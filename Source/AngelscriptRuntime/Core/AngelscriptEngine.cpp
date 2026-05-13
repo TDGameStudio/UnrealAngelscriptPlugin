@@ -496,9 +496,11 @@ static void ReleaseOwnedSharedStateResources(TSharedPtr<FAngelscriptOwnedSharedS
 		GBlueprintEventsByScriptName.Empty();
 	}
 	// AngelscriptGameplayTagsLookup is intentionally NOT cleared here.
-	// UE GameplayTag registration is process-level and irreversible;
-	// this TSet guards against duplicate RegisterGlobalProperty calls
-	// across engine cycles.
+	// It is the dedup index for the global AngelscriptGameplayTags TChunkedArray,
+	// which provides stable addresses for AS global variables. Clearing the lookup
+	// without clearing the array causes linear growth; clearing both breaks
+	// AngelscriptRebindGameplayTagsToCurrentEngine() which relies on the array
+	// as the tag truth source for clone/test engines.
 #if WITH_EDITOR
 	{
 		extern void ResetCachedEditorClasses();
