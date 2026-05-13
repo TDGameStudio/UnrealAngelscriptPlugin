@@ -186,6 +186,15 @@ namespace AngelscriptTestSupport
 		return CreateScriptScanFreeFullEngineForTesting();
 	}
 
+	inline TUniquePtr<FAngelscriptEngine>& GetTransientFullTestEngineStorage()
+	{
+		static thread_local TUniquePtr<FAngelscriptEngine> TransientFullEngine;
+		return TransientFullEngine;
+	}
+
+	// AcquireTransientFullTestEngine is defined after CleanupDetachedASTypesForGarbageCollection
+	FAngelscriptEngine& AcquireTransientFullTestEngine();
+
 	inline TUniquePtr<FAngelscriptEngine> CreateIsolatedCloneEngine()
 	{
 		FAngelscriptEngineConfig Config;
@@ -408,6 +417,21 @@ namespace AngelscriptTestSupport
 #endif
 
 		return Result;
+	}
+
+	inline FAngelscriptEngine& AcquireTransientFullTestEngine()
+	{
+		TUniquePtr<FAngelscriptEngine>& TransientFullEngine = GetTransientFullTestEngineStorage();
+		if (TransientFullEngine.IsValid())
+		{
+			const TArray<TSharedRef<FAngelscriptModuleDesc>> ModulesBeforeReset = TransientFullEngine->GetActiveModules();
+			TransientFullEngine.Reset();
+			CleanupDetachedASTypesForGarbageCollection(&ModulesBeforeReset);
+			CollectGarbage(RF_NoFlags, true);
+		}
+		TransientFullEngine = CreateIsolatedFullEngine();
+		check(TransientFullEngine.IsValid());
+		return *TransientFullEngine;
 	}
 
 	inline void ResetSharedCloneEngine(FAngelscriptEngine& Engine)

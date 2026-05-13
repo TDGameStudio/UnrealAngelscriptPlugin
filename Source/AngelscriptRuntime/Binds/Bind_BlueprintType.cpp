@@ -936,9 +936,16 @@ extern void BindBlueprintCallable(TSharedRef<FAngelscriptType> InType, UFunction
  */
 
 #if WITH_EDITOR
+static TMap<UClass*, bool> GCachedEditorClasses;
+
+void ResetCachedEditorClasses()
+{
+	GCachedEditorClasses.Empty();
+}
+
 bool IsEditorOnlyClass(UClass* Class)
 {
-	static TMap<UClass*, bool> CachedEditorClasses;
+	TMap<UClass*, bool>& CachedEditorClasses = GCachedEditorClasses;
 	bool* CachedValue = CachedEditorClasses.Find(Class);
 	if (CachedValue != nullptr)
 		return *CachedValue;

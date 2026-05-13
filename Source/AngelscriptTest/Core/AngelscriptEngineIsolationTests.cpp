@@ -367,6 +367,8 @@ bool RunRequestContextReusedStartsUnprepared(FAutomationTestBase& Test)
 		Function->Release();
 	};
 
+	FAngelscriptEngineScope Scope(*Engine);
+
 	asIScriptContext* SeedRawContext = Engine->GetScriptEngine()->RequestContext();
 	if (!Test.TestNotNull(TEXT("RequestContext reuse test should acquire a seed context"), SeedRawContext))
 	{

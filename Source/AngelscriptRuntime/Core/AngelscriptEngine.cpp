@@ -22,6 +22,8 @@
 #include "Engine/Engine.h"
 #include "Engine/AssetManager.h"
 #include "UObject/Package.h"
+#include "UObject/UObjectHash.h"
+#include "Engine/UserDefinedEnum.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Interfaces/IPluginManager.h"
 
@@ -36,6 +38,7 @@
 #include "StaticJIT/PrecompiledData.h"
 #include "StaticJIT/AngelscriptStaticJIT.h"
 #include "StaticJIT/StaticJITHeader.h"
+#include "StaticJIT/StaticJITBinds.h"
 
 #include "Framework/Application/SlateApplication.h"
 #include "HAL/ThreadSafeBool.h"
@@ -487,6 +490,27 @@ static void ReleaseOwnedSharedStateResources(TSharedPtr<FAngelscriptOwnedSharedS
 	SharedState->BindDatabase.Reset();
 	SharedState->StaticNames.Reset();
 	SharedState->StaticNamesByIndex.Reset();
+
+	{
+		extern TMap<UClass*, TMap<FString, UFunction*>> GBlueprintEventsByScriptName;
+		GBlueprintEventsByScriptName.Empty();
+	}
+	// AngelscriptGameplayTagsLookup is intentionally NOT cleared here.
+	// UE GameplayTag registration is process-level and irreversible;
+	// this TSet guards against duplicate RegisterGlobalProperty calls
+	// across engine cycles.
+#if WITH_EDITOR
+	{
+		extern void ResetCachedEditorClasses();
+		ResetCachedEditorClasses();
+	}
+#endif
+
+#if AS_CAN_GENERATE_JIT
+	FScriptFunctionNativeForm::ReleaseAllNativeForms();
+#endif
+	FAngelscriptDocs::ResetAllDocumentation();
+
 	SyncAmbientWorldContextFromCurrentEngine();
 }
 
@@ -1548,7 +1572,46 @@ void FAngelscriptEngine::Shutdown()
 					ScriptFunction->ValidateFunction = nullptr;
 				}
 			}
+
+			if (ASClass->IsRooted())
+			{
+				ASClass->RemoveFromRoot();
+			}
+			ASClass->ClearFlags(RF_Standalone);
 		}
+	}
+
+	if (bShouldReleaseOwnedEngine && AngelscriptPackage != nullptr)
+	{
+		ForEachObjectWithPackage(AngelscriptPackage, [](UObject* Obj)
+		{
+			if (UASStruct* Struct = Cast<UASStruct>(Obj))
+			{
+				Struct->ScriptType = nullptr;
+				if (Struct->IsRooted())
+				{
+					Struct->RemoveFromRoot();
+				}
+				Struct->ClearFlags(RF_Standalone);
+			}
+			else if (UDelegateFunction* DelegateFunc = Cast<UDelegateFunction>(Obj))
+			{
+				if (DelegateFunc->IsRooted())
+				{
+					DelegateFunc->RemoveFromRoot();
+				}
+				DelegateFunc->ClearFlags(RF_Standalone);
+			}
+			else if (UUserDefinedEnum* ScriptEnum = Cast<UUserDefinedEnum>(Obj))
+			{
+				if (ScriptEnum->IsRooted())
+				{
+					ScriptEnum->RemoveFromRoot();
+				}
+				ScriptEnum->ClearFlags(RF_Standalone);
+			}
+			return true;
+		}, false);
 	}
 
 	if (bShouldReleaseOwnedEngine)
@@ -1566,7 +1629,6 @@ void FAngelscriptEngine::Shutdown()
 	{
 		ReleaseOwnedSharedStateResources(LocalSharedState);
 	}
-
 	Engine = nullptr;
 	StaticJIT = nullptr;
 	PrecompiledData = nullptr;
@@ -1582,6 +1644,19 @@ void FAngelscriptEngine::Shutdown()
 	if (bShouldReleaseOwnedEngine && bHadInitializedEngine && !LocalSharedState.IsValid())
 	{
 		SyncAmbientWorldContextFromCurrentEngine();
+	}
+	if (bShouldReleaseOwnedEngine)
+	{
+		if (AngelscriptPackage != nullptr)
+		{
+			AngelscriptPackage->RemoveFromRoot();
+			AngelscriptPackage->ClearFlags(RF_Standalone);
+		}
+		if (AssetsPackage != nullptr)
+		{
+			AssetsPackage->RemoveFromRoot();
+			AssetsPackage->ClearFlags(RF_Standalone);
+		}
 	}
 	AngelscriptPackage = nullptr;
 	AssetsPackage = nullptr;

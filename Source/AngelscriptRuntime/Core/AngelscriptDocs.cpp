@@ -117,6 +117,14 @@ int32 FAngelscriptDocs::GetUnrealPropertyDocumentationCount()
 	return UnrealPropertyDocumentation.Num();
 }
 
+void FAngelscriptDocs::ResetAllDocumentation()
+{
+	UnrealDocumentation.Empty();
+	UnrealTypeDocumentation.Empty();
+	GlobalVariableDocumentation.Empty();
+	UnrealPropertyDocumentation.Empty();
+}
+
 UFunction* FAngelscriptDocs::LookupAngelscriptFunction(int FunctionId)
 {
 	FPassedDoc* Found = UnrealDocumentation.Find(FunctionId);

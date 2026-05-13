@@ -38,6 +38,7 @@ struct ANGELSCRIPTRUNTIME_API FScriptFunctionNativeForm
 	virtual FNativeFunctionCall GenerateCustomCall(FNativeFunctionContext& Context, struct FStaticJITContext& JITContext) const { return FNativeFunctionCall{}; }
 
 	static FScriptFunctionNativeForm* GetNativeForm(class asIScriptFunction* ScriptFunction);
+	static void ReleaseAllNativeForms();
 
 	static void BindNativeConstructor(FAngelscriptBinds& Binds, const ANSICHAR* Name, bool bTrivial, const ANSICHAR* CustomForm = nullptr);
 	static void BindNativeDestructor(FAngelscriptBinds& Binds, const ANSICHAR* Name, bool bTrivial);

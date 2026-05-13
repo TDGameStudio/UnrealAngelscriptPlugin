@@ -34,4 +34,6 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptDocs
 	static int32 GetUnrealPropertyDocumentationCount();
 
 	static UFunction* LookupAngelscriptFunction(int FunctionId);
+
+	static void ResetAllDocumentation();
 };

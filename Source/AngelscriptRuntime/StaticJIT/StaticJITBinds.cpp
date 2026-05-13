@@ -59,6 +59,15 @@ FScriptFunctionNativeForm* FScriptFunctionNativeForm::GetNativeForm(class asIScr
 		return nullptr;
 }
 
+void FScriptFunctionNativeForm::ReleaseAllNativeForms()
+{
+	for (auto& Pair : GScriptNativeForms)
+	{
+		delete Pair.Value;
+	}
+	GScriptNativeForms.Empty();
+}
+
 int32 FNativeFunctionContext::AppendArgumentsTo(FString& CallCode, int32 ArgumentStart)
 {
 	for (const FString& Arg : ArgumentValues)

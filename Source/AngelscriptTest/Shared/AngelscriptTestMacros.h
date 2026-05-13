@@ -48,12 +48,7 @@
 // Use for: engine core self-tests, bind environment testing, hot-reload tests.
 // Returns: FAngelscriptEngine&
 #define ASTEST_CREATE_ENGINE_FULL() \
-	(*[this]() -> TUniquePtr<FAngelscriptEngine>& { \
-		static thread_local TUniquePtr<FAngelscriptEngine> _FullEngine; \
-		_FullEngine = AngelscriptTestSupport::CreateIsolatedFullEngine(); \
-		check(_FullEngine.IsValid()); \
-		return _FullEngine; \
-	}())
+	AngelscriptTestSupport::AcquireTransientFullTestEngine()
 
 // NATIVE - Raw asIScriptEngine from the AngelScript SDK.
 // Use for: testing AngelScript SDK APIs directly.
