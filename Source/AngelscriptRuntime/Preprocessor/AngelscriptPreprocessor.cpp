@@ -1329,7 +1329,7 @@ void FAngelscriptPreprocessor::AnalyzeClasses(FFile& File, FChunk& Chunk)
 
 				GeneratedStatics += FString::Printf(
 					TEXT("\n %s Get() __generated {")
-					TEXT("return Cast<%s>(Subsystem::GetEngineSubsystem(%s.Get()));")
+					TEXT("return Cast<%s>(USubsystemLibrary::GetEngineSubsystem(%s.Get()));")
 					TEXT("}"),
 					*ClassDesc->ClassName,
 					*ClassDesc->ClassName,
@@ -1343,7 +1343,7 @@ void FAngelscriptPreprocessor::AnalyzeClasses(FFile& File, FChunk& Chunk)
 
 				GeneratedStatics += FString::Printf(
 					TEXT("\n %s Get() __generated {")
-					TEXT("return Cast<%s>(EditorSubsystem::GetEditorSubsystem(%s.Get()));")
+					TEXT("return Cast<%s>(UEditorSubsystemLibrary::GetEditorSubsystem(%s.Get()));")
 					TEXT("}"),
 					*ClassDesc->ClassName,
 					*ClassDesc->ClassName,
@@ -1357,7 +1357,7 @@ void FAngelscriptPreprocessor::AnalyzeClasses(FFile& File, FChunk& Chunk)
 
 				GeneratedStatics += FString::Printf(
 					TEXT("\n %s Get() __generated {")
-					TEXT("return Cast<%s>(Subsystem::GetGameInstanceSubsystem(%s.Get()));")
+					TEXT("return Cast<%s>(USubsystemLibrary::GetGameInstanceSubsystem(%s.Get()));")
 					TEXT("}"),
 					*ClassDesc->ClassName,
 					*ClassDesc->ClassName,
@@ -1370,7 +1370,7 @@ void FAngelscriptPreprocessor::AnalyzeClasses(FFile& File, FChunk& Chunk)
 
 				GeneratedStatics += FString::Printf(
 					TEXT("\n %s Get() __generated {")
-					TEXT("return Cast<%s>(Subsystem::GetWorldSubsystem(%s.Get()));")
+					TEXT("return Cast<%s>(USubsystemLibrary::GetWorldSubsystem(%s.Get()));")
 					TEXT("}"),
 					*ClassDesc->ClassName,
 					*ClassDesc->ClassName,
@@ -1383,7 +1383,7 @@ void FAngelscriptPreprocessor::AnalyzeClasses(FFile& File, FChunk& Chunk)
 
 				GeneratedStatics += FString::Printf(
 					TEXT("\n %s Get(ULocalPlayer LocalPlayer) __generated {")
-					TEXT("return Cast<%s>(Subsystem::GetLocalPlayerSubsystemFromLocalPlayer(LocalPlayer, %s.Get()));")
+					TEXT("return Cast<%s>(USubsystemLibrary::GetLocalPlayerSubsystemFromLocalPlayer(LocalPlayer, %s.Get()));")
 					TEXT("}"),
 					*ClassDesc->ClassName,
 					*ClassDesc->ClassName,
@@ -1392,7 +1392,7 @@ void FAngelscriptPreprocessor::AnalyzeClasses(FFile& File, FChunk& Chunk)
 
 				GeneratedStatics += FString::Printf(
 					TEXT("\n %s Get(APlayerController PlayerController) __generated {")
-					TEXT("return Cast<%s>(Subsystem::GetLocalPlayerSubsystemFromPlayerController(PlayerController, %s.Get()));")
+					TEXT("return Cast<%s>(USubsystemLibrary::GetLocalPlayerSubsystemFromPlayerController(PlayerController, %s.Get()));")
 					TEXT("}"),
 					*ClassDesc->ClassName,
 					*ClassDesc->ClassName,

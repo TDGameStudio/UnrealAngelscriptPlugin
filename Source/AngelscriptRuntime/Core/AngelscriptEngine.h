@@ -138,9 +138,6 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 	static UObject* GetAmbientWorldContext();
 	static bool ShouldUseEditorScriptsForCurrentContext();
 	static bool ShouldUseAutomaticImportMethodForCurrentContext();
-	static bool ShouldUseScriptNameForBlueprintLibraryNamespacesForCurrentContext();
-	static const TArray<FString>& GetBlueprintLibraryNamespacePrefixesToStripForCurrentContext();
-	static const TArray<FString>& GetBlueprintLibraryNamespaceSuffixesToStripForCurrentContext();
 	static class asCThreadLocalData* GameThreadTLD;
 	static bool bStaticJITTranspiledCodeLoaded;
 
@@ -576,7 +573,6 @@ public:
 	static int32 GetLocalPooledContextCountForTesting(asIScriptEngine* ScriptEngine);
 	void SetUseEditorScriptsForTesting(bool bEnabled);
 	void SetAutomaticImportMethodForTesting(bool bEnabled);
-	void SetBlueprintLibraryNamespaceSettingsForTesting(bool bUseScriptName, TArray<FString> PrefixesToStrip, TArray<FString> SuffixesToStrip);
 	bool LoadPrecompiledDataForTesting(const FString& Filename, FString* OutError = nullptr);
 	bool CompileLoadedPrecompiledDataForTesting(ECompileType CompileType, FString* OutError = nullptr);
 	bool GetStaticJITFunctionIdForTesting(asIScriptFunction* Function, uint32& OutId) const;
@@ -614,10 +610,6 @@ public:
 #endif
 
 private:
-	bool bUseScriptNameForBlueprintLibraryNamespaces = true;
-	TArray<FString> BlueprintLibraryNamespacePrefixesToStrip;
-	TArray<FString> BlueprintLibraryNamespaceSuffixesToStrip;
-
 	FAngelscriptEngineConfig RuntimeConfig;
 	FAngelscriptEngineDependencies Dependencies;
 };

@@ -7,7 +7,7 @@
 // Test Layer: UE Functional
 // Validates script classes subclassing UScriptWorldSubsystem and
 // UScriptGameInstanceSubsystem. The preprocessor auto-generates a Get()
-// static method whose Cast<SubClass>(Subsystem::GetXxxSubsystem(...))
+// static method whose Cast<SubClass>(USubsystemLibrary::GetXxxSubsystem(...))
 // expression requires correct TObjectPtr ↔ UObject* type routing in the
 // binding layer.
 //

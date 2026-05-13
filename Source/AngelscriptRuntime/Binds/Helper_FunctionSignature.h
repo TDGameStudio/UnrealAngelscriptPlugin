@@ -149,59 +149,9 @@ struct FAngelscriptFunctionSignature
 		return OutScriptName;
 	}
 	
-	static FString GetScriptNamespaceForClass(TSharedRef<FAngelscriptType> InType, UFunction* InFunction)
+	static FString GetScriptNamespaceForClass(TSharedRef<FAngelscriptType> InType)
 	{
-		FString Namespace;
-
-		bool bIsScriptName = false;
-		if(FAngelscriptEngine::ShouldUseScriptNameForBlueprintLibraryNamespacesForCurrentContext() && InFunction->GetOuterUClass()->HasMetaData(NAME_Signature_ScriptName))
-		{
-			// Use the ScriptName meta data instead of the type name if available
-			// We assume that the ScriptName does not start with U
-			Namespace = InFunction->GetOuterUClass()->GetMetaData(NAME_Signature_ScriptName);
-			bIsScriptName = true;
-		}
-		else
-		{
-			Namespace = InType->GetAngelscriptTypeName();
-		}
-
-		// Remove the first prefix that matches the start of the namespace
-		// The prefixes are sorted by length, so that the longest found prefix is removed
-		bool bFoundPrefix = false;
-		for(const auto& Prefix : FAngelscriptEngine::GetBlueprintLibraryNamespacePrefixesToStripForCurrentContext())
-		{
-			if(Namespace.RemoveFromStart(Prefix))
-			{
-				bFoundPrefix = true;
-				break;
-			}
-		}
-
-		// Remove the first suffix that matches the end of the namespace
-		// The suffixes are sorted by length, so that the longest found suffix is removed
-		bool bFoundSuffix = false;
-		for(const auto& Suffix : FAngelscriptEngine::GetBlueprintLibraryNamespaceSuffixesToStripForCurrentContext())
-		{
-			if(Namespace.RemoveFromEnd(Suffix))
-			{
-				bFoundSuffix = true;
-				break;
-			}
-		}
-
-		if(!bIsScriptName && !bFoundPrefix && bFoundSuffix)
-		{
-#if WITH_ANGELSCRIPT_HAZE
-			Namespace.RemoveFromStart("UHaze");
-#endif
-
-			// Make sure that anything with a stripped suffix that hasn't already had the prefix removed has U stripped from the front
-			// Does not apply to ScriptName namespaces, since we assume those have already simplified the name
-			Namespace.RemoveFromStart("U");
-		}
-
-		return Namespace;
+		return InType->GetAngelscriptTypeName();
 	}
 
 	void InitFromFunction(TSharedRef<FAngelscriptType> InType, UFunction* InFunction, const TCHAR* OverrideName = nullptr)
@@ -331,7 +281,7 @@ struct FAngelscriptFunctionSignature
 		bStaticInUnreal = Function->HasAnyFunctionFlags(FUNC_Static);
 		if (bStaticInUnreal)
 		{
-			FString Namespace = GetScriptNamespaceForClass(InType, Function);
+			FString Namespace = GetScriptNamespaceForClass(InType);
 			bGlobalScope = HasFuncMeta(NAME_Signature_ScriptGlobalScope);
 
 			// If our class is marked as a 'script mixin', and our argument matches, bind it as a member

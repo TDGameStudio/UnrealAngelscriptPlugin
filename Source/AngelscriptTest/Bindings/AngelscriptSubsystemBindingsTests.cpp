@@ -6,7 +6,7 @@
 //   Angelscript.TestModule.Bindings.Subsystem.*
 //
 // Sections:
-//   NamespaceHelpers          - Subsystem::Get* helpers execute from script
+//   NamespaceHelpers          - USubsystemLibrary::Get* helpers execute from script
 //   NativeStaticGetAccessors  - native subsystem ClassName::Get() accessors
 //   LocalPlayerAccessors      - LocalPlayer and PlayerController subsystem paths
 // ============================================================================
@@ -238,27 +238,27 @@ int VerifySubsystemNamespaceHelpers(
 {
 	int MismatchMask = 0;
 
-	if (Cast<UAngelscriptEngineSubsystem>(Subsystem::GetEngineSubsystem(UAngelscriptEngineSubsystem::StaticClass())) != ExpectedEngineSubsystem)
+	if (Cast<UAngelscriptEngineSubsystem>(USubsystemLibrary::GetEngineSubsystem(UAngelscriptEngineSubsystem::StaticClass())) != ExpectedEngineSubsystem)
 		MismatchMask |= 1;
-	if (Cast<UAngelscriptGameInstanceSubsystem>(Subsystem::GetGameInstanceSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass())) != ExpectedGameInstanceSubsystem)
+	if (Cast<UAngelscriptGameInstanceSubsystem>(USubsystemLibrary::GetGameInstanceSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass())) != ExpectedGameInstanceSubsystem)
 		MismatchMask |= 2;
-	if (Cast<UNetworkSubsystem>(Subsystem::GetWorldSubsystem(UNetworkSubsystem::StaticClass())) != ExpectedWorldSubsystem)
+	if (Cast<UNetworkSubsystem>(USubsystemLibrary::GetWorldSubsystem(UNetworkSubsystem::StaticClass())) != ExpectedWorldSubsystem)
 		MismatchMask |= 4;
 
-	if (Subsystem::GetEngineSubsystem(NullClass) != null)
+	if (USubsystemLibrary::GetEngineSubsystem(NullClass) != null)
 		MismatchMask |= 8;
-	if (Subsystem::GetGameInstanceSubsystem(NullClass) != null)
+	if (USubsystemLibrary::GetGameInstanceSubsystem(NullClass) != null)
 		MismatchMask |= 16;
-	if (Subsystem::GetWorldSubsystem(NullClass) != null)
+	if (USubsystemLibrary::GetWorldSubsystem(NullClass) != null)
 		MismatchMask |= 32;
 
-	if (Subsystem::GetEngineSubsystem(AActor::StaticClass()) != null)
+	if (USubsystemLibrary::GetEngineSubsystem(AActor::StaticClass()) != null)
 		MismatchMask |= 64;
-	if (Subsystem::GetEngineSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
+	if (USubsystemLibrary::GetEngineSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
 		MismatchMask |= 128;
-	if (Subsystem::GetGameInstanceSubsystem(UAngelscriptEngineSubsystem::StaticClass()) != null)
+	if (USubsystemLibrary::GetGameInstanceSubsystem(UAngelscriptEngineSubsystem::StaticClass()) != null)
 		MismatchMask |= 256;
-	if (Subsystem::GetWorldSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
+	if (USubsystemLibrary::GetWorldSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
 		MismatchMask |= 512;
 
 	return MismatchMask;
@@ -436,22 +436,22 @@ int VerifyLocalPlayerSubsystemAccessors(
 {
 	int MismatchMask = 0;
 
-	if (Cast<UEnhancedInputLocalPlayerSubsystem>(Subsystem::GetLocalPlayerSubsystemFromLocalPlayer(LocalPlayer, UEnhancedInputLocalPlayerSubsystem::StaticClass())) != ExpectedLocalPlayerSubsystem)
+	if (Cast<UEnhancedInputLocalPlayerSubsystem>(USubsystemLibrary::GetLocalPlayerSubsystemFromLocalPlayer(LocalPlayer, UEnhancedInputLocalPlayerSubsystem::StaticClass())) != ExpectedLocalPlayerSubsystem)
 		MismatchMask |= 1;
-	if (Cast<UEnhancedInputLocalPlayerSubsystem>(Subsystem::GetLocalPlayerSubsystemFromPlayerController(PlayerController, UEnhancedInputLocalPlayerSubsystem::StaticClass())) != ExpectedLocalPlayerSubsystem)
+	if (Cast<UEnhancedInputLocalPlayerSubsystem>(USubsystemLibrary::GetLocalPlayerSubsystemFromPlayerController(PlayerController, UEnhancedInputLocalPlayerSubsystem::StaticClass())) != ExpectedLocalPlayerSubsystem)
 		MismatchMask |= 2;
 	if (UEnhancedInputLocalPlayerSubsystem::Get(LocalPlayer) != ExpectedLocalPlayerSubsystem)
 		MismatchMask |= 4;
 	if (UEnhancedInputLocalPlayerSubsystem::Get(PlayerController) != ExpectedLocalPlayerSubsystem)
 		MismatchMask |= 8;
 
-	if (Subsystem::GetLocalPlayerSubsystemFromLocalPlayer(NullLocalPlayer, UEnhancedInputLocalPlayerSubsystem::StaticClass()) != null)
+	if (USubsystemLibrary::GetLocalPlayerSubsystemFromLocalPlayer(NullLocalPlayer, UEnhancedInputLocalPlayerSubsystem::StaticClass()) != null)
 		MismatchMask |= 16;
-	if (Subsystem::GetLocalPlayerSubsystemFromPlayerController(NullPlayerController, UEnhancedInputLocalPlayerSubsystem::StaticClass()) != null)
+	if (USubsystemLibrary::GetLocalPlayerSubsystemFromPlayerController(NullPlayerController, UEnhancedInputLocalPlayerSubsystem::StaticClass()) != null)
 		MismatchMask |= 32;
-	if (Subsystem::GetLocalPlayerSubsystemFromLocalPlayer(LocalPlayer, UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
+	if (USubsystemLibrary::GetLocalPlayerSubsystemFromLocalPlayer(LocalPlayer, UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
 		MismatchMask |= 64;
-	if (Subsystem::GetLocalPlayerSubsystemFromPlayerController(PlayerController, UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
+	if (USubsystemLibrary::GetLocalPlayerSubsystemFromPlayerController(PlayerController, UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
 		MismatchMask |= 128;
 
 	return MismatchMask;
@@ -461,9 +461,9 @@ int VerifyAmbientLocalPlayerSubsystemAccessor(UEnhancedInputLocalPlayerSubsystem
 {
 	int MismatchMask = 0;
 
-	if (Cast<UEnhancedInputLocalPlayerSubsystem>(Subsystem::GetLocalPlayerSubsystem(UEnhancedInputLocalPlayerSubsystem::StaticClass())) != ExpectedLocalPlayerSubsystem)
+	if (Cast<UEnhancedInputLocalPlayerSubsystem>(USubsystemLibrary::GetLocalPlayerSubsystem(UEnhancedInputLocalPlayerSubsystem::StaticClass())) != ExpectedLocalPlayerSubsystem)
 		MismatchMask |= 1;
-	if (Subsystem::GetLocalPlayerSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
+	if (USubsystemLibrary::GetLocalPlayerSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
 		MismatchMask |= 2;
 
 	return MismatchMask;

@@ -2,7 +2,10 @@
 #include "AngelscriptGameInstanceSubsystem.h"
 #include "AngelscriptBinds.h"
 #include "AngelscriptBindDatabase.h"
+#include "AngelscriptType.h"
+#include "Binds/Helper_FunctionSignature.h"
 #include "Binds/Helper_ToString.h"
+#include "FunctionLibraries/SubsystemLibrary.h"
 #include "CQTest.h"
 #include "Misc/Guid.h"
 #include "Misc/ScopeExit.h"
@@ -817,7 +820,7 @@ bool RunEngineLocalFlagsIsolation(FAutomationTestBase& Test)
 	return true;
 }
 
-bool RunEngineLocalBlueprintNamespaceSettingsIsolation(FAutomationTestBase& Test)
+bool RunEngineLocalBlueprintLibraryNamespaceRuleConsistency(FAutomationTestBase& Test)
 {
 	FIsolationContextStackGuard ContextGuard;
 
@@ -831,39 +834,36 @@ bool RunEngineLocalBlueprintNamespaceSettingsIsolation(FAutomationTestBase& Test
 		return false;
 	}
 
-	TArray<FString> EngineAPrefixes = { TEXT("LongBlueprintPrefix"), TEXT("BP") };
-	TArray<FString> EngineASuffixes = { TEXT("FunctionLibrary"), TEXT("Lib") };
-	TArray<FString> EngineBPrefixes = { TEXT("OtherPrefix") };
-	TArray<FString> EngineBSuffixes = { TEXT("OtherSuffix") };
-	EngineA->SetBlueprintLibraryNamespaceSettingsForTesting(true, MoveTemp(EngineAPrefixes), MoveTemp(EngineASuffixes));
-	EngineB->SetBlueprintLibraryNamespaceSettingsForTesting(false, MoveTemp(EngineBPrefixes), MoveTemp(EngineBSuffixes));
+	UFunction* Function = USubsystemLibrary::StaticClass()->FindFunctionByName(TEXT("GetEngineSubsystem"));
+	if (!Test.TestNotNull(TEXT("Blueprint namespace rule should find GetEngineSubsystem"), Function))
+	{
+		return false;
+	}
 
 	{
 		FAngelscriptEngineScope ScopeA(*EngineA);
-		const TArray<FString>& Prefixes = FAngelscriptEngine::GetBlueprintLibraryNamespacePrefixesToStripForCurrentContext();
-		const TArray<FString>& Suffixes = FAngelscriptEngine::GetBlueprintLibraryNamespaceSuffixesToStripForCurrentContext();
-		Test.TestTrue(TEXT("Engine A should use ScriptName metadata for blueprint library namespaces"), FAngelscriptEngine::ShouldUseScriptNameForBlueprintLibraryNamespacesForCurrentContext());
-		if (!Test.TestEqual(TEXT("Engine A should keep its own prefix count"), Prefixes.Num(), 2)
-			|| !Test.TestEqual(TEXT("Engine A should keep its own suffix count"), Suffixes.Num(), 2))
+		TSharedPtr<FAngelscriptType> HostType = FAngelscriptType::GetByClass(USubsystemLibrary::StaticClass());
+		if (!Test.TestTrue(TEXT("Engine A should resolve the subsystem library host type"), HostType.IsValid()))
 		{
 			return false;
 		}
-		Test.TestEqual(TEXT("Engine A should sort longer prefixes first"), Prefixes[0], FString(TEXT("LongBlueprintPrefix")));
-		Test.TestEqual(TEXT("Engine A should sort longer suffixes first"), Suffixes[0], FString(TEXT("FunctionLibrary")));
+
+		FAngelscriptFunctionSignature Signature(HostType.ToSharedRef(), Function);
+		Test.TestEqual(TEXT("Engine A should use the full registered AS type namespace"), Signature.ClassName, FString(TEXT("USubsystemLibrary")));
+		Test.TestTrue(TEXT("Engine A should bind the helper as a static script function"), Signature.bStaticInScript);
 	}
 
 	{
 		FAngelscriptEngineScope ScopeB(*EngineB);
-		const TArray<FString>& Prefixes = FAngelscriptEngine::GetBlueprintLibraryNamespacePrefixesToStripForCurrentContext();
-		const TArray<FString>& Suffixes = FAngelscriptEngine::GetBlueprintLibraryNamespaceSuffixesToStripForCurrentContext();
-		Test.TestFalse(TEXT("Engine B should keep its own ScriptName namespace toggle"), FAngelscriptEngine::ShouldUseScriptNameForBlueprintLibraryNamespacesForCurrentContext());
-		if (!Test.TestEqual(TEXT("Engine B should keep its own prefix count"), Prefixes.Num(), 1)
-			|| !Test.TestEqual(TEXT("Engine B should keep its own suffix count"), Suffixes.Num(), 1))
+		TSharedPtr<FAngelscriptType> HostType = FAngelscriptType::GetByClass(USubsystemLibrary::StaticClass());
+		if (!Test.TestTrue(TEXT("Engine B should resolve the subsystem library host type"), HostType.IsValid()))
 		{
 			return false;
 		}
-		Test.TestEqual(TEXT("Engine B should not inherit engine A prefixes"), Prefixes[0], FString(TEXT("OtherPrefix")));
-		Test.TestEqual(TEXT("Engine B should not inherit engine A suffixes"), Suffixes[0], FString(TEXT("OtherSuffix")));
+
+		FAngelscriptFunctionSignature Signature(HostType.ToSharedRef(), Function);
+		Test.TestEqual(TEXT("Engine B should use the same full registered AS type namespace"), Signature.ClassName, FString(TEXT("USubsystemLibrary")));
+		Test.TestTrue(TEXT("Engine B should bind the helper as a static script function"), Signature.bStaticInScript);
 	}
 
 	return true;
@@ -1011,10 +1011,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineIsolationTests,
 		RunEngineLocalFlagsIsolation(*TestRunner);
 	}
 
-	TEST_METHOD(EngineLocalBlueprintNamespaceSettingsIsolation)
+	TEST_METHOD(EngineLocalBlueprintLibraryNamespaceRuleConsistency)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptEngineIsolationTests_Private;
-		RunEngineLocalBlueprintNamespaceSettingsIsolation(*TestRunner);
+		RunEngineLocalBlueprintLibraryNamespaceRuleConsistency(*TestRunner);
 	}
 
 	TEST_METHOD(EngineLocalStaticNamesIsolation)

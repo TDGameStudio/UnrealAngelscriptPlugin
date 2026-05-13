@@ -71,13 +71,7 @@ namespace AngelscriptTest_Bindings_ReflectiveFallbackCache_Private
 			return FString();
 		}
 
-		UFunction* AnyFunction = UBlueprintGameplayTagLibrary::StaticClass()->FindFunctionByName(TEXT("GetTagName"));
-		if (!Test.TestNotNull(TEXT("GameplayTags BPLib should expose GetTagName"), AnyFunction))
-		{
-			return FString();
-		}
-
-		const FString Namespace = FAngelscriptFunctionSignature::GetScriptNamespaceForClass(LibraryType.ToSharedRef(), AnyFunction);
+		const FString Namespace = FAngelscriptFunctionSignature::GetScriptNamespaceForClass(LibraryType.ToSharedRef());
 		return Namespace.IsEmpty() ? FString() : Namespace + TEXT("::");
 	}
 

@@ -97,10 +97,6 @@ public:
 	UPROPERTY(Config, EditDefaultsOnly, Category = "Angelscript", Meta = (ConfigRestartRequired = true))
 	EAngelscriptStaticClassMode StaticClassDeprecation = EAngelscriptStaticClassMode::Allowed;
 
-	/* Whether we should use the ScriptName meta tag for namespaced binds if available. */
-	UPROPERTY(Config, EditDefaultsOnly, Category = "Backwards Compatibility", Meta = (ConfigRestartRequired = true))
-	bool bUseScriptNameForBlueprintLibraryNamespaces = true;
-
 	/* Whether to allow actor and component classes to be instantiated using their raw constructor, instead of forcing SpawnActor or UComponent::Create() calls. */
 	UPROPERTY(Config, EditDefaultsOnly, Category = "Backwards Compatibility", Meta = (ConfigRestartRequired = true))
 	bool bAllowRawConstructorsForComponentsAndActors = false;
@@ -111,23 +107,6 @@ public:
 	 */
 	UPROPERTY(Config, EditDefaultsOnly, Category = "Angelscript", Meta = (ConfigRestartRequired = true))
 	bool bForceConstWithinDevelopmentOnlyFunctions = true;
-
-	/* Strip these prefixes from namespaced binds. For example, when stripping "Kismet": `UKismetSystemLibrary::IsStandalone()` becomes `SystemLibrary::IsStandalone()` */
-	UPROPERTY(Config, EditDefaultsOnly, Category = "Angelscript", Meta = (ConfigRestartRequired = true))
-	TArray<FString> BlueprintLibraryNamespacePrefixesToStrip = {
-		"UKismet",
-		"UBlueprint",
-	};
-
-	/* Strip these suffixes from namespaced binds. For example, when stripping "Library": `SystemLibrary::IsStandalone()` becomes `System::IsStandalone()` */
-	UPROPERTY(Config, EditDefaultsOnly, Category = "Angelscript", Meta = (ConfigRestartRequired = true))
-	TArray<FString> BlueprintLibraryNamespaceSuffixesToStrip = {
-		"Statics",
-		"Library",
-		"BlueprintLibrary",
-		"BlueprintFunctionLibrary",
-		"FunctionLibrary",
-	};
 
 	/**
 	 * Only in editor:

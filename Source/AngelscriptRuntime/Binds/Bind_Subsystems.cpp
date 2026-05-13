@@ -37,7 +37,7 @@ namespace
 AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Subsystems((int32)FAngelscriptBinds::EOrder::Late + 150, []
 {
 	{
-		FAngelscriptBinds::FNamespace Namespace("Subsystem");
+		FAngelscriptBinds::FNamespace Namespace("USubsystemLibrary");
 
 		FAngelscriptBinds::BindGlobalFunction("UObject GetEngineSubsystem(UClass Class)",
 		[](UClass* Class) -> UObject*

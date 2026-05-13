@@ -24,6 +24,7 @@ namespace SubsystemGetterMetadataTest
 	struct FSubsystemGetterExpectation
 	{
 		const TCHAR* FunctionName;
+		const TCHAR* ExpectedNamespace;
 		bool bExpectHiddenWorldContext = false;
 		int32 ExpectedHiddenArgumentIndex = -1;
 		bool bExpectWorldContextTrait = false;
@@ -72,6 +73,13 @@ namespace SubsystemGetterMetadataTest
 		}
 
 		bool bPassed = true;
+		bPassed &= Test.TestEqual(
+			FString::Printf(TEXT("%s should bind under the full subsystem library namespace"), Expectation.FunctionName),
+			Signature.ClassName,
+			FString(Expectation.ExpectedNamespace));
+		bPassed &= Test.TestTrue(
+			FString::Printf(TEXT("%s should remain a static script function"), Expectation.FunctionName),
+			Signature.bStaticInScript);
 		bPassed &= Test.TestTrue(
 			FString::Printf(TEXT("%s should keep the generated declaration non-empty"), Expectation.FunctionName),
 			!Signature.Declaration.IsEmpty());
@@ -124,6 +132,7 @@ namespace MathReturnValueHelperMetadataTest
 	{
 		const TCHAR* FunctionName;
 		const TCHAR* ExpectedScriptName;
+		const TCHAR* ExpectedNamespace;
 	};
 
 	bool CheckMathHelperSignature(
@@ -152,6 +161,13 @@ namespace MathReturnValueHelperMetadataTest
 		}
 
 		bool bPassed = true;
+		bPassed &= Test.TestEqual(
+			FString::Printf(TEXT("%s should bind under the full math library namespace"), Expectation.FunctionName),
+			Signature.ClassName,
+			FString(Expectation.ExpectedNamespace));
+		bPassed &= Test.TestTrue(
+			FString::Printf(TEXT("%s should remain a static script function"), Expectation.FunctionName),
+			Signature.bStaticInScript);
 		bPassed &= Test.TestEqual(
 			FString::Printf(TEXT("%s should expose the expected script alias"), Expectation.FunctionName),
 			Signature.ScriptName,
@@ -401,6 +417,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 		const TArray<SubsystemGetterMetadataTest::FSubsystemGetterExpectation> Expectations = {
 			{
 				TEXT("GetEngineSubsystem"),
+				TEXT("USubsystemLibrary"),
 				false,
 				-1,
 				false,
@@ -408,6 +425,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 			},
 			{
 				TEXT("GetGameInstanceSubsystem"),
+				TEXT("USubsystemLibrary"),
 				true,
 				0,
 				true,
@@ -415,6 +433,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 			},
 			{
 				TEXT("GetLocalPlayerSubsystem"),
+				TEXT("USubsystemLibrary"),
 				true,
 				0,
 				true,
@@ -422,6 +441,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 			},
 			{
 				TEXT("GetWorldSubsystem"),
+				TEXT("USubsystemLibrary"),
 				true,
 				0,
 				true,
@@ -429,6 +449,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 			},
 			{
 				TEXT("GetLocalPlayerSubsystemFromPlayerController"),
+				TEXT("USubsystemLibrary"),
 				false,
 				-1,
 				false,
@@ -436,6 +457,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 			},
 			{
 				TEXT("GetLocalPlayerSubsystemFromLocalPlayer"),
+				TEXT("USubsystemLibrary"),
 				false,
 				-1,
 				false,
@@ -475,7 +497,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 		}
 
 		const FString PreviousNamespace = ANSI_TO_TCHAR(ScriptEngine->GetDefaultNamespace());
-		if (!TestRunner->TestTrue(TEXT("Subsystem helper namespace should be selectable"), ScriptEngine->SetDefaultNamespace("Subsystem") >= 0))
+		if (!TestRunner->TestTrue(TEXT("Subsystem helper namespace should be selectable"), ScriptEngine->SetDefaultNamespace("USubsystemLibrary") >= 0))
 		{
 			return;
 		}
@@ -500,7 +522,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 			{
 				asIScriptFunction* Function = ScriptEngine->GetGlobalFunctionByIndex(FunctionIndex);
 				if (Function != nullptr
-					&& FCStringAnsi::Strcmp(Function->GetNamespace(), "Subsystem") == 0
+					&& FCStringAnsi::Strcmp(Function->GetNamespace(), "USubsystemLibrary") == 0
 					&& FCStringAnsi::Strcmp(Function->GetName(), ExpectedName) == 0)
 				{
 					bFound = true;
@@ -511,6 +533,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 			TestRunner->TestTrue(
 				FString::Printf(TEXT("Subsystem helper namespace should bind %hs"), ExpectedName),
 				bFound);
+		}
+
+		for (asUINT FunctionIndex = 0, FunctionCount = ScriptEngine->GetGlobalFunctionCount(); FunctionIndex < FunctionCount; ++FunctionIndex)
+		{
+			asIScriptFunction* Function = ScriptEngine->GetGlobalFunctionByIndex(FunctionIndex);
+			if (Function != nullptr
+				&& FCStringAnsi::Strcmp(Function->GetNamespace(), "Subsystem") == 0)
+			{
+				TestRunner->AddError(FString::Printf(
+					TEXT("Subsystem helper namespace should not leave old Subsystem::%hs binding"),
+					Function->GetName()));
+			}
 		}
 	}
 
@@ -538,16 +572,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 		}
 
 		const TArray<MathReturnValueHelperMetadataTest::FMathHelperExpectation> Expectations = {
-			{ TEXT("LerpShortestPath"), TEXT("LerpShortestPath") },
-			{ TEXT("RInterpShortestPathTo"), TEXT("RInterpShortestPathTo") },
-			{ TEXT("RInterpConstantShortestPathTo"), TEXT("RInterpConstantShortestPathTo") },
-			{ TEXT("TInterpTo"), TEXT("TInterpTo") },
-			{ TEXT("Modf_32"), TEXT("Modf") },
-			{ TEXT("Modf_64"), TEXT("Modf") },
-			{ TEXT("WrapDouble"), TEXT("Wrap") },
-			{ TEXT("WrapFloat"), TEXT("Wrap") },
-			{ TEXT("WrapInt"), TEXT("Wrap") },
-			{ TEXT("WrapIndex"), TEXT("WrapIndex") }
+			{ TEXT("LerpShortestPath"), TEXT("LerpShortestPath"), TEXT("UAngelscriptMathLibrary") },
+			{ TEXT("RInterpShortestPathTo"), TEXT("RInterpShortestPathTo"), TEXT("UAngelscriptMathLibrary") },
+			{ TEXT("RInterpConstantShortestPathTo"), TEXT("RInterpConstantShortestPathTo"), TEXT("UAngelscriptMathLibrary") },
+			{ TEXT("TInterpTo"), TEXT("TInterpTo"), TEXT("UAngelscriptMathLibrary") },
+			{ TEXT("Modf_32"), TEXT("Modf"), TEXT("UAngelscriptMathLibrary") },
+			{ TEXT("Modf_64"), TEXT("Modf"), TEXT("UAngelscriptMathLibrary") },
+			{ TEXT("WrapDouble"), TEXT("Wrap"), TEXT("UAngelscriptMathLibrary") },
+			{ TEXT("WrapFloat"), TEXT("Wrap"), TEXT("UAngelscriptMathLibrary") },
+			{ TEXT("WrapInt"), TEXT("Wrap"), TEXT("UAngelscriptMathLibrary") },
+			{ TEXT("WrapIndex"), TEXT("WrapIndex"), TEXT("UAngelscriptMathLibrary") }
 		};
 
 		for (const MathReturnValueHelperMetadataTest::FMathHelperExpectation& Expectation : Expectations)

@@ -195,18 +195,6 @@ static UObject* GAmbientWorldContext = nullptr;
 class asCThreadLocalData* FAngelscriptEngine::GameThreadTLD = nullptr;
 thread_local FAngelscriptContextPool GAngelscriptContextPool;
 
-static void SortBlueprintLibraryNamespaceTrimList(TArray<FString>& Values)
-{
-	const auto SortByStringLength = [](const FString& LHS, const FString& RHS)
-	{
-		if (LHS.Len() == RHS.Len())
-			return LHS > RHS;
-		else
-			return LHS.Len() > RHS.Len();
-	};
-	Values.Sort(SortByStringLength);
-}
-
 bool PrepareAngelscriptContextWithLog(asIScriptContext* Context, asIScriptFunction* ScriptFunction, const TCHAR* Callsite)
 {
 	check(Context != nullptr);
@@ -834,38 +822,6 @@ bool FAngelscriptEngine::ShouldUseAutomaticImportMethodForCurrentContext()
 	return false;
 }
 
-bool FAngelscriptEngine::ShouldUseScriptNameForBlueprintLibraryNamespacesForCurrentContext()
-{
-	if (FAngelscriptEngine* CurrentEngine = TryGetCurrentEngine())
-	{
-		return CurrentEngine->bUseScriptNameForBlueprintLibraryNamespaces;
-	}
-
-	return true;
-}
-
-const TArray<FString>& FAngelscriptEngine::GetBlueprintLibraryNamespacePrefixesToStripForCurrentContext()
-{
-	if (FAngelscriptEngine* CurrentEngine = TryGetCurrentEngine())
-	{
-		return CurrentEngine->BlueprintLibraryNamespacePrefixesToStrip;
-	}
-
-	static const TArray<FString> EmptyPrefixesToStrip;
-	return EmptyPrefixesToStrip;
-}
-
-const TArray<FString>& FAngelscriptEngine::GetBlueprintLibraryNamespaceSuffixesToStripForCurrentContext()
-{
-	if (FAngelscriptEngine* CurrentEngine = TryGetCurrentEngine())
-	{
-		return CurrentEngine->BlueprintLibraryNamespaceSuffixesToStrip;
-	}
-
-	static const TArray<FString> EmptySuffixesToStrip;
-	return EmptySuffixesToStrip;
-}
-
 bool FAngelscriptEngine::IsScriptDevelopmentModeForCurrentContext()
 {
 	if (FAngelscriptEngine* Eng = TryGetCurrentEngine()) return Eng->bScriptDevelopmentMode;
@@ -1275,15 +1231,6 @@ void FAngelscriptEngine::SetAutomaticImportMethodForTesting(bool bEnabled)
 {
 	bUseAutomaticImportMethod = bEnabled;
 }
-
-void FAngelscriptEngine::SetBlueprintLibraryNamespaceSettingsForTesting(bool bUseScriptName, TArray<FString> PrefixesToStrip, TArray<FString> SuffixesToStrip)
-{
-	bUseScriptNameForBlueprintLibraryNamespaces = bUseScriptName;
-	BlueprintLibraryNamespacePrefixesToStrip = MoveTemp(PrefixesToStrip);
-	BlueprintLibraryNamespaceSuffixesToStrip = MoveTemp(SuffixesToStrip);
-	SortBlueprintLibraryNamespaceTrimList(BlueprintLibraryNamespacePrefixesToStrip);
-	SortBlueprintLibraryNamespaceTrimList(BlueprintLibraryNamespaceSuffixesToStrip);
-}
 #endif
 
 const FName& FAngelscriptEngine::GetStaticName(int32 Index)
@@ -1684,15 +1631,6 @@ void FAngelscriptEngine::PreInitialize_GameThread()
 
 	ConfigSettings = GetMutableDefault<UAngelscriptSettings>();
 	bUseAutomaticImportMethod = ConfigSettings->bAutomaticImports;
-
-	bUseScriptNameForBlueprintLibraryNamespaces = ConfigSettings->bUseScriptNameForBlueprintLibraryNamespaces;
-	BlueprintLibraryNamespacePrefixesToStrip = ConfigSettings->BlueprintLibraryNamespacePrefixesToStrip;
-	BlueprintLibraryNamespaceSuffixesToStrip = ConfigSettings->BlueprintLibraryNamespaceSuffixesToStrip;
-
-	// Sort the prefixes and suffixes by length
-	// We sort to prioritize stripping long prefixes/suffixes, since eg. Library should not be stripped if we can strip BlueprintFunctionLibrary instead
-	SortBlueprintLibraryNamespaceTrimList(BlueprintLibraryNamespacePrefixesToStrip);
-	SortBlueprintLibraryNamespaceTrimList(BlueprintLibraryNamespaceSuffixesToStrip);
 
 #if WITH_EDITOR && ENGINE_MAJOR_VERSION >= 5
 	// In editor, we need to be able to resolve object pointers to make
@@ -3325,9 +3263,6 @@ void FAngelscriptEngine::AdoptSharedStateFrom(const FAngelscriptEngine& Source)
 	bGeneratePrecompiledData = Source.bGeneratePrecompiledData;
 	bUsePrecompiledData = Source.bUsePrecompiledData;
 	bScriptDevelopmentMode = Source.bScriptDevelopmentMode;
-	bUseScriptNameForBlueprintLibraryNamespaces = Source.bUseScriptNameForBlueprintLibraryNamespaces;
-	BlueprintLibraryNamespacePrefixesToStrip = Source.BlueprintLibraryNamespacePrefixesToStrip;
-	BlueprintLibraryNamespaceSuffixesToStrip = Source.BlueprintLibraryNamespaceSuffixesToStrip;
 }
 
 void FAngelscriptEngine::CheckForFileChanges()
