@@ -1,7 +1,9 @@
 #include "AngelscriptEngine.h"
 #include "AngelscriptBinds.h"
 #include "AngelscriptBindDatabase.h"
+#include "AngelscriptMemoryTags.h"
 #include "AngelscriptPerformanceStats.h"
+#include "HAL/MallocLeakDetection.h"
 #include "Binds/Helper_ToString.h"
 #include "Preprocessor/AngelscriptPreprocessor.h"
 #include "ClassGenerator/AngelscriptClassGenerator.h"
@@ -1230,7 +1232,10 @@ void FAngelscriptEngine::EnsureSharedStateCreated()
 		SharedState->TypeDatabase = MakeUnique<FAngelscriptTypeDatabase>();
 		SharedState->BindState = MakeUnique<FAngelscriptBindState>();
 		SharedState->ToStringList = MakeUnique<TArray<FToStringType>>();
-		SharedState->BindDatabase = MakeUnique<FAngelscriptBindDatabase>();
+		{
+			LLM_SCOPE_BYTAG(Angelscript);
+			SharedState->BindDatabase = MakeUnique<FAngelscriptBindDatabase>();
+		}
 	}
 }
 
@@ -1833,7 +1838,9 @@ void FAngelscriptEngine::Initialize_AnyThread()
 	AllRootPaths = DiscoverScriptRoots(/*bOnlyProjectRoot =*/ true);
 
 	if (bGeneratePrecompiledData)
+	{
 		PrecompiledData = new FAngelscriptPrecompiledData(Engine);
+	}
 
 	if (bGeneratePrecompiledData)
 	{
@@ -2318,6 +2325,8 @@ FAngelscriptContextPool::~FAngelscriptContextPool()
 void FAngelscriptEngine::BindScriptTypes()
 {
 	AS_PERF_SCOPE_STARTUP_BIND_SCRIPT_TYPES();
+	LLM_SCOPE_BYTAG(Angelscript);
+	MALLOCLEAK_SCOPED_CONTEXT(TEXT("Angelscript/BindScriptTypes"));
 
 	#if WITH_DEV_AUTOMATION_TESTS
 	FAngelscriptBindExecutionObservation::BeginBindScriptTypesTiming();
@@ -3547,6 +3556,7 @@ TSharedPtr<struct FAngelscriptModuleDesc> FAngelscriptEngine::GetModuleByFilenam
 ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, const TArray<TSharedRef<struct FAngelscriptModuleDesc>>& InModules, TArray<TSharedRef<FAngelscriptModuleDesc>>& OutCompiledModules)
 {
 	AS_PERF_SCOPE_COMPILE_MODULES();
+	LLM_SCOPE_BYTAG(Angelscript);
 	FAngelscriptCompilationContext CompilationContext(CompileType, InModules);
 
 	if (FAngelscriptCompilationEvents::HasListeners())
@@ -5930,7 +5940,9 @@ FAngelscriptEngine::FAngelscriptDebugStack& GetStack(asIScriptContext* Context)
 {
 	asCContext* Ctx = (asCContext*)Context;
 	if (Ctx->DebugFramePtr == nullptr)
+	{
 		Ctx->DebugFramePtr = new FAngelscriptEngine::FAngelscriptDebugStack;
+	}
 	return *(FAngelscriptEngine::FAngelscriptDebugStack*)Ctx->DebugFramePtr;
 }
 

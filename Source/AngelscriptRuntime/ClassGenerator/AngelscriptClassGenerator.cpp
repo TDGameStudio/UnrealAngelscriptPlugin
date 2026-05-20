@@ -29,6 +29,7 @@
 #include "AngelscriptType.h"
 #include "AngelscriptDebugValue.h"
 #include "AngelscriptInclude.h"
+#include "AngelscriptMemoryTags.h"
 #include "AngelscriptPerformanceStats.h"
 #include "AngelscriptSettings.h"
 #include "Binds/BlueprintCallableReflectiveFallback.h"
@@ -2704,6 +2705,7 @@ void FAngelscriptClassGenerator::CreateFullReloadClass(FModuleData& ModuleData, 
 		ReplacedClass->ClassFlags |= CLASS_NewerVersionExists;
 	}
 
+	LLM_SCOPE_BYTAG(Angelscript);
 	UASClass* NewClass = NewObject<UASClass>(
 		FAngelscriptEngine::GetPackage(),
 		UASClass::StaticClass(),
@@ -2754,6 +2756,7 @@ void FAngelscriptClassGenerator::CreateFullReloadStruct(FModuleData& ModuleData,
 		ReplacedStruct->Rename(*OldClassName, nullptr, REN_DontCreateRedirectors);
 	}
 
+	LLM_SCOPE_BYTAG(Angelscript);
 	UASStruct* NewStruct = NewObject<UASStruct>(
 		FAngelscriptEngine::GetPackage(),
 		UASStruct::StaticClass(),
@@ -2806,6 +2809,7 @@ void FAngelscriptClassGenerator::CreateFullReloadDelegate(FModuleData& Module, F
 		ReplacedFunction->Rename(*OldFunctionName, nullptr, REN_DontCreateRedirectors);
 	}
 
+	LLM_SCOPE_BYTAG(Angelscript);
 	UDelegateFunction* Function = NewObject<UDelegateFunction>(
 		FAngelscriptEngine::GetPackage(),
 		UDelegateFunction::StaticClass(),
@@ -3807,6 +3811,7 @@ void FAngelscriptClassGenerator::DoFullReload(FModuleData& ModuleData, FEnumData
 	}
 	else
 	{
+		LLM_SCOPE_BYTAG(Angelscript);
 		Enum = NewObject<UUserDefinedEnum>(
 			FAngelscriptEngine::GetPackage(),
 			UUserDefinedEnum::StaticClass(),

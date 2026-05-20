@@ -6,6 +6,7 @@
 #include "ClassGenerator/AngelscriptAdditionalCompileChecks.h"
 
 #include "AngelscriptType.h"
+#include "AngelscriptMemoryTags.h"
 
 #include "AngelscriptEngine.generated.h"
 
@@ -29,8 +30,6 @@
 #ifndef WITH_ANGELSCRIPT_HAZE
 #define WITH_ANGELSCRIPT_HAZE 0
 #endif
-
-#define AS_LLM_SCOPE LLM_SCOPE(ELLMTag::CsvProfiler)
 
 ANGELSCRIPTRUNTIME_API DECLARE_LOG_CATEGORY_EXTERN(Angelscript, Log, All);
 

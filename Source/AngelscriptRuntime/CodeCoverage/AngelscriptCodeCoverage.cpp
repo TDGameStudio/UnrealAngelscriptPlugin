@@ -66,6 +66,10 @@ void FAngelscriptCodeCoverage::StopRecordingAndWriteReport(const FString& Output
 
 void FAngelscriptCodeCoverage::MapExecutableLines(FAngelscriptModuleDesc& Module)
 {
+	// MapExecutableLines is the main population path for `FilesToCoverage`,
+	// the per-line hit-count store. Tag the resulting allocations under the
+	// dedicated `Angelscript/CodeCoverage` LLM bucket so coverage memory shows
+	// up separately from generic engine state.
 	asCModule* ScriptModule = Module.ScriptModule;
 	if (!ensure(ScriptModule != nullptr))
 	{

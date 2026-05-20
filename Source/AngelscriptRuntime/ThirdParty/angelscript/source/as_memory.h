@@ -70,11 +70,27 @@ bool isAligned(const void* const pointer, asUINT alignment);
 
 // We don't overload the new operator as that would affect the application as well
 
-#define asNEW(x)        new(FMemory::Malloc(sizeof(x), alignof(x))) x
-#define asDELETE(ptr,x) {void *tmp = ptr; (ptr)->~x(); FMemory::Free(tmp);}
+//[UE++]: Route AS-internal allocations through a single inline gateway so the
+//[UE++]: AngelscriptRuntime LLM tag (Angelscript) attributes the byte count to
+//[UE++]: the right bucket. The gateway preserves per-type alignment that the
+//[UE++]: original `FMemory::Malloc(size, alignof(x))` macros relied on.
+//[UE++]: Declared in the global namespace (independent of AS_USE_NAMESPACE) so
+//[UE++]: the asNEW/asNEWARRAY macros expand to a fully qualified path no matter
+//[UE++]: whether they fire inside or outside `BEGIN_AS_NAMESPACE`.
+END_AS_NAMESPACE
+namespace AngelscriptSDK
+{
+	ANGELSCRIPTRUNTIME_API void* SDKAlloc(size_t Size, size_t Alignment);
+	ANGELSCRIPTRUNTIME_API void  SDKFree(void* Ptr);
+}
+BEGIN_AS_NAMESPACE
 
-#define asNEWARRAY(x,cnt)  (x*)FMemory::Malloc(sizeof(x)*cnt, alignof(x))
-#define asDELETEARRAY(ptr) FMemory::Free(ptr)
+#define asNEW(x)        new(::AngelscriptSDK::SDKAlloc(sizeof(x), alignof(x))) x
+#define asDELETE(ptr,x) {void *tmp = ptr; (ptr)->~x(); ::AngelscriptSDK::SDKFree(tmp);}
+
+#define asNEWARRAY(x,cnt)  (x*)::AngelscriptSDK::SDKAlloc(sizeof(x)*cnt, alignof(x))
+#define asDELETEARRAY(ptr) ::AngelscriptSDK::SDKFree(ptr)
+//[UE--]
 
 #ifdef WIP_16BYTE_ALIGN
 	#define asNEWARRAYALIGNED(x,cnt, alignment)  (x*)userAllocAligned(sizeof(x)*cnt, alignment)

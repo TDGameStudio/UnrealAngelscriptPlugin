@@ -733,6 +733,7 @@ void FAngelscriptDebugServer::ResetClientStateForShutdown()
 
 	FAngelscriptDebugServer::FAngelscriptDebugServer(FAngelscriptEngine* InOwnerEngine, int Port)
 {
+	LLM_SCOPE_BYTAG(Angelscript);
 	OwnerEngine = InOwnerEngine;
 	Listener = new FTcpListener(FIPv4Endpoint(FIPv4Address::Any, Port));
 	Listener->OnConnectionAccepted().BindRaw(this, &FAngelscriptDebugServer::HandleConnectionAccepted);

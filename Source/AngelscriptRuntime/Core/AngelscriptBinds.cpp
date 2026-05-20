@@ -1,7 +1,9 @@
 #include "AngelscriptBinds.h"
 
 #include "AngelscriptEngine.h"
+#include "AngelscriptMemoryTags.h"
 #include "AngelscriptPerformanceStats.h"
+#include "HAL/MallocLeakDetection.h"
 #include "AngelscriptSettings.h"
 #include "Misc/Paths.h"
 #include "Testing/AngelscriptBindExecutionObservation.h"
@@ -301,6 +303,8 @@ void FAngelscriptBinds::CallBinds()
 void FAngelscriptBinds::CallBinds(const TSet<FName>& DisabledBindNames)
 {
 	AS_PERF_SCOPE_BINDS_CALL_BINDS();
+	LLM_SCOPE_BYTAG(Angelscript);
+	MALLOCLEAK_SCOPED_CONTEXT(TEXT("Angelscript/CallBinds"));
 
 	#if WITH_DEV_AUTOMATION_TESTS
 	FAngelscriptBindExecutionObservation::BeginObservationPass(DisabledBindNames);
@@ -313,6 +317,11 @@ void FAngelscriptBinds::CallBinds(const TSet<FName>& DisabledBindNames)
 			UE_LOG(Angelscript, Log, TEXT("Skipping bind '%s'"), *Bind.BindName.ToString());
 			continue;
 		}
+
+		#if MALLOC_LEAKDETECTION
+		const FString BindLeakContext = FString::Printf(TEXT("Angelscript/Bind/%s"), *Bind.BindName.ToString());
+		MALLOCLEAK_SCOPED_CONTEXT(*BindLeakContext);
+		#endif
 
 		#if WITH_DEV_AUTOMATION_TESTS
 		FAngelscriptBindExecutionObservation::RecordExecutedBind(Bind.BindName);

@@ -42,6 +42,13 @@
 #include "as_bytecode.h"
 #include "as_string.h"
 
+//[UE++]: Pull in the AngelscriptRuntime LLM tag declaration so the SDK
+//[UE++]: allocation gateways below can attribute bytes to the Angelscript tag.
+//[UE++]: Build.cs exposes ModuleDirectory/Core via PublicIncludePaths so the
+//[UE++]: bare include path resolves the same way the rest of the runtime does.
+#include "AngelscriptMemoryTags.h"
+//[UE--]
+
 #include <stdlib.h>
 
 #if !defined(__APPLE__) && !defined(__SNC__) && !defined(__ghs__) && !defined(__FreeBSD__) && !defined(__OpenBSD__)
@@ -161,6 +168,11 @@ int asSetResolveObjectPtrFunction(asRESOLVEOBJECTPTRFUNC_t resolveFunc)
 // interface
 void *asAllocMem(size_t size)
 {
+	//[UE++]: Tag every script object / generic SDK byte buffer that flows through
+	//[UE++]: the public asAllocMem hook so LLM reports attribute it under
+	//[UE++]: "Angelscript" rather than the unspecified default bucket.
+	LLM_SCOPE_BYTAG(Angelscript);
+	//[UE--]
 	return FMemory::Malloc(size, alignof(asBYTE));
 }
 
@@ -171,6 +183,28 @@ void asFreeMem(void *mem)
 }
 
 } // extern "C"
+
+//[UE++]: Definition of the global-namespace inline gateway declared in
+//[UE++]: as_memory.h. We temporarily close BEGIN_AS_NAMESPACE so this lives in
+//[UE++]: ::AngelscriptSDK and matches the declaration regardless of whether
+//[UE++]: AS_USE_NAMESPACE is set. Reopened immediately after for the rest of
+//[UE++]: the translation unit.
+END_AS_NAMESPACE
+namespace AngelscriptSDK
+{
+	void* SDKAlloc(size_t Size, size_t Alignment)
+	{
+		LLM_SCOPE_BYTAG(Angelscript);
+		return FMemory::Malloc(Size, Alignment);
+	}
+
+	void SDKFree(void* Ptr)
+	{
+		FMemory::Free(Ptr);
+	}
+}
+BEGIN_AS_NAMESPACE
+//[UE--]
 
 asCMemoryMgr::asCMemoryMgr()
 {
@@ -214,7 +248,11 @@ void *asCMemoryMgr::AllocScriptNode()
 	}
 
 	LEAVECRITICALSECTION(cs);
+	//[UE++]: Tag fresh script-node pages under Angelscript; pool reuse hits
+	//[UE++]: the early return above and skips the allocator entirely.
+	LLM_SCOPE_BYTAG(Angelscript);
 	return FMemory::Malloc(sizeof(asCScriptNode), alignof(asCScriptNode));
+	//[UE--]
 }
 
 void asCMemoryMgr::FreeScriptNode(void *ptr)
@@ -240,7 +278,12 @@ void *asCMemoryMgr::AllocByteInstruction()
 	if( byteInstructionPool.Num() )
 		return byteInstructionPool.Pop(EAllowShrinking::No);
 
+	//[UE++]: Tag fresh byte-instruction allocations under Angelscript so
+	//[UE++]: bytecode-buffer growth shows up under the Angelscript bucket
+	//[UE++]: rather than the unattributed default tag.
+	LLM_SCOPE_BYTAG(Angelscript);
 	return FMemory::Malloc(sizeof(asCByteInstruction), alignof(asCByteInstruction));
+	//[UE--]
 }
 
 void asCMemoryMgr::FreeByteInstruction(void *ptr)

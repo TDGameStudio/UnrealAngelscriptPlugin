@@ -10,6 +10,7 @@
 
 #include "AngelscriptSettings.h"
 #include "AngelscriptType.h"
+#include "AngelscriptMemoryTags.h"
 
 #include "Internationalization/Regex.h"
 #include "Misc/FileHelper.h"
@@ -424,6 +425,7 @@ void FAngelscriptPreprocessor::PerformAsynchronousLoads()
 
 bool FAngelscriptPreprocessor::Preprocess()
 {
+	LLM_SCOPE_BYTAG(Angelscript);
 	FScopedSlowTask SlowTask(1.f, FText::FromString("Script Preprocessing"));
 	SlowTask.EnterProgressFrame(1.f);
 

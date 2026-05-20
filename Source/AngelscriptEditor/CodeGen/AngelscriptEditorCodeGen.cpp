@@ -269,6 +269,10 @@ FString FAngelscriptEditorModule::GetIncludeForModule(UField* Class, FString& He
 
 void FAngelscriptEditorModule::GenerateNativeBinds()
 {
+	// Native bind generation produces large transient buffers (per-class
+	// header + cpp content arrays). Tag the entire pass under Angelscript.
+	LLM_SCOPE_BYTAG(Angelscript);
+
 	//FAngelscriptBindDatabase& BindDB = FAngelscriptBindDatabase::Get();
 
 	GenerateBindDatabases();

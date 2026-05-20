@@ -229,6 +229,13 @@ void FClassReloadHelperTestAccess::ResetPerformReinstanceTestHooks()
 
 void FClassReloadHelper::FReloadState::PerformReinstance()
 {
+	// PerformReinstance is the entire surface of the editor-time hot-reload
+	// flow: it allocates new UClass instances, clones BPGCs, and fixes up
+	// referencers. Tag the whole call tree under Angelscript so
+	// hot-reload memory growth shows up under one bucket instead of being
+	// smeared across UnrealEd / Engine.
+	LLM_SCOPE_BYTAG(Angelscript);
+
 	// We never go into the reinstance path in an initial compile, there's no point
 	if (!FAngelscriptEngine::Get().bIsInitialCompileFinished)
 		return;

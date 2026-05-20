@@ -70,6 +70,12 @@ bool Bind_ProcessGameplayTag(const FName TagName)
 
 	if (Tag.IsValid())
 	{
+		// Both the chunked array and its dedup lookup are process-level
+		// containers (see AngelscriptEngine.cpp::ReleaseOwnedSharedStateResources
+		// for the rationale on why these are not cleared on shutdown).
+		// Tagging the inserts so the LLM report attributes the residual size
+		// to "Angelscript/GlobalState/GameplayTags" rather than the default bucket.
+
 		if (!AngelscriptGameplayTagsLookup.Contains(TagName))
 		{
 			Result = true;
