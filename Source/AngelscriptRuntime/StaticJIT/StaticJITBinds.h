@@ -40,6 +40,12 @@ struct ANGELSCRIPTRUNTIME_API FScriptFunctionNativeForm
 	static FScriptFunctionNativeForm* GetNativeForm(class asIScriptFunction* ScriptFunction);
 	static void ReleaseAllNativeForms();
 
+	// Diagnostic — returns the number of native-form entries currently held in
+	// the global GScriptNativeForms map. Used by Memory.BindFreeEvidence
+	// regression tests to assert the table does not accumulate across engine
+	// cycles. Always returns 0 outside JIT-capable builds.
+	static int32 NumNativeForms();
+
 	static void BindNativeConstructor(FAngelscriptBinds& Binds, const ANSICHAR* Name, bool bTrivial, const ANSICHAR* CustomForm = nullptr);
 	static void BindNativeDestructor(FAngelscriptBinds& Binds, const ANSICHAR* Name, bool bTrivial);
 	static void BindNativeUObjectCast(FAngelscriptBinds& Binds, const FString& TargetType, bool bGuaranteed);

@@ -46,6 +46,7 @@ struct FAngelscriptBindState;
 struct FToStringType;
 
 class FHotReloadTestRunner;
+class FBlueprintEventSignatureRegistry;
 struct FAngelscriptEngineLifetimeToken;
 struct FAngelscriptOwnedSharedState;
 struct FAngelscriptEngineContextStack;
@@ -563,6 +564,7 @@ public:
 	FAngelscriptBindState* GetBindState() const;
 	TArray<FToStringType>* GetToStringList() const;
 	FAngelscriptBindDatabase* GetBindDatabase() const;
+	FBlueprintEventSignatureRegistry* GetBlueprintEventSignatureRegistry() const;
 
 	void EnsureSharedStateCreated();
 

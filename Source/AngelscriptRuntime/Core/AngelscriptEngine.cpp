@@ -4,6 +4,7 @@
 #include "AngelscriptMemoryTags.h"
 #include "AngelscriptPerformanceStats.h"
 #include "HAL/MallocLeakDetection.h"
+#include "Binds/BlueprintEventSignatureRegistry.h"
 #include "Binds/Helper_ToString.h"
 #include "Preprocessor/AngelscriptPreprocessor.h"
 #include "ClassGenerator/AngelscriptClassGenerator.h"
@@ -269,6 +270,7 @@ struct FAngelscriptOwnedSharedState
 	TUniquePtr<FAngelscriptBindState> BindState;
 	TUniquePtr<TArray<FToStringType>> ToStringList;
 	TUniquePtr<FAngelscriptBindDatabase> BindDatabase;
+	TUniquePtr<FBlueprintEventSignatureRegistry> BlueprintEventSignatureRegistry;
 	TArray<FName> StaticNames;
 	TMap<FName, int32> StaticNamesByIndex;
 
@@ -497,6 +499,11 @@ static void ReleaseOwnedSharedStateResources(TSharedPtr<FAngelscriptOwnedSharedS
 		extern TMap<UClass*, TMap<FString, UFunction*>> GBlueprintEventsByScriptName;
 		GBlueprintEventsByScriptName.Empty();
 	}
+	// Drop every FBlueprintEventSignature that was attached to an asCScriptFunction
+	// via SetUserData(...). Safe to do here because ScriptEngine->ShutDownAndRelease()
+	// above has already destroyed every script function that held a userData pointer
+	// to one of these heap-allocated signatures.
+	SharedState->BlueprintEventSignatureRegistry.Reset();
 	// AngelscriptGameplayTagsLookup is intentionally NOT cleared here.
 	// It is the dedup index for the global AngelscriptGameplayTags TChunkedArray,
 	// which provides stable addresses for AS global variables. Clearing the lookup
@@ -1214,6 +1221,11 @@ FAngelscriptBindState* FAngelscriptEngine::GetBindState() const
 	return SharedState.IsValid() ? SharedState->BindState.Get() : nullptr;
 }
 
+FBlueprintEventSignatureRegistry* FAngelscriptEngine::GetBlueprintEventSignatureRegistry() const
+{
+	return SharedState.IsValid() ? SharedState->BlueprintEventSignatureRegistry.Get() : nullptr;
+}
+
 TArray<FToStringType>* FAngelscriptEngine::GetToStringList() const
 {
 	return SharedState.IsValid() ? SharedState->ToStringList.Get() : nullptr;
@@ -1236,6 +1248,7 @@ void FAngelscriptEngine::EnsureSharedStateCreated()
 			LLM_SCOPE_BYTAG(Angelscript);
 			SharedState->BindDatabase = MakeUnique<FAngelscriptBindDatabase>();
 		}
+		SharedState->BlueprintEventSignatureRegistry = MakeUnique<FBlueprintEventSignatureRegistry>();
 	}
 }
 

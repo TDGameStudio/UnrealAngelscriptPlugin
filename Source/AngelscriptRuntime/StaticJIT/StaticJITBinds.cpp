@@ -68,6 +68,11 @@ void FScriptFunctionNativeForm::ReleaseAllNativeForms()
 	GScriptNativeForms.Empty();
 }
 
+int32 FScriptFunctionNativeForm::NumNativeForms()
+{
+	return GScriptNativeForms.Num();
+}
+
 int32 FNativeFunctionContext::AppendArgumentsTo(FString& CallCode, int32 ArgumentStart)
 {
 	for (const FString& Arg : ArgumentValues)

@@ -2,6 +2,7 @@
 #include "AngelscriptEngine.h"
 #include "AngelscriptType.h"
 #include "BlueprintCallableReflectiveFallback.h"
+#include "BlueprintEventSignatureRegistry.h"
 
 #include "Containers/StringConv.h"
 #include "UObject/UObjectIterator.h"
@@ -66,6 +67,20 @@ static bool TryExtractMulticastFunctionNames(const FMulticastScriptDelegate& Del
 }
 
 TMap<UClass*, TMap<FString, UFunction*>> GBlueprintEventsByScriptName;
+
+// Diagnostic accessor used by the cross-cycle bounded-count regression
+// tests in AngelscriptTest. We don't export the global itself across module
+// boundaries; this single ANGELSCRIPTRUNTIME_API entry is enough for tests
+// to assert the table doesn't accumulate across engine cycles.
+ANGELSCRIPTRUNTIME_API int32 GetBlueprintEventsByScriptNameTotalCount()
+{
+	int32 Total = 0;
+	for (const TPair<UClass*, TMap<FString, UFunction*>>& Outer : GBlueprintEventsByScriptName)
+	{
+		Total += Outer.Value.Num();
+	}
+	return Total;
+}
 
 UFunction* GetBlueprintEventByScriptName(UClass* Class, const FString& ScriptName)
 {
@@ -505,6 +520,42 @@ struct FBlueprintEventSignature
 	UFunction* UnrealFunction = nullptr;
 };
 
+// Centralized deleter referenced by FBlueprintEventSignatureRegistry::Reset().
+// Defined here because the registry header only forward-declares the signature
+// type to avoid pulling AS_EVENT_MAX_ARGS and FAngelscriptTypeUsage into a
+// public header.
+namespace BlueprintEventSignatureRegistryInternal
+{
+	void DropOwnedSignature(void* Signature)
+	{
+		delete static_cast<FBlueprintEventSignature*>(Signature);
+	}
+}
+
+// Allocate a new signature and immediately transfer ownership to the current
+// engine's registry. The returned pointer remains stable for the lifetime of
+// the engine (or until SharedState->BlueprintEventSignatureRegistry.Reset()).
+//
+// EnsureSharedStateCreated() unconditionally allocates the registry, so by the
+// time any BindBlueprintEvent_* helper runs the registry must exist. We turn
+// that invariant into a hard `checkf` so a future bootstrap reorder fails
+// loudly instead of silently leaking — every signature that escapes the
+// registry survives every subsequent engine cycle (see
+// ASBindFreeCompletenessVerification.md §4 for why this leak class is
+// expensive to detect after the fact).
+static FBlueprintEventSignature* NewOwnedBlueprintEventSignature()
+{
+	FBlueprintEventSignatureRegistry* Registry = FAngelscriptEngine::Get().GetBlueprintEventSignatureRegistry();
+	checkf(Registry != nullptr,
+		TEXT("FBlueprintEventSignatureRegistry must be initialised before any "
+		     "BindBlueprintEvent path runs. EnsureSharedStateCreated() is "
+		     "responsible for creating it; if this fires the bind ordering "
+		     "regressed."));
+	auto* Sig = new FBlueprintEventSignature;
+	Registry->AddOwnership(Sig);
+	return Sig;
+}
+
 void CallStaticWithSignature(asIScriptGeneric* InGeneric)
 {
 	asCGeneric* Generic = static_cast<asCGeneric*>(InGeneric);
@@ -587,7 +638,7 @@ void BindBlueprintEvent(
 	if (Signature.ArgumentTypes.Num() > AS_EVENT_MAX_ARGS)
 		return;
 
-	auto* Sig = new FBlueprintEventSignature;
+	auto* Sig = NewOwnedBlueprintEventSignature();
 	Sig->FunctionName = Function->GetFName();
 	Sig->UnrealFunction = Function;
 	Sig->ArgCount = Signature.ArgumentTypes.Num();
@@ -721,7 +772,7 @@ void BindBlueprintEvent_FromPrep(
 		return;
 	}
 
-	auto* Sig = new FBlueprintEventSignature;
+	auto* Sig = NewOwnedBlueprintEventSignature();
 	Sig->FunctionName = Function->GetFName();
 	Sig->UnrealFunction = Function;
 	Sig->ArgCount = Signature.ArgumentTypes.Num();
@@ -919,7 +970,7 @@ void BindDelegateEvent(FAngelscriptBinds& Delegate_, UFunction* Function, bool b
 	if (ArgumentTypes.Num() > AS_EVENT_MAX_ARGS)
 		return;
 
-	auto* Sig = new FBlueprintEventSignature;
+	auto* Sig = NewOwnedBlueprintEventSignature();
 	Sig->UnrealFunction = Function;
 	Sig->FunctionName = Function->GetFName();
 	Sig->ArgCount = ArgumentTypes.Num();
