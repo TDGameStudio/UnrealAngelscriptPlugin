@@ -112,7 +112,7 @@ bool FAngelscriptArrayType::CanCreateProperty(const FAngelscriptTypeUsage& Usage
 	return Usage.SubTypes[0].CanCreateProperty();
 }
 
-FProperty* FAngelscriptArrayType::CreateProperty(const FAngelscriptTypeUsage& Usage, const FPropertyParams& Params) const 
+FProperty* FAngelscriptArrayType::CreateProperty(const FAngelscriptTypeUsage& Usage, const FPropertyParams& Params) const
 {
 	auto* ArrayProp = new FArrayProperty(Params.Outer, Params.PropertyName, RF_Public);
 

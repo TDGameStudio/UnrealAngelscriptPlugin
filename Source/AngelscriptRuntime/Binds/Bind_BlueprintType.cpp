@@ -2770,19 +2770,21 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_TWeakObjectPtr((int32)FAngelsc
 static void BindUClassLookup()
 {
 	// Register the type used by TSubclassOf
-	auto SubclassOfType = MakeShared<FSubclassOfType>();
+	TSharedRef<FSubclassOfType> SubclassOfType = MakeShared<FSubclassOfType>();
 	FAngelscriptType::Register(SubclassOfType);
 
-	// Register a type that handles script object types generically
-	auto ScriptObjectType = MakeShared<FUObjectType>(nullptr, TEXT("UObject"));
+	// Register a type that handles script object types generically.
+	// SetScriptObject takes a TSharedPtr (not TSharedRef) so we pass the
+	// implicit Ref->Ptr conversion explicitly.
+	TSharedRef<FUObjectType> ScriptObjectType = MakeShared<FUObjectType>(nullptr, TEXT("UObject"));
 	FAngelscriptType::SetScriptObject(ScriptObjectType);
 
 	// Register the type used by TObjectPtr
-	auto ObjectPtrType = MakeShared<FObjectPtrType>();
+	TSharedRef<FObjectPtrType> ObjectPtrType = MakeShared<FObjectPtrType>();
 	FAngelscriptType::Register(ObjectPtrType);
 
 	// Register the type used by TWeakObjectPtr
-	auto WeakObjectPtrType = MakeShared<FWeakObjectPtrType>();
+	TSharedRef<FWeakObjectPtrType> WeakObjectPtrType = MakeShared<FWeakObjectPtrType>();
 	FAngelscriptType::Register(WeakObjectPtrType);
 
 	// Register a type finder into the type system that
