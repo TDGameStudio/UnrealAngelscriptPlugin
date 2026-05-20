@@ -419,6 +419,26 @@ namespace AngelscriptTestSupport
 		return Result;
 	}
 
+	// Coarse OS-level memory probe used by the Memory.BindFreeEvidence tests.
+	// NOT called automatically by AcquireTransientFullTestEngine — those probe
+	// callers explicitly invoke it through AcquireTransientFullTestEngineWithProbe
+	// below. Keeping the probe out of the common acquire path means the 400+
+	// tests that just need a fresh Full engine pay zero `FPlatformMemory::GetStats`
+	// + `FMemory::Trim(true)` overhead and don't pollute logs with [BindFreeProbe].
+	inline void SampleBindFreeMem(const TCHAR* Phase)
+	{
+		const FPlatformMemoryStats Stats = FPlatformMemory::GetStats();
+		UE_LOG(Angelscript, Log, TEXT("[BindFreeProbe] %s | OS_UsedPhys=%.1f MB | Peak=%.1f MB | UsedVirt=%.1f MB"),
+			Phase,
+			Stats.UsedPhysical / (1024.0 * 1024.0),
+			Stats.PeakUsedPhysical / (1024.0 * 1024.0),
+			Stats.UsedVirtual / (1024.0 * 1024.0));
+	}
+
+	// Default acquisition path. Reset the previous transient engine, GC, and
+	// hand back a freshly-created isolated Full engine. No memory probes, no
+	// `FMemory::Trim(true)` — those are diagnostic operations that belong to
+	// BindFreeEvidence tests, not to the 400+ tests that use ASTEST_CREATE_ENGINE_FULL.
 	inline FAngelscriptEngine& AcquireTransientFullTestEngine()
 	{
 		TUniquePtr<FAngelscriptEngine>& TransientFullEngine = GetTransientFullTestEngineStorage();
@@ -430,6 +450,36 @@ namespace AngelscriptTestSupport
 			CollectGarbage(RF_NoFlags, true);
 		}
 		TransientFullEngine = CreateIsolatedFullEngine();
+		check(TransientFullEngine.IsValid());
+		return *TransientFullEngine;
+	}
+
+	// Diagnostic overload for the Memory.BindFreeEvidence test family. Wraps
+	// the same acquisition flow with five SampleBindFreeMem probes (T0..T3,
+	// plus an explicit FMemory::Trim(true)) so each cycle's residual heap
+	// shows up before/after the allocator gets a chance to release pages.
+	// Run with `-ini:Engine:[ConsoleVariables]:mi.MemoryResetDelay=0` to
+	// collapse mimalloc's 10s reset delay during measurement.
+	inline FAngelscriptEngine& AcquireTransientFullTestEngineWithProbe()
+	{
+		TUniquePtr<FAngelscriptEngine>& TransientFullEngine = GetTransientFullTestEngineStorage();
+		if (TransientFullEngine.IsValid())
+		{
+			SampleBindFreeMem(TEXT("T0_BeforeReset"));
+
+			const TArray<TSharedRef<FAngelscriptModuleDesc>> ModulesBeforeReset = TransientFullEngine->GetActiveModules();
+			TransientFullEngine.Reset();
+			CleanupDetachedASTypesForGarbageCollection(&ModulesBeforeReset);
+			CollectGarbage(RF_NoFlags, true);
+			SampleBindFreeMem(TEXT("T1_AfterResetAndGC"));
+
+			// Force mimalloc to return free pages to the OS so the residual we observe
+			// after this point is real (i.e. not pages held by the allocator's reset_delay).
+			FMemory::Trim(true);
+			SampleBindFreeMem(TEXT("T2_AfterTrim"));
+		}
+		TransientFullEngine = CreateIsolatedFullEngine();
+		SampleBindFreeMem(TEXT("T3_AfterNewCreate"));
 		check(TransientFullEngine.IsValid());
 		return *TransientFullEngine;
 	}
