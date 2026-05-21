@@ -3,6 +3,7 @@
 #include "CQTest.h"
 #include "Misc/Guid.h"
 #include "Misc/ScopeExit.h"
+#include "Shared/AngelscriptTestEngine.h"
 #include "Testing/AngelscriptBindExecutionObservation.h"
 
 #include "StartAngelscriptHeaders.h"
@@ -48,16 +49,6 @@ struct FAngelscriptMultiEngineTestAccess
 		Engine.ModulesByScriptModule.Add(ScriptModule, ModuleDesc);
 	}
 
-	static int32 GetActiveParticipants(const FAngelscriptEngine& Engine)
-	{
-		return Engine.GetActiveParticipantsForTesting();
-	}
-
-	static int32 GetActiveCloneCount(const FAngelscriptEngine& Engine)
-	{
-		return Engine.GetActiveCloneCountForTesting();
-	}
-
 	static int32 GetLocalPooledContextCount(asIScriptEngine* ScriptEngine)
 	{
 		return FAngelscriptEngine::GetLocalPooledContextCountForTesting(ScriptEngine);
@@ -95,35 +86,46 @@ static FName MakeUniqueStartupBindName(const TCHAR* Prefix)
 
 bool RunCloneModuleIsolation(FAutomationTestBase& Test)
 {
+	// Note: the historic name is preserved while the test method name in
+	// the TEST_CLASS still references "CloneModuleIsolation" so test report
+	// archives stay greppable. The semantics are now "two independent test
+	// engines must keep their script modules from leaking into each other"
+	// â€?the "Clone" terminology is historical.
 	ResetToIsolatedEngineState();
 
 	const FString ModuleName = TEXT("Tests.SharedModule");
 	const FAngelscriptEngineConfig Config;
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> PrimaryEngine = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
-	TUniquePtr<FAngelscriptEngine> CloneA = FAngelscriptEngine::CreateCloneFrom(*PrimaryEngine, Config);
-	TUniquePtr<FAngelscriptEngine> CloneB = FAngelscriptEngine::CreateCloneFrom(*PrimaryEngine, Config);
+	TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptTestEngine::Create(Config, Dependencies);
 
-	if (!Test.TestNotNull(TEXT("MultiEngine.CloneModuleIsolation should create primary engine"), PrimaryEngine.Get())
-		|| !Test.TestNotNull(TEXT("MultiEngine.CloneModuleIsolation should create first clone"), CloneA.Get())
-		|| !Test.TestNotNull(TEXT("MultiEngine.CloneModuleIsolation should create second clone"), CloneB.Get()))
+	if (!Test.TestNotNull(TEXT("MultiEngine.IndependentEngines should create the first test engine"), EngineA.Get())
+		|| !Test.TestNotNull(TEXT("MultiEngine.IndependentEngines should create the second test engine"), EngineB.Get()))
 	{
 		return false;
 	}
 
-	asIScriptModule* CloneAModule = FAngelscriptMultiEngineTestAccess::CreateNamedModule(*CloneA, ModuleName);
-	asIScriptModule* CloneBModule = FAngelscriptMultiEngineTestAccess::CreateNamedModule(*CloneB, ModuleName);
-	FAngelscriptMultiEngineTestAccess::TrackNamedModule(*CloneA, ModuleName, CloneAModule);
-	FAngelscriptMultiEngineTestAccess::TrackNamedModule(*CloneB, ModuleName, CloneBModule);
+	asIScriptModule* EngineAModule = FAngelscriptMultiEngineTestAccess::CreateNamedModule(*EngineA, ModuleName);
+	asIScriptModule* EngineBModule = FAngelscriptMultiEngineTestAccess::CreateNamedModule(*EngineB, ModuleName);
+	FAngelscriptMultiEngineTestAccess::TrackNamedModule(*EngineA, ModuleName, EngineAModule);
+	FAngelscriptMultiEngineTestAccess::TrackNamedModule(*EngineB, ModuleName, EngineBModule);
 
-	Test.TestNotNull(TEXT("MultiEngine.CloneModuleIsolation should create the first clone module"), CloneAModule);
-	Test.TestNotNull(TEXT("MultiEngine.CloneModuleIsolation should create the second clone module"), CloneBModule);
-	Test.TestTrue(TEXT("MultiEngine.CloneModuleIsolation should give Clone A an internal module name"), FAngelscriptMultiEngineTestAccess::MakeModuleName(*CloneA, ModuleName).Contains(TEXT("::")));
-	Test.TestTrue(TEXT("MultiEngine.CloneModuleIsolation should give Clone B an internal module name"), FAngelscriptMultiEngineTestAccess::MakeModuleName(*CloneB, ModuleName).Contains(TEXT("::")));
-	Test.TestNotEqual(TEXT("MultiEngine.CloneModuleIsolation should isolate internal module names per clone"), FAngelscriptMultiEngineTestAccess::MakeModuleName(*CloneA, ModuleName), FAngelscriptMultiEngineTestAccess::MakeModuleName(*CloneB, ModuleName));
-	Test.TestTrue(TEXT("MultiEngine.CloneModuleIsolation should keep external lookup working for Clone A"), CloneA->GetModuleByModuleName(ModuleName).IsValid());
-	Test.TestTrue(TEXT("MultiEngine.CloneModuleIsolation should keep external lookup working for Clone B"), CloneB->GetModuleByModuleName(ModuleName).IsValid());
-	return Test.TestTrue(TEXT("MultiEngine.CloneModuleIsolation should create distinct underlying script modules"), CloneAModule != CloneBModule);
+	Test.TestNotNull(TEXT("MultiEngine.IndependentEngines should create the first underlying script module"), EngineAModule);
+	Test.TestNotNull(TEXT("MultiEngine.IndependentEngines should create the second underlying script module"), EngineBModule);
+	Test.TestTrue(TEXT("MultiEngine.IndependentEngines should keep external lookup working for engine A"), EngineA->GetModuleByModuleName(ModuleName).IsValid());
+	Test.TestTrue(TEXT("MultiEngine.IndependentEngines should keep external lookup working for engine B"), EngineB->GetModuleByModuleName(ModuleName).IsValid());
+
+	// The structural invariant: distinct asCScriptEngine instances allocate
+	// their modules independently, so two engines compiling under the same
+	// module name must produce distinct underlying objects.
+	Test.TestTrue(TEXT("MultiEngine.IndependentEngines should produce distinct underlying script modules per engine"), EngineAModule != EngineBModule);
+
+	// Cross-engine lookup must miss: if engine A discards its module, engine B's
+	// module is still reachable via engine B and the asCScriptEngine of B never
+	// learns about engine A's discard.
+	EngineA->DiscardModule(*ModuleName);
+	Test.TestFalse(TEXT("MultiEngine.IndependentEngines should not leak engine A's discarded module back to engine A's lookup"), EngineA->GetModuleByModuleName(ModuleName).IsValid());
+	return Test.TestTrue(TEXT("MultiEngine.IndependentEngines should keep engine B's module reachable after engine A discards"), EngineB->GetModuleByModuleName(ModuleName).IsValid());
 }
 
 bool RunCloneDestroyDoesNotAffectPrimary(FAutomationTestBase& Test)
@@ -133,8 +135,8 @@ bool RunCloneDestroyDoesNotAffectPrimary(FAutomationTestBase& Test)
 	const FString ModuleName = TEXT("Tests.SharedModule");
 	const FAngelscriptEngineConfig Config;
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> PrimaryEngine = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
-	TUniquePtr<FAngelscriptEngine> CloneEngine = FAngelscriptEngine::CreateCloneFrom(*PrimaryEngine, Config);
+	TUniquePtr<FAngelscriptEngine> PrimaryEngine = FAngelscriptTestEngine::Create(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> CloneEngine = FAngelscriptTestEngine::Create(Config, Dependencies);
 
 	if (!Test.TestNotNull(TEXT("MultiEngine.CloneDestroyDoesNotAffectPrimary should create primary engine"), PrimaryEngine.Get())
 		|| !Test.TestNotNull(TEXT("MultiEngine.CloneDestroyDoesNotAffectPrimary should create clone engine"), CloneEngine.Get()))
@@ -161,169 +163,98 @@ bool RunCloneDestroyDoesNotAffectPrimary(FAutomationTestBase& Test)
 
 bool RunCloneKeepsSharedStateAlive(FAutomationTestBase& Test)
 {
-	ResetToIsolatedEngineState();
-
-	const FAngelscriptEngineConfig Config;
-	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> SourceEngine = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
-	TUniquePtr<FAngelscriptEngine> CloneEngine = FAngelscriptEngine::CreateCloneFrom(*SourceEngine, Config);
-
-	if (!Test.TestNotNull(TEXT("MultiEngine.CloneKeepsSharedStateAlive should create a source engine"), SourceEngine.Get())
-		|| !Test.TestNotNull(TEXT("MultiEngine.CloneKeepsSharedStateAlive should create a clone engine"), CloneEngine.Get()))
-	{
-		return false;
-	}
-
-	int32 RegisteredTypeCountBeforeDestroy = 0;
-	{
-		FAngelscriptEngineScope SourceScope(*SourceEngine);
-		RegisteredTypeCountBeforeDestroy = FAngelscriptType::GetTypes().Num();
-	}
-	if (!Test.TestTrue(TEXT("MultiEngine.CloneKeepsSharedStateAlive should start with registered types"), RegisteredTypeCountBeforeDestroy > 0))
-	{
-		return false;
-	}
-
-	Test.AddExpectedError(TEXT("Rejecting Full engine shutdown while Clone instances still reference shared state"), EAutomationExpectedErrorFlags::Contains, 1);
-	SourceEngine.Reset();
-
-	{
-		FAngelscriptEngineScope CloneScope(*CloneEngine);
-		Test.TestTrue(TEXT("MultiEngine.CloneKeepsSharedStateAlive should keep shared type registrations alive while the clone remains"), FAngelscriptType::GetTypes().Num() > 0);
-	}
-	return Test.TestNotNull(TEXT("MultiEngine.CloneKeepsSharedStateAlive should keep the shared script engine reachable from the clone"), CloneEngine->GetScriptEngine());
+	// Test removed: it asserted Clone-specific deferred shared-state release
+	// behavior that no longer exists after clone-removal. Engines are now
+	// independent single-owner Full instances; there is nothing to keep
+	// alive across owners.
+	return true;
 }
 
 bool RunDestroyingSourceWhileCloneAliveIsRejected(FAutomationTestBase& Test)
 {
-	ResetToIsolatedEngineState();
-
-	const FAngelscriptEngineConfig Config;
-	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> SourceEngine = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
-	TUniquePtr<FAngelscriptEngine> CloneEngine = FAngelscriptEngine::CreateCloneFrom(*SourceEngine, Config);
-
-	if (!Test.TestNotNull(TEXT("MultiEngine.DestroyingSourceWhileCloneAliveIsRejected should create a source engine"), SourceEngine.Get())
-		|| !Test.TestNotNull(TEXT("MultiEngine.DestroyingSourceWhileCloneAliveIsRejected should create a clone engine"), CloneEngine.Get()))
-	{
-		return false;
-	}
-
-	Test.AddExpectedError(TEXT("Rejecting Full engine shutdown while Clone instances still reference shared state"), EAutomationExpectedErrorFlags::Contains, 1);
-	SourceEngine.Reset();
-
-	Test.TestNull(TEXT("MultiEngine.DestroyingSourceWhileCloneAliveIsRejected should clear the clone's source-engine link once the source owner is gone"), CloneEngine->GetSourceEngine());
-	return Test.TestNotNull(TEXT("MultiEngine.DestroyingSourceWhileCloneAliveIsRejected should leave the clone with a usable shared script engine reference"), CloneEngine->GetScriptEngine());
+	// Test removed: targeted Clone-specific source-engine link clearing,
+	// which no longer exists after clone-removal.
+	return true;
 }
 
 bool RunDeferredSharedStateReleasePurgesLocalContextPool(FAutomationTestBase& Test)
 {
-	ResetToIsolatedEngineState();
-
-	const FAngelscriptEngineConfig Config;
-	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> SourceEngine = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
-	TUniquePtr<FAngelscriptEngine> CloneEngine = FAngelscriptEngine::CreateCloneFrom(*SourceEngine, Config);
-
-	if (!Test.TestNotNull(TEXT("MultiEngine.DeferredSharedStateReleasePurgesLocalContextPool should create a source engine"), SourceEngine.Get())
-		|| !Test.TestNotNull(TEXT("MultiEngine.DeferredSharedStateReleasePurgesLocalContextPool should create a clone engine"), CloneEngine.Get()))
-	{
-		return false;
-	}
-
-	asIScriptEngine* SharedScriptEngine = SourceEngine->GetScriptEngine();
-	if (!Test.TestNotNull(TEXT("MultiEngine.DeferredSharedStateReleasePurgesLocalContextPool should resolve the shared script engine"), SharedScriptEngine))
-	{
-		return false;
-	}
-
-	{
-		FAngelscriptEngineScope SourceScope(*SourceEngine);
-		{
-			FAngelscriptPooledContextBase SeedContext;
-		}
-	}
-
-	if (!Test.TestTrue(
-		TEXT("MultiEngine.DeferredSharedStateReleasePurgesLocalContextPool should place the seeded context into the local pool"),
-		FAngelscriptMultiEngineTestAccess::GetLocalPooledContextCount(SharedScriptEngine) > 0))
-	{
-		return false;
-	}
-
-	Test.AddExpectedError(TEXT("Rejecting Full engine shutdown while Clone instances still reference shared state"), EAutomationExpectedErrorFlags::Contains, 1);
-	SourceEngine.Reset();
-
-	if (!Test.TestTrue(
-		TEXT("MultiEngine.DeferredSharedStateReleasePurgesLocalContextPool should keep the pooled shared context alive while the clone still references shared state"),
-		FAngelscriptMultiEngineTestAccess::GetLocalPooledContextCount(SharedScriptEngine) > 0))
-	{
-		return false;
-	}
-
-	CloneEngine.Reset();
-	return Test.TestEqual(
-		TEXT("MultiEngine.DeferredSharedStateReleasePurgesLocalContextPool should purge pooled contexts when the deferred shared state is finally released"),
-		FAngelscriptMultiEngineTestAccess::GetLocalPooledContextCount(SharedScriptEngine),
-		0);
+	// Test removed: targeted Clone-specific deferred shared-state release
+	// path, which no longer exists after clone-removal. Single-owner
+	// engines release their context pool synchronously on shutdown.
+	return true;
 }
 
 bool RunCloneHonorsInjectedDependencies(FAutomationTestBase& Test)
 {
+	// Verifies the post-clone-removal contract: two independent Full engines
+	// each carry their own FAngelscriptEngineDependencies callbacks, and one
+	// engine's filesystem hooks must never fire on behalf of the other.
+	//
+	// Test name preserved for stable CI history; the underlying contract
+	// is now "multiple full engines have independent injected dependencies".
 	ResetToIsolatedEngineState();
 
 	FAngelscriptEngineConfig Config;
 	Config.bIsEditor = true;
 
-	const FAngelscriptEngineDependencies SourceDependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> SourceEngine = FAngelscriptEngine::CreateUncompiledWithMode(Config, SourceDependencies, EAngelscriptEngineCreationMode::Full);
-	if (!Test.TestNotNull(TEXT("MultiEngine.CloneHonorsInjectedDependencies should create a source testing full engine"), SourceEngine.Get()))
+	bool bEngineAMakeDirCalled = false;
+	FString EngineACreatedPath;
+	FAngelscriptEngineDependencies EngineADeps;
+	EngineADeps.GetProjectDir = []() { return FString(TEXT("C:/InjectedEngineAProject")); };
+	EngineADeps.ConvertRelativePathToFull = [](const FString& Path) { return Path; };
+	EngineADeps.DirectoryExists = [](const FString& Path) { return false; };
+	EngineADeps.MakeDirectory = [&bEngineAMakeDirCalled, &EngineACreatedPath](const FString& Path, bool /*bTree*/)
 	{
-		return false;
-	}
-
-	FAngelscriptEngineScope GlobalScope(*SourceEngine);
-
-	bool bMakeDirectoryCalled = false;
-	FString CreatedPath;
-
-	FAngelscriptEngineDependencies InjectedDependencies;
-	InjectedDependencies.GetProjectDir = []()
-	{
-		return FString(TEXT("C:/InjectedCloneProject"));
-	};
-	InjectedDependencies.ConvertRelativePathToFull = [](const FString& Path)
-	{
-		return Path;
-	};
-	InjectedDependencies.DirectoryExists = [](const FString& Path)
-	{
-		return false;
-	};
-	InjectedDependencies.MakeDirectory = [&bMakeDirectoryCalled, &CreatedPath](const FString& Path, bool bTree)
-	{
-		bMakeDirectoryCalled = true;
-		CreatedPath = Path;
+		bEngineAMakeDirCalled = true;
+		EngineACreatedPath = Path;
 		return true;
 	};
-	InjectedDependencies.GetEnabledPluginScriptRoots = []()
-	{
-		return TArray<FString>();
-	};
+	EngineADeps.GetEnabledPluginScriptRoots = []() { return TArray<FString>(); };
 
-	TUniquePtr<FAngelscriptEngine> CloneEngine = FAngelscriptEngine::CreateUncompiledWithMode(Config, InjectedDependencies, EAngelscriptEngineCreationMode::Clone);
-	if (!Test.TestNotNull(TEXT("MultiEngine.CloneHonorsInjectedDependencies should create a clone engine"), CloneEngine.Get()))
+	bool bEngineBMakeDirCalled = false;
+	FString EngineBCreatedPath;
+	FAngelscriptEngineDependencies EngineBDeps;
+	EngineBDeps.GetProjectDir = []() { return FString(TEXT("C:/InjectedEngineBProject")); };
+	EngineBDeps.ConvertRelativePathToFull = [](const FString& Path) { return Path; };
+	EngineBDeps.DirectoryExists = [](const FString& Path) { return false; };
+	EngineBDeps.MakeDirectory = [&bEngineBMakeDirCalled, &EngineBCreatedPath](const FString& Path, bool /*bTree*/)
+	{
+		bEngineBMakeDirCalled = true;
+		EngineBCreatedPath = Path;
+		return true;
+	};
+	EngineBDeps.GetEnabledPluginScriptRoots = []() { return TArray<FString>(); };
+
+	TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(Config, EngineADeps);
+	TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptTestEngine::Create(Config, EngineBDeps);
+	if (!Test.TestNotNull(TEXT("MultiEngine.IndependentInjectedDependencies should create engine A"), EngineA.Get())
+		|| !Test.TestNotNull(TEXT("MultiEngine.IndependentInjectedDependencies should create engine B"), EngineB.Get()))
 	{
 		return false;
 	}
 
-	TArray<FString> Roots = CloneEngine->DiscoverScriptRoots(false);
-	Test.TestTrue(TEXT("MultiEngine.CloneHonorsInjectedDependencies should honor the injected editor filesystem hooks"), bMakeDirectoryCalled);
-	if (Roots.Num() > 0)
+	// Each engine's DiscoverScriptRoots must drive its own injected callbacks.
+	const TArray<FString> EngineARoots = EngineA->DiscoverScriptRoots(false);
+	Test.TestTrue(TEXT("MultiEngine.IndependentInjectedDependencies engine A should fire its own MakeDirectory hook"), bEngineAMakeDirCalled);
+	Test.TestFalse(TEXT("MultiEngine.IndependentInjectedDependencies discovering on engine A must not fire engine B's MakeDirectory"), bEngineBMakeDirCalled);
+	Test.TestEqual(TEXT("MultiEngine.IndependentInjectedDependencies engine A should resolve the injected engine A project root"), EngineACreatedPath, FString(TEXT("C:/InjectedEngineAProject/Script")));
+	if (EngineARoots.Num() > 0)
 	{
-		Test.TestEqual(TEXT("MultiEngine.CloneHonorsInjectedDependencies should use the injected project root"), Roots[0], FString(TEXT("C:/InjectedCloneProject/Script")));
+		Test.TestEqual(TEXT("MultiEngine.IndependentInjectedDependencies engine A's discovered root should reflect its own GetProjectDir"), EngineARoots[0], FString(TEXT("C:/InjectedEngineAProject/Script")));
 	}
-	return Test.TestEqual(TEXT("MultiEngine.CloneHonorsInjectedDependencies should create the expected injected clone project root path"), CreatedPath, FString(TEXT("C:/InjectedCloneProject/Script")));
+
+	const TArray<FString> EngineBRoots = EngineB->DiscoverScriptRoots(false);
+	Test.TestTrue(TEXT("MultiEngine.IndependentInjectedDependencies engine B should fire its own MakeDirectory hook"), bEngineBMakeDirCalled);
+	Test.TestEqual(TEXT("MultiEngine.IndependentInjectedDependencies engine B should resolve the injected engine B project root"), EngineBCreatedPath, FString(TEXT("C:/InjectedEngineBProject/Script")));
+	if (EngineBRoots.Num() > 0)
+	{
+		Test.TestEqual(TEXT("MultiEngine.IndependentInjectedDependencies engine B's discovered root should reflect its own GetProjectDir"), EngineBRoots[0], FString(TEXT("C:/InjectedEngineBProject/Script")));
+	}
+
+	// The two engines must not have mutated each other's captured paths.
+	Test.TestNotEqual(TEXT("MultiEngine.IndependentInjectedDependencies the two engines' captured paths must remain distinct"), EngineACreatedPath, EngineBCreatedPath);
+	return true;
 }
 
 bool RunStartupBindObservationFullCreate(FAutomationTestBase& Test)
@@ -339,7 +270,7 @@ bool RunStartupBindObservationFullCreate(FAutomationTestBase& Test)
 
 	const FAngelscriptEngineConfig Config;
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptTestEngine::Create(Config, Dependencies);
 	if (!Test.TestNotNull(TEXT("MultiEngine.StartupBindObservation.FullCreateRecordsOrderedBinds should create a full engine"), Engine.Get()))
 	{
 		return false;
@@ -364,68 +295,17 @@ bool RunStartupBindObservationFullCreate(FAutomationTestBase& Test)
 
 bool RunStartupBindObservationCloneCreate(FAutomationTestBase& Test)
 {
-	ResetToIsolatedEngineState();
-
-	const FName BindName = MakeUniqueStartupBindName(TEXT("Automation.StartupBind.Clone.Named"));
-	FAngelscriptBinds::FBind NamedBind(BindName, []() {});
-
-	const FAngelscriptEngineConfig Config;
-	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> SourceEngine = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
-	if (!Test.TestNotNull(TEXT("MultiEngine.StartupBindObservation.CloneCreateDoesNotReplayBinds should create a source engine"), SourceEngine.Get()))
-	{
-		return false;
-	}
-
-	FAngelscriptBindExecutionObservation::Reset();
-	TUniquePtr<FAngelscriptEngine> CloneEngine = FAngelscriptEngine::CreateCloneFrom(*SourceEngine, Config);
-	if (!Test.TestNotNull(TEXT("MultiEngine.StartupBindObservation.CloneCreateDoesNotReplayBinds should create a clone engine"), CloneEngine.Get()))
-	{
-		return false;
-	}
-
-	if (!Test.TestEqual(TEXT("MultiEngine.StartupBindObservation.CloneCreateDoesNotReplayBinds should not observe a fresh startup bind pass for clone creation"), FAngelscriptBindExecutionObservation::GetInvocationCount(), 0))
-	{
-		return false;
-	}
-
-	const FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
-	return Test.TestEqual(TEXT("MultiEngine.StartupBindObservation.CloneCreateDoesNotReplayBinds should not append any executed bind names during clone creation"), Snapshot.ExecutedBindNames.Num(), 0);
+	// Test removed: targeted Clone create-path skipping startup binds (since
+	// Clone shared the source's bind state). After clone-removal every
+	// engine is a fresh Full instance that replays binds, so the original
+	// invariant no longer holds.
+	return true;
 }
 
 bool RunStartupBindObservationCreateForTestingClone(FAutomationTestBase& Test)
 {
-	ResetToIsolatedEngineState();
-
-	const FName BindName = MakeUniqueStartupBindName(TEXT("Automation.StartupBind.CreateForTesting.Clone.Named"));
-	FAngelscriptBinds::FBind NamedBind(BindName, []() {});
-
-	FAngelscriptEngineConfig Config;
-	Config.bIsEditor = true;
-	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> SourceEngine = FAngelscriptEngine::CreateUncompiledWithMode(Config, Dependencies, EAngelscriptEngineCreationMode::Full);
-	if (!Test.TestNotNull(TEXT("MultiEngine.StartupBindObservation.CreateForTestingCloneDoesNotReplayBinds should create a source full engine"), SourceEngine.Get()))
-	{
-		return false;
-	}
-
-	FAngelscriptEngineScope GlobalScope(*SourceEngine);
-	FAngelscriptBindExecutionObservation::Reset();
-
-	TUniquePtr<FAngelscriptEngine> TestEngine = FAngelscriptEngine::CreateUncompiledWithMode(Config, Dependencies, EAngelscriptEngineCreationMode::Clone);
-	if (!Test.TestNotNull(TEXT("MultiEngine.StartupBindObservation.CreateForTestingCloneDoesNotReplayBinds should create a clone testing engine"), TestEngine.Get()))
-	{
-		return false;
-	}
-
-	Test.TestEqual(TEXT("MultiEngine.StartupBindObservation.CreateForTestingCloneDoesNotReplayBinds should choose clone mode when a global source engine exists"), TestEngine->GetCreationMode(), EAngelscriptEngineCreationMode::Clone);
-	if (!Test.TestEqual(TEXT("MultiEngine.StartupBindObservation.CreateForTestingCloneDoesNotReplayBinds should not observe a fresh bind pass"), FAngelscriptBindExecutionObservation::GetInvocationCount(), 0))
-	{
-		return false;
-	}
-
-	const FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
-	return Test.TestEqual(TEXT("MultiEngine.StartupBindObservation.CreateForTestingCloneDoesNotReplayBinds should keep the observed bind list empty"), Snapshot.ExecutedBindNames.Num(), 0);
+	// Test removed: same rationale as RunStartupBindObservationCloneCreate.
+	return true;
 }
 
 bool RunStartupBindObservationCreateForTestingFullFallback(FAutomationTestBase& Test)
@@ -443,13 +323,12 @@ bool RunStartupBindObservationCreateForTestingFullFallback(FAutomationTestBase& 
 	FAngelscriptEngineConfig Config;
 	Config.bIsEditor = true;
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> TestEngine = FAngelscriptEngine::CreateUncompiledWithMode(Config, Dependencies, EAngelscriptEngineCreationMode::Clone);
+	TUniquePtr<FAngelscriptEngine> TestEngine = FAngelscriptTestEngine::Create(Config, Dependencies);
 	if (!Test.TestNotNull(TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should create a fallback full engine"), TestEngine.Get()))
 	{
 		return false;
 	}
 
-	Test.TestEqual(TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should fall back to full mode when no global engine exists"), TestEngine->GetCreationMode(), EAngelscriptEngineCreationMode::Full);
 	if (!Test.TestEqual(TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should observe one startup bind pass"), FAngelscriptBindExecutionObservation::GetInvocationCount(), 1))
 	{
 		return false;
@@ -469,36 +348,12 @@ bool RunStartupBindObservationCreateForTestingFullFallback(FAutomationTestBase& 
 
 bool RunSharedStateParticipantCounts(FAutomationTestBase& Test)
 {
-	ResetToIsolatedEngineState();
-
-	const FAngelscriptEngineConfig Config;
-	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> SourceEngine = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
-	if (!Test.TestNotNull(TEXT("MultiEngine.SharedState.ParticipantCountsTrackFullAndClones should create the full owner"), SourceEngine.Get()))
-	{
-		return false;
-	}
-
-	if (!Test.TestEqual(TEXT("MultiEngine.SharedState.ParticipantCountsTrackFullAndClones should start with one active participant"), FAngelscriptMultiEngineTestAccess::GetActiveParticipants(*SourceEngine), 1)
-		|| !Test.TestEqual(TEXT("MultiEngine.SharedState.ParticipantCountsTrackFullAndClones should start with zero active clones"), FAngelscriptMultiEngineTestAccess::GetActiveCloneCount(*SourceEngine), 0))
-	{
-		return false;
-	}
-
-	TUniquePtr<FAngelscriptEngine> CloneA = FAngelscriptEngine::CreateCloneFrom(*SourceEngine, Config);
-	TUniquePtr<FAngelscriptEngine> CloneB = FAngelscriptEngine::CreateCloneFrom(*SourceEngine, Config);
-	if (!Test.TestNotNull(TEXT("MultiEngine.SharedState.ParticipantCountsTrackFullAndClones should create clone A"), CloneA.Get())
-		|| !Test.TestNotNull(TEXT("MultiEngine.SharedState.ParticipantCountsTrackFullAndClones should create clone B"), CloneB.Get()))
-	{
-		return false;
-	}
-
-	Test.TestEqual(TEXT("MultiEngine.SharedState.ParticipantCountsTrackFullAndClones should count the full owner and two clones"), FAngelscriptMultiEngineTestAccess::GetActiveParticipants(*SourceEngine), 3);
-	Test.TestEqual(TEXT("MultiEngine.SharedState.ParticipantCountsTrackFullAndClones should count two active clones"), FAngelscriptMultiEngineTestAccess::GetActiveCloneCount(*SourceEngine), 2);
-
-	CloneB.Reset();
-	Test.TestEqual(TEXT("MultiEngine.SharedState.ParticipantCountsTrackFullAndClones should decrement participants when one clone is destroyed"), FAngelscriptMultiEngineTestAccess::GetActiveParticipants(*SourceEngine), 2);
-	return Test.TestEqual(TEXT("MultiEngine.SharedState.ParticipantCountsTrackFullAndClones should decrement clone count when one clone is destroyed"), FAngelscriptMultiEngineTestAccess::GetActiveCloneCount(*SourceEngine), 1);
+	// Test removed: targeted ActiveParticipants / ActiveCloneCount
+	// reference counting on FAngelscriptOwnedSharedState, which is
+	// removed in this refactor. Replacement coverage of the new
+	// single-owner contract belongs in
+	// Angelscript.TestModule.CppTests.Engine.TestEngine.* once added.
+	return true;
 }
 
 }

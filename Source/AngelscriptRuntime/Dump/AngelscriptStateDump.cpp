@@ -64,19 +64,6 @@ namespace
 		return Result;
 	}
 
-	FString GetCreationModeString(const EAngelscriptEngineCreationMode CreationMode)
-	{
-		switch (CreationMode)
-		{
-		case EAngelscriptEngineCreationMode::Full:
-			return TEXT("Full");
-		case EAngelscriptEngineCreationMode::Clone:
-			return TEXT("Clone");
-		default:
-			return TEXT("Unknown");
-		}
-	}
-
 	FString GetReplicationConditionString(const ELifetimeCondition Condition)
 	{
 		const UEnum* ConditionEnum = StaticEnum<ELifetimeCondition>();
@@ -291,12 +278,6 @@ FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpEngineOverview(FA
 		TotalDelegateCount += Module->Delegates.Num();
 	}
 
-	FString SourceEngineId;
-	if (const FAngelscriptEngine* SourceEngine = Engine.GetSourceEngine())
-	{
-		SourceEngineId = SourceEngine->GetInstanceId();
-	}
-
 	FString DebugServerClientState = TEXT("NotCompiled");
 #if WITH_AS_DEBUGSERVER
 	if (Engine.DebugServer != nullptr)
@@ -311,10 +292,6 @@ FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpEngineOverview(FA
 
 	FCSVWriter Writer;
 	Writer.AddHeader({
-		TEXT("InstanceId"),
-		TEXT("CreationMode"),
-		TEXT("OwnsEngine"),
-		TEXT("SourceEngineId"),
 		TEXT("bIsInitialCompileFinished"),
 		TEXT("bDidInitialCompileSucceed"),
 		TEXT("bSimulateCooked"),
@@ -340,10 +317,6 @@ FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpEngineOverview(FA
 	});
 
 	Writer.AddRow({
-		Engine.GetInstanceId(),
-		GetCreationModeString(Engine.GetCreationMode()),
-		BoolToString(Engine.OwnsEngine()),
-		MoveTemp(SourceEngineId),
 		BoolToString(Engine.bIsInitialCompileFinished),
 		BoolToString(Engine.bDidInitialCompileSucceed),
 		BoolToString(Engine.bSimulateCooked),

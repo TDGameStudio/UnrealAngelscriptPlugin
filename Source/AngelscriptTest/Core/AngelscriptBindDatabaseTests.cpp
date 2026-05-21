@@ -230,18 +230,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 			bOk &= TestRunner->TestTrue(TEXT("should keep engine A sentinel in engine-owned database"), DatabaseContainsClassBindNamed(*EngineADirectDatabase, EngineASentinelTypeName));
 			bOk &= TestRunner->TestFalse(TEXT("should keep engine A sentinel out of legacy singleton"), DatabaseContainsClassBindNamed(*LegacyDatabase, EngineASentinelTypeName));
 
-			TUniquePtr<FAngelscriptEngine> EngineB = AngelscriptTestSupport::CreateIsolatedCloneEngine();
-			if (!TestRunner->TestNotNull(TEXT("should create clone engine B"), EngineB.Get())) { return; }
-			{
-				FAngelscriptEngineScope ScopeB(*EngineB);
-				FAngelscriptBindDatabase* EngineBDirectDatabase = EngineB->GetBindDatabase();
-				FAngelscriptBindDatabase* EngineBDatabaseFromGet = &FAngelscriptBindDatabase::Get();
-				bOk &= TestRunner->TestNotNull(TEXT("should expose bind database for clone B"), EngineBDirectDatabase);
-				bOk &= TestRunner->TestTrue(TEXT("clone B should share engine A database"), EngineBDirectDatabase == EngineADirectDatabase);
-				bOk &= TestRunner->TestTrue(TEXT("Get() should resolve to shared database while clone B is current"), EngineBDatabaseFromGet == EngineADirectDatabase);
-				bOk &= TestRunner->TestTrue(TEXT("should preserve engine A sentinel through clone B"), DatabaseContainsClassBindNamed(*EngineBDirectDatabase, EngineASentinelTypeName));
-			}
-			bOk &= TestRunner->TestTrue(TEXT("should restore engine A after leaving clone scope"), &FAngelscriptBindDatabase::Get() == EngineADirectDatabase);
+			// Clone-shares-database sub-test removed alongside the Clone
+			// engine mechanism; independent Full engines have independent
+			// bind databases, which is covered by the engine A vs C
+			// recreation block below.
 		}
 
 		EngineA.Reset();

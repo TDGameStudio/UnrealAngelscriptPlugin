@@ -534,12 +534,14 @@ namespace BlueprintEventSignatureRegistryInternal
 
 // Allocate a new signature and immediately transfer ownership to the current
 // engine's registry. The returned pointer remains stable for the lifetime of
-// the engine (or until SharedState->BlueprintEventSignatureRegistry.Reset()).
+// the engine (or until Engine->BlueprintEventSignatureRegistry.Reset() is
+// invoked during Shutdown(); the registry now lives directly on
+// FAngelscriptEngine after FAngelscriptOwnedSharedState was flattened).
 //
-// EnsureSharedStateCreated() unconditionally allocates the registry, so by the
-// time any BindBlueprintEvent_* helper runs the registry must exist. We turn
-// that invariant into a hard `checkf` so a future bootstrap reorder fails
-// loudly instead of silently leaking — every signature that escapes the
+// FAngelscriptEngine::Initialize* unconditionally allocates the registry, so
+// by the time any BindBlueprintEvent_* helper runs the registry must exist.
+// We turn that invariant into a hard `checkf` so a future bootstrap reorder
+// fails loudly instead of silently leaking — every signature that escapes the
 // registry survives every subsequent engine cycle (see
 // ASBindFreeCompletenessVerification.md §4 for why this leak class is
 // expensive to detect after the fact).
@@ -548,8 +550,8 @@ static FBlueprintEventSignature* NewOwnedBlueprintEventSignature()
 	FBlueprintEventSignatureRegistry* Registry = FAngelscriptEngine::Get().GetBlueprintEventSignatureRegistry();
 	checkf(Registry != nullptr,
 		TEXT("FBlueprintEventSignatureRegistry must be initialised before any "
-		     "BindBlueprintEvent path runs. EnsureSharedStateCreated() is "
-		     "responsible for creating it; if this fires the bind ordering "
+		     "BindBlueprintEvent path runs. FAngelscriptEngine::Initialize* "
+		     "is responsible for creating it; if this fires the bind ordering "
 		     "regressed."));
 	auto* Sig = new FBlueprintEventSignature;
 	Registry->AddOwnership(Sig);

@@ -256,30 +256,6 @@ struct FAngelscriptEngineLifetimeToken
 {
 };
 
-struct FAngelscriptOwnedSharedState
-{
-	asCScriptEngine* ScriptEngine = nullptr;
-	asCContext* PrimaryContext = nullptr;
-	FAngelscriptPrecompiledData* PrecompiledData = nullptr;
-	FAngelscriptStaticJIT* StaticJIT = nullptr;
-#if WITH_AS_DEBUGSERVER
-	FAngelscriptDebugServer* DebugServer = nullptr;
-#endif
-
-	TUniquePtr<FAngelscriptTypeDatabase> TypeDatabase;
-	TUniquePtr<FAngelscriptBindState> BindState;
-	TUniquePtr<TArray<FToStringType>> ToStringList;
-	TUniquePtr<FAngelscriptBindDatabase> BindDatabase;
-	TUniquePtr<FBlueprintEventSignatureRegistry> BlueprintEventSignatureRegistry;
-	TArray<FName> StaticNames;
-	TMap<FName, int32> StaticNamesByIndex;
-
-	int32 ActiveParticipants = 0;
-	int32 ActiveCloneCount = 0;
-	bool bPendingOwnerRelease = false;
-	bool bReleased = false;
-};
-
 void LogAngelscriptException(asIScriptContext* Context);
 void AngelscriptLineCallback(asCContext* Context);
 void AngelscriptStackPopCallback(asCContext* Context, void* OldStackFrameStart, void* OldStackFrameEnd);
@@ -442,89 +418,6 @@ bool FAngelscriptEngine::IsForcingPreprocessEditorCodeForCurrentContext()
 	return false;
 }
 
-static void ReleaseOwnedSharedStateResources(TSharedPtr<FAngelscriptOwnedSharedState>& SharedState)
-{
-	if (!SharedState.IsValid() || SharedState->bReleased)
-	{
-		return;
-	}
-
-#if WITH_AS_DEBUGSERVER
-	if (SharedState->DebugServer != nullptr)
-	{
-		delete SharedState->DebugServer;
-		SharedState->DebugServer = nullptr;
-	}
-#endif
-
-	if (SharedState->StaticJIT != nullptr)
-	{
-		delete SharedState->StaticJIT;
-		SharedState->StaticJIT = nullptr;
-	}
-
-	if (SharedState->PrecompiledData != nullptr)
-	{
-		delete SharedState->PrecompiledData;
-		SharedState->PrecompiledData = nullptr;
-	}
-
-	if (SharedState->PrimaryContext != nullptr)
-	{
-		SharedState->PrimaryContext->Release();
-		if (FAngelscriptEngine::GameThreadTLD != nullptr && FAngelscriptEngine::GameThreadTLD->primaryContext == SharedState->PrimaryContext)
-		{
-			FAngelscriptEngine::GameThreadTLD->primaryContext = nullptr;
-		}
-		SharedState->PrimaryContext = nullptr;
-	}
-
-	if (SharedState->ScriptEngine != nullptr)
-	{
-		ReleaseContextsForScriptEngine(GAngelscriptContextPool.FreeContexts, SharedState->ScriptEngine);
-		SharedState->ScriptEngine->ShutDownAndRelease();
-		SharedState->ScriptEngine = nullptr;
-	}
-
-	SharedState->bReleased = true;
-
-	SharedState->TypeDatabase.Reset();
-	SharedState->BindState.Reset();
-	SharedState->ToStringList.Reset();
-	SharedState->BindDatabase.Reset();
-	SharedState->StaticNames.Reset();
-	SharedState->StaticNamesByIndex.Reset();
-
-	{
-		extern TMap<UClass*, TMap<FString, UFunction*>> GBlueprintEventsByScriptName;
-		GBlueprintEventsByScriptName.Empty();
-	}
-	// Drop every FBlueprintEventSignature that was attached to an asCScriptFunction
-	// via SetUserData(...). Safe to do here because ScriptEngine->ShutDownAndRelease()
-	// above has already destroyed every script function that held a userData pointer
-	// to one of these heap-allocated signatures.
-	SharedState->BlueprintEventSignatureRegistry.Reset();
-	// AngelscriptGameplayTagsLookup is intentionally NOT cleared here.
-	// It is the dedup index for the global AngelscriptGameplayTags TChunkedArray,
-	// which provides stable addresses for AS global variables. Clearing the lookup
-	// without clearing the array causes linear growth; clearing both breaks
-	// AngelscriptRebindGameplayTagsToCurrentEngine() which relies on the array
-	// as the tag truth source for clone/test engines.
-#if WITH_EDITOR
-	{
-		extern void ResetCachedEditorClasses();
-		ResetCachedEditorClasses();
-	}
-#endif
-
-#if AS_CAN_GENERATE_JIT
-	FScriptFunctionNativeForm::ReleaseAllNativeForms();
-#endif
-	FAngelscriptDocs::ResetAllDocumentation();
-
-	SyncAmbientWorldContextFromCurrentEngine();
-}
-
 void LogAngelscriptError(asSMessageInfo* Message, void* DataPtr);
 void LogAngelscriptException(asIScriptContext* Context);
 void AngelscriptLineCallback(asCContext* Context);
@@ -587,8 +480,8 @@ FAngelscriptEngineScope::FAngelscriptEngineScope(FAngelscriptEngine& InEngine, U
 {
 	PreviousEngineWorldContext = InEngine.WorldContextObject;
 	FAngelscriptEngineContextStack::Push(Engine);
-	UE_LOG(Angelscript, VeryVerbose, TEXT("[EngineScope] Push engine=%p id='%s' stackDepth=%d worldCtx=%s"),
-		Engine, *Engine->GetInstanceId(), GAngelscriptEngineContextStack.Num(),
+	UE_LOG(Angelscript, VeryVerbose, TEXT("[EngineScope] Push engine=%p stackDepth=%d worldCtx=%s"),
+		Engine, GAngelscriptEngineContextStack.Num(),
 		InWorldContext ? *InWorldContext->GetName() : TEXT("none"));
 	if (InWorldContext != nullptr)
 	{
@@ -643,8 +536,8 @@ void FAngelscriptEngineScope::Reset()
 		return;
 	}
 
-	UE_LOG(Angelscript, VeryVerbose, TEXT("[EngineScope] Pop engine=%p id='%s' stackDepthBefore=%d"),
-		Engine, *Engine->GetInstanceId(), GAngelscriptEngineContextStack.Num());
+	UE_LOG(Angelscript, VeryVerbose, TEXT("[EngineScope] Pop engine=%p stackDepthBefore=%d"),
+		Engine, GAngelscriptEngineContextStack.Num());
 
 	if (bChangedWorldContext)
 	{
@@ -727,91 +620,32 @@ FAngelscriptEngine::FAngelscriptEngine(const FAngelscriptEngineConfig& InConfig,
 {
 }
 
-static FString MakeEngineInstanceId(const TCHAR* Prefix)
-{
-	static int32 NextEngineInstanceId = 1;
-	return FString::Printf(TEXT("%s_%d"), Prefix, NextEngineInstanceId++);
-}
-
 FAngelscriptEngine::~FAngelscriptEngine()
 {
-	UE_LOG(Angelscript, Verbose, TEXT("[EngineLifecycle] Destroying engine=%p id='%s' owns=%s"),
-		this, *InstanceId, bOwnsEngine ? TEXT("true") : TEXT("false"));
+	UE_LOG(Angelscript, Verbose, TEXT("[EngineLifecycle] Destroying engine=%p"), this);
 	Shutdown();
 }
 
 FString FAngelscriptEngine::MakeModuleName(const FString& ModuleName) const
 {
-	if (CreationMode == EAngelscriptEngineCreationMode::Clone && !InstanceId.IsEmpty())
-	{
-		return FString::Printf(TEXT("%s::%s"), *InstanceId, *ModuleName);
-	}
-
 	return ModuleName;
 }
 
 TUniquePtr<FAngelscriptEngine> FAngelscriptEngine::Create(const FAngelscriptEngineConfig& InConfig, const FAngelscriptEngineDependencies& InDependencies)
 {
-	return CreateUncompiled(InConfig, InDependencies);
-}
-
-TUniquePtr<FAngelscriptEngine> FAngelscriptEngine::CreateCloneFrom(FAngelscriptEngine& Source, const FAngelscriptEngineConfig& InConfig)
-{
-	return CreateCloneFrom(Source, InConfig, Source.Dependencies);
-}
-
-TUniquePtr<FAngelscriptEngine> FAngelscriptEngine::CreateUncompiled(const FAngelscriptEngineConfig& InConfig, const FAngelscriptEngineDependencies& InDependencies)
-{
 	TUniquePtr<FAngelscriptEngine> EngineInstance = MakeUnique<FAngelscriptEngine>(InConfig, InDependencies);
-	EngineInstance->CreationMode = EAngelscriptEngineCreationMode::Full;
-	EngineInstance->SourceEngine = nullptr;
-	EngineInstance->bOwnsEngine = true;
-	EngineInstance->InstanceId = MakeEngineInstanceId(TEXT("Full"));
-	UE_LOG(Angelscript, Verbose, TEXT("[EngineLifecycle] CreateUncompiled -> %p id='%s'"),
-		EngineInstance.Get(), *EngineInstance->InstanceId);
-	EngineInstance->InitializeWithoutInitialCompile();
+	UE_LOG(Angelscript, Verbose, TEXT("[EngineLifecycle] Create -> %p (bSkipInitialCompile=%d)"),
+		EngineInstance.Get(),
+		InConfig.bSkipInitialCompile ? 1 : 0);
+	if (InConfig.bSkipInitialCompile)
+	{
+		EngineInstance->InitializeWithoutInitialCompile();
+	}
+	else
+	{
+		EngineInstance->Initialize();
+	}
 	return EngineInstance;
-}
-
-TUniquePtr<FAngelscriptEngine> FAngelscriptEngine::CreateCloneFrom(FAngelscriptEngine& Source, const FAngelscriptEngineConfig& InConfig, const FAngelscriptEngineDependencies& InDependencies)
-{
-	if (Source.SharedState.IsValid() == false && Source.OwnsEngine() && Source.GetScriptEngine() != nullptr)
-	{
-		Source.InitializeOwnedSharedState();
-	}
-
-	TUniquePtr<FAngelscriptEngine> EngineInstance = MakeUnique<FAngelscriptEngine>(InConfig, InDependencies);
-	EngineInstance->CreationMode = EAngelscriptEngineCreationMode::Clone;
-	EngineInstance->SourceEngine = Source.GetSourceEngine() != nullptr ? Source.GetSourceEngine() : &Source;
-	EngineInstance->SourceLifetimeToken = EngineInstance->SourceEngine != nullptr ? EngineInstance->SourceEngine->LifetimeToken : TWeakPtr<FAngelscriptEngineLifetimeToken>();
-	EngineInstance->bOwnsEngine = false;
-	EngineInstance->InstanceId = MakeEngineInstanceId(TEXT("Clone"));
-	EngineInstance->SharedState = Source.SharedState;
-	if (EngineInstance->SharedState.IsValid())
-	{
-		++EngineInstance->SharedState->ActiveParticipants;
-		++EngineInstance->SharedState->ActiveCloneCount;
-	}
-	EngineInstance->AdoptSharedStateFrom(Source);
-	UE_LOG(Angelscript, Verbose, TEXT("[EngineLifecycle] CreateCloneFrom source=%p -> %p id='%s' cloneCount=%d"),
-		&Source, EngineInstance.Get(), *EngineInstance->InstanceId,
-		EngineInstance->SharedState.IsValid() ? EngineInstance->SharedState->ActiveCloneCount : 0);
-	return EngineInstance;
-}
-
-TUniquePtr<FAngelscriptEngine> FAngelscriptEngine::CreateUncompiledWithMode(const FAngelscriptEngineConfig& InConfig, const FAngelscriptEngineDependencies& InDependencies, EAngelscriptEngineCreationMode Mode)
-{
-	if (Mode == EAngelscriptEngineCreationMode::Full)
-	{
-		return CreateUncompiled(InConfig, InDependencies);
-	}
-
-	if (FAngelscriptEngine* CurrentEngine = TryGetCurrentEngine())
-	{
-		return CreateCloneFrom(*CurrentEngine, InConfig, InDependencies);
-	}
-
-	return CreateUncompiled(InConfig, InDependencies);
 }
 
 #if WITH_EDITOR && ENGINE_MAJOR_VERSION >= 5
@@ -1001,7 +835,6 @@ void FAngelscriptEngine::Initialize()
 	}
 
 	PostInitialize_GameThread();
-	InitializeOwnedSharedState();
 }
 
 void FAngelscriptEngine::InitializeWithoutInitialCompile()
@@ -1057,14 +890,39 @@ void FAngelscriptEngine::InitializeWithoutInitialCompile()
 
 	Engine->SetMessageCallback(asFUNCTION(LogAngelscriptError), 0, asCALL_CDECL);
 	Engine->SetContextCallbacks(&AngelscriptRequestContext, &AngelscriptReturnContext, nullptr);
-	EnsureSharedStateCreated();
+
+	// Construct the engine's owned databases. These were previously held inside
+	// FAngelscriptOwnedSharedState; with that struct removed, they live as
+	// direct TUniquePtr<...> fields on FAngelscriptEngine and are MakeUnique-d
+	// here at the same point EnsureSharedStateCreated() previously fired.
+	if (!TypeDatabase.IsValid())
+	{
+		TypeDatabase = MakeUnique<FAngelscriptTypeDatabase>();
+	}
+	if (!BindState.IsValid())
+	{
+		BindState = MakeUnique<FAngelscriptBindState>();
+	}
+	if (!ToStringList.IsValid())
+	{
+		ToStringList = MakeUnique<TArray<FToStringType>>();
+	}
+	if (!BindDatabase.IsValid())
+	{
+		LLM_SCOPE_BYTAG(Angelscript);
+		BindDatabase = MakeUnique<FAngelscriptBindDatabase>();
+	}
+	if (!BlueprintEventSignatureRegistry.IsValid())
+	{
+		BlueprintEventSignatureRegistry = MakeUnique<FBlueprintEventSignatureRegistry>();
+	}
+
 	{
 		FAngelscriptEngineScope ScopedTestingEngine(*this);
 		BindScriptTypes();
 	}
 	GameThreadTLD->primaryContext = CreateContext();
 	bIsInitialCompileFinished = true;
-	InitializeOwnedSharedState();
 
 #if WITH_AS_DEBUGSERVER
 	if (RuntimeConfig.DebugServerPort > 0)
@@ -1074,39 +932,7 @@ void FAngelscriptEngine::InitializeWithoutInitialCompile()
 #endif
 }
 
-void FAngelscriptEngine::InitializeOwnedSharedState()
-{
-	if (!bOwnsEngine || Engine == nullptr)
-	{
-		return;
-	}
-
-	if (!SharedState.IsValid())
-	{
-		SharedState = MakeShared<FAngelscriptOwnedSharedState>();
-	}
-
-	SharedState->ScriptEngine = Engine;
-	SharedState->PrimaryContext = GameThreadTLD != nullptr ? static_cast<asCContext*>(GameThreadTLD->primaryContext) : nullptr;
-	SharedState->PrecompiledData = PrecompiledData;
-	SharedState->StaticJIT = StaticJIT;
-#if WITH_AS_DEBUGSERVER
-	SharedState->DebugServer = DebugServer;
-#endif
-	SharedState->ActiveParticipants = FMath::Max(SharedState->ActiveParticipants, 1);
-}
-
 #if WITH_DEV_AUTOMATION_TESTS
-int32 FAngelscriptEngine::GetActiveParticipantsForTesting() const
-{
-	return SharedState.IsValid() ? SharedState->ActiveParticipants : 0;
-}
-
-int32 FAngelscriptEngine::GetActiveCloneCountForTesting() const
-{
-	return SharedState.IsValid() ? SharedState->ActiveCloneCount : 0;
-}
-
 int32 FAngelscriptEngine::GetLocalPooledContextCountForTesting(asIScriptEngine* ScriptEngine)
 {
 	int32 MatchCount = 0;
@@ -1213,43 +1039,30 @@ bool FAngelscriptEngine::GetStaticJITFunctionIdForTesting(asIScriptFunction* Fun
 
 FAngelscriptTypeDatabase* FAngelscriptEngine::GetTypeDatabase() const
 {
-	return SharedState.IsValid() ? SharedState->TypeDatabase.Get() : nullptr;
+	// TUniquePtr<>::Get() returns nullptr when empty, preserving the
+	// pre-flatten "nullptr before Initialize*()" contract without needing
+	// an extra IsValid() guard.
+	return TypeDatabase.Get();
 }
 
 FAngelscriptBindState* FAngelscriptEngine::GetBindState() const
 {
-	return SharedState.IsValid() ? SharedState->BindState.Get() : nullptr;
+	return BindState.Get();
 }
 
 FBlueprintEventSignatureRegistry* FAngelscriptEngine::GetBlueprintEventSignatureRegistry() const
 {
-	return SharedState.IsValid() ? SharedState->BlueprintEventSignatureRegistry.Get() : nullptr;
+	return BlueprintEventSignatureRegistry.Get();
 }
 
 TArray<FToStringType>* FAngelscriptEngine::GetToStringList() const
 {
-	return SharedState.IsValid() ? SharedState->ToStringList.Get() : nullptr;
+	return ToStringList.Get();
 }
 
 FAngelscriptBindDatabase* FAngelscriptEngine::GetBindDatabase() const
 {
-	return SharedState.IsValid() ? SharedState->BindDatabase.Get() : nullptr;
-}
-
-void FAngelscriptEngine::EnsureSharedStateCreated()
-{
-	if (bOwnsEngine && !SharedState.IsValid())
-	{
-		SharedState = MakeShared<FAngelscriptOwnedSharedState>();
-		SharedState->TypeDatabase = MakeUnique<FAngelscriptTypeDatabase>();
-		SharedState->BindState = MakeUnique<FAngelscriptBindState>();
-		SharedState->ToStringList = MakeUnique<TArray<FToStringType>>();
-		{
-			LLM_SCOPE_BYTAG(Angelscript);
-			SharedState->BindDatabase = MakeUnique<FAngelscriptBindDatabase>();
-		}
-		SharedState->BlueprintEventSignatureRegistry = MakeUnique<FBlueprintEventSignatureRegistry>();
-	}
+	return BindDatabase.Get();
 }
 
 int32 FAngelscriptEngine::GetToStringEntryCountForTesting() const
@@ -1300,11 +1113,8 @@ int32 FAngelscriptEngine::GetOrAddStaticName(FName Name)
 	TMap<FName, int32>* NamesByIndex = &GLegacyStaticNamesByIndex;
 	if (FAngelscriptEngine* CurrentEngine = TryGetCurrentEngine())
 	{
-		if (CurrentEngine->SharedState.IsValid())
-		{
-			Names = &CurrentEngine->SharedState->StaticNames;
-			NamesByIndex = &CurrentEngine->SharedState->StaticNamesByIndex;
-		}
+		Names = &CurrentEngine->StaticNames;
+		NamesByIndex = &CurrentEngine->StaticNamesByIndex;
 	}
 
 	if (int32* FoundIndex = NamesByIndex->Find(Name))
@@ -1326,12 +1136,9 @@ void FAngelscriptEngine::ReserveStaticNames(int32 Count)
 {
 	if (FAngelscriptEngine* CurrentEngine = TryGetCurrentEngine())
 	{
-		if (CurrentEngine->SharedState.IsValid())
-		{
-			CurrentEngine->SharedState->StaticNames.Reserve(Count);
-			CurrentEngine->SharedState->StaticNamesByIndex.Reserve(Count);
-			return;
-		}
+		CurrentEngine->StaticNames.Reserve(Count);
+		CurrentEngine->StaticNamesByIndex.Reserve(Count);
+		return;
 	}
 
 	GLegacyStaticNames.Reserve(Count);
@@ -1342,12 +1149,9 @@ void FAngelscriptEngine::ResetStaticNames()
 {
 	if (FAngelscriptEngine* CurrentEngine = TryGetCurrentEngine())
 	{
-		if (CurrentEngine->SharedState.IsValid())
-		{
-			CurrentEngine->SharedState->StaticNames.Reset();
-			CurrentEngine->SharedState->StaticNamesByIndex.Reset();
-			return;
-		}
+		CurrentEngine->StaticNames.Reset();
+		CurrentEngine->StaticNamesByIndex.Reset();
+		return;
 	}
 
 	GLegacyStaticNames.Reset();
@@ -1360,11 +1164,8 @@ void FAngelscriptEngine::AddStaticNameFromPrecompiled(FName Name)
 	TMap<FName, int32>* NamesByIndex = &GLegacyStaticNamesByIndex;
 	if (FAngelscriptEngine* CurrentEngine = TryGetCurrentEngine())
 	{
-		if (CurrentEngine->SharedState.IsValid())
-		{
-			Names = &CurrentEngine->SharedState->StaticNames;
-			NamesByIndex = &CurrentEngine->SharedState->StaticNamesByIndex;
-		}
+		Names = &CurrentEngine->StaticNames;
+		NamesByIndex = &CurrentEngine->StaticNamesByIndex;
 	}
 
 	const int32 Index = Names->Add(Name);
@@ -1375,10 +1176,7 @@ const TArray<FName>& FAngelscriptEngine::GetStaticNames()
 {
 	if (FAngelscriptEngine* CurrentEngine = TryGetCurrentEngine())
 	{
-		if (CurrentEngine->SharedState.IsValid())
-		{
-			return CurrentEngine->SharedState->StaticNames;
-		}
+		return CurrentEngine->StaticNames;
 	}
 
 	return GLegacyStaticNames;
@@ -1494,17 +1292,12 @@ bool FAngelscriptEngine::DiscardModule(const TCHAR* ModuleName)
 void FAngelscriptEngine::Shutdown()
 {
 	const bool bHadInitializedEngine = Engine != nullptr;
-	TSharedPtr<FAngelscriptOwnedSharedState> LocalSharedState = SharedState;
-	const bool bHasDeferredCloneDependents = bOwnsEngine && LocalSharedState.IsValid() && LocalSharedState->ActiveCloneCount > 0;
-	const bool bShouldReleaseOwnedEngine = bOwnsEngine && Engine != nullptr && !bHasDeferredCloneDependents;
+	const bool bShouldReleaseOwnedEngine = Engine != nullptr;
 
-	UE_LOG(Angelscript, Verbose, TEXT("[EngineLifecycle] Shutdown engine=%p id='%s' owns=%s hadEngine=%s deferred=%s willRelease=%s clones=%d"),
-		this, *InstanceId,
-		bOwnsEngine ? TEXT("true") : TEXT("false"),
+	UE_LOG(Angelscript, Verbose, TEXT("[EngineLifecycle] Shutdown engine=%p hadEngine=%s willRelease=%s"),
+		this,
 		bHadInitializedEngine ? TEXT("true") : TEXT("false"),
-		bHasDeferredCloneDependents ? TEXT("true") : TEXT("false"),
-		bShouldReleaseOwnedEngine ? TEXT("true") : TEXT("false"),
-		LocalSharedState.IsValid() ? LocalSharedState->ActiveCloneCount : 0);
+		bShouldReleaseOwnedEngine ? TEXT("true") : TEXT("false"));
 
 	if (HotReloadTestRunner != nullptr)
 	{
@@ -1512,33 +1305,29 @@ void FAngelscriptEngine::Shutdown()
 		HotReloadTestRunner = nullptr;
 	}
 
-	if (bHasDeferredCloneDependents)
-	{
-		UE_LOG(Angelscript, Error, TEXT("Rejecting Full engine shutdown while Clone instances still reference shared state."));
-		LocalSharedState->bPendingOwnerRelease = true;
-	}
-
+	// Single-owner releases: with FAngelscriptOwnedSharedState gone there is
+	// no second pointer to consult — just release the engine's own fields.
 #if WITH_AS_DEBUGSERVER
-	if (bShouldReleaseOwnedEngine && DebugServer != nullptr && (!LocalSharedState.IsValid() || LocalSharedState->DebugServer == nullptr))
+	if (bShouldReleaseOwnedEngine && DebugServer != nullptr)
 	{
 		delete DebugServer;
 		DebugServer = nullptr;
 	}
 #endif
 
-	if (bShouldReleaseOwnedEngine && StaticJIT != nullptr && (!LocalSharedState.IsValid() || LocalSharedState->StaticJIT == nullptr))
+	if (bShouldReleaseOwnedEngine && StaticJIT != nullptr)
 	{
 		delete StaticJIT;
 		StaticJIT = nullptr;
 	}
 
-	if (bShouldReleaseOwnedEngine && PrecompiledData != nullptr && (!LocalSharedState.IsValid() || LocalSharedState->PrecompiledData == nullptr))
+	if (bShouldReleaseOwnedEngine && PrecompiledData != nullptr)
 	{
 		delete PrecompiledData;
 		PrecompiledData = nullptr;
 	}
 
-	if (bShouldReleaseOwnedEngine && GameThreadTLD != nullptr && GameThreadTLD->primaryContext != nullptr && (!LocalSharedState.IsValid() || LocalSharedState->PrimaryContext == nullptr))
+	if (bShouldReleaseOwnedEngine && GameThreadTLD != nullptr && GameThreadTLD->primaryContext != nullptr)
 	{
 		GameThreadTLD->primaryContext->Release();
 		GameThreadTLD->primaryContext = nullptr;
@@ -1558,19 +1347,6 @@ void FAngelscriptEngine::Shutdown()
 	}
 	GlobalContextPool.Empty();
 	InterfaceMethodSignatures.Empty();
-
-	if (LocalSharedState.IsValid())
-	{
-		if (bOwnsEngine)
-		{
-			LocalSharedState->ActiveParticipants = FMath::Max(0, LocalSharedState->ActiveParticipants - 1);
-		}
-		else
-		{
-			LocalSharedState->ActiveParticipants = FMath::Max(0, LocalSharedState->ActiveParticipants - 1);
-			LocalSharedState->ActiveCloneCount = FMath::Max(0, LocalSharedState->ActiveCloneCount - 1);
-		}
-	}
 
 	if (bShouldReleaseOwnedEngine && Engine != nullptr)
 	{
@@ -1634,20 +1410,12 @@ void FAngelscriptEngine::Shutdown()
 		}, false);
 	}
 
-	if (bShouldReleaseOwnedEngine)
+	// Engine teardown: was previously in ReleaseOwnedSharedStateResources(); now
+	// folded inline since SharedState is gone and the engine releases its own
+	// fields directly.
+	if (bShouldReleaseOwnedEngine && Engine != nullptr)
 	{
-		if (LocalSharedState.IsValid())
-		{
-			ReleaseOwnedSharedStateResources(LocalSharedState);
-		}
-		else
-		{
-			Engine->ShutDownAndRelease();
-		}
-	}
-	else if (!bOwnsEngine && LocalSharedState.IsValid() && LocalSharedState->bPendingOwnerRelease && LocalSharedState->ActiveParticipants == 0)
-	{
-		ReleaseOwnedSharedStateResources(LocalSharedState);
+		Engine->ShutDownAndRelease();
 	}
 	Engine = nullptr;
 	StaticJIT = nullptr;
@@ -1656,15 +1424,51 @@ void FAngelscriptEngine::Shutdown()
 	DebugServer = nullptr;
 #endif
 
+	// Clear the type / bind / registry databases that used to live on
+	// FAngelscriptOwnedSharedState. ScriptEngine->ShutDownAndRelease() above
+	// has already destroyed every script function that held a userData pointer
+	// to a heap-allocated FBlueprintEventSignature, so the registry can be
+	// safely cleared here. AngelscriptGameplayTagsLookup is intentionally NOT
+	// cleared — see comment in the original ReleaseOwnedSharedStateResources.
+	if (bShouldReleaseOwnedEngine)
+	{
+		TypeDatabase.Reset();
+		BindState.Reset();
+		ToStringList.Reset();
+		BindDatabase.Reset();
+		StaticNames.Reset();
+		StaticNamesByIndex.Reset();
+
+		{
+			extern TMap<UClass*, TMap<FString, UFunction*>> GBlueprintEventsByScriptName;
+			GBlueprintEventsByScriptName.Empty();
+		}
+		BlueprintEventSignatureRegistry.Reset();
+
+#if WITH_EDITOR
+		{
+			extern void ResetCachedEditorClasses();
+			ResetCachedEditorClasses();
+		}
+#endif
+
+#if AS_CAN_GENERATE_JIT
+		FScriptFunctionNativeForm::ReleaseAllNativeForms();
+#endif
+		FAngelscriptDocs::ResetAllDocumentation();
+	}
+
 	ActiveModules.Empty();
 	ModulesByScriptModule.Empty();
 	AllRootPaths.Empty();
 	QueuedFullReloadFiles.Empty();
 	PreviouslyFailedReloadFiles.Empty();
-	if (bShouldReleaseOwnedEngine && bHadInitializedEngine && !LocalSharedState.IsValid())
+
+	if (bShouldReleaseOwnedEngine && bHadInitializedEngine)
 	{
 		SyncAmbientWorldContextFromCurrentEngine();
 	}
+
 	if (bShouldReleaseOwnedEngine)
 	{
 		if (AngelscriptPackage != nullptr)
@@ -1680,9 +1484,6 @@ void FAngelscriptEngine::Shutdown()
 	}
 	AngelscriptPackage = nullptr;
 	AssetsPackage = nullptr;
-	SourceEngine = nullptr;
-	SourceLifetimeToken.Reset();
-	SharedState.Reset();
 	LifetimeToken.Reset();
 	WorldContextObject = nullptr;
 }
@@ -1911,8 +1712,31 @@ void FAngelscriptEngine::Initialize_AnyThread()
 			}
 		}
 	}
-	EnsureSharedStateCreated();
-	//Set everything up for angelscript usage.	
+	// Construct the engine's owned databases. Same MakeUnique sequence
+	// previously held by EnsureSharedStateCreated(); see Initialize() /
+	// InitializeWithoutInitialCompile() for the matching short path.
+	if (!TypeDatabase.IsValid())
+	{
+		TypeDatabase = MakeUnique<FAngelscriptTypeDatabase>();
+	}
+	if (!BindState.IsValid())
+	{
+		BindState = MakeUnique<FAngelscriptBindState>();
+	}
+	if (!ToStringList.IsValid())
+	{
+		ToStringList = MakeUnique<TArray<FToStringType>>();
+	}
+	if (!BindDatabase.IsValid())
+	{
+		LLM_SCOPE_BYTAG(Angelscript);
+		BindDatabase = MakeUnique<FAngelscriptBindDatabase>();
+	}
+	if (!BlueprintEventSignatureRegistry.IsValid())
+	{
+		BlueprintEventSignatureRegistry = MakeUnique<FBlueprintEventSignatureRegistry>();
+	}
+	//Set everything up for angelscript usage.
 	{
 		FAngelscriptScopeTimer Timer(TEXT("== bindings total =="));
 		BindScriptTypes();
@@ -3348,20 +3172,6 @@ void FAngelscriptEngine::Tick(float DeltaTime)
 bool FAngelscriptEngine::ShouldTick() const
 {
 	return Engine != nullptr;
-}
-
-void FAngelscriptEngine::AdoptSharedStateFrom(const FAngelscriptEngine& Source)
-{
-	Engine = Source.Engine;
-	ConfigSettings = Source.ConfigSettings;
-	AngelscriptPackage = Source.AngelscriptPackage;
-	AssetsPackage = Source.AssetsPackage;
-	AllRootPaths = Source.AllRootPaths;
-	bDidInitialCompileSucceed = Source.bDidInitialCompileSucceed;
-	bCompletedAssetScan = Source.bCompletedAssetScan;
-	bGeneratePrecompiledData = Source.bGeneratePrecompiledData;
-	bUsePrecompiledData = Source.bUsePrecompiledData;
-	bScriptDevelopmentMode = Source.bScriptDevelopmentMode;
 }
 
 void FAngelscriptEngine::CheckForFileChanges()

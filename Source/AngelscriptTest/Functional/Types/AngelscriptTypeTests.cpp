@@ -333,7 +333,7 @@ bool FAngelscriptTypeFloatConfigurationModesTest::RunTest(const FString& Paramet
 {
 	using namespace AngelscriptTest_Angelscript_AngelscriptTypeTests_Private;
 	bool bPassed = true;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{
 		FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
@@ -369,7 +369,7 @@ bool FAngelscriptTypeFloatConfigurationModesTest::RunTest(const FString& Paramet
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 
 	ApplyFloatSettings(false);
-	TUniquePtr<FAngelscriptEngine> Float32Engine = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(Config, Dependencies, EAngelscriptEngineCreationMode::Full);
+	TUniquePtr<FAngelscriptEngine> Float32Engine = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(Config, Dependencies);
 	if (!TestNotNull(TEXT("Types.Float.ConfigurationModes should create a float32 testing engine"), Float32Engine.Get()))
 	{
 		return false;
@@ -383,13 +383,6 @@ bool FAngelscriptTypeFloatConfigurationModesTest::RunTest(const FString& Paramet
 		return false;
 	}
 
-	bPassed &= TestEqual(
-		TEXT("Types.Float.ConfigurationModes should force the float32 testing engine into Full mode"),
-		Float32Engine->GetCreationMode(),
-		EAngelscriptEngineCreationMode::Full);
-	bPassed &= TestNull(
-		TEXT("Types.Float.ConfigurationModes should not attach a source engine in explicit Full mode for the float32 engine"),
-		Float32Engine->GetSourceEngine());
 	bPassed &= TestTrue(
 		TEXT("Types.Float.ConfigurationModes should create a dedicated float32 script engine instead of reusing the ambient full engine"),
 		Float32ScriptEngine != AmbientScriptEngine);
@@ -420,7 +413,7 @@ bool FAngelscriptTypeFloatConfigurationModesTest::RunTest(const FString& Paramet
 		0);
 
 	ApplyFloatSettings(true);
-	TUniquePtr<FAngelscriptEngine> Float64Engine = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(Config, Dependencies, EAngelscriptEngineCreationMode::Full);
+	TUniquePtr<FAngelscriptEngine> Float64Engine = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(Config, Dependencies);
 	if (!TestNotNull(TEXT("Types.Float.ConfigurationModes should create a float64 testing engine"), Float64Engine.Get()))
 	{
 		return false;
@@ -432,13 +425,6 @@ bool FAngelscriptTypeFloatConfigurationModesTest::RunTest(const FString& Paramet
 		return false;
 	}
 
-	bPassed &= TestEqual(
-		TEXT("Types.Float.ConfigurationModes should force the float64 testing engine into Full mode"),
-		Float64Engine->GetCreationMode(),
-		EAngelscriptEngineCreationMode::Full);
-	bPassed &= TestNull(
-		TEXT("Types.Float.ConfigurationModes should not attach a source engine in explicit Full mode for the float64 engine"),
-		Float64Engine->GetSourceEngine());
 	bPassed &= TestTrue(
 		TEXT("Types.Float.ConfigurationModes should create a dedicated float64 script engine instead of reusing the ambient full engine"),
 		Float64ScriptEngine != AmbientScriptEngine);

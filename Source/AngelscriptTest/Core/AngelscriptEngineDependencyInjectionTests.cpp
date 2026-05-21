@@ -1,5 +1,6 @@
 #include "AngelscriptEngine.h"
 #include "CQTest.h"
+#include "Shared/AngelscriptTestEngine.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -55,7 +56,7 @@ bool RunInjectedScriptRootDiscovery(FAutomationTestBase& Test)
 		};
 	};
 
-	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptEngine::CreateUncompiledWithMode(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptTestEngine::Create(Config, Dependencies);
 	TArray<FString> Roots = Engine->DiscoverScriptRoots(false);
 
 	Test.TestEqual(TEXT("Injected project root should be first"), Roots[0], FString(TEXT("C:/InjectedProject/Script")));
@@ -101,7 +102,7 @@ bool RunInjectedProjectOnlyScriptRootDiscovery(FAutomationTestBase& Test)
 		};
 	};
 
-	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptEngine::CreateUncompiledWithMode(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptTestEngine::Create(Config, Dependencies);
 	TArray<FString> Roots = Engine->DiscoverScriptRoots(true);
 
 	Test.TestEqual(TEXT("Project-only discovery should return exactly one root"), Roots.Num(), 1);
@@ -151,7 +152,7 @@ bool RunInjectedMissingPluginScriptRootSkip(FAutomationTestBase& Test)
 		};
 	};
 
-	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptEngine::CreateUncompiledWithMode(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptTestEngine::Create(Config, Dependencies);
 	TArray<FString> Roots = Engine->DiscoverScriptRoots(false);
 
 	Test.TestEqual(TEXT("Missing plugin roots should be skipped and project root should not be duplicated"), Roots.Num(), 2);
@@ -202,7 +203,7 @@ bool RunInjectedEditorCreatesProjectScriptRoot(FAutomationTestBase& Test)
 		return TArray<FString>();
 	};
 
-	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptEngine::CreateUncompiledWithMode(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptTestEngine::Create(Config, Dependencies);
 	TArray<FString> Roots = Engine->DiscoverScriptRoots(false);
 
 	Test.TestTrue(TEXT("Editor discovery should create the missing project script root"), bMakeDirectoryCalled);
@@ -216,12 +217,19 @@ bool RunInjectedEditorCreatesProjectScriptRoot(FAutomationTestBase& Test)
 	return true;
 }
 
-bool RunCreateLegacyAliasSkipsProductionDirectorySetup(FAutomationTestBase& Test)
+bool RunCreateWithSkipInitialCompileSkipsProductionDirectorySetup(FAutomationTestBase& Test)
 {
 	FAngelscriptDependencyInjectionTestAccess::ResetToIsolatedEngineState();
 
+	// Verifies the OpenSpec D8 contract for the unified `FAngelscriptEngine::Create`
+	// factory: setting `Config.bSkipInitialCompile = true` selects the
+	// InitializeWithoutInitialCompile path, which must NOT touch the project
+	// script-root directories. The default-flag path (full Initialize) is
+	// covered by production-side runtime tests; the wrapper path is covered
+	// by `RunCreateTestingFullEngineSkipsProductionDirectorySetup` below.
 	FAngelscriptEngineConfig Config;
 	Config.bIsEditor = true;
+	Config.bSkipInitialCompile = true;
 
 	bool bMakeDirectoryCalled = false;
 	FString CreatedPath;
@@ -251,13 +259,13 @@ bool RunCreateLegacyAliasSkipsProductionDirectorySetup(FAutomationTestBase& Test
 	};
 
 	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptEngine::Create(Config, Dependencies);
-	if (!Test.TestNotNull(TEXT("Create.LegacyAliasSkipsProductionDirectorySetup should create a testing full engine wrapper"), Engine.Get()))
+	if (!Test.TestNotNull(TEXT("Create.WithSkipInitialCompileSkipsProductionDirectorySetup should create an engine"), Engine.Get()))
 	{
 		return false;
 	}
 
-	Test.TestFalse(TEXT("Create.LegacyAliasSkipsProductionDirectorySetup should not run the production script-root setup path"), bMakeDirectoryCalled);
-	return Test.TestEqual(TEXT("Create.LegacyAliasSkipsProductionDirectorySetup should keep the production setup path untouched"), CreatedPath, FString());
+	Test.TestFalse(TEXT("Create.WithSkipInitialCompileSkipsProductionDirectorySetup should not run the production script-root setup path"), bMakeDirectoryCalled);
+	return Test.TestEqual(TEXT("Create.WithSkipInitialCompileSkipsProductionDirectorySetup should keep the production setup path untouched"), CreatedPath, FString());
 }
 
 bool RunCreateTestingFullEngineSkipsProductionDirectorySetup(FAutomationTestBase& Test)
@@ -292,7 +300,7 @@ bool RunCreateTestingFullEngineSkipsProductionDirectorySetup(FAutomationTestBase
 		return TArray<FString>();
 	};
 
-	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptTestEngine::Create(Config, Dependencies);
 	if (!Test.TestNotNull(TEXT("CreateTestingFullEngine.SkipsProductionDirectorySetup should create a testing full engine"), Engine.Get()))
 	{
 		return false;
@@ -331,10 +339,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineDependencyInjectionTests,
 		RunInjectedEditorCreatesProjectScriptRoot(*TestRunner);
 	}
 
-	TEST_METHOD(CreateLegacyAliasSkipsProductionDirectorySetup)
+	TEST_METHOD(CreateWithSkipInitialCompileSkipsProductionDirectorySetup)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptEngineDependencyInjectionTests_Private;
-		RunCreateLegacyAliasSkipsProductionDirectorySetup(*TestRunner);
+		RunCreateWithSkipInitialCompileSkipsProductionDirectorySetup(*TestRunner);
 	}
 
 	TEST_METHOD(CreateTestingFullEngineSkipsProductionDirectorySetup)

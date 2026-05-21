@@ -18,7 +18,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPropertyMetaMatrixTests,
 	TEST_METHOD(MetaSpecifiersAreReflectedOnFProperty)
 	{
 		using namespace AngelscriptFunctionalTestUtils;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		FAngelscriptEngineScope EngineScope(Engine);
 
 		static const FName ModuleName(TEXT("FunctionalPropertyMetaMatrix"));

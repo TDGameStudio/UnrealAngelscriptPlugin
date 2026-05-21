@@ -68,9 +68,10 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModulePopupTests_Priv
 
 	TUniquePtr<FAngelscriptEngine> MakePopupTestEngine()
 	{
-		const FAngelscriptEngineConfig Config;
+		FAngelscriptEngineConfig Config;
+		Config.bSkipInitialCompile = true;
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		return FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
+		return FAngelscriptEngine::Create(Config, Dependencies);
 	}
 
 	UCurveFloat* CreatePopupTestAsset(

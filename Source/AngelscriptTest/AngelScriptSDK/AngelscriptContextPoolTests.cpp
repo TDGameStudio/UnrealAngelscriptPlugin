@@ -83,12 +83,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptContextPoolTests,
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> EngineA = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(
 			Config,
-			Dependencies,
-			EAngelscriptEngineCreationMode::Full);
+			Dependencies);
 		TUniquePtr<FAngelscriptEngine> EngineB = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(
 			Config,
-			Dependencies,
-			EAngelscriptEngineCreationMode::Full);
+			Dependencies);
 
 		if (!TestRunner->TestNotNull(TEXT("ContextPool.ReuseAndResetPerEngine should create EngineA"), EngineA.Get())
 			|| !TestRunner->TestNotNull(TEXT("ContextPool.ReuseAndResetPerEngine should create EngineB"), EngineB.Get()))

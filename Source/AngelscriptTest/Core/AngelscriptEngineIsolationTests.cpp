@@ -10,6 +10,7 @@
 #include "Misc/Guid.h"
 #include "Misc/ScopeExit.h"
 #include "Curves/CurveFloat.h"
+#include "Shared/AngelscriptTestEngine.h"
 #include "UObject/UObjectGlobals.h"
 
 #include "AngelscriptInclude.h"
@@ -116,8 +117,8 @@ bool RunContextStackScopedResolution(FAutomationTestBase& Test)
 
 	const FAngelscriptEngineConfig Config;
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> PrimaryEngine = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
-	TUniquePtr<FAngelscriptEngine> SecondaryEngine = FAngelscriptEngine::CreateCloneFrom(*PrimaryEngine, Config);
+	TUniquePtr<FAngelscriptEngine> PrimaryEngine = FAngelscriptTestEngine::Create(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> SecondaryEngine = FAngelscriptTestEngine::Create(Config, Dependencies);
 
 	if (!Test.TestNotNull(TEXT("Context stack scoped resolution should create a primary engine"), PrimaryEngine.Get())
 		|| !Test.TestNotNull(TEXT("Context stack scoped resolution should create a secondary engine"), SecondaryEngine.Get()))
@@ -151,8 +152,8 @@ bool RunEngineScopeRestoresWorldContext(FAutomationTestBase& Test)
 
 	const FAngelscriptEngineConfig Config;
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> PrimaryEngine = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
-	TUniquePtr<FAngelscriptEngine> SecondaryEngine = FAngelscriptEngine::CreateCloneFrom(*PrimaryEngine, Config);
+	TUniquePtr<FAngelscriptEngine> PrimaryEngine = FAngelscriptTestEngine::Create(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> SecondaryEngine = FAngelscriptTestEngine::Create(Config, Dependencies);
 
 	if (!Test.TestNotNull(TEXT("Engine scope restore test should create a primary engine"), PrimaryEngine.Get())
 		|| !Test.TestNotNull(TEXT("Engine scope restore test should create a secondary engine"), SecondaryEngine.Get()))
@@ -189,8 +190,8 @@ bool RunFullEnginesKeepStateSeparate(FAutomationTestBase& Test)
 
 	const FAngelscriptEngineConfig Config;
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
-	TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptTestEngine::Create(Config, Dependencies);
 
 	if (!Test.TestNotNull(TEXT("Full engine isolation test should create engine A"), EngineA.Get())
 		|| !Test.TestNotNull(TEXT("Full engine isolation test should create engine B"), EngineB.Get()))
@@ -257,46 +258,9 @@ bool RunFullEnginesKeepStateSeparate(FAutomationTestBase& Test)
 
 bool RunCloneSharesSourceState(FAutomationTestBase& Test)
 {
-	ResetIsolationRuntime();
-
-	const FAngelscriptEngineConfig Config;
-	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> SourceEngine = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
-	if (!Test.TestNotNull(TEXT("Clone shared-state test should create a source engine"), SourceEngine.Get()))
-	{
-		return false;
-	}
-
-	const FString AliasName = MakeIsolationName(TEXT("CloneAlias"));
-	{
-		FAngelscriptEngineScope SourceScope(*SourceEngine);
-		TSharedPtr<FAngelscriptType> IntType = FAngelscriptType::GetByAngelscriptTypeName(TEXT("int"));
-		if (!Test.TestTrue(TEXT("Clone shared-state test should resolve the built-in int type inside the source engine"), IntType.IsValid()))
-		{
-			return false;
-		}
-
-		FAngelscriptType::RegisterAlias(AliasName, IntType.ToSharedRef());
-		FAngelscriptBinds::AddSkipEntry(FName(TEXT("CloneIsolationActor")), FName(TEXT("SharedSkip")));
-		FToStringHelper::Register(MakeIsolationName(TEXT("CloneToString")), +[](void*, FString& OutString)
-		{
-			OutString = TEXT("CloneShared");
-		});
-	}
-
-	TUniquePtr<FAngelscriptEngine> CloneEngine = FAngelscriptEngine::CreateCloneFrom(*SourceEngine, Config);
-	if (!Test.TestNotNull(TEXT("Clone shared-state test should create the clone engine"), CloneEngine.Get()))
-	{
-		return false;
-	}
-
-	{
-		FAngelscriptEngineScope CloneScope(*CloneEngine);
-		Test.TestNotNull(TEXT("Clone engine should see aliases registered on the source engine"), FAngelscriptType::GetByAngelscriptTypeName(AliasName).Get());
-		Test.TestTrue(TEXT("Clone engine should share skip entries with the source engine"), FAngelscriptBinds::CheckForSkipEntry(FName(TEXT("CloneIsolationActor")), FName(TEXT("SharedSkip"))));
-		Test.TestTrue(TEXT("Clone engine should inherit the shared ToString registry"), FAngelscriptEngineIsolationTestAccess::GetToStringCount(*CloneEngine) > 0);
-	}
-
+	// Test removed: targeted Clone engines sharing aliases / skip entries /
+	// ToString registry with their source engine, which no longer exists
+	// after clone-removal. Independent Full engines have independent state.
 	return true;
 }
 
@@ -306,8 +270,8 @@ bool RunRequestContextUsesRequestedEngine(FAutomationTestBase& Test)
 
 	const FAngelscriptEngineConfig Config;
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
-	TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptTestEngine::Create(Config, Dependencies);
 
 	if (!Test.TestNotNull(TEXT("RequestContext isolation test should create engine A"), EngineA.Get())
 		|| !Test.TestNotNull(TEXT("RequestContext isolation test should create engine B"), EngineB.Get()))
@@ -349,7 +313,7 @@ bool RunRequestContextReusedStartsUnprepared(FAutomationTestBase& Test)
 
 	const FAngelscriptEngineConfig Config;
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptTestEngine::Create(Config, Dependencies);
 	if (!Test.TestNotNull(TEXT("RequestContext reuse test should create an engine"), Engine.Get()))
 	{
 		return false;
@@ -409,7 +373,7 @@ bool RunRequestContextAfterReturningUnpreparedScopedContext(FAutomationTestBase&
 
 	const FAngelscriptEngineConfig Config;
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptTestEngine::Create(Config, Dependencies);
 	if (!Test.TestNotNull(TEXT("RequestContext after unprepared scoped context test should create an engine"), Engine.Get()))
 	{
 		return false;
@@ -460,7 +424,7 @@ bool RunFullEngineCreateClearsThreadLocalPool(FAutomationTestBase& Test)
 
 	const FAngelscriptEngineConfig Config;
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(Config, Dependencies);
 	if (!Test.TestNotNull(TEXT("Full engine create pool reset test should create engine A"), EngineA.Get()))
 	{
 		return false;
@@ -498,7 +462,7 @@ bool RunFullEngineCreateClearsThreadLocalPool(FAutomationTestBase& Test)
 		return false;
 	}
 
-	TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptTestEngine::Create(Config, Dependencies);
 	if (!Test.TestNotNull(TEXT("Full engine create pool reset test should create engine B"), EngineB.Get()))
 	{
 		return false;
@@ -529,7 +493,7 @@ bool RunContextPoolResetSequenceKeepsRequestedContextReusable(FAutomationTestBas
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 
 	{
-		TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
+		TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(Config, Dependencies);
 		if (!Test.TestNotNull(TEXT("Sequence test should create engine A"), EngineA.Get()))
 		{
 			return false;
@@ -567,7 +531,7 @@ bool RunContextPoolResetSequenceKeepsRequestedContextReusable(FAutomationTestBas
 			return false;
 		}
 
-		TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
+		TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptTestEngine::Create(Config, Dependencies);
 		if (!Test.TestNotNull(TEXT("Sequence test should create engine B"), EngineB.Get()))
 		{
 			return false;
@@ -601,7 +565,7 @@ bool RunContextPoolResetSequenceKeepsRequestedContextReusable(FAutomationTestBas
 		return false;
 	}
 
-	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptTestEngine::Create(Config, Dependencies);
 	if (!Test.TestNotNull(TEXT("Sequence test should create the follow-up engine"), Engine.Get()))
 	{
 		return false;
@@ -655,8 +619,8 @@ bool RunScopedPooledContextUsesScopedEngine(FAutomationTestBase& Test)
 
 	const FAngelscriptEngineConfig Config;
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
-	TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptTestEngine::Create(Config, Dependencies);
 
 	if (!Test.TestNotNull(TEXT("Scoped pooled context test should create engine A"), EngineA.Get())
 		|| !Test.TestNotNull(TEXT("Scoped pooled context test should create engine B"), EngineB.Get()))
@@ -718,7 +682,7 @@ bool RunReusedPooledContextStartsUnprepared(FAutomationTestBase& Test)
 
 	const FAngelscriptEngineConfig Config;
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptTestEngine::Create(Config, Dependencies);
 	if (!Test.TestNotNull(TEXT("Reused pooled context test should create an engine"), Engine.Get()))
 	{
 		return false;
@@ -781,7 +745,7 @@ bool RunEngineLocalFlagsIsolation(FAutomationTestBase& Test)
 	ConfigA.bSimulateCooked = true;
 	ConfigA.bTestErrors = true;
 	FAngelscriptEngineDependencies Deps = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptEngine::CreateUncompiled(ConfigA, Deps);
+	TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(ConfigA, Deps);
 	if (!Test.TestNotNull(TEXT("Should create engine A with custom config"), EngineA.Get()))
 	{
 		return false;
@@ -790,7 +754,7 @@ bool RunEngineLocalFlagsIsolation(FAutomationTestBase& Test)
 	FAngelscriptEngineConfig ConfigB;
 	ConfigB.bSimulateCooked = false;
 	ConfigB.bTestErrors = false;
-	TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptEngine::CreateUncompiled(ConfigB, Deps);
+	TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptTestEngine::Create(ConfigB, Deps);
 	if (!Test.TestNotNull(TEXT("Should create engine B with different config"), EngineB.Get()))
 	{
 		return false;
@@ -828,8 +792,8 @@ bool RunEngineLocalBlueprintLibraryNamespaceRuleConsistency(FAutomationTestBase&
 
 	const FAngelscriptEngineConfig Config;
 	const FAngelscriptEngineDependencies Deps = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptEngine::CreateUncompiled(Config, Deps);
-	TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptEngine::CreateUncompiled(Config, Deps);
+	TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(Config, Deps);
+	TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptTestEngine::Create(Config, Deps);
 	if (!Test.TestNotNull(TEXT("Namespace isolation should create engine A"), EngineA.Get())
 		|| !Test.TestNotNull(TEXT("Namespace isolation should create engine B"), EngineB.Get()))
 	{
@@ -877,8 +841,8 @@ bool RunEngineLocalStaticNamesIsolation(FAutomationTestBase& Test)
 
 	const FAngelscriptEngineConfig Config;
 	const FAngelscriptEngineDependencies Deps = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptEngine::CreateUncompiled(Config, Deps);
-	TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptEngine::CreateUncompiled(Config, Deps);
+	TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(Config, Deps);
+	TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptTestEngine::Create(Config, Deps);
 	if (!Test.TestNotNull(TEXT("Static-name isolation should create engine A"), EngineA.Get())
 		|| !Test.TestNotNull(TEXT("Static-name isolation should create engine B"), EngineB.Get()))
 	{
@@ -911,26 +875,10 @@ bool RunEngineLocalStaticNamesIsolation(FAutomationTestBase& Test)
 		Test.TestEqual(TEXT("Engine B static-name count should stay isolated"), FAngelscriptEngine::GetStaticNameCount(), EngineBBaselineCount);
 	}
 
-	TUniquePtr<FAngelscriptEngine> CloneEngine = FAngelscriptEngine::CreateCloneFrom(*EngineA, Config);
-	if (!Test.TestNotNull(TEXT("Static-name isolation should create a clone engine"), CloneEngine.Get()))
-	{
-		return false;
-	}
-
-	{
-		FAngelscriptEngineScope CloneScope(*CloneEngine);
-		FName ResolvedName;
-		Test.TestTrue(TEXT("Clone engine should resolve static names from its source shared state"), FAngelscriptEngine::TryGetStaticName(EngineANameIndex, ResolvedName));
-		Test.TestEqual(TEXT("Clone engine should see engine A static names"), ResolvedName.ToString(), EngineAName.ToString());
-		CloneNameIndex = FAngelscriptEngine::GetOrAddStaticName(CloneName);
-	}
-
-	{
-		FAngelscriptEngineScope ScopeA(*EngineA);
-		FName ResolvedName;
-		Test.TestTrue(TEXT("Engine A should resolve static names added through its clone"), FAngelscriptEngine::TryGetStaticName(CloneNameIndex, ResolvedName));
-		Test.TestEqual(TEXT("Engine A should share static names with its clone"), ResolvedName.ToString(), CloneName.ToString());
-	}
+	// The Clone-shares-source-state portion of this test was removed when
+	// the Clone mechanism was deleted. Two independent Full engines have
+	// independent static-name registries by construction; the EngineA / EngineB
+	// assertions above already cover that contract.
 
 	return true;
 }

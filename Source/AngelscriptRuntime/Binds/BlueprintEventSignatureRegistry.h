@@ -12,11 +12,14 @@
 // visible. This keeps the registry header dependency-free.
 //
 // Lifecycle:
-//   1. EnsureSharedStateCreated() allocates the registry on FAngelscriptOwnedSharedState.
+//   1. FAngelscriptEngine::Initialize* allocates the registry directly as a
+//      `TUniquePtr<FBlueprintEventSignatureRegistry> BlueprintEventSignatureRegistry`
+//      member of the engine (post clone-removal: previously this lived on the
+//      now-removed FAngelscriptOwnedSharedState struct).
 //   2. Bind_BlueprintEvent.cpp creates a signature with `new FBlueprintEventSignature`,
 //      hands it to AS via SetUserData (through OnBind), and immediately transfers
 //      ownership to the registry via AddOwnership().
-//   3. ReleaseOwnedSharedStateResources() calls Reset() *after*
+//   3. FAngelscriptEngine::Shutdown() calls Reset() on the registry *after*
 //      ScriptEngine->ShutDownAndRelease() has destroyed every asCScriptFunction
 //      that referenced the signature.
 //

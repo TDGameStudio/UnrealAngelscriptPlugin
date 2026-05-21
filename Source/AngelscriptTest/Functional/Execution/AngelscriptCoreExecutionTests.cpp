@@ -105,8 +105,7 @@ bool FAngelscriptCoreCreateCompileExecuteFreshEngineBootstrapTest::RunTest(const
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 	TUniquePtr<FAngelscriptEngine> LocalEngine = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(
 		Config,
-		Dependencies,
-		EAngelscriptEngineCreationMode::Full);
+		Dependencies);
 	if (!TestNotNull(TEXT("Core.CreateCompileExecute.FreshEngineBootstrap should create a fresh full test engine"), LocalEngine.Get()))
 	{
 		return false;
@@ -249,143 +248,9 @@ bool FAngelscriptCoreCreateEngineTest::RunTest(const FString& Parameters)
 	asIScriptEngine* ScriptEngineB = LocalEngineB->GetScriptEngine();
 	TestNotNull(TEXT("Core.CreateEngine should create the first asIScriptEngine for the returned wrapper"), ScriptEngineA);
 	TestNotNull(TEXT("Core.CreateEngine should create the second asIScriptEngine for the returned wrapper"), ScriptEngineB);
-	TestNotEqual(TEXT("Core.CreateEngine should always assign a creation mode to the first engine"), LocalEngineA->GetCreationMode(), static_cast<EAngelscriptEngineCreationMode>(255));
-	TestNotEqual(TEXT("Core.CreateEngine should always assign a creation mode to the second engine"), LocalEngineB->GetCreationMode(), static_cast<EAngelscriptEngineCreationMode>(255));
 
 	TestEqual(TEXT("Core.CreateEngine should preserve the embedded AngelScript version"), ANGELSCRIPT_VERSION, 23300);
 	return ScriptEngineA != nullptr && ScriptEngineB != nullptr;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCoreCreateEngineRequestedModeTest,
-	"Angelscript.TestModule.Functional.Core.CreateEngine.RespectsRequestedMode",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCoreCreateEngineRequestedModeTest::RunTest(const FString& Parameters)
-{
-	using namespace AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private;
-	FCoreEngineContextStackGuard ContextGuard;
-	DestroySharedTestEngine();
-	if (FAngelscriptEngine::IsInitialized())
-	{
-		FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
-	}
-	ContextGuard.DiscardSavedStack();
-	ON_SCOPE_EXIT
-	{
-		if (FAngelscriptEngine::IsInitialized())
-		{
-			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
-		}
-		DestroySharedTestEngine();
-	};
-
-	const FAngelscriptEngineConfig Config;
-	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-
-	TUniquePtr<FAngelscriptEngine> SourceEngine = CreateFullTestEngine();
-	if (!TestNotNull(TEXT("Core.CreateEngine.RespectsRequestedMode should create a source full engine"), SourceEngine.Get()))
-	{
-		return false;
-	}
-
-	TUniquePtr<FAngelscriptEngine> FallbackCloneRequest = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(
-		Config,
-		Dependencies,
-		EAngelscriptEngineCreationMode::Clone);
-	if (!TestNotNull(TEXT("Core.CreateEngine.RespectsRequestedMode should create an engine for an unscoped clone request"), FallbackCloneRequest.Get()))
-	{
-		return false;
-	}
-
-	bool bPassed = true;
-	bPassed &= TestEqual(
-		TEXT("Core.CreateEngine.RespectsRequestedMode should fall back to Full when Clone is requested without a current engine"),
-		FallbackCloneRequest->GetCreationMode(),
-		EAngelscriptEngineCreationMode::Full);
-	bPassed &= TestNotNull(
-		TEXT("Core.CreateEngine.RespectsRequestedMode should initialize a script engine for the fallback full instance"),
-		FallbackCloneRequest->GetScriptEngine());
-	bPassed &= TestTrue(
-		TEXT("Core.CreateEngine.RespectsRequestedMode should create a distinct wrapper for the fallback full instance"),
-		FallbackCloneRequest.Get() != SourceEngine.Get());
-	bPassed &= TestTrue(
-		TEXT("Core.CreateEngine.RespectsRequestedMode should give the fallback full instance a distinct script engine"),
-		FallbackCloneRequest->GetScriptEngine() != SourceEngine->GetScriptEngine());
-
-	TUniquePtr<FAngelscriptEngine> ScopedCloneRequest;
-	TUniquePtr<FAngelscriptEngine> ExplicitFullRequest;
-	{
-		FAngelscriptEngineScope SourceScope(*SourceEngine);
-		if (!TestTrue(
-				TEXT("Core.CreateEngine.RespectsRequestedMode should expose the host full engine as the current scope"),
-				FAngelscriptEngine::TryGetCurrentEngine() == SourceEngine.Get()))
-		{
-			return false;
-		}
-
-		ScopedCloneRequest = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(
-			Config,
-			Dependencies,
-			EAngelscriptEngineCreationMode::Clone);
-		ExplicitFullRequest = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(
-			Config,
-			Dependencies,
-			EAngelscriptEngineCreationMode::Full);
-	}
-
-	if (!TestNotNull(TEXT("Core.CreateEngine.RespectsRequestedMode should create a scoped clone engine"), ScopedCloneRequest.Get()))
-	{
-		return false;
-	}
-	if (!TestNotNull(TEXT("Core.CreateEngine.RespectsRequestedMode should create an explicit full engine"), ExplicitFullRequest.Get()))
-	{
-		return false;
-	}
-
-	bPassed &= TestNull(
-		TEXT("Core.CreateEngine.RespectsRequestedMode should clear the current engine after leaving the source scope"),
-		FAngelscriptEngine::TryGetCurrentEngine());
-	bPassed &= TestEqual(
-		TEXT("Core.CreateEngine.RespectsRequestedMode should preserve Clone mode when a source scope exists"),
-		ScopedCloneRequest->GetCreationMode(),
-		EAngelscriptEngineCreationMode::Clone);
-	bPassed &= TestEqual(
-		TEXT("Core.CreateEngine.RespectsRequestedMode should preserve explicit Full mode even when a source scope exists"),
-		ExplicitFullRequest->GetCreationMode(),
-		EAngelscriptEngineCreationMode::Full);
-	bPassed &= TestNotNull(
-		TEXT("Core.CreateEngine.RespectsRequestedMode should initialize a script engine for the scoped clone"),
-		ScopedCloneRequest->GetScriptEngine());
-	bPassed &= TestNotNull(
-		TEXT("Core.CreateEngine.RespectsRequestedMode should initialize a script engine for the explicit full engine"),
-		ExplicitFullRequest->GetScriptEngine());
-	bPassed &= TestTrue(
-		TEXT("Core.CreateEngine.RespectsRequestedMode should keep the scoped clone wrapper distinct from the source engine"),
-		ScopedCloneRequest.Get() != SourceEngine.Get());
-	bPassed &= TestTrue(
-		TEXT("Core.CreateEngine.RespectsRequestedMode should keep the explicit full wrapper distinct from the source engine"),
-		ExplicitFullRequest.Get() != SourceEngine.Get());
-	bPassed &= TestTrue(
-		TEXT("Core.CreateEngine.RespectsRequestedMode should keep the scoped clone wrapper distinct from the explicit full wrapper"),
-		ScopedCloneRequest.Get() != ExplicitFullRequest.Get());
-	bPassed &= TestTrue(
-		TEXT("Core.CreateEngine.RespectsRequestedMode should bind the scoped clone to the source engine"),
-		ScopedCloneRequest->GetSourceEngine() == SourceEngine.Get());
-	bPassed &= TestTrue(
-		TEXT("Core.CreateEngine.RespectsRequestedMode should reuse the source script engine for the scoped clone"),
-		ScopedCloneRequest->GetScriptEngine() == SourceEngine->GetScriptEngine());
-	bPassed &= TestNull(
-		TEXT("Core.CreateEngine.RespectsRequestedMode should not retain a source engine for the explicit full request"),
-		ExplicitFullRequest->GetSourceEngine());
-	bPassed &= TestTrue(
-		TEXT("Core.CreateEngine.RespectsRequestedMode should give the explicit full request its own script engine"),
-		ExplicitFullRequest->GetScriptEngine() != SourceEngine->GetScriptEngine());
-	bPassed &= TestTrue(
-		TEXT("Core.CreateEngine.RespectsRequestedMode should keep the explicit full script engine distinct from the fallback full instance"),
-		ExplicitFullRequest->GetScriptEngine() != FallbackCloneRequest->GetScriptEngine());
-
-	return bPassed;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(

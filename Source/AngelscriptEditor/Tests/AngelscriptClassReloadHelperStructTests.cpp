@@ -26,9 +26,10 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperStructTest
 {
 	TUniquePtr<FAngelscriptEngine> MakeClassReloadHelperStructTestEngine()
 	{
-		const FAngelscriptEngineConfig Config;
+		FAngelscriptEngineConfig Config;
+		Config.bSkipInitialCompile = true;
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		return FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
+		return FAngelscriptEngine::Create(Config, Dependencies);
 	}
 
 	void EnsureClassReloadHelperInitialized()

@@ -161,8 +161,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 	}
 
 	// Regression for `GBlueprintEventsByScriptName`. The cleanup path lives
-	// at AngelscriptEngine.cpp::ReleaseOwnedSharedStateResources. If a future
-	// refactor drops the `Empty()` call, this catches it within 6 cycles.
+	// at AngelscriptEngine.cpp::FAngelscriptEngine::Shutdown (post-flatten;
+	// previously this was in the standalone helper
+	// ReleaseOwnedSharedStateResources). If a future refactor drops the
+	// `Empty()` call, this catches it within 6 cycles.
 	TEST_METHOD(BlueprintEventsByScriptName_BoundedAcrossCycles)
 	{
 		using namespace AngelscriptTest_Memory_GlobalContainerCycleBounded_Private;

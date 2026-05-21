@@ -70,9 +70,10 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleDirectoryWatche
 
 	TUniquePtr<FAngelscriptEngine> MakeEditorModuleTestEngine(const FString& RootPath)
 	{
-		const FAngelscriptEngineConfig Config;
+		FAngelscriptEngineConfig Config;
+		Config.bSkipInitialCompile = true;
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
+		TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptEngine::Create(Config, Dependencies);
 		if (Engine.IsValid())
 		{
 			Engine->AllRootPaths = { FPaths::ConvertRelativePathToFull(RootPath) };

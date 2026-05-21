@@ -21,6 +21,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindWidgetTests,
 	TEST_METHOD(MetadataAndPropertyTypes)
 	{
 		using namespace AngelscriptFunctionalTestUtils;
+		// Widget test stays on Full engine: compiling a UserWidget subclass that
+		// overrides Construct/Tick triggers a hot-reload-style validation that
+		// behaves differently against a shared engine with residual module
+		// state (see Angelscript.TestModule.Functional.Widget.BindWidget
+		// regression observed when this was briefly converted to
+		// ASTEST_CREATE_ENGINE).
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope EngineScope(Engine);
 

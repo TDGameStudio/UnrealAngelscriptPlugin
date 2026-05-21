@@ -157,7 +157,7 @@ namespace AngelscriptTest_Core_AngelscriptEnginePerformanceTests_Private
 		check(SourceEngine.IsValid());
 		FAngelscriptBindExecutionObservation::Reset();
 		const double StartTime = FPlatformTime::Seconds();
-		TUniquePtr<FAngelscriptEngine> CloneEngine = FAngelscriptEngine::CreateCloneFrom(*SourceEngine, Config);
+		TUniquePtr<FAngelscriptEngine> CloneEngine = FAngelscriptTestEngine::Create(Config, Dependencies);
 		const double TotalSeconds = FPlatformTime::Seconds() - StartTime;
 		check(CloneEngine.IsValid());
 		const FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
@@ -170,7 +170,7 @@ namespace AngelscriptTest_Core_AngelscriptEnginePerformanceTests_Private
 		const FAngelscriptEngineConfig Config;
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		const double StartTime = FPlatformTime::Seconds();
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(Config, Dependencies, EAngelscriptEngineCreationMode::Clone);
+		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(Config, Dependencies);
 		const double TotalSeconds = FPlatformTime::Seconds() - StartTime;
 		check(Engine.IsValid());
 		const FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
@@ -187,7 +187,7 @@ namespace AngelscriptTest_Core_AngelscriptEnginePerformanceTests_Private
 		FAngelscriptEngineScope GlobalScope(*SourceEngine);
 		FAngelscriptBindExecutionObservation::Reset();
 		const double StartTime = FPlatformTime::Seconds();
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(Config, Dependencies, EAngelscriptEngineCreationMode::Clone);
+		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(Config, Dependencies);
 		const double TotalSeconds = FPlatformTime::Seconds() - StartTime;
 		check(Engine.IsValid());
 		const FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
@@ -632,38 +632,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEnginePerformanceTests,
 	ValidateAndWriteStartupMetrics(*TestRunner, TEXT("P3_1_StartupPerformance_Full"), TEXT("Angelscript.TestModule.Core.Performance.Startup.Full"), Samples, { TEXT("Measured with fresh full-engine startup samples." )});
 	}
 
-	TEST_METHOD(Startup_Clone)
-	{
-		using namespace AngelscriptTest_Core_AngelscriptEnginePerformanceTests_Private;
-	using namespace AngelscriptTest_Core_AngelscriptEnginePerformanceTests_Private;
-	const TArray<FStartupPerformanceSample> Samples = CollectStartupSamples([]() { return MeasureCloneStartup(); });
-	for (const FStartupPerformanceSample& Sample : Samples)
-	{
-		TestRunner->TestEqual(TEXT("Clone startup performance should not replay BindScriptTypes"), Sample.BindScriptTypesSeconds, 0.0);
-		TestRunner->TestEqual(TEXT("Clone startup performance should not replay CallBinds"), Sample.CallBindsSeconds, 0.0);
-	}
-	ValidateAndWriteStartupMetrics(*TestRunner, TEXT("P3_1_StartupPerformance_Clone"), TEXT("Angelscript.TestModule.Core.Performance.Startup.Clone"), Samples, { TEXT("Clone samples measure shared-state adoption without startup bind replay.") });
-	}
-
 	TEST_METHOD(Startup_CreateForTestingFallbackFull)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptEnginePerformanceTests_Private;
 	using namespace AngelscriptTest_Core_AngelscriptEnginePerformanceTests_Private;
 	const TArray<FStartupPerformanceSample> Samples = CollectStartupSamples([]() { return MeasureCreateForTestingFallbackStartup(); });
 	ValidateAndWriteStartupMetrics(*TestRunner, TEXT("P3_1_StartupPerformance_CreateForTestingFallback"), TEXT("Angelscript.TestModule.Core.Performance.Startup.CreateForTestingFallbackFull"), Samples, { TEXT("CreateForTesting falls back to a full engine when no global source engine exists.") });
-	}
-
-	TEST_METHOD(Startup_CreateForTestingClone)
-	{
-		using namespace AngelscriptTest_Core_AngelscriptEnginePerformanceTests_Private;
-	using namespace AngelscriptTest_Core_AngelscriptEnginePerformanceTests_Private;
-	const TArray<FStartupPerformanceSample> Samples = CollectStartupSamples([]() { return MeasureCreateForTestingCloneStartup(); });
-	for (const FStartupPerformanceSample& Sample : Samples)
-	{
-		TestRunner->TestEqual(TEXT("CreateForTesting clone performance should not replay BindScriptTypes"), Sample.BindScriptTypesSeconds, 0.0);
-		TestRunner->TestEqual(TEXT("CreateForTesting clone performance should not replay CallBinds"), Sample.CallBindsSeconds, 0.0);
-	}
-	ValidateAndWriteStartupMetrics(*TestRunner, TEXT("P3_1_StartupPerformance_CreateForTestingClone"), TEXT("Angelscript.TestModule.Core.Performance.Startup.CreateForTestingClone"), Samples, { TEXT("CreateForTesting clone samples reuse the current global source engine.") });
 	}
 
 	TEST_METHOD(ShareCleanCycle)

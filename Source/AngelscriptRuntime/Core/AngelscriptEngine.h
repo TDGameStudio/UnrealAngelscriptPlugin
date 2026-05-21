@@ -48,7 +48,6 @@ struct FToStringType;
 class FHotReloadTestRunner;
 class FBlueprintEventSignatureRegistry;
 struct FAngelscriptEngineLifetimeToken;
-struct FAngelscriptOwnedSharedState;
 struct FAngelscriptEngineContextStack;
 struct FAngelscriptEngineScope;
 
@@ -65,6 +64,13 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngineConfig
 {
 	bool bForceThreadedInitialize = false;
 	bool bSkipThreadedInitialize = false;
+	// When true, FAngelscriptEngine::Create routes to InitializeWithoutInitialCompile()
+	// (binds + runtime services, but no on-disk script scan / initial compile).
+	// Default false reflects the production path (full Initialize). Test fixtures
+	// set this via FAngelscriptTestEngine::Create; AngelscriptEditor tests set it
+	// inline before calling FAngelscriptEngine::Create. See OpenSpec
+	// `refactor-as-engine-clone-removal` D8 / Section 7.
+	bool bSkipInitialCompile = false;
 	bool bSimulateCooked = false;
 	bool bTestErrors = false;
 	bool bForcePreprocessEditorCode = false;
@@ -109,12 +115,6 @@ enum class ECompileResult : uint8
 	FullyHandled,
 };
 
-enum class EAngelscriptEngineCreationMode : uint8
-{
-	Full,
-	Clone,
-};
-
 USTRUCT()
 struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 {
@@ -125,15 +125,11 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 	~FAngelscriptEngine();
 
 	static TUniquePtr<FAngelscriptEngine> Create(const FAngelscriptEngineConfig& InConfig, const FAngelscriptEngineDependencies& InDependencies);
-	static TUniquePtr<FAngelscriptEngine> CreateUncompiled(const FAngelscriptEngineConfig& InConfig, const FAngelscriptEngineDependencies& InDependencies);
-	static TUniquePtr<FAngelscriptEngine> CreateCloneFrom(FAngelscriptEngine& Source, const FAngelscriptEngineConfig& InConfig);
-	static TUniquePtr<FAngelscriptEngine> CreateCloneFrom(FAngelscriptEngine& Source, const FAngelscriptEngineConfig& InConfig, const FAngelscriptEngineDependencies& InDependencies);
 	static FAngelscriptEngine* TryGetCurrentEngine();
 	static FAngelscriptEngine& Get();
 	static bool IsInitialized();
 	static FString GetScriptRootDirectory();
 	static UPackage* GetPackage();
-	static TUniquePtr<FAngelscriptEngine> CreateUncompiledWithMode(const FAngelscriptEngineConfig& InConfig, const FAngelscriptEngineDependencies& InDependencies, EAngelscriptEngineCreationMode Mode = EAngelscriptEngineCreationMode::Clone);
 	static UObject* TryGetCurrentWorldContextObject();
 	static UObject* GetAmbientWorldContext();
 	static bool ShouldUseEditorScriptsForCurrentContext();
@@ -200,13 +196,6 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 
 	void Tick(float DeltaTime);
 	bool ShouldTick() const;
-	EAngelscriptEngineCreationMode GetCreationMode() const { return CreationMode; }
-	bool OwnsEngine() const { return bOwnsEngine; }
-	FAngelscriptEngine* GetSourceEngine() const
-	{
-		return SourceEngine != nullptr && SourceLifetimeToken.Pin().IsValid() ? SourceEngine : nullptr;
-	}
-	const FString& GetInstanceId() const { return InstanceId; }
 
 	/* Functions can have user data specified at bind-time that can be looked up here. */
 	template<typename T>
@@ -365,11 +354,7 @@ private:
 	FString MakeModuleName(const FString& ModuleName) const;
 	bool ShouldInitializeThreaded();
 	TSet<FName> CollectDisabledBindNames() const;
-	void InitializeOwnedSharedState();
-	void AdoptSharedStateFrom(const FAngelscriptEngine& Source);
 	#if WITH_DEV_AUTOMATION_TESTS
-	int32 GetActiveParticipantsForTesting() const;
-	int32 GetActiveCloneCountForTesting() const;
 	#endif
 	void PreInitialize_GameThread();
 	void Initialize_AnyThread();
@@ -441,13 +426,24 @@ private:
 
 	// Counter for temporary generated module names
 	int32 TempNameIndex = 0;
-	EAngelscriptEngineCreationMode CreationMode = EAngelscriptEngineCreationMode::Full;
-	FAngelscriptEngine* SourceEngine = nullptr;
-	TSharedPtr<FAngelscriptOwnedSharedState> SharedState;
+
+	// Owned engine state (formerly indirected through FAngelscriptOwnedSharedState).
+	// All 7 fields are 1:1 with the owning engine; they were grouped into a
+	// separate struct only because the removed Clone mechanism needed a
+	// shareable resource bag. With single-owner semantics the struct served
+	// no purpose, so its members live directly on the engine. Each TUniquePtr
+	// is empty before Initialize*() runs (Get() returns nullptr) and is
+	// MakeUnique-d during the same point of initialization that previously
+	// called EnsureSharedStateCreated().
+	TUniquePtr<FAngelscriptTypeDatabase> TypeDatabase;
+	TUniquePtr<FAngelscriptBindState> BindState;
+	TUniquePtr<TArray<FToStringType>> ToStringList;
+	TUniquePtr<FAngelscriptBindDatabase> BindDatabase;
+	TUniquePtr<FBlueprintEventSignatureRegistry> BlueprintEventSignatureRegistry;
+	TArray<FName> StaticNames;
+	TMap<FName, int32> StaticNamesByIndex;
+
 	TSharedPtr<FAngelscriptEngineLifetimeToken> LifetimeToken;
-	TWeakPtr<FAngelscriptEngineLifetimeToken> SourceLifetimeToken;
-	bool bOwnsEngine = true;
-	FString InstanceId;
 	UPROPERTY()
 	UObject* WorldContextObject = nullptr;
 
@@ -565,8 +561,6 @@ public:
 	TArray<FToStringType>* GetToStringList() const;
 	FAngelscriptBindDatabase* GetBindDatabase() const;
 	FBlueprintEventSignatureRegistry* GetBlueprintEventSignatureRegistry() const;
-
-	void EnsureSharedStateCreated();
 
 #if WITH_DEV_AUTOMATION_TESTS
 	int32 GetToStringEntryCountForTesting() const;

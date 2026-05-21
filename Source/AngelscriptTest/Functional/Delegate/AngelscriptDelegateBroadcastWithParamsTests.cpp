@@ -19,7 +19,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDelegateBroadcastWithParamsTests,
 	TEST_METHOD(EventBroadcastFanOutsToAllListenersAndDelegateExecuteReturnsValue)
 	{
 		using namespace AngelscriptFunctionalTestUtils;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		FAngelscriptEngineScope EngineScope(Engine);
 
 		static const FName ModuleName(TEXT("FunctionalDelegateBroadcastWithParams"));

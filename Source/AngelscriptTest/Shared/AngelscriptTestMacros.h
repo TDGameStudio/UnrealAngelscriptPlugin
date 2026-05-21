@@ -3,6 +3,7 @@
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestEnginePool.h"
 #include "AngelscriptTestEngineHelper.h"
+#include "Shared/AngelscriptTestEngine.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 
@@ -34,7 +35,11 @@
 //          a guaranteed clean shared engine.
 // Returns: FAngelscriptEngine&
 #define ASTEST_CREATE_ENGINE() \
-	AngelscriptTestSupport::AcquireCleanSharedCloneEngine()
+	([]() -> FAngelscriptEngine& { \
+		FAngelscriptEngine& Engine = FAngelscriptTestEngine::GetSharedEngine(); \
+		FAngelscriptTestEngine::ResetModules(Engine); \
+		return Engine; \
+	}())
 
 // GET - Acquires the shared engine without resetting.
 // Use for: TEST_METHOD bodies where the engine was already cleaned by
@@ -42,7 +47,7 @@
 //          for per-test module isolation.
 // Returns: FAngelscriptEngine&
 #define ASTEST_GET_ENGINE() \
-	AngelscriptTestSupport::GetOrCreateSharedCloneEngine()
+	FAngelscriptTestEngine::GetSharedEngine()
 
 // FULL - Creates a fresh isolated Full engine each time.
 // Use for: engine core self-tests, bind environment testing, hot-reload tests.
@@ -64,4 +69,4 @@
 // Use for: AFTER_ALL / AFTER_EACH to leave the shared engine clean for
 //          subsequent test classes.
 #define ASTEST_RESET_ENGINE(Engine) \
-	AngelscriptTestSupport::ResetSharedCloneEngine(Engine)
+	FAngelscriptTestEngine::ResetModules(Engine)

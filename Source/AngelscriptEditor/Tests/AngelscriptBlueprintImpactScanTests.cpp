@@ -29,9 +29,10 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScanTests_Pr
 {
 	TUniquePtr<FAngelscriptEngine> CreateBlueprintImpactScanTestEngine()
 	{
-		const FAngelscriptEngineConfig Config;
+		FAngelscriptEngineConfig Config;
+		Config.bSkipInitialCompile = true;
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		return FAngelscriptEngine::CreateUncompiled(Config, Dependencies);
+		return FAngelscriptEngine::Create(Config, Dependencies);
 	}
 
 	struct FScopedAutomaticImportsOverride
