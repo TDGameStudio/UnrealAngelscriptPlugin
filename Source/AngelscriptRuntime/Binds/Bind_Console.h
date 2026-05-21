@@ -1,6 +1,5 @@
 #pragma once
 #include "CoreMinimal.h"
-#include "AngelscriptRuntimeModule.h"
 #include "AngelscriptEngine.h"
 #include "HAL/IConsoleManager.h"
 
@@ -8,6 +7,7 @@ template<typename VarType>
 struct FScriptConsoleVariable
 {
 	IConsoleVariable* Variable = nullptr;
+	FAngelscriptEngine* HookEngine = nullptr;
 	FDelegateHandle LateInitializeDelegateHandle;
 
 	FScriptConsoleVariable(const FString& Name, VarType DefaultValue, const FString& Help)
@@ -21,12 +21,18 @@ struct FScriptConsoleVariable
 				// The initial compile can happen on a separate thread, so registering it now might end up crashing.
 				FString NameCopy = Name;
 				FString HelpCopy = Help;
-				LateInitializeDelegateHandle = FAngelscriptRuntimeModule::GetOnInitialCompileFinished().AddLambda(
+				FAngelscriptEngine& Engine = FAngelscriptEngine::Get();
+				HookEngine = &Engine;
+				LateInitializeDelegateHandle = Engine.GetHooks().GetOnInitialCompileFinished().AddLambda(
 					[this, NameCopy, DefaultValue, HelpCopy]()
 					{
 						Variable = IConsoleManager::Get().RegisterConsoleVariable(*NameCopy, DefaultValue, *HelpCopy);
-						FAngelscriptRuntimeModule::GetOnInitialCompileFinished().Remove(LateInitializeDelegateHandle);
+						if (HookEngine != nullptr)
+						{
+							HookEngine->GetHooks().GetOnInitialCompileFinished().Remove(LateInitializeDelegateHandle);
+						}
 						LateInitializeDelegateHandle.Reset();
+						HookEngine = nullptr;
 					}
 				);
 			}
@@ -39,10 +45,11 @@ struct FScriptConsoleVariable
 
 	~FScriptConsoleVariable()
 	{
-		if (LateInitializeDelegateHandle.IsValid())
+		if (LateInitializeDelegateHandle.IsValid() && HookEngine != nullptr)
 		{
-			FAngelscriptRuntimeModule::GetOnInitialCompileFinished().Remove(LateInitializeDelegateHandle);
+			HookEngine->GetHooks().GetOnInitialCompileFinished().Remove(LateInitializeDelegateHandle);
 			LateInitializeDelegateHandle.Reset();
+			HookEngine = nullptr;
 		}
 	}
 

@@ -1,9 +1,8 @@
 #include "AngelscriptDebugServer.h"
 #include "AngelscriptEngine.h"
+#include "AngelscriptEditorDebugBridge.h"
 #include "AngelscriptDocs.h"
 #include "AngelscriptPerformanceStats.h"
-
-#include "AngelscriptRuntimeModule.h"
 
 #include "Dom/JsonObject.h"
 #include "Serialization/JsonSerializer.h"
@@ -1031,7 +1030,9 @@ bool FAngelscriptDebugServer::ShouldBreakOnActiveSide()
 	if (WorldContext == nullptr)
 		return true;
 
-	auto& Delegate = FAngelscriptRuntimeModule::GetDebugCheckBreakOptions();
+	auto& Delegate = OwnerEngine != nullptr
+		? OwnerEngine->GetHooks().GetDebugCheckBreakOptions()
+		: FAngelscriptEngine::Get().GetHooks().GetDebugCheckBreakOptions();
 	if (Delegate.IsBound())
 	{
 		return Delegate.Execute(BreakOptions, WorldContext);
@@ -1556,7 +1557,8 @@ void FAngelscriptDebugServer::HandleMessage(EDebugMessageType MessageType, FArra
 	else if (MessageType == EDebugMessageType::RequestBreakFilters)
 	{
 		TMap<FName, FString> FilterList;
-		FAngelscriptRuntimeModule::GetDebugBreakFilters().ExecuteIfBound(FilterList);
+		FAngelscriptEngine& Engine = OwnerEngine != nullptr ? *OwnerEngine : FAngelscriptEngine::Get();
+		Engine.GetHooks().GetDebugBreakFilters().ExecuteIfBound(FilterList);
 
 		FAngelscriptBreakFilters Filters;
 		for (auto& Elem : FilterList)
@@ -1576,7 +1578,7 @@ void FAngelscriptDebugServer::HandleMessage(EDebugMessageType MessageType, FArra
 		auto ClassDesc = FAngelscriptEngine::Get().GetClass(AssetList.ClassName);
 		if (ClassDesc.IsValid() && Cast<UASClass>(ClassDesc->Class) != nullptr)
 			BaseClass = Cast<UASClass>(ClassDesc->Class);
-		FAngelscriptRuntimeModule::GetDebugListAssets().Broadcast(AssetList.Assets, BaseClass);
+		FAngelscriptEditorDebugBridge::GetDebugListAssets().Broadcast(AssetList.Assets, BaseClass);
 	}
 	else if (MessageType == EDebugMessageType::CreateBlueprint)
 	{
@@ -1586,7 +1588,7 @@ void FAngelscriptDebugServer::HandleMessage(EDebugMessageType MessageType, FArra
 		auto ClassDesc = FAngelscriptEngine::Get().GetClass(CreateBlueprint.ClassName);
 		if (ClassDesc.IsValid() && Cast<UASClass>(ClassDesc->Class) != nullptr)
 		{
-			FAngelscriptRuntimeModule::GetEditorCreateBlueprint().Broadcast(Cast<UASClass>(ClassDesc->Class));
+			FAngelscriptEditorDebugBridge::GetEditorCreateBlueprint().Broadcast(Cast<UASClass>(ClassDesc->Class));
 		}
 		else
 		{

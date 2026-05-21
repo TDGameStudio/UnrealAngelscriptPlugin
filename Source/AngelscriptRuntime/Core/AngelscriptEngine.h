@@ -5,6 +5,7 @@
 #include "UObject/CoreNetTypes.h"
 #include "ClassGenerator/AngelscriptAdditionalCompileChecks.h"
 
+#include "Core/AngelscriptEngineHooks.h"
 #include "AngelscriptType.h"
 #include "AngelscriptMemoryTags.h"
 
@@ -136,6 +137,16 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 	static bool ShouldUseAutomaticImportMethodForCurrentContext();
 	static class asCThreadLocalData* GameThreadTLD;
 	static bool bStaticJITTranspiledCodeLoaded;
+
+	FAngelscriptEngineHooks& GetHooks()
+	{
+		return Hooks;
+	}
+
+	const FAngelscriptEngineHooks& GetHooks() const
+	{
+		return Hooks;
+	}
 
 	bool bSimulateCooked = false;
 	bool bTestErrors = false;
@@ -607,6 +618,7 @@ public:
 private:
 	FAngelscriptEngineConfig RuntimeConfig;
 	FAngelscriptEngineDependencies Dependencies;
+	FAngelscriptEngineHooks Hooks;
 };
 
 template<>

@@ -1,7 +1,7 @@
 #include "Core/AngelscriptEditorModule.h"
 
 #include "ClassGenerator/ASClass.h"
-#include "Core/AngelscriptRuntimeModule.h"
+#include "Core/AngelscriptEditorDebugBridge.h"
 #include "AngelscriptEngine.h"
 
 #include "Engine/DataAsset.h"
@@ -185,12 +185,12 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupSeedsDialogDefaultsTest::Ru
 	TArray<FAngelscriptEngine*> SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
 	TUniquePtr<FAngelscriptEngine> Engine = MakePopupAssetCreationTestEngine();
 	TUniquePtr<FAngelscriptEngineScope> EngineScope;
-	FAngelscriptEditorGetCreateBlueprintDefaultAssetPath SavedDefaultPathDelegate = FAngelscriptRuntimeModule::GetEditorGetCreateBlueprintDefaultAssetPath();
+	FAngelscriptEditorGetCreateBlueprintDefaultAssetPath SavedDefaultPathDelegate = FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath();
 
 	ON_SCOPE_EXIT
 	{
 		FAngelscriptEditorModuleTestAccess::ResetCreateBlueprintPopupTestHooks();
-		FAngelscriptRuntimeModule::GetEditorGetCreateBlueprintDefaultAssetPath() = SavedDefaultPathDelegate;
+		FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath() = SavedDefaultPathDelegate;
 		EngineScope.Reset();
 		FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
 		CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
@@ -247,7 +247,7 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupSeedsDialogDefaultsTest::Ru
 	FAngelscriptEditorModuleTestAccess::SetCreateBlueprintPopupTestHooks(MoveTemp(Hooks));
 
 	CallLog.Reset();
-	FAngelscriptRuntimeModule::GetEditorGetCreateBlueprintDefaultAssetPath().Unbind();
+	FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath().Unbind();
 	FAngelscriptEditorModule::ShowCreateBlueprintPopup(BlueprintScriptClass);
 	if (!TestEqual(TEXT("ShowCreateBlueprintPopup defaults test should bring the editor window to front for blueprint popup defaults"), CallLog.ForceEditorWindowToFrontCalls, 1)
 		|| !TestEqual(TEXT("ShowCreateBlueprintPopup defaults test should open the save dialog once for blueprint popup defaults"), CallLog.SaveDialogCalls, 1)
@@ -261,7 +261,7 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupSeedsDialogDefaultsTest::Ru
 	}
 
 	CallLog.Reset();
-	FAngelscriptRuntimeModule::GetEditorGetCreateBlueprintDefaultAssetPath().Unbind();
+	FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath().Unbind();
 	FAngelscriptEditorModule::ShowCreateBlueprintPopup(DataAssetScriptClass);
 	if (!TestEqual(TEXT("ShowCreateBlueprintPopup defaults test should bring the editor window to front for data-asset popup defaults"), CallLog.ForceEditorWindowToFrontCalls, 1)
 		|| !TestEqual(TEXT("ShowCreateBlueprintPopup defaults test should open the save dialog once for data-asset popup defaults"), CallLog.SaveDialogCalls, 1)
@@ -272,7 +272,7 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupSeedsDialogDefaultsTest::Ru
 	}
 
 	CallLog.Reset();
-	FAngelscriptRuntimeModule::GetEditorGetCreateBlueprintDefaultAssetPath().BindLambda(
+	FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath().BindLambda(
 		[](UASClass* Class)
 		{
 			return Class != nullptr && Class->IsChildOf<UDataAsset>()
@@ -299,12 +299,12 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupRejectsInvalidDialogObjectP
 	TArray<FAngelscriptEngine*> SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
 	TUniquePtr<FAngelscriptEngine> Engine = MakePopupAssetCreationTestEngine();
 	TUniquePtr<FAngelscriptEngineScope> EngineScope;
-	FAngelscriptEditorGetCreateBlueprintDefaultAssetPath SavedDefaultPathDelegate = FAngelscriptRuntimeModule::GetEditorGetCreateBlueprintDefaultAssetPath();
+	FAngelscriptEditorGetCreateBlueprintDefaultAssetPath SavedDefaultPathDelegate = FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath();
 
 	ON_SCOPE_EXIT
 	{
 		FAngelscriptEditorModuleTestAccess::ResetCreateBlueprintPopupTestHooks();
-		FAngelscriptRuntimeModule::GetEditorGetCreateBlueprintDefaultAssetPath() = SavedDefaultPathDelegate;
+		FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath() = SavedDefaultPathDelegate;
 		EngineScope.Reset();
 		FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
 		CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
@@ -316,7 +316,7 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupRejectsInvalidDialogObjectP
 	}
 
 	EngineScope = MakeUnique<FAngelscriptEngineScope>(*Engine);
-	FAngelscriptRuntimeModule::GetEditorGetCreateBlueprintDefaultAssetPath().Unbind();
+	FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath().Unbind();
 
 	if (!CompilePopupScriptModuleWithRelativePath(
 			*this,
@@ -432,14 +432,14 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupBlueprintFactoryFailureTest
 	TArray<FAngelscriptEngine*> SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
 	TUniquePtr<FAngelscriptEngine> Engine = MakePopupAssetCreationTestEngine();
 	TUniquePtr<FAngelscriptEngineScope> EngineScope;
-	FAngelscriptEditorGetCreateBlueprintDefaultAssetPath SavedDefaultPathDelegate = FAngelscriptRuntimeModule::GetEditorGetCreateBlueprintDefaultAssetPath();
+	FAngelscriptEditorGetCreateBlueprintDefaultAssetPath SavedDefaultPathDelegate = FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath();
 	UPackage* PackageToCleanup = nullptr;
 	UObject* CreatedObjectToCleanup = nullptr;
 
 	ON_SCOPE_EXIT
 	{
 		FAngelscriptEditorModuleTestAccess::ResetCreateBlueprintPopupTestHooks();
-		FAngelscriptRuntimeModule::GetEditorGetCreateBlueprintDefaultAssetPath() = SavedDefaultPathDelegate;
+		FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath() = SavedDefaultPathDelegate;
 		EngineScope.Reset();
 		if (CreatedObjectToCleanup != nullptr)
 		{
@@ -461,7 +461,7 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupBlueprintFactoryFailureTest
 	}
 
 	EngineScope = MakeUnique<FAngelscriptEngineScope>(*Engine);
-	FAngelscriptRuntimeModule::GetEditorGetCreateBlueprintDefaultAssetPath().Unbind();
+	FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath().Unbind();
 
 	if (!CompilePopupScriptModuleWithRelativePath(
 			*this,

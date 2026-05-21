@@ -15,8 +15,6 @@
 #include "Internationalization/Regex.h"
 #include "Misc/FileHelper.h"
 
-#include "AngelscriptRuntimeModule.h"
-
 #include "StartAngelscriptHeaders.h"
 #include "as_scriptengine.h"
 #include "as_generic.h"
@@ -1403,8 +1401,12 @@ void FAngelscriptPreprocessor::AnalyzeClasses(FFile& File, FChunk& Chunk)
 			}
 		}
 
-		if(FAngelscriptRuntimeModule::GetClassAnalyze().IsBound())
-			FAngelscriptRuntimeModule::GetClassAnalyze().Execute(GeneratedStatics, ClassDesc, bHasStatics);
+		if (FAngelscriptEngine* CurrentEngine = FAngelscriptEngine::TryGetCurrentEngine())
+		{
+			FAngelscriptClassAnalyzeDelegate& ClassAnalyzeDelegate = CurrentEngine->GetHooks().GetClassAnalyze();
+			if (ClassAnalyzeDelegate.IsBound())
+				ClassAnalyzeDelegate.Execute(GeneratedStatics, ClassDesc, bHasStatics);
+		}
 
 		GeneratedStatics += TEXT("}");
 

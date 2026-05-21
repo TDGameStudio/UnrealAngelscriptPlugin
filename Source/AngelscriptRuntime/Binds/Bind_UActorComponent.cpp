@@ -10,7 +10,6 @@
 #include "UObject/Class.h"
 
 #include "AngelscriptEngine.h"
-#include "AngelscriptRuntimeModule.h"
 #include "AngelscriptType.h"
 #include "AngelscriptBinds.h"
 
@@ -99,7 +98,7 @@ UActorComponent* FAngelscriptActorBinds::CreateComponent(AActor* InActor, const 
 		((FHelper_PostCreateBlueprintComponent*)InActor)->Helper_PostCreateBlueprintComponent(Component);
 	}
 
-	FAngelscriptRuntimeModule::GetComponentCreated().ExecuteIfBound(Component);
+	FAngelscriptEngine::Get().GetHooks().GetComponentCreated().ExecuteIfBound(Component);
 	Component->OnComponentCreated();
 
 	if (USceneComponent* SceneComponent = Cast<USceneComponent>(Component))

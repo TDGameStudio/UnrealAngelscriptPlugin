@@ -1,7 +1,7 @@
 #include "Core/AngelscriptEditorModule.h"
 
 #include "ClassGenerator/ASClass.h"
-#include "Core/AngelscriptRuntimeModule.h"
+#include "Core/AngelscriptEditorDebugBridge.h"
 #include "AngelscriptEngine.h"
 
 #include "AssetRegistry/AssetData.h"
@@ -10,6 +10,7 @@
 #include "Engine/DataAsset.h"
 #include "HAL/FileManager.h"
 #include "IContentBrowserSingleton.h"
+#include "IDirectoryWatcher.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Guid.h"
@@ -28,6 +29,21 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModulePopupTests_Private
 {
+	class FMockDirectoryWatcher final : public IDirectoryWatcher
+	{
+	public:
+		bool RegisterDirectoryChangedCallback_Handle(const FString& Directory, const FDirectoryChanged& InDelegate, FDelegateHandle& OutHandle, uint32 Flags) override
+		{
+			OutHandle = FDelegateHandle(FDelegateHandle::GenerateNewHandle);
+			return true;
+		}
+
+		bool UnregisterDirectoryChangedCallback_Handle(const FString& Directory, FDelegateHandle InHandle) override
+		{
+			return true;
+		}
+	};
+
 	struct FAssetListPopupCallLog
 	{
 		int32 ForceEditorWindowToFrontCalls = 0;
@@ -381,6 +397,169 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	"Angelscript.TestModule.Editor.Module.ShowCreateBlueprintPopupCreatesExpectedAssetAtDialogPath",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FAngelscriptEditorModuleDebugBridgeStartupTest,
+	"Angelscript.Editor.Module.EditorDebugBridgeStartupRegistersAndUnregistersCallbacks",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FAngelscriptEditorModuleDebugBridgeStartupTest::RunTest(const FString& Parameters)
+{
+	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModulePopupTests_Private;
+
+	FMockDirectoryWatcher DirectoryWatcher;
+	FAngelscriptEditorModule Module;
+	bool bModuleStarted = false;
+	FAssetListPopupCallLog AssetListCallLog;
+	FCreateBlueprintPopupCallLog CreateBlueprintCallLog;
+	TArray<FAngelscriptEngine*> SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
+	TUniquePtr<FAngelscriptEngine> Engine = MakePopupTestEngine();
+	TUniquePtr<FAngelscriptEngineScope> EngineScope;
+
+	FAngelscriptEditorDebugBridge::ResetForTesting();
+
+	ON_SCOPE_EXIT
+	{
+		if (bModuleStarted)
+		{
+			Module.ShutdownModule();
+		}
+
+		FAngelscriptEditorModuleTestAccess::ResetAssetListPopupTestHooks();
+		FAngelscriptEditorModuleTestAccess::ResetCreateBlueprintPopupTestHooks();
+		FAngelscriptEditorModuleTestAccess::ResetDirectoryWatcherResolver();
+		FAngelscriptEditorDebugBridge::ResetForTesting();
+		EngineScope.Reset();
+		FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
+		CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
+	};
+
+	if (!TestNotNull(TEXT("EditorDebugBridge startup test should create a testing engine"), Engine.Get()))
+	{
+		return false;
+	}
+
+	EngineScope = MakeUnique<FAngelscriptEngineScope>(*Engine);
+	FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath().Unbind();
+
+	const FString PopupScript = TEXT(R"AS(UCLASS() class ABridgeCreateBlueprintScript : AActor {})AS");
+	if (!CompilePopupScriptModule(*this, *Engine, TEXT("ASEditorDebugBridgeStartup"), PopupScript))
+	{
+		return false;
+	}
+
+	UASClass* const BlueprintScriptClass = FindPopupScriptClass(*this, *Engine, TEXT("ABridgeCreateBlueprintScript"));
+	if (BlueprintScriptClass == nullptr)
+	{
+		return false;
+	}
+	Engine->bIsInitialCompileFinished = true;
+
+	FAngelscriptEditorModuleAssetListPopupTestHooks AssetListHooks;
+	AssetListHooks.ForceEditorWindowToFront = [&AssetListCallLog]()
+	{
+		++AssetListCallLog.ForceEditorWindowToFrontCalls;
+	};
+	AssetListHooks.OpenAssetByPath = [&AssetListCallLog](const FString& AssetPath)
+	{
+		AssetListCallLog.OpenedAssetPaths.Add(AssetPath);
+	};
+	FAngelscriptEditorModuleTestAccess::SetAssetListPopupTestHooks(MoveTemp(AssetListHooks));
+
+	FAngelscriptEditorModuleCreateBlueprintPopupTestHooks CreateBlueprintHooks;
+	CreateBlueprintHooks.ForceEditorWindowToFront = [&CreateBlueprintCallLog]()
+	{
+		++CreateBlueprintCallLog.ForceEditorWindowToFrontCalls;
+	};
+	CreateBlueprintHooks.HasAssetsInPath = [](const FString&, bool)
+	{
+		return false;
+	};
+	CreateBlueprintHooks.CreateSaveAssetDialog = [&CreateBlueprintCallLog](const FSaveAssetDialogConfig&)
+	{
+		++CreateBlueprintCallLog.SaveDialogCalls;
+		return FString();
+	};
+	FAngelscriptEditorModuleTestAccess::SetCreateBlueprintPopupTestHooks(MoveTemp(CreateBlueprintHooks));
+
+	FAngelscriptEditorModuleTestAccess::SetDirectoryWatcherResolver([&DirectoryWatcher]()
+	{
+		return &DirectoryWatcher;
+	});
+
+	const TArray<FString> AssetPaths = { TEXT("/Game/Automation/BridgeStartupAsset") };
+	auto BroadcastBridgeRequests = [&]()
+	{
+		AssetListCallLog.Reset();
+		CreateBlueprintCallLog.Reset();
+		FAngelscriptEditorDebugBridge::GetDebugListAssets().Broadcast(AssetPaths, nullptr);
+		FAngelscriptEditorDebugBridge::GetEditorCreateBlueprint().Broadcast(BlueprintScriptClass);
+	};
+
+	BroadcastBridgeRequests();
+	const int32 BaselineAssetListWindowCalls = AssetListCallLog.ForceEditorWindowToFrontCalls;
+	const int32 BaselineAssetListOpenPathCalls = AssetListCallLog.OpenedAssetPaths.Num();
+	const int32 BaselineCreateBlueprintWindowCalls = CreateBlueprintCallLog.ForceEditorWindowToFrontCalls;
+	const int32 BaselineCreateBlueprintDialogCalls = CreateBlueprintCallLog.SaveDialogCalls;
+
+	Module.StartupModule();
+	bModuleStarted = true;
+
+	BroadcastBridgeRequests();
+	bool bPassed = true;
+	bPassed &= TestEqual(
+		TEXT("EditorDebugBridge startup test should add exactly one debug asset-list bridge callback on startup"),
+		AssetListCallLog.ForceEditorWindowToFrontCalls,
+		BaselineAssetListWindowCalls + 1);
+	bPassed &= TestEqual(
+		TEXT("EditorDebugBridge startup test should route exactly one additional debug asset-list open request on startup"),
+		AssetListCallLog.OpenedAssetPaths.Num(),
+		BaselineAssetListOpenPathCalls + 1);
+	bPassed &= TestEqual(
+		TEXT("EditorDebugBridge startup test should add exactly one create-blueprint bridge callback on startup"),
+		CreateBlueprintCallLog.ForceEditorWindowToFrontCalls,
+		BaselineCreateBlueprintWindowCalls + 1);
+	bPassed &= TestEqual(
+		TEXT("EditorDebugBridge startup test should route exactly one additional create-blueprint dialog request on startup"),
+		CreateBlueprintCallLog.SaveDialogCalls,
+		BaselineCreateBlueprintDialogCalls + 1);
+
+	Module.ShutdownModule();
+	bModuleStarted = false;
+
+	BroadcastBridgeRequests();
+	bPassed &= TestEqual(
+		TEXT("EditorDebugBridge startup test should unregister debug asset-list bridge callbacks on shutdown"),
+		AssetListCallLog.ForceEditorWindowToFrontCalls,
+		BaselineAssetListWindowCalls);
+	bPassed &= TestEqual(
+		TEXT("EditorDebugBridge startup test should leave no extra debug asset-list open requests after shutdown"),
+		AssetListCallLog.OpenedAssetPaths.Num(),
+		BaselineAssetListOpenPathCalls);
+	bPassed &= TestEqual(
+		TEXT("EditorDebugBridge startup test should unregister create-blueprint bridge callbacks on shutdown"),
+		CreateBlueprintCallLog.ForceEditorWindowToFrontCalls,
+		BaselineCreateBlueprintWindowCalls);
+	bPassed &= TestEqual(
+		TEXT("EditorDebugBridge startup test should leave no extra create-blueprint dialog requests after shutdown"),
+		CreateBlueprintCallLog.SaveDialogCalls,
+		BaselineCreateBlueprintDialogCalls);
+
+	Module.StartupModule();
+	bModuleStarted = true;
+
+	BroadcastBridgeRequests();
+	bPassed &= TestEqual(
+		TEXT("EditorDebugBridge startup test should add only one debug asset-list bridge callback after restart"),
+		AssetListCallLog.ForceEditorWindowToFrontCalls,
+		BaselineAssetListWindowCalls + 1);
+	bPassed &= TestEqual(
+		TEXT("EditorDebugBridge startup test should add only one create-blueprint bridge callback after restart"),
+		CreateBlueprintCallLog.ForceEditorWindowToFrontCalls,
+		BaselineCreateBlueprintWindowCalls + 1);
+
+	return bPassed;
+}
+
 bool FAngelscriptEditorModuleShowCreateBlueprintPopupTest::RunTest(const FString& Parameters)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModulePopupTests_Private;
@@ -416,8 +595,8 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupTest::RunTest(const FString
 		return false;
 	}
 
-	FAngelscriptEditorGetCreateBlueprintDefaultAssetPath SavedDefaultPathDelegate = FAngelscriptRuntimeModule::GetEditorGetCreateBlueprintDefaultAssetPath();
-	FAngelscriptRuntimeModule::GetEditorGetCreateBlueprintDefaultAssetPath().Unbind();
+	FAngelscriptEditorGetCreateBlueprintDefaultAssetPath SavedDefaultPathDelegate = FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath();
+	FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath().Unbind();
 
 	FAngelscriptEditorModuleCreateBlueprintPopupTestHooks Hooks;
 	Hooks.ForceEditorWindowToFront = [&CallLog]()
@@ -460,7 +639,7 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupTest::RunTest(const FString
 	ON_SCOPE_EXIT
 	{
 		FAngelscriptEditorModuleTestAccess::ResetCreateBlueprintPopupTestHooks();
-		FAngelscriptRuntimeModule::GetEditorGetCreateBlueprintDefaultAssetPath() = SavedDefaultPathDelegate;
+		FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath() = SavedDefaultPathDelegate;
 		EngineScope.Reset();
 		FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
 		for (UObject* Asset : AssetsToCleanup)

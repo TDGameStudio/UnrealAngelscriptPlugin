@@ -102,6 +102,8 @@ private:
 	void RegisterToolsMenuEntries();
 	TArray<TPair<FString, FDelegateHandle>> DirectoryWatchHandles;
 	FDelegateHandle StateDumpExtensionHandle;
+	FDelegateHandle DebugListAssetsBridgeHandle;
+	FDelegateHandle EditorCreateBlueprintBridgeHandle;
 };
 
 #if WITH_DEV_AUTOMATION_TESTS

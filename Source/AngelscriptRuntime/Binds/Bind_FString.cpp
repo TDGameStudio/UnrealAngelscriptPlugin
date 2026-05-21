@@ -1,6 +1,5 @@
 #include "AngelscriptBinds.h"
 #include "AngelscriptEngine.h"
-#include "AngelscriptRuntimeModule.h"
 
 #include "Containers/UnrealString.h"
 #include "Engine/UserDefinedEnum.h"
@@ -471,7 +470,7 @@ void FToStringHelper::Generic_AppendToString(FString& AppendTo, void* ValuePtr, 
 			if (asClass == nullptr) return;
 
 			FString Suffix;
-			auto& Delegate = FAngelscriptRuntimeModule::GetDebugObjectSuffix();
+			auto& Delegate = FAngelscriptEngine::Get().GetHooks().GetDebugObjectSuffix();
 			if (Delegate.IsBound())
 			{
 				Delegate.Execute(Object, Suffix);

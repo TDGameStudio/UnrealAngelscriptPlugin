@@ -5,8 +5,6 @@
 #include "Shared/AngelscriptDebuggerTestHelpers.h"
 #include "Shared/AngelscriptNativeScriptTestObject.h"
 
-#include "Core/AngelscriptRuntimeModule.h"
-
 #include "Algo/AllOf.h"
 #include "Misc/ScopeExit.h"
 #include "Misc/ScopeLock.h"
@@ -25,8 +23,8 @@ namespace AngelscriptDebuggerBreakpointTests_Private
 	class FScopedDebugBreakOptionsBinding
 	{
 	public:
-		explicit FScopedDebugBreakOptionsBinding(TFunction<bool(const FAngelscriptDebugBreakOptions&, UObject*)> InShouldBreak)
-			: TargetDelegate(FAngelscriptRuntimeModule::GetDebugCheckBreakOptions())
+		FScopedDebugBreakOptionsBinding(FAngelscriptEngine& Engine, TFunction<bool(const FAngelscriptDebugBreakOptions&, UObject*)> InShouldBreak)
+			: TargetDelegate(Engine.GetHooks().GetDebugCheckBreakOptions())
 			, PreviousDelegate(TargetDelegate)
 			, ShouldBreak(MoveTemp(InShouldBreak))
 		{
@@ -662,6 +660,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 
 		FObservedBreakOptionsState ObservedBreakOptions;
 		FScopedDebugBreakOptionsBinding ScopedBreakOptionsBinding(
+			Engine,
 			[&ObservedBreakOptions](const FAngelscriptDebugBreakOptions& BreakOptions, UObject* WorldContext)
 			{
 				return ObservedBreakOptions.Record(BreakOptions, WorldContext);

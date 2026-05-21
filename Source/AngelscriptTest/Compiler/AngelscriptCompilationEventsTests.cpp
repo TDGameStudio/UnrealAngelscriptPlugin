@@ -10,7 +10,6 @@
 #include "Shared/AngelscriptTestEngineHelper.h"
 #include "Shared/AngelscriptTestMacros.h"
 
-#include "AngelscriptRuntimeModule.h"
 #include "Compilation/AngelscriptCompilationContext.h"
 #include "Compilation/AngelscriptCompilationEvents.h"
 
@@ -32,27 +31,34 @@ namespace AngelscriptCompilationEventsTests_Private
 		int32 PostCompileCount = 0;
 		int32 PreGenerateClassesCount = 0;
 		int32 PreGenerateClassesModuleCount = 0;
+		FAngelscriptEngine* BoundEngine = nullptr;
 
-		FCompileDelegateCounters()
+		explicit FCompileDelegateCounters(FAngelscriptEngine& Engine)
+			: BoundEngine(&Engine)
 		{
-			PreCompileHandle = FAngelscriptRuntimeModule::GetPreCompile().AddRaw(this, &FCompileDelegateCounters::HandlePreCompile);
-			PostCompileHandle = FAngelscriptRuntimeModule::GetPostCompile().AddRaw(this, &FCompileDelegateCounters::HandlePostCompile);
-			PreGenerateClassesHandle = FAngelscriptRuntimeModule::GetPreGenerateClasses().AddRaw(this, &FCompileDelegateCounters::HandlePreGenerateClasses);
+			PreCompileHandle = Engine.GetHooks().GetPreCompile().AddRaw(this, &FCompileDelegateCounters::HandlePreCompile);
+			PostCompileHandle = Engine.GetHooks().GetPostCompile().AddRaw(this, &FCompileDelegateCounters::HandlePostCompile);
+			PreGenerateClassesHandle = Engine.GetHooks().GetPreGenerateClasses().AddRaw(this, &FCompileDelegateCounters::HandlePreGenerateClasses);
 		}
 
 		~FCompileDelegateCounters()
 		{
+			if (BoundEngine == nullptr)
+			{
+				return;
+			}
+
 			if (PreCompileHandle.IsValid())
 			{
-				FAngelscriptRuntimeModule::GetPreCompile().Remove(PreCompileHandle);
+				BoundEngine->GetHooks().GetPreCompile().Remove(PreCompileHandle);
 			}
 			if (PostCompileHandle.IsValid())
 			{
-				FAngelscriptRuntimeModule::GetPostCompile().Remove(PostCompileHandle);
+				BoundEngine->GetHooks().GetPostCompile().Remove(PostCompileHandle);
 			}
 			if (PreGenerateClassesHandle.IsValid())
 			{
-				FAngelscriptRuntimeModule::GetPreGenerateClasses().Remove(PreGenerateClassesHandle);
+				BoundEngine->GetHooks().GetPreGenerateClasses().Remove(PreGenerateClassesHandle);
 			}
 		}
 
@@ -209,7 +215,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilationEventsTest,
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
-		AngelscriptCompilationEventsTests_Private::FCompileDelegateCounters DelegateCounters;
+		AngelscriptCompilationEventsTests_Private::FCompileDelegateCounters DelegateCounters(Engine);
 		TArray<FAngelscriptCompilationEvent> Events;
 		const FDelegateHandle ListenerHandle = FAngelscriptCompilationEvents::RegisterListener(
 			[&Events](const FAngelscriptCompilationEvent& Event)

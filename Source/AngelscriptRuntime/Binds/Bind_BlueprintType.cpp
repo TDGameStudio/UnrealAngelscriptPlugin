@@ -1,7 +1,6 @@
 #include "AngelscriptBinds.h"
 #include "AngelscriptEngine.h"
 #include "AngelscriptType.h"
-#include "AngelscriptRuntimeModule.h"
 #include "ClassGenerator/ASClass.h"
 #include "GameFramework/Actor.h"
 
@@ -343,7 +342,7 @@ struct FUObjectType : TAngelscriptPODType<UObject*>
 		else
 		{
 			FString Suffix;
-			auto& Delegate = FAngelscriptRuntimeModule::GetDebugObjectSuffix();
+			auto& Delegate = FAngelscriptEngine::Get().GetHooks().GetDebugObjectSuffix();
 			if (Delegate.IsBound())
 			{
 				Delegate.Execute(Object, Suffix);

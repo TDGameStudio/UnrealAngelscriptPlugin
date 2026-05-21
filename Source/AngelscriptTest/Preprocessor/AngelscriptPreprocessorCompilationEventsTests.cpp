@@ -102,6 +102,58 @@ class UCompilationEventsHookMoments : UObject
  		TestRunner->TestEqual(TEXT("PostProcessCode event should carry file count"), PostProcessCodeEvent->FileCount, 1);
  	}
 
+	}
+ }
+
+ TEST_METHOD(ClassAnalyzeHookMutatesGeneratedStaticsThroughEngineHooks)
+ {
+ 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+ 	{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+
+ 	int32 ClassAnalyzeCount = 0;
+ 	Engine.GetHooks().GetClassAnalyze().BindLambda(
+ 		[&ClassAnalyzeCount](FString& GeneratedStatics, TSharedPtr<FAngelscriptClassDesc> ClassDesc, bool& bHasStatics)
+ 		{
+ 			++ClassAnalyzeCount;
+ 			if (ClassDesc.IsValid() && ClassDesc->ClassName == TEXT("UClassAnalyzeHookCarrier"))
+ 			{
+ 				GeneratedStatics += TEXT("\n int EngineHookValue() __generated { return 31; }");
+ 				bHasStatics = true;
+ 			}
+ 		});
+ 	ON_SCOPE_EXIT
+ 	{
+ 		Engine.GetHooks().GetClassAnalyze().Unbind();
+ 	};
+
+ 	FFixtureFile File(TEXT("Tests/Preprocessor/CompilationEvents/ClassAnalyzeHook.as"), TEXT(R"(
+UCLASS()
+class UClassAnalyzeHookCarrier : UObject
+{
+    UFUNCTION()
+    int Entry()
+    {
+        return 5;
+    }
+}
+)"));
+
+ 	FPreprocessResult Result = RunPreprocess(Engine, File);
+
+ 	AssertPreprocessSucceeded(*TestRunner, Result);
+ 	AssertNoDiagnostics(*TestRunner, Result);
+ 	TestRunner->TestEqual(TEXT("Class analyze hook should fire once for the class"), ClassAnalyzeCount, 1);
+
+ 	FAngelscriptModuleDesc* Module = AssertModuleExists(
+ 		*TestRunner,
+ 		Result,
+ 		TEXT("Tests.Preprocessor.CompilationEvents.ClassAnalyzeHook"));
+ 	if (Module != nullptr)
+ 	{
+ 		AssertModuleCodeContains(*TestRunner, Result, *Module, TEXT("EngineHookValue"));
+ 		AssertModuleCodeContains(*TestRunner, Result, *Module, TEXT("return 31;"));
+ 	}
+
  	}
  }
 };

@@ -8,7 +8,6 @@
 #include "AngelscriptType.h"
 #include "AngelscriptBinds.h"
 #include "AngelscriptDocs.h"
-#include "AngelscriptRuntimeModule.h"
 #include "AngelscriptSettings.h"
 #include "ClassGenerator/AngelscriptClassGenerator.h"
 
@@ -220,7 +219,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UObject_Base((int32)FAngelscri
 			const TCHAR* ClassPrefix = bUseClassPrefix ? ObjClass->GetPrefixCPP() : TEXT("");
 
 			FString Suffix;
-			auto& Delegate = FAngelscriptRuntimeModule::GetDebugObjectSuffix();
+			auto& Delegate = FAngelscriptEngine::Get().GetHooks().GetDebugObjectSuffix();
 			if (Delegate.IsBound())
 			{
 				Delegate.Execute(Object, Suffix);
@@ -670,7 +669,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UObject_Operations((int32)FAng
 			}
 		}
 
-		FAngelscriptRuntimeModule::GetOnLiteralAssetCreated().Broadcast(ExistingObject, AssetName);
+		FAngelscriptEngine::Get().GetHooks().GetOnLiteralAssetCreated().Broadcast(ExistingObject, AssetName);
 		return ExistingObject;
 	});
 
@@ -682,7 +681,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UObject_Operations((int32)FAng
 		NotifyRegistrationEvent(TEXT("/Script/AngelscriptAssets"), *Asset->GetName(), ENotifyRegistrationType::NRT_NoExportObject,
 			ENotifyRegistrationPhase::NRP_Finished, nullptr, false, Asset);
 
-		FAngelscriptRuntimeModule::GetPostLiteralAssetSetup().Broadcast(Asset, Name);
+		FAngelscriptEngine::Get().GetHooks().GetPostLiteralAssetSetup().Broadcast(Asset, Name);
 	});
 });
 

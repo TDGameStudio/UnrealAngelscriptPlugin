@@ -7,8 +7,6 @@
 #include "Components/InputComponent.h"
 #include "Kismet/GameplayStatics.h"
 
-#include "AngelscriptRuntimeModule.h"
-
 #include "UObject/UObjectIterator.h"
 
 #include "AngelscriptEngine.h"
@@ -212,8 +210,8 @@ AActor* FAngelscriptActorBinds::SpawnActorFromMeta(class asCScriptFunction* Meta
 
 	if (Level != nullptr)
 		Params.OverrideLevel = Level;
-	else if (World->IsGameWorld() && FAngelscriptRuntimeModule::GetDynamicSpawnLevel().IsBound())
-		Params.OverrideLevel = FAngelscriptRuntimeModule::GetDynamicSpawnLevel().Execute();
+	else if (World->IsGameWorld() && FAngelscriptEngine::Get().GetHooks().GetDynamicSpawnLevel().IsBound())
+		Params.OverrideLevel = FAngelscriptEngine::Get().GetHooks().GetDynamicSpawnLevel().Execute();
 	else if (auto* Comp = Cast<UActorComponent>(WorldContext))
 		Params.OverrideLevel = Comp->GetOwner() ? Comp->GetOwner()->GetLevel() : nullptr;
 	else if (auto* Actor = Cast<AActor>(WorldContext))
@@ -245,8 +243,8 @@ AActor* FAngelscriptActorBinds::SpawnActor(const TSubclassOf<AActor>& Class, con
 
 	if (Level != nullptr)
 		Params.OverrideLevel = Level;
-	else if (World->IsGameWorld() && FAngelscriptRuntimeModule::GetDynamicSpawnLevel().IsBound())
-		Params.OverrideLevel = FAngelscriptRuntimeModule::GetDynamicSpawnLevel().Execute();
+	else if (World->IsGameWorld() && FAngelscriptEngine::Get().GetHooks().GetDynamicSpawnLevel().IsBound())
+		Params.OverrideLevel = FAngelscriptEngine::Get().GetHooks().GetDynamicSpawnLevel().Execute();
 	else if (auto* Comp = Cast<UActorComponent>(WorldContext))
 		Params.OverrideLevel = Comp->GetOwner() ? Comp->GetOwner()->GetLevel() : nullptr;
 	else if (auto* Actor = Cast<AActor>(WorldContext))

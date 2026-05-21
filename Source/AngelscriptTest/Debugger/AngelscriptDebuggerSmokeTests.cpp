@@ -1,8 +1,6 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptDebuggerTestContext.h"
 
-#include "Core/AngelscriptRuntimeModule.h"
-
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace AngelscriptTestSupport;
@@ -12,8 +10,8 @@ namespace AngelscriptDebuggerSmokeTests_Private
 	class FScopedDebugBreakFiltersBinding
 	{
 	public:
-		explicit FScopedDebugBreakFiltersBinding(TFunction<void(FAngelscriptDebugBreakFilters&)> InPopulateFilters)
-			: TargetDelegate(FAngelscriptRuntimeModule::GetDebugBreakFilters())
+		FScopedDebugBreakFiltersBinding(FAngelscriptEngine& Engine, TFunction<void(FAngelscriptDebugBreakFilters&)> InPopulateFilters)
+			: TargetDelegate(Engine.GetHooks().GetDebugBreakFilters())
 			, PreviousDelegate(TargetDelegate)
 			, PopulateFilters(MoveTemp(InPopulateFilters))
 		{
@@ -147,6 +145,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSmokeTests,
 		using namespace AngelscriptDebuggerSmokeTests_Private;
 
 		FScopedDebugBreakFiltersBinding ScopedBinding(
+			Ctx.GetEngine(),
 			[](FAngelscriptDebugBreakFilters& OutFilters)
 			{
 				OutFilters.Add(FName(TEXT("break:ensure")), TEXT("Ensure"));

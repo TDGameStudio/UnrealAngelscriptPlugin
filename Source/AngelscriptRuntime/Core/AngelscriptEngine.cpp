@@ -13,6 +13,7 @@
 #include "Debugging/AngelscriptDebugServer.h"
 #include "Compilation/AngelscriptCompilationContext.h"
 #include "Compilation/AngelscriptCompilationEvents.h"
+#include "Core/AngelscriptEngineExtensionRegistry.h"
 
 #include "HAL/FileManager.h"
 #include "Misc/Paths.h"
@@ -835,6 +836,7 @@ void FAngelscriptEngine::Initialize()
 	}
 
 	PostInitialize_GameThread();
+	FAngelscriptEngineExtensionRegistry::Get().AttachEngine(*this);
 }
 
 void FAngelscriptEngine::InitializeWithoutInitialCompile()
@@ -930,6 +932,8 @@ void FAngelscriptEngine::InitializeWithoutInitialCompile()
 		DebugServer = new FAngelscriptDebugServer(this, RuntimeConfig.DebugServerPort);
 	}
 #endif
+
+	FAngelscriptEngineExtensionRegistry::Get().AttachEngine(*this);
 }
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -1298,6 +1302,11 @@ void FAngelscriptEngine::Shutdown()
 		this,
 		bHadInitializedEngine ? TEXT("true") : TEXT("false"),
 		bShouldReleaseOwnedEngine ? TEXT("true") : TEXT("false"));
+
+	if (bHadInitializedEngine)
+	{
+		FAngelscriptEngineExtensionRegistry::Get().DetachEngine(*this);
+	}
 
 	if (HotReloadTestRunner != nullptr)
 	{
@@ -1899,7 +1908,7 @@ bool FAngelscriptEngine::IsGeneratingPrecompiledData()
 
 void FAngelscriptEngine::PostInitialize_GameThread()
 {
-	FAngelscriptRuntimeModule::GetOnInitialCompileFinished().Broadcast();
+	GetHooks().GetOnInitialCompileFinished().Broadcast();
 }
 
 void FAngelscriptEngine::StartHotReloadThread()
@@ -2820,7 +2829,7 @@ bool FAngelscriptEngine::PerformHotReload(ECompileType CompileType, const TArray
 
 	if(Result == ECompileResult::FullyHandled || Result == ECompileResult::PartiallyHandled)
 	{
-		FAngelscriptPostCompileClassCollection& PostCompileDelegate = FAngelscriptRuntimeModule::GetPostCompileClassCollection();
+		FAngelscriptPostCompileClassCollection& PostCompileDelegate = GetHooks().GetPostCompileClassCollection();
 			if (PostCompileDelegate.IsBound())
 				PostCompileDelegate.Broadcast(CompiledModules);
 	}
@@ -3396,7 +3405,7 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 	// We allocate from the memstack in the script compiler, so use a MemMark to deallocate everything at the end
 	FMemMark MemoryMark(FMemStack::Get());
 
-	FAngelscriptCompilationDelegate& PreCompileDelegate = FAngelscriptRuntimeModule::GetPreCompile();
+	FAngelscriptCompilationDelegate& PreCompileDelegate = GetHooks().GetPreCompile();
 	if (PreCompileDelegate.IsBound())
 		PreCompileDelegate.Broadcast();
 
@@ -4314,7 +4323,7 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 			CompilationContext.GetRunId(),
 			CompileType,
 			CompiledModules);
-		FAngelscriptRuntimeModule::GetPreGenerateClasses().Broadcast(CompiledModules);
+		GetHooks().GetPreGenerateClasses().Broadcast(CompiledModules);
 
 		for (auto Module : CompiledModules)
 		{
@@ -4553,7 +4562,7 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 
 	if (bShouldSwapInModules && !bHadCompileErrors)
 	{
-		FAngelscriptCompilationDelegate& PostCompileDelegate = FAngelscriptRuntimeModule::GetPostCompile();
+		FAngelscriptCompilationDelegate& PostCompileDelegate = GetHooks().GetPostCompile();
 		if (PostCompileDelegate.IsBound())
 			PostCompileDelegate.Broadcast();
 

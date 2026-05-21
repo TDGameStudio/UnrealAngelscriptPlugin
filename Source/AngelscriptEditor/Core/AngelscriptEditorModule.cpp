@@ -3,7 +3,7 @@
 #include "HotReload/ClassReloadHelper.h"
 #include "AngelscriptSettings.h"
 
-#include "AngelscriptRuntimeModule.h"
+#include "AngelscriptEditorDebugBridge.h"
 #include "AngelscriptEngine.h"
 #include "Binds/Bind_FGameplayTag.h"
 #include "ClassGenerator/ASClass.h"
@@ -857,7 +857,12 @@ void FAngelscriptEditorModule::StartupModule()
 	}
 
 	// Helper to pop open the content browser or asset editor from the debug server
-	FAngelscriptRuntimeModule::GetDebugListAssets().AddLambda(
+	if (DebugListAssetsBridgeHandle.IsValid())
+	{
+		FAngelscriptEditorDebugBridge::GetDebugListAssets().Remove(DebugListAssetsBridgeHandle);
+		DebugListAssetsBridgeHandle.Reset();
+	}
+	DebugListAssetsBridgeHandle = FAngelscriptEditorDebugBridge::GetDebugListAssets().AddLambda(
 		[](TArray<FString> AssetPaths, UASClass* BaseClass)
 		{
 			FAngelscriptEditorModule::ShowAssetListPopup(AssetPaths, BaseClass);
@@ -865,7 +870,12 @@ void FAngelscriptEditorModule::StartupModule()
 	);
 
 	// Helper to create a new blueprint from a script class
-	FAngelscriptRuntimeModule::GetEditorCreateBlueprint().AddLambda(
+	if (EditorCreateBlueprintBridgeHandle.IsValid())
+	{
+		FAngelscriptEditorDebugBridge::GetEditorCreateBlueprint().Remove(EditorCreateBlueprintBridgeHandle);
+		EditorCreateBlueprintBridgeHandle.Reset();
+	}
+	EditorCreateBlueprintBridgeHandle = FAngelscriptEditorDebugBridge::GetEditorCreateBlueprint().AddLambda(
 		[](UASClass* ScriptClass)
 		{
 			FAngelscriptEditorModule::ShowCreateBlueprintPopup(ScriptClass);
@@ -880,6 +890,11 @@ void FAngelscriptEditorModule::StartupModule()
 
 void FAngelscriptEditorModule::ShowCreateBlueprintPopup(UASClass* Class)
 {
+	if (Class == nullptr)
+	{
+		return;
+	}
+
 	const bool bIsDataAsset = Class->IsChildOf<UDataAsset>();
 
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::Get().LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
@@ -894,8 +909,8 @@ void FAngelscriptEditorModule::ShowCreateBlueprintPopup(UASClass* Class)
 		Title = FString::Printf(TEXT("Create Blueprint of %s%s"), Class->GetPrefixCPP(), *Class->GetName());
 
 	FString AssetPath;
-	if (FAngelscriptRuntimeModule::GetEditorGetCreateBlueprintDefaultAssetPath().IsBound())
-		AssetPath = FAngelscriptRuntimeModule::GetEditorGetCreateBlueprintDefaultAssetPath().Execute(Class);
+	if (FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath().IsBound())
+		AssetPath = FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath().Execute(Class);
 
 	// If we don't have a name, try a standard name
 	if (AssetPath.Len() == 0)
@@ -1059,6 +1074,17 @@ void FAngelscriptEditorModule::ShutdownModule()
 #if WITH_DEV_AUTOMATION_TESTS
 	GOnPostEngineInitRegistrationCountForTesting = 0;
 #endif
+
+	if (DebugListAssetsBridgeHandle.IsValid())
+	{
+		FAngelscriptEditorDebugBridge::GetDebugListAssets().Remove(DebugListAssetsBridgeHandle);
+		DebugListAssetsBridgeHandle.Reset();
+	}
+	if (EditorCreateBlueprintBridgeHandle.IsValid())
+	{
+		FAngelscriptEditorDebugBridge::GetEditorCreateBlueprint().Remove(EditorCreateBlueprintBridgeHandle);
+		EditorCreateBlueprintBridgeHandle.Reset();
+	}
 
 	if (GLiteralAssetPreSaveHandle.IsValid())
 	{
