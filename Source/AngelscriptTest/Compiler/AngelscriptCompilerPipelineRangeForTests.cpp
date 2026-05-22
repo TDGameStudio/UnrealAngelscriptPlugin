@@ -109,8 +109,6 @@ namespace CompilerPipelineRangeForTest
 	}
 }
 
-using namespace CompilerPipelineRangeForTest;
-
 TEST_CLASS_WITH_FLAGS(FCompilerPipelineRangeForTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

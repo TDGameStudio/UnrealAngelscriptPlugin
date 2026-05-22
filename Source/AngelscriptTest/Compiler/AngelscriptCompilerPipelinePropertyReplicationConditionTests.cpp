@@ -37,8 +37,6 @@ namespace CompilerPipelinePropertyReplicationConditionTest
 	}
 }
 
-using namespace CompilerPipelinePropertyReplicationConditionTest;
-
 TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyReplicationConditionTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

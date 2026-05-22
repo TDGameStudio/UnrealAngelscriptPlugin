@@ -21,7 +21,7 @@ namespace CompilerPipelineGlobalUFunctionTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.GlobalUFunctionCreatesStaticsClass"));
 	static const FString RelativeScriptPath(TEXT("Tests/Compiler/GlobalUFunctionCreatesStaticsClass.as"));
-	static const FName FunctionName(TEXT("GetGlobalValue"));
+	static const FName GlobalFunctionName(TEXT("GetGlobalValue"));
 
 	FString GetFixtureRoot()
 	{
@@ -139,7 +139,7 @@ namespace CompilerPipelineGlobalUFunctionSanitizedModuleTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.GlobalUFunction-Foo+Bar"));
 	static const FString RelativeScriptPath(TEXT("Tests/Compiler/GlobalUFunction-Foo+Bar.as"));
-	static const FName FunctionName(TEXT("GetSanitizedGlobalValue"));
+	static const FName SanitizedGlobalFunctionName(TEXT("GetSanitizedGlobalValue"));
 }
 
 TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
@@ -226,7 +226,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
 			ExpectedStaticsClassName);
 
 		const TSharedPtr<FAngelscriptFunctionDesc> FunctionDesc = StaticsClassDesc->GetMethod(
-			CompilerPipelineGlobalUFunctionTest::FunctionName.ToString());
+			CompilerPipelineGlobalUFunctionTest::GlobalFunctionName.ToString());
 		if (!TestRunner->TestTrue(TEXT("Global UFUNCTION statics-class test case should attach GetGlobalValue to the generated statics class descriptor"), FunctionDesc.IsValid()))
 		{
 			return;
@@ -276,7 +276,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
 			return;
 		}
 
-		UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, CompilerPipelineGlobalUFunctionTest::FunctionName);
+		UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, CompilerPipelineGlobalUFunctionTest::GlobalFunctionName);
 		UASFunction* ScriptFunction = Cast<UASFunction>(GeneratedFunction);
 		if (!TestRunner->TestNotNull(TEXT("Global UFUNCTION statics-class test case should materialize the generated static function"), GeneratedFunction)
 			|| !TestRunner->TestNotNull(TEXT("Global UFUNCTION statics-class test case should expose the generated function as a UASFunction"), ScriptFunction))
@@ -426,7 +426,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
 		}
 
 		const TSharedPtr<FAngelscriptFunctionDesc> FunctionDesc = StaticsClassDesc->GetMethod(
-			CompilerPipelineGlobalUFunctionSanitizedModuleTest::FunctionName.ToString());
+			CompilerPipelineGlobalUFunctionSanitizedModuleTest::SanitizedGlobalFunctionName.ToString());
 		if (!TestRunner->TestTrue(TEXT("Sanitized-module global UFUNCTION test case should attach GetSanitizedGlobalValue to the generated statics class descriptor"), FunctionDesc.IsValid()))
 		{
 			return;
@@ -476,7 +476,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
 			return;
 		}
 
-		UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, CompilerPipelineGlobalUFunctionSanitizedModuleTest::FunctionName);
+		UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, CompilerPipelineGlobalUFunctionSanitizedModuleTest::SanitizedGlobalFunctionName);
 		UASFunction* ScriptFunction = Cast<UASFunction>(GeneratedFunction);
 		if (!TestRunner->TestNotNull(TEXT("Sanitized-module global UFUNCTION test case should materialize the generated static function"), GeneratedFunction)
 			|| !TestRunner->TestNotNull(TEXT("Sanitized-module global UFUNCTION test case should expose the generated function as a UASFunction"), ScriptFunction))

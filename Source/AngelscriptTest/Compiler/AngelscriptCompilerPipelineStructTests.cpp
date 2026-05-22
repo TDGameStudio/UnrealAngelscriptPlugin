@@ -17,8 +17,6 @@ namespace CompilerPipelineStructTest
 	static const FName ValuePropertyName(TEXT("Value"));
 }
 
-using namespace CompilerPipelineStructTest;
-
 TEST_CLASS_WITH_FLAGS(FCompilerPipelineStructTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

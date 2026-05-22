@@ -15,7 +15,7 @@ namespace CompilerPipelineExecutionTest
 	static const FName ModuleName(TEXT("CompilerAnnotatedMethodExecutes"));
 	static const FString ScriptFilename(TEXT("CompilerAnnotatedMethodExecutes.as"));
 	static const FName GeneratedClassName(TEXT("UCompilerExecutionCarrier"));
-	static const FName FunctionName(TEXT("IncrementAndGetScore"));
+	static const FName ExecutionFunctionName(TEXT("IncrementAndGetScore"));
 	static const FName ScorePropertyName(TEXT("Score"));
 }
 
@@ -74,7 +74,7 @@ class UCompilerExecutionCarrier : UObject
 			return;
 		}
 
-		UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, CompilerPipelineExecutionTest::FunctionName);
+		UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, CompilerPipelineExecutionTest::ExecutionFunctionName);
 		if (!TestRunner->TestNotNull(TEXT("Annotated execution test should find the generated execution function"), GeneratedFunction))
 		{
 			return;

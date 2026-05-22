@@ -15,7 +15,7 @@ namespace CompilerPipelineSpecifierMetadataTest
 	static const FString RelativeScriptPath(TEXT("Tests/Compiler/SpecifierStringMetadataRoundTrip.as"));
 	static const FString ClassName(TEXT("USpecifierCarrier"));
 	static const FString PropertyName(TEXT("Count"));
-	static const FString FunctionName(TEXT("Compute"));
+	static const FString SpecifierFunctionName(TEXT("Compute"));
 	static const FString EntryFunctionDeclaration(TEXT("int Entry()"));
 	static const int32 ExpectedEntryValue = 7;
 	static const FString ExpectedClassDisplayName(TEXT("Alpha, Beta"));
@@ -42,8 +42,6 @@ namespace CompilerPipelineSpecifierMetadataTest
 		return FString::Join(Lines, TEXT(" | "));
 	}
 }
-
-using namespace CompilerPipelineSpecifierMetadataTest;
 
 TEST_CLASS_WITH_FLAGS(FCompilerPipelineSpecifierMetadataTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
@@ -148,7 +146,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineSpecifierMetadataTests,
 		}
 
 		FProperty* CountProperty = FindFProperty<FProperty>(GeneratedClass, *CompilerPipelineSpecifierMetadataTest::PropertyName);
-		UFunction* ComputeFunction = FindGeneratedFunction(GeneratedClass, *CompilerPipelineSpecifierMetadataTest::FunctionName);
+		UFunction* ComputeFunction = FindGeneratedFunction(GeneratedClass, *CompilerPipelineSpecifierMetadataTest::SpecifierFunctionName);
 		if (!TestRunner->TestNotNull(TEXT("Specifier string metadata round-trip should materialize the generated property"), CountProperty)
 			|| !TestRunner->TestNotNull(TEXT("Specifier string metadata round-trip should materialize the generated function"), ComputeFunction))
 		{

@@ -19,7 +19,7 @@ namespace CompilerPipelineMetadataSpecifierTest
 	static const FName ModuleName(TEXT("Tests.Compiler.MacroMetadataStringsWithClosingParen"));
 	static const FString RelativeScriptPath(TEXT("Tests/Compiler/MacroMetadataStringsWithClosingParen.as"));
 	static const FString ClassName(TEXT("UCompilerMetadataParenCarrier"));
-	static const FString FunctionName(TEXT("GetClosingParenText"));
+	static const FString MetaFunctionName(TEXT("GetClosingParenText"));
 	static const FString EnumName(TEXT("ECompilerMetadataParenState"));
 
 	static const FString ExpectedClassDisplayName(TEXT("Do (Test)"));
@@ -191,7 +191,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineMetadataSpecifierTests,
 			return;
 		}
 
-		const TSharedPtr<FAngelscriptFunctionDesc> FunctionDesc = ClassDesc->GetMethod(CompilerPipelineMetadataSpecifierTest::FunctionName);
+		const TSharedPtr<FAngelscriptFunctionDesc> FunctionDesc = ClassDesc->GetMethod(CompilerPipelineMetadataSpecifierTest::MetaFunctionName);
 		if (!TestRunner->TestTrue(TEXT("Metadata specifier test case should parse the annotated function descriptor"), FunctionDesc.IsValid()))
 		{
 			return;
@@ -284,7 +284,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineMetadataSpecifierTests,
 			return;
 		}
 
-		UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, *CompilerPipelineMetadataSpecifierTest::FunctionName);
+		UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, *CompilerPipelineMetadataSpecifierTest::MetaFunctionName);
 		if (!TestRunner->TestNotNull(TEXT("Metadata specifier test case should materialize the generated function"), GeneratedFunction))
 		{
 			return;
