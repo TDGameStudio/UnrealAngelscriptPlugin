@@ -1,9 +1,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AngelscriptInclude.h"
+#include "Misc/AutomationTest.h"
 
 #include <cstring>
+
+#include "StartAngelscriptHeaders.h"
+#include "source/as_builder.h"
+#include "source/as_bytecode.h"
+#include "source/as_parser.h"
+#include "source/as_scriptcode.h"
+#include "source/as_scriptnode.h"
+#include "source/as_tokenizer.h"
+#include "EndAngelscriptHeaders.h"
 
 namespace AngelscriptNativeTestSupport
 {
@@ -156,6 +165,18 @@ namespace AngelscriptNativeTestSupport
 		return ScriptEngine;
 	}
 
+	inline asCScriptEngine* CreateBareSdkEngine(FAutomationTestBase* Test = nullptr)
+	{
+		asIScriptEngine* const RawEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		asCScriptEngine* const ScriptEngine = static_cast<asCScriptEngine*>(RawEngine);
+		if (ScriptEngine == nullptr && Test != nullptr)
+		{
+			Test->AddError(TEXT("Failed to create bare AngelScript SDK engine"));
+		}
+
+		return ScriptEngine;
+	}
+
 	inline void DestroyNativeEngine(asIScriptEngine* ScriptEngine)
 	{
 		if (ScriptEngine != nullptr)
@@ -252,6 +273,16 @@ namespace AngelscriptNativeTestSupport
 		return nullptr;
 	}
 
+	inline asIScriptFunction* GetNativeFunctionByExactDecl(asIScriptModule* Module, const char* Declaration)
+	{
+		if (Module == nullptr || Declaration == nullptr)
+		{
+			return nullptr;
+		}
+
+		return Module->GetFunctionByDecl(Declaration);
+	}
+
 	inline int PrepareAndExecute(asIScriptContext* Context, asIScriptFunction* Function)
 	{
 		if (Context == nullptr || Function == nullptr)
@@ -261,5 +292,141 @@ namespace AngelscriptNativeTestSupport
 
 		const int PrepareResult = Context->Prepare(Function);
 		return PrepareResult == asSUCCESS ? Context->Execute() : PrepareResult;
+	}
+
+	inline TArray<TPair<eTokenType, size_t>> TokenizeAll(const char* Source, size_t SourceLength)
+	{
+		TArray<TPair<eTokenType, size_t>> Tokens;
+		if (Source == nullptr)
+		{
+			return Tokens;
+		}
+
+		struct FTokenizerAccessor : asCTokenizer
+		{
+			using asCTokenizer::GetToken;
+		};
+
+		FTokenizerAccessor Tokenizer;
+		size_t TokenLength = 0;
+		size_t Offset = 0;
+		while (Offset < SourceLength)
+		{
+			const eTokenType TokenType = Tokenizer.GetToken(Source + Offset, SourceLength - Offset, &TokenLength);
+			Tokens.Add(TPair<eTokenType, size_t>(TokenType, TokenLength));
+			if (TokenLength == 0)
+			{
+				break;
+			}
+
+			Offset += TokenLength;
+		}
+
+		return Tokens;
+	}
+
+	inline int32 CountNodesOfType(const asCScriptNode* Node, eScriptNode ExpectedType)
+	{
+		if (Node == nullptr)
+		{
+			return 0;
+		}
+
+		int32 Count = 0;
+		for (const asCScriptNode* Current = Node; Current != nullptr; Current = Current->next)
+		{
+			if (Current->nodeType == ExpectedType)
+			{
+				++Count;
+			}
+
+			Count += CountNodesOfType(Current->firstChild, ExpectedType);
+		}
+
+		return Count;
+	}
+
+	inline TMap<eScriptNode, int32> NodeTypeHistogram(const asCScriptNode* Node)
+	{
+		TMap<eScriptNode, int32> Histogram;
+		if (Node == nullptr)
+		{
+			return Histogram;
+		}
+
+		for (const asCScriptNode* Current = Node; Current != nullptr; Current = Current->next)
+		{
+			int32& Count = Histogram.FindOrAdd(Current->nodeType);
+			++Count;
+
+			if (Current->firstChild != nullptr)
+			{
+				const TMap<eScriptNode, int32> ChildHistogram = NodeTypeHistogram(Current->firstChild);
+				for (const TPair<eScriptNode, int32>& Pair : ChildHistogram)
+				{
+					int32& ChildCount = Histogram.FindOrAdd(Pair.Key);
+					ChildCount += Pair.Value;
+				}
+			}
+		}
+
+		return Histogram;
+	}
+
+	inline int32 MaxNodeDepth(const asCScriptNode* Node)
+	{
+		if (Node == nullptr)
+		{
+			return 0;
+		}
+
+		int32 MaxDepth = 0;
+		for (const asCScriptNode* Current = Node; Current != nullptr; Current = Current->next)
+		{
+			const int32 ChildDepth = MaxNodeDepth(Current->firstChild);
+			MaxDepth = FMath::Max(MaxDepth, 1 + ChildDepth);
+		}
+
+		return MaxDepth;
+	}
+
+	inline FString DumpBytecodeOpcodes(asCByteCode& ByteCode)
+	{
+		TArray<asDWORD> Buffer;
+		const int32 Size = ByteCode.GetSize();
+		if (Size <= 0)
+		{
+			return TEXT("<empty bytecode>");
+		}
+
+		Buffer.SetNumZeroed(Size);
+		ByteCode.Output(Buffer.GetData());
+
+		FString Result;
+		for (int32 Index = 0; Index < Size; ++Index)
+		{
+			if (!Result.IsEmpty())
+			{
+				Result += TEXT(", ");
+			}
+
+			Result += FString::Printf(TEXT("%u"), static_cast<uint32>(Buffer[Index]));
+		}
+
+		return Result;
+	}
+
+	inline TArray<asDWORD> EmitToBuffer(asCByteCode& ByteCode)
+	{
+		TArray<asDWORD> Buffer;
+		const int32 Size = ByteCode.GetSize();
+		if (Size <= 0)
+		{
+			return Buffer;
+		}
+
+		Buffer.SetNumZeroed(Size);
+		ByteCode.Output(Buffer.GetData());
+		return Buffer;
 	}
 }
