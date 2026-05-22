@@ -223,8 +223,8 @@ int Entry()
 				Code.Contains(TEXT("int Entry()")));
 			TestRunner->TestTrue(TEXT("Should generate backing field"),
 				Code.Contains(TEXT("UObject __Asset_PreviewAsset;")));
-			TestRunner->TestTrue(TEXT("Should generate property getter"),
-				Code.Contains(TEXT("UObject GetPreviewAsset() property")));
+			TestRunner->TestTrue(TEXT("Should generate explicit asset getter"),
+				Code.Contains(TEXT("UObject GetPreviewAsset()")));
 			TestRunner->TestTrue(TEXT("Should generate __CreateLiteralAsset call"),
 				Code.Contains(TEXT("__CreateLiteralAsset(UObject, \"PreviewAsset\")")));
 			TestRunner->TestTrue(TEXT("Should generate __PostLiteralAssetSetup call"),
@@ -281,17 +281,17 @@ int Entry()
 			TestRunner->TestTrue(TEXT("Should generate real asset field"),
 				Code.Contains(TEXT("UObject __Asset_RealAsset;")));
 			TestRunner->TestTrue(TEXT("Should generate real asset getter"),
-				Code.Contains(TEXT("UObject GetRealAsset() property")));
+				Code.Contains(TEXT("UObject GetRealAsset()")));
 
 			// Fake/comment assets should NOT expand
 			TestRunner->TestFalse(TEXT("Should not generate fake asset field"),
 				Code.Contains(TEXT("__Asset_FakeAsset")));
 			TestRunner->TestFalse(TEXT("Should not generate fake asset getter"),
-				Code.Contains(TEXT("GetFakeAsset() property")));
+				Code.Contains(TEXT("GetFakeAsset()")));
 			TestRunner->TestFalse(TEXT("Should not generate comment asset field"),
 				Code.Contains(TEXT("__Asset_CommentAsset")));
 			TestRunner->TestFalse(TEXT("Should not generate comment asset getter"),
-				Code.Contains(TEXT("GetCommentAsset() property")));
+				Code.Contains(TEXT("GetCommentAsset()")));
 
 			// String literal should be preserved
 			TestRunner->TestTrue(TEXT("Should preserve string literal text"),

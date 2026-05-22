@@ -178,7 +178,7 @@ class ATestScriptActorTickRunsNTimes : AActor
 		float CurrentTime = -1.0f;
 		if (GetWorld() != null)
 		{
-			CurrentTime = GetWorld().TimeSeconds;
+			CurrentTime = GetWorld().GetTimeSeconds();
 		}
 
 		if (CurrentTime > LastTickWorldTime)

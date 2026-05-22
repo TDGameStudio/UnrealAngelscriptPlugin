@@ -176,7 +176,7 @@ bool FAngelscriptUpgradeEnginePropertyCompatibilityTest::RunTest(const FString& 
 		TestEqual(TEXT("Stock 2.38 default copy property should be forced to the APV2 compatibility value during engine initialization"), static_cast<int64>(ScriptEngine->GetEngineProperty(asEP_ALWAYS_IMPL_DEFAULT_COPY)), int64(1)) &&
 		TestEqual(TEXT("Stock 2.38 default copy construct property should be forced to the APV2 compatibility value during engine initialization"), static_cast<int64>(ScriptEngine->GetEngineProperty(asEP_ALWAYS_IMPL_DEFAULT_COPY_CONSTRUCT)), int64(1)) &&
 		TestEqual(TEXT("Stock 2.38 member init mode should be forced to the APV2 compatibility value during engine initialization"), static_cast<int64>(ScriptEngine->GetEngineProperty(asEP_MEMBER_INIT_MODE)), int64(0)) &&
-		TestEqual(TEXT("Stock property accessor mode should remain pinned to the APV2 compatibility mode during engine initialization"), static_cast<int64>(ScriptEngine->GetEngineProperty(asEP_PROPERTY_ACCESSOR_MODE)), int64(AS_PROPERTY_ACCESSOR_MODE)) &&
+		TestEqual(TEXT("Property accessor mode should be disabled during engine initialization"), static_cast<int64>(ScriptEngine->GetEngineProperty(asEP_PROPERTY_ACCESSOR_MODE)), int64(0)) &&
 		TestEqual(TEXT("APV2 typecheck switch enums property should still be enabled"), static_cast<int64>(ScriptEngine->GetEngineProperty(asEP_TYPECHECK_SWITCH_ENUMS)), int64(1)) &&
 		TestEqual(TEXT("APV2 double type property should remain enabled when settings allow it"), static_cast<int64>(ScriptEngine->GetEngineProperty(asEP_ALLOW_DOUBLE_TYPE)), int64(1)) &&
 		TestTrue(TEXT("Stock 2.38 engine properties should round-trip through SetEngineProperty/GetEngineProperty"),

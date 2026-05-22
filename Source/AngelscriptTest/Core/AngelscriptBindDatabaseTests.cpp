@@ -9,6 +9,8 @@
 #include "Misc/Guid.h"
 #include "Misc/Paths.h"
 #include "Misc/ScopeExit.h"
+#include "Serialization/MemoryReader.h"
+#include "Serialization/MemoryWriter.h"
 #include "UObject/UnrealType.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -30,12 +32,11 @@ namespace AngelscriptTest_Core_AngelscriptBindDatabaseTests_Private
 		return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation"), TEXT("BindDatabase"), FGuid::NewGuid().ToString(EGuidFormats::Digits));
 	}
 
-	FAngelscriptPropertyBind MakeSamplePropertyBind(const FString& Declaration, const FString& UnrealPath, const FString& GeneratedName)
+	FAngelscriptPropertyBind MakeSamplePropertyBind(const FString& Declaration, const FString& UnrealPath)
 	{
 		FAngelscriptPropertyBind Bind;
-		Bind.Declaration = Declaration; Bind.UnrealPath = UnrealPath; Bind.GeneratedName = GeneratedName;
+		Bind.Declaration = Declaration; Bind.UnrealPath = UnrealPath;
 		Bind.bCanWrite = true; Bind.bCanRead = true; Bind.bCanEdit = false;
-		Bind.bGeneratedGetter = true; Bind.bGeneratedSetter = false; Bind.bGeneratedHandle = true; Bind.bGeneratedUnresolvedObject = false;
 		return Bind;
 	}
 
@@ -55,7 +56,7 @@ namespace AngelscriptTest_Core_AngelscriptBindDatabaseTests_Private
 		FAngelscriptClassBind Bind;
 		Bind.TypeName = TEXT("AActor"); Bind.UnrealPath = Class->GetPathName();
 		Bind.Methods.Add(MakeSampleMethodBind());
-		Bind.Properties.Add(MakeSamplePropertyBind(TEXT("float InitialLifeSpan"), TEXT("/Script/Engine.Actor:InitialLifeSpan"), TEXT("InitialLifeSpan")));
+		Bind.Properties.Add(MakeSamplePropertyBind(TEXT("float InitialLifeSpan"), TEXT("/Script/Engine.Actor:InitialLifeSpan")));
 		return Bind;
 	}
 
@@ -68,8 +69,22 @@ namespace AngelscriptTest_Core_AngelscriptBindDatabaseTests_Private
 	{
 		FAngelscriptStructBind Bind;
 		Bind.TypeName = TEXT("FHitResult"); Bind.UnrealPath = Struct->GetPathName();
-		Bind.Properties.Add(MakeSamplePropertyBind(TEXT("bool bBlockingHit"), TEXT("/Script/Engine.HitResult:bBlockingHit"), TEXT("BlockingHit")));
+		Bind.Properties.Add(MakeSamplePropertyBind(TEXT("bool bBlockingHit"), TEXT("/Script/Engine.HitResult:bBlockingHit")));
 		return Bind;
+	}
+
+	void WriteLegacyUnversionedCache(const FString& CachePath, const FAngelscriptClassBind& ClassBind, const FAngelscriptStructBind& StructBind)
+	{
+		TArray<FAngelscriptStructBind> Structs;
+		Structs.Add(StructBind);
+		TArray<FAngelscriptClassBind> Classes;
+		Classes.Add(ClassBind);
+
+		TArray<uint8> Data;
+		FMemoryWriter Writer(Data);
+		Writer << Structs;
+		Writer << Classes;
+		FFileHelper::SaveArrayToFile(Data, *CachePath);
 	}
 
 	bool ExpectPropertyBindEquals(FAutomationTestBase& Test, const TCHAR* Context, const FAngelscriptPropertyBind& Actual, const FAngelscriptPropertyBind& Expected)
@@ -77,14 +92,9 @@ namespace AngelscriptTest_Core_AngelscriptBindDatabaseTests_Private
 		bool bOk = true;
 		bOk &= Test.TestEqual(*FString::Printf(TEXT("%s should round-trip property declaration"), Context), Actual.Declaration, Expected.Declaration);
 		bOk &= Test.TestEqual(*FString::Printf(TEXT("%s should round-trip property UnrealPath"), Context), Actual.UnrealPath, Expected.UnrealPath);
-		bOk &= Test.TestEqual(*FString::Printf(TEXT("%s should round-trip property GeneratedName"), Context), Actual.GeneratedName, Expected.GeneratedName);
 		bOk &= Test.TestEqual(*FString::Printf(TEXT("%s should round-trip property bCanWrite"), Context), Actual.bCanWrite, Expected.bCanWrite);
 		bOk &= Test.TestEqual(*FString::Printf(TEXT("%s should round-trip property bCanRead"), Context), Actual.bCanRead, Expected.bCanRead);
 		bOk &= Test.TestEqual(*FString::Printf(TEXT("%s should round-trip property bCanEdit"), Context), Actual.bCanEdit, Expected.bCanEdit);
-		bOk &= Test.TestEqual(*FString::Printf(TEXT("%s should round-trip property bGeneratedGetter"), Context), Actual.bGeneratedGetter, Expected.bGeneratedGetter);
-		bOk &= Test.TestEqual(*FString::Printf(TEXT("%s should round-trip property bGeneratedSetter"), Context), Actual.bGeneratedSetter, Expected.bGeneratedSetter);
-		bOk &= Test.TestEqual(*FString::Printf(TEXT("%s should round-trip property bGeneratedHandle"), Context), Actual.bGeneratedHandle, Expected.bGeneratedHandle);
-		bOk &= Test.TestEqual(*FString::Printf(TEXT("%s should round-trip property bGeneratedUnresolvedObject"), Context), Actual.bGeneratedUnresolvedObject, Expected.bGeneratedUnresolvedObject);
 		return bOk;
 	}
 
@@ -149,6 +159,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 		Database.Save(CachePath);
 		if (!TestRunner->TestTrue(TEXT("should write Binds.Cache"), IFileManager::Get().FileExists(*CachePath)) || !TestRunner->TestTrue(TEXT("should write Binds.Cache.Headers"), IFileManager::Get().FileExists(*HeadersPath))) { return; }
 
+		TArray<uint8> CacheBytes;
+		if (!TestRunner->TestTrue(TEXT("should read Binds.Cache bytes"), FFileHelper::LoadFileToArray(CacheBytes, *CachePath))) { return; }
+		FMemoryReader CacheReader(CacheBytes);
+		uint32 CacheMagic = 0;
+		int32 CacheVersion = 0;
+		CacheReader << CacheMagic;
+		CacheReader << CacheVersion;
+		if (!TestRunner->TestEqual(TEXT("should write bind database magic header"), CacheMagic, FAngelscriptBindDatabase::CacheMagic)
+			|| !TestRunner->TestEqual(TEXT("should write current bind database version"), CacheVersion, FAngelscriptBindDatabase::CacheVersion))
+		{
+			return;
+		}
+
 		Database.Clear();
 		if (!TestRunner->TestEqual(TEXT("should clear class binds"), Database.Classes.Num(), 0) || !TestRunner->TestEqual(TEXT("should clear struct binds"), Database.Structs.Num(), 0) || !TestRunner->TestEqual(TEXT("should clear header links"), Database.HeaderLinks.Num(), 0)) { return; }
 
@@ -184,6 +207,35 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 		TestRunner->TestFalse(TEXT("should load a non-empty header for FHitResult"), StructHeader.IsEmpty());
 		TestRunner->TestTrue(TEXT("should load an existing header path for AActor"), IFileManager::Get().FileExists(*ActorHeader));
 		TestRunner->TestTrue(TEXT("should load an existing header path for FHitResult"), IFileManager::Get().FileExists(*StructHeader));
+	}
+
+	TEST_METHOD(RejectsLegacyUnversionedCache)
+	{
+		using namespace AngelscriptTest_Core_AngelscriptBindDatabaseTests_Private;
+		FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
+		if (!TestRunner->TestTrue(TEXT("should acquire an isolated full engine"), Fixture.IsValid())) { return; }
+		FAngelscriptEngine& Engine = Fixture.GetEngine();
+		FAngelscriptBindDatabase& Database = Engine.GetBindDatabaseForTesting();
+
+		UClass* ActorClass = AActor::StaticClass();
+		UScriptStruct* HitResultStruct = TBaseStructure<FHitResult>::Get();
+		if (!TestRunner->TestNotNull(TEXT("should resolve AActor"), ActorClass) || !TestRunner->TestNotNull(TEXT("should resolve FHitResult"), HitResultStruct)) { return; }
+
+		const FString CacheDirectory = MakeBindDatabaseAutomationDirectory();
+		const FString CachePath = FPaths::Combine(CacheDirectory, TEXT("Binds.Cache"));
+		IFileManager::Get().MakeDirectory(*CacheDirectory, true);
+		ON_SCOPE_EXIT { Database.Clear(); IFileManager::Get().DeleteDirectory(*CacheDirectory, false, true); };
+
+		Database.Clear();
+		WriteLegacyUnversionedCache(CachePath, MakeSampleClassBind(ActorClass), MakeSampleStructBind(HitResultStruct));
+		Database.Classes.Add(MakeNamedSampleClassBind(ActorClass, TEXT("BindDatabaseSentinelBeforeRejectedLoad")));
+
+		FString LoadError;
+		const bool bLoaded = Database.TryLoad(CachePath, false, &LoadError);
+		TestRunner->TestFalse(TEXT("legacy unversioned Binds.Cache should be rejected"), bLoaded);
+		TestRunner->TestTrue(TEXT("legacy rejection should explain cache regeneration"), LoadError.Contains(TEXT("regenerate Script/Binds.Cache")));
+		TestRunner->TestEqual(TEXT("failed legacy load should preserve existing class binds"), Database.Classes.Num(), 1);
+		TestRunner->TestTrue(TEXT("failed legacy load should preserve existing sentinel bind"), DatabaseContainsClassBindNamed(Database, TEXT("BindDatabaseSentinelBeforeRejectedLoad")));
 	}
 
 	TEST_METHOD(GetPrefersCurrentEngineSharedDatabaseAndFallsBackToLegacySingleton)

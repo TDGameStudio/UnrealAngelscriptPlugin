@@ -240,10 +240,12 @@
 #define TXT_PROP_ACCESS_WITH_INDEX_ONE_ARG        "Property accessor with index must have 1 and only 1 index argument"
 #define TXT_PROPERTY_ACCESSOR_DISABLED            "Property accessors have been disabled by the application"
 #define TXT_PROPERTY_ACCESSOR_MUST_BE_IMPLEMENTED "Property accessor must be implemented"
+#define TXT_PROPERTY_DECORATOR_REMOVED           "The 'property' decorator has been removed. Use explicit GetX/SetX methods instead"
 #define TXT_PROPERTY_CANT_BE_CONST                "Class properties cannot be declared as const"
 #define TXT_PROPERTY_HAS_NO_GET_ACCESSOR          "The property has no get accessor"
 #define TXT_PROPERTY_HAS_NO_SET_ACCESSOR          "The property has no set accessor"
 #define TXT_PROPERTY_WITHOUT_ACCESSOR             "Virtual property must have at least one get or set accessor"
+#define TXT_VIRTUAL_PROPERTY_REMOVED              "Virtual property syntax has been removed. Use explicit GetX/SetX methods instead"
 #define TXT_PROPERTY_WITHOUT_EDITABLE_s			  "Property '%s' is not Editable in C++. Add EditAnywhere or EditDefaultsOnly to allow access from default statements."
 #define TXT_PROPERTY_WITHOUT_READABLE_s			  "Property '%s' is not Blueprint accessible in C++ and can only be accessed from default statements. Add BlueprintReadOnly/BlueprintReadWrite to expose it."
 

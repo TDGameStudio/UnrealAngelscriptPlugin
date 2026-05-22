@@ -1723,6 +1723,8 @@ int asCBuilder::CheckNameConflict(const char *name, asCScriptNode *node, asCScri
 // -3 invalid signature
 int asCBuilder::ValidatePropertyAccessorFunc(asCScriptFunction* func)
 {
+	// Unreachable after refactor-as-remove-autoaccessor: the parser rejects
+	// the 'property' decorator before function registration.
 	if (!func->IsProperty())
 		return 0;
 
@@ -5300,6 +5302,8 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 
 int asCBuilder::RegisterVirtualProperty(asCScriptNode *node, asCScriptCode *file, asCObjectType *objType, bool isInterface, bool isGlobalFunction, asSNameSpace *ns, bool isExistingShared)
 {
+	// Unreachable after refactor-as-remove-autoaccessor: ParseVirtualPropertyDecl
+	// now emits a removal error and returns no virtual-property node.
 	if( engine->ep.propertyAccessorMode < 2 )
 	{
 		WriteError(TXT_PROPERTY_ACCESSOR_DISABLED, file, node);

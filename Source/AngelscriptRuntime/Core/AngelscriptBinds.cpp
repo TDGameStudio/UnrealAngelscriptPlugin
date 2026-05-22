@@ -447,14 +447,6 @@ void FAngelscriptBinds::DeprecatePreviousBind(const ANSICHAR* DeprecationMessage
 	}
 }
 
-void FAngelscriptBinds::SetPreviousBindIsPropertyAccessor(bool bIsProperty)
-{
-	if (auto* Function = (asCScriptFunction*)GetPreviousBind())
-	{
-		Function->traits.SetTrait(asEFuncTrait::asTRAIT_PROPERTY, bIsProperty);
-	}
-}
-
 void FAngelscriptBinds::SetPreviousBindIsGeneratedAccessor(bool bIsAccessor)
 {
 	if (auto* Function = (asCScriptFunction*)GetPreviousBind())
@@ -543,11 +535,6 @@ void FAngelscriptBinds::OnBind(int FunctionId, void* UserData, const FAngelscrip
 			ScriptFunction->SetProtected(true);
 		}
 
-		// All C++ bound functions can implicitly be treated as property accessors
-		if (Manager.ConfigSettings->bAllowImplicitPropertyAccessors)
-		{
-			ScriptFunction->SetProperty(true);
-		}
 	}
 
 	GetPreviouslyBoundFunctionRef() = FunctionId;

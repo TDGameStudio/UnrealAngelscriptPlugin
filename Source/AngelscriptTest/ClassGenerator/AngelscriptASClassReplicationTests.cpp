@@ -78,7 +78,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassReplicationTests,
 UCLASS()
 class AReplicationParent : AActor
 {
-	default bReplicates = true;
+	default SetReplicates(true);
 
 	UPROPERTY(Replicated)
 	int ParentValue = 7;

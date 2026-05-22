@@ -10,14 +10,9 @@ struct FAngelscriptPropertyBind
 {
 	FString Declaration;
 	FString UnrealPath;
-	FString GeneratedName;
 	bool bCanWrite = false;
 	bool bCanRead = false;
 	bool bCanEdit = false;
-	bool bGeneratedGetter = false;
-	bool bGeneratedSetter = false;
-	bool bGeneratedHandle = false;
-	bool bGeneratedUnresolvedObject = false;
 
 	inline friend FArchive& operator<<(FArchive& Archive, FAngelscriptPropertyBind& Data)
 	{
@@ -26,11 +21,6 @@ struct FAngelscriptPropertyBind
 		Archive << Data.bCanWrite;
 		Archive << Data.bCanRead;
 		Archive << Data.bCanEdit;
-		Archive << Data.bGeneratedGetter;
-		Archive << Data.bGeneratedSetter;
-		Archive << Data.GeneratedName;
-		Archive << Data.bGeneratedHandle;
-		Archive << Data.bGeneratedUnresolvedObject;
 		return Archive;
 	}
 };
@@ -123,10 +113,14 @@ struct FAngelscriptClassHeader
 class ANGELSCRIPTRUNTIME_API FAngelscriptBindDatabase
 {
 public:
+	static constexpr uint32 CacheMagic = 0x41534244U;
+	static constexpr int32 CacheVersion = 1;
+
 	static FAngelscriptBindDatabase& Get();
 	
 	void Save(const FString& Filename);
 	void Load(const FString& Filename, bool bGeneratingPrecompiledData);
+	bool TryLoad(const FString& Filename, bool bGeneratingPrecompiledData, FString* OutErrorMessage = nullptr);
 	void Clear();
 
 	TArray<FAngelscriptStructBind> Structs;

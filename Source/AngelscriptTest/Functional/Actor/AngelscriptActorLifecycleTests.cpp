@@ -84,7 +84,7 @@ class ATestActorDefaultsAndHelperFunction : AActor
 	UPROPERTY()
 	bool bBeginPlayTriggered = false;
 
-	default bReplicates = true;
+	default SetReplicates(true);
 	default Tags.Add(n"FunctionalActor");
 	default PrimaryActorTick.TickInterval = 0.25;
 

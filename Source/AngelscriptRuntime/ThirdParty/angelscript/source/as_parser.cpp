@@ -3215,9 +3215,13 @@ bool asCParser::IsFuncDecl(bool isMethod)
 				for( ; ; )
 				{
 					GetToken(&t1);
+					if( IdentifierIs(t1, PROPERTY_TOKEN) )
+					{
+						Error(TXT_PROPERTY_DECORATOR_REMOVED, &t1);
+						return false;
+					}
 					if( !IdentifierIs(t1, FINAL_TOKEN)
 						&& !IdentifierIs(t1, OVERRIDE_TOKEN)
-						&& !IdentifierIs(t1, PROPERTY_TOKEN)
 						&& !IdentifierIs(t1, MIXIN_TOKEN)
 						&& !IdentifierIs(t1, ACCEPT_TEMPORARY_TOKEN)
 						&& !IdentifierIs(t1, EXTERNAL_IMPLICIT_THIS_TOKEN)
@@ -3467,106 +3471,13 @@ asCScriptNode *asCParser::ParseInterfaceMethod()
 // BNF:1: VIRTPROP      ::= ['private' | 'protected'] TYPE ['&'] IDENTIFIER '{' {('get' | 'set') ['const'] [('override' | 'final')] (STATBLOCK | ';')} '}'
 asCScriptNode *asCParser::ParseVirtualPropertyDecl(bool isMethod, bool isInterface)
 {
-	asCScriptNode *node = CreateNode(snVirtualProperty);
-	if( node == 0 ) return 0;
+	(void)isMethod;
+	(void)isInterface;
 
-	sToken t1,t2;
+	sToken t1;
 	GetToken(&t1);
-	GetToken(&t2);
-	RewindTo(&t1);
-
-	// A class method can start with 'private' or 'protected'
-	if( isMethod && t1.type == ttPrivate )
-		node->AddChildLast(ParseToken(ttPrivate));
-	else if( isMethod && t1.type == ttProtected )
-		node->AddChildLast(ParseToken(ttProtected));
-	if( isSyntaxError ) return node;
-
-	node->AddChildLast(ParseType(true));
-	if( isSyntaxError ) return node;
-
-	node->AddChildLast(ParseTypeMod(false));
-	if( isSyntaxError ) return node;
-
-	node->AddChildLast(ParseIdentifier());
-	if( isSyntaxError ) return node;
-
-	GetToken(&t1);
-	if( t1.type != ttStartStatementBlock )
-	{
-		Error(ExpectedToken("{"), &t1);
-		Error(InsteadFound(t1), &t1);
-		return node;
-	}
-
-	for(;;)
-	{
-		GetToken(&t1);
-		asCScriptNode *accessorNode = 0;
-
-		if( IdentifierIs(t1, GET_TOKEN) || IdentifierIs(t1, SET_TOKEN) )
-		{
-			accessorNode = CreateNode(snVirtualProperty);
-			if( accessorNode == 0 ) return 0;
-
-			node->AddChildLast(accessorNode);
-
-			RewindTo(&t1);
-			accessorNode->AddChildLast(ParseIdentifier());
-
-			if( isMethod )
-			{
-				GetToken(&t1);
-				RewindTo(&t1);
-				if( t1.type == ttConst )
-					accessorNode->AddChildLast(ParseToken(ttConst));
-
-				if( !isInterface )
-				{
-					ParseMethodAttributes(accessorNode);
-					if( isSyntaxError ) return node;
-				}
-			}
-
-			if( !isInterface )
-			{
-				GetToken(&t1);
-				if( t1.type == ttStartStatementBlock )
-				{
-					RewindTo(&t1);
-					accessorNode->AddChildLast(SuperficiallyParseStatementBlock());
-					if( isSyntaxError ) return node;
-				}
-				else if( t1.type != ttEndStatement )
-				{
-					Error(ExpectedTokens(";", "{"), &t1);
-					Error(InsteadFound(t1), &t1);
-					return node;
-				}
-			}
-			else
-			{
-				GetToken(&t1);
-				if( t1.type != ttEndStatement )
-				{
-					Error(ExpectedToken(";"), &t1);
-					Error(InsteadFound(t1), &t1);
-					return node;
-				}
-			}
-		}
-		else if( t1.type == ttEndStatementBlock )
-			break;
-		else
-		{
-			const char *tokens[] = { GET_TOKEN, SET_TOKEN, asCTokenizer::GetDefinition(ttEndStatementBlock) };
-			Error(ExpectedOneOf(tokens, 3), &t1);
-			Error(InsteadFound(t1), &t1);
-			return node;
-		}
-	}
-
-	return node;
+	Error(TXT_VIRTUAL_PROPERTY_REMOVED, &t1);
+	return 0;
 }
 
 // BNF:1: INTERFACE     ::= {'external' | 'shared'} 'interface' IDENTIFIER (';' | ([':' IDENTIFIER {',' IDENTIFIER}] '{' {VIRTPROP | INTFMTHD} '}'))
@@ -5116,9 +5027,14 @@ void asCParser::ParseMethodAttributes(asCScriptNode* funcNode)
 		GetToken(&t1);
 		RewindTo(&t1);
 
+		if (IdentifierIs(t1, PROPERTY_TOKEN))
+		{
+			Error(TXT_PROPERTY_DECORATOR_REMOVED, &t1);
+			return;
+		}
+
 		if (IdentifierIs(t1, FINAL_TOKEN)
 			|| IdentifierIs(t1, OVERRIDE_TOKEN)
-			|| IdentifierIs(t1, PROPERTY_TOKEN)
 			|| IdentifierIs(t1, MIXIN_TOKEN)
 			|| IdentifierIs(t1, ACCEPT_TEMPORARY_TOKEN)
 			|| IdentifierIs(t1, EXTERNAL_IMPLICIT_THIS_TOKEN)

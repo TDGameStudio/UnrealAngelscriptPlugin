@@ -901,77 +901,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_StructDetails(FAngelscriptBind
 			if (Property == nullptr)
 				continue;
 
-			if (DBProp.bGeneratedSetter || DBProp.bGeneratedGetter)
-			{
-				const FString& PropertyName = DBProp.GeneratedName;
-				const FString& PropertyType = DBProp.Declaration;
-
-				if (DBProp.bGeneratedGetter)
-				{
-					FString Decl = FString::Printf(TEXT("%s Get%s() const"), *PropertyType, *PropertyName);
-
-					if (DBProp.bGeneratedHandle)
-					{
-						Binds.Method(Decl, FUNC_TRIVIAL(FAngelscriptBindHelpers::GetObjectFromProperty), (void*)(SIZE_T)Property->GetOffset_ForUFunction());
-						FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-					}
-					else if (DBProp.bGeneratedUnresolvedObject)
-					{
-						Binds.Method(Decl, FUNC_TRIVIAL(FAngelscriptBindHelpers::GetUnresolvedObjectFromProperty), (void*)(SIZE_T)Property->GetOffset_ForUFunction());
-						FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-					}
-					else
-					{
-						Binds.Method(Decl, FUNC_TRIVIAL(FAngelscriptBindHelpers::GetValueFromProperty), (void*)(SIZE_T)Property->GetOffset_ForUFunction());
-						FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-					}
-				}
-
-				if (DBProp.bGeneratedSetter)
-				{
-					FString Decl = FString::Printf(TEXT("void Set%s(%s Value)"), *PropertyName, *PropertyType);
-
-					if (DBProp.bGeneratedHandle || DBProp.bGeneratedUnresolvedObject)
-					{
-						Binds.Method(Decl, FUNC_TRIVIAL(FAngelscriptBindHelpers::SetObjectFromProperty), (void*)(SIZE_T)Property->GetOffset_ForUFunction());
-						FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-					}
-					else if (auto* EnumProperty = CastField<FEnumProperty>(Property))
-					{
-						if (EnumProperty->GetElementSize() == 4)
-						{
-							Binds.Method(Decl, FUNC_TRIVIAL_CUSTOMNATIVE(FAngelscriptBindHelpers::SetValueFromProperty_ByteExtendToDWord, FAngelscriptBindHelpers::SetValueFromProperty_NativeByteExtendToDWord), (void*)(SIZE_T)Property->GetOffset_ForUFunction());
-							FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-						}
-						else
-						{
-							Binds.Method(Decl, FUNC_TRIVIAL_CUSTOMNATIVE(FAngelscriptBindHelpers::SetValueFromProperty_Byte, FAngelscriptBindHelpers::SetValueFromProperty_NativeByte), (void*)(SIZE_T)Property->GetOffset_ForUFunction());
-							FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-						}
-					}
-					else if (Property->HasAnyPropertyFlags(CPF_IsPlainOldData) && Property->GetElementSize() == 1)
-					{
-						Binds.Method(Decl, FUNC_TRIVIAL_CUSTOMNATIVE(FAngelscriptBindHelpers::SetValueFromProperty_Byte, FAngelscriptBindHelpers::SetValueFromProperty_NativeByte), (void*)(SIZE_T)Property->GetOffset_ForUFunction());
-						FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-					}
-					else if (Property->HasAnyPropertyFlags(CPF_IsPlainOldData) && Property->GetElementSize() == 4)
-					{
-						Binds.Method(Decl, FUNC_TRIVIAL_CUSTOMNATIVE(FAngelscriptBindHelpers::SetValueFromProperty_DWord, FAngelscriptBindHelpers::SetValueFromProperty_NativeDWord), (void*)(SIZE_T)Property->GetOffset_ForUFunction());
-						FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-					}
-					else if (Property->HasAnyPropertyFlags(CPF_IsPlainOldData) && Property->GetElementSize() == 8)
-					{
-						Binds.Method(Decl, FUNC_TRIVIAL_CUSTOMNATIVE(FAngelscriptBindHelpers::SetValueFromProperty_QWord, FAngelscriptBindHelpers::SetValueFromProperty_NativeQWord), (void*)(SIZE_T)Property->GetOffset_ForUFunction());
-						FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-					}
-					else
-					{
-						Binds.Method(Decl, FUNC_CUSTOMNATIVE(FAngelscriptBindHelpers::SetValueFromProperty, FAngelscriptBindHelpers::SetValueFromProperty_Native), (void*)Property);
-						FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-					}
-				}
-			}
-			else if (DBProp.Declaration.Len() != 0)
+			if (DBProp.Declaration.Len() != 0)
 			{
 				Binds.Property(DBProp.Declaration, (SIZE_T)Property->GetOffset_ForUFunction());
 			}
@@ -1207,9 +1137,6 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_StructDetails((int32)FAngelscr
 				PropertyName = ScriptName;
 #endif
 
-			bool bHasGetter = Binds.HasGetter(PropertyName);
-			bool bHasSetter = Binds.HasSetter(PropertyName);
-
 			if (Usage.Type->BindProperty(Usage, Params, Property))
 			{
 				// Need to replicate the BindProperty in the database
@@ -1242,147 +1169,15 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_StructDetails((int32)FAngelscr
 			FAngelscriptPropertyBind DBProp;
 			DBProp.UnrealPath = Property->GetName();
 
-			if (bHasSetter || bHasGetter)
-			{
-				DBProp.bGeneratedGetter = !bHasGetter && Params.bCanRead;
-				DBProp.bGeneratedSetter = !bHasSetter && (Params.bCanWrite || Params.bCanEdit);
+			FString PropertyType = Usage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::MemberVariable);
+			FString Declaration = FString::Printf(TEXT("%s %s"), *PropertyType, *PropertyName);
+			Binds.Property(Declaration, Property->GetOffset_ForUFunction(), Params);
 
-				FString AccessorType;
-				if (DBProp.bGeneratedGetter || DBProp.bGeneratedSetter)
-				{
-					if (Usage.IsObjectPointer())
-					{
-						AccessorType = Usage.GetAngelscriptDeclaration();
-						DBProp.bGeneratedHandle = true;
-					}
-					else if (Usage.IsUnresolvedObjectPointer())
-					{
-						AccessorType = Usage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::PreResolvedObject);
-						DBProp.bGeneratedUnresolvedObject = true;
-					}
-					else
-					{
-						AccessorType = FString::Printf(TEXT("const %s&"), *Usage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::FunctionReturnValue));
-					}
-				}
+			// Simple declarations can be stored in the database by declaration
+			DBProp.Declaration = Declaration;
 
-				// Bind a generated getter if the property should be readable but
-				// we only have a setter declared.
-				if (DBProp.bGeneratedGetter)
-				{
-					FString Decl = FString::Printf(TEXT("%s Get%s() const"), *AccessorType, *PropertyName);
-
-					if (DBProp.bGeneratedHandle)
-					{
-						Binds.Method(Decl, FUNC_TRIVIAL(FAngelscriptBindHelpers::GetObjectFromProperty), (void*)(SIZE_T)Property->GetOffset_ForUFunction());
-						FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-					}
-					else if (DBProp.bGeneratedUnresolvedObject)
-					{
-						Binds.Method(Decl, FUNC_TRIVIAL(FAngelscriptBindHelpers::GetUnresolvedObjectFromProperty), (void*)(SIZE_T)Property->GetOffset_ForUFunction());
-						FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-					}
-					else
-					{
-						Binds.Method(Decl, FUNC_TRIVIAL(FAngelscriptBindHelpers::GetValueFromProperty), (void*)(SIZE_T)Property->GetOffset_ForUFunction());
-						FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-					}
-
-#if WITH_EDITOR
-					if (bIsDeprecated)
-						Binds.DeprecatePreviousBind(TCHAR_TO_ANSI(*DeprecationMessage));
-
-					if (Tooltip.Len() != 0)
-						FAngelscriptDocs::AddUnrealDocumentation(FAngelscriptBinds::GetPreviousFunctionId(), Tooltip, TEXT(""), nullptr);
-
-					if (auto* ScriptFunction = (asCScriptFunction*)Binds.GetPreviousBind())
-					{
-						ScriptFunction->traits.SetTrait(asTRAIT_GENERATED_FUNCTION, true);
-						if (bIsEditorOnly)
-							ScriptFunction->traits.SetTrait(asTRAIT_EDITOR_ONLY, true);
-					}
-#endif
-				}
-
-				// Bind a generated setter if the property should be writable
-				// but we only have a getter declared.
-				if (DBProp.bGeneratedSetter)
-				{
-					FString Decl = FString::Printf(TEXT("void Set%s(%s Value)"), *PropertyName, *AccessorType);
-
-					if (DBProp.bGeneratedHandle || DBProp.bGeneratedUnresolvedObject)
-					{
-						Binds.Method(Decl, FUNC_TRIVIAL(FAngelscriptBindHelpers::SetObjectFromProperty), Params, (void*)(SIZE_T)Property->GetOffset_ForUFunction());
-						FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-					}
-					else if (auto* EnumProperty = CastField<FEnumProperty>(Property))
-					{
-						if (EnumProperty->GetElementSize() == 4)
-						{
-							Binds.Method(Decl, FUNC_TRIVIAL_CUSTOMNATIVE(FAngelscriptBindHelpers::SetValueFromProperty_ByteExtendToDWord, FAngelscriptBindHelpers::SetValueFromProperty_NativeByteExtendToDWord), Params, (void*)(SIZE_T)Property->GetOffset_ForUFunction());
-							FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-						}
-						else
-						{
-							Binds.Method(Decl, FUNC_TRIVIAL_CUSTOMNATIVE(FAngelscriptBindHelpers::SetValueFromProperty_Byte, FAngelscriptBindHelpers::SetValueFromProperty_NativeByte), Params, (void*)(SIZE_T)Property->GetOffset_ForUFunction());
-							FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-						}
-					}
-					else if (Property->HasAnyPropertyFlags(CPF_IsPlainOldData) && Property->GetElementSize() == 1)
-					{
-						Binds.Method(Decl, FUNC_TRIVIAL_CUSTOMNATIVE(FAngelscriptBindHelpers::SetValueFromProperty_Byte, FAngelscriptBindHelpers::SetValueFromProperty_NativeByte), Params, (void*)(SIZE_T)Property->GetOffset_ForUFunction());
-						FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-					}
-					else if (Property->HasAnyPropertyFlags(CPF_IsPlainOldData) && Property->GetElementSize() == 4)
-					{
-						Binds.Method(Decl, FUNC_TRIVIAL_CUSTOMNATIVE(FAngelscriptBindHelpers::SetValueFromProperty_DWord, FAngelscriptBindHelpers::SetValueFromProperty_NativeDWord), Params, (void*)(SIZE_T)Property->GetOffset_ForUFunction());
-						FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-					}
-					else if (Property->HasAnyPropertyFlags(CPF_IsPlainOldData) && Property->GetElementSize() == 8)
-					{
-						Binds.Method(Decl, FUNC_TRIVIAL_CUSTOMNATIVE(FAngelscriptBindHelpers::SetValueFromProperty_QWord, FAngelscriptBindHelpers::SetValueFromProperty_NativeQWord), Params, (void*)(SIZE_T)Property->GetOffset_ForUFunction());
-						FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-					}
-					else
-					{
-						Binds.Method(Decl, FUNC_CUSTOMNATIVE(FAngelscriptBindHelpers::SetValueFromProperty, FAngelscriptBindHelpers::SetValueFromProperty_Native), Params, (void*)Property);
-						FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-					}
-
-#if WITH_EDITOR
-					if (bIsDeprecated)
-						Binds.DeprecatePreviousBind(TCHAR_TO_ANSI(*DeprecationMessage));
-
-					if (Tooltip.Len() != 0)
-						FAngelscriptDocs::AddUnrealDocumentation(FAngelscriptBinds::GetPreviousFunctionId(), Tooltip, TEXT(""), nullptr);
-
-					if (auto* ScriptFunction = (asCScriptFunction*)Binds.GetPreviousBind())
-					{
-						ScriptFunction->traits.SetTrait(asTRAIT_GENERATED_FUNCTION, true);
-						if (bIsEditorOnly)
-							ScriptFunction->traits.SetTrait(asTRAIT_EDITOR_ONLY, true);
-					}
-#endif
-				}
-
-				if (!Property->HasAnyPropertyFlags(CPF_EditorOnly) && (DBProp.bGeneratedGetter || DBProp.bGeneratedSetter))
-				{
-					DBProp.Declaration = AccessorType;
-					DBProp.GeneratedName = PropertyName;
-					DBBind.Properties.Add(DBProp);
-				}
-			}
-			else
-			{
-				FString PropertyType = Usage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::MemberVariable);
-				FString Declaration = FString::Printf(TEXT("%s %s"), *PropertyType, *PropertyName);
-				Binds.Property(Declaration, Property->GetOffset_ForUFunction(), Params);
-
-				// Simple declarations can be stored in the database by declaration
-				DBProp.Declaration = Declaration;
-
-				if (!Property->HasAnyPropertyFlags(CPF_EditorOnly))
-					DBBind.Properties.Add(DBProp);
+			if (!Property->HasAnyPropertyFlags(CPF_EditorOnly))
+				DBBind.Properties.Add(DBProp);
 
 #if WITH_EDITOR
 			if (bIsDeprecated || bIsEditorOnly)
@@ -1411,7 +1206,6 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_StructDetails((int32)FAngelscr
 				}
 			}
 #endif
-			}
 		}
 
 		// TODO: We need some way of determining whether this struct

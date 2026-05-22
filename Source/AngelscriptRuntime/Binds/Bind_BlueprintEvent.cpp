@@ -3,6 +3,7 @@
 #include "AngelscriptType.h"
 #include "BlueprintCallableReflectiveFallback.h"
 #include "BlueprintEventSignatureRegistry.h"
+#include "ClassGenerator/ASClass.h"
 
 #include "Containers/StringConv.h"
 #include "UObject/UObjectIterator.h"
@@ -82,6 +83,33 @@ ANGELSCRIPTRUNTIME_API int32 GetBlueprintEventsByScriptNameTotalCount()
 	return Total;
 }
 
+void CleanupStaleBlueprintEventsByScriptName()
+{
+	for (auto ClassIt = GBlueprintEventsByScriptName.CreateIterator(); ClassIt; ++ClassIt)
+	{
+		UClass* Class = ClassIt.Key();
+		if (Class == nullptr || !Class->IsValidLowLevelFast() || Class->HasAnyClassFlags(CLASS_NewerVersionExists) || Class->IsUnreachable() || Cast<UASClass>(Class) != nullptr)
+		{
+			ClassIt.RemoveCurrent();
+			continue;
+		}
+
+		for (auto FunctionIt = ClassIt.Value().CreateIterator(); FunctionIt; ++FunctionIt)
+		{
+			UFunction* Function = FunctionIt.Value();
+			if (Function == nullptr || !Function->IsValidLowLevelFast() || Function->IsUnreachable())
+			{
+				FunctionIt.RemoveCurrent();
+			}
+		}
+
+		if (ClassIt.Value().IsEmpty())
+		{
+			ClassIt.RemoveCurrent();
+		}
+	}
+}
+
 UFunction* GetBlueprintEventByScriptName(UClass* Class, const FString& ScriptName)
 {
 	UClass* CheckClass = Class;
@@ -96,6 +124,19 @@ UFunction* GetBlueprintEventByScriptName(UClass* Class, const FString& ScriptNam
 				return *Function;
 			}
 		}
+
+		for (TFieldIterator<UFunction> FunctionIt(CheckClass, EFieldIteratorFlags::ExcludeSuper); FunctionIt; ++FunctionIt)
+		{
+			UFunction* Function = *FunctionIt;
+			if (Function != nullptr
+				&& Function->HasAnyFunctionFlags(FUNC_BlueprintEvent)
+				&& FAngelscriptFunctionSignature::GetScriptNameForFunction(Function) == ScriptName)
+			{
+				GBlueprintEventsByScriptName.FindOrAdd(CheckClass).Add(ScriptName, Function);
+				return Function;
+			}
+		}
+
 		CheckClass = CheckClass->GetSuperClass();
 	}
 

@@ -51,10 +51,6 @@ public:
 	UPROPERTY(Config, EditDefaultsOnly, Category = "Angelscript", Meta = (ConfigRestartRequired = true))
 	TArray<FString> PreprocessorFlags;
 
-	/* Whether to allow any C++ function that starts with Get...() to be accessed as a property. (Requires editor restart) */
-	UPROPERTY(Config, EditDefaultsOnly, Category = "Angelscript", Meta = (ConfigRestartRequired = true))
-	bool bAllowImplicitPropertyAccessors = true;
-
 	UPROPERTY(Config, EditDefaultsOnly, Category = "Angelscript", Meta = (ConfigRestartRequired = true))
 	TArray<FName> DisabledBindNames;
 

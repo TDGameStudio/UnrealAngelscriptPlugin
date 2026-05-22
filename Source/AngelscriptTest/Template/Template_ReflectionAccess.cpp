@@ -817,8 +817,9 @@ class ATemplateReflectionExtendedTypesActor : AActor
 		// Deterministic GUID so the C++ assert can compare against a known value.
 		GuidValue = FGuid(0x12345678, 0x9ABCDEF0, 0x11223344, 0x55667788);
 
-		// Capture the actor's own class as a TSubclassOf<AActor> reference.
-		PawnSubclass = this.Class;
+		// Capture the actor's own class explicitly; property-style class lookup
+		// is removed by refactor-as-remove-autoaccessor.
+		PawnSubclass = GetClass();
 
 		StringToIntMap.Add("Apple", 1);
 		StringToIntMap.Add("Banana", 2);
@@ -961,7 +962,7 @@ class ATemplateReflectionExtendedTypesActor : AActor
 		{
 			return false;
 		}
-		TestEqual(TEXT("TSubclassOf<AActor> assigned from `this.Class` should equal the actor's class"),
+		TestEqual(TEXT("TSubclassOf<AActor> assigned from GetClass() should equal the actor's class"),
 			AsClass, Actor->GetClass());
 	}
 

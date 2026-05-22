@@ -49,6 +49,44 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 		TestRunner->TestTrue(TEXT("Resetting the test-owned engine should clear the pointer"), !Engine.IsValid());
 	}
 
+	TEST_METHOD(ScanFreeInitializeAcquiresProcessPackages)
+	{
+		using namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private;
+		FCoreTestContextStackGuard ContextGuard;
+		AngelscriptTestSupport::DestroySharedTestEngine();
+		if (FAngelscriptEngine::IsInitialized())
+		{
+			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+		}
+		ContextGuard.DiscardSavedStack();
+		ON_SCOPE_EXIT
+		{
+			if (FAngelscriptEngine::IsInitialized())
+			{
+				AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			}
+			AngelscriptTestSupport::DestroySharedTestEngine();
+		};
+
+		FAngelscriptEngineConfig Config;
+		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
+		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
+		if (!TestRunner->TestNotNull(TEXT("scan-free initialize should create the script engine wrapper"), Engine.Get()))
+		{
+			return;
+		}
+
+		TestRunner->TestNotNull(TEXT("scan-free initialize should create the script engine"), Engine->GetScriptEngine());
+		UPackage* Package = Engine->GetPackageInstance();
+		if (!TestRunner->TestNotNull(TEXT("scan-free initialize should acquire the process script package during game-thread pre-initialize"), Package))
+		{
+			return;
+		}
+
+		TestRunner->TestTrue(TEXT("scan-free initialize should root the process script package"), Package->IsRooted());
+		TestRunner->TestTrue(TEXT("scan-free initialize should leave the process script package discoverable"), FindPackage(nullptr, TEXT("/Script/Angelscript")) == Package);
+	}
+
 	TEST_METHOD(CompileSnippet)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private;

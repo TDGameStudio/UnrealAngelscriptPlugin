@@ -13990,7 +13990,8 @@ int asCCompiler::FindPropertyAccessor(const asCString &name, asCExprContext *ctx
 {
 	if( engine->ep.propertyAccessorMode == 0 )
 	{
-		// Property accessors have been disabled by the application
+		// refactor-as-remove-autoaccessor permanently disables GetX/SetX
+		// property-accessor resolution; direct fields still resolve normally.
 		return 0;
 	}
 

@@ -661,7 +661,6 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptBinds
 	static void SetPreviousBindIsGeneratedAccessor(bool bIsAccessor);
 	static void SetPreviousBindIsEditorOnly(bool bEditorOnly);
 	static void SetPreviousBindRequiresWorldContext(bool bRequiresWorldContext);
-	static void SetPreviousBindIsPropertyAccessor(bool bIsProperty);
 	static void SetPreviousBindIsCallable(bool bIsCallable);
 	static void SetPreviousBindNoDiscard(bool bNoDiscard);
 	static void SetPreviousBindForceConstArgumentExpressions(bool bForceConst);

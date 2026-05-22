@@ -21,9 +21,6 @@
 #define AS_REFERENCE_DEBUGGING (WITH_EDITOR)
 #define WITH_AS_COVERAGE WITH_AS_DEBUGSERVER
 
-#ifndef AS_PROPERTY_ACCESSOR_MODE
-#define AS_PROPERTY_ACCESSOR_MODE 3
-#endif
 #ifndef AS_ENFORCE_SERVER_RPC_VALIDATION
 #define AS_ENFORCE_SERVER_RPC_VALIDATION 0
 #endif
@@ -365,6 +362,8 @@ private:
 	FString MakeModuleName(const FString& ModuleName) const;
 	bool ShouldInitializeThreaded();
 	TSet<FName> CollectDisabledBindNames() const;
+	void AcquireProcessPackages();
+	void ReleaseProcessPackages();
 	#if WITH_DEV_AUTOMATION_TESTS
 	#endif
 	void PreInitialize_GameThread();
@@ -455,6 +454,7 @@ private:
 	TMap<FName, int32> StaticNamesByIndex;
 
 	TSharedPtr<FAngelscriptEngineLifetimeToken> LifetimeToken;
+	bool bHoldsProcessPackageReference = false;
 	UPROPERTY()
 	UObject* WorldContextObject = nullptr;
 
@@ -475,9 +475,9 @@ private:
 	friend struct FAngelscriptHotReloadTestAccess;
 	friend struct FAngelscriptEngineScope;
 	friend struct FAngelscriptTestEngineScopeAccess;
-	#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_DEV_AUTOMATION_TESTS
 	friend struct FAngelscriptInterfaceSignatureTestAccess;
-	#endif
+#endif
 
 public:
 	TArray<FFilenamePair> FileChangesDetectedForReload;

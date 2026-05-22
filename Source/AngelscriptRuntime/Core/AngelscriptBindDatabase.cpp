@@ -45,6 +45,10 @@ void FAngelscriptBindDatabase::Save(const FString& Path)
 		TArray<uint8> Data;
 		FMemoryWriter Writer(Data);
 
+		uint32 Magic = CacheMagic;
+		int32 Version = CacheVersion;
+		Writer << Magic;
+		Writer << Version;
 		Serialize(Writer);
 
 		bool bSaveSuccess = FFileHelper::SaveArrayToFile(Data, *Path);
@@ -100,20 +104,61 @@ void FAngelscriptBindDatabase::Save(const FString& Path)
 #endif
 }
 
-void FAngelscriptBindDatabase::Load(const FString& Path, bool bGeneratingPrecompiledData)
+bool FAngelscriptBindDatabase::TryLoad(const FString& Path, bool bGeneratingPrecompiledData, FString* OutErrorMessage)
 {
+	TArray<uint8> Data;
+	if (!FFileHelper::LoadFileToArray(Data, *Path))
 	{
-		TArray<uint8> Data;
-		FFileHelper::LoadFileToArray(Data, *Path);
-
-		FMemoryReader Reader(Data);
-		Serialize(Reader);
-
-		if (Classes.Num() == 0 && Structs.Num() == 0)
+		if (OutErrorMessage != nullptr)
 		{
-			UE_LOG(Angelscript, Fatal, TEXT("Unable to load script bind database, Script/Binds.Cache file is missing or old. This will cause script compilation and execution to fail."));
+			*OutErrorMessage = FString::Printf(TEXT("Unable to load script bind database '%s': file is missing."), *Path);
 		}
+		return false;
 	}
+
+	if (Data.Num() < static_cast<int32>(sizeof(uint32) + sizeof(int32)))
+	{
+		if (OutErrorMessage != nullptr)
+		{
+			*OutErrorMessage = FString::Printf(TEXT("Unable to load script bind database '%s': cache is empty or truncated. Regenerate Script/Binds.Cache."), *Path);
+		}
+		return false;
+	}
+
+	FMemoryReader Reader(Data);
+	uint32 Magic = 0;
+	int32 Version = 0;
+	Reader << Magic;
+	Reader << Version;
+	if (Magic != CacheMagic || Version != CacheVersion)
+	{
+		if (OutErrorMessage != nullptr)
+		{
+			*OutErrorMessage = FString::Printf(
+				TEXT("Unable to load script bind database '%s': unsupported cache version (magic=0x%016llx version=%d expected=0x%016llx version=%d). Regenerate Script/Binds.Cache."),
+				*Path,
+				static_cast<unsigned long long>(Magic),
+				Version,
+				static_cast<unsigned long long>(CacheMagic),
+				CacheVersion);
+		}
+		return false;
+	}
+
+	FAngelscriptBindDatabase LoadedDatabase;
+	LoadedDatabase.Serialize(Reader);
+
+	if (LoadedDatabase.Classes.Num() == 0 && LoadedDatabase.Structs.Num() == 0)
+	{
+		if (OutErrorMessage != nullptr)
+		{
+			*OutErrorMessage = FString::Printf(TEXT("Unable to load script bind database '%s': cache contained no class or struct binds."), *Path);
+		}
+		return false;
+	}
+
+	Structs = MoveTemp(LoadedDatabase.Structs);
+	Classes = MoveTemp(LoadedDatabase.Classes);
 
 #if AS_CAN_GENERATE_JIT
 	if (bGeneratingPrecompiledData)
@@ -121,25 +166,34 @@ void FAngelscriptBindDatabase::Load(const FString& Path, bool bGeneratingPrecomp
 		HeaderLinks.Empty();
 
 		TArray<uint8> HeaderData;
-		if (!FFileHelper::LoadFileToArray(HeaderData, *(Path + TEXT(".Headers"))))
+		if (FFileHelper::LoadFileToArray(HeaderData, *(Path + TEXT(".Headers"))))
 		{
-			return;
-		}
+			FMemoryReader HeaderReader(HeaderData);
 
-		FMemoryReader Reader(HeaderData);
+			TArray<FAngelscriptClassHeader> Headers;
+			HeaderReader << Headers;
 
-		TArray<FAngelscriptClassHeader> Headers;
-		Reader << Headers;
-
-		for (const auto& Header : Headers)
-		{
-			UObject* Field = FindObject<UObject>(nullptr, *Header.UnrealPath);
-			if (Field == nullptr)
-				continue;
-			HeaderLinks.Add(Field, Header.Header);
+			for (const auto& Header : Headers)
+			{
+				UObject* Field = FindObject<UObject>(nullptr, *Header.UnrealPath);
+				if (Field == nullptr)
+					continue;
+				HeaderLinks.Add(Field, Header.Header);
+			}
 		}
 	}
 #endif
+
+	return true;
+}
+
+void FAngelscriptBindDatabase::Load(const FString& Path, bool bGeneratingPrecompiledData)
+{
+	FString ErrorMessage;
+	if (!TryLoad(Path, bGeneratingPrecompiledData, &ErrorMessage))
+	{
+		UE_LOG(Angelscript, Fatal, TEXT("%s"), *ErrorMessage);
+	}
 }
 
 FString FAngelscriptBindDatabase::GetSourceHeader(UField* Field)

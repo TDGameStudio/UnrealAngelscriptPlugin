@@ -940,8 +940,8 @@ void FAngelscriptPreprocessor::ProcessDelegates(FFile& File)
 			GeneratedCode += GeneratedBody;
 
 			GeneratedCode += TEXT("void BindUFunction(UObject Object, const FName& BindFunctionName) __generated { _Inner.BindUFunction(Object, BindFunctionName, __DelegateSignature(this)); }");
-			GeneratedCode += TEXT("UObject GetUObject() const property __generated { return _Inner.GetUObject(); }");
-			GeneratedCode += TEXT("FName GetFunctionName() const property __generated { return _Inner.GetFunctionName(); }");
+			GeneratedCode += TEXT("UObject GetUObject() const __generated { return _Inner.GetUObject(); }");
+			GeneratedCode += TEXT("FName GetFunctionName() const __generated { return _Inner.GetFunctionName(); }");
 
 			GeneratedCode += FString::Printf(TEXT("%s(UObject Object, const FName& BindFunctionName) __generated no_discard { _Inner.BindUFunction(Object, BindFunctionName, __DelegateSignature(this)); }"), *DelegateName);
 		}
@@ -4506,7 +4506,7 @@ void FAngelscriptPreprocessor::PostProcessLiteralAssets(FFile& File)
 
 		const TCHAR* FormatStr =
 			TEXT("{Type} __Asset_{Name};")
-			TEXT("{Type} Get{Name}() property")
+			TEXT("{Type} Get{Name}()")
 			TEXT("{")
 			TEXT("	if (__Asset_{Name} != nullptr)")
 			TEXT("		return __Asset_{Name};")

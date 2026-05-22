@@ -51,7 +51,7 @@ bool FAngelscriptNetworkServerRPCCompileTest::RunTest(const FString& Parameters)
 UCLASS()
 class AServerRPCTestActor : AActor
 {
-	default bReplicates = true;
+	default SetReplicates(true);
 
 	UFUNCTION(Server)
 	void ServerDoAction()
@@ -122,7 +122,7 @@ bool FAngelscriptNetworkClientRPCCompileTest::RunTest(const FString& Parameters)
 UCLASS()
 class AClientRPCTestActor : AActor
 {
-	default bReplicates = true;
+	default SetReplicates(true);
 
 	UFUNCTION(Client)
 	void ClientReceiveUpdate()
@@ -190,7 +190,7 @@ bool FAngelscriptNetworkMulticastRPCCompileTest::RunTest(const FString& Paramete
 UCLASS()
 class AMulticastRPCTestActor : AActor
 {
-	default bReplicates = true;
+	default SetReplicates(true);
 
 	UFUNCTION(NetMulticast)
 	void MulticastBroadcastEvent()
@@ -258,7 +258,7 @@ bool FAngelscriptNetworkValidationRPCCompileTest::RunTest(const FString& Paramet
 UCLASS()
 class AValidationRPCTestActor : AActor
 {
-	default bReplicates = true;
+	default SetReplicates(true);
 
 	UFUNCTION(Server, WithValidation)
 	void ServerValidatedAction()
@@ -332,7 +332,7 @@ bool FAngelscriptNetworkUnreliableRPCCompileTest::RunTest(const FString& Paramet
 UCLASS()
 class AUnreliableRPCTestActor : AActor
 {
-	default bReplicates = true;
+	default SetReplicates(true);
 
 	UFUNCTION(Client, Unreliable)
 	void ClientUnreliableUpdate()
@@ -400,7 +400,7 @@ bool FAngelscriptNetworkMixedRPCCompileTest::RunTest(const FString& Parameters)
 UCLASS()
 class AMixedRPCTestActor : AActor
 {
-	default bReplicates = true;
+	default SetReplicates(true);
 
 	UPROPERTY(Replicated)
 	int ReplicatedScore = 0;

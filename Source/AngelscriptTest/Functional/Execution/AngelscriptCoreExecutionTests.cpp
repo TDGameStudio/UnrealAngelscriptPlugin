@@ -5,6 +5,8 @@
 #include "Shared/AngelscriptTestUtilities.h"
 #include "Misc/Paths.h"
 #include "Misc/ScopeExit.h"
+#include "UObject/GarbageCollection.h"
+#include "UObject/Package.h"
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -62,6 +64,7 @@ namespace AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private
 
 		return nullptr;
 	}
+
 }
 
 
@@ -251,6 +254,70 @@ bool FAngelscriptCoreCreateEngineTest::RunTest(const FString& Parameters)
 
 	TestEqual(TEXT("Core.CreateEngine should preserve the embedded AngelScript version"), ANGELSCRIPT_VERSION, 23300);
 	return ScriptEngineA != nullptr && ScriptEngineB != nullptr;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FAngelscriptCoreCreateEngineProcessPackageLifetimeTest,
+	"Angelscript.TestModule.Functional.Core.CreateEngine.ProcessPackageLifetime",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FAngelscriptCoreCreateEngineProcessPackageLifetimeTest::RunTest(const FString& Parameters)
+{
+	using namespace AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private;
+	FCoreEngineContextStackGuard ContextGuard;
+	DestroySharedTestEngine();
+	if (FAngelscriptEngine::IsInitialized())
+	{
+		FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+	}
+	ContextGuard.DiscardSavedStack();
+	ON_SCOPE_EXIT
+	{
+		if (FAngelscriptEngine::IsInitialized())
+		{
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+		}
+		DestroySharedTestEngine();
+	};
+
+	TUniquePtr<FAngelscriptEngine> EngineA = CreateFullTestEngine();
+	TUniquePtr<FAngelscriptEngine> EngineB = CreateFullTestEngine();
+	if (!TestNotNull(TEXT("Core.CreateEngine.ProcessPackageLifetime should create engine A"), EngineA.Get())
+		|| !TestNotNull(TEXT("Core.CreateEngine.ProcessPackageLifetime should create engine B"), EngineB.Get()))
+	{
+		return false;
+	}
+
+	UPackage* PackageA = EngineA->GetPackageInstance();
+	UPackage* PackageB = EngineB->GetPackageInstance();
+	if (!TestNotNull(TEXT("Core.CreateEngine.ProcessPackageLifetime should resolve package A"), PackageA)
+		|| !TestNotNull(TEXT("Core.CreateEngine.ProcessPackageLifetime should resolve package B"), PackageB))
+	{
+		return false;
+	}
+
+	bool bPassed = true;
+	bPassed &= TestTrue(
+		TEXT("Core.CreateEngine.ProcessPackageLifetime should share the process-level script package"),
+		PackageA == PackageB);
+	bPassed &= TestTrue(
+		TEXT("Core.CreateEngine.ProcessPackageLifetime should keep the shared script package rooted while both engines are alive"),
+		PackageB->IsRooted());
+
+	EngineA.Reset();
+	CollectGarbage(RF_NoFlags, true);
+
+	bPassed &= TestTrue(
+		TEXT("Core.CreateEngine.ProcessPackageLifetime should keep the shared script package rooted while a second full engine still references it"),
+		PackageB->IsRooted());
+	bPassed &= TestTrue(
+		TEXT("Core.CreateEngine.ProcessPackageLifetime should keep the shared script package standalone while a second full engine still references it"),
+		PackageB->HasAnyFlags(RF_Standalone));
+	bPassed &= TestTrue(
+		TEXT("Core.CreateEngine.ProcessPackageLifetime should keep the shared script package discoverable after the first engine is destroyed"),
+		FindPackage(nullptr, TEXT("/Script/Angelscript")) == PackageB);
+
+	return bPassed;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(

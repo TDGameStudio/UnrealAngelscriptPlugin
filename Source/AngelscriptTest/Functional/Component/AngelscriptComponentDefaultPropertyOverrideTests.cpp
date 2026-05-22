@@ -42,8 +42,8 @@ class AFunctionalDefaultOverrideActor : AActor
 	UStaticMeshComponent Mesh;
 
 	default Sphere.SphereRadius = 128.0;
-	default Mesh.bHiddenInGame = true;
-	default Mesh.CastShadow = false;
+	default Mesh.SetHiddenInGame(true);
+	default Mesh.SetCastShadow(false);
 	default Mesh.SetRelativeRotation(FRotator(0.0f, 45.0f, 0.0f));
 }
 )AS"),

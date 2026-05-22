@@ -86,7 +86,8 @@ static FName NAME_BlueprintGetter("BlueprintGetter");
 static TArray<FAngelscriptEngine*> GAngelscriptEngineContextStack;
 static TArray<FName> GLegacyStaticNames;
 static TMap<FName, int32> GLegacyStaticNamesByIndex;
-
+static int32 GAngelscriptPackageRefCount = 0;
+static int32 GAngelscriptAssetsPackageRefCount = 0;
 FAngelscriptEngine::FAngelscriptDebugStack* GAngelscriptStack = nullptr;
 // GAngelscriptEngine removed — engine resolution now uses FAngelscriptEngineContextStack
 static bool GAngelscriptLineReentry = false;
@@ -94,6 +95,12 @@ bool FAngelscriptEngine::bStaticJITTranspiledCodeLoaded = false;
 
 static int32 GAngelscriptRecompileAvoidance = 1;
 static FAutoConsoleVariableRef CVar_AngelscriptRecompileAvoidance(TEXT("angelscript.UseRecompileAvoidance"), GAngelscriptRecompileAvoidance, TEXT(""));
+
+namespace AngelscriptEnginePackages_Private
+{
+	static constexpr const TCHAR* ScriptPackageName = TEXT("/Script/Angelscript");
+	static constexpr const TCHAR* AssetsPackageName = TEXT("/Script/AngelscriptAssets");
+}
 
 namespace AngelscriptEngineCompilationEvents_Private
 {
@@ -858,12 +865,6 @@ void FAngelscriptEngine::InitializeWithoutInitialCompile()
 
 	PreInitialize_GameThread();
 
-	AngelscriptPackage = NewObject<UPackage>(nullptr, FName(TEXT("/Script/Angelscript")), RF_Public | RF_Standalone | RF_MarkAsRootSet);
-	AngelscriptPackage->SetPackageFlags(PKG_CompiledIn);
-
-	AssetsPackage = NewObject<UPackage>(nullptr, FName(TEXT("/Script/AngelscriptAssets")), RF_Public | RF_Standalone | RF_MarkAsRootSet);
-	AssetsPackage->SetPackageFlags(PKG_CompiledIn);
-
 	Engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, 1);
 	Engine->SetEngineProperty(asEP_USE_CHARACTER_LITERALS, 1);
 	Engine->SetEngineProperty(asEP_ALLOW_MULTILINE_STRINGS, 1);
@@ -878,7 +879,7 @@ void FAngelscriptEngine::InitializeWithoutInitialCompile()
 	Engine->SetEngineProperty(asEP_ALWAYS_IMPL_DEFAULT_COPY, 1);
 	Engine->SetEngineProperty(asEP_ALWAYS_IMPL_DEFAULT_COPY_CONSTRUCT, 1);
 	Engine->SetEngineProperty(asEP_MEMBER_INIT_MODE, 0);
-	Engine->SetEngineProperty(asEP_PROPERTY_ACCESSOR_MODE, AS_PROPERTY_ACCESSOR_MODE);
+	Engine->SetEngineProperty(asEP_PROPERTY_ACCESSOR_MODE, 0);
 	Engine->SetEngineProperty(asEP_TYPECHECK_SWITCH_ENUMS, 1);
 	Engine->SetEngineProperty(asEP_FLOAT_IS_FLOAT64, ConfigSettings->bScriptFloatIsFloat64 ? 1 : 0);
 	Engine->SetEngineProperty(asEP_ALLOW_DOUBLE_TYPE, ConfigSettings->bDeprecateDoubleType ? 0 : 1);
@@ -934,6 +935,76 @@ void FAngelscriptEngine::InitializeWithoutInitialCompile()
 #endif
 
 	FAngelscriptEngineExtensionRegistry::Get().AttachEngine(*this);
+}
+
+void FAngelscriptEngine::AcquireProcessPackages()
+{
+	check(IsInGameThread());
+
+	if (bHoldsProcessPackageReference)
+	{
+		return;
+	}
+
+	using namespace AngelscriptEnginePackages_Private;
+
+	AngelscriptPackage = CreatePackage(ScriptPackageName);
+	check(AngelscriptPackage != nullptr);
+	AngelscriptPackage->SetFlags(RF_Public | RF_Standalone);
+	AngelscriptPackage->SetPackageFlags(PKG_CompiledIn);
+	if (GAngelscriptPackageRefCount++ == 0 && !AngelscriptPackage->IsRooted())
+	{
+		AngelscriptPackage->AddToRoot();
+	}
+
+	AssetsPackage = CreatePackage(AssetsPackageName);
+	check(AssetsPackage != nullptr);
+	AssetsPackage->SetFlags(RF_Public | RF_Standalone);
+	AssetsPackage->SetPackageFlags(PKG_CompiledIn);
+	if (GAngelscriptAssetsPackageRefCount++ == 0 && !AssetsPackage->IsRooted())
+	{
+		AssetsPackage->AddToRoot();
+	}
+
+	bHoldsProcessPackageReference = true;
+}
+
+void FAngelscriptEngine::ReleaseProcessPackages()
+{
+	if (!bHoldsProcessPackageReference)
+	{
+		AngelscriptPackage = nullptr;
+		AssetsPackage = nullptr;
+		return;
+	}
+
+	if (AngelscriptPackage != nullptr && GAngelscriptPackageRefCount > 0 && --GAngelscriptPackageRefCount == 0)
+	{
+		if (AngelscriptPackage->IsValidLowLevelFast() && AngelscriptPackage->IsRooted())
+		{
+			AngelscriptPackage->RemoveFromRoot();
+		}
+		if (AngelscriptPackage->IsValidLowLevelFast())
+		{
+			AngelscriptPackage->ClearFlags(RF_Standalone);
+		}
+	}
+
+	if (AssetsPackage != nullptr && GAngelscriptAssetsPackageRefCount > 0 && --GAngelscriptAssetsPackageRefCount == 0)
+	{
+		if (AssetsPackage->IsValidLowLevelFast() && AssetsPackage->IsRooted())
+		{
+			AssetsPackage->RemoveFromRoot();
+		}
+		if (AssetsPackage->IsValidLowLevelFast())
+		{
+			AssetsPackage->ClearFlags(RF_Standalone);
+		}
+	}
+
+	bHoldsProcessPackageReference = false;
+	AngelscriptPackage = nullptr;
+	AssetsPackage = nullptr;
 }
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -1478,18 +1549,12 @@ void FAngelscriptEngine::Shutdown()
 		SyncAmbientWorldContextFromCurrentEngine();
 	}
 
+	// Release process-wide AS packages via the refcount-protected helper.
+	// Phase 4 of clone-removal eliminated SourceEngine / SourceLifetimeToken
+	// / SharedState fields, so the original Clone-aware reset block is gone.
 	if (bShouldReleaseOwnedEngine)
 	{
-		if (AngelscriptPackage != nullptr)
-		{
-			AngelscriptPackage->RemoveFromRoot();
-			AngelscriptPackage->ClearFlags(RF_Standalone);
-		}
-		if (AssetsPackage != nullptr)
-		{
-			AssetsPackage->RemoveFromRoot();
-			AssetsPackage->ClearFlags(RF_Standalone);
-		}
+		ReleaseProcessPackages();
 	}
 	AngelscriptPackage = nullptr;
 	AssetsPackage = nullptr;
@@ -1551,6 +1616,8 @@ void FAngelscriptEngine::PreInitialize_GameThread()
 
 	// Set up thread local data for game thread
 	GameThreadTLD = asCThreadManager::GetLocalData();
+
+	AcquireProcessPackages();
 }
 
 TArray<FString> FAngelscriptEngine::DiscoverScriptRoots(bool bOnlyProjectRoot) const
@@ -1608,13 +1675,6 @@ void FAngelscriptEngine::Initialize_AnyThread()
 		&& ((RuntimeConfig.bIsEditor && !RuntimeConfig.bRunningCommandlet) || bForcePreprocessEditorCode)
 		&& !bSimulateCooked;
 
-	// Store the angelscript package we create everything into
-	AngelscriptPackage = NewObject<UPackage>(nullptr, FName(TEXT("/Script/Angelscript")), RF_Public | RF_Standalone | RF_MarkAsRootSet);
-	AngelscriptPackage->SetPackageFlags(PKG_CompiledIn);
-
-	AssetsPackage = NewObject<UPackage>(nullptr, FName(TEXT("/Script/AngelscriptAssets")), RF_Public | RF_Standalone | RF_MarkAsRootSet);
-	AssetsPackage->SetPackageFlags(PKG_CompiledIn);
-
 	Engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, 1);
 	Engine->SetEngineProperty(asEP_USE_CHARACTER_LITERALS, 1);
 	Engine->SetEngineProperty(asEP_ALLOW_MULTILINE_STRINGS, 1);
@@ -1633,7 +1693,7 @@ void FAngelscriptEngine::Initialize_AnyThread()
 	Engine->SetEngineProperty(asEP_ALWAYS_IMPL_DEFAULT_COPY_CONSTRUCT, 1);
 	Engine->SetEngineProperty(asEP_MEMBER_INIT_MODE, 0);
 
-	Engine->SetEngineProperty(asEP_PROPERTY_ACCESSOR_MODE, AS_PROPERTY_ACCESSOR_MODE);
+	Engine->SetEngineProperty(asEP_PROPERTY_ACCESSOR_MODE, 0);
 
 	Engine->SetEngineProperty(asEP_TYPECHECK_SWITCH_ENUMS, 1);
 
