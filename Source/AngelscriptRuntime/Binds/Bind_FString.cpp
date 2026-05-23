@@ -1,5 +1,6 @@
 #include "AngelscriptBinds.h"
 #include "AngelscriptEngine.h"
+#include "AngelscriptRuntimeModule.h"
 
 #include "Containers/UnrealString.h"
 #include "Engine/UserDefinedEnum.h"
@@ -115,10 +116,8 @@ static bool AddFormatOrderedArgument(FStringFormatOrderedArguments& OutFormatOrd
 			return true;
 		}
 
-		// FString TypeInfo is per script engine; full-suite tests create and
-		// destroy multiple engines, so also accept the current engine's name.
-		if (TypeInfo == TGetStaticTypeInfo<FString>::TypeInfo
-			|| FCStringAnsi::Strcmp(TypeInfo->GetName(), "FString") == 0)
+		// fstring
+		if (TypeInfo == TGetStaticTypeInfo<FString>::TypeInfo)
 		{
 			const FString& Value = *reinterpret_cast<const FString*>(Ptr);
 			OutFormatOrderedArguments.Emplace(FStringFormatArg(Value));
@@ -472,7 +471,7 @@ void FToStringHelper::Generic_AppendToString(FString& AppendTo, void* ValuePtr, 
 			if (asClass == nullptr) return;
 
 			FString Suffix;
-			auto& Delegate = FAngelscriptEngine::Get().GetHooks().GetDebugObjectSuffix();
+			auto& Delegate = FAngelscriptRuntimeModule::GetDebugObjectSuffix();
 			if (Delegate.IsBound())
 			{
 				Delegate.Execute(Object, Suffix);

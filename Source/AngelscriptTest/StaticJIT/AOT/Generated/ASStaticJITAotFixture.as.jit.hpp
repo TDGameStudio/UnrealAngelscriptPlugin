@@ -7,10 +7,10 @@
 #include "StaticJIT/StaticJITHeader.h"
 
 
-AS_FORCE_LINK FJitRef_Type TREF_UStaticJITAotFunctionCarrier(0x1b928a89f00);
-AS_FORCE_LINK FJitRef_GlobalVar GREF___StaticType_UStaticJITAotFunctionCarrier(0x1b928d02460);
-AS_FORCE_LINK FJitRef_SystemFunctionPointer SYSPTR___WorldContext(0x1b925cb8800);
-AS_FORCE_LINK FJitRef_SystemFunctionPointer SYSPTR_TSubclassOf_UObject__opImplConv(0x1b925542c00);
+AS_FORCE_LINK FJitRef_Type TREF_UStaticJITAotFunctionCarrier(0x1ccb4d6d500);
+AS_FORCE_LINK FJitRef_GlobalVar GREF___StaticType_UStaticJITAotFunctionCarrier(0x1ccb4d4dee0);
+AS_FORCE_LINK FJitRef_SystemFunctionPointer SYSPTR___WorldContext(0x1ccb2726600);
+AS_FORCE_LINK FJitRef_SystemFunctionPointer SYSPTR_TSubclassOf_UObject__opImplConv(0x1ccb51e2c00);
 
 extern void AS_UStaticJITAotFunctionCarrier__UStaticJITAotFunctionCarrier(FScriptExecution& Execution, UObject* l_This);
 extern int32 AS_ASStaticJITAotFixture__AddForAOT(FScriptExecution& Execution, asDWORD p_Value);
@@ -27,13 +27,13 @@ constexpr SIZE_T POFFSET_UStaticJITAotFunctionCarrier_StoredValue = Align(sizeof
 constexpr SIZE_T PALIGN_UStaticJITAotFunctionCarrier_StoredValue = AlignmentMax(alignof(UObject), 4);
 constexpr SIZE_T TALIGN_UStaticJITAotFunctionCarrier = PALIGN_UStaticJITAotFunctionCarrier_StoredValue;
 constexpr SIZE_T TSIZE_UStaticJITAotFunctionCarrier = Align(POFFSET_UStaticJITAotFunctionCarrier_StoredValue + 4, TALIGN_UStaticJITAotFunctionCarrier);
-AS_FORCE_LINK FJitVerifyPropertyOffset PVERIFY_UStaticJITAotFunctionCarrier_StoredValue(0x601000612b, POFFSET_UStaticJITAotFunctionCarrier_StoredValue);
+AS_FORCE_LINK FJitVerifyPropertyOffset PVERIFY_UStaticJITAotFunctionCarrier_StoredValue(0x6010006129, POFFSET_UStaticJITAotFunctionCarrier_StoredValue);
 void AS_UStaticJITAotFunctionCarrier__StorePrimitiveArg(FScriptExecution& Execution, UObject* l_This, asDWORD p_Value)
 {
 // == Jit at BC 0 ==
 SCRIPT_DEBUG_CALLSTACK_FRAME_UOBJECT("void UStaticJITAotFunctionCarrier::StorePrimitiveArg(int)", 19);
 SCRIPT_ASSUME_NO_EXCEPTION()
-FStaticJITDiagnosticEntryMarkers::MarkEntry(0x581ba130u);
+FStaticJITTestHooks::MarkEntry(0x581ba130u);
 asQWORD l_valueRegister = 0;
 asBYTE l_byteRegister = 0;
 asDWORD l_dwordRegister = 0;
@@ -74,7 +74,7 @@ int32 AS_UStaticJITAotFunctionCarrier__ReturnPrimitive(FScriptExecution& Executi
 // == Jit at BC 0 ==
 SCRIPT_DEBUG_CALLSTACK_FRAME_UOBJECT("int UStaticJITAotFunctionCarrier::ReturnPrimitive()", 25);
 SCRIPT_ASSUME_NO_EXCEPTION()
-FStaticJITDiagnosticEntryMarkers::MarkEntry(0xc36d30ecu);
+FStaticJITTestHooks::MarkEntry(0xc36d30ecu);
 asQWORD l_valueRegister = 0;
 asBYTE l_byteRegister = 0;
 asDWORD l_dwordRegister = 0;
@@ -109,7 +109,7 @@ int32 AS_UStaticJITAotFunctionCarrier__BumpReference(FScriptExecution& Execution
 // == Jit at BC 0 ==
 SCRIPT_DEBUG_CALLSTACK_FRAME_UOBJECT("int UStaticJITAotFunctionCarrier::BumpReference(int&)", 31);
 SCRIPT_ASSUME_NO_EXCEPTION()
-FStaticJITDiagnosticEntryMarkers::MarkEntry(0x6eb950c0u);
+FStaticJITTestHooks::MarkEntry(0x6eb950c0u);
 alignas(8) asBYTE l_stack[8];
 asQWORD l_valueRegister = 0;
 asBYTE l_byteRegister = 0;
@@ -179,7 +179,7 @@ UObject* AS_UStaticJITAotFunctionCarrier__ReturnSelfObject(FScriptExecution& Exe
 // == Jit at BC 0 ==
 SCRIPT_DEBUG_CALLSTACK_FRAME_UOBJECT("UObject UStaticJITAotFunctionCarrier::ReturnSelfObject()", 39);
 SCRIPT_ASSUME_NO_EXCEPTION()
-FStaticJITDiagnosticEntryMarkers::MarkEntry(0xfbcbdbedu);
+FStaticJITTestHooks::MarkEntry(0xfbcbdbedu);
 asQWORD l_valueRegister = 0;
 asBYTE l_byteRegister = 0;
 asDWORD l_dwordRegister = 0;
@@ -212,7 +212,7 @@ void AS_UStaticJITAotFunctionCarrier__UStaticJITAotFunctionCarrier(FScriptExecut
 // == Jit at BC 0 ==
 SCRIPT_DEBUG_CALLSTACK_FRAME_UOBJECT("UStaticJITAotFunctionCarrier::UStaticJITAotFunctionCarrier()", 14);
 SCRIPT_ASSUME_NO_EXCEPTION()
-FStaticJITDiagnosticEntryMarkers::MarkEntry(0xbf22cbcfu);
+FStaticJITTestHooks::MarkEntry(0xbf22cbcfu);
 alignas(8) asBYTE l_stack[8];
 asQWORD l_valueRegister = 0;
 asBYTE l_byteRegister = 0;
@@ -256,7 +256,7 @@ UObject* AS_ASStaticJITAotFixture__UStaticJITAotFunctionCarrier(FScriptExecution
 // == Jit at BC 0 ==
 SCRIPT_DEBUG_CALLSTACK_FRAME("UStaticJITAotFunctionCarrier UStaticJITAotFunctionCarrier()", 0);
 SCRIPT_ASSUME_NO_EXCEPTION()
-FStaticJITDiagnosticEntryMarkers::MarkEntry(0x10bc161fu);
+FStaticJITTestHooks::MarkEntry(0x10bc161fu);
 alignas(8) asBYTE l_stack[16];
 asQWORD l_valueRegister = 0;
 asBYTE l_byteRegister = 0;
@@ -315,7 +315,7 @@ int32 AS_ASStaticJITAotFixture__AddForAOT(FScriptExecution& Execution, asDWORD p
 // == Jit at BC 0 ==
 SCRIPT_DEBUG_CALLSTACK_FRAME("int AddForAOT(int)", 3);
 SCRIPT_ASSUME_NO_EXCEPTION()
-FStaticJITDiagnosticEntryMarkers::MarkEntry(0x6704d30du);
+FStaticJITTestHooks::MarkEntry(0x6704d30du);
 asQWORD l_valueRegister = 0;
 asBYTE l_byteRegister = 0;
 asDWORD l_dwordRegister = 0;
@@ -353,7 +353,7 @@ int32 AS_ASStaticJITAotFixture__Entry(FScriptExecution& Execution)
 // == Jit at BC 0 ==
 SCRIPT_DEBUG_CALLSTACK_FRAME("int Entry()", 8);
 SCRIPT_ASSUME_NO_EXCEPTION()
-FStaticJITDiagnosticEntryMarkers::MarkEntry(0x7955c32eu);
+FStaticJITTestHooks::MarkEntry(0x7955c32eu);
 alignas(8) asBYTE l_stack[4];
 asQWORD l_valueRegister = 0;
 asBYTE l_byteRegister = 0;
@@ -400,7 +400,7 @@ int32 AS_ASStaticJITAotFixture__StaticWorldContextCheck(FScriptExecution& Execut
 // == Jit at BC 0 ==
 SCRIPT_DEBUG_CALLSTACK_FRAME("int StaticWorldContextCheck(UObject, int)", 46);
 SCRIPT_ASSUME_NO_EXCEPTION()
-FStaticJITDiagnosticEntryMarkers::MarkEntry(0x6ff89890u);
+FStaticJITTestHooks::MarkEntry(0x6ff89890u);
 alignas(8) asBYTE l_stack[8];
 asQWORD l_valueRegister = 0;
 asBYTE l_byteRegister = 0;
@@ -482,7 +482,7 @@ UClass* AS_ASStaticJITAotFixture__StaticClass(FScriptExecution& Execution)
 // == Jit at BC 0 ==
 SCRIPT_DEBUG_CALLSTACK_FRAME("UClass UStaticJITAotFunctionCarrier::StaticClass()", 52);
 SCRIPT_ASSUME_NO_EXCEPTION()
-FStaticJITDiagnosticEntryMarkers::MarkEntry(0x6fccf793u);
+FStaticJITTestHooks::MarkEntry(0x6fccf793u);
 alignas(8) asBYTE l_stack[8];
 asQWORD l_valueRegister = 0;
 asBYTE l_byteRegister = 0;
