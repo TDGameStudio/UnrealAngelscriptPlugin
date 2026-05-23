@@ -4,6 +4,7 @@
 #include "Misc/Paths.h"
 
 #include "StaticJIT/PrecompiledData.h"
+#include "StaticJIT/StaticJITDiagnostics.h"
 #include "StaticJIT/StaticJITHeader.h"
 
 #include "AngelscriptBytecodes.h"
@@ -45,76 +46,10 @@ FJITDatabase& FJITDatabase::Get()
 	return Database;
 }
 
-#if WITH_DEV_AUTOMATION_TESTS
-namespace
+#if AS_WITH_STATIC_JIT_DIAGNOSTICS
+void FStaticJITDiagnosticEntryMarkers::MarkEntry(uint32 FunctionId)
 {
-	TMap<uint32, int32>& GetStaticJITTestEntryCounters()
-	{
-		static TMap<uint32, int32> Counters;
-		return Counters;
-	}
-}
-
-void FStaticJITTestHooks::ResetEntryCounters()
-{
-	GetStaticJITTestEntryCounters().Reset();
-}
-
-void FStaticJITTestHooks::MarkEntry(uint32 FunctionId)
-{
-	int32& Counter = GetStaticJITTestEntryCounters().FindOrAdd(FunctionId);
-	++Counter;
-}
-
-int32 FStaticJITTestHooks::GetEntryCount(uint32 FunctionId)
-{
-	return GetStaticJITTestEntryCounters().FindRef(FunctionId);
-}
-
-bool FStaticJITTestHooks::IsFunctionRegistered(uint32 FunctionId)
-{
-	return FJITDatabase::Get().Functions.Contains(FunctionId);
-}
-
-bool FStaticJITTestHooks::ReferenceGlobalVariableTwice(FAngelscriptPrecompiledData& Data, void* GlobalPtr, int64& OutFirstReference, int64& OutReusedReference, FString& OutFirstName, FString& OutReusedName)
-{
-	const FAngelscriptPrecompiledReference FirstReference = Data.ReferenceGlobalVariable(GlobalPtr, &OutFirstName);
-	const FAngelscriptPrecompiledReference ReusedReference = Data.ReferenceGlobalVariable(GlobalPtr, &OutReusedName);
-	OutFirstReference = FirstReference.OldReference;
-	OutReusedReference = ReusedReference.OldReference;
-	return OutFirstReference != 0 && OutFirstReference == OutReusedReference && !OutReusedName.IsEmpty();
-}
-
-bool FStaticJITTestHooks::ExerciseRepeatedGlobalReferenceLoad(FAngelscriptPrecompiledData& Data, const FString& CacheFilename, int64 GlobalReference, void*& OutFirstResolvedAddress, void*& OutSecondResolvedAddress, bool& bOutCacheClearedAfterLoad)
-{
-	OutFirstResolvedAddress = nullptr;
-	OutSecondResolvedAddress = nullptr;
-	bOutCacheClearedAfterLoad = false;
-
-	const FAngelscriptPrecompiledReference Reference{ GlobalReference };
-	OutFirstResolvedAddress = Data.GetGlobalVariable(Reference);
-	if (OutFirstResolvedAddress == nullptr)
-	{
-		return false;
-	}
-
-	FJitRef_GlobalVar JitRef(static_cast<uint64>(GlobalReference));
-	ON_SCOPE_EXIT
-	{
-		FJITDatabase::Get().GlobalVarLookups.RemoveSingleSwap(&JitRef);
-	};
-
-	JitRef.Pointer = reinterpret_cast<void*>(0x1);
-	JitRef.Pointer = Data.GetGlobalVariable(Reference);
-	if (JitRef.Get() != OutFirstResolvedAddress)
-	{
-		return false;
-	}
-
-	Data.Load(CacheFilename);
-	bOutCacheClearedAfterLoad = !Data.CachedPointerReferences.Contains(GlobalReference);
-	OutSecondResolvedAddress = Data.GetGlobalVariable(Reference);
-	return bOutCacheClearedAfterLoad && OutSecondResolvedAddress == OutFirstResolvedAddress;
+	FStaticJITDiagnostics::MarkEntry(FunctionId);
 }
 #endif
 
@@ -460,10 +395,10 @@ void FStaticJITContext::GenerateNewFunction(asIScriptFunction* InScriptFunction)
 			(ScriptFunction->GetLineNumber(0, nullptr) & 0xFFFFF));
 	}
 	FunctionHead += TEXT("SCRIPT_ASSUME_NO_EXCEPTION()\n");
-#if WITH_DEV_AUTOMATION_TESTS
-	if (JIT->bEmitTestEntryMarkersInOutput)
+#if AS_WITH_STATIC_JIT_DIAGNOSTICS
+	if (JIT->bEmitDiagnosticEntryMarkersInOutput)
 	{
-		FunctionHead += FString::Printf(TEXT("FStaticJITTestHooks::MarkEntry(0x%xu);\n"), FunctionId);
+		FunctionHead += FString::Printf(TEXT("FStaticJITDiagnosticEntryMarkers::MarkEntry(0x%xu);\n"), FunctionId);
 	}
 #endif
 
@@ -3825,14 +3760,14 @@ void FAngelscriptStaticJIT::WriteOutputCode(TMap<FString, FString>* OutGenerated
 	}
 }
 
-#if WITH_DEV_AUTOMATION_TESTS && AS_CAN_GENERATE_JIT
+#if AS_WITH_STATIC_JIT_DIAGNOSTICS && AS_CAN_GENERATE_JIT
 namespace
 {
-	bool GenerateStaticJITFilesForTestingInternal(
+	bool GenerateStaticJITFilesForDiagnosticsInternal(
 		asIScriptModule* Module,
 		TMap<FString, FString>& OutGeneratedFiles,
 		bool bEmitDebugMetadata,
-		bool bEmitTestEntryMarkers,
+		bool bEmitDiagnosticEntryMarkers,
 		FString* OutError)
 	{
 		OutGeneratedFiles.Reset();
@@ -3842,7 +3777,7 @@ namespace
 		{
 			if (OutError != nullptr)
 			{
-				*OutError = TEXT("GenerateStaticJITFilesForTesting failed: module was null.");
+				*OutError = TEXT("GenerateStaticJITFilesForDiagnostics failed: module was null.");
 			}
 			return false;
 		}
@@ -3852,7 +3787,7 @@ namespace
 		{
 			if (OutError != nullptr)
 			{
-				*OutError = TEXT("GenerateStaticJITFilesForTesting failed: script engine was null.");
+				*OutError = TEXT("GenerateStaticJITFilesForDiagnostics failed: script engine was null.");
 			}
 			return false;
 		}
@@ -3862,7 +3797,7 @@ namespace
 		JIT.PrecompiledData = &PrecompiledData;
 		JIT.bGenerateOutputCode = true;
 		JIT.bEmitDebugMetadataInOutput = bEmitDebugMetadata;
-		JIT.bEmitTestEntryMarkersInOutput = bEmitTestEntryMarkers;
+		JIT.bEmitDiagnosticEntryMarkersInOutput = bEmitDiagnosticEntryMarkers;
 
 		asIJITCompiler* PreviousJITCompiler = ScriptEngine->GetJITCompiler();
 		ScriptEngine->SetJITCompiler(&JIT);
@@ -3879,7 +3814,7 @@ namespace
 		{
 			if (OutError != nullptr)
 			{
-				*OutError = TEXT("GenerateStaticJITFilesForTesting failed: module did not produce a JIT file.");
+				*OutError = TEXT("GenerateStaticJITFilesForDiagnostics failed: module did not produce a JIT file.");
 			}
 			return false;
 		}
@@ -3888,7 +3823,7 @@ namespace
 		{
 			if (OutError != nullptr)
 			{
-				*OutError = FString::Printf(TEXT("GenerateStaticJITFilesForTesting failed: generated source file '%s' was missing."), *(*JITFile)->Filename);
+				*OutError = FString::Printf(TEXT("GenerateStaticJITFilesForDiagnostics failed: generated source file '%s' was missing."), *(*JITFile)->Filename);
 			}
 			return false;
 		}
@@ -3897,12 +3832,12 @@ namespace
 	}
 }
 
-bool GenerateStaticJITSourceTextForTesting(asIScriptModule* Module, FString& OutSourceText, bool bEmitDebugMetadata, FString* OutError)
+bool GenerateStaticJITSourceTextForDiagnostics(asIScriptModule* Module, FString& OutSourceText, bool bEmitDebugMetadata, FString* OutError)
 {
 	OutSourceText.Reset();
 
 	TMap<FString, FString> GeneratedFiles;
-	if (!GenerateStaticJITFilesForTestingInternal(Module, GeneratedFiles, bEmitDebugMetadata, false, OutError))
+	if (!GenerateStaticJITFilesForDiagnosticsInternal(Module, GeneratedFiles, bEmitDebugMetadata, false, OutError))
 	{
 		return false;
 	}
@@ -3922,7 +3857,7 @@ bool GenerateStaticJITSourceTextForTesting(asIScriptModule* Module, FString& Out
 	{
 		if (OutError != nullptr)
 		{
-			*OutError = TEXT("GenerateStaticJITSourceTextForTesting failed: generated module source was missing.");
+			*OutError = TEXT("GenerateStaticJITSourceTextForDiagnostics failed: generated module source was missing.");
 		}
 		return false;
 	}
@@ -3931,23 +3866,23 @@ bool GenerateStaticJITSourceTextForTesting(asIScriptModule* Module, FString& Out
 	return true;
 }
 
-bool GenerateStaticJITFilesForTesting(
+bool GenerateStaticJITFilesForDiagnostics(
 	asIScriptModule* Module,
 	TMap<FString, FString>& OutGeneratedFiles,
 	bool bEmitDebugMetadata,
-	bool bEmitTestEntryMarkers,
+	bool bEmitDiagnosticEntryMarkers,
 	FString* OutError)
 {
-	return GenerateStaticJITFilesForTestingInternal(Module, OutGeneratedFiles, bEmitDebugMetadata, bEmitTestEntryMarkers, OutError);
+	return GenerateStaticJITFilesForDiagnosticsInternal(Module, OutGeneratedFiles, bEmitDebugMetadata, bEmitDiagnosticEntryMarkers, OutError);
 }
 
-bool GenerateStaticJITAotArtifactsForTesting(
+bool GenerateStaticJITAotArtifactsForDiagnostics(
 	asIScriptModule* Module,
 	const FString& PrecompiledCacheFilename,
 	const FGuid& PrecompiledDataGuid,
 	TMap<FString, FString>& OutGeneratedFiles,
 	bool bEmitDebugMetadata,
-	bool bEmitTestEntryMarkers,
+	bool bEmitDiagnosticEntryMarkers,
 	FString* OutError)
 {
 	OutGeneratedFiles.Reset();
@@ -3957,7 +3892,7 @@ bool GenerateStaticJITAotArtifactsForTesting(
 	{
 		if (OutError != nullptr)
 		{
-			*OutError = TEXT("GenerateStaticJITAotArtifactsForTesting failed: module was null.");
+			*OutError = TEXT("GenerateStaticJITAotArtifactsForDiagnostics failed: module was null.");
 		}
 		return false;
 	}
@@ -3967,7 +3902,7 @@ bool GenerateStaticJITAotArtifactsForTesting(
 	{
 		if (OutError != nullptr)
 		{
-			*OutError = TEXT("GenerateStaticJITAotArtifactsForTesting failed: script engine was null.");
+			*OutError = TEXT("GenerateStaticJITAotArtifactsForDiagnostics failed: script engine was null.");
 		}
 		return false;
 	}
@@ -3978,7 +3913,7 @@ bool GenerateStaticJITAotArtifactsForTesting(
 	JIT.PrecompiledData = &PrecompiledData;
 	JIT.bGenerateOutputCode = true;
 	JIT.bEmitDebugMetadataInOutput = bEmitDebugMetadata;
-	JIT.bEmitTestEntryMarkersInOutput = bEmitTestEntryMarkers;
+	JIT.bEmitDiagnosticEntryMarkersInOutput = bEmitDiagnosticEntryMarkers;
 
 	asIJITCompiler* PreviousJITCompiler = ScriptEngine->GetJITCompiler();
 	ScriptEngine->SetJITCompiler(&JIT);
@@ -3994,7 +3929,7 @@ bool GenerateStaticJITAotArtifactsForTesting(
 	{
 		if (OutError != nullptr)
 		{
-			*OutError = TEXT("GenerateStaticJITAotArtifactsForTesting failed: no generated files were produced.");
+			*OutError = TEXT("GenerateStaticJITAotArtifactsForDiagnostics failed: no generated files were produced.");
 		}
 		return false;
 	}

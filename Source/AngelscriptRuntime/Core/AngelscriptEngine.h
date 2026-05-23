@@ -50,6 +50,7 @@ struct FAngelscriptEngineContextStack;
 struct FAngelscriptEngineScope;
 
 struct FAngelscriptCodeCoverage;
+struct FStaticJITDiagnostics;
 
 ANGELSCRIPTRUNTIME_API bool PrepareAngelscriptContextWithLog(class asIScriptContext* Context, class asIScriptFunction* ScriptFunction, const TCHAR* Callsite);
 
@@ -475,6 +476,7 @@ private:
 	friend struct FAngelscriptHotReloadTestAccess;
 	friend struct FAngelscriptEngineScope;
 	friend struct FAngelscriptTestEngineScopeAccess;
+	friend struct FStaticJITDiagnostics;
 #if WITH_DEV_AUTOMATION_TESTS
 	friend struct FAngelscriptInterfaceSignatureTestAccess;
 #endif
@@ -579,9 +581,7 @@ public:
 	static int32 GetLocalPooledContextCountForTesting(asIScriptEngine* ScriptEngine);
 	void SetUseEditorScriptsForTesting(bool bEnabled);
 	void SetAutomaticImportMethodForTesting(bool bEnabled);
-	bool LoadPrecompiledDataForTesting(const FString& Filename, FString* OutError = nullptr);
-	bool CompileLoadedPrecompiledDataForTesting(ECompileType CompileType, FString* OutError = nullptr);
-	bool GetStaticJITFunctionIdForTesting(asIScriptFunction* Function, uint32& OutId) const;
+	void SetBlueprintLibraryNamespaceSettingsForTesting(bool bUseScriptName, TArray<FString> PrefixesToStrip, TArray<FString> SuffixesToStrip);
 #endif
 
 	static const FName& GetStaticName(int32 Index);

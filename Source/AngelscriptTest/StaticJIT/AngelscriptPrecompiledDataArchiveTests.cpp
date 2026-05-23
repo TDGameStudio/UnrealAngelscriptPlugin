@@ -3,6 +3,7 @@
 #include "Shared/AngelscriptTestEngineHelper.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "StaticJIT/PrecompiledData.h"
+#include "StaticJIT/StaticJITDiagnostics.h"
 #include "StaticJIT/StaticJITHeader.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -313,7 +314,7 @@ bool FAngelscriptPrecompiledDataGlobalReferenceNameReuseTest::RunTest(const FStr
 	FString ReusedName;
 	if (!TestTrue(
 			TEXT("StaticJIT.PrecompiledData.GlobalReferenceNameReuse should resolve and reuse a global reference"),
-			FStaticJITTestHooks::ReferenceGlobalVariableTwice(Snapshot, GlobalAddress, FirstReference, ReusedReference, FirstName, ReusedName)))
+			FStaticJITDiagnostics::ReferenceGlobalVariableTwice(Snapshot, GlobalAddress, FirstReference, ReusedReference, FirstName, ReusedName)))
 	{
 		return false;
 	}
@@ -360,7 +361,7 @@ bool FAngelscriptPrecompiledDataRepeatedLoadClearsRuntimeCacheTest::RunTest(cons
 	FString ReusedName;
 	if (!TestTrue(
 			TEXT("StaticJIT.PrecompiledData.RepeatedLoadClearsRuntimeCache should resolve a stable global reference"),
-			FStaticJITTestHooks::ReferenceGlobalVariableTwice(Snapshot, GlobalAddress, GlobalReference, ReusedReference, FirstName, ReusedName)))
+			FStaticJITDiagnostics::ReferenceGlobalVariableTwice(Snapshot, GlobalAddress, GlobalReference, ReusedReference, FirstName, ReusedName)))
 	{
 		return false;
 	}
@@ -389,7 +390,7 @@ bool FAngelscriptPrecompiledDataRepeatedLoadClearsRuntimeCacheTest::RunTest(cons
 	bool bCacheClearedAfterLoad = false;
 	if (!TestTrue(
 			TEXT("StaticJIT.PrecompiledData.RepeatedLoadClearsRuntimeCache should re-resolve JIT refs and clear pointer cache after repeated Load"),
-			FStaticJITTestHooks::ExerciseRepeatedGlobalReferenceLoad(*LoadedData, CacheFile.GetFilename(), GlobalReference, FirstResolvedAddress, SecondResolvedAddress, bCacheClearedAfterLoad)))
+			FStaticJITDiagnostics::ExerciseRepeatedGlobalReferenceLoad(*LoadedData, CacheFile.GetFilename(), GlobalReference, FirstResolvedAddress, SecondResolvedAddress, bCacheClearedAfterLoad)))
 	{
 		return false;
 	}

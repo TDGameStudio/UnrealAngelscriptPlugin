@@ -402,8 +402,8 @@ struct FAngelscriptStaticJIT : public asIJITCompiler
 #if AS_CAN_GENERATE_JIT
 	bool bGenerateOutputCode = false;
 	bool bEmitDebugMetadataInOutput = true;
-#if WITH_DEV_AUTOMATION_TESTS
-	bool bEmitTestEntryMarkersInOutput = false;
+#if AS_WITH_STATIC_JIT_DIAGNOSTICS
+	bool bEmitDiagnosticEntryMarkersInOutput = false;
 #endif
 	bool bAllowDevirtualize = true;
 	bool bAllowComprehensiveJIT = true;
@@ -496,26 +496,26 @@ struct FAngelscriptStaticJIT : public asIJITCompiler
 #endif
 };
 
-#if WITH_DEV_AUTOMATION_TESTS && AS_CAN_GENERATE_JIT
-ANGELSCRIPTRUNTIME_API bool GenerateStaticJITSourceTextForTesting(
+#if AS_WITH_STATIC_JIT_DIAGNOSTICS && AS_CAN_GENERATE_JIT
+ANGELSCRIPTRUNTIME_API bool GenerateStaticJITSourceTextForDiagnostics(
 	class asIScriptModule* Module,
 	FString& OutSourceText,
 	bool bEmitDebugMetadata,
 	FString* OutError = nullptr);
 
-ANGELSCRIPTRUNTIME_API bool GenerateStaticJITFilesForTesting(
+ANGELSCRIPTRUNTIME_API bool GenerateStaticJITFilesForDiagnostics(
 	class asIScriptModule* Module,
 	TMap<FString, FString>& OutGeneratedFiles,
 	bool bEmitDebugMetadata,
-	bool bEmitTestEntryMarkers,
+	bool bEmitDiagnosticEntryMarkers,
 	FString* OutError = nullptr);
 
-ANGELSCRIPTRUNTIME_API bool GenerateStaticJITAotArtifactsForTesting(
+ANGELSCRIPTRUNTIME_API bool GenerateStaticJITAotArtifactsForDiagnostics(
 	class asIScriptModule* Module,
 	const FString& PrecompiledCacheFilename,
 	const FGuid& PrecompiledDataGuid,
 	TMap<FString, FString>& OutGeneratedFiles,
 	bool bEmitDebugMetadata,
-	bool bEmitTestEntryMarkers,
+	bool bEmitDiagnosticEntryMarkers,
 	FString* OutError = nullptr);
 #endif

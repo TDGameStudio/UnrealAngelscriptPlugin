@@ -6,6 +6,7 @@
 #include "StaticJIT/AOT/AngelscriptStaticJITAotFixture.h"
 #include "StaticJIT/AOT/AngelscriptStaticJITAotGeneration.h"
 #include "StaticJIT/AngelscriptStaticJIT.h"
+#include "StaticJIT/StaticJITDiagnostics.h"
 #include "StaticJIT/StaticJITHeader.h"
 
 #include "StartAngelscriptHeaders.h"
@@ -223,12 +224,12 @@ namespace AngelscriptTest_StaticJIT_AOT_Private
 			return false;
 		}
 
-		if (!Test.TestTrue(*FString::Printf(TEXT("StaticJIT.AOT %s should expose a StaticJIT function id"), Label), Engine.GetStaticJITFunctionIdForTesting(Function, OutFunctionId)))
+		if (!Test.TestTrue(*FString::Printf(TEXT("StaticJIT.AOT %s should expose a StaticJIT function id"), Label), FStaticJITDiagnostics::ResolveFunctionId(Engine, Function, OutFunctionId)))
 		{
 			return false;
 		}
 
-		return Test.TestTrue(*FString::Printf(TEXT("StaticJIT.AOT %s should register generated C++"), Label), FStaticJITTestHooks::IsFunctionRegistered(OutFunctionId))
+		return Test.TestTrue(*FString::Printf(TEXT("StaticJIT.AOT %s should register generated C++"), Label), FStaticJITDiagnostics::IsFunctionRegistered(OutFunctionId))
 			&& Test.TestNotNull(*FString::Printf(TEXT("StaticJIT.AOT %s should attach jitFunction"), Label), Function->jitFunction)
 			&& Test.TestNotNull(*FString::Printf(TEXT("StaticJIT.AOT %s should attach jitFunction_Raw"), Label), Function->jitFunction_Raw)
 			&& Test.TestNotNull(*FString::Printf(TEXT("StaticJIT.AOT %s should attach jitFunction_ParmsEntry"), Label), Function->jitFunction_ParmsEntry);
@@ -244,14 +245,14 @@ namespace AngelscriptTest_StaticJIT_AOT_Private
 		}
 
 		FString LoadError;
-		if (!Test.TestTrue(TEXT("StaticJIT.AOT should load fixture precompiled data"), Engine.LoadPrecompiledDataForTesting(AngelscriptStaticJITAotFixture::GetPrecompiledCacheFilename(), &LoadError)))
+		if (!Test.TestTrue(TEXT("StaticJIT.AOT should load fixture precompiled data"), FStaticJITDiagnostics::LoadPrecompiledData(Engine, AngelscriptStaticJITAotFixture::GetPrecompiledCacheFilename(), &LoadError)))
 		{
 			Test.AddError(LoadError);
 			return false;
 		}
 
 		FString CompileError;
-		if (!Test.TestTrue(TEXT("StaticJIT.AOT should compile fixture from precompiled data"), Engine.CompileLoadedPrecompiledDataForTesting(ECompileType::Initial, &CompileError)))
+		if (!Test.TestTrue(TEXT("StaticJIT.AOT should compile fixture from precompiled data"), FStaticJITDiagnostics::CompileLoadedPrecompiledData(Engine, ECompileType::Initial, &CompileError)))
 		{
 			Test.AddError(CompileError);
 			return false;
@@ -300,12 +301,12 @@ bool FAngelscriptStaticJITAotRuntimeRegistrationTest::RunTest(const FString& Par
 	}
 
 	uint32 FunctionId = 0;
-	if (!TestTrue(TEXT("StaticJIT.AOT should map the fixture function to a StaticJIT function id"), Engine.GetStaticJITFunctionIdForTesting(EntryFunction, FunctionId)))
+	if (!TestTrue(TEXT("StaticJIT.AOT should map the fixture function to a StaticJIT function id"), FStaticJITDiagnostics::ResolveFunctionId(Engine, EntryFunction, FunctionId)))
 	{
 		return false;
 	}
 
-	TestTrue(TEXT("StaticJIT.AOT should register generated C++ for the fixture function id"), FStaticJITTestHooks::IsFunctionRegistered(FunctionId));
+	TestTrue(TEXT("StaticJIT.AOT should register generated C++ for the fixture function id"), FStaticJITDiagnostics::IsFunctionRegistered(FunctionId));
 	TestTrue(TEXT("StaticJIT.AOT should attach a non-null jitFunction to the fixture entry function"), EntryFunction->jitFunction != nullptr);
 	return true;
 }
@@ -333,12 +334,12 @@ bool FAngelscriptStaticJITAotRuntimeExecutionTest::RunTest(const FString& Parame
 	}
 
 	uint32 FunctionId = 0;
-	if (!TestTrue(TEXT("StaticJIT.AOT should expose the fixture StaticJIT function id before execution"), Engine.GetStaticJITFunctionIdForTesting(EntryFunction, FunctionId)))
+	if (!TestTrue(TEXT("StaticJIT.AOT should expose the fixture StaticJIT function id before execution"), FStaticJITDiagnostics::ResolveFunctionId(Engine, EntryFunction, FunctionId)))
 	{
 		return false;
 	}
 
-	FStaticJITTestHooks::ResetEntryCounters();
+	FStaticJITDiagnostics::ResetEntryCounters();
 
 	asIScriptContext* Context = Engine.GetScriptEngine()->CreateContext();
 	if (!TestNotNull(TEXT("StaticJIT.AOT should create an execution context"), Context))
@@ -361,7 +362,7 @@ bool FAngelscriptStaticJITAotRuntimeExecutionTest::RunTest(const FString& Parame
 	}
 
 	TestEqual(TEXT("StaticJIT.AOT should return the expected fixture result"), static_cast<int32>(Context->GetReturnDWord()), AngelscriptStaticJITAotFixture::GetExpectedEntryResult());
-	TestEqual(TEXT("StaticJIT.AOT should mark exactly one generated entry execution"), FStaticJITTestHooks::GetEntryCount(FunctionId), 1);
+	TestEqual(TEXT("StaticJIT.AOT should mark exactly one generated entry execution"), FStaticJITDiagnostics::GetEntryCount(FunctionId), 1);
 	return true;
 }
 
@@ -470,7 +471,7 @@ bool FAngelscriptStaticJITAotUASFunctionRuntimeCallEventTest::RunTest(const FStr
 		return false;
 	}
 
-	FStaticJITTestHooks::ResetEntryCounters();
+	FStaticJITDiagnostics::ResetEntryCounters();
 
 	FPrimitiveArgParams PrimitiveArgParams;
 	PrimitiveArgParams.Value = 41;
@@ -481,7 +482,7 @@ bool FAngelscriptStaticJITAotUASFunctionRuntimeCallEventTest::RunTest(const FStr
 		return false;
 	}
 	TestEqual(TEXT("RuntimeCallEvent JIT primitive arg should update object state"), StoredValueProperty->GetPropertyValue_InContainer(Instance), AngelscriptStaticJITAotFixture::GetExpectedPrimitiveArgStoredValue());
-	TestEqual(TEXT("RuntimeCallEvent primitive arg should mark generated JIT entry"), FStaticJITTestHooks::GetEntryCount(StorePrimitiveArgId), 1);
+	TestEqual(TEXT("RuntimeCallEvent primitive arg should mark generated JIT entry"), FStaticJITDiagnostics::GetEntryCount(StorePrimitiveArgId), 1);
 
 	FStructOnScope PrimitiveReturnParams(ReturnPrimitiveFunction);
 	ReturnPrimitiveFunction->RuntimeCallEvent(Instance, PrimitiveReturnParams.GetStructMemory());
@@ -491,14 +492,14 @@ bool FAngelscriptStaticJITAotUASFunctionRuntimeCallEventTest::RunTest(const FStr
 		return false;
 	}
 	TestEqual(TEXT("RuntimeCallEvent JIT primitive return should write reflected return value"), PrimitiveReturnProperty->GetPropertyValue_InContainer(PrimitiveReturnParams.GetStructMemory()), AngelscriptStaticJITAotFixture::GetExpectedPrimitiveReturnValue());
-	TestEqual(TEXT("RuntimeCallEvent primitive return should mark generated JIT entry"), FStaticJITTestHooks::GetEntryCount(ReturnPrimitiveId), 1);
+	TestEqual(TEXT("RuntimeCallEvent primitive return should mark generated JIT entry"), FStaticJITDiagnostics::GetEntryCount(ReturnPrimitiveId), 1);
 
 	FReferenceParams ReferenceParams;
 	ReferenceParams.Value = 13;
 	BumpReferenceFunction->RuntimeCallEvent(Instance, &ReferenceParams);
 	TestEqual(TEXT("RuntimeCallEvent JIT reference arg should write back parameter memory"), ReferenceParams.Value, AngelscriptStaticJITAotFixture::GetExpectedReferenceReturnValue());
 	TestEqual(TEXT("RuntimeCallEvent JIT reference arg should write reflected return value"), ReferenceParams.ReturnValue, AngelscriptStaticJITAotFixture::GetExpectedReferenceReturnValue());
-	TestEqual(TEXT("RuntimeCallEvent reference arg should mark generated JIT entry"), FStaticJITTestHooks::GetEntryCount(BumpReferenceId), 1);
+	TestEqual(TEXT("RuntimeCallEvent reference arg should mark generated JIT entry"), FStaticJITDiagnostics::GetEntryCount(BumpReferenceId), 1);
 
 	FStructOnScope ObjectReturnParams(ReturnSelfObjectFunction);
 	ReturnSelfObjectFunction->RuntimeCallEvent(Instance, ObjectReturnParams.GetStructMemory());
@@ -508,7 +509,7 @@ bool FAngelscriptStaticJITAotUASFunctionRuntimeCallEventTest::RunTest(const FStr
 		return false;
 	}
 	TestTrue(TEXT("RuntimeCallEvent JIT object return should preserve object identity"), ObjectReturnProperty->GetObjectPropertyValue_InContainer(ObjectReturnParams.GetStructMemory()) == Instance);
-	TestEqual(TEXT("RuntimeCallEvent object return should mark generated JIT entry"), FStaticJITTestHooks::GetEntryCount(ReturnSelfObjectId), 1);
+	TestEqual(TEXT("RuntimeCallEvent object return should mark generated JIT entry"), FStaticJITDiagnostics::GetEntryCount(ReturnSelfObjectId), 1);
 
 	return true;
 }
@@ -558,7 +559,7 @@ bool FAngelscriptStaticJITAotStaticWorldContextRuntimeCallEventTest::RunTest(con
 		return false;
 	}
 
-	FStaticJITTestHooks::ResetEntryCounters();
+	FStaticJITDiagnostics::ResetEntryCounters();
 
 	UObject* WorldContextObject = NewObject<UObject>(GetTransientPackage(), GeneratedClass, TEXT("StaticJITAotWorldContextObject"));
 	if (!TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should instantiate a concrete world-context object"), WorldContextObject))
@@ -572,7 +573,7 @@ bool FAngelscriptStaticJITAotStaticWorldContextRuntimeCallEventTest::RunTest(con
 	StaticWorldContextFunction->RuntimeCallEvent(StaticsClass->GetDefaultObject(), &Params);
 
 	TestEqual(TEXT("RuntimeCallEvent JIT static world-context should preserve script result"), Params.ReturnValue, AngelscriptStaticJITAotFixture::GetExpectedStaticWorldContextResult());
-	TestEqual(TEXT("RuntimeCallEvent static world-context should mark generated JIT entry"), FStaticJITTestHooks::GetEntryCount(StaticWorldContextId), 1);
+	TestEqual(TEXT("RuntimeCallEvent static world-context should mark generated JIT entry"), FStaticJITDiagnostics::GetEntryCount(StaticWorldContextId), 1);
 	return true;
 }
 
@@ -601,12 +602,12 @@ bool FAngelscriptStaticJITAotMultiEngineSequentialLoadTest::RunTest(const FStrin
 		}
 
 		uint32 FunctionId = 0;
-		if (!TestTrue(*FString::Printf(TEXT("StaticJIT.AOT multi-engine pass %d should expose the fixture function id"), Index), Engine.GetStaticJITFunctionIdForTesting(EntryFunction, FunctionId)))
+		if (!TestTrue(*FString::Printf(TEXT("StaticJIT.AOT multi-engine pass %d should expose the fixture function id"), Index), FStaticJITDiagnostics::ResolveFunctionId(Engine, EntryFunction, FunctionId)))
 		{
 			return false;
 		}
 
-		if (!TestTrue(*FString::Printf(TEXT("StaticJIT.AOT multi-engine pass %d should keep generated registry visible"), Index), FStaticJITTestHooks::IsFunctionRegistered(FunctionId)))
+		if (!TestTrue(*FString::Printf(TEXT("StaticJIT.AOT multi-engine pass %d should keep generated registry visible"), Index), FStaticJITDiagnostics::IsFunctionRegistered(FunctionId)))
 		{
 			return false;
 		}

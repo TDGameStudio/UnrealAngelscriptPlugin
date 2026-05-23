@@ -101,15 +101,12 @@ struct ANGELSCRIPTRUNTIME_API FStaticJITFunction
 
 struct FAngelscriptPrecompiledData;
 
-#if WITH_DEV_AUTOMATION_TESTS
-struct ANGELSCRIPTRUNTIME_API FStaticJITTestHooks
+#if AS_WITH_STATIC_JIT_DIAGNOSTICS
+struct FStaticJITDiagnostics;
+
+struct ANGELSCRIPTRUNTIME_API FStaticJITDiagnosticEntryMarkers
 {
-	static void ResetEntryCounters();
 	static void MarkEntry(uint32 FunctionId);
-	static int32 GetEntryCount(uint32 FunctionId);
-	static bool IsFunctionRegistered(uint32 FunctionId);
-	static bool ReferenceGlobalVariableTwice(FAngelscriptPrecompiledData& Data, void* GlobalPtr, int64& OutFirstReference, int64& OutReusedReference, FString& OutFirstName, FString& OutReusedName);
-	static bool ExerciseRepeatedGlobalReferenceLoad(FAngelscriptPrecompiledData& Data, const FString& CacheFilename, int64 GlobalReference, void*& OutFirstResolvedAddress, void*& OutSecondResolvedAddress, bool& bOutCacheClearedAfterLoad);
 };
 #endif
 

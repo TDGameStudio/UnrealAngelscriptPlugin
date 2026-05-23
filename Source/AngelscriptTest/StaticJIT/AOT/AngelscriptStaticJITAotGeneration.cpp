@@ -53,13 +53,13 @@ namespace AngelscriptStaticJITAotGeneration
 			}
 
 			FString GenerationError;
-			if (!GenerateStaticJITAotArtifactsForTesting(
+			if (!GenerateStaticJITAotArtifactsForDiagnostics(
 				ModuleDesc->ScriptModule,
 				CacheFilename,
 				AngelscriptStaticJITAotFixture::GetPrecompiledDataGuid(),
 				OutGeneratedFiles,
 				/*bEmitDebugMetadata=*/true,
-				/*bEmitTestEntryMarkers=*/true,
+				/*bEmitDiagnosticEntryMarkers=*/true,
 				&GenerationError))
 			{
 				Result.Error = GenerationError;

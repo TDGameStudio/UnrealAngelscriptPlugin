@@ -567,7 +567,7 @@ namespace AngelscriptTestSupport
 		}
 
 		FAngelscriptEngineScope EngineScope(*Engine);
-		return GenerateStaticJITSourceTextForTesting(ModuleDesc->ScriptModule, OutSourceText, bEmitDebugMetadata, OutError);
+		return GenerateStaticJITSourceTextForDiagnostics(ModuleDesc->ScriptModule, OutSourceText, bEmitDebugMetadata, OutError);
 #else
 		if (OutError != nullptr)
 		{
