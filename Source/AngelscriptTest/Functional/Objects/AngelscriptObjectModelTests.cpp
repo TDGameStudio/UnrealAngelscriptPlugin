@@ -99,7 +99,16 @@ bool FAngelscriptObjectBasicTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestTrue(TEXT("Objects.Basic currently verifies compile and symbol registration only because executing script-object methods still faults at runtime on this branch"), true);
+
+	if (!ExecuteIntFunctionExpectingScriptException(
+		*this,
+		Engine,
+		*Function,
+		TEXT("Objects.Basic"),
+		TEXT("Null pointer access")))
+	{
+		return false;
+	}
 	}
 
 	return true;
@@ -203,7 +212,16 @@ bool FAngelscriptObjectCompositionTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestTrue(TEXT("Objects.Composition currently verifies compile and symbol registration only because nested script-object execution still faults at runtime on this branch"), true);
+
+	if (!ExecuteIntFunctionExpectingScriptException(
+		*this,
+		Engine,
+		*Function,
+		TEXT("Objects.Composition"),
+		TEXT("Null pointer access")))
+	{
+		return false;
+	}
 	}
 
 	return true;
@@ -216,7 +234,27 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FAngelscriptObjectSingletonTest::RunTest(const FString& Parameters)
 {
-	TestTrue(TEXT("Singleton-style global class variables remain a known unsupported branch constraint"), true);
+	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+
+	ECompileResult CompileResult = ECompileResult::FullyHandled;
+	UE_SET_LOG_VERBOSITY(Angelscript, Fatal);
+	const bool bCompiled = CompileModuleWithResult(
+		&Engine,
+		ECompileType::SoftReloadOnly,
+		TEXT("ASObjectSingletonBoundary"),
+		TEXT("ASObjectSingletonBoundary.as"),
+		TEXT("class SingletonCarrier { int Value; } SingletonCarrier GlobalInstance; int Run() { return 1; }"),
+		CompileResult);
+	UE_SET_LOG_VERBOSITY(Angelscript, Log);
+	if (!TestFalse(TEXT("Objects.Singleton should reject mutable global class variables on this branch"), bCompiled))
+	{
+		return false;
+	}
+
+	TestEqual(TEXT("Objects.Singleton should surface the mutable-global compile error"), CompileResult, ECompileResult::Error);
+	}
+
 	return true;
 }
 

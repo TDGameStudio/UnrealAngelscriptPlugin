@@ -162,12 +162,6 @@ int MemReader_ReadAnsiString()
 
 	TEST_METHOD(OutOfBoundsSkip)
 	{
-		// TODO(binding-gap): Null pointer access at runtime in headless mode — FMemoryReader::Skip bounds check
-		TestRunner->AddInfo(TEXT("MemoryReader OutOfBoundsSkip causes null pointer access in headless mode, skipping"));
-		return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
-
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
@@ -187,12 +181,12 @@ void MemReader_TriggerInvalidSkip()
 
 		TestRunner->AddExpectedError(TEXT("Skipping past array bounds"), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(*Mod.GetModuleName(), EAutomationExpectedErrorFlags::Contains, 0);
+		TestRunner->AddExpectedError(TEXT("void MemReader_TriggerInvalidSkip()"), EAutomationExpectedErrorFlags::Contains, 0, false);
 
 		ExecuteFunctionExpectingScriptException(*TestRunner, Engine, M, GMemoryReaderProfile,
 			TEXT("void MemReader_TriggerInvalidSkip()"),
 			TEXT("out-of-bounds skip should surface a runtime exception"),
 			TEXT("Skipping past array bounds"));
-#endif
 	}
 };
 

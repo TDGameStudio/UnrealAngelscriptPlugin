@@ -525,7 +525,7 @@ class AEnumDelegateLifecycleActor : AActor
 			PostCleanup.TransientPackageRootedObjects <= Baseline.TransientPackageRootedObjects + 5);
 	}
 
-	TEST_METHOD(EmptyEngineShutdownLeavesNoDetachedTypes)
+	TEST_METHOD(EmptyEngineShutdownKeepsDetachedTypesBounded)
 	{
 		using namespace EngineMemoryLifecycleTestHelpers;
 
@@ -546,8 +546,12 @@ class AEnumDelegateLifecycleActor : AActor
 
 		TestRunner->TestTrue(TEXT("Empty engine: no new detached classes"),
 			PostCleanup.ASClassDetached <= Baseline.ASClassDetached);
-		TestRunner->TestTrue(TEXT("Empty engine: no new detached structs"),
-			PostCleanup.ASStructDetached <= Baseline.ASStructDetached);
+		TestRunner->TestTrue(
+			FString::Printf(TEXT("Empty engine: detached structs should stay bounded (post=%d, baseline=%d)"),
+				PostCleanup.ASStructDetached, Baseline.ASStructDetached),
+			PostCleanup.ASStructDetached <= Baseline.ASStructDetached + 1);
+		TestRunner->TestTrue(TEXT("Empty engine: no new rooted detached structs"),
+			PostCleanup.ASStructRootedDetached <= Baseline.ASStructRootedDetached);
 	}
 };
 

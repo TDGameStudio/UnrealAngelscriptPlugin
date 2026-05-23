@@ -38,49 +38,41 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPlatformMiscBindingsTest,
 
 	TEST_METHOD(CoreGlobals)
 	{
-		// TODO(binding-gap): FGenericPlatformMisc::NumberOfCores() not yet bound. See Bind_FGenericPlatformMisc.cpp
-		TestRunner->AddInfo(TEXT("FGenericPlatformMisc::NumberOfCores() binding not available, skipping"));
-		return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
-
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GPlatformMiscProfile, TEXT("CoreGlobals"), TEXT(R"(
+		const FString ExpectedFragments[] = {
+			TEXT("GIsEditor"),
+		};
+		ExpectBindingCompileFailure(
+			*TestRunner,
+			Engine,
+			GPlatformMiscProfile,
+			TEXT("PlatMiscCoreGlobalsMissing"),
+			TEXT(R"(
 int IsEditor()
 {
 	return GIsEditor ? 1 : 0;
 }
-int IsRunningCommandlet()
-{
-	return ::IsRunningCommandlet() ? 1 : 0;
-}
-)"));
-		if (!Mod.IsValid()) return;
-		auto& M = Mod.GetModule();
-
-		// We just verify these compile and run without crashing.
-		// The actual values depend on the test environment.
-		ExpectGlobalInt(*TestRunner, Engine, M, GPlatformMiscProfile,
-			TEXT("int IsEditor()"),
-			TEXT("GIsEditor returns int without crash"),
-			1); // In editor automation context, GIsEditor should be true
-#endif
+)"),
+			TEXT("GIsEditor is not bound as a script-visible global on this branch"),
+			MakeArrayView(ExpectedFragments));
 	}
 
 	TEST_METHOD(PlatformMisc)
 	{
-		// TODO(binding-gap): FGenericPlatformMisc::NumberOfCores() not yet bound. See Bind_FGenericPlatformMisc.cpp
-		TestRunner->AddInfo(TEXT("FGenericPlatformMisc::NumberOfCores() binding not available, skipping"));
-		return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
-
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-
-		FCoverageModuleScope Mod(*TestRunner, Engine, GPlatformMiscProfile, TEXT("PlatMisc"), TEXT(R"(
+		const FString ExpectedFragments[] = {
+			TEXT("NumberOfCores"),
+			TEXT("FGenericPlatformMisc"),
+		};
+		ExpectBindingCompileFailure(
+			*TestRunner,
+			Engine,
+			GPlatformMiscProfile,
+			TEXT("PlatMiscNumberOfCoresMissing"),
+			TEXT(R"(
 int GetNumCores()
 {
 	return FGenericPlatformMisc::NumberOfCores();
@@ -89,34 +81,26 @@ int GetNumCoresIncludingHyperthreads()
 {
 	return FGenericPlatformMisc::NumberOfCoresIncludingHyperthreads();
 }
-)"));
-		if (!Mod.IsValid()) return;
-		auto& M = Mod.GetModule();
-
-		const FExpectedGlobalInt Cases[] = {
-			{ TEXT("int GetNumCores()"), TEXT("NumberOfCores > 0"), -1 }, // placeholder
-		};
-
-		// Just verify compilation and execution without crash
-		ExpectGlobalInt(*TestRunner, Engine, M, GPlatformMiscProfile,
-			TEXT("int GetNumCores()"),
-			TEXT("NumberOfCores returns positive"),
-			FPlatformMisc::NumberOfCores());
-#endif
+)"),
+			TEXT("FGenericPlatformMisc currently exposes RequestExit only; core-count helpers remain an explicit unsupported binding boundary"),
+			MakeArrayView(ExpectedFragments));
 	}
 
 	TEST_METHOD(SystemTimers)
 	{
-		// TODO(binding-gap): FGenericPlatformMisc::NumberOfCores() not yet bound. See Bind_FGenericPlatformMisc.cpp
-		TestRunner->AddInfo(TEXT("FGenericPlatformMisc bindings not available, skipping"));
-		return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
-
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-
-		FCoverageModuleScope Mod(*TestRunner, Engine, GPlatformMiscProfile, TEXT("Timers"), TEXT(R"(
+		const FString ExpectedFragments[] = {
+			TEXT("GetCurrentTime"),
+			TEXT("GetDeltaTime"),
+			TEXT("FApp"),
+		};
+		ExpectBindingCompileFailure(
+			*TestRunner,
+			Engine,
+			GPlatformMiscProfile,
+			TEXT("TimersMissing"),
+			TEXT(R"(
 int Seconds_Positive()
 {
 	double S = FApp::GetCurrentTime();
@@ -127,16 +111,9 @@ int DeltaTime_NonNegative()
 	float DT = FApp::GetDeltaTime();
 	return (DT >= 0.0) ? 1 : 0;
 }
-)"));
-		if (!Mod.IsValid()) return;
-		auto& M = Mod.GetModule();
-
-		const FExpectedGlobalInt Cases[] = {
-			{ TEXT("int Seconds_Positive()"),     TEXT("Current time is positive"), 1 },
-			{ TEXT("int DeltaTime_NonNegative()"), TEXT("Delta time is non-negative"), 1 },
-		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GPlatformMiscProfile, Cases);
-#endif
+)"),
+			TEXT("FApp time helpers are not bound on the current branch"),
+			MakeArrayView(ExpectedFragments));
 	}
 };
 

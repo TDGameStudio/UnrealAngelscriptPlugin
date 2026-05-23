@@ -1538,11 +1538,6 @@ int Concat_IntZero()
 
 	TEST_METHOD(FormatString)
 	{
-		// TODO(binding-gap): FString::Format passes FString to FText::Format which now requires FText in UE 5.7
-		TestRunner->AddInfo(TEXT("FString::Format binding incompatible with UE 5.7 FText::Format, skipping"));
-		return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
@@ -1757,7 +1752,6 @@ FString Format_Ret_FloatPrecision()
 			{
 				return T.TestTrue(TEXT("contains pi~3.14"), V.Contains(TEXT("pi~3.14")));
 			});
-#endif
 	}
 
 	// ====================================================================
@@ -2345,11 +2339,6 @@ FString ApplyFmt_Ret_NegSignPlus()
 
 	TEST_METHOD(Logging)
 	{
-		// TODO(binding-gap): Log/Warning functions use FString::Format which is incompatible with UE 5.7 FText::Format
-		TestRunner->AddInfo(TEXT("Logging test depends on FString::Format binding, skipping"));
-		return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
@@ -2415,7 +2404,6 @@ int Log_Format()
 			{ TEXT("int Log_Format()"),           TEXT("Log with FString::Format integration"),     1 },
 		};
 		ExpectGlobalInts(*TestRunner, Engine, M, GFStringProfile, Cases);
-#endif
 	}
 
 	// ====================================================================
@@ -2430,11 +2418,6 @@ int Log_Format()
 
 	TEST_METHOD(ReturnFString)
 	{
-		// TODO(binding-gap): ReturnFString uses FString::Format which is incompatible with UE 5.7 FText::Format
-		TestRunner->AddInfo(TEXT("ReturnFString test depends on FString::Format binding, skipping"));
-		return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
@@ -2593,7 +2576,6 @@ FString Ret_AppendChain()
 		ExpectStr(TEXT("FString Ret_AppendChain()"),
 			TEXT("Append chain returned to C++"),
 			TEXT("ABC"));
-#endif
 	}
 
 	// ====================================================================

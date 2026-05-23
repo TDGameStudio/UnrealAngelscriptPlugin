@@ -136,7 +136,20 @@ bool FAngelscriptHandleImplicitTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestTrue(TEXT("Handles.Implicit currently verifies compile and symbol registration only because executing implicit script-class parameter passing still faults at runtime on this branch"), true);
+
+	// This branch still faults when a script-class parameter is passed by value,
+	// so keep the unsupported runtime path explicit instead of implying success.
+	if (!ExecuteIntFunctionExpectingScriptException(
+		*this,
+		Engine,
+		*Function,
+		TEXT("Handles.Implicit"),
+		TEXT("Null pointer access"),
+		TEXT("void SetValue(HandleImplicitObject)"),
+		TEXT("int Test()")))
+	{
+		return false;
+	}
 	}
 
 	return true;

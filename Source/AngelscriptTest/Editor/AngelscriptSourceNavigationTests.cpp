@@ -151,7 +151,7 @@ bool FAngelscriptSourceNavigationVSCodeParametersTest::RunTest(const FString& Pa
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FAngelscriptSourceNavigationStoredLocationTest,
 	"Angelscript.TestModule.Editor.SourceNavigation.NavigateToFunctionUsesStoredSourceLocation",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter | EAutomationTestFlags::Disabled) // TODO(#ue57-headless): Property navigation source metadata not populated in headless mode; shares root cause with SourceNavigation.Functions
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter | EAutomationTestFlags::Disabled) // DISABLED(#ue57-headless): property navigation source metadata is not populated in headless mode; shares root cause with SourceNavigation.Functions
 
 bool FAngelscriptSourceNavigationStoredLocationTest::RunTest(const FString& Parameters)
 {

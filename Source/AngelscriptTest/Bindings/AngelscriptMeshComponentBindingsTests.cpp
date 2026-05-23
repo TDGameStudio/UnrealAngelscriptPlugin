@@ -9,6 +9,8 @@
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
+#include "GameFramework/ProjectileMovementComponent.h"
+
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace AngelscriptTestSupport;
@@ -27,29 +29,45 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMeshComponentBindingsTest,
 
 	TEST_METHOD(ProjectileMovement)
 	{
-		// TODO(binding-gap): UProjectileMovementComponent instantiation causes null pointer access in headless mode
-		TestRunner->AddInfo(TEXT("UProjectileMovementComponent not available in headless mode, skipping"));
-		return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
-
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		FCoverageModuleScope Mod(*TestRunner, Engine, GMeshCompProfile, TEXT("Projectile"), TEXT(R"(
-int Projectile_DefaultSpeed()
+int Projectile_HomingTargetRoundTrip(UProjectileMovementComponent Comp, USceneComponent Target)
 {
-	UProjectileMovementComponent Comp;
-	return (Comp.InitialSpeed == 0.0) ? 1 : 0;
+	if (Comp == nullptr) return 0;
+	if (Target == nullptr) return 0;
+	Comp.SetHomingTargetComponent(Target);
+	const USceneComponent Current = Comp.GetHomingTargetComponent();
+	return (Current == Target) ? 1 : 0;
 }
 )"));
 		if (!Mod.IsValid())
 		{
-			TestRunner->AddInfo(TEXT("UProjectileMovementComponent not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GMeshCompProfile,
-			TEXT("int Projectile_DefaultSpeed()"), TEXT("Default initial speed is 0"), 1);
-#endif
+
+		UProjectileMovementComponent* Movement = NewObject<UProjectileMovementComponent>();
+		USceneComponent* Target = NewObject<USceneComponent>();
+		if (!TestRunner->TestNotNull(TEXT("Projectile movement component should be constructible from C++ in headless automation"), Movement)
+			|| !TestRunner->TestNotNull(TEXT("Scene component target should be constructible from C++ in headless automation"), Target))
+		{
+			return;
+		}
+
+		AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Invoker(
+			*TestRunner,
+			Engine,
+			Mod.GetModule(),
+			TEXT("int Projectile_HomingTargetRoundTrip(UProjectileMovementComponent, USceneComponent)"));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
+		Invoker.AddArgObject(Movement).AddArgObject(Target);
+		TestRunner->TestEqual(
+			TEXT("UProjectileMovementComponent homing target binding should round-trip a C++-constructed component"),
+			Invoker.CallAndReturn<int32>(INDEX_NONE),
+			1);
 	}
 
 	TEST_METHOD(SkeletalMeshTypeCheck)
@@ -62,14 +80,11 @@ int Skeletal_TypeExists()
 	USkeletalMeshComponent Comp;
 	return 1;
 }
-)"));
+		)"));
 		if (!Mod.IsValid())
 		{
-			TestRunner->AddInfo(TEXT("USkeletalMeshComponent not available, skipping"));
+			TestRunner->TestTrue(TEXT("USkeletalMeshComponent type binding module should compile"), false);
 			return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
-#endif
 		}
 		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GMeshCompProfile,
 			TEXT("int Skeletal_TypeExists()"), TEXT("USkeletalMeshComponent compiles"), 1);
@@ -90,10 +105,10 @@ int Skeletal_SetAndGetAssetEntry()
 {
 	return 1;
 }
-)"));
+		)"));
 		if (!Mod.IsValid())
 		{
-			TestRunner->AddInfo(TEXT("USkeletalMeshComponent asset accessors not available, skipping"));
+			TestRunner->TestTrue(TEXT("USkeletalMeshComponent asset accessor binding module should compile"), false);
 			return;
 		}
 		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GMeshCompProfile,

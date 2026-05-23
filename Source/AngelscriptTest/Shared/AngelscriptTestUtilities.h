@@ -900,6 +900,82 @@ namespace AngelscriptTestSupport
 		return PrepareResult == asSUCCESS && ExecuteResult == asEXECUTION_FINISHED;
 	}
 
+	inline bool ExecuteIntFunctionExpectingScriptException(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		asIScriptFunction& Function,
+		const TCHAR* ContextLabel,
+		const TCHAR* ExpectedExceptionContains,
+		const TCHAR* ExpectedStackFrameContains = nullptr,
+		const TCHAR* ExpectedOuterStackFrameContains = nullptr)
+	{
+		if (const ANSICHAR* ModuleNameAnsi = Function.GetModuleName())
+		{
+			if (ModuleNameAnsi[0] != '\0')
+			{
+				Test.AddExpectedErrorPlain(UTF8_TO_TCHAR(ModuleNameAnsi), EAutomationExpectedErrorFlags::Contains, 0);
+			}
+		}
+
+		if (ExpectedStackFrameContains != nullptr && ExpectedStackFrameContains[0] != TEXT('\0'))
+		{
+			Test.AddExpectedErrorPlain(ExpectedStackFrameContains, EAutomationExpectedErrorFlags::Contains, 0);
+		}
+		else if (const ANSICHAR* DeclarationAnsi = Function.GetDeclaration(true, false, false, true))
+		{
+			if (DeclarationAnsi[0] != '\0')
+			{
+				Test.AddExpectedErrorPlain(
+					FString::Printf(TEXT("%s | Line"), UTF8_TO_TCHAR(DeclarationAnsi)),
+					EAutomationExpectedErrorFlags::Contains,
+					0);
+			}
+		}
+
+		if (ExpectedOuterStackFrameContains != nullptr && ExpectedOuterStackFrameContains[0] != TEXT('\0'))
+		{
+			Test.AddExpectedErrorPlain(ExpectedOuterStackFrameContains, EAutomationExpectedErrorFlags::Contains, 0);
+		}
+
+		Test.AddExpectedError(ExpectedExceptionContains, EAutomationExpectedErrorFlags::Contains, 0);
+
+		FAngelscriptEngineScope EngineScope(Engine);
+		asIScriptContext* Context = Engine.CreateContext();
+		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create execution context"), ContextLabel), Context))
+		{
+			return false;
+		}
+		ON_SCOPE_EXIT { Context->Release(); };
+
+		const int PrepareResult = Context->Prepare(&Function);
+		if (!Test.TestEqual(*FString::Printf(TEXT("%s should prepare successfully"), ContextLabel), PrepareResult, static_cast<int32>(asSUCCESS)))
+		{
+			return false;
+		}
+
+		const int ExecuteResult = Context->Execute();
+		const char* ExceptionStringAnsi = Context->GetExceptionString();
+		const FString ExceptionString = UTF8_TO_TCHAR(ExceptionStringAnsi != nullptr ? ExceptionStringAnsi : "");
+		const int32 ExceptionLine = Context->GetExceptionLineNumber();
+
+		bool bPassed = true;
+		bPassed &= Test.TestEqual(
+			*FString::Printf(TEXT("%s should raise asEXECUTION_EXCEPTION"), ContextLabel),
+			ExecuteResult,
+			static_cast<int32>(asEXECUTION_EXCEPTION));
+		bPassed &= Test.TestFalse(
+			*FString::Printf(TEXT("%s should expose a non-empty exception string"), ContextLabel),
+			ExceptionString.IsEmpty());
+		bPassed &= Test.TestTrue(
+			*FString::Printf(TEXT("%s exception '%s' should contain '%s'"), ContextLabel, *ExceptionString, ExpectedExceptionContains),
+			ExceptionString.Contains(ExpectedExceptionContains));
+		bPassed &= Test.TestTrue(
+			*FString::Printf(TEXT("%s should report a positive exception line (got=%d)"), ContextLabel, ExceptionLine),
+			ExceptionLine > 0);
+
+		return bPassed;
+	}
+
 	inline bool ExecuteInt64Function(FAutomationTestBase& Test, FAngelscriptEngine& Engine, asIScriptFunction& Function, int64& OutValue)
 	{
 		FAngelscriptEngineScope EngineScope(Engine);

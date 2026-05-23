@@ -7,6 +7,7 @@
 
 #include "AngelscriptBindingsCoverage.h"
 #include "AngelscriptGlobalFunctionInvoker.h"
+#include "AngelscriptTestEngineHelper.h"
 
 #include "StartAngelscriptHeaders.h"
 #include "source/as_context.h"
@@ -50,6 +51,84 @@ namespace AngelscriptTestBindings
 			Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
 			return true;
 		}
+	}
+
+	/**
+	 * Compile-negative binding contract. Use this when a binding surface is
+	 * intentionally not available on the current branch: the test still runs,
+	 * proves the script fails to compile, and records the missing symbol or
+	 * unsupported API in the compile diagnostics.
+	 */
+	inline bool ExpectBindingCompileFailure(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		const FBindingsCoverageProfile& Profile,
+		const TCHAR* SectionName,
+		const TCHAR* Source,
+		const TCHAR* CaseLabel,
+		TArrayView<const FString> ExpectedDiagnosticFragments)
+	{
+		Detail::TraceCase(Test, Profile, CaseLabel);
+
+		AngelscriptTestSupport::FAngelscriptCompileTraceSummary Summary;
+		const FString ModuleName = MakeCoverageModuleName(Profile, SectionName);
+		const FString Filename = FString::Printf(TEXT("%s.as"), *ModuleName);
+		AngelscriptTestSupport::CompileModuleWithSummary(
+			&Engine,
+			ECompileType::FullReload,
+			FName(*ModuleName),
+			Filename,
+			FString(Source),
+			true,
+			Summary,
+			true);
+
+		bool bPassed = true;
+		bPassed &= Test.TestFalse(
+			*FString::Printf(TEXT("%s should fail to compile as an explicit binding boundary"), *FormatCaseLabel(Profile, CaseLabel)),
+			Summary.bCompileSucceeded);
+		bPassed &= Test.TestEqual(
+			*FString::Printf(TEXT("%s compile result should be Error"), *FormatCaseLabel(Profile, CaseLabel)),
+			Summary.CompileResult,
+			ECompileResult::Error);
+
+		for (const FString& ExpectedFragment : ExpectedDiagnosticFragments)
+		{
+			bool bFoundFragment = false;
+			for (const AngelscriptTestSupport::FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
+			{
+				if (Diagnostic.bIsError && Diagnostic.Message.Contains(ExpectedFragment))
+				{
+					bFoundFragment = true;
+					break;
+				}
+			}
+
+			bPassed &= Test.TestTrue(
+				*FString::Printf(TEXT("%s diagnostics should contain '%s'"),
+					*FormatCaseLabel(Profile, CaseLabel),
+					*ExpectedFragment),
+				bFoundFragment);
+		}
+
+		if (!bPassed || Summary.Diagnostics.Num() == 0)
+		{
+			Test.AddInfo(FString::Printf(TEXT("%s compile diagnostics: %d"),
+				*FormatCaseLabel(Profile, CaseLabel),
+				Summary.Diagnostics.Num()));
+			for (const AngelscriptTestSupport::FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
+			{
+				Test.AddInfo(FString::Printf(
+					TEXT("  %s Row%d:Col%d %s"),
+					Diagnostic.bIsError ? TEXT("ERROR") : (Diagnostic.bIsInfo ? TEXT("INFO") : TEXT("WARN")),
+					Diagnostic.Row,
+					Diagnostic.Column,
+					*Diagnostic.Message));
+			}
+		}
+
+		Engine.DiscardModule(*ModuleName);
+		return bPassed;
 	}
 
 	/**

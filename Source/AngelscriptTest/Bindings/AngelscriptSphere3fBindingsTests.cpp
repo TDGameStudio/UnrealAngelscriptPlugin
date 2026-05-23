@@ -76,24 +76,18 @@ int Sphere_IsInsideFalse()
 
 	TEST_METHOD(FPlaneBasics)
 	{
-		// TODO(binding-gap): FPlane(FVector, float) constructor not yet bound. See Bind_FPlane.cpp
-		TestRunner->AddInfo(TEXT("FPlane(FVector, float) constructor binding not available, skipping"));
-		return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
-
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		FCoverageModuleScope Mod(*TestRunner, Engine, GSphere3fProfile, TEXT("Plane"), TEXT(R"(
 int Plane_NormalPreserved()
 {
-	FPlane P = FPlane(FVector(0,0,1), 5.0);
+	FPlane P = FPlane(FVector(0,0,5), FVector(0,0,1));
 	return (P.X == 0.0 && P.Y == 0.0 && P.Z == 1.0) ? 1 : 0;
 }
 int Plane_WPreserved()
 {
-	FPlane P = FPlane(FVector(0,0,1), 5.0);
+	FPlane P = FPlane(FVector(0,0,5), FVector(0,0,1));
 	return (P.W == 5.0) ? 1 : 0;
 }
 )"));
@@ -101,11 +95,10 @@ int Plane_WPreserved()
 		auto& M = Mod.GetModule();
 
 		const FExpectedGlobalInt Cases[] = {
-			{ TEXT("int Plane_NormalPreserved()"), TEXT("Plane normal preserved"), 1 },
-			{ TEXT("int Plane_WPreserved()"),      TEXT("Plane W preserved"), 1 },
+			{ TEXT("int Plane_NormalPreserved()"), TEXT("Plane point+normal constructor preserves normal"), 1 },
+			{ TEXT("int Plane_WPreserved()"),      TEXT("Plane point+normal constructor computes W"), 1 },
 		};
 		ExpectGlobalInts(*TestRunner, Engine, M, GSphere3fProfile, Cases);
-#endif
 	}
 };
 

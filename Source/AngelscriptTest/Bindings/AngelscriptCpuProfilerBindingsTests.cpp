@@ -38,19 +38,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCpuProfilerBindingsTest,
 
 	TEST_METHOD(ScopedUsage)
 	{
-		// TODO(binding-gap): FCpuProfilerTraceScoped(FString) constructor not yet bound. See Bind_FCpuProfilerTraceScoped.cpp
-		TestRunner->AddInfo(TEXT("FCpuProfilerTraceScoped(FString) binding not available, skipping"));
-		return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
-
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		FCoverageModuleScope Mod(*TestRunner, Engine, GCpuProfilerProfile, TEXT("Scoped"), TEXT(R"(
 int ProfilerScope_CompileAndRun()
 {
-	FCpuProfilerTraceScoped Scope("TestScope");
+	FCpuProfilerTraceScoped Scope(n"TestScope");
 	int Sum = 0;
 	for (int I = 0; I < 10; I++)
 		Sum += I;
@@ -62,9 +56,8 @@ int ProfilerScope_CompileAndRun()
 
 		ExpectGlobalInt(*TestRunner, Engine, M, GCpuProfilerProfile,
 			TEXT("int ProfilerScope_CompileAndRun()"),
-			TEXT("FCpuProfilerTraceScoped compiles and executes"),
+			TEXT("FCpuProfilerTraceScoped FName constructor compiles and executes"),
 			45); // sum 0..9
-#endif
 	}
 };
 

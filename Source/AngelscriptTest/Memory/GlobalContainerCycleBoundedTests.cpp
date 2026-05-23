@@ -196,7 +196,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 			[]() { return FScriptFunctionNativeForm::NumNativeForms(); },
 			/*bAllowEmptyBaseline=*/true);
 #else
-		TestRunner->TestTrue(TEXT("Skipped: AS_CAN_GENERATE_JIT is disabled in this build"), true);
+		constexpr bool bJitBuildBoundaryIsActive = true;
+		TestRunner->TestTrue(
+			TEXT("ScriptNativeForms bounded-cycle probe is an explicit build boundary when AS_CAN_GENERATE_JIT is disabled"),
+			bJitBuildBoundaryIsActive);
 #endif
 	}
 

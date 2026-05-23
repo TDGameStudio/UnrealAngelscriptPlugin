@@ -35,13 +35,9 @@ int Paths_ProjectDirNonEmpty()
 	return Dir.Len() > 0 ? 1 : 0;
 }
 )"));
-		if (!Mod.IsValid())
+		if (!TestRunner->TestTrue(TEXT("FPaths::ProjectDir binding module should compile"), Mod.IsValid()))
 		{
-			TestRunner->AddInfo(TEXT("FPaths not available, skipping"));
 			return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
-#endif
 		}
 		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GPathsProfile,
 			TEXT("int Paths_ProjectDirNonEmpty()"),
@@ -59,13 +55,9 @@ int Paths_GetExtensionLen()
 	return Ext.Len();
 }
 )"));
-		if (!Mod.IsValid())
+		if (!TestRunner->TestTrue(TEXT("FPaths::GetExtension binding module should compile"), Mod.IsValid()))
 		{
-			TestRunner->AddInfo(TEXT("FPaths::GetExtension not available, skipping"));
 			return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
-#endif
 		}
 		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GPathsProfile,
 			TEXT("int Paths_GetExtensionLen()"),
@@ -74,30 +66,43 @@ int Paths_GetExtensionLen()
 
 	TEST_METHOD(FAppGetName)
 	{
-		// TODO(binding-gap): FApp::GetName() not yet bound. See Bind_FApp.cpp
-		TestRunner->AddInfo(TEXT("FApp::GetName() binding not available, skipping"));
-		return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
-
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GPathsProfile, TEXT("AppName"), TEXT(R"(
+		const FString ExpectedFragments[] = {
+			TEXT("GetName"),
+			TEXT("FApp"),
+		};
+		ExpectBindingCompileFailure(
+			*TestRunner,
+			Engine,
+			GPathsProfile,
+			TEXT("AppNameMissing"),
+			TEXT(R"(
 int App_GetNameNonEmpty()
 {
 	FString Name = FApp::GetName();
 	return Name.Len() > 0 ? 1 : 0;
 }
+)"),
+			TEXT("FApp::GetName is not part of the current FApp binding surface; FApp::GetProjectName remains the supported name helper"),
+			MakeArrayView(ExpectedFragments));
+	}
+
+	TEST_METHOD(FAppGetProjectName)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		FCoverageModuleScope Mod(*TestRunner, Engine, GPathsProfile, TEXT("AppProjectName"), TEXT(R"(
+int App_GetProjectNameDoesNotCrash()
+{
+	FString Name = FApp::GetProjectName();
+	return Name.Len() >= 0 ? 1 : 0;
+}
 )"));
-		if (!Mod.IsValid())
-		{
-			TestRunner->AddInfo(TEXT("FApp not available, skipping"));
-			return;
-		}
+		if (!Mod.IsValid()) return;
 		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GPathsProfile,
-			TEXT("int App_GetNameNonEmpty()"),
-			TEXT("FApp::GetName is non-empty"), 1);
-#endif
+			TEXT("int App_GetProjectNameDoesNotCrash()"),
+			TEXT("FApp::GetProjectName is the supported app name helper"), 1);
 	}
 
 	TEST_METHOD(FCommandLineGet)
@@ -111,13 +116,9 @@ int CommandLine_GetExists()
 	return Cmd.Len() >= 0 ? 1 : 0;
 }
 )"));
-		if (!Mod.IsValid())
+		if (!TestRunner->TestTrue(TEXT("FCommandLine::Get binding module should compile"), Mod.IsValid()))
 		{
-			TestRunner->AddInfo(TEXT("FCommandLine not available, skipping"));
 			return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
-#endif
 		}
 		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GPathsProfile,
 			TEXT("int CommandLine_GetExists()"),

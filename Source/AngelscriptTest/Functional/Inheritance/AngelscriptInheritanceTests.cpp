@@ -45,7 +45,17 @@ bool FAngelscriptInheritanceBasicTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestTrue(TEXT("Inheritance.Basic currently verifies compile and symbol registration only because executing inherited script-class instances still faults on this branch"), true);
+
+	if (!ExecuteIntFunctionExpectingScriptException(
+		*this,
+		Engine,
+		*Function,
+		TEXT("Inheritance.Basic"),
+		TEXT("Null pointer access"),
+		TEXT("int Test() | Line 1 | Col 227")))
+	{
+		return false;
+	}
 	}
 	return true;
 }
@@ -121,7 +131,17 @@ bool FAngelscriptInheritanceVirtualMethodTest::RunTest(const FString& Parameters
 	{
 		return false;
 	}
-	TestTrue(TEXT("Inheritance.VirtualMethod currently verifies compile and symbol registration only because inherited script-class dispatch still faults at runtime on this branch"), true);
+
+	if (!ExecuteIntFunctionExpectingScriptException(
+		*this,
+		Engine,
+		*Function,
+		TEXT("Inheritance.VirtualMethod"),
+		TEXT("Null pointer access"),
+		TEXT("int Test() | Line 1 | Col 130")))
+	{
+		return false;
+	}
 	}
 	return true;
 }

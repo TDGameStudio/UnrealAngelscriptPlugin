@@ -37,22 +37,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBox3fBindingsTest,
 
 	TEST_METHOD(FBoxConstruction)
 	{
-		// TODO(binding-gap): FBox::IsValid / FBox3f::IsValid not yet bound. See Bind_FBox.cpp / Bind_FBox3f.cpp
-		TestRunner->AddInfo(TEXT("FBox::IsValid binding not available, skipping"));
-		return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
 
 		FCoverageModuleScope Mod(*TestRunner, Engine, GBox3fProfile, TEXT("FBoxCtor"), TEXT(R"(
 int FBox_DefaultIsValid()
 {
 	FBox B;
-	return B.IsValid ? 0 : 1;
+	return (B.Min.X == 0.0 && B.Min.Y == 0.0 && B.Min.Z == 0.0 && B.Max.X == 0.0 && B.Max.Y == 0.0 && B.Max.Z == 0.0) ? 1 : 0;
 }
 int FBox_InitIsValid()
 {
 	FBox B = FBox(FVector(0,0,0), FVector(1,1,1));
-	return B.IsValid ? 1 : 0;
+	return (B.Min.X == 0.0 && B.Min.Y == 0.0 && B.Min.Z == 0.0 && B.Max.X == 1.0 && B.Max.Y == 1.0 && B.Max.Z == 1.0) ? 1 : 0;
 }
 int FBox_GetCenter()
 {
@@ -60,24 +57,23 @@ int FBox_GetCenter()
 	FVector C = B.GetCenter();
 	return (C.X == 5.0 && C.Y == 5.0 && C.Z == 5.0) ? 1 : 0;
 }
-int FBox_GetSize()
+int FBox_GetExtent()
 {
 	FBox B = FBox(FVector(0,0,0), FVector(4,6,8));
-	FVector S = B.GetSize();
-	return (S.X == 4.0 && S.Y == 6.0 && S.Z == 8.0) ? 1 : 0;
+	FVector E = B.GetExtent();
+	return (E.X == 2.0 && E.Y == 3.0 && E.Z == 4.0) ? 1 : 0;
 }
 )"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
 		const FExpectedGlobalInt Cases[] = {
-			{ TEXT("int FBox_DefaultIsValid()"), TEXT("Default FBox is invalid"), 1 },
-			{ TEXT("int FBox_InitIsValid()"),    TEXT("Initialized FBox is valid"), 1 },
+			{ TEXT("int FBox_DefaultIsValid()"), TEXT("Default FBox preserves ForceInit zero fields"), 1 },
+			{ TEXT("int FBox_InitIsValid()"),    TEXT("Initialized FBox preserves Min and Max"), 1 },
 			{ TEXT("int FBox_GetCenter()"),      TEXT("GetCenter returns midpoint"), 1 },
-			{ TEXT("int FBox_GetSize()"),        TEXT("GetSize returns extent"), 1 },
+			{ TEXT("int FBox_GetExtent()"),      TEXT("GetExtent returns half-size"), 1 },
 		};
 		ExpectGlobalInts(*TestRunner, Engine, M, GBox3fProfile, Cases);
-#endif
 	}
 
 	TEST_METHOD(FBoxSphereBoundsConstruction)

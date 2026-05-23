@@ -74,25 +74,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFileAndDelegateBindingsTest,
 
 	TEST_METHOD(ScriptDelegateCompat)
 	{
-		// TODO(binding-gap): delegate syntax 'delegate int FNativeCallback(...)' causes parse failure — missing type/method binding
-		TestRunner->AddInfo(TEXT("ScriptDelegateCompat has AS syntax incompatibility, skipping"));
-		return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
-
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		FCoverageModuleScope Mod(*TestRunner, Engine, GFileDelegateProfile, TEXT("DelegateBind"), TEXT(R"(
+delegate int FNativeCallback(int Value, const FString& Label);
+event void FNativeEvent(int Value, const FString& Label);
+
 int DelegateBind_EmptyNotBound()
 {
-	delegate int FNativeCallback(int Value, const FString& Label);
 	FNativeCallback Single;
 	return Single.IsBound() ? 0 : 1;
 }
 int DelegateBind_BindUFunction()
 {
-	delegate int FNativeCallback(int Value, const FString& Label);
 	UObject TestObject = FindClass("UAngelscriptNativeScriptTestObject").GetDefaultObject();
 	FNativeCallback Single;
 	Single.BindUFunction(TestObject, n"NativeIntStringEvent");
@@ -100,7 +95,6 @@ int DelegateBind_BindUFunction()
 }
 int DelegateBind_GetFunctionName()
 {
-	delegate int FNativeCallback(int Value, const FString& Label);
 	UObject TestObject = FindClass("UAngelscriptNativeScriptTestObject").GetDefaultObject();
 	FNativeCallback Single;
 	Single.BindUFunction(TestObject, n"NativeIntStringEvent");
@@ -108,7 +102,6 @@ int DelegateBind_GetFunctionName()
 }
 int DelegateBind_MulticastAddUnbind()
 {
-	event void FNativeEvent(int Value, const FString& Label);
 	UObject TestObject = FindClass("UAngelscriptNativeScriptTestObject").GetDefaultObject();
 	FNativeEvent Multi;
 	if (Multi.IsBound()) return 0;
@@ -119,7 +112,6 @@ int DelegateBind_MulticastAddUnbind()
 }
 int DelegateBind_ClearMakesUnbound()
 {
-	delegate int FNativeCallback(int Value, const FString& Label);
 	UObject TestObject = FindClass("UAngelscriptNativeScriptTestObject").GetDefaultObject();
 	FNativeCallback Single;
 	Single.BindUFunction(TestObject, n"NativeIntStringEvent");
@@ -135,7 +127,6 @@ int DelegateBind_ClearMakesUnbound()
 		ExpectGlobalInt(*TestRunner, Engine, M, GFileDelegateProfile, TEXT("int DelegateBind_GetFunctionName()"), TEXT("GetFunctionName should return bound function name"), 1);
 		ExpectGlobalInt(*TestRunner, Engine, M, GFileDelegateProfile, TEXT("int DelegateBind_MulticastAddUnbind()"), TEXT("Multicast Add then Unbind should leave unbound"), 1);
 		ExpectGlobalInt(*TestRunner, Engine, M, GFileDelegateProfile, TEXT("int DelegateBind_ClearMakesUnbound()"), TEXT("Clear should make delegate unbound"), 1);
-#endif
 	}
 
 	// ====================================================================
@@ -144,12 +135,6 @@ int DelegateBind_ClearMakesUnbound()
 
 	TEST_METHOD(ScriptDelegateExecuteCompat)
 	{
-		// TODO(binding-gap): delegate syntax 'delegate int FNativeCallback(...)' causes parse failure — missing type/method binding
-		TestRunner->AddInfo(TEXT("ScriptDelegateExecuteCompat has AS syntax incompatibility, skipping"));
-		return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
-
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
@@ -162,9 +147,11 @@ int DelegateBind_ClearMakesUnbound()
 		ON_SCOPE_EXIT { NativeTestObject->NameCounts.Reset(); };
 
 		FCoverageModuleScope Mod(*TestRunner, Engine, GFileDelegateProfile, TEXT("DelegateExec"), TEXT(R"(
+delegate int FNativeCallback(int Value, const FString& Label);
+event void FNativeEvent(int Value, const FString& Label);
+
 int DelegateExec_SingleExecute()
 {
-	delegate int FNativeCallback(int Value, const FString& Label);
 	UObject TestObject = FindClass("UAngelscriptNativeScriptTestObject").GetDefaultObject();
 	FNativeCallback Single;
 	Single.BindUFunction(TestObject, n"NativeIntStringEvent");
@@ -172,7 +159,6 @@ int DelegateExec_SingleExecute()
 }
 int DelegateExec_MulticastBroadcast()
 {
-	event void FNativeEvent(int Value, const FString& Label);
 	UObject TestObject = FindClass("UAngelscriptNativeScriptTestObject").GetDefaultObject();
 	FNativeEvent Multi;
 	Multi.AddUFunction(TestObject, n"SetIntStringFromDelegate");
@@ -195,7 +181,6 @@ int DelegateExec_MulticastBroadcast()
 			TestRunner->TestEqual(TEXT("Multicast delegate broadcast should forward the expected value"), *AlphaCount, 7);
 		}
 		TestRunner->TestFalse(TEXT("Unbound multicast delegate should not write additional label entries"), NativeTestObject->NameCounts.Contains(TEXT("Beta")));
-#endif
 	}
 
 	// ====================================================================
@@ -553,16 +538,10 @@ int FileHelper_SaveAndLoad()
 
 	TEST_METHOD(DelegateWithPayloadCompat)
 	{
-		// TODO(binding-gap): delegate syntax causes parse failure — missing type/method binding
-		TestRunner->AddInfo(TEXT("DelegateWithPayloadCompat has AS syntax incompatibility, skipping"));
-		return;
-
-#if 0 // Disabled: binding gap — re-enable when binding is added
-
 		TestRunner->AddExpectedError(TEXT("Invalid payload type"), EAutomationExpectedErrorFlags::Contains, 1);
 		TestRunner->AddExpectedError(TEXT("Invalid object passed to BindUFunction."), EAutomationExpectedErrorFlags::Contains, 1);
 		TestRunner->AddExpectedError(TEXT("Specified function is not compatible with delegate function."), EAutomationExpectedErrorFlags::Contains, 1);
-		TestRunner->AddExpectedError(TEXT("ASDelegateWithPayloadCompat"), EAutomationExpectedErrorFlags::Contains, 0);
+		TestRunner->AddExpectedError(TEXT("ASFileDelegate_DelegatePayload"), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(TEXT("void TriggerInvalidPayloadType()"), EAutomationExpectedErrorFlags::Contains, 0, false);
 		TestRunner->AddExpectedError(TEXT("void TriggerInvalidObject()"), EAutomationExpectedErrorFlags::Contains, 0, false);
 		TestRunner->AddExpectedError(TEXT("void TriggerSignatureMismatch()"), EAutomationExpectedErrorFlags::Contains, 0, false);
@@ -642,7 +621,6 @@ void TriggerSignatureMismatch()
 			TEXT("void TriggerSignatureMismatch()"),
 			TEXT("signature mismatch should raise exception"),
 			TEXT("Specified function is not compatible with delegate function."));
-#endif
 	}
 };
 
