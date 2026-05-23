@@ -7,10 +7,10 @@
 #include "StaticJIT/StaticJITHeader.h"
 
 
-AS_FORCE_LINK FJitRef_Type TREF_UStaticJITAotFunctionCarrier(0x1b928a89f00);
-AS_FORCE_LINK FJitRef_GlobalVar GREF___StaticType_UStaticJITAotFunctionCarrier(0x1b928d02460);
-AS_FORCE_LINK FJitRef_SystemFunctionPointer SYSPTR___WorldContext(0x1b925cb8800);
-AS_FORCE_LINK FJitRef_SystemFunctionPointer SYSPTR_TSubclassOf_UObject__opImplConv(0x1b925542c00);
+AS_FORCE_LINK FJitRef_Type TREF_UStaticJITAotFunctionCarrier(0x1f806ba3300);
+AS_FORCE_LINK FJitRef_GlobalVar GREF___StaticType_UStaticJITAotFunctionCarrier(0x1f806c15060);
+AS_FORCE_LINK FJitRef_SystemFunctionPointer SYSPTR___WorldContext(0x1f802d48800);
+AS_FORCE_LINK FJitRef_SystemFunctionPointer SYSPTR_TSubclassOf_UObject__opImplConv(0x1f8025b2800);
 
 extern void AS_UStaticJITAotFunctionCarrier__UStaticJITAotFunctionCarrier(FScriptExecution& Execution, UObject* l_This);
 extern int32 AS_ASStaticJITAotFixture__AddForAOT(FScriptExecution& Execution, asDWORD p_Value);
