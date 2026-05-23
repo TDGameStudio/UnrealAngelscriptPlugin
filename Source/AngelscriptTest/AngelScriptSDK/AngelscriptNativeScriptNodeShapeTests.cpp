@@ -332,11 +332,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ScriptNodeShapeVirtualProperty", "int Value { get { return 1; } set { } }", [&](const asCScriptNode& Root)
-		{
-			TestRunner->TestEqual(TEXT("Virtual property declaration currently emits declaration plus accessor virtual-property nodes"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snVirtualProperty), 3);
-			TestRunner->TestTrue(TEXT("Virtual property declaration should include accessor function bodies"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snStatementBlock) >= 2);
-		});
+		// Virtual-property syntax `int X { get { ... } set { } }` was removed by the
+		// autoaccessor refactor (see openspec/changes/archive/2026-05-22-refactor-as-remove-autoaccessor).
+		// The parser now rejects this form, so no virtual-property script-node shape exists to inspect.
+		asCModule* Module = CreateModule(BareEngine, "ScriptNodeShapeVirtualProperty");
+		asCBuilder Builder(BareEngine, Module);
+		Builder.silent = true;
+		asCScriptCode Code;
+		Code.SetCode("ScriptNodeShapeVirtualProperty", "int Value { get { return 1; } set { } }", true);
+		FParserAccessor Parser(&Builder);
+		TestRunner->TestTrue(TEXT("Virtual property declaration should be rejected after autoaccessor removal"), Parser.ParseScript(&Code) < 0);
 	}
 };
 

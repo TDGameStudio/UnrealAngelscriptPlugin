@@ -28,11 +28,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHitResultBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
+		// `bBlockingHit` is a bitfield UPROPERTY which is not exposed via raw-field
+		// binding; the autoaccessor synthesis that previously surfaced it was removed
+		// in 2026-05-22-refactor-as-remove-autoaccessor. Switch to a bound non-bitfield
+		// member (`Time`) which defaults to 1.0 in FHitResult's default constructor.
 		FCoverageModuleScope Mod(*TestRunner, Engine, GHitResultProfile, TEXT("Default"), TEXT(R"(
-int HitResult_DefaultNoBlock()
+int HitResult_DefaultTime()
 {
 	FHitResult Hit;
-	return Hit.bBlockingHit ? 1 : 0;
+	return (Hit.Time == 1.0) ? 1 : 0;
 }
 )"));
 		if (!Mod.IsValid())
@@ -41,8 +45,8 @@ int HitResult_DefaultNoBlock()
 			return;
 		}
 		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GHitResultProfile,
-			TEXT("int HitResult_DefaultNoBlock()"),
-			TEXT("Default FHitResult has no blocking hit"), 0);
+			TEXT("int HitResult_DefaultTime()"),
+			TEXT("Default FHitResult constructor sets Time to 1.0"), 1);
 	}
 
 	TEST_METHOD(FHitResultDistance)

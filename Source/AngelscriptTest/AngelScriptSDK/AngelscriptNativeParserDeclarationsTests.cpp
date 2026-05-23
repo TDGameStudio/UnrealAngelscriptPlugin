@@ -332,10 +332,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ParserDeclVirtualProperty", "int Value { get { return 1; } set { } }", [&](const asCScriptNode& Root)
-		{
-			TestRunner->TestEqual(TEXT("Virtual property parse currently emits declaration plus accessor virtual-property nodes"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snVirtualProperty), 3);
-		});
+		// Virtual-property syntax `int X { get { ... } set { } }` was removed by the
+		// autoaccessor refactor (see openspec/changes/archive/2026-05-22-refactor-as-remove-autoaccessor).
+		// The parser now rejects this form so authors must declare explicit GetX()/SetX() methods.
+		const int ParseResult = ParseScriptWithResult(BareEngine, "ParserDeclVirtualProperty", "int Value { get { return 1; } set { } }");
+		TestRunner->TestTrue(TEXT("Virtual property syntax should be rejected after autoaccessor removal"), ParseResult < 0);
 	}
 
 	TEST_METHOD(OperatorOverloadParse)

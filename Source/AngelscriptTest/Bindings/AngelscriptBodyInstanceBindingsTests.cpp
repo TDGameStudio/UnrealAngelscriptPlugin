@@ -24,27 +24,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBodyInstanceBindingsTest,
 	BEFORE_ALL() { ASTEST_CREATE_ENGINE(); }
 	AFTER_ALL() { FAngelscriptEngine& E = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(E); }
 
-	TEST_METHOD(FBodyInstanceDefaults)
-	{
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
-		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GBodyInstProfile, TEXT("BodyInst"), TEXT(R"(
-int BodyInstance_SimulatePhysicsDefault()
-{
-	FBodyInstance B;
-	return B.bSimulatePhysics ? 1 : 0;
-}
-)"));
-		if (!Mod.IsValid())
-		{
-			TestRunner->AddInfo(TEXT("FBodyInstance not available, skipping"));
-			return;
-		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GBodyInstProfile,
-			TEXT("int BodyInstance_SimulatePhysicsDefault()"),
-			TEXT("Default FBodyInstance does not simulate physics"), 0);
-	}
-
 	TEST_METHOD(FLatentActionInfoDefault)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();

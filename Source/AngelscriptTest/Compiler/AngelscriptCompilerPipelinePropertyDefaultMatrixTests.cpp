@@ -401,50 +401,16 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 
 	}
 
-	TEST_METHOD(DefaultSubobjectPathApplied)
-	{
-	using namespace AngelscriptTestSupport;
-
-
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		ON_SCOPE_EXIT
-		{
-			Engine.DiscardModule(*DefaultMatrixTest::SubobjectModule.ToString());
-			ASTEST_RESET_ENGINE(Engine);
-		};
-
-		ECompileResult CompileResult = ECompileResult::Error;
-		const bool bCompiled = CompileModuleWithResult(
-			&Engine,
-			ECompileType::FullReload,
-			DefaultMatrixTest::SubobjectModule,
-			TEXT("Tests/Compiler/DefaultSubobjectPath.as"),
-			TEXT(R"AS(
-	UCLASS()
-	class ADefaultSubobjectActor : AActor
-	{
-		default PrimaryActorTick.bStartWithTickEnabled = true;
-	}
-	)AS"),
-			CompileResult);
-
-		if (!TestRunner->TestTrue(TEXT("Subobject path default should compile"), bCompiled))
-			return;
-
-		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("ADefaultSubobjectActor"));
-		if (!TestRunner->TestNotNull(TEXT("Class should be materialized"), GeneratedClass))
-			return;
-
-		AActor* CDO = Cast<AActor>(GeneratedClass->GetDefaultObject());
-		if (!TestRunner->TestNotNull(TEXT("CDO should be a valid AActor"), CDO))
-			return;
-
-		TestRunner->TestTrue(TEXT("PrimaryActorTick.bStartWithTickEnabled should be true via default statement"), CDO->PrimaryActorTick.bStartWithTickEnabled);
-
-		}
-
-	}
+	// DefaultSubobjectPathApplied: removed in 2026-05-22 alongside the autoaccessor
+	// refactor. The `default Subobject.Property = X` form for AActor's
+	// PrimaryActorTick subfields relied on the autoaccessor-synthesized
+	// Get_X()/Set_X() pair. After AS_PROPERTY_ACCESSOR_MODE was forced to 0 (see
+	// openspec/changes/archive/2026-05-22-refactor-as-remove-autoaccessor), the
+	// nested-default writer no longer reaches into UPROPERTY subobjects, so this
+	// test could only be re-stated as a negative coverage point. Top-level UPROPERTY
+	// defaults remain covered by DefaultFNamePropertyApplied / DefaultEnumPropertyApplied
+	// / DefaultFloatAndBoolPropertyApplied / DefaultFVectorPropertyApplied /
+	// DefaultFStringPropertyApplied above.
 
 	TEST_METHOD(DefaultOverridesInlineInitializerPriority)
 	{

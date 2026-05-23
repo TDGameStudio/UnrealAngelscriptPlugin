@@ -330,100 +330,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLiteralAssetPostInitTests,
 		}
 	}
 
-	TEST_METHOD(PostInitResolvesGeneratedGetterInsteadOfNameCollision)
-	{
-		using namespace LiteralAssetPostInitNameCollisionTest;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		TestRunner->AddExpectedError(TEXT("LogUObjectBase: Class pointer is invalid or CDO is invalid."), EAutomationExpectedErrorFlags::Contains, 1);
-
-		ON_SCOPE_EXIT
-		{
-			Engine.DiscardModule(*LiteralAssetPostInitNameCollisionTest::ModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
-		};
-
-		UClass* GeneratedClass = LiteralAssetPostInitNameCollisionTest::CompileLiteralAssetCarrier(*TestRunner, Engine);
-		if (!TestRunner->TestNotNull(
-				TEXT("Literal-asset short-name collision test case should compile the generated asset carrier class"),
-				GeneratedClass))
-		{
-			return;
-		}
-
-		UObject* LiteralAssetAfterCompile = LiteralAssetPostInitNameCollisionTest::FindLiteralAsset();
-		if (!TestRunner->TestNotNull(
-				TEXT("Literal-asset short-name collision test case should materialize the canonical asset during compile teardown"),
-				LiteralAssetAfterCompile))
-		{
-			return;
-		}
-
-		LiteralAssetPostInitNameCollisionTest::FLiteralAssetCollisionSnapshot SnapshotAfterCompile;
-		if (!LiteralAssetPostInitNameCollisionTest::ReadLiteralAssetSnapshot(*TestRunner, LiteralAssetAfterCompile, SnapshotAfterCompile))
-		{
-			return;
-		}
-
-		if (!TestRunner->TestEqual(
-				TEXT("Literal-asset short-name collision test case should keep the materialized asset on the generated carrier class"),
-				LiteralAssetAfterCompile->GetClass(),
-				GeneratedClass)
-			|| !TestRunner->TestEqual(
-				TEXT("Literal-asset short-name collision test case should execute the generated getter exactly once during post-init"),
-				SnapshotAfterCompile.RightCalls,
-				1)
-			|| !TestRunner->TestEqual(
-				TEXT("Literal-asset short-name collision test case should never execute the namespaced short-name collision getter during post-init"),
-				SnapshotAfterCompile.WrongCalls,
-				0))
-		{
-			return;
-		}
-
-		int32 TouchResult = INDEX_NONE;
-		if (!LiteralAssetPostInitNameCollisionTest::ExecuteModuleInt(
-				*TestRunner,
-				Engine,
-				TEXT("int TouchExampleAssetAgain()"),
-				TEXT("Literal-asset short-name collision test should execute TouchExampleAssetAgain()"),
-				TouchResult))
-		{
-			return;
-		}
-
-		UObject* LiteralAssetAfterTouch = LiteralAssetPostInitNameCollisionTest::FindLiteralAsset();
-		if (!TestRunner->TestNotNull(
-				TEXT("Literal-asset short-name collision test case should still expose the canonical asset after the explicit getter touch"),
-				LiteralAssetAfterTouch))
-		{
-			return;
-		}
-
-		LiteralAssetPostInitNameCollisionTest::FLiteralAssetCollisionSnapshot SnapshotAfterTouch;
-		if (!LiteralAssetPostInitNameCollisionTest::ReadLiteralAssetSnapshot(*TestRunner, LiteralAssetAfterTouch, SnapshotAfterTouch))
-		{
-			return;
-		}
-
-		TestRunner->TestEqual(
-			TEXT("Literal-asset short-name collision test should return a non-null result when the explicit getter is touched again"),
-			TouchResult,
-			1);
-		TestRunner->TestTrue(
-			TEXT("Literal-asset short-name collision test should keep returning the same canonical asset on repeated getter access"),
-			LiteralAssetAfterTouch == LiteralAssetAfterCompile);
-		TestRunner->TestEqual(
-			TEXT("Literal-asset short-name collision test should keep the generated getter hit count stable after explicit getter access"),
-			SnapshotAfterTouch.RightCalls,
-			1);
-		TestRunner->TestEqual(
-			TEXT("Literal-asset short-name collision test should keep the namespaced collision getter hit count at zero after explicit getter access"),
-			SnapshotAfterTouch.WrongCalls,
-			0);
-
-		}
-	}
+	// PostInitResolvesGeneratedGetterInsteadOfNameCollision:
+	// Removed in 2026-05-22 alongside the autoaccessor refactor. The test relied on
+	// the AS-side autoaccessor `obj.X ↔ GetX()` rewriting to prefer an asset-framework
+	// generated `GetCollisionExampleAsset()` over a same-short-name namespaced user
+	// function. With AS_PROPERTY_ACCESSOR_MODE forced to 0 (see openspec change
+	// archive/2026-05-22-refactor-as-remove-autoaccessor), there is no longer any
+	// auto-promotion, so the resolution behaviour the test was guarding no longer
+	// exists in this fork. Asset getter wiring continues to be exercised by
+	// PostInitMaterializesAssetOnce above.
 
 	TEST_METHOD(MultipleAssetsInSameClassCoexist)
 	{
