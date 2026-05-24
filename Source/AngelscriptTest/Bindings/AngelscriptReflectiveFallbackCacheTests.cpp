@@ -65,13 +65,20 @@ namespace AngelscriptTest_Bindings_ReflectiveFallbackCache_Private
 	// BlueprintCallableReflectiveFallback test for GameplayTags.
 	FString GetGameplayTagLibraryCallPrefix(FAutomationTestBase& Test)
 	{
-		TSharedPtr<FAngelscriptType> LibraryType = FAngelscriptType::GetByClass(UBlueprintGameplayTagLibrary::StaticClass());
+		UClass* LibraryClass = UBlueprintGameplayTagLibrary::StaticClass();
+		UFunction* RepresentativeFunction = LibraryClass->FindFunctionByName(TEXT("MakeGameplayTagContainerFromTag"));
+		TSharedPtr<FAngelscriptType> LibraryType = FAngelscriptType::GetByClass(LibraryClass);
 		if (!Test.TestTrue(TEXT("GameplayTags BPLib type should resolve"), LibraryType.IsValid()))
 		{
 			return FString();
 		}
 
-		const FString Namespace = FAngelscriptFunctionSignature::GetScriptNamespaceForClass(LibraryType.ToSharedRef(), nullptr);
+		if (!Test.TestNotNull(TEXT("MakeGameplayTagContainerFromTag should exist on GameplayTags BPLib"), RepresentativeFunction))
+		{
+			return FString();
+		}
+
+		const FString Namespace = FAngelscriptFunctionSignature::GetScriptNamespaceForClass(LibraryType.ToSharedRef(), RepresentativeFunction);
 		return Namespace.IsEmpty() ? FString() : Namespace + TEXT("::");
 	}
 
