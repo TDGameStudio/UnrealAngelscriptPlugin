@@ -85,7 +85,7 @@ bool FAngelscriptHotReloadSoftLatencyTest::RunTest(const FString& Parameters)
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		static const FName ModuleName(TEXT("HotReloadPerformanceSoft"));
-		ResetSharedInitializedTestEngine(Engine);
+		ResetSharedCloneEngine(Engine);
 
 		const FString ScriptV1 = TEXT(R"AS(
 UCLASS()
@@ -140,7 +140,7 @@ bool FAngelscriptHotReloadFullLatencyTest::RunTest(const FString& Parameters)
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		static const FName ModuleName(TEXT("HotReloadPerformanceFull"));
-		ResetSharedInitializedTestEngine(Engine);
+		ResetSharedCloneEngine(Engine);
 
 		const FString ScriptV1 = TEXT(R"AS(
 UCLASS()
@@ -194,7 +194,7 @@ bool FAngelscriptHotReloadRenameWindowLatencyTest::RunTest(const FString& Parame
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		static const FName ModuleName(TEXT("HotReloadPerformanceRename"));
-		ResetSharedInitializedTestEngine(Engine);
+		ResetSharedCloneEngine(Engine);
 
 		const FString ScriptV1 = TEXT(R"AS(
 UCLASS()
@@ -252,7 +252,7 @@ bool FAngelscriptHotReloadBurstChurnLatencyTest::RunTest(const FString& Paramete
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		static const FName ModuleName(TEXT("HotReloadPerformanceBurst"));
-		ResetSharedInitializedTestEngine(Engine);
+		ResetSharedCloneEngine(Engine);
 
 		const FString ScriptV1 = TEXT(R"AS(
 UCLASS()

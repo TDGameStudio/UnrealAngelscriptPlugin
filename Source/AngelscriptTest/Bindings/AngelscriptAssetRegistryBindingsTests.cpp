@@ -66,6 +66,7 @@ namespace AngelscriptTest_Bindings_AngelscriptAssetRegistryBindingsTests_Private
 			static_cast<int32>(asSUCCESS));
 	}
 
+	// TODO(refactor-as-test-shared-layout-and-naming): migrate ExecuteFunctionExpectingException to Shared/AngelscriptTestExecute.h once the Execute* naming family lands in Phase 3.
 	bool ExecuteFunctionExpectingException(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,

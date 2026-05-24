@@ -49,6 +49,7 @@ namespace AngelscriptTest_Bindings_AngelscriptMathOrientationBindingsTests_Priva
 		return Test.TestNotNull(TEXT("Math orientation binding test should expose the return value storage"), ReturnValueAddress) && (OutValue = *static_cast<TValue*>(ReturnValueAddress), true);
 	}
 
+	// TODO(refactor-as-test-shared-layout-and-naming): migrate ExecuteValueFunction<T> to Shared/AngelscriptTestExecute.h once the Execute* naming family lands in Phase 3.
 	template <typename TValue>
 	bool ExecuteValueFunction(
 		FAutomationTestBase& Test,

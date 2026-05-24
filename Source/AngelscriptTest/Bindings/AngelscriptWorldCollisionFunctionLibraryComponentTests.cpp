@@ -96,6 +96,7 @@ namespace AngelscriptTest_Bindings_AngelscriptWorldCollisionFunctionLibraryCompo
 			static_cast<int32>(asSUCCESS));
 	}
 
+	// TODO(refactor-as-test-shared-layout-and-naming): migrate ExecuteBoolFunction to Shared/AngelscriptTestExecute.h once the Execute* naming family lands in Phase 3.
 	bool ExecuteBoolFunction(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,

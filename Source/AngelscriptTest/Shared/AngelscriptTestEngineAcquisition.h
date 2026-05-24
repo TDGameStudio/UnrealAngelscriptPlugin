@@ -31,9 +31,17 @@
 //         (`FResolvedProductionLikeEngine`, `AcquireProductionLikeEngine`,
 //          `RequireRunningProductionEngine`).
 //       * Scoped world-context helper (`FScopedTestWorldContextScope`).
-//       * Legacy alias wrappers slated for deletion in Phase 1 task 1.8
-//         (`GetSharedTestEngine`, `ResetSharedInitializedTestEngine`,
-//          `GetResetSharedTestEngine`, `AcquireFreshSharedCloneEngine`).
+//
+// History:
+//   - The four pure-forward aliases `GetSharedTestEngine`,
+//     `ResetSharedInitializedTestEngine`, `GetResetSharedTestEngine`,
+//     and `AcquireFreshSharedCloneEngine` were retired in Phase 1
+//     task 1.8 of the same OpenSpec change. All 19 prior call sites
+//     inside `AngelscriptTest/` were migrated to the canonical entry
+//     points (`GetOrCreateSharedCloneEngine`, `ResetSharedCloneEngine`,
+//     `AcquireCleanSharedCloneEngine`, or the explicit
+//     `DestroySharedAndStrayGlobalTestEngine()` +
+//     `AcquireCleanSharedCloneEngine()` pair).
 //
 // Scope guard:
 //   - This header does **not** include the editor-only Blueprint headers
@@ -272,14 +280,6 @@ namespace AngelscriptTestSupport
 #endif
 	}
 
-	// ------------------------------------------------------------------------
-	// Legacy alias — scheduled for removal in Phase 1 task 1.8.
-	// Prefer `GetOrCreateSharedCloneEngine` directly in new code.
-	inline FAngelscriptEngine& GetSharedTestEngine()
-	{
-		return GetOrCreateSharedCloneEngine();
-	}
-
 	inline void ResetSharedCloneEngine(FAngelscriptEngine& Engine)
 	{
 		// Phase 2: forward to FAngelscriptTestEngine, which now owns the
@@ -287,14 +287,6 @@ namespace AngelscriptTestSupport
 		// wrapper to keep existing test sites compiling unchanged; new code
 		// should call FAngelscriptTestEngine::ResetModules() directly.
 		FAngelscriptTestEngine::ResetModules(Engine);
-	}
-
-	// ------------------------------------------------------------------------
-	// Legacy alias — scheduled for removal in Phase 1 task 1.8.
-	// Prefer `ResetSharedCloneEngine` directly in new code.
-	inline void ResetSharedInitializedTestEngine(FAngelscriptEngine& Engine)
-	{
-		ResetSharedCloneEngine(Engine);
 	}
 
 	inline void LogSharedEngineDebugState(const TCHAR* Phase, FAngelscriptEngine& Engine)
@@ -408,14 +400,6 @@ namespace AngelscriptTestSupport
 		return Engine;
 	}
 
-	// ------------------------------------------------------------------------
-	// Legacy alias — scheduled for removal in Phase 1 task 1.8.
-	// Prefer `AcquireCleanSharedCloneEngine` directly in new code.
-	inline FAngelscriptEngine& GetResetSharedTestEngine()
-	{
-		return AcquireCleanSharedCloneEngine();
-	}
-
 	inline void DestroySharedTestEngine()
 	{
 		TUniquePtr<FAngelscriptEngine>& SharedEngineStorage = GetSharedTestEngineStorage();
@@ -451,16 +435,6 @@ namespace AngelscriptTestSupport
 	{
 		DestroySharedTestEngine();
 		DestroyStrayLegacyGlobalTestEngine();
-	}
-
-	// ------------------------------------------------------------------------
-	// Legacy alias — scheduled for removal in Phase 1 task 1.8.
-	// Prefer the explicit pair `DestroySharedAndStrayGlobalTestEngine()` +
-	// `AcquireCleanSharedCloneEngine()` in new code.
-	inline FAngelscriptEngine& AcquireFreshSharedCloneEngine()
-	{
-		DestroySharedAndStrayGlobalTestEngine();
-		return AcquireCleanSharedCloneEngine();
 	}
 
 	inline TUniquePtr<FAngelscriptEngine> CreateFullTestEngine()

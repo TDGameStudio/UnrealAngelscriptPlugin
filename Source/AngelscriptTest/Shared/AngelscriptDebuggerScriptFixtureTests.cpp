@@ -15,7 +15,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FAngelscriptDebuggerFixtureIdentityIsolatedPerInstanceTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptEngine& Engine = AcquireFreshSharedCloneEngine();
+	DestroySharedAndStrayGlobalTestEngine();
+	FAngelscriptEngine& Engine = AcquireCleanSharedCloneEngine();
 	const FAngelscriptDebuggerScriptFixture FixtureA =
 		FAngelscriptDebuggerScriptFixture::CreateNamedBreakpointFixture(
 			TEXT("DebuggerBreakpointFixtureA"),

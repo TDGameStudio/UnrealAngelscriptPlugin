@@ -277,7 +277,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 
 	TEST_METHOD(RuntimeBindCallSitesUseCurrentEngineHooks)
 	{
-		FAngelscriptEngine& Engine = AngelscriptTestSupport::AcquireFreshSharedCloneEngine();
+		AngelscriptTestSupport::DestroySharedAndStrayGlobalTestEngine();
+		FAngelscriptEngine& Engine = AngelscriptTestSupport::AcquireCleanSharedCloneEngine();
 		AngelscriptTestSupport::FAngelscriptTestWorld World(*TestRunner, Engine);
 		if (!World.IsValid())
 		{

@@ -88,18 +88,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperGetSharedTestEngineAliasesSharedCloneTest,
-	"Angelscript.TestModule.Shared.EngineHelper.GetSharedTestEngineAliasesSharedCloneEngine",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FAngelscriptTestEngineHelperScriptScanFreeEngineStartsCleanTest,
 	"Angelscript.TestModule.Shared.EngineHelper.ScriptScanFreeEngineStartsClean",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperGetResetSharedTestEngineResetsSharedStateTest,
-	"Angelscript.TestModule.Shared.EngineHelper.GetResetSharedTestEngineResetsSharedState",
+	FAngelscriptTestEngineHelperAcquireCleanSharedCloneEngineResetsModulesTest,
+	"Angelscript.TestModule.Shared.EngineHelper.AcquireCleanSharedCloneEngineResetsModules",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -301,33 +296,6 @@ bool FAngelscriptTestEngineHelperSharedEngineNeverAttachesToProductionTest::RunT
 		FAngelscriptTestEngineScopeAccess::GetGlobalEngine() == PreviousGlobalEngine);
 }
 
-bool FAngelscriptTestEngineHelperGetSharedTestEngineAliasesSharedCloneTest::RunTest(const FString& Parameters)
-{
-	AngelscriptTestSupport::DestroySharedTestEngine();
-
-	ON_SCOPE_EXIT
-	{
-		AngelscriptTestSupport::DestroySharedTestEngine();
-	};
-
-	FAngelscriptEngine& FirstSharedEngine = AngelscriptTestSupport::GetSharedTestEngine();
-	FAngelscriptEngine& SecondSharedEngine = AngelscriptTestSupport::GetSharedTestEngine();
-	FAngelscriptEngine& ExplicitSharedClone = AngelscriptTestSupport::GetOrCreateSharedCloneEngine();
-
-	return TestTrue(
-		TEXT("GetSharedTestEngine should reuse the same shared engine instance across calls"),
-		&FirstSharedEngine == &SecondSharedEngine)
-		&& TestTrue(
-		TEXT("GetSharedTestEngine should alias GetOrCreateSharedCloneEngine"),
-		&FirstSharedEngine == &ExplicitSharedClone)
-		&& TestTrue(
-		TEXT("GetSharedTestEngine should install the recreated shared engine as the current scoped engine"),
-		FAngelscriptTestEngineScopeAccess::GetCurrentEngine() == &FirstSharedEngine)
-		&& TestTrue(
-		TEXT("GetSharedTestEngine should resolve as the legacy global engine alias after recreating the shared scope"),
-		FAngelscriptTestEngineScopeAccess::GetGlobalEngine() == &FirstSharedEngine);
-}
-
 bool FAngelscriptTestEngineHelperScriptScanFreeEngineStartsCleanTest::RunTest(const FString& Parameters)
 {
 	TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting();
@@ -364,10 +332,10 @@ bool FAngelscriptTestEngineHelperScriptScanFreeEngineStartsCleanTest::RunTest(co
 	return TestEqual(TEXT("Script-scan-free test engine should not contain raw AS modules"), RawModuleCount, static_cast<asUINT>(0));
 }
 
-bool FAngelscriptTestEngineHelperGetResetSharedTestEngineResetsSharedStateTest::RunTest(const FString& Parameters)
+bool FAngelscriptTestEngineHelperAcquireCleanSharedCloneEngineResetsModulesTest::RunTest(const FString& Parameters)
 {
-	static const FName ModuleName(TEXT("HelperGetResetSharedAlias"));
-	static const FString Filename(TEXT("HelperGetResetSharedAlias.as"));
+	static const FName ModuleName(TEXT("HelperAcquireCleanResetModules"));
+	static const FString Filename(TEXT("HelperAcquireCleanResetModules.as"));
 
 	AngelscriptTestSupport::DestroySharedTestEngine();
 	ON_SCOPE_EXIT
@@ -375,33 +343,33 @@ bool FAngelscriptTestEngineHelperGetResetSharedTestEngineResetsSharedStateTest::
 		AngelscriptTestSupport::DestroySharedTestEngine();
 	};
 
-	FAngelscriptEngine& SharedEngine = AngelscriptTestSupport::GetSharedTestEngine();
+	FAngelscriptEngine& SharedEngine = AngelscriptTestSupport::GetOrCreateSharedCloneEngine();
 	const bool bCompiled = AngelscriptTestSupport::CompileModuleFromMemory(
 		&SharedEngine,
 		ModuleName,
 		Filename,
 		TEXT("int Entry() { return 17; }"));
-	if (!TestTrue(TEXT("GetResetSharedTestEngine regression fixture should compile before reset"), bCompiled))
+	if (!TestTrue(TEXT("AcquireCleanSharedCloneEngine regression fixture should compile before reset"), bCompiled))
 	{
 		return false;
 	}
 
 	if (!TestTrue(
-		TEXT("GetResetSharedTestEngine regression fixture should register a tracked module before reset"),
+		TEXT("AcquireCleanSharedCloneEngine regression fixture should register a tracked module before reset"),
 		SharedEngine.GetModuleByModuleName(ModuleName.ToString()).IsValid()))
 	{
 		return false;
 	}
 
-	FAngelscriptEngine& ResetEngine = AngelscriptTestSupport::GetResetSharedTestEngine();
+	FAngelscriptEngine& ResetEngine = AngelscriptTestSupport::AcquireCleanSharedCloneEngine();
 	return TestTrue(
-		TEXT("GetResetSharedTestEngine should reuse the shared engine instance"),
+		TEXT("AcquireCleanSharedCloneEngine should reuse the shared engine instance"),
 		&ResetEngine == &SharedEngine)
 		&& TestFalse(
-		TEXT("GetResetSharedTestEngine should clear tracked modules from the shared engine"),
+		TEXT("AcquireCleanSharedCloneEngine should clear tracked modules from the shared engine"),
 		ResetEngine.GetModuleByModuleName(ModuleName.ToString()).IsValid())
 		&& TestNull(
-		TEXT("GetResetSharedTestEngine should discard the backing script module"),
+		TEXT("AcquireCleanSharedCloneEngine should discard the backing script module"),
 		ResetEngine.GetScriptEngine()->GetModule(TCHAR_TO_UTF8(*ModuleName.ToString()), asGM_ONLY_IF_EXISTS));
 }
 
@@ -411,7 +379,8 @@ bool FAngelscriptTestEngineHelperResetSharedEngineReleasesGeneratedComponentClas
 	static const FString Filename(TEXT("HelperResetGeneratedComponent.as"));
 	static const FName GeneratedClassName(TEXT("UHelperResetGeneratedComponent"));
 
-	FAngelscriptEngine& Engine = AngelscriptTestSupport::AcquireFreshSharedCloneEngine();
+	AngelscriptTestSupport::DestroySharedAndStrayGlobalTestEngine();
+	FAngelscriptEngine& Engine = AngelscriptTestSupport::AcquireCleanSharedCloneEngine();
 	const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
 		&Engine,
 		ModuleName,
@@ -521,7 +490,8 @@ bool FAngelscriptTestEngineHelperResetSharedEngineReleasesGeneratedStructsTest::
 	static const FString Filename(TEXT("HelperResetGeneratedStruct.as"));
 	static const FName GeneratedStructName(TEXT("HelperResetGeneratedStruct"));
 
-	FAngelscriptEngine& Engine = AngelscriptTestSupport::AcquireFreshSharedCloneEngine();
+	AngelscriptTestSupport::DestroySharedAndStrayGlobalTestEngine();
+	FAngelscriptEngine& Engine = AngelscriptTestSupport::AcquireCleanSharedCloneEngine();
 	const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
 		&Engine,
 		ModuleName,
@@ -588,7 +558,8 @@ bool FAngelscriptTestEngineHelperResetSharedEngineReleasesGeneratedEnumsAndDeleg
 	static const FName ModuleName(TEXT("HelperResetGeneratedEnumDelegate"));
 	static const FString Filename(TEXT("HelperResetGeneratedEnumDelegate.as"));
 
-	FAngelscriptEngine& Engine = AngelscriptTestSupport::AcquireFreshSharedCloneEngine();
+	AngelscriptTestSupport::DestroySharedAndStrayGlobalTestEngine();
+	FAngelscriptEngine& Engine = AngelscriptTestSupport::AcquireCleanSharedCloneEngine();
 	const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
 		&Engine,
 		ModuleName,

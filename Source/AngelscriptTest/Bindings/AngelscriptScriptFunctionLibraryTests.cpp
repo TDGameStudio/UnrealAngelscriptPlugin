@@ -53,6 +53,7 @@ namespace AngelscriptTest_Bindings_AngelscriptScriptFunctionLibraryTests_Private
 			&& (OutValue = *static_cast<TValue*>(ReturnValueAddress), true);
 	}
 
+	// TODO(refactor-as-test-shared-layout-and-naming): migrate ExecuteValueFunction<T> to Shared/AngelscriptTestExecute.h once the Execute* naming family lands in Phase 3.
 	template <typename TValue>
 	bool ExecuteValueFunction(
 		FAutomationTestBase& Test,

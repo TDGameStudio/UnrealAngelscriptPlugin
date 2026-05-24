@@ -11,7 +11,7 @@ namespace AngelscriptTestSupport
 {
 	bool CompileModuleWithResult(FAngelscriptEngine* Engine, ECompileType CompileType, FName ModuleName, FString Filename, FString Script, ECompileResult& OutCompileResult);
 	bool CompileModuleFromMemory(FAngelscriptEngine* Engine, FName ModuleName, FString Filename, FString Script);
-	void ResetSharedInitializedTestEngine(FAngelscriptEngine& Engine);
+	void ResetSharedCloneEngine(FAngelscriptEngine& Engine);
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(

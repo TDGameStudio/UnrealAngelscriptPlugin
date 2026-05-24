@@ -64,6 +64,7 @@ namespace CurveTestHelpers
 			static_cast<int32>(asSUCCESS));
 	}
 
+	// TODO(refactor-as-test-shared-layout-and-naming): migrate ExecuteIntFunctionWithAddressArg to Shared/AngelscriptTestExecute.h once the Execute* naming family lands in Phase 3.
 	bool ExecuteIntFunctionWithAddressArg(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,

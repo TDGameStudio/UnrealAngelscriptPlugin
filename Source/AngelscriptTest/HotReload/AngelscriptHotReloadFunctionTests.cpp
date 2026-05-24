@@ -344,7 +344,7 @@ bool FAngelscriptHotReloadModifyLookupFlowTest::RunTest(const FString& Parameter
 	ON_SCOPE_EXIT
 	{
 		Engine.DiscardModule(*ModuleName.ToString());
-		ResetSharedInitializedTestEngine(Engine);
+		ResetSharedCloneEngine(Engine);
 	};
 
 	const FString ScriptV1 = TEXT(R"AS(
@@ -436,7 +436,7 @@ bool FAngelscriptHotReloadFailureKeepsOldCodeTest::RunTest(const FString& Parame
 	ON_SCOPE_EXIT
 	{
 		Engine.DiscardModule(*ModuleName.ToString());
-		ResetSharedInitializedTestEngine(Engine);
+		ResetSharedCloneEngine(Engine);
 	};
 
 	const FString ScriptV1 = TEXT(R"AS(

@@ -48,6 +48,7 @@ namespace AngelscriptTest_Bindings_AngelscriptWorldFunctionLibraryTests_Private
 	static constexpr ANSICHAR ModuleName[] = "ASWorldStreamingNullGuards";
 	static constexpr ANSICHAR WorldStreamingAccessModuleName[] = "ASWorldStreamingAccess";
 
+	// TODO(refactor-as-test-shared-layout-and-naming): migrate ExecuteIntFunction / ExecuteBoolFunction / ExecuteFunctionExpectingException to Shared/AngelscriptTestExecute.h once the Execute* naming family lands in Phase 3.
 	bool ExecuteIntFunction(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,

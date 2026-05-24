@@ -492,7 +492,7 @@ class UTestScriptClassNonUClassTypeCannotSpawn : UObject
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
-			ResetSharedInitializedTestEngine(Engine);
+			ResetSharedCloneEngine(Engine);
 		};
 
 		UClass* OldClass = CompileScriptModule(*TestRunner, Engine, ModuleName,
