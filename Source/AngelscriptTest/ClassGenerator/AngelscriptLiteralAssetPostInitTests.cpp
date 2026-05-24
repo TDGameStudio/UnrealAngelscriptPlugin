@@ -1,6 +1,6 @@
-#include "Shared/AngelscriptFunctionalTestUtils.h"
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestMacros.h"
 
 #include "CQTest.h"
 #include "Misc/ScopeExit.h"

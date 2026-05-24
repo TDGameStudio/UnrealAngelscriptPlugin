@@ -1,5 +1,5 @@
-#include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestMacros.h"
 
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS

@@ -1,7 +1,7 @@
-#include "Shared/AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestEngineHelper.h"
 
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptNativeScriptTestObject.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptNativeScriptTestObject.h"
 #include "ClassGenerator/ASClass.h"
 #include "ClassGenerator/ASStruct.h"
 #include "Components/ActorTestSpawner.h"

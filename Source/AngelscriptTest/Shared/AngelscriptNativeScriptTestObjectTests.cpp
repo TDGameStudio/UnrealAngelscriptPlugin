@@ -1,4 +1,4 @@
-#include "Shared/AngelscriptNativeScriptTestObject.h"
+#include "AngelscriptNativeScriptTestObject.h"
 
 #include "Misc/AutomationTest.h"
 

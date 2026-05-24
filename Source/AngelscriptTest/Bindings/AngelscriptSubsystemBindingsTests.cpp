@@ -12,10 +12,10 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestExecute.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestUtilities.h"
+#include "AngelscriptTestExecute.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestUtilities.h"
 
 #include "AngelscriptEngineSubsystem.h"
 #include "AngelscriptGameInstanceSubsystem.h"

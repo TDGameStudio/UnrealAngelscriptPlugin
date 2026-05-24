@@ -1,5 +1,5 @@
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestMacros.h"
 
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"

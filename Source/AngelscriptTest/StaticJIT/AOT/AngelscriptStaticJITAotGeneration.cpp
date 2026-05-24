@@ -1,6 +1,6 @@
 #include "StaticJIT/AOT/AngelscriptStaticJITAotGeneration.h"
 
-#include "Shared/AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestEngineHelper.h"
 #include "StaticJIT/AOT/AngelscriptStaticJITAotFixture.h"
 #include "StaticJIT/AngelscriptStaticJIT.h"
 #include "StaticJIT/PrecompiledData.h"

@@ -2,7 +2,7 @@
 
 #include "AngelscriptEngineSubsystem.h"
 #include "Preprocessor/AngelscriptPreprocessorTestHelpers.h"
-#include "Shared/AngelscriptTestEnginePool.h"
+#include "AngelscriptTestEnginePool.h"
 
 #include "Logging/LogMacros.h"
 #include "Misc/CommandLine.h"

@@ -12,17 +12,16 @@
 //
 // CQTest adaptation notes:
 //   Two IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
-//   The custom helper namespace (ExecuteValueFunction, VerifyMathBindingsRotator, etc.) is
-//   retained as-is because these tests return struct types (FRotator, FVector,
-//   FTransform) via GetAddressOfReturnValue.
+//   Struct returns use FAngelscriptTestExecutor::ExecuteAndExtractStruct with
+//   tolerance checks from Bindings/AngelscriptMathBindingsTestCompare.h.
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptTestExecute.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptTestExecute.h"
 #include "Bindings/AngelscriptMathBindingsTestCompare.h"
 
 #include "Math/Quat.h"

@@ -1,8 +1,8 @@
-#include "AngelscriptConsoleBindingsSections.h"
+#include "Bindings/AngelscriptConsoleBindingsSections.h"
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestMacros.h"
 
 #include "Misc/ScopeExit.h"
 

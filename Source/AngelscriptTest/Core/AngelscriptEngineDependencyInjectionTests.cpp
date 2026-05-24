@@ -1,6 +1,6 @@
 #include "AngelscriptEngine.h"
 #include "CQTest.h"
-#include "Shared/AngelscriptTestEngine.h"
+#include "AngelscriptTestEngine.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 

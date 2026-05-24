@@ -19,12 +19,12 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptTestExecute.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptTestExecute.h"
 
-#include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestEngineHelper.h"
 
 #include "Camera/CameraActor.h"
 #include "GameFramework/Actor.h"

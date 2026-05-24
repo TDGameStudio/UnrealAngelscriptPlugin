@@ -14,14 +14,14 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptBindingsAssertions.h"
 
 #include "Core/AngelscriptEngine.h"
-#include "Shared/AngelscriptNativeInterfaceTestTypes.h"
-#include "Shared/AngelscriptNativeInterfaceTestHelpers.h"
-#include "Shared/AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptNativeInterfaceTestTypes.h"
+#include "AngelscriptNativeInterfaceTestHelpers.h"
+#include "AngelscriptFunctionalTestUtils.h"
 
 #include "Components/ActorTestSpawner.h"
 #include "Misc/ScopeExit.h"

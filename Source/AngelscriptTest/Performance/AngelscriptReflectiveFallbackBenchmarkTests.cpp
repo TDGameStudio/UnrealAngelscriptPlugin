@@ -44,7 +44,7 @@
 // ============================================================================
 
 #include "Performance/AngelscriptPerformanceTestTypes.h"
-#include "Shared/AngelscriptPerformanceTestUtils.h"
+#include "AngelscriptPerformanceTestUtils.h"
 
 #include "HAL/PlatformFileManager.h"
 #include "HAL/PlatformTime.h"

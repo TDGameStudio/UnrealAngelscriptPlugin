@@ -16,11 +16,11 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptTestExecute.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptTestExecute.h"
 
 #include "Misc/ScopeExit.h"
 

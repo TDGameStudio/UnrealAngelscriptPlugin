@@ -1,8 +1,8 @@
 #include "CQTest.h"
-#include "Shared/AngelscriptTestExecute.h"
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptTestExecute.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestMacros.h"
 #include "Bindings/AngelscriptTArrayBindingsTestHelpers.h"
 
 #include "Containers/ScriptArray.h"
@@ -77,7 +77,7 @@ int Entry()
 		return false;
 	}
 
-	return Test.TestEqual(*TArrayBindingsFormatCoverageText(Profile, TEXT("TArray mutation helpers should match expected script behaviour")), Result, 1);
+	return Test.TestEqual(TEXT("TArray mutation helpers should match expected script behaviour"), Result, 1);
 }
 
 bool RunTArrayIteratorCompatSection(
@@ -159,7 +159,7 @@ int Entry()
 		return false;
 	}
 
-	return Test.TestEqual(*TArrayBindingsFormatCoverageText(Profile, TEXT("TArray iterator helpers should match expected script behaviour")), Result, 1);
+	return Test.TestEqual(TEXT("TArray iterator helpers should match expected script behaviour"), Result, 1);
 }
 
 bool RunTArrayOperationsSection(
@@ -1743,15 +1743,13 @@ bool RunTArrayNestedContainerRejectionSection(
 
 	const FString ModuleName = TArrayBindingsMakeModuleName(Profile, TEXT("NestedContainerRejection"));
 	const FString SourceFilename = FString::Printf(TEXT("%s.as"), *ModuleName);
-	const FString Source = TArrayBindingsFormatCoverageText(
-		Profile,
-		TEXT(R"(
+	const FString Source = TEXT(R"(
 int Entry()
 {
 	TArray<TArray<int>> Nested;
 	return Nested.Num();
 }
-)"));
+)");
 
 	FAngelscriptCompileTraceSummary Summary;
 	const bool bCompiled = CompileModuleWithSummary(
@@ -1764,18 +1762,18 @@ int Entry()
 		Summary,
 		true);
 
-	TArrayBindingsReportCompileSummaryDiagnostics(Test, *TArrayBindingsFormatCoverageText(Profile, TEXT("TArray<TArray<int>> nested container rejection")), Summary);
+	TArrayBindingsReportCompileSummaryDiagnostics(Test, TEXT("TArray<TArray<int>> nested container rejection"), Summary);
 
 	bPassed = true;
 	bPassed &= Test.TestFalse(
-		*TArrayBindingsFormatCoverageText(Profile, TEXT("TArray<TArray<int>> should fail compilation because nested containers are currently unsupported")),
+		TEXT("TArray<TArray<int>> should fail compilation because nested containers are currently unsupported"),
 		bCompiled);
 	bPassed &= Test.TestEqual(
-		*TArrayBindingsFormatCoverageText(Profile, TEXT("TArray<TArray<int>> rejection should be a compile error")),
+		TEXT("TArray<TArray<int>> rejection should be a compile error"),
 		Summary.CompileResult,
 		ECompileResult::Error);
 	bPassed &= Test.TestTrue(
-		*TArrayBindingsFormatCoverageText(Profile, TEXT("TArray<TArray<int>> rejection should report the nested container diagnostic or use the shorthand parser rejection path")),
+		TEXT("TArray<TArray<int>> rejection should report the nested container diagnostic or use the shorthand parser rejection path"),
 		TArrayBindingsCompileSummaryContainsDiagnosticMessage(Summary, TArrayBindingsNestedContainerDiagnostic));
 
 	return bPassed;

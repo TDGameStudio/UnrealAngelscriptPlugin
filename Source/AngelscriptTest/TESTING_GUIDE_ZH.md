@@ -16,9 +16,9 @@
 
 ```cpp
 #include "CQTest.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptTestExecute.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptTestExecute.h"
 
 TEST_CLASS_WITH_FLAGS(FMyTest,
     "Angelscript.TestModule.Category.Feature",
@@ -51,14 +51,14 @@ int GetValue() { return 42; }
 - `BEFORE_ALL` 用 `CREATE`（带 reset），`TEST_METHOD` 用 `GET`（不 reset）
 - `FScopedAngelscriptModule` 负责每个测试方法的模块隔离
 - 断言函数传 `*TestRunner`（不是 `*this`）
-- 新代码直接 include `AngelscriptTestModuleScope.h` / `AngelscriptTestExecute.h`，勿依赖 `AngelscriptBindingsAssertions.h` 等转发头
+- 新代码直接 `#include "AngelscriptTestModuleScope.h"` / `AngelscriptTestExecute.h`（Build.cs 已把 `Shared/` 加入 include 路径）；`Bindings/` 下模块头仍写 `#include "Bindings/..."`
 
 ## 测试 helper 放哪里
 
 | 条件 | 位置 | 示例 |
 |------|------|------|
 | ≥2 个主题目录共用 | `Shared/*.h` | `FAngelscriptTestExecutor`、`BuildModule` |
-| 仅 `Bindings/` 内 ≥2 个 `.cpp` | `Bindings/Angelscript*TestHelpers.h` | `AngelscriptTArrayBindingsTestHelpers.h` |
+| 仅 `Bindings/` 内 ≥2 个 `.cpp` | `Bindings/Angelscript*TestHelpers.h` | `Bindings/AngelscriptTArrayBindingsTestHelpers.h` |
 | 仅单个 `.cpp` | 保留 `AngelscriptTest_<File>_Private` | ReflectiveFallback 缓存探测 |
 | 大文件按 Section 拆 | `Bindings/*Sections.h` | Console 簇 |
 

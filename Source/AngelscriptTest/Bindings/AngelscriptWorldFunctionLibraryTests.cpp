@@ -11,17 +11,16 @@
 // CQTest adaptation notes:
 //   Two IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
 //   Both tests use ASTEST_CREATE_ENGINE_FULL (requires world context via
-//   FActorTestSpawner). Custom execution helpers (ExecuteIntFunction,
-//   ExecuteBoolFunction, ExecuteFunctionExpectingException) are retained
-//   because these tests pass UObject* arguments and validate exceptions.
+//   FActorTestSpawner). Execution uses FAngelscriptTestExecutor and
+//   Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h for UObject args and exceptions.
 //   $TOKEN$ → compute + ReplaceInline pattern preserved for WorldStreamingAccess.
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptTestExecute.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptTestExecute.h"
 #include "Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h"
 
 #include "Components/ActorTestSpawner.h"

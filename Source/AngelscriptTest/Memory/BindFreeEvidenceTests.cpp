@@ -20,7 +20,7 @@
 
 #include "AngelscriptEngine.h"
 #include "Binds/BlueprintEventSignatureRegistry.h"
-#include "Shared/AngelscriptTestUtilities.h"
+#include "AngelscriptTestUtilities.h"
 #include "CQTest.h"
 #include "Engine/Engine.h"
 #include "HAL/PlatformMemory.h"

@@ -1,5 +1,5 @@
 #include "CQTest.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptTestMacros.h"
 #include "ClassGenerator/ASClass.h"
 #include "ClassGenerator/ASStruct.h"
 #include "UObject/GarbageCollection.h"

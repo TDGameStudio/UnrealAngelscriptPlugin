@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 
-#include "Shared/AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestEngineHelper.h"
 
 struct FAngelscriptDebuggerScriptFixture
 {

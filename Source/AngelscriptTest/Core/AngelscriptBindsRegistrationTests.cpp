@@ -1,5 +1,5 @@
 #include "AngelscriptBinds.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptTestMacros.h"
 
 #include "CQTest.h"
 #include "GameFramework/Actor.h"

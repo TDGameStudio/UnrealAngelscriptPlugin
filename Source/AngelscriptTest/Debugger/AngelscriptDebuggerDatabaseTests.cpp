@@ -1,5 +1,5 @@
 #include "CQTest.h"
-#include "Shared/AngelscriptDebuggerTestContext.h"
+#include "AngelscriptDebuggerTestContext.h"
 
 #include "Core/AngelscriptEngine.h"
 #include "Core/AngelscriptSettings.h"

@@ -7,8 +7,8 @@
 #include "Containers/ScriptArray.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestExecute.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestExecute.h"
 #include "Templates/Function.h"
 
 #include "StartAngelscriptHeaders.h"
@@ -22,7 +22,6 @@ struct FArraySyntaxCoverageProfile
 {
 	const TCHAR* CasePrefix = nullptr;
 	const TCHAR* ModulePrefix = nullptr;
-	const TCHAR* LogCategory = nullptr;
 	const TCHAR* TraceFunctionDecl = TEXT("void TraceTArrayCase(const FString&in)");
 	bool bBracketArraySyntax = false;
 };
@@ -32,7 +31,6 @@ inline FArraySyntaxCoverageProfile TArrayBindingsCoverageProfile()
 	return FArraySyntaxCoverageProfile{
 		TEXT("TArray"),
 		TEXT("ASTArray"),
-		TEXT("TArrayBindings"),
 		TEXT("void TraceTArrayCase(const FString&in)"),
 		false};
 }
@@ -42,7 +40,6 @@ inline FArraySyntaxCoverageProfile TArraySyntaxCompatCoverageProfile()
 	return FArraySyntaxCoverageProfile{
 		TEXT("TArraySyntax"),
 		TEXT("ASTArraySyntaxCompat"),
-		TEXT("TArraySyntaxCompatBindings"),
 		TEXT("void TraceSyntaxCase(const FString&in)"),
 		true};
 }
@@ -64,11 +61,6 @@ struct FTArrayExpectedGlobalIntAtLeast
 inline FString TArrayBindingsMakeModuleName(const FArraySyntaxCoverageProfile& Profile, const TCHAR* SectionName)
 {
 	return FString::Printf(TEXT("%s%s"), Profile.ModulePrefix, SectionName);
-}
-
-inline FString TArrayBindingsFormatCoverageText(const FArraySyntaxCoverageProfile& Profile, const FString& Text)
-{
-	return Text;
 }
 
 inline FString TArrayBindingsMakeArrayFunctionDecl(
@@ -117,13 +109,13 @@ inline bool ExpectTArrayBindingsGlobalInt(
 	const TCHAR* ContextLabel,
 	int32 ExpectedValue)
 {
-	const FString FormattedContextLabel = TArrayBindingsFormatCoverageText(Profile, ContextLabel);
-	const bool bTracePassed = TArrayBindingsTraceCase(Test, Engine, Module, Profile, FormattedContextLabel);
+	const FString ContextLabelString(ContextLabel);
+	const bool bTracePassed = TArrayBindingsTraceCase(Test, Engine, Module, Profile, ContextLabelString);
 	FAngelscriptTestExecutor Invoker(Test, Engine, Module, FunctionDecl);
 	const int32 ActualValue = Invoker.ExecuteAndGet<int32>(INDEX_NONE);
-	Test.AddInfo(FString::Printf(TEXT("%s returned %d"), *FormattedContextLabel, ActualValue));
+	Test.AddInfo(FString::Printf(TEXT("%s returned %d"), *ContextLabelString, ActualValue));
 	return bTracePassed && Test.TestEqual(
-		*FString::Printf(TEXT("%s should return the expected script-visible value"), *FormattedContextLabel),
+		*FString::Printf(TEXT("%s should return the expected script-visible value"), *ContextLabelString),
 		ActualValue,
 		ExpectedValue);
 }
@@ -137,13 +129,13 @@ inline bool ExpectTArrayBindingsGlobalIntAtLeast(
 	const TCHAR* ContextLabel,
 	int32 MinimumValue)
 {
-	const FString FormattedContextLabel = TArrayBindingsFormatCoverageText(Profile, ContextLabel);
-	const bool bTracePassed = TArrayBindingsTraceCase(Test, Engine, Module, Profile, FormattedContextLabel);
+	const FString ContextLabelString(ContextLabel);
+	const bool bTracePassed = TArrayBindingsTraceCase(Test, Engine, Module, Profile, ContextLabelString);
 	FAngelscriptTestExecutor Invoker(Test, Engine, Module, FunctionDecl);
 	const int32 ActualValue = Invoker.ExecuteAndGet<int32>(INDEX_NONE);
-	Test.AddInfo(FString::Printf(TEXT("%s returned %d"), *FormattedContextLabel, ActualValue));
+	Test.AddInfo(FString::Printf(TEXT("%s returned %d"), *ContextLabelString, ActualValue));
 	return bTracePassed && Test.TestTrue(
-		*FString::Printf(TEXT("%s should be at least %d"), *FormattedContextLabel, MinimumValue),
+		*FString::Printf(TEXT("%s should be at least %d"), *ContextLabelString, MinimumValue),
 		ActualValue >= MinimumValue);
 }
 
@@ -200,8 +192,8 @@ inline bool TArrayBindingsExecuteFunctionExpectingScriptException(
 	const FString& ExpectedExceptionText,
 	const FString& ContextLabel)
 {
-	const FString FormattedContextLabel = TArrayBindingsFormatCoverageText(Profile, ContextLabel);
-	if (!TArrayBindingsTraceCase(Test, Engine, Module, Profile, FormattedContextLabel))
+	const FString ContextLabelString(ContextLabel);
+	if (!TArrayBindingsTraceCase(Test, Engine, Module, Profile, ContextLabelString))
 	{
 		return false;
 	}
@@ -214,7 +206,7 @@ inline bool TArrayBindingsExecuteFunctionExpectingScriptException(
 
 	FAngelscriptEngineScope EngineScope(Engine);
 	asIScriptContext* ScriptContext = Engine.CreateContext();
-	if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create an execution context"), *FormattedContextLabel), ScriptContext))
+	if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create an execution context"), *ContextLabelString), ScriptContext))
 	{
 		return false;
 	}
@@ -231,25 +223,25 @@ inline bool TArrayBindingsExecuteFunctionExpectingScriptException(
 	const int32 ExceptionLine = ScriptContext->GetExceptionLineNumber();
 
 	const bool bPrepared = Test.TestEqual(
-		*FString::Printf(TEXT("%s should prepare successfully before the runtime error path"), *FormattedContextLabel),
+		*FString::Printf(TEXT("%s should prepare successfully before the runtime error path"), *ContextLabelString),
 		PrepareResult,
 		static_cast<int32>(asSUCCESS));
 	const bool bThrew = Test.TestEqual(
-		*FString::Printf(TEXT("%s should raise a script execution exception"), *FormattedContextLabel),
+		*FString::Printf(TEXT("%s should raise a script execution exception"), *ContextLabelString),
 		ExecuteResult,
 		static_cast<int32>(asEXECUTION_EXCEPTION));
 	const bool bHasMessage = Test.TestFalse(
-		*FString::Printf(TEXT("%s should provide a non-empty exception string"), *FormattedContextLabel),
+		*FString::Printf(TEXT("%s should provide a non-empty exception string"), *ContextLabelString),
 		ExceptionString.IsEmpty());
 	const bool bHasExpectedMessage = Test.TestTrue(
-		*FString::Printf(TEXT("%s should report the expected exception text"), *FormattedContextLabel),
+		*FString::Printf(TEXT("%s should report the expected exception text"), *ContextLabelString),
 		ExceptionString.Contains(ExpectedExceptionText));
 	const bool bHasLine = Test.TestTrue(
-		*FString::Printf(TEXT("%s should report a positive exception line"), *FormattedContextLabel),
+		*FString::Printf(TEXT("%s should report a positive exception line"), *ContextLabelString),
 		ExceptionLine > 0);
 	Test.AddInfo(FString::Printf(
 		TEXT("%s raised script exception at line %d: %s"),
-		*FormattedContextLabel,
+		*ContextLabelString,
 		ExceptionLine,
 		*ExceptionString));
 
@@ -265,8 +257,8 @@ inline bool TArrayBindingsExecuteFunctionReturningScriptArray(
 	const FString& ContextLabel,
 	TFunctionRef<bool(const FScriptArray&)> ValidateReturnedArray)
 {
-	const FString FormattedContextLabel = TArrayBindingsFormatCoverageText(Profile, ContextLabel);
-	if (!TArrayBindingsTraceCase(Test, Engine, Module, Profile, FormattedContextLabel))
+	const FString ContextLabelString(ContextLabel);
+	if (!TArrayBindingsTraceCase(Test, Engine, Module, Profile, ContextLabelString))
 	{
 		return false;
 	}
@@ -279,7 +271,7 @@ inline bool TArrayBindingsExecuteFunctionReturningScriptArray(
 
 	FAngelscriptEngineScope EngineScope(Engine);
 	asIScriptContext* ScriptContext = Engine.CreateContext();
-	if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create an execution context"), *FormattedContextLabel), ScriptContext))
+	if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create an execution context"), *ContextLabelString), ScriptContext))
 	{
 		return false;
 	}
@@ -292,11 +284,11 @@ inline bool TArrayBindingsExecuteFunctionReturningScriptArray(
 	const int PrepareResult = ScriptContext->Prepare(Function);
 	const int ExecuteResult = PrepareResult == asSUCCESS ? ScriptContext->Execute() : PrepareResult;
 	const bool bPrepared = Test.TestEqual(
-		*FString::Printf(TEXT("%s should prepare successfully"), *FormattedContextLabel),
+		*FString::Printf(TEXT("%s should prepare successfully"), *ContextLabelString),
 		PrepareResult,
 		static_cast<int32>(asSUCCESS));
 	const bool bExecuted = Test.TestEqual(
-		*FString::Printf(TEXT("%s should execute successfully"), *FormattedContextLabel),
+		*FString::Printf(TEXT("%s should execute successfully"), *ContextLabelString),
 		ExecuteResult,
 		static_cast<int32>(asEXECUTION_FINISHED));
 	if (!bPrepared || !bExecuted)
@@ -305,7 +297,7 @@ inline bool TArrayBindingsExecuteFunctionReturningScriptArray(
 		{
 			Test.AddError(FString::Printf(
 				TEXT("%s failed while returning array: %s"),
-				*FormattedContextLabel,
+				*ContextLabelString,
 				UTF8_TO_TCHAR(ScriptContext->GetExceptionString())));
 		}
 		return false;
@@ -313,14 +305,14 @@ inline bool TArrayBindingsExecuteFunctionReturningScriptArray(
 
 	const FScriptArray* ReturnedArray = static_cast<const FScriptArray*>(ScriptContext->GetReturnObject());
 	const bool bHasArray = Test.TestNotNull(
-		*FString::Printf(TEXT("%s should expose a returned FScriptArray object"), *FormattedContextLabel),
+		*FString::Printf(TEXT("%s should expose a returned FScriptArray object"), *ContextLabelString),
 		ReturnedArray);
 	if (!bHasArray)
 	{
 		return false;
 	}
 
-	Test.AddInfo(FString::Printf(TEXT("%s returned array with Num=%d"), *FormattedContextLabel, ReturnedArray->Num()));
+	Test.AddInfo(FString::Printf(TEXT("%s returned array with Num=%d"), *ContextLabelString, ReturnedArray->Num()));
 	return ValidateReturnedArray(*ReturnedArray);
 }
 

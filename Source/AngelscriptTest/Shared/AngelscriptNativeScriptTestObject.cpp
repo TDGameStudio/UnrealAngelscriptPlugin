@@ -1,4 +1,4 @@
-#include "Shared/AngelscriptNativeScriptTestObject.h"
+#include "AngelscriptNativeScriptTestObject.h"
 
 float UAngelscriptNativeScriptTestObject::NativeEventWithParameter_Implementation(float Value)
 {

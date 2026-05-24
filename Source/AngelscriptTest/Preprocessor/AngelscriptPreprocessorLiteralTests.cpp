@@ -13,7 +13,7 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptTestMacros.h"
 #include "Preprocessor/AngelscriptPreprocessorTestHelpers.h"
 
 #include "Misc/ScopeExit.h"

@@ -38,12 +38,12 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptTestExecute.h"
-#include "Shared/AngelscriptReflectiveAccess.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptTestExecute.h"
+#include "AngelscriptReflectiveAccess.h"
 #include "../../AngelscriptRuntime/Binds/BlueprintCallableReflectiveFallback.h"
 #include "../../AngelscriptRuntime/Binds/Helper_FunctionSignature.h"
 

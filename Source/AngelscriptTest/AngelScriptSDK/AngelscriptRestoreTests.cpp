@@ -1,4 +1,4 @@
-#include "Shared/AngelscriptTestUtilities.h"
+#include "AngelscriptTestUtilities.h"
 #include "CQTest.h"
 #include "Misc/ScopeExit.h"
 

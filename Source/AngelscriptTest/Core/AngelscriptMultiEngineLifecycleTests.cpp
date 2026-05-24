@@ -3,7 +3,7 @@
 #include "CQTest.h"
 #include "Misc/Guid.h"
 #include "Misc/ScopeExit.h"
-#include "Shared/AngelscriptTestEngine.h"
+#include "AngelscriptTestEngine.h"
 #include "Testing/AngelscriptBindExecutionObservation.h"
 
 #include "StartAngelscriptHeaders.h"

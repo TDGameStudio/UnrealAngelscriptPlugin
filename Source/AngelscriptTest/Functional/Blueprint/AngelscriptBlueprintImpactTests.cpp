@@ -1,5 +1,5 @@
 #include "CQTest.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptTestMacros.h"
 #include "Functional/Blueprint/AngelscriptBlueprintTestHelpers.h"
 #include "BlueprintImpact/AngelscriptBlueprintImpactScanner.h"
 

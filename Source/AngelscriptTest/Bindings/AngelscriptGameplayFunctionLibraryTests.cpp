@@ -16,12 +16,12 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptTestExecute.h"
-#include "Shared/AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptTestExecute.h"
+#include "AngelscriptFunctionalTestUtils.h"
 
-#include "AngelscriptGameplayFunctionLibraryTestTypes.h"
+#include "Bindings/AngelscriptGameplayFunctionLibraryTestTypes.h"
 
 #include "Async/TaskGraphInterfaces.h"
 #include "Containers/Ticker.h"

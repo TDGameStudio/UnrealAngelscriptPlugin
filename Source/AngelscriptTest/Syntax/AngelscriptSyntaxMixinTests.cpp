@@ -7,9 +7,9 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptBindingsAssertions.h"
 #include "Syntax/AngelscriptSyntaxTestHelpers.h"
 
 #if WITH_DEV_AUTOMATION_TESTS

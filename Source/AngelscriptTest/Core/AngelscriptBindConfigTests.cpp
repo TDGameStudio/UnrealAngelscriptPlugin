@@ -5,7 +5,7 @@
 #include "Binds/Helper_FunctionSignature.h"
 #include "Testing/AngelscriptUhtOverloadCoverageTypes.h"
 #include "ClassGenerator/ASClass.h"
-#include "Shared/AngelscriptTestUtilities.h"
+#include "AngelscriptTestUtilities.h"
 #include "Testing/AngelscriptBindExecutionObservation.h"
 #include "FunctionLibraries/RuntimeFloatCurveMixinLibrary.h"
 #include "GameFramework/Actor.h"

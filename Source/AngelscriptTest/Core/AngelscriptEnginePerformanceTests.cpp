@@ -1,9 +1,9 @@
 #include "AngelscriptEngine.h"
 
-#include "Shared/AngelscriptPerformanceTestUtils.h"
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestUtilities.h"
+#include "AngelscriptPerformanceTestUtils.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestUtilities.h"
 #include "Testing/AngelscriptBindExecutionObservation.h"
 
 #include "ClassGenerator/ASClass.h"

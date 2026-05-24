@@ -1,8 +1,8 @@
-#include "Shared/AngelscriptTestUtilities.h"
+#include "AngelscriptTestUtilities.h"
 #include "Misc/Paths.h"
 #include "Misc/ScopeExit.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestLegacyHelpers.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestLegacyHelpers.h"
 
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS

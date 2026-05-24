@@ -15,15 +15,15 @@
 //
 // CQTest adaptation notes:
 //   Original single IMPLEMENT_SIMPLE_AUTOMATION_TEST monolithic function split
-//   into six TEST_METHODs, each with its own FScopedAngelscriptModule. The custom
-//   address-based invocation helpers are retained for the bool+out-param
-//   calling convention. World/collision setup is shared via BEFORE_EACH.
+//   into six TEST_METHODs, each with its own FScopedAngelscriptModule.
+//   Bool+address out-params use Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h.
+//   World/collision setup is shared via BEFORE_EACH.
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptTestExecute.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptTestExecute.h"
 #include "Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h"
 
 #include "Components/ActorTestSpawner.h"

@@ -1,7 +1,7 @@
-#include "Shared/AngelscriptLearningTrace.h"
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptLearningTrace.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestMacros.h"
 
 #include "GameFramework/Actor.h"
 #include "Misc/AutomationTest.h"

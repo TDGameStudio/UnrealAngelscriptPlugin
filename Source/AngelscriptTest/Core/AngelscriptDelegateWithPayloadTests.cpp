@@ -1,7 +1,7 @@
 #include "Core/AngelscriptDelegateWithPayload.h"
 #include "Core/AngelscriptEngine.h"
-#include "Shared/AngelscriptNativeScriptTestObject.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptNativeScriptTestObject.h"
+#include "AngelscriptTestMacros.h"
 
 #include "CQTest.h"
 #include "Math/UnrealMathUtility.h"

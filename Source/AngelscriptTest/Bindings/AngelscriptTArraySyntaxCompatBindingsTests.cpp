@@ -1,7 +1,7 @@
 #include "CQTest.h"
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestMacros.h"
 
 #include "Containers/ScriptArray.h"
 #include "Camera/CameraActor.h"
@@ -11,7 +11,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-#include "Shared/AngelscriptTestExecute.h"
+#include "AngelscriptTestExecute.h"
 #include "Bindings/AngelscriptTArrayBindingsTestHelpers.h"
 
 static const FString TArraySyntaxCompatNestedContainerDiagnostic = TEXT("Containers cannot be nested in other containers");

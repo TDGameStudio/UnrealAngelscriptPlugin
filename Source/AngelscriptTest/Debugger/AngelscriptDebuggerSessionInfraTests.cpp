@@ -1,6 +1,6 @@
 #include "CQTest.h"
-#include "Shared/AngelscriptDebuggerTestClient.h"
-#include "Shared/AngelscriptDebuggerTestSession.h"
+#include "AngelscriptDebuggerTestClient.h"
+#include "AngelscriptDebuggerTestSession.h"
 
 #include "Misc/ScopeExit.h"
 

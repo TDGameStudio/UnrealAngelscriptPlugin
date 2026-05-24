@@ -3,7 +3,7 @@
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestEnginePool.h"
 #include "AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestEngine.h"
+#include "AngelscriptTestEngine.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 

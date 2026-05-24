@@ -1,9 +1,9 @@
 #include "AngelscriptEngine.h"
-#include "Shared/AngelscriptTestUtilities.h"
+#include "AngelscriptTestUtilities.h"
 #include "ClassGenerator/ASClass.h"
-#include "Shared/AngelscriptNativeScriptTestObject.h"
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptNativeScriptTestObject.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestMacros.h"
 #include "CQTest.h"
 #include "UObject/UObjectGlobals.h"
 

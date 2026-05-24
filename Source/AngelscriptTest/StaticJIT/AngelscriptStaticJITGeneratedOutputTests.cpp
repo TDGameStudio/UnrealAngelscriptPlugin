@@ -1,7 +1,7 @@
 #include "Misc/AutomationTest.h"
 
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestMacros.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 

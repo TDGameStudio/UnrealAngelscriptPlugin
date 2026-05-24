@@ -117,10 +117,10 @@
 // =============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptFunctionalTestUtils.h"
-#include "Shared/AngelscriptGlobalFunctionInvoker.h"
-#include "Shared/AngelscriptReflectiveAccess.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptGlobalFunctionInvoker.h"
+#include "AngelscriptReflectiveAccess.h"
+#include "AngelscriptTestMacros.h"
 
 #include "CodeCoverage/AngelscriptCodeCoverage.h"
 #include "CodeCoverage/CoverageReportGenerator.h"

@@ -10,7 +10,7 @@
 #include "Misc/Guid.h"
 #include "Misc/ScopeExit.h"
 #include "Curves/CurveFloat.h"
-#include "Shared/AngelscriptTestEngine.h"
+#include "AngelscriptTestEngine.h"
 #include "UObject/UObjectGlobals.h"
 
 #include "AngelscriptInclude.h"

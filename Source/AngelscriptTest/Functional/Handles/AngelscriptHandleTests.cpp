@@ -1,9 +1,9 @@
-#include "Shared/AngelscriptTestUtilities.h"
+#include "AngelscriptTestUtilities.h"
 #include "Misc/Paths.h"
 #include "Misc/ScopeExit.h"
 #include "UObject/UObjectGlobals.h"
-#include "Shared/AngelscriptNativeScriptTestObject.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptNativeScriptTestObject.h"
+#include "AngelscriptTestMacros.h"
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS
 

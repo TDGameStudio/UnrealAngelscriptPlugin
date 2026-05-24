@@ -1,6 +1,6 @@
-#include "Shared/AngelscriptGlobalFunctionInvoker.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestUtilities.h"
+#include "AngelscriptGlobalFunctionInvoker.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestUtilities.h"
 
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"

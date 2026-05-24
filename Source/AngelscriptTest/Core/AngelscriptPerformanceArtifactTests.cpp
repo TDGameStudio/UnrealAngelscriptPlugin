@@ -1,4 +1,4 @@
-#include "Shared/AngelscriptPerformanceTestUtils.h"
+#include "AngelscriptPerformanceTestUtils.h"
 
 #include "CQTest.h"
 #include "HAL/PlatformFileManager.h"

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Shared/AngelscriptFunctionalTestUtils.h"
-#include "Shared/AngelscriptReflectiveAccess.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestWorld.h"
+#include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptReflectiveAccess.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestWorld.h"
 
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"

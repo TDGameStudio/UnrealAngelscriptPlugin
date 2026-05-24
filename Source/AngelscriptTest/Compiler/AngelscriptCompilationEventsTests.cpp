@@ -7,8 +7,8 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestMacros.h"
 
 #include "Compilation/AngelscriptCompilationContext.h"
 #include "Compilation/AngelscriptCompilationEvents.h"

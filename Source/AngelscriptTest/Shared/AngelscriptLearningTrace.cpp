@@ -1,4 +1,4 @@
-#include "Shared/AngelscriptLearningTrace.h"
+#include "AngelscriptLearningTrace.h"
 
 #include "HAL/FileManager.h"
 #include "Logging/LogMacros.h"

@@ -12,7 +12,7 @@
 #include "HAL/FileManager.h"
 #include "UObject/UObjectGlobals.h"
 #include "UObject/Package.h"
-#include "Shared/AngelscriptTestUtilities.h"
+#include "AngelscriptTestUtilities.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 

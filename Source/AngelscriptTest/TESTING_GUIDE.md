@@ -18,9 +18,9 @@ All new tests should use CQTest (`TEST_CLASS_WITH_FLAGS`):
 
 ```cpp
 #include "CQTest.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptTestExecute.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptTestExecute.h"
 
 TEST_CLASS_WITH_FLAGS(FMyTest,
     "Angelscript.TestModule.Category.Feature",
@@ -115,8 +115,8 @@ Everything else (bindings, syntax, compiler, functional):
 
 | Condition | Location | Example |
 |-----------|----------|---------|
-| Used by ≥2 theme directories (Bindings + Syntax + HotReload…) | `Shared/*.h` | `BuildModule`, `FAngelscriptTestExecutor`, `ExecuteAndExpectInt` |
-| Used by ≥2 files under `Bindings/` only | `Bindings/Angelscript*TestHelpers.h` | `AngelscriptTArrayBindingsTestHelpers.h`, `AngelscriptWorldCollisionBindingsTestHelpers.h` |
+| Used by ≥2 theme directories (Bindings + Syntax + HotReload…) | `Shared/*.h` on disk; include as `AngelscriptTestExecute.h` etc. | `BuildModule`, `FAngelscriptTestExecutor`, `ExecuteAndExpectInt` |
+| Used by ≥2 files under `Bindings/` only | `Bindings/Angelscript*TestHelpers.h` | `Bindings/AngelscriptTArrayBindingsTestHelpers.h` 等 |
 | Single `.cpp` only | Keep `namespace AngelscriptTest_<File>_Private` | ReflectiveFallback cache probes |
 | Large file split by section | `Bindings/*Sections.h` + main `.cpp` | Console bindings cluster |
 
@@ -136,16 +136,18 @@ Everything else (bindings, syntax, compiler, functional):
 
 | File | Purpose |
 |------|---------|
-| `Shared/AngelscriptTestMacros.h` | 5 engine macros (the only macro file for new tests) |
-| `Shared/AngelscriptTestLegacyHelpers.h` | Legacy COMPILE_RUN/BUILD_MODULE macros (deprecated) |
-| `Shared/AngelscriptTestUtilities.h` | Engine creation/destruction utility functions |
-| `Shared/AngelscriptTestEnginePool.h` | Module-clean engine pool and FScopedModuleCleanEngine |
-| `Shared/AngelscriptTestEngineHelper.h` | Compile/execute helper functions |
-| `Shared/AngelscriptTestExecute.h` | **Canonical** `FAngelscriptTestExecutor`, `ExecuteAndExpect*`, `ExpectGlobalInt` |
-| `Shared/AngelscriptTestModuleScope.h` | `FScopedAngelscriptModule` (explicit module name + source) |
-| `Shared/AngelscriptBindingsAssertions.h` | Forward shim → `AngelscriptTestExecute.h` |
-| `Shared/AngelscriptBindingsModuleBuilder.h` | Forward shim → `AngelscriptTestModuleScope.h` |
-| `Shared/AngelscriptGlobalFunctionInvoker.h` | Forward shim → `AngelscriptTestExecute.h` (`FASGlobalFunctionInvoker` alias) |
+| `AngelscriptTestMacros.h` | 5 engine macros (the only macro file for new tests) |
+| `AngelscriptTestLegacyHelpers.h` | Legacy COMPILE_RUN/BUILD_MODULE macros (deprecated) |
+| `AngelscriptTestUtilities.h` | Engine creation/destruction utility functions (umbrella) |
+| `AngelscriptTestEnginePool.h` | Module-clean engine pool and FScopedModuleCleanEngine |
+| `AngelscriptTestEngineHelper.h` | Compile/execute helper functions |
+| `AngelscriptTestExecute.h` | **Canonical** `FAngelscriptTestExecutor`, `ExecuteAndExpect*`, `ExpectGlobalInt` |
+| `AngelscriptTestModuleScope.h` | `FScopedAngelscriptModule` (explicit module name + source) |
+| `AngelscriptBindingsAssertions.h` | Forward shim → `AngelscriptTestExecute.h` |
+| `AngelscriptBindingsModuleBuilder.h` | Forward shim → `AngelscriptTestModuleScope.h` |
+| `AngelscriptGlobalFunctionInvoker.h` | Forward shim → `AngelscriptTestExecute.h` (`FASGlobalFunctionInvoker` alias) |
 | `Bindings/Angelscript*TestHelpers.h` | Bindings-only shared helpers (TArray, World collision, math compare) |
+
+`AngelscriptTest.Build.cs` adds `Shared/` to `PrivateIncludePaths`, so new tests use `#include "AngelscriptTestExecute.h"` rather than `#include "Shared/..."`. Headers under `Bindings/` still use the `Bindings/` include prefix.
 | `Shared/AngelscriptReflectiveAccess.h` | Property/function reflective access helpers |
 | `Template/Template_CQTest.cpp` | CQTest teaching template (6 examples) |

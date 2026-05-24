@@ -1,6 +1,6 @@
-#include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestLegacyHelpers.h"
+#include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestLegacyHelpers.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 

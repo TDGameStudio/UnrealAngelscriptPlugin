@@ -1,5 +1,5 @@
 #include "CQTest.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptTestMacros.h"
 #include "Functional/Actor/AngelscriptActorTestHelpers.h"
 
 #if WITH_DEV_AUTOMATION_TESTS

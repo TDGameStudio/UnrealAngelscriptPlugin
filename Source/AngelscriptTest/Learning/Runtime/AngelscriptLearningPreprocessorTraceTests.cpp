@@ -1,6 +1,6 @@
-#include "Shared/AngelscriptLearningTrace.h"
-#include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptLearningTrace.h"
+#include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestMacros.h"
 
 #include "Preprocessor/AngelscriptPreprocessor.h"
 #include "HAL/FileManager.h"

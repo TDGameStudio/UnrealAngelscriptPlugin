@@ -8,7 +8,7 @@
 // reduced this file from a 1093-line "god header" to a ~40-line umbrella
 // that simply re-exports the six themed sub-headers below.
 //
-// Existing consumers continue to `#include "Shared/AngelscriptTestUtilities.h"`
+// Existing consumers continue to `#include "AngelscriptTestUtilities.h"`
 // (directly or transitively through `AngelscriptTestMacros.h`) without any
 // callsite change — every public symbol is still in the
 // `` namespace (or at top-level for
@@ -57,5 +57,5 @@
 #include "AngelscriptTestExecute.h"
 #include "AngelscriptTestFixture.h"
 
-#include "Shared/AngelscriptTestEngine.h"
+#include "AngelscriptTestEngine.h"
 #include "Misc/AutomationTest.h"

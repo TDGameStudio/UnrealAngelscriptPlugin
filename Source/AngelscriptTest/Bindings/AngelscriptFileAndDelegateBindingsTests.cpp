@@ -21,12 +21,12 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptTestExecute.h"
-#include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptNativeScriptTestObject.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptTestExecute.h"
+#include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptNativeScriptTestObject.h"
 
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"

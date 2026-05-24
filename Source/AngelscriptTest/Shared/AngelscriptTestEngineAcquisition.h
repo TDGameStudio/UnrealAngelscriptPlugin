@@ -59,7 +59,7 @@
 
 #include "AngelscriptEngine.h"
 #include "AngelscriptGameInstanceSubsystem.h"
-#include "Shared/AngelscriptTestEngine.h"
+#include "AngelscriptTestEngine.h"
 #include "ClassGenerator/ASClass.h"
 #include "Containers/UnrealString.h"
 #include "Engine/Engine.h"

@@ -1,5 +1,5 @@
 #include "AngelscriptEngine.h"
-#include "Shared/AngelscriptTestUtilities.h"
+#include "AngelscriptTestUtilities.h"
 #include "ClassGenerator/AngelscriptClassGenerator.h"
 
 #include "CQTest.h"

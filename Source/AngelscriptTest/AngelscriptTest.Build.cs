@@ -20,6 +20,7 @@ namespace UnrealBuildTool.Rules
 
 			PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Preprocessor"));
 			PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "ClassGenerator"));
+			PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Shared"));
 
 			PublicDependencyModuleNames.AddRange(new string[]
 			{

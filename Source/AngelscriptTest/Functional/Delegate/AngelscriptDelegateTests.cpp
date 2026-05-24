@@ -1,8 +1,8 @@
 #include "CQTest.h"
-#include "Shared/AngelscriptFunctionalTestUtils.h"
-#include "Shared/AngelscriptNativeScriptTestObject.h"
-#include "Shared/AngelscriptReflectiveAccess.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptNativeScriptTestObject.h"
+#include "AngelscriptReflectiveAccess.h"
+#include "AngelscriptTestMacros.h"
 
 #include "Components/ActorTestSpawner.h"
 #include "Misc/ScopeExit.h"

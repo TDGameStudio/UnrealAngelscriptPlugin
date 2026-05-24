@@ -1,6 +1,6 @@
-#include "Shared/AngelscriptConstructionContextProbe.h"
-#include "Shared/AngelscriptFunctionalTestUtils.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptConstructionContextProbe.h"
+#include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptTestMacros.h"
 
 #include "CQTest.h"
 #include "ClassGenerator/ASClass.h"

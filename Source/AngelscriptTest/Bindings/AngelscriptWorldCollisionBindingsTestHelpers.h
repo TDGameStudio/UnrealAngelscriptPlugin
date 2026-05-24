@@ -6,8 +6,8 @@
 #include "AngelscriptEngine.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestExecute.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestExecute.h"
 #include "Templates/Function.h"
 
 #include "StartAngelscriptHeaders.h"

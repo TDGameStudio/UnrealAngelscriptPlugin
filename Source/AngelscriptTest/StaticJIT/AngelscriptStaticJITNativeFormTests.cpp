@@ -1,6 +1,6 @@
 #include "Misc/AutomationTest.h"
 
-#include "Shared/AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestEngineHelper.h"
 
 #include "StaticJIT/StaticJITBinds.h"
 

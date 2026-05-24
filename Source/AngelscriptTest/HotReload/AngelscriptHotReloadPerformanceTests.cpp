@@ -1,7 +1,7 @@
-#include "Shared/AngelscriptPerformanceTestUtils.h"
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptPerformanceTestUtils.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestMacros.h"
 
 #include "HAL/PlatformFileManager.h"
 #include "HAL/PlatformTime.h"

@@ -1,8 +1,8 @@
-#include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestLegacyHelpers.h"
-#include "Shared/AngelscriptFunctionalTestUtils.h"
-#include "Shared/AngelscriptReflectiveAccess.h"
+#include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestLegacyHelpers.h"
+#include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptReflectiveAccess.h"
 
 #include "Misc/ScopeExit.h"
 #include "UObject/UObjectGlobals.h"

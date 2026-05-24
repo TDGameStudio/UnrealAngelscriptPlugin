@@ -1,4 +1,4 @@
-#include "Shared/AngelscriptDebuggerTestClient.h"
+#include "AngelscriptDebuggerTestClient.h"
 
 #include "Async/Async.h"
 #include "HAL/PlatformProcess.h"

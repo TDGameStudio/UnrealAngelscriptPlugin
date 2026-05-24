@@ -19,9 +19,9 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptTestExecute.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptTestExecute.h"
 #include "../../AngelscriptRuntime/Binds/Bind_TMap.h"
 #include "../../AngelscriptRuntime/Binds/Bind_TOptional.h"
 

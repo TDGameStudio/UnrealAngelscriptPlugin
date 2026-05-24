@@ -1,8 +1,8 @@
 #include "CQTest.h"
-#include "Shared/AngelscriptFunctionalTestUtils.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptBindingsAssertions.h"
 
 #include "ClassGenerator/AngelscriptClassGenerator.h"
 #include "Components/ActorTestSpawner.h"

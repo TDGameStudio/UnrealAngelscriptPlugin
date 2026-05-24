@@ -1,7 +1,7 @@
-#include "Shared/AngelscriptTestEnginePool.h"
+#include "AngelscriptTestEnginePool.h"
 
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestMacros.h"
 #include "Testing/AngelscriptBindExecutionObservation.h"
 
 #include "ClassGenerator/ASClass.h"

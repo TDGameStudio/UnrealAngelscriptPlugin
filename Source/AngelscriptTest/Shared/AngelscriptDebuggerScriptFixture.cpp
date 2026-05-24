@@ -1,4 +1,4 @@
-#include "Shared/AngelscriptDebuggerScriptFixture.h"
+#include "AngelscriptDebuggerScriptFixture.h"
 
 #include "Misc/AssertionMacros.h"
 

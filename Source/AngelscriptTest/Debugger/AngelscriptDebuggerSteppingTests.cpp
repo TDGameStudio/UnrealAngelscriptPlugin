@@ -1,8 +1,8 @@
 #include "CQTest.h"
-#include "Shared/AngelscriptDebuggerTestContext.h"
-#include "Shared/AngelscriptDebuggerTestMonitor.h"
-#include "Shared/AngelscriptDebuggerScriptFixture.h"
-#include "Shared/AngelscriptDebuggerTestHelpers.h"
+#include "AngelscriptDebuggerTestContext.h"
+#include "AngelscriptDebuggerTestMonitor.h"
+#include "AngelscriptDebuggerScriptFixture.h"
+#include "AngelscriptDebuggerTestHelpers.h"
 
 #include "Core/AngelscriptEngine.h"
 #include "Async/Async.h"

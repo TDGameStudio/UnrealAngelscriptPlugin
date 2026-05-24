@@ -8,6 +8,8 @@ This directory holds the test-side facade and supporting helpers used by the ent
 |---|---|
 | New code that drives an `asIScriptFunction` from C++ | `AngelscriptTestExecute.h` (canonical) |
 | Build an in-memory `.as` module + look up a function | `AngelscriptTestModuleBuilder.h` |
+
+`AngelscriptTest.Build.cs` adds `Shared/` to `PrivateIncludePaths`, so use `#include "AngelscriptTestExecute.h"` — not `#include "Shared/AngelscriptTestExecute.h"`. Bindings-local helpers remain `#include "Bindings/..."`.
 | Acquire / reset / log / destroy the shared test engine | `AngelscriptTestEngineAcquisition.h` |
 | Sweep detached `UASClass` / `UASStruct` before GC | `AngelscriptTestEngineCleanup.h` |
 | `Memory.BindFreeEvidence`-style probes | `AngelscriptTestMemoryProbe.h` |

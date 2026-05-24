@@ -1,4 +1,4 @@
-#include "Shared/AngelscriptDebuggerScriptFixture.h"
+#include "AngelscriptDebuggerScriptFixture.h"
 
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"

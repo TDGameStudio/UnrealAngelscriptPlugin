@@ -1,7 +1,7 @@
 #include "Dump/AngelscriptCSVWriter.h"
 #include "Dump/AngelscriptStateDump.h"
 
-#include "Shared/AngelscriptTestUtilities.h"
+#include "AngelscriptTestUtilities.h"
 
 #include "HAL/FileManager.h"
 #include "Misc/AutomationTest.h"

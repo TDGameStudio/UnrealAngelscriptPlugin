@@ -1,10 +1,10 @@
-#include "AngelscriptConsoleBindingsSections.h"
+#include "Bindings/AngelscriptConsoleBindingsSections.h"
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestExecute.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptTestExecute.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestMacros.h"
 
 #include "HAL/IConsoleManager.h"
 #include "Misc/Guid.h"

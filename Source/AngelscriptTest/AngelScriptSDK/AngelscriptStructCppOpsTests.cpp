@@ -1,5 +1,5 @@
-#include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestMacros.h"
 #include "../../AngelscriptRuntime/Core/AngelscriptBinds.h"
 #include "AngelScriptSDK/AngelscriptStructCppOpsTestTypes.h"
 #include "CQTest.h"

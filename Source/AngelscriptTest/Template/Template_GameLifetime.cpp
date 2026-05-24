@@ -1,8 +1,8 @@
-#include "Shared/AngelscriptFunctionalTestUtils.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptReflectiveAccess.h"
-#include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptTestWorld.h"
+#include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptReflectiveAccess.h"
+#include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestWorld.h"
 
 #include "Engine/EngineTypes.h"
 #include "Engine/World.h"

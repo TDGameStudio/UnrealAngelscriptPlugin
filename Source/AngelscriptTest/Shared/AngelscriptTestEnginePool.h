@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Shared/AngelscriptTestUtilities.h"
+#include "AngelscriptTestUtilities.h"
 
 #include "HAL/PlatformTime.h"
 #include "UObject/GarbageCollection.h"

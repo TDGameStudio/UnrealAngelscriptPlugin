@@ -1,6 +1,6 @@
-#include "Shared/AngelscriptFunctionalTestUtils.h"
-#include "Shared/AngelscriptNativeScriptTestObject.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptNativeScriptTestObject.h"
+#include "AngelscriptTestMacros.h"
 
 #include "CQTest.h"
 #include "ClassGenerator/ASClass.h"

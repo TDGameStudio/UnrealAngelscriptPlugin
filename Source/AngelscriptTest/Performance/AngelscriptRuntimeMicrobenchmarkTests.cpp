@@ -1,8 +1,8 @@
 #include "Performance/AngelscriptPerformanceTestTypes.h"
-#include "Shared/AngelscriptFunctionalTestUtils.h"
-#include "Shared/AngelscriptPerformanceTestUtils.h"
-#include "Shared/AngelscriptReflectiveAccess.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptPerformanceTestUtils.h"
+#include "AngelscriptReflectiveAccess.h"
+#include "AngelscriptTestMacros.h"
 
 #include "HAL/PlatformFileManager.h"
 #include "HAL/PlatformTime.h"

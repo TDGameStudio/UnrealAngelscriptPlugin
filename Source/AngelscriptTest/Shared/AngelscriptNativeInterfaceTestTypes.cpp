@@ -1,4 +1,4 @@
-#include "Shared/AngelscriptNativeInterfaceTestTypes.h"
+#include "AngelscriptNativeInterfaceTestTypes.h"
 
 ATestNativeParentInterfaceActor::ATestNativeParentInterfaceActor()
 {

@@ -1,8 +1,8 @@
 #include "AngelscriptSettings.h"
 #include "AngelscriptType.h"
 #include "ClassGenerator/ASClass.h"
-#include "Shared/AngelscriptFunctionalTestUtils.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptTestMacros.h"
 
 #include "CQTest.h"
 #include "Containers/StringConv.h"

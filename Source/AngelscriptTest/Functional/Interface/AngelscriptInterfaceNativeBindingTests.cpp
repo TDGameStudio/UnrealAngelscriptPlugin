@@ -1,9 +1,9 @@
 #include "CQTest.h"
 #include "Core/AngelscriptEngine.h"
 #include "Functional/Interface/AngelscriptInterfaceTestAccess.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptBindingsAssertions.h"
 
 #include "Misc/ScopeExit.h"
 

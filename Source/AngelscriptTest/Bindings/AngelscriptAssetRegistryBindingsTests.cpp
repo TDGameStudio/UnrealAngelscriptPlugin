@@ -11,13 +11,13 @@
 // CQTest adaptation notes:
 //   Two IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
 //   Both sections use token-replacement patterns with native baseline computation.
-//   TopLevelPathAndNullParent uses ExecuteFunctionExpectingException for negative path.
+//   TopLevelPathAndNullParent uses WorldCollisionExecuteFunctionExpectingException for negative path.
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptTestExecute.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptTestExecute.h"
 #include "Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"

@@ -1,8 +1,8 @@
-#include "Shared/AngelscriptFunctionalTestUtils.h"
-#include "Shared/AngelscriptGlobalFunctionInvoker.h"
-#include "Shared/AngelscriptReflectiveAccess.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestUtilities.h"
+#include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptGlobalFunctionInvoker.h"
+#include "AngelscriptReflectiveAccess.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestUtilities.h"
 
 #include "Components/ActorTestSpawner.h"
 #include "Components/SceneComponent.h"

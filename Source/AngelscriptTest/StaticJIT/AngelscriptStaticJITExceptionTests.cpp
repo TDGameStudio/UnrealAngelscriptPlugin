@@ -1,7 +1,7 @@
 #include "Misc/AutomationTest.h"
 
-#include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestMacros.h"
 
 #include "StaticJIT/StaticJITHeader.h"
 

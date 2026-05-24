@@ -17,8 +17,8 @@
 // before it shows up as a 200 MB allocator residual months later.
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestMacros.h"
 
 #include "AngelscriptDocs.h"
 #include "AngelscriptEngine.h"

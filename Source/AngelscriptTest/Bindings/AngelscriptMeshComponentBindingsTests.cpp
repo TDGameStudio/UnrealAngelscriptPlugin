@@ -4,9 +4,9 @@
 // Automation IDs: Angelscript.TestModule.Bindings.MeshComponent.*
 
 #include "CQTest.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptTestExecute.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptTestExecute.h"
 
 #include "GameFramework/ProjectileMovementComponent.h"
 

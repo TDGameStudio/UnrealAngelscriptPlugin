@@ -1,4 +1,4 @@
-#include "Shared/AngelscriptLearningTrace.h"
+#include "AngelscriptLearningTrace.h"
 #include "AngelScriptSDK/AngelscriptNativeTestSupport.h"
 
 #include "Misc/AutomationTest.h"

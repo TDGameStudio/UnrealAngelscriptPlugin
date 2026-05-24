@@ -1,5 +1,5 @@
-#include "Shared/AngelscriptFunctionalTestUtils.h"
-#include "Shared/AngelscriptTestMacros.h"
+#include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptTestMacros.h"
 #include "../../AngelscriptRuntime/Core/AngelscriptSettings.h"
 #include "../../AngelscriptRuntime/Core/AngelscriptType.h"
 #include "ClassGenerator/ASClass.h"

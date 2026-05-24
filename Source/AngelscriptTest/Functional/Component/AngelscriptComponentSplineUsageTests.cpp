@@ -1,6 +1,6 @@
-#include "Shared/AngelscriptFunctionalTestUtils.h"
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestWorld.h"
+#include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestWorld.h"
 
 #include "Components/SceneComponent.h"
 #include "Components/SplineComponent.h"

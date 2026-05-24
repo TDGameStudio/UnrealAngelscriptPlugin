@@ -1,4 +1,4 @@
-#include "Shared/AngelscriptConstructionContextProbe.h"
+#include "AngelscriptConstructionContextProbe.h"
 
 #include "ClassGenerator/ASClass.h"
 #include "UObject/WeakObjectPtrTemplates.h"

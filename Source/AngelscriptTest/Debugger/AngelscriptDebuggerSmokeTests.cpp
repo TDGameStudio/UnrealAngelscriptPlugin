@@ -1,5 +1,5 @@
 #include "CQTest.h"
-#include "Shared/AngelscriptDebuggerTestContext.h"
+#include "AngelscriptDebuggerTestContext.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 

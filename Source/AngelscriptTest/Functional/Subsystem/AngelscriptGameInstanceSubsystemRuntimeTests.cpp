@@ -1,5 +1,5 @@
-#include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptTestUtilities.h"
+#include "AngelscriptTestMacros.h"
+#include "AngelscriptTestUtilities.h"
 
 #include "Components/ActorTestSpawner.h"
 #include "Engine/GameInstance.h"
