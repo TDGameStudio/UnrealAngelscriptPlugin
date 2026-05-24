@@ -14,14 +14,14 @@
 //
 // CQTest adaptation notes:
 //   Six IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
-//   Script-based tests use FCoverageModuleScope + ExpectGlobalInt.
+//   Script-based tests use FScopedAngelscriptModule + ExpectGlobalInt.
 //   OptionalTypeCompare and MapDebugger use direct C++ type system assertions.
 // ============================================================================
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
 #include "../../AngelscriptRuntime/Binds/Bind_TMap.h"
 #include "../../AngelscriptRuntime/Binds/Bind_TOptional.h"
 

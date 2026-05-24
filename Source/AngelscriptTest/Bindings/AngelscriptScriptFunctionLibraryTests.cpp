@@ -11,7 +11,7 @@
 // CQTest adaptation notes:
 //   Two IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
 //   Both sections use custom compile/execute patterns with FString return values
-//   via ExecuteValueFunction helper. The original structure is largely preserved
+//   via ExecuteStringGlobalFunction helper. The original structure is largely preserved
 //   since these tests do not follow the simple "int Entry()" pattern.
 // ============================================================================
 
@@ -20,7 +20,7 @@
 #include "Shared/AngelscriptTestUtilities.h"
 #include "Shared/AngelscriptTestEngineHelper.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
 
 #include "Misc/ScopeExit.h"
 
@@ -40,68 +40,15 @@ namespace AngelscriptTest_Bindings_AngelscriptScriptFunctionLibraryTests_Private
 	static const FString HotReloadMarker(TEXT("_NEW_"));
 
 	template <typename TValue>
-	bool ReadReturnValue(FAutomationTestBase& Test, asIScriptContext& Context, TValue& OutValue)
-	{
-		void* ReturnValueAddress = Context.GetAddressOfReturnValue();
-		return Test.TestNotNull(
-				TEXT("Script function library global-init test should expose return value storage"),
-				ReturnValueAddress)
-			&& (OutValue = *static_cast<TValue*>(ReturnValueAddress), true);
-	}
-
-	// TODO(refactor-as-test-shared-layout-and-naming): migrate ExecuteValueFunction<T> to Shared/AngelscriptTestExecute.h once the Execute* naming family lands in Phase 3.
-	template <typename TValue>
-	bool ExecuteValueFunction(
+	bool ExecuteStringGlobalFunction(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FString& FunctionDecl,
+		const TCHAR* FunctionDecl,
 		TValue& OutValue)
 	{
-		asIScriptFunction* Function = GetFunctionByDecl(Test, Module, FunctionDecl);
-		if (Function == nullptr)
-		{
-			return false;
-		}
-
-		asIScriptContext* Context = Engine.CreateContext();
-		if (!Test.TestNotNull(
-				TEXT("Script function library global-init test should create an execution context"),
-				Context))
-		{
-			return false;
-		}
-
-		const int PrepareResult = Context->Prepare(Function);
-		if (!Test.TestEqual(
-				TEXT("Script function library global-init test should prepare the target function"),
-				PrepareResult,
-				asSUCCESS))
-		{
-			Context->Release();
-			return false;
-		}
-
-		const int ExecuteResult = Context->Execute();
-		if (!Test.TestEqual(
-				TEXT("Script function library global-init test should execute the target function"),
-				ExecuteResult,
-				asEXECUTION_FINISHED))
-		{
-			if (ExecuteResult == asEXECUTION_EXCEPTION && Context->GetExceptionString() != nullptr)
-			{
-				Test.AddError(FString::Printf(
-					TEXT("Script function library global-init test saw a script exception: %s"),
-					UTF8_TO_TCHAR(Context->GetExceptionString())));
-			}
-
-			Context->Release();
-			return false;
-		}
-
-		const bool bReadReturnValue = ReadReturnValue(Test, *Context, OutValue);
-		Context->Release();
-		return bReadReturnValue;
+		FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
+		return Executor.ExecuteAndExtractStruct(OutValue);
 	}
 
 	asIScriptModule* GetCompiledModule(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
@@ -291,15 +238,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptFunctionLibraryTest,
 		FString OutsideInitNamespace;
 		FString OutsideInitModule;
 
-		ExecuteValueFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainNameCapture()"), PlainNameCapture);
-		ExecuteValueFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainNamespaceCapture()"), PlainNamespaceCapture);
-		ExecuteValueFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainModuleCapture()"), PlainModuleCapture);
-		ExecuteValueFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedNameCapture()"), ScopedNameCapture);
-		ExecuteValueFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedNamespaceCapture()"), ScopedNamespaceCapture);
-		ExecuteValueFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedModuleCapture()"), ScopedModuleCapture);
-		ExecuteValueFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitName()"), OutsideInitName);
-		ExecuteValueFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitNamespace()"), OutsideInitNamespace);
-		ExecuteValueFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitModule()"), OutsideInitModule);
+		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainNameCapture()"), PlainNameCapture);
+		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainNamespaceCapture()"), PlainNamespaceCapture);
+		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainModuleCapture()"), PlainModuleCapture);
+		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedNameCapture()"), ScopedNameCapture);
+		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedNamespaceCapture()"), ScopedNamespaceCapture);
+		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedModuleCapture()"), ScopedModuleCapture);
+		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitName()"), OutsideInitName);
+		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitNamespace()"), OutsideInitNamespace);
+		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitModule()"), OutsideInitModule);
 
 		const FString ExpectedHotReloadPrefix = ScriptFunctionLibraryModuleName.ToString() + HotReloadMarker;
 
@@ -339,15 +286,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptFunctionLibraryTest,
 		FString OutsideInitNamespace;
 		FString OutsideInitModule;
 
-		ExecuteValueFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainNameCapture()"), PlainNameCapture);
-		ExecuteValueFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainNamespaceCapture()"), PlainNamespaceCapture);
-		ExecuteValueFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainModuleCapture()"), PlainModuleCapture);
-		ExecuteValueFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedNameCapture()"), ScopedNameCapture);
-		ExecuteValueFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedNamespaceCapture()"), ScopedNamespaceCapture);
-		ExecuteValueFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedModuleCapture()"), ScopedModuleCapture);
-		ExecuteValueFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitName()"), OutsideInitName);
-		ExecuteValueFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitNamespace()"), OutsideInitNamespace);
-		ExecuteValueFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitModule()"), OutsideInitModule);
+		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainNameCapture()"), PlainNameCapture);
+		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainNamespaceCapture()"), PlainNamespaceCapture);
+		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainModuleCapture()"), PlainModuleCapture);
+		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedNameCapture()"), ScopedNameCapture);
+		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedNamespaceCapture()"), ScopedNamespaceCapture);
+		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedModuleCapture()"), ScopedModuleCapture);
+		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitName()"), OutsideInitName);
+		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitNamespace()"), OutsideInitNamespace);
+		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitModule()"), OutsideInitModule);
 
 		TestRunner->TestEqual(TEXT("Plain global init should report variable name"), PlainNameCapture, TEXT("PlainNameCapture"));
 		TestRunner->TestEqual(TEXT("Plain global init should report empty namespace"), PlainNamespaceCapture, TEXT(""));

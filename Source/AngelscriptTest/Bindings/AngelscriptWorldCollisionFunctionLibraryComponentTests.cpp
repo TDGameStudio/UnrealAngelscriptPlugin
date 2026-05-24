@@ -19,7 +19,8 @@
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
+#include "Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h"
 
 #include "Components/ActorTestSpawner.h"
 #include "Components/BoxComponent.h"
@@ -58,81 +59,6 @@ namespace AngelscriptTest_Bindings_AngelscriptWorldCollisionFunctionLibraryCompo
 	static const FVector QueryExtent(30.0f, 30.0f, 30.0f);
 	static const FVector MissOverlapLocation(0.0f, -150.0f, 0.0f);
 	static const FQuat IdentityRotation = FQuat::Identity;
-
-	bool SetArgAddressChecked(
-		FAutomationTestBase& Test,
-		asIScriptContext& Context,
-		asUINT ArgumentIndex,
-		void* Address,
-		const TCHAR* ContextLabel)
-	{
-		return Test.TestEqual(
-			*FString::Printf(TEXT("%s should bind address argument %u"), ContextLabel, static_cast<uint32>(ArgumentIndex)),
-			Context.SetArgAddress(ArgumentIndex, Address),
-			static_cast<int32>(asSUCCESS));
-	}
-
-	bool SetArgObjectChecked(
-		FAutomationTestBase& Test,
-		asIScriptContext& Context,
-		asUINT ArgumentIndex,
-		void* Object,
-		const TCHAR* ContextLabel)
-	{
-		return Test.TestEqual(
-			*FString::Printf(TEXT("%s should bind object argument %u"), ContextLabel, static_cast<uint32>(ArgumentIndex)),
-			Context.SetArgObject(ArgumentIndex, Object),
-			static_cast<int32>(asSUCCESS));
-	}
-
-	// TODO(refactor-as-test-shared-layout-and-naming): migrate ExecuteBoolFunction to Shared/AngelscriptTestExecute.h once the Execute* naming family lands in Phase 3.
-	bool ExecuteBoolFunction(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const TCHAR* FunctionDecl,
-		TFunctionRef<bool(asIScriptContext&)> BindArguments,
-		const TCHAR* ContextLabel,
-		bool& OutResult)
-	{
-		asIScriptFunction* Function = GetFunctionByDecl(Test, Module, FunctionDecl);
-		if (Function == nullptr)
-		{
-			return false;
-		}
-
-		FAngelscriptEngineScope EngineScope(Engine);
-		asIScriptContext* Context = Engine.CreateContext();
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create an execution context"), ContextLabel), Context))
-		{
-			return false;
-		}
-
-		ON_SCOPE_EXIT
-		{
-			Context->Release();
-		};
-
-		const int PrepareResult = Context->Prepare(Function);
-		if (!Test.TestEqual(*FString::Printf(TEXT("%s should prepare successfully"), ContextLabel), PrepareResult, static_cast<int32>(asSUCCESS)))
-		{
-			return false;
-		}
-
-		if (!BindArguments(*Context))
-		{
-			return false;
-		}
-
-		const int ExecuteResult = Context->Execute();
-		if (!Test.TestEqual(*FString::Printf(TEXT("%s should execute successfully"), ContextLabel), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
-		{
-			return false;
-		}
-
-		OutResult = Context->GetReturnByte() != 0;
-		return true;
-	}
 
 	UBoxComponent* AddCollisionBox(AActor& Owner, FName ComponentName, const FVector& BoxExtent, const FVector& WorldLocation)
 	{
@@ -287,15 +213,15 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 		const bool bNativeComponentSweepHit = World->ComponentSweepMulti(NativeComponentSweepHits, QueryBox, SweepHitStart, SweepHitEnd, IdentityRotation, ComponentQueryParams);
 		TArray<FHitResult> ScriptComponentSweepHits;
 		bool bScriptComponentSweepHit = false;
-		if (!ExecuteBoolFunction(
+		if (!WorldCollisionExecuteBoolFunction(
 			*TestRunner,
 			Engine,
 			*Module,
 			TEXT("bool RunComponentSweepMultiHit(UPrimitiveComponent QueryComponent, TArray<FHitResult>& OutHits)"),
 			[this, QueryBox, &ScriptComponentSweepHits](asIScriptContext& Context)
 			{
-				return SetArgObjectChecked(*TestRunner, Context, 0, QueryBox, TEXT("RunComponentSweepMultiHit"))
-					&& SetArgAddressChecked(*TestRunner, Context, 1, &ScriptComponentSweepHits, TEXT("RunComponentSweepMultiHit"));
+				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, QueryBox, TEXT("RunComponentSweepMultiHit"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 1, &ScriptComponentSweepHits, TEXT("RunComponentSweepMultiHit"));
 			},
 			TEXT("RunComponentSweepMultiHit"),
 			bScriptComponentSweepHit))
@@ -313,15 +239,15 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 		TArray<FHitResult> ScriptComponentSweepMisses;
 		ScriptComponentSweepMisses.AddDefaulted();
 		bool bScriptComponentSweepMiss = false;
-		if (!ExecuteBoolFunction(
+		if (!WorldCollisionExecuteBoolFunction(
 			*TestRunner,
 			Engine,
 			*Module,
 			TEXT("bool RunComponentSweepMultiMiss(UPrimitiveComponent QueryComponent, TArray<FHitResult>& OutHits)"),
 			[this, QueryBox, &ScriptComponentSweepMisses](asIScriptContext& Context)
 			{
-				return SetArgObjectChecked(*TestRunner, Context, 0, QueryBox, TEXT("RunComponentSweepMultiMiss"))
-					&& SetArgAddressChecked(*TestRunner, Context, 1, &ScriptComponentSweepMisses, TEXT("RunComponentSweepMultiMiss"));
+				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, QueryBox, TEXT("RunComponentSweepMultiMiss"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 1, &ScriptComponentSweepMisses, TEXT("RunComponentSweepMultiMiss"));
 			},
 			TEXT("RunComponentSweepMultiMiss"),
 			bScriptComponentSweepMiss))
@@ -336,15 +262,15 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 		const bool bNativeComponentOverlapHit = World->ComponentOverlapMulti(NativeComponentOverlapHits, QueryBox, OverlapTargetLocation, IdentityRotation, ComponentQueryParams, ObjectQueryParams);
 		TArray<FOverlapResult> ScriptComponentOverlapHits;
 		bool bScriptComponentOverlapHit = false;
-		if (!ExecuteBoolFunction(
+		if (!WorldCollisionExecuteBoolFunction(
 			*TestRunner,
 			Engine,
 			*Module,
 			TEXT("bool RunComponentOverlapMultiHit(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)"),
 			[this, QueryBox, &ScriptComponentOverlapHits](asIScriptContext& Context)
 			{
-				return SetArgObjectChecked(*TestRunner, Context, 0, QueryBox, TEXT("RunComponentOverlapMultiHit"))
-					&& SetArgAddressChecked(*TestRunner, Context, 1, &ScriptComponentOverlapHits, TEXT("RunComponentOverlapMultiHit"));
+				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, QueryBox, TEXT("RunComponentOverlapMultiHit"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 1, &ScriptComponentOverlapHits, TEXT("RunComponentOverlapMultiHit"));
 			},
 			TEXT("RunComponentOverlapMultiHit"),
 			bScriptComponentOverlapHit))
@@ -361,15 +287,15 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 		TArray<FOverlapResult> ScriptComponentOverlapMisses;
 		ScriptComponentOverlapMisses.AddDefaulted();
 		bool bScriptComponentOverlapMiss = false;
-		if (!ExecuteBoolFunction(
+		if (!WorldCollisionExecuteBoolFunction(
 			*TestRunner,
 			Engine,
 			*Module,
 			TEXT("bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)"),
 			[this, QueryBox, &ScriptComponentOverlapMisses](asIScriptContext& Context)
 			{
-				return SetArgObjectChecked(*TestRunner, Context, 0, QueryBox, TEXT("RunComponentOverlapMultiMiss"))
-					&& SetArgAddressChecked(*TestRunner, Context, 1, &ScriptComponentOverlapMisses, TEXT("RunComponentOverlapMultiMiss"));
+				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, QueryBox, TEXT("RunComponentOverlapMultiMiss"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 1, &ScriptComponentOverlapMisses, TEXT("RunComponentOverlapMultiMiss"));
 			},
 			TEXT("RunComponentOverlapMultiMiss"),
 			bScriptComponentOverlapMiss))
@@ -477,15 +403,15 @@ bool RunComponentOverlapMultiNull(UPrimitiveComponent QueryComponent, TArray<FOv
 		const bool bNativeBaselineSweep = World->ComponentSweepMulti(NativeBaselineSweepHits, QueryBox, SweepHitStart, SweepHitEnd, IdentityRotation, BaselineComponentQueryParams);
 		TArray<FHitResult> ScriptBaselineSweepHits;
 		bool bScriptBaselineSweep = false;
-		if (!ExecuteBoolFunction(
+		if (!WorldCollisionExecuteBoolFunction(
 			*TestRunner,
 			Engine,
 			*Module,
 			TEXT("bool RunComponentSweepMultiBaseline(UPrimitiveComponent QueryComponent, TArray<FHitResult>& OutHits)"),
 			[this, QueryBox, &ScriptBaselineSweepHits](asIScriptContext& Context)
 			{
-				return SetArgObjectChecked(*TestRunner, Context, 0, QueryBox, TEXT("RunComponentSweepMultiBaseline"))
-					&& SetArgAddressChecked(*TestRunner, Context, 1, &ScriptBaselineSweepHits, TEXT("RunComponentSweepMultiBaseline"));
+				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, QueryBox, TEXT("RunComponentSweepMultiBaseline"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 1, &ScriptBaselineSweepHits, TEXT("RunComponentSweepMultiBaseline"));
 			},
 			TEXT("RunComponentSweepMultiBaseline"),
 			bScriptBaselineSweep))
@@ -498,15 +424,15 @@ bool RunComponentOverlapMultiNull(UPrimitiveComponent QueryComponent, TArray<FOv
 		// Null component sweep
 		TArray<FHitResult> ScriptNullSweepHits = ScriptBaselineSweepHits;
 		bool bScriptNullSweep = true;
-		if (!ExecuteBoolFunction(
+		if (!WorldCollisionExecuteBoolFunction(
 			*TestRunner,
 			Engine,
 			*Module,
 			TEXT("bool RunComponentSweepMultiNull(UPrimitiveComponent QueryComponent, TArray<FHitResult>& OutHits)"),
 			[this, &ScriptNullSweepHits](asIScriptContext& Context)
 			{
-				return SetArgObjectChecked(*TestRunner, Context, 0, nullptr, TEXT("RunComponentSweepMultiNull"))
-					&& SetArgAddressChecked(*TestRunner, Context, 1, &ScriptNullSweepHits, TEXT("RunComponentSweepMultiNull"));
+				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, nullptr, TEXT("RunComponentSweepMultiNull"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 1, &ScriptNullSweepHits, TEXT("RunComponentSweepMultiNull"));
 			},
 			TEXT("RunComponentSweepMultiNull"),
 			bScriptNullSweep))
@@ -521,15 +447,15 @@ bool RunComponentOverlapMultiNull(UPrimitiveComponent QueryComponent, TArray<FOv
 		const bool bNativeBaselineOverlap = World->ComponentOverlapMulti(NativeBaselineOverlaps, QueryBox, OverlapTargetLocation, IdentityRotation, BaselineComponentQueryParams, ObjectQueryParams);
 		TArray<FOverlapResult> ScriptBaselineOverlaps;
 		bool bScriptBaselineOverlap = false;
-		if (!ExecuteBoolFunction(
+		if (!WorldCollisionExecuteBoolFunction(
 			*TestRunner,
 			Engine,
 			*Module,
 			TEXT("bool RunComponentOverlapMultiBaseline(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)"),
 			[this, QueryBox, &ScriptBaselineOverlaps](asIScriptContext& Context)
 			{
-				return SetArgObjectChecked(*TestRunner, Context, 0, QueryBox, TEXT("RunComponentOverlapMultiBaseline"))
-					&& SetArgAddressChecked(*TestRunner, Context, 1, &ScriptBaselineOverlaps, TEXT("RunComponentOverlapMultiBaseline"));
+				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, QueryBox, TEXT("RunComponentOverlapMultiBaseline"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 1, &ScriptBaselineOverlaps, TEXT("RunComponentOverlapMultiBaseline"));
 			},
 			TEXT("RunComponentOverlapMultiBaseline"),
 			bScriptBaselineOverlap))
@@ -542,15 +468,15 @@ bool RunComponentOverlapMultiNull(UPrimitiveComponent QueryComponent, TArray<FOv
 		// Null component overlap
 		TArray<FOverlapResult> ScriptNullOverlaps = ScriptBaselineOverlaps;
 		bool bScriptNullOverlap = true;
-		if (!ExecuteBoolFunction(
+		if (!WorldCollisionExecuteBoolFunction(
 			*TestRunner,
 			Engine,
 			*Module,
 			TEXT("bool RunComponentOverlapMultiNull(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)"),
 			[this, &ScriptNullOverlaps](asIScriptContext& Context)
 			{
-				return SetArgObjectChecked(*TestRunner, Context, 0, nullptr, TEXT("RunComponentOverlapMultiNull"))
-					&& SetArgAddressChecked(*TestRunner, Context, 1, &ScriptNullOverlaps, TEXT("RunComponentOverlapMultiNull"));
+				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, nullptr, TEXT("RunComponentOverlapMultiNull"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 1, &ScriptNullOverlaps, TEXT("RunComponentOverlapMultiNull"));
 			},
 			TEXT("RunComponentOverlapMultiNull"),
 			bScriptNullOverlap))

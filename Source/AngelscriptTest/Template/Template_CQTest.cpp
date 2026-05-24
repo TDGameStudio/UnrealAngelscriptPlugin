@@ -40,10 +40,10 @@
 //     BEFORE_ALL  : ASTEST_CREATE_ENGINE()       — one-time acquire (with reset)
 //     TEST_METHOD : ASTEST_GET_ENGINE()           — no reset per test
 //                   FAngelscriptEngineScope       — local RAII scope
-//                   FCoverageModuleScope          — module RAII
+//                   FScopedAngelscriptModule          — module RAII
 //     AFTER_ALL   : ASTEST_RESET_ENGINE(Engine)   — one-time cleanup
 //
-//   FCoverageModuleScope automatically calls Engine.DiscardModule() in its
+//   FScopedAngelscriptModule automatically calls Engine.DiscardModule() in its
 //   destructor, so per-test module isolation is guaranteed without a full
 //   engine reset between tests.
 //
@@ -51,7 +51,7 @@
 //
 //   CQTest exposes `TestRunner` as a static pointer of type
 //   TTestRunner<FNoDiscardAsserter>*. Functions that take
-//   FAutomationTestBase& (like ExpectGlobalInts, FCoverageModuleScope)
+//   FAutomationTestBase& (like ExpectGlobalInts, FScopedAngelscriptModule)
 //   require dereferencing: pass `*TestRunner`, not `TestRunner`.
 //
 // ---- Reference files ----
@@ -67,7 +67,7 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -127,7 +127,7 @@ int GetFortyTwo()
 	// Batch multiple assertions using FExpectedGlobalInt array and
 	// ExpectGlobalInts. This is the standard pattern for testing many
 	// cases within a single TEST_METHOD — avoids repeating the
-	// boilerplate of FCoverageModuleScope per case.
+	// boilerplate of FScopedAngelscriptModule per case.
 	// =================================================================
 
 	TEST_METHOD(MultipleAssertions)

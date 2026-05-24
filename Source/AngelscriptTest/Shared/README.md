@@ -43,7 +43,7 @@ This directory holds the test-side facade and supporting helpers used by the ent
 | `AngelscriptBindingsModuleBuilder.h` | ~10 | Forward shim → `AngelscriptTestModuleScope.h`. |
 | `AngelscriptBindingsExampleSection.h` | ~90 | Official example: global `Execute*` + explicit module names. |
 
-**Deleted in Phase 5:** `AngelscriptBindingsCoverage.h` (`FBindingsCoverageProfile`, `FormatCaseLabel`, `MakeCoverageModuleName`). Bindings tests pass full-word module names directly to `FCoverageModuleScope` and plain case labels to `Execute*` / legacy `ExpectGlobal*`.
+**Deleted in Phase 5:** `AngelscriptBindingsCoverage.h` (`FBindingsCoverageProfile`, `FormatCaseLabel`, `MakeCoverageModuleName`). Bindings tests pass full-word module names directly to `FScopedAngelscriptModule` and plain case labels to `Execute*` / legacy `ExpectGlobal*`.
 
 ### Other Shared/* headers (no change in this OpenSpec change)
 
@@ -62,23 +62,19 @@ The following four pure-forward wrappers were removed from `AngelscriptTestSuppo
 
 `AngelscriptTestEngineHelperGetSharedTestEngineAliasesSharedCloneTest` (a pure alias-existence regression) was deleted because `SharedEngineNeverAttachesToProduction` already covers the same idempotency invariant. `GetResetSharedTestEngineResetsSharedState` was renamed to `AcquireCleanSharedCloneEngineResetsModules` and its `AngelscriptTestSupport::GetResetSharedTestEngine()` callsite swapped for `AcquireCleanSharedCloneEngine()`; the reset-then-discard-modules invariant remains under test.
 
-## Scattered private `Execute*Function*` helpers (deferred to follow-ups)
+## Bindings `Execute*` migration (completed 2026-05-25)
 
-Phase 1 left the following 14 private helpers in 11 `Bindings/*.cpp` files in place, each carrying a `// TODO(refactor-as-test-shared-layout-and-naming)` marker at the definition. They will be migrated to `AngelscriptTestExecute.h` as part of a dedicated follow-up change once the Phase 3 `Execute*` naming family lands.
+The 11 `Bindings/*.cpp` files that previously duplicated `Execute*` helpers in `AngelscriptTest_*_Private` now use global `FAngelscriptTestExecutor` / `ExecuteAndExpect*` from `AngelscriptTestExecute.h`. Bindings-local scaffolding lives in module headers (not Shared):
 
-| File | Helper(s) |
+| Header | Role |
 |---|---|
-| `AngelscriptAssetRegistryBindingsTests.cpp` | `ExecuteFunctionExpectingException` |
-| `AngelscriptCollisionParamsBindingsTests.cpp` | `ExecuteIntFunction` |
-| `AngelscriptCurveFunctionLibraryTests.cpp` | `ExecuteIntFunctionWithAddressArg` |
-| `AngelscriptJsonBindingsTests.cpp` | `ExecuteFunctionExpectingException` |
-| `AngelscriptMathBindingsTests.cpp` | `ExecuteValueFunction<T>` |
-| `AngelscriptMathOrientationBindingsTests.cpp` | `ExecuteValueFunction<T>` |
-| `AngelscriptScriptFunctionLibraryTests.cpp` | `ExecuteValueFunction<T>` |
-| `AngelscriptWorldFunctionLibraryTests.cpp` | `ExecuteIntFunction`, `ExecuteBoolFunction`, `ExecuteFunctionExpectingException` |
-| `AngelscriptWorldCollisionFunctionLibraryTraceTests.cpp` | `ExecuteBoolFunction`, `ExecuteAddressBoolFunction<T>` |
-| `AngelscriptWorldCollisionFunctionLibraryComponentTests.cpp` | `ExecuteBoolFunction` |
-| `AngelscriptWorldCollisionBindingsTests.cpp` | `ExecuteBoolFunction` |
+| `Bindings/AngelscriptMathBindingsTestCompare.h` | Math tolerance / `VerifyMathBindings*` / reference rotators |
+| `Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h` | `WorldCollisionExecute*` / `WorldCollisionSetArg*` |
+| `Bindings/AngelscriptTArrayBindingsTestHelpers.h` | `TArrayBindings*` / `ExpectTArrayBindings*` (`TArrayBindings` prefix avoids Unity ODR clash with global `ExpectGlobalInt`) |
+
+**Reference test shape:** `Bindings/AngelscriptQuatBindingsTests.cpp` (`FScopedAngelscriptModule` + global `ExpectGlobal*`).
+
+**Optional follow-ups (not blocking):** P3-only Private in ReflectiveFallback / TextFormatting / MathAndPlatform; Syntax theme still on forward shims; full-module `AngelscriptTest_*_Private` convergence outside Bindings.
 
 ## Scope guards
 

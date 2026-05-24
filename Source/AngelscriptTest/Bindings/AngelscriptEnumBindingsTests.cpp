@@ -15,13 +15,13 @@
 // CQTest adaptation notes:
 //   Native baseline values (UEnum lookups on EAttachmentRule) are computed in
 //   each TEST_METHOD and injected into the AS source via ReplaceInline before
-//   passing to FCoverageModuleScope.
+//   passing to FScopedAngelscriptModule.
 // ============================================================================
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
 
 #include "Engine/EngineTypes.h"
 #include "UObject/UnrealType.h"

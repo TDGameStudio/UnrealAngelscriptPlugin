@@ -19,7 +19,7 @@
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
 
 #include "Curves/CurveFloat.h"
 #include "Curves/CurveLinearColor.h"
@@ -40,74 +40,6 @@
 
 namespace CurveTestHelpers
 {
-	bool SetArgAddressChecked(
-		FAutomationTestBase& Test,
-		asIScriptContext& Context,
-		asUINT ArgumentIndex,
-		void* Address,
-		const TCHAR* ContextLabel)
-	{
-		return Test.TestEqual(
-			*FString::Printf(TEXT("%s should bind address argument %u"), ContextLabel, static_cast<uint32>(ArgumentIndex)),
-			Context.SetArgAddress(ArgumentIndex, Address),
-			static_cast<int32>(asSUCCESS));
-	}
-
-	// TODO(refactor-as-test-shared-layout-and-naming): migrate ExecuteIntFunctionWithAddressArg to Shared/AngelscriptTestExecute.h once the Execute* naming family lands in Phase 3.
-	bool ExecuteIntFunctionWithAddressArg(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const TCHAR* FunctionDecl,
-		void* AddressArg,
-		const TCHAR* ContextLabel,
-		int32& OutResult)
-	{
-		asIScriptFunction* Function = GetFunctionByDecl(Test, Module, FunctionDecl);
-		if (Function == nullptr)
-		{
-			return false;
-		}
-
-		FAngelscriptEngineScope EngineScope(Engine);
-		asIScriptContext* Context = Engine.CreateContext();
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create an execution context"), ContextLabel), Context))
-		{
-			return false;
-		}
-
-		ON_SCOPE_EXIT
-		{
-			Context->Release();
-		};
-
-		const int PrepareResult = Context->Prepare(Function);
-		if (!Test.TestEqual(
-			*FString::Printf(TEXT("%s should prepare successfully"), ContextLabel),
-			PrepareResult,
-			static_cast<int32>(asSUCCESS)))
-		{
-			return false;
-		}
-
-		if (!SetArgAddressChecked(Test, *Context, 0, AddressArg, ContextLabel))
-		{
-			return false;
-		}
-
-		const int ExecuteResult = Context->Execute();
-		if (!Test.TestEqual(
-			*FString::Printf(TEXT("%s should execute successfully"), ContextLabel),
-			ExecuteResult,
-			static_cast<int32>(asEXECUTION_FINISHED)))
-		{
-			return false;
-		}
-
-		OutResult = static_cast<int32>(Context->GetReturnDWord());
-		return true;
-	}
-
 	bool ExpectCurveKey(
 		FAutomationTestBase& Test,
 		const FRichCurve& Curve,
@@ -179,11 +111,14 @@ int PopulateCurve(FRuntimeCurveLinearColor& Curve)
 				Curve.ColorCurves[ChannelIndex].Keys.Num(), 0);
 		}
 
-		int32 Result = INDEX_NONE;
-		if (!ExecuteIntFunctionWithAddressArg(
-			*TestRunner, Engine, M,
-			TEXT("int PopulateCurve(FRuntimeCurveLinearColor&)"),
-			&Curve, TEXT("PopulateCurve"), Result))
+		FAngelscriptTestExecutor PopulateCurveExecutor(
+			*TestRunner,
+			Engine,
+			M,
+			TEXT("int PopulateCurve(FRuntimeCurveLinearColor&)"));
+		PopulateCurveExecutor.AddArgAddress(&Curve);
+		const int32 Result = PopulateCurveExecutor.ExecuteAndGet<int32>(INDEX_NONE);
+		if (!PopulateCurveExecutor.HasRun())
 		{
 			return;
 		}
@@ -268,11 +203,14 @@ int PopulateCurve(FRuntimeFloatCurve& RuntimeCurve)
 		auto& M = Mod.GetModule();
 
 		FRuntimeFloatCurve RuntimeCurve;
-		int32 Result = INDEX_NONE;
-		if (!ExecuteIntFunctionWithAddressArg(
-			*TestRunner, Engine, M,
-			TEXT("int PopulateCurve(FRuntimeFloatCurve&)"),
-			&RuntimeCurve, TEXT("PopulateCurve"), Result))
+		FAngelscriptTestExecutor PopulateCurveExecutor(
+			*TestRunner,
+			Engine,
+			M,
+			TEXT("int PopulateCurve(FRuntimeFloatCurve&)"));
+		PopulateCurveExecutor.AddArgAddress(&RuntimeCurve);
+		const int32 Result = PopulateCurveExecutor.ExecuteAndGet<int32>(INDEX_NONE);
+		if (!PopulateCurveExecutor.HasRun())
 		{
 			return;
 		}

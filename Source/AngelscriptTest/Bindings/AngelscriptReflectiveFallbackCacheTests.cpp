@@ -42,7 +42,7 @@
 #include "Shared/AngelscriptTestUtilities.h"
 #include "Shared/AngelscriptTestEngineHelper.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
 #include "Shared/AngelscriptReflectiveAccess.h"
 #include "../../AngelscriptRuntime/Binds/BlueprintCallableReflectiveFallback.h"
 #include "../../AngelscriptRuntime/Binds/Helper_FunctionSignature.h"

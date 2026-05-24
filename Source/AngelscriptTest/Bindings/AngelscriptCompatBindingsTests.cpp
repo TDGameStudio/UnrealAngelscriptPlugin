@@ -22,7 +22,7 @@
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestEngineHelper.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
 
 #include "Components/InputComponent.h"
 #include "Misc/Guid.h"

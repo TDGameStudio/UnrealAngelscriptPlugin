@@ -59,7 +59,7 @@ Key points:
 - `BEFORE_ALL`: call `ASTEST_CREATE_ENGINE()` once (resets shared engine)
 - `TEST_METHOD`: call `ASTEST_GET_ENGINE()` (no reset, fast)
 - `AFTER_ALL`: call `ASTEST_RESET_ENGINE()` to leave clean state
-- `FCoverageModuleScope`: RAII module isolation per test method
+- `FScopedAngelscriptModule`: RAII module isolation per test method
 - Pass `*TestRunner` (not `*this`) to assertion helpers
 
 ## Full Engine Pattern
@@ -111,6 +111,19 @@ Everything else (bindings, syntax, compiler, functional):
   --> ASTEST_CREATE_ENGINE() + ASTEST_GET_ENGINE() pattern
 ```
 
+## Where to Put Test Helpers
+
+| Condition | Location | Example |
+|-----------|----------|---------|
+| Used by ≥2 theme directories (Bindings + Syntax + HotReload…) | `Shared/*.h` | `BuildModule`, `FAngelscriptTestExecutor`, `ExecuteAndExpectInt` |
+| Used by ≥2 files under `Bindings/` only | `Bindings/Angelscript*TestHelpers.h` | `AngelscriptTArrayBindingsTestHelpers.h`, `AngelscriptWorldCollisionBindingsTestHelpers.h` |
+| Single `.cpp` only | Keep `namespace AngelscriptTest_<File>_Private` | ReflectiveFallback cache probes |
+| Large file split by section | `Bindings/*Sections.h` + main `.cpp` | Console bindings cluster |
+
+`AngelscriptTest_<File>_Private` is for Unity Build / ODR isolation — do not remove it just to "drop namespaces"; only lift **reusable Execute / module scaffolding** into Shared or a Bindings helper header.
+
+**Bindings reference:** `Bindings/AngelscriptQuatBindingsTests.cpp` (`FScopedAngelscriptModule` + `ExpectGlobalInt` / `ExecuteAndExpect*`).
+
 ## Naming Conventions
 
 | Category | Pattern | Example |
@@ -128,9 +141,11 @@ Everything else (bindings, syntax, compiler, functional):
 | `Shared/AngelscriptTestUtilities.h` | Engine creation/destruction utility functions |
 | `Shared/AngelscriptTestEnginePool.h` | Module-clean engine pool and FScopedModuleCleanEngine |
 | `Shared/AngelscriptTestEngineHelper.h` | Compile/execute helper functions |
-| `Shared/AngelscriptBindingsAssertions.h` | ExpectGlobalInt, ExpectGlobalReturnCustom, etc. |
-| `Shared/AngelscriptBindingsModuleBuilder.h` | FCoverageModuleScope（显式 module name + source） |
-| `Shared/AngelscriptBindingsModuleBuilder.h` | Module compilation utilities |
-| `Shared/AngelscriptGlobalFunctionInvoker.h` | FASGlobalFunctionInvoker for passing args to AS |
+| `Shared/AngelscriptTestExecute.h` | **Canonical** `FAngelscriptTestExecutor`, `ExecuteAndExpect*`, `ExpectGlobalInt` |
+| `Shared/AngelscriptTestModuleScope.h` | `FScopedAngelscriptModule` (explicit module name + source) |
+| `Shared/AngelscriptBindingsAssertions.h` | Forward shim → `AngelscriptTestExecute.h` |
+| `Shared/AngelscriptBindingsModuleBuilder.h` | Forward shim → `AngelscriptTestModuleScope.h` |
+| `Shared/AngelscriptGlobalFunctionInvoker.h` | Forward shim → `AngelscriptTestExecute.h` (`FASGlobalFunctionInvoker` alias) |
+| `Bindings/Angelscript*TestHelpers.h` | Bindings-only shared helpers (TArray, World collision, math compare) |
 | `Shared/AngelscriptReflectiveAccess.h` | Property/function reflective access helpers |
 | `Template/Template_CQTest.cpp` | CQTest teaching template (6 examples) |

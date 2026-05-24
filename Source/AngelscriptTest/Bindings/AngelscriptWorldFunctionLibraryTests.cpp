@@ -21,7 +21,8 @@
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
+#include "Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h"
 
 #include "Components/ActorTestSpawner.h"
 #include "Engine/LevelStreamingDynamic.h"
@@ -40,182 +41,6 @@ namespace AngelscriptTest_Bindings_AngelscriptWorldFunctionLibraryTests_Private
 {
 	static constexpr ANSICHAR ModuleName[] = "ASWorldStreamingNullGuards";
 	static constexpr ANSICHAR WorldStreamingAccessModuleName[] = "ASWorldStreamingAccess";
-
-	// TODO(refactor-as-test-shared-layout-and-naming): migrate ExecuteIntFunction / ExecuteBoolFunction / ExecuteFunctionExpectingException to Shared/AngelscriptTestExecute.h once the Execute* naming family lands in Phase 3.
-	bool ExecuteIntFunction(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const TCHAR* FunctionDecl,
-		TFunctionRef<bool(asIScriptContext&)> BindArguments,
-		const TCHAR* ContextLabel,
-		int32& OutResult)
-	{
-		asIScriptFunction* Function = GetFunctionByDecl(Test, Module, FunctionDecl);
-		if (Function == nullptr)
-		{
-			return false;
-		}
-
-		FAngelscriptEngineScope EngineScope(Engine);
-		asIScriptContext* Context = Engine.CreateContext();
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create an execution context"), ContextLabel), Context))
-		{
-			return false;
-		}
-
-		ON_SCOPE_EXIT
-		{
-			Context->Release();
-		};
-
-		const int PrepareResult = Context->Prepare(Function);
-		if (!Test.TestEqual(
-			*FString::Printf(TEXT("%s should prepare successfully"), ContextLabel),
-			PrepareResult,
-			static_cast<int32>(asSUCCESS)))
-		{
-			return false;
-		}
-
-		if (!BindArguments(*Context))
-		{
-			return false;
-		}
-
-		const int ExecuteResult = Context->Execute();
-		if (!Test.TestEqual(
-			*FString::Printf(TEXT("%s should execute successfully"), ContextLabel),
-			ExecuteResult,
-			static_cast<int32>(asEXECUTION_FINISHED)))
-		{
-			return false;
-		}
-
-		OutResult = static_cast<int32>(Context->GetReturnDWord());
-		return true;
-	}
-
-	bool SetArgObjectChecked(
-		FAutomationTestBase& Test,
-		asIScriptContext& Context,
-		asUINT ArgumentIndex,
-		void* Object,
-		const TCHAR* ContextLabel)
-	{
-		return Test.TestEqual(
-			*FString::Printf(TEXT("%s should bind object argument %u"), ContextLabel, static_cast<uint32>(ArgumentIndex)),
-			Context.SetArgObject(ArgumentIndex, Object),
-			static_cast<int32>(asSUCCESS));
-	}
-
-	bool ExecuteBoolFunction(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const TCHAR* FunctionDecl,
-		TFunctionRef<bool(asIScriptContext&)> BindArguments,
-		const TCHAR* ContextLabel,
-		bool& OutResult)
-	{
-		asIScriptFunction* Function = GetFunctionByDecl(Test, Module, FunctionDecl);
-		if (Function == nullptr)
-		{
-			return false;
-		}
-
-		FAngelscriptEngineScope EngineScope(Engine);
-		asIScriptContext* Context = Engine.CreateContext();
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create an execution context"), ContextLabel), Context))
-		{
-			return false;
-		}
-
-		ON_SCOPE_EXIT
-		{
-			Context->Release();
-		};
-
-		const int PrepareResult = Context->Prepare(Function);
-		if (!Test.TestEqual(
-			*FString::Printf(TEXT("%s should prepare successfully"), ContextLabel),
-			PrepareResult,
-			static_cast<int32>(asSUCCESS)))
-		{
-			return false;
-		}
-
-		if (!BindArguments(*Context))
-		{
-			return false;
-		}
-
-		const int ExecuteResult = Context->Execute();
-		if (!Test.TestEqual(
-			*FString::Printf(TEXT("%s should execute successfully"), ContextLabel),
-			ExecuteResult,
-			static_cast<int32>(asEXECUTION_FINISHED)))
-		{
-			return false;
-		}
-
-		OutResult = Context->GetReturnByte() != 0;
-		return true;
-	}
-
-	bool ExecuteFunctionExpectingException(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const TCHAR* FunctionDecl,
-		TFunctionRef<bool(asIScriptContext&)> BindArguments,
-		const TCHAR* ContextLabel,
-		FString& OutExceptionString)
-	{
-		asIScriptFunction* Function = GetFunctionByDecl(Test, Module, FunctionDecl);
-		if (Function == nullptr)
-		{
-			return false;
-		}
-
-		FAngelscriptEngineScope EngineScope(Engine);
-		asIScriptContext* Context = Engine.CreateContext();
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create an execution context"), ContextLabel), Context))
-		{
-			return false;
-		}
-
-		ON_SCOPE_EXIT
-		{
-			Context->Release();
-		};
-
-		const int PrepareResult = Context->Prepare(Function);
-		if (!Test.TestEqual(
-			*FString::Printf(TEXT("%s should prepare successfully"), ContextLabel),
-			PrepareResult,
-			static_cast<int32>(asSUCCESS)))
-		{
-			return false;
-		}
-
-		if (!BindArguments(*Context))
-		{
-			return false;
-		}
-
-		const int ExecuteResult = Context->Execute();
-		if (!Test.TestEqual(
-			*FString::Printf(TEXT("%s should fail with a script exception"), ContextLabel),
-			ExecuteResult,
-			static_cast<int32>(asEXECUTION_EXCEPTION)))
-		{
-			return false;
-		}
-
-		OutExceptionString = Context->GetExceptionString() != nullptr ? UTF8_TO_TCHAR(Context->GetExceptionString()) : TEXT("");
-		return true;
-	}
 }
 
 
@@ -295,14 +120,14 @@ bool GetLevelVisibleInEditor(ULevelStreaming Level)
 		const bool bNativeEditorVisibility = StreamingLevel->GetShouldBeVisibleInEditor();
 
 		int32 ScriptStreamingLevelCount = INDEX_NONE;
-		if (!ExecuteIntFunction(
+		if (!WorldCollisionExecuteIntFunction(
 			*TestRunner,
 			Engine,
 			*Module,
 			TEXT("int GetStreamingLevelCount(UWorld World)"),
 			[this, TestWorld](asIScriptContext& Context)
 			{
-				return SetArgObjectChecked(*TestRunner, Context, 0, TestWorld, TEXT("GetStreamingLevelCount(valid)"));
+				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, TestWorld, TEXT("GetStreamingLevelCount(valid)"));
 			},
 			TEXT("GetStreamingLevelCount(valid)"),
 			ScriptStreamingLevelCount))
@@ -316,14 +141,14 @@ bool GetLevelVisibleInEditor(ULevelStreaming Level)
 			NativeStreamingLevelCount);
 
 		bool bScriptEditorVisibility = false;
-		if (!ExecuteBoolFunction(
+		if (!WorldCollisionExecuteBoolFunction(
 			*TestRunner,
 			Engine,
 			*Module,
 			TEXT("bool GetLevelVisibleInEditor(ULevelStreaming Level)"),
 			[this, StreamingLevel](asIScriptContext& Context)
 			{
-				return SetArgObjectChecked(*TestRunner, Context, 0, StreamingLevel, TEXT("GetLevelVisibleInEditor"));
+				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, StreamingLevel, TEXT("GetLevelVisibleInEditor"));
 			},
 			TEXT("GetLevelVisibleInEditor"),
 			bScriptEditorVisibility))
@@ -337,17 +162,18 @@ bool GetLevelVisibleInEditor(ULevelStreaming Level)
 			bNativeEditorVisibility);
 
 		FString NullWorldException;
-		if (!ExecuteFunctionExpectingException(
+		if (!WorldCollisionExecuteFunctionExpectingException(
 			*TestRunner,
 			Engine,
 			*Module,
 			TEXT("int GetStreamingLevelCount(UWorld World)"),
 			[this](asIScriptContext& Context)
 			{
-				return SetArgObjectChecked(*TestRunner, Context, 0, nullptr, TEXT("GetStreamingLevelCount(null)"));
+				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, nullptr, TEXT("GetStreamingLevelCount(null)"));
 			},
 			TEXT("GetStreamingLevelCount(null)"),
-			NullWorldException))
+			TEXT("Null pointer access"),
+			&NullWorldException))
 		{
 			return;
 		}
@@ -358,17 +184,18 @@ bool GetLevelVisibleInEditor(ULevelStreaming Level)
 			FString(TEXT("Null pointer access")));
 
 		FString NullLevelException;
-		if (!ExecuteFunctionExpectingException(
+		if (!WorldCollisionExecuteFunctionExpectingException(
 			*TestRunner,
 			Engine,
 			*Module,
 			TEXT("bool GetLevelVisibleInEditor(ULevelStreaming Level)"),
 			[this](asIScriptContext& Context)
 			{
-				return SetArgObjectChecked(*TestRunner, Context, 0, nullptr, TEXT("GetLevelVisibleInEditor(null)"));
+				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, nullptr, TEXT("GetLevelVisibleInEditor(null)"));
 			},
 			TEXT("GetLevelVisibleInEditor(null)"),
-			NullLevelException))
+			TEXT("Null pointer access"),
+			&NullLevelException))
 		{
 			return;
 		}
@@ -489,16 +316,16 @@ int VerifyWorldStreamingAccess(UWorld World, ULevelStreaming ExpectedFirst, ULev
 		FScopedTestWorldContextScope WorldContextScope(&ContextActor);
 
 		int32 ResultMask = INDEX_NONE;
-		if (!ExecuteIntFunction(
+		if (!WorldCollisionExecuteIntFunction(
 			*TestRunner,
 			Engine,
 			*Module,
 			TEXT("int VerifyWorldStreamingAccess(UWorld, ULevelStreaming, ULevelStreaming)"),
 			[this, TestWorld, FirstStreamingLevel, SecondStreamingLevel](asIScriptContext& Context)
 			{
-				return SetArgObjectChecked(*TestRunner, Context, 0, TestWorld, TEXT("VerifyWorldStreamingAccess"))
-					&& SetArgObjectChecked(*TestRunner, Context, 1, FirstStreamingLevel, TEXT("VerifyWorldStreamingAccess"))
-					&& SetArgObjectChecked(*TestRunner, Context, 2, SecondStreamingLevel, TEXT("VerifyWorldStreamingAccess"));
+				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, TestWorld, TEXT("VerifyWorldStreamingAccess"))
+					&& WorldCollisionSetArgObjectChecked(*TestRunner, Context, 1, FirstStreamingLevel, TEXT("VerifyWorldStreamingAccess"))
+					&& WorldCollisionSetArgObjectChecked(*TestRunner, Context, 2, SecondStreamingLevel, TEXT("VerifyWorldStreamingAccess"));
 			},
 			TEXT("VerifyWorldStreamingAccess"),
 			ResultMask))

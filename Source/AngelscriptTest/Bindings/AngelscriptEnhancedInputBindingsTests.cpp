@@ -17,7 +17,7 @@
 //
 // CQTest adaptation notes:
 //   Eight IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
-//   Each section uses FCoverageModuleScope + ExpectGlobalInt where possible.
+//   Each section uses FScopedAngelscriptModule + ExpectGlobalInt where possible.
 //   The const-compat test retains its compile-error assertion pattern.
 // ============================================================================
 
@@ -27,7 +27,7 @@
 #include "Shared/AngelscriptTestEngineHelper.h"
 #include "Shared/AngelscriptReflectiveAccess.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
 
 #include "EnhancedInputComponent.h"
 #include "InputAction.h"

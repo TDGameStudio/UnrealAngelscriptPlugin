@@ -20,7 +20,7 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
 
 #include "Misc/DateTime.h"
 

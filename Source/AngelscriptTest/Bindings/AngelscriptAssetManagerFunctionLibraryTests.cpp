@@ -14,13 +14,13 @@
 //   UAssetManagerMixinLibrary null-guard paths.  Because the AS source
 //   defines UCLASS/UPROPERTY/UFUNCTION types (not plain global functions),
 //   module lifecycle is managed manually via CompileAnnotatedModuleFromMemory
-//   and DiscardModule rather than through FCoverageModuleScope.
+//   and DiscardModule rather than through FScopedAngelscriptModule.
 // ============================================================================
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
 #include "Shared/AngelscriptReflectiveAccess.h"
 
 #include "FunctionLibraries/UAssetManagerMixinLibrary.h"

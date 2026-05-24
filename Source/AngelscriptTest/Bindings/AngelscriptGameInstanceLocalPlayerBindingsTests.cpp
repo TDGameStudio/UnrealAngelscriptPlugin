@@ -19,7 +19,7 @@
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
 
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"

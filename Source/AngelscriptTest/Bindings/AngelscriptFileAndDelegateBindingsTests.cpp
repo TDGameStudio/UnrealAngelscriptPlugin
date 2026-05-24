@@ -23,7 +23,7 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
 #include "Shared/AngelscriptTestUtilities.h"
 #include "Shared/AngelscriptTestEngineHelper.h"
 #include "Shared/AngelscriptNativeScriptTestObject.h"

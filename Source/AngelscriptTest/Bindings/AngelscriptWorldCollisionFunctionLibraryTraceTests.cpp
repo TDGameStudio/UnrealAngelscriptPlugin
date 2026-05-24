@@ -15,7 +15,7 @@
 //
 // CQTest adaptation notes:
 //   Original single IMPLEMENT_SIMPLE_AUTOMATION_TEST monolithic function split
-//   into six TEST_METHODs, each with its own FCoverageModuleScope. The custom
+//   into six TEST_METHODs, each with its own FScopedAngelscriptModule. The custom
 //   address-based invocation helpers are retained for the bool+out-param
 //   calling convention. World/collision setup is shared via BEFORE_EACH.
 // ============================================================================
@@ -23,7 +23,8 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
+#include "Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h"
 
 #include "Components/ActorTestSpawner.h"
 #include "Components/BoxComponent.h"
@@ -59,91 +60,6 @@ namespace WorldCollisionTraceTestHelpers
 	static const FVector OverlapShapeExtent(45.0f, 45.0f, 45.0f);
 	static const FVector ProfileMissLocation(0.0f, -150.0f, 0.0f);
 	static const FQuat IdentityRotation = FQuat::Identity;
-
-	bool SetArgAddressChecked(
-		FAutomationTestBase& Test,
-		asIScriptContext& Context,
-		asUINT ArgumentIndex,
-		void* Address,
-		const TCHAR* ContextLabel)
-	{
-		return Test.TestEqual(
-			*FString::Printf(TEXT("%s should bind address argument %u"), ContextLabel, static_cast<uint32>(ArgumentIndex)),
-			Context.SetArgAddress(ArgumentIndex, Address),
-			static_cast<int32>(asSUCCESS));
-	}
-
-	// TODO(refactor-as-test-shared-layout-and-naming): migrate ExecuteBoolFunction / ExecuteAddressBoolFunction<T> to Shared/AngelscriptTestExecute.h once the Execute* naming family lands in Phase 3.
-	bool ExecuteBoolFunction(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const FString& FunctionDecl,
-		TFunctionRef<bool(asIScriptContext&)> BindArguments,
-		const TCHAR* ContextLabel,
-		bool& OutResult)
-	{
-		asIScriptFunction* Function = GetFunctionByDecl(Test, Module, FunctionDecl);
-		if (Function == nullptr)
-		{
-			return false;
-		}
-
-		FAngelscriptEngineScope EngineScope(Engine);
-		asIScriptContext* Context = Engine.CreateContext();
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create an execution context"), ContextLabel), Context))
-		{
-			return false;
-		}
-
-		ON_SCOPE_EXIT
-		{
-			Context->Release();
-		};
-
-		const int PrepareResult = Context->Prepare(Function);
-		if (!Test.TestEqual(*FString::Printf(TEXT("%s should prepare successfully"), ContextLabel), PrepareResult, static_cast<int32>(asSUCCESS)))
-		{
-			return false;
-		}
-
-		if (!BindArguments(*Context))
-		{
-			return false;
-		}
-
-		const int ExecuteResult = Context->Execute();
-		if (!Test.TestEqual(*FString::Printf(TEXT("%s should execute successfully"), ContextLabel), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
-		{
-			return false;
-		}
-
-		OutResult = Context->GetReturnByte() != 0;
-		return true;
-	}
-
-	template <typename TValue>
-	bool ExecuteAddressBoolFunction(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const TCHAR* FunctionDecl,
-		const TCHAR* ContextLabel,
-		TValue& OutValue,
-		bool& OutResult)
-	{
-		return ExecuteBoolFunction(
-			Test,
-			Engine,
-			Module,
-			FunctionDecl,
-			[&](asIScriptContext& Context)
-			{
-				return SetArgAddressChecked(Test, Context, 0, &OutValue, ContextLabel);
-			},
-			ContextLabel,
-			OutResult);
-	}
 
 	UBoxComponent* AddCollisionBox(AActor& Owner, FName ComponentName, const FVector& BoxExtent, const FVector& WorldLocation)
 	{
@@ -243,7 +159,7 @@ bool RunLineTraceSingleByChannelHit(FHitResult& OutHit)
 		const bool bNativeLineHit = World->LineTraceSingleByChannel(NativeLineHit, LineTraceHitStart, LineTraceHitEnd, ECC_Visibility);
 		FHitResult ScriptLineHit;
 		bool bScriptLineHit = false;
-		if (!ExecuteAddressBoolFunction(*TestRunner, Engine, M, TEXT("bool RunLineTraceSingleByChannelHit(FHitResult& OutHit)"), TEXT("RunLineTraceSingleByChannelHit"), ScriptLineHit, bScriptLineHit))
+		if (!WorldCollisionExecuteAddressBoolFunction(*TestRunner, Engine, M, TEXT("bool RunLineTraceSingleByChannelHit(FHitResult& OutHit)"), TEXT("RunLineTraceSingleByChannelHit"), ScriptLineHit, bScriptLineHit))
 		{
 			return;
 		}
@@ -284,7 +200,7 @@ bool RunLineTraceMultiByChannelHit(TArray<FHitResult>& OutHits)
 		const bool bNativeLineMultiHit = World->LineTraceMultiByChannel(NativeLineHits, LineTraceHitStart, LineTraceHitEnd, ECC_Visibility);
 		TArray<FHitResult> ScriptLineHits;
 		bool bScriptLineMultiHit = false;
-		if (!ExecuteAddressBoolFunction(*TestRunner, Engine, M, TEXT("bool RunLineTraceMultiByChannelHit(TArray<FHitResult>& OutHits)"), TEXT("RunLineTraceMultiByChannelHit"), ScriptLineHits, bScriptLineMultiHit))
+		if (!WorldCollisionExecuteAddressBoolFunction(*TestRunner, Engine, M, TEXT("bool RunLineTraceMultiByChannelHit(TArray<FHitResult>& OutHits)"), TEXT("RunLineTraceMultiByChannelHit"), ScriptLineHits, bScriptLineMultiHit))
 		{
 			return;
 		}
@@ -326,7 +242,7 @@ bool RunLineTraceMultiByChannelMiss(TArray<FHitResult>& OutHits)
 		TArray<FHitResult> ScriptLineMissHits;
 		ScriptLineMissHits.AddDefaulted();
 		bool bScriptLineMultiMiss = false;
-		if (!ExecuteAddressBoolFunction(*TestRunner, Engine, M, TEXT("bool RunLineTraceMultiByChannelMiss(TArray<FHitResult>& OutHits)"), TEXT("RunLineTraceMultiByChannelMiss"), ScriptLineMissHits, bScriptLineMultiMiss))
+		if (!WorldCollisionExecuteAddressBoolFunction(*TestRunner, Engine, M, TEXT("bool RunLineTraceMultiByChannelMiss(TArray<FHitResult>& OutHits)"), TEXT("RunLineTraceMultiByChannelMiss"), ScriptLineMissHits, bScriptLineMultiMiss))
 		{
 			return;
 		}
@@ -373,7 +289,7 @@ bool RunSweepSingleByObjectTypeHit(FHitResult& OutHit)
 		const bool bNativeObjectSweepHit = World->SweepSingleByObjectType(NativeObjectSweepHit, LineTraceHitStart, LineTraceHitEnd, IdentityRotation, ObjectQueryParams, SweepShape);
 		FHitResult ScriptObjectSweepHit;
 		bool bScriptObjectSweepHit = false;
-		if (!ExecuteAddressBoolFunction(*TestRunner, Engine, M, TEXT("bool RunSweepSingleByObjectTypeHit(FHitResult& OutHit)"), TEXT("RunSweepSingleByObjectTypeHit"), ScriptObjectSweepHit, bScriptObjectSweepHit))
+		if (!WorldCollisionExecuteAddressBoolFunction(*TestRunner, Engine, M, TEXT("bool RunSweepSingleByObjectTypeHit(FHitResult& OutHit)"), TEXT("RunSweepSingleByObjectTypeHit"), ScriptObjectSweepHit, bScriptObjectSweepHit))
 		{
 			return;
 		}
@@ -418,7 +334,7 @@ bool RunOverlapMultiByProfileHit(TArray<FOverlapResult>& OutOverlaps)
 		const bool bNativeProfileOverlapHit = World->OverlapMultiByProfile(NativeProfileOverlaps, OverlapTargetLocation, IdentityRotation, UCollisionProfile::BlockAllDynamic_ProfileName, ProfileOverlapShape);
 		TArray<FOverlapResult> ScriptProfileOverlaps;
 		bool bScriptProfileOverlapHit = false;
-		if (!ExecuteAddressBoolFunction(*TestRunner, Engine, M, TEXT("bool RunOverlapMultiByProfileHit(TArray<FOverlapResult>& OutOverlaps)"), TEXT("RunOverlapMultiByProfileHit"), ScriptProfileOverlaps, bScriptProfileOverlapHit))
+		if (!WorldCollisionExecuteAddressBoolFunction(*TestRunner, Engine, M, TEXT("bool RunOverlapMultiByProfileHit(TArray<FOverlapResult>& OutOverlaps)"), TEXT("RunOverlapMultiByProfileHit"), ScriptProfileOverlaps, bScriptProfileOverlapHit))
 		{
 			return;
 		}
@@ -461,7 +377,7 @@ bool RunOverlapMultiByProfileMiss(TArray<FOverlapResult>& OutOverlaps)
 		TArray<FOverlapResult> ScriptProfileMissOverlaps;
 		ScriptProfileMissOverlaps.AddDefaulted();
 		bool bScriptProfileOverlapMiss = false;
-		if (!ExecuteAddressBoolFunction(*TestRunner, Engine, M, TEXT("bool RunOverlapMultiByProfileMiss(TArray<FOverlapResult>& OutOverlaps)"), TEXT("RunOverlapMultiByProfileMiss"), ScriptProfileMissOverlaps, bScriptProfileOverlapMiss))
+		if (!WorldCollisionExecuteAddressBoolFunction(*TestRunner, Engine, M, TEXT("bool RunOverlapMultiByProfileMiss(TArray<FOverlapResult>& OutOverlaps)"), TEXT("RunOverlapMultiByProfileMiss"), ScriptProfileMissOverlaps, bScriptProfileOverlapMiss))
 		{
 			return;
 		}

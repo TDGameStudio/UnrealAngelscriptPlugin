@@ -21,143 +21,14 @@
 #include "Shared/AngelscriptTestUtilities.h"
 #include "Shared/AngelscriptTestEngineHelper.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
+#include "Bindings/AngelscriptMathBindingsTestCompare.h"
 
 #include "Math/Quat.h"
 #include "Math/RotationMatrix.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-
-
-namespace AngelscriptTest_Bindings_AngelscriptMathOrientationBindingsTests_Private
-{
-	bool ReadReturnValue(FAutomationTestBase&, asIScriptContext& Context, float& OutValue) { OutValue = Context.GetReturnFloat(); return true; }
-	bool ReadReturnValue(FAutomationTestBase&, asIScriptContext& Context, double& OutValue) { OutValue = Context.GetReturnDouble(); return true; }
-
-	template <typename TValue>
-	bool ReadReturnValue(FAutomationTestBase& Test, asIScriptContext& Context, TValue& OutValue)
-	{
-		void* ReturnValueAddress = Context.GetAddressOfReturnValue();
-		return Test.TestNotNull(TEXT("Math orientation binding test should expose the return value storage"), ReturnValueAddress) && (OutValue = *static_cast<TValue*>(ReturnValueAddress), true);
-	}
-
-	// TODO(refactor-as-test-shared-layout-and-naming): migrate ExecuteValueFunction<T> to Shared/AngelscriptTestExecute.h once the Execute* naming family lands in Phase 3.
-	template <typename TValue>
-	bool ExecuteValueFunction(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptFunction& Function,
-		TValue& OutValue)
-	{
-		asIScriptContext* Context = Engine.CreateContext();
-		if (!Test.TestNotNull(TEXT("Math orientation binding test should create an execution context"), Context))
-		{
-			return false;
-		}
-
-		const int PrepareResult = Context->Prepare(&Function);
-		if (!Test.TestEqual(TEXT("Math orientation binding test should prepare the script function"), PrepareResult, asSUCCESS))
-		{
-			Context->Release();
-			return false;
-		}
-
-		const int ExecuteResult = Context->Execute();
-		if (!Test.TestEqual(TEXT("Math orientation binding test should execute the script function"), ExecuteResult, asEXECUTION_FINISHED))
-		{
-			if (ExecuteResult == asEXECUTION_EXCEPTION && Context->GetExceptionString() != nullptr)
-			{
-				Test.AddError(FString::Printf(
-					TEXT("Math orientation binding test saw a script exception: %s"),
-					UTF8_TO_TCHAR(Context->GetExceptionString())));
-			}
-			Context->Release();
-			return false;
-		}
-
-		const bool bReadReturnValue = ReadReturnValue(Test, *Context, OutValue);
-		Context->Release();
-		return bReadReturnValue;
-	}
-
-	bool RotatorMatches(const FRotator& Actual, const FRotator& Expected, double ToleranceDegrees = 0.05)
-	{
-		FQuat ActualQuat(Actual);
-		FQuat ExpectedQuat(Expected);
-		ActualQuat.Normalize();
-		ExpectedQuat.Normalize();
-		return FMath::RadiansToDegrees(ActualQuat.AngularDistance(ExpectedQuat)) <= ToleranceDegrees;
-	}
-
-	bool VerifyRotator(
-		FAutomationTestBase& Test,
-		const TCHAR* What,
-		const FRotator& Actual,
-		const FRotator& Expected,
-		double ToleranceDegrees = 0.05)
-	{
-		return Test.TestTrue(What, RotatorMatches(Actual, Expected, ToleranceDegrees));
-	}
-
-	bool QuatMatches(const FQuat& Actual, const FQuat& Expected, double ToleranceDegrees = 0.05)
-	{
-		FQuat ActualQuat = Actual;
-		FQuat ExpectedQuat = Expected;
-		ActualQuat.Normalize();
-		ExpectedQuat.Normalize();
-		if ((ActualQuat | ExpectedQuat) < 0.0)
-		{
-			ExpectedQuat = FQuat(-ExpectedQuat.X, -ExpectedQuat.Y, -ExpectedQuat.Z, -ExpectedQuat.W);
-		}
-		return FMath::RadiansToDegrees(ActualQuat.AngularDistance(ExpectedQuat)) <= ToleranceDegrees;
-	}
-
-	bool VerifyQuat(
-		FAutomationTestBase& Test,
-		const TCHAR* What,
-		const FQuat& Actual,
-		const FQuat& Expected,
-		double ToleranceDegrees = 0.05)
-	{
-		return Test.TestTrue(What, QuatMatches(Actual, Expected, ToleranceDegrees));
-	}
-
-	bool VerifyVector(
-		FAutomationTestBase& Test,
-		const TCHAR* What,
-		const FVector& Actual,
-		const FVector& Expected,
-		double Tolerance = KINDA_SMALL_NUMBER)
-	{
-		return Test.TestTrue(What, Actual.Equals(Expected, Tolerance));
-	}
-
-	bool VerifyTransform(
-		FAutomationTestBase& Test,
-		const TCHAR* What,
-		const FTransform& Actual,
-		const FTransform& Expected,
-		double Tolerance = 0.01)
-	{
-		const bool bRotationMatches = RotatorMatches(Actual.Rotator(), Expected.Rotator(), Tolerance);
-		const bool bTranslationMatches = Actual.GetLocation().Equals(Expected.GetLocation(), Tolerance);
-		const bool bScaleMatches = Actual.GetScale3D().Equals(Expected.GetScale3D(), Tolerance);
-		if (!(bRotationMatches && bTranslationMatches && bScaleMatches))
-		{
-			Test.AddInfo(FString::Printf(
-				TEXT("%s actual rotation=%s expected rotation=%s actual translation=%s expected translation=%s actual scale=%s expected scale=%s"),
-				What,
-				*Actual.Rotator().ToCompactString(),
-				*Expected.Rotator().ToCompactString(),
-				*Actual.GetLocation().ToCompactString(),
-				*Expected.GetLocation().ToCompactString(),
-				*Actual.GetScale3D().ToCompactString(),
-				*Expected.GetScale3D().ToCompactString()));
-		}
-		return Test.TestTrue(What, bRotationMatches && bTranslationMatches && bScaleMatches);
-	}
-}
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptMathOrientationBindingsTest, "Angelscript.TestModule.Bindings.Math.Orientation",
@@ -172,7 +43,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMathOrientationBindingsTest, "Angelscript.Test
 
 	TEST_METHOD(FactoriesAndTransformMutators)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptMathOrientationBindingsTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
@@ -335,74 +205,40 @@ FTransform GetSetRotationTransform()
 		FTransform ScriptBlendWithTransform;
 		FTransform ScriptSetRotationTransform;
 
-		asIScriptFunction* AxesRotatorFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FRotator GetAxesRotator()"));
-		asIScriptFunction* AxesForwardFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FVector GetAxesForward()"));
-		asIScriptFunction* AxesForwardMemberFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FVector GetAxesForwardMember()"));
-		asIScriptFunction* AxesRightFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FVector GetAxesRight()"));
-		asIScriptFunction* AxesRightMemberFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FVector GetAxesRightMember()"));
-		asIScriptFunction* AxesUpFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FVector GetAxesUp()"));
-		asIScriptFunction* AxesUpMemberFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FVector GetAxesUpMember()"));
-		asIScriptFunction* ComposedRotatorFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FRotator GetComposedRotator()"));
-		asIScriptFunction* RotatorAngularDistanceFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("double GetRotatorAngularDistance()"));
-		asIScriptFunction* QuatFromXFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FQuat GetQuatFromX()"));
-		asIScriptFunction* QuatFromYFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FQuat GetQuatFromY()"));
-		asIScriptFunction* QuatFromZFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FQuat GetQuatFromZ()"));
-		asIScriptFunction* QuatFromXYFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FQuat GetQuatFromXY()"));
-		asIScriptFunction* QuatFromXZFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FQuat GetQuatFromXZ()"));
-		asIScriptFunction* QuatFromYXFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FQuat GetQuatFromYX()"));
-		asIScriptFunction* QuatFromYZFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FQuat GetQuatFromYZ()"));
-		asIScriptFunction* QuatFromZXFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FQuat GetQuatFromZX()"));
-		asIScriptFunction* QuatFromZYFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FQuat GetQuatFromZY()"));
-		asIScriptFunction* BlendTransformFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FTransform GetBlendTransform()"));
-		asIScriptFunction* BlendWithTransformFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FTransform GetBlendWithTransform()"));
-		asIScriptFunction* SetRotationTransformFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("FTransform GetSetRotationTransform()"));
-		if (AxesRotatorFunction == nullptr
-			|| AxesForwardFunction == nullptr
-			|| AxesForwardMemberFunction == nullptr
-			|| AxesRightFunction == nullptr
-			|| AxesRightMemberFunction == nullptr
-			|| AxesUpFunction == nullptr
-			|| AxesUpMemberFunction == nullptr
-			|| ComposedRotatorFunction == nullptr
-			|| RotatorAngularDistanceFunction == nullptr
-			|| QuatFromXFunction == nullptr
-			|| QuatFromYFunction == nullptr
-			|| QuatFromZFunction == nullptr
-			|| QuatFromXYFunction == nullptr
-			|| QuatFromXZFunction == nullptr
-			|| QuatFromYXFunction == nullptr
-			|| QuatFromYZFunction == nullptr
-			|| QuatFromZXFunction == nullptr
-			|| QuatFromZYFunction == nullptr
-			|| BlendTransformFunction == nullptr
-			|| BlendWithTransformFunction == nullptr
-			|| SetRotationTransformFunction == nullptr)
+		const auto ExecuteStructGlobal = [&](const TCHAR* FunctionDecl, auto& OutValue)
 		{
-			return;
-		}
+			FAngelscriptTestExecutor Executor(*TestRunner, Engine, Module, FunctionDecl);
+			return Executor.ExecuteAndExtractStruct(OutValue);
+		};
+		const auto ExecuteScalarGlobal = [&](const TCHAR* FunctionDecl, auto& OutValue)
+		{
+			FAngelscriptTestExecutor Executor(*TestRunner, Engine, Module, FunctionDecl);
+			OutValue = Executor.ExecuteAndGet<std::remove_reference_t<decltype(OutValue)>>();
+			return Executor.HasRun();
+		};
 
 		const bool bExecutedAll =
-			ExecuteValueFunction(*TestRunner, Engine, *AxesRotatorFunction, ScriptAxesRotator) &&
-			ExecuteValueFunction(*TestRunner, Engine, *AxesForwardFunction, ScriptAxesForward) &&
-			ExecuteValueFunction(*TestRunner, Engine, *AxesForwardMemberFunction, ScriptAxesForwardMember) &&
-			ExecuteValueFunction(*TestRunner, Engine, *AxesRightFunction, ScriptAxesRight) &&
-			ExecuteValueFunction(*TestRunner, Engine, *AxesRightMemberFunction, ScriptAxesRightMember) &&
-			ExecuteValueFunction(*TestRunner, Engine, *AxesUpFunction, ScriptAxesUp) &&
-			ExecuteValueFunction(*TestRunner, Engine, *AxesUpMemberFunction, ScriptAxesUpMember) &&
-			ExecuteValueFunction(*TestRunner, Engine, *ComposedRotatorFunction, ScriptComposedRotator) &&
-			ExecuteValueFunction(*TestRunner, Engine, *RotatorAngularDistanceFunction, ScriptRotatorAngularDistance) &&
-			ExecuteValueFunction(*TestRunner, Engine, *QuatFromXFunction, ScriptQuatFromX) &&
-			ExecuteValueFunction(*TestRunner, Engine, *QuatFromYFunction, ScriptQuatFromY) &&
-			ExecuteValueFunction(*TestRunner, Engine, *QuatFromZFunction, ScriptQuatFromZ) &&
-			ExecuteValueFunction(*TestRunner, Engine, *QuatFromXYFunction, ScriptQuatFromXY) &&
-			ExecuteValueFunction(*TestRunner, Engine, *QuatFromXZFunction, ScriptQuatFromXZ) &&
-			ExecuteValueFunction(*TestRunner, Engine, *QuatFromYXFunction, ScriptQuatFromYX) &&
-			ExecuteValueFunction(*TestRunner, Engine, *QuatFromYZFunction, ScriptQuatFromYZ) &&
-			ExecuteValueFunction(*TestRunner, Engine, *QuatFromZXFunction, ScriptQuatFromZX) &&
-			ExecuteValueFunction(*TestRunner, Engine, *QuatFromZYFunction, ScriptQuatFromZY) &&
-			ExecuteValueFunction(*TestRunner, Engine, *BlendTransformFunction, ScriptBlendTransform) &&
-			ExecuteValueFunction(*TestRunner, Engine, *BlendWithTransformFunction, ScriptBlendWithTransform) &&
-			ExecuteValueFunction(*TestRunner, Engine, *SetRotationTransformFunction, ScriptSetRotationTransform);
+			ExecuteStructGlobal(TEXT("FRotator GetAxesRotator()"), ScriptAxesRotator) &&
+			ExecuteStructGlobal(TEXT("FVector GetAxesForward()"), ScriptAxesForward) &&
+			ExecuteStructGlobal(TEXT("FVector GetAxesForwardMember()"), ScriptAxesForwardMember) &&
+			ExecuteStructGlobal(TEXT("FVector GetAxesRight()"), ScriptAxesRight) &&
+			ExecuteStructGlobal(TEXT("FVector GetAxesRightMember()"), ScriptAxesRightMember) &&
+			ExecuteStructGlobal(TEXT("FVector GetAxesUp()"), ScriptAxesUp) &&
+			ExecuteStructGlobal(TEXT("FVector GetAxesUpMember()"), ScriptAxesUpMember) &&
+			ExecuteStructGlobal(TEXT("FRotator GetComposedRotator()"), ScriptComposedRotator) &&
+			ExecuteScalarGlobal(TEXT("double GetRotatorAngularDistance()"), ScriptRotatorAngularDistance) &&
+			ExecuteStructGlobal(TEXT("FQuat GetQuatFromX()"), ScriptQuatFromX) &&
+			ExecuteStructGlobal(TEXT("FQuat GetQuatFromY()"), ScriptQuatFromY) &&
+			ExecuteStructGlobal(TEXT("FQuat GetQuatFromZ()"), ScriptQuatFromZ) &&
+			ExecuteStructGlobal(TEXT("FQuat GetQuatFromXY()"), ScriptQuatFromXY) &&
+			ExecuteStructGlobal(TEXT("FQuat GetQuatFromXZ()"), ScriptQuatFromXZ) &&
+			ExecuteStructGlobal(TEXT("FQuat GetQuatFromYX()"), ScriptQuatFromYX) &&
+			ExecuteStructGlobal(TEXT("FQuat GetQuatFromYZ()"), ScriptQuatFromYZ) &&
+			ExecuteStructGlobal(TEXT("FQuat GetQuatFromZX()"), ScriptQuatFromZX) &&
+			ExecuteStructGlobal(TEXT("FQuat GetQuatFromZY()"), ScriptQuatFromZY) &&
+			ExecuteStructGlobal(TEXT("FTransform GetBlendTransform()"), ScriptBlendTransform) &&
+			ExecuteStructGlobal(TEXT("FTransform GetBlendWithTransform()"), ScriptBlendWithTransform) &&
+			ExecuteStructGlobal(TEXT("FTransform GetSetRotationTransform()"), ScriptSetRotationTransform);
 		if (!bExecutedAll)
 		{
 			return;
@@ -428,42 +264,42 @@ FTransform GetSetRotationTransform()
 		FTransform ExpectedSetRotationTransform = TransformA;
 		ExpectedSetRotationTransform.SetRotation(ReplacementRotation.Quaternion());
 
-		VerifyRotator(
+		VerifyMathBindingsRotator(
 			*TestRunner,
 			TEXT("FRotator::MakeFromAxes should build the same orientation as the native matrix conversion"),
 			ScriptAxesRotator,
 			ExpectedAxesRotator);
-		VerifyVector(
+		VerifyMathBindingsVector(
 			*TestRunner,
 			TEXT("FRotator.GetForwardVector should recover the canonical forward axis from MakeFromAxes"),
 			ScriptAxesForward,
 			CanonicalForward);
-		VerifyVector(
+		VerifyMathBindingsVector(
 			*TestRunner,
 			TEXT("FRotator.GetForwardVector should recover the canonical forward axis from MakeFromAxes"),
 			ScriptAxesForwardMember,
 			CanonicalForward);
-		VerifyVector(
+		VerifyMathBindingsVector(
 			*TestRunner,
 			TEXT("FRotator.GetRightVector should recover the canonical right axis from MakeFromAxes"),
 			ScriptAxesRight,
 			CanonicalRight);
-		VerifyVector(
+		VerifyMathBindingsVector(
 			*TestRunner,
 			TEXT("FRotator.GetRightVector should recover the canonical right axis from MakeFromAxes"),
 			ScriptAxesRightMember,
 			CanonicalRight);
-		VerifyVector(
+		VerifyMathBindingsVector(
 			*TestRunner,
 			TEXT("FRotator.GetUpVector should recover the canonical up axis from MakeFromAxes"),
 			ScriptAxesUp,
 			CanonicalUp);
-		VerifyVector(
+		VerifyMathBindingsVector(
 			*TestRunner,
 			TEXT("FRotator.GetUpVector should recover the canonical up axis from MakeFromAxes"),
 			ScriptAxesUpMember,
 			CanonicalUp);
-		VerifyRotator(
+		VerifyMathBindingsRotator(
 			*TestRunner,
 			TEXT("FRotator.Compose should preserve the native B * A multiplication order"),
 			ScriptComposedRotator,
@@ -471,72 +307,72 @@ FTransform GetSetRotationTransform()
 		TestRunner->TestTrue(
 			TEXT("FRotator.AngularDistance should expose orientation distance as an instance method"),
 			FMath::Abs(ScriptRotatorAngularDistance - ExpectedRotatorAngularDistance) <= 0.05);
-		VerifyQuat(
+		VerifyMathBindingsQuat(
 			*TestRunner,
 			TEXT("FQuat::MakeFromX should match the native rotation matrix factory"),
 			ScriptQuatFromX,
 			ExpectedQuatFromX);
-		VerifyQuat(
+		VerifyMathBindingsQuat(
 			*TestRunner,
 			TEXT("FQuat::MakeFromY should match the native rotation matrix factory"),
 			ScriptQuatFromY,
 			ExpectedQuatFromY);
-		VerifyQuat(
+		VerifyMathBindingsQuat(
 			*TestRunner,
 			TEXT("FQuat::MakeFromZ should match the native rotation matrix factory"),
 			ScriptQuatFromZ,
 			ExpectedQuatFromZ);
-		VerifyQuat(
+		VerifyMathBindingsQuat(
 			*TestRunner,
 			TEXT("FQuat::MakeFromXY should match the native rotation matrix factory"),
 			ScriptQuatFromXY,
 			ExpectedQuatFromXY);
-		VerifyQuat(
+		VerifyMathBindingsQuat(
 			*TestRunner,
 			TEXT("FQuat::MakeFromXZ should match the native rotation matrix factory"),
 			ScriptQuatFromXZ,
 			ExpectedQuatFromXZ);
-		VerifyQuat(
+		VerifyMathBindingsQuat(
 			*TestRunner,
 			TEXT("FQuat::MakeFromYX should match the native rotation matrix factory"),
 			ScriptQuatFromYX,
 			ExpectedQuatFromYX);
-		VerifyQuat(
+		VerifyMathBindingsQuat(
 			*TestRunner,
 			TEXT("FQuat::MakeFromYZ should match the native rotation matrix factory"),
 			ScriptQuatFromYZ,
 			ExpectedQuatFromYZ);
-		VerifyQuat(
+		VerifyMathBindingsQuat(
 			*TestRunner,
 			TEXT("FQuat::MakeFromZX should match the native rotation matrix factory"),
 			ScriptQuatFromZX,
 			ExpectedQuatFromZX);
-		VerifyQuat(
+		VerifyMathBindingsQuat(
 			*TestRunner,
 			TEXT("FQuat::MakeFromZY should match the native rotation matrix factory"),
 			ScriptQuatFromZY,
 			ExpectedQuatFromZY);
-		VerifyTransform(
+		VerifyMathBindingsTransform(
 			*TestRunner,
 			TEXT("FTransform::Blend should match native transform blending"),
 			ScriptBlendTransform,
 			ExpectedBlendTransform);
-		VerifyTransform(
+		VerifyMathBindingsTransform(
 			*TestRunner,
 			TEXT("FTransform::BlendWith should match native in-place blending"),
 			ScriptBlendWithTransform,
 			ExpectedBlendWithTransform);
-		VerifyTransform(
+		VerifyMathBindingsTransform(
 			*TestRunner,
 			TEXT("FTransform::SetRotation should update only the rotation component"),
 			ScriptSetRotationTransform,
 			ExpectedSetRotationTransform);
-		VerifyVector(
+		VerifyMathBindingsVector(
 			*TestRunner,
 			TEXT("FTransform::SetRotation should preserve the original translation"),
 			ScriptSetRotationTransform.GetLocation(),
 			TransformA.GetLocation());
-		VerifyVector(
+		VerifyMathBindingsVector(
 			*TestRunner,
 			TEXT("FTransform::SetRotation should preserve the original scale"),
 			ScriptSetRotationTransform.GetScale3D(),

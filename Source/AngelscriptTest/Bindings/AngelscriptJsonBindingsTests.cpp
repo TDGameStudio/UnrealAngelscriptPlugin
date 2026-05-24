@@ -20,9 +20,7 @@
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
-
-#include "Misc/ScopeExit.h"
+#include "Shared/AngelscriptTestExecute.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -31,72 +29,6 @@
 // Profile
 // ----------------------------------------------------------------------------
 
-
-// ----------------------------------------------------------------------------
-// Shared helpers
-// ----------------------------------------------------------------------------
-
-namespace JsonTestHelpers
-{
-	// TODO(refactor-as-test-shared-layout-and-naming): migrate ExecuteFunctionExpectingException to Shared/AngelscriptTestExecute.h once the Execute* naming family lands in Phase 3.
-	bool ExecuteFunctionExpectingException(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const TCHAR* FunctionDecl,
-		const TCHAR* ContextLabel,
-		FString& OutExceptionString,
-		int32& OutExceptionLine)
-	{
-		asIScriptFunction* Function = GetFunctionByDecl(Test, Module, FunctionDecl);
-		if (Function == nullptr)
-		{
-			return false;
-		}
-
-		FAngelscriptEngineScope EngineScope(Engine);
-		asIScriptContext* Context = Engine.CreateContext();
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create an execution context"), ContextLabel), Context))
-		{
-			return false;
-		}
-
-		ON_SCOPE_EXIT
-		{
-			Context->Release();
-		};
-
-		const int PrepareResult = Context->Prepare(Function);
-		if (!Test.TestEqual(
-				*FString::Printf(TEXT("%s should prepare successfully"), ContextLabel),
-				PrepareResult,
-				static_cast<int32>(asSUCCESS)))
-		{
-			return false;
-		}
-
-		const int ExecuteResult = Context->Execute();
-		if (!Test.TestEqual(
-				*FString::Printf(TEXT("%s should fail with a script exception"), ContextLabel),
-				ExecuteResult,
-				static_cast<int32>(asEXECUTION_EXCEPTION)))
-		{
-			return false;
-		}
-
-		OutExceptionString = Context->GetExceptionString() != nullptr ? UTF8_TO_TCHAR(Context->GetExceptionString()) : TEXT("");
-		OutExceptionLine = Context->GetExceptionLineNumber();
-		const bool bHasExceptionString = Test.TestFalse(
-			*FString::Printf(TEXT("%s should report a non-empty exception string"), ContextLabel),
-			OutExceptionString.IsEmpty());
-		const bool bHasExceptionLine = Test.TestTrue(
-			*FString::Printf(TEXT("%s should report a positive exception line"), ContextLabel),
-			OutExceptionLine > 0);
-		return bHasExceptionString && bHasExceptionLine;
-	}
-}
-
-using namespace JsonTestHelpers;
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -280,68 +212,48 @@ void TriggerIteratorMutation()
 		TestRunner->AddExpectedError(TEXT("ASJson_ErrorPaths"), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(TEXT("void TriggerTypeError()"), EAutomationExpectedErrorFlags::Contains, 0, false);
 
-		FString ExceptionString;
-		int32 ExceptionLine = INDEX_NONE;
-		if (!ExecuteFunctionExpectingException(
-				*TestRunner, Engine, M,
+		if (!ExecuteAndExpectException(
+				*TestRunner,
+				Engine,
+				M,
 				TEXT("void TriggerTypeError()"),
 				TEXT("Json type-error path"),
-				ExceptionString, ExceptionLine))
+				TEXT("Json Value of type 'Object' used as a 'String'.")))
 		{
 			return;
 		}
-
-		TestRunner->TestEqual(
-			TEXT("Json GetStringField type mismatch should surface the expected runtime exception"),
-			ExceptionString,
-			FString(TEXT("Json Value of type 'Object' used as a 'String'.")));
-		TestRunner->TestTrue(
-			TEXT("Json GetStringField type mismatch should report a script source line"),
-			ExceptionLine > 0);
 
 		// Out-of-bounds path
 		TestRunner->AddExpectedError(TEXT("Array index is out of bounds"), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(TEXT("ASJson_ErrorPaths"), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(TEXT("void TriggerOutOfBounds()"), EAutomationExpectedErrorFlags::Contains, 0, false);
 
-		if (!ExecuteFunctionExpectingException(
-				*TestRunner, Engine, M,
+		if (!ExecuteAndExpectException(
+				*TestRunner,
+				Engine,
+				M,
 				TEXT("void TriggerOutOfBounds()"),
 				TEXT("Json out-of-bounds path"),
-				ExceptionString, ExceptionLine))
+				TEXT("Array index is out of bounds")))
 		{
 			return;
 		}
-
-		TestRunner->TestEqual(
-			TEXT("Json GetValueAt out-of-bounds access should surface the expected runtime exception"),
-			ExceptionString,
-			FString(TEXT("Array index is out of bounds")));
-		TestRunner->TestTrue(
-			TEXT("Json GetValueAt out-of-bounds access should report a script source line"),
-			ExceptionLine > 0);
 
 		// Iterator mutation path
 		TestRunner->AddExpectedError(TEXT("FJsonObject is being modified during for loop iteration"), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(TEXT("ASJson_ErrorPaths"), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(TEXT("void TriggerIteratorMutation()"), EAutomationExpectedErrorFlags::Contains, 0, false);
 
-		if (!ExecuteFunctionExpectingException(
-				*TestRunner, Engine, M,
+		if (!ExecuteAndExpectException(
+				*TestRunner,
+				Engine,
+				M,
 				TEXT("void TriggerIteratorMutation()"),
 				TEXT("Json iterator-mutation path"),
-				ExceptionString, ExceptionLine))
+				TEXT("FJsonObject is being modified during for loop iteration")))
 		{
 			return;
 		}
-
-		TestRunner->TestEqual(
-			TEXT("Json iterator mutation should surface the expected runtime exception"),
-			ExceptionString,
-			FString(TEXT("FJsonObject is being modified during for loop iteration")));
-		TestRunner->TestTrue(
-			TEXT("Json iterator mutation should report a script source line"),
-			ExceptionLine > 0);
 	}
 };
 

@@ -20,7 +20,8 @@
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
+#include "Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h"
 
 #include "CollisionQueryParams.h"
 #include "Components/BoxComponent.h"
@@ -46,87 +47,6 @@ namespace AngelscriptTest_Bindings_AngelscriptCollisionParamsBindingsTests_Priva
 			Result.Add(Id);
 		}
 		return Result;
-	}
-
-	bool SetArgAddressChecked(
-		FAutomationTestBase& Test,
-		asIScriptContext& Context,
-		asUINT ArgumentIndex,
-		void* Address,
-		const TCHAR* ContextLabel)
-	{
-		return Test.TestEqual(
-			*FString::Printf(TEXT("%s should bind address argument %u"), ContextLabel, static_cast<uint32>(ArgumentIndex)),
-			Context.SetArgAddress(ArgumentIndex, Address),
-			static_cast<int32>(asSUCCESS));
-	}
-
-	bool SetArgObjectChecked(
-		FAutomationTestBase& Test,
-		asIScriptContext& Context,
-		asUINT ArgumentIndex,
-		void* Object,
-		const TCHAR* ContextLabel)
-	{
-		return Test.TestEqual(
-			*FString::Printf(TEXT("%s should bind object argument %u"), ContextLabel, static_cast<uint32>(ArgumentIndex)),
-			Context.SetArgObject(ArgumentIndex, Object),
-			static_cast<int32>(asSUCCESS));
-	}
-
-	// TODO(refactor-as-test-shared-layout-and-naming): migrate ExecuteIntFunction to Shared/AngelscriptTestExecute.h once the Execute* naming family lands in Phase 3.
-	bool ExecuteIntFunction(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const TCHAR* FunctionDecl,
-		TFunctionRef<bool(asIScriptContext&)> BindArguments,
-		const TCHAR* ContextLabel,
-		int32& OutResult)
-	{
-		asIScriptFunction* Function = GetFunctionByDecl(Test, Module, FunctionDecl);
-		if (Function == nullptr)
-		{
-			return false;
-		}
-
-		FAngelscriptEngineScope EngineScope(Engine);
-		asIScriptContext* Context = Engine.CreateContext();
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create an execution context"), ContextLabel), Context))
-		{
-			return false;
-		}
-
-		ON_SCOPE_EXIT
-		{
-			Context->Release();
-		};
-
-		const int PrepareResult = Context->Prepare(Function);
-		if (!Test.TestEqual(
-			*FString::Printf(TEXT("%s should prepare successfully"), ContextLabel),
-			PrepareResult,
-			static_cast<int32>(asSUCCESS)))
-		{
-			return false;
-		}
-
-		if (!BindArguments(*Context))
-		{
-			return false;
-		}
-
-		const int ExecuteResult = Context->Execute();
-		if (!Test.TestEqual(
-			*FString::Printf(TEXT("%s should execute successfully"), ContextLabel),
-			ExecuteResult,
-			static_cast<int32>(asEXECUTION_FINISHED)))
-		{
-			return false;
-		}
-
-		OutResult = static_cast<int32>(Context->GetReturnDWord());
-		return true;
 	}
 
 	FCollisionQueryParams BuildNativeCollisionQueryParams(const AActor* IgnoredActor, const UPrimitiveComponent* IgnoredComponent)
@@ -396,20 +316,20 @@ int PopulateCollisionBindings(
 		int32 ResultMask = INDEX_NONE;
 
 		auto& M = Mod.GetModule();
-		if (!ExecuteIntFunction(
+		if (!WorldCollisionExecuteIntFunction(
 			*TestRunner,
 			Engine,
 			M,
 			TEXT("int PopulateCollisionBindings(AActor IgnoredActor, UPrimitiveComponent IgnoredComponent, FCollisionQueryParams& OutQueryParams, FComponentQueryParams& OutComponentQueryParams, FCollisionObjectQueryParams& OutObjectQueryParams, FCollisionResponseContainer& OutResponseContainer, FCollisionResponseContainer& OutMinResponseContainer)"),
 			[this, TestActor, TestComponent, &ScriptQueryParams, &ScriptComponentQueryParams, &ScriptObjectQueryParams, &ScriptResponseContainer, &ScriptMinResponseContainer](asIScriptContext& Context)
 			{
-				return SetArgObjectChecked(*TestRunner, Context, 0, TestActor, TEXT("PopulateCollisionBindings"))
-					&& SetArgObjectChecked(*TestRunner, Context, 1, TestComponent, TEXT("PopulateCollisionBindings"))
-					&& SetArgAddressChecked(*TestRunner, Context, 2, &ScriptQueryParams, TEXT("PopulateCollisionBindings"))
-					&& SetArgAddressChecked(*TestRunner, Context, 3, &ScriptComponentQueryParams, TEXT("PopulateCollisionBindings"))
-					&& SetArgAddressChecked(*TestRunner, Context, 4, &ScriptObjectQueryParams, TEXT("PopulateCollisionBindings"))
-					&& SetArgAddressChecked(*TestRunner, Context, 5, &ScriptResponseContainer, TEXT("PopulateCollisionBindings"))
-					&& SetArgAddressChecked(*TestRunner, Context, 6, &ScriptMinResponseContainer, TEXT("PopulateCollisionBindings"));
+				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, TestActor, TEXT("PopulateCollisionBindings"))
+					&& WorldCollisionSetArgObjectChecked(*TestRunner, Context, 1, TestComponent, TEXT("PopulateCollisionBindings"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 2, &ScriptQueryParams, TEXT("PopulateCollisionBindings"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 3, &ScriptComponentQueryParams, TEXT("PopulateCollisionBindings"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 4, &ScriptObjectQueryParams, TEXT("PopulateCollisionBindings"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 5, &ScriptResponseContainer, TEXT("PopulateCollisionBindings"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 6, &ScriptMinResponseContainer, TEXT("PopulateCollisionBindings"));
 			},
 			TEXT("PopulateCollisionBindings"),
 			ResultMask))

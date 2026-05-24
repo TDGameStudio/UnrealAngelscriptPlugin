@@ -32,10 +32,10 @@
 //                 a clean shared engine for the entire test class.
 //   AFTER_ALL   : one-time ResetSharedCloneEngine() for final cleanup.
 //   TEST_METHOD : ASTEST_GET_ENGINE() (no per-test reset) +
-//                 FAngelscriptEngineScope + FCoverageModuleScope (RAII
+//                 FAngelscriptEngineScope + FScopedAngelscriptModule (RAII
 //                 DiscardModule on scope exit handles per-test cleanup).
 //
-//   No BEFORE_EACH/AFTER_EACH needed — FCoverageModuleScope already
+//   No BEFORE_EACH/AFTER_EACH needed — FScopedAngelscriptModule already
 //   discards each test's module via RAII, so per-test engine reset is
 //   unnecessary overhead.
 // ============================================================================
@@ -43,7 +43,7 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 

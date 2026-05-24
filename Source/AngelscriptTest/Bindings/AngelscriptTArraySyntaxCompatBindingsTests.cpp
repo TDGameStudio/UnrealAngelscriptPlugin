@@ -1,5 +1,4 @@
 #include "CQTest.h"
-#include "Shared/AngelscriptGlobalFunctionInvoker.h"
 #include "Shared/AngelscriptTestEngineHelper.h"
 #include "Shared/AngelscriptTestUtilities.h"
 #include "Shared/AngelscriptTestMacros.h"
@@ -12,342 +11,16 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_Bindings_AngelscriptTArraySyntaxCompatBindingsTests_Private
-{
-	static const FString NestedContainerDiagnostic = TEXT("Containers cannot be nested in other containers");
-	static const TCHAR* ModulePrefix = TEXT("ASTArraySyntaxCompat");
-	static const TCHAR* LogCategory = TEXT("TArraySyntaxCompatBindings");
+#include "Shared/AngelscriptTestExecute.h"
+#include "Bindings/AngelscriptTArrayBindingsTestHelpers.h"
 
-	struct FSyntaxExpectedGlobalInt
-	{
-		const TCHAR* FunctionDecl;
-		const TCHAR* ContextLabel;
-		int32 ExpectedValue;
-	};
+static const FString TArraySyntaxCompatNestedContainerDiagnostic = TEXT("Containers cannot be nested in other containers");
+static const FArraySyntaxCoverageProfile TArraySyntaxCompatProfile = TArraySyntaxCompatCoverageProfile();
 
-	struct FSyntaxExpectedGlobalIntAtLeast
-	{
-		const TCHAR* FunctionDecl;
-		const TCHAR* ContextLabel;
-		int32 MinimumValue;
-	};
-
-	FString MakeModuleName(const TCHAR* SectionName)
-	{
-		return FString::Printf(TEXT("%s%s"), ModulePrefix, SectionName);
-	}
-
-	FString MakeArrayFunctionDecl(const TCHAR* ElementType, const TCHAR* FunctionName)
-	{
-		return FString::Printf(TEXT("%s[] %s()"), ElementType, FunctionName);
-	}
-
-	asIScriptModule* BuildSyntaxModule(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const TCHAR* SectionName,
-		const FString& Source)
-	{
-		const FString ModuleName = MakeModuleName(SectionName);
-		FTCHARToUTF8 ModuleNameUtf8(*ModuleName);
-		return BuildModule(Test, Engine, ModuleNameUtf8.Get(), Source);
-	}
-
-	bool TraceSyntaxCase(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const FString& ContextLabel)
-	{
-		FString CaseName(ContextLabel);
-		FASGlobalFunctionInvoker Invoker(Test, Engine, Module, TEXT("void TraceSyntaxCase(const FString&in)"));
-		Invoker.AddArgRef(CaseName);
-		return Invoker.Call();
-	}
-
-	bool ExpectSyntaxCompatGlobalInt(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const TCHAR* FunctionDecl,
-		const TCHAR* ContextLabel,
-		int32 ExpectedValue)
-	{
-		const bool bTracePassed = TraceSyntaxCase(Test, Engine, Module, ContextLabel);
-		FASGlobalFunctionInvoker Invoker(Test, Engine, Module, FunctionDecl);
-		const int32 ActualValue = Invoker.CallAndReturn<int32>(INDEX_NONE);
-		Test.AddInfo(FString::Printf(TEXT("%s returned %d"), ContextLabel, ActualValue));
-		return bTracePassed && Test.TestEqual(
-			*FString::Printf(TEXT("%s should return the expected script-visible value"), ContextLabel),
-			ActualValue,
-			ExpectedValue);
-	}
-
-	bool ExpectSyntaxCompatGlobalIntAtLeast(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const TCHAR* FunctionDecl,
-		const TCHAR* ContextLabel,
-		int32 MinimumValue)
-	{
-		const bool bTracePassed = TraceSyntaxCase(Test, Engine, Module, ContextLabel);
-		FASGlobalFunctionInvoker Invoker(Test, Engine, Module, FunctionDecl);
-		const int32 ActualValue = Invoker.CallAndReturn<int32>(INDEX_NONE);
-		Test.AddInfo(FString::Printf(TEXT("%s returned %d"), ContextLabel, ActualValue));
-		return bTracePassed && Test.TestTrue(
-			*FString::Printf(TEXT("%s should be at least %d"), ContextLabel, MinimumValue),
-			ActualValue >= MinimumValue);
-	}
-
-	bool ExpectSyntaxCompatGlobalInts(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const TArray<FSyntaxExpectedGlobalInt>& Cases)
-	{
-		bool bPassed = true;
-		for (const FSyntaxExpectedGlobalInt& TestCase : Cases)
-		{
-			bPassed &= ExpectSyntaxCompatGlobalInt(
-				Test,
-				Engine,
-				Module,
-				TestCase.FunctionDecl,
-				TestCase.ContextLabel,
-				TestCase.ExpectedValue);
-		}
-		return bPassed;
-	}
-
-	bool ExpectSyntaxCompatGlobalIntsAtLeast(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const TArray<FSyntaxExpectedGlobalIntAtLeast>& Cases)
-	{
-		bool bPassed = true;
-		for (const FSyntaxExpectedGlobalIntAtLeast& TestCase : Cases)
-		{
-			bPassed &= ExpectSyntaxCompatGlobalIntAtLeast(
-				Test,
-				Engine,
-				Module,
-				TestCase.FunctionDecl,
-				TestCase.ContextLabel,
-				TestCase.MinimumValue);
-		}
-		return bPassed;
-	}
-
-	bool ExecuteFunctionExpectingScriptException(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const FString& FunctionDecl,
-		const FString& ExpectedExceptionText,
-		const FString& ContextLabel)
-	{
-		if (!TraceSyntaxCase(Test, Engine, Module, ContextLabel))
-		{
-			return false;
-		}
-
-		asIScriptFunction* Function = ResolveFunctionByDecl(Test, Module, FunctionDecl);
-		if (Function == nullptr)
-		{
-			return false;
-		}
-
-		FAngelscriptEngineScope EngineScope(Engine);
-		asIScriptContext* ScriptContext = Engine.CreateContext();
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create an execution context"), *ContextLabel), ScriptContext))
-		{
-			return false;
-		}
-
-		ON_SCOPE_EXIT
-		{
-			ScriptContext->Release();
-		};
-
-		const int PrepareResult = ScriptContext->Prepare(Function);
-		const int ExecuteResult = PrepareResult == asSUCCESS ? ScriptContext->Execute() : PrepareResult;
-		const FString ExceptionString = UTF8_TO_TCHAR(
-			ScriptContext->GetExceptionString() != nullptr ? ScriptContext->GetExceptionString() : "");
-		const int32 ExceptionLine = ScriptContext->GetExceptionLineNumber();
-
-		const bool bPrepared = Test.TestEqual(
-			*FString::Printf(TEXT("%s should prepare successfully before the runtime error path"), *ContextLabel),
-			PrepareResult,
-			static_cast<int32>(asSUCCESS));
-		const bool bThrew = Test.TestEqual(
-			*FString::Printf(TEXT("%s should raise a script execution exception"), *ContextLabel),
-			ExecuteResult,
-			static_cast<int32>(asEXECUTION_EXCEPTION));
-		const bool bHasMessage = Test.TestFalse(
-			*FString::Printf(TEXT("%s should provide a non-empty exception string"), *ContextLabel),
-			ExceptionString.IsEmpty());
-		const bool bHasExpectedMessage = Test.TestTrue(
-			*FString::Printf(TEXT("%s should report the expected exception text"), *ContextLabel),
-			ExceptionString.Contains(ExpectedExceptionText));
-		const bool bHasLine = Test.TestTrue(
-			*FString::Printf(TEXT("%s should report a positive exception line"), *ContextLabel),
-			ExceptionLine > 0);
-		Test.AddInfo(FString::Printf(
-			TEXT("%s raised script exception at line %d: %s"),
-			*ContextLabel,
-			ExceptionLine,
-			*ExceptionString));
-
-		return bPrepared && bThrew && bHasMessage && bHasExpectedMessage && bHasLine;
-	}
-
-	bool ExecuteFunctionReturningScriptArray(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const FString& FunctionDecl,
-		const FString& ContextLabel,
-		TFunctionRef<bool(const FScriptArray&)> ValidateReturnedArray)
-	{
-		if (!TraceSyntaxCase(Test, Engine, Module, ContextLabel))
-		{
-			return false;
-		}
-
-		asIScriptFunction* Function = ResolveFunctionByDecl(Test, Module, FunctionDecl);
-		if (Function == nullptr)
-		{
-			return false;
-		}
-
-		FAngelscriptEngineScope EngineScope(Engine);
-		asIScriptContext* ScriptContext = Engine.CreateContext();
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create an execution context"), *ContextLabel), ScriptContext))
-		{
-			return false;
-		}
-
-		ON_SCOPE_EXIT
-		{
-			ScriptContext->Release();
-		};
-
-		const int PrepareResult = ScriptContext->Prepare(Function);
-		const int ExecuteResult = PrepareResult == asSUCCESS ? ScriptContext->Execute() : PrepareResult;
-		const bool bPrepared = Test.TestEqual(
-			*FString::Printf(TEXT("%s should prepare successfully"), *ContextLabel),
-			PrepareResult,
-			static_cast<int32>(asSUCCESS));
-		const bool bExecuted = Test.TestEqual(
-			*FString::Printf(TEXT("%s should execute successfully"), *ContextLabel),
-			ExecuteResult,
-			static_cast<int32>(asEXECUTION_FINISHED));
-		if (!bPrepared || !bExecuted)
-		{
-			if (ScriptContext->GetExceptionString() != nullptr)
-			{
-				Test.AddError(FString::Printf(
-					TEXT("%s failed while returning [] array: %s"),
-					*ContextLabel,
-					UTF8_TO_TCHAR(ScriptContext->GetExceptionString())));
-			}
-			return false;
-		}
-
-		const FScriptArray* ReturnedArray = static_cast<const FScriptArray*>(ScriptContext->GetReturnObject());
-		const bool bHasArray = Test.TestNotNull(
-			*FString::Printf(TEXT("%s should expose a returned FScriptArray object"), *ContextLabel),
-			ReturnedArray);
-		if (!bHasArray)
-		{
-			return false;
-		}
-
-		Test.AddInfo(FString::Printf(TEXT("%s returned array with Num=%d"), *ContextLabel, ReturnedArray->Num()));
-		return ValidateReturnedArray(*ReturnedArray);
-	}
-
-	bool SyntaxCompileSummaryContainsDiagnosticMessage(
-		const FAngelscriptCompileTraceSummary& Summary,
-		const FString& ExpectedMessage)
-	{
-		for (const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
-		{
-			if (Diagnostic.Message.Contains(ExpectedMessage))
-			{
-				return true;
-			}
-		}
-		return false;
-	}
-
-	void SyntaxReportCompileSummaryDiagnostics(
-		FAutomationTestBase& Test,
-		const TCHAR* ContextLabel,
-		const FAngelscriptCompileTraceSummary& Summary)
-	{
-		Test.AddInfo(FString::Printf(
-			TEXT("%s compile result=%d diagnostics=%d"),
-			ContextLabel,
-			static_cast<int32>(Summary.CompileResult),
-			Summary.Diagnostics.Num()));
-
-		for (const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
-		{
-			Test.AddInfo(FString::Printf(
-				TEXT("%s diagnostic %s:%d:%d %s"),
-				ContextLabel,
-				*Diagnostic.Section,
-				Diagnostic.Row,
-				Diagnostic.Column,
-				*Diagnostic.Message));
-		}
-	}
-
-	bool ExpectCompileFailure(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const TCHAR* SectionName,
-		const FString& Source,
-		const TCHAR* ContextLabel)
-	{
-		const FString ModuleName = MakeModuleName(SectionName);
-		const FString SourceFilename = FString::Printf(TEXT("%s.as"), *ModuleName);
-
-		FAngelscriptCompileTraceSummary Summary;
-		const bool bCompiled = CompileModuleWithSummary(
-			&Engine,
-			ECompileType::SoftReloadOnly,
-			FName(*ModuleName),
-			SourceFilename,
-			Source,
-			false,
-			Summary,
-			true);
-
-		SyntaxReportCompileSummaryDiagnostics(Test, ContextLabel, Summary);
-
-		bool bPassed = true;
-		bPassed &= Test.TestFalse(
-			*FString::Printf(TEXT("%s should fail compilation"), ContextLabel),
-			bCompiled);
-		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should be reported as a compile error"), ContextLabel),
-			Summary.CompileResult,
-			ECompileResult::Error);
-		return bPassed;
-	}
-}
-
-using namespace AngelscriptTest_Bindings_AngelscriptTArraySyntaxCompatBindingsTests_Private;
 
 bool RunIntArrayMutationCompatSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 {
-	asIScriptModule* Module = BuildSyntaxModule(
-		Test,
-		Engine,
+	asIScriptModule* Module = TArrayBindingsBuildCoverageModule(Test, Engine, TArraySyntaxCompatProfile,
 		TEXT("MutationCompat"),
 		TEXT(R"(
 int Entry()
@@ -404,9 +77,7 @@ int Entry()
 
 bool RunIntArrayIteratorCompatSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 {
-	asIScriptModule* Module = BuildSyntaxModule(
-		Test,
-		Engine,
+	asIScriptModule* Module = TArrayBindingsBuildCoverageModule(Test, Engine, TArraySyntaxCompatProfile,
 		TEXT("IteratorCompat"),
 		TEXT(R"(
 int Entry()
@@ -977,9 +648,7 @@ int IntIteratorCopyAssignStartsAtSameElement()
 }
 )");
 
-	asIScriptModule* Module = BuildSyntaxModule(
-		Test,
-		Engine,
+	asIScriptModule* Module = TArrayBindingsBuildCoverageModule(Test, Engine, TArraySyntaxCompatProfile,
 		TEXT("Operations"),
 		OperationsScript);
 	if (Module == nullptr)
@@ -987,7 +656,7 @@ int IntIteratorCopyAssignStartsAtSameElement()
 		return false;
 	}
 
-	const TArray<FSyntaxExpectedGlobalInt> ExactCases = {
+	const TArray<FTArrayExpectedGlobalInt> ExactCases = {
 		{ TEXT("int IntDefaultIsEmpty()"), TEXT("int[] default construction and IsEmpty"), 1 },
 		{ TEXT("int IntReserveKeepsNum()"), TEXT("int[].Reserve should preserve Num"), 2 },
 		{ TEXT("int IntGetAllocatedSizeAfterReserve()"), TEXT("int[].GetAllocatedSize should observe allocation"), 1 },
@@ -1037,23 +706,21 @@ int IntIteratorCopyAssignStartsAtSameElement()
 		{ TEXT("int IntConstIteratorProceedSum()"), TEXT("TArrayConstIterator<int>.Proceed should walk const int[] arrays"), 15 },
 		{ TEXT("int IntIteratorCopyAssignStartsAtSameElement()"), TEXT("TArrayIterator<int> copy and assignment should preserve int[] iterator state"), 3 },
 	};
-	const TArray<FSyntaxExpectedGlobalIntAtLeast> MinimumCases = {
+	const TArray<FTArrayExpectedGlobalIntAtLeast> MinimumCases = {
 		{ TEXT("int IntReserveGrowsMax()"), TEXT("int[].Reserve should grow Max"), 16 },
 		{ TEXT("int IntGetSlackAfterReserve()"), TEXT("int[].GetSlack should expose reserved slack"), 14 },
 		{ TEXT("int IntEmptyReservedMax()"), TEXT("int[].Empty should honor reserved size"), 6 },
 	};
 
-	bool bPassed = ExpectSyntaxCompatGlobalInts(Test, Engine, *Module, ExactCases);
-	bPassed &= ExpectSyntaxCompatGlobalIntsAtLeast(Test, Engine, *Module, MinimumCases);
+	bool bPassed = ExpectTArrayBindingsGlobalInts(Test, Engine, *Module, TArraySyntaxCompatProfile, ExactCases);
+	bPassed &= ExpectTArrayBindingsGlobalIntsAtLeast(Test, Engine, *Module, TArraySyntaxCompatProfile, MinimumCases);
 
 	return bPassed;
 }
 
 bool RunSyntaxTypeMatrixSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 {
-	asIScriptModule* Module = BuildSyntaxModule(
-		Test,
-		Engine,
+	asIScriptModule* Module = TArrayBindingsBuildCoverageModule(Test, Engine, TArraySyntaxCompatProfile,
 		TEXT("TypeMatrix"),
 		TEXT(R"(
 void TraceSyntaxCase(const FString&in CaseName)
@@ -1314,7 +981,7 @@ int TSubclassOfActorArrayOperations()
 		return false;
 	}
 
-	const TArray<FSyntaxExpectedGlobalInt> Cases = {
+	const TArray<FTArrayExpectedGlobalInt> Cases = {
 		{ TEXT("int UInt8ArraySum()"), TEXT("uint8[] should store byte values"), 255 },
 		{ TEXT("int Int8ArrayKeepsSignedBytes()"), TEXT("int8[] should preserve signed byte values"), -1 },
 		{ TEXT("int UInt16ArraySum()"), TEXT("uint16[] should preserve unsigned 16-bit values"), 1 },
@@ -1342,14 +1009,12 @@ int TSubclassOfActorArrayOperations()
 		{ TEXT("int TSubclassOfActorArrayOperations()"), TEXT("TSubclassOf<AActor>[] should store actor class wrappers"), 1 },
 	};
 
-	return ExpectSyntaxCompatGlobalInts(Test, Engine, *Module, Cases);
+	return ExpectTArrayBindingsGlobalInts(Test, Engine, *Module, TArraySyntaxCompatProfile, Cases);
 }
 
 bool RunSyntaxReturnValuesSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 {
-	asIScriptModule* Module = BuildSyntaxModule(
-		Test,
-		Engine,
+	asIScriptModule* Module = TArrayBindingsBuildCoverageModule(Test, Engine, TArraySyntaxCompatProfile,
 		TEXT("ReturnValues"),
 		TEXT(R"(
 void TraceSyntaxCase(const FString&in CaseName)
@@ -1404,11 +1069,12 @@ TSubclassOf<AActor>[] ReturnActorClassArray()
 	}
 
 	bool bPassed = true;
-	bPassed &= ExecuteFunctionReturningScriptArray(
+	bPassed &= TArrayBindingsExecuteFunctionReturningScriptArray(
 		Test,
 		Engine,
 		*Module,
-		MakeArrayFunctionDecl(TEXT("int"), TEXT("ReturnIntArray")),
+		TArraySyntaxCompatProfile,
+		TArrayBindingsMakeArrayFunctionDecl(TArraySyntaxCompatProfile, TEXT("int"), TEXT("ReturnIntArray")),
 		TEXT("int[] return value should expose returned primitive elements"),
 		[&Test](const FScriptArray& ReturnedArray)
 		{
@@ -1419,11 +1085,12 @@ TSubclassOf<AActor>[] ReturnActorClassArray()
 				&& Test.TestEqual(TEXT("Returned int[][1]"), Values[1], 5)
 				&& Test.TestEqual(TEXT("Returned int[][2]"), Values[2], 8);
 		});
-	bPassed &= ExecuteFunctionReturningScriptArray(
+	bPassed &= TArrayBindingsExecuteFunctionReturningScriptArray(
 		Test,
 		Engine,
 		*Module,
-		MakeArrayFunctionDecl(TEXT("FVector"), TEXT("ReturnVectorArray")),
+		TArraySyntaxCompatProfile,
+		TArrayBindingsMakeArrayFunctionDecl(TArraySyntaxCompatProfile, TEXT("FVector"), TEXT("ReturnVectorArray")),
 		TEXT("FVector[] return value should expose returned struct elements"),
 		[&Test](const FScriptArray& ReturnedArray)
 		{
@@ -1433,11 +1100,12 @@ TSubclassOf<AActor>[] ReturnActorClassArray()
 				&& Test.TestEqual(TEXT("Returned FVector[][0]"), Values[0], FVector(1.0, 2.0, 3.0))
 				&& Test.TestEqual(TEXT("Returned FVector[][1]"), Values[1], FVector(4.0, 5.0, 6.0));
 		});
-	bPassed &= ExecuteFunctionReturningScriptArray(
+	bPassed &= TArrayBindingsExecuteFunctionReturningScriptArray(
 		Test,
 		Engine,
 		*Module,
-		MakeArrayFunctionDecl(TEXT("FString"), TEXT("ReturnStringArray")),
+		TArraySyntaxCompatProfile,
+		TArrayBindingsMakeArrayFunctionDecl(TArraySyntaxCompatProfile, TEXT("FString"), TEXT("ReturnStringArray")),
 		TEXT("FString[] return value should expose returned string elements"),
 		[&Test](const FScriptArray& ReturnedArray)
 		{
@@ -1447,11 +1115,12 @@ TSubclassOf<AActor>[] ReturnActorClassArray()
 				&& Test.TestEqual(TEXT("Returned FString[][0]"), Values[0], FString(TEXT("Alpha")))
 				&& Test.TestEqual(TEXT("Returned FString[][1]"), Values[1], FString(TEXT("Beta")));
 		});
-	bPassed &= ExecuteFunctionReturningScriptArray(
+	bPassed &= TArrayBindingsExecuteFunctionReturningScriptArray(
 		Test,
 		Engine,
 		*Module,
-		MakeArrayFunctionDecl(TEXT("TSubclassOf<AActor>"), TEXT("ReturnActorClassArray")),
+		TArraySyntaxCompatProfile,
+		TArrayBindingsMakeArrayFunctionDecl(TArraySyntaxCompatProfile, TEXT("TSubclassOf<AActor>"), TEXT("ReturnActorClassArray")),
 		TEXT("TSubclassOf<AActor>[] return value should expose returned class wrappers"),
 		[&Test](const FScriptArray& ReturnedArray)
 		{
@@ -1467,9 +1136,7 @@ TSubclassOf<AActor>[] ReturnActorClassArray()
 
 bool RunSyntaxErrorPathsSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 {
-	asIScriptModule* Module = BuildSyntaxModule(
-		Test,
-		Engine,
+	asIScriptModule* Module = TArrayBindingsBuildCoverageModule(Test, Engine, TArraySyntaxCompatProfile,
 		TEXT("ErrorPaths"),
 		TEXT(R"(
 void TraceSyntaxCase(const FString&in CaseName)
@@ -1646,140 +1313,159 @@ void TriggerSortUnsupportedText()
 	Test.AddExpectedError(TEXT("Invalid negative Num"), EAutomationExpectedErrorFlags::Contains, 2);
 	Test.AddExpectedError(TEXT("SetNumZeroed is not valid for arrays of non-primitive types."), EAutomationExpectedErrorFlags::Contains, 1);
 	Test.AddExpectedError(TEXT("Array element type not sortable."), EAutomationExpectedErrorFlags::Contains, 1);
-	Test.AddExpectedError(MakeModuleName(TEXT("ErrorPaths")), EAutomationExpectedErrorFlags::Contains, 0);
+	Test.AddExpectedError(TArrayBindingsMakeModuleName(TArraySyntaxCompatProfile, TEXT("ErrorPaths")), EAutomationExpectedErrorFlags::Contains, 0);
 	Test.AddExpectedError(TEXT("void Trigger"), EAutomationExpectedErrorFlags::Contains, 0, false);
 
 	bool bPassed = true;
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerIndexOutOfBounds()"),
 		TEXT("Array index out of bounds."),
 		TEXT("int[].opIndex out-of-bounds"));
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerLastOutOfBounds()"),
 		TEXT("Array index out of bounds."),
 		TEXT("int[].Last out-of-bounds"));
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerSwapOutOfBounds()"),
 		TEXT("Array index out of bounds."),
 		TEXT("int[].Swap out-of-bounds"));
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerInsertOutOfBounds()"),
 		TEXT("Array index out of bounds. Need to insert between 0 and ArraySize"),
 		TEXT("int[].Insert out-of-bounds"));
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerRemoveAtOutOfBounds()"),
 		TEXT("Array index out of bounds."),
 		TEXT("int[].RemoveAt out-of-bounds"));
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerRemoveAtSwapOutOfBounds()"),
 		TEXT("Array index out of bounds."),
 		TEXT("int[].RemoveAtSwap out-of-bounds"));
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerAddSelfAlias()"),
 		TEXT("Cannot Add an element from the same array by reference. Copy it to a temporary first."),
 		TEXT("FString[].Add self-alias guard"));
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerInsertSelfAlias()"),
 		TEXT("Cannot Insert an element from the same array by reference. Copy it to a temporary first."),
 		TEXT("FString[].Insert self-alias guard"));
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerCopySelf()"),
 		TEXT("Cannot copy an array into itself."),
 		TEXT("int[].Copy self guard"));
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerCopyNegativeCount()"),
 		TEXT("Count should not be negative."),
 		TEXT("int[].Copy negative count guard"));
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerCopySourceOutOfBounds()"),
 		TEXT("Source array out of bounds."),
 		TEXT("int[].Copy source bounds guard"));
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerCopyTargetOutOfBounds()"),
 		TEXT("Target array out of bounds."),
 		TEXT("int[].Copy target bounds guard"));
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerMoveAssignSelf()"),
 		TEXT("Cannot move assign an array into itself."),
 		TEXT("int[].MoveAssignFrom self guard"));
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerSetNumNegative()"),
 		TEXT("Invalid negative Num"),
 		TEXT("int[].SetNum negative guard"));
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerSetNumZeroedNegative()"),
 		TEXT("Invalid negative Num"),
 		TEXT("int[].SetNumZeroed negative guard"));
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerSetNumZeroedString()"),
 		TEXT("SetNumZeroed is not valid for arrays of non-primitive types."),
 		TEXT("FString[].SetNumZeroed primitive-type guard"));
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerIteratorProceedOutOfBounds()"),
 		TEXT("Iterator out of bounds."),
 		TEXT("TArrayIterator<int> over int[] Proceed out-of-bounds"));
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerConstIteratorProceedOutOfBounds()"),
 		TEXT("Iterator out of bounds."),
 		TEXT("TArrayConstIterator<int> over int[] Proceed out-of-bounds"));
-	bPassed &= ExecuteFunctionExpectingScriptException(
+	bPassed &= TArrayBindingsExecuteFunctionExpectingScriptException(
 		Test,
 		Engine,
 		*Module,
+		TArraySyntaxCompatProfile,
 		TEXT("void TriggerSortUnsupportedText()"),
 		TEXT("Array element type not sortable."),
 		TEXT("FText[].Sort unsupported type guard"));
@@ -1797,7 +1483,7 @@ int Entry()
 }
 )");
 
-	const FString ModuleName = MakeModuleName(TEXT("NestedContainerRejection"));
+	const FString ModuleName = TArrayBindingsMakeModuleName(TArraySyntaxCompatProfile, TEXT("NestedContainerRejection"));
 	const FString SourceFilename = FString::Printf(TEXT("%s.as"), *ModuleName);
 
 	FAngelscriptCompileTraceSummary Summary;
@@ -1811,7 +1497,7 @@ int Entry()
 		Summary,
 		true);
 
-	SyntaxReportCompileSummaryDiagnostics(Test, TEXT("int[][] nested container rejection"), Summary);
+	TArrayBindingsReportCompileSummaryDiagnostics(Test, TEXT("int[][] nested container rejection"), Summary);
 
 	bool bPassed = true;
 	bPassed &= Test.TestFalse(
@@ -1825,7 +1511,7 @@ int Entry()
 	{
 		bPassed &= Test.TestTrue(
 			TEXT("int[][] rejection should report nested container diagnostics when diagnostics are available"),
-			SyntaxCompileSummaryContainsDiagnosticMessage(Summary, NestedContainerDiagnostic));
+			TArrayBindingsCompileSummaryContainsDiagnosticMessage(Summary, TArraySyntaxCompatNestedContainerDiagnostic));
 	}
 
 	return bPassed;
@@ -1834,9 +1520,10 @@ int Entry()
 bool RunObjectArraySyntaxBoundarySection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 {
 	bool bPassed = true;
-	bPassed &= ExpectCompileFailure(
+	bPassed &= TArraySyntaxCompatExpectCompileFailure(
 		Test,
 		Engine,
+		TArraySyntaxCompatProfile,
 		TEXT("UObjectArrayBoundary"),
 		TEXT(R"(
 int Entry()
@@ -1846,9 +1533,10 @@ int Entry()
 }
 )"),
 		TEXT("UObject[] local variable boundary"));
-	bPassed &= ExpectCompileFailure(
+	bPassed &= TArraySyntaxCompatExpectCompileFailure(
 		Test,
 		Engine,
+		TArraySyntaxCompatProfile,
 		TEXT("AActorArrayBoundary"),
 		TEXT(R"(
 int Entry()
@@ -1858,9 +1546,10 @@ int Entry()
 }
 )"),
 		TEXT("AActor[] local variable boundary"));
-	bPassed &= ExpectCompileFailure(
+	bPassed &= TArraySyntaxCompatExpectCompileFailure(
 		Test,
 		Engine,
+		TArraySyntaxCompatProfile,
 		TEXT("UActorComponentArrayBoundary"),
 		TEXT(R"(
 int Entry()
@@ -1870,9 +1559,10 @@ int Entry()
 }
 )"),
 		TEXT("UActorComponent[] local variable boundary"));
-	bPassed &= ExpectCompileFailure(
+	bPassed &= TArraySyntaxCompatExpectCompileFailure(
 		Test,
 		Engine,
+		TArraySyntaxCompatProfile,
 		TEXT("USceneComponentArrayBoundary"),
 		TEXT(R"(
 int Entry()
@@ -1882,9 +1572,10 @@ int Entry()
 }
 )"),
 		TEXT("USceneComponent[] local variable boundary"));
-	bPassed &= ExpectCompileFailure(
+	bPassed &= TArraySyntaxCompatExpectCompileFailure(
 		Test,
 		Engine,
+		TArraySyntaxCompatProfile,
 		TEXT("UClassArrayBoundary"),
 		TEXT(R"(
 int Entry()
@@ -1915,7 +1606,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTArraySyntaxCompatBindingsTest,
 
 	TEST_METHOD(TArraySyntaxCompat)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptTArraySyntaxCompatBindingsTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 

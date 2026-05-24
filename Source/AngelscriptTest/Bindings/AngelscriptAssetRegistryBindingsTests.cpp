@@ -17,7 +17,8 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestModuleScope.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
+#include "Shared/AngelscriptTestExecute.h"
+#include "Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Engine/Blueprint.h"
@@ -49,73 +50,6 @@ namespace AngelscriptTest_Bindings_AngelscriptAssetRegistryBindingsTests_Private
 		});
 	}
 
-	bool SetArgAddressChecked(
-		FAutomationTestBase& Test,
-		asIScriptContext& Context,
-		asUINT ArgumentIndex,
-		void* Address,
-		const TCHAR* ContextLabel)
-	{
-		return Test.TestEqual(
-			*FString::Printf(TEXT("%s should bind address argument %u"), ContextLabel, static_cast<uint32>(ArgumentIndex)),
-			Context.SetArgAddress(ArgumentIndex, Address),
-			static_cast<int32>(asSUCCESS));
-	}
-
-	// TODO(refactor-as-test-shared-layout-and-naming): migrate ExecuteFunctionExpectingException to Shared/AngelscriptTestExecute.h once the Execute* naming family lands in Phase 3.
-	bool ExecuteFunctionExpectingException(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const TCHAR* FunctionDecl,
-		TFunctionRef<bool(asIScriptContext&)> BindArguments,
-		const TCHAR* ContextLabel,
-		FString& OutExceptionString)
-	{
-		asIScriptFunction* Function = GetFunctionByDecl(Test, Module, FunctionDecl);
-		if (Function == nullptr)
-		{
-			return false;
-		}
-
-		FAngelscriptEngineScope EngineScope(Engine);
-		asIScriptContext* Context = Engine.CreateContext();
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create an execution context"), ContextLabel), Context))
-		{
-			return false;
-		}
-
-		ON_SCOPE_EXIT
-		{
-			Context->Release();
-		};
-
-		const int PrepareResult = Context->Prepare(Function);
-		if (!Test.TestEqual(
-			*FString::Printf(TEXT("%s should prepare successfully"), ContextLabel),
-			PrepareResult,
-			static_cast<int32>(asSUCCESS)))
-		{
-			return false;
-		}
-
-		if (!BindArguments(*Context))
-		{
-			return false;
-		}
-
-		const int ExecuteResult = Context->Execute();
-		if (!Test.TestEqual(
-			*FString::Printf(TEXT("%s should fail with a script exception"), ContextLabel),
-			ExecuteResult,
-			static_cast<int32>(asEXECUTION_EXCEPTION)))
-		{
-			return false;
-		}
-
-		OutExceptionString = Context->GetExceptionString() != nullptr ? UTF8_TO_TCHAR(Context->GetExceptionString()) : TEXT("");
-		return true;
-	}
 }
 
 
@@ -221,23 +155,18 @@ void TriggerNullParent(TArray<UObject>& OutAssets)
 
 		// Negative path: null parent exception
 		TArray<UObject*> NativeBlueprintCDOs;
-		FString ExceptionString;
-		if (ExecuteFunctionExpectingException(
+		if (WorldCollisionExecuteFunctionExpectingException(
 			*TestRunner,
 			Engine,
 			M,
 			TEXT("void TriggerNullParent(TArray<UObject>& OutAssets)"),
 			[this, &NativeBlueprintCDOs](asIScriptContext& Context)
 			{
-				return SetArgAddressChecked(*TestRunner, Context, 0, &NativeBlueprintCDOs, TEXT("TriggerNullParent"));
+				return WorldCollisionSetArgAddressChecked(*TestRunner, Context, 0, &NativeBlueprintCDOs, TEXT("TriggerNullParent"));
 			},
 			TEXT("TriggerNullParent"),
-			ExceptionString))
+			TEXT("A null Class was passed to GetBlueprintCDOsByParentClass.")))
 		{
-			TestRunner->TestEqual(
-				TEXT("GetBlueprintCDOsByParentClass(null) should report expected exception text"),
-				ExceptionString,
-				FString(TEXT("A null Class was passed to GetBlueprintCDOsByParentClass.")));
 			TestRunner->TestEqual(
 				TEXT("GetBlueprintCDOsByParentClass(null) should leave output array empty"),
 				NativeBlueprintCDOs.Num(),
