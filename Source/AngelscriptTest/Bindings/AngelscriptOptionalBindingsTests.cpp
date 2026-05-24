@@ -17,8 +17,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -124,7 +122,7 @@ int OptFName_GetWithValue()
 			{ TEXT("int OptFName_GetValue()"),     TEXT("FName TOptional GetValue should match Alpha"),       1 },
 			{ TEXT("int OptFName_GetWithValue()"), TEXT("FName TOptional Get with value returns value not fallback"), 1 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -161,7 +159,7 @@ int TriggerGetValueUnset()
 			TEXT("int TriggerGetValueUnset()"),
 			EAutomationExpectedErrorFlags::Contains, 0);
 
-		return AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(
+		return ExecuteFunctionExpectingScriptException(
 			Test, Engine, Module, 
 			TEXT("int TriggerGetValueUnset()"),
 			TEXT("Unset TOptional.GetValue should raise exception"),
@@ -298,7 +296,7 @@ int OptObject_NullSet_IsSet()
 			{ TEXT("int OptEnum_GetValue()"),         TEXT("TOptional<ETickingGroup>.GetValue should match TG_PrePhysics"),1 },
 			{ TEXT("int OptObject_NullSet_IsSet()"),  TEXT("TOptional<UObject>(nullptr) construction still sets the slot"),1 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -435,7 +433,7 @@ int OptApi_GetMutableViaRef()
 			{ TEXT("int OptApi_ResetThenSetRoundtrip_GetValue()"),   TEXT("Reset+Set(2) should store value 2"),                  2 },
 			{ TEXT("int OptApi_GetMutableViaRef()"),                 TEXT("non-const GetValue should return mutable reference"), 20 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -594,15 +592,15 @@ int OptRet_VerifyOptionalVector_X()
 		asIScriptModule& Module = ModuleScope.GetModule();
 
 		// Direct bool return assertions
-		AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool OptRet_Bool_IsSet()"), TEXT("bool return: set Optional.IsSet() should be true"), true);
-		AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool OptRet_Bool_IsSetEmpty()"), TEXT("bool return: empty Optional.IsSet() should be false"), false);
 
 		// Direct float return assertions
-		AngelscriptTestBindings::ExpectGlobalReturnFloat(Test, Engine, Module, 
+		ExpectGlobalReturnFloat(Test, Engine, Module, 
 			TEXT("float OptRet_Float_GetValue()"), TEXT("float return: GetValue should be 3.5"), 3.5f);
-		AngelscriptTestBindings::ExpectGlobalReturnFloat(Test, Engine, Module, 
+		ExpectGlobalReturnFloat(Test, Engine, Module, 
 			TEXT("float OptRet_Float_GetFallback()"), TEXT("float return: Get fallback should be 7.25"), 7.25f);
 
 		// FString / FVector returns verified via script-side int wrappers
@@ -620,7 +618,7 @@ int OptRet_VerifyOptionalVector_X()
 			{ TEXT("int OptRet_VerifyOptionalVector_IsSet()"),    TEXT("TOptional<FVector> return: should be set"),              1 },
 			{ TEXT("int OptRet_VerifyOptionalVector_X()"),        TEXT("TOptional<FVector> return: X should be ~10"),            1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  IntCases);
+		ExpectGlobalInts(Test, Engine, Module,  IntCases);
 
 		return true;
 	}
@@ -666,7 +664,7 @@ int OptLog_IntAndString()
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
-		return AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
+		return ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int OptLog_IntAndString()"),
 			TEXT("Log diagnostic: TOptional types should compile and log without crash"), 1);
 	}

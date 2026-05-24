@@ -9,9 +9,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
-using namespace AngelscriptReflectiveAccess;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptInterfaceNativeLifecycleTests, "Angelscript.TestModule.Interface.NativeLifecycle", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

@@ -6,7 +6,6 @@
 #include "UObject/UnrealType.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace UPropertySpecifierMatrixTest
 {
@@ -28,7 +27,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUPropertySpecifierMatrixTests,
 {
 	TEST_METHOD(EditConstSpecifierSetsCPFEditConst)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -74,7 +72,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUPropertySpecifierMatrixTests,
 
 	TEST_METHOD(NotEditableSpecifierClearsCPFEdit)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -120,7 +117,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUPropertySpecifierMatrixTests,
 
 	TEST_METHOD(AdvancedDisplaySpecifierSetsCPFAdvancedDisplay)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -166,7 +162,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUPropertySpecifierMatrixTests,
 
 	TEST_METHOD(SaveGameSpecifierSetsCPFSaveGame)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -212,7 +207,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUPropertySpecifierMatrixTests,
 
 	TEST_METHOD(TransientSpecifierSetsCPFTransient)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -258,7 +252,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUPropertySpecifierMatrixTests,
 
 	TEST_METHOD(ConfigSpecifierSetsCPFConfig)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();

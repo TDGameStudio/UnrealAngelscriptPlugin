@@ -34,7 +34,6 @@
 
 namespace SyntaxTestHelpers
 {
-	using namespace AngelscriptTestSupport;
 
 	// Returns a fake .as filename for diagnostic isolation.
 	inline FString MakeSyntaxFilename(const TCHAR* SectionName)

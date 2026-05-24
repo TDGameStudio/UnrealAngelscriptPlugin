@@ -13,7 +13,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptTest_Core_AngelscriptDocsTests_Private
 {

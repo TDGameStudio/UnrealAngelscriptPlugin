@@ -15,7 +15,7 @@ namespace AngelscriptStaticJITAotGeneration
 	{
 		bool CompileFixture(FAngelscriptEngine& Engine, FStaticJITAotGenerationResult& Result)
 		{
-			const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
+			const bool bCompiled = CompileAnnotatedModuleFromMemory(
 				&Engine,
 				AngelscriptStaticJITAotFixture::GetModuleName(),
 				AngelscriptStaticJITAotFixture::GetSourceFilename(),
@@ -448,7 +448,7 @@ namespace AngelscriptStaticJITAotGeneration
 	{
 		FStaticJITAotGenerationResult Result;
 
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateIsolatedFullEngine();
+		TUniquePtr<FAngelscriptEngine> Engine = CreateIsolatedFullEngine();
 		if (!Engine.IsValid())
 		{
 			Result.Error = TEXT("Failed to create StaticJIT AOT generation engine.");

@@ -9,8 +9,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptHitResultBindingsTest,
@@ -40,7 +38,7 @@ int HitResult_DefaultTime()
 			TestRunner->AddInfo(TEXT("FHitResult not available, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int HitResult_DefaultTime()"),
 			TEXT("Default FHitResult constructor sets Time to 1.0"), 1);
 	}
@@ -61,7 +59,7 @@ int HitResult_DefaultDistance()
 			TestRunner->AddInfo(TEXT("FHitResult.Distance not available, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int HitResult_DefaultDistance()"),
 			TEXT("Default FHitResult distance is 0"), 1);
 	}
@@ -82,7 +80,7 @@ int OverlapResult_DefaultNoOverlap()
 			TestRunner->AddInfo(TEXT("FOverlapResult not available, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int OverlapResult_DefaultNoOverlap()"),
 			TEXT("Default FOverlapResult ItemIndex is 0"), 1);
 	}

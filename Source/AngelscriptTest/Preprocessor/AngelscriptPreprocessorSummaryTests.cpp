@@ -14,7 +14,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace PreprocessorTestHelpers;
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptPreprocessorSummaryTests_Private
 {
@@ -63,7 +62,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorSummaryTest,
 	TEST_METHOD(SummaryReportsProcessedScriptStructure)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		TPair<FString, FString> FixtureData[] = {
 			{
@@ -170,7 +169,7 @@ class USummaryConsumer : UObject
 	TEST_METHOD(SummaryAvailableAtExistingHookPoints)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		FFixtureFile File(TEXT("Tests/Preprocessor/Summary/HookAvailability.as"), TEXT(R"(
 UCLASS()

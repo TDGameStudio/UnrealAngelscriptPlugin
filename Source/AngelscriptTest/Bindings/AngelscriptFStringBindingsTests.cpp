@@ -47,8 +47,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -142,7 +140,7 @@ int Ctor_LongString()
 			{ TEXT("int Ctor_EmptyEqualsEmpty()"),  TEXT("Two default-constructed strings are equal"),  1 },
 			{ TEXT("int Ctor_LongString()"),        TEXT("62-char string has correct length"),          62 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -234,7 +232,7 @@ int OpIdx_Write()
 			{ TEXT("int OpIdx_ReadLast()"),     TEXT("opIndex[3] reads D (68)"),                    68 },
 			{ TEXT("int OpIdx_Write()"),        TEXT("opIndex write at [0] and [2]"),                1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -265,7 +263,7 @@ void TriggerIndexOutOfBounds()
 			TEXT("void TriggerIndexOutOfBounds()"),
 			EAutomationExpectedErrorFlags::Contains, 0);
 
-		AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(
+		ExecuteFunctionExpectingScriptException(
 			*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("void TriggerIndexOutOfBounds()"),
 			TEXT("opIndex out-of-bounds should throw exception"),
@@ -359,7 +357,7 @@ int Reset_ThenReuse()
 			{ TEXT("int Reset_ZeroLen()"),       TEXT("Reset clears to length 0"),               0 },
 			{ TEXT("int Reset_ThenReuse()"),     TEXT("Reset then Append stores new content"),   1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -422,7 +420,7 @@ int Compound_LeftThenRight()
 			{ TEXT("int Mid_Single()"),          TEXT("Mid(2,1) returns single char C"),          1 },
 			{ TEXT("int Compound_LeftThenRight()"), TEXT("Left(7).Right(4) compound extraction"),1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -556,7 +554,7 @@ int Equals_EmptyEmpty()       { FString A; FString B; return A.Equals(B) ? 1 : 0
 			{ TEXT("int Equals_IgnoreCase()"),       TEXT("Equals ignore case match"),                     1 },
 			{ TEXT("int Equals_EmptyEmpty()"),       TEXT("Equals two empty strings"),                     1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -767,7 +765,7 @@ int Reverse_Empty()
 			{ TEXT("int Reverse_SingleChar()"),         TEXT("Reverse of single char is identity"),        1 },
 			{ TEXT("int Reverse_Empty()"),              TEXT("Reverse of empty is empty"),                  1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -956,7 +954,7 @@ int TrimChar_AllSame()
 			{ TEXT("int TrimChar_NoMatch()"),              TEXT("TrimChar no match"),                    1 },
 			{ TEXT("int TrimChar_AllSame()"),              TEXT("TrimChar all same char"),               1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -1085,7 +1083,7 @@ int RightPad_Content()
 			{ TEXT("int RightPad_AlreadyLong()"), TEXT("RightPad no-op when already long enough"),     1 },
 			{ TEXT("int RightPad_Content()"),     TEXT("RightPad preserves content at left end"),       1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -1241,7 +1239,7 @@ int ParseMulti_TwoDelims()
 			{ TEXT("int ParseMulti_Basic()"),           TEXT("ParseIntoArray with 3 delimiters"),               1 },
 			{ TEXT("int ParseMulti_TwoDelims()"),       TEXT("ParseIntoArray with 2 delimiters"),               1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -1335,7 +1333,7 @@ int ParseWS_OnlyWhitespace()
 			{ TEXT("int ParseWS_TabsAndSpaces()"),         TEXT("ParseIntoArrayWS tabs and spaces"),      1 },
 			{ TEXT("int ParseWS_OnlyWhitespace()"),        TEXT("ParseIntoArrayWS only whitespace"),      1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -1454,7 +1452,7 @@ int ToDisplayName_Bool()
 			{ TEXT("int ToDisplayName_Camel()"),     TEXT("ToDisplayName inserts spaces in CamelCase"), 1 },
 			{ TEXT("int ToDisplayName_Bool()"),       TEXT("ToDisplayName with bIsBool flag"),          1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -1521,7 +1519,7 @@ int Concat_IntZero()
 			{ TEXT("int Concat_ChainMixed()"),   TEXT("Chained mixed type concat"),            1 },
 			{ TEXT("int Concat_IntZero()"),      TEXT("String + 0 contains 0"),                1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -1714,7 +1712,7 @@ FString Format_Ret_FloatPrecision()
 			{ TEXT("int Format_LargeInt()"),           TEXT("Format with INT32_MAX"),                         1 },
 			{ TEXT("int Format_AdjacentPlaceholders()"), TEXT("Format adjacent {0}{1}{2}"),                   1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 
 		// C++ side verification of Format return values
 		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
@@ -1816,7 +1814,7 @@ int Join_WithEmptyElements()
 			{ TEXT("int Join_MultiCharSep()"),       TEXT("Join with multi-char separator"),           1 },
 			{ TEXT("int Join_WithEmptyElements()"),  TEXT("Join preserves empty elements"),            1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -1910,7 +1908,7 @@ int ChrN_Zero()
 			{ TEXT("int ChrN_Repeat()"),                   TEXT("ChrN repeated characters"),            1 },
 			{ TEXT("int ChrN_Zero()"),                     TEXT("ChrN zero length"),                    1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -2263,7 +2261,7 @@ FString ApplyFmt_Ret_NegSignPlus()
 			{ TEXT("int ApplyFmt_Str_FillChar()"),     TEXT("string custom fill char (*)"),              1 },
 			{ TEXT("int ApplyFmt_Str_Empty()"),        TEXT("string empty with pad"),                    1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 
 		// C++ side verification of ApplyFormat return values
 		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
@@ -2395,7 +2393,7 @@ int Log_Format()
 			{ TEXT("int Log_Concatenated()"),     TEXT("Log with string+type concatenation"),       1 },
 			{ TEXT("int Log_Format()"),           TEXT("Log with FString::Format integration"),     1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -2581,7 +2579,6 @@ FString Ret_AppendChain()
 
 	TEST_METHOD(PassFString)
 	{
-		using namespace AngelscriptReflectiveAccess;
 
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);

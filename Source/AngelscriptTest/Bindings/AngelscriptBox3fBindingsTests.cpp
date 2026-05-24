@@ -12,8 +12,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptBox3fBindingsTest,
@@ -65,7 +63,7 @@ int FBox_GetExtent()
 			{ TEXT("int FBox_GetCenter()"),      TEXT("GetCenter returns midpoint"), 1 },
 			{ TEXT("int FBox_GetExtent()"),      TEXT("GetExtent returns half-size"), 1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	TEST_METHOD(FBoxSphereBoundsConstruction)
@@ -92,7 +90,7 @@ int BSB_SphereRadius()
 			{ TEXT("int BSB_Origin()"),       TEXT("BoxSphereBounds origin preserved"), 1 },
 			{ TEXT("int BSB_SphereRadius()"), TEXT("BoxSphereBounds radius preserved"), 1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 };
 

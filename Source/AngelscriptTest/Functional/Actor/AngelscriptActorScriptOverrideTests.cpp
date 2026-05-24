@@ -6,9 +6,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 using namespace AngelscriptFunctionalTestUtils;
-using namespace AngelscriptReflectiveAccess;
 using namespace AngelscriptActorTestUtils;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptActorScriptOverrideTest,

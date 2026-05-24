@@ -15,7 +15,6 @@
 #include "UObject/UnrealType.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelineGlobalUFunctionTest
 {
@@ -148,7 +147,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
 {
 	TEST_METHOD(GlobalUFunctionCreatesStaticsClass)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		const FString ScriptSource = TEXT(R"AS(
@@ -324,7 +322,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
 
 	TEST_METHOD(GlobalUFunctionSanitizesModuleNameForStaticsClass)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		const FString ScriptSource = TEXT(R"AS(

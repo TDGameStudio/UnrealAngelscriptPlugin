@@ -7,14 +7,11 @@
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
-namespace AngelscriptTestSupport
-{
-	bool CompileModuleFromMemory(FAngelscriptEngine* Engine, FName ModuleName, FString Filename, FString Script);
-	bool CompileModuleWithResult(FAngelscriptEngine* Engine, ECompileType CompileType, FName ModuleName, FString Filename, FString Script, ECompileResult& OutCompileResult);
-	void ResetSharedCloneEngine(FAngelscriptEngine& Engine);
-}
+bool CompileModuleFromMemory(FAngelscriptEngine* Engine, FName ModuleName, FString Filename, FString Script);
+bool CompileModuleWithResult(FAngelscriptEngine* Engine, ECompileType CompileType, FName ModuleName, FString Filename, FString Script, ECompileResult& OutCompileResult);
+void ResetSharedCloneEngine(FAngelscriptEngine& Engine);
+
 
 namespace AngelscriptTest_Angelscript_AngelscriptHandleTests_Private
 {

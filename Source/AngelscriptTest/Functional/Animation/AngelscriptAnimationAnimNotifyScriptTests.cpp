@@ -9,7 +9,6 @@
 // Test Layer: UE Functional - Round1 vacuum-fill (UAnimNotify script subclassing)
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptAnimNotifyScriptTests,
 	"Angelscript.TestModule.Functional.Animation.AnimNotifyScript",

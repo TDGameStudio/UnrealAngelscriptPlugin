@@ -21,7 +21,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace PreprocessorTestHelpers;
-using namespace AngelscriptTestSupport;
 
 // ============================================================================
 // Test class
@@ -38,7 +37,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorLiteralTest,
 	TEST_METHOD(NameLiteralRoundTrip)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		static const FName ModuleName(TEXT("Tests.Preprocessor.Literals.NameLiteralRoundTrip"));
 		ON_SCOPE_EXIT { Engine.DiscardModule(*ModuleName.ToString()); };
@@ -111,7 +110,7 @@ int Entry()
 	TEST_METHOD(PrefixedLiteralsRequireTokenBoundary)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		struct FBoundaryCase
 		{
@@ -191,7 +190,7 @@ int Entry()
 	TEST_METHOD(LiteralAsset_GenerateGetterAndPostInitRegistration)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		FFixtureFile File(TEXT("Tests/Preprocessor/LiteralAssets/GenerateGetterAndPostInitRegistration.as"), TEXT(R"(
 asset PreviewAsset of UObject
@@ -248,7 +247,7 @@ int Entry()
 	TEST_METHOD(LiteralAsset_SkipStringAndCommentDecoys)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		FFixtureFile File(TEXT("Tests/Preprocessor/LiteralAssets/SkipStringAndCommentDecoys.as"), TEXT(R"(
 asset RealAsset of UObject
@@ -316,7 +315,7 @@ int Entry()
 	TEST_METHOD(LiteralAsset_MissingTypeFails)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		ON_SCOPE_EXIT
 		{
@@ -347,7 +346,7 @@ int Entry()
 	TEST_METHOD(LiteralAsset_InsideFunctionBodyIgnored)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		ON_SCOPE_EXIT
 		{
@@ -378,7 +377,7 @@ int Entry()
 	TEST_METHOD(FormatStringExpansion)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		static const FName ModuleName(TEXT("Tests.Preprocessor.Literals.FormatStringExpansion"));
 		ON_SCOPE_EXIT { Engine.DiscardModule(*ModuleName.ToString()); };

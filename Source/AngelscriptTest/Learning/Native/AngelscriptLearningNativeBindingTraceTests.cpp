@@ -7,7 +7,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptTest_Learning_Native_AngelscriptLearningNativeBindingTraceTests_Private
 {

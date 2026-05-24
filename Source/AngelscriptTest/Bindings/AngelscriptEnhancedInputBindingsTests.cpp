@@ -38,9 +38,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
-using namespace AngelscriptReflectiveAccess;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptEnhancedInputBindingsTest, "Angelscript.TestModule.Bindings.EnhancedInput",
@@ -80,7 +77,7 @@ int MulAssignChaining()
 )"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int MulAssignChaining()"),
 			TEXT("*= chaining should preserve value and support later +="), 1);
 	}
@@ -172,7 +169,7 @@ int MutableEntry()
 )"));
 		if (!MutableMod.IsValid()) return;
 		auto& MM = MutableMod.GetModule();
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, MM, 
+		ExpectGlobalInt(*TestRunner, Engine, MM, 
 			TEXT("int MutableEntry()"),
 			TEXT("Mutable UEnhancedInputComponent should compile and execute"), 1);
 	}
@@ -212,7 +209,7 @@ int DebugKeyEntry()
 )"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int DebugKeyEntry()"),
 			TEXT("FInputDebugKeyBinding.Execute should coexist with binding handle helpers"), 1);
 	}
@@ -248,7 +245,7 @@ int VerifyConstructorsAndAxisTypes()
 )"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int VerifyConstructorsAndAxisTypes()"),
 			TEXT("FInputActionValue constructors and axis accessors should work correctly"), 1);
 	}
@@ -278,7 +275,7 @@ int VerifyConvertToType()
 )"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int VerifyConvertToType()"),
 			TEXT("ConvertToType should preserve dimension data correctly"), 1);
 	}
@@ -354,7 +351,7 @@ int ConfigureRuntimeMapping()
 )"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int ConfigureRuntimeMapping()"),
 			TEXT("AS should be able to create an Enhanced Input movement context at runtime"), 1);
 	}
@@ -485,7 +482,7 @@ int RemoveBindingEntry()
 )"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int RemoveBindingEntry()"),
 			TEXT("Remove/Clear binding signatures should compile"), 1);
 	}
@@ -509,7 +506,7 @@ int EditorFlagsEntry()
 )"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int EditorFlagsEntry()"),
 			TEXT("Editor delegate flag API should compile"), 1);
 	}

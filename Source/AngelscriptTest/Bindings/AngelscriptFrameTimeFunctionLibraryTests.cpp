@@ -21,9 +21,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
-using namespace AngelscriptReflectiveAccess;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -108,7 +105,7 @@ int AsSeconds_Compiles()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int AsSeconds_Compiles()"),
 			TEXT("FQualifiedFrameTime.AsSeconds mixin binding should compile and be callable"),
 			1);

@@ -3,7 +3,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptDebuggerSmokeTests_Private
 {

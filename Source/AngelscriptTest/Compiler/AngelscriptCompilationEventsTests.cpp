@@ -18,7 +18,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptCompilationEventsTests_Private
 {
@@ -130,7 +129,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilationEventsTest,
 	TEST_METHOD(NoListenerCompileIsSilentAndPreservesResult)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		TestRunner->TestFalse(
 			TEXT("Compilation events should start with no listeners"),
@@ -157,7 +156,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilationEventsTest,
 	TEST_METHOD(RegisteredListenerReceivesValueStyleCompileEvents)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		TArray<FAngelscriptCompilationEvent> Events;
 		const FDelegateHandle ListenerHandle = FAngelscriptCompilationEvents::RegisterListener(
@@ -213,7 +212,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilationEventsTest,
 	TEST_METHOD(ExistingCompileDelegatesRemainCompatible)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		AngelscriptCompilationEventsTests_Private::FCompileDelegateCounters DelegateCounters(Engine);
 		TArray<FAngelscriptCompilationEvent> Events;
@@ -262,7 +261,7 @@ class UCompilationEventsDelegates : UObject
 	TEST_METHOD(SuccessfulCompileEmitsOrderedStageEvents)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		TArray<FAngelscriptCompilationEvent> Events;
 		const FDelegateHandle ListenerHandle = FAngelscriptCompilationEvents::RegisterListener(
@@ -336,7 +335,7 @@ class UCompilationEventsDelegates : UObject
 	TEST_METHOD(FailedCompileEmitsPairedEndEvent)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		TArray<FAngelscriptCompilationEvent> Events;
 		const FDelegateHandle ListenerHandle = FAngelscriptCompilationEvents::RegisterListener(
@@ -384,7 +383,7 @@ class UCompilationEventsDelegates : UObject
 	TEST_METHOD(ParseEventsAreBroadcastFromMainThreadInDeterministicOrder)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		const uint32 MainThreadId = FPlatformTLS::GetCurrentThreadId();
 		TArray<FAngelscriptCompilationEvent> ParseEvents;
@@ -426,7 +425,7 @@ class UCompilationEventsDelegates : UObject
 	TEST_METHOD(CompilationContextIsScopedPerCompileRun)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		TArray<FAngelscriptCompilationEvent> Events;
 		const FDelegateHandle ListenerHandle = FAngelscriptCompilationEvents::RegisterListener(

@@ -6,7 +6,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptTest_AngelScriptSDK_AngelscriptContextPoolTests_Private
 {
@@ -81,10 +80,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptContextPoolTests,
 
 		const FAngelscriptEngineConfig Config;
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		TUniquePtr<FAngelscriptEngine> EngineA = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(
+		TUniquePtr<FAngelscriptEngine> EngineA = CreateScriptScanFreeEngineForTesting(
 			Config,
 			Dependencies);
-		TUniquePtr<FAngelscriptEngine> EngineB = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(
+		TUniquePtr<FAngelscriptEngine> EngineB = CreateScriptScanFreeEngineForTesting(
 			Config,
 			Dependencies);
 

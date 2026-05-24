@@ -4,7 +4,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptTest_Validation_AngelscriptMacroValidationTests_Private
 {
@@ -138,7 +137,7 @@ bool FAngelscriptModuleCleanMacroValidationTest::RunTest(const FString& Paramete
 	int32 Result = 0;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	const int32 BaselineActiveModules = Engine.GetActiveModules().Num();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+	{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 	ASTEST_COMPILE_RUN_INT(
 		Engine,

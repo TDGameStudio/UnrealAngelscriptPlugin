@@ -27,9 +27,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
-using namespace AngelscriptReflectiveAccess;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -138,14 +135,14 @@ int MemReader_ReadAnsiString()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MemReader_TotalSize()"), TEXT("TotalSize should return 12 for 12-byte buffer"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MemReader_InitialTell()"), TEXT("Tell should return 0 on a fresh reader"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MemReader_ReadUInt8()"), TEXT("ReadUInt8 should read first byte and advance cursor"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MemReader_ReadUInt16()"), TEXT("ReadUInt16 should read two bytes and advance cursor"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MemReader_SeekAndReadInt32()"), TEXT("Seek + ReadInt32 should read four bytes at offset"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MemReader_ReadBytes()"), TEXT("ReadBytes should read tail bytes correctly"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MemReader_Skip()"), TEXT("Skip should advance cursor without reading"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MemReader_ReadAnsiString()"), TEXT("ReadAnsiString should read ASCII characters correctly"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MemReader_TotalSize()"), TEXT("TotalSize should return 12 for 12-byte buffer"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MemReader_InitialTell()"), TEXT("Tell should return 0 on a fresh reader"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MemReader_ReadUInt8()"), TEXT("ReadUInt8 should read first byte and advance cursor"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MemReader_ReadUInt16()"), TEXT("ReadUInt16 should read two bytes and advance cursor"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MemReader_SeekAndReadInt32()"), TEXT("Seek + ReadInt32 should read four bytes at offset"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MemReader_ReadBytes()"), TEXT("ReadBytes should read tail bytes correctly"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MemReader_Skip()"), TEXT("Skip should advance cursor without reading"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MemReader_ReadAnsiString()"), TEXT("ReadAnsiString should read ASCII characters correctly"), 1);
 	}
 
 	// ====================================================================
@@ -175,7 +172,7 @@ void MemReader_TriggerInvalidSkip()
 		TestRunner->AddExpectedError(*Mod.GetModuleName(), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(TEXT("void MemReader_TriggerInvalidSkip()"), EAutomationExpectedErrorFlags::Contains, 0, false);
 
-		AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(*TestRunner, Engine, M, 
+		ExecuteFunctionExpectingScriptException(*TestRunner, Engine, M, 
 			TEXT("void MemReader_TriggerInvalidSkip()"),
 			TEXT("out-of-bounds skip should surface a runtime exception"),
 			TEXT("Skipping past array bounds"));

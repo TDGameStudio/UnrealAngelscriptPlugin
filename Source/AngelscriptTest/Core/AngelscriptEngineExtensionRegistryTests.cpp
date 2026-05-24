@@ -68,10 +68,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 	{
 		using namespace AngelscriptTest_Core_AngelscriptEngineExtensionRegistryTests_Private;
 		FExtensionRegistryContextGuard ContextGuard;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
-			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 		}
 		ContextGuard.DiscardSavedStack();
 
@@ -80,12 +80,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
-				AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 			}
-			AngelscriptTestSupport::DestroySharedTestEngine();
+			DestroySharedTestEngine();
 		};
 
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> Engine = CreateFullTestEngine();
 		if (!TestRunner->TestNotNull(TEXT("Extension registry no-op test should create an isolated full engine"), Engine.Get()))
 		{
 			return;
@@ -114,10 +114,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 	{
 		using namespace AngelscriptTest_Core_AngelscriptEngineExtensionRegistryTests_Private;
 		FExtensionRegistryContextGuard ContextGuard;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
-			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 		}
 		ContextGuard.DiscardSavedStack();
 
@@ -126,12 +126,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
-				AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 			}
-			AngelscriptTestSupport::DestroySharedTestEngine();
+			DestroySharedTestEngine();
 		};
 
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> Engine = CreateFullTestEngine();
 		if (!TestRunner->TestNotNull(TEXT("Extension registry late-registration test should create an isolated full engine"), Engine.Get()))
 		{
 			return;
@@ -170,10 +170,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 	{
 		using namespace AngelscriptTest_Core_AngelscriptEngineExtensionRegistryTests_Private;
 		FExtensionRegistryContextGuard ContextGuard;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
-			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 		}
 		ContextGuard.DiscardSavedStack();
 
@@ -182,13 +182,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
-				AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 			}
-			AngelscriptTestSupport::DestroySharedTestEngine();
+			DestroySharedTestEngine();
 		};
 
-		TUniquePtr<FAngelscriptEngine> EngineA = AngelscriptTestSupport::CreateFullTestEngine();
-		TUniquePtr<FAngelscriptEngine> EngineB = AngelscriptTestSupport::CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> EngineA = CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> EngineB = CreateFullTestEngine();
 		if (!TestRunner->TestNotNull(TEXT("Extension registry unregister test should create engine A"), EngineA.Get())
 			|| !TestRunner->TestNotNull(TEXT("Extension registry unregister test should create engine B"), EngineB.Get()))
 		{
@@ -233,10 +233,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 	{
 		using namespace AngelscriptTest_Core_AngelscriptEngineExtensionRegistryTests_Private;
 		FExtensionRegistryContextGuard ContextGuard;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
-			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 		}
 		ContextGuard.DiscardSavedStack();
 
@@ -245,9 +245,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
-				AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 			}
-			AngelscriptTestSupport::DestroySharedTestEngine();
+			DestroySharedTestEngine();
 		};
 
 		TSharedRef<FRecordingEngineExtension> Extension = MakeShared<FRecordingEngineExtension>();
@@ -259,7 +259,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 
 		FString EngineId;
 		{
-			TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateFullTestEngine();
+			TUniquePtr<FAngelscriptEngine> Engine = CreateFullTestEngine();
 			if (!TestRunner->TestNotNull(TEXT("Extension registry lifecycle test should create an isolated full engine"), Engine.Get()))
 			{
 				return;

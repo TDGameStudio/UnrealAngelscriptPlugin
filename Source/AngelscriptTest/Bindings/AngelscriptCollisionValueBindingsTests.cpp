@@ -26,9 +26,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
-using namespace AngelscriptReflectiveAccess;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -114,14 +111,14 @@ int Shape_MinExtents()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_DefaultIsLine()"), TEXT("default FCollisionShape should be line with zero extent"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_SetBox()"), TEXT("SetBox should configure box shape with correct extents"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_SetSphere()"), TEXT("SetSphere should configure sphere shape with correct radius"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_SetCapsule()"), TEXT("SetCapsule should configure capsule with correct radius and half-height"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_MakeBox()"), TEXT("MakeBox factory should produce a valid box shape"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_MakeSphere()"), TEXT("MakeSphere factory should produce a valid sphere shape"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_MakeCapsule()"), TEXT("MakeCapsule factory should produce a valid capsule shape"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_MinExtents()"), TEXT("min-extent queries should all return positive values"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_DefaultIsLine()"), TEXT("default FCollisionShape should be line with zero extent"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_SetBox()"), TEXT("SetBox should configure box shape with correct extents"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_SetSphere()"), TEXT("SetSphere should configure sphere shape with correct radius"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_SetCapsule()"), TEXT("SetCapsule should configure capsule with correct radius and half-height"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_MakeBox()"), TEXT("MakeBox factory should produce a valid box shape"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_MakeSphere()"), TEXT("MakeSphere factory should produce a valid sphere shape"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_MakeCapsule()"), TEXT("MakeCapsule factory should produce a valid capsule shape"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_MinExtents()"), TEXT("min-extent queries should all return positive values"), 1);
 	}
 
 	// ====================================================================

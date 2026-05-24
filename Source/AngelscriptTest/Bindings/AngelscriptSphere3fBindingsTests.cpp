@@ -12,8 +12,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSphere3fBindingsTest,
@@ -63,7 +61,7 @@ int Sphere_IsInsideFalse()
 			{ TEXT("int Sphere_IsInsideTrue()"),    TEXT("Point inside sphere"), 1 },
 			{ TEXT("int Sphere_IsInsideFalse()"),   TEXT("Point outside sphere"), 1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	TEST_METHOD(FPlaneBasics)
@@ -90,7 +88,7 @@ int Plane_WPreserved()
 			{ TEXT("int Plane_NormalPreserved()"), TEXT("Plane point+normal constructor preserves normal"), 1 },
 			{ TEXT("int Plane_WPreserved()"),      TEXT("Plane point+normal constructor computes W"), 1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 };
 

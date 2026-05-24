@@ -26,9 +26,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
-using namespace AngelscriptReflectiveAccess;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -213,7 +210,7 @@ int RoundTrip()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int RoundTrip()"),
 			TEXT("Json object round-trip operations should preserve field values and JSON type strings"),
 			1);

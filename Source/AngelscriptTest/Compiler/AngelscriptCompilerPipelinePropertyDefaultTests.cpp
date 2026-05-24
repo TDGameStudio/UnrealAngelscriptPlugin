@@ -14,7 +14,6 @@
 #include "UObject/UnrealType.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelinePropertyDefaultTest
 {
@@ -138,7 +137,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultTests,
 {
 	TEST_METHOD(StringDefaultPreservesCommentMarkersInsideLiteral)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		const FString TestScriptSource = TEXT(R"AS(

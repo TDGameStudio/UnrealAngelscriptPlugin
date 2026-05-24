@@ -10,7 +10,6 @@
 #include "Misc/ScopeExit.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelineControlFlowTest
 {
@@ -89,7 +88,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineControlFlowTests,
 {
 	TEST_METHOD(RangeBasedForRewriteSupportsBlockAndSingleLine)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		const FString ScriptSource = TEXT(R"AS(

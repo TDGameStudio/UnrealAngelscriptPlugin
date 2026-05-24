@@ -6,7 +6,6 @@
 #include "UObject/Class.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace UClassSpecifierMatrixTest
 {
@@ -27,7 +26,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUClassSpecifierMatrixTests,
 {
 	TEST_METHOD(AbstractClassSpecifierSetsFlag)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -69,7 +67,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUClassSpecifierMatrixTests,
 
 	TEST_METHOD(BlueprintTypeClassSpecifierSetsMeta)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -112,7 +109,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUClassSpecifierMatrixTests,
 
 	TEST_METHOD(DefaultToInstancedClassSpecifierSetsFlag)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -155,7 +151,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUClassSpecifierMatrixTests,
 
 	TEST_METHOD(DeprecatedClassSpecifierSetsFlag)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -198,7 +193,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUClassSpecifierMatrixTests,
 
 	TEST_METHOD(HideCategoriesClassSpecifierSetsMeta)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();

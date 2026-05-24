@@ -13,9 +13,7 @@
 
 namespace AngelscriptActorTestUtils
 {
-	using namespace AngelscriptTestSupport;
 	using namespace AngelscriptFunctionalTestUtils;
-	using namespace AngelscriptReflectiveAccess;
 
 	constexpr float DefaultActorTestDeltaTime = 0.016f;
 	constexpr int32 DefaultActorTestTickCount = 3;

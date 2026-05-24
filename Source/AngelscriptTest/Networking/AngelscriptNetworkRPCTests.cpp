@@ -10,7 +10,6 @@
 // compile through the preprocessor → class generator pipeline and produce correct FUNC_Net* flags.
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptNetworkRPCTest
 {

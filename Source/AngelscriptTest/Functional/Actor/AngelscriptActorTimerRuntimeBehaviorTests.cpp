@@ -15,7 +15,6 @@
 // `Angelscript.TestModule.Learning.Runtime.TimerAndLatent` (a non-asserting trace-style test).
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptActorTimerRuntimeBehaviorTests,
 	"Angelscript.TestModule.Functional.Actor.TimerRuntimeBehavior",

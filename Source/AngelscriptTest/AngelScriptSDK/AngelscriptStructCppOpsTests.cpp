@@ -17,7 +17,7 @@ namespace AngelscriptTest_AngelScriptSDK_AngelscriptStructCppOpsTests_Private
 		const FString& Source,
 		const char* TypeName)
 	{
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(Test, Engine, ModuleName, Source);
+		asIScriptModule* Module = BuildModule(Test, Engine, ModuleName, Source);
 		if (Module == nullptr)
 		{
 			return nullptr;

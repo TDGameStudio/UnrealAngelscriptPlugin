@@ -26,9 +26,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
-using namespace AngelscriptReflectiveAccess;
 
 // ----------------------------------------------------------------------------
 // Helper utilities (retained from original)
@@ -328,7 +325,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptFunctionLibraryTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(
+		asIScriptModule* Module = BuildModule(
 			*TestRunner, Engine, "ASGlobalInitContext_Stable", BuildDirectContextScriptSource());
 		if (Module == nullptr) return;
 

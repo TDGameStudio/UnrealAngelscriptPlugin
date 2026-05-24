@@ -17,8 +17,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -82,7 +80,7 @@ int MixedTypes()   { float X = 1 + 2.0f; return int(X * 10); }
 			{ TEXT("int CompoundExpr()"), TEXT("(1+2)*3-4/2+7%3 = 8"),    8 },
 			{ TEXT("int MixedTypes()"),   TEXT("int+float = 3.0 (*10)"),  30 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -211,7 +209,7 @@ int Compound()    { return (0xFF & 0x0F) | (0xF0 ^ 0x0F); }
 			{ TEXT("int ShiftRight()"), TEXT("16 >> 2 = 4"),         4 },
 			{ TEXT("int Compound()"),   TEXT("compound bitwise"),  255 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -302,7 +300,7 @@ int ShortCircuit()  { bool A = false; int Z = 0; return (A && (1/Z > 0)) ? 1 : 0
 			{ TEXT("int LogicCompound()"), TEXT("compound logic"),    1 },
 			{ TEXT("int ShortCircuit()"),  TEXT("short-circuit &&"),  0 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -389,7 +387,7 @@ int FloatCompare()  { return (1.5f > 1.0f) ? 1 : 0; }
 			{ TEXT("int ChainedCmp()"),   TEXT("chained cmp"), 1 },
 			{ TEXT("int FloatCompare()"), TEXT("1.5 > 1.0"),   1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -475,7 +473,7 @@ int ShiftRAssign()   { int X = 16; X >>= 2; return X; }
 			{ TEXT("int ShiftLAssign()"),TEXT("1 <<= 4 = 16"),     16 },
 			{ TEXT("int ShiftRAssign()"),TEXT("16 >>= 2 = 4"),      4 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -579,7 +577,7 @@ int FalseCondition() { return false ? 100 : 200; }
 			{ TEXT("int WithExpr()"),       TEXT("5>3 ? 10 : 4"),       10 },
 			{ TEXT("int FalseCondition()"), TEXT("false ? 100 : 200"), 200 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -661,7 +659,7 @@ int AssignInExpr() { int X = 0; X = 5; int Y = X; return Y; }
 			{ TEXT("int BitAndLogic()"),  TEXT("logic + bitwise mix"),    1 },
 			{ TEXT("int AssignInExpr()"), TEXT("sequential assign"),       5 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 
 		// Negative edge cases
 		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine,

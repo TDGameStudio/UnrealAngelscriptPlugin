@@ -134,10 +134,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineSubsystemTests,
 	{
 		using namespace AngelscriptTest_Core_AngelscriptEngineSubsystemTests_Private;
 		FEngineSubsystemContextStackGuard ContextGuard;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
-			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 		}
 		ContextGuard.DiscardSavedStack();
 
@@ -154,9 +154,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineSubsystemTests,
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
-				AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 			}
-			AngelscriptTestSupport::DestroySharedTestEngine();
+			DestroySharedTestEngine();
 		};
 
 		FAngelscriptEngineSubsystemTestAccess::ResetInitializeState();
@@ -165,7 +165,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineSubsystemTests,
 			return;
 		}
 
-		TUniquePtr<FAngelscriptEngine> OverrideEngine = AngelscriptTestSupport::CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> OverrideEngine = CreateFullTestEngine();
 		if (!TestRunner->TestNotNull(TEXT("EngineSubsystem initialize-override test should create an isolated override engine"), OverrideEngine.Get()))
 		{
 			return;

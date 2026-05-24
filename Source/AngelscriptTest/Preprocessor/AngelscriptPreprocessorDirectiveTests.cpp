@@ -20,7 +20,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace PreprocessorTestHelpers;
-using namespace AngelscriptTestSupport;
 
 // ============================================================================
 // Test class
@@ -37,7 +36,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorDirectiveTest,
 	TEST_METHOD(IfdefRespectsBooleanFlagValue)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		static const FName ModuleName(TEXT("Tests.Preprocessor.Directives.IfdefBooleanFlagValue"));
 		ON_SCOPE_EXIT { Engine.DiscardModule(*ModuleName.ToString()); };
@@ -391,7 +390,7 @@ int Entry()
 		TestRunner->AddExpectedError(TEXT("Invalid preprocessor condition:"), EAutomationExpectedErrorFlags::Contains, 1);
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		const FString RelativeScriptPath = TEXT("Tests/Preprocessor/Directives/CompoundConditionReportsUnsupportedSyntax.as");
 		const FString ScriptSource = TEXT(
@@ -429,7 +428,7 @@ int Entry()
 		TestRunner->AddExpectedError(TEXT("Preceding preprocessor #if/#ifdef/#else was not closed, missing #endif."), EAutomationExpectedErrorFlags::Contains, 1);
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		struct FDirectiveErrorCase
 		{
@@ -616,7 +615,7 @@ int Entry()
 		TestRunner->AddExpectedError(*ExpectedDiagnostic, EAutomationExpectedErrorFlags::Contains, 2);
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		static const FName ModuleName(TEXT("Tests.Preprocessor.Directives.IncludeDirectiveProducesDeterministicResult"));
 		const FString RelativeScriptPath = TEXT("Tests/Preprocessor/Directives/IncludeDirectiveProducesDeterministicResult.as");
@@ -677,7 +676,7 @@ int Entry()
 	TEST_METHOD(DeeplyNestedConditionals)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		const FString RelativeScriptPath = TEXT("Tests/Preprocessor/Directives/DeeplyNestedConditionals.as");
 		const FString ScriptSource = TEXT(
@@ -751,7 +750,7 @@ private:
 		FAngelscriptEngineConfig Config;
 		Config.bIsEditor = true;
 		FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		return AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
+		return CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
 	}
 };
 

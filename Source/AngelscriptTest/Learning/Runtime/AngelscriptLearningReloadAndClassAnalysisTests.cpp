@@ -9,7 +9,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptTest_Learning_Runtime_AngelscriptLearningReloadAndClassAnalysisTests_Private
 {

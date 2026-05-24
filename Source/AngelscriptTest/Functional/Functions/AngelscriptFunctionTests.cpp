@@ -7,7 +7,6 @@
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptTest_Angelscript_AngelscriptFunctionTests_Private
 {
@@ -28,11 +27,9 @@ namespace AngelscriptTest_Angelscript_AngelscriptFunctionTests_Private
 }
 
 
-namespace AngelscriptTestSupport
-{
-	bool CompileModuleWithResult(FAngelscriptEngine* Engine, ECompileType CompileType, FName ModuleName, FString Filename, FString Script, ECompileResult& OutCompileResult);
-	void ResetSharedCloneEngine(FAngelscriptEngine& Engine);
-}
+bool CompileModuleWithResult(FAngelscriptEngine* Engine, ECompileType CompileType, FName ModuleName, FString Filename, FString Script, ECompileResult& OutCompileResult);
+void ResetSharedCloneEngine(FAngelscriptEngine& Engine);
+
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FAngelscriptFunctionDefaultArgumentsTest,

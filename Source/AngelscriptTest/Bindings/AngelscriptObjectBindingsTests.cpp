@@ -17,8 +17,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -102,11 +100,11 @@ int ObjPtr_Copy()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ObjPtr_DefaultIsNull()"), TEXT("default TObjectPtr is null"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ObjPtr_Construct()"), TEXT("TObjectPtr construct from raw pointer"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ObjPtr_Assign()"), TEXT("TObjectPtr assign from raw pointer"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ObjPtr_ImplicitConvert()"), TEXT("TObjectPtr implicit conversion to raw pointer"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ObjPtr_Copy()"), TEXT("TObjectPtr copy equality"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ObjPtr_DefaultIsNull()"), TEXT("default TObjectPtr is null"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ObjPtr_Construct()"), TEXT("TObjectPtr construct from raw pointer"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ObjPtr_Assign()"), TEXT("TObjectPtr assign from raw pointer"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ObjPtr_ImplicitConvert()"), TEXT("TObjectPtr implicit conversion to raw pointer"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ObjPtr_Copy()"), TEXT("TObjectPtr copy equality"), 1);
 	}
 
 	// ====================================================================
@@ -240,14 +238,14 @@ int SoftPtr_Reset()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_DefaultState()"), TEXT("default TSoftObjectPtr is null and invalid"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_Construct()"), TEXT("TSoftObjectPtr construct from raw pointer"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_PathAndValidity()"), TEXT("TSoftObjectPtr path and validity accessors"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_ConstructFromPath()"), TEXT("TSoftObjectPtr construct and assign from FSoftObjectPath"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_AssignAndConvert()"), TEXT("TSoftObjectPtr assign and Get conversion"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_CopyEquality()"), TEXT("TSoftObjectPtr copy equality"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_ArrayOperations()"), TEXT("TSoftObjectPtr TArray Add/Contains"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_Reset()"), TEXT("TSoftObjectPtr Reset clears to null"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_DefaultState()"), TEXT("default TSoftObjectPtr is null and invalid"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_Construct()"), TEXT("TSoftObjectPtr construct from raw pointer"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_PathAndValidity()"), TEXT("TSoftObjectPtr path and validity accessors"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_ConstructFromPath()"), TEXT("TSoftObjectPtr construct and assign from FSoftObjectPath"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_AssignAndConvert()"), TEXT("TSoftObjectPtr assign and Get conversion"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_CopyEquality()"), TEXT("TSoftObjectPtr copy equality"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_ArrayOperations()"), TEXT("TSoftObjectPtr TArray Add/Contains"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_Reset()"), TEXT("TSoftObjectPtr Reset clears to null"), 1);
 	}
 };
 

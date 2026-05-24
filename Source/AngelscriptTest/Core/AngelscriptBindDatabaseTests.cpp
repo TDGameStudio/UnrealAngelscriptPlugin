@@ -15,7 +15,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptTest_Core_AngelscriptBindDatabaseTests_Private
 {
@@ -242,8 +241,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 	{
 		using namespace AngelscriptTest_Core_AngelscriptBindDatabaseTests_Private;
 		FBindDatabaseContextStackGuard ContextGuard;
-		AngelscriptTestSupport::DestroySharedTestEngine();
-		if (FAngelscriptEngine::IsInitialized()) { AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine(); }
+		DestroySharedTestEngine();
+		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine(); }
 		ContextGuard.DiscardSavedStack();
 
 		static const FString LegacySentinelTypeName(TEXT("BindDatabaseLegacySentinel"));
@@ -251,7 +250,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 		FAngelscriptBindDatabase* LegacyDatabase = &FAngelscriptBindDatabase::Get();
 		if (!TestRunner->TestNotNull(TEXT("should expose a legacy database without a current engine"), LegacyDatabase)) { return; }
 
-		ON_SCOPE_EXIT { LegacyDatabase->Clear(); if (FAngelscriptEngine::IsInitialized()) { AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine(); } AngelscriptTestSupport::DestroySharedTestEngine(); };
+		ON_SCOPE_EXIT { LegacyDatabase->Clear(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine(); } DestroySharedTestEngine(); };
 
 		LegacyDatabase->Clear();
 		LegacyDatabase->Classes.Add(MakeNamedSampleClassBind(AActor::StaticClass(), LegacySentinelTypeName));
@@ -262,7 +261,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 		bOk &= TestRunner->TestTrue(TEXT("should reuse the same legacy singleton"), LegacyDatabaseSecondRead == LegacyDatabase);
 		bOk &= TestRunner->TestTrue(TEXT("should preserve legacy sentinel data"), DatabaseContainsClassBindNamed(*LegacyDatabase, LegacySentinelTypeName));
 
-		TUniquePtr<FAngelscriptEngine> EngineA = AngelscriptTestSupport::CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> EngineA = CreateFullTestEngine();
 		if (!TestRunner->TestNotNull(TEXT("should create engine A"), EngineA.Get())) { return; }
 		FAngelscriptBindDatabase* EngineADatabaseFromGet = nullptr;
 		FAngelscriptBindDatabase* EngineADirectDatabase = nullptr;
@@ -291,7 +290,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 		EngineA.Reset();
 		bOk &= TestRunner->TestNull(TEXT("should restore no-current-engine baseline after destroying engine A"), FAngelscriptTestEngineScopeAccess::GetCurrentEngine());
 
-		TUniquePtr<FAngelscriptEngine> EngineC = AngelscriptTestSupport::CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> EngineC = CreateFullTestEngine();
 		if (!TestRunner->TestNotNull(TEXT("should create engine C"), EngineC.Get())) { return; }
 		{
 			FAngelscriptEngineScope ScopeC(*EngineC);

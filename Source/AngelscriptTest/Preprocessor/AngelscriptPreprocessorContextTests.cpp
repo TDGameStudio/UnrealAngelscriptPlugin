@@ -12,7 +12,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace PreprocessorTestHelpers;
-using namespace AngelscriptTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorContextTest,
 	"Angelscript.TestModule.Preprocessor.Context",
@@ -21,7 +20,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorContextTest,
 	TEST_METHOD(ExplicitContextControlsFlagsAndDefaults)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		FAngelscriptPreprocessorContext Context = FAngelscriptPreprocessorContext::CreateFromCurrentEngineContext();
 		Context.PreprocessorFlags.Add(TEXT("CONTEXT_ENABLED"), true);
@@ -109,7 +108,7 @@ class UWrongContextCarrier : UObject
 	TEST_METHOD(CurrentEngineContextMatchesCompatibilityConstructor)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		FAngelscriptPreprocessor CompatibilityPreprocessor;
 		const FAngelscriptPreprocessorContext Context = FAngelscriptPreprocessorContext::CreateFromCurrentEngineContext();

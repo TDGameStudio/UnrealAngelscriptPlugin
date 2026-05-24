@@ -19,8 +19,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -115,10 +113,10 @@ int RoundTrip_AppendedFieldParity()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RoundTrip_VectorToJson()"), TEXT("UStructToJsonObjectString produces non-empty JSON"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RoundTrip_JsonToVector()"), TEXT("JsonObjectStringToUStruct round-trips FVector"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RoundTrip_AppendRotator()"), TEXT("AppendUStructToJsonObjectString merges FRotator fields"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RoundTrip_AppendedFieldParity()"), TEXT("appended JSON preserves numeric field values"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RoundTrip_VectorToJson()"), TEXT("UStructToJsonObjectString produces non-empty JSON"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RoundTrip_JsonToVector()"), TEXT("JsonObjectStringToUStruct round-trips FVector"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RoundTrip_AppendRotator()"), TEXT("AppendUStructToJsonObjectString merges FRotator fields"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RoundTrip_AppendedFieldParity()"), TEXT("appended JSON preserves numeric field values"), 1);
 	}
 
 	// ====================================================================
@@ -155,8 +153,8 @@ int Error_MalformedJsonRejected()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Error_NonUStructRejected()"), TEXT("non-USTRUCT input fails without mutating sentinel"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Error_MalformedJsonRejected()"), TEXT("malformed JSON fails without mutating output"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Error_NonUStructRejected()"), TEXT("non-USTRUCT input fails without mutating sentinel"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Error_MalformedJsonRejected()"), TEXT("malformed JSON fails without mutating output"), 1);
 	}
 };
 

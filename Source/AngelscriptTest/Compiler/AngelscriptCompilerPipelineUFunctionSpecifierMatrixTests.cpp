@@ -6,7 +6,6 @@
 #include "UObject/UnrealType.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace UFunctionSpecifierMatrixTest
 {
@@ -25,7 +24,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUFunctionSpecifierMatrixTests,
 {
 	TEST_METHOD(CallInEditorSpecifierSetsFlag)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -74,7 +72,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUFunctionSpecifierMatrixTests,
 
 	TEST_METHOD(BlueprintAuthorityOnlySpecifierSetsFlag)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -123,7 +120,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUFunctionSpecifierMatrixTests,
 
 	TEST_METHOD(ExecSpecifierSetsFlag)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();

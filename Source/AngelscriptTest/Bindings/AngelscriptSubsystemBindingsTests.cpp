@@ -33,9 +33,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptReflectiveAccess;
-using namespace AngelscriptTestBindings;
-using namespace AngelscriptTestSupport;
 
 
 namespace AngelscriptSubsystemBindingsTest_Private

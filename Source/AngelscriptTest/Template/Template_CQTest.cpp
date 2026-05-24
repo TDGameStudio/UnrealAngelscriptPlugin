@@ -71,9 +71,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
-using namespace AngelscriptReflectiveAccess;
 
 
 
@@ -118,7 +115,7 @@ int GetFortyTwo()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int GetFortyTwo()"),
 			TEXT("Literal 42 round-trips through AS"),
 			42);
@@ -156,7 +153,7 @@ int Modulo()   { return 17 % 5; }
 			{ TEXT("int Divide()"),   TEXT("20 / 4 = 5"),     5 },
 			{ TEXT("int Modulo()"),   TEXT("17 % 5 = 2"),     2 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// =================================================================
@@ -343,7 +340,7 @@ void StringIndexOOB()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(
+		ExecuteFunctionExpectingScriptException(
 			*TestRunner, Engine, M, 
 			TEXT("void StringIndexOOB()"),
 			TEXT("String index beyond length throws"),
@@ -380,7 +377,7 @@ FString GetMessage() { return "success"; }
 		auto& M = Mod.GetModule();
 
 		// After the guard, we know M is safe to use.
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int GetValue()"),
 			TEXT("Value is 100"),
 			100);

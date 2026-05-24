@@ -25,8 +25,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Helpers
@@ -155,10 +153,10 @@ int Transform_ScaleAffectsResult()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_TransformPosition()"), TEXT("TransformPosition parity"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_TransformPositionNoScale()"), TEXT("TransformPositionNoScale parity"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_InverseTransformPosition()"), TEXT("InverseTransformPosition recovers input"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_ScaleAffectsResult()"), TEXT("scale affects TransformPosition"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_TransformPosition()"), TEXT("TransformPosition parity"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_TransformPositionNoScale()"), TEXT("TransformPositionNoScale parity"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_InverseTransformPosition()"), TEXT("InverseTransformPosition recovers input"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_ScaleAffectsResult()"), TEXT("scale affects TransformPosition"), 1);
 	}
 
 	// ====================================================================
@@ -218,8 +216,8 @@ int Transform_RelativeNotIdentity()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_GetRelativeTransform()"), TEXT("GetRelativeTransform matches native"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_RelativeNotIdentity()"), TEXT("relative is not identity"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_GetRelativeTransform()"), TEXT("GetRelativeTransform matches native"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_RelativeNotIdentity()"), TEXT("relative is not identity"), 1);
 	}
 
 	// ====================================================================
@@ -301,12 +299,12 @@ int Transform_GetScale()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_SetTranslation()"), TEXT("SetTranslation reflected in GetTranslation"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_SetScale3D()"), TEXT("SetScale3D reflected in GetScale3D"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_UpdatedMatchesNative()"), TEXT("updated matches native expected"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_UpdatedDiffersFromBaseline()"), TEXT("updated differs from baseline"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_GetLocation()"), TEXT("GetTranslation returns construction value"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_GetScale()"), TEXT("GetScale3D returns construction value"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_SetTranslation()"), TEXT("SetTranslation reflected in GetTranslation"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_SetScale3D()"), TEXT("SetScale3D reflected in GetScale3D"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_UpdatedMatchesNative()"), TEXT("updated matches native expected"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_UpdatedDiffersFromBaseline()"), TEXT("updated differs from baseline"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_GetLocation()"), TEXT("GetTranslation returns construction value"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_GetScale()"), TEXT("GetScale3D returns construction value"), 1);
 	}
 };
 

@@ -12,8 +12,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace AngelscriptFunctionalTestUtils;
-using namespace AngelscriptReflectiveAccess;
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private
 {

@@ -9,8 +9,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptBodyInstanceBindingsTest,
@@ -37,7 +35,7 @@ int LatentInfo_DefaultLinkage()
 			return;
 		}
 		// UE 5.7: FLatentActionInfo default Linkage changed from 0 to -1
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int LatentInfo_DefaultLinkage()"),
 			TEXT("Default FLatentActionInfo linkage"), -1);
 	}

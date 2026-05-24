@@ -10,7 +10,6 @@
 // Test Layer: UE Functional - Round1 deep-fill (default <Component>.<Field> override on CDO)
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptComponentDefaultPropertyOverrideTests,
 	"Angelscript.TestModule.Functional.Component.DefaultPropertyOverride",

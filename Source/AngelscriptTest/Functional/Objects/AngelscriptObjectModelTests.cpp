@@ -11,15 +11,11 @@
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 using namespace AngelscriptFunctionalTestUtils;
-using namespace AngelscriptReflectiveAccess;
 
-namespace AngelscriptTestSupport
-{
-	bool CompileModuleWithResult(FAngelscriptEngine* Engine, ECompileType CompileType, FName ModuleName, FString Filename, FString Script, ECompileResult& OutCompileResult);
-	bool CompileModuleFromMemory(FAngelscriptEngine* Engine, FName ModuleName, FString Filename, FString Script);
-}
+bool CompileModuleWithResult(FAngelscriptEngine* Engine, ECompileType CompileType, FName ModuleName, FString Filename, FString Script, ECompileResult& OutCompileResult);
+bool CompileModuleFromMemory(FAngelscriptEngine* Engine, FName ModuleName, FString Filename, FString Script);
+
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FAngelscriptObjectModelInheritanceTest,

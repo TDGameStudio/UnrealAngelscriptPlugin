@@ -95,10 +95,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 	{
 		using namespace AngelscriptTest_Core_AngelscriptRuntimeModuleTests_Private;
 		FRuntimeModuleContextStackGuard ContextGuard;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
-			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 		}
 		ContextGuard.DiscardSavedStack();
 
@@ -108,9 +108,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
-				AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 			}
-			AngelscriptTestSupport::DestroySharedTestEngine();
+			DestroySharedTestEngine();
 		};
 
 		FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
@@ -119,7 +119,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 			return;
 		}
 
-		TUniquePtr<FAngelscriptEngine> OverrideEngine = AngelscriptTestSupport::CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> OverrideEngine = CreateFullTestEngine();
 		if (!TestRunner->TestNotNull(TEXT("RuntimeModule initialize-override test should create an isolated override engine"), OverrideEngine.Get()))
 		{
 			return;
@@ -173,10 +173,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 	{
 		using namespace AngelscriptTest_Core_AngelscriptRuntimeModuleTests_Private;
 		FRuntimeModuleContextStackGuard ContextGuard;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
-			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 		}
 		ContextGuard.DiscardSavedStack();
 
@@ -195,9 +195,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
-				AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 			}
-			AngelscriptTestSupport::DestroySharedTestEngine();
+			DestroySharedTestEngine();
 		};
 
 		if (!TestRunner->TestNull(TEXT("RuntimeModule shutdown test should start without a current engine"), FAngelscriptEngine::TryGetCurrentEngine()))
@@ -265,10 +265,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 	{
 		using namespace AngelscriptTest_Core_AngelscriptRuntimeModuleTests_Private;
 		FRuntimeModuleContextStackGuard ContextGuard;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
-			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 		}
 		ContextGuard.DiscardSavedStack();
 
@@ -278,9 +278,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
-				AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 			}
-			AngelscriptTestSupport::DestroySharedTestEngine();
+			DestroySharedTestEngine();
 		};
 
 		int32 InitializeCalls = 0;
@@ -323,10 +323,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 	{
 		using namespace AngelscriptTest_Core_AngelscriptRuntimeModuleTests_Private;
 		FRuntimeModuleContextStackGuard ContextGuard;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
-			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 		}
 		ContextGuard.DiscardSavedStack();
 
@@ -336,9 +336,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
-				AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 			}
-			AngelscriptTestSupport::DestroySharedTestEngine();
+			DestroySharedTestEngine();
 		};
 
 		FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
@@ -347,7 +347,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 			return;
 		}
 
-		TUniquePtr<FAngelscriptEngine> AmbientEngine = AngelscriptTestSupport::CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> AmbientEngine = CreateFullTestEngine();
 		if (!TestRunner->TestNotNull(TEXT("RuntimeModule ambient-initialize test should create an isolated ambient engine"), AmbientEngine.Get()))
 		{
 			return;
@@ -429,10 +429,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineSubsystemTickTests,
 		using namespace AngelscriptTest_Core_AngelscriptRuntimeModuleTests_Private;
 		FRuntimeModuleContextStackGuard ContextGuard;
 		const int32 SavedActiveTickOwners = FAngelscriptTickBehaviorTestAccess::GetActiveTickOwners();
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
-			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 		}
 		ContextGuard.DiscardSavedStack();
 
@@ -443,12 +443,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineSubsystemTickTests,
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
-				AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 			}
-			AngelscriptTestSupport::DestroySharedTestEngine();
+			DestroySharedTestEngine();
 		};
 
-		TUniquePtr<FAngelscriptEngine> TestEngine = AngelscriptTestSupport::CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> TestEngine = CreateFullTestEngine();
 		if (!TestRunner->TestNotNull(TEXT("EngineSubsystem tick test should create an isolated full engine"), TestEngine.Get()))
 		{
 			return;

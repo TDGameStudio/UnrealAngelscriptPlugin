@@ -14,9 +14,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 using namespace AngelscriptFunctionalTestUtils;
-using namespace AngelscriptReflectiveAccess;
 
 namespace AngelscriptTest_Component_LifecycleExtended_Private
 {

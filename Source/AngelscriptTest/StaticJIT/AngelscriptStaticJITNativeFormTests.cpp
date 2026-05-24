@@ -119,7 +119,7 @@ bool FAngelscriptStaticJITTArrayIndexCustomCallTest::RunTest(const FString& Para
 	Config.bGeneratePrecompiledData = true;
 
 	FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> OwnedEngine = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> OwnedEngine = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
 	if (!TestNotNull(
 		TEXT("StaticJIT.NativeForms.TArrayIndexCustomCall should create a dedicated engine with precompiled-data generation enabled"),
 		OwnedEngine.Get()))
@@ -131,7 +131,7 @@ bool FAngelscriptStaticJITTArrayIndexCustomCallTest::RunTest(const FString& Para
 
 	do
 	{
-		const bool bCompiled = AngelscriptTestSupport::CompileModuleFromMemory(
+		const bool bCompiled = CompileModuleFromMemory(
 			&Engine,
 			ModuleName,
 			SourceFilename,
@@ -144,7 +144,7 @@ bool FAngelscriptStaticJITTArrayIndexCustomCallTest::RunTest(const FString& Para
 		}
 
 		int32 ReadMiddleResult = 0;
-		const bool bExecutedReadMiddle = AngelscriptTestSupport::ExecuteIntFunction(
+		const bool bExecutedReadMiddle = ExecuteIntFunction(
 			&Engine,
 			ModuleName,
 			TEXT("int ReadMiddle()"),
@@ -199,7 +199,7 @@ bool FAngelscriptStaticJITTArrayIndexCustomCallTest::RunTest(const FString& Para
 
 		FString GeneratedSource;
 		FString GenerateError;
-		const bool bGenerated = AngelscriptTestSupport::GenerateStaticJITSourceText(
+		const bool bGenerated = GenerateStaticJITSourceText(
 			&Engine,
 			ModuleName,
 			GeneratedSource,

@@ -17,7 +17,6 @@
 #include "UObject/UObjectIterator.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptTest_Core_AngelscriptEnginePerformanceTests_Private
 {
@@ -78,10 +77,10 @@ namespace AngelscriptTest_Core_AngelscriptEnginePerformanceTests_Private
 
 	void ResetPerformanceEngineState()
 	{
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
-			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 		}
 	}
 
@@ -109,7 +108,6 @@ namespace AngelscriptTest_Core_AngelscriptEnginePerformanceTests_Private
 
 	FString ValidateAndWriteStartupMetrics(FAutomationTestBase& Test, const FString& RunId, const FString& TestGroup, const TArray<FStartupPerformanceSample>& Samples, const TArray<FString>& Notes)
 	{
-		using namespace AngelscriptTestSupport;
 
 		TArray<double> StartupTotals;
 		TArray<double> BindTotals;
@@ -141,7 +139,7 @@ namespace AngelscriptTest_Core_AngelscriptEnginePerformanceTests_Private
 		const FAngelscriptEngineConfig Config;
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		const double StartTime = FPlatformTime::Seconds();
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
+		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
 		const double TotalSeconds = FPlatformTime::Seconds() - StartTime;
 		check(Engine.IsValid());
 		const FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
@@ -153,7 +151,7 @@ namespace AngelscriptTest_Core_AngelscriptEnginePerformanceTests_Private
 		FAngelscriptBindExecutionObservation::Reset();
 		const FAngelscriptEngineConfig Config;
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		TUniquePtr<FAngelscriptEngine> SourceEngine = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
+		TUniquePtr<FAngelscriptEngine> SourceEngine = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
 		check(SourceEngine.IsValid());
 		FAngelscriptBindExecutionObservation::Reset();
 		const double StartTime = FPlatformTime::Seconds();
@@ -170,7 +168,7 @@ namespace AngelscriptTest_Core_AngelscriptEnginePerformanceTests_Private
 		const FAngelscriptEngineConfig Config;
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		const double StartTime = FPlatformTime::Seconds();
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(Config, Dependencies);
+		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeEngineForTesting(Config, Dependencies);
 		const double TotalSeconds = FPlatformTime::Seconds() - StartTime;
 		check(Engine.IsValid());
 		const FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
@@ -182,12 +180,12 @@ namespace AngelscriptTest_Core_AngelscriptEnginePerformanceTests_Private
 		FAngelscriptBindExecutionObservation::Reset();
 		const FAngelscriptEngineConfig Config;
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		TUniquePtr<FAngelscriptEngine> SourceEngine = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
+		TUniquePtr<FAngelscriptEngine> SourceEngine = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
 		check(SourceEngine.IsValid());
 		FAngelscriptEngineScope GlobalScope(*SourceEngine);
 		FAngelscriptBindExecutionObservation::Reset();
 		const double StartTime = FPlatformTime::Seconds();
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(Config, Dependencies);
+		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeEngineForTesting(Config, Dependencies);
 		const double TotalSeconds = FPlatformTime::Seconds() - StartTime;
 		check(Engine.IsValid());
 		const FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
@@ -314,10 +312,10 @@ class %s : UObject
 
 		if (Workload.Kind == EShareCleanWorkloadKind::Minimal)
 		{
-			return AngelscriptTestSupport::CompileModuleFromMemory(&Engine, ModuleName, Filename, Script);
+			return CompileModuleFromMemory(&Engine, ModuleName, Filename, Script);
 		}
 
-		return AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(&Engine, ModuleName, Filename, Script);
+		return CompileAnnotatedModuleFromMemory(&Engine, ModuleName, Filename, Script);
 	}
 
 	void CaptureGeneratedClassBeforeReset(FAngelscriptEngine& Engine, const FShareCleanWorkload& Workload, const FString& RunSuffix, int32 CycleIndex, FShareCleanCycleSample& Sample, TWeakObjectPtr<UASClass>& OutWeakGeneratedClass)
@@ -330,7 +328,7 @@ class %s : UObject
 		Sample.bGeneratedClassExpected = true;
 		Sample.GeneratedClassName = MakeShareCleanGeneratedClassName(Workload, RunSuffix, CycleIndex);
 
-		UASClass* GeneratedClass = Cast<UASClass>(AngelscriptTestSupport::FindGeneratedClass(&Engine, FName(*Sample.GeneratedClassName)));
+		UASClass* GeneratedClass = Cast<UASClass>(FindGeneratedClass(&Engine, FName(*Sample.GeneratedClassName)));
 		Sample.bGeneratedClassFoundBeforeReset = GeneratedClass != nullptr;
 		if (GeneratedClass == nullptr)
 		{
@@ -521,14 +519,13 @@ class %s : UObject
 		}
 	}
 
-	void AddShareCleanMetric(TArray<AngelscriptTestSupport::FAngelscriptPerformanceMetric>& Metrics, const FString& MetricName, const TArray<double>& Samples, const FString& Unit = TEXT("seconds"))
+	void AddShareCleanMetric(TArray<FAngelscriptPerformanceMetric>& Metrics, const FString& MetricName, const TArray<double>& Samples, const FString& Unit = TEXT("seconds"))
 	{
-		using namespace AngelscriptTestSupport;
 		LogPerformanceMetric(MetricName, Samples);
 		Metrics.Add({ MetricName, Samples, ComputeMedian(Samples), Unit, TEXT("AutomationTest") });
 	}
 
-	void AddShareCleanWorkloadMetrics(TArray<AngelscriptTestSupport::FAngelscriptPerformanceMetric>& Metrics, const FString& WorkloadName, const TArray<FShareCleanCycleSample>& Samples)
+	void AddShareCleanWorkloadMetrics(TArray<FAngelscriptPerformanceMetric>& Metrics, const FString& WorkloadName, const TArray<FShareCleanCycleSample>& Samples)
 	{
 		TArray<double> AcquireSeconds;
 		TArray<double> CompileSeconds;
@@ -554,7 +551,7 @@ class %s : UObject
 		AddShareCleanMetric(Metrics, FString::Printf(TEXT("share_clean.%s.total_seconds"), *WorkloadName), TotalSeconds);
 	}
 
-	void AddShareCleanGeneratedClassMetrics(TArray<AngelscriptTestSupport::FAngelscriptPerformanceMetric>& Metrics, const TArray<FShareCleanCycleSample>& Samples)
+	void AddShareCleanGeneratedClassMetrics(TArray<FAngelscriptPerformanceMetric>& Metrics, const TArray<FShareCleanCycleSample>& Samples)
 	{
 		TArray<double> GcAfterReset;
 		TArray<double> WeakValidAfterReset;
@@ -597,7 +594,6 @@ class %s : UObject
 
 	FString ValidateAndWriteShareCleanMetrics(FAutomationTestBase& Test, const TArray<FShareCleanCycleSample>& Samples)
 	{
-		using namespace AngelscriptTestSupport;
 
 		TArray<FAngelscriptPerformanceMetric> Metrics;
 		AddShareCleanWorkloadMetrics(Metrics, TEXT("minimal"), Samples);
@@ -651,7 +647,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEnginePerformanceTests,
 		{ TEXT("uclass"), EShareCleanWorkloadKind::UClass },
 	};
 
-	AngelscriptTestSupport::DestroySharedTestEngine();
+	DestroySharedTestEngine();
 
 	TArray<FShareCleanCycleSample> Samples;
 	for (const FShareCleanWorkload& Workload : Workloads)
@@ -701,7 +697,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEnginePerformanceTests,
 	}
 
 	ValidateAndWriteShareCleanMetrics(*TestRunner, Samples);
-	AngelscriptTestSupport::DestroySharedTestEngine();
+	DestroySharedTestEngine();
 	}
 
 };

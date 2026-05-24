@@ -19,193 +19,191 @@
 #include "Debugging/AngelscriptDebugServer.h"
 #include "Templates/SharedPointer.h"
 
-namespace AngelscriptTestSupport
+// ---- Simplified stack-frame / scope model used by the mock server ----
+
+struct FMockScopeEntry
 {
-	// ---- Simplified stack-frame / scope model used by the mock server ----
+	FString Name;
+	FString TypeName;
+	FString Value;
+};
 
-	struct FMockScopeEntry
+struct FMockStackFrame
+{
+	FString FunctionName;
+	FString SourceFile;
+	int32 Line = 0;
+
+	// Locals / arguments for this frame, queried by tests as "local scope".
+	TArray<FMockScopeEntry> Locals;
+};
+
+struct FMockBreakpointRecord
+{
+	FString SourceFile;
+	int32 Line = 0;
+	FString Condition;
+	bool bDataBreakpoint = false;
+
+	bool Matches(const FString& InFile, int32 InLine) const
 	{
-		FString Name;
-		FString TypeName;
-		FString Value;
-	};
+		return Line == InLine && SourceFile == InFile;
+	}
+};
 
-	struct FMockStackFrame
-	{
-		FString FunctionName;
-		FString SourceFile;
-		int32 Line = 0;
+// ---- Scripted response primitive ----
+//
+// The mock stores a queue of outgoing envelopes to emit in response to a
+// particular incoming client message type. Tests pre-seed this queue so they
+// can deterministically drive protocol handshakes and break sequences
+// without relying on a real server's threading or socket stack.
 
-		// Locals / arguments for this frame, queried by tests as "local scope".
-		TArray<FMockScopeEntry> Locals;
-	};
+struct FMockScriptedResponse
+{
+	EDebugMessageType TriggerType = EDebugMessageType::PingAlive;
+	FAngelscriptDebugMessageEnvelope ResponseEnvelope;
 
-	struct FMockBreakpointRecord
-	{
-		FString SourceFile;
-		int32 Line = 0;
-		FString Condition;
-		bool bDataBreakpoint = false;
+	// If true, the response fires whenever Tick() runs with nothing else
+	// pending, rather than waiting for a matching ingest. Useful for
+	// auto-delivered version/handshake packets.
+	bool bEmitOnNextTick = false;
 
-		bool Matches(const FString& InFile, int32 InLine) const
-		{
-			return Line == InLine && SourceFile == InFile;
-		}
-	};
+	// One-shot by default; set to true to re-arm after firing.
+	bool bRepeat = false;
+};
 
-	// ---- Scripted response primitive ----
-	//
-	// The mock stores a queue of outgoing envelopes to emit in response to a
-	// particular incoming client message type. Tests pre-seed this queue so they
-	// can deterministically drive protocol handshakes and break sequences
-	// without relying on a real server's threading or socket stack.
+// ---- Interface targeted by tests ----
 
-	struct FMockScriptedResponse
-	{
-		EDebugMessageType TriggerType = EDebugMessageType::PingAlive;
-		FAngelscriptDebugMessageEnvelope ResponseEnvelope;
+class IAngelscriptDebugServerTestInterface
+{
+public:
+	virtual ~IAngelscriptDebugServerTestInterface() = default;
 
-		// If true, the response fires whenever Tick() runs with nothing else
-		// pending, rather than waiting for a matching ingest. Useful for
-		// auto-delivered version/handshake packets.
-		bool bEmitOnNextTick = false;
+	// --- Lifecycle / transport substitute ---
 
-		// One-shot by default; set to true to re-arm after firing.
-		bool bRepeat = false;
-	};
+	// Simulated server port for tests that log/assert it. The real server
+	// binds to a TCP port; the mock just returns a stable numeric id.
+	virtual int32 GetPort() const = 0;
 
-	// ---- Interface targeted by tests ----
+	// Runs one tick of the scripted response pipeline. Tests call this from
+	// FAngelscriptDebuggerTestSession::PumpOneTick() when in mock mode.
+	virtual void Tick() = 0;
 
-	class IAngelscriptDebugServerTestInterface
-	{
-	public:
-		virtual ~IAngelscriptDebugServerTestInterface() = default;
+	// True if the mock is currently in "stopped" state (simulating a
+	// breakpoint hit / step completion). Drives PumpUntil() predicates.
+	virtual bool IsStopped() const = 0;
 
-		// --- Lifecycle / transport substitute ---
+	// --- Protocol plumbing (scripted) ---
 
-		// Simulated server port for tests that log/assert it. The real server
-		// binds to a TCP port; the mock just returns a stable numeric id.
-		virtual int32 GetPort() const = 0;
+	// Called by a test (directly or via a fake client) to feed a client->server
+	// envelope into the mock. The mock may immediately push scripted replies
+	// into its outbound queue based on TriggerType matches.
+	virtual void IngestClientMessage(const FAngelscriptDebugMessageEnvelope& Envelope) = 0;
 
-		// Runs one tick of the scripted response pipeline. Tests call this from
-		// FAngelscriptDebuggerTestSession::PumpOneTick() when in mock mode.
-		virtual void Tick() = 0;
+	// Drains all pending server->client envelopes produced so far by Tick() or
+	// IngestClientMessage(). After this call, the outbound queue is empty.
+	virtual TArray<FAngelscriptDebugMessageEnvelope> DrainServerMessages() = 0;
 
-		// True if the mock is currently in "stopped" state (simulating a
-		// breakpoint hit / step completion). Drives PumpUntil() predicates.
-		virtual bool IsStopped() const = 0;
+	// Pre-seed a response mapping. Tests call this during setup.
+	virtual void AddScriptedResponse(const FMockScriptedResponse& Response) = 0;
 
-		// --- Protocol plumbing (scripted) ---
+	// --- Breakpoint table view ---
 
-		// Called by a test (directly or via a fake client) to feed a client->server
-		// envelope into the mock. The mock may immediately push scripted replies
-		// into its outbound queue based on TriggerType matches.
-		virtual void IngestClientMessage(const FAngelscriptDebugMessageEnvelope& Envelope) = 0;
+	virtual const TArray<FMockBreakpointRecord>& GetBreakpoints() const = 0;
+	virtual void SetBreakpoint(const FMockBreakpointRecord& Record) = 0;
+	virtual void ClearBreakpoints(const FString& SourceFile) = 0;
+	virtual void ClearAllBreakpoints() = 0;
 
-		// Drains all pending server->client envelopes produced so far by Tick() or
-		// IngestClientMessage(). After this call, the outbound queue is empty.
-		virtual TArray<FAngelscriptDebugMessageEnvelope> DrainServerMessages() = 0;
+	// --- Simplified stepping model ---
 
-		// Pre-seed a response mapping. Tests call this during setup.
-		virtual void AddScriptedResponse(const FMockScriptedResponse& Response) = 0;
+	// Trigger the "stopped at breakpoint" state with an explicit stack and
+	// local scope. Typically invoked by tests at the point they would have
+	// expected the real engine to hit a script breakpoint.
+	virtual void SimulateBreakpointHit(
+		const FString& SourceFile,
+		int32 Line,
+		const TArray<FMockStackFrame>& StackFrames) = 0;
 
-		// --- Breakpoint table view ---
+	// Advance the top frame to a new line. Does not change frame count.
+	virtual void SimulateStepTo(int32 NextLine) = 0;
 
-		virtual const TArray<FMockBreakpointRecord>& GetBreakpoints() const = 0;
-		virtual void SetBreakpoint(const FMockBreakpointRecord& Record) = 0;
-		virtual void ClearBreakpoints(const FString& SourceFile) = 0;
-		virtual void ClearAllBreakpoints() = 0;
+	// Pop the top frame; if no frames remain, transition out of stopped state.
+	virtual void SimulateStepOutTopFrame() = 0;
 
-		// --- Simplified stepping model ---
+	// Clear stopped state (emulating Continue).
+	virtual void SimulateContinue() = 0;
 
-		// Trigger the "stopped at breakpoint" state with an explicit stack and
-		// local scope. Typically invoked by tests at the point they would have
-		// expected the real engine to hit a script breakpoint.
-		virtual void SimulateBreakpointHit(
-			const FString& SourceFile,
-			int32 Line,
-			const TArray<FMockStackFrame>& StackFrames) = 0;
+	virtual TArray<FMockStackFrame> GetCurrentStack() const = 0;
+	virtual const FMockStackFrame* GetCurrentTopFrame() const = 0;
+	virtual TArray<FMockScopeEntry> GetLocalScope() const = 0;
+};
 
-		// Advance the top frame to a new line. Does not change frame count.
-		virtual void SimulateStepTo(int32 NextLine) = 0;
+// ---- Concrete implementation ----
 
-		// Pop the top frame; if no frames remain, transition out of stopped state.
-		virtual void SimulateStepOutTopFrame() = 0;
+class FAngelscriptMockDebugServer final : public IAngelscriptDebugServerTestInterface
+{
+public:
+	FAngelscriptMockDebugServer();
+	virtual ~FAngelscriptMockDebugServer() override = default;
 
-		// Clear stopped state (emulating Continue).
-		virtual void SimulateContinue() = 0;
+	// --- IAngelscriptDebugServerTestInterface ---
 
-		virtual TArray<FMockStackFrame> GetCurrentStack() const = 0;
-		virtual const FMockStackFrame* GetCurrentTopFrame() const = 0;
-		virtual TArray<FMockScopeEntry> GetLocalScope() const = 0;
-	};
+	virtual int32 GetPort() const override { return Port; }
+	virtual void Tick() override;
+	virtual bool IsStopped() const override { return bIsStopped; }
 
-	// ---- Concrete implementation ----
+	virtual void IngestClientMessage(const FAngelscriptDebugMessageEnvelope& Envelope) override;
+	virtual TArray<FAngelscriptDebugMessageEnvelope> DrainServerMessages() override;
+	virtual void AddScriptedResponse(const FMockScriptedResponse& Response) override;
 
-	class FAngelscriptMockDebugServer final : public IAngelscriptDebugServerTestInterface
-	{
-	public:
-		FAngelscriptMockDebugServer();
-		virtual ~FAngelscriptMockDebugServer() override = default;
+	virtual const TArray<FMockBreakpointRecord>& GetBreakpoints() const override { return Breakpoints; }
+	virtual void SetBreakpoint(const FMockBreakpointRecord& Record) override;
+	virtual void ClearBreakpoints(const FString& SourceFile) override;
+	virtual void ClearAllBreakpoints() override;
 
-		// --- IAngelscriptDebugServerTestInterface ---
+	virtual void SimulateBreakpointHit(
+		const FString& SourceFile,
+		int32 Line,
+		const TArray<FMockStackFrame>& StackFrames) override;
+	virtual void SimulateStepTo(int32 NextLine) override;
+	virtual void SimulateStepOutTopFrame() override;
+	virtual void SimulateContinue() override;
 
-		virtual int32 GetPort() const override { return Port; }
-		virtual void Tick() override;
-		virtual bool IsStopped() const override { return bIsStopped; }
+	virtual TArray<FMockStackFrame> GetCurrentStack() const override { return StackFrames; }
+	virtual const FMockStackFrame* GetCurrentTopFrame() const override;
+	virtual TArray<FMockScopeEntry> GetLocalScope() const override;
 
-		virtual void IngestClientMessage(const FAngelscriptDebugMessageEnvelope& Envelope) override;
-		virtual TArray<FAngelscriptDebugMessageEnvelope> DrainServerMessages() override;
-		virtual void AddScriptedResponse(const FMockScriptedResponse& Response) override;
+	// --- Non-virtual mock-only helpers (exposed for direct test introspection) ---
 
-		virtual const TArray<FMockBreakpointRecord>& GetBreakpoints() const override { return Breakpoints; }
-		virtual void SetBreakpoint(const FMockBreakpointRecord& Record) override;
-		virtual void ClearBreakpoints(const FString& SourceFile) override;
-		virtual void ClearAllBreakpoints() override;
+	// Assign the simulated port (used by session initialization).
+	void SetPort(int32 InPort) { Port = InPort; }
 
-		virtual void SimulateBreakpointHit(
-			const FString& SourceFile,
-			int32 Line,
-			const TArray<FMockStackFrame>& StackFrames) override;
-		virtual void SimulateStepTo(int32 NextLine) override;
-		virtual void SimulateStepOutTopFrame() override;
-		virtual void SimulateContinue() override;
+	// Number of incoming envelopes received via IngestClientMessage so far.
+	int32 GetIngestedMessageCount() const { return IngestedCount; }
 
-		virtual TArray<FMockStackFrame> GetCurrentStack() const override { return StackFrames; }
-		virtual const FMockStackFrame* GetCurrentTopFrame() const override;
-		virtual TArray<FMockScopeEntry> GetLocalScope() const override;
+	// Number of outbound envelopes delivered via DrainServerMessages so far.
+	int32 GetDeliveredMessageCount() const { return DeliveredCount; }
 
-		// --- Non-virtual mock-only helpers (exposed for direct test introspection) ---
+	// For tests that need to push an arbitrary server->client envelope without
+	// a trigger (e.g. simulating an EngineBreak notification).
+	void EnqueueServerMessage(const FAngelscriptDebugMessageEnvelope& Envelope);
 
-		// Assign the simulated port (used by session initialization).
-		void SetPort(int32 InPort) { Port = InPort; }
+private:
+	void FireScriptedResponsesFor(EDebugMessageType TriggerType);
+	void FireOnNextTickResponses();
 
-		// Number of incoming envelopes received via IngestClientMessage so far.
-		int32 GetIngestedMessageCount() const { return IngestedCount; }
+	int32 Port = 0;
+	bool bIsStopped = false;
 
-		// Number of outbound envelopes delivered via DrainServerMessages so far.
-		int32 GetDeliveredMessageCount() const { return DeliveredCount; }
+	TArray<FMockBreakpointRecord> Breakpoints;
+	TArray<FMockStackFrame> StackFrames;
+	TArray<FMockScriptedResponse> ScriptedResponses;
+	TArray<FAngelscriptDebugMessageEnvelope> OutboundQueue;
 
-		// For tests that need to push an arbitrary server->client envelope without
-		// a trigger (e.g. simulating an EngineBreak notification).
-		void EnqueueServerMessage(const FAngelscriptDebugMessageEnvelope& Envelope);
+	int32 IngestedCount = 0;
+	int32 DeliveredCount = 0;
+};
 
-	private:
-		void FireScriptedResponsesFor(EDebugMessageType TriggerType);
-		void FireOnNextTickResponses();
+// Convenience typedef used by session config below.
+using FMockDebugServerPtr = TSharedPtr<IAngelscriptDebugServerTestInterface>;
 
-		int32 Port = 0;
-		bool bIsStopped = false;
-
-		TArray<FMockBreakpointRecord> Breakpoints;
-		TArray<FMockStackFrame> StackFrames;
-		TArray<FMockScriptedResponse> ScriptedResponses;
-		TArray<FAngelscriptDebugMessageEnvelope> OutboundQueue;
-
-		int32 IngestedCount = 0;
-		int32 DeliveredCount = 0;
-	};
-
-	// Convenience typedef used by session config below.
-	using FMockDebugServerPtr = TSharedPtr<IAngelscriptDebugServerTestInterface>;
-}

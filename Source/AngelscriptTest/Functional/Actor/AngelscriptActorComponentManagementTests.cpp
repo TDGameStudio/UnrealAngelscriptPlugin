@@ -9,9 +9,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 using namespace AngelscriptFunctionalTestUtils;
-using namespace AngelscriptReflectiveAccess;
 
 namespace AngelscriptTest_Actor_ComponentManagement_Private
 {

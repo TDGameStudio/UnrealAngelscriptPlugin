@@ -8,7 +8,6 @@
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 using namespace AngelscriptFunctionalTestUtils;
 
 namespace AngelscriptTest_HotReload_AngelscriptHotReloadLiteralAssetTests_Private

@@ -25,8 +25,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -92,19 +90,19 @@ int ObjType_WorldDynamicRoundTrip()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int ObjType_WorldStatic()"),
 			TEXT("ConvertToObjectType(WorldStatic) should match native baseline"),
 			WorldStaticObjType);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int ObjType_WorldDynamic()"),
 			TEXT("ConvertToObjectType(WorldDynamic) should match native baseline"),
 			WorldDynamicObjType);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int ObjType_WorldStaticRoundTrip()"),
 			TEXT("WorldStatic object type should round-trip back to ECC_WorldStatic"),
 			WorldStaticChannel);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int ObjType_WorldDynamicRoundTrip()"),
 			TEXT("WorldDynamic object type should round-trip back to ECC_WorldDynamic"),
 			WorldDynamicChannel);
@@ -169,27 +167,27 @@ int Composite_TraceTypeRoundTrip()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int TraceType_Visibility()"),
 			TEXT("ConvertToTraceType(Visibility) should match native baseline"),
 			VisibilityTraceType);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int TraceType_Camera()"),
 			TEXT("ConvertToTraceType(Camera) should match native baseline"),
 			CameraTraceType);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int TraceType_VisibilityRoundTrip()"),
 			TEXT("Visibility trace type should round-trip back to ECC_Visibility"),
 			VisibilityChannel);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int TraceType_CameraRoundTrip()"),
 			TEXT("Camera trace type should round-trip back to ECC_Camera"),
 			CameraChannel);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Composite_ObjTypeRoundTrip()"),
 			TEXT("Composite WorldStatic object-type round-trip should return ECC_WorldStatic"),
 			WorldStaticChannel);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Composite_TraceTypeRoundTrip()"),
 			TEXT("Composite Visibility trace-type round-trip should return ECC_Visibility"),
 			VisibilityChannel);

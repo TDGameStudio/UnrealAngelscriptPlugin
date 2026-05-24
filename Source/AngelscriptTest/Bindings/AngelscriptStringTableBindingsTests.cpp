@@ -27,8 +27,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -125,7 +123,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptStringTableBindingsTest,
 		auto& M = Mod.GetModule();
 
 		// Verify script can read back the localized text
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int LocTable_ReadBack()"), TEXT("LOCTABLE reads back expected localized text"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int LocTable_ReadBack()"), TEXT("LOCTABLE reads back expected localized text"), 1);
 
 		// Verify C++ registry state after script execution
 		FStringTableConstPtr StringTable = FStringTableRegistry::Get().FindStringTable(TableId);

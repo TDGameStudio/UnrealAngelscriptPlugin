@@ -12,7 +12,6 @@
 #include "UObject/Class.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelineNamespaceTest
 {
@@ -69,7 +68,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineNamespaceTests,
 	TEST_METHOD(NamespacedAnnotatedClassStaticHelperRoundTrip)
 	{
 	using namespace CompilerPipelineNamespaceTest;
-	using namespace AngelscriptTestSupport;
 
 
 		const FString ScriptSource = TEXT(R"AS(

@@ -19,12 +19,8 @@ All new tests should use CQTest (`TEST_CLASS_WITH_FLAGS`):
 ```cpp
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
-#include "Shared/AngelscriptBindingsAssertions.h"
-
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
-
+#include "Shared/AngelscriptTestModuleScope.h"
+#include "Shared/AngelscriptTestExecute.h"
 
 TEST_CLASS_WITH_FLAGS(FMyTest,
     "Angelscript.TestModule.Category.Feature",
@@ -46,7 +42,7 @@ TEST_CLASS_WITH_FLAGS(FMyTest,
         FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
         FAngelscriptEngineScope Scope(Engine);
 
-        FCoverageModuleScope Mod(*TestRunner, Engine,
+        FScopedAngelscriptModule Mod(*TestRunner, Engine,
             TEXT("ASCategoryFeature_Basic"), TEXT(R"(
 int GetValue() { return 42; }
 )"));

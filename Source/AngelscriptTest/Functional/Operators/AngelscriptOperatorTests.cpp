@@ -6,12 +6,9 @@
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
-namespace AngelscriptTestSupport
-{
-	bool CompileModuleWithResult(FAngelscriptEngine* Engine, ECompileType CompileType, FName ModuleName, FString Filename, FString Script, ECompileResult& OutCompileResult);
-}
+bool CompileModuleWithResult(FAngelscriptEngine* Engine, ECompileType CompileType, FName ModuleName, FString Filename, FString Script, ECompileResult& OutCompileResult);
+
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FAngelscriptOperatorOverloadTest,

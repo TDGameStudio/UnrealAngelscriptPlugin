@@ -75,7 +75,7 @@ namespace AngelscriptTest_AngelScriptSDK_AngelscriptRestoreTests_Private
 
 	asCModule* BuildRestoreModule(FAutomationTestBase& Test, FAngelscriptEngine& Engine, const char* ModuleName)
 	{
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(
+		asIScriptModule* Module = BuildModule(
 			Test,
 			Engine,
 			ModuleName,
@@ -85,13 +85,13 @@ namespace AngelscriptTest_AngelScriptSDK_AngelscriptRestoreTests_Private
 
 	bool ExecuteRestoreFunction(FAutomationTestBase& Test, FAngelscriptEngine& Engine, asCModule& Module, int32& OutValue)
 	{
-		asIScriptFunction* Function = AngelscriptTestSupport::GetFunctionByDecl(Test, Module, TEXT("int Test()"));
+		asIScriptFunction* Function = GetFunctionByDecl(Test, Module, TEXT("int Test()"));
 		if (Function == nullptr)
 		{
 			return false;
 		}
 
-		return AngelscriptTestSupport::ExecuteIntFunction(Test, Engine, *Function, OutValue);
+		return ExecuteIntFunction(Test, Engine, *Function, OutValue);
 	}
 }
 
@@ -103,7 +103,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 	TEST_METHOD(RoundTrip)
 	{
 		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptRestoreTests_Private;
-		TUniquePtr<FAngelscriptEngine> SourceEngineOwner = AngelscriptTestSupport::CreateIsolatedCloneEngine();
+		TUniquePtr<FAngelscriptEngine> SourceEngineOwner = CreateIsolatedCloneEngine();
 		if (!TestRunner->TestNotNull(TEXT("Restore roundtrip should create an isolated clone test engine"), SourceEngineOwner.Get()))
 		{
 			return;
@@ -173,7 +173,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 	TEST_METHOD(StripDebugInfoRoundTrip)
 	{
 		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptRestoreTests_Private;
-		TUniquePtr<FAngelscriptEngine> SourceEngineOwner = AngelscriptTestSupport::CreateIsolatedCloneEngine();
+		TUniquePtr<FAngelscriptEngine> SourceEngineOwner = CreateIsolatedCloneEngine();
 		if (!TestRunner->TestNotNull(TEXT("Restore strip roundtrip should create an isolated clone test engine"), SourceEngineOwner.Get()))
 		{
 			return;
@@ -229,7 +229,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 	TEST_METHOD(EmptyStreamFails)
 	{
 		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptRestoreTests_Private;
-		TUniquePtr<FAngelscriptEngine> EngineOwner = AngelscriptTestSupport::CreateIsolatedCloneEngine();
+		TUniquePtr<FAngelscriptEngine> EngineOwner = CreateIsolatedCloneEngine();
 		if (!TestRunner->TestNotNull(TEXT("Restore empty stream test should create an isolated clone test engine"), EngineOwner.Get()))
 		{
 			return;
@@ -253,7 +253,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 	TEST_METHOD(TruncatedStreamFails)
 	{
 		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptRestoreTests_Private;
-		TUniquePtr<FAngelscriptEngine> SourceEngineOwner = AngelscriptTestSupport::CreateIsolatedCloneEngine();
+		TUniquePtr<FAngelscriptEngine> SourceEngineOwner = CreateIsolatedCloneEngine();
 		if (!TestRunner->TestNotNull(TEXT("Restore truncated stream test should create an isolated clone test engine"), SourceEngineOwner.Get()))
 		{
 			return;
@@ -310,7 +310,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 	TEST_METHOD(FailureLeavesModuleClean)
 	{
 		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptRestoreTests_Private;
-		TUniquePtr<FAngelscriptEngine> SourceEngineOwner = AngelscriptTestSupport::CreateIsolatedCloneEngine();
+		TUniquePtr<FAngelscriptEngine> SourceEngineOwner = CreateIsolatedCloneEngine();
 		if (!TestRunner->TestNotNull(TEXT("Restore failure cleanup test should create an isolated clone test engine"), SourceEngineOwner.Get()))
 		{
 			return;

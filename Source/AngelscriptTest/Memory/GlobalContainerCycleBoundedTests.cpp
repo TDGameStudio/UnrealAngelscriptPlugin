@@ -45,7 +45,7 @@ namespace AngelscriptTest_Memory_GlobalContainerCycleBounded_Private
 	// Trim so each cycle starts from a stable allocator state.
 	static void ResetToCleanSlate()
 	{
-		AngelscriptTestSupport::GetTransientFullTestEngineStorage().Reset();
+		GetTransientFullTestEngineStorage().Reset();
 		CollectGarbage(RF_NoFlags, true);
 		FMemory::Trim(true);
 	}
@@ -111,7 +111,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 
 		for (int32 Cycle = 1; Cycle <= NumCycles; ++Cycle)
 		{
-			FAngelscriptEngine& Engine = AngelscriptTestSupport::AcquireTransientFullTestEngine();
+			FAngelscriptEngine& Engine = AcquireTransientFullTestEngine();
 			(void)Engine.GetScriptEngine();  // Touch the engine handle so the bind path runs.
 
 			const int32 ThisCount = SampleSize();
@@ -259,14 +259,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 		constexpr int32 NumCycles = 4;
 		for (int32 Cycle = 1; Cycle <= NumCycles; ++Cycle)
 		{
-			FAngelscriptEngine& Engine = AngelscriptTestSupport::AcquireTransientFullTestEngine();
+			FAngelscriptEngine& Engine = AcquireTransientFullTestEngine();
 			(void)Engine.GetScriptEngine();
 		}
 
 		// Final teardown — the test storage is still holding the last
 		// engine; release it so the count we read after GC reflects only
 		// engines that were actually shut down.
-		AngelscriptTestSupport::GetTransientFullTestEngineStorage().Reset();
+		GetTransientFullTestEngineStorage().Reset();
 		CollectGarbage(RF_NoFlags, true);
 
 		const int32 FinalRootedDetached = CountRootedDetachedASClasses();

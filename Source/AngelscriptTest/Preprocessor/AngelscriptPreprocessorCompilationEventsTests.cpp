@@ -15,7 +15,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace PreprocessorTestHelpers;
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptPreprocessorCompilationEventsTests_Private
 {
@@ -38,7 +37,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorCompilationEventsTest,
  TEST_METHOD(HookMomentsEmitSummaryBackedCompilationEvents)
  {
  	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
- 	{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+ 	{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
  	TArray<FAngelscriptCompilationEvent> Events;
  	const FDelegateHandle ListenerHandle = FAngelscriptCompilationEvents::RegisterListener(
@@ -108,7 +107,7 @@ class UCompilationEventsHookMoments : UObject
  TEST_METHOD(ClassAnalyzeHookMutatesGeneratedStaticsThroughEngineHooks)
  {
  	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
- 	{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+ 	{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
  	int32 ClassAnalyzeCount = 0;
  	Engine.GetHooks().GetClassAnalyze().BindLambda(

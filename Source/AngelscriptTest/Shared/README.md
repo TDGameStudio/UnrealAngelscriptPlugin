@@ -30,7 +30,7 @@ This directory holds the test-side facade and supporting helpers used by the ent
 | `AngelscriptTestEngineCleanup.h` | ~195 | `FDetachedASTypeCleanupResult` + `CleanupDetachedASTypesForGarbageCollection`. **Sole** sub-header that includes editor-only Blueprint headers (`BlueprintActionDatabase.h`, `K2Node_GetSubsystem.h`, `Subsystems/Subsystem.h`). |
 | `AngelscriptTestMemoryProbe.h` | ~110 | `SampleBindFreeMem`, `AcquireTransientFullTestEngine` (the real definition), `AcquireTransientFullTestEngineWithProbe`. Depends on Acquisition + Cleanup. |
 | `AngelscriptTestModuleBuilder.h` | ~220 | `ReportCompileDiagnostics`, `FScopedAutomaticImportsOverride`, `BuildModule`, `GetFunctionByDecl`. |
-| `AngelscriptTestExecute.h` | ~1280 | **Canonical AS execution entry**: `FAngelscriptTestExecutor`, `AngelscriptTest::Execute*` / `Compile*` families, `AngelscriptReflectiveAccess::ResolveFunction*`, legacy `ExpectGlobal*` / `FASGlobalFunctionInvoker` inline aliases, and `AngelscriptTestSupport::ExecuteIntFunction*` trio. Does **not** depend on Bindings profile types (Phase 5). |
+| `AngelscriptTestExecute.h` | ~1280 | **Canonical AS execution entry** (global API, no namespace): `FAngelscriptTestExecutor`, `Execute*` / `Compile*` families, `ResolveFunction*`, legacy `ExpectGlobal*` / `FASGlobalFunctionInvoker` aliases, and `ExecuteIntFunction*` trio. Does **not** depend on Bindings profile types (Phase 5). |
 | `AngelscriptTestFixture.h` | ~120 | `ETestEngineMode` + `FAngelscriptTestFixture`. The **only** Shared/* header that depends on the other five themed sub-headers. |
 
 ### Bindings cluster (sibling headers)
@@ -39,8 +39,9 @@ This directory holds the test-side facade and supporting helpers used by the ent
 |---|---|---|
 | `AngelscriptGlobalFunctionInvoker.h` | ~10 | Permanent forward shim → `AngelscriptTestExecute.h`. |
 | `AngelscriptBindingsAssertions.h` | ~14 | Permanent forward shim → `AngelscriptTestExecute.h`. |
-| `AngelscriptBindingsModuleBuilder.h` | ~100 | `FCoverageModuleScope` — AS module lifecycle RAII; takes explicit `ModuleName` + `Source` (Phase 5; no Profile). |
-| `AngelscriptBindingsExampleSection.h` | ~90 | Official example: `AngelscriptTest::Execute*` + explicit module names. |
+| `AngelscriptTestModuleScope.h` | ~100 | `FScopedAngelscriptModule` — AS module lifecycle RAII; takes explicit `ModuleName` + `Source`. |
+| `AngelscriptBindingsModuleBuilder.h` | ~10 | Forward shim → `AngelscriptTestModuleScope.h`. |
+| `AngelscriptBindingsExampleSection.h` | ~90 | Official example: global `Execute*` + explicit module names. |
 
 **Deleted in Phase 5:** `AngelscriptBindingsCoverage.h` (`FBindingsCoverageProfile`, `FormatCaseLabel`, `MakeCoverageModuleName`). Bindings tests pass full-word module names directly to `FCoverageModuleScope` and plain case labels to `Execute*` / legacy `ExpectGlobal*`.
 

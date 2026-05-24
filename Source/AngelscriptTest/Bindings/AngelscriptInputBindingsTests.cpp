@@ -9,8 +9,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptInputBindingsTest,
@@ -32,7 +30,7 @@ int InputActionValue_DefaultZero()
 }
 )"));
 		if (!Mod.IsValid()) return;
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int InputActionValue_DefaultZero()"), TEXT("Default FInputActionValue is zero"), 1);
 	}
 
@@ -48,7 +46,7 @@ int Key_IsValid()
 }
 )"));
 		if (!Mod.IsValid()) return;
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int Key_IsValid()"), TEXT("SpaceBar key is valid"), 1);
 	}
 };

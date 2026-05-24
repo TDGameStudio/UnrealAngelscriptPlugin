@@ -11,7 +11,6 @@
 #include "Misc/ScopeExit.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelineImportReloadTest
 {
@@ -88,7 +87,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 {
 	TEST_METHOD(DeclaredFunctionImportRebindsAfterProviderReload)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		const FString ProviderScriptSourceV1 = TEXT(R"AS(

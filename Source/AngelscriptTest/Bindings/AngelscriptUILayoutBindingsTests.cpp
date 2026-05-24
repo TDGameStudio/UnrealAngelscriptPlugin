@@ -12,8 +12,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptUILayoutBindingsTest,
@@ -57,7 +55,7 @@ int Margin_ComponentCtor()
 			{ TEXT("int Margin_UniformCtor()"),    TEXT("Uniform FMargin ctor"), 1 },
 			{ TEXT("int Margin_ComponentCtor()"),  TEXT("Component FMargin ctor"), 1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	TEST_METHOD(FAnchorsBasics)
@@ -84,7 +82,7 @@ int Anchors_UniformCtor()
 			{ TEXT("int Anchors_DefaultZero()"),   TEXT("Default FAnchors is zero"), 1 },
 			{ TEXT("int Anchors_UniformCtor()"),   TEXT("Uniform FAnchors ctor"), 1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 };
 

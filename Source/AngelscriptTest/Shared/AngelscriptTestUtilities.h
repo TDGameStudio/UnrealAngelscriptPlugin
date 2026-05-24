@@ -11,7 +11,7 @@
 // Existing consumers continue to `#include "Shared/AngelscriptTestUtilities.h"`
 // (directly or transitively through `AngelscriptTestMacros.h`) without any
 // callsite change — every public symbol is still in the
-// `AngelscriptTestSupport::` namespace (or at top-level for
+// `` namespace (or at top-level for
 // `FAngelscriptTestEngineScopeAccess`).
 //
 // New code should prefer including the specific themed sub-header it needs,

@@ -9,8 +9,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptMessageDialogBindingsTest,
@@ -36,7 +34,7 @@ int InputSettings_GetDefaultExists()
 			TestRunner->AddInfo(TEXT("UInputSettings not available, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int InputSettings_GetDefaultExists()"),
 			TEXT("UInputSettings::GetInputSettings returns non-null"), 1);
 	}

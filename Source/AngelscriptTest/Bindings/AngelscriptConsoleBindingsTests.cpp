@@ -13,8 +13,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 namespace
 {
@@ -331,7 +329,7 @@ int CommandReady()
 		}
 
 		asIScriptModule& Module = ModuleScope->GetModule();
-		bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
+		bPassed &= ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int CommandReady()"), TEXT("Console command argument module should initialize"), 1);
 		bPassed &= ConsoleScope.VerifyCommandExists(CommandName, TEXT("Console command argument setup"));
 		bPassed &= ConsoleScope.ExecuteCommand(CommandName, Args, TEXT("Console command argument execution"));
@@ -344,516 +342,514 @@ int CommandReady()
 	}
 }
 
-namespace AngelscriptTestBindings
+
+bool RunConsoleVariableTypesSection(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine)
 {
+	FConsoleManagerScope ConsoleScope(Test, TEXT("VariableTypes"));
+	const FString IntName = ConsoleScope.MakeName(TEXT("int"));
+	const FString FloatName = ConsoleScope.MakeName(TEXT("float"));
+	const FString BoolName = ConsoleScope.MakeName(TEXT("bool"));
+	const FString StringName = ConsoleScope.MakeName(TEXT("string"));
 
-	bool RunConsoleVariableTypesSection(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine)
+	bool bPassed = true;
 	{
-		FConsoleManagerScope ConsoleScope(Test, TEXT("VariableTypes"));
-		const FString IntName = ConsoleScope.MakeName(TEXT("int"));
-		const FString FloatName = ConsoleScope.MakeName(TEXT("float"));
-		const FString BoolName = ConsoleScope.MakeName(TEXT("bool"));
-		const FString StringName = ConsoleScope.MakeName(TEXT("string"));
-
-		bool bPassed = true;
-		{
-			FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_VariableTypes"), FString::Printf(TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_VariableTypes"), FString::Printf(TEXT(R"(
 int IntDefault()
 {
-	FConsoleVariable IntVar("%s", 5, "Test int cvar");
-	return IntVar.GetInt();
+FConsoleVariable IntVar("%s", 5, "Test int cvar");
+return IntVar.GetInt();
 }
 int IntUpdated()
 {
-	FConsoleVariable IntVar("%s", 5, "Test int cvar");
-	IntVar.SetInt(42);
-	return IntVar.GetInt();
+FConsoleVariable IntVar("%s", 5, "Test int cvar");
+IntVar.SetInt(42);
+return IntVar.GetInt();
 }
 float FloatDefault()
 {
-	FConsoleVariable FloatVar("%s", 1.5f, "Test float cvar");
-	return FloatVar.GetFloat();
+FConsoleVariable FloatVar("%s", 1.5f, "Test float cvar");
+return FloatVar.GetFloat();
 }
 float FloatUpdated()
 {
-	FConsoleVariable FloatVar("%s", 1.5f, "Test float cvar");
-	FloatVar.SetFloat(3.25f);
-	return FloatVar.GetFloat();
+FConsoleVariable FloatVar("%s", 1.5f, "Test float cvar");
+FloatVar.SetFloat(3.25f);
+return FloatVar.GetFloat();
 }
 int BoolDefault()
 {
-	FConsoleVariable BoolVar("%s", true, "Test bool cvar");
-	return BoolVar.GetBool() ? 1 : 0;
+FConsoleVariable BoolVar("%s", true, "Test bool cvar");
+return BoolVar.GetBool() ? 1 : 0;
 }
 int BoolUpdated()
 {
-	FConsoleVariable BoolVar("%s", true, "Test bool cvar");
-	BoolVar.SetBool(false);
-	return BoolVar.GetBool() ? 1 : 0;
+FConsoleVariable BoolVar("%s", true, "Test bool cvar");
+BoolVar.SetBool(false);
+return BoolVar.GetBool() ? 1 : 0;
 }
 int StringDefault()
 {
-	FConsoleVariable StringVar("%s", "DefaultValue", "Test string cvar");
-	return StringVar.GetString() == "DefaultValue" ? 1 : 0;
+FConsoleVariable StringVar("%s", "DefaultValue", "Test string cvar");
+return StringVar.GetString() == "DefaultValue" ? 1 : 0;
 }
 int StringUpdated()
 {
-	FConsoleVariable StringVar("%s", "DefaultValue", "Test string cvar");
-	StringVar.SetString("UpdatedValue");
-	return StringVar.GetString() == "UpdatedValue" ? 1 : 0;
+FConsoleVariable StringVar("%s", "DefaultValue", "Test string cvar");
+StringVar.SetString("UpdatedValue");
+return StringVar.GetString() == "UpdatedValue" ? 1 : 0;
 }
 )"),
-				*IntName,
-				*IntName,
-				*FloatName,
-				*FloatName,
-				*BoolName,
-				*BoolName,
-				*StringName,
-				*StringName));
-			if (!ModuleScope.IsValid())
-			{
-				return false;
-			}
-
-			asIScriptModule& Module = ModuleScope.GetModule();
-			bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
-				TEXT("int IntDefault()"), TEXT("FConsoleVariable int default should read back"), 5);
-			bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
-				TEXT("int IntUpdated()"), TEXT("FConsoleVariable int SetInt should read back"), 42);
-			bPassed &= AngelscriptTestBindings::ExpectGlobalReturnFloat(Test, Engine, Module, 
-				TEXT("float FloatDefault()"), TEXT("FConsoleVariable float default should read back"), 1.5f, 0.01f);
-			bPassed &= AngelscriptTestBindings::ExpectGlobalReturnFloat(Test, Engine, Module, 
-				TEXT("float FloatUpdated()"), TEXT("FConsoleVariable float SetFloat should read back"), 3.25f, 0.01f);
-			bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
-				TEXT("int BoolDefault()"), TEXT("FConsoleVariable bool default should read back"), 1);
-			bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
-				TEXT("int BoolUpdated()"), TEXT("FConsoleVariable bool SetBool should read back"), 0);
-			bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
-				TEXT("int StringDefault()"), TEXT("FConsoleVariable string default should read back"), 1);
-			bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
-				TEXT("int StringUpdated()"), TEXT("FConsoleVariable string SetString should read back"), 1);
-		}
-
-		bPassed &= ConsoleScope.VerifyInt(IntName, 42, TEXT("Console variable type native int"));
-		bPassed &= ConsoleScope.VerifyFloat(FloatName, 3.25f, TEXT("Console variable type native float"));
-		bPassed &= ConsoleScope.VerifyBool(BoolName, false, TEXT("Console variable type native bool"));
-		bPassed &= ConsoleScope.VerifyString(StringName, TEXT("UpdatedValue"), TEXT("Console variable type native string"));
-		bPassed &= ConsoleScope.VerifyNoLeaks(TEXT("Console variable type section"));
-		return bPassed;
-	}
-
-	bool RunConsoleVariableExistingSection(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine)
-	{
-		FConsoleManagerScope ConsoleScope(Test, TEXT("VariableExisting"));
-		const FString ExistingName = ConsoleScope.MakeName(TEXT("existing"));
-
-		IConsoleVariable* ExistingVariable = ConsoleScope.RegisterIntVariable(
-			ExistingName,
-			7,
-			TEXT("Existing native cvar for bindings test"));
-		if (!Test.TestNotNull(TEXT("Console variable existing section should pre-register native cvar"), ExistingVariable))
+			*IntName,
+			*IntName,
+			*FloatName,
+			*FloatName,
+			*BoolName,
+			*BoolName,
+			*StringName,
+			*StringName));
+		if (!ModuleScope.IsValid())
 		{
 			return false;
 		}
 
-		bool bPassed = true;
-		{
-			FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_VariableExisting"), FString::Printf(TEXT(R"(
+		asIScriptModule& Module = ModuleScope.GetModule();
+		bPassed &= ExpectGlobalInt(Test, Engine, Module, 
+			TEXT("int IntDefault()"), TEXT("FConsoleVariable int default should read back"), 5);
+		bPassed &= ExpectGlobalInt(Test, Engine, Module, 
+			TEXT("int IntUpdated()"), TEXT("FConsoleVariable int SetInt should read back"), 42);
+		bPassed &= ExpectGlobalReturnFloat(Test, Engine, Module, 
+			TEXT("float FloatDefault()"), TEXT("FConsoleVariable float default should read back"), 1.5f, 0.01f);
+		bPassed &= ExpectGlobalReturnFloat(Test, Engine, Module, 
+			TEXT("float FloatUpdated()"), TEXT("FConsoleVariable float SetFloat should read back"), 3.25f, 0.01f);
+		bPassed &= ExpectGlobalInt(Test, Engine, Module, 
+			TEXT("int BoolDefault()"), TEXT("FConsoleVariable bool default should read back"), 1);
+		bPassed &= ExpectGlobalInt(Test, Engine, Module, 
+			TEXT("int BoolUpdated()"), TEXT("FConsoleVariable bool SetBool should read back"), 0);
+		bPassed &= ExpectGlobalInt(Test, Engine, Module, 
+			TEXT("int StringDefault()"), TEXT("FConsoleVariable string default should read back"), 1);
+		bPassed &= ExpectGlobalInt(Test, Engine, Module, 
+			TEXT("int StringUpdated()"), TEXT("FConsoleVariable string SetString should read back"), 1);
+	}
+
+	bPassed &= ConsoleScope.VerifyInt(IntName, 42, TEXT("Console variable type native int"));
+	bPassed &= ConsoleScope.VerifyFloat(FloatName, 3.25f, TEXT("Console variable type native float"));
+	bPassed &= ConsoleScope.VerifyBool(BoolName, false, TEXT("Console variable type native bool"));
+	bPassed &= ConsoleScope.VerifyString(StringName, TEXT("UpdatedValue"), TEXT("Console variable type native string"));
+	bPassed &= ConsoleScope.VerifyNoLeaks(TEXT("Console variable type section"));
+	return bPassed;
+}
+
+bool RunConsoleVariableExistingSection(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine)
+{
+	FConsoleManagerScope ConsoleScope(Test, TEXT("VariableExisting"));
+	const FString ExistingName = ConsoleScope.MakeName(TEXT("existing"));
+
+	IConsoleVariable* ExistingVariable = ConsoleScope.RegisterIntVariable(
+		ExistingName,
+		7,
+		TEXT("Existing native cvar for bindings test"));
+	if (!Test.TestNotNull(TEXT("Console variable existing section should pre-register native cvar"), ExistingVariable))
+	{
+		return false;
+	}
+
+	bool bPassed = true;
+	{
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_VariableExisting"), FString::Printf(TEXT(R"(
 int ExistingInitial()
 {
-	FConsoleVariable ExistingVar("%s", 99, "Should reuse existing native cvar");
-	return ExistingVar.GetInt();
+FConsoleVariable ExistingVar("%s", 99, "Should reuse existing native cvar");
+return ExistingVar.GetInt();
 }
 int ExistingUpdated()
 {
-	FConsoleVariable ExistingVar("%s", 99, "Should reuse existing native cvar");
-	ExistingVar.SetInt(21);
-	return ExistingVar.GetInt();
+FConsoleVariable ExistingVar("%s", 99, "Should reuse existing native cvar");
+ExistingVar.SetInt(21);
+return ExistingVar.GetInt();
 }
 )"), *ExistingName, *ExistingName));
-			if (!ModuleScope.IsValid())
-			{
-				return false;
-			}
-
-			asIScriptModule& Module = ModuleScope.GetModule();
-			bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
-				TEXT("int ExistingInitial()"), TEXT("Existing native CVar initial value should be reused"), 7);
-			bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
-				TEXT("int ExistingUpdated()"), TEXT("Existing native CVar should accept script SetInt"), 21);
-		}
-
-		bPassed &= ConsoleScope.VerifyInt(ExistingName, 21, TEXT("Console variable existing native value"));
-		bPassed &= ConsoleScope.VerifyNoLeaks(TEXT("Console variable existing section"));
-		return bPassed;
-	}
-
-	bool RunConsoleVariableIdentitySection(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine)
-	{
-		FConsoleManagerScope ConsoleScope(Test, TEXT("VariableIdentity"));
-		const FString ExistingName = ConsoleScope.MakeName(TEXT("existingIdentity"));
-
-		IConsoleVariable* ExistingVariable = ConsoleScope.RegisterIntVariable(
-			ExistingName,
-			7,
-			TEXT("Existing native cvar identity/help/flags should survive bindings test"),
-			ECVF_Cheat);
-		if (!Test.TestNotNull(TEXT("Console variable identity section should pre-register native cvar"), ExistingVariable))
+		if (!ModuleScope.IsValid())
 		{
 			return false;
 		}
 
-		const FString ExistingHelp = ExistingVariable->GetHelp();
-		const EConsoleVariableFlags ExistingFlags = ExistingVariable->GetFlags();
+		asIScriptModule& Module = ModuleScope.GetModule();
+		bPassed &= ExpectGlobalInt(Test, Engine, Module, 
+			TEXT("int ExistingInitial()"), TEXT("Existing native CVar initial value should be reused"), 7);
+		bPassed &= ExpectGlobalInt(Test, Engine, Module, 
+			TEXT("int ExistingUpdated()"), TEXT("Existing native CVar should accept script SetInt"), 21);
+	}
 
-		bool bPassed = true;
-		{
-			FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_VariableIdentity"), FString::Printf(TEXT(R"(
+	bPassed &= ConsoleScope.VerifyInt(ExistingName, 21, TEXT("Console variable existing native value"));
+	bPassed &= ConsoleScope.VerifyNoLeaks(TEXT("Console variable existing section"));
+	return bPassed;
+}
+
+bool RunConsoleVariableIdentitySection(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine)
+{
+	FConsoleManagerScope ConsoleScope(Test, TEXT("VariableIdentity"));
+	const FString ExistingName = ConsoleScope.MakeName(TEXT("existingIdentity"));
+
+	IConsoleVariable* ExistingVariable = ConsoleScope.RegisterIntVariable(
+		ExistingName,
+		7,
+		TEXT("Existing native cvar identity/help/flags should survive bindings test"),
+		ECVF_Cheat);
+	if (!Test.TestNotNull(TEXT("Console variable identity section should pre-register native cvar"), ExistingVariable))
+	{
+		return false;
+	}
+
+	const FString ExistingHelp = ExistingVariable->GetHelp();
+	const EConsoleVariableFlags ExistingFlags = ExistingVariable->GetFlags();
+
+	bool bPassed = true;
+	{
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_VariableIdentity"), FString::Printf(TEXT(R"(
 int ExistingInitial()
 {
-	FConsoleVariable ExistingVar("%s", 99, "Should not replace native cvar");
-	return ExistingVar.GetInt();
+FConsoleVariable ExistingVar("%s", 99, "Should not replace native cvar");
+return ExistingVar.GetInt();
 }
 int ExistingUpdated()
 {
-	FConsoleVariable ExistingVar("%s", 99, "Should not replace native cvar");
-	ExistingVar.SetInt(21);
-	return ExistingVar.GetInt();
+FConsoleVariable ExistingVar("%s", 99, "Should not replace native cvar");
+ExistingVar.SetInt(21);
+return ExistingVar.GetInt();
 }
 )"), *ExistingName, *ExistingName));
-			if (!ModuleScope.IsValid())
-			{
-				return false;
-			}
-
-			asIScriptModule& Module = ModuleScope.GetModule();
-			bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
-				TEXT("int ExistingInitial()"), TEXT("Existing identity CVar initial value should be reused"), 7);
-			bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
-				TEXT("int ExistingUpdated()"), TEXT("Existing identity CVar should accept script SetInt"), 21);
-		}
-
-		bPassed &= ConsoleScope.VerifyInt(ExistingName, 21, TEXT("Console variable identity native value"));
-		bPassed &= ConsoleScope.VerifyIdentity(
-			ExistingName,
-			ExistingVariable,
-			ExistingHelp,
-			ExistingFlags,
-			TEXT("Console variable identity native metadata"));
-		bPassed &= Test.TestTrue(
-			TEXT("Console variable identity should preserve the native cheat flag"),
-			ExistingVariable->TestFlags(ECVF_Cheat));
-		bPassed &= ConsoleScope.VerifyNoLeaks(TEXT("Console variable identity section"));
-		return bPassed;
-	}
-
-	bool RunConsoleCommandBasicSection(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine)
-	{
-		FConsoleManagerScope ConsoleScope(Test, TEXT("CommandBasic"));
-		const FString CommandName = ConsoleScope.MakeName(TEXT("command"));
-		const FString OutputName = ConsoleScope.MakeName(TEXT("output"));
-
-		IConsoleVariable* OutputVariable = ConsoleScope.RegisterIntVariable(
-			OutputName,
-			-1,
-			TEXT("Console command output sink"));
-		if (!Test.TestNotNull(TEXT("Console command basic section should pre-register output cvar"), OutputVariable))
+		if (!ModuleScope.IsValid())
 		{
 			return false;
 		}
 
-		bool bPassed = true;
-		TUniquePtr<FScopedAngelscriptModule> ModuleScope = MakeUnique<FScopedAngelscriptModule>(
-			Test,
-			Engine, 
-			TEXT("CommandBasic"),
-			FString::Printf(TEXT(R"(
+		asIScriptModule& Module = ModuleScope.GetModule();
+		bPassed &= ExpectGlobalInt(Test, Engine, Module, 
+			TEXT("int ExistingInitial()"), TEXT("Existing identity CVar initial value should be reused"), 7);
+		bPassed &= ExpectGlobalInt(Test, Engine, Module, 
+			TEXT("int ExistingUpdated()"), TEXT("Existing identity CVar should accept script SetInt"), 21);
+	}
+
+	bPassed &= ConsoleScope.VerifyInt(ExistingName, 21, TEXT("Console variable identity native value"));
+	bPassed &= ConsoleScope.VerifyIdentity(
+		ExistingName,
+		ExistingVariable,
+		ExistingHelp,
+		ExistingFlags,
+		TEXT("Console variable identity native metadata"));
+	bPassed &= Test.TestTrue(
+		TEXT("Console variable identity should preserve the native cheat flag"),
+		ExistingVariable->TestFlags(ECVF_Cheat));
+	bPassed &= ConsoleScope.VerifyNoLeaks(TEXT("Console variable identity section"));
+	return bPassed;
+}
+
+bool RunConsoleCommandBasicSection(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine)
+{
+	FConsoleManagerScope ConsoleScope(Test, TEXT("CommandBasic"));
+	const FString CommandName = ConsoleScope.MakeName(TEXT("command"));
+	const FString OutputName = ConsoleScope.MakeName(TEXT("output"));
+
+	IConsoleVariable* OutputVariable = ConsoleScope.RegisterIntVariable(
+		OutputName,
+		-1,
+		TEXT("Console command output sink"));
+	if (!Test.TestNotNull(TEXT("Console command basic section should pre-register output cvar"), OutputVariable))
+	{
+		return false;
+	}
+
+	bool bPassed = true;
+	TUniquePtr<FScopedAngelscriptModule> ModuleScope = MakeUnique<FScopedAngelscriptModule>(
+		Test,
+		Engine, 
+		TEXT("CommandBasic"),
+		FString::Printf(TEXT(R"(
 const FConsoleCommand Command("%s", n"OnCommand");
 
 void OnCommand(const TArray<FString>& Args)
 {
-	FConsoleVariable Output("%s", 0, "Command output");
-	Output.SetInt(Args.Num());
+FConsoleVariable Output("%s", 0, "Command output");
+Output.SetInt(Args.Num());
 }
 
 int CommandReady()
 {
-	return 1;
+return 1;
 }
 )"), *CommandName, *OutputName));
-		if (!ModuleScope->IsValid())
-		{
-			return false;
-		}
-
-		asIScriptModule& Module = ModuleScope->GetModule();
-		bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
-			TEXT("int CommandReady()"), TEXT("Console command basic module should initialize"), 1);
-		bPassed &= ConsoleScope.VerifyCommandExists(CommandName, TEXT("Console command basic setup"));
-
-		TArray<FString> Args;
-		Args.Add(TEXT("One"));
-		Args.Add(TEXT("Two"));
-		Args.Add(TEXT("Three"));
-		bPassed &= ConsoleScope.ExecuteCommand(CommandName, Args, TEXT("Console command basic execution"));
-		bPassed &= ConsoleScope.VerifyInt(OutputName, 3, TEXT("Console command basic execution"));
-
-		ModuleScope.Reset();
-		bPassed &= ConsoleScope.VerifyCommandMissing(CommandName, TEXT("Console command basic unload"));
-		bPassed &= ConsoleScope.VerifyNoLeaks(TEXT("Console command basic section"));
-		return bPassed;
+	if (!ModuleScope->IsValid())
+	{
+		return false;
 	}
 
-	bool RunConsoleCommandArgumentEmptySection(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine)
+	asIScriptModule& Module = ModuleScope->GetModule();
+	bPassed &= ExpectGlobalInt(Test, Engine, Module, 
+		TEXT("int CommandReady()"), TEXT("Console command basic module should initialize"), 1);
+	bPassed &= ConsoleScope.VerifyCommandExists(CommandName, TEXT("Console command basic setup"));
+
+	TArray<FString> Args;
+	Args.Add(TEXT("One"));
+	Args.Add(TEXT("Two"));
+	Args.Add(TEXT("Three"));
+	bPassed &= ConsoleScope.ExecuteCommand(CommandName, Args, TEXT("Console command basic execution"));
+	bPassed &= ConsoleScope.VerifyInt(OutputName, 3, TEXT("Console command basic execution"));
+
+	ModuleScope.Reset();
+	bPassed &= ConsoleScope.VerifyCommandMissing(CommandName, TEXT("Console command basic unload"));
+	bPassed &= ConsoleScope.VerifyNoLeaks(TEXT("Console command basic section"));
+	return bPassed;
+}
+
+bool RunConsoleCommandArgumentEmptySection(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine)
+{
+	const TArray<FString> Args;
+	return RunConsoleCommandArgumentSection(
+		Test,
+		Engine, 
+		TEXT("CommandArgumentEmpty"),
+		Args,
+		TEXT("<empty>"));
+}
+
+bool RunConsoleCommandArgumentContentSection(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine)
+{
+	TArray<FString> Args;
+	Args.Add(TEXT("One"));
+	Args.Add(TEXT("Two Words"));
+	Args.Add(TEXT("Three=Value"));
+	return RunConsoleCommandArgumentSection(
+		Test,
+		Engine, 
+		TEXT("CommandArgumentContent"),
+		Args,
+		TEXT("One|Two Words|Three=Value"));
+}
+
+bool RunConsoleCommandReplacementSection(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine)
+{
+	FConsoleManagerScope ConsoleScope(Test, TEXT("CommandReplacement"));
+	const FString CommandName = ConsoleScope.MakeName(TEXT("command"));
+	const FString OutputName = ConsoleScope.MakeName(TEXT("output"));
+
+	IConsoleVariable* OutputVariable = ConsoleScope.RegisterIntVariable(
+		OutputName,
+		-1,
+		TEXT("Console command replacement output sink"));
+	if (!Test.TestNotNull(TEXT("Console command replacement section should pre-register output cvar"), OutputVariable))
 	{
-		const TArray<FString> Args;
-		return RunConsoleCommandArgumentSection(
-			Test,
-			Engine, 
-			TEXT("CommandArgumentEmpty"),
-			Args,
-			TEXT("<empty>"));
+		return false;
 	}
 
-	bool RunConsoleCommandArgumentContentSection(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine)
+	bool bPassed = true;
+	TUniquePtr<FScopedAngelscriptModule> OriginalScope = MakeUnique<FScopedAngelscriptModule>(
+		Test,
+		Engine, 
+		TEXT("CommandReplacementOriginal"),
+		MakeCommandSource(CommandName, OutputName, TEXT("OnOriginalCommand"), 11));
+	if (!OriginalScope->IsValid())
 	{
-		TArray<FString> Args;
-		Args.Add(TEXT("One"));
-		Args.Add(TEXT("Two Words"));
-		Args.Add(TEXT("Three=Value"));
-		return RunConsoleCommandArgumentSection(
-			Test,
-			Engine, 
-			TEXT("CommandArgumentContent"),
-			Args,
-			TEXT("One|Two Words|Three=Value"));
+		return false;
 	}
 
-	bool RunConsoleCommandReplacementSection(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine)
+	bPassed &= ExpectGlobalInt(Test, Engine, OriginalScope->GetModule(), 
+		TEXT("int CommandReady()"), TEXT("Console command original replacement module should initialize"), 1);
+
 	{
-		FConsoleManagerScope ConsoleScope(Test, TEXT("CommandReplacement"));
-		const FString CommandName = ConsoleScope.MakeName(TEXT("command"));
-		const FString OutputName = ConsoleScope.MakeName(TEXT("output"));
-
-		IConsoleVariable* OutputVariable = ConsoleScope.RegisterIntVariable(
-			OutputName,
-			-1,
-			TEXT("Console command replacement output sink"));
-		if (!Test.TestNotNull(TEXT("Console command replacement section should pre-register output cvar"), OutputVariable))
-		{
-			return false;
-		}
-
-		bool bPassed = true;
-		TUniquePtr<FScopedAngelscriptModule> OriginalScope = MakeUnique<FScopedAngelscriptModule>(
+		FScopedAngelscriptModule ReplacementScope(
 			Test,
-			Engine, 
-			TEXT("CommandReplacementOriginal"),
-			MakeCommandSource(CommandName, OutputName, TEXT("OnOriginalCommand"), 11));
-		if (!OriginalScope->IsValid())
-		{
-			return false;
-		}
-
-		bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, OriginalScope->GetModule(), 
-			TEXT("int CommandReady()"), TEXT("Console command original replacement module should initialize"), 1);
-
-		{
-			FScopedAngelscriptModule ReplacementScope(
-				Test,
-				Engine,
-				TEXT("ASConsole_CommandReplacementActive"),
-				MakeCommandSource(CommandName, OutputName, TEXT("OnReplacementCommand"), 22));
-			if (!ReplacementScope.IsValid())
-			{
-				return false;
-			}
-
-			bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, ReplacementScope.GetModule(), 
-				TEXT("int CommandReady()"), TEXT("Console command replacement module should initialize"), 1);
-			bPassed &= ConsoleScope.VerifyCommandExists(CommandName, TEXT("Console command replacement setup"));
-			bPassed &= ConsoleScope.ExecuteCommand(CommandName, {}, TEXT("Console command replacement execution"));
-			bPassed &= ConsoleScope.VerifyInt(OutputName, 22, TEXT("Console command replacement execution"));
-		}
-
-		bPassed &= ConsoleScope.VerifyCommandMissing(CommandName, TEXT("Console command replacement unload"));
-		OriginalScope.Reset();
-		bPassed &= ConsoleScope.VerifyNoLeaks(TEXT("Console command replacement section"));
-		return bPassed;
-	}
-
-	bool RunConsoleCommandLifecycleSection(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine)
-	{
-		FConsoleManagerScope ConsoleScope(Test, TEXT("CommandLifecycle"));
-		const FString CommandName = ConsoleScope.MakeName(TEXT("command"));
-		const FString OutputName = ConsoleScope.MakeName(TEXT("output"));
-
-		IConsoleVariable* OutputVariable = ConsoleScope.RegisterIntVariable(
-			OutputName,
-			-1,
-			TEXT("Console command lifecycle output sink"));
-		if (!Test.TestNotNull(TEXT("Console command lifecycle section should pre-register output cvar"), OutputVariable))
-		{
-			return false;
-		}
-
-		bool bPassed = true;
-		TUniquePtr<FScopedAngelscriptModule> OriginalScope = MakeUnique<FScopedAngelscriptModule>(
-			Test,
-			Engine, 
-			TEXT("CommandLifecycleOriginal"),
-			MakeCommandSource(CommandName, OutputName, TEXT("OnOriginalCommand"), 11));
-		if (!OriginalScope->IsValid())
-		{
-			return false;
-		}
-
-		bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, OriginalScope->GetModule(), 
-			TEXT("int CommandReady()"), TEXT("Console command lifecycle original module should initialize"), 1);
-		bPassed &= ConsoleScope.VerifyCommandExists(CommandName, TEXT("Console command lifecycle original setup"));
-		bPassed &= ConsoleScope.ExecuteCommand(CommandName, {}, TEXT("Console command lifecycle original execution"));
-		bPassed &= ConsoleScope.VerifyInt(OutputName, 11, TEXT("Console command lifecycle original execution"));
-
-		TUniquePtr<FScopedAngelscriptModule> ReplacementScope = MakeUnique<FScopedAngelscriptModule>(
-			Test,
-			Engine, 
-			TEXT("CommandLifecycleReplacement"),
+			Engine,
+			TEXT("ASConsole_CommandReplacementActive"),
 			MakeCommandSource(CommandName, OutputName, TEXT("OnReplacementCommand"), 22));
-		if (!ReplacementScope->IsValid())
+		if (!ReplacementScope.IsValid())
 		{
 			return false;
 		}
 
-		bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, ReplacementScope->GetModule(), 
-			TEXT("int CommandReady()"), TEXT("Console command lifecycle replacement module should initialize"), 1);
-		bPassed &= ConsoleScope.VerifyCommandExists(CommandName, TEXT("Console command lifecycle replacement setup"));
-		bPassed &= ConsoleScope.ExecuteCommand(CommandName, {}, TEXT("Console command lifecycle replacement execution"));
-		bPassed &= ConsoleScope.VerifyInt(OutputName, 22, TEXT("Console command lifecycle replacement execution"));
-
-		OriginalScope.Reset();
-		bPassed &= ConsoleScope.VerifyCommandExists(CommandName, TEXT("Console command lifecycle original unload"));
-		bPassed &= ConsoleScope.ExecuteCommand(CommandName, {}, TEXT("Console command lifecycle replacement after original unload"));
-		bPassed &= ConsoleScope.VerifyInt(OutputName, 22, TEXT("Console command lifecycle replacement after original unload"));
-
-		ReplacementScope.Reset();
-		bPassed &= ConsoleScope.VerifyCommandMissing(CommandName, TEXT("Console command lifecycle replacement unload"));
-		bPassed &= ConsoleScope.VerifyNoLeaks(TEXT("Console command lifecycle section"));
-		return bPassed;
+		bPassed &= ExpectGlobalInt(Test, Engine, ReplacementScope.GetModule(), 
+			TEXT("int CommandReady()"), TEXT("Console command replacement module should initialize"), 1);
+		bPassed &= ConsoleScope.VerifyCommandExists(CommandName, TEXT("Console command replacement setup"));
+		bPassed &= ConsoleScope.ExecuteCommand(CommandName, {}, TEXT("Console command replacement execution"));
+		bPassed &= ConsoleScope.VerifyInt(OutputName, 22, TEXT("Console command replacement execution"));
 	}
 
-	bool RunConsoleCommandMissingHandlerSection(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine)
-	{
-		FConsoleManagerScope ConsoleScope(Test, TEXT("CommandMissingHandler"));
-		const FString CommandName = ConsoleScope.MakeName(TEXT("command"));
+	bPassed &= ConsoleScope.VerifyCommandMissing(CommandName, TEXT("Console command replacement unload"));
+	OriginalScope.Reset();
+	bPassed &= ConsoleScope.VerifyNoLeaks(TEXT("Console command replacement section"));
+	return bPassed;
+}
 
-		bool bPassed = true;
-		{
-			FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_CommandMissingHandler"), FString::Printf(TEXT(R"(
+bool RunConsoleCommandLifecycleSection(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine)
+{
+	FConsoleManagerScope ConsoleScope(Test, TEXT("CommandLifecycle"));
+	const FString CommandName = ConsoleScope.MakeName(TEXT("command"));
+	const FString OutputName = ConsoleScope.MakeName(TEXT("output"));
+
+	IConsoleVariable* OutputVariable = ConsoleScope.RegisterIntVariable(
+		OutputName,
+		-1,
+		TEXT("Console command lifecycle output sink"));
+	if (!Test.TestNotNull(TEXT("Console command lifecycle section should pre-register output cvar"), OutputVariable))
+	{
+		return false;
+	}
+
+	bool bPassed = true;
+	TUniquePtr<FScopedAngelscriptModule> OriginalScope = MakeUnique<FScopedAngelscriptModule>(
+		Test,
+		Engine, 
+		TEXT("CommandLifecycleOriginal"),
+		MakeCommandSource(CommandName, OutputName, TEXT("OnOriginalCommand"), 11));
+	if (!OriginalScope->IsValid())
+	{
+		return false;
+	}
+
+	bPassed &= ExpectGlobalInt(Test, Engine, OriginalScope->GetModule(), 
+		TEXT("int CommandReady()"), TEXT("Console command lifecycle original module should initialize"), 1);
+	bPassed &= ConsoleScope.VerifyCommandExists(CommandName, TEXT("Console command lifecycle original setup"));
+	bPassed &= ConsoleScope.ExecuteCommand(CommandName, {}, TEXT("Console command lifecycle original execution"));
+	bPassed &= ConsoleScope.VerifyInt(OutputName, 11, TEXT("Console command lifecycle original execution"));
+
+	TUniquePtr<FScopedAngelscriptModule> ReplacementScope = MakeUnique<FScopedAngelscriptModule>(
+		Test,
+		Engine, 
+		TEXT("CommandLifecycleReplacement"),
+		MakeCommandSource(CommandName, OutputName, TEXT("OnReplacementCommand"), 22));
+	if (!ReplacementScope->IsValid())
+	{
+		return false;
+	}
+
+	bPassed &= ExpectGlobalInt(Test, Engine, ReplacementScope->GetModule(), 
+		TEXT("int CommandReady()"), TEXT("Console command lifecycle replacement module should initialize"), 1);
+	bPassed &= ConsoleScope.VerifyCommandExists(CommandName, TEXT("Console command lifecycle replacement setup"));
+	bPassed &= ConsoleScope.ExecuteCommand(CommandName, {}, TEXT("Console command lifecycle replacement execution"));
+	bPassed &= ConsoleScope.VerifyInt(OutputName, 22, TEXT("Console command lifecycle replacement execution"));
+
+	OriginalScope.Reset();
+	bPassed &= ConsoleScope.VerifyCommandExists(CommandName, TEXT("Console command lifecycle original unload"));
+	bPassed &= ConsoleScope.ExecuteCommand(CommandName, {}, TEXT("Console command lifecycle replacement after original unload"));
+	bPassed &= ConsoleScope.VerifyInt(OutputName, 22, TEXT("Console command lifecycle replacement after original unload"));
+
+	ReplacementScope.Reset();
+	bPassed &= ConsoleScope.VerifyCommandMissing(CommandName, TEXT("Console command lifecycle replacement unload"));
+	bPassed &= ConsoleScope.VerifyNoLeaks(TEXT("Console command lifecycle section"));
+	return bPassed;
+}
+
+bool RunConsoleCommandMissingHandlerSection(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine)
+{
+	FConsoleManagerScope ConsoleScope(Test, TEXT("CommandMissingHandler"));
+	const FString CommandName = ConsoleScope.MakeName(TEXT("command"));
+
+	bool bPassed = true;
+	{
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_CommandMissingHandler"), FString::Printf(TEXT(R"(
 void Trigger()
 {
-	const FConsoleCommand Command("%s", n"MissingHandler");
+const FConsoleCommand Command("%s", n"MissingHandler");
 }
 )"), *CommandName));
-			if (!ModuleScope.IsValid())
-			{
-				return false;
-			}
-
-			Test.AddExpectedError(
-				TEXT("Could not find global function 'MissingHandler' to bind as console command."),
-				EAutomationExpectedErrorFlags::Contains,
-				1);
-			Test.AddExpectedError(ModuleScope.GetModuleName(), EAutomationExpectedErrorFlags::Contains, 1);
-			Test.AddExpectedError(TEXT("void Trigger() | Line"), EAutomationExpectedErrorFlags::Contains, 1);
-
-			asIScriptModule& Module = ModuleScope.GetModule();
-			bPassed &= AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(
-				Test,
-				Engine,
-				Module, 
-				TEXT("void Trigger()"),
-				TEXT("Missing console command handler should throw"),
-				TEXT("Could not find global function 'MissingHandler' to bind as console command."));
-			bPassed &= ConsoleScope.VerifyCommandMissing(CommandName, TEXT("Console command missing handler failure"));
+		if (!ModuleScope.IsValid())
+		{
+			return false;
 		}
 
-		bPassed &= ConsoleScope.VerifyNoLeaks(TEXT("Console command missing handler section"));
-		return bPassed;
+		Test.AddExpectedError(
+			TEXT("Could not find global function 'MissingHandler' to bind as console command."),
+			EAutomationExpectedErrorFlags::Contains,
+			1);
+		Test.AddExpectedError(ModuleScope.GetModuleName(), EAutomationExpectedErrorFlags::Contains, 1);
+		Test.AddExpectedError(TEXT("void Trigger() | Line"), EAutomationExpectedErrorFlags::Contains, 1);
+
+		asIScriptModule& Module = ModuleScope.GetModule();
+		bPassed &= ExecuteFunctionExpectingScriptException(
+			Test,
+			Engine,
+			Module, 
+			TEXT("void Trigger()"),
+			TEXT("Missing console command handler should throw"),
+			TEXT("Could not find global function 'MissingHandler' to bind as console command."));
+		bPassed &= ConsoleScope.VerifyCommandMissing(CommandName, TEXT("Console command missing handler failure"));
 	}
 
-	bool RunConsoleCommandWrongSignatureSection(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine)
-	{
-		FConsoleManagerScope ConsoleScope(Test, TEXT("CommandWrongSignature"));
-		const FString CommandName = ConsoleScope.MakeName(TEXT("command"));
+	bPassed &= ConsoleScope.VerifyNoLeaks(TEXT("Console command missing handler section"));
+	return bPassed;
+}
 
-		bool bPassed = true;
-		{
-			FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_CommandWrongSignature"), FString::Printf(TEXT(R"(
+bool RunConsoleCommandWrongSignatureSection(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine)
+{
+	FConsoleManagerScope ConsoleScope(Test, TEXT("CommandWrongSignature"));
+	const FString CommandName = ConsoleScope.MakeName(TEXT("command"));
+
+	bool bPassed = true;
+	{
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_CommandWrongSignature"), FString::Printf(TEXT(R"(
 void WrongSignature()
 {
 }
 
 void Trigger()
 {
-	const FConsoleCommand Command("%s", n"WrongSignature");
+const FConsoleCommand Command("%s", n"WrongSignature");
 }
 )"), *CommandName));
-			if (!ModuleScope.IsValid())
-			{
-				return false;
-			}
-
-			Test.AddExpectedError(
-				TEXT("Global function for console command must have signature"),
-				EAutomationExpectedErrorFlags::Contains,
-				1);
-			Test.AddExpectedError(ModuleScope.GetModuleName(), EAutomationExpectedErrorFlags::Contains, 1);
-			Test.AddExpectedError(TEXT("void Trigger() | Line"), EAutomationExpectedErrorFlags::Contains, 1);
-
-			asIScriptModule& Module = ModuleScope.GetModule();
-			bPassed &= AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(
-				Test,
-				Engine,
-				Module, 
-				TEXT("void Trigger()"),
-				TEXT("Wrong console command signature should throw"),
-				TEXT("Global function for console command must have signature"));
-			bPassed &= ConsoleScope.VerifyCommandMissing(CommandName, TEXT("Console command wrong signature failure"));
+		if (!ModuleScope.IsValid())
+		{
+			return false;
 		}
 
-		bPassed &= ConsoleScope.VerifyNoLeaks(TEXT("Console command wrong signature section"));
-		return bPassed;
+		Test.AddExpectedError(
+			TEXT("Global function for console command must have signature"),
+			EAutomationExpectedErrorFlags::Contains,
+			1);
+		Test.AddExpectedError(ModuleScope.GetModuleName(), EAutomationExpectedErrorFlags::Contains, 1);
+		Test.AddExpectedError(TEXT("void Trigger() | Line"), EAutomationExpectedErrorFlags::Contains, 1);
+
+		asIScriptModule& Module = ModuleScope.GetModule();
+		bPassed &= ExecuteFunctionExpectingScriptException(
+			Test,
+			Engine,
+			Module, 
+			TEXT("void Trigger()"),
+			TEXT("Wrong console command signature should throw"),
+			TEXT("Global function for console command must have signature"));
+		bPassed &= ConsoleScope.VerifyCommandMissing(CommandName, TEXT("Console command wrong signature failure"));
 	}
 
-	bool RunConsoleLeakSelfCheckSection(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine)
-	{
-		FConsoleManagerScope ConsoleScope(Test, TEXT("LeakSelfCheck"));
-		return ConsoleScope.VerifyNoLeaks(TEXT("Console leak self-check"));
-	}
+	bPassed &= ConsoleScope.VerifyNoLeaks(TEXT("Console command wrong signature section"));
+	return bPassed;
 }
+
+bool RunConsoleLeakSelfCheckSection(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine)
+{
+	FConsoleManagerScope ConsoleScope(Test, TEXT("LeakSelfCheck"));
+	return ConsoleScope.VerifyNoLeaks(TEXT("Console leak self-check"));
+}
+
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptConsoleBindingsTest,
 	"Angelscript.TestModule.Bindings.Console",

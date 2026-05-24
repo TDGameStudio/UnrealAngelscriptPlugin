@@ -17,57 +17,55 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTestSupport
+/**
+ * Spawn a UBoxComponent on `Owner` configured for query-only collision
+ * with `WorldDynamic` object type and `Block` response on every channel.
+ * Mirrors the original `Bindings/AngelscriptWorldCollisionAsyncBindingsTests`
+ * helper. Component is registered and assigned as root.
+ */
+inline UBoxComponent* AddQueryOnlyCollisionBox(
+	AActor& Owner,
+	const FName ComponentName,
+	const FVector& BoxExtent,
+	const FVector& WorldLocation)
 {
-	/**
-	 * Spawn a UBoxComponent on `Owner` configured for query-only collision
-	 * with `WorldDynamic` object type and `Block` response on every channel.
-	 * Mirrors the original `Bindings/AngelscriptWorldCollisionAsyncBindingsTests`
-	 * helper. Component is registered and assigned as root.
-	 */
-	inline UBoxComponent* AddQueryOnlyCollisionBox(
-		AActor& Owner,
-		const FName ComponentName,
-		const FVector& BoxExtent,
-		const FVector& WorldLocation)
-	{
-		UBoxComponent* BoxComponent = NewObject<UBoxComponent>(&Owner, ComponentName);
-		check(BoxComponent != nullptr);
+	UBoxComponent* BoxComponent = NewObject<UBoxComponent>(&Owner, ComponentName);
+	check(BoxComponent != nullptr);
 
-		Owner.AddInstanceComponent(BoxComponent);
-		Owner.SetRootComponent(BoxComponent);
-		BoxComponent->RegisterComponent();
-		BoxComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		BoxComponent->SetCollisionObjectType(ECC_WorldDynamic);
-		BoxComponent->SetCollisionResponseToAllChannels(ECR_Block);
-		BoxComponent->SetGenerateOverlapEvents(true);
-		BoxComponent->SetBoxExtent(BoxExtent);
-		BoxComponent->SetWorldLocation(WorldLocation);
-		return BoxComponent;
-	}
-
-	/**
-	 * Spawn a UBoxComponent on `Owner` configured via the
-	 * `BlockAllDynamic_ProfileName` collision profile. Mirrors the original
-	 * `Bindings/AngelscriptWorldCollisionFunctionLibrary*Tests` helper.
-	 */
-	inline UBoxComponent* AddBlockAllDynamicCollisionBox(
-		AActor& Owner,
-		FName ComponentName,
-		const FVector& BoxExtent,
-		const FVector& WorldLocation)
-	{
-		UBoxComponent* BoxComponent = NewObject<UBoxComponent>(&Owner, ComponentName);
-		check(BoxComponent != nullptr);
-		Owner.AddInstanceComponent(BoxComponent);
-		Owner.SetRootComponent(BoxComponent);
-		BoxComponent->RegisterComponent();
-		BoxComponent->SetCollisionProfileName(UCollisionProfile::BlockAllDynamic_ProfileName);
-		BoxComponent->SetGenerateOverlapEvents(true);
-		BoxComponent->SetBoxExtent(BoxExtent);
-		BoxComponent->SetWorldLocation(WorldLocation);
-		return BoxComponent;
-	}
+	Owner.AddInstanceComponent(BoxComponent);
+	Owner.SetRootComponent(BoxComponent);
+	BoxComponent->RegisterComponent();
+	BoxComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	BoxComponent->SetCollisionObjectType(ECC_WorldDynamic);
+	BoxComponent->SetCollisionResponseToAllChannels(ECR_Block);
+	BoxComponent->SetGenerateOverlapEvents(true);
+	BoxComponent->SetBoxExtent(BoxExtent);
+	BoxComponent->SetWorldLocation(WorldLocation);
+	return BoxComponent;
 }
+
+/**
+ * Spawn a UBoxComponent on `Owner` configured via the
+ * `BlockAllDynamic_ProfileName` collision profile. Mirrors the original
+ * `Bindings/AngelscriptWorldCollisionFunctionLibrary*Tests` helper.
+ */
+inline UBoxComponent* AddBlockAllDynamicCollisionBox(
+	AActor& Owner,
+	FName ComponentName,
+	const FVector& BoxExtent,
+	const FVector& WorldLocation)
+{
+	UBoxComponent* BoxComponent = NewObject<UBoxComponent>(&Owner, ComponentName);
+	check(BoxComponent != nullptr);
+	Owner.AddInstanceComponent(BoxComponent);
+	Owner.SetRootComponent(BoxComponent);
+	BoxComponent->RegisterComponent();
+	BoxComponent->SetCollisionProfileName(UCollisionProfile::BlockAllDynamic_ProfileName);
+	BoxComponent->SetGenerateOverlapEvents(true);
+	BoxComponent->SetBoxExtent(BoxExtent);
+	BoxComponent->SetWorldLocation(WorldLocation);
+	return BoxComponent;
+}
+
 
 #endif // WITH_DEV_AUTOMATION_TESTS

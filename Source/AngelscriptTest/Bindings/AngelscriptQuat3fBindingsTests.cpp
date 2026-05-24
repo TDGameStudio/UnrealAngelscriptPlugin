@@ -12,8 +12,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptQuat3fBindingsTest,
@@ -64,7 +62,7 @@ int Rotator_IsZero()
 			{ TEXT("int Rotator_IsNearlyZero()"),        TEXT("Small rotator is nearly zero"), 1 },
 			{ TEXT("int Rotator_IsZero()"),              TEXT("Zero rotator IsZero"), 1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	TEST_METHOD(FQuatIdentity)
@@ -91,7 +89,7 @@ int Quat_IdentityComponents()
 			{ TEXT("int Quat_IdentityIsNormalized()"), TEXT("Identity quat is normalized"), 1 },
 			{ TEXT("int Quat_IdentityComponents()"),   TEXT("Identity quat has correct XYZW"), 1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	TEST_METHOD(FTransformIdentity)
@@ -120,7 +118,7 @@ int Transform_IdentityScale()
 			{ TEXT("int Transform_IdentityLocation()"), TEXT("Identity transform location is origin"), 1 },
 			{ TEXT("int Transform_IdentityScale()"),    TEXT("Identity transform scale is 1"), 1 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 };
 

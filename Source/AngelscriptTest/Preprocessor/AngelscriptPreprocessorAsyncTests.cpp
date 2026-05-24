@@ -18,7 +18,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace PreprocessorTestHelpers;
-using namespace AngelscriptTestSupport;
 
 // ============================================================================
 // Test class
@@ -310,7 +309,7 @@ public:
 	TEST_METHOD(AsyncMatchesSynchronousPreprocess)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		const FString SharedPadding = MakeAsyncLoadPadding(60000);
 		const FString ProviderRelativePath = TEXT("Tests/Preprocessor/AsyncLoad/Provider.as");
@@ -416,7 +415,7 @@ int UseProvider()
 	TEST_METHOD(AsyncZeroByteFileMatchesSyncPath)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		const FString RelativeFilename = TEXT("Tests/Preprocessor/AsyncZeroByte/ZeroByte.as");
 		FFixtureFile ZeroByteFile = FFixtureFile::CreateZeroByte(RelativeFilename);
@@ -507,7 +506,7 @@ int UseProvider()
 	TEST_METHOD(TreatAsDeletedProducesEmptyModule)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		Engine.ResetDiagnostics();
 

@@ -26,8 +26,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -73,8 +71,8 @@ int Quat_IsIdentity()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_IdentityRoundTrip()"), TEXT("Identity components are 0,0,0,1"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_IsIdentity()"), TEXT("Identity reports IsIdentity"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_IdentityRoundTrip()"), TEXT("Identity components are 0,0,0,1"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_IsIdentity()"), TEXT("Identity reports IsIdentity"), 1);
 	}
 
 	// ====================================================================
@@ -104,8 +102,8 @@ int Quat_IsNormalizedAfterNormalize()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_NormalizeRecoversRotation()"), TEXT("Normalize recovers quarter-turn"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_IsNormalizedAfterNormalize()"), TEXT("IsNormalized after Normalize"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_NormalizeRecoversRotation()"), TEXT("Normalize recovers quarter-turn"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_IsNormalizedAfterNormalize()"), TEXT("IsNormalized after Normalize"), 1);
 	}
 
 	// ====================================================================
@@ -136,8 +134,8 @@ int Quat_UnrotateVectorRecoversOriginal()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_RotateVectorMatchesNative()"), TEXT("RotateVector quarter-turn"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_UnrotateVectorRecoversOriginal()"), TEXT("UnrotateVector recovers original"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_RotateVectorMatchesNative()"), TEXT("RotateVector quarter-turn"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_UnrotateVectorRecoversOriginal()"), TEXT("UnrotateVector recovers original"), 1);
 	}
 
 	// ====================================================================
@@ -175,9 +173,9 @@ int Quat_ToAxisAndAngle_Angle()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_InverseUndoesRotation()"), TEXT("Inverse undoes rotation"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_ToAxisAndAngle_Axis()"), TEXT("ToAxisAndAngle reports UpVector axis"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_ToAxisAndAngle_Angle()"), TEXT("ToAxisAndAngle reports half-pi angle"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_InverseUndoesRotation()"), TEXT("Inverse undoes rotation"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_ToAxisAndAngle_Axis()"), TEXT("ToAxisAndAngle reports UpVector axis"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_ToAxisAndAngle_Angle()"), TEXT("ToAxisAndAngle reports half-pi angle"), 1);
 	}
 
 	// ====================================================================
@@ -206,8 +204,8 @@ int Quat_MakeFromEulerRotator()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_RotatorConversion()"), TEXT("Rotator() matches 90-deg yaw"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_MakeFromEulerRotator()"), TEXT("MakeFromEuler produces non-identity"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_RotatorConversion()"), TEXT("Rotator() matches 90-deg yaw"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_MakeFromEulerRotator()"), TEXT("MakeFromEuler produces non-identity"), 1);
 	}
 
 	// ====================================================================
@@ -236,8 +234,8 @@ int Quat_SlerpIsNormalized()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_SlerpHalfWay()"), TEXT("Slerp half-way is 45-deg"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_SlerpIsNormalized()"), TEXT("Slerp result is normalized"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_SlerpHalfWay()"), TEXT("Slerp half-way is 45-deg"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_SlerpIsNormalized()"), TEXT("Slerp result is normalized"), 1);
 	}
 };
 

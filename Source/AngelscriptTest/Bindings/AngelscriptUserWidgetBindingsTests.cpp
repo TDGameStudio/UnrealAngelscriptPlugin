@@ -13,8 +13,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 namespace
 {
@@ -225,7 +223,7 @@ int MissingTreeRemoveReturnsFalse() { UUserWidget Widget = WithoutTreeWidget(); 
 			{ TEXT("int RootClearsAfterRemove()"), TEXT("GetRootWidget should be null after removal"), 1 },
 			{ TEXT("int WidgetsClearAfterRemove()"), TEXT("GetAllWidgets should be empty after removal"), 1 },
 		};
-		bPassed &= AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		bPassed &= ExpectGlobalInts(Test, Engine, Module,  Cases);
 		bPassed &= VerifyEmptyTreeState(Test, Fixture, TEXT("UserWidgetTreeCompat native postcondition"));
 		return bPassed;
 	}
@@ -273,7 +271,7 @@ int MissingTreeRemoveReturnsFalse() { UUserWidget Widget = WithoutTreeWidget(); 
 			{ TEXT("int MissingTreeSetRootNoops()"), TEXT("SetRootWidget without WidgetTree should be a no-op"), 1 },
 			{ TEXT("int MissingTreeRemoveReturnsFalse()"), TEXT("RemoveWidget without WidgetTree should return false"), 1 },
 		};
-		bPassed &= AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		bPassed &= ExpectGlobalInts(Test, Engine, Module,  Cases);
 		bPassed &= VerifyEmptyTreeState(Test, WithTree, TEXT("UserWidgetTreeErrorPaths tree-backed postcondition"));
 		bPassed &= Test.TestNull(TEXT("UserWidgetTreeErrorPaths missing-tree fixture should keep WidgetTree null"), WithoutTree.Widget->WidgetTree);
 		bPassed &= Test.TestNull(TEXT("UserWidgetTreeErrorPaths missing-tree fixture should keep root null"), WithoutTree.Widget->GetRootWidget());

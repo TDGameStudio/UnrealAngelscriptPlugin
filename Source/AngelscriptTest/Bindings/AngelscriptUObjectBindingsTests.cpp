@@ -42,8 +42,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 // ============================================================================
@@ -84,7 +82,7 @@ FString ScriptGetPathName(UObject Obj)
 		bool bPassed = true;
 
 		// Step 1: AS creates the object, returns UObject* to C++
-		AngelscriptReflectiveAccess::FASGlobalFunctionInvoker CreateInvoker(
+		FASGlobalFunctionInvoker CreateInvoker(
 			Test, Engine, Module, TEXT("UObject CreateNamedObject()"));
 		if (!Test.TestTrue(TEXT("[UObject] CreateNamedObject invoker should be valid"), CreateInvoker.IsValid()))
 			return false;
@@ -109,7 +107,7 @@ FString ScriptGetPathName(UObject Obj)
 
 		// Step 3: AS reads the same object's identity — C++ compares with ground truth
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker NameInvoker(
+			FASGlobalFunctionInvoker NameInvoker(
 				Test, Engine, Module, TEXT("FName ScriptGetName(UObject Obj)"));
 			if (NameInvoker.IsValid())
 			{
@@ -164,7 +162,7 @@ UClass ScriptGetClass(UObject Obj)
 		bool bPassed = true;
 
 		// AS creates
-		AngelscriptReflectiveAccess::FASGlobalFunctionInvoker CreateInvoker(
+		FASGlobalFunctionInvoker CreateInvoker(
 			Test, Engine, Module, TEXT("UObject CreateInTransient()"));
 		if (!CreateInvoker.IsValid()) return false;
 		UObject* Obj = CreateInvoker.CallAndReturn<UObject*>(nullptr);
@@ -181,7 +179,7 @@ UClass ScriptGetClass(UObject Obj)
 
 		// AS returns GetOuter → C++ verifies consistency
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker OuterInvoker(
+			FASGlobalFunctionInvoker OuterInvoker(
 				Test, Engine, Module, TEXT("UObject ScriptGetOuter(UObject Obj)"));
 			if (OuterInvoker.IsValid())
 			{
@@ -195,7 +193,7 @@ UClass ScriptGetClass(UObject Obj)
 
 		// AS returns GetPackage → C++ verifies
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker PkgInvoker(
+			FASGlobalFunctionInvoker PkgInvoker(
 				Test, Engine, Module, TEXT("UObject ScriptGetPackage(UObject Obj)"));
 			if (PkgInvoker.IsValid())
 			{
@@ -209,7 +207,7 @@ UClass ScriptGetClass(UObject Obj)
 
 		// AS returns GetClass → C++ verifies
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker ClassInvoker(
+			FASGlobalFunctionInvoker ClassInvoker(
 				Test, Engine, Module, TEXT("UClass ScriptGetClass(UObject Obj)"));
 			if (ClassInvoker.IsValid())
 			{
@@ -268,7 +266,7 @@ int ScriptIsA_Texture(UObject Obj)
 		bool bPassed = true;
 
 		// AS creates camera actor
-		AngelscriptReflectiveAccess::FASGlobalFunctionInvoker CreateInvoker(
+		FASGlobalFunctionInvoker CreateInvoker(
 			Test, Engine, Module, TEXT("UObject CreateCamera()"));
 		if (!CreateInvoker.IsValid()) return false;
 		UObject* CameraObj = CreateInvoker.CallAndReturn<UObject*>(nullptr);
@@ -282,7 +280,7 @@ int ScriptIsA_Texture(UObject Obj)
 
 		// AS Cast<AActor> → C++ verifies pointer identity
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker CastInvoker(
+			FASGlobalFunctionInvoker CastInvoker(
 				Test, Engine, Module, TEXT("UObject ScriptCastToActor(UObject Obj)"));
 			if (CastInvoker.IsValid())
 			{
@@ -296,7 +294,7 @@ int ScriptIsA_Texture(UObject Obj)
 
 		// AS Cast<ACameraActor> → C++ verifies pointer identity
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker CastInvoker(
+			FASGlobalFunctionInvoker CastInvoker(
 				Test, Engine, Module, TEXT("UObject ScriptCastToCamera(UObject Obj)"));
 			if (CastInvoker.IsValid())
 			{
@@ -310,7 +308,7 @@ int ScriptIsA_Texture(UObject Obj)
 
 		// AS Cast<UTexture2D> on camera → C++ verifies null (invalid cast)
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker CastInvoker(
+			FASGlobalFunctionInvoker CastInvoker(
 				Test, Engine, Module, TEXT("UObject ScriptCastToTexture(UObject Obj)"));
 			if (CastInvoker.IsValid())
 			{
@@ -325,7 +323,7 @@ int ScriptIsA_Texture(UObject Obj)
 		// AS IsA → C++ verifies int return matches expectation
 		auto TestIsA = [&](const TCHAR* Decl, const TCHAR* Label, int32 Expected)
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Invoker(Test, Engine, Module, Decl);
+			FASGlobalFunctionInvoker Invoker(Test, Engine, Module, Decl);
 			if (Invoker.IsValid())
 			{
 				Invoker.AddArgObject(CameraObj);
@@ -368,7 +366,7 @@ UObject ScriptFindWithOuter(UObject Outer, const FString& in Name)
 		bool bPassed = true;
 
 		// AS creates named object → C++ finds it via UE FindObject
-		AngelscriptReflectiveAccess::FASGlobalFunctionInvoker CreateInvoker(
+		FASGlobalFunctionInvoker CreateInvoker(
 			Test, Engine, Module, TEXT("UObject CreateNamedForFind()"));
 		if (!CreateInvoker.IsValid()) return false;
 		UObject* Created = CreateInvoker.CallAndReturn<UObject*>(nullptr);
@@ -384,7 +382,7 @@ UObject ScriptFindWithOuter(UObject Outer, const FString& in Name)
 		// C++ passes path to AS ScriptFindByPath → AS returns found object → C++ verifies
 		{
 			FString Path = Created->GetPathName();
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker FindInvoker(
+			FASGlobalFunctionInvoker FindInvoker(
 				Test, Engine, Module, TEXT("UObject ScriptFindByPath(const FString& in Path)"));
 			if (FindInvoker.IsValid())
 			{
@@ -399,7 +397,7 @@ UObject ScriptFindWithOuter(UObject Outer, const FString& in Name)
 		// C++ passes outer + name to AS ScriptFindWithOuter → C++ verifies
 		{
 			FString Name = TEXT("UObjBindTest_Find");
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker FindOuterInvoker(
+			FASGlobalFunctionInvoker FindOuterInvoker(
 				Test, Engine, Module, TEXT("UObject ScriptFindWithOuter(UObject Outer, const FString& in Name)"));
 			if (FindOuterInvoker.IsValid())
 			{
@@ -447,7 +445,7 @@ int ScriptGetIsRooted(UObject Obj)
 		bool bPassed = true;
 
 		// AS creates
-		AngelscriptReflectiveAccess::FASGlobalFunctionInvoker CreateInvoker(
+		FASGlobalFunctionInvoker CreateInvoker(
 			Test, Engine, Module, TEXT("UObject CreateForRoot()"));
 		if (!CreateInvoker.IsValid()) return false;
 		UObject* Obj = CreateInvoker.CallAndReturn<UObject*>(nullptr);
@@ -459,7 +457,7 @@ int ScriptGetIsRooted(UObject Obj)
 
 		// AS AddToRoot
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker AddInvoker(
+			FASGlobalFunctionInvoker AddInvoker(
 				Test, Engine, Module, TEXT("void ScriptAddToRoot(UObject Obj)"));
 			if (AddInvoker.IsValid())
 			{
@@ -473,7 +471,7 @@ int ScriptGetIsRooted(UObject Obj)
 
 		// AS GetIsRooted → C++ verifies AS agrees with C++
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker RootedInvoker(
+			FASGlobalFunctionInvoker RootedInvoker(
 				Test, Engine, Module, TEXT("int ScriptGetIsRooted(UObject Obj)"));
 			if (RootedInvoker.IsValid())
 			{
@@ -485,7 +483,7 @@ int ScriptGetIsRooted(UObject Obj)
 
 		// AS RemoveFromRoot
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker RemoveInvoker(
+			FASGlobalFunctionInvoker RemoveInvoker(
 				Test, Engine, Module, TEXT("void ScriptRemoveFromRoot(UObject Obj)"));
 			if (RemoveInvoker.IsValid())
 			{
@@ -499,7 +497,7 @@ int ScriptGetIsRooted(UObject Obj)
 
 		// AS confirms not rooted
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker RootedInvoker(
+			FASGlobalFunctionInvoker RootedInvoker(
 				Test, Engine, Module, TEXT("int ScriptGetIsRooted(UObject Obj)"));
 			if (RootedInvoker.IsValid())
 			{
@@ -546,7 +544,7 @@ int ScriptIsTransient(UObject Obj)
 
 		// AS creates transient object → C++ verifies
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Invoker(
+			FASGlobalFunctionInvoker Invoker(
 				Test, Engine, Module, TEXT("UObject CreateTransient()"));
 			if (!Invoker.IsValid()) return false;
 			UObject* TransientObj = Invoker.CallAndReturn<UObject*>(nullptr);
@@ -561,7 +559,7 @@ int ScriptIsTransient(UObject Obj)
 
 		// AS creates non-transient → C++ verifies
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Invoker(
+			FASGlobalFunctionInvoker Invoker(
 				Test, Engine, Module, TEXT("UObject CreateNonTransient()"));
 			if (!Invoker.IsValid()) return false;
 			UObject* NormalObj = Invoker.CallAndReturn<UObject*>(nullptr);
@@ -572,7 +570,7 @@ int ScriptIsTransient(UObject Obj)
 				// still has RF_Transient set because the binding defaults to it when outer is transient pkg
 				// Verify IsTransient through AS and through C++
 				{
-					AngelscriptReflectiveAccess::FASGlobalFunctionInvoker IsTransInvoker(
+					FASGlobalFunctionInvoker IsTransInvoker(
 						Test, Engine, Module, TEXT("int ScriptIsTransient(UObject Obj)"));
 					if (IsTransInvoker.IsValid())
 					{
@@ -587,7 +585,7 @@ int ScriptIsTransient(UObject Obj)
 
 				// AS SetTransactional(true) → C++ verifies RF_Transactional
 				{
-					AngelscriptReflectiveAccess::FASGlobalFunctionInvoker SetInvoker(
+					FASGlobalFunctionInvoker SetInvoker(
 						Test, Engine, Module, TEXT("void ScriptSetTransactional(UObject Obj, bool bValue)"));
 					if (SetInvoker.IsValid())
 					{
@@ -602,7 +600,7 @@ int ScriptIsTransient(UObject Obj)
 
 				// AS SetTransactional(false) → C++ verifies RF_Transactional cleared
 				{
-					AngelscriptReflectiveAccess::FASGlobalFunctionInvoker SetInvoker(
+					FASGlobalFunctionInvoker SetInvoker(
 						Test, Engine, Module, TEXT("void ScriptSetTransactional(UObject Obj, bool bValue)"));
 					if (SetInvoker.IsValid())
 					{
@@ -673,7 +671,7 @@ int NullComparison_TwoValidDifferent()
 			{ TEXT("int NullComparison_TwoValidSameInstance()"),  TEXT("Same instance references should be equal"),     1 },
 			{ TEXT("int NullComparison_TwoValidDifferent()"),     TEXT("Different instances should not be equal"),      1 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -743,7 +741,7 @@ bool GetIsTransient(UObject Obj)
 			const TCHAR* ExpectedName, // nullptr = auto-generated
 			bool bExpectTransient) -> UObject*
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Invoker(Test, Engine, Module, CreateDecl);
+			FASGlobalFunctionInvoker Invoker(Test, Engine, Module, CreateDecl);
 			if (!Test.TestTrue(FString::Printf(TEXT("[UObject] %s invoker valid"), Label), Invoker.IsValid()))
 				return nullptr;
 			UObject* Obj = Invoker.CallAndReturn<UObject*>(nullptr);
@@ -763,7 +761,7 @@ bool GetIsTransient(UObject Obj)
 					Obj->GetFName(), FName(ExpectedName));
 
 				// Cross-check: AS returns name → C++ compares
-				AngelscriptReflectiveAccess::FASGlobalFunctionInvoker NameInv(
+				FASGlobalFunctionInvoker NameInv(
 					Test, Engine, Module, TEXT("FName GetNameOf(UObject Obj)"));
 				if (NameInv.IsValid())
 				{
@@ -804,7 +802,7 @@ bool GetIsTransient(UObject Obj)
 
 			// Cross-check: AS returns IsTransient → C++ compares
 			{
-				AngelscriptReflectiveAccess::FASGlobalFunctionInvoker TransInv(
+				FASGlobalFunctionInvoker TransInv(
 					Test, Engine, Module, TEXT("bool GetIsTransient(UObject Obj)"));
 				if (TransInv.IsValid())
 				{
@@ -820,7 +818,7 @@ bool GetIsTransient(UObject Obj)
 
 			// Cross-check: AS returns GetFullName → C++ compares
 			{
-				AngelscriptReflectiveAccess::FASGlobalFunctionInvoker FullInv(
+				FASGlobalFunctionInvoker FullInv(
 					Test, Engine, Module, TEXT("FString GetFullNameOf(UObject Obj)"));
 				if (FullInv.IsValid())
 				{
@@ -838,7 +836,7 @@ bool GetIsTransient(UObject Obj)
 
 			// Cross-check: AS returns GetPathName → C++ compares
 			{
-				AngelscriptReflectiveAccess::FASGlobalFunctionInvoker PathInv(
+				FASGlobalFunctionInvoker PathInv(
 					Test, Engine, Module, TEXT("FString GetPathNameOf(UObject Obj)"));
 				if (PathInv.IsValid())
 				{
@@ -959,7 +957,7 @@ FString GetClassName(UObject Obj)
 
 		// --- GetDefaultObject ---
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("UObject GetCDO_Texture2D()"));
 			if (Inv.IsValid())
 			{
@@ -974,7 +972,7 @@ FString GetClassName(UObject Obj)
 
 		// --- GetSuperClass ---
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("UClass GetSuper_CameraActor()"));
 			if (Inv.IsValid())
 			{
@@ -990,7 +988,7 @@ FString GetClassName(UObject Obj)
 		// --- IsChildOf ---
 		auto TestBoolReturn = [&](const TCHAR* Decl, const TCHAR* Label, bool Expected)
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(Test, Engine, Module, Decl);
+			FASGlobalFunctionInvoker Inv(Test, Engine, Module, Decl);
 			if (Inv.IsValid())
 			{
 				int32 Result = Inv.CallAndReturn<int32>(INDEX_NONE);
@@ -1024,7 +1022,7 @@ FString GetClassName(UObject Obj)
 
 		// --- FindFunctionByName ---
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("UFunction FindFunc_Actor_ReceiveTick()"));
 			if (Inv.IsValid())
 			{
@@ -1036,7 +1034,7 @@ FString GetClassName(UObject Obj)
 			}
 		}
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("UFunction FindFunc_Actor_Nonexistent()"));
 			if (Inv.IsValid())
 			{
@@ -1050,7 +1048,7 @@ FString GetClassName(UObject Obj)
 		// --- GetClassName cross-check: AS builds string from GetClass().GetName() ---
 		{
 			UObject* TestObj = NewObject<UTexture2D>(GetTransientPackage(), NAME_None, RF_Transient);
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("FString GetClassName(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1127,7 +1125,7 @@ FString LogFormatted(UObject Obj)
 
 		// FString return
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("FString ReturnString()"));
 			if (Inv.IsValid())
 			{
@@ -1144,7 +1142,7 @@ FString LogFormatted(UObject Obj)
 
 		// FName return
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("FName ReturnName()"));
 			if (Inv.IsValid())
 			{
@@ -1161,7 +1159,7 @@ FString LogFormatted(UObject Obj)
 
 		// int return
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("int ReturnInt()"));
 			if (Inv.IsValid())
 			{
@@ -1173,7 +1171,7 @@ FString LogFormatted(UObject Obj)
 
 		// float return (AS float is 64-bit double when bScriptFloatIsFloat64=true)
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("float ReturnFloat()"));
 			if (Inv.IsValid())
 			{
@@ -1186,7 +1184,7 @@ FString LogFormatted(UObject Obj)
 
 		// bool return (true)
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("bool ReturnTrue()"));
 			if (Inv.IsValid())
 			{
@@ -1198,7 +1196,7 @@ FString LogFormatted(UObject Obj)
 
 		// bool return (false)
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("bool ReturnFalse()"));
 			if (Inv.IsValid())
 			{
@@ -1210,7 +1208,7 @@ FString LogFormatted(UObject Obj)
 
 		// FString concat with int and float (tests string + type concatenation returns)
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("FString ConcatIntFloat(int A, float B)"));
 			if (Inv.IsValid())
 			{
@@ -1233,7 +1231,7 @@ FString LogFormatted(UObject Obj)
 		// ObjectToString: AS builds "ClassName:ObjectName" → C++ validates
 		{
 			UObject* TestObj = NewObject<UTexture2D>(GetTransientPackage(), FName(TEXT("RetValTestObj_42")), RF_Transient);
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("FString ObjectToString(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1254,7 +1252,7 @@ FString LogFormatted(UObject Obj)
 		// LogFormatted: AS returns GetFullName → C++ compares
 		{
 			UObject* TestObj = NewObject<UTexture2D>(GetTransientPackage(), FName(TEXT("RetValLogObj_42")), RF_Transient);
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("FString LogFormatted(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1414,7 +1412,7 @@ bool IsRootedCheck(UObject Obj)
 
 		// ---- 1. DescribeObject: C++ passes UTexture2D → AS returns formatted string ----
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("FString DescribeObject(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1436,7 +1434,7 @@ bool IsRootedCheck(UObject Obj)
 
 		// ---- 2. DescribeObject: C++ passes ACameraActor → AS returns formatted string ----
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("FString DescribeObject(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1458,7 +1456,7 @@ bool IsRootedCheck(UObject Obj)
 
 		// ---- 3. GetNameOf: cross-check FName return ----
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("FName GetNameOf(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1476,7 +1474,7 @@ bool IsRootedCheck(UObject Obj)
 
 		// ---- 4. GetFullNameOf: cross-check FString return ----
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("FString GetFullNameOf(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1496,7 +1494,7 @@ bool IsRootedCheck(UObject Obj)
 		auto TestBool = [&](const TCHAR* Decl, void* Arg0, void* Arg1,
 			const TCHAR* Label, bool Expected)
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(Test, Engine, Module, Decl);
+			FASGlobalFunctionInvoker Inv(Test, Engine, Module, Decl);
 			if (Inv.IsValid())
 			{
 				Inv.AddArgObject(Arg0);
@@ -1518,7 +1516,7 @@ bool IsRootedCheck(UObject Obj)
 
 		// ---- 6. Cast: valid and invalid ----
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("UObject TryCastToActor(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1530,7 +1528,7 @@ bool IsRootedCheck(UObject Obj)
 			}
 		}
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("UObject TryCastToTexture(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1542,7 +1540,7 @@ bool IsRootedCheck(UObject Obj)
 			}
 		}
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("UObject TryCastToTexture(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1556,7 +1554,7 @@ bool IsRootedCheck(UObject Obj)
 
 		// ---- 7. Hierarchy: GetOuter, GetPackage, GetClass ----
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("UObject GetOuterOf(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1568,7 +1566,7 @@ bool IsRootedCheck(UObject Obj)
 			}
 		}
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("UObject GetPackageOf(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1580,7 +1578,7 @@ bool IsRootedCheck(UObject Obj)
 			}
 		}
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("UClass GetClassOf(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1613,7 +1611,7 @@ bool IsRootedCheck(UObject Obj)
 
 		// ---- 10. Log with C++-passed objects ----
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("FString LogAndReturnInfo(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1631,7 +1629,7 @@ bool IsRootedCheck(UObject Obj)
 			}
 		}
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("FString LogMultiple(UObject A, UObject B)"));
 			if (Inv.IsValid())
 			{
@@ -1659,7 +1657,7 @@ bool IsRootedCheck(UObject Obj)
 
 			// AS AddToRoot
 			{
-				AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+				FASGlobalFunctionInvoker Inv(
 					Test, Engine, Module, TEXT("void DoAddToRoot(UObject Obj)"));
 				if (Inv.IsValid()) { Inv.AddArgObject(TexObj); Inv.Call(); }
 			}
@@ -1675,7 +1673,7 @@ bool IsRootedCheck(UObject Obj)
 
 			// AS RemoveFromRoot
 			{
-				AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+				FASGlobalFunctionInvoker Inv(
 					Test, Engine, Module, TEXT("void DoRemoveFromRoot(UObject Obj)"));
 				if (Inv.IsValid()) { Inv.AddArgObject(TexObj); Inv.Call(); }
 			}
@@ -1824,7 +1822,7 @@ FString DescribeChain(UObject Leaf)
 		// =================================================================
 
 		// AS creates root
-		AngelscriptReflectiveAccess::FASGlobalFunctionInvoker CreateRootInv(
+		FASGlobalFunctionInvoker CreateRootInv(
 			Test, Engine, Module, TEXT("UObject CreateChainRoot()"));
 		if (!CreateRootInv.IsValid()) return false;
 		UObject* Root = CreateRootInv.CallAndReturn<UObject*>(nullptr);
@@ -1840,7 +1838,7 @@ FString DescribeChain(UObject Leaf)
 		UObject* Child = nullptr;
 		{
 			FName ChildName(TEXT("ChainChild_42"));
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("UObject CreateChild(UObject Parent, FName ChildName)"));
 			if (Inv.IsValid())
 			{
@@ -1861,7 +1859,7 @@ FString DescribeChain(UObject Leaf)
 		UObject* GrandChild = nullptr;
 		{
 			FName GCName(TEXT("ChainGrandChild_42"));
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("UObject CreateChild(UObject Parent, FName ChildName)"));
 			if (Inv.IsValid())
 			{
@@ -1887,7 +1885,7 @@ FString DescribeChain(UObject Leaf)
 
 		// WalkToRoot(GrandChild) should return Root
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("UObject WalkToRoot(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1901,7 +1899,7 @@ FString DescribeChain(UObject Leaf)
 
 		// GetChainDepth(GrandChild) should be 2 (GC→Child→Root, 2 non-package levels above)
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("int GetChainDepth(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1914,7 +1912,7 @@ FString DescribeChain(UObject Leaf)
 
 		// GetChainDepth(Child) should be 1
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("int GetChainDepth(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1927,7 +1925,7 @@ FString DescribeChain(UObject Leaf)
 
 		// GetChainDepth(Root) should be 0 (root's outer is package)
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("int GetChainDepth(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1940,7 +1938,7 @@ FString DescribeChain(UObject Leaf)
 
 		// CollectChainNames(GrandChild) should be "ChainGrandChild_42>ChainChild_42>ChainRoot_42"
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("FString CollectChainNames(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1969,7 +1967,7 @@ FString DescribeChain(UObject Leaf)
 
 		// AS GetChainDepth(Leaf) should be 3
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("int GetChainDepth(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1982,7 +1980,7 @@ FString DescribeChain(UObject Leaf)
 
 		// AS WalkToRoot(Leaf) should be L1
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("UObject WalkToRoot(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -1996,7 +1994,7 @@ FString DescribeChain(UObject Leaf)
 
 		// AS CollectChainNames(Leaf) → C++ verifies
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("FString CollectChainNames(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -2015,7 +2013,7 @@ FString DescribeChain(UObject Leaf)
 
 		// AS GetOutermost on all levels should return the same package
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("UObject GetOutermostOf(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -2027,7 +2025,7 @@ FString DescribeChain(UObject Leaf)
 			}
 		}
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("UObject GetOutermostOf(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -2041,7 +2039,7 @@ FString DescribeChain(UObject Leaf)
 
 		// AS GetPathName(Leaf) should contain the full hierarchy
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("FString GetPathOf(UObject Obj)"));
 			if (Inv.IsValid())
 			{
@@ -2071,7 +2069,7 @@ FString DescribeChain(UObject Leaf)
 		// IsSameOuter: L2 and sibling created under L1 should have same outer
 		UObject* L2Sibling = NewObject<UTexture2D>(L1, FName(TEXT("CppL2Sibling_42")));
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("bool IsSameOuter(UObject A, UObject B)"));
 			if (Inv.IsValid())
 			{
@@ -2085,7 +2083,7 @@ FString DescribeChain(UObject Leaf)
 		}
 		// L2 and L3 should have different outers
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("bool IsSameOuter(UObject A, UObject B)"));
 			if (Inv.IsValid())
 			{
@@ -2100,7 +2098,7 @@ FString DescribeChain(UObject Leaf)
 
 		// DescribeChain: AS logs and returns the full chain description
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Inv(
+			FASGlobalFunctionInvoker Inv(
 				Test, Engine, Module, TEXT("FString DescribeChain(UObject Leaf)"));
 			if (Inv.IsValid())
 			{
@@ -2237,7 +2235,7 @@ int LogConcatTypes()
 		// Step 1: AS calls all log functions, C++ verifies they execute without crash
 		auto CallVoid = [&](const TCHAR* Decl, const TCHAR* Label) -> bool
 		{
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Invoker(Test, Engine, Module, Decl);
+			FASGlobalFunctionInvoker Invoker(Test, Engine, Module, Decl);
 			if (!Invoker.IsValid()) return false;
 			bool bOk = Invoker.Call();
 			Test.AddInfo(FString(Label));
@@ -2260,14 +2258,14 @@ int LogConcatTypes()
 		bPassed &= CallVoid(TEXT("void CallWarningWithCategory()"), TEXT("Warning(category) should execute"));
 
 		// Step 2: Throw — should raise AS exception
-		bPassed &= AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(
+		bPassed &= ExecuteFunctionExpectingScriptException(
 			Test, Engine, Module, 
 			TEXT("void CallThrow()"),
 			TEXT("Throw() should raise script exception"),
 			TEXT("BIND_THROW_MARKER_42"));
 
 		// Step 3: Log with type concatenation — AS returns 1 if no crash
-		bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
+		bPassed &= ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int LogConcatTypes()"),
 			TEXT("Log with int/float/bool/FName/FString/UObject concat should succeed"),
 			1);

@@ -6,7 +6,6 @@
 #include "Misc/ScopeExit.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelineFunctionDefaultTest
 {
@@ -68,7 +67,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionDefaultTests,
 {
 	TEST_METHOD(FunctionDefaultMetadataRoundTrip)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		const FString ScriptSource = TEXT(R"AS(

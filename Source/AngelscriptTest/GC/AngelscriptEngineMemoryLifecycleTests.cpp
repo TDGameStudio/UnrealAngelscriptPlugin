@@ -10,7 +10,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 // ==========================================================================
 // Engine Memory Lifecycle Tests — with full diagnostic instrumentation

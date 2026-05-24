@@ -22,13 +22,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FAngelscriptTestEngineHelperCompileModuleTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptEngine& Engine = AngelscriptTestSupport::GetOrCreateSharedCloneEngine();
+	FAngelscriptEngine& Engine = GetOrCreateSharedCloneEngine();
 	ON_SCOPE_EXIT
 	{
 		Engine.DiscardModule(TEXT("HelperCompileModule"));
 	};
 
-	const bool bCompiled = AngelscriptTestSupport::CompileModuleFromMemory(
+	const bool bCompiled = CompileModuleFromMemory(
 		&Engine,
 		TEXT("HelperCompileModule"),
 		TEXT("HelperCompileModule.as"),
@@ -45,13 +45,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FAngelscriptTestEngineHelperExecuteIntFunctionTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptEngine& Engine = AngelscriptTestSupport::GetOrCreateSharedCloneEngine();
+	FAngelscriptEngine& Engine = GetOrCreateSharedCloneEngine();
 	ON_SCOPE_EXIT
 	{
 		Engine.DiscardModule(TEXT("HelperExecuteInt"));
 	};
 
-	const bool bCompiled = AngelscriptTestSupport::CompileModuleFromMemory(
+	const bool bCompiled = CompileModuleFromMemory(
 		&Engine,
 		TEXT("HelperExecuteInt"),
 		TEXT("HelperExecuteInt.as"),
@@ -62,7 +62,7 @@ bool FAngelscriptTestEngineHelperExecuteIntFunctionTest::RunTest(const FString& 
 	}
 
 	int32 Result = 0;
-	const bool bExecuted = AngelscriptTestSupport::ExecuteIntFunction(&Engine, TEXT("HelperExecuteInt"), TEXT("int Entry()"), Result);
+	const bool bExecuted = ExecuteIntFunction(&Engine, TEXT("HelperExecuteInt"), TEXT("int Entry()"), Result);
 	if (!TestTrue(TEXT("ExecuteIntFunction should execute the compiled entry point"), bExecuted))
 	{
 		return false;
@@ -170,13 +170,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FAngelscriptTestEngineHelperGeneratedSymbolLookupTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptEngine& Engine = AngelscriptTestSupport::GetOrCreateSharedCloneEngine();
+	FAngelscriptEngine& Engine = GetOrCreateSharedCloneEngine();
 	ON_SCOPE_EXIT
 	{
 		Engine.DiscardModule(TEXT("HelperAnnotatedModule"));
 	};
 
-	const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
+	const bool bCompiled = CompileAnnotatedModuleFromMemory(
 		&Engine,
 		TEXT("HelperAnnotatedModule"),
 		TEXT("HelperAnnotatedModule.as"),
@@ -196,20 +196,20 @@ class UAnnotatedHelperObject : UObject
 		return false;
 	}
 
-	UClass* GeneratedClass = AngelscriptTestSupport::FindGeneratedClass(&Engine, TEXT("UAnnotatedHelperObject"));
+	UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UAnnotatedHelperObject"));
 	if (!TestNotNull(TEXT("FindGeneratedClass should locate the generated class"), GeneratedClass))
 	{
 		return false;
 	}
 
-	UFunction* GeneratedFunction = AngelscriptTestSupport::FindGeneratedFunction(GeneratedClass, TEXT("GetValue"));
+	UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, TEXT("GetValue"));
 	TestNotNull(TEXT("FindGeneratedFunction should locate the generated UFunction"), GeneratedFunction);
 	return GeneratedFunction != nullptr;
 }
 
 bool FAngelscriptTestEngineHelperFailedAnnotatedIsolationTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptEngine& Engine = AngelscriptTestSupport::GetOrCreateSharedCloneEngine();
+	FAngelscriptEngine& Engine = GetOrCreateSharedCloneEngine();
 	ON_SCOPE_EXIT
 	{
 		Engine.DiscardModule(TEXT("HelperBrokenAnnotated"));
@@ -219,7 +219,7 @@ bool FAngelscriptTestEngineHelperFailedAnnotatedIsolationTest::RunTest(const FSt
 	FAngelscriptClassGenerator::EReloadRequirement ReloadRequirement = FAngelscriptClassGenerator::Error;
 	bool bWantsFullReload = false;
 	bool bNeedsFullReload = false;
-	const bool bBrokenCompiled = AngelscriptTestSupport::AnalyzeReloadFromMemory(
+	const bool bBrokenCompiled = AnalyzeReloadFromMemory(
 		&Engine,
 		TEXT("HelperBrokenAnnotated"),
 		TEXT("HelperBrokenAnnotated.as"),
@@ -246,7 +246,7 @@ class UBrokenHelperObject : UObject
 	TestFalse(TEXT("Broken annotated helper module should not suggest a full reload"), bWantsFullReload);
 	TestFalse(TEXT("Broken annotated helper module should not require a full reload"), bNeedsFullReload);
 
-	const bool bRecoveredCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
+	const bool bRecoveredCompiled = CompileAnnotatedModuleFromMemory(
 		&Engine,
 		TEXT("HelperRecoveredAnnotated"),
 		TEXT("HelperRecoveredAnnotated.as"),
@@ -266,13 +266,13 @@ class URecoveredHelperObject : UObject
 		return false;
 	}
 
-	UClass* GeneratedClass = AngelscriptTestSupport::FindGeneratedClass(&Engine, TEXT("URecoveredHelperObject"));
+	UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("URecoveredHelperObject"));
 	if (!TestNotNull(TEXT("Recovered generated class should be discoverable"), GeneratedClass))
 	{
 		return false;
 	}
 
-	UFunction* GeneratedFunction = AngelscriptTestSupport::FindGeneratedFunction(GeneratedClass, TEXT("GetValue"));
+	UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, TEXT("GetValue"));
 	TestNotNull(TEXT("Recovered generated function should be discoverable"), GeneratedFunction);
 	return GeneratedFunction != nullptr;
 }
@@ -281,13 +281,13 @@ bool FAngelscriptTestEngineHelperSharedEngineNeverAttachesToProductionTest::RunT
 {
 	FAngelscriptEngine* PreviousCurrentEngine = FAngelscriptTestEngineScopeAccess::GetCurrentEngine();
 	FAngelscriptEngine* PreviousGlobalEngine = FAngelscriptTestEngineScopeAccess::GetGlobalEngine();
-	FAngelscriptEngine& SharedEngine = AngelscriptTestSupport::GetOrCreateSharedCloneEngine();
+	FAngelscriptEngine& SharedEngine = GetOrCreateSharedCloneEngine();
 	return TestTrue(
 		TEXT("Explicit shared clone helper should resolve to the shared clone engine instance"),
-		&AngelscriptTestSupport::GetOrCreateSharedCloneEngine() == &SharedEngine)
+		&GetOrCreateSharedCloneEngine() == &SharedEngine)
 		&& TestTrue(
 		TEXT("Clean shared clone helper should keep using the shared clone engine instance"),
-		&AngelscriptTestSupport::AcquireCleanSharedCloneEngine() == &SharedEngine)
+		&AcquireCleanSharedCloneEngine() == &SharedEngine)
 		&& TestTrue(
 		TEXT("Shared clone helper should not silently replace the current engine"),
 		FAngelscriptTestEngineScopeAccess::GetCurrentEngine() == PreviousCurrentEngine)
@@ -298,7 +298,7 @@ bool FAngelscriptTestEngineHelperSharedEngineNeverAttachesToProductionTest::RunT
 
 bool FAngelscriptTestEngineHelperScriptScanFreeEngineStartsCleanTest::RunTest(const FString& Parameters)
 {
-	TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting();
+	TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting();
 	if (!TestNotNull(TEXT("Script-scan-free test engine should be created"), Engine.Get()))
 	{
 		return false;
@@ -337,14 +337,14 @@ bool FAngelscriptTestEngineHelperAcquireCleanSharedCloneEngineResetsModulesTest:
 	static const FName ModuleName(TEXT("HelperAcquireCleanResetModules"));
 	static const FString Filename(TEXT("HelperAcquireCleanResetModules.as"));
 
-	AngelscriptTestSupport::DestroySharedTestEngine();
+	DestroySharedTestEngine();
 	ON_SCOPE_EXIT
 	{
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 	};
 
-	FAngelscriptEngine& SharedEngine = AngelscriptTestSupport::GetOrCreateSharedCloneEngine();
-	const bool bCompiled = AngelscriptTestSupport::CompileModuleFromMemory(
+	FAngelscriptEngine& SharedEngine = GetOrCreateSharedCloneEngine();
+	const bool bCompiled = CompileModuleFromMemory(
 		&SharedEngine,
 		ModuleName,
 		Filename,
@@ -361,7 +361,7 @@ bool FAngelscriptTestEngineHelperAcquireCleanSharedCloneEngineResetsModulesTest:
 		return false;
 	}
 
-	FAngelscriptEngine& ResetEngine = AngelscriptTestSupport::AcquireCleanSharedCloneEngine();
+	FAngelscriptEngine& ResetEngine = AcquireCleanSharedCloneEngine();
 	return TestTrue(
 		TEXT("AcquireCleanSharedCloneEngine should reuse the shared engine instance"),
 		&ResetEngine == &SharedEngine)
@@ -379,9 +379,9 @@ bool FAngelscriptTestEngineHelperResetSharedEngineReleasesGeneratedComponentClas
 	static const FString Filename(TEXT("HelperResetGeneratedComponent.as"));
 	static const FName GeneratedClassName(TEXT("UHelperResetGeneratedComponent"));
 
-	AngelscriptTestSupport::DestroySharedAndStrayGlobalTestEngine();
-	FAngelscriptEngine& Engine = AngelscriptTestSupport::AcquireCleanSharedCloneEngine();
-	const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
+	DestroySharedAndStrayGlobalTestEngine();
+	FAngelscriptEngine& Engine = AcquireCleanSharedCloneEngine();
+	const bool bCompiled = CompileAnnotatedModuleFromMemory(
 		&Engine,
 		ModuleName,
 		Filename,
@@ -404,7 +404,7 @@ class UHelperResetGeneratedComponent : UAngelscriptComponent
 		return false;
 	}
 
-	UClass* GeneratedClass = AngelscriptTestSupport::FindGeneratedClass(&Engine, GeneratedClassName);
+	UClass* GeneratedClass = FindGeneratedClass(&Engine, GeneratedClassName);
 	if (!TestNotNull(TEXT("Generated component helper class should exist before reset"), GeneratedClass))
 	{
 		return false;
@@ -490,9 +490,9 @@ bool FAngelscriptTestEngineHelperResetSharedEngineReleasesGeneratedStructsTest::
 	static const FString Filename(TEXT("HelperResetGeneratedStruct.as"));
 	static const FName GeneratedStructName(TEXT("HelperResetGeneratedStruct"));
 
-	AngelscriptTestSupport::DestroySharedAndStrayGlobalTestEngine();
-	FAngelscriptEngine& Engine = AngelscriptTestSupport::AcquireCleanSharedCloneEngine();
-	const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
+	DestroySharedAndStrayGlobalTestEngine();
+	FAngelscriptEngine& Engine = AcquireCleanSharedCloneEngine();
+	const bool bCompiled = CompileAnnotatedModuleFromMemory(
 		&Engine,
 		ModuleName,
 		Filename,
@@ -558,9 +558,9 @@ bool FAngelscriptTestEngineHelperResetSharedEngineReleasesGeneratedEnumsAndDeleg
 	static const FName ModuleName(TEXT("HelperResetGeneratedEnumDelegate"));
 	static const FString Filename(TEXT("HelperResetGeneratedEnumDelegate.as"));
 
-	AngelscriptTestSupport::DestroySharedAndStrayGlobalTestEngine();
-	FAngelscriptEngine& Engine = AngelscriptTestSupport::AcquireCleanSharedCloneEngine();
-	const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
+	DestroySharedAndStrayGlobalTestEngine();
+	FAngelscriptEngine& Engine = AcquireCleanSharedCloneEngine();
+	const bool bCompiled = CompileAnnotatedModuleFromMemory(
 		&Engine,
 		ModuleName,
 		Filename,
@@ -644,7 +644,7 @@ event void FHelperResetGeneratedEvent(int Value);
 
 bool FAngelscriptTestEngineHelperProductionHelperRejectsMissingProductionTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptEngine* ProductionEngine = AngelscriptTestSupport::TryGetRunningProductionEngine();
+	FAngelscriptEngine* ProductionEngine = TryGetRunningProductionEngine();
 	if (UAngelscriptGameInstanceSubsystem* Subsystem = UAngelscriptGameInstanceSubsystem::GetCurrent())
 	{
 		return TestTrue(
@@ -666,17 +666,17 @@ bool FAngelscriptTestEngineHelperProductionHelperRejectsMissingProductionTest::R
 
 bool FAngelscriptTestEngineHelperProductionDebuggerHelperPrefersDebuggableEngineOverScopedTestEngineTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptEngine* DebuggableEngine = AngelscriptTestSupport::TryGetRunningProductionDebuggerEngine();
+	FAngelscriptEngine* DebuggableEngine = TryGetRunningProductionDebuggerEngine();
 	if (!TestNotNull(TEXT("Scoped production-debugger helper test requires an active debuggable production engine"), DebuggableEngine))
 	{
 		return false;
 	}
 
-	AngelscriptTestSupport::DestroySharedTestEngine();
-	FAngelscriptEngine& SharedEngine = AngelscriptTestSupport::GetOrCreateSharedCloneEngine();
+	DestroySharedTestEngine();
+	FAngelscriptEngine& SharedEngine = GetOrCreateSharedCloneEngine();
 	ON_SCOPE_EXIT
 	{
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 	};
 
 	if (!TestTrue(
@@ -695,12 +695,12 @@ bool FAngelscriptTestEngineHelperProductionDebuggerHelperPrefersDebuggableEngine
 
 	return TestTrue(
 		TEXT("Production-debugger helper should still prefer the debuggable production engine over a scoped shared test engine"),
-		AngelscriptTestSupport::TryGetRunningProductionDebuggerEngine() == DebuggableEngine);
+		TryGetRunningProductionDebuggerEngine() == DebuggableEngine);
 }
 
 bool FAngelscriptTestEngineHelperResetSharedEngineDiscardsRawModulesTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptEngine& Engine = AngelscriptTestSupport::GetOrCreateSharedCloneEngine();
+	FAngelscriptEngine& Engine = GetOrCreateSharedCloneEngine();
 	ON_SCOPE_EXIT
 	{
 		ASTEST_RESET_ENGINE(Engine);
@@ -750,8 +750,8 @@ bool FAngelscriptTestEngineHelperResetSharedEngineDiscardsRawModulesTest::RunTes
 bool FAngelscriptTestEngineHelperCompileRestoresScopedGlobalEngineTest::RunTest(const FString& Parameters)
 {
 	FAngelscriptEngine* PreviousCurrentEngine = FAngelscriptTestEngineScopeAccess::GetCurrentEngine();
-	FAngelscriptEngine& SharedEngine = AngelscriptTestSupport::GetOrCreateSharedCloneEngine();
-	TUniquePtr<FAngelscriptEngine> IsolatedEngine = AngelscriptTestSupport::CreateIsolatedCloneEngine();
+	FAngelscriptEngine& SharedEngine = GetOrCreateSharedCloneEngine();
+	TUniquePtr<FAngelscriptEngine> IsolatedEngine = CreateIsolatedCloneEngine();
 	if (!TestNotNull(TEXT("Compile restore test should create an isolated engine"), IsolatedEngine.Get()))
 	{
 		return false;
@@ -759,7 +759,7 @@ bool FAngelscriptTestEngineHelperCompileRestoresScopedGlobalEngineTest::RunTest(
 
 	{
 		FAngelscriptEngineScope SharedScope(SharedEngine);
-		const bool bCompiled = AngelscriptTestSupport::CompileModuleFromMemory(
+		const bool bCompiled = CompileModuleFromMemory(
 			IsolatedEngine.Get(),
 			TEXT("HelperScopedGlobalRestore"),
 			TEXT("HelperScopedGlobalRestore.as"),
@@ -786,8 +786,8 @@ bool FAngelscriptTestEngineHelperCompileRestoresScopedGlobalEngineTest::RunTest(
 bool FAngelscriptTestEngineHelperNestedGlobalScopeRestoreTest::RunTest(const FString& Parameters)
 {
 	FAngelscriptEngine* PreviousCurrentEngine = FAngelscriptTestEngineScopeAccess::GetCurrentEngine();
-	TUniquePtr<FAngelscriptEngine> EngineA = AngelscriptTestSupport::CreateIsolatedCloneEngine();
-	TUniquePtr<FAngelscriptEngine> EngineB = AngelscriptTestSupport::CreateIsolatedCloneEngine();
+	TUniquePtr<FAngelscriptEngine> EngineA = CreateIsolatedCloneEngine();
+	TUniquePtr<FAngelscriptEngine> EngineB = CreateIsolatedCloneEngine();
 	if (!TestNotNull(TEXT("Nested scope restore test should create engine A"), EngineA.Get())
 		|| !TestNotNull(TEXT("Nested scope restore test should create engine B"), EngineB.Get()))
 	{
@@ -830,7 +830,7 @@ bool FAngelscriptTestEngineHelperWorldContextScopeRestoreTest::RunTest(const FSt
 	}
 
 	{
-		AngelscriptTestSupport::FScopedTestWorldContextScope WorldContextScope(DummyContext);
+		FScopedTestWorldContextScope WorldContextScope(DummyContext);
 		if (!TestTrue(TEXT("World context scope should install the dummy context"), FAngelscriptEngine::GetAmbientWorldContext() == DummyContext))
 		{
 			return false;
@@ -843,7 +843,7 @@ bool FAngelscriptTestEngineHelperWorldContextScopeRestoreTest::RunTest(const FSt
 bool FAngelscriptTestEngineHelperEngineScopeWorldContextRestoreTest::RunTest(const FString& Parameters)
 {
 	FAngelscriptEngine* PreviousCurrentEngine = FAngelscriptTestEngineScopeAccess::GetCurrentEngine();
-	TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateIsolatedCloneEngine();
+	TUniquePtr<FAngelscriptEngine> Engine = CreateIsolatedCloneEngine();
 	UObject* PreviousWorldContext = FAngelscriptEngine::GetAmbientWorldContext();
 	UObject* DummyContext = NewObject<UAngelscriptNativeScriptTestObject>();
 	if (!TestNotNull(TEXT("Engine-scope world context test should create an isolated engine"), Engine.Get())
@@ -877,14 +877,14 @@ bool FAngelscriptTestEngineHelperEngineScopeWorldContextRestoreTest::RunTest(con
 
 bool FAngelscriptTestEngineHelperCompileSummaryPlainModuleTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptEngine& Engine = AngelscriptTestSupport::GetOrCreateSharedCloneEngine();
+	FAngelscriptEngine& Engine = GetOrCreateSharedCloneEngine();
 	ON_SCOPE_EXIT
 	{
 		Engine.DiscardModule(TEXT("HelperCompileSummaryPlain"));
 	};
 
-	AngelscriptTestSupport::FAngelscriptCompileTraceSummary Summary;
-	const bool bCompiled = AngelscriptTestSupport::CompileModuleWithSummary(
+	FAngelscriptCompileTraceSummary Summary;
+	const bool bCompiled = CompileModuleWithSummary(
 		&Engine,
 		ECompileType::SoftReloadOnly,
 		TEXT("HelperCompileSummaryPlain"),
@@ -907,14 +907,14 @@ bool FAngelscriptTestEngineHelperCompileSummaryPlainModuleTest::RunTest(const FS
 
 bool FAngelscriptTestEngineHelperCompileSummaryDiagnosticCaptureTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptEngine& Engine = AngelscriptTestSupport::GetOrCreateSharedCloneEngine();
+	FAngelscriptEngine& Engine = GetOrCreateSharedCloneEngine();
 	ON_SCOPE_EXIT
 	{
 		Engine.DiscardModule(TEXT("HelperCompileSummaryBroken"));
 	};
 
-	AngelscriptTestSupport::FAngelscriptCompileTraceSummary Summary;
-	const bool bCompiled = AngelscriptTestSupport::CompileModuleWithSummary(
+	FAngelscriptCompileTraceSummary Summary;
+	const bool bCompiled = CompileModuleWithSummary(
 		&Engine,
 		ECompileType::FullReload,
 		TEXT("HelperCompileSummaryBroken"),
@@ -944,20 +944,20 @@ class UBrokenCompileSummaryObject : UObject
 
 bool FAngelscriptTestEngineHelperContextIsolationAcrossEnginesTest::RunTest(const FString& Parameters)
 {
-	TUniquePtr<FAngelscriptEngine> EngineA = AngelscriptTestSupport::CreateIsolatedCloneEngine();
-	TUniquePtr<FAngelscriptEngine> EngineB = AngelscriptTestSupport::CreateIsolatedCloneEngine();
+	TUniquePtr<FAngelscriptEngine> EngineA = CreateIsolatedCloneEngine();
+	TUniquePtr<FAngelscriptEngine> EngineB = CreateIsolatedCloneEngine();
 	if (!TestNotNull(TEXT("Context isolation test should create engine A"), EngineA.Get())
 		|| !TestNotNull(TEXT("Context isolation test should create engine B"), EngineB.Get()))
 	{
 		return false;
 	}
 
-	const bool bCompiledA = AngelscriptTestSupport::CompileModuleFromMemory(
+	const bool bCompiledA = CompileModuleFromMemory(
 		EngineA.Get(),
 		TEXT("HelperIsolationA"),
 		TEXT("HelperIsolationA.as"),
 		TEXT("int EntryA() { return 11; }"));
-	const bool bCompiledB = AngelscriptTestSupport::CompileModuleFromMemory(
+	const bool bCompiledB = CompileModuleFromMemory(
 		EngineB.Get(),
 		TEXT("HelperIsolationB"),
 		TEXT("HelperIsolationB.as"),
@@ -970,8 +970,8 @@ bool FAngelscriptTestEngineHelperContextIsolationAcrossEnginesTest::RunTest(cons
 
 	int32 ResultA = 0;
 	int32 ResultB = 0;
-	if (!TestTrue(TEXT("Engine A should execute its own module"), AngelscriptTestSupport::ExecuteIntFunction(EngineA.Get(), TEXT("HelperIsolationA"), TEXT("int EntryA()"), ResultA))
-		|| !TestTrue(TEXT("Engine B should execute its own module"), AngelscriptTestSupport::ExecuteIntFunction(EngineB.Get(), TEXT("HelperIsolationB"), TEXT("int EntryB()"), ResultB)))
+	if (!TestTrue(TEXT("Engine A should execute its own module"), ExecuteIntFunction(EngineA.Get(), TEXT("HelperIsolationA"), TEXT("int EntryA()"), ResultA))
+		|| !TestTrue(TEXT("Engine B should execute its own module"), ExecuteIntFunction(EngineB.Get(), TEXT("HelperIsolationB"), TEXT("int EntryB()"), ResultB)))
 	{
 		return false;
 	}
@@ -982,14 +982,14 @@ bool FAngelscriptTestEngineHelperContextIsolationAcrossEnginesTest::RunTest(cons
 
 bool FAngelscriptTestEngineHelperProductionSubsystemDoesNotHijackIsolatedEngineTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptEngine& SharedEngine = AngelscriptTestSupport::GetOrCreateSharedCloneEngine();
-	TUniquePtr<FAngelscriptEngine> IsolatedEngine = AngelscriptTestSupport::CreateIsolatedCloneEngine();
+	FAngelscriptEngine& SharedEngine = GetOrCreateSharedCloneEngine();
+	TUniquePtr<FAngelscriptEngine> IsolatedEngine = CreateIsolatedCloneEngine();
 	if (!TestNotNull(TEXT("Subsystem hijack test should create an isolated engine"), IsolatedEngine.Get()))
 	{
 		return false;
 	}
 
-	const bool bCompiled = AngelscriptTestSupport::CompileModuleFromMemory(
+	const bool bCompiled = CompileModuleFromMemory(
 		IsolatedEngine.Get(),
 		TEXT("HelperIsolationHijack"),
 		TEXT("HelperIsolationHijack.as"),

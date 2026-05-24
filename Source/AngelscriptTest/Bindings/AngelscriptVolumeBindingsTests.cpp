@@ -9,8 +9,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptVolumeBindingsTest,
@@ -38,7 +36,7 @@ int Volume_TypeExists()
 			TestRunner->AddInfo(TEXT("AVolume type not available in test engine, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int Volume_TypeExists()"), TEXT("AVolume type compiles"), 1);
 	}
 
@@ -58,7 +56,7 @@ int FX_TypeExists()
 			TestRunner->AddInfo(TEXT("UFXSystemComponent not available in test engine, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int FX_TypeExists()"), TEXT("UFXSystemComponent compiles"), 1);
 	}
 };

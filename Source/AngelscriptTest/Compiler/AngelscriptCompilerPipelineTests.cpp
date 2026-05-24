@@ -7,7 +7,6 @@
 #include "UObject/UnrealType.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 	"Angelscript.TestModule.Compiler.EndToEnd",
@@ -18,7 +17,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 		FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
+		const bool bCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
 			TEXT("CompilerDelegateEnumClassCompile"),
 			TEXT("CompilerDelegateEnumClassCompile.as"),
@@ -67,7 +66,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 		TestRunner->TestFalse(TEXT("Simple delegate should remain single-cast"), SimpleDelegate->bIsMulticast);
 		TestRunner->TestTrue(TEXT("Event delegate should remain multicast"), MultiDelegate->bIsMulticast);
 
-		UClass* GeneratedClass = AngelscriptTestSupport::FindGeneratedClass(&Engine, TEXT("UCompilerTransferObject"));
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UCompilerTransferObject"));
 		if (!TestRunner->TestNotNull(TEXT("Generated class should exist for delegate/enum/class transfer input"), GeneratedClass))
 		{
 			return;
@@ -75,7 +74,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 
 		TestRunner->TestTrue(TEXT("Generated class should preserve abstract flag"), GeneratedClass->HasAnyClassFlags(CLASS_Abstract));
 		TestRunner->TestNotNull(TEXT("Generated Score property should exist"), FindFProperty<FProperty>(GeneratedClass, TEXT("Score")));
-		TestRunner->TestNotNull(TEXT("Generated GetScore function should exist"), AngelscriptTestSupport::FindGeneratedFunction(GeneratedClass, TEXT("GetScore")));
+		TestRunner->TestNotNull(TEXT("Generated GetScore function should exist"), FindGeneratedFunction(GeneratedClass, TEXT("GetScore")));
 	}
 	}
 
@@ -84,7 +83,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 		FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
+		const bool bCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
 			TEXT("CompilerFunctionDefaultsAndClassLikeCompile"),
 			TEXT("CompilerFunctionDefaultsAndClassLikeCompile.as"),
@@ -129,7 +128,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 		}
 
 		int32 Result = 0;
-		const bool bExecuted = AngelscriptTestSupport::ExecuteIntFunction(&Engine, TEXT("CompilerFunctionDefaultsAndClassLikeCompile"), TEXT("int Entry()"), Result);
+		const bool bExecuted = ExecuteIntFunction(&Engine, TEXT("CompilerFunctionDefaultsAndClassLikeCompile"), TEXT("int Entry()"), Result);
 		if (!TestRunner->TestTrue(TEXT("Function default validation should execute compiled entry point"), bExecuted))
 		{
 			return;
@@ -137,15 +136,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 
 		TestRunner->TestEqual(TEXT("Function default values should be honored at runtime"), Result, 42);
 
-		UClass* GeneratedClass = AngelscriptTestSupport::FindGeneratedClass(&Engine, TEXT("UCompilerFunctionCarrier"));
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UCompilerFunctionCarrier"));
 		if (!TestRunner->TestNotNull(TEXT("Generated class should exist for class-like signature input"), GeneratedClass))
 		{
 			return;
 		}
 
-		TestRunner->TestNotNull(TEXT("EchoPlainClass function should exist"), AngelscriptTestSupport::FindGeneratedFunction(GeneratedClass, TEXT("EchoPlainClass")));
-		TestRunner->TestNotNull(TEXT("EchoActorClass function should exist"), AngelscriptTestSupport::FindGeneratedFunction(GeneratedClass, TEXT("EchoActorClass")));
-		TestRunner->TestNotNull(TEXT("EchoSoftActorClass function should exist"), AngelscriptTestSupport::FindGeneratedFunction(GeneratedClass, TEXT("EchoSoftActorClass")));
+		TestRunner->TestNotNull(TEXT("EchoPlainClass function should exist"), FindGeneratedFunction(GeneratedClass, TEXT("EchoPlainClass")));
+		TestRunner->TestNotNull(TEXT("EchoActorClass function should exist"), FindGeneratedFunction(GeneratedClass, TEXT("EchoActorClass")));
+		TestRunner->TestNotNull(TEXT("EchoSoftActorClass function should exist"), FindGeneratedFunction(GeneratedClass, TEXT("EchoSoftActorClass")));
 	}
 	}
 
@@ -154,7 +153,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 		FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
+		const bool bCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
 			TEXT("CompilerPropertyDefaultsCompile"),
 			TEXT("CompilerPropertyDefaultsCompile.as"),
@@ -178,7 +177,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 			return;
 		}
 
-		UClass* GeneratedClass = AngelscriptTestSupport::FindGeneratedClass(&Engine, TEXT("UCompilerDefaultsCarrier"));
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UCompilerDefaultsCarrier"));
 		if (!TestRunner->TestNotNull(TEXT("Generated class should exist for property default input"), GeneratedClass))
 		{
 			return;
@@ -206,7 +205,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 		FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
+		const bool bCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
 			TEXT("CompilerGeneratedClassConsistency"),
 			TEXT("CompilerGeneratedClassConsistency.as"),
@@ -230,7 +229,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 			return;
 		}
 
-		UClass* GeneratedClass = AngelscriptTestSupport::FindGeneratedClass(&Engine, TEXT("UCompilerConsistencyCarrier"));
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UCompilerConsistencyCarrier"));
 		if (!TestRunner->TestNotNull(TEXT("Generated consistency class should exist"), GeneratedClass))
 		{
 			return;
@@ -238,7 +237,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 
 		TestRunner->TestTrue(TEXT("Generated consistency class should preserve abstract flag"), GeneratedClass->HasAnyClassFlags(CLASS_Abstract));
 		TestRunner->TestNotNull(TEXT("Generated consistency class should expose Score property"), FindFProperty<FProperty>(GeneratedClass, TEXT("Score")));
-		TestRunner->TestNotNull(TEXT("Generated consistency class should expose GetScore function"), AngelscriptTestSupport::FindGeneratedFunction(GeneratedClass, TEXT("GetScore")));
+		TestRunner->TestNotNull(TEXT("Generated consistency class should expose GetScore function"), FindGeneratedFunction(GeneratedClass, TEXT("GetScore")));
 	}
 	}
 
@@ -247,7 +246,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 		FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(
+		asIScriptModule* Module = BuildModule(
 			*TestRunner,
 			Engine,
 			"CompilerModuleFunctionInspection",
@@ -267,7 +266,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 			return;
 		}
 
-		asIScriptFunction* SumWithDefault = AngelscriptTestSupport::GetFunctionByDecl(*TestRunner, *Module, TEXT("int SumWithDefault(int, int)"));
+		asIScriptFunction* SumWithDefault = GetFunctionByDecl(*TestRunner, *Module, TEXT("int SumWithDefault(int, int)"));
 		if (!TestRunner->TestNotNull(TEXT("Compiled module should expose SumWithDefault"), SumWithDefault))
 		{
 			return;
@@ -276,7 +275,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 		TestRunner->TestEqual(TEXT("Compiled module should expose exactly two parameters for SumWithDefault"), static_cast<int32>(SumWithDefault->GetParamCount()), 2);
 
 		int32 Result = 0;
-		if (!TestRunner->TestTrue(TEXT("Compiled inspection module entry should execute"), AngelscriptTestSupport::ExecuteIntFunction(&Engine, TEXT("CompilerModuleFunctionInspection"), TEXT("int Entry()"), Result)))
+		if (!TestRunner->TestTrue(TEXT("Compiled inspection module entry should execute"), ExecuteIntFunction(&Engine, TEXT("CompilerModuleFunctionInspection"), TEXT("int Entry()"), Result)))
 		{
 			return;
 		}
@@ -290,7 +289,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 		FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
+		const bool bCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
 			TEXT("CompilerEnumAvailability"),
 			TEXT("CompilerEnumAvailability.as"),
@@ -325,7 +324,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 		FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
+		const bool bCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
 			TEXT("CompilerDelegateSignatureConsistency"),
 			TEXT("CompilerDelegateSignatureConsistency.as"),
@@ -367,7 +366,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 		FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
+		const bool bCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
 			TEXT("CompilerClassLikeReflectionShape"),
 			TEXT("CompilerClassLikeReflectionShape.as"),
@@ -400,15 +399,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 			return;
 		}
 
-		UClass* GeneratedClass = AngelscriptTestSupport::FindGeneratedClass(&Engine, TEXT("UCompilerClassLikeShapeCarrier"));
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UCompilerClassLikeShapeCarrier"));
 		if (!TestRunner->TestNotNull(TEXT("Generated class should exist for class-like reflection shape input"), GeneratedClass))
 		{
 			return;
 		}
 
-		UFunction* EchoPlainClass = AngelscriptTestSupport::FindGeneratedFunction(GeneratedClass, TEXT("EchoPlainClass"));
-		UFunction* EchoActorClass = AngelscriptTestSupport::FindGeneratedFunction(GeneratedClass, TEXT("EchoActorClass"));
-		UFunction* EchoSoftActorClass = AngelscriptTestSupport::FindGeneratedFunction(GeneratedClass, TEXT("EchoSoftActorClass"));
+		UFunction* EchoPlainClass = FindGeneratedFunction(GeneratedClass, TEXT("EchoPlainClass"));
+		UFunction* EchoActorClass = FindGeneratedFunction(GeneratedClass, TEXT("EchoActorClass"));
+		UFunction* EchoSoftActorClass = FindGeneratedFunction(GeneratedClass, TEXT("EchoSoftActorClass"));
 		if (!TestRunner->TestNotNull(TEXT("EchoPlainClass should exist"), EchoPlainClass) ||
 			!TestRunner->TestNotNull(TEXT("EchoActorClass should exist"), EchoActorClass) ||
 			!TestRunner->TestNotNull(TEXT("EchoSoftActorClass should exist"), EchoSoftActorClass))

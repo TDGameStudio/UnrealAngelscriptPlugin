@@ -8,7 +8,6 @@
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptTest_Angelscript_AngelscriptTypeTests_Private
 {
@@ -369,7 +368,7 @@ bool FAngelscriptTypeFloatConfigurationModesTest::RunTest(const FString& Paramet
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 
 	ApplyFloatSettings(false);
-	TUniquePtr<FAngelscriptEngine> Float32Engine = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> Float32Engine = CreateScriptScanFreeEngineForTesting(Config, Dependencies);
 	if (!TestNotNull(TEXT("Types.Float.ConfigurationModes should create a float32 testing engine"), Float32Engine.Get()))
 	{
 		return false;
@@ -413,7 +412,7 @@ bool FAngelscriptTypeFloatConfigurationModesTest::RunTest(const FString& Paramet
 		0);
 
 	ApplyFloatSettings(true);
-	TUniquePtr<FAngelscriptEngine> Float64Engine = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> Float64Engine = CreateScriptScanFreeEngineForTesting(Config, Dependencies);
 	if (!TestNotNull(TEXT("Types.Float.ConfigurationModes should create a float64 testing engine"), Float64Engine.Get()))
 	{
 		return false;

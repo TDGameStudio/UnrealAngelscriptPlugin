@@ -61,10 +61,10 @@ namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private
 bool FAngelscriptTestEnginePoolPrewarmCachesBindDatabaseTest::RunTest(const FString& Parameters)
 {
 	using namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private;
-	AngelscriptTestSupport::ShutdownTestEnginePool();
+	ShutdownTestEnginePool();
 	FAngelscriptBindExecutionObservation::Reset();
 
-	FAngelscriptEngine& SourceEngine = AngelscriptTestSupport::PrewarmTestEnginePool();
+	FAngelscriptEngine& SourceEngine = PrewarmTestEnginePool();
 	const FAngelscriptBindExecutionSnapshot PrewarmSnapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
 	if (!TestTrue(TEXT("Prewarm should create a fully bound source engine"), PrewarmSnapshot.BindScriptTypesDurationSeconds > 0.0))
 	{
@@ -73,23 +73,23 @@ bool FAngelscriptTestEnginePoolPrewarmCachesBindDatabaseTest::RunTest(const FStr
 
 	FAngelscriptBindExecutionObservation::Reset();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+	{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 		TestTrue(TEXT("Module-clean acquire should reuse the prewarmed source engine"), &Engine == &SourceEngine);
 	}
 
 	TestEqual(TEXT("Module-clean acquire should not replay BindScriptTypes"), FAngelscriptBindExecutionObservation::GetInvocationCount(), 0);
-	AngelscriptTestSupport::ShutdownTestEnginePool();
+	ShutdownTestEnginePool();
 	return true;
 }
 
 bool FAngelscriptTestEnginePoolModuleCleanDiscardsOnlyDeltaTest::RunTest(const FString& Parameters)
 {
 	using namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private;
-	AngelscriptTestSupport::ShutdownTestEnginePool();
+	ShutdownTestEnginePool();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(
+	{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		asIScriptModule* Module = BuildModule(
 			*this,
 			Engine,
 			"PoolDeltaModule",
@@ -102,22 +102,22 @@ bool FAngelscriptTestEnginePoolModuleCleanDiscardsOnlyDeltaTest::RunTest(const F
 	}
 
 	TestEqual(TEXT("Module-clean scope should discard its active module delta"), Engine.GetActiveModules().Num(), 0);
-	const AngelscriptTestSupport::FAngelscriptTestEnginePoolMetrics Metrics = AngelscriptTestSupport::GetTestEnginePoolMetrics();
+	const FAngelscriptTestEnginePoolMetrics Metrics = GetTestEnginePoolMetrics();
 	TestTrue(TEXT("Module-clean scope should record at least one cleanup"), Metrics.ModuleCleanCount >= 1);
 	TestTrue(TEXT("Module-clean scope should not force GC for a plain module"), Metrics.GarbageCollectCount == 0);
 
-	AngelscriptTestSupport::ShutdownTestEnginePool();
+	ShutdownTestEnginePool();
 	return true;
 }
 
 bool FAngelscriptTestEnginePoolGeneratedClassCleanupIsBoundedTest::RunTest(const FString& Parameters)
 {
 	using namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private;
-	AngelscriptTestSupport::ShutdownTestEnginePool();
+	ShutdownTestEnginePool();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
-		const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
+	{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		const bool bCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
 			TEXT("PoolGeneratedClassModule"),
 			TEXT("PoolGeneratedClassModule.as"),
@@ -137,19 +137,19 @@ class UPoolGeneratedClassObject : UObject
 			return false;
 		}
 
-		UClass* GeneratedClass = AngelscriptTestSupport::FindGeneratedClass(&Engine, TEXT("UPoolGeneratedClassObject"));
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UPoolGeneratedClassObject"));
 		if (!TestNotNull(TEXT("Generated class should be visible inside the scoped lease"), GeneratedClass))
 		{
 			return false;
 		}
 	}
 
-	const AngelscriptTestSupport::FAngelscriptTestEnginePoolMetrics Metrics = AngelscriptTestSupport::GetTestEnginePoolMetrics();
+	const FAngelscriptTestEnginePoolMetrics Metrics = GetTestEnginePoolMetrics();
 	TestEqual(TEXT("Generated-class cleanup should leave no rooted detached UASClass objects"), CountRootedDetachedASClasses(), 0);
 	TestTrue(TEXT("Generated-class cleanup should discard the generated class module"), Metrics.LastActiveModuleDiscardCount >= 1);
 	TestTrue(TEXT("Generated-class cleanup should inspect detached generated classes"), Metrics.LastDetachedClassCount >= 1);
 
-	AngelscriptTestSupport::ShutdownTestEnginePool();
+	ShutdownTestEnginePool();
 	return true;
 }
 
@@ -158,15 +158,15 @@ bool FAngelscriptTestEnginePoolGeneratedStructCleanupIsBoundedTest::RunTest(cons
 	using namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private;
 	static const FName GeneratedStructName(TEXT("PoolGeneratedStruct"));
 
-	AngelscriptTestSupport::ShutdownTestEnginePool();
-	AngelscriptTestSupport::FAngelscriptTestEnginePool::Get().SetGarbageCollectEveryNCleanups(1);
+	ShutdownTestEnginePool();
+	FAngelscriptTestEnginePool::Get().SetGarbageCollectEveryNCleanups(1);
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 
 	TWeakObjectPtr<UASStruct> WeakGeneratedStruct;
 	FString GeneratedStructPath;
 
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
-		const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
+	{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		const bool bCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
 			TEXT("PoolGeneratedStructModule"),
 			TEXT("PoolGeneratedStructModule.as"),
@@ -194,12 +194,12 @@ struct FPoolGeneratedStruct
 	}
 
 	UASStruct* FoundGeneratedStructByPath = FindObject<UASStruct>(nullptr, *GeneratedStructPath);
-	const AngelscriptTestSupport::FAngelscriptTestEnginePoolMetrics Metrics = AngelscriptTestSupport::GetTestEnginePoolMetrics();
+	const FAngelscriptTestEnginePoolMetrics Metrics = GetTestEnginePoolMetrics();
 	TestFalse(TEXT("Module-clean generated struct weak pointer should be invalid after cleanup"), WeakGeneratedStruct.IsValid());
 	TestNull(TEXT("Module-clean generated struct should not be findable by path after cleanup"), FoundGeneratedStructByPath);
 	TestTrue(TEXT("Generated-struct cleanup should inspect detached generated structs"), Metrics.LastDetachedStructCount >= 1);
 
-	AngelscriptTestSupport::ShutdownTestEnginePool();
+	ShutdownTestEnginePool();
 	return !WeakGeneratedStruct.IsValid()
 		&& FoundGeneratedStructByPath == nullptr
 		&& Metrics.LastDetachedStructCount >= 1;
@@ -208,8 +208,8 @@ struct FPoolGeneratedStruct
 bool FAngelscriptTestEnginePoolGeneratedEnumDelegateCleanupIsBoundedTest::RunTest(const FString& Parameters)
 {
 	using namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private;
-	AngelscriptTestSupport::ShutdownTestEnginePool();
-	AngelscriptTestSupport::FAngelscriptTestEnginePool::Get().SetGarbageCollectEveryNCleanups(1);
+	ShutdownTestEnginePool();
+	FAngelscriptTestEnginePool::Get().SetGarbageCollectEveryNCleanups(1);
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 
 	TWeakObjectPtr<UEnum> WeakGeneratedEnum;
@@ -219,8 +219,8 @@ bool FAngelscriptTestEnginePoolGeneratedEnumDelegateCleanupIsBoundedTest::RunTes
 	FString GeneratedDelegateFunctionPath;
 	FString GeneratedEventFunctionPath;
 
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
-		const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
+	{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		const bool bCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
 			TEXT("PoolGeneratedEnumDelegateModule"),
 			TEXT("PoolGeneratedEnumDelegateModule.as"),
@@ -286,7 +286,7 @@ event void FPoolGeneratedEvent(int Value);
 	UEnum* FoundGeneratedEnumByPath = FindObject<UEnum>(nullptr, *GeneratedEnumPath);
 	UDelegateFunction* FoundGeneratedDelegateFunctionByPath = FindObject<UDelegateFunction>(nullptr, *GeneratedDelegateFunctionPath);
 	UDelegateFunction* FoundGeneratedEventFunctionByPath = FindObject<UDelegateFunction>(nullptr, *GeneratedEventFunctionPath);
-	const AngelscriptTestSupport::FAngelscriptTestEnginePoolMetrics Metrics = AngelscriptTestSupport::GetTestEnginePoolMetrics();
+	const FAngelscriptTestEnginePoolMetrics Metrics = GetTestEnginePoolMetrics();
 	TestFalse(TEXT("Module-clean generated enum weak pointer should be invalid after cleanup"), WeakGeneratedEnum.IsValid());
 	TestFalse(TEXT("Module-clean generated delegate function weak pointer should be invalid after cleanup"), WeakGeneratedDelegateFunction.IsValid());
 	TestFalse(TEXT("Module-clean generated event function weak pointer should be invalid after cleanup"), WeakGeneratedEventFunction.IsValid());
@@ -296,7 +296,7 @@ event void FPoolGeneratedEvent(int Value);
 	TestTrue(TEXT("Generated enum/delegate cleanup should inspect discarded generated enums"), Metrics.LastDiscardedEnumCount >= 1);
 	TestTrue(TEXT("Generated enum/delegate cleanup should inspect discarded generated delegate functions"), Metrics.LastDiscardedDelegateFunctionCount >= 2);
 
-	AngelscriptTestSupport::ShutdownTestEnginePool();
+	ShutdownTestEnginePool();
 	return !WeakGeneratedEnum.IsValid()
 		&& !WeakGeneratedDelegateFunction.IsValid()
 		&& !WeakGeneratedEventFunction.IsValid()
@@ -310,15 +310,15 @@ event void FPoolGeneratedEvent(int Value);
 bool FAngelscriptTestEnginePoolGeneratedClassActionCacheIsClearedTest::RunTest(const FString& Parameters)
 {
 	using namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private;
-	AngelscriptTestSupport::ShutdownTestEnginePool();
-	AngelscriptTestSupport::FAngelscriptTestEnginePool::Get().SetGarbageCollectEveryNCleanups(1);
+	ShutdownTestEnginePool();
+	FAngelscriptTestEnginePool::Get().SetGarbageCollectEveryNCleanups(1);
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 
 	TWeakObjectPtr<UASClass> WeakGeneratedClass;
 	FString GeneratedClassPath;
 
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
-		const bool bCompiled = AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(
+	{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		const bool bCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
 			TEXT("PoolGeneratedClassActionCacheModule"),
 			TEXT("PoolGeneratedClassActionCacheModule.as"),
@@ -341,7 +341,7 @@ class UPoolGeneratedClassActionCacheObject : UObject
 			return false;
 		}
 
-		UASClass* GeneratedClass = Cast<UASClass>(AngelscriptTestSupport::FindGeneratedClass(&Engine, TEXT("UPoolGeneratedClassActionCacheObject")));
+		UASClass* GeneratedClass = Cast<UASClass>(FindGeneratedClass(&Engine, TEXT("UPoolGeneratedClassActionCacheObject")));
 		if (!TestNotNull(TEXT("Generated class should be visible before module-clean scope exits"), GeneratedClass))
 		{
 			return false;
@@ -355,12 +355,12 @@ class UPoolGeneratedClassActionCacheObject : UObject
 	}
 
 	UASClass* FoundGeneratedClassByPath = FindObject<UASClass>(nullptr, *GeneratedClassPath);
-	const AngelscriptTestSupport::FAngelscriptTestEnginePoolMetrics Metrics = AngelscriptTestSupport::GetTestEnginePoolMetrics();
+	const FAngelscriptTestEnginePoolMetrics Metrics = GetTestEnginePoolMetrics();
 	TestFalse(TEXT("Module-clean generated class weak pointer should be invalid after action-cache cleanup"), WeakGeneratedClass.IsValid());
 	TestNull(TEXT("Module-clean generated class should not be findable by path after action-cache cleanup"), FoundGeneratedClassByPath);
 	TestTrue(TEXT("Module-clean cleanup should clear generated-class Blueprint action entries"), Metrics.LastBlueprintActionCacheClearedCount >= 1);
 
-	AngelscriptTestSupport::ShutdownTestEnginePool();
+	ShutdownTestEnginePool();
 	return !WeakGeneratedClass.IsValid()
 		&& FoundGeneratedClassByPath == nullptr
 		&& Metrics.LastBlueprintActionCacheClearedCount >= 1;

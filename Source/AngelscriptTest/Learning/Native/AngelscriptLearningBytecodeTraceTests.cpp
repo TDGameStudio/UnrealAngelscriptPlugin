@@ -7,7 +7,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptTestSupport;
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FAngelscriptLearningNativeBytecodeTraceTest,

@@ -36,9 +36,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
-using namespace AngelscriptReflectiveAccess;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -114,11 +111,11 @@ int DelegateBind_ClearMakesUnbound()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegateBind_EmptyNotBound()"), TEXT("Empty delegate should not be bound"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegateBind_BindUFunction()"), TEXT("BindUFunction should make delegate bound"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegateBind_GetFunctionName()"), TEXT("GetFunctionName should return bound function name"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegateBind_MulticastAddUnbind()"), TEXT("Multicast Add then Unbind should leave unbound"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegateBind_ClearMakesUnbound()"), TEXT("Clear should make delegate unbound"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegateBind_EmptyNotBound()"), TEXT("Empty delegate should not be bound"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegateBind_BindUFunction()"), TEXT("BindUFunction should make delegate bound"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegateBind_GetFunctionName()"), TEXT("GetFunctionName should return bound function name"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegateBind_MulticastAddUnbind()"), TEXT("Multicast Add then Unbind should leave unbound"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegateBind_ClearMakesUnbound()"), TEXT("Clear should make delegate unbound"), 1);
 	}
 
 	// ====================================================================
@@ -163,8 +160,8 @@ int DelegateExec_MulticastBroadcast()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegateExec_SingleExecute()"), TEXT("Single delegate Execute should return expected value"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegateExec_MulticastBroadcast()"), TEXT("Multicast broadcast then unbind should leave unbound"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegateExec_SingleExecute()"), TEXT("Single delegate Execute should return expected value"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegateExec_MulticastBroadcast()"), TEXT("Multicast broadcast then unbind should leave unbound"), 1);
 
 		const int32* AlphaCount = NativeTestObject->NameCounts.Find(TEXT("Alpha"));
 		TestRunner->TestNotNull(TEXT("Multicast delegate broadcast should write the expected label key"), AlphaCount);
@@ -247,17 +244,17 @@ int SoftPath_ClassPathFromString()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_EmptyIsNull()"), TEXT("Empty FSoftObjectPath should be null"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ObjectPathValid()"), TEXT("FSoftObjectPath from class path should be valid"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ObjectPathAssetName()"), TEXT("FSoftObjectPath should have non-empty asset name"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ObjectPathPackageName()"), TEXT("FSoftObjectPath should have non-empty package name"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ObjectPathNotSubobject()"), TEXT("FSoftObjectPath from class should not be subobject"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ObjectPathEquality()"), TEXT("FSoftObjectPath equality from same source should hold"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ClassPathValid()"), TEXT("FSoftClassPath from class path should be valid"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ClassPathAssetName()"), TEXT("FSoftClassPath should have non-empty asset name"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ClassPathPackageName()"), TEXT("FSoftClassPath should have non-empty package name"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ClassPathCopyEquality()"), TEXT("FSoftClassPath copy should equal original"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ClassPathFromString()"), TEXT("FSoftClassPath from string roundtrip should match"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_EmptyIsNull()"), TEXT("Empty FSoftObjectPath should be null"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ObjectPathValid()"), TEXT("FSoftObjectPath from class path should be valid"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ObjectPathAssetName()"), TEXT("FSoftObjectPath should have non-empty asset name"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ObjectPathPackageName()"), TEXT("FSoftObjectPath should have non-empty package name"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ObjectPathNotSubobject()"), TEXT("FSoftObjectPath from class should not be subobject"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ObjectPathEquality()"), TEXT("FSoftObjectPath equality from same source should hold"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ClassPathValid()"), TEXT("FSoftClassPath from class path should be valid"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ClassPathAssetName()"), TEXT("FSoftClassPath should have non-empty asset name"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ClassPathPackageName()"), TEXT("FSoftClassPath should have non-empty package name"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ClassPathCopyEquality()"), TEXT("FSoftClassPath copy should equal original"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPath_ClassPathFromString()"), TEXT("FSoftClassPath from string roundtrip should match"), 1);
 	}
 
 	// ====================================================================
@@ -373,20 +370,20 @@ int SoftResolve_ClassPathTryLoad()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ObjectPathValid()"), TEXT("FSoftObjectPath from string should be valid"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ObjectPathToString()"), TEXT("FSoftObjectPath ToString should roundtrip"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ObjectPathAssetName()"), TEXT("FSoftObjectPath GetAssetName should match"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ObjectPathPackageName()"), TEXT("FSoftObjectPath GetLongPackageName should match"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ObjectPathAssetPath()"), TEXT("FSoftObjectPath GetAssetPath should match"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ObjectPathResolve()"), TEXT("FSoftObjectPath ResolveObject should find AActor class"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ObjectPathTryLoad()"), TEXT("FSoftObjectPath TryLoad should find AActor class"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ClassPathValid()"), TEXT("FSoftClassPath from string should be valid"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ClassPathToString()"), TEXT("FSoftClassPath ToString should roundtrip"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ClassPathAssetName()"), TEXT("FSoftClassPath GetAssetName should match"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ClassPathPackageName()"), TEXT("FSoftClassPath GetLongPackageName should match"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ClassPathAssetPath()"), TEXT("FSoftClassPath GetAssetPath should match"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ClassPathResolve()"), TEXT("FSoftClassPath ResolveClass should find AActor class"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ClassPathTryLoad()"), TEXT("FSoftClassPath TryLoadClass should find AActor class"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ObjectPathValid()"), TEXT("FSoftObjectPath from string should be valid"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ObjectPathToString()"), TEXT("FSoftObjectPath ToString should roundtrip"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ObjectPathAssetName()"), TEXT("FSoftObjectPath GetAssetName should match"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ObjectPathPackageName()"), TEXT("FSoftObjectPath GetLongPackageName should match"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ObjectPathAssetPath()"), TEXT("FSoftObjectPath GetAssetPath should match"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ObjectPathResolve()"), TEXT("FSoftObjectPath ResolveObject should find AActor class"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ObjectPathTryLoad()"), TEXT("FSoftObjectPath TryLoad should find AActor class"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ClassPathValid()"), TEXT("FSoftClassPath from string should be valid"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ClassPathToString()"), TEXT("FSoftClassPath ToString should roundtrip"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ClassPathAssetName()"), TEXT("FSoftClassPath GetAssetName should match"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ClassPathPackageName()"), TEXT("FSoftClassPath GetLongPackageName should match"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ClassPathAssetPath()"), TEXT("FSoftClassPath GetAssetPath should match"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ClassPathResolve()"), TEXT("FSoftClassPath ResolveClass should find AActor class"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftResolve_ClassPathTryLoad()"), TEXT("FSoftClassPath TryLoadClass should find AActor class"), 1);
 	}
 
 	// ====================================================================
@@ -488,13 +485,13 @@ int SourceMeta_FunctionDeclaration()
 			return;
 		}
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, *Module,  TEXT("int SourceMeta_ClassFilePath()"), TEXT("UClass GetSourceFilePath should match written file"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, *Module,  TEXT("int SourceMeta_ClassModuleName()"), TEXT("UClass GetScriptModuleName should contain module name"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, *Module,  TEXT("int SourceMeta_ClassTypeDeclaration()"), TEXT("UClass GetScriptTypeDeclaration should be non-empty"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, *Module,  TEXT("int SourceMeta_FunctionImplementedInScript()"), TEXT("IsFunctionImplementedInScript should be true"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, *Module,  TEXT("int SourceMeta_FunctionFilePath()"), TEXT("UFunction GetSourceFilePath should match written file"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, *Module,  TEXT("int SourceMeta_FunctionLineNumber()"), TEXT("UFunction GetSourceLineNumber should be 6"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, *Module,  TEXT("int SourceMeta_FunctionDeclaration()"), TEXT("UFunction GetScriptFunctionDeclaration should match"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, *Module,  TEXT("int SourceMeta_ClassFilePath()"), TEXT("UClass GetSourceFilePath should match written file"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, *Module,  TEXT("int SourceMeta_ClassModuleName()"), TEXT("UClass GetScriptModuleName should contain module name"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, *Module,  TEXT("int SourceMeta_ClassTypeDeclaration()"), TEXT("UClass GetScriptTypeDeclaration should be non-empty"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, *Module,  TEXT("int SourceMeta_FunctionImplementedInScript()"), TEXT("IsFunctionImplementedInScript should be true"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, *Module,  TEXT("int SourceMeta_FunctionFilePath()"), TEXT("UFunction GetSourceFilePath should match written file"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, *Module,  TEXT("int SourceMeta_FunctionLineNumber()"), TEXT("UFunction GetSourceLineNumber should be 6"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, *Module,  TEXT("int SourceMeta_FunctionDeclaration()"), TEXT("UFunction GetScriptFunctionDeclaration should match"), 1);
 	}
 
 	// ====================================================================
@@ -521,7 +518,7 @@ int FileHelper_SaveAndLoad()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FileHelper_SaveAndLoad()"), TEXT("FFileHelper save then load should roundtrip string content"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FileHelper_SaveAndLoad()"), TEXT("FFileHelper save then load should roundtrip string content"), 1);
 	}
 
 	// ====================================================================
@@ -595,21 +592,21 @@ void TriggerSignatureMismatch()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegatePayload_HappyPath()"), TEXT("DelegateWithPayload happy path should execute both bindings"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegatePayload_HappyPath()"), TEXT("DelegateWithPayload happy path should execute both bindings"), 1);
 		TestRunner->TestTrue(TEXT("DelegateWithPayload should execute the bound no-payload native function"), NativeTestObject->bNativeFlag);
 		TestRunner->TestEqual(TEXT("DelegateWithPayload should forward the boxed int payload"), NativeTestObject->LargeCount, static_cast<int64>(123));
 
-		AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(*TestRunner, Engine, M, 
+		ExecuteFunctionExpectingScriptException(*TestRunner, Engine, M, 
 			TEXT("void TriggerInvalidPayloadType()"),
 			TEXT("invalid payload type should raise exception"),
 			TEXT("Invalid payload type"));
 
-		AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(*TestRunner, Engine, M, 
+		ExecuteFunctionExpectingScriptException(*TestRunner, Engine, M, 
 			TEXT("void TriggerInvalidObject()"),
 			TEXT("invalid object should raise exception"),
 			TEXT("Invalid object passed to BindUFunction."));
 
-		AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(*TestRunner, Engine, M, 
+		ExecuteFunctionExpectingScriptException(*TestRunner, Engine, M, 
 			TEXT("void TriggerSignatureMismatch()"),
 			TEXT("signature mismatch should raise exception"),
 			TEXT("Specified function is not compatible with delegate function."));

@@ -24,8 +24,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -107,9 +105,9 @@ int Guid_SlotAccess()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ToStringHyphens()"), TEXT("FGuid ToString DigitsWithHyphens should match native"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ToStringDigits()"), TEXT("FGuid ToString Digits should match native"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_SlotAccess()"), TEXT("FGuid operator[] should return correct components"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ToStringHyphens()"), TEXT("FGuid ToString DigitsWithHyphens should match native"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ToStringDigits()"), TEXT("FGuid ToString Digits should match native"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_SlotAccess()"), TEXT("FGuid operator[] should return correct components"), 1);
 	}
 
 	// ====================================================================
@@ -171,10 +169,10 @@ int Guid_ParseExactDigits()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseHyphens()"), TEXT("FGuid::Parse should accept DigitsWithHyphens format"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseDigits()"), TEXT("FGuid::Parse should accept Digits format"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseExactHyphens()"), TEXT("FGuid::ParseExact should accept DigitsWithHyphens"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseExactDigits()"), TEXT("FGuid::ParseExact should accept Digits"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseHyphens()"), TEXT("FGuid::Parse should accept DigitsWithHyphens format"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseDigits()"), TEXT("FGuid::Parse should accept Digits format"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseExactHyphens()"), TEXT("FGuid::ParseExact should accept DigitsWithHyphens"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseExactDigits()"), TEXT("FGuid::ParseExact should accept Digits"), 1);
 	}
 
 	// ====================================================================
@@ -219,8 +217,8 @@ int Guid_ParseInvalid()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseExactWrongFormat()"), TEXT("FGuid::ParseExact should reject wrong format and preserve sentinel"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseInvalid()"), TEXT("FGuid::Parse should reject invalid text and preserve sentinel"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseExactWrongFormat()"), TEXT("FGuid::ParseExact should reject wrong format and preserve sentinel"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseInvalid()"), TEXT("FGuid::Parse should reject invalid text and preserve sentinel"), 1);
 	}
 
 	// ====================================================================
@@ -260,8 +258,8 @@ int Guid_CtorFromDigits()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_CtorFromHyphens()"), TEXT("FGuid string ctor should parse DigitsWithHyphens"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_CtorFromDigits()"), TEXT("FGuid string ctor should parse Digits"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_CtorFromHyphens()"), TEXT("FGuid string ctor should parse DigitsWithHyphens"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_CtorFromDigits()"), TEXT("FGuid string ctor should parse Digits"), 1);
 	}
 };
 

@@ -35,11 +35,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 	TEST_METHOD(CreateDestroy)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		FAngelscriptEngineConfig Config;
 		FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(Config, Dependencies);
+		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeEngineForTesting(Config, Dependencies);
 		if (!TestRunner->TestNotNull(TEXT("Test module should create an angelscript engine instance"), Engine.Get()))
 		{
 			return;
@@ -53,24 +53,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 	{
 		using namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private;
 		FCoreTestContextStackGuard ContextGuard;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
-			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 		}
 		ContextGuard.DiscardSavedStack();
 		ON_SCOPE_EXIT
 		{
 			if (FAngelscriptEngine::IsInitialized())
 			{
-				AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 			}
-			AngelscriptTestSupport::DestroySharedTestEngine();
+			DestroySharedTestEngine();
 		};
 
 		FAngelscriptEngineConfig Config;
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
+		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
 		if (!TestRunner->TestNotNull(TEXT("scan-free initialize should create the script engine wrapper"), Engine.Get()))
 		{
 			return;
@@ -166,22 +166,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 	{
 		using namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private;
 		FCoreTestContextStackGuard ContextGuard;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
-			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 		}
 		ContextGuard.DiscardSavedStack();
 		ON_SCOPE_EXIT
 		{
 			if (FAngelscriptEngine::IsInitialized())
 			{
-				AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 			}
-			AngelscriptTestSupport::DestroySharedTestEngine();
+			DestroySharedTestEngine();
 		};
 
-		TUniquePtr<FAngelscriptEngine> FullEngine = AngelscriptTestSupport::CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> FullEngine = CreateFullTestEngine();
 		if (!TestRunner->TestNotNull(TEXT("Last full destroy core test should create a full engine"), FullEngine.Get()))
 		{
 			return;
@@ -203,22 +203,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 	{
 		using namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private;
 		FCoreTestContextStackGuard ContextGuard;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
-			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 		}
 		ContextGuard.DiscardSavedStack();
 		ON_SCOPE_EXIT
 		{
 			if (FAngelscriptEngine::IsInitialized())
 			{
-				AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 			}
-			AngelscriptTestSupport::DestroySharedTestEngine();
+			DestroySharedTestEngine();
 		};
 
-		TUniquePtr<FAngelscriptEngine> FirstEngine = AngelscriptTestSupport::CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> FirstEngine = CreateFullTestEngine();
 		if (!TestRunner->TestNotNull(TEXT("Full destroy recreate core test should create the first full engine"), FirstEngine.Get()))
 		{
 			return;
@@ -238,7 +238,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 			return;
 		}
 
-		TUniquePtr<FAngelscriptEngine> SecondEngine = AngelscriptTestSupport::CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> SecondEngine = CreateFullTestEngine();
 		if (!TestRunner->TestNotNull(TEXT("Full destroy recreate core test should create a second full engine after cleanup"), SecondEngine.Get()))
 		{
 			return;
@@ -252,7 +252,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 			}
 		}
 
-		const bool bCompiled = AngelscriptTestSupport::CompileModuleFromMemory(
+		const bool bCompiled = CompileModuleFromMemory(
 			SecondEngine.Get(),
 			TEXT("RecreateCoreSnippet"),
 			TEXT("RecreateCoreSnippet.as"),
@@ -263,7 +263,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 		}
 
 		int32 Result = 0;
-		if (!TestRunner->TestTrue(TEXT("Full destroy recreate core test should execute the recreated module entry point"), AngelscriptTestSupport::ExecuteIntFunction(SecondEngine.Get(), TEXT("RecreateCoreSnippet"), TEXT("int Entry()"), Result)))
+		if (!TestRunner->TestTrue(TEXT("Full destroy recreate core test should execute the recreated module entry point"), ExecuteIntFunction(SecondEngine.Get(), TEXT("RecreateCoreSnippet"), TEXT("int Entry()"), Result)))
 		{
 			return;
 		}
@@ -275,19 +275,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 	{
 		using namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private;
 		FCoreTestContextStackGuard ContextGuard;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
-			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 		}
 		ContextGuard.DiscardSavedStack();
 		ON_SCOPE_EXIT
 		{
 			if (FAngelscriptEngine::IsInitialized())
 			{
-				AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 			}
-			AngelscriptTestSupport::DestroySharedTestEngine();
+			DestroySharedTestEngine();
 		};
 
 		auto CompileAnnotatedActor = [this](FAngelscriptEngine* Engine, FName ModuleName, const TCHAR* Filename, const TCHAR* ScriptSource, const TCHAR* ExpectedClassName)
@@ -295,18 +295,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 			FAngelscriptEngineScope Scope(*Engine);
 			if (!TestRunner->TestTrue(
 				FString::Printf(TEXT("%s should compile after full-engine setup"), *ModuleName.ToString()),
-				AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(Engine, ModuleName, Filename, ScriptSource)))
+				CompileAnnotatedModuleFromMemory(Engine, ModuleName, Filename, ScriptSource)))
 			{
 				return false;
 			}
 
-			UClass* GeneratedClass = AngelscriptTestSupport::FindGeneratedClass(Engine, ExpectedClassName);
+			UClass* GeneratedClass = FindGeneratedClass(Engine, ExpectedClassName);
 			return TestRunner->TestNotNull(
 				*FString::Printf(TEXT("%s should resolve the generated class after compile"), ExpectedClassName),
 				GeneratedClass);
 		};
 
-		TUniquePtr<FAngelscriptEngine> FirstEngine = AngelscriptTestSupport::CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> FirstEngine = CreateFullTestEngine();
 		if (!TestRunner->TestNotNull(TEXT("Annotated recreate test should create the first full engine"), FirstEngine.Get()))
 		{
 			return;
@@ -341,7 +341,7 @@ class ARecreateAnnotatedActorA : AActor
 			return;
 		}
 
-		TUniquePtr<FAngelscriptEngine> SecondEngine = AngelscriptTestSupport::CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> SecondEngine = CreateFullTestEngine();
 		if (!TestRunner->TestNotNull(TEXT("Annotated recreate test should create the second full engine"), SecondEngine.Get()))
 		{
 			return;
@@ -366,19 +366,19 @@ class ARecreateAnnotatedActorB : AActor
 	{
 		using namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private;
 		FCoreTestContextStackGuard ContextGuard;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
-			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 		}
 		ContextGuard.DiscardSavedStack();
 		ON_SCOPE_EXIT
 		{
 			if (FAngelscriptEngine::IsInitialized())
 			{
-				AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 			}
-			AngelscriptTestSupport::DestroySharedTestEngine();
+			DestroySharedTestEngine();
 		};
 
 		const FName ModuleName(TEXT("RecreateAnnotatedActor"));
@@ -407,12 +407,12 @@ class ARecreateAnnotatedActor : AActor
 			FAngelscriptEngineScope Scope(*Engine);
 			if (!TestRunner->TestTrue(
 				FString::Printf(TEXT("%s should compile annotated source"), *ModuleName.ToString()),
-				AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(Engine, ModuleName, Filename, ScriptSource)))
+				CompileAnnotatedModuleFromMemory(Engine, ModuleName, Filename, ScriptSource)))
 			{
 				return false;
 			}
 
-			UClass* GeneratedClass = AngelscriptTestSupport::FindGeneratedClass(Engine, GeneratedClassName);
+			UClass* GeneratedClass = FindGeneratedClass(Engine, GeneratedClassName);
 			if (!TestRunner->TestNotNull(TEXT("Annotated same-name recreate test should resolve the generated class"), GeneratedClass))
 			{
 				return false;
@@ -435,7 +435,7 @@ class ARecreateAnnotatedActor : AActor
 			return true;
 		};
 
-		TUniquePtr<FAngelscriptEngine> FirstEngine = AngelscriptTestSupport::CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> FirstEngine = CreateFullTestEngine();
 		if (!TestRunner->TestNotNull(TEXT("Annotated same-name recreate test should create the first full engine"), FirstEngine.Get()))
 		{
 			return;
@@ -474,7 +474,7 @@ class ARecreateAnnotatedActor : AActor
 			return;
 		}
 
-		TUniquePtr<FAngelscriptEngine> SecondEngine = AngelscriptTestSupport::CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> SecondEngine = CreateFullTestEngine();
 		if (!TestRunner->TestNotNull(TEXT("Annotated same-name recreate test should create the second full engine"), SecondEngine.Get()))
 		{
 			return;

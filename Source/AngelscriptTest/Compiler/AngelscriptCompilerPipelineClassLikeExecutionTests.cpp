@@ -7,7 +7,6 @@
 #include "UObject/UObjectGlobals.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelineClassLikeExecutionTest
 {
@@ -23,7 +22,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassLikeExecutionTests,
 {
 	TEST_METHOD(ClassLikeMethodExecutionRoundTrip)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		const FString ScriptSource = TEXT(R"AS(

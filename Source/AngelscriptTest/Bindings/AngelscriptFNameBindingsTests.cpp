@@ -9,8 +9,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptFNameBindingsTest,
@@ -36,7 +34,7 @@ int FName_ConstructAndIsNone()
 			TestRunner->AddInfo(TEXT("FName not available, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int FName_ConstructAndIsNone()"),
 			TEXT("Constructed FName is not None"), 1);
 	}
@@ -57,7 +55,7 @@ int FName_NoneIsNone()
 			TestRunner->AddInfo(TEXT("FName not available, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int FName_NoneIsNone()"),
 			TEXT("Default FName is None"), 1);
 	}
@@ -79,7 +77,7 @@ int FName_EqualityCheck()
 			TestRunner->AddInfo(TEXT("FName equality not available, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int FName_EqualityCheck()"),
 			TEXT("Same FName values are equal"), 1);
 	}
@@ -101,7 +99,7 @@ int FName_ToStringLen()
 			TestRunner->AddInfo(TEXT("FName.ToString not available, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int FName_ToStringLen()"),
 			TEXT("FName ToString length is 8"), 8);
 	}

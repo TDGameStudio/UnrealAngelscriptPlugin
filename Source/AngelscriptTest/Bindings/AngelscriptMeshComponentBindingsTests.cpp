@@ -12,8 +12,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptMeshComponentBindingsTest,
@@ -50,7 +48,7 @@ int Projectile_HomingTargetRoundTrip(UProjectileMovementComponent Comp, USceneCo
 			return;
 		}
 
-		AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Invoker(
+		FASGlobalFunctionInvoker Invoker(
 			*TestRunner,
 			Engine,
 			Mod.GetModule(),
@@ -82,7 +80,7 @@ int Skeletal_TypeExists()
 			TestRunner->TestTrue(TEXT("USkeletalMeshComponent type binding module should compile"), false);
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int Skeletal_TypeExists()"), TEXT("USkeletalMeshComponent compiles"), 1);
 	}
 
@@ -107,7 +105,7 @@ int Skeletal_SetAndGetAssetEntry()
 			TestRunner->TestTrue(TEXT("USkeletalMeshComponent asset accessor binding module should compile"), false);
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int Skeletal_SetAndGetAssetEntry()"), TEXT("USkeletalMeshComponent asset accessors compile"), 1);
 	}
 };

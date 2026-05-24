@@ -9,8 +9,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptInstancedStructBindingsTest,
@@ -36,7 +34,7 @@ int InstancedStruct_DefaultInvalid()
 			TestRunner->AddInfo(TEXT("FInstancedStruct not available, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int InstancedStruct_DefaultInvalid()"),
 			TEXT("Default FInstancedStruct is invalid"), 1);
 	}
@@ -58,7 +56,7 @@ int InstancedStruct_ResetMakesInvalid()
 			TestRunner->AddInfo(TEXT("FInstancedStruct not available, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int InstancedStruct_ResetMakesInvalid()"),
 			TEXT("Reset FInstancedStruct is invalid"), 1);
 	}

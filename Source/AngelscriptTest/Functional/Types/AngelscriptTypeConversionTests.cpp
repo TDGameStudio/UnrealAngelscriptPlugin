@@ -4,7 +4,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FAngelscriptTypeConversionNegativeTruncateTowardZeroTest,

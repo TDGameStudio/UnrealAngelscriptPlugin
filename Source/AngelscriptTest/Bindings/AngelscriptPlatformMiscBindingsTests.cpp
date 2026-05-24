@@ -13,8 +13,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptPlatformMiscBindingsTest,
@@ -36,7 +34,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPlatformMiscBindingsTest,
 		const FString ExpectedFragments[] = {
 			TEXT("GIsEditor"),
 		};
-		AngelscriptTestBindings::ExpectBindingCompileFailure(
+		ExpectBindingCompileFailure(
 			*TestRunner,
 			Engine,
 			TEXT("ASPlatformMisc_PlatMiscCoreGlobalsMissing"),
@@ -58,7 +56,7 @@ int IsEditor()
 			TEXT("NumberOfCores"),
 			TEXT("FGenericPlatformMisc"),
 		};
-		AngelscriptTestBindings::ExpectBindingCompileFailure(
+		ExpectBindingCompileFailure(
 			*TestRunner,
 			Engine,
 			TEXT("ASPlatformMisc_PlatMiscNumberOfCoresMissing"),
@@ -85,7 +83,7 @@ int GetNumCoresIncludingHyperthreads()
 			TEXT("GetDeltaTime"),
 			TEXT("FApp"),
 		};
-		AngelscriptTestBindings::ExpectBindingCompileFailure(
+		ExpectBindingCompileFailure(
 			*TestRunner,
 			Engine,
 			TEXT("ASPlatformMisc_TimersMissing"),

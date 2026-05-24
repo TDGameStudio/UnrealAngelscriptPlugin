@@ -25,8 +25,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -229,9 +227,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGameplayTagContainerFunctionLibraryTest,
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RemoveTag_MissingParity()"), TEXT("RemoveTag missing tag preserves container"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RemoveTag_EmptyParity()"), TEXT("RemoveTag empty tag preserves container"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RemoveTag_PresentParity()"), TEXT("RemoveTag present tag empties container"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RemoveTag_MissingParity()"), TEXT("RemoveTag missing tag preserves container"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RemoveTag_EmptyParity()"), TEXT("RemoveTag empty tag preserves container"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RemoveTag_PresentParity()"), TEXT("RemoveTag present tag empties container"), 1);
 	}
 };
 

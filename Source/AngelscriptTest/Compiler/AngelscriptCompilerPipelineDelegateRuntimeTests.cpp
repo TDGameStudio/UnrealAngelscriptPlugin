@@ -6,7 +6,6 @@
 #include "Misc/ScopeExit.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelineDelegateRuntimeTest
 {
@@ -80,7 +79,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineDelegateRuntimeTests,
 {
 	TEST_METHOD(DelegateExecuteReportsUnboundRuntimeError)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		const FString ScriptSource = TEXT(R"AS(
@@ -185,7 +183,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineDelegateRuntimeTests,
 
 	TEST_METHOD(DelegateExecuteIfBoundReturnsDefaultValue)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		const FString ScriptSource = TEXT(R"AS(

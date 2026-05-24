@@ -32,9 +32,9 @@ namespace AngelscriptTest_Core_AngelscriptScriptObjectTypeTests_Private
 	{
 		bPassed &= Test.TestTrue(
 			*FString::Printf(TEXT("%s should compile the annotated script object module"), *Fixture.ModuleName.ToString()),
-			AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(&Engine, Fixture.ModuleName, Fixture.Filename, Fixture.ScriptSource));
+			CompileAnnotatedModuleFromMemory(&Engine, Fixture.ModuleName, Fixture.Filename, Fixture.ScriptSource));
 
-		UClass* GeneratedClass = AngelscriptTestSupport::FindGeneratedClass(&Engine, Fixture.GeneratedClassName);
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, Fixture.GeneratedClassName);
 		bPassed &= Test.TestNotNull(
 			*FString::Printf(TEXT("%s should resolve the generated class"), *Fixture.GeneratedClassName.ToString()),
 			GeneratedClass);

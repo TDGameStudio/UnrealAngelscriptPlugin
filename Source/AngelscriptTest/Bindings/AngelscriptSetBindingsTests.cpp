@@ -27,8 +27,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -135,7 +133,7 @@ int SetFName_Contains()
 			{ TEXT("int SetReset_IsEmpty()"),       TEXT("TSet Reset should leave set empty"),           1 },
 			{ TEXT("int SetFName_Contains()"),      TEXT("TSet<FName> should contain added FName"),      1 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -366,7 +364,7 @@ int SetVector_RemoveContains()
 			{ TEXT("int SetVector_RemoveNum()"),         TEXT("TSet<FVector> Num should drop to 1 after Remove"),             1 },
 			{ TEXT("int SetVector_RemoveContains()"),    TEXT("TSet<FVector> should not contain removed vector"),             0 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -534,7 +532,7 @@ int SetApi_Iterator_Sum()
 			{ TEXT("int SetApi_Empty_Slack_IsEmpty()"),          TEXT("Empty(16) should clear contents"),                       1 },
 			{ TEXT("int SetApi_Iterator_Sum()"),                 TEXT("Iterator walk sum of {2,3,5} should be 10"),             10 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -718,17 +716,17 @@ int SetRet_VerifyStringArray_Num()
 		bool bPassed = true;
 
 		// Direct bool return assertions
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool SetRet_Bool_Contains()"), TEXT("bool return: Contains existing should be true"), true);
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool SetRet_Bool_NotContains()"), TEXT("bool return: Contains missing should be false"), false);
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool SetRet_Bool_Remove()"), TEXT("bool return: Remove existing should be true"), true);
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool SetRet_Bool_IsEmpty()"), TEXT("bool return: empty set IsEmpty should be true"), true);
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool SetRet_Bool_IsEmptyAfterAdd()"), TEXT("bool return: non-empty set IsEmpty should be false"), false);
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool SetRet_Bool_OpEquals()"), TEXT("bool return: equal sets opEquals should be true"), true);
 
 		// Container return verified via script-side int wrappers
@@ -747,7 +745,7 @@ int SetRet_VerifyStringArray_Num()
 			{ TEXT("int SetRet_VerifyVectorSet_ContainsFirst()"),    TEXT("TSet<FVector> return: should contain (1,0,0)"),         1 },
 			{ TEXT("int SetRet_VerifyStringArray_Num()"),            TEXT("TArray<FString> from TSet return: Num should be 2"),    2 },
 		};
-		bPassed &= AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  IntCases);
+		bPassed &= ExpectGlobalInts(Test, Engine, Module,  IntCases);
 
 		return bPassed;
 	}
@@ -797,7 +795,7 @@ int SetLog_Types()
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
-		return AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
+		return ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int SetLog_Types()"),
 			TEXT("Log diagnostic: TSet types should compile and log without crash"), 1);
 	}

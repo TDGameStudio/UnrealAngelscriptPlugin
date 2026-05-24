@@ -27,8 +27,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -241,10 +239,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGameplayTagEmptyContractTest,
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValidTag_SelfConsistency()"), TEXT("valid tag self-consistency sanity check"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int EmptyTag_MatchesParity()"), TEXT("empty tag Matches* parity with native"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int EmptyTag_SingleContainerParity()"), TEXT("empty tag GetSingleTagContainer parity"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int EmptyTag_ParentParity()"), TEXT("empty tag parent chain parity"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValidTag_SelfConsistency()"), TEXT("valid tag self-consistency sanity check"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int EmptyTag_MatchesParity()"), TEXT("empty tag Matches* parity with native"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int EmptyTag_SingleContainerParity()"), TEXT("empty tag GetSingleTagContainer parity"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int EmptyTag_ParentParity()"), TEXT("empty tag parent chain parity"), 1);
 	}
 };
 

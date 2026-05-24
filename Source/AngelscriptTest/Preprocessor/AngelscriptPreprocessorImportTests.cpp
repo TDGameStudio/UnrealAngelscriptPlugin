@@ -23,7 +23,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace PreprocessorTestHelpers;
-using namespace AngelscriptTestSupport;
 
 // ============================================================================
 // Test class
@@ -40,7 +39,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorImportTest,
 	TEST_METHOD(CircularDependencyReportsChain)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		TestRunner->AddExpectedError(
 			TEXT("Detected circular import of module Tests.Preprocessor.ImportCycles.CircularA. Import chain:"),
@@ -96,7 +95,7 @@ int FromB()
 	TEST_METHOD(AutomaticModeManualImportCompatibility)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		TestRunner->TestTrue(
 			TEXT("Should run with automatic imports enabled"),
@@ -173,7 +172,7 @@ int UseShared()
 	TEST_METHOD(MissingSemicolonReportsSyntax)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		TestRunner->AddExpectedError(
 			TEXT("Import statement is missing terminating ';'."),
@@ -225,7 +224,7 @@ int UseShared()
 	TEST_METHOD(TrailingBlockCommentDoesNotPolluteModuleName)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		FFixtureFile SharedFile(TEXT("Tests/Preprocessor/ImportTrailingBlockComment/Shared.as"), TEXT(R"(
 int SharedValue()
@@ -313,7 +312,7 @@ int Entry()
 	TEST_METHOD(DuplicateStatementsDeduplicateDependency)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		FFixtureFile SharedFile(TEXT("Tests/Preprocessor/ImportDedup/Shared.as"), TEXT(R"(
 int SharedValue()
@@ -407,7 +406,7 @@ int Entry()
 	TEST_METHOD(TopologicalOrderRespectsDependencyChain)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		FFixtureFile BaseFile(TEXT("Tests/Preprocessor/ImportTopology/Base.as"), TEXT(R"(
 int BaseValue()
@@ -489,7 +488,7 @@ int Entry()
 	TEST_METHOD(AutomaticWarningRespectsConfig)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		if (!TestRunner->TestTrue(
 			TEXT("Should run with automatic imports enabled"),
@@ -592,7 +591,7 @@ int Entry()
 	TEST_METHOD(ImportInsideConditionalBranch)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		FFixtureFile SharedFile(TEXT("Tests/Preprocessor/ImportConditional/Shared.as"), TEXT(R"(
 int SharedValue()
@@ -704,7 +703,7 @@ int Entry()
 	TEST_METHOD(WideImportGraph)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		// Graph: Root has no imports. A/B/C all import Root. Consumer imports A, B, C.
 		// Expected order: Root → A/B/C (any order) → Consumer

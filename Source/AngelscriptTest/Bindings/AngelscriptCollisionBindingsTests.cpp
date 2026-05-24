@@ -9,8 +9,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptCollisionBindingsTest,
@@ -36,7 +34,7 @@ int CollisionQueryParams_DefaultTraceComplex()
 			TestRunner->AddInfo(TEXT("FCollisionQueryParams not available, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int CollisionQueryParams_DefaultTraceComplex()"),
 			TEXT("Default FCollisionQueryParams bTraceComplex is false"), 0);
 	}
@@ -57,7 +55,7 @@ int CollisionShape_MakeSphere()
 			TestRunner->AddInfo(TEXT("FCollisionShape not available, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int CollisionShape_MakeSphere()"),
 			TEXT("MakeSphere creates sphere shape"), 1);
 	}
@@ -78,7 +76,7 @@ int CollisionShape_MakeBox()
 			TestRunner->AddInfo(TEXT("FCollisionShape::MakeBox not available, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int CollisionShape_MakeBox()"),
 			TEXT("MakeBox creates box shape"), 1);
 	}

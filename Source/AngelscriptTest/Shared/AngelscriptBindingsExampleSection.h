@@ -14,18 +14,18 @@
  * Phase 4): this file is the official demonstration of the *new* call-side
  * API surface. New Coverage Sections should mirror the shape used here:
  *
- *   - namespace `AngelscriptTest::` is the primary entry point for the
+ *   - namespace `` is the primary entry point for the
  *     C++-side AS invocation API (Executor + Execute* assertion family).
- *   - `AngelscriptTest::ExecuteAndExpectInt` (Bool / Double / NearFloat /
+ *   - `ExecuteAndExpectInt` (Bool / Double / NearFloat /
  *     NearDouble / IntAtLeast / Validate<T> / ...) replaces the legacy
- *     `AngelscriptTestBindings::ExpectGlobal*` helpers; signatures are
+ *     `ExpectGlobal*` helpers; signatures are
  *     identical so migration is a pure rename. The old names still work
  *     via inline forwarders for source compatibility.
- *   - `AngelscriptTest::ExecuteBatchAndExpectInt` + the `FExpectedInt`
+ *   - `ExecuteBatchAndExpectInt` + the `FExpectedInt`
  *     row struct replace `ExpectGlobalInts` + `FExpectedGlobalInt`.
- *   - `AngelscriptTest::FAngelscriptTestExecutor` (with `.Execute()` /
+ *   - `FAngelscriptTestExecutor` (with `.Execute()` /
  *     `.ExecuteAndGet<R>()` / `.ExecuteAndExtractStruct<T>()`) replaces
- *     `AngelscriptReflectiveAccess::FASGlobalFunctionInvoker`. The old
+ *     `FASGlobalFunctionInvoker`. The old
  *     class name resolves through a `using` alias.
  *
  * The companion file `AngelscriptBindingsExampleSectionTests.cpp` registers
@@ -39,25 +39,20 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-// FCoverageModuleScope is the RAII module wrapper used by every Section and
-// lives in `AngelscriptTestBindings::`. We lift it into this TU so the
-// Section body can read cleanly under `namespace AngelscriptTest`, without
-// the Execute.h header itself having to take a transitive include on the
-// module builder header.
-using AngelscriptTestBindings::FScopedAngelscriptModule;
+// FScopedAngelscriptModule (AngelscriptTestModuleScope.h) is the RAII module
+// wrapper used by every Section. Include that header directly when you need
+// module lifetime without pulling the full Execute surface.
 
-namespace AngelscriptTest
+/** Run the example section and return aggregate pass/fail. */
+inline bool RunBindingsExampleSection(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine)
 {
-	/** Run the example section and return aggregate pass/fail. */
-	inline bool RunBindingsExampleSection(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine)
-	{
-		// Each case is a no-arg `int F()` that asserts a single behavior and
-		// returns 0 / 1 (or a small int). Keep the script side dumb -- all
-		// branching/fallback logic stays here in C++ where the assertion
-		// names live.
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASBindingsSharedExample_Example"), TEXT(R"(
+	// Each case is a no-arg `int F()` that asserts a single behavior and
+	// returns 0 / 1 (or a small int). Keep the script side dumb -- all
+	// branching/fallback logic stays here in C++ where the assertion
+	// names live.
+	FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASBindingsSharedExample_Example"), TEXT(R"(
 int EchoZero()           { return 0; }
 int EchoOne()            { return 1; }
 int EchoSum()            { int A = 17; int B = 25; return A + B; }
@@ -68,38 +63,38 @@ int EchoMaxOf(int A, int B) { return A > B ? A : B; }
 // realistic shape than pure arithmetic).
 int CountFruits()
 {
-    TArray<FString> Fruits;
-    Fruits.Add("apple");
-    Fruits.Add("banana");
-    Fruits.Add("cherry");
-    return Fruits.Num();
+TArray<FString> Fruits;
+Fruits.Add("apple");
+Fruits.Add("banana");
+Fruits.Add("cherry");
+return Fruits.Num();
 }
 )"));
-		if (!ModuleScope.IsValid())
-		{
-			return false;
-		}
-		asIScriptModule& Module = ModuleScope.GetModule();
-
-		bool bPassed = true;
-		bPassed &= ExecuteAndExpectInt(Test, Engine, Module,
-			TEXT("int EchoZero()"), TEXT("EchoZero returns 0"), 0);
-		bPassed &= ExecuteAndExpectInt(Test, Engine, Module,
-			TEXT("int EchoOne()"), TEXT("EchoOne returns 1"), 1);
-		bPassed &= ExecuteAndExpectInt(Test, Engine, Module,
-			TEXT("int EchoSum()"), TEXT("EchoSum returns 17 + 25"), 42);
-		bPassed &= ExecuteAndExpectInt(Test, Engine, Module,
-			TEXT("int CountFruits()"), TEXT("CountFruits builds and counts a TArray<FString>"), 3);
-
-		// Batched form -- useful when a section has many homogeneous cases.
-		const FExpectedInt Cases[] = {
-			{ TEXT("int EchoZero()"), TEXT("Batched EchoZero baseline"), 0 },
-			{ TEXT("int EchoOne()"),  TEXT("Batched EchoOne baseline"),  1 },
-		};
-		bPassed &= ExecuteBatchAndExpectInt(Test, Engine, Module, Cases);
-
-		return bPassed;
+	if (!ModuleScope.IsValid())
+	{
+		return false;
 	}
+	asIScriptModule& Module = ModuleScope.GetModule();
+
+	bool bPassed = true;
+	bPassed &= ExecuteAndExpectInt(Test, Engine, Module,
+		TEXT("int EchoZero()"), TEXT("EchoZero returns 0"), 0);
+	bPassed &= ExecuteAndExpectInt(Test, Engine, Module,
+		TEXT("int EchoOne()"), TEXT("EchoOne returns 1"), 1);
+	bPassed &= ExecuteAndExpectInt(Test, Engine, Module,
+		TEXT("int EchoSum()"), TEXT("EchoSum returns 17 + 25"), 42);
+	bPassed &= ExecuteAndExpectInt(Test, Engine, Module,
+		TEXT("int CountFruits()"), TEXT("CountFruits builds and counts a TArray<FString>"), 3);
+
+	// Batched form -- useful when a section has many homogeneous cases.
+	const FExpectedInt Cases[] = {
+		{ TEXT("int EchoZero()"), TEXT("Batched EchoZero baseline"), 0 },
+		{ TEXT("int EchoOne()"),  TEXT("Batched EchoOne baseline"),  1 },
+	};
+	bPassed &= ExecuteBatchAndExpectInt(Test, Engine, Module, Cases);
+
+	return bPassed;
 }
+
 
 #endif // WITH_DEV_AUTOMATION_TESTS

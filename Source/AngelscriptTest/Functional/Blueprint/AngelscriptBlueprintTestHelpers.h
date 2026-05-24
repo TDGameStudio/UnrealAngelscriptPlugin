@@ -19,7 +19,6 @@
 
 namespace AngelscriptBlueprintTestUtils
 {
-	using namespace AngelscriptTestSupport;
 	using namespace AngelscriptFunctionalTestUtils;
 
 	// -----------------------------------------------------------------

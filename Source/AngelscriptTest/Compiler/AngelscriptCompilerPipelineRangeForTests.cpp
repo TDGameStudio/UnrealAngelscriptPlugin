@@ -10,7 +10,6 @@
 #include "Misc/ScopeExit.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelineRangeForTest
 {
@@ -115,7 +114,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRangeForTests,
 {
 	TEST_METHOD(RangeBasedForRewriteSkipsStringAndCommentLiterals)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		const FString TestScriptSource = TEXT(R"AS(

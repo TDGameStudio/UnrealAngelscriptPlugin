@@ -26,9 +26,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
-using namespace AngelscriptReflectiveAccess;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -208,12 +205,12 @@ int BoundsCompat_LightmapType()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_CollisionExtents()"), TEXT("collision extents should match configured box extent"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_BoundsOrigin()"), TEXT("bounds origin should reflect configured relative location"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_BoundsExtent()"), TEXT("bounds extent should match configured box extent"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_BoundsRadius()"), TEXT("bounds radius should match box extent radius"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_Selectable()"), TEXT("SetbSelectable should update native component immediately"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_LightmapType()"), TEXT("SetLightmapType(ForceSurface) should execute without error"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_CollisionExtents()"), TEXT("collision extents should match configured box extent"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_BoundsOrigin()"), TEXT("bounds origin should reflect configured relative location"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_BoundsExtent()"), TEXT("bounds extent should match configured box extent"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_BoundsRadius()"), TEXT("bounds radius should match box extent radius"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_Selectable()"), TEXT("SetbSelectable should update native component immediately"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_LightmapType()"), TEXT("SetLightmapType(ForceSurface) should execute without error"), 1);
 
 		// Native-side assertions for mutations done by script
 		TestRunner->TestTrue(TEXT("PrimComp SetbSelectable(true) should update native component"),

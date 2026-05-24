@@ -31,12 +31,12 @@ namespace AngelscriptFunctionalTestUtils
 
 		if (!Test.TestTrue(
 			*FString::Printf(TEXT("Test module '%s' should compile"), *ModuleName.ToString()),
-			AngelscriptTestSupport::CompileAnnotatedModuleFromMemory(&Engine, ModuleName, Filename, InScriptSource)))
+			CompileAnnotatedModuleFromMemory(&Engine, ModuleName, Filename, InScriptSource)))
 		{
 			return nullptr;
 		}
 
-		UClass* ScriptClass = AngelscriptTestSupport::FindGeneratedClass(&Engine, ExpectedGeneratedClassName);
+		UClass* ScriptClass = FindGeneratedClass(&Engine, ExpectedGeneratedClassName);
 		Test.TestNotNull(
 			*FString::Printf(TEXT("Test class '%s' should be generated"), *ExpectedGeneratedClassName.ToString()),
 			ScriptClass);

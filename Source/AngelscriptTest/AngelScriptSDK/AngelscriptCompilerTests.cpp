@@ -13,11 +13,11 @@
 
 namespace AngelscriptTest_AngelScriptSDK_AngelscriptCompilerTests_Private
 {
-	const AngelscriptTestSupport::FAngelscriptCompileTraceDiagnosticSummary* FindErrorDiagnosticContaining(
-		const TArray<AngelscriptTestSupport::FAngelscriptCompileTraceDiagnosticSummary>& Diagnostics,
+	const FAngelscriptCompileTraceDiagnosticSummary* FindErrorDiagnosticContaining(
+		const TArray<FAngelscriptCompileTraceDiagnosticSummary>& Diagnostics,
 		const FString& Needle)
 	{
-		for (const AngelscriptTestSupport::FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Diagnostics)
+		for (const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Diagnostics)
 		{
 			if (Diagnostic.bIsError && Diagnostic.Message.Contains(Needle))
 			{
@@ -65,7 +65,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerTests,
 		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptCompilerTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(
+		asIScriptModule* Module = BuildModule(
 			*TestRunner,
 			Engine,
 			"CompilerBytecodeGeneration",
@@ -75,7 +75,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerTests,
 			return;
 		}
 
-		asIScriptFunction* Function = AngelscriptTestSupport::GetFunctionByDecl(*TestRunner, *Module, TEXT("int Entry()"));
+		asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("int Entry()"));
 		if (Function == nullptr)
 		{
 			return;
@@ -93,7 +93,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerTests,
 		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptCompilerTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(
+		asIScriptModule* Module = BuildModule(
 			*TestRunner,
 			Engine,
 			"CompilerBytecodeExecutionAndRetBoundary",
@@ -103,7 +103,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerTests,
 			return;
 		}
 
-		asIScriptFunction* Function = AngelscriptTestSupport::GetFunctionByDecl(*TestRunner, *Module, TEXT("int Entry(int)"));
+		asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("int Entry(int)"));
 		if (Function == nullptr)
 		{
 			return;
@@ -172,7 +172,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerTests,
 		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptCompilerTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(
+		asIScriptModule* Module = BuildModule(
 			*TestRunner,
 			Engine,
 			"CompilerVariableScopes",
@@ -182,7 +182,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerTests,
 			return;
 		}
 
-		asIScriptFunction* Function = AngelscriptTestSupport::GetFunctionByDecl(*TestRunner, *Module, TEXT("int Entry()"));
+		asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("int Entry()"));
 		if (Function == nullptr)
 		{
 			return;
@@ -217,8 +217,8 @@ int Entry()
 }
 )AS");
 
-		AngelscriptTestSupport::FAngelscriptCompileTraceSummary Summary;
-		const bool bCompiled = AngelscriptTestSupport::CompileModuleWithSummary(
+		FAngelscriptCompileTraceSummary Summary;
+		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::SoftReloadOnly,
 			ModuleName,
@@ -227,7 +227,7 @@ int Entry()
 			false,
 			Summary,
 			true);
-		const AngelscriptTestSupport::FAngelscriptCompileTraceDiagnosticSummary* Diagnostic =
+		const FAngelscriptCompileTraceDiagnosticSummary* Diagnostic =
 			FindErrorDiagnosticContaining(Summary.Diagnostics, TEXT("is not declared"));
 
 		TestRunner->TestFalse(
@@ -270,7 +270,7 @@ int Entry()
 		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptCompilerTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(
+		asIScriptModule* Module = BuildModule(
 			*TestRunner,
 			Engine,
 			"CompilerFunctionCalls",
@@ -280,14 +280,14 @@ int Entry()
 			return;
 		}
 
-		asIScriptFunction* Function = AngelscriptTestSupport::GetFunctionByDecl(*TestRunner, *Module, TEXT("int Entry()"));
+		asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("int Entry()"));
 		if (Function == nullptr)
 		{
 			return;
 		}
 
 		int32 Result = 0;
-		if (!AngelscriptTestSupport::ExecuteIntFunction(*TestRunner, Engine, *Function, Result))
+		if (!ExecuteIntFunction(*TestRunner, Engine, *Function, Result))
 		{
 			return;
 		}
@@ -301,7 +301,7 @@ int Entry()
 		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptCompilerTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(
+		asIScriptModule* Module = BuildModule(
 			*TestRunner,
 			Engine,
 			"CompilerTypeConversions",
@@ -311,7 +311,7 @@ int Entry()
 			return;
 		}
 
-		asIScriptFunction* Function = AngelscriptTestSupport::GetFunctionByDecl(*TestRunner, *Module, TEXT("float32 Entry()"));
+		asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("float32 Entry()"));
 		if (Function == nullptr)
 		{
 			return;
@@ -339,7 +339,7 @@ int Entry()
 		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptCompilerTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(
+		asIScriptModule* Module = BuildModule(
 			*TestRunner,
 			Engine,
 			"CompilerTypeConversionsNegativeAndFloat64Matrix",
@@ -349,14 +349,14 @@ int Entry()
 			return;
 		}
 
-		asIScriptFunction* Function = AngelscriptTestSupport::GetFunctionByDecl(*TestRunner, *Module, TEXT("int Entry()"));
+		asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("int Entry()"));
 		if (Function == nullptr)
 		{
 			return;
 		}
 
 		int32 Result = 0;
-		if (!AngelscriptTestSupport::ExecuteIntFunction(*TestRunner, Engine, *Function, Result))
+		if (!ExecuteIntFunction(*TestRunner, Engine, *Function, Result))
 		{
 			return;
 		}

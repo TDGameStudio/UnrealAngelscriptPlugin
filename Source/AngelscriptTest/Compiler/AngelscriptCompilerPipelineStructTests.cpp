@@ -7,7 +7,6 @@
 #include "UObject/UnrealType.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelineStructTest
 {
@@ -23,7 +22,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineStructTests,
 {
 	TEST_METHOD(AnnotatedStructRoundTrip)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		const FString TestScriptSource = TEXT(R"AS(

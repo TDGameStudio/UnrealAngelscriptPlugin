@@ -111,7 +111,7 @@ bool FAngelscriptStaticJITGeneratedOutputDebugMetadataHooksTest::RunTest(const F
 
 	do
 	{
-		const bool bCompiled = AngelscriptTestSupport::CompileModuleFromMemory(
+		const bool bCompiled = CompileModuleFromMemory(
 			&Engine,
 			ModuleName,
 			SourceFilename,
@@ -123,7 +123,7 @@ bool FAngelscriptStaticJITGeneratedOutputDebugMetadataHooksTest::RunTest(const F
 
 		FString SourceWithDebugMetadata;
 		FString WithDebugError;
-		const bool bGeneratedWithDebugMetadata = AngelscriptTestSupport::GenerateStaticJITSourceText(
+		const bool bGeneratedWithDebugMetadata = GenerateStaticJITSourceText(
 			&Engine,
 			ModuleName,
 			SourceWithDebugMetadata,
@@ -153,7 +153,7 @@ bool FAngelscriptStaticJITGeneratedOutputDebugMetadataHooksTest::RunTest(const F
 
 		FString SourceWithoutDebugMetadata;
 		FString WithoutDebugError;
-		const bool bGeneratedWithoutDebugMetadata = AngelscriptTestSupport::GenerateStaticJITSourceText(
+		const bool bGeneratedWithoutDebugMetadata = GenerateStaticJITSourceText(
 			&Engine,
 			ModuleName,
 			SourceWithoutDebugMetadata,

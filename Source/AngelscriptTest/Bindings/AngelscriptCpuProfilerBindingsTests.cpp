@@ -13,8 +13,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptCpuProfilerBindingsTest,
@@ -46,7 +44,7 @@ int ProfilerScope_CompileAndRun()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int ProfilerScope_CompileAndRun()"),
 			TEXT("FCpuProfilerTraceScoped FName constructor compiles and executes"),
 			45); // sum 0..9

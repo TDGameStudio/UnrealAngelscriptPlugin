@@ -14,7 +14,6 @@
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 using namespace AngelscriptFunctionalTestUtils;
 
 namespace AngelscriptTest_ClassGenerator_AngelscriptASClassReferenceSchemaTests_Private

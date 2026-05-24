@@ -9,8 +9,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptColorBindingsTest,
@@ -36,7 +34,7 @@ int FColor_RedComponent()
 			TestRunner->AddInfo(TEXT("FColor not available, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int FColor_RedComponent()"),
 			TEXT("FColor red component is 255"), 255);
 	}
@@ -57,7 +55,7 @@ int FLinearColor_IsBlack()
 			TestRunner->AddInfo(TEXT("FLinearColor not available, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int FLinearColor_IsBlack()"),
 			TEXT("FLinearColor black check"), 1);
 	}
@@ -79,7 +77,7 @@ int FColor_ToLinearConversion()
 			TestRunner->AddInfo(TEXT("FColor.ReinterpretAsLinear not available, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int FColor_ToLinearConversion()"),
 			TEXT("FColor to linear has non-zero red"), 1);
 	}

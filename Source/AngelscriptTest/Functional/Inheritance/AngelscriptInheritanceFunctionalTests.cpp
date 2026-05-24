@@ -11,9 +11,6 @@
 // Test Layer: UE Functional
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
-using namespace AngelscriptReflectiveAccess;
 
 namespace AngelscriptTest_Inheritance_AngelscriptInheritanceTestCaseTests_Private
 {

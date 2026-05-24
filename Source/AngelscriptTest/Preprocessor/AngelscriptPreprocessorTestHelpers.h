@@ -14,7 +14,7 @@
 //   TEST_METHOD(SomeName)
 //   {
 //       FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-//       { FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+//       { FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 //
 //       FFixtureFile File(TEXT("Tests/PP/Feature/Test.as"), TEXT("int Entry() { return 7; }"));
 //       auto Result = RunPreprocess(Engine, File);
@@ -52,7 +52,6 @@ DECLARE_LOG_CATEGORY_EXTERN(LogPreprocessorDump, NoLogging, Verbose);
 
 namespace PreprocessorTestHelpers
 {
-	using namespace AngelscriptTestSupport;
 
 	// =========================================================================
 	// 1. Fixture File Management (RAII)

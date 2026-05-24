@@ -28,9 +28,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
-using namespace AngelscriptReflectiveAccess;
 
 
 namespace AngelscriptTest_Bindings_AngelscriptMathOrientationBindingsTests_Private
@@ -611,13 +608,13 @@ int TransformRelativeRoundTrips()
 		if (!Mod.IsValid()) return;
 		asIScriptModule& Module = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int QuatDeltaRoundTrips()"), TEXT("FQuat::GetDelta/ApplyDelta should round-trip target rotations"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int QuatRelativeRoundTrips()"), TEXT("FQuat::GetRelative/ApplyRelative should round-trip child rotations"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int QuatAngularVelocityRoundTrips()"), TEXT("FQuat angular velocity helpers should round-trip axis speed"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int RotatorDeltaRoundTrips()"), TEXT("FRotator::GetDelta/ApplyDelta should round-trip target rotations"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int RotatorRelativeRoundTrips()"), TEXT("FRotator::GetRelative/ApplyRelative should round-trip child rotations"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int TransformDeltaRoundTrips()"), TEXT("FTransform::GetDelta/ApplyDelta should round-trip target transforms"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int TransformRelativeRoundTrips()"), TEXT("FTransform::GetRelative/ApplyRelative should round-trip child transforms"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int QuatDeltaRoundTrips()"), TEXT("FQuat::GetDelta/ApplyDelta should round-trip target rotations"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int QuatRelativeRoundTrips()"), TEXT("FQuat::GetRelative/ApplyRelative should round-trip child rotations"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int QuatAngularVelocityRoundTrips()"), TEXT("FQuat angular velocity helpers should round-trip axis speed"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int RotatorDeltaRoundTrips()"), TEXT("FRotator::GetDelta/ApplyDelta should round-trip target rotations"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int RotatorRelativeRoundTrips()"), TEXT("FRotator::GetRelative/ApplyRelative should round-trip child rotations"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int TransformDeltaRoundTrips()"), TEXT("FTransform::GetDelta/ApplyDelta should round-trip target transforms"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int TransformRelativeRoundTrips()"), TEXT("FTransform::GetRelative/ApplyRelative should round-trip child transforms"), 1);
 	}
 };
 

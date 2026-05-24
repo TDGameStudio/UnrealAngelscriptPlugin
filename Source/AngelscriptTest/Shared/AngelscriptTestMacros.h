@@ -53,7 +53,7 @@
 // Use for: engine core self-tests, bind environment testing, hot-reload tests.
 // Returns: FAngelscriptEngine&
 #define ASTEST_CREATE_ENGINE_FULL() \
-	AngelscriptTestSupport::AcquireTransientFullTestEngine()
+	AcquireTransientFullTestEngine()
 
 // NATIVE - Raw asIScriptEngine from the AngelScript SDK.
 // Use for: testing AngelScript SDK APIs directly.

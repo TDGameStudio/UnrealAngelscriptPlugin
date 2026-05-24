@@ -15,7 +15,6 @@
 // Bind_BlueprintType.cpp restored correct type-finder routing.
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 // ============================================================================
 // World Subsystem compilation tests — validate script subclassing compiles

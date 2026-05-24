@@ -12,7 +12,6 @@
 #include "UObject/Class.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelineFunctionFlagTest
 {
@@ -199,7 +198,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionFlagTests,
 {
 	TEST_METHOD(FunctionBlueprintCallableDefaultsAndOverrides)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();

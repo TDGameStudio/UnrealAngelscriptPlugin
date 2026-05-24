@@ -8,7 +8,6 @@
 #include "UObject/UnrealType.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelineExecutionTest
 {
@@ -31,7 +30,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineExecutionTest,
 {
 	TEST_METHOD(AnnotatedMethodExecutes)
 	{
-		using namespace AngelscriptTestSupport;
 		using namespace CompilerPipelineExecutionTest;
 
 		const FString ScriptSource = TEXT(R"AS(
@@ -115,7 +113,6 @@ class UCompilerExecutionCarrier : UObject
 
 	TEST_METHOD(PlainSourcePreprocessorRoundTrip)
 	{
-		using namespace AngelscriptTestSupport;
 		using namespace CompilerPipelinePlainSourceRoundTripTest;
 
 		const FString ScriptSource = TEXT(R"AS(

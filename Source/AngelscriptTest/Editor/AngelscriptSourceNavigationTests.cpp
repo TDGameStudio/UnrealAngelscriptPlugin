@@ -14,7 +14,6 @@
 
 #if WITH_EDITOR && WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptTest_Editor_AngelscriptSourceNavigationTests_Private
 {

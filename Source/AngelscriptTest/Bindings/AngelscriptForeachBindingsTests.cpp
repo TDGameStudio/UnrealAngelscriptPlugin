@@ -32,8 +32,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -134,7 +132,7 @@ int ForeachArray_FStringConcatLen()
 			{ TEXT("int ForeachArray_ContinueSkips()"),    TEXT("TArray foreach continue should skip evens (1+3=4)"),             4 },
 			{ TEXT("int ForeachArray_FStringConcatLen()"), TEXT("TArray<FString> foreach length sum should be 10"),              10 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -202,7 +200,7 @@ int ForeachSet_NameSawBeta()
 			{ TEXT("int ForeachSet_NameSawAlpha()"),      TEXT("TSet<FName> foreach should visit Alpha"),                  1 },
 			{ TEXT("int ForeachSet_NameSawBeta()"),       TEXT("TSet<FName> foreach should visit Beta"),                   1 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -254,7 +252,7 @@ int SetForeach_AllVisited()
 			{ TEXT("int SetForeach_VisitCount()"),  TEXT("TSet foreach should visit 3 elements"),          3 },
 			{ TEXT("int SetForeach_AllVisited()"),  TEXT("TSet foreach should visit every element"),       1 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -324,7 +322,7 @@ int ForeachMap_VectorValueXSum()
 			{ TEXT("int ForeachMap_IntStringValueLen()"), TEXT("TMap<int,FString> foreach value length sum should be 6"),6 },
 			{ TEXT("int ForeachMap_VectorValueXSum()"),   TEXT("TMap<FName,FVector> foreach X sum should be 6"),       1 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -449,7 +447,7 @@ int MapForeach_EachSeenOnce()
 			{ TEXT("int MapForeach_SeenCount()"),     TEXT("TMap foreach seen count should be 3 keys"),             3 },
 			{ TEXT("int MapForeach_EachSeenOnce()"),  TEXT("TMap foreach each key should be seen exactly once"),    1 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -483,7 +481,7 @@ int ForeachNested_Total()
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
-		return AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
+		return ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int ForeachNested_Total()"), TEXT("Nested foreach should accumulate 10+20=30"), 30);
 	}
 
@@ -513,7 +511,7 @@ int ForeachEmpty_Count()
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
-		return AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
+		return ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int ForeachEmpty_Count()"), TEXT("Empty containers should never enter foreach body"), 0);
 	}
 
@@ -582,7 +580,7 @@ int ForeachFNameArray_KnownSentinel()
 			{ TEXT("int ForeachFStringArray_LenSum()"),   TEXT("TArray<FString> foreach length sum should be 6"),           6 },
 			{ TEXT("int ForeachFNameArray_KnownSentinel()"),TEXT("TArray<FName> foreach should hit both sentinels"),         2 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -685,7 +683,7 @@ int ForeachConstRef_VectorPartialSumViaContinue()
 			{ TEXT("int ForeachConstRef_RotatorYawSum()"),              TEXT("FRotator foreach Yaw sum should be ~100"),                  1 },
 			{ TEXT("int ForeachConstRef_VectorPartialSumViaContinue()"), TEXT("continue inside foreach should skip middle element (1+3=4)"),1 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -866,13 +864,13 @@ int ForeachRet_VerifyDedupSet_ContainsThree()
 		bool bPassed = true;
 
 		// Direct bool returns
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool ForeachRet_Bool_AnyGreaterThan3()"), TEXT("bool return: any>3 in {1,2,5} should be true"), true);
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool ForeachRet_Bool_AllPositive()"), TEXT("bool return: all-positive {1,2,3} should be true"), true);
 
 		// Direct float return
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnFloat(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnFloat(Test, Engine, Module, 
 			TEXT("float ForeachRet_Float_Sum()"), TEXT("float return: sum of {1.5,2.5,3.0} should be 7.0"), 7.0f);
 
 		// Container returns verified via script-side int wrappers
@@ -889,7 +887,7 @@ int ForeachRet_VerifyDedupSet_ContainsThree()
 			{ TEXT("int ForeachRet_VerifyDedupSet_Num()"),          TEXT("TSet<int> return from dedup: Num should be 3"),            3 },
 			{ TEXT("int ForeachRet_VerifyDedupSet_ContainsThree()"),TEXT("TSet<int> return from dedup: should contain 3"),           1 },
 		};
-		bPassed &= AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  IntCases);
+		bPassed &= ExpectGlobalInts(Test, Engine, Module,  IntCases);
 
 		return bPassed;
 	}
@@ -948,7 +946,7 @@ int ForeachLog_Types()
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
-		return AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
+		return ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int ForeachLog_Types()"),
 			TEXT("Log diagnostic: foreach over various container types should compile and log"), 1);
 	}

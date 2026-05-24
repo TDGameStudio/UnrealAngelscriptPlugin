@@ -9,9 +9,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 using namespace AngelscriptFunctionalTestUtils;
-using namespace AngelscriptReflectiveAccess;
 
 namespace PropertyAccessorRemovalTest
 {
@@ -26,7 +24,7 @@ namespace PropertyAccessorRemovalTest
 	static TUniquePtr<FAngelscriptEngine> CreateEditorScanFreeFullEngine()
 	{
 		AAngelscriptPropertyAccessorCarrier::StaticClass();
-		return AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(
+		return CreateScriptScanFreeFullEngineForTesting(
 			CreateEditorScanFreeConfig(),
 			FAngelscriptEngineDependencies::CreateDefault());
 	}

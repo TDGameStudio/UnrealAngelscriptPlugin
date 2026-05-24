@@ -10,7 +10,6 @@
 // Test Layer: UE Functional - Round1 deep-fill (SpawnActor invocation patterns)
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptActorSpawnPatternsTests,
 	"Angelscript.TestModule.Functional.Actor.SpawnPatterns",

@@ -9,7 +9,6 @@
 #include "UObject/UObjectGlobals.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelineNamingTest
 {
@@ -38,7 +37,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineNamingTests,
 	TEST_METHOD(GeneratedClassExactNameLookup)
 	{
 	using namespace CompilerPipelineNamingTest;
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();

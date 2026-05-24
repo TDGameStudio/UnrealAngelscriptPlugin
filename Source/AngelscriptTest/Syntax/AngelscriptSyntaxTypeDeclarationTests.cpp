@@ -16,8 +16,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -555,7 +553,7 @@ int RefVar()      { int X = 5; int& Ref = X; Ref = 10; return X; }
 			{ TEXT("int AutoVar()"),    TEXT("auto inference"),   42 },
 			{ TEXT("int RefVar()"),     TEXT("reference var"),    10 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	TEST_METHOD(Variable_Negative)

@@ -86,9 +86,7 @@
 //   for precise driving.
 // =============================================================================
 
-using namespace AngelscriptTestSupport;
 using namespace AngelscriptFunctionalTestUtils;
-using namespace AngelscriptReflectiveAccess;
 using namespace AngelscriptActorTestUtils;
 
 namespace TemplateWorldTickTest

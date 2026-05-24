@@ -13,7 +13,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 using namespace AngelscriptFunctionalTestUtils;
 
 namespace AngelscriptTest_Core_AngelscriptDebuggerAutoEvaluationTests_Private

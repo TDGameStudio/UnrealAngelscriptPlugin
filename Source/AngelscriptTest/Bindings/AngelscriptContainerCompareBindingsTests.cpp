@@ -29,8 +29,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -91,8 +89,8 @@ int SetCompare_DifferentSize()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetCompare_EqualReordered()"), TEXT("TSet reordered elements should compare equal"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetCompare_DifferentSize()"), TEXT("TSet with different sizes should compare unequal"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetCompare_EqualReordered()"), TEXT("TSet reordered elements should compare equal"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetCompare_DifferentSize()"), TEXT("TSet with different sizes should compare unequal"), 1);
 	}
 
 	// ====================================================================
@@ -143,9 +141,9 @@ int SetMismatch_CopyEqual()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetMismatch_ReorderedEqual()"), TEXT("TSet reordered should compare equal"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetMismatch_SameSizeDifferent()"), TEXT("TSet same-size mismatched members should compare unequal"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetMismatch_CopyEqual()"), TEXT("TSet copy should compare equal to original"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetMismatch_ReorderedEqual()"), TEXT("TSet reordered should compare equal"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetMismatch_SameSizeDifferent()"), TEXT("TSet same-size mismatched members should compare unequal"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetMismatch_CopyEqual()"), TEXT("TSet copy should compare equal to original"), 1);
 	}
 
 	// ====================================================================
@@ -187,8 +185,8 @@ int MapCompare_DifferentSize()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapCompare_EqualReordered()"), TEXT("TMap reordered entries should compare equal"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapCompare_DifferentSize()"), TEXT("TMap with different sizes should compare unequal"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapCompare_EqualReordered()"), TEXT("TMap reordered entries should compare equal"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapCompare_DifferentSize()"), TEXT("TMap with different sizes should compare unequal"), 1);
 	}
 
 	// ====================================================================
@@ -242,9 +240,9 @@ int MapValue_EmptyCompare()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapValue_EqualReordered()"), TEXT("TMap value-equal reordered entries should compare equal"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapValue_DifferentValue()"), TEXT("TMap with different values should compare unequal"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapValue_EmptyCompare()"), TEXT("TMap empty maps should compare equal and non-empty vs empty should differ"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapValue_EqualReordered()"), TEXT("TMap value-equal reordered entries should compare equal"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapValue_DifferentValue()"), TEXT("TMap with different values should compare unequal"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapValue_EmptyCompare()"), TEXT("TMap empty maps should compare equal and non-empty vs empty should differ"), 1);
 	}
 
 	// ====================================================================

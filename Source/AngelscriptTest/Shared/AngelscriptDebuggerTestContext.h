@@ -28,141 +28,139 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTestSupport
+struct FDebuggerTestContext
 {
-	struct FDebuggerTestContext
+	FAngelscriptDebuggerTestSession Session;
+	FAngelscriptDebuggerTestClient Client;
+	TAtomic<bool> bMonitorShouldStop{false};
+
+	// ---- SetUp variants ----
+
+	/**
+	 * Full setup: Initialize session → connect client → StartDebugging →
+	 * receive DebugServerVersion handshake.
+	 *
+	 * @param AdapterVersion  Protocol version sent in StartDebugging (default 2).
+	 *                        Pass 1 for legacy v1 payload tests.
+	 */
+	bool SetUp(FAutomationTestBase& Test, int32 AdapterVersion = 2, float TimeoutSeconds = kDefaultDebuggerTestTimeoutSeconds)
 	{
-		FAngelscriptDebuggerTestSession Session;
-		FAngelscriptDebuggerTestClient Client;
-		TAtomic<bool> bMonitorShouldStop{false};
+		bMonitorShouldStop = false;
 
-		// ---- SetUp variants ----
+		FAngelscriptDebuggerSessionConfig SessionConfig;
+		SessionConfig.DefaultTimeoutSeconds = TimeoutSeconds;
 
-		/**
-		 * Full setup: Initialize session → connect client → StartDebugging →
-		 * receive DebugServerVersion handshake.
-		 *
-		 * @param AdapterVersion  Protocol version sent in StartDebugging (default 2).
-		 *                        Pass 1 for legacy v1 payload tests.
-		 */
-		bool SetUp(FAutomationTestBase& Test, int32 AdapterVersion = 2, float TimeoutSeconds = kDefaultDebuggerTestTimeoutSeconds)
+		if (!Test.TestTrue(
+				TEXT("Debugger context should initialize the session"),
+				Session.Initialize(SessionConfig)))
 		{
-			bMonitorShouldStop = false;
+			return false;
+		}
 
-			FAngelscriptDebuggerSessionConfig SessionConfig;
-			SessionConfig.DefaultTimeoutSeconds = TimeoutSeconds;
+		if (!Test.TestTrue(
+				TEXT("Debugger context should connect the primary client"),
+				Client.Connect(TEXT("127.0.0.1"), Session.GetPort())))
+		{
+			Test.AddError(Client.GetLastError());
+			return false;
+		}
 
-			if (!Test.TestTrue(
-					TEXT("Debugger context should initialize the session"),
-					Session.Initialize(SessionConfig)))
+		bool bSentStartDebugging = false;
+		const bool bStartMessageSent = Session.PumpUntil(
+			[this, &bSentStartDebugging, AdapterVersion]()
 			{
-				return false;
-			}
-
-			if (!Test.TestTrue(
-					TEXT("Debugger context should connect the primary client"),
-					Client.Connect(TEXT("127.0.0.1"), Session.GetPort())))
-			{
-				Test.AddError(Client.GetLastError());
-				return false;
-			}
-
-			bool bSentStartDebugging = false;
-			const bool bStartMessageSent = Session.PumpUntil(
-				[this, &bSentStartDebugging, AdapterVersion]()
+				if (bSentStartDebugging)
 				{
-					if (bSentStartDebugging)
-					{
-						return true;
-					}
+					return true;
+				}
 
-					bSentStartDebugging = Client.SendStartDebugging(AdapterVersion);
-					return bSentStartDebugging;
-				},
-				Session.GetDefaultTimeoutSeconds());
+				bSentStartDebugging = Client.SendStartDebugging(AdapterVersion);
+				return bSentStartDebugging;
+			},
+			Session.GetDefaultTimeoutSeconds());
 
-			if (!Test.TestTrue(
-					TEXT("Debugger context should send StartDebugging"),
-					bStartMessageSent))
+		if (!Test.TestTrue(
+				TEXT("Debugger context should send StartDebugging"),
+				bStartMessageSent))
+		{
+			Test.AddError(Client.GetLastError());
+			return false;
+		}
+
+		TOptional<FAngelscriptDebugMessageEnvelope> VersionEnvelope;
+		const bool bReceivedVersion = Session.PumpUntil(
+			[this, &VersionEnvelope]()
 			{
-				Test.AddError(Client.GetLastError());
-				return false;
-			}
-
-			TOptional<FAngelscriptDebugMessageEnvelope> VersionEnvelope;
-			const bool bReceivedVersion = Session.PumpUntil(
-				[this, &VersionEnvelope]()
+				TOptional<FAngelscriptDebugMessageEnvelope> Envelope = Client.ReceiveEnvelope();
+				if (Envelope.IsSet() && Envelope->MessageType == EDebugMessageType::DebugServerVersion)
 				{
-					TOptional<FAngelscriptDebugMessageEnvelope> Envelope = Client.ReceiveEnvelope();
-					if (Envelope.IsSet() && Envelope->MessageType == EDebugMessageType::DebugServerVersion)
-					{
-						VersionEnvelope = MoveTemp(Envelope);
-						return true;
-					}
-					return false;
-				},
-				Session.GetDefaultTimeoutSeconds());
-
-			if (!Test.TestTrue(
-					TEXT("Debugger context should receive the DebugServerVersion response"),
-					bReceivedVersion))
-			{
-				Test.AddError(Client.GetLastError());
+					VersionEnvelope = MoveTemp(Envelope);
+					return true;
+				}
 				return false;
-			}
+			},
+			Session.GetDefaultTimeoutSeconds());
 
-			return true;
-		}
-
-		/**
-		 * Session-only setup: Initialize session but do NOT connect a client.
-		 * Used by SessionInfra tests that test the infrastructure itself.
-		 */
-		bool SetUpSessionOnly(FAutomationTestBase& Test, float TimeoutSeconds = kDefaultDebuggerTestTimeoutSeconds)
+		if (!Test.TestTrue(
+				TEXT("Debugger context should receive the DebugServerVersion response"),
+				bReceivedVersion))
 		{
-			bMonitorShouldStop = false;
-
-			FAngelscriptDebuggerSessionConfig SessionConfig;
-			SessionConfig.DefaultTimeoutSeconds = TimeoutSeconds;
-
-			return Test.TestTrue(
-				TEXT("Debugger context should initialize a session-only setup"),
-				Session.Initialize(SessionConfig));
+			Test.AddError(Client.GetLastError());
+			return false;
 		}
 
-		// ---- TearDown ----
+		return true;
+	}
 
-		/**
-		 * Clean up all resources. Signals monitors to stop, disconnects the
-		 * client, and optionally discards the script module + collects garbage.
-		 */
-		void TearDown(const FAngelscriptDebuggerScriptFixture* Fixture = nullptr)
+	/**
+	 * Session-only setup: Initialize session but do NOT connect a client.
+	 * Used by SessionInfra tests that test the infrastructure itself.
+	 */
+	bool SetUpSessionOnly(FAutomationTestBase& Test, float TimeoutSeconds = kDefaultDebuggerTestTimeoutSeconds)
+	{
+		bMonitorShouldStop = false;
+
+		FAngelscriptDebuggerSessionConfig SessionConfig;
+		SessionConfig.DefaultTimeoutSeconds = TimeoutSeconds;
+
+		return Test.TestTrue(
+			TEXT("Debugger context should initialize a session-only setup"),
+			Session.Initialize(SessionConfig));
+	}
+
+	// ---- TearDown ----
+
+	/**
+	 * Clean up all resources. Signals monitors to stop, disconnects the
+	 * client, and optionally discards the script module + collects garbage.
+	 */
+	void TearDown(const FAngelscriptDebuggerScriptFixture* Fixture = nullptr)
+	{
+		bMonitorShouldStop = true;
+
+		if (Client.IsConnected())
 		{
-			bMonitorShouldStop = true;
-
-			if (Client.IsConnected())
-			{
-				Client.SendStopDebugging();
-				Client.SendDisconnect();
-				Client.Disconnect();
-			}
-
-			if (Fixture != nullptr && Session.IsInitialized() && !Session.IsMockMode())
-			{
-				Session.GetEngine().DiscardModule(*Fixture->ModuleName.ToString());
-				CollectGarbage(RF_NoFlags, true);
-			}
-
-			Session.Shutdown();
+			Client.SendStopDebugging();
+			Client.SendDisconnect();
+			Client.Disconnect();
 		}
 
-		// ---- Accessors ----
+		if (Fixture != nullptr && Session.IsInitialized() && !Session.IsMockMode())
+		{
+			Session.GetEngine().DiscardModule(*Fixture->ModuleName.ToString());
+			CollectGarbage(RF_NoFlags, true);
+		}
 
-		FAngelscriptEngine& GetEngine() const { return Session.GetEngine(); }
-		FAngelscriptDebugServer& GetDebugServer() const { return Session.GetDebugServer(); }
-		int32 GetPort() const { return Session.GetPort(); }
-		float GetDefaultTimeoutSeconds() const { return Session.GetDefaultTimeoutSeconds(); }
-	};
-}
+		Session.Shutdown();
+	}
+
+	// ---- Accessors ----
+
+	FAngelscriptEngine& GetEngine() const { return Session.GetEngine(); }
+	FAngelscriptDebugServer& GetDebugServer() const { return Session.GetDebugServer(); }
+	int32 GetPort() const { return Session.GetPort(); }
+	float GetDefaultTimeoutSeconds() const { return Session.GetDefaultTimeoutSeconds(); }
+};
+
 
 #endif // WITH_DEV_AUTOMATION_TESTS

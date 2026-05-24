@@ -8,7 +8,6 @@
 #include "GameplayTagContainer.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace DefaultMatrixTest
 {
@@ -35,7 +34,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 {
 	TEST_METHOD(DefaultFNamePropertyApplied)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -85,7 +83,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 
 	TEST_METHOD(DefaultEnumPropertyApplied)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -151,7 +148,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 
 	TEST_METHOD(DefaultFloatAndBoolPropertyApplied)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -217,7 +213,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 
 	TEST_METHOD(DefaultFVectorPropertyApplied)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -281,7 +276,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 
 	TEST_METHOD(DefaultFStringPropertyApplied)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -341,7 +335,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 
 	TEST_METHOD(DefaultTagsAddExecutedOnCDO)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -414,7 +407,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 
 	TEST_METHOD(DefaultOverridesInlineInitializerPriority)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -472,7 +464,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 
 	TEST_METHOD(DefaultNonExistentPropertyFails)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -508,7 +499,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 
 	TEST_METHOD(DefaultOutsideClassScopeFails)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -541,7 +531,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 
 	TEST_METHOD(DefaultTypeMismatchFails)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();

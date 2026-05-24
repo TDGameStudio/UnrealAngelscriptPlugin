@@ -10,7 +10,6 @@
 // Test Layer: UE Functional - Round1 deep-fill (event Broadcast / delegate IsBound+Execute)
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptDelegateBroadcastWithParamsTests,
 	"Angelscript.TestModule.Functional.Delegate.BroadcastWithParams",

@@ -33,89 +33,87 @@
 #include "AngelscriptEngine.h"
 #include "Misc/AutomationTest.h"
 
-namespace AngelscriptTestSupport
+enum class ETestEngineMode : uint8
 {
-	enum class ETestEngineMode : uint8
+	SharedClone,
+	IsolatedFull,
+	ProductionLike,
+};
+
+struct FAngelscriptTestFixture
+{
+	FAngelscriptTestFixture(FAutomationTestBase& InTest, ETestEngineMode InMode = ETestEngineMode::SharedClone)
+		: Test(InTest)
+		, Mode(InMode)
 	{
-		SharedClone,
-		IsolatedFull,
-		ProductionLike,
-	};
+		switch (Mode)
+		{
+		case ETestEngineMode::SharedClone:
+		{
+			FAngelscriptEngine& SharedEngine = AcquireCleanSharedCloneEngine();
+			Engine = &SharedEngine;
+			EngineScope = MakeUnique<FAngelscriptEngineScope>(SharedEngine);
+			break;
+		}
+		case ETestEngineMode::IsolatedFull:
+		{
+			OwnedEngine = CreateIsolatedFullEngine();
+			if (OwnedEngine.IsValid())
+			{
+				Engine = OwnedEngine.Get();
+				EngineScope = MakeUnique<FAngelscriptEngineScope>(*Engine);
+			}
+			break;
+		}
+		case ETestEngineMode::ProductionLike:
+		{
+			FResolvedProductionLikeEngine Resolved;
+			if (AcquireProductionLikeEngine(InTest, TEXT("FAngelscriptTestFixture failed to acquire production-like engine"), Resolved))
+			{
+				OwnedEngine = MoveTemp(Resolved.OwnedEngine);
+				EngineScope = MoveTemp(Resolved.EngineScope);
+				Engine = Resolved.Engine;
+			}
+			break;
+		}
+		}
+	}
 
-	struct FAngelscriptTestFixture
+	~FAngelscriptTestFixture()
 	{
-		FAngelscriptTestFixture(FAutomationTestBase& InTest, ETestEngineMode InMode = ETestEngineMode::SharedClone)
-			: Test(InTest)
-			, Mode(InMode)
-		{
-			switch (Mode)
-			{
-			case ETestEngineMode::SharedClone:
-			{
-				FAngelscriptEngine& SharedEngine = AcquireCleanSharedCloneEngine();
-				Engine = &SharedEngine;
-				EngineScope = MakeUnique<FAngelscriptEngineScope>(SharedEngine);
-				break;
-			}
-			case ETestEngineMode::IsolatedFull:
-			{
-				OwnedEngine = CreateIsolatedFullEngine();
-				if (OwnedEngine.IsValid())
-				{
-					Engine = OwnedEngine.Get();
-					EngineScope = MakeUnique<FAngelscriptEngineScope>(*Engine);
-				}
-				break;
-			}
-			case ETestEngineMode::ProductionLike:
-			{
-				FResolvedProductionLikeEngine Resolved;
-				if (AcquireProductionLikeEngine(InTest, TEXT("FAngelscriptTestFixture failed to acquire production-like engine"), Resolved))
-				{
-					OwnedEngine = MoveTemp(Resolved.OwnedEngine);
-					EngineScope = MoveTemp(Resolved.EngineScope);
-					Engine = Resolved.Engine;
-				}
-				break;
-			}
-			}
-		}
+		EngineScope.Reset();
+	}
 
-		~FAngelscriptTestFixture()
-		{
-			EngineScope.Reset();
-		}
+	FAngelscriptTestFixture(const FAngelscriptTestFixture&) = delete;
+	FAngelscriptTestFixture& operator=(const FAngelscriptTestFixture&) = delete;
 
-		FAngelscriptTestFixture(const FAngelscriptTestFixture&) = delete;
-		FAngelscriptTestFixture& operator=(const FAngelscriptTestFixture&) = delete;
+	bool IsValid() const { return Engine != nullptr; }
+	FAngelscriptEngine& GetEngine() const { check(Engine != nullptr); return *Engine; }
+	FAutomationTestBase& GetTest() const { return Test; }
 
-		bool IsValid() const { return Engine != nullptr; }
-		FAngelscriptEngine& GetEngine() const { check(Engine != nullptr); return *Engine; }
-		FAutomationTestBase& GetTest() const { return Test; }
+	asIScriptModule* BuildModule(const char* ModuleName, const FString& Source)
+	{
+		check(Engine != nullptr);
+		return ::BuildModule(Test, *Engine, ModuleName, Source);
+	}
 
-		asIScriptModule* BuildModule(const char* ModuleName, const FString& Source)
-		{
-			check(Engine != nullptr);
-			return AngelscriptTestSupport::BuildModule(Test, *Engine, ModuleName, Source);
-		}
+	bool ExecuteInt(asIScriptFunction& Function, int32& OutResult)
+	{
+		check(Engine != nullptr);
+		return ExecuteIntFunction(Test, *Engine, Function, OutResult);
+	}
 
-		bool ExecuteInt(asIScriptFunction& Function, int32& OutResult)
-		{
-			check(Engine != nullptr);
-			return AngelscriptTestSupport::ExecuteIntFunction(Test, *Engine, Function, OutResult);
-		}
+	bool ExecuteInt64(asIScriptFunction& Function, int64& OutResult)
+	{
+		check(Engine != nullptr);
+		return ExecuteInt64Function(Test, *Engine, Function, OutResult);
+	}
 
-		bool ExecuteInt64(asIScriptFunction& Function, int64& OutResult)
-		{
-			check(Engine != nullptr);
-			return AngelscriptTestSupport::ExecuteInt64Function(Test, *Engine, Function, OutResult);
-		}
+private:
+	FAutomationTestBase& Test;
+	ETestEngineMode Mode;
+	FAngelscriptEngine* Engine = nullptr;
+	TUniquePtr<FAngelscriptEngine> OwnedEngine;
+	TUniquePtr<FAngelscriptEngineScope> EngineScope;
+};
 
-	private:
-		FAutomationTestBase& Test;
-		ETestEngineMode Mode;
-		FAngelscriptEngine* Engine = nullptr;
-		TUniquePtr<FAngelscriptEngine> OwnedEngine;
-		TUniquePtr<FAngelscriptEngineScope> EngineScope;
-	};
-}

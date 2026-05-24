@@ -37,7 +37,7 @@ void FAngelscriptTestModule::StartupModule()
 	const bool bUseScanFreeStartupEngine = FParse::Param(FCommandLine::Get(), TEXT("AngelscriptTestUseScanFreeStartupEngine"));
 	if (bUseScanFreeStartupEngine)
 	{
-		GAngelscriptTestStartupOverrideEngine = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(
+		GAngelscriptTestStartupOverrideEngine = CreateScriptScanFreeFullEngineForTesting(
 			CreateEditorScanFreeStartupConfig(),
 			FAngelscriptEngineDependencies::CreateDefault());
 		UAngelscriptEngineSubsystem::SetInitializeOverrideForTesting([]() -> FAngelscriptEngine*
@@ -47,14 +47,14 @@ void FAngelscriptTestModule::StartupModule()
 	}
 
 	const bool bPrewarmEngine = FParse::Param(FCommandLine::Get(), TEXT("AngelscriptTestPrewarmEngine"));
-	AngelscriptTestSupport::StartupTestEnginePool(bPrewarmEngine);
+	StartupTestEnginePool(bPrewarmEngine);
 	UE_LOG(LogAngelscriptTest, Log, TEXT("AngelscriptTest module started."));
 }
 
 void FAngelscriptTestModule::ShutdownModule()
 {
 	UAngelscriptEngineSubsystem::ResetInitializeStateForTesting();
-	AngelscriptTestSupport::ShutdownTestEnginePool();
+	ShutdownTestEnginePool();
 	GAngelscriptTestStartupOverrideEngine.Reset();
 	UE_LOG(LogAngelscriptTest, Log, TEXT("AngelscriptTest module shut down."));
 }

@@ -28,9 +28,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
-using namespace AngelscriptReflectiveAccess;
 
 // ----------------------------------------------------------------------------
 // Helper utilities (retained from original)
@@ -412,11 +409,11 @@ int VerifyGetAllAssets()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyTopLevelPathRoundTrip()"), TEXT("FTopLevelAssetPath should round-trip script values"), 0);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyHasAssets()"), TEXT("AssetRegistry::HasAssets should match the native baseline"), 0);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyGetAssetsByPath()"), TEXT("AssetRegistry::GetAssetsByPath should match the native baseline"), 0);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyGetAssetByObjectPath()"), TEXT("AssetRegistry::GetAssetByObjectPath should match the native baseline"), 0);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyGetAllAssets()"), TEXT("AssetRegistry::GetAllAssets should match the native baseline"), 0);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyTopLevelPathRoundTrip()"), TEXT("FTopLevelAssetPath should round-trip script values"), 0);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyHasAssets()"), TEXT("AssetRegistry::HasAssets should match the native baseline"), 0);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyGetAssetsByPath()"), TEXT("AssetRegistry::GetAssetsByPath should match the native baseline"), 0);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyGetAssetByObjectPath()"), TEXT("AssetRegistry::GetAssetByObjectPath should match the native baseline"), 0);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyGetAllAssets()"), TEXT("AssetRegistry::GetAllAssets should match the native baseline"), 0);
 	}
 };
 

@@ -11,18 +11,17 @@
 
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptTest_ClassGenerator_ClassGeneratorTests_Private
 {
 	FAngelscriptEngine* GetEngineForClassGeneratorTests(FAutomationTestBase* Test)
 	{
-		if (FAngelscriptEngine* ProductionEngine = AngelscriptTestSupport::TryGetRunningProductionEngine())
+		if (FAngelscriptEngine* ProductionEngine = TryGetRunningProductionEngine())
 		{
 			return ProductionEngine;
 		}
 
-		return &AngelscriptTestSupport::GetOrCreateSharedCloneEngine();
+		return &GetOrCreateSharedCloneEngine();
 	}
 }
 

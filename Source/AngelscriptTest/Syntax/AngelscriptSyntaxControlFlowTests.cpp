@@ -16,8 +16,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -67,7 +65,7 @@ int Complex()      { int A = 1; int B = 2; if (A > 0 && B > 0) { return A + B; }
 			{ TEXT("int NoBrace()"),  TEXT("if without braces"), 1 },
 			{ TEXT("int Complex()"),  TEXT("complex condition"), 3 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -155,7 +153,7 @@ int CompoundStep() { int S = 0; for (int I = 0; I < 100; I += 25) { ++S; } retur
 			{ TEXT("int Nested()"),       TEXT("3x2 = 6 iters"),   6 },
 			{ TEXT("int CompoundStep()"), TEXT("step by 25"),       4 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -229,7 +227,7 @@ int Nested()      { int S = 0; int I = 0; while (I < 3) { int J = 0; while (J < 
 			{ TEXT("int DoWhileOnce()"), TEXT("do-while(false)"), 42 },
 			{ TEXT("int Nested()"),      TEXT("nested while 3x2"), 6 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -308,7 +306,7 @@ int DefaultOnly()  { int X = 42; switch(X) { case 0: return 0; default: return 1
 			{ TEXT("int MultiCase()"),   TEXT("multi-case"),        99 },
 			{ TEXT("int DefaultOnly()"), TEXT("default only"),     100 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -470,7 +468,7 @@ int ForeachContinue()
 			{ TEXT("int ForeachBreak()"),    TEXT("break at >2"),    3 },
 			{ TEXT("int ForeachContinue()"), TEXT("skip 2 => 1+3"), 4 },
 		};
-		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================

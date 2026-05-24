@@ -25,9 +25,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
-using namespace AngelscriptReflectiveAccess;
 
 // ----------------------------------------------------------------------------
 // Helper utilities (retained from original)
@@ -233,30 +230,30 @@ int LinePlaneIntersectionCorrect()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RandHelperInRange()"), TEXT("RandHelper should be in [0,10)"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IsPowerOfTwoCorrect()"), TEXT("IsPowerOfTwo(8)=true, (7)=false"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VRandNotZero()"), TEXT("VRand should not be zero"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VRandConeNotZero()"), TEXT("VRandCone should not be zero"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RandPointInCircleBounded()"), TEXT("RandPointInCircle should be within radius"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ClampAngleInRange()"), TEXT("ClampAngle should be in [-180,180]"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ClampInt64Works()"), TEXT("Clamp int64 should work"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ClampUInt64Works()"), TEXT("Clamp uint64 should work"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FindDeltaAngleDegreesCorrect()"), TEXT("FindDeltaAngleDegrees should return 10"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UnwindDegreesCorrect()"), TEXT("UnwindDegrees(370) should return 10"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MakePulsatingValueBounded()"), TEXT("MakePulsatingValue should be in [0,1]"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetReflectionVectorNotZero()"), TEXT("GetReflectionVector should not be zero"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VInterpToAdvances()"), TEXT("VInterpTo should advance"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RInterpToAdvances()"), TEXT("RInterpTo should advance"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FInterpToPositive()"), TEXT("FInterpTo should return positive"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RandomPointInBoundingBoxBounded()"), TEXT("RandomPointInBoundingBox should be bounded"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RandomRotatorNotZero()"), TEXT("RandomRotator should not be zero"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CubicInterpPositive()"), TEXT("CubicInterp float32 should be positive"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CubicInterpDerivativePositive()"), TEXT("CubicInterpDerivative float32 should be positive"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CubicInterp64Positive()"), TEXT("CubicInterp float64 should be positive"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CubicInterpDerivative64Positive()"), TEXT("CubicInterpDerivative float64 should be positive"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Vector2fToDirectionAndLengthCorrect()"), TEXT("Vector2f ToDirectionAndLength should be correct"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Int64MathOps()"), TEXT("int64 Abs/Sign/Min/Max/Square should work"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int LinePlaneIntersectionCorrect()"), TEXT("LinePlaneIntersection should be at origin"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RandHelperInRange()"), TEXT("RandHelper should be in [0,10)"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IsPowerOfTwoCorrect()"), TEXT("IsPowerOfTwo(8)=true, (7)=false"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VRandNotZero()"), TEXT("VRand should not be zero"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VRandConeNotZero()"), TEXT("VRandCone should not be zero"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RandPointInCircleBounded()"), TEXT("RandPointInCircle should be within radius"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ClampAngleInRange()"), TEXT("ClampAngle should be in [-180,180]"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ClampInt64Works()"), TEXT("Clamp int64 should work"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ClampUInt64Works()"), TEXT("Clamp uint64 should work"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FindDeltaAngleDegreesCorrect()"), TEXT("FindDeltaAngleDegrees should return 10"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UnwindDegreesCorrect()"), TEXT("UnwindDegrees(370) should return 10"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MakePulsatingValueBounded()"), TEXT("MakePulsatingValue should be in [0,1]"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetReflectionVectorNotZero()"), TEXT("GetReflectionVector should not be zero"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VInterpToAdvances()"), TEXT("VInterpTo should advance"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RInterpToAdvances()"), TEXT("RInterpTo should advance"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FInterpToPositive()"), TEXT("FInterpTo should return positive"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RandomPointInBoundingBoxBounded()"), TEXT("RandomPointInBoundingBox should be bounded"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RandomRotatorNotZero()"), TEXT("RandomRotator should not be zero"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CubicInterpPositive()"), TEXT("CubicInterp float32 should be positive"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CubicInterpDerivativePositive()"), TEXT("CubicInterpDerivative float32 should be positive"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CubicInterp64Positive()"), TEXT("CubicInterp float64 should be positive"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CubicInterpDerivative64Positive()"), TEXT("CubicInterpDerivative float64 should be positive"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Vector2fToDirectionAndLengthCorrect()"), TEXT("Vector2f ToDirectionAndLength should be correct"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Int64MathOps()"), TEXT("int64 Abs/Sign/Min/Max/Square should work"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int LinePlaneIntersectionCorrect()"), TEXT("LinePlaneIntersection should be at origin"), 1);
 	}
 
 	// ====================================================================
@@ -329,7 +326,7 @@ int Entry()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Entry()"), TEXT("Deterministic Math should match native baselines"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Entry()"), TEXT("Deterministic Math should match native baselines"), 1);
 	}
 
 	// ====================================================================
@@ -357,16 +354,16 @@ int CanLaunchURLWorks() { return FPlatformProcess::CanLaunchURL("https://example
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UserDirNotEmpty()"), TEXT("UserDir should not be empty"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UserSettingsDirNotEmpty()"), TEXT("UserSettingsDir should not be empty"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UserTempDirNotEmpty()"), TEXT("UserTempDir should not be empty"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ApplicationSettingsDirNotEmpty()"), TEXT("ApplicationSettingsDir should not be empty"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ExecutablePathNotEmpty()"), TEXT("ExecutablePath should not be empty"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ExecutableNameNotEmpty()"), TEXT("ExecutableName should not be empty"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CurrentWorkingDirectoryNotEmpty()"), TEXT("CurrentWorkingDirectory should not be empty"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ComputerNameNotEmpty()"), TEXT("ComputerName should not be empty"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UserNameNotEmpty()"), TEXT("UserName should not be empty"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CanLaunchURLWorks()"), TEXT("CanLaunchURL should return true for https"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UserDirNotEmpty()"), TEXT("UserDir should not be empty"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UserSettingsDirNotEmpty()"), TEXT("UserSettingsDir should not be empty"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UserTempDirNotEmpty()"), TEXT("UserTempDir should not be empty"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ApplicationSettingsDirNotEmpty()"), TEXT("ApplicationSettingsDir should not be empty"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ExecutablePathNotEmpty()"), TEXT("ExecutablePath should not be empty"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ExecutableNameNotEmpty()"), TEXT("ExecutableName should not be empty"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CurrentWorkingDirectoryNotEmpty()"), TEXT("CurrentWorkingDirectory should not be empty"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ComputerNameNotEmpty()"), TEXT("ComputerName should not be empty"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UserNameNotEmpty()"), TEXT("UserName should not be empty"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CanLaunchURLWorks()"), TEXT("CanLaunchURL should return true for https"), 1);
 	}
 
 	// ====================================================================
@@ -394,7 +391,7 @@ int LoggingCallsSucceed()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int LoggingCallsSucceed()"), TEXT("Headless-safe logging helpers should execute"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int LoggingCallsSucceed()"), TEXT("Headless-safe logging helpers should execute"), 1);
 	}
 };
 

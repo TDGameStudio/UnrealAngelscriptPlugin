@@ -9,8 +9,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptInputComponentMixinBindingsTest,
@@ -37,7 +35,7 @@ int PlatApp_ClipboardEmpty()
 			TestRunner->AddInfo(TEXT("FPlatformApplicationMisc not available, skipping"));
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int PlatApp_ClipboardEmpty()"),
 			TEXT("ClipboardPaste does not crash"), 1);
 	}

@@ -22,8 +22,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -92,7 +90,7 @@ int Callstack_EntryCallstack()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Callstack_EntryCallstack()"), TEXT("GetAngelscriptCallstack and FormatAngelscriptCallstack should capture the full call chain"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Callstack_EntryCallstack()"), TEXT("GetAngelscriptCallstack and FormatAngelscriptCallstack should capture the full call chain"), 1);
 	}
 
 	// ====================================================================

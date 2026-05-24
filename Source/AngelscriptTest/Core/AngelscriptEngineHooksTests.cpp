@@ -48,8 +48,8 @@ namespace AngelscriptTest_Core_AngelscriptEngineHooksTests_Private
 
 	bool WaitForDebuggerEnvelopeType(
 		FAutomationTestBase& Test,
-		AngelscriptTestSupport::FAngelscriptDebuggerTestSession& Session,
-		AngelscriptTestSupport::FAngelscriptDebuggerTestClient& Client,
+		FAngelscriptDebuggerTestSession& Session,
+		FAngelscriptDebuggerTestClient& Client,
 		EDebugMessageType ExpectedType,
 		TOptional<FAngelscriptDebugMessageEnvelope>& OutEnvelope,
 		const TCHAR* Context)
@@ -94,10 +94,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 	{
 		using namespace AngelscriptTest_Core_AngelscriptEngineHooksTests_Private;
 		FEngineHooksContextGuard ContextGuard;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
-			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 		}
 		ContextGuard.DiscardSavedStack();
 
@@ -106,13 +106,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
-				AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 			}
-			AngelscriptTestSupport::DestroySharedTestEngine();
+			DestroySharedTestEngine();
 		};
 
-		TUniquePtr<FAngelscriptEngine> EngineA = AngelscriptTestSupport::CreateFullTestEngine();
-		TUniquePtr<FAngelscriptEngine> EngineB = AngelscriptTestSupport::CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> EngineA = CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> EngineB = CreateFullTestEngine();
 		if (!TestRunner->TestNotNull(TEXT("Engine hook isolation test should create engine A"), EngineA.Get())
 			|| !TestRunner->TestNotNull(TEXT("Engine hook isolation test should create engine B"), EngineB.Get()))
 		{
@@ -147,10 +147,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 	{
 		using namespace AngelscriptTest_Core_AngelscriptEngineHooksTests_Private;
 		FEngineHooksContextGuard ContextGuard;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
-			AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 		}
 		ContextGuard.DiscardSavedStack();
 
@@ -159,13 +159,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
-				AngelscriptTestSupport::FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 			}
-			AngelscriptTestSupport::DestroySharedTestEngine();
+			DestroySharedTestEngine();
 		};
 
-		TUniquePtr<FAngelscriptEngine> EngineA = AngelscriptTestSupport::CreateFullTestEngine();
-		TUniquePtr<FAngelscriptEngine> EngineB = AngelscriptTestSupport::CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> EngineA = CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> EngineB = CreateFullTestEngine();
 		if (!TestRunner->TestNotNull(TEXT("Runtime hook ownership test should create engine A"), EngineA.Get())
 			|| !TestRunner->TestNotNull(TEXT("Runtime hook ownership test should create engine B"), EngineB.Get()))
 		{
@@ -277,9 +277,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 
 	TEST_METHOD(RuntimeBindCallSitesUseCurrentEngineHooks)
 	{
-		AngelscriptTestSupport::DestroySharedAndStrayGlobalTestEngine();
-		FAngelscriptEngine& Engine = AngelscriptTestSupport::AcquireCleanSharedCloneEngine();
-		AngelscriptTestSupport::FAngelscriptTestWorld World(*TestRunner, Engine);
+		DestroySharedAndStrayGlobalTestEngine();
+		FAngelscriptEngine& Engine = AcquireCleanSharedCloneEngine();
+		FAngelscriptTestWorld World(*TestRunner, Engine);
 		if (!World.IsValid())
 		{
 			return;
@@ -339,7 +339,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 			Engine.GetHooks().GetPostLiteralAssetSetup().Remove(LiteralSetupHandle);
 		};
 
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(
+		asIScriptModule* Module = BuildModule(
 			*TestRunner,
 			Engine,
 			"RuntimeBindHookCallSites",
@@ -368,14 +368,14 @@ int Run()
 			Engine.DiscardModule(TEXT("RuntimeBindHookCallSites"));
 		};
 
-		asIScriptFunction* RunFunction = AngelscriptTestSupport::GetFunctionByDecl(*TestRunner, *Module, TEXT("int Run()"));
+		asIScriptFunction* RunFunction = GetFunctionByDecl(*TestRunner, *Module, TEXT("int Run()"));
 		if (RunFunction == nullptr)
 		{
 			return;
 		}
 
 		int32 Result = 0;
-		if (!AngelscriptTestSupport::ExecuteIntFunction(*TestRunner, Engine, *RunFunction, Result))
+		if (!ExecuteIntFunction(*TestRunner, Engine, *RunFunction, Result))
 		{
 			return;
 		}
@@ -420,9 +420,9 @@ int Run()
 
 	TEST_METHOD(DebugServerCallSitesUseCurrentEngineHooks)
 	{
-		AngelscriptTestSupport::FAngelscriptDebuggerTestSession Session;
-		AngelscriptTestSupport::FAngelscriptDebuggerSessionConfig SessionConfig;
-		SessionConfig.DefaultTimeoutSeconds = AngelscriptTestSupport::kDefaultDebuggerTestTimeoutSeconds;
+		FAngelscriptDebuggerTestSession Session;
+		FAngelscriptDebuggerSessionConfig SessionConfig;
+		SessionConfig.DefaultTimeoutSeconds = kDefaultDebuggerTestTimeoutSeconds;
 		if (!TestRunner->TestTrue(TEXT("Debug hook call-site test should initialize a debugger session"), Session.Initialize(SessionConfig)))
 		{
 			return;
@@ -519,7 +519,7 @@ class ADebugHookObjectSuffixActor : AActor
 			Engine.GetHooks().GetDebugBreakFilters().Unbind();
 		};
 
-		AngelscriptTestSupport::FAngelscriptDebuggerTestClient Client;
+		FAngelscriptDebuggerTestClient Client;
 		if (!TestRunner->TestTrue(TEXT("Debug hook call-site test should connect a debugger client"), Client.Connect(TEXT("127.0.0.1"), Session.GetPort())))
 		{
 			TestRunner->AddError(Client.GetLastError());
@@ -569,7 +569,7 @@ class ADebugHookObjectSuffixActor : AActor
 		}
 
 		const TOptional<FAngelscriptBreakFilters> BreakFilters =
-			AngelscriptTestSupport::FAngelscriptDebuggerTestClient::DeserializeMessage<FAngelscriptBreakFilters>(BreakFiltersEnvelope.GetValue());
+			FAngelscriptDebuggerTestClient::DeserializeMessage<FAngelscriptBreakFilters>(BreakFiltersEnvelope.GetValue());
 		if (!TestRunner->TestTrue(TEXT("Debug hook call-site test should deserialize the BreakFilters response"), BreakFilters.IsSet()))
 		{
 			return;

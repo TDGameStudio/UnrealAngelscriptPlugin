@@ -12,7 +12,6 @@
 #include "UObject/UObjectGlobals.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelineClassHierarchyTest
 {
@@ -90,7 +89,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassHierarchyTests,
 {
 	TEST_METHOD(ScriptSuperclassRoundTrip)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();

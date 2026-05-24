@@ -8,7 +8,6 @@
 #include "UObject/UnrealType.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelineDelegateMetadataTest
 {
@@ -194,7 +193,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineDelegateTests,
 {
 	TEST_METHOD(DelegateSignatureMetadataRoundTrip)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		const FString ScriptSource = FString::Printf(TEXT(R"AS(

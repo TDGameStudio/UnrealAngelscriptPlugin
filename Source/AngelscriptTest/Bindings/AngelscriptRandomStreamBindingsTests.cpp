@@ -24,8 +24,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Helpers
@@ -169,14 +167,14 @@ int IntSeed_CopyParity()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_InitialSeed()"), TEXT("GetInitialSeed parity"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_CurrentSeed()"), TEXT("GetCurrentSeed parity"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_GetUnsignedInt()"), TEXT("GetUnsignedInt parity"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_RandRange()"), TEXT("RandRange parity"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_GetFraction()"), TEXT("GetFraction parity"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_FRandRange()"), TEXT("FRandRange parity"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_PostSequenceSeed()"), TEXT("post-sequence seed parity"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_CopyParity()"), TEXT("copy produces identical sequence"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_InitialSeed()"), TEXT("GetInitialSeed parity"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_CurrentSeed()"), TEXT("GetCurrentSeed parity"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_GetUnsignedInt()"), TEXT("GetUnsignedInt parity"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_RandRange()"), TEXT("RandRange parity"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_GetFraction()"), TEXT("GetFraction parity"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_FRandRange()"), TEXT("FRandRange parity"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_PostSequenceSeed()"), TEXT("post-sequence seed parity"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_CopyParity()"), TEXT("copy produces identical sequence"), 1);
 	}
 
 	// ====================================================================
@@ -218,7 +216,7 @@ int IntSeed_Reset()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_Reset()"), TEXT("Reset restores initial sequence"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_Reset()"), TEXT("Reset restores initial sequence"), 1);
 	}
 
 	// ====================================================================
@@ -271,10 +269,10 @@ int UintSeed_Reset()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UintSeed_InitialSeed()"), TEXT("uint32 seed GetInitialSeed"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UintSeed_CurrentSeed()"), TEXT("uint32 seed GetCurrentSeed"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UintSeed_GetUnsignedInt()"), TEXT("uint32 seed GetUnsignedInt"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UintSeed_Reset()"), TEXT("uint32 seed Reset"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UintSeed_InitialSeed()"), TEXT("uint32 seed GetInitialSeed"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UintSeed_CurrentSeed()"), TEXT("uint32 seed GetCurrentSeed"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UintSeed_GetUnsignedInt()"), TEXT("uint32 seed GetUnsignedInt"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UintSeed_Reset()"), TEXT("uint32 seed Reset"), 1);
 	}
 
 	// ====================================================================
@@ -313,8 +311,8 @@ int NameSeed_RandRange()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int NameSeed_CurrentSeed()"), TEXT("FName seed GetCurrentSeed"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int NameSeed_RandRange()"), TEXT("FName seed RandRange"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int NameSeed_CurrentSeed()"), TEXT("FName seed GetCurrentSeed"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int NameSeed_RandRange()"), TEXT("FName seed RandRange"), 1);
 	}
 };
 

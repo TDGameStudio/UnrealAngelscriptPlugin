@@ -8,8 +8,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptConsoleCommandArgumentBindingsTest,
 	"Angelscript.TestModule.Bindings.ConsoleCommandArgumentMarshalling",

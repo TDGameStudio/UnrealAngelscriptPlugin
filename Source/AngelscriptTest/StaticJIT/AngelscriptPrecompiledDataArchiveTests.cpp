@@ -151,7 +151,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Priva
 
 		return Test.TestTrue(
 			TEXT("StaticJIT.PrecompiledData global-reference fixture should compile"),
-			AngelscriptTestSupport::CompileModuleFromMemory(
+			CompileModuleFromMemory(
 				&Engine,
 				InModuleName,
 				InSourceFilename,
@@ -194,7 +194,7 @@ bool FAngelscriptPrecompiledDataBuildIdentifierValidationTest::RunTest(const FSt
 	do
 	{
 		const FString ScriptSource = MakeScriptSource();
-		const bool bCompiled = AngelscriptTestSupport::CompileModuleFromMemory(
+		const bool bCompiled = CompileModuleFromMemory(
 			&Engine,
 			ModuleName,
 			SourceFilename,
@@ -220,10 +220,10 @@ bool FAngelscriptPrecompiledDataBuildIdentifierValidationTest::RunTest(const FSt
 			break;
 		}
 
-		AngelscriptTestSupport::FScopedTempPrecompiledCacheFile CacheFile(TEXT("PrecompiledDataBuildIdentifierValidation"));
+		FScopedTempPrecompiledCacheFile CacheFile(TEXT("PrecompiledDataBuildIdentifierValidation"));
 		TUniquePtr<FAngelscriptPrecompiledData> LoadedData;
 		FString SaveAndReloadError;
-		const bool bRoundtripped = AngelscriptTestSupport::SaveAndReloadPrecompiledData(
+		const bool bRoundtripped = SaveAndReloadPrecompiledData(
 			&Engine,
 			Snapshot,
 			CacheFile.GetFilename(),
@@ -366,12 +366,12 @@ bool FAngelscriptPrecompiledDataRepeatedLoadClearsRuntimeCacheTest::RunTest(cons
 		return false;
 	}
 
-	AngelscriptTestSupport::FScopedTempPrecompiledCacheFile CacheFile(TEXT("PrecompiledDataRepeatedLoadClearsRuntimeCache"));
+	FScopedTempPrecompiledCacheFile CacheFile(TEXT("PrecompiledDataRepeatedLoadClearsRuntimeCache"));
 	TUniquePtr<FAngelscriptPrecompiledData> LoadedData;
 	FString SaveAndReloadError;
 	if (!TestTrue(
 			TEXT("StaticJIT.PrecompiledData.RepeatedLoadClearsRuntimeCache should roundtrip the fixture cache"),
-			AngelscriptTestSupport::SaveAndReloadPrecompiledData(&Engine, Snapshot, CacheFile.GetFilename(), LoadedData, &SaveAndReloadError)))
+			SaveAndReloadPrecompiledData(&Engine, Snapshot, CacheFile.GetFilename(), LoadedData, &SaveAndReloadError)))
 	{
 		if (!SaveAndReloadError.IsEmpty())
 		{

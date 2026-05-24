@@ -133,9 +133,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS && WITH_AS_COVERAGE
 
-using namespace AngelscriptTestSupport;
 using namespace AngelscriptFunctionalTestUtils;
-using namespace AngelscriptReflectiveAccess;
 
 namespace AngelscriptCodeCoverageTests
 {
@@ -554,7 +552,7 @@ int Entry()
 }
 )");
 
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(*TestRunner, Engine, "ASCoverageMapHit", Source);
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCoverageMapHit", Source);
 		if (!TestRunner->TestNotNull(TEXT("ASCoverageMapHit should compile"), Module)) { return; }
 		ON_SCOPE_EXIT { Engine.DiscardModule(TEXT("ASCoverageMapHit")); };
 
@@ -624,7 +622,7 @@ int GetValue()
 }
 )");
 
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(*TestRunner, Engine, "ASCoverageNotRecording", Source);
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCoverageNotRecording", Source);
 		if (!TestRunner->TestNotNull(TEXT("ASCoverageNotRecording should compile"), Module)) { return; }
 		ON_SCOPE_EXIT { Engine.DiscardModule(TEXT("ASCoverageNotRecording")); };
 
@@ -692,7 +690,7 @@ int Simple()
 }
 )");
 
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(*TestRunner, Engine, "ASCoverageOutOfRange", Source);
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCoverageOutOfRange", Source);
 		if (!TestRunner->TestNotNull(TEXT("ASCoverageOutOfRange should compile"), Module)) { return; }
 		ON_SCOPE_EXIT { Engine.DiscardModule(TEXT("ASCoverageOutOfRange")); };
 
@@ -756,7 +754,7 @@ int Bar()
 }
 )");
 
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(*TestRunner, Engine, "ASCoverageReset", Source);
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCoverageReset", Source);
 		if (!TestRunner->TestNotNull(TEXT("ASCoverageReset should compile"), Module)) { return; }
 		ON_SCOPE_EXIT { Engine.DiscardModule(TEXT("ASCoverageReset")); };
 
@@ -868,8 +866,8 @@ int ModuleB_Func() { return CountPrimes(20); }
 int ModuleB_Other() { return CountPrimes(50); }
 )");
 
-		asIScriptModule* ModA = AngelscriptTestSupport::BuildModule(*TestRunner, Engine, "ASCoverageModA", SourceA);
-		asIScriptModule* ModB = AngelscriptTestSupport::BuildModule(*TestRunner, Engine, "ASCoverageModB", SourceB);
+		asIScriptModule* ModA = BuildModule(*TestRunner, Engine, "ASCoverageModA", SourceA);
+		asIScriptModule* ModB = BuildModule(*TestRunner, Engine, "ASCoverageModB", SourceB);
 		if (!TestRunner->TestNotNull(TEXT("ASCoverageModA should compile"), ModA)
 			|| !TestRunner->TestNotNull(TEXT("ASCoverageModB should compile"), ModB))
 		{
@@ -968,7 +966,7 @@ int ReportTest()
 }
 )");
 
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(*TestRunner, Engine, "ASCoverageReport", Source);
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCoverageReport", Source);
 		if (!TestRunner->TestNotNull(TEXT("ASCoverageReport should compile"), Module)) { return; }
 		ON_SCOPE_EXIT { Engine.DiscardModule(TEXT("ASCoverageReport")); };
 
@@ -1059,7 +1057,7 @@ int GlobalCoverageReportTest()
 }
 )");
 
-		asIScriptModule* GlobalModule = AngelscriptTestSupport::BuildModule(
+		asIScriptModule* GlobalModule = BuildModule(
 			*TestRunner,
 			Engine,
 			"ASCoverageReportGlobal",
@@ -1344,7 +1342,7 @@ int Unmapped()
 }
 )");
 
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(*TestRunner, Engine, "ASCoverageUnmapped", Source);
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCoverageUnmapped", Source);
 		if (!TestRunner->TestNotNull(TEXT("ASCoverageUnmapped should compile"), Module)) { return; }
 		ON_SCOPE_EXIT { Engine.DiscardModule(TEXT("ASCoverageUnmapped")); };
 
@@ -1415,7 +1413,7 @@ int GlobalFunc()
 }
 )");
 
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(*TestRunner, Engine, "ASCoverageClassMethods", Source);
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCoverageClassMethods", Source);
 		if (!TestRunner->TestNotNull(TEXT("ASCoverageClassMethods should compile"), Module)) { return; }
 		ON_SCOPE_EXIT { Engine.DiscardModule(TEXT("ASCoverageClassMethods")); };
 

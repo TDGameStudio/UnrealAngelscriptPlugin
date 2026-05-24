@@ -12,7 +12,6 @@
 #include "UObject/Class.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelineMetadataSpecifierTest
 {
@@ -111,7 +110,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineMetadataSpecifierTests,
 {
 	TEST_METHOD(MacroMetadataStringsWithClosingParen)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		const FString ScriptSource = TEXT(R"AS(

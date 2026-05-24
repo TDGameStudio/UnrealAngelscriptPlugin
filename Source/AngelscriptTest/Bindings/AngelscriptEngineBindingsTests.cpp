@@ -22,8 +22,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -92,12 +90,12 @@ int ValueTypes_FText()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValueTypes_IntDouble()"), TEXT("int32 and double should hold expected values"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValueTypes_FName()"), TEXT("FName constructed from FString should match"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValueTypes_FVector()"), TEXT("FVector addition with OneVector should compute correctly"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValueTypes_FRotator()"), TEXT("FVector::RightVector.Rotation() should yield (0,90,0)"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValueTypes_FTransform()"), TEXT("FTransform::TransformPosition should offset correctly"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValueTypes_FText()"), TEXT("FText::FromString should round-trip correctly"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValueTypes_IntDouble()"), TEXT("int32 and double should hold expected values"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValueTypes_FName()"), TEXT("FName constructed from FString should match"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValueTypes_FVector()"), TEXT("FVector addition with OneVector should compute correctly"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValueTypes_FRotator()"), TEXT("FVector::RightVector.Rotation() should yield (0,90,0)"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValueTypes_FTransform()"), TEXT("FTransform::TransformPosition should offset correctly"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValueTypes_FText()"), TEXT("FText::FromString should round-trip correctly"), 1);
 	}
 
 	// ====================================================================
@@ -157,11 +155,11 @@ int FNameArray_Contains()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameArray_AliasAdd()"), TEXT("FName[] alias should support Add and indexing"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameArray_ExplicitAdd()"), TEXT("TArray<FName> explicit should support Add and copy"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameArray_Copy()"), TEXT("FName copy from array index should preserve value"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameArray_MemberHolder()"), TEXT("FName struct member should support assignment"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameArray_Contains()"), TEXT("FName arrays should support Contains"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameArray_AliasAdd()"), TEXT("FName[] alias should support Add and indexing"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameArray_ExplicitAdd()"), TEXT("TArray<FName> explicit should support Add and copy"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameArray_Copy()"), TEXT("FName copy from array index should preserve value"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameArray_MemberHolder()"), TEXT("FName struct member should support assignment"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameArray_Contains()"), TEXT("FName arrays should support Contains"), 1);
 	}
 
 	// ====================================================================
@@ -205,9 +203,9 @@ int FNameIdxWB_ContainsAfterMutation()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameIdxWB_AliasWriteBack()"), TEXT("FName[] opIndex write-back should not alias the copy"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameIdxWB_ExplicitWriteBack()"), TEXT("TArray<FName> opIndex write-back should replace in-place"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameIdxWB_ContainsAfterMutation()"), TEXT("Contains should reflect mutations after opIndex write-back"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameIdxWB_AliasWriteBack()"), TEXT("FName[] opIndex write-back should not alias the copy"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameIdxWB_ExplicitWriteBack()"), TEXT("TArray<FName> opIndex write-back should replace in-place"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameIdxWB_ContainsAfterMutation()"), TEXT("Contains should reflect mutations after opIndex write-back"), 1);
 	}
 
 	// ====================================================================
@@ -270,10 +268,10 @@ int Foreach_MutatedArray()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Foreach_IntAlias()"), TEXT("range-for over int[] should sum correctly"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Foreach_FNameExplicit()"), TEXT("range-for over TArray<FName> should iterate all elements"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Foreach_FVectorExplicit()"), TEXT("range-for over TArray<FVector> const-ref should read X components"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Foreach_MutatedArray()"), TEXT("range-for after opIndex mutation should reflect new values"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Foreach_IntAlias()"), TEXT("range-for over int[] should sum correctly"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Foreach_FNameExplicit()"), TEXT("range-for over TArray<FName> should iterate all elements"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Foreach_FVectorExplicit()"), TEXT("range-for over TArray<FVector> const-ref should read X components"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Foreach_MutatedArray()"), TEXT("range-for after opIndex mutation should reflect new values"), 1);
 	}
 };
 

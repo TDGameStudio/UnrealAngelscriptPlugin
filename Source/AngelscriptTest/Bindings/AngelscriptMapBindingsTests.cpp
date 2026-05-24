@@ -27,8 +27,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -205,7 +203,7 @@ int MapFNameFind_Value()
 			{ TEXT("int MapFNameFind_Success()"),    TEXT("TMap<FName,FName> Find should succeed"),               1 },
 			{ TEXT("int MapFNameFind_Value()"),      TEXT("TMap<FName,FName> Find value should match Alpha"),     1 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -436,7 +434,7 @@ int MapVectorKey_Overwrite()
 			{ TEXT("int MapVectorKey_FindValue()"),            TEXT("TMap<FVector,int> Find value should be 200"),             200 },
 			{ TEXT("int MapVectorKey_Overwrite()"),            TEXT("TMap<FVector,int> Add same key should overwrite value"),  999 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -680,7 +678,7 @@ int MapApi_OpAssign_DropsOldKey()
 			{ TEXT("int MapApi_OpAssign_ContainsCopiedY()"),          TEXT("opAssign should copy key Y into destination"),               1 },
 			{ TEXT("int MapApi_OpAssign_DropsOldKey()"),              TEXT("opAssign should drop destination's prior key Z"),            0 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -913,21 +911,21 @@ int MapRet_VerifyVectorValues_YSum()
 		bool bPassed = true;
 
 		// Direct bool return assertions
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool MapRet_Bool_Contains()"), TEXT("bool return: Contains hit should be true"), true);
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool MapRet_Bool_NotContains()"), TEXT("bool return: Contains miss should be false"), false);
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool MapRet_Bool_Find()"), TEXT("bool return: Find hit should be true"), true);
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool MapRet_Bool_FindMissing()"), TEXT("bool return: Find miss should be false"), false);
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool MapRet_Bool_Remove()"), TEXT("bool return: Remove hit should be true"), true);
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool MapRet_Bool_RemoveAndCopy()"), TEXT("bool return: RemoveAndCopyValue hit should be true"), true);
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool MapRet_Bool_IsEmpty()"), TEXT("bool return: empty map IsEmpty should be true"), true);
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool MapRet_Bool_OpEquals()"), TEXT("bool return: equal maps opEquals should be true"), true);
 
 		// Container/struct returns verified via script-side int wrappers
@@ -948,7 +946,7 @@ int MapRet_VerifyVectorValues_YSum()
 			{ TEXT("int MapRet_VerifyVectorValues_XSum()"),      TEXT("TArray<FVector> return: X sum should be ~1"),              1 },
 			{ TEXT("int MapRet_VerifyVectorValues_YSum()"),      TEXT("TArray<FVector> return: Y sum should be ~2"),              1 },
 		};
-		bPassed &= AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  IntCases);
+		bPassed &= ExpectGlobalInts(Test, Engine, Module,  IntCases);
 
 		return bPassed;
 	}
@@ -1018,7 +1016,7 @@ int MapFindOrAdd_FinalNum()
 			{ TEXT("int MapFindOrAddRef_Delta()"),        TEXT("TMap FindOrAdd+default ref assign should get 12"),      12 },
 			{ TEXT("int MapFindOrAdd_FinalNum()"),        TEXT("TMap final Num should be 2"),                           2 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -1069,7 +1067,7 @@ int MapLog_Types()
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
-		return AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
+		return ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int MapLog_Types()"),
 			TEXT("Log diagnostic: TMap types should compile and log without crash"), 1);
 	}

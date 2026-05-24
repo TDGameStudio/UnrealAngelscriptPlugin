@@ -12,7 +12,7 @@
 // (script-module level, not UFUNCTION / not member of an AS UCLASS) without
 // hand-rolling the asIScriptContext setup:
 //
-//   asIScriptModule* Module = AngelscriptTestSupport::BuildModule(...);
+//   asIScriptModule* Module = BuildModule(...);
 //   FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("int Sum(int, int)"));
 //   Invoker.AddArg(static_cast<int32>(17)).AddArg(static_cast<int32>(25));
 //   const int32 Result = Invoker.CallAndReturn<int32>(INDEX_NONE);
@@ -48,8 +48,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptReflectiveAccess;
 
 // =============================================================================
 // Test 1: GlobalInvoke — minimal smoke coverage

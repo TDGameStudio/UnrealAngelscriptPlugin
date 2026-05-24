@@ -10,7 +10,6 @@
 #include "Misc/ScopeExit.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelineFormatStringTest
 {
@@ -89,7 +88,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFormatStringTests,
 {
 	TEST_METHOD(FormatStringRewriteProducesExpectedOutput)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		const FString ScriptSource = TEXT(R"AS(

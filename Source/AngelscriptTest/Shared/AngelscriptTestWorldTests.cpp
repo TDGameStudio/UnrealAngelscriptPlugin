@@ -25,9 +25,7 @@
 // independently of any specific functional test.
 // =============================================================================
 
-using namespace AngelscriptTestSupport;
 using namespace AngelscriptFunctionalTestUtils;
-using namespace AngelscriptReflectiveAccess;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptTestWorldHarnessTest,
 	"Angelscript.TestModule.Shared.TestWorld",

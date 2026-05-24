@@ -9,8 +9,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptPathsBindingsTest,
@@ -35,7 +33,7 @@ int Paths_ProjectDirNonEmpty()
 		{
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int Paths_ProjectDirNonEmpty()"),
 			TEXT("FPaths::ProjectDir is non-empty"), 1);
 	}
@@ -55,7 +53,7 @@ int Paths_GetExtensionLen()
 		{
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int Paths_GetExtensionLen()"),
 			TEXT("Extension of 'MyFile.as' is 2 chars"), 2);
 	}
@@ -68,7 +66,7 @@ int Paths_GetExtensionLen()
 			TEXT("GetName"),
 			TEXT("FApp"),
 		};
-		AngelscriptTestBindings::ExpectBindingCompileFailure(
+		ExpectBindingCompileFailure(
 			*TestRunner,
 			Engine,
 			TEXT("ASPaths_AppNameMissing"),
@@ -95,7 +93,7 @@ int App_GetProjectNameDoesNotCrash()
 }
 )"));
 		if (!Mod.IsValid()) return;
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int App_GetProjectNameDoesNotCrash()"),
 			TEXT("FApp::GetProjectName is the supported app name helper"), 1);
 	}
@@ -115,7 +113,7 @@ int CommandLine_GetExists()
 		{
 			return;
 		}
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
+		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int CommandLine_GetExists()"),
 			TEXT("FCommandLine::Get does not crash"), 1);
 	}

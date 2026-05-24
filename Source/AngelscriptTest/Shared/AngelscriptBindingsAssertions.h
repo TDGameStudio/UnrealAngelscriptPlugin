@@ -5,7 +5,7 @@
 // `ExpectGlobalBool` / `ExpectGlobalDouble` / `ExpectGlobalInts` /
 // `ExpectGlobalReturnBool` / `ExpectGlobalReturnFloat` /
 // `ExpectGlobalReturnCustom<T>` / `ExpectBindingCompileFailure` /
-// `ExecuteFunctionExpectingScriptException` / `Detail::TraceCase`) was merged
+// `ExecuteFunctionExpectingScriptException` / `AngelscriptTestTraceCase`) was merged
 // into `AngelscriptTestExecute.h` during Phase 2 task 2.4 of OpenSpec change
 // `refactor-as-test-shared-layout-and-naming`. The `WITH_DEV_AUTOMATION_TESTS`
 // guard travels with the relocated content. This stub is retained indefinitely

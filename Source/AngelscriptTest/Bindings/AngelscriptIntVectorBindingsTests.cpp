@@ -21,8 +21,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -88,12 +86,12 @@ int IntPoint_GetMin()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntPoint_Construction()"), TEXT("FIntPoint construction should set X and Y"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntPoint_Indexing()"), TEXT("FIntPoint operator[] should access X and Y"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntPoint_NegateAdd()"), TEXT("FIntPoint negate+add should compute correctly"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntPoint_MulDiv()"), TEXT("FIntPoint multiply then divide should roundtrip"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntPoint_GetMax()"), TEXT("FIntPoint GetMax should return largest component"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntPoint_GetMin()"), TEXT("FIntPoint GetMin should return smallest component"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntPoint_Construction()"), TEXT("FIntPoint construction should set X and Y"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntPoint_Indexing()"), TEXT("FIntPoint operator[] should access X and Y"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntPoint_NegateAdd()"), TEXT("FIntPoint negate+add should compute correctly"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntPoint_MulDiv()"), TEXT("FIntPoint multiply then divide should roundtrip"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntPoint_GetMax()"), TEXT("FIntPoint GetMax should return largest component"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntPoint_GetMin()"), TEXT("FIntPoint GetMin should return smallest component"), 1);
 	}
 
 	// ====================================================================
@@ -144,12 +142,12 @@ int IntVec_MulDivAssign()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec_ZeroIsZero()"), TEXT("Default FIntVector should be zero"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec_Construction()"), TEXT("FIntVector(1,2,3) should not be zero"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec_Indexing()"), TEXT("FIntVector operator[] should access Z"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec_AddAssign()"), TEXT("FIntVector += should add componentwise"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec_SubAssign()"), TEXT("FIntVector -= should subtract componentwise"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec_MulDivAssign()"), TEXT("FIntVector *= then /= should roundtrip"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec_ZeroIsZero()"), TEXT("Default FIntVector should be zero"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec_Construction()"), TEXT("FIntVector(1,2,3) should not be zero"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec_Indexing()"), TEXT("FIntVector operator[] should access Z"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec_AddAssign()"), TEXT("FIntVector += should add componentwise"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec_SubAssign()"), TEXT("FIntVector -= should subtract componentwise"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec_MulDivAssign()"), TEXT("FIntVector *= then /= should roundtrip"), 1);
 	}
 
 	// ====================================================================
@@ -190,10 +188,10 @@ int IntVec2_Indexing()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec2_Uniform()"), TEXT("FIntVector2 uniform ctor should set both components"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec2_Copy()"), TEXT("FIntVector2 copy ctor should produce equal vector"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec2_Assignment()"), TEXT("FIntVector2 assignment should produce equal vector"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec2_Indexing()"), TEXT("FIntVector2 operator[] should access Y"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec2_Uniform()"), TEXT("FIntVector2 uniform ctor should set both components"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec2_Copy()"), TEXT("FIntVector2 copy ctor should produce equal vector"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec2_Assignment()"), TEXT("FIntVector2 assignment should produce equal vector"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec2_Indexing()"), TEXT("FIntVector2 operator[] should access Y"), 1);
 	}
 
 	// ====================================================================
@@ -235,11 +233,11 @@ int IntVec4_Indexing()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec4_Negate()"), TEXT("FIntVector4 negate should flip all components"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec4_Add()"), TEXT("FIntVector4 addition should be componentwise"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec4_Subtract()"), TEXT("FIntVector4 subtraction should be componentwise"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec4_MulDiv()"), TEXT("FIntVector4 multiply then divide should roundtrip"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec4_Indexing()"), TEXT("FIntVector4 operator[] should access W"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec4_Negate()"), TEXT("FIntVector4 negate should flip all components"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec4_Add()"), TEXT("FIntVector4 addition should be componentwise"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec4_Subtract()"), TEXT("FIntVector4 subtraction should be componentwise"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec4_MulDiv()"), TEXT("FIntVector4 multiply then divide should roundtrip"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntVec4_Indexing()"), TEXT("FIntVector4 operator[] should access W"), 1);
 	}
 };
 

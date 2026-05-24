@@ -13,7 +13,6 @@
 #include "UObject/UObjectGlobals.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelineBlueprintEventWrapperTest
 {
@@ -80,7 +79,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineBlueprintEventWrapperTests,
 {
 	TEST_METHOD(BlueprintEventWrapperExecutesImplementation)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		const FString ScriptSource = TEXT(R"AS(
@@ -256,7 +254,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineBlueprintEventWrapperTests,
 
 	TEST_METHOD(BlueprintEventWrapperUsesMixedPushPaths)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		const FString ScriptSource = TEXT(R"AS(

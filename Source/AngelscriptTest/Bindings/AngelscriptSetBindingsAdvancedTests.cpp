@@ -17,8 +17,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -110,19 +108,19 @@ int AppendSet_MergeContainsAll()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int AppendArray_Num()"),
 			TEXT("Append from TArray with duplicates should deduplicate"), 2);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int AppendArray_Contains4()"),
 			TEXT("Appended set should contain 4"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int AppendArray_Contains7()"),
 			TEXT("Appended set should contain 7"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int AppendSet_MergeNum()"),
 			TEXT("Append from TSet should merge to 3 unique elements"), 3);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int AppendSet_MergeContainsAll()"),
 			TEXT("Merged set should contain all three elements"), 1);
 	}
@@ -186,16 +184,16 @@ int Copy_OriginalUnchangedContent()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Copy_AddToCopy()"),
 			TEXT("Adding to copy should be visible in copy"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Copy_RemoveFromCopy()"),
 			TEXT("Removing from copy should not leave element in copy"), 0);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Copy_OriginalUnchangedNum()"),
 			TEXT("Original set Num should remain 3 after mutating copy"), 3);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Copy_OriginalUnchangedContent()"),
 			TEXT("Original set content should be unchanged after mutating copy"), 1);
 	}
@@ -288,22 +286,22 @@ int Empty_SourceUnaffected()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Assign_ReplacesNum()"),
 			TEXT("Assignment should replace target with source count"), 3);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Assign_ReplacesContent()"),
 			TEXT("Assignment should copy source content into target"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Assign_OldContentGone()"),
 			TEXT("Assignment should discard previous target content"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Empty_ClearsSet()"),
 			TEXT("Empty should clear the set"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Empty_NoElementsLeft()"),
 			TEXT("Empty should leave no elements accessible"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Empty_SourceUnaffected()"),
 			TEXT("Empty on target should not affect source set"), 1);
 	}

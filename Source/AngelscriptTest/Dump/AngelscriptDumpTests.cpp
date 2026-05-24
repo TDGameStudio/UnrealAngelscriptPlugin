@@ -118,8 +118,8 @@ namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private
 
 	bool RunDumpAll(FAutomationTestBase& Test, FString& OutOutputDir)
 	{
-		AngelscriptTestSupport::FResolvedProductionLikeEngine ResolvedEngine;
-		if (!AngelscriptTestSupport::AcquireProductionLikeEngine(Test, TEXT("Expected a production-like engine for dump tests"), ResolvedEngine))
+		FResolvedProductionLikeEngine ResolvedEngine;
+		if (!AcquireProductionLikeEngine(Test, TEXT("Expected a production-like engine for dump tests"), ResolvedEngine))
 		{
 			return false;
 		}

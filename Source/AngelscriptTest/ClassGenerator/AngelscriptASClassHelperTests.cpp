@@ -15,7 +15,6 @@
 // Test Layer: UE Functional
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 using namespace AngelscriptFunctionalTestUtils;
 
 namespace ASClassHelperTest

@@ -11,8 +11,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptReflectiveAccess;
 
 namespace AngelscriptTest_Bindings_AngelscriptTArrayBindingsTests_Private
 {
@@ -87,7 +85,7 @@ namespace AngelscriptTest_Bindings_AngelscriptTArrayBindingsTests_Private
 		return Invoker.Call();
 	}
 
-	bool ExpectGlobalInt(
+	bool ExpectTArrayBindingsGlobalInt(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
@@ -107,7 +105,7 @@ namespace AngelscriptTest_Bindings_AngelscriptTArrayBindingsTests_Private
 			ExpectedValue);
 	}
 
-	bool ExpectGlobalIntAtLeast(
+	bool ExpectTArrayBindingsGlobalIntAtLeast(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
@@ -126,7 +124,7 @@ namespace AngelscriptTest_Bindings_AngelscriptTArrayBindingsTests_Private
 			ActualValue >= MinimumValue);
 	}
 
-	bool ExpectGlobalInts(
+	bool ExpectTArrayBindingsGlobalInts(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
@@ -136,7 +134,7 @@ namespace AngelscriptTest_Bindings_AngelscriptTArrayBindingsTests_Private
 		bool bPassed = true;
 		for (const FTArrayExpectedGlobalInt& TestCase : Cases)
 		{
-			bPassed &= ExpectGlobalInt(
+			bPassed &= ExpectTArrayBindingsGlobalInt(
 				Test,
 				Engine,
 				Module,
@@ -148,7 +146,7 @@ namespace AngelscriptTest_Bindings_AngelscriptTArrayBindingsTests_Private
 		return bPassed;
 	}
 
-	bool ExpectGlobalIntsAtLeast(
+	bool ExpectTArrayBindingsGlobalIntsAtLeast(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
@@ -158,7 +156,7 @@ namespace AngelscriptTest_Bindings_AngelscriptTArrayBindingsTests_Private
 		bool bPassed = true;
 		for (const FTArrayExpectedGlobalIntAtLeast& TestCase : Cases)
 		{
-			bPassed &= ExpectGlobalIntAtLeast(
+			bPassed &= ExpectTArrayBindingsGlobalIntAtLeast(
 				Test,
 				Engine,
 				Module,
@@ -1064,8 +1062,8 @@ int IntIteratorCopyAssignStartsAtSameElement()
 		{ TEXT("int IntEmptyReservedMax()"), TEXT("TArray<int>.Empty should honor reserved size"), 6 },
 	};
 
-	bPassed = ExpectGlobalInts(Test, Engine, *Module, Profile, ExactCases);
-	bPassed &= ExpectGlobalIntsAtLeast(Test, Engine, *Module, Profile, MinimumCases);
+	bPassed = ExpectTArrayBindingsGlobalInts(Test, Engine, *Module, Profile, ExactCases);
+	bPassed &= ExpectTArrayBindingsGlobalIntsAtLeast(Test, Engine, *Module, Profile, MinimumCases);
 
 	return bPassed;
 }
@@ -1366,7 +1364,7 @@ int FTextArrayOperations()
 		{ TEXT("int FTextArrayOperations()"), TEXT("TArray<FText> should default construct and copy text values"), 1 },
 	};
 
-	bPassed = ExpectGlobalInts(Test, Engine, *Module, Profile, Cases);
+	bPassed = ExpectTArrayBindingsGlobalInts(Test, Engine, *Module, Profile, Cases);
 
 	return bPassed;
 }
@@ -1547,7 +1545,7 @@ int TSubclassOfActorArrayOperations()
 		{ TEXT("int TSubclassOfActorArrayOperations()"), TEXT("TArray<TSubclassOf<AActor>> should store actor class references"), 1 },
 	};
 
-	bPassed = ExpectGlobalInts(Test, Engine, *Module, Profile, Cases);
+	bPassed = ExpectTArrayBindingsGlobalInts(Test, Engine, *Module, Profile, Cases);
 
 	return bPassed;
 }

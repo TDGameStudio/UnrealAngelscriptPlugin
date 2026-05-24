@@ -7,7 +7,6 @@
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptTest_HotReload_AngelscriptHotReloadPropertyTests_Private
 {

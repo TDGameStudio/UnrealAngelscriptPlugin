@@ -12,7 +12,6 @@
 // Test Layer: UE Functional - Round1 deep-fill (4-level DefaultComponent attach chain)
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptComponentMultiLevelHierarchyTests,
 	"Angelscript.TestModule.Functional.Component.MultiLevelHierarchy",

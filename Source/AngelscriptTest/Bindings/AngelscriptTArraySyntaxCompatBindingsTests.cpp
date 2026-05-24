@@ -11,8 +11,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptReflectiveAccess;
 
 namespace AngelscriptTest_Bindings_AngelscriptTArraySyntaxCompatBindingsTests_Private
 {
@@ -67,7 +65,7 @@ namespace AngelscriptTest_Bindings_AngelscriptTArraySyntaxCompatBindingsTests_Pr
 		return Invoker.Call();
 	}
 
-	bool ExpectGlobalInt(
+	bool ExpectSyntaxCompatGlobalInt(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
@@ -85,7 +83,7 @@ namespace AngelscriptTest_Bindings_AngelscriptTArraySyntaxCompatBindingsTests_Pr
 			ExpectedValue);
 	}
 
-	bool ExpectGlobalIntAtLeast(
+	bool ExpectSyntaxCompatGlobalIntAtLeast(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
@@ -102,7 +100,7 @@ namespace AngelscriptTest_Bindings_AngelscriptTArraySyntaxCompatBindingsTests_Pr
 			ActualValue >= MinimumValue);
 	}
 
-	bool ExpectGlobalInts(
+	bool ExpectSyntaxCompatGlobalInts(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
@@ -111,7 +109,7 @@ namespace AngelscriptTest_Bindings_AngelscriptTArraySyntaxCompatBindingsTests_Pr
 		bool bPassed = true;
 		for (const FSyntaxExpectedGlobalInt& TestCase : Cases)
 		{
-			bPassed &= ExpectGlobalInt(
+			bPassed &= ExpectSyntaxCompatGlobalInt(
 				Test,
 				Engine,
 				Module,
@@ -122,7 +120,7 @@ namespace AngelscriptTest_Bindings_AngelscriptTArraySyntaxCompatBindingsTests_Pr
 		return bPassed;
 	}
 
-	bool ExpectGlobalIntsAtLeast(
+	bool ExpectSyntaxCompatGlobalIntsAtLeast(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
@@ -131,7 +129,7 @@ namespace AngelscriptTest_Bindings_AngelscriptTArraySyntaxCompatBindingsTests_Pr
 		bool bPassed = true;
 		for (const FSyntaxExpectedGlobalIntAtLeast& TestCase : Cases)
 		{
-			bPassed &= ExpectGlobalIntAtLeast(
+			bPassed &= ExpectSyntaxCompatGlobalIntAtLeast(
 				Test,
 				Engine,
 				Module,
@@ -1045,8 +1043,8 @@ int IntIteratorCopyAssignStartsAtSameElement()
 		{ TEXT("int IntEmptyReservedMax()"), TEXT("int[].Empty should honor reserved size"), 6 },
 	};
 
-	bool bPassed = ExpectGlobalInts(Test, Engine, *Module, ExactCases);
-	bPassed &= ExpectGlobalIntsAtLeast(Test, Engine, *Module, MinimumCases);
+	bool bPassed = ExpectSyntaxCompatGlobalInts(Test, Engine, *Module, ExactCases);
+	bPassed &= ExpectSyntaxCompatGlobalIntsAtLeast(Test, Engine, *Module, MinimumCases);
 
 	return bPassed;
 }
@@ -1344,7 +1342,7 @@ int TSubclassOfActorArrayOperations()
 		{ TEXT("int TSubclassOfActorArrayOperations()"), TEXT("TSubclassOf<AActor>[] should store actor class wrappers"), 1 },
 	};
 
-	return ExpectGlobalInts(Test, Engine, *Module, Cases);
+	return ExpectSyntaxCompatGlobalInts(Test, Engine, *Module, Cases);
 }
 
 bool RunSyntaxReturnValuesSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)

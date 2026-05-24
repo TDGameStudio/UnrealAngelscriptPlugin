@@ -16,7 +16,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace PreprocessorTestHelpers;
-using namespace AngelscriptTestSupport;
 
 // ============================================================================
 // Helpers
@@ -29,7 +28,7 @@ namespace NamespaceTestHelpers
 		FAngelscriptEngineConfig Config;
 		Config.bIsEditor = true;
 		FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		return AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
+		return CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
 	}
 }
 
@@ -52,7 +51,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorNamespaceTest,
 		TestRunner->AddExpectedErrorPlain(InvalidNamespaceMessage, EAutomationExpectedErrorFlags::Contains, 1);
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		FFixtureFile File(TEXT("Tests/Preprocessor/Namespace/InvalidDeclarationReportsSyntax.as"), TEXT(R"(
 namespace Gameplay

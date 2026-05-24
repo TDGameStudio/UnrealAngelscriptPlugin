@@ -10,7 +10,6 @@
 // Test Layer: UE Functional - Round1 deep-fill (f-string interpolation + n-name literal runtime equality)
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptTypesStringInterpolationAndFNameLiteralTests,
 	"Angelscript.TestModule.Functional.Types.StringInterpolationAndFNameLiteral",

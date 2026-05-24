@@ -33,8 +33,8 @@ TUniquePtr<FAngelscriptEngine> FAngelscriptTestEngine::Create(
 
 FAngelscriptEngine& FAngelscriptTestEngine::GetSharedEngine()
 {
-	TUniquePtr<FAngelscriptEngine>& SharedEngineStorage = AngelscriptTestSupport::GetSharedTestEngineStorage();
-	TUniquePtr<FAngelscriptEngineScope>& SharedScopeStorage = AngelscriptTestSupport::GetSharedTestEngineScopeStorage();
+	TUniquePtr<FAngelscriptEngine>& SharedEngineStorage = GetSharedTestEngineStorage();
+	TUniquePtr<FAngelscriptEngineScope>& SharedScopeStorage = GetSharedTestEngineScopeStorage();
 
 	if (!SharedEngineStorage.IsValid())
 	{
@@ -62,8 +62,8 @@ FAngelscriptEngine& FAngelscriptTestEngine::GetSharedEngine()
 
 void FAngelscriptTestEngine::DestroySharedEngine()
 {
-	TUniquePtr<FAngelscriptEngine>& SharedEngineStorage = AngelscriptTestSupport::GetSharedTestEngineStorage();
-	TUniquePtr<FAngelscriptEngineScope>& SharedScopeStorage = AngelscriptTestSupport::GetSharedTestEngineScopeStorage();
+	TUniquePtr<FAngelscriptEngine>& SharedEngineStorage = GetSharedTestEngineStorage();
+	TUniquePtr<FAngelscriptEngineScope>& SharedScopeStorage = GetSharedTestEngineScopeStorage();
 
 	// Drop the persistent scope first so the engine is no longer the
 	// "current" engine while it tears down.
@@ -116,7 +116,7 @@ void FAngelscriptTestEngine::ResetModules(FAngelscriptEngine& Engine)
 		ScriptEngine->DeleteDiscardedModules();
 	}
 
-	const FDetachedASTypeCleanupResult DetachedTypeResult = AngelscriptTestSupport::CleanupDetachedASTypesForGarbageCollection(&ActiveModules);
+	const FDetachedASTypeCleanupResult DetachedTypeResult = CleanupDetachedASTypesForGarbageCollection(&ActiveModules);
 	if (DetachedTypeResult.DetachedClassCount > 0
 		|| DetachedTypeResult.DetachedStructCount > 0
 		|| DetachedTypeResult.DiscardedEnumCount > 0

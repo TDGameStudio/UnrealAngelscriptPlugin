@@ -27,11 +27,9 @@
 // Bindings coverage profile. The example test resolves call-side helpers
 // through namespace `AngelscriptTest`, while module lifetime stays in the
 // explicit FCoverageModuleScope module-name API used by the example header.
-// `AngelscriptTestSupport::` is still pulled in for engine-helper macros that
+// `` is still pulled in for engine-helper macros that
 // drive the fixture (`ASTEST_CREATE_ENGINE` / `ASTEST_RESET_ENGINE` resolve
 // against it), since those belong to the engine-lifecycle layer.
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTest;
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FAngelscriptBindingsSharedExampleTest,

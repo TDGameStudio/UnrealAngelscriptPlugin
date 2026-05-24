@@ -25,9 +25,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
-using namespace AngelscriptReflectiveAccess;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -78,7 +75,7 @@ int SetIter_SumElements()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetIter_SumElements()"), TEXT("TSet iterator should sum all elements via CanProceed/Proceed"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetIter_SumElements()"), TEXT("TSet iterator should sum all elements via CanProceed/Proceed"), 1);
 	}
 
 	// ====================================================================
@@ -114,7 +111,7 @@ int MapIter_SumValuesAndCountKeys()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapIter_SumValuesAndCountKeys()"), TEXT("TMap iterator should sum values and enumerate keys"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapIter_SumValuesAndCountKeys()"), TEXT("TMap iterator should sum values and enumerate keys"), 1);
 	}
 
 	// ====================================================================
@@ -204,8 +201,8 @@ int MapIterPair_CopyPreservesCorrespondence()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapIterPair_EmptyMapDoesNotProceed()"), TEXT("empty TMap iterator should not proceed"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapIterPair_CopyPreservesCorrespondence()"), TEXT("TMap iterator copy should preserve key/value correspondence and remaining state"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapIterPair_EmptyMapDoesNotProceed()"), TEXT("empty TMap iterator should not proceed"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapIterPair_CopyPreservesCorrespondence()"), TEXT("TMap iterator copy should preserve key/value correspondence and remaining state"), 1);
 	}
 };
 

@@ -24,9 +24,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
-using namespace AngelscriptReflectiveAccess;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -112,7 +109,7 @@ void ReadWidgetTransformNull()
 		TestRunner->AddExpectedError(TEXT("int ReadWidgetTransform(UWidget) | Line 4 | Col 2"), EAutomationExpectedErrorFlags::Contains, 1, false);
 		TestRunner->AddExpectedError(TEXT("void ReadWidgetTransformNull() | Line 17 | Col 2"), EAutomationExpectedErrorFlags::Contains, 1, false);
 
-		AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(*TestRunner, Engine, M, 
+		ExecuteFunctionExpectingScriptException(*TestRunner, Engine, M, 
 			TEXT("void ReadWidgetTransformNull()"),
 			TEXT("GetRenderTransform should report a null-pointer diagnostic for a null widget receiver"),
 			TEXT("Null pointer access"));

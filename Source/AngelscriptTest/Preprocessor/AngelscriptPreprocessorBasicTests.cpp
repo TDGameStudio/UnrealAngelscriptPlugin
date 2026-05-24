@@ -18,7 +18,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace PreprocessorTestHelpers;
-using namespace AngelscriptTestSupport;
 
 // ============================================================================
 // Test class
@@ -34,7 +33,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorBasicTest,
 	TEST_METHOD(BasicParse)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		FFixtureFile File(TEXT("Tests/Preprocessor/BasicModule.as"), TEXT(R"(
 int ReturnSeven()
@@ -73,7 +72,7 @@ int ReturnSeven()
 	TEST_METHOD(MacroDetection)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		FFixtureFile File(TEXT("Tests/Preprocessor/MacroActor.as"), TEXT(R"(
 class AMacroActor : AActor
@@ -119,7 +118,7 @@ class AMacroActor : AActor
 	TEST_METHOD(ImportParsing)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		FFixtureFile SharedFile(TEXT("Tests/Preprocessor/Shared.as"), TEXT(R"(
 int SharedValue()
@@ -175,7 +174,7 @@ int UseShared()
 		static const FName ModuleName(TEXT("Tests.Preprocessor.Stress.LongSourceRemainsDeterministic"));
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		// Build a long script with chained functions
 		FString Source;
@@ -271,7 +270,7 @@ int UseShared()
 	TEST_METHOD(PreprocessIsSingleUse)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine); AngelscriptTestSupport::FScopedModuleCleanEngine _AutoModuleClean(Engine);
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		TestRunner->AddExpectedErrorPlain(
 			TEXT("Ensure condition failed: !bIsPreprocessed"),

@@ -13,7 +13,6 @@
 // Test Layer: UE Functional
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private
 {

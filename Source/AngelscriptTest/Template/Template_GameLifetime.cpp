@@ -42,9 +42,7 @@
 // keeping all driving paths consistent with Template_WorldTick.
 // -----------------------------------------------------------------------------
 
-using namespace AngelscriptTestSupport;
 using namespace AngelscriptFunctionalTestUtils;
-using namespace AngelscriptReflectiveAccess;
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FAngelscriptTemplateGameLifetimeScriptActorTest,

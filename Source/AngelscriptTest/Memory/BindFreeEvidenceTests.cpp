@@ -57,7 +57,7 @@ namespace AngelscriptTest_Memory_BindFreeEvidenceTests_Private
 		// Use the probe-enabled overload: it wraps acquisition with the
 		// T0..T3 SampleBindFreeMem calls plus an explicit FMemory::Trim,
 		// which is exactly what this test class needs evidence for.
-		FAngelscriptEngine& Engine = AngelscriptTestSupport::AcquireTransientFullTestEngineWithProbe();
+		FAngelscriptEngine& Engine = AcquireTransientFullTestEngineWithProbe();
 		FBindFreeCycleResult Result;
 		Result.bHasScriptEngine = Engine.GetScriptEngine() != nullptr;
 		if (FBlueprintEventSignatureRegistry* Registry = Engine.GetBlueprintEventSignatureRegistry())
@@ -73,10 +73,10 @@ namespace AngelscriptTest_Memory_BindFreeEvidenceTests_Private
 	{
 		// Drop the shared transient storage and trim again so the *outermost*
 		// "baseline after all cycles" sample is comparable to the first one.
-		AngelscriptTestSupport::GetTransientFullTestEngineStorage().Reset();
+		GetTransientFullTestEngineStorage().Reset();
 		CollectGarbage(RF_NoFlags, true);
 		FMemory::Trim(true);
-		AngelscriptTestSupport::SampleBindFreeMem(TEXT("T4_AfterFinalRelease"));
+		SampleBindFreeMem(TEXT("T4_AfterFinalRelease"));
 	}
 }
 
@@ -88,7 +88,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindFreeEvidenceTests,
 	{
 		using namespace AngelscriptTest_Memory_BindFreeEvidenceTests_Private;
 
-		AngelscriptTestSupport::SampleBindFreeMem(TEXT("T_BeforeFirstCycle"));
+		SampleBindFreeMem(TEXT("T_BeforeFirstCycle"));
 
 		const FBindFreeCycleResult Cycle1 = DriveOneCycle(TEXT("1"));
 		const FBindFreeCycleResult Cycle2 = DriveOneCycle(TEXT("2"));
@@ -134,7 +134,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindFreeEvidenceTests,
 		using namespace AngelscriptTest_Memory_BindFreeEvidenceTests_Private;
 
 		// Clean slate.
-		AngelscriptTestSupport::GetTransientFullTestEngineStorage().Reset();
+		GetTransientFullTestEngineStorage().Reset();
 		CollectGarbage(RF_NoFlags, true);
 		FMemory::Trim(true);
 
@@ -144,7 +144,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindFreeEvidenceTests,
 
 		for (int32 Cycle = 1; Cycle <= NumCycles; ++Cycle)
 		{
-			FAngelscriptEngine& Engine = AngelscriptTestSupport::AcquireTransientFullTestEngine();
+			FAngelscriptEngine& Engine = AcquireTransientFullTestEngine();
 			FBlueprintEventSignatureRegistry* Registry = Engine.GetBlueprintEventSignatureRegistry();
 			if (Registry == nullptr)
 			{
@@ -173,7 +173,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindFreeEvidenceTests,
 		}
 
 		// Final teardown so subsequent tests start clean.
-		AngelscriptTestSupport::GetTransientFullTestEngineStorage().Reset();
+		GetTransientFullTestEngineStorage().Reset();
 		CollectGarbage(RF_NoFlags, true);
 		FMemory::Trim(true);
 	}
@@ -201,14 +201,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindFreeEvidenceTests,
 #else
 		// 1. Establish a clean slate — drop any cached engine, GC, then trim so the
 		//    leak tracker starts from a stable mimalloc baseline.
-		AngelscriptTestSupport::GetTransientFullTestEngineStorage().Reset();
+		GetTransientFullTestEngineStorage().Reset();
 		CollectGarbage(RF_NoFlags, true);
 		FMemory::Trim(true);
 
 		GEngine->Exec(nullptr, TEXT("mallocleak.start size=0"));
 		GEngine->Exec(nullptr, TEXT("mallocleak.clear"));
 
-		AngelscriptTestSupport::SampleBindFreeMem(TEXT("LeakReport_BeforeFirstCycle"));
+		SampleBindFreeMem(TEXT("LeakReport_BeforeFirstCycle"));
 
 		// 2. Drive three full create/free cycles.
 		const FBindFreeCycleResult Cycle1 = DriveOneCycle(TEXT("Leak-1"));

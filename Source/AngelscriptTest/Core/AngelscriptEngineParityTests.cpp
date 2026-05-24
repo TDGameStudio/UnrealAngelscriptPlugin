@@ -124,7 +124,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 
 	BEFORE_EACH()
 	{
-		Engine = AngelscriptTestSupport::RequireRunningProductionEngine(
+		Engine = RequireRunningProductionEngine(
 			*TestRunner, TEXT("Parity tests require a running production engine"));
 	}
 
@@ -278,15 +278,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 			TEXT("    return Ptr.Get();\n")
 			TEXT("}\n");
 
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(*TestRunner, *Engine, "Editor.SoftReferenceParity", Source);
+		asIScriptModule* Module = BuildModule(*TestRunner, *Engine, "Editor.SoftReferenceParity", Source);
 		ASSERT_THAT(IsNotNull(Module));
 
 		TestRunner->TestNotNull(TEXT("TSoftObjectPtr Get() smoke"),
-			AngelscriptTestSupport::GetFunctionByDecl(*TestRunner, *Module, TEXT("UObject CheckSoftObjectGet(TSoftObjectPtr<UObject> Ptr)")));
+			GetFunctionByDecl(*TestRunner, *Module, TEXT("UObject CheckSoftObjectGet(TSoftObjectPtr<UObject> Ptr)")));
 		TestRunner->TestNotNull(TEXT("TSoftObjectPtr editor-only soft load smoke"),
-			AngelscriptTestSupport::GetFunctionByDecl(*TestRunner, *Module, TEXT("UTexture2D CheckSoftObjectEditorLoad(TSoftObjectPtr<UTexture2D> Ptr)")));
+			GetFunctionByDecl(*TestRunner, *Module, TEXT("UTexture2D CheckSoftObjectEditorLoad(TSoftObjectPtr<UTexture2D> Ptr)")));
 		TestRunner->TestNotNull(TEXT("TSoftClassPtr Get() smoke"),
-			AngelscriptTestSupport::GetFunctionByDecl(*TestRunner, *Module, TEXT("TSubclassOf<AActor> CheckSoftClassGet(TSoftClassPtr<AActor> Ptr)")));
+			GetFunctionByDecl(*TestRunner, *Module, TEXT("TSubclassOf<AActor> CheckSoftClassGet(TSoftClassPtr<AActor> Ptr)")));
 	}
 
 	TEST_METHOD(UserWidgetPaintCompile)
@@ -306,7 +306,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 			TEXT("    Context.DrawBox(FVector2D::ZeroVector, FVector2D(8.0f, 8.0f), MaterialBrush);\n")
 			TEXT("}\n");
 
-		asIScriptModule* Module = AngelscriptTestSupport::BuildModule(*TestRunner, *Engine, "UserWidgetPaintParity", Source);
+		asIScriptModule* Module = BuildModule(*TestRunner, *Engine, "UserWidgetPaintParity", Source);
 		TestRunner->TestNotNull(TEXT("UserWidget paint parity module should compile"), Module);
 	}
 

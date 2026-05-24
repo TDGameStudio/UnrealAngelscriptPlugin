@@ -96,7 +96,7 @@ namespace AngelscriptTest_StaticJIT_AOT_Private
 
 	asCScriptFunction* FindMethodFunction(FAutomationTestBase& Test, FAngelscriptEngine& Engine, const FString& Declaration)
 	{
-		UASClass* GeneratedClass = Cast<UASClass>(AngelscriptTestSupport::FindGeneratedClass(&Engine, AngelscriptStaticJITAotFixture::GetGeneratedClassName()));
+		UASClass* GeneratedClass = Cast<UASClass>(FindGeneratedClass(&Engine, AngelscriptStaticJITAotFixture::GetGeneratedClassName()));
 		if (GeneratedClass == nullptr)
 		{
 			Test.AddError(FString::Printf(
@@ -382,7 +382,7 @@ bool FAngelscriptStaticJITAotUASFunctionJitEntryAttachmentTest::RunTest(const FS
 		return false;
 	}
 
-	UClass* GeneratedClass = AngelscriptTestSupport::FindGeneratedClass(&Engine, AngelscriptStaticJITAotFixture::GetGeneratedClassName());
+	UClass* GeneratedClass = FindGeneratedClass(&Engine, AngelscriptStaticJITAotFixture::GetGeneratedClassName());
 	if (!TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should generate the fixture class"), GeneratedClass))
 	{
 		return false;
@@ -435,7 +435,7 @@ bool FAngelscriptStaticJITAotUASFunctionRuntimeCallEventTest::RunTest(const FStr
 		return false;
 	}
 
-	UClass* GeneratedClass = AngelscriptTestSupport::FindGeneratedClass(&Engine, AngelscriptStaticJITAotFixture::GetGeneratedClassName());
+	UClass* GeneratedClass = FindGeneratedClass(&Engine, AngelscriptStaticJITAotFixture::GetGeneratedClassName());
 	if (!TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should generate the fixture class"), GeneratedClass))
 	{
 		return false;
@@ -447,10 +447,10 @@ bool FAngelscriptStaticJITAotUASFunctionRuntimeCallEventTest::RunTest(const FStr
 		return false;
 	}
 
-	UASFunction* StorePrimitiveArgFunction = Cast<UASFunction>(AngelscriptTestSupport::FindGeneratedFunction(GeneratedClass, TEXT("StorePrimitiveArg")));
-	UASFunction* ReturnPrimitiveFunction = Cast<UASFunction>(AngelscriptTestSupport::FindGeneratedFunction(GeneratedClass, TEXT("ReturnPrimitive")));
-	UASFunction* BumpReferenceFunction = Cast<UASFunction>(AngelscriptTestSupport::FindGeneratedFunction(GeneratedClass, TEXT("BumpReference")));
-	UASFunction* ReturnSelfObjectFunction = Cast<UASFunction>(AngelscriptTestSupport::FindGeneratedFunction(GeneratedClass, TEXT("ReturnSelfObject")));
+	UASFunction* StorePrimitiveArgFunction = Cast<UASFunction>(FindGeneratedFunction(GeneratedClass, TEXT("StorePrimitiveArg")));
+	UASFunction* ReturnPrimitiveFunction = Cast<UASFunction>(FindGeneratedFunction(GeneratedClass, TEXT("ReturnPrimitive")));
+	UASFunction* BumpReferenceFunction = Cast<UASFunction>(FindGeneratedFunction(GeneratedClass, TEXT("BumpReference")));
+	UASFunction* ReturnSelfObjectFunction = Cast<UASFunction>(FindGeneratedFunction(GeneratedClass, TEXT("ReturnSelfObject")));
 	if (!TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose StorePrimitiveArg"), StorePrimitiveArgFunction)
 		|| !TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose ReturnPrimitive"), ReturnPrimitiveFunction)
 		|| !TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose BumpReference"), BumpReferenceFunction)
@@ -530,19 +530,19 @@ bool FAngelscriptStaticJITAotStaticWorldContextRuntimeCallEventTest::RunTest(con
 		return false;
 	}
 
-	UClass* StaticsClass = AngelscriptTestSupport::FindGeneratedClass(&Engine, TEXT("UModule_ASStaticJITAotFixtureStatics"));
+	UClass* StaticsClass = FindGeneratedClass(&Engine, TEXT("UModule_ASStaticJITAotFixtureStatics"));
 	if (!TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should generate the fixture statics class"), StaticsClass))
 	{
 		return false;
 	}
 
-	UClass* GeneratedClass = AngelscriptTestSupport::FindGeneratedClass(&Engine, AngelscriptStaticJITAotFixture::GetGeneratedClassName());
+	UClass* GeneratedClass = FindGeneratedClass(&Engine, AngelscriptStaticJITAotFixture::GetGeneratedClassName());
 	if (!TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should generate the fixture class for world context"), GeneratedClass))
 	{
 		return false;
 	}
 
-	UASFunction* StaticWorldContextFunction = Cast<UASFunction>(AngelscriptTestSupport::FindGeneratedFunction(StaticsClass, TEXT("StaticWorldContextCheck")));
+	UASFunction* StaticWorldContextFunction = Cast<UASFunction>(FindGeneratedFunction(StaticsClass, TEXT("StaticWorldContextCheck")));
 	if (!TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose StaticWorldContextCheck"), StaticWorldContextFunction))
 	{
 		return false;

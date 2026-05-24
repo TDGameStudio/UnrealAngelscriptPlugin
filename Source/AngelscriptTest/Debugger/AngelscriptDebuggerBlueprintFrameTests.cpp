@@ -23,7 +23,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptDebuggerBlueprintFrameTests_Private
 {

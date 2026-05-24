@@ -28,8 +28,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -164,10 +162,10 @@ int GetValueByName()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetNameByIndex()"), TEXT("GetNameByIndex should return correct FName"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetNameByValue()"), TEXT("GetNameByValue should return correct FName"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetIndexByName()"), TEXT("GetIndexByName should return correct index"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetValueByName()"), TEXT("GetValueByName should return correct value"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetNameByIndex()"), TEXT("GetNameByIndex should return correct FName"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetNameByValue()"), TEXT("GetNameByValue should return correct FName"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetIndexByName()"), TEXT("GetIndexByName should return correct index"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetValueByName()"), TEXT("GetValueByName should return correct value"), 1);
 	}
 
 	// ====================================================================
@@ -233,12 +231,12 @@ int GenerateEnumPrefix()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetNameStringByIndex()"), TEXT("GetNameStringByIndex should match native"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetNameStringByValue()"), TEXT("GetNameStringByValue should match native"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetIndexByNameString()"), TEXT("GetIndexByNameString should match native"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetValueByNameString()"), TEXT("GetValueByNameString should match native"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetDisplayNameTextByValue()"), TEXT("GetDisplayNameTextByValue should match native"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GenerateEnumPrefix()"), TEXT("GenerateEnumPrefix should match native"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetNameStringByIndex()"), TEXT("GetNameStringByIndex should match native"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetNameStringByValue()"), TEXT("GetNameStringByValue should match native"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetIndexByNameString()"), TEXT("GetIndexByNameString should match native"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetValueByNameString()"), TEXT("GetValueByNameString should match native"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetDisplayNameTextByValue()"), TEXT("GetDisplayNameTextByValue should match native"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GenerateEnumPrefix()"), TEXT("GenerateEnumPrefix should match native"), 1);
 	}
 
 	// ====================================================================
@@ -310,13 +308,13 @@ int GetIndexByNameString_Missing()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IsValidEnumValue_Valid()"), TEXT("IsValidEnumValue should accept valid value"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IsValidEnumValue_Invalid()"), TEXT("IsValidEnumValue should reject invalid value"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IsValidEnumName_Valid()"), TEXT("IsValidEnumName should accept valid name"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IsValidEnumName_Invalid()"), TEXT("IsValidEnumName should reject missing name"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetValueByName_Missing()"), TEXT("GetValueByName with missing name should return sentinel"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetIndexByName_Missing()"), TEXT("GetIndexByName with missing name should return sentinel"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetIndexByNameString_Missing()"), TEXT("GetIndexByNameString with missing name should return sentinel"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IsValidEnumValue_Valid()"), TEXT("IsValidEnumValue should accept valid value"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IsValidEnumValue_Invalid()"), TEXT("IsValidEnumValue should reject invalid value"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IsValidEnumName_Valid()"), TEXT("IsValidEnumName should accept valid name"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IsValidEnumName_Invalid()"), TEXT("IsValidEnumName should reject missing name"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetValueByName_Missing()"), TEXT("GetValueByName with missing name should return sentinel"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetIndexByName_Missing()"), TEXT("GetIndexByName with missing name should return sentinel"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetIndexByNameString_Missing()"), TEXT("GetIndexByNameString with missing name should return sentinel"), 1);
 	}
 };
 

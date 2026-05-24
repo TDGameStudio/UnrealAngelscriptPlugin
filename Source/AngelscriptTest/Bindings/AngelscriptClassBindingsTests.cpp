@@ -39,8 +39,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -125,7 +123,7 @@ int GetSuperClass_ActorNotNull()
 			{ TEXT("int GetSuperClass_CameraIsActor()"),TEXT("ACameraActor.GetSuperClass() should be AActor"),       1 },
 			{ TEXT("int GetSuperClass_ActorNotNull()"), TEXT("AActor.GetSuperClass() should not be null"),           1 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -271,7 +269,7 @@ int MapKey_FindValue()
 			{ TEXT("int SetKey_Contains()"),                TEXT("TSet<TSubclassOf<AActor>> should support Contains"),        1 },
 			{ TEXT("int MapKey_FindValue()"),               TEXT("TMap<TSubclassOf<AActor>, int> should find value by key"),  99 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -321,7 +319,7 @@ void AssignClass(TSubclassOf<AActor>& OutValue, UClass NewClass)
 		{
 			TSubclassOf<AActor> ResetTarget = AActor::StaticClass();
 
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker NullInvoker(
+			FASGlobalFunctionInvoker NullInvoker(
 				Test, Engine, Module,
 				TEXT("void AssignClass(TSubclassOf<AActor>& OutValue, UClass NewClass)"));
 			if (NullInvoker.IsValid())
@@ -346,7 +344,7 @@ void AssignClass(TSubclassOf<AActor>& OutValue, UClass NewClass)
 		}
 
 		// (1) Negative: implicit ctor with unrelated UClass should throw.
-		bPassed &= AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(
+		bPassed &= ExecuteFunctionExpectingScriptException(
 			Test, Engine, Module, 
 			TEXT("void TriggerInvalidImplicitCtor()"),
 			TEXT("Implicit ctor from unrelated UClass should raise script exception"),
@@ -359,7 +357,7 @@ void AssignClass(TSubclassOf<AActor>& OutValue, UClass NewClass)
 		{
 			TSubclassOf<AActor> AssignmentTarget = AActor::StaticClass();
 
-			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker BadInvoker(
+			FASGlobalFunctionInvoker BadInvoker(
 				Test, Engine, Module,
 				TEXT("void AssignClass(TSubclassOf<AActor>& OutValue, UClass NewClass)"));
 			if (BadInvoker.IsValid())
@@ -530,7 +528,7 @@ int GetAssetName_NonEmpty()
 			{ TEXT("int ToSoftObjectPath_NonEmpty()"),    TEXT("ToSoftObjectPath().ToString() should not be empty"), 1 },
 			{ TEXT("int GetAssetName_NonEmpty()"),        TEXT("GetAssetName() should not be empty"),                1 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -581,7 +579,7 @@ int Plain_DefaultObjectIsValid()
 				{ TEXT("int Plain_IsChildOfSelfBoth()"),     TEXT("UClass <-> TSubclassOf IsChildOf should be reflexive"),   1 },
 				{ TEXT("int Plain_DefaultObjectIsValid()"),  TEXT("StaticClass GetDefaultObject should be valid"),           1 },
 			};
-			bPassed &= AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, PlainModule,  PlainCases);
+			bPassed &= ExpectGlobalInts(Test, Engine, PlainModule,  PlainCases);
 		}
 
 		// (b) Annotated ASClass + reflective UFUNCTION call.
@@ -691,7 +689,7 @@ int Query_TSubclassOf_IsChildOfBoth()
 				{ TEXT("int Query_IsChildOfActor()"),             TEXT("Generated class should be child of AActor"),      1 },
 				{ TEXT("int Query_TSubclassOf_IsChildOfBoth()"),  TEXT("Generated class TSubclassOf round-trip"),         1 },
 			};
-			bPassed &= AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, QueryModule,  QueryCases);
+			bPassed &= ExpectGlobalInts(Test, Engine, QueryModule,  QueryCases);
 		}
 
 		return bPassed;
@@ -783,7 +781,7 @@ int StaticType_RoundTrip_MatchNamespace()
 			{ TEXT("int StaticType_DefaultObjectIsValid()"),  TEXT("__StaticType_AActor.GetDefaultObject should be valid"),1 },
 			{ TEXT("int StaticType_RoundTrip_MatchNamespace()"),TEXT("__StaticType_AActor.Get() should match AActor::StaticClass() round-trip"), 1 },
 		};
-		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -905,14 +903,14 @@ int IsAbstract_FindAbstract()
 			if (!AbstractScope.IsValid()) return false;
 			asIScriptModule& AbstractModule = AbstractScope.GetModule();
 
-			bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, AbstractModule, 
+			bPassed &= ExpectGlobalInt(Test, Engine, AbstractModule, 
 				TEXT("int IsAbstract_AActor_False()"),
 				TEXT("AActor should NOT be abstract"),
 				0);
 			// IsAbstract_FindAbstract may return -1 if ANavigationData not found;
 			// just verify execution succeeds (non-crash). Skip value check if -1.
 			{
-				AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Invoker(
+				FASGlobalFunctionInvoker Invoker(
 					Test, Engine, AbstractModule,
 					TEXT("int IsAbstract_FindAbstract()"));
 				if (Invoker.IsValid())
@@ -960,7 +958,7 @@ void TriggerBadSoftAssign()
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
-		return AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(
+		return ExecuteFunctionExpectingScriptException(
 			Test, Engine, Module, 
 			TEXT("void TriggerBadSoftAssign()"),
 			TEXT("TSoftClassPtr opAssign with unrelated class should raise exception"),
@@ -1012,31 +1010,31 @@ int ClassRet_SubclassOf_Echo()
 		asIScriptModule& Module = ModuleScope.GetModule();
 
 		bool bPassed = true;
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool ClassRet_Bool_FindClassIsValid()"),
 			TEXT("FindClass should return valid (bool return path)"),
 			true);
-		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
+		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool ClassRet_Bool_IsChildOf()"),
 			TEXT("IsChildOf should return true (bool return path)"),
 			true);
 
 		// FString return — verify via length proxy (> 0)
-		bPassed &= AngelscriptTestBindings::ExpectGlobalIntAtLeast(Test, Engine, Module, 
+		bPassed &= ExpectGlobalIntAtLeast(Test, Engine, Module, 
 			TEXT("int ClassRet_FString_ClassNameLen()"),
 			TEXT("AActor class name length should be > 0"),
 			1);
-		bPassed &= AngelscriptTestBindings::ExpectGlobalIntAtLeast(Test, Engine, Module, 
+		bPassed &= ExpectGlobalIntAtLeast(Test, Engine, Module, 
 			TEXT("int ClassRet_FString_SuperClassNameLen()"),
 			TEXT("CameraActor super class name length should be > 0"),
 			1);
 
 		// UClass / TSubclassOf echo paths
-		bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
+		bPassed &= ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int ClassRet_UClass_Echo()"),
 			TEXT("UClass echo should round-trip"),
 			1);
-		bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
+		bPassed &= ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int ClassRet_SubclassOf_Echo()"),
 			TEXT("TSubclassOf echo should round-trip"),
 			1);
@@ -1068,7 +1066,7 @@ int ClassLog_Types()
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
-		return AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
+		return ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int ClassLog_Types()"),
 			TEXT("Log() with class string diagnostics should succeed"),
 			1);

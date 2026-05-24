@@ -10,7 +10,6 @@
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 namespace AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private
 {
@@ -106,7 +105,7 @@ bool FAngelscriptCoreCreateCompileExecuteFreshEngineBootstrapTest::RunTest(const
 
 	const FAngelscriptEngineConfig Config;
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> LocalEngine = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(
+	TUniquePtr<FAngelscriptEngine> LocalEngine = CreateScriptScanFreeEngineForTesting(
 		Config,
 		Dependencies);
 	if (!TestNotNull(TEXT("Core.CreateCompileExecute.FreshEngineBootstrap should create a fresh full test engine"), LocalEngine.Get()))
@@ -236,8 +235,8 @@ bool FAngelscriptCoreCreateEngineTest::RunTest(const FString& Parameters)
 	using namespace AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private;
 	FAngelscriptEngineConfig Config;
 	FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> LocalEngineA = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(Config, Dependencies);
-	TUniquePtr<FAngelscriptEngine> LocalEngineB = AngelscriptTestSupport::CreateScriptScanFreeEngineForTesting(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> LocalEngineA = CreateScriptScanFreeEngineForTesting(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> LocalEngineB = CreateScriptScanFreeEngineForTesting(Config, Dependencies);
 	if (!TestNotNull(TEXT("Core.CreateEngine should create a first test engine wrapper"), LocalEngineA.Get()))
 	{
 		return false;
@@ -330,8 +329,8 @@ bool FAngelscriptCoreCreateEngineIsolatedModuleRegistriesTest::RunTest(const FSt
 	const FName ModuleName(TEXT("ASCoreCreateEngineIsolationA"));
 	const FAngelscriptEngineConfig Config;
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> EngineA = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
-	TUniquePtr<FAngelscriptEngine> EngineB = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> EngineA = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
+	TUniquePtr<FAngelscriptEngine> EngineB = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
 	int32 Result = 0;
 	if (!TestNotNull(TEXT("Core.CreateEngine.IsolatedModuleRegistries should create engine A"), EngineA.Get()) || !TestNotNull(TEXT("Core.CreateEngine.IsolatedModuleRegistries should create engine B"), EngineB.Get())) return false;
 	if (!TestTrue(TEXT("Core.CreateEngine.IsolatedModuleRegistries should create distinct script engines"), EngineA->GetScriptEngine() != nullptr && EngineB->GetScriptEngine() != nullptr && EngineA->GetScriptEngine() != EngineB->GetScriptEngine())
@@ -749,7 +748,7 @@ bool FAngelscriptCompilerOptimizeTest::RunTest(const FString& Parameters)
 	}
 
 	int32 ConstantResult = 0;
-	if (!TestTrue(TEXT("Core.Optimize should execute the constant-folding case"), AngelscriptTestSupport::ExecuteIntFunction(&Engine, TEXT("ASCoreOptimizeConstant"), TEXT("int Test()"), ConstantResult)))
+	if (!TestTrue(TEXT("Core.Optimize should execute the constant-folding case"), ExecuteIntFunction(&Engine, TEXT("ASCoreOptimizeConstant"), TEXT("int Test()"), ConstantResult)))
 	{
 		return false;
 	}
@@ -766,7 +765,7 @@ bool FAngelscriptCompilerOptimizeTest::RunTest(const FString& Parameters)
 	}
 
 	int32 DeadCodeResult = 0;
-	if (!TestTrue(TEXT("Core.Optimize should execute the dead-code case"), AngelscriptTestSupport::ExecuteIntFunction(&Engine, TEXT("ASCoreOptimizeDeadCode"), TEXT("int Test()"), DeadCodeResult)))
+	if (!TestTrue(TEXT("Core.Optimize should execute the dead-code case"), ExecuteIntFunction(&Engine, TEXT("ASCoreOptimizeDeadCode"), TEXT("int Test()"), DeadCodeResult)))
 	{
 		return false;
 	}

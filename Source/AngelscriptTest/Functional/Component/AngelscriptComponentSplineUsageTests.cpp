@@ -12,7 +12,6 @@
 // Test Layer: UE Functional - Round1 vacuum-fill (USplineComponent default + AS API surface)
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptComponentSplineUsageTests,
 	"Angelscript.TestModule.Functional.Component.SplineUsage",

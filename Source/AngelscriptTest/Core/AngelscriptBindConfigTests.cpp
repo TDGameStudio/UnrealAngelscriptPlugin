@@ -124,7 +124,7 @@ namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private
 
 	FAngelscriptBindExecutionSnapshot ObserveStartupBindPass(const FAngelscriptEngineConfig& Config)
 	{
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
 			FAngelscriptBindConfigTestAccess::DestroyGlobalEngine();
@@ -132,11 +132,11 @@ namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private
 
 		FAngelscriptBindExecutionObservation::Reset();
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
+		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
 		check(Engine.IsValid());
 		FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
 		Engine.Reset();
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 
 		if (FAngelscriptEngine::IsInitialized())
 		{
@@ -435,10 +435,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 	TEST_METHOD(GeneratedBlueprintCallableEntriesPopulateClassMaps)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
-		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); AngelscriptTestSupport::DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
+		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
 
 		UFunction* DestroyActorFunction = AActor::StaticClass()->FindFunctionByName(TEXT("K2_DestroyActor"));
 		UFunction* GetPlayerControllerFunction = UGameplayStatics::StaticClass()->FindFunctionByName(TEXT("GetPlayerController"));
@@ -449,7 +449,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 		{ return; }
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
+		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
 		if (!TestRunner->TestTrue(TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should create a testing engine"), Engine.IsValid())) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
 
@@ -513,13 +513,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 	TEST_METHOD(FunctionLevelScriptMethodUsesFirstParameterAsMixin)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
-		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); AngelscriptTestSupport::DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
+		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
+		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
 		if (!TestRunner->TestTrue(TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should create a testing engine"), Engine.IsValid())) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
 
@@ -540,13 +540,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 	TEST_METHOD(CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
-		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); AngelscriptTestSupport::DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
+		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
+		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
 		if (!TestRunner->TestTrue(TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should create a testing engine"), Engine.IsValid())) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
 
@@ -580,13 +580,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 	TEST_METHOD(ScriptAllowTemporaryThisAppendsAcceptTemporaryThis)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
-		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); AngelscriptTestSupport::DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
+		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
+		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
 		if (!TestRunner->TestTrue(TEXT("ScriptAllowTemporaryThisAppendsAcceptTemporaryThis should create a testing engine"), Engine.IsValid())) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
 
@@ -604,13 +604,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 	TEST_METHOD(UnsafeDuringActorConstructionSetsUnsafeTrait)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
-		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); AngelscriptTestSupport::DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
+		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
+		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
 		if (!TestRunner->TestTrue(TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should create a testing engine"), Engine.IsValid())) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
 
@@ -642,13 +642,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 	TEST_METHOD(OverloadedExportedFunctionsCanRecoverDirectBind)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
-		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); AngelscriptTestSupport::DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
+		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
+		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
 		if (!TestRunner->TestTrue(TEXT("OverloadedExportedFunctionsCanRecoverDirectBind should create a testing engine"), Engine.IsValid())) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
 
@@ -667,13 +667,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 	TEST_METHOD(InlineDefinitionFunctionsCanRecoverDirectBind)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
-		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); AngelscriptTestSupport::DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
+		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
+		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
 		if (!TestRunner->TestTrue(TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should create a testing engine"), Engine.IsValid())) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
 
@@ -690,13 +690,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 	TEST_METHOD(InlineOutRefFunctionsCanRecoverDirectBind)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		AngelscriptTestSupport::DestroySharedTestEngine();
+		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
-		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); AngelscriptTestSupport::DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
+		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		TUniquePtr<FAngelscriptEngine> Engine = AngelscriptTestSupport::CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
+		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
 		if (!TestRunner->TestTrue(TEXT("InlineOutRefFunctionsCanRecoverDirectBind should create a testing engine"), Engine.IsValid())) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
 

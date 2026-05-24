@@ -11,7 +11,6 @@
 #include "Misc/ScopeExit.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-using namespace AngelscriptTestSupport;
 
 namespace CompilerPipelineImportTest
 {
@@ -124,7 +123,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportTests,
 {
 	TEST_METHOD(DeclaredFunctionImportRoundTrip)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		const FString ProviderScriptSource = TEXT(R"AS(
@@ -320,7 +318,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportTests,
 
 	TEST_METHOD(DeclaredFunctionImportErrorsReportPreciseDiagnostics)
 	{
-	using namespace AngelscriptTestSupport;
 
 
 		struct FDeclaredImportErrorTestCase

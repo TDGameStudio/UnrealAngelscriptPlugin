@@ -26,8 +26,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -148,7 +146,7 @@ int DateTime_ParseIso8601()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_ParseIso8601()"), TEXT("FDateTime::ParseIso8601 should parse and match native components"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_ParseIso8601()"), TEXT("FDateTime::ParseIso8601 should parse and match native components"), 1);
 	}
 
 	// ====================================================================
@@ -181,7 +179,7 @@ int DateTime_ParseHttpDate()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_ParseHttpDate()"), TEXT("FDateTime::ParseHttpDate should parse and match native components"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_ParseHttpDate()"), TEXT("FDateTime::ParseHttpDate should parse and match native components"), 1);
 	}
 
 	// ====================================================================
@@ -214,7 +212,7 @@ int DateTime_ParseGeneric()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_ParseGeneric()"), TEXT("FDateTime::Parse should parse generic format and match native components"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_ParseGeneric()"), TEXT("FDateTime::Parse should parse generic format and match native components"), 1);
 	}
 
 	// ====================================================================
@@ -269,9 +267,9 @@ int DateTime_ParseInvalidIso()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_ParseInvalidGeneric()"), TEXT("FDateTime::Parse should reject invalid input"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_ParseInvalidHttp()"), TEXT("FDateTime::ParseHttpDate should reject invalid input"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_ParseInvalidIso()"), TEXT("FDateTime::ParseIso8601 should reject invalid input"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_ParseInvalidGeneric()"), TEXT("FDateTime::Parse should reject invalid input"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_ParseInvalidHttp()"), TEXT("FDateTime::ParseHttpDate should reject invalid input"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_ParseInvalidIso()"), TEXT("FDateTime::ParseIso8601 should reject invalid input"), 1);
 	}
 
 	// ====================================================================
@@ -322,10 +320,10 @@ int DateTime_ToStringFormatted()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_CtorComponents()"), TEXT("FDateTime component ctor should match native ticks and fields"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_ToHttpDate()"), TEXT("FDateTime::ToHttpDate should match native output"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_ToIso8601()"), TEXT("FDateTime::ToIso8601 should match native output"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_ToStringFormatted()"), TEXT("FDateTime::ToString with format should match native output"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_CtorComponents()"), TEXT("FDateTime component ctor should match native ticks and fields"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_ToHttpDate()"), TEXT("FDateTime::ToHttpDate should match native output"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_ToIso8601()"), TEXT("FDateTime::ToIso8601 should match native output"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_ToStringFormatted()"), TEXT("FDateTime::ToString with format should match native output"), 1);
 	}
 
 	// ====================================================================
@@ -384,9 +382,9 @@ int DateTime_RoundTripFormatted()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_RoundTripHttp()"), TEXT("FDateTime HTTP round-trip should preserve components"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_RoundTripIso()"), TEXT("FDateTime ISO round-trip should preserve components"), 1);
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_RoundTripFormatted()"), TEXT("FDateTime formatted round-trip should preserve components"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_RoundTripHttp()"), TEXT("FDateTime HTTP round-trip should preserve components"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_RoundTripIso()"), TEXT("FDateTime ISO round-trip should preserve components"), 1);
+		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DateTime_RoundTripFormatted()"), TEXT("FDateTime formatted round-trip should preserve components"), 1);
 	}
 };
 

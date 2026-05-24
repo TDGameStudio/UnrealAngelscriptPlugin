@@ -21,9 +21,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptTestSupport;
-using namespace AngelscriptTestBindings;
-using namespace AngelscriptReflectiveAccess;
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -117,7 +114,7 @@ int OrderedFormat_Match()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int OrderedFormat_Match()"),
 			TEXT("Ordered FFormatArgumentValue args should produce expected FText::Format output"),
 			1);
@@ -160,7 +157,7 @@ int NamedFormat_Match()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
+		ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int NamedFormat_Match()"),
 			TEXT("Named FFormatArgumentValue args should produce expected FText::Format output"),
 			1);
