@@ -323,7 +323,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 			.Append(entryCount)
 			.AppendLine(", GeneratedFunctionTableElapsedMilliseconds);");
 
-		builder.Append("\tUE_LOG(Angelscript, Log, TEXT(\"[UHT] Registered %d generated BlueprintCallable entries for module %s shard %d/%d in %.3f ms\"), ")
+		builder.Append("\tUE_LOG(Angelscript, Log, TEXT(\"[UHT] Registered %d generated AS-callable entries for module %s shard %d/%d in %.3f ms\"), ")
 			.Append(entryCount)
 			.Append(", TEXT(\"")
 			.Append(moduleShortName)
@@ -506,7 +506,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 			return false;
 		}
 
-		if (!AngelscriptFunctionTableExporter.IsBlueprintCallable(function))
+		if (!AngelscriptFunctionTableExporter.IsAngelscriptCallable(function))
 		{
 			return false;
 		}

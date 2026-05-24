@@ -37,14 +37,14 @@ internal static class AngelscriptFunctionTableExporter
 		foreach (UhtModule module in factory.Session.Modules)
 		{
 			packageCount++;
-			CountBlueprintCallableFunctions(module.ShortName, module.ScriptPackage, skippedEntries, ref classCount, ref functionCount, ref reconstructedCount, ref skippedCount);
+			CountAngelscriptCallableFunctions(module.ShortName, module.ScriptPackage, skippedEntries, ref classCount, ref functionCount, ref reconstructedCount, ref skippedCount);
 		}
 
 		WriteSkippedEntriesCsv(factory, skippedEntries);
 		WriteSkippedReasonSummaryCsv(factory, skippedEntries);
 
 		Console.WriteLine(
-			"AngelscriptUHTTool exporter visited {0} packages, {1} classes, {2} BlueprintCallable/Pure functions, reconstructed {3}, skipped {4}, wrote {5} module files.",
+			"AngelscriptUHTTool exporter visited {0} packages, {1} classes, {2} AS-callable functions, reconstructed {3}, skipped {4}, wrote {5} module files.",
 			packageCount,
 			classCount,
 			functionCount,
@@ -53,23 +53,24 @@ internal static class AngelscriptFunctionTableExporter
 			generatedFileCount);
 	}
 
-	internal static bool IsBlueprintCallable(UhtFunction function)
+	internal static bool IsAngelscriptCallable(UhtFunction function)
 	{
 		string functionFlags = function.FunctionFlags.ToString();
 
 		return function.FunctionType == UhtFunctionType.Function &&
 			(functionFlags.Contains("BlueprintCallable", StringComparison.Ordinal) ||
-			functionFlags.Contains("BlueprintPure", StringComparison.Ordinal));
+			functionFlags.Contains("BlueprintPure", StringComparison.Ordinal) ||
+			function.MetaData.ContainsKey("ScriptCallable"));
 	}
 
-	private static void CountBlueprintCallableFunctions(string moduleName, UhtType type, List<AngelscriptSkippedFunctionEntry> skippedEntries, ref int classCount, ref int functionCount, ref int reconstructedCount, ref int skippedCount)
+	private static void CountAngelscriptCallableFunctions(string moduleName, UhtType type, List<AngelscriptSkippedFunctionEntry> skippedEntries, ref int classCount, ref int functionCount, ref int reconstructedCount, ref int skippedCount)
 	{
 		if (type is UhtClass classObj)
 		{
 			classCount++;
 			foreach (UhtType child in classObj.Children)
 			{
-				if (child is UhtFunction function && IsBlueprintCallable(function))
+				if (child is UhtFunction function && IsAngelscriptCallable(function))
 				{
 					functionCount++;
 					if (AngelscriptFunctionSignatureBuilder.TryBuild(classObj, function, out AngelscriptFunctionSignature? signature, out string? failureReason))
@@ -92,7 +93,7 @@ internal static class AngelscriptFunctionTableExporter
 
 		foreach (UhtType child in type.Children)
 		{
-			CountBlueprintCallableFunctions(moduleName, child, skippedEntries, ref classCount, ref functionCount, ref reconstructedCount, ref skippedCount);
+			CountAngelscriptCallableFunctions(moduleName, child, skippedEntries, ref classCount, ref functionCount, ref reconstructedCount, ref skippedCount);
 		}
 	}
 

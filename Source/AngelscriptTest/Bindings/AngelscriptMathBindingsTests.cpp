@@ -1,8 +1,8 @@
 // ============================================================================
-// AngelscriptMathFunctionLibraryTests.cpp
+// AngelscriptMathBindingsTests.cpp
 //
-// Math function library binding coverage -- CQTest refactor. Automation IDs:
-//   Angelscript.TestModule.FunctionLibraries.Math.FAngelscriptMathFunctionLibraryTest.*
+// Math binding coverage -- CQTest refactor. Automation IDs:
+//   Angelscript.TestModule.Bindings.Math.FAngelscriptMathBindingsTest.*
 //
 // Sections:
 //   ShortestPathAndTransformSemantics — quaternion lerp/interp, transform interp,
@@ -37,19 +37,19 @@ using namespace AngelscriptReflectiveAccess;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GMathFuncLibProfile{
-	TEXT("MathFuncLib"),                  // Theme
-	TEXT(""),                             // Variant
-	TEXT("ASMathFuncLib"),                // ModulePrefix
-	TEXT("MathFunc"),                     // CasePrefix
-	TEXT("MathFunctionLibraryBindings"), // LogCategory
+static const FBindingsCoverageProfile GMathBindingsProfile{
+	TEXT("Math"),                // Theme
+	TEXT(""),                    // Variant
+	TEXT("ASMathBindings"),      // ModulePrefix
+	TEXT("Math"),                // CasePrefix
+	TEXT("MathBindings"),        // LogCategory
 };
 
 // ----------------------------------------------------------------------------
 // Helpers (retained from original)
 // ----------------------------------------------------------------------------
 
-namespace AngelscriptTest_Bindings_AngelscriptMathFunctionLibraryTests_Private
+namespace AngelscriptTest_Bindings_AngelscriptMathBindingsTests_Private
 {
 	bool ReadReturnValue(FAutomationTestBase&, asIScriptContext& Context, float& OutValue) { OutValue = Context.GetReturnFloat(); return true; }
 	bool ReadReturnValue(FAutomationTestBase&, asIScriptContext& Context, double& OutValue) { OutValue = Context.GetReturnDouble(); return true; }
@@ -58,7 +58,7 @@ namespace AngelscriptTest_Bindings_AngelscriptMathFunctionLibraryTests_Private
 	bool ReadReturnValue(FAutomationTestBase& Test, asIScriptContext& Context, TValue& OutValue)
 	{
 		void* ReturnValueAddress = Context.GetAddressOfReturnValue();
-		return Test.TestNotNull(TEXT("Math function library test should expose the return value storage"), ReturnValueAddress) && (OutValue = *static_cast<TValue*>(ReturnValueAddress), true);
+		return Test.TestNotNull(TEXT("Math binding test should expose the return value storage"), ReturnValueAddress) && (OutValue = *static_cast<TValue*>(ReturnValueAddress), true);
 	}
 
 	template <typename TValue>
@@ -69,25 +69,25 @@ namespace AngelscriptTest_Bindings_AngelscriptMathFunctionLibraryTests_Private
 		TValue& OutValue)
 	{
 		asIScriptContext* Context = Engine.CreateContext();
-		if (!Test.TestNotNull(TEXT("Math function library test should create an execution context"), Context))
+		if (!Test.TestNotNull(TEXT("Math binding test should create an execution context"), Context))
 		{
 			return false;
 		}
 
 		const int PrepareResult = Context->Prepare(&Function);
-		if (!Test.TestEqual(TEXT("Math function library test should prepare the script function"), PrepareResult, asSUCCESS))
+		if (!Test.TestEqual(TEXT("Math binding test should prepare the script function"), PrepareResult, asSUCCESS))
 		{
 			Context->Release();
 			return false;
 		}
 
 		const int ExecuteResult = Context->Execute();
-		if (!Test.TestEqual(TEXT("Math function library test should execute the script function"), ExecuteResult, asEXECUTION_FINISHED))
+		if (!Test.TestEqual(TEXT("Math binding test should execute the script function"), ExecuteResult, asEXECUTION_FINISHED))
 		{
 			if (ExecuteResult == asEXECUTION_EXCEPTION && Context->GetExceptionString() != nullptr)
 			{
 				Test.AddError(FString::Printf(
-					TEXT("Math function library test saw a script exception: %s"),
+					TEXT("Math binding test saw a script exception: %s"),
 					UTF8_TO_TCHAR(Context->GetExceptionString())));
 			}
 			Context->Release();
@@ -127,9 +127,12 @@ namespace AngelscriptTest_Bindings_AngelscriptMathFunctionLibraryTests_Private
 		const FVector& Expected,
 		double Tolerance = KINDA_SMALL_NUMBER)
 	{
-		return Test.TestTrue(
-			What,
-			Actual.Equals(Expected, Tolerance));
+		const bool bMatches = Actual.Equals(Expected, Tolerance);
+		if (!bMatches)
+		{
+			Test.AddInfo(FString::Printf(TEXT("%s actual=%s expected=%s"), What, *Actual.ToCompactString(), *Expected.ToCompactString()));
+		}
+		return Test.TestTrue(What, bMatches);
 	}
 
 	bool VerifyVector3f(
@@ -139,9 +142,12 @@ namespace AngelscriptTest_Bindings_AngelscriptMathFunctionLibraryTests_Private
 		const FVector3f& Expected,
 		float Tolerance = KINDA_SMALL_NUMBER)
 	{
-		return Test.TestTrue(
-			What,
-			Actual.Equals(Expected, Tolerance));
+		const bool bMatches = Actual.Equals(Expected, Tolerance);
+		if (!bMatches)
+		{
+			Test.AddInfo(FString::Printf(TEXT("%s actual=%s expected=%s"), What, *Actual.ToString(), *Expected.ToString()));
+		}
+		return Test.TestTrue(What, bMatches);
 	}
 
 	template <typename TValue>
@@ -217,8 +223,8 @@ namespace AngelscriptTest_Bindings_AngelscriptMathFunctionLibraryTests_Private
 // Test class
 // ----------------------------------------------------------------------------
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptMathFunctionLibraryTest,
-	"Angelscript.TestModule.FunctionLibraries.Math",
+TEST_CLASS_WITH_FLAGS(FAngelscriptMathBindingsTest,
+	"Angelscript.TestModule.Bindings.Math",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	BEFORE_ALL()
@@ -234,11 +240,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMathFunctionLibraryTest,
 
 	TEST_METHOD(ShortestPathAndTransformSemantics)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptMathFunctionLibraryTests_Private;
+		using namespace AngelscriptTest_Bindings_AngelscriptMathBindingsTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GMathFuncLibProfile, TEXT("ShortestPath"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, GMathBindingsProfile, TEXT("ShortestPath"), TEXT(R"(
 FRotator GetShortestLerp()
 {
 	const FRotator A = FRotator(0.0f, 170.0f, 0.0f);
@@ -278,24 +284,26 @@ FRotator GetTransformedRotation()
 {
 	const FTransform CurrentTransform = FTransform(FRotator(0.0f, 90.0f, 0.0f), FVector(10.0f, 0.0f, 0.0f), FVector::OneVector);
 	const FRotator LocalRotation = FRotator(10.0f, 20.0f, 30.0f);
-	return FTransform::TransformRotation(CurrentTransform, LocalRotation);
+	return CurrentTransform.TransformRotation(LocalRotation);
 }
 
 FRotator GetRoundTripRotation()
 {
 	const FTransform CurrentTransform = FTransform(FRotator(0.0f, 90.0f, 0.0f), FVector(10.0f, 0.0f, 0.0f), FVector::OneVector);
 	const FRotator LocalRotation = FRotator(10.0f, 20.0f, 30.0f);
-	return FTransform::InverseTransformRotation(CurrentTransform, FTransform::TransformRotation(CurrentTransform, LocalRotation));
+	return CurrentTransform.InverseTransformRotation(CurrentTransform.TransformRotation(LocalRotation));
 }
 
 FVector GetMoveSmallStep()
 {
-	return FVector::MoveTowards(FVector::ZeroVector, FVector(10.0f, 0.0f, 0.0f), 3.0);
+	const FVector Start = FVector::ZeroVector;
+	return Start.MoveTowards(FVector(10.0f, 0.0f, 0.0f), 3.0);
 }
 
 FVector GetMoveLargeStep()
 {
-	return FVector::MoveTowards(FVector::ZeroVector, FVector(10.0f, 0.0f, 0.0f), 20.0);
+	const FVector Start = FVector::ZeroVector;
+	return Start.MoveTowards(FVector(10.0f, 0.0f, 0.0f), 20.0);
 }
 )"));
 		if (!Mod.IsValid()) return;
@@ -374,8 +382,8 @@ FVector GetMoveLargeStep()
 		VerifyRotator(*TestRunner, TEXT("Math::RInterpConstantShortestPathTo should match native constant-speed quaternion interp"), ScriptShortestInterpConstant, ExpectedShortestInterpConstant);
 		VerifyTransform(*TestRunner, TEXT("Math::TInterpTo should return the target transform when InterpSpeed is zero"), ScriptZeroSpeedTransform, ExpectedZeroSpeedTransform);
 		VerifyTransform(*TestRunner, TEXT("Math::TInterpTo should match native blend semantics for positive InterpSpeed"), ScriptPositiveSpeedTransform, ExpectedPositiveSpeedTransform);
-		VerifyRotator(*TestRunner, TEXT("FTransform::TransformRotation should match native quaternion-based rotation transform"), ScriptTransformedRotation, ExpectedTransformedRotation);
-		VerifyRotator(*TestRunner, TEXT("FTransform::InverseTransformRotation should round-trip the transformed rotator"), ScriptRoundTripRotation, ExpectedRoundTripRotation);
+		VerifyRotator(*TestRunner, TEXT("FTransform.TransformRotation should match native quaternion-based rotation transform"), ScriptTransformedRotation, ExpectedTransformedRotation);
+		VerifyRotator(*TestRunner, TEXT("FTransform.InverseTransformRotation should round-trip the transformed rotator"), ScriptRoundTripRotation, ExpectedRoundTripRotation);
 		VerifyRotator(*TestRunner, TEXT("FTransform rotation round-trip should recover the original local rotator"), ScriptRoundTripRotation, LocalRotation);
 		VerifyVector(*TestRunner, TEXT("MoveTowards should advance by the fixed step distance when the target is farther away"), ScriptMoveSmallStep, ExpectedMoveSmallStep);
 		VerifyVector(*TestRunner, TEXT("MoveTowards should clamp to the target when the requested step overshoots"), ScriptMoveLargeStep, ExpectedMoveLargeStep);
@@ -387,24 +395,24 @@ FVector GetMoveLargeStep()
 
 	TEST_METHOD(PlanarProjectionAndColorFormatting)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptMathFunctionLibraryTests_Private;
+		using namespace AngelscriptTest_Bindings_AngelscriptMathBindingsTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GMathFuncLibProfile, TEXT("PlanarProjection"), TEXT(R"AS(
-double GetVectorSize2D() { return FVector::Size2D(FVector(3.0f, 4.0f, 12.0f), FVector(0.0f, 0.0f, 1.0f)); }
-double GetVectorSizeSquared2D() { return FVector::SizeSquared2D(FVector(3.0f, 4.0f, 12.0f), FVector(0.0f, 0.0f, 1.0f)); }
-FVector GetVectorProjected() { return FVector::PointPlaneProject(FVector(3.0f, 4.0f, 12.0f), FVector(0.0f, 0.0f, 2.0f), FVector(0.0f, 0.0f, 1.0f)); }
-double GetVectorDist2D() { return FVector::Dist2D(FVector(3.0f, 4.0f, 12.0f), FVector(0.0f, 0.0f, 12.0f), FVector(0.0f, 0.0f, 1.0f)); }
-double GetVectorDistSquared2D() { return FVector::DistSquared2D(FVector(3.0f, 4.0f, 12.0f), FVector(0.0f, 0.0f, 12.0f), FVector(0.0f, 0.0f, 1.0f)); }
-FString GetVectorColorString() { return FVector::ToColorString(FVector(1.0f, 0.5f, 0.25f)); }
+		FCoverageModuleScope Mod(*TestRunner, Engine, GMathBindingsProfile, TEXT("PlanarProjection"), TEXT(R"AS(
+double GetVectorSize2D() { const FVector V = FVector(3.0f, 4.0f, 12.0f); return V.Size2D(FVector(0.0f, 0.0f, 1.0f)); }
+double GetVectorSizeSquared2D() { const FVector V = FVector(3.0f, 4.0f, 12.0f); return V.SizeSquared2D(FVector(0.0f, 0.0f, 1.0f)); }
+FVector GetVectorProjected() { const FVector V = FVector(3.0f, 4.0f, 12.0f); return V.PointPlaneProject(FVector(0.0f, 0.0f, 2.0f), FVector(0.0f, 0.0f, 1.0f)); }
+double GetVectorDist2D() { const FVector V = FVector(3.0f, 4.0f, 12.0f); return V.Dist2D(FVector(0.0f, 0.0f, 12.0f), FVector(0.0f, 0.0f, 1.0f)); }
+double GetVectorDistSquared2D() { const FVector V = FVector(3.0f, 4.0f, 12.0f); return V.DistSquared2D(FVector(0.0f, 0.0f, 12.0f), FVector(0.0f, 0.0f, 1.0f)); }
+FString GetVectorColorString() { const FVector V = FVector(1.0f, 0.5f, 0.25f); return V.ToColorString(); }
 
-float32 GetVector3fSize2D() { return FVector3f::Size2D(FVector3f(3.0f, 4.0f, 12.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
-float32 GetVector3fSizeSquared2D() { return FVector3f::SizeSquared2D(FVector3f(3.0f, 4.0f, 12.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
-FVector3f GetVector3fProjected() { return FVector3f::PointPlaneProject(FVector3f(3.0f, 4.0f, 12.0f), FVector3f(0.0f, 0.0f, 2.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
-float32 GetVector3fDist2D() { return FVector3f::Dist2D(FVector3f(3.0f, 4.0f, 12.0f), FVector3f(0.0f, 0.0f, 12.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
-float32 GetVector3fDistSquared2D() { return FVector3f::DistSquared2D(FVector3f(3.0f, 4.0f, 12.0f), FVector3f(0.0f, 0.0f, 12.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
-FString GetVector3fColorString() { return FVector3f::ToColorString(FVector3f(1.0f, 0.5f, 0.25f)); }
+float32 GetVector3fSize2D() { const FVector3f V = FVector3f(3.0f, 4.0f, 12.0f); return V.Size2D(FVector3f(0.0f, 0.0f, 1.0f)); }
+float32 GetVector3fSizeSquared2D() { const FVector3f V = FVector3f(3.0f, 4.0f, 12.0f); return V.SizeSquared2D(FVector3f(0.0f, 0.0f, 1.0f)); }
+FVector3f GetVector3fProjected() { const FVector3f V = FVector3f(3.0f, 4.0f, 12.0f); return V.PointPlaneProject(FVector3f(0.0f, 0.0f, 2.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
+float32 GetVector3fDist2D() { const FVector3f V = FVector3f(3.0f, 4.0f, 12.0f); return V.Dist2D(FVector3f(0.0f, 0.0f, 12.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
+float32 GetVector3fDistSquared2D() { const FVector3f V = FVector3f(3.0f, 4.0f, 12.0f); return V.DistSquared2D(FVector3f(0.0f, 0.0f, 12.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
+FString GetVector3fColorString() { const FVector3f V = FVector3f(1.0f, 0.5f, 0.25f); return V.ToColorString(); }
 )AS"));
 		if (!Mod.IsValid()) return;
 		asIScriptModule& Module = Mod.GetModule();
