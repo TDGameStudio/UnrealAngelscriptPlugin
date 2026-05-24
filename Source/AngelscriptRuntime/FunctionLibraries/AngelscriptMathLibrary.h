@@ -9,7 +9,7 @@
 // (FVector / FVector3f / FRotator / FRotator3f / FQuat / FQuat4f / FTransform / FTransform3f)
 // remain commented out as deferred Hazelight-parity anchors. Each sub-library currently
 // keeps only `ScriptName = "<Type>"` so the helpers stay reachable as static-namespace
-// calls (e.g. `FRotator::GetForwardVector(rot)`, `AngelscriptFVectorMixin::Size2D(vec, n)`),
+// calls (e.g. `FRotator::GetForwardVector(rot)`, `FVector::Size2D(vec, n)`),
 // matching the form used throughout fork test code (AngelscriptMathFunctionLibraryTests.cpp,
 // AngelscriptMathOrientationFunctionLibraryTests.cpp) and any user .as scripts written
 // against the fork.
@@ -24,7 +24,7 @@
 // P4.3 trial enablement caused `FunctionLibraries.MathOrientationFactoriesAndTransformMutators`,
 // `MathPlanarProjectionAndColorFormatting`, and `MathShortestPathAndTransformSemantics` to
 // fail with `No matching signatures to 'FRotator::GetForwardVector(FRotator)'` and
-// `Namespace 'AngelscriptFVectorMixin' doesn't exist.` Enabling ScriptMixin meta strips the
+// `Namespace 'FVector' doesn't exist.` Enabling ScriptMixin meta strips the
 // first parameter and rewrites these UFUNCTIONs into instance-method form, dissolving the
 // namespace-static form fork code depends on. Hazelight upstream avoids this by using the
 // instance form (`vec.Size2D(n)`) exclusively, but fork tests + scripts must migrate first.
@@ -327,7 +327,7 @@ public:
 };
 
 //UCLASS(Meta = (ScriptMixin = "FVector"))
-UCLASS()
+UCLASS(Meta = (ScriptName = "FVector"))
 class UAngelscriptFVectorMixinLibrary : public UObject
 {
 	GENERATED_BODY()
@@ -413,7 +413,7 @@ public:
 };
 
 //UCLASS(Meta = (ScriptMixin = "FVector3f"))
-UCLASS()
+UCLASS(Meta = (ScriptName = "FVector3f"))
 class UAngelscriptFVector3fMixinLibrary : public UObject
 {
 	GENERATED_BODY()

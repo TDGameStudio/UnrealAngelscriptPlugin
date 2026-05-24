@@ -149,8 +149,19 @@ struct FAngelscriptFunctionSignature
 		return OutScriptName;
 	}
 	
-	static FString GetScriptNamespaceForClass(TSharedRef<FAngelscriptType> InType)
+	static FString GetScriptNamespaceForClass(TSharedRef<FAngelscriptType> InType, UFunction* InFunction)
 	{
+		if (InFunction != nullptr)
+		{
+			if (UClass* OuterClass = InFunction->GetOuterUClass())
+			{
+				if (OuterClass->HasMetaData(NAME_Signature_ScriptName))
+				{
+					return GetPrimaryScriptName(OuterClass->GetMetaData(NAME_Signature_ScriptName));
+				}
+			}
+		}
+
 		return InType->GetAngelscriptTypeName();
 	}
 
@@ -281,7 +292,7 @@ struct FAngelscriptFunctionSignature
 		bStaticInUnreal = Function->HasAnyFunctionFlags(FUNC_Static);
 		if (bStaticInUnreal)
 		{
-			FString Namespace = GetScriptNamespaceForClass(InType);
+			FString Namespace = GetScriptNamespaceForClass(InType, Function);
 			bGlobalScope = HasFuncMeta(NAME_Signature_ScriptGlobalScope);
 
 			// If our class is marked as a 'script mixin', and our argument matches, bind it as a member
