@@ -185,7 +185,7 @@ class UAsyncSaveLoadScriptHarness : UObject
 	{
 		FAsyncSaveGameToSlotDynamicDelegate SaveDelegate;
 		SaveDelegate.BindUFunction(Receiver, n"OnSaveComplete");
-		Gameplay::AsyncSaveGameToSlot(SaveGameObject, SlotName, UserIndex, SaveDelegate);
+		UGameplayLibrary::AsyncSaveGameToSlot(SaveGameObject, SlotName, UserIndex, SaveDelegate);
 	}
 
 	UFUNCTION()
@@ -193,7 +193,7 @@ class UAsyncSaveLoadScriptHarness : UObject
 	{
 		FAsyncLoadGameFromSlotDynamicDelegate LoadDelegate;
 		LoadDelegate.BindUFunction(Receiver, n"OnLoadComplete");
-		Gameplay::AsyncLoadGameFromSlot(SlotName, UserIndex, LoadDelegate);
+		UGameplayLibrary::AsyncLoadGameFromSlot(SlotName, UserIndex, LoadDelegate);
 	}
 }
 )AS"),
@@ -340,7 +340,7 @@ class UAsyncSaveLoadImmediateFailureScriptHarness : UObject
 	{
 		FAsyncSaveGameToSlotDynamicDelegate SaveDelegate;
 		SaveDelegate.BindUFunction(Receiver, n"OnSaveComplete");
-		Gameplay::AsyncSaveGameToSlot(SaveGameObject, SlotName, UserIndex, SaveDelegate);
+		UGameplayLibrary::AsyncSaveGameToSlot(SaveGameObject, SlotName, UserIndex, SaveDelegate);
 	}
 
 	UFUNCTION()
@@ -348,7 +348,7 @@ class UAsyncSaveLoadImmediateFailureScriptHarness : UObject
 	{
 		FAsyncLoadGameFromSlotDynamicDelegate LoadDelegate;
 		LoadDelegate.BindUFunction(Receiver, n"OnLoadComplete");
-		Gameplay::AsyncLoadGameFromSlot(SlotName, UserIndex, LoadDelegate);
+		UGameplayLibrary::AsyncLoadGameFromSlot(SlotName, UserIndex, LoadDelegate);
 	}
 }
 )AS"),

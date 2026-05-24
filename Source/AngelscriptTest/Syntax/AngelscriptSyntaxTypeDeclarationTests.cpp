@@ -133,6 +133,10 @@ class AFinalClassActor : AActor final { }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
+		TestRunner->AddExpectedErrorPlain(
+			TEXT("has an unknown super type"),
+			EAutomationExpectedErrorFlags::Contains, 2);
+
 		// DISABLED(#as-engine-behavior): preprocessor-ensure-crash — 匿名 class 触发 DetectClasses ensure 崩溃
 #if 0
 		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("ClassN_NoName"),
@@ -147,7 +151,6 @@ class : AActor { }
 class AClassNoBraceActor : AActor
 )"),
 			TEXT("Class without braces"));
-
 		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("ClassN_Duplicate"),
 			TEXT(R"(
 class ADupActor : AActor { }

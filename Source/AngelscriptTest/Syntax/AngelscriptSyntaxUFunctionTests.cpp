@@ -200,6 +200,10 @@ class AUFuncParamsActor : AActor
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
+		TestRunner->AddExpectedErrorPlain(
+			TEXT("Unknown function specifier"),
+			EAutomationExpectedErrorFlags::Contains, 3);
+
 		// Invalid specifier
 		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("UFuncSN_Invalid"),
 			TEXT(R"(

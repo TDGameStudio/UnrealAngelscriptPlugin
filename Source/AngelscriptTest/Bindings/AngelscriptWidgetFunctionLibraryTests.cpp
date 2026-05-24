@@ -80,7 +80,8 @@ int ReadWidgetTransform(UWidget Widget)
 
 void ReadWidgetTransformNull()
 {
-	ReadWidgetTransform(null);
+	UWidget Widget;
+	ReadWidgetTransform(Widget);
 }
 )");
 
@@ -116,6 +117,8 @@ void ReadWidgetTransformNull()
 		// ---- Null widget: expect script exception ----
 		TestRunner->AddExpectedError(TEXT("Null pointer access"), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(*Mod.GetModuleName(), EAutomationExpectedErrorFlags::Contains, 0);
+		TestRunner->AddExpectedError(TEXT("int ReadWidgetTransform(UWidget) | Line 4 | Col 2"), EAutomationExpectedErrorFlags::Contains, 1, false);
+		TestRunner->AddExpectedError(TEXT("void ReadWidgetTransformNull() | Line 17 | Col 2"), EAutomationExpectedErrorFlags::Contains, 1, false);
 
 		ExecuteFunctionExpectingScriptException(*TestRunner, Engine, M, GWidgetProfile,
 			TEXT("void ReadWidgetTransformNull()"),

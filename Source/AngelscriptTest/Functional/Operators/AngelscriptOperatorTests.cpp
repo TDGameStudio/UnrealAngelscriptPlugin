@@ -101,6 +101,7 @@ bool FAngelscriptOperatorGetSetTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	}
 
 	return true;
 }

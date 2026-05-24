@@ -95,7 +95,7 @@ class AAttrRepActor : AActor
 			TEXT(R"(
 class AMyPawn : APawn
 {
-	default bReplicates = true;
+	default SetReplicates(true);
 }
 )"),
 			TEXT("Default statement for inherited property"));

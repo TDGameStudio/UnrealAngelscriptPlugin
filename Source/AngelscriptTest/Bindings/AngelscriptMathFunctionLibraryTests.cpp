@@ -290,12 +290,12 @@ FRotator GetRoundTripRotation()
 
 FVector GetMoveSmallStep()
 {
-	return AngelscriptFVectorMixin::MoveTowards(FVector::ZeroVector, FVector(10.0f, 0.0f, 0.0f), 3.0);
+	return FVector::MoveTowards(FVector::ZeroVector, FVector(10.0f, 0.0f, 0.0f), 3.0);
 }
 
 FVector GetMoveLargeStep()
 {
-	return AngelscriptFVectorMixin::MoveTowards(FVector::ZeroVector, FVector(10.0f, 0.0f, 0.0f), 20.0);
+	return FVector::MoveTowards(FVector::ZeroVector, FVector(10.0f, 0.0f, 0.0f), 20.0);
 }
 )"));
 		if (!Mod.IsValid()) return;
@@ -392,19 +392,19 @@ FVector GetMoveLargeStep()
 		FAngelscriptEngineScope Scope(Engine);
 
 		FCoverageModuleScope Mod(*TestRunner, Engine, GMathFuncLibProfile, TEXT("PlanarProjection"), TEXT(R"AS(
-double GetVectorSize2D() { return AngelscriptFVectorMixin::Size2D(FVector(3.0f, 4.0f, 12.0f), FVector(0.0f, 0.0f, 1.0f)); }
-double GetVectorSizeSquared2D() { return AngelscriptFVectorMixin::SizeSquared2D(FVector(3.0f, 4.0f, 12.0f), FVector(0.0f, 0.0f, 1.0f)); }
-FVector GetVectorProjected() { return AngelscriptFVectorMixin::PointPlaneProject(FVector(3.0f, 4.0f, 12.0f), FVector(0.0f, 0.0f, 2.0f), FVector(0.0f, 0.0f, 1.0f)); }
-double GetVectorDist2D() { return AngelscriptFVectorMixin::Dist2D(FVector(3.0f, 4.0f, 12.0f), FVector(0.0f, 0.0f, 12.0f), FVector(0.0f, 0.0f, 1.0f)); }
-double GetVectorDistSquared2D() { return AngelscriptFVectorMixin::DistSquared2D(FVector(3.0f, 4.0f, 12.0f), FVector(0.0f, 0.0f, 12.0f), FVector(0.0f, 0.0f, 1.0f)); }
-FString GetVectorColorString() { return AngelscriptFVectorMixin::ToColorString(FVector(1.0f, 0.5f, 0.25f)); }
+double GetVectorSize2D() { return FVector::Size2D(FVector(3.0f, 4.0f, 12.0f), FVector(0.0f, 0.0f, 1.0f)); }
+double GetVectorSizeSquared2D() { return FVector::SizeSquared2D(FVector(3.0f, 4.0f, 12.0f), FVector(0.0f, 0.0f, 1.0f)); }
+FVector GetVectorProjected() { return FVector::PointPlaneProject(FVector(3.0f, 4.0f, 12.0f), FVector(0.0f, 0.0f, 2.0f), FVector(0.0f, 0.0f, 1.0f)); }
+double GetVectorDist2D() { return FVector::Dist2D(FVector(3.0f, 4.0f, 12.0f), FVector(0.0f, 0.0f, 12.0f), FVector(0.0f, 0.0f, 1.0f)); }
+double GetVectorDistSquared2D() { return FVector::DistSquared2D(FVector(3.0f, 4.0f, 12.0f), FVector(0.0f, 0.0f, 12.0f), FVector(0.0f, 0.0f, 1.0f)); }
+FString GetVectorColorString() { return FVector::ToColorString(FVector(1.0f, 0.5f, 0.25f)); }
 
-float32 GetVector3fSize2D() { return AngelscriptFVector3fMixin::Size2D(FVector3f(3.0f, 4.0f, 12.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
-float32 GetVector3fSizeSquared2D() { return AngelscriptFVector3fMixin::SizeSquared2D(FVector3f(3.0f, 4.0f, 12.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
-FVector3f GetVector3fProjected() { return AngelscriptFVector3fMixin::PointPlaneProject(FVector3f(3.0f, 4.0f, 12.0f), FVector3f(0.0f, 0.0f, 2.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
-float32 GetVector3fDist2D() { return AngelscriptFVector3fMixin::Dist2D(FVector3f(3.0f, 4.0f, 12.0f), FVector3f(0.0f, 0.0f, 12.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
-float32 GetVector3fDistSquared2D() { return AngelscriptFVector3fMixin::DistSquared2D(FVector3f(3.0f, 4.0f, 12.0f), FVector3f(0.0f, 0.0f, 12.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
-FString GetVector3fColorString() { return AngelscriptFVector3fMixin::ToColorString(FVector3f(1.0f, 0.5f, 0.25f)); }
+float32 GetVector3fSize2D() { return FVector3f::Size2D(FVector3f(3.0f, 4.0f, 12.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
+float32 GetVector3fSizeSquared2D() { return FVector3f::SizeSquared2D(FVector3f(3.0f, 4.0f, 12.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
+FVector3f GetVector3fProjected() { return FVector3f::PointPlaneProject(FVector3f(3.0f, 4.0f, 12.0f), FVector3f(0.0f, 0.0f, 2.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
+float32 GetVector3fDist2D() { return FVector3f::Dist2D(FVector3f(3.0f, 4.0f, 12.0f), FVector3f(0.0f, 0.0f, 12.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
+float32 GetVector3fDistSquared2D() { return FVector3f::DistSquared2D(FVector3f(3.0f, 4.0f, 12.0f), FVector3f(0.0f, 0.0f, 12.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
+FString GetVector3fColorString() { return FVector3f::ToColorString(FVector3f(1.0f, 0.5f, 0.25f)); }
 )AS"));
 		if (!Mod.IsValid()) return;
 		asIScriptModule& Module = Mod.GetModule();

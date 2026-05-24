@@ -189,6 +189,16 @@ class AUPropMetaActor : AActor
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
+		TestRunner->AddExpectedErrorPlain(
+			TEXT("NotReplicated specifier is only allowed structs"),
+			EAutomationExpectedErrorFlags::Contains, 1);
+		TestRunner->AddExpectedErrorPlain(
+			TEXT("No function specified for ReplicatedUsing"),
+			EAutomationExpectedErrorFlags::Contains, 1);
+		TestRunner->AddExpectedErrorPlain(
+			TEXT("Unknown property specifier"),
+			EAutomationExpectedErrorFlags::Contains, 3);
+
 		// Invalid specifier
 		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("UPropSN_Invalid"),
 			TEXT(R"(

@@ -572,16 +572,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 		}
 
 		const TArray<MathReturnValueHelperMetadataTest::FMathHelperExpectation> Expectations = {
-			{ TEXT("LerpShortestPath"), TEXT("LerpShortestPath"), TEXT("UAngelscriptMathLibrary") },
-			{ TEXT("RInterpShortestPathTo"), TEXT("RInterpShortestPathTo"), TEXT("UAngelscriptMathLibrary") },
-			{ TEXT("RInterpConstantShortestPathTo"), TEXT("RInterpConstantShortestPathTo"), TEXT("UAngelscriptMathLibrary") },
-			{ TEXT("TInterpTo"), TEXT("TInterpTo"), TEXT("UAngelscriptMathLibrary") },
-			{ TEXT("Modf_32"), TEXT("Modf"), TEXT("UAngelscriptMathLibrary") },
-			{ TEXT("Modf_64"), TEXT("Modf"), TEXT("UAngelscriptMathLibrary") },
-			{ TEXT("WrapDouble"), TEXT("Wrap"), TEXT("UAngelscriptMathLibrary") },
-			{ TEXT("WrapFloat"), TEXT("Wrap"), TEXT("UAngelscriptMathLibrary") },
-			{ TEXT("WrapInt"), TEXT("Wrap"), TEXT("UAngelscriptMathLibrary") },
-			{ TEXT("WrapIndex"), TEXT("WrapIndex"), TEXT("UAngelscriptMathLibrary") }
+			{ TEXT("LerpShortestPath"), TEXT("LerpShortestPath"), TEXT("Math") },
+			{ TEXT("RInterpShortestPathTo"), TEXT("RInterpShortestPathTo"), TEXT("Math") },
+			{ TEXT("RInterpConstantShortestPathTo"), TEXT("RInterpConstantShortestPathTo"), TEXT("Math") },
+			{ TEXT("TInterpTo"), TEXT("TInterpTo"), TEXT("Math") },
+			{ TEXT("Modf_32"), TEXT("Modf"), TEXT("Math") },
+			{ TEXT("Modf_64"), TEXT("Modf"), TEXT("Math") },
+			{ TEXT("WrapDouble"), TEXT("Wrap"), TEXT("Math") },
+			{ TEXT("WrapFloat"), TEXT("Wrap"), TEXT("Math") },
+			{ TEXT("WrapInt"), TEXT("Wrap"), TEXT("Math") },
+			{ TEXT("WrapIndex"), TEXT("WrapIndex"), TEXT("Math") }
 		};
 
 		for (const MathReturnValueHelperMetadataTest::FMathHelperExpectation& Expectation : Expectations)

@@ -71,7 +71,7 @@ namespace AngelscriptTest_Bindings_ReflectiveFallbackCache_Private
 			return FString();
 		}
 
-		const FString Namespace = FAngelscriptFunctionSignature::GetScriptNamespaceForClass(LibraryType.ToSharedRef());
+		const FString Namespace = FAngelscriptFunctionSignature::GetScriptNamespaceForClass(LibraryType.ToSharedRef(), nullptr);
 		return Namespace.IsEmpty() ? FString() : Namespace + TEXT("::");
 	}
 

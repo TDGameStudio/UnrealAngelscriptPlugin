@@ -31,7 +31,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindWidgetTests,
 		FAngelscriptEngineScope EngineScope(Engine);
 
 		static const FName ModuleName(TEXT("FunctionalBindWidget"));
-		ON_SCOPE_EXIT { Engine.DiscardModule(*ModuleName.ToString()); };
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
 
 		UClass* WidgetClass = CompileScriptModule(
 			*TestRunner,
