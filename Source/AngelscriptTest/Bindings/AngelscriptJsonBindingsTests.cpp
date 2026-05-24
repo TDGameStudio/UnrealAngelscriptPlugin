@@ -19,7 +19,6 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -35,13 +34,6 @@ using namespace AngelscriptReflectiveAccess;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GJsonProfile{
-	TEXT("Json"),            // Theme
-	TEXT(""),              // Variant
-	TEXT("ASJson"),        // ModulePrefix
-	TEXT("Json"),          // CasePrefix
-	TEXT("JsonBindings"), // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Shared helpers
@@ -133,7 +125,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptJsonBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GJsonProfile, TEXT("ObjectRoundTrip"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASJson_ObjectRoundTrip"), TEXT(R"(
 int RoundTrip()
 {
 	FJsonObject Root;
@@ -221,7 +213,7 @@ int RoundTrip()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GJsonProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int RoundTrip()"),
 			TEXT("Json object round-trip operations should preserve field values and JSON type strings"),
 			1);
@@ -236,7 +228,7 @@ int RoundTrip()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GJsonProfile, TEXT("ErrorPaths"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASJson_ErrorPaths"), TEXT(R"(
 void TriggerTypeError()
 {
 	FJsonObject Root;

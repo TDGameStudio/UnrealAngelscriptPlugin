@@ -42,7 +42,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -55,13 +54,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GFStringProfile{
-	TEXT("FString"),          // Theme
-	TEXT(""),                 // Variant
-	TEXT("ASFString"),        // ModulePrefix
-	TEXT("FString"),          // CasePrefix
-	TEXT("FStringBindings"),  // LogCategory
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptFStringBindingsTest,
 	"Angelscript.TestModule.Bindings.FString",
@@ -84,7 +76,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFStringBindingsTest,
 		// Equivalent to the FAngelscriptEngineScope inside { FAngelscriptEngineScope _AutoEngineScope(Engine);.
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("Ctor"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Ctor"), TEXT(R"(
 int Ctor_EmptyLen()
 {
 	FString S;
@@ -150,7 +142,7 @@ int Ctor_LongString()
 			{ TEXT("int Ctor_EmptyEqualsEmpty()"),  TEXT("Two default-constructed strings are equal"),  1 },
 			{ TEXT("int Ctor_LongString()"),        TEXT("62-char string has correct length"),          62 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GFStringProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -162,7 +154,7 @@ int Ctor_LongString()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("Operators"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Operators"), TEXT(R"(
 // ---- opEquals ----
 int OpEq_Same()           { return ("ABC" == "ABC") ? 1 : 0; }
 int OpEq_Diff()           { return ("ABC" == "XYZ") ? 1 : 0; }
@@ -242,7 +234,7 @@ int OpIdx_Write()
 			{ TEXT("int OpIdx_ReadLast()"),     TEXT("opIndex[3] reads D (68)"),                    68 },
 			{ TEXT("int OpIdx_Write()"),        TEXT("opIndex write at [0] and [2]"),                1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GFStringProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -254,7 +246,7 @@ int OpIdx_Write()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("IndexErr"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_IndexErr"), TEXT(R"(
 void TriggerIndexOutOfBounds()
 {
 	FString S = "AB";
@@ -264,7 +256,7 @@ void TriggerIndexOutOfBounds()
 		if (!Mod.IsValid()) return;
 
 		TestRunner->AddExpectedErrorPlain(
-			MakeCoverageModuleName(GFStringProfile, TEXT("IndexErr")),
+			FString(TEXT("ASFString_IndexErr")),
 			EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedErrorPlain(
 			TEXT("String index out of bounds"),
@@ -273,8 +265,8 @@ void TriggerIndexOutOfBounds()
 			TEXT("void TriggerIndexOutOfBounds()"),
 			EAutomationExpectedErrorFlags::Contains, 0);
 
-		ExecuteFunctionExpectingScriptException(
-			*TestRunner, Engine, Mod.GetModule(), GFStringProfile,
+		AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(
+			*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("void TriggerIndexOutOfBounds()"),
 			TEXT("opIndex out-of-bounds should throw exception"),
 			FString(TEXT("String index out of bounds")));
@@ -289,7 +281,7 @@ void TriggerIndexOutOfBounds()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("LenCap"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_LenCap"), TEXT(R"(
 int Len_Empty()            { FString S; return S.Len(); }
 int Len_One()              { FString S = "X"; return S.Len(); }
 int Len_Multi()            { FString S = "HelloWorld"; return S.Len(); }
@@ -367,7 +359,7 @@ int Reset_ThenReuse()
 			{ TEXT("int Reset_ZeroLen()"),       TEXT("Reset clears to length 0"),               0 },
 			{ TEXT("int Reset_ThenReuse()"),     TEXT("Reset then Append stores new content"),   1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GFStringProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -379,7 +371,7 @@ int Reset_ThenReuse()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("Substr"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Substr"), TEXT(R"(
 // ---- Left / LeftChop ----
 int Left_Full()         { FString S = "ABCDE"; return (S.Left(5) == "ABCDE") ? 1 : 0; }
 int Left_Partial()      { FString S = "ABCDE"; return (S.Left(3) == "ABC") ? 1 : 0; }
@@ -430,7 +422,7 @@ int Compound_LeftThenRight()
 			{ TEXT("int Mid_Single()"),          TEXT("Mid(2,1) returns single char C"),          1 },
 			{ TEXT("int Compound_LeftThenRight()"), TEXT("Left(7).Right(4) compound extraction"),1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GFStringProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -442,7 +434,7 @@ int Compound_LeftThenRight()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("Search"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Search"), TEXT(R"(
 // ---- Contains ----
 int Contains_Found()           { FString S = "Hello World"; return S.Contains("World") ? 1 : 0; }
 int Contains_NotFound()        { FString S = "Hello World"; return S.Contains("xyz") ? 1 : 0; }
@@ -564,7 +556,7 @@ int Equals_EmptyEmpty()       { FString A; FString B; return A.Equals(B) ? 1 : 0
 			{ TEXT("int Equals_IgnoreCase()"),       TEXT("Equals ignore case match"),                     1 },
 			{ TEXT("int Equals_EmptyEmpty()"),       TEXT("Equals two empty strings"),                     1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GFStringProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -576,7 +568,7 @@ int Equals_EmptyEmpty()       { FString A; FString B; return A.Equals(B) ? 1 : 0
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("Mutation"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Mutation"), TEXT(R"(
 // ---- Append / AppendChar ----
 int Append_Basic()
 {
@@ -775,7 +767,7 @@ int Reverse_Empty()
 			{ TEXT("int Reverse_SingleChar()"),         TEXT("Reverse of single char is identity"),        1 },
 			{ TEXT("int Reverse_Empty()"),              TEXT("Reverse of empty is empty"),                  1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GFStringProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -787,7 +779,7 @@ int Reverse_Empty()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("MutExt"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_MutExt"), TEXT(R"(
 // ---- AppendInt ----
 int AppendInt_Positive()
 {
@@ -964,7 +956,7 @@ int TrimChar_AllSame()
 			{ TEXT("int TrimChar_NoMatch()"),              TEXT("TrimChar no match"),                    1 },
 			{ TEXT("int TrimChar_AllSame()"),              TEXT("TrimChar all same char"),               1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GFStringProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -976,7 +968,7 @@ int TrimChar_AllSame()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("CaseTrim"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_CaseTrim"), TEXT(R"(
 // ---- ToUpper / ToLower ----
 int ToUpper_Lower()       { return ("hello".ToUpper() == "HELLO") ? 1 : 0; }
 int ToUpper_Mixed()       { return ("Hello World".ToUpper() == "HELLO WORLD") ? 1 : 0; }
@@ -1093,7 +1085,7 @@ int RightPad_Content()
 			{ TEXT("int RightPad_AlreadyLong()"), TEXT("RightPad no-op when already long enough"),     1 },
 			{ TEXT("int RightPad_Content()"),     TEXT("RightPad preserves content at left end"),       1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GFStringProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -1105,7 +1097,7 @@ int RightPad_Content()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("Split"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Split"), TEXT(R"(
 // ---- Split ----
 int Split_Basic()
 {
@@ -1249,7 +1241,7 @@ int ParseMulti_TwoDelims()
 			{ TEXT("int ParseMulti_Basic()"),           TEXT("ParseIntoArray with 3 delimiters"),               1 },
 			{ TEXT("int ParseMulti_TwoDelims()"),       TEXT("ParseIntoArray with 2 delimiters"),               1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GFStringProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -1261,7 +1253,7 @@ int ParseMulti_TwoDelims()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("SplitExt"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_SplitExt"), TEXT(R"(
 // ---- ParseIntoArrayLines ----
 int ParseLines_Multi()
 {
@@ -1343,7 +1335,7 @@ int ParseWS_OnlyWhitespace()
 			{ TEXT("int ParseWS_TabsAndSpaces()"),         TEXT("ParseIntoArrayWS tabs and spaces"),      1 },
 			{ TEXT("int ParseWS_OnlyWhitespace()"),        TEXT("ParseIntoArrayWS only whitespace"),      1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GFStringProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -1355,7 +1347,7 @@ int ParseWS_OnlyWhitespace()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("Conv"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Conv"), TEXT(R"(
 // ---- ToBool ----
 int ToBool_True()         { return "true".ToBool() ? 1 : 0; }
 int ToBool_True_One()     { return "1".ToBool() ? 1 : 0; }
@@ -1462,7 +1454,7 @@ int ToDisplayName_Bool()
 			{ TEXT("int ToDisplayName_Camel()"),     TEXT("ToDisplayName inserts spaces in CamelCase"), 1 },
 			{ TEXT("int ToDisplayName_Bool()"),       TEXT("ToDisplayName with bIsBool flag"),          1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GFStringProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -1474,7 +1466,7 @@ int ToDisplayName_Bool()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("TypeConcat"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_TypeConcat"), TEXT(R"(
 int Concat_Int()
 {
 	FString S = "Value=" + 42;
@@ -1529,7 +1521,7 @@ int Concat_IntZero()
 			{ TEXT("int Concat_ChainMixed()"),   TEXT("Chained mixed type concat"),            1 },
 			{ TEXT("int Concat_IntZero()"),      TEXT("String + 0 contains 0"),                1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GFStringProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -1541,7 +1533,7 @@ int Concat_IntZero()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("Format"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Format"), TEXT(R"(
 // --- Arity: 1-arg overloads ---
 int Format_OneStr()
 {
@@ -1722,10 +1714,10 @@ FString Format_Ret_FloatPrecision()
 			{ TEXT("int Format_LargeInt()"),           TEXT("Format with INT32_MAX"),                         1 },
 			{ TEXT("int Format_AdjacentPlaceholders()"), TEXT("Format adjacent {0}{1}{2}"),                   1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GFStringProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 
 		// C++ side verification of Format return values
-		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, GFStringProfile,
+		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
 			TEXT("FString Format_Ret_Repeated()"),
 			TEXT("Format repeated index returns Echo=Echo"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
@@ -1733,7 +1725,7 @@ FString Format_Ret_FloatPrecision()
 				return T.TestEqual(TEXT("Repeated"), V, TEXT("Echo=Echo"));
 			});
 
-		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, GFStringProfile,
+		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
 			TEXT("FString Format_Ret_MixedFive()"),
 			TEXT("Format 5-arg mixed returns pipe-separated"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
@@ -1745,7 +1737,7 @@ FString Format_Ret_FloatPrecision()
 				return bOk;
 			});
 
-		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, GFStringProfile,
+		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
 			TEXT("FString Format_Ret_FloatPrecision()"),
 			TEXT("Format float shows decimal digits"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
@@ -1763,7 +1755,7 @@ FString Format_Ret_FloatPrecision()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("Join"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Join"), TEXT(R"(
 int Join_Basic()
 {
 	TArray<FString> Arr;
@@ -1824,7 +1816,7 @@ int Join_WithEmptyElements()
 			{ TEXT("int Join_MultiCharSep()"),       TEXT("Join with multi-char separator"),           1 },
 			{ TEXT("int Join_WithEmptyElements()"),  TEXT("Join preserves empty elements"),            1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GFStringProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -1836,7 +1828,7 @@ int Join_WithEmptyElements()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("StaticCtor"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_StaticCtor"), TEXT(R"(
 // ---- FString::FromInt ----
 int FromInt_Positive()
 {
@@ -1918,7 +1910,7 @@ int ChrN_Zero()
 			{ TEXT("int ChrN_Repeat()"),                   TEXT("ChrN repeated characters"),            1 },
 			{ TEXT("int ChrN_Zero()"),                     TEXT("ChrN zero length"),                    1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GFStringProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -1930,7 +1922,7 @@ int ChrN_Zero()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("ApplyFmt"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_ApplyFmt"), TEXT(R"(
 // ==== int32 ====
 int ApplyFmt_Int_Default()    { return FString::ApplyFormat(42, "").Contains("42") ? 1 : 0; }
 int ApplyFmt_Int_Negative()   { return FString::ApplyFormat(-10, "").Contains("-10") ? 1 : 0; }
@@ -2271,10 +2263,10 @@ FString ApplyFmt_Ret_NegSignPlus()
 			{ TEXT("int ApplyFmt_Str_FillChar()"),     TEXT("string custom fill char (*)"),              1 },
 			{ TEXT("int ApplyFmt_Str_Empty()"),        TEXT("string empty with pad"),                    1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GFStringProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 
 		// C++ side verification of ApplyFormat return values
-		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, GFStringProfile,
+		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
 			TEXT("FString ApplyFmt_Ret_IntHexPrefix()"),
 			TEXT("ApplyFormat int #X returns 0xFF-style"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
@@ -2285,7 +2277,7 @@ FString ApplyFmt_Ret_NegSignPlus()
 				return bOk;
 			});
 
-		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, GFStringProfile,
+		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
 			TEXT("FString ApplyFmt_Ret_FloatPrec3()"),
 			TEXT("ApplyFormat float .3f returns 3.142"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
@@ -2293,7 +2285,7 @@ FString ApplyFmt_Ret_NegSignPlus()
 				return T.TestTrue(TEXT("contains 3.142"), V.Contains(TEXT("3.142")));
 			});
 
-		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, GFStringProfile,
+		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
 			TEXT("FString ApplyFmt_Ret_BoolTrue()"),
 			TEXT("ApplyFormat bool true returns 'true'"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
@@ -2301,7 +2293,7 @@ FString ApplyFmt_Ret_NegSignPlus()
 				return T.TestEqual(TEXT("bool true text"), V, TEXT("true"));
 			});
 
-		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, GFStringProfile,
+		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
 			TEXT("FString ApplyFmt_Ret_StrFillCenter()"),
 			TEXT("ApplyFormat string center with dash fill"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
@@ -2313,7 +2305,7 @@ FString ApplyFmt_Ret_NegSignPlus()
 				return bOk;
 			});
 
-		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, GFStringProfile,
+		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
 			TEXT("FString ApplyFmt_Ret_IntBinPrefix()"),
 			TEXT("ApplyFormat int #b returns 0b1010"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
@@ -2324,7 +2316,7 @@ FString ApplyFmt_Ret_NegSignPlus()
 				return bOk;
 			});
 
-		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, GFStringProfile,
+		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
 			TEXT("FString ApplyFmt_Ret_NegSignPlus()"),
 			TEXT("ApplyFormat negative with + spec still shows minus"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
@@ -2342,7 +2334,7 @@ FString ApplyFmt_Ret_NegSignPlus()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("Logging"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Logging"), TEXT(R"(
 int Log_Compiles()
 {
 	Log("FString test log message");
@@ -2403,7 +2395,7 @@ int Log_Format()
 			{ TEXT("int Log_Concatenated()"),     TEXT("Log with string+type concatenation"),       1 },
 			{ TEXT("int Log_Format()"),           TEXT("Log with FString::Format integration"),     1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GFStringProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -2421,7 +2413,7 @@ int Log_Format()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("RetStr"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_RetStr"), TEXT(R"(
 FString Ret_Literal()
 {
 	return "Hello World";
@@ -2504,7 +2496,7 @@ FString Ret_AppendChain()
 
 		auto ExpectStr = [&](const TCHAR* Decl, const TCHAR* Label, const FString& Expected)
 		{
-			ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, GFStringProfile, Decl, Label,
+			ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M,  Decl, Label,
 				[&](FAutomationTestBase& T, const FString& Actual) -> bool
 				{
 					return T.TestEqual(
@@ -2562,7 +2554,7 @@ FString Ret_AppendChain()
 			TEXT("N=123"));
 
 		// LeftPad pads with spaces on the left to reach width 5.
-		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, GFStringProfile,
+		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
 			TEXT("FString Ret_LeftPad()"),
 			TEXT("LeftPad(5) returns 5-char string ending with AB"),
 			[](FAutomationTestBase& T, const FString& Actual) -> bool
@@ -2594,7 +2586,7 @@ FString Ret_AppendChain()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFStringProfile, TEXT("PassStr"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_PassStr"), TEXT(R"(
 // Identity round-trip
 FString Pass_Echo(const FString& in S)
 {

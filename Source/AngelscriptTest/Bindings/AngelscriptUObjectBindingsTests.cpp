@@ -22,7 +22,6 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -46,13 +45,6 @@
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GUObjectProfile{
-	TEXT("UObject"),         // Theme
-	TEXT(""),                // Variant
-	TEXT("ASUObject"),       // ModulePrefix
-	TEXT("UObject"),         // CasePrefix
-	TEXT("UObjectBindings"), // LogCategory
-};
 
 // ============================================================================
 // Sections — each section uses AS→C++ cross-validation
@@ -67,10 +59,9 @@ namespace
 	// -----------------------------------------------------------------------
 	bool RunCreateAndIdentitySection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("CreateIdentity"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_CreateIdentity"), TEXT(R"(
 UObject CreateNamedObject()
 {
 	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"UObjBindTest_Identity");
@@ -144,10 +135,9 @@ FString ScriptGetPathName(UObject Obj)
 	// -----------------------------------------------------------------------
 	bool RunHierarchyAndOuterSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("Hierarchy"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_Hierarchy"), TEXT(R"(
 UObject CreateInTransient()
 {
 	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"UObjBindTest_Hierarchy");
@@ -241,10 +231,9 @@ UClass ScriptGetClass(UObject Obj)
 	// -----------------------------------------------------------------------
 	bool RunTypeQueryAndCastSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("TypeQuery"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_TypeQuery"), TEXT(R"(
 UObject CreateCamera()
 {
 	return NewObject(GetTransientPackage(), ACameraActor::StaticClass(), n"UObjBindTest_Camera");
@@ -358,10 +347,9 @@ int ScriptIsA_Texture(UObject Obj)
 	// -----------------------------------------------------------------------
 	bool RunFindAndLookupSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("FindLookup"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_FindLookup"), TEXT(R"(
 UObject CreateNamedForFind()
 {
 	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"UObjBindTest_Find");
@@ -434,10 +422,9 @@ UObject ScriptFindWithOuter(UObject Outer, const FString& in Name)
 	// -----------------------------------------------------------------------
 	bool RunRootLifecycleSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("RootLifecycle"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_RootLifecycle"), TEXT(R"(
 UObject CreateForRoot()
 {
 	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"UObjBindTest_Root");
@@ -533,10 +520,9 @@ int ScriptGetIsRooted(UObject Obj)
 	// -----------------------------------------------------------------------
 	bool RunFlagMutationSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("FlagMutation"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_FlagMutation"), TEXT(R"(
 UObject CreateTransient()
 {
 	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), NAME_None, true);
@@ -641,10 +627,9 @@ int ScriptIsTransient(UObject Obj)
 	// -----------------------------------------------------------------------
 	bool RunNullAndIsValidSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("NullValid"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_NullValid"), TEXT(R"(
 int IsValid_ValidObjectTrue()
 {
 	UObject Obj = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
@@ -688,7 +673,7 @@ int NullComparison_TwoValidDifferent()
 			{ TEXT("int NullComparison_TwoValidSameInstance()"),  TEXT("Same instance references should be equal"),     1 },
 			{ TEXT("int NullComparison_TwoValidDifferent()"),     TEXT("Different instances should not be equal"),      1 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -702,10 +687,9 @@ int NullComparison_TwoValidDifferent()
 	// -----------------------------------------------------------------------
 	bool RunNewObjectVariantsSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("NewObjVar"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_NewObjVar"), TEXT(R"(
 UObject Create_DefaultName()
 {
 	return NewObject(GetTransientPackage(), UTexture2D::StaticClass());
@@ -925,10 +909,9 @@ bool GetIsTransient(UObject Obj)
 	// -----------------------------------------------------------------------
 	bool RunClassReflectionSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("ClassRefl"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_ClassRefl"), TEXT(R"(
 UObject GetCDO_Texture2D()
 {
 	return UTexture2D::StaticClass().GetDefaultObject();
@@ -1094,10 +1077,9 @@ FString GetClassName(UObject Obj)
 	// -----------------------------------------------------------------------
 	bool RunReturnValueCrossCheckSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("ReturnVal"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_ReturnVal"), TEXT(R"(
 FString ReturnString()
 {
 	return "Hello from Angelscript";
@@ -1312,10 +1294,9 @@ FString LogFormatted(UObject Obj)
 	// -----------------------------------------------------------------------
 	bool RunCppToScriptPassthroughSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("CppToAS"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_CppToAS"), TEXT(R"(
 // ---- Identity queries on C++-created objects ----
 FString DescribeObject(UObject Obj)
 {
@@ -1727,10 +1708,9 @@ bool IsRootedCheck(UObject Obj)
 	// -----------------------------------------------------------------------
 	bool RunObjectChainAndNestingSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("ObjChain"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_ObjChain"), TEXT(R"(
 // ---- AS creates a chain of nested objects ----
 UObject CreateChainRoot()
 {
@@ -2160,8 +2140,7 @@ FString DescribeChain(UObject Leaf)
 	// -----------------------------------------------------------------------
 	bool RunLogAndDiagnosticsSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
 		// AS Error()/Warning()/Throw() produce UE_LOG at Error/Warning level.
 		// Register all expected outputs so the automation framework doesn't
@@ -2177,7 +2156,7 @@ FString DescribeChain(UObject Leaf)
 		Test.AddExpectedErrorPlain(TEXT("ASUObject_LogDiag"),       EAutomationExpectedErrorFlags::Contains, 1);
 		Test.AddExpectedErrorPlain(TEXT("CallThrow"),               EAutomationExpectedErrorFlags::Contains, 1);
 
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("LogDiag"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_LogDiag"), TEXT(R"(
 void CallLog()
 {
 	Log("BIND_LOG_MARKER_42");
@@ -2261,7 +2240,7 @@ int LogConcatTypes()
 			AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Invoker(Test, Engine, Module, Decl);
 			if (!Invoker.IsValid()) return false;
 			bool bOk = Invoker.Call();
-			Test.AddInfo(FormatCaseLabel(Profile, Label));
+			Test.AddInfo(FString(Label));
 			return bOk;
 		};
 
@@ -2281,14 +2260,14 @@ int LogConcatTypes()
 		bPassed &= CallVoid(TEXT("void CallWarningWithCategory()"), TEXT("Warning(category) should execute"));
 
 		// Step 2: Throw — should raise AS exception
-		bPassed &= ExecuteFunctionExpectingScriptException(
-			Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(
+			Test, Engine, Module, 
 			TEXT("void CallThrow()"),
 			TEXT("Throw() should raise script exception"),
 			TEXT("BIND_THROW_MARKER_42"));
 
 		// Step 3: Log with type concatenation — AS returns 1 if no crash
-		bPassed &= ExpectGlobalInt(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int LogConcatTypes()"),
 			TEXT("Log with int/float/bool/FName/FString/UObject concat should succeed"),
 			1);
@@ -2319,7 +2298,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunCreateAndIdentitySection(*TestRunner, Engine, GUObjectProfile);
+		RunCreateAndIdentitySection(*TestRunner, Engine);
 		}
 	}
 
@@ -2327,7 +2306,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunHierarchyAndOuterSection(*TestRunner, Engine, GUObjectProfile);
+		RunHierarchyAndOuterSection(*TestRunner, Engine);
 		}
 	}
 
@@ -2335,7 +2314,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunTypeQueryAndCastSection(*TestRunner, Engine, GUObjectProfile);
+		RunTypeQueryAndCastSection(*TestRunner, Engine);
 		}
 	}
 
@@ -2343,7 +2322,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunFindAndLookupSection(*TestRunner, Engine, GUObjectProfile);
+		RunFindAndLookupSection(*TestRunner, Engine);
 		}
 	}
 
@@ -2351,7 +2330,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunRootLifecycleSection(*TestRunner, Engine, GUObjectProfile);
+		RunRootLifecycleSection(*TestRunner, Engine);
 		}
 	}
 
@@ -2359,7 +2338,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunFlagMutationSection(*TestRunner, Engine, GUObjectProfile);
+		RunFlagMutationSection(*TestRunner, Engine);
 		}
 	}
 
@@ -2367,7 +2346,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunNullAndIsValidSection(*TestRunner, Engine, GUObjectProfile);
+		RunNullAndIsValidSection(*TestRunner, Engine);
 		}
 	}
 
@@ -2375,7 +2354,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunNewObjectVariantsSection(*TestRunner, Engine, GUObjectProfile);
+		RunNewObjectVariantsSection(*TestRunner, Engine);
 		}
 	}
 
@@ -2383,7 +2362,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunClassReflectionSection(*TestRunner, Engine, GUObjectProfile);
+		RunClassReflectionSection(*TestRunner, Engine);
 		}
 	}
 
@@ -2391,7 +2370,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunReturnValueCrossCheckSection(*TestRunner, Engine, GUObjectProfile);
+		RunReturnValueCrossCheckSection(*TestRunner, Engine);
 		}
 	}
 
@@ -2399,7 +2378,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunCppToScriptPassthroughSection(*TestRunner, Engine, GUObjectProfile);
+		RunCppToScriptPassthroughSection(*TestRunner, Engine);
 		}
 	}
 
@@ -2407,7 +2386,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunObjectChainAndNestingSection(*TestRunner, Engine, GUObjectProfile);
+		RunObjectChainAndNestingSection(*TestRunner, Engine);
 		}
 	}
 
@@ -2415,7 +2394,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunLogAndDiagnosticsSection(*TestRunner, Engine, GUObjectProfile);
+		RunLogAndDiagnosticsSection(*TestRunner, Engine);
 		}
 	}
 };

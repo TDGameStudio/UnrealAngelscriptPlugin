@@ -1,6 +1,5 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptTestEngineHelper.h"
 #include "Shared/AngelscriptTestMacros.h"
@@ -26,10 +25,6 @@ namespace
 	static constexpr TCHAR RuntimeWidgetClassName[] = TEXT("UBindingUserWidgetCompat");
 	static constexpr TCHAR DetachedTextBlockName[] = TEXT("DetachedTextBlock");
 
-	const FBindingsCoverageProfile GUserWidgetProfile{
-		TEXT("UserWidget"), TEXT(""), TEXT("ASUserWidget"),
-		TEXT("UserWidget"), TEXT("UserWidgetBindings"),
-	};
 
 	struct FUserWidgetFixture
 	{
@@ -194,7 +189,7 @@ int MissingTreeRemoveReturnsFalse() { UUserWidget Widget = WithoutTreeWidget(); 
 		return Script;
 	}
 
-	bool RunWidgetTreeBasicSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine, const FBindingsCoverageProfile& Profile)
+	bool RunWidgetTreeBasicSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 	{
 		UClass* WidgetClass = CreateFixtureWidgetClass(Test, Engine);
 		if (WidgetClass == nullptr)
@@ -210,7 +205,7 @@ int MissingTreeRemoveReturnsFalse() { UUserWidget Widget = WithoutTreeWidget(); 
 		FScopedRootedObject FixtureRoot(Fixture.Widget);
 
 		bool bPassed = VerifyEmptyTreeState(Test, Fixture, TEXT("UserWidgetTreeCompat native baseline"));
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("Basic"), BuildBasicScript(Fixture));
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUserWidget_Basic"), BuildBasicScript(Fixture));
 		if (!ModuleScope.IsValid())
 		{
 			return false;
@@ -230,12 +225,12 @@ int MissingTreeRemoveReturnsFalse() { UUserWidget Widget = WithoutTreeWidget(); 
 			{ TEXT("int RootClearsAfterRemove()"), TEXT("GetRootWidget should be null after removal"), 1 },
 			{ TEXT("int WidgetsClearAfterRemove()"), TEXT("GetAllWidgets should be empty after removal"), 1 },
 		};
-		bPassed &= ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		bPassed &= AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 		bPassed &= VerifyEmptyTreeState(Test, Fixture, TEXT("UserWidgetTreeCompat native postcondition"));
 		return bPassed;
 	}
 
-	bool RunWidgetTreeErrorSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine, const FBindingsCoverageProfile& Profile)
+	bool RunWidgetTreeErrorSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 	{
 		UClass* WidgetClass = CreateFixtureWidgetClass(Test, Engine);
 		if (WidgetClass == nullptr)
@@ -264,7 +259,7 @@ int MissingTreeRemoveReturnsFalse() { UUserWidget Widget = WithoutTreeWidget(); 
 		Test.AddExpectedErrorPlain(TEXT("Ensure condition failed: WidgetClass && WidgetClass->IsChildOf(UWidget::StaticClass())"), EAutomationExpectedErrorFlags::Contains, 1);
 		Test.AddExpectedErrorPlain(TEXT("LogOutputDevice:"), EAutomationExpectedErrorFlags::Contains, 0);
 
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("Error"), BuildErrorScript(WithTree, WithoutTree, *DetachedTextBlock));
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUserWidget_Error"), BuildErrorScript(WithTree, WithoutTree, *DetachedTextBlock));
 		if (!ModuleScope.IsValid())
 		{
 			return false;
@@ -278,7 +273,7 @@ int MissingTreeRemoveReturnsFalse() { UUserWidget Widget = WithoutTreeWidget(); 
 			{ TEXT("int MissingTreeSetRootNoops()"), TEXT("SetRootWidget without WidgetTree should be a no-op"), 1 },
 			{ TEXT("int MissingTreeRemoveReturnsFalse()"), TEXT("RemoveWidget without WidgetTree should return false"), 1 },
 		};
-		bPassed &= ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		bPassed &= AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 		bPassed &= VerifyEmptyTreeState(Test, WithTree, TEXT("UserWidgetTreeErrorPaths tree-backed postcondition"));
 		bPassed &= Test.TestNull(TEXT("UserWidgetTreeErrorPaths missing-tree fixture should keep WidgetTree null"), WithoutTree.Widget->WidgetTree);
 		bPassed &= Test.TestNull(TEXT("UserWidgetTreeErrorPaths missing-tree fixture should keep root null"), WithoutTree.Widget->GetRootWidget());
@@ -306,7 +301,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUserWidgetBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunWidgetTreeBasicSection(*TestRunner, Engine, GUserWidgetProfile);
+		RunWidgetTreeBasicSection(*TestRunner, Engine);
 		}
 	}
 
@@ -314,7 +309,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUserWidgetBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunWidgetTreeErrorSection(*TestRunner, Engine, GUserWidgetProfile);
+		RunWidgetTreeErrorSection(*TestRunner, Engine);
 		}
 	}
 };

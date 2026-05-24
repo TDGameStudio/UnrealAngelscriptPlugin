@@ -19,7 +19,6 @@
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
 #include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -202,13 +201,6 @@ FString GetOutsideInitModule() { return Script::GetModuleNameOfGlobalVariableBei
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GScriptFuncLibProfile{
-	TEXT("ScriptFuncLib"),              // Theme
-	TEXT(""),                           // Variant
-	TEXT("ASScriptFuncLib"),            // ModulePrefix
-	TEXT("ScriptFuncLib"),             // CasePrefix
-	TEXT("ScriptFunctionLibraryBindings"), // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class

@@ -18,7 +18,6 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -37,13 +36,6 @@ using namespace AngelscriptReflectiveAccess;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GCurveProfile{
-	TEXT("Curve"),           // Theme
-	TEXT(""),               // Variant
-	TEXT("ASCurve"),        // ModulePrefix
-	TEXT("Curve"),          // CasePrefix
-	TEXT("CurveBindings"), // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Shared helpers
@@ -171,7 +163,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCurveFunctionLibraryBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GCurveProfile, TEXT("LinearColorAddKey"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCurve_LinearColorAddKey"), TEXT(R"(
 int PopulateCurve(FRuntimeCurveLinearColor& Curve)
 {
 	Curve.AddDefaultKey(0.0f, FLinearColor(1.0f, 0.0f, 0.0f, 0.25f));
@@ -274,7 +266,7 @@ int PopulateCurve(FRuntimeFloatCurve& RuntimeCurve)
 )AS");
 		Script.ReplaceInline(TEXT("__CURVE_PATH__"), *CurveAsset->GetPathName().ReplaceCharWithEscapedChar());
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GCurveProfile, TEXT("FloatCurveInstance"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCurve_FloatCurveInstance"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

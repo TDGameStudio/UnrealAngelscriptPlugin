@@ -20,7 +20,6 @@
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
 #include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -33,9 +32,6 @@ using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 using namespace AngelscriptReflectiveAccess;
 
-static const FBindingsCoverageProfile GMathOrientProfile{
-	TEXT("Math"), TEXT("Orientation"), TEXT("ASMathBindings"), TEXT("MathOrient"), TEXT("MathBindings")
-};
 
 namespace AngelscriptTest_Bindings_AngelscriptMathOrientationBindingsTests_Private
 {
@@ -183,7 +179,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMathOrientationBindingsTest, "Angelscript.Test
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GMathOrientProfile, TEXT("FactoriesAndMutators"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMath_Orientation_FactoriesAndMutators"), TEXT(R"(
 FRotator GetAxesRotator()
 {
 	return FRotator::MakeFromAxes(FVector(1.0f, 0.0f, 0.0f), FVector(0.0f, 1.0f, 0.0f), FVector(0.0f, 0.0f, 1.0f));
@@ -555,7 +551,7 @@ FTransform GetSetRotationTransform()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GMathOrientProfile, TEXT("StaticDelta"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMath_Orientation_StaticDelta"), TEXT(R"(
 int QuatDeltaRoundTrips()
 {
 	const FQuat Origin = FQuat(FRotator(0.0f, 15.0f, 0.0f));
@@ -615,13 +611,13 @@ int TransformRelativeRoundTrips()
 		if (!Mod.IsValid()) return;
 		asIScriptModule& Module = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, Module, GMathOrientProfile, TEXT("int QuatDeltaRoundTrips()"), TEXT("FQuat::GetDelta/ApplyDelta should round-trip target rotations"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, Module, GMathOrientProfile, TEXT("int QuatRelativeRoundTrips()"), TEXT("FQuat::GetRelative/ApplyRelative should round-trip child rotations"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, Module, GMathOrientProfile, TEXT("int QuatAngularVelocityRoundTrips()"), TEXT("FQuat angular velocity helpers should round-trip axis speed"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, Module, GMathOrientProfile, TEXT("int RotatorDeltaRoundTrips()"), TEXT("FRotator::GetDelta/ApplyDelta should round-trip target rotations"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, Module, GMathOrientProfile, TEXT("int RotatorRelativeRoundTrips()"), TEXT("FRotator::GetRelative/ApplyRelative should round-trip child rotations"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, Module, GMathOrientProfile, TEXT("int TransformDeltaRoundTrips()"), TEXT("FTransform::GetDelta/ApplyDelta should round-trip target transforms"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, Module, GMathOrientProfile, TEXT("int TransformRelativeRoundTrips()"), TEXT("FTransform::GetRelative/ApplyRelative should round-trip child transforms"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int QuatDeltaRoundTrips()"), TEXT("FQuat::GetDelta/ApplyDelta should round-trip target rotations"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int QuatRelativeRoundTrips()"), TEXT("FQuat::GetRelative/ApplyRelative should round-trip child rotations"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int QuatAngularVelocityRoundTrips()"), TEXT("FQuat angular velocity helpers should round-trip axis speed"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int RotatorDeltaRoundTrips()"), TEXT("FRotator::GetDelta/ApplyDelta should round-trip target rotations"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int RotatorRelativeRoundTrips()"), TEXT("FRotator::GetRelative/ApplyRelative should round-trip child rotations"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int TransformDeltaRoundTrips()"), TEXT("FTransform::GetDelta/ApplyDelta should round-trip target transforms"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int TransformRelativeRoundTrips()"), TEXT("FTransform::GetRelative/ApplyRelative should round-trip child transforms"), 1);
 	}
 };
 

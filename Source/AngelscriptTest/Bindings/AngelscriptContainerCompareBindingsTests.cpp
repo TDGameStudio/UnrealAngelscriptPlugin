@@ -20,7 +20,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "../../AngelscriptRuntime/Binds/Bind_TMap.h"
@@ -37,13 +36,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GContainerCmpProfile{
-	TEXT("ContainerCompare"),            // Theme
-	TEXT(""),                            // Variant
-	TEXT("ASContainerCmp"),              // ModulePrefix
-	TEXT("ContainerCmp"),                // CasePrefix
-	TEXT("ContainerCompareBindings"),    // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -69,7 +61,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptContainerCompareBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GContainerCmpProfile, TEXT("SetCompare"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASContainerCompare_SetCompare"), TEXT(R"(
 int SetCompare_EqualReordered()
 {
 	TSet<int> Left;
@@ -99,8 +91,8 @@ int SetCompare_DifferentSize()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GContainerCmpProfile, TEXT("int SetCompare_EqualReordered()"), TEXT("TSet reordered elements should compare equal"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GContainerCmpProfile, TEXT("int SetCompare_DifferentSize()"), TEXT("TSet with different sizes should compare unequal"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetCompare_EqualReordered()"), TEXT("TSet reordered elements should compare equal"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetCompare_DifferentSize()"), TEXT("TSet with different sizes should compare unequal"), 1);
 	}
 
 	// ====================================================================
@@ -112,7 +104,7 @@ int SetCompare_DifferentSize()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GContainerCmpProfile, TEXT("SetSizeMismatch"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASContainerCompare_SetSizeMismatch"), TEXT(R"(
 int SetMismatch_ReorderedEqual()
 {
 	TSet<int> Left;
@@ -151,9 +143,9 @@ int SetMismatch_CopyEqual()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GContainerCmpProfile, TEXT("int SetMismatch_ReorderedEqual()"), TEXT("TSet reordered should compare equal"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GContainerCmpProfile, TEXT("int SetMismatch_SameSizeDifferent()"), TEXT("TSet same-size mismatched members should compare unequal"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GContainerCmpProfile, TEXT("int SetMismatch_CopyEqual()"), TEXT("TSet copy should compare equal to original"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetMismatch_ReorderedEqual()"), TEXT("TSet reordered should compare equal"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetMismatch_SameSizeDifferent()"), TEXT("TSet same-size mismatched members should compare unequal"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetMismatch_CopyEqual()"), TEXT("TSet copy should compare equal to original"), 1);
 	}
 
 	// ====================================================================
@@ -165,7 +157,7 @@ int SetMismatch_CopyEqual()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GContainerCmpProfile, TEXT("MapCompare"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASContainerCompare_MapCompare"), TEXT(R"(
 int MapCompare_EqualReordered()
 {
 	TMap<FName, int> Left;
@@ -195,8 +187,8 @@ int MapCompare_DifferentSize()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GContainerCmpProfile, TEXT("int MapCompare_EqualReordered()"), TEXT("TMap reordered entries should compare equal"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GContainerCmpProfile, TEXT("int MapCompare_DifferentSize()"), TEXT("TMap with different sizes should compare unequal"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapCompare_EqualReordered()"), TEXT("TMap reordered entries should compare equal"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapCompare_DifferentSize()"), TEXT("TMap with different sizes should compare unequal"), 1);
 	}
 
 	// ====================================================================
@@ -208,7 +200,7 @@ int MapCompare_DifferentSize()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GContainerCmpProfile, TEXT("MapCompareValue"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASContainerCompare_MapCompareValue"), TEXT(R"(
 int MapValue_EqualReordered()
 {
 	TMap<FName, int> Left;
@@ -250,9 +242,9 @@ int MapValue_EmptyCompare()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GContainerCmpProfile, TEXT("int MapValue_EqualReordered()"), TEXT("TMap value-equal reordered entries should compare equal"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GContainerCmpProfile, TEXT("int MapValue_DifferentValue()"), TEXT("TMap with different values should compare unequal"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GContainerCmpProfile, TEXT("int MapValue_EmptyCompare()"), TEXT("TMap empty maps should compare equal and non-empty vs empty should differ"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapValue_EqualReordered()"), TEXT("TMap value-equal reordered entries should compare equal"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapValue_DifferentValue()"), TEXT("TMap with different values should compare unequal"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapValue_EmptyCompare()"), TEXT("TMap empty maps should compare equal and non-empty vs empty should differ"), 1);
 	}
 
 	// ====================================================================

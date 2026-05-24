@@ -2,7 +2,6 @@
 #include "Core/AngelscriptEngine.h"
 #include "Functional/Interface/AngelscriptInterfaceTestAccess.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -14,7 +13,6 @@ using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 using namespace AngelscriptReflectiveAccess;
 
-static const FBindingsCoverageProfile GInterfaceBindingProfile{TEXT("InterfaceBinding"),TEXT(""),TEXT("ASIntfBinding"),TEXT("IntfBinding"),TEXT("InterfaceBindingTests")};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptInterfaceNativeBindingTests, "Angelscript.TestModule.Interface.NativeBinding", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {

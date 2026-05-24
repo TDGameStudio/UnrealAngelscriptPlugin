@@ -15,7 +15,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -38,13 +37,6 @@ using namespace AngelscriptFunctionalTestUtils;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GInterfaceNativeProfile{
-	TEXT("InterfaceNative"),        // Theme
-	TEXT(""),                       // Variant
-	TEXT("ASIntfNative"),          // ModulePrefix
-	TEXT("IntfNative"),            // CasePrefix
-	TEXT("InterfaceNativeTests"),  // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test Class

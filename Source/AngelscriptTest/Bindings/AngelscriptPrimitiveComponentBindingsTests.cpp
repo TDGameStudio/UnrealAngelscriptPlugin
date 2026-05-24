@@ -18,7 +18,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -35,13 +34,6 @@ using namespace AngelscriptReflectiveAccess;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GPrimCompProfile{
-	TEXT("PrimComp"),                       // Theme
-	TEXT(""),                               // Variant
-	TEXT("ASPrimComp"),                     // ModulePrefix
-	TEXT("PrimComp"),                       // CasePrefix
-	TEXT("PrimitiveComponentBindings"),     // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Helpers (kept from original, scoped to translation unit)
@@ -212,16 +204,16 @@ int BoundsCompat_LightmapType()
 		Script.ReplaceInline(TEXT("__EXPECTED_BOUNDS_RADIUS__"), *FormatDoubleLiteral(BoundsRadius), ESearchCase::CaseSensitive);
 		Script.ReplaceInline(TEXT("__BOUNDS_TOLERANCE__"), *FormatDoubleLiteral(BoundsTolerance), ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GPrimCompProfile, TEXT("BoundsCompat"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASPrimitiveComponent_BoundsCompat"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GPrimCompProfile, TEXT("int BoundsCompat_CollisionExtents()"), TEXT("collision extents should match configured box extent"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GPrimCompProfile, TEXT("int BoundsCompat_BoundsOrigin()"), TEXT("bounds origin should reflect configured relative location"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GPrimCompProfile, TEXT("int BoundsCompat_BoundsExtent()"), TEXT("bounds extent should match configured box extent"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GPrimCompProfile, TEXT("int BoundsCompat_BoundsRadius()"), TEXT("bounds radius should match box extent radius"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GPrimCompProfile, TEXT("int BoundsCompat_Selectable()"), TEXT("SetbSelectable should update native component immediately"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GPrimCompProfile, TEXT("int BoundsCompat_LightmapType()"), TEXT("SetLightmapType(ForceSurface) should execute without error"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_CollisionExtents()"), TEXT("collision extents should match configured box extent"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_BoundsOrigin()"), TEXT("bounds origin should reflect configured relative location"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_BoundsExtent()"), TEXT("bounds extent should match configured box extent"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_BoundsRadius()"), TEXT("bounds radius should match box extent radius"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_Selectable()"), TEXT("SetbSelectable should update native component immediately"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_LightmapType()"), TEXT("SetLightmapType(ForceSurface) should execute without error"), 1);
 
 		// Native-side assertions for mutations done by script
 		TestRunner->TestTrue(TEXT("PrimComp SetbSelectable(true) should update native component"),

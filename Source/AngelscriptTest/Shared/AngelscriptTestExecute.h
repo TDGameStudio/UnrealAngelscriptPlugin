@@ -71,7 +71,7 @@
 //       * inline ExpectGlobalIntAtLeast -> ExecuteAndExpectIntAtLeast
 //       * inline ExpectGlobalBool -> ExecuteAndExpectBool
 //       * inline ExpectGlobalDouble -> ExecuteAndExpectNearDouble
-//       * inline ExpectGlobalInts (batch) -> ExecuteBatchAndExpectInt
+//       * inline AngelscriptTestBindings::ExpectGlobalInts(batch) -> ExecuteBatchAndExpectInt
 //       * inline ExpectGlobalReturnBool -> ExecuteAndExpectBool
 //       * inline ExpectGlobalReturnFloat -> ExecuteAndExpectNearFloat
 //       * inline ExpectGlobalReturnCustom<T> -> ExecuteAndValidate<T>
@@ -108,7 +108,6 @@
 #include "Containers/StringConv.h"
 #include "UObject/Object.h"
 
-#include "AngelscriptBindingsCoverage.h"
 #include "AngelscriptTestEngineHelper.h"
 
 #include "StartAngelscriptHeaders.h"
@@ -715,21 +714,11 @@ namespace AngelscriptTest
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-	// Bring the Bindings-coverage profile type and its label helpers into
-	// `AngelscriptTest::` so the Execute* family below can use unqualified
-	// names without polluting the namespace with `using namespace`. These
-	// three symbols intentionally live in `AngelscriptTestBindings::` as the
-	// canonical home for "coverage profile" infrastructure -- the Execute*
-	// family is built on top of that, so we just lift them by name here.
-	using AngelscriptTestBindings::FBindingsCoverageProfile;
-	using AngelscriptTestBindings::FormatCaseLabel;
-	using AngelscriptTestBindings::MakeCoverageModuleName;
-
 	// ========================================================================
 	// Execute* family of free-function assertion helpers
 	//
-	// Module + decl + Profile + CaseLabel -- one-line per case. Every helper
-	// emits an Info trace line via FormatCaseLabel so a passing run still
+	// Module + decl + CaseLabel -- one-line per case. Every helper
+	// emits an Info trace line with the supplied case label so a passing run still
 	// leaves a readable per-case trail in the automation log. Failed helpers
 	// add a detailed AddError describing the actual value vs expected.
 	//
@@ -742,12 +731,11 @@ namespace AngelscriptTest
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
 		const TCHAR* FunctionDecl,
 		const TCHAR* CaseLabel,
 		int32 Expected)
 	{
-		Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
+		Test.AddInfo(FString(CaseLabel));
 		FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
 		if (!Executor.IsValid())
 		{
@@ -755,7 +743,7 @@ namespace AngelscriptTest
 		}
 		const int32 Actual = Executor.ExecuteAndGet<int32>(INDEX_NONE);
 		return Test.TestEqual(
-			*FString::Printf(TEXT("%s (decl=%s)"), *FormatCaseLabel(Profile, CaseLabel), FunctionDecl),
+			*FString::Printf(TEXT("%s (decl=%s)"), *FString(CaseLabel), FunctionDecl),
 			Actual,
 			Expected);
 	}
@@ -765,12 +753,11 @@ namespace AngelscriptTest
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
 		const TCHAR* FunctionDecl,
 		const TCHAR* CaseLabel,
 		int32 Minimum)
 	{
-		Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
+		Test.AddInfo(FString(CaseLabel));
 		FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
 		if (!Executor.IsValid())
 		{
@@ -779,7 +766,7 @@ namespace AngelscriptTest
 		const int32 Actual = Executor.ExecuteAndGet<int32>(INDEX_NONE);
 		return Test.TestTrue(
 			*FString::Printf(TEXT("%s (decl=%s) returned %d, expected >= %d"),
-				*FormatCaseLabel(Profile, CaseLabel), FunctionDecl, Actual, Minimum),
+				*FString(CaseLabel), FunctionDecl, Actual, Minimum),
 			Actual >= Minimum);
 	}
 
@@ -792,12 +779,11 @@ namespace AngelscriptTest
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
 		const TCHAR* FunctionDecl,
 		const TCHAR* CaseLabel,
 		bool Expected)
 	{
-		Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
+		Test.AddInfo(FString(CaseLabel));
 		FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
 		if (!Executor.IsValid())
 		{
@@ -805,7 +791,7 @@ namespace AngelscriptTest
 		}
 		const bool Actual = Executor.ExecuteAndGet<bool>(false);
 		return Test.TestEqual(
-			*FString::Printf(TEXT("%s (decl=%s)"), *FormatCaseLabel(Profile, CaseLabel), FunctionDecl),
+			*FString::Printf(TEXT("%s (decl=%s)"), *FString(CaseLabel), FunctionDecl),
 			Actual,
 			Expected);
 	}
@@ -818,12 +804,11 @@ namespace AngelscriptTest
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
 		const TCHAR* FunctionDecl,
 		const TCHAR* CaseLabel,
 		double Expected)
 	{
-		Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
+		Test.AddInfo(FString(CaseLabel));
 		FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
 		if (!Executor.IsValid())
 		{
@@ -832,7 +817,7 @@ namespace AngelscriptTest
 		const double Actual = Executor.ExecuteAndGet<double>(0.0);
 		return Test.TestEqual(
 			*FString::Printf(TEXT("%s (decl=%s) returned %.9g, expected %.9g"),
-				*FormatCaseLabel(Profile, CaseLabel), FunctionDecl, Actual, Expected),
+				*FString(CaseLabel), FunctionDecl, Actual, Expected),
 			Actual,
 			Expected);
 	}
@@ -844,13 +829,12 @@ namespace AngelscriptTest
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
 		const TCHAR* FunctionDecl,
 		const TCHAR* CaseLabel,
 		float Expected,
 		float Tolerance = 0.01f)
 	{
-		Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
+		Test.AddInfo(FString(CaseLabel));
 		FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
 		if (!Executor.IsValid())
 		{
@@ -859,7 +843,7 @@ namespace AngelscriptTest
 		const double Actual = Executor.ExecuteAndGet<double>(0.0);
 		return Test.TestTrue(
 			*FString::Printf(TEXT("%s (decl=%s) returned %.6g, expected %.6g (tol=%g)"),
-				*FormatCaseLabel(Profile, CaseLabel), FunctionDecl, Actual, (double)Expected, (double)Tolerance),
+				*FString(CaseLabel), FunctionDecl, Actual, (double)Expected, (double)Tolerance),
 			FMath::IsNearlyEqual(Actual, (double)Expected, (double)Tolerance));
 	}
 
@@ -868,13 +852,12 @@ namespace AngelscriptTest
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
 		const TCHAR* FunctionDecl,
 		const TCHAR* CaseLabel,
 		double Expected,
 		double Tolerance = 1e-6)
 	{
-		Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
+		Test.AddInfo(FString(CaseLabel));
 		FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
 		if (!Executor.IsValid())
 		{
@@ -883,7 +866,7 @@ namespace AngelscriptTest
 		const double Actual = Executor.ExecuteAndGet<double>(0.0);
 		return Test.TestTrue(
 			*FString::Printf(TEXT("%s (decl=%s) returned %.9g, expected %.9g (tol=%g)"),
-				*FormatCaseLabel(Profile, CaseLabel), FunctionDecl, Actual, Expected, Tolerance),
+				*FString(CaseLabel), FunctionDecl, Actual, Expected, Tolerance),
 			FMath::IsNearlyEqual(Actual, Expected, Tolerance));
 	}
 
@@ -900,13 +883,12 @@ namespace AngelscriptTest
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
 		TArrayView<const FExpectedInt> Cases)
 	{
 		bool bPassed = true;
 		for (const FExpectedInt& Case : Cases)
 		{
-			bPassed &= ExecuteAndExpectInt(Test, Engine, Module, Profile,
+			bPassed &= ExecuteAndExpectInt(Test, Engine, Module,
 				Case.FunctionDecl, Case.CaseLabel, Case.Expected);
 		}
 		return bPassed;
@@ -926,12 +908,11 @@ namespace AngelscriptTest
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
 		const TCHAR* FunctionDecl,
 		const TCHAR* CaseLabel,
 		ValidatorFn&& Validator)
 	{
-		Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
+		Test.AddInfo(FString(CaseLabel));
 		FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
 		if (!Executor.IsValid())
 		{
@@ -940,7 +921,7 @@ namespace AngelscriptTest
 		T Value{};
 		if (!Executor.ExecuteAndExtractStruct<T>(Value))
 		{
-			Test.AddError(FString::Printf(TEXT("%s failed to read return struct"), *FormatCaseLabel(Profile, CaseLabel)));
+			Test.AddError(FString::Printf(TEXT("%s failed to read return struct"), *FString(CaseLabel)));
 			return false;
 		}
 		return Validator(Test, Value);
@@ -960,12 +941,11 @@ namespace AngelscriptTest
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
 		const TCHAR* FunctionDecl,
 		const TCHAR* CaseLabel,
 		const FString& ExpectedExceptionContains)
 	{
-		const FString Label = FormatCaseLabel(Profile, CaseLabel);
+		const FString Label(CaseLabel);
 		Test.AddInfo(Label);
 
 		asIScriptFunction* Function = ResolveFunctionByDecl(Test, Module, FunctionDecl);
@@ -1029,21 +1009,20 @@ namespace AngelscriptTest
 	inline bool CompileAndExpectFailure(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile,
-		const TCHAR* SectionName,
+		const TCHAR* ModuleName,
 		const TCHAR* Source,
 		const TCHAR* CaseLabel,
 		TArrayView<const FString> ExpectedDiagnosticFragments)
 	{
-		Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
+		Test.AddInfo(FString(CaseLabel));
 
 		AngelscriptTestSupport::FAngelscriptCompileTraceSummary Summary;
-		const FString ModuleName = MakeCoverageModuleName(Profile, SectionName);
-		const FString Filename = FString::Printf(TEXT("%s.as"), *ModuleName);
+		const FString ModuleNameString(ModuleName);
+		const FString Filename = FString::Printf(TEXT("%s.as"), *ModuleNameString);
 		AngelscriptTestSupport::CompileModuleWithSummary(
 			&Engine,
 			ECompileType::FullReload,
-			FName(*ModuleName),
+			FName(*ModuleNameString),
 			Filename,
 			FString(Source),
 			true,
@@ -1052,10 +1031,10 @@ namespace AngelscriptTest
 
 		bool bPassed = true;
 		bPassed &= Test.TestFalse(
-			*FString::Printf(TEXT("%s should fail to compile as an explicit binding boundary"), *FormatCaseLabel(Profile, CaseLabel)),
+			*FString::Printf(TEXT("%s should fail to compile as an explicit binding boundary"), *FString(CaseLabel)),
 			Summary.bCompileSucceeded);
 		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("%s compile result should be Error"), *FormatCaseLabel(Profile, CaseLabel)),
+			*FString::Printf(TEXT("%s compile result should be Error"), *FString(CaseLabel)),
 			Summary.CompileResult,
 			ECompileResult::Error);
 
@@ -1073,7 +1052,7 @@ namespace AngelscriptTest
 
 			bPassed &= Test.TestTrue(
 				*FString::Printf(TEXT("%s diagnostics should contain '%s'"),
-					*FormatCaseLabel(Profile, CaseLabel),
+					*FString(CaseLabel),
 					*ExpectedFragment),
 				bFoundFragment);
 		}
@@ -1081,7 +1060,7 @@ namespace AngelscriptTest
 		if (!bPassed || Summary.Diagnostics.Num() == 0)
 		{
 			Test.AddInfo(FString::Printf(TEXT("%s compile diagnostics: %d"),
-				*FormatCaseLabel(Profile, CaseLabel),
+				*FString(CaseLabel),
 				Summary.Diagnostics.Num()));
 			for (const AngelscriptTestSupport::FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
 			{
@@ -1094,7 +1073,7 @@ namespace AngelscriptTest
 			}
 		}
 
-		Engine.DiscardModule(*ModuleName);
+		Engine.DiscardModule(*ModuleNameString);
 		return bPassed;
 	}
 
@@ -1153,10 +1132,9 @@ namespace AngelscriptTestBindings
 	{
 		inline bool TraceCase(
 			FAutomationTestBase& Test,
-			const FBindingsCoverageProfile& Profile,
 			const TCHAR* CaseLabel)
 		{
-			Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
+			Test.AddInfo(FString(CaseLabel));
 			return true;
 		}
 	}
@@ -1168,14 +1146,13 @@ namespace AngelscriptTestBindings
 	inline bool ExpectBindingCompileFailure(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile,
-		const TCHAR* SectionName,
+		const TCHAR* ModuleName,
 		const TCHAR* Source,
 		const TCHAR* CaseLabel,
 		TArrayView<const FString> ExpectedDiagnosticFragments)
 	{
 		return AngelscriptTest::CompileAndExpectFailure(
-			Test, Engine, Profile, SectionName, Source, CaseLabel, ExpectedDiagnosticFragments);
+			Test, Engine, ModuleName, Source, CaseLabel, ExpectedDiagnosticFragments);
 	}
 
 	/** Legacy forwarder -- new code should call `AngelscriptTest::ExecuteAndExpectInt`. */
@@ -1183,13 +1160,12 @@ namespace AngelscriptTestBindings
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
 		const TCHAR* FunctionDecl,
 		const TCHAR* CaseLabel,
 		int32 Expected)
 	{
 		return AngelscriptTest::ExecuteAndExpectInt(
-			Test, Engine, Module, Profile, FunctionDecl, CaseLabel, Expected);
+			Test, Engine, Module, FunctionDecl, CaseLabel, Expected);
 	}
 
 	/** Legacy forwarder -- new code should call `AngelscriptTest::ExecuteAndExpectIntAtLeast`. */
@@ -1197,13 +1173,12 @@ namespace AngelscriptTestBindings
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
 		const TCHAR* FunctionDecl,
 		const TCHAR* CaseLabel,
 		int32 Minimum)
 	{
 		return AngelscriptTest::ExecuteAndExpectIntAtLeast(
-			Test, Engine, Module, Profile, FunctionDecl, CaseLabel, Minimum);
+			Test, Engine, Module, FunctionDecl, CaseLabel, Minimum);
 	}
 
 	/** Legacy forwarder -- new code should call `AngelscriptTest::ExecuteAndExpectBool`. */
@@ -1211,13 +1186,12 @@ namespace AngelscriptTestBindings
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
 		const TCHAR* FunctionDecl,
 		const TCHAR* CaseLabel,
 		bool Expected)
 	{
 		return AngelscriptTest::ExecuteAndExpectBool(
-			Test, Engine, Module, Profile, FunctionDecl, CaseLabel, Expected);
+			Test, Engine, Module, FunctionDecl, CaseLabel, Expected);
 	}
 
 	/** Legacy forwarder -- new code should call `AngelscriptTest::ExecuteAndExpectNearDouble`.
@@ -1227,14 +1201,13 @@ namespace AngelscriptTestBindings
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
 		const TCHAR* FunctionDecl,
 		const TCHAR* CaseLabel,
 		double Expected,
 		double Tolerance = 1e-6)
 	{
 		return AngelscriptTest::ExecuteAndExpectNearDouble(
-			Test, Engine, Module, Profile, FunctionDecl, CaseLabel, Expected, Tolerance);
+			Test, Engine, Module, FunctionDecl, CaseLabel, Expected, Tolerance);
 	}
 
 	/** Legacy forwarder -- new code should call `AngelscriptTest::ExecuteBatchAndExpectInt`. */
@@ -1242,13 +1215,12 @@ namespace AngelscriptTestBindings
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
 		TArrayView<const FExpectedGlobalInt> Cases)
 	{
 		// FExpectedGlobalInt is a `using` alias of AngelscriptTest::FExpectedInt,
 		// so the array views are layout-compatible without any conversion.
 		return AngelscriptTest::ExecuteBatchAndExpectInt(
-			Test, Engine, Module, Profile,
+			Test, Engine, Module,
 			TArrayView<const AngelscriptTest::FExpectedInt>(Cases.GetData(), Cases.Num()));
 	}
 
@@ -1261,13 +1233,12 @@ namespace AngelscriptTestBindings
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
 		const TCHAR* FunctionDecl,
 		const TCHAR* CaseLabel,
 		bool Expected)
 	{
 		return AngelscriptTest::ExecuteAndExpectBool(
-			Test, Engine, Module, Profile, FunctionDecl, CaseLabel, Expected);
+			Test, Engine, Module, FunctionDecl, CaseLabel, Expected);
 	}
 
 	/** Legacy forwarder -- new code should call `AngelscriptTest::ExecuteAndExpectNearFloat`. */
@@ -1275,14 +1246,13 @@ namespace AngelscriptTestBindings
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
 		const TCHAR* FunctionDecl,
 		const TCHAR* CaseLabel,
 		float Expected,
 		float Tolerance = 0.01f)
 	{
 		return AngelscriptTest::ExecuteAndExpectNearFloat(
-			Test, Engine, Module, Profile, FunctionDecl, CaseLabel, Expected, Tolerance);
+			Test, Engine, Module, FunctionDecl, CaseLabel, Expected, Tolerance);
 	}
 
 	/** Legacy forwarder -- new code should call `AngelscriptTest::ExecuteAndValidate<T>`. */
@@ -1291,13 +1261,12 @@ namespace AngelscriptTestBindings
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
 		const TCHAR* FunctionDecl,
 		const TCHAR* CaseLabel,
 		ValidatorFn&& Validator)
 	{
 		return AngelscriptTest::ExecuteAndValidate<T>(
-			Test, Engine, Module, Profile, FunctionDecl, CaseLabel,
+			Test, Engine, Module, FunctionDecl, CaseLabel,
 			Forward<ValidatorFn>(Validator));
 	}
 
@@ -1306,13 +1275,12 @@ namespace AngelscriptTestBindings
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
 		const TCHAR* FunctionDecl,
 		const TCHAR* CaseLabel,
 		const FString& ExpectedExceptionContains)
 	{
 		return AngelscriptTest::ExecuteAndExpectException(
-			Test, Engine, Module, Profile, FunctionDecl, CaseLabel, ExpectedExceptionContains);
+			Test, Engine, Module, FunctionDecl, CaseLabel, ExpectedExceptionContains);
 	}
 }
 

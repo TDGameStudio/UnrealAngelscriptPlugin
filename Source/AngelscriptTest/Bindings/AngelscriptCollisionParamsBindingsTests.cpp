@@ -19,7 +19,6 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -35,9 +34,6 @@ using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 using namespace AngelscriptReflectiveAccess;
 
-static const FBindingsCoverageProfile GCollisionParamsProfile{
-	TEXT("CollisionParams"), TEXT(""), TEXT("ASCollisionParams"), TEXT("CollisionParams"), TEXT("CollisionParamsBindings")
-};
 
 namespace AngelscriptTest_Bindings_AngelscriptCollisionParamsBindingsTests_Private
 {
@@ -295,7 +291,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCollisionParamsBindingsTest, "Angelscript.Test
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GCollisionParamsProfile, TEXT("Behaviour"), TEXT(R"AS(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCollisionParams_Behaviour"), TEXT(R"AS(
 int PopulateCollisionBindings(
 	AActor IgnoredActor,
 	UPrimitiveComponent IgnoredComponent,

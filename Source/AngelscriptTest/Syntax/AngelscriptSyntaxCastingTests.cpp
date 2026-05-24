@@ -10,7 +10,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "Syntax/AngelscriptSyntaxTestHelpers.h"
@@ -24,13 +23,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GSyntaxCastingProfile{
-	TEXT("Syntax"),          // Theme
-	TEXT("Casting"),         // Variant
-	TEXT("ASSyntaxCast"),    // ModulePrefix
-	TEXT("Casting"),         // CasePrefix
-	TEXT("SyntaxCasting"),   // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class

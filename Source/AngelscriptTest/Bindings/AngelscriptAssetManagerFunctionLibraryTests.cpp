@@ -19,7 +19,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "Shared/AngelscriptReflectiveAccess.h"
@@ -40,13 +39,6 @@ using namespace AngelscriptReflectiveAccess;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GAssetManagerProfile{
-	TEXT("AssetManager"),          // Theme
-	TEXT(""),                      // Variant
-	TEXT("ASAssetMgr"),            // ModulePrefix
-	TEXT("AssetMgr"),              // CasePrefix
-	TEXT("AssetManagerBindings"),  // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Helpers

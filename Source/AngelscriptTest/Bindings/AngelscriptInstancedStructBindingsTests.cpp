@@ -4,7 +4,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -13,9 +12,6 @@
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GInstancedStructProfile{
-	TEXT("InstancedStruct"), TEXT(""), TEXT("ASInstStruct"), TEXT("InstancedStruct"), TEXT("InstancedStructBindings"),
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptInstancedStructBindingsTest,
 	"Angelscript.TestModule.Bindings.InstancedStruct",
@@ -28,7 +24,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptInstancedStructBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GInstancedStructProfile, TEXT("Default"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASInstancedStruct_Default"), TEXT(R"(
 int InstancedStruct_DefaultInvalid()
 {
 	FInstancedStruct S;
@@ -40,7 +36,7 @@ int InstancedStruct_DefaultInvalid()
 			TestRunner->AddInfo(TEXT("FInstancedStruct not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GInstancedStructProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int InstancedStruct_DefaultInvalid()"),
 			TEXT("Default FInstancedStruct is invalid"), 1);
 	}
@@ -49,7 +45,7 @@ int InstancedStruct_DefaultInvalid()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GInstancedStructProfile, TEXT("Reset"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASInstancedStruct_Reset"), TEXT(R"(
 int InstancedStruct_ResetMakesInvalid()
 {
 	FInstancedStruct S;
@@ -62,7 +58,7 @@ int InstancedStruct_ResetMakesInvalid()
 			TestRunner->AddInfo(TEXT("FInstancedStruct not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GInstancedStructProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int InstancedStruct_ResetMakesInvalid()"),
 			TEXT("Reset FInstancedStruct is invalid"), 1);
 	}

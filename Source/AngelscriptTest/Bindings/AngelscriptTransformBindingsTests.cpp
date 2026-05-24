@@ -17,7 +17,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -77,13 +76,6 @@ namespace AngelscriptTransformBindingsTests_Private
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GTransformProfile{
-	TEXT("Transform"),            // Theme
-	TEXT(""),                     // Variant
-	TEXT("ASTransform"),          // ModulePrefix
-	TEXT("Transform"),            // CasePrefix
-	TEXT("TransformBindings"),    // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -159,14 +151,14 @@ int Transform_ScaleAffectsResult()
 		Script.ReplaceInline(TEXT("$EXP_INVERSE$"), *FormatScriptVector(ExpInverse));
 		Script.ReplaceInline(TEXT("$TOL$"), *FormatScriptFloat(Tol));
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GTransformProfile, TEXT("TransformPosition"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTransform_TransformPosition"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GTransformProfile, TEXT("int Transform_TransformPosition()"), TEXT("TransformPosition parity"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTransformProfile, TEXT("int Transform_TransformPositionNoScale()"), TEXT("TransformPositionNoScale parity"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTransformProfile, TEXT("int Transform_InverseTransformPosition()"), TEXT("InverseTransformPosition recovers input"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTransformProfile, TEXT("int Transform_ScaleAffectsResult()"), TEXT("scale affects TransformPosition"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_TransformPosition()"), TEXT("TransformPosition parity"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_TransformPositionNoScale()"), TEXT("TransformPositionNoScale parity"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_InverseTransformPosition()"), TEXT("InverseTransformPosition recovers input"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_ScaleAffectsResult()"), TEXT("scale affects TransformPosition"), 1);
 	}
 
 	// ====================================================================
@@ -222,12 +214,12 @@ int Transform_RelativeNotIdentity()
 		Script.ReplaceInline(TEXT("$EXP_RELATIVE$"), *FormatScriptTransform(ExpRelative));
 		Script.ReplaceInline(TEXT("$TOL$"), *FormatScriptFloat(Tol));
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GTransformProfile, TEXT("RelativeTransform"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTransform_RelativeTransform"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GTransformProfile, TEXT("int Transform_GetRelativeTransform()"), TEXT("GetRelativeTransform matches native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTransformProfile, TEXT("int Transform_RelativeNotIdentity()"), TEXT("relative is not identity"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_GetRelativeTransform()"), TEXT("GetRelativeTransform matches native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_RelativeNotIdentity()"), TEXT("relative is not identity"), 1);
 	}
 
 	// ====================================================================
@@ -305,16 +297,16 @@ int Transform_GetScale()
 		Script.ReplaceInline(TEXT("$EXP_UPDATED$"), *FormatScriptTransform(ExpUpdated));
 		Script.ReplaceInline(TEXT("$TOL$"), *FormatScriptFloat(Tol));
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GTransformProfile, TEXT("SettersAndGetters"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTransform_SettersAndGetters"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GTransformProfile, TEXT("int Transform_SetTranslation()"), TEXT("SetTranslation reflected in GetTranslation"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTransformProfile, TEXT("int Transform_SetScale3D()"), TEXT("SetScale3D reflected in GetScale3D"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTransformProfile, TEXT("int Transform_UpdatedMatchesNative()"), TEXT("updated matches native expected"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTransformProfile, TEXT("int Transform_UpdatedDiffersFromBaseline()"), TEXT("updated differs from baseline"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTransformProfile, TEXT("int Transform_GetLocation()"), TEXT("GetTranslation returns construction value"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTransformProfile, TEXT("int Transform_GetScale()"), TEXT("GetScale3D returns construction value"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_SetTranslation()"), TEXT("SetTranslation reflected in GetTranslation"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_SetScale3D()"), TEXT("SetScale3D reflected in GetScale3D"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_UpdatedMatchesNative()"), TEXT("updated matches native expected"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_UpdatedDiffersFromBaseline()"), TEXT("updated differs from baseline"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_GetLocation()"), TEXT("GetTranslation returns construction value"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Transform_GetScale()"), TEXT("GetScale3D returns construction value"), 1);
 	}
 };
 

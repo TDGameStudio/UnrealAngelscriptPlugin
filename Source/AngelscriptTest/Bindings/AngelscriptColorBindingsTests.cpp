@@ -4,7 +4,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -13,9 +12,6 @@
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GColorProfile{
-	TEXT("Color"), TEXT(""), TEXT("ASColor"), TEXT("Color"), TEXT("ColorBindings"),
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptColorBindingsTest,
 	"Angelscript.TestModule.Bindings.Color",
@@ -28,7 +24,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptColorBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GColorProfile, TEXT("FColorCtor"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASColor_FColorCtor"), TEXT(R"(
 int FColor_RedComponent()
 {
 	FColor C = FColor(255, 128, 64, 255);
@@ -40,7 +36,7 @@ int FColor_RedComponent()
 			TestRunner->AddInfo(TEXT("FColor not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GColorProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int FColor_RedComponent()"),
 			TEXT("FColor red component is 255"), 255);
 	}
@@ -49,7 +45,7 @@ int FColor_RedComponent()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GColorProfile, TEXT("FLinearCtor"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASColor_FLinearCtor"), TEXT(R"(
 int FLinearColor_IsBlack()
 {
 	FLinearColor C = FLinearColor(0.0, 0.0, 0.0, 1.0);
@@ -61,7 +57,7 @@ int FLinearColor_IsBlack()
 			TestRunner->AddInfo(TEXT("FLinearColor not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GColorProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int FLinearColor_IsBlack()"),
 			TEXT("FLinearColor black check"), 1);
 	}
@@ -70,7 +66,7 @@ int FLinearColor_IsBlack()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GColorProfile, TEXT("ToLinear"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASColor_ToLinear"), TEXT(R"(
 int FColor_ToLinearConversion()
 {
 	FColor C = FColor(255, 0, 0, 255);
@@ -83,7 +79,7 @@ int FColor_ToLinearConversion()
 			TestRunner->AddInfo(TEXT("FColor.ReinterpretAsLinear not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GColorProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int FColor_ToLinearConversion()"),
 			TEXT("FColor to linear has non-zero red"), 1);
 	}

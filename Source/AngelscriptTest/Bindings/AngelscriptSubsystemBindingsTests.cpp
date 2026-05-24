@@ -13,7 +13,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
@@ -38,13 +37,6 @@ using namespace AngelscriptReflectiveAccess;
 using namespace AngelscriptTestBindings;
 using namespace AngelscriptTestSupport;
 
-static const FBindingsCoverageProfile GSubsystemProfile{
-	TEXT("Subsystem"),
-	TEXT(""),
-	TEXT("ASSubsystem"),
-	TEXT("Subsystem"),
-	TEXT("SubsystemBindings"),
-};
 
 namespace AngelscriptSubsystemBindingsTest_Private
 {
@@ -265,7 +257,7 @@ int VerifySubsystemNamespaceHelpers(
 }
 )");
 
-		FCoverageModuleScope ModuleScope(*TestRunner, Engine, GSubsystemProfile, TEXT("NamespaceHelpers"), ScriptSource);
+		FCoverageModuleScope ModuleScope(*TestRunner, Engine, TEXT("ASSubsystem_NamespaceHelpers"), ScriptSource);
 		if (!ModuleScope.IsValid())
 		{
 			return;
@@ -344,7 +336,7 @@ int VerifyNativeSubsystemStaticGetAccessors(
 }
 )");
 
-		FCoverageModuleScope ModuleScope(*TestRunner, Engine, GSubsystemProfile, TEXT("NativeStaticGet"), ScriptSource);
+		FCoverageModuleScope ModuleScope(*TestRunner, Engine, TEXT("ASSubsystem_NativeStaticGet"), ScriptSource);
 		if (!ModuleScope.IsValid())
 		{
 			return;
@@ -470,7 +462,7 @@ int VerifyAmbientLocalPlayerSubsystemAccessor(UEnhancedInputLocalPlayerSubsystem
 }
 )");
 
-		FCoverageModuleScope ModuleScope(*TestRunner, Engine, GSubsystemProfile, TEXT("LocalPlayer"), ScriptSource);
+		FCoverageModuleScope ModuleScope(*TestRunner, Engine, TEXT("ASSubsystem_LocalPlayer"), ScriptSource);
 		if (!ModuleScope.IsValid())
 		{
 			return;

@@ -12,7 +12,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -25,13 +24,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GObjectProfile{
-	TEXT("Object"),             // Theme
-	TEXT(""),                   // Variant
-	TEXT("ASObject"),           // ModulePrefix
-	TEXT("Object"),             // CasePrefix
-	TEXT("ObjectBindings"),     // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -57,7 +49,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptObjectBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GObjectProfile, TEXT("ObjectPtrCompat"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASObject_ObjectPtrCompat"), TEXT(R"(
 int ObjPtr_DefaultIsNull()
 {
 	TObjectPtr<UTexture2D> Empty;
@@ -110,11 +102,11 @@ int ObjPtr_Copy()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GObjectProfile, TEXT("int ObjPtr_DefaultIsNull()"), TEXT("default TObjectPtr is null"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GObjectProfile, TEXT("int ObjPtr_Construct()"), TEXT("TObjectPtr construct from raw pointer"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GObjectProfile, TEXT("int ObjPtr_Assign()"), TEXT("TObjectPtr assign from raw pointer"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GObjectProfile, TEXT("int ObjPtr_ImplicitConvert()"), TEXT("TObjectPtr implicit conversion to raw pointer"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GObjectProfile, TEXT("int ObjPtr_Copy()"), TEXT("TObjectPtr copy equality"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ObjPtr_DefaultIsNull()"), TEXT("default TObjectPtr is null"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ObjPtr_Construct()"), TEXT("TObjectPtr construct from raw pointer"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ObjPtr_Assign()"), TEXT("TObjectPtr assign from raw pointer"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ObjPtr_ImplicitConvert()"), TEXT("TObjectPtr implicit conversion to raw pointer"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ObjPtr_Copy()"), TEXT("TObjectPtr copy equality"), 1);
 	}
 
 	// ====================================================================
@@ -126,7 +118,7 @@ int ObjPtr_Copy()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GObjectProfile, TEXT("SoftObjectPtrCompat"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASObject_SoftObjectPtrCompat"), TEXT(R"(
 int SoftPtr_DefaultState()
 {
 	TSoftObjectPtr<UTexture2D> Empty;
@@ -248,14 +240,14 @@ int SoftPtr_Reset()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GObjectProfile, TEXT("int SoftPtr_DefaultState()"), TEXT("default TSoftObjectPtr is null and invalid"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GObjectProfile, TEXT("int SoftPtr_Construct()"), TEXT("TSoftObjectPtr construct from raw pointer"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GObjectProfile, TEXT("int SoftPtr_PathAndValidity()"), TEXT("TSoftObjectPtr path and validity accessors"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GObjectProfile, TEXT("int SoftPtr_ConstructFromPath()"), TEXT("TSoftObjectPtr construct and assign from FSoftObjectPath"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GObjectProfile, TEXT("int SoftPtr_AssignAndConvert()"), TEXT("TSoftObjectPtr assign and Get conversion"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GObjectProfile, TEXT("int SoftPtr_CopyEquality()"), TEXT("TSoftObjectPtr copy equality"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GObjectProfile, TEXT("int SoftPtr_ArrayOperations()"), TEXT("TSoftObjectPtr TArray Add/Contains"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GObjectProfile, TEXT("int SoftPtr_Reset()"), TEXT("TSoftObjectPtr Reset clears to null"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_DefaultState()"), TEXT("default TSoftObjectPtr is null and invalid"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_Construct()"), TEXT("TSoftObjectPtr construct from raw pointer"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_PathAndValidity()"), TEXT("TSoftObjectPtr path and validity accessors"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_ConstructFromPath()"), TEXT("TSoftObjectPtr construct and assign from FSoftObjectPath"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_AssignAndConvert()"), TEXT("TSoftObjectPtr assign and Get conversion"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_CopyEquality()"), TEXT("TSoftObjectPtr copy equality"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_ArrayOperations()"), TEXT("TSoftObjectPtr TArray Add/Contains"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_Reset()"), TEXT("TSoftObjectPtr Reset clears to null"), 1);
 	}
 };
 

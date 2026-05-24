@@ -367,7 +367,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 	using namespace AngelscriptTestSupport;
 
 
-
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 

@@ -17,7 +17,6 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -35,13 +34,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GSetProfile{
-	TEXT("Set"),         // Theme
-	TEXT(""),            // Variant
-	TEXT("ASSet"),       // ModulePrefix
-	TEXT("Set"),         // CasePrefix
-	TEXT("SetBindings"), // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Section: SetCompat (9 cases from original if/return)
@@ -51,10 +43,9 @@ namespace
 {
 	bool RunSetSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("Compat"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASSet_Compat"), TEXT(R"(
 int SetEmpty_IsEmpty()
 {
 	TSet<int> S;
@@ -144,7 +135,7 @@ int SetFName_Contains()
 			{ TEXT("int SetReset_IsEmpty()"),       TEXT("TSet Reset should leave set empty"),           1 },
 			{ TEXT("int SetFName_Contains()"),      TEXT("TSet<FName> should contain added FName"),      1 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -159,10 +150,9 @@ int SetFName_Contains()
 
 	bool RunSetTypeMatrixSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("TypeMatrix"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASSet_TypeMatrix"), TEXT(R"(
 // ---- FString ----
 int SetString_AddDedupNum()
 {
@@ -376,7 +366,7 @@ int SetVector_RemoveContains()
 			{ TEXT("int SetVector_RemoveNum()"),         TEXT("TSet<FVector> Num should drop to 1 after Remove"),             1 },
 			{ TEXT("int SetVector_RemoveContains()"),    TEXT("TSet<FVector> should not contain removed vector"),             0 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -389,10 +379,9 @@ int SetVector_RemoveContains()
 
 	bool RunSetApiCoverageSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("ApiCoverage"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASSet_ApiCoverage"), TEXT(R"(
 int SetApi_AppendArray_Num()
 {
 	TSet<int> S;
@@ -545,7 +534,7 @@ int SetApi_Iterator_Sum()
 			{ TEXT("int SetApi_Empty_Slack_IsEmpty()"),          TEXT("Empty(16) should clear contents"),                       1 },
 			{ TEXT("int SetApi_Iterator_Sum()"),                 TEXT("Iterator walk sum of {2,3,5} should be 10"),             10 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -556,10 +545,9 @@ int SetApi_Iterator_Sum()
 
 	bool RunSetReturnTypeSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("ReturnType"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASSet_ReturnType"), TEXT(R"(
 // Direct bool returns from TSet operations
 bool SetRet_Bool_Contains()
 {
@@ -730,17 +718,17 @@ int SetRet_VerifyStringArray_Num()
 		bool bPassed = true;
 
 		// Direct bool return assertions
-		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool SetRet_Bool_Contains()"), TEXT("bool return: Contains existing should be true"), true);
-		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool SetRet_Bool_NotContains()"), TEXT("bool return: Contains missing should be false"), false);
-		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool SetRet_Bool_Remove()"), TEXT("bool return: Remove existing should be true"), true);
-		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool SetRet_Bool_IsEmpty()"), TEXT("bool return: empty set IsEmpty should be true"), true);
-		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool SetRet_Bool_IsEmptyAfterAdd()"), TEXT("bool return: non-empty set IsEmpty should be false"), false);
-		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool SetRet_Bool_OpEquals()"), TEXT("bool return: equal sets opEquals should be true"), true);
 
 		// Container return verified via script-side int wrappers
@@ -759,7 +747,7 @@ int SetRet_VerifyStringArray_Num()
 			{ TEXT("int SetRet_VerifyVectorSet_ContainsFirst()"),    TEXT("TSet<FVector> return: should contain (1,0,0)"),         1 },
 			{ TEXT("int SetRet_VerifyStringArray_Num()"),            TEXT("TArray<FString> from TSet return: Num should be 2"),    2 },
 		};
-		bPassed &= ExpectGlobalInts(Test, Engine, Module, Profile, IntCases);
+		bPassed &= AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  IntCases);
 
 		return bPassed;
 	}
@@ -770,10 +758,9 @@ int SetRet_VerifyStringArray_Num()
 
 	bool RunSetLogDiagnosticSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("LogDiag"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASSet_LogDiag"), TEXT(R"(
 int SetLog_Types()
 {
 	TSet<int> SInt;
@@ -810,7 +797,7 @@ int SetLog_Types()
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
-		return ExpectGlobalInt(Test, Engine, Module, Profile,
+		return AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int SetLog_Types()"),
 			TEXT("Log diagnostic: TSet types should compile and log without crash"), 1);
 	}
@@ -836,11 +823,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSetBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-		RunSetSection(*TestRunner, Engine, GSetProfile);
-		RunSetTypeMatrixSection(*TestRunner, Engine, GSetProfile);
-		RunSetApiCoverageSection(*TestRunner, Engine, GSetProfile);
-		RunSetReturnTypeSection(*TestRunner, Engine, GSetProfile);
-		RunSetLogDiagnosticSection(*TestRunner, Engine, GSetProfile);
+		RunSetSection(*TestRunner, Engine);
+		RunSetTypeMatrixSection(*TestRunner, Engine);
+		RunSetApiCoverageSection(*TestRunner, Engine);
+		RunSetReturnTypeSection(*TestRunner, Engine);
+		RunSetLogDiagnosticSection(*TestRunner, Engine);
 
 		}
 	}

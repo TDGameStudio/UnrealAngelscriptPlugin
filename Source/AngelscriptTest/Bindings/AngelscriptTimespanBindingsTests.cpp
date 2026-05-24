@@ -18,7 +18,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -33,13 +32,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GTimespanProfile{
-	TEXT("Timespan"),            // Theme
-	TEXT(""),                    // Variant
-	TEXT("ASTimespan"),          // ModulePrefix
-	TEXT("Timespan"),            // CasePrefix
-	TEXT("TimespanBindings"),    // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Helpers
@@ -160,13 +152,13 @@ int Timespan_DetailedCtor_Ticks()
 		InjectTSTokens(Source, TEXT("WB"), WB);
 		InjectTSTokens(Source, TEXT("DB"), DB);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GTimespanProfile, TEXT("Construction"), Source);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTimespan_Construction"), Source);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_TicksCtor_Ticks()"), TEXT("Tick-based ctor should produce correct ticks"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_WholeCtor_Ticks()"), TEXT("4-arg ctor should produce correct ticks"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_DetailedCtor_Ticks()"), TEXT("5-arg ctor should produce correct ticks"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_TicksCtor_Ticks()"), TEXT("Tick-based ctor should produce correct ticks"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_WholeCtor_Ticks()"), TEXT("4-arg ctor should produce correct ticks"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_DetailedCtor_Ticks()"), TEXT("5-arg ctor should produce correct ticks"), 1);
 	}
 
 	// ====================================================================
@@ -221,16 +213,16 @@ int Timespan_Detailed_Totals()
 		InjectTSTokens(Source, TEXT("TB"), TB);
 		InjectTSTokens(Source, TEXT("DB"), DB);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GTimespanProfile, TEXT("ComponentAccess"), Source);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTimespan_ComponentAccess"), Source);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_TicksBased_Components()"), TEXT("Tick-based Days/Hours/Minutes/Seconds should match native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_TicksBased_Fractions()"), TEXT("Tick-based fraction accessors should match native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_TicksBased_Totals()"), TEXT("Tick-based total accessors should match native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_Detailed_Components()"), TEXT("Detailed Days/Hours/Minutes/Seconds should match native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_Detailed_Fractions()"), TEXT("Detailed fraction accessors should match native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_Detailed_Totals()"), TEXT("Detailed total accessors should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_TicksBased_Components()"), TEXT("Tick-based Days/Hours/Minutes/Seconds should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_TicksBased_Fractions()"), TEXT("Tick-based fraction accessors should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_TicksBased_Totals()"), TEXT("Tick-based total accessors should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_Detailed_Components()"), TEXT("Detailed Days/Hours/Minutes/Seconds should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_Detailed_Fractions()"), TEXT("Detailed fraction accessors should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_Detailed_Totals()"), TEXT("Detailed total accessors should match native"), 1);
 	}
 
 	// ====================================================================
@@ -270,13 +262,13 @@ int Timespan_Detailed_FormattedString()
 		InjectTSTokens(Source, TEXT("DB"), DB);
 		Source.ReplaceInline(TEXT("$DFMT$"), *FString(DetailedFormat).ReplaceCharWithEscapedChar(), ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GTimespanProfile, TEXT("Formatting"), Source);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTimespan_Formatting"), Source);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_TicksBased_DefaultString()"), TEXT("Tick-based ToString should match native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_Detailed_DefaultString()"), TEXT("Detailed ToString should match native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_Detailed_FormattedString()"), TEXT("Detailed formatted ToString should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_TicksBased_DefaultString()"), TEXT("Tick-based ToString should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_Detailed_DefaultString()"), TEXT("Detailed ToString should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_Detailed_FormattedString()"), TEXT("Detailed formatted ToString should match native"), 1);
 	}
 
 	// ====================================================================
@@ -322,13 +314,13 @@ int Timespan_Ratio()
 		Source.ReplaceInline(TEXT("$MOD_TICKS$"), *I64(ModRes.Ticks), ESearchCase::CaseSensitive);
 		Source.ReplaceInline(TEXT("$RATIO$"), *F64(Ratio), ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GTimespanProfile, TEXT("Arithmetic"), Source);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTimespan_Arithmetic"), Source);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_Negate_Duration()"), TEXT("Negate then GetDuration should match native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_Modulo()"), TEXT("Modulo operator should match native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_Ratio()"), TEXT("Ratio should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_Negate_Duration()"), TEXT("Negate then GetDuration should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_Modulo()"), TEXT("Modulo operator should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_Ratio()"), TEXT("Ratio should match native"), 1);
 	}
 
 	// ====================================================================
@@ -406,15 +398,15 @@ int Timespan_MutMod()
 		Source.ReplaceInline(TEXT("$DIV_TICKS$"), *I64(AfterDiv.Ticks), ESearchCase::CaseSensitive);
 		Source.ReplaceInline(TEXT("$MOD_TICKS$"), *I64(AfterMod.Ticks), ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GTimespanProfile, TEXT("MutableOperators"), Source);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTimespan_MutableOperators"), Source);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_MutAdd()"), TEXT("+= should match native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_MutSub()"), TEXT("-= should match native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_MutMul()"), TEXT("*= should match native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_MutDiv()"), TEXT("/= should match native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_MutMod()"), TEXT("%= should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_MutAdd()"), TEXT("+= should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_MutSub()"), TEXT("-= should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_MutMul()"), TEXT("*= should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_MutDiv()"), TEXT("/= should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_MutMod()"), TEXT("%= should match native"), 1);
 	}
 
 	// ====================================================================
@@ -426,7 +418,7 @@ int Timespan_MutMod()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GTimespanProfile, TEXT("Comparison"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTimespan_Comparison"), TEXT(R"(
 int Timespan_MaxCmpMin()
 {
 	return (FTimespan::MaxValue().opCmp(FTimespan::MinValue()) > 0) ? 1 : 0;
@@ -439,8 +431,8 @@ int Timespan_MinCmpMax()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_MaxCmpMin()"), TEXT("MaxValue should compare greater than MinValue"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GTimespanProfile, TEXT("int Timespan_MinCmpMax()"), TEXT("MinValue should compare less than MaxValue"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_MaxCmpMin()"), TEXT("MaxValue should compare greater than MinValue"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Timespan_MinCmpMax()"), TEXT("MinValue should compare less than MaxValue"), 1);
 	}
 };
 

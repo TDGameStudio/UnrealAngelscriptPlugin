@@ -1,7 +1,6 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptFunctionalTestUtils.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -26,8 +25,6 @@ namespace AngelscriptTest_Inheritance_AngelscriptInheritanceTestCaseTests_Privat
 	}
 }
 
-
-static const FBindingsCoverageProfile GInheritanceProfile{TEXT("Inheritance"),TEXT(""),TEXT("ASInheritance"),TEXT("Inheritance"),TEXT("InheritanceTests")};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptInheritanceFunctionalTests, "Angelscript.TestModule.Inheritance", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {

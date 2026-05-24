@@ -19,7 +19,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -33,13 +32,6 @@ using namespace AngelscriptReflectiveAccess;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GCoreMiscProfile{
-	TEXT("CoreMisc"),              // Theme
-	TEXT(""),                      // Variant
-	TEXT("ASCoreMisc"),            // ModulePrefix
-	TEXT("CoreMisc"),             // CasePrefix
-	TEXT("CoreMiscBindings"),     // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -65,7 +57,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoreMiscBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GCoreMiscProfile, TEXT("GuidCompat"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCoreMisc_GuidCompat"), TEXT(R"(
 int ExplicitGuidIsValid()
 {
 	FGuid ExplicitGuid(1, 2, 3, 4);
@@ -138,15 +130,15 @@ int GuidGetTypeHashNonZero()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int ExplicitGuidIsValid()"), TEXT("Explicit FGuid should be valid"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int GuidToStringNotEmpty()"), TEXT("FGuid ToString should not be empty"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int GuidParseRoundTrip()"), TEXT("FGuid Parse round-trip should match"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int GuidOpCmpEqual()"), TEXT("FGuid opCmp should return 0 for equal guids"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int GuidParseExactRoundTrip()"), TEXT("FGuid ParseExact round-trip should match"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int GuidCopyEquality()"), TEXT("FGuid copy should equal original"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int GuidInvalidateWorks()"), TEXT("Invalidated FGuid should not be valid"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int GuidNewGuidIsValid()"), TEXT("NewGuid should be valid"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int GuidGetTypeHashNonZero()"), TEXT("NewGuid type hash should be non-zero"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ExplicitGuidIsValid()"), TEXT("Explicit FGuid should be valid"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GuidToStringNotEmpty()"), TEXT("FGuid ToString should not be empty"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GuidParseRoundTrip()"), TEXT("FGuid Parse round-trip should match"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GuidOpCmpEqual()"), TEXT("FGuid opCmp should return 0 for equal guids"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GuidParseExactRoundTrip()"), TEXT("FGuid ParseExact round-trip should match"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GuidCopyEquality()"), TEXT("FGuid copy should equal original"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GuidInvalidateWorks()"), TEXT("Invalidated FGuid should not be valid"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GuidNewGuidIsValid()"), TEXT("NewGuid should be valid"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GuidGetTypeHashNonZero()"), TEXT("NewGuid type hash should be non-zero"), 1);
 	}
 
 	// ====================================================================
@@ -158,7 +150,7 @@ int GuidGetTypeHashNonZero()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GCoreMiscProfile, TEXT("PathsCompat"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCoreMisc_PathsCompat"), TEXT(R"(
 int ProjectDirNotEmpty()
 {
 	return (!FPaths::ProjectDir().IsEmpty()) ? 1 : 0;
@@ -222,17 +214,17 @@ int FileExistsForProjectDirIsFalse()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int ProjectDirNotEmpty()"), TEXT("ProjectDir should not be empty"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int CombinePathsNotEmpty()"), TEXT("CombinePaths should not be empty"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int IsRelativeWorks()"), TEXT("Relative path should be detected"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int ConvertRelativeToFullNotEmpty()"), TEXT("ConvertRelativePathToFull should not be empty"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int ConvertRelativeToFullFromBaseNotEmpty()"), TEXT("ConvertRelativePathToFull from base should not be empty"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int GetExtensionCorrect()"), TEXT("GetExtension should return .as"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int GetCleanFilenameCorrect()"), TEXT("GetCleanFilename should return Test.as"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int GetBaseFilenameCorrect()"), TEXT("GetBaseFilename should return Test"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int GetPathNotEmpty()"), TEXT("GetPath should not be empty"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int DirectoryExistsForProjectDir()"), TEXT("DirectoryExists for ProjectDir should be true"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int FileExistsForProjectDirIsFalse()"), TEXT("FileExists for ProjectDir should be false"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ProjectDirNotEmpty()"), TEXT("ProjectDir should not be empty"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CombinePathsNotEmpty()"), TEXT("CombinePaths should not be empty"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IsRelativeWorks()"), TEXT("Relative path should be detected"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ConvertRelativeToFullNotEmpty()"), TEXT("ConvertRelativePathToFull should not be empty"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ConvertRelativeToFullFromBaseNotEmpty()"), TEXT("ConvertRelativePathToFull from base should not be empty"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetExtensionCorrect()"), TEXT("GetExtension should return .as"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetCleanFilenameCorrect()"), TEXT("GetCleanFilename should return Test.as"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetBaseFilenameCorrect()"), TEXT("GetBaseFilename should return Test"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GetPathNotEmpty()"), TEXT("GetPath should not be empty"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DirectoryExistsForProjectDir()"), TEXT("DirectoryExists for ProjectDir should be true"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FileExistsForProjectDirIsFalse()"), TEXT("FileExists for ProjectDir should be false"), 1);
 	}
 
 	// ====================================================================
@@ -337,11 +329,11 @@ int Entry()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GCoreMiscProfile, TEXT("PathsExactCompat"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCoreMisc_PathsExactCompat"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int Entry()"), TEXT("Paths exact compat should match native FPaths results"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Entry()"), TEXT("Paths exact compat should match native FPaths results"), 1);
 	}
 
 	// ====================================================================
@@ -353,7 +345,7 @@ int Entry()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GCoreMiscProfile, TEXT("NumberFormattingOptions"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCoreMisc_NumberFormattingOptions"), TEXT(R"(
 int OptionsIdenticalAfterCopy()
 {
 	FNumberFormattingOptions Options;
@@ -390,9 +382,9 @@ int DefaultGroupedNotIdenticalToUngrouped()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int OptionsIdenticalAfterCopy()"), TEXT("Copied options should be identical"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int OptionsHashMatchAfterCopy()"), TEXT("Copied options type hash should match"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCoreMiscProfile, TEXT("int DefaultGroupedNotIdenticalToUngrouped()"), TEXT("DefaultWithGrouping should differ from DefaultNoGrouping"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int OptionsIdenticalAfterCopy()"), TEXT("Copied options should be identical"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int OptionsHashMatchAfterCopy()"), TEXT("Copied options type hash should match"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DefaultGroupedNotIdenticalToUngrouped()"), TEXT("DefaultWithGrouping should differ from DefaultNoGrouping"), 1);
 	}
 };
 

@@ -1,6 +1,6 @@
 # AngelscriptTest/Shared/ Layout Guide
 
-This directory holds the test-side facade and supporting helpers used by the entire `AngelscriptTest` module. It was reorganised by OpenSpec change `refactor-as-test-shared-layout-and-naming` (Phase 1, May 2026) — most notably the 1093-line `AngelscriptTestUtilities.h` "god header" was split into six themed sub-headers behind a thin umbrella.
+This directory holds the test-side facade and supporting helpers used by the entire `AngelscriptTest` module. It was reorganised by OpenSpec change `refactor-as-test-shared-layout-and-naming` (Phases 1–5, May 2026) — most notably the 1093-line `AngelscriptTestUtilities.h` "god header" was split into six themed sub-headers behind a thin umbrella, AS execution was consolidated into `AngelscriptTestExecute.h`, and `FBindingsCoverageProfile` was removed (Phase 5).
 
 ## Recommended entry points
 
@@ -30,20 +30,19 @@ This directory holds the test-side facade and supporting helpers used by the ent
 | `AngelscriptTestEngineCleanup.h` | ~195 | `FDetachedASTypeCleanupResult` + `CleanupDetachedASTypesForGarbageCollection`. **Sole** sub-header that includes editor-only Blueprint headers (`BlueprintActionDatabase.h`, `K2Node_GetSubsystem.h`, `Subsystems/Subsystem.h`). |
 | `AngelscriptTestMemoryProbe.h` | ~110 | `SampleBindFreeMem`, `AcquireTransientFullTestEngine` (the real definition), `AcquireTransientFullTestEngineWithProbe`. Depends on Acquisition + Cleanup. |
 | `AngelscriptTestModuleBuilder.h` | ~220 | `ReportCompileDiagnostics`, `FScopedAutomaticImportsOverride`, `BuildModule`, `GetFunctionByDecl`. |
-| `AngelscriptTestExecute.h` | ~175 | Currently: `ExecuteIntFunction[ExpectingScriptException]`, `ExecuteInt64Function`. Phase 2 will fold `AngelscriptGlobalFunctionInvoker.h` + `AngelscriptBindingsAssertions.h` into here; Phase 3 will introduce `FAngelscriptTestExecutor` + the `Execute*` naming family (`ExecuteAndExpect*`, `ExecuteAndExpectNear*`, `ExecuteBatchAndExpect*`, `ExecuteAndValidate<T>`, `CompileAndExpectFailure`) with all legacy names kept as permanent inline aliases. |
+| `AngelscriptTestExecute.h` | ~1280 | **Canonical AS execution entry**: `FAngelscriptTestExecutor`, `AngelscriptTest::Execute*` / `Compile*` families, `AngelscriptReflectiveAccess::ResolveFunction*`, legacy `ExpectGlobal*` / `FASGlobalFunctionInvoker` inline aliases, and `AngelscriptTestSupport::ExecuteIntFunction*` trio. Does **not** depend on Bindings profile types (Phase 5). |
 | `AngelscriptTestFixture.h` | ~120 | `ETestEngineMode` + `FAngelscriptTestFixture`. The **only** Shared/* header that depends on the other five themed sub-headers. |
 
-### Bindings cluster (sibling headers, not part of the Phase 1 split)
+### Bindings cluster (sibling headers)
 
-These predate the split and remain unchanged. Phase 2/3 will fold the first two into `AngelscriptTestExecute.h` and reduce them to ~3-line forward shims (kept indefinitely for source-level compatibility).
+| Header | Lines | Role |
+|---|---|---|
+| `AngelscriptGlobalFunctionInvoker.h` | ~10 | Permanent forward shim → `AngelscriptTestExecute.h`. |
+| `AngelscriptBindingsAssertions.h` | ~14 | Permanent forward shim → `AngelscriptTestExecute.h`. |
+| `AngelscriptBindingsModuleBuilder.h` | ~100 | `FCoverageModuleScope` — AS module lifecycle RAII; takes explicit `ModuleName` + `Source` (Phase 5; no Profile). |
+| `AngelscriptBindingsExampleSection.h` | ~90 | Official example: `AngelscriptTest::Execute*` + explicit module names. |
 
-| Header | Lines | Role | Phase 2/3 plan |
-|---|---|---|---|
-| `AngelscriptGlobalFunctionInvoker.h` | ~440 | `AngelscriptReflectiveAccess::ResolveFunctionByDecl/Name`, `FASGlobalFunctionInvoker`. | Body folded into `AngelscriptTestExecute.h`; this file becomes a forward shim. `FASGlobalFunctionInvoker` becomes a `using`-alias of the new `FAngelscriptTestExecutor`. |
-| `AngelscriptBindingsAssertions.h` | ~410 | `AngelscriptTestBindings::ExpectGlobal*` family + `ExpectBindingCompileFailure` + `Detail::TraceCase`. | Body folded into `AngelscriptTestExecute.h`; this file becomes a forward shim. All public function names retained as inline forwards. |
-| `AngelscriptBindingsCoverage.h` | ~115 | `FBindingsCoverageProfile` + `FCoverageModuleScope`. | Phase 5 adds full-word field aliases (`BodyInstance` for `BodyInst`, etc.) alongside the existing abbreviated names. |
-| `AngelscriptBindingsModuleBuilder.h` | ~100 | Coverage-specific module compile + discard helper. | Unchanged. |
-| `AngelscriptBindingsExampleSection.h` | ~90 | Canonical 80-line example using the bindings stack. | Phase 4 rewrites the example using the new `Execute*` API surface. |
+**Deleted in Phase 5:** `AngelscriptBindingsCoverage.h` (`FBindingsCoverageProfile`, `FormatCaseLabel`, `MakeCoverageModuleName`). Bindings tests pass full-word module names directly to `FCoverageModuleScope` and plain case labels to `Execute*` / legacy `ExpectGlobal*`.
 
 ### Other Shared/* headers (no change in this OpenSpec change)
 

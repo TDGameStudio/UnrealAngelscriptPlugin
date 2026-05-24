@@ -21,7 +21,6 @@
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
 #include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -37,13 +36,6 @@ using namespace AngelscriptReflectiveAccess;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GMathBindingsProfile{
-	TEXT("Math"),                // Theme
-	TEXT(""),                    // Variant
-	TEXT("ASMathBindings"),      // ModulePrefix
-	TEXT("Math"),                // CasePrefix
-	TEXT("MathBindings"),        // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Helpers (retained from original)
@@ -245,7 +237,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMathBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GMathBindingsProfile, TEXT("ShortestPath"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMath_ShortestPath"), TEXT(R"(
 FRotator GetShortestLerp()
 {
 	const FRotator A = FRotator(0.0f, 170.0f, 0.0f);
@@ -400,7 +392,7 @@ FVector GetMoveLargeStep()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GMathBindingsProfile, TEXT("PlanarProjection"), TEXT(R"AS(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMath_PlanarProjection"), TEXT(R"AS(
 double GetVectorSize2D() { const FVector V = FVector(3.0f, 4.0f, 12.0f); return V.Size2D(FVector(0.0f, 0.0f, 1.0f)); }
 double GetVectorSizeSquared2D() { const FVector V = FVector(3.0f, 4.0f, 12.0f); return V.SizeSquared2D(FVector(0.0f, 0.0f, 1.0f)); }
 FVector GetVectorProjected() { const FVector V = FVector(3.0f, 4.0f, 12.0f); return V.PointPlaneProject(FVector(0.0f, 0.0f, 2.0f), FVector(0.0f, 0.0f, 1.0f)); }

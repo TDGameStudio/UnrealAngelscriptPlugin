@@ -10,7 +10,7 @@
 //   1. BasicCompileAndRun   — minimal CQTest skeleton: compile AS, assert one
 //                             int return.
 //   2. MultipleAssertions   — batch assertions via FExpectedGlobalInt array +
-//                             ExpectGlobalInts, with FBindingsCoverageProfile.
+//                             ExpectGlobalInts.
 //   3. ReturnStruct         — AS returns FString / struct, C++ reads it via
 //                             ExpectGlobalReturnCustom<T> + validator lambda.
 //   4. PassArguments        — C++ passes typed arguments into AS globals via
@@ -60,14 +60,12 @@
 //   Production example  : AngelscriptTest/Bindings/AngelscriptFStringBindingsTests.cpp
 //   Assertion helpers   : AngelscriptTest/Shared/AngelscriptBindingsAssertions.h
 //   Module builder      : AngelscriptTest/Shared/AngelscriptBindingsModuleBuilder.h
-//   Coverage profile    : AngelscriptTest/Shared/AngelscriptBindingsCoverage.h
 //   Function invoker    : AngelscriptTest/Shared/AngelscriptGlobalFunctionInvoker.h
 //   Engine macros       : AngelscriptTest/Shared/AngelscriptTestMacros.h
 // =============================================================================
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -77,15 +75,7 @@ using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 using namespace AngelscriptReflectiveAccess;
 
-// Profile describes the test family for labelled diagnostics.
-// Fields: Theme, Variant, ModulePrefix, CasePrefix, LogCategory.
-static const FBindingsCoverageProfile GTemplateProfile{
-	TEXT("Template"),         // Theme
-	TEXT("CQTest"),           // Variant
-	TEXT("ASTemplateCQ"),     // ModulePrefix — used by FCoverageModuleScope
-	TEXT("CQTest"),           // CasePrefix — prepended to case labels
-	TEXT("CQTestTemplate"),   // LogCategory
-};
+
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptTemplateCQTest,
 	"Angelscript.Template.CQTest",
@@ -119,7 +109,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTemplateCQTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GTemplateProfile, TEXT("Basic"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTemplate_CQTest_Basic"), TEXT(R"(
 int GetFortyTwo()
 {
 	return 42;
@@ -128,7 +118,7 @@ int GetFortyTwo()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GTemplateProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int GetFortyTwo()"),
 			TEXT("Literal 42 round-trips through AS"),
 			42);
@@ -148,7 +138,7 @@ int GetFortyTwo()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GTemplateProfile, TEXT("Multi"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTemplate_CQTest_Multi"), TEXT(R"(
 int Add()      { return 2 + 3; }
 int Subtract() { return 10 - 7; }
 int Multiply() { return 4 * 5; }
@@ -166,7 +156,7 @@ int Modulo()   { return 17 % 5; }
 			{ TEXT("int Divide()"),   TEXT("20 / 4 = 5"),     5 },
 			{ TEXT("int Modulo()"),   TEXT("17 % 5 = 2"),     2 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GTemplateProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// =================================================================
@@ -182,7 +172,7 @@ int Modulo()   { return 17 % 5; }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GTemplateProfile, TEXT("RetStruct"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTemplate_CQTest_RetStruct"), TEXT(R"(
 FString BuildGreeting()
 {
 	return "Hello" + " " + "World";
@@ -204,7 +194,7 @@ FString FormatValue()
 		// ExpectGlobalReturnCustom<T> invokes the named no-arg function,
 		// reads the return value via GetAddressOfReturnValue, and hands
 		// it to the validator lambda.
-		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, GTemplateProfile,
+		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
 			TEXT("FString BuildGreeting()"),
 			TEXT("Concatenation produces Hello World"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
@@ -212,7 +202,7 @@ FString FormatValue()
 				return T.TestEqual(TEXT("greeting"), V, TEXT("Hello World"));
 			});
 
-		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, GTemplateProfile,
+		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
 			TEXT("FString ToUpperCase()"),
 			TEXT("ToUpper transforms to TEMPLATE"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
@@ -220,7 +210,7 @@ FString FormatValue()
 				return T.TestEqual(TEXT("upper"), V, TEXT("TEMPLATE"));
 			});
 
-		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, GTemplateProfile,
+		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
 			TEXT("FString FormatValue()"),
 			TEXT("FString::Format produces result=42"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
@@ -245,7 +235,7 @@ FString FormatValue()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GTemplateProfile, TEXT("PassArgs"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTemplate_CQTest_PassArgs"), TEXT(R"(
 int AddInts(int A, int B)
 {
 	return A + B;
@@ -328,13 +318,13 @@ int StringLen(const FString& in S)
 		//
 		// AS exception handling emits log entries at Error level that
 		// must be suppressed:
-		//   (a) Module name   — e.g. "ASTemplateCQ_CQTest_Negative"
+		//   (a) Module name   — e.g. "ASTemplate_CQTest_Negative"
 		//   (b) Function info — e.g. "void StringIndexOOB() | Line 5 | Col 2"
 		//   (c) Exception msg — e.g. "String index out of bounds"
 		// Use count=0 (any number of matches) since the module name
 		// appears once per exception.
 		TestRunner->AddExpectedErrorPlain(
-			TEXT("ASTemplateCQ_CQTest_Negative"),
+			TEXT("ASTemplate_CQTest_Negative"),
 			EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedErrorPlain(
 			TEXT("void StringIndexOOB()"),
@@ -343,7 +333,7 @@ int StringLen(const FString& in S)
 			TEXT("String index out of bounds"),
 			EAutomationExpectedErrorFlags::Contains, 0);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GTemplateProfile, TEXT("Negative"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTemplate_CQTest_Negative"), TEXT(R"(
 void StringIndexOOB()
 {
 	FString S = "AB";
@@ -353,8 +343,8 @@ void StringIndexOOB()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExecuteFunctionExpectingScriptException(
-			*TestRunner, Engine, M, GTemplateProfile,
+		AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(
+			*TestRunner, Engine, M, 
 			TEXT("void StringIndexOOB()"),
 			TEXT("String index beyond length throws"),
 			TEXT("out of bounds"));
@@ -378,7 +368,7 @@ void StringIndexOOB()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GTemplateProfile, TEXT("AssertThat"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTemplate_CQTest_AssertThat"), TEXT(R"(
 int GetValue() { return 100; }
 FString GetMessage() { return "success"; }
 )"));
@@ -390,12 +380,12 @@ FString GetMessage() { return "success"; }
 		auto& M = Mod.GetModule();
 
 		// After the guard, we know M is safe to use.
-		ExpectGlobalInt(*TestRunner, Engine, M, GTemplateProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int GetValue()"),
 			TEXT("Value is 100"),
 			100);
 
-		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, GTemplateProfile,
+		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
 			TEXT("FString GetMessage()"),
 			TEXT("Message is 'success'"),
 			[](FAutomationTestBase& T, const FString& V) -> bool

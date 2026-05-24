@@ -17,7 +17,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -33,13 +32,6 @@ using namespace AngelscriptReflectiveAccess;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GWidgetProfile{
-	TEXT("Widget"),            // Theme
-	TEXT(""),                  // Variant
-	TEXT("ASWidget"),          // ModulePrefix
-	TEXT("Widget"),            // CasePrefix
-	TEXT("WidgetBindings"),    // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -85,7 +77,7 @@ void ReadWidgetTransformNull()
 }
 )");
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GWidgetProfile, TEXT("RenderTransform"), ScriptSource);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASWidget_RenderTransform"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -120,7 +112,7 @@ void ReadWidgetTransformNull()
 		TestRunner->AddExpectedError(TEXT("int ReadWidgetTransform(UWidget) | Line 4 | Col 2"), EAutomationExpectedErrorFlags::Contains, 1, false);
 		TestRunner->AddExpectedError(TEXT("void ReadWidgetTransformNull() | Line 17 | Col 2"), EAutomationExpectedErrorFlags::Contains, 1, false);
 
-		ExecuteFunctionExpectingScriptException(*TestRunner, Engine, M, GWidgetProfile,
+		AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(*TestRunner, Engine, M, 
 			TEXT("void ReadWidgetTransformNull()"),
 			TEXT("GetRenderTransform should report a null-pointer diagnostic for a null widget receiver"),
 			TEXT("Null pointer access"));

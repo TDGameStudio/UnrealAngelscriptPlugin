@@ -17,7 +17,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -33,13 +32,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GGPTagContainerProfile{
-	TEXT("GameplayTagContainer"),         // Theme
-	TEXT(""),                             // Variant
-	TEXT("ASGPTagContainer"),             // ModulePrefix
-	TEXT("GPTagContainer"),               // CasePrefix
-	TEXT("GameplayTagContainerBindings"), // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Helpers
@@ -233,13 +225,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGameplayTagContainerFunctionLibraryTest,
 			MissingTag.ToString().ReplaceCharWithEscapedChar(),
 			Ref);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GGPTagContainerProfile, TEXT("RemoveTagMiss"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTagContainer_RemoveTagMiss"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GGPTagContainerProfile, TEXT("int RemoveTag_MissingParity()"), TEXT("RemoveTag missing tag preserves container"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGPTagContainerProfile, TEXT("int RemoveTag_EmptyParity()"), TEXT("RemoveTag empty tag preserves container"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGPTagContainerProfile, TEXT("int RemoveTag_PresentParity()"), TEXT("RemoveTag present tag empties container"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RemoveTag_MissingParity()"), TEXT("RemoveTag missing tag preserves container"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RemoveTag_EmptyParity()"), TEXT("RemoveTag empty tag preserves container"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RemoveTag_PresentParity()"), TEXT("RemoveTag present tag empties container"), 1);
 	}
 };
 

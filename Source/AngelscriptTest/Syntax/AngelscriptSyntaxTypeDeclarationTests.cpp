@@ -10,7 +10,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "Syntax/AngelscriptSyntaxTestHelpers.h"
@@ -24,13 +23,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GSyntaxTypeDeclProfile{
-	TEXT("Syntax"),          // Theme
-	TEXT("TypeDecl"),        // Variant
-	TEXT("ASSyntaxTD"),      // ModulePrefix
-	TEXT("TypeDecl"),        // CasePrefix
-	TEXT("SyntaxTypeDecl"),  // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -548,7 +540,7 @@ void Test() { int X = FakeNamespace::Value; }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GSyntaxTypeDeclProfile, TEXT("VarPos"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_TypeDeclaration_VarPos"), TEXT(R"(
 int Primitives()  { int A = 0; float B = 1.0f; bool C = true; int64 D = 100; return A + int(B) + (C ? 1 : 0) + int(D); }
 int ConstVar()    { const int X = 42; return X; }
 int AutoVar()     { auto X = 42; return X; }
@@ -563,7 +555,7 @@ int RefVar()      { int X = 5; int& Ref = X; Ref = 10; return X; }
 			{ TEXT("int AutoVar()"),    TEXT("auto inference"),   42 },
 			{ TEXT("int RefVar()"),     TEXT("reference var"),    10 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GSyntaxTypeDeclProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	TEST_METHOD(Variable_Negative)

@@ -8,7 +8,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -17,13 +16,6 @@
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GCpuProfilerProfile{
-	TEXT("CpuProfiler"),
-	TEXT(""),
-	TEXT("ASCpuProfiler"),
-	TEXT("CpuProfiler"),
-	TEXT("CpuProfilerBindings"),
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptCpuProfilerBindingsTest,
 	"Angelscript.TestModule.Bindings.CpuProfiler",
@@ -41,7 +33,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCpuProfilerBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GCpuProfilerProfile, TEXT("Scoped"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCpuProfiler_Scoped"), TEXT(R"(
 int ProfilerScope_CompileAndRun()
 {
 	FCpuProfilerTraceScoped Scope(n"TestScope");
@@ -54,7 +46,7 @@ int ProfilerScope_CompileAndRun()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GCpuProfilerProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int ProfilerScope_CompileAndRun()"),
 			TEXT("FCpuProfilerTraceScoped FName constructor compiles and executes"),
 			45); // sum 0..9

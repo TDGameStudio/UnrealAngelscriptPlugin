@@ -14,7 +14,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -30,13 +29,6 @@ using namespace AngelscriptReflectiveAccess;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GProfile{
-	TEXT("FrameTime"),          // Theme
-	TEXT(""),                   // Variant
-	TEXT("ASFrameTime"),        // ModulePrefix
-	TEXT("FrameTime"),          // CasePrefix
-	TEXT("FrameTimeBindings"),  // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Constants
@@ -104,7 +96,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFrameTimeBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GProfile, TEXT("AsSecondsMixin"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFrameTime_AsSecondsMixin"), TEXT(R"(
 int AsSeconds_Compiles()
 {
 	FQualifiedFrameTime DefaultTime;
@@ -116,7 +108,7 @@ int AsSeconds_Compiles()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int AsSeconds_Compiles()"),
 			TEXT("FQualifiedFrameTime.AsSeconds mixin binding should compile and be callable"),
 			1);

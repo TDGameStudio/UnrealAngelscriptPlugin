@@ -23,7 +23,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "Shared/AngelscriptTestUtilities.h"
@@ -42,13 +41,6 @@ using namespace AngelscriptReflectiveAccess;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GGameplayTagProfile{
-	TEXT("GameplayTag"),           // Theme
-	TEXT(""),                      // Variant
-	TEXT("ASGameplayTag"),         // ModulePrefix
-	TEXT("GPTag"),                 // CasePrefix
-	TEXT("GameplayTagBindings"),   // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Static helpers
@@ -292,16 +284,16 @@ int GPTag_RequestNoneInvalid()
 )"));
 		Script.ReplaceInline(TEXT("__TAG_NAME__"), *EscapedTagName);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GGameplayTagProfile, TEXT("TagCompat"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTag_TagCompat"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTag_RequestValid()"), TEXT("RequestGameplayTag with valid name should be valid"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTag_EmptyNotValid()"), TEXT("Default FGameplayTag should not be valid"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTag_EmptyEqualsEmptyTag()"), TEXT("Default tag should equal EmptyTag"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTag_EmptyNameIsNone()"), TEXT("Default tag name should be None"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTag_EmptyToStringMatchesEmptyTag()"), TEXT("Default tag ToString should match EmptyTag"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTag_RequestNoneInvalid()"), TEXT("RequestGameplayTag with None should equal EmptyTag"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTag_RequestValid()"), TEXT("RequestGameplayTag with valid name should be valid"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTag_EmptyNotValid()"), TEXT("Default FGameplayTag should not be valid"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTag_EmptyEqualsEmptyTag()"), TEXT("Default tag should equal EmptyTag"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTag_EmptyNameIsNone()"), TEXT("Default tag name should be None"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTag_EmptyToStringMatchesEmptyTag()"), TEXT("Default tag ToString should match EmptyTag"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTag_RequestNoneInvalid()"), TEXT("RequestGameplayTag with None should equal EmptyTag"), 1);
 	}
 
 	// ====================================================================
@@ -408,21 +400,21 @@ int GPTagContainer_Reset()
 )"), *TagName);
 		Script.ReplaceInline(TEXT("__TAG_NAME__"), *TagName);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GGameplayTagProfile, TEXT("Container"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTag_Container"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagContainer_EmptyIsEmpty()"), TEXT("Default container should be empty"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagContainer_EmptyEqualsEmptyContainer()"), TEXT("Default container should equal EmptyContainer"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagContainer_AddTagMakesValid()"), TEXT("Container with tag should be valid"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagContainer_NumAfterAdd()"), TEXT("Container Num after AddTag should be 1"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagContainer_HasTag()"), TEXT("Container should have added tag"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagContainer_HasTagExact()"), TEXT("Container should have exact added tag"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagContainer_First()"), TEXT("Container First should equal added tag"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagContainer_HasAnyAndAll()"), TEXT("Container HasAny/HasAll should find matching tags"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagContainer_AppendTags()"), TEXT("AppendTags should copy tags into target"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagContainer_RemoveTag()"), TEXT("RemoveTag should leave container empty"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagContainer_Reset()"), TEXT("Reset should clear container"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagContainer_EmptyIsEmpty()"), TEXT("Default container should be empty"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagContainer_EmptyEqualsEmptyContainer()"), TEXT("Default container should equal EmptyContainer"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagContainer_AddTagMakesValid()"), TEXT("Container with tag should be valid"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagContainer_NumAfterAdd()"), TEXT("Container Num after AddTag should be 1"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagContainer_HasTag()"), TEXT("Container should have added tag"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagContainer_HasTagExact()"), TEXT("Container should have exact added tag"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagContainer_First()"), TEXT("Container First should equal added tag"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagContainer_HasAnyAndAll()"), TEXT("Container HasAny/HasAll should find matching tags"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagContainer_AppendTags()"), TEXT("AppendTags should copy tags into target"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagContainer_RemoveTag()"), TEXT("RemoveTag should leave container empty"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagContainer_Reset()"), TEXT("Reset should clear container"), 1);
 	}
 
 	// ====================================================================
@@ -502,7 +494,7 @@ int GPTagEmptyContract_ComputeMask()
 )"), *TagName);
 		Script.ReplaceInline(TEXT("__TAG_NAME__"), *TagName);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GGameplayTagProfile, TEXT("EmptyContract"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTag_EmptyContract"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -616,19 +608,19 @@ int GPTagQuery_MatchesQuery()
 )"), *TagName);
 		Script.ReplaceInline(TEXT("__TAG_NAME__"), *TagName);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GGameplayTagProfile, TEXT("Query"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTag_Query"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagQuery_EmptyDefault()"), TEXT("Default query should be empty and equal EmptyQuery"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagQuery_MatchAnyNotEmpty()"), TEXT("MakeQuery_MatchAnyTags should not be empty"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagQuery_MatchAllNotEmpty()"), TEXT("MakeQuery_MatchAllTags should not be empty"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagQuery_MatchNoneNotEmpty()"), TEXT("MakeQuery_MatchNoTags should not be empty"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagQuery_MatchTagNotEmpty()"), TEXT("MakeQuery_MatchTag should not be empty"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagQuery_DifferentQueriesNotEqual()"), TEXT("Different query types should not be equal"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagQuery_CopyEquality()"), TEXT("Query copy should equal original"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagQuery_ExactMatchFactories()"), TEXT("ExactMatch factory queries should not be empty"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagQuery_MatchesQuery()"), TEXT("Container should match expected queries"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagQuery_EmptyDefault()"), TEXT("Default query should be empty and equal EmptyQuery"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagQuery_MatchAnyNotEmpty()"), TEXT("MakeQuery_MatchAnyTags should not be empty"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagQuery_MatchAllNotEmpty()"), TEXT("MakeQuery_MatchAllTags should not be empty"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagQuery_MatchNoneNotEmpty()"), TEXT("MakeQuery_MatchNoTags should not be empty"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagQuery_MatchTagNotEmpty()"), TEXT("MakeQuery_MatchTag should not be empty"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagQuery_DifferentQueriesNotEqual()"), TEXT("Different query types should not be equal"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagQuery_CopyEquality()"), TEXT("Query copy should equal original"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagQuery_ExactMatchFactories()"), TEXT("ExactMatch factory queries should not be empty"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagQuery_MatchesQuery()"), TEXT("Container should match expected queries"), 1);
 	}
 
 	// ====================================================================
@@ -682,15 +674,15 @@ int GPTagExact_RequestNoneEqualsEmpty()
 )"), *TagName);
 		Script.ReplaceInline(TEXT("__TAG_NAME__"), *TagName);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GGameplayTagProfile, TEXT("ExactQuery"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTag_ExactQuery"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagExact_GetTagName()"), TEXT("GetTagName should return the requested FName"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagExact_ToString()"), TEXT("ToString should return the tag string"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagExact_MatchTagQuery()"), TEXT("Container with tag should match MatchTag query"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagExact_EmptyNotMatchQuery()"), TEXT("Empty container should not match MatchTag query"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagExact_RequestNoneEqualsEmpty()"), TEXT("RequestGameplayTag(None) should equal EmptyTag"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagExact_GetTagName()"), TEXT("GetTagName should return the requested FName"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagExact_ToString()"), TEXT("ToString should return the tag string"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagExact_MatchTagQuery()"), TEXT("Container with tag should match MatchTag query"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagExact_EmptyNotMatchQuery()"), TEXT("Empty container should not match MatchTag query"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagExact_RequestNoneEqualsEmpty()"), TEXT("RequestGameplayTag(None) should equal EmptyTag"), 1);
 	}
 
 	// ====================================================================
@@ -787,20 +779,20 @@ int GPTagNS_NotMatchesExactParent()
 			*Fixture.SanitizedTagIdentifier, *Fixture.SanitizedParentIdentifier,
 			*Fixture.SanitizedTagIdentifier, *Fixture.SanitizedParentIdentifier);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GGameplayTagProfile, TEXT("Namespace"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTag_Namespace"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagNS_NamespaceTagValid()"), TEXT("Namespace tag global should be valid"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagNS_NamespaceTagEqualsRequested()"), TEXT("Namespace tag should equal RequestGameplayTag result"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagNS_NamespaceTagNameMatches()"), TEXT("Namespace tag name should match requested"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagNS_NamespaceTagToStringMatches()"), TEXT("Namespace tag ToString should match requested"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagNS_ParentTagValid()"), TEXT("Namespace parent tag should be valid"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagNS_ParentTagEqualsRequested()"), TEXT("Namespace parent tag should equal requested"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagNS_DirectParentMatches()"), TEXT("RequestDirectParent should return namespace parent"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagNS_ParentChainContainsParent()"), TEXT("GetGameplayTagParents should contain parent tag"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagNS_MatchesParent()"), TEXT("Child tag should MatchesTag parent"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagNS_NotMatchesExactParent()"), TEXT("Child tag should not MatchesTagExact parent"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagNS_NamespaceTagValid()"), TEXT("Namespace tag global should be valid"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagNS_NamespaceTagEqualsRequested()"), TEXT("Namespace tag should equal RequestGameplayTag result"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagNS_NamespaceTagNameMatches()"), TEXT("Namespace tag name should match requested"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagNS_NamespaceTagToStringMatches()"), TEXT("Namespace tag ToString should match requested"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagNS_ParentTagValid()"), TEXT("Namespace parent tag should be valid"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagNS_ParentTagEqualsRequested()"), TEXT("Namespace parent tag should equal requested"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagNS_DirectParentMatches()"), TEXT("RequestDirectParent should return namespace parent"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagNS_ParentChainContainsParent()"), TEXT("GetGameplayTagParents should contain parent tag"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagNS_MatchesParent()"), TEXT("Child tag should MatchesTag parent"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagNS_NotMatchesExactParent()"), TEXT("Child tag should not MatchesTagExact parent"), 1);
 	}
 
 	// ====================================================================
@@ -905,19 +897,19 @@ int GPTagHier_UnrelatedNotMatched()
 		Script.ReplaceInline(TEXT("__PARENT__"), *ParentTagName);
 		Script.ReplaceInline(TEXT("__UNRELATED__"), *UnrelatedTagName);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GGameplayTagProfile, TEXT("Hierarchy"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTag_Hierarchy"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagHier_ChildMatchesParent()"), TEXT("Child should MatchesTag parent"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagHier_ChildNotMatchesExactParent()"), TEXT("Child should not MatchesTagExact parent"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagHier_MatchesTagDepthPositive()"), TEXT("MatchesTagDepth child->parent should be >= 1"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagHier_MatchesAnyParentContainer()"), TEXT("Child should MatchesAny parent container"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagHier_NotMatchesAnyExactParent()"), TEXT("Child should not MatchesAnyExact parent container"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagHier_DirectParentIsParent()"), TEXT("RequestDirectParent should return the parent"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagHier_SingleTagContainer()"), TEXT("GetSingleTagContainer should contain only self"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagHier_ParentChainContainsBoth()"), TEXT("GetGameplayTagParents should contain child and parent"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagHier_UnrelatedNotMatched()"), TEXT("Unrelated tag should not match child in any way"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagHier_ChildMatchesParent()"), TEXT("Child should MatchesTag parent"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagHier_ChildNotMatchesExactParent()"), TEXT("Child should not MatchesTagExact parent"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagHier_MatchesTagDepthPositive()"), TEXT("MatchesTagDepth child->parent should be >= 1"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagHier_MatchesAnyParentContainer()"), TEXT("Child should MatchesAny parent container"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagHier_NotMatchesAnyExactParent()"), TEXT("Child should not MatchesAnyExact parent container"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagHier_DirectParentIsParent()"), TEXT("RequestDirectParent should return the parent"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagHier_SingleTagContainer()"), TEXT("GetSingleTagContainer should contain only self"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagHier_ParentChainContainsBoth()"), TEXT("GetGameplayTagParents should contain child and parent"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagHier_UnrelatedNotMatched()"), TEXT("Unrelated tag should not match child in any way"), 1);
 	}
 
 	// ====================================================================
@@ -1050,17 +1042,17 @@ int GPTagFilter_RemoveTags()
 		Script.ReplaceInline(TEXT("__PARENT__"), *ParentTagName);
 		Script.ReplaceInline(TEXT("__UNRELATED__"), *UnrelatedTagName);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GGameplayTagProfile, TEXT("Filter"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTag_Filter"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagFilter_AddTagFast()"), TEXT("AddTagFast should add tag to container"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagFilter_FilterIncludesMatchingTags()"), TEXT("Filter should include hierarchy-matching tags"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagFilter_FilterExactExcludesChild()"), TEXT("FilterExact should exclude child of parent"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagFilter_AddLeafTag()"), TEXT("AddLeafTag should replace parent with child"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagFilter_LeafFilterExact()"), TEXT("FilterExact against leaf container should match both"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagFilter_ExpandedParents()"), TEXT("GetGameplayTagParents should expand to include all ancestors"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGameplayTagProfile, TEXT("int GPTagFilter_RemoveTags()"), TEXT("RemoveTags should remove specified tag leaving the rest"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagFilter_AddTagFast()"), TEXT("AddTagFast should add tag to container"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagFilter_FilterIncludesMatchingTags()"), TEXT("Filter should include hierarchy-matching tags"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagFilter_FilterExactExcludesChild()"), TEXT("FilterExact should exclude child of parent"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagFilter_AddLeafTag()"), TEXT("AddLeafTag should replace parent with child"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagFilter_LeafFilterExact()"), TEXT("FilterExact against leaf container should match both"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagFilter_ExpandedParents()"), TEXT("GetGameplayTagParents should expand to include all ancestors"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GPTagFilter_RemoveTags()"), TEXT("RemoveTags should remove specified tag leaving the rest"), 1);
 	}
 };
 

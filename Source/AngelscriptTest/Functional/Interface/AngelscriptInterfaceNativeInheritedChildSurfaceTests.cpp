@@ -4,7 +4,6 @@
 #include "Shared/AngelscriptNativeInterfaceTestHelpers.h"
 #include "Shared/AngelscriptFunctionalTestUtils.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -25,7 +24,6 @@ namespace InterfaceNativeInheritedChildSurfaceTests
 	static const FName GeneratedClassName(TEXT("ATestInterfaceNativeInheritedChildSurface"));
 }
 
-static const FBindingsCoverageProfile GInterfaceChildProfile{TEXT("InterfaceChild"),TEXT(""),TEXT("ASIntfChild"),TEXT("IntfChild"),TEXT("InterfaceChildTests")};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptInterfaceNativeInheritedChildSurfaceTests, "Angelscript.TestModule.Interface.NativeInheritedChild", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {

@@ -16,7 +16,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -30,13 +29,6 @@ using namespace AngelscriptReflectiveAccess;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GProfile{
-	TEXT("TextFormatting"),          // Theme
-	TEXT(""),                        // Variant
-	TEXT("ASTextFormat"),            // ModulePrefix
-	TEXT("TextFormat"),              // CasePrefix
-	TEXT("TextFormattingBindings"),  // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Helpers — compute C++ baselines at runtime
@@ -121,11 +113,11 @@ int OrderedFormat_Match()
 )");
 		Source.ReplaceInline(TEXT("__ORDERED_EXPECTED__"), *OrderedExpected, ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GProfile, TEXT("OrderedFormat"), Source);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTextFormatting_OrderedFormat"), Source);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int OrderedFormat_Match()"),
 			TEXT("Ordered FFormatArgumentValue args should produce expected FText::Format output"),
 			1);
@@ -164,11 +156,11 @@ int NamedFormat_Match()
 )");
 		Source.ReplaceInline(TEXT("__NAMED_EXPECTED__"), *NamedExpected, ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GProfile, TEXT("NamedFormat"), Source);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTextFormatting_NamedFormat"), Source);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int NamedFormat_Match()"),
 			TEXT("Named FFormatArgumentValue args should produce expected FText::Format output"),
 			1);

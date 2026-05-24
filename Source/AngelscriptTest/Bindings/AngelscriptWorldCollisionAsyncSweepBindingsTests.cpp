@@ -16,7 +16,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "Shared/AngelscriptFunctionalTestUtils.h"
@@ -38,13 +37,6 @@ using namespace AngelscriptFunctionalTestUtils;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GWCAsyncSweepProfile{
-	TEXT("WCAsyncSweep"),                     // Theme
-	TEXT(""),                                 // Variant
-	TEXT("ASWCAsyncSweep"),                   // ModulePrefix
-	TEXT("WCAsyncSweep"),                     // CasePrefix
-	TEXT("WorldCollisionAsyncSweepBindings"), // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Local helpers

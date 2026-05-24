@@ -17,7 +17,6 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -35,13 +34,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GMapProfile{
-	TEXT("Map"),         // Theme
-	TEXT(""),            // Variant
-	TEXT("ASMap"),       // ModulePrefix
-	TEXT("Map"),         // CasePrefix
-	TEXT("MapBindings"), // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Section: MapCompat (17 cases from original if/return)
@@ -51,10 +43,9 @@ namespace
 {
 	bool RunMapSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("Compat"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASMap_Compat"), TEXT(R"(
 int MapEmpty_IsEmpty()
 {
 	TMap<FName, int> M;
@@ -214,7 +205,7 @@ int MapFNameFind_Value()
 			{ TEXT("int MapFNameFind_Success()"),    TEXT("TMap<FName,FName> Find should succeed"),               1 },
 			{ TEXT("int MapFNameFind_Value()"),      TEXT("TMap<FName,FName> Find value should match Alpha"),     1 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -228,10 +219,9 @@ int MapFNameFind_Value()
 
 	bool RunMapTypeMatrixSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("TypeMatrix"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASMap_TypeMatrix"), TEXT(R"(
 // ---- int → FString ----
 int MapIntString_Num()
 {
@@ -446,7 +436,7 @@ int MapVectorKey_Overwrite()
 			{ TEXT("int MapVectorKey_FindValue()"),            TEXT("TMap<FVector,int> Find value should be 200"),             200 },
 			{ TEXT("int MapVectorKey_Overwrite()"),            TEXT("TMap<FVector,int> Add same key should overwrite value"),  999 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -459,10 +449,9 @@ int MapVectorKey_Overwrite()
 
 	bool RunMapApiCoverageSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("ApiCoverage"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASMap_ApiCoverage"), TEXT(R"(
 int MapApi_OpIndexRead()
 {
 	TMap<FName, int> M;
@@ -691,7 +680,7 @@ int MapApi_OpAssign_DropsOldKey()
 			{ TEXT("int MapApi_OpAssign_ContainsCopiedY()"),          TEXT("opAssign should copy key Y into destination"),               1 },
 			{ TEXT("int MapApi_OpAssign_DropsOldKey()"),              TEXT("opAssign should drop destination's prior key Z"),            0 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -701,10 +690,9 @@ int MapApi_OpAssign_DropsOldKey()
 
 	bool RunMapReturnTypeSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("ReturnType"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASMap_ReturnType"), TEXT(R"(
 // Direct bool returns
 bool MapRet_Bool_Contains()
 {
@@ -925,21 +913,21 @@ int MapRet_VerifyVectorValues_YSum()
 		bool bPassed = true;
 
 		// Direct bool return assertions
-		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool MapRet_Bool_Contains()"), TEXT("bool return: Contains hit should be true"), true);
-		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool MapRet_Bool_NotContains()"), TEXT("bool return: Contains miss should be false"), false);
-		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool MapRet_Bool_Find()"), TEXT("bool return: Find hit should be true"), true);
-		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool MapRet_Bool_FindMissing()"), TEXT("bool return: Find miss should be false"), false);
-		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool MapRet_Bool_Remove()"), TEXT("bool return: Remove hit should be true"), true);
-		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool MapRet_Bool_RemoveAndCopy()"), TEXT("bool return: RemoveAndCopyValue hit should be true"), true);
-		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool MapRet_Bool_IsEmpty()"), TEXT("bool return: empty map IsEmpty should be true"), true);
-		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool MapRet_Bool_OpEquals()"), TEXT("bool return: equal maps opEquals should be true"), true);
 
 		// Container/struct returns verified via script-side int wrappers
@@ -960,17 +948,16 @@ int MapRet_VerifyVectorValues_YSum()
 			{ TEXT("int MapRet_VerifyVectorValues_XSum()"),      TEXT("TArray<FVector> return: X sum should be ~1"),              1 },
 			{ TEXT("int MapRet_VerifyVectorValues_YSum()"),      TEXT("TArray<FVector> return: Y sum should be ~2"),              1 },
 		};
-		bPassed &= ExpectGlobalInts(Test, Engine, Module, Profile, IntCases);
+		bPassed &= AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  IntCases);
 
 		return bPassed;
 	}
 
 	bool RunMapFindFailureSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("FindFailure"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASMap_FindFailure"), TEXT(R"(
 int MapFindMissing_ReturnsFalse()
 {
 	TMap<FName, int> M;
@@ -1031,7 +1018,7 @@ int MapFindOrAdd_FinalNum()
 			{ TEXT("int MapFindOrAddRef_Delta()"),        TEXT("TMap FindOrAdd+default ref assign should get 12"),      12 },
 			{ TEXT("int MapFindOrAdd_FinalNum()"),        TEXT("TMap final Num should be 2"),                           2 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -1040,10 +1027,9 @@ int MapFindOrAdd_FinalNum()
 
 	bool RunMapLogDiagnosticSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("LogDiag"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASMap_LogDiag"), TEXT(R"(
 int MapLog_Types()
 {
 	TMap<FName, int> MNameInt;
@@ -1083,7 +1069,7 @@ int MapLog_Types()
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
-		return ExpectGlobalInt(Test, Engine, Module, Profile,
+		return AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int MapLog_Types()"),
 			TEXT("Log diagnostic: TMap types should compile and log without crash"), 1);
 	}
@@ -1108,18 +1094,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMapBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunMapSection(*TestRunner, Engine, GMapProfile);
-		RunMapTypeMatrixSection(*TestRunner, Engine, GMapProfile);
-		RunMapApiCoverageSection(*TestRunner, Engine, GMapProfile);
-		RunMapReturnTypeSection(*TestRunner, Engine, GMapProfile);
-		RunMapLogDiagnosticSection(*TestRunner, Engine, GMapProfile);
+		RunMapSection(*TestRunner, Engine);
+		RunMapTypeMatrixSection(*TestRunner, Engine);
+		RunMapApiCoverageSection(*TestRunner, Engine);
+		RunMapReturnTypeSection(*TestRunner, Engine);
+		RunMapLogDiagnosticSection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(MapFindFailureAndFindOrAddRefCompat)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunMapFindFailureSection(*TestRunner, Engine, GMapProfile);
+		RunMapFindFailureSection(*TestRunner, Engine);
 	}
 };
 

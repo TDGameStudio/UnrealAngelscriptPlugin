@@ -23,18 +23,13 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-// Phase 4 of refactor-as-test-shared-layout-and-naming: the example test
-// deliberately resolves all symbols through namespace `AngelscriptTest` -- the
-// new canonical entry point for the C++ side of AS invocation. Even
-// `FBindingsCoverageProfile`, whose canonical home is `AngelscriptTestBindings`,
-// is re-exported into `AngelscriptTest::` via a Phase 3 `using` declaration in
-// `AngelscriptTestExecute.h`, so test authors writing new sections do not need
-// to know that the coverage profile lives elsewhere.
-//
+// Phase 5 of refactor-as-test-shared-layout-and-naming removes the old
+// Bindings coverage profile. The example test resolves call-side helpers
+// through namespace `AngelscriptTest`, while module lifetime stays in the
+// explicit FCoverageModuleScope module-name API used by the example header.
 // `AngelscriptTestSupport::` is still pulled in for engine-helper macros that
 // drive the fixture (`ASTEST_CREATE_ENGINE` / `ASTEST_RESET_ENGINE` resolve
-// against it), since those belong to the engine-lifecycle layer, not the
-// call-side API.
+// against it), since those belong to the engine-lifecycle layer.
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTest;
 
@@ -50,15 +45,8 @@ bool FAngelscriptBindingsSharedExampleTest::RunTest(const FString& Parameters)
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 	ON_SCOPE_EXIT { ASTEST_RESET_ENGINE(Engine); };
 
-	static const FBindingsCoverageProfile GExampleProfile{
-		TEXT("Example"),
-		TEXT(""),
-		TEXT("ASBindingsSharedExample"),
-		TEXT("Example"),
-		TEXT("BindingsSharedExample"),
-	};
 
-	bPassed &= RunBindingsExampleSection(*this, Engine, GExampleProfile);
+	bPassed &= RunBindingsExampleSection(*this, Engine);
 
 	}
 	return bPassed;

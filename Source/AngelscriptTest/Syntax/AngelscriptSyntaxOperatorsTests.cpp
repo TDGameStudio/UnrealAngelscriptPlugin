@@ -11,7 +11,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "Syntax/AngelscriptSyntaxTestHelpers.h"
@@ -25,13 +24,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GSyntaxOperatorsProfile{
-	TEXT("Syntax"),           // Theme
-	TEXT("Operators"),        // Variant
-	TEXT("ASSyntaxOp"),       // ModulePrefix
-	TEXT("Operators"),        // CasePrefix
-	TEXT("SyntaxOperators"),  // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -57,7 +49,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSyntaxOperatorsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GSyntaxOperatorsProfile, TEXT("ArithPos"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_ArithPos"), TEXT(R"(
 int AddInt()       { return 1 + 2; }
 int SubInt()       { return 5 - 3; }
 int MulInt()       { return 2 * 3; }
@@ -90,7 +82,7 @@ int MixedTypes()   { float X = 1 + 2.0f; return int(X * 10); }
 			{ TEXT("int CompoundExpr()"), TEXT("(1+2)*3-4/2+7%3 = 8"),    8 },
 			{ TEXT("int MixedTypes()"),   TEXT("int+float = 3.0 (*10)"),  30 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GSyntaxOperatorsProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -198,7 +190,7 @@ void Test() { auto S = "abc" * 3; }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GSyntaxOperatorsProfile, TEXT("BitPos"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_BitPos"), TEXT(R"(
 int BitAnd()      { return 0xFF & 0x0F; }
 int BitOr()       { return 0xF0 | 0x0F; }
 int BitXor()      { return 0xFF ^ 0x0F; }
@@ -219,7 +211,7 @@ int Compound()    { return (0xFF & 0x0F) | (0xF0 ^ 0x0F); }
 			{ TEXT("int ShiftRight()"), TEXT("16 >> 2 = 4"),         4 },
 			{ TEXT("int Compound()"),   TEXT("compound bitwise"),  255 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GSyntaxOperatorsProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -293,7 +285,7 @@ void Test() { auto X = "abc" >> 2; }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GSyntaxOperatorsProfile, TEXT("LogicPos"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_LogicPos"), TEXT(R"(
 int LogicAnd()      { return (true && true) ? 1 : 0; }
 int LogicOr()       { return (false || true) ? 1 : 0; }
 int LogicNot()      { return (!false) ? 1 : 0; }
@@ -310,7 +302,7 @@ int ShortCircuit()  { bool A = false; int Z = 0; return (A && (1/Z > 0)) ? 1 : 0
 			{ TEXT("int LogicCompound()"), TEXT("compound logic"),    1 },
 			{ TEXT("int ShortCircuit()"),  TEXT("short-circuit &&"),  0 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GSyntaxOperatorsProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -374,7 +366,7 @@ void Test() { bool X = 1.0f && 2.0f; }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GSyntaxOperatorsProfile, TEXT("CmpPos"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_CmpPos"), TEXT(R"(
 int Equal()         { return (1 == 1) ? 1 : 0; }
 int NotEqual()      { return (1 != 2) ? 1 : 0; }
 int LessThan()      { return (1 < 2) ? 1 : 0; }
@@ -397,7 +389,7 @@ int FloatCompare()  { return (1.5f > 1.0f) ? 1 : 0; }
 			{ TEXT("int ChainedCmp()"),   TEXT("chained cmp"), 1 },
 			{ TEXT("int FloatCompare()"), TEXT("1.5 > 1.0"),   1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GSyntaxOperatorsProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -454,7 +446,7 @@ void Test() { bool X = (true < false); }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GSyntaxOperatorsProfile, TEXT("AssignPos"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_AssignPos"), TEXT(R"(
 int SimpleAssign()   { int X = 0; X = 5; return X; }
 int AddAssign()      { int X = 0; X += 5; return X; }
 int SubAssign()      { int X = 10; X -= 3; return X; }
@@ -483,7 +475,7 @@ int ShiftRAssign()   { int X = 16; X >>= 2; return X; }
 			{ TEXT("int ShiftLAssign()"),TEXT("1 <<= 4 = 16"),     16 },
 			{ TEXT("int ShiftRAssign()"),TEXT("16 >>= 2 = 4"),      4 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GSyntaxOperatorsProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -572,7 +564,7 @@ void Test() { float X = 1.0f; X %= 2.0f; }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GSyntaxOperatorsProfile, TEXT("TernPos"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_TernPos"), TEXT(R"(
 int Basic()          { return true ? 1 : 0; }
 int Nested()         { return true ? (false ? 1 : 2) : 3; }
 int WithExpr()       { int A = 5; return (A > 3) ? A * 2 : A - 1; }
@@ -587,7 +579,7 @@ int FalseCondition() { return false ? 100 : 200; }
 			{ TEXT("int WithExpr()"),       TEXT("5>3 ? 10 : 4"),       10 },
 			{ TEXT("int FalseCondition()"), TEXT("false ? 100 : 200"), 200 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GSyntaxOperatorsProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -652,7 +644,7 @@ void Test() { int X = "yes" ? 1 : 0; }
 		FAngelscriptEngineScope Scope(Engine);
 
 		// Positive edge cases
-		FCoverageModuleScope Mod(*TestRunner, Engine, GSyntaxOperatorsProfile, TEXT("Edge"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_Edge"), TEXT(R"(
 int MaxParens()     { return ((((1 + 2)))); }
 int LongChain()    { return 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10; }
 int PrecedenceMix() { return 2 + 3 * 4 - 1; }
@@ -669,7 +661,7 @@ int AssignInExpr() { int X = 0; X = 5; int Y = X; return Y; }
 			{ TEXT("int BitAndLogic()"),  TEXT("logic + bitwise mix"),    1 },
 			{ TEXT("int AssignInExpr()"), TEXT("sequential assign"),       5 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GSyntaxOperatorsProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 
 		// Negative edge cases
 		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine,

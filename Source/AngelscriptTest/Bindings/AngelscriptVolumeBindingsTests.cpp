@@ -4,7 +4,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -13,9 +12,6 @@
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GVolumeProfile{
-	TEXT("Volume"), TEXT(""), TEXT("ASVolume"), TEXT("Volume"), TEXT("VolumeBindings"),
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptVolumeBindingsTest,
 	"Angelscript.TestModule.Bindings.Volume",
@@ -28,7 +24,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptVolumeBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GVolumeProfile, TEXT("TypeCheck"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASVolume_TypeCheck"), TEXT(R"(
 int Volume_TypeExists()
 {
 	// Compile-time type availability check
@@ -42,7 +38,7 @@ int Volume_TypeExists()
 			TestRunner->AddInfo(TEXT("AVolume type not available in test engine, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GVolumeProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int Volume_TypeExists()"), TEXT("AVolume type compiles"), 1);
 	}
 
@@ -50,7 +46,7 @@ int Volume_TypeExists()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GVolumeProfile, TEXT("FXTypeCheck"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASVolume_FXTypeCheck"), TEXT(R"(
 int FX_TypeExists()
 {
 	UFXSystemComponent Comp;
@@ -62,7 +58,7 @@ int FX_TypeExists()
 			TestRunner->AddInfo(TEXT("UFXSystemComponent not available in test engine, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GVolumeProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int FX_TypeExists()"), TEXT("UFXSystemComponent compiles"), 1);
 	}
 };

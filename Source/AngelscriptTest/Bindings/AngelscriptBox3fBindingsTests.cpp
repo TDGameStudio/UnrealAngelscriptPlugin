@@ -7,7 +7,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -16,13 +15,6 @@
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GBox3fProfile{
-	TEXT("Box3f"),
-	TEXT(""),
-	TEXT("ASBox3f"),
-	TEXT("Box3f"),
-	TEXT("Box3fBindings"),
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptBox3fBindingsTest,
 	"Angelscript.TestModule.Bindings.Box3f",
@@ -40,7 +32,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBox3fBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GBox3fProfile, TEXT("FBoxCtor"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASBox3f_FBoxCtor"), TEXT(R"(
 int FBox_DefaultIsValid()
 {
 	FBox B;
@@ -73,7 +65,7 @@ int FBox_GetExtent()
 			{ TEXT("int FBox_GetCenter()"),      TEXT("GetCenter returns midpoint"), 1 },
 			{ TEXT("int FBox_GetExtent()"),      TEXT("GetExtent returns half-size"), 1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GBox3fProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	TEST_METHOD(FBoxSphereBoundsConstruction)
@@ -81,7 +73,7 @@ int FBox_GetExtent()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GBox3fProfile, TEXT("BSBCtor"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASBox3f_BSBCtor"), TEXT(R"(
 int BSB_Origin()
 {
 	FBoxSphereBounds B = FBoxSphereBounds(FVector(1,2,3), FVector(4,5,6), 10.0);
@@ -100,7 +92,7 @@ int BSB_SphereRadius()
 			{ TEXT("int BSB_Origin()"),       TEXT("BoxSphereBounds origin preserved"), 1 },
 			{ TEXT("int BSB_SphereRadius()"), TEXT("BoxSphereBounds radius preserved"), 1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GBox3fProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 };
 

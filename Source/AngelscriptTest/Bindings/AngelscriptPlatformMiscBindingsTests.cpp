@@ -8,7 +8,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -17,13 +16,6 @@
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GPlatformMiscProfile{
-	TEXT("PlatformMisc"),
-	TEXT(""),
-	TEXT("ASPlatformMisc"),
-	TEXT("PlatformMisc"),
-	TEXT("PlatformMiscBindings"),
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptPlatformMiscBindingsTest,
 	"Angelscript.TestModule.Bindings.PlatformMisc",
@@ -44,11 +36,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPlatformMiscBindingsTest,
 		const FString ExpectedFragments[] = {
 			TEXT("GIsEditor"),
 		};
-		ExpectBindingCompileFailure(
+		AngelscriptTestBindings::ExpectBindingCompileFailure(
 			*TestRunner,
 			Engine,
-			GPlatformMiscProfile,
-			TEXT("PlatMiscCoreGlobalsMissing"),
+			TEXT("ASPlatformMisc_PlatMiscCoreGlobalsMissing"),
 			TEXT(R"(
 int IsEditor()
 {
@@ -67,11 +58,10 @@ int IsEditor()
 			TEXT("NumberOfCores"),
 			TEXT("FGenericPlatformMisc"),
 		};
-		ExpectBindingCompileFailure(
+		AngelscriptTestBindings::ExpectBindingCompileFailure(
 			*TestRunner,
 			Engine,
-			GPlatformMiscProfile,
-			TEXT("PlatMiscNumberOfCoresMissing"),
+			TEXT("ASPlatformMisc_PlatMiscNumberOfCoresMissing"),
 			TEXT(R"(
 int GetNumCores()
 {
@@ -95,11 +85,10 @@ int GetNumCoresIncludingHyperthreads()
 			TEXT("GetDeltaTime"),
 			TEXT("FApp"),
 		};
-		ExpectBindingCompileFailure(
+		AngelscriptTestBindings::ExpectBindingCompileFailure(
 			*TestRunner,
 			Engine,
-			GPlatformMiscProfile,
-			TEXT("TimersMissing"),
+			TEXT("ASPlatformMisc_TimersMissing"),
 			TEXT(R"(
 int Seconds_Positive()
 {

@@ -19,7 +19,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -50,13 +49,6 @@ namespace AngelscriptRandomStreamBindingsTests_Private
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GRandomStreamProfile{
-	TEXT("RandomStream"),           // Theme
-	TEXT(""),                       // Variant
-	TEXT("ASRandomStream"),         // ModulePrefix
-	TEXT("RandomStream"),           // CasePrefix
-	TEXT("RandomStreamBindings"),   // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -173,18 +165,18 @@ int IntSeed_CopyParity()
 		Script.ReplaceInline(TEXT("__EXP_COPY_NEXT__"), *LexToString(ExpCopyNext), ESearchCase::CaseSensitive);
 		Script.ReplaceInline(TEXT("__EXP_STREAM_NEXT__"), *LexToString(ExpStreamNext), ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GRandomStreamProfile, TEXT("IntSeedSequence"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASRandomStream_IntSeedSequence"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GRandomStreamProfile, TEXT("int IntSeed_InitialSeed()"), TEXT("GetInitialSeed parity"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GRandomStreamProfile, TEXT("int IntSeed_CurrentSeed()"), TEXT("GetCurrentSeed parity"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GRandomStreamProfile, TEXT("int IntSeed_GetUnsignedInt()"), TEXT("GetUnsignedInt parity"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GRandomStreamProfile, TEXT("int IntSeed_RandRange()"), TEXT("RandRange parity"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GRandomStreamProfile, TEXT("int IntSeed_GetFraction()"), TEXT("GetFraction parity"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GRandomStreamProfile, TEXT("int IntSeed_FRandRange()"), TEXT("FRandRange parity"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GRandomStreamProfile, TEXT("int IntSeed_PostSequenceSeed()"), TEXT("post-sequence seed parity"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GRandomStreamProfile, TEXT("int IntSeed_CopyParity()"), TEXT("copy produces identical sequence"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_InitialSeed()"), TEXT("GetInitialSeed parity"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_CurrentSeed()"), TEXT("GetCurrentSeed parity"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_GetUnsignedInt()"), TEXT("GetUnsignedInt parity"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_RandRange()"), TEXT("RandRange parity"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_GetFraction()"), TEXT("GetFraction parity"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_FRandRange()"), TEXT("FRandRange parity"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_PostSequenceSeed()"), TEXT("post-sequence seed parity"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_CopyParity()"), TEXT("copy produces identical sequence"), 1);
 	}
 
 	// ====================================================================
@@ -222,11 +214,11 @@ int IntSeed_Reset()
 )");
 		Script.ReplaceInline(TEXT("__EXP_RESET__"), *LexToString(ExpResetValue), ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GRandomStreamProfile, TEXT("IntSeedReset"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASRandomStream_IntSeedReset"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GRandomStreamProfile, TEXT("int IntSeed_Reset()"), TEXT("Reset restores initial sequence"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int IntSeed_Reset()"), TEXT("Reset restores initial sequence"), 1);
 	}
 
 	// ====================================================================
@@ -275,14 +267,14 @@ int UintSeed_Reset()
 		Script.ReplaceInline(TEXT("__EXP_UNSIGNED__"), *LexToString(ExpUnsigned), ESearchCase::CaseSensitive);
 		Script.ReplaceInline(TEXT("__EXP_RESET__"), *LexToString(ExpResetValue), ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GRandomStreamProfile, TEXT("UintSeedSequence"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASRandomStream_UintSeedSequence"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GRandomStreamProfile, TEXT("int UintSeed_InitialSeed()"), TEXT("uint32 seed GetInitialSeed"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GRandomStreamProfile, TEXT("int UintSeed_CurrentSeed()"), TEXT("uint32 seed GetCurrentSeed"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GRandomStreamProfile, TEXT("int UintSeed_GetUnsignedInt()"), TEXT("uint32 seed GetUnsignedInt"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GRandomStreamProfile, TEXT("int UintSeed_Reset()"), TEXT("uint32 seed Reset"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UintSeed_InitialSeed()"), TEXT("uint32 seed GetInitialSeed"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UintSeed_CurrentSeed()"), TEXT("uint32 seed GetCurrentSeed"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UintSeed_GetUnsignedInt()"), TEXT("uint32 seed GetUnsignedInt"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int UintSeed_Reset()"), TEXT("uint32 seed Reset"), 1);
 	}
 
 	// ====================================================================
@@ -317,12 +309,12 @@ int NameSeed_RandRange()
 		Script.ReplaceInline(TEXT("__EXP_CURRENT_SEED__"), *LexToString(ExpCurrentSeed), ESearchCase::CaseSensitive);
 		Script.ReplaceInline(TEXT("__EXP_FIRST_RANGE__"), *LexToString(ExpFirstRange), ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GRandomStreamProfile, TEXT("NameSeedSequence"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASRandomStream_NameSeedSequence"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GRandomStreamProfile, TEXT("int NameSeed_CurrentSeed()"), TEXT("FName seed GetCurrentSeed"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GRandomStreamProfile, TEXT("int NameSeed_RandRange()"), TEXT("FName seed RandRange"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int NameSeed_CurrentSeed()"), TEXT("FName seed GetCurrentSeed"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int NameSeed_RandRange()"), TEXT("FName seed RandRange"), 1);
 	}
 };
 

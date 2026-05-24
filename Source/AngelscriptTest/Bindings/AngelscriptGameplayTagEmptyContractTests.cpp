@@ -19,7 +19,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -35,13 +34,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GGPTagEmptyProfile{
-	TEXT("GameplayTagEmpty"),             // Theme
-	TEXT(""),                             // Variant
-	TEXT("ASGPTagEmpty"),                 // ModulePrefix
-	TEXT("GPTagEmpty"),                   // CasePrefix
-	TEXT("GameplayTagEmptyBindings"),     // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Helpers
@@ -245,14 +237,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGameplayTagEmptyContractTest,
 			ValidTag.ToString().ReplaceCharWithEscapedChar(),
 			Ref);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GGPTagEmptyProfile, TEXT("EmptyTagContracts"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTagEmpty_EmptyTagContracts"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GGPTagEmptyProfile, TEXT("int ValidTag_SelfConsistency()"), TEXT("valid tag self-consistency sanity check"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGPTagEmptyProfile, TEXT("int EmptyTag_MatchesParity()"), TEXT("empty tag Matches* parity with native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGPTagEmptyProfile, TEXT("int EmptyTag_SingleContainerParity()"), TEXT("empty tag GetSingleTagContainer parity"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGPTagEmptyProfile, TEXT("int EmptyTag_ParentParity()"), TEXT("empty tag parent chain parity"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValidTag_SelfConsistency()"), TEXT("valid tag self-consistency sanity check"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int EmptyTag_MatchesParity()"), TEXT("empty tag Matches* parity with native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int EmptyTag_SingleContainerParity()"), TEXT("empty tag GetSingleTagContainer parity"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int EmptyTag_ParentParity()"), TEXT("empty tag parent chain parity"), 1);
 	}
 };
 

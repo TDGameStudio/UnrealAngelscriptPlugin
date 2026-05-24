@@ -4,7 +4,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -13,9 +12,6 @@
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GCollisionProfile{
-	TEXT("Collision"), TEXT(""), TEXT("ASCollision"), TEXT("Collision"), TEXT("CollisionBindings"),
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptCollisionBindingsTest,
 	"Angelscript.TestModule.Bindings.Collision",
@@ -28,7 +24,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCollisionBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GCollisionProfile, TEXT("QueryParams"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCollision_QueryParams"), TEXT(R"(
 int CollisionQueryParams_DefaultTraceComplex()
 {
 	FCollisionQueryParams Params;
@@ -40,7 +36,7 @@ int CollisionQueryParams_DefaultTraceComplex()
 			TestRunner->AddInfo(TEXT("FCollisionQueryParams not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GCollisionProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int CollisionQueryParams_DefaultTraceComplex()"),
 			TEXT("Default FCollisionQueryParams bTraceComplex is false"), 0);
 	}
@@ -49,7 +45,7 @@ int CollisionQueryParams_DefaultTraceComplex()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GCollisionProfile, TEXT("Shape"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCollision_Shape"), TEXT(R"(
 int CollisionShape_MakeSphere()
 {
 	FCollisionShape Shape = FCollisionShape::MakeSphere(50.0);
@@ -61,7 +57,7 @@ int CollisionShape_MakeSphere()
 			TestRunner->AddInfo(TEXT("FCollisionShape not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GCollisionProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int CollisionShape_MakeSphere()"),
 			TEXT("MakeSphere creates sphere shape"), 1);
 	}
@@ -70,7 +66,7 @@ int CollisionShape_MakeSphere()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GCollisionProfile, TEXT("Box"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCollision_Box"), TEXT(R"(
 int CollisionShape_MakeBox()
 {
 	FCollisionShape Shape = FCollisionShape::MakeBox(FVector(10.0, 20.0, 30.0));
@@ -82,7 +78,7 @@ int CollisionShape_MakeBox()
 			TestRunner->AddInfo(TEXT("FCollisionShape::MakeBox not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GCollisionProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int CollisionShape_MakeBox()"),
 			TEXT("MakeBox creates box shape"), 1);
 	}

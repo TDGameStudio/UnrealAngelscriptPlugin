@@ -21,7 +21,6 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -39,13 +38,6 @@ using namespace AngelscriptReflectiveAccess;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GCompatProfile{
-	TEXT("Compat"),              // Theme
-	TEXT(""),                    // Variant
-	TEXT("ASCompat"),            // ModulePrefix
-	TEXT("Compat"),             // CasePrefix
-	TEXT("CompatBindings"),     // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -72,7 +64,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompatBindingsTest,
 		FAngelscriptEngineScope Scope(Engine);
 
 		// Plain module: test Cast<T> and n"" literal
-		FCoverageModuleScope Mod(*TestRunner, Engine, GCompatProfile, TEXT("CastCompat"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCompat_CastCompat"), TEXT(R"(
 int Compat_CastPackage()
 {
 	UObject Object = FindObject(GetTransientPackage().GetPathName());
@@ -89,8 +81,8 @@ int Compat_NameLiteral()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_CastPackage()"), TEXT("Cast<UPackage> on transient package should succeed"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_NameLiteral()"), TEXT("n\"\" literal syntax should produce matching FName"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_CastPackage()"), TEXT("Cast<UPackage> on transient package should succeed"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_NameLiteral()"), TEXT("n\"\" literal syntax should produce matching FName"), 1);
 
 		// Annotated module: test Cast<T> on generated script class
 		const bool bAnnotatedCompiled = CompileAnnotatedModuleFromMemory(
@@ -169,7 +161,7 @@ class UBindingCastComponent : UActorComponent
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GCompatProfile, TEXT("EditorOnly"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCompat_EditorOnly"), TEXT(R"(
 int Compat_EditorOnly_Package()
 {
 	UPackage Package = GetTransientPackage();
@@ -181,7 +173,7 @@ int Compat_EditorOnly_Package()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_EditorOnly_Package()"), TEXT("Transient package IsEditorOnly should return false (1)"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_EditorOnly_Package()"), TEXT("Transient package IsEditorOnly should return false (1)"), 1);
 	}
 
 	// ====================================================================
@@ -258,12 +250,12 @@ int Compat_EditorOnlyParity()
 			*NonEditorOnlyComponent->GetPathName().ReplaceCharWithEscapedChar(),
 			*EditorOnlyComponent->GetPathName().ReplaceCharWithEscapedChar());
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GCompatProfile, TEXT("EditorOnlyParity"), ScriptSource);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCompat_EditorOnlyParity"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
 		const int32 ExpectedResult = (bNativeNonEditorOnly ? 2 : 0) + (bNativeEditorOnly ? 1 : 0);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_EditorOnlyParity()"), TEXT("Script IsEditorOnly should match native results"), ExpectedResult);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_EditorOnlyParity()"), TEXT("Script IsEditorOnly should match native results"), ExpectedResult);
 	}
 
 	// ====================================================================
@@ -275,7 +267,7 @@ int Compat_EditorOnlyParity()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GCompatProfile, TEXT("TimespanCompat"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCompat_TimespanCompat"), TEXT(R"(
 int Compat_Timespan_Zero()
 {
 	FTimespan Zero = FTimespan::Zero();
@@ -352,13 +344,13 @@ int Compat_Timespan_Arithmetic()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_Timespan_Zero()"), TEXT("FTimespan::Zero should be zero"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_Timespan_FromSeconds()"), TEXT("FTimespan::FromSeconds should decompose correctly"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_Timespan_FromHours()"), TEXT("FTimespan::FromHours should decompose correctly"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_Timespan_Constructed()"), TEXT("FTimespan(h,m,s) constructor should populate components"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_Timespan_CopyAndCompare()"), TEXT("Copy and equality comparison should work"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_Timespan_Ordering()"), TEXT("opCmp ordering and ToString should work"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_Timespan_Arithmetic()"), TEXT("Arithmetic operators should produce correct results"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_Zero()"), TEXT("FTimespan::Zero should be zero"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_FromSeconds()"), TEXT("FTimespan::FromSeconds should decompose correctly"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_FromHours()"), TEXT("FTimespan::FromHours should decompose correctly"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_Constructed()"), TEXT("FTimespan(h,m,s) constructor should populate components"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_CopyAndCompare()"), TEXT("Copy and equality comparison should work"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_Ordering()"), TEXT("opCmp ordering and ToString should work"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_Arithmetic()"), TEXT("Arithmetic operators should produce correct results"), 1);
 	}
 
 	// ====================================================================
@@ -370,7 +362,7 @@ int Compat_Timespan_Arithmetic()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GCompatProfile, TEXT("DateTimeCompat"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCompat_DateTimeCompat"), TEXT(R"(
 int Compat_DateTime_Epoch()
 {
 	FDateTime Epoch = FDateTime::FromUnixTimestamp(0);
@@ -457,14 +449,14 @@ int Compat_DateTime_NowAndToday()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_DateTime_Epoch()"), TEXT("Unix epoch should decompose to 1970-01-01"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_DateTime_Constructed()"), TEXT("Full constructor should populate all components"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_DateTime_CopyAndCompare()"), TEXT("Copy and equality should work"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_DateTime_Arithmetic()"), TEXT("Add/subtract timespan should round-trip"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_DateTime_LeapYear()"), TEXT("Leap year detection and day counts should be correct"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_DateTime_Ordering()"), TEXT("opCmp ordering should work across dates"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_DateTime_Formatting()"), TEXT("ToString and ToIso8601 should produce non-empty strings"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCompatProfile, TEXT("int Compat_DateTime_NowAndToday()"), TEXT("Today/Now/UtcNow should return reasonable values"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_Epoch()"), TEXT("Unix epoch should decompose to 1970-01-01"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_Constructed()"), TEXT("Full constructor should populate all components"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_CopyAndCompare()"), TEXT("Copy and equality should work"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_Arithmetic()"), TEXT("Add/subtract timespan should round-trip"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_LeapYear()"), TEXT("Leap year detection and day counts should be correct"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_Ordering()"), TEXT("opCmp ordering should work across dates"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_Formatting()"), TEXT("ToString and ToIso8601 should produce non-empty strings"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_NowAndToday()"), TEXT("Today/Now/UtcNow should return reasonable values"), 1);
 	}
 };
 

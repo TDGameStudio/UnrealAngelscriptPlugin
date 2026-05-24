@@ -19,7 +19,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -34,13 +33,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GQuatProfile{
-	TEXT("Quat"),              // Theme
-	TEXT(""),                  // Variant
-	TEXT("ASQuat"),            // ModulePrefix
-	TEXT("Quat"),             // CasePrefix
-	TEXT("QuatBindings"),     // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -66,7 +58,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptQuatBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GQuatProfile, TEXT("Identity"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASQuat_Identity"), TEXT(R"(
 int Quat_IdentityRoundTrip()
 {
 	FQuat Q = FQuat::Identity;
@@ -81,8 +73,8 @@ int Quat_IsIdentity()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GQuatProfile, TEXT("int Quat_IdentityRoundTrip()"), TEXT("Identity components are 0,0,0,1"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GQuatProfile, TEXT("int Quat_IsIdentity()"), TEXT("Identity reports IsIdentity"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_IdentityRoundTrip()"), TEXT("Identity components are 0,0,0,1"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_IsIdentity()"), TEXT("Identity reports IsIdentity"), 1);
 	}
 
 	// ====================================================================
@@ -94,7 +86,7 @@ int Quat_IsIdentity()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GQuatProfile, TEXT("NormalizeOps"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASQuat_NormalizeOps"), TEXT(R"(
 int Quat_NormalizeRecoversRotation()
 {
 	FQuat Q = FQuat(FVector::UpVector, 1.5707963267948966) * 3.0;
@@ -112,8 +104,8 @@ int Quat_IsNormalizedAfterNormalize()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GQuatProfile, TEXT("int Quat_NormalizeRecoversRotation()"), TEXT("Normalize recovers quarter-turn"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GQuatProfile, TEXT("int Quat_IsNormalizedAfterNormalize()"), TEXT("IsNormalized after Normalize"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_NormalizeRecoversRotation()"), TEXT("Normalize recovers quarter-turn"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_IsNormalizedAfterNormalize()"), TEXT("IsNormalized after Normalize"), 1);
 	}
 
 	// ====================================================================
@@ -125,7 +117,7 @@ int Quat_IsNormalizedAfterNormalize()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GQuatProfile, TEXT("RotateVector"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASQuat_RotateVector"), TEXT(R"(
 int Quat_RotateVectorMatchesNative()
 {
 	const FQuat QuarterTurn = FQuat(FVector::UpVector, 1.5707963267948966);
@@ -144,8 +136,8 @@ int Quat_UnrotateVectorRecoversOriginal()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GQuatProfile, TEXT("int Quat_RotateVectorMatchesNative()"), TEXT("RotateVector quarter-turn"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GQuatProfile, TEXT("int Quat_UnrotateVectorRecoversOriginal()"), TEXT("UnrotateVector recovers original"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_RotateVectorMatchesNative()"), TEXT("RotateVector quarter-turn"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_UnrotateVectorRecoversOriginal()"), TEXT("UnrotateVector recovers original"), 1);
 	}
 
 	// ====================================================================
@@ -157,7 +149,7 @@ int Quat_UnrotateVectorRecoversOriginal()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GQuatProfile, TEXT("InverseAndDecomp"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASQuat_InverseAndDecomp"), TEXT(R"(
 int Quat_InverseUndoesRotation()
 {
 	FQuat Q = FQuat(FVector::UpVector, 1.5707963267948966);
@@ -183,9 +175,9 @@ int Quat_ToAxisAndAngle_Angle()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GQuatProfile, TEXT("int Quat_InverseUndoesRotation()"), TEXT("Inverse undoes rotation"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GQuatProfile, TEXT("int Quat_ToAxisAndAngle_Axis()"), TEXT("ToAxisAndAngle reports UpVector axis"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GQuatProfile, TEXT("int Quat_ToAxisAndAngle_Angle()"), TEXT("ToAxisAndAngle reports half-pi angle"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_InverseUndoesRotation()"), TEXT("Inverse undoes rotation"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_ToAxisAndAngle_Axis()"), TEXT("ToAxisAndAngle reports UpVector axis"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_ToAxisAndAngle_Angle()"), TEXT("ToAxisAndAngle reports half-pi angle"), 1);
 	}
 
 	// ====================================================================
@@ -197,7 +189,7 @@ int Quat_ToAxisAndAngle_Angle()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GQuatProfile, TEXT("Conversions"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASQuat_Conversions"), TEXT(R"(
 int Quat_RotatorConversion()
 {
 	FRotator R = FQuat(FVector::UpVector, 1.5707963267948966).Rotator();
@@ -214,8 +206,8 @@ int Quat_MakeFromEulerRotator()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GQuatProfile, TEXT("int Quat_RotatorConversion()"), TEXT("Rotator() matches 90-deg yaw"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GQuatProfile, TEXT("int Quat_MakeFromEulerRotator()"), TEXT("MakeFromEuler produces non-identity"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_RotatorConversion()"), TEXT("Rotator() matches 90-deg yaw"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_MakeFromEulerRotator()"), TEXT("MakeFromEuler produces non-identity"), 1);
 	}
 
 	// ====================================================================
@@ -227,7 +219,7 @@ int Quat_MakeFromEulerRotator()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GQuatProfile, TEXT("Interpolation"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASQuat_Interpolation"), TEXT(R"(
 int Quat_SlerpHalfWay()
 {
 	FQuat Q = FQuat::Slerp(FQuat::Identity, FQuat(FVector::UpVector, 1.5707963267948966), 0.5);
@@ -244,8 +236,8 @@ int Quat_SlerpIsNormalized()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GQuatProfile, TEXT("int Quat_SlerpHalfWay()"), TEXT("Slerp half-way is 45-deg"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GQuatProfile, TEXT("int Quat_SlerpIsNormalized()"), TEXT("Slerp result is normalized"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_SlerpHalfWay()"), TEXT("Slerp half-way is 45-deg"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Quat_SlerpIsNormalized()"), TEXT("Slerp result is normalized"), 1);
 	}
 };
 

@@ -12,7 +12,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -25,13 +24,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GSetAdvProfile{
-	TEXT("SetAdvanced"),          // Theme
-	TEXT(""),                     // Variant
-	TEXT("ASSetAdv"),             // ModulePrefix
-	TEXT("SetAdv"),               // CasePrefix
-	TEXT("SetAdvancedBindings"),  // LogCategory
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSetAdvancedBindingsTest,
 	"Angelscript.TestModule.Bindings.SetAdvanced",
@@ -53,7 +45,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSetAdvancedBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GSetAdvProfile, TEXT("AppendArraySet"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSetAdvanced_AppendArraySet"), TEXT(R"(
 int AppendArray_Num()
 {
 	TArray<int> Arr;
@@ -118,19 +110,19 @@ int AppendSet_MergeContainsAll()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GSetAdvProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int AppendArray_Num()"),
 			TEXT("Append from TArray with duplicates should deduplicate"), 2);
-		ExpectGlobalInt(*TestRunner, Engine, M, GSetAdvProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int AppendArray_Contains4()"),
 			TEXT("Appended set should contain 4"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GSetAdvProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int AppendArray_Contains7()"),
 			TEXT("Appended set should contain 7"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GSetAdvProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int AppendSet_MergeNum()"),
 			TEXT("Append from TSet should merge to 3 unique elements"), 3);
-		ExpectGlobalInt(*TestRunner, Engine, M, GSetAdvProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int AppendSet_MergeContainsAll()"),
 			TEXT("Merged set should contain all three elements"), 1);
 	}
@@ -144,7 +136,7 @@ int AppendSet_MergeContainsAll()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GSetAdvProfile, TEXT("CopyIsolation"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSetAdvanced_CopyIsolation"), TEXT(R"(
 int Copy_AddToCopy()
 {
 	TSet<int> Orig;
@@ -194,16 +186,16 @@ int Copy_OriginalUnchangedContent()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GSetAdvProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Copy_AddToCopy()"),
 			TEXT("Adding to copy should be visible in copy"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GSetAdvProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Copy_RemoveFromCopy()"),
 			TEXT("Removing from copy should not leave element in copy"), 0);
-		ExpectGlobalInt(*TestRunner, Engine, M, GSetAdvProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Copy_OriginalUnchangedNum()"),
 			TEXT("Original set Num should remain 3 after mutating copy"), 3);
-		ExpectGlobalInt(*TestRunner, Engine, M, GSetAdvProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Copy_OriginalUnchangedContent()"),
 			TEXT("Original set content should be unchanged after mutating copy"), 1);
 	}
@@ -217,7 +209,7 @@ int Copy_OriginalUnchangedContent()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GSetAdvProfile, TEXT("AssignEmpty"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSetAdvanced_AssignEmpty"), TEXT(R"(
 int Assign_ReplacesNum()
 {
 	TSet<int> Source;
@@ -296,22 +288,22 @@ int Empty_SourceUnaffected()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GSetAdvProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Assign_ReplacesNum()"),
 			TEXT("Assignment should replace target with source count"), 3);
-		ExpectGlobalInt(*TestRunner, Engine, M, GSetAdvProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Assign_ReplacesContent()"),
 			TEXT("Assignment should copy source content into target"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GSetAdvProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Assign_OldContentGone()"),
 			TEXT("Assignment should discard previous target content"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GSetAdvProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Empty_ClearsSet()"),
 			TEXT("Empty should clear the set"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GSetAdvProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Empty_NoElementsLeft()"),
 			TEXT("Empty should leave no elements accessible"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GSetAdvProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int Empty_SourceUnaffected()"),
 			TEXT("Empty on target should not affect source set"), 1);
 	}

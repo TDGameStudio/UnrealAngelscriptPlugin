@@ -26,7 +26,6 @@
 #include "Shared/AngelscriptTestUtilities.h"
 #include "Shared/AngelscriptTestEngineHelper.h"
 #include "Shared/AngelscriptReflectiveAccess.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -43,9 +42,6 @@ using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 using namespace AngelscriptReflectiveAccess;
 
-static const FBindingsCoverageProfile GEnhInputProfile{
-	TEXT("EnhancedInput"), TEXT(""), TEXT("ASEnhInput"), TEXT("EnhInput"), TEXT("EnhancedInputBindings")
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptEnhancedInputBindingsTest, "Angelscript.TestModule.Bindings.EnhancedInput",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -62,7 +58,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEnhancedInputBindingsTest, "Angelscript.TestMo
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GEnhInputProfile, TEXT("MulAssignCompat"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_MulAssignCompat"), TEXT(R"(
 int MulAssignChaining()
 {
 	FInputActionValue Value(2.0f);
@@ -84,7 +80,7 @@ int MulAssignChaining()
 )"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		ExpectGlobalInt(*TestRunner, Engine, M, GEnhInputProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int MulAssignChaining()"),
 			TEXT("*= chaining should preserve value and support later +="), 1);
 	}
@@ -154,7 +150,7 @@ int Entry()
 		}
 
 		// Mutable path should compile and execute
-		FCoverageModuleScope MutableMod(*TestRunner, Engine, GEnhInputProfile, TEXT("MutableCompat"), TEXT(R"(
+		FCoverageModuleScope MutableMod(*TestRunner, Engine, TEXT("ASEnhancedInput_MutableCompat"), TEXT(R"(
 bool ReadConst(const UEnhancedInputComponent Comp)
 {
 	return Comp.HasBindings();
@@ -176,7 +172,7 @@ int MutableEntry()
 )"));
 		if (!MutableMod.IsValid()) return;
 		auto& MM = MutableMod.GetModule();
-		ExpectGlobalInt(*TestRunner, Engine, MM, GEnhInputProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, MM, 
 			TEXT("int MutableEntry()"),
 			TEXT("Mutable UEnhancedInputComponent should compile and execute"), 1);
 	}
@@ -186,7 +182,7 @@ int MutableEntry()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GEnhInputProfile, TEXT("DebugKeyBindingCompat"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_DebugKeyBindingCompat"), TEXT(R"(
 int VerifyBindingCompat(
 	FEnhancedInputActionEventBinding& EventBinding,
 	FEnhancedInputActionValueBinding& ValueBinding,
@@ -216,7 +212,7 @@ int DebugKeyEntry()
 )"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		ExpectGlobalInt(*TestRunner, Engine, M, GEnhInputProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int DebugKeyEntry()"),
 			TEXT("FInputDebugKeyBinding.Execute should coexist with binding handle helpers"), 1);
 	}
@@ -226,7 +222,7 @@ int DebugKeyEntry()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GEnhInputProfile, TEXT("ConstructorsAxisTypes"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_ConstructorsAxisTypes"), TEXT(R"(
 int VerifyConstructorsAndAxisTypes()
 {
 	FInputActionValue Val1D = FInputActionValue(5.0f);
@@ -252,7 +248,7 @@ int VerifyConstructorsAndAxisTypes()
 )"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		ExpectGlobalInt(*TestRunner, Engine, M, GEnhInputProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int VerifyConstructorsAndAxisTypes()"),
 			TEXT("FInputActionValue constructors and axis accessors should work correctly"), 1);
 	}
@@ -262,7 +258,7 @@ int VerifyConstructorsAndAxisTypes()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GEnhInputProfile, TEXT("ConvertToType"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_ConvertToType"), TEXT(R"(
 int VerifyConvertToType()
 {
 	FInputActionValue Val3D = FInputActionValue(FVector(7.0f, 8.0f, 9.0f));
@@ -282,7 +278,7 @@ int VerifyConvertToType()
 )"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		ExpectGlobalInt(*TestRunner, Engine, M, GEnhInputProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int VerifyConvertToType()"),
 			TEXT("ConvertToType should preserve dimension data correctly"), 1);
 	}
@@ -292,7 +288,7 @@ int VerifyConvertToType()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GEnhInputProfile, TEXT("RuntimeMappingContext"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_RuntimeMappingContext"), TEXT(R"(
 int ConfigureRuntimeMapping()
 {
 	UInputAction MoveAction = Cast<UInputAction>(NewObject(GetTransientPackage(), UInputAction::StaticClass(), n"AS_MoveAction", true));
@@ -358,7 +354,7 @@ int ConfigureRuntimeMapping()
 )"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		ExpectGlobalInt(*TestRunner, Engine, M, GEnhInputProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int ConfigureRuntimeMapping()"),
 			TEXT("AS should be able to create an Enhanced Input movement context at runtime"), 1);
 	}
@@ -473,7 +469,7 @@ int BindActionEntry()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GEnhInputProfile, TEXT("RemoveBinding"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_RemoveBinding"), TEXT(R"(
 void VerifyRemoveSignatures(UEnhancedInputComponent Comp)
 {
 	Comp.ClearActionEventBindings();
@@ -489,7 +485,7 @@ int RemoveBindingEntry()
 )"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		ExpectGlobalInt(*TestRunner, Engine, M, GEnhInputProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int RemoveBindingEntry()"),
 			TEXT("Remove/Clear binding signatures should compile"), 1);
 	}
@@ -499,7 +495,7 @@ int RemoveBindingEntry()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GEnhInputProfile, TEXT("EditorDelegateFlags"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_EditorDelegateFlags"), TEXT(R"(
 void VerifyEditorDelegateFlags(UEnhancedInputComponent Comp)
 {
 	Comp.SetShouldFireDelegatesInEditor(true);
@@ -513,7 +509,7 @@ int EditorFlagsEntry()
 )"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		ExpectGlobalInt(*TestRunner, Engine, M, GEnhInputProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M, 
 			TEXT("int EditorFlagsEntry()"),
 			TEXT("Editor delegate flag API should compile"), 1);
 	}

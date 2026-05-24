@@ -4,7 +4,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -13,9 +12,6 @@
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GFNameProfile{
-	TEXT("FName"), TEXT(""), TEXT("ASFName"), TEXT("FName"), TEXT("FNameBindings"),
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptFNameBindingsTest,
 	"Angelscript.TestModule.Bindings.FName",
@@ -28,7 +24,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFNameBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFNameProfile, TEXT("Ctor"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFName_Ctor"), TEXT(R"(
 int FName_ConstructAndIsNone()
 {
 	FName N = n"TestName";
@@ -40,7 +36,7 @@ int FName_ConstructAndIsNone()
 			TestRunner->AddInfo(TEXT("FName not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GFNameProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int FName_ConstructAndIsNone()"),
 			TEXT("Constructed FName is not None"), 1);
 	}
@@ -49,7 +45,7 @@ int FName_ConstructAndIsNone()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFNameProfile, TEXT("None"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFName_None"), TEXT(R"(
 int FName_NoneIsNone()
 {
 	FName N;
@@ -61,7 +57,7 @@ int FName_NoneIsNone()
 			TestRunner->AddInfo(TEXT("FName not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GFNameProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int FName_NoneIsNone()"),
 			TEXT("Default FName is None"), 1);
 	}
@@ -70,7 +66,7 @@ int FName_NoneIsNone()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFNameProfile, TEXT("Equal"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFName_Equal"), TEXT(R"(
 int FName_EqualityCheck()
 {
 	FName A = n"Hello";
@@ -83,7 +79,7 @@ int FName_EqualityCheck()
 			TestRunner->AddInfo(TEXT("FName equality not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GFNameProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int FName_EqualityCheck()"),
 			TEXT("Same FName values are equal"), 1);
 	}
@@ -92,7 +88,7 @@ int FName_EqualityCheck()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GFNameProfile, TEXT("ToString"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFName_ToString"), TEXT(R"(
 int FName_ToStringLen()
 {
 	FName N = n"TestName";
@@ -105,7 +101,7 @@ int FName_ToStringLen()
 			TestRunner->AddInfo(TEXT("FName.ToString not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GFNameProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int FName_ToStringLen()"),
 			TEXT("FName ToString length is 8"), 8);
 	}

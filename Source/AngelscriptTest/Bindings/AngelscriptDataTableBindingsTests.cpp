@@ -16,7 +16,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "Shared/AngelscriptTestUtilities.h"
@@ -36,13 +35,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GDataTableProfile{
-	TEXT("DataTable"),              // Theme
-	TEXT(""),                       // Variant
-	TEXT("ASDataTable"),            // ModulePrefix
-	TEXT("DataTable"),              // CasePrefix
-	TEXT("DataTableBindings"),     // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Helpers

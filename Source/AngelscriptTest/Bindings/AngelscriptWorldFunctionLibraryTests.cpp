@@ -20,7 +20,6 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -39,9 +38,6 @@ using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 using namespace AngelscriptReflectiveAccess;
 
-static const FBindingsCoverageProfile GWorldFuncLibProfile{
-	TEXT("WorldFuncLib"), TEXT(""), TEXT("ASWorldFuncLib"), TEXT("WorldFunc"), TEXT("WorldFunctionLibraryBindings")
-};
 
 namespace AngelscriptTest_Bindings_AngelscriptWorldFunctionLibraryTests_Private
 {

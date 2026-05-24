@@ -4,7 +4,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -13,9 +12,6 @@
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GMsgDlgProfile{
-	TEXT("MsgDlg"), TEXT(""), TEXT("ASMsgDlg"), TEXT("MsgDlg"), TEXT("MsgDlgBindings"),
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptMessageDialogBindingsTest,
 	"Angelscript.TestModule.Bindings.MessageDialog",
@@ -28,7 +24,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMessageDialogBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GMsgDlgProfile, TEXT("InputSettings"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMessageDialog_InputSettings"), TEXT(R"(
 int InputSettings_GetDefaultExists()
 {
 	UInputSettings Settings = UInputSettings::GetInputSettings();
@@ -40,7 +36,7 @@ int InputSettings_GetDefaultExists()
 			TestRunner->AddInfo(TEXT("UInputSettings not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GMsgDlgProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int InputSettings_GetDefaultExists()"),
 			TEXT("UInputSettings::GetInputSettings returns non-null"), 1);
 	}

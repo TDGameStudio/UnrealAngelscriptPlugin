@@ -19,7 +19,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "Shared/AngelscriptTestUtilities.h"
@@ -39,13 +38,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GNativeEngineProfile{
-	TEXT("NativeEngine"),              // Theme
-	TEXT(""),                          // Variant
-	TEXT("ASNativeEngine"),            // ModulePrefix
-	TEXT("NativeEngine"),              // CasePrefix
-	TEXT("NativeEngineBindings"),      // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class

@@ -17,7 +17,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -35,13 +34,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GStringTableProfile{
-	TEXT("StringTable"),            // Theme
-	TEXT(""),                       // Variant
-	TEXT("ASStringTable"),          // ModulePrefix
-	TEXT("StringTable"),            // CasePrefix
-	TEXT("StringTableBindings"),    // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Helpers
@@ -128,12 +120,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptStringTableBindingsTest,
 
 		const FString Script = BuildLocTableScript(TableId);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GStringTableProfile, TEXT("LocTableCompat"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASStringTable_LocTableCompat"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
 		// Verify script can read back the localized text
-		ExpectGlobalInt(*TestRunner, Engine, M, GStringTableProfile, TEXT("int LocTable_ReadBack()"), TEXT("LOCTABLE reads back expected localized text"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int LocTable_ReadBack()"), TEXT("LOCTABLE reads back expected localized text"), 1);
 
 		// Verify C++ registry state after script execution
 		FStringTableConstPtr StringTable = FStringTableRegistry::Get().FindStringTable(TableId);

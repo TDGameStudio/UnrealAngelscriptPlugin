@@ -17,7 +17,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -32,13 +31,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GGuidProfile{
-	TEXT("Guid"),              // Theme
-	TEXT(""),                  // Variant
-	TEXT("ASGuid"),            // ModulePrefix
-	TEXT("Guid"),             // CasePrefix
-	TEXT("GuidBindings"),     // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Helpers
@@ -111,13 +103,13 @@ int Guid_SlotAccess()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GGuidProfile, TEXT("FormatSlots"), ScriptSource);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGuid_FormatSlots"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GGuidProfile, TEXT("int Guid_ToStringHyphens()"), TEXT("FGuid ToString DigitsWithHyphens should match native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGuidProfile, TEXT("int Guid_ToStringDigits()"), TEXT("FGuid ToString Digits should match native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGuidProfile, TEXT("int Guid_SlotAccess()"), TEXT("FGuid operator[] should return correct components"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ToStringHyphens()"), TEXT("FGuid ToString DigitsWithHyphens should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ToStringDigits()"), TEXT("FGuid ToString Digits should match native"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_SlotAccess()"), TEXT("FGuid operator[] should return correct components"), 1);
 	}
 
 	// ====================================================================
@@ -175,14 +167,14 @@ int Guid_ParseExactDigits()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GGuidProfile, TEXT("ParseOk"), ScriptSource);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGuid_ParseOk"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GGuidProfile, TEXT("int Guid_ParseHyphens()"), TEXT("FGuid::Parse should accept DigitsWithHyphens format"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGuidProfile, TEXT("int Guid_ParseDigits()"), TEXT("FGuid::Parse should accept Digits format"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGuidProfile, TEXT("int Guid_ParseExactHyphens()"), TEXT("FGuid::ParseExact should accept DigitsWithHyphens"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGuidProfile, TEXT("int Guid_ParseExactDigits()"), TEXT("FGuid::ParseExact should accept Digits"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseHyphens()"), TEXT("FGuid::Parse should accept DigitsWithHyphens format"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseDigits()"), TEXT("FGuid::Parse should accept Digits format"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseExactHyphens()"), TEXT("FGuid::ParseExact should accept DigitsWithHyphens"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseExactDigits()"), TEXT("FGuid::ParseExact should accept Digits"), 1);
 	}
 
 	// ====================================================================
@@ -223,12 +215,12 @@ int Guid_ParseInvalid()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GGuidProfile, TEXT("ParseFail"), ScriptSource);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGuid_ParseFail"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GGuidProfile, TEXT("int Guid_ParseExactWrongFormat()"), TEXT("FGuid::ParseExact should reject wrong format and preserve sentinel"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGuidProfile, TEXT("int Guid_ParseInvalid()"), TEXT("FGuid::Parse should reject invalid text and preserve sentinel"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseExactWrongFormat()"), TEXT("FGuid::ParseExact should reject wrong format and preserve sentinel"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseInvalid()"), TEXT("FGuid::Parse should reject invalid text and preserve sentinel"), 1);
 	}
 
 	// ====================================================================
@@ -264,12 +256,12 @@ int Guid_CtorFromDigits()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GGuidProfile, TEXT("StrCtor"), ScriptSource);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGuid_StrCtor"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GGuidProfile, TEXT("int Guid_CtorFromHyphens()"), TEXT("FGuid string ctor should parse DigitsWithHyphens"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGuidProfile, TEXT("int Guid_CtorFromDigits()"), TEXT("FGuid string ctor should parse Digits"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_CtorFromHyphens()"), TEXT("FGuid string ctor should parse DigitsWithHyphens"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_CtorFromDigits()"), TEXT("FGuid string ctor should parse Digits"), 1);
 	}
 };
 

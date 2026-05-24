@@ -17,7 +17,6 @@
 ```cpp
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -37,11 +36,11 @@ TEST_CLASS_WITH_FLAGS(FMyTest,
     {
         FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
         FAngelscriptEngineScope Scope(Engine);
-        FCoverageModuleScope Mod(*TestRunner, Engine, GProfile, TEXT("Basic"), TEXT(R"(
+        FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCategoryFeature_Basic"), TEXT(R"(
 int GetValue() { return 42; }
 )"));
         if (!Mod.IsValid()) return;
-        ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GProfile,
+        ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
             TEXT("int GetValue()"), TEXT("Returns 42"), 42);
     }
 };

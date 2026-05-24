@@ -10,7 +10,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -33,13 +32,6 @@ using namespace AngelscriptFunctionalTestUtils;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GInterfaceBridgeProfile{
-	TEXT("InterfaceBridge"),       // Theme
-	TEXT(""),                      // Variant
-	TEXT("ASIntfBridge"),          // ModulePrefix
-	TEXT("IntfBridge"),            // CasePrefix
-	TEXT("InterfaceBridgeTests"),  // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Helpers

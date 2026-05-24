@@ -17,7 +17,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -34,13 +33,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GUtilityProfile{
-	TEXT("Utility"),            // Theme
-	TEXT(""),                   // Variant
-	TEXT("ASUtility"),          // ModulePrefix
-	TEXT("Utility"),            // CasePrefix
-	TEXT("UtilityBindings"),   // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -66,7 +58,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUtilityBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GUtilityProfile, TEXT("Hash"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASUtility_Hash"), TEXT(R"(
 int Hash_CityHash32Deterministic()
 {
 	uint Hash32A = Hash::CityHash32("Alpha");
@@ -105,11 +97,11 @@ int Hash_SeededDiffersFromUnseeded()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int Hash_CityHash32Deterministic()"), TEXT("CityHash32 should be deterministic"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int Hash_CityHash64Deterministic()"), TEXT("CityHash64 should be deterministic"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int Hash_CityHash64WithSeedDeterministic()"), TEXT("CityHash64WithSeed should be deterministic"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int Hash_CityHash64WithSeedsDeterministic()"), TEXT("CityHash64WithSeeds should be deterministic"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int Hash_SeededDiffersFromUnseeded()"), TEXT("Seeded hash should differ from unseeded"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Hash_CityHash32Deterministic()"), TEXT("CityHash32 should be deterministic"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Hash_CityHash64Deterministic()"), TEXT("CityHash64 should be deterministic"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Hash_CityHash64WithSeedDeterministic()"), TEXT("CityHash64WithSeed should be deterministic"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Hash_CityHash64WithSeedsDeterministic()"), TEXT("CityHash64WithSeeds should be deterministic"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Hash_SeededDiffersFromUnseeded()"), TEXT("Seeded hash should differ from unseeded"), 1);
 	}
 
 	// ====================================================================
@@ -174,16 +166,16 @@ int CommandLine_PlatformMiscGetEnvVar()
 			ExpectedSwitches.Num(),
 			*ProjectName);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GUtilityProfile, TEXT("CmdLine"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASUtility_CmdLine"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int CommandLine_GetNotEmpty()"), TEXT("FCommandLine::Get should return non-empty string"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int CommandLine_ParseTokenCount()"), TEXT("FCommandLine::Parse should produce correct token count"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int CommandLine_ParseSwitchCount()"), TEXT("FCommandLine::Parse should produce correct switch count"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int CommandLine_ParseSwitchValue()"), TEXT("FCommandLine::Parse should extract switch name correctly"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int CommandLine_AppGetProjectName()"), TEXT("FApp::GetProjectName should match native value"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int CommandLine_PlatformMiscGetEnvVar()"), TEXT("FPlatformMisc::GetEnvironmentVariable should return PATH"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CommandLine_GetNotEmpty()"), TEXT("FCommandLine::Get should return non-empty string"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CommandLine_ParseTokenCount()"), TEXT("FCommandLine::Parse should produce correct token count"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CommandLine_ParseSwitchCount()"), TEXT("FCommandLine::Parse should produce correct switch count"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CommandLine_ParseSwitchValue()"), TEXT("FCommandLine::Parse should extract switch name correctly"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CommandLine_AppGetProjectName()"), TEXT("FApp::GetProjectName should match native value"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CommandLine_PlatformMiscGetEnvVar()"), TEXT("FPlatformMisc::GetEnvironmentVariable should return PATH"), 1);
 	}
 
 	// ====================================================================
@@ -195,7 +187,7 @@ int CommandLine_PlatformMiscGetEnvVar()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GUtilityProfile, TEXT("Parse"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASUtility_Parse"), TEXT(R"(
 int Parse_ValueInt()
 {
 	FString Source = "Count=12 Ratio=3.5 Name=Alpha Enabled=true";
@@ -235,10 +227,10 @@ int Parse_Bool()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int Parse_ValueInt()"), TEXT("FParse::Value should parse int correctly"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int Parse_ValueFloat()"), TEXT("FParse::Value should parse float correctly"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int Parse_ValueString()"), TEXT("FParse::Value should parse string correctly"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int Parse_Bool()"), TEXT("FParse::Bool should parse bool correctly"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Parse_ValueInt()"), TEXT("FParse::Value should parse int correctly"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Parse_ValueFloat()"), TEXT("FParse::Value should parse float correctly"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Parse_ValueString()"), TEXT("FParse::Value should parse string correctly"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Parse_Bool()"), TEXT("FParse::Bool should parse bool correctly"), 1);
 	}
 
 	// ====================================================================
@@ -250,7 +242,7 @@ int Parse_Bool()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GUtilityProfile, TEXT("RandStream"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASUtility_RandStream"), TEXT(R"(
 int RandStream_InitialSeed()
 {
 	FRandomStream Stream(123);
@@ -310,14 +302,14 @@ int RandStream_ToStringNotEmpty()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int RandStream_InitialSeed()"), TEXT("FRandomStream initial seed should match constructor arg"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int RandStream_ResetDeterministic()"), TEXT("FRandomStream Reset should reproduce same sequence"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int RandStream_CurrentSeedNonZero()"), TEXT("FRandomStream current seed should be non-zero after use"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int RandStream_FractionInRange()"), TEXT("FRandomStream GetFraction should return value in [0,1]"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int RandStream_DoubleRangeInBounds()"), TEXT("FRandomStream double RandRange should be in bounds"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int RandStream_CopyPreservesSeed()"), TEXT("FRandomStream copy should preserve current seed"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int RandStream_GenerateNewSeedNonZero()"), TEXT("FRandomStream GenerateNewSeed should produce non-zero seed"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int RandStream_ToStringNotEmpty()"), TEXT("FRandomStream ToString should not be empty"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RandStream_InitialSeed()"), TEXT("FRandomStream initial seed should match constructor arg"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RandStream_ResetDeterministic()"), TEXT("FRandomStream Reset should reproduce same sequence"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RandStream_CurrentSeedNonZero()"), TEXT("FRandomStream current seed should be non-zero after use"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RandStream_FractionInRange()"), TEXT("FRandomStream GetFraction should return value in [0,1]"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RandStream_DoubleRangeInBounds()"), TEXT("FRandomStream double RandRange should be in bounds"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RandStream_CopyPreservesSeed()"), TEXT("FRandomStream copy should preserve current seed"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RandStream_GenerateNewSeedNonZero()"), TEXT("FRandomStream GenerateNewSeed should produce non-zero seed"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RandStream_ToStringNotEmpty()"), TEXT("FRandomStream ToString should not be empty"), 1);
 	}
 
 	// ====================================================================
@@ -329,7 +321,7 @@ int RandStream_ToStringNotEmpty()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GUtilityProfile, TEXT("StrRemove"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASUtility_StrRemove"), TEXT(R"(
 int StrRemove_MiddleChars()
 {
 	FString Value = "ABCDE";
@@ -347,8 +339,8 @@ int StrRemove_FirstChar()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int StrRemove_MiddleChars()"), TEXT("FString RemoveAt should remove middle characters"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GUtilityProfile, TEXT("int StrRemove_FirstChar()"), TEXT("FString RemoveAt should remove first character"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int StrRemove_MiddleChars()"), TEXT("FString RemoveAt should remove middle characters"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int StrRemove_FirstChar()"), TEXT("FString RemoveAt should remove first character"), 1);
 	}
 };
 

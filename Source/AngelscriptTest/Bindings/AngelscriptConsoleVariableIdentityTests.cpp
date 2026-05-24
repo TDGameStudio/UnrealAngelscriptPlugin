@@ -26,7 +26,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptConsoleVariableIdentityBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunConsoleVariableIdentitySection(*TestRunner, Engine, GetConsoleBindingsProfile());
+		RunConsoleVariableIdentitySection(*TestRunner, Engine);
 	}
 };
 

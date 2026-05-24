@@ -17,7 +17,6 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptFunctionalTestUtils.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -159,13 +158,6 @@ namespace AngelscriptTest_Bindings_AngelscriptWorldCollisionAsyncBindingsTests_P
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GWCAsyncProfile{
-	TEXT("WorldCollisionAsync"),        // Theme
-	TEXT(""),                           // Variant
-	TEXT("ASWCAsync"),                  // ModulePrefix
-	TEXT("WCAsync"),                    // CasePrefix
-	TEXT("WorldCollisionAsyncBindings"), // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class

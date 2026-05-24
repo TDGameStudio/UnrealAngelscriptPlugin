@@ -18,7 +18,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -38,13 +37,6 @@ using namespace AngelscriptReflectiveAccess;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GWorldProfile{
-	TEXT("World"),            // Theme
-	TEXT(""),                 // Variant
-	TEXT("ASWorld"),           // ModulePrefix
-	TEXT("World"),            // CasePrefix
-	TEXT("WorldBindings"),    // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -124,7 +116,7 @@ int VerifyWorldBindings(
 }
 )");
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GWorldProfile, TEXT("ContextGlobals"), ScriptSource);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASWorld_ContextGlobals"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

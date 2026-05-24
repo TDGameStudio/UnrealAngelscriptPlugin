@@ -22,7 +22,6 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -40,13 +39,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GForeachProfile{
-	TEXT("Foreach"),         // Theme
-	TEXT(""),                // Variant
-	TEXT("ASForeach"),       // ModulePrefix
-	TEXT("Foreach"),         // CasePrefix
-	TEXT("ForeachBindings"), // LogCategory
-};
 
 // ============================================================================
 // Sub-Section runners — one per Automation ID
@@ -60,10 +52,9 @@ namespace
 	// -----------------------------------------------------------------------
 	bool RunForeachArraySection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("Array"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_Array"), TEXT(R"(
 int ForeachArray_ValueSum()
 {
 	TArray<int> Values;
@@ -143,7 +134,7 @@ int ForeachArray_FStringConcatLen()
 			{ TEXT("int ForeachArray_ContinueSkips()"),    TEXT("TArray foreach continue should skip evens (1+3=4)"),             4 },
 			{ TEXT("int ForeachArray_FStringConcatLen()"), TEXT("TArray<FString> foreach length sum should be 10"),              10 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -151,10 +142,9 @@ int ForeachArray_FStringConcatLen()
 	// -----------------------------------------------------------------------
 	bool RunForeachSetSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("Set"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_Set"), TEXT(R"(
 int ForeachSet_Sum()
 {
 	TSet<int> Values;
@@ -212,7 +202,7 @@ int ForeachSet_NameSawBeta()
 			{ TEXT("int ForeachSet_NameSawAlpha()"),      TEXT("TSet<FName> foreach should visit Alpha"),                  1 },
 			{ TEXT("int ForeachSet_NameSawBeta()"),       TEXT("TSet<FName> foreach should visit Beta"),                   1 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -220,10 +210,9 @@ int ForeachSet_NameSawBeta()
 	// -----------------------------------------------------------------------
 	bool RunForeachSetExactVisitSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("SetExactVisit"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_SetExactVisit"), TEXT(R"(
 int SetForeach_EmptySkip()
 {
 	TSet<int> EmptyValues;
@@ -265,7 +254,7 @@ int SetForeach_AllVisited()
 			{ TEXT("int SetForeach_VisitCount()"),  TEXT("TSet foreach should visit 3 elements"),          3 },
 			{ TEXT("int SetForeach_AllVisited()"),  TEXT("TSet foreach should visit every element"),       1 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -274,10 +263,9 @@ int SetForeach_AllVisited()
 	// -----------------------------------------------------------------------
 	bool RunForeachMapSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("Map"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_Map"), TEXT(R"(
 int ForeachMap_ValueSum()
 {
 	TMap<FName, int> Values;
@@ -336,7 +324,7 @@ int ForeachMap_VectorValueXSum()
 			{ TEXT("int ForeachMap_IntStringValueLen()"), TEXT("TMap<int,FString> foreach value length sum should be 6"),6 },
 			{ TEXT("int ForeachMap_VectorValueXSum()"),   TEXT("TMap<FName,FVector> foreach X sum should be 6"),       1 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -344,10 +332,9 @@ int ForeachMap_VectorValueXSum()
 	// -----------------------------------------------------------------------
 	bool RunForeachMapKeyValueSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("MapKeyValue"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_MapKeyValue"), TEXT(R"(
 int MapForeach_EmptySkip()
 {
 	TMap<FName, int> Empty;
@@ -462,7 +449,7 @@ int MapForeach_EachSeenOnce()
 			{ TEXT("int MapForeach_SeenCount()"),     TEXT("TMap foreach seen count should be 3 keys"),             3 },
 			{ TEXT("int MapForeach_EachSeenOnce()"),  TEXT("TMap foreach each key should be seen exactly once"),    1 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -470,10 +457,9 @@ int MapForeach_EachSeenOnce()
 	// -----------------------------------------------------------------------
 	bool RunForeachNestedSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("Nested"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_Nested"), TEXT(R"(
 int ForeachNested_Total()
 {
 	TArray<FName> Keys;
@@ -497,7 +483,7 @@ int ForeachNested_Total()
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
-		return ExpectGlobalInt(Test, Engine, Module, Profile,
+		return AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int ForeachNested_Total()"), TEXT("Nested foreach should accumulate 10+20=30"), 30);
 	}
 
@@ -506,10 +492,9 @@ int ForeachNested_Total()
 	// -----------------------------------------------------------------------
 	bool RunForeachEmptySection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("Empty"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_Empty"), TEXT(R"(
 int ForeachEmpty_Count()
 {
 	TArray<int> EmptyArray;
@@ -528,7 +513,7 @@ int ForeachEmpty_Count()
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
-		return ExpectGlobalInt(Test, Engine, Module, Profile,
+		return AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int ForeachEmpty_Count()"), TEXT("Empty containers should never enter foreach body"), 0);
 	}
 
@@ -539,10 +524,9 @@ int ForeachEmpty_Count()
 	// -----------------------------------------------------------------------
 	bool RunForeachUObjectSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("UObject"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_UObject"), TEXT(R"(
 int ForeachUObject_Count()
 {
 	TArray<UObject> Objects;
@@ -598,7 +582,7 @@ int ForeachFNameArray_KnownSentinel()
 			{ TEXT("int ForeachFStringArray_LenSum()"),   TEXT("TArray<FString> foreach length sum should be 6"),           6 },
 			{ TEXT("int ForeachFNameArray_KnownSentinel()"),TEXT("TArray<FName> foreach should hit both sentinels"),         2 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -607,10 +591,9 @@ int ForeachFNameArray_KnownSentinel()
 	// -----------------------------------------------------------------------
 	bool RunForeachConstRefSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("ConstRef"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_ConstRef"), TEXT(R"(
 int ForeachConstRef_XSum()
 {
 	TArray<FVector> Vectors;
@@ -702,7 +685,7 @@ int ForeachConstRef_VectorPartialSumViaContinue()
 			{ TEXT("int ForeachConstRef_RotatorYawSum()"),              TEXT("FRotator foreach Yaw sum should be ~100"),                  1 },
 			{ TEXT("int ForeachConstRef_VectorPartialSumViaContinue()"), TEXT("continue inside foreach should skip middle element (1+3=4)"),1 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -712,10 +695,9 @@ int ForeachConstRef_VectorPartialSumViaContinue()
 
 	bool RunForeachReturnTypeSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("ReturnType"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_ReturnType"), TEXT(R"(
 // Return bool from foreach-based predicate
 bool ForeachRet_Bool_AnyGreaterThan3()
 {
@@ -884,13 +866,13 @@ int ForeachRet_VerifyDedupSet_ContainsThree()
 		bool bPassed = true;
 
 		// Direct bool returns
-		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool ForeachRet_Bool_AnyGreaterThan3()"), TEXT("bool return: any>3 in {1,2,5} should be true"), true);
-		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool ForeachRet_Bool_AllPositive()"), TEXT("bool return: all-positive {1,2,3} should be true"), true);
 
 		// Direct float return
-		bPassed &= ExpectGlobalReturnFloat(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnFloat(Test, Engine, Module, 
 			TEXT("float ForeachRet_Float_Sum()"), TEXT("float return: sum of {1.5,2.5,3.0} should be 7.0"), 7.0f);
 
 		// Container returns verified via script-side int wrappers
@@ -907,7 +889,7 @@ int ForeachRet_VerifyDedupSet_ContainsThree()
 			{ TEXT("int ForeachRet_VerifyDedupSet_Num()"),          TEXT("TSet<int> return from dedup: Num should be 3"),            3 },
 			{ TEXT("int ForeachRet_VerifyDedupSet_ContainsThree()"),TEXT("TSet<int> return from dedup: should contain 3"),           1 },
 		};
-		bPassed &= ExpectGlobalInts(Test, Engine, Module, Profile, IntCases);
+		bPassed &= AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  IntCases);
 
 		return bPassed;
 	}
@@ -918,10 +900,9 @@ int ForeachRet_VerifyDedupSet_ContainsThree()
 
 	bool RunForeachLogDiagnosticSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("LogDiag"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_LogDiag"), TEXT(R"(
 int ForeachLog_Types()
 {
 	// TArray<int>
@@ -967,7 +948,7 @@ int ForeachLog_Types()
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
-		return ExpectGlobalInt(Test, Engine, Module, Profile,
+		return AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int ForeachLog_Types()"),
 			TEXT("Log diagnostic: foreach over various container types should compile and log"), 1);
 	}
@@ -992,65 +973,65 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptForeachBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunForeachArraySection(*TestRunner, Engine, GForeachProfile);
-		RunForeachReturnTypeSection(*TestRunner, Engine, GForeachProfile);
-		RunForeachLogDiagnosticSection(*TestRunner, Engine, GForeachProfile);
+		RunForeachArraySection(*TestRunner, Engine);
+		RunForeachReturnTypeSection(*TestRunner, Engine);
+		RunForeachLogDiagnosticSection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(SetForeach)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunForeachSetSection(*TestRunner, Engine, GForeachProfile);
+		RunForeachSetSection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(SetForeachExactVisit)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunForeachSetExactVisitSection(*TestRunner, Engine, GForeachProfile);
+		RunForeachSetExactVisitSection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(MapForeach)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunForeachMapSection(*TestRunner, Engine, GForeachProfile);
+		RunForeachMapSection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(MapForeachKeyValuePairing)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunForeachMapKeyValueSection(*TestRunner, Engine, GForeachProfile);
+		RunForeachMapKeyValueSection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(ForeachNestedArrayMap)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunForeachNestedSection(*TestRunner, Engine, GForeachProfile);
+		RunForeachNestedSection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(ForeachEmptyContainerSkipsBody)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunForeachEmptySection(*TestRunner, Engine, GForeachProfile);
+		RunForeachEmptySection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(ForeachUObjectArrayCompiles)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunForeachUObjectSection(*TestRunner, Engine, GForeachProfile);
+		RunForeachUObjectSection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(ForeachConstRefPreservesOriginal)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunForeachConstRefSection(*TestRunner, Engine, GForeachProfile);
+		RunForeachConstRefSection(*TestRunner, Engine);
 	}
 };
 

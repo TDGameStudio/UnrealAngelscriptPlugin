@@ -3,8 +3,6 @@
 #include "CoreMinimal.h"
 #include "AngelscriptEngine.h"
 #include "Misc/AutomationTest.h"
-
-#include "AngelscriptBindingsCoverage.h"
 #include "AngelscriptBindingsModuleBuilder.h"
 #include "AngelscriptTestExecute.h"
 
@@ -42,8 +40,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 // FCoverageModuleScope is the RAII module wrapper used by every Section and
-// lives in `AngelscriptTestBindings::` (its canonical home -- it composes the
-// coverage profile + module name policy). We lift it into this TU so the
+// lives in `AngelscriptTestBindings::`. We lift it into this TU so the
 // Section body can read cleanly under `namespace AngelscriptTest`, without
 // the Execute.h header itself having to take a transitive include on the
 // module builder header.
@@ -51,20 +48,16 @@ using AngelscriptTestBindings::FCoverageModuleScope;
 
 namespace AngelscriptTest
 {
-	/**
-	 * Run the example section under the supplied profile. Returns aggregate
-	 * pass/fail. The profile drives the module name and case-label prefix.
-	 */
+	/** Run the example section and return aggregate pass/fail. */
 	inline bool RunBindingsExampleSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
 		// Each case is a no-arg `int F()` that asserts a single behavior and
 		// returns 0 / 1 (or a small int). Keep the script side dumb -- all
 		// branching/fallback logic stays here in C++ where the assertion
 		// names live.
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("Example"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASBindingsSharedExample_Example"), TEXT(R"(
 int EchoZero()           { return 0; }
 int EchoOne()            { return 1; }
 int EchoSum()            { int A = 17; int B = 25; return A + B; }
@@ -89,13 +82,13 @@ int CountFruits()
 		asIScriptModule& Module = ModuleScope.GetModule();
 
 		bool bPassed = true;
-		bPassed &= ExecuteAndExpectInt(Test, Engine, Module, Profile,
+		bPassed &= ExecuteAndExpectInt(Test, Engine, Module,
 			TEXT("int EchoZero()"), TEXT("EchoZero returns 0"), 0);
-		bPassed &= ExecuteAndExpectInt(Test, Engine, Module, Profile,
+		bPassed &= ExecuteAndExpectInt(Test, Engine, Module,
 			TEXT("int EchoOne()"), TEXT("EchoOne returns 1"), 1);
-		bPassed &= ExecuteAndExpectInt(Test, Engine, Module, Profile,
+		bPassed &= ExecuteAndExpectInt(Test, Engine, Module,
 			TEXT("int EchoSum()"), TEXT("EchoSum returns 17 + 25"), 42);
-		bPassed &= ExecuteAndExpectInt(Test, Engine, Module, Profile,
+		bPassed &= ExecuteAndExpectInt(Test, Engine, Module,
 			TEXT("int CountFruits()"), TEXT("CountFruits builds and counts a TArray<FString>"), 3);
 
 		// Batched form -- useful when a section has many homogeneous cases.
@@ -103,7 +96,7 @@ int CountFruits()
 			{ TEXT("int EchoZero()"), TEXT("Batched EchoZero baseline"), 0 },
 			{ TEXT("int EchoOne()"),  TEXT("Batched EchoOne baseline"),  1 },
 		};
-		bPassed &= ExecuteBatchAndExpectInt(Test, Engine, Module, Profile, Cases);
+		bPassed &= ExecuteBatchAndExpectInt(Test, Engine, Module, Cases);
 
 		return bPassed;
 	}

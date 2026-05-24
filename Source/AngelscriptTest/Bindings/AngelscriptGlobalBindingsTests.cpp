@@ -14,7 +14,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -27,13 +26,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GGlobalProfile{
-	TEXT("Global"),             // Theme
-	TEXT(""),                   // Variant
-	TEXT("ASGlobal"),           // ModulePrefix
-	TEXT("Global"),             // CasePrefix
-	TEXT("GlobalBindings"),     // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -59,7 +51,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GGlobalProfile, TEXT("GlobalVar"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGlobal_GlobalVar"), TEXT(R"(
 int GlobalVar_CollisionProfileBlockAllDynamic()
 {
 	return (CollisionProfile::BlockAllDynamic.Compare(FName("BlockAllDynamic")) == 0) ? 1 : 0;
@@ -90,11 +82,11 @@ int GlobalVar_EmptyGameplayTagQuery()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GGlobalProfile, TEXT("int GlobalVar_CollisionProfileBlockAllDynamic()"), TEXT("CollisionProfile::BlockAllDynamic should match FName"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGlobalProfile, TEXT("int GlobalVar_DefaultComponentQueryParams()"), TEXT("DefaultComponentQueryParams should match fresh default"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGlobalProfile, TEXT("int GlobalVar_EmptyGameplayTag()"), TEXT("FGameplayTag::EmptyTag should not be valid"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGlobalProfile, TEXT("int GlobalVar_EmptyGameplayTagContainer()"), TEXT("FGameplayTagContainer::EmptyContainer should be empty"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGlobalProfile, TEXT("int GlobalVar_EmptyGameplayTagQuery()"), TEXT("FGameplayTagQuery::EmptyQuery should be empty"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GlobalVar_CollisionProfileBlockAllDynamic()"), TEXT("CollisionProfile::BlockAllDynamic should match FName"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GlobalVar_DefaultComponentQueryParams()"), TEXT("DefaultComponentQueryParams should match fresh default"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GlobalVar_EmptyGameplayTag()"), TEXT("FGameplayTag::EmptyTag should not be valid"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GlobalVar_EmptyGameplayTagContainer()"), TEXT("FGameplayTagContainer::EmptyContainer should be empty"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GlobalVar_EmptyGameplayTagQuery()"), TEXT("FGameplayTagQuery::EmptyQuery should be empty"), 1);
 	}
 
 	// ====================================================================
@@ -152,14 +144,14 @@ int CommandletGlobals_GetRunningCommandletClass()
 				? *ExpectedCommandletClass->GetName().ReplaceCharWithEscapedChar()
 				: TEXT(""));
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GGlobalProfile, TEXT("Commandlet"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGlobal_Commandlet"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GGlobalProfile, TEXT("int CommandletGlobals_IsRunningCommandlet()"), TEXT("IsRunningCommandlet should match native value"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGlobalProfile, TEXT("int CommandletGlobals_IsRunningCookCommandlet()"), TEXT("IsRunningCookCommandlet should match native value"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGlobalProfile, TEXT("int CommandletGlobals_IsRunningDLCCookCommandlet()"), TEXT("IsRunningDLCCookCommandlet should match native value"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GGlobalProfile, TEXT("int CommandletGlobals_GetRunningCommandletClass()"), TEXT("GetRunningCommandletClass should match native value"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CommandletGlobals_IsRunningCommandlet()"), TEXT("IsRunningCommandlet should match native value"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CommandletGlobals_IsRunningCookCommandlet()"), TEXT("IsRunningCookCommandlet should match native value"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CommandletGlobals_IsRunningDLCCookCommandlet()"), TEXT("IsRunningDLCCookCommandlet should match native value"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int CommandletGlobals_GetRunningCommandletClass()"), TEXT("GetRunningCommandletClass should match native value"), 1);
 	}
 };
 

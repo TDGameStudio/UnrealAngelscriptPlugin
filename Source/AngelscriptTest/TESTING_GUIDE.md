@@ -19,17 +19,12 @@ All new tests should use CQTest (`TEST_CLASS_WITH_FLAGS`):
 ```cpp
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GMyProfile{
-    TEXT("Category"), TEXT("Feature"), TEXT("ASMyPrefix"),
-    TEXT("Feature"), TEXT("MyLogCategory"),
-};
 
 TEST_CLASS_WITH_FLAGS(FMyTest,
     "Angelscript.TestModule.Category.Feature",
@@ -51,14 +46,14 @@ TEST_CLASS_WITH_FLAGS(FMyTest,
         FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
         FAngelscriptEngineScope Scope(Engine);
 
-        FCoverageModuleScope Mod(*TestRunner, Engine, GMyProfile,
-            TEXT("Basic"), TEXT(R"(
+        FCoverageModuleScope Mod(*TestRunner, Engine,
+            TEXT("ASCategoryFeature_Basic"), TEXT(R"(
 int GetValue() { return 42; }
 )"));
         if (!Mod.IsValid()) return;
         auto& M = Mod.GetModule();
 
-        ExpectGlobalInt(*TestRunner, Engine, M, GMyProfile,
+        ExpectGlobalInt(*TestRunner, Engine, M,
             TEXT("int GetValue()"), TEXT("Returns 42"), 42);
     }
 };
@@ -138,7 +133,7 @@ Everything else (bindings, syntax, compiler, functional):
 | `Shared/AngelscriptTestEnginePool.h` | Module-clean engine pool and FScopedModuleCleanEngine |
 | `Shared/AngelscriptTestEngineHelper.h` | Compile/execute helper functions |
 | `Shared/AngelscriptBindingsAssertions.h` | ExpectGlobalInt, ExpectGlobalReturnCustom, etc. |
-| `Shared/AngelscriptBindingsCoverage.h` | FBindingsCoverageProfile, FCoverageModuleScope |
+| `Shared/AngelscriptBindingsModuleBuilder.h` | FCoverageModuleScope（显式 module name + source） |
 | `Shared/AngelscriptBindingsModuleBuilder.h` | Module compilation utilities |
 | `Shared/AngelscriptGlobalFunctionInvoker.h` | FASGlobalFunctionInvoker for passing args to AS |
 | `Shared/AngelscriptReflectiveAccess.h` | Property/function reflective access helpers |

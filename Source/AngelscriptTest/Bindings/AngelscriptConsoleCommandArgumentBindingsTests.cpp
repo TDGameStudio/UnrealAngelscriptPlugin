@@ -26,14 +26,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptConsoleCommandArgumentBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunConsoleCommandArgumentEmptySection(*TestRunner, Engine, GetConsoleBindingsProfile());
+		RunConsoleCommandArgumentEmptySection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(ContentAndOrder)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunConsoleCommandArgumentContentSection(*TestRunner, Engine, GetConsoleBindingsProfile());
+		RunConsoleCommandArgumentContentSection(*TestRunner, Engine);
 	}
 };
 

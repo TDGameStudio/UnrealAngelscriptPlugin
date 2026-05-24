@@ -18,7 +18,6 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -40,13 +39,6 @@ using namespace AngelscriptReflectiveAccess;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GWorldCollisionProfile{
-	TEXT("WorldCollision"),             // Theme
-	TEXT(""),                           // Variant
-	TEXT("ASWorldCollision"),           // ModulePrefix
-	TEXT("WorldCollision"),             // CasePrefix
-	TEXT("WorldCollisionBindings"),     // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Shared helpers (retained from original)

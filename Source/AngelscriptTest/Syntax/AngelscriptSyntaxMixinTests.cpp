@@ -8,7 +8,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "Syntax/AngelscriptSyntaxTestHelpers.h"
@@ -22,13 +21,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GSyntaxMixinProfile{
-	TEXT("Syntax"),        // Theme
-	TEXT("Mixin"),         // Variant
-	TEXT("ASSyntaxMix"),   // ModulePrefix
-	TEXT("Mixin"),         // CasePrefix
-	TEXT("SyntaxMixin"),   // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class

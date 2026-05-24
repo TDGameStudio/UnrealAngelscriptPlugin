@@ -9,7 +9,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "Syntax/AngelscriptSyntaxTestHelpers.h"
@@ -23,13 +22,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GSyntaxMathProfile{
-	TEXT("Syntax"),         // Theme
-	TEXT("Math"),           // Variant
-	TEXT("ASSyntaxMath"),   // ModulePrefix
-	TEXT("Math"),           // CasePrefix
-	TEXT("SyntaxMath"),     // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class

@@ -20,7 +20,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -34,13 +33,6 @@ using namespace AngelscriptReflectiveAccess;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GIteratorProfile{
-	TEXT("Iterator"),          // Theme
-	TEXT(""),                  // Variant
-	TEXT("ASIterator"),        // ModulePrefix
-	TEXT("Iterator"),          // CasePrefix
-	TEXT("IteratorBindings"),  // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -66,7 +58,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptIteratorBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GIteratorProfile, TEXT("SetIter"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASIterator_SetIter"), TEXT(R"(
 int SetIter_SumElements()
 {
 	TSet<int> Values;
@@ -86,7 +78,7 @@ int SetIter_SumElements()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GIteratorProfile, TEXT("int SetIter_SumElements()"), TEXT("TSet iterator should sum all elements via CanProceed/Proceed"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetIter_SumElements()"), TEXT("TSet iterator should sum all elements via CanProceed/Proceed"), 1);
 	}
 
 	// ====================================================================
@@ -98,7 +90,7 @@ int SetIter_SumElements()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GIteratorProfile, TEXT("MapIter"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASIterator_MapIter"), TEXT(R"(
 int MapIter_SumValuesAndCountKeys()
 {
 	TMap<FName, int> Values;
@@ -122,7 +114,7 @@ int MapIter_SumValuesAndCountKeys()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GIteratorProfile, TEXT("int MapIter_SumValuesAndCountKeys()"), TEXT("TMap iterator should sum values and enumerate keys"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapIter_SumValuesAndCountKeys()"), TEXT("TMap iterator should sum values and enumerate keys"), 1);
 	}
 
 	// ====================================================================
@@ -134,7 +126,7 @@ int MapIter_SumValuesAndCountKeys()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GIteratorProfile, TEXT("MapIterPair"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASIterator_MapIterPair"), TEXT(R"(
 bool MatchesExpectedPair(FName Key, int Value)
 {
 	if (Key == FName("Alpha"))
@@ -212,8 +204,8 @@ int MapIterPair_CopyPreservesCorrespondence()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GIteratorProfile, TEXT("int MapIterPair_EmptyMapDoesNotProceed()"), TEXT("empty TMap iterator should not proceed"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GIteratorProfile, TEXT("int MapIterPair_CopyPreservesCorrespondence()"), TEXT("TMap iterator copy should preserve key/value correspondence and remaining state"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapIterPair_EmptyMapDoesNotProceed()"), TEXT("empty TMap iterator should not proceed"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapIterPair_CopyPreservesCorrespondence()"), TEXT("TMap iterator copy should preserve key/value correspondence and remaining state"), 1);
 	}
 };
 

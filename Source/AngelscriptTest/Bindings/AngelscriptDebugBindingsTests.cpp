@@ -15,7 +15,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -30,13 +29,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GDebugProfile{
-	TEXT("Debug"),              // Theme
-	TEXT(""),                   // Variant
-	TEXT("ASDebug"),            // ModulePrefix
-	TEXT("Debug"),              // CasePrefix
-	TEXT("DebugBindings"),     // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -62,7 +54,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebugBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GDebugProfile, TEXT("Callstack"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASDebug_Callstack"), TEXT(R"(
 bool StackContains(const TArray<FString>& Stack, const FString& Needle)
 {
 	for (int Index = 0; Index < Stack.Num(); ++Index)
@@ -100,7 +92,7 @@ int Callstack_EntryCallstack()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GDebugProfile, TEXT("int Callstack_EntryCallstack()"), TEXT("GetAngelscriptCallstack and FormatAngelscriptCallstack should capture the full call chain"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Callstack_EntryCallstack()"), TEXT("GetAngelscriptCallstack and FormatAngelscriptCallstack should capture the full call chain"), 1);
 	}
 
 	// ====================================================================
@@ -118,7 +110,7 @@ int Callstack_EntryCallstack()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GDebugProfile, TEXT("Throw"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASDebug_Throw"), TEXT(R"(
 void Throw_ThrowLeaf()
 {
 	throw("DebuggingThrowCompat");

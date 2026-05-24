@@ -24,7 +24,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -47,13 +46,6 @@ using namespace AngelscriptFunctionalTestUtils;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GInterfacePtrProfile{
-	TEXT("InterfacePtr"),           // Theme
-	TEXT(""),                       // Variant
-	TEXT("ASIntfPtr"),             // ModulePrefix
-	TEXT("IntfPtr"),               // CasePrefix
-	TEXT("InterfacePtrTests"),     // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Helpers

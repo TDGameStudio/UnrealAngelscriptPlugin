@@ -7,7 +7,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -16,13 +15,6 @@
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GQuat3fProfile{
-	TEXT("Quat3f"),
-	TEXT(""),
-	TEXT("ASQuat3f"),
-	TEXT("Quat3f"),
-	TEXT("Quat3fBindings"),
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptQuat3fBindingsTest,
 	"Angelscript.TestModule.Bindings.Quat3f",
@@ -40,7 +32,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptQuat3fBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GQuat3fProfile, TEXT("Rotator"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASQuat3f_Rotator"), TEXT(R"(
 int Rotator_ZeroIsZero()
 {
 	FRotator R = FRotator(0, 0, 0);
@@ -72,7 +64,7 @@ int Rotator_IsZero()
 			{ TEXT("int Rotator_IsNearlyZero()"),        TEXT("Small rotator is nearly zero"), 1 },
 			{ TEXT("int Rotator_IsZero()"),              TEXT("Zero rotator IsZero"), 1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GQuat3fProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	TEST_METHOD(FQuatIdentity)
@@ -80,7 +72,7 @@ int Rotator_IsZero()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GQuat3fProfile, TEXT("Quat"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASQuat3f_Quat"), TEXT(R"(
 int Quat_IdentityIsNormalized()
 {
 	FQuat Q = FQuat::Identity;
@@ -99,7 +91,7 @@ int Quat_IdentityComponents()
 			{ TEXT("int Quat_IdentityIsNormalized()"), TEXT("Identity quat is normalized"), 1 },
 			{ TEXT("int Quat_IdentityComponents()"),   TEXT("Identity quat has correct XYZW"), 1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GQuat3fProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	TEST_METHOD(FTransformIdentity)
@@ -107,7 +99,7 @@ int Quat_IdentityComponents()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GQuat3fProfile, TEXT("Transform"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASQuat3f_Transform"), TEXT(R"(
 int Transform_IdentityLocation()
 {
 	FTransform T = FTransform::Identity;
@@ -128,7 +120,7 @@ int Transform_IdentityScale()
 			{ TEXT("int Transform_IdentityLocation()"), TEXT("Identity transform location is origin"), 1 },
 			{ TEXT("int Transform_IdentityScale()"),    TEXT("Identity transform scale is 1"), 1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GQuat3fProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 };
 

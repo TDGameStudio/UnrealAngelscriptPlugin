@@ -4,7 +4,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -13,9 +12,6 @@
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GPathsProfile{
-	TEXT("Paths"), TEXT(""), TEXT("ASPaths"), TEXT("Paths"), TEXT("PathsBindings"),
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptPathsBindingsTest,
 	"Angelscript.TestModule.Bindings.Paths",
@@ -28,7 +24,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPathsBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GPathsProfile, TEXT("ProjectDir"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASPaths_ProjectDir"), TEXT(R"(
 int Paths_ProjectDirNonEmpty()
 {
 	FString Dir = FPaths::ProjectDir();
@@ -39,7 +35,7 @@ int Paths_ProjectDirNonEmpty()
 		{
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GPathsProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int Paths_ProjectDirNonEmpty()"),
 			TEXT("FPaths::ProjectDir is non-empty"), 1);
 	}
@@ -48,7 +44,7 @@ int Paths_ProjectDirNonEmpty()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GPathsProfile, TEXT("Extension"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASPaths_Extension"), TEXT(R"(
 int Paths_GetExtensionLen()
 {
 	FString Ext = FPaths::GetExtension("MyFile.as");
@@ -59,7 +55,7 @@ int Paths_GetExtensionLen()
 		{
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GPathsProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int Paths_GetExtensionLen()"),
 			TEXT("Extension of 'MyFile.as' is 2 chars"), 2);
 	}
@@ -72,11 +68,10 @@ int Paths_GetExtensionLen()
 			TEXT("GetName"),
 			TEXT("FApp"),
 		};
-		ExpectBindingCompileFailure(
+		AngelscriptTestBindings::ExpectBindingCompileFailure(
 			*TestRunner,
 			Engine,
-			GPathsProfile,
-			TEXT("AppNameMissing"),
+			TEXT("ASPaths_AppNameMissing"),
 			TEXT(R"(
 int App_GetNameNonEmpty()
 {
@@ -92,7 +87,7 @@ int App_GetNameNonEmpty()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GPathsProfile, TEXT("AppProjectName"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASPaths_AppProjectName"), TEXT(R"(
 int App_GetProjectNameDoesNotCrash()
 {
 	FString Name = FApp::GetProjectName();
@@ -100,7 +95,7 @@ int App_GetProjectNameDoesNotCrash()
 }
 )"));
 		if (!Mod.IsValid()) return;
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GPathsProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int App_GetProjectNameDoesNotCrash()"),
 			TEXT("FApp::GetProjectName is the supported app name helper"), 1);
 	}
@@ -109,7 +104,7 @@ int App_GetProjectNameDoesNotCrash()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GPathsProfile, TEXT("CmdLine"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASPaths_CmdLine"), TEXT(R"(
 int CommandLine_GetExists()
 {
 	FString Cmd = FCommandLine::Get();
@@ -120,7 +115,7 @@ int CommandLine_GetExists()
 		{
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GPathsProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int CommandLine_GetExists()"),
 			TEXT("FCommandLine::Get does not crash"), 1);
 	}

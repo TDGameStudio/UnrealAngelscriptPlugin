@@ -4,7 +4,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -13,9 +12,6 @@
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GInputProfile{
-	TEXT("Input"), TEXT(""), TEXT("ASInput"), TEXT("Input"), TEXT("InputBindings"),
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptInputBindingsTest,
 	"Angelscript.TestModule.Bindings.Input",
@@ -28,7 +24,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptInputBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GInputProfile, TEXT("ActionValue"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASInput_ActionValue"), TEXT(R"(
 int InputActionValue_DefaultZero()
 {
 	FInputActionValue V;
@@ -36,7 +32,7 @@ int InputActionValue_DefaultZero()
 }
 )"));
 		if (!Mod.IsValid()) return;
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GInputProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int InputActionValue_DefaultZero()"), TEXT("Default FInputActionValue is zero"), 1);
 	}
 
@@ -44,7 +40,7 @@ int InputActionValue_DefaultZero()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GInputProfile, TEXT("Key"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASInput_Key"), TEXT(R"(
 int Key_IsValid()
 {
 	FKey K = EKeys::SpaceBar;
@@ -52,7 +48,7 @@ int Key_IsValid()
 }
 )"));
 		if (!Mod.IsValid()) return;
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GInputProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int Key_IsValid()"), TEXT("SpaceBar key is valid"), 1);
 	}
 };

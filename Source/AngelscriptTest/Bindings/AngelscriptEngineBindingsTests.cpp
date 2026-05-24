@@ -17,7 +17,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -30,13 +29,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GEngineProfile{
-	TEXT("Engine"),              // Theme
-	TEXT(""),                    // Variant
-	TEXT("ASEngine"),            // ModulePrefix
-	TEXT("Engine"),              // CasePrefix
-	TEXT("EngineBindings"),      // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -62,7 +54,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GEngineProfile, TEXT("ValueTypes"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASEngine_ValueTypes"), TEXT(R"(
 int ValueTypes_IntDouble()
 {
 	int32 Count = 5;
@@ -100,12 +92,12 @@ int ValueTypes_FText()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GEngineProfile, TEXT("int ValueTypes_IntDouble()"), TEXT("int32 and double should hold expected values"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GEngineProfile, TEXT("int ValueTypes_FName()"), TEXT("FName constructed from FString should match"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GEngineProfile, TEXT("int ValueTypes_FVector()"), TEXT("FVector addition with OneVector should compute correctly"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GEngineProfile, TEXT("int ValueTypes_FRotator()"), TEXT("FVector::RightVector.Rotation() should yield (0,90,0)"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GEngineProfile, TEXT("int ValueTypes_FTransform()"), TEXT("FTransform::TransformPosition should offset correctly"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GEngineProfile, TEXT("int ValueTypes_FText()"), TEXT("FText::FromString should round-trip correctly"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValueTypes_IntDouble()"), TEXT("int32 and double should hold expected values"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValueTypes_FName()"), TEXT("FName constructed from FString should match"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValueTypes_FVector()"), TEXT("FVector addition with OneVector should compute correctly"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValueTypes_FRotator()"), TEXT("FVector::RightVector.Rotation() should yield (0,90,0)"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValueTypes_FTransform()"), TEXT("FTransform::TransformPosition should offset correctly"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int ValueTypes_FText()"), TEXT("FText::FromString should round-trip correctly"), 1);
 	}
 
 	// ====================================================================
@@ -117,7 +109,7 @@ int ValueTypes_FText()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GEngineProfile, TEXT("FNameArrayCompat"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASEngine_FNameArrayCompat"), TEXT(R"(
 struct FFNameMemberHolder
 {
 	UObject NativeSelf;
@@ -165,11 +157,11 @@ int FNameArray_Contains()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GEngineProfile, TEXT("int FNameArray_AliasAdd()"), TEXT("FName[] alias should support Add and indexing"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GEngineProfile, TEXT("int FNameArray_ExplicitAdd()"), TEXT("TArray<FName> explicit should support Add and copy"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GEngineProfile, TEXT("int FNameArray_Copy()"), TEXT("FName copy from array index should preserve value"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GEngineProfile, TEXT("int FNameArray_MemberHolder()"), TEXT("FName struct member should support assignment"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GEngineProfile, TEXT("int FNameArray_Contains()"), TEXT("FName arrays should support Contains"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameArray_AliasAdd()"), TEXT("FName[] alias should support Add and indexing"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameArray_ExplicitAdd()"), TEXT("TArray<FName> explicit should support Add and copy"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameArray_Copy()"), TEXT("FName copy from array index should preserve value"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameArray_MemberHolder()"), TEXT("FName struct member should support assignment"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameArray_Contains()"), TEXT("FName arrays should support Contains"), 1);
 	}
 
 	// ====================================================================
@@ -181,7 +173,7 @@ int FNameArray_Contains()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GEngineProfile, TEXT("FNameArrayIdxWB"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASEngine_FNameArrayIdxWB"), TEXT(R"(
 int FNameIdxWB_AliasWriteBack()
 {
 	FName[] AliasValues;
@@ -213,9 +205,9 @@ int FNameIdxWB_ContainsAfterMutation()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GEngineProfile, TEXT("int FNameIdxWB_AliasWriteBack()"), TEXT("FName[] opIndex write-back should not alias the copy"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GEngineProfile, TEXT("int FNameIdxWB_ExplicitWriteBack()"), TEXT("TArray<FName> opIndex write-back should replace in-place"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GEngineProfile, TEXT("int FNameIdxWB_ContainsAfterMutation()"), TEXT("Contains should reflect mutations after opIndex write-back"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameIdxWB_AliasWriteBack()"), TEXT("FName[] opIndex write-back should not alias the copy"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameIdxWB_ExplicitWriteBack()"), TEXT("TArray<FName> opIndex write-back should replace in-place"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int FNameIdxWB_ContainsAfterMutation()"), TEXT("Contains should reflect mutations after opIndex write-back"), 1);
 	}
 
 	// ====================================================================
@@ -227,7 +219,7 @@ int FNameIdxWB_ContainsAfterMutation()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GEngineProfile, TEXT("ForeachCompat"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASEngine_ForeachCompat"), TEXT(R"(
 int Foreach_IntAlias()
 {
 	int[] AliasValues;
@@ -278,10 +270,10 @@ int Foreach_MutatedArray()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GEngineProfile, TEXT("int Foreach_IntAlias()"), TEXT("range-for over int[] should sum correctly"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GEngineProfile, TEXT("int Foreach_FNameExplicit()"), TEXT("range-for over TArray<FName> should iterate all elements"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GEngineProfile, TEXT("int Foreach_FVectorExplicit()"), TEXT("range-for over TArray<FVector> const-ref should read X components"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GEngineProfile, TEXT("int Foreach_MutatedArray()"), TEXT("range-for after opIndex mutation should reflect new values"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Foreach_IntAlias()"), TEXT("range-for over int[] should sum correctly"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Foreach_FNameExplicit()"), TEXT("range-for over TArray<FName> should iterate all elements"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Foreach_FVectorExplicit()"), TEXT("range-for over TArray<FVector> const-ref should read X components"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Foreach_MutatedArray()"), TEXT("range-for after opIndex mutation should reflect new values"), 1);
 	}
 };
 

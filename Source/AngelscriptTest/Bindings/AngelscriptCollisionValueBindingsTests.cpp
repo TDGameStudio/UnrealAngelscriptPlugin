@@ -17,7 +17,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -35,13 +34,6 @@ using namespace AngelscriptReflectiveAccess;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GCollisionValProfile{
-	TEXT("CollisionValue"),          // Theme
-	TEXT(""),                        // Variant
-	TEXT("ASCollisionVal"),          // ModulePrefix
-	TEXT("CollisionVal"),            // CasePrefix
-	TEXT("CollisionValueBindings"),  // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -67,7 +59,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCollisionValueBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GCollisionValProfile, TEXT("CollisionShape"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCollisionValue_CollisionShape"), TEXT(R"(
 bool MatchesVector(const FVector InValue, const float X, const float Y, const float Z)
 {
 	return InValue.X == X && InValue.Y == Y && InValue.Z == Z;
@@ -122,14 +114,14 @@ int Shape_MinExtents()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GCollisionValProfile, TEXT("int Shape_DefaultIsLine()"), TEXT("default FCollisionShape should be line with zero extent"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCollisionValProfile, TEXT("int Shape_SetBox()"), TEXT("SetBox should configure box shape with correct extents"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCollisionValProfile, TEXT("int Shape_SetSphere()"), TEXT("SetSphere should configure sphere shape with correct radius"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCollisionValProfile, TEXT("int Shape_SetCapsule()"), TEXT("SetCapsule should configure capsule with correct radius and half-height"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCollisionValProfile, TEXT("int Shape_MakeBox()"), TEXT("MakeBox factory should produce a valid box shape"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCollisionValProfile, TEXT("int Shape_MakeSphere()"), TEXT("MakeSphere factory should produce a valid sphere shape"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCollisionValProfile, TEXT("int Shape_MakeCapsule()"), TEXT("MakeCapsule factory should produce a valid capsule shape"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GCollisionValProfile, TEXT("int Shape_MinExtents()"), TEXT("min-extent queries should all return positive values"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_DefaultIsLine()"), TEXT("default FCollisionShape should be line with zero extent"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_SetBox()"), TEXT("SetBox should configure box shape with correct extents"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_SetSphere()"), TEXT("SetSphere should configure sphere shape with correct radius"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_SetCapsule()"), TEXT("SetCapsule should configure capsule with correct radius and half-height"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_MakeBox()"), TEXT("MakeBox factory should produce a valid box shape"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_MakeSphere()"), TEXT("MakeSphere factory should produce a valid sphere shape"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_MakeCapsule()"), TEXT("MakeCapsule factory should produce a valid capsule shape"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_MinExtents()"), TEXT("min-extent queries should all return positive values"), 1);
 	}
 
 	// ====================================================================
@@ -141,7 +133,7 @@ int Shape_MinExtents()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GCollisionValProfile, TEXT("CollisionResultAccessors"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCollisionValue_CollisionResultAccessors"), TEXT(R"(
 bool MatchesVector(const FVector InValue, const float X, const float Y, const float Z)
 {
 	return InValue.X == X && InValue.Y == Y && InValue.Z == Z;

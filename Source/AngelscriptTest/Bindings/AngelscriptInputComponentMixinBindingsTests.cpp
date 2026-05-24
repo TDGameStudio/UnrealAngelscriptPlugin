@@ -4,7 +4,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -13,9 +12,6 @@
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GInputMixinProfile{
-	TEXT("InputMixin"), TEXT(""), TEXT("ASInputMixin"), TEXT("InputMixin"), TEXT("InputMixinBindings"),
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptInputComponentMixinBindingsTest,
 	"Angelscript.TestModule.Bindings.InputMixin",
@@ -28,7 +24,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptInputComponentMixinBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GInputMixinProfile, TEXT("PlatApp"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASInputMixin_PlatApp"), TEXT(R"(
 int PlatApp_ClipboardEmpty()
 {
 	FString Clip;
@@ -41,7 +37,7 @@ int PlatApp_ClipboardEmpty()
 			TestRunner->AddInfo(TEXT("FPlatformApplicationMisc not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GInputMixinProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int PlatApp_ClipboardEmpty()"),
 			TEXT("ClipboardPaste does not crash"), 1);
 	}

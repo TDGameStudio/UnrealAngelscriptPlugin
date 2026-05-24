@@ -7,7 +7,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -16,13 +15,6 @@
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GUILayoutProfile{
-	TEXT("UILayout"),
-	TEXT(""),
-	TEXT("ASUILayout"),
-	TEXT("UILayout"),
-	TEXT("UILayoutBindings"),
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptUILayoutBindingsTest,
 	"Angelscript.TestModule.Bindings.UILayout",
@@ -40,7 +32,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUILayoutBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GUILayoutProfile, TEXT("Margin"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASUILayout_Margin"), TEXT(R"(
 int Margin_DefaultZero()
 {
 	FMargin M;
@@ -65,7 +57,7 @@ int Margin_ComponentCtor()
 			{ TEXT("int Margin_UniformCtor()"),    TEXT("Uniform FMargin ctor"), 1 },
 			{ TEXT("int Margin_ComponentCtor()"),  TEXT("Component FMargin ctor"), 1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GUILayoutProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	TEST_METHOD(FAnchorsBasics)
@@ -73,7 +65,7 @@ int Margin_ComponentCtor()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GUILayoutProfile, TEXT("Anchors"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASUILayout_Anchors"), TEXT(R"(
 int Anchors_DefaultZero()
 {
 	FAnchors A;
@@ -92,7 +84,7 @@ int Anchors_UniformCtor()
 			{ TEXT("int Anchors_DefaultZero()"),   TEXT("Default FAnchors is zero"), 1 },
 			{ TEXT("int Anchors_UniformCtor()"),   TEXT("Uniform FAnchors ctor"), 1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GUILayoutProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 };
 

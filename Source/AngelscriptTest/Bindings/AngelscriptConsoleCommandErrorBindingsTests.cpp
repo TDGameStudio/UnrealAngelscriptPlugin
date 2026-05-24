@@ -26,7 +26,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptConsoleCommandErrorBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunConsoleCommandMissingHandlerSection(*TestRunner, Engine, GetConsoleBindingsProfile());
+		RunConsoleCommandMissingHandlerSection(*TestRunner, Engine);
 	}
 };
 

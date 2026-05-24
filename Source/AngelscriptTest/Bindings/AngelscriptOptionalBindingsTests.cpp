@@ -7,7 +7,6 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -25,13 +24,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GOptionalProfile{
-	TEXT("Optional"),     // Theme
-	TEXT(""),             // Variant
-	TEXT("ASOptional"),   // ModulePrefix
-	TEXT("Optional"),     // CasePrefix
-	TEXT("OptionalBindings"), // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Section: OptionalCompat — baseline (int / FName)
@@ -41,10 +33,9 @@ namespace
 {
 	bool RunOptionalSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("Compat"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASOptional_Compat"), TEXT(R"(
 int OptEmpty_IsSet()
 {
 	TOptional<int> O;
@@ -133,7 +124,7 @@ int OptFName_GetWithValue()
 			{ TEXT("int OptFName_GetValue()"),     TEXT("FName TOptional GetValue should match Alpha"),       1 },
 			{ TEXT("int OptFName_GetWithValue()"), TEXT("FName TOptional Get with value returns value not fallback"), 1 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -142,10 +133,9 @@ int OptFName_GetWithValue()
 
 	bool RunOptionalErrorSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("GetValueUnsetError"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASOptional_GetValueUnsetError"), TEXT(R"(
 int TriggerGetValueUnset()
 {
 	TOptional<int> Empty;
@@ -162,7 +152,7 @@ int TriggerGetValueUnset()
 		// expected so the automation framework won't count it as a failure.
 
 		Test.AddExpectedErrorPlain(
-			MakeCoverageModuleName(Profile, TEXT("GetValueUnsetError")),
+			FString(TEXT("ASOptional_GetValueUnsetError")),
 			EAutomationExpectedErrorFlags::Contains, 0);
 		Test.AddExpectedErrorPlain(
 			TEXT("GetValue() called on Optional when not set"),
@@ -171,8 +161,8 @@ int TriggerGetValueUnset()
 			TEXT("int TriggerGetValueUnset()"),
 			EAutomationExpectedErrorFlags::Contains, 0);
 
-		return ExecuteFunctionExpectingScriptException(
-			Test, Engine, Module, Profile,
+		return AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(
+			Test, Engine, Module, 
 			TEXT("int TriggerGetValueUnset()"),
 			TEXT("Unset TOptional.GetValue should raise exception"),
 			FString(TEXT("GetValue() called on Optional when not set")));
@@ -185,10 +175,9 @@ int TriggerGetValueUnset()
 
 	bool RunOptionalTypeMatrixSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("TypeMatrix"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASOptional_TypeMatrix"), TEXT(R"(
 // ---- bool ----
 int OptBool_True_IsSet()
 {
@@ -309,7 +298,7 @@ int OptObject_NullSet_IsSet()
 			{ TEXT("int OptEnum_GetValue()"),         TEXT("TOptional<ETickingGroup>.GetValue should match TG_PrePhysics"),1 },
 			{ TEXT("int OptObject_NullSet_IsSet()"),  TEXT("TOptional<UObject>(nullptr) construction still sets the slot"),1 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -325,10 +314,9 @@ int OptObject_NullSet_IsSet()
 
 	bool RunOptionalApiCoverageSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("ApiCoverage"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASOptional_ApiCoverage"), TEXT(R"(
 int OptApi_EmptyEqualsEmpty()
 {
 	TOptional<int> A;
@@ -447,7 +435,7 @@ int OptApi_GetMutableViaRef()
 			{ TEXT("int OptApi_ResetThenSetRoundtrip_GetValue()"),   TEXT("Reset+Set(2) should store value 2"),                  2 },
 			{ TEXT("int OptApi_GetMutableViaRef()"),                 TEXT("non-const GetValue should return mutable reference"), 20 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -458,10 +446,9 @@ int OptApi_GetMutableViaRef()
 
 	bool RunOptionalReturnTypeSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("ReturnType"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASOptional_ReturnType"), TEXT(R"(
 bool OptRet_Bool_IsSet()
 {
 	TOptional<int> O;
@@ -607,15 +594,15 @@ int OptRet_VerifyOptionalVector_X()
 		asIScriptModule& Module = ModuleScope.GetModule();
 
 		// Direct bool return assertions
-		ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool OptRet_Bool_IsSet()"), TEXT("bool return: set Optional.IsSet() should be true"), true);
-		ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool OptRet_Bool_IsSetEmpty()"), TEXT("bool return: empty Optional.IsSet() should be false"), false);
 
 		// Direct float return assertions
-		ExpectGlobalReturnFloat(Test, Engine, Module, Profile,
+		AngelscriptTestBindings::ExpectGlobalReturnFloat(Test, Engine, Module, 
 			TEXT("float OptRet_Float_GetValue()"), TEXT("float return: GetValue should be 3.5"), 3.5f);
-		ExpectGlobalReturnFloat(Test, Engine, Module, Profile,
+		AngelscriptTestBindings::ExpectGlobalReturnFloat(Test, Engine, Module, 
 			TEXT("float OptRet_Float_GetFallback()"), TEXT("float return: Get fallback should be 7.25"), 7.25f);
 
 		// FString / FVector returns verified via script-side int wrappers
@@ -633,7 +620,7 @@ int OptRet_VerifyOptionalVector_X()
 			{ TEXT("int OptRet_VerifyOptionalVector_IsSet()"),    TEXT("TOptional<FVector> return: should be set"),              1 },
 			{ TEXT("int OptRet_VerifyOptionalVector_X()"),        TEXT("TOptional<FVector> return: X should be ~10"),            1 },
 		};
-		ExpectGlobalInts(Test, Engine, Module, Profile, IntCases);
+		AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  IntCases);
 
 		return true;
 	}
@@ -646,10 +633,9 @@ int OptRet_VerifyOptionalVector_X()
 
 	bool RunOptionalLogDiagnosticSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("LogDiag"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASOptional_LogDiag"), TEXT(R"(
 int OptLog_IntAndString()
 {
 	TOptional<int> OInt;
@@ -680,7 +666,7 @@ int OptLog_IntAndString()
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
-		return ExpectGlobalInt(Test, Engine, Module, Profile,
+		return AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int OptLog_IntAndString()"),
 			TEXT("Log diagnostic: TOptional types should compile and log without crash"), 1);
 	}
@@ -706,11 +692,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptOptionalBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-		RunOptionalSection(*TestRunner, Engine, GOptionalProfile);
-		RunOptionalTypeMatrixSection(*TestRunner, Engine, GOptionalProfile);
-		RunOptionalApiCoverageSection(*TestRunner, Engine, GOptionalProfile);
-		RunOptionalReturnTypeSection(*TestRunner, Engine, GOptionalProfile);
-		RunOptionalLogDiagnosticSection(*TestRunner, Engine, GOptionalProfile);
+		RunOptionalSection(*TestRunner, Engine);
+		RunOptionalTypeMatrixSection(*TestRunner, Engine);
+		RunOptionalApiCoverageSection(*TestRunner, Engine);
+		RunOptionalReturnTypeSection(*TestRunner, Engine);
+		RunOptionalLogDiagnosticSection(*TestRunner, Engine);
 
 		}
 	}
@@ -720,7 +706,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptOptionalBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-		RunOptionalErrorSection(*TestRunner, Engine, GOptionalProfile);
+		RunOptionalErrorSection(*TestRunner, Engine);
 
 		}
 	}

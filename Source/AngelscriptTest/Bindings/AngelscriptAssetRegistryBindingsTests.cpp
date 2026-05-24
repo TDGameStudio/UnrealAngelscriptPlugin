@@ -16,7 +16,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -127,13 +126,6 @@ namespace AngelscriptTest_Bindings_AngelscriptAssetRegistryBindingsTests_Private
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GAssetRegProfile{
-	TEXT("AssetRegistry"),              // Theme
-	TEXT(""),                           // Variant
-	TEXT("ASAssetReg"),                 // ModulePrefix
-	TEXT("AssetReg"),                   // CasePrefix
-	TEXT("AssetRegistryBindings"),      // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -158,7 +150,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptAssetRegistryBindingsTest,
 	{
 		using namespace AngelscriptTest_Bindings_AngelscriptAssetRegistryBindingsTests_Private;
 		TestRunner->AddExpectedError(TEXT("A null Class was passed to GetBlueprintCDOsByParentClass."), EAutomationExpectedErrorFlags::Contains, 0);
-		TestRunner->AddExpectedError(TEXT("ASAssetReg_TopLevelPathAndNullParent"), EAutomationExpectedErrorFlags::Contains, 0);
+		TestRunner->AddExpectedError(TEXT("ASAssetRegistry_TopLevelPathAndNullParent"), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(TEXT("void TriggerNullParent(UObject[]&)"), EAutomationExpectedErrorFlags::Contains, 0, false);
 
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
@@ -210,7 +202,7 @@ void TriggerNullParent(TArray<UObject>& OutAssets)
 }
 )");
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GAssetRegProfile, TEXT("TopLevelPathAndNullParent"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASAssetRegistry_TopLevelPathAndNullParent"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -416,15 +408,15 @@ int VerifyGetAllAssets()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GAssetRegProfile, TEXT("QueryCompat"), Script);
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASAssetRegistry_QueryCompat"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GAssetRegProfile, TEXT("int VerifyTopLevelPathRoundTrip()"), TEXT("FTopLevelAssetPath should round-trip script values"), 0);
-		ExpectGlobalInt(*TestRunner, Engine, M, GAssetRegProfile, TEXT("int VerifyHasAssets()"), TEXT("AssetRegistry::HasAssets should match the native baseline"), 0);
-		ExpectGlobalInt(*TestRunner, Engine, M, GAssetRegProfile, TEXT("int VerifyGetAssetsByPath()"), TEXT("AssetRegistry::GetAssetsByPath should match the native baseline"), 0);
-		ExpectGlobalInt(*TestRunner, Engine, M, GAssetRegProfile, TEXT("int VerifyGetAssetByObjectPath()"), TEXT("AssetRegistry::GetAssetByObjectPath should match the native baseline"), 0);
-		ExpectGlobalInt(*TestRunner, Engine, M, GAssetRegProfile, TEXT("int VerifyGetAllAssets()"), TEXT("AssetRegistry::GetAllAssets should match the native baseline"), 0);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyTopLevelPathRoundTrip()"), TEXT("FTopLevelAssetPath should round-trip script values"), 0);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyHasAssets()"), TEXT("AssetRegistry::HasAssets should match the native baseline"), 0);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyGetAssetsByPath()"), TEXT("AssetRegistry::GetAssetsByPath should match the native baseline"), 0);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyGetAssetByObjectPath()"), TEXT("AssetRegistry::GetAssetByObjectPath should match the native baseline"), 0);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyGetAllAssets()"), TEXT("AssetRegistry::GetAllAssets should match the native baseline"), 0);
 	}
 };
 

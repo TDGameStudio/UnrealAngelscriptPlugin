@@ -10,7 +10,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "Syntax/AngelscriptSyntaxTestHelpers.h"
@@ -24,13 +23,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GSyntaxControlFlowProfile{
-	TEXT("Syntax"),           // Theme
-	TEXT("ControlFlow"),      // Variant
-	TEXT("ASSyntaxCF"),       // ModulePrefix
-	TEXT("ControlFlow"),      // CasePrefix
-	TEXT("SyntaxControlFlow"),// LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -56,7 +48,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSyntaxControlFlowTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GSyntaxControlFlowProfile, TEXT("IfPos"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_ControlFlow_IfPos"), TEXT(R"(
 int BasicIf()      { if (true) { return 1; } return 0; }
 int IfElse()       { if (false) { return 1; } else { return 2; } }
 int IfElseIf()     { int X = 5; if (X > 10) { return 1; } else if (X > 3) { return 2; } else { return 3; } }
@@ -75,7 +67,7 @@ int Complex()      { int A = 1; int B = 2; if (A > 0 && B > 0) { return A + B; }
 			{ TEXT("int NoBrace()"),  TEXT("if without braces"), 1 },
 			{ TEXT("int Complex()"),  TEXT("complex condition"), 3 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GSyntaxControlFlowProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -146,7 +138,7 @@ void Test() { if ("hello") { } }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GSyntaxControlFlowProfile, TEXT("ForPos"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_ControlFlow_ForPos"), TEXT(R"(
 int BasicFor()     { int S = 0; for (int I = 0; I < 5; ++I) { S += I; } return S; }
 int Decrement()    { int S = 0; for (int I = 3; I > 0; --I) { S += I; } return S; }
 int Empty()        { int I = 0; for (;;) { if (I >= 3) break; ++I; } return I; }
@@ -163,7 +155,7 @@ int CompoundStep() { int S = 0; for (int I = 0; I < 100; I += 25) { ++S; } retur
 			{ TEXT("int Nested()"),       TEXT("3x2 = 6 iters"),   6 },
 			{ TEXT("int CompoundStep()"), TEXT("step by 25"),       4 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GSyntaxControlFlowProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -220,7 +212,7 @@ void Test() { for (int I = 0; I < 5; ++I) { } int X = I; }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GSyntaxControlFlowProfile, TEXT("WhilePos"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_ControlFlow_WhilePos"), TEXT(R"(
 int BasicWhile()  { int I = 0; while (I < 5) { ++I; } return I; }
 int WhileBreak()  { int I = 0; while (true) { if (I >= 3) break; ++I; } return I; }
 int DoWhile()     { int I = 0; do { ++I; } while (I < 5); return I; }
@@ -237,7 +229,7 @@ int Nested()      { int S = 0; int I = 0; while (I < 3) { int J = 0; while (J < 
 			{ TEXT("int DoWhileOnce()"), TEXT("do-while(false)"), 42 },
 			{ TEXT("int Nested()"),      TEXT("nested while 3x2"), 6 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GSyntaxControlFlowProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -301,7 +293,7 @@ void Test() { do { } while (1); }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GSyntaxControlFlowProfile, TEXT("SwitchPos"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_ControlFlow_SwitchPos"), TEXT(R"(
 int BasicSwitch()  { int X = 1; switch(X) { case 0: return 0; case 1: return 1; default: return -1; } }
 int Fallthrough()  { int X = 0; int Y = 0; switch(X) { case 0: fallthrough; case 1: Y = 10; break; default: Y = 20; break; } return Y; }
 int MultiCase()    { int X = 1; switch(X) { case 0: case 1: case 2: return 99; default: return 0; } }
@@ -316,7 +308,7 @@ int DefaultOnly()  { int X = 42; switch(X) { case 0: return 0; default: return 1
 			{ TEXT("int MultiCase()"),   TEXT("multi-case"),        99 },
 			{ TEXT("int DefaultOnly()"), TEXT("default only"),     100 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GSyntaxControlFlowProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================
@@ -442,7 +434,7 @@ void Test()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GSyntaxControlFlowProfile, TEXT("ForeachPos"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_ControlFlow_ForeachPos"), TEXT(R"(
 int BasicForeach()
 {
 	TArray<int> Arr;
@@ -478,7 +470,7 @@ int ForeachContinue()
 			{ TEXT("int ForeachBreak()"),    TEXT("break at >2"),    3 },
 			{ TEXT("int ForeachContinue()"), TEXT("skip 2 => 1+3"), 4 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M, GSyntaxControlFlowProfile, Cases);
+		AngelscriptTestBindings::ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
 	// ====================================================================

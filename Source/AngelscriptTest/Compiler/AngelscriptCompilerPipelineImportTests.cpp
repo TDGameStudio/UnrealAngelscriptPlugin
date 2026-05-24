@@ -127,7 +127,6 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportTests,
 	using namespace AngelscriptTestSupport;
 
 
-
 		const FString ProviderScriptSource = TEXT(R"AS(
 	int SharedValue()
 	{

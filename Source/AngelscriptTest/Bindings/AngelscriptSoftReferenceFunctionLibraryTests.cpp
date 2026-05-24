@@ -15,7 +15,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "Shared/AngelscriptFunctionalTestUtils.h"
@@ -40,13 +39,6 @@ using namespace AngelscriptFunctionalTestUtils;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GSoftRefProfile{
-	TEXT("SoftRef"),               // Theme
-	TEXT(""),                      // Variant
-	TEXT("ASSoftRef"),             // ModulePrefix
-	TEXT("SoftRef"),               // CasePrefix
-	TEXT("SoftReferenceBindings"), // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Helpers

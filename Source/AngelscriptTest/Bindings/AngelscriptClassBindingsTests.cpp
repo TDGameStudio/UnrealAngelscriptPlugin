@@ -19,7 +19,6 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -47,13 +46,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GClassProfile{
-	TEXT("Class"),         // Theme
-	TEXT(""),              // Variant
-	TEXT("ASClass"),       // ModulePrefix
-	TEXT("Class"),         // CasePrefix
-	TEXT("ClassBindings"), // LogCategory
-};
 
 // ============================================================================
 // Sections
@@ -66,10 +58,9 @@ namespace
 	// -----------------------------------------------------------------------
 	bool RunClassLookupSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("Lookup"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASClass_Lookup"), TEXT(R"(
 int FindClass_NotNull()
 {
 	UClass C = FindClass("AActor");
@@ -134,7 +125,7 @@ int GetSuperClass_ActorNotNull()
 			{ TEXT("int GetSuperClass_CameraIsActor()"),TEXT("ACameraActor.GetSuperClass() should be AActor"),       1 },
 			{ TEXT("int GetSuperClass_ActorNotNull()"), TEXT("AActor.GetSuperClass() should not be null"),           1 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -142,10 +133,9 @@ int GetSuperClass_ActorNotNull()
 	// -----------------------------------------------------------------------
 	bool RunTSubclassOfSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("TSubclassOf"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASClass_TSubclassOf"), TEXT(R"(
 TSubclassOf<AActor> EchoSubclass(TSubclassOf<AActor> Value)
 {
 	return Value;
@@ -281,7 +271,7 @@ int MapKey_FindValue()
 			{ TEXT("int SetKey_Contains()"),                TEXT("TSet<TSubclassOf<AActor>> should support Contains"),        1 },
 			{ TEXT("int MapKey_FindValue()"),               TEXT("TMap<TSubclassOf<AActor>, int> should find value by key"),  99 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -295,22 +285,21 @@ int MapKey_FindValue()
 	// -----------------------------------------------------------------------
 	bool RunTSubclassOfRejectSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
 		// Register all expected error patterns up front. The AS engine logs
 		// the diagnostic + the call-stack frame, so cover both.
 		const FString DiagnosticText(TEXT("Class set to TSubclassOf<> was not a child of templated class."));
 		Test.AddExpectedErrorPlain(DiagnosticText, EAutomationExpectedErrorFlags::Contains, 0);
 		Test.AddExpectedErrorPlain(
-			MakeCoverageModuleName(Profile, TEXT("Reject")),
+			FString(TEXT("ASClass_Reject")),
 			EAutomationExpectedErrorFlags::Contains, 0);
 		Test.AddExpectedErrorPlain(TEXT("TriggerInvalidImplicitCtor"),
 			EAutomationExpectedErrorFlags::Contains, 0);
 		Test.AddExpectedErrorPlain(TEXT("AssignClass"),
 			EAutomationExpectedErrorFlags::Contains, 0);
 
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("Reject"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASClass_Reject"), TEXT(R"(
 void TriggerInvalidImplicitCtor()
 {
 	TSubclassOf<AActor> Invalid = UPackage::StaticClass();
@@ -357,8 +346,8 @@ void AssignClass(TSubclassOf<AActor>& OutValue, UClass NewClass)
 		}
 
 		// (1) Negative: implicit ctor with unrelated UClass should throw.
-		bPassed &= ExecuteFunctionExpectingScriptException(
-			Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(
+			Test, Engine, Module, 
 			TEXT("void TriggerInvalidImplicitCtor()"),
 			TEXT("Implicit ctor from unrelated UClass should raise script exception"),
 			DiagnosticText);
@@ -403,10 +392,9 @@ void AssignClass(TSubclassOf<AActor>& OutValue, UClass NewClass)
 	// -----------------------------------------------------------------------
 	bool RunTSoftClassPtrSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("TSoftClassPtr"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASClass_TSoftClassPtr"), TEXT(R"(
 TSoftClassPtr<AActor> EchoSoftClass(TSoftClassPtr<AActor> Value)
 {
 	return Value;
@@ -542,7 +530,7 @@ int GetAssetName_NonEmpty()
 			{ TEXT("int ToSoftObjectPath_NonEmpty()"),    TEXT("ToSoftObjectPath().ToString() should not be empty"), 1 },
 			{ TEXT("int GetAssetName_NonEmpty()"),        TEXT("GetAssetName() should not be empty"),                1 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -555,14 +543,13 @@ int GetAssetName_NonEmpty()
 	// -----------------------------------------------------------------------
 	bool RunStaticClassSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
 		bool bPassed = true;
 
 		// (a) Plain native StaticClass module.
 		{
-			FCoverageModuleScope PlainScope(Test, Engine, Profile, TEXT("StaticClassPlain"), TEXT(R"(
+			FCoverageModuleScope PlainScope(Test, Engine, TEXT("ASClass_StaticClassPlain"), TEXT(R"(
 int Plain_ActorIsValid()
 {
 	UClass C = AActor::StaticClass();
@@ -594,7 +581,7 @@ int Plain_DefaultObjectIsValid()
 				{ TEXT("int Plain_IsChildOfSelfBoth()"),     TEXT("UClass <-> TSubclassOf IsChildOf should be reflexive"),   1 },
 				{ TEXT("int Plain_DefaultObjectIsValid()"),  TEXT("StaticClass GetDefaultObject should be valid"),           1 },
 			};
-			bPassed &= ExpectGlobalInts(Test, Engine, PlainModule, Profile, PlainCases);
+			bPassed &= AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, PlainModule,  PlainCases);
 		}
 
 		// (b) Annotated ASClass + reflective UFUNCTION call.
@@ -672,7 +659,7 @@ class ABindingStaticClassActor : AActor
 
 		// (c) Follow-up plain module resolves the generated class.
 		{
-			FCoverageModuleScope QueryScope(Test, Engine, Profile, TEXT("StaticClassQuery"), TEXT(R"(
+			FCoverageModuleScope QueryScope(Test, Engine, TEXT("ASClass_StaticClassQuery"), TEXT(R"(
 int Query_FindGeneratedIsValid()
 {
 	UClass C = FindClass("ABindingStaticClassActor");
@@ -704,7 +691,7 @@ int Query_TSubclassOf_IsChildOfBoth()
 				{ TEXT("int Query_IsChildOfActor()"),             TEXT("Generated class should be child of AActor"),      1 },
 				{ TEXT("int Query_TSubclassOf_IsChildOfBoth()"),  TEXT("Generated class TSubclassOf round-trip"),         1 },
 			};
-			bPassed &= ExpectGlobalInts(Test, Engine, QueryModule, Profile, QueryCases);
+			bPassed &= AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, QueryModule,  QueryCases);
 		}
 
 		return bPassed;
@@ -716,10 +703,9 @@ int Query_TSubclassOf_IsChildOfBoth()
 	// -----------------------------------------------------------------------
 	bool RunNativeStaticClassNamespaceSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		Test.AddInfo(FormatCaseLabel(Profile, TEXT("Probe AActor::StaticClass via default namespace")));
+		Test.AddInfo(FString(TEXT("Probe AActor::StaticClass via default namespace")));
 
 		FAngelscriptEngineScope EngineScope(Engine);
 		asIScriptEngine* ScriptEngine = Engine.Engine;
@@ -758,10 +744,9 @@ int Query_TSubclassOf_IsChildOfBoth()
 	// -----------------------------------------------------------------------
 	bool RunNativeStaticTypeGlobalSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("StaticTypeGlobal"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASClass_StaticTypeGlobal"), TEXT(R"(
 int StaticType_IsValid()
 {
 	return __StaticType_AActor.IsValid() ? 1 : 0;
@@ -798,7 +783,7 @@ int StaticType_RoundTrip_MatchNamespace()
 			{ TEXT("int StaticType_DefaultObjectIsValid()"),  TEXT("__StaticType_AActor.GetDefaultObject should be valid"),1 },
 			{ TEXT("int StaticType_RoundTrip_MatchNamespace()"),TEXT("__StaticType_AActor.Get() should match AActor::StaticClass() round-trip"), 1 },
 		};
-		return ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		return AngelscriptTestBindings::ExpectGlobalInts(Test, Engine, Module,  Cases);
 	}
 
 	// -----------------------------------------------------------------------
@@ -809,8 +794,7 @@ int StaticType_RoundTrip_MatchNamespace()
 	// -----------------------------------------------------------------------
 	bool RunUClassReflectionSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
 		bool bPassed = true;
 
@@ -903,7 +887,7 @@ class ABindingReflectionActor : AActor
 
 		// (b) Plain module — IsAbstract on native classes.
 		{
-			FCoverageModuleScope AbstractScope(Test, Engine, Profile, TEXT("IsAbstract"), TEXT(R"(
+			FCoverageModuleScope AbstractScope(Test, Engine, TEXT("ASClass_IsAbstract"), TEXT(R"(
 int IsAbstract_AActor_False()
 {
 	UClass C = AActor::StaticClass();
@@ -921,7 +905,7 @@ int IsAbstract_FindAbstract()
 			if (!AbstractScope.IsValid()) return false;
 			asIScriptModule& AbstractModule = AbstractScope.GetModule();
 
-			bPassed &= ExpectGlobalInt(Test, Engine, AbstractModule, Profile,
+			bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, AbstractModule, 
 				TEXT("int IsAbstract_AActor_False()"),
 				TEXT("AActor should NOT be abstract"),
 				0);
@@ -956,18 +940,17 @@ int IsAbstract_FindAbstract()
 	// -----------------------------------------------------------------------
 	bool RunTSoftClassPtrRejectSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
 		const FString DiagnosticText(TEXT("Provided class is does not inherit from TSoftClassPtr subtype."));
 		Test.AddExpectedErrorPlain(DiagnosticText, EAutomationExpectedErrorFlags::Contains, 0);
 		Test.AddExpectedErrorPlain(
-			MakeCoverageModuleName(Profile, TEXT("SoftClassReject")),
+			FString(TEXT("ASClass_SoftClassReject")),
 			EAutomationExpectedErrorFlags::Contains, 0);
 		Test.AddExpectedErrorPlain(TEXT("TriggerBadSoftAssign"),
 			EAutomationExpectedErrorFlags::Contains, 0);
 
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("SoftClassReject"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASClass_SoftClassReject"), TEXT(R"(
 void TriggerBadSoftAssign()
 {
 	TSoftClassPtr<AActor> S;
@@ -977,8 +960,8 @@ void TriggerBadSoftAssign()
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
-		return ExecuteFunctionExpectingScriptException(
-			Test, Engine, Module, Profile,
+		return AngelscriptTestBindings::ExecuteFunctionExpectingScriptException(
+			Test, Engine, Module, 
 			TEXT("void TriggerBadSoftAssign()"),
 			TEXT("TSoftClassPtr opAssign with unrelated class should raise exception"),
 			DiagnosticText);
@@ -989,10 +972,9 @@ void TriggerBadSoftAssign()
 	// -----------------------------------------------------------------------
 	bool RunClassReturnTypeSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("ReturnType"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASClass_ReturnType"), TEXT(R"(
 bool ClassRet_Bool_FindClassIsValid()
 {
 	UClass C = FindClass("AActor");
@@ -1030,31 +1012,31 @@ int ClassRet_SubclassOf_Echo()
 		asIScriptModule& Module = ModuleScope.GetModule();
 
 		bool bPassed = true;
-		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool ClassRet_Bool_FindClassIsValid()"),
 			TEXT("FindClass should return valid (bool return path)"),
 			true);
-		bPassed &= ExpectGlobalReturnBool(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalReturnBool(Test, Engine, Module, 
 			TEXT("bool ClassRet_Bool_IsChildOf()"),
 			TEXT("IsChildOf should return true (bool return path)"),
 			true);
 
 		// FString return — verify via length proxy (> 0)
-		bPassed &= ExpectGlobalIntAtLeast(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalIntAtLeast(Test, Engine, Module, 
 			TEXT("int ClassRet_FString_ClassNameLen()"),
 			TEXT("AActor class name length should be > 0"),
 			1);
-		bPassed &= ExpectGlobalIntAtLeast(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalIntAtLeast(Test, Engine, Module, 
 			TEXT("int ClassRet_FString_SuperClassNameLen()"),
 			TEXT("CameraActor super class name length should be > 0"),
 			1);
 
 		// UClass / TSubclassOf echo paths
-		bPassed &= ExpectGlobalInt(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int ClassRet_UClass_Echo()"),
 			TEXT("UClass echo should round-trip"),
 			1);
-		bPassed &= ExpectGlobalInt(Test, Engine, Module, Profile,
+		bPassed &= AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int ClassRet_SubclassOf_Echo()"),
 			TEXT("TSubclassOf echo should round-trip"),
 			1);
@@ -1067,10 +1049,9 @@ int ClassRet_SubclassOf_Echo()
 	// -----------------------------------------------------------------------
 	bool RunClassLogDiagnosticSection(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FBindingsCoverageProfile& Profile)
+		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("LogDiag"), TEXT(R"(
+		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASClass_LogDiag"), TEXT(R"(
 int ClassLog_Types()
 {
 	UClass C = AActor::StaticClass();
@@ -1087,7 +1068,7 @@ int ClassLog_Types()
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
-		return ExpectGlobalInt(Test, Engine, Module, Profile,
+		return AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module, 
 			TEXT("int ClassLog_Types()"),
 			TEXT("Log() with class string diagnostics should succeed"),
 			1);
@@ -1113,74 +1094,74 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptClassBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunClassLookupSection(*TestRunner, Engine, GClassProfile);
+		RunClassLookupSection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(TSubclassOfCompat)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunTSubclassOfSection(*TestRunner, Engine, GClassProfile);
+		RunTSubclassOfSection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(TSubclassOfRejectsUnrelatedClass)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunTSubclassOfRejectSection(*TestRunner, Engine, GClassProfile);
+		RunTSubclassOfRejectSection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(TSoftClassPtrCompat)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunTSoftClassPtrSection(*TestRunner, Engine, GClassProfile);
+		RunTSoftClassPtrSection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(StaticClassCompat)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunStaticClassSection(*TestRunner, Engine, GClassProfile);
+		RunStaticClassSection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(NativeStaticClassNamespace)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunNativeStaticClassNamespaceSection(*TestRunner, Engine, GClassProfile);
+		RunNativeStaticClassNamespaceSection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(NativeStaticTypeGlobal)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunNativeStaticTypeGlobalSection(*TestRunner, Engine, GClassProfile);
+		RunNativeStaticTypeGlobalSection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(UClassReflectionCompat)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunUClassReflectionSection(*TestRunner, Engine, GClassProfile);
+		RunUClassReflectionSection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(TSoftClassPtrRejectsUnrelatedClass)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunTSoftClassPtrRejectSection(*TestRunner, Engine, GClassProfile);
+		RunTSoftClassPtrRejectSection(*TestRunner, Engine);
 	}
 
 	TEST_METHOD(ClassReturnTypeAndLogDiag)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		if (!RunClassReturnTypeSection(*TestRunner, Engine, GClassProfile))
+		if (!RunClassReturnTypeSection(*TestRunner, Engine))
 		{
 			return;
 		}
-		RunClassLogDiagnosticSection(*TestRunner, Engine, GClassProfile);
+		RunClassLogDiagnosticSection(*TestRunner, Engine);
 	}
 };
 

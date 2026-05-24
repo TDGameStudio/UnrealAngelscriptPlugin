@@ -4,7 +4,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -13,9 +12,6 @@
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GHitResultProfile{
-	TEXT("HitResult"), TEXT(""), TEXT("ASHitResult"), TEXT("HitResult"), TEXT("HitResultBindings"),
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptHitResultBindingsTest,
 	"Angelscript.TestModule.Bindings.HitResult",
@@ -32,7 +28,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHitResultBindingsTest,
 		// binding; the autoaccessor synthesis that previously surfaced it was removed
 		// in 2026-05-22-refactor-as-remove-autoaccessor. Switch to a bound non-bitfield
 		// member (`Time`) which defaults to 1.0 in FHitResult's default constructor.
-		FCoverageModuleScope Mod(*TestRunner, Engine, GHitResultProfile, TEXT("Default"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASHitResult_Default"), TEXT(R"(
 int HitResult_DefaultTime()
 {
 	FHitResult Hit;
@@ -44,7 +40,7 @@ int HitResult_DefaultTime()
 			TestRunner->AddInfo(TEXT("FHitResult not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GHitResultProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int HitResult_DefaultTime()"),
 			TEXT("Default FHitResult constructor sets Time to 1.0"), 1);
 	}
@@ -53,7 +49,7 @@ int HitResult_DefaultTime()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GHitResultProfile, TEXT("Distance"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASHitResult_Distance"), TEXT(R"(
 int HitResult_DefaultDistance()
 {
 	FHitResult Hit;
@@ -65,7 +61,7 @@ int HitResult_DefaultDistance()
 			TestRunner->AddInfo(TEXT("FHitResult.Distance not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GHitResultProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int HitResult_DefaultDistance()"),
 			TEXT("Default FHitResult distance is 0"), 1);
 	}
@@ -74,7 +70,7 @@ int HitResult_DefaultDistance()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GHitResultProfile, TEXT("Overlap"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASHitResult_Overlap"), TEXT(R"(
 int OverlapResult_DefaultNoOverlap()
 {
 	FOverlapResult Overlap;
@@ -86,7 +82,7 @@ int OverlapResult_DefaultNoOverlap()
 			TestRunner->AddInfo(TEXT("FOverlapResult not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GHitResultProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int OverlapResult_DefaultNoOverlap()"),
 			TEXT("Default FOverlapResult ItemIndex is 0"), 1);
 	}

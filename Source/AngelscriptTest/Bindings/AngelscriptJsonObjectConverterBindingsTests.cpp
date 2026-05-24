@@ -12,7 +12,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -27,13 +26,6 @@ using namespace AngelscriptTestBindings;
 // Profile
 // ----------------------------------------------------------------------------
 
-static const FBindingsCoverageProfile GJsonConvProfile{
-	TEXT("JsonObjectConverter"),       // Theme
-	TEXT(""),                          // Variant
-	TEXT("ASJsonConv"),                // ModulePrefix
-	TEXT("JsonConv"),                  // CasePrefix
-	TEXT("JsonObjectConverterBindings"), // LogCategory
-};
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -59,7 +51,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptJsonObjectConverterBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GJsonConvProfile, TEXT("RoundTrip"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASJsonObjectConverter_RoundTrip"), TEXT(R"(
 int RoundTrip_VectorToJson()
 {
 	const FVector Original = FVector(1.0, 2.0, 3.0);
@@ -123,10 +115,10 @@ int RoundTrip_AppendedFieldParity()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GJsonConvProfile, TEXT("int RoundTrip_VectorToJson()"), TEXT("UStructToJsonObjectString produces non-empty JSON"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GJsonConvProfile, TEXT("int RoundTrip_JsonToVector()"), TEXT("JsonObjectStringToUStruct round-trips FVector"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GJsonConvProfile, TEXT("int RoundTrip_AppendRotator()"), TEXT("AppendUStructToJsonObjectString merges FRotator fields"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GJsonConvProfile, TEXT("int RoundTrip_AppendedFieldParity()"), TEXT("appended JSON preserves numeric field values"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RoundTrip_VectorToJson()"), TEXT("UStructToJsonObjectString produces non-empty JSON"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RoundTrip_JsonToVector()"), TEXT("JsonObjectStringToUStruct round-trips FVector"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RoundTrip_AppendRotator()"), TEXT("AppendUStructToJsonObjectString merges FRotator fields"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int RoundTrip_AppendedFieldParity()"), TEXT("appended JSON preserves numeric field values"), 1);
 	}
 
 	// ====================================================================
@@ -138,7 +130,7 @@ int RoundTrip_AppendedFieldParity()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, GJsonConvProfile, TEXT("ErrorPaths"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASJsonObjectConverter_ErrorPaths"), TEXT(R"(
 int Error_NonUStructRejected()
 {
 	int PlainValue = 7;
@@ -163,8 +155,8 @@ int Error_MalformedJsonRejected()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, GJsonConvProfile, TEXT("int Error_NonUStructRejected()"), TEXT("non-USTRUCT input fails without mutating sentinel"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M, GJsonConvProfile, TEXT("int Error_MalformedJsonRejected()"), TEXT("malformed JSON fails without mutating output"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Error_NonUStructRejected()"), TEXT("non-USTRUCT input fails without mutating sentinel"), 1);
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Error_MalformedJsonRejected()"), TEXT("malformed JSON fails without mutating output"), 1);
 	}
 };
 

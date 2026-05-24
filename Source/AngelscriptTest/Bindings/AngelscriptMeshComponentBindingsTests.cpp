@@ -5,7 +5,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -16,9 +15,6 @@
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GMeshCompProfile{
-	TEXT("MeshComp"), TEXT(""), TEXT("ASMeshComp"), TEXT("MeshComp"), TEXT("MeshCompBindings"),
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptMeshComponentBindingsTest,
 	"Angelscript.TestModule.Bindings.MeshComponent",
@@ -31,7 +27,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMeshComponentBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GMeshCompProfile, TEXT("Projectile"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMeshComponent_Projectile"), TEXT(R"(
 int Projectile_HomingTargetRoundTrip(UProjectileMovementComponent Comp, USceneComponent Target)
 {
 	if (Comp == nullptr) return 0;
@@ -74,7 +70,7 @@ int Projectile_HomingTargetRoundTrip(UProjectileMovementComponent Comp, USceneCo
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GMeshCompProfile, TEXT("Skeletal"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMeshComponent_Skeletal"), TEXT(R"(
 int Skeletal_TypeExists()
 {
 	USkeletalMeshComponent Comp;
@@ -86,7 +82,7 @@ int Skeletal_TypeExists()
 			TestRunner->TestTrue(TEXT("USkeletalMeshComponent type binding module should compile"), false);
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GMeshCompProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int Skeletal_TypeExists()"), TEXT("USkeletalMeshComponent compiles"), 1);
 	}
 
@@ -94,7 +90,7 @@ int Skeletal_TypeExists()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GMeshCompProfile, TEXT("SkeletalAssetAccessors"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMeshComponent_SkeletalAssetAccessors"), TEXT(R"(
 void Skeletal_SetAndGetAsset(USkeletalMeshComponent Comp, USkeletalMesh Mesh)
 {
 	Comp.SetSkeletalMeshAsset(Mesh);
@@ -111,7 +107,7 @@ int Skeletal_SetAndGetAssetEntry()
 			TestRunner->TestTrue(TEXT("USkeletalMeshComponent asset accessor binding module should compile"), false);
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GMeshCompProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int Skeletal_SetAndGetAssetEntry()"), TEXT("USkeletalMeshComponent asset accessors compile"), 1);
 	}
 };

@@ -4,7 +4,6 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsCoverage.h"
 #include "Shared/AngelscriptBindingsModuleBuilder.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
@@ -13,9 +12,6 @@
 using namespace AngelscriptTestSupport;
 using namespace AngelscriptTestBindings;
 
-static const FBindingsCoverageProfile GBodyInstProfile{
-	TEXT("BodyInst"), TEXT(""), TEXT("ASBodyInst"), TEXT("BodyInst"), TEXT("BodyInstBindings"),
-};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptBodyInstanceBindingsTest,
 	"Angelscript.TestModule.Bindings.BodyInstance",
@@ -28,7 +24,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBodyInstanceBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, GBodyInstProfile, TEXT("Latent"), TEXT(R"(
+		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASBodyInstance_Latent"), TEXT(R"(
 int LatentInfo_DefaultLinkage()
 {
 	FLatentActionInfo Info;
@@ -41,7 +37,7 @@ int LatentInfo_DefaultLinkage()
 			return;
 		}
 		// UE 5.7: FLatentActionInfo default Linkage changed from 0 to -1
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), GBodyInstProfile,
+		AngelscriptTestBindings::ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int LatentInfo_DefaultLinkage()"),
 			TEXT("Default FLatentActionInfo linkage"), -1);
 	}
