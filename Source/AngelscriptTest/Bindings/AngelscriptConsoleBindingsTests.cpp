@@ -2,7 +2,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptTestEngineHelper.h"
 #include "Shared/AngelscriptTestMacros.h"
 
@@ -293,7 +293,7 @@ int CommandReady()
 			return false;
 		}
 
-		TUniquePtr<FCoverageModuleScope> ModuleScope = MakeUnique<FCoverageModuleScope>(
+		TUniquePtr<FScopedAngelscriptModule> ModuleScope = MakeUnique<FScopedAngelscriptModule>(
 			Test,
 			Engine, 
 			SectionName,
@@ -359,7 +359,7 @@ namespace AngelscriptTestBindings
 
 		bool bPassed = true;
 		{
-			FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASConsole_VariableTypes"), FString::Printf(TEXT(R"(
+			FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_VariableTypes"), FString::Printf(TEXT(R"(
 int IntDefault()
 {
 	FConsoleVariable IntVar("%s", 5, "Test int cvar");
@@ -463,7 +463,7 @@ int StringUpdated()
 
 		bool bPassed = true;
 		{
-			FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASConsole_VariableExisting"), FString::Printf(TEXT(R"(
+			FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_VariableExisting"), FString::Printf(TEXT(R"(
 int ExistingInitial()
 {
 	FConsoleVariable ExistingVar("%s", 99, "Should reuse existing native cvar");
@@ -515,7 +515,7 @@ int ExistingUpdated()
 
 		bool bPassed = true;
 		{
-			FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASConsole_VariableIdentity"), FString::Printf(TEXT(R"(
+			FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_VariableIdentity"), FString::Printf(TEXT(R"(
 int ExistingInitial()
 {
 	FConsoleVariable ExistingVar("%s", 99, "Should not replace native cvar");
@@ -572,7 +572,7 @@ int ExistingUpdated()
 		}
 
 		bool bPassed = true;
-		TUniquePtr<FCoverageModuleScope> ModuleScope = MakeUnique<FCoverageModuleScope>(
+		TUniquePtr<FScopedAngelscriptModule> ModuleScope = MakeUnique<FScopedAngelscriptModule>(
 			Test,
 			Engine, 
 			TEXT("CommandBasic"),
@@ -660,7 +660,7 @@ int CommandReady()
 		}
 
 		bool bPassed = true;
-		TUniquePtr<FCoverageModuleScope> OriginalScope = MakeUnique<FCoverageModuleScope>(
+		TUniquePtr<FScopedAngelscriptModule> OriginalScope = MakeUnique<FScopedAngelscriptModule>(
 			Test,
 			Engine, 
 			TEXT("CommandReplacementOriginal"),
@@ -674,7 +674,7 @@ int CommandReady()
 			TEXT("int CommandReady()"), TEXT("Console command original replacement module should initialize"), 1);
 
 		{
-			FCoverageModuleScope ReplacementScope(
+			FScopedAngelscriptModule ReplacementScope(
 				Test,
 				Engine,
 				TEXT("ASConsole_CommandReplacementActive"),
@@ -715,7 +715,7 @@ int CommandReady()
 		}
 
 		bool bPassed = true;
-		TUniquePtr<FCoverageModuleScope> OriginalScope = MakeUnique<FCoverageModuleScope>(
+		TUniquePtr<FScopedAngelscriptModule> OriginalScope = MakeUnique<FScopedAngelscriptModule>(
 			Test,
 			Engine, 
 			TEXT("CommandLifecycleOriginal"),
@@ -731,7 +731,7 @@ int CommandReady()
 		bPassed &= ConsoleScope.ExecuteCommand(CommandName, {}, TEXT("Console command lifecycle original execution"));
 		bPassed &= ConsoleScope.VerifyInt(OutputName, 11, TEXT("Console command lifecycle original execution"));
 
-		TUniquePtr<FCoverageModuleScope> ReplacementScope = MakeUnique<FCoverageModuleScope>(
+		TUniquePtr<FScopedAngelscriptModule> ReplacementScope = MakeUnique<FScopedAngelscriptModule>(
 			Test,
 			Engine, 
 			TEXT("CommandLifecycleReplacement"),
@@ -767,7 +767,7 @@ int CommandReady()
 
 		bool bPassed = true;
 		{
-			FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASConsole_CommandMissingHandler"), FString::Printf(TEXT(R"(
+			FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_CommandMissingHandler"), FString::Printf(TEXT(R"(
 void Trigger()
 {
 	const FConsoleCommand Command("%s", n"MissingHandler");
@@ -809,7 +809,7 @@ void Trigger()
 
 		bool bPassed = true;
 		{
-			FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASConsole_CommandWrongSignature"), FString::Printf(TEXT(R"(
+			FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_CommandWrongSignature"), FString::Printf(TEXT(R"(
 void WrongSignature()
 {
 }

@@ -4,7 +4,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -24,7 +24,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPathsBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASPaths_ProjectDir"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASPaths_ProjectDir"), TEXT(R"(
 int Paths_ProjectDirNonEmpty()
 {
 	FString Dir = FPaths::ProjectDir();
@@ -44,7 +44,7 @@ int Paths_ProjectDirNonEmpty()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASPaths_Extension"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASPaths_Extension"), TEXT(R"(
 int Paths_GetExtensionLen()
 {
 	FString Ext = FPaths::GetExtension("MyFile.as");
@@ -87,7 +87,7 @@ int App_GetNameNonEmpty()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASPaths_AppProjectName"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASPaths_AppProjectName"), TEXT(R"(
 int App_GetProjectNameDoesNotCrash()
 {
 	FString Name = FApp::GetProjectName();
@@ -104,7 +104,7 @@ int App_GetProjectNameDoesNotCrash()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASPaths_CmdLine"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASPaths_CmdLine"), TEXT(R"(
 int CommandLine_GetExists()
 {
 	FString Cmd = FCommandLine::Get();

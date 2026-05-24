@@ -19,7 +19,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -165,7 +165,7 @@ int IntSeed_CopyParity()
 		Script.ReplaceInline(TEXT("__EXP_COPY_NEXT__"), *LexToString(ExpCopyNext), ESearchCase::CaseSensitive);
 		Script.ReplaceInline(TEXT("__EXP_STREAM_NEXT__"), *LexToString(ExpStreamNext), ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASRandomStream_IntSeedSequence"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASRandomStream_IntSeedSequence"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -214,7 +214,7 @@ int IntSeed_Reset()
 )");
 		Script.ReplaceInline(TEXT("__EXP_RESET__"), *LexToString(ExpResetValue), ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASRandomStream_IntSeedReset"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASRandomStream_IntSeedReset"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -267,7 +267,7 @@ int UintSeed_Reset()
 		Script.ReplaceInline(TEXT("__EXP_UNSIGNED__"), *LexToString(ExpUnsigned), ESearchCase::CaseSensitive);
 		Script.ReplaceInline(TEXT("__EXP_RESET__"), *LexToString(ExpResetValue), ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASRandomStream_UintSeedSequence"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASRandomStream_UintSeedSequence"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -309,7 +309,7 @@ int NameSeed_RandRange()
 		Script.ReplaceInline(TEXT("__EXP_CURRENT_SEED__"), *LexToString(ExpCurrentSeed), ESearchCase::CaseSensitive);
 		Script.ReplaceInline(TEXT("__EXP_FIRST_RANGE__"), *LexToString(ExpFirstRange), ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASRandomStream_NameSeedSequence"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASRandomStream_NameSeedSequence"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

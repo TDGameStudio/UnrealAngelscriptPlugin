@@ -4,7 +4,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -24,7 +24,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptVolumeBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASVolume_TypeCheck"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASVolume_TypeCheck"), TEXT(R"(
 int Volume_TypeExists()
 {
 	// Compile-time type availability check
@@ -46,7 +46,7 @@ int Volume_TypeExists()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASVolume_FXTypeCheck"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASVolume_FXTypeCheck"), TEXT(R"(
 int FX_TypeExists()
 {
 	UFXSystemComponent Comp;

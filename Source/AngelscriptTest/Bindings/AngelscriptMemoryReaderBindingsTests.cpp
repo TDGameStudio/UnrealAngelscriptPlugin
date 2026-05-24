@@ -20,7 +20,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Serialization/MemoryReader.h"
@@ -60,7 +60,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMemoryReaderBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMemoryReader_ReadOps"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMemoryReader_ReadOps"), TEXT(R"(
 TArray<uint8> MakeTestData()
 {
 	TArray<uint8> Data;
@@ -157,7 +157,7 @@ int MemReader_ReadAnsiString()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMemoryReader_InvalidSkip"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMemoryReader_InvalidSkip"), TEXT(R"(
 void MemReader_TriggerInvalidSkip()
 {
 	TArray<uint8> Data;

@@ -7,7 +7,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -32,7 +32,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSphere3fBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSphere3f_Sphere"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASSphere3f_Sphere"), TEXT(R"(
 int Sphere_CenterPreserved()
 {
 	FSphere S = FSphere(FVector(1,2,3), 5.0);
@@ -71,7 +71,7 @@ int Sphere_IsInsideFalse()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSphere3f_Plane"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASSphere3f_Plane"), TEXT(R"(
 int Plane_NormalPreserved()
 {
 	FPlane P = FPlane(FVector(0,0,5), FVector(0,0,1));

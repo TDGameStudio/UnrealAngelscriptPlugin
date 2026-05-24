@@ -22,7 +22,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "Shared/AngelscriptTestUtilities.h"
 #include "Shared/AngelscriptTestEngineHelper.h"
@@ -69,7 +69,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFileAndDelegateBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFileDelegate_DelegateBind"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFileDelegate_DelegateBind"), TEXT(R"(
 delegate int FNativeCallback(int Value, const FString& Label);
 event void FNativeEvent(int Value, const FString& Label);
 
@@ -138,7 +138,7 @@ int DelegateBind_ClearMakesUnbound()
 		NativeTestObject->NameCounts.Reset();
 		ON_SCOPE_EXIT { NativeTestObject->NameCounts.Reset(); };
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFileDelegate_DelegateExec"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFileDelegate_DelegateExec"), TEXT(R"(
 delegate int FNativeCallback(int Value, const FString& Label);
 event void FNativeEvent(int Value, const FString& Label);
 
@@ -184,7 +184,7 @@ int DelegateExec_MulticastBroadcast()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFileDelegate_SoftPath"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFileDelegate_SoftPath"), TEXT(R"(
 int SoftPath_EmptyIsNull()
 {
 	FSoftObjectPath EmptyPath;
@@ -369,7 +369,7 @@ int SoftResolve_ClassPathTryLoad()
 		Script.ReplaceInline(TEXT("__OBJECT_ASSET_PATH__"), *ExpectedObjectAssetPathString.ReplaceCharWithEscapedChar());
 		Script.ReplaceInline(TEXT("__CLASS_ASSET_PATH__"), *ExpectedClassAssetPathString.ReplaceCharWithEscapedChar());
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFileDelegate_SoftResolve"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFileDelegate_SoftResolve"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -506,7 +506,7 @@ int SourceMeta_FunctionDeclaration()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFileDelegate_FileHelper"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFileDelegate_FileHelper"), TEXT(R"(
 int FileHelper_SaveAndLoad()
 {
 	FString Filename = FPaths::CombinePaths(FPaths::ProjectSavedDir(), "AngelscriptFileHelperCompat.txt");
@@ -549,7 +549,7 @@ int FileHelper_SaveAndLoad()
 		NativeTestObject->bNativeFlag = false;
 		NativeTestObject->LargeCount = 0;
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFileDelegate_DelegatePayload"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFileDelegate_DelegatePayload"), TEXT(R"(
 int DelegatePayload_HappyPath()
 {
 	UObject TestObject = FindClass("UAngelscriptNativeScriptTestObject").GetDefaultObject();

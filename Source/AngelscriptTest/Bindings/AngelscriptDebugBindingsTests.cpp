@@ -15,7 +15,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Misc/ScopeExit.h"
@@ -54,7 +54,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebugBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASDebug_Callstack"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASDebug_Callstack"), TEXT(R"(
 bool StackContains(const TArray<FString>& Stack, const FString& Needle)
 {
 	for (int Index = 0; Index < Stack.Num(); ++Index)
@@ -110,7 +110,7 @@ int Callstack_EntryCallstack()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASDebug_Throw"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASDebug_Throw"), TEXT(R"(
 void Throw_ThrowLeaf()
 {
 	throw("DebuggingThrowCompat");

@@ -20,7 +20,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Engine/EngineTypes.h"
@@ -160,7 +160,7 @@ int GetValueByName()
 )");
 		B.Substitute(Script);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASEnum_NameAndIndex"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEnum_NameAndIndex"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -229,7 +229,7 @@ int GenerateEnumPrefix()
 )");
 		B.Substitute(Script);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASEnum_StringAndDisplay"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEnum_StringAndDisplay"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -306,7 +306,7 @@ int GetIndexByNameString_Missing()
 )");
 		B.Substitute(Script);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASEnum_Validation"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEnum_Validation"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

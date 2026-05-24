@@ -22,7 +22,7 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Shared/AngelscriptTestUtilities.h"
@@ -61,7 +61,7 @@ namespace
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_CreateIdentity"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_CreateIdentity"), TEXT(R"(
 UObject CreateNamedObject()
 {
 	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"UObjBindTest_Identity");
@@ -137,7 +137,7 @@ FString ScriptGetPathName(UObject Obj)
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_Hierarchy"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_Hierarchy"), TEXT(R"(
 UObject CreateInTransient()
 {
 	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"UObjBindTest_Hierarchy");
@@ -233,7 +233,7 @@ UClass ScriptGetClass(UObject Obj)
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_TypeQuery"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_TypeQuery"), TEXT(R"(
 UObject CreateCamera()
 {
 	return NewObject(GetTransientPackage(), ACameraActor::StaticClass(), n"UObjBindTest_Camera");
@@ -349,7 +349,7 @@ int ScriptIsA_Texture(UObject Obj)
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_FindLookup"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_FindLookup"), TEXT(R"(
 UObject CreateNamedForFind()
 {
 	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"UObjBindTest_Find");
@@ -424,7 +424,7 @@ UObject ScriptFindWithOuter(UObject Outer, const FString& in Name)
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_RootLifecycle"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_RootLifecycle"), TEXT(R"(
 UObject CreateForRoot()
 {
 	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"UObjBindTest_Root");
@@ -522,7 +522,7 @@ int ScriptGetIsRooted(UObject Obj)
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_FlagMutation"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_FlagMutation"), TEXT(R"(
 UObject CreateTransient()
 {
 	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), NAME_None, true);
@@ -629,7 +629,7 @@ int ScriptIsTransient(UObject Obj)
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_NullValid"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_NullValid"), TEXT(R"(
 int IsValid_ValidObjectTrue()
 {
 	UObject Obj = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
@@ -689,7 +689,7 @@ int NullComparison_TwoValidDifferent()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_NewObjVar"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_NewObjVar"), TEXT(R"(
 UObject Create_DefaultName()
 {
 	return NewObject(GetTransientPackage(), UTexture2D::StaticClass());
@@ -911,7 +911,7 @@ bool GetIsTransient(UObject Obj)
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_ClassRefl"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_ClassRefl"), TEXT(R"(
 UObject GetCDO_Texture2D()
 {
 	return UTexture2D::StaticClass().GetDefaultObject();
@@ -1079,7 +1079,7 @@ FString GetClassName(UObject Obj)
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_ReturnVal"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_ReturnVal"), TEXT(R"(
 FString ReturnString()
 {
 	return "Hello from Angelscript";
@@ -1296,7 +1296,7 @@ FString LogFormatted(UObject Obj)
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_CppToAS"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_CppToAS"), TEXT(R"(
 // ---- Identity queries on C++-created objects ----
 FString DescribeObject(UObject Obj)
 {
@@ -1710,7 +1710,7 @@ bool IsRootedCheck(UObject Obj)
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_ObjChain"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_ObjChain"), TEXT(R"(
 // ---- AS creates a chain of nested objects ----
 UObject CreateChainRoot()
 {
@@ -2156,7 +2156,7 @@ FString DescribeChain(UObject Leaf)
 		Test.AddExpectedErrorPlain(TEXT("ASUObject_LogDiag"),       EAutomationExpectedErrorFlags::Contains, 1);
 		Test.AddExpectedErrorPlain(TEXT("CallThrow"),               EAutomationExpectedErrorFlags::Contains, 1);
 
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUObject_LogDiag"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_LogDiag"), TEXT(R"(
 void CallLog()
 {
 	Log("BIND_LOG_MARKER_42");

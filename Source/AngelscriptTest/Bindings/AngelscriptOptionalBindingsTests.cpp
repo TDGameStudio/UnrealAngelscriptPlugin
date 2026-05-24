@@ -7,7 +7,7 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Shared/AngelscriptTestUtilities.h"
@@ -35,7 +35,7 @@ namespace
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASOptional_Compat"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASOptional_Compat"), TEXT(R"(
 int OptEmpty_IsSet()
 {
 	TOptional<int> O;
@@ -135,7 +135,7 @@ int OptFName_GetWithValue()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASOptional_GetValueUnsetError"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASOptional_GetValueUnsetError"), TEXT(R"(
 int TriggerGetValueUnset()
 {
 	TOptional<int> Empty;
@@ -177,7 +177,7 @@ int TriggerGetValueUnset()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASOptional_TypeMatrix"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASOptional_TypeMatrix"), TEXT(R"(
 // ---- bool ----
 int OptBool_True_IsSet()
 {
@@ -316,7 +316,7 @@ int OptObject_NullSet_IsSet()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASOptional_ApiCoverage"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASOptional_ApiCoverage"), TEXT(R"(
 int OptApi_EmptyEqualsEmpty()
 {
 	TOptional<int> A;
@@ -448,7 +448,7 @@ int OptApi_GetMutableViaRef()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASOptional_ReturnType"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASOptional_ReturnType"), TEXT(R"(
 bool OptRet_Bool_IsSet()
 {
 	TOptional<int> O;
@@ -635,7 +635,7 @@ int OptRet_VerifyOptionalVector_X()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASOptional_LogDiag"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASOptional_LogDiag"), TEXT(R"(
 int OptLog_IntAndString()
 {
 	TOptional<int> OInt;

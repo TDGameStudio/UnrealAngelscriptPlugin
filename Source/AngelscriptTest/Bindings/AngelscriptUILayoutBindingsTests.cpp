@@ -7,7 +7,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -32,7 +32,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUILayoutBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASUILayout_Margin"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASUILayout_Margin"), TEXT(R"(
 int Margin_DefaultZero()
 {
 	FMargin M;
@@ -65,7 +65,7 @@ int Margin_ComponentCtor()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASUILayout_Anchors"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASUILayout_Anchors"), TEXT(R"(
 int Anchors_DefaultZero()
 {
 	FAnchors A;

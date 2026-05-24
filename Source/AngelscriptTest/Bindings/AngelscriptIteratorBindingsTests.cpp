@@ -20,7 +20,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -58,7 +58,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptIteratorBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASIterator_SetIter"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASIterator_SetIter"), TEXT(R"(
 int SetIter_SumElements()
 {
 	TSet<int> Values;
@@ -90,7 +90,7 @@ int SetIter_SumElements()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASIterator_MapIter"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASIterator_MapIter"), TEXT(R"(
 int MapIter_SumValuesAndCountKeys()
 {
 	TMap<FName, int> Values;
@@ -126,7 +126,7 @@ int MapIter_SumValuesAndCountKeys()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASIterator_MapIterPair"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASIterator_MapIterPair"), TEXT(R"(
 bool MatchesExpectedPair(FName Key, int Value)
 {
 	if (Key == FName("Alpha"))

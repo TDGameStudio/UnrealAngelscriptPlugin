@@ -16,7 +16,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
@@ -202,7 +202,7 @@ void TriggerNullParent(TArray<UObject>& OutAssets)
 }
 )");
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASAssetRegistry_TopLevelPathAndNullParent"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASAssetRegistry_TopLevelPathAndNullParent"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -408,7 +408,7 @@ int VerifyGetAllAssets()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASAssetRegistry_QueryCompat"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASAssetRegistry_QueryCompat"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

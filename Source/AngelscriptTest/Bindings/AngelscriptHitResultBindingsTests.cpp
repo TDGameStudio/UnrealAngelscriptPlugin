@@ -4,7 +4,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -28,7 +28,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHitResultBindingsTest,
 		// binding; the autoaccessor synthesis that previously surfaced it was removed
 		// in 2026-05-22-refactor-as-remove-autoaccessor. Switch to a bound non-bitfield
 		// member (`Time`) which defaults to 1.0 in FHitResult's default constructor.
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASHitResult_Default"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASHitResult_Default"), TEXT(R"(
 int HitResult_DefaultTime()
 {
 	FHitResult Hit;
@@ -49,7 +49,7 @@ int HitResult_DefaultTime()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASHitResult_Distance"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASHitResult_Distance"), TEXT(R"(
 int HitResult_DefaultDistance()
 {
 	FHitResult Hit;
@@ -70,7 +70,7 @@ int HitResult_DefaultDistance()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASHitResult_Overlap"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASHitResult_Overlap"), TEXT(R"(
 int OverlapResult_DefaultNoOverlap()
 {
 	FOverlapResult Overlap;

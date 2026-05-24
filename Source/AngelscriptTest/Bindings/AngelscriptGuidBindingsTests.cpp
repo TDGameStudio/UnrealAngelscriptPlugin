@@ -17,7 +17,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Misc/Guid.h"
@@ -103,7 +103,7 @@ int Guid_SlotAccess()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGuid_FormatSlots"), ScriptSource);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASGuid_FormatSlots"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -167,7 +167,7 @@ int Guid_ParseExactDigits()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGuid_ParseOk"), ScriptSource);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASGuid_ParseOk"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -215,7 +215,7 @@ int Guid_ParseInvalid()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGuid_ParseFail"), ScriptSource);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASGuid_ParseFail"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -256,7 +256,7 @@ int Guid_CtorFromDigits()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGuid_StrCtor"), ScriptSource);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASGuid_StrCtor"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

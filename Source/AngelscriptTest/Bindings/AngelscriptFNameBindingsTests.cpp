@@ -4,7 +4,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -24,7 +24,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFNameBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFName_Ctor"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFName_Ctor"), TEXT(R"(
 int FName_ConstructAndIsNone()
 {
 	FName N = n"TestName";
@@ -45,7 +45,7 @@ int FName_ConstructAndIsNone()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFName_None"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFName_None"), TEXT(R"(
 int FName_NoneIsNone()
 {
 	FName N;
@@ -66,7 +66,7 @@ int FName_NoneIsNone()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFName_Equal"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFName_Equal"), TEXT(R"(
 int FName_EqualityCheck()
 {
 	FName A = n"Hello";
@@ -88,7 +88,7 @@ int FName_EqualityCheck()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFName_ToString"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFName_ToString"), TEXT(R"(
 int FName_ToStringLen()
 {
 	FName N = n"TestName";

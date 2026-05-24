@@ -12,7 +12,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -49,7 +49,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptObjectBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASObject_ObjectPtrCompat"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASObject_ObjectPtrCompat"), TEXT(R"(
 int ObjPtr_DefaultIsNull()
 {
 	TObjectPtr<UTexture2D> Empty;
@@ -118,7 +118,7 @@ int ObjPtr_Copy()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASObject_SoftObjectPtrCompat"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASObject_SoftObjectPtrCompat"), TEXT(R"(
 int SoftPtr_DefaultState()
 {
 	TSoftObjectPtr<UTexture2D> Empty;

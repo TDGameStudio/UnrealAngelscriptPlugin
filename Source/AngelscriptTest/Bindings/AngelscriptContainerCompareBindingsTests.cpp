@@ -20,7 +20,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "../../AngelscriptRuntime/Binds/Bind_TMap.h"
 #include "../../AngelscriptRuntime/Binds/Bind_TOptional.h"
@@ -61,7 +61,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptContainerCompareBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASContainerCompare_SetCompare"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASContainerCompare_SetCompare"), TEXT(R"(
 int SetCompare_EqualReordered()
 {
 	TSet<int> Left;
@@ -104,7 +104,7 @@ int SetCompare_DifferentSize()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASContainerCompare_SetSizeMismatch"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASContainerCompare_SetSizeMismatch"), TEXT(R"(
 int SetMismatch_ReorderedEqual()
 {
 	TSet<int> Left;
@@ -157,7 +157,7 @@ int SetMismatch_CopyEqual()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASContainerCompare_MapCompare"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASContainerCompare_MapCompare"), TEXT(R"(
 int MapCompare_EqualReordered()
 {
 	TMap<FName, int> Left;
@@ -200,7 +200,7 @@ int MapCompare_DifferentSize()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASContainerCompare_MapCompareValue"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASContainerCompare_MapCompareValue"), TEXT(R"(
 int MapValue_EqualReordered()
 {
 	TMap<FName, int> Left;

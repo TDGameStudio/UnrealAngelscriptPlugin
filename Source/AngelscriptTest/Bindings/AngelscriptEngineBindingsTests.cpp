@@ -17,7 +17,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -54,7 +54,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASEngine_ValueTypes"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEngine_ValueTypes"), TEXT(R"(
 int ValueTypes_IntDouble()
 {
 	int32 Count = 5;
@@ -109,7 +109,7 @@ int ValueTypes_FText()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASEngine_FNameArrayCompat"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEngine_FNameArrayCompat"), TEXT(R"(
 struct FFNameMemberHolder
 {
 	UObject NativeSelf;
@@ -173,7 +173,7 @@ int FNameArray_Contains()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASEngine_FNameArrayIdxWB"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEngine_FNameArrayIdxWB"), TEXT(R"(
 int FNameIdxWB_AliasWriteBack()
 {
 	FName[] AliasValues;
@@ -219,7 +219,7 @@ int FNameIdxWB_ContainsAfterMutation()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASEngine_ForeachCompat"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEngine_ForeachCompat"), TEXT(R"(
 int Foreach_IntAlias()
 {
 	int[] AliasValues;

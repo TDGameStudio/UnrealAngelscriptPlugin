@@ -11,7 +11,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "Syntax/AngelscriptSyntaxTestHelpers.h"
 
@@ -49,7 +49,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSyntaxOperatorsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_ArithPos"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_ArithPos"), TEXT(R"(
 int AddInt()       { return 1 + 2; }
 int SubInt()       { return 5 - 3; }
 int MulInt()       { return 2 * 3; }
@@ -190,7 +190,7 @@ void Test() { auto S = "abc" * 3; }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_BitPos"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_BitPos"), TEXT(R"(
 int BitAnd()      { return 0xFF & 0x0F; }
 int BitOr()       { return 0xF0 | 0x0F; }
 int BitXor()      { return 0xFF ^ 0x0F; }
@@ -285,7 +285,7 @@ void Test() { auto X = "abc" >> 2; }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_LogicPos"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_LogicPos"), TEXT(R"(
 int LogicAnd()      { return (true && true) ? 1 : 0; }
 int LogicOr()       { return (false || true) ? 1 : 0; }
 int LogicNot()      { return (!false) ? 1 : 0; }
@@ -366,7 +366,7 @@ void Test() { bool X = 1.0f && 2.0f; }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_CmpPos"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_CmpPos"), TEXT(R"(
 int Equal()         { return (1 == 1) ? 1 : 0; }
 int NotEqual()      { return (1 != 2) ? 1 : 0; }
 int LessThan()      { return (1 < 2) ? 1 : 0; }
@@ -446,7 +446,7 @@ void Test() { bool X = (true < false); }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_AssignPos"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_AssignPos"), TEXT(R"(
 int SimpleAssign()   { int X = 0; X = 5; return X; }
 int AddAssign()      { int X = 0; X += 5; return X; }
 int SubAssign()      { int X = 10; X -= 3; return X; }
@@ -564,7 +564,7 @@ void Test() { float X = 1.0f; X %= 2.0f; }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_TernPos"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_TernPos"), TEXT(R"(
 int Basic()          { return true ? 1 : 0; }
 int Nested()         { return true ? (false ? 1 : 2) : 3; }
 int WithExpr()       { int A = 5; return (A > 3) ? A * 2 : A - 1; }
@@ -644,7 +644,7 @@ void Test() { int X = "yes" ? 1 : 0; }
 		FAngelscriptEngineScope Scope(Engine);
 
 		// Positive edge cases
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_Edge"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASSyntax_Operators_Edge"), TEXT(R"(
 int MaxParens()     { return ((((1 + 2)))); }
 int LongChain()    { return 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10; }
 int PrecedenceMix() { return 2 + 3 * 4 - 1; }

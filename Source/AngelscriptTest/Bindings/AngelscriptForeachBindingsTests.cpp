@@ -22,7 +22,7 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Shared/AngelscriptTestUtilities.h"
@@ -54,7 +54,7 @@ namespace
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_Array"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASForeach_Array"), TEXT(R"(
 int ForeachArray_ValueSum()
 {
 	TArray<int> Values;
@@ -144,7 +144,7 @@ int ForeachArray_FStringConcatLen()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_Set"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASForeach_Set"), TEXT(R"(
 int ForeachSet_Sum()
 {
 	TSet<int> Values;
@@ -212,7 +212,7 @@ int ForeachSet_NameSawBeta()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_SetExactVisit"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASForeach_SetExactVisit"), TEXT(R"(
 int SetForeach_EmptySkip()
 {
 	TSet<int> EmptyValues;
@@ -265,7 +265,7 @@ int SetForeach_AllVisited()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_Map"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASForeach_Map"), TEXT(R"(
 int ForeachMap_ValueSum()
 {
 	TMap<FName, int> Values;
@@ -334,7 +334,7 @@ int ForeachMap_VectorValueXSum()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_MapKeyValue"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASForeach_MapKeyValue"), TEXT(R"(
 int MapForeach_EmptySkip()
 {
 	TMap<FName, int> Empty;
@@ -459,7 +459,7 @@ int MapForeach_EachSeenOnce()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_Nested"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASForeach_Nested"), TEXT(R"(
 int ForeachNested_Total()
 {
 	TArray<FName> Keys;
@@ -494,7 +494,7 @@ int ForeachNested_Total()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_Empty"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASForeach_Empty"), TEXT(R"(
 int ForeachEmpty_Count()
 {
 	TArray<int> EmptyArray;
@@ -526,7 +526,7 @@ int ForeachEmpty_Count()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_UObject"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASForeach_UObject"), TEXT(R"(
 int ForeachUObject_Count()
 {
 	TArray<UObject> Objects;
@@ -593,7 +593,7 @@ int ForeachFNameArray_KnownSentinel()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_ConstRef"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASForeach_ConstRef"), TEXT(R"(
 int ForeachConstRef_XSum()
 {
 	TArray<FVector> Vectors;
@@ -697,7 +697,7 @@ int ForeachConstRef_VectorPartialSumViaContinue()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_ReturnType"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASForeach_ReturnType"), TEXT(R"(
 // Return bool from foreach-based predicate
 bool ForeachRet_Bool_AnyGreaterThan3()
 {
@@ -902,7 +902,7 @@ int ForeachRet_VerifyDedupSet_ContainsThree()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASForeach_LogDiag"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASForeach_LogDiag"), TEXT(R"(
 int ForeachLog_Types()
 {
 	// TArray<int>

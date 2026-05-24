@@ -23,7 +23,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "Shared/AngelscriptTestUtilities.h"
 
@@ -284,7 +284,7 @@ int GPTag_RequestNoneInvalid()
 )"));
 		Script.ReplaceInline(TEXT("__TAG_NAME__"), *EscapedTagName);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTag_TagCompat"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASGameplayTag_TagCompat"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -400,7 +400,7 @@ int GPTagContainer_Reset()
 )"), *TagName);
 		Script.ReplaceInline(TEXT("__TAG_NAME__"), *TagName);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTag_Container"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASGameplayTag_Container"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -494,7 +494,7 @@ int GPTagEmptyContract_ComputeMask()
 )"), *TagName);
 		Script.ReplaceInline(TEXT("__TAG_NAME__"), *TagName);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTag_EmptyContract"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASGameplayTag_EmptyContract"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -608,7 +608,7 @@ int GPTagQuery_MatchesQuery()
 )"), *TagName);
 		Script.ReplaceInline(TEXT("__TAG_NAME__"), *TagName);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTag_Query"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASGameplayTag_Query"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -674,7 +674,7 @@ int GPTagExact_RequestNoneEqualsEmpty()
 )"), *TagName);
 		Script.ReplaceInline(TEXT("__TAG_NAME__"), *TagName);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTag_ExactQuery"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASGameplayTag_ExactQuery"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -779,7 +779,7 @@ int GPTagNS_NotMatchesExactParent()
 			*Fixture.SanitizedTagIdentifier, *Fixture.SanitizedParentIdentifier,
 			*Fixture.SanitizedTagIdentifier, *Fixture.SanitizedParentIdentifier);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTag_Namespace"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASGameplayTag_Namespace"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -897,7 +897,7 @@ int GPTagHier_UnrelatedNotMatched()
 		Script.ReplaceInline(TEXT("__PARENT__"), *ParentTagName);
 		Script.ReplaceInline(TEXT("__UNRELATED__"), *UnrelatedTagName);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTag_Hierarchy"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASGameplayTag_Hierarchy"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -1042,7 +1042,7 @@ int GPTagFilter_RemoveTags()
 		Script.ReplaceInline(TEXT("__PARENT__"), *ParentTagName);
 		Script.ReplaceInline(TEXT("__UNRELATED__"), *UnrelatedTagName);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTag_Filter"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASGameplayTag_Filter"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

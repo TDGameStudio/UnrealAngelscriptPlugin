@@ -12,7 +12,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Misc/ScopeExit.h"
@@ -51,7 +51,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptJsonObjectConverterBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASJsonObjectConverter_RoundTrip"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASJsonObjectConverter_RoundTrip"), TEXT(R"(
 int RoundTrip_VectorToJson()
 {
 	const FVector Original = FVector(1.0, 2.0, 3.0);
@@ -130,7 +130,7 @@ int RoundTrip_AppendedFieldParity()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASJsonObjectConverter_ErrorPaths"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASJsonObjectConverter_ErrorPaths"), TEXT(R"(
 int Error_NonUStructRejected()
 {
 	int PlainValue = 7;

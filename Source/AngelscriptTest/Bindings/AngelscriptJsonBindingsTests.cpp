@@ -19,7 +19,7 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Misc/ScopeExit.h"
@@ -125,7 +125,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptJsonBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASJson_ObjectRoundTrip"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASJson_ObjectRoundTrip"), TEXT(R"(
 int RoundTrip()
 {
 	FJsonObject Root;
@@ -228,7 +228,7 @@ int RoundTrip()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASJson_ErrorPaths"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASJson_ErrorPaths"), TEXT(R"(
 void TriggerTypeError()
 {
 	FJsonObject Root;

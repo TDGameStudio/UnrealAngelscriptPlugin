@@ -1,6 +1,6 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptTestEngineHelper.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
@@ -205,7 +205,7 @@ int MissingTreeRemoveReturnsFalse() { UUserWidget Widget = WithoutTreeWidget(); 
 		FScopedRootedObject FixtureRoot(Fixture.Widget);
 
 		bool bPassed = VerifyEmptyTreeState(Test, Fixture, TEXT("UserWidgetTreeCompat native baseline"));
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUserWidget_Basic"), BuildBasicScript(Fixture));
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUserWidget_Basic"), BuildBasicScript(Fixture));
 		if (!ModuleScope.IsValid())
 		{
 			return false;
@@ -259,7 +259,7 @@ int MissingTreeRemoveReturnsFalse() { UUserWidget Widget = WithoutTreeWidget(); 
 		Test.AddExpectedErrorPlain(TEXT("Ensure condition failed: WidgetClass && WidgetClass->IsChildOf(UWidget::StaticClass())"), EAutomationExpectedErrorFlags::Contains, 1);
 		Test.AddExpectedErrorPlain(TEXT("LogOutputDevice:"), EAutomationExpectedErrorFlags::Contains, 0);
 
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASUserWidget_Error"), BuildErrorScript(WithTree, WithoutTree, *DetachedTextBlock));
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUserWidget_Error"), BuildErrorScript(WithTree, WithoutTree, *DetachedTextBlock));
 		if (!ModuleScope.IsValid())
 		{
 			return false;

@@ -48,9 +48,9 @@ namespace AngelscriptTestBindings
 	 *   AngelscriptTestBindings::ExpectGlobalInt(Test, Engine, Module,
 	 *       TEXT("int EchoEmpty()"), TEXT("Empty Optional should not be set"), 0);
 	 */
-	struct FCoverageModuleScope
+	struct FScopedAngelscriptModule
 	{
-		FCoverageModuleScope(
+		FScopedAngelscriptModule(
 			FAutomationTestBase& InTest,
 			FAngelscriptEngine& InEngine,
 			const TCHAR* InModuleName,
@@ -63,7 +63,7 @@ namespace AngelscriptTestBindings
 			Module = AngelscriptTestSupport::BuildModule(InTest, InEngine, ModuleNameUtf8.Get(), Source);
 		}
 
-		~FCoverageModuleScope()
+		~FScopedAngelscriptModule()
 		{
 			// BuildModule registers the module under `ModuleName` (the AS
 			// preprocessor uses the requested filename stem as the module
@@ -73,8 +73,8 @@ namespace AngelscriptTestBindings
 			Engine.DiscardModule(*ModuleName);
 		}
 
-		FCoverageModuleScope(const FCoverageModuleScope&) = delete;
-		FCoverageModuleScope& operator=(const FCoverageModuleScope&) = delete;
+		FScopedAngelscriptModule(const FScopedAngelscriptModule&) = delete;
+		FScopedAngelscriptModule& operator=(const FScopedAngelscriptModule&) = delete;
 
 		bool IsValid() const { return Module != nullptr; }
 

@@ -19,7 +19,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Misc/DateTime.h"
@@ -144,7 +144,7 @@ int DateTime_ParseIso8601()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASDateTime_Iso"), ScriptSource);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASDateTime_Iso"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -177,7 +177,7 @@ int DateTime_ParseHttpDate()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASDateTime_Http"), ScriptSource);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASDateTime_Http"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -210,7 +210,7 @@ int DateTime_ParseGeneric()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASDateTime_Generic"), ScriptSource);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASDateTime_Generic"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -265,7 +265,7 @@ int DateTime_ParseInvalidIso()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASDateTime_Invalid"), ScriptSource);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASDateTime_Invalid"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -318,7 +318,7 @@ int DateTime_ToStringFormatted()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASDateTime_Ctor"), ScriptSource);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASDateTime_Ctor"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -380,7 +380,7 @@ int DateTime_RoundTripFormatted()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASDateTime_RoundTrip"), ScriptSource);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASDateTime_RoundTrip"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

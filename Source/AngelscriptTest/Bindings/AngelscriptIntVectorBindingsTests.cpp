@@ -16,7 +16,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -53,7 +53,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptIntVectorBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASIntVector_IntPoint"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASIntVector_IntPoint"), TEXT(R"(
 int IntPoint_Construction()
 {
 	FIntPoint P(4, 9);
@@ -105,7 +105,7 @@ int IntPoint_GetMin()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASIntVector_IntVec"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASIntVector_IntVec"), TEXT(R"(
 int IntVec_ZeroIsZero()
 {
 	FIntVector V = FIntVector();
@@ -161,7 +161,7 @@ int IntVec_MulDivAssign()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASIntVector_IntVec2"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASIntVector_IntVec2"), TEXT(R"(
 int IntVec2_Uniform()
 {
 	FIntVector2 V(7);
@@ -205,7 +205,7 @@ int IntVec2_Indexing()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASIntVector_IntVec4"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASIntVector_IntVec4"), TEXT(R"(
 int IntVec4_Negate()
 {
 	FIntVector4 V(1, 2, 3, 4);

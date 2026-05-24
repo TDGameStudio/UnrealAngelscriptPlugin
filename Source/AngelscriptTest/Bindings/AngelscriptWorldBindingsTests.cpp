@@ -18,7 +18,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Components/ActorTestSpawner.h"
@@ -116,7 +116,7 @@ int VerifyWorldBindings(
 }
 )");
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASWorld_ContextGlobals"), ScriptSource);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorld_ContextGlobals"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

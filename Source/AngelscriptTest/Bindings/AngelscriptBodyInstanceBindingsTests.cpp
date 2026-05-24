@@ -4,7 +4,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -24,7 +24,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBodyInstanceBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASBodyInstance_Latent"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASBodyInstance_Latent"), TEXT(R"(
 int LatentInfo_DefaultLinkage()
 {
 	FLatentActionInfo Info;

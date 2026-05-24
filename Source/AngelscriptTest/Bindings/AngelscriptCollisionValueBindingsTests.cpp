@@ -17,7 +17,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Components/BoxComponent.h"
@@ -59,7 +59,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCollisionValueBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCollisionValue_CollisionShape"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCollisionValue_CollisionShape"), TEXT(R"(
 bool MatchesVector(const FVector InValue, const float X, const float Y, const float Z)
 {
 	return InValue.X == X && InValue.Y == Y && InValue.Z == Z;
@@ -133,7 +133,7 @@ int Shape_MinExtents()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCollisionValue_CollisionResultAccessors"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCollisionValue_CollisionResultAccessors"), TEXT(R"(
 bool MatchesVector(const FVector InValue, const float X, const float Y, const float Z)
 {
 	return InValue.X == X && InValue.Y == Y && InValue.Z == Z;

@@ -19,7 +19,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Math/Quat.h"
@@ -58,7 +58,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptQuatBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASQuat_Identity"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASQuat_Identity"), TEXT(R"(
 int Quat_IdentityRoundTrip()
 {
 	FQuat Q = FQuat::Identity;
@@ -86,7 +86,7 @@ int Quat_IsIdentity()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASQuat_NormalizeOps"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASQuat_NormalizeOps"), TEXT(R"(
 int Quat_NormalizeRecoversRotation()
 {
 	FQuat Q = FQuat(FVector::UpVector, 1.5707963267948966) * 3.0;
@@ -117,7 +117,7 @@ int Quat_IsNormalizedAfterNormalize()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASQuat_RotateVector"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASQuat_RotateVector"), TEXT(R"(
 int Quat_RotateVectorMatchesNative()
 {
 	const FQuat QuarterTurn = FQuat(FVector::UpVector, 1.5707963267948966);
@@ -149,7 +149,7 @@ int Quat_UnrotateVectorRecoversOriginal()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASQuat_InverseAndDecomp"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASQuat_InverseAndDecomp"), TEXT(R"(
 int Quat_InverseUndoesRotation()
 {
 	FQuat Q = FQuat(FVector::UpVector, 1.5707963267948966);
@@ -189,7 +189,7 @@ int Quat_ToAxisAndAngle_Angle()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASQuat_Conversions"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASQuat_Conversions"), TEXT(R"(
 int Quat_RotatorConversion()
 {
 	FRotator R = FQuat(FVector::UpVector, 1.5707963267948966).Rotator();
@@ -219,7 +219,7 @@ int Quat_MakeFromEulerRotator()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASQuat_Interpolation"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASQuat_Interpolation"), TEXT(R"(
 int Quat_SlerpHalfWay()
 {
 	FQuat Q = FQuat::Slerp(FQuat::Identity, FQuat(FVector::UpVector, 1.5707963267948966), 0.5);

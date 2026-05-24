@@ -17,7 +17,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Engine/CollisionProfile.h"
@@ -88,7 +88,7 @@ int ObjType_WorldDynamicRoundTrip()
 		Script.ReplaceInline(TEXT("$WORLD_STATIC_OBJ_TYPE$"), *LexToString(WorldStaticObjType));
 		Script.ReplaceInline(TEXT("$WORLD_DYNAMIC_OBJ_TYPE$"), *LexToString(WorldDynamicObjType));
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCollisionProfile_ObjType"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCollisionProfile_ObjType"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -165,7 +165,7 @@ int Composite_TraceTypeRoundTrip()
 		Script.ReplaceInline(TEXT("$VISIBILITY_TRACE_TYPE$"), *LexToString(VisibilityTraceType));
 		Script.ReplaceInline(TEXT("$CAMERA_TRACE_TYPE$"), *LexToString(CameraTraceType));
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCollisionProfile_TraceType"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCollisionProfile_TraceType"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

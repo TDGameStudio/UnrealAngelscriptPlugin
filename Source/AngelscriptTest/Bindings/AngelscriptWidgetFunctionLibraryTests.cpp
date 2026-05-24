@@ -17,7 +17,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Components/Button.h"
@@ -77,7 +77,7 @@ void ReadWidgetTransformNull()
 }
 )");
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASWidget_RenderTransform"), ScriptSource);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWidget_RenderTransform"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

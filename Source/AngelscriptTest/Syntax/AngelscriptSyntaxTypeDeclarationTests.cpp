@@ -10,7 +10,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "Syntax/AngelscriptSyntaxTestHelpers.h"
 
@@ -540,7 +540,7 @@ void Test() { int X = FakeNamespace::Value; }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_TypeDeclaration_VarPos"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASSyntax_TypeDeclaration_VarPos"), TEXT(R"(
 int Primitives()  { int A = 0; float B = 1.0f; bool C = true; int64 D = 100; return A + int(B) + (C ? 1 : 0) + int(D); }
 int ConstVar()    { const int X = 42; return X; }
 int AutoVar()     { auto X = 42; return X; }

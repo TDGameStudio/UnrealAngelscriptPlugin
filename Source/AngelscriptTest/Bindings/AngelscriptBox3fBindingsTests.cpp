@@ -7,7 +7,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -32,7 +32,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBox3fBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASBox3f_FBoxCtor"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASBox3f_FBoxCtor"), TEXT(R"(
 int FBox_DefaultIsValid()
 {
 	FBox B;
@@ -73,7 +73,7 @@ int FBox_GetExtent()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASBox3f_BSBCtor"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASBox3f_BSBCtor"), TEXT(R"(
 int BSB_Origin()
 {
 	FBoxSphereBounds B = FBoxSphereBounds(FVector(1,2,3), FVector(4,5,6), 10.0);

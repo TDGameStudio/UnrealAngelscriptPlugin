@@ -18,7 +18,7 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Curves/CurveFloat.h"
@@ -163,7 +163,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCurveFunctionLibraryBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCurve_LinearColorAddKey"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCurve_LinearColorAddKey"), TEXT(R"(
 int PopulateCurve(FRuntimeCurveLinearColor& Curve)
 {
 	Curve.AddDefaultKey(0.0f, FLinearColor(1.0f, 0.0f, 0.0f, 0.25f));
@@ -266,7 +266,7 @@ int PopulateCurve(FRuntimeFloatCurve& RuntimeCurve)
 )AS");
 		Script.ReplaceInline(TEXT("__CURVE_PATH__"), *CurveAsset->GetPathName().ReplaceCharWithEscapedChar());
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCurve_FloatCurveInstance"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCurve_FloatCurveInstance"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

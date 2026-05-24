@@ -10,7 +10,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 #include "Syntax/AngelscriptSyntaxTestHelpers.h"
 
@@ -48,7 +48,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSyntaxControlFlowTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_ControlFlow_IfPos"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASSyntax_ControlFlow_IfPos"), TEXT(R"(
 int BasicIf()      { if (true) { return 1; } return 0; }
 int IfElse()       { if (false) { return 1; } else { return 2; } }
 int IfElseIf()     { int X = 5; if (X > 10) { return 1; } else if (X > 3) { return 2; } else { return 3; } }
@@ -138,7 +138,7 @@ void Test() { if ("hello") { } }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_ControlFlow_ForPos"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASSyntax_ControlFlow_ForPos"), TEXT(R"(
 int BasicFor()     { int S = 0; for (int I = 0; I < 5; ++I) { S += I; } return S; }
 int Decrement()    { int S = 0; for (int I = 3; I > 0; --I) { S += I; } return S; }
 int Empty()        { int I = 0; for (;;) { if (I >= 3) break; ++I; } return I; }
@@ -212,7 +212,7 @@ void Test() { for (int I = 0; I < 5; ++I) { } int X = I; }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_ControlFlow_WhilePos"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASSyntax_ControlFlow_WhilePos"), TEXT(R"(
 int BasicWhile()  { int I = 0; while (I < 5) { ++I; } return I; }
 int WhileBreak()  { int I = 0; while (true) { if (I >= 3) break; ++I; } return I; }
 int DoWhile()     { int I = 0; do { ++I; } while (I < 5); return I; }
@@ -293,7 +293,7 @@ void Test() { do { } while (1); }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_ControlFlow_SwitchPos"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASSyntax_ControlFlow_SwitchPos"), TEXT(R"(
 int BasicSwitch()  { int X = 1; switch(X) { case 0: return 0; case 1: return 1; default: return -1; } }
 int Fallthrough()  { int X = 0; int Y = 0; switch(X) { case 0: fallthrough; case 1: Y = 10; break; default: Y = 20; break; } return Y; }
 int MultiCase()    { int X = 1; switch(X) { case 0: case 1: case 2: return 99; default: return 0; } }
@@ -434,7 +434,7 @@ void Test()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASSyntax_ControlFlow_ForeachPos"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASSyntax_ControlFlow_ForeachPos"), TEXT(R"(
 int BasicForeach()
 {
 	TArray<int> Arr;

@@ -22,7 +22,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Components/ActorTestSpawner.h"
@@ -223,7 +223,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptWorldCollisionTraceBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_LineTraceSingle"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_LineTraceSingle"), TEXT(R"(
 bool RunLineTraceSingleByChannelHit(FHitResult& OutHit)
 {
 	return System::LineTraceSingleByChannel(OutHit, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), ECollisionChannel::ECC_Visibility);
@@ -264,7 +264,7 @@ bool RunLineTraceSingleByChannelHit(FHitResult& OutHit)
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_LineTraceMultiHit"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_LineTraceMultiHit"), TEXT(R"(
 bool RunLineTraceMultiByChannelHit(TArray<FHitResult>& OutHits)
 {
 	return System::LineTraceMultiByChannel(OutHits, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), ECollisionChannel::ECC_Visibility);
@@ -304,7 +304,7 @@ bool RunLineTraceMultiByChannelHit(TArray<FHitResult>& OutHits)
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_LineTraceMultiMiss"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_LineTraceMultiMiss"), TEXT(R"(
 bool RunLineTraceMultiByChannelMiss(TArray<FHitResult>& OutHits)
 {
 	return System::LineTraceMultiByChannel(OutHits, FVector(-200.0f, -200.0f, 0.0f), FVector(200.0f, -200.0f, 0.0f), ECollisionChannel::ECC_Visibility);
@@ -346,7 +346,7 @@ bool RunLineTraceMultiByChannelMiss(TArray<FHitResult>& OutHits)
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_SweepSingleByObject"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_SweepSingleByObject"), TEXT(R"(
 bool RunSweepSingleByObjectTypeHit(FHitResult& OutHit)
 {
 	FCollisionObjectQueryParams ObjectQueryParams;
@@ -394,7 +394,7 @@ bool RunSweepSingleByObjectTypeHit(FHitResult& OutHit)
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_OverlapMultiByProfile"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_OverlapMultiByProfile"), TEXT(R"(
 bool RunOverlapMultiByProfileHit(TArray<FOverlapResult>& OutOverlaps)
 {
 	const FCollisionShape Shape = FCollisionShape::MakeBox(FVector(45.0f, 45.0f, 45.0f));
@@ -438,7 +438,7 @@ bool RunOverlapMultiByProfileHit(TArray<FOverlapResult>& OutOverlaps)
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_OverlapMultiMiss"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_OverlapMultiMiss"), TEXT(R"(
 bool RunOverlapMultiByProfileMiss(TArray<FOverlapResult>& OutOverlaps)
 {
 	const FCollisionShape Shape = FCollisionShape::MakeBox(FVector(45.0f, 45.0f, 45.0f));

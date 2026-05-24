@@ -17,7 +17,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Internationalization/StringTableCore.h"
@@ -120,7 +120,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptStringTableBindingsTest,
 
 		const FString Script = BuildLocTableScript(TableId);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASStringTable_LocTableCompat"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASStringTable_LocTableCompat"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

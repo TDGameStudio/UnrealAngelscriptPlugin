@@ -19,7 +19,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -57,7 +57,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoreMiscBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCoreMisc_GuidCompat"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCoreMisc_GuidCompat"), TEXT(R"(
 int ExplicitGuidIsValid()
 {
 	FGuid ExplicitGuid(1, 2, 3, 4);
@@ -150,7 +150,7 @@ int GuidGetTypeHashNonZero()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCoreMisc_PathsCompat"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCoreMisc_PathsCompat"), TEXT(R"(
 int ProjectDirNotEmpty()
 {
 	return (!FPaths::ProjectDir().IsEmpty()) ? 1 : 0;
@@ -329,7 +329,7 @@ int Entry()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCoreMisc_PathsExactCompat"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCoreMisc_PathsExactCompat"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -345,7 +345,7 @@ int Entry()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCoreMisc_NumberFormattingOptions"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCoreMisc_NumberFormattingOptions"), TEXT(R"(
 int OptionsIdenticalAfterCopy()
 {
 	FNumberFormattingOptions Options;

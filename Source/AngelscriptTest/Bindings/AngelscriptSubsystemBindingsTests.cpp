@@ -13,7 +13,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
 
@@ -257,7 +257,7 @@ int VerifySubsystemNamespaceHelpers(
 }
 )");
 
-		FCoverageModuleScope ModuleScope(*TestRunner, Engine, TEXT("ASSubsystem_NamespaceHelpers"), ScriptSource);
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASSubsystem_NamespaceHelpers"), ScriptSource);
 		if (!ModuleScope.IsValid())
 		{
 			return;
@@ -336,7 +336,7 @@ int VerifyNativeSubsystemStaticGetAccessors(
 }
 )");
 
-		FCoverageModuleScope ModuleScope(*TestRunner, Engine, TEXT("ASSubsystem_NativeStaticGet"), ScriptSource);
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASSubsystem_NativeStaticGet"), ScriptSource);
 		if (!ModuleScope.IsValid())
 		{
 			return;
@@ -462,7 +462,7 @@ int VerifyAmbientLocalPlayerSubsystemAccessor(UEnhancedInputLocalPlayerSubsystem
 }
 )");
 
-		FCoverageModuleScope ModuleScope(*TestRunner, Engine, TEXT("ASSubsystem_LocalPlayer"), ScriptSource);
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASSubsystem_LocalPlayer"), ScriptSource);
 		if (!ModuleScope.IsValid())
 		{
 			return;

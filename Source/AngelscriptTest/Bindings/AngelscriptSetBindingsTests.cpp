@@ -17,7 +17,7 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Shared/AngelscriptTestUtilities.h"
@@ -45,7 +45,7 @@ namespace
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASSet_Compat"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASSet_Compat"), TEXT(R"(
 int SetEmpty_IsEmpty()
 {
 	TSet<int> S;
@@ -152,7 +152,7 @@ int SetFName_Contains()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASSet_TypeMatrix"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASSet_TypeMatrix"), TEXT(R"(
 // ---- FString ----
 int SetString_AddDedupNum()
 {
@@ -381,7 +381,7 @@ int SetVector_RemoveContains()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASSet_ApiCoverage"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASSet_ApiCoverage"), TEXT(R"(
 int SetApi_AppendArray_Num()
 {
 	TSet<int> S;
@@ -547,7 +547,7 @@ int SetApi_Iterator_Sum()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASSet_ReturnType"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASSet_ReturnType"), TEXT(R"(
 // Direct bool returns from TSet operations
 bool SetRet_Bool_Contains()
 {
@@ -760,7 +760,7 @@ int SetRet_VerifyStringArray_Num()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASSet_LogDiag"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASSet_LogDiag"), TEXT(R"(
 int SetLog_Types()
 {
 	TSet<int> SInt;

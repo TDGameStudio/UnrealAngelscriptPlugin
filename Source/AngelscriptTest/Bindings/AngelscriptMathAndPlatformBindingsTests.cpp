@@ -20,7 +20,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -96,7 +96,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMathAndPlatformBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMathPlatform_MathExtended"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMathPlatform_MathExtended"), TEXT(R"(
 int RandHelperInRange()
 {
 	int Helper = Math::RandHelper(10);
@@ -325,7 +325,7 @@ int Entry()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMathPlatform_MathDeterministic"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMathPlatform_MathDeterministic"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -342,7 +342,7 @@ int Entry()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMathPlatform_PlatformProcess"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMathPlatform_PlatformProcess"), TEXT(R"(
 int UserDirNotEmpty() { return (!FPlatformProcess::UserDir().IsEmpty()) ? 1 : 0; }
 int UserSettingsDirNotEmpty() { return (!FPlatformProcess::UserSettingsDir().IsEmpty()) ? 1 : 0; }
 int UserTempDirNotEmpty() { return (!FPlatformProcess::UserTempDir().IsEmpty()) ? 1 : 0; }
@@ -381,7 +381,7 @@ int CanLaunchURLWorks() { return FPlatformProcess::CanLaunchURL("https://example
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMathPlatform_Logging"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMathPlatform_Logging"), TEXT(R"(
 int LoggingCallsSucceed()
 {
 	Log("Test log message");

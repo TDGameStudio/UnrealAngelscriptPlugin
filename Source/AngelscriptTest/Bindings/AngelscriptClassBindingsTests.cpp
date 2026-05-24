@@ -19,7 +19,7 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Shared/AngelscriptTestUtilities.h"
@@ -60,7 +60,7 @@ namespace
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASClass_Lookup"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_Lookup"), TEXT(R"(
 int FindClass_NotNull()
 {
 	UClass C = FindClass("AActor");
@@ -135,7 +135,7 @@ int GetSuperClass_ActorNotNull()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASClass_TSubclassOf"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_TSubclassOf"), TEXT(R"(
 TSubclassOf<AActor> EchoSubclass(TSubclassOf<AActor> Value)
 {
 	return Value;
@@ -299,7 +299,7 @@ int MapKey_FindValue()
 		Test.AddExpectedErrorPlain(TEXT("AssignClass"),
 			EAutomationExpectedErrorFlags::Contains, 0);
 
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASClass_Reject"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_Reject"), TEXT(R"(
 void TriggerInvalidImplicitCtor()
 {
 	TSubclassOf<AActor> Invalid = UPackage::StaticClass();
@@ -394,7 +394,7 @@ void AssignClass(TSubclassOf<AActor>& OutValue, UClass NewClass)
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASClass_TSoftClassPtr"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_TSoftClassPtr"), TEXT(R"(
 TSoftClassPtr<AActor> EchoSoftClass(TSoftClassPtr<AActor> Value)
 {
 	return Value;
@@ -549,7 +549,7 @@ int GetAssetName_NonEmpty()
 
 		// (a) Plain native StaticClass module.
 		{
-			FCoverageModuleScope PlainScope(Test, Engine, TEXT("ASClass_StaticClassPlain"), TEXT(R"(
+			FScopedAngelscriptModule PlainScope(Test, Engine, TEXT("ASClass_StaticClassPlain"), TEXT(R"(
 int Plain_ActorIsValid()
 {
 	UClass C = AActor::StaticClass();
@@ -659,7 +659,7 @@ class ABindingStaticClassActor : AActor
 
 		// (c) Follow-up plain module resolves the generated class.
 		{
-			FCoverageModuleScope QueryScope(Test, Engine, TEXT("ASClass_StaticClassQuery"), TEXT(R"(
+			FScopedAngelscriptModule QueryScope(Test, Engine, TEXT("ASClass_StaticClassQuery"), TEXT(R"(
 int Query_FindGeneratedIsValid()
 {
 	UClass C = FindClass("ABindingStaticClassActor");
@@ -746,7 +746,7 @@ int Query_TSubclassOf_IsChildOfBoth()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASClass_StaticTypeGlobal"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_StaticTypeGlobal"), TEXT(R"(
 int StaticType_IsValid()
 {
 	return __StaticType_AActor.IsValid() ? 1 : 0;
@@ -887,7 +887,7 @@ class ABindingReflectionActor : AActor
 
 		// (b) Plain module — IsAbstract on native classes.
 		{
-			FCoverageModuleScope AbstractScope(Test, Engine, TEXT("ASClass_IsAbstract"), TEXT(R"(
+			FScopedAngelscriptModule AbstractScope(Test, Engine, TEXT("ASClass_IsAbstract"), TEXT(R"(
 int IsAbstract_AActor_False()
 {
 	UClass C = AActor::StaticClass();
@@ -950,7 +950,7 @@ int IsAbstract_FindAbstract()
 		Test.AddExpectedErrorPlain(TEXT("TriggerBadSoftAssign"),
 			EAutomationExpectedErrorFlags::Contains, 0);
 
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASClass_SoftClassReject"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_SoftClassReject"), TEXT(R"(
 void TriggerBadSoftAssign()
 {
 	TSoftClassPtr<AActor> S;
@@ -974,7 +974,7 @@ void TriggerBadSoftAssign()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASClass_ReturnType"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_ReturnType"), TEXT(R"(
 bool ClassRet_Bool_FindClassIsValid()
 {
 	UClass C = FindClass("AActor");
@@ -1051,7 +1051,7 @@ int ClassRet_SubclassOf_Echo()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASClass_LogDiag"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_LogDiag"), TEXT(R"(
 int ClassLog_Types()
 {
 	UClass C = AActor::StaticClass();

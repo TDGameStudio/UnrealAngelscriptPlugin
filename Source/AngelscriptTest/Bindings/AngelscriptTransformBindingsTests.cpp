@@ -17,7 +17,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Math/Quat.h"
@@ -151,7 +151,7 @@ int Transform_ScaleAffectsResult()
 		Script.ReplaceInline(TEXT("$EXP_INVERSE$"), *FormatScriptVector(ExpInverse));
 		Script.ReplaceInline(TEXT("$TOL$"), *FormatScriptFloat(Tol));
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTransform_TransformPosition"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASTransform_TransformPosition"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -214,7 +214,7 @@ int Transform_RelativeNotIdentity()
 		Script.ReplaceInline(TEXT("$EXP_RELATIVE$"), *FormatScriptTransform(ExpRelative));
 		Script.ReplaceInline(TEXT("$TOL$"), *FormatScriptFloat(Tol));
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTransform_RelativeTransform"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASTransform_RelativeTransform"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -297,7 +297,7 @@ int Transform_GetScale()
 		Script.ReplaceInline(TEXT("$EXP_UPDATED$"), *FormatScriptTransform(ExpUpdated));
 		Script.ReplaceInline(TEXT("$TOL$"), *FormatScriptFloat(Tol));
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTransform_SettersAndGetters"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASTransform_SettersAndGetters"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

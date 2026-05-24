@@ -14,7 +14,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Misc/QualifiedFrameTime.h"
@@ -96,7 +96,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFrameTimeBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFrameTime_AsSecondsMixin"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFrameTime_AsSecondsMixin"), TEXT(R"(
 int AsSeconds_Compiles()
 {
 	FQualifiedFrameTime DefaultTime;

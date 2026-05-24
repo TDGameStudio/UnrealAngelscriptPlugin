@@ -14,7 +14,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -51,7 +51,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGlobal_GlobalVar"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASGlobal_GlobalVar"), TEXT(R"(
 int GlobalVar_CollisionProfileBlockAllDynamic()
 {
 	return (CollisionProfile::BlockAllDynamic.Compare(FName("BlockAllDynamic")) == 0) ? 1 : 0;
@@ -144,7 +144,7 @@ int CommandletGlobals_GetRunningCommandletClass()
 				? *ExpectedCommandletClass->GetName().ReplaceCharWithEscapedChar()
 				: TEXT(""));
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGlobal_Commandlet"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASGlobal_Commandlet"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

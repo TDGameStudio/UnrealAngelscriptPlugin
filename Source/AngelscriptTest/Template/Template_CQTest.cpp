@@ -66,7 +66,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -109,7 +109,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTemplateCQTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTemplate_CQTest_Basic"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASTemplate_CQTest_Basic"), TEXT(R"(
 int GetFortyTwo()
 {
 	return 42;
@@ -138,7 +138,7 @@ int GetFortyTwo()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTemplate_CQTest_Multi"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASTemplate_CQTest_Multi"), TEXT(R"(
 int Add()      { return 2 + 3; }
 int Subtract() { return 10 - 7; }
 int Multiply() { return 4 * 5; }
@@ -172,7 +172,7 @@ int Modulo()   { return 17 % 5; }
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTemplate_CQTest_RetStruct"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASTemplate_CQTest_RetStruct"), TEXT(R"(
 FString BuildGreeting()
 {
 	return "Hello" + " " + "World";
@@ -235,7 +235,7 @@ FString FormatValue()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTemplate_CQTest_PassArgs"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASTemplate_CQTest_PassArgs"), TEXT(R"(
 int AddInts(int A, int B)
 {
 	return A + B;
@@ -333,7 +333,7 @@ int StringLen(const FString& in S)
 			TEXT("String index out of bounds"),
 			EAutomationExpectedErrorFlags::Contains, 0);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTemplate_CQTest_Negative"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASTemplate_CQTest_Negative"), TEXT(R"(
 void StringIndexOOB()
 {
 	FString S = "AB";
@@ -368,7 +368,7 @@ void StringIndexOOB()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTemplate_CQTest_AssertThat"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASTemplate_CQTest_AssertThat"), TEXT(R"(
 int GetValue() { return 100; }
 FString GetMessage() { return "success"; }
 )"));

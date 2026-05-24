@@ -21,7 +21,7 @@
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
 #include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Math/Quat.h"
@@ -237,7 +237,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMathBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMath_ShortestPath"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMath_ShortestPath"), TEXT(R"(
 FRotator GetShortestLerp()
 {
 	const FRotator A = FRotator(0.0f, 170.0f, 0.0f);
@@ -392,7 +392,7 @@ FVector GetMoveLargeStep()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMath_PlanarProjection"), TEXT(R"AS(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMath_PlanarProjection"), TEXT(R"AS(
 double GetVectorSize2D() { const FVector V = FVector(3.0f, 4.0f, 12.0f); return V.Size2D(FVector(0.0f, 0.0f, 1.0f)); }
 double GetVectorSizeSquared2D() { const FVector V = FVector(3.0f, 4.0f, 12.0f); return V.SizeSquared2D(FVector(0.0f, 0.0f, 1.0f)); }
 FVector GetVectorProjected() { const FVector V = FVector(3.0f, 4.0f, 12.0f); return V.PointPlaneProject(FVector(0.0f, 0.0f, 2.0f), FVector(0.0f, 0.0f, 1.0f)); }

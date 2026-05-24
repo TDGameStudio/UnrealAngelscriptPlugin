@@ -16,7 +16,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -113,7 +113,7 @@ int OrderedFormat_Match()
 )");
 		Source.ReplaceInline(TEXT("__ORDERED_EXPECTED__"), *OrderedExpected, ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTextFormatting_OrderedFormat"), Source);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASTextFormatting_OrderedFormat"), Source);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -156,7 +156,7 @@ int NamedFormat_Match()
 )");
 		Source.ReplaceInline(TEXT("__NAMED_EXPECTED__"), *NamedExpected, ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTextFormatting_NamedFormat"), Source);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASTextFormatting_NamedFormat"), Source);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

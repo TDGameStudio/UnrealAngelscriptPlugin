@@ -4,7 +4,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -24,7 +24,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCollisionBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCollision_QueryParams"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCollision_QueryParams"), TEXT(R"(
 int CollisionQueryParams_DefaultTraceComplex()
 {
 	FCollisionQueryParams Params;
@@ -45,7 +45,7 @@ int CollisionQueryParams_DefaultTraceComplex()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCollision_Shape"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCollision_Shape"), TEXT(R"(
 int CollisionShape_MakeSphere()
 {
 	FCollisionShape Shape = FCollisionShape::MakeSphere(50.0);
@@ -66,7 +66,7 @@ int CollisionShape_MakeSphere()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCollision_Box"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCollision_Box"), TEXT(R"(
 int CollisionShape_MakeBox()
 {
 	FCollisionShape Shape = FCollisionShape::MakeBox(FVector(10.0, 20.0, 30.0));

@@ -19,7 +19,7 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestUtilities.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "CollisionQueryParams.h"
@@ -291,7 +291,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCollisionParamsBindingsTest, "Angelscript.Test
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCollisionParams_Behaviour"), TEXT(R"AS(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCollisionParams_Behaviour"), TEXT(R"AS(
 int PopulateCollisionBindings(
 	AActor IgnoredActor,
 	UPrimitiveComponent IgnoredComponent,

@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "AngelscriptEngine.h"
 #include "Misc/AutomationTest.h"
-#include "AngelscriptBindingsModuleBuilder.h"
+#include "AngelscriptTestModuleScope.h"
 #include "AngelscriptTestExecute.h"
 
 /**
@@ -44,7 +44,7 @@
 // Section body can read cleanly under `namespace AngelscriptTest`, without
 // the Execute.h header itself having to take a transitive include on the
 // module builder header.
-using AngelscriptTestBindings::FCoverageModuleScope;
+using AngelscriptTestBindings::FScopedAngelscriptModule;
 
 namespace AngelscriptTest
 {
@@ -57,7 +57,7 @@ namespace AngelscriptTest
 		// returns 0 / 1 (or a small int). Keep the script side dumb -- all
 		// branching/fallback logic stays here in C++ where the assertion
 		// names live.
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASBindingsSharedExample_Example"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASBindingsSharedExample_Example"), TEXT(R"(
 int EchoZero()           { return 0; }
 int EchoOne()            { return 1; }
 int EchoSum()            { int A = 17; int B = 25; return A + B; }

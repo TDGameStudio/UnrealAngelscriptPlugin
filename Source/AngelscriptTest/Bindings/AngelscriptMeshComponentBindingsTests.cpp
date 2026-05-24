@@ -5,7 +5,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "GameFramework/ProjectileMovementComponent.h"
@@ -27,7 +27,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMeshComponentBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMeshComponent_Projectile"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMeshComponent_Projectile"), TEXT(R"(
 int Projectile_HomingTargetRoundTrip(UProjectileMovementComponent Comp, USceneComponent Target)
 {
 	if (Comp == nullptr) return 0;
@@ -70,7 +70,7 @@ int Projectile_HomingTargetRoundTrip(UProjectileMovementComponent Comp, USceneCo
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMeshComponent_Skeletal"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMeshComponent_Skeletal"), TEXT(R"(
 int Skeletal_TypeExists()
 {
 	USkeletalMeshComponent Comp;
@@ -90,7 +90,7 @@ int Skeletal_TypeExists()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASMeshComponent_SkeletalAssetAccessors"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMeshComponent_SkeletalAssetAccessors"), TEXT(R"(
 void Skeletal_SetAndGetAsset(USkeletalMeshComponent Comp, USkeletalMesh Mesh)
 {
 	Comp.SetSkeletalMeshAsset(Mesh);

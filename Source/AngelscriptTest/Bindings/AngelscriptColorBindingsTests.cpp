@@ -4,7 +4,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -24,7 +24,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptColorBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASColor_FColorCtor"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASColor_FColorCtor"), TEXT(R"(
 int FColor_RedComponent()
 {
 	FColor C = FColor(255, 128, 64, 255);
@@ -45,7 +45,7 @@ int FColor_RedComponent()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASColor_FLinearCtor"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASColor_FLinearCtor"), TEXT(R"(
 int FLinearColor_IsBlack()
 {
 	FLinearColor C = FLinearColor(0.0, 0.0, 0.0, 1.0);
@@ -66,7 +66,7 @@ int FLinearColor_IsBlack()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASColor_ToLinear"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASColor_ToLinear"), TEXT(R"(
 int FColor_ToLinearConversion()
 {
 	FColor C = FColor(255, 0, 0, 255);

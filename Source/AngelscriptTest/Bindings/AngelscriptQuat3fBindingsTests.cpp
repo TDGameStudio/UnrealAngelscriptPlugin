@@ -7,7 +7,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -32,7 +32,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptQuat3fBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASQuat3f_Rotator"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASQuat3f_Rotator"), TEXT(R"(
 int Rotator_ZeroIsZero()
 {
 	FRotator R = FRotator(0, 0, 0);
@@ -72,7 +72,7 @@ int Rotator_IsZero()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASQuat3f_Quat"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASQuat3f_Quat"), TEXT(R"(
 int Quat_IdentityIsNormalized()
 {
 	FQuat Q = FQuat::Identity;
@@ -99,7 +99,7 @@ int Quat_IdentityComponents()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASQuat3f_Transform"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASQuat3f_Transform"), TEXT(R"(
 int Transform_IdentityLocation()
 {
 	FTransform T = FTransform::Identity;

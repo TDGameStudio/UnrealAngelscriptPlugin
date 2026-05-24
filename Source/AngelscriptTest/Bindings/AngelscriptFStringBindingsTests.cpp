@@ -42,7 +42,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -76,7 +76,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFStringBindingsTest,
 		// Equivalent to the FAngelscriptEngineScope inside { FAngelscriptEngineScope _AutoEngineScope(Engine);.
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Ctor"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_Ctor"), TEXT(R"(
 int Ctor_EmptyLen()
 {
 	FString S;
@@ -154,7 +154,7 @@ int Ctor_LongString()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Operators"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_Operators"), TEXT(R"(
 // ---- opEquals ----
 int OpEq_Same()           { return ("ABC" == "ABC") ? 1 : 0; }
 int OpEq_Diff()           { return ("ABC" == "XYZ") ? 1 : 0; }
@@ -246,7 +246,7 @@ int OpIdx_Write()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_IndexErr"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_IndexErr"), TEXT(R"(
 void TriggerIndexOutOfBounds()
 {
 	FString S = "AB";
@@ -281,7 +281,7 @@ void TriggerIndexOutOfBounds()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_LenCap"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_LenCap"), TEXT(R"(
 int Len_Empty()            { FString S; return S.Len(); }
 int Len_One()              { FString S = "X"; return S.Len(); }
 int Len_Multi()            { FString S = "HelloWorld"; return S.Len(); }
@@ -371,7 +371,7 @@ int Reset_ThenReuse()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Substr"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_Substr"), TEXT(R"(
 // ---- Left / LeftChop ----
 int Left_Full()         { FString S = "ABCDE"; return (S.Left(5) == "ABCDE") ? 1 : 0; }
 int Left_Partial()      { FString S = "ABCDE"; return (S.Left(3) == "ABC") ? 1 : 0; }
@@ -434,7 +434,7 @@ int Compound_LeftThenRight()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Search"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_Search"), TEXT(R"(
 // ---- Contains ----
 int Contains_Found()           { FString S = "Hello World"; return S.Contains("World") ? 1 : 0; }
 int Contains_NotFound()        { FString S = "Hello World"; return S.Contains("xyz") ? 1 : 0; }
@@ -568,7 +568,7 @@ int Equals_EmptyEmpty()       { FString A; FString B; return A.Equals(B) ? 1 : 0
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Mutation"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_Mutation"), TEXT(R"(
 // ---- Append / AppendChar ----
 int Append_Basic()
 {
@@ -779,7 +779,7 @@ int Reverse_Empty()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_MutExt"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_MutExt"), TEXT(R"(
 // ---- AppendInt ----
 int AppendInt_Positive()
 {
@@ -968,7 +968,7 @@ int TrimChar_AllSame()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_CaseTrim"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_CaseTrim"), TEXT(R"(
 // ---- ToUpper / ToLower ----
 int ToUpper_Lower()       { return ("hello".ToUpper() == "HELLO") ? 1 : 0; }
 int ToUpper_Mixed()       { return ("Hello World".ToUpper() == "HELLO WORLD") ? 1 : 0; }
@@ -1097,7 +1097,7 @@ int RightPad_Content()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Split"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_Split"), TEXT(R"(
 // ---- Split ----
 int Split_Basic()
 {
@@ -1253,7 +1253,7 @@ int ParseMulti_TwoDelims()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_SplitExt"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_SplitExt"), TEXT(R"(
 // ---- ParseIntoArrayLines ----
 int ParseLines_Multi()
 {
@@ -1347,7 +1347,7 @@ int ParseWS_OnlyWhitespace()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Conv"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_Conv"), TEXT(R"(
 // ---- ToBool ----
 int ToBool_True()         { return "true".ToBool() ? 1 : 0; }
 int ToBool_True_One()     { return "1".ToBool() ? 1 : 0; }
@@ -1466,7 +1466,7 @@ int ToDisplayName_Bool()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_TypeConcat"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_TypeConcat"), TEXT(R"(
 int Concat_Int()
 {
 	FString S = "Value=" + 42;
@@ -1533,7 +1533,7 @@ int Concat_IntZero()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Format"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_Format"), TEXT(R"(
 // --- Arity: 1-arg overloads ---
 int Format_OneStr()
 {
@@ -1755,7 +1755,7 @@ FString Format_Ret_FloatPrecision()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Join"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_Join"), TEXT(R"(
 int Join_Basic()
 {
 	TArray<FString> Arr;
@@ -1828,7 +1828,7 @@ int Join_WithEmptyElements()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_StaticCtor"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_StaticCtor"), TEXT(R"(
 // ---- FString::FromInt ----
 int FromInt_Positive()
 {
@@ -1922,7 +1922,7 @@ int ChrN_Zero()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_ApplyFmt"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_ApplyFmt"), TEXT(R"(
 // ==== int32 ====
 int ApplyFmt_Int_Default()    { return FString::ApplyFormat(42, "").Contains("42") ? 1 : 0; }
 int ApplyFmt_Int_Negative()   { return FString::ApplyFormat(-10, "").Contains("-10") ? 1 : 0; }
@@ -2334,7 +2334,7 @@ FString ApplyFmt_Ret_NegSignPlus()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_Logging"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_Logging"), TEXT(R"(
 int Log_Compiles()
 {
 	Log("FString test log message");
@@ -2413,7 +2413,7 @@ int Log_Format()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_RetStr"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_RetStr"), TEXT(R"(
 FString Ret_Literal()
 {
 	return "Hello World";
@@ -2586,7 +2586,7 @@ FString Ret_AppendChain()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASFString_PassStr"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFString_PassStr"), TEXT(R"(
 // Identity round-trip
 FString Pass_Echo(const FString& in S)
 {

@@ -18,7 +18,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Misc/Timespan.h"
@@ -152,7 +152,7 @@ int Timespan_DetailedCtor_Ticks()
 		InjectTSTokens(Source, TEXT("WB"), WB);
 		InjectTSTokens(Source, TEXT("DB"), DB);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTimespan_Construction"), Source);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASTimespan_Construction"), Source);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -213,7 +213,7 @@ int Timespan_Detailed_Totals()
 		InjectTSTokens(Source, TEXT("TB"), TB);
 		InjectTSTokens(Source, TEXT("DB"), DB);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTimespan_ComponentAccess"), Source);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASTimespan_ComponentAccess"), Source);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -262,7 +262,7 @@ int Timespan_Detailed_FormattedString()
 		InjectTSTokens(Source, TEXT("DB"), DB);
 		Source.ReplaceInline(TEXT("$DFMT$"), *FString(DetailedFormat).ReplaceCharWithEscapedChar(), ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTimespan_Formatting"), Source);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASTimespan_Formatting"), Source);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -314,7 +314,7 @@ int Timespan_Ratio()
 		Source.ReplaceInline(TEXT("$MOD_TICKS$"), *I64(ModRes.Ticks), ESearchCase::CaseSensitive);
 		Source.ReplaceInline(TEXT("$RATIO$"), *F64(Ratio), ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTimespan_Arithmetic"), Source);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASTimespan_Arithmetic"), Source);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -398,7 +398,7 @@ int Timespan_MutMod()
 		Source.ReplaceInline(TEXT("$DIV_TICKS$"), *I64(AfterDiv.Ticks), ESearchCase::CaseSensitive);
 		Source.ReplaceInline(TEXT("$MOD_TICKS$"), *I64(AfterMod.Ticks), ESearchCase::CaseSensitive);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTimespan_MutableOperators"), Source);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASTimespan_MutableOperators"), Source);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -418,7 +418,7 @@ int Timespan_MutMod()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASTimespan_Comparison"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASTimespan_Comparison"), TEXT(R"(
 int Timespan_MaxCmpMin()
 {
 	return (FTimespan::MaxValue().opCmp(FTimespan::MinValue()) > 0) ? 1 : 0;

@@ -21,7 +21,7 @@
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestEngineHelper.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Components/InputComponent.h"
@@ -64,7 +64,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompatBindingsTest,
 		FAngelscriptEngineScope Scope(Engine);
 
 		// Plain module: test Cast<T> and n"" literal
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCompat_CastCompat"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCompat_CastCompat"), TEXT(R"(
 int Compat_CastPackage()
 {
 	UObject Object = FindObject(GetTransientPackage().GetPathName());
@@ -161,7 +161,7 @@ class UBindingCastComponent : UActorComponent
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCompat_EditorOnly"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCompat_EditorOnly"), TEXT(R"(
 int Compat_EditorOnly_Package()
 {
 	UPackage Package = GetTransientPackage();
@@ -250,7 +250,7 @@ int Compat_EditorOnlyParity()
 			*NonEditorOnlyComponent->GetPathName().ReplaceCharWithEscapedChar(),
 			*EditorOnlyComponent->GetPathName().ReplaceCharWithEscapedChar());
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCompat_EditorOnlyParity"), ScriptSource);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCompat_EditorOnlyParity"), ScriptSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -267,7 +267,7 @@ int Compat_EditorOnlyParity()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCompat_TimespanCompat"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCompat_TimespanCompat"), TEXT(R"(
 int Compat_Timespan_Zero()
 {
 	FTimespan Zero = FTimespan::Zero();
@@ -362,7 +362,7 @@ int Compat_Timespan_Arithmetic()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASCompat_DateTimeCompat"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCompat_DateTimeCompat"), TEXT(R"(
 int Compat_DateTime_Epoch()
 {
 	FDateTime Epoch = FDateTime::FromUnixTimestamp(0);

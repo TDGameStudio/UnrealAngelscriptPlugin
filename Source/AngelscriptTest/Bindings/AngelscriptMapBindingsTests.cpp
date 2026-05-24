@@ -17,7 +17,7 @@
 // ============================================================================
 
 #include "CQTest.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "Shared/AngelscriptTestUtilities.h"
@@ -45,7 +45,7 @@ namespace
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASMap_Compat"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASMap_Compat"), TEXT(R"(
 int MapEmpty_IsEmpty()
 {
 	TMap<FName, int> M;
@@ -221,7 +221,7 @@ int MapFNameFind_Value()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASMap_TypeMatrix"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASMap_TypeMatrix"), TEXT(R"(
 // ---- int → FString ----
 int MapIntString_Num()
 {
@@ -451,7 +451,7 @@ int MapVectorKey_Overwrite()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASMap_ApiCoverage"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASMap_ApiCoverage"), TEXT(R"(
 int MapApi_OpIndexRead()
 {
 	TMap<FName, int> M;
@@ -692,7 +692,7 @@ int MapApi_OpAssign_DropsOldKey()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASMap_ReturnType"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASMap_ReturnType"), TEXT(R"(
 // Direct bool returns
 bool MapRet_Bool_Contains()
 {
@@ -957,7 +957,7 @@ int MapRet_VerifyVectorValues_YSum()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASMap_FindFailure"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASMap_FindFailure"), TEXT(R"(
 int MapFindMissing_ReturnsFalse()
 {
 	TMap<FName, int> M;
@@ -1029,7 +1029,7 @@ int MapFindOrAdd_FinalNum()
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FCoverageModuleScope ModuleScope(Test, Engine, TEXT("ASMap_LogDiag"), TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASMap_LogDiag"), TEXT(R"(
 int MapLog_Types()
 {
 	TMap<FName, int> MNameInt;

@@ -17,7 +17,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "HAL/PlatformMisc.h"
@@ -58,7 +58,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUtilityBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASUtility_Hash"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASUtility_Hash"), TEXT(R"(
 int Hash_CityHash32Deterministic()
 {
 	uint Hash32A = Hash::CityHash32("Alpha");
@@ -166,7 +166,7 @@ int CommandLine_PlatformMiscGetEnvVar()
 			ExpectedSwitches.Num(),
 			*ProjectName);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASUtility_CmdLine"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASUtility_CmdLine"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -187,7 +187,7 @@ int CommandLine_PlatformMiscGetEnvVar()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASUtility_Parse"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASUtility_Parse"), TEXT(R"(
 int Parse_ValueInt()
 {
 	FString Source = "Count=12 Ratio=3.5 Name=Alpha Enabled=true";
@@ -242,7 +242,7 @@ int Parse_Bool()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASUtility_RandStream"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASUtility_RandStream"), TEXT(R"(
 int RandStream_InitialSeed()
 {
 	FRandomStream Stream(123);
@@ -321,7 +321,7 @@ int RandStream_ToStringNotEmpty()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASUtility_StrRemove"), TEXT(R"(
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASUtility_StrRemove"), TEXT(R"(
 int StrRemove_MiddleChars()
 {
 	FString Value = "ABCDE";

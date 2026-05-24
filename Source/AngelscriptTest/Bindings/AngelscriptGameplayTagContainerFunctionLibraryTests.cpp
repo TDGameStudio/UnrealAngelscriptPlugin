@@ -17,7 +17,7 @@
 
 #include "CQTest.h"
 #include "Shared/AngelscriptTestMacros.h"
-#include "Shared/AngelscriptBindingsModuleBuilder.h"
+#include "Shared/AngelscriptTestModuleScope.h"
 #include "Shared/AngelscriptBindingsAssertions.h"
 
 #include "GameplayTagsManager.h"
@@ -225,7 +225,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGameplayTagContainerFunctionLibraryTest,
 			MissingTag.ToString().ReplaceCharWithEscapedChar(),
 			Ref);
 
-		FCoverageModuleScope Mod(*TestRunner, Engine, TEXT("ASGameplayTagContainer_RemoveTagMiss"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASGameplayTagContainer_RemoveTagMiss"), Script);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
