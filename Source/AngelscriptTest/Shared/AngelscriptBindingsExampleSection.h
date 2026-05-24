@@ -6,20 +6,34 @@
 
 #include "AngelscriptBindingsCoverage.h"
 #include "AngelscriptBindingsModuleBuilder.h"
-#include "AngelscriptBindingsAssertions.h"
+#include "AngelscriptTestExecute.h"
 
 /**
  * AngelscriptBindingsExampleSection — copy-paste starting point for writing
  * Coverage Section tests using the CQTest pattern.
  *
- * This file is *intentionally* tiny — it exists to demonstrate the canonical
- * shape of a Coverage Section: declare the profile, wrap the AS source in a
- * `FCoverageModuleScope`, then run each case through one of the
- * `ExpectGlobal*` helpers. There is no shared state between cases — each is
- * a self-contained AS function with a deterministic int return.
+ * Canonical naming reference (post refactor-as-test-shared-layout-and-naming
+ * Phase 4): this file is the official demonstration of the *new* call-side
+ * API surface. New Coverage Sections should mirror the shape used here:
+ *
+ *   - namespace `AngelscriptTest::` is the primary entry point for the
+ *     C++-side AS invocation API (Executor + Execute* assertion family).
+ *   - `AngelscriptTest::ExecuteAndExpectInt` (Bool / Double / NearFloat /
+ *     NearDouble / IntAtLeast / Validate<T> / ...) replaces the legacy
+ *     `AngelscriptTestBindings::ExpectGlobal*` helpers; signatures are
+ *     identical so migration is a pure rename. The old names still work
+ *     via inline forwarders for source compatibility.
+ *   - `AngelscriptTest::ExecuteBatchAndExpectInt` + the `FExpectedInt`
+ *     row struct replace `ExpectGlobalInts` + `FExpectedGlobalInt`.
+ *   - `AngelscriptTest::FAngelscriptTestExecutor` (with `.Execute()` /
+ *     `.ExecuteAndGet<R>()` / `.ExecuteAndExtractStruct<T>()`) replaces
+ *     `AngelscriptReflectiveAccess::FASGlobalFunctionInvoker`. The old
+ *     class name resolves through a `using` alias.
  *
  * The companion file `AngelscriptBindingsExampleSectionTests.cpp` registers
- * an Automation ID that runs this section, proving the base layer end-to-end.
+ * an Automation ID that runs this section end-to-end, proving the base
+ * layer is sound. Per the main plan's "保留旧 ID" rule this test does NOT
+ * replace any existing ID; it is purely additive.
  *
  * Pattern executors should mirror, NOT include, this file in their own
  * SubPlan implementation. This header lives only to be read as documentation.
@@ -27,7 +41,15 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTestBindings
+// FCoverageModuleScope is the RAII module wrapper used by every Section and
+// lives in `AngelscriptTestBindings::` (its canonical home -- it composes the
+// coverage profile + module name policy). We lift it into this TU so the
+// Section body can read cleanly under `namespace AngelscriptTest`, without
+// the Execute.h header itself having to take a transitive include on the
+// module builder header.
+using AngelscriptTestBindings::FCoverageModuleScope;
+
+namespace AngelscriptTest
 {
 	/**
 	 * Run the example section under the supplied profile. Returns aggregate
@@ -39,7 +61,7 @@ namespace AngelscriptTestBindings
 		const FBindingsCoverageProfile& Profile)
 	{
 		// Each case is a no-arg `int F()` that asserts a single behavior and
-		// returns 0 / 1 (or a small int). Keep the script side dumb — all
+		// returns 0 / 1 (or a small int). Keep the script side dumb -- all
 		// branching/fallback logic stays here in C++ where the assertion
 		// names live.
 		FCoverageModuleScope ModuleScope(Test, Engine, Profile, TEXT("Example"), TEXT(R"(
@@ -48,7 +70,7 @@ int EchoOne()            { return 1; }
 int EchoSum()            { int A = 17; int B = 25; return A + B; }
 int EchoMaxOf(int A, int B) { return A > B ? A : B; }
 
-// Container case — exercises a real bound type to prove the basics work
+// Container case -- exercises a real bound type to prove the basics work
 // against the actual Bindings layer (and to give the example a more
 // realistic shape than pure arithmetic).
 int CountFruits()
@@ -67,21 +89,21 @@ int CountFruits()
 		asIScriptModule& Module = ModuleScope.GetModule();
 
 		bool bPassed = true;
-		bPassed &= ExpectGlobalInt(Test, Engine, Module, Profile,
+		bPassed &= ExecuteAndExpectInt(Test, Engine, Module, Profile,
 			TEXT("int EchoZero()"), TEXT("EchoZero returns 0"), 0);
-		bPassed &= ExpectGlobalInt(Test, Engine, Module, Profile,
+		bPassed &= ExecuteAndExpectInt(Test, Engine, Module, Profile,
 			TEXT("int EchoOne()"), TEXT("EchoOne returns 1"), 1);
-		bPassed &= ExpectGlobalInt(Test, Engine, Module, Profile,
+		bPassed &= ExecuteAndExpectInt(Test, Engine, Module, Profile,
 			TEXT("int EchoSum()"), TEXT("EchoSum returns 17 + 25"), 42);
-		bPassed &= ExpectGlobalInt(Test, Engine, Module, Profile,
+		bPassed &= ExecuteAndExpectInt(Test, Engine, Module, Profile,
 			TEXT("int CountFruits()"), TEXT("CountFruits builds and counts a TArray<FString>"), 3);
 
-		// Batched form — useful when a section has many homogeneous cases.
-		const FExpectedGlobalInt Cases[] = {
+		// Batched form -- useful when a section has many homogeneous cases.
+		const FExpectedInt Cases[] = {
 			{ TEXT("int EchoZero()"), TEXT("Batched EchoZero baseline"), 0 },
 			{ TEXT("int EchoOne()"),  TEXT("Batched EchoOne baseline"),  1 },
 		};
-		bPassed &= ExpectGlobalInts(Test, Engine, Module, Profile, Cases);
+		bPassed &= ExecuteBatchAndExpectInt(Test, Engine, Module, Profile, Cases);
 
 		return bPassed;
 	}
