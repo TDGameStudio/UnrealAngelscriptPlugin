@@ -4,43 +4,101 @@
 // AngelscriptTestExecute
 // ============================================================================
 //
-// Themed sub-header originally split out of `AngelscriptTestUtilities.h`
-// (Phase 1 of OpenSpec change `refactor-as-test-shared-layout-and-naming`)
-// and consolidated in Phase 2 to become the single entry point for driving
-// AngelScript functions from C++ tests.
+// Single themed entry point for driving AngelScript functions from C++ tests.
+// Carved out of `AngelscriptTestUtilities.h` in Phase 1 of OpenSpec change
+// `refactor-as-test-shared-layout-and-naming`, then consolidated in Phase 2
+// (the old `AngelscriptGlobalFunctionInvoker.h` + `AngelscriptBindingsAssertions.h`
+// were folded in verbatim and reduced to forward stubs), and finally
+// rebalanced in Phase 3 to introduce the canonical `Execute*` naming family
+// + `FAngelscriptTestExecutor` class as the **new mandatory entry point**
+// for new code, with every legacy name kept as a permanent inline alias /
+// using-declaration / forwarder so existing call sites continue to compile
+// against the same fully-qualified symbol names.
 //
-// Three legacy namespaces coexist here unchanged — every old call site keeps
-// compiling against the same fully-qualified symbol names. The Phase-2 merge
-// is purely a physical relocation; Phase 3 will add the new `Execute*` naming
-// family and `FAngelscriptTestExecutor` class on top, keeping all of these as
-// permanent inline aliases.
+// FOUR NAMESPACES coexist here:
 //
-//   namespace AngelscriptTestSupport
-//     - ExecuteIntFunction
-//     - ExecuteIntFunctionExpectingScriptException
-//     - ExecuteInt64Function
-//       (Inlined from AngelscriptTestUtilities.h lines 873-1007 in Phase 1.)
+//   namespace AngelscriptTestSupport                          [Phase 1 - Utilities-era]
+//     Legacy entry points that take `asIScriptFunction&` directly (no
+//     Profile / CaseLabel). Bodies are intentionally preserved verbatim
+//     -- their callers depend on the specific error-string wording, and
+//     `FAngelscriptTestExecutor` has a richer surface that does not map
+//     1:1 (no Profile / no Case / no per-case AddInfo trace). Migration
+//     of these three functions is deferred to a follow-up change; new
+//     code should NOT call them.
+//       * ExecuteIntFunction
+//       * ExecuteIntFunctionExpectingScriptException
+//       * ExecuteInt64Function
 //
-//   namespace AngelscriptReflectiveAccess  [merged in Phase 2 task 2.1]
-//     - ResolveFunctionByDecl / ResolveFunctionByName
-//     - FASGlobalFunctionInvoker (fluent typed-arg builder around asIScriptContext)
-//       (Was AngelscriptGlobalFunctionInvoker.h, now a 3-line forward header.)
+//   namespace AngelscriptTest                                 [Phase 3 - NEW primary]
+//     Mandatory entry point for new tests. All `Execute*` and `Compile*`
+//     helpers live here, alongside the renamed executor class.
+//       * FAngelscriptTestExecutor (renamed from FASGlobalFunctionInvoker)
+//           .Execute()                  (was .Call)
+//           .ExecuteAndGet<R>()         (was .CallAndReturn<R>)
+//           .ExecuteAndExtractStruct<T>() (was .ReadReturnStruct<T>)
+//           .AddArg / .AddArgRef / .AddArgStruct  (unchanged)
+//           legacy .Call / .CallAndReturn<R> / .ReadReturnStruct<T> kept
+//             as inline forwarders to the new names.
+//       * ResolveFunctionByDecl / ResolveFunctionByName (moved out of
+//         AngelscriptReflectiveAccess; original namespace gets aliases).
+//       * Execute* family — equality / tolerance / lower-bound / batch /
+//         custom-validator / exception:
+//           ExecuteAndExpectInt        ExecuteAndExpectNearFloat
+//           ExecuteAndExpectBool       ExecuteAndExpectNearDouble
+//           ExecuteAndExpectDouble     ExecuteAndExpectIntAtLeast
+//           ExecuteBatchAndExpectInt   ExecuteAndValidate<T>
+//           ExecuteAndExpectException
+//       * Compile* family (compile-side, independent of Execute*):
+//           CompileAndExpectFailure
+//       * FExpectedInt — batch row struct for ExecuteBatchAndExpectInt.
 //
-//   namespace AngelscriptTestBindings  [merged in Phase 2 task 2.2]
-//     - ExpectGlobalInt / ExpectGlobalIntAtLeast / ExpectGlobalBool / ExpectGlobalDouble
-//     - ExpectGlobalInts (batched)
-//     - ExpectGlobalReturnBool / ExpectGlobalReturnFloat / ExpectGlobalReturnCustom<T>
-//     - ExpectBindingCompileFailure (compile-side assertion)
-//     - ExecuteFunctionExpectingScriptException
-//     - Detail::TraceCase
-//       (Was AngelscriptBindingsAssertions.h, now a 3-line forward header.
-//        Guarded by WITH_DEV_AUTOMATION_TESTS to match the original.)
+//   namespace AngelscriptReflectiveAccess                     [Phase 2/3 back-compat]
+//     Class + Resolve helpers used to live here. The class is now an
+//     alias of `AngelscriptTest::FAngelscriptTestExecutor`; the resolve
+//     helpers are inline forwarders to the new home. Existing call sites
+//     stay valid; new code should `AngelscriptTest::*` directly.
+//       * using FASGlobalFunctionInvoker = AngelscriptTest::FAngelscriptTestExecutor
+//       * inline ResolveFunctionByDecl / ResolveFunctionByName (forwarders)
 //
-// Phase 3 (see OpenSpec tasks 3.x) will introduce:
-//   - FAngelscriptTestExecutor + `Execute*` naming family
-//     (`ExecuteAndExpect*`, `ExecuteAndExpectNear*`, `ExecuteBatchAndExpect*`,
-//     `ExecuteAndValidate<T>`, `CompileAndExpectFailure`)
-//   - All legacy names kept as permanent inline aliases / using-declarations.
+//   namespace AngelscriptTestBindings                         [Phase 2/3 back-compat]
+//     The 9 `ExpectGlobal*` helpers + `ExpectBindingCompileFailure` +
+//     `ExecuteFunctionExpectingScriptException` are now thin inline
+//     forwarders to the corresponding `AngelscriptTest::*` entry. The
+//     batch struct gets a `using` alias. The shape & semantics are
+//     preserved one-to-one; the only observable change is that the
+//     work physically happens behind a new function name.
+//       * inline ExpectGlobalInt -> ExecuteAndExpectInt
+//       * inline ExpectGlobalIntAtLeast -> ExecuteAndExpectIntAtLeast
+//       * inline ExpectGlobalBool -> ExecuteAndExpectBool
+//       * inline ExpectGlobalDouble -> ExecuteAndExpectNearDouble
+//       * inline ExpectGlobalInts (batch) -> ExecuteBatchAndExpectInt
+//       * inline ExpectGlobalReturnBool -> ExecuteAndExpectBool
+//       * inline ExpectGlobalReturnFloat -> ExecuteAndExpectNearFloat
+//       * inline ExpectGlobalReturnCustom<T> -> ExecuteAndValidate<T>
+//       * inline ExpectBindingCompileFailure -> CompileAndExpectFailure
+//       * inline ExecuteFunctionExpectingScriptException -> ExecuteAndExpectException
+//       * using FExpectedGlobalInt = AngelscriptTest::FExpectedInt
+//       * namespace Detail { TraceCase } (kept for any external callers)
+//     Guarded by `WITH_DEV_AUTOMATION_TESTS` to match the original layout.
+//
+// Naming family contract (Phase 3 / OpenSpec spec
+// `as-bindings-test-execute-and-naming/spec.md`):
+//
+//   Execute[(empty)|AndGet|AndExpect|AndValidate|BatchAndExpect][Near|AtLeast|(empty)][<Type>|<T>]
+//
+//     Execute          — execute, no return.
+//     AndGet           — execute, return raw value, no assertion.
+//     AndExpect        — execute, return raw value, assert equality.
+//     AndExpectNear    — execute, return raw value, assert within tolerance.
+//     AndExpectAtLeast — execute, return raw value, assert >= minimum.
+//     AndValidate      — execute, return raw value, caller-supplied validator.
+//     BatchAndExpect   — execute N rows of (decl, label, expected) tuples.
+//     ExecuteAndExpectException — execute, expect script exception, validate
+//       message + line metadata.
+//     CompileAndExpect* — compile-side family, independent of Execute (the
+//       script never reaches asIScriptContext::Execute when it does not
+//       compile in the first place).
+//
 // ============================================================================
 
 #include "CoreMinimal.h"
@@ -59,9 +117,16 @@
 #include "source/as_scriptfunction.h"
 #include "EndAngelscriptHeaders.h"
 
-// ----------------------------------------------------------------------------
-// Original AngelscriptTestUtilities.h lines 873-1007 (Phase 1).
-// ----------------------------------------------------------------------------
+// ============================================================================
+// PART 1 — namespace AngelscriptTestSupport (Utilities-era legacy, Phase 1)
+//
+// These three free functions accept an already-resolved `asIScriptFunction&`
+// rather than a (Module, Decl) pair. They predate the Bindings Coverage
+// refactor and are NOT migrated to the new Execute* family in Phase 3: their
+// callers depend on the exact error-string wording, and the new family takes
+// `Profile` + `CaseLabel` which these signatures lack. Migration is tracked
+// in `followups.md` of the parent OpenSpec change.
+// ============================================================================
 namespace AngelscriptTestSupport
 {
 	inline bool ExecuteIntFunction(FAutomationTestBase& Test, FAngelscriptEngine& Engine, asIScriptFunction& Function, int32& OutValue)
@@ -201,34 +266,14 @@ namespace AngelscriptTestSupport
 	}
 }
 
-// ----------------------------------------------------------------------------
-// Verbatim relocation from AngelscriptGlobalFunctionInvoker.h (Phase 2 task 2.1).
-// Original docblock preserved below. Old header is now a 3-line forward stub.
-// ----------------------------------------------------------------------------
-/**
- * AngelscriptGlobalFunctionInvoker — small, typed helper for calling AngelScript
- * *global* functions (script-module level, no enclosing UCLASS) from C++ tests.
- *
- * The existing FFunctionInvoker in AngelscriptReflectiveAccess.h targets
- * UFUNCTIONs on spawned UObjects — it goes through UObject::FindFunction and
- * UASFunction::RuntimeCallEvent. Global functions don't participate in UClass
- * reflection, so they must be called directly via asIScriptContext. This file
- * provides the same Get / Set / Call ergonomics, but the parameter bus is the
- * raw AngelScript argument register instead of a UFunction-laid-out packed
- * parameter buffer.
- *
- * Usage:
- *
- *     asIScriptModule* Module = AngelscriptTestSupport::BuildModule(...);
- *     FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("int Sum(int, int)"));
- *     Invoker.AddArg(static_cast<int32>(17));
- *     Invoker.AddArg(static_cast<int32>(25));
- *     const int32 Result = Invoker.CallAndReturn<int32>(INDEX_NONE);
- *
- * Convenience overloads ResolveFunctionByDecl / ResolveFunctionByName help
- * locate the target asIScriptFunction on the module.
- */
-namespace AngelscriptReflectiveAccess
+// ============================================================================
+// PART 2 — namespace AngelscriptTest (NEW primary, Phase 3)
+//
+// New code MUST call helpers from this namespace. Old `AngelscriptTestBindings`
+// helpers are inline forwarders to here; the layer is preserved indefinitely
+// so 71+ Bindings/*.cpp call sites can be migrated incrementally.
+// ============================================================================
+namespace AngelscriptTest
 {
 	/**
 	 * Resolve an asIScriptFunction by its AS declaration on the given module.
@@ -236,7 +281,7 @@ namespace AngelscriptReflectiveAccess
 	 * Mirrors the logic of AngelscriptTestSupport::GetFunctionByDecl: try the
 	 * full declaration, then fall back to the bare name, then scan the module
 	 * by-index. We materialise a null-terminated FString before the UTF-8
-	 * conversion — FStringView::GetData() is not guaranteed null-terminated.
+	 * conversion -- FStringView::GetData() is not guaranteed null-terminated.
 	 */
 	inline asIScriptFunction* ResolveFunctionByDecl(
 		FAutomationTestBase& Test,
@@ -325,9 +370,9 @@ namespace AngelscriptReflectiveAccess
 	}
 
 	/**
-	 * Typed builder around asIScriptContext that matches the argument slots of
-	 * an AS global function. Each AddArg overload advances the cursor. Call() /
-	 * CallAndReturn<R>() execute the context and tear it down.
+	 * Typed builder around `asIScriptContext` that matches the argument slots
+	 * of an AS global function. Each `AddArg` overload advances the cursor.
+	 * `Execute()` / `ExecuteAndGet<R>()` execute the context and tear it down.
 	 *
 	 * Argument mapping:
 	 *   AddArg(bool)         -> SetArgByte
@@ -341,20 +386,24 @@ namespace AngelscriptReflectiveAccess
 	 *   AddArgRef<T>(ref)    -> SetArgAddress (for &in / &out / &inout refs)
 	 *   AddArgStruct<T>(val) -> SetArgObject on a live temp copy
 	 *
-	 * Return mapping (CallAndReturn<R>):
+	 * Return mapping (`ExecuteAndGet<R>`):
 	 *   R = bool / integer / enum -> GetReturnByte/Word/DWord/QWord
 	 *   R = float / double        -> GetReturnFloat / GetReturnDouble
 	 *   R = T*                    -> GetReturnObject
 	 *
 	 * For AS `float` parameters, the AS runtime applies asEP_FLOAT_IS_FLOAT64=1
-	 * so the UFunction-side type is FDoubleProperty — but at the raw AS context
-	 * level the parameter is still a `float`. So at this layer callers should
-	 * use AddArg(1.0f), NOT AddArg(1.0). (The UFUNCTION path is the
+	 * so the UFunction-side type is FDoubleProperty -- but at the raw AS
+	 * context level the parameter is still a `float`. So at this layer callers
+	 * should use AddArg(1.0f), NOT AddArg(1.0). (The UFUNCTION path is the
 	 * only place where you need `AddParam<double>`.)
+	 *
+	 * Legacy method names (`.Call`, `.CallAndReturn<R>`, `.ReadReturnStruct<T>`)
+	 * are kept as permanent inline forwarders so old call sites continue to
+	 * compile against the same surface.
 	 */
-	struct FASGlobalFunctionInvoker
+	struct FAngelscriptTestExecutor
 	{
-		FASGlobalFunctionInvoker(
+		FAngelscriptTestExecutor(
 			FAutomationTestBase& InTest,
 			FAngelscriptEngine& InEngine,
 			asIScriptFunction& InFunction)
@@ -385,7 +434,7 @@ namespace AngelscriptReflectiveAccess
 		}
 
 		/** Overload that takes a script module + AS declaration for the common case. */
-		FASGlobalFunctionInvoker(
+		FAngelscriptTestExecutor(
 			FAutomationTestBase& InTest,
 			FAngelscriptEngine& InEngine,
 			asIScriptModule& Module,
@@ -421,7 +470,7 @@ namespace AngelscriptReflectiveAccess
 			bValid = true;
 		}
 
-		~FASGlobalFunctionInvoker()
+		~FAngelscriptTestExecutor()
 		{
 			if (Context != nullptr)
 			{
@@ -431,34 +480,34 @@ namespace AngelscriptReflectiveAccess
 			EngineScope.Reset();
 		}
 
-		FASGlobalFunctionInvoker(const FASGlobalFunctionInvoker&) = delete;
-		FASGlobalFunctionInvoker& operator=(const FASGlobalFunctionInvoker&) = delete;
+		FAngelscriptTestExecutor(const FAngelscriptTestExecutor&) = delete;
+		FAngelscriptTestExecutor& operator=(const FAngelscriptTestExecutor&) = delete;
 
 		bool IsValid() const { return bValid; }
 		asIScriptContext* GetContext() const { return Context; }
 
-		// Typed argument setters — each advances the cursor by one AS slot.
-		FASGlobalFunctionInvoker& AddArg(bool    Value)    { return SetArg([&]{ return Context->SetArgByte  (NextArgIndex, Value ? 1 : 0); }); }
-		FASGlobalFunctionInvoker& AddArg(uint8   Value)    { return SetArg([&]{ return Context->SetArgByte  (NextArgIndex, Value); }); }
-		FASGlobalFunctionInvoker& AddArg(int8    Value)    { return SetArg([&]{ return Context->SetArgByte  (NextArgIndex, static_cast<uint8>(Value)); }); }
-		FASGlobalFunctionInvoker& AddArg(uint16  Value)    { return SetArg([&]{ return Context->SetArgWord  (NextArgIndex, Value); }); }
-		FASGlobalFunctionInvoker& AddArg(int16   Value)    { return SetArg([&]{ return Context->SetArgWord  (NextArgIndex, static_cast<uint16>(Value)); }); }
-		FASGlobalFunctionInvoker& AddArg(uint32  Value)    { return SetArg([&]{ return Context->SetArgDWord (NextArgIndex, Value); }); }
-		FASGlobalFunctionInvoker& AddArg(int32   Value)    { return SetArg([&]{ return Context->SetArgDWord (NextArgIndex, static_cast<uint32>(Value)); }); }
-		FASGlobalFunctionInvoker& AddArg(uint64  Value)    { return SetArg([&]{ return Context->SetArgQWord (NextArgIndex, Value); }); }
-		FASGlobalFunctionInvoker& AddArg(int64   Value)    { return SetArg([&]{ return Context->SetArgQWord (NextArgIndex, static_cast<uint64>(Value)); }); }
-		FASGlobalFunctionInvoker& AddArg(float   Value)    { return SetArg([&]{ return Context->SetArgFloat (NextArgIndex, Value); }); }
-		FASGlobalFunctionInvoker& AddArg(double  Value)    { return SetArg([&]{ return Context->SetArgDouble(NextArgIndex, Value); }); }
-		FASGlobalFunctionInvoker& AddArgObject(void* Obj)  { return SetArg([&]{ return Context->SetArgObject(NextArgIndex, Obj); }); }
-		FASGlobalFunctionInvoker& AddArgAddress(void* Ptr) { return SetArg([&]{ return Context->SetArgAddress(NextArgIndex, Ptr); }); }
+		// Typed argument setters -- each advances the cursor by one AS slot.
+		FAngelscriptTestExecutor& AddArg(bool    Value)    { return SetArg([&]{ return Context->SetArgByte  (NextArgIndex, Value ? 1 : 0); }); }
+		FAngelscriptTestExecutor& AddArg(uint8   Value)    { return SetArg([&]{ return Context->SetArgByte  (NextArgIndex, Value); }); }
+		FAngelscriptTestExecutor& AddArg(int8    Value)    { return SetArg([&]{ return Context->SetArgByte  (NextArgIndex, static_cast<uint8>(Value)); }); }
+		FAngelscriptTestExecutor& AddArg(uint16  Value)    { return SetArg([&]{ return Context->SetArgWord  (NextArgIndex, Value); }); }
+		FAngelscriptTestExecutor& AddArg(int16   Value)    { return SetArg([&]{ return Context->SetArgWord  (NextArgIndex, static_cast<uint16>(Value)); }); }
+		FAngelscriptTestExecutor& AddArg(uint32  Value)    { return SetArg([&]{ return Context->SetArgDWord (NextArgIndex, Value); }); }
+		FAngelscriptTestExecutor& AddArg(int32   Value)    { return SetArg([&]{ return Context->SetArgDWord (NextArgIndex, static_cast<uint32>(Value)); }); }
+		FAngelscriptTestExecutor& AddArg(uint64  Value)    { return SetArg([&]{ return Context->SetArgQWord (NextArgIndex, Value); }); }
+		FAngelscriptTestExecutor& AddArg(int64   Value)    { return SetArg([&]{ return Context->SetArgQWord (NextArgIndex, static_cast<uint64>(Value)); }); }
+		FAngelscriptTestExecutor& AddArg(float   Value)    { return SetArg([&]{ return Context->SetArgFloat (NextArgIndex, Value); }); }
+		FAngelscriptTestExecutor& AddArg(double  Value)    { return SetArg([&]{ return Context->SetArgDouble(NextArgIndex, Value); }); }
+		FAngelscriptTestExecutor& AddArgObject(void* Obj)  { return SetArg([&]{ return Context->SetArgObject(NextArgIndex, Obj); }); }
+		FAngelscriptTestExecutor& AddArgAddress(void* Ptr) { return SetArg([&]{ return Context->SetArgAddress(NextArgIndex, Ptr); }); }
 
 		/**
 		 * Bind a reference-style argument (AS `&in` / `&out` / `&inout`) to the
 		 * supplied live storage. The caller owns the lifetime and can read out
-		 * any modifications after Call() returns.
+		 * any modifications after `Execute()` returns.
 		 */
 		template <typename T>
-		FASGlobalFunctionInvoker& AddArgRef(T& InOutRef)
+		FAngelscriptTestExecutor& AddArgRef(T& InOutRef)
 		{
 			return AddArgAddress(const_cast<std::remove_const_t<T>*>(&InOutRef));
 		}
@@ -466,16 +515,16 @@ namespace AngelscriptReflectiveAccess
 		/**
 		 * Bind a value-style struct argument (AS USTRUCT passed by value) by
 		 * copying through SetArgObject. The AS engine does NOT destroy the
-		 * argument — our live C++ temporary is torn down by the normal scope.
+		 * argument -- our live C++ temporary is torn down by the normal scope.
 		 */
 		template <typename T>
-		FASGlobalFunctionInvoker& AddArgStruct(T& LiveValue)
+		FAngelscriptTestExecutor& AddArgStruct(T& LiveValue)
 		{
 			return AddArgObject(static_cast<void*>(&LiveValue));
 		}
 
 		/** Execute the function. Returns true if it ran to completion. */
-		bool Call()
+		bool Execute()
 		{
 			if (!bValid)
 			{
@@ -508,23 +557,63 @@ namespace AngelscriptReflectiveAccess
 			return true;
 		}
 
-		/** Call the function and return the integer-family / pointer return value. */
+		/** Execute the function and return the integer-family / pointer return value. */
 		template <typename ReturnType>
-		ReturnType CallAndReturn(const ReturnType& Fallback = ReturnType{})
+		ReturnType ExecuteAndGet(const ReturnType& Fallback = ReturnType{})
 		{
-			if (!Call())
+			if (!Execute())
 			{
 				return Fallback;
 			}
 			return ReadReturn<ReturnType>(Fallback);
 		}
 
-		/** Return whether Call() has been invoked. */
+		/**
+		 * Execute the function and read a USTRUCT return value out of the
+		 * return register. Caller owns the copy. Returns true if the call ran
+		 * and the address was readable.
+		 */
+		template <typename StructType>
+		bool ExecuteAndExtractStruct(StructType& OutValue)
+		{
+			if (!Execute())
+			{
+				return false;
+			}
+			return ReadReturnStructInternal(OutValue);
+		}
+
+		/** Return whether `Execute()` has been invoked. */
 		bool HasRun() const { return bHasRun; }
+
+		// ---- Permanent inline aliases (legacy method names from Phase 2) ----
+		// New code MUST use Execute / ExecuteAndGet / ExecuteAndExtractStruct.
+		bool Call() { return Execute(); }
+
+		template <typename ReturnType>
+		ReturnType CallAndReturn(const ReturnType& Fallback = ReturnType{})
+		{
+			return ExecuteAndGet<ReturnType>(Fallback);
+		}
+
+		template <typename StructType>
+		bool ReadReturnStruct(StructType& OutValue)
+		{
+			// Legacy semantics: caller had already invoked Call(), so we should
+			// NOT execute again -- just read the existing return value off the
+			// already-completed context. This preserves the original two-step
+			// pattern (Call() + ReadReturnStruct(...)).
+			if (!bHasRun)
+			{
+				Test.AddError(TEXT("ReadReturnStruct called before Call() completed"));
+				return false;
+			}
+			return ReadReturnStructInternal(OutValue);
+		}
 
 	private:
 		template <typename SetArgFn>
-		FASGlobalFunctionInvoker& SetArg(SetArgFn&& Fn)
+		FAngelscriptTestExecutor& SetArg(SetArgFn&& Fn)
 		{
 			if (!bValid)
 			{
@@ -555,8 +644,8 @@ namespace AngelscriptReflectiveAccess
 			return *this;
 		}
 
-		// Return-value extractors. We specialize via overloads on a dispatch tag
-		// struct to keep the template surface simple for callers (`CallAndReturn<int32>()`).
+		// Return-value extractors. We specialise via if-constexpr so callers
+		// just say `ExecuteAndGet<int32>()`.
 		template <typename R>
 		R ReadReturn(const R& Fallback)
 		{
@@ -595,26 +684,15 @@ namespace AngelscriptReflectiveAccess
 			}
 			else
 			{
-				static_assert(sizeof(R) == 0, "Unsupported return type for FASGlobalFunctionInvoker::CallAndReturn — "
-					"use ReadReturnStruct<T>() for USTRUCTs or call through a dedicated helper.");
+				static_assert(sizeof(R) == 0, "Unsupported return type for FAngelscriptTestExecutor::ExecuteAndGet -- "
+					"use ExecuteAndExtractStruct<T>() for USTRUCTs or call through a dedicated helper.");
 				return Fallback;
 			}
 		}
 
-	public:
-		/**
-		 * Read a USTRUCT return value out of the return register. Only valid
-		 * after Call() has run. The caller owns the copy.
-		 */
 		template <typename StructType>
-		bool ReadReturnStruct(StructType& OutValue)
+		bool ReadReturnStructInternal(StructType& OutValue)
 		{
-			if (!bHasRun)
-			{
-				Test.AddError(TEXT("ReadReturnStruct called before Call() completed"));
-				return false;
-			}
-
 			const void* Address = Context->GetAddressOfReturnValue();
 			if (!Test.TestNotNull(TEXT("AS global return should provide a value address"), Address))
 			{
@@ -634,49 +712,313 @@ namespace AngelscriptReflectiveAccess
 		bool bValid = false;
 		bool bHasRun = false;
 	};
-}
-
-// ----------------------------------------------------------------------------
-// Verbatim relocation from AngelscriptBindingsAssertions.h (Phase 2 task 2.2).
-// Original docblock preserved below. Old header is now a 3-line forward stub.
-// ----------------------------------------------------------------------------
-/**
- * AngelscriptBindingsAssertions — one-line per-case assertion helpers that
- * wrap `FASGlobalFunctionInvoker` for the Bindings Coverage refactor.
- *
- * Each helper:
- *   1. Resolves the named global function on the supplied module.
- *   2. Invokes it (with no args by default — see batch overloads for arg
- *      lists; for parameterised cases drive `FASGlobalFunctionInvoker` directly).
- *   3. Compares the return value against `Expected` (or matches an exception
- *      pattern, for the negative-path helper).
- *   4. Pushes a friendly `Test.AddInfo` line so a passing run still leaves a
- *      readable per-case trail in the automation log.
- *
- * Usage spans every SubPlan; the canonical templates live in
- * `AngelscriptBindingsExampleSection.h`.
- *
- * Convention: all expectations take a `CaseLabel` that describes the
- * *behavior under test*, not the function name. The function declaration is
- * already echoed by `FASGlobalFunctionInvoker`'s own diagnostics on failure.
- */
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTestBindings
-{
-	/** Common bookkeeping: trace + invoker preflight. Returns invoker validity. */
-	namespace Detail
+	// Bring the Bindings-coverage profile type and its label helpers into
+	// `AngelscriptTest::` so the Execute* family below can use unqualified
+	// names without polluting the namespace with `using namespace`. These
+	// three symbols intentionally live in `AngelscriptTestBindings::` as the
+	// canonical home for "coverage profile" infrastructure -- the Execute*
+	// family is built on top of that, so we just lift them by name here.
+	using AngelscriptTestBindings::FBindingsCoverageProfile;
+	using AngelscriptTestBindings::FormatCaseLabel;
+	using AngelscriptTestBindings::MakeCoverageModuleName;
+
+	// ========================================================================
+	// Execute* family of free-function assertion helpers
+	//
+	// Module + decl + Profile + CaseLabel -- one-line per case. Every helper
+	// emits an Info trace line via FormatCaseLabel so a passing run still
+	// leaves a readable per-case trail in the automation log. Failed helpers
+	// add a detailed AddError describing the actual value vs expected.
+	//
+	// Naming family (see top-of-file contract):
+	//   Execute[AndExpect|AndExpectNear|AndExpectAtLeast|AndValidate|BatchAndExpect][<Type>]
+	// ========================================================================
+
+	/** Invoke a no-arg `int F()` global; assert equality. */
+	inline bool ExecuteAndExpectInt(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		asIScriptModule& Module,
+		const FBindingsCoverageProfile& Profile,
+		const TCHAR* FunctionDecl,
+		const TCHAR* CaseLabel,
+		int32 Expected)
 	{
-		inline bool TraceCase(
-			FAutomationTestBase& Test,
-			const FBindingsCoverageProfile& Profile,
-			const TCHAR* CaseLabel)
+		Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
+		FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
+		if (!Executor.IsValid())
 		{
-			Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
-			return true;
+			return false;
 		}
+		const int32 Actual = Executor.ExecuteAndGet<int32>(INDEX_NONE);
+		return Test.TestEqual(
+			*FString::Printf(TEXT("%s (decl=%s)"), *FormatCaseLabel(Profile, CaseLabel), FunctionDecl),
+			Actual,
+			Expected);
 	}
+
+	/** Invoke a no-arg `int F()` global; assert `Actual >= Minimum`. */
+	inline bool ExecuteAndExpectIntAtLeast(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		asIScriptModule& Module,
+		const FBindingsCoverageProfile& Profile,
+		const TCHAR* FunctionDecl,
+		const TCHAR* CaseLabel,
+		int32 Minimum)
+	{
+		Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
+		FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
+		if (!Executor.IsValid())
+		{
+			return false;
+		}
+		const int32 Actual = Executor.ExecuteAndGet<int32>(INDEX_NONE);
+		return Test.TestTrue(
+			*FString::Printf(TEXT("%s (decl=%s) returned %d, expected >= %d"),
+				*FormatCaseLabel(Profile, CaseLabel), FunctionDecl, Actual, Minimum),
+			Actual >= Minimum);
+	}
+
+	/**
+	 * Invoke a no-arg `int F()` (or `bool F()` returning 0/1) and compare
+	 * boolean result. AS still returns the value via GetReturnDWord, so we
+	 * compare integer-int as 0/1 to preserve the historical contract.
+	 */
+	inline bool ExecuteAndExpectBool(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		asIScriptModule& Module,
+		const FBindingsCoverageProfile& Profile,
+		const TCHAR* FunctionDecl,
+		const TCHAR* CaseLabel,
+		bool Expected)
+	{
+		Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
+		FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
+		if (!Executor.IsValid())
+		{
+			return false;
+		}
+		const bool Actual = Executor.ExecuteAndGet<bool>(false);
+		return Test.TestEqual(
+			*FString::Printf(TEXT("%s (decl=%s)"), *FormatCaseLabel(Profile, CaseLabel), FunctionDecl),
+			Actual,
+			Expected);
+	}
+
+	/**
+	 * Invoke a no-arg `double F()` global; assert *strict equality* (no
+	 * tolerance). For float math comparisons use `ExecuteAndExpectNearDouble`.
+	 */
+	inline bool ExecuteAndExpectDouble(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		asIScriptModule& Module,
+		const FBindingsCoverageProfile& Profile,
+		const TCHAR* FunctionDecl,
+		const TCHAR* CaseLabel,
+		double Expected)
+	{
+		Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
+		FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
+		if (!Executor.IsValid())
+		{
+			return false;
+		}
+		const double Actual = Executor.ExecuteAndGet<double>(0.0);
+		return Test.TestEqual(
+			*FString::Printf(TEXT("%s (decl=%s) returned %.9g, expected %.9g"),
+				*FormatCaseLabel(Profile, CaseLabel), FunctionDecl, Actual, Expected),
+			Actual,
+			Expected);
+	}
+
+	/** Invoke a no-arg `float F()` global; assert within `Tolerance`.
+	 *  Note: AS engine runs with asEP_FLOAT_IS_FLOAT64=1 so script `float`
+	 *  is actually stored as double in the return register. */
+	inline bool ExecuteAndExpectNearFloat(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		asIScriptModule& Module,
+		const FBindingsCoverageProfile& Profile,
+		const TCHAR* FunctionDecl,
+		const TCHAR* CaseLabel,
+		float Expected,
+		float Tolerance = 0.01f)
+	{
+		Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
+		FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
+		if (!Executor.IsValid())
+		{
+			return false;
+		}
+		const double Actual = Executor.ExecuteAndGet<double>(0.0);
+		return Test.TestTrue(
+			*FString::Printf(TEXT("%s (decl=%s) returned %.6g, expected %.6g (tol=%g)"),
+				*FormatCaseLabel(Profile, CaseLabel), FunctionDecl, Actual, (double)Expected, (double)Tolerance),
+			FMath::IsNearlyEqual(Actual, (double)Expected, (double)Tolerance));
+	}
+
+	/** Invoke a no-arg `double F()` global; assert within `Tolerance`. */
+	inline bool ExecuteAndExpectNearDouble(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		asIScriptModule& Module,
+		const FBindingsCoverageProfile& Profile,
+		const TCHAR* FunctionDecl,
+		const TCHAR* CaseLabel,
+		double Expected,
+		double Tolerance = 1e-6)
+	{
+		Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
+		FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
+		if (!Executor.IsValid())
+		{
+			return false;
+		}
+		const double Actual = Executor.ExecuteAndGet<double>(0.0);
+		return Test.TestTrue(
+			*FString::Printf(TEXT("%s (decl=%s) returned %.9g, expected %.9g (tol=%g)"),
+				*FormatCaseLabel(Profile, CaseLabel), FunctionDecl, Actual, Expected, Tolerance),
+			FMath::IsNearlyEqual(Actual, Expected, Tolerance));
+	}
+
+	/** One row in an `ExecuteBatchAndExpectInt` batch. */
+	struct FExpectedInt
+	{
+		const TCHAR* FunctionDecl;
+		const TCHAR* CaseLabel;
+		int32 Expected;
+	};
+
+	/** Invoke many `int F()` globals and compare each. Aggregate pass/fail. */
+	inline bool ExecuteBatchAndExpectInt(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		asIScriptModule& Module,
+		const FBindingsCoverageProfile& Profile,
+		TArrayView<const FExpectedInt> Cases)
+	{
+		bool bPassed = true;
+		for (const FExpectedInt& Case : Cases)
+		{
+			bPassed &= ExecuteAndExpectInt(Test, Engine, Module, Profile,
+				Case.FunctionDecl, Case.CaseLabel, Case.Expected);
+		}
+		return bPassed;
+	}
+
+	/**
+	 * Invoke a no-arg function returning a struct/container, read via
+	 * `ExecuteAndExtractStruct<T>`, and hand off to a caller-supplied
+	 * validator. Validator signature:
+	 *
+	 *     bool(FAutomationTestBase& Test, const T& Value)
+	 *
+	 * Validator returns true if all of its assertions passed.
+	 */
+	template <typename T, typename ValidatorFn>
+	inline bool ExecuteAndValidate(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		asIScriptModule& Module,
+		const FBindingsCoverageProfile& Profile,
+		const TCHAR* FunctionDecl,
+		const TCHAR* CaseLabel,
+		ValidatorFn&& Validator)
+	{
+		Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
+		FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
+		if (!Executor.IsValid())
+		{
+			return false;
+		}
+		T Value{};
+		if (!Executor.ExecuteAndExtractStruct<T>(Value))
+		{
+			Test.AddError(FString::Printf(TEXT("%s failed to read return struct"), *FormatCaseLabel(Profile, CaseLabel)));
+			return false;
+		}
+		return Validator(Test, Value);
+	}
+
+	/**
+	 * Negative path: invoke a function (typically `void F()` -- any return is
+	 * ignored) and assert that AS execution raises an exception whose message
+	 * *contains* `ExpectedExceptionContains`. Validates the full five-tuple:
+	 * Prepare success / Execute exception / non-empty message / message
+	 * substring / non-zero exception line.
+	 *
+	 * Caller is responsible for any necessary `AddExpectedError` registration
+	 * -- the exception will be logged by the AS log handler regardless.
+	 */
+	inline bool ExecuteAndExpectException(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		asIScriptModule& Module,
+		const FBindingsCoverageProfile& Profile,
+		const TCHAR* FunctionDecl,
+		const TCHAR* CaseLabel,
+		const FString& ExpectedExceptionContains)
+	{
+		const FString Label = FormatCaseLabel(Profile, CaseLabel);
+		Test.AddInfo(Label);
+
+		asIScriptFunction* Function = ResolveFunctionByDecl(Test, Module, FunctionDecl);
+		if (Function == nullptr)
+		{
+			return false;
+		}
+
+		FAngelscriptEngineScope EngineScope(Engine);
+		asIScriptContext* Context = Engine.CreateContext();
+		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create execution context"), *Label), Context))
+		{
+			return false;
+		}
+		ON_SCOPE_EXIT { Context->Release(); };
+
+		const int PrepareResult = Context->Prepare(Function);
+		const int ExecuteResult = PrepareResult == asSUCCESS ? Context->Execute() : PrepareResult;
+		const FString ExceptionString = UTF8_TO_TCHAR(
+			Context->GetExceptionString() != nullptr ? Context->GetExceptionString() : "");
+		const int32 ExceptionLine = Context->GetExceptionLineNumber();
+
+		bool bPassed = true;
+		bPassed &= Test.TestEqual(
+			*FString::Printf(TEXT("%s should Prepare successfully (code=%d)"), *Label, PrepareResult),
+			PrepareResult,
+			static_cast<int32>(asSUCCESS));
+		bPassed &= Test.TestEqual(
+			*FString::Printf(TEXT("%s should raise asEXECUTION_EXCEPTION (got=%d)"), *Label, ExecuteResult),
+			ExecuteResult,
+			static_cast<int32>(asEXECUTION_EXCEPTION));
+		bPassed &= Test.TestFalse(
+			*FString::Printf(TEXT("%s should produce non-empty exception text"), *Label),
+			ExceptionString.IsEmpty());
+		bPassed &= Test.TestTrue(
+			*FString::Printf(TEXT("%s exception '%s' should contain '%s'"),
+				*Label, *ExceptionString, *ExpectedExceptionContains),
+			ExceptionString.Contains(ExpectedExceptionContains));
+		bPassed &= Test.TestTrue(
+			*FString::Printf(TEXT("%s should report a positive exception line (got=%d)"), *Label, ExceptionLine),
+			ExceptionLine > 0);
+
+		Test.AddInfo(FString::Printf(TEXT("%s raised at line %d: %s"), *Label, ExceptionLine, *ExceptionString));
+		return bPassed;
+	}
+
+	// ========================================================================
+	// Compile* family — compile-side assertions, independent of Execute*.
+	//
+	// These never reach `asIScriptContext::Execute()` since the script does
+	// not compile in the first place. Tracked as a separate naming family so
+	// the failure mode (compile diagnostics) is obvious from the name.
+	// ========================================================================
 
 	/**
 	 * Compile-negative binding contract. Use this when a binding surface is
@@ -684,7 +1026,7 @@ namespace AngelscriptTestBindings
 	 * proves the script fails to compile, and records the missing symbol or
 	 * unsupported API in the compile diagnostics.
 	 */
-	inline bool ExpectBindingCompileFailure(
+	inline bool CompileAndExpectFailure(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		const FBindingsCoverageProfile& Profile,
@@ -693,7 +1035,7 @@ namespace AngelscriptTestBindings
 		const TCHAR* CaseLabel,
 		TArrayView<const FString> ExpectedDiagnosticFragments)
 	{
-		Detail::TraceCase(Test, Profile, CaseLabel);
+		Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
 
 		AngelscriptTestSupport::FAngelscriptCompileTraceSummary Summary;
 		const FString ModuleName = MakeCoverageModuleName(Profile, SectionName);
@@ -756,10 +1098,87 @@ namespace AngelscriptTestBindings
 		return bPassed;
 	}
 
-	/**
-	 * Invoke a no-arg `int F()` global, compare its return against `Expected`.
-	 * Returns aggregate pass/fail.
-	 */
+#endif // WITH_DEV_AUTOMATION_TESTS
+}
+
+// ============================================================================
+// PART 3 — namespace AngelscriptReflectiveAccess (Phase 2/3 back-compat layer)
+//
+// The class and the two Resolve helpers used to live here. Class is now an
+// alias of `AngelscriptTest::FAngelscriptTestExecutor`; the Resolve helpers
+// are inline forwarders. Existing call sites keep working unchanged; new
+// code should call `AngelscriptTest::*` directly.
+// ============================================================================
+namespace AngelscriptReflectiveAccess
+{
+	/** Legacy alias for the renamed Phase-3 executor class.
+	 *  Old call sites using `AngelscriptReflectiveAccess::FASGlobalFunctionInvoker`
+	 *  continue to compile against the new `AngelscriptTest::FAngelscriptTestExecutor`. */
+	using FASGlobalFunctionInvoker = AngelscriptTest::FAngelscriptTestExecutor;
+
+	/** Legacy resolve helper -- forwards to the Phase-3 home. */
+	inline asIScriptFunction* ResolveFunctionByDecl(
+		FAutomationTestBase& Test,
+		asIScriptModule& Module,
+		FStringView Declaration)
+	{
+		return AngelscriptTest::ResolveFunctionByDecl(Test, Module, Declaration);
+	}
+
+	/** Legacy resolve helper -- forwards to the Phase-3 home. */
+	inline asIScriptFunction* ResolveFunctionByName(
+		FAutomationTestBase& Test,
+		asIScriptModule& Module,
+		FStringView Name)
+	{
+		return AngelscriptTest::ResolveFunctionByName(Test, Module, Name);
+	}
+}
+
+// ============================================================================
+// PART 4 — namespace AngelscriptTestBindings (Phase 2/3 back-compat forwarders)
+//
+// The 9 `ExpectGlobal*` helpers, `ExpectBindingCompileFailure`, and
+// `ExecuteFunctionExpectingScriptException` are inline forwarders that
+// delegate to the corresponding `AngelscriptTest::*` entry. Signatures
+// preserved verbatim so 260+ Bindings test call sites compile unchanged.
+// New code MUST use the AngelscriptTest::Execute*/Compile* family directly.
+// ============================================================================
+#if WITH_DEV_AUTOMATION_TESTS
+
+namespace AngelscriptTestBindings
+{
+	/** Internal trace helper kept for any external callers of `Detail::TraceCase`. */
+	namespace Detail
+	{
+		inline bool TraceCase(
+			FAutomationTestBase& Test,
+			const FBindingsCoverageProfile& Profile,
+			const TCHAR* CaseLabel)
+		{
+			Test.AddInfo(FormatCaseLabel(Profile, CaseLabel));
+			return true;
+		}
+	}
+
+	/** Legacy alias for the batch row struct -- now lives in AngelscriptTest::. */
+	using FExpectedGlobalInt = AngelscriptTest::FExpectedInt;
+
+	/** Legacy forwarder -- new code should call `AngelscriptTest::CompileAndExpectFailure`. */
+	inline bool ExpectBindingCompileFailure(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		const FBindingsCoverageProfile& Profile,
+		const TCHAR* SectionName,
+		const TCHAR* Source,
+		const TCHAR* CaseLabel,
+		TArrayView<const FString> ExpectedDiagnosticFragments)
+	{
+		return AngelscriptTest::CompileAndExpectFailure(
+			Test, Engine, Profile, SectionName, Source, CaseLabel, ExpectedDiagnosticFragments);
+	}
+
+	/** Legacy forwarder -- new code should call `AngelscriptTest::ExecuteAndExpectInt`. */
 	inline bool ExpectGlobalInt(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
@@ -769,20 +1188,11 @@ namespace AngelscriptTestBindings
 		const TCHAR* CaseLabel,
 		int32 Expected)
 	{
-		Detail::TraceCase(Test, Profile, CaseLabel);
-		AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Invoker(Test, Engine, Module, FunctionDecl);
-		if (!Invoker.IsValid())
-		{
-			return false;
-		}
-		const int32 Actual = Invoker.CallAndReturn<int32>(INDEX_NONE);
-		return Test.TestEqual(
-			*FString::Printf(TEXT("%s (decl=%s)"), *FormatCaseLabel(Profile, CaseLabel), FunctionDecl),
-			Actual,
-			Expected);
+		return AngelscriptTest::ExecuteAndExpectInt(
+			Test, Engine, Module, Profile, FunctionDecl, CaseLabel, Expected);
 	}
 
-	/** Same as `ExpectGlobalInt` but asserts `Actual >= Minimum`. */
+	/** Legacy forwarder -- new code should call `AngelscriptTest::ExecuteAndExpectIntAtLeast`. */
 	inline bool ExpectGlobalIntAtLeast(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
@@ -792,24 +1202,11 @@ namespace AngelscriptTestBindings
 		const TCHAR* CaseLabel,
 		int32 Minimum)
 	{
-		Detail::TraceCase(Test, Profile, CaseLabel);
-		AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Invoker(Test, Engine, Module, FunctionDecl);
-		if (!Invoker.IsValid())
-		{
-			return false;
-		}
-		const int32 Actual = Invoker.CallAndReturn<int32>(INDEX_NONE);
-		return Test.TestTrue(
-			*FString::Printf(TEXT("%s (decl=%s) returned %d, expected >= %d"),
-				*FormatCaseLabel(Profile, CaseLabel), FunctionDecl, Actual, Minimum),
-			Actual >= Minimum);
+		return AngelscriptTest::ExecuteAndExpectIntAtLeast(
+			Test, Engine, Module, Profile, FunctionDecl, CaseLabel, Minimum);
 	}
 
-	/**
-	 * Invoke a no-arg `int F()` (or `bool F()` exposed as int) and assert the
-	 * result matches `Expected`. The script is expected to return 0/1 to
-	 * represent false/true.
-	 */
+	/** Legacy forwarder -- new code should call `AngelscriptTest::ExecuteAndExpectBool`. */
 	inline bool ExpectGlobalBool(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
@@ -819,10 +1216,13 @@ namespace AngelscriptTestBindings
 		const TCHAR* CaseLabel,
 		bool Expected)
 	{
-		return ExpectGlobalInt(Test, Engine, Module, Profile, FunctionDecl, CaseLabel, Expected ? 1 : 0);
+		return AngelscriptTest::ExecuteAndExpectBool(
+			Test, Engine, Module, Profile, FunctionDecl, CaseLabel, Expected);
 	}
 
-	/** Invoke a no-arg `double F()` and compare with the supplied tolerance. */
+	/** Legacy forwarder -- new code should call `AngelscriptTest::ExecuteAndExpectNearDouble`.
+	 *  Note: legacy `ExpectGlobalDouble` always used a tolerance (defaulting to 1e-6) and is
+	 *  therefore mapped to the *Near* variant of the new family. */
 	inline bool ExpectGlobalDouble(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
@@ -833,27 +1233,11 @@ namespace AngelscriptTestBindings
 		double Expected,
 		double Tolerance = 1e-6)
 	{
-		Detail::TraceCase(Test, Profile, CaseLabel);
-		AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Invoker(Test, Engine, Module, FunctionDecl);
-		if (!Invoker.IsValid())
-		{
-			return false;
-		}
-		const double Actual = Invoker.CallAndReturn<double>(0.0);
-		return Test.TestTrue(
-			*FString::Printf(TEXT("%s (decl=%s) returned %.9g, expected %.9g (tol=%g)"),
-				*FormatCaseLabel(Profile, CaseLabel), FunctionDecl, Actual, Expected, Tolerance),
-			FMath::IsNearlyEqual(Actual, Expected, Tolerance));
+		return AngelscriptTest::ExecuteAndExpectNearDouble(
+			Test, Engine, Module, Profile, FunctionDecl, CaseLabel, Expected, Tolerance);
 	}
 
-	/** Batched variant — one entry per case. */
-	struct FExpectedGlobalInt
-	{
-		const TCHAR* FunctionDecl;
-		const TCHAR* CaseLabel;
-		int32 Expected;
-	};
-
+	/** Legacy forwarder -- new code should call `AngelscriptTest::ExecuteBatchAndExpectInt`. */
 	inline bool ExpectGlobalInts(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
@@ -861,102 +1245,18 @@ namespace AngelscriptTestBindings
 		const FBindingsCoverageProfile& Profile,
 		TArrayView<const FExpectedGlobalInt> Cases)
 	{
-		bool bPassed = true;
-		for (const FExpectedGlobalInt& Case : Cases)
-		{
-			bPassed &= ExpectGlobalInt(Test, Engine, Module, Profile,
-				Case.FunctionDecl, Case.CaseLabel, Case.Expected);
-		}
-		return bPassed;
+		// FExpectedGlobalInt is a `using` alias of AngelscriptTest::FExpectedInt,
+		// so the array views are layout-compatible without any conversion.
+		return AngelscriptTest::ExecuteBatchAndExpectInt(
+			Test, Engine, Module, Profile,
+			TArrayView<const AngelscriptTest::FExpectedInt>(Cases.GetData(), Cases.Num()));
 	}
 
-	/**
-	 * Negative path: invoke a no-arg `void F()` (or any function whose return
-	 * is irrelevant) and assert that AS execution raises an exception whose
-	 * message *contains* `ExpectedExceptionContains`. Validates the full
-	 * "Prepare success / Execute exception / non-empty message / message
-	 * contains substring / non-zero line" five-tuple.
-	 *
-	 * Caller is responsible for any necessary `AddExpectedError` registration
-	 * — the exception will be logged by the AS log handler regardless.
-	 */
-	inline bool ExecuteFunctionExpectingScriptException(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const FBindingsCoverageProfile& Profile,
-		const TCHAR* FunctionDecl,
-		const TCHAR* CaseLabel,
-		const FString& ExpectedExceptionContains)
-	{
-		const FString Label = FormatCaseLabel(Profile, CaseLabel);
-		Test.AddInfo(Label);
-
-		asIScriptFunction* Function = AngelscriptReflectiveAccess::ResolveFunctionByDecl(Test, Module, FunctionDecl);
-		if (Function == nullptr)
-		{
-			return false;
-		}
-
-		FAngelscriptEngineScope EngineScope(Engine);
-		asIScriptContext* Context = Engine.CreateContext();
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create execution context"), *Label), Context))
-		{
-			return false;
-		}
-		ON_SCOPE_EXIT { Context->Release(); };
-
-		const int PrepareResult = Context->Prepare(Function);
-		const int ExecuteResult = PrepareResult == asSUCCESS ? Context->Execute() : PrepareResult;
-		const FString ExceptionString = UTF8_TO_TCHAR(
-			Context->GetExceptionString() != nullptr ? Context->GetExceptionString() : "");
-		const int32 ExceptionLine = Context->GetExceptionLineNumber();
-
-		bool bPassed = true;
-		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should Prepare successfully (code=%d)"), *Label, PrepareResult),
-			PrepareResult,
-			static_cast<int32>(asSUCCESS));
-		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should raise asEXECUTION_EXCEPTION (got=%d)"), *Label, ExecuteResult),
-			ExecuteResult,
-			static_cast<int32>(asEXECUTION_EXCEPTION));
-		bPassed &= Test.TestFalse(
-			*FString::Printf(TEXT("%s should produce non-empty exception text"), *Label),
-			ExceptionString.IsEmpty());
-		bPassed &= Test.TestTrue(
-			*FString::Printf(TEXT("%s exception '%s' should contain '%s'"),
-				*Label, *ExceptionString, *ExpectedExceptionContains),
-			ExceptionString.Contains(ExpectedExceptionContains));
-		bPassed &= Test.TestTrue(
-			*FString::Printf(TEXT("%s should report a positive exception line (got=%d)"), *Label, ExceptionLine),
-			ExceptionLine > 0);
-
-		Test.AddInfo(FString::Printf(TEXT("%s raised at line %d: %s"), *Label, ExceptionLine, *ExceptionString));
-		return bPassed;
-	}
-
-	// ====================================================================
-	// Return-type coverage helpers
-	//
-	// These invoke a no-arg global function whose *declared* return type is
-	// the type under test (bool, float, FString, FVector, TArray, TSet,
-	// TMap, ...).  The caller supplies a Validator lambda that receives the
-	// raw return address and performs assertions.
-	//
-	// Usage:
-	//   ExpectGlobalReturnBool(Test, Engine, Module, Profile,
-	//       TEXT("bool F()"), TEXT("should return true"), true);
-	//
-	//   ExpectGlobalReturnFloat(Test, Engine, Module, Profile,
-	//       TEXT("float F()"), TEXT("should be ~3.5"), 3.5f, 0.01f);
-	//
-	//   ExpectGlobalReturnCustom<FVector>(Test, Engine, Module, Profile,
-	//       TEXT("FVector F()"), TEXT("X should be ~1"),
-	//       [](auto& T, const FVector& V) { return T.TestTrue(..., V.X > 0.9f); });
-	// ====================================================================
-
-	/** Invoke a no-arg `bool F()` global, compare return. */
+	/** Legacy forwarder -- new code should call `AngelscriptTest::ExecuteAndExpectBool`.
+	 *  Functionally identical to `ExpectGlobalBool`; the original distinction was that
+	 *  this variant explicitly invokes a `bool F()` (vs. an `int F()` returning 0/1).
+	 *  AS still routes the value through the integer return register, so the new family
+	 *  collapses both into `ExecuteAndExpectBool`. */
 	inline bool ExpectGlobalReturnBool(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
@@ -966,18 +1266,11 @@ namespace AngelscriptTestBindings
 		const TCHAR* CaseLabel,
 		bool Expected)
 	{
-		Detail::TraceCase(Test, Profile, CaseLabel);
-		AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Invoker(Test, Engine, Module, FunctionDecl);
-		if (!Invoker.IsValid()) return false;
-		const bool Actual = Invoker.CallAndReturn<bool>(false);
-		return Test.TestEqual(
-			*FString::Printf(TEXT("%s (decl=%s)"), *FormatCaseLabel(Profile, CaseLabel), FunctionDecl),
-			Actual, Expected);
+		return AngelscriptTest::ExecuteAndExpectBool(
+			Test, Engine, Module, Profile, FunctionDecl, CaseLabel, Expected);
 	}
 
-	/** Invoke a no-arg `float F()` global, compare with tolerance.
-	 *  Note: AS engine runs with asEP_FLOAT_IS_FLOAT64=1 so script `float`
-	 *  is actually stored as double in the return register. */
+	/** Legacy forwarder -- new code should call `AngelscriptTest::ExecuteAndExpectNearFloat`. */
 	inline bool ExpectGlobalReturnFloat(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
@@ -988,24 +1281,11 @@ namespace AngelscriptTestBindings
 		float Expected,
 		float Tolerance = 0.01f)
 	{
-		Detail::TraceCase(Test, Profile, CaseLabel);
-		AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Invoker(Test, Engine, Module, FunctionDecl);
-		if (!Invoker.IsValid()) return false;
-		// AS float is double under asEP_FLOAT_IS_FLOAT64; read as double.
-		const double Actual = Invoker.CallAndReturn<double>(0.0);
-		return Test.TestTrue(
-			*FString::Printf(TEXT("%s (decl=%s) returned %.6g, expected %.6g (tol=%g)"),
-				*FormatCaseLabel(Profile, CaseLabel), FunctionDecl, Actual, (double)Expected, (double)Tolerance),
-			FMath::IsNearlyEqual(Actual, (double)Expected, (double)Tolerance));
+		return AngelscriptTest::ExecuteAndExpectNearFloat(
+			Test, Engine, Module, Profile, FunctionDecl, CaseLabel, Expected, Tolerance);
 	}
 
-	/**
-	 * Invoke a no-arg function returning a struct/container, read via
-	 * GetAddressOfReturnValue, and hand off to a caller-supplied validator.
-	 *
-	 * Validator signature: bool(FAutomationTestBase& Test, const T& Value)
-	 * Return true if all assertions passed.
-	 */
+	/** Legacy forwarder -- new code should call `AngelscriptTest::ExecuteAndValidate<T>`. */
 	template <typename T, typename ValidatorFn>
 	inline bool ExpectGlobalReturnCustom(
 		FAutomationTestBase& Test,
@@ -1016,18 +1296,23 @@ namespace AngelscriptTestBindings
 		const TCHAR* CaseLabel,
 		ValidatorFn&& Validator)
 	{
-		Detail::TraceCase(Test, Profile, CaseLabel);
-		AngelscriptReflectiveAccess::FASGlobalFunctionInvoker Invoker(Test, Engine, Module, FunctionDecl);
-		if (!Invoker.IsValid()) return false;
-		if (!Invoker.Call()) return false;
+		return AngelscriptTest::ExecuteAndValidate<T>(
+			Test, Engine, Module, Profile, FunctionDecl, CaseLabel,
+			Forward<ValidatorFn>(Validator));
+	}
 
-		T Value{};
-		if (!Invoker.ReadReturnStruct(Value))
-		{
-			Test.AddError(FString::Printf(TEXT("%s failed to read return struct"), *FormatCaseLabel(Profile, CaseLabel)));
-			return false;
-		}
-		return Validator(Test, Value);
+	/** Legacy forwarder -- new code should call `AngelscriptTest::ExecuteAndExpectException`. */
+	inline bool ExecuteFunctionExpectingScriptException(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		asIScriptModule& Module,
+		const FBindingsCoverageProfile& Profile,
+		const TCHAR* FunctionDecl,
+		const TCHAR* CaseLabel,
+		const FString& ExpectedExceptionContains)
+	{
+		return AngelscriptTest::ExecuteAndExpectException(
+			Test, Engine, Module, Profile, FunctionDecl, CaseLabel, ExpectedExceptionContains);
 	}
 }
 
