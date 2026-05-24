@@ -1,7 +1,20 @@
 #pragma once
 
 #include "ClassGenerator/AngelscriptClassGenerator.h"
-#include "Shared/AngelscriptTestUtilities.h"
+#include "AngelscriptEngine.h"
+#include "CoreMinimal.h"
+
+// Note: prior to Phase 2 of OpenSpec change `refactor-as-test-shared-layout-and-naming`
+// this header pulled in `Shared/AngelscriptTestUtilities.h` (the umbrella header).
+// That edge was vestigial — none of the declarations below require any
+// umbrella-exported symbol. It was removed when `AngelscriptTestExecute.h`
+// gained a forward include on this header (for `FAngelscriptCompileTraceSummary` +
+// `CompileModuleWithSummary`), which would otherwise close a Helper -> umbrella
+// -> Execute -> Helper #pragma-once-skip cycle and leave the struct invisible
+// to `ExpectBindingCompileFailure`'s inline body. Consumers that previously
+// relied on the transitive umbrella include via Helper.h should `#include
+// "Shared/AngelscriptTestUtilities.h"` (or the specific themed sub-header
+// they actually need) directly.
 
 struct FAngelscriptPrecompiledData;
 
