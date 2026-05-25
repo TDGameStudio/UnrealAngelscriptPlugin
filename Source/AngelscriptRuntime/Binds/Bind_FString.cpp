@@ -116,7 +116,7 @@ static bool AddFormatOrderedArgument(FStringFormatOrderedArguments& OutFormatOrd
 		}
 
 		// fstring
-		if (TypeInfo == TGetStaticTypeInfo<FString>::TypeInfo)
+		if (TGetStaticTypeInfo<FString>::IsForEngine(FAngelscriptEngine::Get().GetScriptEngine(), TypeInfo))
 		{
 			const FString& Value = *reinterpret_cast<const FString*>(Ptr);
 			OutFormatOrderedArguments.Emplace(FStringFormatArg(Value));
@@ -153,7 +153,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FString(FAngelscriptBinds::EOr
 	auto FString_ = FAngelscriptBinds::ValueClass<FString>("FString", FBindFlags());
 	FAngelscriptType::Register(MakeShared<FStringType>());
 
-	TGetStaticTypeInfo<FString>::TypeInfo = FString_.GetTypeInfo();
+	TGetStaticTypeInfo<FString>::SetForEngine(FAngelscriptEngine::Get().GetScriptEngine(), FString_.GetTypeInfo());
 
 	FString_.Constructor("void f()", [](FString* Address)
 	{

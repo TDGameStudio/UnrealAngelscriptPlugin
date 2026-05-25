@@ -74,7 +74,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FText(FAngelscriptBinds::EOrde
 	auto FText_ = FAngelscriptBinds::ValueClass<FText>("FText", FBindFlags());
 	FAngelscriptType::Register(MakeShared<FTextType>());
 
-	TGetStaticTypeInfo<FText>::TypeInfo = FText_.GetTypeInfo();
+	TGetStaticTypeInfo<FText>::SetForEngine(FAngelscriptEngine::Get().GetScriptEngine(), FText_.GetTypeInfo());
 
 	FText_.Constructor("void f()", [](FText* Address)
 	{
@@ -150,7 +150,7 @@ static bool AddFormatOrderedArgument(FFormatOrderedArguments& OutFormatOrderedAr
 		}
 
 		// ftext
-		if (TypeInfo == TGetStaticTypeInfo<FText>::TypeInfo)
+		if (TGetStaticTypeInfo<FText>::IsForEngine(FAngelscriptEngine::Get().GetScriptEngine(), TypeInfo))
 		{
 			const FText& Value = *reinterpret_cast<const FText*>(Ptr);
 			OutFormatOrderedArguments.Emplace(FFormatArgumentValue(Value));

@@ -5,6 +5,7 @@
 #include "AngelscriptPerformanceStats.h"
 #include "HAL/MallocLeakDetection.h"
 #include "Binds/BlueprintEventSignatureRegistry.h"
+#include "Binds/Helper_GetTypeInfo.h"
 #include "Binds/Helper_ToString.h"
 #include "Preprocessor/AngelscriptPreprocessor.h"
 #include "ClassGenerator/AngelscriptClassGenerator.h"
@@ -92,6 +93,42 @@ FAngelscriptEngine::FAngelscriptDebugStack* GAngelscriptStack = nullptr;
 // GAngelscriptEngine removed — engine resolution now uses FAngelscriptEngineContextStack
 static bool GAngelscriptLineReentry = false;
 bool FAngelscriptEngine::bStaticJITTranspiledCodeLoaded = false;
+
+namespace AngelscriptStaticTypeInfo_Private
+{
+	static TArray<FAngelscriptStaticTypeInfoClearer>& GetClearers()
+	{
+		static TArray<FAngelscriptStaticTypeInfoClearer> Clearers;
+		return Clearers;
+	}
+}
+
+void FAngelscriptStaticTypeInfoRegistry::RegisterClearer(FAngelscriptStaticTypeInfoClearer Clearer)
+{
+	if (Clearer == nullptr)
+	{
+		return;
+	}
+
+	TArray<FAngelscriptStaticTypeInfoClearer>& Clearers = AngelscriptStaticTypeInfo_Private::GetClearers();
+	if (!Clearers.Contains(Clearer))
+	{
+		Clearers.Add(Clearer);
+	}
+}
+
+void FAngelscriptStaticTypeInfoRegistry::ClearForEngine(asIScriptEngine* ScriptEngine)
+{
+	if (ScriptEngine == nullptr)
+	{
+		return;
+	}
+
+	for (FAngelscriptStaticTypeInfoClearer Clearer : AngelscriptStaticTypeInfo_Private::GetClearers())
+	{
+		Clearer(ScriptEngine);
+	}
+}
 
 static int32 GAngelscriptRecompileAvoidance = 1;
 static FAutoConsoleVariableRef CVar_AngelscriptRecompileAvoidance(TEXT("angelscript.UseRecompileAvoidance"), GAngelscriptRecompileAvoidance, TEXT(""));
@@ -1405,6 +1442,7 @@ void FAngelscriptEngine::Shutdown()
 	// fields directly.
 	if (bShouldReleaseOwnedEngine && Engine != nullptr)
 	{
+		FAngelscriptStaticTypeInfoRegistry::ClearForEngine(Engine);
 		Engine->ShutDownAndRelease();
 	}
 	Engine = nullptr;
