@@ -16,7 +16,8 @@ internal sealed record AngelscriptGeneratedFunctionEntry(
 	string ClassName,
 	string FunctionName,
 	string EraseMacro,
-	string EntryKind)
+	string EntryKind,
+	string ThunkStyle)
 {
 	public string BuildRegistrationLine()
 	{
@@ -58,7 +59,8 @@ internal sealed record AngelscriptGeneratedFunctionCsvEntry(
 	string FunctionName,
 	string EntryKind,
 	string EraseMacro,
-	int ShardIndex);
+	int ShardIndex,
+	string ThunkStyle);
 
 internal static class AngelscriptFunctionTableCodeGenerator
 {
@@ -331,7 +333,8 @@ internal static class AngelscriptFunctionTableCodeGenerator
 					entry.FunctionName,
 					entry.EntryKind,
 					entry.EraseMacro,
-					shardIndex + 1));
+					shardIndex + 1,
+					entry.ThunkStyle));
 			}
 		}
 
@@ -468,7 +471,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 		Directory.CreateDirectory(Path.GetDirectoryName(csvPath)!);
 
 		StringBuilder builder = new();
-		builder.AppendLine("ModuleName,EditorOnly,ClassName,FunctionName,EntryKind,EraseMacro,ShardIndex");
+		builder.AppendLine("ModuleName,EditorOnly,ClassName,FunctionName,EntryKind,EraseMacro,ShardIndex,ThunkStyle");
 		foreach (AngelscriptGeneratedFunctionCsvEntry entry in csvEntries)
 		{
 			builder
@@ -478,7 +481,8 @@ internal static class AngelscriptFunctionTableCodeGenerator
 				.Append(EscapeCsv(entry.FunctionName)).Append(',')
 				.Append(EscapeCsv(entry.EntryKind)).Append(',')
 				.Append(EscapeCsv(entry.EraseMacro)).Append(',')
-				.Append(entry.ShardIndex)
+				.Append(entry.ShardIndex).Append(',')
+				.Append(EscapeCsv(entry.ThunkStyle))
 				.Append("\r\n");
 		}
 
@@ -597,11 +601,23 @@ internal static class AngelscriptFunctionTableCodeGenerator
 		builder.AppendLine("\tconstexpr uint32 GCrossModuleFlagReturnByRef = 1u << 4;");
 		builder.AppendLine("\tbool GCrossModuleShuttingDown = false;");
 		builder.AppendLine();
+		builder.AppendLine("\tstruct FCrossModuleCallFrame");
+		builder.AppendLine("\t{");
+		builder.AppendLine("\t\tvoid** ArgSlots;");
+		builder.AppendLine("\t\tuint16 ArgCount;");
+		builder.AppendLine("\t\tuint16 Reserved0;");
+		builder.AppendLine("\t\tvoid* ReturnSlot;");
+		builder.AppendLine("\t\tUObject* ScriptSelf;");
+		builder.AppendLine("\t\tUObject* WorldContext;");
+		builder.AppendLine("\t\tuint32 Flags;");
+		builder.AppendLine("\t\tuint32 Reserved1;");
+		builder.AppendLine("\t};");
+		builder.AppendLine();
 		builder.AppendLine("\tstruct FCrossModuleEntry");
 		builder.AppendLine("\t{");
 		builder.AppendLine("\t\tconst TCHAR* ClassName;");
 		builder.AppendLine("\t\tconst TCHAR* FunctionName;");
-		builder.AppendLine("\t\tvoid (*Thunk)(UObject* Self, void** Args, void* Ret);");
+		builder.AppendLine("\t\tvoid (*Thunk)(UObject* Self, FCrossModuleCallFrame* Frame);");
 		builder.AppendLine("\t\tuint16 ArgCount;");
 		builder.AppendLine("\t\tuint16 RetSize;");
 		builder.AppendLine("\t\tuint32 Flags;");
@@ -623,31 +639,35 @@ internal static class AngelscriptFunctionTableCodeGenerator
 		builder.AppendLine("\t\t}");
 		builder.AppendLine("\t};");
 		builder.AppendLine();
+		builder.AppendLine("\tstatic_assert(sizeof(FCrossModuleCallFrame) == 48, \"FCrossModuleCallFrame ABI layout changed; bump cross-module-layout-version.txt.\");");
 		builder.AppendLine("\tstatic_assert(sizeof(FCrossModuleEntry) == 32, \"FCrossModuleEntry ABI layout changed; bump cross-module-layout-version.txt.\");");
 		builder.AppendLine("\tstatic_assert(sizeof(FCrossModuleFeature) == 32, \"FCrossModuleFeature ABI layout changed; bump cross-module-layout-version.txt.\");");
 		builder.AppendLine();
 		builder.AppendLine("\ttemplate <typename T>");
-		builder.AppendLine("\tdecltype(auto) PassCrossModuleArg(void** Args, uint16 Index)");
+		builder.AppendLine("\tdecltype(auto) PassCrossModuleArg(FCrossModuleCallFrame* Frame, uint16 Index)");
 		builder.AppendLine("\t{");
+		builder.AppendLine("\t\tcheck(Frame != nullptr);");
+		builder.AppendLine("\t\tcheck(Frame->ArgSlots != nullptr);");
+		builder.AppendLine("\t\tcheck(Index < Frame->ArgCount);");
 		builder.AppendLine("\t\tusing ValueType = typename TRemoveReference<T>::Type;");
 		builder.AppendLine("\t\tif constexpr (TIsReferenceType<T>::Value)");
 		builder.AppendLine("\t\t{");
-		builder.AppendLine("\t\t\treturn *static_cast<ValueType*>(Args[Index]);");
+		builder.AppendLine("\t\t\treturn *static_cast<ValueType*>(Frame->ArgSlots[Index]);");
 		builder.AppendLine("\t\t}");
 		builder.AppendLine("\t\telse if constexpr (TIsPointer<T>::Value)");
 		builder.AppendLine("\t\t{");
-		builder.AppendLine("\t\t\treturn *static_cast<T*>(Args[Index]);");
+		builder.AppendLine("\t\t\treturn *static_cast<T*>(Frame->ArgSlots[Index]);");
 		builder.AppendLine("\t\t}");
 		builder.AppendLine("\t\telse");
 		builder.AppendLine("\t\t{");
-		builder.AppendLine("\t\t\treturn *static_cast<T*>(Args[Index]);");
+		builder.AppendLine("\t\t\treturn *static_cast<T*>(Frame->ArgSlots[Index]);");
 		builder.AppendLine("\t\t}");
 		builder.AppendLine("\t}");
 		builder.AppendLine();
 		builder.AppendLine("\ttemplate <typename T>");
-		builder.AppendLine("\tvoid BuildCrossModuleReturn(void* Ret, T&& Value)");
+		builder.AppendLine("\tvoid BuildCrossModuleReturn(FCrossModuleCallFrame* Frame, T&& Value)");
 		builder.AppendLine("\t{");
-		builder.AppendLine("\t\tif (Ret == nullptr)");
+		builder.AppendLine("\t\tif (Frame == nullptr || Frame->ReturnSlot == nullptr)");
 		builder.AppendLine("\t\t{");
 		builder.AppendLine("\t\t\treturn;");
 		builder.AppendLine("\t\t}");
@@ -655,11 +675,11 @@ internal static class AngelscriptFunctionTableCodeGenerator
 		builder.AppendLine("\t\tusing ReturnType = typename TRemoveReference<T>::Type;");
 		builder.AppendLine("\t\tif constexpr (TIsArithmetic<ReturnType>::Value || TIsEnum<ReturnType>::Value || TIsPointer<ReturnType>::Value)");
 		builder.AppendLine("\t\t{");
-		builder.AppendLine("\t\t\t*static_cast<ReturnType*>(Ret) = Value;");
+		builder.AppendLine("\t\t\t*static_cast<ReturnType*>(Frame->ReturnSlot) = Value;");
 		builder.AppendLine("\t\t}");
 		builder.AppendLine("\t\telse");
 		builder.AppendLine("\t\t{");
-		builder.AppendLine("\t\t\tnew (Ret) ReturnType(Forward<T>(Value));");
+		builder.AppendLine("\t\t\tnew (Frame->ReturnSlot) ReturnType(Forward<T>(Value));");
 		builder.AppendLine("\t\t}");
 		builder.AppendLine("\t}");
 		builder.AppendLine();
@@ -669,11 +689,11 @@ internal static class AngelscriptFunctionTableCodeGenerator
 			AngelscriptCrossModuleFunctionEntry entry = entries[entryIndex];
 			string thunkName = BuildThunkName(entry);
 			string callArguments = BuildCrossModuleCallArguments(entry);
-			builder.Append("\tvoid ").Append(thunkName).AppendLine("(UObject* Self, void** Args, void* Ret)");
+			builder.Append("\tvoid ").Append(thunkName).AppendLine("(UObject* Self, FCrossModuleCallFrame* Frame)");
 			builder.AppendLine("\t{");
 			if (entry.ParameterTypes.Count > 0)
 			{
-				builder.AppendLine("\t\tif (Args == nullptr)");
+				builder.AppendLine("\t\tif (Frame == nullptr || Frame->ArgSlots == nullptr || Frame->ArgCount < " + entry.ParameterTypes.Count.ToString(CultureInfo.InvariantCulture) + ")");
 				builder.AppendLine("\t\t{");
 				builder.AppendLine("\t\t\treturn;");
 				builder.AppendLine("\t\t}");
@@ -684,7 +704,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 				builder.Append("\t\t");
 				if (entry.ReturnType != "void")
 				{
-					builder.Append("BuildCrossModuleReturn<").Append(entry.ReturnType).Append(">(Ret, ");
+					builder.Append("BuildCrossModuleReturn<").Append(entry.ReturnType).Append(">(Frame, ");
 				}
 				builder.Append(entry.ClassName).Append("::").Append(entry.FunctionName).Append("(").Append(callArguments).Append(")");
 				builder.AppendLine(entry.ReturnType == "void" ? ";" : ");");
@@ -699,7 +719,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 				builder.Append("\t\t");
 				if (entry.ReturnType != "void")
 				{
-					builder.Append("BuildCrossModuleReturn<").Append(entry.ReturnType).Append(">(Ret, ");
+					builder.Append("BuildCrossModuleReturn<").Append(entry.ReturnType).Append(">(Frame, ");
 				}
 				builder.Append("static_cast<");
 				if (entry.IsConst)
@@ -795,7 +815,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 		List<string> arguments = new(entry.ParameterTypes.Count);
 		for (int index = 0; index < entry.ParameterTypes.Count; index++)
 		{
-			arguments.Add($"PassCrossModuleArg<{entry.ParameterTypes[index]}>(Args, {index})");
+			arguments.Add($"PassCrossModuleArg<{entry.ParameterTypes[index]}>(Frame, {index})");
 		}
 		return string.Join(", ", arguments);
 	}
@@ -971,26 +991,30 @@ internal static class AngelscriptFunctionTableCodeGenerator
 
 					string eraseMacro = "ERASE_NO_FUNCTION()";
 					string entryKind = "Stub";
+					string thunkStyle = "Stub";
 					if (classObj.ClassType != UhtClassType.Interface && classObj.ClassType != UhtClassType.NativeInterface)
 					{
 						if (IsRpcNetFunction(function))
 						{
 							entryKind = "Stub";
+							thunkStyle = "Stub";
 						}
 						else if (AngelscriptFunctionSignatureBuilder.TryBuild(classObj, function, out AngelscriptFunctionSignature? signature, out string? failureReason))
 						{
 							eraseMacro = signature!.BuildEraseMacro();
 							entryKind = "Direct";
+							thunkStyle = "DirectNative";
 						}
 						else if (failureReason == "unexported-symbol" &&
 							TryCreateCrossModuleEntry(factory, moduleShortName, classObj, function, includePath, crossModuleEntries.Count, out AngelscriptCrossModuleFunctionEntry? crossModuleEntry, out _))
 						{
 							crossModuleEntries.Add(crossModuleEntry!);
 							entryKind = "CrossModule";
+							thunkStyle = "FrameWrapper";
 						}
 					}
 
-					entries.Add(new AngelscriptGeneratedFunctionEntry(classObj.SourceName, function.SourceName, eraseMacro, entryKind));
+					entries.Add(new AngelscriptGeneratedFunctionEntry(classObj.SourceName, function.SourceName, eraseMacro, entryKind, thunkStyle));
 				}
 			}
 		}
@@ -1019,7 +1043,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 
 		if (!IsSafeAutomaticCrossModuleSignature(signature!, classObj, function))
 		{
-			skippedReason = "cross-module-unsupported-signature";
+			skippedReason = ClassifyUnsupportedCrossModuleProtocol(signature!, classObj, function);
 			return false;
 		}
 
@@ -1064,6 +1088,51 @@ internal static class AngelscriptFunctionTableCodeGenerator
 			!HasWorldContext(function) &&
 			!ReturnsByRef(function) &&
 			!HasScriptMethodMixinProjection(signature, classObj, function);
+	}
+
+	private static string ClassifyUnsupportedCrossModuleProtocol(AngelscriptFunctionSignature signature, UhtClass classObj, UhtFunction function)
+	{
+		if (HasWorldContext(function))
+		{
+			return "needs-world-context-policy";
+		}
+
+		if (HasOutParams(function) || HasReferenceParameters(function))
+		{
+			return "needs-out-param-protocol";
+		}
+
+		if (ReturnsByRef(function))
+		{
+			return "needs-ref-return-protocol";
+		}
+
+		if (HasStaticArrayParameter(function) || ReturnsStaticArray(function))
+		{
+			return "needs-static-array-protocol";
+		}
+
+		if (HasContainerParameter(function) || ReturnsContainer(function))
+		{
+			return "needs-container-frame-protocol";
+		}
+
+		if (HasInterfaceParameter(function) || ReturnsInterface(function))
+		{
+			return "needs-interface-frame-protocol";
+		}
+
+		if (HasDelegateParameter(function) || ReturnsDelegate(function))
+		{
+			return "needs-delegate-frame-protocol";
+		}
+
+		if (HasScriptMethodMixinProjection(signature, classObj, function))
+		{
+			return "needs-script-this-projection";
+		}
+
+		return "cross-module-unsupported-signature";
 	}
 
 	private static bool HasScriptMethodMixinProjection(AngelscriptFunctionSignature signature, UhtClass classObj, UhtFunction function)
@@ -1161,6 +1230,91 @@ internal static class AngelscriptFunctionTableCodeGenerator
 		}
 
 		return false;
+	}
+
+	private static bool HasReferenceParameters(UhtFunction function)
+	{
+		foreach (UhtType parameterType in function.ParameterProperties.Span)
+		{
+			if (parameterType is UhtProperty property && property.PropertyFlags.ToString().Contains("ReferenceParm", StringComparison.Ordinal))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static bool HasStaticArrayParameter(UhtFunction function)
+	{
+		foreach (UhtType parameterType in function.ParameterProperties.Span)
+		{
+			if (parameterType is UhtProperty property && property.ArrayDimensions != null)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static bool ReturnsStaticArray(UhtFunction function)
+	{
+		return function.ReturnProperty is UhtProperty returnProperty && returnProperty.ArrayDimensions != null;
+	}
+
+	private static bool HasContainerParameter(UhtFunction function)
+	{
+		foreach (UhtType parameterType in function.ParameterProperties.Span)
+		{
+			if (parameterType is UhtContainerBaseProperty)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static bool ReturnsContainer(UhtFunction function)
+	{
+		return function.ReturnProperty is UhtContainerBaseProperty;
+	}
+
+	private static bool HasInterfaceParameter(UhtFunction function)
+	{
+		foreach (UhtType parameterType in function.ParameterProperties.Span)
+		{
+			if (parameterType is UhtInterfaceProperty)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static bool ReturnsInterface(UhtFunction function)
+	{
+		return function.ReturnProperty is UhtInterfaceProperty;
+	}
+
+	private static bool HasDelegateParameter(UhtFunction function)
+	{
+		foreach (UhtType parameterType in function.ParameterProperties.Span)
+		{
+			if (parameterType is UhtDelegateProperty or UhtMulticastDelegateProperty)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static bool ReturnsDelegate(UhtFunction function)
+	{
+		return function.ReturnProperty is UhtDelegateProperty or UhtMulticastDelegateProperty;
 	}
 
 	private static bool ReturnsByRef(UhtFunction function)

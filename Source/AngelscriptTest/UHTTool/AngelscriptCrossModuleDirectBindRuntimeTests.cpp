@@ -38,18 +38,22 @@ namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private
 		int32 HitCount = 0;
 		int32 Left = 0;
 		int32 Right = 0;
+		uint16 ArgCount = 0;
 		bool bSelfWasNull = false;
-		bool bArgsWereValid = false;
+		bool bArgSlotsWereValid = false;
 		bool bReturnWasValid = false;
+		bool bScriptSelfWasNull = false;
+		bool bWorldContextWasNull = false;
+		uint32 FrameFlags = 0;
 	};
 
 	FGenericHookProbeState* GGenericHookProbeState = nullptr;
 
-	void NoOpThunk(UObject* /*Self*/, void** /*Args*/, void* /*Ret*/)
+	void NoOpThunk(UObject* /*Self*/, FAngelscriptCrossModuleCallFrame* /*Frame*/)
 	{
 	}
 
-	void SumThunk(UObject* Self, void** Args, void* Ret)
+	void SumThunk(UObject* Self, FAngelscriptCrossModuleCallFrame* Frame)
 	{
 		if (GGenericHookProbeState == nullptr)
 		{
@@ -58,16 +62,20 @@ namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private
 
 		++GGenericHookProbeState->HitCount;
 		GGenericHookProbeState->bSelfWasNull = Self == nullptr;
-		GGenericHookProbeState->bArgsWereValid = Args != nullptr && Args[0] != nullptr && Args[1] != nullptr;
-		GGenericHookProbeState->bReturnWasValid = Ret != nullptr;
-		if (!GGenericHookProbeState->bArgsWereValid || !GGenericHookProbeState->bReturnWasValid)
+		GGenericHookProbeState->ArgCount = Frame != nullptr ? Frame->ArgCount : 0;
+		GGenericHookProbeState->bArgSlotsWereValid = Frame != nullptr && Frame->ArgSlots != nullptr && Frame->ArgSlots[0] != nullptr && Frame->ArgSlots[1] != nullptr;
+		GGenericHookProbeState->bReturnWasValid = Frame != nullptr && Frame->ReturnSlot != nullptr;
+		GGenericHookProbeState->bScriptSelfWasNull = Frame != nullptr && Frame->ScriptSelf == nullptr;
+		GGenericHookProbeState->bWorldContextWasNull = Frame != nullptr && Frame->WorldContext == nullptr;
+		GGenericHookProbeState->FrameFlags = Frame != nullptr ? Frame->Flags : 0;
+		if (!GGenericHookProbeState->bArgSlotsWereValid || !GGenericHookProbeState->bReturnWasValid)
 		{
 			return;
 		}
 
-		GGenericHookProbeState->Left = *static_cast<int32*>(Args[0]);
-		GGenericHookProbeState->Right = *static_cast<int32*>(Args[1]);
-		*static_cast<int32*>(Ret) = GGenericHookProbeState->Left + GGenericHookProbeState->Right;
+		GGenericHookProbeState->Left = *static_cast<int32*>(Frame->ArgSlots[0]);
+		GGenericHookProbeState->Right = *static_cast<int32*>(Frame->ArgSlots[1]);
+		*static_cast<int32*>(Frame->ReturnSlot) = GGenericHookProbeState->Left + GGenericHookProbeState->Right;
 	}
 
 	struct FScopedClassFuncMapRestore
@@ -285,11 +293,11 @@ bool FAngelscriptCrossModuleWorkerThreadRegistrationTest::RunTest(const FString&
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleGenericHookRawThunkTest,
-	"Angelscript.CppTests.UHTToolResolver.CrossModuleDirectBind.GenericHook_RawThunkReceivesArgsAndReturn",
+	FAngelscriptCrossModuleGenericHookFrameThunkTest,
+	"Angelscript.CppTests.UHTToolResolver.CrossModuleDirectBind.GenericHook_FrameThunkReceivesSlotsAndReturn",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FAngelscriptCrossModuleGenericHookRawThunkTest::RunTest(const FString& Parameters)
+bool FAngelscriptCrossModuleGenericHookFrameThunkTest::RunTest(const FString& Parameters)
 {
 	(void)Parameters;
 	using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
@@ -317,7 +325,7 @@ bool FAngelscriptCrossModuleGenericHookRawThunkTest::RunTest(const FString& Para
 		return false;
 	}
 
-	FScopedAngelscriptModule ModuleScope(*this, Engine, TEXT("CrossModuleGenericHookRawThunk"), TEXT(R"(
+	FScopedAngelscriptModule ModuleScope(*this, Engine, TEXT("CrossModuleGenericHookFrameThunk"), TEXT(R"(
 int Run()
 {
 	return CrossModuleGenericHookProbe(17, 25);
@@ -337,13 +345,17 @@ int Run()
 	const int32 Result = Executor.ExecuteAndGet<int32>(INDEX_NONE);
 
 	bool bPassed = true;
-	bPassed &= TestEqual(TEXT("Cross-module generic hook should return the raw thunk result"), Result, 42);
-	bPassed &= TestEqual(TEXT("Cross-module generic hook should invoke the raw thunk once"), ProbeState.HitCount, 1);
-	bPassed &= TestEqual(TEXT("Cross-module generic hook should pass arg 0 through a raw Args slot"), ProbeState.Left, 17);
-	bPassed &= TestEqual(TEXT("Cross-module generic hook should pass arg 1 through a raw Args slot"), ProbeState.Right, 25);
+	bPassed &= TestEqual(TEXT("Cross-module generic hook should return the frame thunk result"), Result, 42);
+	bPassed &= TestEqual(TEXT("Cross-module generic hook should invoke the frame thunk once"), ProbeState.HitCount, 1);
+	bPassed &= TestEqual(TEXT("Cross-module generic hook frame should expose arg count"), ProbeState.ArgCount, 2);
+	bPassed &= TestEqual(TEXT("Cross-module generic hook should pass arg 0 through a frame slot"), ProbeState.Left, 17);
+	bPassed &= TestEqual(TEXT("Cross-module generic hook should pass arg 1 through a frame slot"), ProbeState.Right, 25);
 	bPassed &= TestTrue(TEXT("Cross-module static generic hook should pass null Self"), ProbeState.bSelfWasNull);
-	bPassed &= TestTrue(TEXT("Cross-module generic hook should provide valid Args slots"), ProbeState.bArgsWereValid);
+	bPassed &= TestTrue(TEXT("Cross-module generic hook should provide valid frame arg slots"), ProbeState.bArgSlotsWereValid);
 	bPassed &= TestTrue(TEXT("Cross-module generic hook should provide a return slot"), ProbeState.bReturnWasValid);
+	bPassed &= TestTrue(TEXT("Cross-module static generic hook should leave ScriptSelf null"), ProbeState.bScriptSelfWasNull);
+	bPassed &= TestTrue(TEXT("Cross-module generic hook should leave WorldContext null until a policy exists"), ProbeState.bWorldContextWasNull);
+	bPassed &= TestEqual(TEXT("Cross-module generic hook should copy entry flags into the frame"), ProbeState.FrameFlags, FAngelscriptCrossModuleBindings::FlagStatic);
 	return bPassed;
 }
 

@@ -2,4 +2,4 @@
 # Bump this token when any FAngelscriptCrossModuleEntry POD field is added, removed,
 # reordered, widened, narrowed, or given new semantics.
 # Bump this token when the runtime reader layout and emitted cpp layout stop changing together.
-0xA5C0DE01
+0xA5C0DE02

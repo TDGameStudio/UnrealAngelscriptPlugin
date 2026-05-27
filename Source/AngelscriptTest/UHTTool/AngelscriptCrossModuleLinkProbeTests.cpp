@@ -18,7 +18,7 @@
 
 namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 {
-	constexpr uint32 ProbeLayoutVersion = 0xA5C0DE01u;
+	constexpr uint32 ProbeLayoutVersion = 0xA5C0DE02u;
 
 	static_assert(std::is_empty<IModularFeature>::value, "IModularFeature must stay empty for the probe reader layout.");
 	static_assert(!std::is_polymorphic<IModularFeature>::value, "IModularFeature must stay non-polymorphic for the probe reader layout.");
@@ -163,26 +163,27 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 
 	bool ContainsSafeReturnValueCrossModuleThunk(const FString& ShardContents)
 	{
-		return ShardContents.Contains(TEXT("void* Ret")) &&
-			ShardContents.Contains(TEXT("if (Ret == nullptr)")) &&
+		return ShardContents.Contains(TEXT("FCrossModuleCallFrame* Frame")) &&
+			ShardContents.Contains(TEXT("Frame->ReturnSlot")) &&
 			ShardContents.Contains(TEXT("*static_cast<")) &&
-			ShardContents.Contains(TEXT("*>(Ret) = ")) &&
+			ShardContents.Contains(TEXT("*>(Frame->ReturnSlot) = ")) &&
 			ShardContents.Contains(TEXT(", sizeof("));
 	}
 
 	bool ContainsArgumentMarshallingCrossModuleThunk(const FString& ShardContents)
 	{
-		return !ShardContents.Contains(TEXT("void** /*Args*/")) &&
+		return !ShardContents.Contains(TEXT("FCrossModuleCallFrame* /*Frame*/")) &&
 			ShardContents.Contains(TEXT("PassCrossModuleArg<")) &&
-			ShardContents.Contains(TEXT("(Args, 0)")) &&
-			ShardContents.Contains(TEXT("Args == nullptr")) &&
+			ShardContents.Contains(TEXT("(Frame, 0)")) &&
+			ShardContents.Contains(TEXT("Frame == nullptr")) &&
+			ShardContents.Contains(TEXT("Frame->ArgSlots == nullptr")) &&
 			ShardContents.Contains(TEXT("TIsReferenceType")) &&
 			ShardContents.Contains(TEXT("TIsPointer"));
 	}
 
 	bool ContainsNonTrivialReturnConstruction(const FString& ShardContents)
 	{
-		return ShardContents.Contains(TEXT("new (Ret)")) &&
+		return ShardContents.Contains(TEXT("new (Frame->ReturnSlot)")) &&
 			ShardContents.Contains(TEXT("BuildCrossModuleReturn")) &&
 			ShardContents.Contains(TEXT("BuildCrossModuleReturn<FVector>"));
 	}
@@ -342,6 +343,23 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		return false;
 	}
 
+	bool CsvContainsThunkStyleForIdentity(const FString& EntriesContents, const FString& ModuleName, const FString& ClassName, const FString& FunctionName, const FString& ThunkStyle)
+	{
+		TArray<FString> Lines;
+		EntriesContents.ParseIntoArrayLines(Lines);
+		for (const FString& Line : Lines)
+		{
+			TArray<FString> Fields;
+			Line.ParseIntoArray(Fields, TEXT(","), false);
+			if (Fields.Num() >= 8 && Fields[0] == ModuleName && Fields[2] == ClassName && Fields[3] == FunctionName && Fields[7] == ThunkStyle)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	bool TryExtractFirstRpcStubCsvIdentity(const FString& EntriesContents, FString& OutModuleName, FString& OutClassName, FString& OutFunctionName)
 	{
 		TArray<FString> Lines;
@@ -423,6 +441,10 @@ bool FAngelscriptCrossModulePublicHeaderTest::RunTest(const FString& Parameters)
 	}
 
 	bool bPassed = true;
+	bPassed &= TestTrue(TEXT("Public ABI header should declare the cross-module call frame"), HeaderContents.Contains(TEXT("struct FAngelscriptCrossModuleCallFrame")));
+	bPassed &= TestTrue(TEXT("Public ABI header should expose frame-based thunk pointers"), HeaderContents.Contains(TEXT("FAngelscriptCrossModuleCallFrame* Frame")));
+	bPassed &= TestTrue(TEXT("Public ABI header should assert cross-module call-frame ABI size"), HeaderContents.Contains(TEXT("static_assert(sizeof(FAngelscriptCrossModuleCallFrame) == 48")));
+	bPassed &= TestFalse(TEXT("Public ABI header should not expose raw Args/Ret thunk pointers"), HeaderContents.Contains(TEXT("void** Args, void* Ret")));
 	bPassed &= TestFalse(TEXT("Public ABI header should not include AngelscriptBinds"), HeaderContents.Contains(TEXT("AngelscriptBinds.h")));
 	bPassed &= TestFalse(TEXT("Public ABI header should not include FunctionCallers"), HeaderContents.Contains(TEXT("FunctionCallers.h")));
 	bPassed &= TestFalse(TEXT("Public ABI header should not include angelscript SDK"), HeaderContents.Contains(TEXT("angelscript.h")));
@@ -459,6 +481,11 @@ bool FAngelscriptCrossModuleLayoutVersionSingleSourceTest::RunTest(const FString
 	}
 
 	bPassed &= TestTrue(TEXT("Cross-module shard should embed the shared layout token"), CrossModuleShardContents.Contains(FString::Printf(TEXT("GCrossModuleLayoutVersion = %su"), *VersionToken)));
+	bPassed &= TestTrue(TEXT("Cross-module shard should mirror the frame ABI"), CrossModuleShardContents.Contains(TEXT("struct FCrossModuleCallFrame")));
+	bPassed &= TestTrue(TEXT("Cross-module shard should use frame-based thunk pointers"), CrossModuleShardContents.Contains(TEXT("FCrossModuleCallFrame* Frame")));
+	bPassed &= TestTrue(TEXT("Cross-module shard should read arguments from frame slots"), CrossModuleShardContents.Contains(TEXT("Frame->ArgSlots")));
+	bPassed &= TestTrue(TEXT("Cross-module shard should write returns through the frame return slot"), CrossModuleShardContents.Contains(TEXT("Frame->ReturnSlot")));
+	bPassed &= TestTrue(TEXT("Cross-module shard should assert cross-module call-frame ABI size"), CrossModuleShardContents.Contains(TEXT("static_assert(sizeof(FCrossModuleCallFrame) == 48")));
 	bPassed &= TestTrue(TEXT("Cross-module shard should assert cross-module entry ABI size"), CrossModuleShardContents.Contains(TEXT("static_assert(sizeof(FCrossModuleEntry) == 32")));
 	bPassed &= TestTrue(TEXT("Cross-module shard should assert cross-module feature ABI size"), CrossModuleShardContents.Contains(TEXT("static_assert(sizeof(FCrossModuleFeature) == 32")));
 	bPassed &= TestTrue(TEXT("Cross-module shard should pass the shared layout token into feature registration"), CrossModuleShardContents.Contains(TEXT("GCrossModuleFeature(GCrossModuleTable, UE_ARRAY_COUNT(GCrossModuleTable), TEXT(\"Engine\"), GCrossModuleLayoutVersion)")));
@@ -471,6 +498,7 @@ bool FAngelscriptCrossModuleLayoutVersionSingleSourceTest::RunTest(const FString
 	bPassed &= TestFalse(TEXT("Cross-module shard should not include angelscript SDK"), CrossModuleShardContents.Contains(TEXT("angelscript.h")));
 	bPassed &= TestFalse(TEXT("Cross-module shard should use IModularFeatures registration, not exported getter link path"), CrossModuleShardContents.Contains(TEXT("Get_AS_Bindings_")));
 	bPassed &= TestFalse(TEXT("Cross-module shard should not use brace aggregate feature init"), CrossModuleShardContents.Contains(TEXT("= { GCrossModuleTable")));
+	bPassed &= TestFalse(TEXT("Cross-module shard should not expose raw Args/Ret thunk signatures"), CrossModuleShardContents.Contains(TEXT("void** Args, void* Ret")));
 	return bPassed;
 }
 
@@ -502,10 +530,18 @@ bool FAngelscriptCrossModuleSkippedStatisticsTest::RunTest(const FString& Parame
 	}
 
 	bool bPassed = true;
-	bPassed &= TestTrue(TEXT("Cross-module unsupported signatures should have an explicit skipped reason"), SummaryContents.Contains(TEXT("cross-module-unsupported-signature,")));
+	bPassed &= TestTrue(TEXT("WorldContext cross-module candidates should identify missing policy"), SummaryContents.Contains(TEXT("needs-world-context-policy,")));
+	bPassed &= TestTrue(TEXT("Out/ref cross-module candidates should identify missing protocol"), SummaryContents.Contains(TEXT("needs-out-param-protocol,")));
+	bPassed &= TestTrue(TEXT("Ref-return cross-module candidates should identify missing protocol"), SummaryContents.Contains(TEXT("needs-ref-return-protocol,")));
+	bPassed &= TestTrue(TEXT("Container cross-module candidates should identify missing frame protocol"), SummaryContents.Contains(TEXT("needs-container-frame-protocol,")));
+	bPassed &= TestTrue(TEXT("Interface cross-module candidates should identify missing frame protocol"), SummaryContents.Contains(TEXT("needs-interface-frame-protocol,")));
+	bPassed &= TestTrue(TEXT("Delegate cross-module candidates should identify missing frame protocol"), SummaryContents.Contains(TEXT("needs-delegate-frame-protocol,")));
+	bPassed &= TestTrue(TEXT("ScriptMethod/ScriptMixin projections should identify missing receiver projection"), SummaryContents.Contains(TEXT("needs-script-this-projection,")));
+	bPassed &= TestFalse(TEXT("Cross-module unsupported signatures should be split into protocol reasons"), SummaryContents.Contains(TEXT("cross-module-unsupported-signature,")));
 	bPassed &= TestTrue(TEXT("Disabled target modules should have an explicit skipped reason"), SummaryContents.Contains(TEXT("target-module-disabled,")));
 	bPassed &= TestTrue(TEXT("RPC functions should have an explicit skipped reason"), SummaryContents.Contains(TEXT("rpc-net-function,")));
 	bPassed &= TestFalse(TEXT("Supported cross-module candidates should no longer be lumped into unexported-symbol"), CsvContainsRowWithPrefix(SummaryContents, TEXT("unexported-symbol,")));
+	bPassed &= TestTrue(TEXT("Entries CSV should expose a thunk style column"), EntriesContents.StartsWith(TEXT("ModuleName,EditorOnly,ClassName,FunctionName,EntryKind,EraseMacro,ShardIndex,ThunkStyle")));
 
 	FString RpcModuleName;
 	FString RpcClassName;
@@ -514,6 +550,8 @@ bool FAngelscriptCrossModuleSkippedStatisticsTest::RunTest(const FString& Parame
 	{
 		const FString RpcSkippedIdentity = FString::Printf(TEXT("%s,%s,%s,rpc-net-function"), *RpcModuleName, *RpcClassName, *RpcFunctionName);
 		bPassed &= TestTrue(TEXT("RPC stub entry should also appear in skipped diagnostics with rpc-net-function"), SkippedEntriesContents.Contains(RpcSkippedIdentity));
+		bPassed &= TestTrue(TEXT("RPC entries should report stub thunk style"), CsvContainsThunkStyleForIdentity(EntriesContents, RpcModuleName, RpcClassName, RpcFunctionName, TEXT("Stub")));
+		bPassed &= TestFalse(TEXT("RPC entries should not report frame-wrapper thunk style"), CsvContainsThunkStyleForIdentity(EntriesContents, RpcModuleName, RpcClassName, RpcFunctionName, TEXT("FrameWrapper")));
 	}
 	else
 	{
@@ -527,6 +565,7 @@ bool FAngelscriptCrossModuleSkippedStatisticsTest::RunTest(const FString& Parame
 	{
 		const FString SkippedIdentity = FString::Printf(TEXT("%s,%s,%s,"), *CrossModuleName, *CrossModuleClassName, *CrossModuleFunctionName);
 		bPassed &= TestFalse(TEXT("Generated cross-module entries should not also appear as skipped"), SkippedEntriesContents.Contains(SkippedIdentity));
+		bPassed &= TestTrue(TEXT("CrossModule entries should report frame-wrapper thunk style"), CsvContainsThunkStyleForIdentity(EntriesContents, CrossModuleName, CrossModuleClassName, CrossModuleFunctionName, TEXT("FrameWrapper")));
 	}
 	else
 	{

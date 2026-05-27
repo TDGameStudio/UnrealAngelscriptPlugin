@@ -236,6 +236,20 @@ void GAngelscriptCrossModuleGenericHook(asIScriptGeneric* Generic)
 	UObject* Self = (Entry->Flags & FAngelscriptCrossModuleBindings::FlagStatic) != 0
 		? nullptr
 		: static_cast<UObject*>(Generic->GetObject());
-	void* ReturnAddress = Entry->RetSize > 0 ? Generic->GetAddressOfReturnLocation() : nullptr;
-	Entry->Thunk(Self, Args.GetData(), ReturnAddress);
+	FAngelscriptCrossModuleCallFrame Frame = {
+		Args.GetData(),
+		Entry->ArgCount,
+		0,
+		Entry->RetSize > 0 ? Generic->GetAddressOfReturnLocation() : nullptr,
+		Self,
+		nullptr,
+		Entry->Flags,
+		0
+	};
+	if ((Entry->Flags & FAngelscriptCrossModuleBindings::FlagStatic) != 0)
+	{
+		Frame.ScriptSelf = nullptr;
+	}
+
+	Entry->Thunk(Self, &Frame);
 }
