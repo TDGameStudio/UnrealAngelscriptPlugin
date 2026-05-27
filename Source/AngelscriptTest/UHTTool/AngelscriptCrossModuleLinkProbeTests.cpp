@@ -82,6 +82,11 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		return FPaths::Combine(GetAngelscriptPluginDirectory(), TEXT("Source/AngelscriptUHTTool/cross-module-layout-version.txt"));
 	}
 
+	FString GetCrossModuleGenerationModulesFilePath()
+	{
+		return FPaths::Combine(GetAngelscriptPluginDirectory(), TEXT("Source/AngelscriptUHTTool/cross-module-generation-modules.json"));
+	}
+
 	FString GetCrossModulePublicHeaderPath()
 	{
 		return FPaths::Combine(GetAngelscriptPluginDirectory(), TEXT("Source/AngelscriptRuntime/Public/UHT/AngelscriptCrossModuleBindings.h"));
@@ -306,6 +311,47 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		return false;
 	}
 
+	bool TryParseCsvLine(const FString& Line, TArray<FString>& OutFields)
+	{
+		OutFields.Reset();
+		FString Field;
+		bool bInQuotes = false;
+		for (int32 Index = 0; Index < Line.Len(); ++Index)
+		{
+			const TCHAR Character = Line[Index];
+			if (Character == TEXT('"'))
+			{
+				if (bInQuotes && Index + 1 < Line.Len() && Line[Index + 1] == TEXT('"'))
+				{
+					Field.AppendChar(TEXT('"'));
+					++Index;
+				}
+				else
+				{
+					bInQuotes = !bInQuotes;
+				}
+			}
+			else if (Character == TEXT(',') && !bInQuotes)
+			{
+				OutFields.Add(Field);
+				Field.Reset();
+			}
+			else
+			{
+				Field.AppendChar(Character);
+			}
+		}
+
+		if (bInQuotes)
+		{
+			OutFields.Reset();
+			return false;
+		}
+
+		OutFields.Add(Field);
+		return true;
+	}
+
 	bool TryExtractFirstCrossModuleCsvIdentity(const FString& EntriesContents, FString& OutModuleName, FString& OutClassName, FString& OutFunctionName)
 	{
 		TArray<FString> Lines;
@@ -313,7 +359,11 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		for (const FString& Line : Lines)
 		{
 			TArray<FString> Fields;
-			Line.ParseIntoArray(Fields, TEXT(","), false);
+			if (!TryParseCsvLine(Line, Fields))
+			{
+				continue;
+			}
+
 			if (Fields.Num() >= 5 && Fields[4] == TEXT("CrossModule"))
 			{
 				OutModuleName = Fields[0];
@@ -333,7 +383,11 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		for (const FString& Line : Lines)
 		{
 			TArray<FString> Fields;
-			Line.ParseIntoArray(Fields, TEXT(","), false);
+			if (!TryParseCsvLine(Line, Fields))
+			{
+				continue;
+			}
+
 			if (Fields.Num() >= 5 && Fields[0] == ModuleName && Fields[2] == ClassName && Fields[3] == FunctionName && Fields[4] == EntryKind)
 			{
 				return true;
@@ -350,8 +404,75 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		for (const FString& Line : Lines)
 		{
 			TArray<FString> Fields;
-			Line.ParseIntoArray(Fields, TEXT(","), false);
+			if (!TryParseCsvLine(Line, Fields))
+			{
+				continue;
+			}
+
 			if (Fields.Num() >= 8 && Fields[0] == ModuleName && Fields[2] == ClassName && Fields[3] == FunctionName && Fields[7] == ThunkStyle)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	bool CsvContainsModuleEntryKind(const FString& EntriesContents, const FString& ModuleName, const FString& EntryKind)
+	{
+		TArray<FString> Lines;
+		EntriesContents.ParseIntoArrayLines(Lines);
+		for (const FString& Line : Lines)
+		{
+			TArray<FString> Fields;
+			if (!TryParseCsvLine(Line, Fields))
+			{
+				continue;
+			}
+
+			if (Fields.Num() >= 5 && Fields[0] == ModuleName && Fields[4] == EntryKind)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	bool CsvContainsModuleThunkStyle(const FString& EntriesContents, const FString& ModuleName, const FString& ThunkStyle)
+	{
+		TArray<FString> Lines;
+		EntriesContents.ParseIntoArrayLines(Lines);
+		for (const FString& Line : Lines)
+		{
+			TArray<FString> Fields;
+			if (!TryParseCsvLine(Line, Fields))
+			{
+				continue;
+			}
+
+			if (Fields.Num() >= 8 && Fields[0] == ModuleName && Fields[7] == ThunkStyle)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	bool CsvContainsSkippedReasonForModule(const FString& SkippedEntriesContents, const FString& ModuleName, const FString& FailureReason)
+	{
+		TArray<FString> Lines;
+		SkippedEntriesContents.ParseIntoArrayLines(Lines);
+		for (const FString& Line : Lines)
+		{
+			TArray<FString> Fields;
+			if (!TryParseCsvLine(Line, Fields))
+			{
+				continue;
+			}
+
+			if (Fields.Num() >= 4 && Fields[0] == ModuleName && Fields[3] == FailureReason)
 			{
 				return true;
 			}
@@ -367,7 +488,11 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		for (const FString& Line : Lines)
 		{
 			TArray<FString> Fields;
-			Line.ParseIntoArray(Fields, TEXT(","), false);
+			if (!TryParseCsvLine(Line, Fields))
+			{
+				continue;
+			}
+
 			if (Fields.Num() >= 6 && Fields[4] == TEXT("Stub") && Fields[5].Contains(TEXT("ERASE_NO_FUNCTION")) &&
 				(Fields[3].StartsWith(TEXT("Client")) || Fields[3].Contains(TEXT("Multicast"))))
 			{
@@ -536,15 +661,17 @@ bool FAngelscriptCrossModuleSkippedStatisticsTest::RunTest(const FString& Parame
 	bPassed &= TestTrue(TEXT("Container cross-module candidates should identify missing frame protocol"), SummaryContents.Contains(TEXT("needs-container-frame-protocol,")));
 	bPassed &= TestTrue(TEXT("Interface cross-module candidates should identify missing frame protocol"), SummaryContents.Contains(TEXT("needs-interface-frame-protocol,")));
 	bPassed &= TestTrue(TEXT("Delegate cross-module candidates should identify missing frame protocol"), SummaryContents.Contains(TEXT("needs-delegate-frame-protocol,")));
+	bPassed &= TestTrue(TEXT("FieldPath cross-module candidates should identify missing frame protocol"), SummaryContents.Contains(TEXT("needs-field-path-frame-protocol,")));
 	bPassed &= TestTrue(TEXT("ScriptMethod/ScriptMixin projections should identify missing receiver projection"), SummaryContents.Contains(TEXT("needs-script-this-projection,")));
 	bPassed &= TestFalse(TEXT("Enabled cross-module unsupported signatures should be split into protocol reasons"), CsvContainsRowWithPrefix(SummaryContents, TEXT("cross-module-unsupported-signature,")));
 	bPassed &= TestFalse(TEXT("Disabled target modules should not remain lumped into target-module-disabled when classifiable"), SummaryContents.Contains(TEXT("target-module-disabled,")));
-	bPassed &= TestTrue(TEXT("Disabled target modules should identify safe cross-module candidates"), SummaryContents.Contains(TEXT("disabled-safe-cross-module,")));
 	bPassed &= TestTrue(TEXT("Disabled target modules should preserve protocol diagnostics"), SummaryContents.Contains(TEXT("disabled-needs-out-param-protocol,")));
 	bPassed &= TestTrue(TEXT("RPC functions should have an explicit skipped reason"), SummaryContents.Contains(TEXT("rpc-net-function,")));
 	bPassed &= TestFalse(TEXT("Supported cross-module candidates should no longer be lumped into unexported-symbol"), CsvContainsRowWithPrefix(SummaryContents, TEXT("unexported-symbol,")));
 	bPassed &= TestTrue(TEXT("Entries CSV should expose a thunk style column"), EntriesContents.StartsWith(TEXT("ModuleName,EditorOnly,ClassName,FunctionName,EntryKind,EraseMacro,ShardIndex,ThunkStyle")));
-	bPassed &= TestFalse(TEXT("Diagnostic-only disabled-module classification should not emit disabled modules as generated entries"), EntriesContents.Contains(TEXT("GameplayCameras,")));
+	const FString DiagnosticOnlyDisabledModule = TEXT("ControlRigEditor");
+	bPassed &= TestTrue(TEXT("Source profile module should emit cross-module entries after profile expansion"), CsvContainsModuleEntryKind(EntriesContents, DiagnosticOnlyDisabledModule, TEXT("CrossModule")));
+	bPassed &= TestFalse(TEXT("Source profile module should not remain diagnostic-only disabled-safe-cross-module"), CsvContainsSkippedReasonForModule(SkippedEntriesContents, DiagnosticOnlyDisabledModule, TEXT("disabled-safe-cross-module")));
 
 	FString RpcModuleName;
 	FString RpcClassName;
@@ -671,8 +798,8 @@ bool FAngelscriptCrossModuleStaleCleanupBoundariesTest::RunTest(const FString& P
 	}
 
 	bool bPassed = true;
-	bPassed &= TestTrue(TEXT("Stale cleanup should accept supported module output directories"), GeneratorContents.Contains(TEXT("IReadOnlyDictionary<string, string> supportedModuleOutputDirectories")));
-	bPassed &= TestTrue(TEXT("Stale cleanup should enumerate each supported module output directory"), GeneratorContents.Contains(TEXT("foreach ((string moduleName, string outputDirectory) in supportedModuleOutputDirectories)")));
+	bPassed &= TestTrue(TEXT("Stale cleanup should accept all UHT session module output directories"), GeneratorContents.Contains(TEXT("IReadOnlyDictionary<string, string> allModuleOutputDirectories")));
+	bPassed &= TestTrue(TEXT("Stale cleanup should enumerate each UHT session module output directory"), GeneratorContents.Contains(TEXT("foreach ((string moduleName, string outputDirectory) in allModuleOutputDirectories)")));
 	bPassed &= TestTrue(TEXT("Stale cleanup should delete only matching cross-module shards per module"), GeneratorContents.Contains(TEXT("$\"AS_FunctionTable_{moduleName}_CrossModule_*.cpp\"")));
 	bPassed &= TestTrue(TEXT("Stale cleanup should preserve runtime same-module cleanup"), GeneratorContents.Contains(TEXT("DeleteStaleFilesInDirectory(runtimeOutputDirectory, \"AS_FunctionTable_*.cpp\", livePaths)")));
 	return bPassed;
@@ -801,6 +928,144 @@ bool FAngelscriptCrossModuleBuildCsDependencyBoundaryTest::RunTest(const FString
 		}
 	}
 
+	return bPassed;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FAngelscriptCrossModuleGenerationProfilesPolicyTest,
+	"Angelscript.CppTests.UHTToolResolver.CrossModuleGenerationProfiles.PolicyFileAndBuildCsBoundary",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FAngelscriptCrossModuleGenerationProfilesPolicyTest::RunTest(const FString& Parameters)
+{
+	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+
+	FString ProfileConfigContents;
+	if (!TestTrue(TEXT("Cross-module generation profile config should be readable"), FFileHelper::LoadFileToString(ProfileConfigContents, *GetCrossModuleGenerationModulesFilePath())))
+	{
+		return false;
+	}
+
+	FString BuildCsContents;
+	if (!TestTrue(TEXT("AngelscriptRuntime.Build.cs should be readable"), FFileHelper::LoadFileToString(BuildCsContents, *GetRuntimeBuildCsPath())))
+	{
+		return false;
+	}
+
+	const TSet<FString> DependencyModules = ExtractDependencyModuleNames(BuildCsContents);
+	const TArray<FString> CommonModules = {
+		TEXT("GameplayCameras"),
+		TEXT("IKRig"),
+		TEXT("Niagara"),
+		TEXT("GameplayAbilities"),
+		TEXT("MovieSceneTracks")
+	};
+	const TArray<FString> SourceProfileModules = {
+		TEXT("ControlRigEditor"),
+		TEXT("PythonScriptPlugin"),
+		TEXT("NiagaraEditor"),
+		TEXT("SequencerScripting"),
+		TEXT("EditorScriptingUtilities"),
+		TEXT("Paper2D"),
+		TEXT("EngineCameras")
+	};
+
+	bool bPassed = true;
+	bPassed &= TestTrue(TEXT("Profile config should declare common profile"), ProfileConfigContents.Contains(TEXT("\"common\"")));
+	bPassed &= TestTrue(TEXT("Profile config should declare source profile"), ProfileConfigContents.Contains(TEXT("\"source\"")));
+	bPassed &= TestTrue(TEXT("Profile config should declare installed profile"), ProfileConfigContents.Contains(TEXT("\"installed\"")));
+	for (const FString& CommonModule : CommonModules)
+	{
+		bPassed &= TestTrue(FString::Printf(TEXT("Common profile should include pilot module %s"), *CommonModule), ProfileConfigContents.Contains(FString::Printf(TEXT("\"%s\""), *CommonModule)));
+		bPassed &= TestFalse(FString::Printf(TEXT("Common profile module %s should not be added to AngelscriptRuntime dependencies"), *CommonModule), DependencyModules.Contains(CommonModule));
+	}
+
+	for (const FString& SourceProfileModule : SourceProfileModules)
+	{
+		bPassed &= TestTrue(FString::Printf(TEXT("Source profile should include disabled-safe module %s"), *SourceProfileModule), ProfileConfigContents.Contains(FString::Printf(TEXT("\"%s\""), *SourceProfileModule)));
+		bPassed &= TestFalse(FString::Printf(TEXT("Source profile module %s should not be added to AngelscriptRuntime dependencies"), *SourceProfileModule), DependencyModules.Contains(SourceProfileModule));
+	}
+
+	return bPassed;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FAngelscriptCrossModuleGenerationProfilesEntriesTest,
+	"Angelscript.CppTests.UHTToolResolver.CrossModuleGenerationProfiles.GeneratedRowsAreCrossModuleOnly",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FAngelscriptCrossModuleGenerationProfilesEntriesTest::RunTest(const FString& Parameters)
+{
+	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+
+	FString EntriesContents;
+	if (!TestTrue(TEXT("Generated entries should be readable"), FFileHelper::LoadFileToString(EntriesContents, *GetGeneratedUhtFilePath(TEXT("AS_FunctionTable_Entries.csv")))))
+	{
+		return false;
+	}
+
+	FString SkippedEntriesContents;
+	if (!TestTrue(TEXT("Skipped entries should be readable"), FFileHelper::LoadFileToString(SkippedEntriesContents, *GetGeneratedUhtFilePath(TEXT("AS_FunctionTable_SkippedEntries.csv")))))
+	{
+		return false;
+	}
+
+	FString SummaryContents;
+	if (!TestTrue(TEXT("Generated summary should be readable"), FFileHelper::LoadFileToString(SummaryContents, *GetGeneratedUhtFilePath(TEXT("AS_FunctionTable_Summary.json")))))
+	{
+		return false;
+	}
+
+	const TArray<FString> PilotModules = {
+		TEXT("GameplayCameras"),
+		TEXT("IKRig"),
+		TEXT("Niagara"),
+		TEXT("GameplayAbilities"),
+		TEXT("MovieSceneTracks")
+	};
+	const TArray<FString> SourceProfileModules = {
+		TEXT("ControlRigEditor"),
+		TEXT("PythonScriptPlugin"),
+		TEXT("NiagaraEditor"),
+		TEXT("SequencerScripting"),
+		TEXT("EditorScriptingUtilities"),
+		TEXT("Paper2D"),
+		TEXT("EngineCameras")
+	};
+
+	bool bObservedPilotCrossModule = false;
+	bool bObservedSourceProfileCrossModule = false;
+	bool bPassed = true;
+	bPassed &= TestTrue(TEXT("Summary should report source cross-module generation profile"), SummaryContents.Contains(TEXT("\"crossModuleGenerationProfile\": \"source\"")));
+	bPassed &= TestTrue(TEXT("Summary should report cross-module config path"), SummaryContents.Contains(TEXT("\"crossModuleGenerationConfigPath\"")));
+	bPassed &= TestTrue(TEXT("Summary should report configured cross-module modules"), SummaryContents.Contains(TEXT("\"crossModuleConfiguredModules\"")));
+	bPassed &= TestTrue(TEXT("Summary should report effective cross-module modules"), SummaryContents.Contains(TEXT("\"crossModuleEffectiveModules\"")));
+	for (const FString& PilotModule : PilotModules)
+	{
+		if (CsvContainsModuleEntryKind(EntriesContents, PilotModule, TEXT("CrossModule")))
+		{
+			bObservedPilotCrossModule = true;
+			bPassed &= TestTrue(FString::Printf(TEXT("Pilot module %s cross-module rows should use frame-wrapper thunks"), *PilotModule), CsvContainsModuleThunkStyle(EntriesContents, PilotModule, TEXT("FrameWrapper")));
+			bPassed &= TestFalse(FString::Printf(TEXT("Pilot module %s should not emit DirectNative rows from AngelscriptRuntime"), *PilotModule), CsvContainsModuleThunkStyle(EntriesContents, PilotModule, TEXT("DirectNative")));
+			bPassed &= TestFalse(FString::Printf(TEXT("Pilot module %s should not emit Stub rows from AngelscriptRuntime"), *PilotModule), CsvContainsModuleThunkStyle(EntriesContents, PilotModule, TEXT("Stub")));
+			bPassed &= TestFalse(FString::Printf(TEXT("Pilot module %s realized entries should not remain disabled-safe-cross-module diagnostics"), *PilotModule), CsvContainsSkippedReasonForModule(SkippedEntriesContents, PilotModule, TEXT("disabled-safe-cross-module")));
+		}
+	}
+
+	for (const FString& SourceProfileModule : SourceProfileModules)
+	{
+		if (CsvContainsModuleEntryKind(EntriesContents, SourceProfileModule, TEXT("CrossModule")))
+		{
+			bObservedSourceProfileCrossModule = true;
+			bPassed &= TestTrue(FString::Printf(TEXT("Source profile module %s cross-module rows should use frame-wrapper thunks"), *SourceProfileModule), CsvContainsModuleThunkStyle(EntriesContents, SourceProfileModule, TEXT("FrameWrapper")));
+			bPassed &= TestFalse(FString::Printf(TEXT("Source profile module %s should not emit DirectNative rows from AngelscriptRuntime"), *SourceProfileModule), CsvContainsModuleThunkStyle(EntriesContents, SourceProfileModule, TEXT("DirectNative")));
+			bPassed &= TestFalse(FString::Printf(TEXT("Source profile module %s should not emit Stub rows from AngelscriptRuntime"), *SourceProfileModule), CsvContainsModuleThunkStyle(EntriesContents, SourceProfileModule, TEXT("Stub")));
+			bPassed &= TestFalse(FString::Printf(TEXT("Source profile module %s realized entries should not remain disabled-safe-cross-module diagnostics"), *SourceProfileModule), CsvContainsSkippedReasonForModule(SkippedEntriesContents, SourceProfileModule, TEXT("disabled-safe-cross-module")));
+		}
+	}
+
+	bPassed &= TestTrue(TEXT("At least one pilot module should realize cross-module entries"), bObservedPilotCrossModule);
+	bPassed &= TestTrue(TEXT("At least one source profile module should realize cross-module entries"), bObservedSourceProfileCrossModule);
 	return bPassed;
 }
 

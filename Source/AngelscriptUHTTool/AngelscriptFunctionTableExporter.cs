@@ -136,7 +136,9 @@ internal static class AngelscriptFunctionTableExporter
 			return false;
 		}
 
-		if (!supportedModules.All.Contains(moduleName))
+		bool runtimeLinked = supportedModules.RuntimeLinked.Contains(moduleName);
+		bool crossModuleOnly = supportedModules.CrossModuleOnly.Contains(moduleName);
+		if (!runtimeLinked && !crossModuleOnly)
 		{
 			if (AngelscriptFunctionTableCodeGenerator.TryClassifyCrossModuleOutcome(classObj, function, out _, out string? disabledModuleReason))
 			{
