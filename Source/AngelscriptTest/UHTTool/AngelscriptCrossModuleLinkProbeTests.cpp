@@ -537,11 +537,14 @@ bool FAngelscriptCrossModuleSkippedStatisticsTest::RunTest(const FString& Parame
 	bPassed &= TestTrue(TEXT("Interface cross-module candidates should identify missing frame protocol"), SummaryContents.Contains(TEXT("needs-interface-frame-protocol,")));
 	bPassed &= TestTrue(TEXT("Delegate cross-module candidates should identify missing frame protocol"), SummaryContents.Contains(TEXT("needs-delegate-frame-protocol,")));
 	bPassed &= TestTrue(TEXT("ScriptMethod/ScriptMixin projections should identify missing receiver projection"), SummaryContents.Contains(TEXT("needs-script-this-projection,")));
-	bPassed &= TestFalse(TEXT("Cross-module unsupported signatures should be split into protocol reasons"), SummaryContents.Contains(TEXT("cross-module-unsupported-signature,")));
-	bPassed &= TestTrue(TEXT("Disabled target modules should have an explicit skipped reason"), SummaryContents.Contains(TEXT("target-module-disabled,")));
+	bPassed &= TestFalse(TEXT("Enabled cross-module unsupported signatures should be split into protocol reasons"), CsvContainsRowWithPrefix(SummaryContents, TEXT("cross-module-unsupported-signature,")));
+	bPassed &= TestFalse(TEXT("Disabled target modules should not remain lumped into target-module-disabled when classifiable"), SummaryContents.Contains(TEXT("target-module-disabled,")));
+	bPassed &= TestTrue(TEXT("Disabled target modules should identify safe cross-module candidates"), SummaryContents.Contains(TEXT("disabled-safe-cross-module,")));
+	bPassed &= TestTrue(TEXT("Disabled target modules should preserve protocol diagnostics"), SummaryContents.Contains(TEXT("disabled-needs-out-param-protocol,")));
 	bPassed &= TestTrue(TEXT("RPC functions should have an explicit skipped reason"), SummaryContents.Contains(TEXT("rpc-net-function,")));
 	bPassed &= TestFalse(TEXT("Supported cross-module candidates should no longer be lumped into unexported-symbol"), CsvContainsRowWithPrefix(SummaryContents, TEXT("unexported-symbol,")));
 	bPassed &= TestTrue(TEXT("Entries CSV should expose a thunk style column"), EntriesContents.StartsWith(TEXT("ModuleName,EditorOnly,ClassName,FunctionName,EntryKind,EraseMacro,ShardIndex,ThunkStyle")));
+	bPassed &= TestFalse(TEXT("Diagnostic-only disabled-module classification should not emit disabled modules as generated entries"), EntriesContents.Contains(TEXT("GameplayCameras,")));
 
 	FString RpcModuleName;
 	FString RpcClassName;

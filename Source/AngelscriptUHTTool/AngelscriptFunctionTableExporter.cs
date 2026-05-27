@@ -138,7 +138,16 @@ internal static class AngelscriptFunctionTableExporter
 
 		if (!supportedModules.All.Contains(moduleName))
 		{
-			skippedReason = "target-module-disabled";
+			if (AngelscriptFunctionTableCodeGenerator.TryClassifyCrossModuleOutcome(classObj, function, out _, out string? disabledModuleReason))
+			{
+				skippedReason = "disabled-safe-cross-module";
+			}
+			else
+			{
+				skippedReason = string.IsNullOrEmpty(disabledModuleReason)
+					? "target-module-disabled"
+					: $"disabled-{disabledModuleReason}";
+			}
 			return true;
 		}
 
