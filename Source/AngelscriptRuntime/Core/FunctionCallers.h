@@ -385,7 +385,9 @@ struct FFuncEntry
 {
 	FGenericFuncPtr FuncPtr;
 	ASAutoCaller::FunctionCaller Caller;
+	void* UserData = nullptr;
 	bool bReflectiveFallbackBound = false;
+	bool bGenericCall = false;
 };
 
 //extern void AddFunctionCaller(UClass* Class, FFuncEntry Entry);

@@ -526,19 +526,23 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptBinds
 
 	static void AddFunctionEntry(UClass* Class, FString Name, FFuncEntry Entry)
 	{
-		auto& ClassFuncMaps = GetClassFuncMaps();
-		if (ClassFuncMaps.Contains(Class))
+		if (Class == nullptr)
 		{
-			if (!ClassFuncMaps[Class].Contains(Name))
-			{
-				ClassFuncMaps[Class].Add(Name, Entry);
-			}
+			return;
 		}
 
-		else
+		auto& ClassFuncMaps = GetClassFuncMaps();
+		TMap<FString, FFuncEntry>& FunctionMap = ClassFuncMaps.FindOrAdd(Class);
+		if (FFuncEntry* ExistingEntry = FunctionMap.Find(Name))
 		{
-			ClassFuncMaps.Add(Class, TMap<FString, FFuncEntry>()).Add(Name, Entry);
+			if (!ExistingEntry->FuncPtr.IsBound() && !ExistingEntry->bReflectiveFallbackBound && Entry.FuncPtr.IsBound())
+			{
+				*ExistingEntry = Entry;
+			}
+			return;
 		}
+
+		FunctionMap.Add(Name, Entry);
 	}
 
 	static void SkipFunctionEntry(UClass* Class, FString Name)

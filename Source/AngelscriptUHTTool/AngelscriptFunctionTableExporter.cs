@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using EpicGames.UHT.Tables;
+using EpicGames.Core;
 using EpicGames.UHT.Types;
 using EpicGames.UHT.Utils;
 
@@ -31,24 +32,27 @@ internal static class AngelscriptFunctionTableExporter
 		int functionCount = 0;
 		int reconstructedCount = 0;
 		int skippedCount = 0;
+		int crossModuleReconstructedCount = 0;
 		List<AngelscriptSkippedFunctionEntry> skippedEntries = new();
+		AngelscriptSupportedModules supportedModules = AngelscriptFunctionTableCodeGenerator.LoadSupportedModules(factory);
 		int generatedFileCount = AngelscriptFunctionTableCodeGenerator.Generate(factory);
 
 		foreach (UhtModule module in factory.Session.Modules)
 		{
 			packageCount++;
-			CountAngelscriptCallableFunctions(module.ShortName, module.ScriptPackage, skippedEntries, ref classCount, ref functionCount, ref reconstructedCount, ref skippedCount);
+			CountAngelscriptCallableFunctions(module.ShortName, module.ScriptPackage, supportedModules, skippedEntries, ref classCount, ref functionCount, ref reconstructedCount, ref crossModuleReconstructedCount, ref skippedCount);
 		}
 
 		WriteSkippedEntriesCsv(factory, skippedEntries);
 		WriteSkippedReasonSummaryCsv(factory, skippedEntries);
 
 		Console.WriteLine(
-			"AngelscriptUHTTool exporter visited {0} packages, {1} classes, {2} AS-callable functions, reconstructed {3}, skipped {4}, wrote {5} module files.",
+			"AngelscriptUHTTool exporter visited {0} packages, {1} classes, {2} AS-callable functions, reconstructed {3}, reconstructed cross-module {4}, skipped {5}, wrote {6} module files.",
 			packageCount,
 			classCount,
 			functionCount,
 			reconstructedCount,
+			crossModuleReconstructedCount,
 			skippedCount,
 			generatedFileCount);
 	}
@@ -63,7 +67,7 @@ internal static class AngelscriptFunctionTableExporter
 			function.MetaData.ContainsKey("ScriptCallable"));
 	}
 
-	private static void CountAngelscriptCallableFunctions(string moduleName, UhtType type, List<AngelscriptSkippedFunctionEntry> skippedEntries, ref int classCount, ref int functionCount, ref int reconstructedCount, ref int skippedCount)
+	private static void CountAngelscriptCallableFunctions(string moduleName, UhtType type, AngelscriptSupportedModules supportedModules, List<AngelscriptSkippedFunctionEntry> skippedEntries, ref int classCount, ref int functionCount, ref int reconstructedCount, ref int crossModuleReconstructedCount, ref int skippedCount)
 	{
 		if (type is UhtClass classObj)
 		{
@@ -73,10 +77,37 @@ internal static class AngelscriptFunctionTableExporter
 				if (child is UhtFunction function && IsAngelscriptCallable(function))
 				{
 					functionCount++;
+					if (IsRpcNetFunction(function))
+					{
+						skippedCount++;
+						skippedEntries.Add(new AngelscriptSkippedFunctionEntry(
+							moduleName,
+							classObj.SourceName,
+							function.SourceName,
+							"rpc-net-function"));
+						continue;
+					}
+
 					if (AngelscriptFunctionSignatureBuilder.TryBuild(classObj, function, out AngelscriptFunctionSignature? signature, out string? failureReason))
 					{
 						_ = signature!.BuildEraseMacro();
 						reconstructedCount++;
+					}
+					else if (TryClassifyCrossModuleOutcome(moduleName, supportedModules, classObj, function, failureReason, out string? crossModuleFailureReason))
+					{
+						if (crossModuleFailureReason == null)
+						{
+							crossModuleReconstructedCount++;
+						}
+						else
+						{
+							skippedCount++;
+							skippedEntries.Add(new AngelscriptSkippedFunctionEntry(
+								moduleName,
+								classObj.SourceName,
+								function.SourceName,
+								crossModuleFailureReason));
+						}
 					}
 					else
 					{
@@ -93,8 +124,45 @@ internal static class AngelscriptFunctionTableExporter
 
 		foreach (UhtType child in type.Children)
 		{
-			CountAngelscriptCallableFunctions(moduleName, child, skippedEntries, ref classCount, ref functionCount, ref reconstructedCount, ref skippedCount);
+			CountAngelscriptCallableFunctions(moduleName, child, supportedModules, skippedEntries, ref classCount, ref functionCount, ref reconstructedCount, ref crossModuleReconstructedCount, ref skippedCount);
 		}
+	}
+
+	private static bool TryClassifyCrossModuleOutcome(string moduleName, AngelscriptSupportedModules supportedModules, UhtClass classObj, UhtFunction function, string? directFailureReason, out string? skippedReason)
+	{
+		skippedReason = null;
+		if (!string.Equals(directFailureReason, "unexported-symbol", StringComparison.Ordinal))
+		{
+			return false;
+		}
+
+		if (!supportedModules.All.Contains(moduleName))
+		{
+			skippedReason = "target-module-disabled";
+			return true;
+		}
+
+		if (IsRpcNetFunction(function))
+		{
+			skippedReason = "rpc-net-function";
+			return true;
+		}
+
+		if (!AngelscriptFunctionTableCodeGenerator.TryClassifyCrossModuleOutcome(classObj, function, out _, out skippedReason))
+		{
+			return true;
+		}
+
+		return true;
+	}
+
+	private static bool IsRpcNetFunction(UhtFunction function)
+	{
+		return function.FunctionFlags.HasAnyFlags(
+			EFunctionFlags.Net |
+			EFunctionFlags.NetServer |
+			EFunctionFlags.NetClient |
+			EFunctionFlags.NetMulticast);
 	}
 
 	private static void WriteSkippedEntriesCsv(IUhtExportFactory factory, List<AngelscriptSkippedFunctionEntry> skippedEntries)
