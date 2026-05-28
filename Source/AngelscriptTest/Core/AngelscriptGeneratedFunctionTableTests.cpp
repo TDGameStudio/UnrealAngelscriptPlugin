@@ -384,6 +384,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 			return;
 		}
 
+		int32 TotalCrossModuleEntries = 0;
+		if (!TestRunner->TestTrue(TEXT("Generated function table summary test should expose totalCrossModuleEntries"), SummaryObject->TryGetNumberField(TEXT("totalCrossModuleEntries"), TotalCrossModuleEntries)))
+		{
+			return;
+		}
+
 		double DirectBindRate = 0.0;
 		if (!TestRunner->TestTrue(TEXT("Generated function table summary test should expose directBindRate"), SummaryObject->TryGetNumberField(TEXT("directBindRate"), DirectBindRate)))
 		{
@@ -396,24 +402,30 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 			return;
 		}
 
+		double CrossModuleRate = 0.0;
+		if (!TestRunner->TestTrue(TEXT("Generated function table summary test should expose crossModuleRate"), SummaryObject->TryGetNumberField(TEXT("crossModuleRate"), CrossModuleRate)))
+		{
+			return;
+		}
+
 		const int32 CountedRegistrations = CountGeneratedBindingRegistrations(GeneratedDirectory);
 		if (!TestRunner->TestTrue(TEXT("Generated function table summary test should count generated registration lines from UHT output"), CountedRegistrations > 0))
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Generated function table summary test should match the generated binding registration count"), TotalGeneratedEntries, CountedRegistrations);
-
-		if (!TestRunner->TestEqual(TEXT("Generated function table summary test should keep direct and stub totals aligned with totalGeneratedEntries"), TotalGeneratedEntries, TotalDirectBindEntries + TotalStubEntries))
+		if (!TestRunner->TestEqual(TEXT("Generated function table summary test should keep direct, stub, and cross-module totals aligned with totalGeneratedEntries"), TotalGeneratedEntries, TotalDirectBindEntries + TotalStubEntries + TotalCrossModuleEntries))
 		{
 			return;
 		}
 
 		const double ExpectedDirectBindRate = TotalGeneratedEntries > 0 ? static_cast<double>(TotalDirectBindEntries) / static_cast<double>(TotalGeneratedEntries) : 0.0;
 		const double ExpectedStubRate = TotalGeneratedEntries > 0 ? static_cast<double>(TotalStubEntries) / static_cast<double>(TotalGeneratedEntries) : 0.0;
+		const double ExpectedCrossModuleRate = TotalGeneratedEntries > 0 ? static_cast<double>(TotalCrossModuleEntries) / static_cast<double>(TotalGeneratedEntries) : 0.0;
 		TestRunner->TestTrue(TEXT("Generated function table summary test should keep directBindRate aligned with entry counts"), FMath::Abs(DirectBindRate - ExpectedDirectBindRate) < 1.e-9);
 		TestRunner->TestTrue(TEXT("Generated function table summary test should keep stubRate aligned with entry counts"), FMath::Abs(StubRate - ExpectedStubRate) < 1.e-9);
-		TestRunner->TestTrue(TEXT("Generated function table summary test should keep directBindRate and stubRate normalized"), FMath::Abs((DirectBindRate + StubRate) - 1.0) < 1.e-9);
+		TestRunner->TestTrue(TEXT("Generated function table summary test should keep crossModuleRate aligned with entry counts"), FMath::Abs(CrossModuleRate - ExpectedCrossModuleRate) < 1.e-9);
+		TestRunner->TestTrue(TEXT("Generated function table summary test should keep directBindRate, stubRate, and crossModuleRate normalized"), FMath::Abs((DirectBindRate + StubRate + CrossModuleRate) - 1.0) < 1.e-9);
 
 		const TArray<TSharedPtr<FJsonValue>>* Modules = nullptr;
 		if (!TestRunner->TestTrue(TEXT("Generated function table summary test should expose per-module summaries"), SummaryObject->TryGetArrayField(TEXT("modules"), Modules) && Modules != nullptr))
@@ -422,6 +434,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 		}
 
 		int32 SummedModuleEntries = 0;
+		int32 RuntimeShardEntries = 0;
 		for (const TSharedPtr<FJsonValue>& ModuleValue : *Modules)
 		{
 			const TSharedPtr<FJsonObject>* ModuleObject = nullptr;
@@ -430,8 +443,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 				int32 ModuleEntries = 0;
 				int32 ModuleDirectBindEntries = 0;
 				int32 ModuleStubEntries = 0;
+				int32 ModuleCrossModuleEntries = 0;
 				double ModuleDirectBindRate = 0.0;
 				double ModuleStubRate = 0.0;
+				double ModuleCrossModuleRate = 0.0;
 				if ((*ModuleObject)->TryGetNumberField(TEXT("totalEntries"), ModuleEntries))
 				{
 					SummedModuleEntries += ModuleEntries;
@@ -447,6 +462,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 					return;
 				}
 
+				if (!TestRunner->TestTrue(TEXT("Generated function table summary test should expose per-module crossModuleEntries"), (*ModuleObject)->TryGetNumberField(TEXT("crossModuleEntries"), ModuleCrossModuleEntries)))
+				{
+					return;
+				}
+
 				if (!TestRunner->TestTrue(TEXT("Generated function table summary test should expose per-module directBindRate"), (*ModuleObject)->TryGetNumberField(TEXT("directBindRate"), ModuleDirectBindRate)))
 				{
 					return;
@@ -457,13 +477,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 					return;
 				}
 
-				if (!TestRunner->TestEqual(TEXT("Generated function table summary test should keep module totals aligned"), ModuleEntries, ModuleDirectBindEntries + ModuleStubEntries))
+				if (!TestRunner->TestTrue(TEXT("Generated function table summary test should expose per-module crossModuleRate"), (*ModuleObject)->TryGetNumberField(TEXT("crossModuleRate"), ModuleCrossModuleRate)))
 				{
 					return;
 				}
 
+				if (!TestRunner->TestEqual(TEXT("Generated function table summary test should keep module totals aligned"), ModuleEntries, ModuleDirectBindEntries + ModuleStubEntries + ModuleCrossModuleEntries))
+				{
+					return;
+				}
+				if (ModuleDirectBindEntries > 0 || ModuleStubEntries > 0)
+				{
+					RuntimeShardEntries += ModuleEntries;
+				}
+
 				const double ExpectedModuleDirectRate = ModuleEntries > 0 ? static_cast<double>(ModuleDirectBindEntries) / static_cast<double>(ModuleEntries) : 0.0;
 				const double ExpectedModuleStubRate = ModuleEntries > 0 ? static_cast<double>(ModuleStubEntries) / static_cast<double>(ModuleEntries) : 0.0;
+				const double ExpectedModuleCrossModuleRate = ModuleEntries > 0 ? static_cast<double>(ModuleCrossModuleEntries) / static_cast<double>(ModuleEntries) : 0.0;
 				if (!TestRunner->TestTrue(TEXT("Generated function table summary test should keep module directBindRate aligned with entry counts"), FMath::Abs(ModuleDirectBindRate - ExpectedModuleDirectRate) < 1.e-9))
 				{
 					return;
@@ -473,9 +503,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 				{
 					return;
 				}
+
+				if (!TestRunner->TestTrue(TEXT("Generated function table summary test should keep module crossModuleRate aligned with entry counts"), FMath::Abs(ModuleCrossModuleRate - ExpectedModuleCrossModuleRate) < 1.e-9))
+				{
+					return;
+				}
 			}
 		}
 
+		TestRunner->TestEqual(TEXT("Generated function table summary test should match runtime shard registration count"), RuntimeShardEntries, CountedRegistrations);
 		TestRunner->TestEqual(TEXT("Generated function table summary test should keep totalGeneratedEntries equal to the sum of module totals"), TotalGeneratedEntries, SummedModuleEntries);
 	}
 
@@ -509,6 +545,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 			return;
 		}
 
+		int32 TotalDirectBindEntries = 0;
+		if (!TestRunner->TestTrue(TEXT("Generated function table csv test should expose totalDirectBindEntries"), SummaryObject->TryGetNumberField(TEXT("totalDirectBindEntries"), TotalDirectBindEntries)))
+		{
+			return;
+		}
+
+		int32 TotalStubEntries = 0;
+		if (!TestRunner->TestTrue(TEXT("Generated function table csv test should expose totalStubEntries"), SummaryObject->TryGetNumberField(TEXT("totalStubEntries"), TotalStubEntries)))
+		{
+			return;
+		}
+
+		int32 TotalCrossModuleEntries = 0;
+		if (!TestRunner->TestTrue(TEXT("Generated function table csv test should expose totalCrossModuleEntries"), SummaryObject->TryGetNumberField(TEXT("totalCrossModuleEntries"), TotalCrossModuleEntries)))
+		{
+			return;
+		}
+
 		const TArray<TSharedPtr<FJsonValue>>* Modules = nullptr;
 		if (!TestRunner->TestTrue(TEXT("Generated function table csv test should expose per-module summaries"), SummaryObject->TryGetArrayField(TEXT("modules"), Modules) && Modules != nullptr))
 		{
@@ -522,7 +576,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 		}
 
 		TestRunner->TestEqual(TEXT("Generated function table csv test should keep one module csv row per module summary"), ModuleLines.Num() - 1, Modules->Num());
-		TestRunner->TestEqual(TEXT("Generated function table csv test should write the expected module csv header"), ModuleLines[0], TEXT("ModuleName,EditorOnly,TotalEntries,DirectBindEntries,StubEntries,DirectBindRate,StubRate,ShardCount"));
+		TestRunner->TestEqual(TEXT("Generated function table csv test should write the expected module csv header"), ModuleLines[0], TEXT("ModuleName,EditorOnly,TotalEntries,DirectBindEntries,StubEntries,CrossModuleEntries,DirectBindRate,StubRate,CrossModuleRate,ShardCount"));
 
 		const TArray<FString> EntryLines = LoadNonEmptyFileLines(EntryCsvPath);
 		if (!TestRunner->TestTrue(TEXT("Generated function table csv test should write the entry detail csv"), EntryLines.Num() > 0))
@@ -531,7 +585,31 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 		}
 
 		TestRunner->TestEqual(TEXT("Generated function table csv test should keep one entry csv row per generated binding entry"), EntryLines.Num() - 1, TotalGeneratedEntries);
-		TestRunner->TestEqual(TEXT("Generated function table csv test should write the expected entry csv header"), EntryLines[0], TEXT("ModuleName,EditorOnly,ClassName,FunctionName,EntryKind,EraseMacro,ShardIndex"));
+		TestRunner->TestEqual(TEXT("Generated function table csv test should write the expected entry csv header"), EntryLines[0], TEXT("ModuleName,EditorOnly,ClassName,FunctionName,EntryKind,EraseMacro,ShardIndex,ThunkStyle"));
+
+		int32 DirectCsvEntries = 0;
+		int32 StubCsvEntries = 0;
+		int32 CrossModuleCsvEntries = 0;
+		for (int32 LineIndex = 1; LineIndex < EntryLines.Num(); ++LineIndex)
+		{
+			const FString& EntryLine = EntryLines[LineIndex];
+			if (EntryLine.Contains(TEXT(",Direct,")))
+			{
+				DirectCsvEntries++;
+			}
+			else if (EntryLine.Contains(TEXT(",Stub,")))
+			{
+				StubCsvEntries++;
+			}
+			else if (EntryLine.Contains(TEXT(",CrossModule,")))
+			{
+				CrossModuleCsvEntries++;
+			}
+		}
+
+		TestRunner->TestEqual(TEXT("Generated function table csv test should keep direct entry rows aligned with the summary"), DirectCsvEntries, TotalDirectBindEntries);
+		TestRunner->TestEqual(TEXT("Generated function table csv test should keep stub entry rows aligned with the summary"), StubCsvEntries, TotalStubEntries);
+		TestRunner->TestEqual(TEXT("Generated function table csv test should keep cross-module entry rows aligned with the summary"), CrossModuleCsvEntries, TotalCrossModuleEntries);
 
 		FString RunBehaviorTreeCsvLine;
 		if (!TestRunner->TestTrue(TEXT("Generated function table csv test should include RunBehaviorTree in the entry csv"), FindGeneratedBindingLine(GeneratedDirectory, TEXT("\"RunBehaviorTree\""), RunBehaviorTreeCsvLine)))
