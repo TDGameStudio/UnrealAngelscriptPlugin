@@ -106,6 +106,69 @@ internal static class AngelscriptHeaderSignatureResolver
 		return false;
 	}
 
+	public static bool TryBuildCrossModule(UhtClass classObj, UhtFunction function, out AngelscriptFunctionSignature? signature, out string? failureReason)
+	{
+		signature = null;
+
+		if (classObj.HeaderFile == null || string.IsNullOrEmpty(classObj.HeaderFile.FilePath) || !File.Exists(classObj.HeaderFile.FilePath))
+		{
+			failureReason = "header-missing";
+			return false;
+		}
+
+		string header = GetSanitizedHeader(classObj.HeaderFile.FilePath);
+		if (!TryFindClassBody(header, classObj.SourceName, out int classBodyStart, out int classBodyEnd, out _))
+		{
+			failureReason = "class-range";
+			return false;
+		}
+
+		List<CandidateDeclaration> candidates = FindCandidates(header, classBodyStart, classBodyEnd, function.SourceName);
+		if (candidates.Count == 0)
+		{
+			failureReason = "declaration-missing";
+			return false;
+		}
+
+		List<CandidateDeclaration> publicCandidates = candidates.FindAll(static candidate => candidate.IsPublic);
+		if (publicCandidates.Count == 0)
+		{
+			failureReason = "non-public";
+			return false;
+		}
+
+		List<string> expectedParameterTypes = BuildExpectedParameterTypes(function);
+		string expectedReturnType = function.ReturnProperty is UhtProperty returnProperty
+			? BuildExpectedReturnType(returnProperty)
+			: "void";
+
+		List<AngelscriptFunctionSignature> exactMatches = new();
+		foreach (CandidateDeclaration candidate in publicCandidates)
+		{
+			if (!TryParseDeclaration(classObj, function, candidate.Declaration, true, out AngelscriptFunctionSignature? parsedSignature, out _))
+			{
+				continue;
+			}
+
+			if (parsedSignature!.ParameterTypes.Count == expectedParameterTypes.Count &&
+				AreTypesEquivalent(expectedParameterTypes, parsedSignature.ParameterTypes) &&
+				NormalizeTypeText(expectedReturnType) == NormalizeTypeText(parsedSignature.ReturnType))
+			{
+				exactMatches.Add(parsedSignature);
+			}
+		}
+
+		if (exactMatches.Count == 1)
+		{
+			signature = exactMatches[0];
+			failureReason = null;
+			return true;
+		}
+
+		failureReason = exactMatches.Count > 1 ? "overloaded-ambiguous" : "cross-module-signature-unresolved";
+		return false;
+	}
+
 	private static bool HasLinkableExport(UhtClass classObj, string classDeclaration, string declaration)
 	{
 		if (classObj.HeaderFile?.Module?.ShortName.Equals("AngelscriptRuntime", StringComparison.OrdinalIgnoreCase) == true)
