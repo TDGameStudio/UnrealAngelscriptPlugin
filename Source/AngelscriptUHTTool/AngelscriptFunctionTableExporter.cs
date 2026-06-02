@@ -153,6 +153,21 @@ internal static class AngelscriptFunctionTableExporter
 			return true;
 		}
 
+		if (!supportedModules.CrossModuleGenerationEnabled)
+		{
+			if (AngelscriptFunctionTableCodeGenerator.TryClassifyCrossModuleOutcome(classObj, function, out _, out string? disabledReason))
+			{
+				skippedReason = "cross-module-generation-disabled";
+			}
+			else
+			{
+				skippedReason = string.IsNullOrEmpty(disabledReason)
+					? "cross-module-generation-disabled"
+					: $"disabled-{disabledReason}";
+			}
+			return true;
+		}
+
 		if (IsRpcNetFunction(function))
 		{
 			skippedReason = "rpc-net-function";

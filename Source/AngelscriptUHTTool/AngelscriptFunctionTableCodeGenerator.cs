@@ -44,6 +44,7 @@ internal sealed record AngelscriptSupportedModules(
 	HashSet<string> RuntimeLinked,
 	HashSet<string> CrossModuleOnly,
 	HashSet<string> EditorOnly,
+	bool CrossModuleGenerationEnabled,
 	string CrossModuleGenerationProfile,
 	string CrossModuleGenerationConfigPath,
 	HashSet<string> CrossModuleConfigured);
@@ -51,6 +52,7 @@ internal sealed record AngelscriptSupportedModules(
 internal sealed class AngelscriptCrossModuleGenerationConfig
 {
 	public int Version { get; init; }
+	public bool Enabled { get; init; }
 	public AngelscriptCrossModuleGenerationProfiles Profiles { get; init; } = new();
 }
 
@@ -62,6 +64,7 @@ internal sealed class AngelscriptCrossModuleGenerationProfiles
 }
 
 internal sealed record AngelscriptCrossModuleGenerationSelection(
+	bool Enabled,
 	string Profile,
 	string ConfigPath,
 	HashSet<string> ConfiguredModules,
@@ -103,7 +106,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 		List<AngelscriptGeneratedFunctionCsvEntry> csvEntries = new();
 		HashSet<string> effectiveCrossModuleOnlyModules = new(StringComparer.OrdinalIgnoreCase);
 
-		if (TryEmitCrossModuleLinkProbe(factory, generatedPaths, layoutVersion))
+		if (supportedModules.CrossModuleGenerationEnabled && TryEmitCrossModuleLinkProbe(factory, generatedPaths, layoutVersion))
 		{
 			generatedFileCount++;
 		}
@@ -129,6 +132,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 				module,
 				supportedModules.EditorOnly.Contains(module.ShortName),
 				runtimeLinked,
+				supportedModules.CrossModuleGenerationEnabled,
 				layoutVersion,
 				generatedPaths,
 				csvEntries);
@@ -293,13 +297,13 @@ internal static class AngelscriptFunctionTableCodeGenerator
 		return builder.ToString();
 	}
 
-	private static AngelscriptModuleGenerationSummary? GenerateModule(IUhtExportFactory factory, UhtModule module, bool editorOnly, bool emitRuntimeShard, string layoutVersion, HashSet<string> generatedPaths, List<AngelscriptGeneratedFunctionCsvEntry> csvEntries)
+	private static AngelscriptModuleGenerationSummary? GenerateModule(IUhtExportFactory factory, UhtModule module, bool editorOnly, bool emitRuntimeShard, bool allowCrossModuleGeneration, string layoutVersion, HashSet<string> generatedPaths, List<AngelscriptGeneratedFunctionCsvEntry> csvEntries)
 	{
 		SortedSet<string> includes = new(StringComparer.Ordinal);
 		List<AngelscriptGeneratedFunctionEntry> entries = new();
 		List<AngelscriptCrossModuleFunctionEntry> crossModuleEntries = new();
 
-		CollectEntries(factory, module.ScriptPackage, module.ShortName, emitRuntimeShard, includes, entries, crossModuleEntries);
+		CollectEntries(factory, module.ScriptPackage, module.ShortName, emitRuntimeShard, allowCrossModuleGeneration, includes, entries, crossModuleEntries);
 		if (entries.Count == 0 && crossModuleEntries.Count == 0)
 		{
 			return null;
@@ -459,6 +463,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 				crossModuleRate,
 				totalShardCount = generatedFileCount,
 				moduleCount = moduleSummaries.Count,
+				crossModuleGenerationEnabled = supportedModules.CrossModuleGenerationEnabled,
 				crossModuleGenerationProfile = supportedModules.CrossModuleGenerationProfile,
 				crossModuleGenerationConfigPath = supportedModules.CrossModuleGenerationConfigPath,
 				crossModuleConfiguredModules = supportedModules.CrossModuleConfigured
@@ -970,6 +975,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 			runtimeLinkedModules,
 			crossModuleSelection.CrossModuleOnlyModules,
 			editorOnlyModules,
+			crossModuleSelection.Enabled,
 			crossModuleSelection.Profile,
 			crossModuleSelection.ConfigPath,
 			crossModuleSelection.ConfiguredModules);
@@ -987,6 +993,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 			factory.AddExternalDependency(candidate);
 			AngelscriptCrossModuleGenerationConfig config = LoadCrossModuleGenerationConfig(candidate);
 			string profile = ResolveCrossModuleGenerationProfile(factory);
+			bool enabled = config.Enabled;
 			HashSet<string> configuredModules = new(StringComparer.OrdinalIgnoreCase);
 			AddConfiguredModules(configuredModules, config.Profiles.Common, candidate, "common");
 			AddConfiguredModules(
@@ -996,22 +1003,26 @@ internal static class AngelscriptFunctionTableCodeGenerator
 				profile);
 
 			HashSet<string> crossModuleOnlyModules = new(StringComparer.OrdinalIgnoreCase);
-			foreach (string moduleName in configuredModules)
+			if (enabled)
 			{
-				if (!runtimeLinkedModules.Contains(moduleName))
+				foreach (string moduleName in configuredModules)
 				{
-					crossModuleOnlyModules.Add(moduleName);
+					if (!runtimeLinkedModules.Contains(moduleName))
+					{
+						crossModuleOnlyModules.Add(moduleName);
+					}
 				}
 			}
 
 			Console.WriteLine(
-				"AngelscriptUHTTool cross-module generation profile '{0}' loaded from {1}: configured={2}, effective={3}",
+				"AngelscriptUHTTool cross-module generation profile '{0}' loaded from {1}: enabled={2}, configured={3}, effective={4}",
 				profile,
 				candidate,
+				enabled,
 				configuredModules.Count,
 				crossModuleOnlyModules.Count);
 
-			return new AngelscriptCrossModuleGenerationSelection(profile, candidate, configuredModules, crossModuleOnlyModules);
+			return new AngelscriptCrossModuleGenerationSelection(enabled, profile, candidate, configuredModules, crossModuleOnlyModules);
 		}
 
 		throw new FileNotFoundException($"Unable to locate {CrossModuleGenerationModulesFileName} for cross-module generation profiles.");
@@ -1227,7 +1238,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 		}
 	}
 
-	private static void CollectEntries(IUhtExportFactory factory, UhtType type, string moduleShortName, bool emitRuntimeShard, SortedSet<string> includes, List<AngelscriptGeneratedFunctionEntry> entries, List<AngelscriptCrossModuleFunctionEntry> crossModuleEntries)
+	private static void CollectEntries(IUhtExportFactory factory, UhtType type, string moduleShortName, bool emitRuntimeShard, bool allowCrossModuleGeneration, SortedSet<string> includes, List<AngelscriptGeneratedFunctionEntry> entries, List<AngelscriptCrossModuleFunctionEntry> crossModuleEntries)
 	{
 		if (type is UhtClass classObj)
 		{
@@ -1255,7 +1266,8 @@ internal static class AngelscriptFunctionTableCodeGenerator
 					{
 						if (!emitRuntimeShard)
 						{
-							if (TryCreateCrossModuleEntry(factory, moduleShortName, classObj, function, includePath, includes, crossModuleEntries.Count, out AngelscriptCrossModuleFunctionEntry? crossModuleEntry, out _))
+							if (allowCrossModuleGeneration &&
+								TryCreateCrossModuleEntry(factory, moduleShortName, classObj, function, includePath, includes, crossModuleEntries.Count, out AngelscriptCrossModuleFunctionEntry? crossModuleEntry, out _))
 							{
 								crossModuleEntries.Add(crossModuleEntry!);
 								entryKind = "CrossModule";
@@ -1278,6 +1290,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 							thunkStyle = "DirectNative";
 						}
 						else if (failureReason == "unexported-symbol" &&
+							allowCrossModuleGeneration &&
 							TryCreateCrossModuleEntry(factory, moduleShortName, classObj, function, includePath, includes, crossModuleEntries.Count, out AngelscriptCrossModuleFunctionEntry? crossModuleEntry, out _))
 						{
 							crossModuleEntries.Add(crossModuleEntry!);
@@ -1293,7 +1306,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 
 		foreach (UhtType child in type.Children)
 		{
-			CollectEntries(factory, child, moduleShortName, emitRuntimeShard, includes, entries, crossModuleEntries);
+			CollectEntries(factory, child, moduleShortName, emitRuntimeShard, allowCrossModuleGeneration, includes, entries, crossModuleEntries);
 		}
 	}
 

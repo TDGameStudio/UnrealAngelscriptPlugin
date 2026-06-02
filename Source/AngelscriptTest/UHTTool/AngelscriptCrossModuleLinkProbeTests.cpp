@@ -518,36 +518,7 @@ bool FAngelscriptCrossModuleLinkProbeRoundtripTest::RunTest(const FString& Param
 
 	TArray<IModularFeature*> Features = IModularFeatures::Get().GetModularFeatureImplementations<IModularFeature>(
 		FName(TEXT("AngelscriptCrossModuleLinkProbe")));
-	if (!TestTrue(TEXT("Engine module link probe feature should be registered"), Features.Num() > 0))
-	{
-		return false;
-	}
-
-	IModularFeature* Feature = Features[0];
-	if (!TestNotNull(TEXT("Probe feature should be valid"), Feature))
-	{
-		return false;
-	}
-
-	const FProbeFeatureReader* Reader = reinterpret_cast<const FProbeFeatureReader*>(Feature);
-	if (!TestNotNull(TEXT("Probe feature reader should be valid"), Reader))
-	{
-		return false;
-	}
-
-	bool bPassed = true;
-	bPassed &= TestEqual(TEXT("Probe layout version should match"), Reader->LayoutVersion, ProbeLayoutVersion);
-	bPassed &= TestEqual(TEXT("Probe entry count should match"), Reader->Count, 1);
-	bPassed &= TestEqual(TEXT("Probe module name should match"), FString(Reader->ModuleName), FString(TEXT("Engine")));
-	bPassed &= TestNotNull(TEXT("Probe entry table should be valid"), Reader->Entries);
-
-	if (Reader->Entries != nullptr)
-	{
-		bPassed &= TestEqual(TEXT("Probe entry tag should match"), FString(Reader->Entries[0].Tag), FString(TEXT("Engine.Probe")));
-		bPassed &= TestEqual(TEXT("Probe entry magic should match"), Reader->Entries[0].Magic, ProbeLayoutVersion);
-	}
-
-	return bPassed;
+	return TestEqual(TEXT("Engine module link probe feature should not be registered while cross-module generation is disabled by default"), Features.Num(), 0);
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -599,31 +570,26 @@ bool FAngelscriptCrossModuleLayoutVersionSingleSourceTest::RunTest(const FString
 	const FString ExpectedHeaderToken = FormatLayoutVersionToken(FAngelscriptCrossModuleBindings::LayoutVersionExpected);
 	bool bPassed = TestEqual(TEXT("Layout version file should match public header token"), VersionToken, ExpectedHeaderToken);
 
-	FString CrossModuleShardContents;
-	if (!TestTrue(TEXT("Engine cross-module shard should be generated"), LoadEngineCrossModuleShardContents(CrossModuleShardContents)))
+	FString GeneratorContents;
+	if (!TestTrue(TEXT("UHT code generator should be readable"), FFileHelper::LoadFileToString(GeneratorContents, *GetUhtCodeGeneratorPath())))
 	{
 		return false;
 	}
 
-	bPassed &= TestTrue(TEXT("Cross-module shard should embed the shared layout token"), CrossModuleShardContents.Contains(FString::Printf(TEXT("GCrossModuleLayoutVersion = %su"), *VersionToken)));
-	bPassed &= TestTrue(TEXT("Cross-module shard should mirror the frame ABI"), CrossModuleShardContents.Contains(TEXT("struct FCrossModuleCallFrame")));
-	bPassed &= TestTrue(TEXT("Cross-module shard should use frame-based thunk pointers"), CrossModuleShardContents.Contains(TEXT("FCrossModuleCallFrame* Frame")));
-	bPassed &= TestTrue(TEXT("Cross-module shard should read arguments from frame slots"), CrossModuleShardContents.Contains(TEXT("Frame->ArgSlots")));
-	bPassed &= TestTrue(TEXT("Cross-module shard should write returns through the frame return slot"), CrossModuleShardContents.Contains(TEXT("Frame->ReturnSlot")));
-	bPassed &= TestTrue(TEXT("Cross-module shard should assert cross-module call-frame ABI size"), CrossModuleShardContents.Contains(TEXT("static_assert(sizeof(FCrossModuleCallFrame) == 48")));
-	bPassed &= TestTrue(TEXT("Cross-module shard should assert cross-module entry ABI size"), CrossModuleShardContents.Contains(TEXT("static_assert(sizeof(FCrossModuleEntry) == 32")));
-	bPassed &= TestTrue(TEXT("Cross-module shard should assert cross-module feature ABI size"), CrossModuleShardContents.Contains(TEXT("static_assert(sizeof(FCrossModuleFeature) == 32")));
-	bPassed &= TestTrue(TEXT("Cross-module shard should pass the shared layout token into feature registration"), CrossModuleShardContents.Contains(TEXT("GCrossModuleFeature(GCrossModuleTable, UE_ARRAY_COUNT(GCrossModuleTable), TEXT(\"Engine\"), GCrossModuleLayoutVersion)")));
-	bPassed &= TestTrue(TEXT("Cross-module shard should include safe zero-argument return-value thunks when available"), ContainsSafeReturnValueCrossModuleThunk(CrossModuleShardContents));
-	bPassed &= TestTrue(TEXT("Cross-module shard should include argument marshalling helpers for non-zero-argument thunks"), ContainsArgumentMarshallingCrossModuleThunk(CrossModuleShardContents));
-	bPassed &= TestTrue(TEXT("Cross-module shard should contain at least one non-zero-argument direct-bind entry"), ContainsNonZeroArgCrossModuleTableEntry(CrossModuleShardContents));
-	bPassed &= TestTrue(TEXT("Cross-module shard should construct non-trivial return values in the AS return slot"), ContainsNonTrivialReturnConstruction(CrossModuleShardContents));
-	bPassed &= TestFalse(TEXT("Cross-module shard should not include plugin ABI header"), CrossModuleShardContents.Contains(TEXT("AngelscriptCrossModuleBindings.h")));
-	bPassed &= TestFalse(TEXT("Cross-module shard should not include AngelscriptBinds"), CrossModuleShardContents.Contains(TEXT("AngelscriptBinds.h")));
-	bPassed &= TestFalse(TEXT("Cross-module shard should not include angelscript SDK"), CrossModuleShardContents.Contains(TEXT("angelscript.h")));
-	bPassed &= TestFalse(TEXT("Cross-module shard should use IModularFeatures registration, not exported getter link path"), CrossModuleShardContents.Contains(TEXT("Get_AS_Bindings_")));
-	bPassed &= TestFalse(TEXT("Cross-module shard should not use brace aggregate feature init"), CrossModuleShardContents.Contains(TEXT("= { GCrossModuleTable")));
-	bPassed &= TestFalse(TEXT("Cross-module shard should not expose raw Args/Ret thunk signatures"), CrossModuleShardContents.Contains(TEXT("void** Args, void* Ret")));
+	bPassed &= TestTrue(TEXT("Generator should still build cross-module shards when explicitly enabled"), GeneratorContents.Contains(TEXT("BuildCrossModuleShard")));
+	bPassed &= TestTrue(TEXT("Cross-module shard template should embed the shared layout token"), GeneratorContents.Contains(TEXT("GCrossModuleLayoutVersion = {layoutVersion}u")));
+	bPassed &= TestTrue(TEXT("Cross-module shard template should mirror the frame ABI"), GeneratorContents.Contains(TEXT("struct FCrossModuleCallFrame")));
+	bPassed &= TestTrue(TEXT("Cross-module shard template should use frame-based thunk pointers"), GeneratorContents.Contains(TEXT("FCrossModuleCallFrame* Frame")));
+	bPassed &= TestTrue(TEXT("Cross-module shard template should read arguments from frame slots"), GeneratorContents.Contains(TEXT("Frame->ArgSlots")));
+	bPassed &= TestTrue(TEXT("Cross-module shard template should write returns through the frame return slot"), GeneratorContents.Contains(TEXT("Frame->ReturnSlot")));
+	bPassed &= TestTrue(TEXT("Cross-module shard template should assert cross-module call-frame ABI size"), GeneratorContents.Contains(TEXT("static_assert(sizeof(FCrossModuleCallFrame) == 48")));
+	bPassed &= TestTrue(TEXT("Cross-module shard template should assert cross-module entry ABI size"), GeneratorContents.Contains(TEXT("static_assert(sizeof(FCrossModuleEntry) == 32")));
+	bPassed &= TestTrue(TEXT("Cross-module shard template should assert cross-module feature ABI size"), GeneratorContents.Contains(TEXT("static_assert(sizeof(FCrossModuleFeature) == 32")));
+	bPassed &= TestTrue(TEXT("Cross-module shard template should pass the shared layout token into feature registration"), GeneratorContents.Contains(TEXT("GCrossModuleFeature(GCrossModuleTable, UE_ARRAY_COUNT(GCrossModuleTable), TEXT(\\\"")));
+	bPassed &= TestTrue(TEXT("Cross-module shard template should include return-value thunk support"), GeneratorContents.Contains(TEXT("BuildCrossModuleReturn")));
+	bPassed &= TestTrue(TEXT("Cross-module shard template should include argument marshalling helpers"), GeneratorContents.Contains(TEXT("PassCrossModuleArg<")));
+	bPassed &= TestFalse(TEXT("Cross-module shard template should not use exported getter link path"), GeneratorContents.Contains(TEXT("Get_AS_Bindings_")));
+	bPassed &= TestFalse(TEXT("Cross-module shard template should not expose raw Args/Ret thunk signatures"), GeneratorContents.Contains(TEXT("void** Args, void* Ret")));
 	return bPassed;
 }
 
@@ -670,8 +636,8 @@ bool FAngelscriptCrossModuleSkippedStatisticsTest::RunTest(const FString& Parame
 	bPassed &= TestFalse(TEXT("Supported cross-module candidates should no longer be lumped into unexported-symbol"), CsvContainsRowWithPrefix(SummaryContents, TEXT("unexported-symbol,")));
 	bPassed &= TestTrue(TEXT("Entries CSV should expose a thunk style column"), EntriesContents.StartsWith(TEXT("ModuleName,EditorOnly,ClassName,FunctionName,EntryKind,EraseMacro,ShardIndex,ThunkStyle")));
 	const FString DiagnosticOnlyDisabledModule = TEXT("ControlRigEditor");
-	bPassed &= TestTrue(TEXT("Source profile module should emit cross-module entries after profile expansion"), CsvContainsModuleEntryKind(EntriesContents, DiagnosticOnlyDisabledModule, TEXT("CrossModule")));
-	bPassed &= TestFalse(TEXT("Source profile module should not remain diagnostic-only disabled-safe-cross-module"), CsvContainsSkippedReasonForModule(SkippedEntriesContents, DiagnosticOnlyDisabledModule, TEXT("disabled-safe-cross-module")));
+	bPassed &= TestFalse(TEXT("Source profile module should not emit cross-module entries while generation is disabled by default"), CsvContainsModuleEntryKind(EntriesContents, DiagnosticOnlyDisabledModule, TEXT("CrossModule")));
+	bPassed &= TestTrue(TEXT("Source profile module should remain diagnostic-only disabled-safe-cross-module by default"), CsvContainsSkippedReasonForModule(SkippedEntriesContents, DiagnosticOnlyDisabledModule, TEXT("disabled-safe-cross-module")));
 
 	FString RpcModuleName;
 	FString RpcClassName;
@@ -691,16 +657,7 @@ bool FAngelscriptCrossModuleSkippedStatisticsTest::RunTest(const FString& Parame
 	FString CrossModuleName;
 	FString CrossModuleClassName;
 	FString CrossModuleFunctionName;
-	if (TestTrue(TEXT("Generated entries CSV should expose at least one CrossModule entry kind"), TryExtractFirstCrossModuleCsvIdentity(EntriesContents, CrossModuleName, CrossModuleClassName, CrossModuleFunctionName)))
-	{
-		const FString SkippedIdentity = FString::Printf(TEXT("%s,%s,%s,"), *CrossModuleName, *CrossModuleClassName, *CrossModuleFunctionName);
-		bPassed &= TestFalse(TEXT("Generated cross-module entries should not also appear as skipped"), SkippedEntriesContents.Contains(SkippedIdentity));
-		bPassed &= TestTrue(TEXT("CrossModule entries should report frame-wrapper thunk style"), CsvContainsThunkStyleForIdentity(EntriesContents, CrossModuleName, CrossModuleClassName, CrossModuleFunctionName, TEXT("FrameWrapper")));
-	}
-	else
-	{
-		bPassed = false;
-	}
+	bPassed &= TestFalse(TEXT("Generated entries CSV should not expose CrossModule entry kinds while generation is disabled by default"), TryExtractFirstCrossModuleCsvIdentity(EntriesContents, CrossModuleName, CrossModuleClassName, CrossModuleFunctionName));
 
 	return bPassed;
 }
@@ -732,19 +689,10 @@ bool FAngelscriptCrossModuleNoLongerUnexportedSymbolTest::RunTest(const FString&
 		return false;
 	}
 
-	FString CrossModuleName;
-	FString CrossModuleClassName;
-	FString CrossModuleFunctionName;
-	if (!TestTrue(TEXT("Generated entries CSV should expose a cross-module candidate"), TryExtractFirstCrossModuleCsvIdentity(EntriesContents, CrossModuleName, CrossModuleClassName, CrossModuleFunctionName)))
-	{
-		return false;
-	}
-
-	const FString CrossModuleIdentity = FString::Printf(TEXT("%s,%s,%s,"), *CrossModuleName, *CrossModuleClassName, *CrossModuleFunctionName);
 	bool bPassed = true;
 	bPassed &= TestFalse(TEXT("Cross-module candidates should not be summarized as unexported-symbol"), CsvContainsRowWithPrefix(SummaryContents, TEXT("unexported-symbol,")));
-	bPassed &= TestFalse(TEXT("Cross-module candidate should not remain in skipped diagnostics"), SkippedEntriesContents.Contains(CrossModuleIdentity));
-	bPassed &= TestTrue(TEXT("Cross-module candidate should be recorded as EntryKind=CrossModule"), CsvContainsEntryKindForIdentity(EntriesContents, CrossModuleName, CrossModuleClassName, CrossModuleFunctionName, TEXT("CrossModule")));
+	bPassed &= TestFalse(TEXT("Cross-module candidates should not be recorded as EntryKind=CrossModule while generation is disabled by default"), EntriesContents.Contains(TEXT(",CrossModule,")));
+	bPassed &= TestTrue(TEXT("Skipped diagnostics should retain disabled-safe-cross-module candidates by default"), SkippedEntriesContents.Contains(TEXT("disabled-safe-cross-module")));
 	return bPassed;
 }
 
@@ -766,8 +714,8 @@ bool FAngelscriptCrossModuleStaticAssertSizeofConsistencyTest::RunTest(const FSt
 		return false;
 	}
 
-	FString CrossModuleShardContents;
-	if (!TestTrue(TEXT("Engine cross-module shard should be generated"), LoadEngineCrossModuleShardContents(CrossModuleShardContents)))
+	FString GeneratorContents;
+	if (!TestTrue(TEXT("UHT code generator should be readable"), FFileHelper::LoadFileToString(GeneratorContents, *GetUhtCodeGeneratorPath())))
 	{
 		return false;
 	}
@@ -775,9 +723,9 @@ bool FAngelscriptCrossModuleStaticAssertSizeofConsistencyTest::RunTest(const FSt
 	bool bPassed = true;
 	bPassed &= TestTrue(TEXT("Public header should assert cross-module entry ABI size"), HeaderContents.Contains(TEXT("static_assert(sizeof(FAngelscriptCrossModuleEntry) == 32")));
 	bPassed &= TestTrue(TEXT("Public header should assert cross-module reader ABI size"), HeaderContents.Contains(TEXT("static_assert(sizeof(FAngelscriptCrossModuleFeatureReader) == 32")));
-	bPassed &= TestTrue(TEXT("Generated shard should assert cross-module entry ABI size"), CrossModuleShardContents.Contains(TEXT("static_assert(sizeof(FCrossModuleEntry) == 32")));
-	bPassed &= TestTrue(TEXT("Generated shard should assert cross-module feature ABI size"), CrossModuleShardContents.Contains(TEXT("static_assert(sizeof(FCrossModuleFeature) == 32")));
-	bPassed &= TestFalse(TEXT("Generated shard should not use variable-padding bool fields in ABI payload"), CrossModuleShardContents.Contains(TEXT("\t\tbool ")));
+	bPassed &= TestTrue(TEXT("Generated shard template should assert cross-module entry ABI size"), GeneratorContents.Contains(TEXT("static_assert(sizeof(FCrossModuleEntry) == 32")));
+	bPassed &= TestTrue(TEXT("Generated shard template should assert cross-module feature ABI size"), GeneratorContents.Contains(TEXT("static_assert(sizeof(FCrossModuleFeature) == 32")));
+	bPassed &= TestFalse(TEXT("Generated shard template should not use variable-padding bool fields in ABI payload"), GeneratorContents.Contains(TEXT("\\t\\tbool ")));
 	bPassed &= TestFalse(TEXT("Public header should not use variable-padding bool fields in ABI payload"), HeaderContents.Contains(TEXT("\tbool ")));
 	return bPassed;
 }
@@ -848,51 +796,7 @@ bool FAngelscriptCrossModuleAutomaticEntryVisibleTest::RunTest(const FString& Pa
 
 	TArray<IModularFeature*> Features = IModularFeatures::Get().GetModularFeatureImplementations<IModularFeature>(
 		FAngelscriptCrossModuleBindings::FeatureName());
-	if (!TestTrue(TEXT("Cross-module binding features should be registered"), Features.Num() > 0))
-	{
-		return false;
-	}
-
-	bool bObservedBoundEntry = false;
-	bool bPassed = true;
-	for (IModularFeature* Feature : Features)
-	{
-		const FAngelscriptCrossModuleFeatureReader* Reader = reinterpret_cast<const FAngelscriptCrossModuleFeatureReader*>(Feature);
-		if (Reader == nullptr || Reader->LayoutVersion != FAngelscriptCrossModuleBindings::LayoutVersionExpected || Reader->Count <= 0 || Reader->Table == nullptr)
-		{
-			continue;
-		}
-
-		for (int32 EntryIndex = 0; EntryIndex < Reader->Count; ++EntryIndex)
-		{
-			const FAngelscriptCrossModuleEntry& CrossModuleEntry = Reader->Table[EntryIndex];
-			UClass* EntryClass = ResolveCrossModuleClass(CrossModuleEntry, *Reader);
-			if (EntryClass == nullptr)
-			{
-				continue;
-			}
-
-			TMap<FString, FFuncEntry>* FunctionMap = FAngelscriptBinds::GetClassFuncMaps().Find(EntryClass);
-			if (FunctionMap == nullptr)
-			{
-				continue;
-			}
-
-			FFuncEntry* Entry = FunctionMap->Find(CrossModuleEntry.FunctionName);
-			if (Entry == nullptr || Entry->UserData != &CrossModuleEntry)
-			{
-				continue;
-			}
-
-			bObservedBoundEntry = true;
-			bPassed &= TestTrue(TEXT("Automatic cross-module entry should have a bound function pointer"), Entry->FuncPtr.IsBound());
-			bPassed &= TestTrue(TEXT("Automatic cross-module entry should use generic bridge"), Entry->bGenericCall);
-			bPassed &= TestNotNull(TEXT("Automatic cross-module entry should carry user data"), Entry->UserData);
-		}
-	}
-
-	bPassed &= TestTrue(TEXT("At least one automatic cross-module entry should be injected"), bObservedBoundEntry);
-	return bPassed;
+	return TestEqual(TEXT("Automatic cross-module entries should not be injected while generation is disabled by default"), Features.Num(), 0);
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -971,6 +875,7 @@ bool FAngelscriptCrossModuleGenerationProfilesPolicyTest::RunTest(const FString&
 	};
 
 	bool bPassed = true;
+	bPassed &= TestTrue(TEXT("Profile config should default cross-module generation to disabled"), ProfileConfigContents.Contains(TEXT("\"enabled\": false")));
 	bPassed &= TestTrue(TEXT("Profile config should declare common profile"), ProfileConfigContents.Contains(TEXT("\"common\"")));
 	bPassed &= TestTrue(TEXT("Profile config should declare source profile"), ProfileConfigContents.Contains(TEXT("\"source\"")));
 	bPassed &= TestTrue(TEXT("Profile config should declare installed profile"), ProfileConfigContents.Contains(TEXT("\"installed\"")));
@@ -1033,39 +938,97 @@ bool FAngelscriptCrossModuleGenerationProfilesEntriesTest::RunTest(const FString
 		TEXT("EngineCameras")
 	};
 
-	bool bObservedPilotCrossModule = false;
-	bool bObservedSourceProfileCrossModule = false;
 	bool bPassed = true;
-	bPassed &= TestTrue(TEXT("Summary should report source cross-module generation profile"), SummaryContents.Contains(TEXT("\"crossModuleGenerationProfile\": \"source\"")));
+	bPassed &= TestTrue(TEXT("Summary should report selected cross-module generation profile"), SummaryContents.Contains(TEXT("\"crossModuleGenerationProfile\"")));
+	bPassed &= TestTrue(TEXT("Summary should report cross-module generation disabled by default"), SummaryContents.Contains(TEXT("\"crossModuleGenerationEnabled\": false")));
 	bPassed &= TestTrue(TEXT("Summary should report cross-module config path"), SummaryContents.Contains(TEXT("\"crossModuleGenerationConfigPath\"")));
 	bPassed &= TestTrue(TEXT("Summary should report configured cross-module modules"), SummaryContents.Contains(TEXT("\"crossModuleConfiguredModules\"")));
 	bPassed &= TestTrue(TEXT("Summary should report effective cross-module modules"), SummaryContents.Contains(TEXT("\"crossModuleEffectiveModules\"")));
+	bPassed &= TestTrue(TEXT("Summary should report no effective cross-module modules while generation is disabled"), SummaryContents.Contains(TEXT("\"crossModuleEffectiveModules\": []")));
 	for (const FString& PilotModule : PilotModules)
 	{
-		if (CsvContainsModuleEntryKind(EntriesContents, PilotModule, TEXT("CrossModule")))
-		{
-			bObservedPilotCrossModule = true;
-			bPassed &= TestTrue(FString::Printf(TEXT("Pilot module %s cross-module rows should use frame-wrapper thunks"), *PilotModule), CsvContainsModuleThunkStyle(EntriesContents, PilotModule, TEXT("FrameWrapper")));
-			bPassed &= TestFalse(FString::Printf(TEXT("Pilot module %s should not emit DirectNative rows from AngelscriptRuntime"), *PilotModule), CsvContainsModuleThunkStyle(EntriesContents, PilotModule, TEXT("DirectNative")));
-			bPassed &= TestFalse(FString::Printf(TEXT("Pilot module %s should not emit Stub rows from AngelscriptRuntime"), *PilotModule), CsvContainsModuleThunkStyle(EntriesContents, PilotModule, TEXT("Stub")));
-			bPassed &= TestFalse(FString::Printf(TEXT("Pilot module %s realized entries should not remain disabled-safe-cross-module diagnostics"), *PilotModule), CsvContainsSkippedReasonForModule(SkippedEntriesContents, PilotModule, TEXT("disabled-safe-cross-module")));
-		}
+		bPassed &= TestFalse(FString::Printf(TEXT("Pilot module %s should not emit CrossModule rows by default"), *PilotModule), CsvContainsModuleEntryKind(EntriesContents, PilotModule, TEXT("CrossModule")));
+		bPassed &= TestTrue(FString::Printf(TEXT("Pilot module %s should remain diagnostic-only disabled-safe-cross-module by default"), *PilotModule), CsvContainsSkippedReasonForModule(SkippedEntriesContents, PilotModule, TEXT("disabled-safe-cross-module")));
 	}
 
 	for (const FString& SourceProfileModule : SourceProfileModules)
 	{
-		if (CsvContainsModuleEntryKind(EntriesContents, SourceProfileModule, TEXT("CrossModule")))
-		{
-			bObservedSourceProfileCrossModule = true;
-			bPassed &= TestTrue(FString::Printf(TEXT("Source profile module %s cross-module rows should use frame-wrapper thunks"), *SourceProfileModule), CsvContainsModuleThunkStyle(EntriesContents, SourceProfileModule, TEXT("FrameWrapper")));
-			bPassed &= TestFalse(FString::Printf(TEXT("Source profile module %s should not emit DirectNative rows from AngelscriptRuntime"), *SourceProfileModule), CsvContainsModuleThunkStyle(EntriesContents, SourceProfileModule, TEXT("DirectNative")));
-			bPassed &= TestFalse(FString::Printf(TEXT("Source profile module %s should not emit Stub rows from AngelscriptRuntime"), *SourceProfileModule), CsvContainsModuleThunkStyle(EntriesContents, SourceProfileModule, TEXT("Stub")));
-			bPassed &= TestFalse(FString::Printf(TEXT("Source profile module %s realized entries should not remain disabled-safe-cross-module diagnostics"), *SourceProfileModule), CsvContainsSkippedReasonForModule(SkippedEntriesContents, SourceProfileModule, TEXT("disabled-safe-cross-module")));
-		}
+		bPassed &= TestFalse(FString::Printf(TEXT("Source profile module %s should not emit CrossModule rows by default"), *SourceProfileModule), CsvContainsModuleEntryKind(EntriesContents, SourceProfileModule, TEXT("CrossModule")));
+		bPassed &= TestTrue(FString::Printf(TEXT("Source profile module %s should remain diagnostic-only disabled-safe-cross-module by default"), *SourceProfileModule), CsvContainsSkippedReasonForModule(SkippedEntriesContents, SourceProfileModule, TEXT("disabled-safe-cross-module")));
 	}
 
-	bPassed &= TestTrue(TEXT("At least one pilot module should realize cross-module entries"), bObservedPilotCrossModule);
-	bPassed &= TestTrue(TEXT("At least one source profile module should realize cross-module entries"), bObservedSourceProfileCrossModule);
+	return bPassed;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FAngelscriptCrossModuleDefaultOffDiagnosticsTest,
+	"Angelscript.CppTests.UHTToolResolver.CrossModuleDefaultOff.DiagnosticsAndProfileOptIn",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FAngelscriptCrossModuleDefaultOffDiagnosticsTest::RunTest(const FString& Parameters)
+{
+	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+
+	FString ProfileConfigContents;
+	if (!TestTrue(TEXT("Cross-module generation profile config should be readable"), FFileHelper::LoadFileToString(ProfileConfigContents, *GetCrossModuleGenerationModulesFilePath())))
+	{
+		return false;
+	}
+
+	FString SummaryContents;
+	if (!TestTrue(TEXT("Generated summary should be readable"), FFileHelper::LoadFileToString(SummaryContents, *GetGeneratedUhtFilePath(TEXT("AS_FunctionTable_Summary.json")))))
+	{
+		return false;
+	}
+
+	FString GeneratorContents;
+	if (!TestTrue(TEXT("UHT code generator should be readable"), FFileHelper::LoadFileToString(GeneratorContents, *GetUhtCodeGeneratorPath())))
+	{
+		return false;
+	}
+
+	bool bPassed = true;
+	bPassed &= TestTrue(TEXT("Config should declare CrossModule generation disabled by default"), ProfileConfigContents.Contains(TEXT("\"enabled\": false")));
+	bPassed &= TestTrue(TEXT("Config should keep source profile modules for explicit opt-in"), ProfileConfigContents.Contains(TEXT("\"ControlRigEditor\"")));
+	bPassed &= TestTrue(TEXT("Summary should expose disabled CrossModule generation state"), SummaryContents.Contains(TEXT("\"crossModuleGenerationEnabled\": false")));
+	bPassed &= TestTrue(TEXT("Summary should keep selected profile visible"), SummaryContents.Contains(TEXT("\"crossModuleGenerationProfile\"")));
+	bPassed &= TestTrue(TEXT("Summary should keep configured module diagnostics visible"), SummaryContents.Contains(TEXT("\"crossModuleConfiguredModules\"")));
+	bPassed &= TestTrue(TEXT("Summary should report no effective modules by default"), SummaryContents.Contains(TEXT("\"crossModuleEffectiveModules\": []")));
+	bPassed &= TestTrue(TEXT("Generator should model CrossModule generation as an explicit config gate"), GeneratorContents.Contains(TEXT("CrossModuleGenerationEnabled")));
+	return bPassed;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FAngelscriptCrossModuleDefaultOffGeneratedOutputTest,
+	"Angelscript.CppTests.UHTToolResolver.CrossModuleDefaultOff.GeneratedOutputsSuppressed",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FAngelscriptCrossModuleDefaultOffGeneratedOutputTest::RunTest(const FString& Parameters)
+{
+	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+
+	FString EntriesContents;
+	if (!TestTrue(TEXT("Generated entries should be readable"), FFileHelper::LoadFileToString(EntriesContents, *GetGeneratedUhtFilePath(TEXT("AS_FunctionTable_Entries.csv")))))
+	{
+		return false;
+	}
+
+	FString SkippedEntriesContents;
+	if (!TestTrue(TEXT("Skipped entries should be readable"), FFileHelper::LoadFileToString(SkippedEntriesContents, *GetGeneratedUhtFilePath(TEXT("AS_FunctionTable_SkippedEntries.csv")))))
+	{
+		return false;
+	}
+
+	TArray<IModularFeature*> ProbeFeatures = IModularFeatures::Get().GetModularFeatureImplementations<IModularFeature>(
+		FName(TEXT("AngelscriptCrossModuleLinkProbe")));
+	TArray<IModularFeature*> BindingFeatures = IModularFeatures::Get().GetModularFeatureImplementations<IModularFeature>(
+		FAngelscriptCrossModuleBindings::FeatureName());
+
+	bool bPassed = true;
+	bPassed &= TestFalse(TEXT("Entries CSV should not contain CrossModule rows by default"), EntriesContents.Contains(TEXT(",CrossModule,")));
+	bPassed &= TestTrue(TEXT("Skipped diagnostics should retain opt-in opportunities"), SkippedEntriesContents.Contains(TEXT("disabled-safe-cross-module")));
+	bPassed &= TestEqual(TEXT("Engine link probe should not be registered by default"), ProbeFeatures.Num(), 0);
+	bPassed &= TestEqual(TEXT("CrossModule binding features should not be registered by default"), BindingFeatures.Num(), 0);
 	return bPassed;
 }
 
