@@ -60,21 +60,13 @@ int Entry()
 	if (FComponentQueryParams::DefaultComponentQueryParams.ShapeCollisionMask.Bits != FreshParams.ShapeCollisionMask.Bits)
 		return 20;
 
-	FGameplayTag EmptyTagCopy = FGameplayTag::EmptyTag;
-	if (EmptyTagCopy.IsValid())
-		return 30;
-	if (!FGameplayTagContainer::EmptyContainer.IsEmpty())
-		return 40;
-	if (!FGameplayTagQuery::EmptyQuery.IsEmpty())
-		return 50;
-
 	return 1;
 }
 		)"),
 		TEXT("int Entry()"),
 		Result);
 
-	bPassed = TestEqual(TEXT("Global variable compat operations via macro should preserve bound namespace globals and defaults"), Result, 1);
+	bPassed = TestEqual(TEXT("Global variable compat operations via macro should preserve core bound namespace globals and defaults"), Result, 1);
 
 	}
 	return bPassed;

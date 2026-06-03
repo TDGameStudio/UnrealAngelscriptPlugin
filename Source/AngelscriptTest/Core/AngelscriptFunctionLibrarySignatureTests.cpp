@@ -3,7 +3,6 @@
 #include "Binds/Helper_FunctionSignature.h"
 #include "FunctionLibraries/AngelscriptFrameTimeMixinLibrary.h"
 #include "FunctionLibraries/AngelscriptMathLibrary.h"
-#include "FunctionLibraries/GameplayTagQueryMixinLibrary.h"
 #include "FunctionLibraries/SubsystemLibrary.h"
 #include "FunctionLibraries/WidgetBlueprintStatics.h"
 #include "AngelscriptTestUtilities.h"
@@ -630,16 +629,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 				nullptr,
 				TEXT("WorldContextObject"),
 				false
-			},
-			{
-				UGameplayTagQueryMixinLibrary::StaticClass(),
-				TEXT("Matches"),
-				TEXT("FGameplayTagQuery"),
-				1,
-				TEXT("Matches"),
-				TEXT("FGameplayTagContainer"),
-				nullptr,
-				true
 			}
 		};
 

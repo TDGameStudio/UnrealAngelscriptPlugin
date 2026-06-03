@@ -93,6 +93,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 
 		FAngelscriptEngineScope EngineScope(*Engine);
 		FRecordingEngineExtension Extension;
+		const int32 BaselineExtensionCount = FAngelscriptEngineExtensionRegistry::Get().NumExtensions();
 
 		FAngelscriptEngineExtensionRegistry::Get().ReplayCurrentEngine();
 
@@ -105,9 +106,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 			Extension.DetachCount,
 			0);
 		TestRunner->TestEqual(
-			TEXT("Extension registry no-op test should stay empty when the registry is unused"),
+			TEXT("Extension registry no-op test should not add extensions when replay is requested"),
 			FAngelscriptEngineExtensionRegistry::Get().NumExtensions(),
-			0);
+			BaselineExtensionCount);
 	}
 
 	TEST_METHOD(LateRegistrationReplaysToCurrentEngine)
@@ -139,6 +140,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 
 		FAngelscriptEngineScope EngineScope(*Engine);
 		TSharedRef<FRecordingEngineExtension> Extension = MakeShared<FRecordingEngineExtension>();
+		const int32 BaselineExtensionCount = FAngelscriptEngineExtensionRegistry::Get().NumExtensions();
 
 		const FDelegateHandle Handle = FAngelscriptEngineExtensionRegistry::Get().RegisterExtension(Extension);
 		if (!TestRunner->TestTrue(TEXT("Extension registry late-registration test should return a valid handle"), Handle.IsValid()))
@@ -161,9 +163,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 
 		FAngelscriptEngineExtensionRegistry::Get().UnregisterExtension(Handle);
 		TestRunner->TestEqual(
-			TEXT("Extension registry late-registration test should keep the registry empty after unregister"),
+			TEXT("Extension registry late-registration test should restore the baseline registry count after unregister"),
 			FAngelscriptEngineExtensionRegistry::Get().NumExtensions(),
-			0);
+			BaselineExtensionCount);
 	}
 
 	TEST_METHOD(UnregisterStopsFutureReplay)

@@ -31,7 +31,6 @@ namespace UnrealBuildTool.Rules
 			PrivateDependencyModuleNames.AddRange(new string[]
 			{
 				"Projects",
-				"GameplayTags",
 				"Settings",
 				"LevelEditor",
 				"PlacementMode",

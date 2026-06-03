@@ -6,7 +6,6 @@
 #include "IContentBrowserDataModule.h"
 #include "ContentBrowserDataSubsystem.h"
 #include "Delegates/IDelegateInstance.h"
-#include "GameplayTagsModule.h"
 #include "IDirectoryWatcher.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
@@ -25,11 +24,6 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FAngelscriptEditorModuleOnEngineInitDoneDataSourceTest,
 	"Angelscript.TestModule.Editor.Module.OnEngineInitDoneActivatesAngelscriptDataSourceOnce",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorModuleReloadTagsDelegatesLifecycleTest,
-	"Angelscript.Editor.Module.ReloadTagsDelegatesRegisterOnceAndUnbindOnShutdown",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleLifecycleTests_Private
@@ -345,106 +339,6 @@ bool FAngelscriptEditorModuleOnEngineInitDoneDataSourceTest::RunTest(const FStri
 	}
 
 	return true;
-}
-
-bool FAngelscriptEditorModuleReloadTagsDelegatesLifecycleTest::RunTest(const FString& Parameters)
-{
-	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleLifecycleTests_Private;
-	FMockDirectoryWatcher DirectoryWatcher;
-	FAngelscriptEditorModule Module;
-	bool bModuleStarted = false;
-	int32 ReloadCallCount = 0;
-
-	FAngelscriptEditorModuleTestAccess::SetDirectoryWatcherResolver([&DirectoryWatcher]()
-	{
-		return &DirectoryWatcher;
-	});
-	FAngelscriptEditorModuleTestAccess::SetReloadGameplayTagsOverride([&ReloadCallCount, &Module](FAngelscriptEditorModule* ReloadingModule)
-	{
-		if (ReloadingModule == &Module)
-		{
-			++ReloadCallCount;
-		}
-	});
-
-	ON_SCOPE_EXIT
-	{
-		if (bModuleStarted)
-		{
-			Module.ShutdownModule();
-		}
-
-		FAngelscriptEditorModuleTestAccess::ResetReloadGameplayTagsOverride();
-		FAngelscriptEditorModuleTestAccess::ResetDirectoryWatcherResolver();
-	};
-
-	if (!TestFalse(
-			TEXT("Editor.Module.ReloadTagsDelegatesRegisterOnceAndUnbindOnShutdown should start with no tag-settings binding for the module"),
-			IGameplayTagsModule::OnTagSettingsChanged.IsBoundToObject(&Module))
-		|| !TestFalse(
-			TEXT("Editor.Module.ReloadTagsDelegatesRegisterOnceAndUnbindOnShutdown should start with no tag-tree binding for the module"),
-			IGameplayTagsModule::OnGameplayTagTreeChanged.IsBoundToObject(&Module)))
-	{
-		return false;
-	}
-
-	Module.StartupModule();
-	bModuleStarted = true;
-
-	if (!TestTrue(
-			TEXT("Editor.Module.ReloadTagsDelegatesRegisterOnceAndUnbindOnShutdown should bind the tag-settings delegate during startup"),
-			IGameplayTagsModule::OnTagSettingsChanged.IsBoundToObject(&Module))
-		|| !TestTrue(
-			TEXT("Editor.Module.ReloadTagsDelegatesRegisterOnceAndUnbindOnShutdown should bind the tag-tree delegate during startup"),
-			IGameplayTagsModule::OnGameplayTagTreeChanged.IsBoundToObject(&Module)))
-	{
-		return false;
-	}
-
-	const int32 ReloadCallCountBeforeStartupBroadcasts = ReloadCallCount;
-	IGameplayTagsModule::OnTagSettingsChanged.Broadcast();
-	IGameplayTagsModule::OnGameplayTagTreeChanged.Broadcast();
-	const int32 ReloadDeltaPerBroadcastPair = ReloadCallCount - ReloadCallCountBeforeStartupBroadcasts;
-	if (!TestEqual(
-			TEXT("Editor.Module.ReloadTagsDelegatesRegisterOnceAndUnbindOnShutdown should react to the initial gameplay-tags broadcast pair"),
-			ReloadDeltaPerBroadcastPair > 0,
-			true))
-	{
-		return false;
-	}
-
-	FAngelscriptEditorModuleTestAccess::RegisterGameplayTagDelegates(Module);
-	const int32 ReloadCallCountBeforeReregisterBroadcasts = ReloadCallCount;
-	IGameplayTagsModule::OnTagSettingsChanged.Broadcast();
-	IGameplayTagsModule::OnGameplayTagTreeChanged.Broadcast();
-	if (!TestEqual(
-			TEXT("Editor.Module.ReloadTagsDelegatesRegisterOnceAndUnbindOnShutdown should keep the same reload delta when gameplay-tag delegates are re-registered"),
-			ReloadCallCount - ReloadCallCountBeforeReregisterBroadcasts,
-			ReloadDeltaPerBroadcastPair))
-	{
-		return false;
-	}
-
-	Module.ShutdownModule();
-	bModuleStarted = false;
-
-	if (!TestFalse(
-			TEXT("Editor.Module.ReloadTagsDelegatesRegisterOnceAndUnbindOnShutdown should unbind the tag-settings delegate during shutdown"),
-			IGameplayTagsModule::OnTagSettingsChanged.IsBoundToObject(&Module))
-		|| !TestFalse(
-			TEXT("Editor.Module.ReloadTagsDelegatesRegisterOnceAndUnbindOnShutdown should unbind the tag-tree delegate during shutdown"),
-			IGameplayTagsModule::OnGameplayTagTreeChanged.IsBoundToObject(&Module)))
-	{
-		return false;
-	}
-
-	const int32 ReloadCallCountBeforeShutdownBroadcasts = ReloadCallCount;
-	IGameplayTagsModule::OnTagSettingsChanged.Broadcast();
-	IGameplayTagsModule::OnGameplayTagTreeChanged.Broadcast();
-	return TestEqual(
-		TEXT("Editor.Module.ReloadTagsDelegatesRegisterOnceAndUnbindOnShutdown should stop reloading after shutdown"),
-		ReloadCallCount - ReloadCallCountBeforeShutdownBroadcasts,
-		0);
 }
 
 #endif

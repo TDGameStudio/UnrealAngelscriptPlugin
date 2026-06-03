@@ -96,9 +96,6 @@ private:
 #if WITH_DEV_AUTOMATION_TESTS
 	friend struct FAngelscriptEditorModuleTestAccess;
 #endif
-	void RegisterGameplayTagDelegates();
-	void UnregisterGameplayTagDelegates();
-	void ReloadTags();
 	void RegisterToolsMenuEntries();
 	TArray<TPair<FString, FDelegateHandle>> DirectoryWatchHandles;
 	FDelegateHandle StateDumpExtensionHandle;
@@ -119,15 +116,12 @@ struct FAngelscriptEditorModuleTestAccess
 	static void ResetLiteralAssetSaveTestHooks();
 	static void SetPlatformExecuteOverride(TFunction<bool(const TCHAR*, const TCHAR*, const TCHAR*)> InOverride);
 	static void ResetPlatformExecuteOverride();
-	static void SetReloadGameplayTagsOverride(TFunction<void(FAngelscriptEditorModule*)> InOverride);
-	static void ResetReloadGameplayTagsOverride();
 	static void SetOnEngineInitDoneOverride(TFunction<void()> InOverride);
 	static void ResetOnEngineInitDoneOverride();
 	static void InvokeOnLiteralAssetSaved(UObject* Object);
 	static bool IsLiteralAssetPreSaveRegistered();
 	static bool HasStateDumpExtensionHandle(const FAngelscriptEditorModule& Module);
 	static bool ShouldShowAssetListPopupCreateButton(UASClass* BaseClass);
-	static void RegisterGameplayTagDelegates(FAngelscriptEditorModule& Module);
 	static void RegisterToolsMenuEntries(FAngelscriptEditorModule& Module);
 	static void InvokeOnEngineInitDone();
 	static void BroadcastRegisteredOnPostEngineInit();

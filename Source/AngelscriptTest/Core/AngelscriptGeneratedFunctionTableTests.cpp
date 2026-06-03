@@ -331,11 +331,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 			return;
 		}
 
-		if (!TestRunner->TestTrue(TEXT("Generated function table stats should record reflective fallback coverage in GameplayTags"), ReflectiveCountsByModule.FindRef(TEXT("GameplayTags")) > 0))
-		{
-			return;
-		}
-
 		if (!TestRunner->TestTrue(TEXT("Generated function table stats should record reflective fallback coverage in UMG"), ReflectiveCountsByModule.FindRef(TEXT("UMG")) > 0))
 		{
 			return;

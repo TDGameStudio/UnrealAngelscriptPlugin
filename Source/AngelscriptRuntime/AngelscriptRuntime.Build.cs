@@ -40,7 +40,6 @@ namespace UnrealBuildTool.Rules
 				"DeveloperSettings",
 				"Json",
 				"JsonUtilities",
-				"GameplayTags",
 				"StructUtils",
             });
 

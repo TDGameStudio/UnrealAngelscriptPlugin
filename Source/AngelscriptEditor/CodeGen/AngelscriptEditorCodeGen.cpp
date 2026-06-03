@@ -2,7 +2,6 @@
 #include "AngelscriptSettings.h"
 #include "AngelscriptRuntimeModule.h"
 #include "AngelscriptEngine.h"
-#include "Binds/Bind_FGameplayTag.h"
 #include "ClassGenerator/ASClass.h"
 #include "Editor.h"
 #include "FileHelpers.h"

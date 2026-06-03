@@ -5,7 +5,7 @@
 //   Angelscript.TestModule.Bindings.Global.FAngelscriptGlobalBindingsTest.*
 //
 // Sections:
-//   GlobalVariables     — CollisionProfile, FComponentQueryParams, FGameplayTag globals
+//   GlobalVariables     — CollisionProfile, FComponentQueryParams globals
 //   CommandletGlobals   — IsRunningCommandlet, IsRunningCookCommandlet, GetRunningCommandletClass
 //
 // CQTest adaptation notes:
@@ -61,30 +61,12 @@ int GlobalVar_DefaultComponentQueryParams()
 	return (FComponentQueryParams::DefaultComponentQueryParams.ShapeCollisionMask.Bits == FreshParams.ShapeCollisionMask.Bits) ? 1 : 0;
 }
 
-int GlobalVar_EmptyGameplayTag()
-{
-	FGameplayTag EmptyTagCopy = FGameplayTag::EmptyTag;
-	return (!EmptyTagCopy.IsValid()) ? 1 : 0;
-}
-
-int GlobalVar_EmptyGameplayTagContainer()
-{
-	return (FGameplayTagContainer::EmptyContainer.IsEmpty()) ? 1 : 0;
-}
-
-int GlobalVar_EmptyGameplayTagQuery()
-{
-	return (FGameplayTagQuery::EmptyQuery.IsEmpty()) ? 1 : 0;
-}
 )"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
 		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GlobalVar_CollisionProfileBlockAllDynamic()"), TEXT("CollisionProfile::BlockAllDynamic should match FName"), 1);
 		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GlobalVar_DefaultComponentQueryParams()"), TEXT("DefaultComponentQueryParams should match fresh default"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GlobalVar_EmptyGameplayTag()"), TEXT("FGameplayTag::EmptyTag should not be valid"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GlobalVar_EmptyGameplayTagContainer()"), TEXT("FGameplayTagContainer::EmptyContainer should be empty"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int GlobalVar_EmptyGameplayTagQuery()"), TEXT("FGameplayTagQuery::EmptyQuery should be empty"), 1);
 	}
 
 	// ====================================================================

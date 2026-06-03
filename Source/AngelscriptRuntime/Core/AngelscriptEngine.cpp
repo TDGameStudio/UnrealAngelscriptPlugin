@@ -1456,8 +1456,8 @@ void FAngelscriptEngine::Shutdown()
 	// FAngelscriptOwnedSharedState. ScriptEngine->ShutDownAndRelease() above
 	// has already destroyed every script function that held a userData pointer
 	// to a heap-allocated FBlueprintEventSignature, so the registry can be
-	// safely cleared here. AngelscriptGameplayTagsLookup is intentionally NOT
-	// cleared — see comment in the original ReleaseOwnedSharedStateResources.
+	// safely cleared here. Optional extension-owned process caches are not
+	// owned by the core runtime shutdown path.
 	if (bShouldReleaseOwnedEngine)
 	{
 		TypeDatabase.Reset();

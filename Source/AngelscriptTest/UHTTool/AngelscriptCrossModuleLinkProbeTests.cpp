@@ -816,7 +816,7 @@ bool FAngelscriptCrossModuleBuildCsDependencyBoundaryTest::RunTest(const FString
 
 	const TSet<FString> ExpectedDependencyModules = {
 		TEXT("ApplicationCore"), TEXT("Core"), TEXT("CoreUObject"), TEXT("Engine"), TEXT("EngineSettings"), TEXT("DeveloperSettings"),
-		TEXT("Json"), TEXT("JsonUtilities"), TEXT("GameplayTags"), TEXT("StructUtils"), TEXT("AIModule"), TEXT("NavigationSystem"),
+		TEXT("Json"), TEXT("JsonUtilities"), TEXT("StructUtils"), TEXT("AIModule"), TEXT("NavigationSystem"),
 		TEXT("NetCore"), TEXT("Landscape"), TEXT("Networking"), TEXT("Sockets"), TEXT("InputCore"), TEXT("SlateCore"), TEXT("Slate"),
 		TEXT("UMG"), TEXT("TraceLog"), TEXT("AssetRegistry"), TEXT("Projects"), TEXT("PhysicsCore"), TEXT("CoreOnline"), TEXT("EnhancedInput"),
 		TEXT("UnrealEd"), TEXT("EditorSubsystem"), TEXT("UMGEditor") };

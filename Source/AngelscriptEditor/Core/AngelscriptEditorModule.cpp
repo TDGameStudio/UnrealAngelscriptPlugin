@@ -5,7 +5,6 @@
 
 #include "AngelscriptEditorDebugBridge.h"
 #include "AngelscriptEngine.h"
-#include "Binds/Bind_FGameplayTag.h"
 #include "ClassGenerator/ASClass.h"
 #include "EditorMenuExtensions/ScriptEditorMenuExtension.h"
 #include "Kismet2/KismetEditorUtilities.h"
@@ -26,7 +25,6 @@
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "LevelEditor.h"
-#include "GameplayTagsModule.h"
 #include "Misc/ScopedSlowTask.h"
 
 #include "ContentBrowser/AngelscriptContentBrowserDataSource.h"
@@ -66,7 +64,6 @@ namespace
 	FAngelscriptEditorModuleCreateBlueprintPopupTestHooks GCreateBlueprintPopupTestHooks;
 	FAngelscriptEditorModuleLiteralAssetSaveTestHooks GLiteralAssetSaveTestHooks;
 	TFunction<bool(const TCHAR*, const TCHAR*, const TCHAR*)> GPlatformExecuteOverrideForTesting;
-	TFunction<void(FAngelscriptEditorModule*)> GReloadGameplayTagsOverrideForTesting;
 	TFunction<void()> GOnEngineInitDoneOverrideForTesting;
 	int32 GOnPostEngineInitRegistrationCountForTesting = 0;
 #endif
@@ -441,16 +438,6 @@ void FAngelscriptEditorModuleTestAccess::ResetPlatformExecuteOverride()
 	GPlatformExecuteOverrideForTesting = nullptr;
 }
 
-void FAngelscriptEditorModuleTestAccess::SetReloadGameplayTagsOverride(TFunction<void(FAngelscriptEditorModule*)> InOverride)
-{
-	GReloadGameplayTagsOverrideForTesting = MoveTemp(InOverride);
-}
-
-void FAngelscriptEditorModuleTestAccess::ResetReloadGameplayTagsOverride()
-{
-	GReloadGameplayTagsOverrideForTesting = nullptr;
-}
-
 void FAngelscriptEditorModuleTestAccess::SetOnEngineInitDoneOverride(TFunction<void()> InOverride)
 {
 	GOnEngineInitDoneOverrideForTesting = MoveTemp(InOverride);
@@ -479,11 +466,6 @@ bool FAngelscriptEditorModuleTestAccess::HasStateDumpExtensionHandle(const FAnge
 bool FAngelscriptEditorModuleTestAccess::ShouldShowAssetListPopupCreateButton(UASClass* BaseClass)
 {
 	return ::ShouldShowAssetListPopupCreateButton(BaseClass);
-}
-
-void FAngelscriptEditorModuleTestAccess::RegisterGameplayTagDelegates(FAngelscriptEditorModule& Module)
-{
-	Module.RegisterGameplayTagDelegates();
 }
 
 void FAngelscriptEditorModuleTestAccess::RegisterToolsMenuEntries(FAngelscriptEditorModule& Module)
@@ -810,7 +792,6 @@ void FAngelscriptEditorModule::StartupModule()
 	if (FAngelscriptEngine::IsInitialized() && FAngelscriptEngine::Get().IsInitialCompileFinished())
 		FComponentTypeRegistry::Get().Invalidate();
 
-	RegisterGameplayTagDelegates();
 	if (!GOnPostEngineInitHandle.IsValid())
 	{
 		GOnPostEngineInitHandle = FCoreDelegates::OnPostEngineInit.AddStatic(&OnEngineInitDone);
@@ -1064,8 +1045,6 @@ void FAngelscriptEditorModule::ShowAssetListPopup(const TArray<FString>& AssetPa
 
 void FAngelscriptEditorModule::ShutdownModule()
 {
-	UnregisterGameplayTagDelegates();
-
 	if (GOnPostEngineInitHandle.IsValid())
 	{
 		FCoreDelegates::OnPostEngineInit.Remove(GOnPostEngineInitHandle);
@@ -1104,34 +1083,6 @@ void FAngelscriptEditorModule::ShutdownModule()
 	// Unregister the tool menu extension
 	UToolMenus::UnRegisterStartupCallback(this);
 	UToolMenus::UnregisterOwner(this);
-}
-
-void FAngelscriptEditorModule::RegisterGameplayTagDelegates()
-{
-	IGameplayTagsModule::OnTagSettingsChanged.RemoveAll(this);
-	IGameplayTagsModule::OnGameplayTagTreeChanged.RemoveAll(this);
-
-	IGameplayTagsModule::OnTagSettingsChanged.AddRaw(this, &FAngelscriptEditorModule::ReloadTags);
-	IGameplayTagsModule::OnGameplayTagTreeChanged.AddRaw(this, &FAngelscriptEditorModule::ReloadTags);
-}
-
-void FAngelscriptEditorModule::UnregisterGameplayTagDelegates()
-{
-	IGameplayTagsModule::OnTagSettingsChanged.RemoveAll(this);
-	IGameplayTagsModule::OnGameplayTagTreeChanged.RemoveAll(this);
-}
-
-void FAngelscriptEditorModule::ReloadTags()
-{
-#if WITH_DEV_AUTOMATION_TESTS
-	if (GReloadGameplayTagsOverrideForTesting)
-	{
-		GReloadGameplayTagsOverrideForTesting(this);
-		return;
-	}
-#endif
-
-	AngelscriptReloadGameplayTags();
 }
 
 void FAngelscriptEditorModule::RegisterToolsMenuEntries()
