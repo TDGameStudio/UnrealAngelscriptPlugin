@@ -13,28 +13,22 @@
 // Sections cover the dispatch matrix called out in
 // `Documents/Plans/Plan_ReflectiveFallbackCache.md`:
 //   PODScalar    - int32/bool/double fast-path memcpy + POD return
-//   NonPOD       - FName/FGameplayTag/FGameplayTagContainer copy semantics
-//   OutParam     - UPARAM(ref) writeback through the FOutParmRec chain
-//   Return       - non-POD struct return (FGameplayTagContainer)
+//   NonPOD       - FString copy semantics
+//   OutParam     - pure out-param writeback through the FOutParmRec chain
+//   Return       - non-POD FString return
 //   MixinObject  - static UFUNCTION binding with bInjectMixinObject==true
 //                  (every BPLib free function exercises this path)
 //   CacheReuse   - same UFunction called many times in one AS run; second and
 //                  later calls must reuse the cached metadata and remain
 //                  correct (verified by counting outputs across iterations).
-//   FuncNet      - direct C++ call into InvokeReflectiveUFunctionFromGenericCall
-//                  is intentionally skipped here: the FUNC_Net branch requires
-//                  a Server/Client UFUNCTION that survives reflective fallback,
-//                  which engine code rarely exposes outside of game modules.
-//                  The cached invoker's Net branch mirrors sluaunreal's
-//                  LuaFunctionAccelerator::call (lines 284-313) and is exercised
-//                  by production usage; a TODO marker keeps the gap visible.
+//   Eligibility  - direct C++ check that the representative BPLib UFUNCTION
+//                  is still accepted by the reflective fallback gate.
 //
-// Why we use GameplayTagsBPLib for these tests:
+// Why we use BlueprintPathsLibrary for these tests:
 //   The UHT summary (`AS_FunctionTable_Summary.json`) reports
-//   GameplayTags=35/35 stubs (100% reflective fallback). That makes BP-tag
-//   functions the cleanest signal that the cache is on the critical path.
-//   New UFUNCTIONs added in our own AngelscriptTest module would be UHT
-//   direct-bound and would silently bypass the cache.
+//   BlueprintPathsLibrary entries as stubs (100% reflective fallback). That
+//   makes path functions a stable core-plugin signal that the cache is on the
+//   critical path without depending on optional plugin bindings.
 // ============================================================================
 
 #include "CQTest.h"
@@ -44,11 +38,10 @@
 #include "AngelscriptTestModuleScope.h"
 #include "AngelscriptTestExecute.h"
 #include "AngelscriptReflectiveAccess.h"
-#include "../../AngelscriptRuntime/Binds/BlueprintCallableReflectiveFallback.h"
-#include "../../AngelscriptRuntime/Binds/Helper_FunctionSignature.h"
+#include "Binds/BlueprintCallableReflectiveFallback.h"
+#include "Binds/Helper_FunctionSignature.h"
 
-#include "GameplayTagsManager.h"
-#include "BlueprintGameplayTagLibrary.h"
+#include "Kismet/BlueprintPathsLibrary.h"
 #include "HAL/IConsoleManager.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -57,39 +50,24 @@
 namespace AngelscriptTest_Bindings_ReflectiveFallbackCache_Private
 {
 	// Build the AS namespace prefix used for static UFUNCTIONs that reach the
-	// reflective fallback. Mirrors the lookup performed by the existing
-	// BlueprintCallableReflectiveFallback test for GameplayTags.
-	FString GetGameplayTagLibraryCallPrefix(FAutomationTestBase& Test)
+	// reflective fallback.
+	FString GetPathsLibraryCallPrefix(FAutomationTestBase& Test)
 	{
-		UClass* LibraryClass = UBlueprintGameplayTagLibrary::StaticClass();
-		UFunction* RepresentativeFunction = LibraryClass->FindFunctionByName(TEXT("MakeGameplayTagContainerFromTag"));
+		UClass* LibraryClass = UBlueprintPathsLibrary::StaticClass();
+		UFunction* RepresentativeFunction = LibraryClass->FindFunctionByName(TEXT("GetBaseFilename"));
 		TSharedPtr<FAngelscriptType> LibraryType = FAngelscriptType::GetByClass(LibraryClass);
-		if (!Test.TestTrue(TEXT("GameplayTags BPLib type should resolve"), LibraryType.IsValid()))
+		if (!Test.TestTrue(TEXT("BlueprintPathsLibrary type should resolve"), LibraryType.IsValid()))
 		{
 			return FString();
 		}
 
-		if (!Test.TestNotNull(TEXT("MakeGameplayTagContainerFromTag should exist on GameplayTags BPLib"), RepresentativeFunction))
+		if (!Test.TestNotNull(TEXT("GetBaseFilename should exist on BlueprintPathsLibrary"), RepresentativeFunction))
 		{
 			return FString();
 		}
 
 		const FString Namespace = FAngelscriptFunctionSignature::GetScriptNamespaceForClass(LibraryType.ToSharedRef(), RepresentativeFunction);
 		return Namespace.IsEmpty() ? FString() : Namespace + TEXT("::");
-	}
-
-	// Resolve a tag we can reuse across all sections. Falling back to a hard-
-	// coded engine tag if the project has none keeps the test runnable in
-	// minimal CI environments.
-	FString GetReusableTagName()
-	{
-		FGameplayTagContainer AllTags;
-		UGameplayTagsManager::Get().RequestAllGameplayTags(AllTags, false);
-		if (AllTags.Num() > 0)
-		{
-			return AllTags.First().ToString().ReplaceCharWithEscapedChar();
-		}
-		return FString(TEXT("Test.Tag"));
 	}
 }
 
@@ -118,23 +96,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptReflectiveFallbackCacheTest,
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const FString CallPrefix = GetGameplayTagLibraryCallPrefix(*TestRunner);
+		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
 		if (CallPrefix.IsEmpty()) return;
 
-		const FString TagName = GetReusableTagName();
 		FString Script = FString::Printf(TEXT(R"(
 int RunPODScalar()
 {
-	FGameplayTag Tag = FGameplayTag::RequestGameplayTag(FName("%s"), false);
-	if (!Tag.IsValid())
-		return 1; // Tag missing in this environment - benign skip.
-
-	FGameplayTagContainer Container = %sMakeGameplayTagContainerFromTag(Tag);
-	int Count = %sGetNumGameplayTagsInContainer(Container);
-	if (Count != 1) return 10;
-	return 1;
+	return %sIsRelative("Relative/Cache.txt") ? 1 : 0;
 }
-)"), *TagName, *CallPrefix, *CallPrefix);
+)"), *CallPrefix);
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASRefCachePODScalar", Script);
 		if (Module == nullptr) return;
@@ -145,7 +115,7 @@ int RunPODScalar()
 		int32 Result = 0;
 		if (!ExecuteIntFunction(*TestRunner, Engine, *Function, Result)) return;
 
-		TestRunner->TestEqual(TEXT("POD scalar reflective fallback should return container count via memcpy fast path"), Result, 1);
+		TestRunner->TestEqual(TEXT("POD scalar reflective fallback should return bool via memcpy fast path"), Result, 1);
 	}
 
 	// ====================================================================
@@ -158,22 +128,17 @@ int RunPODScalar()
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const FString CallPrefix = GetGameplayTagLibraryCallPrefix(*TestRunner);
+		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
 		if (CallPrefix.IsEmpty()) return;
 
-		const FString TagName = GetReusableTagName();
 		FString Script = FString::Printf(TEXT(R"(
 int RunNonPOD()
 {
-	FGameplayTag Tag = FGameplayTag::RequestGameplayTag(FName("%s"), false);
-	if (!Tag.IsValid())
-		return 1; // Tag missing - benign skip.
-
-	FName Reflected = %sGetTagName(Tag);
-	if (!(Reflected == Tag.GetTagName())) return 10;
+	FString Clean = %sGetCleanFilename("C:/Reflective/Fallback/Cache.txt");
+	if (Clean != "Cache.txt") return 10;
 	return 1;
 }
-)"), *TagName, *CallPrefix);
+)"), *CallPrefix);
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASRefCacheNonPOD", Script);
 		if (Module == nullptr) return;
@@ -184,15 +149,15 @@ int RunNonPOD()
 		int32 Result = 0;
 		if (!ExecuteIntFunction(*TestRunner, Engine, *Function, Result)) return;
 
-		TestRunner->TestEqual(TEXT("Non-POD reflective fallback should round-trip FName via CopySingleValue"), Result, 1);
+		TestRunner->TestEqual(TEXT("Non-POD reflective fallback should round-trip FString via CopySingleValue"), Result, 1);
 	}
 
 	// ====================================================================
 	// Section: OutParam  - exercises FOutParmRec chain for `out` writeback.
 	//
-	// `AddGameplayTag(UPARAM(ref) FGameplayTagContainer&, FGameplayTag)` is a
-	// reflective-fallback function whose first arg is a non-const ref - the
-	// cached invoker must write the modified container back to AS storage.
+	// `Split(const FString&, FString&, FString&, FString&)` is a
+	// reflective-fallback function with pure out FString refs - the cached
+	// invoker must write the path parts back to AS storage.
 	// ====================================================================
 
 	TEST_METHOD(OutParam)
@@ -201,24 +166,22 @@ int RunNonPOD()
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const FString CallPrefix = GetGameplayTagLibraryCallPrefix(*TestRunner);
+		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
 		if (CallPrefix.IsEmpty()) return;
 
-		const FString TagName = GetReusableTagName();
 		FString Script = FString::Printf(TEXT(R"(
 int RunOutParam()
 {
-	FGameplayTag Tag = FGameplayTag::RequestGameplayTag(FName("%s"), false);
-	if (!Tag.IsValid())
-		return 1; // Tag missing - benign skip.
-
-	FGameplayTagContainer Container;
-	%sAddGameplayTag(Container, Tag);
-	int Count = %sGetNumGameplayTagsInContainer(Container);
-	if (Count != 1) return 10;
+	FString Path;
+	FString Filename;
+	FString Extension;
+	%sSplit("C:/Reflective/Fallback/Cache.txt", Path, Filename, Extension);
+	if (Path != "C:/Reflective/Fallback") return 10;
+	if (Filename != "Cache") return 20;
+	if (Extension != "txt") return 30;
 	return 1;
 }
-)"), *TagName, *CallPrefix, *CallPrefix);
+)"), *CallPrefix);
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASRefCacheOutParam", Script);
 		if (Module == nullptr) return;
@@ -233,7 +196,7 @@ int RunOutParam()
 	}
 
 	// ====================================================================
-	// Section: Return  - non-POD struct return (FGameplayTagContainer).
+	// Section: Return  - non-POD FString return.
 	// ====================================================================
 
 	TEST_METHOD(Return)
@@ -242,22 +205,17 @@ int RunOutParam()
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const FString CallPrefix = GetGameplayTagLibraryCallPrefix(*TestRunner);
+		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
 		if (CallPrefix.IsEmpty()) return;
 
-		const FString TagName = GetReusableTagName();
 		FString Script = FString::Printf(TEXT(R"(
 int RunReturn()
 {
-	FGameplayTag Tag = FGameplayTag::RequestGameplayTag(FName("%s"), false);
-	if (!Tag.IsValid())
-		return 1; // Tag missing - benign skip.
-
-	FGameplayTagContainer Container = %sMakeGameplayTagContainerFromTag(Tag);
-	if (%sGetNumGameplayTagsInContainer(Container) != 1) return 10;
+	FString Base = %sGetBaseFilename("C:/Reflective/Fallback/Cache.txt", true);
+	if (Base != "Cache") return 10;
 	return 1;
 }
-)"), *TagName, *CallPrefix, *CallPrefix);
+)"), *CallPrefix);
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASRefCacheReturn", Script);
 		if (Module == nullptr) return;
@@ -268,13 +226,13 @@ int RunReturn()
 		int32 Result = 0;
 		if (!ExecuteIntFunction(*TestRunner, Engine, *Function, Result)) return;
 
-		TestRunner->TestEqual(TEXT("Reflective fallback should return non-POD USTRUCT values correctly"), Result, 1);
+		TestRunner->TestEqual(TEXT("Reflective fallback should return non-POD FString values correctly"), Result, 1);
 	}
 
 	// ====================================================================
 	// Section: MixinObject  - static UFUNCTION bound with bInjectMixinObject=true.
 	//
-	// All BlueprintGameplayTagLibrary functions are static BPLib statics that
+	// All BlueprintPathsLibrary functions are static BPLib statics that
 	// reach the reflective fallback path with bInjectMixinObject==true. This
 	// section just confirms the mixin-object branch of the cached invoker
 	// (where the first parameter slot is fed from Generic->GetObject()) keeps
@@ -287,25 +245,19 @@ int RunReturn()
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const FString CallPrefix = GetGameplayTagLibraryCallPrefix(*TestRunner);
+		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
 		if (CallPrefix.IsEmpty()) return;
 
-		const FString TagName = GetReusableTagName();
 		FString Script = FString::Printf(TEXT(R"(
 int RunMixin()
 {
-	FGameplayTag Tag = FGameplayTag::RequestGameplayTag(FName("%s"), false);
-	if (!Tag.IsValid())
-		return 1; // Tag missing - benign skip.
-
-	FGameplayTagContainer Container = %sMakeGameplayTagContainerFromTag(Tag);
-	int Count = %sGetNumGameplayTagsInContainer(Container);
-	FName Reflected = %sGetTagName(Tag);
-	if (Count != 1) return 10;
-	if (!(Reflected == Tag.GetTagName())) return 20;
+	FString Clean = %sGetCleanFilename("C:/Reflective/Fallback/Cache.txt");
+	bool bRelative = %sIsRelative("Relative/Cache.txt");
+	if (Clean != "Cache.txt") return 10;
+	if (!bRelative) return 20;
 	return 1;
 }
-)"), *TagName, *CallPrefix, *CallPrefix, *CallPrefix);
+)"), *CallPrefix, *CallPrefix);
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASRefCacheMixin", Script);
 		if (Module == nullptr) return;
@@ -335,27 +287,22 @@ int RunMixin()
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const FString CallPrefix = GetGameplayTagLibraryCallPrefix(*TestRunner);
+		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
 		if (CallPrefix.IsEmpty()) return;
 
-		const FString TagName = GetReusableTagName();
 		FString Script = FString::Printf(TEXT(R"(
 int RunCacheReuse()
 {
-	FGameplayTag Tag = FGameplayTag::RequestGameplayTag(FName("%s"), false);
-	if (!Tag.IsValid())
-		return 1; // Tag missing - benign skip.
-
 	int TotalCount = 0;
 	for (int Index = 0; Index < 32; ++Index)
 	{
-		FGameplayTagContainer Container = %sMakeGameplayTagContainerFromTag(Tag);
-		TotalCount += %sGetNumGameplayTagsInContainer(Container);
+		FString Clean = %sGetCleanFilename("C:/Reflective/Fallback/Cache.txt");
+		TotalCount += Clean.Len();
 	}
-	if (TotalCount != 32) return 10;
+	if (TotalCount != 288) return 10;
 	return 1;
 }
-)"), *TagName, *CallPrefix, *CallPrefix);
+)"), *CallPrefix);
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASRefCacheReuse", Script);
 		if (Module == nullptr) return;
@@ -370,31 +317,20 @@ int RunCacheReuse()
 	}
 
 	// ====================================================================
-	// Section: FuncNetCacheStructure
+	// Section: FallbackEligibility
 	//
-	// Structural verification: every UFUNCTION marked FUNC_Net that reaches
-	// the reflective fallback should be classifiable by our cache. We avoid
-	// actually invoking the cached path (no test environment NetDriver) and
-	// instead confirm that EvaluateReflectiveFallbackEligibility accepts the
-	// kind of UFUNCTION we plan to support, so a future closure of the Net
-	// dispatch can extend this section into an end-to-end test.
+	// Structural verification: the representative BPLib UFUNCTION remains
+	// classifiable by the reflective fallback gate.
 	// ====================================================================
 
 	TEST_METHOD(FuncNetEligibility)
 	{
-		// We intentionally do NOT exercise UObject::ProcessEvent here - the
-		// purpose is to confirm the eligibility gate stays open for the
-		// classes of UFUNCTIONs the cached invoker is meant to dispatch. The
-		// FUNC_Net runtime branch in the cached invoker mirrors sluaunreal's
-		// LuaFunctionAccelerator::call (see Plan_ReflectiveFallbackCache.md
-		// "Net handling" section) and is exercised whenever a real Server /
-		// Client RPC happens to reach the reflective fallback in production.
-		const UFunction* SetTagsFunction = UBlueprintGameplayTagLibrary::StaticClass()
-			->FindFunctionByName(TEXT("MakeGameplayTagContainerFromTag"));
-		ASSERT_THAT(IsNotNull(SetTagsFunction));
+		const UFunction* BaseFilenameFunction = UBlueprintPathsLibrary::StaticClass()
+			->FindFunctionByName(TEXT("GetBaseFilename"));
+		ASSERT_THAT(IsNotNull(BaseFilenameFunction));
 		TestRunner->TestEqual(
 			TEXT("BPLib UFUNCTIONs reaching reflective fallback should remain eligible after the cache lands"),
-			EvaluateReflectionFallback(SetTagsFunction),
+			EvaluateReflectionFallback(BaseFilenameFunction),
 			EReflectionFallbackResult::Success);
 	}
 
@@ -415,39 +351,31 @@ int RunCacheReuse()
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const FString CallPrefix = GetGameplayTagLibraryCallPrefix(*TestRunner);
+		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
 		if (CallPrefix.IsEmpty()) return;
 
-		const FString TagName = GetReusableTagName();
-		// Composite checksum exercising every cache-relevant code path:
-		//   - POD scalar return (GetNumGameplayTagsInContainer)
-		//   - FName return (GetTagName, hashed by length)
-		//   - Non-const out-param writeback (AddGameplayTag)
-		//   - Repeated calls so cache reuse vs cache absence both stress
+		// Composite checksum exercising cached and legacy dispatch with
+		// repeated POD scalar and FString-return calls. Out-param writeback is
+		// covered by the dedicated OutParam section above.
 		FString Script = FString::Printf(TEXT(R"(
 int RunParity()
 {
-	FGameplayTag Tag = FGameplayTag::RequestGameplayTag(FName("%s"), false);
-	if (!Tag.IsValid())
-		return -1; // benign skip path - returned identically by both strategies.
-
 	int Acc = 0;
 	for (int Index = 0; Index < 8; ++Index)
 	{
-		FGameplayTagContainer Container = %sMakeGameplayTagContainerFromTag(Tag);
-		Acc += %sGetNumGameplayTagsInContainer(Container) * 100;
+		bool bRelative = %sIsRelative("Relative/Cache.txt");
+		Acc += bRelative ? 100 : 0;
 
-		FName Reflected = %sGetTagName(Tag);
-		Acc += Reflected.ToString().Len();
+		FString Clean = %sGetCleanFilename("C:/Reflective/Fallback/Cache.txt");
+		Acc += Clean.Len();
 
-		%sAddGameplayTag(Container, Tag);
-		Acc += %sGetNumGameplayTagsInContainer(Container) * 7;
+		FString Base = %sGetBaseFilename("C:/Reflective/Fallback/Cache.txt", true);
+		Acc += Base.Len() * 7;
 	}
 	return Acc;
 }
 )"),
-			*TagName,
-			*CallPrefix, *CallPrefix, *CallPrefix, *CallPrefix, *CallPrefix);
+			*CallPrefix, *CallPrefix, *CallPrefix);
 
 		// Capture the CVar so we leave it exactly as we found it. The CVar is
 		// owned by AngelscriptRuntime (registered in BlueprintCallableReflectiveFallback.cpp).
@@ -479,12 +407,11 @@ int RunParity()
 			CachedResult,
 			LegacyResult);
 
-		// Sanity bound: the script either returns -1 (tag missing) or a
-		// strictly positive accumulator. A zero would indicate both paths
-		// silently failed in lockstep, defeating the equality check above.
+		// Sanity bound: a zero would indicate both paths silently failed in
+		// lockstep, defeating the equality check above.
 		TestRunner->TestTrue(
-			TEXT("Composite checksum should be non-zero (or -1 for benign skip) on a valid tag environment"),
-			CachedResult != 0);
+			TEXT("Composite checksum should be non-zero"),
+			CachedResult > 0);
 	}
 };
 

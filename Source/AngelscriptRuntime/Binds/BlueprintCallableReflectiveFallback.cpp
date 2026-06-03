@@ -283,7 +283,8 @@ namespace
 			Entry.bNeedDestroy = !Prop->HasAnyPropertyFlags(CPF_NoDestructor)
 				&& !Prop->HasAnyPropertyFlags(CPF_IsPlainOldData);
 			Entry.bIsSimpleCopy = IsPropertySimpleCopy(Prop);
-			Entry.bIsReferenceParam = Prop->HasAnyPropertyFlags(CPF_ReferenceParm);
+			Entry.bIsReferenceParam = Prop->HasAnyPropertyFlags(CPF_ReferenceParm)
+				|| (Prop->HasAnyPropertyFlags(CPF_OutParm) && !Prop->HasAnyPropertyFlags(CPF_ReturnParm));
 			// Engine FFrame contract: every CPF_OutParm parameter (including
 			// const-ref) must appear in OutParms or StepExplicitProperty
 			// dereferences a null record.
@@ -327,7 +328,9 @@ namespace
 
 	void* ResolveScriptArgumentAddress(const FProperty* Property, void* ScriptArgumentAddress)
 	{
-		if (Property != nullptr && Property->HasAnyPropertyFlags(CPF_ReferenceParm))
+		if (Property != nullptr
+			&& (Property->HasAnyPropertyFlags(CPF_ReferenceParm)
+				|| (Property->HasAnyPropertyFlags(CPF_OutParm) && !Property->HasAnyPropertyFlags(CPF_ReturnParm))))
 		{
 			return ScriptArgumentAddress != nullptr ? *(void**)ScriptArgumentAddress : nullptr;
 		}
