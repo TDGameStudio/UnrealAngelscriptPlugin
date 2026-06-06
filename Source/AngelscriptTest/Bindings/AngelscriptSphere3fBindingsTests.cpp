@@ -64,6 +64,47 @@ int Sphere_IsInsideFalse()
 		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
 
+	TEST_METHOD(FSphere3fBasics)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASSphere3f_Sphere3f"), TEXT(R"(
+int Sphere3f_CenterPreserved()
+{
+	FSphere3f S = FSphere3f(FVector3f(1.0f,2.0f,3.0f), 5.0f);
+	return (S.Center.X == 1.0f && S.Center.Y == 2.0f && S.Center.Z == 3.0f) ? 1 : 0;
+}
+int Sphere3f_RadiusPreserved()
+{
+	FSphere3f S = FSphere3f(FVector3f(0.0f,0.0f,0.0f), 12.5f);
+	return (S.W == 12.5f) ? 1 : 0;
+}
+int Sphere3f_EqualsCopy()
+{
+	FSphere3f S = FSphere3f(FVector3f(1.0f,2.0f,3.0f), 5.0f);
+	FSphere3f Copy = FSphere3f(S);
+	return S.Equals(Copy) ? 1 : 0;
+}
+int Sphere3f_Intersects()
+{
+	FSphere3f A = FSphere3f(FVector3f(0.0f,0.0f,0.0f), 10.0f);
+	FSphere3f B = FSphere3f(FVector3f(1.0f,1.0f,1.0f), 1.0f);
+	return A.Intersects(B) ? 1 : 0;
+}
+)"));
+		if (!Mod.IsValid()) return;
+		auto& M = Mod.GetModule();
+
+		const FExpectedGlobalInt Cases[] = {
+			{ TEXT("int Sphere3f_CenterPreserved()"), TEXT("Sphere3f center preserved"), 1 },
+			{ TEXT("int Sphere3f_RadiusPreserved()"), TEXT("Sphere3f radius preserved"), 1 },
+			{ TEXT("int Sphere3f_EqualsCopy()"),      TEXT("Sphere3f copy compares equal"), 1 },
+			{ TEXT("int Sphere3f_Intersects()"),      TEXT("Sphere3f intersection succeeds"), 1 },
+		};
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+	}
+
 	TEST_METHOD(FPlaneBasics)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
@@ -87,6 +128,41 @@ int Plane_WPreserved()
 		const FExpectedGlobalInt Cases[] = {
 			{ TEXT("int Plane_NormalPreserved()"), TEXT("Plane point+normal constructor preserves normal"), 1 },
 			{ TEXT("int Plane_WPreserved()"),      TEXT("Plane point+normal constructor computes W"), 1 },
+		};
+		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+	}
+
+	TEST_METHOD(FPlane4fBasics)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASSphere3f_Plane4f"), TEXT(R"(
+int Plane4f_NormalPreserved()
+{
+	FPlane4f P = FPlane4f(FVector3f(0.0f,0.0f,5.0f), FVector3f(0.0f,0.0f,1.0f));
+	FVector3f N = P.GetNormal();
+	return (N.X == 0.0f && N.Y == 0.0f && N.Z == 1.0f) ? 1 : 0;
+}
+int Plane4f_OriginPreserved()
+{
+	FPlane4f P = FPlane4f(FVector3f(0.0f,0.0f,5.0f), FVector3f(0.0f,0.0f,1.0f));
+	FVector3f O = P.GetOrigin();
+	return (O.X == 0.0f && O.Y == 0.0f && O.Z == 5.0f) ? 1 : 0;
+}
+int Plane4f_PlaneDotOrigin()
+{
+	FPlane4f P = FPlane4f(FVector3f(0.0f,0.0f,5.0f), FVector3f(0.0f,0.0f,1.0f));
+	return (P.PlaneDot(FVector3f(0.0f,0.0f,5.0f)) == 0.0f) ? 1 : 0;
+}
+)"));
+		if (!Mod.IsValid()) return;
+		auto& M = Mod.GetModule();
+
+		const FExpectedGlobalInt Cases[] = {
+			{ TEXT("int Plane4f_NormalPreserved()"), TEXT("Plane4f point+normal constructor preserves normal"), 1 },
+			{ TEXT("int Plane4f_OriginPreserved()"), TEXT("Plane4f point+normal constructor preserves origin"), 1 },
+			{ TEXT("int Plane4f_PlaneDotOrigin()"),  TEXT("Plane4f PlaneDot is zero at the origin point"), 1 },
 		};
 		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
 	}
