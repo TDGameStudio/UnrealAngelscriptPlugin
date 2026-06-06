@@ -11,6 +11,11 @@ namespace UnrealBuildTool.Rules
 
 			PublicIncludePaths.Add(ModuleDirectory);
 			PrivateIncludePaths.Add(ModuleDirectory);
+			PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "LearningTrace"));
+			PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "LearningTrace", "Core"));
+			PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "LearningTrace", "Phases"));
+			PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "LearningTrace", "Examples"));
+			PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "LearningTrace", "Exporter"));
 
 			PublicDependencyModuleNames.AddRange(new string[]
 			{
@@ -39,6 +44,8 @@ namespace UnrealBuildTool.Rules
 				"ContentBrowserData",
 				"ToolMenus",
 				"ToolWidgets",
+				"Json",
+				"JsonUtilities",
             });
 		}
 	}
