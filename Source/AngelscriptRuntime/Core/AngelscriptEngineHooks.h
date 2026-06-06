@@ -5,6 +5,10 @@
 class UActorComponent;
 class ULevel;
 class UASClass;
+class UClass;
+class UEnum;
+class UScriptStruct;
+class UDelegateFunction;
 
 struct FAngelscriptClassDesc;
 struct FAngelscriptModuleDesc;
@@ -22,6 +26,22 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FAngelscriptPostCompileClassCollection, cons
 DECLARE_MULTICAST_DELEGATE_OneParam(FAngelscriptPreGenerateClasses, const TArray<TSharedRef<struct FAngelscriptModuleDesc>>&);
 DECLARE_MULTICAST_DELEGATE(FAngelscriptCompilationDelegate);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FAngelscriptLiteralAssetCreated, UObject*, const FString&);
+
+// Reload-lifecycle delegates moved here from AngelscriptClassGenerator.h as part
+// of refactor-as-runtime-deglobalize-completion: they used to live as
+// process-wide static fields on FAngelscriptClassGenerator but are now
+// engine-owned (held inside FAngelscriptEngineHooks below). Subscribers should
+// register through `FAngelscriptEngine::Get().GetHooks().GetOnXxx()` instead of
+// through the class-generator statics.
+typedef const TArray<TPair<FName, int64>>& EnumNameList;
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnAngelscriptPostReload, bool);
+DECLARE_MULTICAST_DELEGATE(FOnAngelscriptFullReload);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnAngelscriptLiteralAssetReload, UObject*, UObject*);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnAngelscriptClassReload, UClass*, UClass*);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnAngelscriptEnumCreated, UEnum*);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnAngelscriptEnumChanged, UEnum*, EnumNameList);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnAngelscriptStructReload, UScriptStruct*, UScriptStruct*);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnAngelscriptDelegateReload, UDelegateFunction*, UDelegateFunction*);
 
 struct ANGELSCRIPTRUNTIME_API FAngelscriptEngineHooks
 {
@@ -65,6 +85,31 @@ public:
 	FAngelscriptLiteralAssetCreated& GetPostLiteralAssetSetup() { return PostLiteralAssetSetup; }
 	const FAngelscriptLiteralAssetCreated& GetPostLiteralAssetSetup() const { return PostLiteralAssetSetup; }
 
+	// Reload-lifecycle hooks (engine-owned; previously static on FAngelscriptClassGenerator).
+	FOnAngelscriptClassReload& GetOnClassReload() { return OnClassReload; }
+	const FOnAngelscriptClassReload& GetOnClassReload() const { return OnClassReload; }
+
+	FOnAngelscriptEnumCreated& GetOnEnumCreated() { return OnEnumCreated; }
+	const FOnAngelscriptEnumCreated& GetOnEnumCreated() const { return OnEnumCreated; }
+
+	FOnAngelscriptEnumChanged& GetOnEnumChanged() { return OnEnumChanged; }
+	const FOnAngelscriptEnumChanged& GetOnEnumChanged() const { return OnEnumChanged; }
+
+	FOnAngelscriptStructReload& GetOnStructReload() { return OnStructReload; }
+	const FOnAngelscriptStructReload& GetOnStructReload() const { return OnStructReload; }
+
+	FOnAngelscriptDelegateReload& GetOnDelegateReload() { return OnDelegateReload; }
+	const FOnAngelscriptDelegateReload& GetOnDelegateReload() const { return OnDelegateReload; }
+
+	FOnAngelscriptFullReload& GetOnFullReload() { return OnFullReload; }
+	const FOnAngelscriptFullReload& GetOnFullReload() const { return OnFullReload; }
+
+	FOnAngelscriptPostReload& GetOnPostReload() { return OnPostReload; }
+	const FOnAngelscriptPostReload& GetOnPostReload() const { return OnPostReload; }
+
+	FOnAngelscriptLiteralAssetReload& GetOnLiteralAssetReload() { return OnLiteralAssetReload; }
+	const FOnAngelscriptLiteralAssetReload& GetOnLiteralAssetReload() const { return OnLiteralAssetReload; }
+
 private:
 	FAngelscriptGetDynamicSpawnLevel DynamicSpawnLevel;
 	FAngelscriptDebugCheckBreakOptions DebugCheckBreakOptions;
@@ -79,4 +124,13 @@ private:
 	FAngelscriptPostCompileClassCollection PostCompileClassCollection;
 	FAngelscriptLiteralAssetCreated OnLiteralAssetCreated;
 	FAngelscriptLiteralAssetCreated PostLiteralAssetSetup;
+
+	FOnAngelscriptClassReload OnClassReload;
+	FOnAngelscriptEnumCreated OnEnumCreated;
+	FOnAngelscriptEnumChanged OnEnumChanged;
+	FOnAngelscriptStructReload OnStructReload;
+	FOnAngelscriptDelegateReload OnDelegateReload;
+	FOnAngelscriptFullReload OnFullReload;
+	FOnAngelscriptPostReload OnPostReload;
+	FOnAngelscriptLiteralAssetReload OnLiteralAssetReload;
 };

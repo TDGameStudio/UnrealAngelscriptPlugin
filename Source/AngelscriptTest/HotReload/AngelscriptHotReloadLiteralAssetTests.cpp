@@ -53,7 +53,7 @@ bool FAngelscriptHotReloadLiteralAssetBroadcastsReloadedObjectReplacementTest::R
 
 	ON_SCOPE_EXIT
 	{
-		FAngelscriptClassGenerator::OnLiteralAssetReload.Remove(LiteralAssetReloadHandle);
+		Engine.GetHooks().GetOnLiteralAssetReload().Remove(LiteralAssetReloadHandle);
 		Engine.DiscardModule(*LiteralAssetReloadModuleName.ToString());
 		ASTEST_RESET_ENGINE(Engine);
 	};
@@ -105,7 +105,7 @@ asset ReloadExampleAsset of ULiteralReloadAsset
 	TestTrue(TEXT("Initial literal asset should keep the canonical asset name"), AssetBeforeReload->GetFName() == LiteralAssetObjectName);
 	TestNull(TEXT("Initial literal-asset class should not expose the future ExtraValue property"), FindFProperty<FIntProperty>(OldAssetClass, TEXT("ExtraValue")));
 
-	LiteralAssetReloadHandle = FAngelscriptClassGenerator::OnLiteralAssetReload.AddLambda(
+	LiteralAssetReloadHandle = Engine.GetHooks().GetOnLiteralAssetReload().AddLambda(
 		[&](UObject* OldObject, UObject* NewObject)
 		{
 			++LiteralAssetReloadCount;

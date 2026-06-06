@@ -39,9 +39,9 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperClassReloa
 		return FAngelscriptEngine::Create(Config, Dependencies);
 	}
 
-	void EnsureClassReloadHelperInitialized()
+	void EnsureClassReloadHelperInitialized(FAngelscriptEngine& Engine)
 	{
-		if (!FAngelscriptClassGenerator::OnClassReload.IsBound())
+		if (!Engine.GetHooks().GetOnClassReload().IsBound())
 		{
 			FClassReloadHelper::Init();
 		}
@@ -90,7 +90,7 @@ bool FAngelscriptClassReloadHelperOnClassReloadRefreshesClassActionsAndInvalidat
 
 	EngineScope = MakeUnique<FAngelscriptEngineScope>(*Engine);
 	Engine->bIsInitialCompileFinished = true;
-	EnsureClassReloadHelperInitialized();
+	EnsureClassReloadHelperInitialized(*Engine);
 
 	UClass* OldComponentClass = USceneComponent::StaticClass();
 	UClass* NewComponentClass = UBillboardComponent::StaticClass();
@@ -113,7 +113,7 @@ bool FAngelscriptClassReloadHelperOnClassReloadRefreshesClassActionsAndInvalidat
 
 	ReloadState = FClassReloadHelper::FReloadState();
 	CallLog.Reset();
-	FAngelscriptClassGenerator::OnClassReload.Broadcast(OldComponentClass, NewComponentClass);
+	Engine->GetHooks().GetOnClassReload().Broadcast(OldComponentClass, NewComponentClass);
 
 	if (!TestTrue(TEXT("ClassReloadHelper.OnClassReload immediate-effects test should track the reloaded component class pair"), ReloadState.ReloadClasses.FindRef(OldComponentClass) == NewComponentClass))
 	{
@@ -150,7 +150,7 @@ bool FAngelscriptClassReloadHelperOnClassReloadRefreshesClassActionsAndInvalidat
 
 	ReloadState = FClassReloadHelper::FReloadState();
 	CallLog.Reset();
-	FAngelscriptClassGenerator::OnClassReload.Broadcast(OldRegularClass, NewRegularClass);
+	Engine->GetHooks().GetOnClassReload().Broadcast(OldRegularClass, NewRegularClass);
 
 	if (!TestTrue(TEXT("ClassReloadHelper.OnClassReload immediate-effects test should track the reloaded regular class pair"), ReloadState.ReloadClasses.FindRef(OldRegularClass) == NewRegularClass))
 	{

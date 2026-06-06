@@ -3,20 +3,16 @@
 #include "CoreMinimal.h"
 #include "ClassGenerator/AngelscriptAdditionalCompileChecks.h"
 #include "AngelscriptEngine.h"
+// FOnAngelscriptClassReload / FOnAngelscriptEnumCreated / etc. and the
+// `EnumNameList` typedef now live on `FAngelscriptEngineHooks` (engine-owned).
+// They are declared in `Core/AngelscriptEngineHooks.h`, which is reached
+// transitively through the `AngelscriptEngine.h` include above. Subscribers
+// should register through `FAngelscriptEngine::Get().GetHooks().GetOnXxx()`
+// instead of the previous `FAngelscriptClassGenerator::OnXxx` static fields.
 
 // Generic call callback for dispatching interface method calls.
 // Resolves the real UFunction on the implementing object via FindFunction + ProcessEvent.
 extern ANGELSCRIPTRUNTIME_API void CallInterfaceMethod(class asIScriptGeneric* InGeneric);
-
-typedef const TArray<TPair<FName, int64>>& EnumNameList;
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnAngelscriptPostReload, bool);
-DECLARE_MULTICAST_DELEGATE(FOnAngelscriptFullReload);
-DECLARE_MULTICAST_DELEGATE_TwoParams(FOnAngelscriptLiteralAssetReload, UObject*, UObject*);
-DECLARE_MULTICAST_DELEGATE_TwoParams(FOnAngelscriptClassReload, UClass*, UClass*);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnAngelscriptEnumCreated, UEnum*);
-DECLARE_MULTICAST_DELEGATE_TwoParams(FOnAngelscriptEnumChanged, UEnum*, EnumNameList);
-DECLARE_MULTICAST_DELEGATE_TwoParams(FOnAngelscriptStructReload, UScriptStruct*, UScriptStruct*);
-DECLARE_MULTICAST_DELEGATE_TwoParams(FOnAngelscriptDelegateReload, UDelegateFunction*, UDelegateFunction*);
 
 struct FAngelscriptClassGenerator
 {
@@ -27,15 +23,6 @@ struct FAngelscriptClassGenerator
 		FullReloadRequired,
 		Error,
 	};
-
-	static ANGELSCRIPTRUNTIME_API FOnAngelscriptClassReload OnClassReload;
-	static ANGELSCRIPTRUNTIME_API FOnAngelscriptEnumCreated OnEnumCreated;
-	static ANGELSCRIPTRUNTIME_API FOnAngelscriptEnumChanged OnEnumChanged;
-	static ANGELSCRIPTRUNTIME_API FOnAngelscriptStructReload OnStructReload;
-	static ANGELSCRIPTRUNTIME_API FOnAngelscriptDelegateReload OnDelegateReload;
-	static ANGELSCRIPTRUNTIME_API FOnAngelscriptFullReload OnFullReload;
-	static ANGELSCRIPTRUNTIME_API FOnAngelscriptPostReload OnPostReload;
-	static ANGELSCRIPTRUNTIME_API FOnAngelscriptLiteralAssetReload OnLiteralAssetReload;
 
 	ANGELSCRIPTRUNTIME_API void AddModule(TSharedRef<FAngelscriptModuleDesc> Module);
 

@@ -39,14 +39,14 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadEventTests_Private
 			: Engine(&InEngine)
 			, ClassName(InClassName)
 		{
-			Handle = FAngelscriptClassGenerator::OnPostReload.AddRaw(this, &FScopedPostReloadListener::HandlePostReload);
+			Handle = Engine->GetHooks().GetOnPostReload().AddRaw(this, &FScopedPostReloadListener::HandlePostReload);
 		}
 
 		~FScopedPostReloadListener()
 		{
-			if (Handle.IsValid())
+			if (Handle.IsValid() && Engine != nullptr)
 			{
-				FAngelscriptClassGenerator::OnPostReload.Remove(Handle);
+				Engine->GetHooks().GetOnPostReload().Remove(Handle);
 			}
 		}
 
@@ -65,28 +65,36 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadEventTests_Private
 
 	struct FScopedReloadEventRecorder
 	{
-		FScopedReloadEventRecorder()
+		explicit FScopedReloadEventRecorder(FAngelscriptEngine& InEngine)
+			: Engine(&InEngine)
 		{
-			PostReloadHandle = FAngelscriptClassGenerator::OnPostReload.AddRaw(this, &FScopedReloadEventRecorder::HandlePostReload);
-			ClassReloadHandle = FAngelscriptClassGenerator::OnClassReload.AddRaw(this, &FScopedReloadEventRecorder::HandleClassReload);
-			FullReloadHandle = FAngelscriptClassGenerator::OnFullReload.AddRaw(this, &FScopedReloadEventRecorder::HandleFullReload);
+			FAngelscriptEngineHooks& Hooks = Engine->GetHooks();
+			PostReloadHandle = Hooks.GetOnPostReload().AddRaw(this, &FScopedReloadEventRecorder::HandlePostReload);
+			ClassReloadHandle = Hooks.GetOnClassReload().AddRaw(this, &FScopedReloadEventRecorder::HandleClassReload);
+			FullReloadHandle = Hooks.GetOnFullReload().AddRaw(this, &FScopedReloadEventRecorder::HandleFullReload);
 		}
 
 		~FScopedReloadEventRecorder()
 		{
+			if (Engine == nullptr)
+			{
+				return;
+			}
+
+			FAngelscriptEngineHooks& Hooks = Engine->GetHooks();
 			if (PostReloadHandle.IsValid())
 			{
-				FAngelscriptClassGenerator::OnPostReload.Remove(PostReloadHandle);
+				Hooks.GetOnPostReload().Remove(PostReloadHandle);
 			}
 
 			if (ClassReloadHandle.IsValid())
 			{
-				FAngelscriptClassGenerator::OnClassReload.Remove(ClassReloadHandle);
+				Hooks.GetOnClassReload().Remove(ClassReloadHandle);
 			}
 
 			if (FullReloadHandle.IsValid())
 			{
-				FAngelscriptClassGenerator::OnFullReload.Remove(FullReloadHandle);
+				Hooks.GetOnFullReload().Remove(FullReloadHandle);
 			}
 		}
 
@@ -113,6 +121,7 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadEventTests_Private
 		TArray<bool> PostReloadModes;
 		TArray<FClassReloadObservation> ClassReloads;
 		int32 FullReloadCount = 0;
+		FAngelscriptEngine* Engine = nullptr;
 	};
 
 	bool ExecuteGetValue(
@@ -395,7 +404,7 @@ class UFailedReloadEventTarget : UObject
 		return false;
 	}
 
-	FScopedReloadEventRecorder ReloadEvents;
+	FScopedReloadEventRecorder ReloadEvents(Engine);
 
 	ECompileResult ReloadResult = ECompileResult::FullyHandled;
 	const bool bCompiled = CompileModuleWithResult(

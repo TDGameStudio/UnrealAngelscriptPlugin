@@ -58,9 +58,9 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperTests_Priv
 		return FAngelscriptEngine::Create(Config, Dependencies);
 	}
 
-	void EnsureReloadHelperInitialized()
+	void EnsureReloadHelperInitialized(FAngelscriptEngine& Engine)
 	{
-		if (!FAngelscriptClassGenerator::OnClassReload.IsBound())
+		if (!Engine.GetHooks().GetOnClassReload().IsBound())
 		{
 			FClassReloadHelper::Init();
 		}
@@ -113,7 +113,7 @@ bool FAngelscriptClassReloadHelperPerformReinstanceInitialCompileGateTest::RunTe
 
 	EngineScope = MakeUnique<FAngelscriptEngineScope>(*Engine);
 	Engine->bIsInitialCompileFinished = true;
-	EnsureReloadHelperInitialized();
+	EnsureReloadHelperInitialized(*Engine);
 
 	UEnum* ReloadedEnum = StaticEnum<EAutoReceiveInput::Type>();
 	if (!TestNotNull(TEXT("ClassReloadHelper.PerformReinstance gate test should expose a reload enum fixture"), ReloadedEnum))
@@ -228,7 +228,8 @@ bool FAngelscriptClassReloadHelperPerformReinstanceInitialCompileGateTest::RunTe
 bool FAngelscriptClassReloadHelperReloadStateTest::RunTest(const FString& Parameters)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperTests_Private;
-	EnsureReloadHelperInitialized();
+	FAngelscriptEngine& Engine = FAngelscriptEngine::Get();
+	EnsureReloadHelperInitialized(Engine);
 
 	const FClassReloadHelper::FReloadState SavedState = FClassReloadHelper::ReloadState();
 	ON_SCOPE_EXIT
@@ -245,11 +246,12 @@ bool FAngelscriptClassReloadHelperReloadStateTest::RunTest(const FString& Parame
 
 	FClassReloadHelper::ReloadState() = FClassReloadHelper::FReloadState();
 
-	FAngelscriptClassGenerator::OnClassReload.Broadcast(UInterface::StaticClass(), UInterface::StaticClass());
-	FAngelscriptClassGenerator::OnClassReload.Broadcast(AActor::StaticClass(), APawn::StaticClass());
-	FAngelscriptClassGenerator::OnClassReload.Broadcast(nullptr, AVolume::StaticClass());
-	FAngelscriptClassGenerator::OnStructReload.Broadcast(TBaseStructure<FVector>::Get(), TBaseStructure<FTransform>::Get());
-	FAngelscriptClassGenerator::OnDelegateReload.Broadcast(OldDelegate, NewDelegate);
+	FAngelscriptEngineHooks& Hooks = Engine.GetHooks();
+	Hooks.GetOnClassReload().Broadcast(UInterface::StaticClass(), UInterface::StaticClass());
+	Hooks.GetOnClassReload().Broadcast(AActor::StaticClass(), APawn::StaticClass());
+	Hooks.GetOnClassReload().Broadcast(nullptr, AVolume::StaticClass());
+	Hooks.GetOnStructReload().Broadcast(TBaseStructure<FVector>::Get(), TBaseStructure<FTransform>::Get());
+	Hooks.GetOnDelegateReload().Broadcast(OldDelegate, NewDelegate);
 
 	FClassReloadHelper::FReloadState& ReloadState = FClassReloadHelper::ReloadState();
 
@@ -306,7 +308,7 @@ bool FAngelscriptClassReloadHelperReloadStateTest::RunTest(const FString& Parame
 		return false;
 	}
 
-	FAngelscriptClassGenerator::OnPostReload.Broadcast(true);
+	Hooks.GetOnPostReload().Broadcast(true);
 
 	if (!TestFalse(TEXT("ClassReloadHelper.ReloadState should clear bRefreshAllActions after post reload"), ReloadState.bRefreshAllActions))
 	{
@@ -338,7 +340,8 @@ bool FAngelscriptClassReloadHelperReloadStateTest::RunTest(const FString& Parame
 bool FAngelscriptClassReloadHelperEnumAndAssetReloadStateTest::RunTest(const FString& Parameters)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperTests_Private;
-	EnsureReloadHelperInitialized();
+	FAngelscriptEngine& Engine = FAngelscriptEngine::Get();
+	EnsureReloadHelperInitialized(Engine);
 
 	const FClassReloadHelper::FReloadState SavedState = FClassReloadHelper::ReloadState();
 	ON_SCOPE_EXIT
@@ -370,9 +373,10 @@ bool FAngelscriptClassReloadHelperEnumAndAssetReloadStateTest::RunTest(const FSt
 
 	FClassReloadHelper::ReloadState() = FClassReloadHelper::FReloadState();
 
-	FAngelscriptClassGenerator::OnLiteralAssetReload.Broadcast(OldAsset, NewAsset);
-	FAngelscriptClassGenerator::OnEnumChanged.Broadcast(ChangedEnum, OldNames);
-	FAngelscriptClassGenerator::OnEnumCreated.Broadcast(NewEnum);
+	FAngelscriptEngineHooks& Hooks = Engine.GetHooks();
+	Hooks.GetOnLiteralAssetReload().Broadcast(OldAsset, NewAsset);
+	Hooks.GetOnEnumChanged().Broadcast(ChangedEnum, OldNames);
+	Hooks.GetOnEnumCreated().Broadcast(NewEnum);
 
 	FClassReloadHelper::FReloadState& ReloadState = FClassReloadHelper::ReloadState();
 
@@ -401,7 +405,7 @@ bool FAngelscriptClassReloadHelperEnumAndAssetReloadStateTest::RunTest(const FSt
 		return false;
 	}
 
-	FAngelscriptClassGenerator::OnPostReload.Broadcast(false);
+	Hooks.GetOnPostReload().Broadcast(false);
 
 	if (!TestEqual(TEXT("ClassReloadHelper.ReloadState should clear literal asset reloads after post reload"), ReloadState.ReloadAssets.Num(), 0))
 	{

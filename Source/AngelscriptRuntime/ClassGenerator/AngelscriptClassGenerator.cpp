@@ -69,14 +69,9 @@ void CallInterfaceMethod(asIScriptGeneric* InGeneric)
 	InvokeReflectionFallbackFromGenericCall(Generic, Object, RealFunc);
 }
 
-FOnAngelscriptClassReload FAngelscriptClassGenerator::OnClassReload;
-FOnAngelscriptEnumChanged FAngelscriptClassGenerator::OnEnumChanged;
-FOnAngelscriptEnumCreated FAngelscriptClassGenerator::OnEnumCreated;
-FOnAngelscriptStructReload FAngelscriptClassGenerator::OnStructReload;
-FOnAngelscriptDelegateReload FAngelscriptClassGenerator::OnDelegateReload;
-FOnAngelscriptPostReload FAngelscriptClassGenerator::OnPostReload;
-FOnAngelscriptFullReload FAngelscriptClassGenerator::OnFullReload;
-FOnAngelscriptLiteralAssetReload FAngelscriptClassGenerator::OnLiteralAssetReload;
+// Reload-lifecycle delegates have moved to FAngelscriptEngineHooks (see
+// Core/AngelscriptEngineHooks.h). Triggering sites in this file now go through
+// FAngelscriptEngine::Get().GetHooks().GetOnXxx().Broadcast(...).
 
 static int32 UniqueGeneratedCounter = 1;
 static FORCEINLINE int32 UniqueCounter()
@@ -2468,7 +2463,10 @@ void FAngelscriptClassGenerator::PerformReload(bool bFullReload)
 					}
 
 					if ((OldStruct != nullptr || NewStruct != nullptr) && OldStruct != NewStruct)
-						OnStructReload.Broadcast(OldStruct, NewStruct);
+					{
+						if (FAngelscriptEngine* HookEngine = FAngelscriptEngine::TryGetCurrentEngine())
+							HookEngine->GetHooks().GetOnStructReload().Broadcast(OldStruct, NewStruct);
+					}
 				}
 				else
 				{
@@ -2487,13 +2485,17 @@ void FAngelscriptClassGenerator::PerformReload(bool bFullReload)
 					}
 
 					if ((OldClass != nullptr || NewClass != nullptr) && OldClass != NewClass)
-						OnClassReload.Broadcast(OldClass, NewClass);
+					{
+						if (FAngelscriptEngine* HookEngine = FAngelscriptEngine::TryGetCurrentEngine())
+							HookEngine->GetHooks().GetOnClassReload().Broadcast(OldClass, NewClass);
+					}
 				}
 			}
 		}
 
 		// Call new reinstancing if needed
-		OnFullReload.Broadcast();
+		if (FAngelscriptEngine* HookEngine = FAngelscriptEngine::TryGetCurrentEngine())
+			HookEngine->GetHooks().GetOnFullReload().Broadcast();
 
 		// Update progress indicator
 		SlowTask.EnterProgressFrame(0.5f, FText::FromString(TEXT("Unreal Editor Refresh")));
@@ -2515,7 +2517,8 @@ void FAngelscriptClassGenerator::PerformReload(bool bFullReload)
 		// Notify that a reload has just been performed
 		{
 			FAngelscriptScopeTimer Timer(TEXT("new class propagation"));
-			OnPostReload.Broadcast(bIsDoingFullReload);
+			if (FAngelscriptEngine* HookEngine = FAngelscriptEngine::TryGetCurrentEngine())
+				HookEngine->GetHooks().GetOnPostReload().Broadcast(bIsDoingFullReload);
 		}
 
 		// Null out script types on old classes, we're
@@ -2593,7 +2596,8 @@ void FAngelscriptClassGenerator::PerformReload(bool bFullReload)
 	else
 	{
 		FAngelscriptScopeTimer PostTimer(TEXT("post soft reload"));
-		OnPostReload.Broadcast(bIsDoingFullReload);
+		if (FAngelscriptEngine* HookEngine = FAngelscriptEngine::TryGetCurrentEngine())
+			HookEngine->GetHooks().GetOnPostReload().Broadcast(bIsDoingFullReload);
 	}
 
 #if WITH_EDITOR
@@ -3884,11 +3888,15 @@ void FAngelscriptClassGenerator::DoFullReload(FModuleData& ModuleData, FEnumData
 	if (!bExistingEnum)
 	{
 		if (FAngelscriptEngine::Get().IsInitialCompileFinished())
-			OnEnumCreated.Broadcast(Enum);
+		{
+			if (FAngelscriptEngine* HookEngine = FAngelscriptEngine::TryGetCurrentEngine())
+				HookEngine->GetHooks().GetOnEnumCreated().Broadcast(Enum);
+		}
 	}
 	else if (bHasChanged)
 	{
-		OnEnumChanged.Broadcast(Enum, OldNames);
+		if (FAngelscriptEngine* HookEngine = FAngelscriptEngine::TryGetCurrentEngine())
+			HookEngine->GetHooks().GetOnEnumChanged().Broadcast(Enum, OldNames);
 	}
 }
 
@@ -3943,7 +3951,10 @@ void FAngelscriptClassGenerator::DoFullReload(FModuleData& Module, FDelegateData
 
 	// Tell unreal about the change
 	if (DelegateData.OldDelegate.IsValid() && DelegateData.OldDelegate->Function != nullptr)
-		OnDelegateReload.Broadcast(DelegateData.OldDelegate->Function, NewFunction);
+	{
+		if (FAngelscriptEngine* HookEngine = FAngelscriptEngine::TryGetCurrentEngine())
+			HookEngine->GetHooks().GetOnDelegateReload().Broadcast(DelegateData.OldDelegate->Function, NewFunction);
+	}
 }
 
 FProperty* FAngelscriptClassGenerator::AddFunctionReturnType(UFunction* NewFunction, const FAngelscriptTypeUsage& ReturnType)

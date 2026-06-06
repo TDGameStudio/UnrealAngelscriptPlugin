@@ -655,7 +655,10 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UObject_Operations((int32)FAng
 
 #if AS_CAN_HOTRELOAD
 			if (ReloadedObject != nullptr)
-				FAngelscriptClassGenerator::OnLiteralAssetReload.Broadcast(ReloadedObject, ExistingObject);
+			{
+				if (FAngelscriptEngine* HookEngine = FAngelscriptEngine::TryGetCurrentEngine())
+					HookEngine->GetHooks().GetOnLiteralAssetReload().Broadcast(ReloadedObject, ExistingObject);
+			}
 #endif
 		}
 		else

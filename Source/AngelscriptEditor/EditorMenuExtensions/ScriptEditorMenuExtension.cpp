@@ -2,6 +2,7 @@
 #include "AngelscriptEngine.h"
 #include "ClassGenerator/AngelscriptClassGenerator.h"
 #include "ClassGenerator/ASClass.h"
+#include "Core/AngelscriptEngineExtensionRegistry.h"
 #include "AngelscriptRuntimeModule.h"
 #include "IStructureDetailsView.h"
 #include "Framework/Application/SlateApplication.h"
@@ -70,14 +71,42 @@ namespace
 
 void UScriptEditorMenuExtension::InitializeExtensions()
 {
-	FAngelscriptClassGenerator::OnPostReload.AddLambda([](bool bFullReload)
+	// PostReload hook used to be a process-wide static
+	// (FAngelscriptClassGenerator::OnPostReload). After the runtime
+	// de-globalization (refactor-as-runtime-deglobalize-completion / Section 4)
+	// it lives on per-engine FAngelscriptEngineHooks, so subscribe through the
+	// extension registry to catch every engine's lifecycle.
+	class FScriptEditorMenuPostReloadExtension : public IAngelscriptExtension
 	{
-		if (bFullReload)
+	public:
+		virtual void OnEngineAttached(FAngelscriptEngine& Engine) override
 		{
-			UScriptEditorMenuExtension::UnregisterExtensions();
-			UScriptEditorMenuExtension::RegisterExtensions();
+			Handle = Engine.GetHooks().GetOnPostReload().AddLambda([](bool bFullReload)
+			{
+				if (bFullReload)
+				{
+					UScriptEditorMenuExtension::UnregisterExtensions();
+					UScriptEditorMenuExtension::RegisterExtensions();
+				}
+			});
 		}
-	});
+
+		virtual void OnEngineDetached(FAngelscriptEngine& Engine) override
+		{
+			if (Handle.IsValid())
+			{
+				Engine.GetHooks().GetOnPostReload().Remove(Handle);
+			}
+			Handle.Reset();
+		}
+
+	private:
+		FDelegateHandle Handle;
+	};
+
+	FAngelscriptEngineExtensionRegistry::Get().RegisterExtension(
+		MakeShared<FScriptEditorMenuPostReloadExtension>());
+	FAngelscriptEngineExtensionRegistry::Get().ReplayCurrentEngine();
 
 	FCoreDelegates::OnEnginePreExit.AddLambda([]()
 	{

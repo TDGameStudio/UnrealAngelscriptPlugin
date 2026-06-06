@@ -41,8 +41,9 @@ bool FAngelscriptHotReloadReloadDelegatesBroadcastEnumCreatedOnFirstCompileTest:
 
 	ON_SCOPE_EXIT
 	{
-		FAngelscriptClassGenerator::OnEnumCreated.Remove(EnumCreatedHandle);
-		FAngelscriptClassGenerator::OnEnumChanged.Remove(EnumChangedHandle);
+		FAngelscriptEngineHooks& Hooks = Engine.GetHooks();
+		Hooks.GetOnEnumCreated().Remove(EnumCreatedHandle);
+		Hooks.GetOnEnumChanged().Remove(EnumChangedHandle);
 		Engine.DiscardModule(*EnumCreatedModuleName.ToString());
 		Engine.DiscardModule(*EnumCreatedWarmupModuleName.ToString());
 		ASTEST_RESET_ENGINE(Engine);
@@ -78,7 +79,7 @@ enum class EHotReloadCreatedState : uint8
 		return false;
 	}
 
-	EnumCreatedHandle = FAngelscriptClassGenerator::OnEnumCreated.AddLambda(
+	EnumCreatedHandle = Engine.GetHooks().GetOnEnumCreated().AddLambda(
 		[&](UEnum* Enum)
 		{
 			++EnumCreatedCount;
@@ -86,7 +87,7 @@ enum class EHotReloadCreatedState : uint8
 			EnumCreatedNameDuringCompile = Enum != nullptr ? Enum->GetName() : FString();
 		});
 
-	EnumChangedHandle = FAngelscriptClassGenerator::OnEnumChanged.AddLambda(
+	EnumChangedHandle = Engine.GetHooks().GetOnEnumChanged().AddLambda(
 		[&](UEnum* Enum, EnumNameList OldNames)
 		{
 			++EnumChangedCount;

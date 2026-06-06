@@ -41,9 +41,9 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperDelegateTe
 		return FAngelscriptEngine::Create(Config, Dependencies);
 	}
 
-	void EnsureClassReloadHelperInitialized()
+	void EnsureClassReloadHelperInitialized(FAngelscriptEngine& Engine)
 	{
-		if (!FAngelscriptClassGenerator::OnClassReload.IsBound())
+		if (!Engine.GetHooks().GetOnClassReload().IsBound())
 		{
 			FClassReloadHelper::Init();
 		}
@@ -200,7 +200,7 @@ bool FAngelscriptClassReloadHelperPerformReinstanceDelegateDependencyTest::RunTe
 
 	EngineScope = MakeUnique<FAngelscriptEngineScope>(*Engine);
 	Engine->bIsInitialCompileFinished = true;
-	EnsureClassReloadHelperInitialized();
+	EnsureClassReloadHelperInitialized(*Engine);
 
 	if (UseUnrealReloadCVar != nullptr)
 	{
