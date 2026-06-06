@@ -49,7 +49,7 @@ This directory holds the test-side facade and supporting helpers used by the ent
 
 ### Other Shared/* headers (no change in this OpenSpec change)
 
-`AngelscriptCollisionTestHelpers.h`, `AngelscriptConstructionContextProbe.h`, `AngelscriptDebuggerScriptFixture.h`, `AngelscriptDebuggerTestClient.h`, `AngelscriptDebuggerTestContext.h`, `AngelscriptDebuggerTestHelpers.h`, `AngelscriptDebuggerTestMonitor.h`, `AngelscriptDebuggerTestSession.h`, `AngelscriptFunctionalTestUtils.h`, `AngelscriptLearningTrace.h`, `AngelscriptMockDebugServer.h`, `AngelscriptNativeInterfaceTestHelpers.h`, `AngelscriptNativeInterfaceTestTypes.h`, `AngelscriptNativeScriptTestObject.h`, `AngelscriptPerformanceTestUtils.h`, `AngelscriptReflectiveAccess.h`, `AngelscriptTestEngine.h`, `AngelscriptTestEngineHelper.h`, `AngelscriptTestEnginePool.h`, `AngelscriptTestLegacyHelpers.h`, `AngelscriptTestMacros.h`, `AngelscriptTestWorld.h`.
+`AngelscriptCollisionTestHelpers.h`, `AngelscriptConstructionContextProbe.h`, `AngelscriptDebuggerScriptFixture.h`, `AngelscriptDebuggerTestClient.h`, `AngelscriptDebuggerTestContext.h`, `AngelscriptDebuggerTestHelpers.h`, `AngelscriptDebuggerTestMonitor.h`, `AngelscriptDebuggerTestSession.h`, `AngelscriptFunctionalTestUtils.h`, `AngelscriptMockDebugServer.h`, `AngelscriptNativeInterfaceTestHelpers.h`, `AngelscriptNativeInterfaceTestTypes.h`, `AngelscriptNativeScriptTestObject.h`, `AngelscriptPerformanceTestUtils.h`, `AngelscriptReflectiveAccess.h`, `AngelscriptTestEngine.h`, `AngelscriptTestEngineHelper.h`, `AngelscriptTestEnginePool.h`, `AngelscriptTestLegacyHelpers.h`, `AngelscriptTestMacros.h`, `AngelscriptTestWorld.h`.
 
 ## Legacy alias retirement (Phase 1 task 1.8)
 
