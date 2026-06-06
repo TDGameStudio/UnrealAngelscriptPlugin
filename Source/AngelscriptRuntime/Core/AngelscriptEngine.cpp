@@ -1438,6 +1438,9 @@ void FAngelscriptEngine::Shutdown()
 	if (bShouldReleaseOwnedEngine && Engine != nullptr)
 	{
 		FAngelscriptStaticTypeInfoRegistry::ClearForEngine(Engine);
+		// Drop script-enum -> asITypeInfo* entries before AS engine release so
+		// any late access in the teardown window cannot read a dangling pointer.
+		ScriptEnumTypeLookupByName.Reset();
 		Engine->ShutDownAndRelease();
 	}
 	Engine = nullptr;

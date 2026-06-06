@@ -496,12 +496,19 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Enums((int32)FAngelscriptBinds
 				//if (EnumProperty->Enum != nullptr && EnumProperty->Enum->GetOutermost() == FAngelscriptEngine::GetPackage())
 				if (Enum != nullptr && Enum->GetOutermost() == FAngelscriptEngine::GetPackage())
 				{
-					auto* ScriptEnum = FAngelscriptEngine::Get().GetScriptEnumTypeLookup().FindRef(*Enum->GetName());
-					if (ScriptEnum != nullptr)
+					// Type-finder lambdas can run outside the bind path (asset
+					// scans, dumps, class-generator passes), so fall back to a
+					// no-match when there is no current engine instead of
+					// crashing through Get().
+					if (FAngelscriptEngine* CurrentEngine = FAngelscriptEngine::TryGetCurrentEngine())
 					{
-						Usage.Type = FAngelscriptType::GetScriptEnum();
-						Usage.ScriptClass = ScriptEnum;
-						return true;
+						auto* ScriptEnum = CurrentEngine->GetScriptEnumTypeLookup().FindRef(*Enum->GetName());
+						if (ScriptEnum != nullptr)
+						{
+							Usage.Type = FAngelscriptType::GetScriptEnum();
+							Usage.ScriptClass = ScriptEnum;
+							return true;
+						}
 					}
 				}
 
@@ -531,12 +538,17 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Enums((int32)FAngelscriptBinds
 			{
 				if (ByteProperty->Enum != nullptr && ByteProperty->Enum->GetOutermost() == FAngelscriptEngine::GetPackage())
 				{
-					auto* ScriptEnum = FAngelscriptEngine::Get().GetScriptEnumTypeLookup().FindRef(*ByteProperty->Enum->GetName());
-					if (ScriptEnum != nullptr)
+					// Same defensive guard as the EnumProperty branch above:
+					// no current engine means there is nothing to look up.
+					if (FAngelscriptEngine* CurrentEngine = FAngelscriptEngine::TryGetCurrentEngine())
 					{
-						Usage.Type = FAngelscriptType::GetScriptEnum();
-						Usage.ScriptClass = ScriptEnum;
-						return true;
+						auto* ScriptEnum = CurrentEngine->GetScriptEnumTypeLookup().FindRef(*ByteProperty->Enum->GetName());
+						if (ScriptEnum != nullptr)
+						{
+							Usage.Type = FAngelscriptType::GetScriptEnum();
+							Usage.ScriptClass = ScriptEnum;
+							return true;
+						}
 					}
 				}
 
