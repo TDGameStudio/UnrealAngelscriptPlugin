@@ -14,8 +14,7 @@
 // Lifecycle:
 //   1. FAngelscriptEngine::Initialize* allocates the registry directly as a
 //      `TUniquePtr<FBlueprintEventSignatureRegistry> BlueprintEventSignatureRegistry`
-//      member of the engine (post clone-removal: previously this lived on the
-//      now-removed FAngelscriptOwnedSharedState struct).
+//      member of the engine.
 //   2. Bind_BlueprintEvent.cpp creates a signature with `new FBlueprintEventSignature`,
 //      hands it to AS via SetUserData (through OnBind), and immediately transfers
 //      ownership to the registry via AddOwnership().

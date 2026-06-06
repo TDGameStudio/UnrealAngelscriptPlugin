@@ -438,14 +438,10 @@ private:
 	// Counter for temporary generated module names
 	int32 TempNameIndex = 0;
 
-	// Owned engine state (formerly indirected through FAngelscriptOwnedSharedState).
-	// All 7 fields are 1:1 with the owning engine; they were grouped into a
-	// separate struct only because the removed Clone mechanism needed a
-	// shareable resource bag. With single-owner semantics the struct served
-	// no purpose, so its members live directly on the engine. Each TUniquePtr
-	// is empty before Initialize*() runs (Get() returns nullptr) and is
-	// MakeUnique-d during the same point of initialization that previously
-	// called EnsureSharedStateCreated().
+	// Owned engine state. The engine is the sole owner; each TUniquePtr is
+	// empty before Initialize*() runs (Get() returns nullptr) and is
+	// MakeUnique-d during initialization. Teardown releases these in
+	// Shutdown().
 	TUniquePtr<FAngelscriptTypeDatabase> TypeDatabase;
 	TUniquePtr<FAngelscriptBindState> BindState;
 	TUniquePtr<TArray<FToStringType>> ToStringList;

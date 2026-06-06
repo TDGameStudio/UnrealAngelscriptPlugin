@@ -931,10 +931,8 @@ void FAngelscriptEngine::InitializeWithoutInitialCompile()
 	Engine->SetMessageCallback(asFUNCTION(LogAngelscriptError), 0, asCALL_CDECL);
 	Engine->SetContextCallbacks(&AngelscriptRequestContext, &AngelscriptReturnContext, nullptr);
 
-	// Construct the engine's owned databases. These were previously held inside
-	// FAngelscriptOwnedSharedState; with that struct removed, they live as
-	// direct TUniquePtr<...> fields on FAngelscriptEngine and are MakeUnique-d
-	// here at the same point EnsureSharedStateCreated() previously fired.
+	// Construct the engine's owned databases as direct TUniquePtr<...> fields
+	// on FAngelscriptEngine.
 	if (!TypeDatabase.IsValid())
 	{
 		TypeDatabase = MakeUnique<FAngelscriptTypeDatabase>();
@@ -1332,8 +1330,7 @@ void FAngelscriptEngine::Shutdown()
 		HotReloadTestRunner = nullptr;
 	}
 
-	// Single-owner releases: with FAngelscriptOwnedSharedState gone there is
-	// no second pointer to consult — just release the engine's own fields.
+	// Single-owner releases: the engine releases its own fields directly.
 #if WITH_AS_DEBUGSERVER
 	if (bShouldReleaseOwnedEngine && DebugServer != nullptr)
 	{
@@ -1437,9 +1434,7 @@ void FAngelscriptEngine::Shutdown()
 		}, false);
 	}
 
-	// Engine teardown: was previously in ReleaseOwnedSharedStateResources(); now
-	// folded inline since SharedState is gone and the engine releases its own
-	// fields directly.
+	// Engine teardown: the engine releases its own fields directly here.
 	if (bShouldReleaseOwnedEngine && Engine != nullptr)
 	{
 		FAngelscriptStaticTypeInfoRegistry::ClearForEngine(Engine);
@@ -1452,8 +1447,8 @@ void FAngelscriptEngine::Shutdown()
 	DebugServer = nullptr;
 #endif
 
-	// Clear the type / bind / registry databases that used to live on
-	// FAngelscriptOwnedSharedState. ScriptEngine->ShutDownAndRelease() above
+	// Clear the engine-owned type / bind / registry databases.
+	// ScriptEngine->ShutDownAndRelease() above
 	// has already destroyed every script function that held a userData pointer
 	// to a heap-allocated FBlueprintEventSignature, so the registry can be
 	// safely cleared here. Optional extension-owned process caches are not
@@ -1729,8 +1724,7 @@ void FAngelscriptEngine::Initialize_AnyThread()
 			}
 		}
 	}
-	// Construct the engine's owned databases. Same MakeUnique sequence
-	// previously held by EnsureSharedStateCreated(); see Initialize() /
+	// Construct the engine's owned databases. See Initialize() /
 	// InitializeWithoutInitialCompile() for the matching short path.
 	if (!TypeDatabase.IsValid())
 	{

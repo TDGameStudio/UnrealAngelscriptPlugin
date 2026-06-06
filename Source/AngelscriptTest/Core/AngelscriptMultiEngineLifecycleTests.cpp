@@ -90,7 +90,7 @@ bool RunCloneModuleIsolation(FAutomationTestBase& Test)
 	// the TEST_CLASS still references "CloneModuleIsolation" so test report
 	// archives stay greppable. The semantics are now "two independent test
 	// engines must keep their script modules from leaking into each other"
-	// â€?the "Clone" terminology is historical.
+	// ï¿½?the "Clone" terminology is historical.
 	ResetToIsolatedEngineState();
 
 	const FString ModuleName = TEXT("Tests.SharedModule");
@@ -346,16 +346,6 @@ bool RunStartupBindObservationCreateForTestingFullFallback(FAutomationTestBase& 
 	return Test.TestTrue(TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should preserve order for the fallback full startup pass"), FirstIndex < SecondIndex);
 }
 
-bool RunSharedStateParticipantCounts(FAutomationTestBase& Test)
-{
-	// Test removed: targeted ActiveParticipants / ActiveCloneCount
-	// reference counting on FAngelscriptOwnedSharedState, which is
-	// removed in this refactor. Replacement coverage of the new
-	// single-owner contract belongs in
-	// Angelscript.TestModule.CppTests.Engine.TestEngine.* once added.
-	return true;
-}
-
 }
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptMultiEngineLifecycleTests,
@@ -420,12 +410,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMultiEngineLifecycleTests,
 	{
 		using namespace AngelscriptTest_Core_AngelscriptMultiEngineLifecycleTests_Private;
 		RunStartupBindObservationCreateForTestingFullFallback(*TestRunner);
-	}
-
-	TEST_METHOD(SharedStateParticipantCounts)
-	{
-		using namespace AngelscriptTest_Core_AngelscriptMultiEngineLifecycleTests_Private;
-		RunSharedStateParticipantCounts(*TestRunner);
 	}
 
 };

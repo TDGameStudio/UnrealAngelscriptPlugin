@@ -34,15 +34,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTestEngineLifecycleTests,
 	"Angelscript.TestModule.Engine.TestEngine",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	// The single-owner shutdown contract that replaces the removed
-	// participant / deferred-release coordination on
-	// FAngelscriptOwnedSharedState. With clones gone, every test engine
-	// is the sole owner of its shared state, so destroying the
-	// TUniquePtr must complete teardown synchronously — no waiting for
-	// outstanding clones, no bPendingOwnerRelease handshake. The
-	// observable contract: (a) the first reset returns synchronously
-	// without deadlock, and (b) two engines held simultaneously have
-	// distinct underlying asCScriptEngine objects.
+	// The single-owner shutdown contract: every test engine is the sole owner
+	// of its shared state, so destroying the TUniquePtr must complete teardown
+	// synchronously — no deferred-release handshake. The observable contract:
+	// (a) the first reset returns synchronously without deadlock, and (b) two
+	// engines held simultaneously have distinct underlying asCScriptEngine
+	// objects.
 	//
 	// Note: we do NOT compare a captured pre-reset pointer against a
 	// post-reset newly-allocated pointer — the OS allocator is free to
@@ -76,8 +73,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTestEngineLifecycleTests,
 
 		// Synchronous teardown: dropping engine A must complete without
 		// any coordination handshake. If the destructor blocked on a
-		// deferred-release path (the now-removed bPendingOwnerRelease /
-		// ActiveCloneCount logic), execution would deadlock or emit a
+		// deferred-release path, execution would deadlock or emit a
 		// "release deferred" log. Reaching the next assertion proves the
 		// synchronous-shutdown contract holds.
 		EngineA.Reset();

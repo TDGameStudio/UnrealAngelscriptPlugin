@@ -120,7 +120,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindFreeEvidenceTests,
 	// because the AS 2.33 fork does not invoke any cleanup callback when an
 	// asCScriptFunction is destroyed. After the fix, FBlueprintEventSignatureRegistry
 	// is per-engine and Reset() is called from FAngelscriptEngine::Shutdown()
-	// (post-flatten; previously the helper was named ReleaseOwnedSharedStateResources)
 	// right after ScriptEngine->ShutDownAndRelease().
 	//
 	// We assert two things:

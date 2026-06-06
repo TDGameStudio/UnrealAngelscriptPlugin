@@ -576,8 +576,7 @@ namespace BlueprintEventSignatureRegistryInternal
 // Allocate a new signature and immediately transfer ownership to the current
 // engine's registry. The returned pointer remains stable for the lifetime of
 // the engine (or until Engine->BlueprintEventSignatureRegistry.Reset() is
-// invoked during Shutdown(); the registry now lives directly on
-// FAngelscriptEngine after FAngelscriptOwnedSharedState was flattened).
+// invoked during Shutdown()).
 //
 // FAngelscriptEngine::Initialize* unconditionally allocates the registry, so
 // by the time any BindBlueprintEvent_* helper runs the registry must exist.
