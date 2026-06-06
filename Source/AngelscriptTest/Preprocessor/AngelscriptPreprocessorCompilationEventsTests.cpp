@@ -110,7 +110,7 @@ class UCompilationEventsHookMoments : UObject
  	{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
  	int32 ClassAnalyzeCount = 0;
- 	Engine.GetHooks().GetClassAnalyze().BindLambda(
+ 	Engine.GetClassAnalyze().BindLambda(
  		[&ClassAnalyzeCount](FString& GeneratedStatics, TSharedPtr<FAngelscriptClassDesc> ClassDesc, bool& bHasStatics)
  		{
  			++ClassAnalyzeCount;
@@ -122,7 +122,7 @@ class UCompilationEventsHookMoments : UObject
  		});
  	ON_SCOPE_EXIT
  	{
- 		Engine.GetHooks().GetClassAnalyze().Unbind();
+ 		Engine.GetClassAnalyze().Unbind();
  	};
 
  	FFixtureFile File(TEXT("Tests/Preprocessor/CompilationEvents/ClassAnalyzeHook.as"), TEXT(R"(

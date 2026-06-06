@@ -1403,7 +1403,7 @@ void FAngelscriptPreprocessor::AnalyzeClasses(FFile& File, FChunk& Chunk)
 
 		if (FAngelscriptEngine* CurrentEngine = FAngelscriptEngine::TryGetCurrentEngine())
 		{
-			FAngelscriptClassAnalyzeDelegate& ClassAnalyzeDelegate = CurrentEngine->GetHooks().GetClassAnalyze();
+			FAngelscriptClassAnalyzeDelegate& ClassAnalyzeDelegate = CurrentEngine->GetClassAnalyze();
 			if (ClassAnalyzeDelegate.IsBound())
 				ClassAnalyzeDelegate.Execute(GeneratedStatics, ClassDesc, bHasStatics);
 		}

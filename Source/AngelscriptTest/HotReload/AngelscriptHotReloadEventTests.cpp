@@ -39,14 +39,14 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadEventTests_Private
 			: Engine(&InEngine)
 			, ClassName(InClassName)
 		{
-			Handle = Engine->GetHooks().GetOnPostReload().AddRaw(this, &FScopedPostReloadListener::HandlePostReload);
+			Handle = Engine->GetOnPostReload().AddRaw(this, &FScopedPostReloadListener::HandlePostReload);
 		}
 
 		~FScopedPostReloadListener()
 		{
 			if (Handle.IsValid() && Engine != nullptr)
 			{
-				Engine->GetHooks().GetOnPostReload().Remove(Handle);
+				Engine->GetOnPostReload().Remove(Handle);
 			}
 		}
 
@@ -68,10 +68,9 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadEventTests_Private
 		explicit FScopedReloadEventRecorder(FAngelscriptEngine& InEngine)
 			: Engine(&InEngine)
 		{
-			FAngelscriptEngineHooks& Hooks = Engine->GetHooks();
-			PostReloadHandle = Hooks.GetOnPostReload().AddRaw(this, &FScopedReloadEventRecorder::HandlePostReload);
-			ClassReloadHandle = Hooks.GetOnClassReload().AddRaw(this, &FScopedReloadEventRecorder::HandleClassReload);
-			FullReloadHandle = Hooks.GetOnFullReload().AddRaw(this, &FScopedReloadEventRecorder::HandleFullReload);
+			PostReloadHandle = Engine->GetOnPostReload().AddRaw(this, &FScopedReloadEventRecorder::HandlePostReload);
+			ClassReloadHandle = Engine->GetOnClassReload().AddRaw(this, &FScopedReloadEventRecorder::HandleClassReload);
+			FullReloadHandle = Engine->GetOnFullReload().AddRaw(this, &FScopedReloadEventRecorder::HandleFullReload);
 		}
 
 		~FScopedReloadEventRecorder()
@@ -81,20 +80,19 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadEventTests_Private
 				return;
 			}
 
-			FAngelscriptEngineHooks& Hooks = Engine->GetHooks();
 			if (PostReloadHandle.IsValid())
 			{
-				Hooks.GetOnPostReload().Remove(PostReloadHandle);
+				Engine->GetOnPostReload().Remove(PostReloadHandle);
 			}
 
 			if (ClassReloadHandle.IsValid())
 			{
-				Hooks.GetOnClassReload().Remove(ClassReloadHandle);
+				Engine->GetOnClassReload().Remove(ClassReloadHandle);
 			}
 
 			if (FullReloadHandle.IsValid())
 			{
-				Hooks.GetOnFullReload().Remove(FullReloadHandle);
+				Engine->GetOnFullReload().Remove(FullReloadHandle);
 			}
 		}
 

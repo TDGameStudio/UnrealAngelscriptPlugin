@@ -37,7 +37,7 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperPostReload
 
 	void EnsureClassReloadHelperInitialized(FAngelscriptEngine& Engine)
 	{
-		if (!Engine.GetHooks().GetOnClassReload().IsBound())
+		if (!Engine.GetOnClassReload().IsBound())
 		{
 			FClassReloadHelper::Init();
 		}
@@ -209,7 +209,7 @@ bool FAngelscriptClassReloadHelperOnPostReloadFullReloadEffectsTest::RunTest(con
 	ReloadState.bRefreshAllActions = true;
 	ReloadState.bReloadedVolume = true;
 
-	Engine->GetHooks().GetOnPostReload().Broadcast(true);
+	Engine->GetOnPostReload().Broadcast(true);
 
 
 	if (!TestEqual(TEXT("ClassReloadHelper.OnPostReload full-reload test should refresh the blueprint action database once"), CallLog.RefreshAllCalls, 1))
@@ -343,7 +343,7 @@ bool FAngelscriptClassReloadHelperOnPostReloadSoftReloadInvalidationTest::RunTes
 
 	Engine->bIsInitialCompileFinished = false;
 	SeedPostReloadResetSentinels(ReloadState);
-	Engine->GetHooks().GetOnPostReload().Broadcast(false);
+	Engine->GetOnPostReload().Broadcast(false);
 
 	if (!TestEqual(TEXT("ClassReloadHelper.OnPostReload soft-reload test should invalidate the component registry once when initial compile is unfinished"), CallLog.InvalidateComponentRegistryCalls, 1))
 	{
@@ -376,7 +376,7 @@ bool FAngelscriptClassReloadHelperOnPostReloadSoftReloadInvalidationTest::RunTes
 
 	Engine->bIsInitialCompileFinished = true;
 	SeedPostReloadResetSentinels(ReloadState);
-	Engine->GetHooks().GetOnPostReload().Broadcast(false);
+	Engine->GetOnPostReload().Broadcast(false);
 
 	if (!TestEqual(TEXT("ClassReloadHelper.OnPostReload soft-reload test should not invalidate the component registry again once initial compile is finished"), CallLog.InvalidateComponentRegistryCalls, 1))
 	{

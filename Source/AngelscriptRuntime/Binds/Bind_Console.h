@@ -23,13 +23,13 @@ struct FScriptConsoleVariable
 				FString HelpCopy = Help;
 				FAngelscriptEngine& Engine = FAngelscriptEngine::Get();
 				HookEngine = &Engine;
-				LateInitializeDelegateHandle = Engine.GetHooks().GetOnInitialCompileFinished().AddLambda(
+				LateInitializeDelegateHandle = Engine.GetOnInitialCompileFinished().AddLambda(
 					[this, NameCopy, DefaultValue, HelpCopy]()
 					{
 						Variable = IConsoleManager::Get().RegisterConsoleVariable(*NameCopy, DefaultValue, *HelpCopy);
 						if (HookEngine != nullptr)
 						{
-							HookEngine->GetHooks().GetOnInitialCompileFinished().Remove(LateInitializeDelegateHandle);
+							HookEngine->GetOnInitialCompileFinished().Remove(LateInitializeDelegateHandle);
 						}
 						LateInitializeDelegateHandle.Reset();
 						HookEngine = nullptr;
@@ -47,7 +47,7 @@ struct FScriptConsoleVariable
 	{
 		if (LateInitializeDelegateHandle.IsValid() && HookEngine != nullptr)
 		{
-			HookEngine->GetHooks().GetOnInitialCompileFinished().Remove(LateInitializeDelegateHandle);
+			HookEngine->GetOnInitialCompileFinished().Remove(LateInitializeDelegateHandle);
 			LateInitializeDelegateHandle.Reset();
 			HookEngine = nullptr;
 		}

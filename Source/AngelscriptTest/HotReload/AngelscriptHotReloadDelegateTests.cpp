@@ -104,10 +104,9 @@ bool FAngelscriptHotReloadReloadDelegatesBroadcastEnumChangeAndFullReloadTest::R
 
 	ON_SCOPE_EXIT
 	{
-		FAngelscriptEngineHooks& Hooks = Engine.GetHooks();
-		Hooks.GetOnEnumChanged().Remove(EnumChangedHandle);
-		Hooks.GetOnFullReload().Remove(FullReloadHandle);
-		Hooks.GetOnPostReload().Remove(PostReloadHandle);
+		Engine.GetOnEnumChanged().Remove(EnumChangedHandle);
+		Engine.GetOnFullReload().Remove(FullReloadHandle);
+		Engine.GetOnPostReload().Remove(PostReloadHandle);
 		Engine.DiscardModule(*DelegateReloadModuleName.ToString());
 		ASTEST_RESET_ENGINE(Engine);
 	};
@@ -173,7 +172,7 @@ class UHotReloadEventCarrier : UObject
 		return false;
 	}
 
-	EnumChangedHandle = Engine.GetHooks().GetOnEnumChanged().AddLambda(
+	EnumChangedHandle = Engine.GetOnEnumChanged().AddLambda(
 		[&](UEnum* Enum, EnumNameList OldNames)
 		{
 			++EnumChangedCount;
@@ -181,13 +180,13 @@ class UHotReloadEventCarrier : UObject
 			OldNamesSeenDuringReload = OldNames;
 		});
 
-	FullReloadHandle = Engine.GetHooks().GetOnFullReload().AddLambda(
+	FullReloadHandle = Engine.GetOnFullReload().AddLambda(
 		[&]()
 		{
 			++FullReloadCount;
 		});
 
-	PostReloadHandle = Engine.GetHooks().GetOnPostReload().AddLambda(
+	PostReloadHandle = Engine.GetOnPostReload().AddLambda(
 		[&](const bool bWasFullReload)
 		{
 			++PostReloadCount;
@@ -276,10 +275,9 @@ bool FAngelscriptHotReloadReloadDelegatesBroadcastOldAndNewTypesTest::RunTest(co
 
 	ON_SCOPE_EXIT
 	{
-		FAngelscriptEngineHooks& Hooks = Engine.GetHooks();
-		Hooks.GetOnClassReload().Remove(ClassReloadHandle);
-		Hooks.GetOnStructReload().Remove(StructReloadHandle);
-		Hooks.GetOnPostReload().Remove(PostReloadHandle);
+		Engine.GetOnClassReload().Remove(ClassReloadHandle);
+		Engine.GetOnStructReload().Remove(StructReloadHandle);
+		Engine.GetOnPostReload().Remove(PostReloadHandle);
 		Engine.DiscardModule(*TypeReloadModuleName.ToString());
 		ASTEST_RESET_ENGINE(Engine);
 	};
@@ -349,7 +347,7 @@ class UHotReloadDelegateCarrier : UObject
 		return false;
 	}
 
-	ClassReloadHandle = Engine.GetHooks().GetOnClassReload().AddLambda(
+	ClassReloadHandle = Engine.GetOnClassReload().AddLambda(
 		[&](UClass* OldClass, UClass* NewClass)
 		{
 			++ClassReloadCount;
@@ -357,7 +355,7 @@ class UHotReloadDelegateCarrier : UObject
 			NewClassSeenDuringReload = NewClass;
 		});
 
-	StructReloadHandle = Engine.GetHooks().GetOnStructReload().AddLambda(
+	StructReloadHandle = Engine.GetOnStructReload().AddLambda(
 		[&](UScriptStruct* OldStruct, UScriptStruct* NewStruct)
 		{
 			++StructReloadCount;
@@ -365,7 +363,7 @@ class UHotReloadDelegateCarrier : UObject
 			NewStructSeenDuringReload = NewStruct;
 		});
 
-	PostReloadHandle = Engine.GetHooks().GetOnPostReload().AddLambda(
+	PostReloadHandle = Engine.GetOnPostReload().AddLambda(
 		[&](const bool bWasFullReload)
 		{
 			++PostReloadCount;
@@ -437,7 +435,7 @@ bool FAngelscriptHotReloadReloadDelegatesBroadcastDelegateSignatureSwapTest::Run
 
 	ON_SCOPE_EXIT
 	{
-		Engine.GetHooks().GetOnDelegateReload().Remove(DelegateReloadHandle);
+		Engine.GetOnDelegateReload().Remove(DelegateReloadHandle);
 		Engine.DiscardModule(*SignatureReloadModuleName.ToString());
 		ASTEST_RESET_ENGINE(Engine);
 	};
@@ -459,7 +457,7 @@ bool FAngelscriptHotReloadReloadDelegatesBroadcastDelegateSignatureSwapTest::Run
 	}
 
 	TestNull(TEXT("Initial delegate signature should not expose the future Label parameter"), FindFProperty<FProperty>(DelegateBeforeReload->Function, TEXT("Label")));
-	DelegateReloadHandle = Engine.GetHooks().GetOnDelegateReload().AddLambda(
+	DelegateReloadHandle = Engine.GetOnDelegateReload().AddLambda(
 		[&](UDelegateFunction* OldDelegate, UDelegateFunction* NewDelegate)
 		{
 			++DelegateReloadCount;

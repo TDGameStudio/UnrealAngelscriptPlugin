@@ -10,7 +10,7 @@ namespace AngelscriptDebuggerSmokeTests_Private
 	{
 	public:
 		FScopedDebugBreakFiltersBinding(FAngelscriptEngine& Engine, TFunction<void(FAngelscriptDebugBreakFilters&)> InPopulateFilters)
-			: TargetDelegate(Engine.GetHooks().GetDebugBreakFilters())
+			: TargetDelegate(Engine.GetDebugBreakFilters())
 			, PreviousDelegate(TargetDelegate)
 			, PopulateFilters(MoveTemp(InPopulateFilters))
 		{

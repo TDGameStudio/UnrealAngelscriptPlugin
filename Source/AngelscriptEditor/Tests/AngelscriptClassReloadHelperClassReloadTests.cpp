@@ -41,7 +41,7 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperClassReloa
 
 	void EnsureClassReloadHelperInitialized(FAngelscriptEngine& Engine)
 	{
-		if (!Engine.GetHooks().GetOnClassReload().IsBound())
+		if (!Engine.GetOnClassReload().IsBound())
 		{
 			FClassReloadHelper::Init();
 		}
@@ -113,7 +113,7 @@ bool FAngelscriptClassReloadHelperOnClassReloadRefreshesClassActionsAndInvalidat
 
 	ReloadState = FClassReloadHelper::FReloadState();
 	CallLog.Reset();
-	Engine->GetHooks().GetOnClassReload().Broadcast(OldComponentClass, NewComponentClass);
+	Engine->GetOnClassReload().Broadcast(OldComponentClass, NewComponentClass);
 
 	if (!TestTrue(TEXT("ClassReloadHelper.OnClassReload immediate-effects test should track the reloaded component class pair"), ReloadState.ReloadClasses.FindRef(OldComponentClass) == NewComponentClass))
 	{
@@ -150,7 +150,7 @@ bool FAngelscriptClassReloadHelperOnClassReloadRefreshesClassActionsAndInvalidat
 
 	ReloadState = FClassReloadHelper::FReloadState();
 	CallLog.Reset();
-	Engine->GetHooks().GetOnClassReload().Broadcast(OldRegularClass, NewRegularClass);
+	Engine->GetOnClassReload().Broadcast(OldRegularClass, NewRegularClass);
 
 	if (!TestTrue(TEXT("ClassReloadHelper.OnClassReload immediate-effects test should track the reloaded regular class pair"), ReloadState.ReloadClasses.FindRef(OldRegularClass) == NewRegularClass))
 	{

@@ -96,7 +96,7 @@ struct FClassReloadHelper
 	// Pre-deglobalization the same wiring lived as direct AddLambda calls into
 	// process-wide static delegates on FAngelscriptClassGenerator. After that
 	// refactor (see refactor-as-runtime-deglobalize-completion / Section 4-6)
-	// the hooks live on FAngelscriptEngineHooks (per-engine), so subscribers
+	// the hooks live directly on FAngelscriptEngine (per-engine), so subscribers
 	// must attach when each engine is created and detach when it is destroyed.
 	// FClassReloadHelperExtension is the per-engine binder; FReloadState below
 	// remains a single static for now (Editor only ever drives one engine
@@ -107,16 +107,14 @@ struct FClassReloadHelper
 	public:
 		virtual void OnEngineAttached(FAngelscriptEngine& Engine) override
 		{
-			FAngelscriptEngineHooks& Hooks = Engine.GetHooks();
-
-			AttachedHandles.Add(Hooks.GetOnStructReload().AddLambda(
+			AttachedHandles.Add(Engine.GetOnStructReload().AddLambda(
 			[](UScriptStruct* OldStruct, UScriptStruct* NewStruct)
 			{
 				ReloadState().ReloadStructs.Add(OldStruct, NewStruct);
 				ReloadState().bRefreshAllActions = true;
 			}));
 
-			AttachedHandles.Add(Hooks.GetOnClassReload().AddLambda(
+			AttachedHandles.Add(Engine.GetOnClassReload().AddLambda(
 			[](UClass* OldClass, UClass* NewClass)
 			{
 				if (OldClass != nullptr)
@@ -178,20 +176,20 @@ struct FClassReloadHelper
 				}
 			}));
 
-			AttachedHandles.Add(Hooks.GetOnDelegateReload().AddLambda(
+			AttachedHandles.Add(Engine.GetOnDelegateReload().AddLambda(
 			[](UDelegateFunction* OldDelegate, UDelegateFunction* NewDelegate)
 			{
 				ReloadState().ReloadDelegates.Add(OldDelegate, NewDelegate);
 				ReloadState().NewDelegates.Add(NewDelegate);
 			}));
 
-			AttachedHandles.Add(Hooks.GetOnLiteralAssetReload().AddLambda(
+			AttachedHandles.Add(Engine.GetOnLiteralAssetReload().AddLambda(
 			[](UObject* OldObject, UObject* NewObject)
 			{
 				ReloadState().ReloadAssets.Add(OldObject, NewObject);
 			}));
 
-			AttachedHandles.Add(Hooks.GetOnEnumChanged().AddLambda(
+			AttachedHandles.Add(Engine.GetOnEnumChanged().AddLambda(
 			[](UEnum* Enum, const TArray<TPair<FName, int64>>& OldNames)
 			{
 				ReloadState().ReloadEnums.Add(Enum);
@@ -200,20 +198,20 @@ struct FClassReloadHelper
 				//FEnumEditorUtils::BroadcastChanges((UUserDefinedEnum*)Enum, OldNames);
 			}));
 
-			AttachedHandles.Add(Hooks.GetOnEnumCreated().AddLambda(
+			AttachedHandles.Add(Engine.GetOnEnumCreated().AddLambda(
 			[](UEnum* Enum)
 			{
 				ReloadState().NewEnums.Add(Enum);
 			}));
 
-			AttachedHandles.Add(Hooks.GetOnFullReload().AddLambda(
+			AttachedHandles.Add(Engine.GetOnFullReload().AddLambda(
 			[]()
 			{
 				// Do the actual reinstancing required
 				ReloadState().PerformReinstance();
 			}));
 
-			AttachedHandles.Add(Hooks.GetOnPostReload().AddLambda(
+			AttachedHandles.Add(Engine.GetOnPostReload().AddLambda(
 			[](bool bFullReload)
 			{
 				// Refresh action list in blueprint, this is what
@@ -271,7 +269,6 @@ struct FClassReloadHelper
 
 		virtual void OnEngineDetached(FAngelscriptEngine& Engine) override
 		{
-			FAngelscriptEngineHooks& Hooks = Engine.GetHooks();
 			// Multicast delegates only expose RemoveAll/Remove(Handle); since we
 			// captured each handle on attach, remove them individually so other
 			// subscribers on the same engine remain intact.
@@ -279,14 +276,14 @@ struct FClassReloadHelper
 			{
 				if (Handle.IsValid())
 				{
-					Hooks.GetOnStructReload().Remove(Handle);
-					Hooks.GetOnClassReload().Remove(Handle);
-					Hooks.GetOnDelegateReload().Remove(Handle);
-					Hooks.GetOnLiteralAssetReload().Remove(Handle);
-					Hooks.GetOnEnumChanged().Remove(Handle);
-					Hooks.GetOnEnumCreated().Remove(Handle);
-					Hooks.GetOnFullReload().Remove(Handle);
-					Hooks.GetOnPostReload().Remove(Handle);
+					Engine.GetOnStructReload().Remove(Handle);
+					Engine.GetOnClassReload().Remove(Handle);
+					Engine.GetOnDelegateReload().Remove(Handle);
+					Engine.GetOnLiteralAssetReload().Remove(Handle);
+					Engine.GetOnEnumChanged().Remove(Handle);
+					Engine.GetOnEnumCreated().Remove(Handle);
+					Engine.GetOnFullReload().Remove(Handle);
+					Engine.GetOnPostReload().Remove(Handle);
 				}
 			}
 			AttachedHandles.Reset();

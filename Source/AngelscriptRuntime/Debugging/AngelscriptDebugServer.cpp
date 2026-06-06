@@ -1031,8 +1031,8 @@ bool FAngelscriptDebugServer::ShouldBreakOnActiveSide()
 		return true;
 
 	auto& Delegate = OwnerEngine != nullptr
-		? OwnerEngine->GetHooks().GetDebugCheckBreakOptions()
-		: FAngelscriptEngine::Get().GetHooks().GetDebugCheckBreakOptions();
+		? OwnerEngine->GetDebugCheckBreakOptions()
+		: FAngelscriptEngine::Get().GetDebugCheckBreakOptions();
 	if (Delegate.IsBound())
 	{
 		return Delegate.Execute(BreakOptions, WorldContext);
@@ -1558,7 +1558,7 @@ void FAngelscriptDebugServer::HandleMessage(EDebugMessageType MessageType, FArra
 	{
 		TMap<FName, FString> FilterList;
 		FAngelscriptEngine& Engine = OwnerEngine != nullptr ? *OwnerEngine : FAngelscriptEngine::Get();
-		Engine.GetHooks().GetDebugBreakFilters().ExecuteIfBound(FilterList);
+		Engine.GetDebugBreakFilters().ExecuteIfBound(FilterList);
 
 		FAngelscriptBreakFilters Filters;
 		for (auto& Elem : FilterList)

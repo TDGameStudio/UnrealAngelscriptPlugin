@@ -3,7 +3,7 @@
 //
 // Multi-engine isolation coverage for the reload-lifecycle hooks moved from
 // the deleted `FAngelscriptClassGenerator` static delegates onto per-engine
-// `FAngelscriptEngineHooks` (refactor-as-runtime-deglobalize-completion /
+// FAngelscriptEngine accessors (refactor-as-runtime-deglobalize-completion /
 // Sections 4-6).
 //
 // Pre-fix, all 8 reload hooks (OnClassReload, OnEnumCreated, OnEnumChanged,
@@ -24,7 +24,6 @@
 
 #include "AngelscriptEngine.h"
 #include "AngelscriptTestEngine.h"
-#include "Core/AngelscriptEngineHooks.h"
 #include "CQTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -55,24 +54,23 @@ struct FScopedAllHookSubscriptions
 	FScopedAllHookSubscriptions(FAngelscriptEngine& InEngine, FHookCounters& InCounters)
 		: Engine(&InEngine)
 	{
-		FAngelscriptEngineHooks& Hooks = InEngine.GetHooks();
 		FHookCounters* Counters = &InCounters;
 
-		PostReloadHandle = Hooks.GetOnPostReload().AddLambda(
+		PostReloadHandle = InEngine.GetOnPostReload().AddLambda(
 			[Counters](bool) { ++Counters->PostReload; });
-		FullReloadHandle = Hooks.GetOnFullReload().AddLambda(
+		FullReloadHandle = InEngine.GetOnFullReload().AddLambda(
 			[Counters]() { ++Counters->FullReload; });
-		ClassReloadHandle = Hooks.GetOnClassReload().AddLambda(
+		ClassReloadHandle = InEngine.GetOnClassReload().AddLambda(
 			[Counters](UClass*, UClass*) { ++Counters->ClassReload; });
-		StructReloadHandle = Hooks.GetOnStructReload().AddLambda(
+		StructReloadHandle = InEngine.GetOnStructReload().AddLambda(
 			[Counters](UScriptStruct*, UScriptStruct*) { ++Counters->StructReload; });
-		EnumCreatedHandle = Hooks.GetOnEnumCreated().AddLambda(
+		EnumCreatedHandle = InEngine.GetOnEnumCreated().AddLambda(
 			[Counters](UEnum*) { ++Counters->EnumCreated; });
-		EnumChangedHandle = Hooks.GetOnEnumChanged().AddLambda(
+		EnumChangedHandle = InEngine.GetOnEnumChanged().AddLambda(
 			[Counters](UEnum*, EnumNameList) { ++Counters->EnumChanged; });
-		DelegateReloadHandle = Hooks.GetOnDelegateReload().AddLambda(
+		DelegateReloadHandle = InEngine.GetOnDelegateReload().AddLambda(
 			[Counters](UDelegateFunction*, UDelegateFunction*) { ++Counters->DelegateReload; });
-		LiteralAssetReloadHandle = Hooks.GetOnLiteralAssetReload().AddLambda(
+		LiteralAssetReloadHandle = InEngine.GetOnLiteralAssetReload().AddLambda(
 			[Counters](UObject*, UObject*) { ++Counters->LiteralAssetReload; });
 	}
 
@@ -82,15 +80,14 @@ struct FScopedAllHookSubscriptions
 		{
 			return;
 		}
-		FAngelscriptEngineHooks& Hooks = Engine->GetHooks();
-		Hooks.GetOnPostReload().Remove(PostReloadHandle);
-		Hooks.GetOnFullReload().Remove(FullReloadHandle);
-		Hooks.GetOnClassReload().Remove(ClassReloadHandle);
-		Hooks.GetOnStructReload().Remove(StructReloadHandle);
-		Hooks.GetOnEnumCreated().Remove(EnumCreatedHandle);
-		Hooks.GetOnEnumChanged().Remove(EnumChangedHandle);
-		Hooks.GetOnDelegateReload().Remove(DelegateReloadHandle);
-		Hooks.GetOnLiteralAssetReload().Remove(LiteralAssetReloadHandle);
+		Engine->GetOnPostReload().Remove(PostReloadHandle);
+		Engine->GetOnFullReload().Remove(FullReloadHandle);
+		Engine->GetOnClassReload().Remove(ClassReloadHandle);
+		Engine->GetOnStructReload().Remove(StructReloadHandle);
+		Engine->GetOnEnumCreated().Remove(EnumCreatedHandle);
+		Engine->GetOnEnumChanged().Remove(EnumChangedHandle);
+		Engine->GetOnDelegateReload().Remove(DelegateReloadHandle);
+		Engine->GetOnLiteralAssetReload().Remove(LiteralAssetReloadHandle);
 	}
 
 	FAngelscriptEngine* Engine = nullptr;
@@ -136,17 +133,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadMultiEngineHooksTests,
 		FScopedAllHookSubscriptions SubsB(*EngineB, CountersB);
 
 		// Broadcast every hook on Engine A. Engine B's counters must stay 0.
-		EngineA->GetHooks().GetOnPostReload().Broadcast(false);
-		EngineA->GetHooks().GetOnFullReload().Broadcast();
-		EngineA->GetHooks().GetOnClassReload().Broadcast(nullptr, nullptr);
-		EngineA->GetHooks().GetOnStructReload().Broadcast(nullptr, nullptr);
-		EngineA->GetHooks().GetOnEnumCreated().Broadcast(nullptr);
+		EngineA->GetOnPostReload().Broadcast(false);
+		EngineA->GetOnFullReload().Broadcast();
+		EngineA->GetOnClassReload().Broadcast(nullptr, nullptr);
+		EngineA->GetOnStructReload().Broadcast(nullptr, nullptr);
+		EngineA->GetOnEnumCreated().Broadcast(nullptr);
 		{
 			TArray<TPair<FName, int64>> Names;
-			EngineA->GetHooks().GetOnEnumChanged().Broadcast(nullptr, Names);
+			EngineA->GetOnEnumChanged().Broadcast(nullptr, Names);
 		}
-		EngineA->GetHooks().GetOnDelegateReload().Broadcast(nullptr, nullptr);
-		EngineA->GetHooks().GetOnLiteralAssetReload().Broadcast(nullptr, nullptr);
+		EngineA->GetOnDelegateReload().Broadcast(nullptr, nullptr);
+		EngineA->GetOnLiteralAssetReload().Broadcast(nullptr, nullptr);
 
 		// Engine A's counters should each be 1.
 		TestRunner->TestEqual(TEXT("MultiEngineHooks: A.PostReload"), CountersA.PostReload, 1);
@@ -170,8 +167,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadMultiEngineHooksTests,
 
 		// Reverse direction: broadcast on Engine B, only Engine B counters
 		// should advance (pre-existing 1s on A stay at 1).
-		EngineB->GetHooks().GetOnPostReload().Broadcast(true);
-		EngineB->GetHooks().GetOnFullReload().Broadcast();
+		EngineB->GetOnPostReload().Broadcast(true);
+		EngineB->GetOnFullReload().Broadcast();
 
 		TestRunner->TestEqual(TEXT("MultiEngineHooks: B.PostReload (after B broadcast)"), CountersB.PostReload, 1);
 		TestRunner->TestEqual(TEXT("MultiEngineHooks: B.FullReload (after B broadcast)"), CountersB.FullReload, 1);
@@ -206,7 +203,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadMultiEngineHooksTests,
 			FScopedAllHookSubscriptions SubsA(*EngineA, CountersA);
 
 			// One broadcast on A so we know A's path is functional before teardown.
-			EngineA->GetHooks().GetOnFullReload().Broadcast();
+			EngineA->GetOnFullReload().Broadcast();
 			TestRunner->TestEqual(TEXT("MultiEngineHooks: A.FullReload pre-teardown"), CountersA.FullReload, 1);
 
 			// SubsA destructor unsubscribes; EngineA destructor releases the
@@ -223,8 +220,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadMultiEngineHooksTests,
 		}
 		FScopedAllHookSubscriptions SubsB(*EngineB, CountersB);
 
-		EngineB->GetHooks().GetOnPostReload().Broadcast(true);
-		EngineB->GetHooks().GetOnFullReload().Broadcast();
+		EngineB->GetOnPostReload().Broadcast(true);
+		EngineB->GetOnFullReload().Broadcast();
 
 		TestRunner->TestEqual(TEXT("MultiEngineHooks: B.PostReload after A teardown"), CountersB.PostReload, 1);
 		TestRunner->TestEqual(TEXT("MultiEngineHooks: B.FullReload after A teardown"), CountersB.FullReload, 1);

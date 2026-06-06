@@ -4,10 +4,9 @@
 #include "ClassGenerator/AngelscriptAdditionalCompileChecks.h"
 #include "AngelscriptEngine.h"
 // FOnAngelscriptClassReload / FOnAngelscriptEnumCreated / etc. and the
-// `EnumNameList` typedef now live on `FAngelscriptEngineHooks` (engine-owned).
-// They are declared in `Core/AngelscriptEngineHooks.h`, which is reached
-// transitively through the `AngelscriptEngine.h` include above. Subscribers
-// should register through `FAngelscriptEngine::Get().GetHooks().GetOnXxx()`
+// `EnumNameList` typedef now live directly on `FAngelscriptEngine` (engine-owned).
+// They are declared in `Core/AngelscriptEngine.h`, included above. Subscribers
+// should register through `FAngelscriptEngine::Get().GetOnXxx()`
 // instead of the previous `FAngelscriptClassGenerator::OnXxx` static fields.
 
 // Generic call callback for dispatching interface method calls.

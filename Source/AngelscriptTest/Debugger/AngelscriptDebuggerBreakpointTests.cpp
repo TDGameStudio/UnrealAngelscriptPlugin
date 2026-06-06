@@ -23,7 +23,7 @@ namespace AngelscriptDebuggerBreakpointTests_Private
 	{
 	public:
 		FScopedDebugBreakOptionsBinding(FAngelscriptEngine& Engine, TFunction<bool(const FAngelscriptDebugBreakOptions&, UObject*)> InShouldBreak)
-			: TargetDelegate(Engine.GetHooks().GetDebugCheckBreakOptions())
+			: TargetDelegate(Engine.GetDebugCheckBreakOptions())
 			, PreviousDelegate(TargetDelegate)
 			, ShouldBreak(MoveTemp(InShouldBreak))
 		{

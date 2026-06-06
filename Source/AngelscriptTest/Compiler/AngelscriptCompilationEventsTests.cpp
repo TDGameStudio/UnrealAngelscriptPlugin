@@ -35,9 +35,9 @@ namespace AngelscriptCompilationEventsTests_Private
 		explicit FCompileDelegateCounters(FAngelscriptEngine& Engine)
 			: BoundEngine(&Engine)
 		{
-			PreCompileHandle = Engine.GetHooks().GetPreCompile().AddRaw(this, &FCompileDelegateCounters::HandlePreCompile);
-			PostCompileHandle = Engine.GetHooks().GetPostCompile().AddRaw(this, &FCompileDelegateCounters::HandlePostCompile);
-			PreGenerateClassesHandle = Engine.GetHooks().GetPreGenerateClasses().AddRaw(this, &FCompileDelegateCounters::HandlePreGenerateClasses);
+			PreCompileHandle = Engine.GetPreCompile().AddRaw(this, &FCompileDelegateCounters::HandlePreCompile);
+			PostCompileHandle = Engine.GetPostCompile().AddRaw(this, &FCompileDelegateCounters::HandlePostCompile);
+			PreGenerateClassesHandle = Engine.GetPreGenerateClasses().AddRaw(this, &FCompileDelegateCounters::HandlePreGenerateClasses);
 		}
 
 		~FCompileDelegateCounters()
@@ -49,15 +49,15 @@ namespace AngelscriptCompilationEventsTests_Private
 
 			if (PreCompileHandle.IsValid())
 			{
-				BoundEngine->GetHooks().GetPreCompile().Remove(PreCompileHandle);
+				BoundEngine->GetPreCompile().Remove(PreCompileHandle);
 			}
 			if (PostCompileHandle.IsValid())
 			{
-				BoundEngine->GetHooks().GetPostCompile().Remove(PostCompileHandle);
+				BoundEngine->GetPostCompile().Remove(PostCompileHandle);
 			}
 			if (PreGenerateClassesHandle.IsValid())
 			{
-				BoundEngine->GetHooks().GetPreGenerateClasses().Remove(PreGenerateClassesHandle);
+				BoundEngine->GetPreGenerateClasses().Remove(PreGenerateClassesHandle);
 			}
 		}
 

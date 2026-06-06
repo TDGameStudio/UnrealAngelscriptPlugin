@@ -74,14 +74,14 @@ void UScriptEditorMenuExtension::InitializeExtensions()
 	// PostReload hook used to be a process-wide static
 	// (FAngelscriptClassGenerator::OnPostReload). After the runtime
 	// de-globalization (refactor-as-runtime-deglobalize-completion / Section 4)
-	// it lives on per-engine FAngelscriptEngineHooks, so subscribe through the
+	// it lives directly on each FAngelscriptEngine, so subscribe through the
 	// extension registry to catch every engine's lifecycle.
 	class FScriptEditorMenuPostReloadExtension : public IAngelscriptExtension
 	{
 	public:
 		virtual void OnEngineAttached(FAngelscriptEngine& Engine) override
 		{
-			Handle = Engine.GetHooks().GetOnPostReload().AddLambda([](bool bFullReload)
+			Handle = Engine.GetOnPostReload().AddLambda([](bool bFullReload)
 			{
 				if (bFullReload)
 				{
@@ -95,7 +95,7 @@ void UScriptEditorMenuExtension::InitializeExtensions()
 		{
 			if (Handle.IsValid())
 			{
-				Engine.GetHooks().GetOnPostReload().Remove(Handle);
+				Engine.GetOnPostReload().Remove(Handle);
 			}
 			Handle.Reset();
 		}

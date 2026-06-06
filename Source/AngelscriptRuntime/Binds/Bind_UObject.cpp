@@ -219,7 +219,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UObject_Base((int32)FAngelscri
 			const TCHAR* ClassPrefix = bUseClassPrefix ? ObjClass->GetPrefixCPP() : TEXT("");
 
 			FString Suffix;
-			auto& Delegate = FAngelscriptEngine::Get().GetHooks().GetDebugObjectSuffix();
+			auto& Delegate = FAngelscriptEngine::Get().GetDebugObjectSuffix();
 			if (Delegate.IsBound())
 			{
 				Delegate.Execute(Object, Suffix);
@@ -657,7 +657,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UObject_Operations((int32)FAng
 			if (ReloadedObject != nullptr)
 			{
 				if (FAngelscriptEngine* HookEngine = FAngelscriptEngine::TryGetCurrentEngine())
-					HookEngine->GetHooks().GetOnLiteralAssetReload().Broadcast(ReloadedObject, ExistingObject);
+					HookEngine->GetOnLiteralAssetReload().Broadcast(ReloadedObject, ExistingObject);
 			}
 #endif
 		}
@@ -672,7 +672,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UObject_Operations((int32)FAng
 			}
 		}
 
-		FAngelscriptEngine::Get().GetHooks().GetOnLiteralAssetCreated().Broadcast(ExistingObject, AssetName);
+		FAngelscriptEngine::Get().GetOnLiteralAssetCreated().Broadcast(ExistingObject, AssetName);
 		return ExistingObject;
 	});
 
@@ -684,7 +684,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UObject_Operations((int32)FAng
 		NotifyRegistrationEvent(TEXT("/Script/AngelscriptAssets"), *Asset->GetName(), ENotifyRegistrationType::NRT_NoExportObject,
 			ENotifyRegistrationPhase::NRP_Finished, nullptr, false, Asset);
 
-		FAngelscriptEngine::Get().GetHooks().GetPostLiteralAssetSetup().Broadcast(Asset, Name);
+		FAngelscriptEngine::Get().GetPostLiteralAssetSetup().Broadcast(Asset, Name);
 	});
 });
 

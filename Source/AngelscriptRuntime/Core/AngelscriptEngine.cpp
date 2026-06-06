@@ -1913,7 +1913,7 @@ bool FAngelscriptEngine::IsGeneratingPrecompiledData()
 
 void FAngelscriptEngine::PostInitialize_GameThread()
 {
-	GetHooks().GetOnInitialCompileFinished().Broadcast();
+	GetOnInitialCompileFinished().Broadcast();
 }
 
 void FAngelscriptEngine::StartHotReloadThread()
@@ -2834,7 +2834,7 @@ bool FAngelscriptEngine::PerformHotReload(ECompileType CompileType, const TArray
 
 	if(Result == ECompileResult::FullyHandled || Result == ECompileResult::PartiallyHandled)
 	{
-		FAngelscriptPostCompileClassCollection& PostCompileDelegate = GetHooks().GetPostCompileClassCollection();
+		FAngelscriptPostCompileClassCollection& PostCompileDelegate = GetPostCompileClassCollection();
 			if (PostCompileDelegate.IsBound())
 				PostCompileDelegate.Broadcast(CompiledModules);
 	}
@@ -3410,7 +3410,7 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 	// We allocate from the memstack in the script compiler, so use a MemMark to deallocate everything at the end
 	FMemMark MemoryMark(FMemStack::Get());
 
-	FAngelscriptCompilationDelegate& PreCompileDelegate = GetHooks().GetPreCompile();
+	FAngelscriptCompilationDelegate& PreCompileDelegate = GetPreCompile();
 	if (PreCompileDelegate.IsBound())
 		PreCompileDelegate.Broadcast();
 
@@ -4328,7 +4328,7 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 			CompilationContext.GetRunId(),
 			CompileType,
 			CompiledModules);
-		GetHooks().GetPreGenerateClasses().Broadcast(CompiledModules);
+		GetPreGenerateClasses().Broadcast(CompiledModules);
 
 		for (auto Module : CompiledModules)
 		{
@@ -4567,7 +4567,7 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 
 	if (bShouldSwapInModules && !bHadCompileErrors)
 	{
-		FAngelscriptCompilationDelegate& PostCompileDelegate = GetHooks().GetPostCompile();
+		FAngelscriptCompilationDelegate& PostCompileDelegate = GetPostCompile();
 		if (PostCompileDelegate.IsBound())
 			PostCompileDelegate.Broadcast();
 

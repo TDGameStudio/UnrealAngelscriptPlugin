@@ -120,23 +120,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 		}
 
 		int32 EngineAHookCount = 0;
-		FDelegateHandle EngineAHandle = EngineA->GetHooks().GetPreCompile().AddLambda(
+		FDelegateHandle EngineAHandle = EngineA->GetPreCompile().AddLambda(
 			[&EngineAHookCount]()
 			{
 				++EngineAHookCount;
 			});
 		ON_SCOPE_EXIT
 		{
-			EngineA->GetHooks().GetPreCompile().Remove(EngineAHandle);
+			EngineA->GetPreCompile().Remove(EngineAHandle);
 		};
 
-		EngineB->GetHooks().GetPreCompile().Broadcast();
+		EngineB->GetPreCompile().Broadcast();
 		TestRunner->TestEqual(
 			TEXT("Broadcasting engine B pre-compile hooks should not fire hooks registered on engine A"),
 			EngineAHookCount,
 			0);
 
-		EngineA->GetHooks().GetPreCompile().Broadcast();
+		EngineA->GetPreCompile().Broadcast();
 		TestRunner->TestEqual(
 			TEXT("Broadcasting engine A pre-compile hooks should fire hooks registered on engine A"),
 			EngineAHookCount,
@@ -178,7 +178,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 		ULevel* SpawnLevel = NewObject<ULevel>();
 
 		int32 ComponentCreatedCount = 0;
-		EngineA->GetHooks().GetComponentCreated().BindLambda(
+		EngineA->GetComponentCreated().BindLambda(
 			[&ComponentCreatedCount, Component](UActorComponent* InComponent)
 			{
 				if (InComponent == Component)
@@ -189,7 +189,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 
 		UObject* LiteralCreatedObject = nullptr;
 		FString LiteralCreatedName;
-		const FDelegateHandle LiteralCreatedHandle = EngineA->GetHooks().GetOnLiteralAssetCreated().AddLambda(
+		const FDelegateHandle LiteralCreatedHandle = EngineA->GetOnLiteralAssetCreated().AddLambda(
 			[&LiteralCreatedObject, &LiteralCreatedName](UObject* InAsset, const FString& InName)
 			{
 				LiteralCreatedObject = InAsset;
@@ -197,12 +197,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 			});
 		ON_SCOPE_EXIT
 		{
-			EngineA->GetHooks().GetOnLiteralAssetCreated().Remove(LiteralCreatedHandle);
+			EngineA->GetOnLiteralAssetCreated().Remove(LiteralCreatedHandle);
 		};
 
 		UObject* LiteralSetupObject = nullptr;
 		FString LiteralSetupName;
-		const FDelegateHandle LiteralSetupHandle = EngineA->GetHooks().GetPostLiteralAssetSetup().AddLambda(
+		const FDelegateHandle LiteralSetupHandle = EngineA->GetPostLiteralAssetSetup().AddLambda(
 			[&LiteralSetupObject, &LiteralSetupName](UObject* InAsset, const FString& InName)
 			{
 				LiteralSetupObject = InAsset;
@@ -210,26 +210,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 			});
 		ON_SCOPE_EXIT
 		{
-			EngineA->GetHooks().GetPostLiteralAssetSetup().Remove(LiteralSetupHandle);
+			EngineA->GetPostLiteralAssetSetup().Remove(LiteralSetupHandle);
 		};
 
-		EngineA->GetHooks().GetDynamicSpawnLevel().BindLambda([SpawnLevel]() { return SpawnLevel; });
+		EngineA->GetDynamicSpawnLevel().BindLambda([SpawnLevel]() { return SpawnLevel; });
 
 		int32 BreakCheckCount = 0;
-		EngineA->GetHooks().GetDebugCheckBreakOptions().BindLambda(
+		EngineA->GetDebugCheckBreakOptions().BindLambda(
 			[&BreakCheckCount](const FAngelscriptDebugBreakOptions& BreakOptions, UObject* WorldContext)
 			{
 				++BreakCheckCount;
 				return BreakOptions.Contains(TEXT("break:any")) && WorldContext != nullptr;
 			});
 
-		EngineA->GetHooks().GetDebugBreakFilters().BindLambda(
+		EngineA->GetDebugBreakFilters().BindLambda(
 			[](FAngelscriptDebugBreakFilters& OutFilters)
 			{
 				OutFilters.Add(TEXT("break:engine-owned-test"), TEXT("Engine Owned Test"));
 			});
 
-		EngineA->GetHooks().GetDebugObjectSuffix().BindLambda(
+		EngineA->GetDebugObjectSuffix().BindLambda(
 			[](UObject* Object, FString& OutSuffix)
 			{
 				if (Object != nullptr)
@@ -238,31 +238,31 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 				}
 			});
 
-		EngineB->GetHooks().GetComponentCreated().ExecuteIfBound(Component);
-		EngineB->GetHooks().GetOnLiteralAssetCreated().Broadcast(LiteralAsset, TEXT("WrongEngineAsset"));
-		EngineB->GetHooks().GetPostLiteralAssetSetup().Broadcast(LiteralAsset, TEXT("WrongEngineSetup"));
+		EngineB->GetComponentCreated().ExecuteIfBound(Component);
+		EngineB->GetOnLiteralAssetCreated().Broadcast(LiteralAsset, TEXT("WrongEngineAsset"));
+		EngineB->GetPostLiteralAssetSetup().Broadcast(LiteralAsset, TEXT("WrongEngineSetup"));
 		TestRunner->TestEqual(TEXT("Component-created hook should not leak to engine B"), ComponentCreatedCount, 0);
 		TestRunner->TestNull(TEXT("Literal-created hook should not leak to engine B"), LiteralCreatedObject);
 		TestRunner->TestNull(TEXT("Literal-setup hook should not leak to engine B"), LiteralSetupObject);
 
-		EngineA->GetHooks().GetComponentCreated().ExecuteIfBound(Component);
-		EngineA->GetHooks().GetOnLiteralAssetCreated().Broadcast(LiteralAsset, TEXT("OwnedAsset"));
-		EngineA->GetHooks().GetPostLiteralAssetSetup().Broadcast(LiteralAsset, TEXT("OwnedSetup"));
+		EngineA->GetComponentCreated().ExecuteIfBound(Component);
+		EngineA->GetOnLiteralAssetCreated().Broadcast(LiteralAsset, TEXT("OwnedAsset"));
+		EngineA->GetPostLiteralAssetSetup().Broadcast(LiteralAsset, TEXT("OwnedSetup"));
 		TestRunner->TestEqual(TEXT("Component-created hook should fire for its owning engine"), ComponentCreatedCount, 1);
 		TestRunner->TestEqual(TEXT("Literal-created hook should carry object for its owning engine"), LiteralCreatedObject, LiteralAsset);
 		TestRunner->TestEqual(TEXT("Literal-created hook should carry name for its owning engine"), LiteralCreatedName, FString(TEXT("OwnedAsset")));
 		TestRunner->TestEqual(TEXT("Literal-setup hook should carry object for its owning engine"), LiteralSetupObject, LiteralAsset);
 		TestRunner->TestEqual(TEXT("Literal-setup hook should carry name for its owning engine"), LiteralSetupName, FString(TEXT("OwnedSetup")));
 
-		TestRunner->TestEqual(TEXT("Dynamic-spawn-level hook should return the owning engine value"), EngineA->GetHooks().GetDynamicSpawnLevel().Execute(), SpawnLevel);
+		TestRunner->TestEqual(TEXT("Dynamic-spawn-level hook should return the owning engine value"), EngineA->GetDynamicSpawnLevel().Execute(), SpawnLevel);
 
 		FAngelscriptDebugBreakOptions BreakOptions;
 		BreakOptions.Add(TEXT("break:any"));
-		TestRunner->TestTrue(TEXT("Debug break check hook should run through the owning engine"), EngineA->GetHooks().GetDebugCheckBreakOptions().Execute(BreakOptions, DebugObject));
+		TestRunner->TestTrue(TEXT("Debug break check hook should run through the owning engine"), EngineA->GetDebugCheckBreakOptions().Execute(BreakOptions, DebugObject));
 		TestRunner->TestEqual(TEXT("Debug break check hook should fire once"), BreakCheckCount, 1);
 
 		FAngelscriptDebugBreakFilters BreakFilters;
-		EngineA->GetHooks().GetDebugBreakFilters().ExecuteIfBound(BreakFilters);
+		EngineA->GetDebugBreakFilters().ExecuteIfBound(BreakFilters);
 		const FString* BreakFilterTitle = BreakFilters.Find(TEXT("break:engine-owned-test"));
 		TestRunner->TestNotNull(TEXT("Debug break filters hook should populate the owning engine filters"), BreakFilterTitle);
 		if (BreakFilterTitle != nullptr)
@@ -271,7 +271,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 		}
 
 		FString DebugSuffix;
-		EngineA->GetHooks().GetDebugObjectSuffix().ExecuteIfBound(DebugObject, DebugSuffix);
+		EngineA->GetDebugObjectSuffix().ExecuteIfBound(DebugObject, DebugSuffix);
 		TestRunner->TestEqual(TEXT("Debug object suffix hook should mutate the suffix"), DebugSuffix, FString(TEXT("[engine-hook]")));
 	}
 
@@ -292,7 +292,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 		}
 
 		int32 ComponentCreatedCount = 0;
-		Engine.GetHooks().GetComponentCreated().BindLambda(
+		Engine.GetComponentCreated().BindLambda(
 			[&ComponentCreatedCount](UActorComponent* Component)
 			{
 				if (Component != nullptr && Component->GetFName() == TEXT("EngineOwnedHookComponent"))
@@ -302,7 +302,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 			});
 		ON_SCOPE_EXIT
 		{
-			Engine.GetHooks().GetComponentCreated().Unbind();
+			Engine.GetComponentCreated().Unbind();
 		};
 
 		UActorComponent* CreatedComponent = FAngelscriptActorBinds::CreateComponent(
@@ -315,7 +315,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 
 		UObject* LiteralCreatedObject = nullptr;
 		FString LiteralCreatedName;
-		const FDelegateHandle LiteralCreatedHandle = Engine.GetHooks().GetOnLiteralAssetCreated().AddLambda(
+		const FDelegateHandle LiteralCreatedHandle = Engine.GetOnLiteralAssetCreated().AddLambda(
 			[&LiteralCreatedObject, &LiteralCreatedName](UObject* Asset, const FString& Name)
 			{
 				LiteralCreatedObject = Asset;
@@ -323,12 +323,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 			});
 		ON_SCOPE_EXIT
 		{
-			Engine.GetHooks().GetOnLiteralAssetCreated().Remove(LiteralCreatedHandle);
+			Engine.GetOnLiteralAssetCreated().Remove(LiteralCreatedHandle);
 		};
 
 		UObject* LiteralSetupObject = nullptr;
 		FString LiteralSetupName;
-		const FDelegateHandle LiteralSetupHandle = Engine.GetHooks().GetPostLiteralAssetSetup().AddLambda(
+		const FDelegateHandle LiteralSetupHandle = Engine.GetPostLiteralAssetSetup().AddLambda(
 			[&LiteralSetupObject, &LiteralSetupName](UObject* Asset, const FString& Name)
 			{
 				LiteralSetupObject = Asset;
@@ -336,7 +336,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 			});
 		ON_SCOPE_EXIT
 		{
-			Engine.GetHooks().GetPostLiteralAssetSetup().Remove(LiteralSetupHandle);
+			Engine.GetPostLiteralAssetSetup().Remove(LiteralSetupHandle);
 		};
 
 		asIScriptModule* Module = BuildModule(
@@ -388,7 +388,7 @@ int Run()
 
 		ULevel* OverrideLevel = World.GetWorld().PersistentLevel;
 		int32 DynamicSpawnLevelCalls = 0;
-		Engine.GetHooks().GetDynamicSpawnLevel().BindLambda(
+		Engine.GetDynamicSpawnLevel().BindLambda(
 			[OverrideLevel, &DynamicSpawnLevelCalls]()
 			{
 				++DynamicSpawnLevelCalls;
@@ -396,7 +396,7 @@ int Run()
 			});
 		ON_SCOPE_EXIT
 		{
-			Engine.GetHooks().GetDynamicSpawnLevel().Unbind();
+			Engine.GetDynamicSpawnLevel().Unbind();
 		};
 
 		{
@@ -457,7 +457,7 @@ class ADebugHookObjectSuffixActor : AActor
 		};
 
 		int32 DebugSuffixCalls = 0;
-		Engine.GetHooks().GetDebugObjectSuffix().BindLambda(
+		Engine.GetDebugObjectSuffix().BindLambda(
 			[&DebugSuffixCalls](UObject* Object, FString& OutSuffix)
 			{
 				if (Object != nullptr)
@@ -468,7 +468,7 @@ class ADebugHookObjectSuffixActor : AActor
 			});
 		ON_SCOPE_EXIT
 		{
-			Engine.GetHooks().GetDebugObjectSuffix().Unbind();
+			Engine.GetDebugObjectSuffix().Unbind();
 		};
 
 		UASClass* ScriptASClass = Cast<UASClass>(ScriptClass);
@@ -508,7 +508,7 @@ class ADebugHookObjectSuffixActor : AActor
 			1);
 
 		int32 BreakFilterCalls = 0;
-		Engine.GetHooks().GetDebugBreakFilters().BindLambda(
+		Engine.GetDebugBreakFilters().BindLambda(
 			[&BreakFilterCalls](FAngelscriptDebugBreakFilters& OutFilters)
 			{
 				++BreakFilterCalls;
@@ -516,7 +516,7 @@ class ADebugHookObjectSuffixActor : AActor
 			});
 		ON_SCOPE_EXIT
 		{
-			Engine.GetHooks().GetDebugBreakFilters().Unbind();
+			Engine.GetDebugBreakFilters().Unbind();
 		};
 
 		FAngelscriptDebuggerTestClient Client;
@@ -588,7 +588,7 @@ class ADebugHookObjectSuffixActor : AActor
 			&& BreakFilters->FilterTitles[FilterIndex] == TEXT("Engine Owned Runtime"));
 
 		int32 BreakCheckCalls = 0;
-		Engine.GetHooks().GetDebugCheckBreakOptions().BindLambda(
+		Engine.GetDebugCheckBreakOptions().BindLambda(
 			[&BreakCheckCalls](const FAngelscriptDebugBreakOptions& BreakOptions, UObject* WorldContext)
 			{
 				++BreakCheckCalls;
@@ -596,7 +596,7 @@ class ADebugHookObjectSuffixActor : AActor
 			});
 		ON_SCOPE_EXIT
 		{
-			Engine.GetHooks().GetDebugCheckBreakOptions().Unbind();
+			Engine.GetDebugCheckBreakOptions().Unbind();
 		};
 
 		Engine.AssignWorldContext(NewObject<UAngelscriptNativeScriptTestObject>(GetTransientPackage(), TEXT("EngineOwnedHookDebugWorldContext")));

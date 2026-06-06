@@ -98,7 +98,7 @@ UActorComponent* FAngelscriptActorBinds::CreateComponent(AActor* InActor, const 
 		((FHelper_PostCreateBlueprintComponent*)InActor)->Helper_PostCreateBlueprintComponent(Component);
 	}
 
-	FAngelscriptEngine::Get().GetHooks().GetComponentCreated().ExecuteIfBound(Component);
+	FAngelscriptEngine::Get().GetComponentCreated().ExecuteIfBound(Component);
 	Component->OnComponentCreated();
 
 	if (USceneComponent* SceneComponent = Cast<USceneComponent>(Component))

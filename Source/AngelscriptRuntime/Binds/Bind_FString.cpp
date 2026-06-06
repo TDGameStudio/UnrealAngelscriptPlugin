@@ -488,7 +488,7 @@ void FToStringHelper::Generic_AppendToString(FString& AppendTo, void* ValuePtr, 
 			if (asClass == nullptr) return;
 
 			FString Suffix;
-			auto& Delegate = FAngelscriptEngine::Get().GetHooks().GetDebugObjectSuffix();
+			auto& Delegate = FAngelscriptEngine::Get().GetDebugObjectSuffix();
 			if (Delegate.IsBound())
 			{
 				Delegate.Execute(Object, Suffix);

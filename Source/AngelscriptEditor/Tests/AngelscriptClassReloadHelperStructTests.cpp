@@ -34,7 +34,7 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperStructTest
 
 	void EnsureClassReloadHelperInitialized(FAngelscriptEngine& Engine)
 	{
-		if (!Engine.GetHooks().GetOnClassReload().IsBound())
+		if (!Engine.GetOnClassReload().IsBound())
 		{
 			FClassReloadHelper::Init();
 		}
