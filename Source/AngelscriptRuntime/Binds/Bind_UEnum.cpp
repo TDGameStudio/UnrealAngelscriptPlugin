@@ -331,7 +331,9 @@ struct FEnumType : FAngelscriptType
 static const FName NAME_Enum_BlueprintType("BlueprintType");
 static const FName NAME_Enum_NotBlueprintType("NotBlueprintType");
 static const FName NAME_Enum_NotInAngelscript("NotInAngelscript");
-static TMap<FName, asITypeInfo*> GScriptEnumTypeLookupByName;
+// NOTE: Per-engine lookup of script-defined UEnum -> asITypeInfo* lives on
+// `FAngelscriptEngine::ScriptEnumTypeLookupByName`. Access through
+// `FAngelscriptEngine::Get().GetScriptEnumTypeLookup()`.
 bool ShouldBindEngineType(UEnum* Enum)
 {
 	if (Enum == nullptr)
@@ -373,7 +375,7 @@ bool ShouldBindEngineType(UEnum* Enum)
 AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Enums((int32)FAngelscriptBinds::EOrder::Early-1, []
 {
 	auto& BindDB = FAngelscriptBindDatabase::Get();
-	GScriptEnumTypeLookupByName.Reset();
+	FAngelscriptEngine::Get().GetScriptEnumTypeLookup().Reset();
 
 #if WITH_DEV_AUTOMATION_TESTS
 	// Phase 0 baseline probe: capture filtered candidate enums up-front so the
@@ -434,7 +436,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Enums((int32)FAngelscriptBinds
 			if (auto* EnumScriptType = EnumBind.GetTypeInfo())
 			{
 				EnumScriptType->SetUserData(Enum);
-				GScriptEnumTypeLookupByName.Add(*Enum->GetName(), EnumScriptType);
+				FAngelscriptEngine::Get().GetScriptEnumTypeLookup().Add(*Enum->GetName(), EnumScriptType);
 			}
 		}
 	};
@@ -474,7 +476,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Enums((int32)FAngelscriptBinds
 		if (auto* EnumScriptType = EnumBind.GetTypeInfo())
 		{
 			EnumScriptType->SetUserData(Enum);
-			GScriptEnumTypeLookupByName.Add(*Enum->GetName(), EnumScriptType);
+			FAngelscriptEngine::Get().GetScriptEnumTypeLookup().Add(*Enum->GetName(), EnumScriptType);
 		}
 	}
 #endif
@@ -494,7 +496,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Enums((int32)FAngelscriptBinds
 				//if (EnumProperty->Enum != nullptr && EnumProperty->Enum->GetOutermost() == FAngelscriptEngine::GetPackage())
 				if (Enum != nullptr && Enum->GetOutermost() == FAngelscriptEngine::GetPackage())
 				{
-					auto* ScriptEnum = GScriptEnumTypeLookupByName.FindRef(*Enum->GetName());
+					auto* ScriptEnum = FAngelscriptEngine::Get().GetScriptEnumTypeLookup().FindRef(*Enum->GetName());
 					if (ScriptEnum != nullptr)
 					{
 						Usage.Type = FAngelscriptType::GetScriptEnum();
@@ -529,7 +531,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Enums((int32)FAngelscriptBinds
 			{
 				if (ByteProperty->Enum != nullptr && ByteProperty->Enum->GetOutermost() == FAngelscriptEngine::GetPackage())
 				{
-					auto* ScriptEnum = GScriptEnumTypeLookupByName.FindRef(*ByteProperty->Enum->GetName());
+					auto* ScriptEnum = FAngelscriptEngine::Get().GetScriptEnumTypeLookup().FindRef(*ByteProperty->Enum->GetName());
 					if (ScriptEnum != nullptr)
 					{
 						Usage.Type = FAngelscriptType::GetScriptEnum();

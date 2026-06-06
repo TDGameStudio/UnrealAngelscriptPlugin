@@ -450,6 +450,12 @@ private:
 	TArray<FName> StaticNames;
 	TMap<FName, int32> StaticNamesByIndex;
 
+	// Per-engine lookup from script-defined UEnum name to its bound asITypeInfo*.
+	// Populated during Bind_Enums, consumed by property-type resolution paths in
+	// Bind_UEnum. Engine-owned so that two engines bound concurrently never see
+	// each other's `asITypeInfo*` for same-named script enums.
+	TMap<FName, class asITypeInfo*> ScriptEnumTypeLookupByName;
+
 	TSharedPtr<FAngelscriptEngineLifetimeToken> LifetimeToken;
 	bool bHoldsProcessPackageReference = false;
 	UPROPERTY()
@@ -570,6 +576,9 @@ public:
 	TArray<FToStringType>* GetToStringList() const;
 	FAngelscriptBindDatabase* GetBindDatabase() const;
 	FBlueprintEventSignatureRegistry* GetBlueprintEventSignatureRegistry() const;
+
+	TMap<FName, class asITypeInfo*>& GetScriptEnumTypeLookup() { return ScriptEnumTypeLookupByName; }
+	const TMap<FName, class asITypeInfo*>& GetScriptEnumTypeLookup() const { return ScriptEnumTypeLookupByName; }
 
 #if WITH_DEV_AUTOMATION_TESTS
 	int32 GetToStringEntryCountForTesting() const;

@@ -421,8 +421,26 @@ static TArray<FToStringType>& GetToStringList()
 			return *List;
 		}
 	}
+	// Fallback: process-wide metadata-only list reachable when no engine context
+	// is set (e.g. static init before engine creation). Writes that could expose
+	// engine-owned `asITypeInfo*` across engines (see ToString.TypeInfo) MUST be
+	// fenced via IsEngineOwnedToStringList() before assigning.
 	static TArray<FToStringType> LegacyToStringList;
 	return LegacyToStringList;
+}
+
+// Returns true if `List` is the current engine's owned ToStringList rather than
+// the process-wide fallback. Callers about to write engine-owned pointers
+// (such as `FToStringType::TypeInfo`) into a list entry MUST gate the write on
+// this check, so the fallback stays metadata-only and cannot leak an
+// `asITypeInfo*` between engines.
+static bool IsEngineOwnedToStringList(const TArray<FToStringType>& List)
+{
+	if (FAngelscriptEngine* Engine = FAngelscriptEngine::TryGetCurrentEngine())
+	{
+		return Engine->GetToStringList() == &List;
+	}
+	return false;
 }
 
 void FToStringHelper::Register(const FString& TypeName, FToStringHelper::FToStringFunction ToString, bool bImplicitConversion, bool bIsHandleType)
@@ -1247,7 +1265,10 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FString_Conversion((int32)FAng
 {
 	auto FString_ = FAngelscriptBinds::ExistingClass("FString");
 
-	for (auto& ToString : GetToStringList())
+	auto& ToStringList = GetToStringList();
+	const bool bIsEngineOwnedList = IsEngineOwnedToStringList(ToStringList);
+
+	for (auto& ToString : ToStringList)
 	{
 		FString QualifiedType = ToString.TypeName;
 		FString ObjectType = ToString.TypeName;
@@ -1295,7 +1316,13 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FString_Conversion((int32)FAng
 		auto* Type = FAngelscriptEngine::Get().Engine->GetTypeInfoByName(TCHAR_TO_ANSI(*ObjectType));
 		if (Type != nullptr)
 		{
-			ToString.TypeInfo = Type;
+			// Only the engine-owned ToStringList may cache a per-engine
+			// `asITypeInfo*`. The fallback list stays metadata-only so it can
+			// never expose an Engine A pointer to Engine B's bind path.
+			if (bIsEngineOwnedList)
+			{
+				ToString.TypeInfo = Type;
+			}
 			FAngelscriptBinds::BindMethodDirect(Type->GetName(), "FString ToString() const",
 				asFUNCTION(Type_ToString), asCALL_CDECL_OBJFIRST,
 				ASAutoCaller::MakeFunctionCaller(Type_ToString), (void*)ToString.ToString);
