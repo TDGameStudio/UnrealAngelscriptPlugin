@@ -3,8 +3,8 @@
 
 #include "CQTest.h"
 #include "ClassGenerator/ASClass.h"
-#include "Core/AngelscriptComponent.h"
 #include "Components/ActorTestSpawner.h"
+#include "Components/ActorComponent.h"
 #include "GameFramework/Actor.h"
 #include "Misc/ScopeExit.h"
 #include "UObject/CoreNet.h"
@@ -28,7 +28,7 @@ namespace AngelscriptTest_Core_AngelscriptComponentProcessEventTests_Private
 	static constexpr int32 AcceptedValue = 7;
 	static constexpr int32 RejectedValue = -3;
 
-	UAngelscriptComponent* CreateProcessEventTestCaseComponent(
+	UActorComponent* CreateProcessEventTestCaseComponent(
 		FAutomationTestBase& Test,
 		AActor& OwnerActor,
 		UClass* ComponentClass)
@@ -49,8 +49,8 @@ namespace AngelscriptTest_Core_AngelscriptComponentProcessEventTests_Private
 		Component->RegisterComponent();
 		Component->Activate(true);
 
-		UAngelscriptComponent* TypedComponent = Cast<UAngelscriptComponent>(Component);
-		if (!Test.TestNotNull(TEXT("Component ProcessEvent test case should instantiate a UAngelscriptComponent"), TypedComponent))
+		UActorComponent* TypedComponent = Cast<UActorComponent>(Component);
+		if (!Test.TestNotNull(TEXT("Component ProcessEvent test case should instantiate a UActorComponent"), TypedComponent))
 		{
 			return nullptr;
 		}
@@ -61,7 +61,7 @@ namespace AngelscriptTest_Core_AngelscriptComponentProcessEventTests_Private
 	bool InvokeServerRecordValue(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
-		UAngelscriptComponent& Component,
+		UActorComponent& Component,
 		UFunction& Function,
 		int32 InValue)
 	{
@@ -125,7 +125,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComponentProcessEventTests,
 			ProcessEventFilename,
 			TEXT(R"AS(
 UCLASS()
-class UComponentProcessEventValidate : UAngelscriptComponent
+class UComponentProcessEventValidate : UActorComponent
 {
 	UPROPERTY()
 	int ValidateCalls = 0;
@@ -177,7 +177,7 @@ class UComponentProcessEventValidate : UAngelscriptComponent
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor& HostActor = Spawner.SpawnActor<AActor>();
-		UAngelscriptComponent* Component = CreateProcessEventTestCaseComponent(*TestRunner, HostActor, ScriptClass);
+		UActorComponent* Component = CreateProcessEventTestCaseComponent(*TestRunner, HostActor, ScriptClass);
 		if (Component == nullptr)
 		{
 			return;

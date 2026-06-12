@@ -5,6 +5,7 @@
 #include "ClassGenerator/ASClass.h"
 #include "ClassGenerator/ASStruct.h"
 #include "Components/ActorTestSpawner.h"
+#include "Components/ActorComponent.h"
 #include "Engine/GameInstance.h"
 #include "GameFramework/Actor.h"
 #include "Misc/AutomationTest.h"
@@ -387,7 +388,7 @@ bool FAngelscriptTestEngineHelperResetSharedEngineReleasesGeneratedComponentClas
 		Filename,
 		TEXT(R"AS(
 UCLASS()
-class UHelperResetGeneratedComponent : UAngelscriptComponent
+class UHelperResetGeneratedComponent : UActorComponent
 {
 	UPROPERTY()
 	int TickCount = 0;

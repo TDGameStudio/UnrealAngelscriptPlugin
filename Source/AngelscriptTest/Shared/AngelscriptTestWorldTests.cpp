@@ -151,7 +151,7 @@ class ATestWorldHarnessActorTickActor : AActor
 			TEXT("TestWorldHarnessComponentTick.as"),
 			TEXT(R"AS(
 UCLASS()
-class UTestWorldHarnessComponentTickComp : UAngelscriptComponent
+class UTestWorldHarnessComponentTickComp : UActorComponent
 {
 	UPROPERTY()
 	int TickCount = 0;

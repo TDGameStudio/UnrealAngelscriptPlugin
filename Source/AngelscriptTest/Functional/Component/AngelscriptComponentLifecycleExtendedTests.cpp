@@ -4,7 +4,7 @@
 #include "AngelscriptTestMacros.h"
 #include "AngelscriptTestWorld.h"
 
-#include "Core/AngelscriptComponent.h"
+#include "Components/ActorComponent.h"
 #include "Components/BillboardComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -81,7 +81,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComponentLifecycleExtendedTest,
 			TEXT("TestComponentLifecycleHasBegunPlay.as"),
 			TEXT(R"AS(
 UCLASS()
-class UTestComponentLifecycleBeginPlayProbe : UAngelscriptComponent
+class UTestComponentLifecycleBeginPlayProbe : UActorComponent
 {
 	UPROPERTY()
 	bool bSawBeginPlay = false;
@@ -152,7 +152,7 @@ class ATestComponentLifecycleHasBegunPlay : AActor
 			TEXT("TestComponentLifecycleExactTick.as"),
 			TEXT(R"AS(
 UCLASS()
-class UTestComponentLifecycleExactTickProbe : UAngelscriptComponent
+class UTestComponentLifecycleExactTickProbe : UActorComponent
 {
 	UPROPERTY()
 	int TickCount = 0;
@@ -208,7 +208,7 @@ class ATestComponentLifecycleExactTick : AActor
 			TEXT("TestComponentLifecycleDestroy.as"),
 			TEXT(R"AS(
 UCLASS()
-class UTestComponentLifecycleDestroyProbe : UAngelscriptComponent
+class UTestComponentLifecycleDestroyProbe : UActorComponent
 {
 	UFUNCTION()
 	int DestroySelf()
@@ -258,7 +258,7 @@ class ATestComponentLifecycleDestroy : AActor
 			TEXT("TestComponentLifecycleEndPlayReason.as"),
 			TEXT(R"AS(
 UCLASS()
-class UTestComponentLifecycleEndPlayProbe : UAngelscriptComponent
+class UTestComponentLifecycleEndPlayProbe : UActorComponent
 {
 	UPROPERTY()
 	int EndPlayCount = 0;

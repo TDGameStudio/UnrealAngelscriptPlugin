@@ -4,7 +4,9 @@
 #include "AngelscriptPerformanceStats.h"
 
 #include "UObject/Package.h"
+#include "UObject/CoreNet.h"
 #include "UObject/ScriptMacros.h"
+#include "UObject/StructOnScope.h"
 #include "UObject/UObjectThreadContext.h"
 
 #include "GameFramework/Actor.h"
@@ -21,7 +23,6 @@
 #include "source/as_scriptengine.h"
 #include "source/as_scriptobject.h"
 #include "source/as_context.h"
-#include "AngelscriptComponent.h"
 #include "EndAngelscriptHeaders.h"
 
 #ifdef _MSC_VER
@@ -49,6 +50,11 @@ ANGELSCRIPTRUNTIME_API void SetAngelscriptWorldContextAvailable(bool bAvailable)
 UASClass::UASClass(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
+}
+
+namespace
+{
+	FString GLastAngelscriptValidateFailureReason;
 }
 
 FORCEINLINE bool CheckGameThreadExecution(UASFunction* Function)
@@ -1456,20 +1462,6 @@ void UASClass::StaticComponentConstructor(const FObjectInitializer& Initializer)
 	if (!bIsScriptAllocation && ScriptType != nullptr)
 		new(Object) asCScriptObject(ScriptType);
 
-	//WILL-EDIT	
-	//UAngelscriptComponent* ASComp = Cast<UAngelscriptComponent>(Component);
-	//
-	//if (ASComp != nullptr)
-	//{
-	//	TArray<FName> FuncNames;
-	//	Class->GenerateFunctionList(FuncNames);
-	//
-	//	for (auto Name : FuncNames)
-	//	{
-	//		//GEngine->AddOnScreenDebugMessage(0, 5.0f, FColor::Green, Name.ToString());
-	//	}
-	//}
-
 #if WITH_AS_DEBUGVALUES
 	// Init the object's debug value
 	Object->Debug = Class->DebugValues.Instantiate(Object);
@@ -1962,6 +1954,67 @@ void UASFunction::RuntimeCallFunction(UObject* Object, FFrame& Stack, RESULT_DEC
 	AngelscriptCallFromBPVM<true, false>(this, Object, Stack, RESULT_PARAM);
 }
 
+static bool ExecuteValidateFunctionForProcessEvent(UASFunction* Function, UObject* Object, void* Parameters)
+{
+	UFunction* ValidateFunction = Function->GetRuntimeValidateFunction();
+	if (ValidateFunction == nullptr)
+	{
+		return false;
+	}
+
+	UASFunction* ASValidate = Cast<UASFunction>(ValidateFunction);
+	if (ASValidate == nullptr)
+	{
+		return false;
+	}
+
+	FStructOnScope ValidateFunctionParms(ValidateFunction);
+	uint8* ValidateFunctionParmsPtr = ValidateFunctionParms.GetStructMemory();
+
+	TFieldIterator<FProperty> FunctionPropertyIt(Function);
+	TFieldIterator<FProperty> ValidateFunctionPropertyIt(ValidateFunction);
+
+	for (int32 ParamIdx = 0; ParamIdx < Function->NumParms; ++ParamIdx)
+	{
+		if (!FunctionPropertyIt)
+		{
+			break;
+		}
+
+		check(ValidateFunctionPropertyIt);
+
+		FProperty* SourceProp = *FunctionPropertyIt;
+		FProperty* TargetProp = *ValidateFunctionPropertyIt;
+
+		if (SourceProp && TargetProp
+			&& ((SourceProp->PropertyFlags & CPF_Parm) != 0)
+			&& ((SourceProp->PropertyFlags & CPF_ReturnParm) == 0))
+		{
+			check(SourceProp->SameType(TargetProp));
+
+			const uint8* SrcPtr = SourceProp->ContainerPtrToValuePtr<uint8>(Parameters);
+			uint8* DestPtr = TargetProp->ContainerPtrToValuePtr<uint8>(ValidateFunctionParmsPtr);
+
+			SourceProp->CopyCompleteValue(DestPtr, SrcPtr);
+		}
+
+		++FunctionPropertyIt;
+		++ValidateFunctionPropertyIt;
+	}
+
+	ASValidate->RuntimeCallEvent(Object, ValidateFunctionParmsPtr);
+
+	void* RetPtr = reinterpret_cast<void*>(reinterpret_cast<SIZE_T>(ValidateFunctionParmsPtr) + ValidateFunction->ReturnValueOffset);
+	if (*reinterpret_cast<uint8*>(RetPtr) != 0)
+	{
+		return true;
+	}
+
+	GLastAngelscriptValidateFailureReason = ValidateFunction->GetName();
+	RPC_ValidateFailed(*GLastAngelscriptValidateFailureReason);
+	return false;
+}
+
 void UASFunctionNativeThunk(UObject* Object, FFrame& Stack, RESULT_DECL)
 {
 	// Blueprint VM can invoke this thunk through a generated wrapper frame,
@@ -1972,6 +2025,18 @@ void UASFunctionNativeThunk(UObject* Object, FFrame& Stack, RESULT_DECL)
 		Function = Cast<UASFunction>(Stack.Node);
 	}
 	check(Function != nullptr);
+
+	if (Function->HasAnyFunctionFlags(FUNC_NetValidate)
+		&& Stack.Node == Function
+		&& Stack.Locals != nullptr)
+	{
+		if (ExecuteValidateFunctionForProcessEvent(Function, Object, Stack.Locals))
+		{
+			Function->RuntimeCallEvent(Object, Stack.Locals);
+		}
+		return;
+	}
+
 	Function->RuntimeCallFunction(Object, Stack, RESULT_PARAM);
 }
 

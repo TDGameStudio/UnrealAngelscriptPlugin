@@ -1,8 +1,8 @@
 #include "AngelscriptFunctionalTestUtils.h"
 #include "AngelscriptTestMacros.h"
 
-#include "Core/AngelscriptComponent.h"
 #include "Components/ActorTestSpawner.h"
+#include "Components/ActorComponent.h"
 #include "Components/BillboardComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -109,7 +109,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComponentTests,
 			TEXT("TestComponentBeginPlay.as"),
 			TEXT(R"AS(
 UCLASS()
-class UTestComponentBeginPlay : UAngelscriptComponent
+class UTestComponentBeginPlay : UActorComponent
 {
 	UPROPERTY()
 	bool bReady = false;
@@ -158,7 +158,7 @@ class UTestComponentBeginPlay : UAngelscriptComponent
 			TEXT("TestComponentTick.as"),
 			TEXT(R"AS(
 UCLASS()
-class UTestComponentTick : UAngelscriptComponent
+class UTestComponentTick : UActorComponent
 {
 	UPROPERTY()
 	int TickCount = 0;
@@ -210,7 +210,7 @@ class UTestComponentTick : UAngelscriptComponent
 			TEXT("TestComponentReceiveEndPlay.as"),
 			TEXT(R"AS(
 UCLASS()
-class UTestComponentReceiveEndPlay : UAngelscriptComponent
+class UTestComponentReceiveEndPlay : UActorComponent
 {
 	UPROPERTY()
 	bool bCleanedUp = false;
@@ -268,7 +268,7 @@ class ATestComponentOwnerActor : AActor
 }
 
 UCLASS()
-class UTestComponentActorOwner : UAngelscriptComponent
+class UTestComponentActorOwner : UActorComponent
 {
 	UPROPERTY()
 	int ReadOwnerValue = 0;

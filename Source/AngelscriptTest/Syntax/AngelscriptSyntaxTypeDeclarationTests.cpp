@@ -125,7 +125,7 @@ class AFinalClassActor : AActor final { }
 
 		TestRunner->AddExpectedErrorPlain(
 			TEXT("has an unknown super type"),
-			EAutomationExpectedErrorFlags::Contains, 2);
+			EAutomationExpectedErrorFlags::Contains, 3);
 
 		// DISABLED(#as-engine-behavior): preprocessor-ensure-crash — 匿名 class 触发 DetectClasses ensure 崩溃
 #if 0
@@ -153,6 +153,12 @@ class ADupActor : AActor { }
 class AClassBadParentActor : ANonExistentActor { }
 )"),
 			TEXT("Non-existent parent"));
+
+		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("ClassN_LegacyAngelscriptComponent"),
+			TEXT(R"(
+class ULegacyAngelscriptComponent : UAngelscriptComponent { }
+)"),
+			TEXT("Removed legacy UAngelscriptComponent parent"));
 
 		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("ClassN_BadMember"),
 			TEXT(R"(

@@ -1,8 +1,8 @@
 #include "AngelscriptFunctionalTestUtils.h"
 #include "AngelscriptTestMacros.h"
 
-#include "Core/AngelscriptComponent.h"
 #include "Components/ActorTestSpawner.h"
+#include "Components/ActorComponent.h"
 #include "GameFramework/Actor.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
@@ -163,7 +163,7 @@ bool FAngelscriptTestGCComponentDestroyTest::RunTest(const FString& Parameters)
 		TEXT("TestGCComponentDestroy.as"),
 		TEXT(R"AS(
 UCLASS()
-class UTestGCComponentDestroy : UAngelscriptComponent
+class UTestGCComponentDestroy : UActorComponent
 {
 }
 )AS"),
@@ -221,7 +221,7 @@ class ATestGCWorldTeardownActor : AActor
 }
 
 UCLASS()
-class UTestGCWorldTeardownComponent : UAngelscriptComponent
+class UTestGCWorldTeardownComponent : UActorComponent
 {
 }
 )AS"),

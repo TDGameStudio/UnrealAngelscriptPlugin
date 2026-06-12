@@ -42,7 +42,7 @@
 //   3. AccumulatedDeltaTime       — verifies sum(DeltaTime) ~= NumTicks * Dt.
 //   4. VariableDeltaTime          — multiple frames with different DeltaTimes.
 //   5. MultipleActorsTickedTogether — one World drives many actors at once.
-//   6. ComponentTickAlongsideActor — Tick is also dispatched to UAngelscriptComponent.
+//   6. ComponentTickAlongsideActor — Tick is also dispatched to a script UActorComponent.
 //
 // ---- Boundary with Template_GameLifetime ----
 //
@@ -441,7 +441,7 @@ class ATemplateWorldTickMultiActor : AActor
 	// 6. ComponentTickAlongsideActor
 	//
 	// Demonstrates how to push the script logic down into a
-	// UAngelscriptComponent subclass and drive its BlueprintOverride Tick
+	// UActorComponent subclass and drive its BlueprintOverride Tick
 	// precisely via W.DispatchComponentTick.
 	//
 	// A component must satisfy two conditions to be ticked:
@@ -462,7 +462,7 @@ class ATemplateWorldTickMultiActor : AActor
 			TEXT("TemplateWorldTickComponent.as"),
 			TEXT(R"AS(
 UCLASS()
-class UTemplateWorldTickComponent : UAngelscriptComponent
+class UTemplateWorldTickComponent : UActorComponent
 {
 	UPROPERTY()
 	int TickCount = 0;
