@@ -16,6 +16,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	"Angelscript.Editor.DirectoryWatcher.Queue.UsesMatchingRootWhenMultipleRootsSharePrefix",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FAngelscriptDirectoryWatcherPluginVirtualPathQueueTest,
+	"Angelscript.Editor.DirectoryWatcher.Queue.PreservesPluginVirtualPath",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
 namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherRootResolutionTests_Private
 {
 	FString MakeTempWatcherRoot(const TCHAR* Prefix)
@@ -38,6 +43,23 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherRootResolut
 		for (const FString& RootPath : RootPaths)
 		{
 			Engine->AllRootPaths.Add(FPaths::ConvertRelativePathToFull(RootPath));
+		}
+
+		return Engine;
+	}
+
+	TUniquePtr<FAngelscriptEngine> MakeTestEngineWithScriptRoots(const TArray<FAngelscriptScriptRoot>& ScriptRoots)
+	{
+		const FAngelscriptEngineConfig Config;
+		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
+		TUniquePtr<FAngelscriptEngine> Engine = MakeUnique<FAngelscriptEngine>(Config, Dependencies);
+
+		for (const FAngelscriptScriptRoot& ScriptRoot : ScriptRoots)
+		{
+			FAngelscriptScriptRoot NormalizedRoot = ScriptRoot;
+			NormalizedRoot.AbsolutePath = FPaths::ConvertRelativePathToFull(NormalizedRoot.AbsolutePath);
+			Engine->AllScriptRoots.Add(NormalizedRoot);
+			Engine->AllRootPaths.Add(NormalizedRoot.AbsolutePath);
 		}
 
 		return Engine;
@@ -116,6 +138,61 @@ bool FAngelscriptDirectoryWatcherMatchingRootSelectionTest::RunTest(const FStrin
 	return TestTrue(
 		TEXT("DirectoryWatcher.Queue.UsesMatchingRootWhenMultipleRootsSharePrefix should compute the relative path from the matching root instead of preserving the root segment"),
 		ContainsFilenamePair(Engine->FileChangesDetectedForReload, PluginScriptAbsolutePath, TEXT("Feature/Changed.as")));
+}
+
+bool FAngelscriptDirectoryWatcherPluginVirtualPathQueueTest::RunTest(const FString& Parameters)
+{
+	using namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherRootResolutionTests_Private;
+	IFileManager& FileManager = IFileManager::Get();
+	const FString BaseRoot = MakeTempWatcherRoot(TEXT("PluginVirtualPath"));
+	const FString ProjectRoot = FPaths::ConvertRelativePathToFull(BaseRoot / TEXT("ProjectScript"));
+	const FString PluginRoot = FPaths::ConvertRelativePathToFull(BaseRoot / TEXT("InventoryScript"));
+	ON_SCOPE_EXIT
+	{
+		FileManager.DeleteDirectory(*BaseRoot, false, true);
+	};
+
+	FileManager.MakeDirectory(*ProjectRoot, true);
+	FileManager.MakeDirectory(*(PluginRoot / TEXT("Feature")), true);
+
+	const FString PluginScriptAbsolutePath = FPaths::ConvertRelativePathToFull(PluginRoot / TEXT("Feature/Changed.as"));
+	if (!FFileHelper::SaveStringToFile(TEXT("// Changed"), *PluginScriptAbsolutePath))
+	{
+		AddError(TEXT("DirectoryWatcher.Queue.PreservesPluginVirtualPath should create the plugin-root script fixture"));
+		return false;
+	}
+
+	TUniquePtr<FAngelscriptEngine> Engine = MakeTestEngineWithScriptRoots({
+		FAngelscriptScriptRoot::FromGameRoot(ProjectRoot),
+		FAngelscriptScriptRoot::FromPluginRoot(TEXT("Inventory"), PluginRoot),
+	});
+
+	const TArray<FFileChangeData> Changes = {
+		MakeFileChange(PluginScriptAbsolutePath, FFileChangeData::FCA_Modified)
+	};
+
+	AngelscriptEditor::Private::QueueScriptFileChanges(Changes, Engine->AllRootPaths, *Engine, FileManager, [](const FString&)
+	{
+		return TArray<FAngelscriptEngine::FFilenamePair>();
+	});
+
+	if (!TestEqual(
+			TEXT("DirectoryWatcher.Queue.PreservesPluginVirtualPath should queue one plugin script"),
+			Engine->FileChangesDetectedForReload.Num(),
+			1))
+	{
+		return false;
+	}
+
+	const FAngelscriptEngine::FFilenamePair& QueuedFile = Engine->FileChangesDetectedForReload[0];
+	bool bPassed = true;
+	bPassed &= TestEqual(TEXT("Queued plugin script should keep its absolute path"), QueuedFile.AbsolutePath, PluginScriptAbsolutePath);
+	bPassed &= TestEqual(TEXT("Queued plugin script should keep its plugin-root relative path"), QueuedFile.RelativePath, FString(TEXT("Feature/Changed.as")));
+	bPassed &= TestEqual(
+		TEXT("Queued plugin script should keep its full plugin virtual path"),
+		QueuedFile.VirtualPath,
+		FString(TEXT("/Angelscript/Plugin/Inventory/Feature/Changed.as")));
+	return bPassed;
 }
 
 #endif

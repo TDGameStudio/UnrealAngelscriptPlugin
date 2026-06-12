@@ -485,6 +485,37 @@ bool CompileModuleFromMemory(FAngelscriptEngine* Engine, FName ModuleName, FStri
 	return CompileModuleInternal(Engine, ECompileType::SoftReloadOnly, ModuleName, MoveTemp(Filename), MoveTemp(Script));
 }
 
+bool CompileMemorySource(FAngelscriptEngine* Engine, const FString& VirtualPath, FString Script)
+{
+	if (Engine == nullptr)
+	{
+		return false;
+	}
+
+	FAngelscriptPreprocessor Preprocessor;
+	Preprocessor.AddSource(FAngelscriptScriptSource::FromMemorySource(VirtualPath, MoveTemp(Script)));
+	if (!Preprocessor.Preprocess())
+	{
+		return false;
+	}
+
+	TArray<TSharedRef<FAngelscriptModuleDesc>> ModulesToCompile = Preprocessor.GetModulesToCompile();
+	if (ModulesToCompile.Num() == 0)
+	{
+		return false;
+	}
+
+	ECompileResult CompileResult = ECompileResult::Error;
+	int32 CompiledModuleCount = 0;
+	return CompilePreparedModules(
+		Engine,
+		ECompileType::SoftReloadOnly,
+		ModulesToCompile,
+		CompileResult,
+		CompiledModuleCount,
+		/*bSuppressCompileErrorLogs=*/ false);
+}
+
 bool CompileAnnotatedModuleFromMemory(FAngelscriptEngine* Engine, FName ModuleName, FString Filename, FString Script)
 {
 	if (Engine == nullptr)

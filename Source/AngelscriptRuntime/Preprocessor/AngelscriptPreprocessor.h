@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 
 #include "AngelscriptEngine.h"
+#include "AngelscriptScriptSource.h"
 #include "AngelscriptSettings.h"
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnAngelscriptPreprocessHook, struct FAngelscriptPreprocessor&);
@@ -33,6 +34,7 @@ enum class EAngelscriptPreprocessorSummaryStage : uint8
 
 struct ANGELSCRIPTRUNTIME_API FAngelscriptPreprocessorFileSummary
 {
+	FString VirtualPath;
 	FString RelativeFilename;
 	FString AbsoluteFilename;
 	FString ModuleName;
@@ -95,6 +97,9 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptPreprocessor
 
 	/* Add a file to be preprocessed. */
 	void AddFile(const FString& ScriptRelativePath, const FString& ScriptAbsoluteFilename, bool bLoadAsynchronous = false, bool bTreatAsDeleted = false);
+
+	/* Add a source descriptor to be preprocessed. */
+	void AddSource(const FAngelscriptScriptSource& Source, bool bLoadAsynchronous = false, bool bTreatAsDeleted = false);
 
 	/* Perform preprocessing on all files. Returns true if successful. */
 	bool Preprocess();
@@ -210,6 +215,7 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptPreprocessor
 		TSharedPtr<FAngelscriptClassDesc> StaticsClass;
 
 		// Filenames of the code read into this file
+		FString VirtualPath;
 		FString AbsoluteFilename;
 		FString RelativeFilename;
 

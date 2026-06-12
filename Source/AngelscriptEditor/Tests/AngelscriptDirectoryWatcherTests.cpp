@@ -114,11 +114,13 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherTests_Priva
 		const TSharedRef<FAngelscriptModuleDesc>& ModuleDesc,
 		const FString& RelativeFilename,
 		const FString& AbsoluteFilename,
-		const TCHAR* Code)
+		const TCHAR* Code,
+		const FString& VirtualPath = FString())
 	{
 		FAngelscriptModuleDesc::FCodeSection& Section = ModuleDesc->Code.AddDefaulted_GetRef();
 		Section.RelativeFilename = RelativeFilename;
 		Section.AbsoluteFilename = AbsoluteFilename;
+		Section.VirtualPath = VirtualPath;
 		Section.Code = Code;
 		Section.CodeHash = static_cast<int64>(FCrc::StrCrc32(*Section.Code));
 		ModuleDesc->CodeHash ^= Section.CodeHash;
@@ -152,6 +154,19 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherTests_Priva
 		for (const FAngelscriptEngine::FFilenamePair& File : Files)
 		{
 			if (File.AbsolutePath == AbsolutePath && File.RelativePath == RelativePath)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	bool ContainsFilenamePairWithVirtualPath(const TArray<FAngelscriptEngine::FFilenamePair>& Files, const FString& AbsolutePath, const FString& RelativePath, const FString& VirtualPath)
+	{
+		for (const FAngelscriptEngine::FFilenamePair& File : Files)
+		{
+			if (File.AbsolutePath == AbsolutePath && File.RelativePath == RelativePath && File.VirtualPath == VirtualPath)
 			{
 				return true;
 			}
@@ -442,9 +457,11 @@ bool FAngelscriptDirectoryWatcherGatherLoadedScriptsForFolderTest::RunTest(const
 	TSharedRef<FAngelscriptModuleDesc> RemovedFolderModule = MakeDirectoryWatcherModuleDesc(TEXT("DirectoryWatcher.RemovedFolder"));
 	const FString PrimaryAbsolutePath = RemovedFolderPath / TEXT("Primary.as");
 	const FString NestedAbsolutePath = RemovedFolderPath / TEXT("Nested/Secondary.as");
-	AddDirectoryWatcherCodeSection(RemovedFolderModule, TEXT("RemovedFolder/Primary.as"), PrimaryAbsolutePath, TEXT("int RemovedFolderPrimary() { return 1; }"));
-	AddDirectoryWatcherCodeSection(RemovedFolderModule, TEXT("RemovedFolder/Nested/Secondary.as"), NestedAbsolutePath, TEXT("int RemovedFolderSecondary() { return 2; }"));
-	AddDirectoryWatcherCodeSection(RemovedFolderModule, TEXT("RemovedFolder/Primary.as"), PrimaryAbsolutePath, TEXT("// Duplicate code section metadata entry for the same script path."));
+	const FString PrimaryVirtualPath = TEXT("/Angelscript/Plugin/Inventory/RemovedFolder/Primary.as");
+	const FString NestedVirtualPath = TEXT("/Angelscript/Plugin/Inventory/RemovedFolder/Nested/Secondary.as");
+	AddDirectoryWatcherCodeSection(RemovedFolderModule, TEXT("RemovedFolder/Primary.as"), PrimaryAbsolutePath, TEXT("int RemovedFolderPrimary() { return 1; }"), PrimaryVirtualPath);
+	AddDirectoryWatcherCodeSection(RemovedFolderModule, TEXT("RemovedFolder/Nested/Secondary.as"), NestedAbsolutePath, TEXT("int RemovedFolderSecondary() { return 2; }"), NestedVirtualPath);
+	AddDirectoryWatcherCodeSection(RemovedFolderModule, TEXT("RemovedFolder/Primary.as"), PrimaryAbsolutePath, TEXT("// Duplicate code section metadata entry for the same script path."), PrimaryVirtualPath);
 
 	TSharedRef<FAngelscriptModuleDesc> RemovedSiblingModule = MakeDirectoryWatcherModuleDesc(TEXT("DirectoryWatcher.RemovedFolderSibling"));
 	const FString SiblingAbsolutePath = RemovedSiblingFolderPath / TEXT("Leak.as");
@@ -478,6 +495,16 @@ bool FAngelscriptDirectoryWatcherGatherLoadedScriptsForFolderTest::RunTest(const
 	if (!TestTrue(
 		TEXT("DirectoryWatcher.GatherLoadedScriptsForFolder.DeduplicatesAndRejectsPrefixCollisions should include nested scripts under the removed folder"),
 		ContainsFilenamePair(LoadedScripts, NestedAbsolutePath, TEXT("RemovedFolder/Nested/Secondary.as"))))
+	{
+		return false;
+	}
+
+	if (!TestTrue(
+			TEXT("DirectoryWatcher.GatherLoadedScriptsForFolder.DeduplicatesAndRejectsPrefixCollisions should preserve the direct script virtual path"),
+			ContainsFilenamePairWithVirtualPath(LoadedScripts, PrimaryAbsolutePath, TEXT("RemovedFolder/Primary.as"), PrimaryVirtualPath))
+		|| !TestTrue(
+			TEXT("DirectoryWatcher.GatherLoadedScriptsForFolder.DeduplicatesAndRejectsPrefixCollisions should preserve the nested script virtual path"),
+			ContainsFilenamePairWithVirtualPath(LoadedScripts, NestedAbsolutePath, TEXT("RemovedFolder/Nested/Secondary.as"), NestedVirtualPath)))
 	{
 		return false;
 	}

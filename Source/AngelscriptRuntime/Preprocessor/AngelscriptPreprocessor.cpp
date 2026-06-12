@@ -167,6 +167,7 @@ FAngelscriptPreprocessorSummary FAngelscriptPreprocessor::GetSummary() const
 	for (const FFile& File : Files)
 	{
 		FAngelscriptPreprocessorFileSummary& FileSummary = Summary.Files.AddDefaulted_GetRef();
+		FileSummary.VirtualPath = File.VirtualPath;
 		FileSummary.RelativeFilename = File.RelativeFilename;
 		FileSummary.AbsoluteFilename = File.AbsoluteFilename;
 		FileSummary.RawCodeCharacterCount = File.RawCode.Len();
@@ -262,21 +263,40 @@ FString FAngelscriptPreprocessor::FilenameToModuleName(const FString& Filename)
 
 void FAngelscriptPreprocessor::AddFile(const FString& RelativeFilename, const FString& AbsoluteFilename, bool bLoadAsynchronous, bool bTreatAsDeleted)
 {
+	AddSource(FAngelscriptScriptSource::FromGameFile(RelativeFilename, AbsoluteFilename), bLoadAsynchronous, bTreatAsDeleted);
+}
+
+void FAngelscriptPreprocessor::AddSource(const FAngelscriptScriptSource& Source, bool bLoadAsynchronous, bool bTreatAsDeleted)
+{
 	if (!ensureMsgf(!bIsPreprocessed, TEXT("Cannot add files after preprocessing is done.")))
 		return;
+
+	if (!Source.VirtualPath.IsValid())
+	{
+		bHasError = true;
+		UE_LOG(Angelscript, Error, TEXT("Invalid Angelscript source descriptor: virtual path is missing or invalid."));
+		return;
+	}
 
 	FFile& File = Files.AddDefaulted_GetRef();
 
 	TSharedRef<FAngelscriptModuleDesc> Module = MakeShared<FAngelscriptModuleDesc>();
-	Module->ModuleName = FilenameToModuleName(RelativeFilename);
+	Module->ModuleName = Source.ModuleName.IsEmpty()
+		? FilenameToModuleName(Source.RelativeFilename)
+		: Source.ModuleName;
 
 	File.Module = Module;
-	File.AbsoluteFilename = AbsoluteFilename;
-	File.RelativeFilename = RelativeFilename;
+	File.VirtualPath = Source.VirtualPath.ToString();
+	File.AbsoluteFilename = Source.AbsoluteFilename;
+	File.RelativeFilename = Source.RelativeFilename;
 
 	if (bTreatAsDeleted)
 	{
 		File.RawCode = TEXT("");
+	}
+	else if (Source.bHasSourceText)
+	{
+		File.RawCode = Source.SourceText;
 	}
 	else if (bLoadAsynchronous)
 	{
@@ -290,7 +310,7 @@ void FAngelscriptPreprocessor::AddFile(const FString& RelativeFilename, const FS
 		int32 Tries = 0;
 		for (; Tries < 6; ++Tries)
 		{
-			if (FFileHelper::LoadFileToString(File.RawCode, *AbsoluteFilename))
+			if (FFileHelper::LoadFileToString(File.RawCode, *File.AbsoluteFilename))
 			{
 				bLoaded = true;
 				break;
@@ -305,7 +325,7 @@ void FAngelscriptPreprocessor::AddFile(const FString& RelativeFilename, const FS
 		}
 
 		if (!bLoaded)
-			UE_LOG(Angelscript, Warning, TEXT("Unable to open script file %s after several retries. Treating file as deleted."), *AbsoluteFilename);
+			UE_LOG(Angelscript, Warning, TEXT("Unable to open script file %s after several retries. Treating file as deleted."), *File.AbsoluteFilename);
 		}
 
 }
@@ -524,6 +544,7 @@ bool FAngelscriptPreprocessor::Preprocess()
 	for (FFile& File : Files)
 	{
 		FAngelscriptModuleDesc::FCodeSection Section;
+		Section.VirtualPath = File.VirtualPath;
 		Section.RelativeFilename = File.RelativeFilename;
 		Section.AbsoluteFilename = File.AbsoluteFilename;
 		Section.Code = File.ProcessedCode;

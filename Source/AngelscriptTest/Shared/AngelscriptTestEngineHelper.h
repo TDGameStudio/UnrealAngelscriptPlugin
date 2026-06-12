@@ -60,6 +60,7 @@ ANGELSCRIPTTEST_API bool CompileModuleWithSummary(FAngelscriptEngine* Engine, EC
 ANGELSCRIPTTEST_API bool AnalyzeReloadFromMemory(FAngelscriptEngine* Engine, FName ModuleName, FString Filename, FString Script, FAngelscriptClassGenerator::EReloadRequirement& OutReloadRequirement, bool& bOutWantsFullReload, bool& bOutNeedsFullReload);
 ANGELSCRIPTTEST_API bool CompileModuleFromDiskPath(FAngelscriptEngine* Engine, FName ModuleName, const FString& AbsolutePath);
 ANGELSCRIPTTEST_API bool CompileModuleFromMemory(FAngelscriptEngine* Engine, FName ModuleName, FString Filename, FString Script);
+ANGELSCRIPTTEST_API bool CompileMemorySource(FAngelscriptEngine* Engine, const FString& VirtualPath, FString Script);
 ANGELSCRIPTTEST_API bool CompileAnnotatedModuleFromMemory(FAngelscriptEngine* Engine, FName ModuleName, FString Filename, FString Script);
 ANGELSCRIPTTEST_API bool GenerateStaticJITSourceText(FAngelscriptEngine* Engine, FName ModuleName, FString& OutSourceText, bool bEmitDebugMetadata, FString* OutError = nullptr);
 ANGELSCRIPTTEST_API bool SaveAndReloadPrecompiledData(FAngelscriptEngine* Engine, FAngelscriptPrecompiledData& SourceData, const FString& Filename, TUniquePtr<FAngelscriptPrecompiledData>& OutLoadedData, FString* OutError = nullptr);
@@ -72,4 +73,3 @@ inline bool ExecuteGeneratedIntEventOnGameThread(UObject* Object, UFunction* Fun
 ANGELSCRIPTTEST_API bool ExecuteIntFunction(FAngelscriptEngine* Engine, FName ModuleName, FString Decl, int32& OutResult);
 ANGELSCRIPTTEST_API UClass* FindGeneratedClass(FAngelscriptEngine* Engine, FName ClassName);
 ANGELSCRIPTTEST_API UFunction* FindGeneratedFunction(UClass* OwnerClass, FName FuncName);
-

@@ -5,6 +5,7 @@
 #include "UObject/CoreNetTypes.h"
 #include "ClassGenerator/AngelscriptAdditionalCompileChecks.h"
 
+#include "AngelscriptScriptSource.h"
 #include "AngelscriptType.h"
 #include "AngelscriptMemoryTags.h"
 
@@ -129,6 +130,12 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngineConfig
 	static FAngelscriptEngineConfig FromCurrentProcess();
 };
 
+struct ANGELSCRIPTRUNTIME_API FAngelscriptPluginScriptRoot
+{
+	FString PluginName;
+	FString ScriptRoot;
+};
+
 struct ANGELSCRIPTRUNTIME_API FAngelscriptEngineDependencies
 {
 	TFunction<FString()> GetProjectDir;
@@ -136,6 +143,7 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngineDependencies
 	TFunction<bool(const FString&)> DirectoryExists;
 	TFunction<bool(const FString&, bool)> MakeDirectory;
 	TFunction<TArray<FString>()> GetEnabledPluginScriptRoots;
+	TFunction<TArray<FAngelscriptPluginScriptRoot>()> GetEnabledPluginScriptRootDescriptors;
 
 	static FAngelscriptEngineDependencies CreateDefault();
 };
@@ -271,6 +279,8 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 	FInterfaceMethodSignature* RegisterInterfaceMethodSignature(FName FunctionName);
 	void ReleaseInterfaceMethodSignature(FInterfaceMethodSignature* Signature);
 	TArray<FString> DiscoverScriptRoots(bool bOnlyProjectRoot = false) const;
+	TArray<FAngelscriptScriptRoot> DiscoverScriptRootDescriptors(bool bOnlyProjectRoot = false) const;
+	TArray<FAngelscriptScriptRoot> GetEffectiveScriptRootDescriptors() const;
 
 	/** Discard a named script module from the engine. Returns true if the module was found and discarded. */
 	bool DiscardModule(const TCHAR* ModuleName);
@@ -393,6 +403,7 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 
 	/* Root paths where all scripts are loaded from. */
 	TArray<FString> AllRootPaths;
+	TArray<FAngelscriptScriptRoot> AllScriptRoots;
 
 	/* Internal script data. */
 	class asCScriptEngine* Engine = nullptr;
@@ -461,6 +472,7 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 	{
 		FString AbsolutePath;
 		FString RelativePath;
+		FString VirtualPath;
 	};
 
 private:
@@ -648,6 +660,7 @@ public:
 	void EmitDiagnostics(FDiagnostics& Diag, class FSocket* Client = nullptr);
 
 	void FindAllScriptFilenames(TArray<FFilenamePair>& OutFilenames);
+	void FindAllScriptSources(TArray<FAngelscriptScriptSource>& OutSources);
 
 	bool HasAnyDebugServerClients();
 	void ReplaceScriptAssetContent(FString AssetName, TArray<FString> AssetContent);
@@ -1415,6 +1428,7 @@ struct FAngelscriptModuleDesc
 	/* Code sections to add to the module during compilation. Map is filename->processed code. */
 	struct FCodeSection
 	{
+		FString VirtualPath;
 		FString RelativeFilename;
 		FString AbsoluteFilename;
 		FString Code;
@@ -1563,10 +1577,14 @@ public:
 
 inline uint32 GetTypeHash(const FAngelscriptEngine::FFilenamePair& FilenamePair)
 {
-	return HashCombine(GetTypeHash(FilenamePair.AbsolutePath), GetTypeHash(FilenamePair.RelativePath));
+	return HashCombine(
+		HashCombine(GetTypeHash(FilenamePair.AbsolutePath), GetTypeHash(FilenamePair.RelativePath)),
+		GetTypeHash(FilenamePair.VirtualPath));
 }
 
 inline bool operator==(const FAngelscriptEngine::FFilenamePair& A, const FAngelscriptEngine::FFilenamePair& B)
 {
-	return A.AbsolutePath == B.AbsolutePath && A.RelativePath == B.RelativePath;
+	return A.AbsolutePath == B.AbsolutePath
+		&& A.RelativePath == B.RelativePath
+		&& A.VirtualPath == B.VirtualPath;
 }
