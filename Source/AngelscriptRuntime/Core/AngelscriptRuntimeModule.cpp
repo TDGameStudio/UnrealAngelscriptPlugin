@@ -2,6 +2,7 @@
 #include "AngelscriptEngine.h"
 #include "AngelscriptEngineSubsystem.h"
 #include "AngelscriptGameInstanceSubsystem.h"
+#include "Dump/AngelscriptCrashSnapshot.h"
 
 IMPLEMENT_MODULE(FAngelscriptRuntimeModule, AngelscriptRuntime);
 
@@ -15,12 +16,14 @@ FAngelscriptEngine* FAngelscriptRuntimeModule::InitializedOverrideEngineForTesti
 void FAngelscriptRuntimeModule::StartupModule()
 {
 	UE_LOG(Angelscript, Verbose, TEXT("[RuntimeStartup] StartupModule."));
+	FAngelscriptCrashSnapshot::Startup();
 }
 
 void FAngelscriptRuntimeModule::ShutdownModule()
 {
 	UE_LOG(Angelscript, Verbose, TEXT("[RuntimeStartup] ShutdownModule ownedEngine=%s"),
 		OwnedPrimaryEngine.IsValid() ? TEXT("true") : TEXT("false"));
+	FAngelscriptCrashSnapshot::Shutdown();
 
 	if (OwnedPrimaryEngine.IsValid())
 	{
