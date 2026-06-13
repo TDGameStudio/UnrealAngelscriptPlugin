@@ -1,5 +1,5 @@
 #include "AngelscriptEngine.h"
-#include "AngelscriptScriptSource.h"
+#include "AngelscriptSource.h"
 
 #include "HAL/FileManager.h"
 #include "Misc/AutomationTest.h"

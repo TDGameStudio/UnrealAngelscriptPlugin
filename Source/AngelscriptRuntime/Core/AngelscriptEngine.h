@@ -5,7 +5,7 @@
 #include "UObject/CoreNetTypes.h"
 #include "ClassGenerator/AngelscriptAdditionalCompileChecks.h"
 
-#include "AngelscriptScriptSource.h"
+#include "AngelscriptSource.h"
 #include "AngelscriptType.h"
 #include "AngelscriptMemoryTags.h"
 

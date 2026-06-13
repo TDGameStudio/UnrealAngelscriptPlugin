@@ -1,5 +1,5 @@
 #include "CQTest.h"
-#include "AngelscriptScriptSource.h"
+#include "AngelscriptSource.h"
 #include "Preprocessor/AngelscriptPreprocessorTestHelpers.h"
 
 #if WITH_DEV_AUTOMATION_TESTS

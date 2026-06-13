@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 
 #include "AngelscriptEngine.h"
-#include "AngelscriptScriptSource.h"
+#include "AngelscriptSource.h"
 #include "AngelscriptSettings.h"
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnAngelscriptPreprocessHook, struct FAngelscriptPreprocessor&);

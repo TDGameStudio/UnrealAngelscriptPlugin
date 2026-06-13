@@ -1,6 +1,6 @@
-#include "AngelscriptScriptSource.h"
+#include "AngelscriptSource.h"
 
-namespace AngelscriptScriptSource_Private
+namespace AngelscriptSource_Private
 {
 	FString NormalizeVirtualPath(FString Path)
 	{
@@ -115,7 +115,7 @@ FAngelscriptSourceRoot FAngelscriptSourceRoot::FromPluginRoot(const FString& Plu
 
 bool FAngelscriptVirtualPath::TryParse(const FString& InPath, FAngelscriptVirtualPath& OutPath, FString* OutError)
 {
-	using namespace AngelscriptScriptSource_Private;
+	using namespace AngelscriptSource_Private;
 
 	OutPath = FAngelscriptVirtualPath();
 	if (OutError != nullptr)
@@ -208,7 +208,7 @@ bool FAngelscriptVirtualPath::TryParse(const FString& InPath, FAngelscriptVirtua
 FAngelscriptVirtualPath FAngelscriptVirtualPath::FromGameRelativePath(const FString& RelativePath)
 {
 	FAngelscriptVirtualPath VirtualPath;
-	const FString Path = FString(GameRoot) / AngelscriptScriptSource_Private::NormalizeRelativePath(RelativePath);
+	const FString Path = FString(GameRoot) / AngelscriptSource_Private::NormalizeRelativePath(RelativePath);
 	ensure(TryParse(Path, VirtualPath));
 	return VirtualPath;
 }
@@ -216,7 +216,7 @@ FAngelscriptVirtualPath FAngelscriptVirtualPath::FromGameRelativePath(const FStr
 FAngelscriptVirtualPath FAngelscriptVirtualPath::FromPluginRelativePath(const FString& PluginName, const FString& RelativePath)
 {
 	FAngelscriptVirtualPath VirtualPath;
-	const FString Path = FString(PluginRoot) / PluginName / AngelscriptScriptSource_Private::NormalizeRelativePath(RelativePath);
+	const FString Path = FString(PluginRoot) / PluginName / AngelscriptSource_Private::NormalizeRelativePath(RelativePath);
 	ensure(TryParse(Path, VirtualPath));
 	return VirtualPath;
 }
@@ -224,7 +224,7 @@ FAngelscriptVirtualPath FAngelscriptVirtualPath::FromPluginRelativePath(const FS
 FAngelscriptVirtualPath FAngelscriptVirtualPath::FromMemoryRelativePath(const FString& ProviderName, const FString& RelativePath)
 {
 	FAngelscriptVirtualPath VirtualPath;
-	const FString Path = FString(MemoryRoot) / ProviderName / AngelscriptScriptSource_Private::NormalizeRelativePath(RelativePath);
+	const FString Path = FString(MemoryRoot) / ProviderName / AngelscriptSource_Private::NormalizeRelativePath(RelativePath);
 	ensure(TryParse(Path, VirtualPath));
 	return VirtualPath;
 }
@@ -251,7 +251,7 @@ const FString& FAngelscriptVirtualPath::GetRelativePath() const
 
 FString FAngelscriptVirtualPath::ToModuleName() const
 {
-	using namespace AngelscriptScriptSource_Private;
+	using namespace AngelscriptSource_Private;
 
 	if (SourceKind == EAngelscriptSourceKind::Memory)
 	{
@@ -334,7 +334,7 @@ bool FAngelscriptSource::TryFromMemorySource(
 	if (OutSource.VirtualPath.GetSourceKind() != EAngelscriptSourceKind::Memory)
 	{
 		OutSource = FAngelscriptSource();
-		AngelscriptScriptSource_Private::SetError(OutError, TEXT("Memory-backed script sources must use /Angelscript/Memory virtual paths."));
+		AngelscriptSource_Private::SetError(OutError, TEXT("Memory-backed script sources must use /Angelscript/Memory virtual paths."));
 		return false;
 	}
 
