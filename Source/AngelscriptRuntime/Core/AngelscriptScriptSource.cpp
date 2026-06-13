@@ -331,6 +331,13 @@ bool FAngelscriptScriptSource::TryFromMemorySource(
 		return false;
 	}
 
+	if (OutSource.VirtualPath.GetSourceKind() != EAngelscriptScriptSourceKind::Memory)
+	{
+		OutSource = FAngelscriptScriptSource();
+		AngelscriptScriptSource_Private::SetError(OutError, TEXT("Memory-backed script sources must use /Angelscript/Memory virtual paths."));
+		return false;
+	}
+
 	OutSource.ModuleName = OutSource.VirtualPath.ToModuleName();
 	OutSource.RelativeFilename = OutSource.VirtualPath.GetRelativePath();
 	OutSource.SourceKind = OutSource.VirtualPath.GetSourceKind();

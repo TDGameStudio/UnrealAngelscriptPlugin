@@ -146,6 +146,41 @@ bool FAngelscriptVirtualScriptPathCanonicalRootsTest::RunTest(const FString& Par
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FAngelscriptVirtualScriptPathMemorySourceRequiresMemoryRootTest,
+	"Angelscript.TestModule.FileSystem.VirtualScriptPaths.MemorySourceRequiresMemoryRoot",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FAngelscriptVirtualScriptPathMemorySourceRequiresMemoryRootTest::RunTest(const FString& Parameters)
+{
+	FAngelscriptScriptSource Source;
+	FString Error;
+
+	bool bPassed = true;
+	bPassed &= TestFalse(
+		TEXT("Memory source descriptors should reject game virtual paths"),
+		FAngelscriptScriptSource::TryFromMemorySource(
+			TEXT("/Angelscript/Game/Gameplay/Foo.as"),
+			TEXT("int Entry() { return 1; }"),
+			Source,
+			&Error));
+	bPassed &= TestFalse(TEXT("Rejected game memory source should report a parse error"), Error.IsEmpty());
+	bPassed &= TestFalse(TEXT("Rejected game memory source should not leave a valid descriptor"), Source.VirtualPath.IsValid());
+
+	Error.Reset();
+	bPassed &= TestFalse(
+		TEXT("Memory source descriptors should reject plugin virtual paths"),
+		FAngelscriptScriptSource::TryFromMemorySource(
+			TEXT("/Angelscript/Plugin/Inventory/Gameplay/Foo.as"),
+			TEXT("int Entry() { return 1; }"),
+			Source,
+			&Error));
+	bPassed &= TestFalse(TEXT("Rejected plugin memory source should report a parse error"), Error.IsEmpty());
+	bPassed &= TestFalse(TEXT("Rejected plugin memory source should not leave a valid descriptor"), Source.VirtualPath.IsValid());
+
+	return bPassed;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FAngelscriptVirtualScriptPathInvalidInputsTest,
 	"Angelscript.TestModule.FileSystem.VirtualScriptPaths.InvalidInputs",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
