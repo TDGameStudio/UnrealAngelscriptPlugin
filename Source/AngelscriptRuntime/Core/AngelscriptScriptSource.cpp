@@ -62,7 +62,7 @@ namespace AngelscriptScriptSource_Private
 	}
 
 	bool ValidateParts(
-		const EAngelscriptScriptSourceKind SourceKind,
+		const EAngelscriptSourceKind SourceKind,
 		const FString& MountName,
 		const FString& RelativePath,
 		FString* OutError)
@@ -85,7 +85,7 @@ namespace AngelscriptScriptSource_Private
 			return false;
 		}
 
-		if ((SourceKind == EAngelscriptScriptSourceKind::Plugin || SourceKind == EAngelscriptScriptSourceKind::Memory)
+		if ((SourceKind == EAngelscriptSourceKind::Plugin || SourceKind == EAngelscriptSourceKind::Memory)
 			&& IsInvalidSegment(MountName))
 		{
 			SetError(OutError, TEXT("Virtual script path is missing a mount name."));
@@ -96,28 +96,28 @@ namespace AngelscriptScriptSource_Private
 	}
 }
 
-FAngelscriptScriptRoot FAngelscriptScriptRoot::FromGameRoot(const FString& AbsolutePath)
+FAngelscriptSourceRoot FAngelscriptSourceRoot::FromGameRoot(const FString& AbsolutePath)
 {
-	FAngelscriptScriptRoot Root;
+	FAngelscriptSourceRoot Root;
 	Root.AbsolutePath = AbsolutePath;
-	Root.SourceKind = EAngelscriptScriptSourceKind::Game;
+	Root.SourceKind = EAngelscriptSourceKind::Game;
 	return Root;
 }
 
-FAngelscriptScriptRoot FAngelscriptScriptRoot::FromPluginRoot(const FString& PluginName, const FString& AbsolutePath)
+FAngelscriptSourceRoot FAngelscriptSourceRoot::FromPluginRoot(const FString& PluginName, const FString& AbsolutePath)
 {
-	FAngelscriptScriptRoot Root;
+	FAngelscriptSourceRoot Root;
 	Root.AbsolutePath = AbsolutePath;
-	Root.SourceKind = EAngelscriptScriptSourceKind::Plugin;
+	Root.SourceKind = EAngelscriptSourceKind::Plugin;
 	Root.MountName = PluginName;
 	return Root;
 }
 
-bool FAngelscriptVirtualScriptPath::TryParse(const FString& InPath, FAngelscriptVirtualScriptPath& OutPath, FString* OutError)
+bool FAngelscriptVirtualPath::TryParse(const FString& InPath, FAngelscriptVirtualPath& OutPath, FString* OutError)
 {
 	using namespace AngelscriptScriptSource_Private;
 
-	OutPath = FAngelscriptVirtualScriptPath();
+	OutPath = FAngelscriptVirtualPath();
 	if (OutError != nullptr)
 	{
 		OutError->Reset();
@@ -157,11 +157,11 @@ bool FAngelscriptVirtualScriptPath::TryParse(const FString& InPath, FAngelscript
 	if (NormalizedPath.StartsWith(FString(GameRoot) / TEXT(""), ESearchCase::CaseSensitive))
 	{
 		const FString Relative = NormalizedPath.RightChop(FCString::Strlen(GameRoot) + 1);
-		if (!ValidateParts(EAngelscriptScriptSourceKind::Game, FString(), Relative, OutError))
+		if (!ValidateParts(EAngelscriptSourceKind::Game, FString(), Relative, OutError))
 		{
 			return false;
 		}
-		OutPath.SetParsed(NormalizedPath, EAngelscriptScriptSourceKind::Game, FString(), Relative);
+		OutPath.SetParsed(NormalizedPath, EAngelscriptSourceKind::Game, FString(), Relative);
 		return true;
 	}
 
@@ -175,11 +175,11 @@ bool FAngelscriptVirtualScriptPath::TryParse(const FString& InPath, FAngelscript
 			SetError(OutError, TEXT("Plugin virtual script path is missing a plugin name."));
 			return false;
 		}
-		if (!ValidateParts(EAngelscriptScriptSourceKind::Plugin, PluginName, Relative, OutError))
+		if (!ValidateParts(EAngelscriptSourceKind::Plugin, PluginName, Relative, OutError))
 		{
 			return false;
 		}
-		OutPath.SetParsed(NormalizedPath, EAngelscriptScriptSourceKind::Plugin, PluginName, Relative);
+		OutPath.SetParsed(NormalizedPath, EAngelscriptSourceKind::Plugin, PluginName, Relative);
 		return true;
 	}
 
@@ -193,11 +193,11 @@ bool FAngelscriptVirtualScriptPath::TryParse(const FString& InPath, FAngelscript
 			SetError(OutError, TEXT("Memory virtual script path is missing a provider name."));
 			return false;
 		}
-		if (!ValidateParts(EAngelscriptScriptSourceKind::Memory, ProviderName, Relative, OutError))
+		if (!ValidateParts(EAngelscriptSourceKind::Memory, ProviderName, Relative, OutError))
 		{
 			return false;
 		}
-		OutPath.SetParsed(NormalizedPath, EAngelscriptScriptSourceKind::Memory, ProviderName, Relative);
+		OutPath.SetParsed(NormalizedPath, EAngelscriptSourceKind::Memory, ProviderName, Relative);
 		return true;
 	}
 
@@ -205,55 +205,55 @@ bool FAngelscriptVirtualScriptPath::TryParse(const FString& InPath, FAngelscript
 	return false;
 }
 
-FAngelscriptVirtualScriptPath FAngelscriptVirtualScriptPath::FromGameRelativePath(const FString& RelativePath)
+FAngelscriptVirtualPath FAngelscriptVirtualPath::FromGameRelativePath(const FString& RelativePath)
 {
-	FAngelscriptVirtualScriptPath VirtualPath;
+	FAngelscriptVirtualPath VirtualPath;
 	const FString Path = FString(GameRoot) / AngelscriptScriptSource_Private::NormalizeRelativePath(RelativePath);
 	ensure(TryParse(Path, VirtualPath));
 	return VirtualPath;
 }
 
-FAngelscriptVirtualScriptPath FAngelscriptVirtualScriptPath::FromPluginRelativePath(const FString& PluginName, const FString& RelativePath)
+FAngelscriptVirtualPath FAngelscriptVirtualPath::FromPluginRelativePath(const FString& PluginName, const FString& RelativePath)
 {
-	FAngelscriptVirtualScriptPath VirtualPath;
+	FAngelscriptVirtualPath VirtualPath;
 	const FString Path = FString(PluginRoot) / PluginName / AngelscriptScriptSource_Private::NormalizeRelativePath(RelativePath);
 	ensure(TryParse(Path, VirtualPath));
 	return VirtualPath;
 }
 
-FAngelscriptVirtualScriptPath FAngelscriptVirtualScriptPath::FromMemoryRelativePath(const FString& ProviderName, const FString& RelativePath)
+FAngelscriptVirtualPath FAngelscriptVirtualPath::FromMemoryRelativePath(const FString& ProviderName, const FString& RelativePath)
 {
-	FAngelscriptVirtualScriptPath VirtualPath;
+	FAngelscriptVirtualPath VirtualPath;
 	const FString Path = FString(MemoryRoot) / ProviderName / AngelscriptScriptSource_Private::NormalizeRelativePath(RelativePath);
 	ensure(TryParse(Path, VirtualPath));
 	return VirtualPath;
 }
 
-const FString& FAngelscriptVirtualScriptPath::ToString() const
+const FString& FAngelscriptVirtualPath::ToString() const
 {
 	return Path;
 }
 
-EAngelscriptScriptSourceKind FAngelscriptVirtualScriptPath::GetSourceKind() const
+EAngelscriptSourceKind FAngelscriptVirtualPath::GetSourceKind() const
 {
 	return SourceKind;
 }
 
-const FString& FAngelscriptVirtualScriptPath::GetMountName() const
+const FString& FAngelscriptVirtualPath::GetMountName() const
 {
 	return MountName;
 }
 
-const FString& FAngelscriptVirtualScriptPath::GetRelativePath() const
+const FString& FAngelscriptVirtualPath::GetRelativePath() const
 {
 	return RelativePath;
 }
 
-FString FAngelscriptVirtualScriptPath::ToModuleName() const
+FString FAngelscriptVirtualPath::ToModuleName() const
 {
 	using namespace AngelscriptScriptSource_Private;
 
-	if (SourceKind == EAngelscriptScriptSourceKind::Memory)
+	if (SourceKind == EAngelscriptSourceKind::Memory)
 	{
 		FString ModuleName = TEXT("Angelscript.Memory");
 		if (!MountName.IsEmpty())
@@ -273,14 +273,14 @@ FString FAngelscriptVirtualScriptPath::ToModuleName() const
 	return RelativePathToModuleName(RelativePath);
 }
 
-bool FAngelscriptVirtualScriptPath::IsValid() const
+bool FAngelscriptVirtualPath::IsValid() const
 {
-	return SourceKind != EAngelscriptScriptSourceKind::Unknown && !Path.IsEmpty();
+	return SourceKind != EAngelscriptSourceKind::Unknown && !Path.IsEmpty();
 }
 
-void FAngelscriptVirtualScriptPath::SetParsed(
+void FAngelscriptVirtualPath::SetParsed(
 	const FString& InPath,
-	const EAngelscriptScriptSourceKind InSourceKind,
+	const EAngelscriptSourceKind InSourceKind,
 	const FString& InMountName,
 	const FString& InRelativePath)
 {
@@ -290,50 +290,50 @@ void FAngelscriptVirtualScriptPath::SetParsed(
 	RelativePath = InRelativePath;
 }
 
-FAngelscriptScriptSource FAngelscriptScriptSource::FromGameFile(const FString& RelativeFilename, const FString& AbsoluteFilename)
+FAngelscriptSource FAngelscriptSource::FromGameFile(const FString& RelativeFilename, const FString& AbsoluteFilename)
 {
-	FAngelscriptScriptSource Source;
-	Source.VirtualPath = FAngelscriptVirtualScriptPath::FromGameRelativePath(RelativeFilename);
+	FAngelscriptSource Source;
+	Source.VirtualPath = FAngelscriptVirtualPath::FromGameRelativePath(RelativeFilename);
 	Source.ModuleName = Source.VirtualPath.ToModuleName();
 	Source.RelativeFilename = Source.VirtualPath.GetRelativePath();
 	Source.AbsoluteFilename = AbsoluteFilename;
-	Source.SourceKind = EAngelscriptScriptSourceKind::Game;
+	Source.SourceKind = EAngelscriptSourceKind::Game;
 	return Source;
 }
 
-FAngelscriptScriptSource FAngelscriptScriptSource::FromPluginFile(const FString& PluginName, const FString& RelativeFilename, const FString& AbsoluteFilename)
+FAngelscriptSource FAngelscriptSource::FromPluginFile(const FString& PluginName, const FString& RelativeFilename, const FString& AbsoluteFilename)
 {
-	FAngelscriptScriptSource Source;
-	Source.VirtualPath = FAngelscriptVirtualScriptPath::FromPluginRelativePath(PluginName, RelativeFilename);
+	FAngelscriptSource Source;
+	Source.VirtualPath = FAngelscriptVirtualPath::FromPluginRelativePath(PluginName, RelativeFilename);
 	Source.ModuleName = Source.VirtualPath.ToModuleName();
 	Source.RelativeFilename = Source.VirtualPath.GetRelativePath();
 	Source.AbsoluteFilename = AbsoluteFilename;
-	Source.SourceKind = EAngelscriptScriptSourceKind::Plugin;
+	Source.SourceKind = EAngelscriptSourceKind::Plugin;
 	return Source;
 }
 
-FAngelscriptScriptSource FAngelscriptScriptSource::FromMemorySource(const FString& InVirtualPath, const FString& InSourceText)
+FAngelscriptSource FAngelscriptSource::FromMemorySource(const FString& InVirtualPath, const FString& InSourceText)
 {
-	FAngelscriptScriptSource Source;
+	FAngelscriptSource Source;
 	TryFromMemorySource(InVirtualPath, InSourceText, Source);
 	return Source;
 }
 
-bool FAngelscriptScriptSource::TryFromMemorySource(
+bool FAngelscriptSource::TryFromMemorySource(
 	const FString& InVirtualPath,
 	const FString& InSourceText,
-	FAngelscriptScriptSource& OutSource,
+	FAngelscriptSource& OutSource,
 	FString* OutError)
 {
-	OutSource = FAngelscriptScriptSource();
-	if (!FAngelscriptVirtualScriptPath::TryParse(InVirtualPath, OutSource.VirtualPath, OutError))
+	OutSource = FAngelscriptSource();
+	if (!FAngelscriptVirtualPath::TryParse(InVirtualPath, OutSource.VirtualPath, OutError))
 	{
 		return false;
 	}
 
-	if (OutSource.VirtualPath.GetSourceKind() != EAngelscriptScriptSourceKind::Memory)
+	if (OutSource.VirtualPath.GetSourceKind() != EAngelscriptSourceKind::Memory)
 	{
-		OutSource = FAngelscriptScriptSource();
+		OutSource = FAngelscriptSource();
 		AngelscriptScriptSource_Private::SetError(OutError, TEXT("Memory-backed script sources must use /Angelscript/Memory virtual paths."));
 		return false;
 	}

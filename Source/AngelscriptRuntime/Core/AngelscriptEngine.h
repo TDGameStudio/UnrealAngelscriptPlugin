@@ -279,8 +279,8 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 	FInterfaceMethodSignature* RegisterInterfaceMethodSignature(FName FunctionName);
 	void ReleaseInterfaceMethodSignature(FInterfaceMethodSignature* Signature);
 	TArray<FString> DiscoverScriptRoots(bool bOnlyProjectRoot = false) const;
-	TArray<FAngelscriptScriptRoot> DiscoverScriptRootDescriptors(bool bOnlyProjectRoot = false) const;
-	TArray<FAngelscriptScriptRoot> GetEffectiveScriptRootDescriptors() const;
+	TArray<FAngelscriptSourceRoot> DiscoverScriptRootDescriptors(bool bOnlyProjectRoot = false) const;
+	TArray<FAngelscriptSourceRoot> GetEffectiveScriptRootDescriptors() const;
 
 	/** Discard a named script module from the engine. Returns true if the module was found and discarded. */
 	bool DiscardModule(const TCHAR* ModuleName);
@@ -403,7 +403,7 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 
 	/* Root paths where all scripts are loaded from. */
 	TArray<FString> AllRootPaths;
-	TArray<FAngelscriptScriptRoot> AllScriptRoots;
+	TArray<FAngelscriptSourceRoot> AllScriptRoots;
 
 	/* Internal script data. */
 	class asCScriptEngine* Engine = nullptr;
@@ -660,7 +660,7 @@ public:
 	void EmitDiagnostics(FDiagnostics& Diag, class FSocket* Client = nullptr);
 
 	void FindAllScriptFilenames(TArray<FFilenamePair>& OutFilenames);
-	void FindAllScriptSources(TArray<FAngelscriptScriptSource>& OutSources);
+	void FindAllScriptSources(TArray<FAngelscriptSource>& OutSources);
 
 	bool HasAnyDebugServerClients();
 	void ReplaceScriptAssetContent(FString AssetName, TArray<FString> AssetContent);

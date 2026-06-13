@@ -263,10 +263,10 @@ FString FAngelscriptPreprocessor::FilenameToModuleName(const FString& Filename)
 
 void FAngelscriptPreprocessor::AddFile(const FString& RelativeFilename, const FString& AbsoluteFilename, bool bLoadAsynchronous, bool bTreatAsDeleted)
 {
-	AddSource(FAngelscriptScriptSource::FromGameFile(RelativeFilename, AbsoluteFilename), bLoadAsynchronous, bTreatAsDeleted);
+	AddSource(FAngelscriptSource::FromGameFile(RelativeFilename, AbsoluteFilename), bLoadAsynchronous, bTreatAsDeleted);
 }
 
-void FAngelscriptPreprocessor::AddSource(const FAngelscriptScriptSource& Source, bool bLoadAsynchronous, bool bTreatAsDeleted)
+void FAngelscriptPreprocessor::AddSource(const FAngelscriptSource& Source, bool bLoadAsynchronous, bool bTreatAsDeleted)
 {
 	if (!ensureMsgf(!bIsPreprocessed, TEXT("Cannot add files after preprocessing is done.")))
 		return;

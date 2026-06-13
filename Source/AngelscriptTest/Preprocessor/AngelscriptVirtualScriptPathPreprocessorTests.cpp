@@ -66,7 +66,7 @@ int Entry()
 	TEST_METHOD(AddSourcePreprocessesMemoryText)
 	{
 		FAngelscriptPreprocessor Preprocessor;
-		Preprocessor.AddSource(FAngelscriptScriptSource::FromMemorySource(
+		Preprocessor.AddSource(FAngelscriptSource::FromMemorySource(
 			TEXT("/Angelscript/Memory/Immediate/Snippet_001.as"),
 			TEXT(R"(
 int Entry()
@@ -113,7 +113,7 @@ int Entry()
 
 	TEST_METHOD(AddSourceRejectsInvalidVirtualPathDescriptor)
 	{
-		FAngelscriptScriptSource InvalidSource;
+		FAngelscriptSource InvalidSource;
 		InvalidSource.SourceText = TEXT(R"(
 int Entry()
 {

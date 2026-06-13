@@ -493,7 +493,7 @@ bool CompileMemorySource(FAngelscriptEngine* Engine, const FString& VirtualPath,
 	}
 
 	FAngelscriptPreprocessor Preprocessor;
-	Preprocessor.AddSource(FAngelscriptScriptSource::FromMemorySource(VirtualPath, MoveTemp(Script)));
+	Preprocessor.AddSource(FAngelscriptSource::FromMemorySource(VirtualPath, MoveTemp(Script)));
 	if (!Preprocessor.Preprocess())
 	{
 		return false;

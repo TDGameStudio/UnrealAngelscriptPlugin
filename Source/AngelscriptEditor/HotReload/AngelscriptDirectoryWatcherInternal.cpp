@@ -5,9 +5,9 @@
 
 namespace
 {
-	TArray<FAngelscriptScriptRoot> MakeScriptRootsForWatcher(const TArray<FString>& RootPaths, const FAngelscriptEngine& Engine)
+	TArray<FAngelscriptSourceRoot> MakeScriptRootsForWatcher(const TArray<FString>& RootPaths, const FAngelscriptEngine& Engine)
 	{
-		TArray<FAngelscriptScriptRoot> ScriptRoots = Engine.GetEffectiveScriptRootDescriptors();
+		TArray<FAngelscriptSourceRoot> ScriptRoots = Engine.GetEffectiveScriptRootDescriptors();
 		if (ScriptRoots.Num() != 0)
 		{
 			return ScriptRoots;
@@ -16,22 +16,22 @@ namespace
 		ScriptRoots.Reserve(RootPaths.Num());
 		for (const FString& RootPath : RootPaths)
 		{
-			ScriptRoots.Add(FAngelscriptScriptRoot::FromGameRoot(RootPath));
+			ScriptRoots.Add(FAngelscriptSourceRoot::FromGameRoot(RootPath));
 		}
 		return ScriptRoots;
 	}
 
 	bool TryResolveScriptRootRelativePath(
 		const FString& AbsolutePath,
-		const TArray<FAngelscriptScriptRoot>& ScriptRoots,
-		FAngelscriptScriptRoot& OutScriptRoot,
+		const TArray<FAngelscriptSourceRoot>& ScriptRoots,
+		FAngelscriptSourceRoot& OutScriptRoot,
 		FString& OutRelativePath)
 	{
 		const FString NormalizedAbsolutePath = FPaths::ConvertRelativePathToFull(AbsolutePath);
 		int32 BestRootLength = INDEX_NONE;
 		bool bFoundRoot = false;
 
-		for (const FAngelscriptScriptRoot& ScriptRoot : ScriptRoots)
+		for (const FAngelscriptSourceRoot& ScriptRoot : ScriptRoots)
 		{
 			const FString NormalizedRootPath = FPaths::ConvertRelativePathToFull(ScriptRoot.AbsolutePath);
 			const FString RootPathWithSeparator = FPaths::ConvertRelativePathToFull(NormalizedRootPath / TEXT(""));
@@ -66,14 +66,14 @@ namespace
 	}
 
 	FAngelscriptEngine::FFilenamePair MakeFilenamePair(
-		const FAngelscriptScriptRoot& ScriptRoot,
+		const FAngelscriptSourceRoot& ScriptRoot,
 		const FString& AbsolutePath,
 		const FString& RelativePath)
 	{
-		const FAngelscriptScriptSource Source =
-			ScriptRoot.SourceKind == EAngelscriptScriptSourceKind::Plugin && !ScriptRoot.MountName.IsEmpty()
-				? FAngelscriptScriptSource::FromPluginFile(ScriptRoot.MountName, RelativePath, AbsolutePath)
-				: FAngelscriptScriptSource::FromGameFile(RelativePath, AbsolutePath);
+		const FAngelscriptSource Source =
+			ScriptRoot.SourceKind == EAngelscriptSourceKind::Plugin && !ScriptRoot.MountName.IsEmpty()
+				? FAngelscriptSource::FromPluginFile(ScriptRoot.MountName, RelativePath, AbsolutePath)
+				: FAngelscriptSource::FromGameFile(RelativePath, AbsolutePath);
 		return FAngelscriptEngine::FFilenamePair{
 			Source.AbsoluteFilename,
 			Source.RelativeFilename,
@@ -103,11 +103,11 @@ namespace AngelscriptEditor::Private
 
 	void QueueScriptFileChanges(const TArray<FFileChangeData>& Changes, const TArray<FString>& RootPaths, FAngelscriptEngine& Engine, IFileManager& FileManager, const FEnumerateLoadedScripts& EnumerateLoadedScripts)
 	{
-		const TArray<FAngelscriptScriptRoot> ScriptRoots = MakeScriptRootsForWatcher(RootPaths, Engine);
+		const TArray<FAngelscriptSourceRoot> ScriptRoots = MakeScriptRootsForWatcher(RootPaths, Engine);
 		for (const FFileChangeData& Change : Changes)
 		{
 			const FString AbsolutePath = FPaths::ConvertRelativePathToFull(Change.Filename);
-			FAngelscriptScriptRoot ScriptRoot;
+			FAngelscriptSourceRoot ScriptRoot;
 			FString RelativePath;
 
 			if (!TryResolveScriptRootRelativePath(AbsolutePath, ScriptRoots, ScriptRoot, RelativePath))
@@ -140,7 +140,7 @@ namespace AngelscriptEditor::Private
 					FAngelscriptEngine::FFilenamePair ScriptFile = LoadedScript;
 					if (ScriptFile.VirtualPath.IsEmpty())
 					{
-						FAngelscriptScriptRoot LoadedScriptRoot;
+						FAngelscriptSourceRoot LoadedScriptRoot;
 						FString LoadedRelativePath;
 						if (TryResolveScriptRootRelativePath(ScriptFile.AbsolutePath, ScriptRoots, LoadedScriptRoot, LoadedRelativePath))
 						{

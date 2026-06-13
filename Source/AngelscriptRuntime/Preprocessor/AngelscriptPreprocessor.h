@@ -99,7 +99,7 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptPreprocessor
 	void AddFile(const FString& ScriptRelativePath, const FString& ScriptAbsoluteFilename, bool bLoadAsynchronous = false, bool bTreatAsDeleted = false);
 
 	/* Add a source descriptor to be preprocessed. */
-	void AddSource(const FAngelscriptScriptSource& Source, bool bLoadAsynchronous = false, bool bTreatAsDeleted = false);
+	void AddSource(const FAngelscriptSource& Source, bool bLoadAsynchronous = false, bool bTreatAsDeleted = false);
 
 	/* Perform preprocessing on all files. Returns true if successful. */
 	bool Preprocess();

@@ -48,15 +48,15 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherRootResolut
 		return Engine;
 	}
 
-	TUniquePtr<FAngelscriptEngine> MakeTestEngineWithScriptRoots(const TArray<FAngelscriptScriptRoot>& ScriptRoots)
+	TUniquePtr<FAngelscriptEngine> MakeTestEngineWithScriptRoots(const TArray<FAngelscriptSourceRoot>& ScriptRoots)
 	{
 		const FAngelscriptEngineConfig Config;
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = MakeUnique<FAngelscriptEngine>(Config, Dependencies);
 
-		for (const FAngelscriptScriptRoot& ScriptRoot : ScriptRoots)
+		for (const FAngelscriptSourceRoot& ScriptRoot : ScriptRoots)
 		{
-			FAngelscriptScriptRoot NormalizedRoot = ScriptRoot;
+			FAngelscriptSourceRoot NormalizedRoot = ScriptRoot;
 			NormalizedRoot.AbsolutePath = FPaths::ConvertRelativePathToFull(NormalizedRoot.AbsolutePath);
 			Engine->AllScriptRoots.Add(NormalizedRoot);
 			Engine->AllRootPaths.Add(NormalizedRoot.AbsolutePath);
@@ -163,8 +163,8 @@ bool FAngelscriptDirectoryWatcherPluginVirtualPathQueueTest::RunTest(const FStri
 	}
 
 	TUniquePtr<FAngelscriptEngine> Engine = MakeTestEngineWithScriptRoots({
-		FAngelscriptScriptRoot::FromGameRoot(ProjectRoot),
-		FAngelscriptScriptRoot::FromPluginRoot(TEXT("Inventory"), PluginRoot),
+		FAngelscriptSourceRoot::FromGameRoot(ProjectRoot),
+		FAngelscriptSourceRoot::FromPluginRoot(TEXT("Inventory"), PluginRoot),
 	});
 
 	const TArray<FFileChangeData> Changes = {

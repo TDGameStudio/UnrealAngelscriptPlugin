@@ -1580,7 +1580,7 @@ void FAngelscriptEngine::PreInitialize_GameThread()
 TArray<FString> FAngelscriptEngine::DiscoverScriptRoots(bool bOnlyProjectRoot) const
 {
 	TArray<FString> RootPaths;
-	for (const FAngelscriptScriptRoot& ScriptRoot : DiscoverScriptRootDescriptors(bOnlyProjectRoot))
+	for (const FAngelscriptSourceRoot& ScriptRoot : DiscoverScriptRootDescriptors(bOnlyProjectRoot))
 	{
 		RootPaths.Add(ScriptRoot.AbsolutePath);
 	}
@@ -1597,7 +1597,7 @@ namespace AngelscriptEngineScriptRoots_Private
 	}
 
 	bool AreScriptRootDescriptorsInSyncWithRootPaths(
-		const TArray<FAngelscriptScriptRoot>& ScriptRoots,
+		const TArray<FAngelscriptSourceRoot>& ScriptRoots,
 		const TArray<FString>& RootPaths)
 	{
 		if (ScriptRoots.Num() != RootPaths.Num())
@@ -1617,19 +1617,19 @@ namespace AngelscriptEngineScriptRoots_Private
 		return true;
 	}
 
-	TArray<FAngelscriptScriptRoot> MakeGameRootDescriptorsFromRootPaths(const TArray<FString>& RootPaths)
+	TArray<FAngelscriptSourceRoot> MakeGameRootDescriptorsFromRootPaths(const TArray<FString>& RootPaths)
 	{
-		TArray<FAngelscriptScriptRoot> Roots;
+		TArray<FAngelscriptSourceRoot> Roots;
 		Roots.Reserve(RootPaths.Num());
 		for (const FString& Path : RootPaths)
 		{
-			Roots.Add(FAngelscriptScriptRoot::FromGameRoot(Path));
+			Roots.Add(FAngelscriptSourceRoot::FromGameRoot(Path));
 		}
 		return Roots;
 	}
 }
 
-TArray<FAngelscriptScriptRoot> FAngelscriptEngine::DiscoverScriptRootDescriptors(bool bOnlyProjectRoot) const
+TArray<FAngelscriptSourceRoot> FAngelscriptEngine::DiscoverScriptRootDescriptors(bool bOnlyProjectRoot) const
 {
 	check(Dependencies.GetProjectDir);
 	check(Dependencies.ConvertRelativePathToFull);
@@ -1646,7 +1646,7 @@ TArray<FAngelscriptScriptRoot> FAngelscriptEngine::DiscoverScriptRootDescriptors
 	}
 
 	// Find all plugin script roots
-	TArray<FAngelscriptScriptRoot> DiscoveredRootPaths;
+	TArray<FAngelscriptSourceRoot> DiscoveredRootPaths;
 
 	if (!bOnlyProjectRoot)
 	{
@@ -1657,7 +1657,7 @@ TArray<FAngelscriptScriptRoot> FAngelscriptEngine::DiscoverScriptRootDescriptors
 				const FString ScriptPath = Dependencies.ConvertRelativePathToFull(PluginScriptRoot.ScriptRoot);
 				if (Dependencies.DirectoryExists(ScriptPath) && ScriptPath != RootPath)
 				{
-					DiscoveredRootPaths.Add(FAngelscriptScriptRoot::FromPluginRoot(PluginScriptRoot.PluginName, ScriptPath));
+					DiscoveredRootPaths.Add(FAngelscriptSourceRoot::FromPluginRoot(PluginScriptRoot.PluginName, ScriptPath));
 				}
 			}
 		}
@@ -1668,25 +1668,25 @@ TArray<FAngelscriptScriptRoot> FAngelscriptEngine::DiscoverScriptRootDescriptors
 				const FString ScriptPath = Dependencies.ConvertRelativePathToFull(PluginScriptRoot);
 				if (Dependencies.DirectoryExists(ScriptPath) && ScriptPath != RootPath)
 				{
-					DiscoveredRootPaths.Add(FAngelscriptScriptRoot::FromGameRoot(ScriptPath));
+					DiscoveredRootPaths.Add(FAngelscriptSourceRoot::FromGameRoot(ScriptPath));
 				}
 			}
 		}
 
 		// Make the search order somewhat deterministic
-		DiscoveredRootPaths.Sort([](const FAngelscriptScriptRoot& A, const FAngelscriptScriptRoot& B)
+		DiscoveredRootPaths.Sort([](const FAngelscriptSourceRoot& A, const FAngelscriptSourceRoot& B)
 		{
 			return A.AbsolutePath < B.AbsolutePath;
 		});
 	}
 
 	// Inject the project root first in the list so GetModuleByFilename looks there first.
-	DiscoveredRootPaths.Insert(FAngelscriptScriptRoot::FromGameRoot(RootPath), 0);
+	DiscoveredRootPaths.Insert(FAngelscriptSourceRoot::FromGameRoot(RootPath), 0);
 
 	return DiscoveredRootPaths;
 }
 
-TArray<FAngelscriptScriptRoot> FAngelscriptEngine::GetEffectiveScriptRootDescriptors() const
+TArray<FAngelscriptSourceRoot> FAngelscriptEngine::GetEffectiveScriptRootDescriptors() const
 {
 	using namespace AngelscriptEngineScriptRoots_Private;
 
@@ -1761,7 +1761,7 @@ void FAngelscriptEngine::Initialize_AnyThread()
 	// Wait with the plugin script roots until we know we need them
 	AllScriptRoots = DiscoverScriptRootDescriptors(/*bOnlyProjectRoot =*/ true);
 	AllRootPaths.Reset(AllScriptRoots.Num());
-	for (const FAngelscriptScriptRoot& ScriptRoot : AllScriptRoots)
+	for (const FAngelscriptSourceRoot& ScriptRoot : AllScriptRoots)
 	{
 		AllRootPaths.Add(ScriptRoot.AbsolutePath);
 	}
@@ -2367,11 +2367,11 @@ void FAngelscriptEngine::FindScriptFiles(
 
 void FAngelscriptEngine::FindAllScriptFilenames(TArray<FFilenamePair>& OutFilenames)
 {
-	TArray<FAngelscriptScriptSource> Sources;
+	TArray<FAngelscriptSource> Sources;
 	FindAllScriptSources(Sources);
 
 	OutFilenames.Reserve(OutFilenames.Num() + Sources.Num());
-	for (const FAngelscriptScriptSource& Source : Sources)
+	for (const FAngelscriptSource& Source : Sources)
 	{
 		OutFilenames.Add(FFilenamePair{
 			Source.AbsoluteFilename,
@@ -2381,14 +2381,14 @@ void FAngelscriptEngine::FindAllScriptFilenames(TArray<FFilenamePair>& OutFilena
 	}
 }
 
-void FAngelscriptEngine::FindAllScriptSources(TArray<FAngelscriptScriptSource>& OutSources)
+void FAngelscriptEngine::FindAllScriptSources(TArray<FAngelscriptSource>& OutSources)
 {
 	const bool bSkipDevelopmentScripts = !ShouldUseEditorScripts();
 	const bool bSkipEditorScripts = bSkipDevelopmentScripts;
 
-	TArray<FAngelscriptScriptRoot> Roots = GetEffectiveScriptRootDescriptors();
+	TArray<FAngelscriptSourceRoot> Roots = GetEffectiveScriptRootDescriptors();
 
-	for (const FAngelscriptScriptRoot& Root : Roots)
+	for (const FAngelscriptSourceRoot& Root : Roots)
 	{
 		TArray<FFilenamePair> FilesInRoot;
 		FindScriptFiles(
@@ -2403,16 +2403,16 @@ void FAngelscriptEngine::FindAllScriptSources(TArray<FAngelscriptScriptSource>& 
 		OutSources.Reserve(OutSources.Num() + FilesInRoot.Num());
 		for (const FFilenamePair& File : FilesInRoot)
 		{
-			if (Root.SourceKind == EAngelscriptScriptSourceKind::Plugin && !Root.MountName.IsEmpty())
+			if (Root.SourceKind == EAngelscriptSourceKind::Plugin && !Root.MountName.IsEmpty())
 			{
-				OutSources.Add(FAngelscriptScriptSource::FromPluginFile(
+				OutSources.Add(FAngelscriptSource::FromPluginFile(
 					Root.MountName,
 					File.RelativePath,
 					File.AbsolutePath));
 			}
 			else
 			{
-				OutSources.Add(FAngelscriptScriptSource::FromGameFile(
+				OutSources.Add(FAngelscriptSource::FromGameFile(
 					File.RelativePath,
 					File.AbsolutePath));
 			}
@@ -2448,7 +2448,7 @@ void FAngelscriptEngine::InitialCompile()
 	bool bSuccess = true;
 	TArray<TSharedRef<FAngelscriptModuleDesc>> ModulesToCompile;
 	TArray<FFilenamePair> Filenames;
-	TArray<FAngelscriptScriptSource> Sources;
+	TArray<FAngelscriptSource> Sources;
 
 	ResetDiagnostics();
 
@@ -2470,7 +2470,7 @@ void FAngelscriptEngine::InitialCompile()
 		// Make sure we scan all plugins for script roots as well, now that we know we need them.
 		AllScriptRoots = DiscoverScriptRootDescriptors();
 		AllRootPaths.Reset(AllScriptRoots.Num());
-		for (const FAngelscriptScriptRoot& ScriptRoot : AllScriptRoots)
+		for (const FAngelscriptSourceRoot& ScriptRoot : AllScriptRoots)
 		{
 			AllRootPaths.Add(ScriptRoot.AbsolutePath);
 		}
@@ -2488,7 +2488,7 @@ void FAngelscriptEngine::InitialCompile()
 			/* Add all files from the script root recursively.*/
 			FindAllScriptSources(Sources);
 
-			for (const FAngelscriptScriptSource& Source : Sources)
+			for (const FAngelscriptSource& Source : Sources)
 			{
 				Filenames.Add(FFilenamePair{
 					Source.AbsoluteFilename,
@@ -2944,21 +2944,21 @@ bool FAngelscriptEngine::PerformHotReload(ECompileType CompileType, const TArray
 		const bool bTreatAsDeleted = AlreadyDeletedFiles.Num() != 0 && AlreadyDeletedFiles.Contains(PathPair);
 		if (!PathPair.VirtualPath.IsEmpty())
 		{
-			FAngelscriptVirtualScriptPath VirtualPath;
-			if (FAngelscriptVirtualScriptPath::TryParse(PathPair.VirtualPath, VirtualPath))
+			FAngelscriptVirtualPath VirtualPath;
+			if (FAngelscriptVirtualPath::TryParse(PathPair.VirtualPath, VirtualPath))
 			{
-				if (VirtualPath.GetSourceKind() == EAngelscriptScriptSourceKind::Plugin)
+				if (VirtualPath.GetSourceKind() == EAngelscriptSourceKind::Plugin)
 				{
 					Preprocessor.AddSource(
-						FAngelscriptScriptSource::FromPluginFile(VirtualPath.GetMountName(), PathPair.RelativePath, PathPair.AbsolutePath),
+						FAngelscriptSource::FromPluginFile(VirtualPath.GetMountName(), PathPair.RelativePath, PathPair.AbsolutePath),
 						false,
 						bTreatAsDeleted);
 					continue;
 				}
-				if (VirtualPath.GetSourceKind() == EAngelscriptScriptSourceKind::Game)
+				if (VirtualPath.GetSourceKind() == EAngelscriptSourceKind::Game)
 				{
 					Preprocessor.AddSource(
-						FAngelscriptScriptSource::FromGameFile(PathPair.RelativePath, PathPair.AbsolutePath),
+						FAngelscriptSource::FromGameFile(PathPair.RelativePath, PathPair.AbsolutePath),
 						false,
 						bTreatAsDeleted);
 					continue;

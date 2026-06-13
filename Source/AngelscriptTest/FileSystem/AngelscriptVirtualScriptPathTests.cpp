@@ -38,9 +38,9 @@ namespace AngelscriptTest_FileSystem_VirtualScriptPaths_Private
 
 	bool ExpectInvalidPath(FAutomationTestBase& Test, const FString& Path)
 	{
-		FAngelscriptVirtualScriptPath VirtualPath;
+		FAngelscriptVirtualPath VirtualPath;
 		FString Error;
-		const bool bParsed = FAngelscriptVirtualScriptPath::TryParse(Path, VirtualPath, &Error);
+		const bool bParsed = FAngelscriptVirtualPath::TryParse(Path, VirtualPath, &Error);
 		Test.TestFalse(*FString::Printf(TEXT("Path '%s' should be rejected"), *Path), bParsed);
 		Test.TestFalse(*FString::Printf(TEXT("Path '%s' should report a parse error"), *Path), Error.IsEmpty());
 		return !bParsed && !Error.IsEmpty();
@@ -54,18 +54,18 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FAngelscriptVirtualScriptPathSourceDescriptorsKeepFullNamesTest::RunTest(const FString& Parameters)
 {
-	const FAngelscriptScriptSource GameSource = FAngelscriptScriptSource::FromGameFile(
+	const FAngelscriptSource GameSource = FAngelscriptSource::FromGameFile(
 		TEXT("Gameplay/Enemy.as"),
 		TEXT("D:/Project/Script/Gameplay/Enemy.as"));
-	const FAngelscriptScriptSource PluginSource = FAngelscriptScriptSource::FromPluginFile(
+	const FAngelscriptSource PluginSource = FAngelscriptSource::FromPluginFile(
 		TEXT("Inventory"),
 		TEXT("Gameplay/Item.as"),
 		TEXT("D:/Project/Plugins/Inventory/Script/Gameplay/Item.as"));
-	const FAngelscriptScriptSource PluginRootSource = FAngelscriptScriptSource::FromPluginFile(
+	const FAngelscriptSource PluginRootSource = FAngelscriptSource::FromPluginFile(
 		TEXT("Inventory"),
 		TEXT("Item.as"),
 		TEXT("D:/Project/Plugins/Inventory/Script/Item.as"));
-	const FAngelscriptScriptSource MemorySource = FAngelscriptScriptSource::FromMemorySource(
+	const FAngelscriptSource MemorySource = FAngelscriptSource::FromMemorySource(
 		TEXT("/Angelscript/Memory/Immediate/Snippet_001.as"),
 		TEXT("int Entry() { return 1; }"));
 
@@ -100,24 +100,24 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FAngelscriptVirtualScriptPathCanonicalRootsTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptVirtualScriptPath GamePath;
-	FAngelscriptVirtualScriptPath PluginPath;
-	FAngelscriptVirtualScriptPath PluginRootPath;
-	FAngelscriptVirtualScriptPath MemoryPath;
+	FAngelscriptVirtualPath GamePath;
+	FAngelscriptVirtualPath PluginPath;
+	FAngelscriptVirtualPath PluginRootPath;
+	FAngelscriptVirtualPath MemoryPath;
 
 	bool bPassed = true;
 	bPassed &= TestTrue(
 		TEXT("Game path should parse"),
-		FAngelscriptVirtualScriptPath::TryParse(TEXT("/Angelscript/Game/Gameplay/Enemy.as"), GamePath));
+		FAngelscriptVirtualPath::TryParse(TEXT("/Angelscript/Game/Gameplay/Enemy.as"), GamePath));
 	bPassed &= TestTrue(
 		TEXT("Plugin path should parse"),
-		FAngelscriptVirtualScriptPath::TryParse(TEXT("/Angelscript/Plugin/Inventory/Gameplay/Item.as"), PluginPath));
+		FAngelscriptVirtualPath::TryParse(TEXT("/Angelscript/Plugin/Inventory/Gameplay/Item.as"), PluginPath));
 	bPassed &= TestTrue(
 		TEXT("Plugin root path should parse"),
-		FAngelscriptVirtualScriptPath::TryParse(TEXT("/Angelscript/Plugin/Inventory/Item.as"), PluginRootPath));
+		FAngelscriptVirtualPath::TryParse(TEXT("/Angelscript/Plugin/Inventory/Item.as"), PluginRootPath));
 	bPassed &= TestTrue(
 		TEXT("Memory immediate path should parse"),
-		FAngelscriptVirtualScriptPath::TryParse(TEXT("/Angelscript/Memory/Immediate/Snippet_001.as"), MemoryPath));
+		FAngelscriptVirtualPath::TryParse(TEXT("/Angelscript/Memory/Immediate/Snippet_001.as"), MemoryPath));
 
 	if (!bPassed)
 	{
@@ -125,11 +125,11 @@ bool FAngelscriptVirtualScriptPathCanonicalRootsTest::RunTest(const FString& Par
 	}
 
 	bPassed &= TestEqual(TEXT("Game path should normalize slashes"), GamePath.ToString(), FString(TEXT("/Angelscript/Game/Gameplay/Enemy.as")));
-	bPassed &= TestEqual(TEXT("Game source kind should be game"), GamePath.GetSourceKind(), EAngelscriptScriptSourceKind::Game);
+	bPassed &= TestEqual(TEXT("Game source kind should be game"), GamePath.GetSourceKind(), EAngelscriptSourceKind::Game);
 	bPassed &= TestEqual(TEXT("Game relative path should drop mount root"), GamePath.GetRelativePath(), FString(TEXT("Gameplay/Enemy.as")));
 	bPassed &= TestEqual(TEXT("Game module name should stay compatible"), GamePath.ToModuleName(), FString(TEXT("Gameplay.Enemy")));
 
-	bPassed &= TestEqual(TEXT("Plugin source kind should be plugin"), PluginPath.GetSourceKind(), EAngelscriptScriptSourceKind::Plugin);
+	bPassed &= TestEqual(TEXT("Plugin source kind should be plugin"), PluginPath.GetSourceKind(), EAngelscriptSourceKind::Plugin);
 	bPassed &= TestEqual(TEXT("Plugin mount name should be retained"), PluginPath.GetMountName(), FString(TEXT("Inventory")));
 	bPassed &= TestEqual(TEXT("Plugin relative path should drop plugin name"), PluginPath.GetRelativePath(), FString(TEXT("Gameplay/Item.as")));
 	bPassed &= TestEqual(TEXT("Plugin module name should stay root-relative in v1"), PluginPath.ToModuleName(), FString(TEXT("Gameplay.Item")));
@@ -137,7 +137,7 @@ bool FAngelscriptVirtualScriptPathCanonicalRootsTest::RunTest(const FString& Par
 	bPassed &= TestEqual(TEXT("Plugin root relative path should drop plugin name"), PluginRootPath.GetRelativePath(), FString(TEXT("Item.as")));
 	bPassed &= TestEqual(TEXT("Plugin root module name should stay root-relative in v1"), PluginRootPath.ToModuleName(), FString(TEXT("Item")));
 
-	bPassed &= TestEqual(TEXT("Memory source kind should be memory"), MemoryPath.GetSourceKind(), EAngelscriptScriptSourceKind::Memory);
+	bPassed &= TestEqual(TEXT("Memory source kind should be memory"), MemoryPath.GetSourceKind(), EAngelscriptSourceKind::Memory);
 	bPassed &= TestEqual(TEXT("Memory provider should be retained"), MemoryPath.GetMountName(), FString(TEXT("Immediate")));
 	bPassed &= TestEqual(TEXT("Memory relative path should drop provider name"), MemoryPath.GetRelativePath(), FString(TEXT("Snippet_001.as")));
 	bPassed &= TestEqual(TEXT("Memory module name should be isolated"), MemoryPath.ToModuleName(), FString(TEXT("Angelscript.Memory.Immediate.Snippet_001")));
@@ -152,13 +152,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FAngelscriptVirtualScriptPathMemorySourceRequiresMemoryRootTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptScriptSource Source;
+	FAngelscriptSource Source;
 	FString Error;
 
 	bool bPassed = true;
 	bPassed &= TestFalse(
 		TEXT("Memory source descriptors should reject game virtual paths"),
-		FAngelscriptScriptSource::TryFromMemorySource(
+		FAngelscriptSource::TryFromMemorySource(
 			TEXT("/Angelscript/Game/Gameplay/Foo.as"),
 			TEXT("int Entry() { return 1; }"),
 			Source,
@@ -169,7 +169,7 @@ bool FAngelscriptVirtualScriptPathMemorySourceRequiresMemoryRootTest::RunTest(co
 	Error.Reset();
 	bPassed &= TestFalse(
 		TEXT("Memory source descriptors should reject plugin virtual paths"),
-		FAngelscriptScriptSource::TryFromMemorySource(
+		FAngelscriptSource::TryFromMemorySource(
 			TEXT("/Angelscript/Plugin/Inventory/Gameplay/Foo.as"),
 			TEXT("int Entry() { return 1; }"),
 			Source,
@@ -271,19 +271,19 @@ bool FAngelscriptVirtualScriptPathDiscoveryFullNamesTest::RunTest(const FString&
 	FAngelscriptEngine Engine(Config, Dependencies);
 	Engine.AllScriptRoots = Engine.DiscoverScriptRootDescriptors(false);
 
-	TArray<FAngelscriptScriptSource> Sources;
+	TArray<FAngelscriptSource> Sources;
 	Engine.FindAllScriptSources(Sources);
 
 	bool bPassed = TestEqual(TEXT("Descriptor discovery should find project and plugin sources"), Sources.Num(), 2);
 
-	TMap<FString, FAngelscriptScriptSource> SourceByVirtualPath;
-	for (const FAngelscriptScriptSource& Source : Sources)
+	TMap<FString, FAngelscriptSource> SourceByVirtualPath;
+	for (const FAngelscriptSource& Source : Sources)
 	{
 		SourceByVirtualPath.Add(Source.VirtualPath.ToString(), Source);
 	}
 
-	const FAngelscriptScriptSource* GameSource = SourceByVirtualPath.Find(TEXT("/Angelscript/Game/Gameplay/Player.as"));
-	const FAngelscriptScriptSource* PluginSource = SourceByVirtualPath.Find(TEXT("/Angelscript/Plugin/Inventory/Gameplay/Item.as"));
+	const FAngelscriptSource* GameSource = SourceByVirtualPath.Find(TEXT("/Angelscript/Game/Gameplay/Player.as"));
+	const FAngelscriptSource* PluginSource = SourceByVirtualPath.Find(TEXT("/Angelscript/Plugin/Inventory/Gameplay/Item.as"));
 
 	bPassed &= TestNotNull(TEXT("Discovery should emit the full game virtual path"), GameSource);
 	bPassed &= TestNotNull(TEXT("Discovery should emit the full plugin virtual path"), PluginSource);
@@ -292,14 +292,14 @@ bool FAngelscriptVirtualScriptPathDiscoveryFullNamesTest::RunTest(const FString&
 	{
 		bPassed &= TestEqual(TEXT("Game source should retain absolute filename"), NormalizePath(GameSource->AbsoluteFilename), ProjectScriptPath);
 		bPassed &= TestEqual(TEXT("Game source should keep disk-compatible module name"), GameSource->ModuleName, FString(TEXT("Gameplay.Player")));
-		bPassed &= TestEqual(TEXT("Game source should be marked as game"), GameSource->SourceKind, EAngelscriptScriptSourceKind::Game);
+		bPassed &= TestEqual(TEXT("Game source should be marked as game"), GameSource->SourceKind, EAngelscriptSourceKind::Game);
 	}
 
 	if (PluginSource != nullptr)
 	{
 		bPassed &= TestEqual(TEXT("Plugin source should retain absolute filename"), NormalizePath(PluginSource->AbsoluteFilename), PluginScriptPath);
 		bPassed &= TestEqual(TEXT("Plugin source should keep disk-compatible module name"), PluginSource->ModuleName, FString(TEXT("Gameplay.Item")));
-		bPassed &= TestEqual(TEXT("Plugin source should be marked as plugin"), PluginSource->SourceKind, EAngelscriptScriptSourceKind::Plugin);
+		bPassed &= TestEqual(TEXT("Plugin source should be marked as plugin"), PluginSource->SourceKind, EAngelscriptSourceKind::Plugin);
 		bPassed &= TestEqual(TEXT("Plugin source should keep the plugin mount name"), PluginSource->VirtualPath.GetMountName(), FString(TEXT("Inventory")));
 	}
 
@@ -350,7 +350,7 @@ bool FAngelscriptVirtualScriptPathLegacyRootPathOverrideTest::RunTest(const FStr
 
 	FAngelscriptEngine Engine;
 	Engine.AllScriptRoots = {
-		FAngelscriptScriptRoot::FromPluginRoot(TEXT("StalePlugin"), StaleDescriptorRoot)
+		FAngelscriptSourceRoot::FromPluginRoot(TEXT("StalePlugin"), StaleDescriptorRoot)
 	};
 	Engine.AllRootPaths = {
 		LegacyScriptRoot
