@@ -1227,7 +1227,16 @@ bool FAngelscriptEngine::DiscardModule(const TCHAR* ModuleName)
 
 	const FString InternalModuleName = MakeModuleName(ModuleName);
 	TSharedPtr<FAngelscriptModuleDesc> ModuleToDiscard = GetModule(ModuleName);
+	asCModule* ScriptModuleToDiscard = ModuleToDiscard.IsValid() && ModuleToDiscard->ScriptModule != nullptr
+		? static_cast<asCModule*>(ModuleToDiscard->ScriptModule)
+		: nullptr;
 	auto AnsiName = StringCast<ANSICHAR>(*InternalModuleName);
+	if (ScriptModuleToDiscard == nullptr || Engine->GetModule(AnsiName.Get(), false) != ScriptModuleToDiscard)
+	{
+		return false;
+	}
+
+	ScriptModuleToDiscard->RemoveTypesAndGlobalsFromEngineAvailability();
 	int r = Engine->DiscardModule(AnsiName.Get());
 	if (r < 0)
 		return false;

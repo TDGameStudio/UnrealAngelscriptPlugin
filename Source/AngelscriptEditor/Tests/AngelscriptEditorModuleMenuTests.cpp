@@ -13,7 +13,7 @@
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FAngelscriptEditorModuleRegisterToolsMenuEntriesTest,
-	"Angelscript.Editor.Module.RegisterToolsMenuEntriesAddsWorkspaceAndLegacyBindCommands",
+	"Angelscript.Editor.Module.RegisterToolsMenuEntriesAddsWorkspaceSnippetAndLegacyBindCommands",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleMenuTests_Private
@@ -67,13 +67,16 @@ bool FAngelscriptEditorModuleRegisterToolsMenuEntriesTest::RunTest(const FString
 	FAngelscriptEditorModule Module;
 	const FToolMenuOwner ModuleOwner(&Module);
 	TArray<FPlatformExecuteCall> PlatformExecuteCalls;
+	bool bSnippetRunnerOpened = false;
 
 	FAngelscriptEditorModuleTestAccess::ResetPlatformExecuteOverride();
+	FAngelscriptEditorModuleTestAccess::ResetSnippetRunnerOpenOverride();
 	UToolMenus::UnregisterOwner(&Module);
 
 	ON_SCOPE_EXIT
 	{
 		FAngelscriptEditorModuleTestAccess::ResetPlatformExecuteOverride();
+		FAngelscriptEditorModuleTestAccess::ResetSnippetRunnerOpenOverride();
 		UToolMenus::UnregisterOwner(&Module);
 	};
 
@@ -85,6 +88,11 @@ bool FAngelscriptEditorModuleRegisterToolsMenuEntriesTest::RunTest(const FString
 			Call.Command = Command != nullptr ? Command : TEXT("");
 			Call.CommandLine = CommandLine != nullptr ? CommandLine : TEXT("");
 			return true;
+		});
+	FAngelscriptEditorModuleTestAccess::SetSnippetRunnerOpenOverride(
+		[&bSnippetRunnerOpened]()
+		{
+			bSnippetRunnerOpened = true;
 		});
 
 	FAngelscriptEditorModuleTestAccess::RegisterToolsMenuEntries(Module);
@@ -98,24 +106,34 @@ bool FAngelscriptEditorModuleRegisterToolsMenuEntriesTest::RunTest(const FString
 	}
 
 	const FToolMenuEntry* OpenCodeEntry = FindOwnedEntry(*ProgrammingSection, "ASOpenCode", ModuleOwner);
+	const FToolMenuEntry* RunSnippetEntry = FindOwnedEntry(*ProgrammingSection, "ASRunSnippet", ModuleOwner);
 	const FToolMenuEntry* FunctionTestsEntry = FindOwnedEntry(*ProgrammingSection, "Function Tests", ModuleOwner);
 	const FToolMenuEntry* GenerateBindingsEntry = FindOwnedEntry(*ProgrammingBindsSection, "ASGenerateBindings", ModuleOwner);
 	if (!TestNotNull(TEXT("Editor.Module.RegisterToolsMenuEntriesAddsWorkspaceAndLegacyBindCommands should register ASOpenCode in the Programming section"), OpenCodeEntry)
+		|| !TestNotNull(TEXT("Editor.Module.RegisterToolsMenuEntriesAddsWorkspaceAndLegacyBindCommands should register ASRunSnippet in the Programming section"), RunSnippetEntry)
 		|| !TestNotNull(TEXT("Editor.Module.RegisterToolsMenuEntriesAddsWorkspaceAndLegacyBindCommands should register Function Tests in the Programming section"), FunctionTestsEntry)
 		|| !TestNotNull(TEXT("Editor.Module.RegisterToolsMenuEntriesAddsWorkspaceAndLegacyBindCommands should register ASGenerateBindings in the Programming Binds section"), GenerateBindingsEntry))
 	{
 		return false;
 	}
 
-	if (!TestEqual(TEXT("Editor.Module.RegisterToolsMenuEntriesAddsWorkspaceAndLegacyBindCommands should contribute exactly two entries to the Programming section"), CountOwnedEntries(*ProgrammingSection, ModuleOwner), 2)
+	if (!TestEqual(TEXT("Editor.Module.RegisterToolsMenuEntriesAddsWorkspaceAndLegacyBindCommands should contribute exactly three entries to the Programming section"), CountOwnedEntries(*ProgrammingSection, ModuleOwner), 3)
 		|| !TestEqual(TEXT("Editor.Module.RegisterToolsMenuEntriesAddsWorkspaceAndLegacyBindCommands should contribute exactly one entry to the Programming Binds section"), CountOwnedEntries(*ProgrammingBindsSection, ModuleOwner), 1))
 	{
 		return false;
 	}
 
 	if (!TestEqual(TEXT("Editor.Module.RegisterToolsMenuEntriesAddsWorkspaceAndLegacyBindCommands should preserve the workspace label"), OpenCodeEntry->Label.Get().ToString(), FString(TEXT("Open Angelscript workspace (VS Code)")))
+		|| !TestEqual(TEXT("Editor.Module.RegisterToolsMenuEntriesAddsWorkspaceAndLegacyBindCommands should preserve the snippet runner label"), RunSnippetEntry->Label.Get().ToString(), FString(TEXT("Run Angelscript Snippet")))
 		|| !TestEqual(TEXT("Editor.Module.RegisterToolsMenuEntriesAddsWorkspaceAndLegacyBindCommands should preserve the function-tests label"), FunctionTestsEntry->Label.Get().ToString(), FString(TEXT("Run Function Tests")))
 		|| !TestEqual(TEXT("Editor.Module.RegisterToolsMenuEntriesAddsWorkspaceAndLegacyBindCommands should preserve the legacy-bind label"), GenerateBindingsEntry->Label.Get().ToString(), FString(TEXT("Legacy Native Bind Generator (Debug Only)"))))
+	{
+		return false;
+	}
+
+	FToolMenuEntry* MutableRunSnippetEntry = const_cast<FToolMenuEntry*>(RunSnippetEntry);
+	if (!TestTrue(TEXT("Editor.Module.RegisterToolsMenuEntriesAddsWorkspaceAndLegacyBindCommands should execute the ASRunSnippet action"), MutableRunSnippetEntry->TryExecuteToolUIAction(FToolMenuContext()))
+		|| !TestTrue(TEXT("Editor.Module.RegisterToolsMenuEntriesAddsWorkspaceAndLegacyBindCommands should open the snippet runner window"), bSnippetRunnerOpened))
 	{
 		return false;
 	}

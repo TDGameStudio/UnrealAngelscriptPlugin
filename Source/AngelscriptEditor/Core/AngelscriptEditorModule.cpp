@@ -7,6 +7,7 @@
 #include "AngelscriptEngine.h"
 #include "ClassGenerator/ASClass.h"
 #include "EditorMenuExtensions/ScriptEditorMenuExtension.h"
+#include "Snippet/AngelscriptSnippetRunnerWindow.h"
 #include "Kismet2/KismetEditorUtilities.h"
 #include "KismetCompilerModule.h"
 #include "FileHelpers.h"
@@ -64,6 +65,7 @@ namespace
 	FAngelscriptEditorModuleCreateBlueprintPopupTestHooks GCreateBlueprintPopupTestHooks;
 	FAngelscriptEditorModuleLiteralAssetSaveTestHooks GLiteralAssetSaveTestHooks;
 	TFunction<bool(const TCHAR*, const TCHAR*, const TCHAR*)> GPlatformExecuteOverrideForTesting;
+	TFunction<void()> GSnippetRunnerOpenOverrideForTesting;
 	TFunction<void()> GOnEngineInitDoneOverrideForTesting;
 	int32 GOnPostEngineInitRegistrationCountForTesting = 0;
 #endif
@@ -385,6 +387,19 @@ namespace
 
 		return FPlatformMisc::OsExecute(CommandType, Command, CommandLine);
 	}
+
+	void OpenSnippetRunnerWindowForEditorModule()
+	{
+#if WITH_DEV_AUTOMATION_TESTS
+		if (GSnippetRunnerOpenOverrideForTesting)
+		{
+			GSnippetRunnerOpenOverrideForTesting();
+			return;
+		}
+#endif
+
+		FAngelscriptSnippetRunnerWindow::OpenWindow();
+	}
 }
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -436,6 +451,16 @@ void FAngelscriptEditorModuleTestAccess::SetPlatformExecuteOverride(TFunction<bo
 void FAngelscriptEditorModuleTestAccess::ResetPlatformExecuteOverride()
 {
 	GPlatformExecuteOverrideForTesting = nullptr;
+}
+
+void FAngelscriptEditorModuleTestAccess::SetSnippetRunnerOpenOverride(TFunction<void()> InOverride)
+{
+	GSnippetRunnerOpenOverrideForTesting = MoveTemp(InOverride);
+}
+
+void FAngelscriptEditorModuleTestAccess::ResetSnippetRunnerOpenOverride()
+{
+	GSnippetRunnerOpenOverrideForTesting = nullptr;
 }
 
 void FAngelscriptEditorModuleTestAccess::SetOnEngineInitDoneOverride(TFunction<void()> InOverride)
@@ -1109,6 +1134,20 @@ void FAngelscriptEditorModule::RegisterToolsMenuEntries()
 		NSLOCTEXT("Angelscript", "OpenCode.ToolTip", "Opens Visual Studio Code in this project's Angelscript workspace"),
 		FSourceCodeNavigation::GetOpenSourceCodeIDEIcon(),
 		Action
+	);
+
+	FToolUIActionChoice SnippetAction(FToolMenuExecuteAction::CreateLambda([](const FToolMenuContext&)
+	{
+		OpenSnippetRunnerWindowForEditorModule();
+	}));
+
+	Section.AddMenuEntry
+	(
+		"ASRunSnippet",
+		NSLOCTEXT("Angelscript", "RunSnippet.Label", "Run Angelscript Snippet"),
+		NSLOCTEXT("Angelscript", "RunSnippet.ToolTip", "Opens an editor window for executing an Angelscript snippet through /Angelscript/Memory/Immediate."),
+		FSourceCodeNavigation::GetOpenSourceCodeIDEIcon(),
+		SnippetAction
 	);
 
 	FToolUIActionChoice GenerateAction(FExecuteAction::CreateLambda([]() { GenerateNativeBinds(); }));

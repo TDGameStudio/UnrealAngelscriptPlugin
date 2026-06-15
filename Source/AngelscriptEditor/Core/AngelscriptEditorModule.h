@@ -116,6 +116,8 @@ struct FAngelscriptEditorModuleTestAccess
 	static void ResetLiteralAssetSaveTestHooks();
 	static void SetPlatformExecuteOverride(TFunction<bool(const TCHAR*, const TCHAR*, const TCHAR*)> InOverride);
 	static void ResetPlatformExecuteOverride();
+	static void SetSnippetRunnerOpenOverride(TFunction<void()> InOverride);
+	static void ResetSnippetRunnerOpenOverride();
 	static void SetOnEngineInitDoneOverride(TFunction<void()> InOverride);
 	static void ResetOnEngineInitDoneOverride();
 	static void InvokeOnLiteralAssetSaved(UObject* Object);

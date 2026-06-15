@@ -32,6 +32,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FAngelscriptDiscardModuleRemovesGlobalFunctionAvailabilityTest,
+	"Angelscript.TestModule.HotReload.DiscardModuleRemovesGlobalFunctionAvailability",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FAngelscriptModuleWatcherQueuesFileChangesTest,
 	"Angelscript.TestModule.HotReload.ModuleWatcherQueuesFileChanges",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -297,6 +302,73 @@ class UDiscardRecompileTargetV2 : UObject
 
 	TestEqual(TEXT("Version default should be 2 after discard and recompile"), VersionProperty->GetPropertyValue_InContainer(ObjV2), 2);
 	TestTrue(TEXT("Reload module record should exist after recompile"), Engine.GetModuleByModuleName(TEXT("DiscardRecompileMod")).IsValid());
+	}
+
+	return true;
+}
+
+bool FAngelscriptDiscardModuleRemovesGlobalFunctionAvailabilityTest::RunTest(const FString& Parameters)
+{
+	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadFunctionTests_Private;
+	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+
+	const FName FirstModuleName(TEXT("DiscardGlobalFunctionA"));
+	const FName SecondModuleName(TEXT("DiscardGlobalFunctionB"));
+	ON_SCOPE_EXIT
+	{
+		Engine.DiscardModule(*FirstModuleName.ToString());
+		Engine.DiscardModule(*SecondModuleName.ToString());
+	};
+
+	if (!TestTrue(
+		TEXT("Compile first discard-global-function module should succeed"),
+		CompileModuleFromMemory(&Engine, FirstModuleName, TEXT("DiscardGlobalFunctionA.as"), TEXT("int Entry() { return 1; }"))))
+	{
+		return false;
+	}
+
+	int32 FirstResult = 0;
+	if (!TestTrue(
+		TEXT("First discard-global-function module should execute before discard"),
+		ExecuteIntFunction(&Engine, FirstModuleName, TEXT("int Entry()"), FirstResult)))
+	{
+		return false;
+	}
+	TestEqual(TEXT("First discard-global-function module should return 1"), FirstResult, 1);
+
+	if (!TestTrue(TEXT("DiscardModule should succeed for first global-function module"), Engine.DiscardModule(*FirstModuleName.ToString())))
+	{
+		return false;
+	}
+
+	if (!TestTrue(
+		TEXT("Compile second module with same global function signature should succeed after discard"),
+		CompileModuleFromMemory(&Engine, SecondModuleName, TEXT("DiscardGlobalFunctionB.as"), TEXT("int Entry() { return 2; }"))))
+	{
+		return false;
+	}
+
+	int32 SecondResult = 0;
+	if (!TestTrue(
+		TEXT("Second discard-global-function module should execute after first discard"),
+		ExecuteIntFunction(&Engine, SecondModuleName, TEXT("int Entry()"), SecondResult)))
+	{
+		return false;
+	}
+	TestEqual(TEXT("Second discard-global-function module should return 2"), SecondResult, 2);
+
+	TestFalse(TEXT("DiscardModule should fail when discarding an already discarded module"), Engine.DiscardModule(*FirstModuleName.ToString()));
+
+	SecondResult = 0;
+	if (!TestTrue(
+		TEXT("Failed discard of old module should not remove second global function availability"),
+		ExecuteIntFunction(&Engine, SecondModuleName, TEXT("int Entry()"), SecondResult)))
+	{
+		return false;
+	}
+	TestEqual(TEXT("Second discard-global-function module should remain callable after failed old discard"), SecondResult, 2);
+
 	}
 
 	return true;
