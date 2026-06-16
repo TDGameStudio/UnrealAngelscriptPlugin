@@ -90,6 +90,96 @@ int Entry()
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
 		TestRunner->TestEqual(TEXT("sum = 1+2+4+3 = 10"), Result, 10);
 	}
+
+	TEST_METHOD(ForInitScope)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* SE = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
+
+		// Loop counter declared in for-init is scoped to the loop; a same-named
+		// outer variable is unaffected, and two sequential loops may reuse the name.
+		asIScriptModule* M = BuildNativeModule(SE, "ScopeForInit", R"(
+int Entry()
+{
+	int i = 100;
+	int sum = 0;
+	for (int i = 0; i < 5; i++) { sum += i; }   // 0+1+2+3+4 = 10
+	for (int i = 0; i < 3; i++) { sum += i; }   // +0+1+2 = 13
+	return sum + i;                              // 13 + 100 = 113
+}
+)");
+		if (!TestRunner->TestNotNull(TEXT("For-init scope should compile"), M))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		int32 Result = 0;
+		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
+		TestRunner->TestEqual(TEXT("for-init counters stay loop-scoped; outer i preserved (13+100=113)"), Result, 113);
+	}
+
+	TEST_METHOD(ForInitLeakRejected)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* SE = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
+
+		// A for-init counter must not be visible after the loop body.
+		Messages.Reset();
+		asIScriptModule* M = BuildNativeModule(SE, "ScopeForInitLeak", R"(
+int Entry()
+{
+	for (int k = 0; k < 3; k++) { }
+	return k;
+}
+)");
+		TestRunner->TestNull(TEXT("Referencing a for-init counter after the loop should fail compilation"), M);
+	}
+
+	TEST_METHOD(DeepShadowing)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* SE = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
+
+		// Each nested block may re-shadow the same name; the innermost value is
+		// used within its block, and each outer value is restored on block exit.
+		asIScriptModule* M = BuildNativeModule(SE, "ScopeDeepShadow", R"(
+int Entry()
+{
+	int x = 1;
+	int captured = 0;
+	{
+		int x = 2;
+		{
+			int x = 3;
+			{
+				int x = 4;
+				captured += x;   // 4
+			}
+			captured += x;       // +3 = 7
+		}
+		captured += x;           // +2 = 9
+	}
+	captured += x;               // +1 = 10
+	return captured;
+}
+)");
+		if (!TestRunner->TestNotNull(TEXT("Deep shadowing should compile"), M))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		int32 Result = 0;
+		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
+		TestRunner->TestEqual(TEXT("four-level shadow sums 4+3+2+1 = 10"), Result, 10);
+	}
 };
 
 #endif // WITH_DEV_AUTOMATION_TESTS

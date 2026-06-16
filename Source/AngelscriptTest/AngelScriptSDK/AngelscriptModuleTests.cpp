@@ -135,6 +135,133 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKModuleTests,
 
 		TestRunner->TestNotEqual(TEXT("SDK module multi test should have distinct functions"), Func1, Func2);
 	}
+
+	TEST_METHOD(MultiSection)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("SDK module multi-section test should create a standalone engine"), ScriptEngine))
+		{
+			return;
+		}
+
+		ON_SCOPE_EXIT
+		{
+			DestroyNativeEngine(ScriptEngine);
+		};
+
+		asIScriptModule* Module = ScriptEngine->GetModule("SDKModuleMultiSection", asGM_ALWAYS_CREATE);
+		if (!TestRunner->TestNotNull(TEXT("SDK module multi-section test should create a module"), Module))
+		{
+			return;
+		}
+
+		// Two sections that reference each other: cross-section symbol resolution.
+		const int Add1 = Module->AddScriptSection("sectionA", "int Helper() { return 40; }");
+		const int Add2 = Module->AddScriptSection("sectionB", "int Entry() { return Helper() + 2; }");
+		if (!TestRunner->TestTrue(TEXT("SDK module multi-section test should add both sections"), Add1 >= 0 && Add2 >= 0))
+		{
+			return;
+		}
+
+		if (!TestRunner->TestEqual(TEXT("SDK module multi-section test should build across sections"), Module->Build(), 0))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		int32 Result = 0;
+		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, Module, "int Entry()", Result))
+		{
+			return;
+		}
+
+		TestRunner->TestEqual(TEXT("SDK module multi-section test should resolve a symbol across sections (40+2=42)"), Result, 42);
+	}
+
+	TEST_METHOD(EnumerateFunctions)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("SDK module enumerate test should create a standalone engine"), ScriptEngine))
+		{
+			return;
+		}
+
+		ON_SCOPE_EXIT
+		{
+			DestroyNativeEngine(ScriptEngine);
+		};
+
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKModuleEnumerate", R"(
+int Alpha() { return 1; }
+int Beta() { return 2; }
+int Gamma() { return 3; }
+)");
+		if (!TestRunner->TestNotNull(TEXT("SDK module enumerate test should compile the module"), Module))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		if (!TestRunner->TestEqual(TEXT("SDK module enumerate test should report three module functions"), static_cast<int32>(Module->GetFunctionCount()), 3))
+		{
+			return;
+		}
+
+		bool bFoundBeta = false;
+		for (asUINT Index = 0; Index < Module->GetFunctionCount(); ++Index)
+		{
+			asIScriptFunction* Function = Module->GetFunctionByIndex(Index);
+			if (Function != nullptr && FString(UTF8_TO_TCHAR(Function->GetName())) == TEXT("Beta"))
+			{
+				bFoundBeta = true;
+			}
+		}
+
+		TestRunner->TestTrue(TEXT("SDK module enumerate test should find Beta via GetFunctionByIndex"), bFoundBeta);
+		TestRunner->TestNotNull(TEXT("SDK module enumerate test should resolve Gamma by declaration"), Module->GetFunctionByDecl("int Gamma()"));
+	}
+
+	TEST_METHOD(RecompileAfterDiscard)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("SDK module recompile test should create a standalone engine"), ScriptEngine))
+		{
+			return;
+		}
+
+		ON_SCOPE_EXIT
+		{
+			DestroyNativeEngine(ScriptEngine);
+		};
+
+		// Build, discard, then rebuild the same module name with different content.
+		asIScriptModule* First = BuildNativeModule(ScriptEngine, "SDKModuleRecompile", "int Entry() { return 1; }");
+		if (!TestRunner->TestNotNull(TEXT("SDK module recompile test should compile the first module"), First))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		ScriptEngine->DiscardModule("SDKModuleRecompile");
+
+		asIScriptModule* Second = BuildNativeModule(ScriptEngine, "SDKModuleRecompile", "int Entry() { return 2; }");
+		if (!TestRunner->TestNotNull(TEXT("SDK module recompile test should rebuild the module under the same name"), Second))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		int32 Result = 0;
+		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, Second, "int Entry()", Result))
+		{
+			return;
+		}
+
+		TestRunner->TestEqual(TEXT("SDK module recompile test should run the rebuilt definition (returns 2)"), Result, 2);
+	}
 };
 
 #endif

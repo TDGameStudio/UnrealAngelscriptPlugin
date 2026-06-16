@@ -20,6 +20,8 @@ namespace
 	void AccumulateValue(int32 Value) { GSideEffectAccumulator += Value; }
 	int32 IncrementAndReturn(int32 Value) { return Value + 1; }
 	int32 SumSix(int32 A, int32 B, int32 C, int32 D, int32 E, int32 F) { return A+B+C+D+E+F; }
+	int64 WidenAndScale(int32 Value) { return static_cast<int64>(Value) * 1000000000LL; }
+	double MixIn025(int32 I, double D) { return static_cast<double>(I) + D; }
 
 	bool RegisterHelpers(FAutomationTestBase& Test, asIScriptEngine* SE)
 	{
@@ -39,6 +41,12 @@ namespace
 		if (R < 0) { Test.AddInfo(TEXT("Native function registration not available in headless mode, skipping")); return false; }
 		Caller = ASAutoCaller::MakeFunctionCaller(SumSix);
 		R = SE->RegisterGlobalFunction("int SumSix(int,int,int,int,int,int)", asFUNCTION(SumSix), asCALL_CDECL, *(asFunctionCaller*)&Caller);
+		if (R < 0) { Test.AddInfo(TEXT("Native function registration not available in headless mode, skipping")); return false; }
+		Caller = ASAutoCaller::MakeFunctionCaller(WidenAndScale);
+		R = SE->RegisterGlobalFunction("int64 WidenAndScale(int)", asFUNCTION(WidenAndScale), asCALL_CDECL, *(asFunctionCaller*)&Caller);
+		if (R < 0) { Test.AddInfo(TEXT("Native function registration not available in headless mode, skipping")); return false; }
+		Caller = ASAutoCaller::MakeFunctionCaller(MixIn025);
+		R = SE->RegisterGlobalFunction("double MixIn025(int, double)", asFUNCTION(MixIn025), asCALL_CDECL, *(asFunctionCaller*)&Caller);
 		if (R < 0) { Test.AddInfo(TEXT("Native function registration not available in headless mode, skipping")); return false; }
 		return true;
 	}
@@ -117,6 +125,40 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
 		TestRunner->TestEqual(TEXT("SumSix(1..6)=21"), Result, 21);
+	}
+
+	TEST_METHOD(WideReturn)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* SE = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
+		if (!RegisterHelpers(*TestRunner, SE)) return;
+		asIScriptModule* M = BuildNativeModule(SE, "CallFuncWideReturn", "int64 Entry() { return WidenAndScale(3); }\n");
+		if (!TestRunner->TestNotNull(TEXT("Should compile"), M)) { TestRunner->AddInfo(CollectMessages(Messages)); return; }
+		asIScriptFunction* Func = GetNativeFunctionByDecl(M, "int64 Entry()");
+		if (!TestRunner->TestNotNull(TEXT("Should resolve"), Func)) return;
+		asIScriptContext* Ctx = SE->CreateContext();
+		if (!TestRunner->TestNotNull(TEXT("Context"), Ctx)) return;
+		const int Ret = PrepareAndExecute(Ctx, Func);
+		const int64 Result = static_cast<int64>(Ctx->GetReturnQWord());
+		Ctx->Release();
+		TestRunner->TestEqual(TEXT("Finished"), Ret, static_cast<int32>(asEXECUTION_FINISHED));
+		TestRunner->TestEqual(TEXT("WidenAndScale(3) returns 3,000,000,000 through int64"), Result, static_cast<int64>(3000000000LL));
+	}
+
+	TEST_METHOD(MixedIntDoubleArgs)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* SE = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
+		if (!RegisterHelpers(*TestRunner, SE)) return;
+		asIScriptModule* M = BuildNativeModule(SE, "CallFuncMixed", "double Entry() { return MixIn025(7, 0.25); }\n");
+		if (!TestRunner->TestNotNull(TEXT("Should compile"), M)) { TestRunner->AddInfo(CollectMessages(Messages)); return; }
+		double Result = 0.0;
+		if (!ExecuteScriptFunction(*TestRunner, SE, M, "double Entry()", Result)) return;
+		TestRunner->TestTrue(TEXT("MixIn025(7, 0.25) = 7.25 (int+double arg marshalling)"), FMath::IsNearlyEqual(Result, 7.25));
 	}
 };
 
