@@ -152,6 +152,98 @@ bool Entry()
 
 		TestRunner->TestNotNull(TEXT("SDK implicit value-type conversion test should expose the compiled entry function"), GetNativeFunctionByDecl(Module, "bool Entry()"));
 	}
+
+	TEST_METHOD(NumericBoundary)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("SDK numeric-boundary conversion test should create a standalone engine"), ScriptEngine))
+		{
+			return;
+		}
+
+		ON_SCOPE_EXIT
+		{
+			DestroyNativeEngine(ScriptEngine);
+		};
+
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKConversionNumericBoundary", R"(
+bool Entry()
+{
+	// float -> int truncates toward zero (not rounds)
+	int truncPos = int(3.9);     // 3
+	int truncNeg = int(-3.9);    // -3
+
+	// int -> float -> int round-trip for small magnitudes is exact
+	int roundTrip = int(float(12345));
+
+	// Signed -> unsigned reinterprets the bit pattern
+	uint asUnsigned = uint(-1);  // 0xFFFFFFFF = 4294967295
+
+	// Widening preserves value
+	int64 widened = int64(2147483647) + 1;  // 2147483648, no overflow at 64-bit
+
+	return truncPos == 3 && truncNeg == -3 && roundTrip == 12345
+		&& asUnsigned == 4294967295 && widened == 2147483648;
+}
+)");
+		if (!TestRunner->TestNotNull(TEXT("SDK numeric-boundary conversion test should compile the module"), Module))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		bool bResult = false;
+		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		{
+			return;
+		}
+
+		TestRunner->TestTrue(TEXT("SDK numeric-boundary conversion test should preserve truncation, round-trip, and sign-reinterpret semantics"), bResult);
+	}
+
+	TEST_METHOD(BoolConversion)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("SDK bool-conversion test should create a standalone engine"), ScriptEngine))
+		{
+			return;
+		}
+
+		ON_SCOPE_EXIT
+		{
+			DestroyNativeEngine(ScriptEngine);
+		};
+
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKConversionBool", R"(
+bool Entry()
+{
+	// Explicit numeric -> bool via comparison (AngelScript has no implicit int->bool)
+	bool fromNonZero = (5 != 0);
+	bool fromZero = (0 != 0);
+
+	// bool participates in ternary producing ints
+	int t = fromNonZero ? 1 : 0;
+	int f = fromZero ? 1 : 0;
+
+	return fromNonZero && !fromZero && t == 1 && f == 0;
+}
+)");
+		if (!TestRunner->TestNotNull(TEXT("SDK bool-conversion test should compile the module"), Module))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		bool bResult = false;
+		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		{
+			return;
+		}
+
+		TestRunner->TestTrue(TEXT("SDK bool-conversion test should preserve boolean truth semantics"), bResult);
+	}
 };
 
 #endif
