@@ -267,6 +267,74 @@ int Entry()
 
 		TestRunner->TestEqual(TEXT("SDK runtime modulo-by-zero test should report the divide-by-zero exception text"), ExceptionString, FString(TEXT("Divide by zero")));
 	}
+
+	TEST_METHOD(ContextReuseAfterException)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("SDK runtime context-reuse test should create a standalone engine"), ScriptEngine))
+		{
+			return;
+		}
+
+		ON_SCOPE_EXIT
+		{
+			DestroyNativeEngine(ScriptEngine);
+		};
+
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKRuntimeContextReuse", R"(
+int Boom()
+{
+	int a = 0;
+	return 1 / a;
+}
+
+int SafeSum()
+{
+	int total = 0;
+	for (int i = 1; i <= 5; i++) { total += i; }
+	return total;
+}
+)");
+		if (!TestRunner->TestNotNull(TEXT("SDK runtime context-reuse test should compile the module"), Module))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		asIScriptFunction* BoomFn = GetNativeFunctionByDecl(Module, "int Boom()");
+		asIScriptFunction* SafeFn = GetNativeFunctionByDecl(Module, "int SafeSum()");
+		if (!TestRunner->TestNotNull(TEXT("SDK runtime context-reuse test should resolve Boom"), BoomFn) ||
+			!TestRunner->TestNotNull(TEXT("SDK runtime context-reuse test should resolve SafeSum"), SafeFn))
+		{
+			return;
+		}
+
+		asIScriptContext* Context = ScriptEngine->CreateContext();
+		if (!TestRunner->TestNotNull(TEXT("SDK runtime context-reuse test should create a context"), Context))
+		{
+			return;
+		}
+
+		// First execution throws.
+		const int FirstResult = PrepareAndExecute(Context, BoomFn);
+		if (!TestRunner->TestEqual(TEXT("SDK runtime context-reuse test should throw on the first call"), FirstResult, static_cast<int32>(asEXECUTION_EXCEPTION)))
+		{
+			Context->Release();
+			return;
+		}
+
+		// The same context must be reusable for a fresh, successful execution.
+		const int SecondResult = PrepareAndExecute(Context, SafeFn);
+		const int32 Sum = static_cast<int32>(Context->GetReturnDWord());
+		Context->Release();
+
+		if (!TestRunner->TestEqual(TEXT("SDK runtime context-reuse test should finish the second call after re-Prepare"), SecondResult, static_cast<int32>(asEXECUTION_FINISHED)))
+		{
+			return;
+		}
+		TestRunner->TestEqual(TEXT("SDK runtime context-reuse test should compute SafeSum = 15 after recovering from exception"), Sum, 15);
+	}
 };
 
 #endif

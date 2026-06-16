@@ -22,6 +22,12 @@ namespace
 	int32 SumSix(int32 A, int32 B, int32 C, int32 D, int32 E, int32 F) { return A+B+C+D+E+F; }
 	int64 WidenAndScale(int32 Value) { return static_cast<int64>(Value) * 1000000000LL; }
 	double MixIn025(int32 I, double D) { return static_cast<double>(I) + D; }
+	bool IsPositive(int32 Value) { return Value > 0; }
+	void DivMod(int32 A, int32 B, int32& OutQuotient, int32& OutRemainder)
+	{
+		OutQuotient = (B != 0) ? (A / B) : 0;
+		OutRemainder = (B != 0) ? (A % B) : 0;
+	}
 
 	bool RegisterHelpers(FAutomationTestBase& Test, asIScriptEngine* SE)
 	{
@@ -47,6 +53,12 @@ namespace
 		if (R < 0) { Test.AddInfo(TEXT("Native function registration not available in headless mode, skipping")); return false; }
 		Caller = ASAutoCaller::MakeFunctionCaller(MixIn025);
 		R = SE->RegisterGlobalFunction("double MixIn025(int, double)", asFUNCTION(MixIn025), asCALL_CDECL, *(asFunctionCaller*)&Caller);
+		if (R < 0) { Test.AddInfo(TEXT("Native function registration not available in headless mode, skipping")); return false; }
+		Caller = ASAutoCaller::MakeFunctionCaller(IsPositive);
+		R = SE->RegisterGlobalFunction("bool IsPositive(int)", asFUNCTION(IsPositive), asCALL_CDECL, *(asFunctionCaller*)&Caller);
+		if (R < 0) { Test.AddInfo(TEXT("Native function registration not available in headless mode, skipping")); return false; }
+		Caller = ASAutoCaller::MakeFunctionCaller(DivMod);
+		R = SE->RegisterGlobalFunction("void DivMod(int, int, int &out, int &out)", asFUNCTION(DivMod), asCALL_CDECL, *(asFunctionCaller*)&Caller);
 		if (R < 0) { Test.AddInfo(TEXT("Native function registration not available in headless mode, skipping")); return false; }
 		return true;
 	}
@@ -159,6 +171,42 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 		double Result = 0.0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "double Entry()", Result)) return;
 		TestRunner->TestTrue(TEXT("MixIn025(7, 0.25) = 7.25 (int+double arg marshalling)"), FMath::IsNearlyEqual(Result, 7.25));
+	}
+
+	TEST_METHOD(BoolReturn)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* SE = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
+		if (!RegisterHelpers(*TestRunner, SE)) return;
+		asIScriptModule* M = BuildNativeModule(SE, "CallFuncBool", "bool Entry() { return IsPositive(5) && !IsPositive(-3) && !IsPositive(0); }\n");
+		if (!TestRunner->TestNotNull(TEXT("Should compile"), M)) { TestRunner->AddInfo(CollectMessages(Messages)); return; }
+		bool bResult = false;
+		if (!ExecuteScriptFunction(*TestRunner, SE, M, "bool Entry()", bResult)) return;
+		TestRunner->TestTrue(TEXT("IsPositive native bool returns marshal correctly"), bResult);
+	}
+
+	TEST_METHOD(OutParams)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* SE = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
+		if (!RegisterHelpers(*TestRunner, SE)) return;
+		asIScriptModule* M = BuildNativeModule(SE, "CallFuncOut", R"(
+bool Entry()
+{
+	int q = 0;
+	int r = 0;
+	DivMod(17, 5, q, r);
+	return q == 3 && r == 2;
+}
+)");
+		if (!TestRunner->TestNotNull(TEXT("Should compile"), M)) { TestRunner->AddInfo(CollectMessages(Messages)); return; }
+		bool bResult = false;
+		if (!ExecuteScriptFunction(*TestRunner, SE, M, "bool Entry()", bResult)) return;
+		TestRunner->TestTrue(TEXT("DivMod(17,5) writes back q=3, r=2 through native &out params"), bResult);
 	}
 };
 

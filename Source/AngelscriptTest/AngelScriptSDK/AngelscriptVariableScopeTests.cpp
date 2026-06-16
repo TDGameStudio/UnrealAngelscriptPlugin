@@ -180,6 +180,64 @@ int Entry()
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
 		TestRunner->TestEqual(TEXT("four-level shadow sums 4+3+2+1 = 10"), Result, 10);
 	}
+
+	TEST_METHOD(WhileAndIfBlockScope)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* SE = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
+
+		// Variables declared inside while/if bodies are block-scoped; the outer
+		// accumulator survives across iterations.
+		asIScriptModule* M = BuildNativeModule(SE, "ScopeWhileIf", R"(
+int Entry()
+{
+	int sum = 0;
+	int i = 0;
+	while (i < 4)
+	{
+		int step = i * 2;   // block-scoped to the loop body
+		sum += step;
+		i++;
+	}
+	if (sum > 0)
+	{
+		int bonus = 100;    // block-scoped to the if body
+		sum += bonus;
+	}
+	return sum;             // (0+2+4+6) + 100 = 112
+}
+)");
+		if (!TestRunner->TestNotNull(TEXT("While/if block scope should compile"), M))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		int32 Result = 0;
+		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
+		TestRunner->TestEqual(TEXT("while/if block-scoped locals; outer sum = 12+100 = 112"), Result, 112);
+	}
+
+	TEST_METHOD(IfBlockLeakRejected)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* SE = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
+
+		// A variable declared inside an if body must not be visible afterward.
+		Messages.Reset();
+		asIScriptModule* M = BuildNativeModule(SE, "ScopeIfLeak", R"(
+int Entry()
+{
+	if (true) { int inner = 7; }
+	return inner;
+}
+)");
+		TestRunner->TestNull(TEXT("Referencing an if-body local after the block should fail compilation"), M);
+	}
 };
 
 #endif // WITH_DEV_AUTOMATION_TESTS
