@@ -396,6 +396,166 @@ bool Entry()
 			return;
 		}
 	}
+
+	TEST_METHOD(IntegerWidths)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("SDK integer-width type test should create a standalone engine"), ScriptEngine))
+		{
+			return;
+		}
+
+		ON_SCOPE_EXIT
+		{
+			DestroyNativeEngine(ScriptEngine);
+		};
+
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKTypeIntegerWidths", R"(
+bool Entry()
+{
+	// Signed extremes
+	int8 i8 = 127;
+	int16 i16 = 32767;
+	int i32 = 2147483647;
+	int64 i64 = 9223372036854775807;
+
+	// Unsigned extremes
+	uint8 u8 = 255;
+	uint16 u16 = 65535;
+	uint u32 = 4294967295;
+	uint64 u64 = 18446744073709551615;
+
+	// Signed minimums
+	int8 i8min = -128;
+	int16 i16min = -32768;
+	int i32min = -2147483647 - 1;
+	int64 i64min = -9223372036854775807 - 1;
+
+	return i8 == 127 && i16 == 32767 && i32 == 2147483647 && i64 == 9223372036854775807
+		&& u8 == 255 && u16 == 65535 && u32 == 4294967295 && u64 == 18446744073709551615
+		&& i8min == -128 && i16min == -32768 && i32min == -2147483648 && i64min == -9223372036854775807 - 1;
+}
+)");
+		if (!TestRunner->TestNotNull(TEXT("SDK integer-width type test should compile the module"), Module))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		bool bResult = false;
+		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		{
+			return;
+		}
+
+		TestRunner->TestTrue(TEXT("SDK integer-width type test should preserve every integer width's extreme values"), bResult);
+	}
+
+	TEST_METHOD(IntegerOverflowWrap)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("SDK integer-overflow type test should create a standalone engine"), ScriptEngine))
+		{
+			return;
+		}
+
+		ON_SCOPE_EXIT
+		{
+			DestroyNativeEngine(ScriptEngine);
+		};
+
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKTypeIntegerOverflow", R"(
+bool Entry()
+{
+	// Unsigned wraparound is well-defined (modular)
+	uint8 u8 = 255; u8 += 1;        // wraps to 0
+	uint16 u16 = 65535; u16 += 1;   // wraps to 0
+	uint u32 = 4294967295; u32 += 1; // wraps to 0
+
+	// Unsigned underflow wraps to max
+	uint8 u8u = 0; u8u -= 1;        // 255
+	uint u32u = 0; u32u -= 1;       // 4294967295
+
+	// Truncation on narrowing assignment
+	int wide = 0x1FF;
+	uint8 narrow = uint8(wide);     // keeps low 8 bits = 0xFF = 255
+
+	return u8 == 0 && u16 == 0 && u32 == 0
+		&& u8u == 255 && u32u == 4294967295
+		&& narrow == 255;
+}
+)");
+		if (!TestRunner->TestNotNull(TEXT("SDK integer-overflow type test should compile the module"), Module))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		bool bResult = false;
+		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		{
+			return;
+		}
+
+		TestRunner->TestTrue(TEXT("SDK integer-overflow type test should preserve modular wraparound and truncation semantics"), bResult);
+	}
+
+	TEST_METHOD(EnumUnderlyingValues)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("SDK enum-underlying type test should create a standalone engine"), ScriptEngine))
+		{
+			return;
+		}
+
+		ON_SCOPE_EXIT
+		{
+			DestroyNativeEngine(ScriptEngine);
+		};
+
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKTypeEnumUnderlying", R"(
+enum EFlags
+{
+	None = 0,
+	A = 1,
+	B = 2,
+	C = 4,
+	D = 8
+}
+
+bool Entry()
+{
+	// Enum-to-int conversion
+	int none = int(EFlags::None);
+	int c = int(EFlags::C);
+
+	// Bitwise composition through int, then back to enum
+	int composed = int(EFlags::A) | int(EFlags::B);
+	bool roundTrips = EFlags(composed) == EFlags(3);
+
+	// int-to-enum and ordering
+	bool ordered = int(EFlags::D) > int(EFlags::C);
+
+	return none == 0 && c == 4 && composed == 3 && roundTrips && ordered;
+}
+)");
+		if (!TestRunner->TestNotNull(TEXT("SDK enum-underlying type test should compile the module"), Module))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		bool bResult = false;
+		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		{
+			return;
+		}
+
+		TestRunner->TestTrue(TEXT("SDK enum-underlying type test should preserve enum/int conversion and flag composition"), bResult);
+	}
 };
 
 #endif

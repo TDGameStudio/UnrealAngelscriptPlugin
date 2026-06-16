@@ -150,6 +150,135 @@ bool Entry()
 
 		TestRunner->TestTrue(TEXT("SDK function by-ref mutation test should preserve inout parameter semantics"), bResult);
 	}
+
+	TEST_METHOD(ConstInRef)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("SDK function const-in-ref test should create a standalone engine"), ScriptEngine))
+		{
+			return;
+		}
+
+		ON_SCOPE_EXIT
+		{
+			DestroyNativeEngine(ScriptEngine);
+		};
+
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKFunctionConstInRef", R"(
+int Sum(const int &in A, const int &in B)
+{
+	return A + B;
+}
+
+bool Entry()
+{
+	int x = 17;
+	int y = 25;
+	return Sum(x, y) == 42 && Sum(1, 2) == 3;
+}
+)");
+		if (!TestRunner->TestNotNull(TEXT("SDK function const-in-ref test should compile the module"), Module))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		bool bResult = false;
+		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		{
+			return;
+		}
+
+		TestRunner->TestTrue(TEXT("SDK function const-in-ref test should pass values through const &in parameters"), bResult);
+	}
+
+	TEST_METHOD(TypeBasedOverload)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("SDK function type-overload test should create a standalone engine"), ScriptEngine))
+		{
+			return;
+		}
+
+		ON_SCOPE_EXIT
+		{
+			DestroyNativeEngine(ScriptEngine);
+		};
+
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKFunctionTypeOverload", R"(
+int Describe(int Value)    { return 1; }
+int Describe(double Value) { return 2; }
+int Describe(bool Value)   { return 3; }
+
+bool Entry()
+{
+	// Overload resolution selects by argument type
+	return Describe(10) == 1 && Describe(3.14) == 2 && Describe(true) == 3;
+}
+)");
+		if (!TestRunner->TestNotNull(TEXT("SDK function type-overload test should compile the module"), Module))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		bool bResult = false;
+		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		{
+			return;
+		}
+
+		TestRunner->TestTrue(TEXT("SDK function type-overload test should resolve overloads by argument type"), bResult);
+	}
+
+	TEST_METHOD(Recursion)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("SDK function recursion test should create a standalone engine"), ScriptEngine))
+		{
+			return;
+		}
+
+		ON_SCOPE_EXIT
+		{
+			DestroyNativeEngine(ScriptEngine);
+		};
+
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKFunctionRecursion", R"(
+int Factorial(int N)
+{
+	if (N <= 1) return 1;
+	return N * Factorial(N - 1);
+}
+
+int Fib(int N)
+{
+	if (N < 2) return N;
+	return Fib(N - 1) + Fib(N - 2);
+}
+
+bool Entry()
+{
+	return Factorial(5) == 120 && Factorial(0) == 1 && Fib(10) == 55;
+}
+)");
+		if (!TestRunner->TestNotNull(TEXT("SDK function recursion test should compile the module"), Module))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		bool bResult = false;
+		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		{
+			return;
+		}
+
+		TestRunner->TestTrue(TEXT("SDK function recursion test should compute recursive results correctly"), bResult);
+	}
 };
 
 #endif
