@@ -4,6 +4,7 @@
 
 #include "AngelscriptEngine.h"
 #include "AngelscriptSource.h"
+#include "AngelscriptSourceProvider.h"
 #include "AngelscriptSettings.h"
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnAngelscriptPreprocessHook, struct FAngelscriptPreprocessor&);
@@ -100,6 +101,9 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptPreprocessor
 
 	/* Add a source descriptor to be preprocessed. */
 	void AddSource(const FAngelscriptSource& Source, bool bLoadAsynchronous = false, bool bTreatAsDeleted = false);
+
+	/* Route disk-backed source loading through a provider boundary. */
+	void SetSourceProvider(IAngelscriptSourceProvider* InSourceProvider);
 
 	/* Perform preprocessing on all files. Returns true if successful. */
 	bool Preprocess();
@@ -274,6 +278,7 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptPreprocessor
 
 	TArray<FFile> Files;
 	TMap<FString, TSharedPtr<FAngelscriptClassDesc>> PreprocessingClasses;
+	IAngelscriptSourceProvider* SourceProvider = nullptr;
 
 	bool IsPreprocessingModule(const FString& ModuleName);
 	TSharedPtr<FAngelscriptClassDesc> GetClassDescFor(const FString& ClassName);

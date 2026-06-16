@@ -1,6 +1,7 @@
 #include "AngelscriptEngine.h"
 #include "AngelscriptBinds.h"
 #include "AngelscriptBindDatabase.h"
+#include "AngelscriptSourceProvider.h"
 #include "AngelscriptMemoryTags.h"
 #include "AngelscriptPerformanceStats.h"
 #include "HAL/MallocLeakDetection.h"
@@ -661,6 +662,7 @@ FAngelscriptEngineDependencies FAngelscriptEngineDependencies::CreateDefault()
 		}
 		return ScriptRoots;
 	};
+	Dependencies.SourceProvider = MakeShared<FAngelscriptDiskSourceProvider>();
 	return Dependencies;
 }
 
@@ -674,6 +676,10 @@ FAngelscriptEngine::FAngelscriptEngine(const FAngelscriptEngineConfig& InConfig,
 	, RuntimeConfig(InConfig)
 	, Dependencies(InDependencies)
 {
+	if (!Dependencies.SourceProvider.IsValid())
+	{
+		Dependencies.SourceProvider = MakeShared<FAngelscriptDiskSourceProvider>();
+	}
 }
 
 FAngelscriptEngine::~FAngelscriptEngine()
@@ -1289,7 +1295,11 @@ bool FAngelscriptEngine::DiscardModule(const TCHAR* ModuleName)
 		for (const FAngelscriptModuleDesc::FCodeSection& Section : ModuleToDiscard->Code)
 		{
 			const FFilenamePair FilenamePair{ Section.AbsoluteFilename, Section.RelativeFilename, Section.VirtualPath };
-			FileHotReloadState.Remove(Section.RelativeFilename);
+			FileHotReloadState.Remove(MakeSourceStateKey(FilenamePair));
+			if (!Section.RelativeFilename.IsEmpty())
+			{
+				FileHotReloadState.Remove(Section.RelativeFilename);
+			}
 			PreviouslyFailedReloadFiles.Remove(FilenamePair);
 			QueuedFullReloadFiles.Remove(FilenamePair);
 			Diagnostics.Remove(Section.AbsoluteFilename);
@@ -2395,38 +2405,52 @@ void FAngelscriptEngine::FindAllScriptSources(TArray<FAngelscriptSource>& OutSou
 	const bool bSkipDevelopmentScripts = !ShouldUseEditorScripts();
 	const bool bSkipEditorScripts = bSkipDevelopmentScripts;
 
-	TArray<FAngelscriptSourceRoot> Roots = GetEffectiveScriptRootDescriptors();
+	check(Dependencies.SourceProvider.IsValid());
+	Dependencies.SourceProvider->FindSources(
+		GetEffectiveScriptRootDescriptors(),
+		bSkipDevelopmentScripts,
+		bSkipEditorScripts,
+		OutSources);
+}
 
-	for (const FAngelscriptSourceRoot& Root : Roots)
+namespace AngelscriptEngineSourceProvider_Private
+{
+	FAngelscriptSource MakeSourceFromFilenamePair(const FAngelscriptEngine::FFilenamePair& Filename)
 	{
-		TArray<FFilenamePair> FilesInRoot;
-		FindScriptFiles(
-			IFileManager::Get(),
-			TEXT(""),
-			Root.AbsolutePath,
-			TEXT("*.as"),
-			FilesInRoot,
-			bSkipDevelopmentScripts,
-			bSkipEditorScripts);
-
-		OutSources.Reserve(OutSources.Num() + FilesInRoot.Num());
-		for (const FFilenamePair& File : FilesInRoot)
+		FAngelscriptVirtualPath VirtualPath;
+		if (FAngelscriptVirtualPath::TryParse(Filename.VirtualPath, VirtualPath))
 		{
-			if (Root.SourceKind == EAngelscriptSourceKind::Plugin && !Root.MountName.IsEmpty())
+			if (VirtualPath.GetSourceKind() == EAngelscriptSourceKind::Plugin)
 			{
-				OutSources.Add(FAngelscriptSource::FromPluginFile(
-					Root.MountName,
-					File.RelativePath,
-					File.AbsolutePath));
+				return FAngelscriptSource::FromPluginFile(
+					VirtualPath.GetMountName(),
+					Filename.RelativePath,
+					Filename.AbsolutePath);
 			}
-			else
+
+			if (VirtualPath.GetSourceKind() == EAngelscriptSourceKind::Game)
 			{
-				OutSources.Add(FAngelscriptSource::FromGameFile(
-					File.RelativePath,
-					File.AbsolutePath));
+				return FAngelscriptSource::FromGameFile(
+					Filename.RelativePath,
+					Filename.AbsolutePath);
 			}
+
+			FAngelscriptSource Source;
+			Source.VirtualPath = VirtualPath;
+			Source.ModuleName = VirtualPath.ToModuleName();
+			Source.RelativeFilename = VirtualPath.GetRelativePath();
+			Source.AbsoluteFilename = Filename.AbsolutePath;
+			Source.SourceKind = VirtualPath.GetSourceKind();
+			return Source;
 		}
+
+		return FAngelscriptSource::FromGameFile(Filename.RelativePath, Filename.AbsolutePath);
 	}
+}
+
+FString FAngelscriptEngine::MakeSourceStateKey(const FFilenamePair& Filename) const
+{
+	return Filename.VirtualPath.IsEmpty() ? Filename.RelativePath : Filename.VirtualPath;
 }
 
 bool FAngelscriptEngine::HasAnyDebugServerClients()
@@ -2490,6 +2514,7 @@ void FAngelscriptEngine::InitialCompile()
 
 		// Use preprocessor to read script files from disk
 		FAngelscriptPreprocessor Preprocessor;
+		Preprocessor.SetSourceProvider(Dependencies.SourceProvider.Get());
 
 		{
 			FAngelscriptScopeTimer Timer(TEXT("load script files from disk"));
@@ -2764,6 +2789,7 @@ bool FAngelscriptEngine::PerformHotReload(ECompileType CompileType, const TArray
 	SlowTask.EnterProgressFrame(0.5f);
 
 	FAngelscriptPreprocessor Preprocessor;
+	Preprocessor.SetSourceProvider(Dependencies.SourceProvider.Get());
 
 	TSet<FFilenamePair> AlreadyDeletedFiles;
 	TArray<FFilenamePair> FileList;
@@ -2951,30 +2977,10 @@ bool FAngelscriptEngine::PerformHotReload(ECompileType CompileType, const TArray
 	for (const auto& PathPair : FilesToHotReload)
 	{
 		const bool bTreatAsDeleted = AlreadyDeletedFiles.Num() != 0 && AlreadyDeletedFiles.Contains(PathPair);
-		if (!PathPair.VirtualPath.IsEmpty())
-		{
-			FAngelscriptVirtualPath VirtualPath;
-			if (FAngelscriptVirtualPath::TryParse(PathPair.VirtualPath, VirtualPath))
-			{
-				if (VirtualPath.GetSourceKind() == EAngelscriptSourceKind::Plugin)
-				{
-					Preprocessor.AddSource(
-						FAngelscriptSource::FromPluginFile(VirtualPath.GetMountName(), PathPair.RelativePath, PathPair.AbsolutePath),
-						false,
-						bTreatAsDeleted);
-					continue;
-				}
-				if (VirtualPath.GetSourceKind() == EAngelscriptSourceKind::Game)
-				{
-					Preprocessor.AddSource(
-						FAngelscriptSource::FromGameFile(PathPair.RelativePath, PathPair.AbsolutePath),
-						false,
-						bTreatAsDeleted);
-					continue;
-				}
-			}
-		}
-		Preprocessor.AddFile(PathPair.RelativePath, PathPair.AbsolutePath, false, bTreatAsDeleted);
+		Preprocessor.AddSource(
+			AngelscriptEngineSourceProvider_Private::MakeSourceFromFilenamePair(PathPair),
+			false,
+			bTreatAsDeleted);
 	}
 
 	bool bPreprocessSuccess = Preprocessor.Preprocess();
@@ -3389,23 +3395,56 @@ void FAngelscriptEngine::CheckForFileChanges()
 
 	for (FFilenamePair& Filename : Filenames)
 	{
-		FDateTime FileTime = FileManager.GetTimeStamp(*Filename.AbsolutePath);
+		const FAngelscriptSource Source = AngelscriptEngineSourceProvider_Private::MakeSourceFromFilenamePair(Filename);
 
-		FHotReloadState* FileState = FileHotReloadState.Find(Filename.RelativePath);
+		FAngelscriptSourceState SourceState;
+		const bool bHasSourceState = Dependencies.SourceProvider.IsValid()
+			&& Dependencies.SourceProvider->QuerySourceState(Source, SourceState);
+		const FString SourceStateKey = MakeSourceStateKey(Filename);
+
+		FHotReloadState* FileState = FileHotReloadState.Find(SourceStateKey);
 		if (FileState == nullptr)
 		{
 			// File didn't exist before, so definitely hot reload it
 			FileChangesDetectedForReload.Add(Filename);
 
 			FHotReloadState NewState;
-			NewState.LastChange = FileTime;
-			FileHotReloadState.Add(Filename.RelativePath, NewState);
+			if (bHasSourceState)
+			{
+				NewState.LastChange = SourceState.Timestamp;
+				NewState.ContentHash = SourceState.ContentHash;
+				NewState.bHasContentHash = SourceState.bHasContentHash;
+			}
+			else
+			{
+				NewState.LastChange = FileManager.GetTimeStamp(*Filename.AbsolutePath);
+			}
+			FileHotReloadState.Add(SourceStateKey, NewState);
 		}
-		else if (FileTime != FileState->LastChange)
+		else if (bHasSourceState)
 		{
-			// File on disk is newer, queue reload
-			FileChangesDetectedForReload.Add(Filename);
-			FileState->LastChange = FileTime;
+			const bool bHasComparableHash = FileState->bHasContentHash && SourceState.bHasContentHash;
+			const bool bShouldReload = bHasComparableHash
+				? FileState->ContentHash != SourceState.ContentHash
+				: FileState->LastChange != SourceState.Timestamp;
+			if (bShouldReload)
+			{
+				FileChangesDetectedForReload.Add(Filename);
+			}
+
+			FileState->LastChange = SourceState.Timestamp;
+			FileState->ContentHash = SourceState.ContentHash;
+			FileState->bHasContentHash = SourceState.bHasContentHash;
+		}
+		else
+		{
+			const FDateTime FileTime = FileManager.GetTimeStamp(*Filename.AbsolutePath);
+			if (FileTime != FileState->LastChange)
+			{
+				// File on disk is newer, queue reload
+				FileChangesDetectedForReload.Add(Filename);
+				FileState->LastChange = FileTime;
+			}
 		}
 	}
 

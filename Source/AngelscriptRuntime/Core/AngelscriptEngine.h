@@ -6,6 +6,7 @@
 #include "ClassGenerator/AngelscriptAdditionalCompileChecks.h"
 
 #include "AngelscriptSource.h"
+#include "AngelscriptSourceProvider.h"
 #include "AngelscriptType.h"
 #include "AngelscriptMemoryTags.h"
 
@@ -144,6 +145,7 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngineDependencies
 	TFunction<bool(const FString&, bool)> MakeDirectory;
 	TFunction<TArray<FString>()> GetEnabledPluginScriptRoots;
 	TFunction<TArray<FAngelscriptPluginScriptRoot>()> GetEnabledPluginScriptRootDescriptors;
+	TSharedPtr<IAngelscriptSourceProvider> SourceProvider;
 
 	static FAngelscriptEngineDependencies CreateDefault();
 };
@@ -509,6 +511,8 @@ private:
 	struct FHotReloadState
 	{
 		FDateTime LastChange;
+		uint64 ContentHash = 0;
+		bool bHasContentHash = false;
 	};
 
 	bool bUseHotReloadCheckerThread = false;
@@ -532,6 +536,7 @@ private:
 	void DiscoverTests();
 	bool PerformHotReload(ECompileType CompileType, const TArray<FFilenamePair>& FileList);
 	void CheckForFileChanges();
+	FString MakeSourceStateKey(const FFilenamePair& Filename) const;
 
 	void ImportIntoModule(class asIScriptModule* IntoModule, class asIScriptModule* FromModule);
 

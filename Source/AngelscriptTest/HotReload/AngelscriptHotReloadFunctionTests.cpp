@@ -1,6 +1,7 @@
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestMacros.h"
+#include "AngelscriptSourceProvider.h"
 
 #include "HAL/FileManager.h"
 #include "Misc/AutomationTest.h"
@@ -82,7 +83,23 @@ struct FAngelscriptHotReloadTestAccess
 		return 0;
 	}
 
+	static void CheckForFileChanges(FAngelscriptEngine& Engine)
+	{
+		Engine.bUseHotReloadCheckerThread = true;
+		Engine.CheckForFileChanges();
+	}
+
 };
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FAngelscriptHotReloadSourceProviderSuppressesTimestampOnlyChangeTest,
+	"Angelscript.TestModule.HotReload.SourceProvider.SuppressTimestampOnlyChange",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FAngelscriptHotReloadSourceProviderSeparatesVirtualPathStateTest,
+	"Angelscript.TestModule.HotReload.SourceProvider.SeparatesVirtualPathState",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FAngelscriptModuleRecordTrackingTest::RunTest(const FString& Parameters)
 {
@@ -305,6 +322,143 @@ class UDiscardRecompileTargetV2 : UObject
 	}
 
 	return true;
+}
+
+bool FAngelscriptHotReloadSourceProviderSuppressesTimestampOnlyChangeTest::RunTest(const FString& Parameters)
+{
+	struct FMutableStateSourceProvider final : IAngelscriptSourceProvider
+	{
+		FAngelscriptSource Source = FAngelscriptSource::FromGameFile(
+			TEXT("HotReload/ProviderState.as"),
+			TEXT("J:/ProviderProject/Script/HotReload/ProviderState.as"));
+		FDateTime Timestamp = FDateTime(2026, 6, 16, 10, 0, 0);
+		uint64 ContentHash = 12345;
+
+		virtual void FindSources(
+			const TArray<FAngelscriptSourceRoot>& ScriptRoots,
+			bool bSkipDevelopmentScripts,
+			bool bSkipEditorScripts,
+			TArray<FAngelscriptSource>& OutSources) override
+		{
+			OutSources.Add(Source);
+		}
+
+		virtual bool LoadSourceText(const FAngelscriptSource& InSource, FString& OutSourceText) override
+		{
+			OutSourceText = TEXT("int Entry() { return 41; }");
+			return true;
+		}
+
+		virtual bool QuerySourceState(const FAngelscriptSource& InSource, FAngelscriptSourceState& OutState) override
+		{
+			OutState.Timestamp = Timestamp;
+			OutState.ContentHash = ContentHash;
+			OutState.bHasContentHash = true;
+			return true;
+		}
+	};
+
+	TSharedRef<FMutableStateSourceProvider> Provider = MakeShared<FMutableStateSourceProvider>();
+
+	FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
+	Dependencies.SourceProvider = Provider;
+
+	FAngelscriptEngine Engine(FAngelscriptEngineConfig(), Dependencies);
+	Engine.AllScriptRoots.Add(FAngelscriptSourceRoot::FromGameRoot(TEXT("J:/ProviderProject/Script")));
+
+	FAngelscriptHotReloadTestAccess::CheckForFileChanges(Engine);
+	TestEqual(TEXT("First source-state scan should queue the initially unknown source"), FAngelscriptHotReloadTestAccess::GetQueuedFileChangeCount(Engine), 1);
+
+	Provider->Timestamp = FDateTime(2026, 6, 16, 10, 1, 0);
+	FAngelscriptHotReloadTestAccess::CheckForFileChanges(Engine);
+	TestEqual(TEXT("Timestamp-only source-state churn should not queue a reload when content hash is unchanged"), FAngelscriptHotReloadTestAccess::GetQueuedFileChangeCount(Engine), 0);
+
+	Provider->Timestamp = FDateTime(2026, 6, 16, 10, 2, 0);
+	Provider->ContentHash = 67890;
+	FAngelscriptHotReloadTestAccess::CheckForFileChanges(Engine);
+	return TestEqual(TEXT("Content hash changes should queue a reload"), FAngelscriptHotReloadTestAccess::GetQueuedFileChangeCount(Engine), 1);
+}
+
+bool FAngelscriptHotReloadSourceProviderSeparatesVirtualPathStateTest::RunTest(const FString& Parameters)
+{
+	struct FCollisionSourceProvider final : IAngelscriptSourceProvider
+	{
+		TArray<FAngelscriptSource> Sources = {
+			FAngelscriptSource::FromGameFile(
+				TEXT("Shared/State.as"),
+				TEXT("J:/ProviderProject/Script/Shared/State.as")),
+			FAngelscriptSource::FromPluginFile(
+				TEXT("Inventory"),
+				TEXT("Shared/State.as"),
+				TEXT("J:/ProviderProject/Plugins/Inventory/Script/Shared/State.as")),
+		};
+		TMap<FString, uint64> ContentHashByVirtualPath;
+		FDateTime Timestamp = FDateTime(2026, 6, 16, 10, 0, 0);
+
+		FCollisionSourceProvider()
+		{
+			ContentHashByVirtualPath.Add(TEXT("/Angelscript/Game/Shared/State.as"), 11);
+			ContentHashByVirtualPath.Add(TEXT("/Angelscript/Plugin/Inventory/Shared/State.as"), 22);
+		}
+
+		virtual void FindSources(
+			const TArray<FAngelscriptSourceRoot>& ScriptRoots,
+			bool bSkipDevelopmentScripts,
+			bool bSkipEditorScripts,
+			TArray<FAngelscriptSource>& OutSources) override
+		{
+			OutSources.Append(Sources);
+		}
+
+		virtual bool LoadSourceText(const FAngelscriptSource& InSource, FString& OutSourceText) override
+		{
+			OutSourceText = TEXT("int Entry() { return 1; }");
+			return true;
+		}
+
+		virtual bool QuerySourceState(const FAngelscriptSource& InSource, FAngelscriptSourceState& OutState) override
+		{
+			const uint64* ContentHash = ContentHashByVirtualPath.Find(InSource.VirtualPath.ToString());
+			if (ContentHash == nullptr)
+			{
+				return false;
+			}
+
+			OutState.Timestamp = Timestamp;
+			OutState.ContentHash = *ContentHash;
+			OutState.bHasContentHash = true;
+			return true;
+		}
+	};
+
+	TSharedRef<FCollisionSourceProvider> Provider = MakeShared<FCollisionSourceProvider>();
+
+	FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
+	Dependencies.SourceProvider = Provider;
+
+	FAngelscriptEngine Engine(FAngelscriptEngineConfig(), Dependencies);
+	Engine.AllScriptRoots.Add(FAngelscriptSourceRoot::FromGameRoot(TEXT("J:/ProviderProject/Script")));
+	Engine.AllScriptRoots.Add(FAngelscriptSourceRoot::FromPluginRoot(TEXT("Inventory"), TEXT("J:/ProviderProject/Plugins/Inventory/Script")));
+
+	FAngelscriptHotReloadTestAccess::CheckForFileChanges(Engine);
+	if (!TestEqual(TEXT("First scan should queue both colliding relative paths"), FAngelscriptHotReloadTestAccess::GetQueuedFileChangeCount(Engine), 2))
+	{
+		return false;
+	}
+
+	Provider->Timestamp = FDateTime(2026, 6, 16, 10, 1, 0);
+	Provider->ContentHashByVirtualPath[TEXT("/Angelscript/Plugin/Inventory/Shared/State.as")] = 33;
+	FAngelscriptHotReloadTestAccess::CheckForFileChanges(Engine);
+
+	if (!TestEqual(TEXT("Only the source with a changed canonical virtual path state should reload"), FAngelscriptHotReloadTestAccess::GetQueuedFileChangeCount(Engine), 1))
+	{
+		return false;
+	}
+
+	return TestEqual(
+		TEXT("Reload should preserve the plugin virtual path instead of merging by relative filename"),
+		Engine.FileChangesDetectedForReload[0].VirtualPath,
+		FString(TEXT("/Angelscript/Plugin/Inventory/Shared/State.as")));
 }
 
 bool FAngelscriptDiscardModuleRemovesGlobalFunctionAvailabilityTest::RunTest(const FString& Parameters)

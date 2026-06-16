@@ -11,6 +11,7 @@
 #include "AngelscriptSettings.h"
 #include "AngelscriptType.h"
 #include "AngelscriptMemoryTags.h"
+#include "AngelscriptSourceProvider.h"
 
 #include "Internationalization/Regex.h"
 #include "Misc/FileHelper.h"
@@ -266,6 +267,11 @@ void FAngelscriptPreprocessor::AddFile(const FString& RelativeFilename, const FS
 	AddSource(FAngelscriptSource::FromGameFile(RelativeFilename, AbsoluteFilename), bLoadAsynchronous, bTreatAsDeleted);
 }
 
+void FAngelscriptPreprocessor::SetSourceProvider(IAngelscriptSourceProvider* InSourceProvider)
+{
+	SourceProvider = InSourceProvider;
+}
+
 void FAngelscriptPreprocessor::AddSource(const FAngelscriptSource& Source, bool bLoadAsynchronous, bool bTreatAsDeleted)
 {
 	if (!ensureMsgf(!bIsPreprocessed, TEXT("Cannot add files after preprocessing is done.")))
@@ -305,12 +311,19 @@ void FAngelscriptPreprocessor::AddSource(const FAngelscriptSource& Source, bool 
 	}
 	else
 	{
+		IAngelscriptSourceProvider* EffectiveSourceProvider = SourceProvider;
+		FAngelscriptDiskSourceProvider DefaultSourceProvider;
+		if (EffectiveSourceProvider == nullptr)
+		{
+			EffectiveSourceProvider = &DefaultSourceProvider;
+		}
+
 		bool bLoaded = false;
 
 		int32 Tries = 0;
 		for (; Tries < 6; ++Tries)
 		{
-			if (FFileHelper::LoadFileToString(File.RawCode, *File.AbsoluteFilename))
+			if (EffectiveSourceProvider->LoadSourceText(Source, File.RawCode))
 			{
 				bLoaded = true;
 				break;
