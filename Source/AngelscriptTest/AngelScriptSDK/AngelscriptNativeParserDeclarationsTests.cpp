@@ -13,31 +13,13 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+using namespace AngelscriptNativeTestSupport;
+
 namespace
 {
-	struct FParserAccessor : asCParser
+	bool ParseDeclScript(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
-		explicit FParserAccessor(asCBuilder* Builder)
-			: asCParser(Builder)
-		{
-		}
-
-		asCScriptNode* ParseExpressionSnippet(asCScriptCode* InScript)
-		{
-			Reset();
-			script = InScript;
-			return ParseExpression();
-		}
-	};
-
-	asCModule* CreateModule(asCScriptEngine* ScriptEngine, const char* ModuleName)
-	{
-		return static_cast<asCModule*>(ScriptEngine->GetModule(ModuleName, asGM_ALWAYS_CREATE));
-	}
-
-	bool ParseScript(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
-	{
-		asCModule* Module = CreateModule(ScriptEngine, ModuleName);
+		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Test.TestNotNull(FString::Printf(TEXT("%s should create a parser module"), UTF8_TO_TCHAR(ModuleName)), Module))
 		{
 			return false;
@@ -64,9 +46,9 @@ namespace
 		return true;
 	}
 
-	int ParseScriptWithResult(asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source)
+	int ParseDeclScriptWithResult(asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source)
 	{
-		asCModule* Module = CreateModule(ScriptEngine, ModuleName);
+		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		asCBuilder Builder(ScriptEngine, Module);
 		Builder.silent = true;
 
@@ -77,9 +59,9 @@ namespace
 		return Parser.ParseScript(&Code);
 	}
 
-	bool ParseExpression(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
+	bool ParseDeclExpression(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
-		asCModule* Module = CreateModule(ScriptEngine, ModuleName);
+		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Test.TestNotNull(FString::Printf(TEXT("%s should create a parser-expression module"), UTF8_TO_TCHAR(ModuleName)), Module))
 		{
 			return false;
@@ -120,7 +102,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ParserDeclDefaultParam", "int Add(int A, int B = 2) { return A + B; }", [&](const asCScriptNode& Root)
+		ParseDeclScript(*TestRunner, BareEngine, "ParserDeclDefaultParam", "int Add(int A, int B = 2) { return A + B; }", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestEqual(TEXT("Default-param function parse should produce one function node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snFunction), 1);
 			TestRunner->TestEqual(TEXT("Default-param function parse should produce a parameter list"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snParameterList), 1);
@@ -136,7 +118,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ParserDeclRefParams", "void Mutate(int& in A, int& out B, int& inout C) { }", [&](const asCScriptNode& Root)
+		ParseDeclScript(*TestRunner, BareEngine, "ParserDeclRefParams", "void Mutate(int& in A, int& out B, int& inout C) { }", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestEqual(TEXT("Ref-param parse should produce one function node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snFunction), 1);
 			TestRunner->TestTrue(TEXT("Ref-param parse should include multiple data type nodes"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snDataType) >= 4);
@@ -152,7 +134,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ParserDeclInheritance", "class FBase { } class FDerived : FBase { }", [&](const asCScriptNode& Root)
+		ParseDeclScript(*TestRunner, BareEngine, "ParserDeclInheritance", "class FBase { } class FDerived : FBase { }", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestEqual(TEXT("Inheritance parse should produce two class nodes"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snClass), 2);
 		});
@@ -167,7 +149,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		const int ParseResult = ParseScriptWithResult(BareEngine, "ParserDeclInterfaceImpl", "interface IThing { void Run(); } class FThing : IThing { void Run() { } }");
+		const int ParseResult = ParseDeclScriptWithResult(BareEngine, "ParserDeclInterfaceImpl", "interface IThing { void Run(); } class FThing : IThing { void Run() { } }");
 		TestRunner->TestTrue(TEXT("Script-level interface declarations are currently rejected by the fork tokenizer/parser boundary"), ParseResult < 0);
 	}
 
@@ -180,7 +162,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ParserDeclClassModifiers", "class FFinal { } class FAbstract { }", [&](const asCScriptNode& Root)
+		ParseDeclScript(*TestRunner, BareEngine, "ParserDeclClassModifiers", "class FFinal { } class FAbstract { }", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestEqual(TEXT("Class modifier parse should keep both class declarations"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snClass), 2);
 		});
@@ -195,7 +177,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ParserDeclMixin", "mixin void SharedUtility() { }", [&](const asCScriptNode& Root)
+		ParseDeclScript(*TestRunner, BareEngine, "ParserDeclMixin", "mixin void SharedUtility() { }", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestEqual(TEXT("Mixin parse should produce a function node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snFunction), 1);
 		});
@@ -210,7 +192,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ParserDeclNamespace", "namespace Gameplay { int Value = 1; }", [&](const asCScriptNode& Root)
+		ParseDeclScript(*TestRunner, BareEngine, "ParserDeclNamespace", "namespace Gameplay { int Value = 1; }", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestEqual(TEXT("Namespace parse should produce a namespace node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snNamespace), 1);
 			TestRunner->TestEqual(TEXT("Namespace parse should keep nested declarations"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snDeclaration), 1);
@@ -226,7 +208,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ParserDeclNestedNamespace", "namespace Gameplay::AI { void Tick() { } }", [&](const asCScriptNode& Root)
+		ParseDeclScript(*TestRunner, BareEngine, "ParserDeclNestedNamespace", "namespace Gameplay::AI { void Tick() { } }", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestEqual(TEXT("Nested namespace parse should produce one namespace node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snNamespace), 1);
 			TestRunner->TestTrue(TEXT("Nested namespace parse should keep both namespace identifiers"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snIdentifier) >= 2);
@@ -242,7 +224,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ParserDeclEnum", "enum EMode { Idle = 0, Run = 1 } enum EOther { One }", [&](const asCScriptNode& Root)
+		ParseDeclScript(*TestRunner, BareEngine, "ParserDeclEnum", "enum EMode { Idle = 0, Run = 1 } enum EOther { One }", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestEqual(TEXT("Enum parse should produce two enum nodes"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snEnum), 2);
 		});
@@ -257,12 +239,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ParserDeclScopedEnum", "enum EMode { Idle, Run }", [&](const asCScriptNode& Root)
+		ParseDeclScript(*TestRunner, BareEngine, "ParserDeclScopedEnum", "enum EMode { Idle, Run }", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestEqual(TEXT("Scoped enum parse should produce an enum node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snEnum), 1);
 		});
 
-		ParseExpression(*TestRunner, BareEngine, "ParserDeclScopedEnumExpr", "EMode::Idle", [&](const asCScriptNode& Root)
+		ParseDeclExpression(*TestRunner, BareEngine, "ParserDeclScopedEnumExpr", "EMode::Idle", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestTrue(TEXT("Scoped enum expression should produce a dedicated scope node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snScope) >= 1);
 		});
@@ -277,7 +259,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		const int ParseResult = ParseScriptWithResult(BareEngine, "ParserDeclTypedef", "typedef int32 FScore;");
+		const int ParseResult = ParseDeclScriptWithResult(BareEngine, "ParserDeclTypedef", "typedef int32 FScore;");
 		TestRunner->TestTrue(TEXT("Script-level typedef declarations are currently rejected by the fork tokenizer/parser boundary"), ParseResult < 0);
 	}
 
@@ -290,7 +272,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		const int ParseResult = ParseScriptWithResult(BareEngine, "ParserDeclFuncdef", "funcdef void FCallback(int Value);");
+		const int ParseResult = ParseDeclScriptWithResult(BareEngine, "ParserDeclFuncdef", "funcdef void FCallback(int Value);");
 		TestRunner->TestTrue(TEXT("Script-level funcdef declarations are currently rejected by the fork tokenizer/parser boundary"), ParseResult < 0);
 	}
 
@@ -303,7 +285,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ParserDeclImport", "import int SharedValue() from \"OtherModule\";", [&](const asCScriptNode& Root)
+		ParseDeclScript(*TestRunner, BareEngine, "ParserDeclImport", "import int SharedValue() from \"OtherModule\";", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestEqual(TEXT("Import parse should produce an import node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snImport), 1);
 		});
@@ -321,7 +303,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 		// Virtual-property syntax `int X { get { ... } set { } }` was removed by the
 		// autoaccessor refactor (see openspec/changes/archive/2026-05-22-refactor-as-remove-autoaccessor).
 		// The parser now rejects this form so authors must declare explicit GetX()/SetX() methods.
-		const int ParseResult = ParseScriptWithResult(BareEngine, "ParserDeclVirtualProperty", "int Value { get { return 1; } set { } }");
+		const int ParseResult = ParseDeclScriptWithResult(BareEngine, "ParserDeclVirtualProperty", "int Value { get { return 1; } set { } }");
 		TestRunner->TestTrue(TEXT("Virtual property syntax should be rejected after autoaccessor removal"), ParseResult < 0);
 	}
 
@@ -334,7 +316,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ParserDeclOperator", "class FNumber { FNumber opAdd(const FNumber& in Other) const { return this; } }", [&](const asCScriptNode& Root)
+		ParseDeclScript(*TestRunner, BareEngine, "ParserDeclOperator", "class FNumber { FNumber opAdd(const FNumber& in Other) const { return this; } }", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestEqual(TEXT("Operator overload parse should produce one class node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snClass), 1);
 			TestRunner->TestEqual(TEXT("Operator overload parse should produce one function node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snFunction), 1);
@@ -350,7 +332,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ParserDeclGlobalConst", "const int GlobalValue = 7;", [&](const asCScriptNode& Root)
+		ParseDeclScript(*TestRunner, BareEngine, "ParserDeclGlobalConst", "const int GlobalValue = 7;", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestEqual(TEXT("Global const parse should produce a declaration node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snDeclaration), 1);
 		});
@@ -370,10 +352,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 			return;
 		}
 
-		const int HandleParseResult = ParseScriptWithResult(BareEngine, "ParserDeclHandleType", "FNode@ Node;");
+		const int HandleParseResult = ParseDeclScriptWithResult(BareEngine, "ParserDeclHandleType", "FNode@ Node;");
 		TestRunner->TestTrue(TEXT("Bare native parser currently rejects handle declarations because raw @ tokenization is disabled in this fork"), HandleParseResult < 0);
 
-		ParseScript(*TestRunner, BareEngine, "ParserDeclTemplateType", "array<int> Values;", [&](const asCScriptNode& Root)
+		ParseDeclScript(*TestRunner, BareEngine, "ParserDeclTemplateType", "array<int> Values;", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestEqual(TEXT("Template declaration parse should produce one declaration"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snDeclaration), 1);
 			TestRunner->TestTrue(TEXT("Template declaration parse should produce a data type node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snDataType) >= 1);
@@ -394,7 +376,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 			return;
 		}
 
-		ParseScript(*TestRunner, BareEngine, "ParserDeclTemplate", "array<array<int>> Matrix;", [&](const asCScriptNode& Root)
+		ParseDeclScript(*TestRunner, BareEngine, "ParserDeclTemplate", "array<array<int>> Matrix;", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestTrue(TEXT("Nested template declaration should produce a declaration node once template support is registered"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snDeclaration) >= 1);
 			TestRunner->TestTrue(TEXT("Nested template declaration should produce nested data type nodes"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snDataType) >= 2);

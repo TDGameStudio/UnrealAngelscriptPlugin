@@ -13,42 +13,13 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+using namespace AngelscriptNativeTestSupport;
+
 namespace
 {
-	struct FParserAccessor : asCParser
+	bool ParseRangeScript(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(asCScriptCode&, const asCScriptNode&)> Verify)
 	{
-		explicit FParserAccessor(asCBuilder* Builder)
-			: asCParser(Builder)
-		{
-		}
-	};
-
-	asCModule* CreateModule(asCScriptEngine* ScriptEngine, const char* ModuleName)
-	{
-		return static_cast<asCModule*>(ScriptEngine->GetModule(ModuleName, asGM_ALWAYS_CREATE));
-	}
-
-	const asCScriptNode* FindFirstNodeOfType(const asCScriptNode* Node, const eScriptNode Type)
-	{
-		for (const asCScriptNode* Current = Node; Current != nullptr; Current = Current->next)
-		{
-			if (Current->nodeType == Type)
-			{
-				return Current;
-			}
-
-			if (const asCScriptNode* Child = FindFirstNodeOfType(Current->firstChild, Type))
-			{
-				return Child;
-			}
-		}
-
-		return nullptr;
-	}
-
-	bool ParseScript(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(asCScriptCode&, const asCScriptNode&)> Verify)
-	{
-		asCModule* Module = CreateModule(ScriptEngine, ModuleName);
+		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Test.TestNotNull(FString::Printf(TEXT("%s should create a source-range module"), UTF8_TO_TCHAR(ModuleName)), Module))
 		{
 			return false;
@@ -97,7 +68,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeSourceRangeTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ScriptNodeRangeFunction", "\n\nint Read() { return 7; }", [&](asCScriptCode& Code, const asCScriptNode& Root)
+		ParseRangeScript(*TestRunner, BareEngine, "ScriptNodeRangeFunction", "\n\nint Read() { return 7; }", [&](asCScriptCode& Code, const asCScriptNode& Root)
 		{
 			const asCScriptNode* FunctionNode = FindFirstNodeOfType(&Root, snFunction);
 			if (!TestRunner->TestNotNull(TEXT("Function source-range test should find a function node"), FunctionNode))
@@ -121,7 +92,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeSourceRangeTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ScriptNodeRangeClassMember", "class FRange\n{\n\tint Value;\n}", [&](asCScriptCode& Code, const asCScriptNode& Root)
+		ParseRangeScript(*TestRunner, BareEngine, "ScriptNodeRangeClassMember", "class FRange\n{\n\tint Value;\n}", [&](asCScriptCode& Code, const asCScriptNode& Root)
 		{
 			const asCScriptNode* DeclarationNode = FindFirstNodeOfType(&Root, snDeclaration);
 			if (!TestRunner->TestNotNull(TEXT("Class-member source-range test should find a declaration node"), DeclarationNode))
@@ -144,7 +115,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeSourceRangeTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ScriptNodeRangeMultiline", "int Value =\n\t1 +\n\t2;", [&](asCScriptCode& Code, const asCScriptNode& Root)
+		ParseRangeScript(*TestRunner, BareEngine, "ScriptNodeRangeMultiline", "int Value =\n\t1 +\n\t2;", [&](asCScriptCode& Code, const asCScriptNode& Root)
 		{
 			const asCScriptNode* DeclarationNode = FindFirstNodeOfType(&Root, snDeclaration);
 			if (!TestRunner->TestNotNull(TEXT("Multiline source-range test should find a declaration node"), DeclarationNode))
@@ -171,7 +142,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeSourceRangeTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ScriptNodeRangeComment", "// skipped comment\nint Value = 1;", [&](asCScriptCode& Code, const asCScriptNode& Root)
+		ParseRangeScript(*TestRunner, BareEngine, "ScriptNodeRangeComment", "// skipped comment\nint Value = 1;", [&](asCScriptCode& Code, const asCScriptNode& Root)
 		{
 			const asCScriptNode* DeclarationNode = FindFirstNodeOfType(&Root, snDeclaration);
 			if (!TestRunner->TestNotNull(TEXT("Comment source-range test should find a declaration node"), DeclarationNode))
@@ -195,7 +166,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeSourceRangeTests,
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
 		const char SourceWithBom[] = "\xEF\xBB\xBFint Value = 1;";
-		ParseScript(*TestRunner, BareEngine, "ScriptNodeRangeBom", SourceWithBom, [&](asCScriptCode& Code, const asCScriptNode& Root)
+		ParseRangeScript(*TestRunner, BareEngine, "ScriptNodeRangeBom", SourceWithBom, [&](asCScriptCode& Code, const asCScriptNode& Root)
 		{
 			const asCScriptNode* DeclarationNode = FindFirstNodeOfType(&Root, snDeclaration);
 			if (!TestRunner->TestNotNull(TEXT("BOM source-range test should find a declaration node"), DeclarationNode))

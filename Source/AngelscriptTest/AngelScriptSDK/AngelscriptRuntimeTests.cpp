@@ -1,3 +1,4 @@
+#include "AngelscriptSDKTestExecutionHelpers.h"
 #include "AngelscriptTestAdapter.h"
 
 #include "CQTest.h"
@@ -6,39 +7,16 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace AngelscriptNativeTestSupport;
-
-namespace AngelscriptTest_Native_AngelscriptASSDKRuntimeTests_Private
-{
-	bool ExecuteRuntimeBoolEntry(FAutomationTestBase& Test, asIScriptEngine* ScriptEngine, asIScriptModule* Module, const char* Declaration, bool& OutValue)
-	{
-		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, Declaration);
-		if (!Test.TestNotNull(TEXT("Runtime test should resolve the bool entry function"), Function))
-		{
-			return false;
-		}
-
-		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!Test.TestNotNull(TEXT("Runtime test should create a bool execution context"), Context))
-		{
-			return false;
-		}
-
-		const int ExecuteResult = PrepareAndExecute(Context, Function);
-		OutValue = Context->GetReturnByte() != 0;
-		Context->Release();
-		return Test.TestEqual(TEXT("Runtime test should finish bool execution successfully"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED));
-	}
-}
+using namespace AngelscriptSDKTestSupport;
 
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKRuntimeTests, "Angelscript.TestModule.AngelScriptSDK.ASSDK.Runtime", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+TEST_CLASS_WITH_FLAGS(FAngelscriptSDKRuntimeTests, "Angelscript.TestModule.AngelScriptSDK.Runtime", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	TEST_METHOD(Context)
 	{
-		using namespace AngelscriptTest_Native_AngelscriptASSDKRuntimeTests_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("ASSDK runtime context test should create a standalone engine"), ScriptEngine))
+		if (!TestRunner->TestNotNull(TEXT("SDK runtime context test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
@@ -48,7 +26,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKRuntimeTests, "Angelscript.TestModule.Ang
 			DestroyNativeEngine(ScriptEngine);
 		};
 
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "ASSDKRuntimeContext", R"(
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKRuntimeContext", R"(
 int Compute(int N)
 {
 	int Result = 0;
@@ -64,27 +42,26 @@ bool Entry()
 	return Compute(10) == 55;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("ASSDK runtime context test should compile the module"), Module))
+		if (!TestRunner->TestNotNull(TEXT("SDK runtime context test should compile the module"), Module))
 		{
 			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
 		bool bResult = false;
-		if (!ExecuteRuntimeBoolEntry(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("ASSDK runtime context test should execute context operations"), bResult);
+		TestRunner->TestTrue(TEXT("SDK runtime context test should execute context operations"), bResult);
 	}
 
 	TEST_METHOD(Exception)
 	{
-		using namespace AngelscriptTest_Native_AngelscriptASSDKRuntimeTests_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("ASSDK runtime exception test should create a standalone engine"), ScriptEngine))
+		if (!TestRunner->TestNotNull(TEXT("SDK runtime exception test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
@@ -94,7 +71,7 @@ bool Entry()
 			DestroyNativeEngine(ScriptEngine);
 		};
 
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "ASSDKRuntimeException", R"(
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKRuntimeException", R"(
 void ThrowException()
 {
 	int a = 0;
@@ -107,20 +84,20 @@ bool Entry()
 	return true;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("ASSDK runtime exception test should compile the module"), Module))
+		if (!TestRunner->TestNotNull(TEXT("SDK runtime exception test should compile the module"), Module))
 		{
 			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, "bool Entry()");
-		if (!TestRunner->TestNotNull(TEXT("ASSDK runtime exception test should resolve entry function"), Function))
+		if (!TestRunner->TestNotNull(TEXT("SDK runtime exception test should resolve entry function"), Function))
 		{
 			return;
 		}
 
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("ASSDK runtime exception test should create context"), Context))
+		if (!TestRunner->TestNotNull(TEXT("SDK runtime exception test should create context"), Context))
 		{
 			return;
 		}
@@ -129,15 +106,14 @@ bool Entry()
 		Context->Release();
 
 		// Expect exception from divide by zero
-		TestRunner->TestEqual(TEXT("ASSDK runtime exception test should detect exception"), ExecuteResult, static_cast<int32>(asEXECUTION_EXCEPTION));
+		TestRunner->TestEqual(TEXT("SDK runtime exception test should detect exception"), ExecuteResult, static_cast<int32>(asEXECUTION_EXCEPTION));
 	}
 
 	TEST_METHOD(Suspend)
 	{
-		using namespace AngelscriptTest_Native_AngelscriptASSDKRuntimeTests_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("ASSDK runtime suspend test should create a standalone engine"), ScriptEngine))
+		if (!TestRunner->TestNotNull(TEXT("SDK runtime suspend test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
@@ -147,7 +123,7 @@ bool Entry()
 			DestroyNativeEngine(ScriptEngine);
 		};
 
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "ASSDKRuntimeSuspend", R"(
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKRuntimeSuspend", R"(
 int Sum(int N)
 {
 	int Result = 0;
@@ -163,19 +139,19 @@ bool Entry()
 	return Sum(10) == 55;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("ASSDK runtime suspend test should compile the module"), Module))
+		if (!TestRunner->TestNotNull(TEXT("SDK runtime suspend test should compile the module"), Module))
 		{
 			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
 		bool bResult = false;
-		if (!ExecuteRuntimeBoolEntry(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("ASSDK runtime suspend test should execute loop with suspend support"), bResult);
+		TestRunner->TestTrue(TEXT("SDK runtime suspend test should execute loop with suspend support"), bResult);
 	}
 };
 

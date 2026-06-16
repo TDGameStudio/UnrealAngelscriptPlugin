@@ -11,65 +11,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_BytecodeOpcodes_Private
-{
-	struct FBytecodeFixture
-	{
-		explicit FBytecodeFixture(const char* ModuleName)
-		{
-			Engine = AngelscriptNativeTestSupport::CreateBareSdkEngine();
-			Module = Engine != nullptr ? static_cast<asCModule*>(Engine->GetModule(ModuleName, asGM_ALWAYS_CREATE)) : nullptr;
-			Builder = Module != nullptr ? new asCBuilder(Engine, Module) : nullptr;
-			ByteCode = Builder != nullptr ? new asCByteCode(Builder) : nullptr;
-		}
-
-		~FBytecodeFixture()
-		{
-			delete ByteCode;
-			delete Builder;
-			if (Engine != nullptr)
-			{
-				Engine->ShutDownAndRelease();
-			}
-		}
-
-		bool IsValid(FAutomationTestBase& Test) const
-		{
-			return Test.TestNotNull(TEXT("Bytecode opcode fixture should create a bare engine"), Engine)
-				&& Test.TestNotNull(TEXT("Bytecode opcode fixture should create a module"), Module)
-				&& Test.TestNotNull(TEXT("Bytecode opcode fixture should create a builder"), Builder)
-				&& Test.TestNotNull(TEXT("Bytecode opcode fixture should create bytecode"), ByteCode);
-		}
-
-		asCScriptEngine* Engine = nullptr;
-		asCModule* Module = nullptr;
-		asCBuilder* Builder = nullptr;
-		asCByteCode* ByteCode = nullptr;
-	};
-
-	int32 CountInstructions(asCByteCode& ByteCode)
-	{
-		int32 Count = 0;
-		for (const asCByteInstruction* Instruction = ByteCode.GetFirstInstr(); Instruction != nullptr; Instruction = Instruction->next)
-		{
-			++Count;
-		}
-		return Count;
-	}
-
-	bool ContainsOpcode(asCByteCode& ByteCode, const asEBCInstr Opcode)
-	{
-		for (const asCByteInstruction* Instruction = ByteCode.GetFirstInstr(); Instruction != nullptr; Instruction = Instruction->next)
-		{
-			if (Instruction->op == Opcode)
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
-}
+using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 	"Angelscript.TestModule.AngelScriptSDK.Bytecode.Opcodes",
@@ -77,7 +19,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 {
 	TEST_METHOD(Push_PshC4_PshV4_PshRPtr)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeOpcodes_Private;
 		FBytecodeFixture Fixture("BytecodeOpcodesPush");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -95,7 +36,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 
 	TEST_METHOD(Load_LoadObj_LoadThisR)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeOpcodes_Private;
 		FBytecodeFixture Fixture("BytecodeOpcodesLoad");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -113,7 +53,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 
 	TEST_METHOD(Call_CALL_CALLSYS_CALLINTF)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeOpcodes_Private;
 		FBytecodeFixture Fixture("BytecodeOpcodesCall");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -132,7 +71,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 
 	TEST_METHOD(BranchOps_JZ_JNZ_JLowZ_JLowNZ)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeOpcodes_Private;
 		FBytecodeFixture Fixture("BytecodeOpcodesBranch");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -153,7 +91,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 
 	TEST_METHOD(Misc_LINE_SUSPEND_JitEntry)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeOpcodes_Private;
 		FBytecodeFixture Fixture("BytecodeOpcodesMisc");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -171,7 +108,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 
 	TEST_METHOD(RetVariants_RET_RetWithValue)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeOpcodes_Private;
 		FBytecodeFixture Fixture("BytecodeOpcodesRet");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -188,7 +124,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 
 	TEST_METHOD(MathOps_AddInt_SubInt_MulInt_Float)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeOpcodes_Private;
 		FBytecodeFixture Fixture("BytecodeOpcodesMath");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -208,7 +143,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 
 	TEST_METHOD(CompareOps_CMPi_CMPf)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeOpcodes_Private;
 		FBytecodeFixture Fixture("BytecodeOpcodesCompare");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -226,7 +160,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 
 	TEST_METHOD(InstrSizeMatchesInfoTable)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeOpcodes_Private;
 		FBytecodeFixture Fixture("BytecodeOpcodesSize");
 		if (!Fixture.IsValid(*TestRunner))
 		{

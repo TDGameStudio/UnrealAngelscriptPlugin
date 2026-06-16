@@ -1,4 +1,5 @@
 #include "AngelscriptDebuggerScriptFixture.h"
+#include "AngelscriptTestEngineAcquisition.h"
 
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"

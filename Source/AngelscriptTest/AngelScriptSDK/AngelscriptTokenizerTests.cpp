@@ -1,3 +1,4 @@
+#include "AngelscriptNativeTestSupport.h"
 #include "CQTest.h"
 
 #include "StartAngelscriptHeaders.h"
@@ -7,13 +8,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace
-{
-	struct FTokenizerAccessor : asCTokenizer
-	{
-		using asCTokenizer::GetToken;
-	};
-}
+using namespace AngelscriptNativeTestSupport;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptTokenizerTests,

@@ -13,45 +13,13 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+using namespace AngelscriptNativeTestSupport;
+
 namespace
 {
-	struct FParserAccessor : asCParser
-	{
-		explicit FParserAccessor(asCBuilder* Builder)
-			: asCParser(Builder)
-		{
-		}
-
-		asCScriptNode* ParseExpressionSnippet(asCScriptCode* InScript)
-		{
-			Reset();
-			script = InScript;
-			return ParseExpression();
-		}
-
-		asCScriptNode* ParseAssignmentSnippet(asCScriptCode* InScript)
-		{
-			Reset();
-			script = InScript;
-			return ParseAssignment();
-		}
-
-		asCScriptNode* ParseConditionSnippet(asCScriptCode* InScript)
-		{
-			Reset();
-			script = InScript;
-			return ParseCondition();
-		}
-	};
-
-	asCModule* CreateModule(asCScriptEngine* ScriptEngine, const char* ModuleName)
-	{
-		return static_cast<asCModule*>(ScriptEngine->GetModule(ModuleName, asGM_ALWAYS_CREATE));
-	}
-
 	bool ParseExpression(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
-		asCModule* Module = CreateModule(ScriptEngine, ModuleName);
+		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Test.TestNotNull(FString::Printf(TEXT("%s should create a parser module"), UTF8_TO_TCHAR(ModuleName)), Module))
 		{
 			return false;
@@ -75,7 +43,7 @@ namespace
 
 	bool ParseAssignment(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
-		asCModule* Module = CreateModule(ScriptEngine, ModuleName);
+		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Test.TestNotNull(FString::Printf(TEXT("%s should create a parser module"), UTF8_TO_TCHAR(ModuleName)), Module))
 		{
 			return false;
@@ -99,7 +67,7 @@ namespace
 
 	bool ParseCondition(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
-		asCModule* Module = CreateModule(ScriptEngine, ModuleName);
+		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Test.TestNotNull(FString::Printf(TEXT("%s should create a parser module"), UTF8_TO_TCHAR(ModuleName)), Module))
 		{
 			return false;

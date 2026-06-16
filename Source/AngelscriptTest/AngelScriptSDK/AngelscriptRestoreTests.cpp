@@ -1,3 +1,4 @@
+#include "AngelscriptNativeTestSupport.h"
 #include "AngelscriptTestUtilities.h"
 #include "CQTest.h"
 #include "Misc/ScopeExit.h"
@@ -11,63 +12,10 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+using namespace AngelscriptNativeTestSupport;
+
 namespace
 {
-	class FMemoryBinaryStream final : public asIBinaryStream
-	{
-	public:
-		int Write(const void* Ptr, asUINT Size) override
-		{
-			if (Ptr == nullptr)
-			{
-				return asINVALID_ARG;
-			}
-
-			const int32 StartIndex = Bytes.Num();
-			Bytes.AddUninitialized(static_cast<int32>(Size));
-			FMemory::Memcpy(Bytes.GetData() + StartIndex, Ptr, static_cast<SIZE_T>(Size));
-			return asSUCCESS;
-		}
-
-		int Read(void* Ptr, asUINT Size) override
-		{
-			if (Ptr == nullptr)
-			{
-				return asINVALID_ARG;
-			}
-
-			const int32 RemainingBytes = Bytes.Num() - ReadOffset;
-			if (RemainingBytes < static_cast<int32>(Size))
-			{
-				return asERROR;
-			}
-
-			FMemory::Memcpy(Ptr, Bytes.GetData() + ReadOffset, static_cast<SIZE_T>(Size));
-			ReadOffset += static_cast<int32>(Size);
-			return asSUCCESS;
-		}
-
-		void ResetReadOffset()
-		{
-			ReadOffset = 0;
-		}
-
-		void Truncate(int32 NewSize)
-		{
-			Bytes.SetNum(FMath::Max(NewSize, 0), EAllowShrinking::No);
-			ReadOffset = FMath::Min(ReadOffset, Bytes.Num());
-		}
-
-		int32 Num() const
-		{
-			return Bytes.Num();
-		}
-
-	private:
-		TArray<uint8> Bytes;
-		int32 ReadOffset = 0;
-	};
-
 	asCModule* CreateRestoreModule(asCScriptEngine* ScriptEngine, const char* ModuleName)
 	{
 		return static_cast<asCModule*>(ScriptEngine->GetModule(ModuleName, asGM_ALWAYS_CREATE));

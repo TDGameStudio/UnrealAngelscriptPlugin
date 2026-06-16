@@ -4,38 +4,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace
-{
-	bool ContainsError(const AngelscriptNativeTestSupport::FNativeMessageCollector& Messages, const TCHAR* Needle)
-	{
-		for (const AngelscriptNativeTestSupport::FNativeMessageEntry& Entry : Messages.Entries)
-		{
-			if (Entry.Type == asMSGTYPE_ERROR && Entry.Message.Contains(Needle))
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	int CompileSnippet(const char* ModuleName, const char* Source, AngelscriptNativeTestSupport::FNativeMessageCollector& Messages)
-	{
-		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
-		if (ScriptEngine == nullptr)
-		{
-			return asERROR;
-		}
-
-		ON_SCOPE_EXIT
-		{
-			AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = nullptr;
-		return AngelscriptNativeTestSupport::CompileNativeModule(ScriptEngine, ModuleName, Source, Module);
-	}
-}
+using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceCompilerRejectTests,
 	"Angelscript.TestModule.AngelScriptSDK.Reference.CompilerReject",

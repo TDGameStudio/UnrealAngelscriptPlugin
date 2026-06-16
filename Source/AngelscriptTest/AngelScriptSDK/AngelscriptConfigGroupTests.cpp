@@ -1,4 +1,4 @@
-// AngelscriptASSDKConfigGroupTests.cpp
+// AngelscriptConfigGroupTests.cpp
 // Tests for as_configgroup.cpp - type registration group management.
 // Automation IDs: Angelscript.TestModule.AngelScriptSDK.ConfigGroup.*
 
@@ -10,13 +10,13 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace AngelscriptTest_ConfigGroup_Private
+namespace
 {
 	int ReturnNinetyNine() { return 99; }
 	int ReturnOne() { return 1; }
 }
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKConfigGroupTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptSDKConfigGroupTests,
 	"Angelscript.TestModule.AngelScriptSDK.ConfigGroup",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -30,7 +30,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKConfigGroupTests,
 		int R = SE->BeginConfigGroup("TestGroup");
 		TestRunner->TestTrue(TEXT("BeginConfigGroup should succeed"), R >= 0);
 
-		R = SE->RegisterGlobalFunction("int TestGroupFunc()", asFUNCTION(AngelscriptTest_ConfigGroup_Private::ReturnNinetyNine), asCALL_CDECL);
+		R = SE->RegisterGlobalFunction("int TestGroupFunc()", asFUNCTION(ReturnNinetyNine), asCALL_CDECL);
 		TestRunner->TestTrue(TEXT("Register in group should succeed"), R >= 0);
 
 		R = SE->EndConfigGroup();
@@ -49,7 +49,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKConfigGroupTests,
 		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
 
 		SE->BeginConfigGroup("RemovableGroup");
-		SE->RegisterGlobalFunction("int RemovableFunc()", asFUNCTION(AngelscriptTest_ConfigGroup_Private::ReturnOne), asCALL_CDECL);
+		SE->RegisterGlobalFunction("int RemovableFunc()", asFUNCTION(ReturnOne), asCALL_CDECL);
 		SE->EndConfigGroup();
 
 		int R = SE->RemoveConfigGroup("RemovableGroup");

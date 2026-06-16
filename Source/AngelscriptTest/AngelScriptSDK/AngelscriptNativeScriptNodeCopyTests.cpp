@@ -15,24 +15,13 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+using namespace AngelscriptNativeTestSupport;
+
 namespace
 {
-	struct FParserAccessor : asCParser
+	bool ParseCopyScript(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(FParserAccessor&, asCScriptNode&)> Verify)
 	{
-		explicit FParserAccessor(asCBuilder* Builder)
-			: asCParser(Builder)
-		{
-		}
-	};
-
-	asCModule* CreateModule(asCScriptEngine* ScriptEngine, const char* ModuleName)
-	{
-		return static_cast<asCModule*>(ScriptEngine->GetModule(ModuleName, asGM_ALWAYS_CREATE));
-	}
-
-	bool ParseScript(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(FParserAccessor&, asCScriptNode&)> Verify)
-	{
-		asCModule* Module = CreateModule(ScriptEngine, ModuleName);
+		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Test.TestNotNull(FString::Printf(TEXT("%s should create a script-node copy module"), UTF8_TO_TCHAR(ModuleName)), Module))
 		{
 			return false;
@@ -78,24 +67,6 @@ namespace
 		return true;
 	}
 
-	const asCScriptNode* FindFirstNodeOfType(const asCScriptNode* Node, const eScriptNode Type)
-	{
-		for (const asCScriptNode* Current = Node; Current != nullptr; Current = Current->next)
-		{
-			if (Current->nodeType == Type)
-			{
-				return Current;
-			}
-
-			if (const asCScriptNode* Child = FindFirstNodeOfType(Current->firstChild, Type))
-			{
-				return Child;
-			}
-		}
-
-		return nullptr;
-	}
-
 	int32 CountSiblings(const asCScriptNode* Node)
 	{
 		int32 Count = 0;
@@ -135,7 +106,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeCopyTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ScriptNodeCopyTypes", "int Value = 1; class FNode { int Read() { return Value; } }", [&](FParserAccessor& Parser, asCScriptNode& Root)
+		ParseCopyScript(*TestRunner, BareEngine, "ScriptNodeCopyTypes", "int Value = 1; class FNode { int Read() { return Value; } }", [&](FParserAccessor& Parser, asCScriptNode& Root)
 		{
 			asCScriptNode* Copy = Root.CreateCopy(Parser.MemStack, BareEngine);
 			if (!TestRunner->TestNotNull(TEXT("CreateCopy should duplicate the script root"), Copy))
@@ -156,7 +127,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeCopyTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ScriptNodeCopyOrdering", "int A = 1; int B = 2; int C = 3;", [&](FParserAccessor& Parser, asCScriptNode& Root)
+		ParseCopyScript(*TestRunner, BareEngine, "ScriptNodeCopyOrdering", "int A = 1; int B = 2; int C = 3;", [&](FParserAccessor& Parser, asCScriptNode& Root)
 		{
 			asCScriptNode* Copy = Root.CreateCopy(Parser.MemStack, BareEngine);
 			if (!TestRunner->TestNotNull(TEXT("CreateCopy should duplicate top-level declarations"), Copy))
@@ -180,7 +151,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeCopyTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ScriptNodeCopyRange", "\nint Value = 9;\n", [&](FParserAccessor& Parser, asCScriptNode& Root)
+		ParseCopyScript(*TestRunner, BareEngine, "ScriptNodeCopyRange", "\nint Value = 9;\n", [&](FParserAccessor& Parser, asCScriptNode& Root)
 		{
 			asCScriptNode* Copy = Root.CreateCopy(Parser.MemStack, BareEngine);
 			if (!TestRunner->TestNotNull(TEXT("CreateCopy should duplicate source ranges"), Copy))
@@ -211,7 +182,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeCopyTests,
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
 		const std::string Source = MakeDeepBlockSource(50);
-		ParseScript(*TestRunner, BareEngine, "ScriptNodeCopyDeepNesting", Source.c_str(), [&](FParserAccessor& Parser, asCScriptNode& Root)
+		ParseCopyScript(*TestRunner, BareEngine, "ScriptNodeCopyDeepNesting", Source.c_str(), [&](FParserAccessor& Parser, asCScriptNode& Root)
 		{
 			asCScriptNode* Copy = Root.CreateCopy(Parser.MemStack, BareEngine);
 			if (!TestRunner->TestNotNull(TEXT("CreateCopy should duplicate a deeply nested tree"), Copy))
@@ -233,7 +204,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeCopyTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ScriptNodeCopySiblings", "int A = 1; int B = 2; class FNode { } enum ENode { One }", [&](FParserAccessor& Parser, asCScriptNode& Root)
+		ParseCopyScript(*TestRunner, BareEngine, "ScriptNodeCopySiblings", "int A = 1; int B = 2; class FNode { } enum ENode { One }", [&](FParserAccessor& Parser, asCScriptNode& Root)
 		{
 			asCScriptNode* Copy = Root.CreateCopy(Parser.MemStack, BareEngine);
 			if (!TestRunner->TestNotNull(TEXT("CreateCopy should duplicate sibling traversal fixture"), Copy))
@@ -256,7 +227,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeCopyTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ScriptNodeCopyHistogram", "int A = 1; void Run() { if (A > 0) { A += 1; } }", [&](FParserAccessor& Parser, asCScriptNode& Root)
+		ParseCopyScript(*TestRunner, BareEngine, "ScriptNodeCopyHistogram", "int A = 1; void Run() { if (A > 0) { A += 1; } }", [&](FParserAccessor& Parser, asCScriptNode& Root)
 		{
 			asCScriptNode* Copy = Root.CreateCopy(Parser.MemStack, BareEngine);
 			if (!TestRunner->TestNotNull(TEXT("CreateCopy should duplicate histogram fixture"), Copy))
@@ -280,7 +251,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeCopyTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ScriptNodeCopyReattach", "int A = 1; int B = 2;", [&](FParserAccessor& Parser, asCScriptNode& Root)
+		ParseCopyScript(*TestRunner, BareEngine, "ScriptNodeCopyReattach", "int A = 1; int B = 2;", [&](FParserAccessor& Parser, asCScriptNode& Root)
 		{
 			asCScriptNode* Copy = Root.CreateCopy(Parser.MemStack, BareEngine);
 			if (!TestRunner->TestNotNull(TEXT("CreateCopy should duplicate reattach fixture"), Copy))

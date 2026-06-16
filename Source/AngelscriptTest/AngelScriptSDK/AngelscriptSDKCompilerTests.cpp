@@ -7,22 +7,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace AngelscriptNativeTestSupport;
-
-namespace
-{
-
-		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!Test.TestNotNull(TEXT("Compiler test should create a bool execution context"), Context))
-		{
-			return false;
-		}
-
-		const int ExecuteResult = PrepareAndExecute(Context, Function);
-		OutValue = Context->GetReturnByte() != 0;
-		Context->Release();
-		return Test.TestEqual(TEXT("Compiler test should finish bool execution successfully"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED));
-	}
-}
+using namespace AngelscriptSDKTestSupport;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKCompilerTests,

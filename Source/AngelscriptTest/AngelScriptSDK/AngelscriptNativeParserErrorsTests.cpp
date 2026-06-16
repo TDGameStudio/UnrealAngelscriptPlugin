@@ -13,29 +13,13 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+using namespace AngelscriptNativeTestSupport;
+
 namespace
 {
-	struct FParserAccessor : asCParser
-	{
-		explicit FParserAccessor(asCBuilder* Builder)
-			: asCParser(Builder)
-		{
-		}
-
-		void ResetParser()
-		{
-			Reset();
-		}
-	};
-
-	asCModule* CreateModule(asCScriptEngine* ScriptEngine, const char* ModuleName)
-	{
-		return static_cast<asCModule*>(ScriptEngine->GetModule(ModuleName, asGM_ALWAYS_CREATE));
-	}
-
 	int ParseScriptWithResult(asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source)
 	{
-		asCModule* Module = CreateModule(ScriptEngine, ModuleName);
+		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		asCBuilder Builder(ScriptEngine, Module);
 		Builder.silent = true;
 
@@ -125,7 +109,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserErrorsTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		asCModule* Module = CreateModule(BareEngine, "ParserErrorReset");
+		asCModule* Module = CreateSdkModule(BareEngine, "ParserErrorReset");
 		if (!TestRunner->TestNotNull(TEXT("Parser reset test should create a module"), Module))
 		{
 			return;

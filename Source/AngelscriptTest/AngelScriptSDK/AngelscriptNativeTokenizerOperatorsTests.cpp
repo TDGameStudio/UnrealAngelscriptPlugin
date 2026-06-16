@@ -1,3 +1,4 @@
+#include "AngelscriptNativeTestSupport.h"
 #include "CQTest.h"
 
 #include "StartAngelscriptHeaders.h"
@@ -7,13 +8,10 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_NativeTokenizerOperators_Private
-{
-	struct FTokenizerAccessor : asCTokenizer
-	{
-		using asCTokenizer::GetToken;
-	};
+using namespace AngelscriptNativeTestSupport;
 
+namespace
+{
 	struct FTokenCase
 	{
 		const char* Input;
@@ -43,7 +41,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 {
 	TEST_METHOD(ArithmeticOps_PlusMinusStarSlashPercent)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_NativeTokenizerOperators_Private;
 		const FTokenCase Cases[] = {
 			{ "+", ttPlus, 1, TEXT("Plus operator") },
 			{ "-", ttMinus, 1, TEXT("Minus operator") },
@@ -57,7 +54,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 
 	TEST_METHOD(BitwiseOps_AndOrXorNotShifts)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_NativeTokenizerOperators_Private;
 		const FTokenCase Cases[] = {
 			{ "&", ttAmp, 1, TEXT("Bitwise and operator") },
 			{ "|", ttBitOr, 1, TEXT("Bitwise or operator") },
@@ -72,7 +68,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 
 	TEST_METHOD(ComparisonOps_EqNeLtLeGtGe)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_NativeTokenizerOperators_Private;
 		const FTokenCase Cases[] = {
 			{ "==", ttEqual, 2, TEXT("Equality operator") },
 			{ "!=", ttNotEqual, 2, TEXT("Inequality operator") },
@@ -86,7 +81,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 
 	TEST_METHOD(LogicalOps_AndOrNot)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_NativeTokenizerOperators_Private;
 		const FTokenCase Cases[] = {
 			{ "&&", ttAnd, 2, TEXT("Logical and operator") },
 			{ "||", ttOr, 2, TEXT("Logical or operator") },
@@ -97,7 +91,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 
 	TEST_METHOD(AssignmentOps_PlainAndCompound)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_NativeTokenizerOperators_Private;
 		const FTokenCase Cases[] = {
 			{ "=", ttAssignment, 1, TEXT("Plain assignment operator") },
 			{ "+=", ttAddAssign, 2, TEXT("Add assignment operator") },
@@ -118,7 +111,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 
 	TEST_METHOD(IncrementDecrement)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_NativeTokenizerOperators_Private;
 		const FTokenCase Cases[] = {
 			{ "++", ttInc, 2, TEXT("Increment operator") },
 			{ "--", ttDec, 2, TEXT("Decrement operator") },
@@ -128,7 +120,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 
 	TEST_METHOD(Ternary_Question_Colon)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_NativeTokenizerOperators_Private;
 		const FTokenCase Cases[] = {
 			{ "?", ttQuestion, 1, TEXT("Ternary question token") },
 			{ ":", ttColon, 1, TEXT("Ternary colon token") },
@@ -138,7 +129,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 
 	TEST_METHOD(ScopeColonColonAndDot)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_NativeTokenizerOperators_Private;
 		const FTokenCase Cases[] = {
 			{ "::", ttScope, 2, TEXT("Scope operator") },
 			{ ".", ttDot, 1, TEXT("Dot operator") },
@@ -148,7 +138,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 
 	TEST_METHOD(HandleOpAt)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_NativeTokenizerOperators_Private;
 		FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 		const eTokenType TokenType = Tokenizer.GetToken("@", 1, &TokenLength);
@@ -159,7 +148,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 
 	TEST_METHOD(LongestMatchPrefersShiftRAOverShiftR)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_NativeTokenizerOperators_Private;
 		FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 

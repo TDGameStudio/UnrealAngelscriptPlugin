@@ -12,42 +12,10 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+	using namespace AngelscriptNativeTestSupport;
+
 	namespace
 	{
-		struct FParserAccessor : asCParser
-		{
-			explicit FParserAccessor(asCBuilder* Builder)
-				: asCParser(Builder)
-			{
-			}
-
-			void ResetParser()
-			{
-				Reset();
-			}
-
-			int ParseScriptSnippetWithoutImplicitReset(asCScriptCode* InScript)
-			{
-				script = InScript;
-				scriptNode = asCParser::ParseScript(false);
-				return errorWhileParsing ? -1 : 0;
-			}
-
-			asCScriptNode* ParseExpressionSnippet(asCScriptCode* InScript)
-			{
-				Reset();
-				script = InScript;
-				return ParseExpression();
-			}
-
-			asCScriptNode* ParseStatementSnippet(asCScriptCode* InScript)
-			{
-				Reset();
-				script = InScript;
-				return ParseStatement();
-			}
-		};
-
 		bool ContainsNodeType(const asCScriptNode* Node, eScriptNode ExpectedType)
 		{
 			for (const asCScriptNode* Current = Node; Current != nullptr; Current = Current->next)

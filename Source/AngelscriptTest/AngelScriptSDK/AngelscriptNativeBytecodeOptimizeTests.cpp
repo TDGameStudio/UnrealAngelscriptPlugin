@@ -10,70 +10,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_BytecodeOptimize_Private
-{
-	struct FBytecodeFixture
-	{
-		explicit FBytecodeFixture(const char* ModuleName)
-		{
-			Engine = AngelscriptNativeTestSupport::CreateBareSdkEngine();
-			if (Engine != nullptr)
-			{
-				Engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE, 1);
-			}
-
-			Module = Engine != nullptr ? static_cast<asCModule*>(Engine->GetModule(ModuleName, asGM_ALWAYS_CREATE)) : nullptr;
-			Builder = Module != nullptr ? new asCBuilder(Engine, Module) : nullptr;
-			ByteCode = Builder != nullptr ? new asCByteCode(Builder) : nullptr;
-		}
-
-		~FBytecodeFixture()
-		{
-			delete ByteCode;
-			delete Builder;
-			if (Engine != nullptr)
-			{
-				Engine->ShutDownAndRelease();
-			}
-		}
-
-		bool IsValid(FAutomationTestBase& Test) const
-		{
-			return Test.TestNotNull(TEXT("Bytecode optimize fixture should create a bare engine"), Engine)
-				&& Test.TestNotNull(TEXT("Bytecode optimize fixture should create a module"), Module)
-				&& Test.TestNotNull(TEXT("Bytecode optimize fixture should create a builder"), Builder)
-				&& Test.TestNotNull(TEXT("Bytecode optimize fixture should create bytecode"), ByteCode);
-		}
-
-		asCScriptEngine* Engine = nullptr;
-		asCModule* Module = nullptr;
-		asCBuilder* Builder = nullptr;
-		asCByteCode* ByteCode = nullptr;
-	};
-
-	int32 CountInstructions(asCByteCode& ByteCode)
-	{
-		int32 Count = 0;
-		for (const asCByteInstruction* Instruction = ByteCode.GetFirstInstr(); Instruction != nullptr; Instruction = Instruction->next)
-		{
-			++Count;
-		}
-		return Count;
-	}
-
-	bool ContainsOpcode(asCByteCode& ByteCode, const asEBCInstr Opcode)
-	{
-		for (const asCByteInstruction* Instruction = ByteCode.GetFirstInstr(); Instruction != nullptr; Instruction = Instruction->next)
-		{
-			if (Instruction->op == Opcode)
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
-}
+using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOptimizeTests,
 	"Angelscript.TestModule.AngelScriptSDK.Bytecode.Optimize",
@@ -81,8 +18,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOptimizeTests,
 {
 	TEST_METHOD(OptimizeReducesOrPreservesSize)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeOptimize_Private;
-		FBytecodeFixture Fixture("BytecodeOptimizeSize");
+		FBytecodeFixture Fixture("BytecodeOptimizeSize", true);
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -100,8 +36,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOptimizeTests,
 
 	TEST_METHOD(OptimizeKeepsSemanticHeadAndTail)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeOptimize_Private;
-		FBytecodeFixture Fixture("BytecodeOptimizeHeadTail");
+		FBytecodeFixture Fixture("BytecodeOptimizeHeadTail", true);
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -117,8 +52,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOptimizeTests,
 
 	TEST_METHOD(OutputBufferSizeMatchesGetSize)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeOptimize_Private;
-		FBytecodeFixture Fixture("BytecodeOptimizeOutputSize");
+		FBytecodeFixture Fixture("BytecodeOptimizeOutputSize", true);
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -134,8 +68,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOptimizeTests,
 
 	TEST_METHOD(OutputBufferRoundTripStable)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeOptimize_Private;
-		FBytecodeFixture Fixture("BytecodeOptimizeOutputStable");
+		FBytecodeFixture Fixture("BytecodeOptimizeOutputStable", true);
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -152,8 +85,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOptimizeTests,
 
 	TEST_METHOD(OutputAfterAppendIsContiguous)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeOptimize_Private;
-		FBytecodeFixture Fixture("BytecodeOptimizeAppendOutput");
+		FBytecodeFixture Fixture("BytecodeOptimizeAppendOutput", true);
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -173,8 +105,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOptimizeTests,
 
 	TEST_METHOD(EmptyByteCodeGetSizeIsZero)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeOptimize_Private;
-		FBytecodeFixture Fixture("BytecodeOptimizeEmpty");
+		FBytecodeFixture Fixture("BytecodeOptimizeEmpty", true);
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -187,8 +118,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOptimizeTests,
 
 	TEST_METHOD(LastInstrValueDwAfterMixedOps)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeOptimize_Private;
-		FBytecodeFixture Fixture("BytecodeOptimizeLastValue");
+		FBytecodeFixture Fixture("BytecodeOptimizeLastValue", true);
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -203,8 +133,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOptimizeTests,
 
 	TEST_METHOD(GetLastInstrTypeAfterRet)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeOptimize_Private;
-		FBytecodeFixture Fixture("BytecodeOptimizeLastRet");
+		FBytecodeFixture Fixture("BytecodeOptimizeLastRet", true);
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;

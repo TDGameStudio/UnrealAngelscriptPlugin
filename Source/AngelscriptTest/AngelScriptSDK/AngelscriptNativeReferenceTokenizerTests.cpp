@@ -8,13 +8,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace
-{
-	struct FTokenizerAccessor : asCTokenizer
-	{
-		using asCTokenizer::GetToken;
-	};
-}
+using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceTokenizerTests,
 	"Angelscript.TestModule.AngelScriptSDK.Reference.Tokenizer",

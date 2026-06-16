@@ -13,31 +13,13 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+using namespace AngelscriptNativeTestSupport;
+
 namespace
 {
-	struct FParserAccessor : asCParser
+	bool ParseShapeScript(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
-		explicit FParserAccessor(asCBuilder* Builder)
-			: asCParser(Builder)
-		{
-		}
-
-		asCScriptNode* ParseStatementSnippet(asCScriptCode* InScript)
-		{
-			Reset();
-			script = InScript;
-			return ParseStatement();
-		}
-	};
-
-	asCModule* CreateModule(asCScriptEngine* ScriptEngine, const char* ModuleName)
-	{
-		return static_cast<asCModule*>(ScriptEngine->GetModule(ModuleName, asGM_ALWAYS_CREATE));
-	}
-
-	bool ParseScript(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
-	{
-		asCModule* Module = CreateModule(ScriptEngine, ModuleName);
+		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Test.TestNotNull(FString::Printf(TEXT("%s should create a script-node module"), UTF8_TO_TCHAR(ModuleName)), Module))
 		{
 			return false;
@@ -66,7 +48,7 @@ namespace
 
 	bool ParseStatement(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
-		asCModule* Module = CreateModule(ScriptEngine, ModuleName);
+		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Test.TestNotNull(FString::Printf(TEXT("%s should create a statement parser module"), UTF8_TO_TCHAR(ModuleName)), Module))
 		{
 			return false;
@@ -111,7 +93,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ScriptNodeShapeFunction", "int Add(int A, int B) { return A + B; }", [&](const asCScriptNode& Root)
+		ParseShapeScript(*TestRunner, BareEngine, "ScriptNodeShapeFunction", "int Add(int A, int B) { return A + B; }", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestEqual(TEXT("Function script should produce one function node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snFunction), 1);
 			TestRunner->TestTrue(TEXT("Function node should carry return type, identifier, parameters, and block children"), CountDirectChildren(Root.firstChild) >= 4);
@@ -127,7 +109,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ScriptNodeShapeParameters", "void Visit(int A, float B, const string& in Name) { }", [&](const asCScriptNode& Root)
+		ParseShapeScript(*TestRunner, BareEngine, "ScriptNodeShapeParameters", "void Visit(int A, float B, const string& in Name) { }", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestEqual(TEXT("Parameter list should be represented once"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snParameterList), 1);
 			TestRunner->TestTrue(TEXT("Parameter list should include data type and identifier nodes"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snDataType) >= 4);
@@ -233,7 +215,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ScriptNodeShapeEnum", "enum EMode { Idle = 0, Run = 1, Jump }", [&](const asCScriptNode& Root)
+		ParseShapeScript(*TestRunner, BareEngine, "ScriptNodeShapeEnum", "enum EMode { Idle = 0, Run = 1, Jump }", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestEqual(TEXT("Enum declaration should produce one enum node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snEnum), 1);
 			TestRunner->TestTrue(TEXT("Enum declaration should keep enum and value identifiers"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snIdentifier) >= 4);
@@ -249,7 +231,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		asCModule* Module = CreateModule(BareEngine, "ScriptNodeShapeInterface");
+		asCModule* Module = CreateSdkModule(BareEngine, "ScriptNodeShapeInterface");
 		asCBuilder Builder(BareEngine, Module);
 		Builder.silent = true;
 		asCScriptCode Code;
@@ -267,7 +249,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseScript(*TestRunner, BareEngine, "ScriptNodeShapeImport", "import int SharedValue() from \"OtherModule\";", [&](const asCScriptNode& Root)
+		ParseShapeScript(*TestRunner, BareEngine, "ScriptNodeShapeImport", "import int SharedValue() from \"OtherModule\";", [&](const asCScriptNode& Root)
 		{
 			TestRunner->TestEqual(TEXT("Import declaration should produce one import node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snImport), 1);
 			TestRunner->TestTrue(TEXT("Import declaration should carry a function-definition subtree"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snDataType) >= 1 && AngelscriptNativeTestSupport::CountNodesOfType(&Root, snParameterList) >= 1);
@@ -283,7 +265,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		asCModule* Module = CreateModule(BareEngine, "ScriptNodeShapeFuncDef");
+		asCModule* Module = CreateSdkModule(BareEngine, "ScriptNodeShapeFuncDef");
 		asCBuilder Builder(BareEngine, Module);
 		Builder.silent = true;
 		asCScriptCode Code;
@@ -301,7 +283,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 		}
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		asCModule* Module = CreateModule(BareEngine, "ScriptNodeShapeTypedef");
+		asCModule* Module = CreateSdkModule(BareEngine, "ScriptNodeShapeTypedef");
 		asCBuilder Builder(BareEngine, Module);
 		Builder.silent = true;
 		asCScriptCode Code;
@@ -322,7 +304,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 		// Virtual-property syntax `int X { get { ... } set { } }` was removed by the
 		// autoaccessor refactor (see openspec/changes/archive/2026-05-22-refactor-as-remove-autoaccessor).
 		// The parser now rejects this form, so no virtual-property script-node shape exists to inspect.
-		asCModule* Module = CreateModule(BareEngine, "ScriptNodeShapeVirtualProperty");
+		asCModule* Module = CreateSdkModule(BareEngine, "ScriptNodeShapeVirtualProperty");
 		asCBuilder Builder(BareEngine, Module);
 		Builder.silent = true;
 		asCScriptCode Code;

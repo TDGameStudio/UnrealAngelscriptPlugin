@@ -10,42 +10,10 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_BytecodeJumps_Private
+using namespace AngelscriptNativeTestSupport;
+
+namespace
 {
-	struct FBytecodeFixture
-	{
-		explicit FBytecodeFixture(const char* ModuleName)
-		{
-			Engine = AngelscriptNativeTestSupport::CreateBareSdkEngine();
-			Module = Engine != nullptr ? static_cast<asCModule*>(Engine->GetModule(ModuleName, asGM_ALWAYS_CREATE)) : nullptr;
-			Builder = Module != nullptr ? new asCBuilder(Engine, Module) : nullptr;
-			ByteCode = Builder != nullptr ? new asCByteCode(Builder) : nullptr;
-		}
-
-		~FBytecodeFixture()
-		{
-			delete ByteCode;
-			delete Builder;
-			if (Engine != nullptr)
-			{
-				Engine->ShutDownAndRelease();
-			}
-		}
-
-		bool IsValid(FAutomationTestBase& Test) const
-		{
-			return Test.TestNotNull(TEXT("Bytecode jump fixture should create a bare engine"), Engine)
-				&& Test.TestNotNull(TEXT("Bytecode jump fixture should create a module"), Module)
-				&& Test.TestNotNull(TEXT("Bytecode jump fixture should create a builder"), Builder)
-				&& Test.TestNotNull(TEXT("Bytecode jump fixture should create bytecode"), ByteCode);
-		}
-
-		asCScriptEngine* Engine = nullptr;
-		asCModule* Module = nullptr;
-		asCBuilder* Builder = nullptr;
-		asCByteCode* ByteCode = nullptr;
-	};
-
 	const asCByteInstruction* FindOpcode(const asCByteCode& ByteCode, const asEBCInstr Opcode)
 	{
 		for (const asCByteInstruction* Instruction = const_cast<asCByteCode&>(ByteCode).GetFirstInstr(); Instruction != nullptr; Instruction = Instruction->next)
@@ -66,7 +34,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeJumpsTests,
 {
 	TEST_METHOD(ForwardJumpResolves)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeJumps_Private;
 		FBytecodeFixture Fixture("BytecodeJumpForward");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -89,7 +56,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeJumpsTests,
 
 	TEST_METHOD(BackwardJumpResolves)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeJumps_Private;
 		FBytecodeFixture Fixture("BytecodeJumpBackward");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -112,7 +78,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeJumpsTests,
 
 	TEST_METHOD(MultipleLabelsResolveIndependently)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeJumps_Private;
 		FBytecodeFixture Fixture("BytecodeJumpMultiple");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -133,7 +98,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeJumpsTests,
 
 	TEST_METHOD(JumpToUnresolvedLabelReturnsError)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeJumps_Private;
 		FBytecodeFixture Fixture("BytecodeJumpUnresolved");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -148,7 +112,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeJumpsTests,
 
 	TEST_METHOD(JumpAcrossAddedSequences)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_BytecodeJumps_Private;
 		FBytecodeFixture Fixture("BytecodeJumpAddedSequences");
 		if (!Fixture.IsValid(*TestRunner))
 		{

@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/ScopeExit.h"
 
 #include <cstring>
 
@@ -346,6 +347,24 @@ namespace AngelscriptNativeTestSupport
 		return Count;
 	}
 
+	inline const asCScriptNode* FindFirstNodeOfType(const asCScriptNode* Node, const eScriptNode Type)
+	{
+		for (const asCScriptNode* Current = Node; Current != nullptr; Current = Current->next)
+		{
+			if (Current->nodeType == Type)
+			{
+				return Current;
+			}
+
+			if (const asCScriptNode* Child = FindFirstNodeOfType(Current->firstChild, Type))
+			{
+				return Child;
+			}
+		}
+
+		return nullptr;
+	}
+
 	inline TMap<eScriptNode, int32> NodeTypeHistogram(const asCScriptNode* Node)
 	{
 		TMap<eScriptNode, int32> Histogram;
@@ -428,5 +447,239 @@ namespace AngelscriptNativeTestSupport
 		Buffer.SetNumZeroed(Size);
 		ByteCode.Output(Buffer.GetData());
 		return Buffer;
+	}
+
+	// -------------------------------------------------------------------------
+	// Shared SDK test accessors
+	// -------------------------------------------------------------------------
+	// These helper types were previously duplicated (with identical or
+	// near-identical bodies) across many AngelScriptSDK test files, each wrapped
+	// in a uniquely-named namespace to avoid Unity Build collisions. They are
+	// consolidated here so every test can share a single definition.
+
+	// Exposes asCTokenizer::GetToken for tokenizer tests.
+	struct FTokenizerAccessor : asCTokenizer
+	{
+		using asCTokenizer::GetToken;
+	};
+
+	// Creates (or replaces) a module on the given bare SDK engine.
+	inline asCModule* CreateSdkModule(asCScriptEngine* ScriptEngine, const char* ModuleName)
+	{
+		return static_cast<asCModule*>(ScriptEngine->GetModule(ModuleName, asGM_ALWAYS_CREATE));
+	}
+
+	// Superset parser accessor: exposes every snippet-parse helper that the
+	// individual parser/script-node tests need. Methods unused by a given test
+	// are simply never called.
+	struct FParserAccessor : asCParser
+	{
+		explicit FParserAccessor(asCBuilder* Builder)
+			: asCParser(Builder)
+		{
+		}
+
+		void ResetParser()
+		{
+			Reset();
+		}
+
+		asCScriptNode* ParseExpressionSnippet(asCScriptCode* InScript)
+		{
+			Reset();
+			script = InScript;
+			return ParseExpression();
+		}
+
+		asCScriptNode* ParseAssignmentSnippet(asCScriptCode* InScript)
+		{
+			Reset();
+			script = InScript;
+			return ParseAssignment();
+		}
+
+		asCScriptNode* ParseConditionSnippet(asCScriptCode* InScript)
+		{
+			Reset();
+			script = InScript;
+			return ParseCondition();
+		}
+
+		asCScriptNode* ParseStatementSnippet(asCScriptCode* InScript)
+		{
+			Reset();
+			script = InScript;
+			return ParseStatement();
+		}
+
+		int ParseScriptSnippetWithoutImplicitReset(asCScriptCode* InScript)
+		{
+			script = InScript;
+			scriptNode = asCParser::ParseScript(false);
+			return errorWhileParsing ? -1 : 0;
+		}
+	};
+
+	// Shared bytecode test fixture: owns a bare engine, module, builder, and an
+	// empty asCByteCode. Pass bOptimize=true to enable bytecode optimization.
+	// Previously duplicated across the bytecode test files.
+	struct FBytecodeFixture
+	{
+		explicit FBytecodeFixture(const char* ModuleName, bool bOptimize = false)
+		{
+			Engine = CreateBareSdkEngine();
+			if (Engine != nullptr && bOptimize)
+			{
+				Engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE, 1);
+			}
+
+			Module = Engine != nullptr ? static_cast<asCModule*>(Engine->GetModule(ModuleName, asGM_ALWAYS_CREATE)) : nullptr;
+			Builder = Module != nullptr ? new asCBuilder(Engine, Module) : nullptr;
+			ByteCode = Builder != nullptr ? new asCByteCode(Builder) : nullptr;
+		}
+
+		~FBytecodeFixture()
+		{
+			delete ByteCode;
+			delete Builder;
+			if (Engine != nullptr)
+			{
+				Engine->ShutDownAndRelease();
+			}
+		}
+
+		bool IsValid(FAutomationTestBase& Test) const
+		{
+			return Test.TestNotNull(TEXT("Bytecode fixture should create a bare engine"), Engine)
+				&& Test.TestNotNull(TEXT("Bytecode fixture should create a module"), Module)
+				&& Test.TestNotNull(TEXT("Bytecode fixture should create a builder"), Builder)
+				&& Test.TestNotNull(TEXT("Bytecode fixture should create bytecode"), ByteCode);
+		}
+
+		asCScriptEngine* Engine = nullptr;
+		asCModule* Module = nullptr;
+		asCBuilder* Builder = nullptr;
+		asCByteCode* ByteCode = nullptr;
+	};
+
+	inline int32 CountInstructions(asCByteCode& ByteCode)
+	{
+		int32 Count = 0;
+		for (const asCByteInstruction* Instruction = ByteCode.GetFirstInstr(); Instruction != nullptr; Instruction = Instruction->next)
+		{
+			++Count;
+		}
+		return Count;
+	}
+
+	inline bool ContainsOpcode(asCByteCode& ByteCode, const asEBCInstr Opcode)
+	{
+		for (const asCByteInstruction* Instruction = ByteCode.GetFirstInstr(); Instruction != nullptr; Instruction = Instruction->next)
+		{
+			if (Instruction->op == Opcode)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	// Shared in-memory binary stream for SaveByteCode/LoadByteCode round-trip
+	// tests. Exposes both Truncate(NewSize) and TruncateBy(BytesToRemove) so it
+	// covers every caller previously using a per-file copy.
+	class FMemoryBinaryStream final : public asIBinaryStream
+	{
+	public:
+		int Write(const void* Ptr, asUINT Size) override
+		{
+			if (Ptr == nullptr)
+			{
+				return asINVALID_ARG;
+			}
+
+			const int32 Start = Bytes.Num();
+			Bytes.AddUninitialized(static_cast<int32>(Size));
+			FMemory::Memcpy(Bytes.GetData() + Start, Ptr, static_cast<SIZE_T>(Size));
+			return asSUCCESS;
+		}
+
+		int Read(void* Ptr, asUINT Size) override
+		{
+			if (Ptr == nullptr)
+			{
+				return asINVALID_ARG;
+			}
+
+			if (Bytes.Num() - ReadOffset < static_cast<int32>(Size))
+			{
+				return asERROR;
+			}
+
+			FMemory::Memcpy(Ptr, Bytes.GetData() + ReadOffset, static_cast<SIZE_T>(Size));
+			ReadOffset += static_cast<int32>(Size);
+			return asSUCCESS;
+		}
+
+		void ResetReadOffset()
+		{
+			ReadOffset = 0;
+		}
+
+		// Remove a fixed number of bytes from the end.
+		void TruncateBy(int32 BytesToRemove)
+		{
+			Bytes.SetNum(FMath::Max(0, Bytes.Num() - BytesToRemove), EAllowShrinking::No);
+			ReadOffset = FMath::Min(ReadOffset, Bytes.Num());
+		}
+
+		// Shrink the buffer to an absolute size.
+		void Truncate(int32 NewSize)
+		{
+			Bytes.SetNum(FMath::Max(NewSize, 0), EAllowShrinking::No);
+			ReadOffset = FMath::Min(ReadOffset, Bytes.Num());
+		}
+
+		int32 Num() const
+		{
+			return Bytes.Num();
+		}
+
+	private:
+		TArray<uint8> Bytes;
+		int32 ReadOffset = 0;
+	};
+
+	// Returns true if the collector captured an error message containing Needle.
+	inline bool ContainsError(const FNativeMessageCollector& Messages, const TCHAR* Needle)
+	{
+		for (const FNativeMessageEntry& Entry : Messages.Entries)
+		{
+			if (Entry.Type == asMSGTYPE_ERROR && Entry.Message.Contains(Needle))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	// Compiles a snippet on a throwaway native engine and returns the build code,
+	// capturing diagnostics into Messages. The engine is destroyed before return.
+	inline int CompileSnippet(const char* ModuleName, const char* Source, FNativeMessageCollector& Messages)
+	{
+		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		if (ScriptEngine == nullptr)
+		{
+			return asERROR;
+		}
+
+		ON_SCOPE_EXIT
+		{
+			DestroyNativeEngine(ScriptEngine);
+		};
+
+		asIScriptModule* Module = nullptr;
+		return CompileNativeModule(ScriptEngine, ModuleName, Source, Module);
 	}
 }
