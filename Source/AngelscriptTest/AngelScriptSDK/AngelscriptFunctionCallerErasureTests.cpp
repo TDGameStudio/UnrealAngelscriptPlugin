@@ -6,7 +6,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_AngelscriptFunctionCallerErasureTests_Private
+namespace
 {
 	struct FConstRefQualifiedProbe
 	{
@@ -35,7 +35,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionCallerErasureTests,
 {
 	TEST_METHOD(ConstRefQualifiedMethodCaller)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptFunctionCallerErasureTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 

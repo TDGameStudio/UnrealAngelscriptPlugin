@@ -7,7 +7,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_AngelScriptSDK_AngelscriptContextPoolTests_Private
+namespace
 {
 	struct FContextPoolEngineStackGuard
 	{
@@ -75,7 +75,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptContextPoolTests,
 {
 	TEST_METHOD(ReuseAndResetPerEngine)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptContextPoolTests_Private;
 		FContextPoolEngineStackGuard ContextStackGuard;
 
 		const FAngelscriptEngineConfig Config;

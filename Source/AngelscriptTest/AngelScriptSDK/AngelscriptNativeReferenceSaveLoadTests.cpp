@@ -4,7 +4,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_ReferenceSaveLoad_Private
+namespace
 {
 	class FMemoryBinaryStream final : public asIBinaryStream
 	{
@@ -95,7 +95,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceSaveLoadTests,
 {
 	TEST_METHOD(RoundTripPreservesFunctionDeclarations)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ReferenceSaveLoad_Private;
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		if (!TestRunner->TestNotNull(TEXT("Reference save/load roundtrip should create a native engine"), ScriptEngine))
@@ -160,7 +159,6 @@ int Entry()
 
 	TEST_METHOD(StripDebugInfoReportsStrippedFlag)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ReferenceSaveLoad_Private;
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		if (!TestRunner->TestNotNull(TEXT("Reference stripped save/load should create a native engine"), ScriptEngine))
@@ -199,7 +197,6 @@ int Entry()
 
 	TEST_METHOD(TruncatedStreamFailsThenCompleteStreamStillLoads)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ReferenceSaveLoad_Private;
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		if (!TestRunner->TestNotNull(TEXT("Reference truncated save/load should create a native engine"), ScriptEngine))
@@ -255,7 +252,6 @@ int Entry()
 
 	TEST_METHOD(MultipleFunctionsRemainResolvableAfterLoad)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ReferenceSaveLoad_Private;
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		if (!TestRunner->TestNotNull(TEXT("Reference multi-function save/load should create a native engine"), ScriptEngine))

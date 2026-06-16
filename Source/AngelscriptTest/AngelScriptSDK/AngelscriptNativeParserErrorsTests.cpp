@@ -13,7 +13,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_ParserErrors_Private
+namespace
 {
 	struct FParserAccessor : asCParser
 	{
@@ -53,7 +53,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserErrorsTests,
 {
 	TEST_METHOD(MissingSemicolonRecovers)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ParserErrors_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("Parser error test should create a bare engine"), BareEngine))
 		{
@@ -67,7 +66,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserErrorsTests,
 
 	TEST_METHOD(UnbalancedBracesError)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ParserErrors_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("Parser error test should create a bare engine"), BareEngine))
 		{
@@ -81,7 +79,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserErrorsTests,
 
 	TEST_METHOD(UnclosedStringInDeclaration)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ParserErrors_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("Parser error test should create a bare engine"), BareEngine))
 		{
@@ -95,7 +92,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserErrorsTests,
 
 	TEST_METHOD(BadOperatorSequenceError)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ParserErrors_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("Parser error test should create a bare engine"), BareEngine))
 		{
@@ -109,7 +105,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserErrorsTests,
 
 	TEST_METHOD(BadParameterListError)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ParserErrors_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("Parser error test should create a bare engine"), BareEngine))
 		{
@@ -123,7 +118,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserErrorsTests,
 
 	TEST_METHOD(ResetClearsErrorState)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ParserErrors_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("Parser error test should create a bare engine"), BareEngine))
 		{
@@ -154,7 +148,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserErrorsTests,
 
 	TEST_METHOD(MultipleErrorsAccumulated)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ParserErrors_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("Parser error test should create a bare engine"), BareEngine))
 		{

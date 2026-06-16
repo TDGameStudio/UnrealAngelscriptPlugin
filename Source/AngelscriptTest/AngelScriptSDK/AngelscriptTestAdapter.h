@@ -11,9 +11,9 @@
 
 namespace AngelscriptSDKTestSupport
 {
-	inline constexpr asPWORD ASSDKAdapterUserDataSlot = static_cast<asPWORD>(0x415353444B415054ull);
+	inline constexpr asPWORD SDKAdapterUserDataSlot = static_cast<asPWORD>(0x415353444B415054ull);
 
-	struct FASSDKBufferedOutStream
+	struct FSDKBufferedOutStream
 	{
 		std::string Buffer;
 
@@ -60,7 +60,7 @@ namespace AngelscriptSDKTestSupport
 		}
 	};
 
-	class FASSDKBytecodeStream final : public asIBinaryStream
+	class FSDKBytecodeStream final : public asIBinaryStream
 	{
 	public:
 		int Write(const void* Ptr, asUINT Size) override
@@ -172,14 +172,14 @@ namespace AngelscriptSDKTestSupport
 		bool bFailed = false;
 	};
 
-	inline FAngelscriptSDKTestAdapter* GetASSDKAdapter(asIScriptEngine* Engine)
+	inline FAngelscriptSDKTestAdapter* GetSDKAdapter(asIScriptEngine* Engine)
 	{
 		return Engine != nullptr
-			? static_cast<FAngelscriptSDKTestAdapter*>(Engine->GetUserData(ASSDKAdapterUserDataSlot))
+			? static_cast<FAngelscriptSDKTestAdapter*>(Engine->GetUserData(SDKAdapterUserDataSlot))
 			: nullptr;
 	}
 
-	inline void ASSDKAssert_Generic(asIScriptGeneric* Generic)
+	inline void SDKAssert_Generic(asIScriptGeneric* Generic)
 	{
 		if (Generic == nullptr)
 		{
@@ -196,9 +196,9 @@ namespace AngelscriptSDKTestSupport
 		}
 
 		asIScriptContext* Context = asGetActiveContext();
-		if (FAngelscriptSDKTestAdapter* Adapter = GetASSDKAdapter(Generic->GetEngine()))
+		if (FAngelscriptSDKTestAdapter* Adapter = GetSDKAdapter(Generic->GetEngine()))
 		{
-			Adapter->FailWithContext(TEXT("ASSDK Assert(false) triggered"), Context, __FILE__, __LINE__);
+			Adapter->FailWithContext(TEXT("SDK Assert(false) triggered"), Context, __FILE__, __LINE__);
 		}
 
 		if (Context != nullptr)
@@ -207,24 +207,24 @@ namespace AngelscriptSDKTestSupport
 		}
 	}
 
-	inline int RegisterASSDKAssert(asIScriptEngine* Engine, FAngelscriptSDKTestAdapter& Adapter)
+	inline int RegisterSDKAssert(asIScriptEngine* Engine, FAngelscriptSDKTestAdapter& Adapter)
 	{
 		if (Engine == nullptr)
 		{
-			Adapter.Fail(TEXT("RegisterASSDKAssert requires a valid script engine"), __FILE__, __LINE__);
+			Adapter.Fail(TEXT("RegisterSDKAssert requires a valid script engine"), __FILE__, __LINE__);
 			return asINVALID_ARG;
 		}
 
-		Engine->SetUserData(&Adapter, ASSDKAdapterUserDataSlot);
-		return Engine->RegisterGlobalFunction("void assert(bool bCondition)", asFUNCTION(ASSDKAssert_Generic), asCALL_GENERIC);
+		Engine->SetUserData(&Adapter, SDKAdapterUserDataSlot);
+		return Engine->RegisterGlobalFunction("void assert(bool bCondition)", asFUNCTION(SDKAssert_Generic), asCALL_GENERIC);
 	}
 
-	inline asIScriptEngine* CreateASSDKTestEngine(FAngelscriptSDKTestAdapter& Adapter, FASSDKBufferedOutStream* BufferedOutStream = nullptr)
+	inline asIScriptEngine* CreateSDKTestEngine(FAngelscriptSDKTestAdapter& Adapter, FSDKBufferedOutStream* BufferedOutStream = nullptr)
 	{
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine();
 		if (ScriptEngine == nullptr)
 		{
-			Adapter.Fail(TEXT("CreateASSDKTestEngine should create a standalone AngelScript engine"), __FILE__, __LINE__);
+			Adapter.Fail(TEXT("CreateSDKTestEngine should create a standalone AngelScript engine"), __FILE__, __LINE__);
 			return nullptr;
 		}
 
@@ -232,22 +232,22 @@ namespace AngelscriptSDKTestSupport
 		{
 			BufferedOutStream->Clear();
 			const int CallbackResult = ScriptEngine->SetMessageCallback(
-				asMETHODPR(FASSDKBufferedOutStream, Callback, (asSMessageInfo*), void),
+				asMETHODPR(FSDKBufferedOutStream, Callback, (asSMessageInfo*), void),
 				BufferedOutStream,
 				asCALL_THISCALL);
 			if (CallbackResult < 0)
 			{
-				Adapter.Fail(TEXT("CreateASSDKTestEngine should install the buffered output callback"), __FILE__, __LINE__);
+				Adapter.Fail(TEXT("CreateSDKTestEngine should install the buffered output callback"), __FILE__, __LINE__);
 				AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine);
 				return nullptr;
 			}
 		}
 
-		const int RegisterResult = RegisterASSDKAssert(ScriptEngine, Adapter);
+		const int RegisterResult = RegisterSDKAssert(ScriptEngine, Adapter);
 		if (RegisterResult < 0)
 		{
 			Adapter.Fail(
-				FString::Printf(TEXT("CreateASSDKTestEngine should register script-side Assert(bool) (RegisterResult=%d)"), RegisterResult),
+				FString::Printf(TEXT("CreateSDKTestEngine should register script-side Assert(bool) (RegisterResult=%d)"), RegisterResult),
 				__FILE__,
 				__LINE__);
 			AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine);
@@ -257,7 +257,7 @@ namespace AngelscriptSDKTestSupport
 		return ScriptEngine;
 	}
 
-	inline int ASSDKExecuteString(asIScriptEngine* Engine, asIScriptModule* Module, const char* Code)
+	inline int SDKExecuteString(asIScriptEngine* Engine, asIScriptModule* Module, const char* Code)
 	{
 		if (Engine == nullptr || Module == nullptr || Code == nullptr)
 		{
@@ -266,11 +266,11 @@ namespace AngelscriptSDKTestSupport
 
 		const bool bLooksLikeStatementSnippet = std::strchr(Code, '{') == nullptr;
 		const FString SourceText = bLooksLikeStatementSnippet
-			? FString::Printf(TEXT("void __ASSDKExecuteString() { %s }"), ANSI_TO_TCHAR(Code))
+			? FString::Printf(TEXT("void __SDKExecuteString() { %s }"), ANSI_TO_TCHAR(Code))
 			: FString(ANSI_TO_TCHAR(Code));
 		const FTCHARToUTF8 SourceTextUtf8(*SourceText);
 
-		const int AddSectionResult = Module->AddScriptSection("ASSDKExecuteString", SourceTextUtf8.Get(), SourceTextUtf8.Length());
+		const int AddSectionResult = Module->AddScriptSection("SDKExecuteString", SourceTextUtf8.Get(), SourceTextUtf8.Length());
 		if (AddSectionResult < 0)
 		{
 			return AddSectionResult;
@@ -285,7 +285,7 @@ namespace AngelscriptSDKTestSupport
 		asIScriptFunction* Function = nullptr;
 		if (bLooksLikeStatementSnippet)
 		{
-			Function = Module->GetFunctionByDecl("void __ASSDKExecuteString()");
+			Function = Module->GetFunctionByDecl("void __SDKExecuteString()");
 		}
 		else if (Module->GetFunctionCount() == 1)
 		{
@@ -310,7 +310,7 @@ namespace AngelscriptSDKTestSupport
 		return ExecuteResult;
 	}
 
-	inline int ASSDKExecuteString(asIScriptEngine* Engine, const char* Code)
+	inline int SDKExecuteString(asIScriptEngine* Engine, const char* Code)
 	{
 		if (Engine == nullptr || Code == nullptr)
 		{
@@ -318,11 +318,11 @@ namespace AngelscriptSDKTestSupport
 		}
 
 		asIScriptModule* Module = Engine->GetModule("_assdk_exec_", asGM_ALWAYS_CREATE);
-		return ASSDKExecuteString(Engine, Module, Code);
+		return SDKExecuteString(Engine, Module, Code);
 	}
 }
 
-#define ASSDK_TEST_FAILED(Adapter, Reason) \
+#define SDK_TEST_FAILED(Adapter, Reason) \
 	do \
 	{ \
 		(Adapter).Fail((Reason), __FILE__, __LINE__); \

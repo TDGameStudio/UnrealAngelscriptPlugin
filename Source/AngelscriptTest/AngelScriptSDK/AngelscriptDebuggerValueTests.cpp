@@ -14,7 +14,7 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
-namespace AngelscriptTest_AngelScriptSDK_AngelscriptDebuggerValueTests_Private
+namespace
 {
 	asITypeInfo* FindScriptTypeInfoForClass(
 		FAutomationTestBase& Test,
@@ -123,7 +123,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerValueTests,
 {
 	TEST_METHOD(GetterPropertyTracking)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptDebuggerValueTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		static const FName ModuleName(TEXT("InternalsDebuggerValueGetterTracking"));
@@ -237,7 +236,6 @@ class ADebuggerValueGetterProbe : AActor
 
 	TEST_METHOD(FunctionEvaluationGuards)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptDebuggerValueTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		static const FName ModuleName(TEXT("InternalsDebuggerValueFunctionEvaluationGuards"));
@@ -403,7 +401,6 @@ class UDebuggerValueGuardProbe : UObject
 
 	TEST_METHOD(InheritedGetterTracksBasePropertyAddress)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptDebuggerValueTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		static const FName ModuleName(TEXT("InternalsDebuggerValueInheritedGetterTracking"));

@@ -4,7 +4,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_ReferenceCompilerReject_Private
+namespace
 {
 	bool ContainsError(const AngelscriptNativeTestSupport::FNativeMessageCollector& Messages, const TCHAR* Needle)
 	{
@@ -43,7 +43,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceCompilerRejectTests,
 {
 	TEST_METHOD(InvalidConstObjectAssignmentReportsTypeMismatch)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ReferenceCompilerReject_Private;
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		const int CompileResult = CompileSnippet("ReferenceCompilerConstObjectAssignment", R"(
 class Foo
@@ -63,7 +62,6 @@ void Main()
 
 	TEST_METHOD(OutOfScopeLocalReferenceReportsIdentifier)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ReferenceCompilerReject_Private;
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		const int CompileResult = CompileSnippet("ReferenceCompilerOutOfScopeLocal", R"(
 int Entry()
@@ -82,7 +80,6 @@ int Entry()
 
 	TEST_METHOD(UnknownFunctionCallReportsMissingSymbol)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ReferenceCompilerReject_Private;
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		const int CompileResult = CompileSnippet("ReferenceCompilerUnknownCall", R"(
 void Entry()
@@ -98,7 +95,6 @@ void Entry()
 
 	TEST_METHOD(ReturnObjectFromIntFunctionIsRejected)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ReferenceCompilerReject_Private;
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		const int CompileResult = CompileSnippet("ReferenceCompilerReturnObjectAsInt", R"(
 class Foo
@@ -119,7 +115,6 @@ int Entry()
 
 	TEST_METHOD(LongIdentifierAssignmentReportsDiagnosticWithoutCrash)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ReferenceCompilerReject_Private;
 		const FString LongIdentifier = FString::ChrN(400, TEXT('a'));
 		const FString Source = FString::Printf(TEXT(R"(
 void Entry()

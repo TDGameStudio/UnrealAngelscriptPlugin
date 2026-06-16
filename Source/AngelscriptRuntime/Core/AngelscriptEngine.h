@@ -102,30 +102,66 @@ struct FInterfaceMethodSignature
 	FName FunctionName;
 };
 
+USTRUCT()
 struct ANGELSCRIPTRUNTIME_API FAngelscriptEngineConfig
 {
+	GENERATED_BODY()
+
+	UPROPERTY()
 	bool bForceThreadedInitialize = false;
+
+	UPROPERTY()
 	bool bSkipThreadedInitialize = false;
+
 	// When true, FAngelscriptEngine::Create routes to InitializeWithoutInitialCompile()
 	// (binds + runtime services, but no on-disk script scan / initial compile).
 	// Default false reflects the production path (full Initialize). Test fixtures
 	// set this via FAngelscriptTestEngine::Create; AngelscriptEditor tests set it
 	// inline before calling FAngelscriptEngine::Create. See OpenSpec
 	// `refactor-as-engine-clone-removal` D8 / Section 7.
+	UPROPERTY()
 	bool bSkipInitialCompile = false;
+
+	UPROPERTY()
 	bool bSimulateCooked = false;
+
+	UPROPERTY()
 	bool bTestErrors = false;
+
+	UPROPERTY()
 	bool bForcePreprocessEditorCode = false;
+
+	UPROPERTY()
 	bool bGeneratePrecompiledData = false;
+
+	UPROPERTY()
 	bool bDevelopmentMode = false;
+
+	UPROPERTY()
 	bool bIgnorePrecompiledData = false;
+
+	UPROPERTY()
 	bool bSkipWriteBindDB = false;
+
+	UPROPERTY()
 	bool bWriteBindDB = false;
+
+	UPROPERTY()
 	bool bExitOnError = false;
+
+	UPROPERTY()
 	bool bDumpDocumentation = false;
+
+	UPROPERTY()
 	int32 DebugServerPort = 27099;
+
+	UPROPERTY()
 	bool bIsEditor = false;
+
+	UPROPERTY()
 	bool bRunningCommandlet = false;
+
+	UPROPERTY()
 	TSet<FName> DisabledBindNames;
 
 	static FAngelscriptEngineConfig FromCurrentProcess();

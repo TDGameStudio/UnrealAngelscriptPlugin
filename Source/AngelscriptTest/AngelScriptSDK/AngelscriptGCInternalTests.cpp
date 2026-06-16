@@ -9,7 +9,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_AngelscriptGCInternalTests_Private
+namespace
 {
 	struct FGCProbeObject;
 
@@ -238,7 +238,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGCInternalTests,
 {
 	TEST_METHOD(Statistics)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptGCInternalTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asCGarbageCollector Collector;
@@ -261,7 +260,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGCInternalTests,
 
 	TEST_METHOD(EmptyCollect)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptGCInternalTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asCGarbageCollector Collector;
@@ -274,7 +272,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGCInternalTests,
 
 	TEST_METHOD(InvalidLookup)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptGCInternalTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asCGarbageCollector Collector;
@@ -294,7 +291,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGCInternalTests,
 
 	TEST_METHOD(ReportUndestroyedEmpty)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptGCInternalTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asCGarbageCollector Collector;
@@ -307,7 +303,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGCInternalTests,
 
 	TEST_METHOD(ManualCycleCollection)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptGCInternalTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
@@ -341,7 +336,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGCInternalTests,
 
 	TEST_METHOD(CycleDetection)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptGCInternalTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
@@ -383,7 +377,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGCInternalTests,
 
 	TEST_METHOD(TwoNodeCycleCollection)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptGCInternalTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();

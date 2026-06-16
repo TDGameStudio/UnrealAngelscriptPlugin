@@ -7,7 +7,7 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace AngelscriptTest_Native_AngelscriptNativeRegistrationTests_Private
+namespace
 {
 	int32 GNativeGlobalValue = 21;
 
@@ -121,7 +121,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
 {
 	TEST_METHOD(GlobalFunction)
 	{
-		using namespace AngelscriptTest_Native_AngelscriptNativeRegistrationTests_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
 		if (!TestRunner->TestNotNull(TEXT("Native global-function registration test should create a standalone engine"), ScriptEngine))
@@ -157,7 +156,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
 
 	TEST_METHOD(GlobalProperty)
 	{
-		using namespace AngelscriptTest_Native_AngelscriptNativeRegistrationTests_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
 		if (!TestRunner->TestNotNull(TEXT("Native global-property registration test should create a standalone engine"), ScriptEngine))
@@ -187,7 +185,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
 
 	TEST_METHOD(SimpleValueType)
 	{
-		using namespace AngelscriptTest_Native_AngelscriptNativeRegistrationTests_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
 		if (!TestRunner->TestNotNull(TEXT("Native value-type registration test should create a standalone engine"), ScriptEngine))

@@ -12,7 +12,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_AngelscriptScriptNodeTests_Private
+namespace
 {
 	asCModule* CreateScriptNodeModule(asCScriptEngine* ScriptEngine, const char* ModuleName)
 	{
@@ -37,7 +37,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptNodeTests,
 {
 	TEST_METHOD(Types)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptScriptNodeTests_Private;
 		TestRunner->TestEqual(TEXT("snScript should remain the root script node enum value"), static_cast<int32>(snScript), 1);
 		TestRunner->TestTrue(TEXT("snFunction should remain a positive enum value"), static_cast<int32>(snFunction) > 0);
 		TestRunner->TestTrue(TEXT("snClass should remain a positive enum value"), static_cast<int32>(snClass) > 0);
@@ -46,7 +45,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptNodeTests,
 
 	TEST_METHOD(Traversal)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptScriptNodeTests_Private;
 		asCScriptEngine* BareEngine = reinterpret_cast<asCScriptEngine*>(ASTEST_CREATE_ENGINE_NATIVE());
 		if (BareEngine == nullptr)
 	{
@@ -88,7 +86,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptNodeTests,
 
 	TEST_METHOD(Copy)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptScriptNodeTests_Private;
 		asCScriptEngine* BareEngine = reinterpret_cast<asCScriptEngine*>(ASTEST_CREATE_ENGINE_NATIVE());
 		if (BareEngine == nullptr)
 	{

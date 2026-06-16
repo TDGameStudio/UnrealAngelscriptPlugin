@@ -13,7 +13,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_ParserExpressions_Private
+namespace
 {
 	struct FParserAccessor : asCParser
 	{
@@ -128,7 +128,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserExpressionsTests,
 {
 	TEST_METHOD(PrecedenceMulOverAdd)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ParserExpressions_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
 		{
@@ -144,7 +143,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserExpressionsTests,
 
 	TEST_METHOD(PrecedenceShiftOverAdd)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ParserExpressions_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
 		{
@@ -160,7 +158,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserExpressionsTests,
 
 	TEST_METHOD(RightAssocAssignment)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ParserExpressions_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
 		{
@@ -176,7 +173,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserExpressionsTests,
 
 	TEST_METHOD(TernaryNesting)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ParserExpressions_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
 		{
@@ -192,7 +188,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserExpressionsTests,
 
 	TEST_METHOD(CastExpression)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ParserExpressions_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
 		{
@@ -208,7 +203,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserExpressionsTests,
 
 	TEST_METHOD(MemberAccessChain)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ParserExpressions_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
 		{
@@ -224,7 +218,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserExpressionsTests,
 
 	TEST_METHOD(IndexExpression)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ParserExpressions_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
 		{
@@ -240,7 +233,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserExpressionsTests,
 
 	TEST_METHOD(FunctionCallWithNamedArg)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ParserExpressions_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
 		{
@@ -257,7 +249,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserExpressionsTests,
 
 	TEST_METHOD(AnonymousInitializerList)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ParserExpressions_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
 		{
@@ -273,7 +264,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserExpressionsTests,
 
 	TEST_METHOD(LambdaIfSupported_OrDocumentReject)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ParserExpressions_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
 		{

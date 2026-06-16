@@ -7,7 +7,7 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace AngelscriptTest_Native_AngelscriptNativeExecutionTests_Private
+namespace
 {
 	bool CreateEngineAndBuildModule(
 		FAutomationTestBase& Test,
@@ -41,7 +41,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionTests,
 {
 	TEST_METHOD(VoidFunction)
 	{
-		using namespace AngelscriptTest_Native_AngelscriptNativeExecutionTests_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = nullptr;
 		asIScriptModule* Module = nullptr;
@@ -74,7 +73,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionTests,
 
 	TEST_METHOD(ReturnValue)
 	{
-		using namespace AngelscriptTest_Native_AngelscriptNativeExecutionTests_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = nullptr;
 		asIScriptModule* Module = nullptr;
@@ -108,7 +106,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionTests,
 
 	TEST_METHOD(OneArg)
 	{
-		using namespace AngelscriptTest_Native_AngelscriptNativeExecutionTests_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = nullptr;
 		asIScriptModule* Module = nullptr;
@@ -150,7 +147,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionTests,
 
 	TEST_METHOD(TwoArgs)
 	{
-		using namespace AngelscriptTest_Native_AngelscriptNativeExecutionTests_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = nullptr;
 		asIScriptModule* Module = nullptr;
@@ -193,7 +189,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionTests,
 
 	TEST_METHOD(ThreeArgs)
 	{
-		using namespace AngelscriptTest_Native_AngelscriptNativeExecutionTests_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = nullptr;
 		asIScriptModule* Module = nullptr;

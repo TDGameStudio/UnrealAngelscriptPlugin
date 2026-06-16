@@ -1,7 +1,8 @@
-// AngelscriptASSDKCallFuncTests.cpp
+// AngelscriptCallFuncTests.cpp
 // Tests for as_callfunc.cpp - native function call dispatch edge cases.
 // Automation IDs: Angelscript.TestModule.AngelScriptSDK.CallFunc.*
 
+#include "AngelscriptSDKTestExecutionHelpers.h"
 #include "AngelscriptNativeTestSupport.h"
 #include "CQTest.h"
 #include "Misc/ScopeExit.h"
@@ -9,8 +10,9 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace AngelscriptNativeTestSupport;
+using namespace AngelscriptSDKTestSupport;
 
-namespace AngelscriptTest_AngelScriptSDK_CallFunc_Private
+namespace
 {
 	int32 AddFour(int32 A, int32 B, int32 C, int32 D) { return A + B + C + D; }
 	double MultiplyDouble(double A, double B) { return A * B; }
@@ -40,28 +42,15 @@ namespace AngelscriptTest_AngelScriptSDK_CallFunc_Private
 		if (R < 0) { Test.AddInfo(TEXT("Native function registration not available in headless mode, skipping")); return false; }
 		return true;
 	}
-
-	bool ExecuteIntEntry(FAutomationTestBase& Test, asIScriptEngine* SE, asIScriptModule* M, const char* Decl, int32& Out)
-	{
-		asIScriptFunction* Func = GetNativeFunctionByDecl(M, Decl);
-		if (!Test.TestNotNull(TEXT("Should resolve function"), Func)) return false;
-		asIScriptContext* Ctx = SE->CreateContext();
-		if (!Test.TestNotNull(TEXT("Should create context"), Ctx)) return false;
-		const int Ret = PrepareAndExecute(Ctx, Func);
-		Out = static_cast<int32>(Ctx->GetReturnDWord());
-		Ctx->Release();
-		return Test.TestEqual(TEXT("Execution should finish"), Ret, (int32)asEXECUTION_FINISHED);
-	}
 }
 
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKCallFuncTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 	"Angelscript.TestModule.AngelScriptSDK.CallFunc",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	TEST_METHOD(MultipleArgs)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_CallFunc_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
@@ -70,13 +59,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKCallFuncTests,
 		asIScriptModule* M = BuildNativeModule(SE, "CallFuncMultiArgs", "int Entry() { return AddFour(10, 20, 30, 40); }\n");
 		if (!TestRunner->TestNotNull(TEXT("Should compile"), M)) { TestRunner->AddInfo(CollectMessages(Messages)); return; }
 		int32 Result = 0;
-		if (!ExecuteIntEntry(*TestRunner, SE, M, "int Entry()", Result)) return;
+		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
 		TestRunner->TestEqual(TEXT("AddFour(10,20,30,40)=100"), Result, 100);
 	}
 
 	TEST_METHOD(FloatPrecision)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_CallFunc_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
@@ -84,20 +72,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKCallFuncTests,
 		if (!RegisterHelpers(*TestRunner, SE)) return;
 		asIScriptModule* M = BuildNativeModule(SE, "CallFuncFloat", "double Entry() { return MultiplyDouble(3.14159, 2.0); }\n");
 		if (!TestRunner->TestNotNull(TEXT("Should compile"), M)) { TestRunner->AddInfo(CollectMessages(Messages)); return; }
-		asIScriptFunction* Func = GetNativeFunctionByDecl(M, "double Entry()");
-		if (!TestRunner->TestNotNull(TEXT("Should resolve"), Func)) return;
-		asIScriptContext* Ctx = SE->CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("Context"), Ctx)) return;
-		int Ret = PrepareAndExecute(Ctx, Func);
-		double Result = Ctx->GetReturnDouble();
-		Ctx->Release();
-		TestRunner->TestEqual(TEXT("Finished"), Ret, (int32)asEXECUTION_FINISHED);
+		double Result = 0.0;
+		if (!ExecuteScriptFunction(*TestRunner, SE, M, "double Entry()", Result)) return;
 		TestRunner->TestTrue(TEXT("MultiplyDouble precision"), FMath::IsNearlyEqual(Result, 3.14159*2.0, 1e-10));
 	}
 
 	TEST_METHOD(VoidSideEffect)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_CallFunc_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
@@ -106,19 +87,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKCallFuncTests,
 		if (!RegisterHelpers(*TestRunner, SE)) return;
 		asIScriptModule* M = BuildNativeModule(SE, "CallFuncVoid", "void Entry() { AccumulateValue(10); AccumulateValue(20); AccumulateValue(12); }\n");
 		if (!TestRunner->TestNotNull(TEXT("Should compile"), M)) { TestRunner->AddInfo(CollectMessages(Messages)); return; }
-		asIScriptFunction* Func = GetNativeFunctionByDecl(M, "void Entry()");
-		if (!TestRunner->TestNotNull(TEXT("Should resolve"), Func)) return;
-		asIScriptContext* Ctx = SE->CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("Context"), Ctx)) return;
-		int Ret = PrepareAndExecute(Ctx, Func);
-		Ctx->Release();
-		TestRunner->TestEqual(TEXT("Finished"), Ret, (int32)asEXECUTION_FINISHED);
+		if (!ExecuteScriptVoidFunction(*TestRunner, SE, M, "void Entry()")) return;
 		TestRunner->TestEqual(TEXT("Accumulator=42"), GSideEffectAccumulator, 42);
 	}
 
 	TEST_METHOD(NestedCall)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_CallFunc_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
@@ -127,13 +101,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKCallFuncTests,
 		asIScriptModule* M = BuildNativeModule(SE, "CallFuncNested", "int Entry() { return IncrementAndReturn(IncrementAndReturn(IncrementAndReturn(0))); }\n");
 		if (!TestRunner->TestNotNull(TEXT("Should compile"), M)) { TestRunner->AddInfo(CollectMessages(Messages)); return; }
 		int32 Result = 0;
-		if (!ExecuteIntEntry(*TestRunner, SE, M, "int Entry()", Result)) return;
+		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
 		TestRunner->TestEqual(TEXT("Nested 3x increment = 3"), Result, 3);
 	}
 
 	TEST_METHOD(ManyArgs)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_CallFunc_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
@@ -142,7 +115,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKCallFuncTests,
 		asIScriptModule* M = BuildNativeModule(SE, "CallFuncManyArgs", "int Entry() { return SumSix(1, 2, 3, 4, 5, 6); }\n");
 		if (!TestRunner->TestNotNull(TEXT("Should compile"), M)) { TestRunner->AddInfo(CollectMessages(Messages)); return; }
 		int32 Result = 0;
-		if (!ExecuteIntEntry(*TestRunner, SE, M, "int Entry()", Result)) return;
+		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
 		TestRunner->TestEqual(TEXT("SumSix(1..6)=21"), Result, 21);
 	}
 };

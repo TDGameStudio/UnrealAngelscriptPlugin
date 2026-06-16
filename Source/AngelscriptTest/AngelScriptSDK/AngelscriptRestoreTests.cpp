@@ -11,7 +11,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_AngelscriptRestoreTests_Private
+namespace
 {
 	class FMemoryBinaryStream final : public asIBinaryStream
 	{
@@ -102,7 +102,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 {
 	TEST_METHOD(RoundTrip)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptRestoreTests_Private;
 		TUniquePtr<FAngelscriptEngine> SourceEngineOwner = CreateIsolatedCloneEngine();
 		if (!TestRunner->TestNotNull(TEXT("Restore roundtrip should create an isolated clone test engine"), SourceEngineOwner.Get()))
 		{
@@ -172,7 +171,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 
 	TEST_METHOD(StripDebugInfoRoundTrip)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptRestoreTests_Private;
 		TUniquePtr<FAngelscriptEngine> SourceEngineOwner = CreateIsolatedCloneEngine();
 		if (!TestRunner->TestNotNull(TEXT("Restore strip roundtrip should create an isolated clone test engine"), SourceEngineOwner.Get()))
 		{
@@ -228,7 +226,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 
 	TEST_METHOD(EmptyStreamFails)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptRestoreTests_Private;
 		TUniquePtr<FAngelscriptEngine> EngineOwner = CreateIsolatedCloneEngine();
 		if (!TestRunner->TestNotNull(TEXT("Restore empty stream test should create an isolated clone test engine"), EngineOwner.Get()))
 		{
@@ -252,7 +249,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 
 	TEST_METHOD(TruncatedStreamFails)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptRestoreTests_Private;
 		TUniquePtr<FAngelscriptEngine> SourceEngineOwner = CreateIsolatedCloneEngine();
 		if (!TestRunner->TestNotNull(TEXT("Restore truncated stream test should create an isolated clone test engine"), SourceEngineOwner.Get()))
 		{
@@ -309,7 +305,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 
 	TEST_METHOD(FailureLeavesModuleClean)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptRestoreTests_Private;
 		TUniquePtr<FAngelscriptEngine> SourceEngineOwner = CreateIsolatedCloneEngine();
 		if (!TestRunner->TestNotNull(TEXT("Restore failure cleanup test should create an isolated clone test engine"), SourceEngineOwner.Get()))
 		{

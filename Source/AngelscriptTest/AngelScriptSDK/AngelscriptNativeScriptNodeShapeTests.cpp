@@ -13,7 +13,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_ScriptNodeShape_Private
+namespace
 {
 	struct FParserAccessor : asCParser
 	{
@@ -104,7 +104,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 {
 	TEST_METHOD(FunctionNodeChildrenLayout)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeShape_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
 		{
@@ -121,7 +120,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 
 	TEST_METHOD(ParameterListNodeShape)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeShape_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
 		{
@@ -138,7 +136,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 
 	TEST_METHOD(StatementBlockHoldsStatements)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeShape_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
 		{
@@ -157,7 +154,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 
 	TEST_METHOD(ReturnNodeHasOptionalExpression)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeShape_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
 		{
@@ -174,7 +170,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 
 	TEST_METHOD(BreakAndContinueAreLeafNodes)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeShape_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
 		{
@@ -197,7 +192,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 
 	TEST_METHOD(DoWhileShape)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeShape_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
 		{
@@ -215,7 +209,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 
 	TEST_METHOD(SwitchAndCaseShape)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeShape_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
 		{
@@ -233,7 +226,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 
 	TEST_METHOD(EnumNodeAndEnumValueChildren)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeShape_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
 		{
@@ -250,7 +242,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 
 	TEST_METHOD(InterfaceNodeShape)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeShape_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
 		{
@@ -269,7 +260,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 
 	TEST_METHOD(ImportNodeShape)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeShape_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
 		{
@@ -286,7 +276,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 
 	TEST_METHOD(FuncDefNodeShape)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeShape_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
 		{
@@ -305,7 +294,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 
 	TEST_METHOD(TypedefNodeShape)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeShape_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
 		{
@@ -324,7 +312,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 
 	TEST_METHOD(VirtualPropertyNodeShape)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeShape_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
 		{

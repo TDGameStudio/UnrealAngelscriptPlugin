@@ -1,4 +1,5 @@
-// AngelscriptASSDKStringUtilTests.cpp
+#include "AngelscriptSDKTestExecutionHelpers.h"
+// AngelscriptSDKStringUtilTests.cpp
 // Tests for as_string_util.cpp - number/string conversion via script.
 // Automation IDs: Angelscript.TestModule.AngelScriptSDK.StringUtil.*
 
@@ -13,31 +14,9 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace AngelscriptTest_AngelScriptSDK_StringUtil_Private
+namespace
 {
-	bool ExecuteIntEntry(FAutomationTestBase& Test, asIScriptEngine* SE, asIScriptModule* M, const char* Decl, int32& Out)
-	{
-		asIScriptFunction* Func = GetNativeFunctionByDecl(M, Decl);
-		if (!Test.TestNotNull(TEXT("Should resolve function"), Func)) return false;
-		asIScriptContext* Ctx = SE->CreateContext();
-		if (!Test.TestNotNull(TEXT("Should create context"), Ctx)) return false;
-		const int Ret = PrepareAndExecute(Ctx, Func);
-		Out = static_cast<int32>(Ctx->GetReturnDWord());
-		Ctx->Release();
-		return Test.TestEqual(TEXT("Execution should finish"), Ret, (int32)asEXECUTION_FINISHED);
-	}
 
-	bool ExecuteDoubleEntry(FAutomationTestBase& Test, asIScriptEngine* SE, asIScriptModule* M, const char* Decl, double& Out)
-	{
-		asIScriptFunction* Func = GetNativeFunctionByDecl(M, Decl);
-		if (!Test.TestNotNull(TEXT("Should resolve function"), Func)) return false;
-		asIScriptContext* Ctx = SE->CreateContext();
-		if (!Test.TestNotNull(TEXT("Should create context"), Ctx)) return false;
-		const int Ret = PrepareAndExecute(Ctx, Func);
-		Out = Ctx->GetReturnDouble();
-		Ctx->Release();
-		return Test.TestEqual(TEXT("Execution should finish"), Ret, (int32)asEXECUTION_FINISHED);
-	}
 
 	void RegisterStringFactory(asIScriptEngine* SE)
 	{
@@ -61,11 +40,10 @@ namespace AngelscriptTest_AngelScriptSDK_StringUtil_Private
 }
 
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKStringUtilTests, "Angelscript.TestModule.AngelScriptSDK.StringUtil", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+TEST_CLASS_WITH_FLAGS(FAngelscriptSDKStringUtilTests, "Angelscript.TestModule.AngelScriptSDK.StringUtil", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	TEST_METHOD(ParseInt)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_StringUtil_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
 		if (!TestNotNull(TEXT("Should create engine"), SE)) return;
@@ -74,13 +52,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKStringUtilTests, "Angelscript.TestModule.
 		asIScriptModule* M = BuildNativeModule(SE, "StrUtilPI", "int Entry() { string s = \"42\"; return s.parseInt(); }\n");
 		if (!TestNotNull(TEXT("Should compile"), M)) { AddInfo(CollectMessages(Messages)); return; }
 		int32 Result = 0;
-		if (!ExecuteIntEntry(*this, SE, M, "int Entry()", Result)) return;
+		if (!ExecuteScriptFunction(*this, SE, M, "int Entry()", Result)) return;
 		TestEqual(TEXT("parseInt 42"), Result, 42);
 	}
 
 	TEST_METHOD(ParseNegativeInt)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_StringUtil_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
 		if (!TestNotNull(TEXT("Should create engine"), SE)) return;
@@ -89,13 +66,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKStringUtilTests, "Angelscript.TestModule.
 		asIScriptModule* M = BuildNativeModule(SE, "StrUtilNI", "int Entry() { string s = \"-100\"; return s.parseInt(); }\n");
 		if (!TestNotNull(TEXT("Should compile"), M)) { AddInfo(CollectMessages(Messages)); return; }
 		int32 Result = 0;
-		if (!ExecuteIntEntry(*this, SE, M, "int Entry()", Result)) return;
+		if (!ExecuteScriptFunction(*this, SE, M, "int Entry()", Result)) return;
 		TestEqual(TEXT("parseInt -100"), Result, -100);
 	}
 
 	TEST_METHOD(ParseFloat)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_StringUtil_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
 		if (!TestNotNull(TEXT("Should create engine"), SE)) return;
@@ -104,13 +80,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKStringUtilTests, "Angelscript.TestModule.
 		asIScriptModule* M = BuildNativeModule(SE, "StrUtilPF", "double Entry() { string s = \"3.14\"; return s.parseFloat(); }\n");
 		if (!TestNotNull(TEXT("Should compile"), M)) { AddInfo(CollectMessages(Messages)); return; }
 		double Result = 0.0;
-		if (!ExecuteDoubleEntry(*this, SE, M, "double Entry()", Result)) return;
+		if (!ExecuteScriptFunction(*this, SE, M, "double Entry()", Result)) return;
 		TestTrue(TEXT("parseFloat 3.14"), FMath::IsNearlyEqual(Result, 3.14, 0.001));
 	}
 
 	TEST_METHOD(ParseZero)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_StringUtil_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
 		if (!TestNotNull(TEXT("Should create engine"), SE)) return;
@@ -119,13 +94,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKStringUtilTests, "Angelscript.TestModule.
 		asIScriptModule* M = BuildNativeModule(SE, "StrUtilZ", "int Entry() { string s = \"0\"; return s.parseInt(); }\n");
 		if (!TestNotNull(TEXT("Should compile"), M)) { AddInfo(CollectMessages(Messages)); return; }
 		int32 Result = -1;
-		if (!ExecuteIntEntry(*this, SE, M, "int Entry()", Result)) return;
+		if (!ExecuteScriptFunction(*this, SE, M, "int Entry()", Result)) return;
 		TestEqual(TEXT("parseInt 0"), Result, 0);
 	}
 
 	TEST_METHOD(LargeValue)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_StringUtil_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
 		if (!TestNotNull(TEXT("Should create engine"), SE)) return;
@@ -134,7 +108,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKStringUtilTests, "Angelscript.TestModule.
 		asIScriptModule* M = BuildNativeModule(SE, "StrUtilLV", "int Entry() { string s = \"2147483647\"; return s.parseInt(); }\n");
 		if (!TestNotNull(TEXT("Should compile"), M)) { AddInfo(CollectMessages(Messages)); return; }
 		int32 Result = 0;
-		if (!ExecuteIntEntry(*this, SE, M, "int Entry()", Result)) return;
+		if (!ExecuteScriptFunction(*this, SE, M, "int Entry()", Result)) return;
 		TestEqual(TEXT("parseInt INT32_MAX"), Result, 2147483647);
 	}
 };

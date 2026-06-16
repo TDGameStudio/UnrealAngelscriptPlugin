@@ -10,7 +10,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_AngelscriptBuilderTests_Private
+namespace
 {
 	asCModule* CreateBuilderModule(asCScriptEngine* ScriptEngine, const char* ModuleName)
 	{
@@ -25,7 +25,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBuilderTests,
 {
 	TEST_METHOD(SingleModulePipeline)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptBuilderTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asIScriptModule* Module = BuildModule(
@@ -55,7 +54,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBuilderTests,
 
 	TEST_METHOD(CompileErrors)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptBuilderTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asCScriptEngine* ScriptEngine = static_cast<asCScriptEngine*>(Engine.GetScriptEngine());
@@ -76,7 +74,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBuilderTests,
 
 	TEST_METHOD(RebuildModule)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptBuilderTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asIScriptModule* ModuleV1 = BuildModule(
@@ -127,7 +124,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBuilderTests,
 
 	TEST_METHOD(ImportBinding)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptBuilderTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asIScriptModule* SourceModule = BuildModule(

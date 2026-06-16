@@ -4,7 +4,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_ReferenceContext_Private
+namespace
 {
 	bool BuildContextModule(
 		FAutomationTestBase& Test,
@@ -37,7 +37,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceContextTests,
 {
 	TEST_METHOD(ContextCanBeReusedAfterDeepStackException)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ReferenceContext_Private;
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = nullptr;
 		asIScriptModule* Module = nullptr;
@@ -107,7 +106,6 @@ int Safe(int Value)
 
 	TEST_METHOD(ContextCanSwitchSignaturesAfterException)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ReferenceContext_Private;
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = nullptr;
 		asIScriptModule* Module = nullptr;

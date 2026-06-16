@@ -11,7 +11,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_AngelscriptCompilerTests_Private
+namespace
 {
 	const FAngelscriptCompileTraceDiagnosticSummary* FindErrorDiagnosticContaining(
 		const TArray<FAngelscriptCompileTraceDiagnosticSummary>& Diagnostics,
@@ -62,7 +62,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerTests,
 {
 	TEST_METHOD(BytecodeGeneration)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptCompilerTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asIScriptModule* Module = BuildModule(
@@ -90,7 +89,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerTests,
 
 	TEST_METHOD(BytecodeExecutionAndRetBoundary)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptCompilerTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asIScriptModule* Module = BuildModule(
@@ -169,7 +167,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerTests,
 
 	TEST_METHOD(VariableScopes)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptCompilerTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asIScriptModule* Module = BuildModule(
@@ -198,7 +195,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerTests,
 
 	TEST_METHOD(OutOfScopeUseRejected)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptCompilerTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
@@ -267,7 +263,6 @@ int Entry()
 
 	TEST_METHOD(FunctionCalls)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptCompilerTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asIScriptModule* Module = BuildModule(
@@ -298,7 +293,6 @@ int Entry()
 
 	TEST_METHOD(TypeConversions)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptCompilerTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asIScriptModule* Module = BuildModule(
@@ -336,7 +330,6 @@ int Entry()
 
 	TEST_METHOD(NegativeAndFloat64Matrix)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptCompilerTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asIScriptModule* Module = BuildModule(

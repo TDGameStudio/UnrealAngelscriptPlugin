@@ -7,15 +7,15 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKDefaultTraitTests,
-	"Angelscript.TestModule.AngelScriptSDK.ASSDK.Compiler",
+TEST_CLASS_WITH_FLAGS(FAngelscriptSDKDefaultTraitTests,
+	"Angelscript.TestModule.AngelScriptSDK.Compiler",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	TEST_METHOD(DefaultTraitModifiers)
 	{
 		FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("ASSDK default-trait modifier test should create a standalone engine"), ScriptEngine))
+		if (!TestRunner->TestNotNull(TEXT("SDK default-trait modifier test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
@@ -25,7 +25,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKDefaultTraitTests,
 			DestroyNativeEngine(ScriptEngine);
 		};
 
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "ASSDKDefaultTraitModifiers", R"(
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKDefaultTraitModifiers", R"(
 int DefaultsOnlyValue() defaults
 {
 	return 7;
@@ -41,7 +41,7 @@ int Entry()
 	return 1;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("ASSDK default-trait modifier test should compile the module"), Module))
+		if (!TestRunner->TestNotNull(TEXT("SDK default-trait modifier test should compile the module"), Module))
 		{
 			TestRunner->AddInfo(CollectMessages(Messages));
 			return;

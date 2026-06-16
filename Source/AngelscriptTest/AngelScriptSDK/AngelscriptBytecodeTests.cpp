@@ -10,7 +10,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_AngelscriptBytecodeTests_Private
+namespace
 {
 	asCModule* CreateBytecodeModule(asCScriptEngine* ScriptEngine, const char* ModuleName)
 	{
@@ -25,7 +25,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBytecodeTests,
 {
 	TEST_METHOD(InstructionSequence)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptBytecodeTests_Private;
 		asCScriptEngine* BareEngine = reinterpret_cast<asCScriptEngine*>(ASTEST_CREATE_ENGINE_NATIVE());
 		if (BareEngine == nullptr)
 	{
@@ -54,7 +53,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBytecodeTests,
 
 	TEST_METHOD(Append)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptBytecodeTests_Private;
 		asCScriptEngine* BareEngine = reinterpret_cast<asCScriptEngine*>(ASTEST_CREATE_ENGINE_NATIVE());
 		if (BareEngine == nullptr)
 	{
@@ -85,7 +83,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBytecodeTests,
 
 	TEST_METHOD(JumpResolution)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptBytecodeTests_Private;
 		asCScriptEngine* BareEngine = reinterpret_cast<asCScriptEngine*>(ASTEST_CREATE_ENGINE_NATIVE());
 		if (BareEngine == nullptr)
 	{
@@ -111,7 +108,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBytecodeTests,
 
 	TEST_METHOD(Output)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptBytecodeTests_Private;
 		asCScriptEngine* BareEngine = reinterpret_cast<asCScriptEngine*>(ASTEST_CREATE_ENGINE_NATIVE());
 		if (BareEngine == nullptr)
 	{

@@ -7,7 +7,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_AngelscriptTokenizerTests_Private
+namespace
 {
 	struct FTokenizerAccessor : asCTokenizer
 	{
@@ -22,7 +22,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTokenizerTests,
 {
 	TEST_METHOD(BasicTokens)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptTokenizerTests_Private;
 		FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
@@ -41,7 +40,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTokenizerTests,
 
 	TEST_METHOD(Keywords)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptTokenizerTests_Private;
 		FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
@@ -53,7 +51,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTokenizerTests,
 
 	TEST_METHOD(CommentsAndStrings)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptTokenizerTests_Private;
 		FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
@@ -64,7 +61,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTokenizerTests,
 
 	TEST_METHOD(ErrorRecovery)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptTokenizerTests_Private;
 		FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
@@ -74,7 +70,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTokenizerTests,
 
 	TEST_METHOD(ErrorRecoveryAdvancesAndContinues)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptTokenizerTests_Private;
 		FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 		const char* Input = "`class";
@@ -100,7 +95,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTokenizerTests,
 
 	TEST_METHOD(BasicLiteralAndPunctuationMatrix)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptTokenizerTests_Private;
 		FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
@@ -132,7 +126,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTokenizerTests,
 
 	TEST_METHOD(UnterminatedBlockCommentAndEscapes)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptTokenizerTests_Private;
 		FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 

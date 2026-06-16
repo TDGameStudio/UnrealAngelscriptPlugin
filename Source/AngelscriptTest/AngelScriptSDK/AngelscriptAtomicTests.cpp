@@ -1,5 +1,5 @@
 // =============================================================================
-// AngelscriptASSDKAtomicTests.cpp
+// AngelscriptSDKAtomicTests.cpp
 //
 // Tests for as_atomic.cpp — thread-safe reference counting via asCAtomic.
 // Validates basic get/set, atomic inc/dec, and concurrent safety.
@@ -21,7 +21,7 @@
 // TODO: asCAtomic symbols not exported from AngelscriptRuntime. Disabled until linkage resolved.
 #if 0 // WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_AngelscriptASSDKAtomicTests_Private
+namespace
 {
 	static constexpr int32 GNumThreads = 4;
 	static constexpr int32 GIterationsPerThread = 1000;
@@ -52,7 +52,7 @@ namespace AngelscriptTest_AngelScriptSDK_AngelscriptASSDKAtomicTests_Private
 	};
 }
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKAtomicTest,
+TEST_CLASS_WITH_FLAGS(FAngelscriptSDKAtomicTest,
 	"Angelscript.TestModule.AngelScriptSDK.Atomic",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -123,7 +123,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKAtomicTest,
 
 	TEST_METHOD(ConcurrentIncDec)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptASSDKAtomicTests_Private;
 
 		asCAtomic Atomic;
 

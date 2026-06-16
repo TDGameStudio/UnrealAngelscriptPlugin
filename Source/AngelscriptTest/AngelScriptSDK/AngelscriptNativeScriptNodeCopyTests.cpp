@@ -15,7 +15,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_ScriptNodeCopy_Private
+namespace
 {
 	struct FParserAccessor : asCParser
 	{
@@ -128,7 +128,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeCopyTests,
 {
 	TEST_METHOD(CreateCopyPreservesNodeTypes)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeCopy_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode copy test should create a bare engine"), BareEngine))
 		{
@@ -150,7 +149,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeCopyTests,
 
 	TEST_METHOD(CreateCopyPreservesChildOrdering)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeCopy_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode copy test should create a bare engine"), BareEngine))
 		{
@@ -175,7 +173,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeCopyTests,
 
 	TEST_METHOD(CreateCopyPreservesSourceRange)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeCopy_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode copy test should create a bare engine"), BareEngine))
 		{
@@ -206,7 +203,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeCopyTests,
 
 	TEST_METHOD(CreateCopyDeepNestingNoStackBlow)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeCopy_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode copy test should create a bare engine"), BareEngine))
 		{
@@ -230,7 +226,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeCopyTests,
 
 	TEST_METHOD(SiblingTraversalVisitsAllNodes)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeCopy_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode copy test should create a bare engine"), BareEngine))
 		{
@@ -254,7 +249,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeCopyTests,
 
 	TEST_METHOD(EnumeratePerNodeTypeViaWalker)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeCopy_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode copy test should create a bare engine"), BareEngine))
 		{
@@ -279,7 +273,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeCopyTests,
 
 	TEST_METHOD(DisconnectAndReattachIfExposed)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeCopy_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode copy test should create a bare engine"), BareEngine))
 		{

@@ -8,7 +8,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_AngelscriptStructCppOpsTests_Private
+namespace
 {
 	UScriptStruct* BuildScriptStruct(
 		FAutomationTestBase& Test,
@@ -45,7 +45,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptStructCppOpsTests,
 {
 	TEST_METHOD(NotBlueprintTypeByDefault)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptStructCppOpsTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		UScriptStruct* Struct = BuildScriptStruct(
@@ -70,7 +69,6 @@ struct FScopeConstructStruct
 
 	TEST_METHOD(ValueClassUsesCppStructOps)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptStructCppOpsTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 

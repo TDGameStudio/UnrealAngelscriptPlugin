@@ -1,4 +1,4 @@
-// AngelscriptASSDKThreadTests.cpp
+// AngelscriptSDKThreadTests.cpp
 // Tests for as_thread.cpp - thread-local storage via asCThreadManager.
 // Automation IDs: Angelscript.TestModule.AngelScriptSDK.Thread.*
 
@@ -15,7 +15,7 @@
 // TODO: asCThreadManager symbols not exported from AngelscriptRuntime. Disabled until linkage resolved.
 #if 0 // WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_Thread_Private
+namespace
 {
 	class FTLSCaptureRunnable : public FRunnable
 	{
@@ -34,7 +34,7 @@ namespace AngelscriptTest_AngelScriptSDK_Thread_Private
 	};
 }
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKThreadTests, "Angelscript.TestModule.AngelScriptSDK.Thread", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+TEST_CLASS_WITH_FLAGS(FAngelscriptSDKThreadTests, "Angelscript.TestModule.AngelScriptSDK.Thread", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	TEST_METHOD(GetLocalDataNonNull)
 	{
@@ -53,7 +53,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKThreadTests, "Angelscript.TestModule.Ange
 
 	TEST_METHOD(DifferentTLS)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_Thread_Private;
 
 		asCThreadLocalData* MainTLS = asCThreadManager::GetLocalData();
 		TestNotNull(TEXT("Main thread TLS should be non-null"), MainTLS);

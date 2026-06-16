@@ -8,7 +8,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_ReferenceTokenizer_Private
+namespace
 {
 	struct FTokenizerAccessor : asCTokenizer
 	{
@@ -22,7 +22,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceTokenizerTests,
 {
 	TEST_METHOD(LongIdentifierBoundaryFromReference)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ReferenceTokenizer_Private;
 		const FString LongIdentifier = FString::ChrN(400, TEXT('a'));
 		const FTCHARToUTF8 LongIdentifierUtf8(*LongIdentifier);
 
@@ -60,7 +59,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceTokenizerTests,
 
 	TEST_METHOD(UnrecognizedTokenDoesNotPoisonFollowingIdentifier)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ReferenceTokenizer_Private;
 		FTokenizerAccessor Tokenizer;
 		const char* Source = "`Value";
 		size_t TokenLength = 0;
@@ -76,7 +74,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceTokenizerTests,
 
 	TEST_METHOD(UnterminatedStringReportsDedicatedToken)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ReferenceTokenizer_Private;
 		FTokenizerAccessor Tokenizer;
 		const char* Source = "\"unterminated";
 		size_t TokenLength = 0;

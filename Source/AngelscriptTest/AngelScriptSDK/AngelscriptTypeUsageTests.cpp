@@ -14,7 +14,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_AngelScriptSDK_AngelscriptTypeUsageTests_Private
+namespace
 {
 	asITypeInfo* FindTypeInfoByDecl(FAutomationTestBase& Test, asIScriptModule& Module, const FString& Declaration)
 	{
@@ -154,7 +154,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTypeUsageTests,
 {
 	TEST_METHOD(TypeUsageFromTypeIdScriptKinds)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptTypeUsageTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
@@ -245,7 +244,6 @@ class UTypeUsageCarrier : UObject
 
 	TEST_METHOD(TypeUsageFromPropertyScriptMemberMatrix)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptTypeUsageTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
@@ -347,7 +345,6 @@ class FHolder
 
 	TEST_METHOD(DataTypeTypeUsageQualifiers)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptTypeUsageTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
@@ -424,7 +421,6 @@ int Produce()
 
 	TEST_METHOD(TypeUsageFromPropertyNativeQualifierMatrix)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptTypeUsageTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
@@ -499,7 +495,6 @@ class ATypeUsageNativePropertyProbe : AActor
 
 	TEST_METHOD(TypeUsageFromDataTypeQualifierAndContainerMatrix)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptTypeUsageTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 

@@ -1,4 +1,5 @@
-// AngelscriptASSDKVariableScopeTests.cpp
+#include "AngelscriptSDKTestExecutionHelpers.h"
+// AngelscriptSDKVariableScopeTests.cpp
 // Tests for as_variablescope.cpp - variable scope isolation and shadowing.
 // Automation IDs: Angelscript.TestModule.AngelScriptSDK.VariableScope.*
 
@@ -10,27 +11,15 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace AngelscriptTest_AngelScriptSDK_VariableScope_Private
+namespace
 {
-	bool ExecuteIntEntry(FAutomationTestBase& Test, asIScriptEngine* SE, asIScriptModule* M, int32& Out)
-	{
-		asIScriptFunction* Func = GetNativeFunctionByDecl(M, "int Entry()");
-		if (!Test.TestNotNull(TEXT("Should resolve Entry"), Func)) return false;
-		asIScriptContext* Ctx = SE->CreateContext();
-		if (!Test.TestNotNull(TEXT("Should create context"), Ctx)) return false;
-		const int Ret = PrepareAndExecute(Ctx, Func);
-		Out = static_cast<int32>(Ctx->GetReturnDWord());
-		Ctx->Release();
-		return Test.TestEqual(TEXT("Should finish"), Ret, (int32)asEXECUTION_FINISHED);
-	}
 }
 
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKVariableScopeTests, "Angelscript.TestModule.AngelScriptSDK.VariableScope", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+TEST_CLASS_WITH_FLAGS(FAngelscriptSDKVariableScopeTests, "Angelscript.TestModule.AngelScriptSDK.VariableScope", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	TEST_METHOD(Isolation)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_VariableScope_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
@@ -50,7 +39,6 @@ int Entry()
 
 	TEST_METHOD(Shadowing)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_VariableScope_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
@@ -71,13 +59,12 @@ int Entry()
 		}
 
 		int32 Result = 0;
-		if (!ExecuteIntEntry(*TestRunner, SE, M, Result)) return;
+		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
 		TestRunner->TestEqual(TEXT("Outer x should remain 10 after inner shadow"), Result, 10);
 	}
 
 	TEST_METHOD(NestedBlocks)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_VariableScope_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
@@ -100,7 +87,7 @@ int Entry()
 		}
 
 		int32 Result = 0;
-		if (!ExecuteIntEntry(*TestRunner, SE, M, Result)) return;
+		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
 		TestRunner->TestEqual(TEXT("sum = 1+2+4+3 = 10"), Result, 10);
 	}
 };

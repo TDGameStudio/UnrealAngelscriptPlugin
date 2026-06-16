@@ -6,7 +6,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_AngelscriptMemoryTests_Private
+namespace
 {
 	class FMemoryManagerProbe final : public asCMemoryMgr
 	{
@@ -30,14 +30,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMemoryTests,
 {
 	TEST_METHOD(Construction)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptMemoryTests_Private;
 		asCMemoryMgr Manager;
 		TestRunner->TestTrue(TEXT("Constructing the internal memory manager should succeed"), true);
 	}
 
 	TEST_METHOD(FreeUnused)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptMemoryTests_Private;
 		FMemoryManagerProbe Manager;
 		Manager.FreeUnusedMemory();
 		TestRunner->TestTrue(TEXT("FreeUnusedMemory should be callable even when no pooled memory is tracked"), true);
@@ -47,7 +45,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMemoryTests,
 
 	TEST_METHOD(ScriptNodeReuse)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptMemoryTests_Private;
 		FMemoryManagerProbe Manager;
 		void* FirstAllocation = Manager.AllocScriptNode();
 		TestRunner->TestNotNull(TEXT("AllocScriptNode should return storage for a script node"), FirstAllocation);
@@ -62,7 +59,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMemoryTests,
 
 	TEST_METHOD(ByteInstructionReuse)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptMemoryTests_Private;
 		FMemoryManagerProbe Manager;
 		void* FirstAllocation = Manager.AllocByteInstruction();
 		TestRunner->TestNotNull(TEXT("AllocByteInstruction should return storage for a bytecode instruction"), FirstAllocation);
@@ -77,7 +73,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMemoryTests,
 
 	TEST_METHOD(PoolLeakTracking)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptMemoryTests_Private;
 		FMemoryManagerProbe Manager;
 		void* ScriptNodeA = Manager.AllocScriptNode();
 		void* ScriptNodeB = Manager.AllocScriptNode();

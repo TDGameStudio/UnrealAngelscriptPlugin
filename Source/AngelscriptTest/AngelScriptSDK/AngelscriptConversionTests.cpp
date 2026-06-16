@@ -1,3 +1,4 @@
+#include "AngelscriptSDKTestExecutionHelpers.h"
 #include "AngelscriptTestAdapter.h"
 
 #include "CQTest.h"
@@ -8,28 +9,8 @@
 using namespace AngelscriptNativeTestSupport;
 using namespace AngelscriptSDKTestSupport;
 
-namespace AngelscriptTest_Native_AngelscriptASSDKConversionTests_Private
+namespace
 {
-	bool ExecuteConversionBoolEntry(FAutomationTestBase& Test, asIScriptEngine* ScriptEngine, asIScriptModule* Module, const char* Declaration, bool& OutValue)
-	{
-		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, Declaration);
-		if (!Test.TestNotNull(TEXT("Conversion test should resolve the bool entry function"), Function))
-		{
-			return false;
-		}
-
-		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!Test.TestNotNull(TEXT("Conversion test should create a bool execution context"), Context))
-		{
-			return false;
-		}
-
-		const int ExecuteResult = PrepareAndExecute(Context, Function);
-		OutValue = Context->GetReturnByte() != 0;
-		Context->Release();
-		return Test.TestEqual(TEXT("Conversion test should finish bool execution successfully"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED));
-	}
-
 	void TestValueConstruct0(asIScriptGeneric* Generic)
 	{
 		int* Value = static_cast<int*>(Generic->GetObject());
@@ -50,16 +31,15 @@ namespace AngelscriptTest_Native_AngelscriptASSDKConversionTests_Private
 }
 
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKConversionTests,
-	"Angelscript.TestModule.AngelScriptSDK.ASSDK.Conversion",
+TEST_CLASS_WITH_FLAGS(FAngelscriptSDKConversionTests,
+	"Angelscript.TestModule.AngelScriptSDK.Conversion",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	TEST_METHOD(Numeric)
 	{
-		using namespace AngelscriptTest_Native_AngelscriptASSDKConversionTests_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("ASSDK numeric conversion test should create a standalone engine"), ScriptEngine))
+		if (!TestRunner->TestNotNull(TEXT("SDK numeric conversion test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
@@ -69,7 +49,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKConversionTests,
 			DestroyNativeEngine(ScriptEngine);
 		};
 
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "ASSDKConversionNumeric", R"(
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKConversionNumeric", R"(
 bool Entry()
 {
 	int8 small = 2;
@@ -80,27 +60,26 @@ bool Entry()
 	return total == 6 && narrow > 6.49f && narrow < 6.51f;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("ASSDK numeric conversion test should compile the module"), Module))
+		if (!TestRunner->TestNotNull(TEXT("SDK numeric conversion test should compile the module"), Module))
 		{
 			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
 		bool bResult = false;
-		if (!ExecuteConversionBoolEntry(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("ASSDK numeric conversion test should preserve widening and narrowing conversions"), bResult);
+		TestRunner->TestTrue(TEXT("SDK numeric conversion test should preserve widening and narrowing conversions"), bResult);
 	}
 
 	TEST_METHOD(ExplicitCast)
 	{
-		using namespace AngelscriptTest_Native_AngelscriptASSDKConversionTests_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("ASSDK explicit-cast conversion test should create a standalone engine"), ScriptEngine))
+		if (!TestRunner->TestNotNull(TEXT("SDK explicit-cast conversion test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
@@ -110,7 +89,7 @@ bool Entry()
 			DestroyNativeEngine(ScriptEngine);
 		};
 
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "ASSDKConversionExplicit", R"(
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKConversionExplicit", R"(
 bool Entry()
 {
 	double d = 3.75;
@@ -120,27 +99,26 @@ bool Entry()
 	return i == 3 && wide == 3 && f > 3.24f && f < 3.26f;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("ASSDK explicit-cast conversion test should compile the module"), Module))
+		if (!TestRunner->TestNotNull(TEXT("SDK explicit-cast conversion test should compile the module"), Module))
 		{
 			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
 		bool bResult = false;
-		if (!ExecuteConversionBoolEntry(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("ASSDK explicit-cast conversion test should preserve explicit cast semantics"), bResult);
+		TestRunner->TestTrue(TEXT("SDK explicit-cast conversion test should preserve explicit cast semantics"), bResult);
 	}
 
 	TEST_METHOD(ImplicitValueType)
 	{
-		using namespace AngelscriptTest_Native_AngelscriptASSDKConversionTests_Private;
 		FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("ASSDK implicit value-type conversion test should create a standalone engine"), ScriptEngine))
+		if (!TestRunner->TestNotNull(TEXT("SDK implicit value-type conversion test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
@@ -150,7 +128,7 @@ bool Entry()
 			DestroyNativeEngine(ScriptEngine);
 		};
 
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "ASSDKConversionImplicitValueType", R"(
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKConversionImplicitValueType", R"(
 class Test
 {
 	int opImplConv() const
@@ -166,13 +144,13 @@ bool Entry()
 	return i == 7;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("ASSDK implicit value-type conversion test should compile the module"), Module))
+		if (!TestRunner->TestNotNull(TEXT("SDK implicit value-type conversion test should compile the module"), Module))
 		{
 			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
-		TestRunner->TestNotNull(TEXT("ASSDK implicit value-type conversion test should expose the compiled entry function"), GetNativeFunctionByDecl(Module, "bool Entry()"));
+		TestRunner->TestNotNull(TEXT("SDK implicit value-type conversion test should expose the compiled entry function"), GetNativeFunctionByDecl(Module, "bool Entry()"));
 	}
 };
 

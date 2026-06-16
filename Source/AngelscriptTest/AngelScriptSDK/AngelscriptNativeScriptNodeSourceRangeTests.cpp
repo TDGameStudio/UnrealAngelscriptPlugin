@@ -13,7 +13,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_ScriptNodeSourceRange_Private
+namespace
 {
 	struct FParserAccessor : asCParser
 	{
@@ -90,7 +90,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeSourceRangeTests,
 {
 	TEST_METHOD(LineColPropagatedToFunction)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeSourceRange_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode source-range test should create a bare engine"), BareEngine))
 		{
@@ -115,7 +114,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeSourceRangeTests,
 
 	TEST_METHOD(LineColPropagatedToClassMember)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeSourceRange_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode source-range test should create a bare engine"), BareEngine))
 		{
@@ -139,7 +137,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeSourceRangeTests,
 
 	TEST_METHOD(MultilineStatementSpansCorrectRange)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeSourceRange_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode source-range test should create a bare engine"), BareEngine))
 		{
@@ -167,7 +164,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeSourceRangeTests,
 
 	TEST_METHOD(CommentSkippedDoesNotShiftNextNodeLine)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeSourceRange_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode source-range test should create a bare engine"), BareEngine))
 		{
@@ -191,7 +187,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeSourceRangeTests,
 
 	TEST_METHOD(BomDoesNotPoisonFirstNodeColumn)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_ScriptNodeSourceRange_Private;
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		if (!TestRunner->TestNotNull(TEXT("ScriptNode source-range test should create a bare engine"), BareEngine))
 		{

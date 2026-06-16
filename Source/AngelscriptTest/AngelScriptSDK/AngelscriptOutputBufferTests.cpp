@@ -1,4 +1,4 @@
-// AngelscriptASSDKOutputBufferTests.cpp
+// AngelscriptSDKOutputBufferTests.cpp
 // Tests for as_outputbuffer.cpp - compile error/warning message capture.
 // Automation IDs: Angelscript.TestModule.AngelScriptSDK.OutputBuffer.*
 
@@ -10,7 +10,7 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptASSDKOutputBufferTests, "Angelscript.TestModule.AngelScriptSDK.OutputBuffer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOutputBufferTests, "Angelscript.TestModule.AngelScriptSDK.OutputBuffer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	TEST_METHOD(ErrorCapture)
 	{

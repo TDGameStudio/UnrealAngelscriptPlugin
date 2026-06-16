@@ -4,7 +4,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_AngelScriptSDK_AngelscriptDebugReificationTests_Private
+namespace
 {
 	bool ExpectReifyType(
 		FAutomationTestBase& Test,
@@ -26,7 +26,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebugReificationTests,
 {
 	TEST_METHOD(TypeMapAndFallback)
 	{
-		using namespace AngelscriptTest_AngelScriptSDK_AngelscriptDebugReificationTests_Private;
 		const int32 Int32Type = GetReifyType<int32>();
 		const int32 DoubleType = GetReifyType<double>();
 		const int32 NameType = GetReifyType<FName>();
