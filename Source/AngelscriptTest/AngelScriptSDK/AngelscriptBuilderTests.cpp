@@ -171,6 +171,45 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBuilderTests,
 		TestRunner->TestEqual(TEXT("Imported function binding should let the consumer execute the source function"), Result, 77);
 		}
 	}
+
+	TEST_METHOD(MultiSectionBuild)
+	{
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		asCScriptEngine* ScriptEngine = static_cast<asCScriptEngine*>(Engine.GetScriptEngine());
+		asCModule* Module = CreateBuilderModule(ScriptEngine, "BuilderMultiSection");
+		if (!TestRunner->TestNotNull(TEXT("Builder multi-section test should create a backing module"), Module))
+		{
+			return;
+		}
+
+		// Add two sections to the same module via asCBuilder API (lower-level than BuildModule helper).
+		const char* Section1 = "int Add(int a, int b) { return a + b; }";
+		const char* Section2 = "int Entry() { return Add(10, 20); }";
+		Module->AddScriptSection("Section1", Section1, std::strlen(Section1), 0);
+		Module->AddScriptSection("Section2", Section2, std::strlen(Section2), 0);
+
+		const int BuildResult = Module->Build();
+		if (!TestRunner->TestEqual(TEXT("Builder multi-section test should compile both sections"), BuildResult, static_cast<int32>(asSUCCESS)))
+		{
+			return;
+		}
+
+		asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("int Entry()"));
+		if (!TestRunner->TestNotNull(TEXT("Builder multi-section test should resolve Entry from Section2"), Function))
+		{
+			return;
+		}
+
+		int32 Result = 0;
+		if (!ExecuteIntFunction(*TestRunner, Engine, *Function, Result))
+		{
+			return;
+		}
+
+		TestRunner->TestEqual(TEXT("Builder multi-section test should execute cross-section call Add(10,20)=30"), Result, 30);
+		}
+	}
 };
 
 #endif
