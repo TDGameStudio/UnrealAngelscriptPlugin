@@ -219,6 +219,152 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalVarTests,
 
 		TestRunner->TestEqual(TEXT("SDK global-var remove test should leave one global after removal"), static_cast<int32>(Module->GetGlobalVarCount()), 1);
 	}
+
+	TEST_METHOD(InitializerExpression)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("SDK global-var initializer test should create a standalone engine"), ScriptEngine))
+		{
+			return;
+		}
+
+		ON_SCOPE_EXIT
+		{
+			DestroyNativeEngine(ScriptEngine);
+		};
+
+		// Global initializer expression should be evaluated at module build time.
+		asIScriptModule* Module = BuildNativeModule(
+			ScriptEngine,
+			"SDKGlobalVarInitializer",
+			"const int computed = 10 * 3 + 7;");
+		if (!TestRunner->TestNotNull(TEXT("SDK global-var initializer test should compile the module"), Module))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		const int ComputedIndex = FindGlobalVarIndexByName(Module, "computed");
+		if (!TestRunner->TestTrue(TEXT("SDK global-var initializer test should find the computed global"), ComputedIndex >= 0))
+		{
+			return;
+		}
+
+		const int* ComputedValue = static_cast<const int*>(Module->GetAddressOfGlobalVar(ComputedIndex));
+		if (!TestRunner->TestNotNull(TEXT("SDK global-var initializer test should expose the storage"), ComputedValue))
+		{
+			return;
+		}
+
+		TestRunner->TestEqual(TEXT("SDK global-var initializer test should evaluate 10*3+7 = 37 at build time"), *ComputedValue, 37);
+	}
+
+	TEST_METHOD(ConstReadAccess)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("SDK global-var const-read test should create a standalone engine"), ScriptEngine))
+		{
+			return;
+		}
+
+		ON_SCOPE_EXIT
+		{
+			DestroyNativeEngine(ScriptEngine);
+		};
+
+		// This fork requires all script globals to be const. C++ reads the const value.
+		asIScriptModule* Module = BuildNativeModule(
+			ScriptEngine,
+			"SDKGlobalVarConstRead",
+			R"(
+const int limit = 200;
+
+int Entry()
+{
+	return limit * 2;
+}
+)");
+		if (!TestRunner->TestNotNull(TEXT("SDK global-var const-read test should compile the module"), Module))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		const int LimitIndex = FindGlobalVarIndexByName(Module, "limit");
+		if (!TestRunner->TestTrue(TEXT("SDK global-var const-read test should find the limit global"), LimitIndex >= 0))
+		{
+			return;
+		}
+
+		const int* Limit = static_cast<const int*>(Module->GetAddressOfGlobalVar(LimitIndex));
+		if (!TestRunner->TestNotNull(TEXT("SDK global-var const-read test should expose const storage"), Limit))
+		{
+			return;
+		}
+
+		if (!TestRunner->TestEqual(TEXT("SDK global-var const-read test should read limit = 200"), *Limit, 200))
+		{
+			return;
+		}
+
+		int32 Result = 0;
+		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, Module, "int Entry()", Result))
+		{
+			return;
+		}
+
+		TestRunner->TestEqual(TEXT("SDK global-var const-read test should compute limit*2 = 400"), Result, 400);
+	}
+
+	TEST_METHOD(DeclarationString)
+	{
+		FNativeMessageCollector Messages;
+		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		if (!TestRunner->TestNotNull(TEXT("SDK global-var declaration-string test should create a standalone engine"), ScriptEngine))
+		{
+			return;
+		}
+
+		ON_SCOPE_EXIT
+		{
+			DestroyNativeEngine(ScriptEngine);
+		};
+
+		// Verify GetGlobalVarDeclaration returns a non-empty string for each global.
+		asIScriptModule* Module = BuildNativeModule(
+			ScriptEngine,
+			"SDKGlobalVarDeclString",
+			"const double pi = 3.14159; const int answer = 42;");
+		if (!TestRunner->TestNotNull(TEXT("SDK global-var declaration-string test should compile the module"), Module))
+		{
+			TestRunner->AddInfo(CollectMessages(Messages));
+			return;
+		}
+
+		const asUINT GlobalCount = Module->GetGlobalVarCount();
+		if (!TestRunner->TestEqual(TEXT("SDK global-var declaration-string test should have 2 globals"), static_cast<int32>(GlobalCount), 2))
+		{
+			return;
+		}
+
+		for (asUINT i = 0; i < GlobalCount; ++i)
+		{
+			const char* Decl = Module->GetGlobalVarDeclaration(i);
+			if (!TestRunner->TestNotNull(TEXT("SDK global-var declaration-string test should return a declaration string"), Decl))
+			{
+				return;
+			}
+			const size_t Len = std::strlen(Decl);
+			if (!TestRunner->TestTrue(TEXT("SDK global-var declaration-string test should return a non-empty declaration"), Len > 0))
+			{
+				return;
+			}
+		}
+
+		TestRunner->TestTrue(TEXT("SDK global-var declaration-string test verified all declarations are non-empty"), true);
+	}
 };
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKStackTests,
