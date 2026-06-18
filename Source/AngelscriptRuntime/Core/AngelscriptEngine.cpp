@@ -316,7 +316,7 @@ static asCContext* TryTakeContextFromPool(TArray<asCContext*>& Pool, asIScriptEn
 
 	if (DesiredScriptEngine == nullptr)
 	{
-		return Pool.Pop(false);
+		return Pool.Pop(EAllowShrinking::No);
 	}
 
 	for (int32 Index = Pool.Num() - 1; Index >= 0; --Index)
@@ -2005,7 +2005,7 @@ void FAngelscriptEngine::Initialize_AnyThread()
 #endif
 
 #if WITH_EDITOR && WITH_AS_COVERAGE
-	FCoreDelegates::OnPostEngineInit.AddLambda([&]()
+	FCoreDelegates::GetOnPostEngineInit().AddLambda([&]()
 	{
 		if (CodeCoverage != nullptr)
 		{
@@ -2723,7 +2723,7 @@ void FAngelscriptEngine::InitialCompile()
 	// In order to provide proper support for tests that need the AssetManager
 	// and UPrimaryDataAsset already created, we need to delay the test discovery
 	// until the initial scan is finished.
-	FCoreDelegates::OnPostEngineInit.AddLambda([&]()
+	FCoreDelegates::GetOnPostEngineInit().AddLambda([&]()
 	{
 		UAssetManager* AssetManager = UAssetManager::GetIfInitialized();
 		if (AssetManager != nullptr)
@@ -2950,7 +2950,7 @@ bool FAngelscriptEngine::PerformHotReload(ECompileType CompileType, const TArray
 				// the dependent modules.
 				while (ModuleJobs.Num() > 0)
 				{
-					auto ModulePtr = ModuleJobs.Pop(false);
+					auto ModulePtr = ModuleJobs.Pop(EAllowShrinking::No);
 
 					for (const auto& Section : ModulePtr->Code)
 					{

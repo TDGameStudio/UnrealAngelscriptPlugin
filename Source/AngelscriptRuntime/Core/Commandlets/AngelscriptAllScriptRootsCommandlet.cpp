@@ -6,7 +6,7 @@ int32 UAngelscriptAllScriptRootsCommandlet::Main(const FString& Params)
 {
 	const auto AllScriptRoots = FAngelscriptEngine::MakeAllScriptRoots();
 
-	FStringBuilderBase Result;
+	TStringBuilder<1024> Result;
 	Result << TEXT('[');
 	auto Separator = TEXT("");
 	for (const auto& Root : AllScriptRoots)

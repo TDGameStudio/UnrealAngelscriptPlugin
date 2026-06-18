@@ -97,7 +97,7 @@ struct FAngelscriptSetType : public FAngelscriptType
 
 	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FPropertyParams& Params) const override
 	{
-		auto* SetProp = new FSetProperty(Params.Outer, Params.PropertyName, RF_Public);
+		auto* SetProp = new FSetProperty(Params.Outer, Params.PropertyName);
 
 		FPropertyParams InnerParams = Params;
 		InnerParams.Outer = SetProp;

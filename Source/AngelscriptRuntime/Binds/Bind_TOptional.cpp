@@ -114,7 +114,7 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptOptionalType final : FAngelscriptType
 
 	virtual FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FPropertyParams& Params) const override
 	{
-		auto* OptionalProp = new FOptionalProperty(Params.Outer, Params.PropertyName, RF_Public);
+		auto* OptionalProp = new FOptionalProperty(Params.Outer, Params.PropertyName);
 
 		FPropertyParams InnerParams = Params;
 		InnerParams.Outer = OptionalProp;

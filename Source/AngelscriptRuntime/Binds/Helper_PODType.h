@@ -88,7 +88,7 @@ struct TAngelscriptPODPropertyType : public TAngelscriptPODType<typename Propert
 
 	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FAngelscriptType::FPropertyParams& Params) const override
 	{
-		auto* Property = new PropertyType(Params.Outer, Params.PropertyName, RF_Public);
+		auto* Property = new PropertyType(Params.Outer, Params.PropertyName);
 		return Property;
 	}
 

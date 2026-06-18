@@ -1721,7 +1721,7 @@ void FAngelscriptPreprocessor::ProcessFunctionMacro(FFile& File, FChunk& Chunk, 
 
 			if (FunctionDesc->bIsStatic)
 			{
-				MacroError(File, Macro, FString::Printf(TEXT("Static UFUNCTION()s cannot use network specifiers"), *FunctionDesc->FunctionName));
+				MacroError(File, Macro, TEXT("Static UFUNCTION()s cannot use network specifiers"));
 				bHasError = true;
 				continue;
 			}

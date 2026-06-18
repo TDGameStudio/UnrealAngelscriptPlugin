@@ -1060,8 +1060,18 @@ static FString ApplyFormatInteger(T Number, const FString& Specifier)
 	case 'o':
 		{
 			TCHAR Buffer[32];
-			FCString::Snprintf(Buffer, UE_ARRAY_COUNT(Buffer), TEXT("%o"), UnsignedValue);
-			OutStr += Buffer;
+			int32 BufferIndex = UE_ARRAY_COUNT(Buffer) - 1;
+			Buffer[BufferIndex] = TEXT('\0');
+
+			do
+			{
+				--BufferIndex;
+				Buffer[BufferIndex] = static_cast<TCHAR>(TEXT('0') + (UnsignedValue & 7));
+				UnsignedValue >>= 3;
+			}
+			while (UnsignedValue != 0);
+
+			OutStr += &Buffer[BufferIndex];
 		}
 	break;
 	case 'x':
@@ -1185,7 +1195,7 @@ static FString ApplyFormatFloat(T Number, const FString& Specifier)
 	case 'E':
 		{
 			TCHAR Buffer[64];
-			FCString::Snprintf(Buffer, UE_ARRAY_COUNT(Buffer), TEXT("%E"), AbsValue);
+			FCString::Snprintf(Buffer, UE_ARRAY_COUNT(Buffer), TEXT("%e"), AbsValue);
 			OutStr += Buffer;
 		}
 	break;
@@ -1214,13 +1224,13 @@ static FString ApplyFormatFloat(T Number, const FString& Specifier)
 			int32 Precision = 0;
 			LexFromString(Precision, *Spec.Precision);
 			TCHAR Buffer[64];
-			FCString::Snprintf(Buffer, UE_ARRAY_COUNT(Buffer), TEXT("%.*G"), Precision, AbsValue);
+			FCString::Snprintf(Buffer, UE_ARRAY_COUNT(Buffer), TEXT("%.*g"), Precision, AbsValue);
 			OutStr += Buffer;
 		}
 		else
 		{
 			TCHAR Buffer[64];
-			FCString::Snprintf(Buffer, UE_ARRAY_COUNT(Buffer), TEXT("%G"), AbsValue);
+			FCString::Snprintf(Buffer, UE_ARRAY_COUNT(Buffer), TEXT("%g"), AbsValue);
 			OutStr += Buffer;
 		}
 	break;

@@ -375,7 +375,9 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FCollisionObjectQueryParams_La
 
 	FCollisionObjectQueryParams_.Method("void AddObjectTypesToQuery(ECollisionChannel QueryChannel)", METHOD_TRIVIAL(FCollisionObjectQueryParams, AddObjectTypesToQuery));
 	FCollisionObjectQueryParams_.Method("void RemoveObjectTypesToQuery(ECollisionChannel QueryChannel)", METHOD_TRIVIAL(FCollisionObjectQueryParams, RemoveObjectTypesToQuery));
-	FCollisionObjectQueryParams_.Method("int32 GetQueryBitfield() const", METHOD_TRIVIAL(FCollisionObjectQueryParams, GetQueryBitfield));
+	FCollisionObjectQueryParams_.Method("int64 GetObjectTypesToQuery() const", METHOD_TRIVIAL(FCollisionObjectQueryParams, GetObjectTypesToQuery));
+	FCollisionObjectQueryParams_.Method("void SetObjectTypesToQuery(int64 InObjectTypesToQuery)", METHOD_TRIVIAL(FCollisionObjectQueryParams, SetObjectTypesToQuery));
+	FCollisionObjectQueryParams_.Method("int64 GetQueryBitfield64() const", METHOD_TRIVIAL(FCollisionObjectQueryParams, GetQueryBitfield64));
 	FCollisionObjectQueryParams_.Method("bool IsValid() const", METHOD_TRIVIAL(FCollisionObjectQueryParams, IsValid));
 	FCollisionObjectQueryParams_.Method("void DoVerify() const", METHOD_TRIVIAL(FCollisionObjectQueryParams, DoVerify));
 

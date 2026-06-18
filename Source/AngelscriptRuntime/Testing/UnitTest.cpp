@@ -5,7 +5,6 @@
 #include "AngelscriptSettings.h"
 #include "Binds/Bind_Debugging.h"
 #include "Preprocessor/AngelscriptPreprocessor.h"
-#include "DummyViewport.h"
 #include "Testing/AngelscriptTest.h"
 #include "Testing/AngelscriptTestSettings.h"
 #include "Testing/Network/FakeNetDriver.h"
@@ -18,6 +17,7 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/FeedbackContext.h"
 #include "NavigationSystem.h"
+#include "Slate/SceneViewport.h"
 #include "Templates/Models.h"
 #include "Framework/Application/SlateApplication.h"
 
@@ -307,7 +307,7 @@ void RunOneUnitTest(FAngelscriptTest& T)
 
 		TSharedRef<SOverlay> TestOverlay = SNew(SOverlay);
 		TestViewport->SetViewportOverlayWidget(nullptr, TestOverlay);
-		TestViewport->Viewport = new FDummyViewport(TestViewport);
+		TestViewport->Viewport = new FSceneViewport(TestViewport, nullptr);
 		WorldContext->GameViewport = TestViewport;
 	}
 
@@ -511,7 +511,7 @@ void FHotReloadTestRunner::SortModulesForTestExecution(
 	while (ModuleJobs.Num() > 0)
 	{
 		auto ModulePtr = ModuleJobs[0];
-		ModuleJobs.RemoveAt(0, 1, false);
+		ModuleJobs.RemoveAt(0, 1, EAllowShrinking::No);
 		ModulesOrdered.Add(ModulePtr->ModuleName);
 
 		if (auto DependentModulesPtr = ReverseDeps.Find(ModulePtr))
@@ -631,7 +631,7 @@ bool FHotReloadTestRunner::RunTests(FAngelscriptEngine* AngelscriptManager)
 		TArray<TSharedRef<FAngelscriptModuleDesc>> TestBatch;
 		while (TestsInBatch <= TestsPerBatch && TestAfterHotReload.Num() > 0)
 		{
-			TSharedRef<FAngelscriptModuleDesc> Module = TestAfterHotReload.Pop(false);
+			TSharedRef<FAngelscriptModuleDesc> Module = TestAfterHotReload.Pop(EAllowShrinking::No);
 			TestBatch.Add(Module);
 			TestsInBatch += Module->UnitTestFunctions.Num();
 		}

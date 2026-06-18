@@ -132,7 +132,7 @@ struct FScriptDelegateType : TAngelscriptCppType<FScriptDelegate>
 
 	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FPropertyParams& Params) const override
 	{
-		auto* Prop = new FDelegateProperty(Params.Outer, Params.PropertyName, RF_Public);
+		auto* Prop = new FDelegateProperty(Params.Outer, Params.PropertyName);
 		Prop->SignatureFunction = GetSignature(Usage);
 		return Prop;
 	}
@@ -232,7 +232,7 @@ struct FScriptDelegateType : TAngelscriptCppType<FScriptDelegate>
 
 		Value.Usage = Usage;
 		Value.Address = Address;
-		Value.SetAddressToMonitor(&Delegate.GetUObjectRef(), sizeof(Delegate.GetUObjectRef()));
+		Value.SetAddressToMonitor(&Delegate, sizeof(Delegate));
 
 		if (Delegate.IsBound())
 		{
@@ -708,7 +708,7 @@ struct FMulticastScriptDelegateType : TAngelscriptCppType<FMulticastScriptDelega
 
 	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FPropertyParams& Params) const override
 	{
-		auto* Prop = new FMulticastInlineDelegateProperty(Params.Outer, Params.PropertyName, RF_Public);
+		auto* Prop = new FMulticastInlineDelegateProperty(Params.Outer, Params.PropertyName);
 		Prop->SignatureFunction = GetSignature(Usage);
 		Prop->SetPropertyFlags(CPF_BlueprintAssignable | CPF_BlueprintCallable);
 		return Prop;
@@ -1165,7 +1165,7 @@ struct FScriptSparseDelegateType : public FAngelscriptType
 
 	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FPropertyParams& Params) const override
 	{
-		auto* Prop = new FMulticastSparseDelegateProperty(Params.Outer, Params.PropertyName, RF_Public);
+		auto* Prop = new FMulticastSparseDelegateProperty(Params.Outer, Params.PropertyName);
 		Prop->SignatureFunction = GetSignature(Usage);
 		Prop->SetPropertyFlags(CPF_BlueprintAssignable | CPF_BlueprintCallable);
 		return Prop;

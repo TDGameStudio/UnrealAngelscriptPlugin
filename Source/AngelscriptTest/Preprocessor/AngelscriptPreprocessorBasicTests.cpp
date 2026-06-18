@@ -274,7 +274,7 @@ int UseShared()
 
 		TestRunner->AddExpectedErrorPlain(
 			TEXT("Ensure condition failed: !bIsPreprocessed"),
-			EAutomationExpectedErrorFlags::Contains, 2);
+			EAutomationExpectedErrorFlags::Contains, 4);
 		TestRunner->AddExpectedErrorPlain(
 			TEXT("LogOutputDevice:"),
 			EAutomationExpectedErrorFlags::Contains, 0);

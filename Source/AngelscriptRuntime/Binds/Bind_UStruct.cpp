@@ -176,7 +176,7 @@ struct FUStructType : FAngelscriptType
 	{
 		UScriptStruct* UsedStruct = GetStruct(Usage);
 
-		auto* StructProp = new FStructProperty(Params.Outer, Params.PropertyName, RF_Public);
+		auto* StructProp = new FStructProperty(Params.Outer, Params.PropertyName);
 		StructProp->Struct = UsedStruct;
 
 		return StructProp;

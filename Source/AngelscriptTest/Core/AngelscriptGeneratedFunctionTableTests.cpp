@@ -21,7 +21,7 @@ namespace AngelscriptTest_Core_AngelscriptGeneratedFunctionTableTests_Private
 	int32 CountGeneratedBindingRegistrations(const FString& GeneratedDirectory)
 	{
 		TArray<FString> GeneratedFiles;
-		IFileManager::Get().FindFilesRecursive(GeneratedFiles, *GeneratedDirectory, TEXT("AS_FunctionTable_*.cpp"), true, false);
+		IFileManager::Get().FindFilesRecursive(GeneratedFiles, *GeneratedDirectory, TEXT("AS_FunctionTable_*.gen.cpp"), true, false);
 
 		int32 RegistrationCount = 0;
 		for (const FString& GeneratedFile : GeneratedFiles)
@@ -49,7 +49,7 @@ namespace AngelscriptTest_Core_AngelscriptGeneratedFunctionTableTests_Private
 	bool FindGeneratedBindingLine(const FString& GeneratedDirectory, const FString& FunctionName, FString& OutLine)
 	{
 		TArray<FString> GeneratedFiles;
-		IFileManager::Get().FindFilesRecursive(GeneratedFiles, *GeneratedDirectory, TEXT("AS_FunctionTable_*.cpp"), true, false);
+		IFileManager::Get().FindFilesRecursive(GeneratedFiles, *GeneratedDirectory, TEXT("AS_FunctionTable_*.gen.cpp"), true, false);
 
 		for (const FString& GeneratedFile : GeneratedFiles)
 		{
@@ -151,8 +151,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 			TEXT("Angelscript"),
 			TEXT("Intermediate/Build/Win64/UnrealEditor/Inc/AngelscriptRuntime/UHT"));
 
-		const FString EditorOutputPath = FPaths::Combine(GeneratedDirectory, TEXT("AS_FunctionTable_UMGEditor_000.cpp"));
-		const FString RuntimeOutputPath = FPaths::Combine(GeneratedDirectory, TEXT("AS_FunctionTable_Engine_000.cpp"));
+		const FString EditorOutputPath = FPaths::Combine(GeneratedDirectory, TEXT("AS_FunctionTable_UMGEditor_000.gen.cpp"));
+		const FString RuntimeOutputPath = FPaths::Combine(GeneratedDirectory, TEXT("AS_FunctionTable_Engine_000.gen.cpp"));
 
 		FString EditorOutput;
 		if (!TestRunner->TestTrue(TEXT("Generated strategy test should find the editor-only UHT output"), FFileHelper::LoadFileToString(EditorOutput, *EditorOutputPath)))
@@ -177,7 +177,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 			FPaths::ProjectPluginsDir(),
 			TEXT("Angelscript"),
 			TEXT("Intermediate/Build/Win64/UnrealEditor/Inc/AngelscriptRuntime/UHT"));
-		const FString RuntimeOutputPath = FPaths::Combine(GeneratedDirectory, TEXT("AS_FunctionTable_Engine_000.cpp"));
+		const FString RuntimeOutputPath = FPaths::Combine(GeneratedDirectory, TEXT("AS_FunctionTable_Engine_000.gen.cpp"));
 
 		FString RuntimeOutput;
 		if (!TestRunner->TestTrue(TEXT("Generated timing hook test should find the runtime UHT output"), FFileHelper::LoadFileToString(RuntimeOutput, *RuntimeOutputPath)))

@@ -366,12 +366,12 @@ int PopulateCollisionBindings(
 
 		TestRunner->TestEqual(
 			TEXT("CollisionQueryParamsBehaviour should preserve the object-query bitfield"),
-			ScriptObjectQueryParams.GetQueryBitfield(),
-			NativeObjectQueryParams.GetQueryBitfield());
+			ScriptObjectQueryParams.GetQueryBitfield64(),
+			NativeObjectQueryParams.GetQueryBitfield64());
 		TestRunner->TestEqual(
 			TEXT("CollisionQueryParamsBehaviour should preserve ObjectTypesToQuery"),
-			ScriptObjectQueryParams.ObjectTypesToQuery,
-			NativeObjectQueryParams.ObjectTypesToQuery);
+			ScriptObjectQueryParams.GetObjectTypesToQuery(),
+			NativeObjectQueryParams.GetObjectTypesToQuery());
 		TestRunner->TestEqual(
 			TEXT("CollisionQueryParamsBehaviour should preserve object-query IgnoreMask"),
 			ScriptObjectQueryParams.IgnoreMask,

@@ -159,13 +159,13 @@ struct FUObjectType : TAngelscriptPODType<UObject*>
 		// Properties of type UClass* should emit a FClassProperty
 		if (Class == UClass::StaticClass())
 		{
-			auto* Property = new FClassProperty(Params.Outer, Params.PropertyName, RF_Public);
+			auto* Property = new FClassProperty(Params.Outer, Params.PropertyName);
 			Property->PropertyClass = Class;
 			Property->MetaClass = UObject::StaticClass();
 			return Property;
 		}
 
-		auto* Property = new FObjectProperty(Params.Outer, Params.PropertyName, RF_Public);
+		auto* Property = new FObjectProperty(Params.Outer, Params.PropertyName);
 		if (Class != nullptr)
 			Property->PropertyClass = Class;
 		else
@@ -1643,7 +1643,7 @@ struct FSubclassOfType : TAngelscriptCppType<TSubclassOf<UObject>>
 		UClass* SubClass = Usage.SubTypes[0].GetClass();
 		check(SubClass);
 
-		auto* Property = new FClassProperty(Params.Outer, Params.PropertyName, RF_Public);
+		auto* Property = new FClassProperty(Params.Outer, Params.PropertyName);
 		Property->PropertyFlags |= CPF_UObjectWrapper;
 		Property->PropertyClass = UClass::StaticClass();
 		Property->SetMetaClass(SubClass);
@@ -1905,7 +1905,7 @@ struct FObjectPtrType : TAngelscriptCppType<TObjectPtr<UObject>>
 		UClass* ObjectClass = Usage.SubTypes[0].GetClass();
 		check(ObjectClass);
 
-		auto* Property = new FObjectProperty(Params.Outer, Params.PropertyName, RF_Public);
+		auto* Property = new FObjectProperty(Params.Outer, Params.PropertyName);
 		Property->PropertyFlags |= CPF_TObjectPtr;
 		Property->PropertyClass = ObjectClass;
 
@@ -2208,7 +2208,7 @@ struct FWeakObjectPtrType : TAngelscriptCppType<TWeakObjectPtr<UObject>>
 		UClass* ObjectClass = Usage.SubTypes[0].GetClass();
 		check(ObjectClass);
 
-		auto* Property = new FWeakObjectProperty(Params.Outer, Params.PropertyName, RF_Public);
+		auto* Property = new FWeakObjectProperty(Params.Outer, Params.PropertyName);
 		Property->PropertyClass = ObjectClass;
 
 		return Property;

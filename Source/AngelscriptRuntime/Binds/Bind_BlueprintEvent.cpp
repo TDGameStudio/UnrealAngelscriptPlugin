@@ -383,7 +383,7 @@ struct alignas(64) FScriptCall
 
 		ExecutePreamble();
 
-		Delegate.ProcessMulticastDelegate<UObject>(&ArgumentBuffer[0]);
+		Delegate.ProcessDelegate<UObject>(&ArgumentBuffer[0]);
 
 		ExecuteCleanup();
 	}

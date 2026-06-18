@@ -254,7 +254,7 @@ int MissingTreeRemoveReturnsFalse() { UUserWidget Widget = WithoutTreeWidget(); 
 		bPassed &= Test.TestNull(TEXT("UserWidgetTreeErrorPaths missing-tree fixture should start without root"), WithoutTree.Widget->GetRootWidget());
 		bPassed &= Test.TestNull(TEXT("UserWidgetTreeErrorPaths detached text block should start parentless"), DetachedTextBlock->GetParent());
 
-		Test.AddExpectedErrorPlain(TEXT("Ensure condition failed: WidgetClass && WidgetClass->IsChildOf(UWidget::StaticClass())"), EAutomationExpectedErrorFlags::Contains, 1);
+		Test.AddExpectedErrorPlain(TEXT("Ensure condition failed: WidgetClass && WidgetClass->IsChildOf(UWidget::StaticClass())"), EAutomationExpectedErrorFlags::Contains, 2);
 		Test.AddExpectedErrorPlain(TEXT("LogOutputDevice:"), EAutomationExpectedErrorFlags::Contains, 0);
 
 		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUserWidget_Error"), BuildErrorScript(WithTree, WithoutTree, *DetachedTextBlock));

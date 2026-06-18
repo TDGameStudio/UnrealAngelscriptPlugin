@@ -220,7 +220,7 @@ struct FJsonObjectContainer
 		if (JsonObject.IsValid())
 		{
 			// adding a new field during iteration might reallocate/rehash the map and cause issues
-			if (!JsonObject->Values.Contains(FieldName))
+			if (!JsonObject->HasField(FieldName))
 				return CheckObjectIteratorDebug(&JsonObject->Values);
 			return true;
 		}
@@ -418,10 +418,7 @@ struct FJsonObjectContainer
 	{
 		if (CheckValidObject())
 		{
-			const TSharedPtr<FJsonValue>* Field = JsonObject->Values.Find(FieldName);
-			auto FieldSharedPtr = (Field != nullptr && Field->IsValid()) ? *Field : TSharedPtr<FJsonValue>();
-
-			return FJsonValueContainer(FieldSharedPtr);
+			return FJsonValueContainer(JsonObject->TryGetField(FieldName));
 		}
 		else
 			return FJsonValueContainer();
@@ -484,7 +481,7 @@ struct FJsonObjectFieldIterator
 	MapType* MapPtr;
 #endif
 
-	FJsonObjectFieldIterator(TMap<FString, TSharedPtr<FJsonValue>>& JsonValues)
+	FJsonObjectFieldIterator(MapType& JsonValues)
 		: Iterator(JsonValues.CreateIterator())
 		, bCanProceed(Iterator)
 		, bValidValue(false)
@@ -518,7 +515,11 @@ struct FJsonObjectFieldIterator
 		{
 			return TEXT("");
 		}
+#if !UE_JSONOBJECT_LEGACY_STRING_KEYS
+		return FString(CurrentValue.Key.ToView());
+#else
 		return CurrentValue.Key;
+#endif
 	}
 
 	FJsonValueContainer GetValue() const

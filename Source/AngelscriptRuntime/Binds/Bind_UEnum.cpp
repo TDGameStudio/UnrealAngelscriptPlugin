@@ -99,8 +99,8 @@ struct FEnumType : FAngelscriptType
 
 		if (UsedEnum->GetCppForm() == UEnum::ECppForm::EnumClass || UsedEnum->IsA<UUserDefinedEnum>())
 		{
-			auto* EnumProp = new FEnumProperty(Params.Outer, Params.PropertyName, RF_Public);
-			auto* ByteProp = new FByteProperty(EnumProp, NAME_ENUM_UnderlyingType, RF_Public);
+			auto* EnumProp = new FEnumProperty(Params.Outer, Params.PropertyName);
+			auto* ByteProp = new FByteProperty(EnumProp, NAME_ENUM_UnderlyingType);
 
 			EnumProp->SetEnum(UsedEnum);
 			EnumProp->AddCppProperty(ByteProp);
@@ -109,7 +109,7 @@ struct FEnumType : FAngelscriptType
 		}
 		else
 		{
-			auto* ByteProp = new FByteProperty(Params.Outer, Params.PropertyName, RF_Public);
+			auto* ByteProp = new FByteProperty(Params.Outer, Params.PropertyName);
 			ByteProp->Enum = UsedEnum;
 			return ByteProp;
 		}

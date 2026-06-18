@@ -122,7 +122,7 @@ struct TAngelscriptCppPropertyType : public TAngelscriptCppType<typename Propert
 
 	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FAngelscriptType::FPropertyParams& Params) const override
 	{
-		return new PropertyType(Params.Outer, Params.PropertyName, RF_Public);
+		return new PropertyType(Params.Outer, Params.PropertyName);
 	}
 
 	bool CanBeArgument(const FAngelscriptTypeUsage& Usage) const override { return true; }

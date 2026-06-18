@@ -28,7 +28,7 @@ struct TAngelscriptCoreStructType : public TAngelscriptCppType<NativeType>
 
 	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FAngelscriptType::FPropertyParams& Params) const override
 	{
-		auto* StructProp = new FStructProperty(Params.Outer, Params.PropertyName, RF_Public);
+		auto* StructProp = new FStructProperty(Params.Outer, Params.PropertyName);
 		StructProp->Struct = GetStruct(Usage);
 		return StructProp;
 	}

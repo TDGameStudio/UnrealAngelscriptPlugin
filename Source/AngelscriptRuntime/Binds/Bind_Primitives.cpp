@@ -46,7 +46,7 @@ struct TPrimitiveAngelscriptType : public TAngelscriptPODType<NativeType>
 
 	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FAngelscriptType::FPropertyParams& Params) const override
 	{
-		auto* Property = new PropertyType(Params.Outer, Params.PropertyName, RF_Public);
+		auto* Property = new PropertyType(Params.Outer, Params.PropertyName);
 		Property->SetPropertyFlags(CPF_HasGetValueTypeHash);
 		return Property;
 	}
@@ -207,7 +207,7 @@ struct FBoolType : TPrimitiveAngelscriptType<bool, FBoolProperty>
 
 	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FAngelscriptType::FPropertyParams& Params) const override
 	{
-		auto* Property = new FBoolProperty(Params.Outer, Params.PropertyName, RF_Public);
+		auto* Property = new FBoolProperty(Params.Outer, Params.PropertyName);
 		Property->SetPropertyFlags(CPF_HasGetValueTypeHash);
 		Property->SetBoolSize(1, true, 255);
 		return Property;

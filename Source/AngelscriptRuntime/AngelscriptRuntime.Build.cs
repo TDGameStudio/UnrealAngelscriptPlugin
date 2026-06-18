@@ -29,6 +29,8 @@ namespace UnrealBuildTool.Rules
 				OptimizeCode = CodeOptimization.Never;
 			}
 
+			AddGeneratedFunctionTableWrappers();
+
 			/* Link to libraries used in core angelscript code */
 			PublicDependencyModuleNames.AddRange(new string[]
 			{
@@ -85,6 +87,37 @@ namespace UnrealBuildTool.Rules
 			/* Link to Angelscript */
 			//PublicIncludePaths.Add(PluginPath + "/ThirdParty/include");
 			//PublicIncludePaths.Add(PluginPath + "/ThirdParty/source");
+		}
+
+		private void AddGeneratedFunctionTableWrappers()
+		{
+			AddGeneratedFunctionTableModuleWrappers("AIModule", 2);
+			AddGeneratedFunctionTableModuleWrappers("AngelscriptRuntime", 2);
+			AddGeneratedFunctionTableModuleWrappers("AssetRegistry", 2);
+			AddGeneratedFunctionTableModuleWrappers("Engine", 32);
+			AddGeneratedFunctionTableModuleWrappers("EngineSettings", 2);
+			AddGeneratedFunctionTableModuleWrappers("EnhancedInput", 2);
+			AddGeneratedFunctionTableModuleWrappers("Landscape", 2);
+			AddGeneratedFunctionTableModuleWrappers("NavigationSystem", 2);
+			AddGeneratedFunctionTableModuleWrappers("UMG", 8);
+			AddGeneratedFunctionTableModuleWrappers("UMGEditor", 2);
+			AddGeneratedFunctionTableModuleWrappers("UnrealEd", 4);
+		}
+
+		private void AddGeneratedFunctionTableModuleWrappers(string ModuleName, int MaxShardCount)
+		{
+			for (int ShardIndex = 0; ShardIndex < MaxShardCount; ShardIndex++)
+			{
+				string ShardName = $"AS_FunctionTable_{ModuleName}_{ShardIndex:D3}";
+				FilesToGenerate.Add(
+					$"AngelscriptGeneratedFunctionTableWrappers/{ShardName}.cpp",
+					new[]
+					{
+						$"#if __has_include(\"{ShardName}.gen.cpp\")",
+						$"#include UE_INLINE_GENERATED_CPP_BY_NAME({ShardName})",
+						"#endif",
+					});
+			}
 		}
 	}
 }

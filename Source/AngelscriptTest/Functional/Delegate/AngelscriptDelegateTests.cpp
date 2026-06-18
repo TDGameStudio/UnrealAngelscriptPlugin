@@ -400,7 +400,7 @@ class ATestDelegateMulticast : AActor
 		Params.Label = TEXT("Multicast");
 		{
 			FAngelscriptEngineScope ExecutionScope(Engine, Actor);
-			MulticastDelegate->ProcessMulticastDelegate<UObject>(&Params);
+		MulticastDelegate->ProcessDelegate<UObject>(&Params);
 		}
 
 		int32 EventTriggerCount = 0;

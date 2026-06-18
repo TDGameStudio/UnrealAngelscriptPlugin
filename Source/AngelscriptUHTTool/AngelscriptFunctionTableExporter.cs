@@ -22,8 +22,8 @@ internal static class AngelscriptFunctionTableExporter
 	[UhtExporter(
 		Name = "AngelscriptFunctionTable",
 		Description = "Exports Angelscript function table data",
-		Options = UhtExporterOptions.Default | UhtExporterOptions.CompileOutput,
-		CppFilters = ["AS_FunctionTable_*.cpp"],
+		Options = UhtExporterOptions.Default,
+		CppFilters = ["AS_FunctionTable_*.gen.cpp", "AS_FunctionTable_*.cpp"],
 		ModuleName = "AngelscriptRuntime")]
 	private static void Export(IUhtExportFactory factory)
 	{

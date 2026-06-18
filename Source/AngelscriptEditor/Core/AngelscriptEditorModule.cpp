@@ -819,7 +819,7 @@ void FAngelscriptEditorModule::StartupModule()
 
 	if (!GOnPostEngineInitHandle.IsValid())
 	{
-		GOnPostEngineInitHandle = FCoreDelegates::OnPostEngineInit.AddStatic(&OnEngineInitDone);
+		GOnPostEngineInitHandle = FCoreDelegates::GetOnPostEngineInit().AddStatic(&OnEngineInitDone);
 #if WITH_DEV_AUTOMATION_TESTS
 		GOnPostEngineInitRegistrationCountForTesting = 1;
 #endif
@@ -1072,7 +1072,7 @@ void FAngelscriptEditorModule::ShutdownModule()
 {
 	if (GOnPostEngineInitHandle.IsValid())
 	{
-		FCoreDelegates::OnPostEngineInit.Remove(GOnPostEngineInitHandle);
+		FCoreDelegates::GetOnPostEngineInit().Remove(GOnPostEngineInitHandle);
 		GOnPostEngineInitHandle.Reset();
 	}
 #if WITH_DEV_AUTOMATION_TESTS

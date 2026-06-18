@@ -1,3 +1,13 @@
+#include "AngelscriptBinds.h"
+
+#include "GameFramework/Actor.h"
+
+AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AActor(FAngelscriptBinds::EOrder::Late, []
+{
+	auto AActor_ = FAngelscriptBinds::ExistingClass("AActor");
+
+	AActor_.Method("void SetReplicates(bool bInReplicates)", &AActor::SetReplicates);
+});
 #include "Engine/Engine.h"
 
 #include "GameFramework/Actor.h"

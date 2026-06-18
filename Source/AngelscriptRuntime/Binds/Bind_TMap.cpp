@@ -115,7 +115,7 @@ struct FAngelscriptMapType : public FAngelscriptType
 
 	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FPropertyParams& Params) const override
 	{
-		auto* MapProp = new FMapProperty(Params.Outer, Params.PropertyName, RF_Public);
+		auto* MapProp = new FMapProperty(Params.Outer, Params.PropertyName);
 
 		{
 			FPropertyParams InnerParams = Params;

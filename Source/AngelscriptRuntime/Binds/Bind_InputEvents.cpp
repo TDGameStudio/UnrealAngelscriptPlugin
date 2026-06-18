@@ -109,7 +109,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_InputEvents(FAngelscriptBinds:
 	FPointerEvent_.Method("FKey GetEffectingButton() const", &FPointerEvent::GetEffectingButton);
 	FPointerEvent_.Method("float32 GetWheelDelta() const", &FPointerEvent::GetWheelDelta);
 	FPointerEvent_.Method("uint32 GetPointerIndex() const", &FPointerEvent::GetPointerIndex);
-	FPointerEvent_.Method("uint32 GetTouchpadIndex() const", &FPointerEvent::GetTouchpadIndex);
+	FPointerEvent_.Method("uint32 GetTouchpadIndex() const", [](const FPointerEvent*) -> uint32 { return 0; });
 	FPointerEvent_.Method("float32 GetTouchForce() const", &FPointerEvent::GetTouchForce);
 	FPointerEvent_.Method("bool IsTouchEvent() const", &FPointerEvent::IsTouchEvent);
 	FPointerEvent_.Method("bool IsTouchForceChangedEvent() const", &FPointerEvent::IsTouchForceChangedEvent);

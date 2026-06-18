@@ -2585,7 +2585,7 @@ void FAngelscriptClassGenerator::PerformReload(bool bFullReload)
 			else
 			{
 				// This is likely an initial compile, we should wait with activating subsystems until the engine is inited
-				FCoreDelegates::OnPostEngineInit.AddLambda([AddedSubsystems = ReinstancedSubsystems]()
+				FCoreDelegates::GetOnPostEngineInit().AddLambda([AddedSubsystems = ReinstancedSubsystems]()
 					{
 						for (UClass* NewSubsystem : AddedSubsystems)
 							FSubsystemCollectionBase::ActivateExternalSubsystem(NewSubsystem);
@@ -3824,7 +3824,7 @@ void FAngelscriptClassGenerator::DoFullReload(FModuleData& ModuleData, FEnumData
 		);
 
 		TArray<TPair<FName, int64>> EmptyNames;
-		Enum->SetEnums(EmptyNames, UEnum::ECppForm::Namespaced);
+		Enum->SetEnums(EmptyNames, UEnum::ECppForm::Namespaced, UEnum::EUnderlyingType::uint8, EEnumFlags::None, UEnum::EAddMaxKeyIfMissing::Yes);
 
 #if WITH_EDITOR
 		Enum->SetMetaData(TEXT("BlueprintType"), TEXT("true"));
@@ -3846,7 +3846,7 @@ void FAngelscriptClassGenerator::DoFullReload(FModuleData& ModuleData, FEnumData
 			Values.Emplace(*FullNameStr, EnumDesc->EnumValues[i]);
 		}
 
-		Enum->SetEnums(Values, UEnum::ECppForm::Namespaced);
+		Enum->SetEnums(Values, UEnum::ECppForm::Namespaced, UEnum::EUnderlyingType::uint8, EEnumFlags::None, UEnum::EAddMaxKeyIfMissing::Yes);
 
 		for (int32 i = 0, Count = Values.Num(); i < Count; ++i)
 		{

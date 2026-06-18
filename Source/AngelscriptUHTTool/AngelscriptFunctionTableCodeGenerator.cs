@@ -362,7 +362,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 		{
 			int startIndex = shardIndex * MaxEntriesPerShard;
 			int entryCount = Math.Min(MaxEntriesPerShard, entries.Count - startIndex);
-			string outputPath = factory.MakePath($"AS_FunctionTable_{module.ShortName}_{shardIndex:D3}", ".cpp");
+			string outputPath = factory.MakePath($"AS_FunctionTable_{module.ShortName}_{shardIndex:D3}", ".gen.cpp");
 			factory.CommitOutput(outputPath, BuildShard(module.ShortName, editorOnly, includes, entries, startIndex, entryCount, shardIndex, shardCount));
 			generatedPaths.Add(outputPath);
 			generatedShardCount++;
@@ -1213,7 +1213,8 @@ internal static class AngelscriptFunctionTableCodeGenerator
 	private static void DeleteStaleOutputs(IUhtExportFactory factory, HashSet<string> generatedPaths, IReadOnlyDictionary<string, string> allModuleOutputDirectories)
 	{
 		HashSet<string> livePaths = new(generatedPaths.Select(Path.GetFullPath), StringComparer.OrdinalIgnoreCase);
-		string runtimeOutputDirectory = Path.GetDirectoryName(Path.GetFullPath(factory.MakePath("AS_FunctionTable_Stale", ".cpp")))!;
+		string runtimeOutputDirectory = Path.GetDirectoryName(Path.GetFullPath(factory.MakePath("AS_FunctionTable_Stale", ".gen.cpp")))!;
+		DeleteStaleFilesInDirectory(runtimeOutputDirectory, "AS_FunctionTable_*.gen.cpp", livePaths);
 		DeleteStaleFilesInDirectory(runtimeOutputDirectory, "AS_FunctionTable_*.cpp", livePaths);
 
 		foreach ((string moduleName, string outputDirectory) in allModuleOutputDirectories)

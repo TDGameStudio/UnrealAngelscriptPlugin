@@ -33,7 +33,8 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FPaths(FAngelscriptBinds::EOrd
 	FAngelscriptBinds::BindGlobalFunction("const FString& GetRelativePathToRoot()", &FPaths::GetRelativePathToRoot);
 
 	// filename & path functions
-	FAngelscriptBinds::BindGlobalFunction("FString GetExtension(const FString& InPath, bool bIncludeDot = false)", &FPaths::GetExtension);
+	FAngelscriptBinds::BindGlobalFunction("FString GetExtension(const FString& InPath, bool bIncludeDot = false)",
+		[](const FString& InPath, bool bIncludeDot) -> FString { return FPaths::GetExtension(InPath, bIncludeDot); });
 	FAngelscriptBinds::BindGlobalFunction("FString GetCleanFilename(const FString& InPath)",
 		[](const FString& InPath) -> FString { return FPaths::GetCleanFilename(InPath); });
 	FAngelscriptBinds::BindGlobalFunction("FString GetBaseFilename(const FString& InPath, bool bRemovePath = true)",

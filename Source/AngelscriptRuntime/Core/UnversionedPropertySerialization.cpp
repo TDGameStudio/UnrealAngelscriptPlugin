@@ -22,7 +22,7 @@
 // unversioned property loading except non-numeric SerializeItem() calls about 2x faster.
 #ifndef CACHE_UNVERSIONED_PROPERTY_SCHEMA
 // x64 platforms tend to have more memory...
-#	define CACHE_UNVERSIONED_PROPERTY_SCHEMA (PLATFORM_CPU_X86_FAMILY && PLATFORM_64BITS)
+#	define CACHE_UNVERSIONED_PROPERTY_SCHEMA PLATFORM_CPU_X86_FAMILY
 #endif
 
 // Helper to pass around appropriate default value types depending on CACHE_UNVERSIONED_PROPERTY_SCHEMA
@@ -51,7 +51,7 @@ public:
 	FUnversionedPropertySerializer(FProperty* InProperty, int32 InArrayIndex)
 		: Property(InProperty)
 #if CACHE_UNVERSIONED_PROPERTY_SCHEMA
-		, Offset(Property->GetOffset_ForInternal() + Property->ElementSize * InArrayIndex)
+		, Offset(Property->GetOffset_ForInternal() + Property->GetElementSize() * InArrayIndex)
 		, bSerializeAsInteger(CanSerializeAsInteger(Property))
 		, bIsOptional(IsOptional(Property->GetClass()->GetCastFlags()))
 		, IntType(GetIntType(Property->GetMinAlignment()))
@@ -125,8 +125,8 @@ public:
 		// Cached FastZeroIntNum is only uint8 and not sufficient for large unset optionals
 		if (FastZeroIntNum == 0)
 		{
-			checkf(bIsOptional && Property->ElementSize >= 256, TEXT("Only large unset optionals should hit this loading path"));
-			FMemory::Memzero(ValueData, Property->ElementSize);
+			checkf(bIsOptional && Property->GetElementSize() >= 256, TEXT("Only large unset optionals should hit this loading path"));
+			FMemory::Memzero(ValueData, Property->GetElementSize());
 			return;
 		}
 #else
@@ -181,7 +181,7 @@ private:
 
 	static uint32 GetIntNum(const FProperty* Property, EIntegerType IntType)
 	{
-		return Property->ElementSize / GetSizeOf(IntType);
+		return Property->GetElementSize() / GetSizeOf(IntType);
 	}
 
 	static bool CanSerializeAsZero(const FProperty* Property, EIntegerType IntType)
