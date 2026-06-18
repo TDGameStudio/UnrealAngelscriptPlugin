@@ -169,27 +169,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
 	"Angelscript.TestModule.AngelScriptSDK.Execute",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeSdkAdapterEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner);
+		Engine.Create(*TestRunner);
 	}
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 	}
 
 	BEFORE_EACH()
 	{
-		EngineFixture.Reset(*TestRunner);
+		Engine.Reset(*TestRunner);
 		ResetExecuteState();
 	}
 
 	TEST_METHOD(BasicCallback)
 	{
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK execute basic-callback test should create a script engine"), ScriptEngine))
 		{
 			return;
@@ -236,7 +236,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
 
 	TEST_METHOD(OneArg)
 	{
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK execute one-arg test should create a script engine"), ScriptEngine))
 		{
 			return;
@@ -295,7 +295,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
 
 	TEST_METHOD(TwoArgs)
 	{
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK execute two-args test should create a script engine"), ScriptEngine))
 		{
 			return;
@@ -321,7 +321,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
 
 	TEST_METHOD(FourArgs)
 	{
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK execute four-args test should create a script engine"), ScriptEngine))
 		{
 			return;
@@ -350,7 +350,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
 
 	TEST_METHOD(FloatArgs)
 	{
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK execute float-args test should create a script engine"), ScriptEngine))
 		{
 			return;

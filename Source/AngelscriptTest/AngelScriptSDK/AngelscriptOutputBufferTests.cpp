@@ -12,37 +12,37 @@ using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOutputBufferTests, "Angelscript.TestModule.AngelScriptSDK.OutputBuffer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner);
+		Engine.Create(*TestRunner);
 	}
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 	}
 
 	BEFORE_EACH()
 	{
-		EngineFixture.ResetMessages();
+		Engine.ResetMessages();
 	}
 
 	TEST_METHOD(ErrorCapture)
 	{
-		asIScriptEngine* const SE = EngineFixture.Get();
+		asIScriptEngine* const SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
 		// Compile invalid code - should produce error messages
-		EngineFixture.ResetMessages();
-		FScopedNativeModuleName ModuleScope(EngineFixture, "BadCode");
+		Engine.ResetMessages();
+		FScopedNativeModuleName ModuleScope(Engine, "BadCode");
 		asIScriptModule* M = BuildNativeModule(SE, "BadCode", "int Entry() { return undeclared_var; }\n");
 		TestRunner->TestNull(TEXT("Invalid code should fail to compile"), M);
 
 		// Verify error was captured
 		bool HasError = false;
-		for (const FNativeMessageEntry& Entry : EngineFixture.GetMessages().Entries)
+		for (const FNativeMessageEntry& Entry : Engine.GetMessages().Entries)
 		{
 			if (Entry.Type == asMSGTYPE_ERROR)
 			{
@@ -51,24 +51,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOutputBufferTests, "Angelscript.TestModule.
 			}
 		}
 		TestRunner->TestTrue(TEXT("Message callback should capture at least one error"), HasError);
-		TestRunner->TestTrue(TEXT("Error messages should be non-empty"), EngineFixture.GetMessages().Entries.Num() > 0);
+		TestRunner->TestTrue(TEXT("Error messages should be non-empty"), Engine.GetMessages().Entries.Num() > 0);
 	}
 
 	TEST_METHOD(WarningCapture)
 	{
-		asIScriptEngine* const SE = EngineFixture.Get();
+		asIScriptEngine* const SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
 		// Code that compiles but may produce warnings (unused variable)
-		EngineFixture.ResetMessages();
-		FScopedNativeModuleName ModuleScope(EngineFixture, "WarnCode");
+		Engine.ResetMessages();
+		FScopedNativeModuleName ModuleScope(Engine, "WarnCode");
 		asIScriptModule* M = BuildNativeModule(SE, "WarnCode",
 			"int Entry() { int unused = 42; return 1; }\n");
 
 		// Whether or not there are warnings depends on engine config.
 		// The key assertion is that message callback works and does not crash.
-		TestRunner->AddInfo(FString::Printf(TEXT("Messages captured: %d"), EngineFixture.GetMessages().Entries.Num()));
-		for (const FNativeMessageEntry& Entry : EngineFixture.GetMessages().Entries)
+		TestRunner->AddInfo(FString::Printf(TEXT("Messages captured: %d"), Engine.GetMessages().Entries.Num()));
+		for (const FNativeMessageEntry& Entry : Engine.GetMessages().Entries)
 		{
 			TestRunner->AddInfo(FString::Printf(TEXT("  [%s] %s"), *FString(ToMessageTypeString(Entry.Type)), *Entry.Message));
 		}

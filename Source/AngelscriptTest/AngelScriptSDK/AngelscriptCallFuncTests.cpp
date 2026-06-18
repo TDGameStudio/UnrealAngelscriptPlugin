@@ -69,33 +69,33 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 	"Angelscript.TestModule.AngelScriptSDK.CallFunc",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 	inline static bool bHelpersRegistered = false;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner);
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		Engine.Create(*TestRunner);
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		bHelpersRegistered = ScriptEngine != nullptr && RegisterHelpers(*TestRunner, ScriptEngine);
 	}
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 		bHelpersRegistered = false;
 	}
 
 	BEFORE_EACH()
 	{
-		EngineFixture.ResetMessages();
+		Engine.ResetMessages();
 	}
 
 	TEST_METHOD(MultipleArgs)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 		if (!bHelpersRegistered) return;
-		FScopedNativeModule M(*TestRunner, EngineFixture, "CallFuncMultiArgs", "int Entry() { return AddFour(10, 20, 30, 40); }\n");
+		FScopedNativeModule M(*TestRunner, Engine, "CallFuncMultiArgs", "int Entry() { return AddFour(10, 20, 30, 40); }\n");
 		if (!M.IsValid()) return;
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
@@ -104,10 +104,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 
 	TEST_METHOD(FloatPrecision)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 		if (!bHelpersRegistered) return;
-		FScopedNativeModule M(*TestRunner, EngineFixture, "CallFuncFloat", "double Entry() { return MultiplyDouble(3.14159, 2.0); }\n");
+		FScopedNativeModule M(*TestRunner, Engine, "CallFuncFloat", "double Entry() { return MultiplyDouble(3.14159, 2.0); }\n");
 		if (!M.IsValid()) return;
 		double Result = 0.0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "double Entry()", Result)) return;
@@ -116,11 +116,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 
 	TEST_METHOD(VoidSideEffect)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 		if (!bHelpersRegistered) return;
 		GSideEffectAccumulator = 0;
-		FScopedNativeModule M(*TestRunner, EngineFixture, "CallFuncVoid", "void Entry() { AccumulateValue(10); AccumulateValue(20); AccumulateValue(12); }\n");
+		FScopedNativeModule M(*TestRunner, Engine, "CallFuncVoid", "void Entry() { AccumulateValue(10); AccumulateValue(20); AccumulateValue(12); }\n");
 		if (!M.IsValid()) return;
 		if (!ExecuteScriptVoidFunction(*TestRunner, SE, M, "void Entry()")) return;
 		TestRunner->TestEqual(TEXT("Accumulator=42"), GSideEffectAccumulator, 42);
@@ -128,10 +128,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 
 	TEST_METHOD(NestedCall)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 		if (!bHelpersRegistered) return;
-		FScopedNativeModule M(*TestRunner, EngineFixture, "CallFuncNested", "int Entry() { return IncrementAndReturn(IncrementAndReturn(IncrementAndReturn(0))); }\n");
+		FScopedNativeModule M(*TestRunner, Engine, "CallFuncNested", "int Entry() { return IncrementAndReturn(IncrementAndReturn(IncrementAndReturn(0))); }\n");
 		if (!M.IsValid()) return;
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
@@ -140,10 +140,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 
 	TEST_METHOD(ManyArgs)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 		if (!bHelpersRegistered) return;
-		FScopedNativeModule M(*TestRunner, EngineFixture, "CallFuncManyArgs", "int Entry() { return SumSix(1, 2, 3, 4, 5, 6); }\n");
+		FScopedNativeModule M(*TestRunner, Engine, "CallFuncManyArgs", "int Entry() { return SumSix(1, 2, 3, 4, 5, 6); }\n");
 		if (!M.IsValid()) return;
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
@@ -152,10 +152,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 
 	TEST_METHOD(WideReturn)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 		if (!bHelpersRegistered) return;
-		FScopedNativeModule M(*TestRunner, EngineFixture, "CallFuncWideReturn", "int64 Entry() { return WidenAndScale(3); }\n");
+		FScopedNativeModule M(*TestRunner, Engine, "CallFuncWideReturn", "int64 Entry() { return WidenAndScale(3); }\n");
 		if (!M.IsValid()) return;
 		asIScriptFunction* Func = GetNativeFunctionByDecl(M, "int64 Entry()");
 		if (!TestRunner->TestNotNull(TEXT("Should resolve"), Func)) return;
@@ -170,10 +170,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 
 	TEST_METHOD(MixedIntDoubleArgs)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 		if (!bHelpersRegistered) return;
-		FScopedNativeModule M(*TestRunner, EngineFixture, "CallFuncMixed", "double Entry() { return MixIn025(7, 0.25); }\n");
+		FScopedNativeModule M(*TestRunner, Engine, "CallFuncMixed", "double Entry() { return MixIn025(7, 0.25); }\n");
 		if (!M.IsValid()) return;
 		double Result = 0.0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "double Entry()", Result)) return;
@@ -182,10 +182,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 
 	TEST_METHOD(BoolReturn)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 		if (!bHelpersRegistered) return;
-		FScopedNativeModule M(*TestRunner, EngineFixture, "CallFuncBool", "bool Entry() { return IsPositive(5) && !IsPositive(-3) && !IsPositive(0); }\n");
+		FScopedNativeModule M(*TestRunner, Engine, "CallFuncBool", "bool Entry() { return IsPositive(5) && !IsPositive(-3) && !IsPositive(0); }\n");
 		if (!M.IsValid()) return;
 		bool bResult = false;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "bool Entry()", bResult)) return;
@@ -194,10 +194,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 
 	TEST_METHOD(OutParams)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 		if (!bHelpersRegistered) return;
-		FScopedNativeModule M(*TestRunner, EngineFixture, "CallFuncOut", R"(
+		FScopedNativeModule M(*TestRunner, Engine, "CallFuncOut", R"(
 bool Entry()
 {
 	int q = 0;

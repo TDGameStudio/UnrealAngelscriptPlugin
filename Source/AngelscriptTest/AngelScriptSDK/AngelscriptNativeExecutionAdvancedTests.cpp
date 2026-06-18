@@ -12,26 +12,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionAdvancedTests,
 	"Angelscript.TestModule.AngelScriptSDK.Execute",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner);
+		Engine.Create(*TestRunner);
 	}
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 	}
 
 	BEFORE_EACH()
 	{
-		EngineFixture.ResetMessages();
+		Engine.ResetMessages();
 	}
 
 	TEST_METHOD(FloatReturn)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Native float-return execution test should create a standalone engine"), ScriptEngine))
 		{
 			return;
@@ -45,7 +45,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionAdvancedTests,
 			? "double Test()"
 			: "float Test()";
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "NativeExecuteFloatReturn", Source);
+		FScopedNativeModule Module(*TestRunner, Engine, "NativeExecuteFloatReturn", Source);
 		if (!Module.IsValid())
 		{
 			return;
@@ -85,13 +85,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionAdvancedTests,
 
 	TEST_METHOD(NegativeValue)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Native negative-value execution test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "NativeExecuteNegativeValue", "int Test(int Start, int Delta) { return Start + Delta; }");
+		FScopedNativeModule Module(*TestRunner, Engine, "NativeExecuteNegativeValue", "int Test(int Start, int Delta) { return Start + Delta; }");
 		if (!Module.IsValid())
 		{
 			return;
@@ -126,13 +126,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionAdvancedTests,
 
 	TEST_METHOD(MultipleReturnPaths)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Native multiple-return-paths execution test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "NativeExecuteMultipleReturnPaths", "int Test(int Value) { if (Value > 0) { return 40; } return 2; }");
+		FScopedNativeModule Module(*TestRunner, Engine, "NativeExecuteMultipleReturnPaths", "int Test(int Value) { if (Value > 0) { return 40; } return 2; }");
 		if (!Module.IsValid())
 		{
 			return;

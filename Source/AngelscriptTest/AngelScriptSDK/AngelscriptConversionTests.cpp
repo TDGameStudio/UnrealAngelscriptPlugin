@@ -35,31 +35,31 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKConversionTests,
 	"Angelscript.TestModule.AngelScriptSDK.Conversion",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner);
+		Engine.Create(*TestRunner);
 	}
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 	}
 
 	BEFORE_EACH()
 	{
-		EngineFixture.ResetMessages();
+		Engine.ResetMessages();
 	}
 	TEST_METHOD(Numeric)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK numeric conversion test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKConversionNumeric", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionNumeric", R"(
 int AddSmallAndMedium(int8 Small, uint16 Medium)
 {
 	return Small + Medium;
@@ -99,13 +99,13 @@ float NarrowPrecise(double Value)
 
 	TEST_METHOD(ExplicitCast)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK explicit-cast conversion test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKConversionExplicit", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionExplicit", R"(
 int TruncateDouble(double Value)
 {
 	return int(Value);
@@ -160,13 +160,13 @@ float AddFloatQuarter(uint64 Value)
 
 	TEST_METHOD(ImplicitValueType)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK implicit value-type conversion test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKConversionImplicitValueType", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionImplicitValueType", R"(
 class Test
 {
 	int opImplConv() const
@@ -194,13 +194,13 @@ int ConvertTestToInt()
 
 	TEST_METHOD(NumericBoundary)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK numeric-boundary conversion test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKConversionNumericBoundary", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionNumericBoundary", R"(
 int Truncate(double Value)
 {
 	return int(Value);
@@ -279,13 +279,13 @@ int64 WidenInt(int Value)
 
 	TEST_METHOD(BoolConversion)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK bool-conversion test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKConversionBool", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionBool", R"(
 bool IsNonZero(int Value)
 {
 	return Value != 0;

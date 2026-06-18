@@ -105,31 +105,31 @@ namespace
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOperatorTests, "Angelscript.TestModule.AngelScriptSDK.Operator", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner);
+		Engine.Create(*TestRunner);
 	}
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 	}
 
 	BEFORE_EACH()
 	{
-		EngineFixture.ResetMessages();
+		Engine.ResetMessages();
 	}
 	TEST_METHOD(Arithmetic)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator arithmetic test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorArithmetic", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorArithmetic", R"(
 int Add() { return 10 + 5; }
 int Subtract() { return 10 - 5; }
 int Multiply() { return 10 * 5; }
@@ -164,13 +164,13 @@ int IncrementDecrement()
 
 	TEST_METHOD(Comparison)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator comparison test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorComparison", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorComparison", R"(
 bool Equal() { int a = 10; int c = 10; return a == c; }
 bool NotEqual() { int a = 10; int b = 20; return a != b; }
 bool LessThan() { int a = 10; int b = 20; return a < b; }
@@ -197,13 +197,13 @@ bool GreaterEqualSame() { int a = 10; int c = 10; return a >= c; }
 
 	TEST_METHOD(Logical)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator logical test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorLogical", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorLogical", R"(
 bool AndTrueTrue() { return true && true; }
 bool AndTrueFalse() { return true && false; }
 bool AndFalseTrue() { return false && true; }
@@ -242,13 +242,13 @@ bool NotFalse() { return !false; }
 
 	TEST_METHOD(Bitwise)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator bitwise test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorBitwise", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorBitwise", R"(
 uint BitAnd() { uint a = 0b11001100; uint b = 0b10101010; return a & b; }
 uint BitOr() { uint a = 0b11001100; uint b = 0b10101010; return a | b; }
 uint BitXor() { uint a = 0b11001100; uint b = 0b10101010; return a ^ b; }
@@ -282,13 +282,13 @@ uint CompoundBitwise()
 
 	TEST_METHOD(Assignment)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator assignment test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorAssignment", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorAssignment", R"(
 int SimpleAssign() { int a = 10; return a; }
 int AddAssign() { int b = 10; b += 5; return b; }
 int SubAssign() { int c = 10; c -= 3; return c; }
@@ -313,13 +313,13 @@ int ChainedAssign() { int x = 0, y = 0, z = 0; x = y = z = 42; return x + y + z;
 
 	TEST_METHOD(Ternary)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator ternary test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorTernary", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorTernary", R"(
 int TrueBranch() { return true ? 10 : 20; }
 int FalseBranch() { return false ? 10 : 20; }
 int NestedBranch() { int x = 5; return x > 10 ? 1 : x > 5 ? 2 : x == 5 ? 3 : 4; }
@@ -343,13 +343,13 @@ int SideEffectCounter()
 
 	TEST_METHOD(Pow)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator pow test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorPow", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorPow", R"(
 int IntPow() { return 3 ** 2; }
 double SqrtPow() { return 9.0 ** 0.5; }
 double FractionalPow() { return 2.5 ** 2; }
@@ -397,13 +397,13 @@ void Overflow()
 
 	TEST_METHOD(Call)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator opCall test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorCall", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorCall", R"(
 class Adder
 {
 	int opCall(int a, int b)
@@ -444,13 +444,13 @@ bool InvokeAdderTriple()
 
 	TEST_METHOD(Index)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator index test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorIndex", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorIndex", R"(
 class SimpleArray
 {
 	int data0 = 10;
@@ -484,13 +484,13 @@ int ReadSimpleArraySlot(int Index)
 
 	TEST_METHOD(Precedence)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator precedence test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorPrecedence", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorPrecedence", R"(
 int MultiplicativeBeforeAdditive() { return 2 + 3 * 4; }
 int ParenthesesOverride() { return (2 + 3) * 4; }
 int UnaryMinusBeforeMultiply() { return -2 * 3; }
@@ -513,13 +513,13 @@ bool ComparisonBeforeLogical() { return 2 + 2 == 4 && 3 * 3 > 8; }
 
 	TEST_METHOD(ShortCircuit)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator short-circuit test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorShortCircuit", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorShortCircuit", R"(
 int AndCounter()
 {
 	int counter = 0;

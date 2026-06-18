@@ -12,31 +12,31 @@ using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKRuntimeTests, "Angelscript.TestModule.AngelScriptSDK.Runtime", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner);
+		Engine.Create(*TestRunner);
 	}
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 	}
 
 	BEFORE_EACH()
 	{
-		EngineFixture.ResetMessages();
+		Engine.ResetMessages();
 	}
 	TEST_METHOD(Context)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK runtime context test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKRuntimeContext", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKRuntimeContext", R"(
 int Compute(int N)
 {
 	int Result = 0;
@@ -68,13 +68,13 @@ bool Entry()
 
 	TEST_METHOD(Exception)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK runtime exception test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKRuntimeException", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKRuntimeException", R"(
 void ThrowException()
 {
 	int a = 0;
@@ -113,13 +113,13 @@ bool Entry()
 
 	TEST_METHOD(Suspend)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK runtime suspend test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKRuntimeSuspend", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKRuntimeSuspend", R"(
 int Sum(int N)
 {
 	int Result = 0;
@@ -151,13 +151,13 @@ bool Entry()
 
 	TEST_METHOD(ExceptionDetails)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK runtime exception-details test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKRuntimeExceptionDetails", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKRuntimeExceptionDetails", R"(
 int Divide(int A, int B)
 {
 	return A / B;
@@ -206,13 +206,13 @@ int Entry()
 
 	TEST_METHOD(ModuloByZero)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK runtime modulo-by-zero test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKRuntimeModuloByZero", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKRuntimeModuloByZero", R"(
 int Entry()
 {
 	int a = 7;
@@ -251,13 +251,13 @@ int Entry()
 
 	TEST_METHOD(ContextReuseAfterException)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK runtime context-reuse test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKRuntimeContextReuse", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKRuntimeContextReuse", R"(
 int Boom()
 {
 	int a = 0;

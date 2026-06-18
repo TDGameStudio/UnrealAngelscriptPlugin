@@ -43,15 +43,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKCallingConvTests,
 	"Angelscript.TestModule.AngelScriptSDK.CallingConv",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 	inline static bool bCDeclRegistered = false;
 	inline static bool bGenericRegistered = false;
 	inline static bool bNativeAdderRegistered = false;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner);
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		Engine.Create(*TestRunner);
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (ScriptEngine == nullptr)
 		{
 			return;
@@ -74,7 +74,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKCallingConvTests,
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 		bCDeclRegistered = false;
 		bGenericRegistered = false;
 		bNativeAdderRegistered = false;
@@ -82,12 +82,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKCallingConvTests,
 
 	BEFORE_EACH()
 	{
-		EngineFixture.ResetMessages();
+		Engine.ResetMessages();
 	}
 
 	TEST_METHOD(CDecl)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK calling-convention CDecl test should create a standalone engine"), ScriptEngine))
 		{
 			return;
@@ -97,7 +97,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKCallingConvTests,
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKCallingConvCDecl", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKCallingConvCDecl", R"(
 int Entry()
 {
 	return DoubleNativeValue(21);
@@ -119,7 +119,7 @@ int Entry()
 
 	TEST_METHOD(Generic)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK calling-convention generic test should create a standalone engine"), ScriptEngine))
 		{
 			return;
@@ -129,7 +129,7 @@ int Entry()
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKCallingConvGeneric", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKCallingConvGeneric", R"(
 int Entry()
 {
 	return TripleGenericValue(14);
@@ -151,7 +151,7 @@ int Entry()
 
 	TEST_METHOD(Thiscall)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK calling-convention thiscall test should create a standalone engine"), ScriptEngine))
 		{
 			return;
@@ -163,7 +163,7 @@ int Entry()
 
 		// Compile-only test: verify the module compiles with native thiscall method registration.
 		// Script class instantiation in isolated engine context may crash, so we only verify compilation.
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKCallingConvThiscall", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKCallingConvThiscall", R"(
 int Entry()
 {
 	NativeAdder Value;

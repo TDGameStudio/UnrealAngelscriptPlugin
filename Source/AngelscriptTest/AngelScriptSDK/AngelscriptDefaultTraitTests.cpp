@@ -11,32 +11,32 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKDefaultTraitTests,
 	"Angelscript.TestModule.AngelScriptSDK.Compiler",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner);
+		Engine.Create(*TestRunner);
 	}
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 	}
 
 	BEFORE_EACH()
 	{
-		EngineFixture.ResetMessages();
+		Engine.ResetMessages();
 	}
 
 	TEST_METHOD(DefaultTraitModifiers)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK default-trait modifier test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKDefaultTraitModifiers", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKDefaultTraitModifiers", R"(
 int DefaultsOnlyValue() defaults
 {
 	return 7;

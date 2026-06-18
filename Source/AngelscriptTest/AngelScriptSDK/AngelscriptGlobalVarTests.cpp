@@ -66,26 +66,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalVarTests,
 	"Angelscript.TestModule.AngelScriptSDK.GlobalVar",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner);
+		Engine.Create(*TestRunner);
 	}
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 	}
 
 	BEFORE_EACH()
 	{
-		EngineFixture.ResetMessages();
+		Engine.ResetMessages();
 	}
 
 	TEST_METHOD(Enumerate)
 	{
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK global-var enumeration test should create a standalone engine"), ScriptEngine))
 		{
 			return;
@@ -93,12 +93,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalVarTests,
 
 		FScopedNativeModule Module(
 			*TestRunner,
-			EngineFixture,
+			Engine,
 			"SDKGlobalVarEnumerate",
 			"const int a = 1; const double b = 2.0; const double c = 35.2; const uint d = 0xC0DE;");
 		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(EngineFixture.GetMessagesText());
+			TestRunner->AddInfo(Engine.GetMessagesText());
 			return;
 		}
 
@@ -165,7 +165,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalVarTests,
 
 	TEST_METHOD(ResetState)
 	{
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK global-var reset test should create a standalone engine"), ScriptEngine))
 		{
 			return;
@@ -173,12 +173,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalVarTests,
 
 		FScopedNativeModule Module(
 			*TestRunner,
-			EngineFixture,
+			Engine,
 			"SDKGlobalVarReset",
 			"const double First = 2.0; const double Second = 5.0;");
 		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(EngineFixture.GetMessagesText());
+			TestRunner->AddInfo(Engine.GetMessagesText());
 			return;
 		}
 
@@ -192,7 +192,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalVarTests,
 
 	TEST_METHOD(RemoveBeforeDiscard)
 	{
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK global-var remove test should create a standalone engine"), ScriptEngine))
 		{
 			return;
@@ -200,12 +200,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalVarTests,
 
 		FScopedNativeModule Module(
 			*TestRunner,
-			EngineFixture,
+			Engine,
 			"SDKGlobalVarRemove",
 			"const int First = 1; const int Second = 2;");
 		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(EngineFixture.GetMessagesText());
+			TestRunner->AddInfo(Engine.GetMessagesText());
 			return;
 		}
 
@@ -224,7 +224,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalVarTests,
 
 	TEST_METHOD(InitializerExpression)
 	{
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK global-var initializer test should create a standalone engine"), ScriptEngine))
 		{
 			return;
@@ -233,12 +233,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalVarTests,
 		// Global initializer expression should be evaluated at module build time.
 		FScopedNativeModule Module(
 			*TestRunner,
-			EngineFixture,
+			Engine,
 			"SDKGlobalVarInitializer",
 			"const int computed = 10 * 3 + 7;");
 		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(EngineFixture.GetMessagesText());
+			TestRunner->AddInfo(Engine.GetMessagesText());
 			return;
 		}
 
@@ -259,7 +259,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalVarTests,
 
 	TEST_METHOD(ConstReadAccess)
 	{
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK global-var const-read test should create a standalone engine"), ScriptEngine))
 		{
 			return;
@@ -268,7 +268,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalVarTests,
 		// This fork requires all script globals to be const. C++ reads the const value.
 		FScopedNativeModule Module(
 			*TestRunner,
-			EngineFixture,
+			Engine,
 			"SDKGlobalVarConstRead",
 			R"(
 const int limit = 200;
@@ -280,7 +280,7 @@ int Entry()
 )");
 		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(EngineFixture.GetMessagesText());
+			TestRunner->AddInfo(Engine.GetMessagesText());
 			return;
 		}
 
@@ -312,7 +312,7 @@ int Entry()
 
 	TEST_METHOD(DeclarationString)
 	{
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK global-var declaration-string test should create a standalone engine"), ScriptEngine))
 		{
 			return;
@@ -321,12 +321,12 @@ int Entry()
 		// Verify GetGlobalVarDeclaration returns a non-empty string for each global.
 		FScopedNativeModule Module(
 			*TestRunner,
-			EngineFixture,
+			Engine,
 			"SDKGlobalVarDeclString",
 			"const double pi = 3.14159; const int answer = 42;");
 		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(EngineFixture.GetMessagesText());
+			TestRunner->AddInfo(Engine.GetMessagesText());
 			return;
 		}
 

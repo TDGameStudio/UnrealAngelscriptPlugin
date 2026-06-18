@@ -18,30 +18,30 @@ namespace
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKVariableScopeTests, "Angelscript.TestModule.AngelScriptSDK.VariableScope", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner);
+		Engine.Create(*TestRunner);
 	}
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 	}
 
 	BEFORE_EACH()
 	{
-		EngineFixture.ResetMessages();
+		Engine.ResetMessages();
 	}
 	TEST_METHOD(Isolation)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
 		// Variable declared in inner scope should not be visible in outer scope
-		EngineFixture.ResetMessages();
-		FScopedNativeModuleName ModuleScope(EngineFixture, "ScopeIso");
+		Engine.ResetMessages();
+		FScopedNativeModuleName ModuleScope(Engine, "ScopeIso");
 		asIScriptModule* M = BuildNativeModule(SE, "ScopeIso", R"(
 int Entry()
 {
@@ -54,10 +54,10 @@ int Entry()
 
 	TEST_METHOD(Shadowing)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
-		FScopedNativeModule M(*TestRunner, EngineFixture, "ScopeShadow", R"(
+		FScopedNativeModule M(*TestRunner, Engine, "ScopeShadow", R"(
 int Entry()
 {
 	int x = 10;
@@ -77,10 +77,10 @@ int Entry()
 
 	TEST_METHOD(NestedBlocks)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
-		FScopedNativeModule M(*TestRunner, EngineFixture, "ScopeNested", R"(
+		FScopedNativeModule M(*TestRunner, Engine, "ScopeNested", R"(
 int Entry()
 {
 	int sum = 0;
@@ -102,12 +102,12 @@ int Entry()
 
 	TEST_METHOD(ForInitScope)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
 		// Loop counter declared in for-init is scoped to the loop; a same-named
 		// outer variable is unaffected, and two sequential loops may reuse the name.
-		FScopedNativeModule M(*TestRunner, EngineFixture, "ScopeForInit", R"(
+		FScopedNativeModule M(*TestRunner, Engine, "ScopeForInit", R"(
 int Entry()
 {
 	int i = 100;
@@ -129,12 +129,12 @@ int Entry()
 
 	TEST_METHOD(ForInitLeakRejected)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
 		// A for-init counter must not be visible after the loop body.
-		EngineFixture.ResetMessages();
-		FScopedNativeModuleName ModuleScope(EngineFixture, "ScopeForInitLeak");
+		Engine.ResetMessages();
+		FScopedNativeModuleName ModuleScope(Engine, "ScopeForInitLeak");
 		asIScriptModule* M = BuildNativeModule(SE, "ScopeForInitLeak", R"(
 int Entry()
 {
@@ -147,12 +147,12 @@ int Entry()
 
 	TEST_METHOD(DeepShadowing)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
 		// Each nested block may re-shadow the same name; the innermost value is
 		// used within its block, and each outer value is restored on block exit.
-		FScopedNativeModule M(*TestRunner, EngineFixture, "ScopeDeepShadow", R"(
+		FScopedNativeModule M(*TestRunner, Engine, "ScopeDeepShadow", R"(
 int Entry()
 {
 	int x = 1;
@@ -185,12 +185,12 @@ int Entry()
 
 	TEST_METHOD(WhileAndIfBlockScope)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
 		// Variables declared inside while/if bodies are block-scoped; the outer
 		// accumulator survives across iterations.
-		FScopedNativeModule M(*TestRunner, EngineFixture, "ScopeWhileIf", R"(
+		FScopedNativeModule M(*TestRunner, Engine, "ScopeWhileIf", R"(
 int Entry()
 {
 	int sum = 0;
@@ -221,12 +221,12 @@ int Entry()
 
 	TEST_METHOD(IfBlockLeakRejected)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
 		// A variable declared inside an if body must not be visible afterward.
-		EngineFixture.ResetMessages();
-		FScopedNativeModuleName ModuleScope(EngineFixture, "ScopeIfLeak");
+		Engine.ResetMessages();
+		FScopedNativeModuleName ModuleScope(Engine, "ScopeIfLeak");
 		asIScriptModule* M = BuildNativeModule(SE, "ScopeIfLeak", R"(
 int Entry()
 {

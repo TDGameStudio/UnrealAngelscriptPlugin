@@ -12,26 +12,26 @@ using namespace AngelscriptSDKTestSupport;
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOOPTests, "Angelscript.TestModule.AngelScriptSDK.OOP", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	inline static FSDKBufferedOutStream Buffered;
-	inline static FNativeSdkAdapterEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner, &Buffered);
+		Engine.Create(*TestRunner, &Buffered);
 	}
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 	}
 
 	BEFORE_EACH()
 	{
-		EngineFixture.Reset(*TestRunner);
+		Engine.Reset(*TestRunner);
 	}
 
 	TEST_METHOD(InterfaceBridge)
 	{
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK OOP interface test should create a standalone engine"), ScriptEngine))
 		{
 			return;
@@ -63,13 +63,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOOPTests, "Angelscript.TestModule.AngelScri
 
 	TEST_METHOD(MixinNamespace)
 	{
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK OOP mixin test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOOPMixinNamespace", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOOPMixinNamespace", R"(
 struct Counter
 {
 	int Value = 0;
@@ -98,13 +98,13 @@ bool ApplyMixin()
 
 	TEST_METHOD(InheritedInterfaceMethod)
 	{
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK OOP inherited-interface-method test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOOPInheritedInterfaceMethod", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOOPInheritedInterfaceMethod", R"(
 class B
 {
 	bool touched = false;

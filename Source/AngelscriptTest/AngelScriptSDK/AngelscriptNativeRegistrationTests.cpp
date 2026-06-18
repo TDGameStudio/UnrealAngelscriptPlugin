@@ -68,13 +68,13 @@ namespace
 		const char* ModuleName,
 		const char* Source,
 		const char* Declaration,
-		FNativeSdkEngineFixture& EngineFixture,
+		FNativeTestEngine& Engine,
 		int32& OutValue)
 	{
 		asIScriptModule* Module = BuildNativeModule(ScriptEngine, ModuleName, Source);
 		if (!Test.TestNotNull(TEXT("Native registration tests should compile the script module"), Module))
 		{
-			Test.AddInfo(EngineFixture.GetMessagesText());
+			Test.AddInfo(Engine.GetMessagesText());
 			return false;
 		}
 
@@ -99,7 +99,7 @@ namespace
 				const FString ExceptionString = UTF8_TO_TCHAR(Context->GetExceptionString() != nullptr ? Context->GetExceptionString() : "");
 				Test.AddInfo(FString::Printf(TEXT("Native registration exception at line %d: %s"), ExceptionLine, *ExceptionString));
 			}
-			const FString Diagnostics = EngineFixture.GetMessagesText();
+			const FString Diagnostics = Engine.GetMessagesText();
 			if (!Diagnostics.IsEmpty())
 			{
 				Test.AddInfo(Diagnostics);
@@ -119,15 +119,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
 	"Angelscript.TestModule.AngelScriptSDK.Register",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 	inline static bool bGlobalFunctionRegistered = false;
 	inline static bool bGlobalPropertyRegistered = false;
 	inline static bool bNativeCounterRegistered = false;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner);
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		Engine.Create(*TestRunner);
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (ScriptEngine == nullptr)
 		{
 			return;
@@ -152,7 +152,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 		bGlobalFunctionRegistered = false;
 		bGlobalPropertyRegistered = false;
 		bNativeCounterRegistered = false;
@@ -160,13 +160,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
 
 	BEFORE_EACH()
 	{
-		EngineFixture.ResetMessages();
+		Engine.ResetMessages();
 		GNativeGlobalValue = 21;
 	}
 
 	TEST_METHOD(GlobalFunction)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Native global-function registration test should create a standalone engine"), ScriptEngine))
 		{
 			return;
@@ -177,8 +177,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
 		}
 
 		int32 Result = 0;
-		FScopedNativeModuleName ModuleScope(EngineFixture, "NativeRegisterGlobalFunction");
-		if (!ExecuteRegisteredScript(*TestRunner, ScriptEngine, "NativeRegisterGlobalFunction", "int Entry() { return DoubleNative(21); }", "int Entry()", EngineFixture, Result))
+		FScopedNativeModuleName ModuleScope(Engine, "NativeRegisterGlobalFunction");
+		if (!ExecuteRegisteredScript(*TestRunner, ScriptEngine, "NativeRegisterGlobalFunction", "int Entry() { return DoubleNative(21); }", "int Entry()", Engine, Result))
 		{
 			return;
 		}
@@ -188,7 +188,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
 
 	TEST_METHOD(GlobalProperty)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Native global-property registration test should create a standalone engine"), ScriptEngine))
 		{
 			return;
@@ -199,8 +199,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
 		}
 
 		int32 Result = 0;
-		FScopedNativeModuleName ModuleScope(EngineFixture, "NativeRegisterGlobalProperty");
-		if (!ExecuteRegisteredScript(*TestRunner, ScriptEngine, "NativeRegisterGlobalProperty", "int Entry() { return NativeGlobalValue * 2; }", "int Entry()", EngineFixture, Result))
+		FScopedNativeModuleName ModuleScope(Engine, "NativeRegisterGlobalProperty");
+		if (!ExecuteRegisteredScript(*TestRunner, ScriptEngine, "NativeRegisterGlobalProperty", "int Entry() { return NativeGlobalValue * 2; }", "int Entry()", Engine, Result))
 		{
 			return;
 		}
@@ -210,7 +210,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
 
 	TEST_METHOD(SimpleValueType)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Native value-type registration test should create a standalone engine"), ScriptEngine))
 		{
 			return;
@@ -221,8 +221,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
 		}
 
 		int32 Result = 0;
-		FScopedNativeModuleName ModuleScope(EngineFixture, "NativeRegisterSimpleValueType");
-		if (!ExecuteRegisteredScript(*TestRunner, ScriptEngine, "NativeRegisterSimpleValueType", "int Entry() { NativeCounter Counter; Counter.Value = 19; return Counter.Value + 23; }", "int Entry()", EngineFixture, Result))
+		FScopedNativeModuleName ModuleScope(Engine, "NativeRegisterSimpleValueType");
+		if (!ExecuteRegisteredScript(*TestRunner, ScriptEngine, "NativeRegisterSimpleValueType", "int Entry() { NativeCounter Counter; Counter.Value = 19; return Counter.Value + 23; }", "int Entry()", Engine, Result))
 		{
 			return;
 		}

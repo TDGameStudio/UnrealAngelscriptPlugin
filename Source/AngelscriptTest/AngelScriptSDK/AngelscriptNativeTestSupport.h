@@ -4,6 +4,7 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 
+#include <cstdio>
 #include <cstring>
 #include <string>
 
@@ -18,6 +19,8 @@
 
 namespace AngelscriptNativeTestSupport
 {
+	inline constexpr asPWORD NativeTestEngineUserDataSlot = static_cast<asPWORD>(0x4E41544956454153ull);
+
 	struct FNativeMessageEntry
 	{
 		FString Section;
@@ -129,6 +132,53 @@ namespace AngelscriptNativeTestSupport
 		return Result.IsEmpty() ? TEXT("<no functions>") : Result;
 	}
 
+	struct FSDKBufferedOutStream
+	{
+		std::string Buffer;
+
+		void Clear()
+		{
+			Buffer.clear();
+		}
+
+		void Callback(asSMessageInfo* MessageInfo)
+		{
+			if (MessageInfo == nullptr)
+			{
+				return;
+			}
+
+			const char* MessageType = "Info   ";
+			switch (MessageInfo->type)
+			{
+			case asMSGTYPE_ERROR:
+				MessageType = "Error  ";
+				break;
+			case asMSGTYPE_WARNING:
+				MessageType = "Warning";
+				break;
+			case asMSGTYPE_INFORMATION:
+			default:
+				MessageType = "Info   ";
+				break;
+			}
+
+			char Formatted[1024];
+			std::snprintf(
+				Formatted,
+				sizeof(Formatted),
+				"%s (%d, %d) : %s : %s\n",
+				MessageInfo->section != nullptr ? MessageInfo->section : "",
+				MessageInfo->row,
+				MessageInfo->col,
+				MessageType,
+				MessageInfo->message != nullptr ? MessageInfo->message : "");
+
+			Formatted[sizeof(Formatted) - 1] = '\0';
+			Buffer += Formatted;
+		}
+	};
+
 	inline asIScriptEngine* CreateNativeEngine(FNativeMessageCollector* MessageCollector = nullptr)
 	{
 		FNativeMessageCollector* const Collector = MessageCollector != nullptr ? MessageCollector : &GetDefaultMessageCollector();
@@ -217,24 +267,83 @@ namespace AngelscriptNativeTestSupport
 		return CompileNativeModule(ScriptEngine, ModuleName, Source, Module) >= 0 ? Module : nullptr;
 	}
 
-	struct FNativeSdkEngineFixture
+	struct FNativeTestEngine;
+
+	inline FNativeTestEngine* GetNativeTestEngine(asIScriptEngine* Engine)
 	{
-		void Create(FAutomationTestBase& Test)
+		return Engine != nullptr
+			? static_cast<FNativeTestEngine*>(Engine->GetUserData(NativeTestEngineUserDataSlot))
+			: nullptr;
+	}
+
+	inline void NativeTestAssert_Generic(asIScriptGeneric* Generic);
+
+	struct FNativeTestEngine
+	{
+		void Create(FAutomationTestBase& Test, FSDKBufferedOutStream* InBufferedOutStream = nullptr)
 		{
 			if (ScriptEngine != nullptr)
 			{
 				Destroy();
 			}
 
+			CurrentTest = &Test;
+			BufferedOutStream = InBufferedOutStream;
 			ScriptEngine = CreateNativeEngine(&Messages);
-			Test.TestNotNull(TEXT("Native SDK fixture should create a shared raw engine"), ScriptEngine);
+			if (!Test.TestNotNull(TEXT("Native test engine should create a shared raw engine"), ScriptEngine))
+			{
+				return;
+			}
+
+			if (BufferedOutStream != nullptr)
+			{
+				BufferedOutStream->Clear();
+				const int CallbackResult = ScriptEngine->SetMessageCallback(
+					asMETHODPR(FSDKBufferedOutStream, Callback, (asSMessageInfo*), void),
+					BufferedOutStream,
+					asCALL_THISCALL);
+				if (CallbackResult < 0)
+				{
+					Fail(TEXT("Native test engine should install the buffered output callback"), __FILE__, __LINE__);
+					Destroy();
+					return;
+				}
+			}
+
+			ScriptEngine->SetUserData(this, NativeTestEngineUserDataSlot);
+			const int RegisterAssertResult = ScriptEngine->RegisterGlobalFunction(
+				"void assert(bool bCondition)",
+				asFUNCTION(NativeTestAssert_Generic),
+				asCALL_GENERIC);
+			if (RegisterAssertResult < 0)
+			{
+				Fail(
+					FString::Printf(TEXT("Native test engine should register script-side assert(bool) (Result=%d)"), RegisterAssertResult),
+					__FILE__,
+					__LINE__);
+				Destroy();
+			}
 		}
 
 		void Destroy()
 		{
 			DestroyNativeEngine(ScriptEngine);
 			ScriptEngine = nullptr;
+			CurrentTest = nullptr;
+			BufferedOutStream = nullptr;
+			bFailed = false;
 			Messages.Reset();
+		}
+
+		void Reset(FAutomationTestBase& Test)
+		{
+			CurrentTest = &Test;
+			bFailed = false;
+			ResetMessages();
+			if (BufferedOutStream != nullptr)
+			{
+				BufferedOutStream->Clear();
+			}
 		}
 
 		void ResetMessages()
@@ -262,32 +371,119 @@ namespace AngelscriptNativeTestSupport
 			return CollectMessages(Messages);
 		}
 
+		bool HasFailed() const
+		{
+			return bFailed;
+		}
+
+		FSDKBufferedOutStream* GetBufferedOutStream() const
+		{
+			return BufferedOutStream;
+		}
+
+		void Fail(const TCHAR* Reason, const char* File, int Line)
+		{
+			bFailed = true;
+			if (CurrentTest != nullptr)
+			{
+				CurrentTest->AddError(FString::Printf(TEXT("%s [%hs:%d]"), Reason, File, Line));
+			}
+		}
+
+		void Fail(const FString& Reason, const char* File, int Line)
+		{
+			Fail(*Reason, File, Line);
+		}
+
+		void FailWithContext(const TCHAR* Reason, asIScriptContext* Context, const char* File, int Line)
+		{
+			bFailed = true;
+
+			FString Message = FString::Printf(TEXT("%s [%hs:%d]"), Reason, File, Line);
+			if (Context != nullptr)
+			{
+				int Column = 0;
+				const char* SectionName = nullptr;
+				const int ScriptLine = Context->GetLineNumber(0, &Column, &SectionName);
+
+				if (asIScriptFunction* Function = Context->GetFunction())
+				{
+					Message += FString::Printf(
+						TEXT(" Function=%hs Module=%hs"),
+						Function->GetDeclaration(),
+						Function->GetModuleName() != nullptr ? Function->GetModuleName() : "<anonymous>");
+				}
+
+				Message += FString::Printf(
+					TEXT(" Section=%hs Line=%d Column=%d"),
+					SectionName != nullptr ? SectionName : "",
+					ScriptLine,
+					Column);
+			}
+
+			if (CurrentTest != nullptr)
+			{
+				CurrentTest->AddError(Message);
+			}
+		}
+
 	private:
 		FNativeMessageCollector Messages;
+		FAutomationTestBase* CurrentTest = nullptr;
+		FSDKBufferedOutStream* BufferedOutStream = nullptr;
 		asIScriptEngine* ScriptEngine = nullptr;
+		bool bFailed = false;
 	};
+
+	inline void NativeTestAssert_Generic(asIScriptGeneric* Generic)
+	{
+		if (Generic == nullptr)
+		{
+			return;
+		}
+
+		const bool bExpression = sizeof(bool) == 1
+			? Generic->GetArgByte(0) != 0
+			: Generic->GetArgDWord(0) != 0;
+
+		if (bExpression)
+		{
+			return;
+		}
+
+		asIScriptContext* Context = asGetActiveContext();
+		if (FNativeTestEngine* Engine = GetNativeTestEngine(Generic->GetEngine()))
+		{
+			Engine->FailWithContext(TEXT("SDK Assert(false) triggered"), Context, __FILE__, __LINE__);
+		}
+
+		if (Context != nullptr)
+		{
+			Context->SetException("Assert failed");
+		}
+	}
 
 	struct FScopedNativeModule
 	{
 		FScopedNativeModule(
 			FAutomationTestBase& InTest,
-			FNativeSdkEngineFixture& InFixture,
+			FNativeTestEngine& InEngine,
 			const char* InModuleName,
 			const char* Source)
 			: Test(InTest)
-			, Fixture(InFixture)
+			, Engine(InEngine)
 			, ModuleName(InModuleName != nullptr ? InModuleName : "")
 		{
-			asIScriptEngine* const ScriptEngine = Fixture.Get();
-			if (!Test.TestNotNull(TEXT("Native SDK module scope should have a script engine"), ScriptEngine))
+			asIScriptEngine* const ScriptEngine = Engine.Get();
+			if (!Test.TestNotNull(TEXT("Native module scope should have a script engine"), ScriptEngine))
 			{
 				return;
 			}
 
 			Module = BuildNativeModule(ScriptEngine, ModuleName.c_str(), Source);
-			if (!Test.TestNotNull(TEXT("Native SDK module scope should compile the module"), Module))
+			if (!Test.TestNotNull(TEXT("Native module scope should compile the module"), Module))
 			{
-				const FString Messages = Fixture.GetMessagesText();
+				const FString Messages = Engine.GetMessagesText();
 				if (!Messages.IsEmpty())
 				{
 					Test.AddInfo(Messages);
@@ -297,7 +493,7 @@ namespace AngelscriptNativeTestSupport
 
 		~FScopedNativeModule()
 		{
-			asIScriptEngine* const ScriptEngine = Fixture.Get();
+			asIScriptEngine* const ScriptEngine = Engine.Get();
 			if (ScriptEngine != nullptr && !ModuleName.empty())
 			{
 				ScriptEngine->DiscardModule(ModuleName.c_str());
@@ -334,22 +530,22 @@ namespace AngelscriptNativeTestSupport
 
 	private:
 		FAutomationTestBase& Test;
-		FNativeSdkEngineFixture& Fixture;
+		FNativeTestEngine& Engine;
 		std::string ModuleName;
 		asIScriptModule* Module = nullptr;
 	};
 
 	struct FScopedNativeModuleName
 	{
-		FScopedNativeModuleName(FNativeSdkEngineFixture& InFixture, const char* InModuleName)
-			: Fixture(InFixture)
+		FScopedNativeModuleName(FNativeTestEngine& InEngine, const char* InModuleName)
+			: Engine(InEngine)
 			, ModuleName(InModuleName != nullptr ? InModuleName : "")
 		{
 		}
 
 		~FScopedNativeModuleName()
 		{
-			asIScriptEngine* const ScriptEngine = Fixture.Get();
+			asIScriptEngine* const ScriptEngine = Engine.Get();
 			if (ScriptEngine != nullptr && !ModuleName.empty())
 			{
 				ScriptEngine->DiscardModule(ModuleName.c_str());
@@ -365,7 +561,7 @@ namespace AngelscriptNativeTestSupport
 		}
 
 	private:
-		FNativeSdkEngineFixture& Fixture;
+		FNativeTestEngine& Engine;
 		std::string ModuleName;
 	};
 

@@ -20,26 +20,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKConfigGroupTests,
 	"Angelscript.TestModule.AngelScriptSDK.ConfigGroup",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner);
+		Engine.Create(*TestRunner);
 	}
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 	}
 
 	BEFORE_EACH()
 	{
-		EngineFixture.ResetMessages();
+		Engine.ResetMessages();
 	}
 
 	TEST_METHOD(BeginEnd)
 	{
-		asIScriptEngine* const SE = EngineFixture.Get();
+		asIScriptEngine* const SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
 		int R = SE->BeginConfigGroup("TestGroup");
@@ -52,14 +52,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKConfigGroupTests,
 		TestRunner->TestTrue(TEXT("EndConfigGroup should succeed"), R >= 0);
 
 		// Verify function is accessible
-		FScopedNativeModuleName ModuleScope(EngineFixture, "CfgGroupTest");
+		FScopedNativeModuleName ModuleScope(Engine, "CfgGroupTest");
 		asIScriptModule* M = BuildNativeModule(SE, "CfgGroupTest", "int Entry() { return TestGroupFunc(); }\n");
 		TestRunner->TestNotNull(TEXT("Module using group function should compile"), M);
 	}
 
 	TEST_METHOD(RemoveCleansTypes)
 	{
-		asIScriptEngine* const SE = EngineFixture.Get();
+		asIScriptEngine* const SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
 		SE->BeginConfigGroup("RemovableGroup");
@@ -70,8 +70,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKConfigGroupTests,
 		TestRunner->TestTrue(TEXT("RemoveConfigGroup should succeed"), R >= 0);
 
 		// After removal, function should not be available
-		EngineFixture.ResetMessages();
-		FScopedNativeModuleName ModuleScope(EngineFixture, "AfterRemove");
+		Engine.ResetMessages();
+		FScopedNativeModuleName ModuleScope(Engine, "AfterRemove");
 		asIScriptModule* M = BuildNativeModule(SE, "AfterRemove", "int Entry() { return RemovableFunc(); }\n");
 		// Note: In the current AS 2.33 fork, RemoveConfigGroup may or may not
 		// fully clean up — we just verify the call itself succeeds.
@@ -84,7 +84,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKConfigGroupTests,
 
 	TEST_METHOD(NestedError)
 	{
-		asIScriptEngine* const SE = EngineFixture.Get();
+		asIScriptEngine* const SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
 		int R1 = SE->BeginConfigGroup("Outer");

@@ -14,31 +14,31 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKFunctionTests,
 	"Angelscript.TestModule.AngelScriptSDK.Function",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner);
+		Engine.Create(*TestRunner);
 	}
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 	}
 
 	BEFORE_EACH()
 	{
-		EngineFixture.ResetMessages();
+		Engine.ResetMessages();
 	}
 	TEST_METHOD(OverloadDefault)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK function overload/default test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKFunctionOverloadDefault", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionOverloadDefault", R"(
 int AddOne(int Value)
 {
 	return Value + 1;
@@ -110,13 +110,13 @@ int AddWithDefaultExplicit()
 
 	TEST_METHOD(RefArgument)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK function ref-argument test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKFunctionRefArgument", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionRefArgument", R"(
 void WriteValue(int &out Value)
 {
 	Value = 7;
@@ -143,13 +143,13 @@ void WriteValue(int &out Value)
 
 	TEST_METHOD(ByRefMutation)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK function by-ref mutation test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKFunctionByRefMutation", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionByRefMutation", R"(
 void Increment(int &inout Value)
 {
 	Value += 1;
@@ -176,13 +176,13 @@ void Increment(int &inout Value)
 
 	TEST_METHOD(ConstInRef)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK function const-in-ref test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKFunctionConstInRef", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionConstInRef", R"(
 int Sum(const int &in A, const int &in B)
 {
 	return A + B;
@@ -206,13 +206,13 @@ int Sum(const int &in A, const int &in B)
 
 	TEST_METHOD(TypeBasedOverload)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK function type-overload test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKFunctionTypeOverload", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionTypeOverload", R"(
 int Describe(int Value)    { return 1; }
 int Describe(double Value) { return 2; }
 int Describe(bool Value)   { return 3; }
@@ -267,13 +267,13 @@ int DescribeBool()
 
 	TEST_METHOD(Recursion)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK function recursion test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKFunctionRecursion", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionRecursion", R"(
 int Factorial(int N)
 {
 	if (N <= 1) return 1;

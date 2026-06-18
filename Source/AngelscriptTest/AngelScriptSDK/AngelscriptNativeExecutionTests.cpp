@@ -11,12 +11,12 @@ namespace
 {
 	bool BuildModuleForExecution(
 		FAutomationTestBase& Test,
-		FNativeSdkEngineFixture& EngineFixture,
+		FNativeTestEngine& Engine,
 		const char* ModuleName,
 		const char* Source,
 		asIScriptModule*& OutModule)
 	{
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (!Test.TestNotNull(TEXT("Native execution tests should create a standalone AngelScript engine"), ScriptEngine))
 		{
 			return false;
@@ -25,7 +25,7 @@ namespace
 		OutModule = BuildNativeModule(ScriptEngine, ModuleName, Source);
 		if (!Test.TestNotNull(TEXT("Native execution tests should compile the requested module from memory"), OutModule))
 		{
-			Test.AddInfo(EngineFixture.GetMessagesText());
+			Test.AddInfo(Engine.GetMessagesText());
 			return false;
 		}
 
@@ -38,29 +38,29 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionTests,
 	"Angelscript.TestModule.AngelScriptSDK.Execute",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner);
+		Engine.Create(*TestRunner);
 	}
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 	}
 
 	BEFORE_EACH()
 	{
-		EngineFixture.ResetMessages();
+		Engine.ResetMessages();
 	}
 
 	TEST_METHOD(VoidFunction)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		asIScriptModule* Module = nullptr;
-		FScopedNativeModuleName ModuleScope(EngineFixture, "NativeExecuteVoid");
-		if (!BuildModuleForExecution(*TestRunner, EngineFixture, "NativeExecuteVoid", "void Test() {}", Module))
+		FScopedNativeModuleName ModuleScope(Engine, "NativeExecuteVoid");
+		if (!BuildModuleForExecution(*TestRunner, Engine, "NativeExecuteVoid", "void Test() {}", Module))
 		{
 			return;
 		}
@@ -84,10 +84,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionTests,
 
 	TEST_METHOD(ReturnValue)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		asIScriptModule* Module = nullptr;
-		FScopedNativeModuleName ModuleScope(EngineFixture, "NativeExecuteReturn");
-		if (!BuildModuleForExecution(*TestRunner, EngineFixture, "NativeExecuteReturn", "int Test() { return 42; }", Module))
+		FScopedNativeModuleName ModuleScope(Engine, "NativeExecuteReturn");
+		if (!BuildModuleForExecution(*TestRunner, Engine, "NativeExecuteReturn", "int Test() { return 42; }", Module))
 		{
 			return;
 		}
@@ -112,10 +112,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionTests,
 
 	TEST_METHOD(OneArg)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		asIScriptModule* Module = nullptr;
-		FScopedNativeModuleName ModuleScope(EngineFixture, "NativeExecuteOneArg");
-		if (!BuildModuleForExecution(*TestRunner, EngineFixture, "NativeExecuteOneArg", "int Test(int Value) { return Value * 2; }", Module))
+		FScopedNativeModuleName ModuleScope(Engine, "NativeExecuteOneArg");
+		if (!BuildModuleForExecution(*TestRunner, Engine, "NativeExecuteOneArg", "int Test(int Value) { return Value * 2; }", Module))
 		{
 			return;
 		}
@@ -148,10 +148,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionTests,
 
 	TEST_METHOD(TwoArgs)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		asIScriptModule* Module = nullptr;
-		FScopedNativeModuleName ModuleScope(EngineFixture, "NativeExecuteTwoArgs");
-		if (!BuildModuleForExecution(*TestRunner, EngineFixture, "NativeExecuteTwoArgs", "int Test(int A, int B) { return A + B; }", Module))
+		FScopedNativeModuleName ModuleScope(Engine, "NativeExecuteTwoArgs");
+		if (!BuildModuleForExecution(*TestRunner, Engine, "NativeExecuteTwoArgs", "int Test(int A, int B) { return A + B; }", Module))
 		{
 			return;
 		}
@@ -185,10 +185,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionTests,
 
 	TEST_METHOD(ThreeArgs)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		asIScriptModule* Module = nullptr;
-		FScopedNativeModuleName ModuleScope(EngineFixture, "NativeExecuteThreeArgs");
-		if (!BuildModuleForExecution(*TestRunner, EngineFixture, "NativeExecuteThreeArgs", "int Test(int A, int B, int C) { return A + B + C; }", Module))
+		FScopedNativeModuleName ModuleScope(Engine, "NativeExecuteThreeArgs");
+		if (!BuildModuleForExecution(*TestRunner, Engine, "NativeExecuteThreeArgs", "int Test(int A, int B, int C) { return A + B + C; }", Module))
 		{
 			return;
 		}

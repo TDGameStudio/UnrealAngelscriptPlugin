@@ -11,35 +11,35 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeSmokeTest,
 	"Angelscript.TestModule.AngelScriptSDK",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner);
+		Engine.Create(*TestRunner);
 	}
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 	}
 
 	BEFORE_EACH()
 	{
-		EngineFixture.ResetMessages();
+		Engine.ResetMessages();
 	}
 
 	TEST_METHOD(Smoke)
 	{
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Native smoke test should create a standalone AngelScript engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "NativeSmoke", "int Test() { return 1; }");
+		FScopedNativeModule Module(*TestRunner, Engine, "NativeSmoke", "int Test() { return 1; }");
 		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(EngineFixture.GetMessagesText());
+			TestRunner->AddInfo(Engine.GetMessagesText());
 			return;
 		}
 

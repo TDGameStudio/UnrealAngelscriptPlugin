@@ -25,12 +25,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 	"Angelscript.TestModule.AngelScriptSDK.GlobalProperty",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner);
-		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		Engine.Create(*TestRunner);
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		if (ScriptEngine == nullptr)
 		{
 			return;
@@ -52,12 +52,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 	}
 
 	BEFORE_EACH()
 	{
-		EngineFixture.ResetMessages();
+		Engine.ResetMessages();
 		GTestValue = 0;
 		GTestA = 0;
 		GTestB = 0;
@@ -67,12 +67,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 
 	TEST_METHOD(ScriptReads)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
 		GTestValue = 42;
 
-		FScopedNativeModule M(*TestRunner, EngineFixture, "GPRead", "int Entry() { return GTestValue; }\n");
+		FScopedNativeModule M(*TestRunner, Engine, "GPRead", "int Entry() { return GTestValue; }\n");
 		if (!M.IsValid()) return;
 
 		int32 Result = 0;
@@ -82,12 +82,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 
 	TEST_METHOD(ScriptWrites)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
 		GTestValue = 0;
 
-		FScopedNativeModule M(*TestRunner, EngineFixture, "GPWrite", "void Entry() { GTestValue = 99; }\n");
+		FScopedNativeModule M(*TestRunner, Engine, "GPWrite", "void Entry() { GTestValue = 99; }\n");
 		if (!M.IsValid()) return;
 
 		ExecuteScriptVoidFunction(*TestRunner, SE, M, "void Entry()");
@@ -96,13 +96,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 
 	TEST_METHOD(MultipleGlobals)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
 		GTestA = 10;
 		GTestB = 20;
 
-		FScopedNativeModule M(*TestRunner, EngineFixture, "GPMulti", "int Entry() { return GTestA + GTestB; }\n");
+		FScopedNativeModule M(*TestRunner, Engine, "GPMulti", "int Entry() { return GTestA + GTestB; }\n");
 		if (!M.IsValid()) return;
 
 		int32 Result = 0;
@@ -112,7 +112,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 
 	TEST_METHOD(ScalarReadModifyWrite)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
 		// This fork runs with asEP_FLOAT_IS_FLOAT64=1: the script-level scalar
@@ -121,7 +121,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 		// supported scalar floating declaration is `double` backed by a C++ double.
 		GTestDouble = 1.5;
 
-		FScopedNativeModule M(*TestRunner, EngineFixture, "GPFloat", "void Entry() { GScalar = GScalar * 2.0 + 1.0; }\n");
+		FScopedNativeModule M(*TestRunner, Engine, "GPFloat", "void Entry() { GScalar = GScalar * 2.0 + 1.0; }\n");
 		if (!M.IsValid()) return;
 
 		ExecuteScriptVoidFunction(*TestRunner, SE, M, "void Entry()");
@@ -130,12 +130,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 
 	TEST_METHOD(DoubleProperty)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
 		GTestDouble = 2.5;
 
-		FScopedNativeModule M(*TestRunner, EngineFixture, "GPDouble", "double Entry() { return GTestDouble * 4.0; }\n");
+		FScopedNativeModule M(*TestRunner, Engine, "GPDouble", "double Entry() { return GTestDouble * 4.0; }\n");
 		if (!M.IsValid()) return;
 
 		double Result = 0.0;
@@ -145,12 +145,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 
 	TEST_METHOD(BoolProperty)
 	{
-		asIScriptEngine* SE = EngineFixture.Get();
+		asIScriptEngine* SE = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
 
 		GTestBool = false;
 
-		FScopedNativeModule M(*TestRunner, EngineFixture, "GPBool", "void Entry() { GTestBool = !GTestBool; }\n");
+		FScopedNativeModule M(*TestRunner, Engine, "GPBool", "void Entry() { GTestBool = !GTestBool; }\n");
 		if (!M.IsValid()) return;
 
 		ExecuteScriptVoidFunction(*TestRunner, SE, M, "void Entry()");

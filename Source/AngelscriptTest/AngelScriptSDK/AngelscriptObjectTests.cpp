@@ -126,26 +126,26 @@ public:
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKObjectTests, "Angelscript.TestModule.AngelScriptSDK.Object", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
-		EngineFixture.Create(*TestRunner);
+		Engine.Create(*TestRunner);
 	}
 
 	AFTER_ALL()
 	{
-		EngineFixture.Destroy();
+		Engine.Destroy();
 	}
 
 	BEFORE_EACH()
 	{
-		EngineFixture.ResetMessages();
+		Engine.ResetMessages();
 	}
 
 	TEST_METHOD(ValueType)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK object value-type test should create a standalone engine"), ScriptEngine))
 		{
 			return;
@@ -166,7 +166,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKObjectTests, "Angelscript.TestModule.AngelS
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKObjectValueType", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKObjectValueType", R"(
 bool CopyObjectValue()
 {
 	Object value;
@@ -185,13 +185,13 @@ bool CopyObjectValue()
 
 	TEST_METHOD(ConstructorChain)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK object constructor-chain test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKObjectConstructorChain", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKObjectConstructorChain", R"(
 class InternalClass
 {
 	InternalClass()
@@ -232,13 +232,13 @@ bool ConstructNestedMember()
 
 	TEST_METHOD(NativeFloatWrapper)
 	{
-		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		asIScriptEngine* ScriptEngine = Engine.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK object native-float wrapper test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKObjectFloatValue", R"(
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKObjectFloatValue", R"(
 class FloatValue
 {
 	float Value;
