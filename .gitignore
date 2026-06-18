@@ -75,6 +75,7 @@ Intermediate/
 
 # C# / UBT plugin intermediate outputs
 Source/*/obj/
+Source/*/*.ubtplugin.csproj.props
 
 # Cache files for the editor to use
 DerivedDataCache/
