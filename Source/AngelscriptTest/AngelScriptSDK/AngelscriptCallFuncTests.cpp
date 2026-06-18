@@ -69,15 +69,34 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 	"Angelscript.TestModule.AngelScriptSDK.CallFunc",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static bool bHelpersRegistered = false;
+
+	BEFORE_ALL()
+	{
+		EngineFixture.Create(*TestRunner);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		bHelpersRegistered = ScriptEngine != nullptr && RegisterHelpers(*TestRunner, ScriptEngine);
+	}
+
+	AFTER_ALL()
+	{
+		EngineFixture.Destroy();
+		bHelpersRegistered = false;
+	}
+
+	BEFORE_EACH()
+	{
+		EngineFixture.ResetMessages();
+	}
+
 	TEST_METHOD(MultipleArgs)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* SE = CreateNativeEngine(&Messages);
+		asIScriptEngine* SE = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
-		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
-		if (!RegisterHelpers(*TestRunner, SE)) return;
-		asIScriptModule* M = BuildNativeModule(SE, "CallFuncMultiArgs", "int Entry() { return AddFour(10, 20, 30, 40); }\n");
-		if (!TestRunner->TestNotNull(TEXT("Should compile"), M)) { TestRunner->AddInfo(CollectMessages(Messages)); return; }
+		if (!bHelpersRegistered) return;
+		FScopedNativeModule M(*TestRunner, EngineFixture, "CallFuncMultiArgs", "int Entry() { return AddFour(10, 20, 30, 40); }\n");
+		if (!M.IsValid()) return;
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
 		TestRunner->TestEqual(TEXT("AddFour(10,20,30,40)=100"), Result, 100);
@@ -85,13 +104,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 
 	TEST_METHOD(FloatPrecision)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* SE = CreateNativeEngine(&Messages);
+		asIScriptEngine* SE = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
-		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
-		if (!RegisterHelpers(*TestRunner, SE)) return;
-		asIScriptModule* M = BuildNativeModule(SE, "CallFuncFloat", "double Entry() { return MultiplyDouble(3.14159, 2.0); }\n");
-		if (!TestRunner->TestNotNull(TEXT("Should compile"), M)) { TestRunner->AddInfo(CollectMessages(Messages)); return; }
+		if (!bHelpersRegistered) return;
+		FScopedNativeModule M(*TestRunner, EngineFixture, "CallFuncFloat", "double Entry() { return MultiplyDouble(3.14159, 2.0); }\n");
+		if (!M.IsValid()) return;
 		double Result = 0.0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "double Entry()", Result)) return;
 		TestRunner->TestTrue(TEXT("MultiplyDouble precision"), FMath::IsNearlyEqual(Result, 3.14159*2.0, 1e-10));
@@ -99,27 +116,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 
 	TEST_METHOD(VoidSideEffect)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* SE = CreateNativeEngine(&Messages);
+		asIScriptEngine* SE = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
-		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
+		if (!bHelpersRegistered) return;
 		GSideEffectAccumulator = 0;
-		if (!RegisterHelpers(*TestRunner, SE)) return;
-		asIScriptModule* M = BuildNativeModule(SE, "CallFuncVoid", "void Entry() { AccumulateValue(10); AccumulateValue(20); AccumulateValue(12); }\n");
-		if (!TestRunner->TestNotNull(TEXT("Should compile"), M)) { TestRunner->AddInfo(CollectMessages(Messages)); return; }
+		FScopedNativeModule M(*TestRunner, EngineFixture, "CallFuncVoid", "void Entry() { AccumulateValue(10); AccumulateValue(20); AccumulateValue(12); }\n");
+		if (!M.IsValid()) return;
 		if (!ExecuteScriptVoidFunction(*TestRunner, SE, M, "void Entry()")) return;
 		TestRunner->TestEqual(TEXT("Accumulator=42"), GSideEffectAccumulator, 42);
 	}
 
 	TEST_METHOD(NestedCall)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* SE = CreateNativeEngine(&Messages);
+		asIScriptEngine* SE = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
-		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
-		if (!RegisterHelpers(*TestRunner, SE)) return;
-		asIScriptModule* M = BuildNativeModule(SE, "CallFuncNested", "int Entry() { return IncrementAndReturn(IncrementAndReturn(IncrementAndReturn(0))); }\n");
-		if (!TestRunner->TestNotNull(TEXT("Should compile"), M)) { TestRunner->AddInfo(CollectMessages(Messages)); return; }
+		if (!bHelpersRegistered) return;
+		FScopedNativeModule M(*TestRunner, EngineFixture, "CallFuncNested", "int Entry() { return IncrementAndReturn(IncrementAndReturn(IncrementAndReturn(0))); }\n");
+		if (!M.IsValid()) return;
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
 		TestRunner->TestEqual(TEXT("Nested 3x increment = 3"), Result, 3);
@@ -127,13 +140,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 
 	TEST_METHOD(ManyArgs)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* SE = CreateNativeEngine(&Messages);
+		asIScriptEngine* SE = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
-		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
-		if (!RegisterHelpers(*TestRunner, SE)) return;
-		asIScriptModule* M = BuildNativeModule(SE, "CallFuncManyArgs", "int Entry() { return SumSix(1, 2, 3, 4, 5, 6); }\n");
-		if (!TestRunner->TestNotNull(TEXT("Should compile"), M)) { TestRunner->AddInfo(CollectMessages(Messages)); return; }
+		if (!bHelpersRegistered) return;
+		FScopedNativeModule M(*TestRunner, EngineFixture, "CallFuncManyArgs", "int Entry() { return SumSix(1, 2, 3, 4, 5, 6); }\n");
+		if (!M.IsValid()) return;
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
 		TestRunner->TestEqual(TEXT("SumSix(1..6)=21"), Result, 21);
@@ -141,13 +152,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 
 	TEST_METHOD(WideReturn)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* SE = CreateNativeEngine(&Messages);
+		asIScriptEngine* SE = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
-		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
-		if (!RegisterHelpers(*TestRunner, SE)) return;
-		asIScriptModule* M = BuildNativeModule(SE, "CallFuncWideReturn", "int64 Entry() { return WidenAndScale(3); }\n");
-		if (!TestRunner->TestNotNull(TEXT("Should compile"), M)) { TestRunner->AddInfo(CollectMessages(Messages)); return; }
+		if (!bHelpersRegistered) return;
+		FScopedNativeModule M(*TestRunner, EngineFixture, "CallFuncWideReturn", "int64 Entry() { return WidenAndScale(3); }\n");
+		if (!M.IsValid()) return;
 		asIScriptFunction* Func = GetNativeFunctionByDecl(M, "int64 Entry()");
 		if (!TestRunner->TestNotNull(TEXT("Should resolve"), Func)) return;
 		asIScriptContext* Ctx = SE->CreateContext();
@@ -161,13 +170,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 
 	TEST_METHOD(MixedIntDoubleArgs)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* SE = CreateNativeEngine(&Messages);
+		asIScriptEngine* SE = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
-		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
-		if (!RegisterHelpers(*TestRunner, SE)) return;
-		asIScriptModule* M = BuildNativeModule(SE, "CallFuncMixed", "double Entry() { return MixIn025(7, 0.25); }\n");
-		if (!TestRunner->TestNotNull(TEXT("Should compile"), M)) { TestRunner->AddInfo(CollectMessages(Messages)); return; }
+		if (!bHelpersRegistered) return;
+		FScopedNativeModule M(*TestRunner, EngineFixture, "CallFuncMixed", "double Entry() { return MixIn025(7, 0.25); }\n");
+		if (!M.IsValid()) return;
 		double Result = 0.0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "double Entry()", Result)) return;
 		TestRunner->TestTrue(TEXT("MixIn025(7, 0.25) = 7.25 (int+double arg marshalling)"), FMath::IsNearlyEqual(Result, 7.25));
@@ -175,13 +182,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 
 	TEST_METHOD(BoolReturn)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* SE = CreateNativeEngine(&Messages);
+		asIScriptEngine* SE = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
-		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
-		if (!RegisterHelpers(*TestRunner, SE)) return;
-		asIScriptModule* M = BuildNativeModule(SE, "CallFuncBool", "bool Entry() { return IsPositive(5) && !IsPositive(-3) && !IsPositive(0); }\n");
-		if (!TestRunner->TestNotNull(TEXT("Should compile"), M)) { TestRunner->AddInfo(CollectMessages(Messages)); return; }
+		if (!bHelpersRegistered) return;
+		FScopedNativeModule M(*TestRunner, EngineFixture, "CallFuncBool", "bool Entry() { return IsPositive(5) && !IsPositive(-3) && !IsPositive(0); }\n");
+		if (!M.IsValid()) return;
 		bool bResult = false;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "bool Entry()", bResult)) return;
 		TestRunner->TestTrue(TEXT("IsPositive native bool returns marshal correctly"), bResult);
@@ -189,12 +194,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 
 	TEST_METHOD(OutParams)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* SE = CreateNativeEngine(&Messages);
+		asIScriptEngine* SE = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
-		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
-		if (!RegisterHelpers(*TestRunner, SE)) return;
-		asIScriptModule* M = BuildNativeModule(SE, "CallFuncOut", R"(
+		if (!bHelpersRegistered) return;
+		FScopedNativeModule M(*TestRunner, EngineFixture, "CallFuncOut", R"(
 bool Entry()
 {
 	int q = 0;
@@ -203,7 +206,7 @@ bool Entry()
 	return q == 3 && r == 2;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("Should compile"), M)) { TestRunner->AddInfo(CollectMessages(Messages)); return; }
+		if (!M.IsValid()) return;
 		bool bResult = false;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "bool Entry()", bResult)) return;
 		TestRunner->TestTrue(TEXT("DivMod(17,5) writes back q=3, r=2 through native &out params"), bResult);

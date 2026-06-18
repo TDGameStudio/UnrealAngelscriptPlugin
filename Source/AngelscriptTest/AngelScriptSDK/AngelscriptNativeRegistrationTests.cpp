@@ -68,13 +68,13 @@ namespace
 		const char* ModuleName,
 		const char* Source,
 		const char* Declaration,
-		FNativeMessageCollector& Messages,
+		FNativeSdkEngineFixture& EngineFixture,
 		int32& OutValue)
 	{
 		asIScriptModule* Module = BuildNativeModule(ScriptEngine, ModuleName, Source);
 		if (!Test.TestNotNull(TEXT("Native registration tests should compile the script module"), Module))
 		{
-			Test.AddInfo(CollectMessages(Messages));
+			Test.AddInfo(EngineFixture.GetMessagesText());
 			return false;
 		}
 
@@ -99,7 +99,7 @@ namespace
 				const FString ExceptionString = UTF8_TO_TCHAR(Context->GetExceptionString() != nullptr ? Context->GetExceptionString() : "");
 				Test.AddInfo(FString::Printf(TEXT("Native registration exception at line %d: %s"), ExceptionLine, *ExceptionString));
 			}
-			const FString Diagnostics = CollectMessages(Messages);
+			const FString Diagnostics = EngineFixture.GetMessagesText();
 			if (!Diagnostics.IsEmpty())
 			{
 				Test.AddInfo(Diagnostics);
@@ -119,19 +119,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
 	"Angelscript.TestModule.AngelScriptSDK.Register",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	TEST_METHOD(GlobalFunction)
+	inline static FNativeSdkEngineFixture EngineFixture;
+	inline static bool bGlobalFunctionRegistered = false;
+	inline static bool bGlobalPropertyRegistered = false;
+	inline static bool bNativeCounterRegistered = false;
+
+	BEFORE_ALL()
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("Native global-function registration test should create a standalone engine"), ScriptEngine))
+		EngineFixture.Create(*TestRunner);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		if (ScriptEngine == nullptr)
 		{
 			return;
 		}
-
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
 
 		const ASAutoCaller::FunctionCaller Caller = ASAutoCaller::MakeFunctionCaller(NativeDoubleValue);
 		const int RegisterResult = ScriptEngine->RegisterGlobalFunction(
@@ -139,14 +139,46 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
 			asFUNCTION(NativeDoubleValue),
 			asCALL_CDECL,
 			*(asFunctionCaller*)&Caller);
-		if (!TestRunner->TestTrue(TEXT("Native global-function registration test should register the C++ function"), RegisterResult >= 0))
+		bGlobalFunctionRegistered = TestRunner->TestTrue(TEXT("Native global-function registration test should register the C++ function"), RegisterResult >= 0);
+		if (!bGlobalFunctionRegistered)
 		{
 			TestRunner->AddInfo(FString::Printf(TEXT("RegisterGlobalFunction returned %d"), RegisterResult));
+		}
+
+		const int GlobalPropertyResult = ScriptEngine->RegisterGlobalProperty("int NativeGlobalValue", &GNativeGlobalValue);
+		bGlobalPropertyRegistered = TestRunner->TestTrue(TEXT("Native global-property registration test should register the C++ property"), GlobalPropertyResult >= 0);
+		bNativeCounterRegistered = RegisterNativeCounter(*TestRunner, ScriptEngine);
+	}
+
+	AFTER_ALL()
+	{
+		EngineFixture.Destroy();
+		bGlobalFunctionRegistered = false;
+		bGlobalPropertyRegistered = false;
+		bNativeCounterRegistered = false;
+	}
+
+	BEFORE_EACH()
+	{
+		EngineFixture.ResetMessages();
+		GNativeGlobalValue = 21;
+	}
+
+	TEST_METHOD(GlobalFunction)
+	{
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
+		if (!TestRunner->TestNotNull(TEXT("Native global-function registration test should create a standalone engine"), ScriptEngine))
+		{
+			return;
+		}
+		if (!bGlobalFunctionRegistered)
+		{
 			return;
 		}
 
 		int32 Result = 0;
-		if (!ExecuteRegisteredScript(*TestRunner, ScriptEngine, "NativeRegisterGlobalFunction", "int Entry() { return DoubleNative(21); }", "int Entry()", Messages, Result))
+		FScopedNativeModuleName ModuleScope(EngineFixture, "NativeRegisterGlobalFunction");
+		if (!ExecuteRegisteredScript(*TestRunner, ScriptEngine, "NativeRegisterGlobalFunction", "int Entry() { return DoubleNative(21); }", "int Entry()", EngineFixture, Result))
 		{
 			return;
 		}
@@ -156,26 +188,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
 
 	TEST_METHOD(GlobalProperty)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Native global-property registration test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
-
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		const int RegisterResult = ScriptEngine->RegisterGlobalProperty("int NativeGlobalValue", &GNativeGlobalValue);
-		if (!TestRunner->TestTrue(TEXT("Native global-property registration test should register the C++ property"), RegisterResult >= 0))
+		if (!bGlobalPropertyRegistered)
 		{
 			return;
 		}
 
 		int32 Result = 0;
-		if (!ExecuteRegisteredScript(*TestRunner, ScriptEngine, "NativeRegisterGlobalProperty", "int Entry() { return NativeGlobalValue * 2; }", "int Entry()", Messages, Result))
+		FScopedNativeModuleName ModuleScope(EngineFixture, "NativeRegisterGlobalProperty");
+		if (!ExecuteRegisteredScript(*TestRunner, ScriptEngine, "NativeRegisterGlobalProperty", "int Entry() { return NativeGlobalValue * 2; }", "int Entry()", EngineFixture, Result))
 		{
 			return;
 		}
@@ -185,25 +210,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
 
 	TEST_METHOD(SimpleValueType)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Native value-type registration test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
-
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		if (!RegisterNativeCounter(*TestRunner, ScriptEngine))
+		if (!bNativeCounterRegistered)
 		{
 			return;
 		}
 
 		int32 Result = 0;
-		if (!ExecuteRegisteredScript(*TestRunner, ScriptEngine, "NativeRegisterSimpleValueType", "int Entry() { NativeCounter Counter; Counter.Value = 19; return Counter.Value + 23; }", "int Entry()", Messages, Result))
+		FScopedNativeModuleName ModuleScope(EngineFixture, "NativeRegisterSimpleValueType");
+		if (!ExecuteRegisteredScript(*TestRunner, ScriptEngine, "NativeRegisterSimpleValueType", "int Entry() { NativeCounter Counter; Counter.Value = 19; return Counter.Value + 23; }", "int Entry()", EngineFixture, Result))
 		{
 			return;
 		}

@@ -119,14 +119,23 @@ namespace AngelscriptSDKTestSupport
 	struct FAngelscriptSDKTestAdapter
 	{
 		explicit FAngelscriptSDKTestAdapter(FAutomationTestBase& InTest)
-			: Test(InTest)
+			: Test(&InTest)
 		{
+		}
+
+		void Reset(FAutomationTestBase& InTest)
+		{
+			Test = &InTest;
+			bFailed = false;
 		}
 
 		void Fail(const TCHAR* Reason, const char* File, int Line)
 		{
 			bFailed = true;
-			Test.AddError(FString::Printf(TEXT("%s [%hs:%d]"), Reason, File, Line));
+			if (Test != nullptr)
+			{
+				Test->AddError(FString::Printf(TEXT("%s [%hs:%d]"), Reason, File, Line));
+			}
 		}
 
 		void Fail(const char* Reason, const char* File, int Line)
@@ -165,10 +174,13 @@ namespace AngelscriptSDKTestSupport
 					Column);
 			}
 
-			Test.AddError(Message);
+			if (Test != nullptr)
+			{
+				Test->AddError(Message);
+			}
 		}
 
-		FAutomationTestBase& Test;
+		FAutomationTestBase* Test = nullptr;
 		bool bFailed = false;
 	};
 
@@ -256,6 +268,81 @@ namespace AngelscriptSDKTestSupport
 
 		return ScriptEngine;
 	}
+
+	struct FNativeSdkAdapterEngineFixture : AngelscriptNativeTestSupport::FNativeSdkEngineFixture
+	{
+		void Create(FAutomationTestBase& Test, FSDKBufferedOutStream* InBufferedOutStream = nullptr)
+		{
+			Adapter = MakeUnique<FAngelscriptSDKTestAdapter>(Test);
+			BufferedOutStream = InBufferedOutStream;
+			AngelscriptNativeTestSupport::FNativeSdkEngineFixture::Create(Test);
+
+			asIScriptEngine* const Engine = Get();
+			if (Engine == nullptr)
+			{
+				return;
+			}
+
+			if (BufferedOutStream != nullptr)
+			{
+				BufferedOutStream->Clear();
+				const int CallbackResult = Engine->SetMessageCallback(
+					asMETHODPR(FSDKBufferedOutStream, Callback, (asSMessageInfo*), void),
+					BufferedOutStream,
+					asCALL_THISCALL);
+				if (CallbackResult < 0)
+				{
+					Adapter->Fail(TEXT("SDK adapter fixture should install the buffered output callback"), __FILE__, __LINE__);
+					Destroy();
+					return;
+				}
+			}
+
+			const int RegisterResult = RegisterSDKAssert(Engine, *Adapter);
+			if (RegisterResult < 0)
+			{
+				Adapter->Fail(
+					FString::Printf(TEXT("SDK adapter fixture should register script-side Assert(bool) (RegisterResult=%d)"), RegisterResult),
+					__FILE__,
+					__LINE__);
+				Destroy();
+			}
+		}
+
+		void Destroy()
+		{
+			AngelscriptNativeTestSupport::FNativeSdkEngineFixture::Destroy();
+			Adapter.Reset();
+			BufferedOutStream = nullptr;
+		}
+
+		void Reset(FAutomationTestBase& Test)
+		{
+			ResetMessages();
+			if (Adapter != nullptr)
+			{
+				Adapter->Reset(Test);
+			}
+			if (BufferedOutStream != nullptr)
+			{
+				BufferedOutStream->Clear();
+			}
+		}
+
+		FAngelscriptSDKTestAdapter* GetAdapter() const
+		{
+			return Adapter.Get();
+		}
+
+		FSDKBufferedOutStream* GetBufferedOutStream() const
+		{
+			return BufferedOutStream;
+		}
+
+	private:
+		TUniquePtr<FAngelscriptSDKTestAdapter> Adapter;
+		FSDKBufferedOutStream* BufferedOutStream = nullptr;
+	};
 
 	inline int SDKExecuteString(asIScriptEngine* Engine, asIScriptModule* Module, const char* Code)
 	{

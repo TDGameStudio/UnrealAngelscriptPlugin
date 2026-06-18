@@ -9,20 +9,31 @@ using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKSmokeTests, "Angelscript.TestModule.AngelScriptSDK", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	inline static FSDKBufferedOutStream BufferedOutStream;
+	inline static FNativeSdkAdapterEngineFixture EngineFixture;
+
+	BEFORE_ALL()
+	{
+		EngineFixture.Create(*TestRunner, &BufferedOutStream);
+	}
+
+	AFTER_ALL()
+	{
+		EngineFixture.Destroy();
+	}
+
+	BEFORE_EACH()
+	{
+		EngineFixture.Reset(*TestRunner);
+	}
+
 	TEST_METHOD(Smoke)
 	{
-		FAngelscriptSDKTestAdapter Adapter(*TestRunner);
-		FSDKBufferedOutStream BufferedOutStream;
-		asIScriptEngine* ScriptEngine = CreateSDKTestEngine(Adapter, &BufferedOutStream);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK smoke test should create a standalone script engine"), ScriptEngine))
 		{
 			return;
 		}
-
-		ON_SCOPE_EXIT
-		{
-			AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine);
-		};
 
 		ScriptEngine->WriteMessage("SDKSmoke", 0, 0, asMSGTYPE_INFORMATION, "Smoke callback ready");
 		if (!TestRunner->TestTrue(TEXT("SDK smoke test should capture engine callback messages"), BufferedOutStream.Buffer.find("Smoke callback ready") != std::string::npos))
@@ -39,7 +50,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKSmokeTests, "Angelscript.TestModule.AngelSc
 			return;
 		}
 
-		TestRunner->TestFalse(TEXT("SDK smoke test should not latch an adapter failure for Assert(true)"), Adapter.bFailed);
+		const FAngelscriptSDKTestAdapter* const Adapter = EngineFixture.GetAdapter();
+		if (!TestRunner->TestNotNull(TEXT("SDK smoke test should expose its adapter"), Adapter))
+		{
+			return;
+		}
+
+		TestRunner->TestFalse(TEXT("SDK smoke test should not latch an adapter failure for Assert(true)"), Adapter->bFailed);
 	}
 };
 

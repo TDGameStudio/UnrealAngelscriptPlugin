@@ -1,4 +1,4 @@
-#include "AngelscriptSDKTestUtilities.h"
+#include "AngelscriptSDKTestExecutionHelpers.h"
 #include "AngelscriptTestAdapter.h"
 
 #include "CQTest.h"
@@ -7,31 +7,38 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptSDKTestUtilities;
+using namespace AngelscriptSDKTestSupport;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKFunctionTests,
 	"Angelscript.TestModule.AngelScriptSDK.Function",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	inline static FNativeSdkEngineFixture EngineFixture;
+
+	BEFORE_ALL()
+	{
+		EngineFixture.Create(*TestRunner);
+	}
+
+	AFTER_ALL()
+	{
+		EngineFixture.Destroy();
+	}
+
+	BEFORE_EACH()
+	{
+		EngineFixture.ResetMessages();
+	}
 	TEST_METHOD(OverloadDefault)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK function overload/default test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		// Test function overloading with distinct parameter counts
-		// Note: This fork does not support ambiguous overload resolution when default args overlap
-		// We test distinct overloads that don't have ambiguous calls
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKFunctionOverloadDefault", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKFunctionOverloadDefault", R"(
 int AddOne(int Value)
 {
 	return Value + 1;
@@ -47,207 +54,226 @@ int AddWithDefault(int Left, int Right = 10)
 	return Left + Right;
 }
 
-bool Entry()
+int AddWithDefaultImplicit()
 {
-	return AddOne(2) == 3 && AddPair(2, 5) == 7 && AddWithDefault(5) == 15 && AddWithDefault(3, 2) == 5;
+	return AddWithDefault(5);
+}
+
+int AddWithDefaultExplicit()
+{
+	return AddWithDefault(3, 2);
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK function overload/default test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK function overload/default test should preserve overload resolution and default argument semantics"), bResult);
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int AddOne(int)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(static_cast<int32>(2));
+			TestRunner->TestEqual(TEXT("SDK function overload/default test should call AddOne directly"), Invoker.CallAndReturn<int32>(INDEX_NONE), 3);
+		}
+
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int AddPair(int, int)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(static_cast<int32>(2)).AddArg(static_cast<int32>(5));
+			TestRunner->TestEqual(TEXT("SDK function overload/default test should call AddPair directly"), Invoker.CallAndReturn<int32>(INDEX_NONE), 7);
+		}
+
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int AddWithDefaultImplicit()");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			TestRunner->TestEqual(TEXT("SDK function overload/default test should preserve default arguments"), Invoker.CallAndReturn<int32>(INDEX_NONE), 15);
+		}
+
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int AddWithDefaultExplicit()");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			TestRunner->TestEqual(TEXT("SDK function overload/default test should allow explicit default-argument override"), Invoker.CallAndReturn<int32>(INDEX_NONE), 5);
+		}
 	}
 
 	TEST_METHOD(RefArgument)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK function ref-argument test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKFunctionRefArgument", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKFunctionRefArgument", R"(
 void WriteValue(int &out Value)
 {
 	Value = 7;
 }
-
-bool Entry()
-{
-	int Value = 0;
-	WriteValue(Value);
-	return Value == 7;
-}
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK function ref-argument test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK function ref-argument test should preserve out-parameter writes"), bResult);
+		int32 Value = 0;
+		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "void WriteValue(int&out)");
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
+		Invoker.AddArgRef(Value);
+		if (!TestRunner->TestTrue(TEXT("SDK function ref-argument test should execute the writer"), Invoker.Call()))
+		{
+			return;
+		}
+		TestRunner->TestEqual(TEXT("SDK function ref-argument test should preserve out-parameter writes"), Value, 7);
 	}
 
 	TEST_METHOD(ByRefMutation)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK function by-ref mutation test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKFunctionByRefMutation", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKFunctionByRefMutation", R"(
 void Increment(int &inout Value)
 {
 	Value += 1;
 }
-
-bool Entry()
-{
-	int Value = 41;
-	Increment(Value);
-	return Value == 42;
-}
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK function by-ref mutation test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK function by-ref mutation test should preserve inout parameter semantics"), bResult);
+		int32 Value = 41;
+		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "void Increment(int&inout)");
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
+		Invoker.AddArgRef(Value);
+		if (!TestRunner->TestTrue(TEXT("SDK function by-ref mutation test should execute the mutator"), Invoker.Call()))
+		{
+			return;
+		}
+		TestRunner->TestEqual(TEXT("SDK function by-ref mutation test should preserve inout parameter semantics"), Value, 42);
 	}
 
 	TEST_METHOD(ConstInRef)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK function const-in-ref test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKFunctionConstInRef", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKFunctionConstInRef", R"(
 int Sum(const int &in A, const int &in B)
 {
 	return A + B;
 }
-
-bool Entry()
-{
-	int x = 17;
-	int y = 25;
-	return Sum(x, y) == 42 && Sum(1, 2) == 3;
-}
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK function const-in-ref test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK function const-in-ref test should pass values through const &in parameters"), bResult);
+		int32 Left = 17;
+		int32 Right = 25;
+		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Sum(const int&in, const int&in)");
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
+		Invoker.AddArgRef(Left).AddArgRef(Right);
+		TestRunner->TestEqual(TEXT("SDK function const-in-ref test should pass values through const &in parameters"), Invoker.CallAndReturn<int32>(INDEX_NONE), 42);
 	}
 
 	TEST_METHOD(TypeBasedOverload)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK function type-overload test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKFunctionTypeOverload", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKFunctionTypeOverload", R"(
 int Describe(int Value)    { return 1; }
 int Describe(double Value) { return 2; }
 int Describe(bool Value)   { return 3; }
 
-bool Entry()
+int DescribeInt()
 {
-	// Overload resolution selects by argument type
-	return Describe(10) == 1 && Describe(3.14) == 2 && Describe(true) == 3;
+	return Describe(10);
+}
+
+int DescribeDouble()
+{
+	return Describe(3.14);
+}
+
+int DescribeBool()
+{
+	return Describe(true);
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK function type-overload test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK function type-overload test should resolve overloads by argument type"), bResult);
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int DescribeInt()");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			TestRunner->TestEqual(TEXT("SDK function type-overload test should resolve int overloads by argument type"), Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+		}
+
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int DescribeDouble()");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			TestRunner->TestEqual(TEXT("SDK function type-overload test should resolve double overloads by argument type"), Invoker.CallAndReturn<int32>(INDEX_NONE), 2);
+		}
+
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int DescribeBool()");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			TestRunner->TestEqual(TEXT("SDK function type-overload test should resolve bool overloads by argument type"), Invoker.CallAndReturn<int32>(INDEX_NONE), 3);
+		}
 	}
 
 	TEST_METHOD(Recursion)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK function recursion test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKFunctionRecursion", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKFunctionRecursion", R"(
 int Factorial(int N)
 {
 	if (N <= 1) return 1;
@@ -259,25 +285,41 @@ int Fib(int N)
 	if (N < 2) return N;
 	return Fib(N - 1) + Fib(N - 2);
 }
-
-bool Entry()
-{
-	return Factorial(5) == 120 && Factorial(0) == 1 && Fib(10) == 55;
-}
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK function recursion test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK function recursion test should compute recursive results correctly"), bResult);
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Factorial(int)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(static_cast<int32>(5));
+			TestRunner->TestEqual(TEXT("SDK function recursion test should compute factorial correctly"), Invoker.CallAndReturn<int32>(INDEX_NONE), 120);
+		}
+
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Factorial(int)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(static_cast<int32>(0));
+			TestRunner->TestEqual(TEXT("SDK function recursion test should handle the factorial base case"), Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+		}
+
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Fib(int)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(static_cast<int32>(10));
+			TestRunner->TestEqual(TEXT("SDK function recursion test should compute fibonacci correctly"), Invoker.CallAndReturn<int32>(INDEX_NONE), 55);
+		}
 	}
 };
 

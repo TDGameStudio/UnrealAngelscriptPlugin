@@ -19,21 +19,32 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKCompilerTests,
 	"Angelscript.TestModule.AngelScriptSDK.Compiler",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	inline static FNativeSdkEngineFixture EngineFixture;
+
+	BEFORE_ALL()
+	{
+		EngineFixture.Create(*TestRunner);
+	}
+
+	AFTER_ALL()
+	{
+		EngineFixture.Destroy();
+	}
+
+	BEFORE_EACH()
+	{
+		EngineFixture.ResetMessages();
+	}
+
 	TEST_METHOD(Basic)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK compiler basic test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKCompilerBasic", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKCompilerBasic", R"(
 const int GlobalVar = 42;
 
 int Multiply(int A, int B)
@@ -46,9 +57,9 @@ bool Entry()
 	return GlobalVar == 42 && Multiply(6, 7) == 42;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK compiler basic test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
+			TestRunner->AddInfo(EngineFixture.GetMessagesText());
 			return;
 		}
 
@@ -63,19 +74,14 @@ bool Entry()
 
 	TEST_METHOD(Error)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK compiler error test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
 		// Test that invalid syntax produces compile errors
+		FScopedNativeModuleName ModuleScope(EngineFixture, "SDKCompilerError");
 		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKCompilerError", R"(
 int MissingReturn() { }
 )");
@@ -87,22 +93,16 @@ int MissingReturn() { }
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK compiler error test should detect syntax errors"), Messages.Entries.Num() > 0);
+		TestRunner->TestTrue(TEXT("SDK compiler error test should detect syntax errors"), EngineFixture.GetMessages().Entries.Num() > 0);
 	}
 
 	TEST_METHOD(Config)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK compiler config test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
-
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
 
 		// Test engine property access
 		const int PropResult = ScriptEngine->SetEngineProperty(asEP_COPY_SCRIPT_SECTIONS, true);
@@ -110,6 +110,10 @@ int MissingReturn() { }
 		{
 			return;
 		}
+		ON_SCOPE_EXIT
+		{
+			ScriptEngine->SetEngineProperty(asEP_COPY_SCRIPT_SECTIONS, false);
+		};
 
 		// Test type registration configuration
 		const int TypeResult = ScriptEngine->RegisterObjectType("TestConfigType", 0, asOBJ_REF | asOBJ_NOCOUNT);
@@ -123,20 +127,15 @@ int MissingReturn() { }
 
 	TEST_METHOD(MultipleErrors)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK compiler multiple-errors test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
 		// Script with multiple independent errors: undefined symbol and type mismatch.
-		Messages.Reset();
+		EngineFixture.ResetMessages();
+		FScopedNativeModuleName ModuleScope(EngineFixture, "SDKCompilerMultipleErrors");
 		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKCompilerMultipleErrors", R"(
 int Entry()
 {
@@ -151,26 +150,21 @@ int Entry()
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK compiler multiple-errors test should produce multiple error messages"), Messages.Entries.Num() >= 2);
+		TestRunner->TestTrue(TEXT("SDK compiler multiple-errors test should produce multiple error messages"), EngineFixture.GetMessages().Entries.Num() >= 2);
 	}
 
 	TEST_METHOD(TypeMismatch)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK compiler type-mismatch test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
 		// Calling a function that returns void and assigning it should fail.
-		Messages.Reset();
+		EngineFixture.ResetMessages();
 		ScriptEngine->RegisterGlobalFunction("void DoNothing()", asFUNCTION(VoidHelper), asCALL_CDECL);
+		FScopedNativeModuleName ModuleScope(EngineFixture, "SDKCompilerTypeMismatch");
 		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKCompilerTypeMismatch", R"(
 int Entry()
 {
@@ -184,20 +178,15 @@ int Entry()
 
 	TEST_METHOD(RecompileAfterError)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK compiler recompile-after-error test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
 		// First attempt: compile failure.
-		Messages.Reset();
+		EngineFixture.ResetMessages();
+		FScopedNativeModuleName ModuleScope(EngineFixture, "SDKCompilerRecompile");
 		asIScriptModule* FailedModule = BuildNativeModule(ScriptEngine, "SDKCompilerRecompile", R"(
 int Entry() { return NotDefined; }
 )");
@@ -208,14 +197,14 @@ int Entry() { return NotDefined; }
 		}
 
 		// Second attempt: valid script under the same module name.
-		Messages.Reset();
+		EngineFixture.ResetMessages();
 		asIScriptModule* SuccessModule = BuildNativeModule(ScriptEngine, "SDKCompilerRecompile", R"(
 int Entry() { return 7; }
 )");
 
 		if (!TestRunner->TestNotNull(TEXT("SDK compiler recompile-after-error test should succeed the second compilation"), SuccessModule))
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
+			TestRunner->AddInfo(EngineFixture.GetMessagesText());
 			return;
 		}
 

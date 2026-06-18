@@ -11,21 +11,32 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKDefaultTraitTests,
 	"Angelscript.TestModule.AngelScriptSDK.Compiler",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	inline static FNativeSdkEngineFixture EngineFixture;
+
+	BEFORE_ALL()
+	{
+		EngineFixture.Create(*TestRunner);
+	}
+
+	AFTER_ALL()
+	{
+		EngineFixture.Destroy();
+	}
+
+	BEFORE_EACH()
+	{
+		EngineFixture.ResetMessages();
+	}
+
 	TEST_METHOD(DefaultTraitModifiers)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK default-trait modifier test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKDefaultTraitModifiers", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKDefaultTraitModifiers", R"(
 int DefaultsOnlyValue() defaults
 {
 	return 7;
@@ -41,9 +52,8 @@ int Entry()
 	return 1;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK default-trait modifier test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 	}

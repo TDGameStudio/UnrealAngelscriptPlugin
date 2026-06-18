@@ -11,24 +11,34 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeCompileTests,
 	"Angelscript.TestModule.AngelScriptSDK.Compile",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	inline static FNativeSdkEngineFixture EngineFixture;
+
+	BEFORE_ALL()
+	{
+		EngineFixture.Create(*TestRunner);
+	}
+
+	AFTER_ALL()
+	{
+		EngineFixture.Destroy();
+	}
+
+	BEFORE_EACH()
+	{
+		EngineFixture.ResetMessages();
+	}
+
 	TEST_METHOD(SimpleFunction)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Native compile simple-function test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "NativeCompileSimpleFunction", "int Test() { return 42; }");
+		if (!Module.IsValid())
 		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "NativeCompileSimpleFunction", "int Test() { return 42; }");
-		if (!TestRunner->TestNotNull(TEXT("Native compile simple-function test should compile a trivial function"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
@@ -37,22 +47,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeCompileTests,
 
 	TEST_METHOD(MultipleFunctions)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Native compile multiple-functions test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "NativeCompileMultipleFunctions", "void A() {} void B() {} int C() { return 42; }");
+		if (!Module.IsValid())
 		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "NativeCompileMultipleFunctions", "void A() {} void B() {} int C() { return 42; }");
-		if (!TestRunner->TestNotNull(TEXT("Native compile multiple-functions test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
@@ -61,22 +64,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeCompileTests,
 
 	TEST_METHOD(GlobalVariables)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Native compile global-variables test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "NativeCompileGlobalVariables", "const int First = 40; const int Second = 2; int Read() { return First + Second; }");
+		if (!Module.IsValid())
 		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "NativeCompileGlobalVariables", "const int First = 40; const int Second = 2; int Read() { return First + Second; }");
-		if (!TestRunner->TestNotNull(TEXT("Native compile global-variables test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
@@ -85,23 +81,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeCompileTests,
 
 	TEST_METHOD(SyntaxError)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Native compile syntax-error test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
+		FScopedNativeModuleName ModuleScope(EngineFixture, "NativeCompileSyntaxError");
 		asIScriptModule* Module = nullptr;
 		const int BuildResult = CompileNativeModule(ScriptEngine, "NativeCompileSyntaxError", "int Broken( { return 1; }", Module);
 		if (!TestRunner->TestTrue(TEXT("Native compile syntax-error test should fail with a negative build result"), BuildResult < 0))
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
+			TestRunner->AddInfo(EngineFixture.GetMessagesText());
 			return;
 		}
 
@@ -110,26 +101,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeCompileTests,
 
 	TEST_METHOD(ErrorMessage)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Native compile error-message test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
+		FScopedNativeModuleName ModuleScope(EngineFixture, "NativeCompileErrorMessage");
 		asIScriptModule* Module = nullptr;
 		const int BuildResult = CompileNativeModule(ScriptEngine, "NativeCompileErrorMessage", "int Broken( { return 1; }", Module);
 		if (!TestRunner->TestTrue(TEXT("Native compile error-message test should fail with a negative build result"), BuildResult < 0))
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
+			TestRunner->AddInfo(EngineFixture.GetMessagesText());
 			return;
 		}
 
+		const FNativeMessageCollector& Messages = EngineFixture.GetMessages();
 		if (!TestRunner->TestTrue(TEXT("Native compile error-message test should capture at least one diagnostic entry"), Messages.Entries.Num() > 0))
 		{
 			return;
@@ -138,7 +125,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeCompileTests,
 		const FNativeMessageEntry& FirstMessage = Messages.Entries[0];
 		TestRunner->TestTrue(TEXT("Native compile error-message test should capture a non-empty message text"), !FirstMessage.Message.IsEmpty());
 		TestRunner->TestTrue(TEXT("Native compile error-message test should capture a valid source row"), FirstMessage.Row > 0);
-		TestRunner->TestTrue(TEXT("Native compile error-message test should format the diagnostics for debugging"), !CollectMessages(Messages).IsEmpty());
+		TestRunner->TestTrue(TEXT("Native compile error-message test should format the diagnostics for debugging"), !EngineFixture.GetMessagesText().IsEmpty());
 	}
 };
 

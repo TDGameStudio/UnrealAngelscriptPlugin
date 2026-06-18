@@ -8,58 +8,34 @@
 using namespace AngelscriptNativeTestSupport;
 using namespace AngelscriptSDKTestSupport;
 
-namespace
-{
-	bool ExecuteOOPBoolEntry(FAutomationTestBase& Test, asIScriptEngine* ScriptEngine, asIScriptModule* Module, const char* Declaration, bool& OutValue)
-	{
-		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, Declaration);
-		if (!Test.TestNotNull(TEXT("OOP test should resolve the bool entry function"), Function))
-		{
-			return false;
-		}
-
-		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!Test.TestNotNull(TEXT("OOP test should create a bool execution context"), Context))
-		{
-			return false;
-		}
-
-		const int ExecuteResult = PrepareAndExecute(Context, Function);
-		if (ExecuteResult == asEXECUTION_EXCEPTION)
-		{
-			const int ExceptionLine = Context->GetExceptionLineNumber();
-			const FString ExceptionFunction = Context->GetExceptionFunction() != nullptr
-				? UTF8_TO_TCHAR(Context->GetExceptionFunction()->GetName())
-				: FString();
-			Test.AddInfo(FString::Printf(
-				TEXT("OOP execution exception: %s (line=%d function=%s)"),
-				UTF8_TO_TCHAR(Context->GetExceptionString() != nullptr ? Context->GetExceptionString() : "<null>"),
-				ExceptionLine,
-				*ExceptionFunction));
-		}
-		OutValue = Context->GetReturnByte() != 0;
-		Context->Release();
-		return Test.TestEqual(TEXT("OOP test should finish bool execution successfully"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED));
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOOPTests, "Angelscript.TestModule.AngelScriptSDK.OOP", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	inline static FSDKBufferedOutStream Buffered;
+	inline static FNativeSdkAdapterEngineFixture EngineFixture;
+
+	BEFORE_ALL()
+	{
+		EngineFixture.Create(*TestRunner, &Buffered);
+	}
+
+	AFTER_ALL()
+	{
+		EngineFixture.Destroy();
+	}
+
+	BEFORE_EACH()
+	{
+		EngineFixture.Reset(*TestRunner);
+	}
+
 	TEST_METHOD(InterfaceBridge)
 	{
-		FAngelscriptSDKTestAdapter Adapter(*TestRunner);
-		FSDKBufferedOutStream Buffered;
-		asIScriptEngine* ScriptEngine = CreateSDKTestEngine(Adapter, &Buffered);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK OOP interface test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
-
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
 
 		const int InterfaceResult = ScriptEngine->RegisterInterface("appintf");
 		const int MethodResult = InterfaceResult >= 0
@@ -87,20 +63,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOOPTests, "Angelscript.TestModule.AngelScri
 
 	TEST_METHOD(MixinNamespace)
 	{
-		FAngelscriptSDKTestAdapter Adapter(*TestRunner);
-		FSDKBufferedOutStream Buffered;
-		asIScriptEngine* ScriptEngine = CreateSDKTestEngine(Adapter, &Buffered);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK OOP mixin test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKOOPMixinNamespace", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOOPMixinNamespace", R"(
 struct Counter
 {
 	int Value = 0;
@@ -111,38 +80,31 @@ mixin void AddToCounter(Counter& Self, int Delta)
 	Self.Value += Delta;
 }
 
-bool Entry()
+bool ApplyMixin()
 {
 	Counter Value;
 	Value.AddToCounter(3);
 	return Value.Value == 3;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK OOP mixin test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
 			TestRunner->AddInfo(UTF8_TO_TCHAR(Buffered.Buffer.c_str()));
 			return;
 		}
 
-		TestRunner->TestNotNull(TEXT("SDK OOP mixin test should expose the compiled entry function"), GetNativeFunctionByDecl(Module, "bool Entry()"));
+		TestRunner->TestNotNull(TEXT("SDK OOP mixin test should expose the named mixin wrapper"), GetNativeFunctionByDecl(Module, "bool ApplyMixin()"));
 	}
 
 	TEST_METHOD(InheritedInterfaceMethod)
 	{
-		FAngelscriptSDKTestAdapter Adapter(*TestRunner);
-		FSDKBufferedOutStream Buffered;
-		asIScriptEngine* ScriptEngine = CreateSDKTestEngine(Adapter, &Buffered);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK OOP inherited-interface-method test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKOOPInheritedInterfaceMethod", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOOPInheritedInterfaceMethod", R"(
 class B
 {
 	bool touched = false;
@@ -157,20 +119,20 @@ class D : B
 {
 }
 
-bool Entry()
+bool TouchInheritedMember()
 {
 	D value = D();
 	value.Touch();
 	return value.touched;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK OOP inherited-interface-method test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
 			TestRunner->AddInfo(UTF8_TO_TCHAR(Buffered.Buffer.c_str()));
 			return;
 		}
 
-		TestRunner->TestNotNull(TEXT("SDK OOP inheritance test should expose the compiled entry function"), GetNativeFunctionByDecl(Module, "bool Entry()"));
+		TestRunner->TestNotNull(TEXT("SDK OOP inheritance test should expose the named inherited-member wrapper"), GetNativeFunctionByDecl(Module, "bool TouchInheritedMember()"));
 	}
 };
 

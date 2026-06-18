@@ -9,24 +9,23 @@ using namespace AngelscriptNativeTestSupport;
 
 namespace
 {
-	bool CreateEngineAndBuildModule(
+	bool BuildModuleForExecution(
 		FAutomationTestBase& Test,
+		FNativeSdkEngineFixture& EngineFixture,
 		const char* ModuleName,
 		const char* Source,
-		FNativeMessageCollector& OutMessages,
-		asIScriptEngine*& OutScriptEngine,
 		asIScriptModule*& OutModule)
 	{
-		OutScriptEngine = CreateNativeEngine(&OutMessages);
-		if (!Test.TestNotNull(TEXT("Native execution tests should create a standalone AngelScript engine"), OutScriptEngine))
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
+		if (!Test.TestNotNull(TEXT("Native execution tests should create a standalone AngelScript engine"), ScriptEngine))
 		{
 			return false;
 		}
 
-		OutModule = BuildNativeModule(OutScriptEngine, ModuleName, Source);
+		OutModule = BuildNativeModule(ScriptEngine, ModuleName, Source);
 		if (!Test.TestNotNull(TEXT("Native execution tests should compile the requested module from memory"), OutModule))
 		{
-			Test.AddInfo(CollectMessages(OutMessages));
+			Test.AddInfo(EngineFixture.GetMessagesText());
 			return false;
 		}
 
@@ -39,20 +38,32 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionTests,
 	"Angelscript.TestModule.AngelScriptSDK.Execute",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	inline static FNativeSdkEngineFixture EngineFixture;
+
+	BEFORE_ALL()
+	{
+		EngineFixture.Create(*TestRunner);
+	}
+
+	AFTER_ALL()
+	{
+		EngineFixture.Destroy();
+	}
+
+	BEFORE_EACH()
+	{
+		EngineFixture.ResetMessages();
+	}
+
 	TEST_METHOD(VoidFunction)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = nullptr;
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		asIScriptModule* Module = nullptr;
-		if (!CreateEngineAndBuildModule(*TestRunner, "NativeExecuteVoid", "void Test() {}", Messages, ScriptEngine, Module))
+		FScopedNativeModuleName ModuleScope(EngineFixture, "NativeExecuteVoid");
+		if (!BuildModuleForExecution(*TestRunner, EngineFixture, "NativeExecuteVoid", "void Test() {}", Module))
 		{
 			return;
 		}
-
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
 
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, "void Test()");
 		if (!TestRunner->TestNotNull(TEXT("Native void execution test should resolve the entry function"), Function))
@@ -73,18 +84,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionTests,
 
 	TEST_METHOD(ReturnValue)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = nullptr;
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		asIScriptModule* Module = nullptr;
-		if (!CreateEngineAndBuildModule(*TestRunner, "NativeExecuteReturn", "int Test() { return 42; }", Messages, ScriptEngine, Module))
+		FScopedNativeModuleName ModuleScope(EngineFixture, "NativeExecuteReturn");
+		if (!BuildModuleForExecution(*TestRunner, EngineFixture, "NativeExecuteReturn", "int Test() { return 42; }", Module))
 		{
 			return;
 		}
-
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
 
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, "int Test()");
 		if (!TestRunner->TestNotNull(TEXT("Native return-value execution test should resolve the entry function"), Function))
@@ -106,18 +112,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionTests,
 
 	TEST_METHOD(OneArg)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = nullptr;
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		asIScriptModule* Module = nullptr;
-		if (!CreateEngineAndBuildModule(*TestRunner, "NativeExecuteOneArg", "int Test(int Value) { return Value * 2; }", Messages, ScriptEngine, Module))
+		FScopedNativeModuleName ModuleScope(EngineFixture, "NativeExecuteOneArg");
+		if (!BuildModuleForExecution(*TestRunner, EngineFixture, "NativeExecuteOneArg", "int Test(int Value) { return Value * 2; }", Module))
 		{
 			return;
 		}
-
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
 
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, "int Test(int)");
 		if (!TestRunner->TestNotNull(TEXT("Native one-arg execution test should resolve the entry function"), Function))
@@ -147,18 +148,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionTests,
 
 	TEST_METHOD(TwoArgs)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = nullptr;
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		asIScriptModule* Module = nullptr;
-		if (!CreateEngineAndBuildModule(*TestRunner, "NativeExecuteTwoArgs", "int Test(int A, int B) { return A + B; }", Messages, ScriptEngine, Module))
+		FScopedNativeModuleName ModuleScope(EngineFixture, "NativeExecuteTwoArgs");
+		if (!BuildModuleForExecution(*TestRunner, EngineFixture, "NativeExecuteTwoArgs", "int Test(int A, int B) { return A + B; }", Module))
 		{
 			return;
 		}
-
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
 
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, "int Test(int, int)");
 		if (!TestRunner->TestNotNull(TEXT("Native two-arg execution test should resolve the entry function"), Function))
@@ -189,18 +185,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionTests,
 
 	TEST_METHOD(ThreeArgs)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = nullptr;
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		asIScriptModule* Module = nullptr;
-		if (!CreateEngineAndBuildModule(*TestRunner, "NativeExecuteThreeArgs", "int Test(int A, int B, int C) { return A + B + C; }", Messages, ScriptEngine, Module))
+		FScopedNativeModuleName ModuleScope(EngineFixture, "NativeExecuteThreeArgs");
+		if (!BuildModuleForExecution(*TestRunner, EngineFixture, "NativeExecuteThreeArgs", "int Test(int A, int B, int C) { return A + B + C; }", Module))
 		{
 			return;
 		}
-
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
 
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, "int Test(int, int, int)");
 		if (!TestRunner->TestNotNull(TEXT("Native three-arg execution test should resolve the entry function"), Function))

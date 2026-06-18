@@ -14,20 +14,31 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKModuleTests,
 	"Angelscript.TestModule.AngelScriptSDK.Module",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	inline static FNativeSdkEngineFixture EngineFixture;
+
+	BEFORE_ALL()
+	{
+		EngineFixture.Create(*TestRunner);
+	}
+
+	AFTER_ALL()
+	{
+		EngineFixture.Destroy();
+	}
+
+	BEFORE_EACH()
+	{
+		EngineFixture.ResetMessages();
+	}
 	TEST_METHOD(Create)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK module create test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
+		FScopedNativeModuleName ModuleScope(EngineFixture, "SDKModuleCreate");
 		asIScriptModule* Module = ScriptEngine->GetModule("SDKModuleCreate", asGM_ALWAYS_CREATE);
 		if (!TestRunner->TestNotNull(TEXT("SDK module create test should create a module"), Module))
 		{
@@ -43,7 +54,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKModuleTests,
 		const int BuildResult = Module->Build();
 		if (!TestRunner->TestEqual(TEXT("SDK module create test should build successfully"), BuildResult, 0))
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
+			TestRunner->AddInfo(EngineFixture.GetMessagesText());
 			return;
 		}
 
@@ -53,25 +64,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKModuleTests,
 
 	TEST_METHOD(Discard)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK module discard test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKModuleDiscard", "const int Value = 100;                         \n");
+		if (!Module.IsValid())
 		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(
-			ScriptEngine,
-			"SDKModuleDiscard",
-			"const int Value = 100;                         \n");
-		if (!TestRunner->TestNotNull(TEXT("SDK module discard test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
@@ -85,37 +86,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKModuleTests,
 
 	TEST_METHOD(Multi)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK module multi test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
 		// Create first module
-		asIScriptModule* Module1 = BuildNativeModule(
-			ScriptEngine,
-			"SDKModuleMulti1",
-			"int GetValue() { return 1; }                   \n");
-		if (!TestRunner->TestNotNull(TEXT("SDK module multi test should compile first module"), Module1))
+		FScopedNativeModule Module1(*TestRunner, EngineFixture, "SDKModuleMulti1", "int GetValue() { return 1; }                   \n");
+		if (!Module1.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
 		// Create second module
-		asIScriptModule* Module2 = BuildNativeModule(
-			ScriptEngine,
-			"SDKModuleMulti2",
-			"int GetValue() { return 2; }                   \n");
-		if (!TestRunner->TestNotNull(TEXT("SDK module multi test should compile second module"), Module2))
+		FScopedNativeModule Module2(*TestRunner, EngineFixture, "SDKModuleMulti2", "int GetValue() { return 2; }                   \n");
+		if (!Module2.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
@@ -138,18 +125,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKModuleTests,
 
 	TEST_METHOD(MultiSection)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK module multi-section test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
+		FScopedNativeModuleName ModuleScope(EngineFixture, "SDKModuleMultiSection");
 		asIScriptModule* Module = ScriptEngine->GetModule("SDKModuleMultiSection", asGM_ALWAYS_CREATE);
 		if (!TestRunner->TestNotNull(TEXT("SDK module multi-section test should create a module"), Module))
 		{
@@ -166,7 +148,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKModuleTests,
 
 		if (!TestRunner->TestEqual(TEXT("SDK module multi-section test should build across sections"), Module->Build(), 0))
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
+			TestRunner->AddInfo(EngineFixture.GetMessagesText());
 			return;
 		}
 
@@ -181,26 +163,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKModuleTests,
 
 	TEST_METHOD(EnumerateFunctions)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK module enumerate test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKModuleEnumerate", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKModuleEnumerate", R"(
 int Alpha() { return 1; }
 int Beta() { return 2; }
 int Gamma() { return 3; }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK module enumerate test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
@@ -225,32 +200,27 @@ int Gamma() { return 3; }
 
 	TEST_METHOD(RecompileAfterDiscard)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK module recompile test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
 		// Build, discard, then rebuild the same module name with different content.
+		FScopedNativeModuleName ModuleScope(EngineFixture, "SDKModuleRecompile");
 		asIScriptModule* First = BuildNativeModule(ScriptEngine, "SDKModuleRecompile", "int Entry() { return 1; }");
-		if (!TestRunner->TestNotNull(TEXT("SDK module recompile test should compile the first module"), First))
+		if (!TestRunner->TestNotNull(TEXT("SDK module recompile test should build the first module"), First))
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
+			TestRunner->AddInfo(EngineFixture.GetMessagesText());
 			return;
 		}
 
 		ScriptEngine->DiscardModule("SDKModuleRecompile");
 
 		asIScriptModule* Second = BuildNativeModule(ScriptEngine, "SDKModuleRecompile", "int Entry() { return 2; }");
-		if (!TestRunner->TestNotNull(TEXT("SDK module recompile test should rebuild the module under the same name"), Second))
+		if (!TestRunner->TestNotNull(TEXT("SDK module recompile test should build the second module"), Second))
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
+			TestRunner->AddInfo(EngineFixture.GetMessagesText());
 			return;
 		}
 

@@ -35,100 +35,138 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKConversionTests,
 	"Angelscript.TestModule.AngelScriptSDK.Conversion",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	inline static FNativeSdkEngineFixture EngineFixture;
+
+	BEFORE_ALL()
+	{
+		EngineFixture.Create(*TestRunner);
+	}
+
+	AFTER_ALL()
+	{
+		EngineFixture.Destroy();
+	}
+
+	BEFORE_EACH()
+	{
+		EngineFixture.ResetMessages();
+	}
 	TEST_METHOD(Numeric)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK numeric conversion test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKConversionNumeric", R"(
-bool Entry()
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKConversionNumeric", R"(
+int AddSmallAndMedium(int8 Small, uint16 Medium)
 {
-	int8 small = 2;
-	uint16 medium = 4;
-	int total = small + medium;
-	double precise = total + 0.5;
-	float narrow = float(precise);
-	return total == 6 && narrow > 6.49f && narrow < 6.51f;
+	return Small + Medium;
+}
+
+float NarrowPrecise(double Value)
+{
+	return float(Value);
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK numeric conversion test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bResult = false;
-		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK numeric conversion test should preserve widening and narrowing conversions"), bResult);
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int AddSmallAndMedium(int8, uint16)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(static_cast<int8>(2)).AddArg(static_cast<uint16>(4));
+			TestRunner->TestEqual(TEXT("SDK numeric conversion test should preserve integer widening"), Invoker.CallAndReturn<int32>(INDEX_NONE), 6);
+		}
+
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "float NarrowPrecise(double)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(6.5);
+			const float Result = Invoker.CallAndReturn<float>(0.0f);
+			TestRunner->TestTrue(TEXT("SDK numeric conversion test should preserve explicit float narrowing"), FMath::IsNearlyEqual(Result, 6.5f, 0.01f));
+		}
 	}
 
 	TEST_METHOD(ExplicitCast)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK explicit-cast conversion test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKConversionExplicit", R"(
-bool Entry()
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKConversionExplicit", R"(
+int TruncateDouble(double Value)
 {
-	double d = 3.75;
-	int i = int(d);
-	uint64 wide = uint64(i);
-	float f = float(wide) + 0.25f;
-	return i == 3 && wide == 3 && f > 3.24f && f < 3.26f;
+	return int(Value);
+}
+
+uint64 WidenToUint64(int Value)
+{
+	return uint64(Value);
+}
+
+float AddFloatQuarter(uint64 Value)
+{
+	return float(Value) + 0.25f;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK explicit-cast conversion test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bResult = false;
-		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK explicit-cast conversion test should preserve explicit cast semantics"), bResult);
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int TruncateDouble(double)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(3.75);
+			TestRunner->TestEqual(TEXT("SDK explicit-cast conversion test should truncate double to int"), Invoker.CallAndReturn<int32>(INDEX_NONE), 3);
+		}
+
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "uint64 WidenToUint64(int)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(static_cast<int32>(3));
+			TestRunner->TestEqual(TEXT("SDK explicit-cast conversion test should widen int to uint64"), Invoker.CallAndReturn<uint64>(0), static_cast<uint64>(3));
+		}
+
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "float AddFloatQuarter(uint64)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(static_cast<uint64>(3));
+			const float Result = Invoker.CallAndReturn<float>(0.0f);
+			TestRunner->TestTrue(TEXT("SDK explicit-cast conversion test should cast uint64 through float"), FMath::IsNearlyEqual(Result, 3.25f, 0.01f));
+		}
 	}
 
 	TEST_METHOD(ImplicitValueType)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK implicit value-type conversion test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKConversionImplicitValueType", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKConversionImplicitValueType", R"(
 class Test
 {
 	int opImplConv() const
@@ -137,112 +175,171 @@ class Test
 	}
 }
 
-bool Entry()
+int ConvertTestToInt()
 {
-	Test value;
-	int i = value;
-	return i == 7;
+	Test Value;
+	int Result = Value;
+	return Result;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK implicit value-type conversion test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
-		TestRunner->TestNotNull(TEXT("SDK implicit value-type conversion test should expose the compiled entry function"), GetNativeFunctionByDecl(Module, "bool Entry()"));
+		TestRunner->TestNotNull(
+			TEXT("SDK implicit value-type conversion test should expose the named conversion function"),
+			GetNativeFunctionByDecl(Module, "int ConvertTestToInt()"));
 	}
 
 	TEST_METHOD(NumericBoundary)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK numeric-boundary conversion test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKConversionNumericBoundary", R"(
-bool Entry()
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKConversionNumericBoundary", R"(
+int Truncate(double Value)
 {
-	// float -> int truncates toward zero (not rounds)
-	int truncPos = int(3.9);     // 3
-	int truncNeg = int(-3.9);    // -3
+	return int(Value);
+}
 
-	// int -> float -> int round-trip for small magnitudes is exact
-	int roundTrip = int(float(12345));
+int RoundTripSmallInt(int Value)
+{
+	return int(float(Value));
+}
 
-	// Signed -> unsigned reinterprets the bit pattern
-	uint asUnsigned = uint(-1);  // 0xFFFFFFFF = 4294967295
+uint SignedToUnsigned(int Value)
+{
+	return uint(Value);
+}
 
-	// Widening preserves value
-	int64 widened = int64(2147483647) + 1;  // 2147483648, no overflow at 64-bit
-
-	return truncPos == 3 && truncNeg == -3 && roundTrip == 12345
-		&& asUnsigned == 4294967295 && widened == 2147483648;
+int64 WidenInt(int Value)
+{
+	return int64(Value) + 1;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK numeric-boundary conversion test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bResult = false;
-		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK numeric-boundary conversion test should preserve truncation, round-trip, and sign-reinterpret semantics"), bResult);
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Truncate(double)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(3.9);
+			TestRunner->TestEqual(TEXT("SDK numeric-boundary conversion test should truncate positive floats toward zero"), Invoker.CallAndReturn<int32>(INDEX_NONE), 3);
+		}
+
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Truncate(double)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(-3.9);
+			TestRunner->TestEqual(TEXT("SDK numeric-boundary conversion test should truncate negative floats toward zero"), Invoker.CallAndReturn<int32>(INDEX_NONE), -3);
+		}
+
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int RoundTripSmallInt(int)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(static_cast<int32>(12345));
+			TestRunner->TestEqual(TEXT("SDK numeric-boundary conversion test should round-trip small integers through float"), Invoker.CallAndReturn<int32>(INDEX_NONE), 12345);
+		}
+
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "uint SignedToUnsigned(int)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(static_cast<int32>(-1));
+			TestRunner->TestEqual(TEXT("SDK numeric-boundary conversion test should reinterpret signed values as unsigned"), Invoker.CallAndReturn<uint32>(0), static_cast<uint32>(4294967295u));
+		}
+
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int64 WidenInt(int)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(static_cast<int32>(2147483647));
+			TestRunner->TestEqual(TEXT("SDK numeric-boundary conversion test should widen without int overflow"), Invoker.CallAndReturn<int64>(0), static_cast<int64>(2147483648));
+		}
 	}
 
 	TEST_METHOD(BoolConversion)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK bool-conversion test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKConversionBool", R"(
-bool Entry()
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKConversionBool", R"(
+bool IsNonZero(int Value)
 {
-	// Explicit numeric -> bool via comparison (AngelScript has no implicit int->bool)
-	bool fromNonZero = (5 != 0);
-	bool fromZero = (0 != 0);
+	return Value != 0;
+}
 
-	// bool participates in ternary producing ints
-	int t = fromNonZero ? 1 : 0;
-	int f = fromZero ? 1 : 0;
-
-	return fromNonZero && !fromZero && t == 1 && f == 0;
+int BoolToInt(bool Value)
+{
+	return Value ? 1 : 0;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK bool-conversion test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bResult = false;
-		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK bool-conversion test should preserve boolean truth semantics"), bResult);
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool IsNonZero(int)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(static_cast<int32>(5));
+			TestRunner->TestTrue(TEXT("SDK bool-conversion test should treat non-zero comparisons as true"), Invoker.CallAndReturn<bool>(false));
+		}
+
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool IsNonZero(int)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(static_cast<int32>(0));
+			TestRunner->TestFalse(TEXT("SDK bool-conversion test should treat zero comparisons as false"), Invoker.CallAndReturn<bool>(true));
+		}
+
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int BoolToInt(bool)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(true);
+			TestRunner->TestEqual(TEXT("SDK bool-conversion test should convert true through ternary"), Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+		}
+
+		{
+			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int BoolToInt(bool)");
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddArg(false);
+			TestRunner->TestEqual(TEXT("SDK bool-conversion test should convert false through ternary"), Invoker.CallAndReturn<int32>(INDEX_NONE), 0);
+		}
 	}
 };
 

@@ -10,369 +10,350 @@ using namespace AngelscriptNativeTestSupport;
 using namespace AngelscriptSDKTestSupport;
 using namespace AngelscriptSDKTestUtilities;
 
+namespace
+{
+	bool ExpectSdkInt(
+		FAutomationTestBase& Test,
+		asIScriptEngine* ScriptEngine,
+		asIScriptModule* Module,
+		const char* Declaration,
+		const TCHAR* Label,
+		const int32 Expected)
+	{
+		FSdkFunctionInvoker Invoker(Test, ScriptEngine, Module, Declaration);
+		if (!Invoker.IsValid())
+		{
+			return false;
+		}
+
+		return Test.TestEqual(Label, Invoker.CallAndReturn<int32>(INDEX_NONE), Expected);
+	}
+
+	bool ExpectSdkUInt(
+		FAutomationTestBase& Test,
+		asIScriptEngine* ScriptEngine,
+		asIScriptModule* Module,
+		const char* Declaration,
+		const TCHAR* Label,
+		const uint32 Expected)
+	{
+		FSdkFunctionInvoker Invoker(Test, ScriptEngine, Module, Declaration);
+		if (!Invoker.IsValid())
+		{
+			return false;
+		}
+
+		return Test.TestEqual(Label, Invoker.CallAndReturn<uint32>(0), Expected);
+	}
+
+	bool ExpectSdkUInt8(
+		FAutomationTestBase& Test,
+		asIScriptEngine* ScriptEngine,
+		asIScriptModule* Module,
+		const char* Declaration,
+		const TCHAR* Label,
+		const uint8 Expected)
+	{
+		FSdkFunctionInvoker Invoker(Test, ScriptEngine, Module, Declaration);
+		if (!Invoker.IsValid())
+		{
+			return false;
+		}
+
+		return Test.TestEqual(Label, Invoker.CallAndReturn<uint8>(0), Expected);
+	}
+
+	bool ExpectSdkBool(
+		FAutomationTestBase& Test,
+		asIScriptEngine* ScriptEngine,
+		asIScriptModule* Module,
+		const char* Declaration,
+		const TCHAR* Label,
+		const bool bExpected)
+	{
+		FSdkFunctionInvoker Invoker(Test, ScriptEngine, Module, Declaration);
+		if (!Invoker.IsValid())
+		{
+			return false;
+		}
+
+		return Test.TestEqual(Label, Invoker.CallAndReturn<bool>(!bExpected), bExpected);
+	}
+
+	bool ExpectSdkDouble(
+		FAutomationTestBase& Test,
+		asIScriptEngine* ScriptEngine,
+		asIScriptModule* Module,
+		const char* Declaration,
+		const TCHAR* Label,
+		const double Expected,
+		const double Tolerance = 0.0001)
+	{
+		FSdkFunctionInvoker Invoker(Test, ScriptEngine, Module, Declaration);
+		if (!Invoker.IsValid())
+		{
+			return false;
+		}
+
+		const double Actual = Invoker.CallAndReturn<double>(0.0);
+		return Test.TestTrue(
+			*FString::Printf(TEXT("%s should return %.9g, got %.9g"), Label, Expected, Actual),
+			FMath::IsNearlyEqual(Actual, Expected, Tolerance));
+	}
+}
+
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOperatorTests, "Angelscript.TestModule.AngelScriptSDK.Operator", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	inline static FNativeSdkEngineFixture EngineFixture;
+
+	BEFORE_ALL()
+	{
+		EngineFixture.Create(*TestRunner);
+	}
+
+	AFTER_ALL()
+	{
+		EngineFixture.Destroy();
+	}
+
+	BEFORE_EACH()
+	{
+		EngineFixture.ResetMessages();
+	}
 	TEST_METHOD(Arithmetic)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator arithmetic test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKOperatorArithmetic", R"(
-bool Entry()
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorArithmetic", R"(
+int Add() { return 10 + 5; }
+int Subtract() { return 10 - 5; }
+int Multiply() { return 10 * 5; }
+int Divide() { return 10 / 5; }
+int Modulo() { return 10 % 3; }
+int UnaryPlus() { return +5; }
+int UnaryMinus() { return -5; }
+int IncrementDecrement()
 {
-	// Basic arithmetic
-	int add = 10 + 5;
-	int sub = 10 - 5;
-	int mul = 10 * 5;
-	int div = 10 / 5;
-	int mod = 10 % 3;
-
-	// Unary operators
-	int pos = +5;
-	int neg = -5;
-
-	// Increment/Decrement
 	int a = 5;
-	int b = ++a;  // a=6, b=6
-	int c = a++;  // a=7, c=6
-	int d = --a;  // a=6, d=6
-	int e = a--;  // a=5, e=6
-
-	return add == 15 && sub == 5 && mul == 50 && div == 2 && mod == 1
-		&& pos == 5 && neg == -5
-		&& a == 5 && b == 6 && c == 6 && d == 6 && e == 6;
+	int b = ++a;
+	int c = a++;
+	int d = --a;
+	int e = a--;
+	return a * 10000 + b * 1000 + c * 100 + d * 10 + e;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK operator arithmetic test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK operator arithmetic test should preserve all arithmetic operations"), bResult);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int Add()", TEXT("SDK operator arithmetic test should preserve addition"), 15);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int Subtract()", TEXT("SDK operator arithmetic test should preserve subtraction"), 5);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int Multiply()", TEXT("SDK operator arithmetic test should preserve multiplication"), 50);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int Divide()", TEXT("SDK operator arithmetic test should preserve division"), 2);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int Modulo()", TEXT("SDK operator arithmetic test should preserve modulo"), 1);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int UnaryPlus()", TEXT("SDK operator arithmetic test should preserve unary plus"), 5);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int UnaryMinus()", TEXT("SDK operator arithmetic test should preserve unary minus"), -5);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int IncrementDecrement()", TEXT("SDK operator arithmetic test should preserve increment/decrement ordering"), 56666);
 	}
 
 	TEST_METHOD(Comparison)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator comparison test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKOperatorComparison", R"(
-bool Entry()
-{
-	int a = 10;
-	int b = 20;
-	int c = 10;
-
-	bool eq = (a == c);      // true
-	bool ne = (a != b);      // true
-	bool lt = (a < b);       // true
-	bool le1 = (a <= b);     // true
-	bool le2 = (a <= c);     // true
-	bool gt = (b > a);       // true
-	bool ge1 = (b >= a);     // true
-	bool ge2 = (a >= c);     // true
-
-	return eq && ne && lt && le1 && le2 && gt && ge1 && ge2;
-}
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorComparison", R"(
+bool Equal() { int a = 10; int c = 10; return a == c; }
+bool NotEqual() { int a = 10; int b = 20; return a != b; }
+bool LessThan() { int a = 10; int b = 20; return a < b; }
+bool LessEqualDifferent() { int a = 10; int b = 20; return a <= b; }
+bool LessEqualSame() { int a = 10; int c = 10; return a <= c; }
+bool GreaterThan() { int a = 10; int b = 20; return b > a; }
+bool GreaterEqualDifferent() { int a = 10; int b = 20; return b >= a; }
+bool GreaterEqualSame() { int a = 10; int c = 10; return a >= c; }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK operator comparison test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK operator comparison test should preserve all comparison operations"), bResult);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool Equal()", TEXT("SDK operator comparison test should preserve =="), true);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool NotEqual()", TEXT("SDK operator comparison test should preserve !="), true);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool LessThan()", TEXT("SDK operator comparison test should preserve <"), true);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool LessEqualDifferent()", TEXT("SDK operator comparison test should preserve <= for different values"), true);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool LessEqualSame()", TEXT("SDK operator comparison test should preserve <= for equal values"), true);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool GreaterThan()", TEXT("SDK operator comparison test should preserve >"), true);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool GreaterEqualDifferent()", TEXT("SDK operator comparison test should preserve >= for different values"), true);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool GreaterEqualSame()", TEXT("SDK operator comparison test should preserve >= for equal values"), true);
 	}
 
 	TEST_METHOD(Logical)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator logical test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKOperatorLogical", R"(
-bool Entry()
-{
-	bool t = true;
-	bool f = false;
-
-	// Logical AND
-	bool and1 = t && t;  // true
-	bool and2 = t && f;  // false
-	bool and3 = f && t;  // false
-	bool and4 = f && f;  // false
-
-	// Logical OR
-	bool or1 = t || t;   // true
-	bool or2 = t || f;   // true
-	bool or3 = f || t;   // true
-	bool or4 = f || f;   // false
-
-	// Logical XOR
-	bool xor1 = t ^^ t;  // false
-	bool xor2 = t ^^ f;  // true
-	bool xor3 = f ^^ t;  // true
-	bool xor4 = f ^^ f;  // false
-
-	// Logical NOT
-	bool not1 = !t;      // false
-	bool not2 = !f;      // true
-
-	return and1 && !and2 && !and3 && !and4
-		&& or1 && or2 && or3 && !or4
-		&& !xor1 && xor2 && xor3 && !xor4
-		&& !not1 && not2;
-}
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorLogical", R"(
+bool AndTrueTrue() { return true && true; }
+bool AndTrueFalse() { return true && false; }
+bool AndFalseTrue() { return false && true; }
+bool AndFalseFalse() { return false && false; }
+bool OrTrueTrue() { return true || true; }
+bool OrTrueFalse() { return true || false; }
+bool OrFalseTrue() { return false || true; }
+bool OrFalseFalse() { return false || false; }
+bool XorTrueTrue() { return true ^^ true; }
+bool XorTrueFalse() { return true ^^ false; }
+bool XorFalseTrue() { return false ^^ true; }
+bool XorFalseFalse() { return false ^^ false; }
+bool NotTrue() { return !true; }
+bool NotFalse() { return !false; }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK operator logical test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK operator logical test should preserve all logical operations"), bResult);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool AndTrueTrue()", TEXT("SDK operator logical test should preserve true && true"), true);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool AndTrueFalse()", TEXT("SDK operator logical test should preserve true && false"), false);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool AndFalseTrue()", TEXT("SDK operator logical test should preserve false && true"), false);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool AndFalseFalse()", TEXT("SDK operator logical test should preserve false && false"), false);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool OrTrueTrue()", TEXT("SDK operator logical test should preserve true || true"), true);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool OrTrueFalse()", TEXT("SDK operator logical test should preserve true || false"), true);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool OrFalseTrue()", TEXT("SDK operator logical test should preserve false || true"), true);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool OrFalseFalse()", TEXT("SDK operator logical test should preserve false || false"), false);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool XorTrueTrue()", TEXT("SDK operator logical test should preserve true ^^ true"), false);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool XorTrueFalse()", TEXT("SDK operator logical test should preserve true ^^ false"), true);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool XorFalseTrue()", TEXT("SDK operator logical test should preserve false ^^ true"), true);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool XorFalseFalse()", TEXT("SDK operator logical test should preserve false ^^ false"), false);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool NotTrue()", TEXT("SDK operator logical test should preserve !true"), false);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool NotFalse()", TEXT("SDK operator logical test should preserve !false"), true);
 	}
 
 	TEST_METHOD(Bitwise)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator bitwise test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKOperatorBitwise", R"(
-bool Entry()
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorBitwise", R"(
+uint BitAnd() { uint a = 0b11001100; uint b = 0b10101010; return a & b; }
+uint BitOr() { uint a = 0b11001100; uint b = 0b10101010; return a | b; }
+uint BitXor() { uint a = 0b11001100; uint b = 0b10101010; return a ^ b; }
+uint8 BitNot() { uint8 c = 0b11110000; return ~c; }
+uint ShiftLeft() { return 5 << 2; }
+uint ShiftRight() { return 20 >> 2; }
+uint CompoundBitwise()
 {
-	uint a = 0b11001100;  // 204
-	uint b = 0b10101010;  // 170
-
-	// Bitwise AND
-	uint and_result = a & b;  // 0b10001000 = 136
-
-	// Bitwise OR
-	uint or_result = a | b;   // 0b11101110 = 238
-
-	// Bitwise XOR
-	uint xor_result = a ^ b;  // 0b01100110 = 102
-
-	// Bitwise NOT
-	uint8 c = 0b11110000;
-	uint8 not_result = ~c;    // 0b00001111 = 15
-
-	// Left shift
-	uint left = 5 << 2;       // 20
-
-	// Right shift
-	uint right = 20 >> 2;     // 5
-
-	// Compound bitwise operators
 	uint x = 0xFF;
-	x &= 0x0F;  // x = 0x0F
-	x |= 0xF0;  // x = 0xFF
-	x ^= 0x55;  // x = 0xAA
-	x <<= 1;    // x = 0x154
-	x >>= 2;    // x = 0x55
-
-	return and_result == 136 && or_result == 238 && xor_result == 102
-		&& not_result == 15 && left == 20 && right == 5 && x == 0x55;
+	x &= 0x0F;
+	x |= 0xF0;
+	x ^= 0x55;
+	x <<= 1;
+	x >>= 2;
+	return x;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK operator bitwise test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK operator bitwise test should preserve all bitwise operations"), bResult);
+		ExpectSdkUInt(*TestRunner, ScriptEngine, Module, "uint BitAnd()", TEXT("SDK operator bitwise test should preserve &"), 136);
+		ExpectSdkUInt(*TestRunner, ScriptEngine, Module, "uint BitOr()", TEXT("SDK operator bitwise test should preserve |"), 238);
+		ExpectSdkUInt(*TestRunner, ScriptEngine, Module, "uint BitXor()", TEXT("SDK operator bitwise test should preserve ^"), 102);
+		ExpectSdkUInt8(*TestRunner, ScriptEngine, Module, "uint8 BitNot()", TEXT("SDK operator bitwise test should preserve ~"), 15);
+		ExpectSdkUInt(*TestRunner, ScriptEngine, Module, "uint ShiftLeft()", TEXT("SDK operator bitwise test should preserve <<"), 20);
+		ExpectSdkUInt(*TestRunner, ScriptEngine, Module, "uint ShiftRight()", TEXT("SDK operator bitwise test should preserve >>"), 5);
+		ExpectSdkUInt(*TestRunner, ScriptEngine, Module, "uint CompoundBitwise()", TEXT("SDK operator bitwise test should preserve compound bitwise operators"), 0x55);
 	}
 
 	TEST_METHOD(Assignment)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator assignment test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKOperatorAssignment", R"(
-bool Entry()
-{
-	// Simple assignment
-	int a = 10;
-
-	// Compound assignments
-	int b = 10;
-	b += 5;   // b = 15
-
-	int c = 10;
-	c -= 3;   // c = 7
-
-	int d = 10;
-	d *= 2;   // d = 20
-
-	int e = 10;
-	e /= 2;   // e = 5
-
-	int f = 10;
-	f %= 3;   // f = 1
-
-	// Multi-assignment (chained)
-	int x = 0, y = 0, z = 0;
-	x = y = z = 42;
-
-	return a == 10 && b == 15 && c == 7 && d == 20 && e == 5 && f == 1
-		&& x == 42 && y == 42 && z == 42;
-}
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorAssignment", R"(
+int SimpleAssign() { int a = 10; return a; }
+int AddAssign() { int b = 10; b += 5; return b; }
+int SubAssign() { int c = 10; c -= 3; return c; }
+int MulAssign() { int d = 10; d *= 2; return d; }
+int DivAssign() { int e = 10; e /= 2; return e; }
+int ModAssign() { int f = 10; f %= 3; return f; }
+int ChainedAssign() { int x = 0, y = 0, z = 0; x = y = z = 42; return x + y + z; }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK operator assignment test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK operator assignment test should preserve all assignment operations"), bResult);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int SimpleAssign()", TEXT("SDK operator assignment test should preserve simple assignment"), 10);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int AddAssign()", TEXT("SDK operator assignment test should preserve +="), 15);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int SubAssign()", TEXT("SDK operator assignment test should preserve -="), 7);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int MulAssign()", TEXT("SDK operator assignment test should preserve *="), 20);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int DivAssign()", TEXT("SDK operator assignment test should preserve /="), 5);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int ModAssign()", TEXT("SDK operator assignment test should preserve %="), 1);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int ChainedAssign()", TEXT("SDK operator assignment test should preserve chained assignment"), 126);
 	}
 
 	TEST_METHOD(Ternary)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator ternary test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKOperatorTernary", R"(
-bool Entry()
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorTernary", R"(
+int TrueBranch() { return true ? 10 : 20; }
+int FalseBranch() { return false ? 10 : 20; }
+int NestedBranch() { int x = 5; return x > 10 ? 1 : x > 5 ? 2 : x == 5 ? 3 : 4; }
+int SideEffectCounter()
 {
-	// Basic ternary
-	int a = true ? 10 : 20;
-	int b = false ? 10 : 20;
-
-	// Nested ternary
-	int x = 5;
-	int result = x > 10 ? 1 : x > 5 ? 2 : x == 5 ? 3 : 4;
-
-	// Ternary with side effects
 	int counter = 0;
 	int c = (counter++ > 0) ? 100 : 200;
-
-	return a == 10 && b == 20 && result == 3 && c == 200 && counter == 1;
+	return c + counter;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK operator ternary test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK operator ternary test should preserve conditional operator semantics"), bResult);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int TrueBranch()", TEXT("SDK operator ternary test should preserve true branch selection"), 10);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int FalseBranch()", TEXT("SDK operator ternary test should preserve false branch selection"), 20);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int NestedBranch()", TEXT("SDK operator ternary test should preserve nested branch selection"), 3);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int SideEffectCounter()", TEXT("SDK operator ternary test should preserve side-effect ordering"), 201);
 	}
 
 	TEST_METHOD(Pow)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator pow test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKOperatorPow", R"(
-bool Entry()
-{
-	return 3 ** 2 == 9
-		&& 9.0 ** 0.5 == 3.0
-		&& 2.5 ** 2 == 6.25
-		&& 2 ** 10 == 1024;
-}
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorPow", R"(
+int IntPow() { return 3 ** 2; }
+double SqrtPow() { return 9.0 ** 0.5; }
+double FractionalPow() { return 2.5 ** 2; }
+int WidePow() { return 2 ** 10; }
 
 void Overflow()
 {
@@ -380,22 +361,15 @@ void Overflow()
 	x = x ** 6.0;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK operator pow test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bPowResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bPowResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		if (!TestRunner->TestTrue(TEXT("SDK operator pow test should preserve exponent behavior"), bPowResult))
-		{
-			return;
-		}
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int IntPow()", TEXT("SDK operator pow test should preserve integer exponent behavior"), 9);
+		ExpectSdkDouble(*TestRunner, ScriptEngine, Module, "double SqrtPow()", TEXT("SDK operator pow test should preserve square-root exponent behavior"), 3.0);
+		ExpectSdkDouble(*TestRunner, ScriptEngine, Module, "double FractionalPow()", TEXT("SDK operator pow test should preserve fractional base exponent behavior"), 6.25);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int WidePow()", TEXT("SDK operator pow test should preserve wide integer exponent behavior"), 1024);
 
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, "void Overflow()");
 		if (!TestRunner->TestNotNull(TEXT("SDK operator pow test should resolve the overflow function"), Function))
@@ -423,19 +397,13 @@ void Overflow()
 
 	TEST_METHOD(Call)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator opCall test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKOperatorCall", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorCall", R"(
 class Adder
 {
 	int opCall(int a, int b)
@@ -449,43 +417,40 @@ class Adder
 	}
 }
 
-bool Entry()
+bool InvokeAdderPair()
 {
 	Adder adder;
-	return adder(2, 3) == 5 && adder(1, 2, 3) == 6;
+	return adder(2, 3) == 5;
+}
+
+bool InvokeAdderTriple()
+{
+	Adder adder;
+	return adder(1, 2, 3) == 6;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK operator opCall test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
-		// Note: this bare native engine cannot safely instantiate a script
-		// reference-class at runtime (doing so raises asEXECUTION_EXCEPTION),
-		// so we verify the opCall overloads compile and resolve rather than
-		// executing. Runtime opCall dispatch is covered by the UE-wrapper
-		// engine tests. See OpenSpec change refactor-as-sdk-test-namespace-consolidation §6.6.
 		TestRunner->TestNotNull(
-			TEXT("SDK operator opCall test should resolve the entry function after compiling opCall overloads"),
-			GetNativeFunctionByDecl(Module, "bool Entry()"));
+			TEXT("SDK operator opCall test should resolve the pair opCall wrapper after compiling opCall overloads"),
+			GetNativeFunctionByDecl(Module, "bool InvokeAdderPair()"));
+		TestRunner->TestNotNull(
+			TEXT("SDK operator opCall test should resolve the triple opCall wrapper after compiling opCall overloads"),
+			GetNativeFunctionByDecl(Module, "bool InvokeAdderTriple()"));
 	}
 
 	TEST_METHOD(Index)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator index test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKOperatorIndex", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorIndex", R"(
 class SimpleArray
 {
 	int data0 = 10;
@@ -501,113 +466,81 @@ class SimpleArray
 	}
 }
 
-bool Entry()
+int ReadSimpleArraySlot(int Index)
 {
 	SimpleArray arr;
-	return arr[0] == 10 && arr[1] == 20 && arr[2] == 30;
+	return arr[Index];
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK operator index test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
-		// As with opCall, the bare native engine cannot instantiate this script
-		// reference-class at runtime, so we verify opIndex compiles and resolves.
 		TestRunner->TestNotNull(
-			TEXT("SDK operator index test should resolve the entry function after compiling opIndex"),
-			GetNativeFunctionByDecl(Module, "bool Entry()"));
+			TEXT("SDK operator index test should resolve the named opIndex wrapper after compiling opIndex"),
+			GetNativeFunctionByDecl(Module, "int ReadSimpleArraySlot(int)"));
 	}
 
 	TEST_METHOD(Precedence)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator precedence test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKOperatorPrecedence", R"(
-bool Entry()
-{
-	// Multiplicative binds tighter than additive
-	int a = 2 + 3 * 4;          // 14, not 20
-	// Parentheses override precedence
-	int b = (2 + 3) * 4;        // 20
-	// Unary minus + multiplication
-	int c = -2 * 3;             // -6
-	// Shift below additive, bitwise-and below shift
-	int d = 1 + 2 << 1;         // (1+2)<<1 = 6
-	int e = 0xF0 | 0x0F & 0x33;  // 0x0F&0x33=0x03; 0xF0|0x03 = 0xF3
-	// Comparison below arithmetic; logical below comparison
-	bool f = 2 + 2 == 4 && 3 * 3 > 8;
-	return a == 14 && b == 20 && c == -6 && d == 6 && e == 0xF3 && f;
-}
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorPrecedence", R"(
+int MultiplicativeBeforeAdditive() { return 2 + 3 * 4; }
+int ParenthesesOverride() { return (2 + 3) * 4; }
+int UnaryMinusBeforeMultiply() { return -2 * 3; }
+int ShiftAfterAdditive() { return 1 + 2 << 1; }
+int BitwiseAndBeforeOr() { return 0xF0 | 0x0F & 0x33; }
+bool ComparisonBeforeLogical() { return 2 + 2 == 4 && 3 * 3 > 8; }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK operator precedence test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK operator precedence test should preserve operator precedence and associativity"), bResult);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int MultiplicativeBeforeAdditive()", TEXT("SDK operator precedence test should bind multiplication before addition"), 14);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int ParenthesesOverride()", TEXT("SDK operator precedence test should let parentheses override precedence"), 20);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int UnaryMinusBeforeMultiply()", TEXT("SDK operator precedence test should preserve unary minus with multiplication"), -6);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int ShiftAfterAdditive()", TEXT("SDK operator precedence test should bind shift below additive"), 6);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int BitwiseAndBeforeOr()", TEXT("SDK operator precedence test should bind bitwise and before or"), 0xF3);
+		ExpectSdkBool(*TestRunner, ScriptEngine, Module, "bool ComparisonBeforeLogical()", TEXT("SDK operator precedence test should bind comparison before logical"), true);
 	}
 
 	TEST_METHOD(ShortCircuit)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK operator short-circuit test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKOperatorShortCircuit", R"(
-bool Entry()
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKOperatorShortCircuit", R"(
+int AndCounter()
 {
-	// AND short-circuit: second operand should not evaluate
-	int counter1 = 0;
-	bool and_result = false && (++counter1 > 0);
+	int counter = 0;
+	bool value = false && (++counter > 0);
+	return value ? -1 : counter;
+}
 
-	// OR short-circuit: second operand should not evaluate
-	int counter2 = 0;
-	bool or_result = true || (++counter2 > 0);
-
-	// Verify counters were not incremented (short-circuited)
-	return counter1 == 0 && counter2 == 0 && !and_result && or_result;
+int OrCounter()
+{
+	int counter = 0;
+	bool value = true || (++counter > 0);
+	return value ? counter : -1;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK operator short-circuit test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		if (!Module.IsValid())
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK operator short-circuit test should preserve logical operator short-circuit behavior"), bResult);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int AndCounter()", TEXT("SDK operator short-circuit test should skip RHS for false && RHS"), 0);
+		ExpectSdkInt(*TestRunner, ScriptEngine, Module, "int OrCounter()", TEXT("SDK operator short-circuit test should skip RHS for true || RHS"), 0);
 	}
 };
 

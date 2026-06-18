@@ -12,21 +12,31 @@ using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKRuntimeTests, "Angelscript.TestModule.AngelScriptSDK.Runtime", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	inline static FNativeSdkEngineFixture EngineFixture;
+
+	BEFORE_ALL()
+	{
+		EngineFixture.Create(*TestRunner);
+	}
+
+	AFTER_ALL()
+	{
+		EngineFixture.Destroy();
+	}
+
+	BEFORE_EACH()
+	{
+		EngineFixture.ResetMessages();
+	}
 	TEST_METHOD(Context)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK runtime context test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKRuntimeContext", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKRuntimeContext", R"(
 int Compute(int N)
 {
 	int Result = 0;
@@ -42,9 +52,8 @@ bool Entry()
 	return Compute(10) == 55;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime context test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
@@ -59,19 +68,13 @@ bool Entry()
 
 	TEST_METHOD(Exception)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK runtime exception test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKRuntimeException", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKRuntimeException", R"(
 void ThrowException()
 {
 	int a = 0;
@@ -84,9 +87,8 @@ bool Entry()
 	return true;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime exception test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
@@ -111,19 +113,13 @@ bool Entry()
 
 	TEST_METHOD(Suspend)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK runtime suspend test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKRuntimeSuspend", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKRuntimeSuspend", R"(
 int Sum(int N)
 {
 	int Result = 0;
@@ -139,9 +135,8 @@ bool Entry()
 	return Sum(10) == 55;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime suspend test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
@@ -156,19 +151,13 @@ bool Entry()
 
 	TEST_METHOD(ExceptionDetails)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK runtime exception-details test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKRuntimeExceptionDetails", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKRuntimeExceptionDetails", R"(
 int Divide(int A, int B)
 {
 	return A / B;
@@ -179,9 +168,8 @@ int Entry()
 	return Divide(10, 0);
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime exception-details test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
@@ -218,19 +206,13 @@ int Entry()
 
 	TEST_METHOD(ModuloByZero)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK runtime modulo-by-zero test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKRuntimeModuloByZero", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKRuntimeModuloByZero", R"(
 int Entry()
 {
 	int a = 7;
@@ -238,9 +220,8 @@ int Entry()
 	return a % b;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime modulo-by-zero test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
@@ -270,19 +251,13 @@ int Entry()
 
 	TEST_METHOD(ContextReuseAfterException)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK runtime context-reuse test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKRuntimeContextReuse", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKRuntimeContextReuse", R"(
 int Boom()
 {
 	int a = 0;
@@ -296,9 +271,8 @@ int SafeSum()
 	return total;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime context-reuse test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 

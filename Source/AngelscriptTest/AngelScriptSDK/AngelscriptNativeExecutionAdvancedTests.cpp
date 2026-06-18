@@ -12,19 +12,30 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionAdvancedTests,
 	"Angelscript.TestModule.AngelScriptSDK.Execute",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	inline static FNativeSdkEngineFixture EngineFixture;
+
+	BEFORE_ALL()
+	{
+		EngineFixture.Create(*TestRunner);
+	}
+
+	AFTER_ALL()
+	{
+		EngineFixture.Destroy();
+	}
+
+	BEFORE_EACH()
+	{
+		EngineFixture.ResetMessages();
+	}
+
 	TEST_METHOD(FloatReturn)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Native float-return execution test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
-
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
 
 		const bool bFloatUsesFloat64 = ScriptEngine->GetEngineProperty(asEP_FLOAT_IS_FLOAT64) != 0;
 		const char* Source = bFloatUsesFloat64
@@ -34,10 +45,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionAdvancedTests,
 			? "double Test()"
 			: "float Test()";
 
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "NativeExecuteFloatReturn", Source);
-		if (!TestRunner->TestNotNull(TEXT("Native float-return execution test should compile the module"), Module))
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "NativeExecuteFloatReturn", Source);
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
@@ -75,22 +85,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionAdvancedTests,
 
 	TEST_METHOD(NegativeValue)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Native negative-value execution test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "NativeExecuteNegativeValue", "int Test(int Start, int Delta) { return Start + Delta; }");
+		if (!Module.IsValid())
 		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "NativeExecuteNegativeValue", "int Test(int Start, int Delta) { return Start + Delta; }");
-		if (!TestRunner->TestNotNull(TEXT("Native negative-value execution test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
@@ -123,22 +126,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionAdvancedTests,
 
 	TEST_METHOD(MultipleReturnPaths)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("Native multiple-return-paths execution test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "NativeExecuteMultipleReturnPaths", "int Test(int Value) { if (Value > 0) { return 40; } return 2; }");
+		if (!Module.IsValid())
 		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "NativeExecuteMultipleReturnPaths", "int Test(int Value) { if (Value > 0) { return 40; } return 2; }");
-		if (!TestRunner->TestNotNull(TEXT("Native multiple-return-paths execution test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 

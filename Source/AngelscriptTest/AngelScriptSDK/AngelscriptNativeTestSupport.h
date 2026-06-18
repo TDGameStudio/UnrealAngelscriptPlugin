@@ -5,6 +5,7 @@
 #include "Misc/ScopeExit.h"
 
 #include <cstring>
+#include <string>
 
 #include "StartAngelscriptHeaders.h"
 #include "source/as_builder.h"
@@ -215,6 +216,158 @@ namespace AngelscriptNativeTestSupport
 		asIScriptModule* Module = nullptr;
 		return CompileNativeModule(ScriptEngine, ModuleName, Source, Module) >= 0 ? Module : nullptr;
 	}
+
+	struct FNativeSdkEngineFixture
+	{
+		void Create(FAutomationTestBase& Test)
+		{
+			if (ScriptEngine != nullptr)
+			{
+				Destroy();
+			}
+
+			ScriptEngine = CreateNativeEngine(&Messages);
+			Test.TestNotNull(TEXT("Native SDK fixture should create a shared raw engine"), ScriptEngine);
+		}
+
+		void Destroy()
+		{
+			DestroyNativeEngine(ScriptEngine);
+			ScriptEngine = nullptr;
+			Messages.Reset();
+		}
+
+		void ResetMessages()
+		{
+			Messages.Reset();
+		}
+
+		asIScriptEngine* Get() const
+		{
+			return ScriptEngine;
+		}
+
+		FNativeMessageCollector& GetMessages()
+		{
+			return Messages;
+		}
+
+		const FNativeMessageCollector& GetMessages() const
+		{
+			return Messages;
+		}
+
+		FString GetMessagesText() const
+		{
+			return CollectMessages(Messages);
+		}
+
+	private:
+		FNativeMessageCollector Messages;
+		asIScriptEngine* ScriptEngine = nullptr;
+	};
+
+	struct FScopedNativeModule
+	{
+		FScopedNativeModule(
+			FAutomationTestBase& InTest,
+			FNativeSdkEngineFixture& InFixture,
+			const char* InModuleName,
+			const char* Source)
+			: Test(InTest)
+			, Fixture(InFixture)
+			, ModuleName(InModuleName != nullptr ? InModuleName : "")
+		{
+			asIScriptEngine* const ScriptEngine = Fixture.Get();
+			if (!Test.TestNotNull(TEXT("Native SDK module scope should have a script engine"), ScriptEngine))
+			{
+				return;
+			}
+
+			Module = BuildNativeModule(ScriptEngine, ModuleName.c_str(), Source);
+			if (!Test.TestNotNull(TEXT("Native SDK module scope should compile the module"), Module))
+			{
+				const FString Messages = Fixture.GetMessagesText();
+				if (!Messages.IsEmpty())
+				{
+					Test.AddInfo(Messages);
+				}
+			}
+		}
+
+		~FScopedNativeModule()
+		{
+			asIScriptEngine* const ScriptEngine = Fixture.Get();
+			if (ScriptEngine != nullptr && !ModuleName.empty())
+			{
+				ScriptEngine->DiscardModule(ModuleName.c_str());
+			}
+		}
+
+		FScopedNativeModule(const FScopedNativeModule&) = delete;
+		FScopedNativeModule& operator=(const FScopedNativeModule&) = delete;
+
+		bool IsValid() const
+		{
+			return Module != nullptr;
+		}
+
+		asIScriptModule* Get() const
+		{
+			return Module;
+		}
+
+		asIScriptModule* operator->() const
+		{
+			return Module;
+		}
+
+		operator asIScriptModule*() const
+		{
+			return Module;
+		}
+
+		const char* GetModuleName() const
+		{
+			return ModuleName.c_str();
+		}
+
+	private:
+		FAutomationTestBase& Test;
+		FNativeSdkEngineFixture& Fixture;
+		std::string ModuleName;
+		asIScriptModule* Module = nullptr;
+	};
+
+	struct FScopedNativeModuleName
+	{
+		FScopedNativeModuleName(FNativeSdkEngineFixture& InFixture, const char* InModuleName)
+			: Fixture(InFixture)
+			, ModuleName(InModuleName != nullptr ? InModuleName : "")
+		{
+		}
+
+		~FScopedNativeModuleName()
+		{
+			asIScriptEngine* const ScriptEngine = Fixture.Get();
+			if (ScriptEngine != nullptr && !ModuleName.empty())
+			{
+				ScriptEngine->DiscardModule(ModuleName.c_str());
+			}
+		}
+
+		FScopedNativeModuleName(const FScopedNativeModuleName&) = delete;
+		FScopedNativeModuleName& operator=(const FScopedNativeModuleName&) = delete;
+
+		const char* Get() const
+		{
+			return ModuleName.c_str();
+		}
+
+	private:
+		FNativeSdkEngineFixture& Fixture;
+		std::string ModuleName;
+	};
 
 	inline asIScriptFunction* GetNativeFunctionByDecl(asIScriptModule* Module, const char* Declaration)
 	{

@@ -169,34 +169,45 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
 	"Angelscript.TestModule.AngelScriptSDK.Execute",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	inline static FNativeSdkAdapterEngineFixture EngineFixture;
+
+	BEFORE_ALL()
+	{
+		EngineFixture.Create(*TestRunner);
+	}
+
+	AFTER_ALL()
+	{
+		EngineFixture.Destroy();
+	}
+
+	BEFORE_EACH()
+	{
+		EngineFixture.Reset(*TestRunner);
+		ResetExecuteState();
+	}
+
 	TEST_METHOD(BasicCallback)
 	{
-		ResetExecuteState();
-		FAngelscriptSDKTestAdapter Adapter(*TestRunner);
-		asIScriptEngine* ScriptEngine = CreateSDKTestEngine(Adapter);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK execute basic-callback test should create a script engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine);
-		};
-
 		const int RegisterResult = UsesMaxPortability()
-			? ScriptEngine->RegisterGlobalFunction("void cfunction()", asFUNCTION(CFunctionBasicGeneric), asCALL_GENERIC)
+			? ScriptEngine->RegisterGlobalFunction("void cfunction_basic()", asFUNCTION(CFunctionBasicGeneric), asCALL_GENERIC)
 			: [&]()
 			{
 				const ASAutoCaller::FunctionCaller Caller = ASAutoCaller::MakeFunctionCaller(CFunctionBasic);
-				return ScriptEngine->RegisterGlobalFunction("void cfunction()", asFUNCTION(CFunctionBasic), asCALL_CDECL, *(asFunctionCaller*)&Caller);
+				return ScriptEngine->RegisterGlobalFunction("void cfunction_basic()", asFUNCTION(CFunctionBasic), asCALL_CDECL, *(asFunctionCaller*)&Caller);
 			}();
 		if (!TestRunner->TestEqual(TEXT("SDK execute basic-callback test should register the callback"), RegisterResult >= 0, true))
 		{
 			return;
 		}
 
-		const int ExecuteResult = SDKExecuteString(ScriptEngine, "cfunction();");
+		const int ExecuteResult = SDKExecuteString(ScriptEngine, "cfunction_basic();");
 		if (!TestRunner->TestEqual(TEXT("SDK execute basic-callback test should execute a statement snippet"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
 		{
 			return;
@@ -215,7 +226,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
 
 		Context->SetUserData(reinterpret_cast<void*>(static_cast<SIZE_T>(0xDEADF00D)));
 		ScriptEngine->SetContextUserDataCleanupCallback(CleanupContext);
-		const int PrepareResult = Context->Prepare(ScriptEngine->GetGlobalFunctionByDecl("void cfunction()"));
+		const int PrepareResult = Context->Prepare(ScriptEngine->GetGlobalFunctionByDecl("void cfunction_basic()"));
 		Context->Release();
 
 		TestRunner->TestEqual(TEXT("SDK execute basic-callback test should prepare the callback function"), PrepareResult, static_cast<int32>(asSUCCESS));
@@ -225,32 +236,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
 
 	TEST_METHOD(OneArg)
 	{
-		ResetExecuteState();
-		FAngelscriptSDKTestAdapter Adapter(*TestRunner);
-		asIScriptEngine* ScriptEngine = CreateSDKTestEngine(Adapter);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK execute one-arg test should create a script engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine);
-		};
-
 		const int FunctionId = UsesMaxPortability()
-			? ScriptEngine->RegisterGlobalFunction("void cfunction(int value)", asFUNCTION(CFunctionOneArgGeneric), asCALL_GENERIC)
+			? ScriptEngine->RegisterGlobalFunction("void cfunction_one(int value)", asFUNCTION(CFunctionOneArgGeneric), asCALL_GENERIC)
 			: [&]()
 			{
 				const ASAutoCaller::FunctionCaller Caller = ASAutoCaller::MakeFunctionCaller(CFunctionOneArg);
-				return ScriptEngine->RegisterGlobalFunction("void cfunction(int value)", asFUNCTION(CFunctionOneArg), asCALL_CDECL, *(asFunctionCaller*)&Caller);
+				return ScriptEngine->RegisterGlobalFunction("void cfunction_one(int value)", asFUNCTION(CFunctionOneArg), asCALL_CDECL, *(asFunctionCaller*)&Caller);
 			}();
 		if (!TestRunner->TestTrue(TEXT("SDK execute one-arg test should register the callback"), FunctionId >= 0))
 		{
 			return;
 		}
 
-		const int ExecuteResult = SDKExecuteString(ScriptEngine, "cfunction(5);");
+		const int ExecuteResult = SDKExecuteString(ScriptEngine, "cfunction_one(5);");
 		if (!TestRunner->TestEqual(TEXT("SDK execute one-arg test should execute the statement snippet"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
 		{
 			return;
@@ -291,32 +295,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
 
 	TEST_METHOD(TwoArgs)
 	{
-		ResetExecuteState();
-		FAngelscriptSDKTestAdapter Adapter(*TestRunner);
-		asIScriptEngine* ScriptEngine = CreateSDKTestEngine(Adapter);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK execute two-args test should create a script engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine);
-		};
-
 		const int RegisterResult = UsesMaxPortability()
-			? ScriptEngine->RegisterGlobalFunction("void cfunction(int left, int right)", asFUNCTION(CFunctionTwoArgsGeneric), asCALL_GENERIC)
+			? ScriptEngine->RegisterGlobalFunction("void cfunction_two(int left, int right)", asFUNCTION(CFunctionTwoArgsGeneric), asCALL_GENERIC)
 			: [&]()
 			{
 				const ASAutoCaller::FunctionCaller Caller = ASAutoCaller::MakeFunctionCaller(CFunctionTwoArgs);
-				return ScriptEngine->RegisterGlobalFunction("void cfunction(int left, int right)", asFUNCTION(CFunctionTwoArgs), asCALL_CDECL, *(asFunctionCaller*)&Caller);
+				return ScriptEngine->RegisterGlobalFunction("void cfunction_two(int left, int right)", asFUNCTION(CFunctionTwoArgs), asCALL_CDECL, *(asFunctionCaller*)&Caller);
 			}();
 		if (!TestRunner->TestTrue(TEXT("SDK execute two-args test should register the callback"), RegisterResult >= 0))
 		{
 			return;
 		}
 
-		const int ExecuteResult = SDKExecuteString(ScriptEngine, "cfunction(5, 9);");
+		const int ExecuteResult = SDKExecuteString(ScriptEngine, "cfunction_two(5, 9);");
 		TestRunner->TestEqual(TEXT("SDK execute two-args test should execute the statement snippet"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED));
 		TestRunner->TestTrue(TEXT("SDK execute two-args test should call the registered function"), GCalled);
 		TestRunner->TestEqual(TEXT("SDK execute two-args test should sum both arguments"), GIntResult, 14);
@@ -324,32 +321,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
 
 	TEST_METHOD(FourArgs)
 	{
-		ResetExecuteState();
-		FAngelscriptSDKTestAdapter Adapter(*TestRunner);
-		asIScriptEngine* ScriptEngine = CreateSDKTestEngine(Adapter);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK execute four-args test should create a script engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine);
-		};
-
 		const int RegisterResult = UsesMaxPortability()
-			? ScriptEngine->RegisterGlobalFunction("void cfunction(int first, int16 second, int8 third, int fourth)", asFUNCTION(CFunctionFourArgsGeneric), asCALL_GENERIC)
+			? ScriptEngine->RegisterGlobalFunction("void cfunction_four(int first, int16 second, int8 third, int fourth)", asFUNCTION(CFunctionFourArgsGeneric), asCALL_GENERIC)
 			: [&]()
 			{
 				const ASAutoCaller::FunctionCaller Caller = ASAutoCaller::MakeFunctionCaller(CFunctionFourArgs);
-				return ScriptEngine->RegisterGlobalFunction("void cfunction(int first, int16 second, int8 third, int fourth)", asFUNCTION(CFunctionFourArgs), asCALL_CDECL, *(asFunctionCaller*)&Caller);
+				return ScriptEngine->RegisterGlobalFunction("void cfunction_four(int first, int16 second, int8 third, int fourth)", asFUNCTION(CFunctionFourArgs), asCALL_CDECL, *(asFunctionCaller*)&Caller);
 			}();
 		if (!TestRunner->TestTrue(TEXT("SDK execute four-args test should register the callback"), RegisterResult >= 0))
 		{
 			return;
 		}
 
-		const int ExecuteResult = SDKExecuteString(ScriptEngine, "cfunction(5, 9, 1, 3);");
+		const int ExecuteResult = SDKExecuteString(ScriptEngine, "cfunction_four(5, 9, 1, 3);");
 		TestRunner->TestEqual(TEXT("SDK execute four-args test should execute the statement snippet"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED));
 		TestRunner->TestTrue(TEXT("SDK execute four-args test should call the registered function"), GCalled);
 		TestRunner->TestEqual(TEXT("SDK execute four-args test should preserve the first argument"), GFourArgInt, 5);
@@ -360,26 +350,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
 
 	TEST_METHOD(FloatArgs)
 	{
-		ResetExecuteState();
-		FAngelscriptSDKTestAdapter Adapter(*TestRunner);
-		asIScriptEngine* ScriptEngine = CreateSDKTestEngine(Adapter);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK execute float-args test should create a script engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine);
-		};
-
 		const bool bFloatUsesFloat64 = ScriptEngine->GetEngineProperty(asEP_FLOAT_IS_FLOAT64) != 0;
 		const char* Declaration = bFloatUsesFloat64
-			? "void cfunction(double first, double second, double third, double fourth)"
-			: "void cfunction(float first, float second, double third, float fourth)";
+			? "void cfunction_float(double first, double second, double third, double fourth)"
+			: "void cfunction_float(float first, float second, double third, float fourth)";
 		const char* ScriptCall = bFloatUsesFloat64
-			? "cfunction(9.2, 13.3, 18.8, 3.1415);"
-			: "cfunction(9.2f, 13.3f, 18.8, 3.1415f);";
+			? "cfunction_float(9.2, 13.3, 18.8, 3.1415);"
+			: "cfunction_float(9.2f, 13.3f, 18.8, 3.1415f);";
 
 		int RegisterResult = asERROR;
 		if (!UsesMaxPortability())

@@ -8,7 +8,6 @@
 
 using namespace AngelscriptNativeTestSupport;
 using namespace AngelscriptSDKTestSupport;
-using namespace AngelscriptSDKTestUtilities;
 
 namespace
 {
@@ -27,62 +26,87 @@ namespace
 			GEnumValue = static_cast<int32>(Generic->GetArgDWord(0));
 		}
 	}
+
+	int FindEngineGlobalPropertyIndexByName(asIScriptEngine* ScriptEngine, const char* Name)
+	{
+		if (ScriptEngine == nullptr || Name == nullptr)
+		{
+			return -1;
+		}
+
+		const asUINT PropertyCount = ScriptEngine->GetGlobalPropertyCount();
+		for (asUINT Index = 0; Index < PropertyCount; ++Index)
+		{
+			const char* PropertyName = nullptr;
+			if (ScriptEngine->GetGlobalPropertyByIndex(Index, &PropertyName) >= 0 && PropertyName != nullptr && std::strcmp(PropertyName, Name) == 0)
+			{
+				return static_cast<int>(Index);
+			}
+		}
+
+		return -1;
+	}
 }
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKTypeTests, "Angelscript.TestModule.AngelScriptSDK.Type", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	inline static FNativeSdkEngineFixture EngineFixture;
+
+	BEFORE_ALL()
+	{
+		EngineFixture.Create(*TestRunner);
+	}
+
+	AFTER_ALL()
+	{
+		EngineFixture.Destroy();
+	}
+
+	BEFORE_EACH()
+	{
+		EngineFixture.ResetMessages();
+		GEnumValue = 0;
+		GInt8Value = 0;
+	}
+
 	TEST_METHOD(Bool)
 	{
-		
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK bool type test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(
-			ScriptEngine,
+		FScopedNativeModule Module(
+			*TestRunner,
+			EngineFixture,
 			"SDKTypeBool",
-			"bool Entry() { bool a = true; bool b = false; return a && !b && (a ^^ b); }");
-		if (!TestRunner->TestNotNull(TEXT("SDK bool type test should compile the module"), Module))
+			"bool AllTrue() { bool a = true; bool b = false; return a && !b && (a ^^ b); }");
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
+			TestRunner->AddInfo(EngineFixture.GetMessagesText());
 			return;
 		}
 
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool AllTrue()");
+		if (!Invoker.IsValid())
 		{
 			return;
 		}
-
-		TestRunner->TestTrue(TEXT("SDK bool type test should preserve basic boolean logic"), bResult);
+		TestRunner->TestTrue(TEXT("SDK bool type test should preserve basic boolean logic"), Invoker.CallAndReturn<bool>(false));
 	}
 
 	TEST_METHOD(Bits)
 	{
-		
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK bits type test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKTypeBits", R"(
-bool Entry()
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKTypeBits", R"(
+bool CheckBits()
 {
 	uint oct = 0o777;
 	uint bin = 0b10101010;
@@ -95,104 +119,98 @@ bool Entry()
 	return oct == 0x1FF && bin == 0xAA && dec == 0xFF && newmask == 0xD3;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK bits type test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
+			TestRunner->AddInfo(EngineFixture.GetMessagesText());
 			return;
 		}
 
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool CheckBits()");
+		if (!Invoker.IsValid())
 		{
 			return;
 		}
-
-		TestRunner->TestTrue(TEXT("SDK bits type test should preserve numeric literals and bitwise masks"), bResult);
+		TestRunner->TestTrue(TEXT("SDK bits type test should preserve numeric literals and bitwise masks"), Invoker.CallAndReturn<bool>(false));
 	}
 
 	TEST_METHOD(Int8)
 	{
-		
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK int8 type test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
+		if (ScriptEngine->GetGlobalFunctionByDecl("int8 RetInt8(int8 value)") == nullptr)
 		{
-			DestroyNativeEngine(ScriptEngine);
-		};
+			const ASAutoCaller::FunctionCaller Caller = ASAutoCaller::MakeFunctionCaller(RetInt8);
+			const int RegisterFunctionResult = ScriptEngine->RegisterGlobalFunction("int8 RetInt8(int8 value)", asFUNCTION(RetInt8), asCALL_CDECL, *(asFunctionCaller*)&Caller);
+			if (!TestRunner->TestTrue(TEXT("SDK int8 type test should register the native int8 callback"), RegisterFunctionResult >= 0))
+			{
+				return;
+			}
+		}
 
-		const ASAutoCaller::FunctionCaller Caller = ASAutoCaller::MakeFunctionCaller(RetInt8);
-		const int RegisterFunctionResult = ScriptEngine->RegisterGlobalFunction("int8 RetInt8(int8 value)", asFUNCTION(RetInt8), asCALL_CDECL, *(asFunctionCaller*)&Caller);
-		if (!TestRunner->TestTrue(TEXT("SDK int8 type test should register the native int8 callback"), RegisterFunctionResult >= 0))
+		if (FindEngineGlobalPropertyIndexByName(ScriptEngine, "gvar") < 0)
 		{
+			const int RegisterPropertyResult = ScriptEngine->RegisterGlobalProperty("int8 gvar", &GInt8Value);
+			if (!TestRunner->TestTrue(TEXT("SDK int8 type test should register the int8 global property"), RegisterPropertyResult >= 0))
+			{
+				return;
+			}
+		}
+
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKTypeInt8", R"(
+int ReadInt8RoundTrip()
+{
+	gvar = RetInt8(1);
+	return gvar;
+}
+)");
+		if (!Module.IsValid())
+		{
+			TestRunner->AddInfo(EngineFixture.GetMessagesText());
 			return;
 		}
 
-		const int RegisterPropertyResult = ScriptEngine->RegisterGlobalProperty("int8 gvar", &GInt8Value);
-		if (!TestRunner->TestTrue(TEXT("SDK int8 type test should register the int8 global property"), RegisterPropertyResult >= 0))
+		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int ReadInt8RoundTrip()");
+		if (!Invoker.IsValid())
 		{
 			return;
 		}
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKTypeInt8", "int Entry() { gvar = RetInt8(1); return gvar; }");
-		if (!TestRunner->TestNotNull(TEXT("SDK int8 type test should compile the module"), Module))
-		{
-			TestRunner->AddInfo(CollectMessages(Messages));
-			return;
-		}
-
-		int32 Result = 0;
-		if (!ExecuteScriptIntFunction(*TestRunner, ScriptEngine, Module, "int Entry()", Result))
-		{
-			return;
-		}
-
-		TestRunner->TestEqual(TEXT("SDK int8 type test should preserve the int8 return through the global property"), Result, 1);
+		TestRunner->TestEqual(TEXT("SDK int8 type test should preserve the int8 return through the global property"), Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
 	}
 
 	TEST_METHOD(Float)
 	{
-		
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK float type test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
 		const bool bFloatUsesFloat64 = ScriptEngine->GetEngineProperty(asEP_FLOAT_IS_FLOAT64) != 0;
 		const char* Source = bFloatUsesFloat64
-			? "double Entry() { double a = 1e5; double b = 1.0e5; return (a == b) ? 3.14 : 0.0; }"
-			: "double Entry() { float a = 1e5; float b = 1.0e5; return (a == b) ? 3.14f : 0.0f; }";
+			? "double CheckFloat() { double a = 1e5; double b = 1.0e5; return (a == b) ? 3.14 : 0.0; }"
+			: "double CheckFloat() { float a = 1e5; float b = 1.0e5; return (a == b) ? 3.14f : 0.0f; }";
 
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKTypeFloat", Source);
-		if (!TestRunner->TestNotNull(TEXT("SDK float type test should compile the module"), Module))
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKTypeFloat", Source);
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
+			TestRunner->AddInfo(EngineFixture.GetMessagesText());
 			return;
 		}
 
-		double Result = 0.0;
-		if (!ExecuteScriptDoubleFunction(*TestRunner, ScriptEngine, Module, "double Entry()", Result))
+		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "double CheckFloat()");
+		if (!Invoker.IsValid())
 		{
 			return;
 		}
-
-		TestRunner->TestTrue(TEXT("SDK float type test should preserve scientific literals and floating equality"), FMath::IsNearlyEqual(Result, 3.14, 0.0001));
+		TestRunner->TestTrue(TEXT("SDK float type test should preserve scientific literals and floating equality"), FMath::IsNearlyEqual(Invoker.CallAndReturn<double>(0.0), 3.14, 0.0001));
 	}
 
 	TEST_METHOD(TypedefBytecode)
 	{
-		
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SaveEngine = CreateNativeEngine(&Messages);
 		if (!TestRunner->TestNotNull(TEXT("SDK typedef bytecode test should create the save engine"), SaveEngine))
@@ -221,7 +239,7 @@ TestType4 Func(TestType1 a)
 	return a;
 }
 
-int Entry()
+int ReturnTypedefRoundTrip()
 {
 	TestType1 v = 1;
 	return int(Func(v));
@@ -274,106 +292,97 @@ int Entry()
 			return;
 		}
 
-		TestRunner->TestNotNull(TEXT("SDK typedef bytecode test should preserve the loaded entry function"), GetNativeFunctionByDecl(LoadModule, "int Entry()"));
+		TestRunner->TestNotNull(TEXT("SDK typedef bytecode test should preserve the loaded entry function"), GetNativeFunctionByDecl(LoadModule, "int ReturnTypedefRoundTrip()"));
 	}
 
 	TEST_METHOD(Enum)
 	{
-		
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK enum type test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
+		if (ScriptEngine->GetTypeIdByDecl("myenum") < 0)
 		{
-			DestroyNativeEngine(ScriptEngine);
-		};
+			if (!TestRunner->TestTrue(TEXT("SDK enum type test should register the first enum namespace"), ScriptEngine->RegisterEnum("myenum") >= 0))
+			{
+				return;
+			}
 
-		if (!TestRunner->TestTrue(TEXT("SDK enum type test should register the first enum namespace"), ScriptEngine->RegisterEnum("myenum") >= 0))
-		{
-			return;
-		}
-
-		if (!TestRunner->TestTrue(TEXT("SDK enum type test should register the first enum value"), ScriptEngine->RegisterEnumValue("myenum", "value", 1) >= 0))
-		{
-			return;
+			if (!TestRunner->TestTrue(TEXT("SDK enum type test should register the first enum value"), ScriptEngine->RegisterEnumValue("myenum", "value", 1) >= 0))
+			{
+				return;
+			}
 		}
 
 		ScriptEngine->SetDefaultNamespace("foo");
-		if (!TestRunner->TestTrue(TEXT("SDK enum type test should register a namespaced enum with the same name"), ScriptEngine->RegisterEnum("myenum") >= 0))
+		if (ScriptEngine->GetTypeIdByDecl("myenum") < 0)
 		{
-			ScriptEngine->SetDefaultNamespace("");
-			return;
-		}
+			if (!TestRunner->TestTrue(TEXT("SDK enum type test should register a namespaced enum with the same name"), ScriptEngine->RegisterEnum("myenum") >= 0))
+			{
+				ScriptEngine->SetDefaultNamespace("");
+				return;
+			}
 
-		if (!TestRunner->TestTrue(TEXT("SDK enum type test should register the namespaced enum value"), ScriptEngine->RegisterEnumValue("myenum", "value", 1) >= 0))
-		{
-			ScriptEngine->SetDefaultNamespace("");
-			return;
+			if (!TestRunner->TestTrue(TEXT("SDK enum type test should register the namespaced enum value"), ScriptEngine->RegisterEnumValue("myenum", "value", 1) >= 0))
+			{
+				ScriptEngine->SetDefaultNamespace("");
+				return;
+			}
 		}
 		ScriptEngine->SetDefaultNamespace("");
 
-		if (!TestRunner->TestTrue(TEXT("SDK enum type test should register TEST_ENUM"), ScriptEngine->RegisterEnum("TEST_ENUM") >= 0))
+		if (ScriptEngine->GetTypeIdByDecl("TEST_ENUM") < 0)
 		{
-			return;
+			if (!TestRunner->TestTrue(TEXT("SDK enum type test should register TEST_ENUM"), ScriptEngine->RegisterEnum("TEST_ENUM") >= 0))
+			{
+				return;
+			}
+
+			if (!TestRunner->TestTrue(TEXT("SDK enum type test should register ENUM1"), ScriptEngine->RegisterEnumValue("TEST_ENUM", "ENUM1", 1) >= 0))
+			{
+				return;
+			}
 		}
 
-		if (!TestRunner->TestTrue(TEXT("SDK enum type test should register ENUM1"), ScriptEngine->RegisterEnumValue("TEST_ENUM", "ENUM1", 1) >= 0))
-		{
-			return;
-		}
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKTypeEnum", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKTypeEnum", R"(
 enum LocalEnum
 {
 	LocalValue = 1
 }
 
-bool Entry()
+int ReturnLocalEnumValue()
 {
 	LocalEnum Value = LocalEnum::LocalValue;
-	return Value == LocalEnum::LocalValue;
+	return Value == LocalEnum::LocalValue ? 1 : 0;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK enum type test should compile the enum entry module"), Module))
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
+			TestRunner->AddInfo(EngineFixture.GetMessagesText());
 			return;
 		}
 
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int ReturnLocalEnumValue()");
+		if (!Invoker.IsValid())
 		{
 			return;
 		}
-
-		if (!TestRunner->TestTrue(TEXT("SDK enum type test should preserve local enum equality"), bResult))
-		{
-			return;
-		}
+		TestRunner->TestEqual(TEXT("SDK enum type test should preserve local enum equality"), Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
 
 		TestRunner->TestEqual(TEXT("SDK enum type test should keep the registered enum declaration accessible"), FString(UTF8_TO_TCHAR(ScriptEngine->GetTypeDeclaration(ScriptEngine->GetTypeIdByDecl("TEST_ENUM")))), FString(TEXT("TEST_ENUM")));
 	}
 
 	TEST_METHOD(Auto)
 	{
-		
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK auto type test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKTypeAuto", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKTypeAuto", R"(
 namespace A
 {
 	class X
@@ -384,49 +393,42 @@ namespace A
 	}
 }
 
-bool Entry()
+int CreateAutoValue()
 {
 	auto value = A::X();
-	return true;
+	return 1;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK auto type test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
+			TestRunner->AddInfo(EngineFixture.GetMessagesText());
 			return;
 		}
+
+		TestRunner->TestNotNull(TEXT("SDK auto type test should expose the named auto function"), GetNativeFunctionByDecl(Module, "int CreateAutoValue()"));
 	}
 
 	TEST_METHOD(IntegerWidths)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK integer-width type test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKTypeIntegerWidths", R"(
-bool Entry()
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKTypeIntegerWidths", R"(
+bool CheckIntegerWidths()
 {
-	// Signed extremes
 	int8 i8 = 127;
 	int16 i16 = 32767;
 	int i32 = 2147483647;
 	int64 i64 = 9223372036854775807;
 
-	// Unsigned extremes
 	uint8 u8 = 255;
 	uint16 u16 = 65535;
 	uint u32 = 4294967295;
 	uint64 u64 = 18446744073709551615;
 
-	// Signed minimums
 	int8 i8min = -128;
 	int16 i16min = -32768;
 	int i32min = -2147483647 - 1;
@@ -437,86 +439,69 @@ bool Entry()
 		&& i8min == -128 && i16min == -32768 && i32min == -2147483648 && i64min == -9223372036854775807 - 1;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK integer-width type test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
+			TestRunner->AddInfo(EngineFixture.GetMessagesText());
 			return;
 		}
 
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool CheckIntegerWidths()");
+		if (!Invoker.IsValid())
 		{
 			return;
 		}
-
-		TestRunner->TestTrue(TEXT("SDK integer-width type test should preserve every integer width's extreme values"), bResult);
+		TestRunner->TestTrue(TEXT("SDK integer-width type test should preserve every integer width's extreme values"), Invoker.CallAndReturn<bool>(false));
 	}
 
 	TEST_METHOD(IntegerOverflowWrap)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK integer-overflow type test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKTypeIntegerOverflow", R"(
-bool Entry()
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKTypeIntegerOverflow", R"(
+bool CheckIntegerOverflow()
 {
-	// Unsigned wraparound is well-defined (modular)
-	uint8 u8 = 255; u8 += 1;        // wraps to 0
-	uint16 u16 = 65535; u16 += 1;   // wraps to 0
-	uint u32 = 4294967295; u32 += 1; // wraps to 0
+	uint8 u8 = 255; u8 += 1;
+	uint16 u16 = 65535; u16 += 1;
+	uint u32 = 4294967295; u32 += 1;
 
-	// Unsigned underflow wraps to max
-	uint8 u8u = 0; u8u -= 1;        // 255
-	uint u32u = 0; u32u -= 1;       // 4294967295
+	uint8 u8u = 0; u8u -= 1;
+	uint u32u = 0; u32u -= 1;
 
-	// Truncation on narrowing assignment
 	int wide = 0x1FF;
-	uint8 narrow = uint8(wide);     // keeps low 8 bits = 0xFF = 255
+	uint8 narrow = uint8(wide);
 
 	return u8 == 0 && u16 == 0 && u32 == 0
 		&& u8u == 255 && u32u == 4294967295
 		&& narrow == 255;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK integer-overflow type test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
+			TestRunner->AddInfo(EngineFixture.GetMessagesText());
 			return;
 		}
 
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool CheckIntegerOverflow()");
+		if (!Invoker.IsValid())
 		{
 			return;
 		}
-
-		TestRunner->TestTrue(TEXT("SDK integer-overflow type test should preserve modular wraparound and truncation semantics"), bResult);
+		TestRunner->TestTrue(TEXT("SDK integer-overflow type test should preserve modular wraparound and truncation semantics"), Invoker.CallAndReturn<bool>(false));
 	}
 
 	TEST_METHOD(EnumUnderlyingValues)
 	{
-		FNativeMessageCollector Messages;
-		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
+		asIScriptEngine* const ScriptEngine = EngineFixture.Get();
 		if (!TestRunner->TestNotNull(TEXT("SDK enum-underlying type test should create a standalone engine"), ScriptEngine))
 		{
 			return;
 		}
 
-		ON_SCOPE_EXIT
-		{
-			DestroyNativeEngine(ScriptEngine);
-		};
-
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKTypeEnumUnderlying", R"(
+		FScopedNativeModule Module(*TestRunner, EngineFixture, "SDKTypeEnumUnderlying", R"(
 enum EFlags
 {
 	None = 0,
@@ -526,35 +511,28 @@ enum EFlags
 	D = 8
 }
 
-bool Entry()
+bool CheckEnumUnderlyingValues()
 {
-	// Enum-to-int conversion
 	int none = int(EFlags::None);
 	int c = int(EFlags::C);
-
-	// Bitwise composition through int, then back to enum
 	int composed = int(EFlags::A) | int(EFlags::B);
 	bool roundTrips = EFlags(composed) == EFlags(3);
-
-	// int-to-enum and ordering
 	bool ordered = int(EFlags::D) > int(EFlags::C);
-
 	return none == 0 && c == 4 && composed == 3 && roundTrips && ordered;
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("SDK enum-underlying type test should compile the module"), Module))
+		if (!Module.IsValid())
 		{
-			TestRunner->AddInfo(CollectMessages(Messages));
+			TestRunner->AddInfo(EngineFixture.GetMessagesText());
 			return;
 		}
 
-		bool bResult = false;
-		if (!ExecuteScriptBoolFunction(*TestRunner, ScriptEngine, Module, "bool Entry()", bResult))
+		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool CheckEnumUnderlyingValues()");
+		if (!Invoker.IsValid())
 		{
 			return;
 		}
-
-		TestRunner->TestTrue(TEXT("SDK enum-underlying type test should preserve enum/int conversion and flag composition"), bResult);
+		TestRunner->TestTrue(TEXT("SDK enum-underlying type test should preserve enum/int conversion and flag composition"), Invoker.CallAndReturn<bool>(false));
 	}
 };
 
