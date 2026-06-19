@@ -2,8 +2,8 @@
 // Template_CQTest.cpp
 //
 // Teaching template — demonstrates how to write Angelscript automation tests
-// using CQTest (Engine/Source/Developer/CQTest/) instead of the traditional
-// IMPLEMENT_SIMPLE_AUTOMATION_TEST macro.
+// using CQTest (Engine/Source/Developer/CQTest/) with TEST_CLASS_WITH_FLAGS
+// and TEST_METHOD registration.
 //
 // What this file covers (one TEST_METHOD per topic):
 //

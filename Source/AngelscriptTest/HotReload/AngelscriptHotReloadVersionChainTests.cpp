@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptFunctionalTestUtils.h"
 #include "AngelscriptTestMacros.h"
 
@@ -33,17 +34,12 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadVersionChainTests_Privat
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHotReloadFullReloadVersionChainAndCDOConsistencyTest,
-	"Angelscript.TestModule.HotReload.FullReload.VersionChainAndCDOConsistency",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define TestNull(...) Test.TestNull(__VA_ARGS__)
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHotReloadSoftReloadCDOAndInstanceConsistencyTest,
-	"Angelscript.TestModule.HotReload.SoftReload.CDOAndInstanceConsistency",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptHotReloadFullReloadVersionChainAndCDOConsistencyTest::RunTest(const FString& Parameters)
+static bool FullReloadVersionChainAndCDOConsistency(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadVersionChainTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -94,7 +90,7 @@ class AHotReloadVersionChainTarget : AActor
 )AS");
 
 	UClass* OldClass = CompileScriptModule(
-		*this,
+		Test,
 		Engine,
 		VersionChainModuleName,
 		VersionChainFilename,
@@ -203,7 +199,7 @@ class AHotReloadVersionChainTarget : AActor
 	FActorTestSpawner Spawner;
 	InitializeVersionChainSpawner(Spawner);
 
-	AActor* ReloadedActor = SpawnScriptActor(*this, Spawner, NewClass);
+	AActor* ReloadedActor = SpawnScriptActor(Test, Spawner, NewClass);
 	if (ReloadedActor == nullptr)
 	{
 		return false;
@@ -212,13 +208,13 @@ class AHotReloadVersionChainTarget : AActor
 	BeginPlayActor(*ReloadedActor);
 
 	int32 ReloadedActorVersion = 0;
-	if (!ReadPropertyValue<FIntProperty>(*this, ReloadedActor, TEXT("Version"), ReloadedActorVersion))
+	if (!ReadPropertyValue<FIntProperty>(Test, ReloadedActor, TEXT("Version"), ReloadedActorVersion))
 	{
 		return false;
 	}
 
 	int32 ReloadedActorMana = 0;
-	if (!ReadPropertyValue<FIntProperty>(*this, ReloadedActor, TEXT("Mana"), ReloadedActorMana))
+	if (!ReadPropertyValue<FIntProperty>(Test, ReloadedActor, TEXT("Mana"), ReloadedActorMana))
 	{
 		return false;
 	}
@@ -230,7 +226,7 @@ class AHotReloadVersionChainTarget : AActor
 	return true;
 }
 
-bool FAngelscriptHotReloadSoftReloadCDOAndInstanceConsistencyTest::RunTest(const FString& Parameters)
+static bool SoftReloadCDOAndInstanceConsistency(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadVersionChainTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -272,7 +268,7 @@ class AHotReloadSoftReloadConsistencyTarget : AActor
 )AS");
 
 	UClass* InitialClass = CompileScriptModule(
-		*this,
+		Test,
 		Engine,
 		SoftReloadConsistencyModuleName,
 		SoftReloadConsistencyFilename,
@@ -305,7 +301,7 @@ class AHotReloadSoftReloadConsistencyTarget : AActor
 	FActorTestSpawner Spawner;
 	InitializeVersionChainSpawner(Spawner);
 
-	AActor* ExistingActor = SpawnScriptActor(*this, Spawner, InitialClass);
+	AActor* ExistingActor = SpawnScriptActor(Test, Spawner, InitialClass);
 	if (ExistingActor == nullptr)
 	{
 		return false;
@@ -370,7 +366,7 @@ class AHotReloadSoftReloadConsistencyTarget : AActor
 		5);
 
 	int32 ExistingActorCounter = 0;
-	if (!ReadPropertyValue<FIntProperty>(*this, ExistingActor, TEXT("Counter"), ExistingActorCounter))
+	if (!ReadPropertyValue<FIntProperty>(Test, ExistingActor, TEXT("Counter"), ExistingActorCounter))
 	{
 		return false;
 	}
@@ -380,7 +376,7 @@ class AHotReloadSoftReloadConsistencyTarget : AActor
 		ExistingActorCounter,
 		42);
 
-	AActor* NewActor = SpawnScriptActor(*this, Spawner, ReloadedClass);
+	AActor* NewActor = SpawnScriptActor(Test, Spawner, ReloadedClass);
 	if (NewActor == nullptr)
 	{
 		return false;
@@ -389,7 +385,7 @@ class AHotReloadSoftReloadConsistencyTarget : AActor
 	BeginPlayActor(*NewActor);
 
 	int32 NewActorCounter = 0;
-	if (!ReadPropertyValue<FIntProperty>(*this, NewActor, TEXT("Counter"), NewActorCounter))
+	if (!ReadPropertyValue<FIntProperty>(Test, NewActor, TEXT("Counter"), NewActorCounter))
 	{
 		return false;
 	}
@@ -428,5 +424,30 @@ class AHotReloadSoftReloadConsistencyTarget : AActor
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestEqual
+#undef TestNotNull
+#undef TestNull
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadFullReloadVersionChainTests,
+	"Angelscript.TestModule.HotReload.FullReload",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(VersionChainAndCDOConsistency)
+	{
+		ASSERT_THAT(IsTrue(FullReloadVersionChainAndCDOConsistency(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadSoftReloadVersionChainTests,
+	"Angelscript.TestModule.HotReload.SoftReload",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(CDOAndInstanceConsistency)
+	{
+		ASSERT_THAT(IsTrue(SoftReloadCDOAndInstanceConsistency(*TestRunner)));
+	}
+};
 
 #endif

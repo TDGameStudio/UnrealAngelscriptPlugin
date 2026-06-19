@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptFunctionalTestUtils.h"
 #include "AngelscriptTestMacros.h"
 #include "AngelscriptReflectiveAccess.h"
@@ -7,7 +8,6 @@
 #include "Engine/EngineTypes.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
-#include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 #include "UObject/UnrealType.h"
 
@@ -44,28 +44,27 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTemplateGameLifetimeScriptActorTest,
-	"Angelscript.Template.GameLifetime.ScriptActorFullLifecycle",
+TEST_CLASS_WITH_FLAGS(FAngelscriptTemplateGameLifetimeTest,
+	"Angelscript.Template.GameLifetime",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTemplateGameLifetimeScriptActorTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptEngine& Engine = AcquireCleanSharedCloneEngine();
-	FAngelscriptEngineScope EngineScope(Engine);
-	static const FName ModuleName(TEXT("TemplateGameLifetimeScriptActor"));
-	ON_SCOPE_EXIT
+	TEST_METHOD(ScriptActorFullLifecycle)
 	{
-		Engine.DiscardModule(*ModuleName.ToString());
-		ASTEST_RESET_ENGINE(Engine);
-	};
+		FAngelscriptEngine& Engine = AcquireCleanSharedCloneEngine();
+		FAngelscriptEngineScope EngineScope(Engine);
+		static const FName ModuleName(TEXT("TemplateGameLifetimeScriptActor"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+			ASTEST_RESET_ENGINE(Engine);
+		};
 
-	UClass* ScriptClass = CompileScriptModule(
-		*this,
-		Engine,
-		ModuleName,
-		TEXT("TemplateGameLifetimeScriptActor.as"),
-		TEXT(R"AS(
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("TemplateGameLifetimeScriptActor.as"),
+			TEXT(R"AS(
 UCLASS()
 class ATemplateGameLifetimeScriptActor : AActor
 {
@@ -160,120 +159,96 @@ class ATemplateGameLifetimeScriptActor : AActor
 	}
 }
 )AS"),
-		TEXT("ATemplateGameLifetimeScriptActor"));
-	if (ScriptClass == nullptr)
-	{
-		return false;
+			TEXT("ATemplateGameLifetimeScriptActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass));
+
+		FAngelscriptTestWorld WorldTemplate(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(WorldTemplate.IsValid()));
+
+		// 1. Spawn — UserConstructionScript is dispatched here automatically
+		//    by UE (one or more times depending on the construction path).
+		AActor* Actor = WorldTemplate.SpawnActorOfClass<AActor>(ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("GameLifetime template should spawn the generated script actor")));
+
+		// 2. BeginPlay — transition the actor into the Play phase.
+		WorldTemplate.BeginPlay(*Actor);
+
+		// 3. Tick — advance several frames at a stable DeltaTime to verify that
+		//    ReceiveTick keeps being dispatched.
+		constexpr float DeltaTime = 0.016f;
+		constexpr int32 NumTicks = 3;
+		WorldTemplate.Tick(DeltaTime, NumTicks);
+
+		// Snapshot BeginPlay/Tick counts before destruction so we can confirm
+		// later that Destroy() does not bump them any further.
+		int32 BeginPlayCountBeforeDestroy = 0;
+		ASSERT_THAT(IsTrue(ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("BeginPlayCount"), BeginPlayCountBeforeDestroy)));
+
+		int32 TickCountBeforeDestroy = 0;
+		ASSERT_THAT(IsTrue(ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("TickCount"), TickCountBeforeDestroy)));
+
+		ASSERT_THAT(IsTrue(BeginPlayCountBeforeDestroy == 1, TEXT("BeginPlay should have run exactly once before destruction")));
+		ASSERT_THAT(IsTrue(TickCountBeforeDestroy >= NumTicks, TEXT("Tick should have run at least once per world tick before destruction")));
+
+		// 4 + 5. Destroy — synchronously dispatches EndPlay(Reason=Destroyed)
+		//        and Destroyed.
+		// After destruction the actor is marked PendingKill (TWeakObjectPtr is
+		// considered invalid), but the UObject memory is still alive, and
+		// FProperty::GetPropertyValue_InContainer reads the object memory directly,
+		// so phase counters remain readable. This matches the read pattern used
+		// by AngelscriptActorLifecycleTests.
+		WorldTemplate.DestroyAndDrain(*Actor);
+
+		int32 ConstructCount = 0;
+		int32 BeginPlayCount = 0;
+		int32 TickCount = 0;
+		int32 EndPlayCount = 0;
+		int32 DestroyedCount = 0;
+		// AS-declared `float` UPROPERTY is reflected as FDoubleProperty in UE 5.x
+		// (math types were migrated to double), so the C++ side reads it as double.
+		double TotalDeltaTime = 0.0;
+		ASSERT_THAT(IsTrue(ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("ConstructCount"), ConstructCount)
+			&& ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("BeginPlayCount"), BeginPlayCount)
+			&& ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("TickCount"), TickCount)
+			&& ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("EndPlayCount"), EndPlayCount)
+			&& ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("DestroyedCount"), DestroyedCount)
+			&& ReadPropertyValue<FDoubleProperty>(*TestRunner, Actor, TEXT("TotalDeltaTime"), TotalDeltaTime)));
+
+		int32 ConstructOrder = 0;
+		int32 BeginPlayOrder = 0;
+		int32 FirstTickOrder = 0;
+		int32 EndPlayOrder = 0;
+		int32 DestroyedOrder = 0;
+		ASSERT_THAT(IsTrue(ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("ConstructOrder"), ConstructOrder)
+			&& ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("BeginPlayOrder"), BeginPlayOrder)
+			&& ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("FirstTickOrder"), FirstTickOrder)
+			&& ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("EndPlayOrder"), EndPlayOrder)
+			&& ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("DestroyedOrder"), DestroyedOrder)));
+
+		int64 LastEndPlayReason = -1;
+		ASSERT_THAT(IsTrue(GetEnumByPath(*TestRunner, Actor, TEXT("LastEndPlayReason"), LastEndPlayReason)));
+
+		// Counter checks: each phase fires at least once; BeginPlay / EndPlay /
+		// Destroyed must fire exactly once across the whole lifecycle.
+		ASSERT_THAT(IsTrue(ConstructCount >= 1, TEXT("UserConstructionScript should run at least once during spawn")));
+		ASSERT_THAT(AreEqual(1, BeginPlayCount, TEXT("BeginPlay should run exactly once across the full lifecycle")));
+		ASSERT_THAT(AreEqual(TickCountBeforeDestroy, TickCount, TEXT("Tick count should not change between Destroy() and the property read")));
+		ASSERT_THAT(AreEqual(1, EndPlayCount, TEXT("EndPlay should run exactly once when Destroy() is called")));
+		ASSERT_THAT(AreEqual(1, DestroyedCount, TEXT("Destroyed should run exactly once when Destroy() is called")));
+		ASSERT_THAT(IsTrue(TotalDeltaTime > 0.0, TEXT("TotalDeltaTime should accumulate the per-tick DeltaTime")));
+
+		// Ordering checks: UserConstructionScript -> BeginPlay -> Tick -> EndPlay -> Destroyed.
+		ASSERT_THAT(IsTrue(ConstructOrder > 0 && ConstructOrder < BeginPlayOrder,
+			TEXT("UserConstructionScript should run before BeginPlay")));
+		ASSERT_THAT(IsTrue(BeginPlayOrder < FirstTickOrder, TEXT("BeginPlay should run before the first Tick")));
+		ASSERT_THAT(IsTrue(FirstTickOrder < EndPlayOrder, TEXT("First Tick should run before EndPlay")));
+		ASSERT_THAT(IsTrue(EndPlayOrder < DestroyedOrder, TEXT("EndPlay should run before Destroyed during destruction")));
+
+		// Reason check: when destruction is triggered through Actor->Destroy(),
+		// the EndPlay reason must be EEndPlayReason::Destroyed.
+		ASSERT_THAT(AreEqual(static_cast<int64>(EEndPlayReason::Destroyed), LastEndPlayReason,
+			TEXT("EndPlay should receive EEndPlayReason::Destroyed when triggered by Destroy()")));
 	}
-
-	FAngelscriptTestWorld WorldTemplate(*this, Engine);
-	if (!WorldTemplate.IsValid())
-	{
-		return false;
-	}
-
-	// 1. Spawn — UserConstructionScript is dispatched here automatically
-	//    by UE (one or more times depending on the construction path).
-	AActor* Actor = WorldTemplate.SpawnActorOfClass<AActor>(ScriptClass);
-	if (!TestNotNull(TEXT("GameLifetime template should spawn the generated script actor"), Actor))
-	{
-		return false;
-	}
-
-	// 2. BeginPlay — transition the actor into the Play phase.
-	WorldTemplate.BeginPlay(*Actor);
-
-	// 3. Tick — advance several frames at a stable DeltaTime to verify that
-	//    ReceiveTick keeps being dispatched.
-	constexpr float DeltaTime = 0.016f;
-	constexpr int32 NumTicks = 3;
-	WorldTemplate.Tick(DeltaTime, NumTicks);
-
-	// Snapshot BeginPlay/Tick counts before destruction so we can confirm
-	// later that Destroy() does not bump them any further.
-	int32 BeginPlayCountBeforeDestroy = 0;
-	if (!ReadPropertyValue<FIntProperty>(*this, Actor, TEXT("BeginPlayCount"), BeginPlayCountBeforeDestroy))
-	{
-		return false;
-	}
-
-	int32 TickCountBeforeDestroy = 0;
-	if (!ReadPropertyValue<FIntProperty>(*this, Actor, TEXT("TickCount"), TickCountBeforeDestroy))
-	{
-		return false;
-	}
-
-	TestTrue(TEXT("BeginPlay should have run exactly once before destruction"), BeginPlayCountBeforeDestroy == 1);
-	TestTrue(TEXT("Tick should have run at least once per world tick before destruction"), TickCountBeforeDestroy >= NumTicks);
-
-	// 4 + 5. Destroy — synchronously dispatches EndPlay(Reason=Destroyed)
-	//        and Destroyed.
-	// After destruction the actor is marked PendingKill (TWeakObjectPtr is
-	// considered invalid), but the UObject memory is still alive, and
-	// FProperty::GetPropertyValue_InContainer reads the object memory directly,
-	// so phase counters remain readable. This matches the read pattern used
-	// by AngelscriptActorLifecycleTests.
-	WorldTemplate.DestroyAndDrain(*Actor);
-
-	int32 ConstructCount = 0;
-	int32 BeginPlayCount = 0;
-	int32 TickCount = 0;
-	int32 EndPlayCount = 0;
-	int32 DestroyedCount = 0;
-	// AS-declared `float` UPROPERTY is reflected as FDoubleProperty in UE 5.x
-	// (math types were migrated to double), so the C++ side reads it as double.
-	double TotalDeltaTime = 0.0;
-	if (!ReadPropertyValue<FIntProperty>(*this, Actor, TEXT("ConstructCount"), ConstructCount)
-		|| !ReadPropertyValue<FIntProperty>(*this, Actor, TEXT("BeginPlayCount"), BeginPlayCount)
-		|| !ReadPropertyValue<FIntProperty>(*this, Actor, TEXT("TickCount"), TickCount)
-		|| !ReadPropertyValue<FIntProperty>(*this, Actor, TEXT("EndPlayCount"), EndPlayCount)
-		|| !ReadPropertyValue<FIntProperty>(*this, Actor, TEXT("DestroyedCount"), DestroyedCount)
-		|| !ReadPropertyValue<FDoubleProperty>(*this, Actor, TEXT("TotalDeltaTime"), TotalDeltaTime))
-	{
-		return false;
-	}
-
-	int32 ConstructOrder = 0;
-	int32 BeginPlayOrder = 0;
-	int32 FirstTickOrder = 0;
-	int32 EndPlayOrder = 0;
-	int32 DestroyedOrder = 0;
-	if (!ReadPropertyValue<FIntProperty>(*this, Actor, TEXT("ConstructOrder"), ConstructOrder)
-		|| !ReadPropertyValue<FIntProperty>(*this, Actor, TEXT("BeginPlayOrder"), BeginPlayOrder)
-		|| !ReadPropertyValue<FIntProperty>(*this, Actor, TEXT("FirstTickOrder"), FirstTickOrder)
-		|| !ReadPropertyValue<FIntProperty>(*this, Actor, TEXT("EndPlayOrder"), EndPlayOrder)
-		|| !ReadPropertyValue<FIntProperty>(*this, Actor, TEXT("DestroyedOrder"), DestroyedOrder))
-	{
-		return false;
-	}
-
-	int64 LastEndPlayReason = -1;
-	if (!GetEnumByPath(*this, Actor, TEXT("LastEndPlayReason"), LastEndPlayReason))
-	{
-		return false;
-	}
-
-	// Counter checks: each phase fires at least once; BeginPlay / EndPlay /
-	// Destroyed must fire exactly once across the whole lifecycle.
-	TestTrue(TEXT("UserConstructionScript should run at least once during spawn"), ConstructCount >= 1);
-	TestEqual(TEXT("BeginPlay should run exactly once across the full lifecycle"), BeginPlayCount, 1);
-	TestEqual(TEXT("Tick count should not change between Destroy() and the property read"), TickCount, TickCountBeforeDestroy);
-	TestEqual(TEXT("EndPlay should run exactly once when Destroy() is called"), EndPlayCount, 1);
-	TestEqual(TEXT("Destroyed should run exactly once when Destroy() is called"), DestroyedCount, 1);
-	TestTrue(TEXT("TotalDeltaTime should accumulate the per-tick DeltaTime"), TotalDeltaTime > 0.0);
-
-	// Ordering checks: UserConstructionScript -> BeginPlay -> Tick -> EndPlay -> Destroyed.
-	TestTrue(TEXT("UserConstructionScript should run before BeginPlay"), ConstructOrder > 0 && ConstructOrder < BeginPlayOrder);
-	TestTrue(TEXT("BeginPlay should run before the first Tick"), BeginPlayOrder < FirstTickOrder);
-	TestTrue(TEXT("First Tick should run before EndPlay"), FirstTickOrder < EndPlayOrder);
-	TestTrue(TEXT("EndPlay should run before Destroyed during destruction"), EndPlayOrder < DestroyedOrder);
-
-	// Reason check: when destruction is triggered through Actor->Destroy(),
-	// the EndPlay reason must be EEndPlayReason::Destroyed.
-	TestEqual(TEXT("EndPlay should receive EEndPlayReason::Destroyed when triggered by Destroy()"),
-		LastEndPlayReason, static_cast<int64>(EEndPlayReason::Destroyed));
-
-	return true;
-}
+};
 
 #endif

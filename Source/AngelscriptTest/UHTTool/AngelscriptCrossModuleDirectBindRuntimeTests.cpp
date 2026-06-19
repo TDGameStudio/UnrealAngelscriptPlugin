@@ -1,4 +1,4 @@
-#include "Misc/AutomationTest.h"
+#include "CQTest.h"
 
 #include "Async/Async.h"
 #include "Async/TaskGraphInterfaces.h"
@@ -175,14 +175,11 @@ namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private
 	}
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleExistingSlotPriorityTest,
-	"Angelscript.CppTests.UHTToolResolver.CrossModuleDirectBind.SameModuleShardWins_When_BothExist",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleExistingSlotPriorityTest::RunTest(const FString& Parameters)
+namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private
 {
-	(void)Parameters;
+
+bool RunExistingSlotPriority(FAutomationTestBase& Test)
+{
 	using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
 
 	if (!EnsureCrossModuleSubscriptionReady())
@@ -199,25 +196,19 @@ bool FAngelscriptCrossModuleExistingSlotPriorityTest::RunTest(const FString& Par
 	RegisterAndUnregisterFeature(Feature);
 
 	const FFuncEntry* FinalEntry = FindActorEntry(ExistingFunctionName);
-	if (!TestNotNull(TEXT("Existing same-module entry should remain present"), FinalEntry))
+	if (!Test.TestNotNull(TEXT("Existing same-module entry should remain present"), FinalEntry))
 	{
 		return false;
 	}
 
 	bool bPassed = true;
-	bPassed &= TestEqual(TEXT("Cross-module injection should not replace an already bound slot"), FinalEntry->UserData, ExistingEntry.UserData);
-	bPassed &= TestFalse(TEXT("Existing non-generic slot should keep its original call mode"), FinalEntry->bGenericCall);
+	bPassed &= Test.TestEqual(TEXT("Cross-module injection should not replace an already bound slot"), FinalEntry->UserData, ExistingEntry.UserData);
+	bPassed &= Test.TestFalse(TEXT("Existing non-generic slot should keep its original call mode"), FinalEntry->bGenericCall);
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleLateRegistrationTest,
-	"Angelscript.CppTests.UHTToolResolver.CrossModuleDirectBind.OnModularFeatureRegistered_LateLoadedModule",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleLateRegistrationTest::RunTest(const FString& Parameters)
+bool RunLateRegistration(FAutomationTestBase& Test)
 {
-	(void)Parameters;
 	using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
 
 	if (!EnsureCrossModuleSubscriptionReady())
@@ -232,26 +223,20 @@ bool FAngelscriptCrossModuleLateRegistrationTest::RunTest(const FString& Paramet
 	RegisterAndUnregisterFeature(Feature);
 
 	const FFuncEntry* InjectedEntry = FindActorEntry(LateFunctionName);
-	if (!TestNotNull(TEXT("Late-registered cross-module feature should inject a ClassFuncMaps entry"), InjectedEntry))
+	if (!Test.TestNotNull(TEXT("Late-registered cross-module feature should inject a ClassFuncMaps entry"), InjectedEntry))
 	{
 		return false;
 	}
 
 	bool bPassed = true;
-	bPassed &= TestTrue(TEXT("Late-registered cross-module entry should be bound"), IsEntryFunctionBound(*InjectedEntry));
-	bPassed &= TestTrue(TEXT("Late-registered cross-module entry should use the generic bridge"), InjectedEntry->bGenericCall);
-	bPassed &= TestEqual(TEXT("Late-registered cross-module entry should carry the source entry as user data"), InjectedEntry->UserData, static_cast<void*>(const_cast<FAngelscriptCrossModuleEntry*>(&Entry)));
+	bPassed &= Test.TestTrue(TEXT("Late-registered cross-module entry should be bound"), IsEntryFunctionBound(*InjectedEntry));
+	bPassed &= Test.TestTrue(TEXT("Late-registered cross-module entry should use the generic bridge"), InjectedEntry->bGenericCall);
+	bPassed &= Test.TestEqual(TEXT("Late-registered cross-module entry should carry the source entry as user data"), InjectedEntry->UserData, static_cast<void*>(const_cast<FAngelscriptCrossModuleEntry*>(&Entry)));
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleWorkerThreadRegistrationTest,
-	"Angelscript.CppTests.UHTToolResolver.CrossModuleDirectBind.OnModularFeatureRegistered_WorkerThreadInvocation_MarshalsToGameThread",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleWorkerThreadRegistrationTest::RunTest(const FString& Parameters)
+bool RunWorkerThreadRegistration(FAutomationTestBase& Test)
 {
-	(void)Parameters;
 	using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
 
 	if (!EnsureCrossModuleSubscriptionReady())
@@ -277,29 +262,23 @@ bool FAngelscriptCrossModuleWorkerThreadRegistrationTest::RunTest(const FString&
 	};
 
 	bool bPassed = true;
-	bPassed &= TestFalse(TEXT("Worker-thread registration should not mutate ClassFuncMaps on the worker thread"), bEntryVisibleOnWorkerThread.Load());
-	bPassed &= TestTrue(TEXT("Worker-thread registration should inject on the game thread"), WaitForGameThreadFeatureInjection(WorkerFunctionName));
+	bPassed &= Test.TestFalse(TEXT("Worker-thread registration should not mutate ClassFuncMaps on the worker thread"), bEntryVisibleOnWorkerThread.Load());
+	bPassed &= Test.TestTrue(TEXT("Worker-thread registration should inject on the game thread"), WaitForGameThreadFeatureInjection(WorkerFunctionName));
 
 	const FFuncEntry* InjectedEntry = FindActorEntry(WorkerFunctionName);
-	if (!TestNotNull(TEXT("Worker-thread cross-module feature should inject a ClassFuncMaps entry"), InjectedEntry))
+	if (!Test.TestNotNull(TEXT("Worker-thread cross-module feature should inject a ClassFuncMaps entry"), InjectedEntry))
 	{
 		return false;
 	}
 
-	bPassed &= TestTrue(TEXT("Worker-thread cross-module entry should be bound"), IsEntryFunctionBound(*InjectedEntry));
-	bPassed &= TestTrue(TEXT("Worker-thread cross-module entry should use the generic bridge"), InjectedEntry->bGenericCall);
-	bPassed &= TestEqual(TEXT("Worker-thread cross-module entry should carry the source entry as user data"), InjectedEntry->UserData, static_cast<void*>(const_cast<FAngelscriptCrossModuleEntry*>(&Entry)));
+	bPassed &= Test.TestTrue(TEXT("Worker-thread cross-module entry should be bound"), IsEntryFunctionBound(*InjectedEntry));
+	bPassed &= Test.TestTrue(TEXT("Worker-thread cross-module entry should use the generic bridge"), InjectedEntry->bGenericCall);
+	bPassed &= Test.TestEqual(TEXT("Worker-thread cross-module entry should carry the source entry as user data"), InjectedEntry->UserData, static_cast<void*>(const_cast<FAngelscriptCrossModuleEntry*>(&Entry)));
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleGenericHookFrameThunkTest,
-	"Angelscript.CppTests.UHTToolResolver.CrossModuleDirectBind.GenericHook_FrameThunkReceivesSlotsAndReturn",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleGenericHookFrameThunkTest::RunTest(const FString& Parameters)
+bool RunGenericHookFrameThunk(FAutomationTestBase& Test)
 {
-	(void)Parameters;
 	using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
 
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
@@ -320,24 +299,24 @@ bool FAngelscriptCrossModuleGenericHookFrameThunkTest::RunTest(const FString& Pa
 	const int32 FunctionId = GAngelscriptCrossModuleBindGlobalFunctionForTesting(
 		"int CrossModuleGenericHookProbe(int Left, int Right)",
 		&Entry);
-	if (!TestTrue(TEXT("Cross-module generic hook bridge should register a global function"), FunctionId >= 0))
+	if (!Test.TestTrue(TEXT("Cross-module generic hook bridge should register a global function"), FunctionId >= 0))
 	{
 		return false;
 	}
 
-	FScopedAngelscriptModule ModuleScope(*this, Engine, TEXT("CrossModuleGenericHookFrameThunk"), TEXT(R"(
+	FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("CrossModuleGenericHookFrameThunk"), TEXT(R"(
 int Run()
 {
 	return CrossModuleGenericHookProbe(17, 25);
 }
 )"));
-	if (!TestTrue(TEXT("Cross-module generic hook script should compile"), ModuleScope.IsValid()))
+	if (!Test.TestTrue(TEXT("Cross-module generic hook script should compile"), ModuleScope.IsValid()))
 	{
 		return false;
 	}
 
-	FAngelscriptTestExecutor Executor(*this, Engine, ModuleScope.GetModule(), TEXT("int Run()"));
-	if (!TestTrue(TEXT("Cross-module generic hook script entry should be invokable"), Executor.IsValid()))
+	FAngelscriptTestExecutor Executor(Test, Engine, ModuleScope.GetModule(), TEXT("int Run()"));
+	if (!Test.TestTrue(TEXT("Cross-module generic hook script entry should be invokable"), Executor.IsValid()))
 	{
 		return false;
 	}
@@ -345,28 +324,22 @@ int Run()
 	const int32 Result = Executor.ExecuteAndGet<int32>(INDEX_NONE);
 
 	bool bPassed = true;
-	bPassed &= TestEqual(TEXT("Cross-module generic hook should return the frame thunk result"), Result, 42);
-	bPassed &= TestEqual(TEXT("Cross-module generic hook should invoke the frame thunk once"), ProbeState.HitCount, 1);
-	bPassed &= TestEqual(TEXT("Cross-module generic hook frame should expose arg count"), ProbeState.ArgCount, 2);
-	bPassed &= TestEqual(TEXT("Cross-module generic hook should pass arg 0 through a frame slot"), ProbeState.Left, 17);
-	bPassed &= TestEqual(TEXT("Cross-module generic hook should pass arg 1 through a frame slot"), ProbeState.Right, 25);
-	bPassed &= TestTrue(TEXT("Cross-module static generic hook should pass null Self"), ProbeState.bSelfWasNull);
-	bPassed &= TestTrue(TEXT("Cross-module generic hook should provide valid frame arg slots"), ProbeState.bArgSlotsWereValid);
-	bPassed &= TestTrue(TEXT("Cross-module generic hook should provide a return slot"), ProbeState.bReturnWasValid);
-	bPassed &= TestTrue(TEXT("Cross-module static generic hook should leave ScriptSelf null"), ProbeState.bScriptSelfWasNull);
-	bPassed &= TestTrue(TEXT("Cross-module generic hook should leave WorldContext null until a policy exists"), ProbeState.bWorldContextWasNull);
-	bPassed &= TestEqual(TEXT("Cross-module generic hook should copy entry flags into the frame"), ProbeState.FrameFlags, FAngelscriptCrossModuleBindings::FlagStatic);
+	bPassed &= Test.TestEqual(TEXT("Cross-module generic hook should return the frame thunk result"), Result, 42);
+	bPassed &= Test.TestEqual(TEXT("Cross-module generic hook should invoke the frame thunk once"), ProbeState.HitCount, 1);
+	bPassed &= Test.TestEqual(TEXT("Cross-module generic hook frame should expose arg count"), ProbeState.ArgCount, 2);
+	bPassed &= Test.TestEqual(TEXT("Cross-module generic hook should pass arg 0 through a frame slot"), ProbeState.Left, 17);
+	bPassed &= Test.TestEqual(TEXT("Cross-module generic hook should pass arg 1 through a frame slot"), ProbeState.Right, 25);
+	bPassed &= Test.TestTrue(TEXT("Cross-module static generic hook should pass null Self"), ProbeState.bSelfWasNull);
+	bPassed &= Test.TestTrue(TEXT("Cross-module generic hook should provide valid frame arg slots"), ProbeState.bArgSlotsWereValid);
+	bPassed &= Test.TestTrue(TEXT("Cross-module generic hook should provide a return slot"), ProbeState.bReturnWasValid);
+	bPassed &= Test.TestTrue(TEXT("Cross-module static generic hook should leave ScriptSelf null"), ProbeState.bScriptSelfWasNull);
+	bPassed &= Test.TestTrue(TEXT("Cross-module generic hook should leave WorldContext null until a policy exists"), ProbeState.bWorldContextWasNull);
+	bPassed &= Test.TestEqual(TEXT("Cross-module generic hook should copy entry flags into the frame"), ProbeState.FrameFlags, FAngelscriptCrossModuleBindings::FlagStatic);
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleSameModuleMultipleFeatureTest,
-	"Angelscript.CppTests.UHTToolResolver.CrossModuleDirectBind.MultipleFeaturesSameModule_AllInjected_NoModuleNameDedup",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleSameModuleMultipleFeatureTest::RunTest(const FString& Parameters)
+bool RunSameModuleMultipleFeature(FAutomationTestBase& Test)
 {
-	(void)Parameters;
 	using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
 
 	if (!EnsureCrossModuleSubscriptionReady())
@@ -390,28 +363,22 @@ bool FAngelscriptCrossModuleSameModuleMultipleFeatureTest::RunTest(const FString
 
 	const FFuncEntry* InjectedEntryA = FindActorEntry(MultiShardFunctionNameA);
 	const FFuncEntry* InjectedEntryB = FindActorEntry(MultiShardFunctionNameB);
-	if (!TestNotNull(TEXT("First same-module cross-module feature should inject an entry"), InjectedEntryA) ||
-		!TestNotNull(TEXT("Second same-module cross-module feature should inject an entry"), InjectedEntryB))
+	if (!Test.TestNotNull(TEXT("First same-module cross-module feature should inject an entry"), InjectedEntryA) ||
+		!Test.TestNotNull(TEXT("Second same-module cross-module feature should inject an entry"), InjectedEntryB))
 	{
 		return false;
 	}
 
 	bool bPassed = true;
-	bPassed &= TestTrue(TEXT("First same-module feature entry should be bound"), IsEntryFunctionBound(*InjectedEntryA));
-	bPassed &= TestTrue(TEXT("Second same-module feature entry should be bound"), IsEntryFunctionBound(*InjectedEntryB));
-	bPassed &= TestEqual(TEXT("First same-module feature should keep its own user data"), InjectedEntryA->UserData, static_cast<void*>(const_cast<FAngelscriptCrossModuleEntry*>(&EntryA)));
-	bPassed &= TestEqual(TEXT("Second same-module feature should keep its own user data"), InjectedEntryB->UserData, static_cast<void*>(const_cast<FAngelscriptCrossModuleEntry*>(&EntryB)));
+	bPassed &= Test.TestTrue(TEXT("First same-module feature entry should be bound"), IsEntryFunctionBound(*InjectedEntryA));
+	bPassed &= Test.TestTrue(TEXT("Second same-module feature entry should be bound"), IsEntryFunctionBound(*InjectedEntryB));
+	bPassed &= Test.TestEqual(TEXT("First same-module feature should keep its own user data"), InjectedEntryA->UserData, static_cast<void*>(const_cast<FAngelscriptCrossModuleEntry*>(&EntryA)));
+	bPassed &= Test.TestEqual(TEXT("Second same-module feature should keep its own user data"), InjectedEntryB->UserData, static_cast<void*>(const_cast<FAngelscriptCrossModuleEntry*>(&EntryB)));
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleLayoutMismatchTest,
-	"Angelscript.CppTests.UHTToolResolver.CrossModuleDirectBind.LayoutVersionMismatch_FeatureSkipped_NoCrash",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleLayoutMismatchTest::RunTest(const FString& Parameters)
+bool RunLayoutMismatch(FAutomationTestBase& Test)
 {
-	(void)Parameters;
 	using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
 
 	if (!EnsureCrossModuleSubscriptionReady())
@@ -423,20 +390,14 @@ bool FAngelscriptCrossModuleLayoutMismatchTest::RunTest(const FString& Parameter
 	const FAngelscriptCrossModuleEntry Entry = { TestClassName, MismatchFunctionName, &NoOpThunk, 0, 0, 0 };
 	FTestCrossModuleFeature Feature(&Entry, 1, TestModuleName, 0xDEADBEEFu);
 
-	AddExpectedErrorPlain(TEXT("Cross-module binding feature skipped because layout version"), EAutomationExpectedErrorFlags::Contains, 1);
+	Test.AddExpectedErrorPlain(TEXT("Cross-module binding feature skipped because layout version"), EAutomationExpectedErrorFlags::Contains, 1);
 	RegisterAndUnregisterFeature(Feature);
 
-	return TestNull(TEXT("Layout-mismatched cross-module feature should not inject an entry"), FindActorEntry(MismatchFunctionName));
+	return Test.TestNull(TEXT("Layout-mismatched cross-module feature should not inject an entry"), FindActorEntry(MismatchFunctionName));
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleMalformedFeatureTest,
-	"Angelscript.CppTests.UHTToolResolver.CrossModuleDirectBind.RuntimeNullRangeValidation_RejectsMalformedFeature",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleMalformedFeatureTest::RunTest(const FString& Parameters)
+bool RunMalformedFeature(FAutomationTestBase& Test)
 {
-	(void)Parameters;
 	using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
 
 	if (!EnsureCrossModuleSubscriptionReady())
@@ -451,12 +412,61 @@ bool FAngelscriptCrossModuleMalformedFeatureTest::RunTest(const FString& Paramet
 	FTestCrossModuleFeature NullTableFeature(nullptr, 1, TestModuleName, FAngelscriptCrossModuleBindings::LayoutVersionExpected);
 	FTestCrossModuleFeature NullModuleFeature(&Entry, 1, nullptr, FAngelscriptCrossModuleBindings::LayoutVersionExpected);
 
-	AddExpectedErrorPlain(TEXT("Cross-module binding feature skipped because its payload is malformed."), EAutomationExpectedErrorFlags::Contains, 3);
+	Test.AddExpectedErrorPlain(TEXT("Cross-module binding feature skipped because its payload is malformed."), EAutomationExpectedErrorFlags::Contains, 3);
 	RegisterAndUnregisterFeature(NegativeCountFeature);
 	RegisterAndUnregisterFeature(NullTableFeature);
 	RegisterAndUnregisterFeature(NullModuleFeature);
 
-	return TestNull(TEXT("Malformed cross-module features should not inject entries"), FindActorEntry(MalformedFunctionName));
+	return Test.TestNull(TEXT("Malformed cross-module features should not inject entries"), FindActorEntry(MalformedFunctionName));
 }
+
+}
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleDirectBindRuntimeTests,
+	"Angelscript.CppTests.UHTToolResolver.CrossModuleDirectBind",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(SameModuleShardWins_When_BothExist)
+	{
+		using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
+		ASSERT_THAT(IsTrue(RunExistingSlotPriority(*TestRunner)));
+	}
+
+	TEST_METHOD(OnModularFeatureRegistered_LateLoadedModule)
+	{
+		using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
+		ASSERT_THAT(IsTrue(RunLateRegistration(*TestRunner)));
+	}
+
+	TEST_METHOD(OnModularFeatureRegistered_WorkerThreadInvocation_MarshalsToGameThread)
+	{
+		using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
+		ASSERT_THAT(IsTrue(RunWorkerThreadRegistration(*TestRunner)));
+	}
+
+	TEST_METHOD(GenericHook_FrameThunkReceivesSlotsAndReturn)
+	{
+		using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
+		ASSERT_THAT(IsTrue(RunGenericHookFrameThunk(*TestRunner)));
+	}
+
+	TEST_METHOD(MultipleFeaturesSameModule_AllInjected_NoModuleNameDedup)
+	{
+		using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
+		ASSERT_THAT(IsTrue(RunSameModuleMultipleFeature(*TestRunner)));
+	}
+
+	TEST_METHOD(LayoutVersionMismatch_FeatureSkipped_NoCrash)
+	{
+		using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
+		ASSERT_THAT(IsTrue(RunLayoutMismatch(*TestRunner)));
+	}
+
+	TEST_METHOD(RuntimeNullRangeValidation_RejectsMalformedFeature)
+	{
+		using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
+		ASSERT_THAT(IsTrue(RunMalformedFeature(*TestRunner)));
+	}
+};
 
 #endif

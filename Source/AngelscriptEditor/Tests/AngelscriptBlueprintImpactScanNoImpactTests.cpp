@@ -4,6 +4,7 @@
 #include "AngelscriptInclude.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "CQTest.h"
 #include "GameFramework/Actor.h"
 #include "HAL/FileManager.h"
 #include "Kismet2/KismetEditorUtilities.h"
@@ -19,11 +20,6 @@
 #include "UObject/SavePackage.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactScanNoMatchingModulesTest,
-	"Angelscript.TestModule.Editor.BlueprintImpact.ScanBlueprintAssets.NoMatchingModulesProducesNoMatches",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScanNoImpactTests_Private
 {
@@ -232,8 +228,12 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScanNoImpact
 	}
 }
 
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 
-bool FAngelscriptBlueprintImpactScanNoMatchingModulesTest::RunTest(const FString& Parameters)
+static bool RunNoMatchingModulesProducesNoMatches(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScanNoImpactTests_Private;
 	TArray<FAngelscriptEngine*> SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
@@ -277,7 +277,7 @@ class %s : AActor
 
 	UClass* ImpactedClass = nullptr;
 	if (!CompileBlueprintImpactScriptModule(
-			*this,
+			Test,
 			*Engine,
 			ImpactedRelativeFilename,
 			ImpactedClassName,
@@ -289,7 +289,7 @@ class %s : AActor
 	}
 
 	Blueprint = CreateDiskBackedBlueprintChild(
-		*this,
+		Test,
 		AssetRegistryModule,
 		ImpactedClass,
 		TEXT("NoMatchingModules"),
@@ -369,5 +369,20 @@ class %s : AActor
 		Result.FailedAssetLoads,
 		0);
 }
+
+#undef TestTrue
+#undef TestNotNull
+#undef TestFalse
+#undef TestEqual
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptBlueprintImpactScanNoImpactTests,
+	"Angelscript.TestModule.Editor.BlueprintImpact.ScanBlueprintAssets",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(NoMatchingModulesProducesNoMatches)
+	{
+		ASSERT_THAT(IsTrue(RunNoMatchingModulesProducesNoMatches(*TestRunner)));
+	}
+};
 
 #endif

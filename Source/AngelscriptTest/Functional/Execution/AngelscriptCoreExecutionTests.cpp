@@ -1,8 +1,8 @@
+#include "CQTest.h"
+
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestMacros.h"
-#include "AngelscriptTestLegacyHelpers.h"
-#include "AngelscriptTestUtilities.h"
 #include "Misc/Paths.h"
 #include "Misc/ScopeExit.h"
 #include "UObject/GarbageCollection.h"
@@ -13,6 +13,35 @@
 
 namespace AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private
 {
+	FAutomationTestBase* GCoreExecutionTest = nullptr;
+
+	struct FCoreExecutionTestScope
+	{
+		FAutomationTestBase* PreviousTest = nullptr;
+
+		explicit FCoreExecutionTestScope(FAutomationTestBase& Test)
+			: PreviousTest(GCoreExecutionTest)
+		{
+			GCoreExecutionTest = &Test;
+		}
+
+		~FCoreExecutionTestScope()
+		{
+			GCoreExecutionTest = PreviousTest;
+		}
+	};
+
+	bool TestTrue(const TCHAR* What, bool bValue) { return GCoreExecutionTest->TestTrue(What, bValue); }
+	bool TestFalse(const TCHAR* What, bool bValue) { return GCoreExecutionTest->TestFalse(What, bValue); }
+	bool TestNotNull(const TCHAR* What, const void* Value) { return GCoreExecutionTest->TestNotNull(What, Value); }
+	bool TestNotEqual(const TCHAR* What, const void* Actual, const void* Expected) { return GCoreExecutionTest->TestNotEqual(What, Actual, Expected); }
+
+	template <typename ActualType, typename ExpectedType>
+	bool TestEqual(const TCHAR* What, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		return GCoreExecutionTest->TestEqual(What, Actual, Expected);
+	}
+
 	struct FCoreEngineContextStackGuard
 	{
 		TArray<FAngelscriptEngine*> SavedStack;
@@ -63,25 +92,34 @@ namespace AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private
 
 		return nullptr;
 	}
-
-}
-
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCoreCreateCompileExecuteTest,
-	"Angelscript.TestModule.Functional.Core.CreateCompileExecute",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCoreCreateCompileExecuteTest::RunTest(const FString& Parameters)
+bool RunCreateCompileExecute(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private;
+	FCoreExecutionTestScope TestScope(Test);
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	int32 Result = 0;
-	ASTEST_COMPILE_RUN_INT(Engine, "ASCoreCreateCompileExecute",
-		TEXT("int DoubleValue(int Value) { return Value * 2; } int Run() { return DoubleValue(21); }"),
-		TEXT("int Run()"), Result);
+	asIScriptModule* Module = BuildModule(
+		Test,
+		Engine,
+		"ASCoreCreateCompileExecute",
+		TEXT("int DoubleValue(int Value) { return Value * 2; } int Run() { return DoubleValue(21); }"));
+	if (Module == nullptr)
+	{
+		return false;
+	}
+
+	asIScriptFunction* RunFunction = GetFunctionByDecl(Test, *Module, TEXT("int Run()"));
+	if (RunFunction == nullptr)
+	{
+		return false;
+	}
+
+	if (!ExecuteIntFunction(Test, Engine, *RunFunction, Result))
+	{
+		return false;
+	}
 
 	TestEqual(TEXT("Core create/compile/execute should return the expected value"), Result, 42);
 	}
@@ -89,14 +127,10 @@ bool FAngelscriptCoreCreateCompileExecuteTest::RunTest(const FString& Parameters
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCoreCreateCompileExecuteFreshEngineBootstrapTest,
-	"Angelscript.TestModule.Functional.Core.CreateCompileExecute.FreshEngineBootstrap",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCoreCreateCompileExecuteFreshEngineBootstrapTest::RunTest(const FString& Parameters)
+bool RunCreateCompileExecuteFreshEngineBootstrap(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private;
+	FCoreExecutionTestScope TestScope(Test);
 	static constexpr ANSICHAR ModuleNameAnsi[] = "ASCoreFreshBootstrap";
 	static const FName ModuleName(TEXT("ASCoreFreshBootstrap"));
 	static const FString Script = TEXT("int DoubleValue(int Value) { return Value * 2; } int Run() { return DoubleValue(21); }");
@@ -127,7 +161,7 @@ bool FAngelscriptCoreCreateCompileExecuteFreshEngineBootstrapTest::RunTest(const
 		TEXT("Core.CreateCompileExecute.FreshEngineBootstrap should use the fresh engine as the active scope"),
 		FAngelscriptEngine::TryGetCurrentEngine() == LocalEngine.Get());
 
-	asIScriptModule* Module = BuildModule(*this, *LocalEngine, ModuleNameAnsi, Script);
+	asIScriptModule* Module = BuildModule(Test, *LocalEngine, ModuleNameAnsi, Script);
 	if (!TestNotNull(TEXT("Core.CreateCompileExecute.FreshEngineBootstrap should compile the first module on the fresh engine"), Module))
 	{
 		return false;
@@ -141,7 +175,7 @@ bool FAngelscriptCoreCreateCompileExecuteFreshEngineBootstrapTest::RunTest(const
 		TEXT("Core.CreateCompileExecute.FreshEngineBootstrap should expose the compiled module through module lookup"),
 		LocalEngine->GetModuleByModuleName(ModuleName.ToString()).IsValid());
 
-	asIScriptFunction* RunFunction = GetFunctionByDecl(*this, *Module, TEXT("int Run()"));
+	asIScriptFunction* RunFunction = GetFunctionByDecl(Test, *Module, TEXT("int Run()"));
 	if (RunFunction == nullptr)
 	{
 		return false;
@@ -203,21 +237,34 @@ bool FAngelscriptCoreCreateCompileExecuteFreshEngineBootstrapTest::RunTest(const
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCoreGlobalStateTest,
-	"Angelscript.TestModule.Functional.Core.GlobalState",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCoreGlobalStateTest::RunTest(const FString& Parameters)
+bool RunGlobalState(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private;
+	FCoreExecutionTestScope TestScope(Test);
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	int32 Result = 0;
-	ASTEST_COMPILE_RUN_INT(Engine, "ASCoreGlobalState",
-		TEXT("const int g_Count = 3; int Step(int Value) { return Value + 4; } int Run() { return Step(g_Count); }"),
-		TEXT("int Run()"), Result);
+	asIScriptModule* Module = BuildModule(
+		Test,
+		Engine,
+		"ASCoreGlobalState",
+		TEXT("const int g_Count = 3; int Step(int Value) { return Value + 4; } int Run() { return Step(g_Count); }"));
+	if (Module == nullptr)
+	{
+		return false;
+	}
+
+	asIScriptFunction* RunFunction = GetFunctionByDecl(Test, *Module, TEXT("int Run()"));
+	if (RunFunction == nullptr)
+	{
+		return false;
+	}
+
+	if (!ExecuteIntFunction(Test, Engine, *RunFunction, Result))
+	{
+		return false;
+	}
 
 	TestEqual(TEXT("Const globals and helper calls should evaluate as expected"), Result, 7);
 	}
@@ -225,14 +272,10 @@ bool FAngelscriptCoreGlobalStateTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCoreCreateEngineTest,
-	"Angelscript.TestModule.Functional.Core.CreateEngine",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCoreCreateEngineTest::RunTest(const FString& Parameters)
+bool RunCreateEngine(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private;
+	FCoreExecutionTestScope TestScope(Test);
 	FAngelscriptEngineConfig Config;
 	FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 	TUniquePtr<FAngelscriptEngine> LocalEngineA = CreateScriptScanFreeEngineForTesting(Config, Dependencies);
@@ -255,14 +298,10 @@ bool FAngelscriptCoreCreateEngineTest::RunTest(const FString& Parameters)
 	return ScriptEngineA != nullptr && ScriptEngineB != nullptr;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCoreCreateEngineProcessPackageLifetimeTest,
-	"Angelscript.TestModule.Functional.Core.CreateEngine.ProcessPackageLifetime",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCoreCreateEngineProcessPackageLifetimeTest::RunTest(const FString& Parameters)
+bool RunCreateEngineProcessPackageLifetime(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private;
+	FCoreExecutionTestScope TestScope(Test);
 	FCoreEngineContextStackGuard ContextGuard;
 	DestroySharedTestEngine();
 	if (FAngelscriptEngine::IsInitialized())
@@ -319,13 +358,10 @@ bool FAngelscriptCoreCreateEngineProcessPackageLifetimeTest::RunTest(const FStri
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCoreCreateEngineIsolatedModuleRegistriesTest,
-	"Angelscript.TestModule.Functional.Core.CreateEngine.IsolatedModuleRegistries",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-bool FAngelscriptCoreCreateEngineIsolatedModuleRegistriesTest::RunTest(const FString& Parameters)
+bool RunCreateEngineIsolatedModuleRegistries(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private;
+	FCoreExecutionTestScope TestScope(Test);
 	const FName ModuleName(TEXT("ASCoreCreateEngineIsolationA"));
 	const FAngelscriptEngineConfig Config;
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
@@ -344,14 +380,10 @@ bool FAngelscriptCoreCreateEngineIsolatedModuleRegistriesTest::RunTest(const FSt
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCoreModuleLookupFilenameThenModuleFallbackTest,
-	"Angelscript.TestModule.Functional.Core.ModuleLookup.FilenameThenModuleFallback",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCoreModuleLookupFilenameThenModuleFallbackTest::RunTest(const FString& Parameters)
+bool RunModuleLookupFilenameThenModuleFallback(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private;
+	FCoreExecutionTestScope TestScope(Test);
 	static const FName ModuleName(TEXT("ASCoreModuleLookupProbe"));
 	static const FString RelativeFilename(TEXT("Lookup/ModuleLookup/FilenameFallback.as"));
 	static const FString MissingFilename(TEXT("Z:/DefinitelyMissing/ModuleLookupProbe.as"));
@@ -449,14 +481,10 @@ bool FAngelscriptCoreModuleLookupFilenameThenModuleFallbackTest::RunTest(const F
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCompilerBasicTest,
-	"Angelscript.TestModule.Functional.Core.CompilerBasic",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCompilerBasicTest::RunTest(const FString& Parameters)
+bool RunCompilerBasic(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private;
+	FCoreExecutionTestScope TestScope(Test);
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 	{
 		FAngelscriptEngineScope _AutoEngineScope(Engine);
@@ -541,19 +569,10 @@ bool FAngelscriptCompilerBasicTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCompilerParserTest,
-	"Angelscript.TestModule.Functional.Core.Parser",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCompilerParserInvalidSyntaxDiagnosticsAndCleanupTest,
-	"Angelscript.TestModule.Functional.Core.Parser.InvalidSyntaxDiagnosticsAndCleanup",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCompilerParserTest::RunTest(const FString& Parameters)
+bool RunCompilerParser(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private;
+	FCoreExecutionTestScope TestScope(Test);
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 	{
 		FAngelscriptEngineScope _AutoEngineScope(Engine);
@@ -606,9 +625,10 @@ bool FAngelscriptCompilerParserTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-bool FAngelscriptCompilerParserInvalidSyntaxDiagnosticsAndCleanupTest::RunTest(const FString& Parameters)
+bool RunCompilerParserInvalidSyntaxDiagnosticsAndCleanup(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private;
+	FCoreExecutionTestScope TestScope(Test);
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 	{
 		FAngelscriptEngineScope _AutoEngineScope(Engine);
@@ -717,14 +737,10 @@ bool FAngelscriptCompilerParserInvalidSyntaxDiagnosticsAndCleanupTest::RunTest(c
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCompilerOptimizeTest,
-	"Angelscript.TestModule.Functional.Core.Optimize",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCompilerOptimizeTest::RunTest(const FString& Parameters)
+bool RunCompilerOptimize(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private;
+	FCoreExecutionTestScope TestScope(Test);
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 	{
 		FAngelscriptEngineScope _AutoEngineScope(Engine);
@@ -774,5 +790,67 @@ bool FAngelscriptCompilerOptimizeTest::RunTest(const FString& Parameters)
 
 	return true;
 }
+}
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptCoreExecutionTests,
+	"Angelscript.TestModule.Functional.Core",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(CreateCompileExecute)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private::RunCreateCompileExecute(*TestRunner)));
+	}
+
+	TEST_METHOD(CreateCompileExecute_FreshEngineBootstrap)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private::RunCreateCompileExecuteFreshEngineBootstrap(*TestRunner)));
+	}
+
+	TEST_METHOD(GlobalState)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private::RunGlobalState(*TestRunner)));
+	}
+
+	TEST_METHOD(CreateEngine)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private::RunCreateEngine(*TestRunner)));
+	}
+
+	TEST_METHOD(CreateEngine_ProcessPackageLifetime)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private::RunCreateEngineProcessPackageLifetime(*TestRunner)));
+	}
+
+	TEST_METHOD(CreateEngine_IsolatedModuleRegistries)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private::RunCreateEngineIsolatedModuleRegistries(*TestRunner)));
+	}
+
+	TEST_METHOD(ModuleLookup_FilenameThenModuleFallback)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private::RunModuleLookupFilenameThenModuleFallback(*TestRunner)));
+	}
+
+	TEST_METHOD(CompilerBasic)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private::RunCompilerBasic(*TestRunner)));
+	}
+
+	TEST_METHOD(Parser)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private::RunCompilerParser(*TestRunner)));
+	}
+
+	TEST_METHOD(Parser_InvalidSyntaxDiagnosticsAndCleanup)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private::RunCompilerParserInvalidSyntaxDiagnosticsAndCleanup(*TestRunner)));
+	}
+
+	TEST_METHOD(Optimize)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptCoreExecutionTests_Private::RunCompilerOptimize(*TestRunner)));
+	}
+};
 
 #endif

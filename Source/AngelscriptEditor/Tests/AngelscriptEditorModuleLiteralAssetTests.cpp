@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "Core/AngelscriptEditorModule.h"
 
 #include "AngelscriptEngine.h"
@@ -13,21 +14,6 @@
 #include "UObject/UObjectGlobals.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorModuleLiteralAssetCurveSerializationTest,
-	"Angelscript.Editor.Module.OnLiteralAssetSavedSerializesCurveKeysDefaultValueAndInfinityModes",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorModuleLiteralAssetFlatCurveSerializationTest,
-	"Angelscript.Editor.Module.OnLiteralAssetSavedFlatCurvesSkipAsciiGraphButPreserveSerializedKeys",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorModuleLiteralAssetWeightedTangentSerializationTest,
-	"Angelscript.Editor.Module.OnLiteralAssetSavedWeightedTangentsEmitExpectedFunctionAndArgumentOrder",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleLiteralAssetTests_Private
 {
@@ -81,7 +67,12 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleLiteralAssetTes
 }
 
 
-bool FAngelscriptEditorModuleLiteralAssetCurveSerializationTest::RunTest(const FString& Parameters)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+
+static bool RunOnLiteralAssetSavedSerializesCurveKeysDefaultValueAndInfinityModes(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleLiteralAssetTests_Private;
 	FAngelscriptRuntimeModule::InitializeAngelscript();
@@ -93,7 +84,7 @@ bool FAngelscriptEditorModuleLiteralAssetCurveSerializationTest::RunTest(const F
 
 	FAngelscriptEngine& Engine = FAngelscriptEngine::Get();
 	UPackage* AssetsPackage = Engine.AssetsPackage;
-	UObject* LiteralAssetObject = CreateLiteralCurveTestAsset(*this, AssetsPackage, TEXT("LiteralCurve"));
+	UObject* LiteralAssetObject = CreateLiteralCurveTestAsset(Test, AssetsPackage, TEXT("LiteralCurve"));
 	UCurveFloat* LiteralCurve = Cast<UCurveFloat>(LiteralAssetObject);
 	if (!TestNotNull(TEXT("Editor.Module.OnLiteralAssetSavedSerializesCurveKeysDefaultValueAndInfinityModes should create a literal curve asset"), LiteralCurve))
 	{
@@ -187,7 +178,7 @@ bool FAngelscriptEditorModuleLiteralAssetCurveSerializationTest::RunTest(const F
 	return true;
 }
 
-bool FAngelscriptEditorModuleLiteralAssetFlatCurveSerializationTest::RunTest(const FString& Parameters)
+static bool RunOnLiteralAssetSavedFlatCurvesSkipAsciiGraphButPreserveSerializedKeys(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleLiteralAssetTests_Private;
 	FAngelscriptRuntimeModule::InitializeAngelscript();
@@ -199,8 +190,8 @@ bool FAngelscriptEditorModuleLiteralAssetFlatCurveSerializationTest::RunTest(con
 
 	FAngelscriptEngine& Engine = FAngelscriptEngine::Get();
 	UPackage* AssetsPackage = Engine.AssetsPackage;
-	UObject* SinglePointAssetObject = CreateLiteralCurveTestAsset(*this, AssetsPackage, TEXT("LiteralSinglePointCurve"));
-	UObject* FlatCurveAssetObject = CreateLiteralCurveTestAsset(*this, AssetsPackage, TEXT("LiteralFlatCurve"));
+	UObject* SinglePointAssetObject = CreateLiteralCurveTestAsset(Test, AssetsPackage, TEXT("LiteralSinglePointCurve"));
+	UObject* FlatCurveAssetObject = CreateLiteralCurveTestAsset(Test, AssetsPackage, TEXT("LiteralFlatCurve"));
 	UCurveFloat* SinglePointCurve = Cast<UCurveFloat>(SinglePointAssetObject);
 	UCurveFloat* FlatCurve = Cast<UCurveFloat>(FlatCurveAssetObject);
 	if (!TestNotNull(TEXT("Editor.Module.OnLiteralAssetSavedFlatCurvesSkipAsciiGraphButPreserveSerializedKeys should create the single-point literal curve"), SinglePointCurve)
@@ -364,7 +355,7 @@ bool FAngelscriptEditorModuleLiteralAssetFlatCurveSerializationTest::RunTest(con
 	return true;
 }
 
-bool FAngelscriptEditorModuleLiteralAssetWeightedTangentSerializationTest::RunTest(const FString& Parameters)
+static bool RunOnLiteralAssetSavedWeightedTangentsEmitExpectedFunctionAndArgumentOrder(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleLiteralAssetTests_Private;
 	FAngelscriptRuntimeModule::InitializeAngelscript();
@@ -375,9 +366,9 @@ bool FAngelscriptEditorModuleLiteralAssetWeightedTangentSerializationTest::RunTe
 
 	FAngelscriptEngine& Engine = FAngelscriptEngine::Get();
 	UPackage* AssetsPackage = Engine.AssetsPackage;
-	UObject* WeightedArriveAssetObject = CreateLiteralCurveTestAsset(*this, AssetsPackage, TEXT("LiteralWeightedArriveCurve"));
-	UObject* WeightedLeaveAssetObject = CreateLiteralCurveTestAsset(*this, AssetsPackage, TEXT("LiteralWeightedLeaveCurve"));
-	UObject* WeightedBothAssetObject = CreateLiteralCurveTestAsset(*this, AssetsPackage, TEXT("LiteralWeightedBothCurve"));
+	UObject* WeightedArriveAssetObject = CreateLiteralCurveTestAsset(Test, AssetsPackage, TEXT("LiteralWeightedArriveCurve"));
+	UObject* WeightedLeaveAssetObject = CreateLiteralCurveTestAsset(Test, AssetsPackage, TEXT("LiteralWeightedLeaveCurve"));
+	UObject* WeightedBothAssetObject = CreateLiteralCurveTestAsset(Test, AssetsPackage, TEXT("LiteralWeightedBothCurve"));
 	UCurveFloat* WeightedArriveCurve = Cast<UCurveFloat>(WeightedArriveAssetObject);
 	UCurveFloat* WeightedLeaveCurve = Cast<UCurveFloat>(WeightedLeaveAssetObject);
 	UCurveFloat* WeightedBothCurve = Cast<UCurveFloat>(WeightedBothAssetObject);
@@ -550,5 +541,31 @@ bool FAngelscriptEditorModuleLiteralAssetWeightedTangentSerializationTest::RunTe
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorModuleLiteralAssetTests,
+	"Angelscript.Editor.Module",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(OnLiteralAssetSavedSerializesCurveKeysDefaultValueAndInfinityModes)
+	{
+		ASSERT_THAT(IsTrue(RunOnLiteralAssetSavedSerializesCurveKeysDefaultValueAndInfinityModes(*TestRunner)));
+	}
+
+	TEST_METHOD(OnLiteralAssetSavedFlatCurvesSkipAsciiGraphButPreserveSerializedKeys)
+	{
+		ASSERT_THAT(IsTrue(RunOnLiteralAssetSavedFlatCurvesSkipAsciiGraphButPreserveSerializedKeys(*TestRunner)));
+	}
+
+	TEST_METHOD(OnLiteralAssetSavedWeightedTangentsEmitExpectedFunctionAndArgumentOrder)
+	{
+		ASSERT_THAT(IsTrue(RunOnLiteralAssetSavedWeightedTangentsEmitExpectedFunctionAndArgumentOrder(*TestRunner)));
+	}
+};
 
 #endif

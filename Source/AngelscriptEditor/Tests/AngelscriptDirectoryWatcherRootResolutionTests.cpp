@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "HotReload/AngelscriptDirectoryWatcherInternal.h"
 
 #include "AngelscriptEngine.h"
@@ -11,15 +12,11 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptDirectoryWatcherMatchingRootSelectionTest,
-	"Angelscript.Editor.DirectoryWatcher.Queue.UsesMatchingRootWhenMultipleRootsSharePrefix",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptDirectoryWatcherPluginVirtualPathQueueTest,
-	"Angelscript.Editor.DirectoryWatcher.Queue.PreservesPluginVirtualPath",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define AddError(...) Test.AddError(__VA_ARGS__)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherRootResolutionTests_Private
 {
@@ -80,7 +77,7 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherRootResolut
 }
 
 
-bool FAngelscriptDirectoryWatcherMatchingRootSelectionTest::RunTest(const FString& Parameters)
+static bool RunUsesMatchingRootWhenMultipleRootsSharePrefix(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherRootResolutionTests_Private;
 	IFileManager& FileManager = IFileManager::Get();
@@ -140,7 +137,7 @@ bool FAngelscriptDirectoryWatcherMatchingRootSelectionTest::RunTest(const FStrin
 		ContainsFilenamePair(Engine->FileChangesDetectedForReload, PluginScriptAbsolutePath, TEXT("Feature/Changed.as")));
 }
 
-bool FAngelscriptDirectoryWatcherPluginVirtualPathQueueTest::RunTest(const FString& Parameters)
+static bool RunPreservesPluginVirtualPath(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherRootResolutionTests_Private;
 	IFileManager& FileManager = IFileManager::Get();
@@ -194,5 +191,27 @@ bool FAngelscriptDirectoryWatcherPluginVirtualPathQueueTest::RunTest(const FStri
 		FString(TEXT("/Angelscript/Plugin/Inventory/Feature/Changed.as")));
 	return bPassed;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+#undef AddError
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptDirectoryWatcherRootResolutionQueueTests,
+	"Angelscript.Editor.DirectoryWatcher.Queue",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(UsesMatchingRootWhenMultipleRootsSharePrefix)
+	{
+		ASSERT_THAT(IsTrue(RunUsesMatchingRootWhenMultipleRootsSharePrefix(*TestRunner)));
+	}
+
+	TEST_METHOD(PreservesPluginVirtualPath)
+	{
+		ASSERT_THAT(IsTrue(RunPreservesPluginVirtualPath(*TestRunner)));
+	}
+};
 
 #endif

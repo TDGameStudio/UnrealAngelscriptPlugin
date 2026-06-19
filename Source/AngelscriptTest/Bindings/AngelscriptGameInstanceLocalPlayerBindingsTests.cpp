@@ -9,7 +9,7 @@
 //   Compat — Full create/lookup/remove lifecycle through script bindings
 //
 // CQTest adaptation notes:
-//   Original single IMPLEMENT_SIMPLE_AUTOMATION_TEST converted to one
+//   Original single legacy automation test converted to one
 //   TEST_CLASS with one TEST_METHOD. The $TOKEN$ replacement pattern is
 //   preserved via ReplaceInline. The custom fixture and argument-binding
 //   helpers are retained for the object-arg calling convention.

@@ -1,6 +1,8 @@
+#include "CQTest.h"
+#include "AngelscriptBindingsAssertions.h"
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestMacros.h"
-#include "AngelscriptTestLegacyHelpers.h"
+#include "AngelscriptTestModuleScope.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -40,41 +42,41 @@ int Run()
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptAutoInferenceByOverloadTest,
-	"Angelscript.TestModule.Functional.Types.Auto.InferenceByOverload",
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptAutoTypeTests,
+	"Angelscript.TestModule.Functional.Types.Auto",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptAutoInferenceByOverloadTest::RunTest(const FString& Parameters)
 {
-	using namespace AngelscriptTest_Angelscript_AngelscriptAutoTypeTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-
-	asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
-	if (!TestNotNull(TEXT("Types.Auto.InferenceByOverload should expose a script engine"), ScriptEngine))
+	BEFORE_ALL()
 	{
-		return false;
+		ASTEST_CREATE_ENGINE();
 	}
 
-	const bool bFloatUsesFloat64 = ScriptEngine->GetEngineProperty(asEP_FLOAT_IS_FLOAT64) != 0;
-	const FString Script = BuildAutoInferenceByOverloadScript(bFloatUsesFloat64);
+	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
 
-	int32 Result = 0;
-	ASTEST_COMPILE_RUN_INT(
-		Engine,
-		"ASTypeAutoInferenceByOverload",
-		Script,
-		TEXT("int Run()"),
-		Result);
+	TEST_METHOD(InferenceByOverload)
+	{
+		using namespace AngelscriptTest_Angelscript_AngelscriptAutoTypeTests_Private;
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
 
-	TestEqual(
-		TEXT("Auto inference should pick int, float-or-double, and bool overloads according to the inferred type"),
-		Result,
-		123);
+		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Types.Auto.InferenceByOverload should expose a script engine")));
 
+		const bool bFloatUsesFloat64 = ScriptEngine->GetEngineProperty(asEP_FLOAT_IS_FLOAT64) != 0;
+		const FString Script = BuildAutoInferenceByOverloadScript(bFloatUsesFloat64);
+
+		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASTypeAutoInferenceByOverload"), Script);
+		ASSERT_THAT(IsTrue(Module.IsValid()));
+
+		ExpectGlobalInt(
+			*TestRunner,
+			Engine,
+			Module.GetModule(),
+			TEXT("int Run()"),
+			TEXT("Auto inference should pick int, float-or-double, and bool overloads according to the inferred type"),
+			123);
 	}
-	return true;
-}
+};
 
 #endif

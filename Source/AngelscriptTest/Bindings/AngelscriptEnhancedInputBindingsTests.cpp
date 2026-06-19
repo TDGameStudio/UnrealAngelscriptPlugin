@@ -16,7 +16,7 @@
 //   EnhancedInputComponentEditorDelegateFlags — editor delegate flag API
 //
 // CQTest adaptation notes:
-//   Eight IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
+//   Eight legacy automation tests merged into one TEST_CLASS.
 //   Each section uses FScopedAngelscriptModule + ExpectGlobalInt where possible.
 //   The const-compat test retains its compile-error assertion pattern.
 // ============================================================================

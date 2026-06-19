@@ -9,7 +9,7 @@
 //   ErrorPaths       — wrong-struct, null-handle, wrong-array exception paths
 //
 // CQTest adaptation notes:
-//   Two IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
+//   Two legacy automation tests merged into one TEST_CLASS.
 //   Uses $TOKEN$ → ReplaceInline for DataTable path injection.
 //   ErrorPaths section preserves AddExpectedError + manual context execution.
 // ============================================================================

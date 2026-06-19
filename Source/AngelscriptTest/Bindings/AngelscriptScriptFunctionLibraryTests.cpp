@@ -9,7 +9,7 @@
 //   GlobalInitContext              — direct module name propagation
 //
 // CQTest adaptation notes:
-//   Two IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
+//   Two legacy automation tests merged into one TEST_CLASS.
 //   Both sections use custom compile/execute patterns with FString return values
 //   via ExecuteStringGlobalFunction helper. The original structure is largely preserved
 //   since these tests do not follow the simple "int Entry()" pattern.

@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptFunctionalTestUtils.h"
 #include "AngelscriptGlobalFunctionInvoker.h"
 #include "AngelscriptReflectiveAccess.h"
@@ -15,7 +16,6 @@
 #include "Math/Rotator.h"
 #include "Math/Transform.h"
 #include "Math/Vector2D.h"
-#include "Misc/AutomationTest.h"
 #include "Misc/Guid.h"
 #include "Misc/ScopeExit.h"
 #include "StructUtils/InstancedStruct.h"
@@ -30,7 +30,7 @@
 // members without the historical "hack" patterns (hand-written FindFProperty
 // calls, manually packed parameter buffers, or casts to private AS internals).
 //
-// Eleven tests are provided:
+// Ten tests are provided:
 //
 //   1. PathAndInvoke       - quick smoke test covering the essentials.
 //   2. PathAccessAllTypes  - matrix over every AS-reflected UPROPERTY kind
@@ -65,13 +65,7 @@
 //                            drives the wrapper through FASGlobalFunctionInvoker.
 //                            This is the "BP library reached from AS, called
 //                            from C++" round-trip.
-//  10. BPLibraryDirectCDOCall - skip the AS wrapper entirely and drive the
-//                            UBlueprintFunctionLibrary static UFUNCTION
-//                            directly via FFunctionInvoker against the
-//                            library CDO. Demonstrates that non-AS
-//                            UFUNCTIONs are routable through the same
-//                            invoker that AS UCLASS methods use.
-//  11. BPLibraryThroughActorUFunction - composes the two paths: an AS-defined
+//  10. BPLibraryThroughActorUFunction - composes the two paths: an AS-defined
 //                            UFUNCTION on a spawned actor calls several
 //                            `Math::*` BP statics internally, and the C++
 //                            test reaches the actor method via FFunctionInvoker.
@@ -98,12 +92,14 @@ using namespace AngelscriptFunctionalTestUtils;
 // Test 1: PathAndInvoke - minimal smoke coverage
 // =============================================================================
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTemplateReflectionAccessTest,
-	"Angelscript.Template.ReflectionAccess.PathAndInvoke",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+namespace TemplateReflectionAccessTest
+{
+#define TestTrue(Message, Expr) Test.TestTrue(Message, Expr)
+#define TestFalse(Message, Expr) Test.TestFalse(Message, Expr)
+#define TestEqual(Message, Actual, Expected) Test.TestEqual(Message, Actual, Expected)
+#define TestNotNull(Message, Ptr) Test.TestNotNull(Message, Ptr)
 
-bool FAngelscriptTemplateReflectionAccessTest::RunTest(const FString& Parameters)
+	bool PathAndInvoke(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
@@ -117,7 +113,7 @@ bool FAngelscriptTemplateReflectionAccessTest::RunTest(const FString& Parameters
 	// --- 1. Compile a script class with a modest mix of AS-declared members so
 	//        that Approaches A + B both have something to probe.
 	UClass* ScriptClass = CompileScriptModule(
-		*this,
+		Test,
 		Engine,
 		ModuleName,
 		TEXT("TemplateReflectionAccess.as"),
@@ -169,7 +165,7 @@ class ATemplateReflectionAccessActor : AActor
 
 	FActorTestSpawner Spawner;
 	Spawner.InitializeGameSubsystems();
-	AActor* Actor = SpawnScriptActor(*this, Spawner, ScriptClass);
+	AActor* Actor = SpawnScriptActor(Test, Spawner, ScriptClass);
 	if (!TestNotNull(TEXT("Template actor should spawn"), Actor))
 	{
 		return false;
@@ -177,26 +173,26 @@ class ATemplateReflectionAccessActor : AActor
 	BeginPlayActor(Engine, *Actor);
 
 	// Approach A - path-based Get / Set / Verify.
-	VerifyByPath<FIntProperty, int32>(*this, Actor, TEXT("Health"), 100,
+	VerifyByPath<FIntProperty, int32>(Test, Actor, TEXT("Health"), 100,
 		TEXT("Top-level int UPROPERTY should read back its AS default"));
-	VerifyByPath<FStrProperty, FString>(*this, Actor, TEXT("DisplayName"), FString(TEXT("DefaultName")),
+	VerifyByPath<FStrProperty, FString>(Test, Actor, TEXT("DisplayName"), FString(TEXT("DefaultName")),
 		TEXT("Top-level FString UPROPERTY should read back its AS default"));
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("LastVectorValue.X"), 1.0,
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("LastVectorValue.X"), 1.0,
 		TEXT("Nested USTRUCT sub-field should read through 'LastVectorValue.X'"));
-	VerifyByPath<FIntProperty, int32>(*this, Actor, TEXT("DamageLog[1]"), 0,
+	VerifyByPath<FIntProperty, int32>(Test, Actor, TEXT("DamageLog[1]"), 0,
 		TEXT("Array-indexed int should resolve 'DamageLog[1]'"));
 
-	if (!SetByPath<FDoubleProperty, double>(*this, Actor, TEXT("LastVectorValue.Y"), 42.0))
+	if (!SetByPath<FDoubleProperty, double>(Test, Actor, TEXT("LastVectorValue.Y"), 42.0))
 	{
 		return false;
 	}
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("LastVectorValue.Y"), 42.0,
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("LastVectorValue.Y"), 42.0,
 		TEXT("Writing through a path should round-trip when read back"));
 
 	// Approach B - FindFunction + invoke via the typed invoker.
 	// Note: AS `float` parameters are reflected as FDoubleProperty.
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("ApplyDamage")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("ApplyDamage")));
 		if (!Invoker.IsValid())
 		{
 			return false;
@@ -207,13 +203,13 @@ class ATemplateReflectionAccessActor : AActor
 		TestEqual(TEXT("UFUNCTION return value should equal post-call Health"), RemainingHealth, 100 - 50);
 	}
 
-	VerifyByPath<FIntProperty, int32>(*this, Actor, TEXT("Health"), 50,
+	VerifyByPath<FIntProperty, int32>(Test, Actor, TEXT("Health"), 50,
 		TEXT("Health should reflect damage applied by the AS UFUNCTION"));
-	VerifyByPath<FStrProperty, FString>(*this, Actor, TEXT("DisplayName"), FString(TEXT("Damaged")),
+	VerifyByPath<FStrProperty, FString>(Test, Actor, TEXT("DisplayName"), FString(TEXT("Damaged")),
 		TEXT("DisplayName should reflect the UFUNCTION-side assignment"));
-	VerifyByPath<FIntProperty, int32>(*this, Actor, TEXT("DamageLog[0]"), 50,
+	VerifyByPath<FIntProperty, int32>(Test, Actor, TEXT("DamageLog[0]"), 50,
 		TEXT("Array-indexed write from AS should be observable via path read"));
-	VerifyByPath<FIntProperty, int32>(*this, Actor, TEXT("LastIntValue"), 50,
+	VerifyByPath<FIntProperty, int32>(Test, Actor, TEXT("LastIntValue"), 50,
 		TEXT("Inherited UPROPERTY assigned from AS should be observable via path read"));
 
 	}
@@ -231,13 +227,8 @@ class ATemplateReflectionAccessActor : AActor
 // reflection assumptions (type, offset, TArray layout, enum storage, USTRUCT
 // nesting) regress, exactly one VerifyByPath line will flag it.
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTemplateReflectionAccessAllTypesTest,
-	"Angelscript.Template.ReflectionAccess.PathAccessAllTypes",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTemplateReflectionAccessAllTypesTest::RunTest(const FString& Parameters)
-{
+	bool PathAccessAllTypes(FAutomationTestBase& Test)
+	{
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 	static const FName ModuleName(TEXT("TemplateReflectionAccessAllTypes"));
@@ -248,7 +239,7 @@ bool FAngelscriptTemplateReflectionAccessAllTypesTest::RunTest(const FString& Pa
 	};
 
 	UClass* ScriptClass = CompileScriptModule(
-		*this,
+		Test,
 		Engine,
 		ModuleName,
 		TEXT("TemplateReflectionAccessAllTypes.as"),
@@ -317,7 +308,7 @@ class ATemplateReflectionAccessAllTypesActor : AActor
 
 	FActorTestSpawner Spawner;
 	Spawner.InitializeGameSubsystems();
-	AActor* Actor = SpawnScriptActor(*this, Spawner, ScriptClass);
+	AActor* Actor = SpawnScriptActor(Test, Spawner, ScriptClass);
 	if (!TestNotNull(TEXT("All-types actor should spawn"), Actor))
 	{
 		return false;
@@ -325,41 +316,41 @@ class ATemplateReflectionAccessAllTypesActor : AActor
 	BeginPlayActor(Engine, *Actor);
 
 	// ---- Primitives ----
-	VerifyByPath<FBoolProperty,   bool  >(*this, Actor, TEXT("BoolValue"),   true,                     TEXT("bool UPROPERTY should read back its AS default"));
-	VerifyByPath<FByteProperty,   uint8 >(*this, Actor, TEXT("ByteValue"),   static_cast<uint8>(250),  TEXT("uint8 UPROPERTY should read back its AS default"));
-	VerifyByPath<FIntProperty,    int32 >(*this, Actor, TEXT("IntValue"),    -123456,                  TEXT("int UPROPERTY should read back its AS default"));
-	VerifyByPath<FInt64Property,  int64 >(*this, Actor, TEXT("Int64Value"),  static_cast<int64>(1099511627783LL), TEXT("int64 UPROPERTY should read back its AS default"));
+	VerifyByPath<FBoolProperty,   bool  >(Test, Actor, TEXT("BoolValue"),   true,                     TEXT("bool UPROPERTY should read back its AS default"));
+	VerifyByPath<FByteProperty,   uint8 >(Test, Actor, TEXT("ByteValue"),   static_cast<uint8>(250),  TEXT("uint8 UPROPERTY should read back its AS default"));
+	VerifyByPath<FIntProperty,    int32 >(Test, Actor, TEXT("IntValue"),    -123456,                  TEXT("int UPROPERTY should read back its AS default"));
+	VerifyByPath<FInt64Property,  int64 >(Test, Actor, TEXT("Int64Value"),  static_cast<int64>(1099511627783LL), TEXT("int64 UPROPERTY should read back its AS default"));
 	// AS `float` is promoted to FDoubleProperty in the UFunction/UProperty reflection
 	// (AS defaults asEP_FLOAT_IS_FLOAT64 to 1). Read the value back as a double.
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("FloatValue"),  3.14,                     TEXT("AS float UPROPERTY is reflected as FDoubleProperty"));
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("DoubleValue"), 2.718281828459045,        TEXT("double UPROPERTY should read back its AS default"));
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("FloatValue"),  3.14,                     TEXT("AS float UPROPERTY is reflected as FDoubleProperty"));
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("DoubleValue"), 2.718281828459045,        TEXT("double UPROPERTY should read back its AS default"));
 
 	// ---- Text-like ----
-	VerifyByPath<FNameProperty, FName  >(*this, Actor, TEXT("NameValue"),   FName(TEXT("HelloName")), TEXT("FName UPROPERTY should read back its AS default"));
-	VerifyByPath<FStrProperty,  FString>(*this, Actor, TEXT("StringValue"), FString(TEXT("HelloString")), TEXT("FString UPROPERTY should read back its AS default"));
+	VerifyByPath<FNameProperty, FName  >(Test, Actor, TEXT("NameValue"),   FName(TEXT("HelloName")), TEXT("FName UPROPERTY should read back its AS default"));
+	VerifyByPath<FStrProperty,  FString>(Test, Actor, TEXT("StringValue"), FString(TEXT("HelloString")), TEXT("FString UPROPERTY should read back its AS default"));
 
 	// ---- Structs: read whole struct (by value), and sub-field access via nested path ----
 	{
 		FVector Actual = FVector::ZeroVector;
-		if (!GetStructByPath<FVector>(*this, Actor, TEXT("VectorValue"), Actual))
+		if (!GetStructByPath<FVector>(Test, Actor, TEXT("VectorValue"), Actual))
 		{
 			return false;
 		}
 		TestTrue(TEXT("FVector UPROPERTY should equal its AS default as a whole struct"),
 			Actual.Equals(FVector(10.0, 20.0, 30.0)));
 	}
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("VectorValue.X"),  10.0, TEXT("FVector.X should be reachable through nested path"));
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("VectorValue.Y"),  20.0, TEXT("FVector.Y should be reachable through nested path"));
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("VectorValue.Z"),  30.0, TEXT("FVector.Z should be reachable through nested path"));
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("VectorValue.X"),  10.0, TEXT("FVector.X should be reachable through nested path"));
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("VectorValue.Y"),  20.0, TEXT("FVector.Y should be reachable through nested path"));
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("VectorValue.Z"),  30.0, TEXT("FVector.Z should be reachable through nested path"));
 
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("RotatorValue.Pitch"),  45.0, TEXT("FRotator.Pitch should be reachable through nested path"));
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("RotatorValue.Yaw"),    90.0, TEXT("FRotator.Yaw should be reachable through nested path"));
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("RotatorValue.Roll"),  180.0, TEXT("FRotator.Roll should be reachable through nested path"));
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("RotatorValue.Pitch"),  45.0, TEXT("FRotator.Pitch should be reachable through nested path"));
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("RotatorValue.Yaw"),    90.0, TEXT("FRotator.Yaw should be reachable through nested path"));
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("RotatorValue.Roll"),  180.0, TEXT("FRotator.Roll should be reachable through nested path"));
 
 	// ---- Enum ----
 	{
 		int64 EnumRaw = -1;
-		if (!GetEnumByPath(*this, Actor, TEXT("ColorValue"), EnumRaw))
+		if (!GetEnumByPath(Test, Actor, TEXT("ColorValue"), EnumRaw))
 		{
 			return false;
 		}
@@ -370,7 +361,7 @@ class ATemplateReflectionAccessAllTypesActor : AActor
 	// ---- Object reference ----
 	{
 		UObject* SelfRef = nullptr;
-		if (!GetObjectByPath(*this, Actor, TEXT("SelfRef"), SelfRef))
+		if (!GetObjectByPath(Test, Actor, TEXT("SelfRef"), SelfRef))
 		{
 			return false;
 		}
@@ -381,33 +372,33 @@ class ATemplateReflectionAccessAllTypesActor : AActor
 	// ---- Container lengths + indexed element access ----
 	{
 		int32 Count = 0;
-		if (!GetArrayNumByPath(*this, Actor, TEXT("IntArray"), Count))
+		if (!GetArrayNumByPath(Test, Actor, TEXT("IntArray"), Count))
 		{
 			return false;
 		}
 		TestEqual(TEXT("TArray<int> should report the three elements added in AS BeginPlay"), Count, 3);
 	}
-	VerifyByPath<FIntProperty, int32>(*this, Actor, TEXT("IntArray[0]"), 10, TEXT("TArray<int>[0]"));
-	VerifyByPath<FIntProperty, int32>(*this, Actor, TEXT("IntArray[2]"), 30, TEXT("TArray<int>[2]"));
+	VerifyByPath<FIntProperty, int32>(Test, Actor, TEXT("IntArray[0]"), 10, TEXT("TArray<int>[0]"));
+	VerifyByPath<FIntProperty, int32>(Test, Actor, TEXT("IntArray[2]"), 30, TEXT("TArray<int>[2]"));
 
-	VerifyByPath<FStrProperty, FString>(*this, Actor, TEXT("StringArray[0]"), FString(TEXT("alpha")), TEXT("TArray<FString>[0]"));
-	VerifyByPath<FStrProperty, FString>(*this, Actor, TEXT("StringArray[1]"), FString(TEXT("beta")),  TEXT("TArray<FString>[1]"));
+	VerifyByPath<FStrProperty, FString>(Test, Actor, TEXT("StringArray[0]"), FString(TEXT("alpha")), TEXT("TArray<FString>[0]"));
+	VerifyByPath<FStrProperty, FString>(Test, Actor, TEXT("StringArray[1]"), FString(TEXT("beta")),  TEXT("TArray<FString>[1]"));
 
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("VectorArray[0].X"), 1.0, TEXT("TArray<FVector>[0].X"));
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("VectorArray[1].Y"), 1.0, TEXT("TArray<FVector>[1].Y"));
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("VectorArray[0].X"), 1.0, TEXT("TArray<FVector>[0].X"));
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("VectorArray[1].Y"), 1.0, TEXT("TArray<FVector>[1].Y"));
 
 	// ---- Write-through-path round-trips cover the major leaf types ----
-	if (!SetByPath<FIntProperty, int32>(*this, Actor, TEXT("IntValue"), 4242)) return false;
-	VerifyByPath<FIntProperty, int32>(*this, Actor, TEXT("IntValue"), 4242, TEXT("Int SetByPath should round-trip"));
+	if (!SetByPath<FIntProperty, int32>(Test, Actor, TEXT("IntValue"), 4242)) return false;
+	VerifyByPath<FIntProperty, int32>(Test, Actor, TEXT("IntValue"), 4242, TEXT("Int SetByPath should round-trip"));
 
-	if (!SetByPath<FStrProperty, FString>(*this, Actor, TEXT("StringValue"), FString(TEXT("Overwritten")))) return false;
-	VerifyByPath<FStrProperty, FString>(*this, Actor, TEXT("StringValue"), FString(TEXT("Overwritten")), TEXT("String SetByPath should round-trip"));
+	if (!SetByPath<FStrProperty, FString>(Test, Actor, TEXT("StringValue"), FString(TEXT("Overwritten")))) return false;
+	VerifyByPath<FStrProperty, FString>(Test, Actor, TEXT("StringValue"), FString(TEXT("Overwritten")), TEXT("String SetByPath should round-trip"));
 
-	if (!SetByPath<FDoubleProperty, double>(*this, Actor, TEXT("VectorValue.X"), -1.0)) return false;
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("VectorValue.X"), -1.0, TEXT("Nested-path struct write should round-trip"));
+	if (!SetByPath<FDoubleProperty, double>(Test, Actor, TEXT("VectorValue.X"), -1.0)) return false;
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("VectorValue.X"), -1.0, TEXT("Nested-path struct write should round-trip"));
 
-	if (!SetByPath<FStrProperty, FString>(*this, Actor, TEXT("StringArray[1]"), FString(TEXT("beta-updated")))) return false;
-	VerifyByPath<FStrProperty, FString>(*this, Actor, TEXT("StringArray[1]"), FString(TEXT("beta-updated")), TEXT("Array-indexed write should round-trip"));
+	if (!SetByPath<FStrProperty, FString>(Test, Actor, TEXT("StringArray[1]"), FString(TEXT("beta-updated")))) return false;
+	VerifyByPath<FStrProperty, FString>(Test, Actor, TEXT("StringArray[1]"), FString(TEXT("beta-updated")), TEXT("Array-indexed write should round-trip"));
 
 	}
 	return true;
@@ -436,12 +427,7 @@ class ATemplateReflectionAccessAllTypesActor : AActor
 //   - return int
 //   - return FString
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTemplateReflectionAccessInvokeAllTypesTest,
-	"Angelscript.Template.ReflectionAccess.FunctionInvokeAllTypes",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTemplateReflectionAccessInvokeAllTypesTest::RunTest(const FString& Parameters)
+	bool FunctionInvokeAllTypes(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
@@ -453,7 +439,7 @@ bool FAngelscriptTemplateReflectionAccessInvokeAllTypesTest::RunTest(const FStri
 	};
 
 	UClass* ScriptClass = CompileScriptModule(
-		*this,
+		Test,
 		Engine,
 		ModuleName,
 		TEXT("TemplateReflectionAccessInvokeAllTypes.as"),
@@ -568,7 +554,7 @@ class ATemplateReflectionInvokeAllTypesActor : AActor
 
 	FActorTestSpawner Spawner;
 	Spawner.InitializeGameSubsystems();
-	AActor* Actor = SpawnScriptActor(*this, Spawner, ScriptClass);
+	AActor* Actor = SpawnScriptActor(Test, Spawner, ScriptClass);
 	if (!TestNotNull(TEXT("Invoke-all-types actor should spawn"), Actor))
 	{
 		return false;
@@ -577,65 +563,65 @@ class ATemplateReflectionInvokeAllTypesActor : AActor
 
 	// --- void, no params ---
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("NoArgEvent")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("NoArgEvent")));
 		if (!Invoker.IsValid() || !Invoker.Call())
 		{
 			return false;
 		}
 	}
-	VerifyByPath<FBoolProperty, bool>(*this, Actor, TEXT("bVoidCalled"), true, TEXT("No-arg UFUNCTION should flip bVoidCalled"));
+	VerifyByPath<FBoolProperty, bool>(Test, Actor, TEXT("bVoidCalled"), true, TEXT("No-arg UFUNCTION should flip bVoidCalled"));
 
 	// --- bool in ---
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeBool")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeBool")));
 		Invoker.AddParam<bool>(true);
 		if (!Invoker.Call()) return false;
 	}
-	VerifyByPath<FBoolProperty, bool>(*this, Actor, TEXT("LastBool"), true, TEXT("bool in-param should round-trip"));
+	VerifyByPath<FBoolProperty, bool>(Test, Actor, TEXT("LastBool"), true, TEXT("bool in-param should round-trip"));
 
 	// --- int in ---
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeInt")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeInt")));
 		Invoker.AddParam<int32>(987654);
 		if (!Invoker.Call()) return false;
 	}
-	VerifyByPath<FIntProperty, int32>(*this, Actor, TEXT("LastInt"), 987654, TEXT("int in-param should round-trip"));
+	VerifyByPath<FIntProperty, int32>(Test, Actor, TEXT("LastInt"), 987654, TEXT("int in-param should round-trip"));
 
 	// --- float in (AS `float` is reflected as FDoubleProperty both for params and UPROPERTYs) ---
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeFloat")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeFloat")));
 		Invoker.AddParam<double>(1.5);
 		if (!Invoker.Call()) return false;
 	}
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("LastFloat"), 1.5, TEXT("float in-param should round-trip (read as double)"));
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("LastFloat"), 1.5, TEXT("float in-param should round-trip (read as double)"));
 
 	// --- int64 in ---
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeInt64")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeInt64")));
 		Invoker.AddParam<int64>(static_cast<int64>(9223372036854775000LL));
 		if (!Invoker.Call()) return false;
 	}
-	VerifyByPath<FInt64Property, int64>(*this, Actor, TEXT("LastInt64"),
+	VerifyByPath<FInt64Property, int64>(Test, Actor, TEXT("LastInt64"),
 		static_cast<int64>(9223372036854775000LL), TEXT("int64 in-param should round-trip"));
 
 	// --- FString in ---
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeString")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeString")));
 		Invoker.AddParam<FString>(FString(TEXT("PassedString")));
 		if (!Invoker.Call()) return false;
 	}
-	VerifyByPath<FStrProperty, FString>(*this, Actor, TEXT("LastFString"), FString(TEXT("PassedString")),
+	VerifyByPath<FStrProperty, FString>(Test, Actor, TEXT("LastFString"), FString(TEXT("PassedString")),
 		TEXT("FString in-param should round-trip"));
 
 	// --- FVector in ---
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeVector")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeVector")));
 		Invoker.AddParam<FVector>(FVector(4.0, 5.0, 6.0));
 		if (!Invoker.Call()) return false;
 	}
 	{
 		FVector Actual = FVector::ZeroVector;
-		if (!GetStructByPath<FVector>(*this, Actor, TEXT("LastStructIn"), Actual))
+		if (!GetStructByPath<FVector>(Test, Actor, TEXT("LastStructIn"), Actual))
 		{
 			return false;
 		}
@@ -644,13 +630,13 @@ class ATemplateReflectionInvokeAllTypesActor : AActor
 
 	// --- AActor in (object reference) ---
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeActor")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeActor")));
 		Invoker.AddParam<AActor*>(Actor);
 		if (!Invoker.Call()) return false;
 	}
 	{
 		UObject* Ref = nullptr;
-		if (!GetObjectByPath(*this, Actor, TEXT("LastObjectIn"), Ref))
+		if (!GetObjectByPath(Test, Actor, TEXT("LastObjectIn"), Ref))
 		{
 			return false;
 		}
@@ -659,7 +645,7 @@ class ATemplateReflectionInvokeAllTypesActor : AActor
 
 	// --- enum in (passed as the UEnum's underlying integer width) ---
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeEnum")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeEnum")));
 		// ETemplateInvokeMode::Slow == 2. AS enums map to FEnumProperty with
 		// FByteProperty underlying storage (width sizeof(uint8)).
 		Invoker.AddParam<uint8>(2);
@@ -667,7 +653,7 @@ class ATemplateReflectionInvokeAllTypesActor : AActor
 	}
 	{
 		int64 EnumRaw = -1;
-		if (!GetEnumByPath(*this, Actor, TEXT("LastEnum"), EnumRaw))
+		if (!GetEnumByPath(Test, Actor, TEXT("LastEnum"), EnumRaw))
 		{
 			return false;
 		}
@@ -676,25 +662,25 @@ class ATemplateReflectionInvokeAllTypesActor : AActor
 
 	// --- TArray<int> in (container by value) ---
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeIntArray")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeIntArray")));
 		TArray<int32> Values = { 11, 22, 33 };
 		Invoker.AddParam<TArray<int32>>(Values);
 		if (!Invoker.Call()) return false;
 	}
 	{
 		int32 Count = 0;
-		if (!GetArrayNumByPath(*this, Actor, TEXT("LastArrayIn"), Count))
+		if (!GetArrayNumByPath(Test, Actor, TEXT("LastArrayIn"), Count))
 		{
 			return false;
 		}
 		TestEqual(TEXT("TArray<int> in-param should report the right length"), Count, 3);
 	}
-	VerifyByPath<FIntProperty, int32>(*this, Actor, TEXT("LastArrayIn[0]"), 11, TEXT("TArray<int>[0] via in-param"));
-	VerifyByPath<FIntProperty, int32>(*this, Actor, TEXT("LastArrayIn[2]"), 33, TEXT("TArray<int>[2] via in-param"));
+	VerifyByPath<FIntProperty, int32>(Test, Actor, TEXT("LastArrayIn[0]"), 11, TEXT("TArray<int>[0] via in-param"));
+	VerifyByPath<FIntProperty, int32>(Test, Actor, TEXT("LastArrayIn[2]"), 33, TEXT("TArray<int>[2] via in-param"));
 
 	// --- FVector &out (out-ref round trip: the invoker exposes the mutated buffer) ---
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("FillVectorOut")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("FillVectorOut")));
 		Invoker.AddParam<FVector>(FVector::ZeroVector);
 		if (!Invoker.Call()) return false;
 
@@ -709,7 +695,7 @@ class ATemplateReflectionInvokeAllTypesActor : AActor
 
 	// --- return int ---
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("Sum")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("Sum")));
 		Invoker.AddParam<int32>(17);
 		Invoker.AddParam<int32>(25);
 		const int32 Result = Invoker.CallAndReturn<int32>(/*Fallback=*/INDEX_NONE);
@@ -718,7 +704,7 @@ class ATemplateReflectionInvokeAllTypesActor : AActor
 
 	// --- return FString ---
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("BuildLabel")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("BuildLabel")));
 		Invoker.AddParam<FString>(FString(TEXT("Enemy")));
 		Invoker.AddParam<int32>(7);
 		const FString Result = Invoker.CallAndReturn<FString>(FString());
@@ -746,12 +732,7 @@ class ATemplateReflectionInvokeAllTypesActor : AActor
 // FScriptMapHelper / FScriptSetHelper is used internally by
 // GetMapValueByPath / SetContainsByPath / GetMapNumByPath / GetSetNumByPath.
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTemplateReflectionAccessExtendedTypesTest,
-	"Angelscript.Template.ReflectionAccess.PathAccessExtendedTypes",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTemplateReflectionAccessExtendedTypesTest::RunTest(const FString& Parameters)
+	bool PathAccessExtendedTypes(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
@@ -763,7 +744,7 @@ bool FAngelscriptTemplateReflectionAccessExtendedTypesTest::RunTest(const FStrin
 	};
 
 	UClass* ScriptClass = CompileScriptModule(
-		*this,
+		Test,
 		Engine,
 		ModuleName,
 		TEXT("TemplateReflectionAccessExtendedTypes.as"),
@@ -845,7 +826,7 @@ class ATemplateReflectionExtendedTypesActor : AActor
 
 	FActorTestSpawner Spawner;
 	Spawner.InitializeGameSubsystems();
-	AActor* Actor = SpawnScriptActor(*this, Spawner, ScriptClass);
+	AActor* Actor = SpawnScriptActor(Test, Spawner, ScriptClass);
 	if (!TestNotNull(TEXT("Extended-types actor should spawn"), Actor))
 	{
 		return false;
@@ -855,44 +836,44 @@ class ATemplateReflectionExtendedTypesActor : AActor
 	// ---- FVector2D: both whole-struct read and sub-path read ----
 	{
 		FVector2D Actual = FVector2D::ZeroVector;
-		if (!GetStructByPath<FVector2D>(*this, Actor, TEXT("Vector2DValue"), Actual))
+		if (!GetStructByPath<FVector2D>(Test, Actor, TEXT("Vector2DValue"), Actual))
 		{
 			return false;
 		}
 		TestTrue(TEXT("FVector2D UPROPERTY should equal its AS default as a whole struct"),
 			Actual.Equals(FVector2D(1.5, 2.5)));
 	}
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("Vector2DValue.X"), 1.5, TEXT("FVector2D.X via nested path"));
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("Vector2DValue.Y"), 2.5, TEXT("FVector2D.Y via nested path"));
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("Vector2DValue.X"), 1.5, TEXT("FVector2D.X via nested path"));
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("Vector2DValue.Y"), 2.5, TEXT("FVector2D.Y via nested path"));
 
 	// ---- FIntPoint ----
 	{
 		FIntPoint Actual(0, 0);
-		if (!GetStructByPath<FIntPoint>(*this, Actor, TEXT("IntPointValue"), Actual))
+		if (!GetStructByPath<FIntPoint>(Test, Actor, TEXT("IntPointValue"), Actual))
 		{
 			return false;
 		}
 		TestEqual(TEXT("FIntPoint UPROPERTY should equal its AS default"), Actual, FIntPoint(7, 9));
 	}
-	VerifyByPath<FIntProperty, int32>(*this, Actor, TEXT("IntPointValue.X"), 7, TEXT("FIntPoint.X via nested path"));
-	VerifyByPath<FIntProperty, int32>(*this, Actor, TEXT("IntPointValue.Y"), 9, TEXT("FIntPoint.Y via nested path"));
+	VerifyByPath<FIntProperty, int32>(Test, Actor, TEXT("IntPointValue.X"), 7, TEXT("FIntPoint.X via nested path"));
+	VerifyByPath<FIntProperty, int32>(Test, Actor, TEXT("IntPointValue.Y"), 9, TEXT("FIntPoint.Y via nested path"));
 
 	// ---- FQuat: identity quaternion ----
 	{
 		FQuat Actual = FQuat::Identity;
-		if (!GetStructByPath<FQuat>(*this, Actor, TEXT("QuatValue"), Actual))
+		if (!GetStructByPath<FQuat>(Test, Actor, TEXT("QuatValue"), Actual))
 		{
 			return false;
 		}
 		TestTrue(TEXT("FQuat UPROPERTY should equal the identity quaternion"),
 			Actual.Equals(FQuat::Identity));
 	}
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("QuatValue.W"), 1.0, TEXT("FQuat.W via nested path"));
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("QuatValue.W"), 1.0, TEXT("FQuat.W via nested path"));
 
 	// ---- FTransform: sub-struct access through a longer path ("A.B.C") ----
 	{
 		FTransform Actual;
-		if (!GetStructByPath<FTransform>(*this, Actor, TEXT("TransformValue"), Actual))
+		if (!GetStructByPath<FTransform>(Test, Actor, TEXT("TransformValue"), Actual))
 		{
 			return false;
 		}
@@ -901,25 +882,25 @@ class ATemplateReflectionExtendedTypesActor : AActor
 		TestTrue(TEXT("FTransform UPROPERTY scale should match AS BeginPlay"),
 			Actual.GetScale3D().Equals(FVector::OneVector));
 	}
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("TransformValue.Translation.X"), 100.0, TEXT("FTransform.Translation.X via nested path"));
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("TransformValue.Translation.Z"), 300.0, TEXT("FTransform.Translation.Z via nested path"));
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("TransformValue.Translation.X"), 100.0, TEXT("FTransform.Translation.X via nested path"));
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("TransformValue.Translation.Z"), 300.0, TEXT("FTransform.Translation.Z via nested path"));
 
 	// ---- FLinearColor + FColor ----
 	{
 		FLinearColor Actual;
-		if (!GetStructByPath<FLinearColor>(*this, Actor, TEXT("LinearColorValue"), Actual))
+		if (!GetStructByPath<FLinearColor>(Test, Actor, TEXT("LinearColorValue"), Actual))
 		{
 			return false;
 		}
 		TestTrue(TEXT("FLinearColor UPROPERTY should equal its AS default"),
 			Actual.Equals(FLinearColor(1.0f, 0.5f, 0.25f, 1.0f)));
 	}
-	VerifyByPath<FFloatProperty, float>(*this, Actor, TEXT("LinearColorValue.R"), 1.0f, TEXT("FLinearColor.R via nested path"));
-	VerifyByPath<FFloatProperty, float>(*this, Actor, TEXT("LinearColorValue.G"), 0.5f, TEXT("FLinearColor.G via nested path"));
+	VerifyByPath<FFloatProperty, float>(Test, Actor, TEXT("LinearColorValue.R"), 1.0f, TEXT("FLinearColor.R via nested path"));
+	VerifyByPath<FFloatProperty, float>(Test, Actor, TEXT("LinearColorValue.G"), 0.5f, TEXT("FLinearColor.G via nested path"));
 
 	{
 		FColor Actual;
-		if (!GetStructByPath<FColor>(*this, Actor, TEXT("ColorValue"), Actual))
+		if (!GetStructByPath<FColor>(Test, Actor, TEXT("ColorValue"), Actual))
 		{
 			return false;
 		}
@@ -929,7 +910,7 @@ class ATemplateReflectionExtendedTypesActor : AActor
 	// ---- FGuid: a 4-part USTRUCT, read each quarter via a nested path ----
 	{
 		FGuid Actual;
-		if (!GetStructByPath<FGuid>(*this, Actor, TEXT("GuidValue"), Actual))
+		if (!GetStructByPath<FGuid>(Test, Actor, TEXT("GuidValue"), Actual))
 		{
 			return false;
 		}
@@ -940,7 +921,7 @@ class ATemplateReflectionExtendedTypesActor : AActor
 	// ---- Component reference (DefaultComponent) ----
 	{
 		UObject* Component = nullptr;
-		if (!GetObjectByPath(*this, Actor, TEXT("SceneRoot"), Component))
+		if (!GetObjectByPath(Test, Actor, TEXT("SceneRoot"), Component))
 		{
 			return false;
 		}
@@ -956,7 +937,7 @@ class ATemplateReflectionExtendedTypesActor : AActor
 	// ---- TSubclassOf<AActor> ----
 	{
 		UClass* AsClass = nullptr;
-		if (!GetClassByPath(*this, Actor, TEXT("PawnSubclass"), AsClass))
+		if (!GetClassByPath(Test, Actor, TEXT("PawnSubclass"), AsClass))
 		{
 			return false;
 		}
@@ -967,7 +948,7 @@ class ATemplateReflectionExtendedTypesActor : AActor
 	// ---- TMap<FString, int> ----
 	{
 		int32 Count = 0;
-		if (!GetMapNumByPath(*this, Actor, TEXT("StringToIntMap"), Count))
+		if (!GetMapNumByPath(Test, Actor, TEXT("StringToIntMap"), Count))
 		{
 			return false;
 		}
@@ -976,7 +957,7 @@ class ATemplateReflectionExtendedTypesActor : AActor
 	{
 		int32 Banana = 0;
 		if (!GetMapValueByPath<FString, FIntProperty, int32>(
-				*this, Actor, TEXT("StringToIntMap"), FString(TEXT("Banana")), Banana))
+				Test, Actor, TEXT("StringToIntMap"), FString(TEXT("Banana")), Banana))
 		{
 			return false;
 		}
@@ -985,7 +966,7 @@ class ATemplateReflectionExtendedTypesActor : AActor
 	{
 		int32 Cherry = 0;
 		if (!GetMapValueByPath<FString, FIntProperty, int32>(
-				*this, Actor, TEXT("StringToIntMap"), FString(TEXT("Cherry")), Cherry))
+				Test, Actor, TEXT("StringToIntMap"), FString(TEXT("Cherry")), Cherry))
 		{
 			return false;
 		}
@@ -996,7 +977,7 @@ class ATemplateReflectionExtendedTypesActor : AActor
 	{
 		FString Twenty;
 		if (!GetMapValueByPath<int32, FStrProperty, FString>(
-				*this, Actor, TEXT("IntToStringMap"), 20, Twenty))
+				Test, Actor, TEXT("IntToStringMap"), 20, Twenty))
 		{
 			return false;
 		}
@@ -1007,30 +988,30 @@ class ATemplateReflectionExtendedTypesActor : AActor
 	// ---- TSet<FName> ----
 	{
 		int32 Count = 0;
-		if (!GetSetNumByPath(*this, Actor, TEXT("NameSet"), Count))
+		if (!GetSetNumByPath(Test, Actor, TEXT("NameSet"), Count))
 		{
 			return false;
 		}
 		TestEqual(TEXT("TSet<FName> should report three entries"), Count, 3);
 	}
 	TestTrue(TEXT("TSet<FName> should contain Alpha"),
-		SetContainsByPath<FName>(*this, Actor, TEXT("NameSet"), FName(TEXT("Alpha"))));
+		SetContainsByPath<FName>(Test, Actor, TEXT("NameSet"), FName(TEXT("Alpha"))));
 	TestTrue(TEXT("TSet<FName> should contain Gamma"),
-		SetContainsByPath<FName>(*this, Actor, TEXT("NameSet"), FName(TEXT("Gamma"))));
+		SetContainsByPath<FName>(Test, Actor, TEXT("NameSet"), FName(TEXT("Gamma"))));
 	TestFalse(TEXT("TSet<FName> should not contain an unrelated name"),
-		SetContainsByPath<FName>(*this, Actor, TEXT("NameSet"), FName(TEXT("DefinitelyNotInTheSet"))));
+		SetContainsByPath<FName>(Test, Actor, TEXT("NameSet"), FName(TEXT("DefinitelyNotInTheSet"))));
 
 	// ---- TOptional<int> - set vs. unset state round-trip ----
 	{
 		bool bIsSet = false;
-		if (!GetOptionalIsSetByPath(*this, Actor, TEXT("OptionalIntSet"), bIsSet))
+		if (!GetOptionalIsSetByPath(Test, Actor, TEXT("OptionalIntSet"), bIsSet))
 		{
 			return false;
 		}
 		TestTrue(TEXT("TOptional<int> assigned in AS should report IsSet=true"), bIsSet);
 
 		int32 Inner = 0;
-		if (!GetOptionalValueByPath<FIntProperty, int32>(*this, Actor, TEXT("OptionalIntSet"), Inner))
+		if (!GetOptionalValueByPath<FIntProperty, int32>(Test, Actor, TEXT("OptionalIntSet"), Inner))
 		{
 			return false;
 		}
@@ -1038,7 +1019,7 @@ class ATemplateReflectionExtendedTypesActor : AActor
 	}
 	{
 		bool bIsSet = true;
-		if (!GetOptionalIsSetByPath(*this, Actor, TEXT("OptionalIntUnset"), bIsSet))
+		if (!GetOptionalIsSetByPath(Test, Actor, TEXT("OptionalIntUnset"), bIsSet))
 		{
 			return false;
 		}
@@ -1048,7 +1029,7 @@ class ATemplateReflectionExtendedTypesActor : AActor
 	// ---- TOptional<FString> ----
 	{
 		FString Inner;
-		if (!GetOptionalValueByPath<FStrProperty, FString>(*this, Actor, TEXT("OptionalStringSet"), Inner))
+		if (!GetOptionalValueByPath<FStrProperty, FString>(Test, Actor, TEXT("OptionalStringSet"), Inner))
 		{
 			return false;
 		}
@@ -1059,7 +1040,7 @@ class ATemplateReflectionExtendedTypesActor : AActor
 	// ---- TOptional<FVector> via dedicated struct helper ----
 	{
 		FVector Inner = FVector::ZeroVector;
-		if (!GetOptionalStructByPath<FVector>(*this, Actor, TEXT("OptionalVectorSet"), Inner))
+		if (!GetOptionalStructByPath<FVector>(Test, Actor, TEXT("OptionalVectorSet"), Inner))
 		{
 			return false;
 		}
@@ -1080,12 +1061,7 @@ class ATemplateReflectionExtendedTypesActor : AActor
 // FGuid, `USceneComponent*`, `TSubclassOf<AActor>`, TMap / TSet containers, and
 // out-reference variants of those types.
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTemplateReflectionAccessInvokeExtendedTypesTest,
-	"Angelscript.Template.ReflectionAccess.FunctionInvokeExtendedTypes",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTemplateReflectionAccessInvokeExtendedTypesTest::RunTest(const FString& Parameters)
+	bool FunctionInvokeExtendedTypes(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
@@ -1097,7 +1073,7 @@ bool FAngelscriptTemplateReflectionAccessInvokeExtendedTypesTest::RunTest(const 
 	};
 
 	UClass* ScriptClass = CompileScriptModule(
-		*this,
+		Test,
 		Engine,
 		ModuleName,
 		TEXT("TemplateReflectionAccessInvokeExtendedTypes.as"),
@@ -1162,7 +1138,7 @@ class ATemplateReflectionInvokeExtendedTypesActor : AActor
 
 	FActorTestSpawner Spawner;
 	Spawner.InitializeGameSubsystems();
-	AActor* Actor = SpawnScriptActor(*this, Spawner, ScriptClass);
+	AActor* Actor = SpawnScriptActor(Test, Spawner, ScriptClass);
 	if (!TestNotNull(TEXT("Invoke-extended-types actor should spawn"), Actor))
 	{
 		return false;
@@ -1171,78 +1147,78 @@ class ATemplateReflectionInvokeExtendedTypesActor : AActor
 
 	// ---- FVector2D in-param ----
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeVector2D")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeVector2D")));
 		Invoker.AddParam<FVector2D>(FVector2D(3.5, 4.5));
 		if (!Invoker.Call()) return false;
 	}
 	{
 		FVector2D Actual = FVector2D::ZeroVector;
-		if (!GetStructByPath<FVector2D>(*this, Actor, TEXT("LastVector2D"), Actual)) return false;
+		if (!GetStructByPath<FVector2D>(Test, Actor, TEXT("LastVector2D"), Actual)) return false;
 		TestTrue(TEXT("FVector2D in-param should round-trip"), Actual.Equals(FVector2D(3.5, 4.5)));
 	}
 
 	// ---- FIntPoint in-param ----
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeIntPoint")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeIntPoint")));
 		Invoker.AddParam<FIntPoint>(FIntPoint(-3, 42));
 		if (!Invoker.Call()) return false;
 	}
 	{
 		FIntPoint Actual(0, 0);
-		if (!GetStructByPath<FIntPoint>(*this, Actor, TEXT("LastIntPoint"), Actual)) return false;
+		if (!GetStructByPath<FIntPoint>(Test, Actor, TEXT("LastIntPoint"), Actual)) return false;
 		TestEqual(TEXT("FIntPoint in-param should round-trip"), Actual, FIntPoint(-3, 42));
 	}
 
 	// ---- FQuat in-param ----
 	{
 		const FQuat Expected = FQuat(FVector(0.0, 0.0, 1.0), UE_DOUBLE_HALF_PI).GetNormalized();
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeQuat")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeQuat")));
 		Invoker.AddParam<FQuat>(Expected);
 		if (!Invoker.Call()) return false;
 		FQuat Actual = FQuat::Identity;
-		if (!GetStructByPath<FQuat>(*this, Actor, TEXT("LastQuat"), Actual)) return false;
+		if (!GetStructByPath<FQuat>(Test, Actor, TEXT("LastQuat"), Actual)) return false;
 		TestTrue(TEXT("FQuat in-param should round-trip"), Actual.Equals(Expected));
 	}
 
 	// ---- FTransform in-param ----
 	{
 		const FTransform Expected(FRotator::ZeroRotator, FVector(5.0, -5.0, 50.0), FVector::OneVector);
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeTransform")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeTransform")));
 		Invoker.AddParam<FTransform>(Expected);
 		if (!Invoker.Call()) return false;
 		FTransform Actual;
-		if (!GetStructByPath<FTransform>(*this, Actor, TEXT("LastTransform"), Actual)) return false;
+		if (!GetStructByPath<FTransform>(Test, Actor, TEXT("LastTransform"), Actual)) return false;
 		TestTrue(TEXT("FTransform in-param translation should round-trip"),
 			Actual.GetLocation().Equals(Expected.GetLocation()));
 	}
 
 	// ---- FLinearColor / FColor in-params ----
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeLinearColor")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeLinearColor")));
 		Invoker.AddParam<FLinearColor>(FLinearColor(0.1f, 0.2f, 0.3f, 0.4f));
 		if (!Invoker.Call()) return false;
 		FLinearColor Actual;
-		if (!GetStructByPath<FLinearColor>(*this, Actor, TEXT("LastLinearColor"), Actual)) return false;
+		if (!GetStructByPath<FLinearColor>(Test, Actor, TEXT("LastLinearColor"), Actual)) return false;
 		TestTrue(TEXT("FLinearColor in-param should round-trip"),
 			Actual.Equals(FLinearColor(0.1f, 0.2f, 0.3f, 0.4f)));
 	}
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeColor")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeColor")));
 		Invoker.AddParam<FColor>(FColor(10, 20, 30, 40));
 		if (!Invoker.Call()) return false;
 		FColor Actual;
-		if (!GetStructByPath<FColor>(*this, Actor, TEXT("LastColor"), Actual)) return false;
+		if (!GetStructByPath<FColor>(Test, Actor, TEXT("LastColor"), Actual)) return false;
 		TestEqual(TEXT("FColor in-param should round-trip"), Actual, FColor(10, 20, 30, 40));
 	}
 
 	// ---- FGuid in-param ----
 	{
 		const FGuid Expected(0xDEADBEEFu, 0xCAFEBABEu, 0x01234567u, 0x89ABCDEFu);
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeGuid")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeGuid")));
 		Invoker.AddParam<FGuid>(Expected);
 		if (!Invoker.Call()) return false;
 		FGuid Actual;
-		if (!GetStructByPath<FGuid>(*this, Actor, TEXT("LastGuid"), Actual)) return false;
+		if (!GetStructByPath<FGuid>(Test, Actor, TEXT("LastGuid"), Actual)) return false;
 		TestEqual(TEXT("FGuid in-param should round-trip"), Actual, Expected);
 	}
 
@@ -1250,39 +1226,39 @@ class ATemplateReflectionInvokeExtendedTypesActor : AActor
 	USceneComponent* SceneRootFromProperty = nullptr;
 	{
 		UObject* AsObject = nullptr;
-		if (!GetObjectByPath(*this, Actor, TEXT("SceneRoot"), AsObject)) return false;
+		if (!GetObjectByPath(Test, Actor, TEXT("SceneRoot"), AsObject)) return false;
 		SceneRootFromProperty = Cast<USceneComponent>(AsObject);
 		if (!TestNotNull(TEXT("DefaultComponent SceneRoot should be live after BeginPlay"), SceneRootFromProperty))
 		{
 			return false;
 		}
 
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeComponent")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeComponent")));
 		Invoker.AddParam<USceneComponent*>(SceneRootFromProperty);
 		if (!Invoker.Call()) return false;
 	}
 	{
 		UObject* Actual = nullptr;
-		if (!GetObjectByPath(*this, Actor, TEXT("LastComponent"), Actual)) return false;
+		if (!GetObjectByPath(Test, Actor, TEXT("LastComponent"), Actual)) return false;
 		TestEqual(TEXT("USceneComponent in-param should round-trip via TObjectPtr UPROPERTY"),
 			Actual, static_cast<UObject*>(SceneRootFromProperty));
 	}
 
 	// ---- TSubclassOf<AActor> in-param ----
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeSubclass")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeSubclass")));
 		Invoker.AddParam<UClass*>(Actor->GetClass());
 		if (!Invoker.Call()) return false;
 
 		UClass* Actual = nullptr;
-		if (!GetClassByPath(*this, Actor, TEXT("LastSubclass"), Actual)) return false;
+		if (!GetClassByPath(Test, Actor, TEXT("LastSubclass"), Actual)) return false;
 		TestEqual(TEXT("TSubclassOf<AActor> in-param should round-trip"),
 			Actual, Actor->GetClass());
 	}
 
 	// ---- TMap in-param ----
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeStringIntMap")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeStringIntMap")));
 		TMap<FString, int32> Seed;
 		Seed.Add(TEXT("One"), 1);
 		Seed.Add(TEXT("Two"), 2);
@@ -1290,18 +1266,18 @@ class ATemplateReflectionInvokeExtendedTypesActor : AActor
 		if (!Invoker.Call()) return false;
 
 		int32 Count = 0;
-		if (!GetMapNumByPath(*this, Actor, TEXT("LastMap"), Count)) return false;
+		if (!GetMapNumByPath(Test, Actor, TEXT("LastMap"), Count)) return false;
 		TestEqual(TEXT("TMap in-param should round-trip the entry count"), Count, 2);
 
 		int32 Value = 0;
 		if (!GetMapValueByPath<FString, FIntProperty, int32>(
-				*this, Actor, TEXT("LastMap"), FString(TEXT("Two")), Value)) return false;
+				Test, Actor, TEXT("LastMap"), FString(TEXT("Two")), Value)) return false;
 		TestEqual(TEXT("TMap in-param should round-trip the values"), Value, 2);
 	}
 
 	// ---- TSet in-param ----
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeNameSet")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeNameSet")));
 		TSet<FName> Seed;
 		Seed.Add(FName(TEXT("Delta")));
 		Seed.Add(FName(TEXT("Epsilon")));
@@ -1309,15 +1285,15 @@ class ATemplateReflectionInvokeExtendedTypesActor : AActor
 		if (!Invoker.Call()) return false;
 
 		int32 Count = 0;
-		if (!GetSetNumByPath(*this, Actor, TEXT("LastSet"), Count)) return false;
+		if (!GetSetNumByPath(Test, Actor, TEXT("LastSet"), Count)) return false;
 		TestEqual(TEXT("TSet in-param should round-trip the entry count"), Count, 2);
 		TestTrue(TEXT("TSet in-param should round-trip membership"),
-			SetContainsByPath<FName>(*this, Actor, TEXT("LastSet"), FName(TEXT("Epsilon"))));
+			SetContainsByPath<FName>(Test, Actor, TEXT("LastSet"), FName(TEXT("Epsilon"))));
 	}
 
 	// ---- Return FVector2D ----
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("MakeVector2D")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("MakeVector2D")));
 		// MakeVector2D's parameters are AS `float`s, which the UFunction reflects as
 		// FDoubleProperty (same rule as the core primitive matrix test).
 		Invoker.AddParam<double>(1.25);
@@ -1329,7 +1305,7 @@ class ATemplateReflectionInvokeExtendedTypesActor : AActor
 
 	// ---- Return FTransform ----
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("MakeTransform")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("MakeTransform")));
 		Invoker.AddParam<FVector>(FVector(7.0, 8.0, 9.0));
 		const FTransform Result = Invoker.CallAndReturn<FTransform>(FTransform::Identity);
 		TestTrue(TEXT("FTransform-returning UFUNCTION should carry the assigned translation back to C++"),
@@ -1338,7 +1314,7 @@ class ATemplateReflectionInvokeExtendedTypesActor : AActor
 
 	// ---- Return USceneComponent (component reference as return value) ----
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("GetOwnedScene")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("GetOwnedScene")));
 		USceneComponent* Result = Invoker.CallAndReturn<USceneComponent*>(nullptr);
 		TestEqual(TEXT("USceneComponent-returning UFUNCTION should return the SceneRoot"),
 			static_cast<UObject*>(Result), static_cast<UObject*>(SceneRootFromProperty));
@@ -1346,7 +1322,7 @@ class ATemplateReflectionInvokeExtendedTypesActor : AActor
 
 	// ---- FTransform &out ----
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("FillTransformOut")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("FillTransformOut")));
 		Invoker.AddParam<FTransform>(FTransform::Identity);
 		if (!Invoker.Call()) return false;
 
@@ -1374,12 +1350,7 @@ class ATemplateReflectionInvokeExtendedTypesActor : AActor
 // read back from C++ through its dedicated helper. Where applicable we also
 // flow the type through a UFUNCTION parameter to confirm the invoker handles it.
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTemplateReflectionAccessReferenceTypesTest,
-	"Angelscript.Template.ReflectionAccess.PathAccessReferenceTypes",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTemplateReflectionAccessReferenceTypesTest::RunTest(const FString& Parameters)
+	bool PathAccessReferenceTypes(FAutomationTestBase& Test)
 {
 	// Reference type tests use IsolatedFull so script-defined classes and their
 	// type metadata stay alive for the whole actor lifetime.
@@ -1403,7 +1374,7 @@ bool FAngelscriptTemplateReflectionAccessReferenceTypesTest::RunTest(const FStri
 	const FSoftObjectPath KnownSoftPath(TEXT("/Engine/EngineResources/DefaultTexture.DefaultTexture"));
 
 	UClass* ScriptClass = CompileScriptModule(
-		*this,
+		Test,
 		Engine,
 		ModuleName,
 		TEXT("TemplateReflectionAccessReferenceTypes.as"),
@@ -1463,7 +1434,7 @@ class ATemplateReflectionReferenceTypesActor : AActor
 
 	FActorTestSpawner Spawner;
 	Spawner.InitializeGameSubsystems();
-	AActor* Actor = SpawnScriptActor(*this, Spawner, ScriptClass);
+	AActor* Actor = SpawnScriptActor(Test, Spawner, ScriptClass);
 	if (!TestNotNull(TEXT("Reference-types actor should spawn"), Actor))
 	{
 		return false;
@@ -1473,7 +1444,7 @@ class ATemplateReflectionReferenceTypesActor : AActor
 	// ---- FText ----
 	{
 		FText Actual;
-		if (!GetTextByPath(*this, Actor, TEXT("TextValue"), Actual))
+		if (!GetTextByPath(Test, Actor, TEXT("TextValue"), Actual))
 		{
 			return false;
 		}
@@ -1484,7 +1455,7 @@ class ATemplateReflectionReferenceTypesActor : AActor
 	// ---- TSoftObjectPtr ----
 	{
 		FSoftObjectPath Actual;
-		if (!GetSoftObjectPathByPath(*this, Actor, TEXT("SoftObjectRef"), Actual))
+		if (!GetSoftObjectPathByPath(Test, Actor, TEXT("SoftObjectRef"), Actual))
 		{
 			return false;
 		}
@@ -1495,7 +1466,7 @@ class ATemplateReflectionReferenceTypesActor : AActor
 	// ---- TSoftClassPtr ----
 	{
 		FSoftObjectPath Actual;
-		if (!GetSoftClassPathByPath(*this, Actor, TEXT("SoftClassRef"), Actual))
+		if (!GetSoftClassPathByPath(Test, Actor, TEXT("SoftClassRef"), Actual))
 		{
 			return false;
 		}
@@ -1506,7 +1477,7 @@ class ATemplateReflectionReferenceTypesActor : AActor
 	// ---- TWeakObjectPtr ----
 	{
 		UObject* Actual = nullptr;
-		if (!GetWeakObjectByPath(*this, Actor, TEXT("WeakActorRef"), Actual))
+		if (!GetWeakObjectByPath(Test, Actor, TEXT("WeakActorRef"), Actual))
 		{
 			return false;
 		}
@@ -1522,42 +1493,42 @@ class ATemplateReflectionReferenceTypesActor : AActor
 
 	// TakeText(FText)
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeText")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeText")));
 		Invoker.AddParam<FText>(FText::FromString(TEXT("FromCpp")));
 		if (!Invoker.Call()) return false;
 		FText Actual;
-		if (!GetTextByPath(*this, Actor, TEXT("LastText"), Actual)) return false;
+		if (!GetTextByPath(Test, Actor, TEXT("LastText"), Actual)) return false;
 		TestEqual(TEXT("FText in-param should round-trip"), Actual.ToString(), FString(TEXT("FromCpp")));
 	}
 
 	// TakeSoftObject(TSoftObjectPtr<UObject>) - pass in a soft ptr built from the known path.
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeSoftObject")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeSoftObject")));
 		TSoftObjectPtr<UObject> SoftIn(KnownSoftPath);
 		Invoker.AddParam<TSoftObjectPtr<UObject>>(SoftIn);
 		if (!Invoker.Call()) return false;
 
 		FSoftObjectPath Actual;
-		if (!GetSoftObjectPathByPath(*this, Actor, TEXT("LastSoftRef"), Actual)) return false;
+		if (!GetSoftObjectPathByPath(Test, Actor, TEXT("LastSoftRef"), Actual)) return false;
 		TestEqual(TEXT("TSoftObjectPtr in-param should round-trip"), Actual, KnownSoftPath);
 	}
 
 	// TakeWeakActor(TWeakObjectPtr<AActor>) - pass the actor itself.
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("TakeWeakActor")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("TakeWeakActor")));
 		TWeakObjectPtr<AActor> WeakIn(Actor);
 		Invoker.AddParam<TWeakObjectPtr<AActor>>(WeakIn);
 		if (!Invoker.Call()) return false;
 
 		UObject* Resolved = nullptr;
-		if (!GetWeakObjectByPath(*this, Actor, TEXT("LastWeak"), Resolved)) return false;
+		if (!GetWeakObjectByPath(Test, Actor, TEXT("LastWeak"), Resolved)) return false;
 		TestEqual(TEXT("TWeakObjectPtr in-param should round-trip"),
 			Resolved, static_cast<UObject*>(Actor));
 	}
 
 	// Return FText
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("MakeLabel")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("MakeLabel")));
 		Invoker.AddParam<FString>(FString(TEXT("Mob")));
 		Invoker.AddParam<int32>(11);
 		const FText Result = Invoker.CallAndReturn<FText>(FText::GetEmpty());
@@ -1582,12 +1553,7 @@ class ATemplateReflectionReferenceTypesActor : AActor
 // are in play. The test therefore uses an IsolatedFull engine to keep the AS
 // engine alive for the duration of the spawned actor's lifetime.
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTemplateReflectionAccessScriptDefinedTypesTest,
-	"Angelscript.Template.ReflectionAccess.PathAccessScriptDefinedTypes",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTemplateReflectionAccessScriptDefinedTypesTest::RunTest(const FString& Parameters)
+	bool PathAccessScriptDefinedTypes(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 	{
@@ -1603,7 +1569,7 @@ bool FAngelscriptTemplateReflectionAccessScriptDefinedTypesTest::RunTest(const F
 	static const FName ModuleName(TEXT("TemplateReflectionAccessScriptDefined"));
 
 	UClass* ScriptClass = CompileScriptModule(
-		*this,
+		Test,
 		Engine,
 		ModuleName,
 		TEXT("TemplateReflectionAccessScriptDefined.as"),
@@ -1659,7 +1625,7 @@ class ATemplateScriptDefinedOwner : AActor
 
 	FActorTestSpawner Spawner;
 	Spawner.InitializeGameSubsystems();
-	AActor* Actor = SpawnScriptActor(*this, Spawner, ScriptClass);
+	AActor* Actor = SpawnScriptActor(Test, Spawner, ScriptClass);
 	if (!TestNotNull(TEXT("Script-defined-types actor should spawn"), Actor))
 	{
 		return false;
@@ -1667,14 +1633,14 @@ class ATemplateScriptDefinedOwner : AActor
 	BeginPlayActor(Engine, *Actor);
 
 	// ---- AS USTRUCT as UPROPERTY: sub-field path access ----
-	VerifyByPath<FIntProperty, int32>(*this, Actor, TEXT("Stats.Power"), 42,
+	VerifyByPath<FIntProperty, int32>(Test, Actor, TEXT("Stats.Power"), 42,
 		TEXT("AS-USTRUCT UPROPERTY int sub-field should resolve through a nested path"));
-	VerifyByPath<FStrProperty, FString>(*this, Actor, TEXT("Stats.Label"), FString(TEXT("VIP")),
+	VerifyByPath<FStrProperty, FString>(Test, Actor, TEXT("Stats.Label"), FString(TEXT("VIP")),
 		TEXT("AS-USTRUCT UPROPERTY FString sub-field should resolve through a nested path"));
 
 	// ---- AS UCLASS reference as UPROPERTY ----
 	UObject* Partner = nullptr;
-	if (!GetObjectByPath(*this, Actor, TEXT("Partner"), Partner))
+	if (!GetObjectByPath(Test, Actor, TEXT("Partner"), Partner))
 	{
 		return false;
 	}
@@ -1686,9 +1652,9 @@ class ATemplateScriptDefinedOwner : AActor
 	// Reading a UPROPERTY on the *partner* object is the same helper, just with a
 	// different target - no special casing needed because the partner is also a
 	// UObject generated by the AS class system.
-	VerifyByPath<FIntProperty, int32>(*this, Partner, TEXT("PartnerValue"), 123,
+	VerifyByPath<FIntProperty, int32>(Test, Partner, TEXT("PartnerValue"), 123,
 		TEXT("Partner AS-UCLASS UPROPERTY int should read back the AS-side assignment"));
-	VerifyByPath<FStrProperty, FString>(*this, Partner, TEXT("PartnerName"), FString(TEXT("Bound")),
+	VerifyByPath<FStrProperty, FString>(Test, Partner, TEXT("PartnerName"), FString(TEXT("Bound")),
 		TEXT("Partner AS-UCLASS UPROPERTY FString should read back the AS-side assignment"));
 
 	// ---- AS UFUNCTION taking an AS USTRUCT ----
@@ -1716,12 +1682,7 @@ class ATemplateScriptDefinedOwner : AActor
 // of PropertyBindingUtils that changes this has a red test to signal the
 // behaviour change.
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTemplateReflectionAccessPathLimitsTest,
-	"Angelscript.Template.ReflectionAccess.PathParserLimits",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTemplateReflectionAccessPathLimitsTest::RunTest(const FString& Parameters)
+	bool PathParserLimits(FAutomationTestBase& Test)
 {
 	// -----------------------------------------------------------------------
 	// Parse-level behaviour
@@ -1784,7 +1745,7 @@ bool FAngelscriptTemplateReflectionAccessPathLimitsTest::RunTest(const FString& 
 	};
 
 	UClass* ScriptClass = CompileScriptModule(
-		*this,
+		Test,
 		Engine,
 		ModuleName,
 		TEXT("TemplateReflectionAccessPathLimits.as"),
@@ -1812,7 +1773,7 @@ class ATemplateReflectionPathLimitsActor : AActor
 
 	FActorTestSpawner Spawner;
 	Spawner.InitializeGameSubsystems();
-	AActor* Actor = SpawnScriptActor(*this, Spawner, ScriptClass);
+	AActor* Actor = SpawnScriptActor(Test, Spawner, ScriptClass);
 	if (!TestNotNull(TEXT("Path-limits scratch actor should spawn"), Actor))
 	{
 		return false;
@@ -1895,19 +1856,10 @@ class ATemplateReflectionPathLimitsActor : AActor
 //   1. Declare an AS module-level wrapper that forwards to the BP static.
 //   2. Invoke the wrapper from C++ through FASGlobalFunctionInvoker.
 //
-// Test 10 (BPLibraryDirectCDOCall) proves the complementary route: any
-// BlueprintCallable UFUNCTION — including the test-module-local fallback
-// library — can also be reached from C++ without any AS script at all, by
-// driving its UFunction directly through FFunctionInvoker on the library
-// CDO. That's the pattern to use when you do NOT want to spin up an AS
-// engine just to reach a static BP helper.
+// For tests that do NOT need an AS wrapper, drive BlueprintCallable UFUNCTIONs
+// directly through FFunctionInvoker against the owning object or CDO.
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTemplateReflectionBPLibraryViaASGlobalWrapperTest,
-	"Angelscript.Template.ReflectionAccess.BPLibraryViaASGlobalWrapper",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTemplateReflectionBPLibraryViaASGlobalWrapperTest::RunTest(const FString& Parameters)
+	bool BPLibraryViaASGlobalWrapper(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
@@ -1922,7 +1874,7 @@ bool FAngelscriptTemplateReflectionBPLibraryViaASGlobalWrapperTest::RunTest(cons
 	// are ordinary AS global functions, so FASGlobalFunctionInvoker reaches
 	// them via `GetFunctionByDecl` on this module.
 	asIScriptModule* Module = BuildModule(
-		*this, Engine, "ASTemplateBPLibraryViaASGlobalWrapper",
+		Test, Engine, "ASTemplateBPLibraryViaASGlobalWrapper",
 		TEXT(R"(
 // ---- Math library wrappers ----
 // Note: this fork runs with asEP_FLOAT_IS_FLOAT64=1, so `float` below is
@@ -1978,7 +1930,7 @@ double WrapScoreBlend(double Value, double Floor, double Ceiling)
 
 	// Math::Abs
 	{
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("double WrapMathAbs(double)"));
+		FASGlobalFunctionInvoker Invoker(Test, Engine, *Module, TEXT("double WrapMathAbs(double)"));
 		Invoker.AddArg(-7.25);
 		TestTrue(TEXT("Math::Abs(-7.25) should return 7.25"),
 			FMath::IsNearlyEqual(Invoker.CallAndReturn<double>(0.0), 7.25));
@@ -1986,7 +1938,7 @@ double WrapScoreBlend(double Value, double Floor, double Ceiling)
 
 	// Math::Sqrt
 	{
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("double WrapMathSqrt(double)"));
+		FASGlobalFunctionInvoker Invoker(Test, Engine, *Module, TEXT("double WrapMathSqrt(double)"));
 		Invoker.AddArg(144.0);
 		TestTrue(TEXT("Math::Sqrt(144.0) should return 12.0"),
 			FMath::IsNearlyEqual(Invoker.CallAndReturn<double>(0.0), 12.0));
@@ -1994,7 +1946,7 @@ double WrapScoreBlend(double Value, double Floor, double Ceiling)
 
 	// Math::Clamp
 	{
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("double WrapMathClamp(double, double, double)"));
+		FASGlobalFunctionInvoker Invoker(Test, Engine, *Module, TEXT("double WrapMathClamp(double, double, double)"));
 		Invoker.AddArg(42.0).AddArg(0.0).AddArg(10.0);
 		TestTrue(TEXT("Math::Clamp(42, 0, 10) should clamp to 10"),
 			FMath::IsNearlyEqual(Invoker.CallAndReturn<double>(0.0), 10.0));
@@ -2002,7 +1954,7 @@ double WrapScoreBlend(double Value, double Floor, double Ceiling)
 
 	// Math::Lerp
 	{
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("double WrapMathLerp(double, double, double)"));
+		FASGlobalFunctionInvoker Invoker(Test, Engine, *Module, TEXT("double WrapMathLerp(double, double, double)"));
 		Invoker.AddArg(0.0).AddArg(100.0).AddArg(0.25);
 		TestTrue(TEXT("Math::Lerp(0, 100, 0.25) should be 25"),
 			FMath::IsNearlyEqual(Invoker.CallAndReturn<double>(0.0), 25.0));
@@ -2010,7 +1962,7 @@ double WrapScoreBlend(double Value, double Floor, double Ceiling)
 
 	// Math::IsNearlyEqual (bool return - exercises GetReturnByte through the bool branch)
 	{
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("bool WrapMathIsNearlyEqual(double, double, double)"));
+		FASGlobalFunctionInvoker Invoker(Test, Engine, *Module, TEXT("bool WrapMathIsNearlyEqual(double, double, double)"));
 		Invoker.AddArg(1.00001).AddArg(1.00002).AddArg(0.001);
 		TestTrue(TEXT("Math::IsNearlyEqual should report 1.00001 ~ 1.00002 within 0.001"),
 			Invoker.CallAndReturn<bool>(false));
@@ -2019,7 +1971,7 @@ double WrapScoreBlend(double Value, double Floor, double Ceiling)
 	// FVector const-ref in + Math::Sqrt return
 	{
 		FVector Input(3.0, 4.0, 12.0); // magnitude = 13
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("double WrapVectorMagnitude(const FVector&in)"));
+		FASGlobalFunctionInvoker Invoker(Test, Engine, *Module, TEXT("double WrapVectorMagnitude(const FVector&in)"));
 		Invoker.AddArgRef(Input);
 		TestTrue(TEXT("WrapVectorMagnitude should compose FVector passing with Math::Sqrt"),
 			FMath::IsNearlyEqual(Invoker.CallAndReturn<double>(0.0), 13.0, 1e-6));
@@ -2027,7 +1979,7 @@ double WrapScoreBlend(double Value, double Floor, double Ceiling)
 
 	// Nested BP-library composition: Math::Square(7) = 49, Clamp(49, 0, 100) = 49.
 	{
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module,
+		FASGlobalFunctionInvoker Invoker(Test, Engine, *Module,
 			TEXT("double WrapScoreBlend(double, double, double)"));
 		Invoker.AddArg(7.0).AddArg(0.0).AddArg(100.0);
 		TestTrue(TEXT("WrapScoreBlend should stitch Math::Square + Math::Clamp (49 case)"),
@@ -2036,7 +1988,7 @@ double WrapScoreBlend(double Value, double Floor, double Ceiling)
 
 	// Same routine, but clamp clips: Square(7)=49, Clamp(49, 0, 20) = 20.
 	{
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module,
+		FASGlobalFunctionInvoker Invoker(Test, Engine, *Module,
 			TEXT("double WrapScoreBlend(double, double, double)"));
 		Invoker.AddArg(7.0).AddArg(0.0).AddArg(20.0);
 		TestTrue(TEXT("WrapScoreBlend should observe the Math::Clamp ceiling"),
@@ -2048,7 +2000,7 @@ double WrapScoreBlend(double Value, double Floor, double Ceiling)
 }
 
 // =============================================================================
-// Test 11: BPLibraryThroughActorUFunction
+// Test 10: BPLibraryThroughActorUFunction
 // =============================================================================
 //
 // Compose the two reflection paths:
@@ -2060,12 +2012,7 @@ double WrapScoreBlend(double Value, double Floor, double Ceiling)
 // This is the most "production-like" shape: gameplay code sitting behind a
 // UFUNCTION, BP library usage inside, C++ test driving the whole path.
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTemplateReflectionBPLibraryThroughActorUFunctionTest,
-	"Angelscript.Template.ReflectionAccess.BPLibraryThroughActorUFunction",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTemplateReflectionBPLibraryThroughActorUFunctionTest::RunTest(const FString& Parameters)
+	bool BPLibraryThroughActorUFunction(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
@@ -2077,7 +2024,7 @@ bool FAngelscriptTemplateReflectionBPLibraryThroughActorUFunctionTest::RunTest(c
 	};
 
 	UClass* ScriptClass = CompileScriptModule(
-		*this,
+		Test,
 		Engine,
 		ModuleName,
 		TEXT("TemplateReflectionBPLibraryActor.as"),
@@ -2115,7 +2062,7 @@ class ATemplateReflectionBPLibraryActor : AActor
 
 	FActorTestSpawner Spawner;
 	Spawner.InitializeGameSubsystems();
-	AActor* Actor = SpawnScriptActor(*this, Spawner, ScriptClass);
+	AActor* Actor = SpawnScriptActor(Test, Spawner, ScriptClass);
 	if (!TestNotNull(TEXT("BP-library actor should spawn"), Actor))
 	{
 		return false;
@@ -2125,7 +2072,7 @@ class ATemplateReflectionBPLibraryActor : AActor
 	// Invoke the AS UFUNCTION (which calls Math::Sqrt / Math::Lerp /
 	// Math::Clamp internally) and assert on its return value.
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("ComputeBlend")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("ComputeBlend")));
 		if (!Invoker.IsValid())
 		{
 			return false;
@@ -2145,15 +2092,15 @@ class ATemplateReflectionBPLibraryActor : AActor
 	// Re-confirm the side-effect mirrors through the path helpers. This
 	// exercises the "BP library computation observable via FPropertyBindingPath"
 	// shape, which is how real tests typically assert on gameplay code.
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("LastMagnitude"), 13.0,
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("LastMagnitude"), 13.0,
 		TEXT("LastMagnitude UPROPERTY should mirror the BP-library sqrt result"));
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("LastClampedBlend"), 6.5,
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("LastClampedBlend"), 6.5,
 		TEXT("LastClampedBlend UPROPERTY should mirror the BP-library clamp output"));
 
 	// Second invocation exercises the clamp path — Blended (10) would become
 	// 9 via Lerp, but we clamp to [0, 5] so the return should be 5.
 	{
-		FFunctionInvoker Invoker(*this, Actor, FName(TEXT("ComputeBlend")));
+		FFunctionInvoker Invoker(Test, Actor, FName(TEXT("ComputeBlend")));
 		if (!Invoker.IsValid())
 		{
 			return false;
@@ -2167,11 +2114,72 @@ class ATemplateReflectionBPLibraryActor : AActor
 		TestTrue(TEXT("ComputeBlend should clamp the Lerp output to the supplied max"),
 			FMath::IsNearlyEqual(Result, 5.0, 1e-6));
 	}
-	VerifyByPath<FDoubleProperty, double>(*this, Actor, TEXT("LastClampedBlend"), 5.0,
+	VerifyByPath<FDoubleProperty, double>(Test, Actor, TEXT("LastClampedBlend"), 5.0,
 		TEXT("LastClampedBlend UPROPERTY should reflect the second invocation's clamp output"));
 
 	}
 	return true;
 }
+
+#undef TestNotNull
+#undef TestEqual
+#undef TestFalse
+#undef TestTrue
+}
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptTemplateReflectionAccessTest,
+	"Angelscript.Template.ReflectionAccess",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(PathAndInvoke)
+	{
+		ASSERT_THAT(IsTrue(TemplateReflectionAccessTest::PathAndInvoke(*TestRunner)));
+	}
+
+	TEST_METHOD(PathAccessAllTypes)
+	{
+		ASSERT_THAT(IsTrue(TemplateReflectionAccessTest::PathAccessAllTypes(*TestRunner)));
+	}
+
+	TEST_METHOD(FunctionInvokeAllTypes)
+	{
+		ASSERT_THAT(IsTrue(TemplateReflectionAccessTest::FunctionInvokeAllTypes(*TestRunner)));
+	}
+
+	TEST_METHOD(PathAccessExtendedTypes)
+	{
+		ASSERT_THAT(IsTrue(TemplateReflectionAccessTest::PathAccessExtendedTypes(*TestRunner)));
+	}
+
+	TEST_METHOD(FunctionInvokeExtendedTypes)
+	{
+		ASSERT_THAT(IsTrue(TemplateReflectionAccessTest::FunctionInvokeExtendedTypes(*TestRunner)));
+	}
+
+	TEST_METHOD(PathAccessReferenceTypes)
+	{
+		ASSERT_THAT(IsTrue(TemplateReflectionAccessTest::PathAccessReferenceTypes(*TestRunner)));
+	}
+
+	TEST_METHOD(PathAccessScriptDefinedTypes)
+	{
+		ASSERT_THAT(IsTrue(TemplateReflectionAccessTest::PathAccessScriptDefinedTypes(*TestRunner)));
+	}
+
+	TEST_METHOD(PathParserLimits)
+	{
+		ASSERT_THAT(IsTrue(TemplateReflectionAccessTest::PathParserLimits(*TestRunner)));
+	}
+
+	TEST_METHOD(BPLibraryViaASGlobalWrapper)
+	{
+		ASSERT_THAT(IsTrue(TemplateReflectionAccessTest::BPLibraryViaASGlobalWrapper(*TestRunner)));
+	}
+
+	TEST_METHOD(BPLibraryThroughActorUFunction)
+	{
+		ASSERT_THAT(IsTrue(TemplateReflectionAccessTest::BPLibraryThroughActorUFunction(*TestRunner)));
+	}
+};
 
 #endif

@@ -6,6 +6,7 @@
 #include "Core/AngelscriptRuntimeModule.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "CQTest.h"
 #include "HAL/FileManager.h"
 #include "K2Node_CallFunction.h"
 #include "K2Node_CustomEvent.h"
@@ -23,66 +24,6 @@
 #include "UObject/Package.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactNormalizePathsTest,
-	"Angelscript.Editor.BlueprintImpact.NormalizePaths",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactMatchChangedScriptsToModuleSectionsTest,
-	"Angelscript.Editor.BlueprintImpact.MatchChangedScriptsToModuleSections",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactBuildSymbolsTest,
-	"Angelscript.Editor.BlueprintImpact.BuildImpactSymbols",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactAnalyzeParentClassTest,
-	"Angelscript.Editor.BlueprintImpact.AnalyzeParentClass",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactCommandletInvalidFileTest,
-	"Angelscript.Editor.BlueprintImpact.CommandletInvalidFile",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactCommandletEngineNotReadyTest,
-	"Angelscript.Editor.BlueprintImpact.CommandletEngineNotReadyReturnsExitCode2",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactAnalyzeVariableTypeTest,
-	"Angelscript.Editor.BlueprintImpact.AnalyzeVariableType",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactAnalyzePinTypeTest,
-	"Angelscript.Editor.BlueprintImpact.AnalyzePinType",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactAnalyzeNodeDependencyTest,
-	"Angelscript.Editor.BlueprintImpact.AnalyzeNodeDependency",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactAnalyzeReferencedAssetTest,
-	"Angelscript.Editor.BlueprintImpact.AnalyzeReferencedAsset",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactAnalyzeDelegateSignatureTest,
-	"Angelscript.Editor.BlueprintImpact.AnalyzeDelegateSignature",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactFindBlueprintAssetsDiskBackedTest,
-	"Angelscript.Editor.BlueprintImpact.FindBlueprintAssetsDiskBacked",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScannerTests_Private
 {
@@ -255,8 +196,13 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScannerTests
 	}
 }
 
+#define AddExpectedError(...) Test.AddExpectedError(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 
-bool FAngelscriptBlueprintImpactNormalizePathsTest::RunTest(const FString& Parameters)
+static bool RunNormalizePaths(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScannerTests_Private;
 	const TArray<FString> ChangedScripts = {
@@ -273,7 +219,7 @@ bool FAngelscriptBlueprintImpactNormalizePathsTest::RunTest(const FString& Param
 	return TestEqual(TEXT("BlueprintImpact.NormalizePaths should normalize paths case-insensitively"), NormalizedPaths[1], FString(TEXT("scripts/gameplay/enemy.as")));
 }
 
-bool FAngelscriptBlueprintImpactMatchChangedScriptsToModuleSectionsTest::RunTest(const FString& Parameters)
+static bool RunMatchChangedScriptsToModuleSections(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScannerTests_Private;
 	const TArray<TSharedRef<FAngelscriptModuleDesc>> Modules = {
@@ -300,7 +246,7 @@ bool FAngelscriptBlueprintImpactMatchChangedScriptsToModuleSectionsTest::RunTest
 	return TestEqual(TEXT("BlueprintImpact.MatchChangedScriptsToModuleSections should return the module whose code sections include the changed script"), MatchingModules[0]->ModuleName, FString(TEXT("Gameplay.Enemy")));
 }
 
-bool FAngelscriptBlueprintImpactBuildSymbolsTest::RunTest(const FString& Parameters)
+static bool RunBuildSymbols(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScannerTests_Private;
 	TSharedRef<FAngelscriptModuleDesc> Module = MakeShared<FAngelscriptModuleDesc>();
@@ -323,10 +269,10 @@ bool FAngelscriptBlueprintImpactBuildSymbolsTest::RunTest(const FString& Paramet
 	return TestTrue(TEXT("BlueprintImpact.BuildImpactSymbols should collect generated enums"), Symbols.Enums.Contains(StaticEnum<EAutoReceiveInput::Type>()));
 }
 
-bool FAngelscriptBlueprintImpactAnalyzeParentClassTest::RunTest(const FString& Parameters)
+static bool RunAnalyzeParentClass(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScannerTests_Private;
-	UBlueprint* Blueprint = CreateTransientBlueprintChild(*this, AActor::StaticClass(), TEXT("ParentMatch"));
+	UBlueprint* Blueprint = CreateTransientBlueprintChild(Test, AActor::StaticClass(), TEXT("ParentMatch"));
 	ON_SCOPE_EXIT
 	{
 		CleanupBlueprint(Blueprint);
@@ -349,7 +295,7 @@ bool FAngelscriptBlueprintImpactAnalyzeParentClassTest::RunTest(const FString& P
 	return TestTrue(TEXT("BlueprintImpact.AnalyzeParentClass should record the parent class reason"), Reasons.Contains(AngelscriptEditor::BlueprintImpact::EBlueprintImpactReason::ScriptParentClass));
 }
 
-bool FAngelscriptBlueprintImpactCommandletInvalidFileTest::RunTest(const FString& Parameters)
+static bool RunCommandletInvalidFile(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScannerTests_Private;
 	UAngelscriptBlueprintImpactScanCommandlet* Commandlet = NewObject<UAngelscriptBlueprintImpactScanCommandlet>();
@@ -387,7 +333,7 @@ bool FAngelscriptBlueprintImpactCommandletInvalidFileTest::RunTest(const FString
 		1);
 }
 
-bool FAngelscriptBlueprintImpactCommandletEngineNotReadyTest::RunTest(const FString& Parameters)
+static bool RunCommandletEngineNotReady(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScannerTests_Private;
 	UAngelscriptBlueprintImpactScanCommandlet* Commandlet = NewObject<UAngelscriptBlueprintImpactScanCommandlet>();
@@ -419,10 +365,10 @@ bool FAngelscriptBlueprintImpactCommandletEngineNotReadyTest::RunTest(const FStr
 		2);
 }
 
-bool FAngelscriptBlueprintImpactAnalyzeVariableTypeTest::RunTest(const FString& Parameters)
+static bool RunAnalyzeVariableType(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScannerTests_Private;
-	UBlueprint* Blueprint = CreateTransientBlueprintChild(*this, UObject::StaticClass(), TEXT("VariableType"));
+	UBlueprint* Blueprint = CreateTransientBlueprintChild(Test, UObject::StaticClass(), TEXT("VariableType"));
 	ON_SCOPE_EXIT { CleanupBlueprint(Blueprint); };
 	if (!TestNotNull(TEXT("BlueprintImpact.AnalyzeVariableType should create a blueprint"), Blueprint))
 	{
@@ -447,10 +393,10 @@ bool FAngelscriptBlueprintImpactAnalyzeVariableTypeTest::RunTest(const FString& 
 	return TestTrue(TEXT("BlueprintImpact.AnalyzeVariableType should record the variable-type reason"), Reasons.Contains(AngelscriptEditor::BlueprintImpact::EBlueprintImpactReason::VariableType));
 }
 
-bool FAngelscriptBlueprintImpactAnalyzePinTypeTest::RunTest(const FString& Parameters)
+static bool RunAnalyzePinType(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScannerTests_Private;
-	UBlueprint* Blueprint = CreateTransientBlueprintChild(*this, UObject::StaticClass(), TEXT("PinType"));
+	UBlueprint* Blueprint = CreateTransientBlueprintChild(Test, UObject::StaticClass(), TEXT("PinType"));
 	ON_SCOPE_EXIT { CleanupBlueprint(Blueprint); };
 	if (!TestNotNull(TEXT("BlueprintImpact.AnalyzePinType should create a blueprint"), Blueprint))
 	{
@@ -475,10 +421,10 @@ bool FAngelscriptBlueprintImpactAnalyzePinTypeTest::RunTest(const FString& Param
 	return TestTrue(TEXT("BlueprintImpact.AnalyzePinType should record the pin-type reason"), Reasons.Contains(AngelscriptEditor::BlueprintImpact::EBlueprintImpactReason::PinType));
 }
 
-bool FAngelscriptBlueprintImpactAnalyzeNodeDependencyTest::RunTest(const FString& Parameters)
+static bool RunAnalyzeNodeDependency(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScannerTests_Private;
-	UBlueprint* Blueprint = CreateTransientBlueprintChild(*this, UObject::StaticClass(), TEXT("NodeDependency"));
+	UBlueprint* Blueprint = CreateTransientBlueprintChild(Test, UObject::StaticClass(), TEXT("NodeDependency"));
 	ON_SCOPE_EXIT { CleanupBlueprint(Blueprint); };
 	if (!TestNotNull(TEXT("BlueprintImpact.AnalyzeNodeDependency should create a blueprint"), Blueprint))
 	{
@@ -503,10 +449,10 @@ bool FAngelscriptBlueprintImpactAnalyzeNodeDependencyTest::RunTest(const FString
 	return TestTrue(TEXT("BlueprintImpact.AnalyzeNodeDependency should record the node-dependency reason"), Reasons.Contains(AngelscriptEditor::BlueprintImpact::EBlueprintImpactReason::NodeDependency));
 }
 
-bool FAngelscriptBlueprintImpactAnalyzeReferencedAssetTest::RunTest(const FString& Parameters)
+static bool RunAnalyzeReferencedAsset(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScannerTests_Private;
-	UBlueprint* Blueprint = CreateTransientBlueprintChild(*this, AActor::StaticClass(), TEXT("ReferencedAsset"));
+	UBlueprint* Blueprint = CreateTransientBlueprintChild(Test, AActor::StaticClass(), TEXT("ReferencedAsset"));
 	ON_SCOPE_EXIT { CleanupBlueprint(Blueprint); };
 	if (!TestNotNull(TEXT("BlueprintImpact.AnalyzeReferencedAsset should create a blueprint"), Blueprint))
 	{
@@ -525,7 +471,7 @@ bool FAngelscriptBlueprintImpactAnalyzeReferencedAssetTest::RunTest(const FStrin
 	return TestTrue(TEXT("BlueprintImpact.AnalyzeReferencedAsset should record the referenced-asset reason"), Reasons.Contains(AngelscriptEditor::BlueprintImpact::EBlueprintImpactReason::ReferencedAsset));
 }
 
-bool FAngelscriptBlueprintImpactAnalyzeDelegateSignatureTest::RunTest(const FString& Parameters)
+static bool RunAnalyzeDelegateSignature(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScannerTests_Private;
 	UDelegateFunction* DelegateFunc = nullptr;
@@ -545,7 +491,7 @@ bool FAngelscriptBlueprintImpactAnalyzeDelegateSignatureTest::RunTest(const FStr
 		return false;
 	}
 
-	UBlueprint* Blueprint = CreateTransientBlueprintChild(*this, AActor::StaticClass(), TEXT("DelegateSignature"));
+	UBlueprint* Blueprint = CreateTransientBlueprintChild(Test, AActor::StaticClass(), TEXT("DelegateSignature"));
 	ON_SCOPE_EXIT { CleanupBlueprint(Blueprint); };
 	if (!TestNotNull(TEXT("BlueprintImpact.AnalyzeDelegateSignature should create a blueprint"), Blueprint))
 	{
@@ -583,12 +529,12 @@ bool FAngelscriptBlueprintImpactAnalyzeDelegateSignatureTest::RunTest(const FStr
 	return TestTrue(TEXT("BlueprintImpact.AnalyzeDelegateSignature should record the delegate-signature reason"), Reasons.Contains(AngelscriptEditor::BlueprintImpact::EBlueprintImpactReason::DelegateSignature));
 }
 
-bool FAngelscriptBlueprintImpactFindBlueprintAssetsDiskBackedTest::RunTest(const FString& Parameters)
+static bool RunFindBlueprintAssetsDiskBacked(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScannerTests_Private;
 	FString PackagePath;
 	FString PackageFilename;
-	UBlueprint* Blueprint = CreateDiskBackedBlueprintChild(*this, AActor::StaticClass(), TEXT("DiskBackedEditor"), PackagePath, PackageFilename);
+	UBlueprint* Blueprint = CreateDiskBackedBlueprintChild(Test, AActor::StaticClass(), TEXT("DiskBackedEditor"), PackagePath, PackageFilename);
 	ON_SCOPE_EXIT
 	{
 		if (!PackageFilename.IsEmpty())
@@ -611,5 +557,76 @@ bool FAngelscriptBlueprintImpactFindBlueprintAssetsDiskBackedTest::RunTest(const
 		return AssetData.PackageName.ToString() == PackagePath;
 	}));
 }
+
+#undef TestTrue
+#undef TestNotNull
+#undef TestFalse
+#undef TestEqual
+#undef AddExpectedError
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptBlueprintImpactScannerTests,
+	"Angelscript.Editor.BlueprintImpact",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(NormalizePaths)
+	{
+		ASSERT_THAT(IsTrue(RunNormalizePaths(*TestRunner)));
+	}
+
+	TEST_METHOD(MatchChangedScriptsToModuleSections)
+	{
+		ASSERT_THAT(IsTrue(RunMatchChangedScriptsToModuleSections(*TestRunner)));
+	}
+
+	TEST_METHOD(BuildImpactSymbols)
+	{
+		ASSERT_THAT(IsTrue(RunBuildSymbols(*TestRunner)));
+	}
+
+	TEST_METHOD(AnalyzeParentClass)
+	{
+		ASSERT_THAT(IsTrue(RunAnalyzeParentClass(*TestRunner)));
+	}
+
+	TEST_METHOD(CommandletInvalidFile)
+	{
+		ASSERT_THAT(IsTrue(RunCommandletInvalidFile(*TestRunner)));
+	}
+
+	TEST_METHOD(CommandletEngineNotReadyReturnsExitCode2)
+	{
+		ASSERT_THAT(IsTrue(RunCommandletEngineNotReady(*TestRunner)));
+	}
+
+	TEST_METHOD(AnalyzeVariableType)
+	{
+		ASSERT_THAT(IsTrue(RunAnalyzeVariableType(*TestRunner)));
+	}
+
+	TEST_METHOD(AnalyzePinType)
+	{
+		ASSERT_THAT(IsTrue(RunAnalyzePinType(*TestRunner)));
+	}
+
+	TEST_METHOD(AnalyzeNodeDependency)
+	{
+		ASSERT_THAT(IsTrue(RunAnalyzeNodeDependency(*TestRunner)));
+	}
+
+	TEST_METHOD(AnalyzeReferencedAsset)
+	{
+		ASSERT_THAT(IsTrue(RunAnalyzeReferencedAsset(*TestRunner)));
+	}
+
+	TEST_METHOD(AnalyzeDelegateSignature)
+	{
+		ASSERT_THAT(IsTrue(RunAnalyzeDelegateSignature(*TestRunner)));
+	}
+
+	TEST_METHOD(FindBlueprintAssetsDiskBacked)
+	{
+		ASSERT_THAT(IsTrue(RunFindBlueprintAssetsDiskBacked(*TestRunner)));
+	}
+};
 
 #endif

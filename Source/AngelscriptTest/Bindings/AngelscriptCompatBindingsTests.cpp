@@ -12,7 +12,7 @@
 //   DateTimeCompat           -- FDateTime legacy compat syntax
 //
 // CQTest adaptation notes:
-//   Five separate IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
+//   Five separate legacy automation tests merged into one TEST_CLASS.
 //   ObjectCastCompat uses annotated module compilation (UCLASS/UFUNCTION) so
 //   the original structure is preserved within its TEST_METHOD.
 //   ObjectEditorOnlyParity uses SHARE_CLEAN since it spawns named objects.

@@ -4,6 +4,7 @@
 #include "AngelscriptRuntimeModule.h"
 #include "AngelscriptRuntimeModule.h"
 
+#include "CQTest.h"
 #include "ContentBrowserItem.h"
 #include "ContentBrowserItemData.h"
 #include "Curves/CurveFloat.h"
@@ -145,18 +146,12 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptContentBrowserDataSourceFil
 	}
 }
 
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptContentBrowserDataSourceDoesItemPassFilterTest,
-	"Angelscript.Editor.ContentBrowserDataSource.DoesItemPassFilterHonorsCompiledClassFiltersAndOwner",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptContentBrowserDataSourceCompileFilterReuseClearsStateTest,
-	"Angelscript.Editor.ContentBrowserDataSource.CompileFilterClearsPreviousIncludeExcludeStateOnReusedCompiledFilter",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptContentBrowserDataSourceDoesItemPassFilterTest::RunTest(const FString& Parameters)
+static bool RunDoesItemPassFilterHonorsCompiledClassFiltersAndOwner(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptContentBrowserDataSourceFilterTests_Private;
 	FAngelscriptRuntimeModule::InitializeAngelscript();
@@ -184,7 +179,7 @@ bool FAngelscriptContentBrowserDataSourceDoesItemPassFilterTest::RunTest(const F
 	DataSource->Initialize();
 	ForeignOwnerDataSource->Initialize();
 
-	UObject* IncludedAssetObject = CreateContentBrowserFilterTestAsset<UCurveFloat>(*this, AssetsPackage, TEXT("Asset_FilterPassCurve"));
+	UObject* IncludedAssetObject = CreateContentBrowserFilterTestAsset<UCurveFloat>(Test, AssetsPackage, TEXT("Asset_FilterPassCurve"));
 	UCurveFloat* IncludedAsset = Cast<UCurveFloat>(IncludedAssetObject);
 	if (!TestNotNull(TEXT("ContentBrowserDataSource DoesItemPassFilter test should create the include-match asset"), IncludedAsset))
 	{
@@ -243,7 +238,7 @@ bool FAngelscriptContentBrowserDataSourceDoesItemPassFilterTest::RunTest(const F
 	return bPassed;
 }
 
-bool FAngelscriptContentBrowserDataSourceCompileFilterReuseClearsStateTest::RunTest(const FString& Parameters)
+static bool RunCompileFilterClearsPreviousIncludeExcludeStateOnReusedCompiledFilter(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptContentBrowserDataSourceFilterTests_Private;
 	FAngelscriptRuntimeModule::InitializeAngelscript();
@@ -267,7 +262,7 @@ bool FAngelscriptContentBrowserDataSourceCompileFilterReuseClearsStateTest::RunT
 
 	DataSource->Initialize();
 
-	UObject* IncludedAssetObject = CreateContentBrowserFilterTestAsset<UCurveFloat>(*this, AssetsPackage, TEXT("Asset_FilterReuseCurve"));
+	UObject* IncludedAssetObject = CreateContentBrowserFilterTestAsset<UCurveFloat>(Test, AssetsPackage, TEXT("Asset_FilterReuseCurve"));
 	UCurveFloat* IncludedAsset = Cast<UCurveFloat>(IncludedAssetObject);
 	if (!TestNotNull(TEXT("ContentBrowserDataSource CompileFilter reuse test should create the include-match asset"), IncludedAsset))
 	{
@@ -352,5 +347,25 @@ bool FAngelscriptContentBrowserDataSourceCompileFilterReuseClearsStateTest::RunT
 
 	return bPassed;
 }
+
+#undef TestEqual
+#undef TestFalse
+#undef TestNotNull
+#undef TestTrue
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptContentBrowserDataSourceFilterTests,
+	"Angelscript.Editor.ContentBrowserDataSource",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(DoesItemPassFilterHonorsCompiledClassFiltersAndOwner)
+	{
+		ASSERT_THAT(IsTrue(RunDoesItemPassFilterHonorsCompiledClassFiltersAndOwner(*TestRunner)));
+	}
+
+	TEST_METHOD(CompileFilterClearsPreviousIncludeExcludeStateOnReusedCompiledFilter)
+	{
+		ASSERT_THAT(IsTrue(RunCompileFilterClearsPreviousIncludeExcludeStateOnReusedCompiledFilter(*TestRunner)));
+	}
+};
 
 #endif

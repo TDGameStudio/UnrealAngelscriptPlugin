@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "Core/AngelscriptEditorModule.h"
 
 #include "Misc/AutomationTest.h"
@@ -11,10 +12,10 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorModuleRegisterToolsMenuEntriesTest,
-	"Angelscript.Editor.Module.RegisterToolsMenuEntriesAddsWorkspaceSnippetAndLegacyBindCommands",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleMenuTests_Private
 {
@@ -49,7 +50,7 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleMenuTests_Priva
 }
 
 
-bool FAngelscriptEditorModuleRegisterToolsMenuEntriesTest::RunTest(const FString& Parameters)
+static bool RunRegisterToolsMenuEntriesAddsWorkspaceSnippetAndLegacyBindCommands(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleMenuTests_Private;
 	UToolMenus* ToolMenus = UToolMenus::Get();
@@ -156,5 +157,21 @@ bool FAngelscriptEditorModuleRegisterToolsMenuEntriesTest::RunTest(const FString
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorModuleMenuTests,
+	"Angelscript.Editor.Module",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(RegisterToolsMenuEntriesAddsWorkspaceSnippetAndLegacyBindCommands)
+	{
+		ASSERT_THAT(IsTrue(RunRegisterToolsMenuEntriesAddsWorkspaceSnippetAndLegacyBindCommands(*TestRunner)));
+	}
+};
 
 #endif

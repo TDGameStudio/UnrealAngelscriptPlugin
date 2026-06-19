@@ -1,5 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "CQTest.h"
 #include "Core/LearningTraceEvent.h"
 #include "Core/LearningTraceEventStream.h"
 #include "Core/LearningTraceExample.h"
@@ -96,22 +97,13 @@ namespace AngelscriptEditor::LearningTrace::Tests
 	}
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorLearningTraceTokenizerDriftGuardTest,
-	"Angelscript.Editor.LearningTrace.TokenizerDriftGuard",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define AddError(...) Test.AddError(__VA_ARGS__)
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorLearningTraceTokenizerEventShapeTest,
-	"Angelscript.Editor.LearningTrace.TokenizerEventShape",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorLearningTraceCommandletParsingTest,
-	"Angelscript.Editor.LearningTrace.CommandletParsing",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptEditorLearningTraceTokenizerDriftGuardTest::RunTest(const FString& Parameters)
+static bool RunTokenizerDriftGuard(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor::LearningTrace;
 	using namespace AngelscriptEditor::LearningTrace::Tests;
@@ -169,7 +161,7 @@ bool FAngelscriptEditorLearningTraceTokenizerDriftGuardTest::RunTest(const FStri
 	return true;
 }
 
-bool FAngelscriptEditorLearningTraceTokenizerEventShapeTest::RunTest(const FString& Parameters)
+static bool RunTokenizerEventShape(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor::LearningTrace;
 
@@ -247,7 +239,7 @@ bool FAngelscriptEditorLearningTraceTokenizerEventShapeTest::RunTest(const FStri
 	return true;
 }
 
-bool FAngelscriptEditorLearningTraceCommandletParsingTest::RunTest(const FString& Parameters)
+static bool RunCommandletParsing(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor::LearningTrace;
 
@@ -275,5 +267,32 @@ bool FAngelscriptEditorLearningTraceCommandletParsingTest::RunTest(const FString
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+#undef AddError
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorLearningTraceTests,
+	"Angelscript.Editor.LearningTrace",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(TokenizerDriftGuard)
+	{
+		ASSERT_THAT(IsTrue(RunTokenizerDriftGuard(*TestRunner)));
+	}
+
+	TEST_METHOD(TokenizerEventShape)
+	{
+		ASSERT_THAT(IsTrue(RunTokenizerEventShape(*TestRunner)));
+	}
+
+	TEST_METHOD(CommandletParsing)
+	{
+		ASSERT_THAT(IsTrue(RunCommandletParsing(*TestRunner)));
+	}
+};
 
 #endif // WITH_DEV_AUTOMATION_TESTS

@@ -12,7 +12,7 @@
 //                        correspondence preservation
 //
 // CQTest adaptation notes:
-//   Three original IMPLEMENT_SIMPLE_AUTOMATION_TEST classes merged into one
+//   Three original legacy automation classes merged into one
 //   TEST_CLASS with three TEST_METHODs.  Each `int Entry()` has been renamed
 //   to a descriptive function returning 1 (pass) or 0 (fail).  The pairing
 //   test is split into empty-map guard + full traversal-with-copy.

@@ -1,5 +1,6 @@
 #include "BlueprintImpact/AngelscriptBlueprintImpactScanner.h"
 
+#include "CQTest.h"
 #include "GameFramework/Actor.h"
 #include "K2Node_CallFunction.h"
 #include "K2Node_CustomEvent.h"
@@ -16,21 +17,6 @@
 #include "UObject/Package.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactAnalyzeLoadedBlueprintEmptySymbolsTest,
-	"Angelscript.Editor.BlueprintImpact.AnalyzeLoadedBlueprint.EmptySymbolsReturnsFalseAndClearsReasons",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactAnalyzeLoadedBlueprintEditablePinsAndMacroWildcardReportPinTypeTest,
-	"Angelscript.Editor.BlueprintImpact.AnalyzeLoadedBlueprint.EditablePinsAndMacroWildcardReportPinType",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactAnalyzeLoadedBlueprintEnumPinsAndVariablesReportExactReasonsTest,
-	"Angelscript.Editor.BlueprintImpact.AnalyzeLoadedBlueprint.EnumPinsAndVariablesReportExactReasons",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactAnalyzeLoadedBlueprintTests_Private
 {
@@ -165,11 +151,15 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactAnalyzeLoade
 	}
 }
 
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 
-bool FAngelscriptBlueprintImpactAnalyzeLoadedBlueprintEmptySymbolsTest::RunTest(const FString& Parameters)
+static bool RunEmptySymbolsReturnsFalseAndClearsReasons(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactAnalyzeLoadedBlueprintTests_Private;
-	UBlueprint* Blueprint = CreateTransientBlueprintChild(*this, UObject::StaticClass(), TEXT("EmptySymbols"));
+	UBlueprint* Blueprint = CreateTransientBlueprintChild(Test, UObject::StaticClass(), TEXT("EmptySymbols"));
 	ON_SCOPE_EXIT
 	{
 		CleanupBlueprint(Blueprint);
@@ -213,7 +203,7 @@ bool FAngelscriptBlueprintImpactAnalyzeLoadedBlueprintEmptySymbolsTest::RunTest(
 	return TestFalse(TEXT("BlueprintImpact.AnalyzeLoadedBlueprint should not retain stale reasons after unrelated symbols return false"), Reasons.Contains(AngelscriptEditor::BlueprintImpact::EBlueprintImpactReason::ReferencedAsset));
 }
 
-bool FAngelscriptBlueprintImpactAnalyzeLoadedBlueprintEditablePinsAndMacroWildcardReportPinTypeTest::RunTest(const FString& Parameters)
+static bool RunEditablePinsAndMacroWildcardReportPinType(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactAnalyzeLoadedBlueprintTests_Private;
 	FEdGraphPinType VectorPinType;
@@ -223,10 +213,10 @@ bool FAngelscriptBlueprintImpactAnalyzeLoadedBlueprintEditablePinsAndMacroWildca
 	AngelscriptEditor::BlueprintImpact::FBlueprintImpactSymbols Symbols;
 	Symbols.Structs.Add(TBaseStructure<FVector>::Get());
 
-	UBlueprint* EditablePinBlueprint = CreateTransientBlueprintChild(*this, UObject::StaticClass(), TEXT("EditablePins"));
-	UBlueprint* EditablePinControlBlueprint = CreateTransientBlueprintChild(*this, UObject::StaticClass(), TEXT("EditablePinsControl"));
-	UBlueprint* MacroWildcardBlueprint = CreateTransientBlueprintChild(*this, UObject::StaticClass(), TEXT("MacroWildcard"));
-	UBlueprint* MacroWildcardControlBlueprint = CreateTransientBlueprintChild(*this, UObject::StaticClass(), TEXT("MacroWildcardControl"));
+	UBlueprint* EditablePinBlueprint = CreateTransientBlueprintChild(Test, UObject::StaticClass(), TEXT("EditablePins"));
+	UBlueprint* EditablePinControlBlueprint = CreateTransientBlueprintChild(Test, UObject::StaticClass(), TEXT("EditablePinsControl"));
+	UBlueprint* MacroWildcardBlueprint = CreateTransientBlueprintChild(Test, UObject::StaticClass(), TEXT("MacroWildcard"));
+	UBlueprint* MacroWildcardControlBlueprint = CreateTransientBlueprintChild(Test, UObject::StaticClass(), TEXT("MacroWildcardControl"));
 	ON_SCOPE_EXIT
 	{
 		MarkBlueprintForCleanup(EditablePinBlueprint);
@@ -299,10 +289,10 @@ bool FAngelscriptBlueprintImpactAnalyzeLoadedBlueprintEditablePinsAndMacroWildca
 	return TestEqual(TEXT("BlueprintImpact.AnalyzeLoadedBlueprint should keep macro wildcard control reasons empty"), MacroWildcardControlReasons.Num(), 0);
 }
 
-bool FAngelscriptBlueprintImpactAnalyzeLoadedBlueprintEnumPinsAndVariablesReportExactReasonsTest::RunTest(const FString& Parameters)
+static bool RunEnumPinsAndVariablesReportExactReasons(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactAnalyzeLoadedBlueprintTests_Private;
-	UBlueprint* Blueprint = CreateTransientBlueprintChild(*this, UObject::StaticClass(), TEXT("EnumPinsAndVariables"));
+	UBlueprint* Blueprint = CreateTransientBlueprintChild(Test, UObject::StaticClass(), TEXT("EnumPinsAndVariables"));
 	ON_SCOPE_EXIT
 	{
 		CleanupBlueprint(Blueprint);
@@ -387,5 +377,30 @@ bool FAngelscriptBlueprintImpactAnalyzeLoadedBlueprintEnumPinsAndVariablesReport
 
 	return TestEqual(TEXT("BlueprintImpact.AnalyzeLoadedBlueprint should keep unrelated enum reasons empty"), UnrelatedReasons.Num(), 0);
 }
+
+#undef TestTrue
+#undef TestNotNull
+#undef TestFalse
+#undef TestEqual
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptBlueprintImpactAnalyzeLoadedBlueprintTests,
+	"Angelscript.Editor.BlueprintImpact.AnalyzeLoadedBlueprint",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(EmptySymbolsReturnsFalseAndClearsReasons)
+	{
+		ASSERT_THAT(IsTrue(RunEmptySymbolsReturnsFalseAndClearsReasons(*TestRunner)));
+	}
+
+	TEST_METHOD(EditablePinsAndMacroWildcardReportPinType)
+	{
+		ASSERT_THAT(IsTrue(RunEditablePinsAndMacroWildcardReportPinType(*TestRunner)));
+	}
+
+	TEST_METHOD(EnumPinsAndVariablesReportExactReasons)
+	{
+		ASSERT_THAT(IsTrue(RunEnumPinsAndVariablesReportExactReasons(*TestRunner)));
+	}
+};
 
 #endif

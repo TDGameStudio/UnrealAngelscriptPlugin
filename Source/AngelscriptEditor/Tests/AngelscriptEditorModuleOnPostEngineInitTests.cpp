@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "Core/AngelscriptEditorModule.h"
 
 #include "ContentBrowser/AngelscriptContentBrowserDataSource.h"
@@ -12,10 +13,10 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorModuleOnPostEngineInitRestartTest,
-	"Angelscript.Editor.Module.OnPostEngineInitDoesNotDuplicateAcrossRestart",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleOnPostEngineInitTests_Private
 {
@@ -96,7 +97,7 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleOnPostEngineIni
 }
 
 
-bool FAngelscriptEditorModuleOnPostEngineInitRestartTest::RunTest(const FString& Parameters)
+static bool RunOnPostEngineInitDoesNotDuplicateAcrossRestart(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleOnPostEngineInitTests_Private;
 	UContentBrowserDataSubsystem* ContentBrowserDataSubsystem = IContentBrowserDataModule::Get().GetSubsystem();
@@ -208,5 +209,21 @@ bool FAngelscriptEditorModuleOnPostEngineInitRestartTest::RunTest(const FString&
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorModuleOnPostEngineInitTests,
+	"Angelscript.Editor.Module",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(OnPostEngineInitDoesNotDuplicateAcrossRestart)
+	{
+		ASSERT_THAT(IsTrue(RunOnPostEngineInitDoesNotDuplicateAcrossRestart(*TestRunner)));
+	}
+};
 
 #endif

@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "Tests/AngelscriptEditorMenuExtensionsTestTypes.h"
 
 #include "EditorMenuExtensions/ScriptEditorMenuExtension.h"
@@ -11,11 +12,6 @@
 #include "ToolMenus.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorMenuExtensionToolMenuContextTest,
-	"Angelscript.Editor.MenuExtensions.GetToolMenuContextExposesActiveContextOnlyDuringToolMenuCallbacks",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptEditorMenuExtensionToolMenuContextTests_Private
 {
@@ -40,7 +36,12 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorMenuExtensionToolMenu
 }
 
 
-bool FAngelscriptEditorMenuExtensionToolMenuContextTest::RunTest(const FString& Parameters)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+
+static bool RunGetToolMenuContextExposesActiveContextOnlyDuringToolMenuCallbacks(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorMenuExtensionToolMenuContextTests_Private;
 	UAngelscriptEditorMenuExtensionContextTestShim* Extension = NewObject<UAngelscriptEditorMenuExtensionContextTestShim>(GetTransientPackage());
@@ -77,7 +78,7 @@ bool FAngelscriptEditorMenuExtensionToolMenuContextTest::RunTest(const FString& 
 		}
 	};
 
-	UToolMenu* ToolMenu = RegisterTemporaryMenu(*this, RegisteredMenus, TEXT("MenuExtensionsContext"));
+	UToolMenu* ToolMenu = RegisterTemporaryMenu(Test, RegisteredMenus, TEXT("MenuExtensionsContext"));
 	if (ToolMenu == nullptr)
 	{
 		return false;
@@ -153,5 +154,21 @@ bool FAngelscriptEditorMenuExtensionToolMenuContextTest::RunTest(const FString& 
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorMenuExtensionToolMenuContextTests,
+	"Angelscript.Editor.MenuExtensions",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(GetToolMenuContextExposesActiveContextOnlyDuringToolMenuCallbacks)
+	{
+		ASSERT_THAT(IsTrue(RunGetToolMenuContextExposesActiveContextOnlyDuringToolMenuCallbacks(*TestRunner)));
+	}
+};
 
 #endif

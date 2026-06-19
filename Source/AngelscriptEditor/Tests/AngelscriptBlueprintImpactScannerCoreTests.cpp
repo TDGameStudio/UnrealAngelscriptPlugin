@@ -1,21 +1,12 @@
 #include "BlueprintImpact/AngelscriptBlueprintImpactScanner.h"
 
+#include "CQTest.h"
 #include "GameFramework/Actor.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"
 #include "UObject/UnrealType.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactBuildImpactSymbolsDelegateFilteringTest,
-	"Angelscript.Editor.BlueprintImpact.BuildImpactSymbols.CollectsDelegatesAndSkipsNulls",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactMatchChangedScriptsEmptyInputReturnsAllModulesTest,
-	"Angelscript.Editor.BlueprintImpact.MatchChangedScriptsToModuleSections.EmptyInputReturnsAllModules",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScannerCoreTests_Private
 {
@@ -94,12 +85,15 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScannerCoreT
 	}
 }
 
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 
-bool FAngelscriptBlueprintImpactBuildImpactSymbolsDelegateFilteringTest::RunTest(const FString& Parameters)
+static bool RunBuildImpactSymbolsDelegateFiltering(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScannerCoreTests_Private;
 	UDelegateFunction* SignatureFunction = FindActorDelegateSignature(
-		*this,
+		Test,
 		GET_MEMBER_NAME_CHECKED(AActor, OnActorBeginOverlap));
 	if (SignatureFunction == nullptr)
 	{
@@ -168,7 +162,7 @@ bool FAngelscriptBlueprintImpactBuildImpactSymbolsDelegateFilteringTest::RunTest
 	return TestTrue(TEXT("BlueprintImpact.BuildImpactSymbols should collect the valid delegate signature"), Symbols.Delegates.Contains(SignatureFunction));
 }
 
-bool FAngelscriptBlueprintImpactMatchChangedScriptsEmptyInputReturnsAllModulesTest::RunTest(const FString& Parameters)
+static bool RunMatchChangedScriptsEmptyInputReturnsAllModules(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScannerCoreTests_Private;
 	const TArray<TSharedRef<FAngelscriptModuleDesc>> Modules = {
@@ -236,5 +230,29 @@ bool FAngelscriptBlueprintImpactMatchChangedScriptsEmptyInputReturnsAllModulesTe
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptBlueprintImpactBuildImpactSymbolsCoreTests,
+	"Angelscript.Editor.BlueprintImpact.BuildImpactSymbols",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(CollectsDelegatesAndSkipsNulls)
+	{
+		ASSERT_THAT(IsTrue(RunBuildImpactSymbolsDelegateFiltering(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptBlueprintImpactMatchChangedScriptsCoreTests,
+	"Angelscript.Editor.BlueprintImpact.MatchChangedScriptsToModuleSections",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(EmptyInputReturnsAllModules)
+	{
+		ASSERT_THAT(IsTrue(RunMatchChangedScriptsEmptyInputReturnsAllModules(*TestRunner)));
+	}
+};
 
 #endif

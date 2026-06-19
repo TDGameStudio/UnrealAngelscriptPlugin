@@ -10,7 +10,7 @@
 //   RuntimeFloatCurveInstanceSurface     — FRuntimeFloatCurve + UCurveFloat instance API
 //
 // CQTest adaptation notes:
-//   Two original IMPLEMENT_SIMPLE_AUTOMATION_TEST classes merged into one
+//   Two original legacy automation classes merged into one
 //   TEST_CLASS with two TEST_METHODs. The address-based invocation helpers
 //   and $TOKEN$ replacement (for UCurveFloat path) are preserved.
 // ============================================================================

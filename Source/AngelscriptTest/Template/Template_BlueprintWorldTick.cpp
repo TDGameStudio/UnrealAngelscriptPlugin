@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptFunctionalTestUtils.h"
 #include "AngelscriptTestMacros.h"
 #include "AngelscriptTestUtilities.h"
@@ -6,7 +7,6 @@
 #include "Engine/Blueprint.h"
 #include "Engine/World.h"
 #include "Kismet2/KismetEditorUtilities.h"
-#include "Misc/AutomationTest.h"
 #include "Misc/Guid.h"
 #include "Misc/PackageName.h"
 #include "Misc/ScopeExit.h"
@@ -115,28 +115,27 @@ namespace TemplateBlueprintWorldTickTest
 	};
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTemplateBlueprintWorldTickActorChildTest,
-	"Angelscript.Template.Blueprint.ActorChildWorldTick",
+TEST_CLASS_WITH_FLAGS(FAngelscriptTemplateBlueprintWorldTickTest,
+	"Angelscript.Template.Blueprint",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTemplateBlueprintWorldTickActorChildTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptEngine& Engine = AcquireCleanSharedCloneEngine();
-	FAngelscriptEngineScope EngineScope(Engine);
-	static const FName ModuleName(TEXT("TemplateBlueprintActorChildWorldTick"));
-	ON_SCOPE_EXIT
+	TEST_METHOD(ActorChildWorldTick)
 	{
-		Engine.DiscardModule(*ModuleName.ToString());
-		ASTEST_RESET_ENGINE(Engine);
-	};
+		FAngelscriptEngine& Engine = AcquireCleanSharedCloneEngine();
+		FAngelscriptEngineScope EngineScope(Engine);
+		static const FName ModuleName(TEXT("TemplateBlueprintActorChildWorldTick"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+			ASTEST_RESET_ENGINE(Engine);
+		};
 
-	UClass* ScriptParentClass = CompileScriptModule(
-		*this,
-		Engine,
-		ModuleName,
-		TEXT("TemplateBlueprintActorChildWorldTick.as"),
-		TEXT(R"AS(
+		UClass* ScriptParentClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("TemplateBlueprintActorChildWorldTick.as"),
+			TEXT(R"AS(
 UCLASS()
 class ATemplateBlueprintActorChildWorldTickParent : AActor
 {
@@ -159,58 +158,43 @@ class ATemplateBlueprintActorChildWorldTickParent : AActor
 	}
 }
 )AS"),
-		TEXT("ATemplateBlueprintActorChildWorldTickParent"));
-	if (ScriptParentClass == nullptr)
-	{
-		return false;
+			TEXT("ATemplateBlueprintActorChildWorldTickParent"));
+		ASSERT_THAT(IsNotNull(ScriptParentClass));
+
+		TemplateBlueprintWorldTickTest::FScopedTransientBlueprint Blueprint;
+		ASSERT_THAT(IsTrue(Blueprint.CreateAndCompile(*TestRunner, ScriptParentClass, TEXT("ActorChildWorldTick"))));
+
+		UClass* BlueprintClass = Blueprint.GetGeneratedClass();
+		ASSERT_THAT(IsNotNull(BlueprintClass, TEXT("Blueprint actor child world-tick template should expose a generated class")));
+
+		ASSERT_THAT(IsTrue(BlueprintClass->IsChildOf(ScriptParentClass),
+			TEXT("Blueprint class should inherit from the script actor parent")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, BlueprintClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Blueprint actor child world-tick template should spawn the blueprint child")));
+
+		BeginPlayActor(*Actor);
+
+		UWorld& World = Spawner.GetWorld();
+		for (int32 i = 0; i < 3; ++i)
+		{
+			World.Tick(ELevelTick::LEVELTICK_All, 0.016f);
+		}
+
+		int32 BeginPlayCount = 0;
+		ASSERT_THAT(IsTrue(ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("BeginPlayCount"), BeginPlayCount)));
+
+		int32 TickCount = 0;
+		ASSERT_THAT(IsTrue(ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("TickCount"), TickCount)));
+
+		ASSERT_THAT(IsTrue(BeginPlayCount >= 1,
+			TEXT("Blueprint actor child world-tick template should run inherited BeginPlay at least once")));
+		ASSERT_THAT(IsTrue(TickCount >= 1,
+			TEXT("Blueprint actor child world-tick template should run inherited Tick at least once")));
 	}
-
-	TemplateBlueprintWorldTickTest::FScopedTransientBlueprint Blueprint;
-	if (!Blueprint.CreateAndCompile(*this, ScriptParentClass, TEXT("ActorChildWorldTick")))
-	{
-		return false;
-	}
-
-	UClass* BlueprintClass = Blueprint.GetGeneratedClass();
-	if (!TestNotNull(TEXT("Blueprint actor child world-tick template should expose a generated class"), BlueprintClass))
-	{
-		return false;
-	}
-
-	TestTrue(TEXT("Blueprint class should inherit from the script actor parent"), BlueprintClass->IsChildOf(ScriptParentClass));
-
-	FActorTestSpawner Spawner;
-	Spawner.InitializeGameSubsystems();
-
-	AActor* Actor = SpawnScriptActor(*this, Spawner, BlueprintClass);
-	if (!TestNotNull(TEXT("Blueprint actor child world-tick template should spawn the blueprint child"), Actor))
-	{
-		return false;
-	}
-
-	BeginPlayActor(*Actor);
-
-	UWorld& World = Spawner.GetWorld();
-	for (int32 i = 0; i < 3; ++i)
-	{
-		World.Tick(ELevelTick::LEVELTICK_All, 0.016f);
-	}
-
-	int32 BeginPlayCount = 0;
-	if (!ReadPropertyValue<FIntProperty>(*this, Actor, TEXT("BeginPlayCount"), BeginPlayCount))
-	{
-		return false;
-	}
-
-	int32 TickCount = 0;
-	if (!ReadPropertyValue<FIntProperty>(*this, Actor, TEXT("TickCount"), TickCount))
-	{
-		return false;
-	}
-
-	TestTrue(TEXT("Blueprint actor child world-tick template should run inherited BeginPlay at least once"), BeginPlayCount >= 1);
-	TestTrue(TEXT("Blueprint actor child world-tick template should run inherited Tick at least once"), TickCount >= 1);
-	return true;
-}
+};
 
 #endif

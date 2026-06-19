@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "HotReload/ClassReloadHelper.h"
 
 #include "AngelscriptEngine.h"
@@ -16,11 +17,6 @@
 #include "UObject/Package.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptClassReloadHelperPerformReinstanceStructDependencyTest,
-	"Angelscript.TestModule.Editor.ClassReloadHelper.PerformReinstanceBroadcastsStructChangesAndRecompilesDependentBlueprints",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperStructTests_Private
 {
@@ -151,8 +147,12 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperStructTest
 	};
 }
 
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 
-bool FAngelscriptClassReloadHelperPerformReinstanceStructDependencyTest::RunTest(const FString& Parameters)
+static bool RunPerformReinstanceStructDependency(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperStructTests_Private;
 	const FClassReloadHelper::FReloadState SavedState = FClassReloadHelper::ReloadState();
@@ -193,15 +193,15 @@ bool FAngelscriptClassReloadHelperPerformReinstanceStructDependencyTest::RunTest
 	Engine->bIsInitialCompileFinished = true;
 	EnsureClassReloadHelperInitialized(*Engine);
 
-	UUserDefinedStruct* OldStruct = CreateTransientUserDefinedStruct(*this, TEXT("Old"), RootedObjects);
-	UUserDefinedStruct* NewStruct = CreateTransientUserDefinedStruct(*this, TEXT("New"), RootedObjects);
+	UUserDefinedStruct* OldStruct = CreateTransientUserDefinedStruct(Test, TEXT("Old"), RootedObjects);
+	UUserDefinedStruct* NewStruct = CreateTransientUserDefinedStruct(Test, TEXT("New"), RootedObjects);
 	if (OldStruct == nullptr || NewStruct == nullptr)
 	{
 		return false;
 	}
 
-	UBlueprint* DependentBlueprint = CreateTransientBlueprintChild(*this, UObject::StaticClass(), TEXT("Dependent"), RootedObjects);
-	UBlueprint* ControlBlueprint = CreateTransientBlueprintChild(*this, UObject::StaticClass(), TEXT("Control"), RootedObjects);
+	UBlueprint* DependentBlueprint = CreateTransientBlueprintChild(Test, UObject::StaticClass(), TEXT("Dependent"), RootedObjects);
+	UBlueprint* ControlBlueprint = CreateTransientBlueprintChild(Test, UObject::StaticClass(), TEXT("Control"), RootedObjects);
 	if (DependentBlueprint == nullptr || ControlBlueprint == nullptr)
 	{
 		return false;
@@ -301,5 +301,20 @@ bool FAngelscriptClassReloadHelperPerformReinstanceStructDependencyTest::RunTest
 	}
 	return TestEqual(TEXT("ClassReloadHelper.StructReinstance should still refresh property editor customizations after struct reload"), CallLog.NotifyCustomizationModuleChangedCalls, 1);
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptClassReloadHelperStructTests,
+	"Angelscript.TestModule.Editor.ClassReloadHelper",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(PerformReinstanceBroadcastsStructChangesAndRecompilesDependentBlueprints)
+	{
+		ASSERT_THAT(IsTrue(RunPerformReinstanceStructDependency(*TestRunner)));
+	}
+};
 
 #endif

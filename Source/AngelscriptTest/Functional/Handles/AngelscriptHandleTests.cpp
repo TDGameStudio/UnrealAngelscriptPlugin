@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptTestUtilities.h"
 #include "Misc/Paths.h"
 #include "Misc/ScopeExit.h"
@@ -60,204 +61,147 @@ namespace AngelscriptTest_Angelscript_AngelscriptHandleTests_Private
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHandleBasicTest,
-	"Angelscript.TestModule.Functional.Handles.Basic",
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptHandleTests,
+	"Angelscript.TestModule.Functional.Handles",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptHandleBasicTest::RunTest(const FString& Parameters)
 {
-	using namespace AngelscriptTest_Angelscript_AngelscriptHandleTests_Private;
-	bool bPassed = false;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
-	const FString ScriptFilename = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("NegativeCompileIsolation"), TEXT("ASHandleBasic.as"));
+	TEST_METHOD(Basic)
 	{
-		FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+		const FString ScriptFilename = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("NegativeCompileIsolation"), TEXT("ASHandleBasic.as"));
+		FAngelscriptEngineScope Scope(Engine);
 		ON_SCOPE_EXIT
 		{
-			const TArray<TSharedRef<FAngelscriptModuleDesc>> _ActiveModules = Engine.GetActiveModules();
-			for (const TSharedRef<FAngelscriptModuleDesc>& _Module : _ActiveModules)
+			const TArray<TSharedRef<FAngelscriptModuleDesc>> ActiveModules = Engine.GetActiveModules();
+			for (const TSharedRef<FAngelscriptModuleDesc>& Module : ActiveModules)
 			{
-				Engine.DiscardModule(*_Module->ModuleName);
+				Engine.DiscardModule(*Module->ModuleName);
 			}
 		};
-	ECompileResult CompileResult = ECompileResult::FullyHandled;
-	UE_SET_LOG_VERBOSITY(Angelscript, Fatal);
-	const bool bCompiled = CompileModuleWithResult(
-		&Engine,
-		ECompileType::SoftReloadOnly,
-		TEXT("ASHandleBasic"),
-		ScriptFilename,
-		TEXT("class HandleBasicObject { int Value; } int Test() { HandleBasicObject@ First = HandleBasicObject(); First.Value = 10; HandleBasicObject@ Second = First; return First.Value + Second.Value; }"),
-		CompileResult);
-	UE_SET_LOG_VERBOSITY(Angelscript, Log);
-	if (!TestFalse(TEXT("Handles.Basic should remain unsupported because script-class handle declarations are not available on this branch"), bCompiled))
+
+		ECompileResult CompileResult = ECompileResult::FullyHandled;
+		UE_SET_LOG_VERBOSITY(Angelscript, Fatal);
+		ON_SCOPE_EXIT { UE_SET_LOG_VERBOSITY(Angelscript, Log); };
+		const bool bCompiled = CompileModuleWithResult(
+			&Engine,
+			ECompileType::SoftReloadOnly,
+			TEXT("ASHandleBasic"),
+			ScriptFilename,
+			TEXT("class HandleBasicObject { int Value; } int Test() { HandleBasicObject@ First = HandleBasicObject(); First.Value = 10; HandleBasicObject@ Second = First; return First.Value + Second.Value; }"),
+			CompileResult);
+
+		ASSERT_THAT(IsFalse(bCompiled, TEXT("Handles.Basic should remain unsupported because script-class handle declarations are not available on this branch")));
+		ASSERT_THAT(AreEqual(ECompileResult::Error, CompileResult, TEXT("Handles.Basic should surface a compile error")));
+	}
+
+	TEST_METHOD(Implicit)
 	{
-		return false;
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		const bool bCompiled = CompileModuleFromMemory(
+			&Engine,
+			TEXT("ASHandleImplicit"),
+			TEXT("ASHandleImplicit.as"),
+			TEXT("class HandleImplicitObject { int Value; } void SetValue(HandleImplicitObject ObjectRef) { ObjectRef.Value = 42; } int Test() { HandleImplicitObject ValueHolder; SetValue(ValueHolder); return ValueHolder.Value; }"));
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Handles.Implicit should compile through the shared non-preprocessor path")));
+
+		TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModuleByModuleName(TEXT("ASHandleImplicit"));
+		asIScriptModule* Module = ModuleDesc.IsValid() ? ModuleDesc->ScriptModule : nullptr;
+		ASSERT_THAT(IsNotNull(Module, TEXT("Handles.Implicit should expose the compiled module")));
+
+		asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("int Test()"));
+		if (Function == nullptr)
+		{
+			return;
+		}
+
+		// This branch still faults when a script-class parameter is passed by value,
+		// so keep the unsupported runtime path explicit instead of implying success.
+		ASSERT_THAT(IsTrue(ExecuteIntFunctionExpectingScriptException(
+			*TestRunner,
+			Engine,
+			*Function,
+			TEXT("Handles.Implicit"),
+			TEXT("Null pointer access"),
+			TEXT("void SetValue(HandleImplicitObject)"),
+			TEXT("int Test()"))));
 	}
-	bPassed = CompileResult == ECompileResult::Error;
-	}
 
-	return bPassed;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHandleImplicitTest,
-	"Angelscript.TestModule.Functional.Handles.Implicit",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptHandleImplicitTest::RunTest(const FString& Parameters)
-{
-	using namespace AngelscriptTest_Angelscript_AngelscriptHandleTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	const bool bCompiled = CompileModuleFromMemory(
-		&Engine,
-		TEXT("ASHandleImplicit"),
-		TEXT("ASHandleImplicit.as"),
-		TEXT("class HandleImplicitObject { int Value; } void SetValue(HandleImplicitObject ObjectRef) { ObjectRef.Value = 42; } int Test() { HandleImplicitObject ValueHolder; SetValue(ValueHolder); return ValueHolder.Value; }"));
-	if (!TestTrue(TEXT("Handles.Implicit should compile through the shared non-preprocessor path"), bCompiled))
+	TEST_METHOD(Auto)
 	{
-		return false;
-	}
-
-	TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModuleByModuleName(TEXT("ASHandleImplicit"));
-	asIScriptModule* Module = ModuleDesc.IsValid() ? ModuleDesc->ScriptModule : nullptr;
-	if (!TestNotNull(TEXT("Handles.Implicit should expose the compiled module"), Module))
-	{
-		return false;
-	}
-
-	asIScriptFunction* Function = GetFunctionByDecl(*this, *Module, TEXT("int Test()"));
-	if (Function == nullptr)
-	{
-		return false;
-	}
-
-	// This branch still faults when a script-class parameter is passed by value,
-	// so keep the unsupported runtime path explicit instead of implying success.
-	if (!ExecuteIntFunctionExpectingScriptException(
-		*this,
-		Engine,
-		*Function,
-		TEXT("Handles.Implicit"),
-		TEXT("Null pointer access"),
-		TEXT("void SetValue(HandleImplicitObject)"),
-		TEXT("int Test()")))
-	{
-		return false;
-	}
-	}
-
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHandleAutoTest,
-	"Angelscript.TestModule.Functional.Handles.Auto",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptHandleAutoTest::RunTest(const FString& Parameters)
-{
-	using namespace AngelscriptTest_Angelscript_AngelscriptHandleTests_Private;
-	bool bPassed = false;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
-	const FString ScriptFilename = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("NegativeCompileIsolation"), TEXT("ASHandleAuto.as"));
-	{
-		FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+		const FString ScriptFilename = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("NegativeCompileIsolation"), TEXT("ASHandleAuto.as"));
+		FAngelscriptEngineScope Scope(Engine);
 		ON_SCOPE_EXIT
 		{
-			const TArray<TSharedRef<FAngelscriptModuleDesc>> _ActiveModules = Engine.GetActiveModules();
-			for (const TSharedRef<FAngelscriptModuleDesc>& _Module : _ActiveModules)
+			const TArray<TSharedRef<FAngelscriptModuleDesc>> ActiveModules = Engine.GetActiveModules();
+			for (const TSharedRef<FAngelscriptModuleDesc>& Module : ActiveModules)
 			{
-				Engine.DiscardModule(*_Module->ModuleName);
+				Engine.DiscardModule(*Module->ModuleName);
 			}
 		};
-	ECompileResult CompileResult = ECompileResult::FullyHandled;
-	UE_SET_LOG_VERBOSITY(Angelscript, Fatal);
-	const bool bCompiled = CompileModuleWithResult(
-		&Engine,
-		ECompileType::SoftReloadOnly,
-		TEXT("ASHandleAuto"),
-		ScriptFilename,
-		TEXT("class HandleAutoObject { int Value; } HandleAutoObject@ Create() { HandleAutoObject Instance; Instance.Value = 42; return Instance; } int Test() { HandleAutoObject@ Created = Create(); return Created.Value; }"),
-		CompileResult);
-	UE_SET_LOG_VERBOSITY(Angelscript, Log);
-	if (!TestFalse(TEXT("Handles.Auto should remain unsupported because factory-style script-class handles are not available on this branch"), bCompiled))
+
+		ECompileResult CompileResult = ECompileResult::FullyHandled;
+		UE_SET_LOG_VERBOSITY(Angelscript, Fatal);
+		ON_SCOPE_EXIT { UE_SET_LOG_VERBOSITY(Angelscript, Log); };
+		const bool bCompiled = CompileModuleWithResult(
+			&Engine,
+			ECompileType::SoftReloadOnly,
+			TEXT("ASHandleAuto"),
+			ScriptFilename,
+			TEXT("class HandleAutoObject { int Value; } HandleAutoObject@ Create() { HandleAutoObject Instance; Instance.Value = 42; return Instance; } int Test() { HandleAutoObject@ Created = Create(); return Created.Value; }"),
+			CompileResult);
+
+		ASSERT_THAT(IsFalse(bCompiled, TEXT("Handles.Auto should remain unsupported because factory-style script-class handles are not available on this branch")));
+		ASSERT_THAT(AreEqual(ECompileResult::Error, CompileResult, TEXT("Handles.Auto should surface a compile error")));
+	}
+
+	TEST_METHOD(RefArgument)
 	{
-		return false;
-	}
-	bPassed = CompileResult == ECompileResult::Error;
-	}
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		const bool bCompiled = CompileModuleFromMemory(
+			&Engine,
+			TEXT("ASHandleRefArgument"),
+			TEXT("ASHandleRefArgument.as"),
+			TEXT("void Modify(int &out Value) { Value = 42; } int Test() { int Value = 0; Modify(Value); return Value; }"));
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Handles.RefArgument should compile through the shared non-preprocessor path")));
 
-	return bPassed;
-}
+		TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModuleByModuleName(TEXT("ASHandleRefArgument"));
+		asIScriptModule* Module = ModuleDesc.IsValid() ? ModuleDesc->ScriptModule : nullptr;
+		ASSERT_THAT(IsNotNull(Module, TEXT("Handles.RefArgument should expose the compiled module")));
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHandleRefArgumentTest,
-	"Angelscript.TestModule.Functional.Handles.RefArgument",
+		asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("int Test()"));
+		if (Function == nullptr)
+		{
+			return;
+		}
+
+		int32 Result = 0;
+		ASSERT_THAT(IsTrue(ExecuteIntFunction(*TestRunner, Engine, *Function, Result)));
+		ASSERT_THAT(AreEqual(42, Result, TEXT("Handles.RefArgument should propagate out-ref writes back to the caller")));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptHandleNativeObjectArgumentTests,
+	"Angelscript.TestModule.Functional.Handles.NativeObjectArgument",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHandleNativeObjectArgumentNullAndNonNullTest,
-	"Angelscript.TestModule.Functional.Handles.NativeObjectArgument.NullAndNonNull",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptHandleRefArgumentTest::RunTest(const FString& Parameters)
 {
-	using namespace AngelscriptTest_Angelscript_AngelscriptHandleTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	const bool bCompiled = CompileModuleFromMemory(
-		&Engine,
-		TEXT("ASHandleRefArgument"),
-		TEXT("ASHandleRefArgument.as"),
-		TEXT("void Modify(int &out Value) { Value = 42; } int Test() { int Value = 0; Modify(Value); return Value; }"));
-	if (!TestTrue(TEXT("Handles.RefArgument should compile through the shared non-preprocessor path"), bCompiled))
+	TEST_METHOD(NullAndNonNull)
 	{
-		return false;
-	}
+		using namespace AngelscriptTest_Angelscript_AngelscriptHandleTests_Private;
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
 
-	TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModuleByModuleName(TEXT("ASHandleRefArgument"));
-	asIScriptModule* Module = ModuleDesc.IsValid() ? ModuleDesc->ScriptModule : nullptr;
-	if (!TestNotNull(TEXT("Handles.RefArgument should expose the compiled module"), Module))
-	{
-		return false;
-	}
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(TEXT("ASHandleNativeObjectArgument"));
+		};
 
-	asIScriptFunction* Function = GetFunctionByDecl(*this, *Module, TEXT("int Test()"));
-	if (Function == nullptr)
-	{
-		return false;
-	}
-
-	int32 Result = 0;
-	if (!ExecuteIntFunction(*this, Engine, *Function, Result))
-	{
-		return false;
-	}
-
-	TestEqual(TEXT("Handles.RefArgument should propagate out-ref writes back to the caller"), Result, 42);
-	}
-	return true;
-}
-
-bool FAngelscriptHandleNativeObjectArgumentNullAndNonNullTest::RunTest(const FString& Parameters)
-{
-	using namespace AngelscriptTest_Angelscript_AngelscriptHandleTests_Private;
-	bool bPassed = false;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-
-	ON_SCOPE_EXIT
-	{
-		Engine.DiscardModule(TEXT("ASHandleNativeObjectArgument"));
-	};
-
-	do
-	{
 		asIScriptModule* Module = BuildModule(
-			*this,
+			*TestRunner,
 			Engine,
 			HandleNativeObjectArgumentModuleName,
 			TEXT(R"(
@@ -266,22 +210,16 @@ int Test(UObject Value)
 	return Value != nullptr ? 1 : 0;
 }
 )"));
-		if (!TestNotNull(TEXT("Handles.NativeObjectArgument.NullAndNonNull should compile the test module"), Module))
-		{
-			break;
-		}
+		ASSERT_THAT(IsNotNull(Module, TEXT("Handles.NativeObjectArgument.NullAndNonNull should compile the test module")));
 
-		asIScriptFunction* Function = GetFunctionByDecl(*this, *Module, TEXT("int Test(UObject)"));
+		asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("int Test(UObject)"));
 		if (Function == nullptr)
 		{
-			break;
+			return;
 		}
 
 		asIScriptContext* Context = Engine.CreateContext();
-		if (!TestNotNull(TEXT("Handles.NativeObjectArgument.NullAndNonNull should create a context"), Context))
-		{
-			break;
-		}
+		ASSERT_THAT(IsNotNull(Context, TEXT("Handles.NativeObjectArgument.NullAndNonNull should create a context")));
 
 		ON_SCOPE_EXIT
 		{
@@ -289,39 +227,24 @@ int Test(UObject Value)
 		};
 
 		UObject* Instance = NewObject<UAngelscriptNativeScriptTestObject>(GetTransientPackage());
-		if (!TestNotNull(TEXT("Handles.NativeObjectArgument.NullAndNonNull should create a native UObject instance"), Instance))
-		{
-			break;
-		}
+		ASSERT_THAT(IsNotNull(Instance, TEXT("Handles.NativeObjectArgument.NullAndNonNull should create a native UObject instance")));
 
-		if (!ExecuteNativeObjectArgumentCase(
-				*this,
-				*Context,
-				*Function,
-				Instance,
-				TEXT("Handles.NativeObjectArgument.NullAndNonNull(non-null)"),
-				1))
-		{
-			break;
-		}
+		ASSERT_THAT(IsTrue(ExecuteNativeObjectArgumentCase(
+			*TestRunner,
+			*Context,
+			*Function,
+			Instance,
+			TEXT("Handles.NativeObjectArgument.NullAndNonNull(non-null)"),
+			1)));
 
-		if (!ExecuteNativeObjectArgumentCase(
-				*this,
-				*Context,
-				*Function,
-				nullptr,
-				TEXT("Handles.NativeObjectArgument.NullAndNonNull(null)"),
-				0))
-		{
-			break;
-		}
-
-		bPassed = true;
+		ASSERT_THAT(IsTrue(ExecuteNativeObjectArgumentCase(
+			*TestRunner,
+			*Context,
+			*Function,
+			nullptr,
+			TEXT("Handles.NativeObjectArgument.NullAndNonNull(null)"),
+			0)));
 	}
-	while (false);
-
-	}
-	return bPassed;
-}
+};
 
 #endif

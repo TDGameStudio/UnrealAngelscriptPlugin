@@ -1,4 +1,4 @@
-#include "Misc/AutomationTest.h"
+#include "CQTest.h"
 
 #include "Components/TimelineComponent.h"
 #include "Core/AngelscriptBinds.h"
@@ -7,6 +7,7 @@
 #include "Features/IModularFeatures.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "Misc/ScopeExit.h"
 #include "UHT/AngelscriptCrossModuleBindings.h"
 #include "UObject/FindObjectFlags.h"
 #include "UObject/UObjectGlobals.h"
@@ -19,6 +20,20 @@
 namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 {
 	constexpr uint32 ProbeLayoutVersion = 0xA5C0DE02u;
+	FAutomationTestBase* GActiveTest = nullptr;
+
+	bool TestTrue(const TCHAR* What, bool bValue) { return GActiveTest->TestTrue(What, bValue); }
+	bool TestTrue(const FString& What, bool bValue) { return GActiveTest->TestTrue(*What, bValue); }
+	bool TestFalse(const TCHAR* What, bool bValue) { return GActiveTest->TestFalse(What, bValue); }
+	bool TestFalse(const FString& What, bool bValue) { return GActiveTest->TestFalse(*What, bValue); }
+	template <typename ExpectedType, typename ActualType>
+	bool TestEqual(const TCHAR* What, const ExpectedType& Expected, const ActualType& Actual) { return GActiveTest->TestEqual(What, Expected, Actual); }
+	template <typename ExpectedType, typename ActualType>
+	bool TestEqual(const FString& What, const ExpectedType& Expected, const ActualType& Actual) { return GActiveTest->TestEqual(*What, Expected, Actual); }
+	template <typename ValueType>
+	bool TestNotNull(const TCHAR* What, ValueType* Value) { return GActiveTest->TestNotNull(What, Value); }
+	template <typename ValueType>
+	bool TestNull(const TCHAR* What, ValueType* Value) { return GActiveTest->TestNull(What, Value); }
 
 	static_assert(std::is_empty<IModularFeature>::value, "IModularFeature must stay empty for the probe reader layout.");
 	static_assert(!std::is_polymorphic<IModularFeature>::value, "IModularFeature must stay non-polymorphic for the probe reader layout.");
@@ -507,28 +522,20 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 	}
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleLinkProbeRoundtripTest,
-	"Angelscript.CppTests.UHTToolResolver.LinkProbe.IModularFeaturesRoundtrip",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleLinkProbeRoundtripTest::RunTest(const FString& Parameters)
+bool RunLinkProbeRoundtrip(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	TArray<IModularFeature*> Features = IModularFeatures::Get().GetModularFeatureImplementations<IModularFeature>(
 		FName(TEXT("AngelscriptCrossModuleLinkProbe")));
 	return TestEqual(TEXT("Engine module link probe feature should not be registered while cross-module generation is disabled by default"), Features.Num(), 0);
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModulePublicHeaderTest,
-	"Angelscript.CppTests.UHTToolResolver.PublicHeader.NoASRuntimeOrSDKDeps",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModulePublicHeaderTest::RunTest(const FString& Parameters)
+bool RunPublicHeader(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString HeaderContents;
 	if (!TestTrue(TEXT("Cross-module public ABI header should be readable"), FFileHelper::LoadFileToString(HeaderContents, *GetCrossModulePublicHeaderPath())))
@@ -552,14 +559,10 @@ bool FAngelscriptCrossModulePublicHeaderTest::RunTest(const FString& Parameters)
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleLayoutVersionSingleSourceTest,
-	"Angelscript.CppTests.UHTToolResolver.LayoutVersionFile_SingleSource_GeneratorAndHeaderInSync",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleLayoutVersionSingleSourceTest::RunTest(const FString& Parameters)
+bool RunLayoutVersionSingleSource(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString VersionToken;
 	if (!TestTrue(TEXT("Cross-module layout version file should expose a token"), LoadLayoutVersionToken(VersionToken)))
@@ -593,14 +596,10 @@ bool FAngelscriptCrossModuleLayoutVersionSingleSourceTest::RunTest(const FString
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleSkippedStatisticsTest,
-	"Angelscript.CppTests.UHTToolResolver.CrossModuleDirectBind.SkippedStatisticsClassifyCrossModuleOutcomes",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleSkippedStatisticsTest::RunTest(const FString& Parameters)
+bool RunSkippedStatistics(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString SummaryContents;
 	if (!TestTrue(TEXT("Skipped reason summary should be readable"), FFileHelper::LoadFileToString(SummaryContents, *GetGeneratedUhtFilePath(TEXT("AS_FunctionTable_SkippedReasonSummary.csv")))))
@@ -662,14 +661,10 @@ bool FAngelscriptCrossModuleSkippedStatisticsTest::RunTest(const FString& Parame
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleNoLongerUnexportedSymbolTest,
-	"Angelscript.CppTests.UHTToolResolver.NoLongerEmitsUnexportedSymbol_ForCrossModuleCandidate",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleNoLongerUnexportedSymbolTest::RunTest(const FString& Parameters)
+bool RunNoLongerUnexportedSymbol(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString SummaryContents;
 	if (!TestTrue(TEXT("Skipped reason summary should be readable"), FFileHelper::LoadFileToString(SummaryContents, *GetGeneratedUhtFilePath(TEXT("AS_FunctionTable_SkippedReasonSummary.csv")))))
@@ -696,14 +691,10 @@ bool FAngelscriptCrossModuleNoLongerUnexportedSymbolTest::RunTest(const FString&
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleStaticAssertSizeofConsistencyTest,
-	"Angelscript.CppTests.UHTToolResolver.StaticAssert_SizeofConsistency",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleStaticAssertSizeofConsistencyTest::RunTest(const FString& Parameters)
+bool RunStaticAssertSizeofConsistency(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	static_assert(sizeof(FAngelscriptCrossModuleEntry) == 32, "FAngelscriptCrossModuleEntry size must match generator-emitted ABI.");
 	static_assert(sizeof(FAngelscriptCrossModuleFeatureReader) == 32, "FAngelscriptCrossModuleFeatureReader size must match generator-emitted ABI.");
@@ -730,14 +721,10 @@ bool FAngelscriptCrossModuleStaticAssertSizeofConsistencyTest::RunTest(const FSt
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleStaleCleanupBoundariesTest,
-	"Angelscript.CppTests.UHTToolResolver.StaleCleanup_CrossModuleEnumeratesSupportedModuleDirectories",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleStaleCleanupBoundariesTest::RunTest(const FString& Parameters)
+bool RunStaleCleanupBoundaries(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString GeneratorContents;
 	if (!TestTrue(TEXT("UHT code generator should be readable"), FFileHelper::LoadFileToString(GeneratorContents, *GetUhtCodeGeneratorPath())))
@@ -753,14 +740,10 @@ bool FAngelscriptCrossModuleStaleCleanupBoundariesTest::RunTest(const FString& P
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleScriptProjectionSafetyGateTest,
-	"Angelscript.CppTests.UHTToolResolver.CrossModuleDirectBind.ScriptMethodMixinProjection_ExcludedFromAutomaticSafeSet",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleScriptProjectionSafetyGateTest::RunTest(const FString& Parameters)
+bool RunScriptProjectionSafetyGate(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString GeneratorContents;
 	if (!TestTrue(TEXT("UHT code generator should be readable"), FFileHelper::LoadFileToString(GeneratorContents, *GetUhtCodeGeneratorPath())))
@@ -778,19 +761,15 @@ bool FAngelscriptCrossModuleScriptProjectionSafetyGateTest::RunTest(const FStrin
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleAutomaticEntryVisibleTest,
-	"Angelscript.CppTests.UHTToolResolver.CrossModuleDirectBind.AutomaticEntryVisible",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleAutomaticEntryVisibleTest::RunTest(const FString& Parameters)
+bool RunAutomaticEntryVisible(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FAngelscriptEngine* CurrentEngine = FAngelscriptEngine::TryGetCurrentEngine();
 	if (CurrentEngine == nullptr || CurrentEngine->GetScriptEngine() == nullptr)
 	{
-		AddWarning(TEXT("AngelScript engine is not initialized; skipping runtime cross-module entry visibility check."));
+		Test.AddWarning(TEXT("AngelScript engine is not initialized; skipping runtime cross-module entry visibility check."));
 		return true;
 	}
 
@@ -799,14 +778,10 @@ bool FAngelscriptCrossModuleAutomaticEntryVisibleTest::RunTest(const FString& Pa
 	return TestEqual(TEXT("Automatic cross-module entries should not be injected while generation is disabled by default"), Features.Num(), 0);
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleBuildCsDependencyBoundaryTest,
-	"Angelscript.CppTests.UHTToolResolver.BuildCs_NoEngineModuleAddedAsDependency",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleBuildCsDependencyBoundaryTest::RunTest(const FString& Parameters)
+bool RunBuildCsDependencyBoundary(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString BuildCsContents;
 	if (!TestTrue(TEXT("AngelscriptRuntime.Build.cs should be readable"), FFileHelper::LoadFileToString(BuildCsContents, *GetRuntimeBuildCsPath())))
@@ -827,7 +802,7 @@ bool FAngelscriptCrossModuleBuildCsDependencyBoundaryTest::RunTest(const FString
 	{
 		if (!ExpectedDependencyModules.Contains(ActualModule))
 		{
-			AddError(FString::Printf(TEXT("Unexpected AngelscriptRuntime module dependency introduced: %s"), *ActualModule));
+			Test.AddError(FString::Printf(TEXT("Unexpected AngelscriptRuntime module dependency introduced: %s"), *ActualModule));
 			bPassed = false;
 		}
 	}
@@ -835,14 +810,10 @@ bool FAngelscriptCrossModuleBuildCsDependencyBoundaryTest::RunTest(const FString
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleGenerationProfilesPolicyTest,
-	"Angelscript.CppTests.UHTToolResolver.CrossModuleGenerationProfiles.PolicyFileAndBuildCsBoundary",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleGenerationProfilesPolicyTest::RunTest(const FString& Parameters)
+bool RunGenerationProfilesPolicy(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString ProfileConfigContents;
 	if (!TestTrue(TEXT("Cross-module generation profile config should be readable"), FFileHelper::LoadFileToString(ProfileConfigContents, *GetCrossModuleGenerationModulesFilePath())))
@@ -894,14 +865,10 @@ bool FAngelscriptCrossModuleGenerationProfilesPolicyTest::RunTest(const FString&
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleGenerationProfilesEntriesTest,
-	"Angelscript.CppTests.UHTToolResolver.CrossModuleGenerationProfiles.GeneratedRowsAreCrossModuleOnly",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleGenerationProfilesEntriesTest::RunTest(const FString& Parameters)
+bool RunGenerationProfilesEntries(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString EntriesContents;
 	if (!TestTrue(TEXT("Generated entries should be readable"), FFileHelper::LoadFileToString(EntriesContents, *GetGeneratedUhtFilePath(TEXT("AS_FunctionTable_Entries.csv")))))
@@ -960,14 +927,10 @@ bool FAngelscriptCrossModuleGenerationProfilesEntriesTest::RunTest(const FString
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleDefaultOffDiagnosticsTest,
-	"Angelscript.CppTests.UHTToolResolver.CrossModuleDefaultOff.DiagnosticsAndProfileOptIn",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleDefaultOffDiagnosticsTest::RunTest(const FString& Parameters)
+bool RunDefaultOffDiagnostics(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString ProfileConfigContents;
 	if (!TestTrue(TEXT("Cross-module generation profile config should be readable"), FFileHelper::LoadFileToString(ProfileConfigContents, *GetCrossModuleGenerationModulesFilePath())))
@@ -998,14 +961,10 @@ bool FAngelscriptCrossModuleDefaultOffDiagnosticsTest::RunTest(const FString& Pa
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrossModuleDefaultOffGeneratedOutputTest,
-	"Angelscript.CppTests.UHTToolResolver.CrossModuleDefaultOff.GeneratedOutputsSuppressed",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptCrossModuleDefaultOffGeneratedOutputTest::RunTest(const FString& Parameters)
+bool RunDefaultOffGeneratedOutput(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString EntriesContents;
 	if (!TestTrue(TEXT("Generated entries should be readable"), FFileHelper::LoadFileToString(EntriesContents, *GetGeneratedUhtFilePath(TEXT("AS_FunctionTable_Entries.csv")))))
@@ -1031,5 +990,124 @@ bool FAngelscriptCrossModuleDefaultOffGeneratedOutputTest::RunTest(const FString
 	bPassed &= TestEqual(TEXT("CrossModule binding features should not be registered by default"), BindingFeatures.Num(), 0);
 	return bPassed;
 }
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleLinkProbeTests,
+	"Angelscript.CppTests.UHTToolResolver.LinkProbe",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(IModularFeaturesRoundtrip)
+	{
+		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+		ASSERT_THAT(IsTrue(RunLinkProbeRoundtrip(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModulePublicHeaderTests,
+	"Angelscript.CppTests.UHTToolResolver.PublicHeader",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(NoASRuntimeOrSDKDeps)
+	{
+		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+		ASSERT_THAT(IsTrue(RunPublicHeader(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleLayoutVersionTests,
+	"Angelscript.CppTests.UHTToolResolver",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(LayoutVersionFile_SingleSource_GeneratorAndHeaderInSync)
+	{
+		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+		ASSERT_THAT(IsTrue(RunLayoutVersionSingleSource(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleResolverTests,
+	"Angelscript.CppTests.UHTToolResolver",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(NoLongerEmitsUnexportedSymbol_ForCrossModuleCandidate)
+	{
+		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+		ASSERT_THAT(IsTrue(RunNoLongerUnexportedSymbol(*TestRunner)));
+	}
+
+	TEST_METHOD(StaticAssert_SizeofConsistency)
+	{
+		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+		ASSERT_THAT(IsTrue(RunStaticAssertSizeofConsistency(*TestRunner)));
+	}
+
+	TEST_METHOD(StaleCleanup_CrossModuleEnumeratesSupportedModuleDirectories)
+	{
+		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+		ASSERT_THAT(IsTrue(RunStaleCleanupBoundaries(*TestRunner)));
+	}
+
+	TEST_METHOD(BuildCs_NoEngineModuleAddedAsDependency)
+	{
+		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+		ASSERT_THAT(IsTrue(RunBuildCsDependencyBoundary(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleDirectBindProbeTests,
+	"Angelscript.CppTests.UHTToolResolver.CrossModuleDirectBind",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(SkippedStatisticsClassifyCrossModuleOutcomes)
+	{
+		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+		ASSERT_THAT(IsTrue(RunSkippedStatistics(*TestRunner)));
+	}
+
+	TEST_METHOD(ScriptMethodMixinProjection_ExcludedFromAutomaticSafeSet)
+	{
+		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+		ASSERT_THAT(IsTrue(RunScriptProjectionSafetyGate(*TestRunner)));
+	}
+
+	TEST_METHOD(AutomaticEntryVisible)
+	{
+		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+		ASSERT_THAT(IsTrue(RunAutomaticEntryVisible(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleGenerationProfileTests,
+	"Angelscript.CppTests.UHTToolResolver.CrossModuleGenerationProfiles",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(PolicyFileAndBuildCsBoundary)
+	{
+		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+		ASSERT_THAT(IsTrue(RunGenerationProfilesPolicy(*TestRunner)));
+	}
+
+	TEST_METHOD(GeneratedRowsAreCrossModuleOnly)
+	{
+		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+		ASSERT_THAT(IsTrue(RunGenerationProfilesEntries(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleDefaultOffTests,
+	"Angelscript.CppTests.UHTToolResolver.CrossModuleDefaultOff",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(DiagnosticsAndProfileOptIn)
+	{
+		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+		ASSERT_THAT(IsTrue(RunDefaultOffDiagnostics(*TestRunner)));
+	}
+
+	TEST_METHOD(GeneratedOutputsSuppressed)
+	{
+		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
+		ASSERT_THAT(IsTrue(RunDefaultOffGeneratedOutput(*TestRunner)));
+	}
+};
 
 #endif

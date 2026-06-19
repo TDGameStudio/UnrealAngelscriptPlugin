@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "Performance/AngelscriptPerformanceTestTypes.h"
 #include "AngelscriptFunctionalTestUtils.h"
 #include "AngelscriptPerformanceTestUtils.h"
@@ -6,7 +7,6 @@
 
 #include "HAL/PlatformFileManager.h"
 #include "HAL/PlatformTime.h"
-#include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -102,22 +102,10 @@ namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptRuntimePerformanceScriptSelfTest,
-	"Angelscript.TestModule.Performance.ScriptSelf",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private
+{
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptRuntimePerformanceNativePropertyTest,
-	"Angelscript.TestModule.Performance.NativeProperty",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptRuntimePerformanceNativeFunctionTest,
-	"Angelscript.TestModule.Performance.NativeFunction",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptRuntimePerformanceScriptSelfTest::RunTest(const FString& Parameters)
+bool RunRuntimePerformanceScriptSelf(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -132,7 +120,7 @@ bool FAngelscriptRuntimePerformanceScriptSelfTest::RunTest(const FString& Parame
 	};
 
 	UClass* ScriptClass = CompileBenchmarkCarrier(
-		*this,
+		Test,
 		Engine,
 		TEXT("ASRuntimePerformanceScriptSelf"),
 		TEXT(R"AS(
@@ -176,20 +164,20 @@ class URuntimePerformanceScriptSelfCarrier : UObject
 }
 )AS"),
 		TEXT("URuntimePerformanceScriptSelfCarrier"));
-	if (!TestNotNull(TEXT("Script self benchmark carrier should compile"), ScriptClass))
+	if (!Test.TestNotNull(TEXT("Script self benchmark carrier should compile"), ScriptClass))
 	{
 		break;
 	}
 
 	UObject* Carrier = NewObject<UObject>(GetTransientPackage(), ScriptClass, TEXT("RuntimePerformanceScriptSelfCarrier"));
-	if (!TestNotNull(TEXT("Script self benchmark carrier should instantiate"), Carrier))
+	if (!Test.TestNotNull(TEXT("Script self benchmark carrier should instantiate"), Carrier))
 	{
 		break;
 	}
 
-	auto RunScriptFunction = [this, Carrier](const FName FunctionName) -> int32
+	auto RunScriptFunction = [&Test, Carrier](const FName FunctionName) -> int32
 	{
-		FFunctionInvoker Invoker(*this, Carrier, FunctionName);
+		FFunctionInvoker Invoker(Test, Carrier, FunctionName);
 		Invoker.AddParam<int32>(IterationsPerMeasurement);
 		return Invoker.CallAndReturn<int32>(INDEX_NONE);
 	};
@@ -219,27 +207,27 @@ class URuntimePerformanceScriptSelfCarrier : UObject
 		return Checksum;
 	});
 
-	TestEqual(TEXT("Script and native empty-call checksums should match"), ScriptEmpty.Checksum, NativeEmpty.Checksum);
-	TestEqual(TEXT("Script and native arithmetic checksums should match"), ScriptArithmetic.Checksum, NativeArithmetic.Checksum);
+	Test.TestEqual(TEXT("Script and native empty-call checksums should match"), ScriptEmpty.Checksum, NativeEmpty.Checksum);
+	Test.TestEqual(TEXT("Script and native arithmetic checksums should match"), ScriptArithmetic.Checksum, NativeArithmetic.Checksum);
 
 	TArray<FAngelscriptPerformanceMetric> Metrics;
 	AddMetric(Metrics, TEXT("runtime.as.script_self.empty_seconds"), ScriptEmpty.Samples, TEXT("Angelscript"));
 	AddMetric(Metrics, TEXT("runtime.as.script_self.arithmetic_seconds"), ScriptArithmetic.Samples, TEXT("Angelscript"));
 	AddMetric(Metrics, TEXT("runtime.native.script_self.empty_seconds"), NativeEmpty.Samples, TEXT("NativeCpp"));
 	AddMetric(Metrics, TEXT("runtime.native.script_self.arithmetic_seconds"), NativeArithmetic.Samples, TEXT("NativeCpp"));
-	bWroteMetrics = WriteAndVerifyMetrics(*this, TEXT("RuntimeMicrobenchmark_ScriptSelf"), TEXT("Angelscript.TestModule.Performance.ScriptSelf"), Metrics);
+	bWroteMetrics = WriteAndVerifyMetrics(Test, TEXT("RuntimeMicrobenchmark_ScriptSelf"), TEXT("Angelscript.TestModule.Performance.ScriptSelf"), Metrics);
 
 	}
 	while (false);
 	}
-	return !HasAnyErrors() && bWroteMetrics;
+	return !Test.HasAnyErrors() && bWroteMetrics;
 }
 
-bool FAngelscriptRuntimePerformanceNativePropertyTest::RunTest(const FString& Parameters)
+bool RunRuntimePerformanceNativeProperty(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private;
 	TUniquePtr<FAngelscriptEngine> EngineOwner = CreatePerformanceEditorBindingEngine();
-	if (!TestTrue(TEXT("Native property benchmark engine should create"), EngineOwner.IsValid()))
+	if (!Test.TestTrue(TEXT("Native property benchmark engine should create"), EngineOwner.IsValid()))
 	{
 		return false;
 	}
@@ -264,7 +252,7 @@ bool FAngelscriptRuntimePerformanceNativePropertyTest::RunTest(const FString& Pa
 	};
 
 	UClass* ScriptClass = CompileBenchmarkCarrier(
-		*this,
+		Test,
 		Engine,
 		TEXT("ASRuntimePerformanceNativeProperty"),
 		TEXT(R"AS(
@@ -317,15 +305,15 @@ class URuntimePerformanceNativePropertyCarrier : UObject
 #endif
 )AS"),
 		TEXT("URuntimePerformanceNativePropertyCarrier"));
-	if (!TestNotNull(TEXT("Native property benchmark carrier should compile"), ScriptClass))
+	if (!Test.TestNotNull(TEXT("Native property benchmark carrier should compile"), ScriptClass))
 	{
 		break;
 	}
 
 	UObject* Carrier = NewObject<UObject>(GetTransientPackage(), ScriptClass, TEXT("RuntimePerformanceNativePropertyCarrier"));
 	UAngelscriptPerformanceTestTargetObject* Target = GetMutableDefault<UAngelscriptPerformanceTestTargetObject>();
-	if (!TestNotNull(TEXT("Native property benchmark carrier should instantiate"), Carrier)
-		|| !TestNotNull(TEXT("Native property benchmark target CDO should resolve"), Target))
+	if (!Test.TestNotNull(TEXT("Native property benchmark carrier should instantiate"), Carrier)
+		|| !Test.TestNotNull(TEXT("Native property benchmark target CDO should resolve"), Target))
 	{
 		break;
 	}
@@ -334,9 +322,9 @@ class URuntimePerformanceNativePropertyCarrier : UObject
 		Target->ResetValues();
 	};
 
-	auto RunScriptFunction = [this, Carrier](const FName FunctionName) -> int32
+	auto RunScriptFunction = [&Test, Carrier](const FName FunctionName) -> int32
 	{
-		FFunctionInvoker Invoker(*this, Carrier, FunctionName);
+		FFunctionInvoker Invoker(Test, Carrier, FunctionName);
 		Invoker.AddParam<int32>(IterationsPerMeasurement);
 		return Invoker.CallAndReturn<int32>(INDEX_NONE);
 	};
@@ -346,27 +334,27 @@ class URuntimePerformanceNativePropertyCarrier : UObject
 	const FMeasuredSamples NativeScalar = MeasureSamples([&]() { Target->ResetValues(); return Target->RunNativeScalarPropertyLoop(IterationsPerMeasurement); });
 	const FMeasuredSamples NativeContainers = MeasureSamples([&]() { Target->ResetValues(); return Target->RunNativeContainerPropertyLoop(IterationsPerMeasurement); });
 
-	TestEqual(TEXT("Script and native scalar property checksums should match"), ScriptScalar.Checksum, NativeScalar.Checksum);
-	TestEqual(TEXT("Script and native container property checksums should match"), ScriptContainers.Checksum, NativeContainers.Checksum);
+	Test.TestEqual(TEXT("Script and native scalar property checksums should match"), ScriptScalar.Checksum, NativeScalar.Checksum);
+	Test.TestEqual(TEXT("Script and native container property checksums should match"), ScriptContainers.Checksum, NativeContainers.Checksum);
 
 	TArray<FAngelscriptPerformanceMetric> Metrics;
 	AddMetric(Metrics, TEXT("runtime.as.property.scalar_seconds"), ScriptScalar.Samples, TEXT("Angelscript"));
 	AddMetric(Metrics, TEXT("runtime.as.property.container_seconds"), ScriptContainers.Samples, TEXT("Angelscript"));
 	AddMetric(Metrics, TEXT("runtime.native.property.scalar_seconds"), NativeScalar.Samples, TEXT("NativeCpp"));
 	AddMetric(Metrics, TEXT("runtime.native.property.container_seconds"), NativeContainers.Samples, TEXT("NativeCpp"));
-	bWroteMetrics = WriteAndVerifyMetrics(*this, TEXT("RuntimeMicrobenchmark_NativeProperty"), TEXT("Angelscript.TestModule.Performance.NativeProperty"), Metrics);
+	bWroteMetrics = WriteAndVerifyMetrics(Test, TEXT("RuntimeMicrobenchmark_NativeProperty"), TEXT("Angelscript.TestModule.Performance.NativeProperty"), Metrics);
 
 	}
 	while (false);
 	}
-	return !HasAnyErrors() && bWroteMetrics;
+	return !Test.HasAnyErrors() && bWroteMetrics;
 }
 
-bool FAngelscriptRuntimePerformanceNativeFunctionTest::RunTest(const FString& Parameters)
+bool RunRuntimePerformanceNativeFunction(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private;
 	TUniquePtr<FAngelscriptEngine> EngineOwner = CreatePerformanceEditorBindingEngine();
-	if (!TestTrue(TEXT("Native function benchmark engine should create"), EngineOwner.IsValid()))
+	if (!Test.TestTrue(TEXT("Native function benchmark engine should create"), EngineOwner.IsValid()))
 	{
 		return false;
 	}
@@ -391,7 +379,7 @@ bool FAngelscriptRuntimePerformanceNativeFunctionTest::RunTest(const FString& Pa
 	};
 
 	UClass* ScriptClass = CompileBenchmarkCarrier(
-		*this,
+		Test,
 		Engine,
 		TEXT("ASRuntimePerformanceNativeFunction"),
 		TEXT(R"AS(
@@ -452,15 +440,15 @@ class URuntimePerformanceNativeFunctionCarrier : UObject
 #endif
 )AS"),
 		TEXT("URuntimePerformanceNativeFunctionCarrier"));
-	if (!TestNotNull(TEXT("Native function benchmark carrier should compile"), ScriptClass))
+	if (!Test.TestNotNull(TEXT("Native function benchmark carrier should compile"), ScriptClass))
 	{
 		break;
 	}
 
 	UObject* Carrier = NewObject<UObject>(GetTransientPackage(), ScriptClass, TEXT("RuntimePerformanceNativeFunctionCarrier"));
 	UAngelscriptPerformanceTestTargetObject* Target = GetMutableDefault<UAngelscriptPerformanceTestTargetObject>();
-	if (!TestNotNull(TEXT("Native function benchmark carrier should instantiate"), Carrier)
-		|| !TestNotNull(TEXT("Native function benchmark target CDO should resolve"), Target))
+	if (!Test.TestNotNull(TEXT("Native function benchmark carrier should instantiate"), Carrier)
+		|| !Test.TestNotNull(TEXT("Native function benchmark target CDO should resolve"), Target))
 	{
 		break;
 	}
@@ -469,9 +457,9 @@ class URuntimePerformanceNativeFunctionCarrier : UObject
 		Target->ResetValues();
 	};
 
-	auto RunScriptFunction = [this, Carrier](const FName FunctionName) -> int32
+	auto RunScriptFunction = [&Test, Carrier](const FName FunctionName) -> int32
 	{
-		FFunctionInvoker Invoker(*this, Carrier, FunctionName);
+		FFunctionInvoker Invoker(Test, Carrier, FunctionName);
 		Invoker.AddParam<int32>(IterationsPerMeasurement);
 		return Invoker.CallAndReturn<int32>(INDEX_NONE);
 	};
@@ -481,20 +469,45 @@ class URuntimePerformanceNativeFunctionCarrier : UObject
 	const FMeasuredSamples NativeScalar = MeasureSamples([&]() { Target->ResetValues(); return Target->RunNativeScalarFunctionLoop(IterationsPerMeasurement); });
 	const FMeasuredSamples NativeContainers = MeasureSamples([&]() { Target->ResetValues(); return Target->RunNativeContainerFunctionLoop(IterationsPerMeasurement); });
 
-	TestEqual(TEXT("Script and native scalar function checksums should match"), ScriptScalar.Checksum, NativeScalar.Checksum);
-	TestEqual(TEXT("Script and native container function checksums should match"), ScriptContainers.Checksum, NativeContainers.Checksum);
+	Test.TestEqual(TEXT("Script and native scalar function checksums should match"), ScriptScalar.Checksum, NativeScalar.Checksum);
+	Test.TestEqual(TEXT("Script and native container function checksums should match"), ScriptContainers.Checksum, NativeContainers.Checksum);
 
 	TArray<FAngelscriptPerformanceMetric> Metrics;
 	AddMetric(Metrics, TEXT("runtime.as.function.scalar_seconds"), ScriptScalar.Samples, TEXT("Angelscript"));
 	AddMetric(Metrics, TEXT("runtime.as.function.container_seconds"), ScriptContainers.Samples, TEXT("Angelscript"));
 	AddMetric(Metrics, TEXT("runtime.native.function.scalar_seconds"), NativeScalar.Samples, TEXT("NativeCpp"));
 	AddMetric(Metrics, TEXT("runtime.native.function.container_seconds"), NativeContainers.Samples, TEXT("NativeCpp"));
-	bWroteMetrics = WriteAndVerifyMetrics(*this, TEXT("RuntimeMicrobenchmark_NativeFunction"), TEXT("Angelscript.TestModule.Performance.NativeFunction"), Metrics);
+	bWroteMetrics = WriteAndVerifyMetrics(Test, TEXT("RuntimeMicrobenchmark_NativeFunction"), TEXT("Angelscript.TestModule.Performance.NativeFunction"), Metrics);
 
 	}
 	while (false);
 	}
-	return !HasAnyErrors() && bWroteMetrics;
+	return !Test.HasAnyErrors() && bWroteMetrics;
 }
+
+}
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeMicrobenchmarkTests,
+	"Angelscript.TestModule.Performance",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(ScriptSelf)
+	{
+		using namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private;
+		ASSERT_THAT(IsTrue(RunRuntimePerformanceScriptSelf(*TestRunner)));
+	}
+
+	TEST_METHOD(NativeProperty)
+	{
+		using namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private;
+		ASSERT_THAT(IsTrue(RunRuntimePerformanceNativeProperty(*TestRunner)));
+	}
+
+	TEST_METHOD(NativeFunction)
+	{
+		using namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private;
+		ASSERT_THAT(IsTrue(RunRuntimePerformanceNativeFunction(*TestRunner)));
+	}
+};
 
 #endif

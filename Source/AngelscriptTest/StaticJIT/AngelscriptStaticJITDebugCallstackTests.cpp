@@ -1,4 +1,4 @@
-#include "Misc/AutomationTest.h"
+#include "CQTest.h"
 
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestMacros.h"
@@ -84,12 +84,10 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITDebugCallstackTests_Priv
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITDebugCallstackScopePushPopTest,
-	"Angelscript.TestModule.StaticJIT.DebugCallstack.ScopePushPop",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITDebugCallstackTests_Private
+{
 
-bool FAngelscriptStaticJITDebugCallstackScopePushPopTest::RunTest(const FString& Parameters)
+bool RunDebugCallstackScopePushPop(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITDebugCallstackTests_Private;
 	bool bPassed = false;
@@ -98,7 +96,7 @@ bool FAngelscriptStaticJITDebugCallstackScopePushPopTest::RunTest(const FString&
 
 	do
 	{
-		if (!TestTrue(
+		if (!Test.TestTrue(
 				TEXT("StaticJIT.DebugCallstack.ScopePushPop should run with a current Angelscript engine scope"),
 				FAngelscriptEngine::TryGetCurrentEngine() == &Engine))
 		{
@@ -106,7 +104,7 @@ bool FAngelscriptStaticJITDebugCallstackScopePushPopTest::RunTest(const FString&
 		}
 
 		asCThreadLocalData* ThreadLocalData = FAngelscriptEngine::GameThreadTLD;
-		if (!TestNotNull(
+		if (!Test.TestNotNull(
 				TEXT("StaticJIT.DebugCallstack.ScopePushPop should expose a valid game-thread local data pointer"),
 				ThreadLocalData))
 		{
@@ -123,14 +121,14 @@ bool FAngelscriptStaticJITDebugCallstackScopePushPopTest::RunTest(const FString&
 
 		{
 			FScriptExecution Execution(ThreadLocalData);
-			if (!TestTrue(
+			if (!Test.TestTrue(
 					TEXT("StaticJIT.DebugCallstack.ScopePushPop should register the local execution on the thread-local data"),
 					ThreadLocalData->activeExecution == &Execution))
 			{
 				break;
 			}
 
-			if (!TestNull(
+			if (!Test.TestNull(
 					TEXT("StaticJIT.DebugCallstack.ScopePushPop should start with an empty debug callstack"),
 					Execution.debugCallStack))
 			{
@@ -151,7 +149,7 @@ bool FAngelscriptStaticJITDebugCallstackScopePushPopTest::RunTest(const FString&
 					nullptr
 				};
 				if (!VerifyTopFrame(
-						*this,
+						Test,
 						static_cast<FScopeJITDebugCallstack*>(Execution.debugCallStack),
 						ExpectedOuterFrame,
 						TEXT("StaticJIT.DebugCallstack.ScopePushPop outer scope")))
@@ -171,7 +169,7 @@ bool FAngelscriptStaticJITDebugCallstackScopePushPopTest::RunTest(const FString&
 						OuterFrame
 					};
 					if (!VerifyTopFrame(
-							*this,
+							Test,
 							static_cast<FScopeJITDebugCallstack*>(Execution.debugCallStack),
 							ExpectedInnerFrame,
 							TEXT("StaticJIT.DebugCallstack.ScopePushPop inner scope")))
@@ -181,7 +179,7 @@ bool FAngelscriptStaticJITDebugCallstackScopePushPopTest::RunTest(const FString&
 				}
 
 				if (!VerifyTopFrame(
-						*this,
+						Test,
 						static_cast<FScopeJITDebugCallstack*>(Execution.debugCallStack),
 						ExpectedOuterFrame,
 						TEXT("StaticJIT.DebugCallstack.ScopePushPop after inner scope")))
@@ -190,10 +188,10 @@ bool FAngelscriptStaticJITDebugCallstackScopePushPopTest::RunTest(const FString&
 				}
 			}
 
-			if (!TestNull(
+			if (!Test.TestNull(
 					TEXT("StaticJIT.DebugCallstack.ScopePushPop should restore a null debug callstack after the outer scope exits"),
 					Execution.debugCallStack)
-				|| !TestFalse(
+				|| !Test.TestFalse(
 					TEXT("StaticJIT.DebugCallstack.ScopePushPop should not mark the execution as throwing an exception"),
 					Execution.bExceptionThrown))
 			{
@@ -201,10 +199,10 @@ bool FAngelscriptStaticJITDebugCallstackScopePushPopTest::RunTest(const FString&
 			}
 		}
 
-		if (!TestTrue(
+		if (!Test.TestTrue(
 				TEXT("StaticJIT.DebugCallstack.ScopePushPop should restore the previous active execution after FScriptExecution exits"),
 				ThreadLocalData->activeExecution == PreviousExecution)
-			|| !TestTrue(
+			|| !Test.TestTrue(
 				TEXT("StaticJIT.DebugCallstack.ScopePushPop should restore the previous active context after FScriptExecution exits"),
 				ThreadLocalData->activeContext == PreviousContext))
 		{
@@ -218,5 +216,18 @@ bool FAngelscriptStaticJITDebugCallstackScopePushPopTest::RunTest(const FString&
 	}
 	return bPassed;
 }
+
+}
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITDebugCallstackTests,
+	"Angelscript.TestModule.StaticJIT.DebugCallstack",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(ScopePushPop)
+	{
+		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITDebugCallstackTests_Private;
+		ASSERT_THAT(IsTrue(RunDebugCallstackScopePushPop(*TestRunner)));
+	}
+};
 
 #endif

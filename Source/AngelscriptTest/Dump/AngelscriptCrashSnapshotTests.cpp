@@ -1,5 +1,7 @@
 #include "Dump/AngelscriptCrashSnapshot.h"
 
+#include "CQTest.h"
+
 #include "HAL/FileManager.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/AutomationTest.h"
@@ -10,16 +12,6 @@
 #include "Serialization/JsonSerializer.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrashSnapshotWriteTest,
-	"Angelscript.TestModule.Dump.CrashSnapshot.Write",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCrashSnapshotTestCommandRegisteredTest,
-	"Angelscript.TestModule.Dump.CrashSnapshot.TestCommandRegistered",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptTest_Dump_CrashSnapshotTests_Private
 {
@@ -52,49 +44,49 @@ namespace AngelscriptTest_Dump_CrashSnapshotTests_Private
 	}
 }
 
-bool FAngelscriptCrashSnapshotWriteTest::RunTest(const FString& Parameters)
+TEST_CLASS_WITH_FLAGS(FAngelscriptCrashSnapshotTest,
+	"Angelscript.TestModule.Dump.CrashSnapshot",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	using namespace AngelscriptTest_Dump_CrashSnapshotTests_Private;
-
-	const FString OutputDir = MakeUniqueCrashSnapshotPath(TEXT("Write"));
-	const FString Marker = TEXT("snapshot-write-test-marker");
-
-	const FAngelscriptCrashSnapshot::FWriteResult Result =
-		FAngelscriptCrashSnapshot::WriteSnapshotForTesting(OutputDir, Marker);
-
-	if (!TestTrue(TEXT("Crash snapshot writer should succeed"), Result.bSuccess))
+	TEST_METHOD(Write)
 	{
-		AddError(Result.ErrorMessage);
-		return false;
+		using namespace AngelscriptTest_Dump_CrashSnapshotTests_Private;
+
+		const FString OutputDir = MakeUniqueCrashSnapshotPath(TEXT("Write"));
+		const FString Marker = TEXT("snapshot-write-test-marker");
+
+		const FAngelscriptCrashSnapshot::FWriteResult Result =
+			FAngelscriptCrashSnapshot::WriteSnapshotForTesting(OutputDir, Marker);
+
+		if (!Result.bSuccess)
+		{
+			TestRunner->AddError(Result.ErrorMessage);
+		}
+		ASSERT_THAT(IsTrue(Result.bSuccess, TEXT("Crash snapshot writer should succeed")));
+
+		if (!IFileManager::Get().FileExists(*Result.SnapshotPath))
+		{
+			TestRunner->AddError(Result.SnapshotPath);
+		}
+		ASSERT_THAT(IsTrue(IFileManager::Get().FileExists(*Result.SnapshotPath), TEXT("Crash snapshot writer should create a snapshot file")));
+
+		TSharedPtr<FJsonObject> SnapshotObject;
+		ASSERT_THAT(IsTrue(LoadSnapshotJson(*TestRunner, Result.SnapshotPath, SnapshotObject), TEXT("Crash snapshot JSON should load")));
+
+		ASSERT_THAT(AreEqual(1, static_cast<int32>(SnapshotObject->GetIntegerField(TEXT("schemaVersion"))), TEXT("Crash snapshot should store a schema version")));
+		ASSERT_THAT(AreEqual(Marker, SnapshotObject->GetStringField(TEXT("marker")), TEXT("Crash snapshot should store the test marker")));
+		ASSERT_THAT(IsTrue(SnapshotObject->HasTypedField<EJson::Number>(TEXT("processId")), TEXT("Crash snapshot should store the process id")));
+		ASSERT_THAT(IsTrue(SnapshotObject->HasTypedField<EJson::Number>(TEXT("threadId")), TEXT("Crash snapshot should store the current thread id")));
+		ASSERT_THAT(IsTrue(SnapshotObject->HasTypedField<EJson::Boolean>(TEXT("engineInitialized")), TEXT("Crash snapshot should store engine initialization state")));
+		ASSERT_THAT(IsTrue(SnapshotObject->HasTypedField<EJson::Number>(TEXT("activeModuleCount")), TEXT("Crash snapshot should store active module count")));
+		ASSERT_THAT(IsTrue(SnapshotObject->HasTypedField<EJson::Array>(TEXT("modules")), TEXT("Crash snapshot should store a modules array")));
 	}
 
-	if (!TestTrue(TEXT("Crash snapshot writer should create a snapshot file"), IFileManager::Get().FileExists(*Result.SnapshotPath)))
+	TEST_METHOD(TestCommandRegistered)
 	{
-		AddError(Result.SnapshotPath);
-		return false;
+		IConsoleObject* Command = IConsoleManager::Get().FindConsoleObject(TEXT("as.Test.ConfigureCrashSnapshot"));
+		ASSERT_THAT(IsNotNull(Command, TEXT("Crash snapshot test configuration command should be registered")));
 	}
-
-	TSharedPtr<FJsonObject> SnapshotObject;
-	if (!LoadSnapshotJson(*this, Result.SnapshotPath, SnapshotObject))
-	{
-		return false;
-	}
-
-	TestEqual(TEXT("Crash snapshot should store a schema version"), static_cast<int32>(SnapshotObject->GetIntegerField(TEXT("schemaVersion"))), 1);
-	TestEqual(TEXT("Crash snapshot should store the test marker"), SnapshotObject->GetStringField(TEXT("marker")), Marker);
-	TestTrue(TEXT("Crash snapshot should store the process id"), SnapshotObject->HasTypedField<EJson::Number>(TEXT("processId")));
-	TestTrue(TEXT("Crash snapshot should store the current thread id"), SnapshotObject->HasTypedField<EJson::Number>(TEXT("threadId")));
-	TestTrue(TEXT("Crash snapshot should store engine initialization state"), SnapshotObject->HasTypedField<EJson::Boolean>(TEXT("engineInitialized")));
-	TestTrue(TEXT("Crash snapshot should store active module count"), SnapshotObject->HasTypedField<EJson::Number>(TEXT("activeModuleCount")));
-	TestTrue(TEXT("Crash snapshot should store a modules array"), SnapshotObject->HasTypedField<EJson::Array>(TEXT("modules")));
-
-	return true;
-}
-
-bool FAngelscriptCrashSnapshotTestCommandRegisteredTest::RunTest(const FString& Parameters)
-{
-	IConsoleObject* Command = IConsoleManager::Get().FindConsoleObject(TEXT("as.Test.ConfigureCrashSnapshot"));
-	return TestNotNull(TEXT("Crash snapshot test configuration command should be registered"), Command);
-}
+};
 
 #endif

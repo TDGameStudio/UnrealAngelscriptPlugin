@@ -1,24 +1,21 @@
 #include "AngelscriptNativeScriptTestObject.h"
 
-#include "Misc/AutomationTest.h"
+#include "CQTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+TEST_CLASS_WITH_FLAGS(
 	FAngelscriptNativeScriptTestObjectInstantiationTest,
-	"Angelscript.TestModule.Shared.NativeScriptTestObject.Instantiate",
+	"Angelscript.TestModule.Shared.NativeScriptTestObject",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptNativeScriptTestObjectInstantiationTest::RunTest(const FString& Parameters)
 {
-	UAngelscriptNativeScriptTestObject* Object = NewObject<UAngelscriptNativeScriptTestObject>(GetTransientPackage());
-	if (!TestNotNull(TEXT("Native script test object should instantiate"), Object))
+	TEST_METHOD(Instantiate)
 	{
-		return false;
-	}
+		UAngelscriptNativeScriptTestObject* Object = NewObject<UAngelscriptNativeScriptTestObject>(GetTransientPackage());
+		ASSERT_THAT(IsNotNull(Object));
 
-	TestEqual(TEXT("NativeNoArgValue returns the expected native constant"), Object->NativeNoArgValue(), 42);
-	return true;
-}
+		ASSERT_THAT(AreEqual(42, Object->NativeNoArgValue()));
+	}
+};
 
 #endif

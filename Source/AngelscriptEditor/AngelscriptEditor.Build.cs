@@ -46,6 +46,7 @@ namespace UnrealBuildTool.Rules
 				"ToolWidgets",
 				"Json",
 				"JsonUtilities",
+				"CQTest",
             });
 		}
 	}

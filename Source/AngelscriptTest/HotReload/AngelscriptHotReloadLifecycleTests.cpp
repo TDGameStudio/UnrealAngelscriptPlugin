@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptFunctionalTestUtils.h"
 #include "AngelscriptTestMacros.h"
 
@@ -29,12 +30,11 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadLifecycleTests_Private
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHotReloadDoesNotReplayBeginPlayOnLiveActorTest,
-	"Angelscript.TestModule.HotReload.SoftReload.DoesNotReplayBeginPlayOnLiveActor",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 
-bool FAngelscriptHotReloadDoesNotReplayBeginPlayOnLiveActorTest::RunTest(const FString& Parameters)
+static bool DoesNotReplayBeginPlayOnLiveActor(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadLifecycleTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -94,7 +94,7 @@ class AHotReloadLifecycleTarget : AActor
 )AS");
 
 	UClass* InitialClass = CompileScriptModule(
-		*this,
+		Test,
 		Engine,
 		LifecycleModuleName,
 		LifecycleFilename,
@@ -118,7 +118,7 @@ class AHotReloadLifecycleTarget : AActor
 	FActorTestSpawner Spawner;
 	InitializeLifecycleSpawner(Spawner);
 
-	AActor* ExistingActor = SpawnScriptActor(*this, Spawner, InitialClass);
+	AActor* ExistingActor = SpawnScriptActor(Test, Spawner, InitialClass);
 	if (ExistingActor == nullptr)
 	{
 		return false;
@@ -127,7 +127,7 @@ class AHotReloadLifecycleTarget : AActor
 	BeginPlayActor(Engine, *ExistingActor);
 
 	int32 BeginPlayCountBeforeReload = 0;
-	if (!ReadPropertyValue<FIntProperty>(*this, ExistingActor, TEXT("BeginPlayCount"), BeginPlayCountBeforeReload))
+	if (!ReadPropertyValue<FIntProperty>(Test, ExistingActor, TEXT("BeginPlayCount"), BeginPlayCountBeforeReload))
 	{
 		return false;
 	}
@@ -188,7 +188,7 @@ class AHotReloadLifecycleTarget : AActor
 	}
 
 	int32 BeginPlayCountAfterReload = 0;
-	if (!ReadPropertyValue<FIntProperty>(*this, ExistingActor, TEXT("BeginPlayCount"), BeginPlayCountAfterReload))
+	if (!ReadPropertyValue<FIntProperty>(Test, ExistingActor, TEXT("BeginPlayCount"), BeginPlayCountAfterReload))
 	{
 		return false;
 	}
@@ -199,7 +199,7 @@ class AHotReloadLifecycleTarget : AActor
 		1);
 
 	int32 PersistentCounterAfterReload = 0;
-	if (!ReadPropertyValue<FIntProperty>(*this, ExistingActor, TEXT("PersistentCounter"), PersistentCounterAfterReload))
+	if (!ReadPropertyValue<FIntProperty>(Test, ExistingActor, TEXT("PersistentCounter"), PersistentCounterAfterReload))
 	{
 		return false;
 	}
@@ -225,5 +225,19 @@ class AHotReloadLifecycleTarget : AActor
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadLifecycleTests,
+	"Angelscript.TestModule.HotReload.SoftReload",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(DoesNotReplayBeginPlayOnLiveActor)
+	{
+		ASSERT_THAT(IsTrue(::DoesNotReplayBeginPlayOnLiveActor(*TestRunner)));
+	}
+};
 
 #endif

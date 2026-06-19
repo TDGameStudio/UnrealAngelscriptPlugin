@@ -9,7 +9,6 @@
 #include "Components/ActorComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
-#include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 #include "UObject/UnrealType.h"
 
@@ -24,7 +23,7 @@
 // does not cover EndPlay / Destroy (that ground is fully covered by
 // Template_GameLifetime).
 //
-// Why CQTest over the classic IMPLEMENT_SIMPLE_AUTOMATION_TEST:
+// Why this template uses CQTest:
 //   1. A single TEST_CLASS_WITH_FLAGS hosts many TEST_METHODs; each one is
 //      registered as an independent automation test, avoiding one giant
 //      RunTest function with a forest of scoped helpers.

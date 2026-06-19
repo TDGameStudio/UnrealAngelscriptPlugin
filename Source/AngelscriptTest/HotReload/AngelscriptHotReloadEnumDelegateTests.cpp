@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestMacros.h"
@@ -20,12 +21,11 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadEnumDelegateTests_Privat
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHotReloadReloadDelegatesBroadcastEnumCreatedOnFirstCompileTest,
-	"Angelscript.TestModule.HotReload.ReloadDelegates.BroadcastEnumCreatedOnFirstCompile",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 
-bool FAngelscriptHotReloadReloadDelegatesBroadcastEnumCreatedOnFirstCompileTest::RunTest(const FString& Parameters)
+static bool ReloadDelegatesBroadcastEnumCreatedOnFirstCompile(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadEnumDelegateTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -118,5 +118,19 @@ enum class EHotReloadCreatedState : uint8
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadEnumDelegateTests,
+	"Angelscript.TestModule.HotReload.ReloadDelegates",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(BroadcastEnumCreatedOnFirstCompile)
+	{
+		ASSERT_THAT(IsTrue(ReloadDelegatesBroadcastEnumCreatedOnFirstCompile(*TestRunner)));
+	}
+};
 
 #endif

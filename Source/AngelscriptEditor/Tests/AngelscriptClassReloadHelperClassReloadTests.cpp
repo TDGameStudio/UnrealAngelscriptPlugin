@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "HotReload/ClassReloadHelper.h"
 
 #include "AngelscriptEngine.h"
@@ -11,11 +12,6 @@
 #include "UObject/Class.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptClassReloadHelperOnClassReloadRefreshesClassActionsAndInvalidatesComponentRegistryForNonInterfaceComponentsTest,
-	"Angelscript.Editor.ClassReloadHelper.OnClassReloadRefreshesClassActionsAndInvalidatesComponentRegistryForNonInterfaceComponents",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperClassReloadTests_Private
 {
@@ -62,8 +58,12 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperClassReloa
 	}
 }
 
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 
-bool FAngelscriptClassReloadHelperOnClassReloadRefreshesClassActionsAndInvalidatesComponentRegistryForNonInterfaceComponentsTest::RunTest(const FString& Parameters)
+static bool RunOnClassReloadRefreshesClassActionsAndInvalidatesComponentRegistryForNonInterfaceComponents(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperClassReloadTests_Private;
 	const FClassReloadHelper::FReloadState SavedState = FClassReloadHelper::ReloadState();
@@ -174,5 +174,20 @@ bool FAngelscriptClassReloadHelperOnClassReloadRefreshesClassActionsAndInvalidat
 	}
 	return TestEqual(TEXT("ClassReloadHelper.OnClassReload immediate-effects test should not invalidate non-component replacement classes"), CallLog.InvalidatedClasses.Num(), 0);
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptClassReloadHelperClassReloadTests,
+	"Angelscript.Editor.ClassReloadHelper",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(OnClassReloadRefreshesClassActionsAndInvalidatesComponentRegistryForNonInterfaceComponents)
+	{
+		ASSERT_THAT(IsTrue(RunOnClassReloadRefreshesClassActionsAndInvalidatesComponentRegistryForNonInterfaceComponents(*TestRunner)));
+	}
+};
 
 #endif

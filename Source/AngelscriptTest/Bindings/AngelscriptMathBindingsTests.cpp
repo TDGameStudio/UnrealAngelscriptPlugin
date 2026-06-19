@@ -11,7 +11,7 @@
 //                                        for FVector and FVector3f
 //
 // CQTest adaptation notes:
-//   Two IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
+//   Two legacy automation tests merged into one TEST_CLASS.
 //   Struct returns use FAngelscriptTestExecutor::ExecuteAndExtractStruct with
 //   tolerance checks from Bindings/AngelscriptMathBindingsTestCompare.h.
 // ============================================================================

@@ -11,7 +11,7 @@
 //   ForeachCompat     — range-for over int[], TArray<FName>, TArray<FVector>, mutation
 //
 // CQTest adaptation notes:
-//   Four legacy IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
+//   Four legacy automation tests merged into one TEST_CLASS.
 //   Each `int Entry()` split into named `int FuncName()` returning 1/0.
 // ============================================================================
 

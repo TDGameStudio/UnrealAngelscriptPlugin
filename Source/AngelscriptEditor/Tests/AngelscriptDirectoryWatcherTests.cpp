@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "HotReload/AngelscriptDirectoryWatcherInternal.h"
 
 #include "AngelscriptEngine.h"
@@ -12,46 +13,6 @@
 #include "Misc/ScopeExit.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptDirectoryWatcherScriptQueueTest,
-	"Angelscript.Editor.DirectoryWatcher.Queue.ScriptAddAndRemove",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptDirectoryWatcherNonScriptIgnoreTest,
-	"Angelscript.Editor.DirectoryWatcher.Queue.IgnoresNonScriptFiles",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptDirectoryWatcherModifiedScriptQueueTest,
-	"Angelscript.TestModule.Editor.DirectoryWatcher.Queue.ModifiedScriptQueuesReloadWithoutDeletion",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptDirectoryWatcherFolderAddTest,
-	"Angelscript.Editor.DirectoryWatcher.Queue.FolderAddScansContainedScripts",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptDirectoryWatcherFolderRemoveTest,
-	"Angelscript.Editor.DirectoryWatcher.Queue.FolderRemoveUsesLoadedScriptEnumerator",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptDirectoryWatcherRenameWindowTest,
-	"Angelscript.Editor.DirectoryWatcher.Queue.RenameWindowTracksRemoveAndAdd",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptDirectoryWatcherOutsideRootTimestampTest,
-	"Angelscript.Editor.DirectoryWatcher.Queue.IgnoresOutsideRootsWithoutTimestampMutation",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptDirectoryWatcherGatherLoadedScriptsForFolderTest,
-	"Angelscript.Editor.DirectoryWatcher.GatherLoadedScriptsForFolder.DeduplicatesAndRejectsPrefixCollisions",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherTests_Private
 {
@@ -177,7 +138,12 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherTests_Priva
 }
 
 
-bool FAngelscriptDirectoryWatcherScriptQueueTest::RunTest(const FString& Parameters)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+
+static bool RunQueueScriptAddAndRemove(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherTests_Private;
 	IFileManager& FileManager = IFileManager::Get();
@@ -208,7 +174,7 @@ bool FAngelscriptDirectoryWatcherScriptQueueTest::RunTest(const FString& Paramet
 	return TestTrue(TEXT("DirectoryWatcher.Queue.ScriptAddAndRemove should store the removed script pair"), ContainsFilenamePair(Engine->FileDeletionsDetectedForReload, RemovedAbsolutePath, TEXT("Scripts/Removed.as")));
 }
 
-bool FAngelscriptDirectoryWatcherNonScriptIgnoreTest::RunTest(const FString& Parameters)
+static bool RunQueueIgnoresNonScriptFiles(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherTests_Private;
 	IFileManager& FileManager = IFileManager::Get();
@@ -235,7 +201,7 @@ bool FAngelscriptDirectoryWatcherNonScriptIgnoreTest::RunTest(const FString& Par
 	return TestEqual(TEXT("DirectoryWatcher.Queue.IgnoresNonScriptFiles should not queue removed scripts"), Engine->FileDeletionsDetectedForReload.Num(), 0);
 }
 
-bool FAngelscriptDirectoryWatcherModifiedScriptQueueTest::RunTest(const FString& Parameters)
+static bool RunQueueModifiedScriptQueuesReloadWithoutDeletion(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherTests_Private;
 	IFileManager& FileManager = IFileManager::Get();
@@ -275,7 +241,7 @@ bool FAngelscriptDirectoryWatcherModifiedScriptQueueTest::RunTest(const FString&
 	return TestTrue(TEXT("DirectoryWatcher.Queue.ModifiedScriptQueuesReloadWithoutDeletion should store the modified script pair"), ContainsFilenamePair(Engine->FileChangesDetectedForReload, ModifiedAbsolutePath, TEXT("Scripts/Modified.as")));
 }
 
-bool FAngelscriptDirectoryWatcherFolderAddTest::RunTest(const FString& Parameters)
+static bool RunQueueFolderAddScansContainedScripts(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherTests_Private;
 	IFileManager& FileManager = IFileManager::Get();
@@ -306,7 +272,7 @@ bool FAngelscriptDirectoryWatcherFolderAddTest::RunTest(const FString& Parameter
 	return TestTrue(TEXT("DirectoryWatcher.Queue.FolderAddScansContainedScripts should queue AddedFolder/Nested/C.as"), ContainsFilenamePair(Engine->FileChangesDetectedForReload, FPaths::ConvertRelativePathToFull(AddedFolderPath / TEXT("Nested/C.as")), TEXT("AddedFolder/Nested/C.as")));
 }
 
-bool FAngelscriptDirectoryWatcherFolderRemoveTest::RunTest(const FString& Parameters)
+static bool RunQueueFolderRemoveUsesLoadedScriptEnumerator(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherTests_Private;
 	IFileManager& FileManager = IFileManager::Get();
@@ -340,7 +306,7 @@ bool FAngelscriptDirectoryWatcherFolderRemoveTest::RunTest(const FString& Parame
 	return TestTrue(TEXT("DirectoryWatcher.Queue.FolderRemoveUsesLoadedScriptEnumerator should queue the nested removed script"), ContainsFilenamePair(Engine->FileDeletionsDetectedForReload, NestedRemovedScriptAbsolutePath, TEXT("RemovedFolder/Nested/RemovedB.as")));
 }
 
-bool FAngelscriptDirectoryWatcherRenameWindowTest::RunTest(const FString& Parameters)
+static bool RunQueueRenameWindowTracksRemoveAndAdd(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherTests_Private;
 	IFileManager& FileManager = IFileManager::Get();
@@ -372,7 +338,7 @@ bool FAngelscriptDirectoryWatcherRenameWindowTest::RunTest(const FString& Parame
 	return TestTrue(TEXT("DirectoryWatcher.Queue.RenameWindowTracksRemoveAndAdd should retain the new filename in the addition queue"), ContainsFilenamePair(Engine->FileChangesDetectedForReload, NewAbsolutePath, TEXT("Rename/NewName.as")));
 }
 
-bool FAngelscriptDirectoryWatcherOutsideRootTimestampTest::RunTest(const FString& Parameters)
+static bool RunQueueIgnoresOutsideRootsWithoutTimestampMutation(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherTests_Private;
 	IFileManager& FileManager = IFileManager::Get();
@@ -433,7 +399,7 @@ bool FAngelscriptDirectoryWatcherOutsideRootTimestampTest::RunTest(const FString
 	return TestTrue(TEXT("DirectoryWatcher.Queue.IgnoresOutsideRootsWithoutTimestampMutation should queue the in-root script with the normalized relative path"), ContainsFilenamePair(Engine->FileChangesDetectedForReload, InsideScriptAbsolutePath, TEXT("Scripts/Inside.as")));
 }
 
-bool FAngelscriptDirectoryWatcherGatherLoadedScriptsForFolderTest::RunTest(const FString& Parameters)
+static bool RunGatherLoadedScriptsForFolderDeduplicatesAndRejectsPrefixCollisions(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptDirectoryWatcherTests_Private;
 	IFileManager& FileManager = IFileManager::Get();
@@ -449,7 +415,7 @@ bool FAngelscriptDirectoryWatcherGatherLoadedScriptsForFolderTest::RunTest(const
 	FileManager.MakeDirectory(*RemovedSiblingFolderPath, true);
 
 	FResolvedDirectoryWatcherCompileEngine ResolvedEngine;
-	if (!AcquireDirectoryWatcherCompileEngine(*this, ResolvedEngine))
+	if (!AcquireDirectoryWatcherCompileEngine(Test, ResolvedEngine))
 	{
 		return false;
 	}
@@ -471,7 +437,7 @@ bool FAngelscriptDirectoryWatcherGatherLoadedScriptsForFolderTest::RunTest(const
 		RemovedFolderModule,
 		RemovedSiblingModule
 	};
-	if (!CompileDirectoryWatcherModules(*this, ResolvedEngine.Get(), ModulesToCompile))
+	if (!CompileDirectoryWatcherModules(Test, ResolvedEngine.Get(), ModulesToCompile))
 	{
 		return false;
 	}
@@ -513,5 +479,68 @@ bool FAngelscriptDirectoryWatcherGatherLoadedScriptsForFolderTest::RunTest(const
 		TEXT("DirectoryWatcher.GatherLoadedScriptsForFolder.DeduplicatesAndRejectsPrefixCollisions should reject sibling folders that only share the prefix"),
 		ContainsFilenamePair(LoadedScripts, SiblingAbsolutePath, TEXT("RemovedFolderSibling/Leak.as")));
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptDirectoryWatcherQueueTests,
+	"Angelscript.Editor.DirectoryWatcher.Queue",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(ScriptAddAndRemove)
+	{
+		ASSERT_THAT(IsTrue(RunQueueScriptAddAndRemove(*TestRunner)));
+	}
+
+	TEST_METHOD(IgnoresNonScriptFiles)
+	{
+		ASSERT_THAT(IsTrue(RunQueueIgnoresNonScriptFiles(*TestRunner)));
+	}
+
+	TEST_METHOD(FolderAddScansContainedScripts)
+	{
+		ASSERT_THAT(IsTrue(RunQueueFolderAddScansContainedScripts(*TestRunner)));
+	}
+
+	TEST_METHOD(FolderRemoveUsesLoadedScriptEnumerator)
+	{
+		ASSERT_THAT(IsTrue(RunQueueFolderRemoveUsesLoadedScriptEnumerator(*TestRunner)));
+	}
+
+	TEST_METHOD(RenameWindowTracksRemoveAndAdd)
+	{
+		ASSERT_THAT(IsTrue(RunQueueRenameWindowTracksRemoveAndAdd(*TestRunner)));
+	}
+
+	TEST_METHOD(IgnoresOutsideRootsWithoutTimestampMutation)
+	{
+		ASSERT_THAT(IsTrue(RunQueueIgnoresOutsideRootsWithoutTimestampMutation(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptDirectoryWatcherLegacyQueueTests,
+	"Angelscript.TestModule.Editor.DirectoryWatcher.Queue",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(ModifiedScriptQueuesReloadWithoutDeletion)
+	{
+		ASSERT_THAT(IsTrue(RunQueueModifiedScriptQueuesReloadWithoutDeletion(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptDirectoryWatcherGatherLoadedScriptsForFolderTests,
+	"Angelscript.Editor.DirectoryWatcher.GatherLoadedScriptsForFolder",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(DeduplicatesAndRejectsPrefixCollisions)
+	{
+		ASSERT_THAT(IsTrue(RunGatherLoadedScriptsForFolderDeduplicatesAndRejectsPrefixCollisions(*TestRunner)));
+	}
+};
 
 #endif

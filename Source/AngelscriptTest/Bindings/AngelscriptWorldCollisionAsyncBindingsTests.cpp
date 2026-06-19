@@ -8,7 +8,7 @@
 //   AsyncTraceCallbacks — async line trace and overlap with delegate callbacks
 //
 // CQTest adaptation notes:
-//   Single IMPLEMENT_SIMPLE_AUTOMATION_TEST converted to TEST_CLASS.
+//   Single legacy automation test converted to TEST_CLASS.
 //   This test uses ASTEST_CREATE_ENGINE_FULL (world-based) and a spawned script
 //   actor, so it does not use the standard FScopedAngelscriptModule pattern.
 //   The original structure is preserved with property-read assertions.

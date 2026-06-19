@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "HotReload/ClassReloadHelper.h"
 
 #include "Engine/DataTable.h"
@@ -10,11 +11,6 @@
 #include "UObject/UnrealType.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptClassReloadHelperReferenceReplacementHelperTest,
-	"Angelscript.Editor.ClassReloadHelper.ReferenceReplacementHelperRetargetsOpenEditors",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadReferenceReplacementTests_Private
 {
@@ -155,15 +151,19 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadReferenceReplace
 	}
 }
 
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 
-bool FAngelscriptClassReloadHelperReferenceReplacementHelperTest::RunTest(const FString& Parameters)
+static bool RunReferenceReplacementHelper(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadReferenceReplacementTests_Private;
 	UAssetEditorSubsystem* AssetEditorSubsystem = GEditor != nullptr ? GEditor->GetEditorSubsystem<UAssetEditorSubsystem>() : nullptr;
 	UAngelscriptReferenceReplacementHelper* Helper = NewObject<UAngelscriptReferenceReplacementHelper>(GetTransientPackage());
-	UObject* OriginalAssetObject = CreateReferenceReplacementTestAsset(*this, TEXT("ClassReloadHelperOriginalAsset"));
-	UObject* ReplacedAssetObject = CreateReferenceReplacementTestAsset(*this, TEXT("ClassReloadHelperReplacedAsset"));
-	UObject* UnrelatedAssetObject = CreateReferenceReplacementTestAsset(*this, TEXT("ClassReloadHelperUnrelatedAsset"));
+	UObject* OriginalAssetObject = CreateReferenceReplacementTestAsset(Test, TEXT("ClassReloadHelperOriginalAsset"));
+	UObject* ReplacedAssetObject = CreateReferenceReplacementTestAsset(Test, TEXT("ClassReloadHelperReplacedAsset"));
+	UObject* UnrelatedAssetObject = CreateReferenceReplacementTestAsset(Test, TEXT("ClassReloadHelperUnrelatedAsset"));
 	FTestAssetEditorInstance EditorInstance;
 	TArray<FAssetEditorNotification> Notifications;
 
@@ -284,5 +284,20 @@ bool FAngelscriptClassReloadHelperReferenceReplacementHelperTest::RunTest(const 
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptClassReloadReferenceReplacementTests,
+	"Angelscript.Editor.ClassReloadHelper",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(ReferenceReplacementHelperRetargetsOpenEditors)
+	{
+		ASSERT_THAT(IsTrue(RunReferenceReplacementHelper(*TestRunner)));
+	}
+};
 
 #endif

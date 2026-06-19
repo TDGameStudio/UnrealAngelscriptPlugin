@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestMacros.h"
@@ -13,27 +14,12 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadPropertyTests_Private
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptSoftReloadBasicTest,
-	"Angelscript.TestModule.HotReload.SoftReload.Basic",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptSoftReloadPreservesOtherModulesTest,
-	"Angelscript.TestModule.HotReload.SoftReload.PreservesOtherModules",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptFullReloadBasicTest,
-	"Angelscript.TestModule.HotReload.FullReload.Basic",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptFullReloadEnumBasicTest,
-	"Angelscript.TestModule.HotReload.FullReload.EnumBasic",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptSoftReloadBasicTest::RunTest(const FString& Parameters)
+static bool SoftReloadBasic(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadPropertyTests_Private;
 	bool bPassed = false;
@@ -137,7 +123,7 @@ int GetSoftReloadVersion()
 	return bPassed;
 }
 
-bool FAngelscriptSoftReloadPreservesOtherModulesTest::RunTest(const FString& Parameters)
+static bool SoftReloadPreservesOtherModules(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadPropertyTests_Private;
 	bool bPassed = false;
@@ -206,7 +192,7 @@ int GetValueA()
 	return bPassed;
 }
 
-bool FAngelscriptFullReloadBasicTest::RunTest(const FString& Parameters)
+static bool FullReloadBasic(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadPropertyTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -307,7 +293,7 @@ class UFullReloadTarget : UObject
 	return true;
 }
 
-bool FAngelscriptFullReloadEnumBasicTest::RunTest(const FString& Parameters)
+static bool FullReloadEnumBasic(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadPropertyTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -392,5 +378,40 @@ class UFullReloadEnumTarget : UObject
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptSoftReloadTests,
+	"Angelscript.TestModule.HotReload.SoftReload",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(Basic)
+	{
+		ASSERT_THAT(IsTrue(SoftReloadBasic(*TestRunner)));
+	}
+
+	TEST_METHOD(PreservesOtherModules)
+	{
+		ASSERT_THAT(IsTrue(SoftReloadPreservesOtherModules(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptFullReloadTests,
+	"Angelscript.TestModule.HotReload.FullReload",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(Basic)
+	{
+		ASSERT_THAT(IsTrue(FullReloadBasic(*TestRunner)));
+	}
+
+	TEST_METHOD(EnumBasic)
+	{
+		ASSERT_THAT(IsTrue(FullReloadEnumBasic(*TestRunner)));
+	}
+};
 
 #endif

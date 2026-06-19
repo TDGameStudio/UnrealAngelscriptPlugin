@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "Core/AngelscriptEditorModule.h"
 #include "AngelscriptSettings.h"
 
@@ -12,10 +13,11 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorModuleProjectSettingsLifecycleTest,
-	"Angelscript.Editor.Module.ProjectSettingsEntryMatchesModuleLifetime",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define TestNull(...) Test.TestNull(__VA_ARGS__)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleSettingsTests_Private
 {
@@ -104,7 +106,7 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleSettingsTests_P
 }
 
 
-bool FAngelscriptEditorModuleProjectSettingsLifecycleTest::RunTest(const FString& Parameters)
+static bool RunProjectSettingsEntryMatchesModuleLifetime(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleSettingsTests_Private;
 	ISettingsModule& SettingsModule = FModuleManager::LoadModuleChecked<ISettingsModule>("Settings");
@@ -210,5 +212,22 @@ bool FAngelscriptEditorModuleProjectSettingsLifecycleTest::RunTest(const FString
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+#undef TestNull
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorModuleSettingsTests,
+	"Angelscript.Editor.Module",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(ProjectSettingsEntryMatchesModuleLifetime)
+	{
+		ASSERT_THAT(IsTrue(RunProjectSettingsEntryMatchesModuleLifetime(*TestRunner)));
+	}
+};
 
 #endif

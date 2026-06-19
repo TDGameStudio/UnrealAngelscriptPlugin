@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestMacros.h"
@@ -162,17 +163,13 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadEventTests_Private
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHotReloadPostReloadModeFlagMatchesReloadPathTest,
-	"Angelscript.TestModule.HotReload.Events.PostReloadModeFlagMatchesReloadPath",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define AddExpectedError(...) Test.AddExpectedError(__VA_ARGS__)
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHotReloadFailedReloadDoesNotBroadcastReloadDelegatesTest,
-	"Angelscript.TestModule.HotReload.Events.FailedReloadDoesNotBroadcastReloadDelegates",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptHotReloadPostReloadModeFlagMatchesReloadPathTest::RunTest(const FString& Parameters)
+static bool PostReloadModeFlagMatchesReloadPath(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadEventTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -231,7 +228,7 @@ class UPostReloadModeTarget : UObject
 	}
 
 	UClass* InitialClass = FindGeneratedClass(&Engine, PostReloadModeClassName);
-	if (!ExecuteGetValue(*this, Engine, InitialClass, 1, TEXT("Initial post-reload mode-flag baseline")))
+	if (!ExecuteGetValue(Test, Engine, InitialClass, 1, TEXT("Initial post-reload mode-flag baseline")))
 	{
 		return false;
 	}
@@ -278,7 +275,7 @@ class UPostReloadModeTarget : UObject
 			ClassAfterSoftReload);
 	}
 
-	if (!ExecuteGetValue(*this, Engine, ClassAfterSoftReload, 2, TEXT("Soft reload post-reload mode-flag baseline")))
+	if (!ExecuteGetValue(Test, Engine, ClassAfterSoftReload, 2, TEXT("Soft reload post-reload mode-flag baseline")))
 	{
 		return false;
 	}
@@ -321,7 +318,7 @@ class UPostReloadModeTarget : UObject
 	}
 
 	TestNotNull(TEXT("Full reload should expose the newly added Epoch property"), FindFProperty<FIntProperty>(ClassAfterFullReload, TEXT("Epoch")));
-	if (!ExecuteGetValue(*this, Engine, ClassAfterFullReload, 3, TEXT("Full reload post-reload mode-flag baseline")))
+	if (!ExecuteGetValue(Test, Engine, ClassAfterFullReload, 3, TEXT("Full reload post-reload mode-flag baseline")))
 	{
 		return false;
 	}
@@ -330,7 +327,7 @@ class UPostReloadModeTarget : UObject
 	return true;
 }
 
-bool FAngelscriptHotReloadFailedReloadDoesNotBroadcastReloadDelegatesTest::RunTest(const FString& Parameters)
+static bool FailedReloadDoesNotBroadcastReloadDelegates(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadEventTests_Private;
 	static const FName ModuleName(TEXT("HotReloadFailedReloadEventMod"));
@@ -393,7 +390,7 @@ class UFailedReloadEventTarget : UObject
 	}
 
 	if (!ExecuteGetValue(
-		*this,
+		Test,
 		Engine,
 		ClassBeforeFailure,
 		5,
@@ -440,7 +437,7 @@ class UFailedReloadEventTarget : UObject
 	if (ClassAfterFailure != nullptr)
 	{
 		bPassed &= ExecuteGetValue(
-			*this,
+			Test,
 			Engine,
 			ClassAfterFailure,
 			5,
@@ -450,5 +447,26 @@ class UFailedReloadEventTarget : UObject
 	}
 	return bPassed;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+#undef AddExpectedError
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadEventTests,
+	"Angelscript.TestModule.HotReload.Events",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(PostReloadModeFlagMatchesReloadPath)
+	{
+		ASSERT_THAT(IsTrue(::PostReloadModeFlagMatchesReloadPath(*TestRunner)));
+	}
+
+	TEST_METHOD(FailedReloadDoesNotBroadcastReloadDelegates)
+	{
+		ASSERT_THAT(IsTrue(::FailedReloadDoesNotBroadcastReloadDelegates(*TestRunner)));
+	}
+};
 
 #endif

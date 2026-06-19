@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "HotReload/ClassReloadHelper.h"
 
 #include "AngelscriptEngine.h"
@@ -12,21 +13,6 @@
 #include "UObject/UnrealType.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptClassReloadHelperReloadStateTest,
-	"Angelscript.Editor.ClassReloadHelper.ReloadStateTracksAndResetsOnPostReload",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptClassReloadHelperEnumAndAssetReloadStateTest,
-	"Angelscript.TestModule.Editor.ClassReloadHelper.ReloadStateTracksLiteralAssetsAndEnumChanges",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptClassReloadHelperPerformReinstanceInitialCompileGateTest,
-	"Angelscript.TestModule.Editor.ClassReloadHelper.PerformReinstanceNoOpsBeforeInitialCompileFinishes",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperTests_Private
 {
@@ -85,8 +71,12 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperTests_Priv
 	}
 }
 
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 
-bool FAngelscriptClassReloadHelperPerformReinstanceInitialCompileGateTest::RunTest(const FString& Parameters)
+static bool RunPerformReinstanceInitialCompileGate(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperTests_Private;
 	const FClassReloadHelper::FReloadState SavedState = FClassReloadHelper::ReloadState();
@@ -225,7 +215,7 @@ bool FAngelscriptClassReloadHelperPerformReinstanceInitialCompileGateTest::RunTe
 	return TestEqual(TEXT("ClassReloadHelper.PerformReinstance should not mutate GEditor actor factory count before initial compile finishes"), GEditor->ActorFactories.Num(), InitialActorFactoryCount);
 }
 
-bool FAngelscriptClassReloadHelperReloadStateTest::RunTest(const FString& Parameters)
+static bool RunReloadState(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperTests_Private;
 	FAngelscriptEngine& Engine = FAngelscriptEngine::Get();
@@ -237,8 +227,8 @@ bool FAngelscriptClassReloadHelperReloadStateTest::RunTest(const FString& Parame
 		FClassReloadHelper::ReloadState() = SavedState;
 	};
 
-	UDelegateFunction* OldDelegate = FindActorDelegateSignature(*this, GET_MEMBER_NAME_CHECKED(AActor, OnActorBeginOverlap));
-	UDelegateFunction* NewDelegate = FindActorDelegateSignature(*this, GET_MEMBER_NAME_CHECKED(AActor, OnActorEndOverlap));
+	UDelegateFunction* OldDelegate = FindActorDelegateSignature(Test, GET_MEMBER_NAME_CHECKED(AActor, OnActorBeginOverlap));
+	UDelegateFunction* NewDelegate = FindActorDelegateSignature(Test, GET_MEMBER_NAME_CHECKED(AActor, OnActorEndOverlap));
 	if (OldDelegate == nullptr || NewDelegate == nullptr)
 	{
 		return false;
@@ -336,7 +326,7 @@ bool FAngelscriptClassReloadHelperReloadStateTest::RunTest(const FString& Parame
 	return TestEqual(TEXT("ClassReloadHelper.ReloadState should clear new delegates after post reload"), ReloadState.NewDelegates.Num(), 0);
 }
 
-bool FAngelscriptClassReloadHelperEnumAndAssetReloadStateTest::RunTest(const FString& Parameters)
+static bool RunEnumAndAssetReloadState(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperTests_Private;
 	FAngelscriptEngine& Engine = FAngelscriptEngine::Get();
@@ -415,5 +405,35 @@ bool FAngelscriptClassReloadHelperEnumAndAssetReloadStateTest::RunTest(const FSt
 	}
 	return TestEqual(TEXT("ClassReloadHelper.ReloadState should clear created enums after post reload"), ReloadState.NewEnums.Num(), 0);
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptClassReloadHelperTests,
+	"Angelscript.Editor.ClassReloadHelper",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(ReloadStateTracksAndResetsOnPostReload)
+	{
+		ASSERT_THAT(IsTrue(RunReloadState(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptClassReloadHelperTestModuleTests,
+	"Angelscript.TestModule.Editor.ClassReloadHelper",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(ReloadStateTracksLiteralAssetsAndEnumChanges)
+	{
+		ASSERT_THAT(IsTrue(RunEnumAndAssetReloadState(*TestRunner)));
+	}
+
+	TEST_METHOD(PerformReinstanceNoOpsBeforeInitialCompileFinishes)
+	{
+		ASSERT_THAT(IsTrue(RunPerformReinstanceInitialCompileGate(*TestRunner)));
+	}
+};
 
 #endif

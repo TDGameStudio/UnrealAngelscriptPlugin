@@ -1,8 +1,8 @@
+#include "CQTest.h"
 #include "AngelscriptGlobalFunctionInvoker.h"
 #include "AngelscriptTestMacros.h"
 #include "AngelscriptTestUtilities.h"
 
-#include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 
 // -----------------------------------------------------------------------------
@@ -13,7 +13,7 @@
 // hand-rolling the asIScriptContext setup:
 //
 //   asIScriptModule* Module = BuildModule(...);
-//   FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("int Sum(int, int)"));
+//   FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int Sum(int, int)"));
 //   Invoker.AddArg(static_cast<int32>(17)).AddArg(static_cast<int32>(25));
 //   const int32 Result = Invoker.CallAndReturn<int32>(INDEX_NONE);
 //
@@ -53,23 +53,22 @@
 // Test 1: GlobalInvoke — minimal smoke coverage
 // =============================================================================
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTemplateGlobalFunctionInvokeTest,
-	"Angelscript.Template.GlobalFunctions.GlobalInvoke",
+TEST_CLASS_WITH_FLAGS(FAngelscriptTemplateGlobalFunctionsTest,
+	"Angelscript.Template.GlobalFunctions",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTemplateGlobalFunctionInvokeTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	ON_SCOPE_EXIT
+	TEST_METHOD(GlobalInvoke)
 	{
-		ASTEST_RESET_ENGINE(Engine);
-	};
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		FAngelscriptEngineScope _AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			ASTEST_RESET_ENGINE(Engine);
+		};
 
-	asIScriptModule* Module = BuildModule(
-		*this, Engine, "ASTemplateGlobalInvoke",
-		TEXT(R"(
+		asIScriptModule* Module = BuildModule(
+			*TestRunner, Engine, "ASTemplateGlobalInvoke",
+			TEXT(R"(
 // The AS fork used by this project forbids mutable module-level globals
 // ("Global variable 'X' must be const. Mutable global variables are not
 // supported."), so "module state between calls" is demonstrated here via
@@ -95,62 +94,49 @@ int NextPayload(int Base, int Delta)
 	return Base + Delta;
 }
 )"));
-	if (!TestNotNull(TEXT("Template GlobalInvoke module should compile"), Module))
-	{
-		return false;
-	}
+		ASSERT_THAT(IsNotNull(Module, TEXT("Template GlobalInvoke module should compile")));
 
-	// Void global — no args, no return. Demonstrates the Call()-only path.
-	{
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("void Trigger()"));
-		if (!Invoker.IsValid() || !Invoker.Call())
+		// Void global — no args, no return. Demonstrates the Call()-only path.
 		{
-			return false;
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void Trigger()"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid()));
+			ASSERT_THAT(IsTrue(Invoker.Call()));
+		}
+
+		// Int-returning global — two args.
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int Sum(int, int)"));
+			Invoker.AddArg(static_cast<int32>(17)).AddArg(static_cast<int32>(25));
+			const int32 Result = Invoker.CallAndReturn<int32>(/*Fallback=*/INDEX_NONE);
+			ASSERT_THAT(AreEqual(42, Result, TEXT("Sum(17, 25) should return 42")));
+		}
+
+		// A second int-returning global, demonstrating that multiple
+		// FASGlobalFunctionInvoker instances can drive the same module.
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int NextPayload(int, int)"));
+			Invoker.AddArg(static_cast<int32>(100)).AddArg(static_cast<int32>(23));
+			const int32 Result = Invoker.CallAndReturn<int32>(/*Fallback=*/INDEX_NONE);
+			ASSERT_THAT(AreEqual(123, Result, TEXT("NextPayload(100, 23) should return 123")));
 		}
 	}
-
-	// Int-returning global — two args.
-	{
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("int Sum(int, int)"));
-		Invoker.AddArg(static_cast<int32>(17)).AddArg(static_cast<int32>(25));
-		const int32 Result = Invoker.CallAndReturn<int32>(/*Fallback=*/INDEX_NONE);
-		TestEqual(TEXT("Sum(17, 25) should return 42"), Result, 42);
-	}
-
-	// A second int-returning global, demonstrating that multiple
-	// FASGlobalFunctionInvoker instances can drive the same module.
-	{
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("int NextPayload(int, int)"));
-		Invoker.AddArg(static_cast<int32>(100)).AddArg(static_cast<int32>(23));
-		const int32 Result = Invoker.CallAndReturn<int32>(/*Fallback=*/INDEX_NONE);
-		TestEqual(TEXT("NextPayload(100, 23) should return 123"), Result, 123);
-	}
-
-	}
-	return true;
-}
 
 // =============================================================================
 // Test 2: GlobalInvokeAllArgs — argument / return matrix
 // =============================================================================
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTemplateGlobalFunctionAllArgsTest,
-	"Angelscript.Template.GlobalFunctions.GlobalInvokeAllArgs",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTemplateGlobalFunctionAllArgsTest::RunTest(const FString& Parameters)
-{
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	ON_SCOPE_EXIT
+	TEST_METHOD(GlobalInvokeAllArgs)
 	{
-		ASTEST_RESET_ENGINE(Engine);
-	};
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		FAngelscriptEngineScope _AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			ASTEST_RESET_ENGINE(Engine);
+		};
 
-	asIScriptModule* Module = BuildModule(
-		*this, Engine, "ASTemplateGlobalInvokeAllArgs",
-		TEXT(R"(
+		asIScriptModule* Module = BuildModule(
+			*TestRunner, Engine, "ASTemplateGlobalInvokeAllArgs",
+			TEXT(R"(
 // ---- Primitives ----
 int EchoBool(bool Flag)   { return Flag ? 1 : 0; }
 int EchoByte(uint8 Value) { return int(Value); }
@@ -189,105 +175,86 @@ FVector MakeVector(double X, double Y, double Z)
 	return FVector(X, Y, Z);
 }
 )"));
-	if (!TestNotNull(TEXT("Template GlobalInvokeAllArgs module should compile"), Module))
-	{
-		return false;
-	}
+		ASSERT_THAT(IsNotNull(Module, TEXT("Template GlobalInvokeAllArgs module should compile")));
 
 	// bool in → int out
 	{
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("int EchoBool(bool)"));
+		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int EchoBool(bool)"));
 		Invoker.AddArg(true);
-		TestEqual(TEXT("EchoBool(true) should return 1"),
-			Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+		ASSERT_THAT(AreEqual(1, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("EchoBool(true) should return 1")));
 	}
 
 	// uint8
 	{
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("int EchoByte(uint8)"));
+		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int EchoByte(uint8)"));
 		Invoker.AddArg(static_cast<uint8>(250));
-		TestEqual(TEXT("EchoByte(250) should return 250"),
-			Invoker.CallAndReturn<int32>(INDEX_NONE), 250);
+		ASSERT_THAT(AreEqual(250, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("EchoByte(250) should return 250")));
 	}
 
 	// int32
 	{
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("int EchoInt(int)"));
+		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int EchoInt(int)"));
 		Invoker.AddArg(static_cast<int32>(-314));
-		TestEqual(TEXT("EchoInt(-314) should return -314"),
-			Invoker.CallAndReturn<int32>(INDEX_NONE), -314);
+		ASSERT_THAT(AreEqual(-314, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("EchoInt(-314) should return -314")));
 	}
 
 	// int64
 	{
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("int64 EchoInt64(int64)"));
+		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int64 EchoInt64(int64)"));
 		Invoker.AddArg(static_cast<int64>(9223372036854775000LL));
-		TestEqual(TEXT("EchoInt64 should preserve a wide-int value"),
-			Invoker.CallAndReturn<int64>(0), static_cast<int64>(9223372036854775000LL));
+		ASSERT_THAT(AreEqual(static_cast<int64>(9223372036854775000LL), Invoker.CallAndReturn<int64>(0),
+			TEXT("EchoInt64 should preserve a wide-int value")));
 	}
 
 	// float (AS runtime default is asEP_FLOAT_IS_FLOAT64=1 — but at the
 	// context level the parameter is still declared `float`, so we use
 	// SetArgFloat. The UFUNCTION path would have required double.)
 	{
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("float EchoFloat(float)"));
+		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float EchoFloat(float)"));
 		Invoker.AddArg(1.5f);
 		const float Result = Invoker.CallAndReturn<float>(0.0f);
-		TestTrue(TEXT("EchoFloat(1.5) should return 1.5"), FMath::IsNearlyEqual(Result, 1.5f));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Result, 1.5f), TEXT("EchoFloat(1.5) should return 1.5")));
 	}
 
 	// double
 	{
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("double EchoDouble(double)"));
+		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("double EchoDouble(double)"));
 		Invoker.AddArg(2.71828);
 		const double Result = Invoker.CallAndReturn<double>(0.0);
-		TestTrue(TEXT("EchoDouble should return its AS-side argument"),
-			FMath::IsNearlyEqual(Result, 2.71828));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Result, 2.71828),
+			TEXT("EchoDouble should return its AS-side argument")));
 	}
 
 	// FString by const ref — AS returns an FString
 	{
 		FString Input(TEXT("Hello"));
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("FString EchoString(const FString&in)"));
+		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FString EchoString(const FString&in)"));
 		Invoker.AddArgRef(Input);
-		if (!Invoker.Call())
-		{
-			return false;
-		}
+		ASSERT_THAT(IsTrue(Invoker.Call()));
 		FString Result;
-		if (!Invoker.ReadReturnStruct<FString>(Result))
-		{
-			return false;
-		}
-		TestEqual(TEXT("EchoString should append an exclamation mark"),
-			Result, FString(TEXT("Hello!")));
+		ASSERT_THAT(IsTrue(Invoker.ReadReturnStruct<FString>(Result)));
+		ASSERT_THAT(AreEqual(FString(TEXT("Hello!")), Result, TEXT("EchoString should append an exclamation mark")));
 	}
 
 	// FName by const ref — AS returns an FName
 	{
 		FName Input(TEXT("AlphaName"));
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("FName EchoName(const FName&in)"));
+		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FName EchoName(const FName&in)"));
 		Invoker.AddArgRef(Input);
-		if (!Invoker.Call())
-		{
-			return false;
-		}
+		ASSERT_THAT(IsTrue(Invoker.Call()));
 		FName Result;
-		if (!Invoker.ReadReturnStruct<FName>(Result))
-		{
-			return false;
-		}
-		TestEqual(TEXT("EchoName should round-trip an FName"), Result, Input);
+		ASSERT_THAT(IsTrue(Invoker.ReadReturnStruct<FName>(Result)));
+		ASSERT_THAT(AreEqual(Input, Result, TEXT("EchoName should round-trip an FName")));
 	}
 
 	// FVector by const ref → double
 	{
 		FVector Input(3.0, 4.0, 12.0); // magnitude = 13
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("double VectorMagnitude(const FVector&in)"));
+		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("double VectorMagnitude(const FVector&in)"));
 		Invoker.AddArgRef(Input);
 		const double Result = Invoker.CallAndReturn<double>(0.0);
-		TestTrue(TEXT("VectorMagnitude should compute sqrt(x^2 + y^2 + z^2)"),
-			FMath::IsNearlyEqual(Result, 13.0, 1e-6));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Result, 13.0, 1e-6),
+			TEXT("VectorMagnitude should compute sqrt(x^2 + y^2 + z^2)")));
 	}
 
 	// Out-reference arguments — AS writes back into our live doubles.
@@ -300,42 +267,31 @@ FVector MakeVector(double X, double Y, double Z)
 		double OutX = 0.0;
 		double OutY = 0.0;
 		double OutZ = 0.0;
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module,
+		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module,
 			TEXT("void SplitVector(const FVector&in, double&out, double&out, double&out)"));
 		Invoker.AddArgRef(Input);
 		Invoker.AddArgRef(OutX);
 		Invoker.AddArgRef(OutY);
 		Invoker.AddArgRef(OutZ);
-		if (!Invoker.Call())
-		{
-			return false;
-		}
-		TestTrue(TEXT("SplitVector should fill OutX"), FMath::IsNearlyEqual(OutX, 7.0));
-		TestTrue(TEXT("SplitVector should fill OutY"), FMath::IsNearlyEqual(OutY, 8.0));
-		TestTrue(TEXT("SplitVector should fill OutZ"), FMath::IsNearlyEqual(OutZ, 9.0));
+		ASSERT_THAT(IsTrue(Invoker.Call()));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(OutX, 7.0), TEXT("SplitVector should fill OutX")));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(OutY, 8.0), TEXT("SplitVector should fill OutY")));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(OutZ, 9.0), TEXT("SplitVector should fill OutZ")));
 	}
 
 	// Struct return by value — AS returns its FVector via the return value
 	// buffer. GetAddressOfReturnValue() exposes a pointer to that buffer,
 	// which we memcpy into our FVector out-parameter.
 	{
-		FASGlobalFunctionInvoker Invoker(*this, Engine, *Module, TEXT("FVector MakeVector(double, double, double)"));
+		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector MakeVector(double, double, double)"));
 		Invoker.AddArg(1.0).AddArg(2.0).AddArg(3.0);
-		if (!Invoker.Call())
-		{
-			return false;
-		}
+		ASSERT_THAT(IsTrue(Invoker.Call()));
 		FVector Result = FVector::ZeroVector;
-		if (!Invoker.ReadReturnStruct<FVector>(Result))
-		{
-			return false;
-		}
-		TestTrue(TEXT("MakeVector should return an FVector with the supplied components"),
-			Result.Equals(FVector(1.0, 2.0, 3.0)));
+		ASSERT_THAT(IsTrue(Invoker.ReadReturnStruct<FVector>(Result)));
+		ASSERT_THAT(IsTrue(Result.Equals(FVector(1.0, 2.0, 3.0)),
+			TEXT("MakeVector should return an FVector with the supplied components")));
 	}
-
 	}
-	return true;
-}
+};
 
 #endif

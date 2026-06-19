@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "HotReload/ClassReloadHelper.h"
 #include "BlueprintImpact/AngelscriptBlueprintImpactScanner.h"
 
@@ -19,11 +20,6 @@
 #include "UObject/UnrealType.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptClassReloadHelperPerformReinstanceDelegateDependencyTest,
-	"Angelscript.Editor.ClassReloadHelper.PerformReinstanceRecompilesBlueprintsBoundToReloadedDelegates",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperDelegateTests_Private
 {
@@ -154,8 +150,12 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperDelegateTe
 	}
 }
 
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 
-bool FAngelscriptClassReloadHelperPerformReinstanceDelegateDependencyTest::RunTest(const FString& Parameters)
+static bool RunPerformReinstanceDelegateDependency(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperDelegateTests_Private;
 	const FClassReloadHelper::FReloadState SavedState = FClassReloadHelper::ReloadState();
@@ -207,21 +207,21 @@ bool FAngelscriptClassReloadHelperPerformReinstanceDelegateDependencyTest::RunTe
 		UseUnrealReloadCVar->Set(0, ECVF_SetByCode);
 	}
 
-	UDelegateFunction* OldDelegate = FindActorDelegateSignature(*this, GET_MEMBER_NAME_CHECKED(AActor, OnActorBeginOverlap));
-	UDelegateFunction* NewDelegate = FindActorDelegateSignature(*this, GET_MEMBER_NAME_CHECKED(AActor, OnActorEndOverlap));
+	UDelegateFunction* OldDelegate = FindActorDelegateSignature(Test, GET_MEMBER_NAME_CHECKED(AActor, OnActorBeginOverlap));
+	UDelegateFunction* NewDelegate = FindActorDelegateSignature(Test, GET_MEMBER_NAME_CHECKED(AActor, OnActorEndOverlap));
 	if (OldDelegate == nullptr || NewDelegate == nullptr)
 	{
 		return false;
 	}
 
-	UBlueprint* DependentBlueprint = CreateTransientBlueprintChild(*this, UObject::StaticClass(), TEXT("Dependent"), RootedObjects);
-	UBlueprint* ControlBlueprint = CreateTransientBlueprintChild(*this, UObject::StaticClass(), TEXT("Control"), RootedObjects);
+	UBlueprint* DependentBlueprint = CreateTransientBlueprintChild(Test, UObject::StaticClass(), TEXT("Dependent"), RootedObjects);
+	UBlueprint* ControlBlueprint = CreateTransientBlueprintChild(Test, UObject::StaticClass(), TEXT("Control"), RootedObjects);
 	if (DependentBlueprint == nullptr || ControlBlueprint == nullptr)
 	{
 		return false;
 	}
 
-	if (AddExternalDelegateEventNode(*this, *DependentBlueprint, OldDelegate, TEXT("Dependent")) == nullptr)
+	if (AddExternalDelegateEventNode(Test, *DependentBlueprint, OldDelegate, TEXT("Dependent")) == nullptr)
 	{
 		return false;
 	}
@@ -298,5 +298,20 @@ bool FAngelscriptClassReloadHelperPerformReinstanceDelegateDependencyTest::RunTe
 	}
 	return TestTrue(TEXT("ClassReloadHelper.DelegateReinstance should keep the created delegate visible until post reload resets the state"), ReloadState.NewDelegates.Contains(NewDelegate));
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptClassReloadHelperDelegateTests,
+	"Angelscript.Editor.ClassReloadHelper",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(PerformReinstanceRecompilesBlueprintsBoundToReloadedDelegates)
+	{
+		ASSERT_THAT(IsTrue(RunPerformReinstanceDelegateDependency(*TestRunner)));
+	}
+};
 
 #endif

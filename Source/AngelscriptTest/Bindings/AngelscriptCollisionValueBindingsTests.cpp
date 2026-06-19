@@ -9,7 +9,7 @@
 //   CollisionResultAccessors — FHitResult / FOverlapResult field round-trip
 //
 // CQTest adaptation notes:
-//   Two IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
+//   Two legacy automation tests merged into one TEST_CLASS.
 //   CollisionShape: bitmask `int Run()` split into per-aspect functions.
 //   CollisionResultAccessors: uses FASGlobalFunctionInvoker with AddArgRef/AddArgObject
 //   for parameterised invocations, plus native-side assertions.

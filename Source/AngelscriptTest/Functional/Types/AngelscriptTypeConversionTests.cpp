@@ -1,46 +1,48 @@
+#include "CQTest.h"
+#include "AngelscriptBindingsAssertions.h"
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestMacros.h"
-#include "AngelscriptTestLegacyHelpers.h"
+#include "AngelscriptTestModuleScope.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTypeConversionNegativeTruncateTowardZeroTest,
-	"Angelscript.TestModule.Functional.Types.Conversion.NegativeTruncateTowardZero",
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptTypeConversionTests,
+	"Angelscript.TestModule.Functional.Types.Conversion",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTypeConversionNegativeTruncateTowardZeroTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-
-	asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
-	if (!TestNotNull(TEXT("Types.Conversion.NegativeTruncateTowardZero should expose a script engine"), ScriptEngine))
+	BEFORE_ALL()
 	{
-		return false;
+		ASTEST_CREATE_ENGINE();
 	}
 
-	const bool bFloatUsesFloat64 = ScriptEngine->GetEngineProperty(asEP_FLOAT_IS_FLOAT64) != 0;
-	const FString Script = bFloatUsesFloat64
-		? TEXT("int Run() { double Negative = -3.7; double Positive = 3.7; return int(Negative) * 10 + int(Positive); }")
-		: TEXT("int Run() { float Negative = -3.7f; float Positive = 3.7f; return int(Negative) * 10 + int(Positive); }");
+	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
 
-	int32 Result = 0;
-	ASTEST_COMPILE_RUN_INT(
-		Engine,
-		"ASTypeConversionNegativeTruncateTowardZero",
-		Script,
-		TEXT("int Run()"),
-		Result);
+	TEST_METHOD(NegativeTruncateTowardZero)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
 
-	TestEqual(
-		TEXT("Explicit numeric conversion should truncate both negative and positive floating-point values toward zero"),
-		Result,
-		-27);
+		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Types.Conversion.NegativeTruncateTowardZero should expose a script engine")));
 
+		const bool bFloatUsesFloat64 = ScriptEngine->GetEngineProperty(asEP_FLOAT_IS_FLOAT64) != 0;
+		const FString Script = bFloatUsesFloat64
+			? TEXT("int Run() { double Negative = -3.7; double Positive = 3.7; return int(Negative) * 10 + int(Positive); }")
+			: TEXT("int Run() { float Negative = -3.7f; float Positive = 3.7f; return int(Negative) * 10 + int(Positive); }");
+
+		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASTypeConversionNegativeTruncateTowardZero"), Script);
+		ASSERT_THAT(IsTrue(Module.IsValid()));
+
+		ExpectGlobalInt(
+			*TestRunner,
+			Engine,
+			Module.GetModule(),
+			TEXT("int Run()"),
+			TEXT("Explicit numeric conversion should truncate both negative and positive floating-point values toward zero"),
+			-27);
 	}
-	return true;
-}
+};
 
 #endif

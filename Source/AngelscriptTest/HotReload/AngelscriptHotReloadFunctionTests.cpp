@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestMacros.h"
@@ -16,41 +17,6 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadFunctionTests_Private
 {
 }
 
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptModuleRecordTrackingTest,
-	"Angelscript.TestModule.HotReload.ModuleRecordTracking",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptDiscardModuleTest,
-	"Angelscript.TestModule.HotReload.DiscardModule",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptDiscardAndRecompileTest,
-	"Angelscript.TestModule.HotReload.DiscardAndRecompile",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptDiscardModuleRemovesGlobalFunctionAvailabilityTest,
-	"Angelscript.TestModule.HotReload.DiscardModuleRemovesGlobalFunctionAvailability",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptModuleWatcherQueuesFileChangesTest,
-	"Angelscript.TestModule.HotReload.ModuleWatcherQueuesFileChanges",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHotReloadModifyLookupFlowTest,
-	"Angelscript.TestModule.HotReload.AddModifyLookupFlow",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHotReloadFailureKeepsOldCodeTest,
-	"Angelscript.TestModule.HotReload.FailureKeepsOldCodeAndDiagnostics",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 struct FAngelscriptHotReloadTestAccess
 {
@@ -91,17 +57,13 @@ struct FAngelscriptHotReloadTestAccess
 
 };
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHotReloadSourceProviderSuppressesTimestampOnlyChangeTest,
-	"Angelscript.TestModule.HotReload.SourceProvider.SuppressTimestampOnlyChange",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define AddExpectedError(...) Test.AddExpectedError(__VA_ARGS__)
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHotReloadSourceProviderSeparatesVirtualPathStateTest,
-	"Angelscript.TestModule.HotReload.SourceProvider.SeparatesVirtualPathState",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptModuleRecordTrackingTest::RunTest(const FString& Parameters)
+static bool ModuleRecordTracking(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadFunctionTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -173,7 +135,7 @@ class UTrackedObjectB : UObject
 	return true;
 }
 
-bool FAngelscriptDiscardModuleTest::RunTest(const FString& Parameters)
+static bool DiscardModule(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadFunctionTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -237,7 +199,7 @@ int SurvivorEntry()
 	return true;
 }
 
-bool FAngelscriptDiscardAndRecompileTest::RunTest(const FString& Parameters)
+static bool DiscardAndRecompile(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadFunctionTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -324,7 +286,7 @@ class UDiscardRecompileTargetV2 : UObject
 	return true;
 }
 
-bool FAngelscriptHotReloadSourceProviderSuppressesTimestampOnlyChangeTest::RunTest(const FString& Parameters)
+static bool SourceProviderSuppressesTimestampOnlyChange(FAutomationTestBase& Test)
 {
 	struct FMutableStateSourceProvider final : IAngelscriptSourceProvider
 	{
@@ -379,7 +341,7 @@ bool FAngelscriptHotReloadSourceProviderSuppressesTimestampOnlyChangeTest::RunTe
 	return TestEqual(TEXT("Content hash changes should queue a reload"), FAngelscriptHotReloadTestAccess::GetQueuedFileChangeCount(Engine), 1);
 }
 
-bool FAngelscriptHotReloadSourceProviderSeparatesVirtualPathStateTest::RunTest(const FString& Parameters)
+static bool SourceProviderSeparatesVirtualPathState(FAutomationTestBase& Test)
 {
 	struct FCollisionSourceProvider final : IAngelscriptSourceProvider
 	{
@@ -461,7 +423,7 @@ bool FAngelscriptHotReloadSourceProviderSeparatesVirtualPathStateTest::RunTest(c
 		FString(TEXT("/Angelscript/Plugin/Inventory/Shared/State.as")));
 }
 
-bool FAngelscriptDiscardModuleRemovesGlobalFunctionAvailabilityTest::RunTest(const FString& Parameters)
+static bool DiscardModuleRemovesGlobalFunctionAvailability(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadFunctionTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -528,7 +490,7 @@ bool FAngelscriptDiscardModuleRemovesGlobalFunctionAvailabilityTest::RunTest(con
 	return true;
 }
 
-bool FAngelscriptModuleWatcherQueuesFileChangesTest::RunTest(const FString& Parameters)
+static bool ModuleWatcherQueuesFileChanges(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadFunctionTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -559,7 +521,7 @@ bool FAngelscriptModuleWatcherQueuesFileChangesTest::RunTest(const FString& Para
 	}
 }
 
-bool FAngelscriptHotReloadModifyLookupFlowTest::RunTest(const FString& Parameters)
+static bool HotReloadModifyLookupFlow(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadFunctionTests_Private;
 	bool bPassed = false;
@@ -646,7 +608,7 @@ class UHotReloadModifyLookupFlow : UObject
 	return bPassed;
 }
 
-bool FAngelscriptHotReloadFailureKeepsOldCodeTest::RunTest(const FString& Parameters)
+static bool HotReloadFailureKeepsOldCode(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadFunctionTests_Private;
 	AddExpectedError(TEXT("HotReloadFailureKeepsOldCode.as:"), EAutomationExpectedErrorFlags::Contains, 2);
@@ -735,5 +697,66 @@ class UHotReloadFailureKeepsOldCode : UObject
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+#undef AddExpectedError
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadFunctionTests,
+	"Angelscript.TestModule.HotReload",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(ModuleRecordTracking)
+	{
+		ASSERT_THAT(IsTrue(::ModuleRecordTracking(*TestRunner)));
+	}
+
+	TEST_METHOD(DiscardModule)
+	{
+		ASSERT_THAT(IsTrue(::DiscardModule(*TestRunner)));
+	}
+
+	TEST_METHOD(DiscardAndRecompile)
+	{
+		ASSERT_THAT(IsTrue(::DiscardAndRecompile(*TestRunner)));
+	}
+
+	TEST_METHOD(DiscardModuleRemovesGlobalFunctionAvailability)
+	{
+		ASSERT_THAT(IsTrue(::DiscardModuleRemovesGlobalFunctionAvailability(*TestRunner)));
+	}
+
+	TEST_METHOD(ModuleWatcherQueuesFileChanges)
+	{
+		ASSERT_THAT(IsTrue(::ModuleWatcherQueuesFileChanges(*TestRunner)));
+	}
+
+	TEST_METHOD(AddModifyLookupFlow)
+	{
+		ASSERT_THAT(IsTrue(HotReloadModifyLookupFlow(*TestRunner)));
+	}
+
+	TEST_METHOD(FailureKeepsOldCodeAndDiagnostics)
+	{
+		ASSERT_THAT(IsTrue(HotReloadFailureKeepsOldCode(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadSourceProviderTests,
+	"Angelscript.TestModule.HotReload.SourceProvider",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(SuppressTimestampOnlyChange)
+	{
+		ASSERT_THAT(IsTrue(::SourceProviderSuppressesTimestampOnlyChange(*TestRunner)));
+	}
+
+	TEST_METHOD(SeparatesVirtualPathState)
+	{
+		ASSERT_THAT(IsTrue(::SourceProviderSeparatesVirtualPathState(*TestRunner)));
+	}
+};
 
 #endif

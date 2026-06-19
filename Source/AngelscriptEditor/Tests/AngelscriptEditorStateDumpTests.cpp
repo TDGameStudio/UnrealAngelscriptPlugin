@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "HotReload/ClassReloadHelper.h"
 #include "Dump/AngelscriptStateDump.h"
 #include "EditorMenuExtensions/ScriptEditorMenuExtension.h"
@@ -19,11 +20,6 @@ namespace AngelscriptEditor::Private
 	void RegisterStateDumpExtension(FDelegateHandle& OutHandle);
 	void UnregisterStateDumpExtension(FDelegateHandle& InOutHandle);
 }
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorStateDumpRegisterAndWriteCsvTest,
-	"Angelscript.TestModule.Editor.StateDump.RegistersExtensionAndWritesExpectedCsvFiles",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptEditorStateDumpTests_Private
 {
@@ -77,7 +73,12 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorStateDumpTests_Privat
 }
 
 
-bool FAngelscriptEditorStateDumpRegisterAndWriteCsvTest::RunTest(const FString& Parameters)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+
+static bool RunRegistersExtensionAndWritesExpectedCsvFiles(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorStateDumpTests_Private;
 	FClassReloadHelper::FReloadState SavedReloadState = FClassReloadHelper::ReloadState();
@@ -132,7 +133,7 @@ bool FAngelscriptEditorStateDumpRegisterAndWriteCsvTest::RunTest(const FString& 
 		return false;
 	}
 
-	if (!EnsureDirectoryExists(*this, FirstOutputDir))
+	if (!EnsureDirectoryExists(Test, FirstOutputDir))
 	{
 		return false;
 	}
@@ -149,8 +150,8 @@ bool FAngelscriptEditorStateDumpRegisterAndWriteCsvTest::RunTest(const FString& 
 
 	TArray<FString> ReloadStateLines;
 	TArray<FString> MenuExtensionLines;
-	if (!LoadCsvLines(*this, ReloadStateCsvPath, ReloadStateLines)
-		|| !LoadCsvLines(*this, MenuExtensionsCsvPath, MenuExtensionLines))
+	if (!LoadCsvLines(Test, ReloadStateCsvPath, ReloadStateLines)
+		|| !LoadCsvLines(Test, MenuExtensionsCsvPath, MenuExtensionLines))
 	{
 		return false;
 	}
@@ -188,7 +189,7 @@ bool FAngelscriptEditorStateDumpRegisterAndWriteCsvTest::RunTest(const FString& 
 		return false;
 	}
 
-	if (!EnsureDirectoryExists(*this, SecondOutputDir))
+	if (!EnsureDirectoryExists(Test, SecondOutputDir))
 	{
 		return false;
 	}
@@ -197,5 +198,21 @@ bool FAngelscriptEditorStateDumpRegisterAndWriteCsvTest::RunTest(const FString& 
 	TestFalse(TEXT("Editor.StateDump test should stop writing EditorReloadState.csv after unregister"), IFileManager::Get().FileExists(*FPaths::Combine(SecondOutputDir, TEXT("EditorReloadState.csv"))));
 	return TestFalse(TEXT("Editor.StateDump test should stop writing EditorMenuExtensions.csv after unregister"), IFileManager::Get().FileExists(*FPaths::Combine(SecondOutputDir, TEXT("EditorMenuExtensions.csv"))));
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorStateDumpTests,
+	"Angelscript.TestModule.Editor.StateDump",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(RegistersExtensionAndWritesExpectedCsvFiles)
+	{
+		ASSERT_THAT(IsTrue(RunRegistersExtensionAndWritesExpectedCsvFiles(*TestRunner)));
+	}
+};
 
 #endif

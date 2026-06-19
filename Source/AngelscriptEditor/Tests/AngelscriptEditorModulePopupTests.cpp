@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "Core/AngelscriptEditorModule.h"
 
 #include "ClassGenerator/ASClass.h"
@@ -21,11 +22,6 @@
 #include "UObject/UObjectGlobals.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorModuleShowAssetListPopupTest,
-	"Angelscript.Editor.Module.ShowAssetListPopupHonorsInitGateAndBuildsExpectedOpenFlow",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModulePopupTests_Private
 {
@@ -222,7 +218,12 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModulePopupTests_Priv
 }
 
 
-bool FAngelscriptEditorModuleShowAssetListPopupTest::RunTest(const FString& Parameters)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+
+static bool RunShowAssetListPopupHonorsInitGateAndBuildsExpectedOpenFlow(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModulePopupTests_Private;
 	FAssetListPopupCallLog CallLog;
@@ -233,8 +234,8 @@ bool FAngelscriptEditorModuleShowAssetListPopupTest::RunTest(const FString& Para
 	UPackage* SecondPackage = nullptr;
 	FString FirstPackageName;
 	FString SecondPackageName;
-	UObject* FirstAssetObject = CreatePopupTestAsset(*this, TEXT("AssetListPopupFirst"), FirstPackageName, FirstPackage);
-	UObject* SecondAssetObject = CreatePopupTestAsset(*this, TEXT("AssetListPopupSecond"), SecondPackageName, SecondPackage);
+	UObject* FirstAssetObject = CreatePopupTestAsset(Test, TEXT("AssetListPopupFirst"), FirstPackageName, FirstPackage);
+	UObject* SecondAssetObject = CreatePopupTestAsset(Test, TEXT("AssetListPopupSecond"), SecondPackageName, SecondPackage);
 	const FAssetData FirstAssetData(FirstAssetObject);
 	const FAssetData SecondAssetData(SecondAssetObject);
 	UASClass* const BaseClassMarker = reinterpret_cast<UASClass*>(static_cast<UPTRINT>(1));
@@ -392,17 +393,7 @@ bool FAngelscriptEditorModuleShowAssetListPopupTest::RunTest(const FString& Para
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorModuleShowCreateBlueprintPopupTest,
-	"Angelscript.TestModule.Editor.Module.ShowCreateBlueprintPopupCreatesExpectedAssetAtDialogPath",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorModuleDebugBridgeStartupTest,
-	"Angelscript.Editor.Module.EditorDebugBridgeStartupRegistersAndUnregistersCallbacks",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptEditorModuleDebugBridgeStartupTest::RunTest(const FString& Parameters)
+static bool RunEditorDebugBridgeStartupRegistersAndUnregistersCallbacks(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModulePopupTests_Private;
 
@@ -442,12 +433,12 @@ bool FAngelscriptEditorModuleDebugBridgeStartupTest::RunTest(const FString& Para
 	FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath().Unbind();
 
 	const FString PopupScript = TEXT(R"AS(UCLASS() class ABridgeCreateBlueprintScript : AActor {})AS");
-	if (!CompilePopupScriptModule(*this, *Engine, TEXT("ASEditorDebugBridgeStartup"), PopupScript))
+	if (!CompilePopupScriptModule(Test, *Engine, TEXT("ASEditorDebugBridgeStartup"), PopupScript))
 	{
 		return false;
 	}
 
-	UASClass* const BlueprintScriptClass = FindPopupScriptClass(*this, *Engine, TEXT("ABridgeCreateBlueprintScript"));
+	UASClass* const BlueprintScriptClass = FindPopupScriptClass(Test, *Engine, TEXT("ABridgeCreateBlueprintScript"));
 	if (BlueprintScriptClass == nullptr)
 	{
 		return false;
@@ -560,7 +551,7 @@ bool FAngelscriptEditorModuleDebugBridgeStartupTest::RunTest(const FString& Para
 	return bPassed;
 }
 
-bool FAngelscriptEditorModuleShowCreateBlueprintPopupTest::RunTest(const FString& Parameters)
+static bool RunShowCreateBlueprintPopupCreatesExpectedAssetAtDialogPath(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModulePopupTests_Private;
 	FCreateBlueprintPopupCallLog CallLog;
@@ -583,13 +574,13 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupTest::RunTest(const FString
 	EngineScope = MakeUnique<FAngelscriptEngineScope>(*Engine);
 
 	const FString PopupScript = TEXT(R"AS(UCLASS() class APopupCreateBlueprintScript : AActor {} UCLASS() class UPopupCreateDataAssetScript : UDataAsset {})AS");
-	if (!CompilePopupScriptModule(*this, *Engine, TEXT("ASEditorCreateBlueprintPopup"), PopupScript))
+	if (!CompilePopupScriptModule(Test, *Engine, TEXT("ASEditorCreateBlueprintPopup"), PopupScript))
 	{
 		return false;
 	}
 
-	UASClass* const BlueprintScriptClass = FindPopupScriptClass(*this, *Engine, TEXT("APopupCreateBlueprintScript"));
-	UASClass* const DataAssetScriptClass = FindPopupScriptClass(*this, *Engine, TEXT("UPopupCreateDataAssetScript"));
+	UASClass* const BlueprintScriptClass = FindPopupScriptClass(Test, *Engine, TEXT("APopupCreateBlueprintScript"));
+	UASClass* const DataAssetScriptClass = FindPopupScriptClass(Test, *Engine, TEXT("UPopupCreateDataAssetScript"));
 	if (BlueprintScriptClass == nullptr || DataAssetScriptClass == nullptr)
 	{
 		return false;
@@ -710,5 +701,37 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupTest::RunTest(const FString
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorModulePopupTests,
+	"Angelscript.Editor.Module",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(ShowAssetListPopupHonorsInitGateAndBuildsExpectedOpenFlow)
+	{
+		ASSERT_THAT(IsTrue(RunShowAssetListPopupHonorsInitGateAndBuildsExpectedOpenFlow(*TestRunner)));
+	}
+
+	TEST_METHOD(EditorDebugBridgeStartupRegistersAndUnregistersCallbacks)
+	{
+		ASSERT_THAT(IsTrue(RunEditorDebugBridgeStartupRegistersAndUnregistersCallbacks(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorModulePopupTestModuleTests,
+	"Angelscript.TestModule.Editor.Module",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(ShowCreateBlueprintPopupCreatesExpectedAssetAtDialogPath)
+	{
+		ASSERT_THAT(IsTrue(RunShowCreateBlueprintPopupCreatesExpectedAssetAtDialogPath(*TestRunner)));
+	}
+};
 
 #endif

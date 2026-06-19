@@ -2,6 +2,7 @@
 #include "Dump/AngelscriptStateDump.h"
 
 #include "AngelscriptTestUtilities.h"
+#include "CQTest.h"
 
 #include "HAL/FileManager.h"
 #include "Misc/AutomationTest.h"
@@ -10,26 +11,6 @@
 #include "Misc/Paths.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCSVWriterBasicTest,
-	"Angelscript.TestModule.Dump.CSVWriter.Basic",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptCSVWriterEscapingTest,
-	"Angelscript.TestModule.Dump.CSVWriter.SpecialCharacters",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStateDumpEndToEndTest,
-	"Angelscript.TestModule.Dump.DumpAll.EndToEnd",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStateDumpSummaryTest,
-	"Angelscript.TestModule.Dump.DumpAll.Summary",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private
 {
@@ -156,127 +137,111 @@ namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private
 	}
 }
 
-
-bool FAngelscriptCSVWriterBasicTest::RunTest(const FString& Parameters)
+TEST_CLASS_WITH_FLAGS(FAngelscriptCSVWriterTest,
+	"Angelscript.TestModule.Dump.CSVWriter",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	using namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private;
-	const FString OutputFilename = FPaths::Combine(MakeUniqueDumpTestPath(TEXT("CSVWriterBasic")), TEXT("Basic.csv"));
-
-	FCSVWriter Writer;
-	Writer.AddHeader({ TEXT("Name"), TEXT("Value") });
-	Writer.AddRow({ TEXT("Alpha"), TEXT("42") });
-
-	FString ErrorMessage;
-	if (!TestTrue(TEXT("FCSVWriter basic save should succeed"), Writer.SaveToFile(OutputFilename, &ErrorMessage)))
+	TEST_METHOD(Basic)
 	{
-		AddError(ErrorMessage);
-		return false;
-	}
+		using namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private;
+		const FString OutputFilename = FPaths::Combine(MakeUniqueDumpTestPath(TEXT("CSVWriterBasic")), TEXT("Basic.csv"));
 
-	FString FileContents;
-	if (!LoadFileContents(*this, OutputFilename, FileContents))
-	{
-		return false;
-	}
+		FCSVWriter Writer;
+		Writer.AddHeader({ TEXT("Name"), TEXT("Value") });
+		Writer.AddRow({ TEXT("Alpha"), TEXT("42") });
 
-	TestTrue(TEXT("CSV output should contain the header line"), FileContents.Contains(TEXT("Name,Value")));
-	TestTrue(TEXT("CSV output should contain the written row"), FileContents.Contains(TEXT("Alpha,42")));
-	return true;
-}
-
-bool FAngelscriptCSVWriterEscapingTest::RunTest(const FString& Parameters)
-{
-	using namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private;
-	const FString OutputFilename = FPaths::Combine(MakeUniqueDumpTestPath(TEXT("CSVWriterEscape")), TEXT("Escaped.csv"));
-
-	FCSVWriter Writer;
-	Writer.AddHeader({ TEXT("One"), TEXT("Two"), TEXT("Three") });
-	Writer.AddRow({ TEXT("Comma,Value"), TEXT("Quote \"Here\""), TEXT("Line1\nLine2") });
-
-	FString ErrorMessage;
-	if (!TestTrue(TEXT("FCSVWriter escape save should succeed"), Writer.SaveToFile(OutputFilename, &ErrorMessage)))
-	{
-		AddError(ErrorMessage);
-		return false;
-	}
-
-	FString FileContents;
-	if (!LoadFileContents(*this, OutputFilename, FileContents))
-	{
-		return false;
-	}
-
-	TestTrue(TEXT("CSV should quote comma-containing fields"), FileContents.Contains(TEXT("\"Comma,Value\"")));
-	TestTrue(TEXT("CSV should double embedded quotes"), FileContents.Contains(TEXT("\"Quote \"\"Here\"\"\"")));
-	TestTrue(TEXT("CSV should preserve multiline fields inside quotes"), FileContents.Contains(TEXT("\"Line1\nLine2\"")));
-	return true;
-}
-
-bool FAngelscriptStateDumpEndToEndTest::RunTest(const FString& Parameters)
-{
-	using namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private;
-	FString OutputDir;
-	if (!RunDumpAll(*this, OutputDir))
-	{
-		return false;
-	}
-
-	for (const FString& ExpectedFilename : GetExpectedPhaseOneCsvFiles())
-	{
-		const FString CsvPath = FPaths::Combine(OutputDir, ExpectedFilename);
-		TestTrue(*FString::Printf(TEXT("DumpAll should create '%s'"), *ExpectedFilename), IFileManager::Get().FileExists(*CsvPath));
-	}
-
-	return true;
-}
-
-bool FAngelscriptStateDumpSummaryTest::RunTest(const FString& Parameters)
-{
-	using namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private;
-	FString OutputDir;
-	if (!RunDumpAll(*this, OutputDir))
-	{
-		return false;
-	}
-
-	const FString SummaryPath = FPaths::Combine(OutputDir, TEXT("DumpSummary.csv"));
-	FString SummaryContents;
-	if (!LoadFileContents(*this, SummaryPath, SummaryContents))
-	{
-		return false;
-	}
-
-	const TMap<FString, TPair<int32, FString>> SummaryRows = ParseDumpSummary(SummaryContents);
-	for (const FString& ExpectedFilename : GetExpectedPhaseOneCsvFiles())
-	{
-		const TPair<int32, FString>* SummaryRow = SummaryRows.Find(ExpectedFilename);
-		if (!TestNotNull(*FString::Printf(TEXT("DumpSummary should contain a row for '%s'"), *ExpectedFilename), SummaryRow))
+		FString ErrorMessage;
+		const bool bSaved = Writer.SaveToFile(OutputFilename, &ErrorMessage);
+		if (!bSaved)
 		{
-			return false;
+			TestRunner->AddError(ErrorMessage);
 		}
+		ASSERT_THAT(IsTrue(bSaved, TEXT("FCSVWriter basic save should succeed")));
 
-		const FString ExpectedStatus = GetExpectedSummaryStatus(ExpectedFilename);
-		if (ExpectedStatus.IsEmpty())
-		{
-			// Sentinel empty expected-status means "Success or Skipped both acceptable"
-			// (see GetExpectedSummaryStatus — UE 5.7 headless runs may legitimately
-			// skip Debug* tables when no DebugServer is attached).
-			const bool bAcceptable = SummaryRow->Value == TEXT("Success") || SummaryRow->Value == TEXT("Skipped");
-			TestTrue(
-				*FString::Printf(TEXT("'%s' should report either Success or Skipped (actual: '%s')"), *ExpectedFilename, *SummaryRow->Value),
-				bAcceptable);
-		}
-		else
-		{
-			TestEqual(
-				*FString::Printf(TEXT("'%s' should report the expected summary status"), *ExpectedFilename),
-				SummaryRow->Value,
-				ExpectedStatus);
-		}
-		TestTrue(*FString::Printf(TEXT("'%s' should report a non-negative row count"), *ExpectedFilename), SummaryRow->Key >= 0);
+		FString FileContents;
+		ASSERT_THAT(IsTrue(LoadFileContents(*TestRunner, OutputFilename, FileContents), TEXT("CSV output should be readable")));
+
+		ASSERT_THAT(IsTrue(FileContents.Contains(TEXT("Name,Value")), TEXT("CSV output should contain the header line")));
+		ASSERT_THAT(IsTrue(FileContents.Contains(TEXT("Alpha,42")), TEXT("CSV output should contain the written row")));
 	}
 
-	return true;
-}
+	TEST_METHOD(SpecialCharacters)
+	{
+		using namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private;
+		const FString OutputFilename = FPaths::Combine(MakeUniqueDumpTestPath(TEXT("CSVWriterEscape")), TEXT("Escaped.csv"));
+
+		FCSVWriter Writer;
+		Writer.AddHeader({ TEXT("One"), TEXT("Two"), TEXT("Three") });
+		Writer.AddRow({ TEXT("Comma,Value"), TEXT("Quote \"Here\""), TEXT("Line1\nLine2") });
+
+		FString ErrorMessage;
+		const bool bSaved = Writer.SaveToFile(OutputFilename, &ErrorMessage);
+		if (!bSaved)
+		{
+			TestRunner->AddError(ErrorMessage);
+		}
+		ASSERT_THAT(IsTrue(bSaved, TEXT("FCSVWriter escape save should succeed")));
+
+		FString FileContents;
+		ASSERT_THAT(IsTrue(LoadFileContents(*TestRunner, OutputFilename, FileContents), TEXT("Escaped CSV output should be readable")));
+
+		ASSERT_THAT(IsTrue(FileContents.Contains(TEXT("\"Comma,Value\"")), TEXT("CSV should quote comma-containing fields")));
+		ASSERT_THAT(IsTrue(FileContents.Contains(TEXT("\"Quote \"\"Here\"\"\"")), TEXT("CSV should double embedded quotes")));
+		ASSERT_THAT(IsTrue(FileContents.Contains(TEXT("\"Line1\nLine2\"")), TEXT("CSV should preserve multiline fields inside quotes")));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptStateDumpTest,
+	"Angelscript.TestModule.Dump.DumpAll",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(EndToEnd)
+	{
+		using namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private;
+		FString OutputDir;
+		ASSERT_THAT(IsTrue(RunDumpAll(*TestRunner, OutputDir), TEXT("DumpAll should complete")));
+
+		for (const FString& ExpectedFilename : GetExpectedPhaseOneCsvFiles())
+		{
+			const FString CsvPath = FPaths::Combine(OutputDir, ExpectedFilename);
+			ASSERT_THAT(IsTrue(IFileManager::Get().FileExists(*CsvPath), *FString::Printf(TEXT("DumpAll should create '%s'"), *ExpectedFilename)));
+		}
+	}
+
+	TEST_METHOD(Summary)
+	{
+		using namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private;
+		FString OutputDir;
+		ASSERT_THAT(IsTrue(RunDumpAll(*TestRunner, OutputDir), TEXT("DumpAll should complete for summary validation")));
+
+		const FString SummaryPath = FPaths::Combine(OutputDir, TEXT("DumpSummary.csv"));
+		FString SummaryContents;
+		ASSERT_THAT(IsTrue(LoadFileContents(*TestRunner, SummaryPath, SummaryContents), TEXT("DumpSummary should be readable")));
+
+		const TMap<FString, TPair<int32, FString>> SummaryRows = ParseDumpSummary(SummaryContents);
+		for (const FString& ExpectedFilename : GetExpectedPhaseOneCsvFiles())
+		{
+			const TPair<int32, FString>* SummaryRow = SummaryRows.Find(ExpectedFilename);
+			ASSERT_THAT(IsNotNull(SummaryRow, *FString::Printf(TEXT("DumpSummary should contain a row for '%s'"), *ExpectedFilename)));
+
+			const FString ExpectedStatus = GetExpectedSummaryStatus(ExpectedFilename);
+			if (ExpectedStatus.IsEmpty())
+			{
+				const bool bAcceptable = SummaryRow->Value == TEXT("Success") || SummaryRow->Value == TEXT("Skipped");
+				ASSERT_THAT(IsTrue(
+					bAcceptable,
+					*FString::Printf(TEXT("'%s' should report either Success or Skipped (actual: '%s')"), *ExpectedFilename, *SummaryRow->Value)));
+			}
+			else
+			{
+				ASSERT_THAT(AreEqual(
+					ExpectedStatus,
+					SummaryRow->Value,
+					*FString::Printf(TEXT("'%s' should report the expected summary status"), *ExpectedFilename)));
+			}
+			ASSERT_THAT(IsTrue(SummaryRow->Key >= 0, *FString::Printf(TEXT("'%s' should report a non-negative row count"), *ExpectedFilename)));
+		}
+	}
+};
 
 #endif

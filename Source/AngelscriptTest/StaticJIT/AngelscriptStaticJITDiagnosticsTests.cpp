@@ -1,4 +1,4 @@
-#include "Misc/AutomationTest.h"
+#include "CQTest.h"
 
 #include "AngelscriptTestEngineHelper.h"
 #include "StaticJIT/AOT/AngelscriptStaticJITAotFixture.h"
@@ -77,19 +77,17 @@ namespace AngelscriptTest_StaticJIT_Diagnostics_Private
 	}
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITDiagnosticsResolveFixtureStateTest,
-	"Angelscript.TestModule.StaticJIT.AOT.Diagnostics.ResolveFixtureState",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+namespace AngelscriptTest_StaticJIT_Diagnostics_Private
+{
 
-bool FAngelscriptStaticJITDiagnosticsResolveFixtureStateTest::RunTest(const FString& Parameters)
+bool RunDiagnosticsResolveFixtureState(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_Diagnostics_Private;
 
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngineScope EngineScope(Engine);
 
-	if (!LoadAotFixtureForDiagnosticsTest(*this, Engine))
+	if (!LoadAotFixtureForDiagnosticsTest(Test, Engine))
 	{
 		return false;
 	}
@@ -104,80 +102,95 @@ bool FAngelscriptStaticJITDiagnosticsResolveFixtureStateTest::RunTest(const FStr
 		}
 	}
 
-	if (!TestNotNull(TEXT("StaticJIT diagnostics red test should resolve the fixture entry function"), EntryFunction))
+	if (!Test.TestNotNull(TEXT("StaticJIT diagnostics red test should resolve the fixture entry function"), EntryFunction))
 	{
 		return false;
 	}
 
 	uint32 FunctionId = 0;
-	if (!TestTrue(TEXT("StaticJIT diagnostics should resolve the fixture function id"), FStaticJITDiagnostics::ResolveFunctionId(Engine, EntryFunction, FunctionId)))
+	if (!Test.TestTrue(TEXT("StaticJIT diagnostics should resolve the fixture function id"), FStaticJITDiagnostics::ResolveFunctionId(Engine, EntryFunction, FunctionId)))
 	{
 		return false;
 	}
 
-	TestTrue(TEXT("StaticJIT diagnostics should see generated registry state"), FStaticJITDiagnostics::IsFunctionRegistered(FunctionId));
-	TestTrue(TEXT("StaticJIT diagnostics should see jitFunction attachment"), FStaticJITDiagnostics::HasJitFunction(EntryFunction));
-	TestEqual(TEXT("StaticJIT diagnostics should report no entry marker before execution"), FStaticJITDiagnostics::GetEntryCount(FunctionId), 0);
+	Test.TestTrue(TEXT("StaticJIT diagnostics should see generated registry state"), FStaticJITDiagnostics::IsFunctionRegistered(FunctionId));
+	Test.TestTrue(TEXT("StaticJIT diagnostics should see jitFunction attachment"), FStaticJITDiagnostics::HasJitFunction(EntryFunction));
+	Test.TestEqual(TEXT("StaticJIT diagnostics should report no entry marker before execution"), FStaticJITDiagnostics::GetEntryCount(FunctionId), 0);
 
 	FStaticJITDiagnostics::MarkEntry(FunctionId);
-	TestEqual(TEXT("StaticJIT diagnostics should report generated entry marker counts"), FStaticJITDiagnostics::GetEntryCount(FunctionId), 1);
+	Test.TestEqual(TEXT("StaticJIT diagnostics should report generated entry marker counts"), FStaticJITDiagnostics::GetEntryCount(FunctionId), 1);
 
 	const FStaticJITDiagnostics::FSnapshot Snapshot = FStaticJITDiagnostics::CaptureSnapshot(&Engine);
-	TestTrue(TEXT("StaticJIT diagnostics snapshot should report a current engine"), Snapshot.bHasCurrentEngine);
-	TestTrue(TEXT("StaticJIT diagnostics snapshot should report precompiled data"), Snapshot.bHasPrecompiledData);
-	TestTrue(TEXT("StaticJIT diagnostics snapshot should report registered functions"), Snapshot.RegisteredFunctionCount > 0);
+	Test.TestTrue(TEXT("StaticJIT diagnostics snapshot should report a current engine"), Snapshot.bHasCurrentEngine);
+	Test.TestTrue(TEXT("StaticJIT diagnostics snapshot should report precompiled data"), Snapshot.bHasPrecompiledData);
+	Test.TestTrue(TEXT("StaticJIT diagnostics snapshot should report registered functions"), Snapshot.RegisteredFunctionCount > 0);
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITDiagnosticsConsoleCommandRegisteredTest,
-	"Angelscript.TestModule.StaticJIT.AOT.Diagnostics.ConsoleCommandRegistered",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptStaticJITDiagnosticsConsoleCommandRegisteredTest::RunTest(const FString& Parameters)
+bool RunDiagnosticsConsoleCommandRegistered(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_Diagnostics_Private;
 
 	FScopedClearedCurrentEngineStack NoCurrentEngineScope;
 	const FStaticJITDiagnostics::FSnapshot Snapshot = FStaticJITDiagnostics::CaptureSnapshot();
-	TestFalse(TEXT("StaticJIT diagnostics command test should run with no current engine"), Snapshot.bHasCurrentEngine);
+	Test.TestFalse(TEXT("StaticJIT diagnostics command test should run with no current engine"), Snapshot.bHasCurrentEngine);
 
 	bool bPassed = true;
-	bPassed &= ExecuteDumpDiagnosticsCommand(*this, {}, TEXT("StaticJIT diagnostics process dump without current engine"));
-	AddExpectedError(
+	bPassed &= ExecuteDumpDiagnosticsCommand(Test, {}, TEXT("StaticJIT diagnostics process dump without current engine"));
+	Test.AddExpectedError(
 		TEXT("StaticJIT diagnostics cannot resolve function 'DefinitelyMissingStaticJITDiagnosticFunction': no current Angelscript engine is available."),
 		EAutomationExpectedErrorFlags::Contains,
 		1);
-	bPassed &= ExecuteDumpDiagnosticsCommand(*this, { TEXT("DefinitelyMissingStaticJITDiagnosticFunction") }, TEXT("StaticJIT diagnostics function dump without current engine"));
+	bPassed &= ExecuteDumpDiagnosticsCommand(Test, { TEXT("DefinitelyMissingStaticJITDiagnosticFunction") }, TEXT("StaticJIT diagnostics function dump without current engine"));
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITDiagnosticsConsoleCommandFunctionPathsTest,
-	"Angelscript.TestModule.StaticJIT.AOT.Diagnostics.ConsoleCommandFunctionPaths",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptStaticJITDiagnosticsConsoleCommandFunctionPathsTest::RunTest(const FString& Parameters)
+bool RunDiagnosticsConsoleCommandFunctionPaths(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_Diagnostics_Private;
 
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngineScope EngineScope(Engine);
 
-	if (!LoadAotFixtureForDiagnosticsTest(*this, Engine))
+	if (!LoadAotFixtureForDiagnosticsTest(Test, Engine))
 	{
 		return false;
 	}
 
 	bool bPassed = true;
-	bPassed &= ExecuteDumpDiagnosticsCommand(*this, {}, TEXT("StaticJIT diagnostics dump with current engine"));
-	AddExpectedError(
+	bPassed &= ExecuteDumpDiagnosticsCommand(Test, {}, TEXT("StaticJIT diagnostics dump with current engine"));
+	Test.AddExpectedError(
 		TEXT("Could not resolve StaticJIT diagnostics function argument 'DefinitelyMissingStaticJITDiagnosticFunction'."),
 		EAutomationExpectedErrorFlags::Contains,
 		1);
-	bPassed &= ExecuteDumpDiagnosticsCommand(*this, { TEXT("DefinitelyMissingStaticJITDiagnosticFunction") }, TEXT("StaticJIT diagnostics dump missing function"));
-	bPassed &= ExecuteDumpDiagnosticsCommand(*this, { AngelscriptStaticJITAotFixture::GetEntryDeclaration() }, TEXT("StaticJIT diagnostics dump fixture function"));
+	bPassed &= ExecuteDumpDiagnosticsCommand(Test, { TEXT("DefinitelyMissingStaticJITDiagnosticFunction") }, TEXT("StaticJIT diagnostics dump missing function"));
+	bPassed &= ExecuteDumpDiagnosticsCommand(Test, { AngelscriptStaticJITAotFixture::GetEntryDeclaration() }, TEXT("StaticJIT diagnostics dump fixture function"));
 	return bPassed;
 }
+
+}
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITAotDiagnosticTests,
+	"Angelscript.TestModule.StaticJIT.AOT.Diagnostics",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(ResolveFixtureState)
+	{
+		using namespace AngelscriptTest_StaticJIT_Diagnostics_Private;
+		ASSERT_THAT(IsTrue(RunDiagnosticsResolveFixtureState(*TestRunner)));
+	}
+
+	TEST_METHOD(ConsoleCommandRegistered)
+	{
+		using namespace AngelscriptTest_StaticJIT_Diagnostics_Private;
+		ASSERT_THAT(IsTrue(RunDiagnosticsConsoleCommandRegistered(*TestRunner)));
+	}
+
+	TEST_METHOD(ConsoleCommandFunctionPaths)
+	{
+		using namespace AngelscriptTest_StaticJIT_Diagnostics_Private;
+		ASSERT_THAT(IsTrue(RunDiagnosticsConsoleCommandFunctionPaths(*TestRunner)));
+	}
+};
 
 #endif

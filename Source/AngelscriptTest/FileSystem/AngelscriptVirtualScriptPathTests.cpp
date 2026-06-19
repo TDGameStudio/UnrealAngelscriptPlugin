@@ -1,5 +1,6 @@
 #include "AngelscriptEngine.h"
 #include "AngelscriptSource.h"
+#include "CQTest.h"
 
 #include "HAL/FileManager.h"
 #include "Misc/AutomationTest.h"
@@ -47,178 +48,118 @@ namespace AngelscriptTest_FileSystem_VirtualScriptPaths_Private
 	}
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptVirtualScriptPathSourceDescriptorsKeepFullNamesTest,
-	"Angelscript.TestModule.FileSystem.VirtualScriptPaths.SourceDescriptorsKeepFullNames",
+TEST_CLASS_WITH_FLAGS(FAngelscriptVirtualScriptPathTest,
+	"Angelscript.TestModule.FileSystem.VirtualScriptPaths",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptVirtualScriptPathSourceDescriptorsKeepFullNamesTest::RunTest(const FString& Parameters)
 {
-	const FAngelscriptSource GameSource = FAngelscriptSource::FromGameFile(
-		TEXT("Gameplay/Enemy.as"),
-		TEXT("D:/Project/Script/Gameplay/Enemy.as"));
-	const FAngelscriptSource PluginSource = FAngelscriptSource::FromPluginFile(
-		TEXT("Inventory"),
-		TEXT("Gameplay/Item.as"),
-		TEXT("D:/Project/Plugins/Inventory/Script/Gameplay/Item.as"));
-	const FAngelscriptSource PluginRootSource = FAngelscriptSource::FromPluginFile(
-		TEXT("Inventory"),
-		TEXT("Item.as"),
-		TEXT("D:/Project/Plugins/Inventory/Script/Item.as"));
-	const FAngelscriptSource MemorySource = FAngelscriptSource::FromMemorySource(
-		TEXT("/Angelscript/Memory/Immediate/Snippet_001.as"),
-		TEXT("int Entry() { return 1; }"));
-
-	bool bPassed = true;
-	bPassed &= TestEqual(
-		TEXT("Game source descriptor should keep full /Angelscript/Game name"),
-		GameSource.VirtualPath.ToString(),
-		FString(TEXT("/Angelscript/Game/Gameplay/Enemy.as")));
-	bPassed &= TestEqual(
-		TEXT("Plugin source descriptor should keep full /Angelscript/Plugin name"),
-		PluginSource.VirtualPath.ToString(),
-		FString(TEXT("/Angelscript/Plugin/Inventory/Gameplay/Item.as")));
-	bPassed &= TestEqual(
-		TEXT("Plugin root source descriptor should keep full /Angelscript/Plugin name"),
-		PluginRootSource.VirtualPath.ToString(),
-		FString(TEXT("/Angelscript/Plugin/Inventory/Item.as")));
-	bPassed &= TestEqual(
-		TEXT("Memory source descriptor should keep full /Angelscript/Memory name"),
-		MemorySource.VirtualPath.ToString(),
-		FString(TEXT("/Angelscript/Memory/Immediate/Snippet_001.as")));
-	bPassed &= TestEqual(TEXT("Game descriptor module name should remain disk-compatible"), GameSource.ModuleName, FString(TEXT("Gameplay.Enemy")));
-	bPassed &= TestEqual(TEXT("Plugin descriptor module name should remain disk-compatible"), PluginSource.ModuleName, FString(TEXT("Gameplay.Item")));
-	bPassed &= TestEqual(TEXT("Plugin root descriptor module name should remain disk-compatible"), PluginRootSource.ModuleName, FString(TEXT("Item")));
-	bPassed &= TestEqual(TEXT("Memory descriptor module name should be isolated by full memory root"), MemorySource.ModuleName, FString(TEXT("Angelscript.Memory.Immediate.Snippet_001")));
-	return bPassed;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptVirtualScriptPathCanonicalRootsTest,
-	"Angelscript.TestModule.FileSystem.VirtualScriptPaths.CanonicalRoots",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptVirtualScriptPathCanonicalRootsTest::RunTest(const FString& Parameters)
-{
-	FAngelscriptVirtualPath GamePath;
-	FAngelscriptVirtualPath PluginPath;
-	FAngelscriptVirtualPath PluginRootPath;
-	FAngelscriptVirtualPath MemoryPath;
-
-	bool bPassed = true;
-	bPassed &= TestTrue(
-		TEXT("Game path should parse"),
-		FAngelscriptVirtualPath::TryParse(TEXT("/Angelscript/Game/Gameplay/Enemy.as"), GamePath));
-	bPassed &= TestTrue(
-		TEXT("Plugin path should parse"),
-		FAngelscriptVirtualPath::TryParse(TEXT("/Angelscript/Plugin/Inventory/Gameplay/Item.as"), PluginPath));
-	bPassed &= TestTrue(
-		TEXT("Plugin root path should parse"),
-		FAngelscriptVirtualPath::TryParse(TEXT("/Angelscript/Plugin/Inventory/Item.as"), PluginRootPath));
-	bPassed &= TestTrue(
-		TEXT("Memory immediate path should parse"),
-		FAngelscriptVirtualPath::TryParse(TEXT("/Angelscript/Memory/Immediate/Snippet_001.as"), MemoryPath));
-
-	if (!bPassed)
+	TEST_METHOD(SourceDescriptorsKeepFullNames)
 	{
-		return false;
+		const FAngelscriptSource GameSource = FAngelscriptSource::FromGameFile(
+			TEXT("Gameplay/Enemy.as"),
+			TEXT("D:/Project/Script/Gameplay/Enemy.as"));
+		const FAngelscriptSource PluginSource = FAngelscriptSource::FromPluginFile(
+			TEXT("Inventory"),
+			TEXT("Gameplay/Item.as"),
+			TEXT("D:/Project/Plugins/Inventory/Script/Gameplay/Item.as"));
+		const FAngelscriptSource PluginRootSource = FAngelscriptSource::FromPluginFile(
+			TEXT("Inventory"),
+			TEXT("Item.as"),
+			TEXT("D:/Project/Plugins/Inventory/Script/Item.as"));
+		const FAngelscriptSource MemorySource = FAngelscriptSource::FromMemorySource(
+			TEXT("/Angelscript/Memory/Immediate/Snippet_001.as"),
+			TEXT("int Entry() { return 1; }"));
+
+		ASSERT_THAT(AreEqual(FString(TEXT("/Angelscript/Game/Gameplay/Enemy.as")), GameSource.VirtualPath.ToString(), TEXT("Game source descriptor should keep full /Angelscript/Game name")));
+		ASSERT_THAT(AreEqual(FString(TEXT("/Angelscript/Plugin/Inventory/Gameplay/Item.as")), PluginSource.VirtualPath.ToString(), TEXT("Plugin source descriptor should keep full /Angelscript/Plugin name")));
+		ASSERT_THAT(AreEqual(FString(TEXT("/Angelscript/Plugin/Inventory/Item.as")), PluginRootSource.VirtualPath.ToString(), TEXT("Plugin root source descriptor should keep full /Angelscript/Plugin name")));
+		ASSERT_THAT(AreEqual(FString(TEXT("/Angelscript/Memory/Immediate/Snippet_001.as")), MemorySource.VirtualPath.ToString(), TEXT("Memory source descriptor should keep full /Angelscript/Memory name")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Gameplay.Enemy")), GameSource.ModuleName, TEXT("Game descriptor module name should remain disk-compatible")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Gameplay.Item")), PluginSource.ModuleName, TEXT("Plugin descriptor module name should remain disk-compatible")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Item")), PluginRootSource.ModuleName, TEXT("Plugin root descriptor module name should remain disk-compatible")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Angelscript.Memory.Immediate.Snippet_001")), MemorySource.ModuleName, TEXT("Memory descriptor module name should be isolated by full memory root")));
 	}
 
-	bPassed &= TestEqual(TEXT("Game path should normalize slashes"), GamePath.ToString(), FString(TEXT("/Angelscript/Game/Gameplay/Enemy.as")));
-	bPassed &= TestEqual(TEXT("Game source kind should be game"), GamePath.GetSourceKind(), EAngelscriptSourceKind::Game);
-	bPassed &= TestEqual(TEXT("Game relative path should drop mount root"), GamePath.GetRelativePath(), FString(TEXT("Gameplay/Enemy.as")));
-	bPassed &= TestEqual(TEXT("Game module name should stay compatible"), GamePath.ToModuleName(), FString(TEXT("Gameplay.Enemy")));
+	TEST_METHOD(CanonicalRoots)
+	{
+		FAngelscriptVirtualPath GamePath;
+		FAngelscriptVirtualPath PluginPath;
+		FAngelscriptVirtualPath PluginRootPath;
+		FAngelscriptVirtualPath MemoryPath;
 
-	bPassed &= TestEqual(TEXT("Plugin source kind should be plugin"), PluginPath.GetSourceKind(), EAngelscriptSourceKind::Plugin);
-	bPassed &= TestEqual(TEXT("Plugin mount name should be retained"), PluginPath.GetMountName(), FString(TEXT("Inventory")));
-	bPassed &= TestEqual(TEXT("Plugin relative path should drop plugin name"), PluginPath.GetRelativePath(), FString(TEXT("Gameplay/Item.as")));
-	bPassed &= TestEqual(TEXT("Plugin module name should stay root-relative in v1"), PluginPath.ToModuleName(), FString(TEXT("Gameplay.Item")));
-	bPassed &= TestEqual(TEXT("Plugin root path should normalize slashes"), PluginRootPath.ToString(), FString(TEXT("/Angelscript/Plugin/Inventory/Item.as")));
-	bPassed &= TestEqual(TEXT("Plugin root relative path should drop plugin name"), PluginRootPath.GetRelativePath(), FString(TEXT("Item.as")));
-	bPassed &= TestEqual(TEXT("Plugin root module name should stay root-relative in v1"), PluginRootPath.ToModuleName(), FString(TEXT("Item")));
+		ASSERT_THAT(IsTrue(FAngelscriptVirtualPath::TryParse(TEXT("/Angelscript/Game/Gameplay/Enemy.as"), GamePath), TEXT("Game path should parse")));
+		ASSERT_THAT(IsTrue(FAngelscriptVirtualPath::TryParse(TEXT("/Angelscript/Plugin/Inventory/Gameplay/Item.as"), PluginPath), TEXT("Plugin path should parse")));
+		ASSERT_THAT(IsTrue(FAngelscriptVirtualPath::TryParse(TEXT("/Angelscript/Plugin/Inventory/Item.as"), PluginRootPath), TEXT("Plugin root path should parse")));
+		ASSERT_THAT(IsTrue(FAngelscriptVirtualPath::TryParse(TEXT("/Angelscript/Memory/Immediate/Snippet_001.as"), MemoryPath), TEXT("Memory immediate path should parse")));
 
-	bPassed &= TestEqual(TEXT("Memory source kind should be memory"), MemoryPath.GetSourceKind(), EAngelscriptSourceKind::Memory);
-	bPassed &= TestEqual(TEXT("Memory provider should be retained"), MemoryPath.GetMountName(), FString(TEXT("Immediate")));
-	bPassed &= TestEqual(TEXT("Memory relative path should drop provider name"), MemoryPath.GetRelativePath(), FString(TEXT("Snippet_001.as")));
-	bPassed &= TestEqual(TEXT("Memory module name should be isolated"), MemoryPath.ToModuleName(), FString(TEXT("Angelscript.Memory.Immediate.Snippet_001")));
+		ASSERT_THAT(AreEqual(FString(TEXT("/Angelscript/Game/Gameplay/Enemy.as")), GamePath.ToString(), TEXT("Game path should normalize slashes")));
+		ASSERT_THAT(AreEqual(EAngelscriptSourceKind::Game, GamePath.GetSourceKind(), TEXT("Game source kind should be game")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Gameplay/Enemy.as")), GamePath.GetRelativePath(), TEXT("Game relative path should drop mount root")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Gameplay.Enemy")), GamePath.ToModuleName(), TEXT("Game module name should stay compatible")));
 
-	return bPassed;
-}
+		ASSERT_THAT(AreEqual(EAngelscriptSourceKind::Plugin, PluginPath.GetSourceKind(), TEXT("Plugin source kind should be plugin")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Inventory")), PluginPath.GetMountName(), TEXT("Plugin mount name should be retained")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Gameplay/Item.as")), PluginPath.GetRelativePath(), TEXT("Plugin relative path should drop plugin name")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Gameplay.Item")), PluginPath.ToModuleName(), TEXT("Plugin module name should stay root-relative in v1")));
+		ASSERT_THAT(AreEqual(FString(TEXT("/Angelscript/Plugin/Inventory/Item.as")), PluginRootPath.ToString(), TEXT("Plugin root path should normalize slashes")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Item.as")), PluginRootPath.GetRelativePath(), TEXT("Plugin root relative path should drop plugin name")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Item")), PluginRootPath.ToModuleName(), TEXT("Plugin root module name should stay root-relative in v1")));
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptVirtualScriptPathMemorySourceRequiresMemoryRootTest,
-	"Angelscript.TestModule.FileSystem.VirtualScriptPaths.MemorySourceRequiresMemoryRoot",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+		ASSERT_THAT(AreEqual(EAngelscriptSourceKind::Memory, MemoryPath.GetSourceKind(), TEXT("Memory source kind should be memory")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Immediate")), MemoryPath.GetMountName(), TEXT("Memory provider should be retained")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Snippet_001.as")), MemoryPath.GetRelativePath(), TEXT("Memory relative path should drop provider name")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Angelscript.Memory.Immediate.Snippet_001")), MemoryPath.ToModuleName(), TEXT("Memory module name should be isolated")));
+	}
 
-bool FAngelscriptVirtualScriptPathMemorySourceRequiresMemoryRootTest::RunTest(const FString& Parameters)
-{
-	FAngelscriptSource Source;
-	FString Error;
+	TEST_METHOD(MemorySourceRequiresMemoryRoot)
+	{
+		FAngelscriptSource Source;
+		FString Error;
 
-	bool bPassed = true;
-	bPassed &= TestFalse(
-		TEXT("Memory source descriptors should reject game virtual paths"),
-		FAngelscriptSource::TryFromMemorySource(
+		ASSERT_THAT(IsFalse(FAngelscriptSource::TryFromMemorySource(
 			TEXT("/Angelscript/Game/Gameplay/Foo.as"),
 			TEXT("int Entry() { return 1; }"),
 			Source,
-			&Error));
-	bPassed &= TestFalse(TEXT("Rejected game memory source should report a parse error"), Error.IsEmpty());
-	bPassed &= TestFalse(TEXT("Rejected game memory source should not leave a valid descriptor"), Source.VirtualPath.IsValid());
+			&Error), TEXT("Memory source descriptors should reject game virtual paths")));
+		ASSERT_THAT(IsFalse(Error.IsEmpty(), TEXT("Rejected game memory source should report a parse error")));
+		ASSERT_THAT(IsFalse(Source.VirtualPath.IsValid(), TEXT("Rejected game memory source should not leave a valid descriptor")));
 
-	Error.Reset();
-	bPassed &= TestFalse(
-		TEXT("Memory source descriptors should reject plugin virtual paths"),
-		FAngelscriptSource::TryFromMemorySource(
+		Error.Reset();
+		ASSERT_THAT(IsFalse(FAngelscriptSource::TryFromMemorySource(
 			TEXT("/Angelscript/Plugin/Inventory/Gameplay/Foo.as"),
 			TEXT("int Entry() { return 1; }"),
 			Source,
-			&Error));
-	bPassed &= TestFalse(TEXT("Rejected plugin memory source should report a parse error"), Error.IsEmpty());
-	bPassed &= TestFalse(TEXT("Rejected plugin memory source should not leave a valid descriptor"), Source.VirtualPath.IsValid());
+			&Error), TEXT("Memory source descriptors should reject plugin virtual paths")));
+		ASSERT_THAT(IsFalse(Error.IsEmpty(), TEXT("Rejected plugin memory source should report a parse error")));
+		ASSERT_THAT(IsFalse(Source.VirtualPath.IsValid(), TEXT("Rejected plugin memory source should not leave a valid descriptor")));
+	}
 
-	return bPassed;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptVirtualScriptPathInvalidInputsTest,
-	"Angelscript.TestModule.FileSystem.VirtualScriptPaths.InvalidInputs",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptVirtualScriptPathInvalidInputsTest::RunTest(const FString& Parameters)
-{
-	using namespace AngelscriptTest_FileSystem_VirtualScriptPaths_Private;
-
-	bool bPassed = true;
-	bPassed &= ExpectInvalidPath(*this, TEXT("as://project/Gameplay/Enemy.as"));
-	bPassed &= ExpectInvalidPath(*this, TEXT("/Game/Gameplay/Enemy.as"));
-	bPassed &= ExpectInvalidPath(*this, TEXT("/angelscript/Game/Gameplay/Enemy.as"));
-	bPassed &= ExpectInvalidPath(*this, TEXT("/Angelscript/Game/Gameplay/Enemy.txt"));
-	bPassed &= ExpectInvalidPath(*this, TEXT("/Angelscript/Game/Gameplay//Enemy.as"));
-	bPassed &= ExpectInvalidPath(*this, TEXT("/Angelscript/Game/Gameplay/Enemy.as/"));
-	bPassed &= ExpectInvalidPath(*this, TEXT("/Angelscript/Game/Gameplay/../Enemy.as"));
-	bPassed &= ExpectInvalidPath(*this, TEXT("/Angelscript/Game/Gameplay\\.as"));
-	bPassed &= ExpectInvalidPath(*this, TEXT("/Angelscript/Plugin/Inventory"));
-	bPassed &= ExpectInvalidPath(*this, TEXT("/Angelscript/Plugin/../Gameplay/Enemy.as"));
-	bPassed &= ExpectInvalidPath(*this, TEXT("/Angelscript/Memory/../Snippet.as"));
-	bPassed &= ExpectInvalidPath(*this, TEXT("/Angelscript/Memory/Immediate"));
-	return bPassed;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptVirtualScriptPathDiscoveryFullNamesTest,
-	"Angelscript.TestModule.FileSystem.VirtualScriptPaths.DiscoveryFullNames",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptVirtualScriptPathDiscoveryFullNamesTest::RunTest(const FString& Parameters)
-{
-	using namespace AngelscriptTest_FileSystem_VirtualScriptPaths_Private;
-
-	CleanDiscoveryFixtureRoot();
-	ON_SCOPE_EXIT
+	TEST_METHOD(InvalidInputs)
 	{
+		using namespace AngelscriptTest_FileSystem_VirtualScriptPaths_Private;
+
+		ASSERT_THAT(IsTrue(ExpectInvalidPath(*TestRunner, TEXT("as://project/Gameplay/Enemy.as")), TEXT("as:// path should be rejected")));
+		ASSERT_THAT(IsTrue(ExpectInvalidPath(*TestRunner, TEXT("/Game/Gameplay/Enemy.as")), TEXT("/Game path should be rejected")));
+		ASSERT_THAT(IsTrue(ExpectInvalidPath(*TestRunner, TEXT("/angelscript/Game/Gameplay/Enemy.as")), TEXT("case-mismatched root should be rejected")));
+		ASSERT_THAT(IsTrue(ExpectInvalidPath(*TestRunner, TEXT("/Angelscript/Game/Gameplay/Enemy.txt")), TEXT("non-AS file should be rejected")));
+		ASSERT_THAT(IsTrue(ExpectInvalidPath(*TestRunner, TEXT("/Angelscript/Game/Gameplay//Enemy.as")), TEXT("double slash should be rejected")));
+		ASSERT_THAT(IsTrue(ExpectInvalidPath(*TestRunner, TEXT("/Angelscript/Game/Gameplay/Enemy.as/")), TEXT("trailing slash should be rejected")));
+		ASSERT_THAT(IsTrue(ExpectInvalidPath(*TestRunner, TEXT("/Angelscript/Game/Gameplay/../Enemy.as")), TEXT("parent segment should be rejected")));
+		ASSERT_THAT(IsTrue(ExpectInvalidPath(*TestRunner, TEXT("/Angelscript/Game/Gameplay\\.as")), TEXT("backslash should be rejected")));
+		ASSERT_THAT(IsTrue(ExpectInvalidPath(*TestRunner, TEXT("/Angelscript/Plugin/Inventory")), TEXT("plugin root without file should be rejected")));
+		ASSERT_THAT(IsTrue(ExpectInvalidPath(*TestRunner, TEXT("/Angelscript/Plugin/../Gameplay/Enemy.as")), TEXT("plugin parent segment should be rejected")));
+		ASSERT_THAT(IsTrue(ExpectInvalidPath(*TestRunner, TEXT("/Angelscript/Memory/../Snippet.as")), TEXT("memory parent segment should be rejected")));
+		ASSERT_THAT(IsTrue(ExpectInvalidPath(*TestRunner, TEXT("/Angelscript/Memory/Immediate")), TEXT("memory root without file should be rejected")));
+	}
+
+	TEST_METHOD(DiscoveryFullNames)
+	{
+		using namespace AngelscriptTest_FileSystem_VirtualScriptPaths_Private;
+
 		CleanDiscoveryFixtureRoot();
-	};
+		ON_SCOPE_EXIT
+		{
+			CleanDiscoveryFixtureRoot();
+		};
 
 	const FString FixtureRoot = GetDiscoveryFixtureRoot();
 	const FString ProjectDir = NormalizePath(FixtureRoot / TEXT("Project"));
@@ -227,15 +168,8 @@ bool FAngelscriptVirtualScriptPathDiscoveryFullNamesTest::RunTest(const FString&
 
 	FString ProjectScriptPath;
 	FString PluginScriptPath;
-	if (!TestTrue(
-			TEXT("Project discovery fixture should write a script file"),
-			WriteDiscoveryFixtureFile(ProjectScriptRoot, TEXT("Gameplay/Player.as"), TEXT("int PlayerEntry() { return 17; }"), ProjectScriptPath))
-		|| !TestTrue(
-			TEXT("Plugin discovery fixture should write a script file"),
-			WriteDiscoveryFixtureFile(PluginScriptRoot, TEXT("Gameplay/Item.as"), TEXT("int ItemEntry() { return 23; }"), PluginScriptPath)))
-	{
-		return false;
-	}
+		ASSERT_THAT(IsTrue(WriteDiscoveryFixtureFile(ProjectScriptRoot, TEXT("Gameplay/Player.as"), TEXT("int PlayerEntry() { return 17; }"), ProjectScriptPath), TEXT("Project discovery fixture should write a script file")));
+		ASSERT_THAT(IsTrue(WriteDiscoveryFixtureFile(PluginScriptRoot, TEXT("Gameplay/Item.as"), TEXT("int ItemEntry() { return 23; }"), PluginScriptPath), TEXT("Plugin discovery fixture should write a script file")));
 
 	FAngelscriptEngineConfig Config;
 	Config.bIsEditor = false;
@@ -274,7 +208,7 @@ bool FAngelscriptVirtualScriptPathDiscoveryFullNamesTest::RunTest(const FString&
 	TArray<FAngelscriptSource> Sources;
 	Engine.FindAllScriptSources(Sources);
 
-	bool bPassed = TestEqual(TEXT("Descriptor discovery should find project and plugin sources"), Sources.Num(), 2);
+		ASSERT_THAT(AreEqual(2, Sources.Num(), TEXT("Descriptor discovery should find project and plugin sources")));
 
 	TMap<FString, FAngelscriptSource> SourceByVirtualPath;
 	for (const FAngelscriptSource& Source : Sources)
@@ -285,23 +219,17 @@ bool FAngelscriptVirtualScriptPathDiscoveryFullNamesTest::RunTest(const FString&
 	const FAngelscriptSource* GameSource = SourceByVirtualPath.Find(TEXT("/Angelscript/Game/Gameplay/Player.as"));
 	const FAngelscriptSource* PluginSource = SourceByVirtualPath.Find(TEXT("/Angelscript/Plugin/Inventory/Gameplay/Item.as"));
 
-	bPassed &= TestNotNull(TEXT("Discovery should emit the full game virtual path"), GameSource);
-	bPassed &= TestNotNull(TEXT("Discovery should emit the full plugin virtual path"), PluginSource);
+		ASSERT_THAT(IsNotNull(GameSource, TEXT("Discovery should emit the full game virtual path")));
+		ASSERT_THAT(IsNotNull(PluginSource, TEXT("Discovery should emit the full plugin virtual path")));
 
-	if (GameSource != nullptr)
-	{
-		bPassed &= TestEqual(TEXT("Game source should retain absolute filename"), NormalizePath(GameSource->AbsoluteFilename), ProjectScriptPath);
-		bPassed &= TestEqual(TEXT("Game source should keep disk-compatible module name"), GameSource->ModuleName, FString(TEXT("Gameplay.Player")));
-		bPassed &= TestEqual(TEXT("Game source should be marked as game"), GameSource->SourceKind, EAngelscriptSourceKind::Game);
-	}
+		ASSERT_THAT(AreEqual(ProjectScriptPath, NormalizePath(GameSource->AbsoluteFilename), TEXT("Game source should retain absolute filename")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Gameplay.Player")), GameSource->ModuleName, TEXT("Game source should keep disk-compatible module name")));
+		ASSERT_THAT(AreEqual(EAngelscriptSourceKind::Game, GameSource->SourceKind, TEXT("Game source should be marked as game")));
 
-	if (PluginSource != nullptr)
-	{
-		bPassed &= TestEqual(TEXT("Plugin source should retain absolute filename"), NormalizePath(PluginSource->AbsoluteFilename), PluginScriptPath);
-		bPassed &= TestEqual(TEXT("Plugin source should keep disk-compatible module name"), PluginSource->ModuleName, FString(TEXT("Gameplay.Item")));
-		bPassed &= TestEqual(TEXT("Plugin source should be marked as plugin"), PluginSource->SourceKind, EAngelscriptSourceKind::Plugin);
-		bPassed &= TestEqual(TEXT("Plugin source should keep the plugin mount name"), PluginSource->VirtualPath.GetMountName(), FString(TEXT("Inventory")));
-	}
+		ASSERT_THAT(AreEqual(PluginScriptPath, NormalizePath(PluginSource->AbsoluteFilename), TEXT("Plugin source should retain absolute filename")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Gameplay.Item")), PluginSource->ModuleName, TEXT("Plugin source should keep disk-compatible module name")));
+		ASSERT_THAT(AreEqual(EAngelscriptSourceKind::Plugin, PluginSource->SourceKind, TEXT("Plugin source should be marked as plugin")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Inventory")), PluginSource->VirtualPath.GetMountName(), TEXT("Plugin source should keep the plugin mount name")));
 
 	TArray<FAngelscriptEngine::FFilenamePair> FilenamePairs;
 	Engine.FindAllScriptFilenames(FilenamePairs);
@@ -311,42 +239,26 @@ bool FAngelscriptVirtualScriptPathDiscoveryFullNamesTest::RunTest(const FString&
 		FilenameByVirtualPath.Add(FilenamePair.VirtualPath, FilenamePair);
 	}
 
-	bPassed &= TestTrue(
-		TEXT("Legacy filename discovery should preserve the full game virtual path metadata"),
-		FilenameByVirtualPath.Contains(TEXT("/Angelscript/Game/Gameplay/Player.as")));
-	bPassed &= TestTrue(
-		TEXT("Legacy filename discovery should preserve the full plugin virtual path metadata"),
-		FilenameByVirtualPath.Contains(TEXT("/Angelscript/Plugin/Inventory/Gameplay/Item.as")));
+		ASSERT_THAT(IsTrue(FilenameByVirtualPath.Contains(TEXT("/Angelscript/Game/Gameplay/Player.as")), TEXT("Legacy filename discovery should preserve the full game virtual path metadata")));
+		ASSERT_THAT(IsTrue(FilenameByVirtualPath.Contains(TEXT("/Angelscript/Plugin/Inventory/Gameplay/Item.as")), TEXT("Legacy filename discovery should preserve the full plugin virtual path metadata")));
+	}
 
-	return bPassed;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptVirtualScriptPathLegacyRootPathOverrideTest,
-	"Angelscript.TestModule.FileSystem.VirtualScriptPaths.LegacyRootPathOverrideWinsWhenDescriptorsAreStale",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptVirtualScriptPathLegacyRootPathOverrideTest::RunTest(const FString& Parameters)
-{
-	using namespace AngelscriptTest_FileSystem_VirtualScriptPaths_Private;
-
-	CleanDiscoveryFixtureRoot();
-	ON_SCOPE_EXIT
+	TEST_METHOD(LegacyRootPathOverrideWinsWhenDescriptorsAreStale)
 	{
+		using namespace AngelscriptTest_FileSystem_VirtualScriptPaths_Private;
+
 		CleanDiscoveryFixtureRoot();
-	};
+		ON_SCOPE_EXIT
+		{
+			CleanDiscoveryFixtureRoot();
+		};
 
 	const FString FixtureRoot = GetDiscoveryFixtureRoot();
 	const FString LegacyScriptRoot = NormalizePath(FixtureRoot / TEXT("LegacyRoot"));
 	const FString StaleDescriptorRoot = NormalizePath(FixtureRoot / TEXT("StaleDescriptorRoot"));
 
 	FString LegacyScriptPath;
-	if (!TestTrue(
-			TEXT("Legacy root override fixture should write a script file"),
-			WriteDiscoveryFixtureFile(LegacyScriptRoot, TEXT("Gameplay/Standalone.as"), TEXT("int StandaloneEntry() { return 41; }"), LegacyScriptPath)))
-	{
-		return false;
-	}
+		ASSERT_THAT(IsTrue(WriteDiscoveryFixtureFile(LegacyScriptRoot, TEXT("Gameplay/Standalone.as"), TEXT("int StandaloneEntry() { return 41; }"), LegacyScriptPath), TEXT("Legacy root override fixture should write a script file")));
 
 	FAngelscriptEngine Engine;
 	Engine.AllScriptRoots = {
@@ -359,20 +271,13 @@ bool FAngelscriptVirtualScriptPathLegacyRootPathOverrideTest::RunTest(const FStr
 	TArray<FAngelscriptEngine::FFilenamePair> FilenamePairs;
 	Engine.FindAllScriptFilenames(FilenamePairs);
 
-	if (!TestEqual(
-			TEXT("Legacy AllRootPaths override should be honored when AllScriptRoots are stale"),
-			FilenamePairs.Num(),
-			1))
-	{
-		return false;
-	}
+		ASSERT_THAT(AreEqual(1, FilenamePairs.Num(), TEXT("Legacy AllRootPaths override should be honored when AllScriptRoots are stale")));
 
-	const FAngelscriptEngine::FFilenamePair& FilenamePair = FilenamePairs[0];
-	bool bPassed = true;
-	bPassed &= TestEqual(TEXT("Legacy override should keep the discovered absolute filename"), NormalizePath(FilenamePair.AbsolutePath), LegacyScriptPath);
-	bPassed &= TestEqual(TEXT("Legacy override should keep the root-relative filename"), FilenamePair.RelativePath.Replace(TEXT("\\"), TEXT("/")), FString(TEXT("Gameplay/Standalone.as")));
-	bPassed &= TestEqual(TEXT("Legacy override should synthesize a game virtual path"), FilenamePair.VirtualPath, FString(TEXT("/Angelscript/Game/Gameplay/Standalone.as")));
-	return bPassed;
-}
+		const FAngelscriptEngine::FFilenamePair& FilenamePair = FilenamePairs[0];
+		ASSERT_THAT(AreEqual(LegacyScriptPath, NormalizePath(FilenamePair.AbsolutePath), TEXT("Legacy override should keep the discovered absolute filename")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Gameplay/Standalone.as")), FilenamePair.RelativePath.Replace(TEXT("\\"), TEXT("/")), TEXT("Legacy override should keep the root-relative filename")));
+		ASSERT_THAT(AreEqual(FString(TEXT("/Angelscript/Game/Gameplay/Standalone.as")), FilenamePair.VirtualPath, TEXT("Legacy override should synthesize a game virtual path")));
+	}
+};
 
 #endif

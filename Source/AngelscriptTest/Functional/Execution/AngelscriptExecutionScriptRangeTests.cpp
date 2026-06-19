@@ -1,3 +1,5 @@
+#include "CQTest.h"
+
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestMacros.h"
 
@@ -58,46 +60,37 @@ namespace AngelscriptTest_Angelscript_AngelscriptExecutionScriptRangeTests_Priva
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+TEST_CLASS_WITH_FLAGS(
 	FAngelscriptExecutionScriptRangeBoundariesTest,
-	"Angelscript.TestModule.Functional.Execute.Script.RangeBoundaries",
+	"Angelscript.TestModule.Functional.Execute.Script",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptExecutionScriptRangeBoundariesTest::RunTest(const FString& Parameters)
 {
-	using namespace AngelscriptTest_Angelscript_AngelscriptExecutionScriptRangeTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-
-	asIScriptModule* Module = BuildModule(*this, Engine, ModuleName, ScriptSource);
-	if (Module == nullptr)
+	TEST_METHOD(RangeBoundaries)
 	{
-		return false;
-	}
+		using namespace AngelscriptTest_Angelscript_AngelscriptExecutionScriptRangeTests_Private;
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-	asIScriptFunction* Function = GetFunctionByDecl(*this, *Module, TEXT("int Calculate(int, int)"));
-	if (Function == nullptr)
-	{
-		return false;
-	}
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, ModuleName, ScriptSource);
+		ASSERT_THAT(IsNotNull(Module));
 
-	const FRangeCase Cases[] =
-	{
-		{ TEXT("Execution.Script.RangeBoundaries single-element case"), 1, 1, 1 },
-		{ TEXT("Execution.Script.RangeBoundaries reverse-empty case"), 5, 4, 0 },
-		{ TEXT("Execution.Script.RangeBoundaries negative-to-positive case"), -2, 2, 0 },
-	};
+		asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("int Calculate(int, int)"));
+		ASSERT_THAT(IsNotNull(Function));
 
-	for (const FRangeCase& RangeCase : Cases)
-	{
-		if (!ExecuteRangeCase(*this, Engine, *Function, RangeCase))
+		const FRangeCase Cases[] =
 		{
-			return false;
+			{ TEXT("Execution.Script.RangeBoundaries single-element case"), 1, 1, 1 },
+			{ TEXT("Execution.Script.RangeBoundaries reverse-empty case"), 5, 4, 0 },
+			{ TEXT("Execution.Script.RangeBoundaries negative-to-positive case"), -2, 2, 0 },
+		};
+
+		for (const FRangeCase& RangeCase : Cases)
+		{
+			ASSERT_THAT(IsTrue(ExecuteRangeCase(*TestRunner, Engine, *Function, RangeCase)));
+		}
+
 		}
 	}
-
-	}
-	return true;
-}
+};
 
 #endif

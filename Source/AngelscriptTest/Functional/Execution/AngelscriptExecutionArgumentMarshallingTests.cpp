@@ -1,3 +1,5 @@
+#include "CQTest.h"
+
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestMacros.h"
 
@@ -118,14 +120,10 @@ namespace AngelscriptTest_Angelscript_AngelscriptExecutionArgumentMarshallingTes
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptExecutionArgumentSlotOrderMatrixTest,
-	"Angelscript.TestModule.Functional.Execute.ArgumentSlotOrderMatrix",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptExecutionArgumentSlotOrderMatrixTest::RunTest(const FString& Parameters)
+namespace AngelscriptTest_Angelscript_AngelscriptExecutionArgumentMarshallingTests_Private
 {
-	using namespace AngelscriptTest_Angelscript_AngelscriptExecutionArgumentMarshallingTests_Private;
+bool RunArgumentSlotOrderMatrix(FAutomationTestBase& Test)
+{
 	bool bPassed = false;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
@@ -133,14 +131,14 @@ bool FAngelscriptExecutionArgumentSlotOrderMatrixTest::RunTest(const FString& Pa
 	do
 	{
 		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
-		if (!TestNotNull(TEXT("Execution.ArgumentSlotOrderMatrix should expose the script engine"), ScriptEngine))
+		if (!Test.TestNotNull(TEXT("Execution.ArgumentSlotOrderMatrix should expose the script engine"), ScriptEngine))
 		{
 			break;
 		}
 
 		const bool bFloatUsesFloat64 = ScriptEngine->GetEngineProperty(asEP_FLOAT_IS_FLOAT64) != 0;
 		asIScriptModule* Module = BuildModule(
-			*this,
+			Test,
 			Engine,
 			ModuleName,
 			MakeArgumentMatrixScript(bFloatUsesFloat64));
@@ -150,7 +148,7 @@ bool FAngelscriptExecutionArgumentSlotOrderMatrixTest::RunTest(const FString& Pa
 		}
 
 		if (!ExecuteArgumentCase(
-				*this,
+				Test,
 				Engine,
 				*Module,
 				TEXT("int Encode2(int, int)"),
@@ -166,7 +164,7 @@ bool FAngelscriptExecutionArgumentSlotOrderMatrixTest::RunTest(const FString& Pa
 		}
 
 		if (!ExecuteArgumentCase(
-				*this,
+				Test,
 				Engine,
 				*Module,
 				TEXT("int Encode4(int, int, int, int)"),
@@ -185,7 +183,7 @@ bool FAngelscriptExecutionArgumentSlotOrderMatrixTest::RunTest(const FString& Pa
 
 		const FString MixedDeclaration = GetMixedDeclaration(bFloatUsesFloat64);
 		if (!ExecuteArgumentCase(
-				*this,
+				Test,
 				Engine,
 				*Module,
 				MixedDeclaration,
@@ -216,29 +214,13 @@ bool FAngelscriptExecutionArgumentSlotOrderMatrixTest::RunTest(const FString& Pa
 	return bPassed;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptExecutionOneArgNegativeAndZeroTest,
-	"Angelscript.TestModule.Functional.Execute.OneArg.NegativeAndZero",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptExecutionRefAddressRoundTripTest,
-	"Angelscript.TestModule.Functional.Execute.RefAddressRoundTrip",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptExecutionDoubleArgDirectApiRoundTripTest,
-	"Angelscript.TestModule.Functional.Execute.DoubleArg.DirectApiRoundTrip",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptExecutionOneArgNegativeAndZeroTest::RunTest(const FString& Parameters)
+bool RunOneArgNegativeAndZero(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_Angelscript_AngelscriptExecutionArgumentMarshallingTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	asIScriptModule* Module = BuildModule(
-		*this,
+		Test,
 		Engine,
 		OneArgModuleName,
 		TEXT("int Test(int Value) { return Value * 2; }"));
@@ -247,14 +229,14 @@ bool FAngelscriptExecutionOneArgNegativeAndZeroTest::RunTest(const FString& Para
 		return false;
 	}
 
-	asIScriptFunction* Function = GetFunctionByDecl(*this, *Module, TEXT("int Test(int)"));
+	asIScriptFunction* Function = GetFunctionByDecl(Test, *Module, TEXT("int Test(int)"));
 	if (Function == nullptr)
 	{
 		return false;
 	}
 
 	asIScriptContext* Context = Engine.CreateContext();
-	if (!TestNotNull(TEXT("Execution.OneArg.NegativeAndZero should create a reusable context"), Context))
+	if (!Test.TestNotNull(TEXT("Execution.OneArg.NegativeAndZero should create a reusable context"), Context))
 	{
 		return false;
 	}
@@ -267,7 +249,7 @@ bool FAngelscriptExecutionOneArgNegativeAndZeroTest::RunTest(const FString& Para
 
 	for (const FOneArgCase& OneArgCase : Cases)
 	{
-		if (!ExecuteOneArgCase(*this, *Context, *Function, OneArgCase))
+		if (!ExecuteOneArgCase(Test, *Context, *Function, OneArgCase))
 		{
 			Context->Release();
 			return false;
@@ -279,15 +261,14 @@ bool FAngelscriptExecutionOneArgNegativeAndZeroTest::RunTest(const FString& Para
 	return true;
 }
 
-bool FAngelscriptExecutionRefAddressRoundTripTest::RunTest(const FString& Parameters)
+bool RunRefAddressRoundTrip(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_Angelscript_AngelscriptExecutionArgumentMarshallingTests_Private;
 	bool bPassed = false;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	asIScriptModule* Module = BuildModule(
-		*this,
+		Test,
 		Engine,
 		RefAddressModuleName,
 		TEXT("int UseRefs(const int&in Input, int&out Output) { Output = Input + 5; return Output * 2; }"));
@@ -296,20 +277,20 @@ bool FAngelscriptExecutionRefAddressRoundTripTest::RunTest(const FString& Parame
 		return false;
 	}
 
-	asIScriptFunction* Function = GetFunctionByDecl(*this, *Module, TEXT("int UseRefs(const int&in, int&out)"));
+	asIScriptFunction* Function = GetFunctionByDecl(Test, *Module, TEXT("int UseRefs(const int&in, int&out)"));
 	if (Function == nullptr)
 	{
 		return false;
 	}
 
 	asIScriptContext* Context = Engine.CreateContext();
-	if (!TestNotNull(TEXT("Execution.RefAddressRoundTrip should create a context"), Context))
+	if (!Test.TestNotNull(TEXT("Execution.RefAddressRoundTrip should create a context"), Context))
 	{
 		return false;
 	}
 
 	const int PrepareResult = Context->Prepare(Function);
-	if (!TestEqual(TEXT("Execution.RefAddressRoundTrip should prepare the entry point"), PrepareResult, static_cast<int32>(asSUCCESS)))
+	if (!Test.TestEqual(TEXT("Execution.RefAddressRoundTrip should prepare the entry point"), PrepareResult, static_cast<int32>(asSUCCESS)))
 	{
 		Context->Release();
 		return false;
@@ -318,35 +299,35 @@ bool FAngelscriptExecutionRefAddressRoundTripTest::RunTest(const FString& Parame
 	int32 Input = 10;
 	int32 Output = -1;
 	const int SetInputResult = Context->SetArgAddress(0, &Input);
-	if (!TestEqual(TEXT("Execution.RefAddressRoundTrip should bind the const ref input address"), SetInputResult, static_cast<int32>(asSUCCESS)))
+	if (!Test.TestEqual(TEXT("Execution.RefAddressRoundTrip should bind the const ref input address"), SetInputResult, static_cast<int32>(asSUCCESS)))
 	{
 		Context->Release();
 		return false;
 	}
 
 	const int SetOutputResult = Context->SetArgAddress(1, &Output);
-	if (!TestEqual(TEXT("Execution.RefAddressRoundTrip should bind the out ref output address"), SetOutputResult, static_cast<int32>(asSUCCESS)))
+	if (!Test.TestEqual(TEXT("Execution.RefAddressRoundTrip should bind the out ref output address"), SetOutputResult, static_cast<int32>(asSUCCESS)))
 	{
 		Context->Release();
 		return false;
 	}
 
 	const int ExecuteResult = Context->Execute();
-	if (!TestEqual(TEXT("Execution.RefAddressRoundTrip should execute successfully"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
+	if (!Test.TestEqual(TEXT("Execution.RefAddressRoundTrip should execute successfully"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
 	{
 		Context->Release();
 		return false;
 	}
 
-	const bool bReturnMatched = TestEqual(
+	const bool bReturnMatched = Test.TestEqual(
 		TEXT("Execution.RefAddressRoundTrip should return the doubled out value"),
 		static_cast<int32>(Context->GetReturnDWord()),
 		30);
-	const bool bOutputMatched = TestEqual(
+	const bool bOutputMatched = Test.TestEqual(
 		TEXT("Execution.RefAddressRoundTrip should write the expected out ref value"),
 		Output,
 		15);
-	const bool bInputMatched = TestEqual(
+	const bool bInputMatched = Test.TestEqual(
 		TEXT("Execution.RefAddressRoundTrip should keep the const ref input unchanged"),
 		Input,
 		10);
@@ -357,26 +338,25 @@ bool FAngelscriptExecutionRefAddressRoundTripTest::RunTest(const FString& Parame
 	return bPassed;
 }
 
-bool FAngelscriptExecutionDoubleArgDirectApiRoundTripTest::RunTest(const FString& Parameters)
+bool RunDoubleArgDirectApiRoundTrip(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_Angelscript_AngelscriptExecutionArgumentMarshallingTests_Private;
 	bool bPassed = false;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
-	if (!TestNotNull(TEXT("Execution.DoubleArg.DirectApiRoundTrip should expose the script engine"), ScriptEngine))
+	if (!Test.TestNotNull(TEXT("Execution.DoubleArg.DirectApiRoundTrip should expose the script engine"), ScriptEngine))
 	{
 		return false;
 	}
 
-	if (!TestTrue(TEXT("Execution.DoubleArg.DirectApiRoundTrip should enable the double type"), ScriptEngine->GetEngineProperty(asEP_ALLOW_DOUBLE_TYPE) != 0))
+	if (!Test.TestTrue(TEXT("Execution.DoubleArg.DirectApiRoundTrip should enable the double type"), ScriptEngine->GetEngineProperty(asEP_ALLOW_DOUBLE_TYPE) != 0))
 	{
 		return false;
 	}
 
 	asIScriptModule* Module = BuildModule(
-		*this,
+		Test,
 		Engine,
 		DoubleArgModuleName,
 		TEXT("double Test(double Value) { return Value * 1.5 + 0.25; }"));
@@ -385,40 +365,40 @@ bool FAngelscriptExecutionDoubleArgDirectApiRoundTripTest::RunTest(const FString
 		return false;
 	}
 
-	asIScriptFunction* Function = GetFunctionByDecl(*this, *Module, TEXT("double Test(double)"));
+	asIScriptFunction* Function = GetFunctionByDecl(Test, *Module, TEXT("double Test(double)"));
 	if (Function == nullptr)
 	{
 		return false;
 	}
 
 	asIScriptContext* Context = Engine.CreateContext();
-	if (!TestNotNull(TEXT("Execution.DoubleArg.DirectApiRoundTrip should create a context"), Context))
+	if (!Test.TestNotNull(TEXT("Execution.DoubleArg.DirectApiRoundTrip should create a context"), Context))
 	{
 		return false;
 	}
 
 	const int PrepareResult = Context->Prepare(Function);
-	if (!TestEqual(TEXT("Execution.DoubleArg.DirectApiRoundTrip should prepare the entry point"), PrepareResult, static_cast<int32>(asSUCCESS)))
+	if (!Test.TestEqual(TEXT("Execution.DoubleArg.DirectApiRoundTrip should prepare the entry point"), PrepareResult, static_cast<int32>(asSUCCESS)))
 	{
 		Context->Release();
 		return false;
 	}
 
 	const int SetArgResult = Context->SetArgDouble(0, 20.5);
-	if (!TestEqual(TEXT("Execution.DoubleArg.DirectApiRoundTrip should bind the double argument through SetArgDouble"), SetArgResult, static_cast<int32>(asSUCCESS)))
+	if (!Test.TestEqual(TEXT("Execution.DoubleArg.DirectApiRoundTrip should bind the double argument through SetArgDouble"), SetArgResult, static_cast<int32>(asSUCCESS)))
 	{
 		Context->Release();
 		return false;
 	}
 
 	const int ExecuteResult = Context->Execute();
-	if (!TestEqual(TEXT("Execution.DoubleArg.DirectApiRoundTrip should execute successfully"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
+	if (!Test.TestEqual(TEXT("Execution.DoubleArg.DirectApiRoundTrip should execute successfully"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
 	{
 		Context->Release();
 		return false;
 	}
 
-	bPassed = TestEqual(
+	bPassed = Test.TestEqual(
 		TEXT("Execution.DoubleArg.DirectApiRoundTrip should preserve the double return value through GetReturnDouble"),
 		Context->GetReturnDouble(),
 		31.0,
@@ -427,5 +407,44 @@ bool FAngelscriptExecutionDoubleArgDirectApiRoundTripTest::RunTest(const FString
 	}
 	return bPassed;
 }
+}
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptExecutionArgumentMarshallingTests,
+	"Angelscript.TestModule.Functional.Execute",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(ArgumentSlotOrderMatrix)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptExecutionArgumentMarshallingTests_Private::RunArgumentSlotOrderMatrix(*TestRunner)));
+	}
+
+	TEST_METHOD(RefAddressRoundTrip)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptExecutionArgumentMarshallingTests_Private::RunRefAddressRoundTrip(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptExecutionOneArgArgumentMarshallingTests,
+	"Angelscript.TestModule.Functional.Execute.OneArg",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(NegativeAndZero)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptExecutionArgumentMarshallingTests_Private::RunOneArgNegativeAndZero(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptExecutionDoubleArgArgumentMarshallingTests,
+	"Angelscript.TestModule.Functional.Execute.DoubleArg",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(DirectApiRoundTrip)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptExecutionArgumentMarshallingTests_Private::RunDoubleArgDirectApiRoundTrip(*TestRunner)));
+	}
+};
 
 #endif

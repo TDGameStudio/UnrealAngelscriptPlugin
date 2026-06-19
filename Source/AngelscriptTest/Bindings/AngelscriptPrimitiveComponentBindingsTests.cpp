@@ -10,7 +10,7 @@
 //                  lightmap type round-trip through script
 //
 // CQTest adaptation notes:
-//   Single IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into TEST_CLASS.
+//   Single legacy automation test merged into TEST_CLASS.
 //   $TOKEN$ replacement computed in TEST_METHOD + ReplaceInline.
 //   Original `int Entry()` returning bitmask split into per-aspect functions
 //   returning 1/0, plus native-side C++ assertions for mutated component state.

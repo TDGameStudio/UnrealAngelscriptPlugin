@@ -9,7 +9,7 @@
 //   WorldStreamingAccess    — streaming level count, order, editor visibility
 //
 // CQTest adaptation notes:
-//   Two IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
+//   Two legacy automation tests merged into one TEST_CLASS.
 //   Both tests use ASTEST_CREATE_ENGINE_FULL (requires world context via
 //   FActorTestSpawner). Execution uses FAngelscriptTestExecutor and
 //   Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h for UObject args and exceptions.
@@ -28,7 +28,6 @@
 #include "Engine/LevelStreaming.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
-#include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 #include "Templates/Function.h"
 

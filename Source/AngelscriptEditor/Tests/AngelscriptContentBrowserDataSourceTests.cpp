@@ -6,6 +6,7 @@
 
 #include "AssetRegistry/AssetData.h"
 #include "AssetThumbnail.h"
+#include "CQTest.h"
 #include "ContentBrowserItem.h"
 #include "Curves/CurveBase.h"
 #include "Curves/CurveFloat.h"
@@ -17,11 +18,6 @@
 #include "UObject/UObjectGlobals.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptContentBrowserDataSourceFilterAndAttributesTest,
-	"Angelscript.Editor.ContentBrowserDataSource.FiltersAssetsAndBuildsExpectedAttributes",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptContentBrowserDataSourceTests_Private
 {
@@ -141,8 +137,12 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptContentBrowserDataSourceTes
 	}
 }
 
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 
-bool FAngelscriptContentBrowserDataSourceFilterAndAttributesTest::RunTest(const FString& Parameters)
+static bool RunFiltersAssetsAndBuildsExpectedAttributes(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptContentBrowserDataSourceTests_Private;
 	FAngelscriptRuntimeModule::InitializeAngelscript();
@@ -166,8 +166,8 @@ bool FAngelscriptContentBrowserDataSourceFilterAndAttributesTest::RunTest(const 
 	}
 	DataSource->Initialize();
 
-	UObject* IncludedAssetObject = CreateContentBrowserTestAsset<UCurveFloat>(*this, AssetsPackage, TEXT("Asset_FilteredCurve"));
-	UObject* ExcludedAssetObject = CreateContentBrowserTestAsset<UCurveVector>(*this, AssetsPackage, TEXT("Asset_ExcludedCurve"));
+	UObject* IncludedAssetObject = CreateContentBrowserTestAsset<UCurveFloat>(Test, AssetsPackage, TEXT("Asset_FilteredCurve"));
+	UObject* ExcludedAssetObject = CreateContentBrowserTestAsset<UCurveVector>(Test, AssetsPackage, TEXT("Asset_ExcludedCurve"));
 	UCurveFloat* IncludedAsset = Cast<UCurveFloat>(IncludedAssetObject);
 	UCurveVector* ExcludedAsset = Cast<UCurveVector>(ExcludedAssetObject);
 	if (!TestNotNull(TEXT("ContentBrowserDataSource test should create the included asset"), IncludedAsset)
@@ -284,12 +284,7 @@ bool FAngelscriptContentBrowserDataSourceFilterAndAttributesTest::RunTest(const 
 		IncludedAsset->GetPathName());
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptContentBrowserDataSourceRejectsStalePayloadTest,
-	"Angelscript.Editor.ContentBrowserDataSource.RejectsStalePayloadAcrossAttributesLegacyLookupAndThumbnail",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptContentBrowserDataSourceRejectsStalePayloadTest::RunTest(const FString& Parameters)
+static bool RunRejectsStalePayloadAcrossAttributesLegacyLookupAndThumbnail(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptContentBrowserDataSourceTests_Private;
 	FAngelscriptRuntimeModule::InitializeAngelscript();
@@ -313,7 +308,7 @@ bool FAngelscriptContentBrowserDataSourceRejectsStalePayloadTest::RunTest(const 
 	DataSource->Initialize();
 	DataSource->AddToRoot();
 
-	UObject* StaleAssetObject = CreateContentBrowserTestAsset<UCurveFloat>(*this, AssetsPackage, TEXT("Asset_StalePayloadCurve"));
+	UObject* StaleAssetObject = CreateContentBrowserTestAsset<UCurveFloat>(Test, AssetsPackage, TEXT("Asset_StalePayloadCurve"));
 	UCurveFloat* StaleAsset = Cast<UCurveFloat>(StaleAssetObject);
 	if (!TestNotNull(TEXT("Stale payload ContentBrowserDataSource test should create the payload asset"), StaleAsset))
 	{
@@ -408,7 +403,7 @@ bool FAngelscriptContentBrowserDataSourceRejectsStalePayloadTest::RunTest(const 
 		TEXT("Stale payload should reject legacy asset-data lookup"),
 		DataSource->Legacy_TryGetAssetData(*StaleItemData, StaleLegacyAssetData));
 	bPassed &= TestAssetDataSnapshotEquals(
-		*this,
+		Test,
 		TEXT("Rejected legacy asset-data lookup"),
 		StaleLegacyAssetData,
 		ExpectedLegacySnapshot);
@@ -417,12 +412,32 @@ bool FAngelscriptContentBrowserDataSourceRejectsStalePayloadTest::RunTest(const 
 		TEXT("Stale payload should reject thumbnail updates"),
 		DataSource->UpdateThumbnail(*StaleItemData, Thumbnail));
 	bPassed &= TestAssetDataSnapshotEquals(
-		*this,
+		Test,
 		TEXT("Rejected thumbnail update"),
 		Thumbnail.GetAssetData(),
 		ExpectedThumbnailSnapshot);
 
 	return bPassed;
 }
+
+#undef TestEqual
+#undef TestFalse
+#undef TestNotNull
+#undef TestTrue
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptContentBrowserDataSourceTests,
+	"Angelscript.Editor.ContentBrowserDataSource",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(FiltersAssetsAndBuildsExpectedAttributes)
+	{
+		ASSERT_THAT(IsTrue(RunFiltersAssetsAndBuildsExpectedAttributes(*TestRunner)));
+	}
+
+	TEST_METHOD(RejectsStalePayloadAcrossAttributesLegacyLookupAndThumbnail)
+	{
+		ASSERT_THAT(IsTrue(RunRejectsStalePayloadAcrossAttributesLegacyLookupAndThumbnail(*TestRunner)));
+	}
+};
 
 #endif

@@ -1,4 +1,4 @@
-#include "Misc/AutomationTest.h"
+#include "CQTest.h"
 
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestMacros.h"
@@ -260,17 +260,10 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeBridgeTests_Privat
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITNativeBridgeGenericCallRestoresStateTest,
-	"Angelscript.TestModule.StaticJIT.NativeBridge.GenericCallRestoresState",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeBridgeTests_Private
+{
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITNativeBridgeGenericMethodNullThisThrowsTest,
-	"Angelscript.TestModule.StaticJIT.NativeBridge.GenericMethodNullThisThrows",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptStaticJITNativeBridgeGenericCallRestoresStateTest::RunTest(const FString& Parameters)
+bool RunNativeBridgeGenericCallRestoresState(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeBridgeTests_Private;
 	bool bPassed = false;
@@ -289,20 +282,20 @@ bool FAngelscriptStaticJITNativeBridgeGenericCallRestoresStateTest::RunTest(cons
 	do
 	{
 		asCThreadLocalData* ThreadLocalData = nullptr;
-		if (!VerifyThreadLocalStateAvailable(*this, Engine, ThreadLocalData))
+		if (!VerifyThreadLocalStateAvailable(Test, Engine, ThreadLocalData))
 		{
 			break;
 		}
 
 		asCScriptEngine* ScriptEngine = static_cast<asCScriptEngine*>(Engine.GetScriptEngine());
-		if (!TestNotNull(
+		if (!Test.TestNotNull(
 				TEXT("StaticJIT.NativeBridge.GenericCallRestoresState should expose the underlying AngelScript engine"),
 				ScriptEngine))
 		{
 			break;
 		}
 
-		if (!VerifyGenericFunctionBridge(*this, *ScriptEngine, *ThreadLocalData))
+		if (!VerifyGenericFunctionBridge(Test, *ScriptEngine, *ThreadLocalData))
 		{
 			break;
 		}
@@ -315,7 +308,7 @@ bool FAngelscriptStaticJITNativeBridgeGenericCallRestoresStateTest::RunTest(cons
 	return bPassed;
 }
 
-bool FAngelscriptStaticJITNativeBridgeGenericMethodNullThisThrowsTest::RunTest(const FString& Parameters)
+bool RunNativeBridgeGenericMethodNullThisThrows(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeBridgeTests_Private;
 	bool bPassed = false;
@@ -334,20 +327,20 @@ bool FAngelscriptStaticJITNativeBridgeGenericMethodNullThisThrowsTest::RunTest(c
 	do
 	{
 		asCThreadLocalData* ThreadLocalData = nullptr;
-		if (!VerifyThreadLocalStateAvailable(*this, Engine, ThreadLocalData))
+		if (!VerifyThreadLocalStateAvailable(Test, Engine, ThreadLocalData))
 		{
 			break;
 		}
 
 		asCScriptEngine* ScriptEngine = static_cast<asCScriptEngine*>(Engine.GetScriptEngine());
-		if (!TestNotNull(
+		if (!Test.TestNotNull(
 				TEXT("StaticJIT.NativeBridge.GenericMethodNullThisThrows should expose the underlying AngelScript engine"),
 				ScriptEngine))
 		{
 			break;
 		}
 
-		if (!VerifyGenericMethodNullThisGuard(*this, *ScriptEngine, *ThreadLocalData))
+		if (!VerifyGenericMethodNullThisGuard(Test, *ScriptEngine, *ThreadLocalData))
 		{
 			break;
 		}
@@ -359,5 +352,24 @@ bool FAngelscriptStaticJITNativeBridgeGenericMethodNullThisThrowsTest::RunTest(c
 	}
 	return bPassed;
 }
+
+}
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITNativeBridgeTests,
+	"Angelscript.TestModule.StaticJIT.NativeBridge",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(GenericCallRestoresState)
+	{
+		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeBridgeTests_Private;
+		ASSERT_THAT(IsTrue(RunNativeBridgeGenericCallRestoresState(*TestRunner)));
+	}
+
+	TEST_METHOD(GenericMethodNullThisThrows)
+	{
+		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeBridgeTests_Private;
+		ASSERT_THAT(IsTrue(RunNativeBridgeGenericMethodNullThisThrows(*TestRunner)));
+	}
+};
 
 #endif

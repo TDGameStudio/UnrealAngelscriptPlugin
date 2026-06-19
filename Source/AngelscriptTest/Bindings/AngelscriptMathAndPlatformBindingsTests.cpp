@@ -11,7 +11,7 @@
 //   Logging              — headless-safe logging helpers
 //
 // CQTest adaptation notes:
-//   Four IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
+//   Four legacy automation tests merged into one TEST_CLASS.
 //   MathExtended: single int Entry() split into per-aspect functions.
 //   MathDeterministic: $TOKEN$ replacement pattern retained with single Entry().
 //   PlatformProcess: single int Entry() split into per-aspect functions.

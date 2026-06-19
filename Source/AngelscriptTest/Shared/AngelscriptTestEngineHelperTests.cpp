@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptTestEngineHelper.h"
 
 #include "AngelscriptTestMacros.h"
@@ -16,12 +17,14 @@
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperCompileModuleTest,
-	"Angelscript.TestModule.Shared.EngineHelper.CompileModuleFromMemory",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define TestNull(...) Test.TestNull(__VA_ARGS__)
+#define AddError(...) Test.AddError(__VA_ARGS__)
 
-bool FAngelscriptTestEngineHelperCompileModuleTest::RunTest(const FString& Parameters)
+static bool RunCompileModuleFromMemory(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = GetOrCreateSharedCloneEngine();
 	ON_SCOPE_EXIT
@@ -39,12 +42,7 @@ bool FAngelscriptTestEngineHelperCompileModuleTest::RunTest(const FString& Param
 	return bCompiled;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperExecuteIntFunctionTest,
-	"Angelscript.TestModule.Shared.EngineHelper.ExecuteIntFunction",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTestEngineHelperExecuteIntFunctionTest::RunTest(const FString& Parameters)
+static bool RunExecuteIntFunction(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = GetOrCreateSharedCloneEngine();
 	ON_SCOPE_EXIT
@@ -73,103 +71,7 @@ bool FAngelscriptTestEngineHelperExecuteIntFunctionTest::RunTest(const FString& 
 	return Result == 42;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperGeneratedSymbolLookupTest,
-	"Angelscript.TestModule.Shared.EngineHelper.GeneratedSymbolLookup",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperFailedAnnotatedIsolationTest,
-	"Angelscript.TestModule.Shared.EngineHelper.FailedAnnotatedModuleDoesNotPolluteLaterCompiles",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperSharedEngineNeverAttachesToProductionTest,
-	"Angelscript.TestModule.Shared.EngineHelper.SharedTestEngineNeverSilentlyAttachesToProductionEngine",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperScriptScanFreeEngineStartsCleanTest,
-	"Angelscript.TestModule.Shared.EngineHelper.ScriptScanFreeEngineStartsClean",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperAcquireCleanSharedCloneEngineResetsModulesTest,
-	"Angelscript.TestModule.Shared.EngineHelper.AcquireCleanSharedCloneEngineResetsModules",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperProductionHelperRejectsMissingProductionTest,
-	"Angelscript.TestModule.Shared.EngineHelper.ProductionHelperRejectsMissingProductionEngine",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperProductionDebuggerHelperPrefersDebuggableEngineOverScopedTestEngineTest,
-	"Angelscript.TestModule.Shared.EngineHelper.ProductionDebuggerHelperPrefersDebuggableEngineOverScopedTestEngine",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter | EAutomationTestFlags::Disabled) // TODO(#ue57-headless): TryGetRunningProductionDebuggerEngine returns null in headless batch automation on UE 5.7; requires interactive editor session
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperResetSharedEngineDiscardsRawModulesTest,
-	"Angelscript.TestModule.Shared.EngineHelper.ResetSharedEngineDiscardsRawModules",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperResetSharedEngineReleasesGeneratedComponentClassesTest,
-	"Angelscript.TestModule.Shared.EngineHelper.ResetSharedEngineReleasesGeneratedComponentClasses",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperResetSharedEngineReleasesGeneratedStructsTest,
-	"Angelscript.TestModule.Shared.EngineHelper.ResetSharedEngineReleasesGeneratedStructs",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperResetSharedEngineReleasesGeneratedEnumsAndDelegatesTest,
-	"Angelscript.TestModule.Shared.EngineHelper.ResetSharedEngineReleasesGeneratedEnumsAndDelegates",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperCompileRestoresScopedGlobalEngineTest,
-	"Angelscript.TestModule.Shared.EngineHelper.CompileRestoresOuterCurrentEngine",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperNestedGlobalScopeRestoreTest,
-	"Angelscript.TestModule.Shared.EngineHelper.NestedCurrentEngineScopeRestoresPreviousEngine",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperWorldContextScopeRestoreTest,
-	"Angelscript.TestModule.Shared.EngineHelper.WorldContextScopeRestoresPreviousContext",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperEngineScopeWorldContextRestoreTest,
-	"Angelscript.TestModule.Shared.EngineHelper.EngineScopeRestoresWorldContextAndCurrentEngine",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperCompileSummaryPlainModuleTest,
-	"Angelscript.TestModule.Shared.EngineHelper.CompileSummaryPlainModule",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperCompileSummaryDiagnosticCaptureTest,
-	"Angelscript.TestModule.Shared.EngineHelper.CompileSummaryDiagnosticCapture",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperContextIsolationAcrossEnginesTest,
-	"Angelscript.TestModule.Shared.EngineHelper.ExecutingOneTestEngineDoesNotLeakContextIntoNextTest",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEngineHelperProductionSubsystemDoesNotHijackIsolatedEngineTest,
-	"Angelscript.TestModule.Shared.EngineHelper.SubsystemAttachedProductionEngineDoesNotHijackIsolatedTestEngine",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-
-bool FAngelscriptTestEngineHelperGeneratedSymbolLookupTest::RunTest(const FString& Parameters)
+static bool RunGeneratedSymbolLookup(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = GetOrCreateSharedCloneEngine();
 	ON_SCOPE_EXIT
@@ -208,7 +110,7 @@ class UAnnotatedHelperObject : UObject
 	return GeneratedFunction != nullptr;
 }
 
-bool FAngelscriptTestEngineHelperFailedAnnotatedIsolationTest::RunTest(const FString& Parameters)
+static bool RunFailedAnnotatedModuleDoesNotPolluteLaterCompiles(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = GetOrCreateSharedCloneEngine();
 	ON_SCOPE_EXIT
@@ -278,7 +180,7 @@ class URecoveredHelperObject : UObject
 	return GeneratedFunction != nullptr;
 }
 
-bool FAngelscriptTestEngineHelperSharedEngineNeverAttachesToProductionTest::RunTest(const FString& Parameters)
+static bool RunSharedTestEngineNeverSilentlyAttachesToProductionEngine(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine* PreviousCurrentEngine = FAngelscriptTestEngineScopeAccess::GetCurrentEngine();
 	FAngelscriptEngine* PreviousGlobalEngine = FAngelscriptTestEngineScopeAccess::GetGlobalEngine();
@@ -297,7 +199,7 @@ bool FAngelscriptTestEngineHelperSharedEngineNeverAttachesToProductionTest::RunT
 		FAngelscriptTestEngineScopeAccess::GetGlobalEngine() == PreviousGlobalEngine);
 }
 
-bool FAngelscriptTestEngineHelperScriptScanFreeEngineStartsCleanTest::RunTest(const FString& Parameters)
+static bool RunScriptScanFreeEngineStartsClean(FAutomationTestBase& Test)
 {
 	TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting();
 	if (!TestNotNull(TEXT("Script-scan-free test engine should be created"), Engine.Get()))
@@ -333,7 +235,7 @@ bool FAngelscriptTestEngineHelperScriptScanFreeEngineStartsCleanTest::RunTest(co
 	return TestEqual(TEXT("Script-scan-free test engine should not contain raw AS modules"), RawModuleCount, static_cast<asUINT>(0));
 }
 
-bool FAngelscriptTestEngineHelperAcquireCleanSharedCloneEngineResetsModulesTest::RunTest(const FString& Parameters)
+static bool RunAcquireCleanSharedCloneEngineResetsModules(FAutomationTestBase& Test)
 {
 	static const FName ModuleName(TEXT("HelperAcquireCleanResetModules"));
 	static const FString Filename(TEXT("HelperAcquireCleanResetModules.as"));
@@ -374,7 +276,7 @@ bool FAngelscriptTestEngineHelperAcquireCleanSharedCloneEngineResetsModulesTest:
 		ResetEngine.GetScriptEngine()->GetModule(TCHAR_TO_UTF8(*ModuleName.ToString()), asGM_ONLY_IF_EXISTS));
 }
 
-bool FAngelscriptTestEngineHelperResetSharedEngineReleasesGeneratedComponentClassesTest::RunTest(const FString& Parameters)
+static bool RunResetSharedEngineReleasesGeneratedComponentClasses(FAutomationTestBase& Test)
 {
 	static const FName ModuleName(TEXT("HelperResetGeneratedComponent"));
 	static const FString Filename(TEXT("HelperResetGeneratedComponent.as"));
@@ -485,7 +387,7 @@ class UHelperResetGeneratedComponent : UActorComponent
 		&& StandaloneMatchingClasses == 0;
 }
 
-bool FAngelscriptTestEngineHelperResetSharedEngineReleasesGeneratedStructsTest::RunTest(const FString& Parameters)
+static bool RunResetSharedEngineReleasesGeneratedStructs(FAutomationTestBase& Test)
 {
 	static const FName ModuleName(TEXT("HelperResetGeneratedStruct"));
 	static const FString Filename(TEXT("HelperResetGeneratedStruct.as"));
@@ -554,7 +456,7 @@ struct FHelperResetGeneratedStruct
 		&& StandaloneMatchingStructs == 0;
 }
 
-bool FAngelscriptTestEngineHelperResetSharedEngineReleasesGeneratedEnumsAndDelegatesTest::RunTest(const FString& Parameters)
+static bool RunResetSharedEngineReleasesGeneratedEnumsAndDelegates(FAutomationTestBase& Test)
 {
 	static const FName ModuleName(TEXT("HelperResetGeneratedEnumDelegate"));
 	static const FString Filename(TEXT("HelperResetGeneratedEnumDelegate.as"));
@@ -643,7 +545,7 @@ event void FHelperResetGeneratedEvent(int Value);
 		&& FoundGeneratedEventFunctionByPath == nullptr;
 }
 
-bool FAngelscriptTestEngineHelperProductionHelperRejectsMissingProductionTest::RunTest(const FString& Parameters)
+static bool RunProductionHelperRejectsMissingProductionEngine(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine* ProductionEngine = TryGetRunningProductionEngine();
 	if (UAngelscriptGameInstanceSubsystem* Subsystem = UAngelscriptGameInstanceSubsystem::GetCurrent())
@@ -665,7 +567,7 @@ bool FAngelscriptTestEngineHelperProductionHelperRejectsMissingProductionTest::R
 		ProductionEngine);
 }
 
-bool FAngelscriptTestEngineHelperProductionDebuggerHelperPrefersDebuggableEngineOverScopedTestEngineTest::RunTest(const FString& Parameters)
+static bool RunProductionDebuggerHelperPrefersDebuggableEngineOverScopedTestEngine(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine* DebuggableEngine = TryGetRunningProductionDebuggerEngine();
 	if (!TestNotNull(TEXT("Scoped production-debugger helper test requires an active debuggable production engine"), DebuggableEngine))
@@ -699,7 +601,7 @@ bool FAngelscriptTestEngineHelperProductionDebuggerHelperPrefersDebuggableEngine
 		TryGetRunningProductionDebuggerEngine() == DebuggableEngine);
 }
 
-bool FAngelscriptTestEngineHelperResetSharedEngineDiscardsRawModulesTest::RunTest(const FString& Parameters)
+static bool RunResetSharedEngineDiscardsRawModules(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = GetOrCreateSharedCloneEngine();
 	ON_SCOPE_EXIT
@@ -748,7 +650,7 @@ bool FAngelscriptTestEngineHelperResetSharedEngineDiscardsRawModulesTest::RunTes
 		Engine.GetScriptEngine()->GetModule("HelperRawSharedReset", asGM_ONLY_IF_EXISTS));
 }
 
-bool FAngelscriptTestEngineHelperCompileRestoresScopedGlobalEngineTest::RunTest(const FString& Parameters)
+static bool RunCompileRestoresOuterCurrentEngine(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine* PreviousCurrentEngine = FAngelscriptTestEngineScopeAccess::GetCurrentEngine();
 	FAngelscriptEngine& SharedEngine = GetOrCreateSharedCloneEngine();
@@ -784,7 +686,7 @@ bool FAngelscriptTestEngineHelperCompileRestoresScopedGlobalEngineTest::RunTest(
 		FAngelscriptTestEngineScopeAccess::GetCurrentEngine() == PreviousCurrentEngine);
 }
 
-bool FAngelscriptTestEngineHelperNestedGlobalScopeRestoreTest::RunTest(const FString& Parameters)
+static bool RunNestedCurrentEngineScopeRestoresPreviousEngine(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine* PreviousCurrentEngine = FAngelscriptTestEngineScopeAccess::GetCurrentEngine();
 	TUniquePtr<FAngelscriptEngine> EngineA = CreateIsolatedCloneEngine();
@@ -821,7 +723,7 @@ bool FAngelscriptTestEngineHelperNestedGlobalScopeRestoreTest::RunTest(const FSt
 		FAngelscriptTestEngineScopeAccess::GetCurrentEngine() == PreviousCurrentEngine);
 }
 
-bool FAngelscriptTestEngineHelperWorldContextScopeRestoreTest::RunTest(const FString& Parameters)
+static bool RunWorldContextScopeRestoresPreviousContext(FAutomationTestBase& Test)
 {
 	UObject* PreviousWorldContext = FAngelscriptEngine::GetAmbientWorldContext();
 	UObject* DummyContext = NewObject<UAngelscriptNativeScriptTestObject>();
@@ -841,7 +743,7 @@ bool FAngelscriptTestEngineHelperWorldContextScopeRestoreTest::RunTest(const FSt
 	return TestTrue(TEXT("World context scope should restore the previous context"), FAngelscriptEngine::GetAmbientWorldContext() == PreviousWorldContext);
 }
 
-bool FAngelscriptTestEngineHelperEngineScopeWorldContextRestoreTest::RunTest(const FString& Parameters)
+static bool RunEngineScopeRestoresWorldContextAndCurrentEngine(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine* PreviousCurrentEngine = FAngelscriptTestEngineScopeAccess::GetCurrentEngine();
 	TUniquePtr<FAngelscriptEngine> Engine = CreateIsolatedCloneEngine();
@@ -876,7 +778,7 @@ bool FAngelscriptTestEngineHelperEngineScopeWorldContextRestoreTest::RunTest(con
 	return TestTrue(TEXT("Engine scope should restore the previous world context"), FAngelscriptEngine::GetAmbientWorldContext() == PreviousWorldContext);
 }
 
-bool FAngelscriptTestEngineHelperCompileSummaryPlainModuleTest::RunTest(const FString& Parameters)
+static bool RunCompileSummaryPlainModule(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = GetOrCreateSharedCloneEngine();
 	ON_SCOPE_EXIT
@@ -906,7 +808,7 @@ bool FAngelscriptTestEngineHelperCompileSummaryPlainModuleTest::RunTest(const FS
 	return Summary.ModuleDescCount == 1 && Summary.Diagnostics.Num() == 0;
 }
 
-bool FAngelscriptTestEngineHelperCompileSummaryDiagnosticCaptureTest::RunTest(const FString& Parameters)
+static bool RunCompileSummaryDiagnosticCapture(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = GetOrCreateSharedCloneEngine();
 	ON_SCOPE_EXIT
@@ -943,7 +845,7 @@ class UBrokenCompileSummaryObject : UObject
 	return !bCompiled && Summary.Diagnostics.Num() > 0 && Summary.CompileResult == ECompileResult::Error;
 }
 
-bool FAngelscriptTestEngineHelperContextIsolationAcrossEnginesTest::RunTest(const FString& Parameters)
+static bool RunExecutingOneTestEngineDoesNotLeakContextIntoNextTest(FAutomationTestBase& Test)
 {
 	TUniquePtr<FAngelscriptEngine> EngineA = CreateIsolatedCloneEngine();
 	TUniquePtr<FAngelscriptEngine> EngineB = CreateIsolatedCloneEngine();
@@ -981,7 +883,7 @@ bool FAngelscriptTestEngineHelperContextIsolationAcrossEnginesTest::RunTest(cons
 	return TestEqual(TEXT("Engine B should return its own result without context leakage"), ResultB, 22);
 }
 
-bool FAngelscriptTestEngineHelperProductionSubsystemDoesNotHijackIsolatedEngineTest::RunTest(const FString& Parameters)
+static bool RunSubsystemAttachedProductionEngineDoesNotHijackIsolatedTestEngine(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& SharedEngine = GetOrCreateSharedCloneEngine();
 	TUniquePtr<FAngelscriptEngine> IsolatedEngine = CreateIsolatedCloneEngine();
@@ -1003,5 +905,129 @@ bool FAngelscriptTestEngineHelperProductionSubsystemDoesNotHijackIsolatedEngineT
 	TestTrue(TEXT("Isolated engine should keep its own module record"), IsolatedEngine->GetModuleByModuleName(TEXT("HelperIsolationHijack")).IsValid());
 	return TestTrue(TEXT("Shared test engine should not receive isolated engine modules"), !SharedEngine.GetModuleByModuleName(TEXT("HelperIsolationHijack")).IsValid());
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+#undef TestNull
+#undef AddError
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptTestEngineHelperTests,
+	"Angelscript.TestModule.Shared.EngineHelper",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(CompileModuleFromMemory)
+	{
+		ASSERT_THAT(IsTrue(RunCompileModuleFromMemory(*TestRunner)));
+	}
+
+	TEST_METHOD(ExecuteIntFunction)
+	{
+		ASSERT_THAT(IsTrue(RunExecuteIntFunction(*TestRunner)));
+	}
+
+	TEST_METHOD(GeneratedSymbolLookup)
+	{
+		ASSERT_THAT(IsTrue(RunGeneratedSymbolLookup(*TestRunner)));
+	}
+
+	TEST_METHOD(FailedAnnotatedModuleDoesNotPolluteLaterCompiles)
+	{
+		ASSERT_THAT(IsTrue(RunFailedAnnotatedModuleDoesNotPolluteLaterCompiles(*TestRunner)));
+	}
+
+	TEST_METHOD(SharedTestEngineNeverSilentlyAttachesToProductionEngine)
+	{
+		ASSERT_THAT(IsTrue(RunSharedTestEngineNeverSilentlyAttachesToProductionEngine(*TestRunner)));
+	}
+
+	TEST_METHOD(ScriptScanFreeEngineStartsClean)
+	{
+		ASSERT_THAT(IsTrue(RunScriptScanFreeEngineStartsClean(*TestRunner)));
+	}
+
+	TEST_METHOD(AcquireCleanSharedCloneEngineResetsModules)
+	{
+		ASSERT_THAT(IsTrue(RunAcquireCleanSharedCloneEngineResetsModules(*TestRunner)));
+	}
+
+	TEST_METHOD(ProductionHelperRejectsMissingProductionEngine)
+	{
+		ASSERT_THAT(IsTrue(RunProductionHelperRejectsMissingProductionEngine(*TestRunner)));
+	}
+
+	TEST_METHOD(ResetSharedEngineDiscardsRawModules)
+	{
+		ASSERT_THAT(IsTrue(RunResetSharedEngineDiscardsRawModules(*TestRunner)));
+	}
+
+	TEST_METHOD(ResetSharedEngineReleasesGeneratedComponentClasses)
+	{
+		ASSERT_THAT(IsTrue(RunResetSharedEngineReleasesGeneratedComponentClasses(*TestRunner)));
+	}
+
+	TEST_METHOD(ResetSharedEngineReleasesGeneratedStructs)
+	{
+		ASSERT_THAT(IsTrue(RunResetSharedEngineReleasesGeneratedStructs(*TestRunner)));
+	}
+
+	TEST_METHOD(ResetSharedEngineReleasesGeneratedEnumsAndDelegates)
+	{
+		ASSERT_THAT(IsTrue(RunResetSharedEngineReleasesGeneratedEnumsAndDelegates(*TestRunner)));
+	}
+
+	TEST_METHOD(CompileRestoresOuterCurrentEngine)
+	{
+		ASSERT_THAT(IsTrue(RunCompileRestoresOuterCurrentEngine(*TestRunner)));
+	}
+
+	TEST_METHOD(NestedCurrentEngineScopeRestoresPreviousEngine)
+	{
+		ASSERT_THAT(IsTrue(RunNestedCurrentEngineScopeRestoresPreviousEngine(*TestRunner)));
+	}
+
+	TEST_METHOD(WorldContextScopeRestoresPreviousContext)
+	{
+		ASSERT_THAT(IsTrue(RunWorldContextScopeRestoresPreviousContext(*TestRunner)));
+	}
+
+	TEST_METHOD(EngineScopeRestoresWorldContextAndCurrentEngine)
+	{
+		ASSERT_THAT(IsTrue(RunEngineScopeRestoresWorldContextAndCurrentEngine(*TestRunner)));
+	}
+
+	TEST_METHOD(CompileSummaryPlainModule)
+	{
+		ASSERT_THAT(IsTrue(RunCompileSummaryPlainModule(*TestRunner)));
+	}
+
+	TEST_METHOD(CompileSummaryDiagnosticCapture)
+	{
+		ASSERT_THAT(IsTrue(RunCompileSummaryDiagnosticCapture(*TestRunner)));
+	}
+
+	TEST_METHOD(ExecutingOneTestEngineDoesNotLeakContextIntoNextTest)
+	{
+		ASSERT_THAT(IsTrue(RunExecutingOneTestEngineDoesNotLeakContextIntoNextTest(*TestRunner)));
+	}
+
+	TEST_METHOD(SubsystemAttachedProductionEngineDoesNotHijackIsolatedTestEngine)
+	{
+		ASSERT_THAT(IsTrue(RunSubsystemAttachedProductionEngineDoesNotHijackIsolatedTestEngine(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptTestEngineHelperProductionDebuggerTests,
+	"Angelscript.TestModule.Shared.EngineHelper.ProductionDebuggerHelperPrefersDebuggableEngineOverScopedTestEngine",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter | EAutomationTestFlags::Disabled) // DISABLED(#ue57-headless): TryGetRunningProductionDebuggerEngine returns null in headless batch automation on UE 5.7; requires interactive editor session
+{
+	TEST_METHOD(Run)
+	{
+		ASSERT_THAT(IsTrue(RunProductionDebuggerHelperPrefersDebuggableEngineOverScopedTestEngine(*TestRunner)));
+	}
+};
 
 #endif

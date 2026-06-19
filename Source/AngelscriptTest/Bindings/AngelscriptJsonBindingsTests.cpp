@@ -10,7 +10,7 @@
 //   ErrorPaths      — Type mismatch, out-of-bounds, iterator mutation exceptions
 //
 // CQTest adaptation notes:
-//   Two original IMPLEMENT_SIMPLE_AUTOMATION_TEST classes merged into one
+//   Two original legacy automation classes merged into one
 //   TEST_CLASS with two TEST_METHODs. The custom exception execution helper
 //   is retained for the error-path tests. The round-trip test uses
 //   ExpectGlobalInt via standard `int Entry()` → `int RoundTrip()` rename.

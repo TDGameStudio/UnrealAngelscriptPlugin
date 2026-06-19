@@ -9,7 +9,7 @@
 //   Accessors — populate / reset round-trip via FASGlobalFunctionInvoker
 //
 // CQTest adaptation notes:
-//   Single IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into TEST_CLASS.
+//   Single legacy automation test merged into TEST_CLASS.
 //   Uses FASGlobalFunctionInvoker with AddArgRef/AddArgObject for parameterised
 //   invocations. Original `this` assertions replaced with `*TestRunner`.
 //   Keeps FActorTestSpawner + FScopedTestWorldContextScope for world context.

@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "Core/AngelscriptEditorModule.h"
 
 #include "ContentBrowser/AngelscriptContentBrowserDataSource.h"
@@ -16,15 +17,11 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorModuleLifecycleTest,
-	"Angelscript.Editor.Module.StartupShutdownRegistersAndCleansHooks",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorModuleOnEngineInitDoneDataSourceTest,
-	"Angelscript.TestModule.Editor.Module.OnEngineInitDoneActivatesAngelscriptDataSourceOnce",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define TestNull(...) Test.TestNull(__VA_ARGS__)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleLifecycleTests_Private
 {
@@ -146,7 +143,7 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleLifecycleTests_
 }
 
 
-bool FAngelscriptEditorModuleLifecycleTest::RunTest(const FString& Parameters)
+static bool RunStartupShutdownRegistersAndCleansHooks(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleLifecycleTests_Private;
 	FMockDirectoryWatcher DirectoryWatcher;
@@ -254,7 +251,7 @@ bool FAngelscriptEditorModuleLifecycleTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-bool FAngelscriptEditorModuleOnEngineInitDoneDataSourceTest::RunTest(const FString& Parameters)
+static bool RunOnEngineInitDoneActivatesAngelscriptDataSourceOnce(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleLifecycleTests_Private;
 	UContentBrowserDataSubsystem* ContentBrowserDataSubsystem = IContentBrowserDataModule::Get().GetSubsystem();
@@ -340,5 +337,33 @@ bool FAngelscriptEditorModuleOnEngineInitDoneDataSourceTest::RunTest(const FStri
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+#undef TestNull
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorModuleLifecycleTests,
+	"Angelscript.Editor.Module",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(StartupShutdownRegistersAndCleansHooks)
+	{
+		ASSERT_THAT(IsTrue(RunStartupShutdownRegistersAndCleansHooks(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorModuleLifecycleTestModuleTests,
+	"Angelscript.TestModule.Editor.Module",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(OnEngineInitDoneActivatesAngelscriptDataSourceOnce)
+	{
+		ASSERT_THAT(IsTrue(RunOnEngineInitDoneActivatesAngelscriptDataSourceOnce(*TestRunner)));
+	}
+};
 
 #endif

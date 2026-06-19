@@ -9,7 +9,7 @@
 //                 ComponentOverlapMulti (hit/miss parity)
 //
 // CQTest adaptation notes:
-//   Single IMPLEMENT_SIMPLE_AUTOMATION_TEST converted to TEST_CLASS.
+//   Single legacy automation test converted to TEST_CLASS.
 //   Uses ASTEST_CREATE_ENGINE_FULL (world-based) with FActorTestSpawner.
 //   Custom address-based invocation helpers retained for the
 //   bool+out-param calling convention.

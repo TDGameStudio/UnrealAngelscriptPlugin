@@ -1,4 +1,4 @@
-#include "Misc/AutomationTest.h"
+#include "CQTest.h"
 
 #include "AngelscriptTestEngineHelper.h"
 
@@ -106,12 +106,10 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeFormTests_Private
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITTArrayIndexCustomCallTest,
-	"Angelscript.TestModule.StaticJIT.NativeForms.TArrayIndexCustomCall",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeFormTests_Private
+{
 
-bool FAngelscriptStaticJITTArrayIndexCustomCallTest::RunTest(const FString& Parameters)
+bool RunTArrayIndexCustomCall(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeFormTests_Private;
 	bool bPassed = false;
@@ -120,7 +118,7 @@ bool FAngelscriptStaticJITTArrayIndexCustomCallTest::RunTest(const FString& Para
 
 	FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 	TUniquePtr<FAngelscriptEngine> OwnedEngine = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
-	if (!TestNotNull(
+	if (!Test.TestNotNull(
 		TEXT("StaticJIT.NativeForms.TArrayIndexCustomCall should create a dedicated engine with precompiled-data generation enabled"),
 		OwnedEngine.Get()))
 	{
@@ -136,7 +134,7 @@ bool FAngelscriptStaticJITTArrayIndexCustomCallTest::RunTest(const FString& Para
 			ModuleName,
 			SourceFilename,
 			MakeScriptSource());
-		if (!TestTrue(
+		if (!Test.TestTrue(
 			TEXT("StaticJIT.NativeForms.TArrayIndexCustomCall should compile the fixture module"),
 			bCompiled))
 		{
@@ -149,14 +147,14 @@ bool FAngelscriptStaticJITTArrayIndexCustomCallTest::RunTest(const FString& Para
 			ModuleName,
 			TEXT("int ReadMiddle()"),
 			ReadMiddleResult);
-		if (!TestTrue(
+		if (!Test.TestTrue(
 			TEXT("StaticJIT.NativeForms.TArrayIndexCustomCall should keep ReadMiddle executable through the normal script runtime"),
 			bExecutedReadMiddle))
 		{
 			break;
 		}
 
-		if (!TestEqual(
+		if (!Test.TestEqual(
 			TEXT("StaticJIT.NativeForms.TArrayIndexCustomCall should keep ReadMiddle returning the indexed middle element"),
 			ReadMiddleResult,
 			22))
@@ -165,15 +163,15 @@ bool FAngelscriptStaticJITTArrayIndexCustomCallTest::RunTest(const FString& Para
 		}
 
 		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
-		if (!TestNotNull(
+		if (!Test.TestNotNull(
 			TEXT("StaticJIT.NativeForms.TArrayIndexCustomCall should have a live script engine"),
 			ScriptEngine))
 		{
 			break;
 		}
 
-		asITypeInfo* ArrayTypeInfo = FindArrayTypeInfo(*this, *ScriptEngine);
-		if (!TestNotNull(
+		asITypeInfo* ArrayTypeInfo = FindArrayTypeInfo(Test, *ScriptEngine);
+		if (!Test.TestNotNull(
 			TEXT("StaticJIT.NativeForms.TArrayIndexCustomCall should resolve the bound array<int> type"),
 			ArrayTypeInfo))
 		{
@@ -182,18 +180,18 @@ bool FAngelscriptStaticJITTArrayIndexCustomCallTest::RunTest(const FString& Para
 
 		FString ResolvedOpIndexDeclaration;
 		FScriptFunctionNativeForm* NativeForm = FindNativeFormForMethodName(
-			*this,
+			Test,
 			*ArrayTypeInfo,
 			"opIndex",
 			&ResolvedOpIndexDeclaration);
-		if (!TestNotNull(
+		if (!Test.TestNotNull(
 			TEXT("StaticJIT.NativeForms.TArrayIndexCustomCall should resolve a native form for array<int>.opIndex"),
 			NativeForm))
 		{
 			break;
 		}
 
-		AddInfo(FString::Printf(
+		Test.AddInfo(FString::Printf(
 			TEXT("Resolved array<int>.opIndex native form overload: %s"),
 			*ResolvedOpIndexDeclaration));
 
@@ -205,32 +203,32 @@ bool FAngelscriptStaticJITTArrayIndexCustomCallTest::RunTest(const FString& Para
 			GeneratedSource,
 			/*bEmitDebugMetadata=*/false,
 			&GenerateError);
-		if (!TestTrue(
+		if (!Test.TestTrue(
 			TEXT("StaticJIT.NativeForms.TArrayIndexCustomCall should generate StaticJIT source text for the compiled module"),
 			bGenerated))
 		{
 			if (!GenerateError.IsEmpty())
 			{
-				AddError(GenerateError);
+				Test.AddError(GenerateError);
 			}
 			break;
 		}
 
-		if (!TestTrue(
+		if (!Test.TestTrue(
 			TEXT("StaticJIT.NativeForms.TArrayIndexCustomCall should emit FArrayOperations::IsValidIndex in the generated custom call"),
 			GeneratedSource.Contains(TEXT("FArrayOperations::IsValidIndex"))))
 		{
 			break;
 		}
 
-		if (!TestTrue(
+		if (!Test.TestTrue(
 			TEXT("StaticJIT.NativeForms.TArrayIndexCustomCall should emit ThrowOutOfBounds in the generated custom call"),
 			GeneratedSource.Contains(TEXT("FArrayOperations::ThrowOutOfBounds();"))))
 		{
 			break;
 		}
 
-		if (!TestTrue(
+		if (!Test.TestTrue(
 			TEXT("StaticJIT.NativeForms.TArrayIndexCustomCall should emit one of the unchecked opIndex fast paths instead of a generic call"),
 			GeneratedSourceUsesExpectedIndexFastPath(GeneratedSource)))
 		{
@@ -243,5 +241,18 @@ bool FAngelscriptStaticJITTArrayIndexCustomCallTest::RunTest(const FString& Para
 
 	return bPassed;
 }
+
+}
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITNativeFormTests,
+	"Angelscript.TestModule.StaticJIT.NativeForms",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(TArrayIndexCustomCall)
+	{
+		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeFormTests_Private;
+		ASSERT_THAT(IsTrue(RunTArrayIndexCustomCall(*TestRunner)));
+	}
+};
 
 #endif

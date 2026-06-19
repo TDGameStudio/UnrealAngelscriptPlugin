@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptFunctionalTestUtils.h"
 #include "AngelscriptTestMacros.h"
 
@@ -19,27 +20,11 @@ void InitializeHotReloadTestCaseSpawner(FActorTestSpawner& Spawner)
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestHotReloadPropertyPreservedTest,
-	"Angelscript.TestModule.HotReload.PropertyPreserved",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestHotReloadAddPropertyTest,
-	"Angelscript.TestModule.HotReload.AddProperty",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestHotReloadFunctionChangeTest,
-	"Angelscript.TestModule.HotReload.FunctionChange",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestHotReloadPIEStructuralChangeNeedsFullReloadTest,
-	"Angelscript.TestModule.HotReload.PIEStructuralChangeNeedsFullReload",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTestHotReloadPropertyPreservedTest::RunTest(const FString& Parameters)
+static bool HotReloadPropertyPreserved(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadTestCaseTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -81,7 +66,7 @@ class ATestHotReloadPropertyPreserved : AActor
 )AS");
 
 	UClass* ClassV1 = CompileScriptModule(
-		*this,
+		Test,
 		Engine,
 		ModuleName,
 		TEXT("TestHotReloadPropertyPreserved.as"),
@@ -94,7 +79,7 @@ class ATestHotReloadPropertyPreserved : AActor
 
 	FActorTestSpawner Spawner;
 	InitializeHotReloadTestCaseSpawner(Spawner);
-	AActor* Actor = SpawnScriptActor(*this, Spawner, ClassV1);
+	AActor* Actor = SpawnScriptActor(Test, Spawner, ClassV1);
 	if (Actor == nullptr)
 	{
 		return false;
@@ -127,7 +112,7 @@ class ATestHotReloadPropertyPreserved : AActor
 	TestEqual(TEXT("TestCase hot-reload property-preserved should keep the generated actor class instance"), ClassAfterReload, ClassV1);
 
 	int32 CounterValue = 0;
-	if (!ReadPropertyValue<FIntProperty>(*this, Actor, TEXT("Counter"), CounterValue))
+	if (!ReadPropertyValue<FIntProperty>(Test, Actor, TEXT("Counter"), CounterValue))
 	{
 		return false;
 	}
@@ -150,7 +135,7 @@ class ATestHotReloadPropertyPreserved : AActor
 	return true;
 }
 
-bool FAngelscriptTestHotReloadAddPropertyTest::RunTest(const FString& Parameters)
+static bool HotReloadAddProperty(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadTestCaseTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -183,7 +168,7 @@ class ATestHotReloadAddProperty : AActor
 )AS");
 
 	UClass* ClassV1 = CompileScriptModule(
-		*this,
+		Test,
 		Engine,
 		ModuleName,
 		TEXT("TestHotReloadAddProperty.as"),
@@ -213,7 +198,7 @@ class ATestHotReloadAddProperty : AActor
 
 	FActorTestSpawner Spawner;
 	InitializeHotReloadTestCaseSpawner(Spawner);
-	AActor* Actor = SpawnScriptActor(*this, Spawner, ClassV2);
+	AActor* Actor = SpawnScriptActor(Test, Spawner, ClassV2);
 	if (Actor == nullptr)
 	{
 		return false;
@@ -221,12 +206,12 @@ class ATestHotReloadAddProperty : AActor
 	BeginPlayActor(*Actor);
 
 	int32 ExistingValue = 0;
-	if (!ReadPropertyValue<FIntProperty>(*this, Actor, TEXT("ExistingValue"), ExistingValue))
+	if (!ReadPropertyValue<FIntProperty>(Test, Actor, TEXT("ExistingValue"), ExistingValue))
 	{
 		return false;
 	}
 	int32 NewValue = 0;
-	if (!ReadPropertyValue<FIntProperty>(*this, Actor, TEXT("NewValue"), NewValue))
+	if (!ReadPropertyValue<FIntProperty>(Test, Actor, TEXT("NewValue"), NewValue))
 	{
 		return false;
 	}
@@ -238,7 +223,7 @@ class ATestHotReloadAddProperty : AActor
 	return true;
 }
 
-bool FAngelscriptTestHotReloadFunctionChangeTest::RunTest(const FString& Parameters)
+static bool HotReloadFunctionChange(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadTestCaseTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -274,7 +259,7 @@ class ATestHotReloadFunctionChange : AActor
 )AS");
 
 	UClass* ClassV1 = CompileScriptModule(
-		*this,
+		Test,
 		Engine,
 		ModuleName,
 		TEXT("TestHotReloadFunctionChange.as"),
@@ -287,7 +272,7 @@ class ATestHotReloadFunctionChange : AActor
 
 	FActorTestSpawner Spawner;
 	InitializeHotReloadTestCaseSpawner(Spawner);
-	AActor* Actor = SpawnScriptActor(*this, Spawner, ClassV1);
+	AActor* Actor = SpawnScriptActor(Test, Spawner, ClassV1);
 	if (Actor == nullptr)
 	{
 		return false;
@@ -341,7 +326,7 @@ class ATestHotReloadFunctionChange : AActor
 	return true;
 }
 
-bool FAngelscriptTestHotReloadPIEStructuralChangeNeedsFullReloadTest::RunTest(const FString& Parameters)
+static bool HotReloadPIEStructuralChangeNeedsFullReload(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadTestCaseTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -374,7 +359,7 @@ class ATestHotReloadPIEStructuralChange : AActor
 )AS");
 
 	UClass* BaselineClass = CompileScriptModule(
-		*this,
+		Test,
 		Engine,
 		ModuleName,
 		TEXT("TestHotReloadPIEStructuralChange.as"),
@@ -409,5 +394,34 @@ class ATestHotReloadPIEStructuralChange : AActor
 
 	}
 }
+
+#undef TestTrue
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadTests,
+	"Angelscript.TestModule.HotReload",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(PropertyPreserved)
+	{
+		ASSERT_THAT(IsTrue(HotReloadPropertyPreserved(*TestRunner)));
+	}
+
+	TEST_METHOD(AddProperty)
+	{
+		ASSERT_THAT(IsTrue(HotReloadAddProperty(*TestRunner)));
+	}
+
+	TEST_METHOD(FunctionChange)
+	{
+		ASSERT_THAT(IsTrue(HotReloadFunctionChange(*TestRunner)));
+	}
+
+	TEST_METHOD(PIEStructuralChangeNeedsFullReload)
+	{
+		ASSERT_THAT(IsTrue(HotReloadPIEStructuralChangeNeedsFullReload(*TestRunner)));
+	}
+};
 
 #endif

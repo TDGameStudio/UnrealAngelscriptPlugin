@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestMacros.h"
@@ -68,22 +69,14 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadDelegateTests_Private
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHotReloadReloadDelegatesBroadcastEnumChangeAndFullReloadTest,
-	"Angelscript.TestModule.HotReload.ReloadDelegates.BroadcastEnumChangeAndFullReload",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotEqual(...) Test.TestNotEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define TestNull(...) Test.TestNull(__VA_ARGS__)
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHotReloadReloadDelegatesBroadcastOldAndNewTypesTest,
-	"Angelscript.TestModule.HotReload.Delegates.BroadcastOldAndNewTypes",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHotReloadReloadDelegatesBroadcastDelegateSignatureSwapTest,
-	"Angelscript.TestModule.HotReload.ReloadDelegates.BroadcastDelegateSignatureSwap",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptHotReloadReloadDelegatesBroadcastEnumChangeAndFullReloadTest::RunTest(const FString& Parameters)
+static bool ReloadDelegatesBroadcastEnumChangeAndFullReload(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadDelegateTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -252,7 +245,7 @@ class UHotReloadEventCarrier : UObject
 	return true;
 }
 
-bool FAngelscriptHotReloadReloadDelegatesBroadcastOldAndNewTypesTest::RunTest(const FString& Parameters)
+static bool ReloadDelegatesBroadcastOldAndNewTypes(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadDelegateTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -422,7 +415,7 @@ class UHotReloadDelegateCarrier : UObject
 	return true;
 }
 
-bool FAngelscriptHotReloadReloadDelegatesBroadcastDelegateSignatureSwapTest::RunTest(const FString& Parameters)
+static bool ReloadDelegatesBroadcastDelegateSignatureSwap(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadDelegateTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -495,5 +488,37 @@ bool FAngelscriptHotReloadReloadDelegatesBroadcastDelegateSignatureSwapTest::Run
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotEqual
+#undef TestNotNull
+#undef TestNull
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadReloadDelegateTests,
+	"Angelscript.TestModule.HotReload.ReloadDelegates",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(BroadcastEnumChangeAndFullReload)
+	{
+		ASSERT_THAT(IsTrue(ReloadDelegatesBroadcastEnumChangeAndFullReload(*TestRunner)));
+	}
+
+	TEST_METHOD(BroadcastDelegateSignatureSwap)
+	{
+		ASSERT_THAT(IsTrue(ReloadDelegatesBroadcastDelegateSignatureSwap(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadDelegateTests,
+	"Angelscript.TestModule.HotReload.Delegates",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(BroadcastOldAndNewTypes)
+	{
+		ASSERT_THAT(IsTrue(ReloadDelegatesBroadcastOldAndNewTypes(*TestRunner)));
+	}
+};
 
 #endif

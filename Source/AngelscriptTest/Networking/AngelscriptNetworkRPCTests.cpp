@@ -1,6 +1,7 @@
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestMacros.h"
 
+#include "CQTest.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 #include "UObject/UnrealType.h"
@@ -25,28 +26,28 @@ namespace AngelscriptNetworkRPCTest
 // Server RPC compilation test
 // ============================================================================
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptNetworkServerRPCCompileTest,
-	"Angelscript.TestModule.Networking.RPC.ServerDeclarationCompiles",
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptNetworkRPCTest,
+	"Angelscript.TestModule.Networking.RPC",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptNetworkServerRPCCompileTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	ON_SCOPE_EXIT
+	TEST_METHOD(ServerDeclarationCompiles)
 	{
-		Engine.DiscardModule(*AngelscriptNetworkRPCTest::ServerRPCModuleName.ToString());
-		ASTEST_RESET_ENGINE(Engine);
-	};
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*AngelscriptNetworkRPCTest::ServerRPCModuleName.ToString());
+			ASTEST_RESET_ENGINE(Engine);
+		};
 
-	ECompileResult CompileResult = ECompileResult::Error;
-	const bool bCompiled = CompileModuleWithResult(
-		&Engine,
-		ECompileType::FullReload,
-		AngelscriptNetworkRPCTest::ServerRPCModuleName,
-		TEXT("Tests/Networking/ServerRPCCompile.as"),
-		TEXT(R"AS(
+		ECompileResult CompileResult = ECompileResult::Error;
+		const bool bCompiled = CompileModuleWithResult(
+			&Engine,
+			ECompileType::FullReload,
+			AngelscriptNetworkRPCTest::ServerRPCModuleName,
+			TEXT("Tests/Networking/ServerRPCCompile.as"),
+			TEXT(R"AS(
 UCLASS()
 class AServerRPCTestActor : AActor
 {
@@ -58,66 +59,53 @@ class AServerRPCTestActor : AActor
 	}
 }
 )AS"),
-		CompileResult);
+			CompileResult);
 
-	if (!TestTrue(TEXT("Server RPC declaration should compile successfully"), bCompiled))
-	{
-		AddError(FString::Printf(TEXT("Compile result: %d"), static_cast<int32>(CompileResult)));
-		return false;
+		if (!TestRunner->TestTrue(TEXT("Server RPC declaration should compile successfully"), bCompiled))
+		{
+			TestRunner->AddError(FString::Printf(TEXT("Compile result: %d"), static_cast<int32>(CompileResult)));
+			return;
+		}
+
+		TestRunner->TestTrue(TEXT("Server RPC compilation should be fully handled"),
+			CompileResult == ECompileResult::FullyHandled || CompileResult == ECompileResult::PartiallyHandled);
+
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("AServerRPCTestActor"));
+		ASSERT_THAT(IsNotNull(GeneratedClass));
+
+		UFunction* ServerFunc = GeneratedClass->FindFunctionByName(TEXT("ServerDoAction"));
+		ASSERT_THAT(IsNotNull(ServerFunc));
+
+		TestRunner->TestTrue(TEXT("Server RPC function should carry FUNC_Net flag"),
+			ServerFunc->HasAnyFunctionFlags(FUNC_Net));
+		TestRunner->TestTrue(TEXT("Server RPC function should carry FUNC_NetServer flag"),
+			ServerFunc->HasAnyFunctionFlags(FUNC_NetServer));
+		TestRunner->TestTrue(TEXT("Server RPC function should default to reliable (FUNC_NetReliable)"),
+			ServerFunc->HasAnyFunctionFlags(FUNC_NetReliable));
+		}
 	}
-
-	TestTrue(TEXT("Server RPC compilation should be fully handled"),
-		CompileResult == ECompileResult::FullyHandled || CompileResult == ECompileResult::PartiallyHandled);
-
-	UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("AServerRPCTestActor"));
-	if (!TestNotNull(TEXT("Server RPC test actor class should be materialized"), GeneratedClass))
-	{
-		return false;
-	}
-
-	UFunction* ServerFunc = GeneratedClass->FindFunctionByName(TEXT("ServerDoAction"));
-	if (!TestNotNull(TEXT("Server RPC function should exist on generated class"), ServerFunc))
-	{
-		return false;
-	}
-
-	TestTrue(TEXT("Server RPC function should carry FUNC_Net flag"),
-		ServerFunc->HasAnyFunctionFlags(FUNC_Net));
-	TestTrue(TEXT("Server RPC function should carry FUNC_NetServer flag"),
-		ServerFunc->HasAnyFunctionFlags(FUNC_NetServer));
-	TestTrue(TEXT("Server RPC function should default to reliable (FUNC_NetReliable)"),
-		ServerFunc->HasAnyFunctionFlags(FUNC_NetReliable));
-	}
-
-	return true;
-}
 
 // ============================================================================
 // Client RPC compilation test
 // ============================================================================
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptNetworkClientRPCCompileTest,
-	"Angelscript.TestModule.Networking.RPC.ClientDeclarationCompiles",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptNetworkClientRPCCompileTest::RunTest(const FString& Parameters)
-{
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	ON_SCOPE_EXIT
+	TEST_METHOD(ClientDeclarationCompiles)
 	{
-		Engine.DiscardModule(*AngelscriptNetworkRPCTest::ClientRPCModuleName.ToString());
-		ASTEST_RESET_ENGINE(Engine);
-	};
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*AngelscriptNetworkRPCTest::ClientRPCModuleName.ToString());
+			ASTEST_RESET_ENGINE(Engine);
+		};
 
-	ECompileResult CompileResult = ECompileResult::Error;
-	const bool bCompiled = CompileModuleWithResult(
-		&Engine,
-		ECompileType::FullReload,
-		AngelscriptNetworkRPCTest::ClientRPCModuleName,
-		TEXT("Tests/Networking/ClientRPCCompile.as"),
-		TEXT(R"AS(
+		ECompileResult CompileResult = ECompileResult::Error;
+		const bool bCompiled = CompileModuleWithResult(
+			&Engine,
+			ECompileType::FullReload,
+			AngelscriptNetworkRPCTest::ClientRPCModuleName,
+			TEXT("Tests/Networking/ClientRPCCompile.as"),
+			TEXT(R"AS(
 UCLASS()
 class AClientRPCTestActor : AActor
 {
@@ -129,63 +117,50 @@ class AClientRPCTestActor : AActor
 	}
 }
 )AS"),
-		CompileResult);
+			CompileResult);
 
-	if (!TestTrue(TEXT("Client RPC declaration should compile successfully"), bCompiled))
-	{
-		AddError(FString::Printf(TEXT("Compile result: %d"), static_cast<int32>(CompileResult)));
-		return false;
+		if (!TestRunner->TestTrue(TEXT("Client RPC declaration should compile successfully"), bCompiled))
+		{
+			TestRunner->AddError(FString::Printf(TEXT("Compile result: %d"), static_cast<int32>(CompileResult)));
+			return;
+		}
+
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("AClientRPCTestActor"));
+		ASSERT_THAT(IsNotNull(GeneratedClass));
+
+		UFunction* ClientFunc = GeneratedClass->FindFunctionByName(TEXT("ClientReceiveUpdate"));
+		ASSERT_THAT(IsNotNull(ClientFunc));
+
+		TestRunner->TestTrue(TEXT("Client RPC function should carry FUNC_Net flag"),
+			ClientFunc->HasAnyFunctionFlags(FUNC_Net));
+		TestRunner->TestTrue(TEXT("Client RPC function should carry FUNC_NetClient flag"),
+			ClientFunc->HasAnyFunctionFlags(FUNC_NetClient));
+		TestRunner->TestTrue(TEXT("Client RPC function should default to reliable (FUNC_NetReliable)"),
+			ClientFunc->HasAnyFunctionFlags(FUNC_NetReliable));
+		}
 	}
-
-	UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("AClientRPCTestActor"));
-	if (!TestNotNull(TEXT("Client RPC test actor class should be materialized"), GeneratedClass))
-	{
-		return false;
-	}
-
-	UFunction* ClientFunc = GeneratedClass->FindFunctionByName(TEXT("ClientReceiveUpdate"));
-	if (!TestNotNull(TEXT("Client RPC function should exist on generated class"), ClientFunc))
-	{
-		return false;
-	}
-
-	TestTrue(TEXT("Client RPC function should carry FUNC_Net flag"),
-		ClientFunc->HasAnyFunctionFlags(FUNC_Net));
-	TestTrue(TEXT("Client RPC function should carry FUNC_NetClient flag"),
-		ClientFunc->HasAnyFunctionFlags(FUNC_NetClient));
-	TestTrue(TEXT("Client RPC function should default to reliable (FUNC_NetReliable)"),
-		ClientFunc->HasAnyFunctionFlags(FUNC_NetReliable));
-	}
-
-	return true;
-}
 
 // ============================================================================
 // NetMulticast RPC compilation test
 // ============================================================================
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptNetworkMulticastRPCCompileTest,
-	"Angelscript.TestModule.Networking.RPC.NetMulticastDeclarationCompiles",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptNetworkMulticastRPCCompileTest::RunTest(const FString& Parameters)
-{
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	ON_SCOPE_EXIT
+	TEST_METHOD(NetMulticastDeclarationCompiles)
 	{
-		Engine.DiscardModule(*AngelscriptNetworkRPCTest::MulticastRPCModuleName.ToString());
-		ASTEST_RESET_ENGINE(Engine);
-	};
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*AngelscriptNetworkRPCTest::MulticastRPCModuleName.ToString());
+			ASTEST_RESET_ENGINE(Engine);
+		};
 
-	ECompileResult CompileResult = ECompileResult::Error;
-	const bool bCompiled = CompileModuleWithResult(
-		&Engine,
-		ECompileType::FullReload,
-		AngelscriptNetworkRPCTest::MulticastRPCModuleName,
-		TEXT("Tests/Networking/MulticastRPCCompile.as"),
-		TEXT(R"AS(
+		ECompileResult CompileResult = ECompileResult::Error;
+		const bool bCompiled = CompileModuleWithResult(
+			&Engine,
+			ECompileType::FullReload,
+			AngelscriptNetworkRPCTest::MulticastRPCModuleName,
+			TEXT("Tests/Networking/MulticastRPCCompile.as"),
+			TEXT(R"AS(
 UCLASS()
 class AMulticastRPCTestActor : AActor
 {
@@ -197,63 +172,50 @@ class AMulticastRPCTestActor : AActor
 	}
 }
 )AS"),
-		CompileResult);
+			CompileResult);
 
-	if (!TestTrue(TEXT("NetMulticast RPC declaration should compile successfully"), bCompiled))
-	{
-		AddError(FString::Printf(TEXT("Compile result: %d"), static_cast<int32>(CompileResult)));
-		return false;
+		if (!TestRunner->TestTrue(TEXT("NetMulticast RPC declaration should compile successfully"), bCompiled))
+		{
+			TestRunner->AddError(FString::Printf(TEXT("Compile result: %d"), static_cast<int32>(CompileResult)));
+			return;
+		}
+
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("AMulticastRPCTestActor"));
+		ASSERT_THAT(IsNotNull(GeneratedClass));
+
+		UFunction* MulticastFunc = GeneratedClass->FindFunctionByName(TEXT("MulticastBroadcastEvent"));
+		ASSERT_THAT(IsNotNull(MulticastFunc));
+
+		TestRunner->TestTrue(TEXT("NetMulticast RPC function should carry FUNC_Net flag"),
+			MulticastFunc->HasAnyFunctionFlags(FUNC_Net));
+		TestRunner->TestTrue(TEXT("NetMulticast RPC function should carry FUNC_NetMulticast flag"),
+			MulticastFunc->HasAnyFunctionFlags(FUNC_NetMulticast));
+		TestRunner->TestTrue(TEXT("NetMulticast RPC function should default to reliable (FUNC_NetReliable)"),
+			MulticastFunc->HasAnyFunctionFlags(FUNC_NetReliable));
+		}
 	}
-
-	UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("AMulticastRPCTestActor"));
-	if (!TestNotNull(TEXT("NetMulticast RPC test actor class should be materialized"), GeneratedClass))
-	{
-		return false;
-	}
-
-	UFunction* MulticastFunc = GeneratedClass->FindFunctionByName(TEXT("MulticastBroadcastEvent"));
-	if (!TestNotNull(TEXT("NetMulticast RPC function should exist on generated class"), MulticastFunc))
-	{
-		return false;
-	}
-
-	TestTrue(TEXT("NetMulticast RPC function should carry FUNC_Net flag"),
-		MulticastFunc->HasAnyFunctionFlags(FUNC_Net));
-	TestTrue(TEXT("NetMulticast RPC function should carry FUNC_NetMulticast flag"),
-		MulticastFunc->HasAnyFunctionFlags(FUNC_NetMulticast));
-	TestTrue(TEXT("NetMulticast RPC function should default to reliable (FUNC_NetReliable)"),
-		MulticastFunc->HasAnyFunctionFlags(FUNC_NetReliable));
-	}
-
-	return true;
-}
 
 // ============================================================================
 // WithValidation RPC compilation test
 // ============================================================================
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptNetworkValidationRPCCompileTest,
-	"Angelscript.TestModule.Networking.RPC.WithValidationDeclarationCompiles",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptNetworkValidationRPCCompileTest::RunTest(const FString& Parameters)
-{
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	ON_SCOPE_EXIT
+	TEST_METHOD(WithValidationDeclarationCompiles)
 	{
-		Engine.DiscardModule(*AngelscriptNetworkRPCTest::ValidationRPCModuleName.ToString());
-		ASTEST_RESET_ENGINE(Engine);
-	};
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*AngelscriptNetworkRPCTest::ValidationRPCModuleName.ToString());
+			ASTEST_RESET_ENGINE(Engine);
+		};
 
-	ECompileResult CompileResult = ECompileResult::Error;
-	const bool bCompiled = CompileModuleWithResult(
-		&Engine,
-		ECompileType::FullReload,
-		AngelscriptNetworkRPCTest::ValidationRPCModuleName,
-		TEXT("Tests/Networking/ValidationRPCCompile.as"),
-		TEXT(R"AS(
+		ECompileResult CompileResult = ECompileResult::Error;
+		const bool bCompiled = CompileModuleWithResult(
+			&Engine,
+			ECompileType::FullReload,
+			AngelscriptNetworkRPCTest::ValidationRPCModuleName,
+			TEXT("Tests/Networking/ValidationRPCCompile.as"),
+			TEXT(R"AS(
 UCLASS()
 class AValidationRPCTestActor : AActor
 {
@@ -271,63 +233,50 @@ class AValidationRPCTestActor : AActor
 	}
 }
 )AS"),
-		CompileResult);
+			CompileResult);
 
-	if (!TestTrue(TEXT("WithValidation RPC declaration should compile successfully"), bCompiled))
-	{
-		AddError(FString::Printf(TEXT("Compile result: %d"), static_cast<int32>(CompileResult)));
-		return false;
+		if (!TestRunner->TestTrue(TEXT("WithValidation RPC declaration should compile successfully"), bCompiled))
+		{
+			TestRunner->AddError(FString::Printf(TEXT("Compile result: %d"), static_cast<int32>(CompileResult)));
+			return;
+		}
+
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("AValidationRPCTestActor"));
+		ASSERT_THAT(IsNotNull(GeneratedClass));
+
+		UFunction* ValidatedFunc = GeneratedClass->FindFunctionByName(TEXT("ServerValidatedAction"));
+		ASSERT_THAT(IsNotNull(ValidatedFunc));
+
+		TestRunner->TestTrue(TEXT("WithValidation RPC function should carry FUNC_Net flag"),
+			ValidatedFunc->HasAnyFunctionFlags(FUNC_Net));
+		TestRunner->TestTrue(TEXT("WithValidation RPC function should carry FUNC_NetServer flag"),
+			ValidatedFunc->HasAnyFunctionFlags(FUNC_NetServer));
+		TestRunner->TestTrue(TEXT("WithValidation RPC function should carry FUNC_NetValidate flag"),
+			ValidatedFunc->HasAnyFunctionFlags(FUNC_NetValidate));
+		}
 	}
-
-	UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("AValidationRPCTestActor"));
-	if (!TestNotNull(TEXT("WithValidation RPC test actor class should be materialized"), GeneratedClass))
-	{
-		return false;
-	}
-
-	UFunction* ValidatedFunc = GeneratedClass->FindFunctionByName(TEXT("ServerValidatedAction"));
-	if (!TestNotNull(TEXT("WithValidation RPC function should exist on generated class"), ValidatedFunc))
-	{
-		return false;
-	}
-
-	TestTrue(TEXT("WithValidation RPC function should carry FUNC_Net flag"),
-		ValidatedFunc->HasAnyFunctionFlags(FUNC_Net));
-	TestTrue(TEXT("WithValidation RPC function should carry FUNC_NetServer flag"),
-		ValidatedFunc->HasAnyFunctionFlags(FUNC_NetServer));
-	TestTrue(TEXT("WithValidation RPC function should carry FUNC_NetValidate flag"),
-		ValidatedFunc->HasAnyFunctionFlags(FUNC_NetValidate));
-	}
-
-	return true;
-}
 
 // ============================================================================
 // Unreliable RPC compilation test
 // ============================================================================
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptNetworkUnreliableRPCCompileTest,
-	"Angelscript.TestModule.Networking.RPC.UnreliableDeclarationCompiles",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptNetworkUnreliableRPCCompileTest::RunTest(const FString& Parameters)
-{
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	ON_SCOPE_EXIT
+	TEST_METHOD(UnreliableDeclarationCompiles)
 	{
-		Engine.DiscardModule(*AngelscriptNetworkRPCTest::UnreliableRPCModuleName.ToString());
-		ASTEST_RESET_ENGINE(Engine);
-	};
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*AngelscriptNetworkRPCTest::UnreliableRPCModuleName.ToString());
+			ASTEST_RESET_ENGINE(Engine);
+		};
 
-	ECompileResult CompileResult = ECompileResult::Error;
-	const bool bCompiled = CompileModuleWithResult(
-		&Engine,
-		ECompileType::FullReload,
-		AngelscriptNetworkRPCTest::UnreliableRPCModuleName,
-		TEXT("Tests/Networking/UnreliableRPCCompile.as"),
-		TEXT(R"AS(
+		ECompileResult CompileResult = ECompileResult::Error;
+		const bool bCompiled = CompileModuleWithResult(
+			&Engine,
+			ECompileType::FullReload,
+			AngelscriptNetworkRPCTest::UnreliableRPCModuleName,
+			TEXT("Tests/Networking/UnreliableRPCCompile.as"),
+			TEXT(R"AS(
 UCLASS()
 class AUnreliableRPCTestActor : AActor
 {
@@ -339,63 +288,50 @@ class AUnreliableRPCTestActor : AActor
 	}
 }
 )AS"),
-		CompileResult);
+			CompileResult);
 
-	if (!TestTrue(TEXT("Unreliable RPC declaration should compile successfully"), bCompiled))
-	{
-		AddError(FString::Printf(TEXT("Compile result: %d"), static_cast<int32>(CompileResult)));
-		return false;
+		if (!TestRunner->TestTrue(TEXT("Unreliable RPC declaration should compile successfully"), bCompiled))
+		{
+			TestRunner->AddError(FString::Printf(TEXT("Compile result: %d"), static_cast<int32>(CompileResult)));
+			return;
+		}
+
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("AUnreliableRPCTestActor"));
+		ASSERT_THAT(IsNotNull(GeneratedClass));
+
+		UFunction* UnreliableFunc = GeneratedClass->FindFunctionByName(TEXT("ClientUnreliableUpdate"));
+		ASSERT_THAT(IsNotNull(UnreliableFunc));
+
+		TestRunner->TestTrue(TEXT("Unreliable RPC function should carry FUNC_Net flag"),
+			UnreliableFunc->HasAnyFunctionFlags(FUNC_Net));
+		TestRunner->TestTrue(TEXT("Unreliable RPC function should carry FUNC_NetClient flag"),
+			UnreliableFunc->HasAnyFunctionFlags(FUNC_NetClient));
+		TestRunner->TestFalse(TEXT("Unreliable RPC function should NOT carry FUNC_NetReliable flag"),
+			UnreliableFunc->HasAnyFunctionFlags(FUNC_NetReliable));
+		}
 	}
-
-	UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("AUnreliableRPCTestActor"));
-	if (!TestNotNull(TEXT("Unreliable RPC test actor class should be materialized"), GeneratedClass))
-	{
-		return false;
-	}
-
-	UFunction* UnreliableFunc = GeneratedClass->FindFunctionByName(TEXT("ClientUnreliableUpdate"));
-	if (!TestNotNull(TEXT("Unreliable RPC function should exist on generated class"), UnreliableFunc))
-	{
-		return false;
-	}
-
-	TestTrue(TEXT("Unreliable RPC function should carry FUNC_Net flag"),
-		UnreliableFunc->HasAnyFunctionFlags(FUNC_Net));
-	TestTrue(TEXT("Unreliable RPC function should carry FUNC_NetClient flag"),
-		UnreliableFunc->HasAnyFunctionFlags(FUNC_NetClient));
-	TestFalse(TEXT("Unreliable RPC function should NOT carry FUNC_NetReliable flag"),
-		UnreliableFunc->HasAnyFunctionFlags(FUNC_NetReliable));
-	}
-
-	return true;
-}
 
 // ============================================================================
 // Mixed RPC compilation test — multiple RPC types in one class
 // ============================================================================
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptNetworkMixedRPCCompileTest,
-	"Angelscript.TestModule.Networking.RPC.MixedDeclarationsCompile",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptNetworkMixedRPCCompileTest::RunTest(const FString& Parameters)
-{
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	ON_SCOPE_EXIT
+	TEST_METHOD(MixedDeclarationsCompile)
 	{
-		Engine.DiscardModule(*AngelscriptNetworkRPCTest::MixedRPCModuleName.ToString());
-		ASTEST_RESET_ENGINE(Engine);
-	};
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*AngelscriptNetworkRPCTest::MixedRPCModuleName.ToString());
+			ASTEST_RESET_ENGINE(Engine);
+		};
 
-	ECompileResult CompileResult = ECompileResult::Error;
-	const bool bCompiled = CompileModuleWithResult(
-		&Engine,
-		ECompileType::FullReload,
-		AngelscriptNetworkRPCTest::MixedRPCModuleName,
-		TEXT("Tests/Networking/MixedRPCCompile.as"),
-		TEXT(R"AS(
+		ECompileResult CompileResult = ECompileResult::Error;
+		const bool bCompiled = CompileModuleWithResult(
+			&Engine,
+			ECompileType::FullReload,
+			AngelscriptNetworkRPCTest::MixedRPCModuleName,
+			TEXT("Tests/Networking/MixedRPCCompile.as"),
+			TEXT(R"AS(
 UCLASS()
 class AMixedRPCTestActor : AActor
 {
@@ -440,66 +376,62 @@ class AMixedRPCTestActor : AActor
 	}
 }
 )AS"),
-		CompileResult);
+			CompileResult);
 
-	if (!TestTrue(TEXT("Mixed RPC + replication declarations should compile successfully"), bCompiled))
-	{
-		AddError(FString::Printf(TEXT("Compile result: %d"), static_cast<int32>(CompileResult)));
-		return false;
-	}
+		if (!TestRunner->TestTrue(TEXT("Mixed RPC + replication declarations should compile successfully"), bCompiled))
+		{
+			TestRunner->AddError(FString::Printf(TEXT("Compile result: %d"), static_cast<int32>(CompileResult)));
+			return;
+		}
 
-	UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("AMixedRPCTestActor"));
-	if (!TestNotNull(TEXT("Mixed RPC test actor class should be materialized"), GeneratedClass))
-	{
-		return false;
-	}
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("AMixedRPCTestActor"));
+		ASSERT_THAT(IsNotNull(GeneratedClass));
 
-	// Verify Server RPC
-	UFunction* ServerFunc = GeneratedClass->FindFunctionByName(TEXT("ServerApplyDamage"));
-	if (TestNotNull(TEXT("Mixed: Server RPC function should exist"), ServerFunc))
-	{
-		TestTrue(TEXT("Mixed: Server RPC should carry FUNC_NetServer"), ServerFunc->HasAnyFunctionFlags(FUNC_NetServer));
-	}
+		// Verify Server RPC
+		UFunction* ServerFunc = GeneratedClass->FindFunctionByName(TEXT("ServerApplyDamage"));
+		if (TestRunner->TestNotNull(TEXT("Mixed: Server RPC function should exist"), ServerFunc))
+		{
+			TestRunner->TestTrue(TEXT("Mixed: Server RPC should carry FUNC_NetServer"), ServerFunc->HasAnyFunctionFlags(FUNC_NetServer));
+		}
 
-	// Verify Client RPC
-	UFunction* ClientFunc = GeneratedClass->FindFunctionByName(TEXT("ClientNotifyHit"));
-	if (TestNotNull(TEXT("Mixed: Client RPC function should exist"), ClientFunc))
-	{
-		TestTrue(TEXT("Mixed: Client RPC should carry FUNC_NetClient"), ClientFunc->HasAnyFunctionFlags(FUNC_NetClient));
-	}
+		// Verify Client RPC
+		UFunction* ClientFunc = GeneratedClass->FindFunctionByName(TEXT("ClientNotifyHit"));
+		if (TestRunner->TestNotNull(TEXT("Mixed: Client RPC function should exist"), ClientFunc))
+		{
+			TestRunner->TestTrue(TEXT("Mixed: Client RPC should carry FUNC_NetClient"), ClientFunc->HasAnyFunctionFlags(FUNC_NetClient));
+		}
 
-	// Verify NetMulticast Unreliable RPC
-	UFunction* MulticastFunc = GeneratedClass->FindFunctionByName(TEXT("MulticastPlayEffect"));
-	if (TestNotNull(TEXT("Mixed: NetMulticast RPC function should exist"), MulticastFunc))
-	{
-		TestTrue(TEXT("Mixed: NetMulticast RPC should carry FUNC_NetMulticast"), MulticastFunc->HasAnyFunctionFlags(FUNC_NetMulticast));
-		TestFalse(TEXT("Mixed: NetMulticast Unreliable RPC should NOT carry FUNC_NetReliable"), MulticastFunc->HasAnyFunctionFlags(FUNC_NetReliable));
-	}
+		// Verify NetMulticast Unreliable RPC
+		UFunction* MulticastFunc = GeneratedClass->FindFunctionByName(TEXT("MulticastPlayEffect"));
+		if (TestRunner->TestNotNull(TEXT("Mixed: NetMulticast RPC function should exist"), MulticastFunc))
+		{
+			TestRunner->TestTrue(TEXT("Mixed: NetMulticast RPC should carry FUNC_NetMulticast"), MulticastFunc->HasAnyFunctionFlags(FUNC_NetMulticast));
+			TestRunner->TestFalse(TEXT("Mixed: NetMulticast Unreliable RPC should NOT carry FUNC_NetReliable"), MulticastFunc->HasAnyFunctionFlags(FUNC_NetReliable));
+		}
 
-	// Verify Validated Server RPC
-	UFunction* ValidatedFunc = GeneratedClass->FindFunctionByName(TEXT("ServerValidatedAttack"));
-	if (TestNotNull(TEXT("Mixed: Validated Server RPC function should exist"), ValidatedFunc))
-	{
-		TestTrue(TEXT("Mixed: Validated Server RPC should carry FUNC_NetServer"), ValidatedFunc->HasAnyFunctionFlags(FUNC_NetServer));
-		TestTrue(TEXT("Mixed: Validated Server RPC should carry FUNC_NetValidate"), ValidatedFunc->HasAnyFunctionFlags(FUNC_NetValidate));
-	}
+		// Verify Validated Server RPC
+		UFunction* ValidatedFunc = GeneratedClass->FindFunctionByName(TEXT("ServerValidatedAttack"));
+		if (TestRunner->TestNotNull(TEXT("Mixed: Validated Server RPC function should exist"), ValidatedFunc))
+		{
+			TestRunner->TestTrue(TEXT("Mixed: Validated Server RPC should carry FUNC_NetServer"), ValidatedFunc->HasAnyFunctionFlags(FUNC_NetServer));
+			TestRunner->TestTrue(TEXT("Mixed: Validated Server RPC should carry FUNC_NetValidate"), ValidatedFunc->HasAnyFunctionFlags(FUNC_NetValidate));
+		}
 
-	// Verify replicated properties
-	FProperty* ScoreProperty = FindFProperty<FProperty>(GeneratedClass, TEXT("ReplicatedScore"));
-	if (TestNotNull(TEXT("Mixed: ReplicatedScore property should exist"), ScoreProperty))
-	{
-		TestTrue(TEXT("Mixed: ReplicatedScore should carry CPF_Net"), ScoreProperty->HasAnyPropertyFlags(CPF_Net));
-	}
+		// Verify replicated properties
+		FProperty* ScoreProperty = FindFProperty<FProperty>(GeneratedClass, TEXT("ReplicatedScore"));
+		if (TestRunner->TestNotNull(TEXT("Mixed: ReplicatedScore property should exist"), ScoreProperty))
+		{
+			TestRunner->TestTrue(TEXT("Mixed: ReplicatedScore should carry CPF_Net"), ScoreProperty->HasAnyPropertyFlags(CPF_Net));
+		}
 
-	FProperty* HealthProperty = FindFProperty<FProperty>(GeneratedClass, TEXT("Health"));
-	if (TestNotNull(TEXT("Mixed: Health property should exist"), HealthProperty))
-	{
-		TestTrue(TEXT("Mixed: Health should carry CPF_Net"), HealthProperty->HasAnyPropertyFlags(CPF_Net));
-		TestTrue(TEXT("Mixed: Health should carry CPF_RepNotify"), HealthProperty->HasAnyPropertyFlags(CPF_RepNotify));
+		FProperty* HealthProperty = FindFProperty<FProperty>(GeneratedClass, TEXT("Health"));
+		if (TestRunner->TestNotNull(TEXT("Mixed: Health property should exist"), HealthProperty))
+		{
+			TestRunner->TestTrue(TEXT("Mixed: Health should carry CPF_Net"), HealthProperty->HasAnyPropertyFlags(CPF_Net));
+			TestRunner->TestTrue(TEXT("Mixed: Health should carry CPF_RepNotify"), HealthProperty->HasAnyPropertyFlags(CPF_RepNotify));
+		}
+		}
 	}
-	}
-
-	return true;
-}
+};
 
 #endif

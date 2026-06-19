@@ -1,6 +1,7 @@
 #include "BlueprintImpact/AngelscriptBlueprintImpactScanner.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "CQTest.h"
 #include "GameFramework/Actor.h"
 #include "HAL/FileManager.h"
 #include "Kismet2/KismetEditorUtilities.h"
@@ -13,11 +14,6 @@
 #include "UObject/SavePackage.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactFindBlueprintAssetsMixedAssetModesTest,
-	"Angelscript.Editor.BlueprintImpact.FindBlueprintAssets.DiskOnlyExcludesTransientButAllAssetsIncludesBoth",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactAssetDiscoveryTests_Private
 {
@@ -237,8 +233,12 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactAssetDiscove
 	}
 }
 
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 
-bool FAngelscriptBlueprintImpactFindBlueprintAssetsMixedAssetModesTest::RunTest(const FString& Parameters)
+static bool RunDiskOnlyExcludesTransientButAllAssetsIncludesBoth(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactAssetDiscoveryTests_Private;
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
@@ -253,7 +253,7 @@ bool FAngelscriptBlueprintImpactFindBlueprintAssetsMixedAssetModesTest::RunTest(
 	FString DiskPackagePath;
 	FString DiskPackageFilename;
 	UBlueprint* DiskBlueprint = CreateDiskBackedBlueprintChild(
-		*this,
+		Test,
 		AssetRegistryModule,
 		AActor::StaticClass(),
 		TEXT("DiskOnly"),
@@ -262,7 +262,7 @@ bool FAngelscriptBlueprintImpactFindBlueprintAssetsMixedAssetModesTest::RunTest(
 
 	FString UnsavedPackagePath;
 	UBlueprint* UnsavedBlueprint = CreateUnsavedBlueprintChild(
-		*this,
+		Test,
 		AssetRegistryModule,
 		AActor::StaticClass(),
 		TEXT("MemoryOnly"),
@@ -270,8 +270,8 @@ bool FAngelscriptBlueprintImpactFindBlueprintAssetsMixedAssetModesTest::RunTest(
 
 	ON_SCOPE_EXIT
 	{
-		CleanupBlueprintAsset(*this, AssetRegistryModule, UnsavedBlueprint, FString());
-		CleanupBlueprintAsset(*this, AssetRegistryModule, DiskBlueprint, DiskPackageFilename);
+		CleanupBlueprintAsset(Test, AssetRegistryModule, UnsavedBlueprint, FString());
+		CleanupBlueprintAsset(Test, AssetRegistryModule, DiskBlueprint, DiskPackageFilename);
 	};
 
 	if (!TestNotNull(TEXT("BlueprintImpact.FindBlueprintAssets mixed-mode test should create the disk-backed blueprint"), DiskBlueprint))
@@ -366,5 +366,20 @@ bool FAngelscriptBlueprintImpactFindBlueprintAssetsMixedAssetModesTest::RunTest(
 		TEXT("BlueprintImpact.FindBlueprintAssets all-assets delta should include the unsaved in-memory blueprint package"),
 		AllAssetsDelta.Contains(UnsavedPackagePath));
 }
+
+#undef TestTrue
+#undef TestNotNull
+#undef TestFalse
+#undef TestEqual
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptBlueprintImpactAssetDiscoveryTests,
+	"Angelscript.Editor.BlueprintImpact.FindBlueprintAssets",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(DiskOnlyExcludesTransientButAllAssetsIncludesBoth)
+	{
+		ASSERT_THAT(IsTrue(RunDiskOnlyExcludesTransientButAllAssetsIncludesBoth(*TestRunner)));
+	}
+};
 
 #endif

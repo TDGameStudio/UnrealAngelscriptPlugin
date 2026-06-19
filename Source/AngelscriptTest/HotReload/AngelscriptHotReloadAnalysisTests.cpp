@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestMacros.h"
@@ -10,52 +11,12 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptAnalyzeReloadNoChangeTest,
-	"Angelscript.TestModule.HotReload.AnalyzeReload.NoChange",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptAnalyzeReloadPropertyCountChangeTest,
-	"Angelscript.TestModule.HotReload.AnalyzeReload.PropertyCountChange",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptAnalyzeReloadSuperClassChangeTest,
-	"Angelscript.TestModule.HotReload.AnalyzeReload.SuperClassChange",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptAnalyzeReloadSoftReloadRequirementTest,
-	"Angelscript.TestModule.HotReload.AnalyzeReload.SoftReloadRequirement",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptAnalyzeReloadClassAddedTest,
-	"Angelscript.TestModule.HotReload.AnalyzeReload.ClassAdded",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptAnalyzeReloadClassRemovedTest,
-	"Angelscript.TestModule.HotReload.AnalyzeReload.ClassRemoved",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptAnalyzeReloadFunctionSignatureChangedTest,
-	"Angelscript.TestModule.HotReload.AnalyzeReload.FunctionSignatureChanged",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptAnalyzeReloadEnumValueChangeTest,
-	"Angelscript.TestModule.HotReload.AnalyzeReload.EnumValueChange",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptAnalyzeReloadDelegateSignatureChangeTest,
-	"Angelscript.TestModule.HotReload.AnalyzeReload.DelegateSignatureChange",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptAnalyzeReloadNoChangeTest::RunTest(const FString& Parameters)
+static bool AnalyzeReloadNoChange(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -100,7 +61,7 @@ class UReloadNoChangeTarget : UObject
 	return true;
 }
 
-bool FAngelscriptAnalyzeReloadPropertyCountChangeTest::RunTest(const FString& Parameters)
+static bool AnalyzeReloadPropertyCountChange(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -147,7 +108,7 @@ class UReloadPropertyTarget : UObject
 	return true;
 }
 
-bool FAngelscriptAnalyzeReloadSuperClassChangeTest::RunTest(const FString& Parameters)
+static bool AnalyzeReloadSuperClassChange(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -187,7 +148,7 @@ class UReloadSuperTarget : AActor
 	return true;
 }
 
-bool FAngelscriptAnalyzeReloadSoftReloadRequirementTest::RunTest(const FString& Parameters)
+static bool AnalyzeReloadSoftReloadRequirement(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -238,7 +199,7 @@ class UReloadSoftRequirementTarget : UObject
 	return true;
 }
 
-bool FAngelscriptAnalyzeReloadClassAddedTest::RunTest(const FString& Parameters)
+static bool AnalyzeReloadClassAdded(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -283,7 +244,7 @@ class UNewReloadTarget : UObject
 	return true;
 }
 
-bool FAngelscriptAnalyzeReloadClassRemovedTest::RunTest(const FString& Parameters)
+static bool AnalyzeReloadClassRemoved(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -328,7 +289,7 @@ class UReloadSurvivorTarget : UObject
 	return true;
 }
 
-bool FAngelscriptAnalyzeReloadFunctionSignatureChangedTest::RunTest(const FString& Parameters)
+static bool AnalyzeReloadFunctionSignatureChanged(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -378,7 +339,7 @@ class UReloadFunctionTarget : UObject
 	return true;
 }
 
-bool FAngelscriptAnalyzeReloadEnumValueChangeTest::RunTest(const FString& Parameters)
+static bool AnalyzeReloadEnumValueChange(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -441,7 +402,7 @@ class UReloadEnumValueCarrier : UObject
 	return true;
 }
 
-bool FAngelscriptAnalyzeReloadDelegateSignatureChangeTest::RunTest(const FString& Parameters)
+static bool AnalyzeReloadDelegateSignatureChange(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -525,5 +486,60 @@ class UReloadDelegateAnalysisCarrier : UObject
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptAnalyzeReloadTests,
+	"Angelscript.TestModule.HotReload.AnalyzeReload",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(NoChange)
+	{
+		ASSERT_THAT(IsTrue(::AnalyzeReloadNoChange(*TestRunner)));
+	}
+
+	TEST_METHOD(PropertyCountChange)
+	{
+		ASSERT_THAT(IsTrue(::AnalyzeReloadPropertyCountChange(*TestRunner)));
+	}
+
+	TEST_METHOD(SuperClassChange)
+	{
+		ASSERT_THAT(IsTrue(::AnalyzeReloadSuperClassChange(*TestRunner)));
+	}
+
+	TEST_METHOD(SoftReloadRequirement)
+	{
+		ASSERT_THAT(IsTrue(::AnalyzeReloadSoftReloadRequirement(*TestRunner)));
+	}
+
+	TEST_METHOD(ClassAdded)
+	{
+		ASSERT_THAT(IsTrue(::AnalyzeReloadClassAdded(*TestRunner)));
+	}
+
+	TEST_METHOD(ClassRemoved)
+	{
+		ASSERT_THAT(IsTrue(::AnalyzeReloadClassRemoved(*TestRunner)));
+	}
+
+	TEST_METHOD(FunctionSignatureChanged)
+	{
+		ASSERT_THAT(IsTrue(::AnalyzeReloadFunctionSignatureChanged(*TestRunner)));
+	}
+
+	TEST_METHOD(EnumValueChange)
+	{
+		ASSERT_THAT(IsTrue(::AnalyzeReloadEnumValueChange(*TestRunner)));
+	}
+
+	TEST_METHOD(DelegateSignatureChange)
+	{
+		ASSERT_THAT(IsTrue(::AnalyzeReloadDelegateSignatureChange(*TestRunner)));
+	}
+};
 
 #endif

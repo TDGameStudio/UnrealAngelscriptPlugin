@@ -9,7 +9,7 @@
 //   QueryCompat              — deterministic AssetRegistry query vs native baselines
 //
 // CQTest adaptation notes:
-//   Two IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
+//   Two legacy automation tests merged into one TEST_CLASS.
 //   Both sections use token-replacement patterns with native baseline computation.
 //   TopLevelPathAndNullParent uses WorldCollisionExecuteFunctionExpectingException for negative path.
 // ============================================================================

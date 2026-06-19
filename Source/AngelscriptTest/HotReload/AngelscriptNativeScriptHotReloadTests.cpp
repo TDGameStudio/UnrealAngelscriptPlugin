@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestEngineHelper.h"
 #include "Misc/FileHelper.h"
@@ -62,26 +63,11 @@ namespace AngelscriptTest_Angelscript_AngelscriptNativeScriptHotReloadTests_Priv
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptNativeScriptHotReloadPhase2ATest,
-	"Angelscript.TestModule.HotReload.NativeScript.Phase2A",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptNativeScriptHotReloadPhase2BTest,
-	"Angelscript.TestModule.HotReload.NativeScript.Phase2B",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptNativeScriptHotReloadPhase2CTest,
-	"Angelscript.TestModule.HotReload.NativeScript.Phase2C",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptNativeScriptHotReloadPhase2ATest::RunTest(const FString& Parameters)
+static bool NativeScriptHotReloadPhase2A(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Angelscript_AngelscriptNativeScriptHotReloadTests_Private;
 	return VerifyNativeScriptHotReloadInline(
-		*this,
+		Test,
 		TEXT("Phase2A"),
 		{
 			{
@@ -140,11 +126,11 @@ class UNativeHotReloadPhase2AHandleCarrier : UObject
 		});
 }
 
-bool FAngelscriptNativeScriptHotReloadPhase2BTest::RunTest(const FString& Parameters)
+static bool NativeScriptHotReloadPhase2B(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Angelscript_AngelscriptNativeScriptHotReloadTests_Private;
 	return VerifyNativeScriptHotReloadInline(
-		*this,
+		Test,
 		TEXT("Phase2B"),
 		{
 			{
@@ -238,7 +224,7 @@ class UNativeHotReloadPhase2BMathCarrier : UObject
 		});
 }
 
-bool FAngelscriptNativeScriptHotReloadPhase2CTest::RunTest(const FString& Parameters)
+static bool NativeScriptHotReloadPhase2C(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Angelscript_AngelscriptNativeScriptHotReloadTests_Private;
 	const FString RelativeFilename = TEXT("Script/Tests/Test_ExampleActorFixture.as");
@@ -246,16 +232,36 @@ bool FAngelscriptNativeScriptHotReloadPhase2CTest::RunTest(const FString& Parame
 	FString Source;
 	if (!FFileHelper::LoadFileToString(Source, *AbsoluteFilename))
 	{
-		AddError(FString::Printf(TEXT("Phase2C should load source from %s"), *RelativeFilename));
+		Test.AddError(FString::Printf(TEXT("Phase2C should load source from %s"), *RelativeFilename));
 		return false;
 	}
 
 	return VerifyNativeScriptHotReloadInline(
-		*this,
+		Test,
 		TEXT("Phase2C"),
 		{
 			TPair<FString, FString>(RelativeFilename, Source),
 		});
 }
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptHotReloadTests,
+	"Angelscript.TestModule.HotReload.NativeScript",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(Phase2A)
+	{
+		ASSERT_THAT(IsTrue(NativeScriptHotReloadPhase2A(*TestRunner)));
+	}
+
+	TEST_METHOD(Phase2B)
+	{
+		ASSERT_THAT(IsTrue(NativeScriptHotReloadPhase2B(*TestRunner)));
+	}
+
+	TEST_METHOD(Phase2C)
+	{
+		ASSERT_THAT(IsTrue(NativeScriptHotReloadPhase2C(*TestRunner)));
+	}
+};
 
 #endif

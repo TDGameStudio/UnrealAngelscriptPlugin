@@ -1,8 +1,8 @@
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestMacros.h"
+#include "CQTest.h"
 
 #include "HAL/FileManager.h"
-#include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Misc/ScopeExit.h"
@@ -30,25 +30,22 @@ namespace AngelscriptTest_FileSystem_AngelscriptDiskCompileTests_Private
 	}
 }
 
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptDiskCompileReadsUpdatedSourceFromPathTest,
-	"Angelscript.TestModule.FileSystem.DiskCompileReadsUpdatedSourceFromPath",
+TEST_CLASS_WITH_FLAGS(FAngelscriptDiskCompileTest,
+	"Angelscript.TestModule.FileSystem.DiskCompile",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptDiskCompileReadsUpdatedSourceFromPathTest::RunTest(const FString& Parameters)
 {
-	using namespace AngelscriptTest_FileSystem_AngelscriptDiskCompileTests_Private;
-	CleanDiskCompileTestRoot();
-
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	bool bFinalLookupValid = false;
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	ON_SCOPE_EXIT
+	TEST_METHOD(ReadsUpdatedSourceFromPath)
 	{
-		Engine.DiscardModule(TEXT("RuntimeDiskModule"));
+		using namespace AngelscriptTest_FileSystem_AngelscriptDiskCompileTests_Private;
 		CleanDiskCompileTestRoot();
-	};
+
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(TEXT("RuntimeDiskModule"));
+			CleanDiskCompileTestRoot();
+		};
 
 	const FString ScriptV1 = TEXT(R"AS(
 int Entry()
@@ -64,55 +61,26 @@ int Entry()
 )AS");
 
 	FString AbsolutePath;
-	if (!TestTrue(TEXT("Write initial disk-compile script should succeed"), WriteDiskCompileTestFile(TEXT("RuntimeDiskModule.as"), ScriptV1, AbsolutePath)))
-	{
-		return false;
-	}
+		ASSERT_THAT(IsTrue(WriteDiskCompileTestFile(TEXT("RuntimeDiskModule.as"), ScriptV1, AbsolutePath), TEXT("Write initial disk-compile script should succeed")));
 
-	if (!TestTrue(TEXT("Disk compile helper should let runtime read the initial script from disk"), CompileModuleFromDiskPath(&Engine, TEXT("RuntimeDiskModule"), AbsolutePath)))
-	{
-		return false;
-	}
+		ASSERT_THAT(IsTrue(CompileModuleFromDiskPath(&Engine, TEXT("RuntimeDiskModule"), AbsolutePath), TEXT("Disk compile helper should let runtime read the initial script from disk")));
 
 	int32 InitialResult = 0;
-	if (!TestTrue(TEXT("Initial disk-compiled module should execute"), ExecuteIntFunction(&Engine, TEXT("RuntimeDiskModule"), TEXT("int Entry()"), InitialResult)))
-	{
-		return false;
-	}
-	if (!TestEqual(TEXT("Initial disk-compiled module should return the initial file contents"), InitialResult, 42))
-	{
-		return false;
-	}
-	if (!TestTrue(TEXT("Initial disk-compiled module should be discoverable by filename"), Engine.GetModuleByFilename(AbsolutePath).IsValid()))
-	{
-		return false;
-	}
+		ASSERT_THAT(IsTrue(ExecuteIntFunction(&Engine, TEXT("RuntimeDiskModule"), TEXT("int Entry()"), InitialResult), TEXT("Initial disk-compiled module should execute")));
+		ASSERT_THAT(AreEqual(42, InitialResult, TEXT("Initial disk-compiled module should return the initial file contents")));
+		ASSERT_THAT(IsTrue(Engine.GetModuleByFilename(AbsolutePath).IsValid(), TEXT("Initial disk-compiled module should be discoverable by filename")));
 
-	if (!TestTrue(TEXT("Overwrite disk-compile script with updated contents should succeed"), WriteDiskCompileTestFile(TEXT("RuntimeDiskModule.as"), ScriptV2, AbsolutePath)))
-	{
-		return false;
-	}
+		ASSERT_THAT(IsTrue(WriteDiskCompileTestFile(TEXT("RuntimeDiskModule.as"), ScriptV2, AbsolutePath), TEXT("Overwrite disk-compile script with updated contents should succeed")));
 
-	if (!TestTrue(TEXT("Second disk compile should reread the script from disk instead of reusing stale in-memory text"), CompileModuleFromDiskPath(&Engine, TEXT("RuntimeDiskModule"), AbsolutePath)))
-	{
-		return false;
-	}
+		ASSERT_THAT(IsTrue(CompileModuleFromDiskPath(&Engine, TEXT("RuntimeDiskModule"), AbsolutePath), TEXT("Second disk compile should reread the script from disk instead of reusing stale in-memory text")));
 
 	int32 UpdatedResult = 0;
-	if (!TestTrue(TEXT("Updated disk-compiled module should execute"), ExecuteIntFunction(&Engine, TEXT("RuntimeDiskModule"), TEXT("int Entry()"), UpdatedResult)))
-	{
-		return false;
-	}
-	if (!TestEqual(TEXT("Updated disk-compiled module should reflect the latest file contents"), UpdatedResult, 17))
-	{
-		return false;
-	}
+		ASSERT_THAT(IsTrue(ExecuteIntFunction(&Engine, TEXT("RuntimeDiskModule"), TEXT("int Entry()"), UpdatedResult), TEXT("Updated disk-compiled module should execute")));
+		ASSERT_THAT(AreEqual(17, UpdatedResult, TEXT("Updated disk-compiled module should reflect the latest file contents")));
 
-	bFinalLookupValid =
-		TestTrue(TEXT("Updated disk-compiled module should remain discoverable by filename"), Engine.GetModuleByFilename(AbsolutePath).IsValid());
+		ASSERT_THAT(IsTrue(Engine.GetModuleByFilename(AbsolutePath).IsValid(), TEXT("Updated disk-compiled module should remain discoverable by filename")));
+		}
 	}
-
-	return bFinalLookupValid;
-}
+};
 
 #endif

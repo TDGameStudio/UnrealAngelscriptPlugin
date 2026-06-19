@@ -11,7 +11,7 @@
 //   NumberFormattingOptions   — FNumberFormattingOptions builder and identity
 //
 // CQTest adaptation notes:
-//   Four IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
+//   Four legacy automation tests merged into one TEST_CLASS.
 //   GuidCompat, PathsCompat, NumberFormattingOptions: bitmask int Entry() split
 //   into per-aspect functions. PathsExactCompat: token-replacement pattern
 //   retained with single Entry() invoked via ExpectGlobalInt.

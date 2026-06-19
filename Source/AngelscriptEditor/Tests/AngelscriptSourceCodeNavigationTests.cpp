@@ -11,55 +11,22 @@
 
 #include "SourceNavigation/AngelscriptSourceCodeNavigation.h"
 
+#include "CQTest.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-// ---------------------------------------------------------------------------
-// Test declarations — BuildVSCodeParams (pure function, no engine needed)
-// ---------------------------------------------------------------------------
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptSourceNavBuildParamsWorkspaceTest,
-	"Angelscript.Editor.SourceNavigation.BuildVSCodeParams.WorkspacePath",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptSourceNavBuildParamsFolderFallbackTest,
-	"Angelscript.Editor.SourceNavigation.BuildVSCodeParams.FolderFallback",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptSourceNavBuildParamsRawTest,
-	"Angelscript.Editor.SourceNavigation.BuildVSCodeParams.RawParams",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptSourceNavBuildParamsAllEmptyTest,
-	"Angelscript.Editor.SourceNavigation.BuildVSCodeParams.AllEmpty",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-// ---------------------------------------------------------------------------
-// Test declarations — Override hooks
-// ---------------------------------------------------------------------------
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptSourceNavOverrideCaptureTest,
-	"Angelscript.Editor.SourceNavigation.OpenOverride.CapturesLocation",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptSourceNavNonASClassTest,
-	"Angelscript.Editor.SourceNavigation.CanNavigate.NonASClassReturnsFalse",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 
 // ---------------------------------------------------------------------------
 // BuildVSCodeParams.WorkspacePath
 //   Non-empty workspace path should be prepended to params.
 // ---------------------------------------------------------------------------
 
-bool FAngelscriptSourceNavBuildParamsWorkspaceTest::RunTest(const FString& Parameters)
+static bool RunBuildVSCodeParamsWorkspacePath(FAutomationTestBase& Test)
 {
 	const FString Result = AngelscriptSourceNavigation::BuildVSCodeOpenParametersForTesting(
 		TEXT("--goto \"C:/Test.as:10\""),
@@ -80,7 +47,7 @@ bool FAngelscriptSourceNavBuildParamsWorkspaceTest::RunTest(const FString& Param
 //   Empty workspace + bOpenFolder=true should use ScriptRootDirectory.
 // ---------------------------------------------------------------------------
 
-bool FAngelscriptSourceNavBuildParamsFolderFallbackTest::RunTest(const FString& Parameters)
+static bool RunBuildVSCodeParamsFolderFallback(FAutomationTestBase& Test)
 {
 	const FString Result = AngelscriptSourceNavigation::BuildVSCodeOpenParametersForTesting(
 		TEXT("--goto \"C:/Test.as:10\""),
@@ -101,7 +68,7 @@ bool FAngelscriptSourceNavBuildParamsFolderFallbackTest::RunTest(const FString& 
 //   Empty workspace + bOpenFolder=false should return raw params unchanged.
 // ---------------------------------------------------------------------------
 
-bool FAngelscriptSourceNavBuildParamsRawTest::RunTest(const FString& Parameters)
+static bool RunBuildVSCodeParamsRawParams(FAutomationTestBase& Test)
 {
 	const FString RawParams = TEXT("--goto \"C:/Test.as:10\"");
 	const FString Result = AngelscriptSourceNavigation::BuildVSCodeOpenParametersForTesting(
@@ -121,7 +88,7 @@ bool FAngelscriptSourceNavBuildParamsRawTest::RunTest(const FString& Parameters)
 //   All empty/false should return raw params unchanged.
 // ---------------------------------------------------------------------------
 
-bool FAngelscriptSourceNavBuildParamsAllEmptyTest::RunTest(const FString& Parameters)
+static bool RunBuildVSCodeParamsAllEmpty(FAutomationTestBase& Test)
 {
 	const FString RawParams = TEXT("\"C:/Test.as\"");
 	const FString Result = AngelscriptSourceNavigation::BuildVSCodeOpenParametersForTesting(
@@ -142,7 +109,7 @@ bool FAngelscriptSourceNavBuildParamsAllEmptyTest::RunTest(const FString& Parame
 //   a navigation function is invoked.
 // ---------------------------------------------------------------------------
 
-bool FAngelscriptSourceNavOverrideCaptureTest::RunTest(const FString& Parameters)
+static bool RunOpenOverrideCapturesLocation(FAutomationTestBase& Test)
 {
 	FAngelscriptSourceNavigationLocation CapturedLocation;
 	bool bWasCalled = false;
@@ -176,7 +143,7 @@ bool FAngelscriptSourceNavOverrideCaptureTest::RunTest(const FString& Parameters
 //   Native UE classes (non-AS) should not be navigable via AS navigation.
 // ---------------------------------------------------------------------------
 
-bool FAngelscriptSourceNavNonASClassTest::RunTest(const FString& Parameters)
+static bool RunCanNavigateNonASClassReturnsFalse(FAutomationTestBase& Test)
 {
 	// NavigateToStructForTesting with a native UE class should return false.
 	const bool Result = AngelscriptSourceNavigation::NavigateToStructForTesting(AActor::StaticClass());
@@ -185,5 +152,54 @@ bool FAngelscriptSourceNavNonASClassTest::RunTest(const FString& Parameters)
 
 	return true;
 }
+
+#undef TestEqual
+#undef TestFalse
+#undef TestTrue
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptSourceNavigationBuildVSCodeParamsTests,
+	"Angelscript.Editor.SourceNavigation.BuildVSCodeParams",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(WorkspacePath)
+	{
+		ASSERT_THAT(IsTrue(RunBuildVSCodeParamsWorkspacePath(*TestRunner)));
+	}
+
+	TEST_METHOD(FolderFallback)
+	{
+		ASSERT_THAT(IsTrue(RunBuildVSCodeParamsFolderFallback(*TestRunner)));
+	}
+
+	TEST_METHOD(RawParams)
+	{
+		ASSERT_THAT(IsTrue(RunBuildVSCodeParamsRawParams(*TestRunner)));
+	}
+
+	TEST_METHOD(AllEmpty)
+	{
+		ASSERT_THAT(IsTrue(RunBuildVSCodeParamsAllEmpty(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptSourceNavigationOpenOverrideTests,
+	"Angelscript.Editor.SourceNavigation.OpenOverride",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(CapturesLocation)
+	{
+		ASSERT_THAT(IsTrue(RunOpenOverrideCapturesLocation(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptSourceNavigationCanNavigateTests,
+	"Angelscript.Editor.SourceNavigation.CanNavigate",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(NonASClassReturnsFalse)
+	{
+		ASSERT_THAT(IsTrue(RunCanNavigateNonASClassReturnsFalse(*TestRunner)));
+	}
+};
 
 #endif // WITH_DEV_AUTOMATION_TESTS

@@ -5,8 +5,8 @@
 // paths normalize to dotted module names, and FilenameToModuleName only strips
 // the terminal '.as' extension (intermediate '.as' folder segments survive).
 //
-// Refactored from IMPLEMENT_SIMPLE_AUTOMATION_TEST -> TEST_CLASS_WITH_FLAGS,
-// reusing the shared PreprocessorTestHelpers (FFixtureFile / FPreprocessResult /
+// Refactored to TEST_CLASS_WITH_FLAGS, reusing the shared
+// PreprocessorTestHelpers (FFixtureFile / FPreprocessResult /
 // RunPreprocess) for the file-based scenarios. The file-local namespace
 // helpers from the previous revision were retired in favor of those shared
 // utilities.

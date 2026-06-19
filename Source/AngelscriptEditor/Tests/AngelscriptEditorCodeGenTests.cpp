@@ -8,40 +8,16 @@
 //   Angelscript.Editor.CodeGen.*
 // =============================================================================
 
+#include "CQTest.h"
 #include "Core/AngelscriptEditorModule.h"
 
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-// ---------------------------------------------------------------------------
-// Test declarations
-// ---------------------------------------------------------------------------
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorCodeGenGetIncludePublicPathTest,
-	"Angelscript.Editor.CodeGen.GetInclude.PublicPath",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorCodeGenGetIncludePrivatePathTest,
-	"Angelscript.Editor.CodeGen.GetInclude.PrivatePath",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorCodeGenGetIncludeClassesPathTest,
-	"Angelscript.Editor.CodeGen.GetInclude.ClassesPath",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorCodeGenGetIncludeEmptyPathTest,
-	"Angelscript.Editor.CodeGen.GetInclude.EmptyPath",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorCodeGenBuildFileStructureTest,
-	"Angelscript.Editor.CodeGen.GenerateBuildFile.OutputStructure",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
 
 // ---------------------------------------------------------------------------
 // GetInclude.PublicPath
@@ -49,7 +25,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 //   including "Public/" and produce a proper #include directive.
 // ---------------------------------------------------------------------------
 
-bool FAngelscriptEditorCodeGenGetIncludePublicPathTest::RunTest(const FString& Parameters)
+static bool RunGetIncludePublicPath(FAutomationTestBase& Test)
 {
 	FString HeaderPath = TEXT("C:/UnrealEngine/Engine/Source/Runtime/Engine/Public/GameFramework/Actor.h");
 	const FString Result = FAngelscriptEditorModule::GetIncludeForModule(nullptr, HeaderPath);
@@ -69,7 +45,7 @@ bool FAngelscriptEditorCodeGenGetIncludePublicPathTest::RunTest(const FString& P
 //   Header path containing "Private/" should strip the Private/ prefix.
 // ---------------------------------------------------------------------------
 
-bool FAngelscriptEditorCodeGenGetIncludePrivatePathTest::RunTest(const FString& Parameters)
+static bool RunGetIncludePrivatePath(FAutomationTestBase& Test)
 {
 	FString HeaderPath = TEXT("C:/Project/Plugins/MyPlugin/Source/MyPlugin/Private/Internal/Helper.h");
 	const FString Result = FAngelscriptEditorModule::GetIncludeForModule(nullptr, HeaderPath);
@@ -86,7 +62,7 @@ bool FAngelscriptEditorCodeGenGetIncludePrivatePathTest::RunTest(const FString& 
 //   Header path containing "Classes/" should strip the Classes/ prefix.
 // ---------------------------------------------------------------------------
 
-bool FAngelscriptEditorCodeGenGetIncludeClassesPathTest::RunTest(const FString& Parameters)
+static bool RunGetIncludeClassesPath(FAutomationTestBase& Test)
 {
 	FString HeaderPath = TEXT("C:/Engine/Source/Runtime/CoreUObject/Classes/Object.h");
 	const FString Result = FAngelscriptEditorModule::GetIncludeForModule(nullptr, HeaderPath);
@@ -103,7 +79,7 @@ bool FAngelscriptEditorCodeGenGetIncludeClassesPathTest::RunTest(const FString& 
 //   Empty header path should not crash and should produce a minimal include.
 // ---------------------------------------------------------------------------
 
-bool FAngelscriptEditorCodeGenGetIncludeEmptyPathTest::RunTest(const FString& Parameters)
+static bool RunGetIncludeEmptyPath(FAutomationTestBase& Test)
 {
 	FString HeaderPath = TEXT("");
 	// GetIncludeForModule with null UField and empty path — should not crash.
@@ -120,7 +96,7 @@ bool FAngelscriptEditorCodeGenGetIncludeEmptyPathTest::RunTest(const FString& Pa
 //   Generated build file lines should contain expected C# structure.
 // ---------------------------------------------------------------------------
 
-bool FAngelscriptEditorCodeGenBuildFileStructureTest::RunTest(const FString& Parameters)
+static bool RunGenerateBuildFileOutputStructure(FAutomationTestBase& Test)
 {
 	TArray<FString> PublicDeps = { TEXT("Core"), TEXT("CoreUObject"), TEXT("Engine") };
 	TArray<FString> PrivateDeps = { TEXT("AngelscriptRuntime") };
@@ -153,5 +129,46 @@ bool FAngelscriptEditorCodeGenBuildFileStructureTest::RunTest(const FString& Par
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorCodeGenGetIncludeTests,
+	"Angelscript.Editor.CodeGen.GetInclude",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(PublicPath)
+	{
+		ASSERT_THAT(IsTrue(RunGetIncludePublicPath(*TestRunner)));
+	}
+
+	TEST_METHOD(PrivatePath)
+	{
+		ASSERT_THAT(IsTrue(RunGetIncludePrivatePath(*TestRunner)));
+	}
+
+	TEST_METHOD(ClassesPath)
+	{
+		ASSERT_THAT(IsTrue(RunGetIncludeClassesPath(*TestRunner)));
+	}
+
+	TEST_METHOD(EmptyPath)
+	{
+		ASSERT_THAT(IsTrue(RunGetIncludeEmptyPath(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorCodeGenGenerateBuildFileTests,
+	"Angelscript.Editor.CodeGen.GenerateBuildFile",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(OutputStructure)
+	{
+		ASSERT_THAT(IsTrue(RunGenerateBuildFileOutputStructure(*TestRunner)));
+	}
+};
 
 #endif // WITH_DEV_AUTOMATION_TESTS

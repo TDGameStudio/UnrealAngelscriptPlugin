@@ -10,7 +10,7 @@
 //     FTransform Blend/BlendWith/SetRotation parity
 //
 // CQTest adaptation notes:
-//   One IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
+//   One legacy automation test merged into one TEST_CLASS.
 //   Struct returns use FAngelscriptTestExecutor::ExecuteAndExtractStruct with
 //   tolerance checks from Bindings/AngelscriptMathBindingsTestCompare.h.
 // ============================================================================

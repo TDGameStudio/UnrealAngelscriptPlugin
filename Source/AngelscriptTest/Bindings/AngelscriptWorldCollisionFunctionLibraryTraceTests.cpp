@@ -14,7 +14,7 @@
 //   OverlapMultiMiss       — OverlapMultiByProfile miss parity
 //
 // CQTest adaptation notes:
-//   Original single IMPLEMENT_SIMPLE_AUTOMATION_TEST monolithic function split
+//   Original single legacy automation monolithic function split
 //   into six TEST_METHODs, each with its own FScopedAngelscriptModule.
 //   Bool+address out-params use Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h.
 //   World/collision setup is shared via BEFORE_EACH.

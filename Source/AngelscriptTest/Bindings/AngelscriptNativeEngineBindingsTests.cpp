@@ -12,7 +12,7 @@
 //   ComponentActivationAndTag       — Activate/Deactivate/ComponentHasTag
 //
 // CQTest adaptation notes:
-//   Four IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
+//   Four legacy automation tests merged into one TEST_CLASS.
 //   Uses CompileAnnotatedModuleFromMemory + FindGeneratedClass pattern.
 //   ComponentActivationAndTag uses ASTEST_CREATE_ENGINE_FULL for world context.
 // ============================================================================

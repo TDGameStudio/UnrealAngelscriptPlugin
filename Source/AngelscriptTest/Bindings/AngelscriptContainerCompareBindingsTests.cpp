@@ -13,7 +13,7 @@
 //   MapDebugger             — TMap debugger summary and member access
 //
 // CQTest adaptation notes:
-//   Six IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
+//   Six legacy automation tests merged into one TEST_CLASS.
 //   Script-based tests use FScopedAngelscriptModule + ExpectGlobalInt.
 //   OptionalTypeCompare and MapDebugger use direct C++ type system assertions.
 // ============================================================================

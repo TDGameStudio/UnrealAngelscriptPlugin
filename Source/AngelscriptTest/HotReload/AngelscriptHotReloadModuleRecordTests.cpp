@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestMacros.h"
@@ -213,12 +214,9 @@ class %s : UObject
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHotReloadModuleRecordTracksEnumAndDelegateArtifactsTest,
-	"Angelscript.TestModule.HotReload.ModuleRecordTracking.EnumAndDelegateArtifacts",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 
-bool FAngelscriptHotReloadModuleRecordTracksEnumAndDelegateArtifactsTest::RunTest(const FString& Parameters)
+static bool ModuleRecordTracksEnumAndDelegateArtifacts(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadModuleRecordTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -255,12 +253,24 @@ bool FAngelscriptHotReloadModuleRecordTracksEnumAndDelegateArtifactsTest::RunTes
 		return false;
 	}
 
-	bModuleAPassed = VerifyTrackedModuleArtifacts(*this, Engine, ModuleTrackedTypesA, ModuleTrackedTypesB);
-	bModuleBPassed = VerifyTrackedModuleArtifacts(*this, Engine, ModuleTrackedTypesB, ModuleTrackedTypesA);
+	bModuleAPassed = VerifyTrackedModuleArtifacts(Test, Engine, ModuleTrackedTypesA, ModuleTrackedTypesB);
+	bModuleBPassed = VerifyTrackedModuleArtifacts(Test, Engine, ModuleTrackedTypesB, ModuleTrackedTypesA);
 
 	}
 
 	return bModuleAPassed && bModuleBPassed;
 }
+
+#undef TestTrue
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadModuleRecordTests,
+	"Angelscript.TestModule.HotReload.ModuleRecordTracking",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(EnumAndDelegateArtifacts)
+	{
+		ASSERT_THAT(IsTrue(ModuleRecordTracksEnumAndDelegateArtifacts(*TestRunner)));
+	}
+};
 
 #endif

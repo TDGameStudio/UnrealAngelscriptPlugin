@@ -1,4 +1,4 @@
-#include "Misc/AutomationTest.h"
+#include "CQTest.h"
 
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestMacros.h"
@@ -262,79 +262,67 @@ namespace AngelscriptTest_StaticJIT_AOT_Private
 	}
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITAotGeneratedOutputVerifyTest,
-	"Angelscript.TestModule.StaticJIT.AOT.GeneratedOutputVerify",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+namespace AngelscriptTest_StaticJIT_AOT_Private
+{
 
-bool FAngelscriptStaticJITAotGeneratedOutputVerifyTest::RunTest(const FString& Parameters)
+bool RunGeneratedOutputVerify(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptStaticJITAotGeneration;
 	const FStaticJITAotGenerationResult Result = Run(EStaticJITAotGenerationMode::Verify);
-	if (!TestTrue(TEXT("StaticJIT.AOT generated output should match the fixture"), Result.bSuccess))
+	if (!Test.TestTrue(TEXT("StaticJIT.AOT generated output should match the fixture"), Result.bSuccess))
 	{
-		AddError(Result.Error);
+		Test.AddError(Result.Error);
 	}
 	return Result.bSuccess;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITAotRuntimeRegistrationTest,
-	"Angelscript.TestModule.StaticJIT.AOT.RuntimeRegistersGeneratedFunction",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptStaticJITAotRuntimeRegistrationTest::RunTest(const FString& Parameters)
+bool RunRuntimeRegistration(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AOT_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngineScope EngineScope(Engine);
 
-	if (!LoadAotFixtureFromPrecompiledData(*this, Engine))
+	if (!LoadAotFixtureFromPrecompiledData(Test, Engine))
 	{
 		return false;
 	}
 
 	asCScriptFunction* EntryFunction = FindEntryFunction(Engine);
-	if (!TestNotNull(TEXT("StaticJIT.AOT should resolve the fixture entry function"), EntryFunction))
+	if (!Test.TestNotNull(TEXT("StaticJIT.AOT should resolve the fixture entry function"), EntryFunction))
 	{
 		return false;
 	}
 
 	uint32 FunctionId = 0;
-	if (!TestTrue(TEXT("StaticJIT.AOT should map the fixture function to a StaticJIT function id"), FStaticJITDiagnostics::ResolveFunctionId(Engine, EntryFunction, FunctionId)))
+	if (!Test.TestTrue(TEXT("StaticJIT.AOT should map the fixture function to a StaticJIT function id"), FStaticJITDiagnostics::ResolveFunctionId(Engine, EntryFunction, FunctionId)))
 	{
 		return false;
 	}
 
-	TestTrue(TEXT("StaticJIT.AOT should register generated C++ for the fixture function id"), FStaticJITDiagnostics::IsFunctionRegistered(FunctionId));
-	TestTrue(TEXT("StaticJIT.AOT should attach a non-null jitFunction to the fixture entry function"), EntryFunction->jitFunction != nullptr);
+	Test.TestTrue(TEXT("StaticJIT.AOT should register generated C++ for the fixture function id"), FStaticJITDiagnostics::IsFunctionRegistered(FunctionId));
+	Test.TestTrue(TEXT("StaticJIT.AOT should attach a non-null jitFunction to the fixture entry function"), EntryFunction->jitFunction != nullptr);
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITAotRuntimeExecutionTest,
-	"Angelscript.TestModule.StaticJIT.AOT.RuntimeExecuteUsesGeneratedEntry",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptStaticJITAotRuntimeExecutionTest::RunTest(const FString& Parameters)
+bool RunRuntimeExecution(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AOT_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngineScope EngineScope(Engine);
 
-	if (!LoadAotFixtureFromPrecompiledData(*this, Engine))
+	if (!LoadAotFixtureFromPrecompiledData(Test, Engine))
 	{
 		return false;
 	}
 
 	asCScriptFunction* EntryFunction = FindEntryFunction(Engine);
-	if (!TestNotNull(TEXT("StaticJIT.AOT should resolve the fixture entry function before execution"), EntryFunction))
+	if (!Test.TestNotNull(TEXT("StaticJIT.AOT should resolve the fixture entry function before execution"), EntryFunction))
 	{
 		return false;
 	}
 
 	uint32 FunctionId = 0;
-	if (!TestTrue(TEXT("StaticJIT.AOT should expose the fixture StaticJIT function id before execution"), FStaticJITDiagnostics::ResolveFunctionId(Engine, EntryFunction, FunctionId)))
+	if (!Test.TestTrue(TEXT("StaticJIT.AOT should expose the fixture StaticJIT function id before execution"), FStaticJITDiagnostics::ResolveFunctionId(Engine, EntryFunction, FunctionId)))
 	{
 		return false;
 	}
@@ -342,7 +330,7 @@ bool FAngelscriptStaticJITAotRuntimeExecutionTest::RunTest(const FString& Parame
 	FStaticJITDiagnostics::ResetEntryCounters();
 
 	asIScriptContext* Context = Engine.GetScriptEngine()->CreateContext();
-	if (!TestNotNull(TEXT("StaticJIT.AOT should create an execution context"), Context))
+	if (!Test.TestNotNull(TEXT("StaticJIT.AOT should create an execution context"), Context))
 	{
 		return false;
 	}
@@ -351,39 +339,34 @@ bool FAngelscriptStaticJITAotRuntimeExecutionTest::RunTest(const FString& Parame
 		Context->Release();
 	};
 
-	if (!TestEqual(TEXT("StaticJIT.AOT should prepare the fixture entry function"), Context->Prepare(EntryFunction), asSUCCESS))
+	if (!Test.TestEqual(TEXT("StaticJIT.AOT should prepare the fixture entry function"), Context->Prepare(EntryFunction), asSUCCESS))
 	{
 		return false;
 	}
 
-	if (!TestEqual(TEXT("StaticJIT.AOT should execute the fixture entry function"), Context->Execute(), asEXECUTION_FINISHED))
+	if (!Test.TestEqual(TEXT("StaticJIT.AOT should execute the fixture entry function"), Context->Execute(), asEXECUTION_FINISHED))
 	{
 		return false;
 	}
 
-	TestEqual(TEXT("StaticJIT.AOT should return the expected fixture result"), static_cast<int32>(Context->GetReturnDWord()), AngelscriptStaticJITAotFixture::GetExpectedEntryResult());
-	TestEqual(TEXT("StaticJIT.AOT should mark exactly one generated entry execution"), FStaticJITDiagnostics::GetEntryCount(FunctionId), 1);
+	Test.TestEqual(TEXT("StaticJIT.AOT should return the expected fixture result"), static_cast<int32>(Context->GetReturnDWord()), AngelscriptStaticJITAotFixture::GetExpectedEntryResult());
+	Test.TestEqual(TEXT("StaticJIT.AOT should mark exactly one generated entry execution"), FStaticJITDiagnostics::GetEntryCount(FunctionId), 1);
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITAotUASFunctionJitEntryAttachmentTest,
-	"Angelscript.TestModule.StaticJIT.AOT.UASFunctionDispatch.ExposesJitEntries",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptStaticJITAotUASFunctionJitEntryAttachmentTest::RunTest(const FString& Parameters)
+bool RunUASFunctionJitEntryAttachment(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AOT_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngineScope EngineScope(Engine);
 
-	if (!LoadAotFixtureFromPrecompiledData(*this, Engine))
+	if (!LoadAotFixtureFromPrecompiledData(Test, Engine))
 	{
 		return false;
 	}
 
 	UClass* GeneratedClass = FindGeneratedClass(&Engine, AngelscriptStaticJITAotFixture::GetGeneratedClassName());
-	if (!TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should generate the fixture class"), GeneratedClass))
+	if (!Test.TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should generate the fixture class"), GeneratedClass))
 	{
 		return false;
 	}
@@ -399,7 +382,7 @@ bool FAngelscriptStaticJITAotUASFunctionJitEntryAttachmentTest::RunTest(const FS
 	for (const TPair<FString, const TCHAR*>& MethodCase : MethodCases)
 	{
 		uint32 FunctionId = 0;
-		if (!RequireJitEntries(*this, Engine, FindMethodFunction(*this, Engine, MethodCase.Key), MethodCase.Value, FunctionId))
+		if (!RequireJitEntries(Test, Engine, FindMethodFunction(Test, Engine, MethodCase.Key), MethodCase.Value, FunctionId))
 		{
 			return false;
 		}
@@ -407,9 +390,9 @@ bool FAngelscriptStaticJITAotUASFunctionJitEntryAttachmentTest::RunTest(const FS
 
 	uint32 StaticFunctionId = 0;
 	if (!RequireJitEntries(
-			*this,
+			Test,
 			Engine,
-			FindGlobalFunction(*this, Engine, AngelscriptStaticJITAotFixture::GetStaticWorldContextDeclaration()),
+			FindGlobalFunction(Test, Engine, AngelscriptStaticJITAotFixture::GetStaticWorldContextDeclaration()),
 			TEXT("static world-context function"),
 			StaticFunctionId))
 	{
@@ -419,30 +402,25 @@ bool FAngelscriptStaticJITAotUASFunctionJitEntryAttachmentTest::RunTest(const FS
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITAotUASFunctionRuntimeCallEventTest,
-	"Angelscript.TestModule.StaticJIT.AOT.UASFunctionDispatch.RuntimeCallEventUsesGeneratedJit",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptStaticJITAotUASFunctionRuntimeCallEventTest::RunTest(const FString& Parameters)
+bool RunUASFunctionRuntimeCallEvent(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AOT_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngineScope EngineScope(Engine);
 
-	if (!LoadAotFixtureFromPrecompiledData(*this, Engine))
+	if (!LoadAotFixtureFromPrecompiledData(Test, Engine))
 	{
 		return false;
 	}
 
 	UClass* GeneratedClass = FindGeneratedClass(&Engine, AngelscriptStaticJITAotFixture::GetGeneratedClassName());
-	if (!TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should generate the fixture class"), GeneratedClass))
+	if (!Test.TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should generate the fixture class"), GeneratedClass))
 	{
 		return false;
 	}
 
 	UObject* Instance = NewObject<UObject>(GetTransientPackage(), GeneratedClass, TEXT("StaticJITAotFunctionCarrierInstance"));
-	if (!TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should instantiate the fixture class"), Instance))
+	if (!Test.TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should instantiate the fixture class"), Instance))
 	{
 		return false;
 	}
@@ -451,10 +429,10 @@ bool FAngelscriptStaticJITAotUASFunctionRuntimeCallEventTest::RunTest(const FStr
 	UASFunction* ReturnPrimitiveFunction = Cast<UASFunction>(FindGeneratedFunction(GeneratedClass, TEXT("ReturnPrimitive")));
 	UASFunction* BumpReferenceFunction = Cast<UASFunction>(FindGeneratedFunction(GeneratedClass, TEXT("BumpReference")));
 	UASFunction* ReturnSelfObjectFunction = Cast<UASFunction>(FindGeneratedFunction(GeneratedClass, TEXT("ReturnSelfObject")));
-	if (!TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose StorePrimitiveArg"), StorePrimitiveArgFunction)
-		|| !TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose ReturnPrimitive"), ReturnPrimitiveFunction)
-		|| !TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose BumpReference"), BumpReferenceFunction)
-		|| !TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose ReturnSelfObject"), ReturnSelfObjectFunction))
+	if (!Test.TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose StorePrimitiveArg"), StorePrimitiveArgFunction)
+		|| !Test.TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose ReturnPrimitive"), ReturnPrimitiveFunction)
+		|| !Test.TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose BumpReference"), BumpReferenceFunction)
+		|| !Test.TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose ReturnSelfObject"), ReturnSelfObjectFunction))
 	{
 		return false;
 	}
@@ -463,10 +441,10 @@ bool FAngelscriptStaticJITAotUASFunctionRuntimeCallEventTest::RunTest(const FStr
 	uint32 ReturnPrimitiveId = 0;
 	uint32 BumpReferenceId = 0;
 	uint32 ReturnSelfObjectId = 0;
-	if (!RequireJitEntries(*this, Engine, FindMethodFunction(*this, Engine, AngelscriptStaticJITAotFixture::GetMethodPrimitiveArgDeclaration()), TEXT("primitive argument method"), StorePrimitiveArgId)
-		|| !RequireJitEntries(*this, Engine, FindMethodFunction(*this, Engine, AngelscriptStaticJITAotFixture::GetMethodPrimitiveReturnDeclaration()), TEXT("primitive return method"), ReturnPrimitiveId)
-		|| !RequireJitEntries(*this, Engine, FindMethodFunction(*this, Engine, AngelscriptStaticJITAotFixture::GetMethodReferenceDeclaration()), TEXT("reference writeback method"), BumpReferenceId)
-		|| !RequireJitEntries(*this, Engine, FindMethodFunction(*this, Engine, AngelscriptStaticJITAotFixture::GetMethodObjectReturnDeclaration()), TEXT("object return method"), ReturnSelfObjectId))
+	if (!RequireJitEntries(Test, Engine, FindMethodFunction(Test, Engine, AngelscriptStaticJITAotFixture::GetMethodPrimitiveArgDeclaration()), TEXT("primitive argument method"), StorePrimitiveArgId)
+		|| !RequireJitEntries(Test, Engine, FindMethodFunction(Test, Engine, AngelscriptStaticJITAotFixture::GetMethodPrimitiveReturnDeclaration()), TEXT("primitive return method"), ReturnPrimitiveId)
+		|| !RequireJitEntries(Test, Engine, FindMethodFunction(Test, Engine, AngelscriptStaticJITAotFixture::GetMethodReferenceDeclaration()), TEXT("reference writeback method"), BumpReferenceId)
+		|| !RequireJitEntries(Test, Engine, FindMethodFunction(Test, Engine, AngelscriptStaticJITAotFixture::GetMethodObjectReturnDeclaration()), TEXT("object return method"), ReturnSelfObjectId))
 	{
 		return false;
 	}
@@ -477,82 +455,77 @@ bool FAngelscriptStaticJITAotUASFunctionRuntimeCallEventTest::RunTest(const FStr
 	PrimitiveArgParams.Value = 41;
 	StorePrimitiveArgFunction->RuntimeCallEvent(Instance, &PrimitiveArgParams);
 	FIntProperty* StoredValueProperty = FindFProperty<FIntProperty>(GeneratedClass, TEXT("StoredValue"));
-	if (!TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose StoredValue"), StoredValueProperty))
+	if (!Test.TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose StoredValue"), StoredValueProperty))
 	{
 		return false;
 	}
-	TestEqual(TEXT("RuntimeCallEvent JIT primitive arg should update object state"), StoredValueProperty->GetPropertyValue_InContainer(Instance), AngelscriptStaticJITAotFixture::GetExpectedPrimitiveArgStoredValue());
-	TestEqual(TEXT("RuntimeCallEvent primitive arg should mark generated JIT entry"), FStaticJITDiagnostics::GetEntryCount(StorePrimitiveArgId), 1);
+	Test.TestEqual(TEXT("RuntimeCallEvent JIT primitive arg should update object state"), StoredValueProperty->GetPropertyValue_InContainer(Instance), AngelscriptStaticJITAotFixture::GetExpectedPrimitiveArgStoredValue());
+	Test.TestEqual(TEXT("RuntimeCallEvent primitive arg should mark generated JIT entry"), FStaticJITDiagnostics::GetEntryCount(StorePrimitiveArgId), 1);
 
 	FStructOnScope PrimitiveReturnParams(ReturnPrimitiveFunction);
 	ReturnPrimitiveFunction->RuntimeCallEvent(Instance, PrimitiveReturnParams.GetStructMemory());
 	FIntProperty* PrimitiveReturnProperty = CastField<FIntProperty>(ReturnPrimitiveFunction->GetReturnProperty());
-	if (!TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose primitive return property"), PrimitiveReturnProperty))
+	if (!Test.TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose primitive return property"), PrimitiveReturnProperty))
 	{
 		return false;
 	}
-	TestEqual(TEXT("RuntimeCallEvent JIT primitive return should write reflected return value"), PrimitiveReturnProperty->GetPropertyValue_InContainer(PrimitiveReturnParams.GetStructMemory()), AngelscriptStaticJITAotFixture::GetExpectedPrimitiveReturnValue());
-	TestEqual(TEXT("RuntimeCallEvent primitive return should mark generated JIT entry"), FStaticJITDiagnostics::GetEntryCount(ReturnPrimitiveId), 1);
+	Test.TestEqual(TEXT("RuntimeCallEvent JIT primitive return should write reflected return value"), PrimitiveReturnProperty->GetPropertyValue_InContainer(PrimitiveReturnParams.GetStructMemory()), AngelscriptStaticJITAotFixture::GetExpectedPrimitiveReturnValue());
+	Test.TestEqual(TEXT("RuntimeCallEvent primitive return should mark generated JIT entry"), FStaticJITDiagnostics::GetEntryCount(ReturnPrimitiveId), 1);
 
 	FReferenceParams ReferenceParams;
 	ReferenceParams.Value = 13;
 	BumpReferenceFunction->RuntimeCallEvent(Instance, &ReferenceParams);
-	TestEqual(TEXT("RuntimeCallEvent JIT reference arg should write back parameter memory"), ReferenceParams.Value, AngelscriptStaticJITAotFixture::GetExpectedReferenceReturnValue());
-	TestEqual(TEXT("RuntimeCallEvent JIT reference arg should write reflected return value"), ReferenceParams.ReturnValue, AngelscriptStaticJITAotFixture::GetExpectedReferenceReturnValue());
-	TestEqual(TEXT("RuntimeCallEvent reference arg should mark generated JIT entry"), FStaticJITDiagnostics::GetEntryCount(BumpReferenceId), 1);
+	Test.TestEqual(TEXT("RuntimeCallEvent JIT reference arg should write back parameter memory"), ReferenceParams.Value, AngelscriptStaticJITAotFixture::GetExpectedReferenceReturnValue());
+	Test.TestEqual(TEXT("RuntimeCallEvent JIT reference arg should write reflected return value"), ReferenceParams.ReturnValue, AngelscriptStaticJITAotFixture::GetExpectedReferenceReturnValue());
+	Test.TestEqual(TEXT("RuntimeCallEvent reference arg should mark generated JIT entry"), FStaticJITDiagnostics::GetEntryCount(BumpReferenceId), 1);
 
 	FStructOnScope ObjectReturnParams(ReturnSelfObjectFunction);
 	ReturnSelfObjectFunction->RuntimeCallEvent(Instance, ObjectReturnParams.GetStructMemory());
 	FObjectProperty* ObjectReturnProperty = CastField<FObjectProperty>(ReturnSelfObjectFunction->GetReturnProperty());
-	if (!TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose object return property"), ObjectReturnProperty))
+	if (!Test.TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose object return property"), ObjectReturnProperty))
 	{
 		return false;
 	}
-	TestTrue(TEXT("RuntimeCallEvent JIT object return should preserve object identity"), ObjectReturnProperty->GetObjectPropertyValue_InContainer(ObjectReturnParams.GetStructMemory()) == Instance);
-	TestEqual(TEXT("RuntimeCallEvent object return should mark generated JIT entry"), FStaticJITDiagnostics::GetEntryCount(ReturnSelfObjectId), 1);
+	Test.TestTrue(TEXT("RuntimeCallEvent JIT object return should preserve object identity"), ObjectReturnProperty->GetObjectPropertyValue_InContainer(ObjectReturnParams.GetStructMemory()) == Instance);
+	Test.TestEqual(TEXT("RuntimeCallEvent object return should mark generated JIT entry"), FStaticJITDiagnostics::GetEntryCount(ReturnSelfObjectId), 1);
 
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITAotStaticWorldContextRuntimeCallEventTest,
-	"Angelscript.TestModule.StaticJIT.AOT.UASFunctionDispatch.StaticWorldContextUsesGeneratedJit",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptStaticJITAotStaticWorldContextRuntimeCallEventTest::RunTest(const FString& Parameters)
+bool RunStaticWorldContextRuntimeCallEvent(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AOT_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngineScope EngineScope(Engine);
 
-	if (!LoadAotFixtureFromPrecompiledData(*this, Engine))
+	if (!LoadAotFixtureFromPrecompiledData(Test, Engine))
 	{
 		return false;
 	}
 
 	UClass* StaticsClass = FindGeneratedClass(&Engine, TEXT("UModule_ASStaticJITAotFixtureStatics"));
-	if (!TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should generate the fixture statics class"), StaticsClass))
+	if (!Test.TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should generate the fixture statics class"), StaticsClass))
 	{
 		return false;
 	}
 
 	UClass* GeneratedClass = FindGeneratedClass(&Engine, AngelscriptStaticJITAotFixture::GetGeneratedClassName());
-	if (!TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should generate the fixture class for world context"), GeneratedClass))
+	if (!Test.TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should generate the fixture class for world context"), GeneratedClass))
 	{
 		return false;
 	}
 
 	UASFunction* StaticWorldContextFunction = Cast<UASFunction>(FindGeneratedFunction(StaticsClass, TEXT("StaticWorldContextCheck")));
-	if (!TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose StaticWorldContextCheck"), StaticWorldContextFunction))
+	if (!Test.TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should expose StaticWorldContextCheck"), StaticWorldContextFunction))
 	{
 		return false;
 	}
 
 	uint32 StaticWorldContextId = 0;
 	if (!RequireJitEntries(
-			*this,
+			Test,
 			Engine,
-			FindGlobalFunction(*this, Engine, AngelscriptStaticJITAotFixture::GetStaticWorldContextDeclaration()),
+			FindGlobalFunction(Test, Engine, AngelscriptStaticJITAotFixture::GetStaticWorldContextDeclaration()),
 			TEXT("static world-context function"),
 			StaticWorldContextId))
 	{
@@ -562,7 +535,7 @@ bool FAngelscriptStaticJITAotStaticWorldContextRuntimeCallEventTest::RunTest(con
 	FStaticJITDiagnostics::ResetEntryCounters();
 
 	UObject* WorldContextObject = NewObject<UObject>(GetTransientPackage(), GeneratedClass, TEXT("StaticJITAotWorldContextObject"));
-	if (!TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should instantiate a concrete world-context object"), WorldContextObject))
+	if (!Test.TestNotNull(TEXT("StaticJIT.AOT UASFunction dispatch should instantiate a concrete world-context object"), WorldContextObject))
 	{
 		return false;
 	}
@@ -572,17 +545,12 @@ bool FAngelscriptStaticJITAotStaticWorldContextRuntimeCallEventTest::RunTest(con
 	Params.Value = 31;
 	StaticWorldContextFunction->RuntimeCallEvent(StaticsClass->GetDefaultObject(), &Params);
 
-	TestEqual(TEXT("RuntimeCallEvent JIT static world-context should preserve script result"), Params.ReturnValue, AngelscriptStaticJITAotFixture::GetExpectedStaticWorldContextResult());
-	TestEqual(TEXT("RuntimeCallEvent static world-context should mark generated JIT entry"), FStaticJITDiagnostics::GetEntryCount(StaticWorldContextId), 1);
+	Test.TestEqual(TEXT("RuntimeCallEvent JIT static world-context should preserve script result"), Params.ReturnValue, AngelscriptStaticJITAotFixture::GetExpectedStaticWorldContextResult());
+	Test.TestEqual(TEXT("RuntimeCallEvent static world-context should mark generated JIT entry"), FStaticJITDiagnostics::GetEntryCount(StaticWorldContextId), 1);
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITAotMultiEngineSequentialLoadTest,
-	"Angelscript.TestModule.StaticJIT.AOT.MultiEngine.SequentialLoadsKeepGeneratedRegistryVisible",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptStaticJITAotMultiEngineSequentialLoadTest::RunTest(const FString& Parameters)
+bool RunMultiEngineSequentialLoad(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AOT_Private;
 	for (int32 Index = 0; Index < 2; ++Index)
@@ -590,24 +558,24 @@ bool FAngelscriptStaticJITAotMultiEngineSequentialLoadTest::RunTest(const FStrin
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		FAngelscriptEngineScope EngineScope(Engine);
 
-		if (!LoadAotFixtureFromPrecompiledData(*this, Engine))
+		if (!LoadAotFixtureFromPrecompiledData(Test, Engine))
 		{
 			return false;
 		}
 
 		asCScriptFunction* EntryFunction = FindEntryFunction(Engine);
-		if (!TestNotNull(*FString::Printf(TEXT("StaticJIT.AOT multi-engine pass %d should resolve the fixture entry function"), Index), EntryFunction))
+		if (!Test.TestNotNull(*FString::Printf(TEXT("StaticJIT.AOT multi-engine pass %d should resolve the fixture entry function"), Index), EntryFunction))
 		{
 			return false;
 		}
 
 		uint32 FunctionId = 0;
-		if (!TestTrue(*FString::Printf(TEXT("StaticJIT.AOT multi-engine pass %d should expose the fixture function id"), Index), FStaticJITDiagnostics::ResolveFunctionId(Engine, EntryFunction, FunctionId)))
+		if (!Test.TestTrue(*FString::Printf(TEXT("StaticJIT.AOT multi-engine pass %d should expose the fixture function id"), Index), FStaticJITDiagnostics::ResolveFunctionId(Engine, EntryFunction, FunctionId)))
 		{
 			return false;
 		}
 
-		if (!TestTrue(*FString::Printf(TEXT("StaticJIT.AOT multi-engine pass %d should keep generated registry visible"), Index), FStaticJITDiagnostics::IsFunctionRegistered(FunctionId)))
+		if (!Test.TestTrue(*FString::Printf(TEXT("StaticJIT.AOT multi-engine pass %d should keep generated registry visible"), Index), FStaticJITDiagnostics::IsFunctionRegistered(FunctionId)))
 		{
 			return false;
 		}
@@ -615,5 +583,64 @@ bool FAngelscriptStaticJITAotMultiEngineSequentialLoadTest::RunTest(const FStrin
 
 	return true;
 }
+
+}
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITAotTests,
+	"Angelscript.TestModule.StaticJIT.AOT",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(GeneratedOutputVerify)
+	{
+		using namespace AngelscriptTest_StaticJIT_AOT_Private;
+		ASSERT_THAT(IsTrue(RunGeneratedOutputVerify(*TestRunner)));
+	}
+
+	TEST_METHOD(RuntimeRegistersGeneratedFunction)
+	{
+		using namespace AngelscriptTest_StaticJIT_AOT_Private;
+		ASSERT_THAT(IsTrue(RunRuntimeRegistration(*TestRunner)));
+	}
+
+	TEST_METHOD(RuntimeExecuteUsesGeneratedEntry)
+	{
+		using namespace AngelscriptTest_StaticJIT_AOT_Private;
+		ASSERT_THAT(IsTrue(RunRuntimeExecution(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITAotUASFunctionDispatchTests,
+	"Angelscript.TestModule.StaticJIT.AOT.UASFunctionDispatch",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(ExposesJitEntries)
+	{
+		using namespace AngelscriptTest_StaticJIT_AOT_Private;
+		ASSERT_THAT(IsTrue(RunUASFunctionJitEntryAttachment(*TestRunner)));
+	}
+
+	TEST_METHOD(RuntimeCallEventUsesGeneratedJit)
+	{
+		using namespace AngelscriptTest_StaticJIT_AOT_Private;
+		ASSERT_THAT(IsTrue(RunUASFunctionRuntimeCallEvent(*TestRunner)));
+	}
+
+	TEST_METHOD(StaticWorldContextUsesGeneratedJit)
+	{
+		using namespace AngelscriptTest_StaticJIT_AOT_Private;
+		ASSERT_THAT(IsTrue(RunStaticWorldContextRuntimeCallEvent(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITAotMultiEngineTests,
+	"Angelscript.TestModule.StaticJIT.AOT.MultiEngine",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(SequentialLoadsKeepGeneratedRegistryVisible)
+	{
+		using namespace AngelscriptTest_StaticJIT_AOT_Private;
+		ASSERT_THAT(IsTrue(RunMultiEngineSequentialLoad(*TestRunner)));
+	}
+};
 
 #endif

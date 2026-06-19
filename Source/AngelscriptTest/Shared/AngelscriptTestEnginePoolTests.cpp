@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptTestEnginePool.h"
 
 #include "AngelscriptTestEngineHelper.h"
@@ -11,35 +12,11 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEnginePoolPrewarmCachesBindDatabaseTest,
-	"Angelscript.TestModule.Shared.TestEnginePool.PrewarmCachesBindDatabase",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEnginePoolModuleCleanDiscardsOnlyDeltaTest,
-	"Angelscript.TestModule.Shared.TestEnginePool.ModuleCleanDiscardsOnlyDelta",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEnginePoolGeneratedClassCleanupIsBoundedTest,
-	"Angelscript.TestModule.Shared.TestEnginePool.GeneratedClassCleanupIsBounded",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEnginePoolGeneratedStructCleanupIsBoundedTest,
-	"Angelscript.TestModule.Shared.TestEnginePool.GeneratedStructCleanupIsBounded",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEnginePoolGeneratedEnumDelegateCleanupIsBoundedTest,
-	"Angelscript.TestModule.Shared.TestEnginePool.GeneratedEnumDelegateCleanupIsBounded",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTestEnginePoolGeneratedClassActionCacheIsClearedTest,
-	"Angelscript.TestModule.Shared.TestEnginePool.GeneratedClassActionCacheIsCleared",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define TestNull(...) Test.TestNull(__VA_ARGS__)
 
 namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private
 {
@@ -58,7 +35,7 @@ namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private
 }
 
 
-bool FAngelscriptTestEnginePoolPrewarmCachesBindDatabaseTest::RunTest(const FString& Parameters)
+static bool RunPrewarmCachesBindDatabase(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private;
 	ShutdownTestEnginePool();
@@ -82,7 +59,7 @@ bool FAngelscriptTestEnginePoolPrewarmCachesBindDatabaseTest::RunTest(const FStr
 	return true;
 }
 
-bool FAngelscriptTestEnginePoolModuleCleanDiscardsOnlyDeltaTest::RunTest(const FString& Parameters)
+static bool RunModuleCleanDiscardsOnlyDelta(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private;
 	ShutdownTestEnginePool();
@@ -90,7 +67,7 @@ bool FAngelscriptTestEnginePoolModuleCleanDiscardsOnlyDeltaTest::RunTest(const F
 
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 		asIScriptModule* Module = BuildModule(
-			*this,
+			Test,
 			Engine,
 			"PoolDeltaModule",
 			TEXT("int Entry() { return 12; }"));
@@ -110,7 +87,7 @@ bool FAngelscriptTestEnginePoolModuleCleanDiscardsOnlyDeltaTest::RunTest(const F
 	return true;
 }
 
-bool FAngelscriptTestEnginePoolGeneratedClassCleanupIsBoundedTest::RunTest(const FString& Parameters)
+static bool RunGeneratedClassCleanupIsBounded(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private;
 	ShutdownTestEnginePool();
@@ -153,7 +130,7 @@ class UPoolGeneratedClassObject : UObject
 	return true;
 }
 
-bool FAngelscriptTestEnginePoolGeneratedStructCleanupIsBoundedTest::RunTest(const FString& Parameters)
+static bool RunGeneratedStructCleanupIsBounded(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private;
 	static const FName GeneratedStructName(TEXT("PoolGeneratedStruct"));
@@ -205,7 +182,7 @@ struct FPoolGeneratedStruct
 		&& Metrics.LastDetachedStructCount >= 1;
 }
 
-bool FAngelscriptTestEnginePoolGeneratedEnumDelegateCleanupIsBoundedTest::RunTest(const FString& Parameters)
+static bool RunGeneratedEnumDelegateCleanupIsBounded(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private;
 	ShutdownTestEnginePool();
@@ -307,7 +284,7 @@ event void FPoolGeneratedEvent(int Value);
 		&& Metrics.LastDiscardedDelegateFunctionCount >= 2;
 }
 
-bool FAngelscriptTestEnginePoolGeneratedClassActionCacheIsClearedTest::RunTest(const FString& Parameters)
+static bool RunGeneratedClassActionCacheIsCleared(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private;
 	ShutdownTestEnginePool();
@@ -365,5 +342,47 @@ class UPoolGeneratedClassActionCacheObject : UObject
 		&& FoundGeneratedClassByPath == nullptr
 		&& Metrics.LastBlueprintActionCacheClearedCount >= 1;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+#undef TestNull
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptTestEnginePoolTests,
+	"Angelscript.TestModule.Shared.TestEnginePool",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(PrewarmCachesBindDatabase)
+	{
+		ASSERT_THAT(IsTrue(RunPrewarmCachesBindDatabase(*TestRunner)));
+	}
+
+	TEST_METHOD(ModuleCleanDiscardsOnlyDelta)
+	{
+		ASSERT_THAT(IsTrue(RunModuleCleanDiscardsOnlyDelta(*TestRunner)));
+	}
+
+	TEST_METHOD(GeneratedClassCleanupIsBounded)
+	{
+		ASSERT_THAT(IsTrue(RunGeneratedClassCleanupIsBounded(*TestRunner)));
+	}
+
+	TEST_METHOD(GeneratedStructCleanupIsBounded)
+	{
+		ASSERT_THAT(IsTrue(RunGeneratedStructCleanupIsBounded(*TestRunner)));
+	}
+
+	TEST_METHOD(GeneratedEnumDelegateCleanupIsBounded)
+	{
+		ASSERT_THAT(IsTrue(RunGeneratedEnumDelegateCleanupIsBounded(*TestRunner)));
+	}
+
+	TEST_METHOD(GeneratedClassActionCacheIsCleared)
+	{
+		ASSERT_THAT(IsTrue(RunGeneratedClassActionCacheIsCleared(*TestRunner)));
+	}
+};
 
 #endif

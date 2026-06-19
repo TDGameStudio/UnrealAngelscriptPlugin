@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "Core/AngelscriptEditorModule.h"
 
 #include "ClassGenerator/ASClass.h"
@@ -18,21 +19,6 @@
 #include "UObject/UObjectGlobals.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorModuleShowCreateBlueprintPopupSeedsDialogDefaultsTest,
-	"Angelscript.Editor.Module.ShowCreateBlueprintPopupSeedsDialogFromScriptPathAndAssetKind",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorModuleShowCreateBlueprintPopupRejectsInvalidDialogObjectPathTest,
-	"Angelscript.TestModule.Editor.Module.ShowCreateBlueprintPopupRejectsInvalidDialogObjectPathBeforePackageCreation",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorModuleShowCreateBlueprintPopupBlueprintFactoryFailureTest,
-	"Angelscript.Editor.Module.ShowCreateBlueprintPopupDoesNotPromptSaveOrOpenEditorWhenBlueprintFactoryFails",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleAssetCreationTests_Private
 {
@@ -178,7 +164,11 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleAssetCreationTe
 }
 
 
-bool FAngelscriptEditorModuleShowCreateBlueprintPopupSeedsDialogDefaultsTest::RunTest(const FString& Parameters)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+
+static bool RunShowCreateBlueprintPopupSeedsDialogFromScriptPathAndAssetKind(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleAssetCreationTests_Private;
 	FCreateBlueprintPopupDefaultsCallLog CallLog;
@@ -204,13 +194,13 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupSeedsDialogDefaultsTest::Ru
 	EngineScope = MakeUnique<FAngelscriptEngineScope>(*Engine);
 
 	if (!CompilePopupScriptModuleWithRelativePath(
-			*this,
+			Test,
 			*Engine,
 			TEXT("ASEditorPopupDefaultBlueprint"),
 			TEXT("Gameplay/Enemies/Boss/BossLogic.as"),
 			TEXT(R"AS(UCLASS() class ABossPopupBlueprintScript : AActor {})AS"))
 		|| !CompilePopupScriptModuleWithRelativePath(
-			*this,
+			Test,
 			*Engine,
 			TEXT("ASEditorPopupDefaultDataAsset"),
 			TEXT("Gameplay/Enemies/Boss/BossData.as"),
@@ -219,8 +209,8 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupSeedsDialogDefaultsTest::Ru
 		return false;
 	}
 
-	UASClass* const BlueprintScriptClass = FindPopupScriptClass(*this, *Engine, TEXT("ABossPopupBlueprintScript"));
-	UASClass* const DataAssetScriptClass = FindPopupScriptClass(*this, *Engine, TEXT("UBossPopupDataAssetScript"));
+	UASClass* const BlueprintScriptClass = FindPopupScriptClass(Test, *Engine, TEXT("ABossPopupBlueprintScript"));
+	UASClass* const DataAssetScriptClass = FindPopupScriptClass(Test, *Engine, TEXT("UBossPopupDataAssetScript"));
 	if (BlueprintScriptClass == nullptr || DataAssetScriptClass == nullptr)
 	{
 		return false;
@@ -292,7 +282,7 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupSeedsDialogDefaultsTest::Ru
 	return true;
 }
 
-bool FAngelscriptEditorModuleShowCreateBlueprintPopupRejectsInvalidDialogObjectPathTest::RunTest(const FString& Parameters)
+static bool RunShowCreateBlueprintPopupRejectsInvalidDialogObjectPathBeforePackageCreation(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleAssetCreationTests_Private;
 	FCreateBlueprintPopupInvalidObjectPathCallLog CallLog;
@@ -319,7 +309,7 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupRejectsInvalidDialogObjectP
 	FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath().Unbind();
 
 	if (!CompilePopupScriptModuleWithRelativePath(
-			*this,
+			Test,
 			*Engine,
 			TEXT("ASEditorPopupInvalidDialogPath"),
 			TEXT("Gameplay/Enemies/Boss/InvalidDialogPath.as"),
@@ -328,7 +318,7 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupRejectsInvalidDialogObjectP
 		return false;
 	}
 
-	UASClass* const BlueprintScriptClass = FindPopupScriptClass(*this, *Engine, TEXT("AInvalidDialogPopupBlueprintScript"));
+	UASClass* const BlueprintScriptClass = FindPopupScriptClass(Test, *Engine, TEXT("AInvalidDialogPopupBlueprintScript"));
 	if (BlueprintScriptClass == nullptr)
 	{
 		return false;
@@ -425,7 +415,7 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupRejectsInvalidDialogObjectP
 	return bPassed;
 }
 
-bool FAngelscriptEditorModuleShowCreateBlueprintPopupBlueprintFactoryFailureTest::RunTest(const FString& Parameters)
+static bool RunShowCreateBlueprintPopupDoesNotPromptSaveOrOpenEditorWhenBlueprintFactoryFails(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleAssetCreationTests_Private;
 	FCreateBlueprintPopupFactoryFailureCallLog CallLog;
@@ -464,7 +454,7 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupBlueprintFactoryFailureTest
 	FAngelscriptEditorDebugBridge::GetEditorGetCreateBlueprintDefaultAssetPath().Unbind();
 
 	if (!CompilePopupScriptModuleWithRelativePath(
-			*this,
+			Test,
 			*Engine,
 			TEXT("ASEditorPopupBlueprintFactoryFailure"),
 			TEXT("Gameplay/Enemies/Boss/BlueprintFactoryFailure.as"),
@@ -473,7 +463,7 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupBlueprintFactoryFailureTest
 		return false;
 	}
 
-	UASClass* const BlueprintScriptClass = FindPopupScriptClass(*this, *Engine, TEXT("ABlueprintFactoryFailurePopupScript"));
+	UASClass* const BlueprintScriptClass = FindPopupScriptClass(Test, *Engine, TEXT("ABlueprintFactoryFailurePopupScript"));
 	if (BlueprintScriptClass == nullptr)
 	{
 		return false;
@@ -534,5 +524,36 @@ bool FAngelscriptEditorModuleShowCreateBlueprintPopupBlueprintFactoryFailureTest
 
 	return bPassed;
 }
+
+#undef TestTrue
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorModuleAssetCreationTests,
+	"Angelscript.Editor.Module",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(ShowCreateBlueprintPopupSeedsDialogFromScriptPathAndAssetKind)
+	{
+		ASSERT_THAT(IsTrue(RunShowCreateBlueprintPopupSeedsDialogFromScriptPathAndAssetKind(*TestRunner)));
+	}
+
+	TEST_METHOD(ShowCreateBlueprintPopupDoesNotPromptSaveOrOpenEditorWhenBlueprintFactoryFails)
+	{
+		ASSERT_THAT(IsTrue(RunShowCreateBlueprintPopupDoesNotPromptSaveOrOpenEditorWhenBlueprintFactoryFails(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorModuleAssetCreationTestModuleTests,
+	"Angelscript.TestModule.Editor.Module",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(ShowCreateBlueprintPopupRejectsInvalidDialogObjectPathBeforePackageCreation)
+	{
+		ASSERT_THAT(IsTrue(RunShowCreateBlueprintPopupRejectsInvalidDialogObjectPathBeforePackageCreation(*TestRunner)));
+	}
+};
 
 #endif

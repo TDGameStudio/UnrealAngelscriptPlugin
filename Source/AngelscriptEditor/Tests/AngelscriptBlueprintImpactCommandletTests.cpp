@@ -5,6 +5,7 @@
 #include "Core/AngelscriptRuntimeModule.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "CQTest.h"
 #include "HAL/FileManager.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
@@ -13,16 +14,6 @@
 #include "Misc/ScopeExit.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactCommandletMergeChangedScriptsTest,
-	"Angelscript.Editor.BlueprintImpact.CommandletMergesInlineAndFileChangedScripts",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactCommandletFailedAssetLoadsReturnExitCode3Test,
-	"Angelscript.Editor.BlueprintImpact.CommandletFailedAssetLoadsReturnExitCode3",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactCommandletTests_Private
 {
@@ -55,8 +46,11 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactCommandletTe
 	}
 }
 
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 
-bool FAngelscriptBlueprintImpactCommandletMergeChangedScriptsTest::RunTest(const FString& Parameters)
+static bool RunCommandletMergesInlineAndFileChangedScripts(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactCommandletTests_Private;
 	const FString TempDirectory = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("BlueprintImpact"));
@@ -177,7 +171,7 @@ bool FAngelscriptBlueprintImpactCommandletMergeChangedScriptsTest::RunTest(const
 		0);
 }
 
-bool FAngelscriptBlueprintImpactCommandletFailedAssetLoadsReturnExitCode3Test::RunTest(const FString& Parameters)
+static bool RunCommandletFailedAssetLoadsReturnExitCode3(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactCommandletTests_Private;
 	UAngelscriptBlueprintImpactScanCommandlet* Commandlet = NewObject<UAngelscriptBlueprintImpactScanCommandlet>();
@@ -239,5 +233,24 @@ bool FAngelscriptBlueprintImpactCommandletFailedAssetLoadsReturnExitCode3Test::R
 		Commandlet->Main(TEXT("")),
 		3);
 }
+
+#undef TestTrue
+#undef TestNotNull
+#undef TestEqual
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptBlueprintImpactCommandletTests,
+	"Angelscript.Editor.BlueprintImpact",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(CommandletMergesInlineAndFileChangedScripts)
+	{
+		ASSERT_THAT(IsTrue(RunCommandletMergesInlineAndFileChangedScripts(*TestRunner)));
+	}
+
+	TEST_METHOD(CommandletFailedAssetLoadsReturnExitCode3)
+	{
+		ASSERT_THAT(IsTrue(RunCommandletFailedAssetLoadsReturnExitCode3(*TestRunner)));
+	}
+};
 
 #endif

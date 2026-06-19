@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "Tests/AngelscriptEditorMenuExtensionsTestTypes.h"
 
 #include "AngelscriptEngine.h"
@@ -17,16 +18,6 @@
 #include "UObject/UObjectGlobals.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorMenuExtensionsTest,
-	"Angelscript.Editor.MenuExtensions.RegisterFunctionsAndForwardFilteredSelection",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorMenuExtensionsActionMetadataTest,
-	"Angelscript.Editor.MenuExtensions.ActionMetadataDelegatesAndShiftNavigationFallback",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptEditorMenuExtensionsTests_Private
 {
@@ -148,7 +139,12 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorMenuExtensionsTests_P
 }
 
 
-bool FAngelscriptEditorMenuExtensionsTest::RunTest(const FString& Parameters)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+
+static bool RunRegisterFunctionsAndForwardFilteredSelection(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorMenuExtensionsTests_Private;
 	UAngelscriptEditorMenuExtensionTestShim* BaseExtension = NewObject<UAngelscriptEditorMenuExtensionTestShim>(GetTransientPackage());
@@ -180,15 +176,15 @@ bool FAngelscriptEditorMenuExtensionsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Asset menu extensions should resolve the default asset context extension point"), AssetExtension->ResolveExtensionPoint(), FName(TEXT("CommonAssetActions")));
 
 	FResolvedMenuExtensionEngine ResolvedEngine;
-	if (!AcquireMenuExtensionEngine(*this, ResolvedEngine))
+	if (!AcquireMenuExtensionEngine(Test, ResolvedEngine))
 	{
 		return false;
 	}
 	FAngelscriptEngine& Engine = ResolvedEngine.Get();
 
 	UWorld* EditorWorld = (GEditor != nullptr) ? GEditor->GetEditorWorldContext().World() : nullptr;
-	AStaticMeshActor* AllowedActor = SpawnMenuExtensionTestActor<AStaticMeshActor>(*this, EditorWorld, TEXT("MenuExtensionAllowedActor"));
-	AActor* UnsupportedActor = SpawnMenuExtensionTestActor<AActor>(*this, EditorWorld, TEXT("MenuExtensionUnsupportedActor"));
+	AStaticMeshActor* AllowedActor = SpawnMenuExtensionTestActor<AStaticMeshActor>(Test, EditorWorld, TEXT("MenuExtensionAllowedActor"));
+	AActor* UnsupportedActor = SpawnMenuExtensionTestActor<AActor>(Test, EditorWorld, TEXT("MenuExtensionUnsupportedActor"));
 	UObject* NonActorSelection = NewObject<UCurveFloat>(GetTransientPackage());
 	if (!TestNotNull(TEXT("MenuExtensions test should spawn the allowed actor"), AllowedActor)
 		|| !TestNotNull(TEXT("MenuExtensions test should spawn the unsupported actor"), UnsupportedActor))
@@ -226,8 +222,8 @@ bool FAngelscriptEditorMenuExtensionsTest::RunTest(const FString& Parameters)
 	}
 
 	UPackage* AssetsPackage = Engine.AssetsPackage;
-	UObject* AllowedAssetObject = CreateMenuExtensionTestAsset<UCurveFloat>(*this, AssetsPackage, TEXT("AllowedCurve"));
-	UObject* UnsupportedAssetObject = CreateMenuExtensionTestAsset<UCurveVector>(*this, AssetsPackage, TEXT("UnsupportedVector"));
+	UObject* AllowedAssetObject = CreateMenuExtensionTestAsset<UCurveFloat>(Test, AssetsPackage, TEXT("AllowedCurve"));
+	UObject* UnsupportedAssetObject = CreateMenuExtensionTestAsset<UCurveVector>(Test, AssetsPackage, TEXT("UnsupportedVector"));
 	UCurveFloat* AllowedAsset = Cast<UCurveFloat>(AllowedAssetObject);
 	UCurveVector* UnsupportedAsset = Cast<UCurveVector>(UnsupportedAssetObject);
 	if (!TestNotNull(TEXT("MenuExtensions test should create the allowed asset"), AllowedAsset)
@@ -322,7 +318,7 @@ bool FAngelscriptEditorMenuExtensionsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-bool FAngelscriptEditorMenuExtensionsActionMetadataTest::RunTest(const FString& Parameters)
+static bool RunActionMetadataDelegatesAndShiftNavigationFallback(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorMenuExtensionsTests_Private;
 	UAngelscriptEditorMenuExtensionActionTestShim* Extension = NewObject<UAngelscriptEditorMenuExtensionActionTestShim>(GetTransientPackage());
@@ -433,5 +429,26 @@ bool FAngelscriptEditorMenuExtensionsActionMetadataTest::RunTest(const FString& 
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorMenuExtensionsTests,
+	"Angelscript.Editor.MenuExtensions",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(RegisterFunctionsAndForwardFilteredSelection)
+	{
+		ASSERT_THAT(IsTrue(RunRegisterFunctionsAndForwardFilteredSelection(*TestRunner)));
+	}
+
+	TEST_METHOD(ActionMetadataDelegatesAndShiftNavigationFallback)
+	{
+		ASSERT_THAT(IsTrue(RunActionMetadataDelegatesAndShiftNavigationFallback(*TestRunner)));
+	}
+};
 
 #endif

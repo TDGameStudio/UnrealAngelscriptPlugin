@@ -4,6 +4,7 @@
 #include "AngelscriptInclude.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "CQTest.h"
 #include "GameFramework/Actor.h"
 #include "HAL/FileManager.h"
 #include "Kismet2/KismetEditorUtilities.h"
@@ -19,11 +20,6 @@
 #include "UObject/SavePackage.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptBlueprintImpactScanBlueprintAssetsFullScanTest,
-	"Angelscript.TestModule.Editor.BlueprintImpact.ScanBlueprintAssets.FullScanUsesAllActiveModulesWhenChangedScriptsEmpty",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScanTests_Private
 {
@@ -243,8 +239,12 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScanTests_Pr
 	}
 }
 
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 
-bool FAngelscriptBlueprintImpactScanBlueprintAssetsFullScanTest::RunTest(const FString& Parameters)
+static bool RunFullScanUsesAllActiveModulesWhenChangedScriptsEmpty(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptBlueprintImpactScanTests_Private;
 	TArray<FAngelscriptEngine*> SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
@@ -304,7 +304,7 @@ class %s : AActor
 	UClass* ImpactedClass = nullptr;
 	UClass* UnrelatedClass = nullptr;
 	if (!CompileBlueprintImpactScanScriptModule(
-			*this,
+			Test,
 			*Engine,
 			ImpactedRelativeFilename,
 			ImpactedClassName,
@@ -312,7 +312,7 @@ class %s : AActor
 			ImpactedAbsoluteFilename,
 			ImpactedClass)
 		|| !CompileBlueprintImpactScanScriptModule(
-			*this,
+			Test,
 			*Engine,
 			UnrelatedRelativeFilename,
 			UnrelatedClassName,
@@ -324,7 +324,7 @@ class %s : AActor
 	}
 
 	Blueprint = CreateDiskBackedBlueprintChild(
-		*this,
+		Test,
 		AssetRegistryModule,
 		ImpactedClass,
 		TEXT("FullScan"),
@@ -483,5 +483,20 @@ class %s : AActor
 		SelectiveResult.FailedAssetLoads,
 		0);
 }
+
+#undef TestTrue
+#undef TestNotNull
+#undef TestFalse
+#undef TestEqual
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptBlueprintImpactScanTests,
+	"Angelscript.TestModule.Editor.BlueprintImpact.ScanBlueprintAssets",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(FullScanUsesAllActiveModulesWhenChangedScriptsEmpty)
+	{
+		ASSERT_THAT(IsTrue(RunFullScanUsesAllActiveModulesWhenChangedScriptsEmpty(*TestRunner)));
+	}
+};
 
 #endif

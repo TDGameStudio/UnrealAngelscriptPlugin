@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "Tests/AngelscriptEditorMenuExtensionsTestTypes.h"
 
 #include "EditorMenuExtensions/ScriptEditorMenuExtension.h"
@@ -13,11 +14,6 @@
 #include "ToolMenus.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorMenuExtensionCategoryTest,
-	"Angelscript.Editor.MenuExtensions.BuildMenuAndToolMenuSectionRespectCategoryHierarchyAndSortOrder",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptEditorMenuExtensionCategoryTests_Private
 {
@@ -183,7 +179,12 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorMenuExtensionCategory
 }
 
 
-bool FAngelscriptEditorMenuExtensionCategoryTest::RunTest(const FString& Parameters)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+
+static bool RunBuildMenuAndToolMenuSectionRespectCategoryHierarchyAndSortOrder(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorMenuExtensionCategoryTests_Private;
 	UAngelscriptEditorMenuExtensionCategoryTestShim* Extension = NewObject<UAngelscriptEditorMenuExtensionCategoryTestShim>(GetTransientPackage());
@@ -222,7 +223,7 @@ bool FAngelscriptEditorMenuExtensionCategoryTest::RunTest(const FString& Paramet
 		}
 	};
 
-	UToolMenu* MenuModeMenu = RegisterTemporaryMenu(*this, RegisteredMenus, TEXT("MenuExtensionsCategoryMenu"), EMultiBoxType::Menu);
+	UToolMenu* MenuModeMenu = RegisterTemporaryMenu(Test, RegisteredMenus, TEXT("MenuExtensionsCategoryMenu"), EMultiBoxType::Menu);
 	if (MenuModeMenu == nullptr)
 	{
 		return false;
@@ -249,12 +250,12 @@ bool FAngelscriptEditorMenuExtensionCategoryTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("Categoryless command should keep its display label"), GetEntryLabel(*TopLevelMenuEntry), FString(TEXT("Top Level Command")));
 	TestEqual(TEXT("Top-level Tools submenu should keep its category label"), GetEntryLabel(*ToolsMenuEntry), FString(TEXT("Tools")));
 
-	if (!VerifyToolsSubMenuHierarchy(*this, RegisteredMenus, *ToolsMenuEntry, TEXT("MenuExtensionsMenuModeTools")))
+	if (!VerifyToolsSubMenuHierarchy(Test, RegisteredMenus, *ToolsMenuEntry, TEXT("MenuExtensionsMenuModeTools")))
 	{
 		return false;
 	}
 
-	UToolMenu* ToolbarMenu = RegisterTemporaryMenu(*this, RegisteredMenus, TEXT("MenuExtensionsCategoryToolbar"), EMultiBoxType::ToolBar);
+	UToolMenu* ToolbarMenu = RegisterTemporaryMenu(Test, RegisteredMenus, TEXT("MenuExtensionsCategoryToolbar"), EMultiBoxType::ToolBar);
 	if (ToolbarMenu == nullptr)
 	{
 		return false;
@@ -282,12 +283,28 @@ bool FAngelscriptEditorMenuExtensionCategoryTest::RunTest(const FString& Paramet
 		TEXT("Toolbar Tools combo button should expose a context-menu generator"),
 		ToolsToolbarEntry->ToolBarData.ComboButtonContextMenuGenerator.NewToolMenu.IsBound());
 
-	if (!VerifyToolsSubMenuHierarchy(*this, RegisteredMenus, *ToolsToolbarEntry, TEXT("MenuExtensionsToolbarModeTools")))
+	if (!VerifyToolsSubMenuHierarchy(Test, RegisteredMenus, *ToolsToolbarEntry, TEXT("MenuExtensionsToolbarModeTools")))
 	{
 		return false;
 	}
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorMenuExtensionCategoryTests,
+	"Angelscript.Editor.MenuExtensions",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(BuildMenuAndToolMenuSectionRespectCategoryHierarchyAndSortOrder)
+	{
+		ASSERT_THAT(IsTrue(RunBuildMenuAndToolMenuSectionRespectCategoryHierarchyAndSortOrder(*TestRunner)));
+	}
+};
 
 #endif

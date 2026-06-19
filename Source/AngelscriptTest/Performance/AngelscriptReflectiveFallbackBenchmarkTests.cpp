@@ -46,9 +46,9 @@
 #include "Performance/AngelscriptPerformanceTestTypes.h"
 #include "AngelscriptPerformanceTestUtils.h"
 
+#include "CQTest.h"
 #include "HAL/PlatformFileManager.h"
 #include "HAL/PlatformTime.h"
-#include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 #include "UObject/PropertyOptional.h"
 #include "UObject/Script.h"
@@ -615,17 +615,15 @@ namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private
 	}
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptReflectiveFallbackBenchmarkTest,
-	"Angelscript.TestModule.Performance.ReflectiveFallback.Benchmark",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private
+{
 
-bool FAngelscriptReflectiveFallbackBenchmarkTest::RunTest(const FString& Parameters)
+bool RunReflectiveFallbackBenchmark(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private;
 
 	UAngelscriptPerformanceTestTargetObject* Target = GetMutableDefault<UAngelscriptPerformanceTestTargetObject>();
-	if (!TestNotNull(TEXT("Benchmark target CDO should resolve"), Target))
+	if (!Test.TestNotNull(TEXT("Benchmark target CDO should resolve"), Target))
 	{
 		return false;
 	}
@@ -642,7 +640,7 @@ bool FAngelscriptReflectiveFallbackBenchmarkTest::RunTest(const FString& Paramet
 	auto Resolve = [&](const TCHAR* Name) -> UFunction*
 	{
 		UFunction* Fn = TargetClass->FindFunctionByName(FName(Name));
-		TestNotNull(*FString::Printf(TEXT("UFUNCTION %s should exist"), Name), Fn);
+		Test.TestNotNull(*FString::Printf(TEXT("UFUNCTION %s should exist"), Name), Fn);
 		return Fn;
 	};
 
@@ -663,7 +661,7 @@ bool FAngelscriptReflectiveFallbackBenchmarkTest::RunTest(const FString& Paramet
 	UFunction* SetStructFn    = Resolve(TEXT("SetStructValueFunction"));
 	UFunction* SetArrayFn     = Resolve(TEXT("SetArrayValueFunction"));
 	UFunction* SetMapFn       = Resolve(TEXT("SetMapValueFunction"));
-	if (HasAnyErrors())
+	if (Test.HasAnyErrors())
 	{
 		return false;
 	}
@@ -741,13 +739,13 @@ bool FAngelscriptReflectiveFallbackBenchmarkTest::RunTest(const FString& Paramet
 		FRunResult R = BenchOne(Target, StaticAddFn, StaticAddCache, AddArgs,
 			[&](int32) -> int64 { return UAngelscriptPerformanceTestTargetObject::StaticAdd(ConstArgA, ConstArgB); });
 		EmitFourWayMetrics(Metrics, TEXT("reflective.staticadd"), R);
-		TestChecksumsAcrossPaths(*this, TEXT("StaticAdd"), R);
+		TestChecksumsAcrossPaths(Test, TEXT("StaticAdd"), R);
 	}
 	{
 		FRunResult R = BenchOne(Target, StaticNoOpFn, StaticNoOpCache, EmptyArgs,
 			[&](int32) -> int64 { UAngelscriptPerformanceTestTargetObject::StaticNoOp(); return 0; });
 		EmitFourWayMetrics(Metrics, TEXT("reflective.staticnoop"), R);
-		TestChecksumsAcrossPaths(*this, TEXT("StaticNoOp"), R);
+		TestChecksumsAcrossPaths(Test, TEXT("StaticNoOp"), R);
 	}
 
 	// ---------------- Member no-op (lower bound for member calls) ----------
@@ -755,7 +753,7 @@ bool FAngelscriptReflectiveFallbackBenchmarkTest::RunTest(const FString& Paramet
 		FRunResult R = BenchOne(Target, MemberNoOpFn, MemberNoOpCache, EmptyArgs,
 			[&](int32) -> int64 { Target->MemberNoOp(); return 0; });
 		EmitFourWayMetrics(Metrics, TEXT("reflective.membernoop"), R);
-		TestChecksumsAcrossPaths(*this, TEXT("MemberNoOp"), R);
+		TestChecksumsAcrossPaths(Test, TEXT("MemberNoOp"), R);
 	}
 
 	// ---------------- POD scalar getters ----------------
@@ -766,25 +764,25 @@ bool FAngelscriptReflectiveFallbackBenchmarkTest::RunTest(const FString& Paramet
 		// FBoolProperty's bitfield extraction differs subtly between branches;
 		// we still compare A1 vs A2 vs A3 (all reflection paths share the
 		// extraction code), but skip A0 vs A1 for noise tolerance.
-		TestChecksumsAcrossPaths(*this, TEXT("GetBool"), R, /*bSkipA0Compare=*/true);
+		TestChecksumsAcrossPaths(Test, TEXT("GetBool"), R, /*bSkipA0Compare=*/true);
 	}
 	{
 		FRunResult R = BenchOne(Target, GetInt32Fn, GetInt32Cache, EmptyArgs,
 			[&](int32) -> int64 { return Target->GetInt32ValueFunction(); });
 		EmitFourWayMetrics(Metrics, TEXT("reflective.getint32"), R);
-		TestChecksumsAcrossPaths(*this, TEXT("GetInt32"), R);
+		TestChecksumsAcrossPaths(Test, TEXT("GetInt32"), R);
 	}
 	{
 		FRunResult R = BenchOne(Target, GetDoubleFn, GetDoubleCache, EmptyArgs,
 			[&](int32) -> int64 { return static_cast<int64>(Target->GetDoubleValueFunction() * 1000.0); });
 		EmitFourWayMetrics(Metrics, TEXT("reflective.getdouble"), R);
-		TestChecksumsAcrossPaths(*this, TEXT("GetDouble"), R);
+		TestChecksumsAcrossPaths(Test, TEXT("GetDouble"), R);
 	}
 	{
 		FRunResult R = BenchOne(Target, GetEnumFn, GetEnumCache, EmptyArgs,
 			[&](int32) -> int64 { return static_cast<int64>(Target->GetEnumValueFunction()); });
 		EmitFourWayMetrics(Metrics, TEXT("reflective.getenum"), R);
-		TestChecksumsAcrossPaths(*this, TEXT("GetEnum"), R);
+		TestChecksumsAcrossPaths(Test, TEXT("GetEnum"), R);
 	}
 
 	// ---------------- Non-POD getters (FName / FString / USTRUCT / UObject* / TArray / TMap) ----
@@ -792,13 +790,13 @@ bool FAngelscriptReflectiveFallbackBenchmarkTest::RunTest(const FString& Paramet
 		FRunResult R = BenchOne(Target, GetNameFn, GetNameCache, EmptyArgs,
 			[&](int32) -> int64 { return Target->GetNameValueFunction().ToString().Len(); });
 		EmitFourWayMetrics(Metrics, TEXT("reflective.getname"), R);
-		TestChecksumsAcrossPaths(*this, TEXT("GetName"), R);
+		TestChecksumsAcrossPaths(Test, TEXT("GetName"), R);
 	}
 	{
 		FRunResult R = BenchOne(Target, GetStringFn, GetStringCache, EmptyArgs,
 			[&](int32) -> int64 { return Target->GetStringValueFunction().Len(); });
 		EmitFourWayMetrics(Metrics, TEXT("reflective.getstring"), R);
-		TestChecksumsAcrossPaths(*this, TEXT("GetString"), R);
+		TestChecksumsAcrossPaths(Test, TEXT("GetString"), R);
 	}
 	{
 		// USTRUCT return: ExtractChecksum returns 0 for FStructProperty, so
@@ -806,25 +804,25 @@ bool FAngelscriptReflectiveFallbackBenchmarkTest::RunTest(const FString& Paramet
 		FRunResult R = BenchOne(Target, GetStructFn, GetStructCache, EmptyArgs,
 			[&](int32) -> int64 { (void)Target->GetStructValueFunction(); return 0; });
 		EmitFourWayMetrics(Metrics, TEXT("reflective.getstruct"), R);
-		TestChecksumsAcrossPaths(*this, TEXT("GetStruct"), R);
+		TestChecksumsAcrossPaths(Test, TEXT("GetStruct"), R);
 	}
 	{
 		FRunResult R = BenchOne(Target, GetObjectFn, GetObjectCache, EmptyArgs,
 			[&](int32) -> int64 { return Target->GetObjectValueFunction() != nullptr ? 1 : 0; });
 		EmitFourWayMetrics(Metrics, TEXT("reflective.getobject"), R);
-		TestChecksumsAcrossPaths(*this, TEXT("GetObject"), R);
+		TestChecksumsAcrossPaths(Test, TEXT("GetObject"), R);
 	}
 	{
 		FRunResult R = BenchOne(Target, GetArrayFn, GetArrayCache, EmptyArgs,
 			[&](int32) -> int64 { return Target->GetArrayValueFunction().Num(); });
 		EmitFourWayMetrics(Metrics, TEXT("reflective.getarray"), R);
-		TestChecksumsAcrossPaths(*this, TEXT("GetArray"), R);
+		TestChecksumsAcrossPaths(Test, TEXT("GetArray"), R);
 	}
 	{
 		FRunResult R = BenchOne(Target, GetMapFn, GetMapCache, EmptyArgs,
 			[&](int32) -> int64 { return Target->GetMapValueFunction().Num(); });
 		EmitFourWayMetrics(Metrics, TEXT("reflective.getmap"), R);
-		TestChecksumsAcrossPaths(*this, TEXT("GetMap"), R);
+		TestChecksumsAcrossPaths(Test, TEXT("GetMap"), R);
 	}
 
 	// ---------------- Non-POD setters (CPF_OutParm | CPF_ConstParm refs) ----
@@ -835,27 +833,27 @@ bool FAngelscriptReflectiveFallbackBenchmarkTest::RunTest(const FString& Paramet
 			[&](int32) -> int64 { Target->SetStringValueFunction(SampleString); return 0; },
 			[&]() { Target->StringValue.Reset(); });
 		EmitFourWayMetrics(Metrics, TEXT("reflective.setstring"), R);
-		TestChecksumsAcrossPaths(*this, TEXT("SetString"), R);
+		TestChecksumsAcrossPaths(Test, TEXT("SetString"), R);
 	}
 	{
 		FRunResult R = BenchOne(Target, SetStructFn, SetStructCache, StructArgs,
 			[&](int32) -> int64 { Target->SetStructValueFunction(SampleStruct); return 0; });
 		EmitFourWayMetrics(Metrics, TEXT("reflective.setstruct"), R);
-		TestChecksumsAcrossPaths(*this, TEXT("SetStruct"), R);
+		TestChecksumsAcrossPaths(Test, TEXT("SetStruct"), R);
 	}
 	{
 		FRunResult R = BenchOne(Target, SetArrayFn, SetArrayCache, ArrayArgs,
 			[&](int32) -> int64 { Target->SetArrayValueFunction(SampleArray); return 0; },
 			[&]() { Target->ArrayValue.Reset(); });
 		EmitFourWayMetrics(Metrics, TEXT("reflective.setarray"), R);
-		TestChecksumsAcrossPaths(*this, TEXT("SetArray"), R);
+		TestChecksumsAcrossPaths(Test, TEXT("SetArray"), R);
 	}
 	{
 		FRunResult R = BenchOne(Target, SetMapFn, SetMapCache, MapArgs,
 			[&](int32) -> int64 { Target->SetMapValueFunction(SampleMap); return 0; },
 			[&]() { Target->MapValue.Reset(); });
 		EmitFourWayMetrics(Metrics, TEXT("reflective.setmap"), R);
-		TestChecksumsAcrossPaths(*this, TEXT("SetMap"), R);
+		TestChecksumsAcrossPaths(Test, TEXT("SetMap"), R);
 	}
 
 	const TArray<FString> Notes = {
@@ -867,13 +865,26 @@ bool FAngelscriptReflectiveFallbackBenchmarkTest::RunTest(const FString& Paramet
 	};
 
 	const bool bWroteMetrics = WriteAndVerifyMetrics(
-		*this,
+		Test,
 		TEXT("ReflectiveFallback_Benchmark"),
 		TEXT("Angelscript.TestModule.Performance.ReflectiveFallback.Benchmark"),
 		Metrics,
 		Notes);
 
-	return !HasAnyErrors() && bWroteMetrics;
+	return !Test.HasAnyErrors() && bWroteMetrics;
 }
+
+}
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptReflectiveFallbackBenchmarkTests,
+	"Angelscript.TestModule.Performance.ReflectiveFallback",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(Benchmark)
+	{
+		using namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private;
+		ASSERT_THAT(IsTrue(RunReflectiveFallbackBenchmark(*TestRunner)));
+	}
+};
 
 #endif

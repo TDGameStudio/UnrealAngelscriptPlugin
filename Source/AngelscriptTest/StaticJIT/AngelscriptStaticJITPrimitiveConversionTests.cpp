@@ -1,4 +1,4 @@
-#include "Misc/AutomationTest.h"
+#include "CQTest.h"
 
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestMacros.h"
@@ -21,22 +21,10 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITPrimitiveConversionTests
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITPrimitiveBitCastRoundTripTest,
-	"Angelscript.TestModule.StaticJIT.PrimitiveConversions.BitCastFloatRoundTrip",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITPrimitiveConversionTests_Private
+{
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITPrimitiveZeroExtendParityTest,
-	"Angelscript.TestModule.StaticJIT.PrimitiveConversions.ZeroExtendParity",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITPrimitiveNumericConversionParityTest,
-	"Angelscript.TestModule.StaticJIT.PrimitiveConversions.BitCastAndNumericParity",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptStaticJITPrimitiveBitCastRoundTripTest::RunTest(const FString& Parameters)
+bool RunPrimitiveBitCastRoundTrip(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITPrimitiveConversionTests_Private;
 	bool bPassed = false;
@@ -55,7 +43,7 @@ bool FAngelscriptStaticJITPrimitiveBitCastRoundTripTest::RunTest(const FString& 
 	do
 	{
 		if (!VerifyCurrentEngine(
-				*this,
+				Test,
 				TEXT("StaticJIT.PrimitiveConversions.BitCastFloatRoundTrip"),
 				Engine))
 		{
@@ -64,7 +52,7 @@ bool FAngelscriptStaticJITPrimitiveBitCastRoundTripTest::RunTest(const FString& 
 
 		const asDWORD ExpectedBits = 0x3FC00000u;
 		const float FloatValue = value_as<float>(ExpectedBits);
-		if (!TestEqual(
+		if (!Test.TestEqual(
 				TEXT("StaticJIT.PrimitiveConversions.BitCastFloatRoundTrip should reinterpret 0x3FC00000 as 1.5f"),
 				FloatValue,
 				1.5f))
@@ -74,7 +62,7 @@ bool FAngelscriptStaticJITPrimitiveBitCastRoundTripTest::RunTest(const FString& 
 
 		asDWORD RoundTripBits = 0u;
 		value_assign_safe<asDWORD>(&RoundTripBits, FloatValue);
-		if (!TestEqual(
+		if (!Test.TestEqual(
 				TEXT("StaticJIT.PrimitiveConversions.BitCastFloatRoundTrip should preserve the float bit pattern when writing back to asDWORD"),
 				value_read<asDWORD>(&RoundTripBits),
 				ExpectedBits))
@@ -82,7 +70,7 @@ bool FAngelscriptStaticJITPrimitiveBitCastRoundTripTest::RunTest(const FString& 
 			break;
 		}
 
-		if (!TestEqual(
+		if (!Test.TestEqual(
 				TEXT("StaticJIT.PrimitiveConversions.BitCastFloatRoundTrip should support the reverse float-to-dword bit cast"),
 				value_as<asDWORD>(FloatValue),
 				ExpectedBits))
@@ -98,7 +86,7 @@ bool FAngelscriptStaticJITPrimitiveBitCastRoundTripTest::RunTest(const FString& 
 	return bPassed;
 }
 
-bool FAngelscriptStaticJITPrimitiveZeroExtendParityTest::RunTest(const FString& Parameters)
+bool RunPrimitiveZeroExtendParity(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITPrimitiveConversionTests_Private;
 	bool bPassed = false;
@@ -117,7 +105,7 @@ bool FAngelscriptStaticJITPrimitiveZeroExtendParityTest::RunTest(const FString& 
 	do
 	{
 		if (!VerifyCurrentEngine(
-				*this,
+				Test,
 				TEXT("StaticJIT.PrimitiveConversions.ZeroExtendParity"),
 				Engine))
 		{
@@ -128,7 +116,7 @@ bool FAngelscriptStaticJITPrimitiveZeroExtendParityTest::RunTest(const FString& 
 		asQWORD WideValue = 0xFFFFFFFFFFFFFFFFull;
 		value_assign_safe<asQWORD>(&WideValue, NarrowValue);
 
-		if (!TestEqual(
+		if (!Test.TestEqual(
 				TEXT("StaticJIT.PrimitiveConversions.ZeroExtendParity should zero-extend a dword into a qword without leaving dirty high bits"),
 				value_read<asQWORD>(&WideValue),
 				static_cast<asQWORD>(0x0000000089ABCDEFull)))
@@ -136,7 +124,7 @@ bool FAngelscriptStaticJITPrimitiveZeroExtendParityTest::RunTest(const FString& 
 			break;
 		}
 
-		if (!TestEqual(
+		if (!Test.TestEqual(
 				TEXT("StaticJIT.PrimitiveConversions.ZeroExtendParity should preserve the original low 32-bit payload after widening"),
 				value_read<asDWORD>(&WideValue),
 				NarrowValue))
@@ -152,7 +140,7 @@ bool FAngelscriptStaticJITPrimitiveZeroExtendParityTest::RunTest(const FString& 
 	return bPassed;
 }
 
-bool FAngelscriptStaticJITPrimitiveNumericConversionParityTest::RunTest(const FString& Parameters)
+bool RunPrimitiveNumericConversionParity(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITPrimitiveConversionTests_Private;
 	bool bPassed = false;
@@ -171,7 +159,7 @@ bool FAngelscriptStaticJITPrimitiveNumericConversionParityTest::RunTest(const FS
 	do
 	{
 		if (!VerifyCurrentEngine(
-				*this,
+				Test,
 				TEXT("StaticJIT.PrimitiveConversions.BitCastAndNumericParity"),
 				Engine))
 		{
@@ -181,7 +169,7 @@ bool FAngelscriptStaticJITPrimitiveNumericConversionParityTest::RunTest(const FS
 		const double SignedConverted = ConvertPrimitiveValue<double, int>(-1);
 		const double UnsignedConverted = ConvertPrimitiveValue<double, asDWORD>(0xFFFFFFFFu);
 
-		if (!TestEqual(
+		if (!Test.TestEqual(
 				TEXT("StaticJIT.PrimitiveConversions.BitCastAndNumericParity should keep signed -1 converting to double as -1.0"),
 				SignedConverted,
 				-1.0))
@@ -189,7 +177,7 @@ bool FAngelscriptStaticJITPrimitiveNumericConversionParityTest::RunTest(const FS
 			break;
 		}
 
-		if (!TestEqual(
+		if (!Test.TestEqual(
 				TEXT("StaticJIT.PrimitiveConversions.BitCastAndNumericParity should keep unsigned 0xFFFFFFFF converting to double as 4294967295.0"),
 				UnsignedConverted,
 				4294967295.0))
@@ -197,7 +185,7 @@ bool FAngelscriptStaticJITPrimitiveNumericConversionParityTest::RunTest(const FS
 			break;
 		}
 
-		if (!TestFalse(
+		if (!Test.TestFalse(
 				TEXT("StaticJIT.PrimitiveConversions.BitCastAndNumericParity should keep signed and unsigned conversion paths distinct"),
 				SignedConverted == UnsignedConverted))
 		{
@@ -211,5 +199,30 @@ bool FAngelscriptStaticJITPrimitiveNumericConversionParityTest::RunTest(const FS
 	}
 	return bPassed;
 }
+
+}
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITPrimitiveConversionTests,
+	"Angelscript.TestModule.StaticJIT.PrimitiveConversions",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(BitCastFloatRoundTrip)
+	{
+		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITPrimitiveConversionTests_Private;
+		ASSERT_THAT(IsTrue(RunPrimitiveBitCastRoundTrip(*TestRunner)));
+	}
+
+	TEST_METHOD(ZeroExtendParity)
+	{
+		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITPrimitiveConversionTests_Private;
+		ASSERT_THAT(IsTrue(RunPrimitiveZeroExtendParity(*TestRunner)));
+	}
+
+	TEST_METHOD(BitCastAndNumericParity)
+	{
+		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITPrimitiveConversionTests_Private;
+		ASSERT_THAT(IsTrue(RunPrimitiveNumericConversionParity(*TestRunner)));
+	}
+};
 
 #endif

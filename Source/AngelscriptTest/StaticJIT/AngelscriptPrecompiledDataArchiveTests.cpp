@@ -1,4 +1,4 @@
-#include "Misc/AutomationTest.h"
+#include "CQTest.h"
 
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestMacros.h"
@@ -160,22 +160,10 @@ namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Priva
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptPrecompiledDataBuildIdentifierValidationTest,
-	"Angelscript.TestModule.StaticJIT.PrecompiledData.BuildIdentifierValidation",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Private
+{
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptPrecompiledDataGlobalReferenceNameReuseTest,
-	"Angelscript.TestModule.StaticJIT.PrecompiledData.GlobalReferenceNameReuse",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptPrecompiledDataRepeatedLoadClearsRuntimeCacheTest,
-	"Angelscript.TestModule.StaticJIT.PrecompiledData.RepeatedLoadClearsRuntimeCache",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptPrecompiledDataBuildIdentifierValidationTest::RunTest(const FString& Parameters)
+bool RunBuildIdentifierValidation(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Private;
 	bool bPassed = false;
@@ -199,7 +187,7 @@ bool FAngelscriptPrecompiledDataBuildIdentifierValidationTest::RunTest(const FSt
 			ModuleName,
 			SourceFilename,
 			ScriptSource);
-		if (!TestTrue(TEXT("StaticJIT.PrecompiledData.BuildIdentifierValidation should compile the archive fixture module"), bCompiled))
+		if (!Test.TestTrue(TEXT("StaticJIT.PrecompiledData.BuildIdentifierValidation should compile the archive fixture module"), bCompiled))
 		{
 			break;
 		}
@@ -208,15 +196,15 @@ bool FAngelscriptPrecompiledDataBuildIdentifierValidationTest::RunTest(const FSt
 		Snapshot.InitFromActiveScript();
 
 		const FString ModuleNameString = ModuleName.ToString();
-		if (!TestEqual(
+		if (!Test.TestEqual(
 				TEXT("StaticJIT.PrecompiledData.BuildIdentifierValidation should stamp the snapshot with the current build identifier"),
 				Snapshot.BuildIdentifier,
 				Snapshot.GetCurrentBuildIdentifier())
-			|| !TestTrue(
+			|| !Test.TestTrue(
 				TEXT("StaticJIT.PrecompiledData.BuildIdentifierValidation should serialize the newly compiled module into the snapshot"),
 				Snapshot.Modules.Contains(ModuleNameString)))
 		{
-			AddInfo(FString::Printf(TEXT("Observed saved precompiled modules: [%s]"), *DescribeSavedModuleNames(Snapshot)));
+			Test.AddInfo(FString::Printf(TEXT("Observed saved precompiled modules: [%s]"), *DescribeSavedModuleNames(Snapshot)));
 			break;
 		}
 
@@ -229,27 +217,27 @@ bool FAngelscriptPrecompiledDataBuildIdentifierValidationTest::RunTest(const FSt
 			CacheFile.GetFilename(),
 			LoadedData,
 			&SaveAndReloadError);
-		if (!TestTrue(TEXT("StaticJIT.PrecompiledData.BuildIdentifierValidation should roundtrip the archive through Save/Load"), bRoundtripped))
+		if (!Test.TestTrue(TEXT("StaticJIT.PrecompiledData.BuildIdentifierValidation should roundtrip the archive through Save/Load"), bRoundtripped))
 		{
 			if (!SaveAndReloadError.IsEmpty())
 			{
-				AddError(SaveAndReloadError);
+				Test.AddError(SaveAndReloadError);
 			}
 			break;
 		}
 
-		if (!TestNotNull(TEXT("StaticJIT.PrecompiledData.BuildIdentifierValidation should load a new precompiled data instance from disk"), LoadedData.Get()))
+		if (!Test.TestNotNull(TEXT("StaticJIT.PrecompiledData.BuildIdentifierValidation should load a new precompiled data instance from disk"), LoadedData.Get()))
 		{
 			break;
 		}
 
-		if (!ValidateRoundtripSnapshot(*this, Snapshot, *LoadedData, ModuleNameString))
+		if (!ValidateRoundtripSnapshot(Test, Snapshot, *LoadedData, ModuleNameString))
 		{
 			break;
 		}
 
 		const int32 CurrentBuildIdentifier = LoadedData->GetCurrentBuildIdentifier();
-		if (!TestTrue(
+		if (!Test.TestTrue(
 				TEXT("StaticJIT.PrecompiledData.BuildIdentifierValidation should run in a known UE build configuration"),
 				CurrentBuildIdentifier != -1))
 		{
@@ -257,14 +245,14 @@ bool FAngelscriptPrecompiledDataBuildIdentifierValidationTest::RunTest(const FSt
 		}
 
 		LoadedData->BuildIdentifier = MakeInvalidBuildIdentifier(CurrentBuildIdentifier);
-		if (!TestFalse(
+		if (!Test.TestFalse(
 				TEXT("StaticJIT.PrecompiledData.BuildIdentifierValidation should reject archives whose BuildIdentifier no longer matches the active build"),
 				LoadedData->IsValidForCurrentBuild()))
 		{
 			break;
 		}
 
-		if (!SimulateEngineStartupDiscard(*this, LoadedData))
+		if (!SimulateEngineStartupDiscard(Test, LoadedData))
 		{
 			break;
 		}
@@ -277,7 +265,7 @@ bool FAngelscriptPrecompiledDataBuildIdentifierValidationTest::RunTest(const FSt
 	return bPassed;
 }
 
-bool FAngelscriptPrecompiledDataGlobalReferenceNameReuseTest::RunTest(const FString& Parameters)
+bool RunGlobalReferenceNameReuse(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Private;
 
@@ -293,14 +281,14 @@ bool FAngelscriptPrecompiledDataGlobalReferenceNameReuseTest::RunTest(const FStr
 	};
 
 	const FName FixtureModuleName(TEXT("ASPrecompiledDataGlobalReferenceNameReuse"));
-	if (!CompileGlobalReferenceFixture(*this, Engine, FixtureModuleName, TEXT("PrecompiledDataGlobalReferenceNameReuse.as")))
+	if (!CompileGlobalReferenceFixture(Test, Engine, FixtureModuleName, TEXT("PrecompiledDataGlobalReferenceNameReuse.as")))
 	{
 		return false;
 	}
 
-	asIScriptModule* Module = FindCompiledModule(*this, Engine, FixtureModuleName);
-	void* GlobalAddress = FindGlobalVariableAddress(*this, Module, "ReferencedGlobal");
-	if (!TestNotNull(TEXT("StaticJIT.PrecompiledData.GlobalReferenceNameReuse should find the global address"), GlobalAddress))
+	asIScriptModule* Module = FindCompiledModule(Test, Engine, FixtureModuleName);
+	void* GlobalAddress = FindGlobalVariableAddress(Test, Module, "ReferencedGlobal");
+	if (!Test.TestNotNull(TEXT("StaticJIT.PrecompiledData.GlobalReferenceNameReuse should find the global address"), GlobalAddress))
 	{
 		return false;
 	}
@@ -312,20 +300,20 @@ bool FAngelscriptPrecompiledDataGlobalReferenceNameReuseTest::RunTest(const FStr
 	int64 ReusedReference = 0;
 	FString FirstName;
 	FString ReusedName;
-	if (!TestTrue(
+	if (!Test.TestTrue(
 			TEXT("StaticJIT.PrecompiledData.GlobalReferenceNameReuse should resolve and reuse a global reference"),
 			FStaticJITDiagnostics::ReferenceGlobalVariableTwice(Snapshot, GlobalAddress, FirstReference, ReusedReference, FirstName, ReusedName)))
 	{
 		return false;
 	}
 
-	TestEqual(TEXT("StaticJIT.PrecompiledData.GlobalReferenceNameReuse should reuse the same reference id"), ReusedReference, FirstReference);
-	TestEqual(TEXT("StaticJIT.PrecompiledData.GlobalReferenceNameReuse should return the stable name when an existing global reference is reused"), ReusedName, FirstName);
-	TestEqual(TEXT("StaticJIT.PrecompiledData.GlobalReferenceNameReuse should keep the script global name stable"), ReusedName, TEXT("ReferencedGlobal"));
+	Test.TestEqual(TEXT("StaticJIT.PrecompiledData.GlobalReferenceNameReuse should reuse the same reference id"), ReusedReference, FirstReference);
+	Test.TestEqual(TEXT("StaticJIT.PrecompiledData.GlobalReferenceNameReuse should return the stable name when an existing global reference is reused"), ReusedName, FirstName);
+	Test.TestEqual(TEXT("StaticJIT.PrecompiledData.GlobalReferenceNameReuse should keep the script global name stable"), ReusedName, TEXT("ReferencedGlobal"));
 	return true;
 }
 
-bool FAngelscriptPrecompiledDataRepeatedLoadClearsRuntimeCacheTest::RunTest(const FString& Parameters)
+bool RunRepeatedLoadClearsRuntimeCache(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Private;
 
@@ -341,14 +329,14 @@ bool FAngelscriptPrecompiledDataRepeatedLoadClearsRuntimeCacheTest::RunTest(cons
 	};
 
 	const FName FixtureModuleName(TEXT("ASPrecompiledDataRepeatedLoadClearsRuntimeCache"));
-	if (!CompileGlobalReferenceFixture(*this, Engine, FixtureModuleName, TEXT("PrecompiledDataRepeatedLoadClearsRuntimeCache.as")))
+	if (!CompileGlobalReferenceFixture(Test, Engine, FixtureModuleName, TEXT("PrecompiledDataRepeatedLoadClearsRuntimeCache.as")))
 	{
 		return false;
 	}
 
-	asIScriptModule* Module = FindCompiledModule(*this, Engine, FixtureModuleName);
-	void* GlobalAddress = FindGlobalVariableAddress(*this, Module, "ReferencedGlobal");
-	if (!TestNotNull(TEXT("StaticJIT.PrecompiledData.RepeatedLoadClearsRuntimeCache should find the global address"), GlobalAddress))
+	asIScriptModule* Module = FindCompiledModule(Test, Engine, FixtureModuleName);
+	void* GlobalAddress = FindGlobalVariableAddress(Test, Module, "ReferencedGlobal");
+	if (!Test.TestNotNull(TEXT("StaticJIT.PrecompiledData.RepeatedLoadClearsRuntimeCache should find the global address"), GlobalAddress))
 	{
 		return false;
 	}
@@ -359,7 +347,7 @@ bool FAngelscriptPrecompiledDataRepeatedLoadClearsRuntimeCacheTest::RunTest(cons
 	int64 ReusedReference = 0;
 	FString FirstName;
 	FString ReusedName;
-	if (!TestTrue(
+	if (!Test.TestTrue(
 			TEXT("StaticJIT.PrecompiledData.RepeatedLoadClearsRuntimeCache should resolve a stable global reference"),
 			FStaticJITDiagnostics::ReferenceGlobalVariableTwice(Snapshot, GlobalAddress, GlobalReference, ReusedReference, FirstName, ReusedName)))
 	{
@@ -369,18 +357,18 @@ bool FAngelscriptPrecompiledDataRepeatedLoadClearsRuntimeCacheTest::RunTest(cons
 	FScopedTempPrecompiledCacheFile CacheFile(TEXT("PrecompiledDataRepeatedLoadClearsRuntimeCache"));
 	TUniquePtr<FAngelscriptPrecompiledData> LoadedData;
 	FString SaveAndReloadError;
-	if (!TestTrue(
+	if (!Test.TestTrue(
 			TEXT("StaticJIT.PrecompiledData.RepeatedLoadClearsRuntimeCache should roundtrip the fixture cache"),
 			SaveAndReloadPrecompiledData(&Engine, Snapshot, CacheFile.GetFilename(), LoadedData, &SaveAndReloadError)))
 	{
 		if (!SaveAndReloadError.IsEmpty())
 		{
-			AddError(SaveAndReloadError);
+			Test.AddError(SaveAndReloadError);
 		}
 		return false;
 	}
 
-	if (!TestNotNull(TEXT("StaticJIT.PrecompiledData.RepeatedLoadClearsRuntimeCache should load precompiled data"), LoadedData.Get()))
+	if (!Test.TestNotNull(TEXT("StaticJIT.PrecompiledData.RepeatedLoadClearsRuntimeCache should load precompiled data"), LoadedData.Get()))
 	{
 		return false;
 	}
@@ -388,18 +376,43 @@ bool FAngelscriptPrecompiledDataRepeatedLoadClearsRuntimeCacheTest::RunTest(cons
 	void* FirstResolvedAddress = nullptr;
 	void* SecondResolvedAddress = nullptr;
 	bool bCacheClearedAfterLoad = false;
-	if (!TestTrue(
+	if (!Test.TestTrue(
 			TEXT("StaticJIT.PrecompiledData.RepeatedLoadClearsRuntimeCache should re-resolve JIT refs and clear pointer cache after repeated Load"),
 			FStaticJITDiagnostics::ExerciseRepeatedGlobalReferenceLoad(*LoadedData, CacheFile.GetFilename(), GlobalReference, FirstResolvedAddress, SecondResolvedAddress, bCacheClearedAfterLoad)))
 	{
 		return false;
 	}
 
-	TestTrue(TEXT("StaticJIT.PrecompiledData.RepeatedLoadClearsRuntimeCache should clear pointer cache on repeated Load"), bCacheClearedAfterLoad);
-	TestTrue(
+	Test.TestTrue(TEXT("StaticJIT.PrecompiledData.RepeatedLoadClearsRuntimeCache should clear pointer cache on repeated Load"), bCacheClearedAfterLoad);
+	Test.TestTrue(
 		TEXT("StaticJIT.PrecompiledData.RepeatedLoadClearsRuntimeCache should re-resolve globals after repeated Load"),
 		SecondResolvedAddress == FirstResolvedAddress);
 	return true;
 }
+
+}
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptPrecompiledDataArchiveTests,
+	"Angelscript.TestModule.StaticJIT.PrecompiledData",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(BuildIdentifierValidation)
+	{
+		using namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Private;
+		ASSERT_THAT(IsTrue(RunBuildIdentifierValidation(*TestRunner)));
+	}
+
+	TEST_METHOD(GlobalReferenceNameReuse)
+	{
+		using namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Private;
+		ASSERT_THAT(IsTrue(RunGlobalReferenceNameReuse(*TestRunner)));
+	}
+
+	TEST_METHOD(RepeatedLoadClearsRuntimeCache)
+	{
+		using namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Private;
+		ASSERT_THAT(IsTrue(RunRepeatedLoadClearsRuntimeCache(*TestRunner)));
+	}
+};
 
 #endif

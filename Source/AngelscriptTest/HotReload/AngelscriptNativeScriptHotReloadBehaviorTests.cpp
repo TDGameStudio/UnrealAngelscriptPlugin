@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestEngineHelper.h"
 
@@ -106,16 +107,15 @@ class UNativeHotReloadPhase2BMathCarrier : UObject
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptNativeScriptHotReloadPhase2BNamespaceFunctionBehaviorSwitchTest,
-	"Angelscript.TestModule.HotReload.NativeScript.Phase2B.NamespaceFunctionBehaviorSwitch",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 
-bool FAngelscriptNativeScriptHotReloadPhase2BNamespaceFunctionBehaviorSwitchTest::RunTest(const FString& Parameters)
+static bool NativeScriptHotReloadPhase2BNamespaceFunctionBehaviorSwitch(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_Angelscript_AngelscriptNativeScriptHotReloadBehaviorTests_Private;
 	FAngelscriptEngine* ProductionEngine = RequireRunningProductionEngine(
-		*this,
+		Test,
 		TEXT("Native script namespace hot reload behavior tests require a production engine."));
 	if (ProductionEngine == nullptr)
 	{
@@ -231,5 +231,19 @@ bool FAngelscriptNativeScriptHotReloadPhase2BNamespaceFunctionBehaviorSwitchTest
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptHotReloadBehaviorTests,
+	"Angelscript.TestModule.HotReload.NativeScript.Phase2B",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(NamespaceFunctionBehaviorSwitch)
+	{
+		ASSERT_THAT(IsTrue(NativeScriptHotReloadPhase2BNamespaceFunctionBehaviorSwitch(*TestRunner)));
+	}
+};
 
 #endif

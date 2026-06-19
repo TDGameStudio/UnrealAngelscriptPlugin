@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "HotReload/ClassReloadHelper.h"
 
 #include "AngelscriptEngine.h"
@@ -9,11 +10,6 @@
 #include "UObject/GarbageCollection.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptClassReloadHelperOnPostReloadFullReloadEffectsTest,
-	"Angelscript.Editor.ClassReloadHelper.OnPostReloadFullReloadRefreshesActionsBroadcastsBlueprintCompiledAndRestoresCurrentLevel",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperPostReloadTests_Private
 {
@@ -82,8 +78,12 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperPostReload
 	}
 }
 
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 
-bool FAngelscriptClassReloadHelperOnPostReloadFullReloadEffectsTest::RunTest(const FString& Parameters)
+static bool RunOnPostReloadFullReloadEffects(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperPostReloadTests_Private;
 	const FClassReloadHelper::FReloadState SavedState = FClassReloadHelper::ReloadState();
@@ -162,7 +162,7 @@ bool FAngelscriptClassReloadHelperOnPostReloadFullReloadEffectsTest::RunTest(con
 		return false;
 	}
 
-	AddedLevel = AddTransientLevel(*this, *EditorWorld, RootedObjects);
+	AddedLevel = AddTransientLevel(Test, *EditorWorld, RootedObjects);
 	if (AddedLevel == nullptr)
 	{
 		return false;
@@ -268,12 +268,7 @@ bool FAngelscriptClassReloadHelperOnPostReloadFullReloadEffectsTest::RunTest(con
 	return TestEqual(TEXT("ClassReloadHelper.OnPostReload full-reload test should clear literal asset reload mappings after the callback"), ReloadState.ReloadAssets.Num(), 0);
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptClassReloadHelperOnPostReloadSoftReloadInvalidationTest,
-	"Angelscript.Editor.ClassReloadHelper.OnPostReloadSoftReloadInvalidatesComponentRegistryWithoutFullReloadSideEffects",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptClassReloadHelperOnPostReloadSoftReloadInvalidationTest::RunTest(const FString& Parameters)
+static bool RunOnPostReloadSoftReloadInvalidation(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperPostReloadTests_Private;
 	const FClassReloadHelper::FReloadState SavedState = FClassReloadHelper::ReloadState();
@@ -405,5 +400,25 @@ bool FAngelscriptClassReloadHelperOnPostReloadSoftReloadInvalidationTest::RunTes
 
 	return TestEqual(TEXT("ClassReloadHelper.OnPostReload soft-reload test should clear literal asset reload mappings after the finished-compile callback"), ReloadState.ReloadAssets.Num(), 0);
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptClassReloadHelperPostReloadTests,
+	"Angelscript.Editor.ClassReloadHelper",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(OnPostReloadFullReloadRefreshesActionsBroadcastsBlueprintCompiledAndRestoresCurrentLevel)
+	{
+		ASSERT_THAT(IsTrue(RunOnPostReloadFullReloadEffects(*TestRunner)));
+	}
+
+	TEST_METHOD(OnPostReloadSoftReloadInvalidatesComponentRegistryWithoutFullReloadSideEffects)
+	{
+		ASSERT_THAT(IsTrue(RunOnPostReloadSoftReloadInvalidation(*TestRunner)));
+	}
+};
 
 #endif

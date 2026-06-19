@@ -1,56 +1,29 @@
+#include "CQTest.h"
 #include "AngelscriptTestMacros.h"
-#include "AngelscriptTestLegacyHelpers.h"
-#include "Misc/AutomationTest.h"
+#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptTestExecute.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_Validation_AngelscriptMacroValidationTests_Private
+TEST_CLASS_WITH_FLAGS(FAngelscriptMacroValidationTest,
+	"Angelscript.TestModule.Validation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-}
-
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptGlobalBindingsMacroValidationTest,
-	"Angelscript.TestModule.Validation.GlobalBindingsMacro",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptSharedCleanMacroValidationTest,
-	"Angelscript.TestModule.Validation.SharedCleanMacro",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptSharedFreshMacroValidationTest,
-	"Angelscript.TestModule.Validation.SharedFreshMacro",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptModuleCleanMacroValidationTest,
-	"Angelscript.TestModule.Validation.ModuleCleanMacro",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptGlobalBindingsMacroValidationTest::RunTest(const FString& Parameters)
-{
-	using namespace AngelscriptTest_Validation_AngelscriptMacroValidationTests_Private;
-	bool bPassed = false;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+	TEST_METHOD(GlobalBindingsMacro)
 	{
-		FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+		FAngelscriptEngineScope Scope(Engine);
 		ON_SCOPE_EXIT
 		{
-			const TArray<TSharedRef<FAngelscriptModuleDesc>> _ActiveModules = Engine.GetActiveModules();
-			for (const TSharedRef<FAngelscriptModuleDesc>& _Module : _ActiveModules)
+			const TArray<TSharedRef<FAngelscriptModuleDesc>> ActiveModules = Engine.GetActiveModules();
+			for (const TSharedRef<FAngelscriptModuleDesc>& Module : ActiveModules)
 			{
-				Engine.DiscardModule(*_Module->ModuleName);
+				Engine.DiscardModule(*Module->ModuleName);
 			}
 		};
 
-	int32 Result = 0;
-	ASTEST_COMPILE_RUN_INT(
-		Engine,
-		"ASGlobalVariableCompatMacro",
-		TEXT(R"(
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASGlobalVariableCompatMacro"), TEXT(R"(
 int Entry()
 {
 	if (CollisionProfile::BlockAllDynamic.Compare(FName("BlockAllDynamic")) != 0)
@@ -62,91 +35,84 @@ int Entry()
 
 	return 1;
 }
-		)"),
-		TEXT("int Entry()"),
-		Result);
-
-	bPassed = TestEqual(TEXT("Global variable compat operations via macro should preserve core bound namespace globals and defaults"), Result, 1);
-
+)"));
+		ASSERT_THAT(IsTrue(ModuleScope.IsValid(), TEXT("Global variable compat macro module should compile")));
+		ExpectGlobalInt(
+			*TestRunner,
+			Engine,
+			ModuleScope.GetModule(),
+			TEXT("int Entry()"),
+			TEXT("Global variable compat operations via macro should preserve core bound namespace globals and defaults"),
+			1);
 	}
-	return bPassed;
-}
 
-bool FAngelscriptSharedCleanMacroValidationTest::RunTest(const FString& Parameters)
-{
-	using namespace AngelscriptTest_Validation_AngelscriptMacroValidationTests_Private;
-	bool bPassed = false;
-	int32 Result = 0;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-
-	ASTEST_COMPILE_RUN_INT(
-		Engine,
-		"ASSharedCleanMacroValidation",
-		TEXT(R"(
+	TEST_METHOD(SharedCleanMacro)
+	{
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASSharedCleanMacroValidation"), TEXT(R"(
 int Entry()
 {
 	return 17;
 }
-		)"),
-		TEXT("int Entry()"),
-		Result);
-
-	bPassed = TestEqual(TEXT("Shared clean lifecycle macro pair should compile and run"), Result, 17);
+)"));
+		ASSERT_THAT(IsTrue(ModuleScope.IsValid(), TEXT("Shared clean lifecycle macro module should compile")));
+		ExpectGlobalInt(
+			*TestRunner,
+			Engine,
+			ModuleScope.GetModule(),
+			TEXT("int Entry()"),
+			TEXT("Shared clean lifecycle macro pair should compile and run"),
+			17);
 	}
-	return bPassed;
-}
 
-bool FAngelscriptSharedFreshMacroValidationTest::RunTest(const FString& Parameters)
-{
-	using namespace AngelscriptTest_Validation_AngelscriptMacroValidationTests_Private;
-	bool bPassed = false;
-	int32 Result = 0;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-
-	ASTEST_COMPILE_RUN_INT(
-		Engine,
-		"ASSharedFreshMacroValidation",
-		TEXT(R"(
+	TEST_METHOD(SharedFreshMacro)
+	{
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASSharedFreshMacroValidation"), TEXT(R"(
 int Entry()
 {
 	return 23;
 }
-		)"),
-		TEXT("int Entry()"),
-		Result);
-
-	bPassed = TestEqual(TEXT("Shared fresh lifecycle macro pair should compile and run"), Result, 23);
+)"));
+		ASSERT_THAT(IsTrue(ModuleScope.IsValid(), TEXT("Shared fresh lifecycle macro module should compile")));
+		ExpectGlobalInt(
+			*TestRunner,
+			Engine,
+			ModuleScope.GetModule(),
+			TEXT("int Entry()"),
+			TEXT("Shared fresh lifecycle macro pair should compile and run"),
+			23);
 	}
-	return bPassed;
-}
 
-bool FAngelscriptModuleCleanMacroValidationTest::RunTest(const FString& Parameters)
-{
-	using namespace AngelscriptTest_Validation_AngelscriptMacroValidationTests_Private;
-	bool bPassed = false;
-	int32 Result = 0;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	const int32 BaselineActiveModules = Engine.GetActiveModules().Num();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
-
-	ASTEST_COMPILE_RUN_INT(
-		Engine,
-		"ASModuleCleanMacroValidation",
-		TEXT(R"(
+	TEST_METHOD(ModuleCleanMacro)
+	{
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		const int32 BaselineActiveModules = Engine.GetActiveModules().Num();
+		{
+			FAngelscriptEngineScope Scope(Engine);
+			FScopedModuleCleanEngine ModuleClean(Engine);
+			FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASModuleCleanMacroValidation"), TEXT(R"(
 int Entry()
 {
 	return 31;
 }
-		)"),
-		TEXT("int Entry()"),
-		Result);
-
-	bPassed = TestEqual(TEXT("Module clean lifecycle macro pair should compile and run"), Result, 31);
+)"));
+			ASSERT_THAT(IsTrue(ModuleScope.IsValid(), TEXT("Module clean lifecycle macro module should compile")));
+			ExpectGlobalInt(
+				*TestRunner,
+				Engine,
+				ModuleScope.GetModule(),
+				TEXT("int Entry()"),
+				TEXT("Module clean lifecycle macro pair should compile and run"),
+				31);
+		}
+		ASSERT_THAT(AreEqual(
+			BaselineActiveModules,
+			Engine.GetActiveModules().Num(),
+			TEXT("Module clean lifecycle should discard its module delta")));
 	}
-
-	return bPassed && TestEqual(TEXT("Module clean lifecycle should discard its module delta"), Engine.GetActiveModules().Num(), BaselineActiveModules);
-}
+};
 
 #endif

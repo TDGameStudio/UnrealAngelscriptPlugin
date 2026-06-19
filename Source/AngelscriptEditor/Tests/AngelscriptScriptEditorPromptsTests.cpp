@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "Tests/AngelscriptScriptEditorPromptsTestTypes.h"
 
 #include "EditorMenuExtensions/ScriptEditorPrompts.h"
@@ -13,16 +14,6 @@
 #include "UObject/UObjectGlobals.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptScriptEditorPromptsStructFirstParameterTest,
-	"Angelscript.Editor.ScriptEditorPrompts.StructFirstParameterFiltersMatchingStructs",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptScriptEditorPromptsBatchObjectFilteringTest,
-	"Angelscript.Editor.ScriptEditorPrompts.ShowPromptToCallFunctionOnObjectsSkipsNullAndMismatchedReceivers",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptScriptEditorPromptsTests_Private
 {
@@ -83,14 +74,19 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptScriptEditorPromptsTests_Pr
 }
 
 
-bool FAngelscriptScriptEditorPromptsStructFirstParameterTest::RunTest(const FString& Parameters)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+
+static bool RunStructFirstParameterFiltersMatchingStructs(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptScriptEditorPromptsTests_Private;
 	UAngelscriptScriptEditorPromptsAssetReceiver* Receiver = NewObject<UAngelscriptScriptEditorPromptsAssetReceiver>(GetTransientPackage());
 	UPackage* FirstPackage = nullptr;
 	UPackage* SecondPackage = nullptr;
-	UObject* FirstAssetObject = CreatePromptTestAsset<UCurveFloat>(*this, TEXT("ScriptEditorPromptFirst"), FirstPackage);
-	UObject* SecondAssetObject = CreatePromptTestAsset<UCurveFloat>(*this, TEXT("ScriptEditorPromptSecond"), SecondPackage);
+	UObject* FirstAssetObject = CreatePromptTestAsset<UCurveFloat>(Test, TEXT("ScriptEditorPromptFirst"), FirstPackage);
+	UObject* SecondAssetObject = CreatePromptTestAsset<UCurveFloat>(Test, TEXT("ScriptEditorPromptSecond"), SecondPackage);
 	if (!TestNotNull(TEXT("ScriptEditorPrompts test should create the receiver object"), Receiver)
 		|| !TestNotNull(TEXT("ScriptEditorPrompts test should create the first asset"), FirstAssetObject)
 		|| !TestNotNull(TEXT("ScriptEditorPrompts test should create the second asset"), SecondAssetObject))
@@ -150,7 +146,7 @@ bool FAngelscriptScriptEditorPromptsStructFirstParameterTest::RunTest(const FStr
 	return true;
 }
 
-bool FAngelscriptScriptEditorPromptsBatchObjectFilteringTest::RunTest(const FString& Parameters)
+static bool RunShowPromptToCallFunctionOnObjectsSkipsNullAndMismatchedReceivers(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptScriptEditorPromptsTests_Private;
 	UAngelscriptScriptEditorPromptsBatchReceiver* FirstReceiver = NewObject<UAngelscriptScriptEditorPromptsBatchReceiver>(GetTransientPackage());
@@ -211,5 +207,26 @@ bool FAngelscriptScriptEditorPromptsBatchObjectFilteringTest::RunTest(const FStr
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptScriptEditorPromptsTests,
+	"Angelscript.Editor.ScriptEditorPrompts",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(StructFirstParameterFiltersMatchingStructs)
+	{
+		ASSERT_THAT(IsTrue(RunStructFirstParameterFiltersMatchingStructs(*TestRunner)));
+	}
+
+	TEST_METHOD(ShowPromptToCallFunctionOnObjectsSkipsNullAndMismatchedReceivers)
+	{
+		ASSERT_THAT(IsTrue(RunShowPromptToCallFunctionOnObjectsSkipsNullAndMismatchedReceivers(*TestRunner)));
+	}
+};
 
 #endif

@@ -8,7 +8,7 @@
 //   AsyncDelegates — object/class success/failure async load callbacks
 //
 // CQTest adaptation notes:
-//   Single IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into TEST_CLASS.
+//   Single legacy automation test merged into TEST_CLASS.
 //   Async harness pattern preserved with object instantiation and pumped callbacks.
 //   Uses `*TestRunner` instead of `this` for assertions.
 // ============================================================================

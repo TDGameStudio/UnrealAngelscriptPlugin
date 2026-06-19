@@ -4,8 +4,7 @@
 // Preprocessor tests for USTRUCT handling: inheritance rejection and
 // default property edit specifier settings.
 //
-// Migrated from:
-//   - AngelscriptPreprocessorStructTests.cpp (original IMPLEMENT_SIMPLE_AUTOMATION_TEST)
+// Migrated to TEST_CLASS_WITH_FLAGS.
 //
 // Automation prefix: Angelscript.TestModule.Preprocessor.Structs.*
 // ============================================================================

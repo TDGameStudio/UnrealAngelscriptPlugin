@@ -1,10 +1,10 @@
+#include "CQTest.h"
 #include "AngelscriptFunctionalTestUtils.h"
 #include "AngelscriptTestMacros.h"
 #include "AngelscriptTestUtilities.h"
 
 #include "Engine/Blueprint.h"
 #include "Kismet2/KismetEditorUtilities.h"
-#include "Misc/AutomationTest.h"
 #include "Misc/Guid.h"
 #include "Misc/PackageName.h"
 #include "Misc/ScopeExit.h"
@@ -113,27 +113,26 @@ namespace TemplateBlueprintTest
 	};
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTemplateBlueprintScriptParentTest,
-	"Angelscript.Template.Blueprint.ScriptParentChild",
+TEST_CLASS_WITH_FLAGS(FAngelscriptTemplateBlueprintTest,
+	"Angelscript.Template.Blueprint",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTemplateBlueprintScriptParentTest::RunTest(const FString& Parameters)
 {
-	FAngelscriptEngine& Engine = AcquireCleanSharedCloneEngine();
-	static const FName ModuleName(TEXT("TemplateBlueprintScriptParent"));
-	ON_SCOPE_EXIT
+	TEST_METHOD(ScriptParentChild)
 	{
-		Engine.DiscardModule(*ModuleName.ToString());
-		ASTEST_RESET_ENGINE(Engine);
-	};
+		FAngelscriptEngine& Engine = AcquireCleanSharedCloneEngine();
+		static const FName ModuleName(TEXT("TemplateBlueprintScriptParent"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+			ASTEST_RESET_ENGINE(Engine);
+		};
 
-	UClass* ScriptClass = CompileScriptModule(
-		*this,
-		Engine,
-		ModuleName,
-		TEXT("TemplateBlueprintScriptParent.as"),
-		TEXT(R"AS(
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("TemplateBlueprintScriptParent.as"),
+			TEXT(R"AS(
 UCLASS()
 class ATemplateBlueprintScriptParent : AActor
 {
@@ -141,26 +140,18 @@ class ATemplateBlueprintScriptParent : AActor
 	int BlueprintTemplateMarker = 7;
 }
 )AS"),
-		TEXT("ATemplateBlueprintScriptParent"));
-	if (ScriptClass == nullptr)
-	{
-		return false;
-	}
+			TEXT("ATemplateBlueprintScriptParent"));
+		ASSERT_THAT(IsNotNull(ScriptClass));
 
-	TemplateBlueprintTest::FScopedTransientBlueprint Blueprint;
-	if (!Blueprint.CreateAndCompile(*this, ScriptClass, TEXT("ScriptParentChild")))
-	{
-		return false;
-	}
+		TemplateBlueprintTest::FScopedTransientBlueprint Blueprint;
+		ASSERT_THAT(IsTrue(Blueprint.CreateAndCompile(*TestRunner, ScriptClass, TEXT("ScriptParentChild"))));
 
-	UClass* GeneratedBlueprintClass = Blueprint.GetGeneratedClass();
-	if (!TestNotNull(TEXT("Blueprint template should expose a generated class"), GeneratedBlueprintClass))
-	{
-		return false;
-	}
+		UClass* GeneratedBlueprintClass = Blueprint.GetGeneratedClass();
+		ASSERT_THAT(IsNotNull(GeneratedBlueprintClass, TEXT("Blueprint template should expose a generated class")));
 
-	TestTrue(TEXT("Blueprint template should create a child blueprint from the script class"), GeneratedBlueprintClass->IsChildOf(ScriptClass));
-	return true;
-}
+		ASSERT_THAT(IsTrue(GeneratedBlueprintClass->IsChildOf(ScriptClass),
+			TEXT("Blueprint template should create a child blueprint from the script class")));
+	}
+};
 
 #endif

@@ -4,6 +4,7 @@
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestMacros.h"
 
+#include "CQTest.h"
 #include "Misc/ScopeExit.h"
 
 /**
@@ -31,23 +32,22 @@
 // drive the fixture (`ASTEST_CREATE_ENGINE` / `ASTEST_RESET_ENGINE` resolve
 // against it), since those belong to the engine-lifecycle layer.
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+TEST_CLASS_WITH_FLAGS(
 	FAngelscriptBindingsSharedExampleTest,
-	"Angelscript.TestModule.Bindings.SharedExample",
+	"Angelscript.TestModule.Bindings",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptBindingsSharedExampleTest::RunTest(const FString& Parameters)
 {
-	bool bPassed = true;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	ON_SCOPE_EXIT { ASTEST_RESET_ENGINE(Engine); };
+	TEST_METHOD(SharedExample)
+	{
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		ON_SCOPE_EXIT { ASTEST_RESET_ENGINE(Engine); };
 
 
-	bPassed &= RunBindingsExampleSection(*this, Engine);
+		ASSERT_THAT(IsTrue(RunBindingsExampleSection(*TestRunner, Engine)));
 
+		}
 	}
-	return bPassed;
-}
+};
 
 #endif // WITH_DEV_AUTOMATION_TESTS

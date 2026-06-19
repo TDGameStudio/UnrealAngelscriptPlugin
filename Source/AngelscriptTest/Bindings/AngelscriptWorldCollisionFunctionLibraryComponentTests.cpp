@@ -10,7 +10,7 @@
 //   NullComponentQueries — null component guard returns false and clears output
 //
 // CQTest adaptation notes:
-//   Two IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
+//   Two legacy automation tests merged into one TEST_CLASS.
 //   Uses ASTEST_CREATE_ENGINE_FULL (world-based) with FActorTestSpawner.
 //   Custom address-based invocation helpers retained.
 // ============================================================================

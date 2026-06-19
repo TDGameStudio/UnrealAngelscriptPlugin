@@ -1,4 +1,4 @@
-#include "Misc/AutomationTest.h"
+#include "CQTest.h"
 
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestMacros.h"
@@ -88,19 +88,17 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITGeneratedOutputTests_Pri
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITGeneratedOutputDebugMetadataHooksTest,
-	"Angelscript.TestModule.StaticJIT.GeneratedOutput.DebugMetadataHooks",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITGeneratedOutputTests_Private
+{
 
-bool FAngelscriptStaticJITGeneratedOutputDebugMetadataHooksTest::RunTest(const FString& Parameters)
+bool RunGeneratedOutputDebugMetadataHooks(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITGeneratedOutputTests_Private;
 	const FString ScriptSource = MakeScriptSource();
 	const int32 FirstCallLine = FindScriptLineNumberContaining(ScriptSource, TEXT("AddOne(1);"));
 	const int32 SecondCallLine = FindScriptLineNumberContaining(ScriptSource, TEXT("AddTwo(First);"));
-	if (!TestTrue(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should locate the first call line marker"), FirstCallLine != INDEX_NONE)
-		|| !TestTrue(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should locate the second call line marker"), SecondCallLine != INDEX_NONE))
+	if (!Test.TestTrue(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should locate the first call line marker"), FirstCallLine != INDEX_NONE)
+		|| !Test.TestTrue(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should locate the second call line marker"), SecondCallLine != INDEX_NONE))
 	{
 		return false;
 	}
@@ -116,7 +114,7 @@ bool FAngelscriptStaticJITGeneratedOutputDebugMetadataHooksTest::RunTest(const F
 			ModuleName,
 			SourceFilename,
 			ScriptSource);
-		if (!TestTrue(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should compile the fixture module"), bCompiled))
+		if (!Test.TestTrue(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should compile the fixture module"), bCompiled))
 		{
 			break;
 		}
@@ -129,11 +127,11 @@ bool FAngelscriptStaticJITGeneratedOutputDebugMetadataHooksTest::RunTest(const F
 			SourceWithDebugMetadata,
 			/*bEmitDebugMetadata=*/true,
 			&WithDebugError);
-		if (!TestTrue(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should generate source text with debug metadata enabled"), bGeneratedWithDebugMetadata))
+		if (!Test.TestTrue(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should generate source text with debug metadata enabled"), bGeneratedWithDebugMetadata))
 		{
 			if (!WithDebugError.IsEmpty())
 			{
-				AddError(WithDebugError);
+				Test.AddError(WithDebugError);
 			}
 			break;
 		}
@@ -143,11 +141,11 @@ bool FAngelscriptStaticJITGeneratedOutputDebugMetadataHooksTest::RunTest(const F
 		const FString SecondCallLineNeedle = FString::Printf(TEXT("SCRIPT_DEBUG_CALLSTACK_LINE(%d);"), SecondCallLine);
 		const TArray<int32> ObservedLineMarkers = ExtractGeneratedLineMarkers(SourceWithDebugMetadata);
 
-		if (!TestTrue(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should emit a frame macro when debug metadata is enabled"), SourceWithDebugMetadata.Contains(FrameNeedle))
-			|| !TestTrue(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should emit the first call line marker when debug metadata is enabled"), SourceWithDebugMetadata.Contains(FirstCallLineNeedle))
-			|| !TestTrue(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should emit the second call line marker when debug metadata is enabled"), SourceWithDebugMetadata.Contains(SecondCallLineNeedle)))
+		if (!Test.TestTrue(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should emit a frame macro when debug metadata is enabled"), SourceWithDebugMetadata.Contains(FrameNeedle))
+			|| !Test.TestTrue(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should emit the first call line marker when debug metadata is enabled"), SourceWithDebugMetadata.Contains(FirstCallLineNeedle))
+			|| !Test.TestTrue(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should emit the second call line marker when debug metadata is enabled"), SourceWithDebugMetadata.Contains(SecondCallLineNeedle)))
 		{
-			AddInfo(FString::Printf(TEXT("Observed generated line markers: [%s]"), *JoinLineMarkers(ObservedLineMarkers)));
+			Test.AddInfo(FString::Printf(TEXT("Observed generated line markers: [%s]"), *JoinLineMarkers(ObservedLineMarkers)));
 			break;
 		}
 
@@ -159,17 +157,17 @@ bool FAngelscriptStaticJITGeneratedOutputDebugMetadataHooksTest::RunTest(const F
 			SourceWithoutDebugMetadata,
 			/*bEmitDebugMetadata=*/false,
 			&WithoutDebugError);
-		if (!TestTrue(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should generate source text with debug metadata disabled"), bGeneratedWithoutDebugMetadata))
+		if (!Test.TestTrue(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should generate source text with debug metadata disabled"), bGeneratedWithoutDebugMetadata))
 		{
 			if (!WithoutDebugError.IsEmpty())
 			{
-				AddError(WithoutDebugError);
+				Test.AddError(WithoutDebugError);
 			}
 			break;
 		}
 
-		if (!TestFalse(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should omit frame macros when debug metadata is disabled"), SourceWithoutDebugMetadata.Contains(TEXT("SCRIPT_DEBUG_CALLSTACK_FRAME(")))
-			|| !TestFalse(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should omit line markers when debug metadata is disabled"), SourceWithoutDebugMetadata.Contains(TEXT("SCRIPT_DEBUG_CALLSTACK_LINE("))))
+		if (!Test.TestFalse(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should omit frame macros when debug metadata is disabled"), SourceWithoutDebugMetadata.Contains(TEXT("SCRIPT_DEBUG_CALLSTACK_FRAME(")))
+			|| !Test.TestFalse(TEXT("StaticJIT.GeneratedOutput.DebugMetadataHooks should omit line markers when debug metadata is disabled"), SourceWithoutDebugMetadata.Contains(TEXT("SCRIPT_DEBUG_CALLSTACK_LINE("))))
 		{
 			break;
 		}
@@ -181,5 +179,18 @@ bool FAngelscriptStaticJITGeneratedOutputDebugMetadataHooksTest::RunTest(const F
 	}
 	return bPassed;
 }
+
+}
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITGeneratedOutputTests,
+	"Angelscript.TestModule.StaticJIT.GeneratedOutput",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(DebugMetadataHooks)
+	{
+		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITGeneratedOutputTests_Private;
+		ASSERT_THAT(IsTrue(RunGeneratedOutputDebugMetadataHooks(*TestRunner)));
+	}
+};
 
 #endif

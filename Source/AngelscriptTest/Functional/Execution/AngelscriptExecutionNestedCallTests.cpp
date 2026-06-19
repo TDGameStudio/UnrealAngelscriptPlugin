@@ -1,6 +1,7 @@
+#include "CQTest.h"
+
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestMacros.h"
-#include "AngelscriptTestLegacyHelpers.h"
 
 #include "Misc/ScopeExit.h"
 
@@ -55,141 +56,105 @@ int Entry()
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptExecutionNestedRecursiveFrameIsolationTest,
-	"Angelscript.TestModule.Functional.Execute.Nested.RecursiveFrameIsolation",
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptExecutionNestedCallTests,
+	"Angelscript.TestModule.Functional.Execute.Nested",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(RecursiveFrameIsolation)
+	{
+		using namespace AngelscriptTest_Angelscript_AngelscriptExecutionNestedCallTests_Private;
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptExecutionExceptionCallstackInspectionTest,
-	"Angelscript.TestModule.Functional.Execute.Context.ExceptionCallstackInspection",
+		int32 Result = 0;
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, ModuleName, ScriptSource);
+		ASSERT_THAT(IsNotNull(Module));
+
+		asIScriptFunction* RunFunction = GetFunctionByDecl(*TestRunner, *Module, TEXT("int Run()"));
+		ASSERT_THAT(IsNotNull(RunFunction));
+
+		ASSERT_THAT(IsTrue(ExecuteIntFunction(*TestRunner, Engine, *RunFunction, Result)));
+
+		ASSERT_THAT(AreEqual(1234, Result));
+
+		}
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptExecutionContextCallstackTests,
+	"Angelscript.TestModule.Functional.Execute.Context",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptExecutionNestedRecursiveFrameIsolationTest::RunTest(const FString& Parameters)
 {
-	using namespace AngelscriptTest_Angelscript_AngelscriptExecutionNestedCallTests_Private;
-	bool bPassed = false;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-
-	int32 Result = 0;
-	ASTEST_COMPILE_RUN_INT(
-		Engine,
-		ModuleName,
-		ScriptSource,
-		TEXT("int Run()"),
-		Result);
-
-	bPassed = TestEqual(
-		TEXT("Execution.Nested.RecursiveFrameIsolation should preserve frame-local state across recursive calls"),
-		Result,
-		1234);
-
-	}
-	return bPassed;
-}
-
-bool FAngelscriptExecutionExceptionCallstackInspectionTest::RunTest(const FString& Parameters)
-{
-	using namespace AngelscriptTest_Angelscript_AngelscriptExecutionNestedCallTests_Private;
-	bool bPassed = true;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-
-	asIScriptModule* Module = BuildModule(*this, Engine, ExceptionModuleName, ExceptionScriptSource);
-	if (Module == nullptr)
+	TEST_METHOD(ExceptionCallstackInspection)
 	{
-		return false;
-	}
+		using namespace AngelscriptTest_Angelscript_AngelscriptExecutionNestedCallTests_Private;
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-	asIScriptFunction* EntryFunction = GetFunctionByDecl(*this, *Module, TEXT("int Entry()"));
-	if (EntryFunction == nullptr)
-	{
-		return false;
-	}
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, ExceptionModuleName, ExceptionScriptSource);
+		ASSERT_THAT(IsNotNull(Module));
 
-	asIScriptContext* Context = Engine.CreateContext();
-	if (!TestNotNull(TEXT("Execution.Context.ExceptionCallstackInspection should create a script context"), Context))
-	{
-		return false;
-	}
+		asIScriptFunction* EntryFunction = GetFunctionByDecl(*TestRunner, *Module, TEXT("int Entry()"));
+		ASSERT_THAT(IsNotNull(EntryFunction));
 
-	ON_SCOPE_EXIT
-	{
-		Context->Release();
-	};
+		asIScriptContext* Context = Engine.CreateContext();
+		ASSERT_THAT(IsNotNull(Context));
 
-	const int32 PrepareResult = Context->Prepare(EntryFunction);
-	if (!TestEqual(
-		TEXT("Execution.Context.ExceptionCallstackInspection should prepare Entry() successfully"),
-		PrepareResult,
-		static_cast<int32>(asSUCCESS)))
-	{
-		return false;
-	}
-
-	AddExpectedError(TEXT("ContextCallstackFailure"), EAutomationExpectedErrorFlags::Contains, 1);
-	AddExpectedError(TEXT("ASExecutionExceptionCallstackInspection"), EAutomationExpectedErrorFlags::Contains, 1);
-	AddExpectedError(TEXT("void FailInner(int) | Line"), EAutomationExpectedErrorFlags::Contains, 1, false);
-	AddExpectedError(TEXT("void TriggerFailure(int) | Line"), EAutomationExpectedErrorFlags::Contains, 1, false);
-	AddExpectedError(TEXT("int Entry() | Line"), EAutomationExpectedErrorFlags::Contains, 1, false);
-
-	const int32 ExecuteResult = Context->Execute();
-	const char* ExceptionStringAnsi = Context->GetExceptionString();
-	const FString ExceptionString = ExceptionStringAnsi != nullptr ? UTF8_TO_TCHAR(ExceptionStringAnsi) : FString();
-	const asUINT CallstackSize = Context->GetCallstackSize();
-
-	bool bFoundInnerFrame = false;
-	bool bFoundMiddleFrame = false;
-	bool bFoundEntryFrame = false;
-	bool bAllFrameLinesPositive = true;
-
-	for (asUINT StackLevel = 0; StackLevel < CallstackSize; ++StackLevel)
-	{
-		asIScriptFunction* StackFunction = Context->GetFunction(StackLevel);
-		if (StackFunction == nullptr)
+		ON_SCOPE_EXIT
 		{
-			bAllFrameLinesPositive = false;
-			continue;
+			Context->Release();
+		};
+
+		const int32 PrepareResult = Context->Prepare(EntryFunction);
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), PrepareResult));
+
+		TestRunner->AddExpectedError(TEXT("ContextCallstackFailure"), EAutomationExpectedErrorFlags::Contains, 1);
+		TestRunner->AddExpectedError(TEXT("ASExecutionExceptionCallstackInspection"), EAutomationExpectedErrorFlags::Contains, 1);
+		TestRunner->AddExpectedError(TEXT("void FailInner(int) | Line"), EAutomationExpectedErrorFlags::Contains, 1, false);
+		TestRunner->AddExpectedError(TEXT("void TriggerFailure(int) | Line"), EAutomationExpectedErrorFlags::Contains, 1, false);
+		TestRunner->AddExpectedError(TEXT("int Entry() | Line"), EAutomationExpectedErrorFlags::Contains, 1, false);
+
+		const int32 ExecuteResult = Context->Execute();
+		const char* ExceptionStringAnsi = Context->GetExceptionString();
+		const FString ExceptionString = ExceptionStringAnsi != nullptr ? UTF8_TO_TCHAR(ExceptionStringAnsi) : FString();
+		const asUINT CallstackSize = Context->GetCallstackSize();
+
+		bool bFoundInnerFrame = false;
+		bool bFoundMiddleFrame = false;
+		bool bFoundEntryFrame = false;
+		bool bAllFrameLinesPositive = true;
+
+		for (asUINT StackLevel = 0; StackLevel < CallstackSize; ++StackLevel)
+		{
+			asIScriptFunction* StackFunction = Context->GetFunction(StackLevel);
+			if (StackFunction == nullptr)
+			{
+				bAllFrameLinesPositive = false;
+				continue;
+			}
+
+			const FString Declaration = UTF8_TO_TCHAR(StackFunction->GetDeclaration());
+			const int32 LineNumber = Context->GetLineNumber(StackLevel);
+			bAllFrameLinesPositive &= LineNumber > 0;
+
+			bFoundInnerFrame |= Declaration.Contains(TEXT("FailInner"));
+			bFoundMiddleFrame |= Declaration.Contains(TEXT("TriggerFailure"));
+			bFoundEntryFrame |= Declaration.Contains(TEXT("Entry"));
 		}
 
-		const FString Declaration = UTF8_TO_TCHAR(StackFunction->GetDeclaration());
-		const int32 LineNumber = Context->GetLineNumber(StackLevel);
-		bAllFrameLinesPositive &= LineNumber > 0;
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_EXCEPTION), ExecuteResult));
+		ASSERT_THAT(IsFalse(ExceptionString.IsEmpty()));
+		ASSERT_THAT(IsTrue(ExceptionString.Contains(TEXT("ContextCallstackFailure"))));
+		ASSERT_THAT(IsTrue(CallstackSize >= 3));
+		ASSERT_THAT(IsTrue(bFoundInnerFrame));
+		ASSERT_THAT(IsTrue(bFoundMiddleFrame));
+		ASSERT_THAT(IsTrue(bFoundEntryFrame));
+		ASSERT_THAT(IsTrue(bAllFrameLinesPositive));
 
-		bFoundInnerFrame |= Declaration.Contains(TEXT("FailInner"));
-		bFoundMiddleFrame |= Declaration.Contains(TEXT("TriggerFailure"));
-		bFoundEntryFrame |= Declaration.Contains(TEXT("Entry"));
+		}
 	}
-
-	bPassed &= TestEqual(
-		TEXT("Execution.Context.ExceptionCallstackInspection should raise a runtime exception"),
-		ExecuteResult,
-		static_cast<int32>(asEXECUTION_EXCEPTION));
-	bPassed &= TestFalse(
-		TEXT("Execution.Context.ExceptionCallstackInspection should expose a non-empty exception string"),
-		ExceptionString.IsEmpty());
-	bPassed &= TestTrue(
-		TEXT("Execution.Context.ExceptionCallstackInspection should surface the thrown failure message"),
-		ExceptionString.Contains(TEXT("ContextCallstackFailure")));
-	bPassed &= TestTrue(
-		TEXT("Execution.Context.ExceptionCallstackInspection should preserve at least three stack frames"),
-		CallstackSize >= 3);
-	bPassed &= TestTrue(
-		TEXT("Execution.Context.ExceptionCallstackInspection should keep the failing inner frame in the callstack"),
-		bFoundInnerFrame);
-	bPassed &= TestTrue(
-		TEXT("Execution.Context.ExceptionCallstackInspection should keep the middle frame in the callstack"),
-		bFoundMiddleFrame);
-	bPassed &= TestTrue(
-		TEXT("Execution.Context.ExceptionCallstackInspection should keep the entry frame in the callstack"),
-		bFoundEntryFrame);
-	bPassed &= TestTrue(
-		TEXT("Execution.Context.ExceptionCallstackInspection should expose positive source line numbers for captured frames"),
-		bAllFrameLinesPositive);
-
-	}
-	return bPassed;
-}
+};
 
 #endif

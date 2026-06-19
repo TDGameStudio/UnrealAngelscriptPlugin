@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "Core/AngelscriptEditorModule.h"
 
 #include "AngelscriptEngine.h"
@@ -11,11 +12,6 @@
 #include "Misc/ScopeExit.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptEditorModuleOnScriptFileChangesTest,
-	"Angelscript.Editor.Module.OnScriptFileChangesGuardsEngineInitAndQueuesRootScripts",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleDirectoryWatcherTests_Private
 {
@@ -139,7 +135,12 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleDirectoryWatche
 }
 
 
-bool FAngelscriptEditorModuleOnScriptFileChangesTest::RunTest(const FString& Parameters)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+
+static bool RunOnScriptFileChangesGuardsEngineInitAndQueuesRootScripts(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleDirectoryWatcherTests_Private;
 	IFileManager& FileManager = IFileManager::Get();
@@ -233,7 +234,7 @@ bool FAngelscriptEditorModuleOnScriptFileChangesTest::RunTest(const FString& Par
 
 	TArray<TSharedRef<FAngelscriptModuleDesc>> ModulesToCompile;
 	ModulesToCompile.Add(RemovedFolderModule);
-	if (!CompileEditorModuleModules(*this, *Engine, ModulesToCompile))
+	if (!CompileEditorModuleModules(Test, *Engine, ModulesToCompile))
 	{
 		return false;
 	}
@@ -258,5 +259,21 @@ bool FAngelscriptEditorModuleOnScriptFileChangesTest::RunTest(const FString& Par
 
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotNull
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorModuleDirectoryWatcherTests,
+	"Angelscript.Editor.Module",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(OnScriptFileChangesGuardsEngineInitAndQueuesRootScripts)
+	{
+		ASSERT_THAT(IsTrue(RunOnScriptFileChangesGuardsEngineInitAndQueuesRootScripts(*TestRunner)));
+	}
+};
 
 #endif

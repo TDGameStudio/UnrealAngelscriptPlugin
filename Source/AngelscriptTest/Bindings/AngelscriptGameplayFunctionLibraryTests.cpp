@@ -10,7 +10,7 @@
 //   ImmediateFailureCallbacks     — null-save, empty-slot, missing-slot error paths
 //
 // CQTest adaptation notes:
-//   Two IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
+//   Two legacy automation tests merged into one TEST_CLASS.
 //   Async harness pattern preserved with pumped callbacks.
 //   Uses `*TestRunner` instead of `this` for assertions.
 // ============================================================================

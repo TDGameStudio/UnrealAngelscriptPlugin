@@ -9,7 +9,7 @@
 //     FComponentQueryParams, FCollisionObjectQueryParams, FCollisionResponseContainer
 //
 // CQTest adaptation notes:
-//   One IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
+//   One legacy automation test merged into one TEST_CLASS.
 //   This test retains its custom execution pattern (parameterised function with
 //   out-ref arguments) because the script populates multiple struct outputs that
 //   are compared against native equivalents. The original helper namespace is

@@ -1,3 +1,4 @@
+#include "CQTest.h"
 #include "AngelscriptFunctionalTestUtils.h"
 #include "AngelscriptTestMacros.h"
 
@@ -29,12 +30,15 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadLiteralAssetTests_Privat
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptHotReloadLiteralAssetBroadcastsReloadedObjectReplacementTest,
-	"Angelscript.TestModule.HotReload.LiteralAsset.BroadcastsReloadedObjectReplacement",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
+#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
+#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
+#define TestNotEqual(...) Test.TestNotEqual(__VA_ARGS__)
+#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
+#define TestNull(...) Test.TestNull(__VA_ARGS__)
+#define AddExpectedError(...) Test.AddExpectedError(__VA_ARGS__)
 
-bool FAngelscriptHotReloadLiteralAssetBroadcastsReloadedObjectReplacementTest::RunTest(const FString& Parameters)
+static bool LiteralAssetBroadcastsReloadedObjectReplacement(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadLiteralAssetTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -167,7 +171,7 @@ asset ReloadExampleAsset of ULiteralReloadAsset
 	TestNull(TEXT("Old generated asset class should keep its pre-reload reflected layout"), FindFProperty<FIntProperty>(OldAssetClass, TEXT("ExtraValue")));
 
 	int32 NewAssetExtraValue = 0;
-	if (!ReadPropertyValue<FIntProperty>(*this, AssetAfterReload, TEXT("ExtraValue"), NewAssetExtraValue))
+	if (!ReadPropertyValue<FIntProperty>(Test, AssetAfterReload, TEXT("ExtraValue"), NewAssetExtraValue))
 	{
 		return false;
 	}
@@ -177,5 +181,23 @@ asset ReloadExampleAsset of ULiteralReloadAsset
 	}
 	return true;
 }
+
+#undef TestTrue
+#undef TestFalse
+#undef TestEqual
+#undef TestNotEqual
+#undef TestNotNull
+#undef TestNull
+#undef AddExpectedError
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadLiteralAssetTests,
+	"Angelscript.TestModule.HotReload.LiteralAsset",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(BroadcastsReloadedObjectReplacement)
+	{
+		ASSERT_THAT(IsTrue(LiteralAssetBroadcastsReloadedObjectReplacement(*TestRunner)));
+	}
+};
 
 #endif

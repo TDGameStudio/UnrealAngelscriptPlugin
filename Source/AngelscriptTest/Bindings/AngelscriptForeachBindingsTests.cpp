@@ -16,7 +16,7 @@
 //   ForeachConstRefPreservesOriginal — FVector/FRotator const-ref preservation
 //
 // CQTest adaptation notes:
-//   Nine IMPLEMENT_SIMPLE_AUTOMATION_TEST merged into one TEST_CLASS.
+//   Nine legacy automation tests merged into one TEST_CLASS.
 //   Each RunTest shell becomes a TEST_METHOD calling the corresponding
 //   sub-section runner function.
 // ============================================================================

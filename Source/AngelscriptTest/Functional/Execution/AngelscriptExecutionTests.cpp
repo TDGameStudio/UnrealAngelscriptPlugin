@@ -1,3 +1,5 @@
+#include "CQTest.h"
+
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestMacros.h"
 
@@ -5,18 +7,16 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptExecutionBasicTest,
-	"Angelscript.TestModule.Functional.Execute.Basic",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+namespace AngelscriptTest_Angelscript_AngelscriptExecutionTests_Private
+{
 
-bool FAngelscriptExecutionBasicTest::RunTest(const FString& Parameters)
+bool RunBasic(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	asIScriptModule* Module = BuildModule(
-		*this,
+		Test,
 		Engine,
 		"ASExecutionBasic",
 		TEXT("void TestVoid() {} int TestValue() { return 42; }"));
@@ -25,54 +25,49 @@ bool FAngelscriptExecutionBasicTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	asIScriptFunction* VoidFunction = GetFunctionByDecl(*this, *Module, TEXT("void TestVoid()"));
+	asIScriptFunction* VoidFunction = GetFunctionByDecl(Test, *Module, TEXT("void TestVoid()"));
 	if (VoidFunction == nullptr)
 	{
 		return false;
 	}
 
 	asIScriptContext* Context = Engine.CreateContext();
-	if (!TestNotNull(TEXT("Execution.Basic should create a context for the void function"), Context))
+	if (!Test.TestNotNull(TEXT("Execution.Basic should create a context for the void function"), Context))
 	{
 		return false;
 	}
 
 	const int PrepareVoidResult = Context->Prepare(VoidFunction);
 	const int ExecuteVoidResult = PrepareVoidResult == asSUCCESS ? Context->Execute() : PrepareVoidResult;
-	TestEqual(TEXT("Execution.Basic should prepare the void function"), PrepareVoidResult, static_cast<int32>(asSUCCESS));
-	TestEqual(TEXT("Execution.Basic should execute the void function"), ExecuteVoidResult, static_cast<int32>(asEXECUTION_FINISHED));
+	Test.TestEqual(TEXT("Execution.Basic should prepare the void function"), PrepareVoidResult, static_cast<int32>(asSUCCESS));
+	Test.TestEqual(TEXT("Execution.Basic should execute the void function"), ExecuteVoidResult, static_cast<int32>(asEXECUTION_FINISHED));
 	Context->Release();
 
-	asIScriptFunction* ValueFunction = GetFunctionByDecl(*this, *Module, TEXT("int TestValue()"));
+	asIScriptFunction* ValueFunction = GetFunctionByDecl(Test, *Module, TEXT("int TestValue()"));
 	if (ValueFunction == nullptr)
 	{
 		return false;
 	}
 
 	int32 Result = 0;
-	if (!ExecuteIntFunction(*this, Engine, *ValueFunction, Result))
+	if (!ExecuteIntFunction(Test, Engine, *ValueFunction, Result))
 	{
 		return false;
 	}
 
-	TestEqual(TEXT("Execution.Basic should return 42 from the value function"), Result, 42);
+	Test.TestEqual(TEXT("Execution.Basic should return 42 from the value function"), Result, 42);
 	}
 
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptExecutionOneArgTest,
-	"Angelscript.TestModule.Functional.Execute.OneArg",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptExecutionOneArgTest::RunTest(const FString& Parameters)
+bool RunOneArg(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	asIScriptModule* Module = BuildModule(
-		*this,
+		Test,
 		Engine,
 		"ASExecutionOneArg",
 		TEXT("int Test(int Value) { return Value * 2; }"));
@@ -81,20 +76,20 @@ bool FAngelscriptExecutionOneArgTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	asIScriptFunction* Function = GetFunctionByDecl(*this, *Module, TEXT("int Test(int)"));
+	asIScriptFunction* Function = GetFunctionByDecl(Test, *Module, TEXT("int Test(int)"));
 	if (Function == nullptr)
 	{
 		return false;
 	}
 
 	asIScriptContext* Context = Engine.CreateContext();
-	if (!TestNotNull(TEXT("Execution.OneArg should create a context"), Context))
+	if (!Test.TestNotNull(TEXT("Execution.OneArg should create a context"), Context))
 	{
 		return false;
 	}
 
 	const int PrepareResult = Context->Prepare(Function);
-	if (!TestEqual(TEXT("Execution.OneArg should prepare the entry point"), PrepareResult, static_cast<int32>(asSUCCESS)))
+	if (!Test.TestEqual(TEXT("Execution.OneArg should prepare the entry point"), PrepareResult, static_cast<int32>(asSUCCESS)))
 	{
 		Context->Release();
 		return false;
@@ -102,31 +97,26 @@ bool FAngelscriptExecutionOneArgTest::RunTest(const FString& Parameters)
 
 	Context->SetArgDWord(0, 21);
 	const int ExecuteResult = Context->Execute();
-	if (!TestEqual(TEXT("Execution.OneArg should execute the entry point"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
+	if (!Test.TestEqual(TEXT("Execution.OneArg should execute the entry point"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
 	{
 		Context->Release();
 		return false;
 	}
 
-	TestEqual(TEXT("Execution.OneArg should double the provided value"), static_cast<int32>(Context->GetReturnDWord()), 42);
+	Test.TestEqual(TEXT("Execution.OneArg should double the provided value"), static_cast<int32>(Context->GetReturnDWord()), 42);
 	Context->Release();
 	}
 
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptExecutionTwoArgsTest,
-	"Angelscript.TestModule.Functional.Execute.TwoArgs",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptExecutionTwoArgsTest::RunTest(const FString& Parameters)
+bool RunTwoArgs(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	asIScriptModule* Module = BuildModule(
-		*this,
+		Test,
 		Engine,
 		"ASExecutionTwoArgs",
 		TEXT("int Test(int A, int B) { return A + B; }"));
@@ -135,20 +125,20 @@ bool FAngelscriptExecutionTwoArgsTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	asIScriptFunction* Function = GetFunctionByDecl(*this, *Module, TEXT("int Test(int, int)"));
+	asIScriptFunction* Function = GetFunctionByDecl(Test, *Module, TEXT("int Test(int, int)"));
 	if (Function == nullptr)
 	{
 		return false;
 	}
 
 	asIScriptContext* Context = Engine.CreateContext();
-	if (!TestNotNull(TEXT("Execution.TwoArgs should create a context"), Context))
+	if (!Test.TestNotNull(TEXT("Execution.TwoArgs should create a context"), Context))
 	{
 		return false;
 	}
 
 	const int PrepareResult = Context->Prepare(Function);
-	if (!TestEqual(TEXT("Execution.TwoArgs should prepare the entry point"), PrepareResult, static_cast<int32>(asSUCCESS)))
+	if (!Test.TestEqual(TEXT("Execution.TwoArgs should prepare the entry point"), PrepareResult, static_cast<int32>(asSUCCESS)))
 	{
 		Context->Release();
 		return false;
@@ -157,31 +147,26 @@ bool FAngelscriptExecutionTwoArgsTest::RunTest(const FString& Parameters)
 	Context->SetArgDWord(0, 20);
 	Context->SetArgDWord(1, 22);
 	const int ExecuteResult = Context->Execute();
-	if (!TestEqual(TEXT("Execution.TwoArgs should execute the entry point"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
+	if (!Test.TestEqual(TEXT("Execution.TwoArgs should execute the entry point"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
 	{
 		Context->Release();
 		return false;
 	}
 
-	TestEqual(TEXT("Execution.TwoArgs should sum both arguments"), static_cast<int32>(Context->GetReturnDWord()), 42);
+	Test.TestEqual(TEXT("Execution.TwoArgs should sum both arguments"), static_cast<int32>(Context->GetReturnDWord()), 42);
 	Context->Release();
 	}
 
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptExecutionFourArgsTest,
-	"Angelscript.TestModule.Functional.Execute.FourArgs",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptExecutionFourArgsTest::RunTest(const FString& Parameters)
+bool RunFourArgs(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	asIScriptModule* Module = BuildModule(
-		*this,
+		Test,
 		Engine,
 		"ASExecutionFourArgs",
 		TEXT("int Test(int A, int B, int C, int D) { return A + B + C + D; }"));
@@ -190,20 +175,20 @@ bool FAngelscriptExecutionFourArgsTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	asIScriptFunction* Function = GetFunctionByDecl(*this, *Module, TEXT("int Test(int, int, int, int)"));
+	asIScriptFunction* Function = GetFunctionByDecl(Test, *Module, TEXT("int Test(int, int, int, int)"));
 	if (Function == nullptr)
 	{
 		return false;
 	}
 
 	asIScriptContext* Context = Engine.CreateContext();
-	if (!TestNotNull(TEXT("Execution.FourArgs should create a context"), Context))
+	if (!Test.TestNotNull(TEXT("Execution.FourArgs should create a context"), Context))
 	{
 		return false;
 	}
 
 	const int PrepareResult = Context->Prepare(Function);
-	if (!TestEqual(TEXT("Execution.FourArgs should prepare the entry point"), PrepareResult, static_cast<int32>(asSUCCESS)))
+	if (!Test.TestEqual(TEXT("Execution.FourArgs should prepare the entry point"), PrepareResult, static_cast<int32>(asSUCCESS)))
 	{
 		Context->Release();
 		return false;
@@ -214,36 +199,26 @@ bool FAngelscriptExecutionFourArgsTest::RunTest(const FString& Parameters)
 	Context->SetArgDWord(2, 10);
 	Context->SetArgDWord(3, 12);
 	const int ExecuteResult = Context->Execute();
-	if (!TestEqual(TEXT("Execution.FourArgs should execute the entry point"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
+	if (!Test.TestEqual(TEXT("Execution.FourArgs should execute the entry point"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
 	{
 		Context->Release();
 		return false;
 	}
 
-	TestEqual(TEXT("Execution.FourArgs should sum all arguments"), static_cast<int32>(Context->GetReturnDWord()), 42);
+	Test.TestEqual(TEXT("Execution.FourArgs should sum all arguments"), static_cast<int32>(Context->GetReturnDWord()), 42);
 	Context->Release();
 	}
 
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptExecutionMixedArgsTest,
-	"Angelscript.TestModule.Functional.Execute.MixedArgs",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptExecutionInt64QWordRoundTripTest,
-	"Angelscript.TestModule.Functional.Execute.Int64QWordRoundTrip",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptExecutionMixedArgsTest::RunTest(const FString& Parameters)
+bool RunMixedArgs(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
-	if (!TestNotNull(TEXT("Execution.MixedArgs should expose the script engine"), ScriptEngine))
+	if (!Test.TestNotNull(TEXT("Execution.MixedArgs should expose the script engine"), ScriptEngine))
 	{
 		return false;
 	}
@@ -257,7 +232,7 @@ bool FAngelscriptExecutionMixedArgsTest::RunTest(const FString& Parameters)
 		: TEXT("float Test(int, float, int)");
 
 	asIScriptModule* Module = BuildModule(
-		*this,
+		Test,
 		Engine,
 		"ASExecutionMixedArgs",
 		Script);
@@ -266,20 +241,20 @@ bool FAngelscriptExecutionMixedArgsTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	asIScriptFunction* Function = GetFunctionByDecl(*this, *Module, Declaration);
+	asIScriptFunction* Function = GetFunctionByDecl(Test, *Module, Declaration);
 	if (Function == nullptr)
 	{
 		return false;
 	}
 
 	asIScriptContext* Context = Engine.CreateContext();
-	if (!TestNotNull(TEXT("Execution.MixedArgs should create a context"), Context))
+	if (!Test.TestNotNull(TEXT("Execution.MixedArgs should create a context"), Context))
 	{
 		return false;
 	}
 
 	const int PrepareResult = Context->Prepare(Function);
-	if (!TestEqual(TEXT("Execution.MixedArgs should prepare the entry point"), PrepareResult, static_cast<int32>(asSUCCESS)))
+	if (!Test.TestEqual(TEXT("Execution.MixedArgs should prepare the entry point"), PrepareResult, static_cast<int32>(asSUCCESS)))
 	{
 		Context->Release();
 		return false;
@@ -299,7 +274,7 @@ bool FAngelscriptExecutionMixedArgsTest::RunTest(const FString& Parameters)
 	}
 	Context->SetArgDWord(2, 12);
 	const int ExecuteResult = Context->Execute();
-	if (!TestEqual(TEXT("Execution.MixedArgs should execute the entry point"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
+	if (!Test.TestEqual(TEXT("Execution.MixedArgs should execute the entry point"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
 	{
 		Context->Release();
 		return false;
@@ -310,11 +285,11 @@ bool FAngelscriptExecutionMixedArgsTest::RunTest(const FString& Parameters)
 		const asQWORD EncodedReturnValue = Context->GetReturnQWord();
 		double ReturnValue = 0.0;
 		FMemory::Memcpy(&ReturnValue, &EncodedReturnValue, sizeof(ReturnValue));
-		TestTrue(TEXT("Execution.MixedArgs should preserve the mixed-argument result in float64 mode"), FMath::IsNearlyEqual(ReturnValue, 42.5, 0.001));
+		Test.TestTrue(TEXT("Execution.MixedArgs should preserve the mixed-argument result in float64 mode"), FMath::IsNearlyEqual(ReturnValue, 42.5, 0.001));
 	}
 	else
 	{
-		TestEqual(TEXT("Execution.MixedArgs should preserve the mixed-argument result"), Context->GetReturnFloat(), 42.5f, 0.001f);
+		Test.TestEqual(TEXT("Execution.MixedArgs should preserve the mixed-argument result"), Context->GetReturnFloat(), 42.5f, 0.001f);
 	}
 	Context->Release();
 	}
@@ -322,13 +297,13 @@ bool FAngelscriptExecutionMixedArgsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-bool FAngelscriptExecutionInt64QWordRoundTripTest::RunTest(const FString& Parameters)
+bool RunInt64QWordRoundTrip(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	asIScriptModule* Module = BuildModule(
-		*this,
+		Test,
 		Engine,
 		"ASExecutionInt64QWordRoundTrip",
 		TEXT("int64 AddFive(int64 Value) { return Value + 5; } int64 Negate(int64 Value) { return -Value; }"));
@@ -337,13 +312,13 @@ bool FAngelscriptExecutionInt64QWordRoundTripTest::RunTest(const FString& Parame
 		return false;
 	}
 
-	asIScriptFunction* AddFiveFunction = GetFunctionByDecl(*this, *Module, TEXT("int64 AddFive(int64)"));
+	asIScriptFunction* AddFiveFunction = GetFunctionByDecl(Test, *Module, TEXT("int64 AddFive(int64)"));
 	if (AddFiveFunction == nullptr)
 	{
 		return false;
 	}
 
-	asIScriptFunction* NegateFunction = GetFunctionByDecl(*this, *Module, TEXT("int64 Negate(int64)"));
+	asIScriptFunction* NegateFunction = GetFunctionByDecl(Test, *Module, TEXT("int64 Negate(int64)"));
 	if (NegateFunction == nullptr)
 	{
 		return false;
@@ -363,16 +338,16 @@ bool FAngelscriptExecutionInt64QWordRoundTripTest::RunTest(const FString& Parame
 		return DecodedValue;
 	};
 
-	auto ExecuteInt64Case = [this, &Engine, &EncodeInt64, &DecodeInt64](const FString& CaseName, asIScriptFunction& Function, int64 ArgumentValue, int64 ExpectedValue) -> bool
+	auto ExecuteInt64Case = [&Test, &Engine, &EncodeInt64, &DecodeInt64](const FString& CaseName, asIScriptFunction& Function, int64 ArgumentValue, int64 ExpectedValue) -> bool
 	{
 		asIScriptContext* Context = Engine.CreateContext();
-		if (!TestNotNull(*FString::Printf(TEXT("%s should create a context"), *CaseName), Context))
+		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should create a context"), *CaseName), Context))
 		{
 			return false;
 		}
 
 		const int PrepareResult = Context->Prepare(&Function);
-		if (!TestEqual(*FString::Printf(TEXT("%s should prepare the function"), *CaseName), PrepareResult, static_cast<int32>(asSUCCESS)))
+		if (!Test.TestEqual(*FString::Printf(TEXT("%s should prepare the function"), *CaseName), PrepareResult, static_cast<int32>(asSUCCESS)))
 		{
 			Context->Release();
 			return false;
@@ -380,14 +355,14 @@ bool FAngelscriptExecutionInt64QWordRoundTripTest::RunTest(const FString& Parame
 
 		Context->SetArgQWord(0, EncodeInt64(ArgumentValue));
 		const int ExecuteResult = Context->Execute();
-		if (!TestEqual(*FString::Printf(TEXT("%s should execute successfully"), *CaseName), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
+		if (!Test.TestEqual(*FString::Printf(TEXT("%s should execute successfully"), *CaseName), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
 		{
 			Context->Release();
 			return false;
 		}
 
 		const int64 ReturnValue = DecodeInt64(Context->GetReturnQWord());
-		const bool bMatched = TestEqual(*FString::Printf(TEXT("%s should preserve the expected int64 result"), *CaseName), ReturnValue, ExpectedValue);
+		const bool bMatched = Test.TestEqual(*FString::Printf(TEXT("%s should preserve the expected int64 result"), *CaseName), ReturnValue, ExpectedValue);
 		Context->Release();
 		return bMatched;
 	};
@@ -406,34 +381,29 @@ bool FAngelscriptExecutionInt64QWordRoundTripTest::RunTest(const FString& Parame
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptExecutionContextTest,
-	"Angelscript.TestModule.Functional.Execute.Context",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptExecutionContextTest::RunTest(const FString& Parameters)
+bool RunContext(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	asIScriptContext* ContextA = Engine.CreateContext();
-	if (!TestNotNull(TEXT("Execution.Context should create the first context"), ContextA))
+	if (!Test.TestNotNull(TEXT("Execution.Context should create the first context"), ContextA))
 	{
 		return false;
 	}
 
 	asIScriptContext* ContextB = Engine.CreateContext();
-	if (!TestNotNull(TEXT("Execution.Context should create the second context"), ContextB))
+	if (!Test.TestNotNull(TEXT("Execution.Context should create the second context"), ContextB))
 	{
 		ContextA->Release();
 		return false;
 	}
 
-	TestNotEqual(TEXT("Execution.Context should return distinct contexts"), ContextA, ContextB);
+	Test.TestNotEqual(TEXT("Execution.Context should return distinct contexts"), ContextA, ContextB);
 	ContextB->Release();
 
 	asIScriptModule* Module = BuildModule(
-		*this,
+		Test,
 		Engine,
 		"ASExecutionContext",
 		TEXT("void Test() {}"));
@@ -443,50 +413,45 @@ bool FAngelscriptExecutionContextTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	asIScriptFunction* Function = GetFunctionByDecl(*this, *Module, TEXT("void Test()"));
+	asIScriptFunction* Function = GetFunctionByDecl(Test, *Module, TEXT("void Test()"));
 	if (Function == nullptr)
 	{
 		ContextA->Release();
 		return false;
 	}
 
-	TestEqual(TEXT("Execution.Context should start uninitialized"), static_cast<int32>(ContextA->GetState()), static_cast<int32>(asEXECUTION_UNINITIALIZED));
+	Test.TestEqual(TEXT("Execution.Context should start uninitialized"), static_cast<int32>(ContextA->GetState()), static_cast<int32>(asEXECUTION_UNINITIALIZED));
 
 	const int PrepareResult = ContextA->Prepare(Function);
-	if (!TestEqual(TEXT("Execution.Context should prepare the function"), PrepareResult, static_cast<int32>(asSUCCESS)))
+	if (!Test.TestEqual(TEXT("Execution.Context should prepare the function"), PrepareResult, static_cast<int32>(asSUCCESS)))
 	{
 		ContextA->Release();
 		return false;
 	}
 
-	TestEqual(TEXT("Execution.Context should report a prepared state after prepare"), static_cast<int32>(ContextA->GetState()), static_cast<int32>(asEXECUTION_PREPARED));
+	Test.TestEqual(TEXT("Execution.Context should report a prepared state after prepare"), static_cast<int32>(ContextA->GetState()), static_cast<int32>(asEXECUTION_PREPARED));
 
 	const int ExecuteResult = ContextA->Execute();
-	if (!TestEqual(TEXT("Execution.Context should execute the function"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
+	if (!Test.TestEqual(TEXT("Execution.Context should execute the function"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
 	{
 		ContextA->Release();
 		return false;
 	}
 
-	TestEqual(TEXT("Execution.Context should report a finished state after execute"), static_cast<int32>(ContextA->GetState()), static_cast<int32>(asEXECUTION_FINISHED));
+	Test.TestEqual(TEXT("Execution.Context should report a finished state after execute"), static_cast<int32>(ContextA->GetState()), static_cast<int32>(asEXECUTION_FINISHED));
 	ContextA->Release();
 	}
 
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptExecutionNestedTest,
-	"Angelscript.TestModule.Functional.Execute.Nested",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptExecutionNestedTest::RunTest(const FString& Parameters)
+bool RunNested(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	asIScriptModule* Module = BuildModule(
-		*this,
+		Test,
 		Engine,
 		"ASExecutionNested",
 		TEXT("int Outer(int Value) { return Inner(Value) + 1; } int Inner(int Value) { return Value * 2; }"));
@@ -495,20 +460,20 @@ bool FAngelscriptExecutionNestedTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	asIScriptFunction* Function = GetFunctionByDecl(*this, *Module, TEXT("int Outer(int)"));
+	asIScriptFunction* Function = GetFunctionByDecl(Test, *Module, TEXT("int Outer(int)"));
 	if (Function == nullptr)
 	{
 		return false;
 	}
 
 	asIScriptContext* Context = Engine.CreateContext();
-	if (!TestNotNull(TEXT("Execution.Nested should create a context"), Context))
+	if (!Test.TestNotNull(TEXT("Execution.Nested should create a context"), Context))
 	{
 		return false;
 	}
 
 	const int PrepareResult = Context->Prepare(Function);
-	if (!TestEqual(TEXT("Execution.Nested should prepare the entry point"), PrepareResult, static_cast<int32>(asSUCCESS)))
+	if (!Test.TestEqual(TEXT("Execution.Nested should prepare the entry point"), PrepareResult, static_cast<int32>(asSUCCESS)))
 	{
 		Context->Release();
 		return false;
@@ -516,31 +481,26 @@ bool FAngelscriptExecutionNestedTest::RunTest(const FString& Parameters)
 
 	Context->SetArgDWord(0, 20);
 	const int ExecuteResult = Context->Execute();
-	if (!TestEqual(TEXT("Execution.Nested should execute the entry point"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
+	if (!Test.TestEqual(TEXT("Execution.Nested should execute the entry point"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
 	{
 		Context->Release();
 		return false;
 	}
 
-	TestEqual(TEXT("Execution.Nested should evaluate nested calls in order"), static_cast<int32>(Context->GetReturnDWord()), 41);
+	Test.TestEqual(TEXT("Execution.Nested should evaluate nested calls in order"), static_cast<int32>(Context->GetReturnDWord()), 41);
 	Context->Release();
 	}
 
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptExecutionDiscardTest,
-	"Angelscript.TestModule.Functional.Execute.Discard",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptExecutionDiscardTest::RunTest(const FString& Parameters)
+bool RunDiscard(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	asIScriptModule* Module = BuildModule(
-		*this,
+		Test,
 		Engine,
 		"ASExecutionDiscard",
 		TEXT("void Test() {}"));
@@ -549,32 +509,27 @@ bool FAngelscriptExecutionDiscardTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	TestTrue(TEXT("Execution.Discard should track the compiled module before discard"), Engine.GetModuleByModuleName(TEXT("ASExecutionDiscard")).IsValid());
+	Test.TestTrue(TEXT("Execution.Discard should track the compiled module before discard"), Engine.GetModuleByModuleName(TEXT("ASExecutionDiscard")).IsValid());
 
-	if (!TestTrue(TEXT("Execution.Discard should discard the tracked module"), Engine.DiscardModule(TEXT("ASExecutionDiscard"))))
+	if (!Test.TestTrue(TEXT("Execution.Discard should discard the tracked module"), Engine.DiscardModule(TEXT("ASExecutionDiscard"))))
 	{
 		return false;
 	}
 
-	TestTrue(TEXT("Execution.Discard should remove the tracked module after discard"), !Engine.GetModuleByModuleName(TEXT("ASExecutionDiscard")).IsValid());
-	TestFalse(TEXT("Execution.Discard should fail when discarding the same module twice"), Engine.DiscardModule(TEXT("ASExecutionDiscard")));
+	Test.TestTrue(TEXT("Execution.Discard should remove the tracked module after discard"), !Engine.GetModuleByModuleName(TEXT("ASExecutionDiscard")).IsValid());
+	Test.TestFalse(TEXT("Execution.Discard should fail when discarding the same module twice"), Engine.DiscardModule(TEXT("ASExecutionDiscard")));
 	}
 
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptExecutionScriptTest,
-	"Angelscript.TestModule.Functional.Execute.Script",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptExecutionScriptTest::RunTest(const FString& Parameters)
+bool RunScript(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	asIScriptModule* Module = BuildModule(
-		*this,
+		Test,
 		Engine,
 		"ASExecutionScript",
 		TEXT("int Calculate(int Start, int End) { int Result = 0; for (int Index = Start; Index <= End; ++Index) { Result += Index; } return Result; }"));
@@ -583,20 +538,20 @@ bool FAngelscriptExecutionScriptTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	asIScriptFunction* Function = GetFunctionByDecl(*this, *Module, TEXT("int Calculate(int, int)"));
+	asIScriptFunction* Function = GetFunctionByDecl(Test, *Module, TEXT("int Calculate(int, int)"));
 	if (Function == nullptr)
 	{
 		return false;
 	}
 
 	asIScriptContext* Context = Engine.CreateContext();
-	if (!TestNotNull(TEXT("Execution.Script should create a context"), Context))
+	if (!Test.TestNotNull(TEXT("Execution.Script should create a context"), Context))
 	{
 		return false;
 	}
 
 	const int PrepareResult = Context->Prepare(Function);
-	if (!TestEqual(TEXT("Execution.Script should prepare the entry point"), PrepareResult, static_cast<int32>(asSUCCESS)))
+	if (!Test.TestEqual(TEXT("Execution.Script should prepare the entry point"), PrepareResult, static_cast<int32>(asSUCCESS)))
 	{
 		Context->Release();
 		return false;
@@ -605,17 +560,74 @@ bool FAngelscriptExecutionScriptTest::RunTest(const FString& Parameters)
 	Context->SetArgDWord(0, 1);
 	Context->SetArgDWord(1, 10);
 	const int ExecuteResult = Context->Execute();
-	if (!TestEqual(TEXT("Execution.Script should execute the entry point"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
+	if (!Test.TestEqual(TEXT("Execution.Script should execute the entry point"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
 	{
 		Context->Release();
 		return false;
 	}
 
-	TestEqual(TEXT("Execution.Script should sum the range inclusively"), static_cast<int32>(Context->GetReturnDWord()), 55);
+	Test.TestEqual(TEXT("Execution.Script should sum the range inclusively"), static_cast<int32>(Context->GetReturnDWord()), 55);
 	Context->Release();
 	}
 
 	return true;
 }
+}
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptExecutionTests,
+	"Angelscript.TestModule.Functional.Execute",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(Basic)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptExecutionTests_Private::RunBasic(*TestRunner)));
+	}
+
+	TEST_METHOD(OneArg)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptExecutionTests_Private::RunOneArg(*TestRunner)));
+	}
+
+	TEST_METHOD(TwoArgs)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptExecutionTests_Private::RunTwoArgs(*TestRunner)));
+	}
+
+	TEST_METHOD(FourArgs)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptExecutionTests_Private::RunFourArgs(*TestRunner)));
+	}
+
+	TEST_METHOD(MixedArgs)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptExecutionTests_Private::RunMixedArgs(*TestRunner)));
+	}
+
+	TEST_METHOD(Int64QWordRoundTrip)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptExecutionTests_Private::RunInt64QWordRoundTrip(*TestRunner)));
+	}
+
+	TEST_METHOD(Context)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptExecutionTests_Private::RunContext(*TestRunner)));
+	}
+
+	TEST_METHOD(Nested)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptExecutionTests_Private::RunNested(*TestRunner)));
+	}
+
+	TEST_METHOD(Discard)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptExecutionTests_Private::RunDiscard(*TestRunner)));
+	}
+
+	TEST_METHOD(Script)
+	{
+		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptExecutionTests_Private::RunScript(*TestRunner)));
+	}
+};
 
 #endif

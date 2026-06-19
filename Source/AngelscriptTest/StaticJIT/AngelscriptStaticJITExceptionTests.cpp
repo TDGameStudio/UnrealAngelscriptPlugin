@@ -1,4 +1,4 @@
-#include "Misc/AutomationTest.h"
+#include "CQTest.h"
 
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestMacros.h"
@@ -146,22 +146,10 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private
 }
 
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITExceptionHelpersMapExpectedErrorsTest,
-	"Angelscript.TestModule.StaticJIT.ExceptionHelpers.MapExpectedErrors",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private
+{
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITExceptionHelpersWrapperParityTest,
-	"Angelscript.TestModule.StaticJIT.ExceptionHelpers.WrappersMatchMappedMessages",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptStaticJITExceptionHelpersSwitchValueInvalidTest,
-	"Angelscript.TestModule.StaticJIT.ExceptionHelpers.SwitchValueInvalidUsesDedicatedMessage",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptStaticJITExceptionHelpersMapExpectedErrorsTest::RunTest(const FString& Parameters)
+bool RunExceptionHelpersMapExpectedErrors(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private;
 	bool bPassed = false;
@@ -179,14 +167,14 @@ bool FAngelscriptStaticJITExceptionHelpersMapExpectedErrorsTest::RunTest(const F
 
 	do
 	{
-		if (!TestTrue(
+		if (!Test.TestTrue(
 				TEXT("StaticJIT.ExceptionHelpers.MapExpectedErrors should run with the current engine installed"),
 				FAngelscriptEngine::TryGetCurrentEngine() == &Engine))
 		{
 			break;
 		}
 
-		if (!VerifySetExceptionMappings(*this, FAngelscriptEngine::GameThreadTLD))
+		if (!VerifySetExceptionMappings(Test, FAngelscriptEngine::GameThreadTLD))
 		{
 			break;
 		}
@@ -199,7 +187,7 @@ bool FAngelscriptStaticJITExceptionHelpersMapExpectedErrorsTest::RunTest(const F
 	return bPassed;
 }
 
-bool FAngelscriptStaticJITExceptionHelpersWrapperParityTest::RunTest(const FString& Parameters)
+bool RunExceptionHelpersWrapperParity(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private;
 	bool bPassed = false;
@@ -217,14 +205,14 @@ bool FAngelscriptStaticJITExceptionHelpersWrapperParityTest::RunTest(const FStri
 
 	do
 	{
-		if (!TestTrue(
+		if (!Test.TestTrue(
 				TEXT("StaticJIT.ExceptionHelpers.WrappersMatchMappedMessages should run with the current engine installed"),
 				FAngelscriptEngine::TryGetCurrentEngine() == &Engine))
 		{
 			break;
 		}
 
-		if (!VerifyWrapperMappings(*this, FAngelscriptEngine::GameThreadTLD))
+		if (!VerifyWrapperMappings(Test, FAngelscriptEngine::GameThreadTLD))
 		{
 			break;
 		}
@@ -237,7 +225,7 @@ bool FAngelscriptStaticJITExceptionHelpersWrapperParityTest::RunTest(const FStri
 	return bPassed;
 }
 
-bool FAngelscriptStaticJITExceptionHelpersSwitchValueInvalidTest::RunTest(const FString& Parameters)
+bool RunExceptionHelpersSwitchValueInvalid(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private;
 	bool bPassed = false;
@@ -255,7 +243,7 @@ bool FAngelscriptStaticJITExceptionHelpersSwitchValueInvalidTest::RunTest(const 
 
 	do
 	{
-		if (!TestTrue(
+		if (!Test.TestTrue(
 				TEXT("StaticJIT.ExceptionHelpers.SwitchValueInvalidUsesDedicatedMessage should run with the current engine installed"),
 				FAngelscriptEngine::TryGetCurrentEngine() == &Engine))
 		{
@@ -263,7 +251,7 @@ bool FAngelscriptStaticJITExceptionHelpersSwitchValueInvalidTest::RunTest(const 
 		}
 
 		if (!RunExceptionCase(
-				*this,
+				Test,
 				FAngelscriptEngine::GameThreadTLD,
 				TEXT("StaticJIT.ExceptionHelpers.SwitchValueInvalidUsesDedicatedMessage dedicated wrapper"),
 				TEXT("Invalid enum value passed to switch"),
@@ -282,5 +270,30 @@ bool FAngelscriptStaticJITExceptionHelpersSwitchValueInvalidTest::RunTest(const 
 	}
 	return bPassed;
 }
+
+}
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITExceptionHelperTests,
+	"Angelscript.TestModule.StaticJIT.ExceptionHelpers",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(MapExpectedErrors)
+	{
+		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private;
+		ASSERT_THAT(IsTrue(RunExceptionHelpersMapExpectedErrors(*TestRunner)));
+	}
+
+	TEST_METHOD(WrappersMatchMappedMessages)
+	{
+		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private;
+		ASSERT_THAT(IsTrue(RunExceptionHelpersWrapperParity(*TestRunner)));
+	}
+
+	TEST_METHOD(SwitchValueInvalidUsesDedicatedMessage)
+	{
+		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private;
+		ASSERT_THAT(IsTrue(RunExceptionHelpersSwitchValueInvalid(*TestRunner)));
+	}
+};
 
 #endif
