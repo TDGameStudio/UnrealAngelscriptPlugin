@@ -21,12 +21,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSnippetExecutionTests,
 
 		const FAngelscriptSnippetResult Result = FAngelscriptSnippetRunner::Execute(Engine, Request);
 
-		TestRunner->TestTrue(TEXT("Statement snippet should execute successfully"), Result.bSucceeded);
-		TestRunner->TestEqual(TEXT("Statement snippet should report success"), Result.ResultCode, EAngelscriptSnippetResultCode::Succeeded);
-		TestRunner->TestTrue(TEXT("Statement snippet should expose a void entry point"), Result.EntryPointDeclaration.StartsWith(TEXT("void ")));
-		TestRunner->TestTrue(TEXT("Statement snippet should use Immediate memory virtual path"), Result.VirtualPath.StartsWith(TEXT("/Angelscript/Memory/Immediate/Snippet_")));
-		TestRunner->TestTrue(TEXT("Statement snippet should use isolated Immediate module name"), Result.ModuleName.StartsWith(TEXT("Angelscript.Memory.Immediate.Snippet_")));
-		TestRunner->TestFalse(TEXT("Statement snippet should discard module by default"), Engine.GetModule(Result.ModuleName).IsValid());
+		ASSERT_THAT(IsTrue(Result.bSucceeded, TEXT("Statement snippet should execute successfully")));
+		ASSERT_THAT(AreEqual(EAngelscriptSnippetResultCode::Succeeded, Result.ResultCode, TEXT("Statement snippet should report success")));
+		ASSERT_THAT(IsTrue(Result.EntryPointDeclaration.StartsWith(TEXT("void ")), TEXT("Statement snippet should expose a void entry point")));
+		ASSERT_THAT(IsTrue(Result.VirtualPath.StartsWith(TEXT("/Angelscript/Memory/Immediate/Snippet_")), TEXT("Statement snippet should use Immediate memory virtual path")));
+		ASSERT_THAT(IsTrue(Result.ModuleName.StartsWith(TEXT("Angelscript.Memory.Immediate.Snippet_")), TEXT("Statement snippet should use isolated Immediate module name")));
+		ASSERT_THAT(IsFalse(Engine.GetModule(Result.ModuleName).IsValid(), TEXT("Statement snippet should discard module by default")));
 
 		}
 	}
@@ -43,12 +43,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSnippetExecutionTests,
 		const FAngelscriptSnippetResult FirstResult = FAngelscriptSnippetRunner::Execute(Engine, Request);
 		const FAngelscriptSnippetResult SecondResult = FAngelscriptSnippetRunner::Execute(Engine, Request);
 
-		TestRunner->TestTrue(TEXT("First repeated-label statement snippet should execute successfully"), FirstResult.bSucceeded);
-		TestRunner->TestTrue(TEXT("Second repeated-label statement snippet should execute successfully"), SecondResult.bSucceeded);
-		TestRunner->TestEqual(TEXT("Second repeated-label statement snippet should report success"), SecondResult.ResultCode, EAngelscriptSnippetResultCode::Succeeded);
-		TestRunner->TestNotEqual(TEXT("Repeated-label statement snippets should use distinct module names"), FirstResult.ModuleName, SecondResult.ModuleName);
-		TestRunner->TestFalse(TEXT("First repeated-label statement snippet should discard module"), Engine.GetModule(FirstResult.ModuleName).IsValid());
-		TestRunner->TestFalse(TEXT("Second repeated-label statement snippet should discard module"), Engine.GetModule(SecondResult.ModuleName).IsValid());
+		ASSERT_THAT(IsTrue(FirstResult.bSucceeded, TEXT("First repeated-label statement snippet should execute successfully")));
+		ASSERT_THAT(IsTrue(SecondResult.bSucceeded, TEXT("Second repeated-label statement snippet should execute successfully")));
+		ASSERT_THAT(AreEqual(EAngelscriptSnippetResultCode::Succeeded, SecondResult.ResultCode, TEXT("Second repeated-label statement snippet should report success")));
+		ASSERT_THAT(AreNotEqual(SecondResult.ModuleName, FirstResult.ModuleName, TEXT("Repeated-label statement snippets should use distinct module names")));
+		ASSERT_THAT(IsFalse(Engine.GetModule(FirstResult.ModuleName).IsValid(), TEXT("First repeated-label statement snippet should discard module")));
+		ASSERT_THAT(IsFalse(Engine.GetModule(SecondResult.ModuleName).IsValid(), TEXT("Second repeated-label statement snippet should discard module")));
 
 		}
 	}
@@ -77,12 +77,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSnippetExecutionTests,
 			}
 		};
 
-		TestRunner->TestTrue(TEXT("First kept repeated-label statement snippet should execute successfully"), FirstResult.bSucceeded);
-		TestRunner->TestTrue(TEXT("Second kept repeated-label statement snippet should execute successfully"), SecondResult.bSucceeded);
-		TestRunner->TestNotEqual(TEXT("Kept repeated-label statement snippets should use distinct module names"), FirstResult.ModuleName, SecondResult.ModuleName);
-		TestRunner->TestNotEqual(TEXT("Kept repeated-label statement snippets should use distinct entry points"), FirstResult.EntryPointDeclaration, SecondResult.EntryPointDeclaration);
-		TestRunner->TestTrue(TEXT("First kept repeated-label statement snippet should keep module"), Engine.GetModule(FirstResult.ModuleName).IsValid());
-		TestRunner->TestTrue(TEXT("Second kept repeated-label statement snippet should keep module"), Engine.GetModule(SecondResult.ModuleName).IsValid());
+		ASSERT_THAT(IsTrue(FirstResult.bSucceeded, TEXT("First kept repeated-label statement snippet should execute successfully")));
+		ASSERT_THAT(IsTrue(SecondResult.bSucceeded, TEXT("Second kept repeated-label statement snippet should execute successfully")));
+		ASSERT_THAT(AreNotEqual(SecondResult.ModuleName, FirstResult.ModuleName, TEXT("Kept repeated-label statement snippets should use distinct module names")));
+		ASSERT_THAT(AreNotEqual(SecondResult.EntryPointDeclaration, FirstResult.EntryPointDeclaration, TEXT("Kept repeated-label statement snippets should use distinct entry points")));
+		ASSERT_THAT(IsTrue(Engine.GetModule(FirstResult.ModuleName).IsValid(), TEXT("First kept repeated-label statement snippet should keep module")));
+		ASSERT_THAT(IsTrue(Engine.GetModule(SecondResult.ModuleName).IsValid(), TEXT("Second kept repeated-label statement snippet should keep module")));
 
 		}
 	}
@@ -107,9 +107,9 @@ void Main()
 
 		const FAngelscriptSnippetResult Result = FAngelscriptSnippetRunner::Execute(Engine, Request);
 
-		TestRunner->TestTrue(TEXT("Full-source snippet should execute explicit Main"), Result.bSucceeded);
-		TestRunner->TestEqual(TEXT("Full-source snippet should report success"), Result.ResultCode, EAngelscriptSnippetResultCode::Succeeded);
-		TestRunner->TestEqual(TEXT("Full-source snippet diagnostics should be empty on success"), Result.Diagnostics.Num(), 0);
+		ASSERT_THAT(IsTrue(Result.bSucceeded, TEXT("Full-source snippet should execute explicit Main")));
+		ASSERT_THAT(AreEqual(EAngelscriptSnippetResultCode::Succeeded, Result.ResultCode, TEXT("Full-source snippet should report success")));
+		ASSERT_THAT(AreEqual(0, Result.Diagnostics.Num(), TEXT("Full-source snippet diagnostics should be empty on success")));
 
 		}
 	}
@@ -132,12 +132,12 @@ void Main()
 		const FAngelscriptSnippetResult FirstResult = FAngelscriptSnippetRunner::Execute(Engine, Request);
 		const FAngelscriptSnippetResult SecondResult = FAngelscriptSnippetRunner::Execute(Engine, Request);
 
-		TestRunner->TestTrue(TEXT("First repeated full-source snippet should execute successfully"), FirstResult.bSucceeded);
-		TestRunner->TestTrue(TEXT("Second repeated full-source snippet should execute successfully"), SecondResult.bSucceeded);
-		TestRunner->TestEqual(TEXT("Repeated full-source snippets should keep explicit Main entry"), SecondResult.EntryPointDeclaration, FString(TEXT("void Main()")));
-		TestRunner->TestNotEqual(TEXT("Repeated full-source snippets should use distinct module names"), FirstResult.ModuleName, SecondResult.ModuleName);
-		TestRunner->TestFalse(TEXT("First repeated full-source snippet should discard module"), Engine.GetModule(FirstResult.ModuleName).IsValid());
-		TestRunner->TestFalse(TEXT("Second repeated full-source snippet should discard module"), Engine.GetModule(SecondResult.ModuleName).IsValid());
+		ASSERT_THAT(IsTrue(FirstResult.bSucceeded, TEXT("First repeated full-source snippet should execute successfully")));
+		ASSERT_THAT(IsTrue(SecondResult.bSucceeded, TEXT("Second repeated full-source snippet should execute successfully")));
+		ASSERT_THAT(AreEqual(FString(TEXT("void Main()")), SecondResult.EntryPointDeclaration, TEXT("Repeated full-source snippets should keep explicit Main entry")));
+		ASSERT_THAT(AreNotEqual(SecondResult.ModuleName, FirstResult.ModuleName, TEXT("Repeated full-source snippets should use distinct module names")));
+		ASSERT_THAT(IsFalse(Engine.GetModule(FirstResult.ModuleName).IsValid(), TEXT("First repeated full-source snippet should discard module")));
+		ASSERT_THAT(IsFalse(Engine.GetModule(SecondResult.ModuleName).IsValid(), TEXT("Second repeated full-source snippet should discard module")));
 
 		}
 	}
@@ -157,13 +157,13 @@ void Main()
 		TestRunner->AddExpectedError(TEXT("Hot reload failed due to script compile errors"), EAutomationExpectedErrorFlags::Contains, 0);
 		const FAngelscriptSnippetResult Result = FAngelscriptSnippetRunner::Execute(Engine, Request);
 
-		TestRunner->TestFalse(TEXT("Broken snippet should fail"), Result.bSucceeded);
-		TestRunner->TestEqual(TEXT("Broken snippet should fail during compile"), Result.ResultCode, EAngelscriptSnippetResultCode::CompileFailed);
-		TestRunner->TestTrue(TEXT("Broken snippet should report at least one diagnostic"), Result.Diagnostics.Num() > 0);
+		ASSERT_THAT(IsFalse(Result.bSucceeded, TEXT("Broken snippet should fail")));
+		ASSERT_THAT(AreEqual(EAngelscriptSnippetResultCode::CompileFailed, Result.ResultCode, TEXT("Broken snippet should fail during compile")));
+		ASSERT_THAT(IsTrue(Result.Diagnostics.Num() > 0, TEXT("Broken snippet should report at least one diagnostic")));
 		if (Result.Diagnostics.Num() > 0)
 		{
-			TestRunner->TestEqual(TEXT("Broken snippet diagnostic should use virtual path section"), Result.Diagnostics[0].Section, Result.VirtualPath);
-			TestRunner->TestTrue(TEXT("Broken snippet diagnostic should map to user row"), Result.Diagnostics[0].UserRow >= 1);
+			ASSERT_THAT(AreEqual(Result.VirtualPath, Result.Diagnostics[0].Section, TEXT("Broken snippet diagnostic should use virtual path section")));
+			ASSERT_THAT(IsTrue(Result.Diagnostics[0].UserRow >= 1, TEXT("Broken snippet diagnostic should map to user row")));
 		}
 
 		}
@@ -183,12 +183,12 @@ void Main()
 		TestRunner->AddExpectedError(TEXT("void __SnippetMain_"), EAutomationExpectedErrorFlags::Contains, 0);
 		const FAngelscriptSnippetResult Result = FAngelscriptSnippetRunner::Execute(Engine, Request);
 
-		TestRunner->TestFalse(TEXT("Throwing snippet should fail"), Result.bSucceeded);
-		TestRunner->TestEqual(TEXT("Throwing snippet should report execution exception"), Result.ResultCode, EAngelscriptSnippetResultCode::ExecutionException);
-		TestRunner->TestTrue(TEXT("Throwing statement snippet should report generated entry point"), Result.EntryPointDeclaration.StartsWith(TEXT("void __SnippetMain_")));
-		TestRunner->TestTrue(TEXT("Throwing snippet should preserve exception text"), Result.ExceptionMessage.Contains(TEXT("SnippetFailure")));
-		TestRunner->TestEqual(TEXT("Throwing snippet should report virtual section"), Result.ExceptionSection, Result.VirtualPath);
-		TestRunner->TestTrue(TEXT("Throwing snippet should report user-visible line"), Result.ExceptionLine >= 1);
+		ASSERT_THAT(IsFalse(Result.bSucceeded, TEXT("Throwing snippet should fail")));
+		ASSERT_THAT(AreEqual(EAngelscriptSnippetResultCode::ExecutionException, Result.ResultCode, TEXT("Throwing snippet should report execution exception")));
+		ASSERT_THAT(IsTrue(Result.EntryPointDeclaration.StartsWith(TEXT("void __SnippetMain_")), TEXT("Throwing statement snippet should report generated entry point")));
+		ASSERT_THAT(IsTrue(Result.ExceptionMessage.Contains(TEXT("SnippetFailure")), TEXT("Throwing snippet should preserve exception text")));
+		ASSERT_THAT(AreEqual(Result.VirtualPath, Result.ExceptionSection, TEXT("Throwing snippet should report virtual section")));
+		ASSERT_THAT(IsTrue(Result.ExceptionLine >= 1, TEXT("Throwing snippet should report user-visible line")));
 
 		}
 	}
@@ -212,8 +212,8 @@ void Main()
 			}
 		};
 
-		TestRunner->TestTrue(TEXT("Kept snippet should execute successfully"), Result.bSucceeded);
-		TestRunner->TestTrue(TEXT("Kept snippet should leave module descriptor available"), Engine.GetModule(Result.ModuleName).IsValid());
+		ASSERT_THAT(IsTrue(Result.bSucceeded, TEXT("Kept snippet should execute successfully")));
+		ASSERT_THAT(IsTrue(Engine.GetModule(Result.ModuleName).IsValid(), TEXT("Kept snippet should leave module descriptor available")));
 
 		}
 	}
@@ -228,9 +228,9 @@ void Main()
 
 		const FAngelscriptSnippetResult Result = FAngelscriptSnippetRunner::Execute(Engine, Request);
 
-		TestRunner->TestFalse(TEXT("Empty snippet should fail"), Result.bSucceeded);
-		TestRunner->TestEqual(TEXT("Empty snippet should be invalid request"), Result.ResultCode, EAngelscriptSnippetResultCode::InvalidRequest);
-		TestRunner->TestTrue(TEXT("Empty snippet should explain the failure"), !Result.ErrorMessage.IsEmpty());
+		ASSERT_THAT(IsFalse(Result.bSucceeded, TEXT("Empty snippet should fail")));
+		ASSERT_THAT(AreEqual(EAngelscriptSnippetResultCode::InvalidRequest, Result.ResultCode, TEXT("Empty snippet should be invalid request")));
+		ASSERT_THAT(IsTrue(!Result.ErrorMessage.IsEmpty(), TEXT("Empty snippet should explain the failure")));
 
 		}
 	}
@@ -246,9 +246,9 @@ void Main()
 
 		const FAngelscriptSnippetResult Result = FAngelscriptSnippetRunner::Execute(Engine, Request);
 
-		TestRunner->TestFalse(TEXT("Full-source snippet without Main should fail"), Result.bSucceeded);
-		TestRunner->TestEqual(TEXT("Full-source snippet without Main should report missing entry"), Result.ResultCode, EAngelscriptSnippetResultCode::EntryPointMissing);
-		TestRunner->TestTrue(TEXT("Full-source snippet without Main should discard module"), !Result.ModuleName.IsEmpty() && !Engine.GetModule(Result.ModuleName).IsValid());
+		ASSERT_THAT(IsFalse(Result.bSucceeded, TEXT("Full-source snippet without Main should fail")));
+		ASSERT_THAT(AreEqual(EAngelscriptSnippetResultCode::EntryPointMissing, Result.ResultCode, TEXT("Full-source snippet without Main should report missing entry")));
+		ASSERT_THAT(IsTrue(!Result.ModuleName.IsEmpty() && !Engine.GetModule(Result.ModuleName).IsValid(), TEXT("Full-source snippet without Main should discard module")));
 
 		}
 	}

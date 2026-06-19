@@ -84,26 +84,13 @@ namespace AngelscriptTest_Bindings_AngelscriptWorldCollisionBindingsTests_Privat
 		const FHitResult& ScriptHit,
 		const FHitResult& NativeHit)
 	{
+		FNoDiscardAsserter Assert(Test);
 		bool bPassed = true;
-		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel),
-			bScriptReturnValue,
-			bNativeReturnValue);
-		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the hit actor"), ContextLabel),
-			ScriptHit.GetActor(),
-			NativeHit.GetActor());
-		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the hit component"), ContextLabel),
-			ScriptHit.GetComponent(),
-			NativeHit.GetComponent());
-		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the blocking-hit flag"), ContextLabel),
-			ScriptHit.bBlockingHit,
-			NativeHit.bBlockingHit);
-		bPassed &= Test.TestTrue(
-			*FString::Printf(TEXT("%s should preserve the hit distance"), ContextLabel),
-			FMath::IsNearlyEqual(ScriptHit.Distance, NativeHit.Distance, 0.01f));
+		bPassed &= Assert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel));
+		bPassed &= Assert.AreEqual(NativeHit.GetActor(), ScriptHit.GetActor(), *FString::Printf(TEXT("%s should preserve the hit actor"), ContextLabel));
+		bPassed &= Assert.AreEqual(NativeHit.GetComponent(), ScriptHit.GetComponent(), *FString::Printf(TEXT("%s should preserve the hit component"), ContextLabel));
+		bPassed &= Assert.AreEqual(NativeHit.bBlockingHit, ScriptHit.bBlockingHit, *FString::Printf(TEXT("%s should preserve the blocking-hit flag"), ContextLabel));
+		bPassed &= Assert.IsTrue(FMath::IsNearlyEqual(ScriptHit.Distance, NativeHit.Distance, 0.01f), *FString::Printf(TEXT("%s should preserve the hit distance"), ContextLabel));
 		return bPassed;
 	}
 
@@ -115,26 +102,15 @@ namespace AngelscriptTest_Bindings_AngelscriptWorldCollisionBindingsTests_Privat
 		const TArray<FHitResult>& ScriptHits,
 		const TArray<FHitResult>& NativeHits)
 	{
+		FNoDiscardAsserter Assert(Test);
 		bool bPassed = true;
-		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel),
-			bScriptReturnValue,
-			bNativeReturnValue);
-		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the hit count"), ContextLabel),
-			ScriptHits.Num(),
-			NativeHits.Num());
+		bPassed &= Assert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel));
+		bPassed &= Assert.AreEqual(NativeHits.Num(), ScriptHits.Num(), *FString::Printf(TEXT("%s should preserve the hit count"), ContextLabel));
 
 		for (int32 HitIndex = 0; HitIndex < FMath::Min(ScriptHits.Num(), NativeHits.Num()); ++HitIndex)
 		{
-			bPassed &= Test.TestEqual(
-				*FString::Printf(TEXT("%s should preserve actor for hit %d"), ContextLabel, HitIndex),
-				ScriptHits[HitIndex].GetActor(),
-				NativeHits[HitIndex].GetActor());
-			bPassed &= Test.TestEqual(
-				*FString::Printf(TEXT("%s should preserve component for hit %d"), ContextLabel, HitIndex),
-				ScriptHits[HitIndex].GetComponent(),
-				NativeHits[HitIndex].GetComponent());
+			bPassed &= Assert.AreEqual(NativeHits[HitIndex].GetActor(), ScriptHits[HitIndex].GetActor(), *FString::Printf(TEXT("%s should preserve actor for hit %d"), ContextLabel, HitIndex));
+			bPassed &= Assert.AreEqual(NativeHits[HitIndex].GetComponent(), ScriptHits[HitIndex].GetComponent(), *FString::Printf(TEXT("%s should preserve component for hit %d"), ContextLabel, HitIndex));
 		}
 
 		return bPassed;
@@ -148,26 +124,15 @@ namespace AngelscriptTest_Bindings_AngelscriptWorldCollisionBindingsTests_Privat
 		const TArray<FOverlapResult>& ScriptOverlaps,
 		const TArray<FOverlapResult>& NativeOverlaps)
 	{
+		FNoDiscardAsserter Assert(Test);
 		bool bPassed = true;
-		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel),
-			bScriptReturnValue,
-			bNativeReturnValue);
-		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the overlap count"), ContextLabel),
-			ScriptOverlaps.Num(),
-			NativeOverlaps.Num());
+		bPassed &= Assert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel));
+		bPassed &= Assert.AreEqual(NativeOverlaps.Num(), ScriptOverlaps.Num(), *FString::Printf(TEXT("%s should preserve the overlap count"), ContextLabel));
 
 		for (int32 OverlapIndex = 0; OverlapIndex < FMath::Min(ScriptOverlaps.Num(), NativeOverlaps.Num()); ++OverlapIndex)
 		{
-			bPassed &= Test.TestEqual(
-				*FString::Printf(TEXT("%s should preserve actor for overlap %d"), ContextLabel, OverlapIndex),
-				ScriptOverlaps[OverlapIndex].GetActor(),
-				NativeOverlaps[OverlapIndex].GetActor());
-			bPassed &= Test.TestEqual(
-				*FString::Printf(TEXT("%s should preserve component for overlap %d"), ContextLabel, OverlapIndex),
-				ScriptOverlaps[OverlapIndex].GetComponent(),
-				NativeOverlaps[OverlapIndex].GetComponent());
+			bPassed &= Assert.AreEqual(NativeOverlaps[OverlapIndex].GetActor(), ScriptOverlaps[OverlapIndex].GetActor(), *FString::Printf(TEXT("%s should preserve actor for overlap %d"), ContextLabel, OverlapIndex));
+			bPassed &= Assert.AreEqual(NativeOverlaps[OverlapIndex].GetComponent(), ScriptOverlaps[OverlapIndex].GetComponent(), *FString::Printf(TEXT("%s should preserve component for overlap %d"), ContextLabel, OverlapIndex));
 		}
 
 		return bPassed;
@@ -273,14 +238,14 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 		UBoxComponent* TargetBox = AngelscriptTest_Bindings_AngelscriptWorldCollisionBindingsTests_Private::AddCollisionBox(CollisionTargetActor, FName(TEXT("CollisionTarget")), TargetExtent, CollisionTargetLocation);
 		AActor& CollisionQueryActor = Spawner.SpawnActor<AActor>();
 		UBoxComponent* QueryBox = AngelscriptTest_Bindings_AngelscriptWorldCollisionBindingsTests_Private::AddCollisionBox(CollisionQueryActor, FName(TEXT("CollisionQuery")), QueryExtent, CollisionMissLocation);
-		if (!TestRunner->TestNotNull(TEXT("World collision target box should be created"), TargetBox)
-			|| !TestRunner->TestNotNull(TEXT("World collision query box should be created"), QueryBox))
+		if (!this->Assert.IsNotNull(TargetBox, TEXT("World collision target box should be created"))
+			|| !this->Assert.IsNotNull(QueryBox, TEXT("World collision query box should be created")))
 		{
 			return;
 		}
 
 		UWorld* World = CollisionTargetActor.GetWorld();
-		if (!TestRunner->TestNotNull(TEXT("World collision test should access the spawned test world"), World))
+		if (!this->Assert.IsNotNull(World, TEXT("World collision test should access the spawned test world")))
 		{
 			return;
 		}
@@ -400,7 +365,10 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 		{
 			return;
 		}
-		TestRunner->TestEqual(TEXT("OverlapAny hit should preserve the bool return value"), bScriptOverlapAnyHit, bNativeOverlapAnyHit);
+		if (!this->Assert.AreEqual(bNativeOverlapAnyHit, bScriptOverlapAnyHit, TEXT("OverlapAny hit should preserve the bool return value")))
+		{
+			return;
+		}
 
 		// OverlapAny miss
 		const bool bNativeOverlapAnyMiss = World->OverlapAnyTestByChannel(CollisionMissLocation, IdentityRotation, ECC_Visibility, SweepShape);
@@ -412,7 +380,10 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 		{
 			return;
 		}
-		TestRunner->TestEqual(TEXT("OverlapAny miss should preserve the bool return value"), bScriptOverlapAnyMiss, bNativeOverlapAnyMiss);
+		if (!this->Assert.AreEqual(bNativeOverlapAnyMiss, bScriptOverlapAnyMiss, TEXT("OverlapAny miss should preserve the bool return value")))
+		{
+			return;
+		}
 
 		// ComponentOverlapMulti hit
 		TArray<FOverlapResult> NativeComponentOverlapHits;

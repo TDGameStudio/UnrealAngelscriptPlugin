@@ -105,12 +105,13 @@ namespace CompilerPipelinePropertyDefaultTest
 		UObject* Object,
 		FString& OutValue)
 	{
-		if (!Test.TestNotNull(
-				*FString::Printf(TEXT("%s should expose the reflected FString property"), Context),
-				Property)
-			|| !Test.TestNotNull(
-				*FString::Printf(TEXT("%s should expose the target object"), Context),
-				Object))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(
+				Property,
+				*FString::Printf(TEXT("%s should expose the reflected FString property"), Context))
+			|| !Assert.IsNotNull(
+				Object,
+				*FString::Printf(TEXT("%s should expose the target object"), Context)))
 		{
 			return false;
 		}
@@ -125,7 +126,8 @@ namespace CompilerPipelinePropertyDefaultTest
 		const FString& ActualValue,
 		const FString& ExpectedValue)
 	{
-		return Test.TestEqual(Context, ActualValue, ExpectedValue);
+		FNoDiscardAsserter Assert(Test);
+		return Assert.AreEqual(ExpectedValue, ActualValue, Context);
 	}
 }
 
@@ -199,48 +201,48 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultTests,
 				*CompilerPipelinePropertyDefaultTest::JoinMessages(PreprocessMessages)));
 		}
 
-		TestRunner->TestTrue(
-			TEXT("String default literal test case should preprocess successfully"),
-			bPreprocessSucceeded);
-		TestRunner->TestEqual(
-			TEXT("String default literal test case should not emit preprocessing errors"),
+		ASSERT_THAT(IsTrue(
+			bPreprocessSucceeded,
+			TEXT("String default literal test case should preprocess successfully")));
+		ASSERT_THAT(AreEqual(
+			0,
 			PreprocessErrorCount,
-			0);
-		TestRunner->TestEqual(
-			TEXT("String default literal test case should keep preprocessing diagnostics empty"),
+			TEXT("String default literal test case should not emit preprocessing errors")));
+		ASSERT_THAT(AreEqual(
+			0,
 			PreprocessMessages.Num(),
-			0);
-		TestRunner->TestEqual(
-			TEXT("String default literal test case should emit exactly one module descriptor"),
+			TEXT("String default literal test case should keep preprocessing diagnostics empty")));
+		ASSERT_THAT(AreEqual(
+			1,
 			Modules.Num(),
-			1);
+			TEXT("String default literal test case should emit exactly one module descriptor")));
 		if (!bPreprocessSucceeded || Modules.Num() != 1)
 		{
 			return;
 		}
 
 		const TSharedRef<FAngelscriptModuleDesc> ModuleDesc = Modules[0];
-		TestRunner->TestEqual(
-			TEXT("String default literal test case should preserve the expected module name"),
+		ASSERT_THAT(AreEqual(
+			CompilerPipelinePropertyDefaultTest::ModuleName.ToString(),
 			ModuleDesc->ModuleName,
-			CompilerPipelinePropertyDefaultTest::ModuleName.ToString());
+			TEXT("String default literal test case should preserve the expected module name")));
 
 		const TSharedPtr<FAngelscriptClassDesc> ClassDesc = ModuleDesc->GetClass(CompilerPipelinePropertyDefaultTest::ClassName);
-		if (!TestRunner->TestTrue(TEXT("String default literal test case should parse the annotated class descriptor"), ClassDesc.IsValid()))
+		if (!this->Assert.IsTrue(ClassDesc.IsValid(), TEXT("String default literal test case should parse the annotated class descriptor")))
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("String default literal test case should preserve the exact defaults code text"),
+		ASSERT_THAT(AreEqual(
+			CompilerPipelinePropertyDefaultTest::ExpectedDefaultsCode,
 			ClassDesc->DefaultsCode,
-			CompilerPipelinePropertyDefaultTest::ExpectedDefaultsCode);
-		TestRunner->TestTrue(
-			TEXT("String default literal test case should keep the line-comment marker inside the defaults code"),
-			ClassDesc->DefaultsCode.Contains(TEXT("//not a comment")));
-		TestRunner->TestTrue(
-			TEXT("String default literal test case should keep the block-comment marker inside the defaults code"),
-			ClassDesc->DefaultsCode.Contains(TEXT("/*literal*/")));
+			TEXT("String default literal test case should preserve the exact defaults code text")));
+		ASSERT_THAT(IsTrue(
+			ClassDesc->DefaultsCode.Contains(TEXT("//not a comment")),
+			TEXT("String default literal test case should keep the line-comment marker inside the defaults code")));
+		ASSERT_THAT(IsTrue(
+			ClassDesc->DefaultsCode.Contains(TEXT("/*literal*/")),
+			TEXT("String default literal test case should keep the block-comment marker inside the defaults code")));
 
 		Engine.ResetDiagnostics();
 
@@ -262,30 +264,30 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultTests,
 				*CompilerPipelinePropertyDefaultTest::JoinDiagnostics(Summary.Diagnostics)));
 		}
 
-		TestRunner->TestTrue(
-			TEXT("String default literal test case should compile through the normal preprocessor pipeline"),
-			bCompiled);
-		TestRunner->TestTrue(
-			TEXT("String default literal test case should record preprocessor usage in the compile summary"),
-			Summary.bUsedPreprocessor);
-		TestRunner->TestTrue(
-			TEXT("String default literal test case should mark compile succeeded in the summary"),
-			Summary.bCompileSucceeded);
-		TestRunner->TestEqual(
-			TEXT("String default literal test case should finish with a fully handled compile result"),
+		ASSERT_THAT(IsTrue(
+			bCompiled,
+			TEXT("String default literal test case should compile through the normal preprocessor pipeline")));
+		ASSERT_THAT(IsTrue(
+			Summary.bUsedPreprocessor,
+			TEXT("String default literal test case should record preprocessor usage in the compile summary")));
+		ASSERT_THAT(IsTrue(
+			Summary.bCompileSucceeded,
+			TEXT("String default literal test case should mark compile succeeded in the summary")));
+		ASSERT_THAT(AreEqual(
+			ECompileResult::FullyHandled,
 			Summary.CompileResult,
-			ECompileResult::FullyHandled);
-		TestRunner->TestEqual(
-			TEXT("String default literal test case should keep compile diagnostics empty"),
+			TEXT("String default literal test case should finish with a fully handled compile result")));
+		ASSERT_THAT(AreEqual(
+			0,
 			Summary.Diagnostics.Num(),
-			0);
+			TEXT("String default literal test case should keep compile diagnostics empty")));
 		if (!bCompiled || !Summary.bCompileSucceeded)
 		{
 			return;
 		}
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, *CompilerPipelinePropertyDefaultTest::ClassName);
-		if (!TestRunner->TestNotNull(TEXT("String default literal test case should materialize the generated class"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("String default literal test case should materialize the generated class")))
 		{
 			return;
 		}
@@ -293,17 +295,17 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultTests,
 		FStrProperty* MessageProperty = FindFProperty<FStrProperty>(GeneratedClass, *CompilerPipelinePropertyDefaultTest::MessagePropertyName);
 		FStrProperty* BlockTextProperty = FindFProperty<FStrProperty>(GeneratedClass, *CompilerPipelinePropertyDefaultTest::BlockTextPropertyName);
 		UFunction* VerifyDefaultsFunction = FindGeneratedFunction(GeneratedClass, CompilerPipelinePropertyDefaultTest::VerifyFunctionName);
-		if (!TestRunner->TestNotNull(TEXT("String default literal test case should materialize the Message property"), MessageProperty)
-			|| !TestRunner->TestNotNull(TEXT("String default literal test case should materialize the BlockText property"), BlockTextProperty)
-			|| !TestRunner->TestNotNull(TEXT("String default literal test case should materialize the verification function"), VerifyDefaultsFunction))
+		if (!this->Assert.IsNotNull(MessageProperty, TEXT("String default literal test case should materialize the Message property"))
+			|| !this->Assert.IsNotNull(BlockTextProperty, TEXT("String default literal test case should materialize the BlockText property"))
+			|| !this->Assert.IsNotNull(VerifyDefaultsFunction, TEXT("String default literal test case should materialize the verification function")))
 		{
 			return;
 		}
 
 		UObject* DefaultObject = GeneratedClass->GetDefaultObject();
 		UObject* RuntimeObject = NewObject<UObject>(GetTransientPackage(), GeneratedClass, TEXT("CompilerStringDefaultCarrier"));
-		if (!TestRunner->TestNotNull(TEXT("String default literal test case should expose the generated CDO"), DefaultObject)
-			|| !TestRunner->TestNotNull(TEXT("String default literal test case should instantiate the generated class"), RuntimeObject))
+		if (!this->Assert.IsNotNull(DefaultObject, TEXT("String default literal test case should expose the generated CDO"))
+			|| !this->Assert.IsNotNull(RuntimeObject, TEXT("String default literal test case should instantiate the generated class")))
 		{
 			return;
 		}
@@ -360,15 +362,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultTests,
 			RuntimeObject,
 			VerifyDefaultsFunction,
 			Observation.VerifyResult);
-		TestRunner->TestTrue(
-			TEXT("String default literal test case should execute the generated verification function"),
-			bExecuted);
+		ASSERT_THAT(IsTrue(
+			bExecuted,
+			TEXT("String default literal test case should execute the generated verification function")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(
-				TEXT("String default literal test case should keep comment markers and escaped quotes visible to script runtime code"),
+			ASSERT_THAT(AreEqual(
+				CompilerPipelinePropertyDefaultTest::ExpectedVerifyResult,
 				Observation.VerifyResult,
-				CompilerPipelinePropertyDefaultTest::ExpectedVerifyResult);
+				TEXT("String default literal test case should keep comment markers and escaped quotes visible to script runtime code")));
 		}
 
 		}

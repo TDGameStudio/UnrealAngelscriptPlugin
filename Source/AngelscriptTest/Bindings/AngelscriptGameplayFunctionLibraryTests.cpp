@@ -77,10 +77,11 @@ namespace
 		FName FunctionName,
 		void* Params)
 	{
+		FNoDiscardAsserter Assert(Test);
 		UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
-		if (!Test.TestNotNull(
-			*FString::Printf(TEXT("Gameplay function library script method '%s' should exist"), *FunctionName.ToString()),
-			Function))
+		if (!Assert.IsNotNull(
+			Function,
+			*FString::Printf(TEXT("Gameplay function library script method '%s' should exist"), *FunctionName.ToString())))
 		{
 			return false;
 		}
@@ -196,9 +197,11 @@ class UAsyncSaveLoadScriptHarness : UObject
 		UObject* ScriptHarness = NewObject<UObject>(GetTransientPackage(), ScriptHarnessClass, TEXT("AsyncSaveLoadScriptHarness"));
 		UAngelscriptAsyncSaveLoadCallbackRecorder* Recorder = NewObject<UAngelscriptAsyncSaveLoadCallbackRecorder>(GetTransientPackage(), TEXT("AsyncSaveLoadRecorder"));
 		UAngelscriptAsyncSaveGameTestObject* SaveGameObject = NewObject<UAngelscriptAsyncSaveGameTestObject>(GetTransientPackage(), TEXT("AsyncSaveLoadSaveGame"));
-		if (!TestRunner->TestNotNull(TEXT("Async save/load delegate test case should create the script harness"), ScriptHarness)
-			|| !TestRunner->TestNotNull(TEXT("Async save/load delegate test case should create the callback recorder"), Recorder)
-			|| !TestRunner->TestNotNull(TEXT("Async save/load delegate test case should create the save object"), SaveGameObject))
+		bool bObjectsCreated = true;
+		bObjectsCreated &= this->Assert.IsNotNull(ScriptHarness, TEXT("Async save/load delegate test case should create the script harness"));
+		bObjectsCreated &= this->Assert.IsNotNull(Recorder, TEXT("Async save/load delegate test case should create the callback recorder"));
+		bObjectsCreated &= this->Assert.IsNotNull(SaveGameObject, TEXT("Async save/load delegate test case should create the save object"));
+		if (!bObjectsCreated)
 		{
 			return;
 		}
@@ -236,12 +239,13 @@ class UAsyncSaveLoadScriptHarness : UObject
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Async save helper should invoke the callback exactly once"), Recorder->SaveCallbackCount, 1);
-		TestRunner->TestEqual(TEXT("Async save helper should forward the original slot name"), Recorder->SaveSlotName, SlotName);
-		TestRunner->TestEqual(TEXT("Async save helper should forward the original user index"), Recorder->SaveUserIndex, UserIndex);
-		TestRunner->TestTrue(TEXT("Async save helper should report save success"), Recorder->bLastSaveSuccess);
-		TestRunner->TestTrue(TEXT("Async save helper should dispatch the callback on the game thread"), Recorder->bSaveCallbackOnGameThread);
-		TestRunner->TestTrue(TEXT("Async save helper should create the slot on disk"), UGameplayStatics::DoesSaveGameExist(SlotName, UserIndex));
+		bool bAsyncSaveLoadPassed = true;
+		bAsyncSaveLoadPassed &= this->Assert.AreEqual(1, Recorder->SaveCallbackCount, TEXT("Async save helper should invoke the callback exactly once"));
+		bAsyncSaveLoadPassed &= this->Assert.AreEqual(SlotName, Recorder->SaveSlotName, TEXT("Async save helper should forward the original slot name"));
+		bAsyncSaveLoadPassed &= this->Assert.AreEqual(UserIndex, Recorder->SaveUserIndex, TEXT("Async save helper should forward the original user index"));
+		bAsyncSaveLoadPassed &= this->Assert.IsTrue(Recorder->bLastSaveSuccess, TEXT("Async save helper should report save success"));
+		bAsyncSaveLoadPassed &= this->Assert.IsTrue(Recorder->bSaveCallbackOnGameThread, TEXT("Async save helper should dispatch the callback on the game thread"));
+		bAsyncSaveLoadPassed &= this->Assert.IsTrue(UGameplayStatics::DoesSaveGameExist(SlotName, UserIndex), TEXT("Async save helper should create the slot on disk"));
 
 		Recorder->ResetLoadState();
 		FStartAsyncLoadParams LoadParams;
@@ -262,12 +266,12 @@ class UAsyncSaveLoadScriptHarness : UObject
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Async load helper should invoke the callback exactly once"), Recorder->LoadCallbackCount, 1);
-		TestRunner->TestEqual(TEXT("Async load helper should forward the original slot name"), Recorder->LoadSlotName, SlotName);
-		TestRunner->TestEqual(TEXT("Async load helper should forward the original user index"), Recorder->LoadUserIndex, UserIndex);
-		TestRunner->TestFalse(TEXT("Async load helper should return a non-null save object for an existing slot"), Recorder->bLoadReceivedNullObject);
-		TestRunner->TestTrue(TEXT("Async load helper should dispatch the callback on the game thread"), Recorder->bLoadCallbackOnGameThread);
-		TestRunner->TestEqual(TEXT("Async load helper should deserialize the saved marker"), Recorder->LoadedMarker, ExpectedMarker);
+		bAsyncSaveLoadPassed &= this->Assert.AreEqual(1, Recorder->LoadCallbackCount, TEXT("Async load helper should invoke the callback exactly once"));
+		bAsyncSaveLoadPassed &= this->Assert.AreEqual(SlotName, Recorder->LoadSlotName, TEXT("Async load helper should forward the original slot name"));
+		bAsyncSaveLoadPassed &= this->Assert.AreEqual(UserIndex, Recorder->LoadUserIndex, TEXT("Async load helper should forward the original user index"));
+		bAsyncSaveLoadPassed &= this->Assert.IsFalse(Recorder->bLoadReceivedNullObject, TEXT("Async load helper should return a non-null save object for an existing slot"));
+		bAsyncSaveLoadPassed &= this->Assert.IsTrue(Recorder->bLoadCallbackOnGameThread, TEXT("Async load helper should dispatch the callback on the game thread"));
+		bAsyncSaveLoadPassed &= this->Assert.AreEqual(ExpectedMarker, Recorder->LoadedMarker, TEXT("Async load helper should deserialize the saved marker"));
 
 		Recorder->ResetLoadState();
 		LoadParams.SlotName = MissingSlotName;
@@ -285,12 +289,16 @@ class UAsyncSaveLoadScriptHarness : UObject
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Missing-slot async load should invoke the callback exactly once"), Recorder->LoadCallbackCount, 1);
-		TestRunner->TestEqual(TEXT("Missing-slot async load should still forward the requested slot name"), Recorder->LoadSlotName, MissingSlotName);
-		TestRunner->TestEqual(TEXT("Missing-slot async load should still forward the requested user index"), Recorder->LoadUserIndex, UserIndex);
-		TestRunner->TestTrue(TEXT("Missing-slot async load should report a null save object"), Recorder->bLoadReceivedNullObject);
-		TestRunner->TestEqual(TEXT("Missing-slot async load should keep the marker sentinel"), Recorder->LoadedMarker, INDEX_NONE);
-		TestRunner->TestTrue(TEXT("Missing-slot async load should still run on the game thread"), Recorder->bLoadCallbackOnGameThread);
+		bAsyncSaveLoadPassed &= this->Assert.AreEqual(1, Recorder->LoadCallbackCount, TEXT("Missing-slot async load should invoke the callback exactly once"));
+		bAsyncSaveLoadPassed &= this->Assert.AreEqual(MissingSlotName, Recorder->LoadSlotName, TEXT("Missing-slot async load should still forward the requested slot name"));
+		bAsyncSaveLoadPassed &= this->Assert.AreEqual(UserIndex, Recorder->LoadUserIndex, TEXT("Missing-slot async load should still forward the requested user index"));
+		bAsyncSaveLoadPassed &= this->Assert.IsTrue(Recorder->bLoadReceivedNullObject, TEXT("Missing-slot async load should report a null save object"));
+		bAsyncSaveLoadPassed &= this->Assert.AreEqual(INDEX_NONE, Recorder->LoadedMarker, TEXT("Missing-slot async load should keep the marker sentinel"));
+		bAsyncSaveLoadPassed &= this->Assert.IsTrue(Recorder->bLoadCallbackOnGameThread, TEXT("Missing-slot async load should still run on the game thread"));
+		if (!bAsyncSaveLoadPassed)
+		{
+			return;
+		}
 	}
 
 	// ====================================================================
@@ -351,9 +359,11 @@ class UAsyncSaveLoadImmediateFailureScriptHarness : UObject
 		UObject* ScriptHarness = NewObject<UObject>(GetTransientPackage(), ScriptHarnessClass, TEXT("AsyncSaveLoadImmediateFailureScriptHarness"));
 		UAngelscriptAsyncSaveLoadCallbackRecorder* Recorder = NewObject<UAngelscriptAsyncSaveLoadCallbackRecorder>(GetTransientPackage(), TEXT("AsyncSaveLoadImmediateFailureRecorder"));
 		UAngelscriptAsyncSaveGameTestObject* SaveGameObject = NewObject<UAngelscriptAsyncSaveGameTestObject>(GetTransientPackage(), TEXT("AsyncImmediateFailureSaveGame"));
-		if (!TestRunner->TestNotNull(TEXT("Gameplay async immediate-failure test should create the script harness"), ScriptHarness)
-			|| !TestRunner->TestNotNull(TEXT("Gameplay async immediate-failure test should create the callback recorder"), Recorder)
-			|| !TestRunner->TestNotNull(TEXT("Gameplay async immediate-failure test should create the save object"), SaveGameObject))
+		bool bObjectsCreated = true;
+		bObjectsCreated &= this->Assert.IsNotNull(ScriptHarness, TEXT("Gameplay async immediate-failure test should create the script harness"));
+		bObjectsCreated &= this->Assert.IsNotNull(Recorder, TEXT("Gameplay async immediate-failure test should create the callback recorder"));
+		bObjectsCreated &= this->Assert.IsNotNull(SaveGameObject, TEXT("Gameplay async immediate-failure test should create the save object"));
+		if (!bObjectsCreated)
 		{
 			return;
 		}
@@ -396,11 +406,13 @@ class UAsyncSaveLoadImmediateFailureScriptHarness : UObject
 				return false;
 			}
 
-			return TestRunner->TestEqual(FString::Printf(TEXT("%s should invoke the save callback exactly once"), CaseLabel), Recorder->SaveCallbackCount, 1)
-				&& TestRunner->TestEqual(FString::Printf(TEXT("%s should preserve the requested slot name"), CaseLabel), Recorder->SaveSlotName, SlotName)
-				&& TestRunner->TestEqual(FString::Printf(TEXT("%s should preserve the requested user index"), CaseLabel), Recorder->SaveUserIndex, UserIndex)
-				&& TestRunner->TestFalse(FString::Printf(TEXT("%s should report save failure"), CaseLabel), Recorder->bLastSaveSuccess)
-				&& TestRunner->TestTrue(FString::Printf(TEXT("%s should dispatch the save callback on the game thread"), CaseLabel), Recorder->bSaveCallbackOnGameThread);
+			bool bPassed = true;
+			bPassed &= this->Assert.AreEqual(1, Recorder->SaveCallbackCount, FString::Printf(TEXT("%s should invoke the save callback exactly once"), CaseLabel));
+			bPassed &= this->Assert.AreEqual(SlotName, Recorder->SaveSlotName, FString::Printf(TEXT("%s should preserve the requested slot name"), CaseLabel));
+			bPassed &= this->Assert.AreEqual(UserIndex, Recorder->SaveUserIndex, FString::Printf(TEXT("%s should preserve the requested user index"), CaseLabel));
+			bPassed &= this->Assert.IsFalse(Recorder->bLastSaveSuccess, FString::Printf(TEXT("%s should report save failure"), CaseLabel));
+			bPassed &= this->Assert.IsTrue(Recorder->bSaveCallbackOnGameThread, FString::Printf(TEXT("%s should dispatch the save callback on the game thread"), CaseLabel));
+			return bPassed;
 		};
 
 		auto RunInvalidLoadCase = [this, &Engine, ScriptHarness, ScriptHarnessClass, Recorder, UserIndex](
@@ -427,13 +439,15 @@ class UAsyncSaveLoadImmediateFailureScriptHarness : UObject
 				return false;
 			}
 
-			return TestRunner->TestEqual(FString::Printf(TEXT("%s should invoke the load callback exactly once"), CaseLabel), Recorder->LoadCallbackCount, 1)
-				&& TestRunner->TestEqual(FString::Printf(TEXT("%s should preserve the requested slot name"), CaseLabel), Recorder->LoadSlotName, SlotName)
-				&& TestRunner->TestEqual(FString::Printf(TEXT("%s should preserve the requested user index"), CaseLabel), Recorder->LoadUserIndex, UserIndex)
-				&& TestRunner->TestTrue(FString::Printf(TEXT("%s should report a null save object"), CaseLabel), Recorder->bLoadReceivedNullObject)
-				&& TestRunner->TestTrue(FString::Printf(TEXT("%s should dispatch the load callback on the game thread"), CaseLabel), Recorder->bLoadCallbackOnGameThread)
-				&& TestRunner->TestEqual(FString::Printf(TEXT("%s should keep the marker sentinel when load fails"), CaseLabel), Recorder->LoadedMarker, INDEX_NONE)
-				&& TestRunner->TestTrue(FString::Printf(TEXT("%s should keep the loaded save object null"), CaseLabel), Recorder->LastLoadedSaveGame == nullptr);
+			bool bPassed = true;
+			bPassed &= this->Assert.AreEqual(1, Recorder->LoadCallbackCount, FString::Printf(TEXT("%s should invoke the load callback exactly once"), CaseLabel));
+			bPassed &= this->Assert.AreEqual(SlotName, Recorder->LoadSlotName, FString::Printf(TEXT("%s should preserve the requested slot name"), CaseLabel));
+			bPassed &= this->Assert.AreEqual(UserIndex, Recorder->LoadUserIndex, FString::Printf(TEXT("%s should preserve the requested user index"), CaseLabel));
+			bPassed &= this->Assert.IsTrue(Recorder->bLoadReceivedNullObject, FString::Printf(TEXT("%s should report a null save object"), CaseLabel));
+			bPassed &= this->Assert.IsTrue(Recorder->bLoadCallbackOnGameThread, FString::Printf(TEXT("%s should dispatch the load callback on the game thread"), CaseLabel));
+			bPassed &= this->Assert.AreEqual(INDEX_NONE, Recorder->LoadedMarker, FString::Printf(TEXT("%s should keep the marker sentinel when load fails"), CaseLabel));
+			bPassed &= this->Assert.IsTrue(Recorder->LastLoadedSaveGame == nullptr, FString::Printf(TEXT("%s should keep the loaded save object null"), CaseLabel));
+			return bPassed;
 		};
 
 		if (!RunInvalidSaveCase(

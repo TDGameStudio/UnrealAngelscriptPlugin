@@ -172,9 +172,9 @@ FVector GetMoveLargeStep()
 		const FVector ExpectedMoveSmallStep = FMath::VInterpConstantTo(Start, Target, 3.0, 1.0f);
 		const FVector ExpectedMoveLargeStep = FMath::VInterpConstantTo(Start, Target, 20.0, 1.0f);
 
-		TestRunner->TestTrue(
-			TEXT("Math::LerpShortestPath should stay near the 180-degree seam instead of crossing back toward zero"),
-			FMath::Abs(FMath::FindDeltaAngleDegrees(ScriptShortestLerp.Yaw, 0.0f)) > 90.0f);
+		ASSERT_THAT(IsTrue(
+			FMath::Abs(FMath::FindDeltaAngleDegrees(ScriptShortestLerp.Yaw, 0.0f)) > 90.0f,
+			TEXT("Math::LerpShortestPath should stay near the 180-degree seam instead of crossing back toward zero")));
 		VerifyMathBindingsRotator(*TestRunner, TEXT("Math::LerpShortestPath should match native quaternion slerp"), ScriptShortestLerp, ExpectedShortestLerp);
 		VerifyMathBindingsRotator(*TestRunner, TEXT("Math::RInterpShortestPathTo should match native quaternion interp"), ScriptShortestInterp, ExpectedShortestInterp);
 		VerifyMathBindingsRotator(*TestRunner, TEXT("Math::RInterpConstantShortestPathTo should match native constant-speed quaternion interp"), ScriptShortestInterpConstant, ExpectedShortestInterpConstant);
@@ -283,13 +283,13 @@ FString GetVector3fColorString() { const FVector3f V = FVector3f(1.0f, 0.5f, 0.2
 		VerifyMathBindingsVector(*TestRunner, TEXT("FVector PointPlaneProject should match native projection"), ScriptVectorProjected, ExpectedVectorProjected);
 		VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector Dist2D should match native planar distance"), ScriptVectorDist2D, ExpectedVectorDist2D, KINDA_SMALL_NUMBER);
 		VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector DistSquared2D should match native planar squared distance"), ScriptVectorDistSquared2D, ExpectedVectorDistSquared2D, KINDA_SMALL_NUMBER);
-		TestRunner->TestEqual(TEXT("FVector ToColorString should preserve the exact formatted debug string"), ScriptVectorColorString, ExpectedVectorColorString);
+		ASSERT_THAT(AreEqual(ExpectedVectorColorString, ScriptVectorColorString, TEXT("FVector ToColorString should preserve the exact formatted debug string")));
 		VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector3f Size2D should match native planar length"), ScriptVector3fSize2D, ExpectedVector3fSize2D, KINDA_SMALL_NUMBER);
 		VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector3f SizeSquared2D should match native planar squared length"), ScriptVector3fSizeSquared2D, ExpectedVector3fSizeSquared2D, KINDA_SMALL_NUMBER);
 		VerifyMathBindingsVector3f(*TestRunner, TEXT("FVector3f PointPlaneProject should match native projection"), ScriptVector3fProjected, ExpectedVector3fProjected);
 		VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector3f Dist2D should match native planar distance"), ScriptVector3fDist2D, ExpectedVector3fDist2D, KINDA_SMALL_NUMBER);
 		VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector3f DistSquared2D should match native planar squared distance"), ScriptVector3fDistSquared2D, ExpectedVector3fDistSquared2D, KINDA_SMALL_NUMBER);
-		TestRunner->TestEqual(TEXT("FVector3f ToColorString should preserve the exact formatted debug string"), ScriptVector3fColorString, ExpectedVector3fColorString);
+		ASSERT_THAT(AreEqual(ExpectedVector3fColorString, ScriptVector3fColorString, TEXT("FVector3f ToColorString should preserve the exact formatted debug string")));
 	}
 };
 

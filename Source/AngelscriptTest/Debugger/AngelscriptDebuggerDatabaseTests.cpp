@@ -81,7 +81,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerDatabaseTests,
 
 	TEST_METHOD(RequestDebugDatabaseSequence)
 	{
-		TestRunner->TestTrue(TEXT("Debugger database protocol should enter debugging mode after StartDebugging"), Ctx.GetDebugServer().bIsDebugging);
+		ASSERT_THAT(IsTrue(Ctx.GetDebugServer().bIsDebugging, TEXT("Debugger database protocol should enter debugging mode after StartDebugging")));
 
 		Ctx.Client.DrainPendingMessages();
 
@@ -98,8 +98,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerDatabaseTests,
 		ASSERT_THAT(IsTrue(bCollectedTranscript));
 
 		const int32 SettingsIndex = FindFirstMessageIndex(Transcript, EDebugMessageType::DebugDatabaseSettings);
-		TestRunner->TestEqual(TEXT("Debugger database protocol should emit exactly one DebugDatabaseSettings message"), CountMessagesOfType(Transcript, EDebugMessageType::DebugDatabaseSettings), 1);
-		TestRunner->TestEqual(TEXT("Debugger database protocol should start the transcript with DebugDatabaseSettings"), SettingsIndex, 0);
+		ASSERT_THAT(AreEqual(1, CountMessagesOfType(Transcript, EDebugMessageType::DebugDatabaseSettings), TEXT("Debugger database protocol should emit exactly one DebugDatabaseSettings message")));
+		ASSERT_THAT(AreEqual(0, SettingsIndex, TEXT("Debugger database protocol should start the transcript with DebugDatabaseSettings")));
 
 		const TOptional<FAngelscriptDebugDatabaseSettings> Settings = SettingsIndex != INDEX_NONE
 			? FAngelscriptDebuggerTestClient::DeserializeMessage<FAngelscriptDebugDatabaseSettings>(Transcript[SettingsIndex])
@@ -109,11 +109,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerDatabaseTests,
 		const UAngelscriptSettings* RuntimeSettings = GetDefault<UAngelscriptSettings>();
 		ASSERT_THAT(IsNotNull(RuntimeSettings));
 
-		TestRunner->TestEqual(TEXT("Debugger database protocol should mirror the automatic-import setting"), Settings->bAutomaticImports, Ctx.GetEngine().ShouldUseAutomaticImportMethod());
-		TestRunner->TestEqual(TEXT("Debugger database protocol should mirror the script float width setting"), Settings->bFloatIsFloat64, RuntimeSettings->bScriptFloatIsFloat64);
-		TestRunner->TestEqual(TEXT("Debugger database protocol should mirror the haze integration setting"), Settings->bUseAngelscriptHaze, !!WITH_ANGELSCRIPT_HAZE);
-		TestRunner->TestEqual(TEXT("Debugger database protocol should mirror the static class deprecate setting"), Settings->bDeprecateStaticClass, RuntimeSettings->StaticClassDeprecation == EAngelscriptStaticClassMode::Deprecated);
-		TestRunner->TestEqual(TEXT("Debugger database protocol should mirror the static class disallow setting"), Settings->bDisallowStaticClass, RuntimeSettings->StaticClassDeprecation == EAngelscriptStaticClassMode::Disallowed);
+		ASSERT_THAT(AreEqual(Ctx.GetEngine().ShouldUseAutomaticImportMethod(), Settings->bAutomaticImports, TEXT("Debugger database protocol should mirror the automatic-import setting")));
+		ASSERT_THAT(AreEqual(RuntimeSettings->bScriptFloatIsFloat64, Settings->bFloatIsFloat64, TEXT("Debugger database protocol should mirror the script float width setting")));
+		ASSERT_THAT(AreEqual(!!WITH_ANGELSCRIPT_HAZE, Settings->bUseAngelscriptHaze, TEXT("Debugger database protocol should mirror the haze integration setting")));
+		ASSERT_THAT(AreEqual(RuntimeSettings->StaticClassDeprecation == EAngelscriptStaticClassMode::Deprecated, Settings->bDeprecateStaticClass, TEXT("Debugger database protocol should mirror the static class deprecate setting")));
+		ASSERT_THAT(AreEqual(RuntimeSettings->StaticClassDeprecation == EAngelscriptStaticClassMode::Disallowed, Settings->bDisallowStaticClass, TEXT("Debugger database protocol should mirror the static class disallow setting")));
 
 		const int32 DatabaseIndex = FindFirstMessageIndex(Transcript, EDebugMessageType::DebugDatabase);
 		ASSERT_THAT(IsTrue(DatabaseIndex != INDEX_NONE));
@@ -121,7 +121,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerDatabaseTests,
 		const TOptional<FAngelscriptDebugDatabase> Database = FAngelscriptDebuggerTestClient::DeserializeMessage<FAngelscriptDebugDatabase>(Transcript[DatabaseIndex]);
 		ASSERT_THAT(IsTrue(Database.IsSet()));
 
-		TestRunner->TestFalse(TEXT("Debugger database protocol should keep the first DebugDatabase payload non-empty"), Database->Database.IsEmpty());
+		ASSERT_THAT(IsFalse(Database->Database.IsEmpty(), TEXT("Debugger database protocol should keep the first DebugDatabase payload non-empty")));
 
 		TSharedPtr<FJsonObject> DatabaseJsonObject;
 		ASSERT_THAT(IsTrue(ParseJsonObject(Database->Database, DatabaseJsonObject)));
@@ -137,8 +137,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerDatabaseTests,
 
 		ASSERT_THAT(IsTrue(AssetDatabaseFinishedIndex != INDEX_NONE));
 
-		TestRunner->TestTrue(TEXT("Debugger database protocol should finish debug database emission before any asset database message"), FirstAssetDatabaseMessageIndex != INDEX_NONE && DebugDatabaseFinishedIndex < FirstAssetDatabaseMessageIndex);
-		TestRunner->TestTrue(TEXT("Debugger database protocol should emit AssetDatabaseInit before AssetDatabaseFinished"), AssetDatabaseInitIndex < AssetDatabaseFinishedIndex);
+		ASSERT_THAT(IsTrue(
+			FirstAssetDatabaseMessageIndex != INDEX_NONE && DebugDatabaseFinishedIndex < FirstAssetDatabaseMessageIndex,
+			TEXT("Debugger database protocol should finish debug database emission before any asset database message")));
+		ASSERT_THAT(IsTrue(
+			AssetDatabaseInitIndex < AssetDatabaseFinishedIndex,
+			TEXT("Debugger database protocol should emit AssetDatabaseInit before AssetDatabaseFinished")));
 
 		for (int32 Index = 0; Index < Transcript.Num(); ++Index)
 		{
@@ -150,10 +154,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerDatabaseTests,
 			const TOptional<FAngelscriptAssetDatabase> AssetDatabase = FAngelscriptDebuggerTestClient::DeserializeMessage<FAngelscriptAssetDatabase>(Transcript[Index]);
 			ASSERT_THAT(IsTrue(AssetDatabase.IsSet()));
 
-			TestRunner->TestEqual(
-				FString::Printf(TEXT("Debugger database protocol should keep AssetDatabase payload %d in path/class pairs"), Index),
+			ASSERT_THAT(AreEqual(
+				0,
 				AssetDatabase->Assets.Num() % 2,
-				0);
+				FString::Printf(TEXT("Debugger database protocol should keep AssetDatabase payload %d in path/class pairs"), Index)));
 		}
 	}
 };

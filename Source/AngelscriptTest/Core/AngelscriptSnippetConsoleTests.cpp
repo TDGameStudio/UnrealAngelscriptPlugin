@@ -28,10 +28,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSnippetConsoleTests,
 	TEST_METHOD(ExecuteFileCommandIsRegistered)
 	{
 		IConsoleObject* ConsoleObject = IConsoleManager::Get().FindConsoleObject(TEXT("as.Snippet.ExecuteFile"));
-		TestRunner->TestNotNull(TEXT("Snippet ExecuteFile command should be registered"), ConsoleObject);
+		ASSERT_THAT(IsNotNull(ConsoleObject, TEXT("Snippet ExecuteFile command should be registered")));
 		if (ConsoleObject != nullptr)
 		{
-			TestRunner->TestNotNull(TEXT("Snippet ExecuteFile object should be a command"), ConsoleObject->AsCommand());
+			ASSERT_THAT(IsNotNull(ConsoleObject->AsCommand(), TEXT("Snippet ExecuteFile object should be a command")));
 		}
 	}
 
@@ -42,10 +42,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSnippetConsoleTests,
 
 		IConsoleObject* ConsoleObject = IConsoleManager::Get().FindConsoleObject(TEXT("as.Snippet.ExecuteFile"));
 		IConsoleCommand* Command = ConsoleObject != nullptr ? ConsoleObject->AsCommand() : nullptr;
-		if (!TestRunner->TestNotNull(TEXT("Snippet ExecuteFile command should exist"), Command))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Command, TEXT("Snippet ExecuteFile command should exist")));
 
 		const FString SnippetPath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation"), TEXT("SnippetConsole"), TEXT("ExecuteFileRunsStatementSnippet.as"));
 		IFileManager::Get().MakeDirectory(*FPaths::GetPath(SnippetPath), true);
@@ -54,18 +51,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSnippetConsoleTests,
 			IFileManager::Get().Delete(*SnippetPath, false, true, true);
 		};
 
-		if (!TestRunner->TestTrue(
-			TEXT("Snippet ExecuteFile test should write source file"),
-			FFileHelper::SaveStringToFile(TEXT("int Value = 1 + 1;"), *SnippetPath)))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(
+			FFileHelper::SaveStringToFile(TEXT("int Value = 1 + 1;"), *SnippetPath),
+			TEXT("Snippet ExecuteFile test should write source file")));
 
 		FSnippetConsoleOutputDevice Output;
 		const bool bExecuted = Command->Execute({ SnippetPath }, nullptr, Output);
 
-		TestRunner->TestTrue(TEXT("Snippet ExecuteFile command delegate should execute"), bExecuted);
-		TestRunner->TestTrue(TEXT("Snippet ExecuteFile output should report success"), Output.Text.Contains(TEXT("succeeded")));
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("Snippet ExecuteFile command delegate should execute")));
+		ASSERT_THAT(IsTrue(Output.Text.Contains(TEXT("succeeded")), TEXT("Snippet ExecuteFile output should report success")));
 
 		}
 	}
@@ -74,18 +68,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSnippetConsoleTests,
 	{
 		IConsoleObject* ConsoleObject = IConsoleManager::Get().FindConsoleObject(TEXT("as.Snippet.ExecuteFile"));
 		IConsoleCommand* Command = ConsoleObject != nullptr ? ConsoleObject->AsCommand() : nullptr;
-		if (!TestRunner->TestNotNull(TEXT("Snippet ExecuteFile command should exist for read failure"), Command))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Command, TEXT("Snippet ExecuteFile command should exist for read failure")));
 
 		const FString MissingPath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation"), TEXT("SnippetConsole"), TEXT("Missing.as"));
 
 		FSnippetConsoleOutputDevice Output;
 		const bool bExecuted = Command->Execute({ MissingPath }, nullptr, Output);
 
-		TestRunner->TestTrue(TEXT("Snippet ExecuteFile read-failure command delegate should execute"), bExecuted);
-		TestRunner->TestTrue(TEXT("Snippet ExecuteFile output should report read failure"), Output.Text.Contains(TEXT("failed to read")));
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("Snippet ExecuteFile read-failure command delegate should execute")));
+		ASSERT_THAT(IsTrue(Output.Text.Contains(TEXT("failed to read")), TEXT("Snippet ExecuteFile output should report read failure")));
 	}
 };
 

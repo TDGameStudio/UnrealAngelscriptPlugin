@@ -25,17 +25,17 @@ int Entry()
 		FAngelscriptPreprocessor Preprocessor;
 		Preprocessor.AddFile(File.RelativePath, File.AbsolutePath);
 
-		TestRunner->TestTrue(TEXT("AddFile source should preprocess"), Preprocessor.Preprocess());
+		ASSERT_THAT(IsTrue(Preprocessor.Preprocess(), TEXT("AddFile source should preprocess")));
 		TArray<TSharedRef<FAngelscriptModuleDesc>> Modules = Preprocessor.GetModulesToCompile();
 		FAngelscriptPreprocessorSummary Summary = Preprocessor.GetSummary();
 
-		TestRunner->TestEqual(TEXT("Summary should contain one file"), Summary.Files.Num(), 1);
+		ASSERT_THAT(AreEqual(1, Summary.Files.Num(), TEXT("Summary should contain one file")));
 		if (Summary.Files.Num() == 1)
 		{
-			TestRunner->TestEqual(
-				TEXT("AddFile should synthesize a game virtual path"),
+			ASSERT_THAT(AreEqual(
+				FString(TEXT("/Angelscript/Game/Tests/VirtualPath/AddFile.as")),
 				Summary.Files[0].VirtualPath,
-				FString(TEXT("/Angelscript/Game/Tests/VirtualPath/AddFile.as")));
+				TEXT("AddFile should synthesize a game virtual path")));
 		}
 
 		const FAngelscriptModuleDesc* Module = nullptr;
@@ -47,16 +47,16 @@ int Entry()
 				break;
 			}
 		}
-		TestRunner->TestNotNull(TEXT("AddFile module should be emitted"), Module);
+		ASSERT_THAT(IsNotNull(Module, TEXT("AddFile module should be emitted")));
 		if (Module != nullptr)
 		{
-			TestRunner->TestEqual(TEXT("Module should contain one code section"), Module->Code.Num(), 1);
+			ASSERT_THAT(AreEqual(1, Module->Code.Num(), TEXT("Module should contain one code section")));
 			if (Module->Code.Num() == 1)
 			{
-				TestRunner->TestEqual(
-					TEXT("Code section should carry virtual path"),
+				ASSERT_THAT(AreEqual(
+					FString(TEXT("/Angelscript/Game/Tests/VirtualPath/AddFile.as")),
 					Module->Code[0].VirtualPath,
-					FString(TEXT("/Angelscript/Game/Tests/VirtualPath/AddFile.as")));
+					TEXT("Code section should carry virtual path")));
 			}
 		}
 
@@ -75,39 +75,39 @@ int Entry()
 }
 )")));
 
-		TestRunner->TestTrue(TEXT("Memory source should preprocess"), Preprocessor.Preprocess());
+		ASSERT_THAT(IsTrue(Preprocessor.Preprocess(), TEXT("Memory source should preprocess")));
 		TArray<TSharedRef<FAngelscriptModuleDesc>> Modules = Preprocessor.GetModulesToCompile();
-		TestRunner->TestEqual(TEXT("Memory source should emit one module"), Modules.Num(), 1);
+		ASSERT_THAT(AreEqual(1, Modules.Num(), TEXT("Memory source should emit one module")));
 
 		if (Modules.Num() == 1)
 		{
 			const FAngelscriptModuleDesc& Module = Modules[0].Get();
-			TestRunner->TestEqual(
-				TEXT("Memory module name should be isolated"),
+			ASSERT_THAT(AreEqual(
+				FString(TEXT("Angelscript.Memory.Immediate.Snippet_001")),
 				Module.ModuleName,
-				FString(TEXT("Angelscript.Memory.Immediate.Snippet_001")));
-			TestRunner->TestEqual(TEXT("Memory module should contain one code section"), Module.Code.Num(), 1);
+				TEXT("Memory module name should be isolated")));
+			ASSERT_THAT(AreEqual(1, Module.Code.Num(), TEXT("Memory module should contain one code section")));
 			if (Module.Code.Num() == 1)
 			{
-				TestRunner->TestEqual(
-					TEXT("Memory section should use virtual path metadata"),
+				ASSERT_THAT(AreEqual(
+					FString(TEXT("/Angelscript/Memory/Immediate/Snippet_001.as")),
 					Module.Code[0].VirtualPath,
-					FString(TEXT("/Angelscript/Memory/Immediate/Snippet_001.as")));
-				TestRunner->TestEqual(
-					TEXT("Memory section should have no physical filename"),
+					TEXT("Memory section should use virtual path metadata")));
+				ASSERT_THAT(AreEqual(
+					FString(),
 					Module.Code[0].AbsoluteFilename,
-					FString());
+					TEXT("Memory section should have no physical filename")));
 			}
 		}
 
 		FAngelscriptPreprocessorSummary Summary = Preprocessor.GetSummary();
-		TestRunner->TestEqual(TEXT("Memory summary should contain one file"), Summary.Files.Num(), 1);
+		ASSERT_THAT(AreEqual(1, Summary.Files.Num(), TEXT("Memory summary should contain one file")));
 		if (Summary.Files.Num() == 1)
 		{
-			TestRunner->TestEqual(
-				TEXT("Memory summary should carry virtual path"),
+			ASSERT_THAT(AreEqual(
+				FString(TEXT("/Angelscript/Memory/Immediate/Snippet_001.as")),
 				Summary.Files[0].VirtualPath,
-				FString(TEXT("/Angelscript/Memory/Immediate/Snippet_001.as")));
+				TEXT("Memory summary should carry virtual path")));
 		}
 	}
 
@@ -127,12 +127,12 @@ int Entry()
 		FAngelscriptPreprocessor Preprocessor;
 		Preprocessor.AddSource(InvalidSource);
 
-		TestRunner->TestFalse(TEXT("Invalid source descriptor should fail preprocessing before source text is compiled"), Preprocessor.Preprocess());
-		TestRunner->TestEqual(TEXT("Invalid source descriptor should not emit modules"), Preprocessor.GetModulesToCompile().Num(), 0);
+		ASSERT_THAT(IsFalse(Preprocessor.Preprocess(), TEXT("Invalid source descriptor should fail preprocessing before source text is compiled")));
+		ASSERT_THAT(AreEqual(0, Preprocessor.GetModulesToCompile().Num(), TEXT("Invalid source descriptor should not emit modules")));
 
 		const FAngelscriptPreprocessorSummary Summary = Preprocessor.GetSummary();
-		TestRunner->TestTrue(TEXT("Invalid source descriptor should mark the preprocessor as failed"), Summary.bHasError);
-		TestRunner->TestEqual(TEXT("Invalid source descriptor should not appear in the file summary"), Summary.Files.Num(), 0);
+		ASSERT_THAT(IsTrue(Summary.bHasError, TEXT("Invalid source descriptor should mark the preprocessor as failed")));
+		ASSERT_THAT(AreEqual(0, Summary.Files.Num(), TEXT("Invalid source descriptor should not appear in the file summary")));
 	}
 };
 

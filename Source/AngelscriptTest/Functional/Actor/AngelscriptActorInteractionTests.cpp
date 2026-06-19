@@ -10,6 +10,31 @@
 using namespace AngelscriptFunctionalTestUtils;
 using namespace AngelscriptActorTestUtils;
 
+namespace AngelscriptActorInteractionTests_Private
+{
+	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsTrue(bActual, Message);
+	}
+
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.AreEqual(Expected, Actual, Message);
+	}
+
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsNotNull(Value, Message);
+	}
+}
+
+using namespace AngelscriptActorInteractionTests_Private;
+
 TEST_CLASS_WITH_FLAGS(FAngelscriptActorInteractionTest,
 	"Angelscript.TestModule.Actor.Interaction",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -69,7 +94,7 @@ class ATestActorPointDamage : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 
 		W.BeginPlay(*Actor);
 		const FVector ExpectedHitLocation(100.f, 200.f, 300.f);
@@ -85,8 +110,8 @@ class ATestActorPointDamage : AActor
 		{
 			FVector ActualHitLocation = FVector::ZeroVector;
 			if (!GetStructByPath<FVector>(*TestRunner, Actor, TEXT("LastVectorValue"), ActualHitLocation)) return;
-			TestRunner->TestTrue(TEXT("PointDamage should route the hit location into LastVectorValue"),
-				ActualHitLocation.Equals(ExpectedHitLocation));
+			ASSERT_THAT(IsTrue(ActualHitLocation.Equals(ExpectedHitLocation),
+				TEXT("PointDamage should route the hit location into LastVectorValue")));
 		}
 		VerifyByPath<FNameProperty, FName>(*TestRunner, Actor, TEXT("LastNameValue"), ExpectedBoneName,
 			TEXT("PointDamage should route the bone name into LastNameValue"));
@@ -142,22 +167,22 @@ class ATestActorRadialDamage : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 
 		W.BeginPlay(*Actor);
 		TArray<AActor*> IgnoredActors;
 		const bool bAppliedDamage = UGameplayStatics::ApplyRadialDamage(
 			&W.GetWorld(), 24.0f, Actor->GetActorLocation(), 128.0f,
 			nullptr, IgnoredActors, nullptr, nullptr, true);
-		if (!TestRunner->TestTrue(TEXT("RadialDamage should apply damage"), bAppliedDamage)) return;
+		if (!CheckTrue(*TestRunner, TEXT("RadialDamage should apply damage"), bAppliedDamage)) return;
 
 		VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("LastFloatValue"), 24.0,
 			TEXT("RadialDamage should route the applied damage value into LastFloatValue"));
 		{
 			FVector ActualOrigin = FVector::ZeroVector;
 			if (!GetStructByPath<FVector>(*TestRunner, Actor, TEXT("LastVectorValue"), ActualOrigin)) return;
-			TestRunner->TestTrue(TEXT("RadialDamage should route the explosion origin into LastVectorValue"),
-				ActualOrigin.Equals(Actor->GetActorLocation()));
+			ASSERT_THAT(IsTrue(ActualOrigin.Equals(Actor->GetActorLocation()),
+				TEXT("RadialDamage should route the explosion origin into LastVectorValue")));
 		}
 		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EventCallCount"), 1,
 			TEXT("RadialDamage should fire exactly once"));
@@ -195,7 +220,7 @@ class ATestActorMultiSpawn : AActor
 		for (int32 Index = 0; Index < 3; ++Index)
 		{
 			AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-			if (!TestRunner->TestNotNull(TEXT("MultiSpawn actor should spawn"), Actor)) return;
+			if (!CheckNotNull(*TestRunner, TEXT("MultiSpawn actor should spawn"), Actor)) return;
 			W.BeginPlay(*Actor);
 			SpawnedActors.Add(Actor);
 		}
@@ -208,11 +233,12 @@ class ATestActorMultiSpawn : AActor
 			TotalBeginPlayCount += EventCallCount;
 		}
 
-		TestRunner->TestTrue(TEXT("MultiSpawn should execute BeginPlay on every spawned instance"), TotalBeginPlayCount >= 3);
-		TestRunner->TestTrue(TEXT("MultiSpawn should create distinct actor instances"),
+		ASSERT_THAT(IsTrue(TotalBeginPlayCount >= 3, TEXT("MultiSpawn should execute BeginPlay on every spawned instance")));
+		ASSERT_THAT(IsTrue(
 			SpawnedActors[0] != SpawnedActors[1] &&
 			SpawnedActors[1] != SpawnedActors[2] &&
-			SpawnedActors[0] != SpawnedActors[2]);
+			SpawnedActors[0] != SpawnedActors[2],
+			TEXT("MultiSpawn should create distinct actor instances")));
 	}
 
 	TEST_METHOD(CrossCall)
@@ -258,14 +284,14 @@ class ATestActorCrossCallA : AActor
 		if (ActorAClass == nullptr) return;
 
 		UClass* ActorBClass = FindGeneratedClass(&Engine, TEXT("ATestActorCrossCallB"));
-		if (!TestRunner->TestNotNull(TEXT("CrossCall target class should be generated"), ActorBClass)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("CrossCall target class should be generated"), ActorBClass)) return;
 
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* ActorA = W.SpawnActorOfClass(ActorAClass);
 		AActor* ActorB = W.SpawnActorOfClass(ActorBClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor A should spawn"), ActorA)
-			|| !TestRunner->TestNotNull(TEXT("Actor B should spawn"), ActorB)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor A should spawn"), ActorA)
+			|| !CheckNotNull(*TestRunner, TEXT("Actor B should spawn"), ActorB)) return;
 
 		if (!SetObjectByPath(*TestRunner, ActorA, TEXT("TargetActor"), ActorB)) return;
 
@@ -276,7 +302,7 @@ class ATestActorCrossCallA : AActor
 
 		int32 EventCallCount = 0;
 		if (!GetByPath<FIntProperty, int32>(*TestRunner, ActorB, TEXT("EventCallCount"), EventCallCount)) return;
-		TestRunner->TestTrue(TEXT("CrossCall should let one script actor invoke another's UFUNCTION"), EventCallCount >= 1);
+		ASSERT_THAT(IsTrue(EventCallCount >= 1, TEXT("CrossCall should let one script actor invoke another's UFUNCTION")));
 	}
 
 	TEST_METHOD(AnyDamage)
@@ -316,7 +342,7 @@ class ATestActorAnyDamage : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 
 		W.BeginPlay(*Actor);
 		UGameplayStatics::ApplyDamage(Actor, 55.0f, nullptr, Actor, nullptr);
@@ -326,8 +352,8 @@ class ATestActorAnyDamage : AActor
 		{
 			UObject* DamageCauser = nullptr;
 			if (!GetObjectByPath(*TestRunner, Actor, TEXT("LastActorRef"), DamageCauser)) return;
-			TestRunner->TestEqual(TEXT("AnyDamage should pass the damage causer"),
-				DamageCauser, static_cast<UObject*>(Actor));
+			ASSERT_THAT(AreEqual(static_cast<UObject*>(Actor), DamageCauser,
+				TEXT("AnyDamage should pass the damage causer")));
 		}
 		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EventCallCount"), 1,
 			TEXT("AnyDamage should fire exactly once"));
@@ -369,14 +395,14 @@ class ATestOverlapTrigger : AActor
 		if (ReceiverClass == nullptr) return;
 
 		UClass* TriggerClass = FindGeneratedClass(&Engine, TEXT("ATestOverlapTrigger"));
-		if (!TestRunner->TestNotNull(TEXT("Trigger class should be generated"), TriggerClass)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Trigger class should be generated"), TriggerClass)) return;
 
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Receiver = W.SpawnActorOfClass(ReceiverClass, FActorSpawnParameters(), FVector::ZeroVector);
-		if (!TestRunner->TestNotNull(TEXT("Receiver should spawn"), Receiver)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Receiver should spawn"), Receiver)) return;
 		AActor* Trigger = W.SpawnActorOfClass(TriggerClass);
-		if (!TestRunner->TestNotNull(TEXT("Trigger should spawn"), Trigger)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Trigger should spawn"), Trigger)) return;
 
 		W.BeginPlay(*Receiver);
 		W.BeginPlay(*Trigger);
@@ -387,12 +413,12 @@ class ATestOverlapTrigger : AActor
 
 		int32 EventCallCount = 0;
 		if (!GetByPath<FIntProperty, int32>(*TestRunner, Receiver, TEXT("EventCallCount"), EventCallCount)) return;
-		TestRunner->TestEqual(TEXT("ActorBeginOverlap should fire once"), EventCallCount, 1);
+		ASSERT_THAT(AreEqual(1, EventCallCount, TEXT("ActorBeginOverlap should fire once")));
 		{
 			UObject* OtherActor = nullptr;
 			if (!GetObjectByPath(*TestRunner, Receiver, TEXT("LastActorRef"), OtherActor)) return;
-			TestRunner->TestEqual(TEXT("ActorBeginOverlap should pass the overlapping actor"),
-				OtherActor, static_cast<UObject*>(Trigger));
+			ASSERT_THAT(AreEqual(static_cast<UObject*>(Trigger), OtherActor,
+				TEXT("ActorBeginOverlap should pass the overlapping actor")));
 		}
 	}
 
@@ -432,14 +458,14 @@ class ATestEndOverlapTrigger : AActor
 		if (ReceiverClass == nullptr) return;
 
 		UClass* TriggerClass = FindGeneratedClass(&Engine, TEXT("ATestEndOverlapTrigger"));
-		if (!TestRunner->TestNotNull(TEXT("Trigger class should be generated"), TriggerClass)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Trigger class should be generated"), TriggerClass)) return;
 
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Receiver = W.SpawnActorOfClass(ReceiverClass);
 		AActor* Trigger = W.SpawnActorOfClass(TriggerClass);
-		if (!TestRunner->TestNotNull(TEXT("Receiver should spawn"), Receiver)
-			|| !TestRunner->TestNotNull(TEXT("Trigger should spawn"), Trigger)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Receiver should spawn"), Receiver)
+			|| !CheckNotNull(*TestRunner, TEXT("Trigger should spawn"), Trigger)) return;
 
 		W.BeginPlay(*Receiver);
 		W.BeginPlay(*Trigger);
@@ -448,12 +474,12 @@ class ATestEndOverlapTrigger : AActor
 
 		int32 EventCallCount = 0;
 		if (!GetByPath<FIntProperty, int32>(*TestRunner, Receiver, TEXT("EventCallCount"), EventCallCount)) return;
-		TestRunner->TestEqual(TEXT("ActorEndOverlap should fire once"), EventCallCount, 1);
+		ASSERT_THAT(AreEqual(1, EventCallCount, TEXT("ActorEndOverlap should fire once")));
 		{
 			UObject* OtherActor = nullptr;
 			if (!GetObjectByPath(*TestRunner, Receiver, TEXT("LastActorRef"), OtherActor)) return;
-			TestRunner->TestEqual(TEXT("ActorEndOverlap should pass the departing actor"),
-				OtherActor, static_cast<UObject*>(Trigger));
+			ASSERT_THAT(AreEqual(static_cast<UObject*>(Trigger), OtherActor,
+				TEXT("ActorEndOverlap should pass the departing actor")));
 		}
 	}
 
@@ -514,22 +540,22 @@ class ATestComponentBeginOverlapOther : AActor
 		if (ReceiverClass == nullptr) return;
 
 		UClass* OtherClass = FindGeneratedClass(&Engine, TEXT("ATestComponentBeginOverlapOther"));
-		if (!TestRunner->TestNotNull(TEXT("Other overlap class should be generated"), OtherClass)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Other overlap class should be generated"), OtherClass)) return;
 
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* ReceiverActor = W.SpawnActorOfClass(ReceiverClass);
 		AActor* OtherActor = W.SpawnActorOfClass(OtherClass);
-		if (!TestRunner->TestNotNull(TEXT("Receiver actor should spawn"), ReceiverActor)
-			|| !TestRunner->TestNotNull(TEXT("Other actor should spawn"), OtherActor))
+		if (!CheckNotNull(*TestRunner, TEXT("Receiver actor should spawn"), ReceiverActor)
+			|| !CheckNotNull(*TestRunner, TEXT("Other actor should spawn"), OtherActor))
 		{
 			return;
 		}
 
 		UPrimitiveComponent* ReceiverComponent = Cast<UPrimitiveComponent>(ReceiverActor->GetRootComponent());
 		UPrimitiveComponent* OtherComponent = Cast<UPrimitiveComponent>(OtherActor->GetRootComponent());
-		if (!TestRunner->TestNotNull(TEXT("Receiver root should be a primitive component"), ReceiverComponent)
-			|| !TestRunner->TestNotNull(TEXT("Other root should be a primitive component"), OtherComponent))
+		if (!CheckNotNull(*TestRunner, TEXT("Receiver root should be a primitive component"), ReceiverComponent)
+			|| !CheckNotNull(*TestRunner, TEXT("Other root should be a primitive component"), OtherComponent))
 		{
 			return;
 		}
@@ -545,8 +571,8 @@ class ATestComponentBeginOverlapOther : AActor
 		{
 			UObject* LastOtherActor = nullptr;
 			if (!GetObjectByPath(*TestRunner, ReceiverComponent, TEXT("LastOtherActor"), LastOtherActor)) return;
-			TestRunner->TestEqual(TEXT("Component begin overlap handler should receive the other actor"),
-				LastOtherActor, static_cast<UObject*>(OtherActor));
+			ASSERT_THAT(AreEqual(static_cast<UObject*>(OtherActor), LastOtherActor,
+				TEXT("Component begin overlap handler should receive the other actor")));
 		}
 	}
 
@@ -576,7 +602,7 @@ class ATestActorSpawnInvalidClass : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		W.BeginPlay(*Actor);
 
 		TestRunner->AddExpectedError(TEXT("Angelscript"), EAutomationExpectedErrorFlags::Contains, 0);
@@ -644,14 +670,14 @@ class ATestDelegateListener : AActor
 		if (BroadcasterClass == nullptr) return;
 
 		UClass* ListenerClass = FindGeneratedClass(&Engine, TEXT("ATestDelegateListener"));
-		if (!TestRunner->TestNotNull(TEXT("Listener class should be generated"), ListenerClass)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Listener class should be generated"), ListenerClass)) return;
 
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Broadcaster = W.SpawnActorOfClass(BroadcasterClass);
 		AActor* Listener = W.SpawnActorOfClass(ListenerClass);
-		if (!TestRunner->TestNotNull(TEXT("Broadcaster should spawn"), Broadcaster)
-			|| !TestRunner->TestNotNull(TEXT("Listener should spawn"), Listener)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Broadcaster should spawn"), Broadcaster)
+			|| !CheckNotNull(*TestRunner, TEXT("Listener should spawn"), Listener)) return;
 
 		if (!SetObjectByPath(*TestRunner, Listener, TEXT("Broadcaster"), Broadcaster)) return;
 
@@ -662,7 +688,7 @@ class ATestDelegateListener : AActor
 
 		int32 EventCallCount = 0;
 		if (!GetByPath<FIntProperty, int32>(*TestRunner, Listener, TEXT("EventCallCount"), EventCallCount)) return;
-		TestRunner->TestTrue(TEXT("DelegateBroadcast should let the listener receive at least one broadcast"), EventCallCount >= 1);
+		ASSERT_THAT(IsTrue(EventCallCount >= 1, TEXT("DelegateBroadcast should let the listener receive at least one broadcast")));
 		VerifyByPath<FDoubleProperty, double>(*TestRunner, Listener, TEXT("LastFloatValue"), 99.0,
 			TEXT("DelegateBroadcast should pass the correct value through the delegate"));
 	}

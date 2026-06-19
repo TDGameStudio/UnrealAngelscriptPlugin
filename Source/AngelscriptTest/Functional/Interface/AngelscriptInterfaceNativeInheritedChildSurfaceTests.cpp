@@ -111,18 +111,12 @@ class ATestInterfaceNativeInheritedChildSurface : AActor, UAngelscriptNativeChil
 }
 )AS"),
 			InterfaceNativeInheritedChildSurfaceTests::GeneratedClassName);
-		if (!TestRunner->TestNotNull(TEXT("ScriptClass should be valid"), ScriptClass))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("ScriptClass should be valid")));
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should be valid"), Actor))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Actor should be valid")));
 
 		BeginPlayActor(Engine, *Actor);
 
@@ -140,13 +134,13 @@ class ATestInterfaceNativeInheritedChildSurface : AActor, UAngelscriptNativeChil
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("Script actor should implement native child interface"), ScriptClass->ImplementsInterface(UAngelscriptNativeChildInterface::StaticClass()));
-		TestRunner->TestTrue(TEXT("Script actor implementing child interface should also satisfy native parent interface"), ScriptClass->ImplementsInterface(UAngelscriptNativeParentInterface::StaticClass()));
-		TestRunner->TestEqual(TEXT("Script-side cast to native child interface should succeed"), ChildCastWorked, 1);
-		TestRunner->TestEqual(TEXT("Child native interface ref should expose inherited parent getter"), ChildParentResult, 7);
-		TestRunner->TestEqual(TEXT("Child native interface ref should expose inherited parent ref-parameter method"), ChildAdjustedValue, 29);
-		TestRunner->TestEqual(TEXT("Child native interface ref should still expose child-owned methods"), ChildOwnResult, 11);
-		TestRunner->TestEqual(TEXT("Child native interface ref should expose inherited parent setter"), NativeMarker, FName(TEXT("ChildRoute")));
+		ASSERT_THAT(IsTrue(ScriptClass->ImplementsInterface(UAngelscriptNativeChildInterface::StaticClass()), TEXT("Script actor should implement native child interface")));
+		ASSERT_THAT(IsTrue(ScriptClass->ImplementsInterface(UAngelscriptNativeParentInterface::StaticClass()), TEXT("Script actor implementing child interface should also satisfy native parent interface")));
+		ASSERT_THAT(AreEqual(1, ChildCastWorked, TEXT("Script-side cast to native child interface should succeed")));
+		ASSERT_THAT(AreEqual(7, ChildParentResult, TEXT("Child native interface ref should expose inherited parent getter")));
+		ASSERT_THAT(AreEqual(29, ChildAdjustedValue, TEXT("Child native interface ref should expose inherited parent ref-parameter method")));
+		ASSERT_THAT(AreEqual(11, ChildOwnResult, TEXT("Child native interface ref should still expose child-owned methods")));
+		ASSERT_THAT(AreEqual(FName(TEXT("ChildRoute")), NativeMarker, TEXT("Child native interface ref should expose inherited parent setter")));
 	}
 };
 

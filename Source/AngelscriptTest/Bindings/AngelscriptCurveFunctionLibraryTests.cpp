@@ -48,20 +48,25 @@ namespace CurveTestHelpers
 		float ExpectedValue,
 		const TCHAR* ChannelLabel)
 	{
-		if (!Test.TestTrue(
-			*FString::Printf(TEXT("%s channel should contain key index %d"), ChannelLabel, KeyIndex),
-			Curve.Keys.IsValidIndex(KeyIndex)))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsTrue(
+			Curve.Keys.IsValidIndex(KeyIndex),
+			FString::Printf(TEXT("%s channel should contain key index %d"), ChannelLabel, KeyIndex)))
 		{
 			return false;
 		}
 
 		const FRichCurveKey& Key = Curve.Keys[KeyIndex];
-		const bool bTimeMatches = Test.TestTrue(
-			*FString::Printf(TEXT("%s channel key %d should preserve its timestamp"), ChannelLabel, KeyIndex),
-			FMath::IsNearlyEqual(Key.Time, ExpectedTime));
-		const bool bValueMatches = Test.TestTrue(
-			*FString::Printf(TEXT("%s channel key %d should preserve its channel value"), ChannelLabel, KeyIndex),
-			FMath::IsNearlyEqual(Key.Value, ExpectedValue));
+		const bool bTimeMatches = Assert.IsNear(
+			ExpectedTime,
+			Key.Time,
+			UE_KINDA_SMALL_NUMBER,
+			FString::Printf(TEXT("%s channel key %d should preserve its timestamp"), ChannelLabel, KeyIndex));
+		const bool bValueMatches = Assert.IsNear(
+			ExpectedValue,
+			Key.Value,
+			UE_KINDA_SMALL_NUMBER,
+			FString::Printf(TEXT("%s channel key %d should preserve its channel value"), ChannelLabel, KeyIndex));
 		return bTimeMatches && bValueMatches;
 	}
 }
@@ -106,9 +111,10 @@ int PopulateCurve(FRuntimeCurveLinearColor& Curve)
 		FRuntimeCurveLinearColor Curve;
 		for (int32 ChannelIndex = 0; ChannelIndex < UE_ARRAY_COUNT(Curve.ColorCurves); ++ChannelIndex)
 		{
-			TestRunner->TestEqual(
-				*FString::Printf(TEXT("Curve channel %d should start empty"), ChannelIndex),
-				Curve.ColorCurves[ChannelIndex].Keys.Num(), 0);
+			ASSERT_THAT(AreEqual(
+				0,
+				Curve.ColorCurves[ChannelIndex].Keys.Num(),
+				FString::Printf(TEXT("Curve channel %d should start empty"), ChannelIndex)));
 		}
 
 		FAngelscriptTestExecutor PopulateCurveExecutor(
@@ -123,9 +129,10 @@ int PopulateCurve(FRuntimeCurveLinearColor& Curve)
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("RuntimeCurveLinearColor AddDefaultKey helper should execute successfully"),
-			Result, 1);
+		ASSERT_THAT(AreEqual(
+			1,
+			Result,
+			TEXT("RuntimeCurveLinearColor AddDefaultKey helper should execute successfully")));
 
 		static const TCHAR* ChannelLabels[] = { TEXT("R"), TEXT("G"), TEXT("B"), TEXT("A") };
 		static const float ExpectedValues[4][2] =
@@ -140,9 +147,10 @@ int PopulateCurve(FRuntimeCurveLinearColor& Curve)
 		for (int32 ChannelIndex = 0; ChannelIndex < UE_ARRAY_COUNT(Curve.ColorCurves); ++ChannelIndex)
 		{
 			const FRichCurve& RichCurve = Curve.ColorCurves[ChannelIndex];
-			TestRunner->TestEqual(
-				*FString::Printf(TEXT("%s channel should contain two keys after two AddDefaultKey calls"), ChannelLabels[ChannelIndex]),
-				RichCurve.Keys.Num(), 2);
+			ASSERT_THAT(AreEqual(
+				2,
+				RichCurve.Keys.Num(),
+				FString::Printf(TEXT("%s channel should contain two keys after two AddDefaultKey calls"), ChannelLabels[ChannelIndex])));
 			ExpectCurveKey(*TestRunner, RichCurve, 0, ExpectedTimes[0], ExpectedValues[ChannelIndex][0], ChannelLabels[ChannelIndex]);
 			ExpectCurveKey(*TestRunner, RichCurve, 1, ExpectedTimes[1], ExpectedValues[ChannelIndex][1], ChannelLabels[ChannelIndex]);
 		}
@@ -215,38 +223,48 @@ int PopulateCurve(FRuntimeFloatCurve& RuntimeCurve)
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("RuntimeFloatCurve and UCurveFloat instance helper surface should compile and execute through instance syntax"),
-			Result, 1);
+		ASSERT_THAT(AreEqual(
+			1,
+			Result,
+			TEXT("RuntimeFloatCurve and UCurveFloat instance helper surface should compile and execute through instance syntax")));
 
 		const FRichCurve& RuntimeRichCurve = RuntimeCurve.EditorCurveData;
-		TestRunner->TestEqual(
-			TEXT("FRuntimeFloatCurve.AddDefaultKey instance syntax should add two keys to the runtime curve"),
-			RuntimeRichCurve.Keys.Num(), 2);
+		ASSERT_THAT(AreEqual(
+			2,
+			RuntimeRichCurve.Keys.Num(),
+			TEXT("FRuntimeFloatCurve.AddDefaultKey instance syntax should add two keys to the runtime curve")));
 		ExpectCurveKey(*TestRunner, RuntimeRichCurve, 0, 0.5f, 1.25f, TEXT("RuntimeFloatCurve"));
 		ExpectCurveKey(*TestRunner, RuntimeRichCurve, 1, 3.0f, 9.5f, TEXT("RuntimeFloatCurve"));
 
 		float MinTime = 0.0f;
 		float MaxTime = 0.0f;
 		RuntimeCurve.GetRichCurveConst()->GetTimeRange(MinTime, MaxTime);
-		TestRunner->TestTrue(
-			TEXT("FRuntimeFloatCurve.GetTimeRange instance syntax should preserve the native time range"),
-			FMath::IsNearlyEqual(MinTime, 0.5f) && FMath::IsNearlyEqual(MaxTime, 3.0f));
+		ASSERT_THAT(IsNear(
+			0.5f,
+			MinTime,
+			UE_KINDA_SMALL_NUMBER,
+			TEXT("FRuntimeFloatCurve.GetTimeRange instance syntax should preserve the native minimum time")));
+		ASSERT_THAT(IsNear(
+			3.0f,
+			MaxTime,
+			UE_KINDA_SMALL_NUMBER,
+			TEXT("FRuntimeFloatCurve.GetTimeRange instance syntax should preserve the native maximum time")));
 
 		if (Result == 1)
 		{
 			const FRichCurve& AssetCurve = CurveAsset->FloatCurve;
 			const int32 AssetKeyCount = AssetCurve.Keys.Num();
-			TestRunner->TestEqual(
-				TEXT("UCurveFloat.AddAutoCurveKey instance syntax should add one key to the asset curve"),
-				AssetKeyCount, 1);
+			ASSERT_THAT(AreEqual(
+				1,
+				AssetKeyCount,
+				TEXT("UCurveFloat.AddAutoCurveKey instance syntax should add one key to the asset curve")));
 			if (AssetKeyCount > 0)
 			{
 				ExpectCurveKey(*TestRunner, AssetCurve, 0, 1.5f, 7.5f, TEXT("UCurveFloat"));
-				TestRunner->TestEqual(
-					TEXT("UCurveFloat.SetKeyInterpMode instance syntax should update the native key interpolation mode"),
+				ASSERT_THAT(AreEqual(
+					ERichCurveInterpMode::RCIM_Constant,
 					AssetCurve.Keys[0].InterpMode,
-					ERichCurveInterpMode::RCIM_Constant);
+					TEXT("UCurveFloat.SetKeyInterpMode instance syntax should update the native key interpolation mode")));
 			}
 		}
 	}

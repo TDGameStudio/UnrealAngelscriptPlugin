@@ -72,19 +72,19 @@ class AFunctionalStringInterpolationActor : AActor
 
 		FString Greeting;
 		ReadPropertyValue<FStrProperty>(*TestRunner, Actor, TEXT("Greeting"), Greeting);
-		TestRunner->TestEqual(TEXT("Greeting should be the interpolated literal 'Hello World!'"), Greeting, FString(TEXT("Hello World!")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Hello World!")), Greeting, TEXT("Greeting should be the interpolated literal 'Hello World!'")));
 
 		FString Composite;
 		ReadPropertyValue<FStrProperty>(*TestRunner, Actor, TEXT("Composite"), Composite);
-		TestRunner->TestEqual(TEXT("Composite should be '1 2 in 3s'"), Composite, FString(TEXT("1 2 in 3s")));
+		ASSERT_THAT(AreEqual(FString(TEXT("1 2 in 3s")), Composite, TEXT("Composite should be '1 2 in 3s'")));
 
 		bool bLiteralEquality = false;
 		ReadPropertyValue<FBoolProperty>(*TestRunner, Actor, TEXT("bFNameLiteralEqualsConstructor"), bLiteralEquality);
-		TestRunner->TestTrue(TEXT("n\"Tag\" should equal FName(\"Tag\")"), bLiteralEquality);
+		ASSERT_THAT(IsTrue(bLiteralEquality, TEXT("n\"Tag\" should equal FName(\"Tag\")")));
 
 		bool bCaseInsensitive = false;
 		ReadPropertyValue<FBoolProperty>(*TestRunner, Actor, TEXT("bFNameLiteralIsCaseInsensitive"), bCaseInsensitive);
-		TestRunner->TestTrue(TEXT("n\"tag\" should equal FName(\"TAG\") (case-insensitive)"), bCaseInsensitive);
+		ASSERT_THAT(IsTrue(bCaseInsensitive, TEXT("n\"tag\" should equal FName(\"TAG\") (case-insensitive)")));
 	}
 };
 

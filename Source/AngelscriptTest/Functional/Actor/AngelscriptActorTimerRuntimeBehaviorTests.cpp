@@ -97,21 +97,21 @@ class AFunctionalTimerActor : AActor
 			return Value;
 		};
 
-		TestRunner->TestFalse(
-			TEXT("Freshly registered looping timer should report IsTimerPausedHandle == false"),
-			ReadBool(TEXT("bAfterSetIsPaused")));
+		ASSERT_THAT(IsFalse(
+			ReadBool(TEXT("bAfterSetIsPaused")),
+			TEXT("Freshly registered looping timer should report IsTimerPausedHandle == false")));
 
-		TestRunner->TestTrue(
-			TEXT("After PauseTimerHandle, IsTimerPausedHandle should report true"),
-			ReadBool(TEXT("bAfterPauseIsPaused")));
+		ASSERT_THAT(IsTrue(
+			ReadBool(TEXT("bAfterPauseIsPaused")),
+			TEXT("After PauseTimerHandle, IsTimerPausedHandle should report true")));
 
-		TestRunner->TestFalse(
-			TEXT("After UnPauseTimerHandle, IsTimerPausedHandle should report false"),
-			ReadBool(TEXT("bAfterUnPauseIsPaused")));
+		ASSERT_THAT(IsFalse(
+			ReadBool(TEXT("bAfterUnPauseIsPaused")),
+			TEXT("After UnPauseTimerHandle, IsTimerPausedHandle should report false")));
 
-		TestRunner->TestFalse(
-			TEXT("After ClearAndInvalidateTimerHandle, IsTimerPausedHandle should report false (handle is gone)"),
-			ReadBool(TEXT("bAfterClearIsPaused")));
+		ASSERT_THAT(IsFalse(
+			ReadBool(TEXT("bAfterClearIsPaused")),
+			TEXT("After ClearAndInvalidateTimerHandle, IsTimerPausedHandle should report false (handle is gone)")));
 	}
 };
 

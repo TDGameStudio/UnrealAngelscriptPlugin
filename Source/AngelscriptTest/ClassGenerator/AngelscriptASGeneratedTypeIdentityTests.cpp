@@ -36,9 +36,10 @@ namespace ASGeneratedTypeIdentityTest
 
 	bool VerifyHandledReloadResult(FAutomationTestBase& Test, const TCHAR* Context, const ECompileResult ReloadResult)
 	{
-		return Test.TestTrue(
-			Context,
-			ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled);
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsTrue(
+			ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled,
+			Context);
 	}
 
 	bool VerifyLiveStructIdentity(
@@ -47,21 +48,22 @@ namespace ASGeneratedTypeIdentityTest
 		const TCHAR* StageLabel)
 	{
 		const FString StructMessage = FString::Printf(TEXT("%s should publish a generated UASStruct"), StageLabel);
-		if (!Test.TestNotNull(*StructMessage, Struct))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(Struct, *StructMessage))
 		{
 			return false;
 		}
 
-		const bool bIsScriptStructMatches = Test.TestTrue(
-			*FString::Printf(TEXT("%s should mark the struct as script-generated"), StageLabel),
-			Struct->bIsScriptStruct);
-		const bool bScriptTypeMatches = Test.TestNotNull(
-			*FString::Printf(TEXT("%s should publish a live script type pointer"), StageLabel),
-			Struct->ScriptType);
-		const bool bNewestVersionMatches = Test.TestEqual(
-			*FString::Printf(TEXT("%s should resolve GetNewestVersion to itself while canonical"), StageLabel),
+		const bool bIsScriptStructMatches = Assert.IsTrue(
+			Struct->bIsScriptStruct,
+			*FString::Printf(TEXT("%s should mark the struct as script-generated"), StageLabel));
+		const bool bScriptTypeMatches = Assert.IsNotNull(
+			Struct->ScriptType,
+			*FString::Printf(TEXT("%s should publish a live script type pointer"), StageLabel));
+		const bool bNewestVersionMatches = Assert.AreEqual(
+			static_cast<UScriptStruct*>(Struct),
 			Struct->GetNewestVersion(),
-			static_cast<UScriptStruct*>(Struct));
+			*FString::Printf(TEXT("%s should resolve GetNewestVersion to itself while canonical"), StageLabel));
 		return bIsScriptStructMatches && bScriptTypeMatches && bNewestVersionMatches;
 	}
 
@@ -72,25 +74,26 @@ namespace ASGeneratedTypeIdentityTest
 		const TCHAR* StageLabel)
 	{
 		const FString StructMessage = FString::Printf(TEXT("%s should keep the replaced struct alive for version-chain lookups"), StageLabel);
-		if (!Test.TestNotNull(*StructMessage, Struct))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(Struct, *StructMessage))
 		{
 			return false;
 		}
 
-		const bool bIsScriptStructMatches = Test.TestTrue(
-			*FString::Printf(TEXT("%s should keep the replaced struct tagged as a script struct"), StageLabel),
-			Struct->bIsScriptStruct);
-		const bool bNewestVersionMatches = Test.TestEqual(
-			*FString::Printf(TEXT("%s should point GetNewestVersion at the replacement struct"), StageLabel),
+		const bool bIsScriptStructMatches = Assert.IsTrue(
+			Struct->bIsScriptStruct,
+			*FString::Printf(TEXT("%s should keep the replaced struct tagged as a script struct"), StageLabel));
+		const bool bNewestVersionMatches = Assert.AreEqual(
+			static_cast<UScriptStruct*>(ExpectedNewestVersion),
 			Struct->GetNewestVersion(),
-			static_cast<UScriptStruct*>(ExpectedNewestVersion));
-		const bool bDirectVersionLinkMatches = Test.TestEqual(
-			*FString::Printf(TEXT("%s should wire NewerVersion directly to the replacement struct"), StageLabel),
+			*FString::Printf(TEXT("%s should point GetNewestVersion at the replacement struct"), StageLabel));
+		const bool bDirectVersionLinkMatches = Assert.AreEqual(
+			ExpectedNewestVersion,
 			Struct->NewerVersion,
-			ExpectedNewestVersion);
-		const bool bClearedScriptTypeMatches = Test.TestNull(
-			*FString::Printf(TEXT("%s should clear the stale script type pointer after full reload"), StageLabel),
-			Struct->ScriptType);
+			*FString::Printf(TEXT("%s should wire NewerVersion directly to the replacement struct"), StageLabel));
+		const bool bClearedScriptTypeMatches = Assert.IsNull(
+			Struct->ScriptType,
+			*FString::Printf(TEXT("%s should clear the stale script type pointer after full reload"), StageLabel));
 		return bIsScriptStructMatches
 			&& bNewestVersionMatches
 			&& bDirectVersionLinkMatches
@@ -135,9 +138,9 @@ struct FStructIdentityTarget
 };
 )AS");
 
-		if (!TestRunner->TestTrue(
-				TEXT("Struct identity baseline compile should succeed"),
-				CompileAnnotatedModuleFromMemory(&Engine, ASGeneratedTypeIdentityTest::StructModuleName, ASGeneratedTypeIdentityTest::StructScriptFilename, ScriptV1)))
+		if (!this->Assert.IsTrue(
+				CompileAnnotatedModuleFromMemory(&Engine, ASGeneratedTypeIdentityTest::StructModuleName, ASGeneratedTypeIdentityTest::StructScriptFilename, ScriptV1),
+				TEXT("Struct identity baseline compile should succeed")))
 		{
 			return;
 		}
@@ -148,23 +151,23 @@ struct FStructIdentityTarget
 			return;
 		}
 
-		TestRunner->TestNull(
-			TEXT("Struct identity baseline should not publish a newer version link before reload"),
-			StructV1->NewerVersion);
-		TestRunner->TestNull(
-			TEXT("Struct identity baseline should not expose the structural-change property before reload"),
-			StructV1->FindPropertyByName(TEXT("AddedValue")));
+		ASSERT_THAT(IsNull(
+			StructV1->NewerVersion,
+			TEXT("Struct identity baseline should not publish a newer version link before reload")));
+		ASSERT_THAT(IsNull(
+			StructV1->FindPropertyByName(TEXT("AddedValue")),
+			TEXT("Struct identity baseline should not expose the structural-change property before reload")));
 
 		ECompileResult ReloadResult = ECompileResult::Error;
-		if (!TestRunner->TestTrue(
-				TEXT("Struct identity full reload should compile successfully"),
+		if (!this->Assert.IsTrue(
 				CompileModuleWithResult(
 					&Engine,
 					ECompileType::FullReload,
 					ASGeneratedTypeIdentityTest::StructModuleName,
 					ASGeneratedTypeIdentityTest::StructScriptFilename,
 					ScriptV2,
-					ReloadResult)))
+					ReloadResult),
+				TEXT("Struct identity full reload should compile successfully")))
 		{
 			return;
 		}
@@ -183,19 +186,19 @@ struct FStructIdentityTarget
 			return;
 		}
 
-		TestRunner->TestNotEqual(
-			TEXT("Struct identity full reload should replace the canonical struct object"),
+		ASSERT_THAT(AreNotEqual(
 			static_cast<UScriptStruct*>(StructV1),
-			static_cast<UScriptStruct*>(StructV2));
-		TestRunner->TestNotNull(
-			TEXT("Struct identity replacement should expose the newly added reflected property"),
-			StructV2->FindPropertyByName(TEXT("AddedValue")));
-		TestRunner->TestNull(
-			TEXT("Struct identity replacement should become the leaf of the version chain"),
-			StructV2->NewerVersion);
-		TestRunner->TestNull(
-			TEXT("Struct identity replaced struct should keep its original reflected layout"),
-			StructV1->FindPropertyByName(TEXT("AddedValue")));
+			static_cast<UScriptStruct*>(StructV2),
+			TEXT("Struct identity full reload should replace the canonical struct object")));
+		ASSERT_THAT(IsNotNull(
+			StructV2->FindPropertyByName(TEXT("AddedValue")),
+			TEXT("Struct identity replacement should expose the newly added reflected property")));
+		ASSERT_THAT(IsNull(
+			StructV2->NewerVersion,
+			TEXT("Struct identity replacement should become the leaf of the version chain")));
+		ASSERT_THAT(IsNull(
+			StructV1->FindPropertyByName(TEXT("AddedValue")),
+			TEXT("Struct identity replaced struct should keep its original reflected layout")));
 		ASGeneratedTypeIdentityTest::VerifyReplacedStructIdentity(
 			*TestRunner,
 			StructV1,

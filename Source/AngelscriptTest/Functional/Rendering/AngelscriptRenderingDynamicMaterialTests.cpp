@@ -55,26 +55,26 @@ class AFunctionalDynamicMaterialActor : AActor
 			TEXT("AFunctionalDynamicMaterialActor"));
 		if (ActorClass == nullptr) { return; }
 
-		TestRunner->TestTrue(
-			TEXT("AFunctionalDynamicMaterialActor should derive from AActor"),
-			ActorClass->IsChildOf(AActor::StaticClass()));
+		ASSERT_THAT(IsTrue(
+			ActorClass->IsChildOf(AActor::StaticClass()),
+			TEXT("AFunctionalDynamicMaterialActor should derive from AActor")));
 
 		FObjectProperty* DynamicMaterialProp = FindFProperty<FObjectProperty>(ActorClass, TEXT("DynamicMaterial"));
-		if (TestRunner->TestNotNull(TEXT("DynamicMaterial FObjectProperty should be registered"), DynamicMaterialProp))
+		if (this->Assert.IsNotNull(DynamicMaterialProp, TEXT("DynamicMaterial FObjectProperty should be registered")))
 		{
-			TestRunner->TestTrue(
-				TEXT("DynamicMaterial property class should reference UMaterialInstanceDynamic"),
+			ASSERT_THAT(IsTrue(
 				DynamicMaterialProp->PropertyClass != nullptr
-				&& DynamicMaterialProp->PropertyClass->IsChildOf(UMaterialInstanceDynamic::StaticClass()));
+				&& DynamicMaterialProp->PropertyClass->IsChildOf(UMaterialInstanceDynamic::StaticClass()),
+				TEXT("DynamicMaterial property class should reference UMaterialInstanceDynamic")));
 		}
 
 		FObjectProperty* MeshProp = FindFProperty<FObjectProperty>(ActorClass, TEXT("Mesh"));
-		if (TestRunner->TestNotNull(TEXT("Mesh FObjectProperty should be registered"), MeshProp))
+		if (this->Assert.IsNotNull(MeshProp, TEXT("Mesh FObjectProperty should be registered")))
 		{
-			TestRunner->TestTrue(
-				TEXT("Mesh property class should reference UStaticMeshComponent"),
+			ASSERT_THAT(IsTrue(
 				MeshProp->PropertyClass != nullptr
-				&& MeshProp->PropertyClass->IsChildOf(UStaticMeshComponent::StaticClass()));
+				&& MeshProp->PropertyClass->IsChildOf(UStaticMeshComponent::StaticClass()),
+				TEXT("Mesh property class should reference UStaticMeshComponent")));
 		}
 	}
 };

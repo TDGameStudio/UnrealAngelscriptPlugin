@@ -19,6 +19,32 @@
 
 namespace AngelscriptDebuggerBreakpointTests_Private
 {
+	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsTrue(bActual, Message);
+	}
+
+	static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsFalse(bActual, Message);
+	}
+
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.AreEqual(Expected, Actual, Message);
+	}
+
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsNotNull(Value, Message);
+	}
+
 	class FScopedDebugBreakOptionsBinding
 	{
 	public:
@@ -75,7 +101,7 @@ namespace AngelscriptDebuggerBreakpointTests_Private
 			},
 			Session.GetDefaultTimeoutSeconds());
 
-		return Test.TestTrue(Context, bObservedExpectedState);
+		return CheckTrue(Test, Context, bObservedExpectedState);
 	}
 
 	// Protocol tests need to wait for breakpoint ack envelopes
@@ -133,6 +159,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 	// =========================================================================
 	TEST_METHOD(HitLine)
 	{
+		using namespace AngelscriptDebuggerBreakpointTests_Private;
+
 		FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBreakpointFixture();
 		ON_SCOPE_EXIT
@@ -142,10 +170,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 			CollectGarbage(RF_NoFlags, true);
 		};
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.HitLine should compile the breakpoint fixture"), Fixture.Compile(Engine))));
+		ASSERT_THAT(IsTrue(Fixture.Compile(Engine), TEXT("Debugger.Breakpoint.HitLine should compile the breakpoint fixture")));
 
 		TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModuleByFilenameOrModuleName(Fixture.Filename, Fixture.ModuleName.ToString());
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.HitLine should resolve the compiled module immediately after compilation"), ModuleDesc.IsValid() && ModuleDesc->ScriptModule != nullptr)));
+		ASSERT_THAT(IsTrue(ModuleDesc.IsValid() && ModuleDesc->ScriptModule != nullptr, TEXT("Debugger.Breakpoint.HitLine should resolve the compiled module immediately after compilation")));
 
 		TAtomic<bool> bMonitorReady{false};
 		FBreakpointMonitorConfig MonitorConfig;
@@ -161,7 +189,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 		Breakpoint.Filename = Fixture.Filename;
 		Breakpoint.ModuleName = Fixture.ModuleName.ToString();
 		Breakpoint.LineNumber = Fixture.GetLine(TEXT("BreakpointHelperLine"));
-		if (!TestRunner->TestTrue(TEXT("Debugger.Breakpoint.HitLine should send the target breakpoint"), Ctx.Client.SendSetBreakpoint(Breakpoint)))
+		if (!CheckTrue(*TestRunner, TEXT("Debugger.Breakpoint.HitLine should send the target breakpoint"), Ctx.Client.SendSetBreakpoint(Breakpoint)))
 		{
 			TestRunner->AddError(Ctx.Client.GetLastError());
 			return;
@@ -184,7 +212,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 		Ctx.bMonitorShouldStop = true;
 		FBreakpointMonitorResult MonitorResult = MonitorFuture.Get();
 
-		if (!TestRunner->TestTrue(TEXT("Debugger.Breakpoint.HitLine should receive at least one HasStopped via the monitor"), MonitorResult.StopEnvelopes.Num() > 0))
+		if (!CheckTrue(*TestRunner, TEXT("Debugger.Breakpoint.HitLine should receive at least one HasStopped via the monitor"), MonitorResult.StopEnvelopes.Num() > 0))
 		{
 			if (!MonitorResult.Error.IsEmpty())
 			{
@@ -194,19 +222,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 		}
 
 		const TOptional<FStoppedMessage> StopMessage = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(MonitorResult.StopEnvelopes[0]);
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.HitLine should deserialize the stop payload"), StopMessage.IsSet())));
+		ASSERT_THAT(IsTrue(StopMessage.IsSet(), TEXT("Debugger.Breakpoint.HitLine should deserialize the stop payload")));
 
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.HitLine should stop because of a breakpoint"), StopMessage->Reason, FString(TEXT("breakpoint")));
+		ASSERT_THAT(AreEqual(FString(TEXT("breakpoint")), StopMessage->Reason, TEXT("Debugger.Breakpoint.HitLine should stop because of a breakpoint")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.HitLine should capture a callstack via the monitor"), MonitorResult.CapturedCallstack.IsSet())));
+		ASSERT_THAT(IsTrue(MonitorResult.CapturedCallstack.IsSet(), TEXT("Debugger.Breakpoint.HitLine should capture a callstack via the monitor")));
 
 		const FAngelscriptCallStack& Callstack = MonitorResult.CapturedCallstack.GetValue();
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.HitLine should return at least one frame"), Callstack.Frames.Num() > 0)));
+		ASSERT_THAT(IsTrue(Callstack.Frames.Num() > 0, TEXT("Debugger.Breakpoint.HitLine should return at least one frame")));
 
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.HitLine should report the fixture filename in the top stack frame"), Callstack.Frames[0].Source.EndsWith(Fixture.Filename));
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.HitLine should stop at the requested helper line"), Callstack.Frames[0].LineNumber, Fixture.GetLine(TEXT("BreakpointHelperLine")));
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.HitLine should execute the script function successfully after resume"), InvocationState->bSucceeded);
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.HitLine should keep the module function return value"), InvocationState->Result, 8);
+		ASSERT_THAT(IsTrue(Callstack.Frames[0].Source.EndsWith(Fixture.Filename), TEXT("Debugger.Breakpoint.HitLine should report the fixture filename in the top stack frame")));
+		ASSERT_THAT(AreEqual(Fixture.GetLine(TEXT("BreakpointHelperLine")), Callstack.Frames[0].LineNumber, TEXT("Debugger.Breakpoint.HitLine should stop at the requested helper line")));
+		ASSERT_THAT(IsTrue(InvocationState->bSucceeded, TEXT("Debugger.Breakpoint.HitLine should execute the script function successfully after resume")));
+		ASSERT_THAT(AreEqual(8, InvocationState->Result, TEXT("Debugger.Breakpoint.HitLine should keep the module function return value")));
 	}
 
 	// =========================================================================
@@ -214,6 +242,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 	// =========================================================================
 	TEST_METHOD(ClearThenResume)
 	{
+		using namespace AngelscriptDebuggerBreakpointTests_Private;
+
 		FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBreakpointFixture();
 		ON_SCOPE_EXIT
@@ -223,10 +253,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 			CollectGarbage(RF_NoFlags, true);
 		};
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ClearThenResume should compile the breakpoint fixture"), Fixture.Compile(Engine))));
+		ASSERT_THAT(IsTrue(Fixture.Compile(Engine), TEXT("Debugger.Breakpoint.ClearThenResume should compile the breakpoint fixture")));
 
 		TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModuleByFilenameOrModuleName(Fixture.Filename, Fixture.ModuleName.ToString());
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ClearThenResume should resolve the compiled module immediately after compilation"), ModuleDesc.IsValid() && ModuleDesc->ScriptModule != nullptr)));
+		ASSERT_THAT(IsTrue(ModuleDesc.IsValid() && ModuleDesc->ScriptModule != nullptr, TEXT("Debugger.Breakpoint.ClearThenResume should resolve the compiled module immediately after compilation")));
 
 		// First run: breakpoint should fire
 		TAtomic<bool> bFirstMonitorReady{false};
@@ -243,7 +273,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 		Breakpoint.Filename = Fixture.Filename;
 		Breakpoint.ModuleName = Fixture.ModuleName.ToString();
 		Breakpoint.LineNumber = Fixture.GetLine(TEXT("BreakpointHelperLine"));
-		if (!TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ClearThenResume should send the target breakpoint"), Ctx.Client.SendSetBreakpoint(Breakpoint)))
+		if (!CheckTrue(*TestRunner, TEXT("Debugger.Breakpoint.ClearThenResume should send the target breakpoint"), Ctx.Client.SendSetBreakpoint(Breakpoint)))
 		{
 			TestRunner->AddError(Ctx.Client.GetLastError());
 			return;
@@ -266,14 +296,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 		Ctx.bMonitorShouldStop = true;
 		FBreakpointMonitorResult FirstMonitorResult = FirstMonitorFuture.Get();
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ClearThenResume should receive a stop event on the first invocation"), FirstMonitorResult.StopEnvelopes.Num() > 0)));
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ClearThenResume should finish the first invocation successfully"), FirstInvocation->bSucceeded);
+		ASSERT_THAT(IsTrue(FirstMonitorResult.StopEnvelopes.Num() > 0, TEXT("Debugger.Breakpoint.ClearThenResume should receive a stop event on the first invocation")));
+		ASSERT_THAT(IsTrue(FirstInvocation->bSucceeded, TEXT("Debugger.Breakpoint.ClearThenResume should finish the first invocation successfully")));
 
 		// Clear breakpoints
 		FAngelscriptClearBreakpoints ClearBreakpoints;
 		ClearBreakpoints.Filename = Fixture.Filename;
 		ClearBreakpoints.ModuleName = Fixture.ModuleName.ToString();
-		if (!TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ClearThenResume should clear the active breakpoints"), Ctx.Client.SendClearBreakpoints(ClearBreakpoints)))
+		if (!CheckTrue(*TestRunner, TEXT("Debugger.Breakpoint.ClearThenResume should clear the active breakpoints"), Ctx.Client.SendClearBreakpoints(ClearBreakpoints)))
 		{
 			TestRunner->AddError(Ctx.Client.GetLastError());
 			return;
@@ -310,8 +340,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 		Ctx.bMonitorShouldStop = true;
 		FBreakpointMonitorResult SecondMonitorResult = SecondMonitorFuture.Get();
 
-		TestRunner->TestEqual(TEXT("Cleared breakpoints should not stop the second invocation."), SecondMonitorResult.StopEnvelopes.Num(), 0);
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ClearThenResume should still execute the script successfully after clearing breakpoints"), SecondInvocation->bSucceeded);
+		ASSERT_THAT(AreEqual(0, SecondMonitorResult.StopEnvelopes.Num(), TEXT("Cleared breakpoints should not stop the second invocation.")));
+		ASSERT_THAT(IsTrue(SecondInvocation->bSucceeded, TEXT("Debugger.Breakpoint.ClearThenResume should still execute the script successfully after clearing breakpoints")));
 	}
 
 	// =========================================================================
@@ -319,6 +349,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 	// =========================================================================
 	TEST_METHOD(IgnoreInactiveBranch)
 	{
+		using namespace AngelscriptDebuggerBreakpointTests_Private;
+
 		FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBreakpointFixture();
 		ON_SCOPE_EXIT
@@ -328,10 +360,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 			CollectGarbage(RF_NoFlags, true);
 		};
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.IgnoreInactiveBranch should compile the breakpoint fixture"), Fixture.Compile(Engine))));
+		ASSERT_THAT(IsTrue(Fixture.Compile(Engine), TEXT("Debugger.Breakpoint.IgnoreInactiveBranch should compile the breakpoint fixture")));
 
 		TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModuleByFilenameOrModuleName(Fixture.Filename, Fixture.ModuleName.ToString());
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.IgnoreInactiveBranch should resolve the compiled module immediately after compilation"), ModuleDesc.IsValid() && ModuleDesc->ScriptModule != nullptr)));
+		ASSERT_THAT(IsTrue(ModuleDesc.IsValid() && ModuleDesc->ScriptModule != nullptr, TEXT("Debugger.Breakpoint.IgnoreInactiveBranch should resolve the compiled module immediately after compilation")));
 
 		TAtomic<bool> bMonitorReady{false};
 		FBreakpointMonitorConfig MonitorConfig;
@@ -347,7 +379,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 		Breakpoint.Filename = Fixture.Filename;
 		Breakpoint.ModuleName = Fixture.ModuleName.ToString();
 		Breakpoint.LineNumber = Fixture.GetLine(TEXT("BreakpointInactiveBranchLine"));
-		if (!TestRunner->TestTrue(TEXT("Debugger.Breakpoint.IgnoreInactiveBranch should send the inactive-branch breakpoint"), Ctx.Client.SendSetBreakpoint(Breakpoint)))
+		if (!CheckTrue(*TestRunner, TEXT("Debugger.Breakpoint.IgnoreInactiveBranch should send the inactive-branch breakpoint"), Ctx.Client.SendSetBreakpoint(Breakpoint)))
 		{
 			TestRunner->AddError(Ctx.Client.GetLastError());
 			return;
@@ -370,8 +402,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 		Ctx.bMonitorShouldStop = true;
 		FBreakpointMonitorResult MonitorResult = MonitorFuture.Get();
 
-		TestRunner->TestEqual(TEXT("Breakpoint in the inactive branch should not have triggered a stop event."), MonitorResult.StopEnvelopes.Num(), 0);
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.IgnoreInactiveBranch should execute the function successfully when the inactive branch breakpoint never hits"), InvocationState->bSucceeded);
+		ASSERT_THAT(AreEqual(0, MonitorResult.StopEnvelopes.Num(), TEXT("Breakpoint in the inactive branch should not have triggered a stop event.")));
+		ASSERT_THAT(IsTrue(InvocationState->bSucceeded, TEXT("Debugger.Breakpoint.IgnoreInactiveBranch should execute the function successfully when the inactive branch breakpoint never hits")));
 	}
 
 	// =========================================================================
@@ -390,11 +422,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 			CollectGarbage(RF_NoFlags, true);
 		};
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.NearestExecutableLineAck should compile the breakpoint fixture"), Fixture.Compile(Engine))));
+		ASSERT_THAT(IsTrue(Fixture.Compile(Engine), TEXT("Debugger.Breakpoint.NearestExecutableLineAck should compile the breakpoint fixture")));
 
 		const int32 RequestedLine = Fixture.GetLine(TEXT("BreakpointHelperLine")) - 1;
 		const int32 ExpectedLine = Fixture.GetLine(TEXT("BreakpointHelperLine"));
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.NearestExecutableLineAck should target a non-executable line before the helper marker"), RequestedLine < ExpectedLine)));
+		ASSERT_THAT(IsTrue(RequestedLine < ExpectedLine, TEXT("Debugger.Breakpoint.NearestExecutableLineAck should target a non-executable line before the helper marker")));
 
 		TAtomic<bool> bMonitorReady{false};
 		FBreakpointMonitorConfig MonitorConfig;
@@ -413,7 +445,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 		Breakpoint.ModuleName = Fixture.ModuleName.ToString();
 		Breakpoint.LineNumber = RequestedLine;
 		Breakpoint.Id = 101;
-		if (!TestRunner->TestTrue(TEXT("Debugger.Breakpoint.NearestExecutableLineAck should send the non-executable-line breakpoint request"), Ctx.Client.SendSetBreakpoint(Breakpoint)))
+		if (!CheckTrue(*TestRunner, TEXT("Debugger.Breakpoint.NearestExecutableLineAck should send the non-executable-line breakpoint request"), Ctx.Client.SendSetBreakpoint(Breakpoint)))
 		{
 			TestRunner->AddError(Ctx.Client.GetLastError());
 			return;
@@ -426,15 +458,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 			return;
 		}
 
-		if (!TestRunner->TestTrue(TEXT("Debugger.Breakpoint.NearestExecutableLineAck should deserialize the SetBreakpoint ack payload"), BreakpointAck.IsSet()))
+		if (!CheckTrue(*TestRunner, TEXT("Debugger.Breakpoint.NearestExecutableLineAck should deserialize the SetBreakpoint ack payload"), BreakpointAck.IsSet()))
 		{
 			Ctx.bMonitorShouldStop = true;
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.NearestExecutableLineAck should preserve the explicit breakpoint id in the ack"), BreakpointAck->Id, 101);
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.NearestExecutableLineAck should keep the original fixture filename in the ack"), BreakpointAck->Filename, Fixture.Filename);
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.NearestExecutableLineAck should snap the ack line to the nearest executable helper line"), BreakpointAck->LineNumber, ExpectedLine);
+		ASSERT_THAT(AreEqual(101, BreakpointAck->Id, TEXT("Debugger.Breakpoint.NearestExecutableLineAck should preserve the explicit breakpoint id in the ack")));
+		ASSERT_THAT(AreEqual(Fixture.Filename, BreakpointAck->Filename, TEXT("Debugger.Breakpoint.NearestExecutableLineAck should keep the original fixture filename in the ack")));
+		ASSERT_THAT(AreEqual(ExpectedLine, BreakpointAck->LineNumber, TEXT("Debugger.Breakpoint.NearestExecutableLineAck should snap the ack line to the nearest executable helper line")));
 
 		if (!WaitForSpecificBreakpoint(
 			*TestRunner,
@@ -447,7 +479,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.NearestExecutableLineAck should keep exactly one authoritative breakpoint registered"), Ctx.GetDebugServer().BreakpointCount, 1);
+		ASSERT_THAT(AreEqual(1, Ctx.GetDebugServer().BreakpointCount, TEXT("Debugger.Breakpoint.NearestExecutableLineAck should keep exactly one authoritative breakpoint registered")));
 
 		TSharedRef<FAsyncModuleInvocationState> InvocationState = DispatchModuleInvocation(
 			Engine,
@@ -470,25 +502,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 			return;
 		}
 
-		if (!TestRunner->TestEqual(TEXT("Debugger.Breakpoint.NearestExecutableLineAck should stop exactly once after the adjusted breakpoint is hit"), MonitorResult.StopEnvelopes.Num(), 1))
+		if (!CheckEqual(*TestRunner, TEXT("Debugger.Breakpoint.NearestExecutableLineAck should stop exactly once after the adjusted breakpoint is hit"), MonitorResult.StopEnvelopes.Num(), 1))
 		{
 			return;
 		}
 
 		const TOptional<FStoppedMessage> StopMessage = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(MonitorResult.StopEnvelopes[0]);
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.NearestExecutableLineAck should deserialize the stop payload"), StopMessage.IsSet())));
+		ASSERT_THAT(IsTrue(StopMessage.IsSet(), TEXT("Debugger.Breakpoint.NearestExecutableLineAck should deserialize the stop payload")));
 
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.NearestExecutableLineAck should stop because of a breakpoint"), StopMessage->Reason, FString(TEXT("breakpoint")));
+		ASSERT_THAT(AreEqual(FString(TEXT("breakpoint")), StopMessage->Reason, TEXT("Debugger.Breakpoint.NearestExecutableLineAck should stop because of a breakpoint")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.NearestExecutableLineAck should capture a callstack after the stop"), MonitorResult.CapturedCallstack.IsSet())));
+		ASSERT_THAT(IsTrue(MonitorResult.CapturedCallstack.IsSet(), TEXT("Debugger.Breakpoint.NearestExecutableLineAck should capture a callstack after the stop")));
 
 		const FAngelscriptCallStack& Callstack = MonitorResult.CapturedCallstack.GetValue();
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.NearestExecutableLineAck should return at least one frame"), Callstack.Frames.Num() > 0)));
+		ASSERT_THAT(IsTrue(Callstack.Frames.Num() > 0, TEXT("Debugger.Breakpoint.NearestExecutableLineAck should return at least one frame")));
 
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.NearestExecutableLineAck should report the fixture filename in the top stack frame"), Callstack.Frames[0].Source.EndsWith(Fixture.Filename));
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.NearestExecutableLineAck should stop at the adjusted executable line"), Callstack.Frames[0].LineNumber, BreakpointAck->LineNumber);
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.NearestExecutableLineAck should execute the script successfully after resume"), InvocationState->bSucceeded);
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.NearestExecutableLineAck should preserve the script return value"), InvocationState->Result, 8);
+		ASSERT_THAT(IsTrue(Callstack.Frames[0].Source.EndsWith(Fixture.Filename), TEXT("Debugger.Breakpoint.NearestExecutableLineAck should report the fixture filename in the top stack frame")));
+		ASSERT_THAT(AreEqual(BreakpointAck->LineNumber, Callstack.Frames[0].LineNumber, TEXT("Debugger.Breakpoint.NearestExecutableLineAck should stop at the adjusted executable line")));
+		ASSERT_THAT(IsTrue(InvocationState->bSucceeded, TEXT("Debugger.Breakpoint.NearestExecutableLineAck should execute the script successfully after resume")));
+		ASSERT_THAT(AreEqual(8, InvocationState->Result, TEXT("Debugger.Breakpoint.NearestExecutableLineAck should preserve the script return value")));
 	}
 
 	// =========================================================================
@@ -507,7 +539,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 			CollectGarbage(RF_NoFlags, true);
 		};
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should compile the breakpoint fixture"), Fixture.Compile(Engine))));
+		ASSERT_THAT(IsTrue(Fixture.Compile(Engine), TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should compile the breakpoint fixture")));
 
 		const int32 BreakpointLine = Fixture.GetLine(TEXT("BreakpointHelperLine"));
 
@@ -528,7 +560,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 		InitialBreakpoint.ModuleName = Fixture.ModuleName.ToString();
 		InitialBreakpoint.LineNumber = BreakpointLine;
 		InitialBreakpoint.Id = 201;
-		if (!TestRunner->TestTrue(TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should send the initial breakpoint request"), Ctx.Client.SendSetBreakpoint(InitialBreakpoint)))
+		if (!CheckTrue(*TestRunner, TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should send the initial breakpoint request"), Ctx.Client.SendSetBreakpoint(InitialBreakpoint)))
 		{
 			TestRunner->AddError(Ctx.Client.GetLastError());
 			return;
@@ -549,7 +581,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 
 		FAngelscriptBreakpoint DuplicateBreakpoint = InitialBreakpoint;
 		DuplicateBreakpoint.Id = 202;
-		if (!TestRunner->TestTrue(TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should send the duplicate breakpoint request"), Ctx.Client.SendSetBreakpoint(DuplicateBreakpoint)))
+		if (!CheckTrue(*TestRunner, TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should send the duplicate breakpoint request"), Ctx.Client.SendSetBreakpoint(DuplicateBreakpoint)))
 		{
 			TestRunner->AddError(Ctx.Client.GetLastError());
 			return;
@@ -561,11 +593,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 			return;
 		}
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should deserialize the duplicate-breakpoint ack"), DuplicateAck.IsSet())));
+		ASSERT_THAT(IsTrue(DuplicateAck.IsSet(), TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should deserialize the duplicate-breakpoint ack")));
 
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should preserve the duplicate request id in the rejection ack"), DuplicateAck->Id, 202);
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should preserve the original fixture filename in the rejection ack"), DuplicateAck->Filename, Fixture.Filename);
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should ask the frontend to remove the duplicate breakpoint"), DuplicateAck->LineNumber, -1);
+		ASSERT_THAT(AreEqual(202, DuplicateAck->Id, TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should preserve the duplicate request id in the rejection ack")));
+		ASSERT_THAT(AreEqual(Fixture.Filename, DuplicateAck->Filename, TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should preserve the original fixture filename in the rejection ack")));
+		ASSERT_THAT(AreEqual(-1, DuplicateAck->LineNumber, TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should ask the frontend to remove the duplicate breakpoint")));
 
 		ASSERT_THAT(IsTrue(WaitForBreakpointCount(
 			*TestRunner,
@@ -588,7 +620,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 		Ctx.bMonitorShouldStop = true;
 		FBreakpointMonitorResult MonitorResult = MonitorFuture.Get();
 
-		if (!TestRunner->TestTrue(TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should not report monitor-side transport errors"), MonitorResult.Error.IsEmpty()))
+		if (!CheckTrue(*TestRunner, TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should not report monitor-side transport errors"), MonitorResult.Error.IsEmpty()))
 		{
 			if (!MonitorResult.Error.IsEmpty())
 			{
@@ -597,30 +629,30 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 			return;
 		}
 
-		if (!TestRunner->TestFalse(TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should not time out while waiting for the breakpoint hit"), MonitorResult.bTimedOut))
+		if (!CheckFalse(*TestRunner, TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should not time out while waiting for the breakpoint hit"), MonitorResult.bTimedOut))
 		{
 			return;
 		}
 
-		if (!TestRunner->TestEqual(TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should stop exactly once even after a duplicate request"), MonitorResult.StopEnvelopes.Num(), 1))
+		if (!CheckEqual(*TestRunner, TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should stop exactly once even after a duplicate request"), MonitorResult.StopEnvelopes.Num(), 1))
 		{
 			return;
 		}
 
 		const TOptional<FStoppedMessage> StopMessage = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(MonitorResult.StopEnvelopes[0]);
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should deserialize the stop payload"), StopMessage.IsSet())));
+		ASSERT_THAT(IsTrue(StopMessage.IsSet(), TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should deserialize the stop payload")));
 
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should stop because of a breakpoint"), StopMessage->Reason, FString(TEXT("breakpoint")));
+		ASSERT_THAT(AreEqual(FString(TEXT("breakpoint")), StopMessage->Reason, TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should stop because of a breakpoint")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should capture a callstack after the stop"), MonitorResult.CapturedCallstack.IsSet())));
+		ASSERT_THAT(IsTrue(MonitorResult.CapturedCallstack.IsSet(), TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should capture a callstack after the stop")));
 
 		const FAngelscriptCallStack& Callstack = MonitorResult.CapturedCallstack.GetValue();
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should return at least one frame"), Callstack.Frames.Num() > 0)));
+		ASSERT_THAT(IsTrue(Callstack.Frames.Num() > 0, TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should return at least one frame")));
 
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should report the fixture filename in the top stack frame"), Callstack.Frames[0].Source.EndsWith(Fixture.Filename));
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should stop at the helper line"), Callstack.Frames[0].LineNumber, BreakpointLine);
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should execute the script successfully after resume"), InvocationState->bSucceeded);
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should preserve the script return value"), InvocationState->Result, 8);
+		ASSERT_THAT(IsTrue(Callstack.Frames[0].Source.EndsWith(Fixture.Filename), TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should report the fixture filename in the top stack frame")));
+		ASSERT_THAT(AreEqual(BreakpointLine, Callstack.Frames[0].LineNumber, TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should stop at the helper line")));
+		ASSERT_THAT(IsTrue(InvocationState->bSucceeded, TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should execute the script successfully after resume")));
+		ASSERT_THAT(AreEqual(8, InvocationState->Result, TEXT("Debugger.Breakpoint.DuplicateSetReturnsRemovalAck should preserve the script return value")));
 	}
 
 	// =========================================================================
@@ -633,14 +665,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 		FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBreakpointFixture();
 		UObject* BreakOptionsWorldContext = NewObject<UAngelscriptNativeScriptTestObject>();
-		ASSERT_THAT(IsTrue(TestRunner->TestNotNull(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should create a non-null world context for break-option gating"), BreakOptionsWorldContext)));
+		ASSERT_THAT(IsNotNull(BreakOptionsWorldContext, TEXT("Debugger.Breakpoint.BreakOptionsGateStop should create a non-null world context for break-option gating")));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*Fixture.ModuleName.ToString());
 			CollectGarbage(RF_NoFlags, true);
 		};
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should compile the breakpoint fixture"), Fixture.Compile(Engine))));
+		ASSERT_THAT(IsTrue(Fixture.Compile(Engine), TEXT("Debugger.Breakpoint.BreakOptionsGateStop should compile the breakpoint fixture")));
 
 		struct FObservedBreakOptionsState
 		{
@@ -698,7 +730,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 				Breakpoint.Filename = Fixture.Filename;
 				Breakpoint.ModuleName = Fixture.ModuleName.ToString();
 				Breakpoint.LineNumber = Fixture.GetLine(TEXT("BreakpointHelperLine"));
-				if (!TestRunner->TestTrue(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should register the round-specific breakpoint after the monitor starts debugging"), Ctx.Client.SendSetBreakpoint(Breakpoint)))
+				if (!CheckTrue(*TestRunner, TEXT("Debugger.Breakpoint.BreakOptionsGateStop should register the round-specific breakpoint after the monitor starts debugging"), Ctx.Client.SendSetBreakpoint(Breakpoint)))
 				{
 					bMonitorShouldStop = true;
 					TestRunner->AddError(Ctx.Client.GetLastError());
@@ -722,7 +754,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 					return false;
 				}
 
-				if (!TestRunner->TestTrue(SendContext, Ctx.Client.SendBreakOptions(Filters)))
+				if (!CheckTrue(*TestRunner, SendContext, Ctx.Client.SendBreakOptions(Filters)))
 				{
 					bMonitorShouldStop = true;
 					TestRunner->AddError(Ctx.Client.GetLastError());
@@ -785,45 +817,45 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should keep the rejected-round monitor error empty"), FirstRoundMonitorResult.Error.IsEmpty());
-		TestRunner->TestFalse(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should not time out while waiting for a rejected breakpoint stop"), FirstRoundMonitorResult.bTimedOut);
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should not emit any HasStopped message in the rejected round"), FirstRoundMonitorResult.StopEnvelopes.Num(), 0);
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should still execute the rejected-round invocation successfully"), FirstInvocationState->bSucceeded);
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should preserve the rejected-round script return value"), FirstInvocationState->Result, 8);
+		ASSERT_THAT(IsTrue(FirstRoundMonitorResult.Error.IsEmpty(), TEXT("Debugger.Breakpoint.BreakOptionsGateStop should keep the rejected-round monitor error empty")));
+		ASSERT_THAT(IsFalse(FirstRoundMonitorResult.bTimedOut, TEXT("Debugger.Breakpoint.BreakOptionsGateStop should not time out while waiting for a rejected breakpoint stop")));
+		ASSERT_THAT(AreEqual(0, FirstRoundMonitorResult.StopEnvelopes.Num(), TEXT("Debugger.Breakpoint.BreakOptionsGateStop should not emit any HasStopped message in the rejected round")));
+		ASSERT_THAT(IsTrue(FirstInvocationState->bSucceeded, TEXT("Debugger.Breakpoint.BreakOptionsGateStop should still execute the rejected-round invocation successfully")));
+		ASSERT_THAT(AreEqual(8, FirstInvocationState->Result, TEXT("Debugger.Breakpoint.BreakOptionsGateStop should preserve the rejected-round script return value")));
 
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should keep the accepted-round monitor error empty"), SecondRoundMonitorResult.Error.IsEmpty());
-		if (!TestRunner->TestEqual(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should emit exactly one HasStopped message in the accepted round"), SecondRoundMonitorResult.StopEnvelopes.Num(), 1))
+		ASSERT_THAT(IsTrue(SecondRoundMonitorResult.Error.IsEmpty(), TEXT("Debugger.Breakpoint.BreakOptionsGateStop should keep the accepted-round monitor error empty")));
+		if (!CheckEqual(*TestRunner, TEXT("Debugger.Breakpoint.BreakOptionsGateStop should emit exactly one HasStopped message in the accepted round"), SecondRoundMonitorResult.StopEnvelopes.Num(), 1))
 		{
 			return;
 		}
 
 		const TOptional<FStoppedMessage> StopMessage = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(SecondRoundMonitorResult.StopEnvelopes[0]);
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should deserialize the accepted-round stop payload"), StopMessage.IsSet())));
+		ASSERT_THAT(IsTrue(StopMessage.IsSet(), TEXT("Debugger.Breakpoint.BreakOptionsGateStop should deserialize the accepted-round stop payload")));
 
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should stop because of a breakpoint in the accepted round"), StopMessage->Reason, FString(TEXT("breakpoint")));
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should capture a callstack for the accepted round"), SecondRoundMonitorResult.CapturedCallstack.IsSet())));
+		ASSERT_THAT(AreEqual(FString(TEXT("breakpoint")), StopMessage->Reason, TEXT("Debugger.Breakpoint.BreakOptionsGateStop should stop because of a breakpoint in the accepted round")));
+		ASSERT_THAT(IsTrue(SecondRoundMonitorResult.CapturedCallstack.IsSet(), TEXT("Debugger.Breakpoint.BreakOptionsGateStop should capture a callstack for the accepted round")));
 
 		const FAngelscriptCallStack& Callstack = SecondRoundMonitorResult.CapturedCallstack.GetValue();
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should return at least one frame in the accepted-round callstack"), Callstack.Frames.Num() > 0)));
+		ASSERT_THAT(IsTrue(Callstack.Frames.Num() > 0, TEXT("Debugger.Breakpoint.BreakOptionsGateStop should return at least one frame in the accepted-round callstack")));
 
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should report the fixture filename in the accepted-round top stack frame"), Callstack.Frames[0].Source.EndsWith(Fixture.Filename));
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should stop at the breakpoint helper line"), Callstack.Frames[0].LineNumber, Fixture.GetLine(TEXT("BreakpointHelperLine")));
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should execute the accepted-round invocation successfully"), SecondInvocationState->bSucceeded);
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should preserve the accepted-round script return value"), SecondInvocationState->Result, 8);
+		ASSERT_THAT(IsTrue(Callstack.Frames[0].Source.EndsWith(Fixture.Filename), TEXT("Debugger.Breakpoint.BreakOptionsGateStop should report the fixture filename in the accepted-round top stack frame")));
+		ASSERT_THAT(AreEqual(Fixture.GetLine(TEXT("BreakpointHelperLine")), Callstack.Frames[0].LineNumber, TEXT("Debugger.Breakpoint.BreakOptionsGateStop should stop at the breakpoint helper line")));
+		ASSERT_THAT(IsTrue(SecondInvocationState->bSucceeded, TEXT("Debugger.Breakpoint.BreakOptionsGateStop should execute the accepted-round invocation successfully")));
+		ASSERT_THAT(AreEqual(8, SecondInvocationState->Result, TEXT("Debugger.Breakpoint.BreakOptionsGateStop should preserve the accepted-round script return value")));
 
 		FScopeLock Lock(&ObservedBreakOptions.Mutex);
-		if (!TestRunner->TestEqual(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should invoke the break-options delegate exactly once per round"), ObservedBreakOptions.Calls.Num(), 2))
+		if (!CheckEqual(*TestRunner, TEXT("Debugger.Breakpoint.BreakOptionsGateStop should invoke the break-options delegate exactly once per round"), ObservedBreakOptions.Calls.Num(), 2))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should pass break:other to the first delegate invocation"), ObservedBreakOptions.Calls[0].Contains(FName(TEXT("break:other"))));
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should append break:any to the first delegate invocation"), ObservedBreakOptions.Calls[0].Contains(FName(TEXT("break:any"))));
-		TestRunner->TestFalse(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should not leak break:test into the first delegate invocation"), ObservedBreakOptions.Calls[0].Contains(FName(TEXT("break:test"))));
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should pass break:test to the second delegate invocation"), ObservedBreakOptions.Calls[1].Contains(FName(TEXT("break:test"))));
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should append break:any to the second delegate invocation"), ObservedBreakOptions.Calls[1].Contains(FName(TEXT("break:any"))));
-		TestRunner->TestFalse(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should not leak break:other into the second delegate invocation"), ObservedBreakOptions.Calls[1].Contains(FName(TEXT("break:other"))));
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.BreakOptionsGateStop should provide a valid world context to every delegate invocation"), Algo::AllOf(ObservedBreakOptions.WorldContexts, [](const TWeakObjectPtr<UObject>& WorldContext) { return WorldContext.IsValid(); }));
+		ASSERT_THAT(IsTrue(ObservedBreakOptions.Calls[0].Contains(FName(TEXT("break:other"))), TEXT("Debugger.Breakpoint.BreakOptionsGateStop should pass break:other to the first delegate invocation")));
+		ASSERT_THAT(IsTrue(ObservedBreakOptions.Calls[0].Contains(FName(TEXT("break:any"))), TEXT("Debugger.Breakpoint.BreakOptionsGateStop should append break:any to the first delegate invocation")));
+		ASSERT_THAT(IsFalse(ObservedBreakOptions.Calls[0].Contains(FName(TEXT("break:test"))), TEXT("Debugger.Breakpoint.BreakOptionsGateStop should not leak break:test into the first delegate invocation")));
+		ASSERT_THAT(IsTrue(ObservedBreakOptions.Calls[1].Contains(FName(TEXT("break:test"))), TEXT("Debugger.Breakpoint.BreakOptionsGateStop should pass break:test to the second delegate invocation")));
+		ASSERT_THAT(IsTrue(ObservedBreakOptions.Calls[1].Contains(FName(TEXT("break:any"))), TEXT("Debugger.Breakpoint.BreakOptionsGateStop should append break:any to the second delegate invocation")));
+		ASSERT_THAT(IsFalse(ObservedBreakOptions.Calls[1].Contains(FName(TEXT("break:other"))), TEXT("Debugger.Breakpoint.BreakOptionsGateStop should not leak break:other into the second delegate invocation")));
+		ASSERT_THAT(IsTrue(Algo::AllOf(ObservedBreakOptions.WorldContexts, [](const TWeakObjectPtr<UObject>& WorldContext) { return WorldContext.IsValid(); }), TEXT("Debugger.Breakpoint.BreakOptionsGateStop should provide a valid world context to every delegate invocation")));
 	}
 
 	// =========================================================================
@@ -842,10 +874,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 			CollectGarbage(RF_NoFlags, true);
 		};
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ConditionExpression should compile the breakpoint fixture"), Fixture.Compile(Engine))));
+		ASSERT_THAT(IsTrue(Fixture.Compile(Engine), TEXT("Debugger.Breakpoint.ConditionExpression should compile the breakpoint fixture")));
 
 		TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModuleByFilenameOrModuleName(Fixture.Filename, Fixture.ModuleName.ToString());
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ConditionExpression should resolve the compiled module immediately after compilation"), ModuleDesc.IsValid() && ModuleDesc->ScriptModule != nullptr)));
+		ASSERT_THAT(IsTrue(ModuleDesc.IsValid() && ModuleDesc->ScriptModule != nullptr, TEXT("Debugger.Breakpoint.ConditionExpression should resolve the compiled module immediately after compilation")));
 
 		// Positive run: condition "Input > 0" with Input=3 should trigger stop
 		TAtomic<bool> bPositiveMonitorReady{false};
@@ -861,14 +893,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 			Ctx.bMonitorShouldStop,
 			PositiveMonitorConfig);
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ConditionExpression should start the positive-run monitor"), Ctx.Session.PumpUntil([&bPositiveMonitorReady]() { return bPositiveMonitorReady.Load(); }, Ctx.GetDefaultTimeoutSeconds()))));
+		ASSERT_THAT(IsTrue(
+			Ctx.Session.PumpUntil([&bPositiveMonitorReady]() { return bPositiveMonitorReady.Load(); }, Ctx.GetDefaultTimeoutSeconds()),
+			TEXT("Debugger.Breakpoint.ConditionExpression should start the positive-run monitor")));
 
 		FAngelscriptBreakpoint Breakpoint;
 		Breakpoint.Filename = Fixture.Filename;
 		Breakpoint.ModuleName = Fixture.ModuleName.ToString();
 		Breakpoint.LineNumber = Fixture.GetLine(TEXT("BreakpointHelperLine"));
 		Breakpoint.Condition = TEXT("Input > 0");
-		if (!TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ConditionExpression should send the conditional breakpoint"), Ctx.Client.SendSetBreakpoint(Breakpoint)))
+		if (!CheckTrue(*TestRunner, TEXT("Debugger.Breakpoint.ConditionExpression should send the conditional breakpoint"), Ctx.Client.SendSetBreakpoint(Breakpoint)))
 		{
 			TestRunner->AddError(Ctx.Client.GetLastError());
 			return;
@@ -891,7 +925,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 
 		Ctx.bMonitorShouldStop = true;
 		FBreakpointMonitorResult PositiveMonitorResult = PositiveMonitorFuture.Get();
-		if (!TestRunner->TestEqual(TEXT("Debugger.Breakpoint.ConditionExpression should stop exactly once when the condition is true"), PositiveMonitorResult.StopEnvelopes.Num(), 1))
+		if (!CheckEqual(*TestRunner, TEXT("Debugger.Breakpoint.ConditionExpression should stop exactly once when the condition is true"), PositiveMonitorResult.StopEnvelopes.Num(), 1))
 		{
 			if (!PositiveMonitorResult.Error.IsEmpty())
 			{
@@ -901,18 +935,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 		}
 
 		const TOptional<FStoppedMessage> StopMessage = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(PositiveMonitorResult.StopEnvelopes[0]);
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ConditionExpression should deserialize the positive stop payload"), StopMessage.IsSet())));
+		ASSERT_THAT(IsTrue(StopMessage.IsSet(), TEXT("Debugger.Breakpoint.ConditionExpression should deserialize the positive stop payload")));
 
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.ConditionExpression should stop because of a breakpoint when the condition is true"), StopMessage->Reason, FString(TEXT("breakpoint")));
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ConditionExpression should capture a callstack when the condition is true"), PositiveMonitorResult.CapturedCallstack.IsSet())));
+		ASSERT_THAT(AreEqual(FString(TEXT("breakpoint")), StopMessage->Reason, TEXT("Debugger.Breakpoint.ConditionExpression should stop because of a breakpoint when the condition is true")));
+		ASSERT_THAT(IsTrue(PositiveMonitorResult.CapturedCallstack.IsSet(), TEXT("Debugger.Breakpoint.ConditionExpression should capture a callstack when the condition is true")));
 
 		const FAngelscriptCallStack& PositiveCallstack = PositiveMonitorResult.CapturedCallstack.GetValue();
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ConditionExpression should return at least one stack frame for the positive stop"), PositiveCallstack.Frames.Num() > 0)));
+		ASSERT_THAT(IsTrue(PositiveCallstack.Frames.Num() > 0, TEXT("Debugger.Breakpoint.ConditionExpression should return at least one stack frame for the positive stop")));
 
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ConditionExpression should report the fixture filename in the top stack frame"), PositiveCallstack.Frames[0].Source.EndsWith(Fixture.Filename));
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.ConditionExpression should stop at the requested helper line when the condition is true"), PositiveCallstack.Frames[0].LineNumber, Fixture.GetLine(TEXT("BreakpointHelperLine")));
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ConditionExpression should execute the positive case successfully"), PositiveInvocation->bSucceeded);
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.ConditionExpression should keep the positive helper return value"), PositiveInvocation->Result, 8);
+		ASSERT_THAT(IsTrue(PositiveCallstack.Frames[0].Source.EndsWith(Fixture.Filename), TEXT("Debugger.Breakpoint.ConditionExpression should report the fixture filename in the top stack frame")));
+		ASSERT_THAT(AreEqual(Fixture.GetLine(TEXT("BreakpointHelperLine")), PositiveCallstack.Frames[0].LineNumber, TEXT("Debugger.Breakpoint.ConditionExpression should stop at the requested helper line when the condition is true")));
+		ASSERT_THAT(IsTrue(PositiveInvocation->bSucceeded, TEXT("Debugger.Breakpoint.ConditionExpression should execute the positive case successfully")));
+		ASSERT_THAT(AreEqual(8, PositiveInvocation->Result, TEXT("Debugger.Breakpoint.ConditionExpression should keep the positive helper return value")));
 
 		// Negative run: condition "Input > 0" with Input=-1 should NOT trigger stop
 		Ctx.bMonitorShouldStop = false;
@@ -929,7 +963,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 			Ctx.bMonitorShouldStop,
 			NegativeMonitorConfig);
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ConditionExpression should start the negative-run monitor"), Ctx.Session.PumpUntil([&bNegativeMonitorReady]() { return bNegativeMonitorReady.Load(); }, Ctx.GetDefaultTimeoutSeconds()))));
+		ASSERT_THAT(IsTrue(
+			Ctx.Session.PumpUntil([&bNegativeMonitorReady]() { return bNegativeMonitorReady.Load(); }, Ctx.GetDefaultTimeoutSeconds()),
+			TEXT("Debugger.Breakpoint.ConditionExpression should start the negative-run monitor")));
 
 		TSharedRef<FAsyncModuleInvocationState> NegativeInvocation = DispatchModuleInvocationWithIntArg(
 			Engine,
@@ -947,11 +983,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 		Ctx.bMonitorShouldStop = true;
 		FBreakpointMonitorResult NegativeMonitorResult = NegativeMonitorFuture.Get();
 
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.ConditionExpression should not stop when the condition is false"), NegativeMonitorResult.StopEnvelopes.Num(), 0);
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ConditionExpression should keep the negative monitor error empty"), NegativeMonitorResult.Error.IsEmpty());
-		TestRunner->TestFalse(TEXT("Debugger.Breakpoint.ConditionExpression should not time out while waiting for a false-condition run to complete"), NegativeMonitorResult.bTimedOut);
-		TestRunner->TestTrue(TEXT("Debugger.Breakpoint.ConditionExpression should execute the negative case successfully"), NegativeInvocation->bSucceeded);
-		TestRunner->TestEqual(TEXT("Debugger.Breakpoint.ConditionExpression should keep the negative helper return value"), NegativeInvocation->Result, 4);
+		ASSERT_THAT(AreEqual(0, NegativeMonitorResult.StopEnvelopes.Num(), TEXT("Debugger.Breakpoint.ConditionExpression should not stop when the condition is false")));
+		ASSERT_THAT(IsTrue(NegativeMonitorResult.Error.IsEmpty(), TEXT("Debugger.Breakpoint.ConditionExpression should keep the negative monitor error empty")));
+		ASSERT_THAT(IsFalse(NegativeMonitorResult.bTimedOut, TEXT("Debugger.Breakpoint.ConditionExpression should not time out while waiting for a false-condition run to complete")));
+		ASSERT_THAT(IsTrue(NegativeInvocation->bSucceeded, TEXT("Debugger.Breakpoint.ConditionExpression should execute the negative case successfully")));
+		ASSERT_THAT(AreEqual(4, NegativeInvocation->Result, TEXT("Debugger.Breakpoint.ConditionExpression should keep the negative helper return value")));
 	}
 };
 

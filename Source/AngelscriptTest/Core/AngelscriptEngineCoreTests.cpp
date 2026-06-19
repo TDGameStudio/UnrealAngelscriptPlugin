@@ -40,13 +40,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 		FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeEngineForTesting(Config, Dependencies);
-		if (!TestRunner->TestNotNull(TEXT("Test module should create an angelscript engine instance"), Engine.Get()))
+		if (!this->Assert.IsNotNull(Engine.Get(), TEXT("Test module should create an angelscript engine instance")))
 		{
 			return;
 		}
 
 		Engine.Reset();
-		TestRunner->TestTrue(TEXT("Resetting the test-owned engine should clear the pointer"), !Engine.IsValid());
+		(void)this->Assert.IsTrue(!Engine.IsValid(), TEXT("Resetting the test-owned engine should clear the pointer"));
 	}
 
 	TEST_METHOD(ScanFreeInitializeAcquiresProcessPackages)
@@ -71,20 +71,21 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 		FAngelscriptEngineConfig Config;
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
-		if (!TestRunner->TestNotNull(TEXT("scan-free initialize should create the script engine wrapper"), Engine.Get()))
+		if (!this->Assert.IsNotNull(Engine.Get(), TEXT("scan-free initialize should create the script engine wrapper")))
 		{
 			return;
 		}
 
-		TestRunner->TestNotNull(TEXT("scan-free initialize should create the script engine"), Engine->GetScriptEngine());
+		bool bOk = this->Assert.IsNotNull(Engine->GetScriptEngine(), TEXT("scan-free initialize should create the script engine"));
 		UPackage* Package = Engine->GetPackageInstance();
-		if (!TestRunner->TestNotNull(TEXT("scan-free initialize should acquire the process script package during game-thread pre-initialize"), Package))
+		if (!this->Assert.IsNotNull(Package, TEXT("scan-free initialize should acquire the process script package during game-thread pre-initialize")))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("scan-free initialize should root the process script package"), Package->IsRooted());
-		TestRunner->TestTrue(TEXT("scan-free initialize should leave the process script package discoverable"), FindPackage(nullptr, TEXT("/Script/Angelscript")) == Package);
+		bOk &= this->Assert.IsTrue(Package->IsRooted(), TEXT("scan-free initialize should root the process script package"));
+		bOk &= this->Assert.IsTrue(FindPackage(nullptr, TEXT("/Script/Angelscript")) == Package, TEXT("scan-free initialize should leave the process script package discoverable"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(CompileSnippet)
@@ -92,14 +93,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 		using namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		if (!TestRunner->TestNotNull(TEXT("Compile test should create an initialized engine"), &Engine))
+		if (!this->Assert.IsNotNull(&Engine, TEXT("Compile test should create an initialized engine")))
 		{
 			return;
 		}
 		FAngelscriptEngineScope GlobalScope(Engine);
 
 		asIScriptModule* Module = Engine.GetScriptEngine()->GetModule("CompileSnippet", asGM_ALWAYS_CREATE);
-		if (!TestRunner->TestNotNull(TEXT("Compile test should create a script module"), Module))
+		if (!this->Assert.IsNotNull(Module, TEXT("Compile test should create a script module")))
 		{
 			return;
 		}
@@ -107,12 +108,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 		const char* Source = "int CompileOnly() { return 7; }";
 		asIScriptFunction* Function = nullptr;
 		const int CompileResult = Module->CompileFunction("CompileSnippet", Source, 0, 0, &Function);
-		TestRunner->TestEqual(TEXT("Compile test should compile the snippet successfully"), CompileResult, asSUCCESS);
-		TestRunner->TestNotNull(TEXT("Compile test should receive a compiled function"), Function);
+		bool bOk = true;
+		bOk &= this->Assert.AreEqual(static_cast<int>(asSUCCESS), CompileResult, TEXT("Compile test should compile the snippet successfully"));
+		bOk &= this->Assert.IsNotNull(Function, TEXT("Compile test should receive a compiled function"));
 		if (Function != nullptr)
 		{
 			Function->Release();
 		}
+		(void)bOk;
 		}
 	}
 
@@ -121,14 +124,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 		using namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		if (!TestRunner->TestNotNull(TEXT("Execute test should create an initialized engine"), &Engine))
+		if (!this->Assert.IsNotNull(&Engine, TEXT("Execute test should create an initialized engine")))
 		{
 			return;
 		}
 		FAngelscriptEngineScope GlobalScope(Engine);
 
 		asIScriptModule* Module = Engine.GetScriptEngine()->GetModule("ExecuteSnippet", asGM_ALWAYS_CREATE);
-		if (!TestRunner->TestNotNull(TEXT("Execute test should create a script module"), Module))
+		if (!this->Assert.IsNotNull(Module, TEXT("Execute test should create a script module")))
 		{
 			return;
 		}
@@ -136,29 +139,31 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 		const char* Source = "int ReturnFortyTwo() { return 42; }";
 		asIScriptFunction* Function = nullptr;
 		const int CompileResult = Module->CompileFunction("ExecuteSnippet", Source, 0, 0, &Function);
-		if (!TestRunner->TestEqual(TEXT("Execute test should compile the snippet successfully"), CompileResult, asSUCCESS))
+		if (!this->Assert.AreEqual(static_cast<int>(asSUCCESS), CompileResult, TEXT("Execute test should compile the snippet successfully")))
 		{
 			return;
 		}
 
-		if (!TestRunner->TestNotNull(TEXT("Execute test should find the compiled function"), Function))
+		if (!this->Assert.IsNotNull(Function, TEXT("Execute test should find the compiled function")))
 		{
 			return;
 		}
 
 		asIScriptContext* Context = Engine.CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("Execute test should create a script context"), Context))
+		if (!this->Assert.IsNotNull(Context, TEXT("Execute test should create a script context")))
 		{
 			return;
 		}
 
 		const int PrepareResult = Context->Prepare(Function);
 		const int ExecuteResult = PrepareResult == asSUCCESS ? Context->Execute() : PrepareResult;
-		TestRunner->TestEqual(TEXT("Execute test should prepare the function successfully"), PrepareResult, asSUCCESS);
-		TestRunner->TestEqual(TEXT("Execute test should finish successfully"), ExecuteResult, asEXECUTION_FINISHED);
-		TestRunner->TestEqual(TEXT("Execute test should receive the script return value"), static_cast<int>(Context->GetReturnDWord()), 42);
+		bool bOk = true;
+		bOk &= this->Assert.AreEqual(static_cast<int>(asSUCCESS), PrepareResult, TEXT("Execute test should prepare the function successfully"));
+		bOk &= this->Assert.AreEqual(static_cast<int>(asEXECUTION_FINISHED), ExecuteResult, TEXT("Execute test should finish successfully"));
+		bOk &= this->Assert.AreEqual(42, static_cast<int>(Context->GetReturnDWord()), TEXT("Execute test should receive the script return value"));
 		Context->Release();
 		Function->Release();
+		(void)bOk;
 		}
 	}
 
@@ -182,21 +187,21 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 		};
 
 		TUniquePtr<FAngelscriptEngine> FullEngine = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("Last full destroy core test should create a full engine"), FullEngine.Get()))
+		if (!this->Assert.IsNotNull(FullEngine.Get(), TEXT("Last full destroy core test should create a full engine")))
 		{
 			return;
 		}
 
 		{
 			FAngelscriptEngineScope Scope(*FullEngine);
-			if (!TestRunner->TestTrue(TEXT("Last full destroy core test should populate type metadata while the full engine is alive"), FAngelscriptType::GetTypes().Num() > 0))
+			if (!this->Assert.IsTrue(FAngelscriptType::GetTypes().Num() > 0, TEXT("Last full destroy core test should populate type metadata while the full engine is alive")))
 			{
 				return;
 			}
 		}
 
 		FullEngine.Reset();
-		TestRunner->TestEqual(TEXT("Last full destroy core test should clear type metadata after the final full owner is destroyed"), FAngelscriptType::GetTypes().Num(), 0);
+		(void)this->Assert.AreEqual(0, FAngelscriptType::GetTypes().Num(), TEXT("Last full destroy core test should clear type metadata after the final full owner is destroyed"));
 	}
 
 	TEST_METHOD(FullDestroyAllowsCleanRecreate)
@@ -219,34 +224,34 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 		};
 
 		TUniquePtr<FAngelscriptEngine> FirstEngine = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("Full destroy recreate core test should create the first full engine"), FirstEngine.Get()))
+		if (!this->Assert.IsNotNull(FirstEngine.Get(), TEXT("Full destroy recreate core test should create the first full engine")))
 		{
 			return;
 		}
 
 		{
 			FAngelscriptEngineScope Scope(*FirstEngine);
-			if (!TestRunner->TestTrue(TEXT("Full destroy recreate core test should populate type metadata during the first epoch"), FAngelscriptType::GetTypes().Num() > 0))
+			if (!this->Assert.IsTrue(FAngelscriptType::GetTypes().Num() > 0, TEXT("Full destroy recreate core test should populate type metadata during the first epoch")))
 			{
 				return;
 			}
 		}
 
 		FirstEngine.Reset();
-		if (!TestRunner->TestEqual(TEXT("Full destroy recreate core test should clear type metadata after the first epoch ends"), FAngelscriptType::GetTypes().Num(), 0))
+		if (!this->Assert.AreEqual(0, FAngelscriptType::GetTypes().Num(), TEXT("Full destroy recreate core test should clear type metadata after the first epoch ends")))
 		{
 			return;
 		}
 
 		TUniquePtr<FAngelscriptEngine> SecondEngine = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("Full destroy recreate core test should create a second full engine after cleanup"), SecondEngine.Get()))
+		if (!this->Assert.IsNotNull(SecondEngine.Get(), TEXT("Full destroy recreate core test should create a second full engine after cleanup")))
 		{
 			return;
 		}
 
 		{
 			FAngelscriptEngineScope Scope(*SecondEngine);
-			if (!TestRunner->TestTrue(TEXT("Full destroy recreate core test should repopulate type metadata during the recreated epoch"), FAngelscriptType::GetTypes().Num() > 0))
+			if (!this->Assert.IsTrue(FAngelscriptType::GetTypes().Num() > 0, TEXT("Full destroy recreate core test should repopulate type metadata during the recreated epoch")))
 			{
 				return;
 			}
@@ -257,18 +262,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 			TEXT("RecreateCoreSnippet"),
 			TEXT("RecreateCoreSnippet.as"),
 			TEXT("int Entry() { return 17; }"));
-		if (!TestRunner->TestTrue(TEXT("Full destroy recreate core test should compile a trivial module after recreation"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("Full destroy recreate core test should compile a trivial module after recreation")))
 		{
 			return;
 		}
 
 		int32 Result = 0;
-		if (!TestRunner->TestTrue(TEXT("Full destroy recreate core test should execute the recreated module entry point"), ExecuteIntFunction(SecondEngine.Get(), TEXT("RecreateCoreSnippet"), TEXT("int Entry()"), Result)))
+		if (!this->Assert.IsTrue(ExecuteIntFunction(SecondEngine.Get(), TEXT("RecreateCoreSnippet"), TEXT("int Entry()"), Result), TEXT("Full destroy recreate core test should execute the recreated module entry point")))
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Full destroy recreate core test should preserve the expected return value after recreation"), Result, 17);
+		(void)this->Assert.AreEqual(17, Result, TEXT("Full destroy recreate core test should preserve the expected return value after recreation"));
 	}
 
 	TEST_METHOD(FullDestroyAllowsAnnotatedRecreate)
@@ -293,21 +298,21 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 		auto CompileAnnotatedActor = [this](FAngelscriptEngine* Engine, FName ModuleName, const TCHAR* Filename, const TCHAR* ScriptSource, const TCHAR* ExpectedClassName)
 		{
 			FAngelscriptEngineScope Scope(*Engine);
-			if (!TestRunner->TestTrue(
-				FString::Printf(TEXT("%s should compile after full-engine setup"), *ModuleName.ToString()),
-				CompileAnnotatedModuleFromMemory(Engine, ModuleName, Filename, ScriptSource)))
+			if (!this->Assert.IsTrue(
+				CompileAnnotatedModuleFromMemory(Engine, ModuleName, Filename, ScriptSource),
+				FString::Printf(TEXT("%s should compile after full-engine setup"), *ModuleName.ToString())))
 			{
 				return false;
 			}
 
 			UClass* GeneratedClass = FindGeneratedClass(Engine, ExpectedClassName);
-			return TestRunner->TestNotNull(
-				*FString::Printf(TEXT("%s should resolve the generated class after compile"), ExpectedClassName),
-				GeneratedClass);
+			return this->Assert.IsNotNull(
+				GeneratedClass,
+				*FString::Printf(TEXT("%s should resolve the generated class after compile"), ExpectedClassName));
 		};
 
 		TUniquePtr<FAngelscriptEngine> FirstEngine = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("Annotated recreate test should create the first full engine"), FirstEngine.Get()))
+		if (!this->Assert.IsNotNull(FirstEngine.Get(), TEXT("Annotated recreate test should create the first full engine")))
 		{
 			return;
 		}
@@ -336,13 +341,13 @@ class ARecreateAnnotatedActorA : AActor
 		CollectGarbage(RF_NoFlags, true);
 		FirstEngine.Reset();
 
-		if (!TestRunner->TestEqual(TEXT("Annotated recreate test should clear type metadata after the first full engine exits"), FAngelscriptType::GetTypes().Num(), 0))
+		if (!this->Assert.AreEqual(0, FAngelscriptType::GetTypes().Num(), TEXT("Annotated recreate test should clear type metadata after the first full engine exits")))
 		{
 			return;
 		}
 
 		TUniquePtr<FAngelscriptEngine> SecondEngine = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("Annotated recreate test should create the second full engine"), SecondEngine.Get()))
+		if (!this->Assert.IsNotNull(SecondEngine.Get(), TEXT("Annotated recreate test should create the second full engine")))
 		{
 			return;
 		}
@@ -405,38 +410,41 @@ class ARecreateAnnotatedActor : AActor
 		auto CompileAnnotatedActor = [this, ModuleName, Filename, GeneratedClassName](FAngelscriptEngine* Engine, const FString& ScriptSource, int32 ExpectedValue, UClass*& OutGeneratedClass)
 		{
 			FAngelscriptEngineScope Scope(*Engine);
-			if (!TestRunner->TestTrue(
-				FString::Printf(TEXT("%s should compile annotated source"), *ModuleName.ToString()),
-				CompileAnnotatedModuleFromMemory(Engine, ModuleName, Filename, ScriptSource)))
+			if (!this->Assert.IsTrue(
+				CompileAnnotatedModuleFromMemory(Engine, ModuleName, Filename, ScriptSource),
+				FString::Printf(TEXT("%s should compile annotated source"), *ModuleName.ToString())))
 			{
 				return false;
 			}
 
 			UClass* GeneratedClass = FindGeneratedClass(Engine, GeneratedClassName);
-			if (!TestRunner->TestNotNull(TEXT("Annotated same-name recreate test should resolve the generated class"), GeneratedClass))
+			if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Annotated same-name recreate test should resolve the generated class")))
 			{
 				return false;
 			}
 
 			FIntProperty* ValueProperty = FindFProperty<FIntProperty>(GeneratedClass, TEXT("Value"));
-			if (!TestRunner->TestNotNull(TEXT("Annotated same-name recreate test should expose the generated Value property"), ValueProperty))
+			if (!this->Assert.IsNotNull(ValueProperty, TEXT("Annotated same-name recreate test should expose the generated Value property")))
 			{
 				return false;
 			}
 
 			UObject* DefaultObject = GeneratedClass->GetDefaultObject();
-			if (!TestRunner->TestNotNull(TEXT("Annotated same-name recreate test should expose a generated CDO"), DefaultObject))
+			if (!this->Assert.IsNotNull(DefaultObject, TEXT("Annotated same-name recreate test should expose a generated CDO")))
 			{
 				return false;
 			}
 
-			TestRunner->TestEqual(TEXT("Annotated same-name recreate test should read the expected CDO Value"), ValueProperty->GetPropertyValue_InContainer(DefaultObject), ExpectedValue);
+			if (!this->Assert.AreEqual(ExpectedValue, ValueProperty->GetPropertyValue_InContainer(DefaultObject), TEXT("Annotated same-name recreate test should read the expected CDO Value")))
+			{
+				return false;
+			}
 			OutGeneratedClass = GeneratedClass;
 			return true;
 		};
 
 		TUniquePtr<FAngelscriptEngine> FirstEngine = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("Annotated same-name recreate test should create the first full engine"), FirstEngine.Get()))
+		if (!this->Assert.IsNotNull(FirstEngine.Get(), TEXT("Annotated same-name recreate test should create the first full engine")))
 		{
 			return;
 		}
@@ -448,7 +456,7 @@ class ARecreateAnnotatedActor : AActor
 		}
 
 		UPackage* FirstGeneratedPackage = FirstGeneratedClass->GetPackage();
-		if (!TestRunner->TestNotNull(TEXT("Annotated same-name recreate test should resolve the first generated package"), FirstGeneratedPackage))
+		if (!this->Assert.IsNotNull(FirstGeneratedPackage, TEXT("Annotated same-name recreate test should resolve the first generated package")))
 		{
 			return;
 		}
@@ -459,7 +467,7 @@ class ARecreateAnnotatedActor : AActor
 
 		{
 			FAngelscriptEngineScope Scope(*FirstEngine);
-			if (!TestRunner->TestTrue(TEXT("Annotated same-name recreate test should discard the first epoch module"), FirstEngine->DiscardModule(*ModuleNameString)))
+			if (!this->Assert.IsTrue(FirstEngine->DiscardModule(*ModuleNameString), TEXT("Annotated same-name recreate test should discard the first epoch module")))
 			{
 				return;
 			}
@@ -469,13 +477,13 @@ class ARecreateAnnotatedActor : AActor
 		FirstEngine.Reset();
 		CollectGarbage(RF_NoFlags, true);
 
-		if (!TestRunner->TestEqual(TEXT("Annotated same-name recreate test should clear type metadata after the first full engine exits"), FAngelscriptType::GetTypes().Num(), 0))
+		if (!this->Assert.AreEqual(0, FAngelscriptType::GetTypes().Num(), TEXT("Annotated same-name recreate test should clear type metadata after the first full engine exits")))
 		{
 			return;
 		}
 
 		TUniquePtr<FAngelscriptEngine> SecondEngine = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("Annotated same-name recreate test should create the second full engine"), SecondEngine.Get()))
+		if (!this->Assert.IsNotNull(SecondEngine.Get(), TEXT("Annotated same-name recreate test should create the second full engine")))
 		{
 			return;
 		}
@@ -487,15 +495,17 @@ class ARecreateAnnotatedActor : AActor
 		}
 
 		UPackage* SecondGeneratedPackage = SecondGeneratedClass->GetPackage();
-		if (!TestRunner->TestNotNull(TEXT("Annotated same-name recreate test should resolve the recreated generated package"), SecondGeneratedPackage))
+		if (!this->Assert.IsNotNull(SecondGeneratedPackage, TEXT("Annotated same-name recreate test should resolve the recreated generated package")))
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Annotated same-name recreate test should recreate the class at the same object path"), SecondGeneratedClass->GetPathName(), FirstClassPath);
-		TestRunner->TestEqual(TEXT("Annotated same-name recreate test should recreate the package at the same object path"), SecondGeneratedPackage->GetPathName(), FirstPackagePath);
-		TestRunner->TestNotEqual(TEXT("Annotated same-name recreate test should create a new UObject identity for the recreated class"), SecondGeneratedClass->GetUniqueID(), FirstClassUniqueId);
-		TestRunner->TestEqual(TEXT("Annotated same-name recreate test should let global lookup resolve the recreated class"), FindObject<UClass>(nullptr, *FirstClassPath), SecondGeneratedClass);
+		bool bOk = true;
+		bOk &= this->Assert.AreEqual(FirstClassPath, SecondGeneratedClass->GetPathName(), TEXT("Annotated same-name recreate test should recreate the class at the same object path"));
+		bOk &= this->Assert.AreEqual(FirstPackagePath, SecondGeneratedPackage->GetPathName(), TEXT("Annotated same-name recreate test should recreate the package at the same object path"));
+		bOk &= this->Assert.AreNotEqual(FirstClassUniqueId, SecondGeneratedClass->GetUniqueID(), TEXT("Annotated same-name recreate test should create a new UObject identity for the recreated class"));
+		bOk &= this->Assert.AreEqual(SecondGeneratedClass, FindObject<UClass>(nullptr, *FirstClassPath), TEXT("Annotated same-name recreate test should let global lookup resolve the recreated class"));
+		(void)bOk;
 	}
 };
 

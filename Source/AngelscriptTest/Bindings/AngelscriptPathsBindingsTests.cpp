@@ -29,10 +29,7 @@ int Paths_ProjectDirNonEmpty()
 	return Dir.Len() > 0 ? 1 : 0;
 }
 )"));
-		if (!TestRunner->TestTrue(TEXT("FPaths::ProjectDir binding module should compile"), Mod.IsValid()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(Mod.IsValid(), TEXT("FPaths::ProjectDir binding module should compile")));
 		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int Paths_ProjectDirNonEmpty()"),
 			TEXT("FPaths::ProjectDir is non-empty"), 1);
@@ -49,10 +46,7 @@ int Paths_GetExtensionLen()
 	return Ext.Len();
 }
 )"));
-		if (!TestRunner->TestTrue(TEXT("FPaths::GetExtension binding module should compile"), Mod.IsValid()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(Mod.IsValid(), TEXT("FPaths::GetExtension binding module should compile")));
 		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int Paths_GetExtensionLen()"),
 			TEXT("Extension of 'MyFile.as' is 2 chars"), 2);
@@ -109,10 +103,7 @@ int CommandLine_GetExists()
 	return Cmd.Len() >= 0 ? 1 : 0;
 }
 )"));
-		if (!TestRunner->TestTrue(TEXT("FCommandLine::Get binding module should compile"), Mod.IsValid()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(Mod.IsValid(), TEXT("FCommandLine::Get binding module should compile")));
 		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
 			TEXT("int CommandLine_GetExists()"),
 			TEXT("FCommandLine::Get does not crash"), 1);

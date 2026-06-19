@@ -129,7 +129,11 @@ namespace AngelscriptTest_Core_AngelscriptEnginePerformanceTests_Private
 		Metrics.Add({ TEXT("startup.call_binds_seconds"), CallBindTotals, ComputeMedian(CallBindTotals) });
 
 		const FString MetricsPath = WritePerformanceMetricsArtifact(RunId, TestGroup, Metrics, Notes);
-		Test.TestTrue(TEXT("Startup performance test should write a metrics.json artifact"), FPlatformFileManager::Get().GetPlatformFile().FileExists(*MetricsPath));
+		FNoDiscardAsserter Assert(Test);
+		const bool bMetricsArtifactExists = Assert.IsTrue(
+			FPlatformFileManager::Get().GetPlatformFile().FileExists(*MetricsPath),
+			TEXT("Startup performance test should write a metrics.json artifact"));
+		(void)bMetricsArtifactExists;
 		return MetricsPath;
 	}
 
@@ -610,7 +614,11 @@ class %s : UObject
 				TEXT("Generated UASClass diagnostics run after timing capture and report GC state plus strong referencers."),
 				TEXT("No timing thresholds are enforced; this is an optimization baseline artifact.")
 			});
-		Test.TestTrue(TEXT("Share-clean cycle performance test should write a metrics.json artifact"), FPlatformFileManager::Get().GetPlatformFile().FileExists(*MetricsPath));
+		FNoDiscardAsserter Assert(Test);
+		const bool bMetricsArtifactExists = Assert.IsTrue(
+			FPlatformFileManager::Get().GetPlatformFile().FileExists(*MetricsPath),
+			TEXT("Share-clean cycle performance test should write a metrics.json artifact"));
+		(void)bMetricsArtifactExists;
 		return MetricsPath;
 	}
 }
@@ -656,41 +664,41 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEnginePerformanceTests,
 		{
 			FShareCleanCycleSample Sample = MeasureShareCleanCycle(Workload, RunSuffix, CycleIndex);
 			LogShareCleanCycleSample(*TestRunner, Sample);
-			TestRunner->TestTrue(
-				*FString::Printf(TEXT("Share-clean %s cycle %d should compile successfully"), Workload.Name, CycleIndex),
-				Sample.bCompileSucceeded);
-			TestRunner->TestEqual(
-				*FString::Printf(TEXT("Share-clean %s cycle %d reset should leave no active modules"), Workload.Name, CycleIndex),
+			ASSERT_THAT(IsTrue(
+				Sample.bCompileSucceeded,
+				FString::Printf(TEXT("Share-clean %s cycle %d should compile successfully"), Workload.Name, CycleIndex)));
+			ASSERT_THAT(AreEqual(
+				0,
 				Sample.ResetActiveModuleCount,
-				0);
+				FString::Printf(TEXT("Share-clean %s cycle %d reset should leave no active modules"), Workload.Name, CycleIndex)));
 			if (Sample.bGeneratedClassExpected)
 			{
-				TestRunner->TestTrue(
-					*FString::Printf(TEXT("Share-clean %s cycle %d should locate the generated UASClass before reset"), Workload.Name, CycleIndex),
-					Sample.bGeneratedClassFoundBeforeReset);
-				TestRunner->TestEqual(
-					*FString::Printf(TEXT("Share-clean %s cycle %d should detach every matching generated UASClass left after reset"), Workload.Name, CycleIndex),
+				ASSERT_THAT(IsTrue(
+					Sample.bGeneratedClassFoundBeforeReset,
+					FString::Printf(TEXT("Share-clean %s cycle %d should locate the generated UASClass before reset"), Workload.Name, CycleIndex)));
+				ASSERT_THAT(AreEqual(
+					Sample.GeneratedClassCountAfterReset,
 					Sample.DetachedGeneratedClassCountAfterReset,
-					Sample.GeneratedClassCountAfterReset);
-				TestRunner->TestEqual(
-					*FString::Printf(TEXT("Share-clean %s cycle %d generated UASClass should not remain rooted after reset"), Workload.Name, CycleIndex),
+					FString::Printf(TEXT("Share-clean %s cycle %d should detach every matching generated UASClass left after reset"), Workload.Name, CycleIndex)));
+				ASSERT_THAT(AreEqual(
+					0,
 					Sample.RootedGeneratedClassCountAfterReset,
-					0);
-				TestRunner->TestEqual(
-					*FString::Printf(TEXT("Share-clean %s cycle %d generated UASClass should not remain standalone after reset"), Workload.Name, CycleIndex),
+					FString::Printf(TEXT("Share-clean %s cycle %d generated UASClass should not remain rooted after reset"), Workload.Name, CycleIndex)));
+				ASSERT_THAT(AreEqual(
+					0,
 					Sample.StandaloneGeneratedClassCountAfterReset,
-					0);
-				TestRunner->TestEqual(
-					*FString::Printf(TEXT("Share-clean %s cycle %d generated UASClass should have no strong referencers after reset"), Workload.Name, CycleIndex),
+					FString::Printf(TEXT("Share-clean %s cycle %d generated UASClass should not remain standalone after reset"), Workload.Name, CycleIndex)));
+				ASSERT_THAT(AreEqual(
+					0,
 					Sample.StrongReferencerCountAfterReset,
-					0);
-				TestRunner->TestEqual(
-					*FString::Printf(TEXT("Share-clean %s cycle %d generated UASClass should have no external strong referencers after reset"), Workload.Name, CycleIndex),
+					FString::Printf(TEXT("Share-clean %s cycle %d generated UASClass should have no strong referencers after reset"), Workload.Name, CycleIndex)));
+				ASSERT_THAT(AreEqual(
+					0,
 					Sample.ExternalStrongReferencerCountAfterReset,
-					0);
-				TestRunner->TestTrue(
-					*FString::Printf(TEXT("Share-clean %s cycle %d generated UASClass should be garbage collected after reset"), Workload.Name, CycleIndex),
-					Sample.WasGeneratedClassGarbageCollectedAfterReset());
+					FString::Printf(TEXT("Share-clean %s cycle %d generated UASClass should have no external strong referencers after reset"), Workload.Name, CycleIndex)));
+				ASSERT_THAT(IsTrue(
+					Sample.WasGeneratedClassGarbageCollectedAfterReset(),
+					FString::Printf(TEXT("Share-clean %s cycle %d generated UASClass should be garbage collected after reset"), Workload.Name, CycleIndex)));
 			}
 			Samples.Add(MoveTemp(Sample));
 		}

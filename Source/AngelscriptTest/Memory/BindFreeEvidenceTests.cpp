@@ -100,16 +100,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindFreeEvidenceTests,
 		for (int32 CycleIndex = 0; CycleIndex < UE_ARRAY_COUNT(Cycles); ++CycleIndex)
 		{
 			const int32 CycleNumber = CycleIndex + 1;
-			TestRunner->TestTrue(
-				*FString::Printf(TEXT("BindFreeEvidence cycle %d should create a script engine"), CycleNumber),
-				Cycles[CycleIndex].bHasScriptEngine);
-			TestRunner->TestTrue(
-				*FString::Printf(TEXT("BindFreeEvidence cycle %d should create the blueprint signature registry"), CycleNumber),
-				Cycles[CycleIndex].bHasSignatureRegistry);
-			TestRunner->TestTrue(
-				*FString::Printf(TEXT("BindFreeEvidence cycle %d should exercise the bind path and own at least one blueprint signature (got %d)"),
-					CycleNumber, Cycles[CycleIndex].BlueprintSignatureCount),
-				Cycles[CycleIndex].BlueprintSignatureCount > 0);
+			ASSERT_THAT(IsTrue(
+				Cycles[CycleIndex].bHasScriptEngine,
+				FString::Printf(TEXT("BindFreeEvidence cycle %d should create a script engine"), CycleNumber)));
+			ASSERT_THAT(IsTrue(
+				Cycles[CycleIndex].bHasSignatureRegistry,
+				FString::Printf(TEXT("BindFreeEvidence cycle %d should create the blueprint signature registry"), CycleNumber)));
+			ASSERT_THAT(IsTrue(
+				Cycles[CycleIndex].BlueprintSignatureCount > 0,
+				FString::Printf(TEXT("BindFreeEvidence cycle %d should exercise the bind path and own at least one blueprint signature (got %d)"),
+					CycleNumber, Cycles[CycleIndex].BlueprintSignatureCount)));
 		}
 	}
 
@@ -157,17 +157,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindFreeEvidenceTests,
 			if (Cycle == 1)
 			{
 				BaselineCount = ThisCount;
-				TestRunner->TestTrue(
-					*FString::Printf(TEXT("Cycle 1 must register at least one FBlueprintEventSignature (got %d)"), ThisCount),
-					ThisCount > 0);
+				ASSERT_THAT(IsTrue(
+					ThisCount > 0,
+					FString::Printf(TEXT("Cycle 1 must register at least one FBlueprintEventSignature (got %d)"), ThisCount)));
 			}
 			else
 			{
 				const int32 Delta = ThisCount - BaselineCount;
-				TestRunner->TestTrue(
-					*FString::Printf(TEXT("Cycle %d Registry->Num()=%d should stay within +/-%d of baseline %d (delta=%d) — drift indicates the leak has returned"),
-						Cycle, ThisCount, TolerancePerCycle, BaselineCount, Delta),
-					FMath::Abs(Delta) <= TolerancePerCycle);
+				ASSERT_THAT(IsTrue(
+					FMath::Abs(Delta) <= TolerancePerCycle,
+					FString::Printf(TEXT("Cycle %d Registry->Num()=%d should stay within +/-%d of baseline %d (delta=%d) — drift indicates the leak has returned"),
+						Cycle, ThisCount, TolerancePerCycle, BaselineCount, Delta)));
 			}
 		}
 
@@ -193,9 +193,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindFreeEvidenceTests,
 		// configuration as the documented boundary.
 #if !MALLOC_LEAKDETECTION
 		constexpr bool bLeakDetectionBuildBoundaryIsActive = true;
-		TestRunner->TestTrue(
-			TEXT("BindFreeEvidence_LeakReport is an explicit boundary when MALLOC_LEAKDETECTION=0"),
-			bLeakDetectionBuildBoundaryIsActive);
+		ASSERT_THAT(IsTrue(
+			bLeakDetectionBuildBoundaryIsActive,
+			TEXT("BindFreeEvidence_LeakReport is an explicit boundary when MALLOC_LEAKDETECTION=0")));
 		return;
 #else
 		// 1. Establish a clean slate — drop any cached engine, GC, then trim so the
@@ -224,16 +224,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindFreeEvidenceTests,
 		for (int32 CycleIndex = 0; CycleIndex < UE_ARRAY_COUNT(Cycles); ++CycleIndex)
 		{
 			const int32 CycleNumber = CycleIndex + 1;
-			TestRunner->TestTrue(
-				*FString::Printf(TEXT("BindFreeEvidence leak-report cycle %d should create a script engine"), CycleNumber),
-				Cycles[CycleIndex].bHasScriptEngine);
-			TestRunner->TestTrue(
-				*FString::Printf(TEXT("BindFreeEvidence leak-report cycle %d should create the blueprint signature registry"), CycleNumber),
-				Cycles[CycleIndex].bHasSignatureRegistry);
-			TestRunner->TestTrue(
-				*FString::Printf(TEXT("BindFreeEvidence leak-report cycle %d should exercise the bind path and own at least one blueprint signature (got %d)"),
-					CycleNumber, Cycles[CycleIndex].BlueprintSignatureCount),
-				Cycles[CycleIndex].BlueprintSignatureCount > 0);
+			ASSERT_THAT(IsTrue(
+				Cycles[CycleIndex].bHasScriptEngine,
+				FString::Printf(TEXT("BindFreeEvidence leak-report cycle %d should create a script engine"), CycleNumber)));
+			ASSERT_THAT(IsTrue(
+				Cycles[CycleIndex].bHasSignatureRegistry,
+				FString::Printf(TEXT("BindFreeEvidence leak-report cycle %d should create the blueprint signature registry"), CycleNumber)));
+			ASSERT_THAT(IsTrue(
+				Cycles[CycleIndex].BlueprintSignatureCount > 0,
+				FString::Printf(TEXT("BindFreeEvidence leak-report cycle %d should exercise the bind path and own at least one blueprint signature (got %d)"),
+					CycleNumber, Cycles[CycleIndex].BlueprintSignatureCount)));
 		}
 #endif
 	}

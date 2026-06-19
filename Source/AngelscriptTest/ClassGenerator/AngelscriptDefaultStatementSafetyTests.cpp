@@ -42,17 +42,18 @@ namespace AngelscriptTest_ClassGenerator_DefaultStatementSafetyTests_Private
 			OutSummary,
 			!bExpectedCompile);
 
+		FNoDiscardAsserter Assert(Test);
 		if (bExpectedCompile)
 		{
-			if (!Test.TestTrue(*FString::Printf(TEXT("%s should compile"), *ClassName), bCompiled))
+			if (!Assert.IsTrue(bCompiled, *FString::Printf(TEXT("%s should compile"), *ClassName)))
 			{
 				return false;
 			}
 
-			return Test.TestNotNull(*FString::Printf(TEXT("%s should publish a generated class"), *ClassName), FindGeneratedClass(&Engine, *ClassName));
+			return Assert.IsNotNull(FindGeneratedClass(&Engine, *ClassName), *FString::Printf(TEXT("%s should publish a generated class"), *ClassName));
 		}
 
-		return Test.TestFalse(*FString::Printf(TEXT("%s should fail compilation"), *ClassName), bCompiled);
+		return Assert.IsFalse(bCompiled, *FString::Printf(TEXT("%s should fail compilation"), *ClassName));
 	}
 }
 
@@ -92,7 +93,9 @@ class UUnsafeDefaultTarget : UObject
 		FAngelscriptCompileTraceSummary UnsafeDefaultSummary;
 		if (!CompileSafetyScript(*TestRunner, Engine, TEXT("ASUnsafeDefault"), TEXT("UUnsafeDefaultTarget"), UnsafeDefaultScript, false, UnsafeDefaultSummary))
 		{ return; }
-		TestRunner->TestTrue(TEXT("Unsafe default call should report unsafe construction diagnostics"), SummaryContainsDiagnosticMessage(UnsafeDefaultSummary, TEXT("unsafe during construction")));
+		ASSERT_THAT(IsTrue(
+			SummaryContainsDiagnosticMessage(UnsafeDefaultSummary, TEXT("unsafe during construction")),
+			TEXT("Unsafe default call should report unsafe construction diagnostics")));
 
 		const FString UnsafeConstructorScript = TEXT(R"AS(
 class UnsafeConstructorCarrier
@@ -120,7 +123,9 @@ int Entry()
 		FAngelscriptCompileTraceSummary UnsafeConstructorSummary;
 		if (!CompileSafetyScript(*TestRunner, Engine, TEXT("ASUnsafeConstructor"), TEXT("UnsafeConstructorCarrier"), UnsafeConstructorScript, false, UnsafeConstructorSummary))
 		{ return; }
-		TestRunner->TestTrue(TEXT("Unsafe constructor call should report unsafe construction diagnostics"), SummaryContainsDiagnosticMessage(UnsafeConstructorSummary, TEXT("unsafe during construction")));
+		ASSERT_THAT(IsTrue(
+			SummaryContainsDiagnosticMessage(UnsafeConstructorSummary, TEXT("unsafe during construction")),
+			TEXT("Unsafe constructor call should report unsafe construction diagnostics")));
 
 		const FString UnsafeOrdinaryScript = TEXT(R"AS(
 UCLASS()
@@ -206,7 +211,9 @@ class UDefaultsOnlyRejectTarget : UObject
 		FAngelscriptCompileTraceSummary DefaultsOnlyRejectSummary;
 		if (!CompileSafetyScript(*TestRunner, Engine, TEXT("ASDefaultsOnlyReject"), TEXT("UDefaultsOnlyRejectTarget"), DefaultsOnlyRejectScript, false, DefaultsOnlyRejectSummary))
 		{ return; }
-		TestRunner->TestTrue(TEXT("Defaults-only ordinary call should report an access diagnostic"), SummaryContainsDiagnosticMessage(DefaultsOnlyRejectSummary, TEXT("only accessible from default statements")));
+		ASSERT_THAT(IsTrue(
+			SummaryContainsDiagnosticMessage(DefaultsOnlyRejectSummary, TEXT("only accessible from default statements")),
+			TEXT("Defaults-only ordinary call should report an access diagnostic")));
 
 		}
 	}

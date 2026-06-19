@@ -127,18 +127,19 @@ namespace AngelscriptTest_Bindings_AngelscriptCollisionParamsBindingsTests_Priva
 		const TArray<uint32>& ActualIds,
 		const uint32 ExpectedId)
 	{
+		FNoDiscardAsserter Assert(Test);
 		bool bPassed = true;
-		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should contain exactly one ignored entry"), ContextLabel),
+		bPassed &= Assert.AreEqual(
+			1,
 			ActualIds.Num(),
-			1);
+			*FString::Printf(TEXT("%s should contain exactly one ignored entry"), ContextLabel));
 
 		if (ActualIds.Num() == 1)
 		{
-			bPassed &= Test.TestEqual(
-				*FString::Printf(TEXT("%s should preserve the ignored object ID"), ContextLabel),
+			bPassed &= Assert.AreEqual(
+				ExpectedId,
 				ActualIds[0],
-				ExpectedId);
+				*FString::Printf(TEXT("%s should preserve the ignored object ID"), ContextLabel));
 		}
 
 		return bPassed;
@@ -152,18 +153,19 @@ namespace AngelscriptTest_Bindings_AngelscriptCollisionParamsBindingsTests_Priva
 		const uint32 ExpectedActorId,
 		const uint32 ExpectedComponentId)
 	{
+		FNoDiscardAsserter Assert(Test);
 		bool bPassed = true;
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve TraceTag"), ContextLabel), ScriptParams.TraceTag, NativeParams.TraceTag);
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve OwnerTag"), ContextLabel), ScriptParams.OwnerTag, NativeParams.OwnerTag);
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve bTraceComplex"), ContextLabel), ScriptParams.bTraceComplex, NativeParams.bTraceComplex);
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve bFindInitialOverlaps"), ContextLabel), ScriptParams.bFindInitialOverlaps, NativeParams.bFindInitialOverlaps);
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve bReturnFaceIndex"), ContextLabel), ScriptParams.bReturnFaceIndex, NativeParams.bReturnFaceIndex);
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve bReturnPhysicalMaterial"), ContextLabel), ScriptParams.bReturnPhysicalMaterial, NativeParams.bReturnPhysicalMaterial);
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve bIgnoreBlocks"), ContextLabel), ScriptParams.bIgnoreBlocks, NativeParams.bIgnoreBlocks);
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve bIgnoreTouches"), ContextLabel), ScriptParams.bIgnoreTouches, NativeParams.bIgnoreTouches);
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve bSkipNarrowPhase"), ContextLabel), ScriptParams.bSkipNarrowPhase, NativeParams.bSkipNarrowPhase);
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve MobilityType"), ContextLabel), ScriptParams.MobilityType, NativeParams.MobilityType);
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve IgnoreMask"), ContextLabel), ScriptParams.IgnoreMask, NativeParams.IgnoreMask);
+		bPassed &= Assert.AreEqual(NativeParams.TraceTag, ScriptParams.TraceTag, *FString::Printf(TEXT("%s should preserve TraceTag"), ContextLabel));
+		bPassed &= Assert.AreEqual(NativeParams.OwnerTag, ScriptParams.OwnerTag, *FString::Printf(TEXT("%s should preserve OwnerTag"), ContextLabel));
+		bPassed &= Assert.AreEqual(NativeParams.bTraceComplex, ScriptParams.bTraceComplex, *FString::Printf(TEXT("%s should preserve bTraceComplex"), ContextLabel));
+		bPassed &= Assert.AreEqual(NativeParams.bFindInitialOverlaps, ScriptParams.bFindInitialOverlaps, *FString::Printf(TEXT("%s should preserve bFindInitialOverlaps"), ContextLabel));
+		bPassed &= Assert.AreEqual(NativeParams.bReturnFaceIndex, ScriptParams.bReturnFaceIndex, *FString::Printf(TEXT("%s should preserve bReturnFaceIndex"), ContextLabel));
+		bPassed &= Assert.AreEqual(NativeParams.bReturnPhysicalMaterial, ScriptParams.bReturnPhysicalMaterial, *FString::Printf(TEXT("%s should preserve bReturnPhysicalMaterial"), ContextLabel));
+		bPassed &= Assert.AreEqual(NativeParams.bIgnoreBlocks, ScriptParams.bIgnoreBlocks, *FString::Printf(TEXT("%s should preserve bIgnoreBlocks"), ContextLabel));
+		bPassed &= Assert.AreEqual(NativeParams.bIgnoreTouches, ScriptParams.bIgnoreTouches, *FString::Printf(TEXT("%s should preserve bIgnoreTouches"), ContextLabel));
+		bPassed &= Assert.AreEqual(NativeParams.bSkipNarrowPhase, ScriptParams.bSkipNarrowPhase, *FString::Printf(TEXT("%s should preserve bSkipNarrowPhase"), ContextLabel));
+		bPassed &= Assert.AreEqual(NativeParams.MobilityType, ScriptParams.MobilityType, *FString::Printf(TEXT("%s should preserve MobilityType"), ContextLabel));
+		bPassed &= Assert.AreEqual(NativeParams.IgnoreMask, ScriptParams.IgnoreMask, *FString::Printf(TEXT("%s should preserve IgnoreMask"), ContextLabel));
 		bPassed &= ExpectSingleIgnoredId(Test, *FString::Printf(TEXT("%s ignored actors"), ContextLabel), CopyIgnoredIds(ScriptParams.GetIgnoredSourceObjects()), ExpectedActorId);
 		bPassed &= ExpectSingleIgnoredId(Test, *FString::Printf(TEXT("%s ignored components"), ContextLabel), CopyIgnoredIds(ScriptParams.GetIgnoredComponents()), ExpectedComponentId);
 		return bPassed;
@@ -183,10 +185,11 @@ namespace AngelscriptTest_Bindings_AngelscriptCollisionParamsBindingsTests_Priva
 			static_cast<const FCollisionQueryParams&>(NativeParams),
 			ExpectedActorId,
 			ExpectedComponentId);
-		bPassed &= Test.TestEqual(
-			TEXT("CollisionQueryParamsBehaviour should preserve ShapeCollisionMask.Bits"),
+		FNoDiscardAsserter Assert(Test);
+		bPassed &= Assert.AreEqual(
+			NativeParams.ShapeCollisionMask.Bits,
 			ScriptParams.ShapeCollisionMask.Bits,
-			NativeParams.ShapeCollisionMask.Bits);
+			TEXT("CollisionQueryParamsBehaviour should preserve ShapeCollisionMask.Bits"));
 		return bPassed;
 	}
 }
@@ -302,11 +305,8 @@ int PopulateCollisionBindings(
 
 		AActor* TestActor = NewObject<AActor>(GetTransientPackage(), NAME_None, RF_Transient);
 		UBoxComponent* TestComponent = NewObject<UBoxComponent>(TestActor, NAME_None, RF_Transient);
-		if (!TestRunner->TestNotNull(TEXT("CollisionQueryParamsBehaviour should create a transient actor"), TestActor)
-			|| !TestRunner->TestNotNull(TEXT("CollisionQueryParamsBehaviour should create a transient primitive component"), TestComponent))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(TestActor, TEXT("CollisionQueryParamsBehaviour should create a transient actor")));
+		ASSERT_THAT(IsNotNull(TestComponent, TEXT("CollisionQueryParamsBehaviour should create a transient primitive component")));
 
 		FCollisionQueryParams ScriptQueryParams;
 		FComponentQueryParams ScriptComponentQueryParams;
@@ -337,10 +337,10 @@ int PopulateCollisionBindings(
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("CollisionQueryParamsBehaviour should preserve script-side ignored-list and response mutation checks"),
+		ASSERT_THAT(AreEqual(
+			0,
 			ResultMask,
-			0);
+			TEXT("CollisionQueryParamsBehaviour should preserve script-side ignored-list and response mutation checks")));
 
 		const uint32 ExpectedActorId = TestActor->GetUniqueID();
 		const uint32 ExpectedComponentId = TestComponent->GetUniqueID();
@@ -364,49 +364,49 @@ int PopulateCollisionBindings(
 			ExpectedActorId,
 			ExpectedComponentId);
 
-		TestRunner->TestEqual(
-			TEXT("CollisionQueryParamsBehaviour should preserve the object-query bitfield"),
+		ASSERT_THAT(AreEqual(
+			NativeObjectQueryParams.GetQueryBitfield64(),
 			ScriptObjectQueryParams.GetQueryBitfield64(),
-			NativeObjectQueryParams.GetQueryBitfield64());
-		TestRunner->TestEqual(
-			TEXT("CollisionQueryParamsBehaviour should preserve ObjectTypesToQuery"),
+			TEXT("CollisionQueryParamsBehaviour should preserve the object-query bitfield")));
+		ASSERT_THAT(AreEqual(
+			NativeObjectQueryParams.GetObjectTypesToQuery(),
 			ScriptObjectQueryParams.GetObjectTypesToQuery(),
-			NativeObjectQueryParams.GetObjectTypesToQuery());
-		TestRunner->TestEqual(
-			TEXT("CollisionQueryParamsBehaviour should preserve object-query IgnoreMask"),
+			TEXT("CollisionQueryParamsBehaviour should preserve ObjectTypesToQuery")));
+		ASSERT_THAT(AreEqual(
+			NativeObjectQueryParams.IgnoreMask,
 			ScriptObjectQueryParams.IgnoreMask,
-			NativeObjectQueryParams.IgnoreMask);
-		TestRunner->TestEqual(
-			TEXT("CollisionQueryParamsBehaviour should preserve object-query validity"),
+			TEXT("CollisionQueryParamsBehaviour should preserve object-query IgnoreMask")));
+		ASSERT_THAT(AreEqual(
+			NativeObjectQueryParams.IsValid(),
 			ScriptObjectQueryParams.IsValid(),
-			NativeObjectQueryParams.IsValid());
+			TEXT("CollisionQueryParamsBehaviour should preserve object-query validity")));
 
-		TestRunner->TestTrue(
-			TEXT("CollisionQueryParamsBehaviour should preserve the response container state"),
-			ScriptResponseContainer == NativeResponseContainer);
-		TestRunner->TestEqual(
-			TEXT("CollisionQueryParamsBehaviour should preserve Visibility response"),
+		ASSERT_THAT(IsTrue(
+			ScriptResponseContainer == NativeResponseContainer,
+			TEXT("CollisionQueryParamsBehaviour should preserve the response container state")));
+		ASSERT_THAT(AreEqual(
+			NativeResponseContainer.GetResponse(ECC_Visibility),
 			ScriptResponseContainer.GetResponse(ECC_Visibility),
-			NativeResponseContainer.GetResponse(ECC_Visibility));
-		TestRunner->TestEqual(
-			TEXT("CollisionQueryParamsBehaviour should preserve Camera response"),
+			TEXT("CollisionQueryParamsBehaviour should preserve Visibility response")));
+		ASSERT_THAT(AreEqual(
+			NativeResponseContainer.GetResponse(ECC_Camera),
 			ScriptResponseContainer.GetResponse(ECC_Camera),
-			NativeResponseContainer.GetResponse(ECC_Camera));
-		TestRunner->TestTrue(
-			TEXT("CollisionQueryParamsBehaviour should preserve CreateMinContainer results"),
-			ScriptMinResponseContainer == NativeMinResponseContainer);
-		TestRunner->TestEqual(
-			TEXT("CollisionQueryParamsBehaviour should preserve min Visibility response"),
+			TEXT("CollisionQueryParamsBehaviour should preserve Camera response")));
+		ASSERT_THAT(IsTrue(
+			ScriptMinResponseContainer == NativeMinResponseContainer,
+			TEXT("CollisionQueryParamsBehaviour should preserve CreateMinContainer results")));
+		ASSERT_THAT(AreEqual(
+			NativeMinResponseContainer.GetResponse(ECC_Visibility),
 			ScriptMinResponseContainer.GetResponse(ECC_Visibility),
-			NativeMinResponseContainer.GetResponse(ECC_Visibility));
-		TestRunner->TestEqual(
-			TEXT("CollisionQueryParamsBehaviour should preserve min Camera response"),
+			TEXT("CollisionQueryParamsBehaviour should preserve min Visibility response")));
+		ASSERT_THAT(AreEqual(
+			NativeMinResponseContainer.GetResponse(ECC_Camera),
 			ScriptMinResponseContainer.GetResponse(ECC_Camera),
-			NativeMinResponseContainer.GetResponse(ECC_Camera));
-		TestRunner->TestEqual(
-			TEXT("CollisionQueryParamsBehaviour should preserve min WorldStatic response"),
+			TEXT("CollisionQueryParamsBehaviour should preserve min Camera response")));
+		ASSERT_THAT(AreEqual(
+			NativeMinResponseContainer.GetResponse(ECC_WorldStatic),
 			ScriptMinResponseContainer.GetResponse(ECC_WorldStatic),
-			NativeMinResponseContainer.GetResponse(ECC_WorldStatic));
+			TEXT("CollisionQueryParamsBehaviour should preserve min WorldStatic response")));
 	}
 };
 

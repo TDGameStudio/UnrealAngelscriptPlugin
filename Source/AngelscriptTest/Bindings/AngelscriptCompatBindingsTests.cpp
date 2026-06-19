@@ -111,42 +111,26 @@ class UBindingCastComponent : UActorComponent
 }
 
 )"));
-		if (!TestRunner->TestTrue(TEXT("Compile annotated module using Cast<T> compat syntax should succeed"), bAnnotatedCompiled))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(bAnnotatedCompiled, TEXT("Compile annotated module using Cast<T> compat syntax should succeed")));
 
 		UClass* RuntimeActorClass = FindGeneratedClass(&Engine, TEXT("ABindingCastActor"));
 		UClass* RuntimeComponentClass = FindGeneratedClass(&Engine, TEXT("UBindingCastComponent"));
-		if (!TestRunner->TestNotNull(TEXT("Generated actor class for compat cast should exist"), RuntimeActorClass) ||
-			!TestRunner->TestNotNull(TEXT("Generated component class for compat cast should exist"), RuntimeComponentClass))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RuntimeActorClass, TEXT("Generated actor class for compat cast should exist")));
+		ASSERT_THAT(IsNotNull(RuntimeComponentClass, TEXT("Generated component class for compat cast should exist")));
 
 		UFunction* ReadCastCompatFunction = FindGeneratedFunction(RuntimeComponentClass, TEXT("ReadCastCompat"));
-		if (!TestRunner->TestNotNull(TEXT("Compat cast function should exist"), ReadCastCompatFunction))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ReadCastCompatFunction, TEXT("Compat cast function should exist")));
 		AActor* RuntimeActor = NewObject<AActor>(GetTransientPackage(), RuntimeActorClass);
-		if (!TestRunner->TestNotNull(TEXT("Generated compat actor instance should be created"), RuntimeActor))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RuntimeActor, TEXT("Generated compat actor instance should be created")));
 
 		UActorComponent* RuntimeComponent = NewObject<UActorComponent>(RuntimeActor, RuntimeComponentClass);
-		if (!TestRunner->TestNotNull(TEXT("Generated compat component instance should be created"), RuntimeComponent))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RuntimeComponent, TEXT("Generated compat component instance should be created")));
 
 		int32 AnnotatedResult = 0;
-		if (!TestRunner->TestTrue(TEXT("Compat cast reflected call should execute on the game thread"), ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeComponent, ReadCastCompatFunction, AnnotatedResult)))
-		{
-			return;
-		}
-		TestRunner->TestEqual(TEXT("Annotated module Cast<T> should cast native return values to generated script classes"), AnnotatedResult, 1);
+		ASSERT_THAT(IsTrue(
+			ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeComponent, ReadCastCompatFunction, AnnotatedResult),
+			TEXT("Compat cast reflected call should execute on the game thread")));
+		ASSERT_THAT(AreEqual(1, AnnotatedResult, TEXT("Annotated module Cast<T> should cast native return values to generated script classes")));
 	}
 
 	// ====================================================================
@@ -191,11 +175,8 @@ int Compat_EditorOnly_Package()
 
 		UInputComponent* NonEditorOnlyComponent = NewObject<UInputComponent>(GetTransientPackage(), NonEditorOnlyName, RF_Transient);
 		UInputComponent* EditorOnlyComponent = NewObject<UInputComponent>(GetTransientPackage(), EditorOnlyName, RF_Transient);
-		if (!TestRunner->TestNotNull(TEXT("Non-editor-only input component should be created"), NonEditorOnlyComponent) ||
-			!TestRunner->TestNotNull(TEXT("Editor-only input component should be created"), EditorOnlyComponent))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(NonEditorOnlyComponent, TEXT("Non-editor-only input component should be created")));
+		ASSERT_THAT(IsNotNull(EditorOnlyComponent, TEXT("Editor-only input component should be created")));
 
 		EditorOnlyComponent->bIsEditorOnly = true;
 
@@ -217,11 +198,8 @@ int Compat_EditorOnly_Package()
 
 		const bool bNativeNonEditorOnly = NonEditorOnlyComponent->IsEditorOnly();
 		const bool bNativeEditorOnly = EditorOnlyComponent->IsEditorOnly();
-		if (!TestRunner->TestFalse(TEXT("Default transient input component should remain non-editor-only"), bNativeNonEditorOnly) ||
-			!TestRunner->TestTrue(TEXT("Input component with bIsEditorOnly should report editor-only natively"), bNativeEditorOnly))
-		{
-			return;
-		}
+		ASSERT_THAT(IsFalse(bNativeNonEditorOnly, TEXT("Default transient input component should remain non-editor-only")));
+		ASSERT_THAT(IsTrue(bNativeEditorOnly, TEXT("Input component with bIsEditorOnly should report editor-only natively")));
 
 		const FString ScriptSource = FString::Printf(
 			TEXT(R"(

@@ -116,21 +116,21 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineNamespaceTests,
 			AbsoluteScriptPath,
 			PreprocessErrorCount);
 
-		TestRunner->TestTrue(
-			TEXT("Namespaced annotated class test case should preprocess successfully"),
-			bPreprocessSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Namespaced annotated class test case should keep preprocessing errors at zero"),
+		ASSERT_THAT(IsTrue(
+			bPreprocessSucceeded,
+			TEXT("Namespaced annotated class test case should preprocess successfully")));
+		ASSERT_THAT(AreEqual(
+			0,
 			PreprocessErrorCount,
-			0);
-		TestRunner->TestEqual(
-			TEXT("Namespaced annotated class test case should keep preprocessing diagnostics empty"),
+			TEXT("Namespaced annotated class test case should keep preprocessing errors at zero")));
+		ASSERT_THAT(AreEqual(
+			0,
 			PreprocessMessages.Num(),
-			0);
-		TestRunner->TestEqual(
-			TEXT("Namespaced annotated class test case should emit exactly one module descriptor"),
+			TEXT("Namespaced annotated class test case should keep preprocessing diagnostics empty")));
+		ASSERT_THAT(AreEqual(
+			1,
 			Modules.Num(),
-			1);
+			TEXT("Namespaced annotated class test case should emit exactly one module descriptor")));
 		if (!bPreprocessSucceeded || Modules.Num() != 1)
 		{
 			return;
@@ -138,37 +138,37 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineNamespaceTests,
 
 		const TSharedRef<FAngelscriptModuleDesc> ModuleDesc = Modules[0];
 		const TSharedPtr<FAngelscriptClassDesc> ClassDesc = ModuleDesc->GetClass(CompilerPipelineNamespaceTest::ClassName);
-		if (!TestRunner->TestTrue(TEXT("Namespaced annotated class test case should parse the annotated class descriptor"), ClassDesc.IsValid()))
+		if (!this->Assert.IsTrue(ClassDesc.IsValid(), TEXT("Namespaced annotated class test case should parse the annotated class descriptor")))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(
-			TEXT("Namespaced annotated class test case should record the class namespace during preprocessing"),
-			ClassDesc->Namespace.IsSet());
+		ASSERT_THAT(IsTrue(
+			ClassDesc->Namespace.IsSet(),
+			TEXT("Namespaced annotated class test case should record the class namespace during preprocessing")));
 		if (ClassDesc->Namespace.IsSet())
 		{
-			TestRunner->TestEqual(
-				TEXT("Namespaced annotated class test case should preserve the Gameplay namespace"),
+			ASSERT_THAT(AreEqual(
+				FString(TEXT("Gameplay")),
 				ClassDesc->Namespace.GetValue(),
-				FString(TEXT("Gameplay")));
+				TEXT("Namespaced annotated class test case should preserve the Gameplay namespace")));
 		}
 
-		if (!TestRunner->TestTrue(TEXT("Namespaced annotated class test case should keep one processed code section"), ModuleDesc->Code.Num() == 1))
+		if (!this->Assert.IsTrue(ModuleDesc->Code.Num() == 1, TEXT("Namespaced annotated class test case should keep one processed code section")))
 		{
 			return;
 		}
 
 		const FString& ProcessedCode = ModuleDesc->Code[0].Code;
-		TestRunner->TestTrue(
-			TEXT("Namespaced annotated class test case should keep the generated helper inside the Gameplay namespace"),
-			ProcessedCode.Contains(TEXT("namespace Gameplay")));
-		TestRunner->TestTrue(
-			TEXT("Namespaced annotated class test case should emit the __StaticType global for the namespaced class"),
-			ProcessedCode.Contains(TEXT("__StaticType_UNamespaceCarrier")));
-		TestRunner->TestTrue(
-			TEXT("Namespaced annotated class test case should emit the nested StaticClass helper wrapper"),
-			ProcessedCode.Contains(TEXT("namespace UNamespaceCarrier { UClass StaticClass()")));
+		ASSERT_THAT(IsTrue(
+			ProcessedCode.Contains(TEXT("namespace Gameplay")),
+			TEXT("Namespaced annotated class test case should keep the generated helper inside the Gameplay namespace")));
+		ASSERT_THAT(IsTrue(
+			ProcessedCode.Contains(TEXT("__StaticType_UNamespaceCarrier")),
+			TEXT("Namespaced annotated class test case should emit the __StaticType global for the namespaced class")));
+		ASSERT_THAT(IsTrue(
+			ProcessedCode.Contains(TEXT("namespace UNamespaceCarrier { UClass StaticClass()")),
+			TEXT("Namespaced annotated class test case should emit the nested StaticClass helper wrapper")));
 
 		Engine.ResetDiagnostics();
 
@@ -182,37 +182,37 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineNamespaceTests,
 			true,
 			Summary);
 
-		TestRunner->TestTrue(
-			TEXT("Namespaced annotated class test case should compile through the normal preprocessor pipeline"),
-			bCompiled);
-		TestRunner->TestTrue(
-			TEXT("Namespaced annotated class test case should record preprocessor usage in the compile summary"),
-			Summary.bUsedPreprocessor);
-		TestRunner->TestTrue(
-			TEXT("Namespaced annotated class test case should mark compile succeeded in the summary"),
-			Summary.bCompileSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Namespaced annotated class test case should compile as fully handled"),
+		ASSERT_THAT(IsTrue(
+			bCompiled,
+			TEXT("Namespaced annotated class test case should compile through the normal preprocessor pipeline")));
+		ASSERT_THAT(IsTrue(
+			Summary.bUsedPreprocessor,
+			TEXT("Namespaced annotated class test case should record preprocessor usage in the compile summary")));
+		ASSERT_THAT(IsTrue(
+			Summary.bCompileSucceeded,
+			TEXT("Namespaced annotated class test case should mark compile succeeded in the summary")));
+		ASSERT_THAT(AreEqual(
+			ECompileResult::FullyHandled,
 			Summary.CompileResult,
-			ECompileResult::FullyHandled);
-		TestRunner->TestEqual(
-			TEXT("Namespaced annotated class test case should keep compile diagnostics empty"),
+			TEXT("Namespaced annotated class test case should compile as fully handled")));
+		ASSERT_THAT(AreEqual(
+			0,
 			Summary.Diagnostics.Num(),
-			0);
+			TEXT("Namespaced annotated class test case should keep compile diagnostics empty")));
 		if (!bCompiled)
 		{
 			return;
 		}
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, *CompilerPipelineNamespaceTest::ClassName);
-		if (!TestRunner->TestNotNull(TEXT("Namespaced annotated class test case should materialize the generated class"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Namespaced annotated class test case should materialize the generated class")))
 		{
 			return;
 		}
 
-		TestRunner->TestNotNull(
-			TEXT("Namespaced annotated class test case should materialize the generated class method"),
-			FindGeneratedFunction(GeneratedClass, *CompilerPipelineNamespaceTest::MethodName));
+		ASSERT_THAT(IsNotNull(
+			FindGeneratedFunction(GeneratedClass, *CompilerPipelineNamespaceTest::MethodName),
+			TEXT("Namespaced annotated class test case should materialize the generated class method")));
 
 		int32 Result = 0;
 		const bool bExecuted = ExecuteIntFunction(
@@ -220,15 +220,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineNamespaceTests,
 			CompilerPipelineNamespaceTest::ModuleName,
 			CompilerPipelineNamespaceTest::EntryDecl,
 			Result);
-		TestRunner->TestTrue(
-			TEXT("Namespaced annotated class test case should execute the entry point"),
-			bExecuted);
+		ASSERT_THAT(IsTrue(
+			bExecuted,
+			TEXT("Namespaced annotated class test case should execute the entry point")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(
-				TEXT("Namespaced annotated class test case should resolve Gameplay::UNamespaceCarrier::StaticClass() at runtime"),
+			ASSERT_THAT(AreEqual(
+				42,
 				Result,
-				42);
+				TEXT("Namespaced annotated class test case should resolve Gameplay::UNamespaceCarrier::StaticClass() at runtime")));
 		}
 
 		}

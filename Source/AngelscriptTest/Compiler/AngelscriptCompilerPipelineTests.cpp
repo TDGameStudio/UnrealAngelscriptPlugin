@@ -47,34 +47,34 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 	}
 	)"));
 
-		if (!TestRunner->TestTrue(TEXT("Fallback compiler validation should compile delegate/enum/class transfer input"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("Fallback compiler validation should compile delegate/enum/class transfer input")))
 		{
 			return;
 		}
 
 		const TSharedPtr<FAngelscriptDelegateDesc> SimpleDelegate = Engine.GetDelegate(TEXT("FCompilerTransferDelegate"));
 		const TSharedPtr<FAngelscriptDelegateDesc> MultiDelegate = Engine.GetDelegate(TEXT("FCompilerTransferEvent"));
-		if (!TestRunner->TestTrue(TEXT("Simple delegate metadata should be registered after compile"), SimpleDelegate.IsValid()))
+		if (!this->Assert.IsTrue(SimpleDelegate.IsValid(), TEXT("Simple delegate metadata should be registered after compile")))
 		{
 			return;
 		}
-		if (!TestRunner->TestTrue(TEXT("Multicast delegate metadata should be registered after compile"), MultiDelegate.IsValid()))
+		if (!this->Assert.IsTrue(MultiDelegate.IsValid(), TEXT("Multicast delegate metadata should be registered after compile")))
 		{
 			return;
 		}
 
-		TestRunner->TestFalse(TEXT("Simple delegate should remain single-cast"), SimpleDelegate->bIsMulticast);
-		TestRunner->TestTrue(TEXT("Event delegate should remain multicast"), MultiDelegate->bIsMulticast);
+		ASSERT_THAT(IsFalse(SimpleDelegate->bIsMulticast, TEXT("Simple delegate should remain single-cast")));
+		ASSERT_THAT(IsTrue(MultiDelegate->bIsMulticast, TEXT("Event delegate should remain multicast")));
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UCompilerTransferObject"));
-		if (!TestRunner->TestNotNull(TEXT("Generated class should exist for delegate/enum/class transfer input"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Generated class should exist for delegate/enum/class transfer input")))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("Generated class should preserve abstract flag"), GeneratedClass->HasAnyClassFlags(CLASS_Abstract));
-		TestRunner->TestNotNull(TEXT("Generated Score property should exist"), FindFProperty<FProperty>(GeneratedClass, TEXT("Score")));
-		TestRunner->TestNotNull(TEXT("Generated GetScore function should exist"), FindGeneratedFunction(GeneratedClass, TEXT("GetScore")));
+		ASSERT_THAT(IsTrue(GeneratedClass->HasAnyClassFlags(CLASS_Abstract), TEXT("Generated class should preserve abstract flag")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FProperty>(GeneratedClass, TEXT("Score")), TEXT("Generated Score property should exist")));
+		ASSERT_THAT(IsNotNull(FindGeneratedFunction(GeneratedClass, TEXT("GetScore")), TEXT("Generated GetScore function should exist")));
 	}
 	}
 
@@ -122,29 +122,29 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 	}
 	)"));
 
-		if (!TestRunner->TestTrue(TEXT("Fallback compiler validation should compile function defaults and class-like signatures"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("Fallback compiler validation should compile function defaults and class-like signatures")))
 		{
 			return;
 		}
 
 		int32 Result = 0;
 		const bool bExecuted = ExecuteIntFunction(&Engine, TEXT("CompilerFunctionDefaultsAndClassLikeCompile"), TEXT("int Entry()"), Result);
-		if (!TestRunner->TestTrue(TEXT("Function default validation should execute compiled entry point"), bExecuted))
+		if (!this->Assert.IsTrue(bExecuted, TEXT("Function default validation should execute compiled entry point")))
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Function default values should be honored at runtime"), Result, 42);
+		ASSERT_THAT(AreEqual(42, Result, TEXT("Function default values should be honored at runtime")));
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UCompilerFunctionCarrier"));
-		if (!TestRunner->TestNotNull(TEXT("Generated class should exist for class-like signature input"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Generated class should exist for class-like signature input")))
 		{
 			return;
 		}
 
-		TestRunner->TestNotNull(TEXT("EchoPlainClass function should exist"), FindGeneratedFunction(GeneratedClass, TEXT("EchoPlainClass")));
-		TestRunner->TestNotNull(TEXT("EchoActorClass function should exist"), FindGeneratedFunction(GeneratedClass, TEXT("EchoActorClass")));
-		TestRunner->TestNotNull(TEXT("EchoSoftActorClass function should exist"), FindGeneratedFunction(GeneratedClass, TEXT("EchoSoftActorClass")));
+		ASSERT_THAT(IsNotNull(FindGeneratedFunction(GeneratedClass, TEXT("EchoPlainClass")), TEXT("EchoPlainClass function should exist")));
+		ASSERT_THAT(IsNotNull(FindGeneratedFunction(GeneratedClass, TEXT("EchoActorClass")), TEXT("EchoActorClass function should exist")));
+		ASSERT_THAT(IsNotNull(FindGeneratedFunction(GeneratedClass, TEXT("EchoSoftActorClass")), TEXT("EchoSoftActorClass function should exist")));
 	}
 	}
 
@@ -172,31 +172,31 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 	}
 	)"));
 
-		if (!TestRunner->TestTrue(TEXT("Fallback compiler validation should compile property default input"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("Fallback compiler validation should compile property default input")))
 		{
 			return;
 		}
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UCompilerDefaultsCarrier"));
-		if (!TestRunner->TestNotNull(TEXT("Generated class should exist for property default input"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Generated class should exist for property default input")))
 		{
 			return;
 		}
 
 		UObject* DefaultObject = GeneratedClass->GetDefaultObject();
-		if (!TestRunner->TestNotNull(TEXT("Generated class default object should exist"), DefaultObject))
+		if (!this->Assert.IsNotNull(DefaultObject, TEXT("Generated class default object should exist")))
 		{
 			return;
 		}
 
 		FIntProperty* ScoreProperty = FindFProperty<FIntProperty>(GeneratedClass, TEXT("Score"));
-		if (!TestRunner->TestNotNull(TEXT("Generated Score property should exist"), ScoreProperty))
+		if (!this->Assert.IsNotNull(ScoreProperty, TEXT("Generated Score property should exist")))
 		{
 			return;
 		}
 
 		const int32 ScoreValue = ScoreProperty->GetPropertyValue_InContainer(DefaultObject);
-		TestRunner->TestEqual(TEXT("Generated default object should materialize overridden int default"), ScoreValue, 21);
+		ASSERT_THAT(AreEqual(21, ScoreValue, TEXT("Generated default object should materialize overridden int default")));
 	}
 	}
 
@@ -224,20 +224,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 	}
 	)"));
 
-		if (!TestRunner->TestTrue(TEXT("Generated class consistency input should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("Generated class consistency input should compile")))
 		{
 			return;
 		}
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UCompilerConsistencyCarrier"));
-		if (!TestRunner->TestNotNull(TEXT("Generated consistency class should exist"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Generated consistency class should exist")))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("Generated consistency class should preserve abstract flag"), GeneratedClass->HasAnyClassFlags(CLASS_Abstract));
-		TestRunner->TestNotNull(TEXT("Generated consistency class should expose Score property"), FindFProperty<FProperty>(GeneratedClass, TEXT("Score")));
-		TestRunner->TestNotNull(TEXT("Generated consistency class should expose GetScore function"), FindGeneratedFunction(GeneratedClass, TEXT("GetScore")));
+		ASSERT_THAT(IsTrue(GeneratedClass->HasAnyClassFlags(CLASS_Abstract), TEXT("Generated consistency class should preserve abstract flag")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FProperty>(GeneratedClass, TEXT("Score")), TEXT("Generated consistency class should expose Score property")));
+		ASSERT_THAT(IsNotNull(FindGeneratedFunction(GeneratedClass, TEXT("GetScore")), TEXT("Generated consistency class should expose GetScore function")));
 	}
 	}
 
@@ -261,26 +261,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 		return SumWithDefault();
 	}
 	)"));
-		if (!TestRunner->TestNotNull(TEXT("Fallback compiler inspection module should build"), Module))
+		if (!this->Assert.IsNotNull(Module, TEXT("Fallback compiler inspection module should build")))
 		{
 			return;
 		}
 
 		asIScriptFunction* SumWithDefault = GetFunctionByDecl(*TestRunner, *Module, TEXT("int SumWithDefault(int, int)"));
-		if (!TestRunner->TestNotNull(TEXT("Compiled module should expose SumWithDefault"), SumWithDefault))
+		if (!this->Assert.IsNotNull(SumWithDefault, TEXT("Compiled module should expose SumWithDefault")))
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Compiled module should expose exactly two parameters for SumWithDefault"), static_cast<int32>(SumWithDefault->GetParamCount()), 2);
+		ASSERT_THAT(AreEqual(2, static_cast<int32>(SumWithDefault->GetParamCount()), TEXT("Compiled module should expose exactly two parameters for SumWithDefault")));
 
 		int32 Result = 0;
-		if (!TestRunner->TestTrue(TEXT("Compiled inspection module entry should execute"), ExecuteIntFunction(&Engine, TEXT("CompilerModuleFunctionInspection"), TEXT("int Entry()"), Result)))
+		if (!this->Assert.IsTrue(ExecuteIntFunction(&Engine, TEXT("CompilerModuleFunctionInspection"), TEXT("int Entry()"), Result), TEXT("Compiled inspection module entry should execute")))
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Compiled inspection module should preserve executable default values"), Result, 42);
+		ASSERT_THAT(AreEqual(42, Result, TEXT("Compiled inspection module should preserve executable default values")));
 	}
 	}
 
@@ -303,19 +303,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 	}
 	)"));
 
-		if (!TestRunner->TestTrue(TEXT("Enum availability input should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("Enum availability input should compile")))
 		{
 			return;
 		}
 
 		const TSharedPtr<FAngelscriptEnumDesc> EnumDesc = Engine.GetEnum(TEXT("ECompilerAvailabilityState"));
-		if (!TestRunner->TestTrue(TEXT("Compiled enum metadata should be registered"), EnumDesc.IsValid()))
+		if (!this->Assert.IsTrue(EnumDesc.IsValid(), TEXT("Compiled enum metadata should be registered")))
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Compiled enum should have 3 declared values"), EnumDesc->ValueNames.Num(), 3);
-		TestRunner->TestEqual(TEXT("Beta should have explicit value 4"), static_cast<int32>(EnumDesc->EnumValues[1]), 4);
+		ASSERT_THAT(AreEqual(3, EnumDesc->ValueNames.Num(), TEXT("Compiled enum should have 3 declared values")));
+		ASSERT_THAT(AreEqual(4, static_cast<int32>(EnumDesc->EnumValues[1]), TEXT("Beta should have explicit value 4")));
 	}
 	}
 
@@ -338,26 +338,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 	}
 	)"));
 
-		if (!TestRunner->TestTrue(TEXT("Delegate signature consistency input should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("Delegate signature consistency input should compile")))
 		{
 			return;
 		}
 
 		const TSharedPtr<FAngelscriptDelegateDesc> SingleCast = Engine.GetDelegate(TEXT("FCompilerSingleCastSignature"));
 		const TSharedPtr<FAngelscriptDelegateDesc> MultiCast = Engine.GetDelegate(TEXT("FCompilerMultiCastSignature"));
-		if (!TestRunner->TestTrue(TEXT("Single-cast delegate metadata should exist"), SingleCast.IsValid()))
+		if (!this->Assert.IsTrue(SingleCast.IsValid(), TEXT("Single-cast delegate metadata should exist")))
 		{
 			return;
 		}
-		if (!TestRunner->TestTrue(TEXT("Multicast delegate metadata should exist"), MultiCast.IsValid()))
+		if (!this->Assert.IsTrue(MultiCast.IsValid(), TEXT("Multicast delegate metadata should exist")))
 		{
 			return;
 		}
 
-		TestRunner->TestFalse(TEXT("Single-cast delegate should not be marked multicast"), SingleCast->bIsMulticast);
-		TestRunner->TestTrue(TEXT("Multicast delegate should be marked multicast"), MultiCast->bIsMulticast);
-		TestRunner->TestNotNull(TEXT("Single-cast delegate should materialize a UDelegateFunction"), SingleCast->Function);
-		TestRunner->TestNotNull(TEXT("Multicast delegate should materialize a UDelegateFunction"), MultiCast->Function);
+		ASSERT_THAT(IsFalse(SingleCast->bIsMulticast, TEXT("Single-cast delegate should not be marked multicast")));
+		ASSERT_THAT(IsTrue(MultiCast->bIsMulticast, TEXT("Multicast delegate should be marked multicast")));
+		ASSERT_THAT(IsNotNull(SingleCast->Function, TEXT("Single-cast delegate should materialize a UDelegateFunction")));
+		ASSERT_THAT(IsNotNull(MultiCast->Function, TEXT("Multicast delegate should materialize a UDelegateFunction")));
 	}
 	}
 
@@ -394,13 +394,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 	}
 	)"));
 
-		if (!TestRunner->TestTrue(TEXT("Class-like reflection shape input should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("Class-like reflection shape input should compile")))
 		{
 			return;
 		}
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UCompilerClassLikeShapeCarrier"));
-		if (!TestRunner->TestNotNull(TEXT("Generated class should exist for class-like reflection shape input"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Generated class should exist for class-like reflection shape input")))
 		{
 			return;
 		}
@@ -408,35 +408,35 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
 		UFunction* EchoPlainClass = FindGeneratedFunction(GeneratedClass, TEXT("EchoPlainClass"));
 		UFunction* EchoActorClass = FindGeneratedFunction(GeneratedClass, TEXT("EchoActorClass"));
 		UFunction* EchoSoftActorClass = FindGeneratedFunction(GeneratedClass, TEXT("EchoSoftActorClass"));
-		if (!TestRunner->TestNotNull(TEXT("EchoPlainClass should exist"), EchoPlainClass) ||
-			!TestRunner->TestNotNull(TEXT("EchoActorClass should exist"), EchoActorClass) ||
-			!TestRunner->TestNotNull(TEXT("EchoSoftActorClass should exist"), EchoSoftActorClass))
+		if (!this->Assert.IsNotNull(EchoPlainClass, TEXT("EchoPlainClass should exist")) ||
+			!this->Assert.IsNotNull(EchoActorClass, TEXT("EchoActorClass should exist")) ||
+			!this->Assert.IsNotNull(EchoSoftActorClass, TEXT("EchoSoftActorClass should exist")))
 		{
 			return;
 		}
 
-		TestRunner->TestNotNull(TEXT("Plain class return should materialize as FClassProperty"), CastField<FClassProperty>(EchoPlainClass->GetReturnProperty()));
-		TestRunner->TestNotNull(TEXT("Plain class parameter should materialize as FClassProperty"), CastField<FClassProperty>(FindFProperty<FProperty>(EchoPlainClass, TEXT("Value"))));
+		ASSERT_THAT(IsNotNull(CastField<FClassProperty>(EchoPlainClass->GetReturnProperty()), TEXT("Plain class return should materialize as FClassProperty")));
+		ASSERT_THAT(IsNotNull(CastField<FClassProperty>(FindFProperty<FProperty>(EchoPlainClass, TEXT("Value"))), TEXT("Plain class parameter should materialize as FClassProperty")));
 
 		FClassProperty* ActorReturnProperty = CastField<FClassProperty>(EchoActorClass->GetReturnProperty());
 		FClassProperty* ActorParamProperty = CastField<FClassProperty>(FindFProperty<FProperty>(EchoActorClass, TEXT("Value")));
-		if (!TestRunner->TestNotNull(TEXT("Subclass return should materialize as FClassProperty"), ActorReturnProperty) ||
-			!TestRunner->TestNotNull(TEXT("Subclass parameter should materialize as FClassProperty"), ActorParamProperty))
+		if (!this->Assert.IsNotNull(ActorReturnProperty, TEXT("Subclass return should materialize as FClassProperty")) ||
+			!this->Assert.IsNotNull(ActorParamProperty, TEXT("Subclass parameter should materialize as FClassProperty")))
 		{
 			return;
 		}
-		TestRunner->TestTrue(TEXT("Subclass return MetaClass should be AActor"), ActorReturnProperty->MetaClass == AActor::StaticClass());
-		TestRunner->TestTrue(TEXT("Subclass parameter MetaClass should be AActor"), ActorParamProperty->MetaClass == AActor::StaticClass());
+		ASSERT_THAT(IsTrue(ActorReturnProperty->MetaClass == AActor::StaticClass(), TEXT("Subclass return MetaClass should be AActor")));
+		ASSERT_THAT(IsTrue(ActorParamProperty->MetaClass == AActor::StaticClass(), TEXT("Subclass parameter MetaClass should be AActor")));
 
 		FSoftClassProperty* SoftReturnProperty = CastField<FSoftClassProperty>(EchoSoftActorClass->GetReturnProperty());
 		FSoftClassProperty* SoftParamProperty = CastField<FSoftClassProperty>(FindFProperty<FProperty>(EchoSoftActorClass, TEXT("Value")));
-		if (!TestRunner->TestNotNull(TEXT("Soft class return should materialize as FSoftClassProperty"), SoftReturnProperty) ||
-			!TestRunner->TestNotNull(TEXT("Soft class parameter should materialize as FSoftClassProperty"), SoftParamProperty))
+		if (!this->Assert.IsNotNull(SoftReturnProperty, TEXT("Soft class return should materialize as FSoftClassProperty")) ||
+			!this->Assert.IsNotNull(SoftParamProperty, TEXT("Soft class parameter should materialize as FSoftClassProperty")))
 		{
 			return;
 		}
-		TestRunner->TestTrue(TEXT("Soft class return MetaClass should be AActor"), SoftReturnProperty->MetaClass == AActor::StaticClass());
-		TestRunner->TestTrue(TEXT("Soft class parameter MetaClass should be AActor"), SoftParamProperty->MetaClass == AActor::StaticClass());
+		ASSERT_THAT(IsTrue(SoftReturnProperty->MetaClass == AActor::StaticClass(), TEXT("Soft class return MetaClass should be AActor")));
+		ASSERT_THAT(IsTrue(SoftParamProperty->MetaClass == AActor::StaticClass(), TEXT("Soft class parameter MetaClass should be AActor")));
 	}
 	}
 };

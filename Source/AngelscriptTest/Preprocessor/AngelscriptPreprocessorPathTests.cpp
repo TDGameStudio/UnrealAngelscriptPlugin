@@ -78,28 +78,30 @@ int UseShared()
 		const FAngelscriptModuleDesc* ImportingModule = AssertModuleExists(
 			*TestRunner, Result, TEXT("Tests.Preprocessor.PathNormalization.WinUse"));
 
-		TestRunner->TestFalse(
-			TEXT("Normalized module names should not preserve raw backslashes"),
-			ModuleNames.Contains(TEXT("\\")));
+		ASSERT_THAT(IsFalse(
+			ModuleNames.Contains(TEXT("\\")),
+			TEXT("Normalized module names should not preserve raw backslashes")));
 
 		if (SharedModule != nullptr)
 		{
-			TestRunner->TestEqual(
-				TEXT("Normalized provider module should not record any imports"),
-				SharedModule->ImportedModules.Num(), 0);
+			ASSERT_THAT(AreEqual(
+				0,
+				SharedModule->ImportedModules.Num(),
+				TEXT("Normalized provider module should not record any imports")));
 		}
 
 		if (ImportingModule != nullptr)
 		{
-			TestRunner->TestEqual(
-				TEXT("Normalized importer module should record exactly one imported module"),
-				ImportingModule->ImportedModules.Num(), 1);
-			TestRunner->TestTrue(
-				TEXT("Normalized importer module should reference the dotted provider module name"),
-				ImportingModule->ImportedModules.Contains(TEXT("Tests.Preprocessor.PathNormalization.WinShared")));
-			TestRunner->TestFalse(
-				TEXT("Normalized importer module should not record backslash-based import names"),
-				ImportingModule->ImportedModules.Contains(TEXT("Tests\\Preprocessor\\PathNormalization\\WinShared")));
+			ASSERT_THAT(AreEqual(
+				1,
+				ImportingModule->ImportedModules.Num(),
+				TEXT("Normalized importer module should record exactly one imported module")));
+			ASSERT_THAT(IsTrue(
+				ImportingModule->ImportedModules.Contains(TEXT("Tests.Preprocessor.PathNormalization.WinShared")),
+				TEXT("Normalized importer module should reference the dotted provider module name")));
+			ASSERT_THAT(IsFalse(
+				ImportingModule->ImportedModules.Contains(TEXT("Tests\\Preprocessor\\PathNormalization\\WinShared")),
+				TEXT("Normalized importer module should not record backslash-based import names")));
 		}
 
 		}
@@ -119,18 +121,21 @@ int UseShared()
 		const FString RegularModuleName     = Preprocessor.FilenameToModuleName(TEXT("Tests/Foo/Bar.as"));
 		const FString AssetSuffixModuleName = Preprocessor.FilenameToModuleName(TEXT("Tests/Foo.as/Baz.asset.as"));
 
-		TestRunner->TestEqual(
-			TEXT("FilenameToModuleName should preserve '.as' when it appears in an intermediate path segment"),
-			FolderAsModuleName, FString(TEXT("Tests.Foo.as.Bar")));
-		TestRunner->TestEqual(
-			TEXT("FilenameToModuleName should continue normalizing a standard script filename"),
-			RegularModuleName, FString(TEXT("Tests.Foo.Bar")));
-		TestRunner->TestTrue(
-			TEXT("FilenameToModuleName should keep intermediate '.as' segments distinct from plain folders"),
-			FolderAsModuleName != RegularModuleName);
-		TestRunner->TestEqual(
-			TEXT("FilenameToModuleName should strip only the terminal extension from asset-like script filenames"),
-			AssetSuffixModuleName, FString(TEXT("Tests.Foo.as.Baz.asset")));
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("Tests.Foo.as.Bar")),
+			FolderAsModuleName,
+			TEXT("FilenameToModuleName should preserve '.as' when it appears in an intermediate path segment")));
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("Tests.Foo.Bar")),
+			RegularModuleName,
+			TEXT("FilenameToModuleName should continue normalizing a standard script filename")));
+		ASSERT_THAT(IsTrue(
+			FolderAsModuleName != RegularModuleName,
+			TEXT("FilenameToModuleName should keep intermediate '.as' segments distinct from plain folders")));
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("Tests.Foo.as.Baz.asset")),
+			AssetSuffixModuleName,
+			TEXT("FilenameToModuleName should strip only the terminal extension from asset-like script filenames")));
 	}
 };
 

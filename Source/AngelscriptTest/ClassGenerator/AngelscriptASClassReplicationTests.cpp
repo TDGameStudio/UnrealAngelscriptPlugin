@@ -112,37 +112,40 @@ class AReplicationChild : AReplicationParent
 		}
 
 		UClass* ChildClass = FindGeneratedClass(&Engine, ASClassReplicationTest::ChildClassName);
-		if (!TestRunner->TestNotNull(TEXT("ASClass replication test case should generate the child script class"), ChildClass))
+		ASSERT_THAT(IsNotNull(ChildClass, TEXT("ASClass replication test case should generate the child script class")));
+		if (ChildClass == nullptr)
 		{
 			return;
 		}
 
 		UASClass* ChildASClass = Cast<UASClass>(ChildClass);
-		if (!TestRunner->TestNotNull(TEXT("ASClass replication test case should compile the child as a UASClass"), ChildASClass))
+		ASSERT_THAT(IsNotNull(ChildASClass, TEXT("ASClass replication test case should compile the child as a UASClass")));
+		if (ChildASClass == nullptr)
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("ASClass replication test case should keep the child superclass exact"), ChildClass->GetSuperClass(), ParentClass);
+		ASSERT_THAT(AreEqual(ParentClass, ChildClass->GetSuperClass(), TEXT("ASClass replication test case should keep the child superclass exact")));
 
 		FProperty* ParentValueProperty = FindFProperty<FProperty>(ChildClass, ASClassReplicationTest::ParentValueName);
 		FProperty* ChildValueProperty = FindFProperty<FProperty>(ChildClass, ASClassReplicationTest::ChildValueName);
 		FProperty* ChildNotifiedValueProperty = FindFProperty<FProperty>(ChildClass, ASClassReplicationTest::ChildNotifiedValueName);
-		if (!TestRunner->TestNotNull(TEXT("ASClass replication test case should expose the inherited ParentValue property"), ParentValueProperty)
-			|| !TestRunner->TestNotNull(TEXT("ASClass replication test case should expose the child ChildValue property"), ChildValueProperty)
-			|| !TestRunner->TestNotNull(TEXT("ASClass replication test case should expose the child ChildNotifiedValue property"), ChildNotifiedValueProperty))
+		ASSERT_THAT(IsNotNull(ParentValueProperty, TEXT("ASClass replication test case should expose the inherited ParentValue property")));
+		ASSERT_THAT(IsNotNull(ChildValueProperty, TEXT("ASClass replication test case should expose the child ChildValue property")));
+		ASSERT_THAT(IsNotNull(ChildNotifiedValueProperty, TEXT("ASClass replication test case should expose the child ChildNotifiedValue property")));
+		if (ParentValueProperty == nullptr || ChildValueProperty == nullptr || ChildNotifiedValueProperty == nullptr)
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("ASClass replication test case should mark ParentValue as replicated"), ParentValueProperty->HasAnyPropertyFlags(CPF_Net));
-		TestRunner->TestTrue(TEXT("ASClass replication test case should mark ChildValue as replicated"), ChildValueProperty->HasAnyPropertyFlags(CPF_Net));
-		TestRunner->TestTrue(TEXT("ASClass replication test case should mark ChildNotifiedValue as replicated"), ChildNotifiedValueProperty->HasAnyPropertyFlags(CPF_Net));
-		TestRunner->TestTrue(TEXT("ASClass replication test case should mark ChildNotifiedValue as a RepNotify property"), ChildNotifiedValueProperty->HasAnyPropertyFlags(CPF_RepNotify));
-		TestRunner->TestEqual(
-			TEXT("ASClass replication test case should preserve the RepNotify function name on the generated child property"),
+		ASSERT_THAT(IsTrue(ParentValueProperty->HasAnyPropertyFlags(CPF_Net), TEXT("ASClass replication test case should mark ParentValue as replicated")));
+		ASSERT_THAT(IsTrue(ChildValueProperty->HasAnyPropertyFlags(CPF_Net), TEXT("ASClass replication test case should mark ChildValue as replicated")));
+		ASSERT_THAT(IsTrue(ChildNotifiedValueProperty->HasAnyPropertyFlags(CPF_Net), TEXT("ASClass replication test case should mark ChildNotifiedValue as replicated")));
+		ASSERT_THAT(IsTrue(ChildNotifiedValueProperty->HasAnyPropertyFlags(CPF_RepNotify), TEXT("ASClass replication test case should mark ChildNotifiedValue as a RepNotify property")));
+		ASSERT_THAT(AreEqual(
+			ASClassReplicationTest::ChildRepNotifyFunctionName,
 			ChildNotifiedValueProperty->RepNotifyFunc,
-			ASClassReplicationTest::ChildRepNotifyFunctionName);
+			TEXT("ASClass replication test case should preserve the RepNotify function name on the generated child property")));
 
 		TArray<FLifetimeProperty> LifetimeProperties;
 		ChildASClass->GetLifetimeScriptReplicationList(LifetimeProperties);
@@ -156,27 +159,27 @@ class AReplicationChild : AReplicationParent
 			UniquePropertyNames.Add(PropertyName);
 		}
 
-		TestRunner->TestEqual(
-			TEXT("ASClass replication test case should collect exactly the script replicated properties declared across the parent-child chain"),
+		ASSERT_THAT(AreEqual(
+			3,
 			LifetimeProperties.Num(),
-			3);
-		TestRunner->TestEqual(
-			TEXT("ASClass replication test case should resolve every lifetime replication entry back to a concrete property name"),
+			TEXT("ASClass replication test case should collect exactly the script replicated properties declared across the parent-child chain")));
+		ASSERT_THAT(AreEqual(
+			LifetimeProperties.Num(),
 			ReplicatedPropertyNames.Num(),
-			LifetimeProperties.Num());
-		TestRunner->TestEqual(
-			TEXT("ASClass replication test case should not duplicate inherited script replicated properties in the lifetime list"),
+			TEXT("ASClass replication test case should resolve every lifetime replication entry back to a concrete property name")));
+		ASSERT_THAT(AreEqual(
+			ReplicatedPropertyNames.Num(),
 			UniquePropertyNames.Num(),
-			ReplicatedPropertyNames.Num());
-		TestRunner->TestTrue(
-			TEXT("ASClass replication test case should include the parent replicated property in the child lifetime list"),
-			ReplicatedPropertyNames.Contains(ASClassReplicationTest::ParentValueName));
-		TestRunner->TestTrue(
-			TEXT("ASClass replication test case should include the direct child replicated property in the child lifetime list"),
-			ReplicatedPropertyNames.Contains(ASClassReplicationTest::ChildValueName));
-		TestRunner->TestTrue(
-			TEXT("ASClass replication test case should include the child RepNotify property in the child lifetime list"),
-			ReplicatedPropertyNames.Contains(ASClassReplicationTest::ChildNotifiedValueName));
+			TEXT("ASClass replication test case should not duplicate inherited script replicated properties in the lifetime list")));
+		ASSERT_THAT(IsTrue(
+			ReplicatedPropertyNames.Contains(ASClassReplicationTest::ParentValueName),
+			TEXT("ASClass replication test case should include the parent replicated property in the child lifetime list")));
+		ASSERT_THAT(IsTrue(
+			ReplicatedPropertyNames.Contains(ASClassReplicationTest::ChildValueName),
+			TEXT("ASClass replication test case should include the direct child replicated property in the child lifetime list")));
+		ASSERT_THAT(IsTrue(
+			ReplicatedPropertyNames.Contains(ASClassReplicationTest::ChildNotifiedValueName),
+			TEXT("ASClass replication test case should include the child RepNotify property in the child lifetime list")));
 		}
 	}
 };

@@ -57,20 +57,20 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineStructTests,
 			true,
 			Summary);
 
-		TestRunner->TestTrue(
-			TEXT("Annotated struct round-trip test should compile through the preprocessor-enabled full-reload pipeline"),
-			bCompiled);
-		TestRunner->TestTrue(
-			TEXT("Annotated struct round-trip test should report preprocessor usage in the compile summary"),
-			Summary.bUsedPreprocessor);
-		TestRunner->TestEqual(
-			TEXT("Annotated struct round-trip test should finish with a fully handled compile result"),
+		ASSERT_THAT(IsTrue(
+			bCompiled,
+			TEXT("Annotated struct round-trip test should compile through the preprocessor-enabled full-reload pipeline")));
+		ASSERT_THAT(IsTrue(
+			Summary.bUsedPreprocessor,
+			TEXT("Annotated struct round-trip test should report preprocessor usage in the compile summary")));
+		ASSERT_THAT(AreEqual(
+			ECompileResult::FullyHandled,
 			Summary.CompileResult,
-			ECompileResult::FullyHandled);
-		TestRunner->TestEqual(
-			TEXT("Annotated struct round-trip test should compile without diagnostics"),
+			TEXT("Annotated struct round-trip test should finish with a fully handled compile result")));
+		ASSERT_THAT(AreEqual(
+			0,
 			Summary.Diagnostics.Num(),
-			0);
+			TEXT("Annotated struct round-trip test should compile without diagnostics")));
 		if (!bCompiled)
 		{
 			return;
@@ -83,27 +83,24 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineStructTests,
 			CompilerPipelineStructTest::ModuleName,
 			TEXT("int Entry()"),
 			EntryResult);
-		TestRunner->TestTrue(
-			TEXT("Annotated struct round-trip test should execute the compiled Entry function"),
-			bExecuted);
+		ASSERT_THAT(IsTrue(
+			bExecuted,
+			TEXT("Annotated struct round-trip test should execute the compiled Entry function")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(
-				TEXT("Annotated struct round-trip test should read the annotated struct field through runtime execution"),
+			ASSERT_THAT(AreEqual(
+				7,
 				EntryResult,
-				7);
+				TEXT("Annotated struct round-trip test should read the annotated struct field through runtime execution")));
 		}
 
 		UScriptStruct* GeneratedStruct = FindObject<UScriptStruct>(FAngelscriptEngine::GetPackage(), *CompilerPipelineStructTest::GeneratedStructName.ToString());
-		if (!TestRunner->TestNotNull(TEXT("Annotated struct round-trip test should materialize a backing UScriptStruct"), GeneratedStruct))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(GeneratedStruct, TEXT("Annotated struct round-trip test should materialize a backing UScriptStruct")));
 
 		FIntProperty* ValueProperty = FindFProperty<FIntProperty>(GeneratedStruct, CompilerPipelineStructTest::ValuePropertyName);
-		TestRunner->TestNotNull(
-			TEXT("Annotated struct round-trip test should preserve the reflected Value property on the generated UScriptStruct"),
-			ValueProperty);
+		ASSERT_THAT(IsNotNull(
+			ValueProperty,
+			TEXT("Annotated struct round-trip test should preserve the reflected Value property on the generated UScriptStruct")));
 
 		}
 

@@ -59,17 +59,29 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKCallingConvTests,
 
 		const ASAutoCaller::FunctionCaller Caller = ASAutoCaller::MakeFunctionCaller(DoubleNativeValue);
 		const int RegisterResult = ScriptEngine->RegisterGlobalFunction("int DoubleNativeValue(int Value)", asFUNCTION(DoubleNativeValue), asCALL_CDECL, *(asFunctionCaller*)&Caller);
-		bCDeclRegistered = TestRunner->TestTrue(TEXT("SDK calling-convention CDecl test should register the native function"), RegisterResult >= 0);
+		bCDeclRegistered = RegisterResult >= 0;
+		if (!bCDeclRegistered)
+		{
+			TestRunner->AddError(TEXT("SDK calling-convention CDecl test should register the native function"));
+		}
 
 		const int GenericResult = ScriptEngine->RegisterGlobalFunction("int TripleGenericValue(int Value)", asFUNCTION(TripleGenericValue), asCALL_GENERIC);
-		bGenericRegistered = TestRunner->TestTrue(TEXT("SDK calling-convention generic test should register the generic function"), GenericResult >= 0);
+		bGenericRegistered = GenericResult >= 0;
+		if (!bGenericRegistered)
+		{
+			TestRunner->AddError(TEXT("SDK calling-convention generic test should register the generic function"));
+		}
 
 		const int TypeResult = ScriptEngine->RegisterObjectType("NativeAdder", sizeof(FNativeAdder), asOBJ_VALUE | asOBJ_POD | asGetTypeTraits<FNativeAdder>() | asOBJ_APP_CLASS_ALLINTS);
 		const ASAutoCaller::FunctionCaller ConstructCaller = ASAutoCaller::MakeFunctionCaller(ConstructNativeAdder);
 		const int ConstructResult = ScriptEngine->RegisterObjectBehaviour("NativeAdder", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(ConstructNativeAdder), asCALL_CDECL_OBJLAST, *(asFunctionCaller*)&ConstructCaller);
 		const int PropertyResult = ScriptEngine->RegisterObjectProperty("NativeAdder", "int Base", asOFFSET(FNativeAdder, Base));
 		const int MethodResult = ScriptEngine->RegisterObjectMethod("NativeAdder", "int Add(int Delta) const", asMETHODPR(FNativeAdder, Add, (int32) const, int32), asCALL_THISCALL);
-		bNativeAdderRegistered = TestRunner->TestTrue(TEXT("SDK calling-convention thiscall test should register the value type and method"), TypeResult >= 0 && ConstructResult >= 0 && PropertyResult >= 0 && MethodResult >= 0);
+		bNativeAdderRegistered = TypeResult >= 0 && ConstructResult >= 0 && PropertyResult >= 0 && MethodResult >= 0;
+		if (!bNativeAdderRegistered)
+		{
+			TestRunner->AddError(TEXT("SDK calling-convention thiscall test should register the value type and method"));
+		}
 	}
 
 	AFTER_ALL()
@@ -88,10 +100,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKCallingConvTests,
 	TEST_METHOD(CDecl)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK calling-convention CDecl test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK calling-convention CDecl test should create a standalone engine")));
 		if (!bCDeclRegistered)
 		{
 			return;
@@ -114,16 +123,13 @@ int Entry()
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("SDK calling-convention CDecl test should preserve native CDecl calls"), Result, 42);
+		ASSERT_THAT(AreEqual(42, Result, TEXT("SDK calling-convention CDecl test should preserve native CDecl calls")));
 	}
 
 	TEST_METHOD(Generic)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK calling-convention generic test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK calling-convention generic test should create a standalone engine")));
 		if (!bGenericRegistered)
 		{
 			return;
@@ -146,16 +152,13 @@ int Entry()
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("SDK calling-convention generic test should preserve generic callback execution"), Result, 42);
+		ASSERT_THAT(AreEqual(42, Result, TEXT("SDK calling-convention generic test should preserve generic callback execution")));
 	}
 
 	TEST_METHOD(Thiscall)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK calling-convention thiscall test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK calling-convention thiscall test should create a standalone engine")));
 		if (!bNativeAdderRegistered)
 		{
 			return;
@@ -178,7 +181,7 @@ int Entry()
 
 		// Verify the function exists in the compiled module.
 		asIScriptFunction* EntryFunc = GetNativeFunctionByDecl(Module, "int Entry()");
-		TestRunner->TestNotNull(TEXT("SDK calling-convention thiscall test should expose the compiled entry function"), EntryFunc);
+		ASSERT_THAT(IsNotNull(EntryFunc, TEXT("SDK calling-convention thiscall test should expose the compiled entry function")));
 	}
 };
 

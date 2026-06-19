@@ -63,8 +63,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKAtomicTest,
 	TEST_METHOD(InitZero)
 	{
 		asCAtomic Atomic;
-		TestEqual(TEXT("Default-constructed asCAtomic value should be 0"),
-			static_cast<int32>(Atomic.get()), 0);
+		ASSERT_THAT(AreEqual(
+			0,
+			static_cast<int32>(Atomic.get()),
+			TEXT("Default-constructed asCAtomic value should be 0")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -76,16 +78,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKAtomicTest,
 		asCAtomic Atomic;
 
 		Atomic.set(42);
-		TestEqual(TEXT("set(42) followed by get() should return 42"),
-			static_cast<int32>(Atomic.get()), 42);
+		ASSERT_THAT(AreEqual(
+			42,
+			static_cast<int32>(Atomic.get()),
+			TEXT("set(42) followed by get() should return 42")));
 
 		Atomic.set(0);
-		TestEqual(TEXT("set(0) followed by get() should return 0"),
-			static_cast<int32>(Atomic.get()), 0);
+		ASSERT_THAT(AreEqual(
+			0,
+			static_cast<int32>(Atomic.get()),
+			TEXT("set(0) followed by get() should return 0")));
 
 		Atomic.set(999);
-		TestEqual(TEXT("set(999) followed by get() should return 999"),
-			static_cast<int32>(Atomic.get()), 999);
+		ASSERT_THAT(AreEqual(
+			999,
+			static_cast<int32>(Atomic.get()),
+			TEXT("set(999) followed by get() should return 999")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -97,24 +105,36 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKAtomicTest,
 		asCAtomic Atomic;
 
 		const asDWORD After1 = Atomic.atomicInc();
-		TestEqual(TEXT("atomicInc from 0 should return 1"),
-			static_cast<int32>(After1), 1);
-		TestEqual(TEXT("get() after one atomicInc should be 1"),
-			static_cast<int32>(Atomic.get()), 1);
+		ASSERT_THAT(AreEqual(
+			1,
+			static_cast<int32>(After1),
+			TEXT("atomicInc from 0 should return 1")));
+		ASSERT_THAT(AreEqual(
+			1,
+			static_cast<int32>(Atomic.get()),
+			TEXT("get() after one atomicInc should be 1")));
 
 		const asDWORD After2 = Atomic.atomicInc();
-		TestEqual(TEXT("atomicInc from 1 should return 2"),
-			static_cast<int32>(After2), 2);
+		ASSERT_THAT(AreEqual(
+			2,
+			static_cast<int32>(After2),
+			TEXT("atomicInc from 1 should return 2")));
 
 		const asDWORD After3 = Atomic.atomicDec();
-		TestEqual(TEXT("atomicDec from 2 should return 1"),
-			static_cast<int32>(After3), 1);
+		ASSERT_THAT(AreEqual(
+			1,
+			static_cast<int32>(After3),
+			TEXT("atomicDec from 2 should return 1")));
 
 		const asDWORD After4 = Atomic.atomicDec();
-		TestEqual(TEXT("atomicDec from 1 should return 0"),
-			static_cast<int32>(After4), 0);
-		TestEqual(TEXT("get() after balanced inc/dec should be 0"),
-			static_cast<int32>(Atomic.get()), 0);
+		ASSERT_THAT(AreEqual(
+			0,
+			static_cast<int32>(After4),
+			TEXT("atomicDec from 1 should return 0")));
+		ASSERT_THAT(AreEqual(
+			0,
+			static_cast<int32>(Atomic.get()),
+			TEXT("get() after balanced inc/dec should be 0")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -149,9 +169,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKAtomicTest,
 			}
 		}
 
-		TestEqual(
-			TEXT("After balanced concurrent inc/dec across all threads, value should be 0"),
-			static_cast<int32>(Atomic.get()), 0);
+		ASSERT_THAT(AreEqual(
+			0,
+			static_cast<int32>(Atomic.get()),
+			TEXT("After balanced concurrent inc/dec across all threads, value should be 0")));
 	}
 };
 

@@ -66,15 +66,16 @@ namespace AngelscriptTest_InterfaceNativePointerOffset_Private
 		UObject* ReferencedObject,
 		const TCHAR* Context)
 	{
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should have a valid object"), Context), Object))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(Object, *FString::Printf(TEXT("%s should have a valid object"), Context)))
 		{
 			return false;
 		}
 
 		FObjectPropertyBase* Property = FindFProperty<FObjectPropertyBase>(Object->GetClass(), PropertyName);
-		if (!Test.TestNotNull(
-			*FString::Printf(TEXT("%s should expose object property '%s'"), Context, *PropertyName.ToString()),
-			Property))
+		if (!Assert.IsNotNull(
+			Property,
+			*FString::Printf(TEXT("%s should expose object property '%s'"), Context, *PropertyName.ToString())))
 		{
 			return false;
 		}
@@ -155,21 +156,15 @@ class ATestInterfaceNativePointerOffset : AActor
 }
 )AS"),
 			GeneratedClassName);
-		if (!TestRunner->TestNotNull(TEXT("ScriptClass should be valid"), ScriptClass))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("ScriptClass should be valid")));
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 
 		ATestNativeMultiInterfaceActor* NativeFixtureActor = Spawner.GetWorld().SpawnActor<ATestNativeMultiInterfaceActor>();
 		AActor* ScriptActor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Multi-interface native fixture actor should spawn"), NativeFixtureActor)
-			|| !TestRunner->TestNotNull(TEXT("Script actor should spawn"), ScriptActor))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(NativeFixtureActor, TEXT("Multi-interface native fixture actor should spawn")));
+		ASSERT_THAT(IsNotNull(ScriptActor, TEXT("Script actor should spawn")));
 
 		if (!SetObjectReferenceProperty(
 			*TestRunner,
@@ -195,13 +190,13 @@ class ATestInterfaceNativePointerOffset : AActor
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Script-side Cast<UAngelscriptNativeParentInterface> should succeed on multi-interface native actor"), bParentCastSucceeded, 1);
-		TestRunner->TestEqual(TEXT("Script-side Cast<UAngelscriptNativeSecondaryInterface> should succeed on multi-interface native actor"), bSecondaryCastSucceeded, 1);
-		TestRunner->TestEqual(TEXT("Parent interface method dispatch returns the correct C++ field"), ParentReadValue, 777);
-		TestRunner->TestEqual(TEXT("Secondary interface method dispatch returns the correct C++ field"), SecondaryReadValue, 4242);
+		ASSERT_THAT(AreEqual(1, bParentCastSucceeded, TEXT("Script-side Cast<UAngelscriptNativeParentInterface> should succeed on multi-interface native actor")));
+		ASSERT_THAT(AreEqual(1, bSecondaryCastSucceeded, TEXT("Script-side Cast<UAngelscriptNativeSecondaryInterface> should succeed on multi-interface native actor")));
+		ASSERT_THAT(AreEqual(777, ParentReadValue, TEXT("Parent interface method dispatch returns the correct C++ field")));
+		ASSERT_THAT(AreEqual(4242, SecondaryReadValue, TEXT("Secondary interface method dispatch returns the correct C++ field")));
 
-		TestRunner->TestEqual(TEXT("Parent interface setter writes the correct C++ backing field"), NativeFixtureActor->NativeMarker, FName(TEXT("FromParent")));
-		TestRunner->TestEqual(TEXT("Secondary interface setter writes the distinct C++ backing field"), NativeFixtureActor->SecondaryLabel, FString(TEXT("FromSecondary")));
+		ASSERT_THAT(AreEqual(FName(TEXT("FromParent")), NativeFixtureActor->NativeMarker, TEXT("Parent interface setter writes the correct C++ backing field")));
+		ASSERT_THAT(AreEqual(FString(TEXT("FromSecondary")), NativeFixtureActor->SecondaryLabel, TEXT("Secondary interface setter writes the distinct C++ backing field")));
 	}
 
 	TEST_METHOD(ScriptClassStillZeroOffset)
@@ -273,18 +268,12 @@ class ATestInterfaceNativePointerOffsetScriptZero : AActor, UAngelscriptNativePa
 }
 )AS"),
 			TEXT("ATestInterfaceNativePointerOffsetScriptZero"));
-		if (!TestRunner->TestNotNull(TEXT("ScriptClass should be valid"), ScriptClass))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("ScriptClass should be valid")));
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should be valid"), Actor))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Actor should be valid")));
 
 		BeginPlayActor(Engine, *Actor);
 
@@ -299,9 +288,9 @@ class ATestInterfaceNativePointerOffsetScriptZero : AActor, UAngelscriptNativePa
 		}
 		const FImplementedInterface* ImplementedEntry = Actor->GetClass()->Interfaces.FindByPredicate(
 			[ImplementedInterface](const FImplementedInterface& Entry) { return Entry.Class == ImplementedInterface; });
-		if (TestRunner->TestNotNull(TEXT("Implemented interface entry should exist on the script class"), ImplementedEntry))
+		if (this->Assert.IsNotNull(ImplementedEntry, TEXT("Implemented interface entry should exist on the script class")))
 		{
-			TestRunner->TestEqual(TEXT("Script-implemented interface must keep PointerOffset == 0"), ImplementedEntry->PointerOffset, 0);
+			ASSERT_THAT(AreEqual(0, ImplementedEntry->PointerOffset, TEXT("Script-implemented interface must keep PointerOffset == 0")));
 		}
 
 		int32 bSelfCastSucceeded = 0;
@@ -312,15 +301,15 @@ class ATestInterfaceNativePointerOffsetScriptZero : AActor, UAngelscriptNativePa
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Script-implemented interface cast should still succeed after Phase 2"), bSelfCastSucceeded, 1);
-		TestRunner->TestEqual(TEXT("Script-implemented interface dispatch should still return the script field"), DispatchedValue, 321);
+		ASSERT_THAT(AreEqual(1, bSelfCastSucceeded, TEXT("Script-implemented interface cast should still succeed after Phase 2")));
+		ASSERT_THAT(AreEqual(321, DispatchedValue, TEXT("Script-implemented interface dispatch should still return the script field")));
 
 		FName NativeMarker = NAME_None;
 		if (!ReadPropertyValue<FNameProperty>(*TestRunner, Actor, TEXT("NativeMarker"), NativeMarker))
 		{
 			return;
 		}
-		TestRunner->TestEqual(TEXT("Script-implemented interface setter should still route through the script implementation"), NativeMarker, FName(TEXT("FromSelf")));
+		ASSERT_THAT(AreEqual(FName(TEXT("FromSelf")), NativeMarker, TEXT("Script-implemented interface setter should still route through the script implementation")));
 	}
 };
 

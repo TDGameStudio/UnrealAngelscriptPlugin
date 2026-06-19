@@ -42,26 +42,26 @@ class UFunctionalAnimNotify_ScriptEffect : UAnimNotify
 			TEXT("UFunctionalAnimNotify_ScriptEffect"));
 		if (NotifyClass == nullptr) { return; }
 
-		TestRunner->TestTrue(
-			TEXT("UFunctionalAnimNotify_ScriptEffect should derive from UAnimNotify"),
-			NotifyClass->IsChildOf(UAnimNotify::StaticClass()));
+		ASSERT_THAT(IsTrue(
+			NotifyClass->IsChildOf(UAnimNotify::StaticClass()),
+			TEXT("UFunctionalAnimNotify_ScriptEffect should derive from UAnimNotify")));
 
 		FNameProperty* EffectTagProp = FindFProperty<FNameProperty>(NotifyClass, TEXT("EffectTag"));
-		if (TestRunner->TestNotNull(TEXT("EffectTag FNameProperty should be registered"), EffectTagProp))
+		if (this->Assert.IsNotNull(EffectTagProp, TEXT("EffectTag FNameProperty should be registered")))
 		{
 			UObject* CDO = NotifyClass->GetDefaultObject();
-			if (TestRunner->TestNotNull(TEXT("UFunctionalAnimNotify_ScriptEffect should have a valid CDO"), CDO))
+			if (this->Assert.IsNotNull(CDO, TEXT("UFunctionalAnimNotify_ScriptEffect should have a valid CDO")))
 			{
-				TestRunner->TestEqual(
-					TEXT("EffectTag CDO default should be the n\"Default\" literal"),
+				ASSERT_THAT(AreEqual(
+					FName(TEXT("Default")),
 					EffectTagProp->GetPropertyValue_InContainer(CDO),
-					FName(TEXT("Default")));
+					TEXT("EffectTag CDO default should be the n\"Default\" literal")));
 			}
 		}
 
 		// AngelscriptSettings::bScriptFloatIsFloat64 defaults to true, so AS 'float' lowers to FDoubleProperty.
 		FDoubleProperty* EffectStrengthProp = FindFProperty<FDoubleProperty>(NotifyClass, TEXT("EffectStrength"));
-		TestRunner->TestNotNull(TEXT("EffectStrength FDoubleProperty should be registered"), EffectStrengthProp);
+		ASSERT_THAT(IsNotNull(EffectStrengthProp, TEXT("EffectStrength FDoubleProperty should be registered")));
 	}
 };
 

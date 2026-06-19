@@ -27,18 +27,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTypeRegistryTests,
 
 		const FString AliasName = TEXT("ScoreAlias");
 		FProperty* StoredValueProperty = UAngelscriptUhtCoverageTestObject::StaticClass()->FindPropertyByName(TEXT("StoredValue"));
-		if (!TestRunner->TestNotNull(
-				TEXT("Type registry alias/property-finder test should find UAngelscriptUhtCoverageTestObject::StoredValue"),
-				StoredValueProperty))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(StoredValueProperty,
+			TEXT("Type registry alias/property-finder test should find UAngelscriptUhtCoverageTestObject::StoredValue")));
 
 		const TSharedPtr<FAngelscriptType> IntType = FAngelscriptType::GetByAngelscriptTypeName(TEXT("int"));
-		if (!TestRunner->TestNotNull(TEXT("Type registry alias/property-finder test should resolve the baseline int type"), IntType.Get()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(IntType.Get(),
+			TEXT("Type registry alias/property-finder test should resolve the baseline int type")));
 
 		FAngelscriptType::RegisterAlias(AliasName, IntType.ToSharedRef());
 
@@ -68,40 +62,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTypeRegistryTests,
 		const FAngelscriptTypeUsage UsageFromProperty = FAngelscriptTypeUsage::FromProperty(StoredValueProperty);
 		const int32 FinderCallsAfterUsageLookup = FinderCallCount;
 
-		TestRunner->TestTrue(
-			TEXT("RegisterAlias should resolve the alias name to the baseline int type"),
-			AliasType.Get() == IntType.Get());
-		TestRunner->TestTrue(
-			TEXT("GetByProperty(..., false) should keep using the built-in reflected-property fallback"),
-			FallbackPropertyType.Get() == IntType.Get());
-		TestRunner->TestEqual(
-			TEXT("GetByProperty(..., false) should not invoke registered type finders"),
-			FinderCallsAfterFallbackLookup,
-			0);
-		TestRunner->TestTrue(
-			TEXT("GetByProperty(..., true) should resolve the alias-backed finder result"),
-			FinderPropertyType.Get() == IntType.Get());
-		TestRunner->TestEqual(
-			TEXT("GetByProperty(..., true) should invoke the registered type finder once"),
-			FinderCallsAfterFinderLookup,
-			1);
-		TestRunner->TestTrue(
-			TEXT("FromProperty should preserve the alias-backed finder result as a valid usage"),
-			UsageFromProperty.IsValid() && UsageFromProperty.Type.Get() == IntType.Get());
-		TestRunner->TestEqual(
-			TEXT("FromProperty should query the registered type finder exactly once"),
-			FinderCallsAfterUsageLookup,
-			1);
-		TestRunner->TestFalse(
-			TEXT("FromProperty should not add const qualifiers for a plain reflected int property"),
-			UsageFromProperty.bIsConst);
-		TestRunner->TestFalse(
-			TEXT("FromProperty should not add reference qualifiers for a plain reflected int property"),
-			UsageFromProperty.bIsReference);
-		TestRunner->TestEqual(
-			TEXT("FromProperty should still render the baseline int declaration"),
-			UsageFromProperty.GetAngelscriptDeclaration(),
-			TEXT("int"));
+		ASSERT_THAT(IsTrue(AliasType.Get() == IntType.Get(),
+			TEXT("RegisterAlias should resolve the alias name to the baseline int type")));
+		ASSERT_THAT(IsTrue(FallbackPropertyType.Get() == IntType.Get(),
+			TEXT("GetByProperty(..., false) should keep using the built-in reflected-property fallback")));
+		ASSERT_THAT(AreEqual(0, FinderCallsAfterFallbackLookup,
+			TEXT("GetByProperty(..., false) should not invoke registered type finders")));
+		ASSERT_THAT(IsTrue(FinderPropertyType.Get() == IntType.Get(),
+			TEXT("GetByProperty(..., true) should resolve the alias-backed finder result")));
+		ASSERT_THAT(AreEqual(1, FinderCallsAfterFinderLookup,
+			TEXT("GetByProperty(..., true) should invoke the registered type finder once")));
+		ASSERT_THAT(IsTrue(UsageFromProperty.IsValid() && UsageFromProperty.Type.Get() == IntType.Get(),
+			TEXT("FromProperty should preserve the alias-backed finder result as a valid usage")));
+		ASSERT_THAT(AreEqual(1, FinderCallsAfterUsageLookup,
+			TEXT("FromProperty should query the registered type finder exactly once")));
+		ASSERT_THAT(IsFalse(UsageFromProperty.bIsConst,
+			TEXT("FromProperty should not add const qualifiers for a plain reflected int property")));
+		ASSERT_THAT(IsFalse(UsageFromProperty.bIsReference,
+			TEXT("FromProperty should not add reference qualifiers for a plain reflected int property")));
+		ASSERT_THAT(AreEqual(FString(TEXT("int")), UsageFromProperty.GetAngelscriptDeclaration(),
+			TEXT("FromProperty should still render the baseline int declaration")));
 
 		}
 	}

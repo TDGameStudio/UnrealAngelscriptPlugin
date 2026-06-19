@@ -166,7 +166,7 @@ namespace
 		return Snapshot;
 	}
 
-	bool RegisterGCProbeType(FAutomationTestBase& Test, asIScriptEngine& ScriptEngine, asITypeInfo*& OutType)
+	bool RegisterGCProbeType(FNoDiscardAsserter& Assert, asIScriptEngine& ScriptEngine, asITypeInfo*& OutType)
 	{
 		GGCProbeScriptEngine = &ScriptEngine;
 		OutType = ScriptEngine.GetTypeInfoByName("GCProbeObject");
@@ -176,7 +176,8 @@ namespace
 		}
 
 		const int RegisterTypeResult = ScriptEngine.RegisterObjectType("GCProbeObject", 0, asOBJ_REF | asOBJ_GC);
-		if (!Test.TestTrue(TEXT("GC probe object type should register successfully"), RegisterTypeResult >= 0 || RegisterTypeResult == asALREADY_REGISTERED))
+		if (!Assert.IsTrue(RegisterTypeResult >= 0 || RegisterTypeResult == asALREADY_REGISTERED,
+			TEXT("GC probe object type should register successfully")))
 		{
 			return false;
 		}
@@ -189,13 +190,13 @@ namespace
 			ScriptEngine.RegisterObjectBehaviour("GCProbeObject", asBEHAVE_GETGCFLAG, "bool f()", asFUNCTION(GCProbeGetGCFlag), asCALL_CDECL_OBJFIRST) >= 0 &&
 			ScriptEngine.RegisterObjectBehaviour("GCProbeObject", asBEHAVE_ENUMREFS, "void f(int&in gcCycle)" , asFUNCTION(GCProbeEnumReferences), asCALL_CDECL_OBJFIRST) >= 0 &&
 			ScriptEngine.RegisterObjectBehaviour("GCProbeObject", asBEHAVE_RELEASEREFS, "void f(int&in gcCycle)", asFUNCTION(GCProbeReleaseAllReferences), asCALL_CDECL_OBJFIRST) >= 0;
-		if (!Test.TestTrue(TEXT("GC probe object should register all GC behaviours"), bBehavioursRegistered))
+		if (!Assert.IsTrue(bBehavioursRegistered, TEXT("GC probe object should register all GC behaviours")))
 		{
 			return false;
 		}
 
 		OutType = ScriptEngine.GetTypeInfoByName("GCProbeObject");
-		return Test.TestNotNull(TEXT("GC probe object should be visible through the type system"), OutType);
+		return Assert.IsNotNull(OutType, TEXT("GC probe object should be visible through the type system"));
 	}
 
 	FGCProbeObject* CreateSelfCycle(asIScriptEngine& ScriptEngine, asITypeInfo& Type)
@@ -250,11 +251,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGCInternalTests,
 		asUINT TotalNewDestroyed = MAX_uint32;
 		Collector.GetStatistics(&CurrentSize, &TotalDestroyed, &TotalDetected, &NewObjects, &TotalNewDestroyed);
 
-		TestRunner->TestEqual(TEXT("Fresh GC collector should start with zero tracked objects"), CurrentSize, 0u);
-		TestRunner->TestEqual(TEXT("Fresh GC collector should start with zero destroyed objects"), TotalDestroyed, 0u);
-		TestRunner->TestEqual(TEXT("Fresh GC collector should start with zero detected cycles"), TotalDetected, 0u);
-		TestRunner->TestEqual(TEXT("Fresh GC collector should start with zero new objects"), NewObjects, 0u);
-		TestRunner->TestEqual(TEXT("Fresh GC collector should start with zero newly destroyed objects"), TotalNewDestroyed, 0u);
+		ASSERT_THAT(AreEqual(0u, CurrentSize,
+			TEXT("Fresh GC collector should start with zero tracked objects")));
+		ASSERT_THAT(AreEqual(0u, TotalDestroyed,
+			TEXT("Fresh GC collector should start with zero destroyed objects")));
+		ASSERT_THAT(AreEqual(0u, TotalDetected,
+			TEXT("Fresh GC collector should start with zero detected cycles")));
+		ASSERT_THAT(AreEqual(0u, NewObjects,
+			TEXT("Fresh GC collector should start with zero new objects")));
+		ASSERT_THAT(AreEqual(0u, TotalNewDestroyed,
+			TEXT("Fresh GC collector should start with zero newly destroyed objects")));
 		}
 	}
 
@@ -266,7 +272,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGCInternalTests,
 		Collector.engine = static_cast<asCScriptEngine*>(Engine.GetScriptEngine());
 
 		const int Result = Collector.GarbageCollect(asGC_FULL_CYCLE, 1);
-		TestRunner->TestEqual(TEXT("GC full cycle on an empty collector should complete immediately"), Result, 0);
+		ASSERT_THAT(AreEqual(0, Result,
+			TEXT("GC full cycle on an empty collector should complete immediately")));
 		}
 	}
 
@@ -282,10 +289,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGCInternalTests,
 		asITypeInfo* Type = reinterpret_cast<asITypeInfo*>(0x1);
 		const int Result = Collector.GetObjectInGC(0, &SeqNbr, &Object, &Type);
 
-		TestRunner->TestEqual(TEXT("GetObjectInGC should reject out-of-range lookups on an empty collector"), Result, asINVALID_ARG);
-		TestRunner->TestEqual(TEXT("GetObjectInGC should zero the sequence number on failure"), SeqNbr, 0u);
-		TestRunner->TestEqual(TEXT("GetObjectInGC should null the object pointer on failure"), Object, static_cast<void*>(nullptr));
-		TestRunner->TestEqual(TEXT("GetObjectInGC should null the type pointer on failure"), Type, static_cast<asITypeInfo*>(nullptr));
+		ASSERT_THAT(AreEqual(asINVALID_ARG, Result,
+			TEXT("GetObjectInGC should reject out-of-range lookups on an empty collector")));
+		ASSERT_THAT(AreEqual(0u, SeqNbr,
+			TEXT("GetObjectInGC should zero the sequence number on failure")));
+		ASSERT_THAT(AreEqual(static_cast<void*>(nullptr), Object,
+			TEXT("GetObjectInGC should null the object pointer on failure")));
+		ASSERT_THAT(AreEqual(static_cast<asITypeInfo*>(nullptr), Type,
+			TEXT("GetObjectInGC should null the type pointer on failure")));
 		}
 	}
 
@@ -297,7 +308,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGCInternalTests,
 		Collector.engine = static_cast<asCScriptEngine*>(Engine.GetScriptEngine());
 
 		const int Result = Collector.ReportAndReleaseUndestroyedObjects();
-		TestRunner->TestEqual(TEXT("ReportAndReleaseUndestroyedObjects should return zero when no objects are tracked"), Result, 0);
+		ASSERT_THAT(AreEqual(0, Result,
+			TEXT("ReportAndReleaseUndestroyedObjects should return zero when no objects are tracked")));
 		}
 	}
 
@@ -307,30 +319,29 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGCInternalTests,
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
 		asITypeInfo* GCProbeType = nullptr;
-		if (!RegisterGCProbeType(*TestRunner, *ScriptEngine, GCProbeType))
+		if (!RegisterGCProbeType(this->Assert, *ScriptEngine, GCProbeType))
 		{
 			return;
 		}
 
 		FGCProbeObject::LiveCount = 0;
 		FGCProbeObject* Node = CreateSelfCycle(*ScriptEngine, *GCProbeType);
-		if (!TestRunner->TestNotNull(TEXT("Manual GC cycle test should create a self-referencing probe object"), Node))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Node,
+			TEXT("Manual GC cycle test should create a self-referencing probe object")));
 
 		const FGCStatisticsSnapshot BeforeRelease = GetGCStatisticsSnapshot(*ScriptEngine);
 		Node->Release();
 
-		if (!TestRunner->TestTrue(TEXT("Manual GC cycle test should finish a full collection pass"), RunFullGarbageCollection(*ScriptEngine)))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(RunFullGarbageCollection(*ScriptEngine),
+			TEXT("Manual GC cycle test should finish a full collection pass")));
 
 		const FGCStatisticsSnapshot AfterCollect = GetGCStatisticsSnapshot(*ScriptEngine);
-		TestRunner->TestTrue(TEXT("Manual GC should destroy at least one released cyclic object"), AfterCollect.TotalDestroyed > BeforeRelease.TotalDestroyed);
-		TestRunner->TestTrue(TEXT("Manual GC should not increase the number of tracked objects after collecting a released cycle"), AfterCollect.CurrentSize <= BeforeRelease.CurrentSize);
-		TestRunner->TestEqual(TEXT("Manual GC should leave no probe objects alive after collecting a self-cycle"), FGCProbeObject::LiveCount, 0);
+		ASSERT_THAT(IsTrue(AfterCollect.TotalDestroyed > BeforeRelease.TotalDestroyed,
+			TEXT("Manual GC should destroy at least one released cyclic object")));
+		ASSERT_THAT(IsTrue(AfterCollect.CurrentSize <= BeforeRelease.CurrentSize,
+			TEXT("Manual GC should not increase the number of tracked objects after collecting a released cycle")));
+		ASSERT_THAT(AreEqual(0, FGCProbeObject::LiveCount,
+			TEXT("Manual GC should leave no probe objects alive after collecting a self-cycle")));
 		}
 	}
 
@@ -340,38 +351,36 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGCInternalTests,
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
 		asITypeInfo* GCProbeType = nullptr;
-		if (!RegisterGCProbeType(*TestRunner, *ScriptEngine, GCProbeType))
+		if (!RegisterGCProbeType(this->Assert, *ScriptEngine, GCProbeType))
 		{
 			return;
 		}
 
 		FGCProbeObject::LiveCount = 0;
 		FGCProbeObject* Root = CreateSelfCycle(*ScriptEngine, *GCProbeType);
-		if (!TestRunner->TestNotNull(TEXT("GC cycle detection test should create a self cycle"), Root))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Root,
+			TEXT("GC cycle detection test should create a self cycle")));
 
 		const FGCStatisticsSnapshot BeforeRelease = GetGCStatisticsSnapshot(*ScriptEngine);
 		Root->Release();
 
-		if (!TestRunner->TestEqual(TEXT("GC cycle detection should accept a detect-only full cycle"), ScriptEngine->GarbageCollect(asGC_FULL_CYCLE | asGC_DETECT_GARBAGE, 1), 0))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(0, ScriptEngine->GarbageCollect(asGC_FULL_CYCLE | asGC_DETECT_GARBAGE, 1),
+			TEXT("GC cycle detection should accept a detect-only full cycle")));
 
 		const FGCStatisticsSnapshot AfterDetect = GetGCStatisticsSnapshot(*ScriptEngine);
-		TestRunner->TestTrue(TEXT("GC should detect at least one cyclic object after releasing a self-cycle"), AfterDetect.TotalDetected >= BeforeRelease.TotalDetected + 1);
-		TestRunner->TestTrue(TEXT("Detect-only GC should keep the cyclic object tracked until destroy runs"), AfterDetect.CurrentSize >= 1);
+		ASSERT_THAT(IsTrue(AfterDetect.TotalDetected >= BeforeRelease.TotalDetected + 1,
+			TEXT("GC should detect at least one cyclic object after releasing a self-cycle")));
+		ASSERT_THAT(IsTrue(AfterDetect.CurrentSize >= 1,
+			TEXT("Detect-only GC should keep the cyclic object tracked until destroy runs")));
 
-		if (!TestRunner->TestTrue(TEXT("GC cycle detection test should complete subsequent collection passes"), RunFullGarbageCollection(*ScriptEngine)))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(RunFullGarbageCollection(*ScriptEngine),
+			TEXT("GC cycle detection test should complete subsequent collection passes")));
 
 		const FGCStatisticsSnapshot AfterCollect = GetGCStatisticsSnapshot(*ScriptEngine);
-		TestRunner->TestTrue(TEXT("GC should eventually destroy the detected cycle"), AfterCollect.TotalDestroyed >= AfterDetect.TotalDestroyed);
-		TestRunner->TestEqual(TEXT("GC should leave no probe objects alive after collecting the detected self-cycle"), FGCProbeObject::LiveCount, 0);
+		ASSERT_THAT(IsTrue(AfterCollect.TotalDestroyed >= AfterDetect.TotalDestroyed,
+			TEXT("GC should eventually destroy the detected cycle")));
+		ASSERT_THAT(AreEqual(0, FGCProbeObject::LiveCount,
+			TEXT("GC should leave no probe objects alive after collecting the detected self-cycle")));
 		}
 	}
 
@@ -381,49 +390,48 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGCInternalTests,
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
 		asITypeInfo* GCProbeType = nullptr;
-		if (!RegisterGCProbeType(*TestRunner, *ScriptEngine, GCProbeType))
+		if (!RegisterGCProbeType(this->Assert, *ScriptEngine, GCProbeType))
 		{
 			return;
 		}
 
 		FGCProbeObject::LiveCount = 0;
 		FGCProbeObject* Root = CreateTwoNodeCycle(*ScriptEngine, *GCProbeType);
-		if (!TestRunner->TestNotNull(TEXT("GC two-node cycle collection test should create the root probe object"), Root))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Root,
+			TEXT("GC two-node cycle collection test should create the root probe object")));
 
 		FGCProbeObject* Peer = Root->Peer;
-		if (!TestRunner->TestNotNull(TEXT("GC two-node cycle collection test should create the peer probe object"), Peer))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Peer,
+			TEXT("GC two-node cycle collection test should create the peer probe object")));
 
-		TestRunner->TestNotEqual(TEXT("GC two-node cycle collection test should build two distinct probe objects"), Root, Peer);
-		TestRunner->TestEqual(TEXT("GC two-node cycle collection test should start with two live probe objects"), FGCProbeObject::LiveCount, 2);
+		ASSERT_THAT(AreNotEqual(Root, Peer,
+			TEXT("GC two-node cycle collection test should build two distinct probe objects")));
+		ASSERT_THAT(AreEqual(2, FGCProbeObject::LiveCount,
+			TEXT("GC two-node cycle collection test should start with two live probe objects")));
 
 		const FGCStatisticsSnapshot BeforeRelease = GetGCStatisticsSnapshot(*ScriptEngine);
 		Root->Release();
 		Peer->Release();
 
-		if (!TestRunner->TestEqual(TEXT("GC two-node cycle detection should accept a detect-only full cycle"), ScriptEngine->GarbageCollect(asGC_FULL_CYCLE | asGC_DETECT_GARBAGE, 1), 0))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(0, ScriptEngine->GarbageCollect(asGC_FULL_CYCLE | asGC_DETECT_GARBAGE, 1),
+			TEXT("GC two-node cycle detection should accept a detect-only full cycle")));
 
 		const FGCStatisticsSnapshot AfterDetect = GetGCStatisticsSnapshot(*ScriptEngine);
-		TestRunner->TestTrue(TEXT("GC should detect at least one released two-node cycle"), AfterDetect.TotalDetected >= BeforeRelease.TotalDetected + 1);
-		TestRunner->TestTrue(TEXT("Detect-only GC should keep both released cyclic objects tracked until destroy runs"), AfterDetect.CurrentSize >= BeforeRelease.CurrentSize);
+		ASSERT_THAT(IsTrue(AfterDetect.TotalDetected >= BeforeRelease.TotalDetected + 1,
+			TEXT("GC should detect at least one released two-node cycle")));
+		ASSERT_THAT(IsTrue(AfterDetect.CurrentSize >= BeforeRelease.CurrentSize,
+			TEXT("Detect-only GC should keep both released cyclic objects tracked until destroy runs")));
 
-		if (!TestRunner->TestTrue(TEXT("GC two-node cycle collection test should complete subsequent collection passes"), RunFullGarbageCollection(*ScriptEngine)))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(RunFullGarbageCollection(*ScriptEngine),
+			TEXT("GC two-node cycle collection test should complete subsequent collection passes")));
 
 		const FGCStatisticsSnapshot AfterCollect = GetGCStatisticsSnapshot(*ScriptEngine);
-		TestRunner->TestTrue(TEXT("GC should destroy released two-node cycle objects during full collection"), AfterCollect.TotalDestroyed > AfterDetect.TotalDestroyed);
-		TestRunner->TestTrue(TEXT("Full collection should remove both released cyclic probe objects from GC tracking"), AfterDetect.CurrentSize >= AfterCollect.CurrentSize + 2);
-		TestRunner->TestEqual(TEXT("GC should leave no probe objects alive after collecting the detected two-node cycle"), FGCProbeObject::LiveCount, 0);
+		ASSERT_THAT(IsTrue(AfterCollect.TotalDestroyed > AfterDetect.TotalDestroyed,
+			TEXT("GC should destroy released two-node cycle objects during full collection")));
+		ASSERT_THAT(IsTrue(AfterDetect.CurrentSize >= AfterCollect.CurrentSize + 2,
+			TEXT("Full collection should remove both released cyclic probe objects from GC tracking")));
+		ASSERT_THAT(AreEqual(0, FGCProbeObject::LiveCount,
+			TEXT("GC should leave no probe objects alive after collecting the detected two-node cycle")));
 		}
 	}
 };

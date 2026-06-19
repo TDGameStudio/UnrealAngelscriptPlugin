@@ -11,6 +11,32 @@ using namespace AngelscriptFunctionalTestUtils;
 
 namespace AngelscriptTest_ClassGenerator_AngelscriptASClassComponentMetadataTests_Private
 {
+	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsTrue(bActual, Message);
+	}
+
+	static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsFalse(bActual, Message);
+	}
+
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.AreEqual(Expected, Actual, Message);
+	}
+
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsNotNull(Value, Message);
+	}
+
 	static const FName ASClassComponentMetadataModuleName(TEXT("ASClassComponentMetadata"));
 	static const FString ASClassComponentMetadataFilename(TEXT("ASClassComponentMetadata.as"));
 	static const FName ASClassComponentMetadataDerivedClassName(TEXT("AMetadataDerivedActor"));
@@ -178,34 +204,34 @@ class AMetadataDerivedActor : AMetadataBaseActor
 		UClass* RootComponentClass = FindGeneratedClass(&Engine, TEXT("UMetadataRootComponent"));
 		UClass* BillboardComponentClass = FindGeneratedClass(&Engine, TEXT("UMetadataBillboardComponent"));
 		UClass* ReplacementBillboardComponentClass = FindGeneratedClass(&Engine, TEXT("UMetadataReplacementBillboardComponent"));
-		if (!TestRunner->TestNotNull(TEXT("ASClass component metadata test should resolve the generated base actor class"), BaseActorClass)
-			|| !TestRunner->TestNotNull(TEXT("ASClass component metadata test should compile the derived actor to a UASClass"), DerivedASClass)
-			|| !TestRunner->TestNotNull(TEXT("ASClass component metadata test should resolve the generated root component class"), RootComponentClass)
-			|| !TestRunner->TestNotNull(TEXT("ASClass component metadata test should resolve the generated billboard component class"), BillboardComponentClass)
-			|| !TestRunner->TestNotNull(TEXT("ASClass component metadata test should resolve the generated replacement component class"), ReplacementBillboardComponentClass))
+		if (!CheckNotNull(*TestRunner, TEXT("ASClass component metadata test should resolve the generated base actor class"), BaseActorClass)
+			|| !CheckNotNull(*TestRunner, TEXT("ASClass component metadata test should compile the derived actor to a UASClass"), DerivedASClass)
+			|| !CheckNotNull(*TestRunner, TEXT("ASClass component metadata test should resolve the generated root component class"), RootComponentClass)
+			|| !CheckNotNull(*TestRunner, TEXT("ASClass component metadata test should resolve the generated billboard component class"), BillboardComponentClass)
+			|| !CheckNotNull(*TestRunner, TEXT("ASClass component metadata test should resolve the generated replacement component class"), ReplacementBillboardComponentClass))
 		{ return; }
 
 		const UASClass::FDefaultComponent* RootEntry = FindDefaultComponentEntryByName(BaseActorClass, ASClassRootComponentName);
 		const UASClass::FDefaultComponent* BillboardEntry = FindDefaultComponentEntryByName(BaseActorClass, ASClassBillboardComponentName);
 		const UASClass::FOverrideComponent* OverrideEntry = FindOverrideComponentEntryByVariableName(DerivedASClass, ASClassOverrideVariableName);
 
-		TestRunner->TestEqual(TEXT("ASClass component metadata test should record exactly two default components on the base class"), BaseActorClass->DefaultComponents.Num(), 2);
-		TestRunner->TestEqual(TEXT("ASClass component metadata test should record exactly one override component on the derived class"), DerivedASClass->OverrideComponents.Num(), 1);
+		ASSERT_THAT(AreEqual(2, BaseActorClass->DefaultComponents.Num(), TEXT("ASClass component metadata test should record exactly two default components on the base class")));
+		ASSERT_THAT(AreEqual(1, DerivedASClass->OverrideComponents.Num(), TEXT("ASClass component metadata test should record exactly one override component on the derived class")));
 
-		if (!TestRunner->TestNotNull(TEXT("ASClass component metadata test should record a root-scene default component entry"), RootEntry)
-			|| !TestRunner->TestNotNull(TEXT("ASClass component metadata test should record a billboard default component entry"), BillboardEntry)
-			|| !TestRunner->TestNotNull(TEXT("ASClass component metadata test should record the derived override entry"), OverrideEntry))
+		if (!CheckNotNull(*TestRunner, TEXT("ASClass component metadata test should record a root-scene default component entry"), RootEntry)
+			|| !CheckNotNull(*TestRunner, TEXT("ASClass component metadata test should record a billboard default component entry"), BillboardEntry)
+			|| !CheckNotNull(*TestRunner, TEXT("ASClass component metadata test should record the derived override entry"), OverrideEntry))
 		{ return; }
 
-		TestRunner->TestTrue(TEXT("ASClass component metadata test should mark RootScene as the root component"), RootEntry->bIsRoot);
-		TestRunner->TestTrue(TEXT("ASClass component metadata test should keep RootScene unattached"), RootEntry->Attach.IsNone());
-		TestRunner->TestTrue(TEXT("ASClass component metadata test should preserve the generated root component class"), RootEntry->ComponentClass == RootComponentClass);
-		TestRunner->TestFalse(TEXT("ASClass component metadata test should keep Billboard out of the root slot"), BillboardEntry->bIsRoot);
-		TestRunner->TestEqual(TEXT("ASClass component metadata test should attach Billboard to RootScene"), BillboardEntry->Attach, ASClassRootComponentName);
-		TestRunner->TestTrue(TEXT("ASClass component metadata test should preserve the generated billboard component class"), BillboardEntry->ComponentClass == BillboardComponentClass);
-		TestRunner->TestEqual(TEXT("ASClass component metadata test should record which base component gets overridden"), OverrideEntry->OverrideComponentName, ASClassBillboardComponentName);
-		TestRunner->TestEqual(TEXT("ASClass component metadata test should record the overriding property name"), OverrideEntry->VariableName, ASClassOverrideVariableName);
-		TestRunner->TestTrue(TEXT("ASClass component metadata test should preserve the generated override component class"), OverrideEntry->ComponentClass == ReplacementBillboardComponentClass);
+		ASSERT_THAT(IsTrue(RootEntry->bIsRoot, TEXT("ASClass component metadata test should mark RootScene as the root component")));
+		ASSERT_THAT(IsTrue(RootEntry->Attach.IsNone(), TEXT("ASClass component metadata test should keep RootScene unattached")));
+		ASSERT_THAT(IsTrue(RootEntry->ComponentClass == RootComponentClass, TEXT("ASClass component metadata test should preserve the generated root component class")));
+		ASSERT_THAT(IsFalse(BillboardEntry->bIsRoot, TEXT("ASClass component metadata test should keep Billboard out of the root slot")));
+		ASSERT_THAT(AreEqual(ASClassRootComponentName, BillboardEntry->Attach, TEXT("ASClass component metadata test should attach Billboard to RootScene")));
+		ASSERT_THAT(IsTrue(BillboardEntry->ComponentClass == BillboardComponentClass, TEXT("ASClass component metadata test should preserve the generated billboard component class")));
+		ASSERT_THAT(AreEqual(ASClassBillboardComponentName, OverrideEntry->OverrideComponentName, TEXT("ASClass component metadata test should record which base component gets overridden")));
+		ASSERT_THAT(AreEqual(ASClassOverrideVariableName, OverrideEntry->VariableName, TEXT("ASClass component metadata test should record the overriding property name")));
+		ASSERT_THAT(IsTrue(OverrideEntry->ComponentClass == ReplacementBillboardComponentClass, TEXT("ASClass component metadata test should preserve the generated override component class")));
 		}
 	}
 
@@ -269,74 +295,78 @@ class ASoftMetadataDerivedActor : ASoftMetadataBaseActor
 		UASClass* InitialDerivedASClass = Cast<UASClass>(InitialDerivedClass);
 		UClass* InitialRootComponentClass = FindGeneratedClass(&Engine, ASClassSoftReloadRootComponentClassName);
 		UClass* InitialReplacementComponentClass = FindGeneratedClass(&Engine, ASClassSoftReloadReplacementComponentClassName);
-		if (!TestRunner->TestNotNull(TEXT("Soft-reload test should resolve base actor class"), InitialBaseClass)
-			|| !TestRunner->TestNotNull(TEXT("Soft-reload test should compile derived as UASClass"), InitialDerivedASClass)
-			|| !TestRunner->TestNotNull(TEXT("Soft-reload test should resolve root component class"), InitialRootComponentClass)
-			|| !TestRunner->TestNotNull(TEXT("Soft-reload test should resolve replacement component class"), InitialReplacementComponentClass))
+		if (!CheckNotNull(*TestRunner, TEXT("Soft-reload test should resolve base actor class"), InitialBaseClass)
+			|| !CheckNotNull(*TestRunner, TEXT("Soft-reload test should compile derived as UASClass"), InitialDerivedASClass)
+			|| !CheckNotNull(*TestRunner, TEXT("Soft-reload test should resolve root component class"), InitialRootComponentClass)
+			|| !CheckNotNull(*TestRunner, TEXT("Soft-reload test should resolve replacement component class"), InitialReplacementComponentClass))
 		{ return; }
 
 		const TArray<FDefaultComponentMetadataSnapshot> InitialDefaultSnapshot = SnapshotDefaultComponentLayoutMetadata(InitialBaseClass);
 		const TArray<FOverrideComponentMetadataSnapshot> InitialOverrideSnapshot = SnapshotOverrideComponentLayoutMetadata(InitialDerivedASClass);
-		TestRunner->TestEqual(TEXT("Soft-reload test should start with two default-component entries"), InitialDefaultSnapshot.Num(), 2);
-		TestRunner->TestEqual(TEXT("Soft-reload test should start with one override-component entry"), InitialOverrideSnapshot.Num(), 1);
+		ASSERT_THAT(AreEqual(2, InitialDefaultSnapshot.Num(), TEXT("Soft-reload test should start with two default-component entries")));
+		ASSERT_THAT(AreEqual(1, InitialOverrideSnapshot.Num(), TEXT("Soft-reload test should start with one override-component entry")));
 
 		ECompileResult ReloadResult = ECompileResult::Error;
-		if (!TestRunner->TestTrue(TEXT("Soft-reload test should compile the body-only update"),
-			CompileModuleWithResult(&Engine, ECompileType::SoftReloadOnly, ASClassComponentMetadataSoftReloadModuleName, ASClassComponentMetadataSoftReloadFilename, ScriptV2, ReloadResult)))
+		if (!CheckTrue(
+				*TestRunner,
+				TEXT("Soft-reload test should compile the body-only update"),
+				CompileModuleWithResult(&Engine, ECompileType::SoftReloadOnly, ASClassComponentMetadataSoftReloadModuleName, ASClassComponentMetadataSoftReloadFilename, ScriptV2, ReloadResult)))
 		{ return; }
-		if (!TestRunner->TestTrue(TEXT("Soft-reload test should stay on a handled path"), IsHandledReloadResult(ReloadResult)))
+		if (!CheckTrue(*TestRunner, TEXT("Soft-reload test should stay on a handled path"), IsHandledReloadResult(ReloadResult)))
 		{ return; }
 
 		UASClass* ReloadedBaseClass = Cast<UASClass>(FindGeneratedClass(&Engine, ASClassComponentMetadataSoftReloadBaseClassName));
 		UASClass* ReloadedDerivedClass = Cast<UASClass>(FindGeneratedClass(&Engine, ASClassComponentMetadataSoftReloadDerivedClassName));
 		UFunction* GetVersionAfterReload = ReloadedDerivedClass != nullptr ? FindGeneratedFunction(ReloadedDerivedClass, TEXT("GetVersion")) : nullptr;
-		if (!TestRunner->TestNotNull(TEXT("Soft-reload test should still expose base class"), ReloadedBaseClass)
-			|| !TestRunner->TestNotNull(TEXT("Soft-reload test should still expose derived class"), ReloadedDerivedClass)
-			|| !TestRunner->TestNotNull(TEXT("Soft-reload test should still expose GetVersion"), GetVersionAfterReload))
+		if (!CheckNotNull(*TestRunner, TEXT("Soft-reload test should still expose base class"), ReloadedBaseClass)
+			|| !CheckNotNull(*TestRunner, TEXT("Soft-reload test should still expose derived class"), ReloadedDerivedClass)
+			|| !CheckNotNull(*TestRunner, TEXT("Soft-reload test should still expose GetVersion"), GetVersionAfterReload))
 		{ return; }
 
-		TestRunner->TestTrue(TEXT("Soft-reload test should preserve base UASClass instance"), ReloadedBaseClass == InitialBaseClass);
-		TestRunner->TestTrue(TEXT("Soft-reload test should preserve derived UASClass instance"), ReloadedDerivedClass == InitialDerivedASClass);
+		ASSERT_THAT(IsTrue(ReloadedBaseClass == InitialBaseClass, TEXT("Soft-reload test should preserve base UASClass instance")));
+		ASSERT_THAT(IsTrue(ReloadedDerivedClass == InitialDerivedASClass, TEXT("Soft-reload test should preserve derived UASClass instance")));
 
 		const TArray<FDefaultComponentMetadataSnapshot> ReloadedDefaultSnapshot = SnapshotDefaultComponentLayoutMetadata(ReloadedBaseClass);
 		const TArray<FOverrideComponentMetadataSnapshot> ReloadedOverrideSnapshot = SnapshotOverrideComponentLayoutMetadata(ReloadedDerivedClass);
-		TestRunner->TestEqual(TEXT("Soft-reload test should keep default-component count stable"), ReloadedDefaultSnapshot.Num(), InitialDefaultSnapshot.Num());
-		TestRunner->TestEqual(TEXT("Soft-reload test should keep override-component count stable"), ReloadedOverrideSnapshot.Num(), InitialOverrideSnapshot.Num());
-		TestRunner->TestTrue(TEXT("Soft-reload test should preserve default-component metadata"), ReloadedDefaultSnapshot == InitialDefaultSnapshot);
-		TestRunner->TestTrue(TEXT("Soft-reload test should preserve override-component metadata"), ReloadedOverrideSnapshot == InitialOverrideSnapshot);
+		ASSERT_THAT(AreEqual(InitialDefaultSnapshot.Num(), ReloadedDefaultSnapshot.Num(), TEXT("Soft-reload test should keep default-component count stable")));
+		ASSERT_THAT(AreEqual(InitialOverrideSnapshot.Num(), ReloadedOverrideSnapshot.Num(), TEXT("Soft-reload test should keep override-component count stable")));
+		ASSERT_THAT(IsTrue(ReloadedDefaultSnapshot == InitialDefaultSnapshot, TEXT("Soft-reload test should preserve default-component metadata")));
+		ASSERT_THAT(IsTrue(ReloadedOverrideSnapshot == InitialOverrideSnapshot, TEXT("Soft-reload test should preserve override-component metadata")));
 
 		const UASClass::FDefaultComponent* RootEntryAfterReload = FindDefaultComponentEntryByName(ReloadedBaseClass, ASClassRootComponentName);
 		const UASClass::FDefaultComponent* BillboardEntryAfterReload = FindDefaultComponentEntryByName(ReloadedBaseClass, ASClassBillboardComponentName);
 		const UASClass::FOverrideComponent* OverrideEntryAfterReload = FindOverrideComponentEntryByVariableName(ReloadedDerivedClass, ASClassOverrideVariableName);
-		if (!TestRunner->TestNotNull(TEXT("Soft-reload test should keep root metadata entry"), RootEntryAfterReload)
-			|| !TestRunner->TestNotNull(TEXT("Soft-reload test should keep billboard metadata entry"), BillboardEntryAfterReload)
-			|| !TestRunner->TestNotNull(TEXT("Soft-reload test should keep override metadata entry"), OverrideEntryAfterReload))
+		if (!CheckNotNull(*TestRunner, TEXT("Soft-reload test should keep root metadata entry"), RootEntryAfterReload)
+			|| !CheckNotNull(*TestRunner, TEXT("Soft-reload test should keep billboard metadata entry"), BillboardEntryAfterReload)
+			|| !CheckNotNull(*TestRunner, TEXT("Soft-reload test should keep override metadata entry"), OverrideEntryAfterReload))
 		{ return; }
 
-		TestRunner->TestTrue(TEXT("Soft-reload test should keep RootScene as unique root"), RootEntryAfterReload->bIsRoot);
-		TestRunner->TestTrue(TEXT("Soft-reload test should keep RootScene unattached"), RootEntryAfterReload->Attach.IsNone());
-		TestRunner->TestEqual(TEXT("Soft-reload test should keep Billboard attached to RootScene"), BillboardEntryAfterReload->Attach, ASClassRootComponentName);
-		TestRunner->TestEqual(TEXT("Soft-reload test should keep override pointed at Billboard"), OverrideEntryAfterReload->OverrideComponentName, ASClassBillboardComponentName);
+		ASSERT_THAT(IsTrue(RootEntryAfterReload->bIsRoot, TEXT("Soft-reload test should keep RootScene as unique root")));
+		ASSERT_THAT(IsTrue(RootEntryAfterReload->Attach.IsNone(), TEXT("Soft-reload test should keep RootScene unattached")));
+		ASSERT_THAT(AreEqual(ASClassRootComponentName, BillboardEntryAfterReload->Attach, TEXT("Soft-reload test should keep Billboard attached to RootScene")));
+		ASSERT_THAT(AreEqual(ASClassBillboardComponentName, OverrideEntryAfterReload->OverrideComponentName, TEXT("Soft-reload test should keep override pointed at Billboard")));
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* ReloadedActor = SpawnScriptActor(*TestRunner, Spawner, ReloadedDerivedClass);
-		if (!TestRunner->TestNotNull(TEXT("Soft-reload test should spawn the reloaded actor"), ReloadedActor)) { return; }
+		if (!CheckNotNull(*TestRunner, TEXT("Soft-reload test should spawn the reloaded actor"), ReloadedActor)) { return; }
 
 		USceneComponent* RuntimeRootComponent = ReloadedActor->GetRootComponent();
 		USceneComponent* RuntimeBillboardComponent = FindSceneComponentByName(ReloadedActor, ASClassBillboardComponentName);
-		if (!TestRunner->TestNotNull(TEXT("Soft-reload test should create runtime root component"), RuntimeRootComponent)
-			|| !TestRunner->TestNotNull(TEXT("Soft-reload test should create overridden Billboard component"), RuntimeBillboardComponent))
+		if (!CheckNotNull(*TestRunner, TEXT("Soft-reload test should create runtime root component"), RuntimeRootComponent)
+			|| !CheckNotNull(*TestRunner, TEXT("Soft-reload test should create overridden Billboard component"), RuntimeBillboardComponent))
 		{ return; }
 
-		TestRunner->TestTrue(TEXT("Soft-reload test should keep root component class aligned with metadata"), RuntimeRootComponent->GetClass() == FindGeneratedClass(&Engine, ASClassSoftReloadRootComponentClassName));
-		TestRunner->TestTrue(TEXT("Soft-reload test should keep Billboard attached to root"), RuntimeBillboardComponent->GetAttachParent() == RuntimeRootComponent);
+		ASSERT_THAT(IsTrue(RuntimeRootComponent->GetClass() == FindGeneratedClass(&Engine, ASClassSoftReloadRootComponentClassName), TEXT("Soft-reload test should keep root component class aligned with metadata")));
+		ASSERT_THAT(IsTrue(RuntimeBillboardComponent->GetAttachParent() == RuntimeRootComponent, TEXT("Soft-reload test should keep Billboard attached to root")));
 
 		int32 VersionAfterReload = 0;
-		if (!TestRunner->TestTrue(TEXT("Soft-reload test should execute the reloaded function"),
-			ExecuteGeneratedIntEventOnGameThread(&Engine, ReloadedActor, GetVersionAfterReload, VersionAfterReload)))
+		if (!CheckTrue(
+				*TestRunner,
+				TEXT("Soft-reload test should execute the reloaded function"),
+				ExecuteGeneratedIntEventOnGameThread(&Engine, ReloadedActor, GetVersionAfterReload, VersionAfterReload)))
 		{ return; }
-		TestRunner->TestEqual(TEXT("Soft-reload test should observe updated function body"), VersionAfterReload, 2);
+		ASSERT_THAT(AreEqual(2, VersionAfterReload, TEXT("Soft-reload test should observe updated function body")));
 		}
 	}
 };

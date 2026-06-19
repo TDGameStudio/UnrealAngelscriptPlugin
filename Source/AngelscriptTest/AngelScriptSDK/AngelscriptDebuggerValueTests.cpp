@@ -34,9 +34,10 @@ namespace
 			ScriptType = Engine.GetScriptEngine()->GetTypeInfoByName(BoundTypeNameUtf8.Get());
 		}
 
-		Test.TestNotNull(
-			*FString::Printf(TEXT("Debugger value getter tracking should resolve script type '%s'"), *BoundTypeName),
-			ScriptType);
+		FNoDiscardAsserter Assert(Test);
+		(void)Assert.IsNotNull(
+			ScriptType,
+			*FString::Printf(TEXT("Debugger value getter tracking should resolve script type '%s'"), *BoundTypeName));
 		return ScriptType;
 	}
 
@@ -68,9 +69,10 @@ namespace
 			}
 		}
 
-		Test.TestNotNull(
-			*FString::Printf(TEXT("Debugger value getter tracking should resolve method '%s'"), *Declaration),
-			Function);
+		FNoDiscardAsserter Assert(Test);
+		(void)Assert.IsNotNull(
+			Function,
+			*FString::Printf(TEXT("Debugger value getter tracking should resolve method '%s'"), *Declaration));
 		return Function;
 	}
 
@@ -81,24 +83,25 @@ namespace
 		const FString& ExpectedValue,
 		void* ExpectedAddress)
 	{
+		FNoDiscardAsserter Assert(Test);
 		bool bOk = true;
-		bOk &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should stringify the getter result"), Context),
+		bOk &= Assert.AreEqual(
+			ExpectedValue,
 			DebugValue.Value,
-			ExpectedValue);
-		bOk &= Test.TestTrue(
-			*FString::Printf(TEXT("%s should mark debugger output as a temporary value"), Context),
-			DebugValue.bTemporaryValue);
-		bOk &= Test.TestTrue(
-			*FString::Printf(TEXT("%s should bind the monitored address back to the Health property"), Context),
-			DebugValue.GetAddressToMonitor() == ExpectedAddress);
-		bOk &= Test.TestTrue(
-			*FString::Printf(TEXT("%s should preserve a concrete non-temporary or monitor address"), Context),
-			DebugValue.NonTemporaryAddress == ExpectedAddress || DebugValue.AddressToMonitor == ExpectedAddress);
-		bOk &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should report the expected monitor value size"), Context),
+			*FString::Printf(TEXT("%s should stringify the getter result"), Context));
+		bOk &= Assert.IsTrue(
+			DebugValue.bTemporaryValue,
+			*FString::Printf(TEXT("%s should mark debugger output as a temporary value"), Context));
+		bOk &= Assert.IsTrue(
+			DebugValue.GetAddressToMonitor() == ExpectedAddress,
+			*FString::Printf(TEXT("%s should bind the monitored address back to the Health property"), Context));
+		bOk &= Assert.IsTrue(
+			DebugValue.NonTemporaryAddress == ExpectedAddress || DebugValue.AddressToMonitor == ExpectedAddress,
+			*FString::Printf(TEXT("%s should preserve a concrete non-temporary or monitor address"), Context));
+		bOk &= Assert.AreEqual(
+			static_cast<int32>(sizeof(int32)),
 			DebugValue.GetAddressToMonitorValueSize(),
-			static_cast<int32>(sizeof(int32)));
+			*FString::Printf(TEXT("%s should report the expected monitor value size"), Context));
 		return bOk;
 	}
 
@@ -169,22 +172,16 @@ class ADebuggerValueGetterProbe : AActor
 			: nullptr;
 		FIntProperty* HealthProperty = FindFProperty<FIntProperty>(ScriptClass, TEXT("Health"));
 
-		if (!TestRunner->TestNotNull(TEXT("Debugger value getter tracking should spawn the script actor"), Actor) ||
-			!TestRunner->TestNotNull(TEXT("Debugger value getter tracking should expose the native Health property"), HealthProperty) ||
-			!TestRunner->TestNotNull(TEXT("Debugger value getter tracking should keep the spawned actor inside a world"), Actor != nullptr ? Actor->GetWorld() : nullptr) ||
-			!TestRunner->TestNotNull(TEXT("Debugger value getter tracking should resolve the script getter method"), GetterFunction))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Debugger value getter tracking should spawn the script actor")));
+		ASSERT_THAT(IsNotNull(HealthProperty, TEXT("Debugger value getter tracking should expose the native Health property")));
+		ASSERT_THAT(IsNotNull(Actor->GetWorld(), TEXT("Debugger value getter tracking should keep the spawned actor inside a world")));
+		ASSERT_THAT(IsNotNull(GetterFunction, TEXT("Debugger value getter tracking should resolve the script getter method")));
 
 		void* const HealthAddress = HealthProperty->ContainerPtrToValuePtr<void>(Actor);
 		int32* const HealthValue = static_cast<int32*>(HealthAddress);
-		if (!TestRunner->TestNotNull(TEXT("Debugger value getter tracking should expose reflected Health storage"), HealthValue))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(HealthValue, TEXT("Debugger value getter tracking should expose reflected Health storage")));
 
-		TestRunner->TestEqual(TEXT("Debugger value getter tracking should start from the default Health value"), *HealthValue, 42);
+		ASSERT_THAT(AreEqual(42, *HealthValue, TEXT("Debugger value getter tracking should start from the default Health value")));
 
 		FDebuggerValue FirstValue;
 		const bool bFirstResolved = FAngelscriptType::GetDebuggerValueFromFunction(
@@ -194,9 +191,7 @@ class ADebuggerValueGetterProbe : AActor
 			ScriptType,
 			ScriptClass,
 			TEXT("Health"));
-		TestRunner->TestTrue(
-			TEXT("Debugger value getter tracking should evaluate the getter once before mutation"),
-			bFirstResolved);
+		ASSERT_THAT(IsTrue(bFirstResolved, TEXT("Debugger value getter tracking should evaluate the getter once before mutation")));
 		if (bFirstResolved)
 		{
 			ExpectTrackedDebuggerValue(
@@ -208,7 +203,7 @@ class ADebuggerValueGetterProbe : AActor
 		}
 
 		*HealthValue = 99;
-		TestRunner->TestEqual(TEXT("Debugger value getter tracking should mutate the reflected Health storage in place"), *HealthValue, 99);
+		ASSERT_THAT(AreEqual(99, *HealthValue, TEXT("Debugger value getter tracking should mutate the reflected Health storage in place")));
 
 		FDebuggerValue SecondValue;
 		const bool bSecondResolved = FAngelscriptType::GetDebuggerValueFromFunction(
@@ -218,9 +213,7 @@ class ADebuggerValueGetterProbe : AActor
 			ScriptType,
 			ScriptClass,
 			TEXT("Health"));
-		TestRunner->TestTrue(
-			TEXT("Debugger value getter tracking should evaluate the getter again after mutation"),
-			bSecondResolved);
+		ASSERT_THAT(IsTrue(bSecondResolved, TEXT("Debugger value getter tracking should evaluate the getter again after mutation")));
 		if (bSecondResolved)
 		{
 			ExpectTrackedDebuggerValue(
@@ -299,23 +292,15 @@ class UDebuggerValueGuardProbe : UObject
 		FIntProperty* EvalCountProperty = FindFProperty<FIntProperty>(ScriptClass, TEXT("EvalCount"));
 		UObject* Target = NewObject<UObject>(GetTransientPackage(), ScriptClass, TEXT("DebuggerValueGuardTarget"));
 
-		if (!TestRunner->TestNotNull(TEXT("Debugger value guard test should expose the EvalCount property"), EvalCountProperty) ||
-			!TestRunner->TestNotNull(TEXT("Debugger value guard test should instantiate the generated UObject"), Target) ||
-			!TestRunner->TestNotNull(TEXT("Debugger value guard test should resolve the generated getter method"), GetterFunction) ||
-			!TestRunner->TestNotNull(TEXT("Debugger value guard test should resolve the generated NeedsArg method"), NeedsArgFunction))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(EvalCountProperty, TEXT("Debugger value guard test should expose the EvalCount property")));
+		ASSERT_THAT(IsNotNull(Target, TEXT("Debugger value guard test should instantiate the generated UObject")));
+		ASSERT_THAT(IsNotNull(GetterFunction, TEXT("Debugger value guard test should resolve the generated getter method")));
+		ASSERT_THAT(IsNotNull(NeedsArgFunction, TEXT("Debugger value guard test should resolve the generated NeedsArg method")));
 
-		TestRunner->TestTrue(
-			TEXT("Debugger value guard test should keep the generated UObject worldless so the without-world blacklist path is reachable"),
-			Target->GetWorld() == nullptr);
+		ASSERT_THAT(IsTrue(Target->GetWorld() == nullptr, TEXT("Debugger value guard test should keep the generated UObject worldless so the without-world blacklist path is reachable")));
 
 		int32* const EvalCountPtr = EvalCountProperty->ContainerPtrToValuePtr<int32>(Target);
-		if (!TestRunner->TestNotNull(TEXT("Debugger value guard test should expose reflected EvalCount storage"), EvalCountPtr))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(EvalCountPtr, TEXT("Debugger value guard test should expose reflected EvalCount storage")));
 
 		Settings.DebuggerBlacklistAutomaticFunctionEvaluation.Reset();
 		Settings.DebuggerBlacklistAutomaticFunctionEvaluationWithoutWorldContext.Reset();
@@ -323,52 +308,43 @@ class UDebuggerValueGuardProbe : UObject
 			BuildDebuggerFunctionPath(*GetterFunction));
 
 		FDebuggerValue WithoutWorldValue;
-		TestRunner->TestFalse(
-			TEXT("Debugger value guard test should reject a getter blacklisted for objects without world context"),
+		ASSERT_THAT(IsFalse(
 			FAngelscriptType::GetDebuggerValueFromFunction(
 				GetterFunction,
 				Target,
 				WithoutWorldValue,
 				ScriptType,
-				ScriptClass));
-		TestRunner->TestEqual(
-			TEXT("Debugger value guard test should not execute the getter when the without-world blacklist matches"),
-			*EvalCountPtr,
-			0);
+				ScriptClass),
+			TEXT("Debugger value guard test should reject a getter blacklisted for objects without world context")));
+		ASSERT_THAT(AreEqual(0, *EvalCountPtr, TEXT("Debugger value guard test should not execute the getter when the without-world blacklist matches")));
 
 		Settings.DebuggerBlacklistAutomaticFunctionEvaluationWithoutWorldContext.Reset();
 		Settings.DebuggerBlacklistAutomaticFunctionEvaluation.Add(
 			BuildDebuggerFunctionPath(*GetterFunction));
 
 		FDebuggerValue UnconditionalValue;
-		TestRunner->TestFalse(
-			TEXT("Debugger value guard test should reject a getter blacklisted for all debugger evaluation"),
+		ASSERT_THAT(IsFalse(
 			FAngelscriptType::GetDebuggerValueFromFunction(
 				GetterFunction,
 				Target,
 				UnconditionalValue,
 				ScriptType,
-				ScriptClass));
-		TestRunner->TestEqual(
-			TEXT("Debugger value guard test should still leave EvalCount untouched after the unconditional blacklist guard"),
-			*EvalCountPtr,
-			0);
+				ScriptClass),
+			TEXT("Debugger value guard test should reject a getter blacklisted for all debugger evaluation")));
+		ASSERT_THAT(AreEqual(0, *EvalCountPtr, TEXT("Debugger value guard test should still leave EvalCount untouched after the unconditional blacklist guard")));
 
 		Settings.DebuggerBlacklistAutomaticFunctionEvaluation.Reset();
 
 		FDebuggerValue NeedsArgValue;
-		TestRunner->TestFalse(
-			TEXT("Debugger value guard test should reject methods whose signature still requires parameters"),
+		ASSERT_THAT(IsFalse(
 			FAngelscriptType::GetDebuggerValueFromFunction(
 				NeedsArgFunction,
 				Target,
 				NeedsArgValue,
 				ScriptType,
-				ScriptClass));
-		TestRunner->TestEqual(
-			TEXT("Debugger value guard test should not execute the parameterized method when the signature guard rejects it"),
-			*EvalCountPtr,
-			0);
+				ScriptClass),
+			TEXT("Debugger value guard test should reject methods whose signature still requires parameters")));
+		ASSERT_THAT(AreEqual(0, *EvalCountPtr, TEXT("Debugger value guard test should not execute the parameterized method when the signature guard rejects it")));
 
 		FDebuggerValue GetterValue;
 		const bool bGetterResolved = FAngelscriptType::GetDebuggerValueFromFunction(
@@ -377,24 +353,17 @@ class UDebuggerValueGuardProbe : UObject
 			GetterValue,
 			ScriptType,
 			ScriptClass);
-		TestRunner->TestTrue(
-			TEXT("Debugger value guard test should evaluate the getter once all guards are removed"),
-			bGetterResolved);
+		ASSERT_THAT(IsTrue(bGetterResolved, TEXT("Debugger value guard test should evaluate the getter once all guards are removed")));
 		if (bGetterResolved)
 		{
-			TestRunner->TestEqual(
-				TEXT("Debugger value guard test should stringify the getter return value once evaluation is allowed"),
+			ASSERT_THAT(AreEqual(
+				FString(TEXT("42")),
 				GetterValue.Value,
-				FString(TEXT("42")));
-			TestRunner->TestTrue(
-				TEXT("Debugger value guard test should report the getter result as a temporary debugger value"),
-				GetterValue.bTemporaryValue);
+				TEXT("Debugger value guard test should stringify the getter return value once evaluation is allowed")));
+			ASSERT_THAT(IsTrue(GetterValue.bTemporaryValue, TEXT("Debugger value guard test should report the getter result as a temporary debugger value")));
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Debugger value guard test should increment EvalCount exactly once after the successful evaluation"),
-			*EvalCountPtr,
-			1);
+		ASSERT_THAT(AreEqual(1, *EvalCountPtr, TEXT("Debugger value guard test should increment EvalCount exactly once after the successful evaluation")));
 
 		}
 	}
@@ -451,25 +420,19 @@ class ADebuggerValueDerivedProbe : ADebuggerValueBaseProbe
 			: nullptr;
 		FIntProperty* HealthProperty = FindFProperty<FIntProperty>(DerivedClass, TEXT("Health"));
 
-		if (!TestRunner->TestNotNull(TEXT("Debugger value inherited getter tracking should spawn the derived script actor"), Actor) ||
-			!TestRunner->TestNotNull(TEXT("Debugger value inherited getter tracking should expose the inherited Health property"), HealthProperty) ||
-			!TestRunner->TestNotNull(TEXT("Debugger value inherited getter tracking should keep the spawned actor inside a world"), Actor != nullptr ? Actor->GetWorld() : nullptr) ||
-			!TestRunner->TestNotNull(TEXT("Debugger value inherited getter tracking should resolve the derived getter method"), GetterFunction))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Debugger value inherited getter tracking should spawn the derived script actor")));
+		ASSERT_THAT(IsNotNull(HealthProperty, TEXT("Debugger value inherited getter tracking should expose the inherited Health property")));
+		ASSERT_THAT(IsNotNull(Actor->GetWorld(), TEXT("Debugger value inherited getter tracking should keep the spawned actor inside a world")));
+		ASSERT_THAT(IsNotNull(GetterFunction, TEXT("Debugger value inherited getter tracking should resolve the derived getter method")));
 
 		void* const HealthAddress = HealthProperty->ContainerPtrToValuePtr<void>(Actor);
 		int32* const HealthValue = static_cast<int32*>(HealthAddress);
-		if (!TestRunner->TestNotNull(TEXT("Debugger value inherited getter tracking should expose reflected Health storage"), HealthValue))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(HealthValue, TEXT("Debugger value inherited getter tracking should expose reflected Health storage")));
 
-		TestRunner->TestEqual(
-			TEXT("Debugger value inherited getter tracking should start from the base-class default Health value"),
+		ASSERT_THAT(AreEqual(
+			42,
 			*HealthValue,
-			42);
+			TEXT("Debugger value inherited getter tracking should start from the base-class default Health value")));
 
 		FDebuggerValue FirstValue;
 		const bool bFirstResolved = FAngelscriptType::GetDebuggerValueFromFunction(
@@ -479,9 +442,7 @@ class ADebuggerValueDerivedProbe : ADebuggerValueBaseProbe
 			ScriptType,
 			DerivedClass,
 			TEXT("Health"));
-		TestRunner->TestTrue(
-			TEXT("Debugger value inherited getter tracking should evaluate the derived getter before mutation"),
-			bFirstResolved);
+		ASSERT_THAT(IsTrue(bFirstResolved, TEXT("Debugger value inherited getter tracking should evaluate the derived getter before mutation")));
 		if (bFirstResolved)
 		{
 			ExpectTrackedDebuggerValue(
@@ -493,10 +454,10 @@ class ADebuggerValueDerivedProbe : ADebuggerValueBaseProbe
 		}
 
 		*HealthValue = 99;
-		TestRunner->TestEqual(
-			TEXT("Debugger value inherited getter tracking should mutate the inherited Health storage in place"),
+		ASSERT_THAT(AreEqual(
+			99,
 			*HealthValue,
-			99);
+			TEXT("Debugger value inherited getter tracking should mutate the inherited Health storage in place")));
 
 		FDebuggerValue SecondValue;
 		const bool bSecondResolved = FAngelscriptType::GetDebuggerValueFromFunction(
@@ -506,9 +467,7 @@ class ADebuggerValueDerivedProbe : ADebuggerValueBaseProbe
 			ScriptType,
 			DerivedClass,
 			TEXT("Health"));
-		TestRunner->TestTrue(
-			TEXT("Debugger value inherited getter tracking should evaluate the derived getter again after mutation"),
-			bSecondResolved);
+		ASSERT_THAT(IsTrue(bSecondResolved, TEXT("Debugger value inherited getter tracking should evaluate the derived getter again after mutation")));
 		if (bSecondResolved)
 		{
 			ExpectTrackedDebuggerValue(

@@ -12,14 +12,14 @@ using namespace AngelscriptNativeTestSupport;
 
 namespace
 {
-	void ExpectToken(FAutomationTestBase& Test, const char* Input, const eTokenType ExpectedType, const int32 ExpectedLength, const TCHAR* CaseName)
+	bool ExpectTokenType(const char* Input, const eTokenType ExpectedType, int32& OutTokenLength)
 	{
 		FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 		const eTokenType TokenType = Tokenizer.GetToken(Input, std::strlen(Input), &TokenLength);
+		OutTokenLength = static_cast<int32>(TokenLength);
 
-		Test.TestEqual(FString::Printf(TEXT("%s should use the expected token type"), CaseName), static_cast<int32>(TokenType), static_cast<int32>(ExpectedType));
-		Test.TestEqual(FString::Printf(TEXT("%s should use the expected token length"), CaseName), static_cast<int32>(TokenLength), ExpectedLength);
+		return TokenType == ExpectedType;
 	}
 }
 
@@ -29,99 +29,160 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerLiteralsTests,
 {
 	TEST_METHOD(HexIntegerLiteral)
 	{
-		ExpectToken(*TestRunner, "0x2A", ttBitsConstant, 4, TEXT("Hex integer literal"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType("0x2A", ttBitsConstant, TokenLength),
+			TEXT("Hex integer literal should use the expected token type")));
+		ASSERT_THAT(AreEqual(4, TokenLength, TEXT("Hex integer literal should use the expected token length")));
 	}
 
 	TEST_METHOD(HexUppercaseAndLowercase)
 	{
-		ExpectToken(*TestRunner, "0XfF", ttBitsConstant, 4, TEXT("Mixed-case hex integer literal"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType("0XfF", ttBitsConstant, TokenLength),
+			TEXT("Mixed-case hex integer literal should use the expected token type")));
+		ASSERT_THAT(AreEqual(4, TokenLength, TEXT("Mixed-case hex integer literal should use the expected token length")));
 	}
 
 	TEST_METHOD(OctalLiteralIfSupported_OrDocumentReject)
 	{
-		ExpectToken(*TestRunner, "0o755", ttBitsConstant, 5, TEXT("Octal radix literal"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType("0o755", ttBitsConstant, TokenLength),
+			TEXT("Octal radix literal should use the expected token type")));
+		ASSERT_THAT(AreEqual(5, TokenLength, TEXT("Octal radix literal should use the expected token length")));
 	}
 
 	TEST_METHOD(BinaryLiteralIfSupported_OrDocumentReject)
 	{
-		ExpectToken(*TestRunner, "0b1010", ttBitsConstant, 6, TEXT("Binary radix literal"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType("0b1010", ttBitsConstant, TokenLength),
+			TEXT("Binary radix literal should use the expected token type")));
+		ASSERT_THAT(AreEqual(6, TokenLength, TEXT("Binary radix literal should use the expected token length")));
 	}
 
 	TEST_METHOD(DecimalIntegerVarieties)
 	{
-		ExpectToken(*TestRunner, "0", ttIntConstant, 1, TEXT("Zero integer literal"));
-		ExpectToken(*TestRunner, "42", ttIntConstant, 2, TEXT("Small integer literal"));
-		ExpectToken(*TestRunner, "1234567890", ttIntConstant, 10, TEXT("Long integer literal"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType("0", ttIntConstant, TokenLength),
+			TEXT("Zero integer literal should use the expected token type")));
+		ASSERT_THAT(AreEqual(1, TokenLength, TEXT("Zero integer literal should use the expected token length")));
+		ASSERT_THAT(IsTrue(ExpectTokenType("42", ttIntConstant, TokenLength),
+			TEXT("Small integer literal should use the expected token type")));
+		ASSERT_THAT(AreEqual(2, TokenLength, TEXT("Small integer literal should use the expected token length")));
+		ASSERT_THAT(IsTrue(ExpectTokenType("1234567890", ttIntConstant, TokenLength),
+			TEXT("Long integer literal should use the expected token type")));
+		ASSERT_THAT(AreEqual(10, TokenLength, TEXT("Long integer literal should use the expected token length")));
 	}
 
 	TEST_METHOD(Float64WithoutSuffix)
 	{
-		ExpectToken(*TestRunner, "1.25", ttFloat64Constant, 4, TEXT("Float64 literal without suffix"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType("1.25", ttFloat64Constant, TokenLength),
+			TEXT("Float64 literal without suffix should use the expected token type")));
+		ASSERT_THAT(AreEqual(4, TokenLength, TEXT("Float64 literal without suffix should use the expected token length")));
 	}
 
 	TEST_METHOD(Float32WithFSuffix)
 	{
-		ExpectToken(*TestRunner, "1.25f", ttFloat32Constant, 5, TEXT("Float32 literal with f suffix"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType("1.25f", ttFloat32Constant, TokenLength),
+			TEXT("Float32 literal with f suffix should use the expected token type")));
+		ASSERT_THAT(AreEqual(5, TokenLength, TEXT("Float32 literal with f suffix should use the expected token length")));
 	}
 
 	TEST_METHOD(Float64WithDSuffix)
 	{
-		ExpectToken(*TestRunner, "1.25d", ttFloat64Constant, 4, TEXT("Float64 literal leaves d suffix for the next token"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType("1.25d", ttFloat64Constant, TokenLength),
+			TEXT("Float64 literal leaves d suffix for the next token should use the expected token type")));
+		ASSERT_THAT(AreEqual(4, TokenLength, TEXT("Float64 literal leaves d suffix for the next token should use the expected token length")));
 	}
 
 	TEST_METHOD(FloatExponentPositive)
 	{
-		ExpectToken(*TestRunner, "1e+10", ttFloat64Constant, 5, TEXT("Float exponent with positive sign"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType("1e+10", ttFloat64Constant, TokenLength),
+			TEXT("Float exponent with positive sign should use the expected token type")));
+		ASSERT_THAT(AreEqual(5, TokenLength, TEXT("Float exponent with positive sign should use the expected token length")));
 	}
 
 	TEST_METHOD(FloatExponentNegative)
 	{
-		ExpectToken(*TestRunner, "1e-10", ttFloat64Constant, 5, TEXT("Float exponent with negative sign"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType("1e-10", ttFloat64Constant, TokenLength),
+			TEXT("Float exponent with negative sign should use the expected token type")));
+		ASSERT_THAT(AreEqual(5, TokenLength, TEXT("Float exponent with negative sign should use the expected token length")));
 	}
 
 	TEST_METHOD(FloatLeadingDot)
 	{
-		ExpectToken(*TestRunner, ".5", ttFloat64Constant, 2, TEXT("Float literal with leading dot"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType(".5", ttFloat64Constant, TokenLength),
+			TEXT("Float literal with leading dot should use the expected token type")));
+		ASSERT_THAT(AreEqual(2, TokenLength, TEXT("Float literal with leading dot should use the expected token length")));
 	}
 
 	TEST_METHOD(FloatTrailingDot)
 	{
-		ExpectToken(*TestRunner, "5.", ttFloat64Constant, 2, TEXT("Float literal with trailing dot"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType("5.", ttFloat64Constant, TokenLength),
+			TEXT("Float literal with trailing dot should use the expected token type")));
+		ASSERT_THAT(AreEqual(2, TokenLength, TEXT("Float literal with trailing dot should use the expected token length")));
 	}
 
 	TEST_METHOD(StringEscape_NTRBackslashQuote)
 	{
-		ExpectToken(*TestRunner, "\"\\n\\t\\r\\\\\\\"\"", ttStringConstant, 12, TEXT("Escaped newline tab carriage-return backslash and quote"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType("\"\\n\\t\\r\\\\\\\"\"", ttStringConstant, TokenLength),
+			TEXT("Escaped newline tab carriage-return backslash and quote should use the expected token type")));
+		ASSERT_THAT(AreEqual(12, TokenLength, TEXT("Escaped newline tab carriage-return backslash and quote should use the expected token length")));
 	}
 
 	TEST_METHOD(StringEscape_HexByte_xNN)
 	{
-		ExpectToken(*TestRunner, "\"\\x41\"", ttStringConstant, 6, TEXT("Hex byte escape sequence"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType("\"\\x41\"", ttStringConstant, TokenLength),
+			TEXT("Hex byte escape sequence should use the expected token type")));
+		ASSERT_THAT(AreEqual(6, TokenLength, TEXT("Hex byte escape sequence should use the expected token length")));
 	}
 
 	TEST_METHOD(StringEscape_Unicode_uNNNN)
 	{
-		ExpectToken(*TestRunner, "\"\\u0041\"", ttStringConstant, 8, TEXT("Unicode escape sequence"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType("\"\\u0041\"", ttStringConstant, TokenLength),
+			TEXT("Unicode escape sequence should use the expected token type")));
+		ASSERT_THAT(AreEqual(8, TokenLength, TEXT("Unicode escape sequence should use the expected token length")));
 	}
 
 	TEST_METHOD(HeredocStringIfEnabled)
 	{
-		ExpectToken(*TestRunner, "\"\"\"line\ntext\"\"\"", ttHeredocStringConstant, 15, TEXT("Heredoc string literal"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType("\"\"\"line\ntext\"\"\"", ttHeredocStringConstant, TokenLength),
+			TEXT("Heredoc string literal should use the expected token type")));
+		ASSERT_THAT(AreEqual(15, TokenLength, TEXT("Heredoc string literal should use the expected token length")));
 	}
 
 	TEST_METHOD(CharLiteralBasic)
 	{
-		ExpectToken(*TestRunner, "'a'", ttStringConstant, 3, TEXT("Character literal token"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType("'a'", ttStringConstant, TokenLength),
+			TEXT("Character literal token should use the expected token type")));
+		ASSERT_THAT(AreEqual(3, TokenLength, TEXT("Character literal token should use the expected token length")));
 	}
 
 	TEST_METHOD(CharLiteralEscape)
 	{
-		ExpectToken(*TestRunner, "'\\n'", ttStringConstant, 4, TEXT("Escaped character literal token"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType("'\\n'", ttStringConstant, TokenLength),
+			TEXT("Escaped character literal token should use the expected token type")));
+		ASSERT_THAT(AreEqual(4, TokenLength, TEXT("Escaped character literal token should use the expected token length")));
 	}
 
 	TEST_METHOD(EmptyStringLiteral)
 	{
-		ExpectToken(*TestRunner, "\"\"", ttStringConstant, 2, TEXT("Empty string literal"));
+		int32 TokenLength = 0;
+		ASSERT_THAT(IsTrue(ExpectTokenType("\"\"", ttStringConstant, TokenLength),
+			TEXT("Empty string literal should use the expected token type")));
+		ASSERT_THAT(AreEqual(2, TokenLength, TEXT("Empty string literal should use the expected token length")));
 	}
 
 	TEST_METHOD(AdjacentStringConcatNotMerged)
@@ -130,8 +191,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerLiteralsTests,
 		const char* Input = "\"a\"\"b\"";
 		size_t TokenLength = 0;
 
-		TestRunner->TestEqual(TEXT("Adjacent string scan should return the first string token only"), static_cast<int32>(Tokenizer.GetToken(Input, std::strlen(Input), &TokenLength)), static_cast<int32>(ttStringConstant));
-		TestRunner->TestEqual(TEXT("Adjacent string scan should not merge the following string token"), static_cast<int32>(TokenLength), 3);
+		ASSERT_THAT(AreEqual(static_cast<int32>(ttStringConstant), static_cast<int32>(Tokenizer.GetToken(Input, std::strlen(Input), &TokenLength)),
+			TEXT("Adjacent string scan should return the first string token only")));
+		ASSERT_THAT(AreEqual(3, static_cast<int32>(TokenLength),
+			TEXT("Adjacent string scan should not merge the following string token")));
 	}
 };
 

@@ -75,66 +75,58 @@ class UFunctionalScoreWidget : UUserWidget
 			TEXT("UFunctionalScoreWidget"));
 		if (WidgetClass == nullptr) { return; }
 
-		TestRunner->TestTrue(
-			TEXT("UFunctionalScoreWidget should derive from UUserWidget"),
-			WidgetClass->IsChildOf(UUserWidget::StaticClass()));
+		ASSERT_THAT(IsTrue(
+			WidgetClass->IsChildOf(UUserWidget::StaticClass()),
+			TEXT("UFunctionalScoreWidget should derive from UUserWidget")));
 
 		FObjectProperty* ScoreTextProp = FindFProperty<FObjectProperty>(WidgetClass, TEXT("ScoreText"));
-		if (TestRunner->TestNotNull(TEXT("ScoreText FObjectProperty should be registered"), ScoreTextProp))
-		{
-			TestRunner->TestTrue(
-				TEXT("ScoreText property class should be UTextBlock"),
-				ScoreTextProp->PropertyClass != nullptr
-				&& ScoreTextProp->PropertyClass->IsChildOf(UTextBlock::StaticClass()));
-			TestRunner->TestTrue(
-				TEXT("ScoreText should carry BindWidget metadata"),
-				ScoreTextProp->HasMetaData(TEXT("BindWidget")));
-		}
+		ASSERT_THAT(IsNotNull(ScoreTextProp, TEXT("ScoreText FObjectProperty should be registered")));
+		ASSERT_THAT(IsTrue(
+			ScoreTextProp->PropertyClass != nullptr
+			&& ScoreTextProp->PropertyClass->IsChildOf(UTextBlock::StaticClass()),
+			TEXT("ScoreText property class should be UTextBlock")));
+		ASSERT_THAT(IsTrue(
+			ScoreTextProp->HasMetaData(TEXT("BindWidget")),
+			TEXT("ScoreText should carry BindWidget metadata")));
 
 		FObjectProperty* HealthBarProp = FindFProperty<FObjectProperty>(WidgetClass, TEXT("HealthBar"));
-		if (TestRunner->TestNotNull(TEXT("HealthBar FObjectProperty should be registered"), HealthBarProp))
-		{
-			TestRunner->TestTrue(
-				TEXT("HealthBar property class should be UProgressBar"),
-				HealthBarProp->PropertyClass != nullptr
-				&& HealthBarProp->PropertyClass->IsChildOf(UProgressBar::StaticClass()));
-			TestRunner->TestTrue(
-				TEXT("HealthBar should carry BindWidget metadata"),
-				HealthBarProp->HasMetaData(TEXT("BindWidget")));
-		}
+		ASSERT_THAT(IsNotNull(HealthBarProp, TEXT("HealthBar FObjectProperty should be registered")));
+		ASSERT_THAT(IsTrue(
+			HealthBarProp->PropertyClass != nullptr
+			&& HealthBarProp->PropertyClass->IsChildOf(UProgressBar::StaticClass()),
+			TEXT("HealthBar property class should be UProgressBar")));
+		ASSERT_THAT(IsTrue(
+			HealthBarProp->HasMetaData(TEXT("BindWidget")),
+			TEXT("HealthBar should carry BindWidget metadata")));
 
 		FObjectProperty* RestartButtonProp = FindFProperty<FObjectProperty>(WidgetClass, TEXT("RestartButton"));
-		if (TestRunner->TestNotNull(TEXT("RestartButton FObjectProperty should be registered"), RestartButtonProp))
-		{
-			TestRunner->TestTrue(
-				TEXT("RestartButton property class should be UButton"),
-				RestartButtonProp->PropertyClass != nullptr
-				&& RestartButtonProp->PropertyClass->IsChildOf(UButton::StaticClass()));
-			TestRunner->TestTrue(
-				TEXT("RestartButton should carry BindWidget metadata"),
-				RestartButtonProp->HasMetaData(TEXT("BindWidget")));
-		}
+		ASSERT_THAT(IsNotNull(RestartButtonProp, TEXT("RestartButton FObjectProperty should be registered")));
+		ASSERT_THAT(IsTrue(
+			RestartButtonProp->PropertyClass != nullptr
+			&& RestartButtonProp->PropertyClass->IsChildOf(UButton::StaticClass()),
+			TEXT("RestartButton property class should be UButton")));
+		ASSERT_THAT(IsTrue(
+			RestartButtonProp->HasMetaData(TEXT("BindWidget")),
+			TEXT("RestartButton should carry BindWidget metadata")));
 
 		UFunction* ConstructFunction = WidgetClass->FindFunctionByName(TEXT("Construct"));
 		UFunction* TickFunction = WidgetClass->FindFunctionByName(TEXT("Tick"));
-		TestRunner->TestNotNull(TEXT("UserWidget Construct override should generate a UFunction"), ConstructFunction);
-		if (TestRunner->TestNotNull(TEXT("UserWidget Tick override should generate a UFunction"), TickFunction))
+		ASSERT_THAT(IsNotNull(ConstructFunction, TEXT("UserWidget Construct override should generate a UFunction")));
+		ASSERT_THAT(IsNotNull(TickFunction, TEXT("UserWidget Tick override should generate a UFunction")));
+		bool bHasGeometryParam = false;
+		bool bHasDeltaParam = false;
+		for (TFieldIterator<FProperty> ParamIt(TickFunction); ParamIt && ParamIt->HasAnyPropertyFlags(CPF_Parm); ++ParamIt)
 		{
-			bool bHasGeometryParam = false;
-			bool bHasDeltaParam = false;
-			for (TFieldIterator<FProperty> ParamIt(TickFunction); ParamIt && ParamIt->HasAnyPropertyFlags(CPF_Parm); ++ParamIt)
+			FProperty* Param = *ParamIt;
+			if (FStructProperty* StructParam = CastField<FStructProperty>(Param))
 			{
-				FProperty* Param = *ParamIt;
-				if (FStructProperty* StructParam = CastField<FStructProperty>(Param))
-				{
-					bHasGeometryParam |= StructParam->Struct != nullptr
-						&& StructParam->Struct->GetStructCPPName() == TEXT("FGeometry");
-				}
-				bHasDeltaParam |= Param->IsA<FFloatProperty>() || Param->IsA<FDoubleProperty>();
+				bHasGeometryParam |= StructParam->Struct != nullptr
+					&& StructParam->Struct->GetStructCPPName() == TEXT("FGeometry");
 			}
-			TestRunner->TestTrue(TEXT("Tick should expose FGeometry parameter"), bHasGeometryParam);
-			TestRunner->TestTrue(TEXT("Tick should expose float/double DeltaTime parameter"), bHasDeltaParam);
+			bHasDeltaParam |= Param->IsA<FFloatProperty>() || Param->IsA<FDoubleProperty>();
 		}
+		ASSERT_THAT(IsTrue(bHasGeometryParam, TEXT("Tick should expose FGeometry parameter")));
+		ASSERT_THAT(IsTrue(bHasDeltaParam, TEXT("Tick should expose float/double DeltaTime parameter")));
 	}
 };
 

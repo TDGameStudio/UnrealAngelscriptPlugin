@@ -71,17 +71,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineTypeInteropTests,
 		};
 
 		TUniquePtr<FAngelscriptEngine> TestEngine = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("TypeInterop test should create an isolated full engine"), TestEngine.Get()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(TestEngine.Get(), TEXT("TypeInterop test should create an isolated full engine")));
 
 		FAngelscriptEngineScope EngineScope(*TestEngine);
 		asIScriptEngine* ScriptEngine = TestEngine->GetScriptEngine();
-		if (!TestRunner->TestNotNull(TEXT("TypeInterop test should expose a live script engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("TypeInterop test should expose a live script engine")));
 
 		const FString ModuleName = MakeAutomationTypeInteropName(TEXT("ASTypeInterop"));
 		const FString SingleCastTypeName = MakeAutomationTypeInteropName(TEXT("FAutomationSingleCast"));
@@ -95,10 +89,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineTypeInteropTests,
 
 		const auto ModuleNameAnsi = StringCast<ANSICHAR>(*ModuleName);
 		asIScriptModule* Module = BuildModule(*TestRunner, *TestEngine, ModuleNameAnsi.Get(), ScriptSource);
-		if (!TestRunner->TestNotNull(TEXT("TypeInterop test should compile the delegate/event fixture module"), Module))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Module, TEXT("TypeInterop test should compile the delegate/event fixture module")));
 
 		const int PlainStructTypeId = ScriptEngine->GetTypeIdByDecl("FIntPoint");
 		const int EnumTypeId = ScriptEngine->GetTypeIdByDecl("ECollisionChannel");
@@ -109,22 +100,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineTypeInteropTests,
 		asITypeInfo* SingleCastTypeInfo = Module->GetTypeInfoByName(SingleCastTypeNameAnsi.Get());
 		asITypeInfo* MultiCastTypeInfo = Module->GetTypeInfoByName(MultiCastTypeNameAnsi.Get());
 
-		if (!TestRunner->TestTrue(TEXT("TypeInterop test should resolve a valid FIntPoint type id"), PlainStructTypeId >= 0)
-			|| !TestRunner->TestTrue(TEXT("TypeInterop test should resolve a valid ECollisionChannel enum type id"), EnumTypeId >= 0)
-			|| !TestRunner->TestTrue(TEXT("TypeInterop test should resolve a valid TArray<FIntPoint> template type id"), TemplateTypeId >= 0)
-			|| !TestRunner->TestNotNull(TEXT("TypeInterop test should resolve the declared single-cast delegate type"), SingleCastTypeInfo)
-			|| !TestRunner->TestNotNull(TEXT("TypeInterop test should resolve the declared multi-cast event type"), MultiCastTypeInfo))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(PlainStructTypeId >= 0, TEXT("TypeInterop test should resolve a valid FIntPoint type id")));
+		ASSERT_THAT(IsTrue(EnumTypeId >= 0, TEXT("TypeInterop test should resolve a valid ECollisionChannel enum type id")));
+		ASSERT_THAT(IsTrue(TemplateTypeId >= 0, TEXT("TypeInterop test should resolve a valid TArray<FIntPoint> template type id")));
+		ASSERT_THAT(IsNotNull(SingleCastTypeInfo, TEXT("TypeInterop test should resolve the declared single-cast delegate type")));
+		ASSERT_THAT(IsNotNull(MultiCastTypeInfo, TEXT("TypeInterop test should resolve the declared multi-cast event type")));
 
 		const int SingleCastTypeId = SingleCastTypeInfo->GetTypeId();
 		const int MultiCastTypeId = MultiCastTypeInfo->GetTypeId();
-		if (!TestRunner->TestTrue(TEXT("TypeInterop test should produce a valid single-cast delegate type id"), SingleCastTypeId >= 0)
-			|| !TestRunner->TestTrue(TEXT("TypeInterop test should produce a valid multi-cast event type id"), MultiCastTypeId >= 0))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(SingleCastTypeId >= 0, TEXT("TypeInterop test should produce a valid single-cast delegate type id")));
+		ASSERT_THAT(IsTrue(MultiCastTypeId >= 0, TEXT("TypeInterop test should produce a valid multi-cast event type id")));
 
 		UStruct* PlainStruct = TestEngine->GetUnrealStructFromAngelscriptTypeId(PlainStructTypeId);
 		UStruct* EnumStruct = TestEngine->GetUnrealStructFromAngelscriptTypeId(EnumTypeId);
@@ -142,25 +127,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineTypeInteropTests,
 		}
 		else
 		{
-			TestRunner->TestTrue(
-				TEXT("TypeInterop test should map the plain FIntPoint type id back to the reflected Unreal struct"),
-				true);
+			ASSERT_THAT(IsTrue(
+				true,
+				TEXT("TypeInterop test should map the plain FIntPoint type id back to the reflected Unreal struct")));
 		}
-		TestRunner->TestNull(
-			TEXT("TypeInterop test should reject enum type ids as non-struct Unreal mappings"),
-			EnumStruct);
-		TestRunner->TestNull(
-			TEXT("TypeInterop test should reject template instance type ids as non-plain Unreal structs"),
-			TemplateStruct);
-		TestRunner->TestNull(
-			TEXT("TypeInterop test should reject single-cast delegate type ids as non-struct Unreal mappings"),
-			SingleCastStruct);
-		TestRunner->TestNull(
-			TEXT("TypeInterop test should reject multi-cast event type ids as non-struct Unreal mappings"),
-			MultiCastStruct);
-		TestRunner->TestNull(
-			TEXT("TypeInterop test should reject invalid type ids"),
-			InvalidStruct);
+		ASSERT_THAT(IsNull(EnumStruct, TEXT("TypeInterop test should reject enum type ids as non-struct Unreal mappings")));
+		ASSERT_THAT(IsNull(TemplateStruct, TEXT("TypeInterop test should reject template instance type ids as non-plain Unreal structs")));
+		ASSERT_THAT(IsNull(SingleCastStruct, TEXT("TypeInterop test should reject single-cast delegate type ids as non-struct Unreal mappings")));
+		ASSERT_THAT(IsNull(MultiCastStruct, TEXT("TypeInterop test should reject multi-cast event type ids as non-struct Unreal mappings")));
+		ASSERT_THAT(IsNull(InvalidStruct, TEXT("TypeInterop test should reject invalid type ids")));
 	}
 };
 

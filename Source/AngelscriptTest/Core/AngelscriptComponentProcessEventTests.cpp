@@ -28,18 +28,19 @@ namespace AngelscriptTest_Core_AngelscriptComponentProcessEventTests_Private
 	static constexpr int32 AcceptedValue = 7;
 	static constexpr int32 RejectedValue = -3;
 
-	UActorComponent* CreateProcessEventTestCaseComponent(
+		UActorComponent* CreateProcessEventTestCaseComponent(
 		FAutomationTestBase& Test,
 		AActor& OwnerActor,
 		UClass* ComponentClass)
 	{
-		if (!Test.TestNotNull(TEXT("Component ProcessEvent test case should compile to a valid component class"), ComponentClass))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(ComponentClass, TEXT("Component ProcessEvent test case should compile to a valid component class")))
 		{
 			return nullptr;
 		}
 
 		UActorComponent* Component = NewObject<UActorComponent>(&OwnerActor, ComponentClass);
-		if (!Test.TestNotNull(TEXT("Component ProcessEvent test case should instantiate a runtime component"), Component))
+		if (!Assert.IsNotNull(Component, TEXT("Component ProcessEvent test case should instantiate a runtime component")))
 		{
 			return nullptr;
 		}
@@ -50,7 +51,7 @@ namespace AngelscriptTest_Core_AngelscriptComponentProcessEventTests_Private
 		Component->Activate(true);
 
 		UActorComponent* TypedComponent = Cast<UActorComponent>(Component);
-		if (!Test.TestNotNull(TEXT("Component ProcessEvent test case should instantiate a UActorComponent"), TypedComponent))
+		if (!Assert.IsNotNull(TypedComponent, TEXT("Component ProcessEvent test case should instantiate a UActorComponent")))
 		{
 			return nullptr;
 		}
@@ -65,15 +66,16 @@ namespace AngelscriptTest_Core_AngelscriptComponentProcessEventTests_Private
 		UFunction& Function,
 		int32 InValue)
 	{
+		FNoDiscardAsserter Assert(Test);
 		FStructOnScope FunctionParameters(&Function);
 		uint8* ParametersMemory = FunctionParameters.GetStructMemory();
-		if (!Test.TestNotNull(TEXT("Component ProcessEvent test case should allocate parameter storage"), ParametersMemory))
+		if (!Assert.IsNotNull(ParametersMemory, TEXT("Component ProcessEvent test case should allocate parameter storage")))
 		{
 			return false;
 		}
 
 		FIntProperty* ValueProperty = FindFProperty<FIntProperty>(&Function, TEXT("Value"));
-		if (!Test.TestNotNull(TEXT("Component ProcessEvent test case should expose the RPC value parameter"), ValueProperty))
+		if (!Assert.IsNotNull(ValueProperty, TEXT("Component ProcessEvent test case should expose the RPC value parameter")))
 		{
 			return false;
 		}
@@ -98,7 +100,8 @@ namespace AngelscriptTest_Core_AngelscriptComponentProcessEventTests_Private
 			return false;
 		}
 
-		return Test.TestEqual(Context, ActualValue, ExpectedValue);
+		FNoDiscardAsserter Assert(Test);
+		return Assert.AreEqual(ExpectedValue, ActualValue, Context);
 	}
 }
 
@@ -159,20 +162,20 @@ class UComponentProcessEventValidate : UActorComponent
 
 		UFunction* ServerFunction = FindGeneratedFunction(ScriptClass, ServerFunctionName);
 		UASFunction* GeneratedServerFunction = Cast<UASFunction>(ServerFunction);
-		if (!TestRunner->TestNotNull(TEXT("Component ProcessEvent test case should generate the server RPC"), ServerFunction)
-			|| !TestRunner->TestNotNull(TEXT("Component ProcessEvent test case should expose the server RPC as UASFunction"), GeneratedServerFunction))
+		if (!this->Assert.IsNotNull(ServerFunction, TEXT("Component ProcessEvent test case should generate the server RPC"))
+			|| !this->Assert.IsNotNull(GeneratedServerFunction, TEXT("Component ProcessEvent test case should expose the server RPC as UASFunction")))
 		{
 			return;
 		}
 
 		UFunction* ValidateFunction = GeneratedServerFunction->GetRuntimeValidateFunction();
-		if (!TestRunner->TestNotNull(TEXT("Component ProcessEvent test case should cache the _Validate companion function"), ValidateFunction))
+		if (!this->Assert.IsNotNull(ValidateFunction, TEXT("Component ProcessEvent test case should cache the _Validate companion function")))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("Component ProcessEvent test case should mark the generated RPC as requiring validation"), ServerFunction->HasAnyFunctionFlags(FUNC_NetValidate));
-		TestRunner->TestTrue(TEXT("Component ProcessEvent test case should resolve the expected _Validate function"), ValidateFunction->GetFName() == ValidateFunctionName);
+		ASSERT_THAT(IsTrue(ServerFunction->HasAnyFunctionFlags(FUNC_NetValidate), TEXT("Component ProcessEvent test case should mark the generated RPC as requiring validation")));
+		ASSERT_THAT(IsTrue(ValidateFunction->GetFName() == ValidateFunctionName, TEXT("Component ProcessEvent test case should resolve the expected _Validate function")));
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
@@ -213,7 +216,7 @@ class UComponentProcessEventValidate : UActorComponent
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("Component ProcessEvent should not record a validation failure for accepted input"), RPC_GetLastFailedReason() == nullptr);
+		ASSERT_THAT(IsTrue(RPC_GetLastFailedReason() == nullptr, TEXT("Component ProcessEvent should not record a validation failure for accepted input")));
 
 		RPC_ResetLastFailedReason();
 		if (!InvokeServerRecordValue(*TestRunner, Engine, *Component, *ServerFunction, RejectedValue))
@@ -244,12 +247,12 @@ class UComponentProcessEventValidate : UActorComponent
 		}
 
 		const TCHAR* FailedReason = RPC_GetLastFailedReason();
-		if (!TestRunner->TestNotNull(TEXT("Component ProcessEvent should record the failed validation function name"), FailedReason))
+		if (!this->Assert.IsNotNull(FailedReason, TEXT("Component ProcessEvent should record the failed validation function name")))
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Component ProcessEvent should report the _Validate function name on validation failure"), FString(FailedReason), ValidateFunctionName.ToString());
+		ASSERT_THAT(AreEqual(ValidateFunctionName.ToString(), FString(FailedReason), TEXT("Component ProcessEvent should report the _Validate function name on validation failure")));
 
 		}
 	}

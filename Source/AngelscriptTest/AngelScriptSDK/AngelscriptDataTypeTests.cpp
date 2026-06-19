@@ -21,11 +21,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDataTypeTests,
 		asCDataType VoidType = asCDataType::CreatePrimitive(ttVoid, false);
 		asCDataType NullHandleType = asCDataType::CreateNullHandle();
 
-		TestRunner->TestTrue(TEXT("int data type should be valid and primitive"), IntType.IsValid() && IntType.IsPrimitive() && IntType.IsIntegerType());
-		TestRunner->TestTrue(TEXT("float32 data type should report float semantics"), FloatType.IsPrimitive() && FloatType.IsFloat32Type() && FloatType.IsMathType());
-		TestRunner->TestTrue(TEXT("bool data type should report boolean semantics"), BoolType.IsPrimitive() && BoolType.IsBooleanType());
-		TestRunner->TestFalse(TEXT("void data type should not be instantiable"), VoidType.CanBeInstantiated());
-		TestRunner->TestTrue(TEXT("null handle data type should report object-handle semantics"), NullHandleType.IsNullHandle() && NullHandleType.IsObjectHandle());
+		ASSERT_THAT(IsTrue(IntType.IsValid() && IntType.IsPrimitive() && IntType.IsIntegerType(),
+			TEXT("int data type should be valid and primitive")));
+		ASSERT_THAT(IsTrue(FloatType.IsPrimitive() && FloatType.IsFloat32Type() && FloatType.IsMathType(),
+			TEXT("float32 data type should report float semantics")));
+		ASSERT_THAT(IsTrue(BoolType.IsPrimitive() && BoolType.IsBooleanType(),
+			TEXT("bool data type should report boolean semantics")));
+		ASSERT_THAT(IsFalse(VoidType.CanBeInstantiated(),
+			TEXT("void data type should not be instantiable")));
+		ASSERT_THAT(IsTrue(NullHandleType.IsNullHandle() && NullHandleType.IsObjectHandle(),
+			TEXT("null handle data type should report object-handle semantics")));
 	}
 
 	TEST_METHOD(Comparisons)
@@ -35,10 +40,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDataTypeTests,
 		asCDataType RefInt = asCDataType::CreatePrimitive(ttInt, false);
 		RefInt.MakeReference(true);
 
-		TestRunner->TestTrue(TEXT("Constness should be ignored by IsEqualExceptConst"), MutableInt.IsEqualExceptConst(ConstInt));
-		TestRunner->TestFalse(TEXT("Constness should still matter for exact equality"), MutableInt == ConstInt);
-		TestRunner->TestTrue(TEXT("Reference-ness should be ignored by IsEqualExceptRef"), MutableInt.IsEqualExceptRef(RefInt));
-		TestRunner->TestFalse(TEXT("Reference-ness should still matter for exact equality"), MutableInt == RefInt);
+		ASSERT_THAT(IsTrue(MutableInt.IsEqualExceptConst(ConstInt),
+			TEXT("Constness should be ignored by IsEqualExceptConst")));
+		ASSERT_THAT(IsFalse(MutableInt == ConstInt,
+			TEXT("Constness should still matter for exact equality")));
+		ASSERT_THAT(IsTrue(MutableInt.IsEqualExceptRef(RefInt),
+			TEXT("Reference-ness should be ignored by IsEqualExceptRef")));
+		ASSERT_THAT(IsFalse(MutableInt == RefInt,
+			TEXT("Reference-ness should still matter for exact equality")));
 	}
 
 	TEST_METHOD(HandleQualifierMatrix)
@@ -47,10 +56,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDataTypeTests,
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asCScriptEngine* ScriptEngine = static_cast<asCScriptEngine*>(Engine.GetScriptEngine());
 		asCTypeInfo* ActorType = static_cast<asCTypeInfo*>(ScriptEngine->GetTypeInfoByName("AActor"));
-		if (!TestRunner->TestNotNull(TEXT("AActor should exist in the script type system for handle qualifier comparisons"), ActorType))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ActorType,
+			TEXT("AActor should exist in the script type system for handle qualifier comparisons")));
 
 		asCDataType ActorValueType = asCDataType::CreateType(ActorType, false);
 		asCDataType ActorHandleType = asCDataType::CreateObjectHandle(ActorType, false);
@@ -59,34 +66,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDataTypeTests,
 		RefConstActorHandleType.MakeReference(true);
 		asCDataType NullHandleType = asCDataType::CreateNullHandle();
 
-		if (!TestRunner->TestTrue(TEXT("Object handle matrix should preserve the target type info"), ActorHandleType.GetTypeInfo() == ActorType))
-		{
-			return;
-		}
-		if (!TestRunner->TestFalse(TEXT("Exact equality should distinguish mutable and const handles"), ActorHandleType == ConstActorHandleType))
-		{
-			return;
-		}
-		if (!TestRunner->TestTrue(TEXT("IsEqualExceptConst should ignore handle constness"), ActorHandleType.IsEqualExceptConst(ConstActorHandleType)))
-		{
-			return;
-		}
-		if (!TestRunner->TestTrue(TEXT("IsEqualExceptRefAndConst should ignore both reference and const on handles"), ActorHandleType.IsEqualExceptRefAndConst(RefConstActorHandleType)))
-		{
-			return;
-		}
-		if (!TestRunner->TestFalse(TEXT("Null handle should not be exactly equal to a typed object handle"), NullHandleType == ActorHandleType))
-		{
-			return;
-		}
-		if (!TestRunner->TestTrue(TEXT("Null handle should still report object-handle semantics"), NullHandleType.IsObjectHandle() && NullHandleType.IsNullHandle()))
-		{
-			return;
-		}
-		if (!TestRunner->TestTrue(TEXT("Value type and object handle should keep different kind semantics"), ActorValueType.IsObject() && ActorHandleType.IsObjectHandle()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(ActorHandleType.GetTypeInfo() == ActorType,
+			TEXT("Object handle matrix should preserve the target type info")));
+		ASSERT_THAT(IsFalse(ActorHandleType == ConstActorHandleType,
+			TEXT("Exact equality should distinguish mutable and const handles")));
+		ASSERT_THAT(IsTrue(ActorHandleType.IsEqualExceptConst(ConstActorHandleType),
+			TEXT("IsEqualExceptConst should ignore handle constness")));
+		ASSERT_THAT(IsTrue(ActorHandleType.IsEqualExceptRefAndConst(RefConstActorHandleType),
+			TEXT("IsEqualExceptRefAndConst should ignore both reference and const on handles")));
+		ASSERT_THAT(IsFalse(NullHandleType == ActorHandleType,
+			TEXT("Null handle should not be exactly equal to a typed object handle")));
+		ASSERT_THAT(IsTrue(NullHandleType.IsObjectHandle() && NullHandleType.IsNullHandle(),
+			TEXT("Null handle should still report object-handle semantics")));
+		ASSERT_THAT(IsTrue(ActorValueType.IsObject() && ActorHandleType.IsObjectHandle(),
+			TEXT("Value type and object handle should keep different kind semantics")));
 
 		}
 	}
@@ -97,18 +90,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDataTypeTests,
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		asCScriptEngine* ScriptEngine = static_cast<asCScriptEngine*>(Engine.GetScriptEngine());
 		asCTypeInfo* ActorType = static_cast<asCTypeInfo*>(ScriptEngine->GetTypeInfoByName("AActor"));
-		if (!TestRunner->TestNotNull(TEXT("AActor should exist in the script type system for data-type handle tests"), ActorType))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ActorType,
+			TEXT("AActor should exist in the script type system for data-type handle tests")));
 
 		asCDataType ActorValueType = asCDataType::CreateType(ActorType, false);
-		TestRunner->TestTrue(TEXT("AActor value type should be recognized as an object type"), ActorValueType.IsObject());
-		TestRunner->TestTrue(TEXT("AActor value type should support handles"), ActorValueType.SupportHandles());
+		ASSERT_THAT(IsTrue(ActorValueType.IsObject(),
+			TEXT("AActor value type should be recognized as an object type")));
+		ASSERT_THAT(IsTrue(ActorValueType.SupportHandles(),
+			TEXT("AActor value type should support handles")));
 
 		asCDataType ActorHandleType = asCDataType::CreateObjectHandle(ActorType, false);
-		TestRunner->TestTrue(TEXT("CreateObjectHandle should mark the type as an object handle"), ActorHandleType.IsObjectHandle());
-		TestRunner->TestTrue(TEXT("Object handle should still be considered instantiable as a handle slot"), ActorHandleType.CanBeInstantiated());
+		ASSERT_THAT(IsTrue(ActorHandleType.IsObjectHandle(),
+			TEXT("CreateObjectHandle should mark the type as an object handle")));
+		ASSERT_THAT(IsTrue(ActorHandleType.CanBeInstantiated(),
+			TEXT("Object handle should still be considered instantiable as a handle slot")));
 		}
 	}
 
@@ -118,9 +113,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDataTypeTests,
 		asCDataType Float64Type = asCDataType::CreatePrimitive(ttFloat64, false);
 		asCDataType BoolType = asCDataType::CreatePrimitive(ttBool, false);
 
-		TestRunner->TestEqual(TEXT("int should occupy one dword in memory"), IntType.GetSizeInMemoryDWords(), 1);
-		TestRunner->TestEqual(TEXT("float64 should occupy eight bytes in memory"), Float64Type.GetSizeInMemoryBytes(), 8);
-		TestRunner->TestEqual(TEXT("bool alignment should stay byte-sized"), BoolType.GetAlignment(), 1);
+		ASSERT_THAT(AreEqual(1, IntType.GetSizeInMemoryDWords(),
+			TEXT("int should occupy one dword in memory")));
+		ASSERT_THAT(AreEqual(8, Float64Type.GetSizeInMemoryBytes(),
+			TEXT("float64 should occupy eight bytes in memory")));
+		ASSERT_THAT(AreEqual(1, BoolType.GetAlignment(),
+			TEXT("bool alignment should stay byte-sized")));
 	}
 };
 

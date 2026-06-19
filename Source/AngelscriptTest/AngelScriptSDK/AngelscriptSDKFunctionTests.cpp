@@ -33,10 +33,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKFunctionTests,
 	TEST_METHOD(OverloadDefault)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK function overload/default test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK function overload/default test should create a standalone engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionOverloadDefault", R"(
 int AddOne(int Value)
@@ -76,7 +73,8 @@ int AddWithDefaultExplicit()
 				return;
 			}
 			Invoker.AddArg(static_cast<int32>(2));
-			TestRunner->TestEqual(TEXT("SDK function overload/default test should call AddOne directly"), Invoker.CallAndReturn<int32>(INDEX_NONE), 3);
+			ASSERT_THAT(AreEqual(3, Invoker.CallAndReturn<int32>(INDEX_NONE),
+				TEXT("SDK function overload/default test should call AddOne directly")));
 		}
 
 		{
@@ -86,7 +84,8 @@ int AddWithDefaultExplicit()
 				return;
 			}
 			Invoker.AddArg(static_cast<int32>(2)).AddArg(static_cast<int32>(5));
-			TestRunner->TestEqual(TEXT("SDK function overload/default test should call AddPair directly"), Invoker.CallAndReturn<int32>(INDEX_NONE), 7);
+			ASSERT_THAT(AreEqual(7, Invoker.CallAndReturn<int32>(INDEX_NONE),
+				TEXT("SDK function overload/default test should call AddPair directly")));
 		}
 
 		{
@@ -95,7 +94,8 @@ int AddWithDefaultExplicit()
 			{
 				return;
 			}
-			TestRunner->TestEqual(TEXT("SDK function overload/default test should preserve default arguments"), Invoker.CallAndReturn<int32>(INDEX_NONE), 15);
+			ASSERT_THAT(AreEqual(15, Invoker.CallAndReturn<int32>(INDEX_NONE),
+				TEXT("SDK function overload/default test should preserve default arguments")));
 		}
 
 		{
@@ -104,17 +104,15 @@ int AddWithDefaultExplicit()
 			{
 				return;
 			}
-			TestRunner->TestEqual(TEXT("SDK function overload/default test should allow explicit default-argument override"), Invoker.CallAndReturn<int32>(INDEX_NONE), 5);
+			ASSERT_THAT(AreEqual(5, Invoker.CallAndReturn<int32>(INDEX_NONE),
+				TEXT("SDK function overload/default test should allow explicit default-argument override")));
 		}
 	}
 
 	TEST_METHOD(RefArgument)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK function ref-argument test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK function ref-argument test should create a standalone engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionRefArgument", R"(
 void WriteValue(int &out Value)
@@ -134,20 +132,14 @@ void WriteValue(int &out Value)
 			return;
 		}
 		Invoker.AddArgRef(Value);
-		if (!TestRunner->TestTrue(TEXT("SDK function ref-argument test should execute the writer"), Invoker.Call()))
-		{
-			return;
-		}
-		TestRunner->TestEqual(TEXT("SDK function ref-argument test should preserve out-parameter writes"), Value, 7);
+		ASSERT_THAT(IsTrue(Invoker.Call(), TEXT("SDK function ref-argument test should execute the writer")));
+		ASSERT_THAT(AreEqual(7, Value, TEXT("SDK function ref-argument test should preserve out-parameter writes")));
 	}
 
 	TEST_METHOD(ByRefMutation)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK function by-ref mutation test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK function by-ref mutation test should create a standalone engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionByRefMutation", R"(
 void Increment(int &inout Value)
@@ -167,20 +159,14 @@ void Increment(int &inout Value)
 			return;
 		}
 		Invoker.AddArgRef(Value);
-		if (!TestRunner->TestTrue(TEXT("SDK function by-ref mutation test should execute the mutator"), Invoker.Call()))
-		{
-			return;
-		}
-		TestRunner->TestEqual(TEXT("SDK function by-ref mutation test should preserve inout parameter semantics"), Value, 42);
+		ASSERT_THAT(IsTrue(Invoker.Call(), TEXT("SDK function by-ref mutation test should execute the mutator")));
+		ASSERT_THAT(AreEqual(42, Value, TEXT("SDK function by-ref mutation test should preserve inout parameter semantics")));
 	}
 
 	TEST_METHOD(ConstInRef)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK function const-in-ref test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK function const-in-ref test should create a standalone engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionConstInRef", R"(
 int Sum(const int &in A, const int &in B)
@@ -201,16 +187,14 @@ int Sum(const int &in A, const int &in B)
 			return;
 		}
 		Invoker.AddArgRef(Left).AddArgRef(Right);
-		TestRunner->TestEqual(TEXT("SDK function const-in-ref test should pass values through const &in parameters"), Invoker.CallAndReturn<int32>(INDEX_NONE), 42);
+		ASSERT_THAT(AreEqual(42, Invoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("SDK function const-in-ref test should pass values through const &in parameters")));
 	}
 
 	TEST_METHOD(TypeBasedOverload)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK function type-overload test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK function type-overload test should create a standalone engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionTypeOverload", R"(
 int Describe(int Value)    { return 1; }
@@ -243,7 +227,8 @@ int DescribeBool()
 			{
 				return;
 			}
-			TestRunner->TestEqual(TEXT("SDK function type-overload test should resolve int overloads by argument type"), Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+			ASSERT_THAT(AreEqual(1, Invoker.CallAndReturn<int32>(INDEX_NONE),
+				TEXT("SDK function type-overload test should resolve int overloads by argument type")));
 		}
 
 		{
@@ -252,7 +237,8 @@ int DescribeBool()
 			{
 				return;
 			}
-			TestRunner->TestEqual(TEXT("SDK function type-overload test should resolve double overloads by argument type"), Invoker.CallAndReturn<int32>(INDEX_NONE), 2);
+			ASSERT_THAT(AreEqual(2, Invoker.CallAndReturn<int32>(INDEX_NONE),
+				TEXT("SDK function type-overload test should resolve double overloads by argument type")));
 		}
 
 		{
@@ -261,17 +247,15 @@ int DescribeBool()
 			{
 				return;
 			}
-			TestRunner->TestEqual(TEXT("SDK function type-overload test should resolve bool overloads by argument type"), Invoker.CallAndReturn<int32>(INDEX_NONE), 3);
+			ASSERT_THAT(AreEqual(3, Invoker.CallAndReturn<int32>(INDEX_NONE),
+				TEXT("SDK function type-overload test should resolve bool overloads by argument type")));
 		}
 	}
 
 	TEST_METHOD(Recursion)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK function recursion test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK function recursion test should create a standalone engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionRecursion", R"(
 int Factorial(int N)
@@ -298,7 +282,8 @@ int Fib(int N)
 				return;
 			}
 			Invoker.AddArg(static_cast<int32>(5));
-			TestRunner->TestEqual(TEXT("SDK function recursion test should compute factorial correctly"), Invoker.CallAndReturn<int32>(INDEX_NONE), 120);
+			ASSERT_THAT(AreEqual(120, Invoker.CallAndReturn<int32>(INDEX_NONE),
+				TEXT("SDK function recursion test should compute factorial correctly")));
 		}
 
 		{
@@ -308,7 +293,8 @@ int Fib(int N)
 				return;
 			}
 			Invoker.AddArg(static_cast<int32>(0));
-			TestRunner->TestEqual(TEXT("SDK function recursion test should handle the factorial base case"), Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+			ASSERT_THAT(AreEqual(1, Invoker.CallAndReturn<int32>(INDEX_NONE),
+				TEXT("SDK function recursion test should handle the factorial base case")));
 		}
 
 		{
@@ -318,7 +304,8 @@ int Fib(int N)
 				return;
 			}
 			Invoker.AddArg(static_cast<int32>(10));
-			TestRunner->TestEqual(TEXT("SDK function recursion test should compute fibonacci correctly"), Invoker.CallAndReturn<int32>(INDEX_NONE), 55);
+			ASSERT_THAT(AreEqual(55, Invoker.CallAndReturn<int32>(INDEX_NONE),
+				TEXT("SDK function recursion test should compute fibonacci correctly")));
 		}
 	}
 };

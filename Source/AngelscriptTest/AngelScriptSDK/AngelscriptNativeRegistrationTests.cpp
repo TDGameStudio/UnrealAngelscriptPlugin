@@ -26,9 +26,9 @@ namespace
 		new(Address) FNativeCounter{0};
 	}
 
-	bool RegisterNativeCounter(FAutomationTestBase& Test, asIScriptEngine* ScriptEngine)
+	bool RegisterNativeCounter(asIScriptEngine* ScriptEngine)
 	{
-		if (!Test.TestNotNull(TEXT("Native value-type registration should receive a valid script engine"), ScriptEngine))
+		if (ScriptEngine == nullptr)
 		{
 			return false;
 		}
@@ -37,7 +37,7 @@ namespace
 			"NativeCounter",
 			sizeof(FNativeCounter),
 			asOBJ_VALUE | asOBJ_POD | asGetTypeTraits<FNativeCounter>() | asOBJ_APP_CLASS_ALLINTS);
-		if (!Test.TestTrue(TEXT("Native value-type registration should register the POD object type"), TypeResult >= 0))
+		if (TypeResult < 0)
 		{
 			return false;
 		}
@@ -50,7 +50,7 @@ namespace
 			asFUNCTION(ConstructNativeCounter),
 			asCALL_CDECL_OBJLAST,
 			*(asFunctionCaller*)&ConstructorCaller);
-		if (!Test.TestTrue(TEXT("Native value-type registration should register the default constructor"), ConstructResult >= 0))
+		if (ConstructResult < 0)
 		{
 			return false;
 		}
@@ -59,57 +59,65 @@ namespace
 			"NativeCounter",
 			"int Value",
 			asOFFSET(FNativeCounter, Value));
-		return Test.TestTrue(TEXT("Native value-type registration should expose the POD field as a script property"), PropertyResult >= 0);
+		return PropertyResult >= 0;
 	}
 
 	bool ExecuteRegisteredScript(
-		FAutomationTestBase& Test,
 		asIScriptEngine* ScriptEngine,
 		const char* ModuleName,
 		const char* Source,
 		const char* Declaration,
 		FNativeTestEngine& Engine,
-		int32& OutValue)
+		int32& OutValue,
+		FString& OutDiagnostics)
 	{
 		asIScriptModule* Module = BuildNativeModule(ScriptEngine, ModuleName, Source);
-		if (!Test.TestNotNull(TEXT("Native registration tests should compile the script module"), Module))
+		if (Module == nullptr)
 		{
-			Test.AddInfo(Engine.GetMessagesText());
+			OutDiagnostics = Engine.GetMessagesText();
 			return false;
 		}
 
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, Declaration);
-		if (!Test.TestNotNull(TEXT("Native registration tests should resolve the script entry point"), Function))
+		if (Function == nullptr)
 		{
+			OutDiagnostics = TEXT("Native registration tests should resolve the script entry point");
 			return false;
 		}
 
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!Test.TestNotNull(TEXT("Native registration tests should create a script context"), Context))
+		if (Context == nullptr)
 		{
+			OutDiagnostics = TEXT("Native registration tests should create a script context");
 			return false;
 		}
+		ON_SCOPE_EXIT
+		{
+			Context->Release();
+		};
 
 		const int ExecuteResult = PrepareAndExecute(Context, Function);
-		if (!Test.TestEqual(TEXT("Native registration tests should finish script execution successfully"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
+		if (ExecuteResult != static_cast<int32>(asEXECUTION_FINISHED))
 		{
 			if (ExecuteResult == asEXECUTION_EXCEPTION)
 			{
 				const int ExceptionLine = Context->GetExceptionLineNumber();
 				const FString ExceptionString = UTF8_TO_TCHAR(Context->GetExceptionString() != nullptr ? Context->GetExceptionString() : "");
-				Test.AddInfo(FString::Printf(TEXT("Native registration exception at line %d: %s"), ExceptionLine, *ExceptionString));
+				OutDiagnostics += FString::Printf(TEXT("Native registration exception at line %d: %s"), ExceptionLine, *ExceptionString);
 			}
 			const FString Diagnostics = Engine.GetMessagesText();
 			if (!Diagnostics.IsEmpty())
 			{
-				Test.AddInfo(Diagnostics);
+				if (!OutDiagnostics.IsEmpty())
+				{
+					OutDiagnostics += LINE_TERMINATOR;
+				}
+				OutDiagnostics += Diagnostics;
 			}
-			Context->Release();
 			return false;
 		}
 
 		OutValue = static_cast<int32>(Context->GetReturnDWord());
-		Context->Release();
 		return true;
 	}
 }
@@ -139,15 +147,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
 			asFUNCTION(NativeDoubleValue),
 			asCALL_CDECL,
 			*(asFunctionCaller*)&Caller);
-		bGlobalFunctionRegistered = TestRunner->TestTrue(TEXT("Native global-function registration test should register the C++ function"), RegisterResult >= 0);
+		bGlobalFunctionRegistered = RegisterResult >= 0;
 		if (!bGlobalFunctionRegistered)
 		{
+			TestRunner->AddError(TEXT("Native global-function registration test should register the C++ function"));
 			TestRunner->AddInfo(FString::Printf(TEXT("RegisterGlobalFunction returned %d"), RegisterResult));
 		}
 
 		const int GlobalPropertyResult = ScriptEngine->RegisterGlobalProperty("int NativeGlobalValue", &GNativeGlobalValue);
-		bGlobalPropertyRegistered = TestRunner->TestTrue(TEXT("Native global-property registration test should register the C++ property"), GlobalPropertyResult >= 0);
-		bNativeCounterRegistered = RegisterNativeCounter(*TestRunner, ScriptEngine);
+		bGlobalPropertyRegistered = GlobalPropertyResult >= 0;
+		if (!bGlobalPropertyRegistered)
+		{
+			TestRunner->AddError(TEXT("Native global-property registration test should register the C++ property"));
+		}
+
+		bNativeCounterRegistered = RegisterNativeCounter(ScriptEngine);
+		if (!bNativeCounterRegistered)
+		{
+			TestRunner->AddError(TEXT("Native value-type registration should register the POD object type, constructor, and property"));
+		}
 	}
 
 	AFTER_ALL()
@@ -167,67 +185,79 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
 	TEST_METHOD(GlobalFunction)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Native global-function registration test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Native global-function registration test should create a standalone engine")));
 		if (!bGlobalFunctionRegistered)
 		{
 			return;
 		}
 
 		int32 Result = 0;
+		FString Diagnostics;
 		FScopedNativeModuleName ModuleScope(Engine, "NativeRegisterGlobalFunction");
-		if (!ExecuteRegisteredScript(*TestRunner, ScriptEngine, "NativeRegisterGlobalFunction", "int Entry() { return DoubleNative(21); }", "int Entry()", Engine, Result))
+		if (!this->Assert.IsTrue(ExecuteRegisteredScript(ScriptEngine, "NativeRegisterGlobalFunction", "int Entry() { return DoubleNative(21); }", "int Entry()", Engine, Result, Diagnostics),
+			TEXT("Native registration tests should compile, resolve, and execute the script module")))
 		{
+			if (!Diagnostics.IsEmpty())
+			{
+				TestRunner->AddInfo(Diagnostics);
+			}
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Native global-function registration test should allow script code to call the registered function"), Result, 42);
+		ASSERT_THAT(AreEqual(42, Result,
+			TEXT("Native global-function registration test should allow script code to call the registered function")));
 	}
 
 	TEST_METHOD(GlobalProperty)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Native global-property registration test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Native global-property registration test should create a standalone engine")));
 		if (!bGlobalPropertyRegistered)
 		{
 			return;
 		}
 
 		int32 Result = 0;
+		FString Diagnostics;
 		FScopedNativeModuleName ModuleScope(Engine, "NativeRegisterGlobalProperty");
-		if (!ExecuteRegisteredScript(*TestRunner, ScriptEngine, "NativeRegisterGlobalProperty", "int Entry() { return NativeGlobalValue * 2; }", "int Entry()", Engine, Result))
+		if (!this->Assert.IsTrue(ExecuteRegisteredScript(ScriptEngine, "NativeRegisterGlobalProperty", "int Entry() { return NativeGlobalValue * 2; }", "int Entry()", Engine, Result, Diagnostics),
+			TEXT("Native registration tests should compile, resolve, and execute the script module")))
 		{
+			if (!Diagnostics.IsEmpty())
+			{
+				TestRunner->AddInfo(Diagnostics);
+			}
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Native global-property registration test should expose the registered property to script code"), Result, 42);
+		ASSERT_THAT(AreEqual(42, Result,
+			TEXT("Native global-property registration test should expose the registered property to script code")));
 	}
 
 	TEST_METHOD(SimpleValueType)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Native value-type registration test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Native value-type registration test should create a standalone engine")));
 		if (!bNativeCounterRegistered)
 		{
 			return;
 		}
 
 		int32 Result = 0;
+		FString Diagnostics;
 		FScopedNativeModuleName ModuleScope(Engine, "NativeRegisterSimpleValueType");
-		if (!ExecuteRegisteredScript(*TestRunner, ScriptEngine, "NativeRegisterSimpleValueType", "int Entry() { NativeCounter Counter; Counter.Value = 19; return Counter.Value + 23; }", "int Entry()", Engine, Result))
+		if (!this->Assert.IsTrue(ExecuteRegisteredScript(ScriptEngine, "NativeRegisterSimpleValueType", "int Entry() { NativeCounter Counter; Counter.Value = 19; return Counter.Value + 23; }", "int Entry()", Engine, Result, Diagnostics),
+			TEXT("Native registration tests should compile, resolve, and execute the script module")))
 		{
+			if (!Diagnostics.IsEmpty())
+			{
+				TestRunner->AddInfo(Diagnostics);
+			}
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Native value-type registration test should allow script code to construct and use the registered POD type"), Result, 42);
+		ASSERT_THAT(AreEqual(42, Result,
+			TEXT("Native value-type registration test should allow script code to construct and use the registered POD type")));
 	}
 };
 

@@ -159,48 +159,48 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFormatStringTests,
 			? Modules[0]->Code[0].Code
 			: FString();
 
-		TestRunner->TestTrue(
-			TEXT("Format string rewrite test case should preprocess successfully"),
-			bPreprocessSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Format string rewrite test case should not emit preprocessing errors"),
+		ASSERT_THAT(IsTrue(
+			bPreprocessSucceeded,
+			TEXT("Format string rewrite test case should preprocess successfully")));
+		ASSERT_THAT(AreEqual(
+			0,
 			PreprocessErrorCount,
-			0);
-		TestRunner->TestEqual(
-			TEXT("Format string rewrite test case should keep preprocessing diagnostics empty"),
+			TEXT("Format string rewrite test case should not emit preprocessing errors")));
+		ASSERT_THAT(AreEqual(
+			0,
 			PreprocessMessages.Num(),
-			0);
-		TestRunner->TestEqual(
-			TEXT("Format string rewrite test case should produce exactly one module descriptor"),
+			TEXT("Format string rewrite test case should keep preprocessing diagnostics empty")));
+		ASSERT_THAT(AreEqual(
+			1,
 			Modules.Num(),
-			1);
+			TEXT("Format string rewrite test case should produce exactly one module descriptor")));
 		if (Modules.Num() > 0)
 		{
-			TestRunner->TestEqual(
-				TEXT("Format string rewrite test case should preserve the expected module name"),
+			ASSERT_THAT(AreEqual(
+				CompilerPipelineFormatStringTest::ModuleName.ToString(),
 				Modules[0]->ModuleName,
-				CompilerPipelineFormatStringTest::ModuleName.ToString());
+				TEXT("Format string rewrite test case should preserve the expected module name")));
 		}
 
-		TestRunner->TestTrue(
-			TEXT("Format string rewrite test case should materialize escaped opening braces in processed code"),
-			ProcessedCode.Contains(TEXT(".AppendChar('{')")));
-		TestRunner->TestTrue(
-			TEXT("Format string rewrite test case should materialize escaped closing braces in processed code"),
-			ProcessedCode.Contains(TEXT(".AppendChar('}')")));
-		TestRunner->TestTrue(
-			TEXT("Format string rewrite test case should rewrite equals expansion into an explicit label prefix"),
-			ProcessedCode.Contains(TEXT("\"21 = \"+(21)")));
-		TestRunner->TestEqual(
-			TEXT("Format string rewrite test case should produce three ApplyFormat calls for both specifier paths"),
+		ASSERT_THAT(IsTrue(
+			ProcessedCode.Contains(TEXT(".AppendChar('{')")),
+			TEXT("Format string rewrite test case should materialize escaped opening braces in processed code")));
+		ASSERT_THAT(IsTrue(
+			ProcessedCode.Contains(TEXT(".AppendChar('}')")),
+			TEXT("Format string rewrite test case should materialize escaped closing braces in processed code")));
+		ASSERT_THAT(IsTrue(
+			ProcessedCode.Contains(TEXT("\"21 = \"+(21)")),
+			TEXT("Format string rewrite test case should rewrite equals expansion into an explicit label prefix")));
+		ASSERT_THAT(AreEqual(
+			3,
 			CompilerPipelineFormatStringTest::CountOccurrences(ProcessedCode, TEXT("FString::ApplyFormat((")),
-			3);
-		TestRunner->TestTrue(
-			TEXT("Format string rewrite test case should preserve the hex format specifier in processed code"),
-			ProcessedCode.Contains(TEXT("\"#06x\"")));
-		TestRunner->TestTrue(
-			TEXT("Format string rewrite test case should preserve the decimal precision format specifier in processed code"),
-			ProcessedCode.Contains(TEXT("\".1f\"")));
+			TEXT("Format string rewrite test case should produce three ApplyFormat calls for both specifier paths")));
+		ASSERT_THAT(IsTrue(
+			ProcessedCode.Contains(TEXT("\"#06x\"")),
+			TEXT("Format string rewrite test case should preserve the hex format specifier in processed code")));
+		ASSERT_THAT(IsTrue(
+			ProcessedCode.Contains(TEXT("\".1f\"")),
+			TEXT("Format string rewrite test case should preserve the decimal precision format specifier in processed code")));
 
 		Engine.ResetDiagnostics();
 
@@ -215,19 +215,19 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFormatStringTests,
 			Summary,
 			true);
 
-		TestRunner->TestTrue(
-			TEXT("Format string rewrite test case should compile through the normal preprocessor pipeline"),
-			bCompiled);
-		TestRunner->TestTrue(
-			TEXT("Format string rewrite test case should report that it used the preprocessor"),
-			Summary.bUsedPreprocessor);
-		TestRunner->TestTrue(
-			TEXT("Format string rewrite test case should mark compile succeeded in the summary"),
-			Summary.bCompileSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Format string rewrite test case should keep compile diagnostics empty"),
+		ASSERT_THAT(IsTrue(
+			bCompiled,
+			TEXT("Format string rewrite test case should compile through the normal preprocessor pipeline")));
+		ASSERT_THAT(IsTrue(
+			Summary.bUsedPreprocessor,
+			TEXT("Format string rewrite test case should report that it used the preprocessor")));
+		ASSERT_THAT(IsTrue(
+			Summary.bCompileSucceeded,
+			TEXT("Format string rewrite test case should mark compile succeeded in the summary")));
+		ASSERT_THAT(AreEqual(
+			0,
 			Summary.Diagnostics.Num(),
-			0);
+			TEXT("Format string rewrite test case should keep compile diagnostics empty")));
 
 		int32 EntryResult = 0;
 		const bool bExecuted = bCompiled
@@ -237,15 +237,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFormatStringTests,
 				CompilerPipelineFormatStringTest::ModuleName,
 				TEXT("int Entry()"),
 				EntryResult);
-		TestRunner->TestTrue(
-			TEXT("Format string rewrite test case should execute the compiled Entry function"),
-			bExecuted);
+		ASSERT_THAT(IsTrue(
+			bExecuted,
+			TEXT("Format string rewrite test case should execute the compiled Entry function")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(
-				TEXT("Format string rewrite test case should keep escaped braces, plain interpolation, equals expansion, and every specifier branch executable"),
+			ASSERT_THAT(AreEqual(
+				1117,
 				EntryResult,
-				1117);
+				TEXT("Format string rewrite test case should keep escaped braces, plain interpolation, equals expansion, and every specifier branch executable")));
 		}
 
 		}

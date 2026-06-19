@@ -180,34 +180,34 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 			AbsoluteScriptPath,
 			PreprocessErrorCount);
 
-		TestRunner->TestTrue(
-			TEXT("Property callback metadata test case should preprocess successfully"),
-			bPreprocessSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Property callback metadata test case should not emit preprocessing errors"),
+		ASSERT_THAT(IsTrue(
+			bPreprocessSucceeded,
+			TEXT("Property callback metadata test case should preprocess successfully")));
+		ASSERT_THAT(AreEqual(
+			0,
 			PreprocessErrorCount,
-			0);
-		TestRunner->TestEqual(
-			TEXT("Property callback metadata test case should keep preprocessing diagnostics empty"),
+			TEXT("Property callback metadata test case should not emit preprocessing errors")));
+		ASSERT_THAT(AreEqual(
+			0,
 			PreprocessMessages.Num(),
-			0);
-		TestRunner->TestEqual(
-			TEXT("Property callback metadata test case should produce exactly one module descriptor"),
+			TEXT("Property callback metadata test case should keep preprocessing diagnostics empty")));
+		ASSERT_THAT(AreEqual(
+			1,
 			Modules.Num(),
-			1);
+			TEXT("Property callback metadata test case should produce exactly one module descriptor")));
 		if (!bPreprocessSucceeded || Modules.Num() != 1)
 		{
 			return;
 		}
 
 		const TSharedRef<FAngelscriptModuleDesc> ModuleDesc = Modules[0];
-		TestRunner->TestEqual(
-			TEXT("Property callback metadata test case should preserve the expected module name"),
+		ASSERT_THAT(AreEqual(
+			CompilerPipelinePropertyMetadataTest::ModuleName.ToString(),
 			ModuleDesc->ModuleName,
-			CompilerPipelinePropertyMetadataTest::ModuleName.ToString());
+			TEXT("Property callback metadata test case should preserve the expected module name")));
 
 		const TSharedPtr<FAngelscriptClassDesc> ClassDesc = ModuleDesc->GetClass(CompilerPipelinePropertyMetadataTest::ClassName);
-		if (!TestRunner->TestTrue(TEXT("Property callback metadata test case should parse the annotated class descriptor"), ClassDesc.IsValid()))
+		if (!this->Assert.IsTrue(ClassDesc.IsValid(), TEXT("Property callback metadata test case should parse the annotated class descriptor")))
 		{
 			return;
 		}
@@ -216,35 +216,35 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 		const TSharedPtr<FAngelscriptFunctionDesc> OnRepDesc = ClassDesc->GetMethod(CompilerPipelinePropertyMetadataTest::OnRepFunctionName);
 		const TSharedPtr<FAngelscriptFunctionDesc> GetterDesc = ClassDesc->GetMethod(CompilerPipelinePropertyMetadataTest::GetterFunctionName);
 		const TSharedPtr<FAngelscriptFunctionDesc> SetterDesc = ClassDesc->GetMethod(CompilerPipelinePropertyMetadataTest::SetterFunctionName);
-		if (!TestRunner->TestTrue(TEXT("Property callback metadata test case should parse the annotated property descriptor"), PropertyDesc.IsValid())
-			|| !TestRunner->TestTrue(TEXT("Property callback metadata test case should parse the RepNotify callback descriptor"), OnRepDesc.IsValid())
-			|| !TestRunner->TestTrue(TEXT("Property callback metadata test case should parse the BlueprintGetter descriptor"), GetterDesc.IsValid())
-			|| !TestRunner->TestTrue(TEXT("Property callback metadata test case should parse the BlueprintSetter descriptor"), SetterDesc.IsValid()))
+		if (!this->Assert.IsTrue(PropertyDesc.IsValid(), TEXT("Property callback metadata test case should parse the annotated property descriptor"))
+			|| !this->Assert.IsTrue(OnRepDesc.IsValid(), TEXT("Property callback metadata test case should parse the RepNotify callback descriptor"))
+			|| !this->Assert.IsTrue(GetterDesc.IsValid(), TEXT("Property callback metadata test case should parse the BlueprintGetter descriptor"))
+			|| !this->Assert.IsTrue(SetterDesc.IsValid(), TEXT("Property callback metadata test case should parse the BlueprintSetter descriptor")))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(
-			TEXT("Preprocessor should mark ReplicatedUsing properties as replicated"),
-			PropertyDesc->bReplicated);
-		TestRunner->TestTrue(
-			TEXT("Preprocessor should mark ReplicatedUsing properties as rep-notify"),
-			PropertyDesc->bRepNotify);
-		TestRunner->TestEqual(
-			TEXT("Preprocessor should preserve the ReplicatedUsing callback name"),
+		ASSERT_THAT(IsTrue(
+			PropertyDesc->bReplicated,
+			TEXT("Preprocessor should mark ReplicatedUsing properties as replicated")));
+		ASSERT_THAT(IsTrue(
+			PropertyDesc->bRepNotify,
+			TEXT("Preprocessor should mark ReplicatedUsing properties as rep-notify")));
+		ASSERT_THAT(AreEqual(
+			CompilerPipelinePropertyMetadataTest::OnRepFunctionName,
 			CompilerPipelinePropertyMetadataTest::GetPropertyMeta(PropertyDesc, TEXT("ReplicatedUsing")),
-			CompilerPipelinePropertyMetadataTest::OnRepFunctionName);
-		TestRunner->TestEqual(
-			TEXT("Preprocessor should preserve the BlueprintGetter callback name"),
+			TEXT("Preprocessor should preserve the ReplicatedUsing callback name")));
+		ASSERT_THAT(AreEqual(
+			CompilerPipelinePropertyMetadataTest::GetterFunctionName,
 			CompilerPipelinePropertyMetadataTest::GetPropertyMeta(PropertyDesc, TEXT("BlueprintGetter")),
-			CompilerPipelinePropertyMetadataTest::GetterFunctionName);
-		TestRunner->TestEqual(
-			TEXT("Preprocessor should preserve the BlueprintSetter callback name"),
+			TEXT("Preprocessor should preserve the BlueprintGetter callback name")));
+		ASSERT_THAT(AreEqual(
+			CompilerPipelinePropertyMetadataTest::SetterFunctionName,
 			CompilerPipelinePropertyMetadataTest::GetPropertyMeta(PropertyDesc, TEXT("BlueprintSetter")),
-			CompilerPipelinePropertyMetadataTest::SetterFunctionName);
-		TestRunner->TestTrue(
-			TEXT("Preprocessor should keep the BlueprintGetter callback marked BlueprintPure"),
-			GetterDesc->bBlueprintPure);
+			TEXT("Preprocessor should preserve the BlueprintSetter callback name")));
+		ASSERT_THAT(IsTrue(
+			GetterDesc->bBlueprintPure,
+			TEXT("Preprocessor should keep the BlueprintGetter callback marked BlueprintPure")));
 
 		Engine.ResetDiagnostics();
 
@@ -266,19 +266,19 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 				*CompilerPipelinePropertyMetadataTest::JoinDiagnostics(Summary.Diagnostics)));
 		}
 
-		TestRunner->TestTrue(
-			TEXT("Property callback metadata test case should compile through the normal preprocessor pipeline"),
-			bCompiled);
-		TestRunner->TestTrue(
-			TEXT("Property callback metadata test case should record preprocessor usage in the compile summary"),
-			Summary.bUsedPreprocessor);
-		TestRunner->TestTrue(
-			TEXT("Property callback metadata test case should mark compile succeeded in the summary"),
-			Summary.bCompileSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Property callback metadata test case should keep compile diagnostics empty"),
+		ASSERT_THAT(IsTrue(
+			bCompiled,
+			TEXT("Property callback metadata test case should compile through the normal preprocessor pipeline")));
+		ASSERT_THAT(IsTrue(
+			Summary.bUsedPreprocessor,
+			TEXT("Property callback metadata test case should record preprocessor usage in the compile summary")));
+		ASSERT_THAT(IsTrue(
+			Summary.bCompileSucceeded,
+			TEXT("Property callback metadata test case should mark compile succeeded in the summary")));
+		ASSERT_THAT(AreEqual(
+			0,
 			Summary.Diagnostics.Num(),
-			0);
+			TEXT("Property callback metadata test case should keep compile diagnostics empty")));
 		if (!bCompiled)
 		{
 			return;
@@ -291,19 +291,19 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 			CompilerPipelinePropertyMetadataTest::ModuleName,
 			CompilerPipelinePropertyMetadataTest::EntryFunctionDeclaration,
 			EntryResult);
-		TestRunner->TestTrue(
-			TEXT("Property callback metadata test case should execute the compiled entry function"),
-			bExecuted);
+		ASSERT_THAT(IsTrue(
+			bExecuted,
+			TEXT("Property callback metadata test case should execute the compiled entry function")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(
-				TEXT("Property callback metadata test case should preserve module execution after metadata propagation"),
+			ASSERT_THAT(AreEqual(
+				CompilerPipelinePropertyMetadataTest::ExpectedEntryValue,
 				EntryResult,
-				CompilerPipelinePropertyMetadataTest::ExpectedEntryValue);
+				TEXT("Property callback metadata test case should preserve module execution after metadata propagation")));
 		}
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, *CompilerPipelinePropertyMetadataTest::ClassName);
-		if (!TestRunner->TestNotNull(TEXT("Property callback metadata test case should materialize the generated class"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Property callback metadata test case should materialize the generated class")))
 		{
 			return;
 		}
@@ -312,10 +312,10 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 		UFunction* OnRepFunction = FindGeneratedFunction(GeneratedClass, *CompilerPipelinePropertyMetadataTest::OnRepFunctionName);
 		UFunction* GetterFunction = FindGeneratedFunction(GeneratedClass, *CompilerPipelinePropertyMetadataTest::GetterFunctionName);
 		UFunction* SetterFunction = FindGeneratedFunction(GeneratedClass, *CompilerPipelinePropertyMetadataTest::SetterFunctionName);
-		if (!TestRunner->TestNotNull(TEXT("Property callback metadata test case should materialize the generated property"), TrackedValueProperty)
-			|| !TestRunner->TestNotNull(TEXT("Property callback metadata test case should materialize the generated RepNotify callback"), OnRepFunction)
-			|| !TestRunner->TestNotNull(TEXT("Property callback metadata test case should materialize the generated BlueprintGetter callback"), GetterFunction)
-			|| !TestRunner->TestNotNull(TEXT("Property callback metadata test case should materialize the generated BlueprintSetter callback"), SetterFunction))
+		if (!this->Assert.IsNotNull(TrackedValueProperty, TEXT("Property callback metadata test case should materialize the generated property"))
+			|| !this->Assert.IsNotNull(OnRepFunction, TEXT("Property callback metadata test case should materialize the generated RepNotify callback"))
+			|| !this->Assert.IsNotNull(GetterFunction, TEXT("Property callback metadata test case should materialize the generated BlueprintGetter callback"))
+			|| !this->Assert.IsNotNull(SetterFunction, TEXT("Property callback metadata test case should materialize the generated BlueprintSetter callback")))
 		{
 			return;
 		}
@@ -323,38 +323,38 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 		FIntProperty* GetterReturnProperty = CastField<FIntProperty>(GetterFunction->GetReturnProperty());
 		FIntProperty* SetterValueProperty = FindFProperty<FIntProperty>(SetterFunction, TEXT("Value"));
 
-		TestRunner->TestTrue(
-			TEXT("Generated property should carry CPF_Net"),
-			TrackedValueProperty->HasAnyPropertyFlags(CPF_Net));
-		TestRunner->TestTrue(
-			TEXT("Generated property should carry CPF_RepNotify"),
-			TrackedValueProperty->HasAnyPropertyFlags(CPF_RepNotify));
-		TestRunner->TestEqual(
-			TEXT("Generated property should preserve the RepNotify callback name"),
+		ASSERT_THAT(IsTrue(
+			TrackedValueProperty->HasAnyPropertyFlags(CPF_Net),
+			TEXT("Generated property should carry CPF_Net")));
+		ASSERT_THAT(IsTrue(
+			TrackedValueProperty->HasAnyPropertyFlags(CPF_RepNotify),
+			TEXT("Generated property should carry CPF_RepNotify")));
+		ASSERT_THAT(AreEqual(
+			FName(*CompilerPipelinePropertyMetadataTest::OnRepFunctionName),
 			TrackedValueProperty->RepNotifyFunc,
-			FName(*CompilerPipelinePropertyMetadataTest::OnRepFunctionName));
-		TestRunner->TestEqual(
-			TEXT("Generated property should preserve BlueprintGetter metadata"),
+			TEXT("Generated property should preserve the RepNotify callback name")));
+		ASSERT_THAT(AreEqual(
+			CompilerPipelinePropertyMetadataTest::GetterFunctionName,
 			TrackedValueProperty->GetMetaData(TEXT("BlueprintGetter")),
-			CompilerPipelinePropertyMetadataTest::GetterFunctionName);
-		TestRunner->TestEqual(
-			TEXT("Generated property should preserve BlueprintSetter metadata"),
+			TEXT("Generated property should preserve BlueprintGetter metadata")));
+		ASSERT_THAT(AreEqual(
+			CompilerPipelinePropertyMetadataTest::SetterFunctionName,
 			TrackedValueProperty->GetMetaData(TEXT("BlueprintSetter")),
-			CompilerPipelinePropertyMetadataTest::SetterFunctionName);
-		TestRunner->TestEqual(
-			TEXT("Generated RepNotify callback should not expose parameters"),
+			TEXT("Generated property should preserve BlueprintSetter metadata")));
+		ASSERT_THAT(AreEqual(
+			0,
 			OnRepFunction->NumParms,
-			0);
-		TestRunner->TestNotNull(
-			TEXT("Generated BlueprintGetter callback should return int"),
-			GetterReturnProperty);
-		TestRunner->TestEqual(
-			TEXT("Generated BlueprintSetter callback should expose exactly one parameter"),
+			TEXT("Generated RepNotify callback should not expose parameters")));
+		ASSERT_THAT(IsNotNull(
+			GetterReturnProperty,
+			TEXT("Generated BlueprintGetter callback should return int")));
+		ASSERT_THAT(AreEqual(
+			1,
 			SetterFunction->NumParms,
-			1);
-		TestRunner->TestNotNull(
-			TEXT("Generated BlueprintSetter callback should expose an int Value parameter"),
-			SetterValueProperty);
+			TEXT("Generated BlueprintSetter callback should expose exactly one parameter")));
+		ASSERT_THAT(IsNotNull(
+			SetterValueProperty,
+			TEXT("Generated BlueprintSetter callback should expose an int Value parameter")));
 
 		}
 
@@ -454,16 +454,16 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 			const FAngelscriptCompileTraceDiagnosticSummary* MatchingDiagnostic =
 				CompilerPipelinePropertyMetadataTest::FindMatchingErrorDiagnostic(Summary.Diagnostics, TestCase.ExpectedMessageFragment);
 
-			TestRunner->TestFalse(FString::Printf(TEXT("%s should fail compile"), TestCase.Label), bCompiled);
-			TestRunner->TestFalse(FString::Printf(TEXT("%s should keep bCompileSucceeded false"), TestCase.Label), Summary.bCompileSucceeded);
-			TestRunner->TestTrue(FString::Printf(TEXT("%s should record preprocessor usage"), TestCase.Label), Summary.bUsedPreprocessor);
-			TestRunner->TestNotNull(FString::Printf(TEXT("%s should emit the expected callback diagnostic"), TestCase.Label), MatchingDiagnostic);
+			ASSERT_THAT(IsFalse(bCompiled, FString::Printf(TEXT("%s should fail compile"), TestCase.Label)));
+			ASSERT_THAT(IsFalse(Summary.bCompileSucceeded, FString::Printf(TEXT("%s should keep bCompileSucceeded false"), TestCase.Label)));
+			ASSERT_THAT(IsTrue(Summary.bUsedPreprocessor, FString::Printf(TEXT("%s should record preprocessor usage"), TestCase.Label)));
+			ASSERT_THAT(IsNotNull(MatchingDiagnostic, FString::Printf(TEXT("%s should emit the expected callback diagnostic"), TestCase.Label)));
 			if (MatchingDiagnostic != nullptr)
 			{
-				TestRunner->TestEqual(
-					FString::Printf(TEXT("%s should pin the diagnostic row to the callback/property declaration"), TestCase.Label),
+				ASSERT_THAT(AreEqual(
+					TestCase.ExpectedRow,
 					MatchingDiagnostic->Row,
-					TestCase.ExpectedRow);
+					FString::Printf(TEXT("%s should pin the diagnostic row to the callback/property declaration"), TestCase.Label)));
 			}
 
 			Engine.DiscardModule(*TestCase.ModuleName.ToString());

@@ -91,13 +91,13 @@ bool GetLevelVisibleInEditor(ULevelStreaming Level)
 
 		AActor& ContextActor = Spawner.SpawnActor<AActor>();
 		UWorld* TestWorld = ContextActor.GetWorld();
-		if (!TestRunner->TestNotNull(TEXT("World function library test should access the spawned world"), TestWorld))
+		if (!this->Assert.IsNotNull(TestWorld, TEXT("World function library test should access the spawned world")))
 		{
 			return;
 		}
 
 		ULevelStreamingDynamic* StreamingLevel = NewObject<ULevelStreamingDynamic>(TestWorld, TEXT("FunctionLibraryStreamingLevel"));
-		if (!TestRunner->TestNotNull(TEXT("World function library test should create a streaming level"), StreamingLevel))
+		if (!this->Assert.IsNotNull(StreamingLevel, TEXT("World function library test should create a streaming level")))
 		{
 			return;
 		}
@@ -134,10 +134,10 @@ bool GetLevelVisibleInEditor(ULevelStreaming Level)
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("GetStreamingLevels should preserve the native streaming-level count for a valid world"),
+		ASSERT_THAT(AreEqual(
+			NativeStreamingLevelCount,
 			ScriptStreamingLevelCount,
-			NativeStreamingLevelCount);
+			TEXT("GetStreamingLevels should preserve the native streaming-level count for a valid world")));
 
 		bool bScriptEditorVisibility = false;
 		if (!WorldCollisionExecuteBoolFunction(
@@ -155,10 +155,10 @@ bool GetLevelVisibleInEditor(ULevelStreaming Level)
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("GetShouldBeVisibleInEditor should match the native editor-visibility baseline for a valid level"),
+		ASSERT_THAT(AreEqual(
+			bNativeEditorVisibility,
 			bScriptEditorVisibility,
-			bNativeEditorVisibility);
+			TEXT("GetShouldBeVisibleInEditor should match the native editor-visibility baseline for a valid level")));
 
 		FString NullWorldException;
 		if (!WorldCollisionExecuteFunctionExpectingException(
@@ -177,10 +177,10 @@ bool GetLevelVisibleInEditor(ULevelStreaming Level)
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("GetStreamingLevels should report a stable null-pointer diagnostic for a null world receiver"),
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("Null pointer access")),
 			NullWorldException,
-			FString(TEXT("Null pointer access")));
+			TEXT("GetStreamingLevels should report a stable null-pointer diagnostic for a null world receiver")));
 
 		FString NullLevelException;
 		if (!WorldCollisionExecuteFunctionExpectingException(
@@ -199,10 +199,10 @@ bool GetLevelVisibleInEditor(ULevelStreaming Level)
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("GetShouldBeVisibleInEditor should report a stable null-pointer diagnostic for a null level receiver"),
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("Null pointer access")),
 			NullLevelException,
-			FString(TEXT("Null pointer access")));
+			TEXT("GetShouldBeVisibleInEditor should report a stable null-pointer diagnostic for a null level receiver")));
 
 		}
 	}
@@ -227,23 +227,23 @@ bool GetLevelVisibleInEditor(ULevelStreaming Level)
 
 		AActor& ContextActor = Spawner.SpawnActor<AActor>();
 		UWorld* TestWorld = ContextActor.GetWorld();
-		if (!TestRunner->TestNotNull(TEXT("World streaming access test should access the spawned world"), TestWorld))
+		if (!this->Assert.IsNotNull(TestWorld, TEXT("World streaming access test should access the spawned world")))
 		{
 			return;
 		}
 
-		if (!TestRunner->TestEqual(
-			TEXT("World streaming access test should start from a world without pre-existing streaming levels"),
+		if (!this->Assert.AreEqual(
+			0,
 			TestWorld->GetStreamingLevels().Num(),
-			0))
+			TEXT("World streaming access test should start from a world without pre-existing streaming levels")))
 		{
 			return;
 		}
 
 		ULevelStreamingDynamic* FirstStreamingLevel = NewObject<ULevelStreamingDynamic>(TestWorld, TEXT("WorldStreamingAccess_First"));
 		ULevelStreamingDynamic* SecondStreamingLevel = NewObject<ULevelStreamingDynamic>(TestWorld, TEXT("WorldStreamingAccess_Second"));
-		if (!TestRunner->TestNotNull(TEXT("World streaming access test should create the first streaming level"), FirstStreamingLevel)
-			|| !TestRunner->TestNotNull(TEXT("World streaming access test should create the second streaming level"), SecondStreamingLevel))
+		if (!this->Assert.IsNotNull(FirstStreamingLevel, TEXT("World streaming access test should create the first streaming level"))
+			|| !this->Assert.IsNotNull(SecondStreamingLevel, TEXT("World streaming access test should create the second streaming level")))
 		{
 			return;
 		}
@@ -271,10 +271,10 @@ bool GetLevelVisibleInEditor(ULevelStreaming Level)
 #endif
 
 		const TArray<ULevelStreaming*>& NativeStreamingLevels = TestWorld->GetStreamingLevels();
-		if (!TestRunner->TestEqual(
-			TEXT("World streaming access test should expose exactly the two streaming levels inserted by the fixture"),
+		if (!this->Assert.AreEqual(
+			2,
 			NativeStreamingLevels.Num(),
-			2))
+			TEXT("World streaming access test should expose exactly the two streaming levels inserted by the fixture")))
 		{
 			return;
 		}
@@ -332,16 +332,16 @@ int VerifyWorldStreamingAccess(UWorld World, ULevelStreaming ExpectedFirst, ULev
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("World streaming function libraries should preserve streaming-level count, order and editor visibility"),
+		ASSERT_THAT(AreEqual(
+			0,
 			ResultMask,
-			0);
-		TestRunner->TestTrue(
-			TEXT("World streaming access test should keep the first streaming level editor-visible"),
-			bNativeFirstVisibility);
-		TestRunner->TestFalse(
-			TEXT("World streaming access test should keep the second streaming level editor-hidden"),
-			bNativeSecondVisibility);
+			TEXT("World streaming function libraries should preserve streaming-level count, order and editor visibility")));
+		ASSERT_THAT(IsTrue(
+			bNativeFirstVisibility,
+			TEXT("World streaming access test should keep the first streaming level editor-visible")));
+		ASSERT_THAT(IsFalse(
+			bNativeSecondVisibility,
+			TEXT("World streaming access test should keep the second streaming level editor-hidden")));
 
 		}
 	}

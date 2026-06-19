@@ -66,18 +66,18 @@ class AFunctionalPropertyMetaMatrixActor : AActor
 		auto VerifyMeta = [&](const TCHAR* PropertyName, const TCHAR* MetaKey, const TCHAR* ExpectedValue)
 		{
 			FProperty* Prop = ActorClass->FindPropertyByName(PropertyName);
-			if (!TestRunner->TestNotNull(*FString::Printf(TEXT("%s should be registered"), PropertyName), Prop)) { return; }
+			ASSERT_THAT(IsNotNull(Prop, FString::Printf(TEXT("%s should be registered"), PropertyName)));
 
-			TestRunner->TestTrue(
-				*FString::Printf(TEXT("%s should carry meta '%s'"), PropertyName, MetaKey),
-				Prop->HasMetaData(MetaKey));
+			ASSERT_THAT(IsTrue(
+				Prop->HasMetaData(MetaKey),
+				FString::Printf(TEXT("%s should carry meta '%s'"), PropertyName, MetaKey)));
 
 			if (ExpectedValue != nullptr)
 			{
-				TestRunner->TestEqual(
-					*FString::Printf(TEXT("%s meta '%s' should match expected literal"), PropertyName, MetaKey),
+				ASSERT_THAT(AreEqual(
+					FString(ExpectedValue),
 					Prop->GetMetaData(MetaKey),
-					FString(ExpectedValue));
+					FString::Printf(TEXT("%s meta '%s' should match expected literal"), PropertyName, MetaKey)));
 			}
 		};
 
@@ -100,23 +100,15 @@ class AFunctionalPropertyMetaMatrixActor : AActor
 		FProperty* LockedToggle = ActorClass->FindPropertyByName(TEXT("bLockedToggle"));
 		FProperty* BlueprintReadable = ActorClass->FindPropertyByName(TEXT("bBlueprintReadable"));
 		FProperty* DefaultsOnlyValue = ActorClass->FindPropertyByName(TEXT("DefaultsOnlyValue"));
-		if (TestRunner->TestNotNull(TEXT("NotEditable property should be registered"), HiddenToggle))
-		{
-			TestRunner->TestFalse(TEXT("NotEditable property should not carry CPF_Edit"), HiddenToggle->HasAnyPropertyFlags(CPF_Edit));
-		}
-		if (TestRunner->TestNotNull(TEXT("EditConst property should be registered"), LockedToggle))
-		{
-			TestRunner->TestTrue(TEXT("EditConst property should carry CPF_EditConst"), LockedToggle->HasAnyPropertyFlags(CPF_EditConst));
-		}
-		if (TestRunner->TestNotNull(TEXT("BlueprintReadOnly property should be registered"), BlueprintReadable))
-		{
-			TestRunner->TestTrue(TEXT("BlueprintReadOnly property should be Blueprint-visible"), BlueprintReadable->HasAnyPropertyFlags(CPF_BlueprintVisible));
-			TestRunner->TestTrue(TEXT("BlueprintReadOnly property should carry CPF_BlueprintReadOnly"), BlueprintReadable->HasAnyPropertyFlags(CPF_BlueprintReadOnly));
-		}
-		if (TestRunner->TestNotNull(TEXT("EditDefaultsOnly property should be registered"), DefaultsOnlyValue))
-		{
-			TestRunner->TestTrue(TEXT("EditDefaultsOnly property should disable instance editing"), DefaultsOnlyValue->HasAnyPropertyFlags(CPF_DisableEditOnInstance));
-		}
+		ASSERT_THAT(IsNotNull(HiddenToggle, TEXT("NotEditable property should be registered")));
+		ASSERT_THAT(IsFalse(HiddenToggle->HasAnyPropertyFlags(CPF_Edit), TEXT("NotEditable property should not carry CPF_Edit")));
+		ASSERT_THAT(IsNotNull(LockedToggle, TEXT("EditConst property should be registered")));
+		ASSERT_THAT(IsTrue(LockedToggle->HasAnyPropertyFlags(CPF_EditConst), TEXT("EditConst property should carry CPF_EditConst")));
+		ASSERT_THAT(IsNotNull(BlueprintReadable, TEXT("BlueprintReadOnly property should be registered")));
+		ASSERT_THAT(IsTrue(BlueprintReadable->HasAnyPropertyFlags(CPF_BlueprintVisible), TEXT("BlueprintReadOnly property should be Blueprint-visible")));
+		ASSERT_THAT(IsTrue(BlueprintReadable->HasAnyPropertyFlags(CPF_BlueprintReadOnly), TEXT("BlueprintReadOnly property should carry CPF_BlueprintReadOnly")));
+		ASSERT_THAT(IsNotNull(DefaultsOnlyValue, TEXT("EditDefaultsOnly property should be registered")));
+		ASSERT_THAT(IsTrue(DefaultsOnlyValue->HasAnyPropertyFlags(CPF_DisableEditOnInstance), TEXT("EditDefaultsOnly property should disable instance editing")));
 	}
 };
 

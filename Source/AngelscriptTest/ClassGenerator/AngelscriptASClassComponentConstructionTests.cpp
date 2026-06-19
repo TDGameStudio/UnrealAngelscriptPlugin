@@ -74,22 +74,28 @@ class UComponentConstructionCarrier : UActorComponent
 		}
 
 		UASClass* GeneratedASClass = Cast<UASClass>(GeneratedClass);
-		if (!Test.TestNotNull(
-				TEXT("ASClass component-construction test case should compile the carrier into a UASClass"),
-				GeneratedASClass))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(
+				GeneratedASClass,
+				TEXT("ASClass component-construction test case should compile the carrier into a UASClass")))
 		{
 			return nullptr;
 		}
 
-		Test.TestNotNull(
-			TEXT("ASClass component-construction test case should bind the script constructor function"),
-			GeneratedASClass->ConstructFunction);
-		Test.TestNotNull(
-			TEXT("ASClass component-construction test case should bind the defaults function"),
-			GeneratedASClass->DefaultsFunction);
-		Test.TestNotNull(
-			TEXT("ASClass component-construction test case should keep a live script type pointer"),
-			GeneratedASClass->ScriptTypePtr);
+		bool bHasRequiredFunctions = true;
+		bHasRequiredFunctions &= Assert.IsNotNull(
+			GeneratedASClass->ConstructFunction,
+			TEXT("ASClass component-construction test case should bind the script constructor function"));
+		bHasRequiredFunctions &= Assert.IsNotNull(
+			GeneratedASClass->DefaultsFunction,
+			TEXT("ASClass component-construction test case should bind the defaults function"));
+		bHasRequiredFunctions &= Assert.IsNotNull(
+			GeneratedASClass->ScriptTypePtr,
+			TEXT("ASClass component-construction test case should keep a live script type pointer"));
+		if (!bHasRequiredFunctions)
+		{
+			return nullptr;
+		}
 
 		return GeneratedASClass;
 	}
@@ -123,18 +129,19 @@ class UComponentConstructionCarrier : UActorComponent
 		const FComponentConstructionSnapshot& Snapshot,
 		int32 ExpectedCtorCountForScope)
 	{
-		const bool bCtorCountMatches = Test.TestEqual(
-			*FString::Printf(TEXT("%s should observe the expected constructor count"), *ScopeLabel),
+		FNoDiscardAsserter Assert(Test);
+		const bool bCtorCountMatches = Assert.AreEqual(
+			ExpectedCtorCountForScope,
 			Snapshot.CtorCount,
-			ExpectedCtorCountForScope);
-		const bool bDefaultValueMatches = Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the scripted integer default"), *ScopeLabel),
+			*FString::Printf(TEXT("%s should observe the expected constructor count"), *ScopeLabel));
+		const bool bDefaultValueMatches = Assert.AreEqual(
+			ExpectedDefaultValue,
 			Snapshot.DefaultValue,
-			ExpectedDefaultValue);
-		const bool bDefaultLabelMatches = Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the scripted string default"), *ScopeLabel),
+			*FString::Printf(TEXT("%s should preserve the scripted integer default"), *ScopeLabel));
+		const bool bDefaultLabelMatches = Assert.AreEqual(
+			ExpectedDefaultLabel,
 			Snapshot.DefaultLabel,
-			ExpectedDefaultLabel);
+			*FString::Printf(TEXT("%s should preserve the scripted string default"), *ScopeLabel));
 
 		return bCtorCountMatches && bDefaultValueMatches && bDefaultLabelMatches;
 	}
@@ -146,27 +153,33 @@ class UComponentConstructionCarrier : UActorComponent
 		const TCHAR* InstanceName,
 		const TCHAR* Context)
 	{
-		if (!Test.TestNotNull(
-				*FString::Printf(TEXT("%s should compile to a valid generated component class"), Context),
-				ComponentClass))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(
+				ComponentClass,
+				*FString::Printf(TEXT("%s should compile to a valid generated component class"), Context)))
 		{
 			return nullptr;
 		}
 
 		UActorComponent* Component = NewObject<UActorComponent>(&OwnerActor, ComponentClass, InstanceName);
-		if (!Test.TestNotNull(
-				*FString::Printf(TEXT("%s should instantiate a runtime component"), Context),
-				Component))
+		if (!Assert.IsNotNull(
+				Component,
+				*FString::Printf(TEXT("%s should instantiate a runtime component"), Context)))
 		{
 			return nullptr;
 		}
 
-		Test.TestTrue(
-			*FString::Printf(TEXT("%s should keep the host actor as the typed outer"), Context),
-			Component->GetTypedOuter<AActor>() == &OwnerActor);
-		Test.TestTrue(
-			*FString::Printf(TEXT("%s should resolve the host actor as owner even before registration"), Context),
-			Component->GetOwner() == &OwnerActor);
+		bool bHasExpectedOwner = true;
+		bHasExpectedOwner &= Assert.IsTrue(
+			Component->GetTypedOuter<AActor>() == &OwnerActor,
+			*FString::Printf(TEXT("%s should keep the host actor as the typed outer"), Context));
+		bHasExpectedOwner &= Assert.IsTrue(
+			Component->GetOwner() == &OwnerActor,
+			*FString::Printf(TEXT("%s should resolve the host actor as owner even before registration"), Context));
+		if (!bHasExpectedOwner)
+		{
+			return nullptr;
+		}
 
 		return Component;
 	}
@@ -208,9 +221,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassComponentConstructionTests,
 		}
 
 		UActorComponent* DefaultObject = Cast<UActorComponent>(GeneratedASClass->GetDefaultObject());
-		if (!TestRunner->TestNotNull(
-				TEXT("ASClass component-construction test case should expose a generated component class default object"),
-				DefaultObject))
+		ASSERT_THAT(IsNotNull(DefaultObject, TEXT("ASClass component-construction test case should expose a generated component class default object")));
+		if (DefaultObject == nullptr)
 		{
 			return;
 		}
@@ -261,21 +273,21 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassComponentConstructionTests,
 			return;
 		}
 
-		TestRunner->TestTrue(
-			TEXT("ASClass component-construction test case should compile a generated component class"),
-			GeneratedASClass->IsChildOf(UActorComponent::StaticClass()));
-		TestRunner->TestFalse(
-			TEXT("ASClass component-construction test case should keep the generated class out of the actor hierarchy"),
-			GeneratedASClass->IsChildOf(AActor::StaticClass()));
-		TestRunner->TestTrue(
-			TEXT("ASClass component-construction test case should create distinct runtime components"),
-			FirstInstance != SecondInstance);
-		TestRunner->TestTrue(
-			TEXT("ASClass component-construction test case should keep runtime components distinct from the class default object"),
-			FirstInstance != DefaultObject && SecondInstance != DefaultObject);
-		TestRunner->TestTrue(
-			TEXT("ASClass component-construction test case should keep both runtime components on the same generated class"),
-			FirstInstance->GetClass() == GeneratedASClass && SecondInstance->GetClass() == GeneratedASClass);
+		ASSERT_THAT(IsTrue(
+			GeneratedASClass->IsChildOf(UActorComponent::StaticClass()),
+			TEXT("ASClass component-construction test case should compile a generated component class")));
+		ASSERT_THAT(IsFalse(
+			GeneratedASClass->IsChildOf(AActor::StaticClass()),
+			TEXT("ASClass component-construction test case should keep the generated class out of the actor hierarchy")));
+		ASSERT_THAT(IsTrue(
+			FirstInstance != SecondInstance,
+			TEXT("ASClass component-construction test case should create distinct runtime components")));
+		ASSERT_THAT(IsTrue(
+			FirstInstance != DefaultObject && SecondInstance != DefaultObject,
+			TEXT("ASClass component-construction test case should keep runtime components distinct from the class default object")));
+		ASSERT_THAT(IsTrue(
+			FirstInstance->GetClass() == GeneratedASClass && SecondInstance->GetClass() == GeneratedASClass,
+			TEXT("ASClass component-construction test case should keep both runtime components on the same generated class")));
 
 		ASClassComponentConstructionTest::VerifySnapshot(
 			*TestRunner,
@@ -293,26 +305,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassComponentConstructionTests,
 			SecondSnapshot,
 			ASClassComponentConstructionTest::ExpectedCtorCount);
 
-		TestRunner->TestEqual(
-			TEXT("ASClass component-construction test case should keep the second instance constructor count isolated from the first instance"),
+		ASSERT_THAT(AreEqual(
+			ASClassComponentConstructionTest::ExpectedCtorCount,
 			SecondSnapshot.CtorCount,
-			ASClassComponentConstructionTest::ExpectedCtorCount);
-		TestRunner->TestEqual(
-			TEXT("ASClass component-construction test case should keep the class default object on the same scripted integer default as runtime instances"),
+			TEXT("ASClass component-construction test case should keep the second instance constructor count isolated from the first instance")));
+		ASSERT_THAT(AreEqual(
 			DefaultSnapshot.DefaultValue,
-			FirstSnapshot.DefaultValue);
-		TestRunner->TestEqual(
-			TEXT("ASClass component-construction test case should keep both runtime components on the same scripted integer default"),
 			FirstSnapshot.DefaultValue,
-			SecondSnapshot.DefaultValue);
-		TestRunner->TestEqual(
-			TEXT("ASClass component-construction test case should keep the class default object on the same scripted string default as runtime instances"),
+			TEXT("ASClass component-construction test case should keep the class default object on the same scripted integer default as runtime instances")));
+		ASSERT_THAT(AreEqual(
+			FirstSnapshot.DefaultValue,
+			SecondSnapshot.DefaultValue,
+			TEXT("ASClass component-construction test case should keep both runtime components on the same scripted integer default")));
+		ASSERT_THAT(AreEqual(
 			DefaultSnapshot.DefaultLabel,
-			FirstSnapshot.DefaultLabel);
-		TestRunner->TestEqual(
-			TEXT("ASClass component-construction test case should keep both runtime components on the same scripted string default"),
 			FirstSnapshot.DefaultLabel,
-			SecondSnapshot.DefaultLabel);
+			TEXT("ASClass component-construction test case should keep the class default object on the same scripted string default as runtime instances")));
+		ASSERT_THAT(AreEqual(
+			FirstSnapshot.DefaultLabel,
+			SecondSnapshot.DefaultLabel,
+			TEXT("ASClass component-construction test case should keep both runtime components on the same scripted string default")));
 
 		}
 	}

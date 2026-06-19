@@ -22,6 +22,7 @@ namespace AngelscriptTest_Core_AngelscriptDebuggerAutoEvaluationTests_Private
 		FAngelscriptEngine& Engine,
 		UClass* ScriptClass)
 	{
+		FNoDiscardAsserter Assert(Test);
 		const FString BoundTypeName = FAngelscriptType::GetBoundClassName(ScriptClass);
 		asITypeInfo* ScriptType = nullptr;
 		if (const UASClass* ScriptASClass = Cast<UASClass>(ScriptClass))
@@ -35,9 +36,12 @@ namespace AngelscriptTest_Core_AngelscriptDebuggerAutoEvaluationTests_Private
 			ScriptType = Engine.GetScriptEngine()->GetTypeInfoByName(BoundTypeNameUtf8.Get());
 		}
 
-		Test.TestNotNull(
-			*FString::Printf(TEXT("Debugger auto-evaluate test should resolve script type '%s'"), *BoundTypeName),
-			ScriptType);
+		if (!Assert.IsNotNull(
+				ScriptType,
+				*FString::Printf(TEXT("Debugger auto-evaluate test should resolve script type '%s'"), *BoundTypeName)))
+		{
+			return nullptr;
+		}
 		return ScriptType;
 	}
 
@@ -46,11 +50,15 @@ namespace AngelscriptTest_Core_AngelscriptDebuggerAutoEvaluationTests_Private
 		asITypeInfo& ScriptType,
 		const FString& Declaration)
 	{
+		FNoDiscardAsserter Assert(Test);
 		const FTCHARToUTF8 DeclarationUtf8(*Declaration);
 		asIScriptFunction* Function = ScriptType.GetMethodByDecl(DeclarationUtf8.Get());
-		Test.TestNotNull(
-			*FString::Printf(TEXT("Debugger auto-evaluate test should resolve method '%s'"), *Declaration),
-			Function);
+		if (!Assert.IsNotNull(
+				Function,
+				*FString::Printf(TEXT("Debugger auto-evaluate test should resolve method '%s'"), *Declaration)))
+		{
+			return nullptr;
+		}
 		return Function;
 	}
 
@@ -125,20 +133,20 @@ class UDebuggerAutoEvaluateWorldlessProbe : UObject
 			FIntProperty* StoredValueProperty = FindFProperty<FIntProperty>(ScriptClass, TEXT("StoredValue"));
 			UObject* Target = NewObject<UObject>(GetTransientPackage(), ScriptClass, TEXT("DebuggerAutoEvaluateWorldlessTarget"));
 
-			if (!TestRunner->TestNotNull(TEXT("Debugger auto-evaluate test should expose the generated StoredValue property"), StoredValueProperty) ||
-				!TestRunner->TestNotNull(TEXT("Debugger auto-evaluate test should instantiate the generated UObject"), Target) ||
-				!TestRunner->TestNotNull(TEXT("Debugger auto-evaluate test should resolve the generated getter method"), GetterFunction))
+			if (!this->Assert.IsNotNull(StoredValueProperty, TEXT("Debugger auto-evaluate test should expose the generated StoredValue property")) ||
+				!this->Assert.IsNotNull(Target, TEXT("Debugger auto-evaluate test should instantiate the generated UObject")) ||
+				!this->Assert.IsNotNull(GetterFunction, TEXT("Debugger auto-evaluate test should resolve the generated getter method")))
 			{
 				return;
 			}
 
-			TestRunner->TestTrue(
-				TEXT("Debugger auto-evaluate test should keep the generated UObject worldless so the without-world blacklist path is reachable"),
-				Target->GetWorld() == nullptr);
+			ASSERT_THAT(IsTrue(
+				Target->GetWorld() == nullptr,
+				TEXT("Debugger auto-evaluate test should keep the generated UObject worldless so the without-world blacklist path is reachable")));
 
 			void* const StoredValueAddress = StoredValueProperty->ContainerPtrToValuePtr<void>(Target);
 			int32* const StoredValuePtr = static_cast<int32*>(StoredValueAddress);
-			if (!TestRunner->TestNotNull(TEXT("Debugger auto-evaluate test should expose reflected StoredValue storage"), StoredValuePtr))
+			if (!this->Assert.IsNotNull(StoredValuePtr, TEXT("Debugger auto-evaluate test should expose reflected StoredValue storage")))
 			{
 				return;
 			}
@@ -153,43 +161,40 @@ class UDebuggerAutoEvaluateWorldlessProbe : UObject
 				ScriptType,
 				ScriptClass,
 				TEXT("StoredValue"));
-			TestRunner->TestTrue(
-				TEXT("Debugger auto-evaluate test should evaluate the generated getter before blacklist filtering"),
-				bEvaluated);
-			if (bEvaluated)
-			{
-				TestRunner->TestEqual(
-					TEXT("Debugger auto-evaluate test should stringify the getter result as the current StoredValue"),
-					EvaluatedValue.Value,
-					FString(TEXT("42")));
-				TestRunner->TestTrue(
-					TEXT("Debugger auto-evaluate test should mark function-return debugger values as temporary"),
-					EvaluatedValue.bTemporaryValue);
-				TestRunner->TestTrue(
-					TEXT("Debugger auto-evaluate test should track the non-temporary StoredValue address"),
-					EvaluatedValue.GetNonTemporaryAddress() == StoredValueAddress);
-				TestRunner->TestTrue(
-					TEXT("Debugger auto-evaluate test should monitor the StoredValue address for refresh"),
-					EvaluatedValue.GetAddressToMonitor() == StoredValueAddress);
-				TestRunner->TestEqual(
-					TEXT("Debugger auto-evaluate test should report the StoredValue monitor size as int32"),
-					EvaluatedValue.GetAddressToMonitorValueSize(),
-					static_cast<int32>(sizeof(int32)));
-			}
+			ASSERT_THAT(IsTrue(
+				bEvaluated,
+				TEXT("Debugger auto-evaluate test should evaluate the generated getter before blacklist filtering")));
+			ASSERT_THAT(AreEqual(
+				FString(TEXT("42")),
+				EvaluatedValue.Value,
+				TEXT("Debugger auto-evaluate test should stringify the getter result as the current StoredValue")));
+			ASSERT_THAT(IsTrue(
+				EvaluatedValue.bTemporaryValue,
+				TEXT("Debugger auto-evaluate test should mark function-return debugger values as temporary")));
+			ASSERT_THAT(IsTrue(
+				EvaluatedValue.GetNonTemporaryAddress() == StoredValueAddress,
+				TEXT("Debugger auto-evaluate test should track the non-temporary StoredValue address")));
+			ASSERT_THAT(IsTrue(
+				EvaluatedValue.GetAddressToMonitor() == StoredValueAddress,
+				TEXT("Debugger auto-evaluate test should monitor the StoredValue address for refresh")));
+			ASSERT_THAT(AreEqual(
+				static_cast<int32>(sizeof(int32)),
+				EvaluatedValue.GetAddressToMonitorValueSize(),
+				TEXT("Debugger auto-evaluate test should report the StoredValue monitor size as int32")));
 
 			Settings.DebuggerBlacklistAutomaticFunctionEvaluationWithoutWorldContext.Add(
 				BuildDebuggerFunctionPath(*GetterFunction));
 
 			FDebuggerValue BlacklistedValue;
-			TestRunner->TestFalse(
-				TEXT("Debugger auto-evaluate test should reject the getter once it is blacklisted for objects without world context"),
+			ASSERT_THAT(IsFalse(
 				FAngelscriptType::GetDebuggerValueFromFunction(
 					GetterFunction,
 					Target,
 					BlacklistedValue,
 					ScriptType,
 					ScriptClass,
-					TEXT("StoredValue")));
+					TEXT("StoredValue")),
+				TEXT("Debugger auto-evaluate test should reject the getter once it is blacklisted for objects without world context")));
 		}
 
 		}

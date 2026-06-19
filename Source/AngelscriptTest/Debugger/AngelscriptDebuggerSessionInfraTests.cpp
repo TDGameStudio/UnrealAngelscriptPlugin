@@ -9,6 +9,41 @@
 
 namespace AngelscriptDebuggerSessionInfraTests_Private
 {
+	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsTrue(bActual, Message);
+	}
+
+	static bool CheckTrue(FAutomationTestBase& Test, const FString& Message, bool bActual)
+	{
+		return CheckTrue(Test, *Message, bActual);
+	}
+
+	static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsFalse(bActual, Message);
+	}
+
+	static bool CheckFalse(FAutomationTestBase& Test, const FString& Message, bool bActual)
+	{
+		return CheckFalse(Test, *Message, bActual);
+	}
+
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.AreEqual(Expected, Actual, Message);
+	}
+
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const FString& Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		return CheckEqual(Test, *Message, Actual, Expected);
+	}
+
 	TSharedRef<FFakeDebuggerClientSocket> MakePendingConnectSocket(
 		const FString& Description,
 		const TArray<ESocketConnectionState>& ConnectionStates)
@@ -44,7 +79,7 @@ namespace AngelscriptDebuggerSessionInfraTests_Private
 			},
 			Session.GetDefaultTimeoutSeconds());
 
-		if (!Test.TestTrue(TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should receive DebugServerVersion after StartDebugging"), bReceivedVersion))
+		if (!CheckTrue(Test, TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should receive DebugServerVersion after StartDebugging"), bReceivedVersion))
 		{
 			if (!Client.GetLastError().IsEmpty())
 			{
@@ -55,12 +90,13 @@ namespace AngelscriptDebuggerSessionInfraTests_Private
 
 		const TOptional<FDebugServerVersionMessage> DebugServerVersion =
 			FAngelscriptDebuggerTestClient::DeserializeMessage<FDebugServerVersionMessage>(VersionEnvelope.GetValue());
-		if (!Test.TestTrue(TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should deserialize the DebugServerVersion payload"), DebugServerVersion.IsSet()))
+		if (!CheckTrue(Test, TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should deserialize the DebugServerVersion payload"), DebugServerVersion.IsSet()))
 		{
 			return false;
 		}
 
-		return Test.TestEqual(
+		return CheckEqual(
+			Test,
 			TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should report the current debug server version"),
 			DebugServerVersion->DebugServerVersion,
 			DEBUG_SERVER_VERSION);
@@ -101,43 +137,47 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionInfraTests,
 			Session.Shutdown();
 		};
 
-		TestRunner->TestEqual(
-			TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should start from the sentinel adapter version"),
+		ASSERT_THAT(AreEqual(
+			InitializeSentinelVersion,
 			AdapterVersionSentinel.GetCurrent(),
-			InitializeSentinelVersion);
+			TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should start from the sentinel adapter version")
+		));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should initialize the debugger session"), Session.Initialize(SessionConfig))));
+		ASSERT_THAT(IsTrue(Session.Initialize(SessionConfig), TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should initialize the debugger session")));
 
-		TestRunner->TestEqual(
-			TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should preserve the sentinel through Initialize before any handshake"),
+		ASSERT_THAT(AreEqual(
+			InitializeSentinelVersion,
 			AdapterVersionSentinel.GetCurrent(),
-			InitializeSentinelVersion);
+			TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should preserve the sentinel through Initialize before any handshake")
+		));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should connect the debugger client"), Client.Connect(TEXT("127.0.0.1"), Session.GetPort()))));
+		ASSERT_THAT(IsTrue(Client.Connect(TEXT("127.0.0.1"), Session.GetPort()), TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should connect the debugger client")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should send StartDebugging"), Client.SendStartDebugging(HandshakeAdapterVersion))));
+		ASSERT_THAT(IsTrue(Client.SendStartDebugging(HandshakeAdapterVersion), TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should send StartDebugging")));
 
 		ASSERT_THAT(IsTrue(WaitForDebugServerVersion(*TestRunner, Session, Client)));
 
-		TestRunner->TestEqual(
-			TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should switch to the requested adapter version after StartDebugging"),
+		ASSERT_THAT(AreEqual(
+			HandshakeAdapterVersion,
 			AdapterVersionSentinel.GetCurrent(),
-			HandshakeAdapterVersion);
+			TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should switch to the requested adapter version after StartDebugging")
+		));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should send StopDebugging"), Client.SendStopDebugging())));
+		ASSERT_THAT(IsTrue(Client.SendStopDebugging(), TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should send StopDebugging")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(
-			TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should leave debugging mode after StopDebugging"),
-			Session.PumpUntil([&Session]() { return !Session.GetDebugServer().bIsDebugging; }, Session.GetDefaultTimeoutSeconds()))));
+		ASSERT_THAT(IsTrue(
+			Session.PumpUntil([&Session]() { return !Session.GetDebugServer().bIsDebugging; }, Session.GetDefaultTimeoutSeconds()),
+			TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should leave debugging mode after StopDebugging")));
 
 		Client.SendDisconnect();
 		Client.Disconnect();
 
 		Session.Shutdown();
-		TestRunner->TestEqual(
-			TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should restore the pre-handshake sentinel during Shutdown"),
+		ASSERT_THAT(AreEqual(
+			InitializeSentinelVersion,
 			AdapterVersionSentinel.GetCurrent(),
-			InitializeSentinelVersion);
+			TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should restore the pre-handshake sentinel during Shutdown")
+		));
 
 		AdapterVersionSentinel.SetSentinel(FreshSessionSentinelVersion);
 
@@ -145,17 +185,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionInfraTests,
 			FAngelscriptDebuggerTestSession FreshSession;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should keep the sentinel when a never-initialized session is destroyed"),
+		ASSERT_THAT(AreEqual(
+			FreshSessionSentinelVersion,
 			AdapterVersionSentinel.GetCurrent(),
-			FreshSessionSentinelVersion);
+			TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should keep the sentinel when a never-initialized session is destroyed")
+		));
 
 		FAngelscriptDebuggerTestSession ExplicitShutdownSession;
 		ExplicitShutdownSession.Shutdown();
-		TestRunner->TestEqual(
-			TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should keep the sentinel when Shutdown is called on a never-initialized session"),
+		ASSERT_THAT(AreEqual(
+			FreshSessionSentinelVersion,
 			AdapterVersionSentinel.GetCurrent(),
-			FreshSessionSentinelVersion);
+			TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should keep the sentinel when Shutdown is called on a never-initialized session")
+		));
 	}
 
 	TEST_METHOD(PreservesDebugBreakState)
@@ -173,8 +215,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionInfraTests,
 		auto RunTestCase = [this, &SessionConfig, &DebugBreakStateSentinel](const bool bInitiallyEnabled, const TCHAR* TestCaseLabel) -> bool
 		{
 			DebugBreakStateSentinel.SetEnabled(bInitiallyEnabled);
-			if (!TestRunner->TestEqual(
-					*FString::Printf(TEXT("Debugger.SessionInfra.PreservesDebugBreakState should start %s from the requested debug-break state"), TestCaseLabel),
+			if (!CheckEqual(
+					*TestRunner,
+					FString::Printf(TEXT("Debugger.SessionInfra.PreservesDebugBreakState should start %s from the requested debug-break state"), TestCaseLabel),
 					DebugBreakStateSentinel.IsEnabled(),
 					bInitiallyEnabled))
 			{
@@ -183,23 +226,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionInfraTests,
 
 			{
 				FAngelscriptDebuggerTestSession Session;
-				if (!TestRunner->TestTrue(
-						*FString::Printf(TEXT("Debugger.SessionInfra.PreservesDebugBreakState should initialize the debugger session for the %s branch"), TestCaseLabel),
+				if (!CheckTrue(
+						*TestRunner,
+						FString::Printf(TEXT("Debugger.SessionInfra.PreservesDebugBreakState should initialize the debugger session for the %s branch"), TestCaseLabel),
 						Session.Initialize(SessionConfig)))
 				{
 					return false;
 				}
 
-				if (!TestRunner->TestFalse(
-						*FString::Printf(TEXT("Debugger.SessionInfra.PreservesDebugBreakState should disable debug breaks while the %s session is active"), TestCaseLabel),
+				if (!CheckFalse(
+						*TestRunner,
+						FString::Printf(TEXT("Debugger.SessionInfra.PreservesDebugBreakState should disable debug breaks while the %s session is active"), TestCaseLabel),
 						DebugBreakStateSentinel.IsEnabled()))
 				{
 					return false;
 				}
 			}
 
-			return TestRunner->TestEqual(
-				*FString::Printf(TEXT("Debugger.SessionInfra.PreservesDebugBreakState should restore the %s debug-break state after session shutdown"), TestCaseLabel),
+			return CheckEqual(
+				*TestRunner,
+				FString::Printf(TEXT("Debugger.SessionInfra.PreservesDebugBreakState should restore the %s debug-break state after session shutdown"), TestCaseLabel),
 				DebugBreakStateSentinel.IsEnabled(),
 				bInitiallyEnabled);
 		};
@@ -207,7 +253,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionInfraTests,
 		bool bPassed = true;
 		bPassed &= RunTestCase(true, TEXT("pre-enabled"));
 		bPassed &= RunTestCase(false, TEXT("pre-disabled"));
-		TestRunner->TestTrue(TEXT("Debugger.SessionInfra.PreservesDebugBreakState should pass both branches"), bPassed);
+		ASSERT_THAT(IsTrue(bPassed, TEXT("Debugger.SessionInfra.PreservesDebugBreakState should pass both branches")));
 	}
 
 	TEST_METHOD(ClientConnectTimeoutReportsFailure)
@@ -224,31 +270,40 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionInfraTests,
 				{ESocketConnectionState::SCS_NotConnected, ESocketConnectionState::SCS_NotConnected, ESocketConnectionState::SCS_NotConnected});
 			FAngelscriptDebuggerTestClient Client(MakeShared<FSingleDebuggerTestSocketFactory>(TimeoutSocket));
 
-			bPassed &= TestRunner->TestFalse(
+			bPassed &= CheckFalse(
+				*TestRunner,
 				TEXT("Debugger.SessionInfra.ClientConnectTimeoutReportsFailure should fail the connect attempt when the socket never reaches SCS_Connected"),
 				Client.Connect(TEXT("127.0.0.1"), 31337, FailureTimeoutSeconds));
-			bPassed &= TestRunner->TestTrue(
+			bPassed &= CheckTrue(
+				*TestRunner,
 				TEXT("Debugger.SessionInfra.ClientConnectTimeoutReportsFailure should mention the host in the connect-timeout error"),
 				Client.GetLastError().Contains(TEXT("127.0.0.1")));
-			bPassed &= TestRunner->TestTrue(
+			bPassed &= CheckTrue(
+				*TestRunner,
 				TEXT("Debugger.SessionInfra.ClientConnectTimeoutReportsFailure should mention the port in the connect-timeout error"),
 				Client.GetLastError().Contains(TEXT("31337")));
-			bPassed &= TestRunner->TestTrue(
+			bPassed &= CheckTrue(
+				*TestRunner,
 				TEXT("Debugger.SessionInfra.ClientConnectTimeoutReportsFailure should report a connect-timeout instead of deferring the error to message wait helpers"),
 				Client.GetLastError().Contains(TEXT("Timed out")));
-			bPassed &= TestRunner->TestTrue(
+			bPassed &= CheckTrue(
+				*TestRunner,
 				TEXT("Debugger.SessionInfra.ClientConnectTimeoutReportsFailure should report the last connection state"),
 				Client.GetLastError().Contains(TEXT("SCS_NotConnected")));
-			bPassed &= TestRunner->TestFalse(
+			bPassed &= CheckFalse(
+				*TestRunner,
 				TEXT("Debugger.SessionInfra.ClientConnectTimeoutReportsFailure should leave the client disconnected after timeout"),
 				Client.IsConnected());
-			bPassed &= TestRunner->TestTrue(
+			bPassed &= CheckTrue(
+				*TestRunner,
 				TEXT("Debugger.SessionInfra.ClientConnectTimeoutReportsFailure should close the socket after a failed connect attempt"),
 				TimeoutSocket->WasClosed());
-			bPassed &= TestRunner->TestFalse(
+			bPassed &= CheckFalse(
+				*TestRunner,
 				TEXT("Debugger.SessionInfra.ClientConnectTimeoutReportsFailure should not permit StartDebugging after a failed connect attempt"),
 				Client.SendStartDebugging(2));
-			bPassed &= TestRunner->TestTrue(
+			bPassed &= CheckTrue(
+				*TestRunner,
 				TEXT("Debugger.SessionInfra.ClientConnectTimeoutReportsFailure should clear any half-connected socket before StartDebugging"),
 				Client.GetLastError().Contains(TEXT("active socket connection")));
 		}
@@ -259,23 +314,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionInfraTests,
 				{ESocketConnectionState::SCS_NotConnected, ESocketConnectionState::SCS_NotConnected, ESocketConnectionState::SCS_Connected});
 			FAngelscriptDebuggerTestClient Client(MakeShared<FSingleDebuggerTestSocketFactory>(SuccessSocket));
 
-			bPassed &= TestRunner->TestTrue(
+			bPassed &= CheckTrue(
+				*TestRunner,
 				TEXT("Debugger.SessionInfra.ClientConnectTimeoutReportsFailure should succeed when the same pending connect reaches SCS_Connected before the deadline"),
 				Client.Connect(TEXT("127.0.0.1"), 31338, SuccessTimeoutSeconds));
-			bPassed &= TestRunner->TestTrue(
+			bPassed &= CheckTrue(
+				*TestRunner,
 				TEXT("Debugger.SessionInfra.ClientConnectTimeoutReportsFailure should report the connected state after the pending connect succeeds"),
 				Client.IsConnected());
-			bPassed &= TestRunner->TestTrue(
+			bPassed &= CheckTrue(
+				*TestRunner,
 				TEXT("Debugger.SessionInfra.ClientConnectTimeoutReportsFailure should clear LastError after a successful pending connect"),
 				Client.GetLastError().IsEmpty());
 
 			Client.Disconnect();
-			bPassed &= TestRunner->TestTrue(
+			bPassed &= CheckTrue(
+				*TestRunner,
 				TEXT("Debugger.SessionInfra.ClientConnectTimeoutReportsFailure should close the socket when the successfully connected client disconnects"),
 				SuccessSocket->WasClosed());
 		}
 
-		TestRunner->TestTrue(TEXT("Debugger.SessionInfra.ClientConnectTimeoutReportsFailure should pass all sub-assertions"), bPassed);
+		ASSERT_THAT(IsTrue(bPassed, TEXT("Debugger.SessionInfra.ClientConnectTimeoutReportsFailure should pass all sub-assertions")));
 	}
 };
 

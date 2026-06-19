@@ -54,6 +54,7 @@ namespace AngelscriptTest_Core_AngelscriptEngineHooksTests_Private
 		TOptional<FAngelscriptDebugMessageEnvelope>& OutEnvelope,
 		const TCHAR* Context)
 	{
+		FNoDiscardAsserter Assert(Test);
 		const bool bReceivedEnvelope = Session.PumpUntil(
 			[&Client, &OutEnvelope, ExpectedType]()
 			{
@@ -73,7 +74,7 @@ namespace AngelscriptTest_Core_AngelscriptEngineHooksTests_Private
 			},
 			Session.GetDefaultTimeoutSeconds());
 
-		if (!Test.TestTrue(Context, bReceivedEnvelope))
+		if (!Assert.IsTrue(bReceivedEnvelope, Context))
 		{
 			if (!Client.GetLastError().IsEmpty())
 			{
@@ -113,8 +114,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 
 		TUniquePtr<FAngelscriptEngine> EngineA = CreateFullTestEngine();
 		TUniquePtr<FAngelscriptEngine> EngineB = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("Engine hook isolation test should create engine A"), EngineA.Get())
-			|| !TestRunner->TestNotNull(TEXT("Engine hook isolation test should create engine B"), EngineB.Get()))
+		if (!this->Assert.IsNotNull(EngineA.Get(), TEXT("Engine hook isolation test should create engine A"))
+			|| !this->Assert.IsNotNull(EngineB.Get(), TEXT("Engine hook isolation test should create engine B")))
 		{
 			return;
 		}
@@ -131,16 +132,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 		};
 
 		EngineB->GetPreCompile().Broadcast();
-		TestRunner->TestEqual(
-			TEXT("Broadcasting engine B pre-compile hooks should not fire hooks registered on engine A"),
+		bool bOk = true;
+		bOk &= this->Assert.AreEqual(
+			0,
 			EngineAHookCount,
-			0);
+			TEXT("Broadcasting engine B pre-compile hooks should not fire hooks registered on engine A"));
 
 		EngineA->GetPreCompile().Broadcast();
-		TestRunner->TestEqual(
-			TEXT("Broadcasting engine A pre-compile hooks should fire hooks registered on engine A"),
+		bOk &= this->Assert.AreEqual(
+			1,
 			EngineAHookCount,
-			1);
+			TEXT("Broadcasting engine A pre-compile hooks should fire hooks registered on engine A"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(RuntimeHookDelegatesAreEngineOwned)
@@ -166,8 +169,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 
 		TUniquePtr<FAngelscriptEngine> EngineA = CreateFullTestEngine();
 		TUniquePtr<FAngelscriptEngine> EngineB = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("Runtime hook ownership test should create engine A"), EngineA.Get())
-			|| !TestRunner->TestNotNull(TEXT("Runtime hook ownership test should create engine B"), EngineB.Get()))
+		if (!this->Assert.IsNotNull(EngineA.Get(), TEXT("Runtime hook ownership test should create engine A"))
+			|| !this->Assert.IsNotNull(EngineB.Get(), TEXT("Runtime hook ownership test should create engine B")))
 		{
 			return;
 		}
@@ -241,38 +244,40 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 		EngineB->GetComponentCreated().ExecuteIfBound(Component);
 		EngineB->GetOnLiteralAssetCreated().Broadcast(LiteralAsset, TEXT("WrongEngineAsset"));
 		EngineB->GetPostLiteralAssetSetup().Broadcast(LiteralAsset, TEXT("WrongEngineSetup"));
-		TestRunner->TestEqual(TEXT("Component-created hook should not leak to engine B"), ComponentCreatedCount, 0);
-		TestRunner->TestNull(TEXT("Literal-created hook should not leak to engine B"), LiteralCreatedObject);
-		TestRunner->TestNull(TEXT("Literal-setup hook should not leak to engine B"), LiteralSetupObject);
+		bool bOk = true;
+		bOk &= this->Assert.AreEqual(0, ComponentCreatedCount, TEXT("Component-created hook should not leak to engine B"));
+		bOk &= this->Assert.IsNull(LiteralCreatedObject, TEXT("Literal-created hook should not leak to engine B"));
+		bOk &= this->Assert.IsNull(LiteralSetupObject, TEXT("Literal-setup hook should not leak to engine B"));
 
 		EngineA->GetComponentCreated().ExecuteIfBound(Component);
 		EngineA->GetOnLiteralAssetCreated().Broadcast(LiteralAsset, TEXT("OwnedAsset"));
 		EngineA->GetPostLiteralAssetSetup().Broadcast(LiteralAsset, TEXT("OwnedSetup"));
-		TestRunner->TestEqual(TEXT("Component-created hook should fire for its owning engine"), ComponentCreatedCount, 1);
-		TestRunner->TestEqual(TEXT("Literal-created hook should carry object for its owning engine"), LiteralCreatedObject, LiteralAsset);
-		TestRunner->TestEqual(TEXT("Literal-created hook should carry name for its owning engine"), LiteralCreatedName, FString(TEXT("OwnedAsset")));
-		TestRunner->TestEqual(TEXT("Literal-setup hook should carry object for its owning engine"), LiteralSetupObject, LiteralAsset);
-		TestRunner->TestEqual(TEXT("Literal-setup hook should carry name for its owning engine"), LiteralSetupName, FString(TEXT("OwnedSetup")));
+		bOk &= this->Assert.AreEqual(1, ComponentCreatedCount, TEXT("Component-created hook should fire for its owning engine"));
+		bOk &= this->Assert.AreEqual(LiteralAsset, LiteralCreatedObject, TEXT("Literal-created hook should carry object for its owning engine"));
+		bOk &= this->Assert.AreEqual(FString(TEXT("OwnedAsset")), LiteralCreatedName, TEXT("Literal-created hook should carry name for its owning engine"));
+		bOk &= this->Assert.AreEqual(LiteralAsset, LiteralSetupObject, TEXT("Literal-setup hook should carry object for its owning engine"));
+		bOk &= this->Assert.AreEqual(FString(TEXT("OwnedSetup")), LiteralSetupName, TEXT("Literal-setup hook should carry name for its owning engine"));
 
-		TestRunner->TestEqual(TEXT("Dynamic-spawn-level hook should return the owning engine value"), EngineA->GetDynamicSpawnLevel().Execute(), SpawnLevel);
+		bOk &= this->Assert.AreEqual(SpawnLevel, EngineA->GetDynamicSpawnLevel().Execute(), TEXT("Dynamic-spawn-level hook should return the owning engine value"));
 
 		FAngelscriptDebugBreakOptions BreakOptions;
 		BreakOptions.Add(TEXT("break:any"));
-		TestRunner->TestTrue(TEXT("Debug break check hook should run through the owning engine"), EngineA->GetDebugCheckBreakOptions().Execute(BreakOptions, DebugObject));
-		TestRunner->TestEqual(TEXT("Debug break check hook should fire once"), BreakCheckCount, 1);
+		bOk &= this->Assert.IsTrue(EngineA->GetDebugCheckBreakOptions().Execute(BreakOptions, DebugObject), TEXT("Debug break check hook should run through the owning engine"));
+		bOk &= this->Assert.AreEqual(1, BreakCheckCount, TEXT("Debug break check hook should fire once"));
 
 		FAngelscriptDebugBreakFilters BreakFilters;
 		EngineA->GetDebugBreakFilters().ExecuteIfBound(BreakFilters);
 		const FString* BreakFilterTitle = BreakFilters.Find(TEXT("break:engine-owned-test"));
-		TestRunner->TestNotNull(TEXT("Debug break filters hook should populate the owning engine filters"), BreakFilterTitle);
+		bOk &= this->Assert.IsNotNull(BreakFilterTitle, TEXT("Debug break filters hook should populate the owning engine filters"));
 		if (BreakFilterTitle != nullptr)
 		{
-			TestRunner->TestEqual(TEXT("Debug break filters hook should carry the registered title"), *BreakFilterTitle, FString(TEXT("Engine Owned Test")));
+			bOk &= this->Assert.AreEqual(FString(TEXT("Engine Owned Test")), *BreakFilterTitle, TEXT("Debug break filters hook should carry the registered title"));
 		}
 
 		FString DebugSuffix;
 		EngineA->GetDebugObjectSuffix().ExecuteIfBound(DebugObject, DebugSuffix);
-		TestRunner->TestEqual(TEXT("Debug object suffix hook should mutate the suffix"), DebugSuffix, FString(TEXT("[engine-hook]")));
+		bOk &= this->Assert.AreEqual(FString(TEXT("[engine-hook]")), DebugSuffix, TEXT("Debug object suffix hook should mutate the suffix"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(RuntimeBindCallSitesUseCurrentEngineHooks)
@@ -286,7 +291,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 		}
 
 		AActor* Owner = World.GetWorld().SpawnActor<AActor>();
-		if (!TestRunner->TestNotNull(TEXT("Runtime hook bind-path test should spawn an owner actor"), Owner))
+		if (!this->Assert.IsNotNull(Owner, TEXT("Runtime hook bind-path test should spawn an owner actor")))
 		{
 			return;
 		}
@@ -310,8 +315,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 			USceneComponent::StaticClass(),
 			TEXT("EngineOwnedHookComponent"));
 
-		TestRunner->TestNotNull(TEXT("Runtime hook bind-path test should create a component through the bind helper"), CreatedComponent);
-		TestRunner->TestEqual(TEXT("CreateComponent bind path should invoke the current engine's component-created hook"), ComponentCreatedCount, 1);
+		bool bOk = true;
+		bOk &= this->Assert.IsNotNull(CreatedComponent, TEXT("Runtime hook bind-path test should create a component through the bind helper"));
+		bOk &= this->Assert.AreEqual(1, ComponentCreatedCount, TEXT("CreateComponent bind path should invoke the current engine's component-created hook"));
 
 		UObject* LiteralCreatedObject = nullptr;
 		FString LiteralCreatedName;
@@ -380,11 +386,11 @@ int Run()
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Runtime hook literal-asset script should execute"), Result, 1);
-		TestRunner->TestNotNull(TEXT("__CreateLiteralAsset bind path should invoke the current engine's literal-created hook"), LiteralCreatedObject);
-		TestRunner->TestEqual(TEXT("__CreateLiteralAsset bind path should pass the literal asset name"), LiteralCreatedName, FString(TEXT("EngineOwnedHookLiteralAsset")));
-		TestRunner->TestEqual(TEXT("__PostLiteralAssetSetup bind path should pass the literal asset object"), LiteralSetupObject, LiteralCreatedObject);
-		TestRunner->TestEqual(TEXT("__PostLiteralAssetSetup bind path should pass the literal asset name"), LiteralSetupName, FString(TEXT("EngineOwnedHookLiteralAsset")));
+		bOk &= this->Assert.AreEqual(1, Result, TEXT("Runtime hook literal-asset script should execute"));
+		bOk &= this->Assert.IsNotNull(LiteralCreatedObject, TEXT("__CreateLiteralAsset bind path should invoke the current engine's literal-created hook"));
+		bOk &= this->Assert.AreEqual(FString(TEXT("EngineOwnedHookLiteralAsset")), LiteralCreatedName, TEXT("__CreateLiteralAsset bind path should pass the literal asset name"));
+		bOk &= this->Assert.AreEqual(LiteralCreatedObject, LiteralSetupObject, TEXT("__PostLiteralAssetSetup bind path should pass the literal asset object"));
+		bOk &= this->Assert.AreEqual(FString(TEXT("EngineOwnedHookLiteralAsset")), LiteralSetupName, TEXT("__PostLiteralAssetSetup bind path should pass the literal asset name"));
 
 		ULevel* OverrideLevel = World.GetWorld().PersistentLevel;
 		int32 DynamicSpawnLevelCalls = 0;
@@ -409,13 +415,14 @@ int Run()
 				false,
 				nullptr);
 
-			TestRunner->TestNotNull(TEXT("Runtime hook bind-path test should spawn an actor through the bind helper"), SpawnedActor);
-			TestRunner->TestEqual(TEXT("SpawnActor bind path should invoke the current engine's dynamic-spawn-level hook"), DynamicSpawnLevelCalls, 1);
+			bOk &= this->Assert.IsNotNull(SpawnedActor, TEXT("Runtime hook bind-path test should spawn an actor through the bind helper"));
+			bOk &= this->Assert.AreEqual(1, DynamicSpawnLevelCalls, TEXT("SpawnActor bind path should invoke the current engine's dynamic-spawn-level hook"));
 			if (SpawnedActor != nullptr)
 			{
-				TestRunner->TestEqual(TEXT("SpawnActor bind path should use the current engine's dynamic-spawn-level hook"), SpawnedActor->GetLevel(), OverrideLevel);
+				bOk &= this->Assert.AreEqual(OverrideLevel, SpawnedActor->GetLevel(), TEXT("SpawnActor bind path should use the current engine's dynamic-spawn-level hook"));
 			}
 		}
+		(void)bOk;
 	}
 
 	TEST_METHOD(DebugServerCallSitesUseCurrentEngineHooks)
@@ -423,7 +430,7 @@ int Run()
 		FAngelscriptDebuggerTestSession Session;
 		FAngelscriptDebuggerSessionConfig SessionConfig;
 		SessionConfig.DefaultTimeoutSeconds = kDefaultDebuggerTestTimeoutSeconds;
-		if (!TestRunner->TestTrue(TEXT("Debug hook call-site test should initialize a debugger session"), Session.Initialize(SessionConfig)))
+		if (!this->Assert.IsTrue(Session.Initialize(SessionConfig), TEXT("Debug hook call-site test should initialize a debugger session")))
 		{
 			return;
 		}
@@ -472,7 +479,7 @@ class ADebugHookObjectSuffixActor : AActor
 		};
 
 		UASClass* ScriptASClass = Cast<UASClass>(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Debug hook call-site test should find the generated suffix actor class"), ScriptASClass))
+		if (!this->Assert.IsNotNull(ScriptASClass, TEXT("Debug hook call-site test should find the generated suffix actor class")))
 		{
 			return;
 		}
@@ -484,13 +491,13 @@ class ADebugHookObjectSuffixActor : AActor
 			const FTCHARToUTF8 BoundTypeNameUtf8(*BoundTypeName);
 			ScriptTypeInfo = Engine.GetScriptEngine()->GetTypeInfoByName(BoundTypeNameUtf8.Get());
 		}
-		if (!TestRunner->TestNotNull(TEXT("Debug hook call-site test should resolve the generated suffix actor script type"), ScriptTypeInfo))
+		if (!this->Assert.IsNotNull(ScriptTypeInfo, TEXT("Debug hook call-site test should resolve the generated suffix actor script type")))
 		{
 			return;
 		}
 
 		UObject* ScriptObject = NewObject<UObject>(GetTransientPackage(), ScriptClass, TEXT("EngineOwnedDebugSuffixObject"));
-		if (!TestRunner->TestNotNull(TEXT("Debug hook call-site test should create a generated suffix object"), ScriptObject))
+		if (!this->Assert.IsNotNull(ScriptObject, TEXT("Debug hook call-site test should create a generated suffix object")))
 		{
 			return;
 		}
@@ -499,13 +506,14 @@ class ADebugHookObjectSuffixActor : AActor
 		UObject* ScriptObjectValue = ScriptObject;
 		FString DebugString;
 		FToStringHelper::Generic_AppendToString(DebugString, &ScriptObjectValue, ScriptObjectTypeId);
-		TestRunner->TestTrue(
-			TEXT("ToString debug path should use the current engine's debug-object-suffix hook"),
-			DebugString.Contains(TEXT("[engine-owned-debug-suffix]")));
-		TestRunner->TestEqual(
-			TEXT("ToString debug path should invoke the current engine's debug-object-suffix hook once"),
+		bool bOk = true;
+		bOk &= this->Assert.IsTrue(
+			DebugString.Contains(TEXT("[engine-owned-debug-suffix]")),
+			TEXT("ToString debug path should use the current engine's debug-object-suffix hook"));
+		bOk &= this->Assert.AreEqual(
+			1,
 			DebugSuffixCalls,
-			1);
+			TEXT("ToString debug path should invoke the current engine's debug-object-suffix hook once"));
 
 		int32 BreakFilterCalls = 0;
 		Engine.GetDebugBreakFilters().BindLambda(
@@ -520,7 +528,7 @@ class ADebugHookObjectSuffixActor : AActor
 		};
 
 		FAngelscriptDebuggerTestClient Client;
-		if (!TestRunner->TestTrue(TEXT("Debug hook call-site test should connect a debugger client"), Client.Connect(TEXT("127.0.0.1"), Session.GetPort())))
+		if (!this->Assert.IsTrue(Client.Connect(TEXT("127.0.0.1"), Session.GetPort()), TEXT("Debug hook call-site test should connect a debugger client")))
 		{
 			TestRunner->AddError(Client.GetLastError());
 			return;
@@ -532,7 +540,7 @@ class ADebugHookObjectSuffixActor : AActor
 			Client.Disconnect();
 		};
 
-		if (!TestRunner->TestTrue(TEXT("Debug hook call-site test should send StartDebugging"), Client.SendStartDebugging(2)))
+		if (!this->Assert.IsTrue(Client.SendStartDebugging(2), TEXT("Debug hook call-site test should send StartDebugging")))
 		{
 			TestRunner->AddError(Client.GetLastError());
 			return;
@@ -550,7 +558,7 @@ class ADebugHookObjectSuffixActor : AActor
 			return;
 		}
 
-		if (!TestRunner->TestTrue(TEXT("Debug hook call-site test should request break filters"), Client.SendRequestBreakFilters()))
+		if (!this->Assert.IsTrue(Client.SendRequestBreakFilters(), TEXT("Debug hook call-site test should request break filters")))
 		{
 			TestRunner->AddError(Client.GetLastError());
 			return;
@@ -570,22 +578,22 @@ class ADebugHookObjectSuffixActor : AActor
 
 		const TOptional<FAngelscriptBreakFilters> BreakFilters =
 			FAngelscriptDebuggerTestClient::DeserializeMessage<FAngelscriptBreakFilters>(BreakFiltersEnvelope.GetValue());
-		if (!TestRunner->TestTrue(TEXT("Debug hook call-site test should deserialize the BreakFilters response"), BreakFilters.IsSet()))
+		if (!this->Assert.IsTrue(BreakFilters.IsSet(), TEXT("Debug hook call-site test should deserialize the BreakFilters response")))
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("RequestBreakFilters debug-server path should invoke the current engine's hook once"), BreakFilterCalls, 1);
+		bOk &= this->Assert.AreEqual(1, BreakFilterCalls, TEXT("RequestBreakFilters debug-server path should invoke the current engine's hook once"));
 		const int32 FilterIndex = BreakFilters->Filters.IndexOfByKey(FString(TEXT("break:engine-owned-runtime")));
-		if (!TestRunner->TestTrue(TEXT("RequestBreakFilters debug-server path should include the engine-owned filter"), FilterIndex != INDEX_NONE))
+		if (!this->Assert.IsTrue(FilterIndex != INDEX_NONE, TEXT("RequestBreakFilters debug-server path should include the engine-owned filter")))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(
-			TEXT("RequestBreakFilters debug-server path should preserve the engine-owned filter title"),
+		bOk &= this->Assert.IsTrue(
 			BreakFilters->FilterTitles.IsValidIndex(FilterIndex)
-			&& BreakFilters->FilterTitles[FilterIndex] == TEXT("Engine Owned Runtime"));
+			&& BreakFilters->FilterTitles[FilterIndex] == TEXT("Engine Owned Runtime"),
+			TEXT("RequestBreakFilters debug-server path should preserve the engine-owned filter title"));
 
 		int32 BreakCheckCalls = 0;
 		Engine.GetDebugCheckBreakOptions().BindLambda(
@@ -607,8 +615,9 @@ class ADebugHookObjectSuffixActor : AActor
 
 		Session.GetDebugServer().BreakOptions.Reset();
 		Session.GetDebugServer().BreakOptions.Add(FName(TEXT("break:allow-engine-owned")));
-		TestRunner->TestTrue(TEXT("ShouldBreakOnActiveSide should use the current engine's debug-check hook"), Session.GetDebugServer().ShouldBreakOnActiveSide());
-		TestRunner->TestEqual(TEXT("ShouldBreakOnActiveSide should invoke the current engine's debug-check hook once"), BreakCheckCalls, 1);
+		bOk &= this->Assert.IsTrue(Session.GetDebugServer().ShouldBreakOnActiveSide(), TEXT("ShouldBreakOnActiveSide should use the current engine's debug-check hook"));
+		bOk &= this->Assert.AreEqual(1, BreakCheckCalls, TEXT("ShouldBreakOnActiveSide should invoke the current engine's debug-check hook once"));
+		(void)bOk;
 	}
 };
 

@@ -15,6 +15,33 @@ using namespace AngelscriptActorTestUtils;
 
 namespace AngelscriptTest_Functional_Actor_Component_Private
 {
+	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsTrue(bActual, Message);
+	}
+
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.AreEqual(Expected, Actual, Message);
+	}
+
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsNotNull(Value, Message);
+	}
+
+	template <typename ValueType>
+	static bool CheckNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsNull(Value, Message);
+	}
+
 	int32 CountComponentsByClass(const AActor* Actor, const UClass* ComponentClass)
 	{
 		if (Actor == nullptr || ComponentClass == nullptr)
@@ -132,19 +159,19 @@ namespace AngelscriptTest_Functional_Actor_Component_Private
 		FName PropertyName,
 		TArray<UActorComponent*>& OutComponents)
 	{
-		if (!Test.TestNotNull(TEXT("Component array property read requires a valid object"), Object))
+		if (!CheckNotNull(Test, TEXT("Component array property read requires a valid object"), Object))
 		{
 			return false;
 		}
 
 		FArrayProperty* ArrayProperty = FindFProperty<FArrayProperty>(Object->GetClass(), PropertyName);
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should be a reflected TArray property"), *PropertyName.ToString()), ArrayProperty))
+		if (!CheckNotNull(Test, *FString::Printf(TEXT("%s should be a reflected TArray property"), *PropertyName.ToString()), ArrayProperty))
 		{
 			return false;
 		}
 
 		FObjectPropertyBase* InnerObjectProperty = CastField<FObjectPropertyBase>(ArrayProperty->Inner);
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should contain UObject references"), *PropertyName.ToString()), InnerObjectProperty))
+		if (!CheckNotNull(Test, *FString::Printf(TEXT("%s should contain UObject references"), *PropertyName.ToString()), InnerObjectProperty))
 		{
 			return false;
 		}
@@ -240,57 +267,57 @@ class ATestActorCreateComponent : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		W.BeginPlay(*Actor);
 
 		USceneComponent* DynamicRoot = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("CreateDynamicRootForCpp")), DynamicRoot)) return;
-		if (!TestRunner->TestNotNull(TEXT("CreateComponent should return the first dynamic scene component to C++"), DynamicRoot)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("CreateComponent should return the first dynamic scene component to C++"), DynamicRoot)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("CreateComponent dynamic root returned to C++: %s:%s"), *DynamicRoot->GetName(), *DynamicRoot->GetClass()->GetName()));
-		TestRunner->TestEqual(TEXT("CreateComponent root should preserve the requested object name"), DynamicRoot->GetFName(), FName(TEXT("DynamicRoot")));
-		TestRunner->TestEqual(TEXT("CreateComponent root should be owned by the script actor"), DynamicRoot->GetOwner(), Actor);
-		TestRunner->TestEqual(TEXT("CreateComponent should promote the first scene component to root"), Actor->GetRootComponent(), DynamicRoot);
+		ASSERT_THAT(AreEqual(FName(TEXT("DynamicRoot")), DynamicRoot->GetFName(), TEXT("CreateComponent root should preserve the requested object name")));
+		ASSERT_THAT(AreEqual(Actor, DynamicRoot->GetOwner(), TEXT("CreateComponent root should be owned by the script actor")));
+		ASSERT_THAT(AreEqual(DynamicRoot, Actor->GetRootComponent(), TEXT("CreateComponent should promote the first scene component to root")));
 
 		USceneComponent* DynamicChild = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("CreateDynamicChildForCpp")), DynamicChild)) return;
-		if (!TestRunner->TestNotNull(TEXT("CreateComponent should return the second dynamic scene component to C++"), DynamicChild)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("CreateComponent should return the second dynamic scene component to C++"), DynamicChild)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("CreateComponent dynamic child returned to C++: %s:%s"), *DynamicChild->GetName(), *DynamicChild->GetClass()->GetName()));
-		TestRunner->TestEqual(TEXT("CreateComponent child should preserve the requested object name"), DynamicChild->GetFName(), FName(TEXT("DynamicChild")));
-		TestRunner->TestEqual(TEXT("CreateComponent child should be owned by the script actor"), DynamicChild->GetOwner(), Actor);
-		TestRunner->TestEqual(TEXT("CreateComponent should attach later scene components to the root"), DynamicChild->GetAttachParent(), DynamicRoot);
+		ASSERT_THAT(AreEqual(FName(TEXT("DynamicChild")), DynamicChild->GetFName(), TEXT("CreateComponent child should preserve the requested object name")));
+		ASSERT_THAT(AreEqual(Actor, DynamicChild->GetOwner(), TEXT("CreateComponent child should be owned by the script actor")));
+		ASSERT_THAT(AreEqual(DynamicRoot, DynamicChild->GetAttachParent(), TEXT("CreateComponent should attach later scene components to the root")));
 
 		UBillboardComponent* DynamicBillboard = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("CreateDynamicBillboardForCpp")), DynamicBillboard)) return;
-		if (!TestRunner->TestNotNull(TEXT("CreateComponent should return the dynamic billboard component to C++"), DynamicBillboard)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("CreateComponent should return the dynamic billboard component to C++"), DynamicBillboard)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("CreateComponent dynamic billboard returned to C++: %s:%s"), *DynamicBillboard->GetName(), *DynamicBillboard->GetClass()->GetName()));
-		TestRunner->TestEqual(TEXT("CreateComponent billboard should preserve the requested object name"), DynamicBillboard->GetFName(), FName(TEXT("DynamicBillboard")));
-		TestRunner->TestEqual(TEXT("CreateComponent billboard should be owned by the script actor"), DynamicBillboard->GetOwner(), Actor);
-		TestRunner->TestEqual(TEXT("CreateComponent should attach later scene-derived components to the root"), DynamicBillboard->GetAttachParent(), DynamicRoot);
+		ASSERT_THAT(AreEqual(FName(TEXT("DynamicBillboard")), DynamicBillboard->GetFName(), TEXT("CreateComponent billboard should preserve the requested object name")));
+		ASSERT_THAT(AreEqual(Actor, DynamicBillboard->GetOwner(), TEXT("CreateComponent billboard should be owned by the script actor")));
+		ASSERT_THAT(AreEqual(DynamicRoot, DynamicBillboard->GetAttachParent(), TEXT("CreateComponent should attach later scene-derived components to the root")));
 
-		TestRunner->TestTrue(TEXT("CreateComponent should register every created component"), AreAllComponentsRegistered(Actor));
-		TestRunner->TestEqual(TEXT("CreateComponent should leave exactly three scene components on this actor"), CountComponentsByClass(Actor, USceneComponent::StaticClass()), 3);
+		ASSERT_THAT(IsTrue(AreAllComponentsRegistered(Actor), TEXT("CreateComponent should register every created component")));
+		ASSERT_THAT(AreEqual(3, CountComponentsByClass(Actor, USceneComponent::StaticClass()), TEXT("CreateComponent should leave exactly three scene components on this actor")));
 
 		UActorComponent* FoundDynamicRoot = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("FindDynamicRootForCpp")), FoundDynamicRoot)) return;
-		TestRunner->TestTrue(TEXT("CreateComponent should make the dynamic root discoverable by name"), FoundDynamicRoot == DynamicRoot);
+		ASSERT_THAT(IsTrue(FoundDynamicRoot == DynamicRoot, TEXT("CreateComponent should make the dynamic root discoverable by name")));
 
 		UActorComponent* FoundDynamicBillboard = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("FindDynamicBillboardForCpp")), FoundDynamicBillboard)) return;
-		TestRunner->TestTrue(TEXT("CreateComponent should make the dynamic billboard discoverable by name and class"), FoundDynamicBillboard == DynamicBillboard);
+		ASSERT_THAT(IsTrue(FoundDynamicBillboard == DynamicBillboard, TEXT("CreateComponent should make the dynamic billboard discoverable by name and class")));
 
 		UActorComponent* WrongTypeBillboard = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("FindDynamicBillboardAsWrongTypeForCpp")), WrongTypeBillboard)) return;
-		TestRunner->TestNull(TEXT("CreateComponent should not return a named component through an unrelated class"), WrongTypeBillboard);
+		ASSERT_THAT(IsNull(WrongTypeBillboard, TEXT("CreateComponent should not return a named component through an unrelated class")));
 
 		USceneComponent* ReturnedNamedScene = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("CreateNamedSceneForCpp")), ReturnedNamedScene)) return;
-		if (!TestRunner->TestNotNull(TEXT("CreateComponent should return the newly created named component to C++"), ReturnedNamedScene)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("CreateComponent should return the newly created named component to C++"), ReturnedNamedScene)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("CreateComponent returned named component to C++: %s:%s"), *ReturnedNamedScene->GetName(), *ReturnedNamedScene->GetClass()->GetName()));
-		TestRunner->TestEqual(TEXT("Returned named component should preserve the requested object name"), ReturnedNamedScene->GetFName(), FName(TEXT("CppReturnedNamedScene")));
-		TestRunner->TestEqual(TEXT("Returned named component should be owned by the script actor"), ReturnedNamedScene->GetOwner(), Actor);
-		TestRunner->TestTrue(TEXT("Returned named component should be registered"), ReturnedNamedScene->IsRegistered());
-		TestRunner->TestEqual(TEXT("Returned named component should attach to the existing dynamic root"), ReturnedNamedScene->GetAttachParent(), DynamicRoot);
-		TestRunner->TestEqual(TEXT("CreateComponent should expose the returned named component in the actor component list"), FindComponentByName<USceneComponent>(Actor, TEXT("CppReturnedNamedScene")), ReturnedNamedScene);
+		ASSERT_THAT(AreEqual(FName(TEXT("CppReturnedNamedScene")), ReturnedNamedScene->GetFName(), TEXT("Returned named component should preserve the requested object name")));
+		ASSERT_THAT(AreEqual(Actor, ReturnedNamedScene->GetOwner(), TEXT("Returned named component should be owned by the script actor")));
+		ASSERT_THAT(IsTrue(ReturnedNamedScene->IsRegistered(), TEXT("Returned named component should be registered")));
+		ASSERT_THAT(AreEqual(DynamicRoot, ReturnedNamedScene->GetAttachParent(), TEXT("Returned named component should attach to the existing dynamic root")));
+		ASSERT_THAT(AreEqual(ReturnedNamedScene, FindComponentByName<USceneComponent>(Actor, TEXT("CppReturnedNamedScene")), TEXT("CreateComponent should expose the returned named component in the actor component list")));
 	}
 
 	TEST_METHOD(GetComponent)
@@ -371,52 +398,52 @@ class ATestActorGetComponent : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		W.BeginPlay(*Actor);
 
 		USceneComponent* RootScene = FindComponentByName<USceneComponent>(Actor, TEXT("RootScene"));
 		UStaticMeshComponent* Mesh = FindComponentByName<UStaticMeshComponent>(Actor, TEXT("Mesh"));
 		UBillboardComponent* Billboard = FindComponentByName<UBillboardComponent>(Actor, TEXT("Billboard"));
-		if (!TestRunner->TestNotNull(TEXT("GetComponent fixture should have a root scene component"), RootScene)
-			|| !TestRunner->TestNotNull(TEXT("GetComponent fixture should have a static mesh component"), Mesh)
-			|| !TestRunner->TestNotNull(TEXT("GetComponent fixture should have a billboard component"), Billboard))
+		if (!CheckNotNull(*TestRunner, TEXT("GetComponent fixture should have a root scene component"), RootScene)
+			|| !CheckNotNull(*TestRunner, TEXT("GetComponent fixture should have a static mesh component"), Mesh)
+			|| !CheckNotNull(*TestRunner, TEXT("GetComponent fixture should have a billboard component"), Billboard))
 		{
 			return;
 		}
 
 		UActorComponent* FirstSceneByClass = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("FindFirstSceneByClassForCpp")), FirstSceneByClass)) return;
-		if (!TestRunner->TestNotNull(TEXT("GetComponent should find a scene component by class"), FirstSceneByClass)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("GetComponent should find a scene component by class"), FirstSceneByClass)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("GetComponent first scene by class returned to C++: %s:%s"), *FirstSceneByClass->GetName(), *FirstSceneByClass->GetClass()->GetName()));
-		TestRunner->TestTrue(TEXT("GetComponent result should satisfy the requested scene class"), FirstSceneByClass->IsA(USceneComponent::StaticClass()));
+		ASSERT_THAT(IsTrue(FirstSceneByClass->IsA(USceneComponent::StaticClass()), TEXT("GetComponent result should satisfy the requested scene class")));
 
 		UActorComponent* MeshByClass = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("FindMeshByClassForCpp")), MeshByClass)) return;
-		if (!TestRunner->TestNotNull(TEXT("GetComponent should find Mesh by static mesh class"), MeshByClass)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("GetComponent should find Mesh by static mesh class"), MeshByClass)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("GetComponent mesh by class returned to C++: %s:%s"), *MeshByClass->GetName(), *MeshByClass->GetClass()->GetName()));
-		TestRunner->TestTrue(TEXT("GetComponent should find Mesh by static mesh class"), MeshByClass == Mesh);
+		ASSERT_THAT(IsTrue(MeshByClass == Mesh, TEXT("GetComponent should find Mesh by static mesh class")));
 
 		UActorComponent* RootByName = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("FindRootByClassAndNameForCpp")), RootByName)) return;
-		TestRunner->TestTrue(TEXT("GetComponent should find RootScene by class and name"), RootByName == RootScene);
+		ASSERT_THAT(IsTrue(RootByName == RootScene, TEXT("GetComponent should find RootScene by class and name")));
 
 		UActorComponent* MeshAsScene = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("FindMeshByParentClassAndNameForCpp")), MeshAsScene)) return;
-		TestRunner->TestTrue(TEXT("GetComponent should match a derived component when querying parent class plus name"), MeshAsScene == Mesh);
+		ASSERT_THAT(IsTrue(MeshAsScene == Mesh, TEXT("GetComponent should match a derived component when querying parent class plus name")));
 
 		UActorComponent* WrongTypeByName = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("FindBillboardWithWrongClassForCpp")), WrongTypeByName)) return;
-		TestRunner->TestNull(TEXT("GetComponent should return null for matching name with wrong class"), WrongTypeByName);
+		ASSERT_THAT(IsNull(WrongTypeByName, TEXT("GetComponent should return null for matching name with wrong class")));
 
 		UActorComponent* MissingByName = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("FindMissingSceneByNameForCpp")), MissingByName)) return;
-		TestRunner->TestNull(TEXT("GetComponent should return null for a missing component name"), MissingByName);
+		ASSERT_THAT(IsNull(MissingByName, TEXT("GetComponent should return null for a missing component name")));
 
 		UActorComponent* MissingByClass = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("FindMissingComponentByClassForCpp")), MissingByClass)) return;
-		TestRunner->TestNull(TEXT("GetComponent should return null for an absent component class"), MissingByClass);
+		ASSERT_THAT(IsNull(MissingByClass, TEXT("GetComponent should return null for an absent component class")));
 
-		TestRunner->TestEqual(TEXT("GetComponent fixture should not create extra components"), CountComponentsByClass(Actor, UActorComponent::StaticClass()), 3);
+		ASSERT_THAT(AreEqual(3, CountComponentsByClass(Actor, UActorComponent::StaticClass()), TEXT("GetComponent fixture should not create extra components")));
 	}
 
 	TEST_METHOD(GetOrCreateComponent)
@@ -480,47 +507,47 @@ class ATestActorGetOrCreateComponent : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		W.BeginPlay(*Actor);
 
 		USceneComponent* RootScene = FindComponentByName<USceneComponent>(Actor, TEXT("RootScene"));
-		if (!TestRunner->TestNotNull(TEXT("GetOrCreateComponent should keep the original root scene"), RootScene)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("GetOrCreateComponent should keep the original root scene"), RootScene)) return;
 
 		UActorComponent* ExistingRootByName = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("GetExistingRootByNameForCpp")), ExistingRootByName)) return;
-		if (!TestRunner->TestNotNull(TEXT("GetOrCreateComponent should return the default root by name"), ExistingRootByName)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("GetOrCreateComponent should return the default root by name"), ExistingRootByName)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("GetOrCreateComponent existing root by name returned to C++: %s:%s"), *ExistingRootByName->GetName(), *ExistingRootByName->GetClass()->GetName()));
-		TestRunner->TestTrue(TEXT("GetOrCreateComponent should reuse the default root by name"), ExistingRootByName == RootScene);
+		ASSERT_THAT(IsTrue(ExistingRootByName == RootScene, TEXT("GetOrCreateComponent should reuse the default root by name")));
 
 		UActorComponent* ExistingRootByClass = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("GetExistingRootByClassForCpp")), ExistingRootByClass)) return;
-		TestRunner->TestTrue(TEXT("GetOrCreateComponent should reuse the default root by class"), ExistingRootByClass == RootScene);
-		TestRunner->TestEqual(TEXT("GetOrCreateComponent should not replace the root component"), Actor->GetRootComponent(), RootScene);
+		ASSERT_THAT(IsTrue(ExistingRootByClass == RootScene, TEXT("GetOrCreateComponent should reuse the default root by class")));
+		ASSERT_THAT(AreEqual(RootScene, Actor->GetRootComponent(), TEXT("GetOrCreateComponent should not replace the root component")));
 
 		USceneComponent* LazyScene = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("CreateLazySceneForCpp")), LazyScene)) return;
-		if (!TestRunner->TestNotNull(TEXT("GetOrCreateComponent should create one lazy scene component"), LazyScene)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("GetOrCreateComponent should create one lazy scene component"), LazyScene)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("GetOrCreateComponent lazy scene returned to C++: %s:%s"), *LazyScene->GetName(), *LazyScene->GetClass()->GetName()));
-		TestRunner->TestEqual(TEXT("GetOrCreateComponent lazy scene should preserve the requested name"), LazyScene->GetFName(), FName(TEXT("LazyScene")));
-		TestRunner->TestEqual(TEXT("GetOrCreateComponent lazy scene should be owned by the actor"), LazyScene->GetOwner(), Actor);
-		TestRunner->TestEqual(TEXT("GetOrCreateComponent should attach created scene components to the root"), LazyScene->GetAttachParent(), RootScene);
+		ASSERT_THAT(AreEqual(FName(TEXT("LazyScene")), LazyScene->GetFName(), TEXT("GetOrCreateComponent lazy scene should preserve the requested name")));
+		ASSERT_THAT(AreEqual(Actor, LazyScene->GetOwner(), TEXT("GetOrCreateComponent lazy scene should be owned by the actor")));
+		ASSERT_THAT(AreEqual(RootScene, LazyScene->GetAttachParent(), TEXT("GetOrCreateComponent should attach created scene components to the root")));
 
 		UActorComponent* LazySceneAgain = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("GetLazySceneAgainForCpp")), LazySceneAgain)) return;
-		TestRunner->TestTrue(TEXT("GetOrCreateComponent should not duplicate a named scene component"), LazySceneAgain == LazyScene);
+		ASSERT_THAT(IsTrue(LazySceneAgain == LazyScene, TEXT("GetOrCreateComponent should not duplicate a named scene component")));
 
 		UBillboardComponent* LazyBillboard = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("CreateLazyBillboardForCpp")), LazyBillboard)) return;
-		if (!TestRunner->TestNotNull(TEXT("GetOrCreateComponent should create one lazy billboard component"), LazyBillboard)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("GetOrCreateComponent should create one lazy billboard component"), LazyBillboard)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("GetOrCreateComponent lazy billboard returned to C++: %s:%s"), *LazyBillboard->GetName(), *LazyBillboard->GetClass()->GetName()));
-		TestRunner->TestEqual(TEXT("GetOrCreateComponent lazy billboard should preserve the requested name"), LazyBillboard->GetFName(), FName(TEXT("LazyBillboard")));
-		TestRunner->TestEqual(TEXT("GetOrCreateComponent lazy billboard should be owned by the actor"), LazyBillboard->GetOwner(), Actor);
-		TestRunner->TestEqual(TEXT("GetOrCreateComponent should attach created scene-derived components to the root"), LazyBillboard->GetAttachParent(), RootScene);
+		ASSERT_THAT(AreEqual(FName(TEXT("LazyBillboard")), LazyBillboard->GetFName(), TEXT("GetOrCreateComponent lazy billboard should preserve the requested name")));
+		ASSERT_THAT(AreEqual(Actor, LazyBillboard->GetOwner(), TEXT("GetOrCreateComponent lazy billboard should be owned by the actor")));
+		ASSERT_THAT(AreEqual(RootScene, LazyBillboard->GetAttachParent(), TEXT("GetOrCreateComponent should attach created scene-derived components to the root")));
 
 		UActorComponent* BillboardBySceneName = nullptr;
 		if (!InvokeComponentReturn(*TestRunner, Actor, FName(TEXT("GetLazyBillboardBySceneClassForCpp")), BillboardBySceneName)) return;
-		TestRunner->TestTrue(TEXT("GetOrCreateComponent should reuse derived components when parent class and name match"), BillboardBySceneName == LazyBillboard);
-		TestRunner->TestEqual(TEXT("GetOrCreateComponent should not duplicate components when called repeatedly"), CountComponentsByClass(Actor, UActorComponent::StaticClass()), 3);
+		ASSERT_THAT(IsTrue(BillboardBySceneName == LazyBillboard, TEXT("GetOrCreateComponent should reuse derived components when parent class and name match")));
+		ASSERT_THAT(AreEqual(3, CountComponentsByClass(Actor, UActorComponent::StaticClass()), TEXT("GetOrCreateComponent should not duplicate components when called repeatedly")));
 	}
 
 	TEST_METHOD(GetAllComponents)
@@ -657,12 +684,12 @@ class ATestActorGetAllComponents : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		W.BeginPlay(*Actor);
 
-		TestRunner->TestEqual(TEXT("GetAllComponents fixture should contain seven actor components"), CountComponentsByClass(Actor, UActorComponent::StaticClass()), 7);
-		TestRunner->TestEqual(TEXT("GetAllComponents fixture should contain seven scene components"), CountComponentsByClass(Actor, USceneComponent::StaticClass()), 7);
-		TestRunner->TestEqual(TEXT("GetAllComponents fixture should contain two billboard components"), CountComponentsByClass(Actor, UBillboardComponent::StaticClass()), 2);
+		ASSERT_THAT(AreEqual(7, CountComponentsByClass(Actor, UActorComponent::StaticClass()), TEXT("GetAllComponents fixture should contain seven actor components")));
+		ASSERT_THAT(AreEqual(7, CountComponentsByClass(Actor, USceneComponent::StaticClass()), TEXT("GetAllComponents fixture should contain seven scene components")));
+		ASSERT_THAT(AreEqual(2, CountComponentsByClass(Actor, UBillboardComponent::StaticClass()), TEXT("GetAllComponents fixture should contain two billboard components")));
 
 		UActorComponent* CompA = FindComponentByName<UActorComponent>(Actor, TEXT("CompA"));
 		UActorComponent* CompB = FindComponentByName<UActorComponent>(Actor, TEXT("CompB"));
@@ -671,13 +698,13 @@ class ATestActorGetAllComponents : AActor
 		UActorComponent* DerivedB2 = FindComponentByName<UActorComponent>(Actor, TEXT("DerivedB2"));
 		UActorComponent* Billboard = FindComponentByName<UActorComponent>(Actor, TEXT("Billboard"));
 		UActorComponent* Billboard2 = FindComponentByName<UActorComponent>(Actor, TEXT("Billboard2"));
-		if (!TestRunner->TestNotNull(TEXT("GetAllComponents C++ fixture should expose CompA"), CompA)
-			|| !TestRunner->TestNotNull(TEXT("GetAllComponents C++ fixture should expose CompB"), CompB)
-			|| !TestRunner->TestNotNull(TEXT("GetAllComponents C++ fixture should expose CompB2"), CompB2)
-			|| !TestRunner->TestNotNull(TEXT("GetAllComponents C++ fixture should expose DerivedB"), DerivedB)
-			|| !TestRunner->TestNotNull(TEXT("GetAllComponents C++ fixture should expose DerivedB2"), DerivedB2)
-			|| !TestRunner->TestNotNull(TEXT("GetAllComponents C++ fixture should expose Billboard"), Billboard)
-			|| !TestRunner->TestNotNull(TEXT("GetAllComponents C++ fixture should expose Billboard2"), Billboard2))
+		if (!CheckNotNull(*TestRunner, TEXT("GetAllComponents C++ fixture should expose CompA"), CompA)
+			|| !CheckNotNull(*TestRunner, TEXT("GetAllComponents C++ fixture should expose CompB"), CompB)
+			|| !CheckNotNull(*TestRunner, TEXT("GetAllComponents C++ fixture should expose CompB2"), CompB2)
+			|| !CheckNotNull(*TestRunner, TEXT("GetAllComponents C++ fixture should expose DerivedB"), DerivedB)
+			|| !CheckNotNull(*TestRunner, TEXT("GetAllComponents C++ fixture should expose DerivedB2"), DerivedB2)
+			|| !CheckNotNull(*TestRunner, TEXT("GetAllComponents C++ fixture should expose Billboard"), Billboard)
+			|| !CheckNotNull(*TestRunner, TEXT("GetAllComponents C++ fixture should expose Billboard2"), Billboard2))
 		{
 			return;
 		}
@@ -685,75 +712,75 @@ class ATestActorGetAllComponents : AActor
 		FFunctionInvoker ReturnRootInvoker(*TestRunner, Actor, FName(TEXT("ReturnRootForCpp")));
 		if (!ReturnRootInvoker.IsValid()) return;
 		UActorComponent* ReturnedRoot = ReturnRootInvoker.CallAndReturn<UActorComponent*>(nullptr);
-		TestRunner->TestEqual(TEXT("Script should return CompA to C++ as a component object"), ReturnedRoot, CompA);
+		ASSERT_THAT(AreEqual(CompA, ReturnedRoot, TEXT("Script should return CompA to C++ as a component object")));
 
 		FFunctionInvoker ReturnDerivedInvoker(*TestRunner, Actor, FName(TEXT("ReturnDerivedForCpp")));
 		if (!ReturnDerivedInvoker.IsValid()) return;
 		UActorComponent* ReturnedDerived = ReturnDerivedInvoker.CallAndReturn<UActorComponent*>(nullptr);
-		TestRunner->TestEqual(TEXT("Script should return DerivedB to C++ as a component object"), ReturnedDerived, DerivedB);
+		ASSERT_THAT(AreEqual(DerivedB, ReturnedDerived, TEXT("Script should return DerivedB to C++ as a component object")));
 
 		TArray<UActorComponent*> AllActorComponents;
 		if (!InvokeComponentArrayOut(*TestRunner, Actor, FName(TEXT("FillAllActorComponentsForCpp")), {}, AllActorComponents)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("GetAllComponents all actor components returned to C++: [%s]"), *DescribeComponents(AllActorComponents)));
-		TestRunner->TestEqual(TEXT("All actor components returned to C++ should include every fixture component"), AllActorComponents.Num(), 7);
-		TestRunner->TestTrue(TEXT("All actor components returned to C++ should include CompA"), AllActorComponents.Contains(CompA));
-		TestRunner->TestTrue(TEXT("All actor components returned to C++ should include CompB"), AllActorComponents.Contains(CompB));
-		TestRunner->TestTrue(TEXT("All actor components returned to C++ should include CompB2"), AllActorComponents.Contains(CompB2));
-		TestRunner->TestTrue(TEXT("All actor components returned to C++ should include DerivedB"), AllActorComponents.Contains(DerivedB));
-		TestRunner->TestTrue(TEXT("All actor components returned to C++ should include DerivedB2"), AllActorComponents.Contains(DerivedB2));
-		TestRunner->TestTrue(TEXT("All actor components returned to C++ should include Billboard"), AllActorComponents.Contains(Billboard));
-		TestRunner->TestTrue(TEXT("All actor components returned to C++ should include Billboard2"), AllActorComponents.Contains(Billboard2));
+		ASSERT_THAT(AreEqual(7, AllActorComponents.Num(), TEXT("All actor components returned to C++ should include every fixture component")));
+		ASSERT_THAT(IsTrue(AllActorComponents.Contains(CompA), TEXT("All actor components returned to C++ should include CompA")));
+		ASSERT_THAT(IsTrue(AllActorComponents.Contains(CompB), TEXT("All actor components returned to C++ should include CompB")));
+		ASSERT_THAT(IsTrue(AllActorComponents.Contains(CompB2), TEXT("All actor components returned to C++ should include CompB2")));
+		ASSERT_THAT(IsTrue(AllActorComponents.Contains(DerivedB), TEXT("All actor components returned to C++ should include DerivedB")));
+		ASSERT_THAT(IsTrue(AllActorComponents.Contains(DerivedB2), TEXT("All actor components returned to C++ should include DerivedB2")));
+		ASSERT_THAT(IsTrue(AllActorComponents.Contains(Billboard), TEXT("All actor components returned to C++ should include Billboard")));
+		ASSERT_THAT(IsTrue(AllActorComponents.Contains(Billboard2), TEXT("All actor components returned to C++ should include Billboard2")));
 
 		TArray<UActorComponent*> AllSceneComponents;
 		if (!InvokeComponentArrayOut(*TestRunner, Actor, FName(TEXT("FillAllSceneComponentsForCpp")), {}, AllSceneComponents)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("GetAllComponents all scene components returned to C++: [%s]"), *DescribeComponents(AllSceneComponents)));
-		TestRunner->TestEqual(TEXT("All scene components returned to C++ should include every fixture component"), AllSceneComponents.Num(), 7);
-		TestRunner->TestTrue(TEXT("All scene components returned to C++ should include CompA"), AllSceneComponents.Contains(CompA));
-		TestRunner->TestTrue(TEXT("All scene components returned to C++ should include CompB"), AllSceneComponents.Contains(CompB));
-		TestRunner->TestTrue(TEXT("All scene components returned to C++ should include CompB2"), AllSceneComponents.Contains(CompB2));
-		TestRunner->TestTrue(TEXT("All scene components returned to C++ should include DerivedB"), AllSceneComponents.Contains(DerivedB));
-		TestRunner->TestTrue(TEXT("All scene components returned to C++ should include DerivedB2"), AllSceneComponents.Contains(DerivedB2));
-		TestRunner->TestTrue(TEXT("All scene components returned to C++ should include Billboard"), AllSceneComponents.Contains(Billboard));
-		TestRunner->TestTrue(TEXT("All scene components returned to C++ should include Billboard2"), AllSceneComponents.Contains(Billboard2));
+		ASSERT_THAT(AreEqual(7, AllSceneComponents.Num(), TEXT("All scene components returned to C++ should include every fixture component")));
+		ASSERT_THAT(IsTrue(AllSceneComponents.Contains(CompA), TEXT("All scene components returned to C++ should include CompA")));
+		ASSERT_THAT(IsTrue(AllSceneComponents.Contains(CompB), TEXT("All scene components returned to C++ should include CompB")));
+		ASSERT_THAT(IsTrue(AllSceneComponents.Contains(CompB2), TEXT("All scene components returned to C++ should include CompB2")));
+		ASSERT_THAT(IsTrue(AllSceneComponents.Contains(DerivedB), TEXT("All scene components returned to C++ should include DerivedB")));
+		ASSERT_THAT(IsTrue(AllSceneComponents.Contains(DerivedB2), TEXT("All scene components returned to C++ should include DerivedB2")));
+		ASSERT_THAT(IsTrue(AllSceneComponents.Contains(Billboard), TEXT("All scene components returned to C++ should include Billboard")));
+		ASSERT_THAT(IsTrue(AllSceneComponents.Contains(Billboard2), TEXT("All scene components returned to C++ should include Billboard2")));
 
 		TArray<UActorComponent*> BFamily;
 		if (!InvokeComponentArrayOut(*TestRunner, Actor, FName(TEXT("FillBFamilyForCpp")), {}, BFamily)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("GetAllComponents B-family returned to C++: [%s]"), *DescribeComponents(BFamily)));
-		TestRunner->TestEqual(TEXT("B-family array returned to C++ should contain every base and derived component"), BFamily.Num(), 4);
-		TestRunner->TestTrue(TEXT("B-family array returned to C++ should include CompB"), BFamily.Contains(CompB));
-		TestRunner->TestTrue(TEXT("B-family array returned to C++ should include CompB2"), BFamily.Contains(CompB2));
-		TestRunner->TestTrue(TEXT("B-family array returned to C++ should include DerivedB"), BFamily.Contains(DerivedB));
-		TestRunner->TestTrue(TEXT("B-family array returned to C++ should include DerivedB2"), BFamily.Contains(DerivedB2));
+		ASSERT_THAT(AreEqual(4, BFamily.Num(), TEXT("B-family array returned to C++ should contain every base and derived component")));
+		ASSERT_THAT(IsTrue(BFamily.Contains(CompB), TEXT("B-family array returned to C++ should include CompB")));
+		ASSERT_THAT(IsTrue(BFamily.Contains(CompB2), TEXT("B-family array returned to C++ should include CompB2")));
+		ASSERT_THAT(IsTrue(BFamily.Contains(DerivedB), TEXT("B-family array returned to C++ should include DerivedB")));
+		ASSERT_THAT(IsTrue(BFamily.Contains(DerivedB2), TEXT("B-family array returned to C++ should include DerivedB2")));
 
 		TArray<UActorComponent*> DerivedOnly;
 		if (!InvokeComponentArrayOut(*TestRunner, Actor, FName(TEXT("FillDerivedBOnlyForCpp")), {}, DerivedOnly)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("GetAllComponents derived-only returned to C++: [%s]"), *DescribeComponents(DerivedOnly)));
-		TestRunner->TestEqual(TEXT("Derived-only array returned to C++ should contain only derived instances"), DerivedOnly.Num(), 2);
-		TestRunner->TestTrue(TEXT("Derived-only array returned to C++ should include DerivedB"), DerivedOnly.Contains(DerivedB));
-		TestRunner->TestTrue(TEXT("Derived-only array returned to C++ should include DerivedB2"), DerivedOnly.Contains(DerivedB2));
-		TestRunner->TestFalse(TEXT("Derived-only array returned to C++ should not include base CompB"), DerivedOnly.Contains(CompB));
+		ASSERT_THAT(AreEqual(2, DerivedOnly.Num(), TEXT("Derived-only array returned to C++ should contain only derived instances")));
+		ASSERT_THAT(IsTrue(DerivedOnly.Contains(DerivedB), TEXT("Derived-only array returned to C++ should include DerivedB")));
+		ASSERT_THAT(IsTrue(DerivedOnly.Contains(DerivedB2), TEXT("Derived-only array returned to C++ should include DerivedB2")));
+		ASSERT_THAT(IsFalse(DerivedOnly.Contains(CompB), TEXT("Derived-only array returned to C++ should not include base CompB")));
 
 		TArray<UActorComponent*> Billboards;
 		if (!InvokeComponentArrayOut(*TestRunner, Actor, FName(TEXT("FillBillboardsForCpp")), {}, Billboards)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("GetAllComponents billboards returned to C++: [%s]"), *DescribeComponents(Billboards)));
-		TestRunner->TestEqual(TEXT("Billboard array returned to C++ should contain both billboards"), Billboards.Num(), 2);
-		TestRunner->TestTrue(TEXT("Billboard array returned to C++ should include Billboard"), Billboards.Contains(Billboard));
-		TestRunner->TestTrue(TEXT("Billboard array returned to C++ should include Billboard2"), Billboards.Contains(Billboard2));
+		ASSERT_THAT(AreEqual(2, Billboards.Num(), TEXT("Billboard array returned to C++ should contain both billboards")));
+		ASSERT_THAT(IsTrue(Billboards.Contains(Billboard), TEXT("Billboard array returned to C++ should include Billboard")));
+		ASSERT_THAT(IsTrue(Billboards.Contains(Billboard2), TEXT("Billboard array returned to C++ should include Billboard2")));
 
 		TArray<UActorComponent*> NoStaticMeshMatches;
 		if (!InvokeComponentArrayOut(*TestRunner, Actor, FName(TEXT("FillNoStaticMeshMatchesForCpp")), {}, NoStaticMeshMatches)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("GetAllComponents no static mesh matches returned to C++: [%s]"), *DescribeComponents(NoStaticMeshMatches)));
-		TestRunner->TestEqual(TEXT("No-match array returned to C++ should stay empty"), NoStaticMeshMatches.Num(), 0);
+		ASSERT_THAT(AreEqual(0, NoStaticMeshMatches.Num(), TEXT("No-match array returned to C++ should stay empty")));
 
 		TArray<UActorComponent*> SeededComponents;
 		SeededComponents.Add(CompA);
 		TArray<UActorComponent*> SeededBillboards;
 		if (!InvokeComponentArrayOut(*TestRunner, Actor, FName(TEXT("AppendBillboardsForCpp")), SeededComponents, SeededBillboards)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("GetAllComponents seeded billboard append returned to C++: [%s]"), *DescribeComponents(SeededBillboards)));
-		if (!TestRunner->TestEqual(TEXT("Seeded array returned to C++ should preserve seed and append both billboards"), SeededBillboards.Num(), 3)) return;
-		TestRunner->TestEqual(TEXT("Seeded array returned to C++ should keep CompA as the seed element"), SeededBillboards[0], CompA);
-		TestRunner->TestTrue(TEXT("Seeded array returned to C++ should append Billboard"), SeededBillboards.Contains(Billboard));
-		TestRunner->TestTrue(TEXT("Seeded array returned to C++ should append Billboard2"), SeededBillboards.Contains(Billboard2));
+		if (!CheckEqual(*TestRunner, TEXT("Seeded array returned to C++ should preserve seed and append both billboards"), SeededBillboards.Num(), 3)) return;
+		ASSERT_THAT(AreEqual(CompA, SeededBillboards[0], TEXT("Seeded array returned to C++ should keep CompA as the seed element")));
+		ASSERT_THAT(IsTrue(SeededBillboards.Contains(Billboard), TEXT("Seeded array returned to C++ should append Billboard")));
+		ASSERT_THAT(IsTrue(SeededBillboards.Contains(Billboard2), TEXT("Seeded array returned to C++ should append Billboard2")));
 
 		FFunctionInvoker StoreArraysInvoker(*TestRunner, Actor, FName(TEXT("StoreArraysForCpp")));
 		if (!StoreArraysInvoker.IsValid() || !StoreArraysInvoker.Call()) return;
@@ -761,30 +788,30 @@ class ATestActorGetAllComponents : AActor
 		TArray<UActorComponent*> StoredBFamily;
 		if (!ReadComponentArrayProperty(*TestRunner, Actor, FName(TEXT("LastBFamilyForCpp")), StoredBFamily)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("GetAllComponents B-family stored property read by C++: [%s]"), *DescribeComponents(StoredBFamily)));
-		TestRunner->TestEqual(TEXT("Stored B-family array should contain four components"), StoredBFamily.Num(), 4);
-		TestRunner->TestTrue(TEXT("Stored B-family array should include CompB"), StoredBFamily.Contains(CompB));
-		TestRunner->TestTrue(TEXT("Stored B-family array should include CompB2"), StoredBFamily.Contains(CompB2));
-		TestRunner->TestTrue(TEXT("Stored B-family array should include DerivedB"), StoredBFamily.Contains(DerivedB));
-		TestRunner->TestTrue(TEXT("Stored B-family array should include DerivedB2"), StoredBFamily.Contains(DerivedB2));
+		ASSERT_THAT(AreEqual(4, StoredBFamily.Num(), TEXT("Stored B-family array should contain four components")));
+		ASSERT_THAT(IsTrue(StoredBFamily.Contains(CompB), TEXT("Stored B-family array should include CompB")));
+		ASSERT_THAT(IsTrue(StoredBFamily.Contains(CompB2), TEXT("Stored B-family array should include CompB2")));
+		ASSERT_THAT(IsTrue(StoredBFamily.Contains(DerivedB), TEXT("Stored B-family array should include DerivedB")));
+		ASSERT_THAT(IsTrue(StoredBFamily.Contains(DerivedB2), TEXT("Stored B-family array should include DerivedB2")));
 
 		TArray<UActorComponent*> StoredAllComponents;
 		if (!ReadComponentArrayProperty(*TestRunner, Actor, FName(TEXT("LastAllComponentsForCpp")), StoredAllComponents)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("GetAllComponents all components stored property read by C++: [%s]"), *DescribeComponents(StoredAllComponents)));
-		TestRunner->TestEqual(TEXT("Stored all-components array should contain seven components"), StoredAllComponents.Num(), 7);
-		TestRunner->TestTrue(TEXT("Stored all-components array should include CompA"), StoredAllComponents.Contains(CompA));
-		TestRunner->TestTrue(TEXT("Stored all-components array should include CompB"), StoredAllComponents.Contains(CompB));
-		TestRunner->TestTrue(TEXT("Stored all-components array should include CompB2"), StoredAllComponents.Contains(CompB2));
-		TestRunner->TestTrue(TEXT("Stored all-components array should include DerivedB"), StoredAllComponents.Contains(DerivedB));
-		TestRunner->TestTrue(TEXT("Stored all-components array should include DerivedB2"), StoredAllComponents.Contains(DerivedB2));
-		TestRunner->TestTrue(TEXT("Stored all-components array should include Billboard"), StoredAllComponents.Contains(Billboard));
-		TestRunner->TestTrue(TEXT("Stored all-components array should include Billboard2"), StoredAllComponents.Contains(Billboard2));
+		ASSERT_THAT(AreEqual(7, StoredAllComponents.Num(), TEXT("Stored all-components array should contain seven components")));
+		ASSERT_THAT(IsTrue(StoredAllComponents.Contains(CompA), TEXT("Stored all-components array should include CompA")));
+		ASSERT_THAT(IsTrue(StoredAllComponents.Contains(CompB), TEXT("Stored all-components array should include CompB")));
+		ASSERT_THAT(IsTrue(StoredAllComponents.Contains(CompB2), TEXT("Stored all-components array should include CompB2")));
+		ASSERT_THAT(IsTrue(StoredAllComponents.Contains(DerivedB), TEXT("Stored all-components array should include DerivedB")));
+		ASSERT_THAT(IsTrue(StoredAllComponents.Contains(DerivedB2), TEXT("Stored all-components array should include DerivedB2")));
+		ASSERT_THAT(IsTrue(StoredAllComponents.Contains(Billboard), TEXT("Stored all-components array should include Billboard")));
+		ASSERT_THAT(IsTrue(StoredAllComponents.Contains(Billboard2), TEXT("Stored all-components array should include Billboard2")));
 
 		TArray<UActorComponent*> StoredBillboards;
 		if (!ReadComponentArrayProperty(*TestRunner, Actor, FName(TEXT("LastBillboardsForCpp")), StoredBillboards)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("GetAllComponents billboards stored property read by C++: [%s]"), *DescribeComponents(StoredBillboards)));
-		TestRunner->TestEqual(TEXT("Stored billboard array should contain two components"), StoredBillboards.Num(), 2);
-		TestRunner->TestTrue(TEXT("Stored billboard array should include Billboard"), StoredBillboards.Contains(Billboard));
-		TestRunner->TestTrue(TEXT("Stored billboard array should include Billboard2"), StoredBillboards.Contains(Billboard2));
+		ASSERT_THAT(AreEqual(2, StoredBillboards.Num(), TEXT("Stored billboard array should contain two components")));
+		ASSERT_THAT(IsTrue(StoredBillboards.Contains(Billboard), TEXT("Stored billboard array should include Billboard")));
+		ASSERT_THAT(IsTrue(StoredBillboards.Contains(Billboard2), TEXT("Stored billboard array should include Billboard2")));
 	}
 
 	TEST_METHOD(ReturnComponentsToCpp)
@@ -903,8 +930,8 @@ class ATestActorReturnComponentsToCpp : AActor
 
 		UClass* ReturnBaseClass = FindGeneratedClass(&Engine, TEXT("UReturnComponentBase"));
 		UClass* ReturnDerivedClass = FindGeneratedClass(&Engine, TEXT("UReturnComponentDerived"));
-		if (!TestRunner->TestNotNull(TEXT("ReturnComponentsToCpp should generate the base component class"), ReturnBaseClass)
-			|| !TestRunner->TestNotNull(TEXT("ReturnComponentsToCpp should generate the derived component class"), ReturnDerivedClass))
+		if (!CheckNotNull(*TestRunner, TEXT("ReturnComponentsToCpp should generate the base component class"), ReturnBaseClass)
+			|| !CheckNotNull(*TestRunner, TEXT("ReturnComponentsToCpp should generate the derived component class"), ReturnDerivedClass))
 		{
 			return;
 		}
@@ -912,7 +939,7 @@ class ATestActorReturnComponentsToCpp : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		W.BeginPlay(*Actor);
 
 		UActorComponent* BaseA = FindComponentByName<UActorComponent>(Actor, TEXT("BaseA"));
@@ -921,70 +948,70 @@ class ATestActorReturnComponentsToCpp : AActor
 		UActorComponent* DerivedB = FindComponentByName<UActorComponent>(Actor, TEXT("DerivedB"));
 		UActorComponent* BillboardA = FindComponentByName<UActorComponent>(Actor, TEXT("BillboardA"));
 		UActorComponent* BillboardB = FindComponentByName<UActorComponent>(Actor, TEXT("BillboardB"));
-		if (!TestRunner->TestNotNull(TEXT("ReturnComponentsToCpp fixture should expose BaseA"), BaseA)
-			|| !TestRunner->TestNotNull(TEXT("ReturnComponentsToCpp fixture should expose BaseB"), BaseB)
-			|| !TestRunner->TestNotNull(TEXT("ReturnComponentsToCpp fixture should expose DerivedA"), DerivedA)
-			|| !TestRunner->TestNotNull(TEXT("ReturnComponentsToCpp fixture should expose DerivedB"), DerivedB)
-			|| !TestRunner->TestNotNull(TEXT("ReturnComponentsToCpp fixture should expose BillboardA"), BillboardA)
-			|| !TestRunner->TestNotNull(TEXT("ReturnComponentsToCpp fixture should expose BillboardB"), BillboardB))
+		if (!CheckNotNull(*TestRunner, TEXT("ReturnComponentsToCpp fixture should expose BaseA"), BaseA)
+			|| !CheckNotNull(*TestRunner, TEXT("ReturnComponentsToCpp fixture should expose BaseB"), BaseB)
+			|| !CheckNotNull(*TestRunner, TEXT("ReturnComponentsToCpp fixture should expose DerivedA"), DerivedA)
+			|| !CheckNotNull(*TestRunner, TEXT("ReturnComponentsToCpp fixture should expose DerivedB"), DerivedB)
+			|| !CheckNotNull(*TestRunner, TEXT("ReturnComponentsToCpp fixture should expose BillboardA"), BillboardA)
+			|| !CheckNotNull(*TestRunner, TEXT("ReturnComponentsToCpp fixture should expose BillboardB"), BillboardB))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("BaseA should use the generated base component class"), BaseA->IsA(ReturnBaseClass));
-		TestRunner->TestTrue(TEXT("DerivedA should use the generated derived component class"), DerivedA->IsA(ReturnDerivedClass));
+		ASSERT_THAT(IsTrue(BaseA->IsA(ReturnBaseClass), TEXT("BaseA should use the generated base component class")));
+		ASSERT_THAT(IsTrue(DerivedA->IsA(ReturnDerivedClass), TEXT("DerivedA should use the generated derived component class")));
 
 		FFunctionInvoker ReturnBaseInvoker(*TestRunner, Actor, FName(TEXT("ReturnBaseAForCpp")));
 		if (!ReturnBaseInvoker.IsValid()) return;
 		UActorComponent* ReturnedBaseA = ReturnBaseInvoker.CallAndReturn<UActorComponent*>(nullptr);
-		if (!TestRunner->TestNotNull(TEXT("ReturnBaseAForCpp should return a component object"), ReturnedBaseA)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("ReturnBaseAForCpp should return a component object"), ReturnedBaseA)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("ReturnComponentsToCpp single component returned to C++: %s:%s"), *ReturnedBaseA->GetName(), *ReturnedBaseA->GetClass()->GetName()));
-		TestRunner->TestEqual(TEXT("ReturnBaseAForCpp should return BaseA to C++"), ReturnedBaseA, BaseA);
+		ASSERT_THAT(AreEqual(BaseA, ReturnedBaseA, TEXT("ReturnBaseAForCpp should return BaseA to C++")));
 
 		FFunctionInvoker ReturnDerivedInvoker(*TestRunner, Actor, FName(TEXT("ReturnDerivedBForCpp")));
 		if (!ReturnDerivedInvoker.IsValid()) return;
 		UActorComponent* ReturnedDerivedB = ReturnDerivedInvoker.CallAndReturn<UActorComponent*>(nullptr);
-		if (!TestRunner->TestNotNull(TEXT("ReturnDerivedBForCpp should return a component object"), ReturnedDerivedB)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("ReturnDerivedBForCpp should return a component object"), ReturnedDerivedB)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("ReturnComponentsToCpp derived component returned to C++: %s:%s"), *ReturnedDerivedB->GetName(), *ReturnedDerivedB->GetClass()->GetName()));
-		TestRunner->TestEqual(TEXT("ReturnDerivedBForCpp should return DerivedB to C++"), ReturnedDerivedB, DerivedB);
+		ASSERT_THAT(AreEqual(DerivedB, ReturnedDerivedB, TEXT("ReturnDerivedBForCpp should return DerivedB to C++")));
 
 		FFunctionInvoker ReturnByNameInvoker(*TestRunner, Actor, FName(TEXT("ReturnComponentByNameForCpp")));
 		if (!ReturnByNameInvoker.IsValid()) return;
 		ReturnByNameInvoker.AddParam<FName>(FName(TEXT("BillboardB")));
 		UActorComponent* ReturnedByName = ReturnByNameInvoker.CallAndReturn<UActorComponent*>(nullptr);
-		if (!TestRunner->TestNotNull(TEXT("ReturnComponentByNameForCpp should return a component object"), ReturnedByName)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("ReturnComponentByNameForCpp should return a component object"), ReturnedByName)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("ReturnComponentsToCpp component returned by name to C++: %s:%s"), *ReturnedByName->GetName(), *ReturnedByName->GetClass()->GetName()));
-		TestRunner->TestEqual(TEXT("ReturnComponentByNameForCpp should return the named BillboardB component"), ReturnedByName, BillboardB);
+		ASSERT_THAT(AreEqual(BillboardB, ReturnedByName, TEXT("ReturnComponentByNameForCpp should return the named BillboardB component")));
 
 		TArray<UActorComponent*> BaseFamily;
 		if (!InvokeComponentArrayOut(*TestRunner, Actor, FName(TEXT("ReturnBaseFamilyArrayForCpp")), {}, BaseFamily)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("ReturnComponentsToCpp base-family array returned to C++: [%s]"), *DescribeComponents(BaseFamily)));
-		TestRunner->TestEqual(TEXT("Returned base-family array should contain base and derived instances"), BaseFamily.Num(), 4);
-		TestRunner->TestTrue(TEXT("Returned base-family array should include BaseA"), BaseFamily.Contains(BaseA));
-		TestRunner->TestTrue(TEXT("Returned base-family array should include BaseB"), BaseFamily.Contains(BaseB));
-		TestRunner->TestTrue(TEXT("Returned base-family array should include DerivedA"), BaseFamily.Contains(DerivedA));
-		TestRunner->TestTrue(TEXT("Returned base-family array should include DerivedB"), BaseFamily.Contains(DerivedB));
+		ASSERT_THAT(AreEqual(4, BaseFamily.Num(), TEXT("Returned base-family array should contain base and derived instances")));
+		ASSERT_THAT(IsTrue(BaseFamily.Contains(BaseA), TEXT("Returned base-family array should include BaseA")));
+		ASSERT_THAT(IsTrue(BaseFamily.Contains(BaseB), TEXT("Returned base-family array should include BaseB")));
+		ASSERT_THAT(IsTrue(BaseFamily.Contains(DerivedA), TEXT("Returned base-family array should include DerivedA")));
+		ASSERT_THAT(IsTrue(BaseFamily.Contains(DerivedB), TEXT("Returned base-family array should include DerivedB")));
 
 		TArray<UActorComponent*> AllComponents;
 		if (!InvokeComponentArrayOut(*TestRunner, Actor, FName(TEXT("ReturnAllComponentsArrayForCpp")), {}, AllComponents)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("ReturnComponentsToCpp all-component array returned to C++: [%s]"), *DescribeComponents(AllComponents)));
-		TestRunner->TestEqual(TEXT("Returned all-component array should include every default component"), AllComponents.Num(), 7);
-		TestRunner->TestTrue(TEXT("Returned all-component array should include BaseA"), AllComponents.Contains(BaseA));
-		TestRunner->TestTrue(TEXT("Returned all-component array should include BaseB"), AllComponents.Contains(BaseB));
-		TestRunner->TestTrue(TEXT("Returned all-component array should include DerivedA"), AllComponents.Contains(DerivedA));
-		TestRunner->TestTrue(TEXT("Returned all-component array should include DerivedB"), AllComponents.Contains(DerivedB));
-		TestRunner->TestTrue(TEXT("Returned all-component array should include BillboardA"), AllComponents.Contains(BillboardA));
-		TestRunner->TestTrue(TEXT("Returned all-component array should include BillboardB"), AllComponents.Contains(BillboardB));
+		ASSERT_THAT(AreEqual(7, AllComponents.Num(), TEXT("Returned all-component array should include every default component")));
+		ASSERT_THAT(IsTrue(AllComponents.Contains(BaseA), TEXT("Returned all-component array should include BaseA")));
+		ASSERT_THAT(IsTrue(AllComponents.Contains(BaseB), TEXT("Returned all-component array should include BaseB")));
+		ASSERT_THAT(IsTrue(AllComponents.Contains(DerivedA), TEXT("Returned all-component array should include DerivedA")));
+		ASSERT_THAT(IsTrue(AllComponents.Contains(DerivedB), TEXT("Returned all-component array should include DerivedB")));
+		ASSERT_THAT(IsTrue(AllComponents.Contains(BillboardA), TEXT("Returned all-component array should include BillboardA")));
+		ASSERT_THAT(IsTrue(AllComponents.Contains(BillboardB), TEXT("Returned all-component array should include BillboardB")));
 
 		TArray<UActorComponent*> SeededComponents;
 		SeededComponents.Add(BaseA);
 		TArray<UActorComponent*> SeededBillboards;
 		if (!InvokeComponentArrayOut(*TestRunner, Actor, FName(TEXT("AppendBillboardArrayForCpp")), SeededComponents, SeededBillboards)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("ReturnComponentsToCpp seeded billboard array returned to C++: [%s]"), *DescribeComponents(SeededBillboards)));
-		if (!TestRunner->TestEqual(TEXT("Returned seeded billboard array should preserve the seed and append both billboards"), SeededBillboards.Num(), 3)) return;
-		TestRunner->TestEqual(TEXT("Returned seeded billboard array should keep BaseA as the seed element"), SeededBillboards[0], BaseA);
-		TestRunner->TestTrue(TEXT("Returned seeded billboard array should include BillboardA"), SeededBillboards.Contains(BillboardA));
-		TestRunner->TestTrue(TEXT("Returned seeded billboard array should include BillboardB"), SeededBillboards.Contains(BillboardB));
+		if (!CheckEqual(*TestRunner, TEXT("Returned seeded billboard array should preserve the seed and append both billboards"), SeededBillboards.Num(), 3)) return;
+		ASSERT_THAT(AreEqual(BaseA, SeededBillboards[0], TEXT("Returned seeded billboard array should keep BaseA as the seed element")));
+		ASSERT_THAT(IsTrue(SeededBillboards.Contains(BillboardA), TEXT("Returned seeded billboard array should include BillboardA")));
+		ASSERT_THAT(IsTrue(SeededBillboards.Contains(BillboardB), TEXT("Returned seeded billboard array should include BillboardB")));
 
 		FFunctionInvoker StoreArraysInvoker(*TestRunner, Actor, FName(TEXT("StoreComponentArraysForCpp")));
 		if (!StoreArraysInvoker.IsValid() || !StoreArraysInvoker.Call()) return;
@@ -992,38 +1019,38 @@ class ATestActorReturnComponentsToCpp : AActor
 		TArray<UActorComponent*> StoredBaseFamily;
 		if (!ReadComponentArrayProperty(*TestRunner, Actor, FName(TEXT("StoredBaseFamily")), StoredBaseFamily)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("ReturnComponentsToCpp stored base-family property read by C++: [%s]"), *DescribeComponents(StoredBaseFamily)));
-		TestRunner->TestEqual(TEXT("Stored base-family property should contain four components"), StoredBaseFamily.Num(), 4);
-		TestRunner->TestTrue(TEXT("Stored base-family property should include BaseA"), StoredBaseFamily.Contains(BaseA));
-		TestRunner->TestTrue(TEXT("Stored base-family property should include BaseB"), StoredBaseFamily.Contains(BaseB));
-		TestRunner->TestTrue(TEXT("Stored base-family property should include DerivedA"), StoredBaseFamily.Contains(DerivedA));
-		TestRunner->TestTrue(TEXT("Stored base-family property should include DerivedB"), StoredBaseFamily.Contains(DerivedB));
+		ASSERT_THAT(AreEqual(4, StoredBaseFamily.Num(), TEXT("Stored base-family property should contain four components")));
+		ASSERT_THAT(IsTrue(StoredBaseFamily.Contains(BaseA), TEXT("Stored base-family property should include BaseA")));
+		ASSERT_THAT(IsTrue(StoredBaseFamily.Contains(BaseB), TEXT("Stored base-family property should include BaseB")));
+		ASSERT_THAT(IsTrue(StoredBaseFamily.Contains(DerivedA), TEXT("Stored base-family property should include DerivedA")));
+		ASSERT_THAT(IsTrue(StoredBaseFamily.Contains(DerivedB), TEXT("Stored base-family property should include DerivedB")));
 
 		TArray<UActorComponent*> StoredAllComponents;
 		if (!ReadComponentArrayProperty(*TestRunner, Actor, FName(TEXT("StoredAllComponents")), StoredAllComponents)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("ReturnComponentsToCpp stored all-component property read by C++: [%s]"), *DescribeComponents(StoredAllComponents)));
-		TestRunner->TestEqual(TEXT("Stored all-component property should contain seven components"), StoredAllComponents.Num(), 7);
-		TestRunner->TestTrue(TEXT("Stored all-component property should include BaseA"), StoredAllComponents.Contains(BaseA));
-		TestRunner->TestTrue(TEXT("Stored all-component property should include BaseB"), StoredAllComponents.Contains(BaseB));
-		TestRunner->TestTrue(TEXT("Stored all-component property should include DerivedA"), StoredAllComponents.Contains(DerivedA));
-		TestRunner->TestTrue(TEXT("Stored all-component property should include DerivedB"), StoredAllComponents.Contains(DerivedB));
-		TestRunner->TestTrue(TEXT("Stored all-component property should include BillboardA"), StoredAllComponents.Contains(BillboardA));
-		TestRunner->TestTrue(TEXT("Stored all-component property should include BillboardB"), StoredAllComponents.Contains(BillboardB));
+		ASSERT_THAT(AreEqual(7, StoredAllComponents.Num(), TEXT("Stored all-component property should contain seven components")));
+		ASSERT_THAT(IsTrue(StoredAllComponents.Contains(BaseA), TEXT("Stored all-component property should include BaseA")));
+		ASSERT_THAT(IsTrue(StoredAllComponents.Contains(BaseB), TEXT("Stored all-component property should include BaseB")));
+		ASSERT_THAT(IsTrue(StoredAllComponents.Contains(DerivedA), TEXT("Stored all-component property should include DerivedA")));
+		ASSERT_THAT(IsTrue(StoredAllComponents.Contains(DerivedB), TEXT("Stored all-component property should include DerivedB")));
+		ASSERT_THAT(IsTrue(StoredAllComponents.Contains(BillboardA), TEXT("Stored all-component property should include BillboardA")));
+		ASSERT_THAT(IsTrue(StoredAllComponents.Contains(BillboardB), TEXT("Stored all-component property should include BillboardB")));
 
 		TArray<UActorComponent*> StoredBillboards;
 		if (!ReadComponentArrayProperty(*TestRunner, Actor, FName(TEXT("StoredBillboards")), StoredBillboards)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("ReturnComponentsToCpp stored billboard property read by C++: [%s]"), *DescribeComponents(StoredBillboards)));
-		TestRunner->TestEqual(TEXT("Stored billboard property should contain two components"), StoredBillboards.Num(), 2);
-		TestRunner->TestTrue(TEXT("Stored billboard property should include BillboardA"), StoredBillboards.Contains(BillboardA));
-		TestRunner->TestTrue(TEXT("Stored billboard property should include BillboardB"), StoredBillboards.Contains(BillboardB));
+		ASSERT_THAT(AreEqual(2, StoredBillboards.Num(), TEXT("Stored billboard property should contain two components")));
+		ASSERT_THAT(IsTrue(StoredBillboards.Contains(BillboardA), TEXT("Stored billboard property should include BillboardA")));
+		ASSERT_THAT(IsTrue(StoredBillboards.Contains(BillboardB), TEXT("Stored billboard property should include BillboardB")));
 
 		FFunctionInvoker CreateNamedInvoker(*TestRunner, Actor, FName(TEXT("ReturnCreatedNamedSceneForCpp")));
 		if (!CreateNamedInvoker.IsValid()) return;
 		USceneComponent* CreatedNamedScene = CreateNamedInvoker.CallAndReturn<USceneComponent*>(nullptr);
-		if (!TestRunner->TestNotNull(TEXT("ReturnCreatedNamedSceneForCpp should return a dynamically created named component"), CreatedNamedScene)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("ReturnCreatedNamedSceneForCpp should return a dynamically created named component"), CreatedNamedScene)) return;
 		TestRunner->AddInfo(FString::Printf(TEXT("ReturnComponentsToCpp dynamically created named component returned to C++: %s:%s"), *CreatedNamedScene->GetName(), *CreatedNamedScene->GetClass()->GetName()));
-		TestRunner->TestEqual(TEXT("Returned dynamically created component should preserve its requested name"), CreatedNamedScene->GetFName(), FName(TEXT("CppExplicitNamedScene")));
-		TestRunner->TestEqual(TEXT("Returned dynamically created component should be owned by the actor"), CreatedNamedScene->GetOwner(), Actor);
-		TestRunner->TestTrue(TEXT("Returned dynamically created component should be registered"), CreatedNamedScene->IsRegistered());
+		ASSERT_THAT(AreEqual(FName(TEXT("CppExplicitNamedScene")), CreatedNamedScene->GetFName(), TEXT("Returned dynamically created component should preserve its requested name")));
+		ASSERT_THAT(AreEqual(Actor, CreatedNamedScene->GetOwner(), TEXT("Returned dynamically created component should be owned by the actor")));
+		ASSERT_THAT(IsTrue(CreatedNamedScene->IsRegistered(), TEXT("Returned dynamically created component should be registered")));
 	}
 };
 

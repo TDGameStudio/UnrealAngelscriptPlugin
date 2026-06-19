@@ -53,7 +53,7 @@ class ATestActorBeginPlay : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("BeginPlay actor should spawn"), Actor)) return;
+		if (!this->Assert.IsNotNull(Actor, TEXT("BeginPlay actor should spawn"))) return;
 		W.BeginPlay(*Actor);
 
 		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EventCallCount"), 1,
@@ -105,12 +105,11 @@ class ATestActorDefaultsAndHelperFunction : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!this->Assert.IsNotNull(Actor, TEXT("Actor should spawn"))) return;
 
-		TestRunner->TestTrue(TEXT("Script default should enable replication"), Actor->GetIsReplicated());
-		TestRunner->TestTrue(TEXT("Script default should add the expected actor tag"), Actor->ActorHasTag(TEXT("FunctionalActor")));
-		TestRunner->TestTrue(TEXT("Script default should apply the configured tick interval"),
-			FMath::IsNearlyEqual(Actor->PrimaryActorTick.TickInterval, 0.25f));
+		ASSERT_THAT(IsTrue(Actor->GetIsReplicated(), TEXT("Script default should enable replication")));
+		ASSERT_THAT(IsTrue(Actor->ActorHasTag(TEXT("FunctionalActor")), TEXT("Script default should add the expected actor tag")));
+		ASSERT_THAT(IsNear(0.25f, Actor->PrimaryActorTick.TickInterval, UE_KINDA_SMALL_NUMBER, TEXT("Script default should apply the configured tick interval")));
 
 		W.BeginPlay(*Actor);
 
@@ -123,8 +122,7 @@ class ATestActorDefaultsAndHelperFunction : AActor
 
 		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("GetHealthValue")));
 		if (!Invoker.IsValid()) return;
-		TestRunner->TestEqual(TEXT("Helper UFUNCTION should return the reflected Health value"),
-			Invoker.CallAndReturn<int32>(INDEX_NONE), 125);
+		ASSERT_THAT(AreEqual(125, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("Helper UFUNCTION should return the reflected Health value")));
 	}
 
 	TEST_METHOD(BeginPlayIdempotent)
@@ -156,7 +154,7 @@ class ATestActorBeginPlayIdempotent : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!this->Assert.IsNotNull(Actor, TEXT("Actor should spawn"))) return;
 
 		W.BeginPlay(*Actor);
 		W.BeginPlay(*Actor);
@@ -198,7 +196,7 @@ class ATestActorTick : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Tick actor should spawn"), Actor)) return;
+		if (!this->Assert.IsNotNull(Actor, TEXT("Tick actor should spawn"))) return;
 
 		EnableActorTick(*Actor);
 		W.BeginPlay(*Actor);
@@ -206,11 +204,11 @@ class ATestActorTick : AActor
 
 		int32 EventCallCount = 0;
 		if (!GetByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EventCallCount"), EventCallCount)) return;
-		TestRunner->TestTrue(TEXT("Tick should execute at least once per manual world tick"), EventCallCount >= 5);
+		ASSERT_THAT(IsTrue(EventCallCount >= 5, TEXT("Tick should execute at least once per manual world tick")));
 
 		double LastDeltaTime = 0.0;
 		if (!GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("LastDeltaTime"), LastDeltaTime)) return;
-		TestRunner->TestTrue(TEXT("Tick should receive a positive DeltaTime"), LastDeltaTime > 0.0);
+		ASSERT_THAT(IsTrue(LastDeltaTime > 0.0, TEXT("Tick should receive a positive DeltaTime")));
 	}
 
 	TEST_METHOD(TickRegisteredDispatch)
@@ -246,22 +244,23 @@ class ATestActorTickRegisteredDispatch : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!this->Assert.IsNotNull(Actor, TEXT("Actor should spawn"))) return;
 
 		EnableActorTick(*Actor);
 		W.BeginPlay(*Actor);
-		TestRunner->TestTrue(TEXT("Actor should have a registered PrimaryActorTick"),
-			Actor->PrimaryActorTick.IsTickFunctionRegistered());
+		ASSERT_THAT(IsTrue(
+			Actor->PrimaryActorTick.IsTickFunctionRegistered(),
+			TEXT("Actor should have a registered PrimaryActorTick")));
 
 		W.TickViaManager(DefaultActorTestDeltaTime, 3);
 
 		int32 EventCallCount = 0;
 		if (!GetByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EventCallCount"), EventCallCount)) return;
-		TestRunner->TestTrue(TEXT("World tick manager should dispatch the registered script actor Tick at least once"), EventCallCount >= 1);
+		ASSERT_THAT(IsTrue(EventCallCount >= 1, TEXT("World tick manager should dispatch the registered script actor Tick at least once")));
 
 		double LastDeltaTime = 0.0;
 		if (!GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("LastDeltaTime"), LastDeltaTime)) return;
-		TestRunner->TestTrue(TEXT("World tick manager should pass a positive DeltaTime"), LastDeltaTime > 0.0);
+		ASSERT_THAT(IsTrue(LastDeltaTime > 0.0, TEXT("World tick manager should pass a positive DeltaTime")));
 	}
 
 	TEST_METHOD(ReceiveEndPlay)
@@ -293,7 +292,7 @@ class ATestActorReceiveEndPlay : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!this->Assert.IsNotNull(Actor, TEXT("Actor should spawn"))) return;
 
 		W.BeginPlay(*Actor);
 		Actor->Destroy();
@@ -336,7 +335,7 @@ class ATestActorReceiveEndPlayReason : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!this->Assert.IsNotNull(Actor, TEXT("Actor should spawn"))) return;
 
 		W.BeginPlay(*Actor);
 		Actor->Destroy();
@@ -347,8 +346,7 @@ class ATestActorReceiveEndPlayReason : AActor
 
 		int64 LastReason = -1;
 		if (!GetEnumByPath(*TestRunner, Actor, TEXT("LastReason"), LastReason)) return;
-		TestRunner->TestEqual(TEXT("EndPlay should receive EEndPlayReason::Destroyed"),
-			LastReason, static_cast<int64>(EEndPlayReason::Destroyed));
+		ASSERT_THAT(AreEqual(static_cast<int64>(EEndPlayReason::Destroyed), LastReason, TEXT("EndPlay should receive EEndPlayReason::Destroyed")));
 	}
 
 	TEST_METHOD(DestroyLifecycleOrder)
@@ -402,7 +400,7 @@ class ATestActorDestroyLifecycleOrder : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!this->Assert.IsNotNull(Actor, TEXT("Actor should spawn"))) return;
 
 		W.BeginPlay(*Actor);
 		Actor->Destroy();
@@ -447,7 +445,7 @@ class ATestActorReceiveDestroyed : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!this->Assert.IsNotNull(Actor, TEXT("Actor should spawn"))) return;
 
 		W.BeginPlay(*Actor);
 		Actor->Destroy();
@@ -496,7 +494,7 @@ class ATestActorConstructionScript : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!this->Assert.IsNotNull(Actor, TEXT("Actor should spawn"))) return;
 
 		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ConstructionCallCount"), 1,
 			TEXT("ConstructionScript should run once during actor spawn"));
@@ -551,7 +549,7 @@ class ATestActorReset : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!this->Assert.IsNotNull(Actor, TEXT("Actor should spawn"))) return;
 
 		W.BeginPlay(*Actor);
 		if (!SetByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResetValue"), 99)) return;

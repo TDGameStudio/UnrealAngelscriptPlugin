@@ -19,8 +19,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 		FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
-		TestRunner->TestEqual(TEXT("Empty line comment should be recognized"), static_cast<int32>(Tokenizer.GetToken("//\n", 3, &TokenLength)), static_cast<int32>(ttOnelineComment));
-		TestRunner->TestEqual(TEXT("Empty line comment should consume through the newline"), static_cast<int32>(TokenLength), 3);
+		ASSERT_THAT(AreEqual(static_cast<int32>(ttOnelineComment), static_cast<int32>(Tokenizer.GetToken("//\n", 3, &TokenLength)),
+			TEXT("Empty line comment should be recognized")));
+		ASSERT_THAT(AreEqual(3, static_cast<int32>(TokenLength),
+			TEXT("Empty line comment should consume through the newline")));
 	}
 
 	TEST_METHOD(BlockCommentNested_DocumentBehavior)
@@ -29,8 +31,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 		const char* Input = "/* outer /* inner */ tail */";
 		size_t TokenLength = 0;
 
-		TestRunner->TestEqual(TEXT("Block comments should be recognized"), static_cast<int32>(Tokenizer.GetToken(Input, std::strlen(Input), &TokenLength)), static_cast<int32>(ttMultilineComment));
-		TestRunner->TestTrue(TEXT("Tokenizer should stop at the first closing block-comment marker"), TokenLength < std::strlen(Input));
+		ASSERT_THAT(AreEqual(static_cast<int32>(ttMultilineComment), static_cast<int32>(Tokenizer.GetToken(Input, std::strlen(Input), &TokenLength)),
+			TEXT("Block comments should be recognized")));
+		ASSERT_THAT(IsTrue(TokenLength < std::strlen(Input),
+			TEXT("Tokenizer should stop at the first closing block-comment marker")));
 	}
 
 	TEST_METHOD(UnterminatedBlockCommentReachesEOF)
@@ -39,8 +43,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 		const char* Input = "/* comment";
 		size_t TokenLength = 0;
 
-		TestRunner->TestEqual(TEXT("Unterminated block comment should still be classified as a multiline comment"), static_cast<int32>(Tokenizer.GetToken(Input, std::strlen(Input), &TokenLength)), static_cast<int32>(ttMultilineComment));
-		TestRunner->TestEqual(TEXT("Unterminated block comment should consume to end of input"), static_cast<int32>(TokenLength), static_cast<int32>(std::strlen(Input)));
+		ASSERT_THAT(AreEqual(static_cast<int32>(ttMultilineComment), static_cast<int32>(Tokenizer.GetToken(Input, std::strlen(Input), &TokenLength)),
+			TEXT("Unterminated block comment should still be classified as a multiline comment")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(std::strlen(Input)), static_cast<int32>(TokenLength),
+			TEXT("Unterminated block comment should consume to end of input")));
 	}
 
 	TEST_METHOD(MixedCRLFWhitespace)
@@ -49,8 +55,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 		const char* Input = " \t\r\n  ";
 		size_t TokenLength = 0;
 
-		TestRunner->TestEqual(TEXT("Mixed whitespace should be grouped into one whitespace token"), static_cast<int32>(Tokenizer.GetToken(Input, std::strlen(Input), &TokenLength)), static_cast<int32>(ttWhiteSpace));
-		TestRunner->TestEqual(TEXT("Mixed whitespace should consume the full whitespace span"), static_cast<int32>(TokenLength), static_cast<int32>(std::strlen(Input)));
+		ASSERT_THAT(AreEqual(static_cast<int32>(ttWhiteSpace), static_cast<int32>(Tokenizer.GetToken(Input, std::strlen(Input), &TokenLength)),
+			TEXT("Mixed whitespace should be grouped into one whitespace token")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(std::strlen(Input)), static_cast<int32>(TokenLength),
+			TEXT("Mixed whitespace should consume the full whitespace span")));
 	}
 
 	TEST_METHOD(BomAtStartOfSource)
@@ -59,8 +67,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 		const char Input[] = "\xEF\xBB\xBF" "class";
 		size_t TokenLength = 0;
 
-		TestRunner->TestEqual(TEXT("UTF-8 BOM should be recognized as whitespace"), static_cast<int32>(Tokenizer.GetToken(Input, sizeof(Input) - 1, &TokenLength)), static_cast<int32>(ttWhiteSpace));
-		TestRunner->TestEqual(TEXT("UTF-8 BOM token should consume exactly three bytes"), static_cast<int32>(TokenLength), 3);
+		ASSERT_THAT(AreEqual(static_cast<int32>(ttWhiteSpace), static_cast<int32>(Tokenizer.GetToken(Input, sizeof(Input) - 1, &TokenLength)),
+			TEXT("UTF-8 BOM should be recognized as whitespace")));
+		ASSERT_THAT(AreEqual(3, static_cast<int32>(TokenLength),
+			TEXT("UTF-8 BOM token should consume exactly three bytes")));
 	}
 
 	TEST_METHOD(IdentifierLeadingUnderscore)
@@ -68,8 +78,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 		FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
-		TestRunner->TestEqual(TEXT("Identifier may start with underscore"), static_cast<int32>(Tokenizer.GetToken("_Value", 6, &TokenLength)), static_cast<int32>(ttIdentifier));
-		TestRunner->TestEqual(TEXT("Identifier starting with underscore should consume all identifier characters"), static_cast<int32>(TokenLength), 6);
+		ASSERT_THAT(AreEqual(static_cast<int32>(ttIdentifier), static_cast<int32>(Tokenizer.GetToken("_Value", 6, &TokenLength)),
+			TEXT("Identifier may start with underscore")));
+		ASSERT_THAT(AreEqual(6, static_cast<int32>(TokenLength),
+			TEXT("Identifier starting with underscore should consume all identifier characters")));
 	}
 
 	TEST_METHOD(IdentifierWithDigits)
@@ -77,8 +89,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 		FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
-		TestRunner->TestEqual(TEXT("Identifier may contain trailing digits"), static_cast<int32>(Tokenizer.GetToken("Value123", 8, &TokenLength)), static_cast<int32>(ttIdentifier));
-		TestRunner->TestEqual(TEXT("Identifier with digits should consume the full identifier"), static_cast<int32>(TokenLength), 8);
+		ASSERT_THAT(AreEqual(static_cast<int32>(ttIdentifier), static_cast<int32>(Tokenizer.GetToken("Value123", 8, &TokenLength)),
+			TEXT("Identifier may contain trailing digits")));
+		ASSERT_THAT(AreEqual(8, static_cast<int32>(TokenLength),
+			TEXT("Identifier with digits should consume the full identifier")));
 	}
 
 	TEST_METHOD(KeywordVsIdentifierBoundary)
@@ -86,8 +100,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 		FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
-		TestRunner->TestEqual(TEXT("Keyword followed by an identifier character should remain an identifier"), static_cast<int32>(Tokenizer.GetToken("className", 9, &TokenLength)), static_cast<int32>(ttIdentifier));
-		TestRunner->TestEqual(TEXT("Keyword-boundary identifier should consume all characters"), static_cast<int32>(TokenLength), 9);
+		ASSERT_THAT(AreEqual(static_cast<int32>(ttIdentifier), static_cast<int32>(Tokenizer.GetToken("className", 9, &TokenLength)),
+			TEXT("Keyword followed by an identifier character should remain an identifier")));
+		ASSERT_THAT(AreEqual(9, static_cast<int32>(TokenLength),
+			TEXT("Keyword-boundary identifier should consume all characters")));
 	}
 
 	TEST_METHOD(ZeroLengthInputReturnsEnd)
@@ -96,7 +112,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 		size_t TokenLength = 0;
 		const eTokenType TokenType = Tokenizer.GetToken("", 0, &TokenLength);
 
-		TestRunner->TestTrue(TEXT("Raw zero-length tokenizer input should return a stable sentinel token"), TokenType == ttEnd || TokenType == ttUnrecognizedToken);
+		ASSERT_THAT(IsTrue(TokenType == ttEnd || TokenType == ttUnrecognizedToken,
+			TEXT("Raw zero-length tokenizer input should return a stable sentinel token")));
 	}
 
 	TEST_METHOD(PastEofGracefulHandling)
@@ -106,8 +123,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 		const char Input[] = "";
 		const eTokenType TokenType = Tokenizer.GetToken(Input, 0, &TokenLength);
 
-		TestRunner->TestTrue(TEXT("Past-EOF style input should not produce an ordinary source token"), TokenType == ttEnd || TokenType == ttUnrecognizedToken);
-		TestRunner->TestTrue(TEXT("Past-EOF style input should report a bounded token length"), TokenLength <= 1);
+		ASSERT_THAT(IsTrue(TokenType == ttEnd || TokenType == ttUnrecognizedToken,
+			TEXT("Past-EOF style input should not produce an ordinary source token")));
+		ASSERT_THAT(IsTrue(TokenLength <= 1,
+			TEXT("Past-EOF style input should report a bounded token length")));
 	}
 };
 

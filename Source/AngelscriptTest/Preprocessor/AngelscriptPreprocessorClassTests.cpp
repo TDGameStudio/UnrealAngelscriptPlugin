@@ -63,11 +63,9 @@ class UUnknownSuperCarrier : UMissingBaseType
 
 		const FAngelscriptModuleDesc* Module = Result.FindModule(
 			TEXT("Tests.Preprocessor.Classes.UnknownSuperType"));
-		if (TestRunner->TestNotNull(TEXT("Module should exist for inspection"), Module))
-		{
-			TestRunner->TestEqual(TEXT("Should have no code sections"), Module->Code.Num(), 0);
-			TestRunner->TestEqual(TEXT("Should have no class descriptors"), Module->Classes.Num(), 0);
-		}
+		ASSERT_THAT(IsNotNull(Module, TEXT("Module should exist for inspection")));
+		ASSERT_THAT(AreEqual(0, Module->Code.Num(), TEXT("Should have no code sections")));
+		ASSERT_THAT(AreEqual(0, Module->Classes.Num(), TEXT("Should have no class descriptors")));
 
 		}
 	}
@@ -77,14 +75,11 @@ class UUnknownSuperCarrier : UMissingBaseType
 	// module with UDuplicateCarrier, a batch with two files declaring the same
 	// class fails with a conflict diagnostic on the second file
 	// ========================================================================
-	TEST_METHOD(DuplicateClassNameAcrossHotReloadBatchReportsConflict)
+		TEST_METHOD(DuplicateClassNameAcrossHotReloadBatchReportsConflict)
 	{
 		// This test requires an isolated engine to seed a module first
 		FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
-		if (!TestRunner->TestTrue(TEXT("Should acquire isolated engine"), Fixture.IsValid()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(Fixture.IsValid(), TEXT("Should acquire isolated engine")));
 
 		FAngelscriptEngine& Engine = Fixture.GetEngine();
 
@@ -108,12 +103,10 @@ class UDuplicateCarrier : UObject
 )"),
 			true, SeedSummary);
 
-		if (!TestRunner->TestTrue(TEXT("Seed should compile"), bSeedCompiled))
-		{
-			return;
-		}
-		TestRunner->TestNotNull(TEXT("Seeded class should be published"),
-			FindGeneratedClass(&Engine, TEXT("UDuplicateCarrier")));
+		ASSERT_THAT(IsTrue(bSeedCompiled, TEXT("Seed should compile")));
+		ASSERT_THAT(IsNotNull(
+			FindGeneratedClass(&Engine, TEXT("UDuplicateCarrier")),
+			TEXT("Seeded class should be published")));
 
 		// Now preprocess a batch where both files declare UDuplicateCarrier
 		Engine.ResetDiagnostics();
@@ -149,7 +142,7 @@ class UDuplicateCarrier : UObject
 		auto Result = RunPreprocess(Engine, Files);
 
 		AssertPreprocessFailed(*TestRunner, Result);
-		TestRunner->TestEqual(TEXT("Should keep both module descriptors"), Result.Modules.Num(), 2);
+		ASSERT_THAT(AreEqual(2, Result.Modules.Num(), TEXT("Should keep both module descriptors")));
 		AssertDiagnosticContains(*TestRunner, Result,
 			TEXT("Cannot declare class UDuplicateCarrier in module Tests.Preprocessor.Second"));
 		AssertDiagnosticAt(*TestRunner, Result,
@@ -159,8 +152,9 @@ class UDuplicateCarrier : UObject
 		FAngelscriptModuleDesc* SecondModule = Result.FindModule(TEXT("Tests.Preprocessor.Second"));
 		if (SecondModule != nullptr)
 		{
-			TestRunner->TestFalse(TEXT("Second module should not have duplicate class"),
-				SecondModule->GetClass(TEXT("UDuplicateCarrier")).IsValid());
+			ASSERT_THAT(IsFalse(
+				SecondModule->GetClass(TEXT("UDuplicateCarrier")).IsValid(),
+				TEXT("Second module should not have duplicate class")));
 		}
 	}
 };

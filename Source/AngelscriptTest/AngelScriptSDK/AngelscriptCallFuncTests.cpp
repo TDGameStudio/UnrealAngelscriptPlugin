@@ -93,109 +93,114 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 	TEST_METHOD(MultipleArgs)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		if (!bHelpersRegistered) return;
 		FScopedNativeModule M(*TestRunner, Engine, "CallFuncMultiArgs", "int Entry() { return AddFour(10, 20, 30, 40); }\n");
 		if (!M.IsValid()) return;
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
-		TestRunner->TestEqual(TEXT("AddFour(10,20,30,40)=100"), Result, 100);
+		ASSERT_THAT(AreEqual(100, Result, TEXT("AddFour(10,20,30,40)=100")));
 	}
 
 	TEST_METHOD(FloatPrecision)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		if (!bHelpersRegistered) return;
 		FScopedNativeModule M(*TestRunner, Engine, "CallFuncFloat", "double Entry() { return MultiplyDouble(3.14159, 2.0); }\n");
 		if (!M.IsValid()) return;
 		double Result = 0.0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "double Entry()", Result)) return;
-		TestRunner->TestTrue(TEXT("MultiplyDouble precision"), FMath::IsNearlyEqual(Result, 3.14159*2.0, 1e-10));
+		ASSERT_THAT(IsNear(3.14159 * 2.0, Result, 1e-10, TEXT("MultiplyDouble precision")));
 	}
 
 	TEST_METHOD(VoidSideEffect)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		if (!bHelpersRegistered) return;
 		GSideEffectAccumulator = 0;
 		FScopedNativeModule M(*TestRunner, Engine, "CallFuncVoid", "void Entry() { AccumulateValue(10); AccumulateValue(20); AccumulateValue(12); }\n");
 		if (!M.IsValid()) return;
 		if (!ExecuteScriptVoidFunction(*TestRunner, SE, M, "void Entry()")) return;
-		TestRunner->TestEqual(TEXT("Accumulator=42"), GSideEffectAccumulator, 42);
+		ASSERT_THAT(AreEqual(42, GSideEffectAccumulator, TEXT("Accumulator=42")));
 	}
 
 	TEST_METHOD(NestedCall)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		if (!bHelpersRegistered) return;
 		FScopedNativeModule M(*TestRunner, Engine, "CallFuncNested", "int Entry() { return IncrementAndReturn(IncrementAndReturn(IncrementAndReturn(0))); }\n");
 		if (!M.IsValid()) return;
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
-		TestRunner->TestEqual(TEXT("Nested 3x increment = 3"), Result, 3);
+		ASSERT_THAT(AreEqual(3, Result, TEXT("Nested 3x increment = 3")));
 	}
 
 	TEST_METHOD(ManyArgs)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		if (!bHelpersRegistered) return;
 		FScopedNativeModule M(*TestRunner, Engine, "CallFuncManyArgs", "int Entry() { return SumSix(1, 2, 3, 4, 5, 6); }\n");
 		if (!M.IsValid()) return;
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
-		TestRunner->TestEqual(TEXT("SumSix(1..6)=21"), Result, 21);
+		ASSERT_THAT(AreEqual(21, Result, TEXT("SumSix(1..6)=21")));
 	}
 
 	TEST_METHOD(WideReturn)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		if (!bHelpersRegistered) return;
 		FScopedNativeModule M(*TestRunner, Engine, "CallFuncWideReturn", "int64 Entry() { return WidenAndScale(3); }\n");
 		if (!M.IsValid()) return;
 		asIScriptFunction* Func = GetNativeFunctionByDecl(M, "int64 Entry()");
-		if (!TestRunner->TestNotNull(TEXT("Should resolve"), Func)) return;
+		ASSERT_THAT(IsNotNull(Func, TEXT("Should resolve")));
 		asIScriptContext* Ctx = SE->CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("Context"), Ctx)) return;
+		ASSERT_THAT(IsNotNull(Ctx, TEXT("Context")));
+		ON_SCOPE_EXIT
+		{
+			Ctx->Release();
+		};
 		const int Ret = PrepareAndExecute(Ctx, Func);
 		const int64 Result = static_cast<int64>(Ctx->GetReturnQWord());
-		Ctx->Release();
-		TestRunner->TestEqual(TEXT("Finished"), Ret, static_cast<int32>(asEXECUTION_FINISHED));
-		TestRunner->TestEqual(TEXT("WidenAndScale(3) returns 3,000,000,000 through int64"), Result, static_cast<int64>(3000000000LL));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_FINISHED), Ret, TEXT("Finished")));
+		ASSERT_THAT(AreEqual(static_cast<int64>(3000000000LL), Result,
+			TEXT("WidenAndScale(3) returns 3,000,000,000 through int64")));
 	}
 
 	TEST_METHOD(MixedIntDoubleArgs)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		if (!bHelpersRegistered) return;
 		FScopedNativeModule M(*TestRunner, Engine, "CallFuncMixed", "double Entry() { return MixIn025(7, 0.25); }\n");
 		if (!M.IsValid()) return;
 		double Result = 0.0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "double Entry()", Result)) return;
-		TestRunner->TestTrue(TEXT("MixIn025(7, 0.25) = 7.25 (int+double arg marshalling)"), FMath::IsNearlyEqual(Result, 7.25));
+		ASSERT_THAT(IsNear(7.25, Result, 1e-8,
+			TEXT("MixIn025(7, 0.25) = 7.25 (int+double arg marshalling)")));
 	}
 
 	TEST_METHOD(BoolReturn)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		if (!bHelpersRegistered) return;
 		FScopedNativeModule M(*TestRunner, Engine, "CallFuncBool", "bool Entry() { return IsPositive(5) && !IsPositive(-3) && !IsPositive(0); }\n");
 		if (!M.IsValid()) return;
 		bool bResult = false;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "bool Entry()", bResult)) return;
-		TestRunner->TestTrue(TEXT("IsPositive native bool returns marshal correctly"), bResult);
+		ASSERT_THAT(IsTrue(bResult, TEXT("IsPositive native bool returns marshal correctly")));
 	}
 
 	TEST_METHOD(OutParams)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		if (!bHelpersRegistered) return;
 		FScopedNativeModule M(*TestRunner, Engine, "CallFuncOut", R"(
 bool Entry()
@@ -209,7 +214,7 @@ bool Entry()
 		if (!M.IsValid()) return;
 		bool bResult = false;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "bool Entry()", bResult)) return;
-		TestRunner->TestTrue(TEXT("DivMod(17,5) writes back q=3, r=2 through native &out params"), bResult);
+		ASSERT_THAT(IsTrue(bResult, TEXT("DivMod(17,5) writes back q=3, r=2 through native &out params")));
 	}
 };
 

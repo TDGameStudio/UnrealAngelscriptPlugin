@@ -38,82 +38,63 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserErrorsTests,
 	TEST_METHOD(MissingSemicolonRecovers)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("Parser error test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser error test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
 		const int ParseResult = ParseScriptWithResult(BareEngine, "ParserErrorMissingSemicolon", "int A = 1 int B = 2;");
-		TestRunner->TestEqual(TEXT("Parser currently accepts adjacent declarations without an explicit semicolon error in this recovery path"), ParseResult, 0);
+		ASSERT_THAT(AreEqual(0, ParseResult,
+			TEXT("Parser currently accepts adjacent declarations without an explicit semicolon error in this recovery path")));
 	}
 
 	TEST_METHOD(UnbalancedBracesError)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("Parser error test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser error test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
 		const int ParseResult = ParseScriptWithResult(BareEngine, "ParserErrorUnbalancedBraces", "class FBroken { void Run() { }");
-		TestRunner->TestTrue(TEXT("Unbalanced braces should fail parser validation"), ParseResult < 0);
+		ASSERT_THAT(IsTrue(ParseResult < 0, TEXT("Unbalanced braces should fail parser validation")));
 	}
 
 	TEST_METHOD(UnclosedStringInDeclaration)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("Parser error test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser error test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
 		const int ParseResult = ParseScriptWithResult(BareEngine, "ParserErrorUnclosedString", "const string Name = \"unterminated;");
-		TestRunner->TestTrue(TEXT("Unclosed string should fail parser validation"), ParseResult < 0);
+		ASSERT_THAT(IsTrue(ParseResult < 0, TEXT("Unclosed string should fail parser validation")));
 	}
 
 	TEST_METHOD(BadOperatorSequenceError)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("Parser error test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser error test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
 		const int ParseResult = ParseScriptWithResult(BareEngine, "ParserErrorBadOperatorSequence", "int Read() { return 1 + * 2; }");
-		TestRunner->TestEqual(TEXT("Parser currently accepts this operator sequence at syntax-tree construction time"), ParseResult, 0);
+		ASSERT_THAT(AreEqual(0, ParseResult,
+			TEXT("Parser currently accepts this operator sequence at syntax-tree construction time")));
 	}
 
 	TEST_METHOD(BadParameterListError)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("Parser error test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser error test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
 		const int ParseResult = ParseScriptWithResult(BareEngine, "ParserErrorBadParameterList", "void Bad(int A,, int B) { }");
-		TestRunner->TestTrue(TEXT("Bad parameter list should fail parser validation"), ParseResult < 0);
+		ASSERT_THAT(IsTrue(ParseResult < 0, TEXT("Bad parameter list should fail parser validation")));
 	}
 
 	TEST_METHOD(ResetClearsErrorState)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("Parser error test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser error test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
 		asCModule* Module = CreateSdkModule(BareEngine, "ParserErrorReset");
-		if (!TestRunner->TestNotNull(TEXT("Parser reset test should create a module"), Module))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Module, TEXT("Parser reset test should create a module")));
 
 		asCBuilder Builder(BareEngine, Module);
 		Builder.silent = true;
@@ -121,26 +102,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserErrorsTests,
 
 		asCScriptCode InvalidCode;
 		InvalidCode.SetCode("ParserErrorResetInvalid", "void Broken( { }", true);
-		TestRunner->TestTrue(TEXT("Invalid parser pass should fail"), Parser.ParseScript(&InvalidCode) < 0);
+		ASSERT_THAT(IsTrue(Parser.ParseScript(&InvalidCode) < 0, TEXT("Invalid parser pass should fail")));
 
 		Parser.ResetParser();
 
 		asCScriptCode ValidCode;
 		ValidCode.SetCode("ParserErrorResetValid", "void Fixed() { }", true);
-		TestRunner->TestEqual(TEXT("Parser should accept valid input after explicit Reset"), Parser.ParseScript(&ValidCode), 0);
+		ASSERT_THAT(AreEqual(0, Parser.ParseScript(&ValidCode),
+			TEXT("Parser should accept valid input after explicit Reset")));
 	}
 
 	TEST_METHOD(MultipleErrorsAccumulated)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("Parser error test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser error test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
 		const int ParseResult = ParseScriptWithResult(BareEngine, "ParserErrorMultiple", "void Bad( { }\nclass Broken { int ; }\nint A = ;");
-		TestRunner->TestTrue(TEXT("Multiple malformed declarations should fail parser validation"), ParseResult < 0);
+		ASSERT_THAT(IsTrue(ParseResult < 0, TEXT("Multiple malformed declarations should fail parser validation")));
 	}
 };
 

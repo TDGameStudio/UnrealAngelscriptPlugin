@@ -78,9 +78,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFrameTimeBindingsTest,
 		const TArray<FFrameTimeAsSecondsCase> Cases = BuildNativeCases();
 		for (const FFrameTimeAsSecondsCase& C : Cases)
 		{
-			TestRunner->TestTrue(
-				FString::Printf(TEXT("Native %s baseline should match expected seconds conversion"), C.Label),
-				FMath::IsNearlyEqual(C.Value.AsSeconds(), C.ExpectedSeconds, FrameTimeTolerance));
+			ASSERT_THAT(IsTrue(
+				FMath::IsNearlyEqual(C.Value.AsSeconds(), C.ExpectedSeconds, FrameTimeTolerance),
+				FString::Printf(TEXT("Native %s baseline should match expected seconds conversion"), C.Label)));
 		}
 	}
 

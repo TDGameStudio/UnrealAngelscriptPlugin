@@ -36,18 +36,37 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("RegisterGlobalProperty int GTestValue should succeed"),
-			ScriptEngine->RegisterGlobalProperty("int GTestValue", &GTestValue) >= 0);
-		TestRunner->TestTrue(TEXT("RegisterGlobalProperty int GTestA should succeed"),
-			ScriptEngine->RegisterGlobalProperty("int GTestA", &GTestA) >= 0);
-		TestRunner->TestTrue(TEXT("RegisterGlobalProperty int GTestB should succeed"),
-			ScriptEngine->RegisterGlobalProperty("int GTestB", &GTestB) >= 0);
-		TestRunner->TestTrue(TEXT("RegisterGlobalProperty double GScalar should succeed"),
-			ScriptEngine->RegisterGlobalProperty("double GScalar", &GTestDouble) >= 0);
-		TestRunner->TestTrue(TEXT("RegisterGlobalProperty double GTestDouble should succeed"),
-			ScriptEngine->RegisterGlobalProperty("double GTestDouble", &GTestDouble) >= 0);
-		TestRunner->TestTrue(TEXT("RegisterGlobalProperty bool GTestBool should succeed"),
-			ScriptEngine->RegisterGlobalProperty("bool GTestBool", &GTestBool) >= 0);
+		FNoDiscardAsserter Assert(*TestRunner);
+		if (!Assert.IsTrue(ScriptEngine->RegisterGlobalProperty("int GTestValue", &GTestValue) >= 0,
+			TEXT("RegisterGlobalProperty int GTestValue should succeed")))
+		{
+			return;
+		}
+		if (!Assert.IsTrue(ScriptEngine->RegisterGlobalProperty("int GTestA", &GTestA) >= 0,
+			TEXT("RegisterGlobalProperty int GTestA should succeed")))
+		{
+			return;
+		}
+		if (!Assert.IsTrue(ScriptEngine->RegisterGlobalProperty("int GTestB", &GTestB) >= 0,
+			TEXT("RegisterGlobalProperty int GTestB should succeed")))
+		{
+			return;
+		}
+		if (!Assert.IsTrue(ScriptEngine->RegisterGlobalProperty("double GScalar", &GTestDouble) >= 0,
+			TEXT("RegisterGlobalProperty double GScalar should succeed")))
+		{
+			return;
+		}
+		if (!Assert.IsTrue(ScriptEngine->RegisterGlobalProperty("double GTestDouble", &GTestDouble) >= 0,
+			TEXT("RegisterGlobalProperty double GTestDouble should succeed")))
+		{
+			return;
+		}
+		if (!Assert.IsTrue(ScriptEngine->RegisterGlobalProperty("bool GTestBool", &GTestBool) >= 0,
+			TEXT("RegisterGlobalProperty bool GTestBool should succeed")))
+		{
+			return;
+		}
 	}
 
 	AFTER_ALL()
@@ -68,7 +87,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 	TEST_METHOD(ScriptReads)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		GTestValue = 42;
 
@@ -77,13 +96,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
-		TestRunner->TestEqual(TEXT("Script should read C++ global value 42"), Result, 42);
+		ASSERT_THAT(AreEqual(42, Result, TEXT("Script should read C++ global value 42")));
 	}
 
 	TEST_METHOD(ScriptWrites)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		GTestValue = 0;
 
@@ -91,13 +110,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 		if (!M.IsValid()) return;
 
 		ExecuteScriptVoidFunction(*TestRunner, SE, M, "void Entry()");
-		TestRunner->TestEqual(TEXT("C++ should see script-written value 99"), GTestValue, 99);
+		ASSERT_THAT(AreEqual(99, GTestValue, TEXT("C++ should see script-written value 99")));
 	}
 
 	TEST_METHOD(MultipleGlobals)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		GTestA = 10;
 		GTestB = 20;
@@ -107,13 +126,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
-		TestRunner->TestEqual(TEXT("Script reads both globals: 10+20=30"), Result, 30);
+		ASSERT_THAT(AreEqual(30, Result, TEXT("Script reads both globals: 10+20=30")));
 	}
 
 	TEST_METHOD(ScalarReadModifyWrite)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		// This fork runs with asEP_FLOAT_IS_FLOAT64=1: the script-level scalar
 		// float type is registered as `double` (8 bytes). Registering a global
@@ -125,13 +144,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 		if (!M.IsValid()) return;
 
 		ExecuteScriptVoidFunction(*TestRunner, SE, M, "void Entry()");
-		TestRunner->TestTrue(TEXT("C++ should see script-written scalar 4.0"), FMath::IsNearlyEqual(GTestDouble, 4.0));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(GTestDouble, 4.0),
+			TEXT("C++ should see script-written scalar 4.0")));
 	}
 
 	TEST_METHOD(DoubleProperty)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		GTestDouble = 2.5;
 
@@ -140,13 +160,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 
 		double Result = 0.0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "double Entry()", Result)) return;
-		TestRunner->TestTrue(TEXT("Script reads C++ double and computes 10.0"), FMath::IsNearlyEqual(Result, 10.0));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Result, 10.0),
+			TEXT("Script reads C++ double and computes 10.0")));
 	}
 
 	TEST_METHOD(BoolProperty)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		GTestBool = false;
 
@@ -154,7 +175,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 		if (!M.IsValid()) return;
 
 		ExecuteScriptVoidFunction(*TestRunner, SE, M, "void Entry()");
-		TestRunner->TestTrue(TEXT("C++ should see script-toggled bool true"), GTestBool);
+		ASSERT_THAT(IsTrue(GTestBool, TEXT("C++ should see script-toggled bool true")));
 	}
 };
 

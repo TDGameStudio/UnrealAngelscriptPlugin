@@ -31,29 +31,34 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMemoryTests,
 	TEST_METHOD(Construction)
 	{
 		asCMemoryMgr Manager;
-		TestRunner->TestTrue(TEXT("Constructing the internal memory manager should succeed"), true);
+		ASSERT_THAT(IsTrue(true, TEXT("Constructing the internal memory manager should succeed")));
 	}
 
 	TEST_METHOD(FreeUnused)
 	{
 		FMemoryManagerProbe Manager;
 		Manager.FreeUnusedMemory();
-		TestRunner->TestTrue(TEXT("FreeUnusedMemory should be callable even when no pooled memory is tracked"), true);
-		TestRunner->TestEqual(TEXT("FreeUnusedMemory should leave the script-node pool empty"), Manager.GetScriptNodePoolSize(), 0);
-		TestRunner->TestEqual(TEXT("FreeUnusedMemory should leave the byte-instruction pool empty"), Manager.GetByteInstructionPoolSize(), 0);
+		ASSERT_THAT(IsTrue(true, TEXT("FreeUnusedMemory should be callable even when no pooled memory is tracked")));
+		ASSERT_THAT(AreEqual(0, Manager.GetScriptNodePoolSize(),
+			TEXT("FreeUnusedMemory should leave the script-node pool empty")));
+		ASSERT_THAT(AreEqual(0, Manager.GetByteInstructionPoolSize(),
+			TEXT("FreeUnusedMemory should leave the byte-instruction pool empty")));
 	}
 
 	TEST_METHOD(ScriptNodeReuse)
 	{
 		FMemoryManagerProbe Manager;
 		void* FirstAllocation = Manager.AllocScriptNode();
-		TestRunner->TestNotNull(TEXT("AllocScriptNode should return storage for a script node"), FirstAllocation);
+		ASSERT_THAT(IsNotNull(FirstAllocation, TEXT("AllocScriptNode should return storage for a script node")));
 		Manager.FreeScriptNode(FirstAllocation);
-		TestRunner->TestEqual(TEXT("FreeScriptNode should retain exactly one script-node allocation in the pool"), Manager.GetScriptNodePoolSize(), 1);
+		ASSERT_THAT(AreEqual(1, Manager.GetScriptNodePoolSize(),
+			TEXT("FreeScriptNode should retain exactly one script-node allocation in the pool")));
 
 		void* ReusedAllocation = Manager.AllocScriptNode();
-		TestRunner->TestEqual(TEXT("AllocScriptNode should reuse the most recently freed script-node allocation"), ReusedAllocation, FirstAllocation);
-		TestRunner->TestEqual(TEXT("Reusing a script-node allocation should remove it from the pool"), Manager.GetScriptNodePoolSize(), 0);
+		ASSERT_THAT(AreEqual(FirstAllocation, ReusedAllocation,
+			TEXT("AllocScriptNode should reuse the most recently freed script-node allocation")));
+		ASSERT_THAT(AreEqual(0, Manager.GetScriptNodePoolSize(),
+			TEXT("Reusing a script-node allocation should remove it from the pool")));
 		Manager.FreeScriptNode(ReusedAllocation);
 	}
 
@@ -61,13 +66,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMemoryTests,
 	{
 		FMemoryManagerProbe Manager;
 		void* FirstAllocation = Manager.AllocByteInstruction();
-		TestRunner->TestNotNull(TEXT("AllocByteInstruction should return storage for a bytecode instruction"), FirstAllocation);
+		ASSERT_THAT(IsNotNull(FirstAllocation, TEXT("AllocByteInstruction should return storage for a bytecode instruction")));
 		Manager.FreeByteInstruction(FirstAllocation);
-		TestRunner->TestEqual(TEXT("FreeByteInstruction should retain exactly one byte-instruction allocation in the pool"), Manager.GetByteInstructionPoolSize(), 1);
+		ASSERT_THAT(AreEqual(1, Manager.GetByteInstructionPoolSize(),
+			TEXT("FreeByteInstruction should retain exactly one byte-instruction allocation in the pool")));
 
 		void* ReusedAllocation = Manager.AllocByteInstruction();
-		TestRunner->TestEqual(TEXT("AllocByteInstruction should reuse the most recently freed bytecode instruction allocation"), ReusedAllocation, FirstAllocation);
-		TestRunner->TestEqual(TEXT("Reusing a bytecode instruction allocation should remove it from the pool"), Manager.GetByteInstructionPoolSize(), 0);
+		ASSERT_THAT(AreEqual(FirstAllocation, ReusedAllocation,
+			TEXT("AllocByteInstruction should reuse the most recently freed bytecode instruction allocation")));
+		ASSERT_THAT(AreEqual(0, Manager.GetByteInstructionPoolSize(),
+			TEXT("Reusing a bytecode instruction allocation should remove it from the pool")));
 		Manager.FreeByteInstruction(ReusedAllocation);
 	}
 
@@ -82,12 +90,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMemoryTests,
 		Manager.FreeScriptNode(ScriptNodeB);
 		Manager.FreeByteInstruction(Instruction);
 
-		TestRunner->TestEqual(TEXT("The script-node pool should track every freed script-node allocation"), Manager.GetScriptNodePoolSize(), 2);
-		TestRunner->TestEqual(TEXT("The byte-instruction pool should track every freed bytecode allocation"), Manager.GetByteInstructionPoolSize(), 1);
+		ASSERT_THAT(AreEqual(2, Manager.GetScriptNodePoolSize(),
+			TEXT("The script-node pool should track every freed script-node allocation")));
+		ASSERT_THAT(AreEqual(1, Manager.GetByteInstructionPoolSize(),
+			TEXT("The byte-instruction pool should track every freed bytecode allocation")));
 
 		Manager.FreeUnusedMemory();
-		TestRunner->TestEqual(TEXT("FreeUnusedMemory should release all tracked script-node allocations"), Manager.GetScriptNodePoolSize(), 0);
-		TestRunner->TestEqual(TEXT("FreeUnusedMemory should release all tracked bytecode allocations"), Manager.GetByteInstructionPoolSize(), 0);
+		ASSERT_THAT(AreEqual(0, Manager.GetScriptNodePoolSize(),
+			TEXT("FreeUnusedMemory should release all tracked script-node allocations")));
+		ASSERT_THAT(AreEqual(0, Manager.GetByteInstructionPoolSize(),
+			TEXT("FreeUnusedMemory should release all tracked bytecode allocations")));
 	}
 };
 

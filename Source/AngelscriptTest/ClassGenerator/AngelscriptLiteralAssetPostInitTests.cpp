@@ -108,7 +108,8 @@ int TouchExampleAssetAgain()
 		int32& OutResult)
 	{
 		const bool bExecuted = ExecuteIntFunction(&Engine, ModuleName, Declaration, OutResult);
-		return Test.TestTrue(Context, bExecuted);
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsTrue(bExecuted, Context);
 	}
 }
 
@@ -208,7 +209,8 @@ int TouchExampleAssetAgain()
 		int32& OutResult)
 	{
 		const bool bExecuted = ExecuteIntFunction(&Engine, ModuleName, Declaration, OutResult);
-		return Test.TestTrue(Context, bExecuted);
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsTrue(bExecuted, Context);
 	}
 }
 
@@ -242,17 +244,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLiteralAssetPostInitTests,
 		};
 
 		UClass* GeneratedClass = LiteralAssetPostInitTest::CompileLiteralAssetCarrier(*TestRunner, Engine);
-		if (!TestRunner->TestNotNull(
-				TEXT("Literal-asset post-init test case should compile the generated asset carrier class"),
-				GeneratedClass))
+		ASSERT_THAT(IsNotNull(GeneratedClass, TEXT("Literal-asset post-init test case should compile the generated asset carrier class")));
+		if (GeneratedClass == nullptr)
 		{
 			return;
 		}
 
 		UObject* LiteralAssetBeforeTouch = LiteralAssetPostInitTest::FindLiteralAsset();
-		if (!TestRunner->TestNotNull(
-				TEXT("Literal-asset post-init test case should materialize the asset object before any explicit getter call"),
-				LiteralAssetBeforeTouch))
+		ASSERT_THAT(IsNotNull(LiteralAssetBeforeTouch, TEXT("Literal-asset post-init test case should materialize the asset object before any explicit getter call")));
+		if (LiteralAssetBeforeTouch == nullptr)
 		{
 			return;
 		}
@@ -263,21 +263,21 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLiteralAssetPostInitTests,
 			return;
 		}
 
-		if (!TestRunner->TestEqual(
-				TEXT("Literal-asset post-init test case should keep the generated literal asset on the expected script class"),
+		if (!this->Assert.AreEqual(
+				GeneratedClass,
 				LiteralAssetBeforeTouch->GetClass(),
-				GeneratedClass)
-			|| !TestRunner->TestEqual(
-				TEXT("Literal-asset post-init test case should execute __Init_ExampleAsset exactly once during compile teardown"),
+				TEXT("Literal-asset post-init test case should keep the generated literal asset on the expected script class"))
+			|| !this->Assert.AreEqual(
+				1,
 				SnapshotBeforeTouch.PostInitCalls,
-				1)
-			|| !TestRunner->TestTrue(
-				TEXT("Literal-asset post-init test case should preserve the bool flag written by __Init_ExampleAsset"),
-				SnapshotBeforeTouch.bWasPostInit)
-			|| !TestRunner->TestEqual(
-				TEXT("Literal-asset post-init test case should preserve the init marker written by __Init_ExampleAsset"),
+				TEXT("Literal-asset post-init test case should execute __Init_ExampleAsset exactly once during compile teardown"))
+			|| !this->Assert.IsTrue(
+				SnapshotBeforeTouch.bWasPostInit,
+				TEXT("Literal-asset post-init test case should preserve the bool flag written by __Init_ExampleAsset"))
+			|| !this->Assert.AreEqual(
+				LiteralAssetPostInitTest::ExpectedInitMarker,
 				SnapshotBeforeTouch.InitMarker,
-				LiteralAssetPostInitTest::ExpectedInitMarker))
+				TEXT("Literal-asset post-init test case should preserve the init marker written by __Init_ExampleAsset")))
 		{
 			return;
 		}
@@ -294,9 +294,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLiteralAssetPostInitTests,
 		}
 
 		UObject* LiteralAssetAfterTouch = LiteralAssetPostInitTest::FindLiteralAsset();
-		if (!TestRunner->TestNotNull(
-				TEXT("Literal-asset post-init test case should still expose the canonical asset after repeated getter access"),
-				LiteralAssetAfterTouch))
+		ASSERT_THAT(IsNotNull(LiteralAssetAfterTouch, TEXT("Literal-asset post-init test case should still expose the canonical asset after repeated getter access")));
+		if (LiteralAssetAfterTouch == nullptr)
 		{
 			return;
 		}
@@ -307,24 +306,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLiteralAssetPostInitTests,
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Literal-asset post-init test should return the initialized marker when the generated getter is touched again"),
+		ASSERT_THAT(AreEqual(
+			LiteralAssetPostInitTest::ExpectedInitMarker,
 			TouchResult,
-			LiteralAssetPostInitTest::ExpectedInitMarker);
-		TestRunner->TestTrue(
-			TEXT("Literal-asset post-init test should keep returning the same materialized asset on repeated getter access"),
-			LiteralAssetAfterTouch == LiteralAssetBeforeTouch);
-		TestRunner->TestEqual(
-			TEXT("Literal-asset post-init test should not rerun __Init_ExampleAsset when the generated getter is touched again"),
+			TEXT("Literal-asset post-init test should return the initialized marker when the generated getter is touched again")));
+		ASSERT_THAT(IsTrue(
+			LiteralAssetAfterTouch == LiteralAssetBeforeTouch,
+			TEXT("Literal-asset post-init test should keep returning the same materialized asset on repeated getter access")));
+		ASSERT_THAT(AreEqual(
+			1,
 			SnapshotAfterTouch.PostInitCalls,
-			1);
-		TestRunner->TestTrue(
-			TEXT("Literal-asset post-init test should preserve the bool flag after repeated getter access"),
-			SnapshotAfterTouch.bWasPostInit);
-		TestRunner->TestEqual(
-			TEXT("Literal-asset post-init test should preserve the init marker after repeated getter access"),
+			TEXT("Literal-asset post-init test should not rerun __Init_ExampleAsset when the generated getter is touched again")));
+		ASSERT_THAT(IsTrue(
+			SnapshotAfterTouch.bWasPostInit,
+			TEXT("Literal-asset post-init test should preserve the bool flag after repeated getter access")));
+		ASSERT_THAT(AreEqual(
+			LiteralAssetPostInitTest::ExpectedInitMarker,
 			SnapshotAfterTouch.InitMarker,
-			LiteralAssetPostInitTest::ExpectedInitMarker);
+			TEXT("Literal-asset post-init test should preserve the init marker after repeated getter access")));
 
 		}
 	}
@@ -376,20 +375,22 @@ asset SecondAsset of UMultiAssetOwner
 )AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("Multiple assets in same class should compile"), bCompiled))
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Multiple assets in same class should compile")));
+		if (!bCompiled)
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UMultiAssetOwner"));
-		if (!TestRunner->TestNotNull(TEXT("Class should be materialized"), GeneratedClass))
+		ASSERT_THAT(IsNotNull(GeneratedClass, TEXT("Class should be materialized")));
+		if (GeneratedClass == nullptr)
 			return;
 
 		UObject* FirstAsset = FindObject<UObject>(Engine.AssetsPackage, TEXT("FirstAsset"));
 		UObject* SecondAsset = FindObject<UObject>(Engine.AssetsPackage, TEXT("SecondAsset"));
-		TestRunner->TestNotNull(TEXT("FirstAsset should be materialized"), FirstAsset);
-		TestRunner->TestNotNull(TEXT("SecondAsset should be materialized"), SecondAsset);
+		ASSERT_THAT(IsNotNull(FirstAsset, TEXT("FirstAsset should be materialized")));
+		ASSERT_THAT(IsNotNull(SecondAsset, TEXT("SecondAsset should be materialized")));
 		if (FirstAsset && SecondAsset)
 		{
-			TestRunner->TestTrue(TEXT("Assets should be independent objects"), FirstAsset != SecondAsset);
+			ASSERT_THAT(IsTrue(FirstAsset != SecondAsset, TEXT("Assets should be independent objects")));
 		}
 
 		}
@@ -434,17 +435,18 @@ asset MyCoexistAsset of UAssetCarrier
 )AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("Asset + DefaultComponent coexistence should compile"), bCompiled))
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Asset + DefaultComponent coexistence should compile")));
+		if (!bCompiled)
 			return;
 
 		UClass* ActorClass = FindGeneratedClass(&Engine, TEXT("AAssetAndComponentActor"));
-		TestRunner->TestNotNull(TEXT("Actor class should be materialized"), ActorClass);
+		ASSERT_THAT(IsNotNull(ActorClass, TEXT("Actor class should be materialized")));
 
 		UClass* CarrierClass = FindGeneratedClass(&Engine, TEXT("UAssetCarrier"));
-		TestRunner->TestNotNull(TEXT("Carrier class should be materialized"), CarrierClass);
+		ASSERT_THAT(IsNotNull(CarrierClass, TEXT("Carrier class should be materialized")));
 
 		UObject* AssetObj = FindObject<UObject>(Engine.AssetsPackage, TEXT("MyCoexistAsset"));
-		TestRunner->TestNotNull(TEXT("Asset should coexist with component-bearing actor"), AssetObj);
+		ASSERT_THAT(IsNotNull(AssetObj, TEXT("Asset should coexist with component-bearing actor")));
 
 		}
 	}

@@ -46,18 +46,21 @@ namespace AngelscriptTest_Core_AngelscriptEngineParityTests_Private
 	bool CompileSnippet(FAutomationTestBase& Test, FAngelscriptEngine& Engine,
 		const char* ModuleName, const char* Source)
 	{
+		FNoDiscardAsserter Assert(Test);
 		asIScriptModule* Module = Engine.GetScriptEngine()->GetModule(ModuleName, asGM_ALWAYS_CREATE);
-		if (!Test.TestNotNull(
-				*FString::Printf(TEXT("%hs should create a script module"), ModuleName), Module))
+		if (!Assert.IsNotNull(
+				Module,
+				*FString::Printf(TEXT("%hs should create a script module"), ModuleName)))
 		{
 			return false;
 		}
 
 		asIScriptFunction* Function = nullptr;
 		const int CompileResult = Module->CompileFunction(ModuleName, Source, 0, 0, &Function);
-		const bool bOk = Test.TestEqual(
-			*FString::Printf(TEXT("%hs should compile successfully"), ModuleName),
-			CompileResult, asSUCCESS);
+		const bool bOk = Assert.AreEqual(
+			asSUCCESS,
+			CompileResult,
+			*FString::Printf(TEXT("%hs should compile successfully"), ModuleName));
 		if (Function != nullptr)
 		{
 			Function->Release();
@@ -69,28 +72,33 @@ namespace AngelscriptTest_Core_AngelscriptEngineParityTests_Private
 	bool CompileAndExecuteInt(FAutomationTestBase& Test, FAngelscriptEngine& Engine,
 		const char* ModuleName, const char* Source, int32& OutResult)
 	{
+		FNoDiscardAsserter Assert(Test);
 		asIScriptModule* Module = Engine.GetScriptEngine()->GetModule(ModuleName, asGM_ALWAYS_CREATE);
-		if (!Test.TestNotNull(
-				*FString::Printf(TEXT("%hs should create a script module"), ModuleName), Module))
+		if (!Assert.IsNotNull(
+				Module,
+				*FString::Printf(TEXT("%hs should create a script module"), ModuleName)))
 		{
 			return false;
 		}
 
 		asIScriptFunction* Function = nullptr;
 		const int CompileResult = Module->CompileFunction(ModuleName, Source, 0, 0, &Function);
-		if (!Test.TestEqual(
-				*FString::Printf(TEXT("%hs should compile successfully"), ModuleName),
-				CompileResult, asSUCCESS)
-			|| !Test.TestNotNull(
-				*FString::Printf(TEXT("%hs should produce a function"), ModuleName), Function))
+		if (!Assert.AreEqual(
+				asSUCCESS,
+				CompileResult,
+				*FString::Printf(TEXT("%hs should compile successfully"), ModuleName))
+			|| !Assert.IsNotNull(
+				Function,
+				*FString::Printf(TEXT("%hs should produce a function"), ModuleName)))
 		{
 			if (Function) Function->Release();
 			return false;
 		}
 
 		asIScriptContext* Context = Engine.CreateContext();
-		if (!Test.TestNotNull(
-				*FString::Printf(TEXT("%hs should create a script context"), ModuleName), Context))
+		if (!Assert.IsNotNull(
+				Context,
+				*FString::Printf(TEXT("%hs should create a script context"), ModuleName)))
 		{
 			Function->Release();
 			return false;
@@ -98,18 +106,21 @@ namespace AngelscriptTest_Core_AngelscriptEngineParityTests_Private
 
 		const int PrepareResult = Context->Prepare(Function);
 		const int ExecuteResult = PrepareResult == asSUCCESS ? Context->Execute() : PrepareResult;
-		Test.TestEqual(
-			*FString::Printf(TEXT("%hs should prepare successfully"), ModuleName),
-			PrepareResult, asSUCCESS);
-		Test.TestEqual(
-			*FString::Printf(TEXT("%hs should finish successfully"), ModuleName),
-			ExecuteResult, asEXECUTION_FINISHED);
+		bool bPassed = true;
+		bPassed &= Assert.AreEqual(
+			asSUCCESS,
+			PrepareResult,
+			*FString::Printf(TEXT("%hs should prepare successfully"), ModuleName));
+		bPassed &= Assert.AreEqual(
+			asEXECUTION_FINISHED,
+			ExecuteResult,
+			*FString::Printf(TEXT("%hs should finish successfully"), ModuleName));
 
 		OutResult = static_cast<int32>(Context->GetReturnDWord());
 
 		Context->Release();
 		Function->Release();
-		return PrepareResult == asSUCCESS && ExecuteResult == asEXECUTION_FINISHED;
+		return bPassed;
 	}
 }
 
@@ -134,10 +145,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 		asITypeInfo* TypeInfo = Engine->GetScriptEngine()->GetTypeInfoByName("USkinnedMeshComponent");
 		ASSERT_THAT(IsNotNull(TypeInfo));
 
-		TestRunner->TestNotNull(TEXT("USkinnedMeshComponent should expose UpdateLODStatus()"),
-			TypeInfo->GetMethodByDecl("void UpdateLODStatus()"));
-		TestRunner->TestNotNull(TEXT("USkinnedMeshComponent should expose InvalidateCachedBounds()"),
-			TypeInfo->GetMethodByDecl("void InvalidateCachedBounds()"));
+		ASSERT_THAT(IsNotNull(
+			TypeInfo->GetMethodByDecl("void UpdateLODStatus()"),
+			TEXT("USkinnedMeshComponent should expose UpdateLODStatus()")));
+		ASSERT_THAT(IsNotNull(
+			TypeInfo->GetMethodByDecl("void InvalidateCachedBounds()"),
+			TEXT("USkinnedMeshComponent should expose InvalidateCachedBounds()")));
 	}
 
 	TEST_METHOD(DelegateWithPayloadCompile)
@@ -146,10 +159,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 		asITypeInfo* TypeInfo = Engine->GetScriptEngine()->GetTypeInfoByName("FAngelscriptDelegateWithPayload");
 		ASSERT_THAT(IsNotNull(TypeInfo));
 
-		TestRunner->TestNotNull(TEXT("FAngelscriptDelegateWithPayload should expose IsBound()"),
-			TypeInfo->GetMethodByDecl("bool IsBound() const"));
-		TestRunner->TestNotNull(TEXT("FAngelscriptDelegateWithPayload should expose ExecuteIfBound()"),
-			TypeInfo->GetMethodByDecl("void ExecuteIfBound() const"));
+		ASSERT_THAT(IsNotNull(
+			TypeInfo->GetMethodByDecl("bool IsBound() const"),
+			TEXT("FAngelscriptDelegateWithPayload should expose IsBound()")));
+		ASSERT_THAT(IsNotNull(
+			TypeInfo->GetMethodByDecl("void ExecuteIfBound() const"),
+			TEXT("FAngelscriptDelegateWithPayload should expose ExecuteIfBound()")));
 	}
 
 	TEST_METHOD(CollisionProfileCompile)
@@ -171,7 +186,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 		int32 Result = -1;
 		if (CompileAndExecuteInt(*TestRunner, *Engine, "CollisionProfileParity", TCHAR_TO_ANSI(*Source), Result))
 		{
-			TestRunner->TestEqual(TEXT("CollisionProfile constant should compare equal to the underlying FName"), Result, 0);
+			ASSERT_THAT(AreEqual(0, Result, TEXT("CollisionProfile constant should compare equal to the underlying FName")));
 		}
 	}
 
@@ -179,10 +194,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 	{
 		ASSERT_THAT(IsNotNull(Engine));
 
-		TestRunner->TestNotNull(TEXT("FCollisionEnabledMask should exist in the script type system"),
-			Engine->GetScriptEngine()->GetTypeInfoByName("FCollisionEnabledMask"));
-		TestRunner->TestNotNull(TEXT("FComponentQueryParams should exist in the script type system"),
-			Engine->GetScriptEngine()->GetTypeInfoByName("FComponentQueryParams"));
+		ASSERT_THAT(IsNotNull(
+			Engine->GetScriptEngine()->GetTypeInfoByName("FCollisionEnabledMask"),
+			TEXT("FCollisionEnabledMask should exist in the script type system")));
+		ASSERT_THAT(IsNotNull(
+			Engine->GetScriptEngine()->GetTypeInfoByName("FComponentQueryParams"),
+			TEXT("FComponentQueryParams should exist in the script type system")));
 
 		CompileSnippet(*TestRunner, *Engine, "CollisionQueryParamsParity",
 			"int CheckCollisionQueryParams() { FCollisionEnabledMask Mask(ECollisionEnabled::QueryOnly); FComponentQueryParams Params; Params.ShapeCollisionMask = Mask; return Params.ShapeCollisionMask.Bits; }");
@@ -221,7 +238,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 		if (CompileAndExecuteInt(*TestRunner, *Engine, "FIntPointParity",
 				"int CheckFIntPoint() { FIntPoint A(1, 2); FIntPoint B(3); FIntPoint C = A + B; return C.X + C.Y + C[0]; }", Result))
 		{
-			TestRunner->TestEqual(TEXT("FIntPoint parity should return the expected sum"), Result, 13);
+			ASSERT_THAT(AreEqual(13, Result, TEXT("FIntPoint parity should return the expected sum")));
 		}
 	}
 
@@ -249,15 +266,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 		ASSERT_THAT(IsTrue(SoftObjectUsage.GetCppForm(SoftObjectForm)));
 		ASSERT_THAT(IsTrue(SoftClassUsage.GetCppForm(SoftClassForm)));
 
-		TestRunner->TestEqual(TEXT("TSoftObjectPtr CppType"), SoftObjectForm.CppType, TEXT("TSoftObjectPtr<UTexture2D>"));
-		TestRunner->TestEqual(TEXT("TSoftObjectPtr CppGenericType"), SoftObjectForm.CppGenericType, TEXT("TSoftObjectPtr<UObject>"));
-		TestRunner->TestEqual(TEXT("TSoftObjectPtr TemplateObjectForm"), SoftObjectForm.TemplateObjectForm, TEXT("TSoftObjectPtr<UObject>"));
-		TestRunner->TestFalse(TEXT("TSoftObjectPtr should emit a header include"), SoftObjectForm.CppHeader.IsEmpty());
+		ASSERT_THAT(AreEqual(FString(TEXT("TSoftObjectPtr<UTexture2D>")), SoftObjectForm.CppType, TEXT("TSoftObjectPtr CppType")));
+		ASSERT_THAT(AreEqual(FString(TEXT("TSoftObjectPtr<UObject>")), SoftObjectForm.CppGenericType, TEXT("TSoftObjectPtr CppGenericType")));
+		ASSERT_THAT(AreEqual(FString(TEXT("TSoftObjectPtr<UObject>")), SoftObjectForm.TemplateObjectForm, TEXT("TSoftObjectPtr TemplateObjectForm")));
+		ASSERT_THAT(IsFalse(SoftObjectForm.CppHeader.IsEmpty(), TEXT("TSoftObjectPtr should emit a header include")));
 
-		TestRunner->TestEqual(TEXT("TSoftClassPtr CppType"), SoftClassForm.CppType, TEXT("TSoftClassPtr<AActor>"));
-		TestRunner->TestEqual(TEXT("TSoftClassPtr CppGenericType"), SoftClassForm.CppGenericType, TEXT("TSoftClassPtr<UObject>"));
-		TestRunner->TestEqual(TEXT("TSoftClassPtr TemplateObjectForm"), SoftClassForm.TemplateObjectForm, TEXT("TSoftClassPtr<UObject>"));
-		TestRunner->TestFalse(TEXT("TSoftClassPtr should emit a header include"), SoftClassForm.CppHeader.IsEmpty());
+		ASSERT_THAT(AreEqual(FString(TEXT("TSoftClassPtr<AActor>")), SoftClassForm.CppType, TEXT("TSoftClassPtr CppType")));
+		ASSERT_THAT(AreEqual(FString(TEXT("TSoftClassPtr<UObject>")), SoftClassForm.CppGenericType, TEXT("TSoftClassPtr CppGenericType")));
+		ASSERT_THAT(AreEqual(FString(TEXT("TSoftClassPtr<UObject>")), SoftClassForm.TemplateObjectForm, TEXT("TSoftClassPtr TemplateObjectForm")));
+		ASSERT_THAT(IsFalse(SoftClassForm.CppHeader.IsEmpty(), TEXT("TSoftClassPtr should emit a header include")));
 	}
 
 	TEST_METHOD(SoftReferenceCompile)
@@ -281,12 +298,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 		asIScriptModule* Module = BuildModule(*TestRunner, *Engine, "Editor.SoftReferenceParity", Source);
 		ASSERT_THAT(IsNotNull(Module));
 
-		TestRunner->TestNotNull(TEXT("TSoftObjectPtr Get() smoke"),
-			GetFunctionByDecl(*TestRunner, *Module, TEXT("UObject CheckSoftObjectGet(TSoftObjectPtr<UObject> Ptr)")));
-		TestRunner->TestNotNull(TEXT("TSoftObjectPtr editor-only soft load smoke"),
-			GetFunctionByDecl(*TestRunner, *Module, TEXT("UTexture2D CheckSoftObjectEditorLoad(TSoftObjectPtr<UTexture2D> Ptr)")));
-		TestRunner->TestNotNull(TEXT("TSoftClassPtr Get() smoke"),
-			GetFunctionByDecl(*TestRunner, *Module, TEXT("TSubclassOf<AActor> CheckSoftClassGet(TSoftClassPtr<AActor> Ptr)")));
+		ASSERT_THAT(IsNotNull(
+			GetFunctionByDecl(*TestRunner, *Module, TEXT("UObject CheckSoftObjectGet(TSoftObjectPtr<UObject> Ptr)")),
+			TEXT("TSoftObjectPtr Get() smoke")));
+		ASSERT_THAT(IsNotNull(
+			GetFunctionByDecl(*TestRunner, *Module, TEXT("UTexture2D CheckSoftObjectEditorLoad(TSoftObjectPtr<UTexture2D> Ptr)")),
+			TEXT("TSoftObjectPtr editor-only soft load smoke")));
+		ASSERT_THAT(IsNotNull(
+			GetFunctionByDecl(*TestRunner, *Module, TEXT("TSubclassOf<AActor> CheckSoftClassGet(TSoftClassPtr<AActor> Ptr)")),
+			TEXT("TSoftClassPtr Get() smoke")));
 	}
 
 	TEST_METHOD(UserWidgetPaintCompile)
@@ -307,7 +327,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 			TEXT("}\n");
 
 		asIScriptModule* Module = BuildModule(*TestRunner, *Engine, "UserWidgetPaintParity", Source);
-		TestRunner->TestNotNull(TEXT("UserWidget paint parity module should compile"), Module);
+		ASSERT_THAT(IsNotNull(Module, TEXT("UserWidget paint parity module should compile")));
 	}
 
 	TEST_METHOD(LevelStreamingCompile)
@@ -317,10 +337,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 		asITypeInfo* TypeInfo = Engine->GetScriptEngine()->GetTypeInfoByName("ULevelStreaming");
 		ASSERT_THAT(IsNotNull(TypeInfo));
 
-		TestRunner->TestNotNull(TEXT("UAngelscriptLevelStreamingLibrary should be visible"),
-			Engine->GetScriptEngine()->GetTypeInfoByName("UAngelscriptLevelStreamingLibrary"));
-		TestRunner->TestNotNull(TEXT("ULevelStreaming should expose GetShouldBeVisibleInEditor()"),
-			TypeInfo->GetMethodByDecl("bool GetShouldBeVisibleInEditor() const"));
+		ASSERT_THAT(IsNotNull(
+			Engine->GetScriptEngine()->GetTypeInfoByName("UAngelscriptLevelStreamingLibrary"),
+			TEXT("UAngelscriptLevelStreamingLibrary should be visible")));
+		ASSERT_THAT(IsNotNull(
+			TypeInfo->GetMethodByDecl("bool GetShouldBeVisibleInEditor() const"),
+			TEXT("ULevelStreaming should expose GetShouldBeVisibleInEditor()")));
 	}
 
 	TEST_METHOD(RuntimeCurveLinearColorCompile)
@@ -352,7 +374,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 				"    return Hit.FaceIndex + Hit.ElementIndex + Hit.Item + Hit.MyItem;\n"
 				"}", Result))
 		{
-			TestRunner->TestEqual(TEXT("FHitResult parity should read/write the restored fields"), Result, 10);
+			ASSERT_THAT(AreEqual(10, Result, TEXT("FHitResult parity should read/write the restored fields")));
 		}
 	}
 
@@ -364,11 +386,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 		UFunction* Function = FindObject<UFunction>(nullptr, TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableLinearColor"));
 		ASSERT_THAT(IsNotNull(Function));
 
-		TestRunner->TestTrue(TEXT("Niagara linear color setter should be marked deprecated"),
-			Function->HasMetaData(NAME_META_DeprecatedFunction));
-		TestRunner->TestEqual(TEXT("Niagara linear color setter deprecation message"),
+		ASSERT_THAT(IsTrue(
+			Function->HasMetaData(NAME_META_DeprecatedFunction),
+			TEXT("Niagara linear color setter should be marked deprecated")));
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("Use the SetVariable variant that takes FName instead")),
 			Function->GetMetaData(NAME_META_DeprecationMessage),
-			TEXT("Use the SetVariable variant that takes FName instead"));
+			TEXT("Niagara linear color setter deprecation message")));
 	}
 
 	TEST_METHOD(StartupBindRegistrySmoke)
@@ -382,11 +406,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 
 		for (int32 BindIndex = 1; BindIndex < BindInfos.Num(); ++BindIndex)
 		{
-			if (!TestRunner->TestTrue(TEXT("Bind info should be sorted by bind order"),
-					BindInfos[BindIndex - 1].BindOrder <= BindInfos[BindIndex].BindOrder))
-			{
-				return;
-			}
+			ASSERT_THAT(IsTrue(
+				BindInfos[BindIndex - 1].BindOrder <= BindInfos[BindIndex].BindOrder,
+				TEXT("Bind info should be sorted by bind order")));
 		}
 
 		CompileSnippet(*TestRunner, *Engine, "StartupBindRegistryParity",

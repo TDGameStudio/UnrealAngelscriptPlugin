@@ -77,17 +77,18 @@ namespace AngelscriptTest_Bindings_AngelscriptWorldCollisionAsyncBindingsTests_P
 		FName FunctionName,
 		int32& OutResult)
 	{
+		FNoDiscardAsserter Assert(Test);
 		UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
-		if (!Test.TestNotNull(
-			*FString::Printf(TEXT("World collision async method '%s' should exist"), *FunctionName.ToString()),
-			Function))
+		if (!Assert.IsNotNull(
+			Function,
+			*FString::Printf(TEXT("World collision async method '%s' should exist"), *FunctionName.ToString())))
 		{
 			return false;
 		}
 
-		return Test.TestTrue(
-			*FString::Printf(TEXT("World collision async method '%s' should execute"), *FunctionName.ToString()),
-			ExecuteGeneratedIntEventOnGameThread(Object, Function, OutResult));
+		return Assert.IsTrue(
+			ExecuteGeneratedIntEventOnGameThread(Object, Function, OutResult),
+			*FString::Printf(TEXT("World collision async method '%s' should execute"), *FunctionName.ToString()));
 	}
 
 	bool ReadUInt64PropertyChecked(
@@ -96,15 +97,16 @@ namespace AngelscriptTest_Bindings_AngelscriptWorldCollisionAsyncBindingsTests_P
 		FName PropertyName,
 		uint64& OutValue)
 	{
-		if (!Test.TestNotNull(TEXT("World collision async object should be valid for uint64 property reads"), Object))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(Object, TEXT("World collision async object should be valid for uint64 property reads")))
 		{
 			return false;
 		}
 
 		FUInt64Property* Property = FindFProperty<FUInt64Property>(Object->GetClass(), PropertyName);
-		if (!Test.TestNotNull(
-			*FString::Printf(TEXT("World collision async property '%s' should exist"), *PropertyName.ToString()),
-			Property))
+		if (!Assert.IsNotNull(
+			Property,
+			*FString::Printf(TEXT("World collision async property '%s' should exist"), *PropertyName.ToString())))
 		{
 			return false;
 		}
@@ -119,10 +121,13 @@ namespace AngelscriptTest_Bindings_AngelscriptWorldCollisionAsyncBindingsTests_P
 		UWorld& World,
 		AActor& ScriptActor)
 	{
+		FNoDiscardAsserter Assert(Test);
 		FIntProperty* LineCallbackCountProperty = FindFProperty<FIntProperty>(ScriptActor.GetClass(), TEXT("LineCallbackCount"));
 		FIntProperty* OverlapCallbackCountProperty = FindFProperty<FIntProperty>(ScriptActor.GetClass(), TEXT("OverlapCallbackCount"));
-		if (!Test.TestNotNull(TEXT("World collision async actor should expose LineCallbackCount"), LineCallbackCountProperty)
-			|| !Test.TestNotNull(TEXT("World collision async actor should expose OverlapCallbackCount"), OverlapCallbackCountProperty))
+		bool bHasCallbackProperties = true;
+		bHasCallbackProperties &= Assert.IsNotNull(LineCallbackCountProperty, TEXT("World collision async actor should expose LineCallbackCount"));
+		bHasCallbackProperties &= Assert.IsNotNull(OverlapCallbackCountProperty, TEXT("World collision async actor should expose OverlapCallbackCount"));
+		if (!bHasCallbackProperties)
 		{
 			return false;
 		}
@@ -317,31 +322,22 @@ class ATestWorldCollisionAsyncCallbacks : AActor
 
 		AActor& TargetActor = Spawner.SpawnActor<AActor>();
 		UBoxComponent* TargetBox = AddCollisionBox(TargetActor, TEXT("AsyncCollisionTarget"), AsyncTargetExtent, AsyncCollisionTargetLocation);
-		if (!TestRunner->TestNotNull(TEXT("World collision async target box should be created"), TargetBox))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(TargetBox, TEXT("World collision async target box should be created")));
 
 		AActor* ScriptActor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("World collision async script actor should spawn"), ScriptActor))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptActor, TEXT("World collision async script actor should spawn")));
 
 		BeginPlayActor(Engine, *ScriptActor);
 
 		UWorld* World = TargetActor.GetWorld();
-		if (!TestRunner->TestNotNull(TEXT("World collision async test should access the spawned test world"), World))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(World, TEXT("World collision async test should access the spawned test world")));
 
 		int32 StartResult = 0;
 		if (!ExecuteGeneratedIntMethod(*TestRunner, ScriptActor, ScriptClass, TEXT("StartAsyncQueries"), StartResult))
 		{
 			return;
 		}
-		TestRunner->TestEqual(TEXT("Async world collision start method should acknowledge launch"), StartResult, 1);
+		ASSERT_THAT(AreEqual(1, StartResult, TEXT("Async world collision start method should acknowledge launch")));
 
 		if (!WaitForAsyncCallbacks(*TestRunner, Engine, *World, *ScriptActor))
 		{
@@ -384,22 +380,22 @@ class ATestWorldCollisionAsyncCallbacks : AActor
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Async line trace should invoke callback exactly once"), LineCallbackCount, 1);
-		TestRunner->TestEqual(TEXT("Async overlap should invoke callback exactly once"), OverlapCallbackCount, 1);
-		TestRunner->TestEqual(TEXT("Async line trace should preserve UserData"), LineUserData, 77);
-		TestRunner->TestEqual(TEXT("Async overlap should preserve UserData"), OverlapUserData, 88);
-		TestRunner->TestTrue(TEXT("Async line trace should report at least one hit"), LineHitCount > 0);
-		TestRunner->TestTrue(TEXT("Async overlap should report at least one overlap"), OverlapHitCount > 0);
-		TestRunner->TestEqual(TEXT("Async line trace handle should be initially valid"), LineHandleValidInitially, 1);
-		TestRunner->TestEqual(TEXT("Async overlap handle should be initially valid"), OverlapHandleValidInitially, 1);
-		TestRunner->TestEqual(TEXT("Line callback handle should match stored handle"), LastLineCallbackHandle, LineHandleRaw);
-		TestRunner->TestEqual(TEXT("Overlap callback handle should match stored handle"), LastOverlapCallbackHandle, OverlapHandleRaw);
-		TestRunner->TestEqual(TEXT("Line trace QueryTraceData should succeed"), LineQuerySucceeded, 1);
-		TestRunner->TestEqual(TEXT("Overlap QueryOverlapData should succeed"), OverlapQuerySucceeded, 1);
-		TestRunner->TestTrue(TEXT("Line trace queried hits should be non-empty"), LineQueryHitCount > 0);
-		TestRunner->TestTrue(TEXT("Overlap queried hits should be non-empty"), OverlapQueryHitCount > 0);
-		TestRunner->TestEqual(TEXT("Line trace query count should match callback payload"), LineQueryHitCount, LineHitCount);
-		TestRunner->TestEqual(TEXT("Overlap query count should match callback payload"), OverlapQueryHitCount, OverlapHitCount);
+		ASSERT_THAT(AreEqual(1, LineCallbackCount, TEXT("Async line trace should invoke callback exactly once")));
+		ASSERT_THAT(AreEqual(1, OverlapCallbackCount, TEXT("Async overlap should invoke callback exactly once")));
+		ASSERT_THAT(AreEqual(77, LineUserData, TEXT("Async line trace should preserve UserData")));
+		ASSERT_THAT(AreEqual(88, OverlapUserData, TEXT("Async overlap should preserve UserData")));
+		ASSERT_THAT(IsTrue(LineHitCount > 0, TEXT("Async line trace should report at least one hit")));
+		ASSERT_THAT(IsTrue(OverlapHitCount > 0, TEXT("Async overlap should report at least one overlap")));
+		ASSERT_THAT(AreEqual(1, LineHandleValidInitially, TEXT("Async line trace handle should be initially valid")));
+		ASSERT_THAT(AreEqual(1, OverlapHandleValidInitially, TEXT("Async overlap handle should be initially valid")));
+		ASSERT_THAT(AreEqual(LineHandleRaw, LastLineCallbackHandle, TEXT("Line callback handle should match stored handle")));
+		ASSERT_THAT(AreEqual(OverlapHandleRaw, LastOverlapCallbackHandle, TEXT("Overlap callback handle should match stored handle")));
+		ASSERT_THAT(AreEqual(1, LineQuerySucceeded, TEXT("Line trace QueryTraceData should succeed")));
+		ASSERT_THAT(AreEqual(1, OverlapQuerySucceeded, TEXT("Overlap QueryOverlapData should succeed")));
+		ASSERT_THAT(IsTrue(LineQueryHitCount > 0, TEXT("Line trace queried hits should be non-empty")));
+		ASSERT_THAT(IsTrue(OverlapQueryHitCount > 0, TEXT("Overlap queried hits should be non-empty")));
+		ASSERT_THAT(AreEqual(LineHitCount, LineQueryHitCount, TEXT("Line trace query count should match callback payload")));
+		ASSERT_THAT(AreEqual(OverlapHitCount, OverlapQueryHitCount, TEXT("Overlap query count should match callback payload")));
 
 		FTraceHandle NativeLineHandle;
 		NativeLineHandle._Handle = LineHandleRaw;
@@ -416,8 +412,8 @@ class ATestWorldCollisionAsyncCallbacks : AActor
 
 		const bool bNativeLineHandleValidNow = World->IsTraceHandleValid(NativeLineHandle, false);
 		const bool bNativeOverlapHandleValidNow = World->IsTraceHandleValid(NativeOverlapHandle, true);
-		TestRunner->TestEqual(TEXT("Script line handle validity should match native after completion"), ScriptLineHandleValidNow, bNativeLineHandleValidNow ? 1 : 0);
-		TestRunner->TestEqual(TEXT("Script overlap handle validity should match native after completion"), ScriptOverlapHandleValidNow, bNativeOverlapHandleValidNow ? 1 : 0);
+		ASSERT_THAT(AreEqual(bNativeLineHandleValidNow ? 1 : 0, ScriptLineHandleValidNow, TEXT("Script line handle validity should match native after completion")));
+		ASSERT_THAT(AreEqual(bNativeOverlapHandleValidNow ? 1 : 0, ScriptOverlapHandleValidNow, TEXT("Script overlap handle validity should match native after completion")));
 
 		}
 	}

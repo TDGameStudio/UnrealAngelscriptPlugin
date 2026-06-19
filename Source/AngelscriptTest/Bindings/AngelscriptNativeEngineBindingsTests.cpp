@@ -86,35 +86,20 @@ class ABindingExampleActor : AActor
 	}
 }
 )"));
-		if (!TestRunner->TestTrue(TEXT("Compile annotated actor module using native bindings should succeed"), bCompiled))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Compile annotated actor module using native bindings should succeed")));
 
 		UClass* RuntimeClass = FindGeneratedClass(&Engine, TEXT("ABindingExampleActor"));
-		if (!TestRunner->TestNotNull(TEXT("Generated actor class should exist"), RuntimeClass))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RuntimeClass, TEXT("Generated actor class should exist")));
 
 		UFunction* ReadNativeBindingsFunction = FindGeneratedFunction(RuntimeClass, TEXT("ReadNativeBindings"));
-		if (!TestRunner->TestNotNull(TEXT("Native actor binding test function should exist"), ReadNativeBindingsFunction))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ReadNativeBindingsFunction, TEXT("Native actor binding test function should exist")));
 
 		AActor* RuntimeActor = RuntimeClass->GetDefaultObject<AActor>();
-		if (!TestRunner->TestNotNull(TEXT("Generated actor default object should exist"), RuntimeActor))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RuntimeActor, TEXT("Generated actor default object should exist")));
 
 		int32 Result = 0;
-		if (!TestRunner->TestTrue(TEXT("Native actor binding reflected call should execute on the game thread"), ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeActor, ReadNativeBindingsFunction, Result)))
-		{
-			return;
-		}
-		TestRunner->TestEqual(TEXT("Script class should call bridged native AActor and UObject methods"), Result, 1);
+		ASSERT_THAT(IsTrue(ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeActor, ReadNativeBindingsFunction, Result), TEXT("Native actor binding reflected call should execute on the game thread")));
+		ASSERT_THAT(AreEqual(1, Result, TEXT("Script class should call bridged native AActor and UObject methods")));
 	}
 
 	// ====================================================================
@@ -199,43 +184,25 @@ class UBindingSceneComponent : USceneComponent
 	}
 }
 )"));
-		if (!TestRunner->TestTrue(TEXT("Compile annotated scene component module using native bindings should succeed"), bCompiled))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Compile annotated scene component module using native bindings should succeed")));
 
 		UClass* RuntimeClass = FindGeneratedClass(&Engine, TEXT("UBindingSceneComponent"));
-		if (!TestRunner->TestNotNull(TEXT("Generated scene component class should exist"), RuntimeClass))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RuntimeClass, TEXT("Generated scene component class should exist")));
 
 		UFunction* ReadComponentBindingsFunction = FindGeneratedFunction(RuntimeClass, TEXT("ReadComponentBindings"));
-		if (!TestRunner->TestNotNull(TEXT("Native component binding test function should exist"), ReadComponentBindingsFunction))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ReadComponentBindingsFunction, TEXT("Native component binding test function should exist")));
 
 		AActor* OuterActor = NewObject<AActor>(GetTransientPackage(), AActor::StaticClass());
-		if (!TestRunner->TestNotNull(TEXT("Transient outer actor should be created"), OuterActor))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(OuterActor, TEXT("Transient outer actor should be created")));
 
 		USceneComponent* RuntimeComponent = NewObject<USceneComponent>(OuterActor, RuntimeClass, TEXT("ScriptScene"));
-		if (!TestRunner->TestNotNull(TEXT("Generated scene component instance should be created"), RuntimeComponent))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RuntimeComponent, TEXT("Generated scene component instance should be created")));
 
 		OuterActor->AddOwnedComponent(RuntimeComponent);
 
 		int32 Result = 0;
-		if (!TestRunner->TestTrue(TEXT("Native component binding reflected call should execute on the game thread"), ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeComponent, ReadComponentBindingsFunction, Result)))
-		{
-			return;
-		}
-		TestRunner->TestEqual(TEXT("Script component should call bridged native component methods"), Result, 1);
+		ASSERT_THAT(IsTrue(ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeComponent, ReadComponentBindingsFunction, Result), TEXT("Native component binding reflected call should execute on the game thread")));
+		ASSERT_THAT(AreEqual(1, Result, TEXT("Script component should call bridged native component methods")));
 	}
 
 	// ====================================================================
@@ -263,49 +230,35 @@ class UDestroyBindingComponent : UActorComponent
 	}
 }
 )"));
-		if (!TestRunner->TestTrue(TEXT("Compile annotated destroy component module should succeed"), bCompiled))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Compile annotated destroy component module should succeed")));
 
 		UClass* RuntimeClass = FindGeneratedClass(&Engine, TEXT("UDestroyBindingComponent"));
-		if (!TestRunner->TestNotNull(TEXT("Generated destroy component class should exist"), RuntimeClass))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RuntimeClass, TEXT("Generated destroy component class should exist")));
 
 		UFunction* DestroySelfFunction = FindGeneratedFunction(RuntimeClass, TEXT("DestroySelf"));
-		if (!TestRunner->TestNotNull(TEXT("Destroy component function should exist"), DestroySelfFunction))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(DestroySelfFunction, TEXT("Destroy component function should exist")));
 
 		AActor* OuterActor = NewObject<AActor>(GetTransientPackage(), AActor::StaticClass());
-		if (!TestRunner->TestNotNull(TEXT("Transient actor should be created for destroy component test"), OuterActor))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(OuterActor, TEXT("Transient actor should be created for destroy component test")));
 
 		UActorComponent* RuntimeComponent = NewObject<UActorComponent>(OuterActor, RuntimeClass, TEXT("DestroyBindingComponent"));
-		if (!TestRunner->TestNotNull(TEXT("Destroy binding component should be created"), RuntimeComponent))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RuntimeComponent, TEXT("Destroy binding component should be created")));
 
 		OuterActor->AddOwnedComponent(RuntimeComponent);
 
 		int32 Result = 0;
-		if (!TestRunner->TestTrue(TEXT("Destroy component reflected call should execute on the game thread"), ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeComponent, DestroySelfFunction, Result)))
+		if (!this->Assert.IsTrue(ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeComponent, DestroySelfFunction, Result), TEXT("Destroy component reflected call should execute on the game thread")))
 		{
 			return;
 		}
 
-		if (!TestRunner->TestEqual(TEXT("Destroy component function should return success"), Result, 1))
+		if (!this->Assert.AreEqual(1, Result, TEXT("Destroy component function should return success")))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("DestroyComponent binding should mark the component as being destroyed"), RuntimeComponent->IsBeingDestroyed());
+		const bool bDestroyStateReported = this->Assert.IsTrue(RuntimeComponent->IsBeingDestroyed(), TEXT("DestroyComponent binding should mark the component as being destroyed"));
+		(void)bDestroyStateReported;
 	}
 
 	// ====================================================================
@@ -363,82 +316,43 @@ class UBindingActivationComponent : UActorComponent
 	}
 }
 )"));
-		if (!TestRunner->TestTrue(TEXT("Compile annotated activation component module should succeed"), bCompiled))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Compile annotated activation component module should succeed")));
 
 		UClass* RuntimeClass = FindGeneratedClass(&Engine, TEXT("UBindingActivationComponent"));
-		if (!TestRunner->TestNotNull(TEXT("Generated activation component class should exist"), RuntimeClass))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RuntimeClass, TEXT("Generated activation component class should exist")));
 
 		UFunction* VerifyTagBindingsFunction = FindGeneratedFunction(RuntimeClass, TEXT("VerifyTagBindings"));
 		UFunction* DeactivateSelfFunction = FindGeneratedFunction(RuntimeClass, TEXT("DeactivateSelf"));
 		UFunction* ReactivateSelfFunction = FindGeneratedFunction(RuntimeClass, TEXT("ReactivateSelf"));
-		if (!TestRunner->TestNotNull(TEXT("VerifyTagBindings function should exist"), VerifyTagBindingsFunction)
-			|| !TestRunner->TestNotNull(TEXT("DeactivateSelf function should exist"), DeactivateSelfFunction)
-			|| !TestRunner->TestNotNull(TEXT("ReactivateSelf function should exist"), ReactivateSelfFunction))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(VerifyTagBindingsFunction, TEXT("VerifyTagBindings function should exist")));
+		ASSERT_THAT(IsNotNull(DeactivateSelfFunction, TEXT("DeactivateSelf function should exist")));
+		ASSERT_THAT(IsNotNull(ReactivateSelfFunction, TEXT("ReactivateSelf function should exist")));
 
 		UActorComponent* RuntimeComponent = NewObject<UActorComponent>(&HostActor, RuntimeClass, TEXT("ActivationBindingComponent"));
-		if (!TestRunner->TestNotNull(TEXT("Generated activation component instance should be created"), RuntimeComponent))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RuntimeComponent, TEXT("Generated activation component instance should be created")));
 
 		HostActor.AddInstanceComponent(RuntimeComponent);
 		RuntimeComponent->ComponentTags.Add(TEXT("Probe"));
 		RuntimeComponent->RegisterComponent();
-		if (!TestRunner->TestTrue(TEXT("Activation component should register into the spawned world"), RuntimeComponent->IsRegistered()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(RuntimeComponent->IsRegistered(), TEXT("Activation component should register into the spawned world")));
 
 		RuntimeComponent->Activate(true);
-		if (!TestRunner->TestTrue(TEXT("Activation component should start active before script toggles it"), RuntimeComponent->IsActive()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(RuntimeComponent->IsActive(), TEXT("Activation component should start active before script toggles it")));
 
 		int32 TagResult = 0;
-		if (!TestRunner->TestTrue(TEXT("VerifyTagBindings reflected call should execute on the game thread"), ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeComponent, VerifyTagBindingsFunction, TagResult)))
-		{
-			return;
-		}
-		if (!TestRunner->TestEqual(TEXT("Tag compatibility probe should pass"), TagResult, 1))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeComponent, VerifyTagBindingsFunction, TagResult), TEXT("VerifyTagBindings reflected call should execute on the game thread")));
+		ASSERT_THAT(AreEqual(1, TagResult, TEXT("Tag compatibility probe should pass")));
 
 		int32 DeactivateResult = 0;
-		if (!TestRunner->TestTrue(TEXT("DeactivateSelf reflected call should execute on the game thread"), ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeComponent, DeactivateSelfFunction, DeactivateResult)))
-		{
-			return;
-		}
-		if (!TestRunner->TestEqual(TEXT("DeactivateSelf should report success"), DeactivateResult, 1))
-		{
-			return;
-		}
-		if (!TestRunner->TestFalse(TEXT("Deactivate binding should clear the active state"), RuntimeComponent->IsActive()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeComponent, DeactivateSelfFunction, DeactivateResult), TEXT("DeactivateSelf reflected call should execute on the game thread")));
+		ASSERT_THAT(AreEqual(1, DeactivateResult, TEXT("DeactivateSelf should report success")));
+		ASSERT_THAT(IsFalse(RuntimeComponent->IsActive(), TEXT("Deactivate binding should clear the active state")));
 
 		int32 ReactivateResult = 0;
-		if (!TestRunner->TestTrue(TEXT("ReactivateSelf reflected call should execute on the game thread"), ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeComponent, ReactivateSelfFunction, ReactivateResult)))
-		{
-			return;
-		}
-		if (!TestRunner->TestEqual(TEXT("ReactivateSelf should report success"), ReactivateResult, 1))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeComponent, ReactivateSelfFunction, ReactivateResult), TEXT("ReactivateSelf reflected call should execute on the game thread")));
+		ASSERT_THAT(AreEqual(1, ReactivateResult, TEXT("ReactivateSelf should report success")));
 
-		TestRunner->TestTrue(TEXT("Activate(true) binding should restore the active state"), RuntimeComponent->IsActive());
+		ASSERT_THAT(IsTrue(RuntimeComponent->IsActive(), TEXT("Activate(true) binding should restore the active state")));
 	}
 };
 

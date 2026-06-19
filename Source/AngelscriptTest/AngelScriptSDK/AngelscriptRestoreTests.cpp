@@ -51,10 +51,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 	TEST_METHOD(RoundTrip)
 	{
 		TUniquePtr<FAngelscriptEngine> SourceEngineOwner = CreateIsolatedCloneEngine();
-		if (!TestRunner->TestNotNull(TEXT("Restore roundtrip should create an isolated clone test engine"), SourceEngineOwner.Get()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(SourceEngineOwner.Get(), TEXT("Restore roundtrip should create an isolated clone test engine")));
 		FAngelscriptEngineScope EngineScope(*SourceEngineOwner);
 
 		FAngelscriptEngine& SourceEngine = *SourceEngineOwner;
@@ -64,31 +61,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 		};
 
 		asCModule* SourceModule = BuildRestoreModule(*TestRunner, SourceEngine, "RestoreSourceModule");
-		if (!TestRunner->TestNotNull(TEXT("Restore roundtrip should compile a source module"), SourceModule))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(SourceModule, TEXT("Restore roundtrip should compile a source module")));
 
 		int32 SourceValue = 0;
 		if (!ExecuteRestoreFunction(*TestRunner, SourceEngine, *SourceModule, SourceValue))
 		{
 			return;
 		}
-		if (!TestRunner->TestEqual(TEXT("Restore roundtrip should execute before serialization"), SourceValue, 42))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(42, SourceValue, TEXT("Restore roundtrip should execute before serialization")));
 
 		FMemoryBinaryStream Stream;
 		const int SaveResult = SourceModule->SaveByteCode(&Stream, false);
-		if (!TestRunner->TestEqual(TEXT("Restore roundtrip should save bytecode successfully"), SaveResult, static_cast<int>(asSUCCESS)))
-		{
-			return;
-		}
-		if (!TestRunner->TestTrue(TEXT("Restore roundtrip should emit bytecode bytes"), Stream.Num() > 0))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int>(asSUCCESS), SaveResult, TEXT("Restore roundtrip should save bytecode successfully")));
+		ASSERT_THAT(IsTrue(Stream.Num() > 0, TEXT("Restore roundtrip should emit bytecode bytes")));
 
 		Stream.ResetReadOffset();
 		SourceModule->Discard();
@@ -101,29 +86,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 			ScriptEngine->SetEngineProperty(asEP_INIT_GLOBAL_VARS_AFTER_BUILD, PreviousInitGlobalsAfterBuild);
 		};
 		asCModule* RestoredModule = CreateRestoreModule(ScriptEngine, "RestoreSourceModule");
-		if (!TestRunner->TestNotNull(TEXT("Restore roundtrip should create a destination module"), RestoredModule))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RestoredModule, TEXT("Restore roundtrip should create a destination module")));
 
 		const int LoadResult = RestoredModule->LoadByteCode(&Stream, &bWasDebugInfoStripped);
-		if (!TestRunner->TestEqual(TEXT("Restore roundtrip should load bytecode successfully"), LoadResult, static_cast<int>(asSUCCESS)))
-		{
-			return;
-		}
-		if (!TestRunner->TestFalse(TEXT("Restore roundtrip should preserve debug info when not stripping"), bWasDebugInfoStripped))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int>(asSUCCESS), LoadResult, TEXT("Restore roundtrip should load bytecode successfully")));
+		ASSERT_THAT(IsFalse(bWasDebugInfoStripped, TEXT("Restore roundtrip should preserve debug info when not stripping")));
 	}
 
 	TEST_METHOD(StripDebugInfoRoundTrip)
 	{
 		TUniquePtr<FAngelscriptEngine> SourceEngineOwner = CreateIsolatedCloneEngine();
-		if (!TestRunner->TestNotNull(TEXT("Restore strip roundtrip should create an isolated clone test engine"), SourceEngineOwner.Get()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(SourceEngineOwner.Get(), TEXT("Restore strip roundtrip should create an isolated clone test engine")));
 		FAngelscriptEngineScope EngineScope(*SourceEngineOwner);
 
 		FAngelscriptEngine& SourceEngine = *SourceEngineOwner;
@@ -133,17 +106,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 		};
 
 		asCModule* SourceModule = BuildRestoreModule(*TestRunner, SourceEngine, "RestoreStripSourceModule");
-		if (!TestRunner->TestNotNull(TEXT("Restore strip roundtrip should compile a source module"), SourceModule))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(SourceModule, TEXT("Restore strip roundtrip should compile a source module")));
 
 		FMemoryBinaryStream Stream;
 		const int SaveResult = SourceModule->SaveByteCode(&Stream, true);
-		if (!TestRunner->TestEqual(TEXT("Restore strip roundtrip should save bytecode successfully"), SaveResult, static_cast<int>(asSUCCESS)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int>(asSUCCESS), SaveResult, TEXT("Restore strip roundtrip should save bytecode successfully")));
 
 		Stream.ResetReadOffset();
 		SourceModule->Discard();
@@ -156,52 +123,34 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 			ScriptEngine->SetEngineProperty(asEP_INIT_GLOBAL_VARS_AFTER_BUILD, PreviousInitGlobalsAfterBuild);
 		};
 		asCModule* RestoredModule = CreateRestoreModule(ScriptEngine, "RestoreStripSourceModule");
-		if (!TestRunner->TestNotNull(TEXT("Restore strip roundtrip should create a destination module"), RestoredModule))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RestoredModule, TEXT("Restore strip roundtrip should create a destination module")));
 
 		const int LoadResult = RestoredModule->LoadByteCode(&Stream, &bWasDebugInfoStripped);
-		if (!TestRunner->TestEqual(TEXT("Restore strip roundtrip should load bytecode successfully"), LoadResult, static_cast<int>(asSUCCESS)))
-		{
-			return;
-		}
-		if (!TestRunner->TestTrue(TEXT("Restore strip roundtrip should report stripped debug info"), bWasDebugInfoStripped))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int>(asSUCCESS), LoadResult, TEXT("Restore strip roundtrip should load bytecode successfully")));
+		ASSERT_THAT(IsTrue(bWasDebugInfoStripped, TEXT("Restore strip roundtrip should report stripped debug info")));
 	}
 
 	TEST_METHOD(EmptyStreamFails)
 	{
 		TUniquePtr<FAngelscriptEngine> EngineOwner = CreateIsolatedCloneEngine();
-		if (!TestRunner->TestNotNull(TEXT("Restore empty stream test should create an isolated clone test engine"), EngineOwner.Get()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(EngineOwner.Get(), TEXT("Restore empty stream test should create an isolated clone test engine")));
 		FAngelscriptEngineScope EngineScope(*EngineOwner);
 
 		asCScriptEngine* ScriptEngine = static_cast<asCScriptEngine*>(EngineOwner->GetScriptEngine());
 		asCModule* RestoredModule = CreateRestoreModule(ScriptEngine, "RestoreEmptyStream");
-		if (!TestRunner->TestNotNull(TEXT("Restore empty stream test should create a destination module"), RestoredModule))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RestoredModule, TEXT("Restore empty stream test should create a destination module")));
 
 		FMemoryBinaryStream Stream;
 		bool bWasDebugInfoStripped = false;
 		TestRunner->AddExpectedErrorPlain(TEXT("Unexpected end of file"), EAutomationExpectedErrorFlags::Contains, -1);
 		const int LoadResult = RestoredModule->LoadByteCode(&Stream, &bWasDebugInfoStripped);
-		TestRunner->TestNotEqual(TEXT("Restore should reject an empty bytecode stream"), LoadResult, static_cast<int>(asSUCCESS));
+		ASSERT_THAT(AreNotEqual(static_cast<int>(asSUCCESS), LoadResult, TEXT("Restore should reject an empty bytecode stream")));
 	}
 
 	TEST_METHOD(TruncatedStreamFails)
 	{
 		TUniquePtr<FAngelscriptEngine> SourceEngineOwner = CreateIsolatedCloneEngine();
-		if (!TestRunner->TestNotNull(TEXT("Restore truncated stream test should create an isolated clone test engine"), SourceEngineOwner.Get()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(SourceEngineOwner.Get(), TEXT("Restore truncated stream test should create an isolated clone test engine")));
 		FAngelscriptEngineScope EngineScope(*SourceEngineOwner);
 
 		FAngelscriptEngine& SourceEngine = *SourceEngineOwner;
@@ -211,21 +160,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 		};
 
 		asCModule* SourceModule = BuildRestoreModule(*TestRunner, SourceEngine, "RestoreTruncatedSourceModule");
-		if (!TestRunner->TestNotNull(TEXT("Restore truncated stream test should compile a source module"), SourceModule))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(SourceModule, TEXT("Restore truncated stream test should compile a source module")));
 
 		FMemoryBinaryStream Stream;
 		const int SaveResult = SourceModule->SaveByteCode(&Stream, false);
-		if (!TestRunner->TestEqual(TEXT("Restore truncated stream test should save bytecode successfully"), SaveResult, static_cast<int>(asSUCCESS)))
-		{
-			return;
-		}
-		if (!TestRunner->TestTrue(TEXT("Restore truncated stream test should emit enough bytes to truncate"), Stream.Num() > 16))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int>(asSUCCESS), SaveResult, TEXT("Restore truncated stream test should save bytecode successfully")));
+		ASSERT_THAT(IsTrue(Stream.Num() > 16, TEXT("Restore truncated stream test should emit enough bytes to truncate")));
 
 		Stream.Truncate(Stream.Num() - 16);
 		Stream.ResetReadOffset();
@@ -240,24 +180,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 		};
 
 		asCModule* RestoredModule = CreateRestoreModule(ScriptEngine, "RestoreTruncatedSourceModule");
-		if (!TestRunner->TestNotNull(TEXT("Restore truncated stream test should create a destination module"), RestoredModule))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RestoredModule, TEXT("Restore truncated stream test should create a destination module")));
 
 		bool bWasDebugInfoStripped = false;
 		TestRunner->AddExpectedErrorPlain(TEXT("Unexpected end of file"), EAutomationExpectedErrorFlags::Contains, -1);
 		const int LoadResult = RestoredModule->LoadByteCode(&Stream, &bWasDebugInfoStripped);
-		TestRunner->TestNotEqual(TEXT("Restore should reject a truncated bytecode stream"), LoadResult, static_cast<int>(asSUCCESS));
+		ASSERT_THAT(AreNotEqual(static_cast<int>(asSUCCESS), LoadResult, TEXT("Restore should reject a truncated bytecode stream")));
 	}
 
 	TEST_METHOD(FailureLeavesModuleClean)
 	{
 		TUniquePtr<FAngelscriptEngine> SourceEngineOwner = CreateIsolatedCloneEngine();
-		if (!TestRunner->TestNotNull(TEXT("Restore failure cleanup test should create an isolated clone test engine"), SourceEngineOwner.Get()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(SourceEngineOwner.Get(), TEXT("Restore failure cleanup test should create an isolated clone test engine")));
 		FAngelscriptEngineScope EngineScope(*SourceEngineOwner);
 
 		FAngelscriptEngine& SourceEngine = *SourceEngineOwner;
@@ -267,21 +201,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 		};
 
 		asCModule* SourceModule = BuildRestoreModule(*TestRunner, SourceEngine, "RestoreFailureCleanupSourceModule");
-		if (!TestRunner->TestNotNull(TEXT("Restore failure cleanup test should compile a source module"), SourceModule))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(SourceModule, TEXT("Restore failure cleanup test should compile a source module")));
 
 		FMemoryBinaryStream CompleteStream;
 		const int SaveResult = SourceModule->SaveByteCode(&CompleteStream, false);
-		if (!TestRunner->TestEqual(TEXT("Restore failure cleanup test should save bytecode successfully"), SaveResult, static_cast<int>(asSUCCESS)))
-		{
-			return;
-		}
-		if (!TestRunner->TestTrue(TEXT("Restore failure cleanup test should emit enough bytes to truncate"), CompleteStream.Num() > 16))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int>(asSUCCESS), SaveResult, TEXT("Restore failure cleanup test should save bytecode successfully")));
+		ASSERT_THAT(IsTrue(CompleteStream.Num() > 16, TEXT("Restore failure cleanup test should emit enough bytes to truncate")));
 
 		FMemoryBinaryStream TruncatedStream = CompleteStream;
 		TruncatedStream.Truncate(TruncatedStream.Num() - 16);
@@ -297,57 +222,30 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 		};
 
 		asCModule* RestoredModule = CreateRestoreModule(ScriptEngine, "RestoreFailureCleanupSourceModule");
-		if (!TestRunner->TestNotNull(TEXT("Restore failure cleanup test should create a destination module"), RestoredModule))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RestoredModule, TEXT("Restore failure cleanup test should create a destination module")));
 
 		bool bWasDebugInfoStripped = false;
 		TestRunner->AddExpectedErrorPlain(TEXT("Unexpected end of file"), EAutomationExpectedErrorFlags::Contains, -1);
 		const int FailedLoadResult = RestoredModule->LoadByteCode(&TruncatedStream, &bWasDebugInfoStripped);
-		if (!TestRunner->TestNotEqual(TEXT("Restore failure cleanup test should reject the truncated bytecode stream"), FailedLoadResult, static_cast<int>(asSUCCESS)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreNotEqual(static_cast<int>(asSUCCESS), FailedLoadResult, TEXT("Restore failure cleanup test should reject the truncated bytecode stream")));
 
-		if (!TestRunner->TestEqual(TEXT("Restore failure cleanup test should leave the failed module with zero functions"), RestoredModule->GetFunctionCount(), 0))
-		{
-			return;
-		}
-		if (!TestRunner->TestEqual(TEXT("Restore failure cleanup test should leave the failed module with zero globals"), RestoredModule->GetGlobalVarCount(), 0))
-		{
-			return;
-		}
-		if (!TestRunner->TestNull(TEXT("Restore failure cleanup test should not leave the failed function declaration behind"), RestoredModule->GetFunctionByDecl("int Test()")))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(0, RestoredModule->GetFunctionCount(), TEXT("Restore failure cleanup test should leave the failed module with zero functions")));
+		ASSERT_THAT(AreEqual(0, RestoredModule->GetGlobalVarCount(), TEXT("Restore failure cleanup test should leave the failed module with zero globals")));
+		ASSERT_THAT(IsNull(RestoredModule->GetFunctionByDecl("int Test()"), TEXT("Restore failure cleanup test should not leave the failed function declaration behind")));
 
 		RestoredModule->Discard();
 		CompleteStream.ResetReadOffset();
 		bWasDebugInfoStripped = true;
 
 		asCModule* RetryModule = CreateRestoreModule(ScriptEngine, "RestoreFailureCleanupSourceModule");
-		if (!TestRunner->TestNotNull(TEXT("Restore failure cleanup test should recreate the destination module after failure"), RetryModule))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RetryModule, TEXT("Restore failure cleanup test should recreate the destination module after failure")));
 
 		const int RetryLoadResult = RetryModule->LoadByteCode(&CompleteStream, &bWasDebugInfoStripped);
-		if (!TestRunner->TestEqual(TEXT("Restore failure cleanup test should load the complete bytecode stream after retry"), RetryLoadResult, static_cast<int>(asSUCCESS)))
-		{
-			return;
-		}
-		if (!TestRunner->TestFalse(TEXT("Restore failure cleanup test should preserve debug info on the successful retry"), bWasDebugInfoStripped))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int>(asSUCCESS), RetryLoadResult, TEXT("Restore failure cleanup test should load the complete bytecode stream after retry")));
+		ASSERT_THAT(IsFalse(bWasDebugInfoStripped, TEXT("Restore failure cleanup test should preserve debug info on the successful retry")));
 
 		const int ResetGlobalsResult = RetryModule->ResetGlobalVars(nullptr);
-		if (!TestRunner->TestEqual(TEXT("Restore failure cleanup test should initialize globals before executing the retried module"), ResetGlobalsResult, static_cast<int>(asSUCCESS)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int>(asSUCCESS), ResetGlobalsResult, TEXT("Restore failure cleanup test should initialize globals before executing the retried module")));
 
 		int32 RestoredValue = 0;
 		if (!ExecuteRestoreFunction(*TestRunner, SourceEngine, *RetryModule, RestoredValue))
@@ -355,7 +253,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Restore failure cleanup test should execute the retried module successfully"), RestoredValue, 42);
+		ASSERT_THAT(AreEqual(42, RestoredValue, TEXT("Restore failure cleanup test should execute the retried module successfully")));
 	}
 };
 

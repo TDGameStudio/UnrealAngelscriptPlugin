@@ -37,7 +37,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKVariableScopeTests, "Angelscript.TestModule
 	TEST_METHOD(Isolation)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		// Variable declared in inner scope should not be visible in outer scope
 		Engine.ResetMessages();
@@ -49,13 +49,13 @@ int Entry()
 	return x;
 }
 )");
-		TestRunner->TestNull(TEXT("Access to out-of-scope variable should fail compilation"), M);
+		ASSERT_THAT(IsNull(M, TEXT("Access to out-of-scope variable should fail compilation")));
 	}
 
 	TEST_METHOD(Shadowing)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		FScopedNativeModule M(*TestRunner, Engine, "ScopeShadow", R"(
 int Entry()
@@ -72,13 +72,13 @@ int Entry()
 
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
-		TestRunner->TestEqual(TEXT("Outer x should remain 10 after inner shadow"), Result, 10);
+		ASSERT_THAT(AreEqual(10, Result, TEXT("Outer x should remain 10 after inner shadow")));
 	}
 
 	TEST_METHOD(NestedBlocks)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		FScopedNativeModule M(*TestRunner, Engine, "ScopeNested", R"(
 int Entry()
@@ -97,13 +97,13 @@ int Entry()
 
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
-		TestRunner->TestEqual(TEXT("sum = 1+2+4+3 = 10"), Result, 10);
+		ASSERT_THAT(AreEqual(10, Result, TEXT("sum = 1+2+4+3 = 10")));
 	}
 
 	TEST_METHOD(ForInitScope)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		// Loop counter declared in for-init is scoped to the loop; a same-named
 		// outer variable is unaffected, and two sequential loops may reuse the name.
@@ -124,13 +124,14 @@ int Entry()
 
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
-		TestRunner->TestEqual(TEXT("for-init counters stay loop-scoped; outer i preserved (13+100=113)"), Result, 113);
+		ASSERT_THAT(AreEqual(113, Result,
+			TEXT("for-init counters stay loop-scoped; outer i preserved (13+100=113)")));
 	}
 
 	TEST_METHOD(ForInitLeakRejected)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		// A for-init counter must not be visible after the loop body.
 		Engine.ResetMessages();
@@ -142,13 +143,13 @@ int Entry()
 	return k;
 }
 )");
-		TestRunner->TestNull(TEXT("Referencing a for-init counter after the loop should fail compilation"), M);
+		ASSERT_THAT(IsNull(M, TEXT("Referencing a for-init counter after the loop should fail compilation")));
 	}
 
 	TEST_METHOD(DeepShadowing)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		// Each nested block may re-shadow the same name; the innermost value is
 		// used within its block, and each outer value is restored on block exit.
@@ -180,13 +181,13 @@ int Entry()
 
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
-		TestRunner->TestEqual(TEXT("four-level shadow sums 4+3+2+1 = 10"), Result, 10);
+		ASSERT_THAT(AreEqual(10, Result, TEXT("four-level shadow sums 4+3+2+1 = 10")));
 	}
 
 	TEST_METHOD(WhileAndIfBlockScope)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		// Variables declared inside while/if bodies are block-scoped; the outer
 		// accumulator survives across iterations.
@@ -216,13 +217,14 @@ int Entry()
 
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
-		TestRunner->TestEqual(TEXT("while/if block-scoped locals; outer sum = 12+100 = 112"), Result, 112);
+		ASSERT_THAT(AreEqual(112, Result,
+			TEXT("while/if block-scoped locals; outer sum = 12+100 = 112")));
 	}
 
 	TEST_METHOD(IfBlockLeakRejected)
 	{
 		asIScriptEngine* SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		// A variable declared inside an if body must not be visible afterward.
 		Engine.ResetMessages();
@@ -234,7 +236,7 @@ int Entry()
 	return inner;
 }
 )");
-		TestRunner->TestNull(TEXT("Referencing an if-body local after the block should fail compilation"), M);
+		ASSERT_THAT(IsNull(M, TEXT("Referencing an if-body local after the block should fail compilation")));
 	}
 };
 

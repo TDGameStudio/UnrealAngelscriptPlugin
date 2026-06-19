@@ -36,7 +36,8 @@ namespace PropertyAccessorRemovalTest
 	{
 		OutEngine = CreateEditorScanFreeFullEngine();
 		OutEnginePtr = OutEngine.Get();
-		return Test.TestNotNull(TEXT("Accessor removal test should create an editor-configured scan-free engine"), OutEnginePtr);
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsNotNull(OutEnginePtr, TEXT("Accessor removal test should create an editor-configured scan-free engine"));
 	}
 
 	static const FAngelscriptCompileTraceDiagnosticSummary* FindDiagnosticContaining(
@@ -72,9 +73,10 @@ namespace PropertyAccessorRemovalTest
 			OutSummary,
 			true);
 
-		const bool bPassed = Test.TestTrue(
-			*FString::Printf(TEXT("Module '%s' should compile"), *ModuleName.ToString()),
-			bCompiled);
+		FNoDiscardAsserter Assert(Test);
+		const bool bPassed = Assert.IsTrue(
+			bCompiled,
+			*FString::Printf(TEXT("Module '%s' should compile"), *ModuleName.ToString()));
 
 		if (!bPassed)
 		{
@@ -140,7 +142,7 @@ class AAutoAccessorRawFieldScriptActor : AAngelscriptPropertyAccessorCarrier
 		}
 
 		UClass* ScriptClass = FindGeneratedClass(&Engine, TEXT("AAutoAccessorRawFieldScriptActor"));
-		if (!TestRunner->TestNotNull(TEXT("Raw-field test should materialize the generated class"), ScriptClass))
+		if (!this->Assert.IsNotNull(ScriptClass, TEXT("Raw-field test should materialize the generated class")))
 		{
 			return;
 		}
@@ -152,7 +154,7 @@ class AAutoAccessorRawFieldScriptActor : AAngelscriptPropertyAccessorCarrier
 		}
 
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Raw-field test should spawn the generated actor"), Actor))
+		if (!this->Assert.IsNotNull(Actor, TEXT("Raw-field test should spawn the generated actor")))
 		{
 			return;
 		}
@@ -164,7 +166,7 @@ class AAutoAccessorRawFieldScriptActor : AAngelscriptPropertyAccessorCarrier
 		}
 
 		const int32 Result = Invoker.CallAndReturn<int32>(INDEX_NONE);
-		TestRunner->TestEqual(TEXT("Raw-field access should execute successfully"), Result, 1);
+		ASSERT_THAT(AreEqual(1, Result, TEXT("Raw-field access should execute successfully")));
 	}
 
 	TEST_METHOD(RawFieldSyntheticGetterDoesNotCompile)
@@ -205,12 +207,12 @@ class AAutoAccessorRawFieldScriptActorFailure : AAngelscriptPropertyAccessorCarr
 			Summary,
 			true);
 
-		TestRunner->TestFalse(TEXT("Synthetic getter access should stop compiling for raw fields"), bCompiled);
-		TestRunner->TestFalse(TEXT("Synthetic getter access should not report success in the compile summary"), Summary.bCompileSucceeded);
-		TestRunner->TestEqual(TEXT("Synthetic getter access should surface a compile error"), Summary.CompileResult, ECompileResult::Error);
-		TestRunner->TestNotNull(
-			TEXT("Synthetic getter failure should mention GetField in the diagnostic stream"),
-			PropertyAccessorRemovalTest::FindDiagnosticContaining(Summary.Diagnostics, TEXT("GetField")));
+		ASSERT_THAT(IsFalse(bCompiled, TEXT("Synthetic getter access should stop compiling for raw fields")));
+		ASSERT_THAT(IsFalse(Summary.bCompileSucceeded, TEXT("Synthetic getter access should not report success in the compile summary")));
+		ASSERT_THAT(AreEqual(ECompileResult::Error, Summary.CompileResult, TEXT("Synthetic getter access should surface a compile error")));
+		ASSERT_THAT(IsNotNull(
+			PropertyAccessorRemovalTest::FindDiagnosticContaining(Summary.Diagnostics, TEXT("GetField")),
+			TEXT("Synthetic getter failure should mention GetField in the diagnostic stream")));
 	}
 
 	TEST_METHOD(BlueprintGetterRemainsCallableWithoutSyntheticAlias)
@@ -250,7 +252,7 @@ class AAutoAccessorGetterScriptActor : AAngelscriptPropertyAccessorCarrier
 		}
 
 		UClass* ScriptClass = FindGeneratedClass(&Engine, TEXT("AAutoAccessorGetterScriptActor"));
-		if (!TestRunner->TestNotNull(TEXT("BlueprintGetter test should materialize the generated class"), ScriptClass))
+		if (!this->Assert.IsNotNull(ScriptClass, TEXT("BlueprintGetter test should materialize the generated class")))
 		{
 			return;
 		}
@@ -262,7 +264,7 @@ class AAutoAccessorGetterScriptActor : AAngelscriptPropertyAccessorCarrier
 		}
 
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("BlueprintGetter test should spawn the generated actor"), Actor))
+		if (!this->Assert.IsNotNull(Actor, TEXT("BlueprintGetter test should spawn the generated actor")))
 		{
 			return;
 		}
@@ -274,7 +276,7 @@ class AAutoAccessorGetterScriptActor : AAngelscriptPropertyAccessorCarrier
 		}
 
 		const int32 Result = Invoker.CallAndReturn<int32>(INDEX_NONE);
-		TestRunner->TestEqual(TEXT("Underlying BlueprintGetter UFUNCTION should remain callable directly"), Result, 7);
+		ASSERT_THAT(AreEqual(7, Result, TEXT("Underlying BlueprintGetter UFUNCTION should remain callable directly")));
 	}
 
 	TEST_METHOD(BlueprintGetterSyntheticAliasDoesNotCompile)
@@ -315,12 +317,12 @@ class AAutoAccessorGetterScriptActorFailure : AAngelscriptPropertyAccessorCarrie
 			Summary,
 			true);
 
-		TestRunner->TestFalse(TEXT("BlueprintGetter synthetic alias should stop compiling"), bCompiled);
-		TestRunner->TestFalse(TEXT("BlueprintGetter synthetic alias should not report success in the compile summary"), Summary.bCompileSucceeded);
-		TestRunner->TestEqual(TEXT("BlueprintGetter synthetic alias should surface a compile error"), Summary.CompileResult, ECompileResult::Error);
-		TestRunner->TestNotNull(
-			TEXT("BlueprintGetter alias failure should mention GetScore in the diagnostic stream"),
-			PropertyAccessorRemovalTest::FindDiagnosticContaining(Summary.Diagnostics, TEXT("GetScore")));
+		ASSERT_THAT(IsFalse(bCompiled, TEXT("BlueprintGetter synthetic alias should stop compiling")));
+		ASSERT_THAT(IsFalse(Summary.bCompileSucceeded, TEXT("BlueprintGetter synthetic alias should not report success in the compile summary")));
+		ASSERT_THAT(AreEqual(ECompileResult::Error, Summary.CompileResult, TEXT("BlueprintGetter synthetic alias should surface a compile error")));
+		ASSERT_THAT(IsNotNull(
+			PropertyAccessorRemovalTest::FindDiagnosticContaining(Summary.Diagnostics, TEXT("GetScore")),
+			TEXT("BlueprintGetter alias failure should mention GetScore in the diagnostic stream")));
 	}
 
 	TEST_METHOD(PropertyDecoratorDoesNotCompile)
@@ -358,12 +360,12 @@ class FAutoAccessorDecoratorFailure
 			Summary,
 			true);
 
-		TestRunner->TestFalse(TEXT("property decorator syntax should stop compiling"), bCompiled);
-		TestRunner->TestFalse(TEXT("property decorator syntax should not report success in the compile summary"), Summary.bCompileSucceeded);
-		TestRunner->TestEqual(TEXT("property decorator syntax should surface a compile error"), Summary.CompileResult, ECompileResult::Error);
-		TestRunner->TestNotNull(
-			TEXT("property decorator failure should mention the removal diagnostic"),
-			PropertyAccessorRemovalTest::FindDiagnosticContaining(Summary.Diagnostics, TEXT("property' decorator has been removed")));
+		ASSERT_THAT(IsFalse(bCompiled, TEXT("property decorator syntax should stop compiling")));
+		ASSERT_THAT(IsFalse(Summary.bCompileSucceeded, TEXT("property decorator syntax should not report success in the compile summary")));
+		ASSERT_THAT(AreEqual(ECompileResult::Error, Summary.CompileResult, TEXT("property decorator syntax should surface a compile error")));
+		ASSERT_THAT(IsNotNull(
+			PropertyAccessorRemovalTest::FindDiagnosticContaining(Summary.Diagnostics, TEXT("property' decorator has been removed")),
+			TEXT("property decorator failure should mention the removal diagnostic")));
 	}
 
 	TEST_METHOD(VirtualPropertyBlockDoesNotCompile)
@@ -398,12 +400,12 @@ class FAutoAccessorVirtualPropertyFailure
 			Summary,
 			true);
 
-		TestRunner->TestFalse(TEXT("virtual property syntax should stop compiling"), bCompiled);
-		TestRunner->TestFalse(TEXT("virtual property syntax should not report success in the compile summary"), Summary.bCompileSucceeded);
-		TestRunner->TestEqual(TEXT("virtual property syntax should surface a compile error"), Summary.CompileResult, ECompileResult::Error);
-		TestRunner->TestNotNull(
-			TEXT("virtual property failure should mention the removal diagnostic"),
-			PropertyAccessorRemovalTest::FindDiagnosticContaining(Summary.Diagnostics, TEXT("Virtual property syntax has been removed")));
+		ASSERT_THAT(IsFalse(bCompiled, TEXT("virtual property syntax should stop compiling")));
+		ASSERT_THAT(IsFalse(Summary.bCompileSucceeded, TEXT("virtual property syntax should not report success in the compile summary")));
+		ASSERT_THAT(AreEqual(ECompileResult::Error, Summary.CompileResult, TEXT("virtual property syntax should surface a compile error")));
+		ASSERT_THAT(IsNotNull(
+			PropertyAccessorRemovalTest::FindDiagnosticContaining(Summary.Diagnostics, TEXT("Virtual property syntax has been removed")),
+			TEXT("virtual property failure should mention the removal diagnostic")));
 	}
 };
 

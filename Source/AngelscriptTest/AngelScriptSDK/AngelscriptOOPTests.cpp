@@ -32,42 +32,30 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOOPTests, "Angelscript.TestModule.AngelScri
 	TEST_METHOD(InterfaceBridge)
 	{
 		asIScriptEngine* const ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK OOP interface test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK OOP interface test should create a standalone engine")));
 
 		const int InterfaceResult = ScriptEngine->RegisterInterface("appintf");
 		const int MethodResult = InterfaceResult >= 0
 			? ScriptEngine->RegisterInterfaceMethod("appintf", "void test()")
 			: InterfaceResult;
-		if (!TestRunner->TestTrue(TEXT("SDK OOP interface test should register the application interface"), InterfaceResult >= 0 && MethodResult >= 0))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(InterfaceResult >= 0 && MethodResult >= 0,
+			TEXT("SDK OOP interface test should register the application interface")));
 
 		const FString InterfaceDeclaration = UTF8_TO_TCHAR(ScriptEngine->GetTypeDeclaration(InterfaceResult));
-		if (!TestRunner->TestEqual(TEXT("SDK OOP interface test should preserve the registered interface declaration"), InterfaceDeclaration, FString(TEXT("appintf"))))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(FString(TEXT("appintf")), InterfaceDeclaration,
+			TEXT("SDK OOP interface test should preserve the registered interface declaration")));
 
 		asITypeInfo* InterfaceType = ScriptEngine->GetTypeInfoByName("appintf");
-		if (!TestRunner->TestNotNull(TEXT("SDK OOP interface test should expose the registered interface type"), InterfaceType))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(InterfaceType, TEXT("SDK OOP interface test should expose the registered interface type")));
 
-		TestRunner->TestEqual(TEXT("SDK OOP interface test should expose the registered interface method count"), static_cast<int32>(InterfaceType->GetMethodCount()), 1);
+		ASSERT_THAT(AreEqual(1, static_cast<int32>(InterfaceType->GetMethodCount()),
+			TEXT("SDK OOP interface test should expose the registered interface method count")));
 	}
 
 	TEST_METHOD(MixinNamespace)
 	{
 		asIScriptEngine* const ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK OOP mixin test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK OOP mixin test should create a standalone engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKOOPMixinNamespace", R"(
 struct Counter
@@ -93,16 +81,14 @@ bool ApplyMixin()
 			return;
 		}
 
-		TestRunner->TestNotNull(TEXT("SDK OOP mixin test should expose the named mixin wrapper"), GetNativeFunctionByDecl(Module, "bool ApplyMixin()"));
+		ASSERT_THAT(IsNotNull(GetNativeFunctionByDecl(Module, "bool ApplyMixin()"),
+			TEXT("SDK OOP mixin test should expose the named mixin wrapper")));
 	}
 
 	TEST_METHOD(InheritedInterfaceMethod)
 	{
 		asIScriptEngine* const ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK OOP inherited-interface-method test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK OOP inherited-interface-method test should create a standalone engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKOOPInheritedInterfaceMethod", R"(
 class B
@@ -132,7 +118,8 @@ bool TouchInheritedMember()
 			return;
 		}
 
-		TestRunner->TestNotNull(TEXT("SDK OOP inheritance test should expose the named inherited-member wrapper"), GetNativeFunctionByDecl(Module, "bool TouchInheritedMember()"));
+		ASSERT_THAT(IsNotNull(GetNativeFunctionByDecl(Module, "bool TouchInheritedMember()"),
+			TEXT("SDK OOP inheritance test should expose the named inherited-member wrapper")));
 	}
 };
 

@@ -86,10 +86,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 		};
 
 		TUniquePtr<FAngelscriptEngine> Engine = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("Extension registry no-op test should create an isolated full engine"), Engine.Get()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Engine.Get(), TEXT("Extension registry no-op test should create an isolated full engine")));
 
 		FAngelscriptEngineScope EngineScope(*Engine);
 		FRecordingEngineExtension Extension;
@@ -97,18 +94,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 
 		FAngelscriptEngineExtensionRegistry::Get().ReplayCurrentEngine();
 
-		TestRunner->TestEqual(
-			TEXT("Extension registry no-op test should not attach anything when the registry is empty"),
-			Extension.AttachCount,
-			0);
-		TestRunner->TestEqual(
-			TEXT("Extension registry no-op test should not detach anything when the registry is empty"),
-			Extension.DetachCount,
-			0);
-		TestRunner->TestEqual(
-			TEXT("Extension registry no-op test should not add extensions when replay is requested"),
-			FAngelscriptEngineExtensionRegistry::Get().NumExtensions(),
-			BaselineExtensionCount);
+		ASSERT_THAT(AreEqual(0, Extension.AttachCount, TEXT("Extension registry no-op test should not attach anything when the registry is empty")));
+		ASSERT_THAT(AreEqual(0, Extension.DetachCount, TEXT("Extension registry no-op test should not detach anything when the registry is empty")));
+		ASSERT_THAT(AreEqual(BaselineExtensionCount, FAngelscriptEngineExtensionRegistry::Get().NumExtensions(), TEXT("Extension registry no-op test should not add extensions when replay is requested")));
 	}
 
 	TEST_METHOD(LateRegistrationReplaysToCurrentEngine)
@@ -133,39 +121,21 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 		};
 
 		TUniquePtr<FAngelscriptEngine> Engine = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("Extension registry late-registration test should create an isolated full engine"), Engine.Get()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Engine.Get(), TEXT("Extension registry late-registration test should create an isolated full engine")));
 
 		FAngelscriptEngineScope EngineScope(*Engine);
 		TSharedRef<FRecordingEngineExtension> Extension = MakeShared<FRecordingEngineExtension>();
 		const int32 BaselineExtensionCount = FAngelscriptEngineExtensionRegistry::Get().NumExtensions();
 
 		const FDelegateHandle Handle = FAngelscriptEngineExtensionRegistry::Get().RegisterExtension(Extension);
-		if (!TestRunner->TestTrue(TEXT("Extension registry late-registration test should return a valid handle"), Handle.IsValid()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(Handle.IsValid(), TEXT("Extension registry late-registration test should return a valid handle")));
 
-		TestRunner->TestEqual(
-			TEXT("Extension registry late-registration test should attach the extension to the active engine immediately"),
-			Extension->AttachCount,
-			1);
-		TestRunner->TestEqual(
-			TEXT("Extension registry late-registration test should record the current engine id"),
-			Extension->AttachedEngineIds.Num(),
-			1);
-		TestRunner->TestEqual(
-			TEXT("Extension registry late-registration test should replay onto the active engine"),
-			Extension->AttachedEngineIds[0],
-			MakeEngineIdentityString(*Engine));
+		ASSERT_THAT(AreEqual(1, Extension->AttachCount, TEXT("Extension registry late-registration test should attach the extension to the active engine immediately")));
+		ASSERT_THAT(AreEqual(1, Extension->AttachedEngineIds.Num(), TEXT("Extension registry late-registration test should record the current engine id")));
+		ASSERT_THAT(AreEqual(MakeEngineIdentityString(*Engine), Extension->AttachedEngineIds[0], TEXT("Extension registry late-registration test should replay onto the active engine")));
 
 		FAngelscriptEngineExtensionRegistry::Get().UnregisterExtension(Handle);
-		TestRunner->TestEqual(
-			TEXT("Extension registry late-registration test should restore the baseline registry count after unregister"),
-			FAngelscriptEngineExtensionRegistry::Get().NumExtensions(),
-			BaselineExtensionCount);
+		ASSERT_THAT(AreEqual(BaselineExtensionCount, FAngelscriptEngineExtensionRegistry::Get().NumExtensions(), TEXT("Extension registry late-registration test should restore the baseline registry count after unregister")));
 	}
 
 	TEST_METHOD(UnregisterStopsFutureReplay)
@@ -191,11 +161,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 
 		TUniquePtr<FAngelscriptEngine> EngineA = CreateFullTestEngine();
 		TUniquePtr<FAngelscriptEngine> EngineB = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("Extension registry unregister test should create engine A"), EngineA.Get())
-			|| !TestRunner->TestNotNull(TEXT("Extension registry unregister test should create engine B"), EngineB.Get()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(EngineA.Get(), TEXT("Extension registry unregister test should create engine A")));
+		ASSERT_THAT(IsNotNull(EngineB.Get(), TEXT("Extension registry unregister test should create engine B")));
 
 		TSharedRef<FRecordingEngineExtension> Extension = MakeShared<FRecordingEngineExtension>();
 		FDelegateHandle Handle;
@@ -203,16 +170,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 		{
 			FAngelscriptEngineScope EngineScope(*EngineA);
 			Handle = FAngelscriptEngineExtensionRegistry::Get().RegisterExtension(Extension);
-			if (!TestRunner->TestTrue(TEXT("Extension registry unregister test should return a valid handle"), Handle.IsValid()))
-			{
-				return;
-			}
+			ASSERT_THAT(IsTrue(Handle.IsValid(), TEXT("Extension registry unregister test should return a valid handle")));
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Extension registry unregister test should attach the extension once before unregister"),
-			Extension->AttachCount,
-			1);
+		ASSERT_THAT(AreEqual(1, Extension->AttachCount, TEXT("Extension registry unregister test should attach the extension once before unregister")));
 
 		FAngelscriptEngineExtensionRegistry::Get().UnregisterExtension(Handle);
 
@@ -221,14 +182,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 			FAngelscriptEngineExtensionRegistry::Get().ReplayCurrentEngine();
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Extension registry unregister test should not replay unregistered extensions onto a new engine"),
-			Extension->AttachCount,
-			1);
-		TestRunner->TestEqual(
-			TEXT("Extension registry unregister test should not detach more than once when the extension is removed"),
-			Extension->DetachCount,
-			0);
+		ASSERT_THAT(AreEqual(1, Extension->AttachCount, TEXT("Extension registry unregister test should not replay unregistered extensions onto a new engine")));
+		ASSERT_THAT(AreEqual(0, Extension->DetachCount, TEXT("Extension registry unregister test should not detach more than once when the extension is removed")));
 	}
 
 	TEST_METHOD(EngineLifecycleAttachesAndDetachesRegisteredExtension)
@@ -254,51 +209,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 
 		TSharedRef<FRecordingEngineExtension> Extension = MakeShared<FRecordingEngineExtension>();
 		const FDelegateHandle Handle = FAngelscriptEngineExtensionRegistry::Get().RegisterExtension(Extension);
-		if (!TestRunner->TestTrue(TEXT("Extension registry lifecycle test should return a valid handle"), Handle.IsValid()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(Handle.IsValid(), TEXT("Extension registry lifecycle test should return a valid handle")));
 
 		FString EngineId;
 		{
 			TUniquePtr<FAngelscriptEngine> Engine = CreateFullTestEngine();
-			if (!TestRunner->TestNotNull(TEXT("Extension registry lifecycle test should create an isolated full engine"), Engine.Get()))
-			{
-				return;
-			}
+			ASSERT_THAT(IsNotNull(Engine.Get(), TEXT("Extension registry lifecycle test should create an isolated full engine")));
 
 			EngineId = MakeEngineIdentityString(*Engine);
-			TestRunner->TestEqual(
-				TEXT("Extension registry lifecycle test should attach a pre-registered extension during engine initialization"),
-				Extension->AttachCount,
-				1);
-			TestRunner->TestEqual(
-				TEXT("Extension registry lifecycle test should record the initialized engine id"),
-				Extension->AttachedEngineIds.Num(),
-				1);
+			ASSERT_THAT(AreEqual(1, Extension->AttachCount, TEXT("Extension registry lifecycle test should attach a pre-registered extension during engine initialization")));
+			ASSERT_THAT(AreEqual(1, Extension->AttachedEngineIds.Num(), TEXT("Extension registry lifecycle test should record the initialized engine id")));
 			if (Extension->AttachedEngineIds.Num() == 1)
 			{
-				TestRunner->TestEqual(
-					TEXT("Extension registry lifecycle test should attach to the initialized engine"),
-					Extension->AttachedEngineIds[0],
-					EngineId);
+				ASSERT_THAT(AreEqual(EngineId, Extension->AttachedEngineIds[0], TEXT("Extension registry lifecycle test should attach to the initialized engine")));
 			}
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Extension registry lifecycle test should detach the extension during engine shutdown"),
-			Extension->DetachCount,
-			1);
-		TestRunner->TestEqual(
-			TEXT("Extension registry lifecycle test should record the detached engine id"),
-			Extension->DetachedEngineIds.Num(),
-			1);
+		ASSERT_THAT(AreEqual(1, Extension->DetachCount, TEXT("Extension registry lifecycle test should detach the extension during engine shutdown")));
+		ASSERT_THAT(AreEqual(1, Extension->DetachedEngineIds.Num(), TEXT("Extension registry lifecycle test should record the detached engine id")));
 		if (Extension->DetachedEngineIds.Num() == 1)
 		{
-			TestRunner->TestEqual(
-				TEXT("Extension registry lifecycle test should detach from the same engine it attached to"),
-				Extension->DetachedEngineIds[0],
-				EngineId);
+			ASSERT_THAT(AreEqual(EngineId, Extension->DetachedEngineIds[0], TEXT("Extension registry lifecycle test should detach from the same engine it attached to")));
 		}
 
 		FAngelscriptEngineExtensionRegistry::Get().UnregisterExtension(Handle);

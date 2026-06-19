@@ -178,30 +178,30 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportTests,
 			PreprocessErrorCount);
 		const FString PreprocessDiagnostics = FString::Join(PreprocessMessages, TEXT("\n"));
 
-		TestRunner->TestTrue(
-			TEXT("Declared import round-trip should preprocess successfully"),
-			bPreprocessSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Declared import round-trip should keep preprocessing diagnostics empty"),
+		ASSERT_THAT(IsTrue(
+			bPreprocessSucceeded,
+			TEXT("Declared import round-trip should preprocess successfully")));
+		ASSERT_THAT(AreEqual(
+			0,
 			PreprocessErrorCount,
-			0);
-		TestRunner->TestTrue(
-			TEXT("Declared import round-trip should not accumulate preprocessing messages"),
-			PreprocessDiagnostics.IsEmpty());
-		TestRunner->TestEqual(
-			TEXT("Declared import round-trip should produce exactly two module descriptors"),
+			TEXT("Declared import round-trip should keep preprocessing diagnostics empty")));
+		ASSERT_THAT(IsTrue(
+			PreprocessDiagnostics.IsEmpty(),
+			TEXT("Declared import round-trip should not accumulate preprocessing messages")));
+		ASSERT_THAT(AreEqual(
+			2,
 			ModulesToCompile.Num(),
-			2);
+			TEXT("Declared import round-trip should produce exactly two module descriptors")));
 		if (!bPreprocessSucceeded || ModulesToCompile.Num() != 2)
 		{
 			return;
 		}
 
 		const FString ModuleOrder = CompilerPipelineImportTest::JoinModuleNames(ModulesToCompile);
-		TestRunner->TestEqual(
-			TEXT("Declared import round-trip should keep provider before consumer in compile order"),
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("Tests.Compiler.ImportSource -> Tests.Compiler.ImportConsumer")),
 			ModuleOrder,
-			FString(TEXT("Tests.Compiler.ImportSource -> Tests.Compiler.ImportConsumer")));
+			TEXT("Declared import round-trip should keep provider before consumer in compile order")));
 
 		const FAngelscriptModuleDesc* ProviderModuleDesc = CompilerPipelineImportTest::FindModuleByName(
 			ModulesToCompile,
@@ -209,12 +209,12 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportTests,
 		const FAngelscriptModuleDesc* ConsumerModuleDesc = CompilerPipelineImportTest::FindModuleByName(
 			ModulesToCompile,
 			CompilerPipelineImportTest::ConsumerModuleName.ToString());
-		if (!TestRunner->TestNotNull(
-				TEXT("Declared import round-trip should emit the provider module descriptor"),
-				ProviderModuleDesc)
-			|| !TestRunner->TestNotNull(
-				TEXT("Declared import round-trip should emit the consumer module descriptor"),
-				ConsumerModuleDesc))
+		if (!this->Assert.IsNotNull(
+				ProviderModuleDesc,
+				TEXT("Declared import round-trip should emit the provider module descriptor"))
+			|| !this->Assert.IsNotNull(
+				ConsumerModuleDesc,
+				TEXT("Declared import round-trip should emit the consumer module descriptor")))
 		{
 			return;
 		}
@@ -238,21 +238,21 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportTests,
 			TestRunner->AddInfo(FString::Printf(TEXT("Declared import diagnostics: %s"), *CompileDiagnostics));
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Declared import round-trip should compile as FullyHandled"),
+		ASSERT_THAT(AreEqual(
+			ECompileResult::FullyHandled,
 			CompileResult,
-			ECompileResult::FullyHandled);
-		TestRunner->TestEqual(
-			TEXT("Declared import round-trip should keep compile diagnostics empty"),
+			TEXT("Declared import round-trip should compile as FullyHandled")));
+		ASSERT_THAT(AreEqual(
+			0,
 			CompileErrorCount,
-			0);
-		TestRunner->TestTrue(
-			TEXT("Declared import round-trip should not accumulate compile messages"),
-			CompileDiagnostics.IsEmpty());
-		TestRunner->TestEqual(
-			TEXT("Declared import round-trip should materialize exactly two compiled modules"),
+			TEXT("Declared import round-trip should keep compile diagnostics empty")));
+		ASSERT_THAT(IsTrue(
+			CompileDiagnostics.IsEmpty(),
+			TEXT("Declared import round-trip should not accumulate compile messages")));
+		ASSERT_THAT(AreEqual(
+			2,
 			CompiledModules.Num(),
-			2);
+			TEXT("Declared import round-trip should materialize exactly two compiled modules")));
 		if (CompileResult != ECompileResult::FullyHandled || CompiledModules.Num() != 2)
 		{
 			return;
@@ -260,38 +260,38 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportTests,
 
 		TSharedPtr<FAngelscriptModuleDesc> CompiledProvider = Engine.GetModule(CompilerPipelineImportTest::ProviderModuleName.ToString());
 		TSharedPtr<FAngelscriptModuleDesc> CompiledConsumer = Engine.GetModule(CompilerPipelineImportTest::ConsumerModuleName.ToString());
-		if (!TestRunner->TestTrue(
-				TEXT("Declared import round-trip should register the compiled provider module on the engine"),
-				CompiledProvider.IsValid())
-			|| !TestRunner->TestTrue(
-				TEXT("Declared import round-trip should register the compiled consumer module on the engine"),
-				CompiledConsumer.IsValid()))
+		if (!this->Assert.IsTrue(
+				CompiledProvider.IsValid(),
+				TEXT("Declared import round-trip should register the compiled provider module on the engine"))
+			|| !this->Assert.IsTrue(
+				CompiledConsumer.IsValid(),
+				TEXT("Declared import round-trip should register the compiled consumer module on the engine")))
 		{
 			return;
 		}
 
 		asIScriptModule* ConsumerScriptModule = CompiledConsumer->ScriptModule;
-		if (!TestRunner->TestNotNull(
-			TEXT("Declared import round-trip should expose a backing script module for the consumer"),
-			ConsumerScriptModule))
+		if (!this->Assert.IsNotNull(
+			ConsumerScriptModule,
+			TEXT("Declared import round-trip should expose a backing script module for the consumer")))
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Declared import round-trip should preserve exactly one declared imported function"),
+		ASSERT_THAT(AreEqual(
+			1,
 			static_cast<int32>(ConsumerScriptModule->GetImportedFunctionCount()),
-			1);
+			TEXT("Declared import round-trip should preserve exactly one declared imported function")));
 		if (ConsumerScriptModule->GetImportedFunctionCount() > 0)
 		{
-			TestRunner->TestEqual(
-				TEXT("Declared import round-trip should preserve the imported function source module"),
+			ASSERT_THAT(AreEqual(
+				CompilerPipelineImportTest::ProviderModuleName.ToString(),
 				FString(UTF8_TO_TCHAR(ConsumerScriptModule->GetImportedFunctionSourceModule(0))),
-				CompilerPipelineImportTest::ProviderModuleName.ToString());
-			TestRunner->TestEqual(
-				TEXT("Declared import round-trip should preserve the imported function declaration"),
+				TEXT("Declared import round-trip should preserve the imported function source module")));
+			ASSERT_THAT(AreEqual(
+				CompilerPipelineImportTest::ImportedFunctionDeclaration,
 				FString(UTF8_TO_TCHAR(ConsumerScriptModule->GetImportedFunctionDeclaration(0))),
-				CompilerPipelineImportTest::ImportedFunctionDeclaration);
+				TEXT("Declared import round-trip should preserve the imported function declaration")));
 		}
 
 		int32 EntryResult = 0;
@@ -301,15 +301,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportTests,
 			CompilerPipelineImportTest::ConsumerModuleName,
 			CompilerPipelineImportTest::EntryFunctionDeclaration,
 			EntryResult);
-		TestRunner->TestTrue(
-			TEXT("Declared import round-trip should execute the consumer entry point"),
-			bExecuted);
+		ASSERT_THAT(IsTrue(
+			bExecuted,
+			TEXT("Declared import round-trip should execute the consumer entry point")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(
-				TEXT("Declared import round-trip should route execution through the bound imported function"),
+			ASSERT_THAT(AreEqual(
+				77,
 				EntryResult,
-				77);
+				TEXT("Declared import round-trip should route execution through the bound imported function")));
 		}
 
 		}
@@ -397,17 +397,17 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportTests,
 				PreprocessErrorCount);
 			const FString PreprocessDiagnostics = FString::Join(PreprocessMessages, TEXT("\n"));
 
-			TestRunner->TestTrue(
-				FString::Printf(TEXT("%s declared-import diagnostics test case should preprocess successfully"), TestCase.Label),
-				bPreprocessSucceeded);
-			TestRunner->TestEqual(
-				FString::Printf(TEXT("%s declared-import diagnostics test case should keep preprocessing diagnostics empty"), TestCase.Label),
+			ASSERT_THAT(IsTrue(
+				bPreprocessSucceeded,
+				FString::Printf(TEXT("%s declared-import diagnostics test case should preprocess successfully"), TestCase.Label)));
+			ASSERT_THAT(AreEqual(
+				0,
 				PreprocessErrorCount,
-				0);
-			TestRunner->TestEqual(
-				FString::Printf(TEXT("%s declared-import diagnostics test case should produce the expected module descriptor count"), TestCase.Label),
+				FString::Printf(TEXT("%s declared-import diagnostics test case should keep preprocessing diagnostics empty"), TestCase.Label)));
+			ASSERT_THAT(AreEqual(
+				TestCase.ExpectedModuleDescCount,
 				ModulesToCompile.Num(),
-				TestCase.ExpectedModuleDescCount);
+				FString::Printf(TEXT("%s declared-import diagnostics test case should produce the expected module descriptor count"), TestCase.Label)));
 			if (!PreprocessDiagnostics.IsEmpty()) { TestRunner->AddInfo(FString::Printf(TEXT("%s preprocessor diagnostics: %s"), TestCase.Label, *PreprocessDiagnostics)); }
 			if (!bPreprocessSucceeded || ModulesToCompile.Num() != TestCase.ExpectedModuleDescCount) { return; }
 
@@ -428,42 +428,42 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportTests,
 			const FString CompileDiagnostics = FString::Join(CompileMessages, TEXT("\n"));
 			if (!CompileDiagnostics.IsEmpty()) { TestRunner->AddInfo(FString::Printf(TEXT("%s compile diagnostics: %s"), TestCase.Label, *CompileDiagnostics)); }
 
-			TestRunner->TestEqual(
-				FString::Printf(TEXT("%s declared-import diagnostics test case should fail compilation"), TestCase.Label),
+			ASSERT_THAT(AreEqual(
+				ECompileResult::Error,
 				CompileResult,
-				ECompileResult::Error);
-			TestRunner->TestEqual(
-				FString::Printf(TEXT("%s declared-import diagnostics test case should keep the expected number of compiled module descriptors"), TestCase.Label),
+				FString::Printf(TEXT("%s declared-import diagnostics test case should fail compilation"), TestCase.Label)));
+			ASSERT_THAT(AreEqual(
+				TestCase.ExpectedCompiledModuleCount,
 				CompiledModules.Num(),
-				TestCase.ExpectedCompiledModuleCount);
-			TestRunner->TestTrue(
-				FString::Printf(TEXT("%s declared-import diagnostics test case should capture at least one compile error"), TestCase.Label),
-				CompileErrorCount > 0);
-			TestRunner->TestFalse(
-				FString::Printf(TEXT("%s declared-import diagnostics test case should keep the consumer module inactive after the failed compile"), TestCase.Label),
-				Engine.GetModule(TestCase.ConsumerModuleName.ToString()).IsValid());
+				FString::Printf(TEXT("%s declared-import diagnostics test case should keep the expected number of compiled module descriptors"), TestCase.Label)));
+			ASSERT_THAT(IsTrue(
+				CompileErrorCount > 0,
+				FString::Printf(TEXT("%s declared-import diagnostics test case should capture at least one compile error"), TestCase.Label)));
+			ASSERT_THAT(IsFalse(
+				Engine.GetModule(TestCase.ConsumerModuleName.ToString()).IsValid(),
+				FString::Printf(TEXT("%s declared-import diagnostics test case should keep the consumer module inactive after the failed compile"), TestCase.Label)));
 			if (!TestCase.ProviderRelativeScriptPath.IsEmpty())
-				TestRunner->TestFalse(
-					FString::Printf(TEXT("%s declared-import diagnostics test case should avoid swapping in the provider when the batch fails"), TestCase.Label),
-					Engine.GetModule(TestCase.ProviderModuleName.ToString()).IsValid());
+				ASSERT_THAT(IsFalse(
+					Engine.GetModule(TestCase.ProviderModuleName.ToString()).IsValid(),
+					FString::Printf(TEXT("%s declared-import diagnostics test case should avoid swapping in the provider when the batch fails"), TestCase.Label)));
 
 			const FAngelscriptEngine::FDiagnostic* MatchingDiagnostic = CompilerPipelineImportTest::FindMatchingErrorDiagnostic(
 				Engine,
 				ConsumerAbsoluteScriptPath,
 				TestCase.ExpectedDiagnosticFragment);
-			TestRunner->TestNotNull(
-				FString::Printf(TEXT("%s declared-import diagnostics test case should attach the expected error to the consumer file"), TestCase.Label),
-				MatchingDiagnostic);
+			ASSERT_THAT(IsNotNull(
+				MatchingDiagnostic,
+				FString::Printf(TEXT("%s declared-import diagnostics test case should attach the expected error to the consumer file"), TestCase.Label)));
 			if (MatchingDiagnostic != nullptr)
 			{
-				TestRunner->TestEqual(
-					FString::Printf(TEXT("%s declared-import diagnostics test case should keep the diagnostic row pinned to the import line"), TestCase.Label),
+				ASSERT_THAT(AreEqual(
+					TestCase.ExpectedDiagnosticRow,
 					MatchingDiagnostic->Row,
-					TestCase.ExpectedDiagnosticRow);
-				TestRunner->TestEqual(
-					FString::Printf(TEXT("%s declared-import diagnostics test case should keep the diagnostic column pinned to the import line start"), TestCase.Label),
+					FString::Printf(TEXT("%s declared-import diagnostics test case should keep the diagnostic row pinned to the import line"), TestCase.Label)));
+				ASSERT_THAT(AreEqual(
+					1,
 					MatchingDiagnostic->Column,
-					1);
+					FString::Printf(TEXT("%s declared-import diagnostics test case should keep the diagnostic column pinned to the import line start"), TestCase.Label)));
 			}
 		}
 

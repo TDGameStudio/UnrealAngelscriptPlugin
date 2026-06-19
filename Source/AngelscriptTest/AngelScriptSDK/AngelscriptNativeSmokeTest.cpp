@@ -31,10 +31,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeSmokeTest,
 	TEST_METHOD(Smoke)
 	{
 		asIScriptEngine* const ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Native smoke test should create a standalone AngelScript engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Native smoke test should create a standalone AngelScript engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "NativeSmoke", "int Test() { return 1; }");
 		if (!Module.IsValid())
@@ -44,22 +41,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeSmokeTest,
 		}
 
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, "int Test()");
-		if (!TestRunner->TestNotNull(TEXT("Native smoke test should resolve the compiled function by declaration"), Function))
+		if (!this->Assert.IsNotNull(Function, TEXT("Native smoke test should resolve the compiled function by declaration")))
 		{
 			TestRunner->AddInfo(FString::Printf(TEXT("Native smoke module functions: %s"), *CollectFunctionDeclarations(Module)));
 			return;
 		}
 
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("Native smoke test should create a native execution context"), Context))
+		ASSERT_THAT(IsNotNull(Context, TEXT("Native smoke test should create a native execution context")));
+		ON_SCOPE_EXIT
 		{
-			return;
-		}
+			Context->Release();
+		};
 
 		const int ExecuteResult = PrepareAndExecute(Context, Function);
-		TestRunner->TestEqual(TEXT("Native smoke test should finish execution successfully"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED));
-		TestRunner->TestEqual(TEXT("Native smoke test should return the expected integer result"), static_cast<int32>(Context->GetReturnDWord()), 1);
-		Context->Release();
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_FINISHED), ExecuteResult,
+			TEXT("Native smoke test should finish execution successfully")));
+		ASSERT_THAT(AreEqual(1, static_cast<int32>(Context->GetReturnDWord()),
+			TEXT("Native smoke test should return the expected integer result")));
 	}
 };
 

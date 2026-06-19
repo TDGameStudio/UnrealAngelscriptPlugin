@@ -13,6 +13,29 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
+namespace AngelscriptDelegateTests_Private
+{
+	static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsFalse(bActual, Message);
+	}
+
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.AreEqual(Expected, Actual, Message);
+	}
+
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsNotNull(Value, Message);
+	}
+}
+
 namespace
 {
 	struct FTestCaseIntStringParams
@@ -30,6 +53,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDelegateUnicastTest,
 	"Angelscript.TestModule.Delegate.Unicast",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		return AngelscriptDelegateTests_Private::CheckNotNull(Test, Message, Value);
+	}
+
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -75,22 +104,22 @@ class ATestDelegateUnicast : AActor
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		BeginPlayActor(Engine, *Actor);
 
 		UAngelscriptNativeScriptTestObject* NativeReceiver = NewObject<UAngelscriptNativeScriptTestObject>(GetTransientPackage());
-		if (!TestRunner->TestNotNull(TEXT("Native receiver should be created"), NativeReceiver)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Native receiver should be created"), NativeReceiver)) return;
 		NativeReceiver->NameCounts.Reset();
 
 		FDelegateProperty* DelegateProperty = FindFProperty<FDelegateProperty>(Actor->GetClass(), TEXT("OnHealthChanged"));
-		if (!TestRunner->TestNotNull(TEXT("Delegate property should exist"), DelegateProperty)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Delegate property should exist"), DelegateProperty)) return;
 
 		FScriptDelegate BoundDelegate;
 		BoundDelegate.BindUFunction(NativeReceiver, TEXT("SetIntStringFromDelegate"));
 		*DelegateProperty->ContainerPtrToValuePtr<FScriptDelegate>(Actor) = BoundDelegate;
 
 		UFunction* TriggerFunction = FindGeneratedFunction(ScriptClass, TEXT("TriggerHealthChanged"));
-		if (!TestRunner->TestNotNull(TEXT("Trigger function should exist"), TriggerFunction)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Trigger function should exist"), TriggerFunction)) return;
 
 		FTestCaseIntStringParams Params;
 		Params.Value = 77;
@@ -100,8 +129,8 @@ class ATestDelegateUnicast : AActor
 			Actor->ProcessEvent(TriggerFunction, &Params);
 		}
 
-		TestRunner->TestEqual(TEXT("Unicast Execute should invoke bound C++ callback with correct parameters"),
-			NativeReceiver->NameCounts.FindRef(TEXT("Unicast")), 77);
+		ASSERT_THAT(AreEqual(77, NativeReceiver->NameCounts.FindRef(TEXT("Unicast")),
+			TEXT("Unicast Execute should invoke bound C++ callback with correct parameters")));
 	}
 
 	TEST_METHOD(IsBoundReturnsFalseWhenUnbound)
@@ -137,13 +166,13 @@ class ATestDelegateIsBound : AActor
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		BeginPlayActor(Engine, *Actor);
 
 		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("RunIsBoundTest")));
 		if (!Invoker.IsValid()) return;
-		TestRunner->TestEqual(TEXT("IsBound should return false when delegate has no binding"),
-			Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+		ASSERT_THAT(AreEqual(1, Invoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("IsBound should return false when delegate has no binding")));
 	}
 
 	TEST_METHOD(ClearRemovesBinding)
@@ -198,13 +227,13 @@ class ATestDelegateClear : AActor
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		BeginPlayActor(Engine, *Actor);
 
 		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("RunClearTest")));
 		if (!Invoker.IsValid()) return;
-		TestRunner->TestEqual(TEXT("Clear should unbind the delegate after a successful Execute"),
-			Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+		ASSERT_THAT(AreEqual(1, Invoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("Clear should unbind the delegate after a successful Execute")));
 	}
 
 	TEST_METHOD(GetUObjectReturnsTarget)
@@ -251,13 +280,13 @@ class ATestDelegateGetUObject : AActor
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		BeginPlayActor(Engine, *Actor);
 
 		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("RunGetUObjectTest")));
 		if (!Invoker.IsValid()) return;
-		TestRunner->TestEqual(TEXT("GetUObject should return null when unbound and target when bound"),
-			Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+		ASSERT_THAT(AreEqual(1, Invoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("GetUObject should return null when unbound and target when bound")));
 	}
 
 	TEST_METHOD(SignatureMismatchDoesNotInvoke)
@@ -294,22 +323,22 @@ class ATestDelegateUnicastSigMismatch : AActor
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		BeginPlayActor(Engine, *Actor);
 
 		UAngelscriptNativeScriptTestObject* NativeReceiver = NewObject<UAngelscriptNativeScriptTestObject>(GetTransientPackage());
-		if (!TestRunner->TestNotNull(TEXT("Native receiver should be created"), NativeReceiver)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Native receiver should be created"), NativeReceiver)) return;
 		NativeReceiver->bNativeFlag = false;
 
 		FDelegateProperty* DelegateProperty = FindFProperty<FDelegateProperty>(Actor->GetClass(), TEXT("OnHealthChanged"));
-		if (!TestRunner->TestNotNull(TEXT("Delegate property should exist"), DelegateProperty)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Delegate property should exist"), DelegateProperty)) return;
 
 		FScriptDelegate BoundDelegate;
 		BoundDelegate.BindUFunction(NativeReceiver, TEXT("MarkNativeFlagFromDelegate"));
 		*DelegateProperty->ContainerPtrToValuePtr<FScriptDelegate>(Actor) = BoundDelegate;
 
 		UFunction* TriggerFunction = FindGeneratedFunction(ScriptClass, TEXT("TriggerHealthChanged"));
-		if (!TestRunner->TestNotNull(TEXT("Trigger function should exist"), TriggerFunction)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Trigger function should exist"), TriggerFunction)) return;
 
 		TestRunner->AddExpectedError(TEXT("Signature mismatch"), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(TEXT("Angelscript"), EAutomationExpectedErrorFlags::Contains, 0);
@@ -322,8 +351,8 @@ class ATestDelegateUnicastSigMismatch : AActor
 			Actor->ProcessEvent(TriggerFunction, &Params);
 		}
 
-		TestRunner->TestFalse(TEXT("Signature-mismatched unicast should not invoke zero-arg native receiver"),
-			NativeReceiver->bNativeFlag);
+		ASSERT_THAT(IsFalse(NativeReceiver->bNativeFlag,
+			TEXT("Signature-mismatched unicast should not invoke zero-arg native receiver")));
 	}
 };
 
@@ -335,6 +364,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDelegateMulticastTest,
 	"Angelscript.TestModule.Delegate.Multicast",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		return AngelscriptDelegateTests_Private::CheckNotNull(Test, Message, Value);
+	}
+
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -386,14 +421,14 @@ class ATestDelegateMulticast : AActor
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		BeginPlayActor(Engine, *Actor);
 
 		FMulticastInlineDelegateProperty* MulticastProperty = FindFProperty<FMulticastInlineDelegateProperty>(Actor->GetClass(), TEXT("OnDamaged"));
-		if (!TestRunner->TestNotNull(TEXT("Multicast delegate property should exist"), MulticastProperty)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Multicast delegate property should exist"), MulticastProperty)) return;
 
 		FMulticastScriptDelegate* MulticastDelegate = MulticastProperty->ContainerPtrToValuePtr<FMulticastScriptDelegate>(Actor);
-		if (!TestRunner->TestNotNull(TEXT("Multicast delegate storage should exist"), MulticastDelegate)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Multicast delegate storage should exist"), MulticastDelegate)) return;
 
 		FTestCaseIntStringParams Params;
 		Params.Value = 33;
@@ -405,8 +440,8 @@ class ATestDelegateMulticast : AActor
 
 		int32 EventTriggerCount = 0;
 		if (!GetByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EventTriggerCount"), EventTriggerCount)) return;
-		TestRunner->TestTrue(TEXT("Multicast Broadcast from C++ should invoke the script handler"),
-			EventTriggerCount > 0);
+		ASSERT_THAT(IsTrue(EventTriggerCount > 0,
+			TEXT("Multicast Broadcast from C++ should invoke the script handler")));
 	}
 
 	TEST_METHOD(AddUFunctionAndBroadcastFromScript)
@@ -462,13 +497,13 @@ class ATestDelegateMulticastScript : AActor
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		BeginPlayActor(Engine, *Actor);
 
 		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("RunMulticastTest")));
 		if (!Invoker.IsValid()) return;
-		TestRunner->TestEqual(TEXT("AddUFunction + Broadcast from script should accumulate values"),
-			Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+		ASSERT_THAT(AreEqual(1, Invoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("AddUFunction + Broadcast from script should accumulate values")));
 	}
 
 	TEST_METHOD(MultipleSubscribers)
@@ -529,13 +564,13 @@ class ATestDelegateMultiSub : AActor
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		BeginPlayActor(Engine, *Actor);
 
 		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("RunMultiSubTest")));
 		if (!Invoker.IsValid()) return;
-		TestRunner->TestEqual(TEXT("Multiple subscribers should all receive each Broadcast"),
-			Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+		ASSERT_THAT(AreEqual(1, Invoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("Multiple subscribers should all receive each Broadcast")));
 	}
 
 	TEST_METHOD(UnbindRemovesSpecificSubscriber)
@@ -594,13 +629,13 @@ class ATestDelegateUnbind : AActor
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		BeginPlayActor(Engine, *Actor);
 
 		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("RunUnbindTest")));
 		if (!Invoker.IsValid()) return;
-		TestRunner->TestEqual(TEXT("Unbind should remove only the specified handler"),
-			Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+		ASSERT_THAT(AreEqual(1, Invoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("Unbind should remove only the specified handler")));
 	}
 
 	TEST_METHOD(ClearRemovesAllSubscribers)
@@ -653,13 +688,13 @@ class ATestDelegateMCClear : AActor
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		BeginPlayActor(Engine, *Actor);
 
 		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("RunClearTest")));
 		if (!Invoker.IsValid()) return;
-		TestRunner->TestEqual(TEXT("Clear should remove all subscribers and IsBound returns false"),
-			Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+		ASSERT_THAT(AreEqual(1, Invoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("Clear should remove all subscribers and IsBound returns false")));
 	}
 
 	TEST_METHOD(UnbindObjectRemovesAllForTarget)
@@ -719,13 +754,13 @@ class ATestDelegateUnbindObj : AActor
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		BeginPlayActor(Engine, *Actor);
 
 		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("RunUnbindObjTest")));
 		if (!Invoker.IsValid()) return;
-		TestRunner->TestEqual(TEXT("UnbindObject should remove all handlers bound to the target"),
-			Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+		ASSERT_THAT(AreEqual(1, Invoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("UnbindObject should remove all handlers bound to the target")));
 	}
 
 	TEST_METHOD(SignatureMismatchDoesNotInvoke)
@@ -759,25 +794,25 @@ class ATestDelegateMulticastSigMismatch : AActor
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		BeginPlayActor(Engine, *Actor);
 
 		UAngelscriptNativeScriptTestObject* NativeReceiver = NewObject<UAngelscriptNativeScriptTestObject>(GetTransientPackage());
-		if (!TestRunner->TestNotNull(TEXT("Native receiver should be created"), NativeReceiver)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Native receiver should be created"), NativeReceiver)) return;
 		NativeReceiver->bNativeFlag = false;
 
 		FMulticastInlineDelegateProperty* MulticastProperty = FindFProperty<FMulticastInlineDelegateProperty>(Actor->GetClass(), TEXT("OnDamaged"));
-		if (!TestRunner->TestNotNull(TEXT("Multicast property should exist"), MulticastProperty)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Multicast property should exist"), MulticastProperty)) return;
 
 		FMulticastScriptDelegate* MulticastDelegate = MulticastProperty->ContainerPtrToValuePtr<FMulticastScriptDelegate>(Actor);
-		if (!TestRunner->TestNotNull(TEXT("Multicast delegate storage should exist"), MulticastDelegate)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Multicast delegate storage should exist"), MulticastDelegate)) return;
 
 		FScriptDelegate BoundDelegate;
 		BoundDelegate.BindUFunction(NativeReceiver, TEXT("MarkNativeFlagFromDelegate"));
 		MulticastDelegate->Add(BoundDelegate);
 
 		UFunction* TriggerFunction = FindGeneratedFunction(ScriptClass, TEXT("TriggerDamaged"));
-		if (!TestRunner->TestNotNull(TEXT("Trigger function should exist"), TriggerFunction)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Trigger function should exist"), TriggerFunction)) return;
 
 		TestRunner->AddExpectedError(TEXT("Signature mismatch"), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(TEXT("Angelscript"), EAutomationExpectedErrorFlags::Contains, 0);
@@ -790,8 +825,8 @@ class ATestDelegateMulticastSigMismatch : AActor
 			Actor->ProcessEvent(TriggerFunction, &Params);
 		}
 
-		TestRunner->TestFalse(TEXT("Signature-mismatched multicast should not invoke zero-arg native receiver"),
-			NativeReceiver->bNativeFlag);
+		ASSERT_THAT(IsFalse(NativeReceiver->bNativeFlag,
+			TEXT("Signature-mismatched multicast should not invoke zero-arg native receiver")));
 	}
 };
 

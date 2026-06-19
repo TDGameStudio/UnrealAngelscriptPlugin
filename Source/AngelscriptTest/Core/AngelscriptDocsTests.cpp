@@ -41,11 +41,15 @@ class %s
 		asIScriptModule& Module,
 		const FString& Declaration)
 	{
+		FNoDiscardAsserter Assert(Test);
 		const FTCHARToUTF8 DeclarationUtf8(*Declaration);
 		asITypeInfo* TypeInfo = Module.GetTypeInfoByDecl(DeclarationUtf8.Get());
-		Test.TestNotNull(
-			*FString::Printf(TEXT("Docs normalization test should resolve script type '%s'"), *Declaration),
-			TypeInfo);
+		if (!Assert.IsNotNull(
+				TypeInfo,
+				*FString::Printf(TEXT("Docs normalization test should resolve script type '%s'"), *Declaration)))
+		{
+			return nullptr;
+		}
 		return TypeInfo;
 	}
 
@@ -54,6 +58,7 @@ class %s
 		asITypeInfo& ScriptType,
 		const FString& Declaration)
 	{
+		FNoDiscardAsserter Assert(Test);
 		const FTCHARToUTF8 DeclarationUtf8(*Declaration);
 		asIScriptFunction* Function = ScriptType.GetMethodByDecl(DeclarationUtf8.Get());
 		if (Function == nullptr)
@@ -121,9 +126,12 @@ class %s
 			}
 		}
 
-		Test.TestNotNull(
-			*FString::Printf(TEXT("Docs normalization test should resolve method '%s'"), *Declaration),
-			Function);
+		if (!Assert.IsNotNull(
+				Function,
+				*FString::Printf(TEXT("Docs normalization test should resolve method '%s'"), *Declaration)))
+		{
+			return nullptr;
+		}
 		return Function;
 	}
 
@@ -155,9 +163,10 @@ class %s
 
 		bool Prepare(FAutomationTestBase& Test) const
 		{
-			return Test.TestTrue(
-				TEXT("Docs normalization test should create the generated docs directory"),
-				IFileManager::Get().MakeDirectory(*RootDir, true));
+			FNoDiscardAsserter Assert(Test);
+			return Assert.IsTrue(
+				IFileManager::Get().MakeDirectory(*RootDir, true),
+				TEXT("Docs normalization test should create the generated docs directory"));
 		}
 
 		void Cleanup() const
@@ -187,12 +196,13 @@ class %s
 		const FString& FilePath,
 		FString& OutContent)
 	{
+		FNoDiscardAsserter Assert(Test);
 		OutContent.Reset();
 
 		const bool bExists = IFileManager::Get().FileExists(*FilePath);
-		if (!Test.TestTrue(
-				*FString::Printf(TEXT("Docs normalization test should create generated file '%s'"), *FilePath),
-				bExists))
+		if (!Assert.IsTrue(
+				bExists,
+				*FString::Printf(TEXT("Docs normalization test should create generated file '%s'"), *FilePath)))
 		{
 			TArray<FString> GeneratedFilenames;
 			IFileManager::Get().FindFiles(
@@ -215,10 +225,9 @@ class %s
 		}
 
 		const bool bLoaded = FFileHelper::LoadFileToString(OutContent, *FilePath);
-		Test.TestTrue(
-			*FString::Printf(TEXT("Docs normalization test should load generated file '%s'"), *FilePath),
-			bLoaded);
-		return bLoaded;
+		return Assert.IsTrue(
+			bLoaded,
+			*FString::Printf(TEXT("Docs normalization test should load generated file '%s'"), *FilePath));
 	}
 }
 
@@ -272,21 +281,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDocsTests,
 			ModuleName,
 			ScriptFilename,
 			ScriptSource);
-		if (!TestRunner->TestTrue(TEXT("Docs normalization test should compile the automation docs module"), bCompiled))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Docs normalization test should compile the automation docs module")));
 
 		const TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModuleByModuleName(ModuleName.ToString());
-		if (!TestRunner->TestTrue(TEXT("Docs normalization test should register the module by name"), ModuleDesc.IsValid()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(ModuleDesc.IsValid(), TEXT("Docs normalization test should register the module by name")));
 
-		if (!TestRunner->TestNotNull(TEXT("Docs normalization test should expose the compiled script module"), ModuleDesc->ScriptModule))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ModuleDesc->ScriptModule, TEXT("Docs normalization test should expose the compiled script module")));
 
 		asITypeInfo* ScriptType = FindTypeInfoByDecl(*TestRunner, *ModuleDesc->ScriptModule, TypeName);
 		if (ScriptType == nullptr)
@@ -318,36 +318,36 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDocsTests,
 			return;
 		}
 
-		TestRunner->TestTrue(
-			TEXT("Docs normalization test should emit the generated class declaration"),
-			GeneratedContent.Contains(FString::Printf(TEXT("class %s"), *TypeName)));
-		TestRunner->TestTrue(
-			TEXT("Docs normalization test should normalize @see into a See section"),
-			GeneratedContent.Contains(TEXT("See: RelatedScoreType")));
-		TestRunner->TestTrue(
-			TEXT("Docs normalization test should normalize @note into a Note section"),
-			GeneratedContent.Contains(TEXT("Note: Keep integer only")));
-		TestRunner->TestTrue(
-			TEXT("Docs normalization test should emit a Parameters section"),
-			GeneratedContent.Contains(TEXT("Parameters:")));
-		TestRunner->TestTrue(
-			TEXT("Docs normalization test should fold multi-line parameter text into one readable line"),
-			GeneratedContent.Contains(TEXT("InValue - first line second line continues")));
-		TestRunner->TestTrue(
-			TEXT("Docs normalization test should emit a Returns section for @returns"),
-			GeneratedContent.Contains(TEXT("Returns:")));
-		TestRunner->TestTrue(
-			TEXT("Docs normalization test should preserve the @returns description text"),
-			GeneratedContent.Contains(TEXT("final computed score")));
-		TestRunner->TestFalse(
-			TEXT("Docs normalization test should not leak raw @see tags into generated output"),
-			GeneratedContent.Contains(TEXT("@see")));
-		TestRunner->TestFalse(
-			TEXT("Docs normalization test should not leak raw @note tags into generated output"),
-			GeneratedContent.Contains(TEXT("@note")));
-		TestRunner->TestFalse(
-			TEXT("Docs normalization test should not leak raw @returns tags into generated output"),
-			GeneratedContent.Contains(TEXT("@returns")));
+		ASSERT_THAT(IsTrue(
+			GeneratedContent.Contains(FString::Printf(TEXT("class %s"), *TypeName)),
+			TEXT("Docs normalization test should emit the generated class declaration")));
+		ASSERT_THAT(IsTrue(
+			GeneratedContent.Contains(TEXT("See: RelatedScoreType")),
+			TEXT("Docs normalization test should normalize @see into a See section")));
+		ASSERT_THAT(IsTrue(
+			GeneratedContent.Contains(TEXT("Note: Keep integer only")),
+			TEXT("Docs normalization test should normalize @note into a Note section")));
+		ASSERT_THAT(IsTrue(
+			GeneratedContent.Contains(TEXT("Parameters:")),
+			TEXT("Docs normalization test should emit a Parameters section")));
+		ASSERT_THAT(IsTrue(
+			GeneratedContent.Contains(TEXT("InValue - first line second line continues")),
+			TEXT("Docs normalization test should fold multi-line parameter text into one readable line")));
+		ASSERT_THAT(IsTrue(
+			GeneratedContent.Contains(TEXT("Returns:")),
+			TEXT("Docs normalization test should emit a Returns section for @returns")));
+		ASSERT_THAT(IsTrue(
+			GeneratedContent.Contains(TEXT("final computed score")),
+			TEXT("Docs normalization test should preserve the @returns description text")));
+		ASSERT_THAT(IsFalse(
+			GeneratedContent.Contains(TEXT("@see")),
+			TEXT("Docs normalization test should not leak raw @see tags into generated output")));
+		ASSERT_THAT(IsFalse(
+			GeneratedContent.Contains(TEXT("@note")),
+			TEXT("Docs normalization test should not leak raw @note tags into generated output")));
+		ASSERT_THAT(IsFalse(
+			GeneratedContent.Contains(TEXT("@returns")),
+			TEXT("Docs normalization test should not leak raw @returns tags into generated output")));
 
 		}
 	}

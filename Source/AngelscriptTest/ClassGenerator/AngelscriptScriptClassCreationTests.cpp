@@ -32,7 +32,8 @@ namespace ScriptClassCreationTest
 		FStringView Suffix,
 		const TCHAR* CallingContext = TEXT("AngelscriptScriptClassCreationTests"))
 	{
-		if (!Test.TestNotNull(TEXT("Blueprint parent class should be valid"), ParentClass))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(ParentClass, TEXT("Blueprint parent class should be valid")))
 		{
 			return nullptr;
 		}
@@ -43,7 +44,7 @@ namespace ScriptClassCreationTest
 			Suffix.GetData(),
 			*FGuid::NewGuid().ToString(EGuidFormats::Digits));
 		UPackage* BlueprintPackage = CreatePackage(*PackagePath);
-		if (!Test.TestNotNull(TEXT("Transient blueprint package should be created"), BlueprintPackage))
+		if (!Assert.IsNotNull(BlueprintPackage, TEXT("Transient blueprint package should be created")))
 		{
 			return nullptr;
 		}
@@ -59,7 +60,7 @@ namespace ScriptClassCreationTest
 			UBlueprint::StaticClass(),
 			UBlueprintGeneratedClass::StaticClass(),
 			CallingContext);
-		if (!Test.TestNotNull(TEXT("Transient blueprint asset should be created"), Blueprint))
+		if (!Assert.IsNotNull(Blueprint, TEXT("Transient blueprint asset should be created")))
 		{
 			return nullptr;
 		}
@@ -70,7 +71,8 @@ namespace ScriptClassCreationTest
 	bool CompileAndValidateBlueprint(FAutomationTestBase& Test, UBlueprint& Blueprint)
 	{
 		FKismetEditorUtilities::CompileBlueprint(&Blueprint);
-		return Test.TestNotNull(TEXT("Blueprint should compile to a generated class"), Blueprint.GeneratedClass.Get());
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsNotNull(Blueprint.GeneratedClass.Get(), TEXT("Blueprint should compile to a generated class"));
 	}
 
 	void CleanupBlueprint(UBlueprint*& Blueprint)
@@ -146,7 +148,7 @@ class ATestScriptClassCompilesToUClass : AActor
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("Script-class compile test case should produce an actor-derived generated UClass"), ScriptClass->IsChildOf(AActor::StaticClass()));
+		ASSERT_THAT(IsTrue(ScriptClass->IsChildOf(AActor::StaticClass()), TEXT("Script-class compile test case should produce an actor-derived generated UClass")));
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
@@ -162,7 +164,7 @@ class ATestScriptClassCompilesToUClass : AActor
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Script-class compile test case should instantiate an actor with script property defaults"), SpawnMarker, 7);
+		ASSERT_THAT(AreEqual(7, SpawnMarker, TEXT("Script-class compile test case should instantiate an actor with script property defaults")));
 	}
 
 	TEST_METHOD(CanSpawnInTestWorld)
@@ -218,7 +220,7 @@ class ATestScriptClassCanSpawnInTestWorld : AActor
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Script-class spawn test case should observe BeginPlay after entering the test world"), BeginPlayObserved, 1);
+		ASSERT_THAT(AreEqual(1, BeginPlayObserved, TEXT("Script-class spawn test case should observe BeginPlay after entering the test world")));
 	}
 
 	TEST_METHOD(MultiSpawnKeepsStateIsolation)
@@ -251,12 +253,14 @@ class ATestScriptClassMultiSpawnKeepsStateIsolation : AActor
 		Spawner.InitializeGameSubsystems();
 		AActor* FirstActor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		AActor* SecondActor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("State-isolation test case should spawn first actor"), FirstActor)
-			|| !TestRunner->TestNotNull(TEXT("State-isolation test case should spawn second actor"), SecondActor))
+		ASSERT_THAT(IsNotNull(FirstActor, TEXT("State-isolation test case should spawn first actor")));
+		ASSERT_THAT(IsNotNull(SecondActor, TEXT("State-isolation test case should spawn second actor")));
+		if (FirstActor == nullptr || SecondActor == nullptr)
 		{ return; }
 
 		FIntProperty* LocalStateProperty = FindFProperty<FIntProperty>(ScriptClass, TEXT("LocalState"));
-		if (!TestRunner->TestNotNull(TEXT("State-isolation test case should expose LocalState property"), LocalStateProperty))
+		ASSERT_THAT(IsNotNull(LocalStateProperty, TEXT("State-isolation test case should expose LocalState property")));
+		if (LocalStateProperty == nullptr)
 		{ return; }
 
 		LocalStateProperty->SetPropertyValue_InContainer(FirstActor, 11);
@@ -266,9 +270,9 @@ class ATestScriptClassMultiSpawnKeepsStateIsolation : AActor
 		int32 SecondValue = 0;
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, SecondActor, TEXT("LocalState"), SecondValue)) { return; }
 
-		TestRunner->TestTrue(TEXT("State-isolation test case should spawn distinct actor instances"), FirstActor != SecondActor);
-		TestRunner->TestEqual(TEXT("State-isolation test case should keep the mutated value on the first actor"), FirstValue, 11);
-		TestRunner->TestEqual(TEXT("State-isolation test case should keep the second actor at its own default state"), SecondValue, 3);
+		ASSERT_THAT(IsTrue(FirstActor != SecondActor, TEXT("State-isolation test case should spawn distinct actor instances")));
+		ASSERT_THAT(AreEqual(11, FirstValue, TEXT("State-isolation test case should keep the mutated value on the first actor")));
+		ASSERT_THAT(AreEqual(3, SecondValue, TEXT("State-isolation test case should keep the second actor at its own default state")));
 	}
 
 	TEST_METHOD(BlueprintChildCompiles)
@@ -308,9 +312,10 @@ class ATestScriptClassBlueprintChildCompiles : AActor
 		if (!ScriptClassCreationTest::CompileAndValidateBlueprint(*TestRunner, *Blueprint.BlueprintAsset)) { return; }
 
 		UClass* BlueprintClass = Blueprint.GetGeneratedClass();
-		if (!TestRunner->TestNotNull(TEXT("Blueprint-child test case should provide a generated blueprint class"), BlueprintClass)) { return; }
+		ASSERT_THAT(IsNotNull(BlueprintClass, TEXT("Blueprint-child test case should provide a generated blueprint class")));
+		if (BlueprintClass == nullptr) { return; }
 
-		TestRunner->TestTrue(TEXT("Blueprint-child test case should generate a blueprint class inheriting from the script parent"), BlueprintClass->IsChildOf(ScriptClass));
+		ASSERT_THAT(IsTrue(BlueprintClass->IsChildOf(ScriptClass), TEXT("Blueprint-child test case should generate a blueprint class inheriting from the script parent")));
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
@@ -322,7 +327,7 @@ class ATestScriptClassBlueprintChildCompiles : AActor
 		int32 BeginPlayCount = 0;
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("BeginPlayCount"), BeginPlayCount)) { return; }
 
-		TestRunner->TestEqual(TEXT("Blueprint-child test case should preserve the script BeginPlay override when spawned"), BeginPlayCount, 1);
+		ASSERT_THAT(AreEqual(1, BeginPlayCount, TEXT("Blueprint-child test case should preserve the script BeginPlay override when spawned")));
 	}
 
 	TEST_METHOD(CDOHasExpectedDefaults)
@@ -357,7 +362,8 @@ class ATestScriptClassCDOHasExpectedDefaults : AActor
 		if (ScriptClass == nullptr) { return; }
 
 		UObject* DefaultObject = ScriptClass->GetDefaultObject();
-		if (!TestRunner->TestNotNull(TEXT("CDO-defaults test case should provide a generated class default object"), DefaultObject)) { return; }
+		ASSERT_THAT(IsNotNull(DefaultObject, TEXT("CDO-defaults test case should provide a generated class default object")));
+		if (DefaultObject == nullptr) { return; }
 
 		int32 DefaultCounter = 0;
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, DefaultObject, TEXT("DefaultCounter"), DefaultCounter)) { return; }
@@ -376,11 +382,11 @@ class ATestScriptClassCDOHasExpectedDefaults : AActor
 		FString SpawnedDefaultLabel;
 		if (!ReadPropertyValue<FStrProperty>(*TestRunner, SpawnedActor, TEXT("DefaultLabel"), SpawnedDefaultLabel)) { return; }
 
-		TestRunner->TestEqual(TEXT("CDO-defaults test case should preserve integer defaults on the class default object"), DefaultCounter, 21);
-		TestRunner->TestTrue(TEXT("CDO-defaults test case should preserve boolean defaults on the class default object"), bDefaultFlag);
-		TestRunner->TestEqual(TEXT("CDO-defaults test case should preserve string defaults on the class default object"), DefaultLabel, FString(TEXT("CDOStable")));
-		TestRunner->TestEqual(TEXT("CDO-defaults test case should apply class default integer values to spawned actor instances"), SpawnedDefaultCounter, 21);
-		TestRunner->TestEqual(TEXT("CDO-defaults test case should apply class default string values to spawned actor instances"), SpawnedDefaultLabel, FString(TEXT("CDOStable")));
+		ASSERT_THAT(AreEqual(21, DefaultCounter, TEXT("CDO-defaults test case should preserve integer defaults on the class default object")));
+		ASSERT_THAT(IsTrue(bDefaultFlag, TEXT("CDO-defaults test case should preserve boolean defaults on the class default object")));
+		ASSERT_THAT(AreEqual(FString(TEXT("CDOStable")), DefaultLabel, TEXT("CDO-defaults test case should preserve string defaults on the class default object")));
+		ASSERT_THAT(AreEqual(21, SpawnedDefaultCounter, TEXT("CDO-defaults test case should apply class default integer values to spawned actor instances")));
+		ASSERT_THAT(AreEqual(FString(TEXT("CDOStable")), SpawnedDefaultLabel, TEXT("CDO-defaults test case should apply class default string values to spawned actor instances")));
 	}
 
 	TEST_METHOD(RecompileDoesNotCrashClassSwitch)
@@ -440,9 +446,9 @@ class ATestScriptClassRecompileDoesNotCrashClassSwitch : AActor
 		int32 AddedAfterRecompile = 0;
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, RecompiledActor, TEXT("AddedAfterRecompile"), AddedAfterRecompile)) { return; }
 
-		TestRunner->TestEqual(TEXT("Recompile test case should produce the initial default before class switch"), InitialGenerationValue, 1);
-		TestRunner->TestEqual(TEXT("Recompile test case should expose updated defaults after recompiling the same script class"), RecompiledGenerationValue, 2);
-		TestRunner->TestEqual(TEXT("Recompile test case should expose newly added reflected properties after class switch"), AddedAfterRecompile, 17);
+		ASSERT_THAT(AreEqual(1, InitialGenerationValue, TEXT("Recompile test case should produce the initial default before class switch")));
+		ASSERT_THAT(AreEqual(2, RecompiledGenerationValue, TEXT("Recompile test case should expose updated defaults after recompiling the same script class")));
+		ASSERT_THAT(AreEqual(17, AddedAfterRecompile, TEXT("Recompile test case should expose newly added reflected properties after class switch")));
 	}
 
 	TEST_METHOD(NonUClassTypeCannotSpawn)
@@ -470,16 +476,17 @@ class UTestScriptClassNonUClassTypeCannotSpawn : UObject
 			TEXT("UTestScriptClassNonUClassTypeCannotSpawn"));
 		if (NonActorClass == nullptr) { return; }
 
-		TestRunner->TestFalse(TEXT("Non-uclass-type spawn test case should compile a generated class that is not actor-derived"), NonActorClass->IsChildOf(AActor::StaticClass()));
+		ASSERT_THAT(IsFalse(NonActorClass->IsChildOf(AActor::StaticClass()), TEXT("Non-uclass-type spawn test case should compile a generated class that is not actor-derived")));
 
 		UObject* ObjectInstance = NewObject<UObject>(GetTransientPackage(), NonActorClass);
-		if (!TestRunner->TestNotNull(TEXT("Non-uclass-type spawn test case should still allow plain UObject creation"), ObjectInstance)) { return; }
+		ASSERT_THAT(IsNotNull(ObjectInstance, TEXT("Non-uclass-type spawn test case should still allow plain UObject creation")));
+		if (ObjectInstance == nullptr) { return; }
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		FActorSpawnParameters SpawnParameters;
 		AActor* SpawnedActor = Spawner.GetWorld().SpawnActor<AActor>(NonActorClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParameters);
-		TestRunner->TestNull(TEXT("Non-uclass-type spawn test case should reject spawning non-actor generated classes into the world"), SpawnedActor);
+		ASSERT_THAT(IsNull(SpawnedActor, TEXT("Non-uclass-type spawn test case should reject spawning non-actor generated classes into the world")));
 	}
 
 	TEST_METHOD(RenameReplacesOldClass)
@@ -518,16 +525,18 @@ class ATestScriptClassRenameNew : AActor
 }
 )AS"),
 			TEXT("ATestScriptClassRenameNew"));
-		if (!TestRunner->TestNotNull(TEXT("Rename test case should compile the renamed generated class"), NewClass)) { return; }
+		ASSERT_THAT(IsNotNull(NewClass, TEXT("Rename test case should compile the renamed generated class")));
+		if (NewClass == nullptr) { return; }
 
-		TestRunner->TestTrue(TEXT("Rename test case should expose the new generated class by its new name"), FindGeneratedClass(&Engine, TEXT("ATestScriptClassRenameNew")) == NewClass);
-		TestRunner->TestTrue(TEXT("Rename test case should keep the old generated class address distinct from the new class"), OldClass != NewClass);
-		TestRunner->TestTrue(TEXT("Rename test case should move the old generated class out of the active class name"), OldClass->GetName().Contains(TEXT("REPLACED")) || OldClass->GetName() != TEXT("ATestScriptClassRenameOld"));
+		ASSERT_THAT(IsTrue(FindGeneratedClass(&Engine, TEXT("ATestScriptClassRenameNew")) == NewClass, TEXT("Rename test case should expose the new generated class by its new name")));
+		ASSERT_THAT(IsTrue(OldClass != NewClass, TEXT("Rename test case should keep the old generated class address distinct from the new class")));
+		ASSERT_THAT(IsTrue(OldClass->GetName().Contains(TEXT("REPLACED")) || OldClass->GetName() != TEXT("ATestScriptClassRenameOld"), TEXT("Rename test case should move the old generated class out of the active class name")));
 
 		FIntProperty* VersionProperty = FindFProperty<FIntProperty>(NewClass, TEXT("Version"));
-		if (!TestRunner->TestNotNull(TEXT("Rename test case should expose the new reflected property on the renamed class"), VersionProperty)) { return; }
+		ASSERT_THAT(IsNotNull(VersionProperty, TEXT("Rename test case should expose the new reflected property on the renamed class")));
+		if (VersionProperty == nullptr) { return; }
 
-		TestRunner->TestEqual(TEXT("Rename test case should apply the renamed class default value after replacement"), VersionProperty->GetPropertyValue_InContainer(NewClass->GetDefaultObject()), 2);
+		ASSERT_THAT(AreEqual(2, VersionProperty->GetPropertyValue_InContainer(NewClass->GetDefaultObject()), TEXT("Rename test case should apply the renamed class default value after replacement")));
 		}
 	}
 };

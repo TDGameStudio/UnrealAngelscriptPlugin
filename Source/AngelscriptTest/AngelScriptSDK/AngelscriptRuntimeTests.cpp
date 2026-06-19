@@ -31,10 +31,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKRuntimeTests, "Angelscript.TestModule.Angel
 	TEST_METHOD(Context)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime context test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine,
+			TEXT("SDK runtime context test should create a standalone engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKRuntimeContext", R"(
 int Compute(int N)
@@ -63,16 +61,15 @@ bool Entry()
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK runtime context test should execute context operations"), bResult);
+		ASSERT_THAT(IsTrue(bResult,
+			TEXT("SDK runtime context test should execute context operations")));
 	}
 
 	TEST_METHOD(Exception)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime exception test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine,
+			TEXT("SDK runtime exception test should create a standalone engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKRuntimeException", R"(
 void ThrowException()
@@ -93,31 +90,26 @@ bool Entry()
 		}
 
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, "bool Entry()");
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime exception test should resolve entry function"), Function))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Function,
+			TEXT("SDK runtime exception test should resolve entry function")));
 
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime exception test should create context"), Context))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Context,
+			TEXT("SDK runtime exception test should create context")));
+		ON_SCOPE_EXIT { Context->Release(); };
 
 		const int ExecuteResult = PrepareAndExecute(Context, Function);
-		Context->Release();
 
 		// Expect exception from divide by zero
-		TestRunner->TestEqual(TEXT("SDK runtime exception test should detect exception"), ExecuteResult, static_cast<int32>(asEXECUTION_EXCEPTION));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_EXCEPTION), ExecuteResult,
+			TEXT("SDK runtime exception test should detect exception")));
 	}
 
 	TEST_METHOD(Suspend)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime suspend test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine,
+			TEXT("SDK runtime suspend test should create a standalone engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKRuntimeSuspend", R"(
 int Sum(int N)
@@ -146,16 +138,15 @@ bool Entry()
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK runtime suspend test should execute loop with suspend support"), bResult);
+		ASSERT_THAT(IsTrue(bResult,
+			TEXT("SDK runtime suspend test should execute loop with suspend support")));
 	}
 
 	TEST_METHOD(ExceptionDetails)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime exception-details test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine,
+			TEXT("SDK runtime exception-details test should create a standalone engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKRuntimeExceptionDetails", R"(
 int Divide(int A, int B)
@@ -174,16 +165,13 @@ int Entry()
 		}
 
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, "int Entry()");
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime exception-details test should resolve the entry function"), Function))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Function,
+			TEXT("SDK runtime exception-details test should resolve the entry function")));
 
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime exception-details test should create a context"), Context))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Context,
+			TEXT("SDK runtime exception-details test should create a context")));
+		ON_SCOPE_EXIT { Context->Release(); };
 
 		const int ExecuteResult = PrepareAndExecute(Context, Function);
 		const FString ExceptionString = UTF8_TO_TCHAR(Context->GetExceptionString() != nullptr ? Context->GetExceptionString() : "");
@@ -192,25 +180,23 @@ int Entry()
 		const FString ExceptionFunctionName = (ExceptionFunction != nullptr && ExceptionFunction->GetName() != nullptr)
 			? UTF8_TO_TCHAR(ExceptionFunction->GetName())
 			: FString();
-		Context->Release();
 
-		if (!TestRunner->TestEqual(TEXT("SDK runtime exception-details test should raise an execution exception"), ExecuteResult, static_cast<int32>(asEXECUTION_EXCEPTION)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_EXCEPTION), ExecuteResult,
+			TEXT("SDK runtime exception-details test should raise an execution exception")));
 
-		TestRunner->TestEqual(TEXT("SDK runtime exception-details test should report the divide-by-zero exception text"), ExceptionString, FString(TEXT("Divide by zero")));
-		TestRunner->TestTrue(TEXT("SDK runtime exception-details test should report a positive exception line"), ExceptionLine > 0);
-		TestRunner->TestEqual(TEXT("SDK runtime exception-details test should attribute the exception to Divide"), ExceptionFunctionName, FString(TEXT("Divide")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Divide by zero")), ExceptionString,
+			TEXT("SDK runtime exception-details test should report the divide-by-zero exception text")));
+		ASSERT_THAT(IsTrue(ExceptionLine > 0,
+			TEXT("SDK runtime exception-details test should report a positive exception line")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Divide")), ExceptionFunctionName,
+			TEXT("SDK runtime exception-details test should attribute the exception to Divide")));
 	}
 
 	TEST_METHOD(ModuloByZero)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime modulo-by-zero test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine,
+			TEXT("SDK runtime modulo-by-zero test should create a standalone engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKRuntimeModuloByZero", R"(
 int Entry()
@@ -226,36 +212,29 @@ int Entry()
 		}
 
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, "int Entry()");
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime modulo-by-zero test should resolve the entry function"), Function))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Function,
+			TEXT("SDK runtime modulo-by-zero test should resolve the entry function")));
 
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime modulo-by-zero test should create a context"), Context))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Context,
+			TEXT("SDK runtime modulo-by-zero test should create a context")));
+		ON_SCOPE_EXIT { Context->Release(); };
 
 		const int ExecuteResult = PrepareAndExecute(Context, Function);
 		const FString ExceptionString = UTF8_TO_TCHAR(Context->GetExceptionString() != nullptr ? Context->GetExceptionString() : "");
-		Context->Release();
 
-		if (!TestRunner->TestEqual(TEXT("SDK runtime modulo-by-zero test should raise an execution exception"), ExecuteResult, static_cast<int32>(asEXECUTION_EXCEPTION)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_EXCEPTION), ExecuteResult,
+			TEXT("SDK runtime modulo-by-zero test should raise an execution exception")));
 
-		TestRunner->TestEqual(TEXT("SDK runtime modulo-by-zero test should report the divide-by-zero exception text"), ExceptionString, FString(TEXT("Divide by zero")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Divide by zero")), ExceptionString,
+			TEXT("SDK runtime modulo-by-zero test should report the divide-by-zero exception text")));
 	}
 
 	TEST_METHOD(ContextReuseAfterException)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime context-reuse test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine,
+			TEXT("SDK runtime context-reuse test should create a standalone engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKRuntimeContextReuse", R"(
 int Boom()
@@ -278,36 +257,29 @@ int SafeSum()
 
 		asIScriptFunction* BoomFn = GetNativeFunctionByDecl(Module, "int Boom()");
 		asIScriptFunction* SafeFn = GetNativeFunctionByDecl(Module, "int SafeSum()");
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime context-reuse test should resolve Boom"), BoomFn) ||
-			!TestRunner->TestNotNull(TEXT("SDK runtime context-reuse test should resolve SafeSum"), SafeFn))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BoomFn,
+			TEXT("SDK runtime context-reuse test should resolve Boom")));
+		ASSERT_THAT(IsNotNull(SafeFn,
+			TEXT("SDK runtime context-reuse test should resolve SafeSum")));
 
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("SDK runtime context-reuse test should create a context"), Context))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Context,
+			TEXT("SDK runtime context-reuse test should create a context")));
+		ON_SCOPE_EXIT { Context->Release(); };
 
 		// First execution throws.
 		const int FirstResult = PrepareAndExecute(Context, BoomFn);
-		if (!TestRunner->TestEqual(TEXT("SDK runtime context-reuse test should throw on the first call"), FirstResult, static_cast<int32>(asEXECUTION_EXCEPTION)))
-		{
-			Context->Release();
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_EXCEPTION), FirstResult,
+			TEXT("SDK runtime context-reuse test should throw on the first call")));
 
 		// The same context must be reusable for a fresh, successful execution.
 		const int SecondResult = PrepareAndExecute(Context, SafeFn);
 		const int32 Sum = static_cast<int32>(Context->GetReturnDWord());
-		Context->Release();
 
-		if (!TestRunner->TestEqual(TEXT("SDK runtime context-reuse test should finish the second call after re-Prepare"), SecondResult, static_cast<int32>(asEXECUTION_FINISHED)))
-		{
-			return;
-		}
-		TestRunner->TestEqual(TEXT("SDK runtime context-reuse test should compute SafeSum = 15 after recovering from exception"), Sum, 15);
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_FINISHED), SecondResult,
+			TEXT("SDK runtime context-reuse test should finish the second call after re-Prepare")));
+		ASSERT_THAT(AreEqual(15, Sum,
+			TEXT("SDK runtime context-reuse test should compute SafeSum = 15 after recovering from exception")));
 	}
 };
 

@@ -21,6 +21,25 @@
 
 namespace AngelscriptDebuggerSteppingTests_Private
 {
+	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsTrue(bActual, Message);
+	}
+
+	static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsFalse(bActual, Message);
+	}
+
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.AreEqual(Expected, Actual, Message);
+	}
+
 	struct FStepOutTopFrameMonitorResult
 	{
 		TOptional<FAngelscriptDebugMessageEnvelope> InitialStopEnvelope;
@@ -314,13 +333,13 @@ namespace AngelscriptDebuggerSteppingTests_Private
 		const TCHAR* Context)
 	{
 		const FString CallstackContext = FString::Printf(TEXT("%s should include a callstack"), Context);
-		if (!Test.TestTrue(*CallstackContext, Callstack.IsSet()))
+		if (!CheckTrue(Test, *CallstackContext, Callstack.IsSet()))
 		{
 			return false;
 		}
 
 		const FString FrameContext = FString::Printf(TEXT("%s should include at least one frame"), Context);
-		if (!Test.TestTrue(*FrameContext, Callstack->Frames.Num() > 0))
+		if (!CheckTrue(Test, *FrameContext, Callstack->Frames.Num() > 0))
 		{
 			return false;
 		}
@@ -328,11 +347,13 @@ namespace AngelscriptDebuggerSteppingTests_Private
 		const FAngelscriptCallFrame& TopFrame = Callstack->Frames[0];
 		bool bPassed = true;
 		const FString SourceContext = FString::Printf(TEXT("%s should report the expected source file"), Context);
-		bPassed &= Test.TestTrue(
+		bPassed &= CheckTrue(
+			Test,
 			*SourceContext,
 			FPaths::IsSamePath(TopFrame.Source, ExpectedSource));
 		const FString LineContext = FString::Printf(TEXT("%s should report the expected line"), Context);
-		bPassed &= Test.TestEqual(
+		bPassed &= CheckEqual(
+			Test,
 			*LineContext,
 			TopFrame.LineNumber,
 			ExpectedLine);
@@ -347,13 +368,13 @@ namespace AngelscriptDebuggerSteppingTests_Private
 	{
 		const TOptional<FStoppedMessage> StoppedMessage = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(Envelope);
 		const FString DeserializeContext = FString::Printf(TEXT("%s should deserialize into a stopped message"), Context);
-		if (!Test.TestTrue(*DeserializeContext, StoppedMessage.IsSet()))
+		if (!CheckTrue(Test, *DeserializeContext, StoppedMessage.IsSet()))
 		{
 			return false;
 		}
 
 		const FString ReasonContext = FString::Printf(TEXT("%s should report the expected stop reason"), Context);
-		return Test.TestEqual(*ReasonContext, StoppedMessage->Reason, ExpectedReason);
+		return CheckEqual(Test, *ReasonContext, StoppedMessage->Reason, ExpectedReason);
 	}
 
 	bool AssertFrameMatches(
@@ -365,13 +386,13 @@ namespace AngelscriptDebuggerSteppingTests_Private
 		const TCHAR* Context)
 	{
 		const FString CallstackContext = FString::Printf(TEXT("%s should include a callstack"), Context);
-		if (!Test.TestTrue(*CallstackContext, Callstack.IsSet()))
+		if (!CheckTrue(Test, *CallstackContext, Callstack.IsSet()))
 		{
 			return false;
 		}
 
 		const FString FrameCountContext = FString::Printf(TEXT("%s should include frame %d"), Context, FrameIndex);
-		if (!Test.TestTrue(*FrameCountContext, Callstack->Frames.IsValidIndex(FrameIndex)))
+		if (!CheckTrue(Test, *FrameCountContext, Callstack->Frames.IsValidIndex(FrameIndex)))
 		{
 			return false;
 		}
@@ -379,9 +400,9 @@ namespace AngelscriptDebuggerSteppingTests_Private
 		const FAngelscriptCallFrame& Frame = Callstack->Frames[FrameIndex];
 		bool bPassed = true;
 		const FString SourceContext = FString::Printf(TEXT("%s should stay on the expected source file"), Context);
-		bPassed &= Test.TestEqual(*SourceContext, FPaths::GetCleanFilename(Frame.Source), ExpectedFilename);
+		bPassed &= CheckEqual(Test, *SourceContext, FPaths::GetCleanFilename(Frame.Source), ExpectedFilename);
 		const FString LineContext = FString::Printf(TEXT("%s should report the expected line"), Context);
-		bPassed &= Test.TestEqual(*LineContext, Frame.LineNumber, ExpectedLine);
+		bPassed &= CheckEqual(Test, *LineContext, Frame.LineNumber, ExpectedLine);
 		return bPassed;
 	}
 }
@@ -462,38 +483,40 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 			TestRunner->AddError(MonitorResult.Error);
 		}
 
-		ASSERT_THAT(AreEqual(MonitorResult.Stops.Num(), 2,
+		ASSERT_THAT(AreEqual(2, MonitorResult.Stops.Num(),
 			TEXT("Stepping.StepIn should emit exactly 2 stops")));
 
 		const TOptional<FStoppedMessage> FirstStop = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(MonitorResult.Stops[0].StopEnvelope);
 		const TOptional<FStoppedMessage> SecondStop = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(MonitorResult.Stops[1].StopEnvelope);
-		TestRunner->TestTrue(TEXT("Stepping.StepIn first stop should deserialize"), FirstStop.IsSet());
-		TestRunner->TestTrue(TEXT("Stepping.StepIn second stop should deserialize"), SecondStop.IsSet());
+		ASSERT_THAT(IsTrue(FirstStop.IsSet(), TEXT("Stepping.StepIn first stop should deserialize")));
+		ASSERT_THAT(IsTrue(SecondStop.IsSet(), TEXT("Stepping.StepIn second stop should deserialize")));
 		if (FirstStop.IsSet())
 		{
-			TestRunner->TestEqual(TEXT("Stepping.StepIn first stop should be a breakpoint"), FirstStop->Reason, FString(TEXT("breakpoint")));
+			ASSERT_THAT(AreEqual(FString(TEXT("breakpoint")), FirstStop->Reason, TEXT("Stepping.StepIn first stop should be a breakpoint")));
 		}
 		if (SecondStop.IsSet())
 		{
-			TestRunner->TestEqual(TEXT("Stepping.StepIn second stop should be a step"), SecondStop->Reason, FString(TEXT("step")));
+			ASSERT_THAT(AreEqual(FString(TEXT("step")), SecondStop->Reason, TEXT("Stepping.StepIn second stop should be a step")));
 		}
 
-		if (TestRunner->TestTrue(TEXT("Stepping.StepIn first stop should have a callstack"), MonitorResult.Stops[0].Callstack.IsSet()))
+		if (CheckTrue(*TestRunner, TEXT("Stepping.StepIn first stop should have a callstack"), MonitorResult.Stops[0].Callstack.IsSet()))
 		{
-			TestRunner->TestEqual(TEXT("Stepping.StepIn should first stop at the call line"),
+			ASSERT_THAT(AreEqual(
+				Fixture.GetLine(TEXT("StepCallLine")),
 				MonitorResult.Stops[0].Callstack->Frames[0].LineNumber,
-				Fixture.GetLine(TEXT("StepCallLine")));
+				TEXT("Stepping.StepIn should first stop at the call line")));
 		}
 
-		if (TestRunner->TestTrue(TEXT("Stepping.StepIn second stop should have a callstack"), MonitorResult.Stops[1].Callstack.IsSet()))
+		if (CheckTrue(*TestRunner, TEXT("Stepping.StepIn second stop should have a callstack"), MonitorResult.Stops[1].Callstack.IsSet()))
 		{
-			TestRunner->TestTrue(TEXT("Stepping.StepIn should enter the callee frame"), MonitorResult.Stops[1].Callstack->Frames.Num() >= 2);
-			TestRunner->TestEqual(TEXT("Stepping.StepIn should land inside Inner()"),
+			ASSERT_THAT(IsTrue(MonitorResult.Stops[1].Callstack->Frames.Num() >= 2, TEXT("Stepping.StepIn should enter the callee frame")));
+			ASSERT_THAT(AreEqual(
+				Fixture.GetLine(TEXT("StepInnerEntryLine")),
 				MonitorResult.Stops[1].Callstack->Frames[0].LineNumber,
-				Fixture.GetLine(TEXT("StepInnerEntryLine")));
+				TEXT("Stepping.StepIn should land inside Inner()")));
 		}
 
-		TestRunner->TestTrue(TEXT("Stepping.StepIn should execute successfully"), InvocationState->bSucceeded);
+		ASSERT_THAT(IsTrue(InvocationState->bSucceeded, TEXT("Stepping.StepIn should execute successfully")));
 	}
 
 	// =========================================================================
@@ -552,31 +575,34 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 			TestRunner->AddError(MonitorResult.Error);
 		}
 
-		ASSERT_THAT(AreEqual(MonitorResult.Stops.Num(), 2,
+		ASSERT_THAT(AreEqual(2, MonitorResult.Stops.Num(),
 			TEXT("Stepping.StepOver should emit exactly 2 stops")));
 
-		if (TestRunner->TestTrue(TEXT("Stepping.StepOver first stop should have a callstack"), MonitorResult.Stops[0].Callstack.IsSet()))
+		if (CheckTrue(*TestRunner, TEXT("Stepping.StepOver first stop should have a callstack"), MonitorResult.Stops[0].Callstack.IsSet()))
 		{
-			TestRunner->TestEqual(TEXT("Stepping.StepOver should first stop at the call line"),
+			ASSERT_THAT(AreEqual(
+				Fixture.GetLine(TEXT("StepCallLine")),
 				MonitorResult.Stops[0].Callstack->Frames[0].LineNumber,
-				Fixture.GetLine(TEXT("StepCallLine")));
+				TEXT("Stepping.StepOver should first stop at the call line")));
 		}
 
-		if (TestRunner->TestTrue(TEXT("Stepping.StepOver second stop should have a callstack"), MonitorResult.Stops[1].Callstack.IsSet()))
+		if (CheckTrue(*TestRunner, TEXT("Stepping.StepOver second stop should have a callstack"), MonitorResult.Stops[1].Callstack.IsSet()))
 		{
-			TestRunner->TestEqual(TEXT("Stepping.StepOver should land at the line after the call"),
+			ASSERT_THAT(AreEqual(
+				Fixture.GetLine(TEXT("StepAfterCallLine")),
 				MonitorResult.Stops[1].Callstack->Frames[0].LineNumber,
-				Fixture.GetLine(TEXT("StepAfterCallLine")));
+				TEXT("Stepping.StepOver should land at the line after the call")));
 
 			if (MonitorResult.Stops[0].Callstack.IsSet())
 			{
-				TestRunner->TestEqual(TEXT("Stepping.StepOver should stay in the same frame depth"),
+				ASSERT_THAT(AreEqual(
+					MonitorResult.Stops[0].Callstack->Frames.Num(),
 					MonitorResult.Stops[1].Callstack->Frames.Num(),
-					MonitorResult.Stops[0].Callstack->Frames.Num());
+					TEXT("Stepping.StepOver should stay in the same frame depth")));
 			}
 		}
 
-		TestRunner->TestTrue(TEXT("Stepping.StepOver should execute successfully"), InvocationState->bSucceeded);
+		ASSERT_THAT(IsTrue(InvocationState->bSucceeded, TEXT("Stepping.StepOver should execute successfully")));
 	}
 
 	// =========================================================================
@@ -636,31 +662,34 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 			TestRunner->AddError(MonitorResult.Error);
 		}
 
-		ASSERT_THAT(AreEqual(MonitorResult.Stops.Num(), 3,
+		ASSERT_THAT(AreEqual(3, MonitorResult.Stops.Num(),
 			TEXT("Stepping.StepOut should emit exactly 3 stops")));
 
-		if (TestRunner->TestTrue(TEXT("Stepping.StepOut second stop should have a callstack"), MonitorResult.Stops[1].Callstack.IsSet()))
+		if (CheckTrue(*TestRunner, TEXT("Stepping.StepOut second stop should have a callstack"), MonitorResult.Stops[1].Callstack.IsSet()))
 		{
-			TestRunner->TestTrue(TEXT("Stepping.StepOut should be inside the callee before stepping out"),
-				MonitorResult.Stops[1].Callstack->Frames.Num() >= 2);
-			TestRunner->TestEqual(TEXT("Stepping.StepOut should enter Inner() before stepping out"),
+			ASSERT_THAT(IsTrue(MonitorResult.Stops[1].Callstack->Frames.Num() >= 2,
+				TEXT("Stepping.StepOut should be inside the callee before stepping out")));
+			ASSERT_THAT(AreEqual(
+				Fixture.GetLine(TEXT("StepInnerEntryLine")),
 				MonitorResult.Stops[1].Callstack->Frames[0].LineNumber,
-				Fixture.GetLine(TEXT("StepInnerEntryLine")));
+				TEXT("Stepping.StepOut should enter Inner() before stepping out")));
 		}
 
-		if (TestRunner->TestTrue(TEXT("Stepping.StepOut third stop should have a callstack"), MonitorResult.Stops[2].Callstack.IsSet()))
+		if (CheckTrue(*TestRunner, TEXT("Stepping.StepOut third stop should have a callstack"), MonitorResult.Stops[2].Callstack.IsSet()))
 		{
-			TestRunner->TestEqual(TEXT("Stepping.StepOut should return to the line after the call"),
+			ASSERT_THAT(AreEqual(
+				Fixture.GetLine(TEXT("StepAfterCallLine")),
 				MonitorResult.Stops[2].Callstack->Frames[0].LineNumber,
-				Fixture.GetLine(TEXT("StepAfterCallLine")));
+				TEXT("Stepping.StepOut should return to the line after the call")));
 			if (MonitorResult.Stops[1].Callstack.IsSet())
 			{
-				TestRunner->TestTrue(TEXT("Stepping.StepOut should reduce stack depth after returning"),
-					MonitorResult.Stops[2].Callstack->Frames.Num() < MonitorResult.Stops[1].Callstack->Frames.Num());
+				ASSERT_THAT(IsTrue(
+					MonitorResult.Stops[2].Callstack->Frames.Num() < MonitorResult.Stops[1].Callstack->Frames.Num(),
+					TEXT("Stepping.StepOut should reduce stack depth after returning")));
 			}
 		}
 
-		TestRunner->TestTrue(TEXT("Stepping.StepOut should execute successfully"), InvocationState->bSucceeded);
+		ASSERT_THAT(IsTrue(InvocationState->bSucceeded, TEXT("Stepping.StepOut should execute successfully")));
 	}
 
 	// =========================================================================
@@ -727,8 +756,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 			TestRunner->AddError(MonitorResult.Error);
 		}
 
-		TestRunner->TestFalse(TEXT("Debugger StepIn-on-statement monitor should not time out"), MonitorResult.bTimedOut);
-		ASSERT_THAT(AreEqual(MonitorResult.Stops.Num(), 2,
+		ASSERT_THAT(IsFalse(MonitorResult.bTimedOut, TEXT("Debugger StepIn-on-statement monitor should not time out")));
+		ASSERT_THAT(AreEqual(2, MonitorResult.Stops.Num(),
 			TEXT("Debugger StepIn-on-statement test should emit exactly 2 stops")));
 
 		AssertStopReason(*TestRunner, MonitorResult.Stops[0].StopEnvelope, TEXT("breakpoint"), TEXT("Debugger StepIn-on-statement first stop"));
@@ -747,10 +776,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 			StepInnerEntryLine,
 			TEXT("Debugger StepIn-on-statement first stop top frame")))
 		{
-			TestRunner->TestEqual(
-				TEXT("Debugger StepIn-on-statement first stop should expose caller and callee frames"),
+			ASSERT_THAT(AreEqual(
+				2,
 				MonitorResult.Stops[0].Callstack->Frames.Num(),
-				2);
+				TEXT("Debugger StepIn-on-statement first stop should expose caller and callee frames")));
 			AssertFrameMatches(
 				*TestRunner,
 				MonitorResult.Stops[0].Callstack,
@@ -768,10 +797,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 			StepInnerLine,
 			TEXT("Debugger StepIn-on-statement second stop top frame")))
 		{
-			TestRunner->TestEqual(
-				TEXT("Debugger StepIn-on-statement second stop should stay inside the same frame depth"),
+			ASSERT_THAT(AreEqual(
+				2,
 				MonitorResult.Stops[1].Callstack->Frames.Num(),
-				2);
+				TEXT("Debugger StepIn-on-statement second stop should stay inside the same frame depth")));
 			AssertFrameMatches(
 				*TestRunner,
 				MonitorResult.Stops[1].Callstack,
@@ -779,16 +808,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 				Fixture.Filename,
 				StepCallLine,
 				TEXT("Debugger StepIn-on-statement second stop caller frame"));
-			TestRunner->TestTrue(
-				TEXT("Debugger StepIn-on-statement second stop should advance beyond the entry line"),
-				MonitorResult.Stops[1].Callstack->Frames[0].LineNumber != StepInnerEntryLine);
-			TestRunner->TestTrue(
-				TEXT("Debugger StepIn-on-statement second stop should not jump to the after-call line"),
-				MonitorResult.Stops[1].Callstack->Frames[0].LineNumber != StepAfterCallLine);
+			ASSERT_THAT(IsTrue(
+				MonitorResult.Stops[1].Callstack->Frames[0].LineNumber != StepInnerEntryLine,
+				TEXT("Debugger StepIn-on-statement second stop should advance beyond the entry line")));
+			ASSERT_THAT(IsTrue(
+				MonitorResult.Stops[1].Callstack->Frames[0].LineNumber != StepAfterCallLine,
+				TEXT("Debugger StepIn-on-statement second stop should not jump to the after-call line")));
 		}
 
-		TestRunner->TestTrue(TEXT("Debugger StepIn-on-statement test should execute successfully"), InvocationState->bSucceeded);
-		TestRunner->TestEqual(TEXT("Debugger StepIn-on-statement test should preserve the stepping fixture result"), InvocationState->Result, 14);
+		ASSERT_THAT(IsTrue(InvocationState->bSucceeded, TEXT("Debugger StepIn-on-statement test should execute successfully")));
+		ASSERT_THAT(AreEqual(14, InvocationState->Result, TEXT("Debugger StepIn-on-statement test should preserve the stepping fixture result")));
 	}
 
 	// =========================================================================
@@ -855,7 +884,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 		Ctx.bMonitorShouldStop = true;
 
 		const FStepOutTopFrameMonitorResult MonitorResult = MonitorFuture.Get();
-		if (!TestRunner->TestTrue(TEXT("Stepping.StepOutTopFrameCompletes should keep the completion monitor error-free"), MonitorResult.Error.IsEmpty()))
+		if (!CheckTrue(*TestRunner, TEXT("Stepping.StepOutTopFrameCompletes should keep the completion monitor error-free"), MonitorResult.Error.IsEmpty()))
 		{
 			TestRunner->AddError(MonitorResult.Error);
 		}
@@ -874,10 +903,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 
 		if (InitialStop.IsSet())
 		{
-			TestRunner->TestEqual(
-				TEXT("Stepping.StepOutTopFrameCompletes should first stop because of the breakpoint"),
+			ASSERT_THAT(AreEqual(
+				FString(TEXT("breakpoint")),
 				InitialStop->Reason,
-				FString(TEXT("breakpoint")));
+				TEXT("Stepping.StepOutTopFrameCompletes should first stop because of the breakpoint")));
 		}
 
 		ASSERT_THAT(IsTrue(MonitorResult.InitialCallstack.IsSet(),
@@ -885,18 +914,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 
 		if (MonitorResult.InitialCallstack.IsSet())
 		{
-			TestRunner->TestEqual(
-				TEXT("Stepping.StepOutTopFrameCompletes should stop on the line after the call before issuing StepOut"),
+			ASSERT_THAT(AreEqual(
+				Fixture.GetLine(TEXT("StepAfterCallLine")),
 				MonitorResult.InitialCallstack->Frames[0].LineNumber,
-				Fixture.GetLine(TEXT("StepAfterCallLine")));
-			TestRunner->TestEqual(
-				TEXT("Stepping.StepOutTopFrameCompletes should stay in the top frame when the breakpoint hits after the call"),
+				TEXT("Stepping.StepOutTopFrameCompletes should stop on the line after the call before issuing StepOut")));
+			ASSERT_THAT(AreEqual(
+				1,
 				MonitorResult.InitialCallstack->Frames.Num(),
-				1);
+				TEXT("Stepping.StepOutTopFrameCompletes should stay in the top frame when the breakpoint hits after the call")));
 		}
 
-		TestRunner->TestTrue(TEXT("Stepping.StepOutTopFrameCompletes should execute successfully"), InvocationState->bSucceeded);
-		TestRunner->TestEqual(TEXT("Stepping.StepOutTopFrameCompletes should preserve the expected test case result"), InvocationState->Result, 14);
+		ASSERT_THAT(IsTrue(InvocationState->bSucceeded, TEXT("Stepping.StepOutTopFrameCompletes should execute successfully")));
+		ASSERT_THAT(AreEqual(14, InvocationState->Result, TEXT("Stepping.StepOutTopFrameCompletes should preserve the expected test case result")));
 	}
 
 	// =========================================================================
@@ -964,8 +993,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 			TestRunner->AddError(MonitorResult.Error);
 		}
 
-		TestRunner->TestFalse(TEXT("Debugger StepOver-within-callee monitor should not time out"), MonitorResult.bTimedOut);
-		ASSERT_THAT(AreEqual(MonitorResult.Stops.Num(), 3,
+		ASSERT_THAT(IsFalse(MonitorResult.bTimedOut, TEXT("Debugger StepOver-within-callee monitor should not time out")));
+		ASSERT_THAT(AreEqual(3, MonitorResult.Stops.Num(),
 			TEXT("Debugger StepOver-within-callee test should emit exactly 3 stops")));
 
 		AssertStopReason(*TestRunner, MonitorResult.Stops[0].StopEnvelope, TEXT("breakpoint"), TEXT("Debugger StepOver-within-callee first stop"));
@@ -980,10 +1009,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 			Fixture.GetLine(TEXT("StepCallLine")),
 			TEXT("Debugger StepOver-within-callee first stop top frame")))
 		{
-			TestRunner->TestEqual(
-				TEXT("Debugger StepOver-within-callee first stop should stay at caller depth"),
+			ASSERT_THAT(AreEqual(
+				1,
 				MonitorResult.Stops[0].Callstack->Frames.Num(),
-				1);
+				TEXT("Debugger StepOver-within-callee first stop should stay at caller depth")));
 		}
 
 		if (AssertFrameMatches(
@@ -994,10 +1023,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 			Fixture.GetLine(TEXT("StepInnerEntryLine")),
 			TEXT("Debugger StepOver-within-callee second stop top frame")))
 		{
-			TestRunner->TestEqual(
-				TEXT("Debugger StepOver-within-callee second stop should expose caller and callee frames"),
+			ASSERT_THAT(AreEqual(
+				2,
 				MonitorResult.Stops[1].Callstack->Frames.Num(),
-				2);
+				TEXT("Debugger StepOver-within-callee second stop should expose caller and callee frames")));
 			AssertFrameMatches(
 				*TestRunner,
 				MonitorResult.Stops[1].Callstack,
@@ -1015,10 +1044,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 			Fixture.GetLine(TEXT("StepInnerLine")),
 			TEXT("Debugger StepOver-within-callee third stop top frame")))
 		{
-			TestRunner->TestEqual(
-				TEXT("Debugger StepOver-within-callee third stop should stay inside the callee"),
+			ASSERT_THAT(AreEqual(
+				2,
 				MonitorResult.Stops[2].Callstack->Frames.Num(),
-				2);
+				TEXT("Debugger StepOver-within-callee third stop should stay inside the callee")));
 			AssertFrameMatches(
 				*TestRunner,
 				MonitorResult.Stops[2].Callstack,
@@ -1026,13 +1055,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 				Fixture.Filename,
 				Fixture.GetLine(TEXT("StepCallLine")),
 				TEXT("Debugger StepOver-within-callee third stop caller frame"));
-			TestRunner->TestTrue(
-				TEXT("Debugger StepOver-within-callee third stop should not jump to the after-call line"),
-				MonitorResult.Stops[2].Callstack->Frames[0].LineNumber != Fixture.GetLine(TEXT("StepAfterCallLine")));
+			ASSERT_THAT(IsTrue(
+				MonitorResult.Stops[2].Callstack->Frames[0].LineNumber != Fixture.GetLine(TEXT("StepAfterCallLine")),
+				TEXT("Debugger StepOver-within-callee third stop should not jump to the after-call line")));
 		}
 
-		TestRunner->TestTrue(TEXT("Debugger StepOver-within-callee test should execute successfully"), InvocationState->bSucceeded);
-		TestRunner->TestEqual(TEXT("Debugger StepOver-within-callee test should preserve the stepping fixture result"), InvocationState->Result, 14);
+		ASSERT_THAT(IsTrue(InvocationState->bSucceeded, TEXT("Debugger StepOver-within-callee test should execute successfully")));
+		ASSERT_THAT(AreEqual(14, InvocationState->Result, TEXT("Debugger StepOver-within-callee test should preserve the stepping fixture result")));
 	}
 
 	// =========================================================================
@@ -1101,27 +1130,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 			TestRunner->AddError(MonitorResult.Error);
 		}
 
-		TestRunner->TestFalse(TEXT("Cross-file stepping should not time out"), MonitorResult.bTimedOut);
-		ASSERT_THAT(AreEqual(MonitorResult.Stops.Num(), 3,
+		ASSERT_THAT(IsFalse(MonitorResult.bTimedOut, TEXT("Cross-file stepping should not time out")));
+		ASSERT_THAT(AreEqual(3, MonitorResult.Stops.Num(),
 			TEXT("Cross-file stepping should emit exactly 3 stops")));
 
 		const TOptional<FStoppedMessage> FirstStop = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(MonitorResult.Stops[0].StopEnvelope);
 		const TOptional<FStoppedMessage> SecondStop = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(MonitorResult.Stops[1].StopEnvelope);
 		const TOptional<FStoppedMessage> ThirdStop = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(MonitorResult.Stops[2].StopEnvelope);
-		TestRunner->TestTrue(TEXT("Cross-file stepping should deserialize the breakpoint stop"), FirstStop.IsSet());
-		TestRunner->TestTrue(TEXT("Cross-file stepping should deserialize the step-in stop"), SecondStop.IsSet());
-		TestRunner->TestTrue(TEXT("Cross-file stepping should deserialize the step-out stop"), ThirdStop.IsSet());
+		ASSERT_THAT(IsTrue(FirstStop.IsSet(), TEXT("Cross-file stepping should deserialize the breakpoint stop")));
+		ASSERT_THAT(IsTrue(SecondStop.IsSet(), TEXT("Cross-file stepping should deserialize the step-in stop")));
+		ASSERT_THAT(IsTrue(ThirdStop.IsSet(), TEXT("Cross-file stepping should deserialize the step-out stop")));
 		if (FirstStop.IsSet())
 		{
-			TestRunner->TestEqual(TEXT("Cross-file stepping should first stop because of the breakpoint"), FirstStop->Reason, FString(TEXT("breakpoint")));
+			ASSERT_THAT(AreEqual(FString(TEXT("breakpoint")), FirstStop->Reason, TEXT("Cross-file stepping should first stop because of the breakpoint")));
 		}
 		if (SecondStop.IsSet())
 		{
-			TestRunner->TestEqual(TEXT("Cross-file stepping should report StepIn as a step stop"), SecondStop->Reason, FString(TEXT("step")));
+			ASSERT_THAT(AreEqual(FString(TEXT("step")), SecondStop->Reason, TEXT("Cross-file stepping should report StepIn as a step stop")));
 		}
 		if (ThirdStop.IsSet())
 		{
-			TestRunner->TestEqual(TEXT("Cross-file stepping should report StepOut as a step stop"), ThirdStop->Reason, FString(TEXT("step")));
+			ASSERT_THAT(AreEqual(FString(TEXT("step")), ThirdStop->Reason, TEXT("Cross-file stepping should report StepOut as a step stop")));
 		}
 
 		const FString EntryAbsolutePath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation"), Fixture.EntryFilename);
@@ -1129,17 +1158,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 		(void)AssertTopFrameMatches(*TestRunner, MonitorResult.Stops[0].Callstack, EntryAbsolutePath, Fixture.GetLine(TEXT("StepCallLine")), TEXT("Cross-file stepping first stop"));
 		if (AssertTopFrameMatches(*TestRunner, MonitorResult.Stops[1].Callstack, CalleeAbsolutePath, Fixture.GetLine(TEXT("StepInnerEntryLine")), TEXT("Cross-file stepping second stop")))
 		{
-			TestRunner->TestTrue(TEXT("Cross-file stepping should enter a deeper stack frame after StepIn"), MonitorResult.Stops[1].Callstack->Frames.Num() >= 2);
+			ASSERT_THAT(IsTrue(MonitorResult.Stops[1].Callstack->Frames.Num() >= 2, TEXT("Cross-file stepping should enter a deeper stack frame after StepIn")));
 		}
 		if (AssertTopFrameMatches(*TestRunner, MonitorResult.Stops[2].Callstack, EntryAbsolutePath, Fixture.GetLine(TEXT("StepAfterCallLine")), TEXT("Cross-file stepping third stop"))
 			&& MonitorResult.Stops[1].Callstack.IsSet())
 		{
-			TestRunner->TestTrue(TEXT("Cross-file stepping should reduce stack depth after StepOut"),
-				MonitorResult.Stops[2].Callstack->Frames.Num() < MonitorResult.Stops[1].Callstack->Frames.Num());
+			ASSERT_THAT(IsTrue(
+				MonitorResult.Stops[2].Callstack->Frames.Num() < MonitorResult.Stops[1].Callstack->Frames.Num(),
+				TEXT("Cross-file stepping should reduce stack depth after StepOut")));
 		}
 
-		TestRunner->TestTrue(TEXT("Cross-file stepping should execute successfully"), InvocationState->bSucceeded);
-		TestRunner->TestEqual(TEXT("Cross-file stepping should return the expected final result"), InvocationState->Result, 22);
+		ASSERT_THAT(IsTrue(InvocationState->bSucceeded, TEXT("Cross-file stepping should execute successfully")));
+		ASSERT_THAT(AreEqual(22, InvocationState->Result, TEXT("Cross-file stepping should return the expected final result")));
 	}
 
 	// =========================================================================
@@ -1207,21 +1237,21 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 			TestRunner->AddError(MonitorResult.Error);
 		}
 
-		TestRunner->TestFalse(TEXT("Cross-file StepOver should not time out"), MonitorResult.bTimedOut);
-		ASSERT_THAT(AreEqual(MonitorResult.Stops.Num(), 2,
+		ASSERT_THAT(IsFalse(MonitorResult.bTimedOut, TEXT("Cross-file StepOver should not time out")));
+		ASSERT_THAT(AreEqual(2, MonitorResult.Stops.Num(),
 			TEXT("Cross-file StepOver should emit exactly 2 stops")));
 
 		const TOptional<FStoppedMessage> FirstStop = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(MonitorResult.Stops[0].StopEnvelope);
 		const TOptional<FStoppedMessage> SecondStop = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(MonitorResult.Stops[1].StopEnvelope);
-		TestRunner->TestTrue(TEXT("Cross-file StepOver should deserialize the breakpoint stop"), FirstStop.IsSet());
-		TestRunner->TestTrue(TEXT("Cross-file StepOver should deserialize the step stop"), SecondStop.IsSet());
+		ASSERT_THAT(IsTrue(FirstStop.IsSet(), TEXT("Cross-file StepOver should deserialize the breakpoint stop")));
+		ASSERT_THAT(IsTrue(SecondStop.IsSet(), TEXT("Cross-file StepOver should deserialize the step stop")));
 		if (FirstStop.IsSet())
 		{
-			TestRunner->TestEqual(TEXT("Cross-file StepOver should first stop because of the breakpoint"), FirstStop->Reason, FString(TEXT("breakpoint")));
+			ASSERT_THAT(AreEqual(FString(TEXT("breakpoint")), FirstStop->Reason, TEXT("Cross-file StepOver should first stop because of the breakpoint")));
 		}
 		if (SecondStop.IsSet())
 		{
-			TestRunner->TestEqual(TEXT("Cross-file StepOver should report the second stop as a step"), SecondStop->Reason, FString(TEXT("step")));
+			ASSERT_THAT(AreEqual(FString(TEXT("step")), SecondStop->Reason, TEXT("Cross-file StepOver should report the second stop as a step")));
 		}
 
 		const FString EntryAbsolutePath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation"), Fixture.EntryFilename);
@@ -1241,18 +1271,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 		if (bSecondFrameMatched)
 		{
 			const FAngelscriptCallFrame& TopFrame = MonitorResult.Stops[1].Callstack->Frames[0];
-			TestRunner->TestFalse(TEXT("Cross-file StepOver second stop should not switch the top frame source to the callee file"), FPaths::IsSamePath(TopFrame.Source, CalleeAbsolutePath));
+			ASSERT_THAT(IsFalse(FPaths::IsSamePath(TopFrame.Source, CalleeAbsolutePath), TEXT("Cross-file StepOver second stop should not switch the top frame source to the callee file")));
 		}
 		if (bFirstFrameMatched && bSecondFrameMatched)
 		{
-			TestRunner->TestEqual(
-				TEXT("Cross-file StepOver should keep the same stack depth before and after stepping over the call"),
+			ASSERT_THAT(AreEqual(
+				MonitorResult.Stops[0].Callstack->Frames.Num(),
 				MonitorResult.Stops[1].Callstack->Frames.Num(),
-				MonitorResult.Stops[0].Callstack->Frames.Num());
+				TEXT("Cross-file StepOver should keep the same stack depth before and after stepping over the call")));
 		}
 
-		TestRunner->TestTrue(TEXT("Cross-file StepOver should execute successfully"), InvocationState->bSucceeded);
-		TestRunner->TestEqual(TEXT("Cross-file StepOver should return the expected final result"), InvocationState->Result, 22);
+		ASSERT_THAT(IsTrue(InvocationState->bSucceeded, TEXT("Cross-file StepOver should execute successfully")));
+		ASSERT_THAT(AreEqual(22, InvocationState->Result, TEXT("Cross-file StepOver should return the expected final result")));
 	}
 };
 

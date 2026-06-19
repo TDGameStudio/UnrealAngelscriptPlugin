@@ -35,18 +35,19 @@ namespace AngelscriptTest_Core_AngelscriptBindModuleCacheTests_Private
 		const TArray<FString>& Actual,
 		const TArray<FString>& Expected)
 	{
+		FNoDiscardAsserter Assert(Test);
 		bool bOk = true;
-		bOk &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the bind module count"), Context),
+		bOk &= Assert.AreEqual(
+			Expected.Num(),
 			Actual.Num(),
-			Expected.Num());
+			*FString::Printf(TEXT("%s should preserve the bind module count"), Context));
 
 		for (int32 Index = 0; Index < FMath::Min(Actual.Num(), Expected.Num()); ++Index)
 		{
-			bOk &= Test.TestEqual(
-				*FString::Printf(TEXT("%s should preserve the bind module at index %d"), Context, Index),
+			bOk &= Assert.AreEqual(
+				Expected[Index],
 				Actual[Index],
-				Expected[Index]);
+				*FString::Printf(TEXT("%s should preserve the bind module at index %d"), Context, Index));
 		}
 
 		return bOk;
@@ -78,17 +79,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindModuleCacheTests,
 		BindModuleNames = ExpectedBindModules;
 		FAngelscriptBinds::SaveBindModules(CachePath);
 
-		if (!TestRunner->TestTrue(
-				TEXT("BindModuleCache should write BindModules.Cache to the automation directory"),
-				IFileManager::Get().FileExists(*CachePath)))
+		if (!this->Assert.IsTrue(
+				IFileManager::Get().FileExists(*CachePath),
+				TEXT("BindModuleCache should write BindModules.Cache to the automation directory")))
 		{
 			return;
 		}
 
 		TArray<FString> SavedLines;
-		if (!TestRunner->TestTrue(
-				TEXT("BindModuleCache should persist BindModules.Cache as readable string lines"),
-				FFileHelper::LoadFileToStringArray(SavedLines, *CachePath)))
+		if (!this->Assert.IsTrue(
+				FFileHelper::LoadFileToStringArray(SavedLines, *CachePath),
+				TEXT("BindModuleCache should persist BindModules.Cache as readable string lines")))
 		{
 			return;
 		}
@@ -103,10 +104,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindModuleCacheTests,
 		}
 
 		FAngelscriptBinds::ResetBindState();
-		if (!TestRunner->TestEqual(
-				TEXT("BindModuleCache reset should clear the in-memory bind module list before reload"),
+		if (!this->Assert.AreEqual(
+				0,
 				FAngelscriptBinds::GetBindModuleNames().Num(),
-				0))
+				TEXT("BindModuleCache reset should clear the in-memory bind module list before reload")))
 		{
 			return;
 		}
@@ -126,18 +127,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindModuleCacheTests,
 			TEXT("ASEditorBind_Stale"),
 		};
 
-		if (!TestRunner->TestFalse(
-				TEXT("BindModuleCache missing-file coverage should use a path that does not exist"),
-				IFileManager::Get().FileExists(*MissingCachePath)))
+		if (!this->Assert.IsFalse(
+				IFileManager::Get().FileExists(*MissingCachePath),
+				TEXT("BindModuleCache missing-file coverage should use a path that does not exist")))
 		{
 			return;
 		}
 
 		FAngelscriptBinds::LoadBindModules(MissingCachePath);
-		TestRunner->TestEqual(
-			TEXT("BindModuleCache missing-file load should clear stale in-memory bind module names"),
+		ASSERT_THAT(AreEqual(
+			0,
 			FAngelscriptBinds::GetBindModuleNames().Num(),
-			0);
+			TEXT("BindModuleCache missing-file load should clear stale in-memory bind module names")));
 	}
 };
 

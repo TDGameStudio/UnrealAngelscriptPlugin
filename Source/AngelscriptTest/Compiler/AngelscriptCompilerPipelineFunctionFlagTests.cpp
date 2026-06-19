@@ -144,22 +144,23 @@ class UCompilerBlueprintCallableDefaultTrueCarrier : UObject
 		const TSharedPtr<FAngelscriptFunctionDesc>& FunctionDesc,
 		const FExpectedFunctionFlags& Expected)
 	{
-		if (!Test.TestTrue(
-				*FString::Printf(TEXT("%s should parse function descriptor %s"), *TestCaseLabel, Expected.FunctionName),
-				FunctionDesc.IsValid()))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsTrue(
+				FunctionDesc.IsValid(),
+				*FString::Printf(TEXT("%s should parse function descriptor %s"), *TestCaseLabel, Expected.FunctionName)))
 		{
 			return false;
 		}
 
 		bool bPassed = true;
-		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should set bBlueprintCallable for %s during preprocessing"), *TestCaseLabel, Expected.FunctionName),
+		bPassed &= Assert.AreEqual(
+			Expected.bBlueprintCallable,
 			FunctionDesc->bBlueprintCallable,
-			Expected.bBlueprintCallable);
-		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should set bBlueprintPure for %s during preprocessing"), *TestCaseLabel, Expected.FunctionName),
+			*FString::Printf(TEXT("%s should set bBlueprintCallable for %s during preprocessing"), *TestCaseLabel, Expected.FunctionName));
+		bPassed &= Assert.AreEqual(
+			Expected.bBlueprintPure,
 			FunctionDesc->bBlueprintPure,
-			Expected.bBlueprintPure);
+			*FString::Printf(TEXT("%s should set bBlueprintPure for %s during preprocessing"), *TestCaseLabel, Expected.FunctionName));
 		return bPassed;
 	}
 
@@ -170,22 +171,23 @@ class UCompilerBlueprintCallableDefaultTrueCarrier : UObject
 		const FExpectedFunctionFlags& Expected)
 	{
 		UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, Expected.FunctionName);
-		if (!Test.TestNotNull(
-				*FString::Printf(TEXT("%s should materialize generated function %s"), *TestCaseLabel, Expected.FunctionName),
-				GeneratedFunction))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(
+				GeneratedFunction,
+				*FString::Printf(TEXT("%s should materialize generated function %s"), *TestCaseLabel, Expected.FunctionName)))
 		{
 			return false;
 		}
 
 		bool bPassed = true;
-		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should set FUNC_BlueprintCallable for %s"), *TestCaseLabel, Expected.FunctionName),
+		bPassed &= Assert.AreEqual(
+			Expected.bBlueprintCallable,
 			GeneratedFunction->HasAnyFunctionFlags(FUNC_BlueprintCallable),
-			Expected.bBlueprintCallable);
-		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should set FUNC_BlueprintPure for %s"), *TestCaseLabel, Expected.FunctionName),
+			*FString::Printf(TEXT("%s should set FUNC_BlueprintCallable for %s"), *TestCaseLabel, Expected.FunctionName));
+		bPassed &= Assert.AreEqual(
+			Expected.bBlueprintPure,
 			GeneratedFunction->HasAnyFunctionFlags(FUNC_BlueprintPure),
-			Expected.bBlueprintPure);
+			*FString::Printf(TEXT("%s should set FUNC_BlueprintPure for %s"), *TestCaseLabel, Expected.FunctionName));
 		return bPassed;
 	}
 }
@@ -204,7 +206,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionFlagTests,
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 		UAngelscriptSettings* Settings = GetMutableDefault<UAngelscriptSettings>();
-		if (!TestRunner->TestNotNull(TEXT("Function blueprint callable defaults test should access mutable angelscript settings"), Settings))
+		if (!this->Assert.IsNotNull(Settings, TEXT("Function blueprint callable defaults test should access mutable angelscript settings")))
 		{
 			return;
 		}
@@ -248,21 +250,21 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionFlagTests,
 					*TestCase.ClassName,
 					TestCase.bDefaultFunctionBlueprintCallable ? TEXT("true") : TEXT("false"));
 
-				TestRunner->TestTrue(
-					*FString::Printf(TEXT("%s should preprocess successfully"), *TestCaseLabel),
-					bPreprocessSucceeded);
-				TestRunner->TestEqual(
-					*FString::Printf(TEXT("%s should keep preprocessing error count at zero"), *TestCaseLabel),
+				ASSERT_THAT(IsTrue(
+					bPreprocessSucceeded,
+					*FString::Printf(TEXT("%s should preprocess successfully"), *TestCaseLabel)));
+				ASSERT_THAT(AreEqual(
+					0,
 					PreprocessErrorCount,
-					0);
-				TestRunner->TestEqual(
-					*FString::Printf(TEXT("%s should keep preprocessing diagnostics empty"), *TestCaseLabel),
+					*FString::Printf(TEXT("%s should keep preprocessing error count at zero"), *TestCaseLabel)));
+				ASSERT_THAT(AreEqual(
+					0,
 					PreprocessMessages.Num(),
-					0);
-				TestRunner->TestEqual(
-					*FString::Printf(TEXT("%s should emit exactly one module descriptor"), *TestCaseLabel),
+					*FString::Printf(TEXT("%s should keep preprocessing diagnostics empty"), *TestCaseLabel)));
+				ASSERT_THAT(AreEqual(
+					1,
 					Modules.Num(),
-					1);
+					*FString::Printf(TEXT("%s should emit exactly one module descriptor"), *TestCaseLabel)));
 				if (!bPreprocessSucceeded || Modules.Num() != 1)
 				{
 					return;
@@ -270,9 +272,9 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionFlagTests,
 
 				const TSharedRef<FAngelscriptModuleDesc> ModuleDesc = Modules[0];
 				const TSharedPtr<FAngelscriptClassDesc> ClassDesc = ModuleDesc->GetClass(TestCase.ClassName);
-				if (!TestRunner->TestTrue(
-						*FString::Printf(TEXT("%s should parse the annotated class descriptor"), *TestCaseLabel),
-						ClassDesc.IsValid()))
+				if (!this->Assert.IsTrue(
+						ClassDesc.IsValid(),
+						*FString::Printf(TEXT("%s should parse the annotated class descriptor"), *TestCaseLabel)))
 				{
 					return;
 				}
@@ -300,32 +302,32 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionFlagTests,
 					Summary,
 					true);
 
-				TestRunner->TestTrue(
-					*FString::Printf(TEXT("%s should compile through the full preprocessor pipeline"), *TestCaseLabel),
-					bCompiled);
-				TestRunner->TestTrue(
-					*FString::Printf(TEXT("%s should record preprocessor usage in the compile summary"), *TestCaseLabel),
-					Summary.bUsedPreprocessor);
-				TestRunner->TestTrue(
-					*FString::Printf(TEXT("%s should mark compile succeeded in the summary"), *TestCaseLabel),
-					Summary.bCompileSucceeded);
-				TestRunner->TestEqual(
-					*FString::Printf(TEXT("%s should report FullyHandled compile result"), *TestCaseLabel),
+				ASSERT_THAT(IsTrue(
+					bCompiled,
+					*FString::Printf(TEXT("%s should compile through the full preprocessor pipeline"), *TestCaseLabel)));
+				ASSERT_THAT(IsTrue(
+					Summary.bUsedPreprocessor,
+					*FString::Printf(TEXT("%s should record preprocessor usage in the compile summary"), *TestCaseLabel)));
+				ASSERT_THAT(IsTrue(
+					Summary.bCompileSucceeded,
+					*FString::Printf(TEXT("%s should mark compile succeeded in the summary"), *TestCaseLabel)));
+				ASSERT_THAT(AreEqual(
+					ECompileResult::FullyHandled,
 					Summary.CompileResult,
-					ECompileResult::FullyHandled);
-				TestRunner->TestEqual(
-					*FString::Printf(TEXT("%s should keep compile diagnostics empty"), *TestCaseLabel),
+					*FString::Printf(TEXT("%s should report FullyHandled compile result"), *TestCaseLabel)));
+				ASSERT_THAT(AreEqual(
+					0,
 					Summary.Diagnostics.Num(),
-					0);
+					*FString::Printf(TEXT("%s should keep compile diagnostics empty"), *TestCaseLabel)));
 				if (!bCompiled)
 				{
 					return;
 				}
 
 				UClass* GeneratedClass = FindGeneratedClass(&Engine, *TestCase.ClassName);
-				if (!TestRunner->TestNotNull(
-						*FString::Printf(TEXT("%s should materialize the generated class"), *TestCaseLabel),
-						GeneratedClass))
+				if (!this->Assert.IsNotNull(
+						GeneratedClass,
+						*FString::Printf(TEXT("%s should materialize the generated class"), *TestCaseLabel)))
 				{
 					return;
 				}

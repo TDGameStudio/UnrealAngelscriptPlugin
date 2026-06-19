@@ -80,17 +80,18 @@ namespace
 		FName FunctionName,
 		int32& OutResult)
 	{
+		FNoDiscardAsserter Assert(Test);
 		UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
-		if (!Test.TestNotNull(
-				*FString::Printf(TEXT("World collision async sweep method '%s' should exist"), *FunctionName.ToString()),
-				Function))
+		if (!Assert.IsNotNull(
+				Function,
+				*FString::Printf(TEXT("World collision async sweep method '%s' should exist"), *FunctionName.ToString())))
 		{
 			return false;
 		}
 
-		return Test.TestTrue(
-			*FString::Printf(TEXT("World collision async sweep method '%s' should execute"), *FunctionName.ToString()),
-			ExecuteGeneratedIntEventOnGameThread(Object, Function, OutResult));
+		return Assert.IsTrue(
+			ExecuteGeneratedIntEventOnGameThread(Object, Function, OutResult),
+			*FString::Printf(TEXT("World collision async sweep method '%s' should execute"), *FunctionName.ToString()));
 	}
 
 	template<typename ValueType>
@@ -100,15 +101,16 @@ namespace
 		FName PropertyName,
 		ValueType* Value)
 	{
-		if (!Test.TestNotNull(TEXT("World collision async sweep object should be valid for reflected writes"), Object))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(Object, TEXT("World collision async sweep object should be valid for reflected writes")))
 		{
 			return false;
 		}
 
 		FObjectProperty* Property = FindFProperty<FObjectProperty>(Object->GetClass(), PropertyName);
-		if (!Test.TestNotNull(
-				*FString::Printf(TEXT("World collision async sweep property '%s' should exist"), *PropertyName.ToString()),
-				Property))
+		if (!Assert.IsNotNull(
+				Property,
+				*FString::Printf(TEXT("World collision async sweep property '%s' should exist"), *PropertyName.ToString())))
 		{
 			return false;
 		}
@@ -123,15 +125,16 @@ namespace
 		FName PropertyName,
 		uint64& OutValue)
 	{
-		if (!Test.TestNotNull(TEXT("World collision async sweep object should be valid for uint64 property reads"), Object))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(Object, TEXT("World collision async sweep object should be valid for uint64 property reads")))
 		{
 			return false;
 		}
 
 		FUInt64Property* Property = FindFProperty<FUInt64Property>(Object->GetClass(), PropertyName);
-		if (!Test.TestNotNull(
-				*FString::Printf(TEXT("World collision async sweep property '%s' should exist"), *PropertyName.ToString()),
-				Property))
+		if (!Assert.IsNotNull(
+				Property,
+				*FString::Printf(TEXT("World collision async sweep property '%s' should exist"), *PropertyName.ToString())))
 		{
 			return false;
 		}
@@ -155,12 +158,15 @@ namespace
 		UWorld& World,
 		AActor& ScriptActor)
 	{
+		FNoDiscardAsserter Assert(Test);
 		FIntProperty* ChannelCallbackCountProperty = FindFProperty<FIntProperty>(ScriptActor.GetClass(), TEXT("ChannelCallbackCount"));
 		FIntProperty* ObjectCallbackCountProperty = FindFProperty<FIntProperty>(ScriptActor.GetClass(), TEXT("ObjectCallbackCount"));
 		FIntProperty* ProfileCallbackCountProperty = FindFProperty<FIntProperty>(ScriptActor.GetClass(), TEXT("ProfileCallbackCount"));
-		if (!Test.TestNotNull(TEXT("Async sweep actor should expose ChannelCallbackCount"), ChannelCallbackCountProperty)
-			|| !Test.TestNotNull(TEXT("Async sweep actor should expose ObjectCallbackCount"), ObjectCallbackCountProperty)
-			|| !Test.TestNotNull(TEXT("Async sweep actor should expose ProfileCallbackCount"), ProfileCallbackCountProperty))
+		bool bHasCallbackProperties = true;
+		bHasCallbackProperties &= Assert.IsNotNull(ChannelCallbackCountProperty, TEXT("Async sweep actor should expose ChannelCallbackCount"));
+		bHasCallbackProperties &= Assert.IsNotNull(ObjectCallbackCountProperty, TEXT("Async sweep actor should expose ObjectCallbackCount"));
+		bHasCallbackProperties &= Assert.IsNotNull(ProfileCallbackCountProperty, TEXT("Async sweep actor should expose ProfileCallbackCount"));
+		if (!bHasCallbackProperties)
 		{
 			return false;
 		}
@@ -423,16 +429,10 @@ class ATestWorldCollisionAsyncSweepCallbacks : AActor
 			TEXT("AsyncSweepBlockingTarget"),
 			AsyncSweepTargetExtent,
 			AsyncSweepTargetLocation);
-		if (!TestRunner->TestNotNull(TEXT("Async sweep blocking box should be created"), BlockingBox))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BlockingBox, TEXT("Async sweep blocking box should be created")));
 
 		AActor* ScriptActor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Async sweep script actor should spawn"), ScriptActor))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptActor, TEXT("Async sweep script actor should spawn")));
 
 		if (!WriteObjectPropertyChecked(*TestRunner, ScriptActor, TEXT("ExpectedActor"), &BlockingActor)
 			|| !WriteObjectPropertyChecked(*TestRunner, ScriptActor, TEXT("ExpectedComponent"), BlockingBox))
@@ -443,17 +443,14 @@ class ATestWorldCollisionAsyncSweepCallbacks : AActor
 		BeginPlayActor(Engine, *ScriptActor);
 
 		UWorld* World = BlockingActor.GetWorld();
-		if (!TestRunner->TestNotNull(TEXT("Async sweep test should access the spawned world"), World))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(World, TEXT("Async sweep test should access the spawned world")));
 
 		int32 StartResult = 0;
 		if (!ExecuteGeneratedIntMethod(*TestRunner, ScriptActor, ScriptClass, TEXT("StartAsyncSweeps"), StartResult))
 		{
 			return;
 		}
-		TestRunner->TestEqual(TEXT("Async sweep start method should acknowledge launch"), StartResult, 1);
+		ASSERT_THAT(AreEqual(1, StartResult, TEXT("Async sweep start method should acknowledge launch")));
 
 		if (!WaitForAsyncSweepCallbacks(*TestRunner, Engine, *World, *ScriptActor))
 		{
@@ -509,45 +506,45 @@ class ATestWorldCollisionAsyncSweepCallbacks : AActor
 		}
 
 		// Verify callback invocation counts
-		TestRunner->TestEqual(TEXT("AsyncSweepByChannel should invoke its callback exactly once"), ChannelCallbackCount, 1);
-		TestRunner->TestEqual(TEXT("AsyncSweepByObjectType should invoke its callback exactly once"), ObjectCallbackCount, 1);
-		TestRunner->TestEqual(TEXT("AsyncSweepByProfile should invoke its callback exactly once"), ProfileCallbackCount, 1);
+		ASSERT_THAT(AreEqual(1, ChannelCallbackCount, TEXT("AsyncSweepByChannel should invoke its callback exactly once")));
+		ASSERT_THAT(AreEqual(1, ObjectCallbackCount, TEXT("AsyncSweepByObjectType should invoke its callback exactly once")));
+		ASSERT_THAT(AreEqual(1, ProfileCallbackCount, TEXT("AsyncSweepByProfile should invoke its callback exactly once")));
 
 		// Verify UserData preservation
-		TestRunner->TestEqual(TEXT("AsyncSweepByChannel should preserve UserData through the delegate bridge"), ChannelUserData, 101);
-		TestRunner->TestEqual(TEXT("AsyncSweepByObjectType should preserve UserData through the delegate bridge"), ObjectUserData, 202);
-		TestRunner->TestEqual(TEXT("AsyncSweepByProfile should preserve UserData through the delegate bridge"), ProfileUserData, 303);
+		ASSERT_THAT(AreEqual(101, ChannelUserData, TEXT("AsyncSweepByChannel should preserve UserData through the delegate bridge")));
+		ASSERT_THAT(AreEqual(202, ObjectUserData, TEXT("AsyncSweepByObjectType should preserve UserData through the delegate bridge")));
+		ASSERT_THAT(AreEqual(303, ProfileUserData, TEXT("AsyncSweepByProfile should preserve UserData through the delegate bridge")));
 
 		// Verify hit counts
-		TestRunner->TestTrue(TEXT("AsyncSweepByChannel should report at least one hit"), ChannelHitCount > 0);
-		TestRunner->TestTrue(TEXT("AsyncSweepByObjectType should report at least one hit"), ObjectHitCount > 0);
-		TestRunner->TestTrue(TEXT("AsyncSweepByProfile should report at least one hit"), ProfileHitCount > 0);
+		ASSERT_THAT(IsTrue(ChannelHitCount > 0, TEXT("AsyncSweepByChannel should report at least one hit")));
+		ASSERT_THAT(IsTrue(ObjectHitCount > 0, TEXT("AsyncSweepByObjectType should report at least one hit")));
+		ASSERT_THAT(IsTrue(ProfileHitCount > 0, TEXT("AsyncSweepByProfile should report at least one hit")));
 
 		// Verify handle validity
-		TestRunner->TestEqual(TEXT("AsyncSweepByChannel should return an initially valid trace handle"), ChannelHandleValidInitially, 1);
-		TestRunner->TestEqual(TEXT("AsyncSweepByObjectType should return an initially valid trace handle"), ObjectHandleValidInitially, 1);
-		TestRunner->TestEqual(TEXT("AsyncSweepByProfile should return an initially valid trace handle"), ProfileHandleValidInitially, 1);
+		ASSERT_THAT(AreEqual(1, ChannelHandleValidInitially, TEXT("AsyncSweepByChannel should return an initially valid trace handle")));
+		ASSERT_THAT(AreEqual(1, ObjectHandleValidInitially, TEXT("AsyncSweepByObjectType should return an initially valid trace handle")));
+		ASSERT_THAT(AreEqual(1, ProfileHandleValidInitially, TEXT("AsyncSweepByProfile should return an initially valid trace handle")));
 
 		// Verify handle matching
-		TestRunner->TestEqual(TEXT("AsyncSweepByChannel callback should observe the same handle that StartAsyncSweeps stored"), LastChannelCallbackHandle, ChannelHandleRaw);
-		TestRunner->TestEqual(TEXT("AsyncSweepByObjectType callback should observe the same handle that StartAsyncSweeps stored"), LastObjectCallbackHandle, ObjectHandleRaw);
-		TestRunner->TestEqual(TEXT("AsyncSweepByProfile callback should observe the same handle that StartAsyncSweeps stored"), LastProfileCallbackHandle, ProfileHandleRaw);
+		ASSERT_THAT(AreEqual(ChannelHandleRaw, LastChannelCallbackHandle, TEXT("AsyncSweepByChannel callback should observe the same handle that StartAsyncSweeps stored")));
+		ASSERT_THAT(AreEqual(ObjectHandleRaw, LastObjectCallbackHandle, TEXT("AsyncSweepByObjectType callback should observe the same handle that StartAsyncSweeps stored")));
+		ASSERT_THAT(AreEqual(ProfileHandleRaw, LastProfileCallbackHandle, TEXT("AsyncSweepByProfile callback should observe the same handle that StartAsyncSweeps stored")));
 
 		// Verify QueryTraceData
-		TestRunner->TestEqual(TEXT("AsyncSweepByChannel callback should report successful QueryTraceData"), ChannelQuerySucceeded, 1);
-		TestRunner->TestEqual(TEXT("AsyncSweepByObjectType callback should report successful QueryTraceData"), ObjectQuerySucceeded, 1);
-		TestRunner->TestEqual(TEXT("AsyncSweepByProfile callback should report successful QueryTraceData"), ProfileQuerySucceeded, 1);
-		TestRunner->TestEqual(TEXT("AsyncSweepByChannel query hit count should match callback payload"), ChannelQueryHitCount, ChannelHitCount);
-		TestRunner->TestEqual(TEXT("AsyncSweepByObjectType query hit count should match callback payload"), ObjectQueryHitCount, ObjectHitCount);
-		TestRunner->TestEqual(TEXT("AsyncSweepByProfile query hit count should match callback payload"), ProfileQueryHitCount, ProfileHitCount);
+		ASSERT_THAT(AreEqual(1, ChannelQuerySucceeded, TEXT("AsyncSweepByChannel callback should report successful QueryTraceData")));
+		ASSERT_THAT(AreEqual(1, ObjectQuerySucceeded, TEXT("AsyncSweepByObjectType callback should report successful QueryTraceData")));
+		ASSERT_THAT(AreEqual(1, ProfileQuerySucceeded, TEXT("AsyncSweepByProfile callback should report successful QueryTraceData")));
+		ASSERT_THAT(AreEqual(ChannelHitCount, ChannelQueryHitCount, TEXT("AsyncSweepByChannel query hit count should match callback payload")));
+		ASSERT_THAT(AreEqual(ObjectHitCount, ObjectQueryHitCount, TEXT("AsyncSweepByObjectType query hit count should match callback payload")));
+		ASSERT_THAT(AreEqual(ProfileHitCount, ProfileQueryHitCount, TEXT("AsyncSweepByProfile query hit count should match callback payload")));
 
 		// Verify actor/component identification
-		TestRunner->TestTrue(TEXT("AsyncSweepByChannel should identify the expected blocker actor"), bChannelHitActorMatched);
-		TestRunner->TestTrue(TEXT("AsyncSweepByChannel should identify the expected blocker component"), bChannelHitComponentMatched);
-		TestRunner->TestTrue(TEXT("AsyncSweepByObjectType should identify the expected blocker actor"), bObjectHitActorMatched);
-		TestRunner->TestTrue(TEXT("AsyncSweepByObjectType should identify the expected blocker component"), bObjectHitComponentMatched);
-		TestRunner->TestTrue(TEXT("AsyncSweepByProfile should identify the expected blocker actor"), bProfileHitActorMatched);
-		TestRunner->TestTrue(TEXT("AsyncSweepByProfile should identify the expected blocker component"), bProfileHitComponentMatched);
+		ASSERT_THAT(IsTrue(bChannelHitActorMatched, TEXT("AsyncSweepByChannel should identify the expected blocker actor")));
+		ASSERT_THAT(IsTrue(bChannelHitComponentMatched, TEXT("AsyncSweepByChannel should identify the expected blocker component")));
+		ASSERT_THAT(IsTrue(bObjectHitActorMatched, TEXT("AsyncSweepByObjectType should identify the expected blocker actor")));
+		ASSERT_THAT(IsTrue(bObjectHitComponentMatched, TEXT("AsyncSweepByObjectType should identify the expected blocker component")));
+		ASSERT_THAT(IsTrue(bProfileHitActorMatched, TEXT("AsyncSweepByProfile should identify the expected blocker actor")));
+		ASSERT_THAT(IsTrue(bProfileHitComponentMatched, TEXT("AsyncSweepByProfile should identify the expected blocker component")));
 	}
 };
 

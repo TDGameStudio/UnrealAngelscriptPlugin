@@ -121,10 +121,10 @@ private:
 	{
 		bool bMatched = true;
 
-		if (!TestRunner->TestEqual(
-				TEXT("Async preprocessor path should emit the same module count as the synchronous path"),
+		if (!this->Assert.AreEqual(
+				ExpectedModules.Num(),
 				ActualModules.Num(),
-				ExpectedModules.Num()))
+				TEXT("Async preprocessor path should emit the same module count as the synchronous path")))
 		{
 			return false;
 		}
@@ -134,34 +134,34 @@ private:
 			const FModuleSnapshot& Expected = ExpectedModules[ModuleIndex];
 			const FModuleSnapshot& Actual = ActualModules[ModuleIndex];
 
-			bMatched &= TestRunner->TestEqual(
-				*FString::Printf(TEXT("Module[%d] name should match between sync and async preprocess"), ModuleIndex),
+			bMatched &= this->Assert.AreEqual(
+				Expected.ModuleName,
 				Actual.ModuleName,
-				Expected.ModuleName);
+				*FString::Printf(TEXT("Module[%d] name should match between sync and async preprocess"), ModuleIndex));
 
-			bMatched &= TestRunner->TestEqual(
-				*FString::Printf(TEXT("Module[%d] imported-module count should match between sync and async preprocess"), ModuleIndex),
+			bMatched &= this->Assert.AreEqual(
+				Expected.ImportedModules.Num(),
 				Actual.ImportedModules.Num(),
-				Expected.ImportedModules.Num());
+				*FString::Printf(TEXT("Module[%d] imported-module count should match between sync and async preprocess"), ModuleIndex));
 
 			const int32 ComparedImportCount = FMath::Min(Expected.ImportedModules.Num(), Actual.ImportedModules.Num());
 			for (int32 ImportIndex = 0; ImportIndex < ComparedImportCount; ++ImportIndex)
 			{
-				bMatched &= TestRunner->TestEqual(
-					*FString::Printf(TEXT("Module[%d] import[%d] should keep the same dependency order"), ModuleIndex, ImportIndex),
+				bMatched &= this->Assert.AreEqual(
+					Expected.ImportedModules[ImportIndex],
 					Actual.ImportedModules[ImportIndex],
-					Expected.ImportedModules[ImportIndex]);
+					*FString::Printf(TEXT("Module[%d] import[%d] should keep the same dependency order"), ModuleIndex, ImportIndex));
 			}
 
-			bMatched &= TestRunner->TestEqual(
-				*FString::Printf(TEXT("Module[%d] code section count should match between sync and async preprocess"), ModuleIndex),
+			bMatched &= this->Assert.AreEqual(
+				Expected.CodeSections.Num(),
 				Actual.CodeSections.Num(),
-				Expected.CodeSections.Num());
+				*FString::Printf(TEXT("Module[%d] code section count should match between sync and async preprocess"), ModuleIndex));
 
-			bMatched &= TestRunner->TestEqual(
-				*FString::Printf(TEXT("Module[%d] aggregate code hash should match between sync and async preprocess"), ModuleIndex),
+			bMatched &= this->Assert.AreEqual(
+				Expected.CodeHash,
 				Actual.CodeHash,
-				Expected.CodeHash);
+				*FString::Printf(TEXT("Module[%d] aggregate code hash should match between sync and async preprocess"), ModuleIndex));
 
 			const int32 ComparedSectionCount = FMath::Min(Expected.CodeSections.Num(), Actual.CodeSections.Num());
 			for (int32 SectionIndex = 0; SectionIndex < ComparedSectionCount; ++SectionIndex)
@@ -169,24 +169,24 @@ private:
 				const FCodeSectionSnapshot& ExpectedSection = Expected.CodeSections[SectionIndex];
 				const FCodeSectionSnapshot& ActualSection = Actual.CodeSections[SectionIndex];
 
-				bMatched &= TestRunner->TestEqual(
-					*FString::Printf(TEXT("Module[%d] section[%d] relative filename should match"), ModuleIndex, SectionIndex),
+				bMatched &= this->Assert.AreEqual(
+					ExpectedSection.RelativeFilename,
 					ActualSection.RelativeFilename,
-					ExpectedSection.RelativeFilename);
+					*FString::Printf(TEXT("Module[%d] section[%d] relative filename should match"), ModuleIndex, SectionIndex));
 
-				bMatched &= TestRunner->TestEqual(
-					*FString::Printf(TEXT("Module[%d] section[%d] absolute filename should match"), ModuleIndex, SectionIndex),
+				bMatched &= this->Assert.AreEqual(
+					ExpectedSection.AbsoluteFilename,
 					ActualSection.AbsoluteFilename,
-					ExpectedSection.AbsoluteFilename);
+					*FString::Printf(TEXT("Module[%d] section[%d] absolute filename should match"), ModuleIndex, SectionIndex));
 
-				bMatched &= TestRunner->TestEqual(
-					*FString::Printf(TEXT("Module[%d] section[%d] code hash should match"), ModuleIndex, SectionIndex),
+				bMatched &= this->Assert.AreEqual(
+					ExpectedSection.CodeHash,
 					ActualSection.CodeHash,
-					ExpectedSection.CodeHash);
+					*FString::Printf(TEXT("Module[%d] section[%d] code hash should match"), ModuleIndex, SectionIndex));
 
-				bMatched &= TestRunner->TestTrue(
-					*FString::Printf(TEXT("Module[%d] section[%d] processed code should match exactly"), ModuleIndex, SectionIndex),
-					ActualSection.Code == ExpectedSection.Code);
+				bMatched &= this->Assert.IsTrue(
+					ActualSection.Code == ExpectedSection.Code,
+					*FString::Printf(TEXT("Module[%d] section[%d] processed code should match exactly"), ModuleIndex, SectionIndex));
 			}
 		}
 
@@ -199,35 +199,35 @@ private:
 	{
 		bool bMatched = true;
 
-		bMatched &= TestRunner->TestEqual(
-			TEXT("Async zero-byte preprocess should keep the same module name as the sync path"),
+		bMatched &= this->Assert.AreEqual(
+			Expected.ModuleName,
 			Actual.ModuleName,
-			Expected.ModuleName);
+			TEXT("Async zero-byte preprocess should keep the same module name as the sync path"));
 
-		bMatched &= TestRunner->TestEqual(
-			TEXT("Async zero-byte preprocess should keep the same imported-module count as the sync path"),
-			Actual.ImportedModules.Num(),
-			Expected.ImportedModules.Num());
-
-		bMatched &= TestRunner->TestEqual(
-			TEXT("Async zero-byte preprocess should keep the same code section count as the sync path"),
-			Actual.CodeSections.Num(),
-			Expected.CodeSections.Num());
-
-		bMatched &= TestRunner->TestEqual(
-			TEXT("Synchronous zero-byte preprocess should keep a zero aggregate code hash"),
-			Expected.CodeHash,
-			0ll);
-
-		bMatched &= TestRunner->TestEqual(
-			TEXT("Async zero-byte preprocess should keep the same aggregate code hash as the sync path"),
-			Actual.CodeHash,
-			Expected.CodeHash);
-
-		bMatched &= TestRunner->TestEqual(
-			TEXT("Synchronous zero-byte preprocess should keep zero imported modules"),
+		bMatched &= this->Assert.AreEqual(
 			Expected.ImportedModules.Num(),
-			0);
+			Actual.ImportedModules.Num(),
+			TEXT("Async zero-byte preprocess should keep the same imported-module count as the sync path"));
+
+		bMatched &= this->Assert.AreEqual(
+			Expected.CodeSections.Num(),
+			Actual.CodeSections.Num(),
+			TEXT("Async zero-byte preprocess should keep the same code section count as the sync path"));
+
+		bMatched &= this->Assert.AreEqual(
+			0ll,
+			Expected.CodeHash,
+			TEXT("Synchronous zero-byte preprocess should keep a zero aggregate code hash"));
+
+		bMatched &= this->Assert.AreEqual(
+			Expected.CodeHash,
+			Actual.CodeHash,
+			TEXT("Async zero-byte preprocess should keep the same aggregate code hash as the sync path"));
+
+		bMatched &= this->Assert.AreEqual(
+			0,
+			Expected.ImportedModules.Num(),
+			TEXT("Synchronous zero-byte preprocess should keep zero imported modules"));
 
 		const int32 ComparedSectionCount = FMath::Min(Expected.CodeSections.Num(), Actual.CodeSections.Num());
 		for (int32 SectionIndex = 0; SectionIndex < ComparedSectionCount; ++SectionIndex)
@@ -235,37 +235,37 @@ private:
 			const FCodeSectionSnapshot& ExpectedSection = Expected.CodeSections[SectionIndex];
 			const FCodeSectionSnapshot& ActualSection = Actual.CodeSections[SectionIndex];
 
-			bMatched &= TestRunner->TestEqual(
-				*FString::Printf(TEXT("Code section[%d] relative filename should match between sync and async zero-byte preprocess"), SectionIndex),
+			bMatched &= this->Assert.AreEqual(
+				ExpectedSection.RelativeFilename,
 				ActualSection.RelativeFilename,
-				ExpectedSection.RelativeFilename);
+				*FString::Printf(TEXT("Code section[%d] relative filename should match between sync and async zero-byte preprocess"), SectionIndex));
 
-			bMatched &= TestRunner->TestEqual(
-				*FString::Printf(TEXT("Code section[%d] absolute filename should match between sync and async zero-byte preprocess"), SectionIndex),
+			bMatched &= this->Assert.AreEqual(
+				ExpectedSection.AbsoluteFilename,
 				ActualSection.AbsoluteFilename,
-				ExpectedSection.AbsoluteFilename);
+				*FString::Printf(TEXT("Code section[%d] absolute filename should match between sync and async zero-byte preprocess"), SectionIndex));
 
-			bMatched &= TestRunner->TestEqual(
-				*FString::Printf(TEXT("Code section[%d] hash should match between sync and async zero-byte preprocess"), SectionIndex),
-				ActualSection.CodeHash,
-				ExpectedSection.CodeHash);
-
-			bMatched &= TestRunner->TestEqual(
-				*FString::Printf(TEXT("Synchronous zero-byte preprocess should keep code section[%d] hash at zero"), SectionIndex),
+			bMatched &= this->Assert.AreEqual(
 				ExpectedSection.CodeHash,
-				0ll);
+				ActualSection.CodeHash,
+				*FString::Printf(TEXT("Code section[%d] hash should match between sync and async zero-byte preprocess"), SectionIndex));
 
-			bMatched &= TestRunner->TestTrue(
-				*FString::Printf(TEXT("Synchronous zero-byte preprocess should keep code section[%d] empty"), SectionIndex),
-				ExpectedSection.Code.IsEmpty());
+			bMatched &= this->Assert.AreEqual(
+				0ll,
+				ExpectedSection.CodeHash,
+				*FString::Printf(TEXT("Synchronous zero-byte preprocess should keep code section[%d] hash at zero"), SectionIndex));
 
-			bMatched &= TestRunner->TestTrue(
-				*FString::Printf(TEXT("Code section[%d] processed code should match exactly between sync and async zero-byte preprocess"), SectionIndex),
-				ActualSection.Code == ExpectedSection.Code);
+			bMatched &= this->Assert.IsTrue(
+				ExpectedSection.Code.IsEmpty(),
+				*FString::Printf(TEXT("Synchronous zero-byte preprocess should keep code section[%d] empty"), SectionIndex));
 
-			bMatched &= TestRunner->TestTrue(
-				*FString::Printf(TEXT("Asynchronous zero-byte preprocess should keep code section[%d] empty"), SectionIndex),
-				ActualSection.Code.IsEmpty());
+			bMatched &= this->Assert.IsTrue(
+				ActualSection.Code == ExpectedSection.Code,
+				*FString::Printf(TEXT("Code section[%d] processed code should match exactly between sync and async zero-byte preprocess"), SectionIndex));
+
+			bMatched &= this->Assert.IsTrue(
+				ActualSection.Code.IsEmpty(),
+				*FString::Printf(TEXT("Asynchronous zero-byte preprocess should keep code section[%d] empty"), SectionIndex));
 		}
 
 		return bMatched;
@@ -276,10 +276,10 @@ private:
 		FModuleSnapshot& OutSnapshot,
 		const TCHAR* ContextLabel)
 	{
-		if (!TestRunner->TestEqual(
-				*FString::Printf(TEXT("%s should produce exactly one module"), ContextLabel),
+		if (!this->Assert.AreEqual(
+				1,
 				Modules.Num(),
-				1))
+				*FString::Printf(TEXT("%s should produce exactly one module"), ContextLabel)))
 		{
 			return false;
 		}
@@ -381,24 +381,28 @@ int UseProvider()
 			true, AsynchronousModules, AsynchronousDiagnostics, AsynchronousErrorCount);
 
 		// Verify both paths succeeded without diagnostics
-		const bool bSyncOk = TestRunner->TestTrue(
-			TEXT("Synchronous preprocess should succeed for the async-load comparison fixture"),
-			bSynchronousSucceeded);
-		const bool bAsyncOk = TestRunner->TestTrue(
-			TEXT("Asynchronous preprocess should succeed for the async-load comparison fixture"),
-			bAsynchronousSucceeded);
-		const bool bSyncDiagEmpty = TestRunner->TestEqual(
-			TEXT("Synchronous preprocess should not emit diagnostics for the async-load comparison fixture"),
-			SynchronousDiagnostics.Num(), 0);
-		const bool bAsyncDiagEmpty = TestRunner->TestEqual(
-			TEXT("Asynchronous preprocess should not emit diagnostics for the async-load comparison fixture"),
-			AsynchronousDiagnostics.Num(), 0);
-		const bool bSyncErrZero = TestRunner->TestEqual(
-			TEXT("Synchronous preprocess should not emit errors for the async-load comparison fixture"),
-			SynchronousErrorCount, 0);
-		const bool bAsyncErrZero = TestRunner->TestEqual(
-			TEXT("Asynchronous preprocess should not emit errors for the async-load comparison fixture"),
-			AsynchronousErrorCount, 0);
+		const bool bSyncOk = this->Assert.IsTrue(
+			bSynchronousSucceeded,
+			TEXT("Synchronous preprocess should succeed for the async-load comparison fixture"));
+		const bool bAsyncOk = this->Assert.IsTrue(
+			bAsynchronousSucceeded,
+			TEXT("Asynchronous preprocess should succeed for the async-load comparison fixture"));
+		const bool bSyncDiagEmpty = this->Assert.AreEqual(
+			0,
+			SynchronousDiagnostics.Num(),
+			TEXT("Synchronous preprocess should not emit diagnostics for the async-load comparison fixture"));
+		const bool bAsyncDiagEmpty = this->Assert.AreEqual(
+			0,
+			AsynchronousDiagnostics.Num(),
+			TEXT("Asynchronous preprocess should not emit diagnostics for the async-load comparison fixture"));
+		const bool bSyncErrZero = this->Assert.AreEqual(
+			0,
+			SynchronousErrorCount,
+			TEXT("Synchronous preprocess should not emit errors for the async-load comparison fixture"));
+		const bool bAsyncErrZero = this->Assert.AreEqual(
+			0,
+			AsynchronousErrorCount,
+			TEXT("Asynchronous preprocess should not emit errors for the async-load comparison fixture"));
 
 		if (bSyncOk && bAsyncOk && bSyncDiagEmpty && bAsyncDiagEmpty && bSyncErrZero && bAsyncErrZero)
 		{
@@ -420,10 +424,10 @@ int UseProvider()
 		const FString RelativeFilename = TEXT("Tests/Preprocessor/AsyncZeroByte/ZeroByte.as");
 		FFixtureFile ZeroByteFile = FFixtureFile::CreateZeroByte(RelativeFilename);
 
-		TestRunner->TestEqual(
-			TEXT("Async zero-byte preprocessor fixture should stay at file size 0"),
+		ASSERT_THAT(AreEqual(
+			0ll,
 			IFileManager::Get().FileSize(*ZeroByteFile.AbsolutePath),
-			0ll);
+			TEXT("Async zero-byte preprocessor fixture should stay at file size 0")));
 
 		TGuardValue<bool> AutomaticImportGuard(Engine.bUseAutomaticImportMethod, false);
 
@@ -472,24 +476,28 @@ int UseProvider()
 			true, AsyncSnapshot, AsyncDiagnostics, AsyncErrorCount);
 
 		// Verify both paths succeeded without diagnostics
-		const bool bSyncOk = TestRunner->TestTrue(
-			TEXT("Synchronous zero-byte preprocess should return success"),
-			bSyncSucceeded);
-		const bool bAsyncOk = TestRunner->TestTrue(
-			TEXT("Asynchronous zero-byte preprocess should return success"),
-			bAsyncSucceeded);
-		const bool bSyncDiagEmpty = TestRunner->TestEqual(
-			TEXT("Synchronous zero-byte preprocess should not emit diagnostics"),
-			SyncDiagnostics.Num(), 0);
-		const bool bAsyncDiagEmpty = TestRunner->TestEqual(
-			TEXT("Asynchronous zero-byte preprocess should not emit diagnostics"),
-			AsyncDiagnostics.Num(), 0);
-		const bool bSyncErrZero = TestRunner->TestEqual(
-			TEXT("Synchronous zero-byte preprocess should not emit errors"),
-			SyncErrorCount, 0);
-		const bool bAsyncErrZero = TestRunner->TestEqual(
-			TEXT("Asynchronous zero-byte preprocess should not emit errors"),
-			AsyncErrorCount, 0);
+		const bool bSyncOk = this->Assert.IsTrue(
+			bSyncSucceeded,
+			TEXT("Synchronous zero-byte preprocess should return success"));
+		const bool bAsyncOk = this->Assert.IsTrue(
+			bAsyncSucceeded,
+			TEXT("Asynchronous zero-byte preprocess should return success"));
+		const bool bSyncDiagEmpty = this->Assert.AreEqual(
+			0,
+			SyncDiagnostics.Num(),
+			TEXT("Synchronous zero-byte preprocess should not emit diagnostics"));
+		const bool bAsyncDiagEmpty = this->Assert.AreEqual(
+			0,
+			AsyncDiagnostics.Num(),
+			TEXT("Asynchronous zero-byte preprocess should not emit diagnostics"));
+		const bool bSyncErrZero = this->Assert.AreEqual(
+			0,
+			SyncErrorCount,
+			TEXT("Synchronous zero-byte preprocess should not emit errors"));
+		const bool bAsyncErrZero = this->Assert.AreEqual(
+			0,
+			AsyncErrorCount,
+			TEXT("Asynchronous zero-byte preprocess should not emit errors"));
 
 		if (bSyncOk && bAsyncOk && bSyncDiagEmpty && bAsyncDiagEmpty && bSyncErrZero && bAsyncErrZero)
 		{
@@ -537,18 +545,20 @@ class UDeletedFileProbe : UObject
 			ErrorCount);
 		const FString DiagnosticSummary = FString::Join(DiagnosticMessages, TEXT("\n"));
 
-		TestRunner->TestTrue(
-			TEXT("Treat-as-deleted preprocessing should succeed even when a real file exists on disk"),
-			bPreprocessSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Treat-as-deleted preprocessing should materialize exactly one module descriptor"),
-			Modules.Num(), 1);
-		TestRunner->TestEqual(
-			TEXT("Treat-as-deleted preprocessing should not emit diagnostics"),
-			ErrorCount, 0);
-		TestRunner->TestTrue(
-			TEXT("Treat-as-deleted preprocessing should keep the diagnostic summary empty"),
-			DiagnosticSummary.IsEmpty());
+		ASSERT_THAT(IsTrue(
+			bPreprocessSucceeded,
+			TEXT("Treat-as-deleted preprocessing should succeed even when a real file exists on disk")));
+		ASSERT_THAT(AreEqual(
+			1,
+			Modules.Num(),
+			TEXT("Treat-as-deleted preprocessing should materialize exactly one module descriptor")));
+		ASSERT_THAT(AreEqual(
+			0,
+			ErrorCount,
+			TEXT("Treat-as-deleted preprocessing should not emit diagnostics")));
+		ASSERT_THAT(IsTrue(
+			DiagnosticSummary.IsEmpty(),
+			TEXT("Treat-as-deleted preprocessing should keep the diagnostic summary empty")));
 
 		const FAngelscriptModuleDesc* Module = nullptr;
 		for (const TSharedRef<FAngelscriptModuleDesc>& M : Modules)
@@ -560,61 +570,69 @@ class UDeletedFileProbe : UObject
 			}
 		}
 
-		if (!TestRunner->TestNotNull(
-				TEXT("Treat-as-deleted preprocessing should normalize the deleted file path into a module name"),
-				Module))
+		if (!this->Assert.IsNotNull(
+				Module,
+				TEXT("Treat-as-deleted preprocessing should normalize the deleted file path into a module name")))
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Treat-as-deleted preprocessing should keep exactly one empty code section"),
-			Module->Code.Num(), 1);
+		ASSERT_THAT(AreEqual(
+			1,
+			Module->Code.Num(),
+			TEXT("Treat-as-deleted preprocessing should keep exactly one empty code section")));
 		if (Module->Code.Num() > 0)
 		{
-			TestRunner->TestEqual(
-				TEXT("Treat-as-deleted preprocessing should preserve the relative filename on the emitted code section"),
+			ASSERT_THAT(AreEqual(
+				RelativeScriptPath,
 				Module->Code[0].RelativeFilename,
-				RelativeScriptPath);
-			TestRunner->TestEqual(
-				TEXT("Treat-as-deleted preprocessing should preserve the absolute filename on the emitted code section"),
+				TEXT("Treat-as-deleted preprocessing should preserve the relative filename on the emitted code section")));
+			ASSERT_THAT(AreEqual(
+				DeletedFile.AbsolutePath,
 				Module->Code[0].AbsoluteFilename,
-				DeletedFile.AbsolutePath);
-			TestRunner->TestTrue(
-				TEXT("Treat-as-deleted preprocessing should emit an empty processed code section"),
-				Module->Code[0].Code.IsEmpty());
-			TestRunner->TestEqual(
-				TEXT("Treat-as-deleted preprocessing should zero the empty code section hash"),
+				TEXT("Treat-as-deleted preprocessing should preserve the absolute filename on the emitted code section")));
+			ASSERT_THAT(IsTrue(
+				Module->Code[0].Code.IsEmpty(),
+				TEXT("Treat-as-deleted preprocessing should emit an empty processed code section")));
+			ASSERT_THAT(AreEqual(
+				static_cast<int64>(0),
 				Module->Code[0].CodeHash,
-				static_cast<int64>(0));
+				TEXT("Treat-as-deleted preprocessing should zero the empty code section hash")));
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Treat-as-deleted preprocessing should keep the module code hash at zero"),
+		ASSERT_THAT(AreEqual(
+			static_cast<int64>(0),
 			Module->CodeHash,
-			static_cast<int64>(0));
-		TestRunner->TestEqual(
-			TEXT("Treat-as-deleted preprocessing should not record imported modules from deleted source"),
-			Module->ImportedModules.Num(), 0);
-		TestRunner->TestEqual(
-			TEXT("Treat-as-deleted preprocessing should not record post-init functions from deleted source"),
-			Module->PostInitFunctions.Num(), 0);
-		TestRunner->TestEqual(
-			TEXT("Treat-as-deleted preprocessing should not materialize classes from deleted source"),
-			Module->Classes.Num(), 0);
-		TestRunner->TestEqual(
-			TEXT("Treat-as-deleted preprocessing should not materialize enums from deleted source"),
-			Module->Enums.Num(), 0);
-		TestRunner->TestEqual(
-			TEXT("Treat-as-deleted preprocessing should not materialize delegates from deleted source"),
-			Module->Delegates.Num(), 0);
+			TEXT("Treat-as-deleted preprocessing should keep the module code hash at zero")));
+		ASSERT_THAT(AreEqual(
+			0,
+			Module->ImportedModules.Num(),
+			TEXT("Treat-as-deleted preprocessing should not record imported modules from deleted source")));
+		ASSERT_THAT(AreEqual(
+			0,
+			Module->PostInitFunctions.Num(),
+			TEXT("Treat-as-deleted preprocessing should not record post-init functions from deleted source")));
+		ASSERT_THAT(AreEqual(
+			0,
+			Module->Classes.Num(),
+			TEXT("Treat-as-deleted preprocessing should not materialize classes from deleted source")));
+		ASSERT_THAT(AreEqual(
+			0,
+			Module->Enums.Num(),
+			TEXT("Treat-as-deleted preprocessing should not materialize enums from deleted source")));
+		ASSERT_THAT(AreEqual(
+			0,
+			Module->Delegates.Num(),
+			TEXT("Treat-as-deleted preprocessing should not materialize delegates from deleted source")));
 #if WITH_EDITOR
-		TestRunner->TestEqual(
-			TEXT("Treat-as-deleted preprocessing should not materialize usage restrictions from deleted source"),
-			Module->UsageRestrictions.Num(), 0);
-		TestRunner->TestEqual(
-			TEXT("Treat-as-deleted preprocessing should not record editor-only block lines from deleted source"),
-			Module->EditorOnlyBlockLines.Num(), 0);
+		ASSERT_THAT(AreEqual(
+			0,
+			Module->UsageRestrictions.Num(),
+			TEXT("Treat-as-deleted preprocessing should not materialize usage restrictions from deleted source")));
+		ASSERT_THAT(AreEqual(
+			0,
+			Module->EditorOnlyBlockLines.Num(),
+			TEXT("Treat-as-deleted preprocessing should not record editor-only block lines from deleted source")));
 #endif
 
 		}

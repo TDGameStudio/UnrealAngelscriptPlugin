@@ -20,6 +20,7 @@ namespace AngelscriptTest_Core_AngelscriptEngineDependencyInjectionTests_Private
 
 bool RunInjectedScriptRootDiscovery(FAutomationTestBase& Test)
 {
+	FNoDiscardAsserter Assert(Test);
 	FAngelscriptDependencyInjectionTestAccess::ResetToIsolatedEngineState();
 
 	FAngelscriptEngineConfig Config;
@@ -59,15 +60,17 @@ bool RunInjectedScriptRootDiscovery(FAutomationTestBase& Test)
 	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptTestEngine::Create(Config, Dependencies);
 	TArray<FString> Roots = Engine->DiscoverScriptRoots(false);
 
-	Test.TestEqual(TEXT("Injected project root should be first"), Roots[0], FString(TEXT("C:/InjectedProject/Script")));
-	Test.TestEqual(TEXT("Injected plugin roots should be sorted deterministically"), Roots[1], FString(TEXT("C:/Plugins/Alpha/Script")));
-	Test.TestEqual(TEXT("Injected plugin roots should keep all entries"), Roots[2], FString(TEXT("C:/Plugins/Beta/Script")));
+	bool bOk = true;
+	bOk &= Assert.AreEqual(FString(TEXT("C:/InjectedProject/Script")), Roots[0], TEXT("Injected project root should be first"));
+	bOk &= Assert.AreEqual(FString(TEXT("C:/Plugins/Alpha/Script")), Roots[1], TEXT("Injected plugin roots should be sorted deterministically"));
+	bOk &= Assert.AreEqual(FString(TEXT("C:/Plugins/Beta/Script")), Roots[2], TEXT("Injected plugin roots should keep all entries"));
 
-	return true;
+	return bOk;
 }
 
 bool RunInjectedProjectOnlyScriptRootDiscovery(FAutomationTestBase& Test)
 {
+	FNoDiscardAsserter Assert(Test);
 	FAngelscriptDependencyInjectionTestAccess::ResetToIsolatedEngineState();
 
 	FAngelscriptEngineConfig Config;
@@ -105,17 +108,18 @@ bool RunInjectedProjectOnlyScriptRootDiscovery(FAutomationTestBase& Test)
 	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptTestEngine::Create(Config, Dependencies);
 	TArray<FString> Roots = Engine->DiscoverScriptRoots(true);
 
-	Test.TestEqual(TEXT("Project-only discovery should return exactly one root"), Roots.Num(), 1);
+	bool bOk = Assert.AreEqual(1, Roots.Num(), TEXT("Project-only discovery should return exactly one root"));
 	if (Roots.Num() == 1)
 	{
-		Test.TestEqual(TEXT("Project-only discovery should keep only the project root"), Roots[0], FString(TEXT("C:/InjectedProjectOnly/Script")));
+		bOk &= Assert.AreEqual(FString(TEXT("C:/InjectedProjectOnly/Script")), Roots[0], TEXT("Project-only discovery should keep only the project root"));
 	}
 
-	return true;
+	return bOk;
 }
 
 bool RunInjectedMissingPluginScriptRootSkip(FAutomationTestBase& Test)
 {
+	FNoDiscardAsserter Assert(Test);
 	FAngelscriptDependencyInjectionTestAccess::ResetToIsolatedEngineState();
 
 	FAngelscriptEngineConfig Config;
@@ -155,18 +159,19 @@ bool RunInjectedMissingPluginScriptRootSkip(FAutomationTestBase& Test)
 	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptTestEngine::Create(Config, Dependencies);
 	TArray<FString> Roots = Engine->DiscoverScriptRoots(false);
 
-	Test.TestEqual(TEXT("Missing plugin roots should be skipped and project root should not be duplicated"), Roots.Num(), 2);
+	bool bOk = Assert.AreEqual(2, Roots.Num(), TEXT("Missing plugin roots should be skipped and project root should not be duplicated"));
 	if (Roots.Num() == 2)
 	{
-		Test.TestEqual(TEXT("Project root should remain first when skipping missing plugin roots"), Roots[0], FString(TEXT("C:/InjectedSkipProject/Script")));
-		Test.TestEqual(TEXT("Only existing plugin root should remain after skipping missing roots"), Roots[1], FString(TEXT("C:/Plugins/Alpha/Script")));
+		bOk &= Assert.AreEqual(FString(TEXT("C:/InjectedSkipProject/Script")), Roots[0], TEXT("Project root should remain first when skipping missing plugin roots"));
+		bOk &= Assert.AreEqual(FString(TEXT("C:/Plugins/Alpha/Script")), Roots[1], TEXT("Only existing plugin root should remain after skipping missing roots"));
 	}
 
-	return true;
+	return bOk;
 }
 
 bool RunInjectedEditorCreatesProjectScriptRoot(FAutomationTestBase& Test)
 {
+	FNoDiscardAsserter Assert(Test);
 	FAngelscriptDependencyInjectionTestAccess::ResetToIsolatedEngineState();
 
 	FAngelscriptEngineConfig Config;
@@ -206,19 +211,21 @@ bool RunInjectedEditorCreatesProjectScriptRoot(FAutomationTestBase& Test)
 	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptTestEngine::Create(Config, Dependencies);
 	TArray<FString> Roots = Engine->DiscoverScriptRoots(false);
 
-	Test.TestTrue(TEXT("Editor discovery should create the missing project script root"), bMakeDirectoryCalled);
-	Test.TestEqual(TEXT("Editor discovery should create the expected project script root path"), CreatedPath, FString(TEXT("C:/InjectedEditorProject/Script")));
-	Test.TestEqual(TEXT("Editor discovery should still return the project root after creation"), Roots.Num(), 1);
+	bool bOk = true;
+	bOk &= Assert.IsTrue(bMakeDirectoryCalled, TEXT("Editor discovery should create the missing project script root"));
+	bOk &= Assert.AreEqual(FString(TEXT("C:/InjectedEditorProject/Script")), CreatedPath, TEXT("Editor discovery should create the expected project script root path"));
+	bOk &= Assert.AreEqual(1, Roots.Num(), TEXT("Editor discovery should still return the project root after creation"));
 	if (Roots.Num() == 1)
 	{
-		Test.TestEqual(TEXT("Created project root should be returned by discovery"), Roots[0], FString(TEXT("C:/InjectedEditorProject/Script")));
+		bOk &= Assert.AreEqual(FString(TEXT("C:/InjectedEditorProject/Script")), Roots[0], TEXT("Created project root should be returned by discovery"));
 	}
 
-	return true;
+	return bOk;
 }
 
 bool RunCreateWithSkipInitialCompileSkipsProductionDirectorySetup(FAutomationTestBase& Test)
 {
+	FNoDiscardAsserter Assert(Test);
 	FAngelscriptDependencyInjectionTestAccess::ResetToIsolatedEngineState();
 
 	// Verifies the OpenSpec D8 contract for the unified `FAngelscriptEngine::Create`
@@ -259,17 +266,19 @@ bool RunCreateWithSkipInitialCompileSkipsProductionDirectorySetup(FAutomationTes
 	};
 
 	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptEngine::Create(Config, Dependencies);
-	if (!Test.TestNotNull(TEXT("Create.WithSkipInitialCompileSkipsProductionDirectorySetup should create an engine"), Engine.Get()))
+	if (!Assert.IsNotNull(Engine.Get(), TEXT("Create.WithSkipInitialCompileSkipsProductionDirectorySetup should create an engine")))
 	{
 		return false;
 	}
 
-	Test.TestFalse(TEXT("Create.WithSkipInitialCompileSkipsProductionDirectorySetup should not run the production script-root setup path"), bMakeDirectoryCalled);
-	return Test.TestEqual(TEXT("Create.WithSkipInitialCompileSkipsProductionDirectorySetup should keep the production setup path untouched"), CreatedPath, FString());
+	bool bOk = Assert.IsFalse(bMakeDirectoryCalled, TEXT("Create.WithSkipInitialCompileSkipsProductionDirectorySetup should not run the production script-root setup path"));
+	bOk &= Assert.AreEqual(FString(), CreatedPath, TEXT("Create.WithSkipInitialCompileSkipsProductionDirectorySetup should keep the production setup path untouched"));
+	return bOk;
 }
 
 bool RunCreateTestingFullEngineSkipsProductionDirectorySetup(FAutomationTestBase& Test)
 {
+	FNoDiscardAsserter Assert(Test);
 	FAngelscriptDependencyInjectionTestAccess::ResetToIsolatedEngineState();
 
 	FAngelscriptEngineConfig Config;
@@ -301,12 +310,12 @@ bool RunCreateTestingFullEngineSkipsProductionDirectorySetup(FAutomationTestBase
 	};
 
 	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptTestEngine::Create(Config, Dependencies);
-	if (!Test.TestNotNull(TEXT("CreateTestingFullEngine.SkipsProductionDirectorySetup should create a testing full engine"), Engine.Get()))
+	if (!Assert.IsNotNull(Engine.Get(), TEXT("CreateTestingFullEngine.SkipsProductionDirectorySetup should create a testing full engine")))
 	{
 		return false;
 	}
 
-	return Test.TestFalse(TEXT("CreateTestingFullEngine.SkipsProductionDirectorySetup should not run the production script-root setup path"), bMakeDirectoryCalled);
+	return Assert.IsFalse(bMakeDirectoryCalled, TEXT("CreateTestingFullEngine.SkipsProductionDirectorySetup should not run the production script-root setup path"));
 }
 
 }

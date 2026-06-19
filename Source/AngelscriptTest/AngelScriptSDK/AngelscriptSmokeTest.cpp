@@ -30,27 +30,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKSmokeTests, "Angelscript.TestModule.AngelSc
 	TEST_METHOD(Smoke)
 	{
 		asIScriptEngine* const ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK smoke test should create a standalone script engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK smoke test should create a standalone script engine")));
 
 		ScriptEngine->WriteMessage("SDKSmoke", 0, 0, asMSGTYPE_INFORMATION, "Smoke callback ready");
-		if (!TestRunner->TestTrue(TEXT("SDK smoke test should capture engine callback messages"), BufferedOutStream.Buffer.find("Smoke callback ready") != std::string::npos))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(BufferedOutStream.Buffer.find("Smoke callback ready") != std::string::npos,
+			TEXT("SDK smoke test should capture engine callback messages")));
 
 		const int ExecuteResult = SDKExecuteString(
 			ScriptEngine,
 			"bool ExecuteSmoke() { assert(true); return true; }");
 
-		if (!TestRunner->TestEqual(TEXT("SDK smoke test should compile and execute a simple snippet"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_FINISHED), ExecuteResult,
+			TEXT("SDK smoke test should compile and execute a simple snippet")));
 
-		TestRunner->TestFalse(TEXT("SDK smoke test should not latch an engine failure for Assert(true)"), Engine.HasFailed());
+		ASSERT_THAT(IsFalse(Engine.HasFailed(), TEXT("SDK smoke test should not latch an engine failure for Assert(true)")));
 	}
 };
 

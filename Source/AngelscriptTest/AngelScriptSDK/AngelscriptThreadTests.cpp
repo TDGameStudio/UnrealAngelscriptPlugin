@@ -39,29 +39,29 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKThreadTests, "Angelscript.TestModule.AngelS
 	TEST_METHOD(GetLocalDataNonNull)
 	{
 		asCThreadLocalData* TLS = asCThreadManager::GetLocalData();
-		TestNotNull(TEXT("GetLocalData on main thread should return non-null"), TLS);
+		ASSERT_THAT(IsNotNull(TLS, TEXT("GetLocalData on main thread should return non-null")));
 	}
 
 	TEST_METHOD(GetLocalDataStable)
 	{
 		asCThreadLocalData* TLS1 = asCThreadManager::GetLocalData();
 		asCThreadLocalData* TLS2 = asCThreadManager::GetLocalData();
-		TestNotNull(TEXT("First GetLocalData should be non-null"), TLS1);
-		TestNotNull(TEXT("Second GetLocalData should be non-null"), TLS2);
-		TestEqual(TEXT("Two calls on same thread should return identical pointer"), TLS1, TLS2);
+		ASSERT_THAT(IsNotNull(TLS1, TEXT("First GetLocalData should be non-null")));
+		ASSERT_THAT(IsNotNull(TLS2, TEXT("Second GetLocalData should be non-null")));
+		ASSERT_THAT(AreEqual(TLS1, TLS2, TEXT("Two calls on same thread should return identical pointer")));
 	}
 
 	TEST_METHOD(DifferentTLS)
 	{
 
 		asCThreadLocalData* MainTLS = asCThreadManager::GetLocalData();
-		TestNotNull(TEXT("Main thread TLS should be non-null"), MainTLS);
+		ASSERT_THAT(IsNotNull(MainTLS, TEXT("Main thread TLS should be non-null")));
 
 		FEvent* CompletionEvent = FPlatformProcess::GetSynchEventFromPool(true);
 		FTLSCaptureRunnable Runnable(CompletionEvent);
 
 		FRunnableThread* Thread = FRunnableThread::Create(&Runnable, TEXT("TLSCaptureThread"));
-		if (!TestNotNull(TEXT("Should create worker thread"), Thread))
+		if (!this->Assert.IsNotNull(Thread, TEXT("Should create worker thread")))
 		{
 			FPlatformProcess::ReturnSynchEventToPool(CompletionEvent);
 			return;
@@ -72,8 +72,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKThreadTests, "Angelscript.TestModule.AngelS
 		delete Thread;
 		FPlatformProcess::ReturnSynchEventToPool(CompletionEvent);
 
-		TestNotNull(TEXT("Worker thread TLS should be non-null"), Runnable.CapturedTLS);
-		TestNotEqual(TEXT("Worker thread TLS should differ from main thread TLS"), Runnable.CapturedTLS, MainTLS);
+		ASSERT_THAT(IsNotNull(Runnable.CapturedTLS, TEXT("Worker thread TLS should be non-null")));
+		ASSERT_THAT(AreNotEqual(MainTLS, Runnable.CapturedTLS, TEXT("Worker thread TLS should differ from main thread TLS")));
 	}
 };
 

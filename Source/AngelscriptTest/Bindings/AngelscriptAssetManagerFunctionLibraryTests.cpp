@@ -55,10 +55,11 @@ namespace AngelscriptAssetManagerTestHelpers
 		const TCHAR* ContextLabel,
 		int32& OutValue)
 	{
+		FNoDiscardAsserter Assert(Test);
 		FIntProperty* Property = FindFProperty<FIntProperty>(Object.GetClass(), PropertyName);
-		if (!Test.TestNotNull(
-			*FString::Printf(TEXT("%s should expose int property '%s'"), ContextLabel, *PropertyName.ToString()),
-			Property))
+		if (!Assert.IsNotNull(
+			Property,
+			*FString::Printf(TEXT("%s should expose int property '%s'"), ContextLabel, *PropertyName.ToString())))
 		{
 			return false;
 		}
@@ -127,39 +128,24 @@ class UAssetManagerMissingScanReceiver : UObject
 }
 )AS");
 
-		if (!TestRunner->TestTrue(
-				TEXT("AssetManager guard test should compile the callback receiver module"),
-				CompileAnnotatedModuleFromMemory(&Engine, TEXT("ASAssetManagerNullAndInvalidCallbackGuards"), TEXT("ASAssetManagerNullAndInvalidCallbackGuards.as"), ReceiverScript)))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(
+			CompileAnnotatedModuleFromMemory(&Engine, TEXT("ASAssetManagerNullAndInvalidCallbackGuards"), TEXT("ASAssetManagerNullAndInvalidCallbackGuards.as"), ReceiverScript),
+			TEXT("AssetManager guard test should compile the callback receiver module")));
 
 		UClass* ValidReceiverClass = FindGeneratedClass(&Engine, ValidReceiverClassName);
 		UClass* MissingReceiverClass = FindGeneratedClass(&Engine, MissingReceiverClassName);
-		if (!TestRunner->TestNotNull(TEXT("AssetManager guard test should generate the valid callback receiver class"), ValidReceiverClass)
-			|| !TestRunner->TestNotNull(TEXT("AssetManager guard test should generate the missing-callback receiver class"), MissingReceiverClass))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ValidReceiverClass, TEXT("AssetManager guard test should generate the valid callback receiver class")));
+		ASSERT_THAT(IsNotNull(MissingReceiverClass, TEXT("AssetManager guard test should generate the missing-callback receiver class")));
 
 		UObject* ValidReceiver = NewObject<UObject>(GetTransientPackage(), ValidReceiverClass);
 		UObject* MissingReceiver = NewObject<UObject>(GetTransientPackage(), MissingReceiverClass);
-		if (!TestRunner->TestNotNull(TEXT("AssetManager guard test should instantiate the valid callback receiver"), ValidReceiver)
-			|| !TestRunner->TestNotNull(TEXT("AssetManager guard test should instantiate the missing-callback receiver"), MissingReceiver))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ValidReceiver, TEXT("AssetManager guard test should instantiate the valid callback receiver")));
+		ASSERT_THAT(IsNotNull(MissingReceiver, TEXT("AssetManager guard test should instantiate the missing-callback receiver")));
 
 		UAssetManager* AssetManager = UAssetManager::GetIfInitialized();
-		if (!TestRunner->TestNotNull(TEXT("AssetManager guard test should resolve an initialized asset manager"), AssetManager))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(AssetManager, TEXT("AssetManager guard test should resolve an initialized asset manager")));
 
-		if (!TestRunner->TestTrue(TEXT("AssetManager guard test requires the asset manager initial scan to be complete"), AssetManager->HasInitialScanCompleted()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(AssetManager->HasInitialScanCompleted(), TEXT("AssetManager guard test requires the asset manager initial scan to be complete")));
 
 		const FPrimaryAssetId DummyPrimaryAssetId(TEXT("MissingType"), TEXT("MissingName"));
 		const FPrimaryAssetType DummyPrimaryAssetType(TEXT("MissingType"));
@@ -175,24 +161,26 @@ class UAssetManagerMissingScanReceiver : UObject
 		const FPrimaryAssetRules DefaultRules;
 		const FPrimaryAssetTypeInfo DefaultTypeInfo;
 
-		if (!TestRunner->TestFalse(
-				TEXT("Null asset manager should fail GetPrimaryAssetData"),
-				UAssetManagerMixinLibrary::GetPrimaryAssetData(nullptr, DummyPrimaryAssetId, AssetData))
-			|| !TestRunner->TestFalse(
-				TEXT("Null asset manager should fail GetPrimaryAssetDataList"),
-				UAssetManagerMixinLibrary::GetPrimaryAssetDataList(nullptr, DummyPrimaryAssetType, AssetDataList))
-			|| !TestRunner->TestNull(
-				TEXT("Null asset manager should return null from GetPrimaryAssetObject"),
-				UAssetManagerMixinLibrary::GetPrimaryAssetObject(nullptr, DummyPrimaryAssetId))
-			|| !TestRunner->TestFalse(
-				TEXT("Null asset manager should return an invalid primary asset id for objects"),
-				UAssetManagerMixinLibrary::GetPrimaryAssetIdForObject(nullptr, ValidReceiver).IsValid())
-			|| !TestRunner->TestFalse(
-				TEXT("Null asset manager should fail GetPrimaryAssetIdList"),
-				UAssetManagerMixinLibrary::GetPrimaryAssetIdList(nullptr, DummyPrimaryAssetType, PrimaryAssetIdList))
-			|| !TestRunner->TestFalse(
-				TEXT("Null asset manager should fail GetPrimaryAssetTypeInfo"),
-				UAssetManagerMixinLibrary::GetPrimaryAssetTypeInfo(nullptr, DummyPrimaryAssetType, AssetTypeInfo)))
+		bool bNullGuardResultsValid = true;
+		bNullGuardResultsValid &= this->Assert.IsFalse(
+			UAssetManagerMixinLibrary::GetPrimaryAssetData(nullptr, DummyPrimaryAssetId, AssetData),
+			TEXT("Null asset manager should fail GetPrimaryAssetData"));
+		bNullGuardResultsValid &= this->Assert.IsFalse(
+			UAssetManagerMixinLibrary::GetPrimaryAssetDataList(nullptr, DummyPrimaryAssetType, AssetDataList),
+			TEXT("Null asset manager should fail GetPrimaryAssetDataList"));
+		bNullGuardResultsValid &= this->Assert.IsNull(
+			UAssetManagerMixinLibrary::GetPrimaryAssetObject(nullptr, DummyPrimaryAssetId),
+			TEXT("Null asset manager should return null from GetPrimaryAssetObject"));
+		bNullGuardResultsValid &= this->Assert.IsFalse(
+			UAssetManagerMixinLibrary::GetPrimaryAssetIdForObject(nullptr, ValidReceiver).IsValid(),
+			TEXT("Null asset manager should return an invalid primary asset id for objects"));
+		bNullGuardResultsValid &= this->Assert.IsFalse(
+			UAssetManagerMixinLibrary::GetPrimaryAssetIdList(nullptr, DummyPrimaryAssetType, PrimaryAssetIdList),
+			TEXT("Null asset manager should fail GetPrimaryAssetIdList"));
+		bNullGuardResultsValid &= this->Assert.IsFalse(
+			UAssetManagerMixinLibrary::GetPrimaryAssetTypeInfo(nullptr, DummyPrimaryAssetType, AssetTypeInfo),
+			TEXT("Null asset manager should fail GetPrimaryAssetTypeInfo"));
+		if (!bNullGuardResultsValid)
 		{
 			return;
 		}
@@ -200,17 +188,19 @@ class UAssetManagerMissingScanReceiver : UObject
 		UAssetManagerMixinLibrary::GetPrimaryAssetTypeInfoList(nullptr, AssetTypeInfoList);
 		const FPrimaryAssetRules Rules = UAssetManagerMixinLibrary::GetPrimaryAssetRules(nullptr, DummyPrimaryAssetId);
 
-		if (!TestRunner->TestFalse(TEXT("Null asset manager should leave asset data invalid"), AssetData.IsValid())
-			|| !TestRunner->TestEqual(TEXT("Null asset manager should clear the asset data list"), AssetDataList.Num(), 0)
-			|| !TestRunner->TestEqual(TEXT("Null asset manager should clear the primary asset id list"), PrimaryAssetIdList.Num(), 0)
-			|| !TestRunner->TestEqual(TEXT("Null asset manager should reset the primary asset type info type"), AssetTypeInfo.PrimaryAssetType, DefaultTypeInfo.PrimaryAssetType)
-			|| !TestRunner->TestTrue(TEXT("Null asset manager should reset the primary asset type info base class to UObject"), AssetTypeInfo.AssetBaseClassLoaded.Get() == UObject::StaticClass())
-			|| !TestRunner->TestEqual(TEXT("Null asset manager should reset the primary asset type info dynamic flag"), AssetTypeInfo.bIsDynamicAsset, DefaultTypeInfo.bIsDynamicAsset)
-			|| !TestRunner->TestEqual(TEXT("Null asset manager should reset the primary asset type info asset count"), AssetTypeInfo.NumberOfAssets, DefaultTypeInfo.NumberOfAssets)
-			|| !TestRunner->TestEqual(TEXT("Null asset manager should reset the primary asset type info scan paths"), AssetTypeInfo.AssetScanPaths.Num(), DefaultTypeInfo.AssetScanPaths.Num())
-			|| !TestRunner->TestEqual(TEXT("Null asset manager should reset the primary asset type info rules"), AssetTypeInfo.Rules, DefaultRules)
-			|| !TestRunner->TestEqual(TEXT("Null asset manager should clear the asset type info list"), AssetTypeInfoList.Num(), 0)
-			|| !TestRunner->TestEqual(TEXT("Null asset manager should return default primary asset rules"), Rules, DefaultRules))
+		bool bNullOutputStateValid = true;
+		bNullOutputStateValid &= this->Assert.IsFalse(AssetData.IsValid(), TEXT("Null asset manager should leave asset data invalid"));
+		bNullOutputStateValid &= this->Assert.AreEqual(0, AssetDataList.Num(), TEXT("Null asset manager should clear the asset data list"));
+		bNullOutputStateValid &= this->Assert.AreEqual(0, PrimaryAssetIdList.Num(), TEXT("Null asset manager should clear the primary asset id list"));
+		bNullOutputStateValid &= this->Assert.AreEqual(DefaultTypeInfo.PrimaryAssetType, AssetTypeInfo.PrimaryAssetType, TEXT("Null asset manager should reset the primary asset type info type"));
+		bNullOutputStateValid &= this->Assert.IsTrue(AssetTypeInfo.AssetBaseClassLoaded.Get() == UObject::StaticClass(), TEXT("Null asset manager should reset the primary asset type info base class to UObject"));
+		bNullOutputStateValid &= this->Assert.AreEqual(DefaultTypeInfo.bIsDynamicAsset, AssetTypeInfo.bIsDynamicAsset, TEXT("Null asset manager should reset the primary asset type info dynamic flag"));
+		bNullOutputStateValid &= this->Assert.AreEqual(DefaultTypeInfo.NumberOfAssets, AssetTypeInfo.NumberOfAssets, TEXT("Null asset manager should reset the primary asset type info asset count"));
+		bNullOutputStateValid &= this->Assert.AreEqual(DefaultTypeInfo.AssetScanPaths.Num(), AssetTypeInfo.AssetScanPaths.Num(), TEXT("Null asset manager should reset the primary asset type info scan paths"));
+		bNullOutputStateValid &= this->Assert.AreEqual(DefaultRules, AssetTypeInfo.Rules, TEXT("Null asset manager should reset the primary asset type info rules"));
+		bNullOutputStateValid &= this->Assert.AreEqual(0, AssetTypeInfoList.Num(), TEXT("Null asset manager should clear the asset type info list"));
+		bNullOutputStateValid &= this->Assert.AreEqual(DefaultRules, Rules, TEXT("Null asset manager should return default primary asset rules"));
+		if (!bNullOutputStateValid)
 		{
 			return;
 		}
@@ -234,14 +224,16 @@ class UAssetManagerMissingScanReceiver : UObject
 			return;
 		}
 
-		if (!TestRunner->TestEqual(
-				TEXT("Invalid asset manager callback inputs should not trigger the valid receiver"),
-				ValidCallbackCount,
-				0)
-			|| !TestRunner->TestEqual(
-				TEXT("Invalid asset manager callback inputs should not trigger the missing-callback receiver"),
-				MissingCallbackCount,
-				0))
+		bool bInvalidCallbacksSuppressed = true;
+		bInvalidCallbacksSuppressed &= this->Assert.AreEqual(
+			0,
+			ValidCallbackCount,
+			TEXT("Invalid asset manager callback inputs should not trigger the valid receiver"));
+		bInvalidCallbacksSuppressed &= this->Assert.AreEqual(
+			0,
+			MissingCallbackCount,
+			TEXT("Invalid asset manager callback inputs should not trigger the missing-callback receiver"));
+		if (!bInvalidCallbacksSuppressed)
 		{
 			return;
 		}
@@ -252,7 +244,7 @@ class UAssetManagerMissingScanReceiver : UObject
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Valid asset manager callback path should still trigger exactly once"), ValidCallbackCount, 1);
+		ASSERT_THAT(AreEqual(1, ValidCallbackCount, TEXT("Valid asset manager callback path should still trigger exactly once")));
 	}
 
 	// ====================================================================
@@ -406,35 +398,20 @@ class UAssetManagerScriptCallProbe : UObject
 }
 )AS");
 
-		if (!TestRunner->TestTrue(
-				TEXT("AssetManager script mixin test should compile the probe module"),
-				CompileAnnotatedModuleFromMemory(&Engine, TEXT("ASAssetManagerScriptMixinCalls"), TEXT("ASAssetManagerScriptMixinCalls.as"), ProbeScript)))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(
+			CompileAnnotatedModuleFromMemory(&Engine, TEXT("ASAssetManagerScriptMixinCalls"), TEXT("ASAssetManagerScriptMixinCalls.as"), ProbeScript),
+			TEXT("AssetManager script mixin test should compile the probe module")));
 
 		UClass* ProbeClass = FindGeneratedClass(&Engine, ScriptProbeClassName);
-		if (!TestRunner->TestNotNull(TEXT("AssetManager script mixin test should generate the probe class"), ProbeClass))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ProbeClass, TEXT("AssetManager script mixin test should generate the probe class")));
 
 		UObject* Probe = NewObject<UObject>(GetTransientPackage(), ProbeClass);
-		if (!TestRunner->TestNotNull(TEXT("AssetManager script mixin test should instantiate the probe"), Probe))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Probe, TEXT("AssetManager script mixin test should instantiate the probe")));
 
 		UAssetManager* AssetManager = UAssetManager::GetIfInitialized();
-		if (!TestRunner->TestNotNull(TEXT("AssetManager script mixin test should resolve an initialized asset manager"), AssetManager))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(AssetManager, TEXT("AssetManager script mixin test should resolve an initialized asset manager")));
 
-		if (!TestRunner->TestTrue(TEXT("AssetManager script mixin test requires the asset manager initial scan to be complete"), AssetManager->HasInitialScanCompleted()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(AssetManager->HasInitialScanCompleted(), TEXT("AssetManager script mixin test requires the asset manager initial scan to be complete")));
 
 		auto InvokeAssetManagerProbe = [this, Probe, AssetManager](FName FunctionName, const TCHAR* AssertionText) -> bool
 		{
@@ -445,7 +422,7 @@ class UAssetManagerScriptCallProbe : UObject
 			}
 
 			Invoker.AddParam<UAssetManager*>(AssetManager);
-			return TestRunner->TestEqual(AssertionText, Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+			return this->Assert.AreEqual(1, Invoker.CallAndReturn<int32>(INDEX_NONE), AssertionText);
 		};
 
 		auto InvokeAssetManagerObjectProbe = [this, Probe, AssetManager](FName FunctionName, UObject* ProbeObject, const TCHAR* AssertionText) -> bool
@@ -458,7 +435,7 @@ class UAssetManagerScriptCallProbe : UObject
 
 			Invoker.AddParam<UAssetManager*>(AssetManager);
 			Invoker.AddParam<UObject*>(ProbeObject);
-			return TestRunner->TestEqual(AssertionText, Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+			return this->Assert.AreEqual(1, Invoker.CallAndReturn<int32>(INDEX_NONE), AssertionText);
 		};
 
 		if (!InvokeAssetManagerProbe(TEXT("RunGetPrimaryAssetDataProbe"), TEXT("Angelscript should call UAssetManager.GetPrimaryAssetData mixin"))
@@ -473,7 +450,7 @@ class UAssetManagerScriptCallProbe : UObject
 		int32 CallbackCount = INDEX_NONE;
 		if (ReadIntPropertyChecked(*TestRunner, *Probe, CallbackCountPropertyName, TEXT("Asset manager script mixin probe"), CallbackCount))
 		{
-			TestRunner->TestEqual(TEXT("Angelscript AssetManager callback path should increment the probe once"), CallbackCount, 1);
+			ASSERT_THAT(AreEqual(1, CallbackCount, TEXT("Angelscript AssetManager callback path should increment the probe once")));
 		}
 	}
 };

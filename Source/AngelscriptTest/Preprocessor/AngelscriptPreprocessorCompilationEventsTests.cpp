@@ -77,29 +77,25 @@ class UCompilationEventsHookMoments : UObject
  		Events,
  		EAngelscriptCompilationEventType::PreprocessPostProcessCode);
 
- 	if (TestRunner->TestNotNull(TEXT("ProcessChunks compilation event should be emitted"), ProcessChunksEvent))
- 	{
- 		TestRunner->TestEqual(TEXT("ProcessChunks phase should be stable"), ProcessChunksEvent->Phase, FName(TEXT("Preprocess.ProcessChunks")));
- 		TestRunner->TestEqual(TEXT("ProcessChunks summary should identify hook stage"), ProcessChunksEvent->PreprocessorSummary.Stage, EAngelscriptPreprocessorSummaryStage::ProcessChunks);
- 		TestRunner->TestEqual(TEXT("ProcessChunks summary should report file count"), ProcessChunksEvent->PreprocessorSummary.FileCount, 1);
- 		TestRunner->TestEqual(TEXT("ProcessChunks summary should report class count"), ProcessChunksEvent->PreprocessorSummary.ClassCount, 1);
- 		TestRunner->TestEqual(TEXT("ProcessChunks summary should report function count"), ProcessChunksEvent->PreprocessorSummary.FunctionCount, 1);
- 		TestRunner->TestEqual(TEXT("ProcessChunks summary should not report final processed code yet"), ProcessChunksEvent->PreprocessorSummary.ProcessedCodeCharacterCount, 0);
- 		TestRunner->TestTrue(TEXT("ProcessChunks event should carry module name"), ProcessChunksEvent->ModuleNames.Contains(TEXT("Tests.Preprocessor.CompilationEvents.HookMoments")));
- 		TestRunner->TestEqual(TEXT("ProcessChunks event should carry file count"), ProcessChunksEvent->FileCount, 1);
- 	}
+	ASSERT_THAT(IsNotNull(ProcessChunksEvent, TEXT("ProcessChunks compilation event should be emitted")));
+	ASSERT_THAT(AreEqual(FName(TEXT("Preprocess.ProcessChunks")), ProcessChunksEvent->Phase, TEXT("ProcessChunks phase should be stable")));
+	ASSERT_THAT(AreEqual(EAngelscriptPreprocessorSummaryStage::ProcessChunks, ProcessChunksEvent->PreprocessorSummary.Stage, TEXT("ProcessChunks summary should identify hook stage")));
+	ASSERT_THAT(AreEqual(1, ProcessChunksEvent->PreprocessorSummary.FileCount, TEXT("ProcessChunks summary should report file count")));
+	ASSERT_THAT(AreEqual(1, ProcessChunksEvent->PreprocessorSummary.ClassCount, TEXT("ProcessChunks summary should report class count")));
+	ASSERT_THAT(AreEqual(1, ProcessChunksEvent->PreprocessorSummary.FunctionCount, TEXT("ProcessChunks summary should report function count")));
+	ASSERT_THAT(AreEqual(0, ProcessChunksEvent->PreprocessorSummary.ProcessedCodeCharacterCount, TEXT("ProcessChunks summary should not report final processed code yet")));
+	ASSERT_THAT(IsTrue(ProcessChunksEvent->ModuleNames.Contains(TEXT("Tests.Preprocessor.CompilationEvents.HookMoments")), TEXT("ProcessChunks event should carry module name")));
+	ASSERT_THAT(AreEqual(1, ProcessChunksEvent->FileCount, TEXT("ProcessChunks event should carry file count")));
 
- 	if (TestRunner->TestNotNull(TEXT("PostProcessCode compilation event should be emitted"), PostProcessCodeEvent))
- 	{
- 		TestRunner->TestEqual(TEXT("PostProcessCode phase should be stable"), PostProcessCodeEvent->Phase, FName(TEXT("Preprocess.PostProcessCode")));
- 		TestRunner->TestEqual(TEXT("PostProcessCode summary should identify hook stage"), PostProcessCodeEvent->PreprocessorSummary.Stage, EAngelscriptPreprocessorSummaryStage::PostProcessCode);
- 		TestRunner->TestEqual(TEXT("PostProcessCode summary should report file count"), PostProcessCodeEvent->PreprocessorSummary.FileCount, 1);
- 		TestRunner->TestEqual(TEXT("PostProcessCode summary should report class count"), PostProcessCodeEvent->PreprocessorSummary.ClassCount, 1);
- 		TestRunner->TestEqual(TEXT("PostProcessCode summary should report function count"), PostProcessCodeEvent->PreprocessorSummary.FunctionCount, 1);
- 		TestRunner->TestTrue(TEXT("PostProcessCode summary should report final processed code"), PostProcessCodeEvent->PreprocessorSummary.ProcessedCodeCharacterCount > 0);
- 		TestRunner->TestTrue(TEXT("PostProcessCode event should carry module name"), PostProcessCodeEvent->ModuleNames.Contains(TEXT("Tests.Preprocessor.CompilationEvents.HookMoments")));
- 		TestRunner->TestEqual(TEXT("PostProcessCode event should carry file count"), PostProcessCodeEvent->FileCount, 1);
- 	}
+	ASSERT_THAT(IsNotNull(PostProcessCodeEvent, TEXT("PostProcessCode compilation event should be emitted")));
+	ASSERT_THAT(AreEqual(FName(TEXT("Preprocess.PostProcessCode")), PostProcessCodeEvent->Phase, TEXT("PostProcessCode phase should be stable")));
+	ASSERT_THAT(AreEqual(EAngelscriptPreprocessorSummaryStage::PostProcessCode, PostProcessCodeEvent->PreprocessorSummary.Stage, TEXT("PostProcessCode summary should identify hook stage")));
+	ASSERT_THAT(AreEqual(1, PostProcessCodeEvent->PreprocessorSummary.FileCount, TEXT("PostProcessCode summary should report file count")));
+	ASSERT_THAT(AreEqual(1, PostProcessCodeEvent->PreprocessorSummary.ClassCount, TEXT("PostProcessCode summary should report class count")));
+	ASSERT_THAT(AreEqual(1, PostProcessCodeEvent->PreprocessorSummary.FunctionCount, TEXT("PostProcessCode summary should report function count")));
+	ASSERT_THAT(IsTrue(PostProcessCodeEvent->PreprocessorSummary.ProcessedCodeCharacterCount > 0, TEXT("PostProcessCode summary should report final processed code")));
+	ASSERT_THAT(IsTrue(PostProcessCodeEvent->ModuleNames.Contains(TEXT("Tests.Preprocessor.CompilationEvents.HookMoments")), TEXT("PostProcessCode event should carry module name")));
+	ASSERT_THAT(AreEqual(1, PostProcessCodeEvent->FileCount, TEXT("PostProcessCode event should carry file count")));
 
 	}
  }
@@ -141,7 +137,7 @@ class UClassAnalyzeHookCarrier : UObject
 
  	AssertPreprocessSucceeded(*TestRunner, Result);
  	AssertNoDiagnostics(*TestRunner, Result);
- 	TestRunner->TestEqual(TEXT("Class analyze hook should fire once for the class"), ClassAnalyzeCount, 1);
+	ASSERT_THAT(AreEqual(1, ClassAnalyzeCount, TEXT("Class analyze hook should fire once for the class")));
 
  	FAngelscriptModuleDesc* Module = AssertModuleExists(
  		*TestRunner,

@@ -65,13 +65,15 @@ class ATestActorMixinSetQuat : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Actor should spawn")));
 		W.BeginPlay(*Actor);
 
 		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("RunSetQuatTest")));
 		if (!Invoker.IsValid()) return;
-		TestRunner->TestEqual(TEXT("SetActorQuat should apply FQuat rotation to the actor"),
-			Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+		ASSERT_THAT(AreEqual(
+			1,
+			Invoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("SetActorQuat should apply FQuat rotation to the actor")));
 	}
 
 	TEST_METHOD(SetActorLocationSweep)
@@ -121,13 +123,15 @@ class ATestActorMixinSetLocSweep : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Actor should spawn")));
 		W.BeginPlay(*Actor);
 
 		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("RunSetLocSweepTest")));
 		if (!Invoker.IsValid()) return;
-		TestRunner->TestEqual(TEXT("SetActorLocation advanced mixin should move the actor and support teleport flag"),
-			Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+		ASSERT_THAT(AreEqual(
+			1,
+			Invoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("SetActorLocation advanced mixin should move the actor and support teleport flag")));
 	}
 
 	TEST_METHOD(SetActorLocationAndRotation)
@@ -176,13 +180,15 @@ class ATestActorMixinSetLocAndRot : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Actor should spawn")));
 		W.BeginPlay(*Actor);
 
 		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("RunSetLocAndRotTest")));
 		if (!Invoker.IsValid()) return;
-		TestRunner->TestEqual(TEXT("SetActorLocationAndRotation should set both position and rotation"),
-			Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+		ASSERT_THAT(AreEqual(
+			1,
+			Invoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("SetActorLocationAndRotation should set both position and rotation")));
 	}
 
 	TEST_METHOD(GetAttachedActors)
@@ -241,13 +247,15 @@ class ATestMixinAttachParent : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Actor should spawn")));
 		W.BeginPlay(*Actor);
 
 		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("RunGetAttachedTest")));
 		if (!Invoker.IsValid()) return;
-		TestRunner->TestEqual(TEXT("GetAttachedActors should enumerate attached child actors"),
-			Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+		ASSERT_THAT(AreEqual(
+			1,
+			Invoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("GetAttachedActors should enumerate attached child actors")));
 	}
 };
 

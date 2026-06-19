@@ -131,9 +131,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilationEventsTest,
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
-		TestRunner->TestFalse(
-			TEXT("Compilation events should start with no listeners"),
-			FAngelscriptCompilationEvents::HasListeners());
+		ASSERT_THAT(IsFalse(
+			FAngelscriptCompilationEvents::HasListeners(),
+			TEXT("Compilation events should start with no listeners")));
 
 		FAngelscriptCompileTraceSummary Summary;
 		const bool bCompiled = CompileModuleWithSummary(
@@ -145,10 +145,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilationEventsTest,
 			false,
 			Summary);
 
-		TestRunner->TestTrue(TEXT("No-listener compile should still compile"), bCompiled);
-		TestRunner->TestEqual(TEXT("No-listener compile should keep the compile result"), Summary.CompileResult, ECompileResult::FullyHandled);
-		TestRunner->TestEqual(TEXT("No-listener compile should produce one compiled module"), Summary.CompiledModuleCount, 1);
-		TestRunner->TestEqual(TEXT("No-listener compile should keep diagnostics empty"), Summary.Diagnostics.Num(), 0);
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("No-listener compile should still compile")));
+		ASSERT_THAT(AreEqual(ECompileResult::FullyHandled, Summary.CompileResult, TEXT("No-listener compile should keep the compile result")));
+		ASSERT_THAT(AreEqual(1, Summary.CompiledModuleCount, TEXT("No-listener compile should produce one compiled module")));
+		ASSERT_THAT(AreEqual(0, Summary.Diagnostics.Num(), TEXT("No-listener compile should keep diagnostics empty")));
 
 		}
 	}
@@ -169,9 +169,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilationEventsTest,
 			FAngelscriptCompilationEvents::UnregisterListener(ListenerHandle);
 		};
 
-		TestRunner->TestTrue(
-			TEXT("Compilation events should report a registered listener"),
-			FAngelscriptCompilationEvents::HasListeners());
+		ASSERT_THAT(IsTrue(
+			FAngelscriptCompilationEvents::HasListeners(),
+			TEXT("Compilation events should report a registered listener")));
 
 		FAngelscriptCompileTraceSummary Summary;
 		const bool bCompiled = CompileModuleWithSummary(
@@ -183,27 +183,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilationEventsTest,
 			false,
 			Summary);
 
-		TestRunner->TestTrue(TEXT("Listener compile should compile"), bCompiled);
-		TestRunner->TestTrue(TEXT("Listener should receive compilation events"), Events.Num() >= 2);
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Listener compile should compile")));
+		ASSERT_THAT(IsTrue(Events.Num() >= 2, TEXT("Listener should receive compilation events")));
 
 		const FAngelscriptCompilationEvent* BeginEvent = AngelscriptCompilationEventsTests_Private::FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileBegin);
 		const FAngelscriptCompilationEvent* EndEvent = AngelscriptCompilationEventsTests_Private::FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileEnd);
-		if (TestRunner->TestNotNull(TEXT("Listener should receive Compile.Begin"), BeginEvent))
+		if (this->Assert.IsNotNull(BeginEvent, TEXT("Listener should receive Compile.Begin")))
 		{
-			TestRunner->TestEqual(TEXT("Compile.Begin phase name should be stable"), BeginEvent->Phase, FName(TEXT("Compile.Begin")));
-			TestRunner->TestEqual(TEXT("Compile.Begin should carry compile type"), BeginEvent->CompileType, ECompileType::SoftReloadOnly);
-			TestRunner->TestEqual(TEXT("Compile.Begin should carry module count"), BeginEvent->ModuleCount, 1);
-			TestRunner->TestTrue(TEXT("Compile.Begin should carry module name"), BeginEvent->ModuleNames.Contains(TEXT("CompilationEventsListener")));
+			ASSERT_THAT(AreEqual(FName(TEXT("Compile.Begin")), BeginEvent->Phase, TEXT("Compile.Begin phase name should be stable")));
+			ASSERT_THAT(AreEqual(ECompileType::SoftReloadOnly, BeginEvent->CompileType, TEXT("Compile.Begin should carry compile type")));
+			ASSERT_THAT(AreEqual(1, BeginEvent->ModuleCount, TEXT("Compile.Begin should carry module count")));
+			ASSERT_THAT(IsTrue(BeginEvent->ModuleNames.Contains(TEXT("CompilationEventsListener")), TEXT("Compile.Begin should carry module name")));
 		}
 
-		if (TestRunner->TestNotNull(TEXT("Listener should receive Compile.End"), EndEvent))
+		if (this->Assert.IsNotNull(EndEvent, TEXT("Listener should receive Compile.End")))
 		{
-			TestRunner->TestEqual(TEXT("Compile.End phase name should be stable"), EndEvent->Phase, FName(TEXT("Compile.End")));
-			TestRunner->TestEqual(TEXT("Compile.End should carry compile type"), EndEvent->CompileType, ECompileType::SoftReloadOnly);
-			TestRunner->TestEqual(TEXT("Compile.End should carry result"), EndEvent->CompileResult, Summary.CompileResult);
-			TestRunner->TestTrue(TEXT("Compile.End should report success"), EndEvent->bSucceeded);
-			TestRunner->TestFalse(TEXT("Compile.End should not report failure"), EndEvent->bFailed);
-			TestRunner->TestEqual(TEXT("Compile.End should carry compiled module count"), EndEvent->CompiledModuleCount, Summary.CompiledModuleCount);
+			ASSERT_THAT(AreEqual(FName(TEXT("Compile.End")), EndEvent->Phase, TEXT("Compile.End phase name should be stable")));
+			ASSERT_THAT(AreEqual(ECompileType::SoftReloadOnly, EndEvent->CompileType, TEXT("Compile.End should carry compile type")));
+			ASSERT_THAT(AreEqual(Summary.CompileResult, EndEvent->CompileResult, TEXT("Compile.End should carry result")));
+			ASSERT_THAT(IsTrue(EndEvent->bSucceeded, TEXT("Compile.End should report success")));
+			ASSERT_THAT(IsFalse(EndEvent->bFailed, TEXT("Compile.End should not report failure")));
+			ASSERT_THAT(AreEqual(Summary.CompiledModuleCount, EndEvent->CompiledModuleCount, TEXT("Compile.End should carry compiled module count")));
 		}
 
 		}
@@ -246,14 +246,14 @@ class UCompilationEventsDelegates : UObject
 			true,
 			Summary);
 
-		TestRunner->TestTrue(TEXT("Delegate compatibility compile should compile"), bCompiled);
-		TestRunner->TestEqual(TEXT("Existing pre-compile delegate should still fire once"), DelegateCounters.PreCompileCount, 1);
-		TestRunner->TestEqual(TEXT("Existing post-compile delegate should still fire once"), DelegateCounters.PostCompileCount, 1);
-		TestRunner->TestEqual(TEXT("Existing pre-generate-classes delegate should still fire once"), DelegateCounters.PreGenerateClassesCount, 1);
-		TestRunner->TestEqual(TEXT("Existing pre-generate-classes delegate should still carry the compiled module"), DelegateCounters.PreGenerateClassesModuleCount, 1);
-		TestRunner->TestNotNull(
-			TEXT("Structured compile events should also be emitted"),
-			AngelscriptCompilationEventsTests_Private::FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileEnd));
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Delegate compatibility compile should compile")));
+		ASSERT_THAT(AreEqual(1, DelegateCounters.PreCompileCount, TEXT("Existing pre-compile delegate should still fire once")));
+		ASSERT_THAT(AreEqual(1, DelegateCounters.PostCompileCount, TEXT("Existing post-compile delegate should still fire once")));
+		ASSERT_THAT(AreEqual(1, DelegateCounters.PreGenerateClassesCount, TEXT("Existing pre-generate-classes delegate should still fire once")));
+		ASSERT_THAT(AreEqual(1, DelegateCounters.PreGenerateClassesModuleCount, TEXT("Existing pre-generate-classes delegate should still carry the compiled module")));
+		ASSERT_THAT(IsNotNull(
+			AngelscriptCompilationEventsTests_Private::FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileEnd),
+			TEXT("Structured compile events should also be emitted")));
 
 		}
 	}
@@ -284,7 +284,7 @@ class UCompilationEventsDelegates : UObject
 			false,
 			Summary);
 
-		TestRunner->TestTrue(TEXT("Stage event compile should compile"), bCompiled);
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Stage event compile should compile")));
 
 		const FName ExpectedPhases[] = {
 			TEXT("Compile.Begin"),
@@ -303,30 +303,30 @@ class UCompilationEventsDelegates : UObject
 		for (FName Phase : ExpectedPhases)
 		{
 			const int32 PhaseIndex = AngelscriptCompilationEventsTests_Private::FindFirstPhaseIndex(Events, Phase);
-			if (TestRunner->TestTrue(FString::Printf(TEXT("Expected phase should be emitted: %s"), *Phase.ToString()), PhaseIndex != INDEX_NONE))
+			if (this->Assert.IsTrue(PhaseIndex != INDEX_NONE, FString::Printf(TEXT("Expected phase should be emitted: %s"), *Phase.ToString())))
 			{
-				TestRunner->TestTrue(FString::Printf(TEXT("Expected phase should be ordered: %s"), *Phase.ToString()), PhaseIndex > PreviousIndex);
+				ASSERT_THAT(IsTrue(PhaseIndex > PreviousIndex, FString::Printf(TEXT("Expected phase should be ordered: %s"), *Phase.ToString())));
 				PreviousIndex = PhaseIndex;
 			}
 		}
 
 		const FAngelscriptCompilationEvent* AssemblyEvent = AngelscriptCompilationEventsTests_Private::FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileModuleAssembly);
-		if (TestRunner->TestNotNull(TEXT("Module assembly event should be emitted"), AssemblyEvent))
+		if (this->Assert.IsNotNull(AssemblyEvent, TEXT("Module assembly event should be emitted")))
 		{
-			TestRunner->TestEqual(TEXT("Assembly event should carry one module"), AssemblyEvent->ModuleCount, 1);
-			TestRunner->TestTrue(TEXT("Assembly event should carry module name"), AssemblyEvent->ModuleNames.Contains(TEXT("CompilationEventsStages")));
-			TestRunner->TestEqual(TEXT("Assembly event should carry one file"), AssemblyEvent->FileCount, 1);
+			ASSERT_THAT(AreEqual(1, AssemblyEvent->ModuleCount, TEXT("Assembly event should carry one module")));
+			ASSERT_THAT(IsTrue(AssemblyEvent->ModuleNames.Contains(TEXT("CompilationEventsStages")), TEXT("Assembly event should carry module name")));
+			ASSERT_THAT(AreEqual(1, AssemblyEvent->FileCount, TEXT("Assembly event should carry one file")));
 		}
 
 		const FAngelscriptCompilationEvent* CodeEvent = AngelscriptCompilationEventsTests_Private::FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileModuleCompileCode);
-		if (TestRunner->TestNotNull(TEXT("Code compilation event should be emitted"), CodeEvent))
+		if (this->Assert.IsNotNull(CodeEvent, TEXT("Code compilation event should be emitted")))
 		{
-			TestRunner->TestEqual(TEXT("Code event should carry its stable phase"), CodeEvent->Phase, FName(TEXT("Compile.ModuleCompileCode")));
-			TestRunner->TestEqual(TEXT("Code event should carry one module"), CodeEvent->ModuleCount, 1);
-			TestRunner->TestTrue(TEXT("Code event should carry module name"), CodeEvent->ModuleNames.Contains(TEXT("CompilationEventsStages")));
-			TestRunner->TestEqual(TEXT("Code event should expose compile type"), CodeEvent->CompileType, ECompileType::SoftReloadOnly);
-			TestRunner->TestTrue(TEXT("Code event should report an explicit JIT availability value"), CodeEvent->bJitAvailable || !CodeEvent->bJitAvailable);
-			TestRunner->TestFalse(TEXT("Code event should not report a JIT handoff when JIT is unavailable"), !CodeEvent->bJitAvailable && CodeEvent->bJitHandoff);
+			ASSERT_THAT(AreEqual(FName(TEXT("Compile.ModuleCompileCode")), CodeEvent->Phase, TEXT("Code event should carry its stable phase")));
+			ASSERT_THAT(AreEqual(1, CodeEvent->ModuleCount, TEXT("Code event should carry one module")));
+			ASSERT_THAT(IsTrue(CodeEvent->ModuleNames.Contains(TEXT("CompilationEventsStages")), TEXT("Code event should carry module name")));
+			ASSERT_THAT(AreEqual(ECompileType::SoftReloadOnly, CodeEvent->CompileType, TEXT("Code event should expose compile type")));
+			ASSERT_THAT(IsTrue(CodeEvent->bJitAvailable || !CodeEvent->bJitAvailable, TEXT("Code event should report an explicit JIT availability value")));
+			ASSERT_THAT(IsFalse(!CodeEvent->bJitAvailable && CodeEvent->bJitHandoff, TEXT("Code event should not report a JIT handoff when JIT is unavailable")));
 		}
 
 		}
@@ -359,22 +359,22 @@ class UCompilationEventsDelegates : UObject
 			Summary,
 			true);
 
-		TestRunner->TestFalse(TEXT("Invalid script should not compile"), bCompiled);
-		TestRunner->TestEqual(TEXT("Invalid script should report error result"), Summary.CompileResult, ECompileResult::Error);
+		ASSERT_THAT(IsFalse(bCompiled, TEXT("Invalid script should not compile")));
+		ASSERT_THAT(AreEqual(ECompileResult::Error, Summary.CompileResult, TEXT("Invalid script should report error result")));
 
 		const int32 BeginIndex = AngelscriptCompilationEventsTests_Private::FindFirstPhaseIndex(Events, TEXT("Compile.Begin"));
 		const int32 EndIndex = AngelscriptCompilationEventsTests_Private::FindFirstPhaseIndex(Events, TEXT("Compile.End"));
-		TestRunner->TestTrue(TEXT("Failed compile should emit begin"), BeginIndex != INDEX_NONE);
-		TestRunner->TestTrue(TEXT("Failed compile should emit end"), EndIndex != INDEX_NONE);
-		TestRunner->TestTrue(TEXT("Failed compile should emit end after begin"), BeginIndex != INDEX_NONE && EndIndex > BeginIndex);
+		ASSERT_THAT(IsTrue(BeginIndex != INDEX_NONE, TEXT("Failed compile should emit begin")));
+		ASSERT_THAT(IsTrue(EndIndex != INDEX_NONE, TEXT("Failed compile should emit end")));
+		ASSERT_THAT(IsTrue(BeginIndex != INDEX_NONE && EndIndex > BeginIndex, TEXT("Failed compile should emit end after begin")));
 
 		const FAngelscriptCompilationEvent* EndEvent = AngelscriptCompilationEventsTests_Private::FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileEnd);
-		if (TestRunner->TestNotNull(TEXT("Failed compile should include Compile.End payload"), EndEvent))
+		if (this->Assert.IsNotNull(EndEvent, TEXT("Failed compile should include Compile.End payload")))
 		{
-			TestRunner->TestEqual(TEXT("Failed end event should carry result"), EndEvent->CompileResult, ECompileResult::Error);
-			TestRunner->TestFalse(TEXT("Failed end event should not report success"), EndEvent->bSucceeded);
-			TestRunner->TestTrue(TEXT("Failed end event should report failure"), EndEvent->bFailed);
-			TestRunner->TestTrue(TEXT("Failed end event should carry diagnostics"), EndEvent->DiagnosticCount > 0 || EndEvent->Messages.Num() > 0);
+			ASSERT_THAT(AreEqual(ECompileResult::Error, EndEvent->CompileResult, TEXT("Failed end event should carry result")));
+			ASSERT_THAT(IsFalse(EndEvent->bSucceeded, TEXT("Failed end event should not report success")));
+			ASSERT_THAT(IsTrue(EndEvent->bFailed, TEXT("Failed end event should report failure")));
+			ASSERT_THAT(IsTrue(EndEvent->DiagnosticCount > 0 || EndEvent->Messages.Num() > 0, TEXT("Failed end event should carry diagnostics")));
 		}
 
 		}
@@ -410,13 +410,13 @@ class UCompilationEventsDelegates : UObject
 			false,
 			Summary);
 
-		TestRunner->TestTrue(TEXT("Parse event compile should compile"), bCompiled);
-		TestRunner->TestEqual(TEXT("One module should emit one parse event"), ParseEvents.Num(), 1);
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Parse event compile should compile")));
+		ASSERT_THAT(AreEqual(1, ParseEvents.Num(), TEXT("One module should emit one parse event")));
 		if (ParseEvents.Num() == 1)
 		{
-			TestRunner->TestEqual(TEXT("Parse event should be emitted on the compile caller thread"), ParseEvents[0].ThreadId, MainThreadId);
-			TestRunner->TestTrue(TEXT("Parse event should be emitted on the game thread"), ParseEvents[0].bOnGameThread);
-			TestRunner->TestTrue(TEXT("Parse event should carry module name"), ParseEvents[0].ModuleNames.Contains(TEXT("CompilationEventsParseMainThread")));
+			ASSERT_THAT(AreEqual(MainThreadId, ParseEvents[0].ThreadId, TEXT("Parse event should be emitted on the compile caller thread")));
+			ASSERT_THAT(IsTrue(ParseEvents[0].bOnGameThread, TEXT("Parse event should be emitted on the game thread")));
+			ASSERT_THAT(IsTrue(ParseEvents[0].ModuleNames.Contains(TEXT("CompilationEventsParseMainThread")), TEXT("Parse event should carry module name")));
 		}
 
 		}
@@ -461,35 +461,35 @@ class UCompilationEventsDelegates : UObject
 			false,
 			SecondSummary);
 
-		TestRunner->TestTrue(TEXT("First context-scoping compile should compile"), bFirstCompiled);
-		TestRunner->TestTrue(TEXT("Second context-scoping compile should compile"), bSecondCompiled);
+		ASSERT_THAT(IsTrue(bFirstCompiled, TEXT("First context-scoping compile should compile")));
+		ASSERT_THAT(IsTrue(bSecondCompiled, TEXT("Second context-scoping compile should compile")));
 
 		const FAngelscriptCompilationEvent* FirstBegin = AngelscriptCompilationEventsTests_Private::FindFirstEventForModule(Events, EAngelscriptCompilationEventType::CompileBegin, TEXT("CompilationContextFirstRun"));
 		const FAngelscriptCompilationEvent* FirstEnd = AngelscriptCompilationEventsTests_Private::FindFirstEventForModule(Events, EAngelscriptCompilationEventType::CompileEnd, TEXT("CompilationContextFirstRun"));
 		const FAngelscriptCompilationEvent* SecondBegin = AngelscriptCompilationEventsTests_Private::FindFirstEventForModule(Events, EAngelscriptCompilationEventType::CompileBegin, TEXT("CompilationContextSecondRun"));
 		const FAngelscriptCompilationEvent* SecondEnd = AngelscriptCompilationEventsTests_Private::FindFirstEventForModule(Events, EAngelscriptCompilationEventType::CompileEnd, TEXT("CompilationContextSecondRun"));
 
-		if (TestRunner->TestNotNull(TEXT("First compile should emit a begin event"), FirstBegin)
-			&& TestRunner->TestNotNull(TEXT("First compile should emit an end event"), FirstEnd))
+		if (this->Assert.IsNotNull(FirstBegin, TEXT("First compile should emit a begin event"))
+			&& this->Assert.IsNotNull(FirstEnd, TEXT("First compile should emit an end event")))
 		{
-			TestRunner->TestTrue(TEXT("First compile should carry a run id"), FirstBegin->CompilationRunId != 0);
-			TestRunner->TestEqual(TEXT("First compile begin/end should share one run id"), FirstEnd->CompilationRunId, FirstBegin->CompilationRunId);
-			TestRunner->TestFalse(TEXT("First compile should not leak second module into begin summary"), FirstBegin->ModuleNames.Contains(TEXT("CompilationContextSecondRun")));
-			TestRunner->TestFalse(TEXT("First compile should not leak second module into end summary"), FirstEnd->ModuleNames.Contains(TEXT("CompilationContextSecondRun")));
+			ASSERT_THAT(IsTrue(FirstBegin->CompilationRunId != 0, TEXT("First compile should carry a run id")));
+			ASSERT_THAT(AreEqual(FirstBegin->CompilationRunId, FirstEnd->CompilationRunId, TEXT("First compile begin/end should share one run id")));
+			ASSERT_THAT(IsFalse(FirstBegin->ModuleNames.Contains(TEXT("CompilationContextSecondRun")), TEXT("First compile should not leak second module into begin summary")));
+			ASSERT_THAT(IsFalse(FirstEnd->ModuleNames.Contains(TEXT("CompilationContextSecondRun")), TEXT("First compile should not leak second module into end summary")));
 		}
 
-		if (TestRunner->TestNotNull(TEXT("Second compile should emit a begin event"), SecondBegin)
-			&& TestRunner->TestNotNull(TEXT("Second compile should emit an end event"), SecondEnd))
+		if (this->Assert.IsNotNull(SecondBegin, TEXT("Second compile should emit a begin event"))
+			&& this->Assert.IsNotNull(SecondEnd, TEXT("Second compile should emit an end event")))
 		{
-			TestRunner->TestTrue(TEXT("Second compile should carry a run id"), SecondBegin->CompilationRunId != 0);
-			TestRunner->TestEqual(TEXT("Second compile begin/end should share one run id"), SecondEnd->CompilationRunId, SecondBegin->CompilationRunId);
-			TestRunner->TestFalse(TEXT("Second compile should not leak first module into begin summary"), SecondBegin->ModuleNames.Contains(TEXT("CompilationContextFirstRun")));
-			TestRunner->TestFalse(TEXT("Second compile should not leak first module into end summary"), SecondEnd->ModuleNames.Contains(TEXT("CompilationContextFirstRun")));
+			ASSERT_THAT(IsTrue(SecondBegin->CompilationRunId != 0, TEXT("Second compile should carry a run id")));
+			ASSERT_THAT(AreEqual(SecondBegin->CompilationRunId, SecondEnd->CompilationRunId, TEXT("Second compile begin/end should share one run id")));
+			ASSERT_THAT(IsFalse(SecondBegin->ModuleNames.Contains(TEXT("CompilationContextFirstRun")), TEXT("Second compile should not leak first module into begin summary")));
+			ASSERT_THAT(IsFalse(SecondEnd->ModuleNames.Contains(TEXT("CompilationContextFirstRun")), TEXT("Second compile should not leak first module into end summary")));
 		}
 
 		if (FirstBegin != nullptr && SecondBegin != nullptr)
 		{
-			TestRunner->TestNotEqual(TEXT("Each compile should receive a distinct run id"), FirstBegin->CompilationRunId, SecondBegin->CompilationRunId);
+			ASSERT_THAT(AreNotEqual(SecondBegin->CompilationRunId, FirstBegin->CompilationRunId, TEXT("Each compile should receive a distinct run id")));
 		}
 
 		}

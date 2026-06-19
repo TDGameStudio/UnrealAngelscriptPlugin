@@ -20,8 +20,9 @@ namespace BlueprintImpactTestHelpers
 		const FString& PackagePath,
 		FString& OutPackageFilename)
 	{
+		FNoDiscardAsserter Assert(Test);
 		UPackage* Package = Blueprint.GetOutermost();
-		if (!Test.TestNotNull(TEXT("Blueprint should have a package before save"), Package))
+		if (!Assert.IsNotNull(Package, TEXT("Blueprint should have a package before save")))
 		{
 			return false;
 		}
@@ -32,9 +33,9 @@ namespace BlueprintImpactTestHelpers
 		FSavePackageArgs SaveArgs;
 		SaveArgs.TopLevelFlags = RF_Public | RF_Standalone;
 		SaveArgs.SaveFlags = SAVE_NoError;
-		return Test.TestTrue(
-			TEXT("Blueprint package should save to disk"),
-			UPackage::SavePackage(Package, &Blueprint, *OutPackageFilename, SaveArgs));
+		return Assert.IsTrue(
+			UPackage::SavePackage(Package, &Blueprint, *OutPackageFilename, SaveArgs),
+			TEXT("Blueprint package should save to disk"));
 	}
 
 	UBlueprint* CreateDiskBackedBlueprintChild(
@@ -44,7 +45,8 @@ namespace BlueprintImpactTestHelpers
 		FString& OutPackagePath,
 		FString& OutPackageFilename)
 	{
-		if (!Test.TestNotNull(TEXT("Disk-backed BP parent class should be valid"), ParentClass))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(ParentClass, TEXT("Disk-backed BP parent class should be valid")))
 		{
 			return nullptr;
 		}
@@ -56,7 +58,7 @@ namespace BlueprintImpactTestHelpers
 			*FGuid::NewGuid().ToString(EGuidFormats::Digits));
 		OutPackagePath = FString::Printf(TEXT("/Game/Automation/%s"), *AssetName);
 		UPackage* BlueprintPackage = CreatePackage(*OutPackagePath);
-		if (!Test.TestNotNull(TEXT("Disk-backed BP should create a package"), BlueprintPackage))
+		if (!Assert.IsNotNull(BlueprintPackage, TEXT("Disk-backed BP should create a package")))
 		{
 			return nullptr;
 		}
@@ -131,17 +133,17 @@ class ATestBPImpactScriptParentMatch : AActor
 		const auto MatchingModules = AngelscriptEditor::BlueprintImpact::FindModulesForChangedScripts(
 			Engine.GetActiveModules(),
 			{ TEXT("TestBPImpactScriptParentMatch.as") });
-		if (!TestRunner->TestEqual(TEXT("Should resolve to exactly one module"), MatchingModules.Num(), 1)) return;
+		if (!this->Assert.AreEqual(1, MatchingModules.Num(), TEXT("Should resolve to exactly one module"))) return;
 
 		const auto Symbols = AngelscriptEditor::BlueprintImpact::BuildImpactSymbols(MatchingModules);
 		TArray<AngelscriptEditor::BlueprintImpact::EBlueprintImpactReason> Reasons;
-		if (!TestRunner->TestTrue(
-			TEXT("BP child should be marked as impacted by script parent"),
-			AngelscriptEditor::BlueprintImpact::AnalyzeLoadedBlueprint(*BP.Blueprint, Symbols, Reasons))) return;
+		if (!this->Assert.IsTrue(
+			AngelscriptEditor::BlueprintImpact::AnalyzeLoadedBlueprint(*BP.Blueprint, Symbols, Reasons),
+			TEXT("BP child should be marked as impacted by script parent"))) return;
 
-		TestRunner->TestTrue(
-			TEXT("Impact reason should include ScriptParentClass"),
-			Reasons.Contains(AngelscriptEditor::BlueprintImpact::EBlueprintImpactReason::ScriptParentClass));
+		ASSERT_THAT(IsTrue(
+			Reasons.Contains(AngelscriptEditor::BlueprintImpact::EBlueprintImpactReason::ScriptParentClass),
+			TEXT("Impact reason should include ScriptParentClass")));
 	}
 
 	// =================================================================
@@ -195,7 +197,7 @@ class ATestBPImpactFilterB : AActor
 		const auto MatchingModules = AngelscriptEditor::BlueprintImpact::FindModulesForChangedScripts(
 			Engine.GetActiveModules(),
 			{ TEXT("TestBPImpactFilterA.as") });
-		if (!TestRunner->TestEqual(TEXT("Only module A should match the changed script"), MatchingModules.Num(), 1)) return;
+		if (!this->Assert.AreEqual(1, MatchingModules.Num(), TEXT("Only module A should match the changed script"))) return;
 
 		const auto Symbols = AngelscriptEditor::BlueprintImpact::BuildImpactSymbols(MatchingModules);
 
@@ -203,8 +205,8 @@ class ATestBPImpactFilterB : AActor
 		const bool bAImpacted = AngelscriptEditor::BlueprintImpact::AnalyzeLoadedBlueprint(*BPA.Blueprint, Symbols, ReasonsA);
 		const bool bBImpacted = AngelscriptEditor::BlueprintImpact::AnalyzeLoadedBlueprint(*BPB.Blueprint, Symbols, ReasonsB);
 
-		TestRunner->TestTrue(TEXT("Blueprint A should be marked as impacted"), bAImpacted);
-		TestRunner->TestFalse(TEXT("Blueprint B should NOT be marked as impacted"), bBImpacted);
+		ASSERT_THAT(IsTrue(bAImpacted, TEXT("Blueprint A should be marked as impacted")));
+		ASSERT_THAT(IsFalse(bBImpacted, TEXT("Blueprint B should NOT be marked as impacted")));
 	}
 
 	// =================================================================
@@ -245,7 +247,7 @@ class ATestBPImpactDiskBacked : AActor
 
 		DiskBP = BlueprintImpactTestHelpers::CreateDiskBackedBlueprintChild(
 			*TestRunner, ScriptParent, TEXT("DiskBacked"), PackagePath, PackageFilename);
-		if (!TestRunner->TestNotNull(TEXT("Should create a saved blueprint asset"), DiskBP)) return;
+		if (!this->Assert.IsNotNull(DiskBP, TEXT("Should create a saved blueprint asset"))) return;
 
 		FAssetRegistryModule& ARM = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 		ARM.Get().ScanModifiedAssetFiles({ PackageFilename });
@@ -255,16 +257,16 @@ class ATestBPImpactDiskBacked : AActor
 		const auto ScanResult = AngelscriptEditor::BlueprintImpact::ScanBlueprintAssets(
 			Engine, ARM.Get(), Request);
 
-		TestRunner->TestTrue(
-			TEXT("Scanner should discover the saved blueprint as a candidate"),
+		ASSERT_THAT(IsTrue(
 			ScanResult.CandidateAssets.ContainsByPredicate(
-				[&PackagePath](const FAssetData& A) { return A.PackageName.ToString() == PackagePath; }));
+				[&PackagePath](const FAssetData& A) { return A.PackageName.ToString() == PackagePath; }),
+			TEXT("Scanner should discover the saved blueprint as a candidate")));
 
-		TestRunner->TestTrue(
-			TEXT("Scanner should mark the saved blueprint as impacted"),
+		ASSERT_THAT(IsTrue(
 			ScanResult.Matches.ContainsByPredicate(
 				[&PackagePath](const AngelscriptEditor::BlueprintImpact::FBlueprintImpactMatch& M)
-				{ return M.AssetData.PackageName.ToString() == PackagePath; }));
+				{ return M.AssetData.PackageName.ToString() == PackagePath; }),
+			TEXT("Scanner should mark the saved blueprint as impacted")));
 	}
 };
 

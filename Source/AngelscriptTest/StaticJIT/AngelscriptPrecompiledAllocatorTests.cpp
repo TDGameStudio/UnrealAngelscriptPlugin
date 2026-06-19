@@ -9,6 +9,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledAllocatorTests_Private
 bool RunPrecompiledAllocatorResizeAndMove(FAutomationTestBase& Test)
 {
 	FMemMark Mark(GScriptPreallocatedMemStack);
+	FNoDiscardAsserter Assert(Test);
 
 	using FIntAllocator = TPrecompiledAllocator<>::ForElementType<int32>;
 
@@ -16,7 +17,7 @@ bool RunPrecompiledAllocatorResizeAndMove(FAutomationTestBase& Test)
 	SourceAllocator.ResizeAllocation(0, 2, sizeof(int32));
 
 	int32* InitialAllocation = SourceAllocator.GetAllocation();
-	if (!Test.TestNotNull(TEXT("Precompiled allocator should allocate an initial buffer"), InitialAllocation))
+	if (!Assert.IsNotNull(InitialAllocation, TEXT("Precompiled allocator should allocate an initial buffer")))
 	{
 		return false;
 	}
@@ -26,20 +27,20 @@ bool RunPrecompiledAllocatorResizeAndMove(FAutomationTestBase& Test)
 
 	SourceAllocator.ResizeAllocation(2, 4, sizeof(int32));
 	int32* GrownAllocation = SourceAllocator.GetAllocation();
-	if (!Test.TestNotNull(TEXT("Precompiled allocator should keep a valid allocation after growing"), GrownAllocation))
+	if (!Assert.IsNotNull(GrownAllocation, TEXT("Precompiled allocator should keep a valid allocation after growing")))
 	{
 		return false;
 	}
 
-	if (!Test.TestEqual(TEXT("Precompiled allocator should preserve the first element when growing"), GrownAllocation[0], 17))
+	if (!Assert.AreEqual(17, GrownAllocation[0], TEXT("Precompiled allocator should preserve the first element when growing")))
 	{
 		return false;
 	}
-	if (!Test.TestEqual(TEXT("Precompiled allocator should preserve the second element when growing"), GrownAllocation[1], 42))
+	if (!Assert.AreEqual(42, GrownAllocation[1], TEXT("Precompiled allocator should preserve the second element when growing")))
 	{
 		return false;
 	}
-	if (!Test.TestEqual(TEXT("Precompiled allocator should keep the allocation aligned for int32"), reinterpret_cast<UPTRINT>(GrownAllocation) % alignof(int32), static_cast<UPTRINT>(0)))
+	if (!Assert.AreEqual(static_cast<UPTRINT>(0), reinterpret_cast<UPTRINT>(GrownAllocation) % alignof(int32), TEXT("Precompiled allocator should keep the allocation aligned for int32")))
 	{
 		return false;
 	}
@@ -47,20 +48,20 @@ bool RunPrecompiledAllocatorResizeAndMove(FAutomationTestBase& Test)
 	FIntAllocator TargetAllocator;
 	TargetAllocator.MoveToEmpty(SourceAllocator);
 
-	if (!Test.TestNull(TEXT("Precompiled allocator should clear the source allocation after MoveToEmpty"), SourceAllocator.GetAllocation()))
+	if (!Assert.IsNull(SourceAllocator.GetAllocation(), TEXT("Precompiled allocator should clear the source allocation after MoveToEmpty")))
 	{
 		return false;
 	}
-	if (!Test.TestTrue(TEXT("Precompiled allocator should preserve the destination allocation pointer after MoveToEmpty"), TargetAllocator.GetAllocation() == GrownAllocation))
+	if (!Assert.IsTrue(TargetAllocator.GetAllocation() == GrownAllocation, TEXT("Precompiled allocator should preserve the destination allocation pointer after MoveToEmpty")))
 	{
 		return false;
 	}
-	if (!Test.TestEqual(TEXT("Precompiled allocator should preserve the first moved element"), TargetAllocator.GetAllocation()[0], 17))
+	if (!Assert.AreEqual(17, TargetAllocator.GetAllocation()[0], TEXT("Precompiled allocator should preserve the first moved element")))
 	{
 		return false;
 	}
 
-	return Test.TestEqual(TEXT("Precompiled allocator should preserve the second moved element"), TargetAllocator.GetAllocation()[1], 42);
+	return Assert.AreEqual(42, TargetAllocator.GetAllocation()[1], TEXT("Precompiled allocator should preserve the second moved element"));
 }
 
 }

@@ -51,15 +51,16 @@ namespace InterfaceNativeBridgeTests
 		UObject* ReferencedObject,
 		const TCHAR* Context)
 	{
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should have a valid object"), Context), Object))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(Object, FString::Printf(TEXT("%s should have a valid object"), Context)))
 		{
 			return false;
 		}
 
 		FObjectPropertyBase* Property = FindFProperty<FObjectPropertyBase>(Object->GetClass(), PropertyName);
-		if (!Test.TestNotNull(
-			*FString::Printf(TEXT("%s should expose object property '%s'"), Context, *PropertyName.ToString()),
-			Property))
+		if (!Assert.IsNotNull(
+			Property,
+			FString::Printf(TEXT("%s should expose object property '%s'"), Context, *PropertyName.ToString())))
 		{
 			return false;
 		}
@@ -131,21 +132,15 @@ class ATestInterfaceNativeCppImplementerBridge : AActor
 }
 )AS"),
 			InterfaceNativeBridgeTests::GeneratedClassName);
-		if (!TestRunner->TestNotNull(TEXT("ScriptClass should be valid"), ScriptClass))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("ScriptClass should be valid")));
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 
 		ATestNativeParentInterfaceActor* NativeFixtureActor = Spawner.GetWorld().SpawnActor<ATestNativeParentInterfaceActor>();
 		AActor* ScriptActor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Native interface bridge fixture actor should spawn"), NativeFixtureActor)
-			|| !TestRunner->TestNotNull(TEXT("Native interface bridge script actor should spawn"), ScriptActor))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(NativeFixtureActor, TEXT("Native interface bridge fixture actor should spawn")));
+		ASSERT_THAT(IsNotNull(ScriptActor, TEXT("Native interface bridge script actor should spawn")));
 
 		if (!InterfaceNativeBridgeTests::SetObjectReferenceProperty(
 			*TestRunner,
@@ -169,12 +164,12 @@ class ATestInterfaceNativeCppImplementerBridge : AActor
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Script-side cast to a pure C++ native interface implementer should succeed"), bCastSucceeded, 1);
-		TestRunner->TestEqual(TEXT("Script-side interface getter should dispatch to the C++ implementer"), ReadValue, 123);
-		TestRunner->TestEqual(TEXT("Script-side ref parameter bridge should write back the adjusted value"), AdjustedValue, 15);
-		TestRunner->TestEqual(TEXT("Script-side interface setter should update the C++ implementer marker"), NativeFixtureActor->NativeMarker, FName(TEXT("FromScript")));
-		TestRunner->TestEqual(TEXT("C++ fixture should observe the delta passed through the interface bridge"), NativeFixtureActor->LastAdjustmentDelta, 5);
-		TestRunner->TestEqual(TEXT("C++ fixture should observe the final ref value written by the interface bridge"), NativeFixtureActor->LastAdjustedValue, 15);
+		ASSERT_THAT(AreEqual(1, bCastSucceeded, TEXT("Script-side cast to a pure C++ native interface implementer should succeed")));
+		ASSERT_THAT(AreEqual(123, ReadValue, TEXT("Script-side interface getter should dispatch to the C++ implementer")));
+		ASSERT_THAT(AreEqual(15, AdjustedValue, TEXT("Script-side ref parameter bridge should write back the adjusted value")));
+		ASSERT_THAT(AreEqual(FName(TEXT("FromScript")), NativeFixtureActor->NativeMarker, TEXT("Script-side interface setter should update the C++ implementer marker")));
+		ASSERT_THAT(AreEqual(5, NativeFixtureActor->LastAdjustmentDelta, TEXT("C++ fixture should observe the delta passed through the interface bridge")));
+		ASSERT_THAT(AreEqual(15, NativeFixtureActor->LastAdjustedValue, TEXT("C++ fixture should observe the final ref value written by the interface bridge")));
 	}
 };
 

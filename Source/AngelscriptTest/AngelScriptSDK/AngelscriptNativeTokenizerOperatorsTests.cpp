@@ -20,18 +20,13 @@ namespace
 		const TCHAR* Description;
 	};
 
-	void ExpectTokens(FAutomationTestBase& Test, const FTokenCase* Cases, const int32 NumCases)
+	bool ReadToken(const char* Input, eTokenType& OutTokenType, int32& OutTokenLength)
 	{
 		FTokenizerAccessor Tokenizer;
-		for (int32 Index = 0; Index < NumCases; ++Index)
-		{
-			const FTokenCase& Case = Cases[Index];
-			size_t TokenLength = 0;
-			const eTokenType TokenType = Tokenizer.GetToken(Case.Input, std::strlen(Case.Input), &TokenLength);
-
-			Test.TestEqual(FString::Printf(TEXT("%s should use the expected token type"), Case.Description), static_cast<int32>(TokenType), static_cast<int32>(Case.ExpectedType));
-			Test.TestEqual(FString::Printf(TEXT("%s should use the expected token length"), Case.Description), static_cast<int32>(TokenLength), Case.ExpectedLength);
-		}
+		size_t TokenLength = 0;
+		OutTokenType = Tokenizer.GetToken(Input, std::strlen(Input), &TokenLength);
+		OutTokenLength = static_cast<int32>(TokenLength);
+		return true;
 	}
 }
 
@@ -39,6 +34,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 	"Angelscript.TestModule.AngelScriptSDK.Tokenizer.Operators",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	void ExpectTokens(const FTokenCase* Cases, const int32 NumCases)
+	{
+		for (int32 Index = 0; Index < NumCases; ++Index)
+		{
+			const FTokenCase& Case = Cases[Index];
+			eTokenType TokenType = ttUnrecognizedToken;
+			int32 TokenLength = 0;
+			ReadToken(Case.Input, TokenType, TokenLength);
+
+			ASSERT_THAT(AreEqual(static_cast<int32>(Case.ExpectedType), static_cast<int32>(TokenType),
+				FString::Printf(TEXT("%s should use the expected token type"), Case.Description)));
+			ASSERT_THAT(AreEqual(Case.ExpectedLength, TokenLength,
+				FString::Printf(TEXT("%s should use the expected token length"), Case.Description)));
+		}
+	}
+
 	TEST_METHOD(ArithmeticOps_PlusMinusStarSlashPercent)
 	{
 		const FTokenCase Cases[] = {
@@ -49,7 +60,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 			{ "%", ttPercent, 1, TEXT("Modulo operator") },
 			{ "**", ttStarStar, 2, TEXT("Power operator") },
 		};
-		ExpectTokens(*TestRunner, Cases, UE_ARRAY_COUNT(Cases));
+		ExpectTokens(Cases, UE_ARRAY_COUNT(Cases));
 	}
 
 	TEST_METHOD(BitwiseOps_AndOrXorNotShifts)
@@ -63,7 +74,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 			{ ">>", ttBitShiftRight, 2, TEXT("Right shift operator") },
 			{ ">>>", ttBitShiftRightArith, 3, TEXT("Arithmetic right shift operator") },
 		};
-		ExpectTokens(*TestRunner, Cases, UE_ARRAY_COUNT(Cases));
+		ExpectTokens(Cases, UE_ARRAY_COUNT(Cases));
 	}
 
 	TEST_METHOD(ComparisonOps_EqNeLtLeGtGe)
@@ -76,7 +87,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 			{ ">", ttGreaterThan, 1, TEXT("Greater-than operator") },
 			{ ">=", ttGreaterThanOrEqual, 2, TEXT("Greater-than-or-equal operator") },
 		};
-		ExpectTokens(*TestRunner, Cases, UE_ARRAY_COUNT(Cases));
+		ExpectTokens(Cases, UE_ARRAY_COUNT(Cases));
 	}
 
 	TEST_METHOD(LogicalOps_AndOrNot)
@@ -86,7 +97,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 			{ "||", ttOr, 2, TEXT("Logical or operator") },
 			{ "!", ttNot, 1, TEXT("Logical not operator") },
 		};
-		ExpectTokens(*TestRunner, Cases, UE_ARRAY_COUNT(Cases));
+		ExpectTokens(Cases, UE_ARRAY_COUNT(Cases));
 	}
 
 	TEST_METHOD(AssignmentOps_PlainAndCompound)
@@ -106,7 +117,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 			{ ">>=", ttShiftRightLAssign, 3, TEXT("Right shift assignment operator") },
 			{ ">>>=", ttShiftRightAAssign, 4, TEXT("Arithmetic right shift assignment operator") },
 		};
-		ExpectTokens(*TestRunner, Cases, UE_ARRAY_COUNT(Cases));
+		ExpectTokens(Cases, UE_ARRAY_COUNT(Cases));
 	}
 
 	TEST_METHOD(IncrementDecrement)
@@ -115,7 +126,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 			{ "++", ttInc, 2, TEXT("Increment operator") },
 			{ "--", ttDec, 2, TEXT("Decrement operator") },
 		};
-		ExpectTokens(*TestRunner, Cases, UE_ARRAY_COUNT(Cases));
+		ExpectTokens(Cases, UE_ARRAY_COUNT(Cases));
 	}
 
 	TEST_METHOD(Ternary_Question_Colon)
@@ -124,7 +135,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 			{ "?", ttQuestion, 1, TEXT("Ternary question token") },
 			{ ":", ttColon, 1, TEXT("Ternary colon token") },
 		};
-		ExpectTokens(*TestRunner, Cases, UE_ARRAY_COUNT(Cases));
+		ExpectTokens(Cases, UE_ARRAY_COUNT(Cases));
 	}
 
 	TEST_METHOD(ScopeColonColonAndDot)
@@ -133,7 +144,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 			{ "::", ttScope, 2, TEXT("Scope operator") },
 			{ ".", ttDot, 1, TEXT("Dot operator") },
 		};
-		ExpectTokens(*TestRunner, Cases, UE_ARRAY_COUNT(Cases));
+		ExpectTokens(Cases, UE_ARRAY_COUNT(Cases));
 	}
 
 	TEST_METHOD(HandleOpAt)
@@ -142,8 +153,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 		size_t TokenLength = 0;
 		const eTokenType TokenType = Tokenizer.GetToken("@", 1, &TokenLength);
 
-		TestRunner->TestEqual(TEXT("Raw tokenizer currently leaves @ to parser-level handle handling"), static_cast<int32>(TokenType), static_cast<int32>(ttUnrecognizedToken));
-		TestRunner->TestEqual(TEXT("Raw tokenizer should still advance over @"), static_cast<int32>(TokenLength), 1);
+		ASSERT_THAT(AreEqual(static_cast<int32>(ttUnrecognizedToken), static_cast<int32>(TokenType),
+			TEXT("Raw tokenizer currently leaves @ to parser-level handle handling")));
+		ASSERT_THAT(AreEqual(1, static_cast<int32>(TokenLength),
+			TEXT("Raw tokenizer should still advance over @")));
 	}
 
 	TEST_METHOD(LongestMatchPrefersShiftRAOverShiftR)
@@ -151,10 +164,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 		FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
-		TestRunner->TestEqual(TEXT("Tokenizer should greedily match >>>= as the arithmetic-right-shift assignment token"), static_cast<int32>(Tokenizer.GetToken(">>>=", 4, &TokenLength)), static_cast<int32>(ttShiftRightAAssign));
-		TestRunner->TestEqual(TEXT("Tokenizer should consume all four characters in >>>="), static_cast<int32>(TokenLength), 4);
+		ASSERT_THAT(AreEqual(static_cast<int32>(ttShiftRightAAssign), static_cast<int32>(Tokenizer.GetToken(">>>=", 4, &TokenLength)),
+			TEXT("Tokenizer should greedily match >>>= as the arithmetic-right-shift assignment token")));
+		ASSERT_THAT(AreEqual(4, static_cast<int32>(TokenLength),
+			TEXT("Tokenizer should consume all four characters in >>>=")));
 	}
 };
 
 #endif
-

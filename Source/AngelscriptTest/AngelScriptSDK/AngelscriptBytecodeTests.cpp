@@ -34,20 +34,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBytecodeTests,
 	{
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 		asCModule* Module = CreateBytecodeModule(BareEngine, "BytecodeInstructionSequence");
-		if (!TestRunner->TestNotNull(TEXT("Bytecode instruction test should create a backing module"), Module))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Module, TEXT("Bytecode instruction test should create a backing module")));
 
 		asCBuilder Builder(BareEngine, Module);
 		asCByteCode ByteCode(&Builder);
 		ByteCode.InstrDWORD(asBC_PshC4, 42);
 		ByteCode.Instr(asBC_RET);
 
-		TestRunner->TestTrue(TEXT("Bytecode should contain at least one dword after emitting instructions"), ByteCode.GetSize() > 0);
-		TestRunner->TestNotNull(TEXT("Bytecode should expose the first instruction"), ByteCode.GetFirstInstr());
-		TestRunner->TestEqual(TEXT("First emitted opcode should match asBC_PshC4"), static_cast<int32>(ByteCode.GetFirstInstr()->op), static_cast<int32>(asBC_PshC4));
-		TestRunner->TestEqual(TEXT("Last emitted opcode should match asBC_RET"), ByteCode.GetLastInstr(), static_cast<int32>(asBC_RET));
+		ASSERT_THAT(IsTrue(ByteCode.GetSize() > 0,
+			TEXT("Bytecode should contain at least one dword after emitting instructions")));
+		ASSERT_THAT(IsNotNull(ByteCode.GetFirstInstr(), TEXT("Bytecode should expose the first instruction")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asBC_PshC4), static_cast<int32>(ByteCode.GetFirstInstr()->op),
+			TEXT("First emitted opcode should match asBC_PshC4")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asBC_RET), ByteCode.GetLastInstr(),
+			TEXT("Last emitted opcode should match asBC_RET")));
 		}
 	}
 
@@ -62,10 +62,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBytecodeTests,
 	{
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 		asCModule* Module = CreateBytecodeModule(BareEngine, "BytecodeAppend");
-		if (!TestRunner->TestNotNull(TEXT("Bytecode append test should create a backing module"), Module))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Module, TEXT("Bytecode append test should create a backing module")));
 
 		asCBuilder Builder(BareEngine, Module);
 		asCByteCode First(&Builder);
@@ -76,8 +73,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBytecodeTests,
 		const int32 InitialSize = First.GetSize();
 		First.AddCode(&Second);
 
-		TestRunner->TestTrue(TEXT("AddCode should append the second sequence to the first one"), First.GetSize() > InitialSize);
-		TestRunner->TestEqual(TEXT("The last dword payload should come from the appended sequence"), static_cast<int32>(First.GetLastInstrValueDW()), 20);
+		ASSERT_THAT(IsTrue(First.GetSize() > InitialSize,
+			TEXT("AddCode should append the second sequence to the first one")));
+		ASSERT_THAT(AreEqual(20, static_cast<int32>(First.GetLastInstrValueDW()),
+			TEXT("The last dword payload should come from the appended sequence")));
 		}
 	}
 
@@ -92,17 +91,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBytecodeTests,
 	{
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 		asCModule* Module = CreateBytecodeModule(BareEngine, "BytecodeJumpResolution");
-		if (!TestRunner->TestNotNull(TEXT("Bytecode jump test should create a backing module"), Module))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Module, TEXT("Bytecode jump test should create a backing module")));
 
 		asCBuilder Builder(BareEngine, Module);
 		asCByteCode ByteCode(&Builder);
 		ByteCode.InstrDWORD(asBC_JMP, 1);
 		ByteCode.Label(1);
 
-		TestRunner->TestEqual(TEXT("ResolveJumpAddresses should resolve a forward label jump"), ByteCode.ResolveJumpAddresses(), 0);
+		ASSERT_THAT(AreEqual(0, ByteCode.ResolveJumpAddresses(),
+			TEXT("ResolveJumpAddresses should resolve a forward label jump")));
 		}
 	}
 
@@ -117,10 +114,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBytecodeTests,
 	{
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 		asCModule* Module = CreateBytecodeModule(BareEngine, "BytecodeOutput");
-		if (!TestRunner->TestNotNull(TEXT("Bytecode output test should create a backing module"), Module))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Module, TEXT("Bytecode output test should create a backing module")));
 
 		asCBuilder Builder(BareEngine, Module);
 		asCByteCode ByteCode(&Builder);
@@ -130,8 +124,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBytecodeTests,
 		Buffer.SetNumZeroed(ByteCode.GetSize());
 		ByteCode.Output(Buffer.GetData());
 
-		TestRunner->TestEqual(TEXT("Output should preserve the opcode in the first emitted dword"), static_cast<int32>(*reinterpret_cast<asBYTE*>(&Buffer[0])), static_cast<int32>(asBC_PshC4));
-		TestRunner->TestEqual(TEXT("Output should preserve the dword payload for asBC_PshC4"), static_cast<int32>(Buffer[1]), 42);
+		ASSERT_THAT(AreEqual(static_cast<int32>(asBC_PshC4), static_cast<int32>(*reinterpret_cast<asBYTE*>(&Buffer[0])),
+			TEXT("Output should preserve the opcode in the first emitted dword")));
+		ASSERT_THAT(AreEqual(42, static_cast<int32>(Buffer[1]),
+			TEXT("Output should preserve the dword payload for asBC_PshC4")));
 		}
 	}
 };

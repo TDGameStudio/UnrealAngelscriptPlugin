@@ -64,18 +64,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptWorldBindingsTest,
 
 		AActor& ContextActor = Spawner.SpawnActor<AActor>();
 		UWorld* TestWorld = ContextActor.GetWorld();
-		if (!TestRunner->TestNotNull(TEXT("World context bindings test should access the spawned test world"), TestWorld))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(TestWorld, TEXT("World context bindings test should access the spawned test world")));
 
 		ULevel* PersistentLevel = TestWorld->PersistentLevel;
 		UGameInstance* GameInstance = TestWorld->GetGameInstance();
-		if (!TestRunner->TestNotNull(TEXT("World context bindings test should expose a persistent level"), PersistentLevel)
-			|| !TestRunner->TestNotNull(TEXT("World context bindings test should expose a game instance"), GameInstance))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(PersistentLevel, TEXT("World context bindings test should expose a persistent level")));
+		ASSERT_THAT(IsNotNull(GameInstance, TEXT("World context bindings test should expose a game instance")));
 
 		const FString ScriptSource = TEXT(R"(
 int VerifyWorldBindings(
@@ -136,21 +130,21 @@ int VerifyWorldBindings(
 
 		const int32 ResultMask = Invoker.CallAndReturn<int32>(INDEX_NONE);
 
-		TestRunner->TestEqual(
-			TEXT("World context bindings should preserve world context, world globals, persistent level, game instance, world type and frame number"),
+		ASSERT_THAT(AreEqual(
+			0,
 			ResultMask,
-			0);
-		TestRunner->TestTrue(
-			TEXT("World context bindings test should observe a game world in the spawned test case world"),
-			bExpectedIsGameWorld);
-		TestRunner->TestEqual(
-			TEXT("World context bindings test should use the native world type baseline"),
+			TEXT("World context bindings should preserve world context, world globals, persistent level, game instance, world type and frame number")));
+		ASSERT_THAT(IsTrue(
+			bExpectedIsGameWorld,
+			TEXT("World context bindings test should observe a game world in the spawned test case world")));
+		ASSERT_THAT(AreEqual(
+			static_cast<uint32>(TestWorld->WorldType),
 			ExpectedWorldType,
-			static_cast<uint32>(TestWorld->WorldType));
-		TestRunner->TestEqual(
-			TEXT("World context bindings test should capture the current frame number baseline"),
+			TEXT("World context bindings test should use the native world type baseline")));
+		ASSERT_THAT(AreEqual(
+			static_cast<uint32>(GFrameNumber),
 			ExpectedFrameNumber,
-			static_cast<uint32>(GFrameNumber));
+			TEXT("World context bindings test should capture the current frame number baseline")));
 	}
 };
 

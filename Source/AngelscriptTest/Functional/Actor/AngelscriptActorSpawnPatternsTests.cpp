@@ -99,7 +99,7 @@ class AFunctionalSpawnSourceActor : AActor
 		{
 			int32 Count = 0;
 			ReadPropertyValue<FIntProperty>(*TestRunner, SourceActor, PropertyName, Count);
-			TestRunner->TestEqual(Description, Count, 1);
+			ASSERT_THAT(AreEqual(1, Count, Description));
 		};
 
 		VerifyCount(TEXT("PositionalSpawnedCount"), TEXT("SpawnActor with positional Location/Rotation should succeed"));

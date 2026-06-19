@@ -118,11 +118,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPrimitiveComponentBindingsTest,
 		// Create fixture
 		AActor* HostActor = nullptr;
 		UBoxComponent* BoxComponent = CreatePrimitiveComponentFixture(HostActor);
-		if (!TestRunner->TestNotNull(TEXT("PrimComp should create transient host actor"), HostActor) ||
-			!TestRunner->TestNotNull(TEXT("PrimComp should create transient box component"), BoxComponent))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(HostActor, TEXT("PrimComp should create transient host actor")));
+		ASSERT_THAT(IsNotNull(BoxComponent, TEXT("PrimComp should create transient box component")));
 
 		// Capture baseline values for token replacement
 		const FString ComponentPath = BoxComponent->GetPathName();
@@ -132,18 +129,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPrimitiveComponentBindingsTest,
 		const double BoundsRadius = BoxComponent->Bounds.SphereRadius;
 
 		// Verify native baseline
-		TestRunner->TestTrue(TEXT("PrimComp native collision extents should match configured box extent"),
-			CollisionExtents.Equals(ExpectedBoxExtent, 0.0f));
-		TestRunner->TestTrue(TEXT("PrimComp native bounds origin should reflect configured relative location"),
-			BoundsOrigin.Equals(ExpectedRelativeLocation, BoundsTolerance));
-		TestRunner->TestTrue(TEXT("PrimComp native bounds extent should match configured box extent"),
-			BoundsExtent.Equals(ExpectedBoxExtent, BoundsTolerance));
-		TestRunner->TestTrue(TEXT("PrimComp native bounds radius should match box extent radius"),
-			FMath::IsNearlyEqual(BoundsRadius, ExpectedBoxExtent.Size(), BoundsTolerance));
-		TestRunner->TestFalse(TEXT("PrimComp native selectable flag should start disabled"),
-			BoxComponent->bSelectable);
-		TestRunner->TestEqual(TEXT("PrimComp native lightmap type should start at default"),
-			BoxComponent->GetLightmapType(), ELightmapType::Default);
+		ASSERT_THAT(IsTrue(
+			CollisionExtents.Equals(ExpectedBoxExtent, 0.0f),
+			TEXT("PrimComp native collision extents should match configured box extent")));
+		ASSERT_THAT(IsTrue(
+			BoundsOrigin.Equals(ExpectedRelativeLocation, BoundsTolerance),
+			TEXT("PrimComp native bounds origin should reflect configured relative location")));
+		ASSERT_THAT(IsTrue(
+			BoundsExtent.Equals(ExpectedBoxExtent, BoundsTolerance),
+			TEXT("PrimComp native bounds extent should match configured box extent")));
+		ASSERT_THAT(IsNear(
+			ExpectedBoxExtent.Size(),
+			BoundsRadius,
+			BoundsTolerance,
+			TEXT("PrimComp native bounds radius should match box extent radius")));
+		ASSERT_THAT(IsFalse(
+			BoxComponent->bSelectable,
+			TEXT("PrimComp native selectable flag should start disabled")));
+		ASSERT_THAT(AreEqual(
+			ELightmapType::Default,
+			BoxComponent->GetLightmapType(),
+			TEXT("PrimComp native lightmap type should start at default")));
 
 		// Build script with token replacement
 		FString Script = TEXT(R"(
@@ -213,10 +219,13 @@ int BoundsCompat_LightmapType()
 		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_LightmapType()"), TEXT("SetLightmapType(ForceSurface) should execute without error"), 1);
 
 		// Native-side assertions for mutations done by script
-		TestRunner->TestTrue(TEXT("PrimComp SetbSelectable(true) should update native component"),
-			BoxComponent->bSelectable);
-		TestRunner->TestEqual(TEXT("PrimComp SetLightmapType(ForceSurface) should update native lightmap type"),
-			BoxComponent->GetLightmapType(), ELightmapType::ForceSurface);
+		ASSERT_THAT(IsTrue(
+			BoxComponent->bSelectable,
+			TEXT("PrimComp SetbSelectable(true) should update native component")));
+		ASSERT_THAT(AreEqual(
+			ELightmapType::ForceSurface,
+			BoxComponent->GetLightmapType(),
+			TEXT("PrimComp SetLightmapType(ForceSurface) should update native lightmap type")));
 
 		// Cleanup
 		BoxComponent->MarkAsGarbage();

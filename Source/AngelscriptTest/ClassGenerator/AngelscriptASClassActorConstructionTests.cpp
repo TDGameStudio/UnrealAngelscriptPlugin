@@ -71,22 +71,28 @@ class AActorConstructionCarrier : AActor
 		}
 
 		UASClass* GeneratedASClass = Cast<UASClass>(GeneratedClass);
-		if (!Test.TestNotNull(
-				TEXT("ASClass actor-construction test case should compile the carrier into a UASClass"),
-				GeneratedASClass))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(
+				GeneratedASClass,
+				TEXT("ASClass actor-construction test case should compile the carrier into a UASClass")))
 		{
 			return nullptr;
 		}
 
-		Test.TestNotNull(
-			TEXT("ASClass actor-construction test case should bind the script constructor function"),
-			GeneratedASClass->ConstructFunction);
-		Test.TestNotNull(
-			TEXT("ASClass actor-construction test case should bind the defaults function"),
-			GeneratedASClass->DefaultsFunction);
-		Test.TestNotNull(
-			TEXT("ASClass actor-construction test case should keep a live script type pointer"),
-			GeneratedASClass->ScriptTypePtr);
+		bool bHasRequiredFunctions = true;
+		bHasRequiredFunctions &= Assert.IsNotNull(
+			GeneratedASClass->ConstructFunction,
+			TEXT("ASClass actor-construction test case should bind the script constructor function"));
+		bHasRequiredFunctions &= Assert.IsNotNull(
+			GeneratedASClass->DefaultsFunction,
+			TEXT("ASClass actor-construction test case should bind the defaults function"));
+		bHasRequiredFunctions &= Assert.IsNotNull(
+			GeneratedASClass->ScriptTypePtr,
+			TEXT("ASClass actor-construction test case should keep a live script type pointer"));
+		if (!bHasRequiredFunctions)
+		{
+			return nullptr;
+		}
 
 		return GeneratedASClass;
 	}
@@ -119,14 +125,15 @@ class AActorConstructionCarrier : AActor
 		const FString& ScopeLabel,
 		const FActorConstructionSnapshot& Snapshot)
 	{
-		const bool bDefaultValueMatches = Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the scripted integer default"), *ScopeLabel),
+		FNoDiscardAsserter Assert(Test);
+		const bool bDefaultValueMatches = Assert.AreEqual(
+			ExpectedDefaultValue,
 			Snapshot.DefaultValue,
-			ExpectedDefaultValue);
-		const bool bDefaultLabelMatches = Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the scripted string default"), *ScopeLabel),
+			*FString::Printf(TEXT("%s should preserve the scripted integer default"), *ScopeLabel));
+		const bool bDefaultLabelMatches = Assert.AreEqual(
+			ExpectedDefaultLabel,
 			Snapshot.DefaultLabel,
-			ExpectedDefaultLabel);
+			*FString::Printf(TEXT("%s should preserve the scripted string default"), *ScopeLabel));
 
 		return bDefaultValueMatches && bDefaultLabelMatches;
 	}
@@ -136,10 +143,11 @@ class AActorConstructionCarrier : AActor
 		const FString& ScopeLabel,
 		const FActorConstructionSnapshot& Snapshot)
 	{
-		const bool bCtorCountMatches = Test.TestEqual(
-			*FString::Printf(TEXT("%s should observe the expected constructor count"), *ScopeLabel),
+		FNoDiscardAsserter Assert(Test);
+		const bool bCtorCountMatches = Assert.AreEqual(
+			ExpectedCtorCount,
 			Snapshot.CtorCount,
-			ExpectedCtorCount);
+			*FString::Printf(TEXT("%s should observe the expected constructor count"), *ScopeLabel));
 
 		return bCtorCountMatches
 			&& VerifyDefaults(Test, ScopeLabel, Snapshot);
@@ -170,9 +178,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassActorConstructionTests,
 		}
 
 		AActor* DefaultObject = Cast<AActor>(GeneratedASClass->GetDefaultObject());
-		if (!TestRunner->TestNotNull(
-				TEXT("ASClass actor-construction test case should expose a generated actor class default object"),
-				DefaultObject))
+		ASSERT_THAT(IsNotNull(DefaultObject, TEXT("ASClass actor-construction test case should expose a generated actor class default object")));
+		if (DefaultObject == nullptr)
 		{
 			return;
 		}
@@ -188,8 +195,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassActorConstructionTests,
 
 		AActor* FirstActor = SpawnScriptActor(*TestRunner, Spawner, GeneratedASClass);
 		AActor* SecondActor = SpawnScriptActor(*TestRunner, Spawner, GeneratedASClass);
-		if (!TestRunner->TestNotNull(TEXT("ASClass actor-construction test case should spawn the first generated actor"), FirstActor)
-			|| !TestRunner->TestNotNull(TEXT("ASClass actor-construction test case should spawn the second generated actor"), SecondActor))
+		ASSERT_THAT(IsNotNull(FirstActor, TEXT("ASClass actor-construction test case should spawn the first generated actor")));
+		ASSERT_THAT(IsNotNull(SecondActor, TEXT("ASClass actor-construction test case should spawn the second generated actor")));
+		if (FirstActor == nullptr || SecondActor == nullptr)
 		{
 			return;
 		}
@@ -202,18 +210,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassActorConstructionTests,
 			return;
 		}
 
-		TestRunner->TestTrue(
-			TEXT("ASClass actor-construction test case should compile a generated actor class"),
-			GeneratedASClass->IsChildOf(AActor::StaticClass()));
-		TestRunner->TestTrue(
-			TEXT("ASClass actor-construction test case should keep runtime actors on the generated class"),
-			FirstActor->GetClass() == GeneratedASClass && SecondActor->GetClass() == GeneratedASClass);
-		TestRunner->TestTrue(
-			TEXT("ASClass actor-construction test case should create distinct runtime actor instances"),
-			FirstActor != SecondActor);
-		TestRunner->TestTrue(
-			TEXT("ASClass actor-construction test case should keep runtime actors distinct from the class default object"),
-			FirstActor != DefaultObject && SecondActor != DefaultObject);
+		ASSERT_THAT(IsTrue(
+			GeneratedASClass->IsChildOf(AActor::StaticClass()),
+			TEXT("ASClass actor-construction test case should compile a generated actor class")));
+		ASSERT_THAT(IsTrue(
+			FirstActor->GetClass() == GeneratedASClass && SecondActor->GetClass() == GeneratedASClass,
+			TEXT("ASClass actor-construction test case should keep runtime actors on the generated class")));
+		ASSERT_THAT(IsTrue(
+			FirstActor != SecondActor,
+			TEXT("ASClass actor-construction test case should create distinct runtime actor instances")));
+		ASSERT_THAT(IsTrue(
+			FirstActor != DefaultObject && SecondActor != DefaultObject,
+			TEXT("ASClass actor-construction test case should keep runtime actors distinct from the class default object")));
 
 		ASClassActorConstructionTest::VerifyDefaults(
 			*TestRunner,
@@ -228,26 +236,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassActorConstructionTests,
 			TEXT("ASClass actor-construction test case second spawned actor"),
 			SecondSnapshot);
 
-		TestRunner->TestEqual(
-			TEXT("ASClass actor-construction test case should keep the second actor constructor count isolated from the first actor"),
+		ASSERT_THAT(AreEqual(
+			ASClassActorConstructionTest::ExpectedCtorCount,
 			SecondSnapshot.CtorCount,
-			ASClassActorConstructionTest::ExpectedCtorCount);
-		TestRunner->TestEqual(
-			TEXT("ASClass actor-construction test case should keep the class default object on the same scripted integer default as spawned actors"),
+			TEXT("ASClass actor-construction test case should keep the second actor constructor count isolated from the first actor")));
+		ASSERT_THAT(AreEqual(
 			DefaultSnapshot.DefaultValue,
-			FirstSnapshot.DefaultValue);
-		TestRunner->TestEqual(
-			TEXT("ASClass actor-construction test case should keep both spawned actors on the same scripted integer default"),
 			FirstSnapshot.DefaultValue,
-			SecondSnapshot.DefaultValue);
-		TestRunner->TestEqual(
-			TEXT("ASClass actor-construction test case should keep the class default object on the same scripted string default as spawned actors"),
+			TEXT("ASClass actor-construction test case should keep the class default object on the same scripted integer default as spawned actors")));
+		ASSERT_THAT(AreEqual(
+			FirstSnapshot.DefaultValue,
+			SecondSnapshot.DefaultValue,
+			TEXT("ASClass actor-construction test case should keep both spawned actors on the same scripted integer default")));
+		ASSERT_THAT(AreEqual(
 			DefaultSnapshot.DefaultLabel,
-			FirstSnapshot.DefaultLabel);
-		TestRunner->TestEqual(
-			TEXT("ASClass actor-construction test case should keep both spawned actors on the same scripted string default"),
 			FirstSnapshot.DefaultLabel,
-			SecondSnapshot.DefaultLabel);
+			TEXT("ASClass actor-construction test case should keep the class default object on the same scripted string default as spawned actors")));
+		ASSERT_THAT(AreEqual(
+			FirstSnapshot.DefaultLabel,
+			SecondSnapshot.DefaultLabel,
+			TEXT("ASClass actor-construction test case should keep both spawned actors on the same scripted string default")));
 
 		}
 	}

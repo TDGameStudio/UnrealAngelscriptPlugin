@@ -78,12 +78,13 @@ int FromB()
 		AssertDiagnosticContains(*TestRunner, Result, TEXT("Detected circular import"));
 		AssertDiagnosticContains(*TestRunner, Result, TEXT("Tests.Preprocessor.ImportCycles.CircularA"));
 		AssertDiagnosticContains(*TestRunner, Result, TEXT("Tests.Preprocessor.ImportCycles.CircularB"));
-		TestRunner->TestTrue(
-			TEXT("Circular import should emit at least 3 error diagnostics (headline + chain)"),
-			Result.ErrorCount >= 3);
-		TestRunner->TestEqual(
-			TEXT("Circular import should not register active modules"),
-			Engine.GetActiveModules().Num(), 0);
+		ASSERT_THAT(IsTrue(
+			Result.ErrorCount >= 3,
+			TEXT("Circular import should emit at least 3 error diagnostics (headline + chain)")));
+		ASSERT_THAT(AreEqual(
+			0,
+			Engine.GetActiveModules().Num(),
+			TEXT("Circular import should not register active modules")));
 
 		}
 	}
@@ -97,9 +98,9 @@ int FromB()
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
-		TestRunner->TestTrue(
-			TEXT("Should run with automatic imports enabled"),
-			Engine.ShouldUseAutomaticImportMethod());
+		ASSERT_THAT(IsTrue(
+			Engine.ShouldUseAutomaticImportMethod(),
+			TEXT("Should run with automatic imports enabled")));
 
 		FFixtureFile SharedFile(TEXT("Tests/Preprocessor/AutomaticImportCompat/Shared.as"), TEXT(R"(
 int SharedValue()
@@ -151,10 +152,11 @@ int UseShared()
 		const int32 ExpectedWarningCount = bWarningsEnabled ? 1 : 0;
 		const int32 NonErrorCount = Result.AllDiagnostics.Num() - Result.ErrorCount;
 
-		TestRunner->TestEqual(TEXT("Should emit no errors"), Result.ErrorCount, 0);
-		TestRunner->TestEqual(
-			TEXT("Warning count should match warning policy"),
-			NonErrorCount, ExpectedWarningCount);
+		ASSERT_THAT(AreEqual(0, Result.ErrorCount, TEXT("Should emit no errors")));
+		ASSERT_THAT(AreEqual(
+			ExpectedWarningCount,
+			NonErrorCount,
+			TEXT("Warning count should match warning policy")));
 
 		if (bWarningsEnabled && Result.AllDiagnostics.Num() > 0)
 		{
@@ -207,11 +209,12 @@ int UseShared()
 
 		const FAngelscriptModuleDesc* BrokenModule = Result.FindModule(
 			TEXT("Tests.Preprocessor.MissingSemicolon.BrokenImport"));
-		if (TestRunner->TestNotNull(TEXT("Broken module should still exist for diagnostics"), BrokenModule))
+		if (this->Assert.IsNotNull(BrokenModule, TEXT("Broken module should still exist for diagnostics")))
 		{
-			TestRunner->TestEqual(
-				TEXT("Broken module should not record malformed imports"),
-				BrokenModule->ImportedModules.Num(), 0);
+			ASSERT_THAT(AreEqual(
+				0,
+				BrokenModule->ImportedModules.Num(),
+				TEXT("Broken module should not record malformed imports")));
 		}
 
 		}
@@ -261,10 +264,10 @@ int Entry()
 			AssertModuleImports(*TestRunner, *ImportingModule,
 				TEXT("Tests.Preprocessor.ImportTrailingBlockComment.Shared"));
 			// Verify comment is NOT in the import name
-			TestRunner->TestFalse(
-				TEXT("Should not include block comment in module name"),
+			ASSERT_THAT(IsFalse(
 				ImportingModule->ImportedModules.Contains(
-					TEXT("Tests.Preprocessor.ImportTrailingBlockComment.Shared /* shared helpers */")));
+					TEXT("Tests.Preprocessor.ImportTrailingBlockComment.Shared /* shared helpers */")),
+				TEXT("Should not include block comment in module name")));
 			AssertModuleCodeNotContains(*TestRunner, Result, *ImportingModule,
 				TEXT("import Tests.Preprocessor.ImportTrailingBlockComment.Shared /* shared helpers */;"));
 		}
@@ -278,16 +281,15 @@ int Entry()
 		const ECompileResult CompileResult = Engine.CompileModules(
 			ECompileType::SoftReloadOnly, Result.Modules, CompiledModules);
 
-		TestRunner->TestEqual(TEXT("Should compile as FullyHandled"),
-			CompileResult, ECompileResult::FullyHandled);
-		TestRunner->TestEqual(TEXT("Should compile two modules"), CompiledModules.Num(), 2);
+		ASSERT_THAT(AreEqual(ECompileResult::FullyHandled, CompileResult, TEXT("Should compile as FullyHandled")));
+		ASSERT_THAT(AreEqual(2, CompiledModules.Num(), TEXT("Should compile two modules")));
 
 		if (CompileResult == ECompileResult::FullyHandled)
 		{
 			TSharedPtr<FAngelscriptModuleDesc> CompiledConsumer =
 				Engine.GetModule(TEXT("Tests.Preprocessor.ImportTrailingBlockComment.UsesShared"));
-			if (TestRunner->TestTrue(TEXT("Consumer should be registered"), CompiledConsumer.IsValid())
-				&& TestRunner->TestNotNull(TEXT("Should have script module"), CompiledConsumer->ScriptModule))
+			if (this->Assert.IsTrue(CompiledConsumer.IsValid(), TEXT("Consumer should be registered"))
+				&& this->Assert.IsNotNull(CompiledConsumer->ScriptModule, TEXT("Should have script module")))
 			{
 				asIScriptFunction* EntryFunction = GetFunctionByDecl(
 					*TestRunner, *CompiledConsumer->ScriptModule, TEXT("int Entry()"));
@@ -296,7 +298,7 @@ int Entry()
 					int32 EntryResult = 0;
 					if (ExecuteIntFunction(*TestRunner, Engine, *EntryFunction, EntryResult))
 					{
-						TestRunner->TestEqual(TEXT("Should execute imported function → 11"), EntryResult, 11);
+						ASSERT_THAT(AreEqual(11, EntryResult, TEXT("Should execute imported function → 11")));
 					}
 				}
 			}
@@ -343,10 +345,10 @@ int Entry()
 		AssertNoDiagnostics(*TestRunner, Result);
 
 		// Verify topological order: Shared before Consumer
-		TestRunner->TestEqual(
-			TEXT("Module order should be provider-first"),
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("Tests.Preprocessor.ImportDedup.Shared -> Tests.Preprocessor.ImportDedup.Consumer")),
 			Result.ModuleOrder(),
-			FString(TEXT("Tests.Preprocessor.ImportDedup.Shared -> Tests.Preprocessor.ImportDedup.Consumer")));
+			TEXT("Module order should be provider-first")));
 
 		const FAngelscriptModuleDesc* SharedModule = AssertModuleExists(
 			*TestRunner, Result, TEXT("Tests.Preprocessor.ImportDedup.Shared"));
@@ -376,9 +378,10 @@ int Entry()
 			const ECompileResult CompileResult = Engine.CompileModules(
 				ECompileType::SoftReloadOnly, Result.Modules, CompiledModules);
 
-			TestRunner->TestTrue(TEXT("Deduplicated imports should compile"),
-				CompileResult == ECompileResult::FullyHandled || CompileResult == ECompileResult::PartiallyHandled);
-			TestRunner->TestEqual(TEXT("Should compile two modules"), CompiledModules.Num(), 2);
+			ASSERT_THAT(IsTrue(
+				CompileResult == ECompileResult::FullyHandled || CompileResult == ECompileResult::PartiallyHandled,
+				TEXT("Deduplicated imports should compile")));
+			ASSERT_THAT(AreEqual(2, CompiledModules.Num(), TEXT("Should compile two modules")));
 
 			if (ConsumerModule != nullptr && ConsumerModule->ScriptModule != nullptr)
 			{
@@ -389,8 +392,7 @@ int Entry()
 					int32 EntryResult = 0;
 					if (ExecuteIntFunction(*TestRunner, Engine, *EntryFunction, EntryResult))
 					{
-						TestRunner->TestEqual(TEXT("Should execute through deduplicated import → 17"),
-							EntryResult, 17);
+						ASSERT_THAT(AreEqual(17, EntryResult, TEXT("Should execute through deduplicated import → 17")));
 					}
 				}
 			}
@@ -445,10 +447,10 @@ int Entry()
 		AssertErrorCount(*TestRunner, Result, 0);
 		AssertNoDiagnostics(*TestRunner, Result);
 
-		TestRunner->TestEqual(
-			TEXT("Module order should be Base -> Shared -> Consumer"),
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("Tests.Preprocessor.ImportTopology.Base -> Tests.Preprocessor.ImportTopology.Shared -> Tests.Preprocessor.ImportTopology.Consumer")),
 			Result.ModuleOrder(),
-			FString(TEXT("Tests.Preprocessor.ImportTopology.Base -> Tests.Preprocessor.ImportTopology.Shared -> Tests.Preprocessor.ImportTopology.Consumer")));
+			TEXT("Module order should be Base -> Shared -> Consumer")));
 
 		const FAngelscriptModuleDesc* BaseModule = AssertModuleExists(
 			*TestRunner, Result, TEXT("Tests.Preprocessor.ImportTopology.Base"));
@@ -490,15 +492,15 @@ int Entry()
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
-		if (!TestRunner->TestTrue(
-			TEXT("Should run with automatic imports enabled"),
-			Engine.ShouldUseAutomaticImportMethod()))
+		if (!this->Assert.IsTrue(
+			Engine.ShouldUseAutomaticImportMethod(),
+			TEXT("Should run with automatic imports enabled")))
 		{
 			return;
 		}
 
 		UAngelscriptSettings* Settings = GetMutableDefault<UAngelscriptSettings>();
-		if (!TestRunner->TestNotNull(TEXT("Should access mutable settings"), Settings))
+		if (!this->Assert.IsNotNull(Settings, TEXT("Should access mutable settings")))
 		{
 			return;
 		}
@@ -545,18 +547,21 @@ int Entry()
 			auto Result = RunPreprocess(Engine, Files, {}, /*bDisableAutomaticImports=*/ false);
 			LogProcessedCode(Result, *FString::Printf(TEXT("AutomaticWarning_%s"), Case.Label));
 
-			TestRunner->TestTrue(
-				FString::Printf(TEXT("%s should preprocess successfully"), Case.Label),
-				Result.bSuccess);
-			TestRunner->TestEqual(
-				FString::Printf(TEXT("%s should emit two modules"), Case.Label),
-				Result.Modules.Num(), 2);
-			TestRunner->TestEqual(
-				FString::Printf(TEXT("%s should emit no errors"), Case.Label),
-				Result.ErrorCount, 0);
-			TestRunner->TestEqual(
-				FString::Printf(TEXT("%s should emit expected warning count"), Case.Label),
-				Result.AllDiagnostics.Num(), Case.ExpectedWarningCount);
+			ASSERT_THAT(IsTrue(
+				Result.bSuccess,
+				FString::Printf(TEXT("%s should preprocess successfully"), Case.Label)));
+			ASSERT_THAT(AreEqual(
+				2,
+				Result.Modules.Num(),
+				FString::Printf(TEXT("%s should emit two modules"), Case.Label)));
+			ASSERT_THAT(AreEqual(
+				0,
+				Result.ErrorCount,
+				FString::Printf(TEXT("%s should emit no errors"), Case.Label)));
+			ASSERT_THAT(AreEqual(
+				Case.ExpectedWarningCount,
+				Result.AllDiagnostics.Num(),
+				FString::Printf(TEXT("%s should emit expected warning count"), Case.Label)));
 
 			const FAngelscriptModuleDesc* ConsumerModule = Result.FindModule(
 				TEXT("Tests.Preprocessor.ImportMode.Consumer"));
@@ -571,13 +576,13 @@ int Entry()
 
 			if (Case.bWarnOnManualImport && Result.AllDiagnostics.Num() > 0)
 			{
-				TestRunner->TestFalse(
-					FString::Printf(TEXT("%s warning should not be an error"), Case.Label),
-					Result.AllDiagnostics[0].bIsError);
-				TestRunner->TestTrue(
-					FString::Printf(TEXT("%s warning should mention automatic imports"), Case.Label),
+				ASSERT_THAT(IsFalse(
+					Result.AllDiagnostics[0].bIsError,
+					FString::Printf(TEXT("%s warning should not be an error"), Case.Label)));
+				ASSERT_THAT(IsTrue(
 					Result.AllDiagnostics[0].Message.Contains(
-						TEXT("Automatic imports are active, import statements will be ignored.")));
+						TEXT("Automatic imports are active, import statements will be ignored.")),
+					FString::Printf(TEXT("%s warning should mention automatic imports"), Case.Label)));
 			}
 		}
 
@@ -765,10 +770,14 @@ int Entry()
 		AssertNoDiagnostics(*TestRunner, Result);
 
 		// Root should be first (no deps), Consumer should be last (depends on all)
-		TestRunner->TestEqual(TEXT("First module should be Root"),
-			Result.Modules[0]->ModuleName, FString(TEXT("Tests.Preprocessor.WideGraph.Root")));
-		TestRunner->TestEqual(TEXT("Last module should be Consumer"),
-			Result.Modules[4]->ModuleName, FString(TEXT("Tests.Preprocessor.WideGraph.Consumer")));
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("Tests.Preprocessor.WideGraph.Root")),
+			Result.Modules[0]->ModuleName,
+			TEXT("First module should be Root")));
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("Tests.Preprocessor.WideGraph.Consumer")),
+			Result.Modules[4]->ModuleName,
+			TEXT("Last module should be Consumer")));
 
 		// Consumer should import exactly A, B, C
 		const FAngelscriptModuleDesc* Consumer = Result.FindModule(TEXT("Tests.Preprocessor.WideGraph.Consumer"));

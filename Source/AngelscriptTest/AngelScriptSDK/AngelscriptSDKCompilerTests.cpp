@@ -39,10 +39,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKCompilerTests,
 	TEST_METHOD(Basic)
 	{
 		asIScriptEngine* const ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK compiler basic test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK compiler basic test should create a standalone engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKCompilerBasic", R"(
 const int GlobalVar = 42;
@@ -69,16 +66,13 @@ bool Entry()
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK compiler basic test should compile and execute basic constructs"), bResult);
+		ASSERT_THAT(IsTrue(bResult, TEXT("SDK compiler basic test should compile and execute basic constructs")));
 	}
 
 	TEST_METHOD(Error)
 	{
 		asIScriptEngine* const ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK compiler error test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK compiler error test should create a standalone engine")));
 
 		// Test that invalid syntax produces compile errors
 		FScopedNativeModuleName ModuleScope(Engine, "SDKCompilerError");
@@ -93,23 +87,18 @@ int MissingReturn() { }
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("SDK compiler error test should detect syntax errors"), Engine.GetMessages().Entries.Num() > 0);
+		ASSERT_THAT(IsTrue(Engine.GetMessages().Entries.Num() > 0,
+			TEXT("SDK compiler error test should detect syntax errors")));
 	}
 
 	TEST_METHOD(Config)
 	{
 		asIScriptEngine* const ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK compiler config test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK compiler config test should create a standalone engine")));
 
 		// Test engine property access
 		const int PropResult = ScriptEngine->SetEngineProperty(asEP_COPY_SCRIPT_SECTIONS, true);
-		if (!TestRunner->TestTrue(TEXT("SDK compiler config test should set engine property"), PropResult >= 0))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(PropResult >= 0, TEXT("SDK compiler config test should set engine property")));
 		ON_SCOPE_EXIT
 		{
 			ScriptEngine->SetEngineProperty(asEP_COPY_SCRIPT_SECTIONS, false);
@@ -117,21 +106,15 @@ int MissingReturn() { }
 
 		// Test type registration configuration
 		const int TypeResult = ScriptEngine->RegisterObjectType("TestConfigType", 0, asOBJ_REF | asOBJ_NOCOUNT);
-		if (!TestRunner->TestTrue(TEXT("SDK compiler config test should register reference type"), TypeResult >= 0))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(TypeResult >= 0, TEXT("SDK compiler config test should register reference type")));
 
-		TestRunner->TestTrue(TEXT("SDK compiler config test should configure engine properties"), true);
+		ASSERT_THAT(IsTrue(true, TEXT("SDK compiler config test should configure engine properties")));
 	}
 
 	TEST_METHOD(MultipleErrors)
 	{
 		asIScriptEngine* const ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK compiler multiple-errors test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK compiler multiple-errors test should create a standalone engine")));
 
 		// Script with multiple independent errors: undefined symbol and type mismatch.
 		Engine.ResetMessages();
@@ -145,21 +128,16 @@ int Entry()
 }
 )");
 
-		if (!TestRunner->TestNull(TEXT("SDK compiler multiple-errors test should fail to compile"), Module))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNull(Module, TEXT("SDK compiler multiple-errors test should fail to compile")));
 
-		TestRunner->TestTrue(TEXT("SDK compiler multiple-errors test should produce multiple error messages"), Engine.GetMessages().Entries.Num() >= 2);
+		ASSERT_THAT(IsTrue(Engine.GetMessages().Entries.Num() >= 2,
+			TEXT("SDK compiler multiple-errors test should produce multiple error messages")));
 	}
 
 	TEST_METHOD(TypeMismatch)
 	{
 		asIScriptEngine* const ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK compiler type-mismatch test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK compiler type-mismatch test should create a standalone engine")));
 
 		// Calling a function that returns void and assigning it should fail.
 		Engine.ResetMessages();
@@ -173,16 +151,13 @@ int Entry()
 }
 )");
 
-		TestRunner->TestNull(TEXT("SDK compiler type-mismatch test should reject assigning void to int"), Module);
+		ASSERT_THAT(IsNull(Module, TEXT("SDK compiler type-mismatch test should reject assigning void to int")));
 	}
 
 	TEST_METHOD(RecompileAfterError)
 	{
 		asIScriptEngine* const ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK compiler recompile-after-error test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK compiler recompile-after-error test should create a standalone engine")));
 
 		// First attempt: compile failure.
 		Engine.ResetMessages();
@@ -191,10 +166,7 @@ int Entry()
 int Entry() { return NotDefined; }
 )");
 
-		if (!TestRunner->TestNull(TEXT("SDK compiler recompile-after-error test should fail the first compilation"), FailedModule))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNull(FailedModule, TEXT("SDK compiler recompile-after-error test should fail the first compilation")));
 
 		// Second attempt: valid script under the same module name.
 		Engine.ResetMessages();
@@ -202,7 +174,7 @@ int Entry() { return NotDefined; }
 int Entry() { return 7; }
 )");
 
-		if (!TestRunner->TestNotNull(TEXT("SDK compiler recompile-after-error test should succeed the second compilation"), SuccessModule))
+		if (!this->Assert.IsNotNull(SuccessModule, TEXT("SDK compiler recompile-after-error test should succeed the second compilation")))
 		{
 			TestRunner->AddInfo(Engine.GetMessagesText());
 			return;
@@ -214,7 +186,7 @@ int Entry() { return 7; }
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("SDK compiler recompile-after-error test should execute the corrected module"), Result, 7);
+		ASSERT_THAT(AreEqual(7, Result, TEXT("SDK compiler recompile-after-error test should execute the corrected module")));
 	}
 };
 

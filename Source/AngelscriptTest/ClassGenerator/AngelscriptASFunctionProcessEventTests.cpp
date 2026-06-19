@@ -14,6 +14,38 @@ using namespace AngelscriptFunctionalTestUtils;
 
 namespace ASFunctionProcessEventTests
 {
+	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsTrue(bActual, Message);
+	}
+
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.AreEqual(Expected, Actual, Message);
+	}
+
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const FString& Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		return CheckEqual(Test, *Message, Actual, Expected);
+	}
+
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsNotNull(Value, Message);
+	}
+
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const FString& Message, const ValueType& Value)
+	{
+		return CheckNotNull(Test, *Message, Value);
+	}
+
 	static const FName ModuleName(TEXT("ASFunctionProcessEvent"));
 	static const FString ScriptFilename(TEXT("ASFunctionProcessEvent.as"));
 	static const FName GeneratedClassName(TEXT("UProcessEventCarrier"));
@@ -204,15 +236,15 @@ class UProcessEventVirtualChild : UProcessEventVirtualParent
 	{
 		FIntProperty* InputProperty = FindFProperty<FIntProperty>(Function, TEXT("Input"));
 		FIntProperty* ReturnProperty = FindFProperty<FIntProperty>(Function, TEXT("ReturnValue"));
-		if (!Test.TestNotNull(TEXT("ProcessEvent thunk test case should expose the Input property"), InputProperty)
-			|| !Test.TestNotNull(TEXT("ProcessEvent thunk test case should expose the ReturnValue property"), ReturnProperty))
+		if (!CheckNotNull(Test, TEXT("ProcessEvent thunk test case should expose the Input property"), InputProperty)
+			|| !CheckNotNull(Test, TEXT("ProcessEvent thunk test case should expose the ReturnValue property"), ReturnProperty))
 		{
 			return false;
 		}
 
 		FStructOnScope Params(Function);
 		void* ParamsMemory = Params.GetStructMemory();
-		if (!Test.TestNotNull(TEXT("ProcessEvent thunk test case should allocate a reflected parameter buffer"), ParamsMemory))
+		if (!CheckNotNull(Test, TEXT("ProcessEvent thunk test case should allocate a reflected parameter buffer"), ParamsMemory))
 		{
 			return false;
 		}
@@ -234,14 +266,14 @@ class UProcessEventVirtualChild : UProcessEventVirtualParent
 		int32 InputValue)
 	{
 		FIntProperty* InputProperty = FindFProperty<FIntProperty>(Function, TEXT("Input"));
-		if (!Test.TestNotNull(TEXT("ProcessEvent thunk test case should expose the Input property on the void function"), InputProperty))
+		if (!CheckNotNull(Test, TEXT("ProcessEvent thunk test case should expose the Input property on the void function"), InputProperty))
 		{
 			return false;
 		}
 
 		FStructOnScope Params(Function);
 		void* ParamsMemory = Params.GetStructMemory();
-		if (!Test.TestNotNull(TEXT("ProcessEvent thunk test case should allocate a reflected parameter buffer for the void function"), ParamsMemory))
+		if (!CheckNotNull(Test, TEXT("ProcessEvent thunk test case should allocate a reflected parameter buffer for the void function"), ParamsMemory))
 		{
 			return false;
 		}
@@ -259,7 +291,7 @@ class UProcessEventVirtualChild : UProcessEventVirtualParent
 		const TCHAR* FunctionName)
 	{
 		UASFunction* ScriptFunction = Cast<UASFunction>(FindGeneratedFunction(OwnerClass, FunctionName));
-		Test.TestNotNull(
+		CheckNotNull(Test,
 			*FString::Printf(TEXT("ASFunction ABI test case should expose '%s' as a UASFunction"), FunctionName),
 			ScriptFunction);
 		return ScriptFunction;
@@ -273,9 +305,9 @@ class UProcessEventVirtualChild : UProcessEventVirtualParent
 		void* ParamsMemory,
 		EInvocationPath Path)
 	{
-		if (!Test.TestNotNull(TEXT("ASFunction ABI test case should have a valid target object"), Object)
-			|| !Test.TestNotNull(TEXT("ASFunction ABI test case should have a valid function"), Function)
-			|| !Test.TestNotNull(TEXT("ASFunction ABI test case should have reflected parameter memory"), ParamsMemory))
+		if (!CheckNotNull(Test, TEXT("ASFunction ABI test case should have a valid target object"), Object)
+			|| !CheckNotNull(Test, TEXT("ASFunction ABI test case should have a valid function"), Function)
+			|| !CheckNotNull(Test, TEXT("ASFunction ABI test case should have reflected parameter memory"), ParamsMemory))
 		{
 			return false;
 		}
@@ -288,7 +320,7 @@ class UProcessEventVirtualChild : UProcessEventVirtualParent
 		}
 
 		UASFunction* ScriptFunction = Cast<UASFunction>(Function);
-		if (!Test.TestNotNull(TEXT("ASFunction ABI test case should dispatch generated functions directly as UASFunction"), ScriptFunction))
+		if (!CheckNotNull(Test, TEXT("ASFunction ABI test case should dispatch generated functions directly as UASFunction"), ScriptFunction))
 		{
 			return false;
 		}
@@ -306,7 +338,7 @@ class UProcessEventVirtualChild : UProcessEventVirtualParent
 		ValueType Value)
 	{
 		PropertyType* Property = FindFProperty<PropertyType>(Function, PropertyName);
-		if (!Test.TestNotNull(
+		if (!CheckNotNull(Test,
 				*FString::Printf(TEXT("ASFunction ABI test case should expose parameter '%s'"), *PropertyName.ToString()),
 				Property))
 		{
@@ -350,7 +382,7 @@ class UProcessEventVirtualChild : UProcessEventVirtualParent
 		}
 
 		PropertyType* ReturnProperty = CastField<PropertyType>(Function->GetReturnProperty());
-		if (!Test.TestNotNull(TEXT("ASFunction ABI test case should expose the expected return property type"), ReturnProperty))
+		if (!CheckNotNull(Test, TEXT("ASFunction ABI test case should expose the expected return property type"), ReturnProperty))
 		{
 			return false;
 		}
@@ -375,7 +407,7 @@ class UProcessEventVirtualChild : UProcessEventVirtualParent
 		}
 
 		FObjectProperty* ReturnProperty = CastField<FObjectProperty>(Function->GetReturnProperty());
-		if (!Test.TestNotNull(TEXT("ASFunction ABI test case should expose an object return property"), ReturnProperty))
+		if (!CheckNotNull(Test, TEXT("ASFunction ABI test case should expose an object return property"), ReturnProperty))
 		{
 			return false;
 		}
@@ -425,7 +457,7 @@ class UProcessEventVirtualChild : UProcessEventVirtualParent
 		}
 		int32 ByteSeen = INDEX_NONE;
 		if (!ReadPropertyValue<FIntProperty>(Test, Instance, ByteSeenPropertyName, ByteSeen)
-			|| !Test.TestEqual(*FString::Printf(TEXT("%s should preserve byte argument values"), DescribeInvocationPath(Path)), ByteSeen, 201))
+			|| !CheckEqual(Test, *FString::Printf(TEXT("%s should preserve byte argument values"), DescribeInvocationPath(Path)), ByteSeen, 201))
 		{
 			return false;
 		}
@@ -436,7 +468,7 @@ class UProcessEventVirtualChild : UProcessEventVirtualParent
 		}
 		bool bBoolSeen = false;
 		if (!ReadPropertyValue<FBoolProperty>(Test, Instance, BoolSeenPropertyName, bBoolSeen)
-			|| !Test.TestTrue(*FString::Printf(TEXT("%s should preserve bool argument values"), DescribeInvocationPath(Path)), bBoolSeen))
+			|| !CheckTrue(Test, *FString::Printf(TEXT("%s should preserve bool argument values"), DescribeInvocationPath(Path)), bBoolSeen))
 		{
 			return false;
 		}
@@ -448,7 +480,7 @@ class UProcessEventVirtualChild : UProcessEventVirtualParent
 		}
 		uint32 DWordSeen = 0;
 		if (!ReadPropertyValue<FUInt32Property>(Test, Instance, DWordSeenPropertyName, DWordSeen)
-			|| !Test.TestEqual(*FString::Printf(TEXT("%s should preserve dword argument values"), DescribeInvocationPath(Path)), DWordSeen, DWordValue))
+			|| !CheckEqual(Test, *FString::Printf(TEXT("%s should preserve dword argument values"), DescribeInvocationPath(Path)), DWordSeen, DWordValue))
 		{
 			return false;
 		}
@@ -460,7 +492,7 @@ class UProcessEventVirtualChild : UProcessEventVirtualParent
 		}
 		uint64 QWordSeen = 0;
 		if (!ReadPropertyValue<FUInt64Property>(Test, Instance, QWordSeenPropertyName, QWordSeen)
-			|| !Test.TestEqual(*FString::Printf(TEXT("%s should preserve qword argument values"), DescribeInvocationPath(Path)), QWordSeen, QWordValue))
+			|| !CheckEqual(Test, *FString::Printf(TEXT("%s should preserve qword argument values"), DescribeInvocationPath(Path)), QWordSeen, QWordValue))
 		{
 			return false;
 		}
@@ -471,7 +503,7 @@ class UProcessEventVirtualChild : UProcessEventVirtualParent
 		}
 		int32 FloatHundredths = INDEX_NONE;
 		if (!ReadPropertyValue<FIntProperty>(Test, Instance, FloatHundredthsPropertyName, FloatHundredths)
-			|| !Test.TestEqual(*FString::Printf(TEXT("%s should preserve float argument values"), DescribeInvocationPath(Path)), FloatHundredths, 1225))
+			|| !CheckEqual(Test, *FString::Printf(TEXT("%s should preserve float argument values"), DescribeInvocationPath(Path)), FloatHundredths, 1225))
 		{
 			return false;
 		}
@@ -482,7 +514,7 @@ class UProcessEventVirtualChild : UProcessEventVirtualParent
 		}
 		int32 DoubleHundredths = INDEX_NONE;
 		if (!ReadPropertyValue<FIntProperty>(Test, Instance, DoubleHundredthsPropertyName, DoubleHundredths)
-			|| !Test.TestEqual(*FString::Printf(TEXT("%s should preserve double argument values"), DescribeInvocationPath(Path)), DoubleHundredths, 2450))
+			|| !CheckEqual(Test, *FString::Printf(TEXT("%s should preserve double argument values"), DescribeInvocationPath(Path)), DoubleHundredths, 2450))
 		{
 			return false;
 		}
@@ -496,10 +528,10 @@ class UProcessEventVirtualChild : UProcessEventVirtualParent
 		}
 		FIntProperty* ReferenceParamProperty = FindFProperty<FIntProperty>(BumpReferenceFunction, TEXT("Value"));
 		int32 ReferenceSeen = INDEX_NONE;
-		if (!Test.TestNotNull(TEXT("ASFunction ABI reference test should expose the Value parameter"), ReferenceParamProperty)
-			|| !Test.TestEqual(*FString::Printf(TEXT("%s should write back reflected reference parameter values"), DescribeInvocationPath(Path)), ReferenceParamProperty->GetPropertyValue_InContainer(ReferenceParamsMemory), 42)
+		if (!CheckNotNull(Test, TEXT("ASFunction ABI reference test should expose the Value parameter"), ReferenceParamProperty)
+			|| !CheckEqual(Test, *FString::Printf(TEXT("%s should write back reflected reference parameter values"), DescribeInvocationPath(Path)), ReferenceParamProperty->GetPropertyValue_InContainer(ReferenceParamsMemory), 42)
 			|| !ReadPropertyValue<FIntProperty>(Test, Instance, ReferenceSeenPropertyName, ReferenceSeen)
-			|| !Test.TestEqual(*FString::Printf(TEXT("%s should expose reference writeback inside script state"), DescribeInvocationPath(Path)), ReferenceSeen, 42))
+			|| !CheckEqual(Test, *FString::Printf(TEXT("%s should expose reference writeback inside script state"), DescribeInvocationPath(Path)), ReferenceSeen, 42))
 		{
 			return false;
 		}
@@ -510,15 +542,15 @@ class UProcessEventVirtualChild : UProcessEventVirtualParent
 		double DoubleReturnValue = 0.0;
 		UObject* ObjectReturnValue = nullptr;
 		if (!InvokeReturnFunction<FByteProperty>(Test, Engine, Instance, ReturnByteFunction, Path, ByteReturnValue)
-			|| !Test.TestEqual(*FString::Printf(TEXT("%s should preserve byte return values"), DescribeInvocationPath(Path)), static_cast<int32>(ByteReturnValue), 213)
+			|| !CheckEqual(Test, *FString::Printf(TEXT("%s should preserve byte return values"), DescribeInvocationPath(Path)), static_cast<int32>(ByteReturnValue), 213)
 			|| !InvokeReturnFunction<FIntProperty>(Test, Engine, Instance, ReturnIntFunction, Path, IntReturnValue)
-			|| !Test.TestEqual(*FString::Printf(TEXT("%s should preserve dword primitive return values"), DescribeInvocationPath(Path)), IntReturnValue, 31415)
+			|| !CheckEqual(Test, *FString::Printf(TEXT("%s should preserve dword primitive return values"), DescribeInvocationPath(Path)), IntReturnValue, 31415)
 			|| !InvokeReturnFunction<FFloatProperty>(Test, Engine, Instance, ReturnFloatFunction, Path, FloatReturnValue)
-			|| !Test.TestEqual(*FString::Printf(TEXT("%s should preserve float return values"), DescribeInvocationPath(Path)), FloatReturnValue, 12.25f)
+			|| !FNoDiscardAsserter(Test).IsNear(12.25f, FloatReturnValue, UE_KINDA_SMALL_NUMBER, *FString::Printf(TEXT("%s should preserve float return values"), DescribeInvocationPath(Path)))
 			|| !InvokeReturnFunction<FDoubleProperty>(Test, Engine, Instance, ReturnDoubleFunction, Path, DoubleReturnValue)
-			|| !Test.TestEqual(*FString::Printf(TEXT("%s should preserve double return values"), DescribeInvocationPath(Path)), DoubleReturnValue, 24.5)
+			|| !FNoDiscardAsserter(Test).IsNear(24.5, DoubleReturnValue, static_cast<double>(UE_KINDA_SMALL_NUMBER), *FString::Printf(TEXT("%s should preserve double return values"), DescribeInvocationPath(Path)))
 			|| !InvokeObjectReturnFunction(Test, Engine, Instance, ReturnSelfObjectFunction, Path, ObjectReturnValue)
-			|| !Test.TestTrue(*FString::Printf(TEXT("%s should preserve object return identity"), DescribeInvocationPath(Path)), ObjectReturnValue == Instance))
+			|| !CheckTrue(Test, *FString::Printf(TEXT("%s should preserve object return identity"), DescribeInvocationPath(Path)), ObjectReturnValue == Instance))
 		{
 			return false;
 		}
@@ -544,7 +576,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionProcessEventTests,
 		};
 
 		UASClass* ScriptClass = ASFunctionProcessEventTests::CompileProcessEventCarrier(*TestRunner, Engine);
-		if (!TestRunner->TestNotNull(TEXT("ProcessEvent thunk test case should compile to a UASClass"), ScriptClass))
+		if (!CheckNotNull(*TestRunner, TEXT("ProcessEvent thunk test case should compile to a UASClass"), ScriptClass))
 		{
 			return;
 		}
@@ -553,33 +585,33 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionProcessEventTests,
 		UFunction* SetStoredValueFunction = FindGeneratedFunction(ScriptClass, TEXT("SetStoredValue"));
 		UASFunction* AddTenScriptFunction = Cast<UASFunction>(AddTenFunction);
 		UASFunction* SetStoredValueScriptFunction = Cast<UASFunction>(SetStoredValueFunction);
-		if (!TestRunner->TestNotNull(TEXT("ProcessEvent thunk test case should generate AddTen"), AddTenFunction)
-			|| !TestRunner->TestNotNull(TEXT("ProcessEvent thunk test case should generate SetStoredValue"), SetStoredValueFunction)
-			|| !TestRunner->TestNotNull(TEXT("ProcessEvent thunk test case should expose AddTen as a UASFunction"), AddTenScriptFunction)
-			|| !TestRunner->TestNotNull(TEXT("ProcessEvent thunk test case should expose SetStoredValue as a UASFunction"), SetStoredValueScriptFunction))
+		if (!CheckNotNull(*TestRunner, TEXT("ProcessEvent thunk test case should generate AddTen"), AddTenFunction)
+			|| !CheckNotNull(*TestRunner, TEXT("ProcessEvent thunk test case should generate SetStoredValue"), SetStoredValueFunction)
+			|| !CheckNotNull(*TestRunner, TEXT("ProcessEvent thunk test case should expose AddTen as a UASFunction"), AddTenScriptFunction)
+			|| !CheckNotNull(*TestRunner, TEXT("ProcessEvent thunk test case should expose SetStoredValue as a UASFunction"), SetStoredValueScriptFunction))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("ProcessEvent thunk test case should route AddTen through UASFunctionNativeThunk"), AddTenFunction->GetNativeFunc() == &UASFunctionNativeThunk);
-		TestRunner->TestTrue(TEXT("ProcessEvent thunk test case should route SetStoredValue through UASFunctionNativeThunk"), SetStoredValueFunction->GetNativeFunc() == &UASFunctionNativeThunk);
+		CheckTrue(*TestRunner, TEXT("ProcessEvent thunk test case should route AddTen through UASFunctionNativeThunk"), AddTenFunction->GetNativeFunc() == &UASFunctionNativeThunk);
+		CheckTrue(*TestRunner, TEXT("ProcessEvent thunk test case should route SetStoredValue through UASFunctionNativeThunk"), SetStoredValueFunction->GetNativeFunc() == &UASFunctionNativeThunk);
 
 		UObject* Instance = NewObject<UObject>(GetTransientPackage(), ScriptClass, TEXT("ProcessEventCarrierInstance"));
-		if (!TestRunner->TestNotNull(TEXT("ProcessEvent thunk test case should instantiate the generated UObject"), Instance))
+		if (!CheckNotNull(*TestRunner, TEXT("ProcessEvent thunk test case should instantiate the generated UObject"), Instance))
 		{
 			return;
 		}
 
 		int32 AddTenResult = INDEX_NONE;
-		if (!TestRunner->TestTrue(
+		if (!CheckTrue(*TestRunner,
 				TEXT("ProcessEvent thunk test case should execute AddTen via ProcessEvent"),
 				ASFunctionProcessEventTests::InvokeIntFunctionThroughProcessEvent(*TestRunner, Engine, Instance, AddTenFunction, 5, AddTenResult))
-			|| !TestRunner->TestEqual(TEXT("ProcessEvent thunk test case should return 15 when AddTen receives 5"), AddTenResult, 15))
+			|| !CheckEqual(*TestRunner, TEXT("ProcessEvent thunk test case should return 15 when AddTen receives 5"), AddTenResult, 15))
 		{
 			return;
 		}
 
-		if (!TestRunner->TestTrue(
+		if (!CheckTrue(*TestRunner,
 				TEXT("ProcessEvent thunk test case should execute SetStoredValue via ProcessEvent"),
 				ASFunctionProcessEventTests::InvokeVoidFunctionThroughProcessEvent(*TestRunner, Engine, Instance, SetStoredValueFunction, 17)))
 		{
@@ -592,7 +624,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionProcessEventTests,
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("ProcessEvent thunk test case should write StoredValue through RuntimeCallFunction"), StoredValue, 17);
+		(void)CheckEqual(*TestRunner, TEXT("ProcessEvent thunk test case should write StoredValue through RuntimeCallFunction"), StoredValue, 17);
 
 		}
 	}
@@ -610,18 +642,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionProcessEventTests,
 		};
 
 		UASClass* ScriptClass = ASFunctionProcessEventTests::CompileProcessEventCarrier(*TestRunner, Engine);
-		if (!TestRunner->TestNotNull(TEXT("ProcessEvent ABI test case should compile to a UASClass"), ScriptClass))
+		if (!CheckNotNull(*TestRunner, TEXT("ProcessEvent ABI test case should compile to a UASClass"), ScriptClass))
 		{
 			return;
 		}
 
 		UObject* Instance = NewObject<UObject>(GetTransientPackage(), ScriptClass, TEXT("ProcessEventAbiCarrierInstance"));
-		if (!TestRunner->TestNotNull(TEXT("ProcessEvent ABI test case should instantiate the generated UObject"), Instance))
+		if (!CheckNotNull(*TestRunner, TEXT("ProcessEvent ABI test case should instantiate the generated UObject"), Instance))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(
+		(void)CheckTrue(*TestRunner,
 			TEXT("ProcessEvent should preserve reflected wrapper ABI shapes"),
 			ASFunctionProcessEventTests::ExerciseWrapperAbiFixture(
 				*TestRunner,
@@ -646,18 +678,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionProcessEventTests,
 		};
 
 		UASClass* ScriptClass = ASFunctionProcessEventTests::CompileProcessEventCarrier(*TestRunner, Engine);
-		if (!TestRunner->TestNotNull(TEXT("RuntimeCallEvent ABI test case should compile to a UASClass"), ScriptClass))
+		if (!CheckNotNull(*TestRunner, TEXT("RuntimeCallEvent ABI test case should compile to a UASClass"), ScriptClass))
 		{
 			return;
 		}
 
 		UObject* Instance = NewObject<UObject>(GetTransientPackage(), ScriptClass, TEXT("RuntimeCallEventAbiCarrierInstance"));
-		if (!TestRunner->TestNotNull(TEXT("RuntimeCallEvent ABI test case should instantiate the generated UObject"), Instance))
+		if (!CheckNotNull(*TestRunner, TEXT("RuntimeCallEvent ABI test case should instantiate the generated UObject"), Instance))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(
+		(void)CheckTrue(*TestRunner,
 			TEXT("RuntimeCallEvent should preserve reflected wrapper ABI shapes"),
 			ASFunctionProcessEventTests::ExerciseWrapperAbiFixture(
 				*TestRunner,
@@ -688,20 +720,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionProcessEventTests,
 
 		UClass* ParentClass = FindGeneratedClass(&Engine, ASFunctionProcessEventTests::VirtualParentClassName);
 		UClass* ChildClass = FindGeneratedClass(&Engine, ASFunctionProcessEventTests::VirtualChildClassName);
-		if (!TestRunner->TestNotNull(TEXT("ASFunction virtual dispatch test case should compile the parent class"), ParentClass)
-			|| !TestRunner->TestNotNull(TEXT("ASFunction virtual dispatch test case should generate the child class"), ChildClass))
+		if (!CheckNotNull(*TestRunner, TEXT("ASFunction virtual dispatch test case should compile the parent class"), ParentClass)
+			|| !CheckNotNull(*TestRunner, TEXT("ASFunction virtual dispatch test case should generate the child class"), ChildClass))
 		{
 			return;
 		}
 
 		UASFunction* ParentFunction = ASFunctionProcessEventTests::RequireScriptFunction(*TestRunner, ParentClass, TEXT("GetVirtualValue"));
-		if (!TestRunner->TestNotNull(TEXT("ASFunction virtual dispatch test case should expose the parent virtual function"), ParentFunction))
+		if (!CheckNotNull(*TestRunner, TEXT("ASFunction virtual dispatch test case should expose the parent virtual function"), ParentFunction))
 		{
 			return;
 		}
 
 		UObject* ChildInstance = NewObject<UObject>(GetTransientPackage(), ChildClass, TEXT("ProcessEventVirtualChildInstance"));
-		if (!TestRunner->TestNotNull(TEXT("ASFunction virtual dispatch test case should instantiate the generated child UObject"), ChildInstance))
+		if (!CheckNotNull(*TestRunner, TEXT("ASFunction virtual dispatch test case should instantiate the generated child UObject"), ChildInstance))
 		{
 			return;
 		}
@@ -718,7 +750,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionProcessEventTests,
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Parent UASFunction invoked on a child object should execute the child script override"), ReturnValue, 217);
+		(void)CheckEqual(*TestRunner, TEXT("Parent UASFunction invoked on a child object should execute the child script override"), ReturnValue, 217);
 
 		}
 	}

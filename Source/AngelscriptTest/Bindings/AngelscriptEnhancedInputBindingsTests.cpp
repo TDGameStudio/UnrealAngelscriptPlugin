@@ -133,17 +133,17 @@ int Entry()
 				false,
 				CompileSummary,
 				true);
-			if (!TestRunner->TestFalse(
-				FString::Printf(TEXT("const UEnhancedInputComponent should reject %s"), Expectation.MethodName),
-				bCompiled))
+			if (!this->Assert.IsFalse(
+				bCompiled,
+				FString::Printf(TEXT("const UEnhancedInputComponent should reject %s"), Expectation.MethodName)))
 			{
 				return;
 			}
 
-			TestRunner->TestEqual(
-				FString::Printf(TEXT("Rejecting const %s should produce a regular compile error"), Expectation.MethodName),
+			ASSERT_THAT(AreEqual(
+				ECompileResult::Error,
 				CompileSummary.CompileResult,
-				ECompileResult::Error);
+				FString::Printf(TEXT("Rejecting const %s should produce a regular compile error"), Expectation.MethodName)));
 		}
 
 		// Mutable path should compile and execute
@@ -394,13 +394,13 @@ int BindActionEntry()
 )"));
 		ON_SCOPE_EXIT { Engine.DiscardModule(ModuleName); };
 
-		if (!TestRunner->TestTrue(TEXT("EnhancedInput dynamic signature module should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("EnhancedInput dynamic signature module should compile")))
 		{
 			return;
 		}
 
 		UClass* RuntimeActorClass = FindGeneratedClass(&Engine, TEXT("ABindActionTestActor"));
-		if (!TestRunner->TestNotNull(TEXT("EnhancedInput dynamic signature actor class should exist"), RuntimeActorClass))
+		if (!this->Assert.IsNotNull(RuntimeActorClass, TEXT("EnhancedInput dynamic signature actor class should exist")))
 		{
 			return;
 		}
@@ -408,57 +408,57 @@ int BindActionEntry()
 		AActor* RuntimeActor = NewObject<AActor>(GetTransientPackage(), RuntimeActorClass);
 		UEnhancedInputComponent* InputComponent = NewObject<UEnhancedInputComponent>(RuntimeActor);
 		UInputAction* InputAction = NewObject<UInputAction>(RuntimeActor);
-		if (!TestRunner->TestNotNull(TEXT("EnhancedInput dynamic signature actor should instantiate"), RuntimeActor)
-			|| !TestRunner->TestNotNull(TEXT("EnhancedInput component should instantiate"), InputComponent)
-			|| !TestRunner->TestNotNull(TEXT("InputAction should instantiate"), InputAction))
+		if (!this->Assert.IsNotNull(RuntimeActor, TEXT("EnhancedInput dynamic signature actor should instantiate"))
+			|| !this->Assert.IsNotNull(InputComponent, TEXT("EnhancedInput component should instantiate"))
+			|| !this->Assert.IsNotNull(InputAction, TEXT("InputAction should instantiate")))
 		{
 			return;
 		}
 
 		FObjectPropertyBase* InputJumpProperty = FindFProperty<FObjectPropertyBase>(RuntimeActorClass, TEXT("InputJump"));
-		if (!TestRunner->TestNotNull(TEXT("InputJump property should exist"), InputJumpProperty))
+		if (!this->Assert.IsNotNull(InputJumpProperty, TEXT("InputJump property should exist")))
 		{
 			return;
 		}
 		InputJumpProperty->SetObjectPropertyValue_InContainer(RuntimeActor, InputAction);
 
-		if (!TestRunner->TestNotNull(
-			TEXT("SetupInput function should exist"),
-			FindGeneratedFunction(RuntimeActorClass, TEXT("SetupInput"))))
+		if (!this->Assert.IsNotNull(
+			FindGeneratedFunction(RuntimeActorClass, TEXT("SetupInput")),
+			TEXT("SetupInput function should exist")))
 		{
 			return;
 		}
 
 		FFunctionInvoker SetupInputInvoker(*TestRunner, RuntimeActor, TEXT("SetupInput"));
 		SetupInputInvoker.AddParam<UEnhancedInputComponent*>(InputComponent);
-		if (!TestRunner->TestTrue(TEXT("SetupInput should execute through generated UFUNCTION dispatch"), SetupInputInvoker.Call()))
+		if (!this->Assert.IsTrue(SetupInputInvoker.Call(), TEXT("SetupInput should execute through generated UFUNCTION dispatch")))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(
-			TEXT("BindAction should create one action binding for a compatible script UFUNCTION"),
-			InputComponent->HasBindings());
+		ASSERT_THAT(IsTrue(
+			InputComponent->HasBindings(),
+			TEXT("BindAction should create one action binding for a compatible script UFUNCTION")));
 
 		const TArray<TUniquePtr<FEnhancedInputActionEventBinding>>& Bindings = InputComponent->GetActionEventBindings();
-		if (!TestRunner->TestEqual(TEXT("BindAction should add one action event binding"), Bindings.Num(), 1))
+		if (!this->Assert.AreEqual(1, Bindings.Num(), TEXT("BindAction should add one action event binding")))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(
-			TEXT("BindAction should store the requested input action"),
-			Bindings[0]->GetAction() == InputAction);
-		TestRunner->TestEqual(
-			TEXT("BindAction should store the requested trigger event"),
+		ASSERT_THAT(IsTrue(
+			Bindings[0]->GetAction() == InputAction,
+			TEXT("BindAction should store the requested input action")));
+		ASSERT_THAT(AreEqual(
+			ETriggerEvent::Triggered,
 			Bindings[0]->GetTriggerEvent(),
-			ETriggerEvent::Triggered);
-		TestRunner->TestTrue(
-			TEXT("BindAction should bind the script actor as delegate object"),
-			Bindings[0]->GetUObject() == RuntimeActor);
-		TestRunner->TestTrue(
-			TEXT("BindAction delegate should report the script actor as bound"),
-			Bindings[0]->IsBoundToObject(RuntimeActor));
+			TEXT("BindAction should store the requested trigger event")));
+		ASSERT_THAT(IsTrue(
+			Bindings[0]->GetUObject() == RuntimeActor,
+			TEXT("BindAction should bind the script actor as delegate object")));
+		ASSERT_THAT(IsTrue(
+			Bindings[0]->IsBoundToObject(RuntimeActor),
+			TEXT("BindAction delegate should report the script actor as bound")));
 	}
 
 	TEST_METHOD(EnhancedInputComponentRemoveBindingCompiles)

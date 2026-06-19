@@ -10,14 +10,16 @@ namespace
 {
 	bool ExecuteIntFunction(FAutomationTestBase& Test, asIScriptEngine* ScriptEngine, asIScriptModule* Module, const char* Declaration, int32& OutValue)
 	{
+		FNoDiscardAsserter Assert(Test);
+
 		asIScriptFunction* Function = AngelscriptNativeTestSupport::GetNativeFunctionByExactDecl(Module, Declaration);
-		if (!Test.TestNotNull(TEXT("Reference save/load test should resolve the requested function"), Function))
+		if (!Assert.IsNotNull(Function, TEXT("Reference save/load test should resolve the requested function")))
 		{
 			return false;
 		}
 
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!Test.TestNotNull(TEXT("Reference save/load test should create an execution context"), Context))
+		if (!Assert.IsNotNull(Context, TEXT("Reference save/load test should create an execution context")))
 		{
 			return false;
 		}
@@ -25,7 +27,7 @@ namespace
 		const int ExecuteResult = AngelscriptNativeTestSupport::PrepareAndExecute(Context, Function);
 		OutValue = static_cast<int32>(Context->GetReturnDWord());
 		Context->Release();
-		return Test.TestEqual(TEXT("Reference save/load test should execute successfully"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED));
+		return Assert.AreEqual(static_cast<int32>(asEXECUTION_FINISHED), ExecuteResult, TEXT("Reference save/load test should execute successfully"));
 	}
 
 	asIScriptModule* LoadModuleFromStream(asIScriptEngine* ScriptEngine, const char* ModuleName, FMemoryBinaryStream& Stream, bool& bWasDebugInfoStripped, int& OutLoadResult)
@@ -45,10 +47,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceSaveLoadTests,
 	{
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("Reference save/load roundtrip should create a native engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference save/load roundtrip should create a native engine")));
 
 		ON_SCOPE_EXIT
 		{
@@ -61,12 +60,12 @@ int Add(int A, int B)
 	return A + B;
 }
 
-int Entry()
-{
-	return Add(20, 22);
-}
+		int Entry()
+		{
+			return Add(20, 22);
+		}
 )");
-		if (!TestRunner->TestNotNull(TEXT("Reference save/load roundtrip should build the source module"), SourceModule))
+		if (!this->Assert.IsNotNull(SourceModule, TEXT("Reference save/load roundtrip should build the source module")))
 		{
 			TestRunner->AddInfo(AngelscriptNativeTestSupport::CollectMessages(Messages));
 			return;
@@ -77,42 +76,32 @@ int Entry()
 		{
 			return;
 		}
-		TestRunner->TestEqual(TEXT("Reference save/load roundtrip should execute before serialization"), SourceValue, 42);
+		ASSERT_THAT(AreEqual(42, SourceValue, TEXT("Reference save/load roundtrip should execute before serialization")));
 
 		FMemoryBinaryStream Stream;
 		const int SaveResult = SourceModule->SaveByteCode(&Stream, false);
-		TestRunner->TestEqual(TEXT("Reference save/load roundtrip should save bytecode successfully"), SaveResult, static_cast<int32>(asSUCCESS));
-		TestRunner->TestTrue(TEXT("Reference save/load roundtrip should emit a non-empty byte stream"), Stream.Num() > 0);
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), SaveResult, TEXT("Reference save/load roundtrip should save bytecode successfully")));
+		ASSERT_THAT(IsTrue(Stream.Num() > 0, TEXT("Reference save/load roundtrip should emit a non-empty byte stream")));
 
 		ScriptEngine->DiscardModule("ReferenceSaveLoadSource");
 
 		bool bWasDebugInfoStripped = true;
 		int LoadResult = asERROR;
 		asIScriptModule* RestoredModule = LoadModuleFromStream(ScriptEngine, "ReferenceSaveLoadRestored", Stream, bWasDebugInfoStripped, LoadResult);
-		if (!TestRunner->TestNotNull(TEXT("Reference save/load roundtrip should create the restored module"), RestoredModule))
-		{
-			return;
-		}
-		TestRunner->TestEqual(TEXT("Reference save/load roundtrip should load bytecode successfully"), LoadResult, static_cast<int32>(asSUCCESS));
-		TestRunner->TestFalse(TEXT("Reference save/load roundtrip should preserve debug information when not stripping"), bWasDebugInfoStripped);
+		ASSERT_THAT(IsNotNull(RestoredModule, TEXT("Reference save/load roundtrip should create the restored module")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), LoadResult, TEXT("Reference save/load roundtrip should load bytecode successfully")));
+		ASSERT_THAT(IsFalse(bWasDebugInfoStripped, TEXT("Reference save/load roundtrip should preserve debug information when not stripping")));
 
-		TestRunner->TestNotNull(TEXT("Reference save/load roundtrip should resolve Add after deserialization"),
-			AngelscriptNativeTestSupport::GetNativeFunctionByDecl(RestoredModule, "int Add(int, int)"));
-		TestRunner->TestNotNull(TEXT("Reference save/load roundtrip should resolve Entry after deserialization"),
-			AngelscriptNativeTestSupport::GetNativeFunctionByDecl(RestoredModule, "int Entry()"));
-		TestRunner->TestEqual(TEXT("Reference save/load roundtrip should preserve the function count after deserialization"),
-			RestoredModule->GetFunctionCount(),
-			2);
+		ASSERT_THAT(IsNotNull(AngelscriptNativeTestSupport::GetNativeFunctionByDecl(RestoredModule, "int Add(int, int)"), TEXT("Reference save/load roundtrip should resolve Add after deserialization")));
+		ASSERT_THAT(IsNotNull(AngelscriptNativeTestSupport::GetNativeFunctionByDecl(RestoredModule, "int Entry()"), TEXT("Reference save/load roundtrip should resolve Entry after deserialization")));
+		ASSERT_THAT(AreEqual(2, RestoredModule->GetFunctionCount(), TEXT("Reference save/load roundtrip should preserve the function count after deserialization")));
 	}
 
 	TEST_METHOD(StripDebugInfoReportsStrippedFlag)
 	{
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("Reference stripped save/load should create a native engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference stripped save/load should create a native engine")));
 
 		ON_SCOPE_EXIT
 		{
@@ -123,7 +112,7 @@ int Entry()
 			ScriptEngine,
 			"ReferenceSaveLoadStripSource",
 			"int Entry() { return 42; }");
-		if (!TestRunner->TestNotNull(TEXT("Reference stripped save/load should build the source module"), SourceModule))
+		if (!this->Assert.IsNotNull(SourceModule, TEXT("Reference stripped save/load should build the source module")))
 		{
 			TestRunner->AddInfo(AngelscriptNativeTestSupport::CollectMessages(Messages));
 			return;
@@ -131,26 +120,23 @@ int Entry()
 
 		FMemoryBinaryStream Stream;
 		const int SaveResult = SourceModule->SaveByteCode(&Stream, true);
-		TestRunner->TestEqual(TEXT("Reference stripped save/load should save bytecode successfully"), SaveResult, static_cast<int32>(asSUCCESS));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), SaveResult, TEXT("Reference stripped save/load should save bytecode successfully")));
 
 		ScriptEngine->DiscardModule("ReferenceSaveLoadStripSource");
 
 		bool bWasDebugInfoStripped = false;
 		int LoadResult = asERROR;
 		asIScriptModule* RestoredModule = LoadModuleFromStream(ScriptEngine, "ReferenceSaveLoadStripRestored", Stream, bWasDebugInfoStripped, LoadResult);
-		TestRunner->TestNotNull(TEXT("Reference stripped save/load should create the restored module"), RestoredModule);
-		TestRunner->TestEqual(TEXT("Reference stripped save/load should load bytecode successfully"), LoadResult, static_cast<int32>(asSUCCESS));
-		TestRunner->TestTrue(TEXT("Reference stripped save/load should report stripped debug information"), bWasDebugInfoStripped);
+		ASSERT_THAT(IsNotNull(RestoredModule, TEXT("Reference stripped save/load should create the restored module")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), LoadResult, TEXT("Reference stripped save/load should load bytecode successfully")));
+		ASSERT_THAT(IsTrue(bWasDebugInfoStripped, TEXT("Reference stripped save/load should report stripped debug information")));
 	}
 
 	TEST_METHOD(TruncatedStreamFailsThenCompleteStreamStillLoads)
 	{
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("Reference truncated save/load should create a native engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference truncated save/load should create a native engine")));
 
 		ON_SCOPE_EXIT
 		{
@@ -161,7 +147,7 @@ int Entry()
 			ScriptEngine,
 			"ReferenceSaveLoadTruncateSource",
 			"int Entry() { return 42; }");
-		if (!TestRunner->TestNotNull(TEXT("Reference truncated save/load should build the source module"), SourceModule))
+		if (!this->Assert.IsNotNull(SourceModule, TEXT("Reference truncated save/load should build the source module")))
 		{
 			TestRunner->AddInfo(AngelscriptNativeTestSupport::CollectMessages(Messages));
 			return;
@@ -169,7 +155,7 @@ int Entry()
 
 		FMemoryBinaryStream CompleteStream;
 		const int SaveResult = SourceModule->SaveByteCode(&CompleteStream, false);
-		TestRunner->TestEqual(TEXT("Reference truncated save/load should save bytecode successfully"), SaveResult, static_cast<int32>(asSUCCESS));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), SaveResult, TEXT("Reference truncated save/load should save bytecode successfully")));
 		ScriptEngine->DiscardModule("ReferenceSaveLoadTruncateSource");
 
 		FMemoryBinaryStream TruncatedStream = CompleteStream;
@@ -177,35 +163,29 @@ int Entry()
 		bool bWasDebugInfoStripped = false;
 		int LoadResult = asSUCCESS;
 		asIScriptModule* FailedModule = LoadModuleFromStream(ScriptEngine, "ReferenceSaveLoadTruncated", TruncatedStream, bWasDebugInfoStripped, LoadResult);
-		TestRunner->TestNotNull(TEXT("Reference truncated save/load should still create the target module object"), FailedModule);
-		TestRunner->TestTrue(TEXT("Reference truncated save/load should reject incomplete bytecode"), LoadResult < 0);
+		ASSERT_THAT(IsNotNull(FailedModule, TEXT("Reference truncated save/load should still create the target module object")));
+		ASSERT_THAT(IsTrue(LoadResult < 0, TEXT("Reference truncated save/load should reject incomplete bytecode")));
 
 		ScriptEngine->DiscardModule("ReferenceSaveLoadTruncated");
 
 		int RetryLoadResult = asERROR;
 		asIScriptModule* RetryModule = LoadModuleFromStream(ScriptEngine, "ReferenceSaveLoadTruncated", CompleteStream, bWasDebugInfoStripped, RetryLoadResult);
-		if (!TestRunner->TestNotNull(TEXT("Reference truncated save/load should create the retry module"), RetryModule))
-		{
-			return;
-		}
-		TestRunner->TestEqual(TEXT("Reference truncated save/load should load complete bytecode after a failed load"), RetryLoadResult, static_cast<int32>(asSUCCESS));
+		ASSERT_THAT(IsNotNull(RetryModule, TEXT("Reference truncated save/load should create the retry module")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), RetryLoadResult, TEXT("Reference truncated save/load should load complete bytecode after a failed load")));
 
 		int32 RetryValue = 0;
 		if (!ExecuteIntFunction(*TestRunner, ScriptEngine, RetryModule, "int Entry()", RetryValue))
 		{
 			return;
 		}
-		TestRunner->TestEqual(TEXT("Reference truncated save/load should execute after a successful retry"), RetryValue, 42);
+		ASSERT_THAT(AreEqual(42, RetryValue, TEXT("Reference truncated save/load should execute after a successful retry")));
 	}
 
 	TEST_METHOD(MultipleFunctionsRemainResolvableAfterLoad)
 	{
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("Reference multi-function save/load should create a native engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference multi-function save/load should create a native engine")));
 
 		ON_SCOPE_EXIT
 		{
@@ -223,40 +203,37 @@ int Right()
 	return 22;
 }
 
-int Entry()
-{
-	return Left() + Right();
-}
+		int Entry()
+		{
+			return Left() + Right();
+		}
 )");
-		if (!TestRunner->TestNotNull(TEXT("Reference multi-function save/load should build the source module"), SourceModule))
+		if (!this->Assert.IsNotNull(SourceModule, TEXT("Reference multi-function save/load should build the source module")))
 		{
 			TestRunner->AddInfo(AngelscriptNativeTestSupport::CollectMessages(Messages));
 			return;
 		}
 
 		FMemoryBinaryStream Stream;
-		TestRunner->TestEqual(TEXT("Reference multi-function save/load should save bytecode"), SourceModule->SaveByteCode(&Stream, false), static_cast<int32>(asSUCCESS));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), SourceModule->SaveByteCode(&Stream, false), TEXT("Reference multi-function save/load should save bytecode")));
 		ScriptEngine->DiscardModule("ReferenceSaveLoadMultiSource");
 
 		bool bWasDebugInfoStripped = true;
 		int LoadResult = asERROR;
 		asIScriptModule* RestoredModule = LoadModuleFromStream(ScriptEngine, "ReferenceSaveLoadMultiRestored", Stream, bWasDebugInfoStripped, LoadResult);
-		if (!TestRunner->TestNotNull(TEXT("Reference multi-function save/load should create restored module"), RestoredModule))
-		{
-			return;
-		}
-		TestRunner->TestEqual(TEXT("Reference multi-function save/load should load bytecode"), LoadResult, static_cast<int32>(asSUCCESS));
-		TestRunner->TestFalse(TEXT("Reference multi-function save/load should preserve debug information when not stripping"), bWasDebugInfoStripped);
-		TestRunner->TestNotNull(TEXT("Reference multi-function save/load should resolve Left after load"), AngelscriptNativeTestSupport::GetNativeFunctionByDecl(RestoredModule, "int Left()"));
-		TestRunner->TestNotNull(TEXT("Reference multi-function save/load should resolve Right after load"), AngelscriptNativeTestSupport::GetNativeFunctionByDecl(RestoredModule, "int Right()"));
-		TestRunner->TestNotNull(TEXT("Reference multi-function save/load should resolve Entry after load"), AngelscriptNativeTestSupport::GetNativeFunctionByDecl(RestoredModule, "int Entry()"));
+		ASSERT_THAT(IsNotNull(RestoredModule, TEXT("Reference multi-function save/load should create restored module")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), LoadResult, TEXT("Reference multi-function save/load should load bytecode")));
+		ASSERT_THAT(IsFalse(bWasDebugInfoStripped, TEXT("Reference multi-function save/load should preserve debug information when not stripping")));
+		ASSERT_THAT(IsNotNull(AngelscriptNativeTestSupport::GetNativeFunctionByDecl(RestoredModule, "int Left()"), TEXT("Reference multi-function save/load should resolve Left after load")));
+		ASSERT_THAT(IsNotNull(AngelscriptNativeTestSupport::GetNativeFunctionByDecl(RestoredModule, "int Right()"), TEXT("Reference multi-function save/load should resolve Right after load")));
+		ASSERT_THAT(IsNotNull(AngelscriptNativeTestSupport::GetNativeFunctionByDecl(RestoredModule, "int Entry()"), TEXT("Reference multi-function save/load should resolve Entry after load")));
 
 		int32 RestoredValue = 0;
 		if (!ExecuteIntFunction(*TestRunner, ScriptEngine, RestoredModule, "int Entry()", RestoredValue))
 		{
 			return;
 		}
-		TestRunner->TestEqual(TEXT("Reference multi-function save/load should execute after load"), RestoredValue, 42);
+		ASSERT_THAT(AreEqual(42, RestoredValue, TEXT("Reference multi-function save/load should execute after load")));
 	}
 };
 

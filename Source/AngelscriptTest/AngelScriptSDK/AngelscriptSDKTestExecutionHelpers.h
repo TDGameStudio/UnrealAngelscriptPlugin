@@ -2,6 +2,7 @@
 
 #include "AngelscriptNativeTestSupport.h"
 
+#include "Assert/NoDiscardAsserter.h"
 #include "Misc/AutomationTest.h"
 
 #include <type_traits>
@@ -60,16 +61,17 @@ namespace AngelscriptSDKTestSupport
 			}
 
 			Context = ScriptEngine->CreateContext();
-			if (!Test.TestNotNull(TEXT("SDK raw invoker should create an execution context"), Context))
+			FNoDiscardAsserter Assert(Test);
+			if (!Assert.IsNotNull(Context, TEXT("SDK raw invoker should create an execution context")))
 			{
 				return;
 			}
 
 			const int PrepareResult = Context->Prepare(Function);
-			if (!Test.TestEqual(
-					*FString::Printf(TEXT("SDK raw invoker should Prepare '%s'"), UTF8_TO_TCHAR(Function->GetDeclaration())),
+			if (!Assert.AreEqual(
+					static_cast<int32>(asSUCCESS),
 					PrepareResult,
-					static_cast<int32>(asSUCCESS)))
+					*FString::Printf(TEXT("SDK raw invoker should Prepare '%s'"), UTF8_TO_TCHAR(Function->GetDeclaration()))))
 			{
 				Context->Release();
 				Context = nullptr;
@@ -129,11 +131,12 @@ namespace AngelscriptSDKTestSupport
 				return false;
 			}
 
-			if (!Test.TestEqual(
-					*FString::Printf(TEXT("SDK raw invoker should receive the declared number of arguments for '%s'"),
-						UTF8_TO_TCHAR(Function->GetDeclaration())),
+			FNoDiscardAsserter Assert(Test);
+			if (!Assert.AreEqual(
+					static_cast<asUINT>(Function->GetParamCount()),
 					NextArgIndex,
-					static_cast<asUINT>(Function->GetParamCount())))
+					*FString::Printf(TEXT("SDK raw invoker should receive the declared number of arguments for '%s'"),
+						UTF8_TO_TCHAR(Function->GetDeclaration()))))
 			{
 				return false;
 			}
@@ -292,13 +295,14 @@ namespace AngelscriptSDKTestSupport
 		using namespace AngelscriptNativeTestSupport;
 
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, Declaration);
-		if (!Test.TestNotNull(TEXT("Should resolve the bool-returning script function"), Function))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(Function, TEXT("Should resolve the bool-returning script function")))
 		{
 			return false;
 		}
 
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!Test.TestNotNull(TEXT("Should create a script execution context"), Context))
+		if (!Assert.IsNotNull(Context, TEXT("Should create a script execution context")))
 		{
 			return false;
 		}
@@ -307,10 +311,10 @@ namespace AngelscriptSDKTestSupport
 		OutValue = Context->GetReturnByte() != 0;
 		Context->Release();
 
-		return Test.TestEqual(
-			TEXT("Script execution should finish successfully"),
+		return Assert.AreEqual(
+			static_cast<int32>(asEXECUTION_FINISHED),
 			ExecuteResult,
-			static_cast<int32>(asEXECUTION_FINISHED));
+			TEXT("Script execution should finish successfully"));
 	}
 
 	/**
@@ -327,13 +331,14 @@ namespace AngelscriptSDKTestSupport
 		using namespace AngelscriptNativeTestSupport;
 
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, Declaration);
-		if (!Test.TestNotNull(TEXT("Should resolve the int-returning script function"), Function))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(Function, TEXT("Should resolve the int-returning script function")))
 		{
 			return false;
 		}
 
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!Test.TestNotNull(TEXT("Should create a script execution context"), Context))
+		if (!Assert.IsNotNull(Context, TEXT("Should create a script execution context")))
 		{
 			return false;
 		}
@@ -342,10 +347,10 @@ namespace AngelscriptSDKTestSupport
 		OutValue = static_cast<int32>(Context->GetReturnDWord());
 		Context->Release();
 
-		return Test.TestEqual(
-			TEXT("Script execution should finish successfully"),
+		return Assert.AreEqual(
+			static_cast<int32>(asEXECUTION_FINISHED),
 			ExecuteResult,
-			static_cast<int32>(asEXECUTION_FINISHED));
+			TEXT("Script execution should finish successfully"));
 	}
 
 	/**
@@ -362,13 +367,14 @@ namespace AngelscriptSDKTestSupport
 		using namespace AngelscriptNativeTestSupport;
 
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, Declaration);
-		if (!Test.TestNotNull(TEXT("Should resolve the double-returning script function"), Function))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(Function, TEXT("Should resolve the double-returning script function")))
 		{
 			return false;
 		}
 
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!Test.TestNotNull(TEXT("Should create a script execution context"), Context))
+		if (!Assert.IsNotNull(Context, TEXT("Should create a script execution context")))
 		{
 			return false;
 		}
@@ -377,10 +383,10 @@ namespace AngelscriptSDKTestSupport
 		OutValue = Context->GetReturnDouble();
 		Context->Release();
 
-		return Test.TestEqual(
-			TEXT("Script execution should finish successfully"),
+		return Assert.AreEqual(
+			static_cast<int32>(asEXECUTION_FINISHED),
 			ExecuteResult,
-			static_cast<int32>(asEXECUTION_FINISHED));
+			TEXT("Script execution should finish successfully"));
 	}
 
 	/**
@@ -397,13 +403,14 @@ namespace AngelscriptSDKTestSupport
 		using namespace AngelscriptNativeTestSupport;
 
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, Declaration);
-		if (!Test.TestNotNull(TEXT("Should resolve the float-returning script function"), Function))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(Function, TEXT("Should resolve the float-returning script function")))
 		{
 			return false;
 		}
 
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!Test.TestNotNull(TEXT("Should create a script execution context"), Context))
+		if (!Assert.IsNotNull(Context, TEXT("Should create a script execution context")))
 		{
 			return false;
 		}
@@ -412,10 +419,10 @@ namespace AngelscriptSDKTestSupport
 		OutValue = Context->GetReturnFloat();
 		Context->Release();
 
-		return Test.TestEqual(
-			TEXT("Script execution should finish successfully"),
+		return Assert.AreEqual(
+			static_cast<int32>(asEXECUTION_FINISHED),
 			ExecuteResult,
-			static_cast<int32>(asEXECUTION_FINISHED));
+			TEXT("Script execution should finish successfully"));
 	}
 
 	/**
@@ -436,13 +443,14 @@ namespace AngelscriptSDKTestSupport
 		using namespace AngelscriptNativeTestSupport;
 
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, Declaration);
-		if (!Test.TestNotNull(TEXT("Should resolve the void script function"), Function))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(Function, TEXT("Should resolve the void script function")))
 		{
 			return false;
 		}
 
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!Test.TestNotNull(TEXT("Should create a script execution context"), Context))
+		if (!Assert.IsNotNull(Context, TEXT("Should create a script execution context")))
 		{
 			return false;
 		}
@@ -450,9 +458,9 @@ namespace AngelscriptSDKTestSupport
 		const int ExecuteResult = PrepareAndExecute(Context, Function);
 		Context->Release();
 
-		return Test.TestEqual(
-			TEXT("Script execution should finish successfully"),
+		return Assert.AreEqual(
+			static_cast<int32>(asEXECUTION_FINISHED),
 			ExecuteResult,
-			static_cast<int32>(asEXECUTION_FINISHED));
+			TEXT("Script execution should finish successfully"));
 	}
 }

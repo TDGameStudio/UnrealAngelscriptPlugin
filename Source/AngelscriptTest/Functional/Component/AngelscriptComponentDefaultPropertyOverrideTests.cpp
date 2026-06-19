@@ -50,7 +50,7 @@ class AFunctionalDefaultOverrideActor : AActor
 		if (ActorClass == nullptr) { return; }
 
 		AActor* CDO = Cast<AActor>(ActorClass->GetDefaultObject());
-		if (!TestRunner->TestNotNull(TEXT("Actor CDO should be available"), CDO)) { return; }
+		ASSERT_THAT(IsNotNull(CDO, TEXT("Actor CDO should be available")));
 
 		USphereComponent* SphereCDO = nullptr;
 		UStaticMeshComponent* MeshCDO = nullptr;
@@ -66,19 +66,19 @@ class AFunctionalDefaultOverrideActor : AActor
 			}
 		}
 
-		if (TestRunner->TestNotNull(TEXT("Sphere CDO component should exist"), SphereCDO))
-		{
-			TestRunner->TestEqual(TEXT("Sphere.SphereRadius CDO default should be 128.0"), SphereCDO->GetUnscaledSphereRadius(), 128.0f);
-		}
+		ASSERT_THAT(IsNotNull(SphereCDO, TEXT("Sphere CDO component should exist")));
+		ASSERT_THAT(IsNear(
+			128.0f,
+			SphereCDO->GetUnscaledSphereRadius(),
+			UE_KINDA_SMALL_NUMBER,
+			TEXT("Sphere.SphereRadius CDO default should be 128.0")));
 
-		if (TestRunner->TestNotNull(TEXT("Mesh CDO component should exist"), MeshCDO))
-		{
-			TestRunner->TestTrue(TEXT("Mesh.bHiddenInGame CDO default should be true"), MeshCDO->bHiddenInGame);
-			TestRunner->TestFalse(TEXT("Mesh.CastShadow CDO default should be false"), MeshCDO->CastShadow);
-			TestRunner->TestTrue(
-				TEXT("Mesh.SetRelativeRotation default statement should set CDO relative rotation"),
-				MeshCDO->GetRelativeRotation().Equals(ExpectedMeshRotation));
-		}
+		ASSERT_THAT(IsNotNull(MeshCDO, TEXT("Mesh CDO component should exist")));
+		ASSERT_THAT(IsTrue(MeshCDO->bHiddenInGame, TEXT("Mesh.bHiddenInGame CDO default should be true")));
+		ASSERT_THAT(IsFalse(MeshCDO->CastShadow, TEXT("Mesh.CastShadow CDO default should be false")));
+		ASSERT_THAT(IsTrue(
+			MeshCDO->GetRelativeRotation().Equals(ExpectedMeshRotation),
+			TEXT("Mesh.SetRelativeRotation default statement should set CDO relative rotation")));
 	}
 };
 

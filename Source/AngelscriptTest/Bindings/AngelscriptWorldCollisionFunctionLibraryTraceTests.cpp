@@ -77,26 +77,28 @@ namespace WorldCollisionTraceTestHelpers
 
 	bool ExpectHitResultParity(FAutomationTestBase& Test, const TCHAR* Label, bool bScriptReturnValue, bool bNativeReturnValue, const FHitResult& ScriptHit, const FHitResult& NativeHit)
 	{
+		FNoDiscardAsserter Assert(Test);
 		bool bPassed = true;
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve the bool return value"), Label), bScriptReturnValue, bNativeReturnValue);
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve the hit actor"), Label), ScriptHit.GetActor(), NativeHit.GetActor());
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve the hit component"), Label), ScriptHit.GetComponent(), NativeHit.GetComponent());
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve the blocking-hit flag"), Label), ScriptHit.bBlockingHit, NativeHit.bBlockingHit);
-		bPassed &= Test.TestTrue(*FString::Printf(TEXT("%s should preserve the hit location"), Label), ScriptHit.Location.Equals(NativeHit.Location, 0.05f));
-		bPassed &= Test.TestTrue(*FString::Printf(TEXT("%s should preserve the impact point"), Label), ScriptHit.ImpactPoint.Equals(NativeHit.ImpactPoint, 0.05f));
+		bPassed &= Assert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), Label));
+		bPassed &= Assert.AreEqual(NativeHit.GetActor(), ScriptHit.GetActor(), *FString::Printf(TEXT("%s should preserve the hit actor"), Label));
+		bPassed &= Assert.AreEqual(NativeHit.GetComponent(), ScriptHit.GetComponent(), *FString::Printf(TEXT("%s should preserve the hit component"), Label));
+		bPassed &= Assert.AreEqual(NativeHit.bBlockingHit, ScriptHit.bBlockingHit, *FString::Printf(TEXT("%s should preserve the blocking-hit flag"), Label));
+		bPassed &= Assert.IsTrue(ScriptHit.Location.Equals(NativeHit.Location, 0.05f), *FString::Printf(TEXT("%s should preserve the hit location"), Label));
+		bPassed &= Assert.IsTrue(ScriptHit.ImpactPoint.Equals(NativeHit.ImpactPoint, 0.05f), *FString::Printf(TEXT("%s should preserve the impact point"), Label));
 		return bPassed;
 	}
 
 	template <typename TResult>
 	bool ExpectArrayParity(FAutomationTestBase& Test, const TCHAR* Label, bool bScriptReturnValue, bool bNativeReturnValue, const TArray<TResult>& ScriptResults, const TArray<TResult>& NativeResults)
 	{
+		FNoDiscardAsserter Assert(Test);
 		bool bPassed = true;
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve the bool return value"), Label), bScriptReturnValue, bNativeReturnValue);
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve the result count"), Label), ScriptResults.Num(), NativeResults.Num());
+		bPassed &= Assert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), Label));
+		bPassed &= Assert.AreEqual(NativeResults.Num(), ScriptResults.Num(), *FString::Printf(TEXT("%s should preserve the result count"), Label));
 		if (ScriptResults.Num() > 0 && NativeResults.Num() > 0)
 		{
-			bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve the first result actor"), Label), ScriptResults[0].GetActor(), NativeResults[0].GetActor());
-			bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve the first result component"), Label), ScriptResults[0].GetComponent(), NativeResults[0].GetComponent());
+			bPassed &= Assert.AreEqual(NativeResults[0].GetActor(), ScriptResults[0].GetActor(), *FString::Printf(TEXT("%s should preserve the first result actor"), Label));
+			bPassed &= Assert.AreEqual(NativeResults[0].GetComponent(), ScriptResults[0].GetComponent(), *FString::Printf(TEXT("%s should preserve the first result component"), Label));
 		}
 		return bPassed;
 	}
@@ -164,8 +166,8 @@ bool RunLineTraceSingleByChannelHit(FHitResult& OutHit)
 			return;
 		}
 		ExpectHitResultParity(*TestRunner, TEXT("LineTraceSingleByChannel hit"), bScriptLineHit, bNativeLineHit, ScriptLineHit, NativeLineHit);
-		TestRunner->TestEqual(TEXT("LineTraceSingleByChannel hit should identify the blocker actor"), ScriptLineHit.GetActor(), static_cast<AActor*>(&BlockingActor));
-		TestRunner->TestEqual(TEXT("LineTraceSingleByChannel hit should identify the blocker component"), ScriptLineHit.GetComponent(), static_cast<UPrimitiveComponent*>(BlockingBox));
+		ASSERT_THAT(AreEqual(static_cast<AActor*>(&BlockingActor), ScriptLineHit.GetActor(), TEXT("LineTraceSingleByChannel hit should identify the blocker actor")));
+		ASSERT_THAT(AreEqual(static_cast<UPrimitiveComponent*>(BlockingBox), ScriptLineHit.GetComponent(), TEXT("LineTraceSingleByChannel hit should identify the blocker component")));
 	}
 
 	// ====================================================================
@@ -205,7 +207,7 @@ bool RunLineTraceMultiByChannelHit(TArray<FHitResult>& OutHits)
 			return;
 		}
 		ExpectArrayParity(*TestRunner, TEXT("LineTraceMultiByChannel hit"), bScriptLineMultiHit, bNativeLineMultiHit, ScriptLineHits, NativeLineHits);
-		TestRunner->TestTrue(TEXT("LineTraceMultiByChannel hit should produce at least one hit"), ScriptLineHits.Num() >= 1);
+		ASSERT_THAT(IsTrue(ScriptLineHits.Num() >= 1, TEXT("LineTraceMultiByChannel hit should produce at least one hit")));
 	}
 
 	// ====================================================================
@@ -247,7 +249,7 @@ bool RunLineTraceMultiByChannelMiss(TArray<FHitResult>& OutHits)
 			return;
 		}
 		ExpectArrayParity(*TestRunner, TEXT("LineTraceMultiByChannel miss"), bScriptLineMultiMiss, bNativeLineMultiMiss, ScriptLineMissHits, NativeLineMissHits);
-		TestRunner->TestEqual(TEXT("LineTraceMultiByChannel miss should clear stale output hits"), ScriptLineMissHits.Num(), 0);
+		ASSERT_THAT(AreEqual(0, ScriptLineMissHits.Num(), TEXT("LineTraceMultiByChannel miss should clear stale output hits")));
 	}
 
 	// ====================================================================
@@ -294,8 +296,8 @@ bool RunSweepSingleByObjectTypeHit(FHitResult& OutHit)
 			return;
 		}
 		ExpectHitResultParity(*TestRunner, TEXT("SweepSingleByObjectType hit"), bScriptObjectSweepHit, bNativeObjectSweepHit, ScriptObjectSweepHit, NativeObjectSweepHit);
-		TestRunner->TestEqual(TEXT("SweepSingleByObjectType hit should identify the blocker actor"), ScriptObjectSweepHit.GetActor(), static_cast<AActor*>(&BlockingActor));
-		TestRunner->TestEqual(TEXT("SweepSingleByObjectType hit should identify the blocker component"), ScriptObjectSweepHit.GetComponent(), static_cast<UPrimitiveComponent*>(BlockingBox));
+		ASSERT_THAT(AreEqual(static_cast<AActor*>(&BlockingActor), ScriptObjectSweepHit.GetActor(), TEXT("SweepSingleByObjectType hit should identify the blocker actor")));
+		ASSERT_THAT(AreEqual(static_cast<UPrimitiveComponent*>(BlockingBox), ScriptObjectSweepHit.GetComponent(), TEXT("SweepSingleByObjectType hit should identify the blocker component")));
 	}
 
 	// ====================================================================
@@ -339,7 +341,7 @@ bool RunOverlapMultiByProfileHit(TArray<FOverlapResult>& OutOverlaps)
 			return;
 		}
 		ExpectArrayParity(*TestRunner, TEXT("OverlapMultiByProfile hit"), bScriptProfileOverlapHit, bNativeProfileOverlapHit, ScriptProfileOverlaps, NativeProfileOverlaps);
-		TestRunner->TestTrue(TEXT("OverlapMultiByProfile hit should include the overlap target component"), OverlapsContainComponent(ScriptProfileOverlaps, OverlapBox));
+		ASSERT_THAT(IsTrue(OverlapsContainComponent(ScriptProfileOverlaps, OverlapBox), TEXT("OverlapMultiByProfile hit should include the overlap target component")));
 	}
 
 	// ====================================================================

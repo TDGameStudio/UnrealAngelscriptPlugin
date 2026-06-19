@@ -67,34 +67,24 @@ class UFunctionOnlyScriptClass : UObject
 		}
 
 		UASClass* ASClass = Cast<UASClass>(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Function-only script class test case should generate a UASClass"), ASClass))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ASClass, TEXT("Function-only script class test case should generate a UASClass")));
 
-		TestRunner->TestTrue(TEXT("Function-only script class test case should remain UObject-derived"), ScriptClass->IsChildOf(UObject::StaticClass()));
-		TestRunner->TestEqual(TEXT("Function-only script class test case should not synthesize any declared user properties"), ScriptClassStructureTests::CountDeclaredProperties(*ScriptClass), 0);
-		TestRunner->TestNull(TEXT("Function-only script class test case should not expose undeclared properties"), FindFProperty<FProperty>(ScriptClass, TEXT("UnexpectedProperty")));
+		ASSERT_THAT(IsTrue(ScriptClass->IsChildOf(UObject::StaticClass()), TEXT("Function-only script class test case should remain UObject-derived")));
+		ASSERT_THAT(AreEqual(0, ScriptClassStructureTests::CountDeclaredProperties(*ScriptClass), TEXT("Function-only script class test case should not synthesize any declared user properties")));
+		ASSERT_THAT(IsNull(FindFProperty<FProperty>(ScriptClass, TEXT("UnexpectedProperty")), TEXT("Function-only script class test case should not expose undeclared properties")));
 
 		UFunction* GetValueFunction = FindGeneratedFunction(ScriptClass, TEXT("GetValue"));
-		if (!TestRunner->TestNotNull(TEXT("Function-only script class test case should generate GetValue"), GetValueFunction))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(GetValueFunction, TEXT("Function-only script class test case should generate GetValue")));
 
 		UObject* Instance = NewObject<UObject>(GetTransientPackage(), ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Function-only script class test case should instantiate the generated class"), Instance))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Instance, TEXT("Function-only script class test case should instantiate the generated class")));
 
 		int32 Result = 0;
-		if (!TestRunner->TestTrue(TEXT("Function-only script class test case should execute GetValue on the game thread"), ExecuteGeneratedIntEventOnGameThread(&Engine, Instance, GetValueFunction, Result)))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(
+			ExecuteGeneratedIntEventOnGameThread(&Engine, Instance, GetValueFunction, Result),
+			TEXT("Function-only script class test case should execute GetValue on the game thread")));
 
-		TestRunner->TestEqual(TEXT("Function-only script class test case should keep GetValue returning 17"), Result, 17);
+		ASSERT_THAT(AreEqual(17, Result, TEXT("Function-only script class test case should keep GetValue returning 17")));
 
 		}
 	}

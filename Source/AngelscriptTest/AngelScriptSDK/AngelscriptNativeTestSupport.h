@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Assert/NoDiscardAsserter.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 
@@ -130,6 +131,101 @@ namespace AngelscriptNativeTestSupport
 		}
 
 		return Result.IsEmpty() ? TEXT("<no functions>") : Result;
+	}
+
+	inline bool IsInlineASWhitespace(const TCHAR Character)
+	{
+		return Character == TEXT(' ') || Character == TEXT('\t') || Character == TEXT('\r');
+	}
+
+	inline bool IsInlineASWhitespaceOnlyLine(const FString& Line)
+	{
+		for (const TCHAR Character : Line)
+		{
+			if (!IsInlineASWhitespace(Character))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	inline int32 CountInlineASIndent(const FString& Line)
+	{
+		int32 Count = 0;
+		for (const TCHAR Character : Line)
+		{
+			if (!IsInlineASWhitespace(Character))
+			{
+				break;
+			}
+
+			++Count;
+		}
+
+		return Count;
+	}
+
+	inline FString NormalizeInlineASSource(const TCHAR* Source)
+	{
+		if (Source == nullptr)
+		{
+			return FString();
+		}
+
+		FString Text(Source);
+		Text.ReplaceInline(TEXT("\r\n"), TEXT("\n"));
+		Text.ReplaceInline(TEXT("\r"), TEXT("\n"));
+
+		TArray<FString> Lines;
+		Text.ParseIntoArrayLines(Lines, false);
+		while (Lines.Num() > 0 && IsInlineASWhitespaceOnlyLine(Lines[0]))
+		{
+			Lines.RemoveAt(0, 1, EAllowShrinking::No);
+		}
+		while (Lines.Num() > 0 && IsInlineASWhitespaceOnlyLine(Lines.Last()))
+		{
+			Lines.Pop(EAllowShrinking::No);
+		}
+
+		int32 CommonIndent = MAX_int32;
+		for (const FString& Line : Lines)
+		{
+			if (!IsInlineASWhitespaceOnlyLine(Line))
+			{
+				CommonIndent = FMath::Min(CommonIndent, CountInlineASIndent(Line));
+			}
+		}
+		if (CommonIndent == MAX_int32)
+		{
+			CommonIndent = 0;
+		}
+
+		FString Result;
+		for (int32 LineIndex = 0; LineIndex < Lines.Num(); ++LineIndex)
+		{
+			FString Line = Lines[LineIndex];
+			if (!IsInlineASWhitespaceOnlyLine(Line) && CommonIndent > 0)
+			{
+				Line.RightChopInline(CommonIndent, EAllowShrinking::No);
+			}
+
+			if (LineIndex > 0)
+			{
+				Result += TEXT("\n");
+			}
+			Result += Line;
+		}
+
+		return Result;
+	}
+
+	inline std::string NormalizeInlineASSourceAnsi(const TCHAR* Source)
+	{
+		const FString Normalized = NormalizeInlineASSource(Source);
+		const FTCHARToUTF8 Utf8(*Normalized);
+		return std::string(Utf8.Get(), Utf8.Length());
 	}
 
 	struct FSDKBufferedOutStream
@@ -290,7 +386,8 @@ namespace AngelscriptNativeTestSupport
 			CurrentTest = &Test;
 			BufferedOutStream = InBufferedOutStream;
 			ScriptEngine = CreateNativeEngine(&Messages);
-			if (!Test.TestNotNull(TEXT("Native test engine should create a shared raw engine"), ScriptEngine))
+			FNoDiscardAsserter Assert(Test);
+			if (!Assert.IsNotNull(ScriptEngine, TEXT("Native test engine should create a shared raw engine")))
 			{
 				return;
 			}
@@ -475,13 +572,14 @@ namespace AngelscriptNativeTestSupport
 			, ModuleName(InModuleName != nullptr ? InModuleName : "")
 		{
 			asIScriptEngine* const ScriptEngine = Engine.Get();
-			if (!Test.TestNotNull(TEXT("Native module scope should have a script engine"), ScriptEngine))
+			FNoDiscardAsserter Assert(Test);
+			if (!Assert.IsNotNull(ScriptEngine, TEXT("Native module scope should have a script engine")))
 			{
 				return;
 			}
 
 			Module = BuildNativeModule(ScriptEngine, ModuleName.c_str(), Source);
-			if (!Test.TestNotNull(TEXT("Native module scope should compile the module"), Module))
+			if (!Assert.IsNotNull(Module, TEXT("Native module scope should compile the module")))
 			{
 				const FString Messages = Engine.GetMessagesText();
 				if (!Messages.IsEmpty())
@@ -899,10 +997,11 @@ namespace AngelscriptNativeTestSupport
 
 		bool IsValid(FAutomationTestBase& Test) const
 		{
-			return Test.TestNotNull(TEXT("Bytecode fixture should create a bare engine"), Engine)
-				&& Test.TestNotNull(TEXT("Bytecode fixture should create a module"), Module)
-				&& Test.TestNotNull(TEXT("Bytecode fixture should create a builder"), Builder)
-				&& Test.TestNotNull(TEXT("Bytecode fixture should create bytecode"), ByteCode);
+			FNoDiscardAsserter Assert(Test);
+			return Assert.IsNotNull(Engine, TEXT("Bytecode fixture should create a bare engine"))
+				&& Assert.IsNotNull(Module, TEXT("Bytecode fixture should create a module"))
+				&& Assert.IsNotNull(Builder, TEXT("Bytecode fixture should create a builder"))
+				&& Assert.IsNotNull(ByteCode, TEXT("Bytecode fixture should create bytecode"));
 		}
 
 		asCScriptEngine* Engine = nullptr;
@@ -1032,3 +1131,9 @@ namespace AngelscriptNativeTestSupport
 		return CompileNativeModule(ScriptEngine, ModuleName, Source, Module);
 	}
 }
+
+#define ASTEST_AS(SourceLiteral) \
+	AngelscriptNativeTestSupport::NormalizeInlineASSource(TEXT(SourceLiteral))
+
+#define ASTEST_AS_ANSI(SourceLiteral) \
+	AngelscriptNativeTestSupport::NormalizeInlineASSourceAnsi(TEXT(SourceLiteral))

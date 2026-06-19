@@ -25,7 +25,8 @@ namespace ASClassHelperTest
 		FStringView Suffix,
 		const TCHAR* CallingContext = TEXT("AngelscriptASClassHelperTests"))
 	{
-		if (!Test.TestNotNull(TEXT("ASClass helper test case should receive a valid script parent class"), ParentClass))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(ParentClass, TEXT("ASClass helper test case should receive a valid script parent class")))
 		{
 			return nullptr;
 		}
@@ -36,7 +37,7 @@ namespace ASClassHelperTest
 			Suffix.GetData(),
 			*FGuid::NewGuid().ToString(EGuidFormats::Digits));
 		UPackage* BlueprintPackage = CreatePackage(*PackagePath);
-		if (!Test.TestNotNull(TEXT("ASClass helper test case should create a transient blueprint package"), BlueprintPackage))
+		if (!Assert.IsNotNull(BlueprintPackage, TEXT("ASClass helper test case should create a transient blueprint package")))
 		{
 			return nullptr;
 		}
@@ -52,7 +53,7 @@ namespace ASClassHelperTest
 			UBlueprint::StaticClass(),
 			UBlueprintGeneratedClass::StaticClass(),
 			CallingContext);
-		if (!Test.TestNotNull(TEXT("ASClass helper test case should create a transient blueprint asset"), Blueprint))
+		if (!Assert.IsNotNull(Blueprint, TEXT("ASClass helper test case should create a transient blueprint asset")))
 		{
 			return nullptr;
 		}
@@ -63,7 +64,8 @@ namespace ASClassHelperTest
 	bool CompileAndValidateBlueprint(FAutomationTestBase& Test, UBlueprint& Blueprint)
 	{
 		FKismetEditorUtilities::CompileBlueprint(&Blueprint);
-		return Test.TestNotNull(TEXT("ASClass helper test case should compile the transient blueprint"), Blueprint.GeneratedClass.Get());
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsNotNull(Blueprint.GeneratedClass.Get(), TEXT("ASClass helper test case should compile the transient blueprint"));
 	}
 
 	void CleanupBlueprint(UBlueprint*& Blueprint)
@@ -140,10 +142,7 @@ class AScriptHierarchyHelperParent : AActor
 		}
 
 		UASClass* ScriptASClass = Cast<UASClass>(ScriptParentClass);
-		if (!TestRunner->TestNotNull(TEXT("ASClass helper test case should compile the script parent as a UASClass"), ScriptASClass))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptASClass, TEXT("ASClass helper test case should compile the script parent as a UASClass")));
 
 		ASClassHelperTest::FScopedTransientBlueprint Blueprint;
 		Blueprint.BlueprintAsset = ASClassHelperTest::CreateTransientBlueprintChild(*TestRunner, ScriptParentClass, TEXT("HierarchyHelpers"));
@@ -158,18 +157,12 @@ class AScriptHierarchyHelperParent : AActor
 		}
 
 		UClass* BlueprintChildClass = Blueprint.GetGeneratedClass();
-		if (!TestRunner->TestNotNull(TEXT("ASClass helper test case should produce a generated Blueprint child class"), BlueprintChildClass))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BlueprintChildClass, TEXT("ASClass helper test case should produce a generated Blueprint child class")));
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* BlueprintChildActor = SpawnScriptActor(*TestRunner, Spawner, BlueprintChildClass);
-		if (!TestRunner->TestNotNull(TEXT("ASClass helper test case should spawn the Blueprint child actor"), BlueprintChildActor))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BlueprintChildActor, TEXT("ASClass helper test case should spawn the Blueprint child actor")));
 
 		UASClass* ScriptAncestorFromScriptClass = UASClass::GetFirstASClass(ScriptParentClass);
 		UASClass* ScriptAncestorFromBlueprintClass = UASClass::GetFirstASClass(BlueprintChildClass);
@@ -177,11 +170,11 @@ class AScriptHierarchyHelperParent : AActor
 		UClass* ScriptOrNativeFromBlueprintClass = UASClass::GetFirstASOrNativeClass(BlueprintChildClass);
 		UClass* ScriptOrNativeFromNativeActor = UASClass::GetFirstASOrNativeClass(AActor::StaticClass());
 
-		TestRunner->TestTrue(TEXT("ASClass helper test case should resolve the script parent from the script class itself"), ScriptAncestorFromScriptClass == ScriptParentClass);
-		TestRunner->TestTrue(TEXT("ASClass helper test case should resolve the script parent from the Blueprint child class"), ScriptAncestorFromBlueprintClass == ScriptParentClass);
-		TestRunner->TestTrue(TEXT("ASClass helper test case should resolve the script parent from the Blueprint child actor instance"), ScriptAncestorFromBlueprintActor == ScriptParentClass);
-		TestRunner->TestTrue(TEXT("ASClass helper test case should prefer the script ancestor over the generated Blueprint class"), ScriptOrNativeFromBlueprintClass == ScriptParentClass);
-		TestRunner->TestTrue(TEXT("ASClass helper test case should return AActor for native AActor fallback"), ScriptOrNativeFromNativeActor == AActor::StaticClass());
+		ASSERT_THAT(IsTrue(ScriptAncestorFromScriptClass == ScriptParentClass, TEXT("ASClass helper test case should resolve the script parent from the script class itself")));
+		ASSERT_THAT(IsTrue(ScriptAncestorFromBlueprintClass == ScriptParentClass, TEXT("ASClass helper test case should resolve the script parent from the Blueprint child class")));
+		ASSERT_THAT(IsTrue(ScriptAncestorFromBlueprintActor == ScriptParentClass, TEXT("ASClass helper test case should resolve the script parent from the Blueprint child actor instance")));
+		ASSERT_THAT(IsTrue(ScriptOrNativeFromBlueprintClass == ScriptParentClass, TEXT("ASClass helper test case should prefer the script ancestor over the generated Blueprint class")));
+		ASSERT_THAT(IsTrue(ScriptOrNativeFromNativeActor == AActor::StaticClass(), TEXT("ASClass helper test case should return AActor for native AActor fallback")));
 		}
 	}
 };

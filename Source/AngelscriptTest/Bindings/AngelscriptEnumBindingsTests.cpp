@@ -58,8 +58,9 @@ namespace AngelscriptEnumBindingsTests_Private
 
 		bool Init(FAutomationTestBase& Test)
 		{
+			FNoDiscardAsserter Assert(Test);
 			Enum = StaticEnum<EAttachmentRule>();
-			if (!Test.TestNotNull(TEXT("Enum baseline should resolve native UEnum"), Enum))
+			if (!Assert.IsNotNull(Enum, TEXT("Enum baseline should resolve native UEnum")))
 			{
 				return false;
 			}

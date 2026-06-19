@@ -99,7 +99,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineSubsystemTests,
 		};
 
 		const UAngelscriptEngineSubsystem* SubsystemCdo = GetDefault<UAngelscriptEngineSubsystem>();
-		if (!TestRunner->TestNotNull(TEXT("EngineSubsystem should expose a native CDO"), SubsystemCdo))
+		if (!this->Assert.IsNotNull(SubsystemCdo, TEXT("EngineSubsystem should expose a native CDO")))
 		{
 			return;
 		}
@@ -123,10 +123,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineSubsystemTests,
 		for (const FStartupTestCase& TestCase : TestCases)
 		{
 			FAngelscriptEngineSubsystemTestAccess::SetStartupEnvironmentOverride(TestCase.bIsEditor, TestCase.bIsRunningCommandlet);
-			TestRunner->TestEqual(
-				FString::Printf(TEXT("%s should match the expected EngineSubsystem creation gate"), TestCase.Label),
+			ASSERT_THAT(AreEqual(
+				TestCase.bShouldCreate,
 				FAngelscriptEngineSubsystemTestAccess::ShouldCreateSubsystem(*SubsystemCdo, Outer),
-				TestCase.bShouldCreate);
+				FString::Printf(TEXT("%s should match the expected EngineSubsystem creation gate"), TestCase.Label)));
 		}
 	}
 
@@ -142,7 +142,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineSubsystemTests,
 		ContextGuard.DiscardSavedStack();
 
 		TStrongObjectPtr<UAngelscriptEngineSubsystem> Subsystem(NewObject<UAngelscriptEngineSubsystem>(GetTransientPackage()));
-		if (!TestRunner->TestNotNull(TEXT("EngineSubsystem initialize-override test should create a native subsystem object"), Subsystem.Get()))
+		if (!this->Assert.IsNotNull(Subsystem.Get(), TEXT("EngineSubsystem initialize-override test should create a native subsystem object")))
 		{
 			return;
 		}
@@ -160,13 +160,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineSubsystemTests,
 		};
 
 		FAngelscriptEngineSubsystemTestAccess::ResetInitializeState();
-		if (!TestRunner->TestNull(TEXT("EngineSubsystem initialize-override test should start without a current engine"), FAngelscriptEngine::TryGetCurrentEngine()))
+		if (!this->Assert.IsNull(FAngelscriptEngine::TryGetCurrentEngine(), TEXT("EngineSubsystem initialize-override test should start without a current engine")))
 		{
 			return;
 		}
 
 		TUniquePtr<FAngelscriptEngine> OverrideEngine = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("EngineSubsystem initialize-override test should create an isolated override engine"), OverrideEngine.Get()))
+		if (!this->Assert.IsNotNull(OverrideEngine.Get(), TEXT("EngineSubsystem initialize-override test should create an isolated override engine")))
 		{
 			return;
 		}
@@ -177,44 +177,44 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineSubsystemTests,
 		});
 
 		FAngelscriptEngineSubsystemTestAccess::EnsurePrimaryEngineInitialized(*Subsystem);
-		TestRunner->TestTrue(
-			TEXT("EngineSubsystem initialize-override test should make the override engine current after first initialize"),
-			FAngelscriptEngine::TryGetCurrentEngine() == OverrideEngine.Get());
-		TestRunner->TestTrue(
-			TEXT("EngineSubsystem initialize-override test should mark the primary engine initialized"),
-			FAngelscriptEngineSubsystemTestAccess::HasInitializedPrimaryEngine(*Subsystem));
-		TestRunner->TestTrue(
-			TEXT("EngineSubsystem initialize-override test should expose the override engine as primary"),
-			FAngelscriptEngineSubsystemTestAccess::GetPrimaryEngine(*Subsystem) == OverrideEngine.Get());
-		TestRunner->TestFalse(
-			TEXT("EngineSubsystem initialize-override test should not take ownership of an override engine"),
-			FAngelscriptEngineSubsystemTestAccess::OwnsPrimaryEngine(*Subsystem));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptEngine::TryGetCurrentEngine() == OverrideEngine.Get(),
+			TEXT("EngineSubsystem initialize-override test should make the override engine current after first initialize")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptEngineSubsystemTestAccess::HasInitializedPrimaryEngine(*Subsystem),
+			TEXT("EngineSubsystem initialize-override test should mark the primary engine initialized")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptEngineSubsystemTestAccess::GetPrimaryEngine(*Subsystem) == OverrideEngine.Get(),
+			TEXT("EngineSubsystem initialize-override test should expose the override engine as primary")));
+		ASSERT_THAT(IsFalse(
+			FAngelscriptEngineSubsystemTestAccess::OwnsPrimaryEngine(*Subsystem),
+			TEXT("EngineSubsystem initialize-override test should not take ownership of an override engine")));
 
 		FAngelscriptEngineSubsystemTestAccess::EnsurePrimaryEngineInitialized(*Subsystem);
 
 		TArray<FAngelscriptEngine*> StackAfterSecondInitialize = FAngelscriptEngineContextStack::SnapshotAndClear();
-		TestRunner->TestEqual(
-			TEXT("EngineSubsystem initialize-override test should keep exactly one engine on the context stack after repeated initialize"),
+		ASSERT_THAT(AreEqual(
+			1,
 			StackAfterSecondInitialize.Num(),
-			1);
-		TestRunner->TestTrue(
-			TEXT("EngineSubsystem initialize-override test should keep the override engine as the only stack entry"),
-			StackAfterSecondInitialize.Num() == 1 && StackAfterSecondInitialize[0] == OverrideEngine.Get());
+			TEXT("EngineSubsystem initialize-override test should keep exactly one engine on the context stack after repeated initialize")));
+		ASSERT_THAT(IsTrue(
+			StackAfterSecondInitialize[0] == OverrideEngine.Get(),
+			TEXT("EngineSubsystem initialize-override test should keep the override engine as the only stack entry")));
 		FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(StackAfterSecondInitialize));
 
 		FAngelscriptEngineSubsystemTestAccess::ReleasePrimaryEngine(*Subsystem);
-		TestRunner->TestFalse(
-			TEXT("EngineSubsystem initialize-override test should clear initialized state after release"),
-			FAngelscriptEngineSubsystemTestAccess::HasInitializedPrimaryEngine(*Subsystem));
-		TestRunner->TestNull(
-			TEXT("EngineSubsystem initialize-override test should clear the current engine after release"),
-			FAngelscriptEngine::TryGetCurrentEngine());
+		ASSERT_THAT(IsFalse(
+			FAngelscriptEngineSubsystemTestAccess::HasInitializedPrimaryEngine(*Subsystem),
+			TEXT("EngineSubsystem initialize-override test should clear initialized state after release")));
+		ASSERT_THAT(IsNull(
+			FAngelscriptEngine::TryGetCurrentEngine(),
+			TEXT("EngineSubsystem initialize-override test should clear the current engine after release")));
 
 		const TArray<FAngelscriptEngine*> StackAfterRelease = FAngelscriptEngineContextStack::SnapshotAndClear();
-		TestRunner->TestEqual(
-			TEXT("EngineSubsystem initialize-override test should leave the context stack empty after release"),
+		ASSERT_THAT(AreEqual(
+			0,
 			StackAfterRelease.Num(),
-			0);
+			TEXT("EngineSubsystem initialize-override test should leave the context stack empty after release")));
 	}
 };
 

@@ -23,35 +23,36 @@ namespace CompilerPipelineFunctionDefaultTest
 		const char* RawDefaultArg = reinterpret_cast<const char*>(1);
 		const int Result = Function.GetParam(ParamIndex, nullptr, nullptr, &RawName, &RawDefaultArg);
 
+		FNoDiscardAsserter Assert(Test);
 		bool bPassed = true;
-		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("Function default metadata round-trip should inspect parameter %u successfully"), static_cast<uint32>(ParamIndex)),
+		bPassed &= Assert.AreEqual(
+			static_cast<int32>(asSUCCESS),
 			Result,
-			static_cast<int32>(asSUCCESS));
+			*FString::Printf(TEXT("Function default metadata round-trip should inspect parameter %u successfully"), static_cast<uint32>(ParamIndex)));
 
 		const FString ActualName = RawName != nullptr ? FString(UTF8_TO_TCHAR(RawName)) : FString();
-		bPassed &= Test.TestEqual(
-			*FString::Printf(TEXT("Function default metadata round-trip should preserve parameter %u name"), static_cast<uint32>(ParamIndex)),
+		bPassed &= Assert.AreEqual(
+			FString(ExpectedName),
 			ActualName,
-			FString(ExpectedName));
+			*FString::Printf(TEXT("Function default metadata round-trip should preserve parameter %u name"), static_cast<uint32>(ParamIndex)));
 
 		if (ExpectedDefaultArg == nullptr)
 		{
-			bPassed &= Test.TestTrue(
-				*FString::Printf(TEXT("Function default metadata round-trip should keep parameter %u without a defaultArg"), static_cast<uint32>(ParamIndex)),
-				RawDefaultArg == nullptr);
+			bPassed &= Assert.IsTrue(
+				RawDefaultArg == nullptr,
+				*FString::Printf(TEXT("Function default metadata round-trip should keep parameter %u without a defaultArg"), static_cast<uint32>(ParamIndex)));
 		}
 		else
 		{
-			bPassed &= Test.TestNotNull(
-				*FString::Printf(TEXT("Function default metadata round-trip should expose a defaultArg for parameter %u"), static_cast<uint32>(ParamIndex)),
-				RawDefaultArg);
+			bPassed &= Assert.IsNotNull(
+				RawDefaultArg,
+				*FString::Printf(TEXT("Function default metadata round-trip should expose a defaultArg for parameter %u"), static_cast<uint32>(ParamIndex)));
 			if (RawDefaultArg != nullptr)
 			{
-				bPassed &= Test.TestEqual(
-					*FString::Printf(TEXT("Function default metadata round-trip should preserve parameter %u defaultArg text"), static_cast<uint32>(ParamIndex)),
+				bPassed &= Assert.AreEqual(
+					FString(ExpectedDefaultArg),
 					FString(UTF8_TO_TCHAR(RawDefaultArg)),
-					FString(ExpectedDefaultArg));
+					*FString::Printf(TEXT("Function default metadata round-trip should preserve parameter %u defaultArg text"), static_cast<uint32>(ParamIndex)));
 			}
 		}
 
@@ -99,19 +100,19 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionDefaultTests,
 			false,
 			Summary);
 
-		TestRunner->TestTrue(
-			TEXT("Function default metadata round-trip should compile successfully"),
-			bCompiled);
-		TestRunner->TestFalse(
-			TEXT("Function default metadata round-trip should stay on the plain-source path without the preprocessor"),
-			Summary.bUsedPreprocessor);
-		TestRunner->TestTrue(
-			TEXT("Function default metadata round-trip should mark compile succeeded in the summary"),
-			Summary.bCompileSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Function default metadata round-trip should keep diagnostics empty"),
+		ASSERT_THAT(IsTrue(
+			bCompiled,
+			TEXT("Function default metadata round-trip should compile successfully")));
+		ASSERT_THAT(IsFalse(
+			Summary.bUsedPreprocessor,
+			TEXT("Function default metadata round-trip should stay on the plain-source path without the preprocessor")));
+		ASSERT_THAT(IsTrue(
+			Summary.bCompileSucceeded,
+			TEXT("Function default metadata round-trip should mark compile succeeded in the summary")));
+		ASSERT_THAT(AreEqual(
+			0,
 			Summary.Diagnostics.Num(),
-			0);
+			TEXT("Function default metadata round-trip should keep diagnostics empty")));
 		if (!bCompiled)
 		{
 			return;
@@ -123,29 +124,29 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionDefaultTests,
 			CompilerPipelineFunctionDefaultTest::ModuleName,
 			TEXT("int Entry()"),
 			EntryResult);
-		TestRunner->TestTrue(
-			TEXT("Function default metadata round-trip should execute Entry successfully"),
-			bExecuted);
+		ASSERT_THAT(IsTrue(
+			bExecuted,
+			TEXT("Function default metadata round-trip should execute Entry successfully")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(
-				TEXT("Function default metadata round-trip should honor omitted default arguments at runtime"),
+			ASSERT_THAT(AreEqual(
+				42,
 				EntryResult,
-				42);
+				TEXT("Function default metadata round-trip should honor omitted default arguments at runtime")));
 		}
 
 		const TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModuleByModuleName(
 			CompilerPipelineFunctionDefaultTest::ModuleName.ToString());
-		if (!TestRunner->TestTrue(
-				TEXT("Function default metadata round-trip should register the module by name"),
-				ModuleDesc.IsValid()))
+		if (!this->Assert.IsTrue(
+				ModuleDesc.IsValid(),
+				TEXT("Function default metadata round-trip should register the module by name")))
 		{
 			return;
 		}
 
-		if (!TestRunner->TestNotNull(
-				TEXT("Function default metadata round-trip should expose the compiled script module"),
-				ModuleDesc->ScriptModule))
+		if (!this->Assert.IsNotNull(
+				ModuleDesc->ScriptModule,
+				TEXT("Function default metadata round-trip should expose the compiled script module")))
 		{
 			return;
 		}
@@ -154,17 +155,17 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionDefaultTests,
 			*TestRunner,
 			*ModuleDesc->ScriptModule,
 			TEXT("int SumWithDefaults(int, int, int)"));
-		if (!TestRunner->TestNotNull(
-				TEXT("Function default metadata round-trip should resolve SumWithDefaults by its exact declaration"),
-				SumWithDefaults))
+		if (!this->Assert.IsNotNull(
+				SumWithDefaults,
+				TEXT("Function default metadata round-trip should resolve SumWithDefaults by its exact declaration")))
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Function default metadata round-trip should keep the exact parameter count"),
+		ASSERT_THAT(AreEqual(
+			3,
 			static_cast<int32>(SumWithDefaults->GetParamCount()),
-			3);
+			TEXT("Function default metadata round-trip should keep the exact parameter count")));
 		CompilerPipelineFunctionDefaultTest::VerifyParamMetadata(
 			*TestRunner,
 			*SumWithDefaults,

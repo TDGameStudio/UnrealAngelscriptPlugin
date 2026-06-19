@@ -20,9 +20,10 @@ namespace
 	{
 		FTCHARToUTF8 DeclarationUtf8(*Declaration);
 		asITypeInfo* TypeInfo = Module.GetTypeInfoByDecl(DeclarationUtf8.Get());
-		Test.TestNotNull(
-			*FString::Printf(TEXT("Compiled module should expose script type '%s'"), *Declaration),
-			TypeInfo);
+		FNoDiscardAsserter Assert(Test);
+		(void)Assert.IsNotNull(
+			TypeInfo,
+			*FString::Printf(TEXT("Compiled module should expose script type '%s'"), *Declaration));
 		return TypeInfo;
 	}
 
@@ -70,7 +71,8 @@ namespace
 	asITypeInfo* FindTypeInfoById(FAutomationTestBase& Test, asIScriptEngine& ScriptEngine, int TypeId, const FString& Context)
 	{
 		asITypeInfo* TypeInfo = (TypeId != asINVALID_TYPE) ? ScriptEngine.GetTypeInfoById(TypeId) : nullptr;
-		Test.TestNotNull(*FString::Printf(TEXT("%s should resolve to a script type"), *Context), TypeInfo);
+		FNoDiscardAsserter Assert(Test);
+		(void)Assert.IsNotNull(TypeInfo, *FString::Printf(TEXT("%s should resolve to a script type"), *Context));
 		return TypeInfo;
 	}
 
@@ -97,9 +99,10 @@ namespace
 	FProperty* FindPropertyByName(FAutomationTestBase& Test, UStruct& Owner, const TCHAR* PropertyName)
 	{
 		FProperty* Property = FindFProperty<FProperty>(&Owner, PropertyName);
-		Test.TestNotNull(
-			*FString::Printf(TEXT("Generated owner '%s' should expose property '%s'"), *Owner.GetName(), PropertyName),
-			Property);
+		FNoDiscardAsserter Assert(Test);
+		(void)Assert.IsNotNull(
+			Property,
+			*FString::Printf(TEXT("Generated owner '%s' should expose property '%s'"), *Owner.GetName(), PropertyName));
 		return Property;
 	}
 
@@ -110,17 +113,18 @@ namespace
 		const TSharedPtr<FAngelscriptType>& ExpectedType,
 		asITypeInfo* ExpectedScriptClass)
 	{
+		FNoDiscardAsserter Assert(Test);
 		bool bMatches = true;
-		bMatches &= Test.TestTrue(
-			*FString::Printf(TEXT("%s should resolve to a valid type usage"), *Context),
-			Usage.IsValid());
-		bMatches &= Test.TestTrue(
-			*FString::Printf(TEXT("%s should resolve to the expected script kind"), *Context),
-			Usage.Type.Get() == ExpectedType.Get());
-		bMatches &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the originating script type"), *Context),
+		bMatches &= Assert.IsTrue(
+			Usage.IsValid(),
+			*FString::Printf(TEXT("%s should resolve to a valid type usage"), *Context));
+		bMatches &= Assert.IsTrue(
+			Usage.Type.Get() == ExpectedType.Get(),
+			*FString::Printf(TEXT("%s should resolve to the expected script kind"), *Context));
+		bMatches &= Assert.AreEqual(
+			ExpectedScriptClass,
 			Usage.ScriptClass,
-			ExpectedScriptClass);
+			*FString::Printf(TEXT("%s should preserve the originating script type"), *Context));
 		return bMatches;
 	}
 
@@ -131,18 +135,19 @@ namespace
 		const bool bExpectedConst,
 		const bool bExpectedReference)
 	{
+		FNoDiscardAsserter Assert(Test);
 		bool bMatches = true;
-		bMatches &= Test.TestTrue(
-			*FString::Printf(TEXT("%s should resolve to a valid type usage"), *Context),
-			Usage.IsValid());
-		bMatches &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the const qualifier"), *Context),
+		bMatches &= Assert.IsTrue(
+			Usage.IsValid(),
+			*FString::Printf(TEXT("%s should resolve to a valid type usage"), *Context));
+		bMatches &= Assert.AreEqual(
+			bExpectedConst,
 			Usage.bIsConst,
-			bExpectedConst);
-		bMatches &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the reference qualifier"), *Context),
+			*FString::Printf(TEXT("%s should preserve the const qualifier"), *Context));
+		bMatches &= Assert.AreEqual(
+			bExpectedReference,
 			Usage.bIsReference,
-			bExpectedReference);
+			*FString::Printf(TEXT("%s should preserve the reference qualifier"), *Context));
 		return bMatches;
 	}
 }
@@ -196,7 +201,7 @@ class UTypeUsageCarrier : UObject
 			asITypeInfo* StructTypeInfo = FindTypeInfoByDecl(*TestRunner, *Module, TEXT("FTypeUsagePayload"));
 			asITypeInfo* CarrierTypeInfo = FindTypeInfoByDecl(*TestRunner, *Module, TEXT("UTypeUsageCarrier"));
 			asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
-			TestRunner->TestNotNull(TEXT("Type usage test should expose a script engine"), ScriptEngine);
+			ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Type usage test should expose a script engine")));
 
 			if (EnumTypeInfo != nullptr && StructTypeInfo != nullptr && CarrierTypeInfo != nullptr && ScriptEngine != nullptr)
 			{
@@ -222,9 +227,9 @@ class UTypeUsageCarrier : UObject
 				ExpectUsageMatches(*TestRunner, TEXT("Script object type id"), ScriptObjectUsage, FAngelscriptType::GetScriptObject(), CarrierTypeInfo);
 
 				const TSharedPtr<FAngelscriptType> ArrayType = FAngelscriptType::GetByAngelscriptTypeName(TEXT("TArray"));
-				TestRunner->TestTrue(TEXT("Container type id should resolve to the bound TArray type"), ArrayType.IsValid() && ContainerUsage.Type.Get() == ArrayType.Get());
-				TestRunner->TestEqual(TEXT("Container type id should preserve the instantiated container type"), ContainerUsage.ScriptClass, ArrayTypeInfo);
-				TestRunner->TestEqual(TEXT("Container type id should expose exactly one template subtype"), ContainerUsage.SubTypes.Num(), 1);
+				ASSERT_THAT(IsTrue(ArrayType.IsValid() && ContainerUsage.Type.Get() == ArrayType.Get(), TEXT("Container type id should resolve to the bound TArray type")));
+				ASSERT_THAT(AreEqual(ArrayTypeInfo, ContainerUsage.ScriptClass, TEXT("Container type id should preserve the instantiated container type")));
+				ASSERT_THAT(AreEqual(1, ContainerUsage.SubTypes.Num(), TEXT("Container type id should expose exactly one template subtype")));
 
 				if (ContainerUsage.SubTypes.Num() == 1)
 				{
@@ -234,7 +239,7 @@ class UTypeUsageCarrier : UObject
 						ContainerUsage.SubTypes[0],
 						FAngelscriptType::GetScriptStruct(),
 						StructTypeInfo);
-					TestRunner->TestEqual(TEXT("Container subtype should not recurse any further for a plain script struct"), ContainerUsage.SubTypes[0].SubTypes.Num(), 0);
+					ASSERT_THAT(AreEqual(0, ContainerUsage.SubTypes[0].SubTypes.Num(), TEXT("Container subtype should not recurse any further for a plain script struct")));
 				}
 			}
 		}
@@ -278,7 +283,7 @@ class FHolder
 			asITypeInfo* EnumTypeInfo = FindTypeInfoByDecl(*TestRunner, *Module, TEXT("EMode"));
 			asITypeInfo* PayloadTypeInfo = FindTypeInfoByDecl(*TestRunner, *Module, TEXT("FPayload"));
 			asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
-			TestRunner->TestNotNull(TEXT("FromProperty matrix test should expose a script engine"), ScriptEngine);
+			ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("FromProperty matrix test should expose a script engine")));
 
 			if (HolderTypeInfo != nullptr && EnumTypeInfo != nullptr && PayloadTypeInfo != nullptr && ScriptEngine != nullptr)
 			{
@@ -298,44 +303,44 @@ class FHolder
 					const FAngelscriptTypeUsage ModeUsage = FAngelscriptTypeUsage::FromProperty(HolderTypeInfo, ModeIndex);
 					const FAngelscriptTypeUsage PayloadUsage = FAngelscriptTypeUsage::FromProperty(HolderTypeInfo, PayloadIndex);
 
-					TestRunner->TestTrue(TEXT("Primitive member usage should resolve to a valid type"), CountUsage.IsValid());
-					TestRunner->TestEqual(
-						TEXT("Primitive member usage should render as int"),
+					ASSERT_THAT(IsTrue(CountUsage.IsValid(), TEXT("Primitive member usage should resolve to a valid type")));
+					ASSERT_THAT(AreEqual(
+						FString(TEXT("int")),
 						CountUsage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::MemberVariable),
-						TEXT("int"));
-					TestRunner->TestEqual(TEXT("Primitive member usage should not report template subtypes"), CountUsage.SubTypes.Num(), 0);
+						TEXT("Primitive member usage should render as int")));
+					ASSERT_THAT(AreEqual(0, CountUsage.SubTypes.Num(), TEXT("Primitive member usage should not report template subtypes")));
 
 					const TSharedPtr<FAngelscriptType> ArrayType = FAngelscriptType::GetByAngelscriptTypeName(TEXT("TArray"));
-					TestRunner->TestTrue(TEXT("Container member usage should resolve to a valid type"), ValuesUsage.IsValid());
-					TestRunner->TestTrue(TEXT("Container member usage should resolve to the bound TArray type"), ArrayType.IsValid() && ValuesUsage.Type.Get() == ArrayType.Get());
-					TestRunner->TestEqual(TEXT("Container member usage should preserve the instantiated container type"), ValuesUsage.ScriptClass, ValuesTypeInfo);
-					TestRunner->TestEqual(TEXT("Container member usage should expose exactly one subtype"), ValuesUsage.SubTypes.Num(), 1);
-					TestRunner->TestEqual(
-						TEXT("Container member usage should render with its element type"),
+					ASSERT_THAT(IsTrue(ValuesUsage.IsValid(), TEXT("Container member usage should resolve to a valid type")));
+					ASSERT_THAT(IsTrue(ArrayType.IsValid() && ValuesUsage.Type.Get() == ArrayType.Get(), TEXT("Container member usage should resolve to the bound TArray type")));
+					ASSERT_THAT(AreEqual(ValuesTypeInfo, ValuesUsage.ScriptClass, TEXT("Container member usage should preserve the instantiated container type")));
+					ASSERT_THAT(AreEqual(1, ValuesUsage.SubTypes.Num(), TEXT("Container member usage should expose exactly one subtype")));
+					ASSERT_THAT(AreEqual(
+						FString(TEXT("TArray<int>")),
 						ValuesUsage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::MemberVariable),
-						TEXT("TArray<int>"));
+						TEXT("Container member usage should render with its element type")));
 
 					if (ValuesUsage.SubTypes.Num() == 1)
 					{
-						TestRunner->TestTrue(TEXT("Container element usage should resolve to a valid type"), ValuesUsage.SubTypes[0].IsValid());
-						TestRunner->TestEqual(
-							TEXT("Container element usage should render as int"),
+						ASSERT_THAT(IsTrue(ValuesUsage.SubTypes[0].IsValid(), TEXT("Container element usage should resolve to a valid type")));
+						ASSERT_THAT(AreEqual(
+							FString(TEXT("int")),
 							ValuesUsage.SubTypes[0].GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::MemberVariable),
-							TEXT("int"));
-						TestRunner->TestEqual(TEXT("Container element usage should not recurse further"), ValuesUsage.SubTypes[0].SubTypes.Num(), 0);
+							TEXT("Container element usage should render as int")));
+						ASSERT_THAT(AreEqual(0, ValuesUsage.SubTypes[0].SubTypes.Num(), TEXT("Container element usage should not recurse further")));
 					}
 
 					ExpectUsageMatches(*TestRunner, TEXT("Script enum member usage"), ModeUsage, FAngelscriptType::GetScriptEnum(), EnumTypeInfo);
-					TestRunner->TestEqual(
-						TEXT("Script enum member usage should render the enum declaration"),
+					ASSERT_THAT(AreEqual(
+						FString(TEXT("EMode")),
 						ModeUsage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::MemberVariable),
-						TEXT("EMode"));
+						TEXT("Script enum member usage should render the enum declaration")));
 
 					ExpectUsageMatches(*TestRunner, TEXT("Script object member usage"), PayloadUsage, FAngelscriptType::GetScriptObject(), PayloadTypeInfo);
-					TestRunner->TestEqual(
-						TEXT("Script object member usage should render the payload declaration"),
+					ASSERT_THAT(AreEqual(
+						FString(TEXT("FPayload")),
 						PayloadUsage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::MemberVariable),
-						TEXT("FPayload"));
+						TEXT("Script object member usage should render the payload declaration")));
 				}
 			}
 		}
@@ -387,32 +392,26 @@ int Produce()
 				ExpectQualifierFlags(*TestRunner, TEXT("Qualifiers parameter 2"), FlagUsage, true, false);
 				ExpectQualifierFlags(*TestRunner, TEXT("Produce return value"), ReturnUsage, false, false);
 
-				TestRunner->TestEqual(
-					TEXT("Input qualifier declaration should render as a const reference"),
+				ASSERT_THAT(AreEqual(
+					FString(TEXT("const int&")),
 					InputUsage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::FunctionArgument),
-					TEXT("const int&"));
-				TestRunner->TestEqual(
-					TEXT("Output qualifier declaration should render as a mutable reference"),
+					TEXT("Input qualifier declaration should render as a const reference")));
+				ASSERT_THAT(AreEqual(
+					FString(TEXT("int&")),
 					OutputUsage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::FunctionArgument),
-					TEXT("int&"));
-				TestRunner->TestEqual(
-					TEXT("Plain bool value parameter should currently render with the propagated const qualifier"),
+					TEXT("Output qualifier declaration should render as a mutable reference")));
+				ASSERT_THAT(AreEqual(
+					FString(TEXT("const bool")),
 					FlagUsage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::FunctionArgument),
-					TEXT("const bool"));
-				TestRunner->TestEqual(
-					TEXT("Return qualifier declaration should render without extra qualifiers"),
+					TEXT("Plain bool value parameter should currently render with the propagated const qualifier")));
+				ASSERT_THAT(AreEqual(
+					FString(TEXT("int")),
 					ReturnUsage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::FunctionReturnValue),
-					TEXT("int"));
+					TEXT("Return qualifier declaration should render without extra qualifiers")));
 
-				TestRunner->TestTrue(
-					TEXT("Input and output qualifiers should still compare equal when ignoring qualifiers"),
-					InputUsage.EqualsUnqualified(OutputUsage));
-				TestRunner->TestTrue(
-					TEXT("Input qualifier and plain return value should still compare equal when ignoring qualifiers"),
-					InputUsage.EqualsUnqualified(ReturnUsage));
-				TestRunner->TestFalse(
-					TEXT("Integer qualifiers should not compare equal to a different base type when ignoring qualifiers"),
-					InputUsage.EqualsUnqualified(FlagUsage));
+				ASSERT_THAT(IsTrue(InputUsage.EqualsUnqualified(OutputUsage), TEXT("Input and output qualifiers should still compare equal when ignoring qualifiers")));
+				ASSERT_THAT(IsTrue(InputUsage.EqualsUnqualified(ReturnUsage), TEXT("Input qualifier and plain return value should still compare equal when ignoring qualifiers")));
+				ASSERT_THAT(IsFalse(InputUsage.EqualsUnqualified(FlagUsage), TEXT("Integer qualifiers should not compare equal to a different base type when ignoring qualifiers")));
 			}
 		}
 
@@ -444,18 +443,18 @@ class ATypeUsageNativePropertyProbe : AActor
 				TEXT("ASTypeUsageFromPropertyNativeQualifierMatrix"),
 				TEXT("ASTypeUsageFromPropertyNativeQualifierMatrix.as"),
 				ScriptSource);
-			TestRunner->TestTrue(TEXT("Type usage native-property probe should compile"), bCompiled);
+			ASSERT_THAT(IsTrue(bCompiled, TEXT("Type usage native-property probe should compile")));
 		}
 
 		if (bCompiled)
 		{
 			UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("ATypeUsageNativePropertyProbe"));
-			TestRunner->TestNotNull(TEXT("Native-property probe class should be generated"), GeneratedClass);
+			ASSERT_THAT(IsNotNull(GeneratedClass, TEXT("Native-property probe class should be generated")));
 
 			if (GeneratedClass != nullptr)
 			{
 				UFunction* QualifiersFunction = GeneratedClass->FindFunctionByName(TEXT("Qualifiers"));
-				TestRunner->TestNotNull(TEXT("Generated class should expose the Qualifiers function"), QualifiersFunction);
+				ASSERT_THAT(IsNotNull(QualifiersFunction, TEXT("Generated class should expose the Qualifiers function")));
 
 				if (QualifiersFunction != nullptr)
 				{
@@ -473,18 +472,18 @@ class ATypeUsageNativePropertyProbe : AActor
 						ExpectQualifierFlags(*TestRunner, TEXT("Native property Output"), OutputUsage, false, true);
 						ExpectQualifierFlags(*TestRunner, TEXT("Native property Flag"), FlagUsage, false, false);
 
-						TestRunner->TestEqual(
-							TEXT("Native property Input should render as a const reference"),
+						ASSERT_THAT(AreEqual(
+							FString(TEXT("const int&")),
 							InputUsage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::FunctionArgument),
-							TEXT("const int&"));
-						TestRunner->TestEqual(
-							TEXT("Native property Output should render as a mutable reference"),
+							TEXT("Native property Input should render as a const reference")));
+						ASSERT_THAT(AreEqual(
+							FString(TEXT("int&")),
 							OutputUsage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::FunctionArgument),
-							TEXT("int&"));
-						TestRunner->TestEqual(
-							TEXT("Native property Flag should render as a plain bool"),
+							TEXT("Native property Output should render as a mutable reference")));
+						ASSERT_THAT(AreEqual(
+							FString(TEXT("bool")),
 							FlagUsage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::FunctionArgument),
-							TEXT("bool"));
+							TEXT("Native property Flag should render as a plain bool")));
 					}
 				}
 			}
@@ -500,7 +499,7 @@ class ATypeUsageNativePropertyProbe : AActor
 
 		FAngelscriptEngineScope EngineScope(Engine);
 		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
-		TestRunner->TestNotNull(TEXT("FromDataType matrix test should expose a script engine"), ScriptEngine);
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("FromDataType matrix test should expose a script engine")));
 
 		if (ScriptEngine != nullptr)
 		{
@@ -508,7 +507,7 @@ class ATypeUsageNativePropertyProbe : AActor
 			IntConstRef.MakeReference(true);
 
 			asCTypeInfo* ActorTypeInfo = static_cast<asCTypeInfo*>(ScriptEngine->GetTypeInfoByName("AActor"));
-			TestRunner->TestNotNull(TEXT("FromDataType matrix test should resolve the native AActor script type"), ActorTypeInfo);
+			ASSERT_THAT(IsNotNull(ActorTypeInfo, TEXT("FromDataType matrix test should resolve the native AActor script type")));
 
 			asITypeInfo* ArrayTypeInfo = FindArrayIntTypeInfo(*TestRunner, *ScriptEngine);
 			if (ActorTypeInfo != nullptr && ArrayTypeInfo != nullptr)
@@ -523,14 +522,12 @@ class ATypeUsageNativePropertyProbe : AActor
 				const FAngelscriptTypeUsage ArrayValueUsage = FAngelscriptTypeUsage::FromDataType(ArrayValue);
 
 				const TSharedPtr<FAngelscriptType> IntType = FAngelscriptType::GetByAngelscriptTypeName(TEXT("int"));
-				TestRunner->TestTrue(
-					TEXT("const int& data type should resolve to the int wrapper"),
-					IntType.IsValid() && IntConstRefUsage.Type.Get() == IntType.Get());
+				ASSERT_THAT(IsTrue(IntType.IsValid() && IntConstRefUsage.Type.Get() == IntType.Get(), TEXT("const int& data type should resolve to the int wrapper")));
 				ExpectQualifierFlags(*TestRunner, TEXT("const int& data type"), IntConstRefUsage, true, true);
-				TestRunner->TestEqual(
-					TEXT("const int& data type should render its qualifiers"),
+				ASSERT_THAT(AreEqual(
+					FString(TEXT("const int&")),
 					IntConstRefUsage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::FunctionArgument),
-					TEXT("const int&"));
+					TEXT("const int& data type should render its qualifiers")));
 
 				ExpectUsageMatches(
 					*TestRunner,
@@ -539,12 +536,10 @@ class ATypeUsageNativePropertyProbe : AActor
 					FAngelscriptType::GetByClass(AActor::StaticClass()),
 					ActorTypeInfo);
 				ExpectQualifierFlags(*TestRunner, TEXT("const AActor handle data type"), ActorHandleUsage, true, false);
-				TestRunner->TestTrue(
-					TEXT("const AActor handle data type should stay bound to the native AActor class"),
-					ActorHandleUsage.GetClass() == AActor::StaticClass());
-				TestRunner->TestTrue(
-					TEXT("const AActor handle data type should render as a const object type"),
-					ActorHandleUsage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::FunctionArgument).StartsWith(TEXT("const AActor")));
+				ASSERT_THAT(IsTrue(ActorHandleUsage.GetClass() == AActor::StaticClass(), TEXT("const AActor handle data type should stay bound to the native AActor class")));
+				ASSERT_THAT(IsTrue(
+					ActorHandleUsage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::FunctionArgument).StartsWith(TEXT("const AActor")),
+					TEXT("const AActor handle data type should render as a const object type")));
 
 				const TSharedPtr<FAngelscriptType> ArrayType = FAngelscriptType::GetByAngelscriptTypeName(TEXT("TArray"));
 				ExpectUsageMatches(
@@ -554,20 +549,20 @@ class ATypeUsageNativePropertyProbe : AActor
 					ArrayType,
 					ArrayTypeInfo);
 				ExpectQualifierFlags(*TestRunner, TEXT("array<int> data type"), ArrayValueUsage, false, false);
-				TestRunner->TestEqual(
-					TEXT("array<int> data type should render the bound container declaration"),
+				ASSERT_THAT(AreEqual(
+					FString(TEXT("TArray<int>")),
 					ArrayValueUsage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::MemberVariable),
-					TEXT("TArray<int>"));
-				TestRunner->TestEqual(TEXT("array<int> data type should expose exactly one template subtype"), ArrayValueUsage.SubTypes.Num(), 1);
+					TEXT("array<int> data type should render the bound container declaration")));
+				ASSERT_THAT(AreEqual(1, ArrayValueUsage.SubTypes.Num(), TEXT("array<int> data type should expose exactly one template subtype")));
 
 				if (ArrayValueUsage.SubTypes.Num() == 1)
 				{
-					TestRunner->TestTrue(TEXT("array<int> subtype should resolve to a valid type"), ArrayValueUsage.SubTypes[0].IsValid());
-					TestRunner->TestEqual(
-						TEXT("array<int> subtype should render as int"),
+					ASSERT_THAT(IsTrue(ArrayValueUsage.SubTypes[0].IsValid(), TEXT("array<int> subtype should resolve to a valid type")));
+					ASSERT_THAT(AreEqual(
+						FString(TEXT("int")),
 						ArrayValueUsage.SubTypes[0].GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::MemberVariable),
-						TEXT("int"));
-					TestRunner->TestEqual(TEXT("array<int> subtype should not recurse further"), ArrayValueUsage.SubTypes[0].SubTypes.Num(), 0);
+						TEXT("array<int> subtype should render as int")));
+					ASSERT_THAT(AreEqual(0, ArrayValueUsage.SubTypes[0].SubTypes.Num(), TEXT("array<int> subtype should not recurse further")));
 				}
 			}
 		}

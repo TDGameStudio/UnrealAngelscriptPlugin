@@ -58,39 +58,39 @@ class AFunctionalSplineActor : AActor
 			TEXT("AFunctionalSplineActor"));
 		if (ActorClass == nullptr) { return; }
 
-		TestRunner->TestTrue(
-			TEXT("AFunctionalSplineActor should derive from AActor"),
-			ActorClass->IsChildOf(AActor::StaticClass()));
+		ASSERT_THAT(IsTrue(
+			ActorClass->IsChildOf(AActor::StaticClass()),
+			TEXT("AFunctionalSplineActor should derive from AActor")));
 
 		FObjectProperty* SplineProp = FindFProperty<FObjectProperty>(ActorClass, TEXT("Spline"));
-		if (TestRunner->TestNotNull(TEXT("Spline FObjectProperty should be registered"), SplineProp))
+		if (this->Assert.IsNotNull(SplineProp, TEXT("Spline FObjectProperty should be registered")))
 		{
-			TestRunner->TestTrue(
-				TEXT("Spline property class should reference USplineComponent"),
+			ASSERT_THAT(IsTrue(
 				SplineProp->PropertyClass != nullptr
-				&& SplineProp->PropertyClass->IsChildOf(USplineComponent::StaticClass()));
+				&& SplineProp->PropertyClass->IsChildOf(USplineComponent::StaticClass()),
+				TEXT("Spline property class should reference USplineComponent")));
 		}
 
 		FObjectProperty* RootProp = FindFProperty<FObjectProperty>(ActorClass, TEXT("Root"));
-		if (TestRunner->TestNotNull(TEXT("Root FObjectProperty should be registered"), RootProp))
+		if (this->Assert.IsNotNull(RootProp, TEXT("Root FObjectProperty should be registered")))
 		{
-			TestRunner->TestTrue(
-				TEXT("Root property class should reference USceneComponent"),
+			ASSERT_THAT(IsTrue(
 				RootProp->PropertyClass != nullptr
-				&& RootProp->PropertyClass->IsChildOf(USceneComponent::StaticClass()));
+				&& RootProp->PropertyClass->IsChildOf(USceneComponent::StaticClass()),
+				TEXT("Root property class should reference USceneComponent")));
 		}
 
 		FIntProperty* RootChildCountProp = FindFProperty<FIntProperty>(ActorClass, TEXT("RootChildCountAtBeginPlay"));
-		TestRunner->TestNotNull(TEXT("RootChildCountAtBeginPlay FIntProperty should be registered"), RootChildCountProp);
+		ASSERT_THAT(IsNotNull(RootChildCountProp, TEXT("RootChildCountAtBeginPlay FIntProperty should be registered")));
 
 		FBoolProperty* SawSplineProp = FindFProperty<FBoolProperty>(ActorClass, TEXT("bSawSplineAtBeginPlay"));
-		TestRunner->TestNotNull(TEXT("bSawSplineAtBeginPlay FBoolProperty should be registered"), SawSplineProp);
+		ASSERT_THAT(IsNotNull(SawSplineProp, TEXT("bSawSplineAtBeginPlay FBoolProperty should be registered")));
 
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) { return; }
 
 		AActor* Actor = W.SpawnActorOfClass(ActorClass);
-		if (!TestRunner->TestNotNull(TEXT("Spline actor should spawn"), Actor)) { return; }
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Spline actor should spawn")));
 
 		USceneComponent* Root = RootProp != nullptr
 			? Cast<USceneComponent>(RootProp->GetObjectPropertyValue_InContainer(Actor))
@@ -98,16 +98,13 @@ class AFunctionalSplineActor : AActor
 		USplineComponent* Spline = SplineProp != nullptr
 			? Cast<USplineComponent>(SplineProp->GetObjectPropertyValue_InContainer(Actor))
 			: nullptr;
-		if (!TestRunner->TestNotNull(TEXT("Root default component should materialize"), Root)
-			|| !TestRunner->TestNotNull(TEXT("Spline default component should materialize"), Spline))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Root, TEXT("Root default component should materialize")));
+		ASSERT_THAT(IsNotNull(Spline, TEXT("Spline default component should materialize")));
 
-		TestRunner->TestEqual(TEXT("Root property should point to the actor root component"), Root, Actor->GetRootComponent());
-		TestRunner->TestEqual(TEXT("Spline default component should attach to the scripted root"), Spline->GetAttachParent(), Root);
-		TestRunner->TestTrue(TEXT("Spline default component should register with the actor"), Spline->IsRegistered());
-		TestRunner->TestTrue(TEXT("Spline component should expose native spline state after materialization"), Spline->GetNumberOfSplinePoints() >= 0);
+		ASSERT_THAT(AreEqual(Actor->GetRootComponent(), Root, TEXT("Root property should point to the actor root component")));
+		ASSERT_THAT(AreEqual(Root, Spline->GetAttachParent(), TEXT("Spline default component should attach to the scripted root")));
+		ASSERT_THAT(IsTrue(Spline->IsRegistered(), TEXT("Spline default component should register with the actor")));
+		ASSERT_THAT(IsTrue(Spline->GetNumberOfSplinePoints() >= 0, TEXT("Spline component should expose native spline state after materialization")));
 
 		W.BeginPlay(*Actor);
 
@@ -119,8 +116,8 @@ class AFunctionalSplineActor : AActor
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("Script BeginPlay should see the attached spline through the root component"), RootChildCountAtBeginPlay >= 1);
-		TestRunner->TestTrue(TEXT("Script BeginPlay should see a non-null spline component reference"), bSawSplineAtBeginPlay);
+		ASSERT_THAT(IsTrue(RootChildCountAtBeginPlay >= 1, TEXT("Script BeginPlay should see the attached spline through the root component")));
+		ASSERT_THAT(IsTrue(bSawSplineAtBeginPlay, TEXT("Script BeginPlay should see a non-null spline component reference")));
 	}
 };
 

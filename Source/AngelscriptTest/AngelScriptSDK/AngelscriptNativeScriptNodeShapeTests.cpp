@@ -17,10 +17,10 @@ using namespace AngelscriptNativeTestSupport;
 
 namespace
 {
-	bool ParseShapeScript(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
+	bool ParseShapeScript(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
-		if (!Test.TestNotNull(FString::Printf(TEXT("%s should create a script-node module"), UTF8_TO_TCHAR(ModuleName)), Module))
+		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a script-node module"), UTF8_TO_TCHAR(ModuleName))))
 		{
 			return false;
 		}
@@ -31,13 +31,13 @@ namespace
 
 		FParserAccessor Parser(&Builder);
 		const int ParseResult = Parser.ParseScript(&Code);
-		if (!Test.TestEqual(FString::Printf(TEXT("%s should parse successfully"), UTF8_TO_TCHAR(ModuleName)), ParseResult, 0))
+		if (!Assert.AreEqual(0, ParseResult, FString::Printf(TEXT("%s should parse successfully"), UTF8_TO_TCHAR(ModuleName))))
 		{
 			return false;
 		}
 
 		const asCScriptNode* Root = Parser.GetScriptNode();
-		if (!Test.TestNotNull(FString::Printf(TEXT("%s should produce a script root"), UTF8_TO_TCHAR(ModuleName)), Root))
+		if (!Assert.IsNotNull(Root, FString::Printf(TEXT("%s should produce a script root"), UTF8_TO_TCHAR(ModuleName))))
 		{
 			return false;
 		}
@@ -46,10 +46,10 @@ namespace
 		return true;
 	}
 
-	bool ParseStatement(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
+	bool ParseStatement(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
-		if (!Test.TestNotNull(FString::Printf(TEXT("%s should create a statement parser module"), UTF8_TO_TCHAR(ModuleName)), Module))
+		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a statement parser module"), UTF8_TO_TCHAR(ModuleName))))
 		{
 			return false;
 		}
@@ -60,7 +60,7 @@ namespace
 
 		FParserAccessor Parser(&Builder);
 		const asCScriptNode* Root = Parser.ParseStatementSnippet(&Code);
-		if (!Test.TestNotNull(FString::Printf(TEXT("%s should parse a statement root"), UTF8_TO_TCHAR(ModuleName)), Root))
+		if (!Assert.IsNotNull(Root, FString::Printf(TEXT("%s should parse a statement root"), UTF8_TO_TCHAR(ModuleName))))
 		{
 			return false;
 		}
@@ -87,148 +87,209 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 	TEST_METHOD(FunctionNodeChildrenLayout)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseShapeScript(*TestRunner, BareEngine, "ScriptNodeShapeFunction", "int Add(int A, int B) { return A + B; }", [&](const asCScriptNode& Root)
+		ParseShapeScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeFunction", "int Add(int A, int B) { return A + B; }", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestEqual(TEXT("Function script should produce one function node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snFunction), 1);
-			TestRunner->TestTrue(TEXT("Function node should carry return type, identifier, parameters, and block children"), CountDirectChildren(Root.firstChild) >= 4);
+			if (!this->Assert.AreEqual(1, AngelscriptNativeTestSupport::CountNodesOfType(&Root, snFunction),
+				TEXT("Function script should produce one function node")))
+			{
+				return;
+			}
+			if (!this->Assert.IsTrue(CountDirectChildren(Root.firstChild) >= 4,
+				TEXT("Function node should carry return type, identifier, parameters, and block children")))
+			{
+				return;
+			}
 		});
 	}
 
 	TEST_METHOD(ParameterListNodeShape)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseShapeScript(*TestRunner, BareEngine, "ScriptNodeShapeParameters", "void Visit(int A, float B, const string& in Name) { }", [&](const asCScriptNode& Root)
+		ParseShapeScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeParameters", "void Visit(int A, float B, const string& in Name) { }", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestEqual(TEXT("Parameter list should be represented once"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snParameterList), 1);
-			TestRunner->TestTrue(TEXT("Parameter list should include data type and identifier nodes"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snDataType) >= 4);
+			if (!this->Assert.AreEqual(1, AngelscriptNativeTestSupport::CountNodesOfType(&Root, snParameterList),
+				TEXT("Parameter list should be represented once")))
+			{
+				return;
+			}
+			if (!this->Assert.IsTrue(AngelscriptNativeTestSupport::CountNodesOfType(&Root, snDataType) >= 4,
+				TEXT("Parameter list should include data type and identifier nodes")))
+			{
+				return;
+			}
 		});
 	}
 
 	TEST_METHOD(StatementBlockHoldsStatements)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseStatement(*TestRunner, BareEngine, "ScriptNodeShapeStatementBlock", "{ int A = 1; A += 2; return; }", [&](const asCScriptNode& Root)
+		ParseStatement(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeStatementBlock", "{ int A = 1; A += 2; return; }", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestEqual(TEXT("Statement block should parse to a statement-block root"), static_cast<int32>(Root.nodeType), static_cast<int32>(snStatementBlock));
-			TestRunner->TestEqual(TEXT("Function body should produce one statement block"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snStatementBlock), 1);
-			TestRunner->TestEqual(TEXT("Statement block should retain all direct child statements"), CountDirectChildren(&Root), 3);
-			TestRunner->TestEqual(TEXT("Statement block should still contain the return statement"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snReturn), 1);
+			if (!this->Assert.AreEqual(static_cast<int32>(snStatementBlock), static_cast<int32>(Root.nodeType),
+				TEXT("Statement block should parse to a statement-block root")))
+			{
+				return;
+			}
+			if (!this->Assert.AreEqual(1, AngelscriptNativeTestSupport::CountNodesOfType(&Root, snStatementBlock),
+				TEXT("Function body should produce one statement block")))
+			{
+				return;
+			}
+			if (!this->Assert.AreEqual(3, CountDirectChildren(&Root),
+				TEXT("Statement block should retain all direct child statements")))
+			{
+				return;
+			}
+			if (!this->Assert.AreEqual(1, AngelscriptNativeTestSupport::CountNodesOfType(&Root, snReturn),
+				TEXT("Statement block should still contain the return statement")))
+			{
+				return;
+			}
 		});
 	}
 
 	TEST_METHOD(ReturnNodeHasOptionalExpression)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseStatement(*TestRunner, BareEngine, "ScriptNodeShapeReturn", "return 42;", [&](const asCScriptNode& Root)
+		ParseStatement(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeReturn", "return 42;", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestEqual(TEXT("Return statement should parse to a return root node"), static_cast<int32>(Root.nodeType), static_cast<int32>(snReturn));
-			TestRunner->TestTrue(TEXT("Value-return statement should include an expression child"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snExpression) >= 1);
+			if (!this->Assert.AreEqual(static_cast<int32>(snReturn), static_cast<int32>(Root.nodeType),
+				TEXT("Return statement should parse to a return root node")))
+			{
+				return;
+			}
+			if (!this->Assert.IsTrue(AngelscriptNativeTestSupport::CountNodesOfType(&Root, snExpression) >= 1,
+				TEXT("Value-return statement should include an expression child")))
+			{
+				return;
+			}
 		});
 	}
 
 	TEST_METHOD(BreakAndContinueAreLeafNodes)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseStatement(*TestRunner, BareEngine, "ScriptNodeShapeBreak", "break;", [&](const asCScriptNode& Root)
+		ParseStatement(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeBreak", "break;", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestEqual(TEXT("Break statement should parse to a break root node"), static_cast<int32>(Root.nodeType), static_cast<int32>(snBreak));
-			TestRunner->TestEqual(TEXT("Break statement should remain a leaf node"), CountDirectChildren(&Root), 0);
+			if (!this->Assert.AreEqual(static_cast<int32>(snBreak), static_cast<int32>(Root.nodeType),
+				TEXT("Break statement should parse to a break root node")))
+			{
+				return;
+			}
+			if (!this->Assert.AreEqual(0, CountDirectChildren(&Root),
+				TEXT("Break statement should remain a leaf node")))
+			{
+				return;
+			}
 		});
 
-		ParseStatement(*TestRunner, BareEngine, "ScriptNodeShapeContinue", "continue;", [&](const asCScriptNode& Root)
+		ParseStatement(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeContinue", "continue;", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestEqual(TEXT("Continue statement should parse to a continue root node"), static_cast<int32>(Root.nodeType), static_cast<int32>(snContinue));
-			TestRunner->TestEqual(TEXT("Continue statement should remain a leaf node"), CountDirectChildren(&Root), 0);
+			if (!this->Assert.AreEqual(static_cast<int32>(snContinue), static_cast<int32>(Root.nodeType),
+				TEXT("Continue statement should parse to a continue root node")))
+			{
+				return;
+			}
+			if (!this->Assert.AreEqual(0, CountDirectChildren(&Root),
+				TEXT("Continue statement should remain a leaf node")))
+			{
+				return;
+			}
 		});
 	}
 
 	TEST_METHOD(DoWhileShape)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseStatement(*TestRunner, BareEngine, "ScriptNodeShapeDoWhile", "do { continue; } while (true);", [&](const asCScriptNode& Root)
+		ParseStatement(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeDoWhile", "do { continue; } while (true);", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestEqual(TEXT("Do/while statement root should be a do-while node"), static_cast<int32>(Root.nodeType), static_cast<int32>(snDoWhile));
-			TestRunner->TestEqual(TEXT("Do/while statement should contain a continue node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snContinue), 1);
-			TestRunner->TestTrue(TEXT("Do/while statement should include a condition subtree"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snCondition) >= 1);
+			if (!this->Assert.AreEqual(static_cast<int32>(snDoWhile), static_cast<int32>(Root.nodeType),
+				TEXT("Do/while statement root should be a do-while node")))
+			{
+				return;
+			}
+			if (!this->Assert.AreEqual(1, AngelscriptNativeTestSupport::CountNodesOfType(&Root, snContinue),
+				TEXT("Do/while statement should contain a continue node")))
+			{
+				return;
+			}
+			if (!this->Assert.IsTrue(AngelscriptNativeTestSupport::CountNodesOfType(&Root, snCondition) >= 1,
+				TEXT("Do/while statement should include a condition subtree")))
+			{
+				return;
+			}
 		});
 	}
 
 	TEST_METHOD(SwitchAndCaseShape)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseStatement(*TestRunner, BareEngine, "ScriptNodeShapeSwitch", "switch (Value) { case 1: break; default: break; }", [&](const asCScriptNode& Root)
+		ParseStatement(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeSwitch", "switch (Value) { case 1: break; default: break; }", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestEqual(TEXT("Switch statement root should be a switch node"), static_cast<int32>(Root.nodeType), static_cast<int32>(snSwitch));
-			TestRunner->TestEqual(TEXT("Switch should carry two case/default nodes"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snCase), 2);
-			TestRunner->TestEqual(TEXT("Switch cases should each include a break node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snBreak), 2);
+			if (!this->Assert.AreEqual(static_cast<int32>(snSwitch), static_cast<int32>(Root.nodeType),
+				TEXT("Switch statement root should be a switch node")))
+			{
+				return;
+			}
+			if (!this->Assert.AreEqual(2, AngelscriptNativeTestSupport::CountNodesOfType(&Root, snCase),
+				TEXT("Switch should carry two case/default nodes")))
+			{
+				return;
+			}
+			if (!this->Assert.AreEqual(2, AngelscriptNativeTestSupport::CountNodesOfType(&Root, snBreak),
+				TEXT("Switch cases should each include a break node")))
+			{
+				return;
+			}
 		});
 	}
 
 	TEST_METHOD(EnumNodeAndEnumValueChildren)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseShapeScript(*TestRunner, BareEngine, "ScriptNodeShapeEnum", "enum EMode { Idle = 0, Run = 1, Jump }", [&](const asCScriptNode& Root)
+		ParseShapeScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeEnum", "enum EMode { Idle = 0, Run = 1, Jump }", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestEqual(TEXT("Enum declaration should produce one enum node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snEnum), 1);
-			TestRunner->TestTrue(TEXT("Enum declaration should keep enum and value identifiers"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snIdentifier) >= 4);
+			if (!this->Assert.AreEqual(1, AngelscriptNativeTestSupport::CountNodesOfType(&Root, snEnum),
+				TEXT("Enum declaration should produce one enum node")))
+			{
+				return;
+			}
+			if (!this->Assert.IsTrue(AngelscriptNativeTestSupport::CountNodesOfType(&Root, snIdentifier) >= 4,
+				TEXT("Enum declaration should keep enum and value identifiers")))
+			{
+				return;
+			}
 		});
 	}
 
 	TEST_METHOD(InterfaceNodeShape)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
 		asCModule* Module = CreateSdkModule(BareEngine, "ScriptNodeShapeInterface");
@@ -237,32 +298,35 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 		asCScriptCode Code;
 		Code.SetCode("ScriptNodeShapeInterface", "interface IThing { void Run(); }", true);
 		FParserAccessor Parser(&Builder);
-		TestRunner->TestTrue(TEXT("Script-level interface declaration should remain rejected in this native parser mode"), Parser.ParseScript(&Code) < 0);
+		ASSERT_THAT(IsTrue(Parser.ParseScript(&Code) < 0,
+			TEXT("Script-level interface declaration should remain rejected in this native parser mode")));
 	}
 
 	TEST_METHOD(ImportNodeShape)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseShapeScript(*TestRunner, BareEngine, "ScriptNodeShapeImport", "import int SharedValue() from \"OtherModule\";", [&](const asCScriptNode& Root)
+		ParseShapeScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeImport", "import int SharedValue() from \"OtherModule\";", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestEqual(TEXT("Import declaration should produce one import node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snImport), 1);
-			TestRunner->TestTrue(TEXT("Import declaration should carry a function-definition subtree"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snDataType) >= 1 && AngelscriptNativeTestSupport::CountNodesOfType(&Root, snParameterList) >= 1);
+			if (!this->Assert.AreEqual(1, AngelscriptNativeTestSupport::CountNodesOfType(&Root, snImport),
+				TEXT("Import declaration should produce one import node")))
+			{
+				return;
+			}
+			if (!this->Assert.IsTrue(AngelscriptNativeTestSupport::CountNodesOfType(&Root, snDataType) >= 1 && AngelscriptNativeTestSupport::CountNodesOfType(&Root, snParameterList) >= 1,
+				TEXT("Import declaration should carry a function-definition subtree")))
+			{
+				return;
+			}
 		});
 	}
 
 	TEST_METHOD(FuncDefNodeShape)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
 		asCModule* Module = CreateSdkModule(BareEngine, "ScriptNodeShapeFuncDef");
@@ -271,16 +335,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 		asCScriptCode Code;
 		Code.SetCode("ScriptNodeShapeFuncDef", "funcdef void FCallback(int Value);", true);
 		FParserAccessor Parser(&Builder);
-		TestRunner->TestTrue(TEXT("Script-level funcdef declaration should remain rejected in this native parser mode"), Parser.ParseScript(&Code) < 0);
+		ASSERT_THAT(IsTrue(Parser.ParseScript(&Code) < 0,
+			TEXT("Script-level funcdef declaration should remain rejected in this native parser mode")));
 	}
 
 	TEST_METHOD(TypedefNodeShape)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
 		asCModule* Module = CreateSdkModule(BareEngine, "ScriptNodeShapeTypedef");
@@ -289,16 +351,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 		asCScriptCode Code;
 		Code.SetCode("ScriptNodeShapeTypedef", "typedef int32 FScore;", true);
 		FParserAccessor Parser(&Builder);
-		TestRunner->TestTrue(TEXT("Script-level typedef declaration should remain rejected in this native parser mode"), Parser.ParseScript(&Code) < 0);
+		ASSERT_THAT(IsTrue(Parser.ParseScript(&Code) < 0,
+			TEXT("Script-level typedef declaration should remain rejected in this native parser mode")));
 	}
 
 	TEST_METHOD(VirtualPropertyNodeShape)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("ScriptNode shape test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
 		// Virtual-property syntax `int X { get { ... } set { } }` was removed by the
@@ -310,7 +370,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 		asCScriptCode Code;
 		Code.SetCode("ScriptNodeShapeVirtualProperty", "int Value { get { return 1; } set { } }", true);
 		FParserAccessor Parser(&Builder);
-		TestRunner->TestTrue(TEXT("Virtual property declaration should be rejected after autoaccessor removal"), Parser.ParseScript(&Code) < 0);
+		ASSERT_THAT(IsTrue(Parser.ParseScript(&Code) < 0,
+			TEXT("Virtual property declaration should be rejected after autoaccessor removal")));
 	}
 };
 

@@ -272,15 +272,15 @@ int LinePlaneIntersectionCorrect()
 		const FRotator ExpectedRotatorInterp = FMath::RInterpTo(FRotator::ZeroRotator, FRotator(0.0f, 90.0f, 0.0f), 0.1f, 5.0f);
 		const float ExpectedScalarInterp = FMath::FInterpTo(0.0f, 100.0f, 0.1f, 5.0f);
 
-		TestRunner->TestTrue(
-			TEXT("Native GetReflectionVector baseline should reflect X across the opposing normal into (-1, 0, 0)"),
-			ExpectedReflection.Equals(FVector(-1.0f, 0.0f, 0.0f), 0.0f));
-		TestRunner->TestTrue(
-			TEXT("Native VInterpTo baseline should advance toward the target on X only"),
-			ExpectedVectorInterp.Equals(FVector(ExpectedVectorInterp.X, 0.0f, 0.0f), 0.0f));
-		TestRunner->TestTrue(
-			TEXT("Native RInterpTo baseline should only accumulate yaw for this setup"),
-			ExpectedRotatorInterp.Equals(FRotator(0.0f, ExpectedRotatorInterp.Yaw, 0.0f), 0.0f));
+		ASSERT_THAT(IsTrue(
+			ExpectedReflection.Equals(FVector(-1.0f, 0.0f, 0.0f), 0.0f),
+			TEXT("Native GetReflectionVector baseline should reflect X across the opposing normal into (-1, 0, 0)")));
+		ASSERT_THAT(IsTrue(
+			ExpectedVectorInterp.Equals(FVector(ExpectedVectorInterp.X, 0.0f, 0.0f), 0.0f),
+			TEXT("Native VInterpTo baseline should advance toward the target on X only")));
+		ASSERT_THAT(IsTrue(
+			ExpectedRotatorInterp.Equals(FRotator(0.0f, ExpectedRotatorInterp.Yaw, 0.0f), 0.0f),
+			TEXT("Native RInterpTo baseline should only accumulate yaw for this setup")));
 
 		FString Script = TEXT(R"(
 int Entry()

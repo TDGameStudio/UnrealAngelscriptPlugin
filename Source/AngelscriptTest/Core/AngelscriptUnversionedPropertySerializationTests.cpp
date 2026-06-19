@@ -75,31 +75,32 @@ namespace AngelscriptTest_Core_AngelscriptUnversionedPropertySerializationTests_
 		const FAngelscriptUnversionedPropertySerializationFixture& Actual,
 		const FAngelscriptUnversionedPropertySerializationFixture& Expected)
 	{
+		FNoDiscardAsserter Assert(Test);
 		bool bOk = true;
-		bOk &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve Count"), Context),
+		bOk &= Assert.AreEqual(
+			Expected.Count,
 			Actual.Count,
-			Expected.Count);
-		bOk &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve bEnabled"), Context),
+			FString::Printf(TEXT("%s should preserve Count"), Context));
+		bOk &= Assert.AreEqual(
+			Expected.bEnabled,
 			Actual.bEnabled,
-			Expected.bEnabled);
-		bOk &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve Label"), Context),
+			FString::Printf(TEXT("%s should preserve bEnabled"), Context));
+		bOk &= Assert.AreEqual(
+			Expected.Label,
 			Actual.Label,
-			Expected.Label);
-		bOk &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve Values.Num"), Context),
+			FString::Printf(TEXT("%s should preserve Label"), Context));
+		bOk &= Assert.AreEqual(
+			Expected.Values.Num(),
 			Actual.Values.Num(),
-			Expected.Values.Num());
+			FString::Printf(TEXT("%s should preserve Values.Num"), Context));
 
 		const int32 SharedValueCount = FMath::Min(Actual.Values.Num(), Expected.Values.Num());
 		for (int32 Index = 0; Index < SharedValueCount; ++Index)
 		{
-			bOk &= Test.TestEqual(
-				*FString::Printf(TEXT("%s should preserve Values[%d]"), Context, Index),
+			bOk &= Assert.AreEqual(
+				Expected.Values[Index],
 				Actual.Values[Index],
-				Expected.Values[Index]);
+				FString::Printf(TEXT("%s should preserve Values[%d]"), Context, Index));
 		}
 
 		return bOk;
@@ -184,10 +185,11 @@ namespace AngelscriptTest_Core_AngelscriptUnversionedPropertySerializationTests_
 				reinterpret_cast<uint8*>(&MutableDefaults));
 		}
 
-		return Test.TestEqual(
-			*FString::Printf(TEXT("%s should consume the entire %s payload"), Context, ToString(Path)),
+		FNoDiscardAsserter Assert(Test);
+		return Assert.AreEqual(
+			static_cast<int64>(Bytes.Num()),
 			Reader.Tell(),
-			static_cast<int64>(Bytes.Num()));
+			FString::Printf(TEXT("%s should consume the entire %s payload"), Context, ToString(Path)));
 	}
 
 	bool ExpectRoundTrip(
@@ -200,9 +202,10 @@ namespace AngelscriptTest_Core_AngelscriptUnversionedPropertySerializationTests_
 		TArray<uint8> Payload;
 		SaveFixture(Path, Source, Defaults, Payload);
 
-		bool bOk = Test.TestTrue(
-			*FString::Printf(TEXT("%s should produce a non-empty %s payload"), Context, ToString(Path)),
-			Payload.Num() > 0);
+		FNoDiscardAsserter Assert(Test);
+		bool bOk = Assert.IsTrue(
+			Payload.Num() > 0,
+			FString::Printf(TEXT("%s should produce a non-empty %s payload"), Context, ToString(Path)));
 
 		FAngelscriptUnversionedPropertySerializationFixture Loaded;
 		bOk &= LoadFixture(Test, Context, Path, Payload, Defaults, Loaded);
@@ -219,12 +222,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUnversionedPropertySerializationTests,
 	TEST_METHOD(RoundTripsAndRebuildsSchemaCache)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptUnversionedPropertySerializationTests_Private;
-		if (!TestRunner->TestTrue(
-				TEXT("Automation environment should enable unversioned property serialization"),
-				IsUnversionedPropertySerializationEnabled()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(
+			IsUnversionedPropertySerializationEnabled(),
+			TEXT("Automation environment should enable unversioned property serialization")));
 
 		UScriptStruct* Struct = GetFixtureStruct();
 		DestroyAngelscriptUnversionedSchema(Struct);
@@ -249,9 +249,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUnversionedPropertySerializationTests,
 
 #if WITH_EDITORONLY_DATA
 		const FBlake3Hash SchemaHashAfterDestroy = GetSchemaHash(Struct, false);
-		TestRunner->TestTrue(
-			TEXT("Schema hash should stay stable across cache destruction"),
-			SchemaHashBeforeDestroy == SchemaHashAfterDestroy);
+		ASSERT_THAT(IsTrue(
+			SchemaHashBeforeDestroy == SchemaHashAfterDestroy,
+			TEXT("Schema hash should stay stable across cache destruction")));
 #endif
 
 		ExpectRoundTrip(*TestRunner, TEXT("Unversioned default fixture after schema rebuild"), ESerializationPath::Unversioned, Defaults, Defaults);

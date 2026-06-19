@@ -82,28 +82,29 @@ namespace AngelscriptTest_Core_AngelscriptTypeDatabaseTests_Private
 		const TSharedRef<FAngelscriptType>& ExpectedType,
 		const FString& ExpectedDeclaration)
 	{
+		FNoDiscardAsserter Assert(Test);
 		const FAngelscriptType* ExpectedTypePtr = &ExpectedType.Get();
 		bool bOk = true;
-		bOk &= Test.TestTrue(
-			*FString::Printf(TEXT("%s should resolve to a valid usage"), Context),
-			Usage.IsValid());
-		bOk &= Test.TestTrue(
-			*FString::Printf(TEXT("%s should resolve to the expected registered type"), Context),
-			Usage.Type.Get() == ExpectedTypePtr);
-		bOk &= Test.TestFalse(
-			*FString::Printf(TEXT("%s should not carry const qualifiers for a plain reflected property"), Context),
-			Usage.bIsConst);
-		bOk &= Test.TestFalse(
-			*FString::Printf(TEXT("%s should not carry reference qualifiers for a plain reflected property"), Context),
-			Usage.bIsReference);
-		bOk &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the fake declaration"), Context),
+		bOk &= Assert.IsTrue(
+			Usage.IsValid(),
+			*FString::Printf(TEXT("%s should resolve to a valid usage"), Context));
+		bOk &= Assert.IsTrue(
+			Usage.Type.Get() == ExpectedTypePtr,
+			*FString::Printf(TEXT("%s should resolve to the expected registered type"), Context));
+		bOk &= Assert.IsFalse(
+			Usage.bIsConst,
+			*FString::Printf(TEXT("%s should not carry const qualifiers for a plain reflected property"), Context));
+		bOk &= Assert.IsFalse(
+			Usage.bIsReference,
+			*FString::Printf(TEXT("%s should not carry reference qualifiers for a plain reflected property"), Context));
+		bOk &= Assert.AreEqual(
+			ExpectedDeclaration,
 			Usage.GetAngelscriptDeclaration(),
-			ExpectedDeclaration);
-		bOk &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should not create synthetic template subtypes"), Context),
+			*FString::Printf(TEXT("%s should preserve the fake declaration"), Context));
+		bOk &= Assert.AreEqual(
+			0,
 			Usage.SubTypes.Num(),
-			0);
+			*FString::Printf(TEXT("%s should not create synthetic template subtypes"), Context));
 		return bOk;
 	}
 }
@@ -135,29 +136,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTypeDatabaseTests,
 			DestroySharedTestEngine();
 		};
 
-		if (!TestRunner->TestNull(
-				TEXT("Type database lifecycle test should start without an ambient engine so it uses the legacy database"),
-				FAngelscriptEngine::TryGetCurrentEngine()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNull(
+			FAngelscriptEngine::TryGetCurrentEngine(),
+			TEXT("Type database lifecycle test should start without an ambient engine so it uses the legacy database")));
 
 		FAngelscriptType::ResetTypeDatabase();
-		if (!TestRunner->TestEqual(
-				TEXT("Type database lifecycle test should start from an empty legacy database"),
-				FAngelscriptType::GetTypes().Num(),
-				0))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(
+			0,
+			FAngelscriptType::GetTypes().Num(),
+			TEXT("Type database lifecycle test should start from an empty legacy database")));
 
 		FProperty* StoredValueProperty = UAngelscriptUhtCoverageTestObject::StaticClass()->FindPropertyByName(TEXT("StoredValue"));
-		if (!TestRunner->TestNotNull(
-				TEXT("Type database lifecycle test should find UAngelscriptUhtCoverageTestObject::StoredValue"),
-				StoredValueProperty))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(
+			StoredValueProperty,
+			TEXT("Type database lifecycle test should find UAngelscriptUhtCoverageTestObject::StoredValue")));
 
 		const FString PreferredTypeName = TEXT("AutomationMappedType");
 		const FString FallbackTypeName = TEXT("AutomationFallbackType");
@@ -182,22 +174,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTypeDatabaseTests,
 			return true;
 		});
 
-		TestRunner->TestEqual(
-			TEXT("Type database lifecycle test should register exactly two concrete types before reset"),
+		ASSERT_THAT(AreEqual(
+			2,
 			FAngelscriptType::GetTypes().Num(),
-			2);
-		TestRunner->TestTrue(
-			TEXT("Type database lifecycle test should resolve the base type by its registered name"),
-			FAngelscriptType::GetByAngelscriptTypeName(PreferredTypeName).Get() == PreferredTypePtr);
-		TestRunner->TestTrue(
-			TEXT("Type database lifecycle test should resolve aliases to the same fake type"),
-			FAngelscriptType::GetByAngelscriptTypeName(AliasName).Get() == PreferredTypePtr);
-		TestRunner->TestTrue(
-			TEXT("Type database lifecycle test should still expose the fallback property matcher when type finders are disabled"),
-			FAngelscriptType::GetByProperty(StoredValueProperty, false).Get() == FallbackTypePtr);
-		TestRunner->TestTrue(
-			TEXT("Type database lifecycle test should prefer the registered type finder over the fallback property matcher"),
-			FAngelscriptType::GetByProperty(StoredValueProperty).Get() == PreferredTypePtr);
+			TEXT("Type database lifecycle test should register exactly two concrete types before reset")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptType::GetByAngelscriptTypeName(PreferredTypeName).Get() == PreferredTypePtr,
+			TEXT("Type database lifecycle test should resolve the base type by its registered name")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptType::GetByAngelscriptTypeName(AliasName).Get() == PreferredTypePtr,
+			TEXT("Type database lifecycle test should resolve aliases to the same fake type")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptType::GetByProperty(StoredValueProperty, false).Get() == FallbackTypePtr,
+			TEXT("Type database lifecycle test should still expose the fallback property matcher when type finders are disabled")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptType::GetByProperty(StoredValueProperty).Get() == PreferredTypePtr,
+			TEXT("Type database lifecycle test should prefer the registered type finder over the fallback property matcher")));
 
 		const FAngelscriptTypeUsage UsageBeforeReset = FAngelscriptTypeUsage::FromProperty(StoredValueProperty);
 		ExpectUsageMatches(
@@ -210,28 +202,28 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTypeDatabaseTests,
 		FAngelscriptType::ResetTypeDatabase();
 
 		const FAngelscriptTypeUsage UsageAfterReset = FAngelscriptTypeUsage::FromProperty(StoredValueProperty);
-		TestRunner->TestEqual(
-			TEXT("Type database lifecycle test should clear all registered types after reset"),
+		ASSERT_THAT(AreEqual(
+			0,
 			FAngelscriptType::GetTypes().Num(),
-			0);
-		TestRunner->TestNull(
-			TEXT("Type database lifecycle test should clear the registered base type after reset"),
-			FAngelscriptType::GetByAngelscriptTypeName(PreferredTypeName).Get());
-		TestRunner->TestNull(
-			TEXT("Type database lifecycle test should clear the registered fallback type after reset"),
-			FAngelscriptType::GetByAngelscriptTypeName(FallbackTypeName).Get());
-		TestRunner->TestNull(
-			TEXT("Type database lifecycle test should clear the registered alias after reset"),
-			FAngelscriptType::GetByAngelscriptTypeName(AliasName).Get());
-		TestRunner->TestNull(
-			TEXT("Type database lifecycle test should remove fallback property resolution after reset"),
-			FAngelscriptType::GetByProperty(StoredValueProperty, false).Get());
-		TestRunner->TestNull(
-			TEXT("Type database lifecycle test should remove finder-based property resolution after reset"),
-			FAngelscriptType::GetByProperty(StoredValueProperty).Get());
-		TestRunner->TestFalse(
-			TEXT("Type database lifecycle test should leave FromProperty invalid after reset"),
-			UsageAfterReset.IsValid());
+			TEXT("Type database lifecycle test should clear all registered types after reset")));
+		ASSERT_THAT(IsNull(
+			FAngelscriptType::GetByAngelscriptTypeName(PreferredTypeName).Get(),
+			TEXT("Type database lifecycle test should clear the registered base type after reset")));
+		ASSERT_THAT(IsNull(
+			FAngelscriptType::GetByAngelscriptTypeName(FallbackTypeName).Get(),
+			TEXT("Type database lifecycle test should clear the registered fallback type after reset")));
+		ASSERT_THAT(IsNull(
+			FAngelscriptType::GetByAngelscriptTypeName(AliasName).Get(),
+			TEXT("Type database lifecycle test should clear the registered alias after reset")));
+		ASSERT_THAT(IsNull(
+			FAngelscriptType::GetByProperty(StoredValueProperty, false).Get(),
+			TEXT("Type database lifecycle test should remove fallback property resolution after reset")));
+		ASSERT_THAT(IsNull(
+			FAngelscriptType::GetByProperty(StoredValueProperty).Get(),
+			TEXT("Type database lifecycle test should remove finder-based property resolution after reset")));
+		ASSERT_THAT(IsFalse(
+			UsageAfterReset.IsValid(),
+			TEXT("Type database lifecycle test should leave FromProperty invalid after reset")));
 	}
 };
 

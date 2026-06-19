@@ -27,13 +27,14 @@ namespace ASClassConstructionContextTest
 
 	bool VerifyProbeBaseline(FAutomationTestBase& Test)
 	{
-		const bool bCapturedObjectCleared = Test.TestNull(
-			TEXT("Construction-context probe should start without a captured object"),
-			UAngelscriptConstructionContextProbe::GetLastCapturedObject());
-		const bool bCaptureCountCleared = Test.TestEqual(
-			TEXT("Construction-context probe should start with a zero capture count"),
+		FNoDiscardAsserter Assert(Test);
+		const bool bCapturedObjectCleared = Assert.IsNull(
+			UAngelscriptConstructionContextProbe::GetLastCapturedObject(),
+			TEXT("Construction-context probe should start without a captured object"));
+		const bool bCaptureCountCleared = Assert.AreEqual(
+			0,
 			UAngelscriptConstructionContextProbe::GetLastCaptureCount(),
-			0);
+			TEXT("Construction-context probe should start with a zero capture count"));
 		return bCapturedObjectCleared && bCaptureCountCleared;
 	}
 
@@ -69,9 +70,13 @@ class UConstructionContextCarrier : UObject
 		}
 
 		UASClass* GeneratedASClass = Cast<UASClass>(GeneratedClass);
-		Test.TestNotNull(
-			TEXT("Construction-context test case should compile to a generated UASClass"),
-			GeneratedASClass);
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(
+			GeneratedASClass,
+			TEXT("Construction-context test case should compile to a generated UASClass")))
+		{
+			return nullptr;
+		}
 		return GeneratedASClass;
 	}
 
@@ -79,24 +84,25 @@ class UConstructionContextCarrier : UObject
 		FAutomationTestBase& Test,
 		UObject* Instance)
 	{
-		if (!Test.TestNotNull(TEXT("Construction-context test case should create the generated script object"), Instance))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(Instance, TEXT("Construction-context test case should create the generated script object")))
 		{
 			return false;
 		}
 
-		const bool bCaptureCountMatches = Test.TestEqual(
-			TEXT("Construction-context test case should capture the constructing object exactly once during instance defaults"),
+		const bool bCaptureCountMatches = Assert.AreEqual(
+			1,
 			UAngelscriptConstructionContextProbe::GetLastCaptureCount(),
-			1);
+			TEXT("Construction-context test case should capture the constructing object exactly once during instance defaults"));
 
 		UObject* CapturedObject = UAngelscriptConstructionContextProbe::GetLastCapturedObject();
-		const bool bProbeCapturedInstance = Test.TestTrue(
-			TEXT("Construction-context test case should record the final instance through the native probe"),
-			CapturedObject == Instance);
+		const bool bProbeCapturedInstance = Assert.IsTrue(
+			CapturedObject == Instance,
+			TEXT("Construction-context test case should record the final instance through the native probe"));
 
-		const bool bConstructionStateCleared = Test.TestNull(
-			TEXT("Construction-context test case should clear GetConstructingASObject after NewObject completes"),
-			UASClass::GetConstructingASObject());
+		const bool bConstructionStateCleared = Assert.IsNull(
+			UASClass::GetConstructingASObject(),
+			TEXT("Construction-context test case should clear GetConstructingASObject after NewObject completes"));
 
 		return bCaptureCountMatches
 			&& bProbeCapturedInstance
@@ -128,12 +134,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassConstructionContextTests,
 			return;
 		}
 
-		if (!TestRunner->TestNull(
-				TEXT("Construction-context test case should not expose a constructing object before compiling or instantiating"),
-				UASClass::GetConstructingASObject()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNull(
+			UASClass::GetConstructingASObject(),
+			TEXT("Construction-context test case should not expose a constructing object before compiling or instantiating")));
 
 		UASClass* GeneratedASClass = ASClassConstructionContextTest::CompileConstructionContextCarrier(*TestRunner, Engine);
 		if (GeneratedASClass == nullptr)
@@ -147,12 +150,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassConstructionContextTests,
 			return;
 		}
 
-		if (!TestRunner->TestNull(
-				TEXT("Construction-context test case should clear any compile-time CDO capture before the runtime instantiation step"),
-				UASClass::GetConstructingASObject()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNull(
+			UASClass::GetConstructingASObject(),
+			TEXT("Construction-context test case should clear any compile-time CDO capture before the runtime instantiation step")));
 
 		UObject* Instance = NewObject<UObject>(GetTransientPackage(), GeneratedASClass, TEXT("ConstructionContextCarrier"));
 		if (Instance == nullptr)

@@ -84,7 +84,8 @@ namespace AngelscriptSubsystemBindingsTest_Private
 
 		bool Initialize(FAutomationTestBase& Test)
 		{
-			if (!Test.TestNotNull(TEXT("Subsystem local-player fixture should have a live GEngine"), GEngine))
+			FNoDiscardAsserter Assert(Test);
+			if (!Assert.IsNotNull(GEngine, TEXT("Subsystem local-player fixture should have a live GEngine")))
 			{
 				return false;
 			}
@@ -94,13 +95,13 @@ namespace AngelscriptSubsystemBindingsTest_Private
 				UPackage::StaticClass(),
 				FName(TEXT("/Angelscript_Test_SubsystemBindingsLocalPlayer")));
 			Package = NewObject<UPackage>(GetTransientPackage(), PackageName, RF_Transient);
-			if (!Test.TestNotNull(TEXT("Subsystem local-player fixture should create a transient world package"), Package))
+			if (!Assert.IsNotNull(Package, TEXT("Subsystem local-player fixture should create a transient world package")))
 			{
 				return false;
 			}
 
 			GameInstance = NewObject<UGameInstance>(GEngine, UGameInstance::StaticClass());
-			if (!Test.TestNotNull(TEXT("Subsystem local-player fixture should create an engine-owned game instance"), GameInstance))
+			if (!Assert.IsNotNull(GameInstance, TEXT("Subsystem local-player fixture should create an engine-owned game instance")))
 			{
 				return false;
 			}
@@ -108,8 +109,10 @@ namespace AngelscriptSubsystemBindingsTest_Private
 			GameInstance->InitializeStandalone(TEXT("AngelscriptSubsystemBindingsLocalPlayerWorld"), Package);
 			World = GameInstance->GetWorld();
 			WorldContext = GameInstance->GetWorldContext();
-			if (!Test.TestNotNull(TEXT("Subsystem local-player fixture should initialize a standalone world"), World)
-				|| !Test.TestNotNull(TEXT("Subsystem local-player fixture should expose a world context"), WorldContext))
+			bool bHasWorldContext = true;
+			bHasWorldContext &= Assert.IsNotNull(World, TEXT("Subsystem local-player fixture should initialize a standalone world"));
+			bHasWorldContext &= Assert.IsNotNull(WorldContext, TEXT("Subsystem local-player fixture should expose a world context"));
+			if (!bHasWorldContext)
 			{
 				return false;
 			}
@@ -118,7 +121,7 @@ namespace AngelscriptSubsystemBindingsTest_Private
 				? GEngine->GameViewportClientClass.Get()
 				: UGameViewportClient::StaticClass();
 			GameViewport = NewObject<UGameViewportClient>(GEngine, ViewportClass);
-			if (!Test.TestNotNull(TEXT("Subsystem local-player fixture should create a viewport client"), GameViewport))
+			if (!Assert.IsNotNull(GameViewport, TEXT("Subsystem local-player fixture should create a viewport client")))
 			{
 				return false;
 			}
@@ -201,22 +204,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSubsystemBindingsTest,
 		AActor& ContextActor = Spawner.SpawnActor<AActor>();
 		UWorld* TestWorld = ContextActor.GetWorld();
 		UGameInstance* GameInstance = TestWorld != nullptr ? TestWorld->GetGameInstance() : nullptr;
-		if (!TestRunner->TestNotNull(TEXT("Subsystem namespace helper test should have a live GEngine"), GEngine)
-			|| !TestRunner->TestNotNull(TEXT("Subsystem namespace helper test should create a test world"), TestWorld)
-			|| !TestRunner->TestNotNull(TEXT("Subsystem namespace helper test should expose a game instance"), GameInstance))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(GEngine, TEXT("Subsystem namespace helper test should have a live GEngine")));
+		ASSERT_THAT(IsNotNull(TestWorld, TEXT("Subsystem namespace helper test should create a test world")));
+		ASSERT_THAT(IsNotNull(GameInstance, TEXT("Subsystem namespace helper test should expose a game instance")));
 
 		UAngelscriptEngineSubsystem* ExpectedEngineSubsystem = GEngine->GetEngineSubsystem<UAngelscriptEngineSubsystem>();
 		UAngelscriptGameInstanceSubsystem* ExpectedGameInstanceSubsystem = GameInstance->GetSubsystem<UAngelscriptGameInstanceSubsystem>();
 		UNetworkSubsystem* ExpectedWorldSubsystem = TestWorld->GetSubsystem<UNetworkSubsystem>();
-		if (!TestRunner->TestNotNull(TEXT("Subsystem namespace helper test should expose the Angelscript engine subsystem"), ExpectedEngineSubsystem)
-			|| !TestRunner->TestNotNull(TEXT("Subsystem namespace helper test should expose the Angelscript game-instance subsystem"), ExpectedGameInstanceSubsystem)
-			|| !TestRunner->TestNotNull(TEXT("Subsystem namespace helper test should expose the network world subsystem"), ExpectedWorldSubsystem))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ExpectedEngineSubsystem, TEXT("Subsystem namespace helper test should expose the Angelscript engine subsystem")));
+		ASSERT_THAT(IsNotNull(ExpectedGameInstanceSubsystem, TEXT("Subsystem namespace helper test should expose the Angelscript game-instance subsystem")));
+		ASSERT_THAT(IsNotNull(ExpectedWorldSubsystem, TEXT("Subsystem namespace helper test should expose the network world subsystem")));
 
 		const FString ScriptSource = TEXT(R"(
 int VerifySubsystemNamespaceHelpers(
@@ -279,10 +276,10 @@ int VerifySubsystemNamespaceHelpers(
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Subsystem namespace helpers should return matching subsystem instances and reject null or mismatched classes"),
+		ASSERT_THAT(AreEqual(
+			0,
 			ResultMask,
-			0);
+			TEXT("Subsystem namespace helpers should return matching subsystem instances and reject null or mismatched classes")));
 	}
 
 	TEST_METHOD(NativeStaticGetAccessors)
@@ -297,22 +294,16 @@ int VerifySubsystemNamespaceHelpers(
 		AActor& ContextActor = Spawner.SpawnActor<AActor>();
 		UWorld* TestWorld = ContextActor.GetWorld();
 		UGameInstance* GameInstance = TestWorld != nullptr ? TestWorld->GetGameInstance() : nullptr;
-		if (!TestRunner->TestNotNull(TEXT("Subsystem static accessor test should have a live GEngine"), GEngine)
-			|| !TestRunner->TestNotNull(TEXT("Subsystem static accessor test should create a test world"), TestWorld)
-			|| !TestRunner->TestNotNull(TEXT("Subsystem static accessor test should expose a game instance"), GameInstance))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(GEngine, TEXT("Subsystem static accessor test should have a live GEngine")));
+		ASSERT_THAT(IsNotNull(TestWorld, TEXT("Subsystem static accessor test should create a test world")));
+		ASSERT_THAT(IsNotNull(GameInstance, TEXT("Subsystem static accessor test should expose a game instance")));
 
 		UAngelscriptEngineSubsystem* ExpectedEngineSubsystem = GEngine->GetEngineSubsystem<UAngelscriptEngineSubsystem>();
 		UAngelscriptGameInstanceSubsystem* ExpectedGameInstanceSubsystem = GameInstance->GetSubsystem<UAngelscriptGameInstanceSubsystem>();
 		UNetworkSubsystem* ExpectedWorldSubsystem = TestWorld->GetSubsystem<UNetworkSubsystem>();
-		if (!TestRunner->TestNotNull(TEXT("Subsystem static accessor test should expose the Angelscript engine subsystem"), ExpectedEngineSubsystem)
-			|| !TestRunner->TestNotNull(TEXT("Subsystem static accessor test should expose the Angelscript game-instance subsystem"), ExpectedGameInstanceSubsystem)
-			|| !TestRunner->TestNotNull(TEXT("Subsystem static accessor test should expose the network world subsystem"), ExpectedWorldSubsystem))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ExpectedEngineSubsystem, TEXT("Subsystem static accessor test should expose the Angelscript engine subsystem")));
+		ASSERT_THAT(IsNotNull(ExpectedGameInstanceSubsystem, TEXT("Subsystem static accessor test should expose the Angelscript game-instance subsystem")));
+		ASSERT_THAT(IsNotNull(ExpectedWorldSubsystem, TEXT("Subsystem static accessor test should expose the network world subsystem")));
 
 		const FString ScriptSource = TEXT(R"(
 int VerifyNativeSubsystemStaticGetAccessors(
@@ -357,10 +348,10 @@ int VerifyNativeSubsystemStaticGetAccessors(
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Native subsystem static Get accessors should return the same instances as the C++ baselines"),
+		ASSERT_THAT(AreEqual(
+			0,
 			ResultMask,
-			0);
+			TEXT("Native subsystem static Get accessors should return the same instances as the C++ baselines")));
 	}
 
 	TEST_METHOD(LocalPlayerAccessors)
@@ -378,11 +369,8 @@ int VerifyNativeSubsystemStaticGetAccessors(
 
 		UWorld* TestWorld = Fixture.World;
 		UGameInstance* GameInstance = Fixture.GameInstance;
-		if (!TestRunner->TestNotNull(TEXT("Subsystem local-player accessor test should create a test world"), TestWorld)
-			|| !TestRunner->TestNotNull(TEXT("Subsystem local-player accessor test should expose a game instance"), GameInstance))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(TestWorld, TEXT("Subsystem local-player accessor test should create a test world")));
+		ASSERT_THAT(IsNotNull(GameInstance, TEXT("Subsystem local-player accessor test should expose a game instance")));
 
 		FString OutError;
 		ULocalPlayer* LocalPlayer = GameInstance->CreateLocalPlayer(LocalPlayerControllerId, OutError, false);
@@ -394,26 +382,22 @@ int VerifyNativeSubsystemStaticGetAccessors(
 			}
 		};
 
-		if (!TestRunner->TestNotNull(TEXT("Subsystem local-player accessor test should create a local player"), LocalPlayer)
-			|| !TestRunner->TestTrue(TEXT("Subsystem local-player accessor test should create the local player without an error"), OutError.IsEmpty()))
+		bool bLocalPlayerCreated = true;
+		bLocalPlayerCreated &= this->Assert.IsNotNull(LocalPlayer, TEXT("Subsystem local-player accessor test should create a local player"));
+		bLocalPlayerCreated &= this->Assert.IsTrue(OutError.IsEmpty(), TEXT("Subsystem local-player accessor test should create the local player without an error"));
+		if (!bLocalPlayerCreated)
 		{
 			return;
 		}
 
 		APlayerController* PlayerController = TestWorld->SpawnActor<APlayerController>();
-		if (!TestRunner->TestNotNull(TEXT("Subsystem local-player accessor test should spawn a player controller"), PlayerController))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(PlayerController, TEXT("Subsystem local-player accessor test should spawn a player controller")));
 
 		PlayerController->SetPlayer(LocalPlayer);
 
 		UEnhancedInputLocalPlayerSubsystem* ExpectedLocalPlayerSubsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
-		if (!TestRunner->TestNotNull(TEXT("Subsystem local-player accessor test should expose the Enhanced Input local-player subsystem"), ExpectedLocalPlayerSubsystem)
-			|| !TestRunner->TestTrue(TEXT("Subsystem local-player accessor test should bind the spawned player controller to the local player"), PlayerController->GetLocalPlayer() == LocalPlayer))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ExpectedLocalPlayerSubsystem, TEXT("Subsystem local-player accessor test should expose the Enhanced Input local-player subsystem")));
+		ASSERT_THAT(IsTrue(PlayerController->GetLocalPlayer() == LocalPlayer, TEXT("Subsystem local-player accessor test should bind the spawned player controller to the local player")));
 
 		const FString ScriptSource = TEXT(R"(
 int VerifyLocalPlayerSubsystemAccessors(
@@ -484,10 +468,10 @@ int VerifyAmbientLocalPlayerSubsystemAccessor(UEnhancedInputLocalPlayerSubsystem
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Local-player subsystem helpers and native static accessors should resolve through explicit local-player and player-controller inputs"),
+		ASSERT_THAT(AreEqual(
+			0,
 			DirectResultMask,
-			0);
+			TEXT("Local-player subsystem helpers and native static accessors should resolve through explicit local-player and player-controller inputs")));
 
 		int32 LocalPlayerAmbientResultMask = INDEX_NONE;
 		{
@@ -519,14 +503,14 @@ int VerifyAmbientLocalPlayerSubsystemAccessor(UEnhancedInputLocalPlayerSubsystem
 			}
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Ambient local-player subsystem helper should resolve when the world context object is a local player"),
+		ASSERT_THAT(AreEqual(
+			0,
 			LocalPlayerAmbientResultMask,
-			0);
-		TestRunner->TestEqual(
-			TEXT("Ambient local-player subsystem helper should resolve when the world context object is a player controller"),
+			TEXT("Ambient local-player subsystem helper should resolve when the world context object is a local player")));
+		ASSERT_THAT(AreEqual(
+			0,
 			PlayerControllerAmbientResultMask,
-			0);
+			TEXT("Ambient local-player subsystem helper should resolve when the world context object is a player controller")));
 	}
 };
 

@@ -82,8 +82,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerTests,
 
 		asUINT BytecodeLength = 0;
 		asDWORD* Bytecode = Function->GetByteCode(&BytecodeLength);
-		TestRunner->TestNotNull(TEXT("Compiled function should expose a bytecode buffer"), Bytecode);
-		TestRunner->TestTrue(TEXT("Compiled function should emit at least one bytecode instruction"), BytecodeLength > 0);
+		ASSERT_THAT(IsNotNull(Bytecode, TEXT("Compiled function should expose a bytecode buffer")));
+		ASSERT_THAT(IsTrue(BytecodeLength > 0, TEXT("Compiled function should emit at least one bytecode instruction")));
 		}
 	}
 
@@ -108,10 +108,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerTests,
 		}
 
 		asIScriptContext* Context = Engine.CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("Compiler bytecode boundary test should create a script context"), Context))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Context, TEXT("Compiler bytecode boundary test should create a script context")));
 
 		const int PrepareResult = Context->Prepare(Function);
 		const int SetArgResult = PrepareResult == asSUCCESS ? Context->SetArgDWord(0, 1) : PrepareResult;
@@ -119,49 +116,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerTests,
 		const int32 Result = ExecuteResult == asEXECUTION_FINISHED ? static_cast<int32>(Context->GetReturnDWord()) : 0;
 		Context->Release();
 
-		if (!TestRunner->TestEqual(TEXT("Compiler bytecode boundary test should prepare successfully"), PrepareResult, asSUCCESS))
-		{
-			return;
-		}
-		if (!TestRunner->TestEqual(TEXT("Compiler bytecode boundary test should accept the integer argument"), SetArgResult, asSUCCESS))
-		{
-			return;
-		}
-		if (!TestRunner->TestEqual(TEXT("Compiler bytecode boundary test should execute successfully"), ExecuteResult, asEXECUTION_FINISHED))
-		{
-			return;
-		}
-		if (!TestRunner->TestEqual(TEXT("Compiler bytecode boundary test should execute the compiled arithmetic function"), Result, 3))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(asSUCCESS, PrepareResult, TEXT("Compiler bytecode boundary test should prepare successfully")));
+		ASSERT_THAT(AreEqual(asSUCCESS, SetArgResult, TEXT("Compiler bytecode boundary test should accept the integer argument")));
+		ASSERT_THAT(AreEqual(asEXECUTION_FINISHED, ExecuteResult, TEXT("Compiler bytecode boundary test should execute successfully")));
+		ASSERT_THAT(AreEqual(3, Result, TEXT("Compiler bytecode boundary test should execute the compiled arithmetic function")));
 
 		asUINT BytecodeLength = 0;
 		asDWORD* Bytecode = Function->GetByteCode(&BytecodeLength);
-		if (!TestRunner->TestNotNull(TEXT("Compiler bytecode boundary test should expose a bytecode buffer"), Bytecode))
-		{
-			return;
-		}
-		if (!TestRunner->TestTrue(TEXT("Compiler bytecode boundary test should emit more than one dword"), BytecodeLength > 1))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Bytecode, TEXT("Compiler bytecode boundary test should expose a bytecode buffer")));
+		ASSERT_THAT(IsTrue(BytecodeLength > 1, TEXT("Compiler bytecode boundary test should emit more than one dword")));
 
 		const asBYTE FirstOpcode = *reinterpret_cast<const asBYTE*>(&Bytecode[0]);
-		if (!TestRunner->TestNotEqual(TEXT("Compiler bytecode boundary test should not begin with RET"), static_cast<int32>(FirstOpcode), static_cast<int32>(asBC_RET)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreNotEqual(static_cast<int32>(asBC_RET), static_cast<int32>(FirstOpcode), TEXT("Compiler bytecode boundary test should not begin with RET")));
 
 		asBYTE LastOpcode = 0;
-		if (!TestRunner->TestTrue(TEXT("Compiler bytecode boundary test should walk the bytecode to a valid end boundary"), FindLastBytecodeOpcode(Bytecode, BytecodeLength, LastOpcode)))
-		{
-			return;
-		}
-		if (!TestRunner->TestEqual(TEXT("Compiler bytecode boundary test should end with RET"), static_cast<int32>(LastOpcode), static_cast<int32>(asBC_RET)))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(FindLastBytecodeOpcode(Bytecode, BytecodeLength, LastOpcode), TEXT("Compiler bytecode boundary test should walk the bytecode to a valid end boundary")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asBC_RET), static_cast<int32>(LastOpcode), TEXT("Compiler bytecode boundary test should end with RET")));
 		}
 	}
 
@@ -185,11 +155,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerTests,
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("Compiled function should report local variables for scoped declarations"), Function->GetVarCount() >= 2);
+		ASSERT_THAT(IsTrue(Function->GetVarCount() >= 2, TEXT("Compiled function should report local variables for scoped declarations")));
 
 		const char* FirstVarName = nullptr;
 		Function->GetVar(0, &FirstVarName, nullptr);
-		TestRunner->TestNotNull(TEXT("Compiler should record the first local variable name"), FirstVarName);
+		ASSERT_THAT(IsNotNull(FirstVarName, TEXT("Compiler should record the first local variable name")));
 		}
 	}
 
@@ -226,37 +196,18 @@ int Entry()
 		const FAngelscriptCompileTraceDiagnosticSummary* Diagnostic =
 			FindErrorDiagnosticContaining(Summary.Diagnostics, TEXT("is not declared"));
 
-		TestRunner->TestFalse(
-			TEXT("Compiler.VariableScopes.OutOfScopeUseRejected should reject out-of-scope locals"),
-			bCompiled);
-		TestRunner->TestFalse(
-			TEXT("Compiler.VariableScopes.OutOfScopeUseRejected should report bCompileSucceeded=false"),
-			Summary.bCompileSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Compiler.VariableScopes.OutOfScopeUseRejected should surface ECompileResult::Error"),
-			Summary.CompileResult,
-			ECompileResult::Error);
-		TestRunner->TestTrue(
-			TEXT("Compiler.VariableScopes.OutOfScopeUseRejected should capture at least one diagnostic"),
-			Summary.Diagnostics.Num() > 0);
-		TestRunner->TestNotNull(
-			TEXT("Compiler.VariableScopes.OutOfScopeUseRejected should surface a scope diagnostic"),
-			Diagnostic);
+		ASSERT_THAT(IsFalse(bCompiled, TEXT("Compiler.VariableScopes.OutOfScopeUseRejected should reject out-of-scope locals")));
+		ASSERT_THAT(IsFalse(Summary.bCompileSucceeded, TEXT("Compiler.VariableScopes.OutOfScopeUseRejected should report bCompileSucceeded=false")));
+		ASSERT_THAT(AreEqual(ECompileResult::Error, Summary.CompileResult, TEXT("Compiler.VariableScopes.OutOfScopeUseRejected should surface ECompileResult::Error")));
+		ASSERT_THAT(IsTrue(Summary.Diagnostics.Num() > 0, TEXT("Compiler.VariableScopes.OutOfScopeUseRejected should capture at least one diagnostic")));
+		ASSERT_THAT(IsNotNull(Diagnostic, TEXT("Compiler.VariableScopes.OutOfScopeUseRejected should surface a scope diagnostic")));
 		if (Diagnostic != nullptr)
 		{
-			TestRunner->TestTrue(
-				TEXT("Compiler.VariableScopes.OutOfScopeUseRejected should keep the missing variable name in the diagnostic"),
-				Diagnostic->Message.Contains(TEXT("Inner")));
-			TestRunner->TestTrue(
-				TEXT("Compiler.VariableScopes.OutOfScopeUseRejected should report a non-zero row"),
-				Diagnostic->Row > 0);
-			TestRunner->TestTrue(
-				TEXT("Compiler.VariableScopes.OutOfScopeUseRejected should report a non-zero column"),
-				Diagnostic->Column > 0);
+			ASSERT_THAT(IsTrue(Diagnostic->Message.Contains(TEXT("Inner")), TEXT("Compiler.VariableScopes.OutOfScopeUseRejected should keep the missing variable name in the diagnostic")));
+			ASSERT_THAT(IsTrue(Diagnostic->Row > 0, TEXT("Compiler.VariableScopes.OutOfScopeUseRejected should report a non-zero row")));
+			ASSERT_THAT(IsTrue(Diagnostic->Column > 0, TEXT("Compiler.VariableScopes.OutOfScopeUseRejected should report a non-zero column")));
 		}
-		TestRunner->TestTrue(
-			TEXT("Compiler.VariableScopes.OutOfScopeUseRejected should not leave a compiled module behind"),
-			!Engine.GetModuleByModuleName(ModuleName.ToString()).IsValid());
+		ASSERT_THAT(IsTrue(!Engine.GetModuleByModuleName(ModuleName.ToString()).IsValid(), TEXT("Compiler.VariableScopes.OutOfScopeUseRejected should not leave a compiled module behind")));
 
 		}
 	}
@@ -287,7 +238,7 @@ int Entry()
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Compiler should generate callable bytecode for function invocations"), Result, 12);
+		ASSERT_THAT(AreEqual(12, Result, TEXT("Compiler should generate callable bytecode for function invocations")));
 		}
 	}
 
@@ -312,19 +263,16 @@ int Entry()
 		}
 
 		asIScriptContext* Context = Engine.CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("Compiler conversion test should create a script context"), Context))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Context, TEXT("Compiler conversion test should create a script context")));
 
 		const int PrepareResult = Context->Prepare(Function);
 		const int ExecuteResult = PrepareResult == asSUCCESS ? Context->Execute() : PrepareResult;
 		const float Result = Context->GetReturnFloat();
 		Context->Release();
 
-		TestRunner->TestEqual(TEXT("Compiler conversion test should prepare successfully"), PrepareResult, asSUCCESS);
-		TestRunner->TestEqual(TEXT("Compiler conversion test should execute successfully"), ExecuteResult, asEXECUTION_FINISHED);
-		TestRunner->TestTrue(TEXT("Compiler should emit a numeric conversion that preserves the value"), FMath::IsNearlyEqual(Result, 7.0f));
+		ASSERT_THAT(AreEqual(asSUCCESS, PrepareResult, TEXT("Compiler conversion test should prepare successfully")));
+		ASSERT_THAT(AreEqual(asEXECUTION_FINISHED, ExecuteResult, TEXT("Compiler conversion test should execute successfully")));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Result, 7.0f), TEXT("Compiler should emit a numeric conversion that preserves the value")));
 		}
 	}
 
@@ -354,24 +302,12 @@ int Entry()
 			return;
 		}
 
-		if (!TestRunner->TestEqual(
-			TEXT("Compiler type conversion matrix should truncate both float32 negatives and float64 positives toward zero"),
-			Result,
-			709))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(709, Result, TEXT("Compiler type conversion matrix should truncate both float32 negatives and float64 positives toward zero")));
 
 		asUINT BytecodeLength = 0;
 		asDWORD* Bytecode = Function->GetByteCode(&BytecodeLength);
-		if (!TestRunner->TestNotNull(TEXT("Compiler type conversion matrix should expose generated bytecode"), Bytecode))
-		{
-			return;
-		}
-		if (!TestRunner->TestTrue(TEXT("Compiler type conversion matrix should emit at least one bytecode instruction"), BytecodeLength > 0))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Bytecode, TEXT("Compiler type conversion matrix should expose generated bytecode")));
+		ASSERT_THAT(IsTrue(BytecodeLength > 0, TEXT("Compiler type conversion matrix should emit at least one bytecode instruction")));
 
 		}
 	}

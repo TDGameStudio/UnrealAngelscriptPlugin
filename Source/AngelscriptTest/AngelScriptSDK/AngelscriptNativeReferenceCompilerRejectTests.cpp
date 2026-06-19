@@ -25,8 +25,9 @@ void Main()
 )",
 			Messages);
 
-		TestRunner->TestTrue(TEXT("Reference invalid const object assignment should fail to build"), CompileResult < 0);
-		TestRunner->TestTrue(TEXT("Reference invalid const object assignment should report the target type or conversion"), ContainsError(Messages, TEXT("Foo")) || ContainsError(Messages, TEXT("convert")));
+		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference invalid const object assignment should fail to build")));
+		ASSERT_THAT(IsTrue(ContainsError(Messages, TEXT("Foo")) || ContainsError(Messages, TEXT("convert")),
+			TEXT("Reference invalid const object assignment should report the target type or conversion")));
 	}
 
 	TEST_METHOD(OutOfScopeLocalReferenceReportsIdentifier)
@@ -43,8 +44,9 @@ int Entry()
 )",
 			Messages);
 
-		TestRunner->TestTrue(TEXT("Reference out-of-scope local should fail to build"), CompileResult < 0);
-		TestRunner->TestTrue(TEXT("Reference out-of-scope local should keep the missing identifier name"), ContainsError(Messages, TEXT("Inner")) || ContainsError(Messages, TEXT("not declared")));
+		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference out-of-scope local should fail to build")));
+		ASSERT_THAT(IsTrue(ContainsError(Messages, TEXT("Inner")) || ContainsError(Messages, TEXT("not declared")),
+			TEXT("Reference out-of-scope local should keep the missing identifier name")));
 	}
 
 	TEST_METHOD(UnknownFunctionCallReportsMissingSymbol)
@@ -58,8 +60,9 @@ void Entry()
 )",
 			Messages);
 
-		TestRunner->TestTrue(TEXT("Reference unknown function call should fail to build"), CompileResult < 0);
-		TestRunner->TestTrue(TEXT("Reference unknown function call should keep the missing symbol name"), ContainsError(Messages, TEXT("MissingCall")) || ContainsError(Messages, TEXT("No matching symbol")));
+		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference unknown function call should fail to build")));
+		ASSERT_THAT(IsTrue(ContainsError(Messages, TEXT("MissingCall")) || ContainsError(Messages, TEXT("No matching symbol")),
+			TEXT("Reference unknown function call should keep the missing symbol name")));
 	}
 
 	TEST_METHOD(ReturnObjectFromIntFunctionIsRejected)
@@ -78,8 +81,9 @@ int Entry()
 )",
 			Messages);
 
-		TestRunner->TestTrue(TEXT("Reference object returned from int function should fail to build"), CompileResult < 0);
-		TestRunner->TestTrue(TEXT("Reference object returned from int function should report type mismatch context"), ContainsError(Messages, TEXT("Foo")) || ContainsError(Messages, TEXT("int")) || ContainsError(Messages, TEXT("convert")));
+		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference object returned from int function should fail to build")));
+		ASSERT_THAT(IsTrue(ContainsError(Messages, TEXT("Foo")) || ContainsError(Messages, TEXT("int")) || ContainsError(Messages, TEXT("convert")),
+			TEXT("Reference object returned from int function should report type mismatch context")));
 	}
 
 	TEST_METHOD(LongIdentifierAssignmentReportsDiagnosticWithoutCrash)
@@ -97,8 +101,9 @@ void Entry()
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		const int CompileResult = CompileSnippet("ReferenceCompilerLongIdentifier", SourceUtf8.Get(), Messages);
 
-		TestRunner->TestTrue(TEXT("Reference long-token assignment should fail to build without crashing"), CompileResult < 0);
-		TestRunner->TestTrue(TEXT("Reference long-token assignment should produce a useful missing-symbol diagnostic"), ContainsError(Messages, TEXT("No matching symbol")) || ContainsError(Messages, TEXT("not declared")) || ContainsError(Messages, *LongIdentifier.Left(32)));
+		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference long-token assignment should fail to build without crashing")));
+		ASSERT_THAT(IsTrue(ContainsError(Messages, TEXT("No matching symbol")) || ContainsError(Messages, TEXT("not declared")) || ContainsError(Messages, *LongIdentifier.Left(32)),
+			TEXT("Reference long-token assignment should produce a useful missing-symbol diagnostic")));
 	}
 };
 

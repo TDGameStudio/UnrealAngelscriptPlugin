@@ -136,9 +136,13 @@ class UOptimizedCallTarget : UObject
 		const TCHAR* FunctionName)
 	{
 		UASFunction* ScriptFunction = Cast<UASFunction>(FindGeneratedFunction(ScriptClass, FunctionName));
-		Test.TestNotNull(
-			*FString::Printf(TEXT("Optimized-call test case should generate '%s' as a UASFunction"), FunctionName),
-			ScriptFunction);
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(
+				ScriptFunction,
+				*FString::Printf(TEXT("Optimized-call test case should generate '%s' as a UASFunction"), FunctionName)))
+		{
+			return nullptr;
+		}
 		return ScriptFunction;
 	}
 }
@@ -160,7 +164,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 		};
 
 		UASClass* ScriptClass = ASFunctionOptimizedCallTests::CompileOptimizedCallTarget(*TestRunner, Engine);
-		if (!TestRunner->TestNotNull(TEXT("Optimized-call test case should compile to a UASClass"), ScriptClass))
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Optimized-call test case should compile to a UASClass")));
+		if (ScriptClass == nullptr)
 		{
 			return;
 		}
@@ -181,32 +186,30 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 			return;
 		}
 
-		if (!TestRunner->TestTrue(
-				TEXT("Optimized-call test case should route Ping through the dedicated no-params dispatch class"),
-				PingFunction->GetClass() == UASFunction_NoParams::StaticClass()
-					|| PingFunction->GetClass() == UASFunction_NoParams_JIT::StaticClass())
-			|| !TestRunner->TestTrue(
-				TEXT("Optimized-call test case should route GetByteCode through the dedicated byte-return dispatch class"),
-				GetByteCodeFunction->GetClass() == UASFunction_ByteReturn::StaticClass()
-					|| GetByteCodeFunction->GetClass() == UASFunction_ByteReturn_JIT::StaticClass())
-			|| !TestRunner->TestTrue(
-				TEXT("Optimized-call test case should route StoreFloat through the dedicated float-argument dispatch class"),
-				StoreFloatFunction->GetClass() == UASFunction_FloatArg::StaticClass()
-					|| StoreFloatFunction->GetClass() == UASFunction_FloatArg_JIT::StaticClass())
-			|| !TestRunner->TestTrue(
-				TEXT("Optimized-call test case should route StoreDouble through the dedicated double-argument dispatch class"),
-				StoreDoubleFunction->GetClass() == UASFunction_DoubleArg::StaticClass()
-					|| StoreDoubleFunction->GetClass() == UASFunction_DoubleArg_JIT::StaticClass())
-			|| !TestRunner->TestTrue(
-				TEXT("Optimized-call test case should route BumpRef through the dedicated reference-argument dispatch class"),
-				BumpRefFunction->GetClass() == UASFunction_ReferenceArg::StaticClass()
-					|| BumpRefFunction->GetClass() == UASFunction_ReferenceArg_JIT::StaticClass()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(
+			PingFunction->GetClass() == UASFunction_NoParams::StaticClass()
+				|| PingFunction->GetClass() == UASFunction_NoParams_JIT::StaticClass(),
+			TEXT("Optimized-call test case should route Ping through the dedicated no-params dispatch class")));
+		ASSERT_THAT(IsTrue(
+			GetByteCodeFunction->GetClass() == UASFunction_ByteReturn::StaticClass()
+				|| GetByteCodeFunction->GetClass() == UASFunction_ByteReturn_JIT::StaticClass(),
+			TEXT("Optimized-call test case should route GetByteCode through the dedicated byte-return dispatch class")));
+		ASSERT_THAT(IsTrue(
+			StoreFloatFunction->GetClass() == UASFunction_FloatArg::StaticClass()
+				|| StoreFloatFunction->GetClass() == UASFunction_FloatArg_JIT::StaticClass(),
+			TEXT("Optimized-call test case should route StoreFloat through the dedicated float-argument dispatch class")));
+		ASSERT_THAT(IsTrue(
+			StoreDoubleFunction->GetClass() == UASFunction_DoubleArg::StaticClass()
+				|| StoreDoubleFunction->GetClass() == UASFunction_DoubleArg_JIT::StaticClass(),
+			TEXT("Optimized-call test case should route StoreDouble through the dedicated double-argument dispatch class")));
+		ASSERT_THAT(IsTrue(
+			BumpRefFunction->GetClass() == UASFunction_ReferenceArg::StaticClass()
+				|| BumpRefFunction->GetClass() == UASFunction_ReferenceArg_JIT::StaticClass(),
+			TEXT("Optimized-call test case should route BumpRef through the dedicated reference-argument dispatch class")));
 
 		UObject* Instance = NewObject<UObject>(GetTransientPackage(), ScriptClass, TEXT("OptimizedCallTargetInstance"));
-		if (!TestRunner->TestNotNull(TEXT("Optimized-call test case should instantiate the generated UObject"), Instance))
+		ASSERT_THAT(IsNotNull(Instance, TEXT("Optimized-call test case should instantiate the generated UObject")));
+		if (Instance == nullptr)
 		{
 			return;
 		}
@@ -215,13 +218,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 
 		int32 PingCount = INDEX_NONE;
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::PingCountPropertyName, PingCount)
-			|| !TestRunner->TestEqual(TEXT("OptimizedCall should execute a no-parameter void function exactly once"), PingCount, 1))
+			|| !this->Assert.AreEqual(1, PingCount, TEXT("OptimizedCall should execute a no-parameter void function exactly once")))
 		{
 			return;
 		}
 
 		const uint8 ByteResult = GetByteCodeFunction->OptimizedCall_ByteReturn(Instance);
-		if (!TestRunner->TestEqual(TEXT("OptimizedCall_ByteReturn should preserve the script byte return value"), static_cast<int32>(ByteResult), 42))
+		if (!this->Assert.AreEqual(42, static_cast<int32>(ByteResult), TEXT("OptimizedCall_ByteReturn should preserve the script byte return value")))
 		{
 			return;
 		}
@@ -230,7 +233,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 
 		int32 StoredFloatHundredths = INDEX_NONE;
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredFloatHundredthsPropertyName, StoredFloatHundredths)
-			|| !TestRunner->TestEqual(TEXT("OptimizedCall_FloatArg should pass the float argument without mangling its value"), StoredFloatHundredths, 1250))
+			|| !this->Assert.AreEqual(1250, StoredFloatHundredths, TEXT("OptimizedCall_FloatArg should pass the float argument without mangling its value")))
 		{
 			return;
 		}
@@ -239,7 +242,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 
 		int32 StoredDoubleHundredths = INDEX_NONE;
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredDoubleHundredthsPropertyName, StoredDoubleHundredths)
-			|| !TestRunner->TestEqual(TEXT("OptimizedCall_DoubleArg should pass the double argument without mangling its value"), StoredDoubleHundredths, 4225))
+			|| !this->Assert.AreEqual(4225, StoredDoubleHundredths, TEXT("OptimizedCall_DoubleArg should pass the double argument without mangling its value")))
 		{
 			return;
 		}
@@ -248,19 +251,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 		BumpRefFunction->OptimizedCall_RefArg(Instance, &RefArgument);
 
 		int32 ObservedRefValue = INDEX_NONE;
-		if (!TestRunner->TestEqual(TEXT("OptimizedCall_RefArg should write through the referenced argument"), RefArgument, 8)
+		if (!this->Assert.AreEqual(8, RefArgument, TEXT("OptimizedCall_RefArg should write through the referenced argument"))
 			|| !ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::ObservedRefValuePropertyName, ObservedRefValue)
-			|| !TestRunner->TestEqual(TEXT("OptimizedCall_RefArg should expose the mutated reference value inside script state"), ObservedRefValue, 8))
+			|| !this->Assert.AreEqual(8, ObservedRefValue, TEXT("OptimizedCall_RefArg should expose the mutated reference value inside script state")))
 		{
 			return;
 		}
 
 		int32 RefArgumentWithReturn = 9;
 		const uint8 RefReturnValue = BumpRefAndReturnFunction->OptimizedCall_RefArg_ByteReturn(Instance, &RefArgumentWithReturn);
-		if (!TestRunner->TestEqual(TEXT("OptimizedCall_RefArg_ByteReturn should write through the referenced argument"), RefArgumentWithReturn, 13)
+		if (!this->Assert.AreEqual(13, RefArgumentWithReturn, TEXT("OptimizedCall_RefArg_ByteReturn should write through the referenced argument"))
 			|| !ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::ObservedRefValuePropertyName, ObservedRefValue)
-			|| !TestRunner->TestEqual(TEXT("OptimizedCall_RefArg_ByteReturn should expose the mutated reference value inside script state"), ObservedRefValue, 13)
-			|| !TestRunner->TestEqual(TEXT("OptimizedCall_RefArg_ByteReturn should preserve the script byte return value"), static_cast<int32>(RefReturnValue), 77))
+			|| !this->Assert.AreEqual(13, ObservedRefValue, TEXT("OptimizedCall_RefArg_ByteReturn should expose the mutated reference value inside script state"))
+			|| !this->Assert.AreEqual(77, static_cast<int32>(RefReturnValue), TEXT("OptimizedCall_RefArg_ByteReturn should preserve the script byte return value")))
 		{
 			return;
 		}
@@ -285,7 +288,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 		};
 
 		UASClass* ScriptClass = ASFunctionOptimizedCallTests::CompileOptimizedCallTarget(*TestRunner, Engine);
-		if (!TestRunner->TestNotNull(TEXT("Optimized-call fallback test case should compile to a UASClass"), ScriptClass))
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Optimized-call fallback test case should compile to a UASClass")));
+		if (ScriptClass == nullptr)
 		{
 			return;
 		}
@@ -307,7 +311,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 		}
 
 		UObject* Instance = NewObject<UObject>(GetTransientPackage(), ScriptClass, TEXT("OptimizedCallFallbackTargetInstance"));
-		if (!TestRunner->TestNotNull(TEXT("Optimized-call fallback test case should instantiate the generated UObject"), Instance))
+		ASSERT_THAT(IsNotNull(Instance, TEXT("Optimized-call fallback test case should instantiate the generated UObject")));
+		if (Instance == nullptr)
 		{
 			return;
 		}
@@ -315,21 +320,21 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 		StoreFloatFunction->OptimizedCall_FloatArg(Instance, std::numeric_limits<float>::quiet_NaN());
 		int32 StoredFloatHundredths = INDEX_NONE;
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredFloatHundredthsPropertyName, StoredFloatHundredths)
-			|| !TestRunner->TestEqual(TEXT("OptimizedCall_FloatArg should preserve a script-observable NaN classification"), StoredFloatHundredths, ASFunctionOptimizedCallTests::FloatNaNMarker))
+			|| !this->Assert.AreEqual(ASFunctionOptimizedCallTests::FloatNaNMarker, StoredFloatHundredths, TEXT("OptimizedCall_FloatArg should preserve a script-observable NaN classification")))
 		{
 			return;
 		}
 
 		StoreFloatFunction->OptimizedCall_FloatArg(Instance, std::numeric_limits<float>::infinity());
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredFloatHundredthsPropertyName, StoredFloatHundredths)
-			|| !TestRunner->TestEqual(TEXT("OptimizedCall_FloatArg should preserve a script-observable positive infinity classification"), StoredFloatHundredths, ASFunctionOptimizedCallTests::FloatPositiveInfinityMarker))
+			|| !this->Assert.AreEqual(ASFunctionOptimizedCallTests::FloatPositiveInfinityMarker, StoredFloatHundredths, TEXT("OptimizedCall_FloatArg should preserve a script-observable positive infinity classification")))
 		{
 			return;
 		}
 
 		StoreFloatFunction->OptimizedCall_FloatArg(Instance, -std::numeric_limits<float>::infinity());
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredFloatHundredthsPropertyName, StoredFloatHundredths)
-			|| !TestRunner->TestEqual(TEXT("OptimizedCall_FloatArg should preserve a script-observable negative infinity classification"), StoredFloatHundredths, ASFunctionOptimizedCallTests::FloatNegativeInfinityMarker))
+			|| !this->Assert.AreEqual(ASFunctionOptimizedCallTests::FloatNegativeInfinityMarker, StoredFloatHundredths, TEXT("OptimizedCall_FloatArg should preserve a script-observable negative infinity classification")))
 		{
 			return;
 		}
@@ -337,21 +342,21 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 		StoreDoubleFunction->OptimizedCall_DoubleArg(Instance, std::numeric_limits<double>::quiet_NaN());
 		int32 StoredDoubleHundredths = INDEX_NONE;
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredDoubleHundredthsPropertyName, StoredDoubleHundredths)
-			|| !TestRunner->TestEqual(TEXT("OptimizedCall_DoubleArg should preserve a script-observable NaN classification"), StoredDoubleHundredths, ASFunctionOptimizedCallTests::DoubleNaNMarker))
+			|| !this->Assert.AreEqual(ASFunctionOptimizedCallTests::DoubleNaNMarker, StoredDoubleHundredths, TEXT("OptimizedCall_DoubleArg should preserve a script-observable NaN classification")))
 		{
 			return;
 		}
 
 		StoreDoubleFunction->OptimizedCall_DoubleArg(Instance, std::numeric_limits<double>::infinity());
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredDoubleHundredthsPropertyName, StoredDoubleHundredths)
-			|| !TestRunner->TestEqual(TEXT("OptimizedCall_DoubleArg should preserve a script-observable positive infinity classification"), StoredDoubleHundredths, ASFunctionOptimizedCallTests::DoublePositiveInfinityMarker))
+			|| !this->Assert.AreEqual(ASFunctionOptimizedCallTests::DoublePositiveInfinityMarker, StoredDoubleHundredths, TEXT("OptimizedCall_DoubleArg should preserve a script-observable positive infinity classification")))
 		{
 			return;
 		}
 
 		StoreDoubleFunction->OptimizedCall_DoubleArg(Instance, -std::numeric_limits<double>::infinity());
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredDoubleHundredthsPropertyName, StoredDoubleHundredths)
-			|| !TestRunner->TestEqual(TEXT("OptimizedCall_DoubleArg should preserve a script-observable negative infinity classification"), StoredDoubleHundredths, ASFunctionOptimizedCallTests::DoubleNegativeInfinityMarker))
+			|| !this->Assert.AreEqual(ASFunctionOptimizedCallTests::DoubleNegativeInfinityMarker, StoredDoubleHundredths, TEXT("OptimizedCall_DoubleArg should preserve a script-observable negative infinity classification")))
 		{
 			return;
 		}
@@ -361,13 +366,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 		TestRunner->AddExpectedError(TEXT("uint8 UOptimizedCallTarget::ThrowByte()"), EAutomationExpectedErrorFlags::Contains, 1, false);
 
 		const uint8 ThrowResult = ThrowByteFunction->OptimizedCall_ByteReturn(Instance);
-		if (!TestRunner->TestEqual(TEXT("OptimizedCall_ByteReturn should return the fallback byte value after a script exception"), static_cast<int32>(ThrowResult), 0))
+		if (!this->Assert.AreEqual(0, static_cast<int32>(ThrowResult), TEXT("OptimizedCall_ByteReturn should return the fallback byte value after a script exception")))
 		{
 			return;
 		}
 
 		const uint8 ByteResultBeforeDiscard = GetByteCodeFunction->OptimizedCall_ByteReturn(Instance);
-		if (!TestRunner->TestEqual(TEXT("OptimizedCall_ByteReturn should return script value before discard"), static_cast<int32>(ByteResultBeforeDiscard), 42))
+		if (!this->Assert.AreEqual(42, static_cast<int32>(ByteResultBeforeDiscard), TEXT("OptimizedCall_ByteReturn should return script value before discard")))
 		{
 			return;
 		}
@@ -377,21 +382,21 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 
 		int32 RefArgument = 41;
 		BumpRefFunction->OptimizedCall_RefArg(Instance, &RefArgument);
-		if (!TestRunner->TestEqual(TEXT("OptimizedCall_RefArg should leave referenced values untouched after discard"), RefArgument, 41))
+		if (!this->Assert.AreEqual(41, RefArgument, TEXT("OptimizedCall_RefArg should leave referenced values untouched after discard")))
 		{
 			return;
 		}
 
 		int32 RefArgumentWithReturn = 51;
 		const uint8 RefReturnAfterDiscard = BumpRefAndReturnFunction->OptimizedCall_RefArg_ByteReturn(Instance, &RefArgumentWithReturn);
-		if (!TestRunner->TestEqual(TEXT("OptimizedCall_RefArg_ByteReturn should leave referenced values untouched after discard"), RefArgumentWithReturn, 51)
-			|| !TestRunner->TestEqual(TEXT("OptimizedCall_RefArg_ByteReturn should return fallback byte value after discard"), static_cast<int32>(RefReturnAfterDiscard), 0))
+		if (!this->Assert.AreEqual(51, RefArgumentWithReturn, TEXT("OptimizedCall_RefArg_ByteReturn should leave referenced values untouched after discard"))
+			|| !this->Assert.AreEqual(0, static_cast<int32>(RefReturnAfterDiscard), TEXT("OptimizedCall_RefArg_ByteReturn should return fallback byte value after discard")))
 		{
 			return;
 		}
 
 		const uint8 ByteResultAfterDiscard = GetByteCodeFunction->OptimizedCall_ByteReturn(Instance);
-		TestRunner->TestEqual(TEXT("OptimizedCall_ByteReturn should return fallback byte value after discard"), static_cast<int32>(ByteResultAfterDiscard), 0);
+		ASSERT_THAT(AreEqual(0, static_cast<int32>(ByteResultAfterDiscard), TEXT("OptimizedCall_ByteReturn should return fallback byte value after discard")));
 
 		}
 	}

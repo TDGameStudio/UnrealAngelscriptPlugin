@@ -54,17 +54,18 @@ namespace AngelscriptTest_Bindings_AngelscriptScriptFunctionLibraryTests_Private
 	asIScriptModule* GetCompiledModule(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 	{
 		TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModule(ScriptFunctionLibraryModuleName.ToString());
-		if (!Test.TestTrue(
-				TEXT("Script function library global-init test should keep the module registered after compile"),
-				ModuleDesc.IsValid()))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsTrue(
+				ModuleDesc.IsValid(),
+				TEXT("Script function library global-init test should keep the module registered after compile")))
 		{
 			return nullptr;
 		}
 
 		asIScriptModule* Module = ModuleDesc.IsValid() ? ModuleDesc->ScriptModule : nullptr;
-		if (!Test.TestNotNull(
-				TEXT("Script function library global-init test should expose the backing asIScriptModule"),
-				Module))
+		if (!Assert.IsNotNull(
+				Module,
+				TEXT("Script function library global-init test should expose the backing asIScriptModule")))
 		{
 			return nullptr;
 		}
@@ -194,10 +195,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptFunctionLibraryTest,
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Should load initial module before hot reload"),
+		if (!this->Assert.AreEqual(
+			1,
 			InitialVersion,
-			1);
+			TEXT("Should load initial module before hot reload")))
+		{
+			return;
+		}
 
 		ECompileResult ReloadCompileResult = ECompileResult::Error;
 		if (!CompileModuleWithResult(
@@ -223,10 +227,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptFunctionLibraryTest,
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Should expose the reloaded module version"),
+		if (!this->Assert.AreEqual(
+			2,
 			ReloadedVersion,
-			2);
+			TEXT("Should expose the reloaded module version")))
+		{
+			return;
+		}
 
 		FString PlainNameCapture;
 		FString PlainNamespaceCapture;
@@ -250,16 +257,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptFunctionLibraryTest,
 
 		const FString ExpectedHotReloadPrefix = ScriptFunctionLibraryModuleName.ToString() + HotReloadMarker;
 
-		TestRunner->TestEqual(TEXT("Plain global init should report variable name"), PlainNameCapture, TEXT("PlainNameCapture"));
-		TestRunner->TestEqual(TEXT("Plain global init should report empty namespace"), PlainNamespaceCapture, TEXT(""));
-		TestRunner->TestEqual(TEXT("Namespaced global init should report variable name"), ScopedNameCapture, TEXT("ScopedNameCapture"));
-		TestRunner->TestEqual(TEXT("Namespaced global init should report its namespace"), ScopedNamespaceCapture, ScriptFunctionLibraryNamespace);
-		TestRunner->TestEqual(TEXT("Plain and namespaced module captures should agree"), ScopedModuleCapture, PlainModuleCapture);
-		TestRunner->TestTrue(TEXT("Module capture should preserve hot-reload suffix"), PlainModuleCapture.StartsWith(ExpectedHotReloadPrefix));
-		TestRunner->TestTrue(TEXT("Module capture should keep explicit user suffix"), PlainModuleCapture.Contains(TEXT("_HotReload_42_NEW_")));
-		TestRunner->TestEqual(TEXT("Outside init global-name helper should be empty"), OutsideInitName, TEXT(""));
-		TestRunner->TestEqual(TEXT("Outside init namespace helper should be empty"), OutsideInitNamespace, TEXT(""));
-		TestRunner->TestEqual(TEXT("Outside init module helper should be empty"), OutsideInitModule, TEXT(""));
+		ASSERT_THAT(AreEqual(FString(TEXT("PlainNameCapture")), PlainNameCapture, TEXT("Plain global init should report variable name")));
+		ASSERT_THAT(AreEqual(FString(TEXT("")), PlainNamespaceCapture, TEXT("Plain global init should report empty namespace")));
+		ASSERT_THAT(AreEqual(FString(TEXT("ScopedNameCapture")), ScopedNameCapture, TEXT("Namespaced global init should report variable name")));
+		ASSERT_THAT(AreEqual(ScriptFunctionLibraryNamespace, ScopedNamespaceCapture, TEXT("Namespaced global init should report its namespace")));
+		ASSERT_THAT(AreEqual(PlainModuleCapture, ScopedModuleCapture, TEXT("Plain and namespaced module captures should agree")));
+		ASSERT_THAT(IsTrue(PlainModuleCapture.StartsWith(ExpectedHotReloadPrefix), TEXT("Module capture should preserve hot-reload suffix")));
+		ASSERT_THAT(IsTrue(PlainModuleCapture.Contains(TEXT("_HotReload_42_NEW_")), TEXT("Module capture should keep explicit user suffix")));
+		ASSERT_THAT(AreEqual(FString(TEXT("")), OutsideInitName, TEXT("Outside init global-name helper should be empty")));
+		ASSERT_THAT(AreEqual(FString(TEXT("")), OutsideInitNamespace, TEXT("Outside init namespace helper should be empty")));
+		ASSERT_THAT(AreEqual(FString(TEXT("")), OutsideInitModule, TEXT("Outside init module helper should be empty")));
 	}
 
 	// ====================================================================
@@ -296,16 +303,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptFunctionLibraryTest,
 		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitNamespace()"), OutsideInitNamespace);
 		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitModule()"), OutsideInitModule);
 
-		TestRunner->TestEqual(TEXT("Plain global init should report variable name"), PlainNameCapture, TEXT("PlainNameCapture"));
-		TestRunner->TestEqual(TEXT("Plain global init should report empty namespace"), PlainNamespaceCapture, TEXT(""));
-		TestRunner->TestEqual(TEXT("Plain global init should report direct module name"), PlainModuleCapture, DirectScriptFunctionLibraryModuleName);
-		TestRunner->TestEqual(TEXT("Namespaced global init should report variable name"), ScopedNameCapture, TEXT("ScopedNameCapture"));
-		TestRunner->TestEqual(TEXT("Namespaced global init should report its namespace"), ScopedNamespaceCapture, ScriptFunctionLibraryNamespace);
-		TestRunner->TestEqual(TEXT("Namespaced global init should report direct module name"), ScopedModuleCapture, DirectScriptFunctionLibraryModuleName);
-		TestRunner->TestEqual(TEXT("Plain and namespaced should agree on direct module name"), ScopedModuleCapture, PlainModuleCapture);
-		TestRunner->TestEqual(TEXT("Outside init global-name helper should be empty"), OutsideInitName, TEXT(""));
-		TestRunner->TestEqual(TEXT("Outside init namespace helper should be empty"), OutsideInitNamespace, TEXT(""));
-		TestRunner->TestEqual(TEXT("Outside init module helper should be empty"), OutsideInitModule, TEXT(""));
+		ASSERT_THAT(AreEqual(FString(TEXT("PlainNameCapture")), PlainNameCapture, TEXT("Plain global init should report variable name")));
+		ASSERT_THAT(AreEqual(FString(TEXT("")), PlainNamespaceCapture, TEXT("Plain global init should report empty namespace")));
+		ASSERT_THAT(AreEqual(DirectScriptFunctionLibraryModuleName, PlainModuleCapture, TEXT("Plain global init should report direct module name")));
+		ASSERT_THAT(AreEqual(FString(TEXT("ScopedNameCapture")), ScopedNameCapture, TEXT("Namespaced global init should report variable name")));
+		ASSERT_THAT(AreEqual(ScriptFunctionLibraryNamespace, ScopedNamespaceCapture, TEXT("Namespaced global init should report its namespace")));
+		ASSERT_THAT(AreEqual(DirectScriptFunctionLibraryModuleName, ScopedModuleCapture, TEXT("Namespaced global init should report direct module name")));
+		ASSERT_THAT(AreEqual(PlainModuleCapture, ScopedModuleCapture, TEXT("Plain and namespaced should agree on direct module name")));
+		ASSERT_THAT(AreEqual(FString(TEXT("")), OutsideInitName, TEXT("Outside init global-name helper should be empty")));
+		ASSERT_THAT(AreEqual(FString(TEXT("")), OutsideInitNamespace, TEXT("Outside init namespace helper should be empty")));
+		ASSERT_THAT(AreEqual(FString(TEXT("")), OutsideInitModule, TEXT("Outside init module helper should be empty")));
 	}
 };
 

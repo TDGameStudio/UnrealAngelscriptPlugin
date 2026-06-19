@@ -163,8 +163,9 @@ namespace AngelscriptCodeCoverageTests
 		FAngelscriptEngine& Engine,
 		const TCHAR* ModuleName)
 	{
+		FNoDiscardAsserter Assert(Test);
 		TSharedPtr<FAngelscriptModuleDesc> FoundModule = FindActiveModule(Engine, ModuleName);
-		Test.TestTrue(FString::Printf(TEXT("%s should be registered as an active module"), ModuleName), FoundModule.IsValid());
+		(void)Assert.IsTrue(FoundModule.IsValid(), FString::Printf(TEXT("%s should be registered as an active module"), ModuleName));
 		return FoundModule;
 	}
 
@@ -173,14 +174,15 @@ namespace AngelscriptCodeCoverageTests
 		const FLineCoverage* LineCoverage,
 		const TCHAR* Context)
 	{
-		if (!Test.TestNotNull(FString::Printf(TEXT("%s should have line coverage"), Context), LineCoverage))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(LineCoverage, FString::Printf(TEXT("%s should have line coverage"), Context)))
 		{
 			return false;
 		}
 
-		return Test.TestTrue(
-			FString::Printf(TEXT("%s should have executable lines"), Context),
-			LineCoverage->NumExecutableLines() > 0);
+		return Assert.IsTrue(
+			LineCoverage->NumExecutableLines() > 0,
+			FString::Printf(TEXT("%s should have executable lines"), Context));
 	}
 
 	bool LoadFileToStringChecked(
@@ -189,9 +191,10 @@ namespace AngelscriptCodeCoverageTests
 		FString& OutContents,
 		const TCHAR* Context)
 	{
-		return Test.TestTrue(
-			FString::Printf(TEXT("%s should be readable at %s"), Context, *Path),
-			FFileHelper::LoadFileToString(OutContents, *Path));
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsTrue(
+			FFileHelper::LoadFileToString(OutContents, *Path),
+			FString::Printf(TEXT("%s should be readable at %s"), Context, *Path));
 	}
 }
 
@@ -206,8 +209,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLineCoverageTest,
 	TEST_METHOD(EmptyLineCoverage)
 	{
 		FLineCoverage LineCoverage;
-		TestRunner->TestEqual(TEXT("Empty FLineCoverage has 0 executable lines"), LineCoverage.NumExecutableLines(), 0);
-		TestRunner->TestEqual(TEXT("Empty FLineCoverage has 0 hit lines"), LineCoverage.NumLinesHit(), 0);
+		ASSERT_THAT(AreEqual(0, LineCoverage.NumExecutableLines(), TEXT("Empty FLineCoverage has 0 executable lines")));
+		ASSERT_THAT(AreEqual(0, LineCoverage.NumLinesHit(), TEXT("Empty FLineCoverage has 0 hit lines")));
 	}
 
 	TEST_METHOD(BasicHitCounting)
@@ -221,8 +224,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLineCoverageTest,
 		LineCoverage.HitCounts.Add(17, 0);
 		LineCoverage.HitCounts.Add(18, 0);
 
-		TestRunner->TestEqual(TEXT("7 entries in HitCounts means 7 executable lines"), LineCoverage.NumExecutableLines(), 7);
-		TestRunner->TestEqual(TEXT("Only 3 entries have value > 0"), LineCoverage.NumLinesHit(), 3);
+		ASSERT_THAT(AreEqual(7, LineCoverage.NumExecutableLines(), TEXT("7 entries in HitCounts means 7 executable lines")));
+		ASSERT_THAT(AreEqual(3, LineCoverage.NumLinesHit(), TEXT("Only 3 entries have value > 0")));
 	}
 
 	TEST_METHOD(AllLinesHit)
@@ -232,8 +235,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLineCoverageTest,
 		LineCoverage.HitCounts.Add(2, 5);
 		LineCoverage.HitCounts.Add(3, 100);
 
-		TestRunner->TestEqual(TEXT("All 3 lines are executable"), LineCoverage.NumExecutableLines(), 3);
-		TestRunner->TestEqual(TEXT("All 3 lines are hit"), LineCoverage.NumLinesHit(), 3);
+		ASSERT_THAT(AreEqual(3, LineCoverage.NumExecutableLines(), TEXT("All 3 lines are executable")));
+		ASSERT_THAT(AreEqual(3, LineCoverage.NumLinesHit(), TEXT("All 3 lines are hit")));
 	}
 
 	TEST_METHOD(NoLinesHit)
@@ -243,8 +246,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLineCoverageTest,
 		LineCoverage.HitCounts.Add(2, 0);
 		LineCoverage.HitCounts.Add(3, 0);
 
-		TestRunner->TestEqual(TEXT("3 executable lines exist"), LineCoverage.NumExecutableLines(), 3);
-		TestRunner->TestEqual(TEXT("0 lines are hit when all counts are zero"), LineCoverage.NumLinesHit(), 0);
+		ASSERT_THAT(AreEqual(3, LineCoverage.NumExecutableLines(), TEXT("3 executable lines exist")));
+		ASSERT_THAT(AreEqual(0, LineCoverage.NumLinesHit(), TEXT("0 lines are hit when all counts are zero")));
 	}
 
 	TEST_METHOD(SingleLineFile)
@@ -252,8 +255,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLineCoverageTest,
 		FLineCoverage LineCoverage;
 		LineCoverage.HitCounts.Add(1, 42);
 
-		TestRunner->TestEqual(TEXT("Single-line file has 1 executable line"), LineCoverage.NumExecutableLines(), 1);
-		TestRunner->TestEqual(TEXT("Single-line file with hit count > 0 has 1 hit"), LineCoverage.NumLinesHit(), 1);
+		ASSERT_THAT(AreEqual(1, LineCoverage.NumExecutableLines(), TEXT("Single-line file has 1 executable line")));
+		ASSERT_THAT(AreEqual(1, LineCoverage.NumLinesHit(), TEXT("Single-line file with hit count > 0 has 1 hit")));
 	}
 
 	TEST_METHOD(PruneGeneratedCode)
@@ -270,8 +273,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLineCoverageTest,
 		// File is 99 lines long; lines 100 and 101 are generated code.
 		LineCoverage.PruneGeneratedCode(99);
 
-		TestRunner->TestEqual(TEXT("After pruning lines > 99, 5 executable lines remain"), LineCoverage.NumExecutableLines(), 5);
-		TestRunner->TestEqual(TEXT("3 of the remaining lines have been hit"), LineCoverage.NumLinesHit(), 3);
+		ASSERT_THAT(AreEqual(5, LineCoverage.NumExecutableLines(), TEXT("After pruning lines > 99, 5 executable lines remain")));
+		ASSERT_THAT(AreEqual(3, LineCoverage.NumLinesHit(), TEXT("3 of the remaining lines have been hit")));
 	}
 
 	TEST_METHOD(PruneRemovesAllWhenCutoffIsZero)
@@ -283,8 +286,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLineCoverageTest,
 
 		LineCoverage.PruneGeneratedCode(0);
 
-		TestRunner->TestEqual(TEXT("Pruning with cutoff 0 removes all lines"), LineCoverage.NumExecutableLines(), 0);
-		TestRunner->TestEqual(TEXT("No lines hit after pruning all"), LineCoverage.NumLinesHit(), 0);
+		ASSERT_THAT(AreEqual(0, LineCoverage.NumExecutableLines(), TEXT("Pruning with cutoff 0 removes all lines")));
+		ASSERT_THAT(AreEqual(0, LineCoverage.NumLinesHit(), TEXT("No lines hit after pruning all")));
 	}
 
 	TEST_METHOD(PruneKeepsAllWhenCutoffIsHigh)
@@ -296,8 +299,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLineCoverageTest,
 
 		LineCoverage.PruneGeneratedCode(1000);
 
-		TestRunner->TestEqual(TEXT("Pruning with high cutoff keeps all lines"), LineCoverage.NumExecutableLines(), 3);
-		TestRunner->TestEqual(TEXT("All 3 lines remain hit"), LineCoverage.NumLinesHit(), 3);
+		ASSERT_THAT(AreEqual(3, LineCoverage.NumExecutableLines(), TEXT("Pruning with high cutoff keeps all lines")));
+		ASSERT_THAT(AreEqual(3, LineCoverage.NumLinesHit(), TEXT("All 3 lines remain hit")));
 	}
 
 	TEST_METHOD(PruneOnEmptyIsNoOp)
@@ -305,7 +308,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLineCoverageTest,
 		FLineCoverage LineCoverage;
 		LineCoverage.PruneGeneratedCode(50);
 
-		TestRunner->TestEqual(TEXT("Pruning empty coverage is a no-op"), LineCoverage.NumExecutableLines(), 0);
+		ASSERT_THAT(AreEqual(0, LineCoverage.NumExecutableLines(), TEXT("Pruning empty coverage is a no-op")));
 	}
 
 	TEST_METHOD(PruneExactBoundary)
@@ -317,8 +320,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLineCoverageTest,
 		// Cutoff == 10 means keep lines <= 10, remove lines > 10.
 		LineCoverage.PruneGeneratedCode(10);
 
-		TestRunner->TestEqual(TEXT("Line 10 is kept, line 11 is pruned"), LineCoverage.NumExecutableLines(), 1);
-		TestRunner->TestEqual(TEXT("Line 10 was hit"), LineCoverage.NumLinesHit(), 1);
+		ASSERT_THAT(AreEqual(1, LineCoverage.NumExecutableLines(), TEXT("Line 10 is kept, line 11 is pruned")));
+		ASSERT_THAT(AreEqual(1, LineCoverage.NumLinesHit(), TEXT("Line 10 was hit")));
 	}
 
 	TEST_METHOD(AbsoluteFilenameIsPreserved)
@@ -326,8 +329,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLineCoverageTest,
 		FLineCoverage LineCoverage;
 		LineCoverage.AbsoluteFilename = TEXT("/Game/Scripts/MyScript.as");
 
-		TestRunner->TestEqual(TEXT("AbsoluteFilename is stored correctly"),
-			LineCoverage.AbsoluteFilename, FString(TEXT("/Game/Scripts/MyScript.as")));
+		ASSERT_THAT(AreEqual(FString(TEXT("/Game/Scripts/MyScript.as")), LineCoverage.AbsoluteFilename, TEXT("AbsoluteFilename is stored correctly")));
 	}
 };
 
@@ -371,16 +373,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageNodeTest,
 
 		FCoverageCounts Result = ComputeCoverage(Root);
 
-		TestRunner->TestEqual(TEXT("A dir hit count"), Root.Children[TEXT("A")]->Counts.NumLinesHit, 4);
-		TestRunner->TestEqual(TEXT("A dir total lines"), Root.Children[TEXT("A")]->Counts.NumExecutableLines, 7);
-		TestRunner->TestEqual(TEXT("A/B dir hit count"), Root.Children[TEXT("A")]->Children[TEXT("B")]->Counts.NumLinesHit, 4);
-		TestRunner->TestEqual(TEXT("A/B dir total lines"), Root.Children[TEXT("A")]->Children[TEXT("B")]->Counts.NumExecutableLines, 7);
-		TestRunner->TestEqual(TEXT("A/B/E dir hit count"), Root.Children[TEXT("A")]->Children[TEXT("B")]->Children[TEXT("E")]->Counts.NumLinesHit, 0);
-		TestRunner->TestEqual(TEXT("A/B/E dir total lines"), Root.Children[TEXT("A")]->Children[TEXT("B")]->Children[TEXT("E")]->Counts.NumExecutableLines, 1);
-		TestRunner->TestEqual(TEXT("G dir hit count"), Root.Children[TEXT("G")]->Counts.NumLinesHit, 1);
-		TestRunner->TestEqual(TEXT("G dir total lines"), Root.Children[TEXT("G")]->Counts.NumExecutableLines, 1);
-		TestRunner->TestEqual(TEXT("Root total hit"), Result.NumLinesHit, 5);
-		TestRunner->TestEqual(TEXT("Root total lines"), Result.NumExecutableLines, 8);
+		ASSERT_THAT(AreEqual(4, Root.Children[TEXT("A")]->Counts.NumLinesHit, TEXT("A dir hit count")));
+		ASSERT_THAT(AreEqual(7, Root.Children[TEXT("A")]->Counts.NumExecutableLines, TEXT("A dir total lines")));
+		ASSERT_THAT(AreEqual(4, Root.Children[TEXT("A")]->Children[TEXT("B")]->Counts.NumLinesHit, TEXT("A/B dir hit count")));
+		ASSERT_THAT(AreEqual(7, Root.Children[TEXT("A")]->Children[TEXT("B")]->Counts.NumExecutableLines, TEXT("A/B dir total lines")));
+		ASSERT_THAT(AreEqual(0, Root.Children[TEXT("A")]->Children[TEXT("B")]->Children[TEXT("E")]->Counts.NumLinesHit, TEXT("A/B/E dir hit count")));
+		ASSERT_THAT(AreEqual(1, Root.Children[TEXT("A")]->Children[TEXT("B")]->Children[TEXT("E")]->Counts.NumExecutableLines, TEXT("A/B/E dir total lines")));
+		ASSERT_THAT(AreEqual(1, Root.Children[TEXT("G")]->Counts.NumLinesHit, TEXT("G dir hit count")));
+		ASSERT_THAT(AreEqual(1, Root.Children[TEXT("G")]->Counts.NumExecutableLines, TEXT("G dir total lines")));
+		ASSERT_THAT(AreEqual(5, Result.NumLinesHit, TEXT("Root total hit")));
+		ASSERT_THAT(AreEqual(8, Result.NumExecutableLines, TEXT("Root total lines")));
 	}
 
 	TEST_METHOD(EmptyTreeProducesZeroCounts)
@@ -388,8 +390,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageNodeTest,
 		FCoverageNode Root;
 		FCoverageCounts Result = ComputeCoverage(Root);
 
-		TestRunner->TestEqual(TEXT("Empty tree has 0 hit lines"), Result.NumLinesHit, 0);
-		TestRunner->TestEqual(TEXT("Empty tree has 0 executable lines"), Result.NumExecutableLines, 0);
+		ASSERT_THAT(AreEqual(0, Result.NumLinesHit, TEXT("Empty tree has 0 hit lines")));
+		ASSERT_THAT(AreEqual(0, Result.NumExecutableLines, TEXT("Empty tree has 0 executable lines")));
 	}
 
 	TEST_METHOD(SingleFileAtRoot)
@@ -404,8 +406,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageNodeTest,
 		AddCoverageLeaf(Root, TEXT("Single.as"), Single);
 		FCoverageCounts Result = ComputeCoverage(Root);
 
-		TestRunner->TestEqual(TEXT("Single file at root: 1 hit"), Result.NumLinesHit, 1);
-		TestRunner->TestEqual(TEXT("Single file at root: 2 total"), Result.NumExecutableLines, 2);
+		ASSERT_THAT(AreEqual(1, Result.NumLinesHit, TEXT("Single file at root: 1 hit")));
+		ASSERT_THAT(AreEqual(2, Result.NumExecutableLines, TEXT("Single file at root: 2 total")));
 	}
 
 	TEST_METHOD(DeeplyNestedPath)
@@ -419,13 +421,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageNodeTest,
 		AddCoverageLeaf(Root, TEXT("A/B/C/D/E/F.as"), Deep);
 		FCoverageCounts Result = ComputeCoverage(Root);
 
-		TestRunner->TestEqual(TEXT("Deeply nested: 1 hit propagates to root"), Result.NumLinesHit, 1);
-		TestRunner->TestEqual(TEXT("Deeply nested: 1 total propagates to root"), Result.NumExecutableLines, 1);
+		ASSERT_THAT(AreEqual(1, Result.NumLinesHit, TEXT("Deeply nested: 1 hit propagates to root")));
+		ASSERT_THAT(AreEqual(1, Result.NumExecutableLines, TEXT("Deeply nested: 1 total propagates to root")));
 
 		// Verify intermediate nodes exist.
-		TestRunner->TestTrue(TEXT("Node A exists"), Root.Children.Contains(TEXT("A")));
-		TestRunner->TestTrue(TEXT("Node A/B exists"), Root.Children[TEXT("A")]->Children.Contains(TEXT("B")));
-		TestRunner->TestTrue(TEXT("Node A/B/C exists"), Root.Children[TEXT("A")]->Children[TEXT("B")]->Children.Contains(TEXT("C")));
+		ASSERT_THAT(IsTrue(Root.Children.Contains(TEXT("A")), TEXT("Node A exists")));
+		ASSERT_THAT(IsTrue(Root.Children[TEXT("A")]->Children.Contains(TEXT("B")), TEXT("Node A/B exists")));
+		ASSERT_THAT(IsTrue(Root.Children[TEXT("A")]->Children[TEXT("B")]->Children.Contains(TEXT("C")), TEXT("Node A/B/C exists")));
 	}
 
 	TEST_METHOD(MultipleFilesInSameDirectory)
@@ -446,8 +448,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageNodeTest,
 
 		FCoverageCounts Result = ComputeCoverage(Root);
 
-		TestRunner->TestEqual(TEXT("Dir aggregates: 3 hit lines"), Root.Children[TEXT("Dir")]->Counts.NumLinesHit, 3);
-		TestRunner->TestEqual(TEXT("Dir aggregates: 5 total lines"), Root.Children[TEXT("Dir")]->Counts.NumExecutableLines, 5);
+		ASSERT_THAT(AreEqual(3, Root.Children[TEXT("Dir")]->Counts.NumLinesHit, TEXT("Dir aggregates: 3 hit lines")));
+		ASSERT_THAT(AreEqual(5, Root.Children[TEXT("Dir")]->Counts.NumExecutableLines, TEXT("Dir aggregates: 5 total lines")));
 	}
 
 	TEST_METHOD(CoverageCountsToStringNonZero)
@@ -457,8 +459,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageNodeTest,
 		Counts.NumExecutableLines = 10;
 
 		FString Result = Counts.ToString();
-		TestRunner->TestTrue(TEXT("ToString contains percentage"), Result.Contains(TEXT("30.0%")));
-		TestRunner->TestTrue(TEXT("ToString contains fraction"), Result.Contains(TEXT("3/10")));
+		ASSERT_THAT(IsTrue(Result.Contains(TEXT("30.0%")), TEXT("ToString contains percentage")));
+		ASSERT_THAT(IsTrue(Result.Contains(TEXT("3/10")), TEXT("ToString contains fraction")));
 	}
 
 	TEST_METHOD(CoverageCountsToStringZeroExecutable)
@@ -468,7 +470,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageNodeTest,
 		Counts.NumExecutableLines = 0;
 
 		FString Result = Counts.ToString();
-		TestRunner->TestEqual(TEXT("ToString returns N/A for 0 executable lines"), Result, FString(TEXT("N/A")));
+		ASSERT_THAT(AreEqual(FString(TEXT("N/A")), Result, TEXT("ToString returns N/A for 0 executable lines")));
 	}
 
 	TEST_METHOD(CoverageCountsToString100Percent)
@@ -478,8 +480,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageNodeTest,
 		Counts.NumExecutableLines = 5;
 
 		FString Result = Counts.ToString();
-		TestRunner->TestTrue(TEXT("ToString shows 100.0%"), Result.Contains(TEXT("100.0%")));
-		TestRunner->TestTrue(TEXT("ToString shows 5/5"), Result.Contains(TEXT("5/5")));
+		ASSERT_THAT(IsTrue(Result.Contains(TEXT("100.0%")), TEXT("ToString shows 100.0%")));
+		ASSERT_THAT(IsTrue(Result.Contains(TEXT("5/5")), TEXT("ToString shows 5/5")));
 	}
 };
 
@@ -553,7 +555,7 @@ int Entry()
 )");
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCoverageMapHit", Source);
-		if (!TestRunner->TestNotNull(TEXT("ASCoverageMapHit should compile"), Module)) { return; }
+		if (!this->Assert.IsNotNull(Module, TEXT("ASCoverageMapHit should compile"))) { return; }
 		ON_SCOPE_EXIT { Engine.DiscardModule(TEXT("ASCoverageMapHit")); };
 
 		TSharedPtr<FAngelscriptModuleDesc> FoundModule =
@@ -568,15 +570,14 @@ int Entry()
 		{
 			return;
 		}
-		TestRunner->TestEqual(TEXT("No lines hit before recording starts"),
-			LineCov->NumLinesHit(), 0);
+		(void)this->Assert.AreEqual(0, LineCov->NumLinesHit(), TEXT("No lines hit before recording starts"));
 
 		// Actually execute the AS Entry() function to verify the script logic works.
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int Entry()"));
 			const int32 ReturnValue = Invoker.CallAndReturn<int32>(INDEX_NONE);
-			TestRunner->TestTrue(TEXT("Entry() should execute successfully"), Invoker.HasRun());
-			TestRunner->TestTrue(TEXT("Entry() should return a positive value"), ReturnValue > 0);
+			(void)this->Assert.IsTrue(Invoker.HasRun(), TEXT("Entry() should execute successfully"));
+			(void)this->Assert.IsTrue(ReturnValue > 0, TEXT("Entry() should return a positive value"));
 		}
 
 		// Start recording and hit all mapped lines via the coverage API.
@@ -587,10 +588,12 @@ int Entry()
 		}
 
 		const FLineCoverage* AfterHit = Coverage.GetLineCoverage(*FoundModule);
-		if (TestRunner->TestNotNull(TEXT("Coverage still available after hits"), AfterHit))
+		if (this->Assert.IsNotNull(AfterHit, TEXT("Coverage still available after hits")))
 		{
-			TestRunner->TestEqual(TEXT("All executable lines should be hit"),
-				AfterHit->NumExecutableLines(), AfterHit->NumLinesHit());
+			(void)this->Assert.AreEqual(
+				AfterHit->NumExecutableLines(),
+				AfterHit->NumLinesHit(),
+				TEXT("All executable lines should be hit"));
 		}
 	}
 
@@ -623,7 +626,7 @@ int GetValue()
 )");
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCoverageNotRecording", Source);
-		if (!TestRunner->TestNotNull(TEXT("ASCoverageNotRecording should compile"), Module)) { return; }
+		if (!this->Assert.IsNotNull(Module, TEXT("ASCoverageNotRecording should compile"))) { return; }
 		ON_SCOPE_EXIT { Engine.DiscardModule(TEXT("ASCoverageNotRecording")); };
 
 		TSharedPtr<FAngelscriptModuleDesc> FoundModule =
@@ -637,9 +640,9 @@ int GetValue()
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int GetValue()"));
 			const int32 FibResult = Invoker.CallAndReturn<int32>(INDEX_NONE);
-			TestRunner->TestTrue(TEXT("GetValue() should execute successfully"), Invoker.HasRun());
+			(void)this->Assert.IsTrue(Invoker.HasRun(), TEXT("GetValue() should execute successfully"));
 			// Fibonacci(10) = 55
-			TestRunner->TestEqual(TEXT("GetValue() should return Fibonacci(10) = 55"), FibResult, 55);
+			(void)this->Assert.AreEqual(55, FibResult, TEXT("GetValue() should return Fibonacci(10) = 55"));
 		}
 
 		// Do NOT call StartRecording — hits should be ignored.
@@ -655,10 +658,9 @@ int GetValue()
 		}
 
 		const FLineCoverage* AfterHit = Coverage.GetLineCoverage(*FoundModule);
-		if (TestRunner->TestNotNull(TEXT("Coverage should remain mapped after ignored hits"), AfterHit))
+		if (this->Assert.IsNotNull(AfterHit, TEXT("Coverage should remain mapped after ignored hits")))
 		{
-			TestRunner->TestEqual(TEXT("No lines should be hit when not recording"),
-				AfterHit->NumLinesHit(), 0);
+			(void)this->Assert.AreEqual(0, AfterHit->NumLinesHit(), TEXT("No lines should be hit when not recording"));
 		}
 	}
 
@@ -691,7 +693,7 @@ int Simple()
 )");
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCoverageOutOfRange", Source);
-		if (!TestRunner->TestNotNull(TEXT("ASCoverageOutOfRange should compile"), Module)) { return; }
+		if (!this->Assert.IsNotNull(Module, TEXT("ASCoverageOutOfRange should compile"))) { return; }
 		ON_SCOPE_EXIT { Engine.DiscardModule(TEXT("ASCoverageOutOfRange")); };
 
 		TSharedPtr<FAngelscriptModuleDesc> FoundModule =
@@ -705,9 +707,9 @@ int Simple()
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int Simple()"));
 			const int32 EvenCount = Invoker.CallAndReturn<int32>(INDEX_NONE);
-			TestRunner->TestTrue(TEXT("Simple() should execute successfully"), Invoker.HasRun());
+			(void)this->Assert.IsTrue(Invoker.HasRun(), TEXT("Simple() should execute successfully"));
 			// CountEvens(100) = 50 (0,2,4,...,98)
-			TestRunner->TestEqual(TEXT("Simple() should return CountEvens(100) = 50"), EvenCount, 50);
+			(void)this->Assert.AreEqual(50, EvenCount, TEXT("Simple() should return CountEvens(100) = 50"));
 		}
 
 		Coverage.StartRecording();
@@ -718,10 +720,9 @@ int Simple()
 		Coverage.HitLine(*FoundModule, 0);
 
 		const FLineCoverage* LineCov = Coverage.GetLineCoverage(*FoundModule);
-		if (TestRunner->TestNotNull(TEXT("Coverage should remain mapped after out-of-range hits"), LineCov))
+		if (this->Assert.IsNotNull(LineCov, TEXT("Coverage should remain mapped after out-of-range hits")))
 		{
-			TestRunner->TestEqual(TEXT("Out-of-range lines should not register as hits"),
-				LineCov->NumLinesHit(), 0);
+			(void)this->Assert.AreEqual(0, LineCov->NumLinesHit(), TEXT("Out-of-range lines should not register as hits"));
 		}
 	}
 
@@ -755,7 +756,7 @@ int Bar()
 )");
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCoverageReset", Source);
-		if (!TestRunner->TestNotNull(TEXT("ASCoverageReset should compile"), Module)) { return; }
+		if (!this->Assert.IsNotNull(Module, TEXT("ASCoverageReset should compile"))) { return; }
 		ON_SCOPE_EXIT { Engine.DiscardModule(TEXT("ASCoverageReset")); };
 
 		TSharedPtr<FAngelscriptModuleDesc> FoundModule =
@@ -769,17 +770,17 @@ int Bar()
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int Foo()"));
 			const int32 FooResult = Invoker.CallAndReturn<int32>(INDEX_NONE);
-			TestRunner->TestTrue(TEXT("Foo() should execute successfully"), Invoker.HasRun());
+			(void)this->Assert.IsTrue(Invoker.HasRun(), TEXT("Foo() should execute successfully"));
 			// Foo increments 5 times, so GetValue() = 5
-			TestRunner->TestEqual(TEXT("Foo() should return 5"), FooResult, 5);
+			(void)this->Assert.AreEqual(5, FooResult, TEXT("Foo() should return 5"));
 		}
 
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int Bar()"));
 			const int32 BarResult = Invoker.CallAndReturn<int32>(INDEX_NONE);
-			TestRunner->TestTrue(TEXT("Bar() should execute successfully"), Invoker.HasRun());
+			(void)this->Assert.IsTrue(Invoker.HasRun(), TEXT("Bar() should execute successfully"));
 			// Bar: increment twice, decrement once => 1
-			TestRunner->TestEqual(TEXT("Bar() should return 1"), BarResult, 1);
+			(void)this->Assert.AreEqual(1, BarResult, TEXT("Bar() should return 1"));
 		}
 
 		Coverage.StartRecording();
@@ -797,22 +798,22 @@ int Bar()
 		}
 
 		const FLineCoverage* BeforeReset = Coverage.GetLineCoverage(*FoundModule);
-		if (!TestRunner->TestNotNull(TEXT("Coverage should remain mapped before reset"), BeforeReset))
+		if (!this->Assert.IsNotNull(BeforeReset, TEXT("Coverage should remain mapped before reset")))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("Some lines are hit before reset"), BeforeReset->NumLinesHit() > 0);
+		(void)this->Assert.IsTrue(BeforeReset->NumLinesHit() > 0, TEXT("Some lines are hit before reset"));
 
 		Coverage.ResetHits();
 
 		const FLineCoverage* AfterReset = Coverage.GetLineCoverage(*FoundModule);
-		if (TestRunner->TestNotNull(TEXT("Coverage should remain mapped after reset"), AfterReset))
+		if (this->Assert.IsNotNull(AfterReset, TEXT("Coverage should remain mapped after reset")))
 		{
-			TestRunner->TestEqual(TEXT("After ResetHits, no lines should be hit"),
-				AfterReset->NumLinesHit(), 0);
-			TestRunner->TestTrue(TEXT("Executable lines still exist after reset"),
-				AfterReset->NumExecutableLines() > 0);
+			(void)this->Assert.AreEqual(0, AfterReset->NumLinesHit(), TEXT("After ResetHits, no lines should be hit"));
+			(void)this->Assert.IsTrue(
+				AfterReset->NumExecutableLines() > 0,
+				TEXT("Executable lines still exist after reset"));
 		}
 	}
 
@@ -868,8 +869,10 @@ int ModuleB_Other() { return CountPrimes(50); }
 
 		asIScriptModule* ModA = BuildModule(*TestRunner, Engine, "ASCoverageModA", SourceA);
 		asIScriptModule* ModB = BuildModule(*TestRunner, Engine, "ASCoverageModB", SourceB);
-		if (!TestRunner->TestNotNull(TEXT("ASCoverageModA should compile"), ModA)
-			|| !TestRunner->TestNotNull(TEXT("ASCoverageModB should compile"), ModB))
+		bool bModulesCompiled = true;
+		bModulesCompiled &= this->Assert.IsNotNull(ModA, TEXT("ASCoverageModA should compile"));
+		bModulesCompiled &= this->Assert.IsNotNull(ModB, TEXT("ASCoverageModB should compile"));
+		if (!bModulesCompiled)
 		{
 			return;
 		}
@@ -889,17 +892,20 @@ int ModuleB_Other() { return CountPrimes(50); }
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *ModA, TEXT("int ModuleA_Func()"));
 			const int32 FactorialResult = Invoker.CallAndReturn<int32>(INDEX_NONE);
-			TestRunner->TestTrue(TEXT("ModuleA_Func() should execute successfully"), Invoker.HasRun());
+			(void)this->Assert.IsTrue(Invoker.HasRun(), TEXT("ModuleA_Func() should execute successfully"));
 			// Factorial(5) = 120
-			TestRunner->TestEqual(TEXT("ModuleA_Func() should return Factorial(5) = 120"), FactorialResult, 120);
+			(void)this->Assert.AreEqual(
+				120,
+				FactorialResult,
+				TEXT("ModuleA_Func() should return Factorial(5) = 120"));
 		}
 
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *ModB, TEXT("int ModuleB_Func()"));
 			const int32 PrimeCount = Invoker.CallAndReturn<int32>(INDEX_NONE);
-			TestRunner->TestTrue(TEXT("ModuleB_Func() should execute successfully"), Invoker.HasRun());
+			(void)this->Assert.IsTrue(Invoker.HasRun(), TEXT("ModuleB_Func() should execute successfully"));
 			// Primes below 20: 2,3,5,7,11,13,17,19 = 8
-			TestRunner->TestEqual(TEXT("ModuleB_Func() should return CountPrimes(20) = 8"), PrimeCount, 8);
+			(void)this->Assert.AreEqual(8, PrimeCount, TEXT("ModuleB_Func() should return CountPrimes(20) = 8"));
 		}
 
 		FAngelscriptCodeCoverage Coverage;
@@ -923,13 +929,14 @@ int ModuleB_Other() { return CountPrimes(50); }
 
 		if (AngelscriptCodeCoverageTests::RequireMappedCoverage(*TestRunner, AfterA, TEXT("ASCoverageModA after hits")))
 		{
-			TestRunner->TestEqual(TEXT("Module A: all lines hit"),
-				AfterA->NumExecutableLines(), AfterA->NumLinesHit());
+			(void)this->Assert.AreEqual(
+				AfterA->NumExecutableLines(),
+				AfterA->NumLinesHit(),
+				TEXT("Module A: all lines hit"));
 		}
-		if (TestRunner->TestNotNull(TEXT("Module B coverage should be mapped"), AfterB))
+		if (this->Assert.IsNotNull(AfterB, TEXT("Module B coverage should be mapped")))
 		{
-			TestRunner->TestEqual(TEXT("Module B: no lines hit (isolation)"),
-				AfterB->NumLinesHit(), 0);
+			(void)this->Assert.AreEqual(0, AfterB->NumLinesHit(), TEXT("Module B: no lines hit (isolation)"));
 		}
 	}
 
@@ -967,7 +974,7 @@ int ReportTest()
 )");
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCoverageReport", Source);
-		if (!TestRunner->TestNotNull(TEXT("ASCoverageReport should compile"), Module)) { return; }
+		if (!this->Assert.IsNotNull(Module, TEXT("ASCoverageReport should compile"))) { return; }
 		ON_SCOPE_EXIT { Engine.DiscardModule(TEXT("ASCoverageReport")); };
 
 		TSharedPtr<FAngelscriptModuleDesc> FoundModule =
@@ -978,9 +985,9 @@ int ReportTest()
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int ReportTest()"));
 			const int32 ReportResult = Invoker.CallAndReturn<int32>(INDEX_NONE);
-			TestRunner->TestTrue(TEXT("ReportTest() should execute successfully"), Invoker.HasRun());
+			(void)this->Assert.IsTrue(Invoker.HasRun(), TEXT("ReportTest() should execute successfully"));
 			// NormalHit=7.0>0 (+1), CritHit=15.0>7.0 (+10), BlockedHit=0.0==0.0 (+100) => 111
-			TestRunner->TestEqual(TEXT("ReportTest() should return 111"), ReportResult, 111);
+			(void)this->Assert.AreEqual(111, ReportResult, TEXT("ReportTest() should return 111"));
 		}
 
 		FAngelscriptCodeCoverage Coverage;
@@ -1001,21 +1008,21 @@ int ReportTest()
 
 		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 		FString ExpectedIndexPath = FPaths::Combine(TempDir, TEXT("index.html"));
-		TestRunner->TestTrue(
-			FString::Printf(TEXT("index.html should exist at %s"), *ExpectedIndexPath),
-			PlatformFile.FileExists(*ExpectedIndexPath));
+		(void)this->Assert.IsTrue(
+			PlatformFile.FileExists(*ExpectedIndexPath),
+			FString::Printf(TEXT("index.html should exist at %s"), *ExpectedIndexPath));
 		const FString ExpectedSummaryJsonPath = FPaths::Combine(TempDir, TEXT("coverage_summary.json"));
-		TestRunner->TestTrue(
-			FString::Printf(TEXT("coverage_summary.json should exist at %s"), *ExpectedSummaryJsonPath),
-			PlatformFile.FileExists(*ExpectedSummaryJsonPath));
+		(void)this->Assert.IsTrue(
+			PlatformFile.FileExists(*ExpectedSummaryJsonPath),
+			FString::Printf(TEXT("coverage_summary.json should exist at %s"), *ExpectedSummaryJsonPath));
 
 		// Per-module HTML report should also exist.
 		const FString ExpectedModulePath = FPaths::ChangeExtension(
 			FPaths::Combine(TempDir, (*FoundModule).Code[0].RelativeFilename),
 			TEXT(".as.html"));
-		TestRunner->TestTrue(
-			FString::Printf(TEXT("Module report should exist at %s"), *ExpectedModulePath),
-			PlatformFile.FileExists(*ExpectedModulePath));
+		(void)this->Assert.IsTrue(
+			PlatformFile.FileExists(*ExpectedModulePath),
+			FString::Printf(TEXT("Module report should exist at %s"), *ExpectedModulePath));
 
 		// Keep the generated report under Saved/Automation/CodeCoverage so
 		// it can be opened manually when validating report layout and contents.
@@ -1062,7 +1069,7 @@ int GlobalCoverageReportTest()
 			Engine,
 			"ASCoverageReportGlobal",
 			GlobalSource);
-		if (!TestRunner->TestNotNull(TEXT("ASCoverageReportGlobal should compile"), GlobalModule)) { return; }
+		if (!this->Assert.IsNotNull(GlobalModule, TEXT("ASCoverageReportGlobal should compile"))) { return; }
 
 		const FName ActorModuleName(TEXT("ASCoverageReportActor"));
 		UClass* ActorClass = CompileScriptModule(
@@ -1142,7 +1149,7 @@ class AASCoverageReportActor : AActor
 }
 )AS"),
 			TEXT("AASCoverageReportActor"));
-		if (!TestRunner->TestNotNull(TEXT("AASCoverageReportActor should compile"), ActorClass)) { return; }
+		if (!this->Assert.IsNotNull(ActorClass, TEXT("AASCoverageReportActor should compile"))) { return; }
 
 		ON_SCOPE_EXIT
 		{
@@ -1159,14 +1166,17 @@ class AASCoverageReportActor : AActor
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *GlobalModule, TEXT("int GlobalCoverageReportTest()"));
 			const int32 Score = Invoker.CallAndReturn<int32>(INDEX_NONE);
-			TestRunner->TestTrue(TEXT("GlobalCoverageReportTest() should execute successfully"), Invoker.HasRun());
-			TestRunner->TestEqual(TEXT("GlobalCoverageReportTest() should return weighted score 180"), Score, 180);
+			(void)this->Assert.IsTrue(Invoker.HasRun(), TEXT("GlobalCoverageReportTest() should execute successfully"));
+			(void)this->Assert.AreEqual(
+				180,
+				Score,
+				TEXT("GlobalCoverageReportTest() should return weighted score 180"));
 		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ActorClass);
-		if (!TestRunner->TestNotNull(TEXT("Coverage report actor should spawn"), Actor)) { return; }
+		if (!this->Assert.IsNotNull(Actor, TEXT("Coverage report actor should spawn"))) { return; }
 
 		BeginPlayActor(Engine, *Actor);
 		VerifyByPath<FIntProperty, int32>(
@@ -1187,7 +1197,10 @@ class AASCoverageReportActor : AActor
 			if (!Invoker.IsValid()) { return; }
 			Invoker.AddParam<int32>(40).AddParam<bool>(false);
 			const int32 RemainingPool = Invoker.CallAndReturn<int32>(INDEX_NONE);
-			TestRunner->TestEqual(TEXT("ApplyDamage should return Health + Shield after mitigation"), RemainingPool, 85);
+			(void)this->Assert.AreEqual(
+				85,
+				RemainingPool,
+				TEXT("ApplyDamage should return Health + Shield after mitigation"));
 		}
 
 		VerifyByPath<FIntProperty, int32>(
@@ -1213,7 +1226,7 @@ class AASCoverageReportActor : AActor
 			FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("GetCombatScore")));
 			if (!Invoker.IsValid()) { return; }
 			const int32 CombatScore = Invoker.CallAndReturn<int32>(INDEX_NONE);
-			TestRunner->TestEqual(TEXT("GetCombatScore should include state and damage log"), CombatScore, 126);
+			(void)this->Assert.AreEqual(126, CombatScore, TEXT("GetCombatScore should include state and damage log"));
 		}
 
 		FAngelscriptCodeCoverage Coverage;
@@ -1246,25 +1259,31 @@ class AASCoverageReportActor : AActor
 
 		const FLineCoverage* GlobalAfterHit = Coverage.GetLineCoverage(*GlobalDesc);
 		const FLineCoverage* ActorAfterHit = Coverage.GetLineCoverage(*ActorDesc);
-		if (!TestRunner->TestNotNull(TEXT("Global coverage should still be available after hits"), GlobalAfterHit)
-			|| !TestRunner->TestNotNull(TEXT("Actor coverage should still be available after hits"), ActorAfterHit))
+		bool bCoverageAvailable = true;
+		bCoverageAvailable &= this->Assert.IsNotNull(
+			GlobalAfterHit,
+			TEXT("Global coverage should still be available after hits"));
+		bCoverageAvailable &= this->Assert.IsNotNull(
+			ActorAfterHit,
+			TEXT("Actor coverage should still be available after hits"));
+		if (!bCoverageAvailable)
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Global report module should be fully covered"),
+		(void)this->Assert.AreEqual(
 			GlobalAfterHit->NumExecutableLines(),
-			GlobalAfterHit->NumLinesHit());
-		TestRunner->TestTrue(
-			TEXT("Actor report module should have at least one hit line"),
-			ActorAfterHit->NumLinesHit() > 0);
-		TestRunner->TestTrue(
-			TEXT("Actor report module should keep some lines uncovered"),
-			ActorAfterHit->NumLinesHit() < ActorAfterHit->NumExecutableLines());
-		TestRunner->TestTrue(
-			TEXT("Expanded report should cover more executable lines than the smoke report"),
-			GlobalAfterHit->NumExecutableLines() + ActorAfterHit->NumExecutableLines() > 15);
+			GlobalAfterHit->NumLinesHit(),
+			TEXT("Global report module should be fully covered"));
+		(void)this->Assert.IsTrue(
+			ActorAfterHit->NumLinesHit() > 0,
+			TEXT("Actor report module should have at least one hit line"));
+		(void)this->Assert.IsTrue(
+			ActorAfterHit->NumLinesHit() < ActorAfterHit->NumExecutableLines(),
+			TEXT("Actor report module should keep some lines uncovered"));
+		(void)this->Assert.IsTrue(
+			GlobalAfterHit->NumExecutableLines() + ActorAfterHit->NumExecutableLines() > 15,
+			TEXT("Expanded report should cover more executable lines than the smoke report"));
 
 		const FString OutputDir = AngelscriptCodeCoverageTests::MakeUniqueCoverageReportDir(TEXT("ReportFeatureMatrix"));
 		Coverage.StopRecordingAndWriteReport(OutputDir);
@@ -1279,18 +1298,18 @@ class AASCoverageReportActor : AActor
 			FPaths::Combine(OutputDir, (*ActorDesc).Code[0].RelativeFilename),
 			TEXT(".as.html"));
 
-		TestRunner->TestTrue(
-			FString::Printf(TEXT("Expanded report index.html should exist at %s"), *IndexPath),
-			PlatformFile.FileExists(*IndexPath));
-		TestRunner->TestTrue(
-			FString::Printf(TEXT("Expanded report coverage_summary.json should exist at %s"), *SummaryJsonPath),
-			PlatformFile.FileExists(*SummaryJsonPath));
-		TestRunner->TestTrue(
-			FString::Printf(TEXT("Global module report should exist at %s"), *GlobalReportPath),
-			PlatformFile.FileExists(*GlobalReportPath));
-		TestRunner->TestTrue(
-			FString::Printf(TEXT("Actor module report should exist at %s"), *ActorReportPath),
-			PlatformFile.FileExists(*ActorReportPath));
+		(void)this->Assert.IsTrue(
+			PlatformFile.FileExists(*IndexPath),
+			FString::Printf(TEXT("Expanded report index.html should exist at %s"), *IndexPath));
+		(void)this->Assert.IsTrue(
+			PlatformFile.FileExists(*SummaryJsonPath),
+			FString::Printf(TEXT("Expanded report coverage_summary.json should exist at %s"), *SummaryJsonPath));
+		(void)this->Assert.IsTrue(
+			PlatformFile.FileExists(*GlobalReportPath),
+			FString::Printf(TEXT("Global module report should exist at %s"), *GlobalReportPath));
+		(void)this->Assert.IsTrue(
+			PlatformFile.FileExists(*ActorReportPath),
+			FString::Printf(TEXT("Actor module report should exist at %s"), *ActorReportPath));
 
 		FString IndexHtml;
 		FString ActorHtml;
@@ -1304,19 +1323,45 @@ class AASCoverageReportActor : AActor
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("Index should link the global report"), IndexHtml.Contains(TEXT("ASCoverageReportGlobal.as")));
-		TestRunner->TestTrue(TEXT("Index should link the actor report"), IndexHtml.Contains(TEXT("ASCoverageReportActor.as")));
-		TestRunner->TestTrue(TEXT("Actor report should include the AS UCLASS declaration"), ActorHtml.Contains(TEXT("AASCoverageReportActor")));
-		TestRunner->TestTrue(TEXT("Actor report should include a UFUNCTION marker"), ActorHtml.Contains(TEXT("UFUNCTION")));
-		TestRunner->TestTrue(TEXT("Actor report should include covered lines"), ActorHtml.Contains(TEXT("class=\"covered\"")));
-		TestRunner->TestTrue(TEXT("Actor report should include not-covered lines"), ActorHtml.Contains(TEXT("class=\"not-covered\"")));
-		TestRunner->TestTrue(TEXT("Global report should include the global entry point"), GlobalHtml.Contains(TEXT("GlobalCoverageReportTest")));
-		TestRunner->TestTrue(TEXT("Global report should include covered lines"), GlobalHtml.Contains(TEXT("class=\"covered\"")));
-		TestRunner->TestTrue(TEXT("Summary JSON should contain the global file"), SummaryJson.Contains(TEXT("ASCoverageReportGlobal.as")));
-		TestRunner->TestTrue(TEXT("Summary JSON should contain the actor file"), SummaryJson.Contains(TEXT("ASCoverageReportActor.as")));
-		TestRunner->TestTrue(TEXT("Summary JSON should contain coverage_pct"), SummaryJson.Contains(TEXT("\"coverage_pct\"")));
-		TestRunner->TestTrue(TEXT("Summary JSON should contain lines_hit"), SummaryJson.Contains(TEXT("\"lines_hit\"")));
-		TestRunner->TestTrue(TEXT("Summary JSON should contain lines_total"), SummaryJson.Contains(TEXT("\"lines_total\"")));
+		(void)this->Assert.IsTrue(
+			IndexHtml.Contains(TEXT("ASCoverageReportGlobal.as")),
+			TEXT("Index should link the global report"));
+		(void)this->Assert.IsTrue(
+			IndexHtml.Contains(TEXT("ASCoverageReportActor.as")),
+			TEXT("Index should link the actor report"));
+		(void)this->Assert.IsTrue(
+			ActorHtml.Contains(TEXT("AASCoverageReportActor")),
+			TEXT("Actor report should include the AS UCLASS declaration"));
+		(void)this->Assert.IsTrue(
+			ActorHtml.Contains(TEXT("UFUNCTION")),
+			TEXT("Actor report should include a UFUNCTION marker"));
+		(void)this->Assert.IsTrue(
+			ActorHtml.Contains(TEXT("class=\"covered\"")),
+			TEXT("Actor report should include covered lines"));
+		(void)this->Assert.IsTrue(
+			ActorHtml.Contains(TEXT("class=\"not-covered\"")),
+			TEXT("Actor report should include not-covered lines"));
+		(void)this->Assert.IsTrue(
+			GlobalHtml.Contains(TEXT("GlobalCoverageReportTest")),
+			TEXT("Global report should include the global entry point"));
+		(void)this->Assert.IsTrue(
+			GlobalHtml.Contains(TEXT("class=\"covered\"")),
+			TEXT("Global report should include covered lines"));
+		(void)this->Assert.IsTrue(
+			SummaryJson.Contains(TEXT("ASCoverageReportGlobal.as")),
+			TEXT("Summary JSON should contain the global file"));
+		(void)this->Assert.IsTrue(
+			SummaryJson.Contains(TEXT("ASCoverageReportActor.as")),
+			TEXT("Summary JSON should contain the actor file"));
+		(void)this->Assert.IsTrue(
+			SummaryJson.Contains(TEXT("\"coverage_pct\"")),
+			TEXT("Summary JSON should contain coverage_pct"));
+		(void)this->Assert.IsTrue(
+			SummaryJson.Contains(TEXT("\"lines_hit\"")),
+			TEXT("Summary JSON should contain lines_hit"));
+		(void)this->Assert.IsTrue(
+			SummaryJson.Contains(TEXT("\"lines_total\"")),
+			TEXT("Summary JSON should contain lines_total"));
 
 		// Keep the generated report under Saved/Automation/CodeCoverage so
 		// UCLASS, UFUNCTION, covered, and not-covered HTML can be inspected.
@@ -1343,7 +1388,7 @@ int Unmapped()
 )");
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCoverageUnmapped", Source);
-		if (!TestRunner->TestNotNull(TEXT("ASCoverageUnmapped should compile"), Module)) { return; }
+		if (!this->Assert.IsNotNull(Module, TEXT("ASCoverageUnmapped should compile"))) { return; }
 		ON_SCOPE_EXIT { Engine.DiscardModule(TEXT("ASCoverageUnmapped")); };
 
 		TSharedPtr<FAngelscriptModuleDesc> FoundModule =
@@ -1354,15 +1399,15 @@ int Unmapped()
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int Unmapped()"));
 			const int32 MaxResult = Invoker.CallAndReturn<int32>(INDEX_NONE);
-			TestRunner->TestTrue(TEXT("Unmapped() should execute successfully"), Invoker.HasRun());
+			(void)this->Assert.IsTrue(Invoker.HasRun(), TEXT("Unmapped() should execute successfully"));
 			// Max3(7, 42, 13) = 42
-			TestRunner->TestEqual(TEXT("Unmapped() should return Max3(7,42,13) = 42"), MaxResult, 42);
+			(void)this->Assert.AreEqual(42, MaxResult, TEXT("Unmapped() should return Max3(7,42,13) = 42"));
 		}
 
 		// Do NOT call MapExecutableLines — coverage should return null.
 		FAngelscriptCodeCoverage Coverage;
 		const FLineCoverage* LineCov = Coverage.GetLineCoverage(*FoundModule);
-		TestRunner->TestNull(TEXT("GetLineCoverage returns null for unmapped module"), LineCov);
+		(void)this->Assert.IsNull(LineCov, TEXT("GetLineCoverage returns null for unmapped module"));
 	}
 
 	TEST_METHOD(MapExecutableLinesIncludesHelperFunctions)
@@ -1414,7 +1459,7 @@ int GlobalFunc()
 )");
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCoverageClassMethods", Source);
-		if (!TestRunner->TestNotNull(TEXT("ASCoverageClassMethods should compile"), Module)) { return; }
+		if (!this->Assert.IsNotNull(Module, TEXT("ASCoverageClassMethods should compile"))) { return; }
 		ON_SCOPE_EXIT { Engine.DiscardModule(TEXT("ASCoverageClassMethods")); };
 
 		TSharedPtr<FAngelscriptModuleDesc> FoundModule =
@@ -1425,9 +1470,9 @@ int GlobalFunc()
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int GlobalFunc()"));
 			const int32 TotalValue = Invoker.CallAndReturn<int32>(INDEX_NONE);
-			TestRunner->TestTrue(TEXT("GlobalFunc() should execute successfully"), Invoker.HasRun());
+			(void)this->Assert.IsTrue(Invoker.HasRun(), TEXT("GlobalFunc() should execute successfully"));
 			// Sword(Rare,1)=100, Potion(Common,5)=50, Shield(Uncommon,1)=25, Crown(Legendary,1)=500 => 675
-			TestRunner->TestEqual(TEXT("GlobalFunc() should return total inventory value 675"), TotalValue, 675);
+			(void)this->Assert.AreEqual(675, TotalValue, TEXT("GlobalFunc() should return total inventory value 675"));
 		}
 
 		FAngelscriptCodeCoverage Coverage;
@@ -1437,8 +1482,9 @@ int GlobalFunc()
 		if (AngelscriptCodeCoverageTests::RequireMappedCoverage(*TestRunner, LineCov, TEXT("ASCoverageClassMethods")))
 		{
 			// Should have lines from both helper functions and the global function.
-			TestRunner->TestTrue(TEXT("Module with helpers + global should have multiple executable lines"),
-				LineCov->NumExecutableLines() >= 3);
+			(void)this->Assert.IsTrue(
+				LineCov->NumExecutableLines() >= 3,
+				TEXT("Module with helpers + global should have multiple executable lines"));
 		}
 	}
 };
@@ -1466,9 +1512,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCodeCoverageRobustnessTest,
 
 		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 		const FString ExpectedIndexPath = FPaths::Combine(TempDir, TEXT("index.html"));
-		TestRunner->TestTrue(
-			FString::Printf(TEXT("Idempotent stop should write index.html at %s"), *ExpectedIndexPath),
-			PlatformFile.FileExists(*ExpectedIndexPath));
+		(void)this->Assert.IsTrue(
+			PlatformFile.FileExists(*ExpectedIndexPath),
+			FString::Printf(TEXT("Idempotent stop should write index.html at %s"), *ExpectedIndexPath));
 		// Keep the generated report for manual inspection of idempotent output.
 	}
 
@@ -1488,7 +1534,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCodeCoverageRobustnessTest,
 		ManualCoverage.HitCounts.Add(2, 20);
 
 		// Verify the data exists before we test the manager.
-		TestRunner->TestEqual(TEXT("Manual coverage has 2 hit lines"), ManualCoverage.NumLinesHit(), 2);
+		(void)this->Assert.AreEqual(2, ManualCoverage.NumLinesHit(), TEXT("Manual coverage has 2 hit lines"));
 
 		FAngelscriptCodeCoverage Coverage;
 		Coverage.StartRecording();
@@ -1498,9 +1544,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCodeCoverageRobustnessTest,
 
 		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 		const FString ExpectedIndexPath = FPaths::Combine(TempDir, TEXT("index.html"));
-		TestRunner->TestTrue(
-			FString::Printf(TEXT("StartRecording/StopRecording should write index.html at %s"), *ExpectedIndexPath),
-			PlatformFile.FileExists(*ExpectedIndexPath));
+		(void)this->Assert.IsTrue(
+			PlatformFile.FileExists(*ExpectedIndexPath),
+			FString::Printf(TEXT("StartRecording/StopRecording should write index.html at %s"), *ExpectedIndexPath));
 		// Keep the generated report for manual inspection of reset behavior.
 	}
 
@@ -1515,13 +1561,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCodeCoverageRobustnessTest,
 
 		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 		const FString IndexPath = FPaths::Combine(TempDir, TEXT("index.html"));
-		TestRunner->TestTrue(
-			FString::Printf(TEXT("Empty report should write index.html at %s"), *IndexPath),
-			PlatformFile.FileExists(*IndexPath));
+		(void)this->Assert.IsTrue(
+			PlatformFile.FileExists(*IndexPath),
+			FString::Printf(TEXT("Empty report should write index.html at %s"), *IndexPath));
 		const FString SummaryJsonPath = FPaths::Combine(TempDir, TEXT("coverage_summary.json"));
-		TestRunner->TestTrue(
-			FString::Printf(TEXT("Empty report should write coverage_summary.json at %s"), *SummaryJsonPath),
-			PlatformFile.FileExists(*SummaryJsonPath));
+		(void)this->Assert.IsTrue(
+			PlatformFile.FileExists(*SummaryJsonPath),
+			FString::Printf(TEXT("Empty report should write coverage_summary.json at %s"), *SummaryJsonPath));
 
 		// Keep the generated empty report for manual inspection.
 	}
@@ -1536,9 +1582,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCodeCoverageRobustnessTest,
 
 		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 		const FString IndexPath = FPaths::Combine(TempDir, TEXT("index.html"));
-		TestRunner->TestTrue(
-			FString::Printf(TEXT("ResetHits on empty coverage should leave report generation functional at %s"), *IndexPath),
-			PlatformFile.FileExists(*IndexPath));
+		(void)this->Assert.IsTrue(
+			PlatformFile.FileExists(*IndexPath),
+			FString::Printf(TEXT("ResetHits on empty coverage should leave report generation functional at %s"), *IndexPath));
 		// Keep the generated report for manual inspection of empty reset behavior.
 	}
 
@@ -1549,13 +1595,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCodeCoverageRobustnessTest,
 
 		// Simulate multiple hits by incrementing manually (mirrors what HitLine does).
 		LineCoverage.HitCounts[5] = 1;
-		TestRunner->TestEqual(TEXT("After 1 hit, count is 1"), LineCoverage.HitCounts[5], 1);
+		(void)this->Assert.AreEqual(1, LineCoverage.HitCounts[5], TEXT("After 1 hit, count is 1"));
 
 		LineCoverage.HitCounts[5] = 100;
-		TestRunner->TestEqual(TEXT("After 100 hits, count is 100"), LineCoverage.HitCounts[5], 100);
+		(void)this->Assert.AreEqual(100, LineCoverage.HitCounts[5], TEXT("After 100 hits, count is 100"));
 
-		TestRunner->TestEqual(TEXT("Still only 1 executable line"), LineCoverage.NumExecutableLines(), 1);
-		TestRunner->TestEqual(TEXT("1 line is hit"), LineCoverage.NumLinesHit(), 1);
+		(void)this->Assert.AreEqual(1, LineCoverage.NumExecutableLines(), TEXT("Still only 1 executable line"));
+		(void)this->Assert.AreEqual(1, LineCoverage.NumLinesHit(), TEXT("1 line is hit"));
 	}
 };
 

@@ -30,17 +30,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptModuleSectionDiagnosticsTests,
 	TEST_METHOD(SyntaxErrorReportsSectionAndOffset)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule section diagnostic test should create a standalone SDK engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine,
+			TEXT("ScriptModule section diagnostic test should create a standalone SDK engine")));
 
 		FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleSectionSyntaxError");
 		asIScriptModule* Module = ScriptEngine->GetModule(ModuleScope.Get(), asGM_ALWAYS_CREATE);
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule section diagnostic test should create a module"), Module))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Module,
+			TEXT("ScriptModule section diagnostic test should create a module")));
 
 		const char* Source = R"(
 
@@ -50,43 +46,36 @@ int Broken(
 }
 )";
 		const int AddResult = Module->AddScriptSection("ScriptModuleSectionSyntaxError_A", Source, std::strlen(Source), 10);
-		if (!TestRunner->TestTrue(TEXT("ScriptModule section diagnostic test should add the broken source section"), AddResult >= 0))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(AddResult >= 0,
+			TEXT("ScriptModule section diagnostic test should add the broken source section")));
 
 		const int BuildResult = Module->Build();
-		if (!TestRunner->TestTrue(TEXT("ScriptModule section diagnostic test should fail to build invalid syntax"), BuildResult < 0))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(BuildResult < 0,
+			TEXT("ScriptModule section diagnostic test should fail to build invalid syntax")));
 
 		const FNativeMessageCollector& Messages = Engine.GetMessages();
-		if (!TestRunner->TestTrue(TEXT("ScriptModule section diagnostic test should capture at least one diagnostic"), Messages.Entries.Num() > 0))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(Messages.Entries.Num() > 0,
+			TEXT("ScriptModule section diagnostic test should capture at least one diagnostic")));
 
 		const FNativeMessageEntry& FirstError = Messages.Entries[0];
-		TestRunner->TestEqual(TEXT("ScriptModule section diagnostic test should report the failing section"), FirstError.Section, FString(TEXT("ScriptModuleSectionSyntaxError_A")));
-		TestRunner->TestTrue(TEXT("ScriptModule section diagnostic test should include the section line offset"), FirstError.Row >= 12);
-		TestRunner->TestTrue(TEXT("ScriptModule section diagnostic test should report a positive column"), FirstError.Column > 0);
+		ASSERT_THAT(AreEqual(FString(TEXT("ScriptModuleSectionSyntaxError_A")), FirstError.Section,
+			TEXT("ScriptModule section diagnostic test should report the failing section")));
+		ASSERT_THAT(IsTrue(FirstError.Row >= 12,
+			TEXT("ScriptModule section diagnostic test should include the section line offset")));
+		ASSERT_THAT(IsTrue(FirstError.Column > 0,
+			TEXT("ScriptModule section diagnostic test should report a positive column")));
 	}
 
 	TEST_METHOD(CrossSectionFunctionKeepsDeclaringSection)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule cross-section diagnostic test should create a standalone SDK engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine,
+			TEXT("ScriptModule cross-section diagnostic test should create a standalone SDK engine")));
 
 		FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleCrossSectionNames");
 		asIScriptModule* Module = ScriptEngine->GetModule(ModuleScope.Get(), asGM_ALWAYS_CREATE);
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule cross-section diagnostic test should create a module"), Module))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Module,
+			TEXT("ScriptModule cross-section diagnostic test should create a module")));
 
 		const char* HelperSource = R"(
 int Helper()
@@ -100,12 +89,12 @@ int Entry()
 	return Helper() + 2;
 }
 )";
-		if (!TestRunner->TestTrue(TEXT("ScriptModule cross-section diagnostic test should add helper section"), Module->AddScriptSection("ScriptModuleCrossSection_Helper", HelperSource, std::strlen(HelperSource), 0) >= 0) ||
-			!TestRunner->TestTrue(TEXT("ScriptModule cross-section diagnostic test should add entry section"), Module->AddScriptSection("ScriptModuleCrossSection_Entry", EntrySource, std::strlen(EntrySource), 0) >= 0))
-		{
-			return;
-		}
-		if (!TestRunner->TestEqual(TEXT("ScriptModule cross-section diagnostic test should build both sections"), Module->Build(), static_cast<int32>(asSUCCESS)))
+		ASSERT_THAT(IsTrue(Module->AddScriptSection("ScriptModuleCrossSection_Helper", HelperSource, std::strlen(HelperSource), 0) >= 0,
+			TEXT("ScriptModule cross-section diagnostic test should add helper section")));
+		ASSERT_THAT(IsTrue(Module->AddScriptSection("ScriptModuleCrossSection_Entry", EntrySource, std::strlen(EntrySource), 0) >= 0,
+			TEXT("ScriptModule cross-section diagnostic test should add entry section")));
+		if (!this->Assert.AreEqual(static_cast<int32>(asSUCCESS), Module->Build(),
+			TEXT("ScriptModule cross-section diagnostic test should build both sections")))
 		{
 			TestRunner->AddInfo(Engine.GetMessagesText());
 			return;
@@ -113,14 +102,15 @@ int Entry()
 
 		asIScriptFunction* Helper = Module->GetFunctionByDecl("int Helper()");
 		asIScriptFunction* Entry = Module->GetFunctionByDecl("int Entry()");
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule cross-section diagnostic test should expose Helper"), Helper) ||
-			!TestRunner->TestNotNull(TEXT("ScriptModule cross-section diagnostic test should expose Entry"), Entry))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Helper,
+			TEXT("ScriptModule cross-section diagnostic test should expose Helper")));
+		ASSERT_THAT(IsNotNull(Entry,
+			TEXT("ScriptModule cross-section diagnostic test should expose Entry")));
 
-		TestRunner->TestEqual(TEXT("ScriptModule cross-section diagnostic test should preserve Helper section"), FString(UTF8_TO_TCHAR(Helper->GetScriptSectionName())), FString(TEXT("ScriptModuleCrossSection_Helper")));
-		TestRunner->TestEqual(TEXT("ScriptModule cross-section diagnostic test should preserve Entry section"), FString(UTF8_TO_TCHAR(Entry->GetScriptSectionName())), FString(TEXT("ScriptModuleCrossSection_Entry")));
+		ASSERT_THAT(AreEqual(FString(TEXT("ScriptModuleCrossSection_Helper")), FString(UTF8_TO_TCHAR(Helper->GetScriptSectionName())),
+			TEXT("ScriptModule cross-section diagnostic test should preserve Helper section")));
+		ASSERT_THAT(AreEqual(FString(TEXT("ScriptModuleCrossSection_Entry")), FString(UTF8_TO_TCHAR(Entry->GetScriptSectionName())),
+			TEXT("ScriptModule cross-section diagnostic test should preserve Entry section")));
 	}
 
 };

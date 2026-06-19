@@ -60,83 +60,83 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineNamingTests,
 			Summary,
 			false);
 
-		TestRunner->TestTrue(
-			TEXT("Generated-class exact-name lookup test case should compile successfully"),
-			bCompiled);
-		TestRunner->TestTrue(
-			TEXT("Generated-class exact-name lookup test case should use the preprocessor path"),
-			Summary.bUsedPreprocessor);
-		TestRunner->TestTrue(
-			TEXT("Generated-class exact-name lookup test case should mark compile succeeded in the summary"),
-			Summary.bCompileSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Generated-class exact-name lookup test case should report FullyHandled"),
+		ASSERT_THAT(IsTrue(
+			bCompiled,
+			TEXT("Generated-class exact-name lookup test case should compile successfully")));
+		ASSERT_THAT(IsTrue(
+			Summary.bUsedPreprocessor,
+			TEXT("Generated-class exact-name lookup test case should use the preprocessor path")));
+		ASSERT_THAT(IsTrue(
+			Summary.bCompileSucceeded,
+			TEXT("Generated-class exact-name lookup test case should mark compile succeeded in the summary")));
+		ASSERT_THAT(AreEqual(
+			ECompileResult::FullyHandled,
 			Summary.CompileResult,
-			ECompileResult::FullyHandled);
-		TestRunner->TestEqual(
-			TEXT("Generated-class exact-name lookup test case should not emit diagnostics"),
+			TEXT("Generated-class exact-name lookup test case should report FullyHandled")));
+		ASSERT_THAT(AreEqual(
+			0,
 			Summary.Diagnostics.Num(),
-			0);
+			TEXT("Generated-class exact-name lookup test case should not emit diagnostics")));
 		if (!bCompiled)
 		{
 			return;
 		}
 
 		UPackage* Package = Engine.GetPackageInstance();
-		if (!TestRunner->TestNotNull(TEXT("Generated-class exact-name lookup test case should expose the engine package"), Package))
+		if (!this->Assert.IsNotNull(Package, TEXT("Generated-class exact-name lookup test case should expose the engine package")))
 		{
 			return;
 		}
 
 		UClass* ExactLookupClass = FindObject<UClass>(Package, *CompilerPipelineNamingTest::GeneratedClassName.ToString());
-		if (!TestRunner->TestNotNull(TEXT("Generated-class exact-name lookup test case should find the generated class by its exact script name"), ExactLookupClass))
+		if (!this->Assert.IsNotNull(ExactLookupClass, TEXT("Generated-class exact-name lookup test case should find the generated class by its exact script name")))
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Generated-class exact-name lookup test case should keep the exact UObject name"),
+		ASSERT_THAT(AreEqual(
+			CompilerPipelineNamingTest::GeneratedClassName.ToString(),
 			ExactLookupClass->GetName(),
-			CompilerPipelineNamingTest::GeneratedClassName.ToString());
+			TEXT("Generated-class exact-name lookup test case should keep the exact UObject name")));
 
 		UClass* StrippedLookupClass = FindObject<UClass>(Package, TEXT("ExactNameCarrier"));
-		TestRunner->TestNull(
-			TEXT("Generated-class exact-name lookup test case should not leave behind a stripped-name alias"),
-			StrippedLookupClass);
+		ASSERT_THAT(IsNull(
+			StrippedLookupClass,
+			TEXT("Generated-class exact-name lookup test case should not leave behind a stripped-name alias")));
 
 		UClass* HelperLookupClass = FindGeneratedClass(&Engine, CompilerPipelineNamingTest::GeneratedClassName);
-		if (!TestRunner->TestNotNull(TEXT("Generated-class exact-name lookup test case should still resolve through FindGeneratedClass"), HelperLookupClass))
+		if (!this->Assert.IsNotNull(HelperLookupClass, TEXT("Generated-class exact-name lookup test case should still resolve through FindGeneratedClass")))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(
-			TEXT("Generated-class exact-name lookup test case should have helper lookup resolve to the same exact-name object"),
-			HelperLookupClass == ExactLookupClass);
+		ASSERT_THAT(IsTrue(
+			HelperLookupClass == ExactLookupClass,
+			TEXT("Generated-class exact-name lookup test case should have helper lookup resolve to the same exact-name object")));
 
 		UFunction* GetValueFunction = FindGeneratedFunction(ExactLookupClass, CompilerPipelineNamingTest::GeneratedFunctionName);
-		if (!TestRunner->TestNotNull(TEXT("Generated-class exact-name lookup test case should expose GetValue on the exact-name class"), GetValueFunction))
+		if (!this->Assert.IsNotNull(GetValueFunction, TEXT("Generated-class exact-name lookup test case should expose GetValue on the exact-name class")))
 		{
 			return;
 		}
 
 		UObject* RuntimeObject = NewObject<UObject>(GetTransientPackage(), ExactLookupClass, TEXT("CompilerExactNameCarrier"));
-		if (!TestRunner->TestNotNull(TEXT("Generated-class exact-name lookup test case should instantiate the exact-name class"), RuntimeObject))
+		if (!this->Assert.IsNotNull(RuntimeObject, TEXT("Generated-class exact-name lookup test case should instantiate the exact-name class")))
 		{
 			return;
 		}
 
 		int32 Result = 0;
 		const bool bExecuted = ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeObject, GetValueFunction, Result);
-		TestRunner->TestTrue(
-			TEXT("Generated-class exact-name lookup test case should execute GetValue on the exact-name class"),
-			bExecuted);
+		ASSERT_THAT(IsTrue(
+			bExecuted,
+			TEXT("Generated-class exact-name lookup test case should execute GetValue on the exact-name class")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(
-				TEXT("Generated-class exact-name lookup test case should return the expected value"),
+			ASSERT_THAT(AreEqual(
+				42,
 				Result,
-				42);
+				TEXT("Generated-class exact-name lookup test case should return the expected value")));
 		}
 
 		}

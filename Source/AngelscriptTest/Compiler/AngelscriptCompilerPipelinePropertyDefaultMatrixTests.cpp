@@ -62,20 +62,20 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("FName default should compile successfully"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("FName default should compile successfully")))
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UDefaultFNameCarrier"));
-		if (!TestRunner->TestNotNull(TEXT("FName default class should be materialized"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("FName default class should be materialized")))
 			return;
 
 		UObject* CDO = GeneratedClass->GetDefaultObject();
 		FNameProperty* Prop = FindFProperty<FNameProperty>(GeneratedClass, TEXT("MyName"));
-		if (!TestRunner->TestNotNull(TEXT("CDO should exist"), CDO) || !TestRunner->TestNotNull(TEXT("MyName property should exist"), Prop))
+		if (!this->Assert.IsNotNull(CDO, TEXT("CDO should exist")) || !this->Assert.IsNotNull(Prop, TEXT("MyName property should exist")))
 			return;
 
 		FName Value = Prop->GetPropertyValue_InContainer(CDO);
-		TestRunner->TestEqual(TEXT("CDO MyName should be TestName"), Value, FName(TEXT("TestName")));
+		ASSERT_THAT(AreEqual(FName(TEXT("TestName")), Value, TEXT("CDO MyName should be TestName")));
 
 		}
 
@@ -125,22 +125,22 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("Enum default should compile successfully"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("Enum default should compile successfully")))
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UDefaultEnumCarrier"));
-		if (!TestRunner->TestNotNull(TEXT("Enum default class should be materialized"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Enum default class should be materialized")))
 			return;
 
 		UObject* Instance = NewObject<UObject>(GetTransientPackage(), GeneratedClass);
 		UFunction* GetFunc = GeneratedClass->FindFunctionByName(TEXT("GetDirectionValue"));
-		if (!TestRunner->TestNotNull(TEXT("Instance should exist"), Instance) || !TestRunner->TestNotNull(TEXT("GetDirectionValue should exist"), GetFunc))
+		if (!this->Assert.IsNotNull(Instance, TEXT("Instance should exist")) || !this->Assert.IsNotNull(GetFunc, TEXT("GetDirectionValue should exist")))
 			return;
 
 		int32 Result = INDEX_NONE;
 		const bool bExecuted = ExecuteGeneratedIntEventOnGameThread(&Engine, Instance, GetFunc, Result);
-		TestRunner->TestTrue(TEXT("GetDirectionValue should execute"), bExecuted);
-		TestRunner->TestEqual(TEXT("Direction should be Right (3)"), Result, 3);
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("GetDirectionValue should execute")));
+		ASSERT_THAT(AreEqual(3, Result, TEXT("Direction should be Right (3)")));
 
 		}
 
@@ -190,22 +190,22 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("Float+Bool default should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("Float+Bool default should compile")))
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UDefaultFloatBoolCarrier"));
-		if (!TestRunner->TestNotNull(TEXT("Class should be materialized"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Class should be materialized")))
 			return;
 
 		UObject* Instance = NewObject<UObject>(GetTransientPackage(), GeneratedClass);
 		UFunction* VerifyFunc = GeneratedClass->FindFunctionByName(TEXT("VerifyDefaults"));
-		if (!TestRunner->TestNotNull(TEXT("Instance should exist"), Instance) || !TestRunner->TestNotNull(TEXT("VerifyDefaults should exist"), VerifyFunc))
+		if (!this->Assert.IsNotNull(Instance, TEXT("Instance should exist")) || !this->Assert.IsNotNull(VerifyFunc, TEXT("VerifyDefaults should exist")))
 			return;
 
 		int32 Result = INDEX_NONE;
 		const bool bExecuted = ExecuteGeneratedIntEventOnGameThread(&Engine, Instance, VerifyFunc, Result);
-		TestRunner->TestTrue(TEXT("VerifyDefaults should execute"), bExecuted);
-		TestRunner->TestEqual(TEXT("Float+Bool defaults should apply correctly"), Result, 42);
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("VerifyDefaults should execute")));
+		ASSERT_THAT(AreEqual(42, Result, TEXT("Float+Bool defaults should apply correctly")));
 
 		}
 
@@ -253,22 +253,22 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("FVector default should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("FVector default should compile")))
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UDefaultVectorCarrier"));
-		if (!TestRunner->TestNotNull(TEXT("Class should be materialized"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Class should be materialized")))
 			return;
 
 		UObject* Instance = NewObject<UObject>(GetTransientPackage(), GeneratedClass);
 		UFunction* VerifyFunc = GeneratedClass->FindFunctionByName(TEXT("VerifyVector"));
-		if (!TestRunner->TestNotNull(TEXT("Instance should exist"), Instance) || !TestRunner->TestNotNull(TEXT("VerifyVector should exist"), VerifyFunc))
+		if (!this->Assert.IsNotNull(Instance, TEXT("Instance should exist")) || !this->Assert.IsNotNull(VerifyFunc, TEXT("VerifyVector should exist")))
 			return;
 
 		int32 Result = INDEX_NONE;
 		const bool bExecuted = ExecuteGeneratedIntEventOnGameThread(&Engine, Instance, VerifyFunc, Result);
-		TestRunner->TestTrue(TEXT("VerifyVector should execute"), bExecuted);
-		TestRunner->TestEqual(TEXT("FVector default should apply correctly"), Result, 42);
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("VerifyVector should execute")));
+		ASSERT_THAT(AreEqual(42, Result, TEXT("FVector default should apply correctly")));
 
 		}
 
@@ -312,22 +312,22 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("FString default should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("FString default should compile")))
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UDefaultStringCarrier"));
-		if (!TestRunner->TestNotNull(TEXT("Class should be materialized"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Class should be materialized")))
 			return;
 
 		UObject* Instance = NewObject<UObject>(GetTransientPackage(), GeneratedClass);
 		UFunction* VerifyFunc = GeneratedClass->FindFunctionByName(TEXT("VerifyString"));
-		if (!TestRunner->TestNotNull(TEXT("Instance should exist"), Instance) || !TestRunner->TestNotNull(TEXT("VerifyString should exist"), VerifyFunc))
+		if (!this->Assert.IsNotNull(Instance, TEXT("Instance should exist")) || !this->Assert.IsNotNull(VerifyFunc, TEXT("VerifyString should exist")))
 			return;
 
 		int32 Result = INDEX_NONE;
 		const bool bExecuted = ExecuteGeneratedIntEventOnGameThread(&Engine, Instance, VerifyFunc, Result);
-		TestRunner->TestTrue(TEXT("VerifyString should execute"), bExecuted);
-		TestRunner->TestEqual(TEXT("FString default should apply correctly"), Result, 42);
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("VerifyString should execute")));
+		ASSERT_THAT(AreEqual(42, Result, TEXT("FString default should apply correctly")));
 
 		}
 
@@ -373,22 +373,22 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("Tags.Add default should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("Tags.Add default should compile")))
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("ADefaultTagsActor"));
-		if (!TestRunner->TestNotNull(TEXT("Class should be materialized"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Class should be materialized")))
 			return;
 
 		UObject* Instance = NewObject<UObject>(GetTransientPackage(), GeneratedClass);
 		UFunction* VerifyFunc = GeneratedClass->FindFunctionByName(TEXT("VerifyTags"));
-		if (!TestRunner->TestNotNull(TEXT("Instance should exist"), Instance) || !TestRunner->TestNotNull(TEXT("VerifyTags should exist"), VerifyFunc))
+		if (!this->Assert.IsNotNull(Instance, TEXT("Instance should exist")) || !this->Assert.IsNotNull(VerifyFunc, TEXT("VerifyTags should exist")))
 			return;
 
 		int32 Result = INDEX_NONE;
 		const bool bExecuted = ExecuteGeneratedIntEventOnGameThread(&Engine, Instance, VerifyFunc, Result);
-		TestRunner->TestTrue(TEXT("VerifyTags should execute"), bExecuted);
-		TestRunner->TestEqual(TEXT("Tags.Add should actually add tags to CDO and instances"), Result, 42);
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("VerifyTags should execute")));
+		ASSERT_THAT(AreEqual(42, Result, TEXT("Tags.Add should actually add tags to CDO and instances")));
 
 		}
 
@@ -441,22 +441,22 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("Priority default should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("Priority default should compile")))
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UDefaultPriorityCarrier"));
-		if (!TestRunner->TestNotNull(TEXT("Class should be materialized"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Class should be materialized")))
 			return;
 
 		UObject* Instance = NewObject<UObject>(GetTransientPackage(), GeneratedClass);
 		UFunction* GetFunc = GeneratedClass->FindFunctionByName(TEXT("GetScore"));
-		if (!TestRunner->TestNotNull(TEXT("Instance should exist"), Instance) || !TestRunner->TestNotNull(TEXT("GetScore should exist"), GetFunc))
+		if (!this->Assert.IsNotNull(Instance, TEXT("Instance should exist")) || !this->Assert.IsNotNull(GetFunc, TEXT("GetScore should exist")))
 			return;
 
 		int32 Result = INDEX_NONE;
 		const bool bExecuted = ExecuteGeneratedIntEventOnGameThread(&Engine, Instance, GetFunc, Result);
-		TestRunner->TestTrue(TEXT("GetScore should execute"), bExecuted);
-		TestRunner->TestEqual(TEXT("default should override inline initializer (20 > 10)"), Result, 20);
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("GetScore should execute")));
+		ASSERT_THAT(AreEqual(20, Result, TEXT("default should override inline initializer (20 > 10)")));
 
 		}
 
@@ -491,7 +491,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 	)AS"),
 			CompileResult);
 
-		TestRunner->TestFalse(TEXT("Non-existent property default should fail to compile"), bCompiled);
+		ASSERT_THAT(IsFalse(bCompiled, TEXT("Non-existent property default should fail to compile")));
 
 		}
 
@@ -523,7 +523,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 	)AS"),
 			CompileResult);
 
-		TestRunner->TestFalse(TEXT("default outside class scope should fail"), bCompiled);
+		ASSERT_THAT(IsFalse(bCompiled, TEXT("default outside class scope should fail")));
 
 		}
 
@@ -561,7 +561,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
 	)AS"),
 			CompileResult);
 
-		TestRunner->TestFalse(TEXT("Type mismatch default should fail to compile"), bCompiled);
+		ASSERT_THAT(IsFalse(bCompiled, TEXT("Type mismatch default should fail to compile")));
 
 		}
 

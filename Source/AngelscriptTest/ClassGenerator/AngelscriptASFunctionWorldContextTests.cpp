@@ -46,8 +46,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionWorldContextTests,
 		AActor& ContextActor = Spawner.SpawnActor<AActor>();
 		AActor& PreviousContextActor = Spawner.SpawnActor<AActor>();
 		UObject* PreviousContext = &PreviousContextActor;
-		if (!TestRunner->TestNotNull(TEXT("World-context function test should create a test case actor"), &ContextActor)
-			|| !TestRunner->TestNotNull(TEXT("World-context function test should create a previous ambient context"), PreviousContext))
+		ASSERT_THAT(IsNotNull(&ContextActor, TEXT("World-context function test should create a test case actor")));
+		ASSERT_THAT(IsNotNull(PreviousContext, TEXT("World-context function test should create a previous ambient context")));
+		if (&ContextActor == nullptr || PreviousContext == nullptr)
 		{ return; }
 
 		const FString ScriptSource = TEXT(R"AS(
@@ -68,42 +69,46 @@ int CheckWorldContext(AActor WorldContextObject, int Value)
 )AS");
 
 		const bool bCompiled = CompileAnnotatedModuleFromMemory(&Engine, WorldContextModuleName, WorldContextFilename, ScriptSource);
-		if (!TestRunner->TestTrue(TEXT("World-context function test should compile the annotated static callable module"), bCompiled)) { return; }
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("World-context function test should compile the annotated static callable module")));
+		if (!bCompiled) { return; }
 
 		UClass* ScriptClass = FindGeneratedClass(&Engine, WorldContextStaticsClassName);
-		if (!TestRunner->TestNotNull(TEXT("World-context function test should generate the module statics class"), ScriptClass)) { return; }
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("World-context function test should generate the module statics class")));
+		if (ScriptClass == nullptr) { return; }
 
 		UFunction* GeneratedFunction = FindGeneratedFunction(ScriptClass, TEXT("CheckWorldContext"));
 		UASFunction* ScriptFunction = Cast<UASFunction>(GeneratedFunction);
 		FObjectProperty* WorldContextProperty = FindFProperty<FObjectProperty>(GeneratedFunction, TEXT("WorldContextObject"));
 		FIntProperty* ValueProperty = FindFProperty<FIntProperty>(GeneratedFunction, TEXT("Value"));
 		FIntProperty* ReturnProperty = FindFProperty<FIntProperty>(GeneratedFunction, TEXT("ReturnValue"));
-		if (!TestRunner->TestNotNull(TEXT("World-context function test should expose the generated static function"), GeneratedFunction)
-			|| !TestRunner->TestNotNull(TEXT("World-context function test should generate a UASFunction"), ScriptFunction)
-			|| !TestRunner->TestNotNull(TEXT("World-context function test should expose the WorldContextObject property"), WorldContextProperty)
-			|| !TestRunner->TestNotNull(TEXT("World-context function test should expose the Value property"), ValueProperty)
-			|| !TestRunner->TestNotNull(TEXT("World-context function test should expose the ReturnValue property"), ReturnProperty))
+		ASSERT_THAT(IsNotNull(GeneratedFunction, TEXT("World-context function test should expose the generated static function")));
+		ASSERT_THAT(IsNotNull(ScriptFunction, TEXT("World-context function test should generate a UASFunction")));
+		ASSERT_THAT(IsNotNull(WorldContextProperty, TEXT("World-context function test should expose the WorldContextObject property")));
+		ASSERT_THAT(IsNotNull(ValueProperty, TEXT("World-context function test should expose the Value property")));
+		ASSERT_THAT(IsNotNull(ReturnProperty, TEXT("World-context function test should expose the ReturnValue property")));
+		if (GeneratedFunction == nullptr || ScriptFunction == nullptr || WorldContextProperty == nullptr || ValueProperty == nullptr || ReturnProperty == nullptr)
 		{ return; }
 
-		TestRunner->TestTrue(TEXT("World-context function test should compile the callable as a static UFunction"), GeneratedFunction->HasAnyFunctionFlags(FUNC_Static));
-		TestRunner->TestFalse(TEXT("Explicit WorldContext metadata should not generate an extra synthetic parameter"), ScriptFunction->bIsWorldContextGenerated);
-		TestRunner->TestEqual(TEXT("WorldContext parameter should stay at argument index 0"), ScriptFunction->WorldContextIndex, 0);
-		if (!TestRunner->TestTrue(TEXT("WorldContext parameter should record a valid parameter offset"), ScriptFunction->WorldContextOffsetInParms >= 0)) { return; }
-		if (!TestRunner->TestEqual(TEXT("WorldContext parameter offset should match the reflected property layout"), ScriptFunction->WorldContextOffsetInParms, WorldContextProperty->GetOffset_ForUFunction())) { return; }
-		TestRunner->TestTrue(TEXT("Generated function parameters should be reported as Angelscript-generated properties"), IsAngelscriptGenerated(WorldContextProperty));
-		TestRunner->TestTrue(TEXT("Generated function ordinary parameters should be reported as Angelscript-generated properties"), IsAngelscriptGenerated(ValueProperty));
-		TestRunner->TestTrue(TEXT("Generated function return parameters should be reported as Angelscript-generated properties"), IsAngelscriptGenerated(ReturnProperty));
-		TestRunner->TestTrue(TEXT("WorldContextObject parameter should be reported as an Angelscript world-context property"), IsAngelscriptWorldContextProperty(WorldContextProperty));
-		TestRunner->TestFalse(TEXT("Ordinary generated parameters should not be reported as world-context properties"), IsAngelscriptWorldContextProperty(ValueProperty));
-		TestRunner->TestFalse(TEXT("Generated return parameters should not be reported as world-context properties"), IsAngelscriptWorldContextProperty(ReturnProperty));
+		ASSERT_THAT(IsTrue(GeneratedFunction->HasAnyFunctionFlags(FUNC_Static), TEXT("World-context function test should compile the callable as a static UFunction")));
+		ASSERT_THAT(IsFalse(ScriptFunction->bIsWorldContextGenerated, TEXT("Explicit WorldContext metadata should not generate an extra synthetic parameter")));
+		ASSERT_THAT(AreEqual(0, ScriptFunction->WorldContextIndex, TEXT("WorldContext parameter should stay at argument index 0")));
+		ASSERT_THAT(IsTrue(ScriptFunction->WorldContextOffsetInParms >= 0, TEXT("WorldContext parameter should record a valid parameter offset")));
+		ASSERT_THAT(AreEqual(ScriptFunction->WorldContextOffsetInParms, WorldContextProperty->GetOffset_ForUFunction(), TEXT("WorldContext parameter offset should match the reflected property layout")));
+		ASSERT_THAT(IsTrue(IsAngelscriptGenerated(WorldContextProperty), TEXT("Generated function parameters should be reported as Angelscript-generated properties")));
+		ASSERT_THAT(IsTrue(IsAngelscriptGenerated(ValueProperty), TEXT("Generated function ordinary parameters should be reported as Angelscript-generated properties")));
+		ASSERT_THAT(IsTrue(IsAngelscriptGenerated(ReturnProperty), TEXT("Generated function return parameters should be reported as Angelscript-generated properties")));
+		ASSERT_THAT(IsTrue(IsAngelscriptWorldContextProperty(WorldContextProperty), TEXT("WorldContextObject parameter should be reported as an Angelscript world-context property")));
+		ASSERT_THAT(IsFalse(IsAngelscriptWorldContextProperty(ValueProperty), TEXT("Ordinary generated parameters should not be reported as world-context properties")));
+		ASSERT_THAT(IsFalse(IsAngelscriptWorldContextProperty(ReturnProperty), TEXT("Generated return parameters should not be reported as world-context properties")));
 
 		UFunction* NativeFunction = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("RequiresWorldContext"));
 		FIntProperty* NativeValueProperty = NativeFunction != nullptr ? FindFProperty<FIntProperty>(NativeFunction, TEXT("Value")) : nullptr;
-		if (!TestRunner->TestNotNull(TEXT("World-context function test should find a native comparison function"), NativeFunction)
-			|| !TestRunner->TestNotNull(TEXT("World-context function test should find a native comparison property"), NativeValueProperty))
+		ASSERT_THAT(IsNotNull(NativeFunction, TEXT("World-context function test should find a native comparison function")));
+		ASSERT_THAT(IsNotNull(NativeValueProperty, TEXT("World-context function test should find a native comparison property")));
+		if (NativeFunction == nullptr || NativeValueProperty == nullptr)
 		{ return; }
-		TestRunner->TestFalse(TEXT("Native UFunction parameters should not be reported as Angelscript-generated properties"), IsAngelscriptGenerated(NativeValueProperty));
-		TestRunner->TestFalse(TEXT("Native UFunction parameters should not be reported as Angelscript world-context properties"), IsAngelscriptWorldContextProperty(NativeValueProperty));
+		ASSERT_THAT(IsFalse(IsAngelscriptGenerated(NativeValueProperty), TEXT("Native UFunction parameters should not be reported as Angelscript-generated properties")));
+		ASSERT_THAT(IsFalse(IsAngelscriptWorldContextProperty(NativeValueProperty), TEXT("Native UFunction parameters should not be reported as Angelscript world-context properties")));
 
 		FCheckWorldContextParams Params;
 		Params.WorldContextObject = &ContextActor;
@@ -112,15 +117,16 @@ int CheckWorldContext(AActor WorldContextObject, int Value)
 		UObject* AmbientBeforeScope = FAngelscriptEngine::GetAmbientWorldContext();
 		{
 			FScopedTestWorldContextScope PreviousContextScope(PreviousContext);
-			if (!TestRunner->TestTrue(TEXT("Outer test scope should install the previous ambient context"), FAngelscriptEngine::GetAmbientWorldContext() == PreviousContext)) { return; }
+			ASSERT_THAT(IsTrue(FAngelscriptEngine::GetAmbientWorldContext() == PreviousContext, TEXT("Outer test scope should install the previous ambient context")));
+			if (FAngelscriptEngine::GetAmbientWorldContext() != PreviousContext) { return; }
 
 			ScriptFunction->RuntimeCallEvent(ScriptClass->GetDefaultObject(), &Params);
 
-			TestRunner->TestEqual(TEXT("RuntimeCallEvent should route the explicit WorldContextObject through ambient world-context lookup"), Params.ReturnValue, 7);
-			TestRunner->TestTrue(TEXT("RuntimeCallEvent should restore the previous ambient context before leaving the outer scope"), FAngelscriptEngine::GetAmbientWorldContext() == PreviousContext);
+			ASSERT_THAT(AreEqual(7, Params.ReturnValue, TEXT("RuntimeCallEvent should route the explicit WorldContextObject through ambient world-context lookup")));
+			ASSERT_THAT(IsTrue(FAngelscriptEngine::GetAmbientWorldContext() == PreviousContext, TEXT("RuntimeCallEvent should restore the previous ambient context before leaving the outer scope")));
 		}
 
-		TestRunner->TestTrue(TEXT("World-context runtime call should restore the ambient context after the scoped override exits"), FAngelscriptEngine::GetAmbientWorldContext() == AmbientBeforeScope);
+		ASSERT_THAT(IsTrue(FAngelscriptEngine::GetAmbientWorldContext() == AmbientBeforeScope, TEXT("World-context runtime call should restore the ambient context after the scoped override exits")));
 		}
 	}
 };

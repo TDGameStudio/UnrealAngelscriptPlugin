@@ -73,21 +73,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionCallersTests,
 		FFuncEntry ConstMethodEntry = { ERASE_AUTO_METHOD_PTR(FFunctionCallerHarness, GetBiasRef) };
 		FFuncEntry PointerEntry = { ERASE_AUTO_FUNCTION_PTR(CopyFromPtr) };
 
-		if (!TestRunner->TestTrue(TEXT("Function caller round-trip test should bind the global direct-call pointer"), GlobalEntry.FuncPtr.IsBound()) ||
-			!TestRunner->TestTrue(TEXT("Function caller round-trip test should bind the global caller thunk"), GlobalEntry.Caller.IsBound()) ||
-			!TestRunner->TestEqual(TEXT("Function caller round-trip test should tag the global caller as a function thunk"), GlobalEntry.Caller.type, 1) ||
-			!TestRunner->TestTrue(TEXT("Function caller round-trip test should bind the method direct-call pointer"), MethodEntry.FuncPtr.IsBound()) ||
-			!TestRunner->TestTrue(TEXT("Function caller round-trip test should bind the method caller thunk"), MethodEntry.Caller.IsBound()) ||
-			!TestRunner->TestEqual(TEXT("Function caller round-trip test should tag the method caller as a method thunk"), MethodEntry.Caller.type, 2) ||
-			!TestRunner->TestTrue(TEXT("Function caller round-trip test should bind the const method direct-call pointer"), ConstMethodEntry.FuncPtr.IsBound()) ||
-			!TestRunner->TestTrue(TEXT("Function caller round-trip test should bind the const method caller thunk"), ConstMethodEntry.Caller.IsBound()) ||
-			!TestRunner->TestEqual(TEXT("Function caller round-trip test should keep the const method on the method-thunk path"), ConstMethodEntry.Caller.type, 2) ||
-			!TestRunner->TestTrue(TEXT("Function caller round-trip test should bind the pointer-argument direct-call pointer"), PointerEntry.FuncPtr.IsBound()) ||
-			!TestRunner->TestTrue(TEXT("Function caller round-trip test should bind the pointer-argument caller thunk"), PointerEntry.Caller.IsBound()) ||
-			!TestRunner->TestEqual(TEXT("Function caller round-trip test should keep the pointer-argument function on the function-thunk path"), PointerEntry.Caller.type, 1))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(GlobalEntry.FuncPtr.IsBound(), TEXT("Function caller round-trip test should bind the global direct-call pointer")));
+		ASSERT_THAT(IsTrue(GlobalEntry.Caller.IsBound(), TEXT("Function caller round-trip test should bind the global caller thunk")));
+		ASSERT_THAT(AreEqual(1, GlobalEntry.Caller.type, TEXT("Function caller round-trip test should tag the global caller as a function thunk")));
+		ASSERT_THAT(IsTrue(MethodEntry.FuncPtr.IsBound(), TEXT("Function caller round-trip test should bind the method direct-call pointer")));
+		ASSERT_THAT(IsTrue(MethodEntry.Caller.IsBound(), TEXT("Function caller round-trip test should bind the method caller thunk")));
+		ASSERT_THAT(AreEqual(2, MethodEntry.Caller.type, TEXT("Function caller round-trip test should tag the method caller as a method thunk")));
+		ASSERT_THAT(IsTrue(ConstMethodEntry.FuncPtr.IsBound(), TEXT("Function caller round-trip test should bind the const method direct-call pointer")));
+		ASSERT_THAT(IsTrue(ConstMethodEntry.Caller.IsBound(), TEXT("Function caller round-trip test should bind the const method caller thunk")));
+		ASSERT_THAT(AreEqual(2, ConstMethodEntry.Caller.type, TEXT("Function caller round-trip test should keep the const method on the method-thunk path")));
+		ASSERT_THAT(IsTrue(PointerEntry.FuncPtr.IsBound(), TEXT("Function caller round-trip test should bind the pointer-argument direct-call pointer")));
+		ASSERT_THAT(IsTrue(PointerEntry.Caller.IsBound(), TEXT("Function caller round-trip test should bind the pointer-argument caller thunk")));
+		ASSERT_THAT(AreEqual(1, PointerEntry.Caller.type, TEXT("Function caller round-trip test should keep the pointer-argument function on the function-thunk path")));
 
 		int32 GlobalValue = 9;
 		int32 GlobalInOut = 4;
@@ -95,12 +92,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionCallersTests,
 		void* GlobalArgs[] = { &GlobalValue, &GlobalInOut };
 		InvokeCaller(GlobalEntry, GlobalArgs, &GlobalReturn);
 
-		if (!TestRunner->TestEqual(TEXT("Function caller round-trip test should preserve the by-value global input"), GlobalValue, 9) ||
-			!TestRunner->TestEqual(TEXT("Function caller round-trip test should write back the by-reference global argument"), GlobalInOut, 10) ||
-			!TestRunner->TestEqual(TEXT("Function caller round-trip test should return the expected global result"), GlobalReturn, 19))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(9, GlobalValue, TEXT("Function caller round-trip test should preserve the by-value global input")));
+		ASSERT_THAT(AreEqual(10, GlobalInOut, TEXT("Function caller round-trip test should write back the by-reference global argument")));
+		ASSERT_THAT(AreEqual(19, GlobalReturn, TEXT("Function caller round-trip test should return the expected global result")));
 
 		FFunctionCallerHarness Harness;
 		Harness.Bias = 11;
@@ -111,23 +105,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionCallersTests,
 		void* MethodArgs[] = { &Harness, &MethodValue, &MethodInOut };
 		InvokeCaller(MethodEntry, MethodArgs, &MethodReturn);
 
-		if (!TestRunner->TestEqual(TEXT("Function caller round-trip test should keep the by-value method input untouched"), MethodValue, 5) ||
-			!TestRunner->TestEqual(TEXT("Function caller round-trip test should route the reference method argument back to the caller"), MethodInOut, 15) ||
-			!TestRunner->TestEqual(TEXT("Function caller round-trip test should dispatch methods against the object passed in Args[0]"), MethodReturn, 31))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(5, MethodValue, TEXT("Function caller round-trip test should keep the by-value method input untouched")));
+		ASSERT_THAT(AreEqual(15, MethodInOut, TEXT("Function caller round-trip test should route the reference method argument back to the caller")));
+		ASSERT_THAT(AreEqual(31, MethodReturn, TEXT("Function caller round-trip test should dispatch methods against the object passed in Args[0]")));
 
 		const int32* BiasRef = nullptr;
 		void* ConstMethodArgs[] = { &Harness };
 		InvokeCaller(ConstMethodEntry, ConstMethodArgs, &BiasRef);
 
-		if (!TestRunner->TestNotNull(TEXT("Function caller round-trip test should materialize the const method return reference as a stable pointer"), BiasRef) ||
-			!TestRunner->TestEqual(TEXT("Function caller round-trip test should preserve the const reference value"), BiasRef != nullptr ? *BiasRef : 0, Harness.Bias) ||
-			!TestRunner->TestTrue(TEXT("Function caller round-trip test should return a reference to the object field rather than a copied temporary"), BiasRef == &Harness.Bias))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BiasRef, TEXT("Function caller round-trip test should materialize the const method return reference as a stable pointer")));
+		ASSERT_THAT(AreEqual(Harness.Bias, *BiasRef, TEXT("Function caller round-trip test should preserve the const reference value")));
+		ASSERT_THAT(IsTrue(BiasRef == &Harness.Bias, TEXT("Function caller round-trip test should return a reference to the object field rather than a copied temporary")));
 
 		int32 PointerSource = 27;
 		const int32* PointerInput = &PointerSource;
@@ -135,7 +123,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionCallersTests,
 		void* PointerArgs[] = { const_cast<int32*>(PointerInput), &PointerOut };
 		InvokeCaller(PointerEntry, PointerArgs, nullptr);
 
-		TestRunner->TestEqual(TEXT("Function caller round-trip test should dereference const pointer parameters and write the result to the referenced output"), PointerOut, 27);
+		ASSERT_THAT(AreEqual(27, PointerOut, TEXT("Function caller round-trip test should dereference const pointer parameters and write the result to the referenced output")));
 	}
 };
 

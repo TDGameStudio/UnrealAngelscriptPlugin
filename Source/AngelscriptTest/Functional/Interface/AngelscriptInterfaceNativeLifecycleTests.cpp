@@ -40,91 +40,64 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptInterfaceNativeLifecycleTests, "Angelscript.Te
 		FirstSignature = Engine.RegisterInterfaceMethodSignature(FName(TEXT("GetNativeValue")));
 		SecondSignature = Engine.RegisterInterfaceMethodSignature(FName(TEXT("SetNativeMarker")));
 
-		if (!TestRunner->TestNotNull(
-				TEXT("Interface.Native.SignatureRegistrationRelease should allocate the first interface signature"),
-				FirstSignature)
-			|| !TestRunner->TestNotNull(
-				TEXT("Interface.Native.SignatureRegistrationRelease should allocate the second interface signature"),
-				SecondSignature))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(
+			FirstSignature,
+			TEXT("Interface.Native.SignatureRegistrationRelease should allocate the first interface signature")));
+		ASSERT_THAT(IsNotNull(
+			SecondSignature,
+			TEXT("Interface.Native.SignatureRegistrationRelease should allocate the second interface signature")));
 
-		if (!TestRunner->TestTrue(
-				TEXT("Interface.Native.SignatureRegistrationRelease should return distinct records for distinct registrations"),
-				FirstSignature != SecondSignature))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(
+			FirstSignature != SecondSignature,
+			TEXT("Interface.Native.SignatureRegistrationRelease should return distinct records for distinct registrations")));
 
-		if (!TestRunner->TestEqual(
-				TEXT("Interface.Native.SignatureRegistrationRelease should grow by 2 entries after two registrations"),
-				FAngelscriptInterfaceSignatureTestAccess::GetSignatureCount(Engine),
-				BaselineCount + 2))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(
+			BaselineCount + 2,
+			FAngelscriptInterfaceSignatureTestAccess::GetSignatureCount(Engine),
+			TEXT("Interface.Native.SignatureRegistrationRelease should grow by 2 entries after two registrations")));
 
-		if (!TestRunner->TestEqual(
-				TEXT("Interface.Native.SignatureRegistrationRelease should keep the first registered function name at index 0"),
-				FirstSignature->FunctionName,
-				FName(TEXT("GetNativeValue"))))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(
+			FName(TEXT("GetNativeValue")),
+			FirstSignature->FunctionName,
+			TEXT("Interface.Native.SignatureRegistrationRelease should keep the first registered function name at index 0")));
 
-		if (!TestRunner->TestEqual(
-				TEXT("Interface.Native.SignatureRegistrationRelease should preserve the second signature function name"),
-				SecondSignature->FunctionName,
-				FName(TEXT("SetNativeMarker"))))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(
+			FName(TEXT("SetNativeMarker")),
+			SecondSignature->FunctionName,
+			TEXT("Interface.Native.SignatureRegistrationRelease should preserve the second signature function name")));
 
 		Engine.ReleaseInterfaceMethodSignature(FirstSignature);
 		FirstSignature = nullptr;
 
-		if (!TestRunner->TestEqual(
-				TEXT("Interface.Native.SignatureRegistrationRelease should shrink by 1 entry after releasing the first signature"),
-				FAngelscriptInterfaceSignatureTestAccess::GetSignatureCount(Engine),
-				BaselineCount + 1))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(
+			BaselineCount + 1,
+			FAngelscriptInterfaceSignatureTestAccess::GetSignatureCount(Engine),
+			TEXT("Interface.Native.SignatureRegistrationRelease should shrink by 1 entry after releasing the first signature")));
 
-		if (!TestRunner->TestEqual(
-				TEXT("Interface.Native.SignatureRegistrationRelease should keep the second signature function name intact after releasing the first"),
-				SecondSignature->FunctionName,
-				FName(TEXT("SetNativeMarker"))))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(
+			FName(TEXT("SetNativeMarker")),
+			SecondSignature->FunctionName,
+			TEXT("Interface.Native.SignatureRegistrationRelease should keep the second signature function name intact after releasing the first")));
 
 		Engine.ReleaseInterfaceMethodSignature(nullptr);
 
-		if (!TestRunner->TestEqual(
-				TEXT("Interface.Native.SignatureRegistrationRelease should keep the count unchanged when releasing nullptr"),
-				FAngelscriptInterfaceSignatureTestAccess::GetSignatureCount(Engine),
-				BaselineCount + 1))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(
+			BaselineCount + 1,
+			FAngelscriptInterfaceSignatureTestAccess::GetSignatureCount(Engine),
+			TEXT("Interface.Native.SignatureRegistrationRelease should keep the count unchanged when releasing nullptr")));
 
-		if (!TestRunner->TestEqual(
-				TEXT("Interface.Native.SignatureRegistrationRelease should preserve the remaining signature function name after the nullptr guard path"),
-				SecondSignature->FunctionName,
-				FName(TEXT("SetNativeMarker"))))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(
+			FName(TEXT("SetNativeMarker")),
+			SecondSignature->FunctionName,
+			TEXT("Interface.Native.SignatureRegistrationRelease should preserve the remaining signature function name after the nullptr guard path")));
 
 		Engine.ReleaseInterfaceMethodSignature(SecondSignature);
 		SecondSignature = nullptr;
 
-		TestRunner->TestEqual(
-			TEXT("Interface.Native.SignatureRegistrationRelease should shrink back to baseline after releasing the final signature"),
+		ASSERT_THAT(AreEqual(
+			BaselineCount,
 			FAngelscriptInterfaceSignatureTestAccess::GetSignatureCount(Engine),
-			BaselineCount);
+			TEXT("Interface.Native.SignatureRegistrationRelease should shrink back to baseline after releasing the final signature")));
 	}
 };
 

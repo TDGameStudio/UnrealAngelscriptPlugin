@@ -52,19 +52,17 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUFunctionSpecifierMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("CallInEditor specifier should compile"), bCompiled))
-			return;
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("CallInEditor specifier should compile")));
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UCallInEditorTestObj"));
-		if (!TestRunner->TestNotNull(TEXT("Class should be materialized"), GeneratedClass))
-			return;
+		ASSERT_THAT(IsNotNull(GeneratedClass, TEXT("Class should be materialized")));
 
 		UFunction* Func = GeneratedClass->FindFunctionByName(TEXT("EditorOnlyAction"));
-		if (!TestRunner->TestNotNull(TEXT("Function should exist"), Func))
-			return;
+		ASSERT_THAT(IsNotNull(Func, TEXT("Function should exist")));
 
-		TestRunner->TestTrue(TEXT("CallInEditor function should have CallInEditor metadata"),
-			Func->HasMetaData(TEXT("CallInEditor")));
+		ASSERT_THAT(IsTrue(
+			Func->HasMetaData(TEXT("CallInEditor")),
+			TEXT("CallInEditor function should have CallInEditor metadata")));
 
 		}
 
@@ -100,19 +98,17 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUFunctionSpecifierMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("BlueprintAuthorityOnly specifier should compile"), bCompiled))
-			return;
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("BlueprintAuthorityOnly specifier should compile")));
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UAuthorityOnlyTestObj"));
-		if (!TestRunner->TestNotNull(TEXT("Class should be materialized"), GeneratedClass))
-			return;
+		ASSERT_THAT(IsNotNull(GeneratedClass, TEXT("Class should be materialized")));
 
 		UFunction* Func = GeneratedClass->FindFunctionByName(TEXT("AuthorityAction"));
-		if (!TestRunner->TestNotNull(TEXT("Function should exist"), Func))
-			return;
+		ASSERT_THAT(IsNotNull(Func, TEXT("Function should exist")));
 
-		TestRunner->TestTrue(TEXT("BlueprintAuthorityOnly should set FUNC_BlueprintAuthorityOnly"),
-			Func->HasAnyFunctionFlags(FUNC_BlueprintAuthorityOnly));
+		ASSERT_THAT(IsTrue(
+			Func->HasAnyFunctionFlags(FUNC_BlueprintAuthorityOnly),
+			TEXT("BlueprintAuthorityOnly should set FUNC_BlueprintAuthorityOnly")));
 
 		}
 
@@ -148,19 +144,17 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUFunctionSpecifierMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("Exec specifier should compile"), bCompiled))
-			return;
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Exec specifier should compile")));
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UExecTestObj"));
-		if (!TestRunner->TestNotNull(TEXT("Class should be materialized"), GeneratedClass))
-			return;
+		ASSERT_THAT(IsNotNull(GeneratedClass, TEXT("Class should be materialized")));
 
 		UFunction* Func = GeneratedClass->FindFunctionByName(TEXT("ConsoleCommand"));
-		if (!TestRunner->TestNotNull(TEXT("Function should exist"), Func))
-			return;
+		ASSERT_THAT(IsNotNull(Func, TEXT("Function should exist")));
 
-		TestRunner->TestTrue(TEXT("Exec should set FUNC_Exec flag"),
-			Func->HasAnyFunctionFlags(FUNC_Exec));
+		ASSERT_THAT(IsTrue(
+			Func->HasAnyFunctionFlags(FUNC_Exec),
+			TEXT("Exec should set FUNC_Exec flag")));
 
 		}
 

@@ -17,10 +17,10 @@ using namespace AngelscriptNativeTestSupport;
 
 namespace
 {
-	bool ParseExpression(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
+	bool ParseExpression(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
-		if (!Test.TestNotNull(FString::Printf(TEXT("%s should create a parser module"), UTF8_TO_TCHAR(ModuleName)), Module))
+		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a parser module"), UTF8_TO_TCHAR(ModuleName))))
 		{
 			return false;
 		}
@@ -31,20 +31,23 @@ namespace
 
 		FParserAccessor Parser(&Builder);
 		asCScriptNode* Root = Parser.ParseExpressionSnippet(&Code);
-		if (!Test.TestNotNull(FString::Printf(TEXT("%s should parse an expression root"), UTF8_TO_TCHAR(ModuleName)), Root))
+		if (!Assert.IsNotNull(Root, FString::Printf(TEXT("%s should parse an expression root"), UTF8_TO_TCHAR(ModuleName))))
 		{
 			return false;
 		}
 
-		Test.TestEqual(FString::Printf(TEXT("%s expression root type"), UTF8_TO_TCHAR(ModuleName)), static_cast<int32>(Root->nodeType), static_cast<int32>(snExpression));
+		if (!Assert.AreEqual(static_cast<int32>(snExpression), static_cast<int32>(Root->nodeType), FString::Printf(TEXT("%s expression root type"), UTF8_TO_TCHAR(ModuleName))))
+		{
+			return false;
+		}
 		Verify(*Root);
 		return true;
 	}
 
-	bool ParseAssignment(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
+	bool ParseAssignment(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
-		if (!Test.TestNotNull(FString::Printf(TEXT("%s should create a parser module"), UTF8_TO_TCHAR(ModuleName)), Module))
+		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a parser module"), UTF8_TO_TCHAR(ModuleName))))
 		{
 			return false;
 		}
@@ -55,20 +58,23 @@ namespace
 
 		FParserAccessor Parser(&Builder);
 		asCScriptNode* Root = Parser.ParseAssignmentSnippet(&Code);
-		if (!Test.TestNotNull(FString::Printf(TEXT("%s should parse an assignment root"), UTF8_TO_TCHAR(ModuleName)), Root))
+		if (!Assert.IsNotNull(Root, FString::Printf(TEXT("%s should parse an assignment root"), UTF8_TO_TCHAR(ModuleName))))
 		{
 			return false;
 		}
 
-		Test.TestEqual(FString::Printf(TEXT("%s assignment root type"), UTF8_TO_TCHAR(ModuleName)), static_cast<int32>(Root->nodeType), static_cast<int32>(snAssignment));
+		if (!Assert.AreEqual(static_cast<int32>(snAssignment), static_cast<int32>(Root->nodeType), FString::Printf(TEXT("%s assignment root type"), UTF8_TO_TCHAR(ModuleName))))
+		{
+			return false;
+		}
 		Verify(*Root);
 		return true;
 	}
 
-	bool ParseCondition(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
+	bool ParseCondition(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
-		if (!Test.TestNotNull(FString::Printf(TEXT("%s should create a parser module"), UTF8_TO_TCHAR(ModuleName)), Module))
+		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a parser module"), UTF8_TO_TCHAR(ModuleName))))
 		{
 			return false;
 		}
@@ -79,12 +85,15 @@ namespace
 
 		FParserAccessor Parser(&Builder);
 		asCScriptNode* Root = Parser.ParseConditionSnippet(&Code);
-		if (!Test.TestNotNull(FString::Printf(TEXT("%s should parse a condition root"), UTF8_TO_TCHAR(ModuleName)), Root))
+		if (!Assert.IsNotNull(Root, FString::Printf(TEXT("%s should parse a condition root"), UTF8_TO_TCHAR(ModuleName))))
 		{
 			return false;
 		}
 
-		Test.TestEqual(FString::Printf(TEXT("%s condition root type"), UTF8_TO_TCHAR(ModuleName)), static_cast<int32>(Root->nodeType), static_cast<int32>(snCondition));
+		if (!Assert.AreEqual(static_cast<int32>(snCondition), static_cast<int32>(Root->nodeType), FString::Printf(TEXT("%s condition root type"), UTF8_TO_TCHAR(ModuleName))))
+		{
+			return false;
+		}
 		Verify(*Root);
 		return true;
 	}
@@ -97,151 +106,132 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserExpressionsTests,
 	TEST_METHOD(PrecedenceMulOverAdd)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseExpression(*TestRunner, BareEngine, "ParserExprMulAdd", "1 + 2 * 3", [&](const asCScriptNode& Root)
+		ParseExpression(*TestRunner, this->Assert, BareEngine, "ParserExprMulAdd", "1 + 2 * 3", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestTrue(TEXT("Mul-over-add expression should contain operator nodes"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snExprOperator) >= 2);
+			ASSERT_THAT(IsTrue(AngelscriptNativeTestSupport::CountNodesOfType(&Root, snExprOperator) >= 2,
+				TEXT("Mul-over-add expression should contain operator nodes")));
 		});
 	}
 
 	TEST_METHOD(PrecedenceShiftOverAdd)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseExpression(*TestRunner, BareEngine, "ParserExprShiftAdd", "1 + 2 << 3", [&](const asCScriptNode& Root)
+		ParseExpression(*TestRunner, this->Assert, BareEngine, "ParserExprShiftAdd", "1 + 2 << 3", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestTrue(TEXT("Shift/add expression should contain operator nodes"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snExprOperator) >= 2);
+			ASSERT_THAT(IsTrue(AngelscriptNativeTestSupport::CountNodesOfType(&Root, snExprOperator) >= 2,
+				TEXT("Shift/add expression should contain operator nodes")));
 		});
 	}
 
 	TEST_METHOD(RightAssocAssignment)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseAssignment(*TestRunner, BareEngine, "ParserExprAssign", "A = B = C", [&](const asCScriptNode& Root)
+		ParseAssignment(*TestRunner, this->Assert, BareEngine, "ParserExprAssign", "A = B = C", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestTrue(TEXT("Right-associative assignment should contain nested assignment nodes"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snAssignment) >= 2);
+			ASSERT_THAT(IsTrue(AngelscriptNativeTestSupport::CountNodesOfType(&Root, snAssignment) >= 2,
+				TEXT("Right-associative assignment should contain nested assignment nodes")));
 		});
 	}
 
 	TEST_METHOD(TernaryNesting)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseCondition(*TestRunner, BareEngine, "ParserExprTernary", "A ? B : (C ? D : E)", [&](const asCScriptNode& Root)
+		ParseCondition(*TestRunner, this->Assert, BareEngine, "ParserExprTernary", "A ? B : (C ? D : E)", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestTrue(TEXT("Nested ternary expression should contain nested condition nodes"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snCondition) >= 2);
+			ASSERT_THAT(IsTrue(AngelscriptNativeTestSupport::CountNodesOfType(&Root, snCondition) >= 2,
+				TEXT("Nested ternary expression should contain nested condition nodes")));
 		});
 	}
 
 	TEST_METHOD(CastExpression)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseExpression(*TestRunner, BareEngine, "ParserExprCast", "Cast<int>(Value)", [&](const asCScriptNode& Root)
+		ParseExpression(*TestRunner, this->Assert, BareEngine, "ParserExprCast", "Cast<int>(Value)", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestEqual(TEXT("Cast expression should produce one cast node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snCast), 1);
+			ASSERT_THAT(AreEqual(1, AngelscriptNativeTestSupport::CountNodesOfType(&Root, snCast),
+				TEXT("Cast expression should produce one cast node")));
 		});
 	}
 
 	TEST_METHOD(MemberAccessChain)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseExpression(*TestRunner, BareEngine, "ParserExprMemberAccess", "Object.Component.Value", [&](const asCScriptNode& Root)
+		ParseExpression(*TestRunner, this->Assert, BareEngine, "ParserExprMemberAccess", "Object.Component.Value", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestTrue(TEXT("Member access chain should produce variable-access nodes"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snVariableAccess) >= 1);
+			ASSERT_THAT(IsTrue(AngelscriptNativeTestSupport::CountNodesOfType(&Root, snVariableAccess) >= 1,
+				TEXT("Member access chain should produce variable-access nodes")));
 		});
 	}
 
 	TEST_METHOD(IndexExpression)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseExpression(*TestRunner, BareEngine, "ParserExprIndex", "Values[Index + 1]", [&](const asCScriptNode& Root)
+		ParseExpression(*TestRunner, this->Assert, BareEngine, "ParserExprIndex", "Values[Index + 1]", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestTrue(TEXT("Index expression should produce an argument list or expression operators"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snArgList) >= 1 || AngelscriptNativeTestSupport::CountNodesOfType(&Root, snExprOperator) >= 1);
+			ASSERT_THAT(IsTrue(AngelscriptNativeTestSupport::CountNodesOfType(&Root, snArgList) >= 1 || AngelscriptNativeTestSupport::CountNodesOfType(&Root, snExprOperator) >= 1,
+				TEXT("Index expression should produce an argument list or expression operators")));
 		});
 	}
 
 	TEST_METHOD(FunctionCallWithNamedArg)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseExpression(*TestRunner, BareEngine, "ParserExprNamedArg", "DoWork(Value: 3)", [&](const asCScriptNode& Root)
+		ParseExpression(*TestRunner, this->Assert, BareEngine, "ParserExprNamedArg", "DoWork(Value: 3)", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestEqual(TEXT("Named-arg call should produce one function call node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snFunctionCall), 1);
-			TestRunner->TestEqual(TEXT("Named-arg call should produce one named argument node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snNamedArgument), 1);
+			ASSERT_THAT(AreEqual(1, AngelscriptNativeTestSupport::CountNodesOfType(&Root, snFunctionCall),
+				TEXT("Named-arg call should produce one function call node")));
+			ASSERT_THAT(AreEqual(1, AngelscriptNativeTestSupport::CountNodesOfType(&Root, snNamedArgument),
+				TEXT("Named-arg call should produce one named argument node")));
 		});
 	}
 
 	TEST_METHOD(AnonymousInitializerList)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseExpression(*TestRunner, BareEngine, "ParserExprInitList", "{ 1, 2, 3 }", [&](const asCScriptNode& Root)
+		ParseExpression(*TestRunner, this->Assert, BareEngine, "ParserExprInitList", "{ 1, 2, 3 }", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestEqual(TEXT("Anonymous initializer list should produce one init-list node"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snInitList), 1);
+			ASSERT_THAT(AreEqual(1, AngelscriptNativeTestSupport::CountNodesOfType(&Root, snInitList),
+				TEXT("Anonymous initializer list should produce one init-list node")));
 		});
 	}
 
 	TEST_METHOD(LambdaIfSupported_OrDocumentReject)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("Parser expression test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseExpression(*TestRunner, BareEngine, "ParserExprLambda", "function() { return 1; }", [&](const asCScriptNode& Root)
+		ParseExpression(*TestRunner, this->Assert, BareEngine, "ParserExprLambda", "function() { return 1; }", [&](const asCScriptNode& Root)
 		{
-			TestRunner->TestEqual(TEXT("Lambda expression should parse to one function node under the current parser"), AngelscriptNativeTestSupport::CountNodesOfType(&Root, snFunction), 1);
+			ASSERT_THAT(AreEqual(1, AngelscriptNativeTestSupport::CountNodesOfType(&Root, snFunction),
+				TEXT("Lambda expression should parse to one function node under the current parser")));
 		});
 	}
 };

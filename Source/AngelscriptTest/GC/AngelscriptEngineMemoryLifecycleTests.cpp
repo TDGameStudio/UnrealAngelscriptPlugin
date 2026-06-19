@@ -223,19 +223,26 @@ class AMemLifecycleTestActor : AActor {}
 			const FMemorySnapshot PostCreate = CaptureSnapshot(TEXT("Class_PostCreate"));
 			LogDelta(Baseline, PostCreate, TEXT("Class_Create"));
 
-			TestRunner->TestTrue(TEXT("Generated class should be rooted while engine is alive"),
-				WeakClass->IsRooted());
+			const bool bClassRootedWhileAlive = this->Assert.IsTrue(
+				WeakClass->IsRooted(),
+				TEXT("Generated class should be rooted while engine is alive"));
 
 			DestroyEngineAndCleanup(Engine);
+			if (!bClassRootedWhileAlive)
+			{
+				return;
+			}
 		}
 
 		const FMemorySnapshot PostCleanup = CaptureSnapshotWithGC(TEXT("Class_PostCleanup"));
 		LogDelta(Baseline, PostCleanup, TEXT("Class_FullCycle"));
 
-		TestRunner->TestTrue(TEXT("No new rooted detached classes after cleanup"),
-			PostCleanup.ASClassRootedDetached <= Baseline.ASClassRootedDetached);
-		TestRunner->TestFalse(TEXT("Generated class weak ref should be invalid"),
-			WeakClass.IsValid());
+		ASSERT_THAT(IsTrue(
+			PostCleanup.ASClassRootedDetached <= Baseline.ASClassRootedDetached,
+			TEXT("No new rooted detached classes after cleanup")));
+		ASSERT_THAT(IsFalse(
+			WeakClass.IsValid(),
+			TEXT("Generated class weak ref should be invalid")));
 	}
 
 	TEST_METHOD(FullEngineShutdownUnrootsGeneratedStructs)
@@ -269,8 +276,9 @@ struct FMemLifecycleTestStruct
 		const FMemorySnapshot PostCleanup = CaptureSnapshotWithGC(TEXT("Struct_PostCleanup"));
 		LogDelta(Baseline, PostCleanup, TEXT("Struct_FullCycle"));
 
-		TestRunner->TestTrue(TEXT("No new rooted detached structs after cleanup"),
-			PostCleanup.ASStructRootedDetached <= Baseline.ASStructRootedDetached);
+		ASSERT_THAT(IsTrue(
+			PostCleanup.ASStructRootedDetached <= Baseline.ASStructRootedDetached,
+			TEXT("No new rooted detached structs after cleanup")));
 	}
 
 	TEST_METHOD(TransientSlotReuseCleansUpPreviousTypes)
@@ -304,8 +312,9 @@ struct FMemLifecycleTestStruct
 		const FMemorySnapshot PostReuse = CaptureSnapshotWithGC(TEXT("Transient_PostReuse"));
 		LogDelta(Baseline, PostReuse, TEXT("Transient_FullCycle"));
 
-		TestRunner->TestTrue(TEXT("Transient slot reuse should not accumulate rooted detached classes"),
-			PostReuse.ASClassRootedDetached <= Baseline.ASClassRootedDetached);
+		ASSERT_THAT(IsTrue(
+			PostReuse.ASClassRootedDetached <= Baseline.ASClassRootedDetached,
+			TEXT("Transient slot reuse should not accumulate rooted detached classes")));
 	}
 
 	// N engine cycles: dump snapshot at every cycle boundary.
@@ -345,25 +354,25 @@ struct FMemLifecycleTestStruct
 		const FMemorySnapshot Final = CaptureSnapshotWithGC(TEXT("MultiCycle_Final"));
 		LogDelta(Baseline, Final, TEXT("MultiCycle_Total"));
 
-		TestRunner->TestTrue(
+		ASSERT_THAT(IsTrue(
+			Final.ASClassRootedDetached <= Baseline.ASClassRootedDetached,
 			FString::Printf(TEXT("After %d cycles, rooted detached class: %d (baseline: %d)"),
-				NumCycles, Final.ASClassRootedDetached, Baseline.ASClassRootedDetached),
-			Final.ASClassRootedDetached <= Baseline.ASClassRootedDetached);
+				NumCycles, Final.ASClassRootedDetached, Baseline.ASClassRootedDetached)));
 
-		TestRunner->TestTrue(
+		ASSERT_THAT(IsTrue(
+			Final.ASStructRootedDetached <= Baseline.ASStructRootedDetached,
 			FString::Printf(TEXT("After %d cycles, rooted detached struct: %d (baseline: %d)"),
-				NumCycles, Final.ASStructRootedDetached, Baseline.ASStructRootedDetached),
-			Final.ASStructRootedDetached <= Baseline.ASStructRootedDetached);
+				NumCycles, Final.ASStructRootedDetached, Baseline.ASStructRootedDetached)));
 
-		TestRunner->TestTrue(
+		ASSERT_THAT(IsTrue(
+			Final.UEnumRooted <= Baseline.UEnumRooted + 2,
 			FString::Printf(TEXT("After %d cycles, UEnum rooted: %d (baseline: %d)"),
-				NumCycles, Final.UEnumRooted, Baseline.UEnumRooted),
-			Final.UEnumRooted <= Baseline.UEnumRooted + 2);
+				NumCycles, Final.UEnumRooted, Baseline.UEnumRooted)));
 
-		TestRunner->TestTrue(
+		ASSERT_THAT(IsTrue(
+			Final.UDelegateFunctionRooted <= Baseline.UDelegateFunctionRooted + 2,
 			FString::Printf(TEXT("After %d cycles, UDelegateFunc rooted: %d (baseline: %d)"),
-				NumCycles, Final.UDelegateFunctionRooted, Baseline.UDelegateFunctionRooted),
-			Final.UDelegateFunctionRooted <= Baseline.UDelegateFunctionRooted + 2);
+				NumCycles, Final.UDelegateFunctionRooted, Baseline.UDelegateFunctionRooted)));
 	}
 
 	TEST_METHOD(HashTableCompactionDoesNotDegradeAcrossCycles)
@@ -414,10 +423,10 @@ struct FMemLifecycleTestStruct
 
 		const double DegradationRatio = (BaselineGcMs > 0.001)
 			? (PostCycleGcMs / BaselineGcMs) : 1.0;
-		TestRunner->TestTrue(
+		ASSERT_THAT(IsTrue(
+			DegradationRatio < 3.0,
 			FString::Printf(TEXT("GC ratio should stay under 3x (%.3f/%.3f = %.1fx)"),
-				PostCycleGcMs, BaselineGcMs, DegradationRatio),
-			DegradationRatio < 3.0);
+				PostCycleGcMs, BaselineGcMs, DegradationRatio)));
 	}
 
 	TEST_METHOD(SharedEngineResetCleansUpGeneratedTypes)
@@ -453,10 +462,12 @@ struct FSharedResetTestStruct
 		const FMemorySnapshot PostReset = CaptureSnapshotWithGC(TEXT("SharedReset_PostReset"));
 		LogDelta(Baseline, PostReset, TEXT("SharedReset_FullCycle"));
 
-		TestRunner->TestTrue(TEXT("Shared engine reset: no new rooted detached classes"),
-			PostReset.ASClassRootedDetached <= Baseline.ASClassRootedDetached);
-		TestRunner->TestTrue(TEXT("Shared engine reset: no new rooted detached structs"),
-			PostReset.ASStructRootedDetached <= Baseline.ASStructRootedDetached);
+		ASSERT_THAT(IsTrue(
+			PostReset.ASClassRootedDetached <= Baseline.ASClassRootedDetached,
+			TEXT("Shared engine reset: no new rooted detached classes")));
+		ASSERT_THAT(IsTrue(
+			PostReset.ASStructRootedDetached <= Baseline.ASStructRootedDetached,
+			TEXT("Shared engine reset: no new rooted detached structs")));
 	}
 
 	TEST_METHOD(FullEngineCleanupUnrootsEnumsAndDelegates)
@@ -497,31 +508,35 @@ class AEnumDelegateLifecycleActor : AActor
 			const FMemorySnapshot PostCreate = CaptureSnapshot(TEXT("EnumDel_PostCreate"));
 			LogDelta(Baseline, PostCreate, TEXT("EnumDel_Create"));
 
-			TestRunner->TestTrue(
+			const bool bEnumRootedWhileAlive = this->Assert.IsTrue(
+				PostCreate.UEnumRooted > Baseline.UEnumRooted,
 				FString::Printf(TEXT("PostCreate UEnum rooted (%d) > baseline (%d)"),
-					PostCreate.UEnumRooted, Baseline.UEnumRooted),
-				PostCreate.UEnumRooted > Baseline.UEnumRooted);
+					PostCreate.UEnumRooted, Baseline.UEnumRooted));
 
 			DestroyEngineAndCleanup(Engine);
+			if (!bEnumRootedWhileAlive)
+			{
+				return;
+			}
 		}
 
 		const FMemorySnapshot PostCleanup = CaptureSnapshotWithGC(TEXT("EnumDel_PostCleanup"));
 		LogDelta(Baseline, PostCleanup, TEXT("EnumDel_FullCycle"));
 
-		TestRunner->TestTrue(
+		ASSERT_THAT(IsTrue(
+			PostCleanup.UEnumRooted <= Baseline.UEnumRooted + 2,
 			FString::Printf(TEXT("PostCleanup UEnum rooted (%d) should return near baseline (%d)"),
-				PostCleanup.UEnumRooted, Baseline.UEnumRooted),
-			PostCleanup.UEnumRooted <= Baseline.UEnumRooted + 2);
+				PostCleanup.UEnumRooted, Baseline.UEnumRooted)));
 
-		TestRunner->TestTrue(
+		ASSERT_THAT(IsTrue(
+			PostCleanup.UDelegateFunctionRooted <= Baseline.UDelegateFunctionRooted + 2,
 			FString::Printf(TEXT("PostCleanup UDelegateFunc rooted (%d) should return near baseline (%d)"),
-				PostCleanup.UDelegateFunctionRooted, Baseline.UDelegateFunctionRooted),
-			PostCleanup.UDelegateFunctionRooted <= Baseline.UDelegateFunctionRooted + 2);
+				PostCleanup.UDelegateFunctionRooted, Baseline.UDelegateFunctionRooted)));
 
-		TestRunner->TestTrue(
+		ASSERT_THAT(IsTrue(
+			PostCleanup.TransientPackageRootedObjects <= Baseline.TransientPackageRootedObjects + 5,
 			FString::Printf(TEXT("PostCleanup TransientRooted (%d) should return near baseline (%d)"),
-				PostCleanup.TransientPackageRootedObjects, Baseline.TransientPackageRootedObjects),
-			PostCleanup.TransientPackageRootedObjects <= Baseline.TransientPackageRootedObjects + 5);
+				PostCleanup.TransientPackageRootedObjects, Baseline.TransientPackageRootedObjects)));
 	}
 
 	TEST_METHOD(EmptyEngineShutdownKeepsDetachedTypesBounded)
@@ -543,14 +558,16 @@ class AEnumDelegateLifecycleActor : AActor
 		const FMemorySnapshot PostCleanup = CaptureSnapshotWithGC(TEXT("Empty_PostCleanup"));
 		LogDelta(Baseline, PostCleanup, TEXT("Empty_FullCycle"));
 
-		TestRunner->TestTrue(TEXT("Empty engine: no new detached classes"),
-			PostCleanup.ASClassDetached <= Baseline.ASClassDetached);
-		TestRunner->TestTrue(
+		ASSERT_THAT(IsTrue(
+			PostCleanup.ASClassDetached <= Baseline.ASClassDetached,
+			TEXT("Empty engine: no new detached classes")));
+		ASSERT_THAT(IsTrue(
+			PostCleanup.ASStructDetached <= Baseline.ASStructDetached + 1,
 			FString::Printf(TEXT("Empty engine: detached structs should stay bounded (post=%d, baseline=%d)"),
-				PostCleanup.ASStructDetached, Baseline.ASStructDetached),
-			PostCleanup.ASStructDetached <= Baseline.ASStructDetached + 1);
-		TestRunner->TestTrue(TEXT("Empty engine: no new rooted detached structs"),
-			PostCleanup.ASStructRootedDetached <= Baseline.ASStructRootedDetached);
+				PostCleanup.ASStructDetached, Baseline.ASStructDetached)));
+		ASSERT_THAT(IsTrue(
+			PostCleanup.ASStructRootedDetached <= Baseline.ASStructRootedDetached,
+			TEXT("Empty engine: no new rooted detached structs")));
 	}
 };
 

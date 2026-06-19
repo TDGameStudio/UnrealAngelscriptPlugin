@@ -108,6 +108,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 		ResetToCleanSlate();
 
 		int32 BaselineCount = -1;
+		bool bProbePassed = true;
 
 		for (int32 Cycle = 1; Cycle <= NumCycles; ++Cycle)
 		{
@@ -133,11 +134,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 				BaselineCount = ThisCount;
 				if (!bAllowEmptyBaseline)
 				{
-					TestRunner->TestTrue(
+					bProbePassed &= this->Assert.IsTrue(
+						ThisCount > 0,
 						*FString::Printf(
 							TEXT("%s cycle 2 must register at least one entry (got %d) — otherwise the bind path didn't run"),
-							ContainerLabel, ThisCount),
-						ThisCount > 0);
+							ContainerLabel, ThisCount));
 				}
 				else if (ThisCount == 0)
 				{
@@ -149,15 +150,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 			else
 			{
 				const int32 Delta = ThisCount - BaselineCount;
-				TestRunner->TestTrue(
+				bProbePassed &= this->Assert.IsTrue(
+					FMath::Abs(Delta) <= TolerancePerCycle,
 					*FString::Printf(
 						TEXT("%s cycle %d count=%d must stay within +/-%d of cycle-2 baseline %d (delta=%d) — drift means the cleanup is missing a Reset()/Empty() somewhere"),
-						ContainerLabel, Cycle, ThisCount, TolerancePerCycle, BaselineCount, Delta),
-					FMath::Abs(Delta) <= TolerancePerCycle);
+						ContainerLabel, Cycle, ThisCount, TolerancePerCycle, BaselineCount, Delta));
 			}
 		}
 
 		ResetToCleanSlate();
+		if (!bProbePassed)
+		{
+			return;
+		}
 	}
 
 	// Regression for `GBlueprintEventsByScriptName`. The cleanup path lives
@@ -195,9 +200,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 			/*bAllowEmptyBaseline=*/true);
 #else
 		constexpr bool bJitBuildBoundaryIsActive = true;
-		TestRunner->TestTrue(
-			TEXT("ScriptNativeForms bounded-cycle probe is an explicit build boundary when AS_CAN_GENERATE_JIT is disabled"),
-			bJitBuildBoundaryIsActive);
+		ASSERT_THAT(IsTrue(
+			bJitBuildBoundaryIsActive,
+			TEXT("ScriptNativeForms bounded-cycle probe is an explicit build boundary when AS_CAN_GENERATE_JIT is disabled")));
 #endif
 	}
 
@@ -272,13 +277,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 			TEXT("[GlobalContainerCycle] RootedDetachedASClasses after %d cycles = %d (baseline %d)"),
 			NumCycles, FinalRootedDetached, BaselineRootedDetached);
 
-		TestRunner->TestTrue(
+		const bool bFinalCountWithinBaseline = this->Assert.IsTrue(
+			FinalRootedDetached <= BaselineRootedDetached,
 			*FString::Printf(
 				TEXT("After %d cycles, rooted detached UASClass count (%d) must not exceed baseline (%d). Drift means a UASClass was created but never RemoveFromRoot'd on engine Shutdown."),
-				NumCycles, FinalRootedDetached, BaselineRootedDetached),
-			FinalRootedDetached <= BaselineRootedDetached);
+				NumCycles, FinalRootedDetached, BaselineRootedDetached));
 
 		ResetToCleanSlate();
+		if (!bFinalCountWithinBaseline)
+		{
+			return;
+		}
 	}
 };
 

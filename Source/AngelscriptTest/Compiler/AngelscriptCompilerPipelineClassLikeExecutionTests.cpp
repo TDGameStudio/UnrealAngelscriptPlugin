@@ -82,59 +82,41 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassLikeExecutionTests,
 			true,
 			Summary);
 
-		TestRunner->TestTrue(
-			TEXT("Class-like method execution round-trip should compile successfully"),
-			bCompiled);
-		TestRunner->TestTrue(
-			TEXT("Class-like method execution round-trip should run through the preprocessor path"),
-			Summary.bUsedPreprocessor);
-		TestRunner->TestTrue(
-			TEXT("Class-like method execution round-trip should mark compile succeeded in the summary"),
-			Summary.bCompileSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Class-like method execution round-trip should not emit diagnostics"),
-			Summary.Diagnostics.Num(),
-			0);
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Class-like method execution round-trip should compile successfully")));
+		ASSERT_THAT(IsTrue(Summary.bUsedPreprocessor, TEXT("Class-like method execution round-trip should run through the preprocessor path")));
+		ASSERT_THAT(IsTrue(Summary.bCompileSucceeded, TEXT("Class-like method execution round-trip should mark compile succeeded in the summary")));
+		ASSERT_THAT(AreEqual(0, Summary.Diagnostics.Num(), TEXT("Class-like method execution round-trip should not emit diagnostics")));
 		if (!bCompiled)
 		{
 			return;
 		}
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, CompilerPipelineClassLikeExecutionTest::GeneratedClassName);
-		if (!TestRunner->TestNotNull(TEXT("Class-like method execution round-trip should generate the annotated carrier class"), GeneratedClass))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(GeneratedClass, TEXT("Class-like method execution round-trip should generate the annotated carrier class")));
 
 		UFunction* EchoPlainClass = FindGeneratedFunction(GeneratedClass, TEXT("EchoPlainClass"));
 		UFunction* EchoActorClass = FindGeneratedFunction(GeneratedClass, TEXT("EchoActorClass"));
 		UFunction* EchoSoftActorClass = FindGeneratedFunction(GeneratedClass, TEXT("EchoSoftActorClass"));
 		UFunction* VerifyRoundTrip = FindGeneratedFunction(GeneratedClass, CompilerPipelineClassLikeExecutionTest::VerifyFunctionName);
-		if (!TestRunner->TestNotNull(TEXT("Class-like method execution round-trip should expose EchoPlainClass"), EchoPlainClass)
-			|| !TestRunner->TestNotNull(TEXT("Class-like method execution round-trip should expose EchoActorClass"), EchoActorClass)
-			|| !TestRunner->TestNotNull(TEXT("Class-like method execution round-trip should expose EchoSoftActorClass"), EchoSoftActorClass)
-			|| !TestRunner->TestNotNull(TEXT("Class-like method execution round-trip should expose VerifyRoundTrip"), VerifyRoundTrip))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(EchoPlainClass, TEXT("Class-like method execution round-trip should expose EchoPlainClass")));
+		ASSERT_THAT(IsNotNull(EchoActorClass, TEXT("Class-like method execution round-trip should expose EchoActorClass")));
+		ASSERT_THAT(IsNotNull(EchoSoftActorClass, TEXT("Class-like method execution round-trip should expose EchoSoftActorClass")));
+		ASSERT_THAT(IsNotNull(VerifyRoundTrip, TEXT("Class-like method execution round-trip should expose VerifyRoundTrip")));
 
 		UObject* RuntimeObject = NewObject<UObject>(GetTransientPackage(), GeneratedClass, TEXT("CompilerClassLikeExecutionCarrier"));
-		if (!TestRunner->TestNotNull(TEXT("Class-like method execution round-trip should instantiate the generated class"), RuntimeObject))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RuntimeObject, TEXT("Class-like method execution round-trip should instantiate the generated class")));
 
 		int32 Result = 0;
 		const bool bExecuted = ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeObject, VerifyRoundTrip, Result);
-		TestRunner->TestTrue(
-			TEXT("Class-like method execution round-trip should execute the generated verification method"),
-			bExecuted);
+		ASSERT_THAT(IsTrue(
+			bExecuted,
+			TEXT("Class-like method execution round-trip should execute the generated verification method")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(
-				TEXT("Class-like method execution round-trip should preserve plain class, subclass and soft-class marshalling"),
+			ASSERT_THAT(AreEqual(
+				1,
 				Result,
-				1);
+				TEXT("Class-like method execution round-trip should preserve plain class, subclass and soft-class marshalling")));
 		}
 
 		}

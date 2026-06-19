@@ -36,51 +36,45 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptInterfaceNativeBindingTests, "Angelscript.Test
 		FInterfaceMethodSignature* NativeMarkerSignature =
 			Engine.RegisterInterfaceMethodSignature(FName(TEXT("SetNativeMarker")));
 
-		TestRunner->TestNotNull(
-			TEXT("Interface signature lifecycle test should allocate a signature record for GetNativeValue"),
-			NativeValueSignature);
-		TestRunner->TestNotNull(
-			TEXT("Interface signature lifecycle test should allocate a signature record for SetNativeMarker"),
-			NativeMarkerSignature);
-		if (NativeValueSignature != nullptr)
-		{
-			TestRunner->TestEqual(
-				TEXT("Interface signature lifecycle test should preserve the registered function name for GetNativeValue"),
-				NativeValueSignature->FunctionName,
-				FName(TEXT("GetNativeValue")));
-		}
-		if (NativeMarkerSignature != nullptr)
-		{
-			TestRunner->TestEqual(
-				TEXT("Interface signature lifecycle test should preserve the registered function name for SetNativeMarker"),
-				NativeMarkerSignature->FunctionName,
-				FName(TEXT("SetNativeMarker")));
-		}
-		TestRunner->TestTrue(
-			TEXT("Interface signature lifecycle test should return distinct records for separate registrations"),
-			NativeValueSignature != nullptr && NativeMarkerSignature != nullptr && NativeValueSignature != NativeMarkerSignature);
-		TestRunner->TestEqual(
-			TEXT("Interface signature lifecycle test should increase the signature count by two after two registrations"),
+		ASSERT_THAT(IsNotNull(
+			NativeValueSignature,
+			TEXT("Interface signature lifecycle test should allocate a signature record for GetNativeValue")));
+		ASSERT_THAT(IsNotNull(
+			NativeMarkerSignature,
+			TEXT("Interface signature lifecycle test should allocate a signature record for SetNativeMarker")));
+		ASSERT_THAT(AreEqual(
+			FName(TEXT("GetNativeValue")),
+			NativeValueSignature->FunctionName,
+			TEXT("Interface signature lifecycle test should preserve the registered function name for GetNativeValue")));
+		ASSERT_THAT(AreEqual(
+			FName(TEXT("SetNativeMarker")),
+			NativeMarkerSignature->FunctionName,
+			TEXT("Interface signature lifecycle test should preserve the registered function name for SetNativeMarker")));
+		ASSERT_THAT(IsTrue(
+			NativeValueSignature != NativeMarkerSignature,
+			TEXT("Interface signature lifecycle test should return distinct records for separate registrations")));
+		ASSERT_THAT(AreEqual(
+			BaselineSignatureCount + 2,
 			FAngelscriptInterfaceSignatureTestAccess::GetSignatureCount(Engine),
-			BaselineSignatureCount + 2);
+			TEXT("Interface signature lifecycle test should increase the signature count by two after two registrations")));
 
 		Engine.ReleaseInterfaceMethodSignature(NativeValueSignature);
-		TestRunner->TestEqual(
-			TEXT("Interface signature lifecycle test should decrease the signature count by one after releasing the first signature"),
+		ASSERT_THAT(AreEqual(
+			BaselineSignatureCount + 1,
 			FAngelscriptInterfaceSignatureTestAccess::GetSignatureCount(Engine),
-			BaselineSignatureCount + 1);
+			TEXT("Interface signature lifecycle test should decrease the signature count by one after releasing the first signature")));
 
 		Engine.ReleaseInterfaceMethodSignature(nullptr);
-		TestRunner->TestEqual(
-			TEXT("Interface signature lifecycle test should treat nullptr release as a no-op"),
+		ASSERT_THAT(AreEqual(
+			BaselineSignatureCount + 1,
 			FAngelscriptInterfaceSignatureTestAccess::GetSignatureCount(Engine),
-			BaselineSignatureCount + 1);
+			TEXT("Interface signature lifecycle test should treat nullptr release as a no-op")));
 
 		Engine.ReleaseInterfaceMethodSignature(NativeMarkerSignature);
-		TestRunner->TestEqual(
-			TEXT("Interface signature lifecycle test should restore the baseline count after releasing the second signature"),
+		ASSERT_THAT(AreEqual(
+			BaselineSignatureCount,
 			FAngelscriptInterfaceSignatureTestAccess::GetSignatureCount(Engine),
-			BaselineSignatureCount);
+			TEXT("Interface signature lifecycle test should restore the baseline count after releasing the second signature")));
 	}
 };
 

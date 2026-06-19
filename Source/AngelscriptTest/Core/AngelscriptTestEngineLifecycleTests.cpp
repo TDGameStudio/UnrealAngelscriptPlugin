@@ -58,18 +58,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTestEngineLifecycleTests,
 		// deterministic.
 		TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(Config, Dependencies);
 		TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptTestEngine::Create(Config, Dependencies);
-		if (!TestRunner->TestNotNull(TEXT("TestEngine.SharedStateReleaseIsImmediate should construct engine A"), EngineA.Get())
-			|| !TestRunner->TestNotNull(TEXT("TestEngine.SharedStateReleaseIsImmediate should construct engine B"), EngineB.Get()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(EngineA.Get(), TEXT("TestEngine.SharedStateReleaseIsImmediate should construct engine A")));
+		ASSERT_THAT(IsNotNull(EngineB.Get(), TEXT("TestEngine.SharedStateReleaseIsImmediate should construct engine B")));
 
 		asIScriptEngine* ScriptEngineA = EngineA->GetScriptEngine();
 		asIScriptEngine* ScriptEngineB = EngineB->GetScriptEngine();
-		TestRunner->TestNotNull(TEXT("TestEngine.SharedStateReleaseIsImmediate engine A should expose a non-null asIScriptEngine"), ScriptEngineA);
-		TestRunner->TestNotNull(TEXT("TestEngine.SharedStateReleaseIsImmediate engine B should expose a non-null asIScriptEngine"), ScriptEngineB);
-		TestRunner->TestTrue(TEXT("TestEngine.SharedStateReleaseIsImmediate two simultaneously-held engines should have distinct asIScriptEngine objects"),
-			ScriptEngineA != ScriptEngineB);
+		ASSERT_THAT(IsNotNull(ScriptEngineA, TEXT("TestEngine.SharedStateReleaseIsImmediate engine A should expose a non-null asIScriptEngine")));
+		ASSERT_THAT(IsNotNull(ScriptEngineB, TEXT("TestEngine.SharedStateReleaseIsImmediate engine B should expose a non-null asIScriptEngine")));
+		ASSERT_THAT(IsTrue(
+			ScriptEngineA != ScriptEngineB,
+			TEXT("TestEngine.SharedStateReleaseIsImmediate two simultaneously-held engines should have distinct asIScriptEngine objects")));
 
 		// Synchronous teardown: dropping engine A must complete without
 		// any coordination handshake. If the destructor blocked on a
@@ -82,10 +80,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTestEngineLifecycleTests,
 		// — its asCScriptEngine pointer is unchanged, and its database
 		// fields still answer non-null. This is the "no cross-engine
 		// contamination" half of the contract.
-		TestRunner->TestEqual(TEXT("TestEngine.SharedStateReleaseIsImmediate engine B's script engine should be unchanged after engine A is reset"),
-			static_cast<void*>(EngineB->GetScriptEngine()), static_cast<void*>(ScriptEngineB));
-		TestRunner->TestNotNull(TEXT("TestEngine.SharedStateReleaseIsImmediate engine B's TypeDatabase should still be reachable after engine A is reset"),
-			EngineB->GetTypeDatabase());
+		ASSERT_THAT(AreEqual(
+			static_cast<void*>(ScriptEngineB),
+			static_cast<void*>(EngineB->GetScriptEngine()),
+			TEXT("TestEngine.SharedStateReleaseIsImmediate engine B's script engine should be unchanged after engine A is reset")));
+		ASSERT_THAT(IsNotNull(
+			EngineB->GetTypeDatabase(),
+			TEXT("TestEngine.SharedStateReleaseIsImmediate engine B's TypeDatabase should still be reachable after engine A is reset")));
 	}
 
 	// Documents that DestroySharedEngine() is reentrant-safe and the
@@ -103,23 +104,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTestEngineLifecycleTests,
 	{
 		FAngelscriptTestEngine::DestroySharedEngine();
 		FAngelscriptEngine& First = FAngelscriptTestEngine::GetSharedEngine();
-		if (!TestRunner->TestNotNull(TEXT("TestEngine.DestroySharedEngineThenReconstruct should expose a non-null asIScriptEngine on the first shared engine"),
-			static_cast<void*>(First.GetScriptEngine())))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(
+			static_cast<void*>(First.GetScriptEngine()),
+			TEXT("TestEngine.DestroySharedEngineThenReconstruct should expose a non-null asIScriptEngine on the first shared engine")));
 		// First engine's TypeDatabase is live — proves Initialize* fully
 		// wired the inlined database fields after construction.
-		TestRunner->TestNotNull(TEXT("TestEngine.DestroySharedEngineThenReconstruct first shared engine should have a non-null TypeDatabase"),
-			First.GetTypeDatabase());
+		ASSERT_THAT(IsNotNull(
+			First.GetTypeDatabase(),
+			TEXT("TestEngine.DestroySharedEngineThenReconstruct first shared engine should have a non-null TypeDatabase")));
 
 		FAngelscriptTestEngine::DestroySharedEngine();
 
 		FAngelscriptEngine& Second = FAngelscriptTestEngine::GetSharedEngine();
-		TestRunner->TestNotNull(TEXT("TestEngine.DestroySharedEngineThenReconstruct should expose a non-null asIScriptEngine on the recreated shared engine"),
-			static_cast<void*>(Second.GetScriptEngine()));
-		TestRunner->TestNotNull(TEXT("TestEngine.DestroySharedEngineThenReconstruct recreated shared engine should have a non-null TypeDatabase"),
-			Second.GetTypeDatabase());
+		ASSERT_THAT(IsNotNull(
+			static_cast<void*>(Second.GetScriptEngine()),
+			TEXT("TestEngine.DestroySharedEngineThenReconstruct should expose a non-null asIScriptEngine on the recreated shared engine")));
+		ASSERT_THAT(IsNotNull(
+			Second.GetTypeDatabase(),
+			TEXT("TestEngine.DestroySharedEngineThenReconstruct recreated shared engine should have a non-null TypeDatabase")));
 
 		// Leave the harness in a known-clean state for whichever test runs next.
 		FAngelscriptTestEngine::DestroySharedEngine();

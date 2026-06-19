@@ -80,15 +80,15 @@ class AFunctionalMixinHostActor : AActor
 
 		bool bSimpleTagged = false;
 		ReadPropertyValue<FBoolProperty>(*TestRunner, Actor, TEXT("SimpleTagged"), bSimpleTagged);
-		TestRunner->TestTrue(TEXT("Single-arg mixin should set SimpleTagged"), bSimpleTagged);
+		ASSERT_THAT(IsTrue(bSimpleTagged, TEXT("Single-arg mixin should set SimpleTagged")));
 
 		int32 Score = 0;
 		ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("AccumulatedScore"), Score);
-		TestRunner->TestEqual(TEXT("Default-argument mixin should accumulate 5 + 7 = 12"), Score, 12);
+		ASSERT_THAT(AreEqual(12, Score, TEXT("Default-argument mixin should accumulate 5 + 7 = 12")));
 
 		bool bPairResult = false;
 		ReadPropertyValue<FBoolProperty>(*TestRunner, Actor, TEXT("PairResult"), bPairResult);
-		TestRunner->TestTrue(TEXT("Pair mixin with default Threshold should evaluate true"), bPairResult);
+		ASSERT_THAT(IsTrue(bPairResult, TEXT("Pair mixin with default Threshold should evaluate true")));
 	}
 };
 

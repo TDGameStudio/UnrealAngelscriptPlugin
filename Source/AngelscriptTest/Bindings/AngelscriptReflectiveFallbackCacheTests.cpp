@@ -56,12 +56,13 @@ namespace AngelscriptTest_Bindings_ReflectiveFallbackCache_Private
 		UClass* LibraryClass = UBlueprintPathsLibrary::StaticClass();
 		UFunction* RepresentativeFunction = LibraryClass->FindFunctionByName(TEXT("GetBaseFilename"));
 		TSharedPtr<FAngelscriptType> LibraryType = FAngelscriptType::GetByClass(LibraryClass);
-		if (!Test.TestTrue(TEXT("BlueprintPathsLibrary type should resolve"), LibraryType.IsValid()))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsTrue(LibraryType.IsValid(), TEXT("BlueprintPathsLibrary type should resolve")))
 		{
 			return FString();
 		}
 
-		if (!Test.TestNotNull(TEXT("GetBaseFilename should exist on BlueprintPathsLibrary"), RepresentativeFunction))
+		if (!Assert.IsNotNull(RepresentativeFunction, TEXT("GetBaseFilename should exist on BlueprintPathsLibrary")))
 		{
 			return FString();
 		}
@@ -115,7 +116,7 @@ int RunPODScalar()
 		int32 Result = 0;
 		if (!ExecuteIntFunction(*TestRunner, Engine, *Function, Result)) return;
 
-		TestRunner->TestEqual(TEXT("POD scalar reflective fallback should return bool via memcpy fast path"), Result, 1);
+		ASSERT_THAT(AreEqual(1, Result, TEXT("POD scalar reflective fallback should return bool via memcpy fast path")));
 	}
 
 	// ====================================================================
@@ -149,7 +150,7 @@ int RunNonPOD()
 		int32 Result = 0;
 		if (!ExecuteIntFunction(*TestRunner, Engine, *Function, Result)) return;
 
-		TestRunner->TestEqual(TEXT("Non-POD reflective fallback should round-trip FString via CopySingleValue"), Result, 1);
+		ASSERT_THAT(AreEqual(1, Result, TEXT("Non-POD reflective fallback should round-trip FString via CopySingleValue")));
 	}
 
 	// ====================================================================
@@ -192,7 +193,7 @@ int RunOutParam()
 		int32 Result = 0;
 		if (!ExecuteIntFunction(*TestRunner, Engine, *Function, Result)) return;
 
-		TestRunner->TestEqual(TEXT("Reflective fallback should write UPARAM(ref) parameters back to script storage"), Result, 1);
+		ASSERT_THAT(AreEqual(1, Result, TEXT("Reflective fallback should write UPARAM(ref) parameters back to script storage")));
 	}
 
 	// ====================================================================
@@ -226,7 +227,7 @@ int RunReturn()
 		int32 Result = 0;
 		if (!ExecuteIntFunction(*TestRunner, Engine, *Function, Result)) return;
 
-		TestRunner->TestEqual(TEXT("Reflective fallback should return non-POD FString values correctly"), Result, 1);
+		ASSERT_THAT(AreEqual(1, Result, TEXT("Reflective fallback should return non-POD FString values correctly")));
 	}
 
 	// ====================================================================
@@ -268,7 +269,7 @@ int RunMixin()
 		int32 Result = 0;
 		if (!ExecuteIntFunction(*TestRunner, Engine, *Function, Result)) return;
 
-		TestRunner->TestEqual(TEXT("Mixin-object reflective fallback should still produce correct results across multiple calls"), Result, 1);
+		ASSERT_THAT(AreEqual(1, Result, TEXT("Mixin-object reflective fallback should still produce correct results across multiple calls")));
 	}
 
 	// ====================================================================
@@ -313,7 +314,7 @@ int RunCacheReuse()
 		int32 Result = 0;
 		if (!ExecuteIntFunction(*TestRunner, Engine, *Function, Result)) return;
 
-		TestRunner->TestEqual(TEXT("Reflective fallback cache should produce correct results across 32 repeated calls"), Result, 1);
+		ASSERT_THAT(AreEqual(1, Result, TEXT("Reflective fallback cache should produce correct results across 32 repeated calls")));
 	}
 
 	// ====================================================================
@@ -328,10 +329,10 @@ int RunCacheReuse()
 		const UFunction* BaseFilenameFunction = UBlueprintPathsLibrary::StaticClass()
 			->FindFunctionByName(TEXT("GetBaseFilename"));
 		ASSERT_THAT(IsNotNull(BaseFilenameFunction));
-		TestRunner->TestEqual(
-			TEXT("BPLib UFUNCTIONs reaching reflective fallback should remain eligible after the cache lands"),
+		ASSERT_THAT(AreEqual(
+			EReflectionFallbackResult::Success,
 			EvaluateReflectionFallback(BaseFilenameFunction),
-			EReflectionFallbackResult::Success);
+			TEXT("BPLib UFUNCTIONs reaching reflective fallback should remain eligible after the cache lands")));
 	}
 
 	// ====================================================================
@@ -402,16 +403,14 @@ int RunParity()
 		int32 LegacyResult = 0;
 		if (!ExecuteIntFunction(*TestRunner, Engine, *LegacyFunction, LegacyResult)) return;
 
-		TestRunner->TestEqual(
-			TEXT("Cached and ProcessEvent reflective fallback paths must produce identical composite checksum"),
+		ASSERT_THAT(AreEqual(
+			LegacyResult,
 			CachedResult,
-			LegacyResult);
+			TEXT("Cached and ProcessEvent reflective fallback paths must produce identical composite checksum")));
 
 		// Sanity bound: a zero would indicate both paths silently failed in
 		// lockstep, defeating the equality check above.
-		TestRunner->TestTrue(
-			TEXT("Composite checksum should be non-zero"),
-			CachedResult > 0);
+		ASSERT_THAT(IsTrue(CachedResult > 0, TEXT("Composite checksum should be non-zero")));
 	}
 };
 

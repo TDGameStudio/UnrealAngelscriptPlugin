@@ -101,9 +101,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorPropertyTest,
 			FFixtureFile File(Case.RelativePath, Case.Source);
 			auto Result = RunPreprocess(Engine, File);
 
-			TestRunner->TestFalse(
-				FString::Printf(TEXT("%s should fail preprocessing"), Case.Label),
-				Result.bSuccess);
+			ASSERT_THAT(IsFalse(
+				Result.bSuccess,
+				FString::Printf(TEXT("%s should fail preprocessing"), Case.Label)));
 			AssertErrorCount(*TestRunner, Result, 1);
 			AssertDiagnosticContains(*TestRunner, Result, Case.ExpectedMessage);
 			AssertDiagnosticAt(*TestRunner, Result, Case.ExpectedMessage, Case.ExpectedRow, 1);
@@ -161,10 +161,7 @@ class UBadPropertyCarrier : UObject
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		UAngelscriptSettings* Settings = GetMutableDefault<UAngelscriptSettings>();
-		if (!TestRunner->TestNotNull(TEXT("Should access mutable settings"), Settings))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Settings, TEXT("Should access mutable settings")));
 
 		const EAngelscriptPropertyBlueprintSpecifier PreviousSpecifier =
 			Settings->DefaultPropertyBlueprintSpecifier;
@@ -198,26 +195,20 @@ class UBlueprintAccessDefaultSpecifierCarrier : UObject
 
 		// Find class and properties
 		const TSharedPtr<FAngelscriptClassDesc> ClassDesc = Module->GetClass(TEXT("UBlueprintAccessDefaultSpecifierCarrier"));
-		if (!TestRunner->TestTrue(TEXT("Should find class descriptor"), ClassDesc.IsValid()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(ClassDesc.IsValid(), TEXT("Should find class descriptor")));
 
 		const TSharedPtr<FAngelscriptPropertyDesc> ImplicitProp = ClassDesc->GetProperty(TEXT("ImplicitAccess"));
 		const TSharedPtr<FAngelscriptPropertyDesc> ExplicitProp = ClassDesc->GetProperty(TEXT("ExplicitAccess"));
-		if (!TestRunner->TestTrue(TEXT("Should find implicit property"), ImplicitProp.IsValid())
-			|| !TestRunner->TestTrue(TEXT("Should find explicit property"), ExplicitProp.IsValid()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(ImplicitProp.IsValid(), TEXT("Should find implicit property")));
+		ASSERT_THAT(IsTrue(ExplicitProp.IsValid(), TEXT("Should find explicit property")));
 
 		// Implicit: should follow settings (BlueprintReadOnly)
-		TestRunner->TestTrue(TEXT("Implicit property should be blueprint-readable"), ImplicitProp->bBlueprintReadable);
-		TestRunner->TestFalse(TEXT("Implicit property should not be blueprint-writable"), ImplicitProp->bBlueprintWritable);
+		ASSERT_THAT(IsTrue(ImplicitProp->bBlueprintReadable, TEXT("Implicit property should be blueprint-readable")));
+		ASSERT_THAT(IsFalse(ImplicitProp->bBlueprintWritable, TEXT("Implicit property should not be blueprint-writable")));
 
 		// Explicit: should follow explicit specifier (BlueprintReadWrite)
-		TestRunner->TestTrue(TEXT("Explicit property should be blueprint-readable"), ExplicitProp->bBlueprintReadable);
-		TestRunner->TestTrue(TEXT("Explicit property should be blueprint-writable"), ExplicitProp->bBlueprintWritable);
+		ASSERT_THAT(IsTrue(ExplicitProp->bBlueprintReadable, TEXT("Explicit property should be blueprint-readable")));
+		ASSERT_THAT(IsTrue(ExplicitProp->bBlueprintWritable, TEXT("Explicit property should be blueprint-writable")));
 
 		}
 	}
@@ -251,7 +242,7 @@ class AShowOnActorInvalidCarrier : AActor
 
 			auto Result = RunPreprocess(Engine, File);
 
-			TestRunner->TestFalse(TEXT("ShowOnActor without DefaultComponent should fail"), Result.bSuccess);
+			ASSERT_THAT(IsFalse(Result.bSuccess, TEXT("ShowOnActor without DefaultComponent should fail")));
 			AssertErrorCount(*TestRunner, Result, 1);
 			AssertDiagnosticContains(*TestRunner, Result,
 				TEXT("ShowOnActor can only be used on default components in actors"));
@@ -284,21 +275,22 @@ class AShowOnActorValidCarrier : AActor
 			if (Module != nullptr)
 			{
 				const TSharedPtr<FAngelscriptClassDesc> ClassDesc = Module->GetClass(TEXT("AShowOnActorValidCarrier"));
-				if (TestRunner->TestTrue(TEXT("Should find valid carrier class"), ClassDesc.IsValid()))
+				if (this->Assert.IsTrue(ClassDesc.IsValid(), TEXT("Should find valid carrier class")))
 				{
 					const TSharedPtr<FAngelscriptPropertyDesc> Prop = ClassDesc->GetProperty(TEXT("RootScene"));
-					if (TestRunner->TestTrue(TEXT("Should find RootScene property"), Prop.IsValid()))
+					if (this->Assert.IsTrue(Prop.IsValid(), TEXT("Should find RootScene property")))
 					{
-						TestRunner->TestTrue(TEXT("Should be instanced reference"), Prop->bInstancedReference);
-						TestRunner->TestTrue(TEXT("Should be editable on defaults"), Prop->bEditableOnDefaults);
-						TestRunner->TestTrue(TEXT("Should be editable on instances"), Prop->bEditableOnInstance);
-						TestRunner->TestTrue(TEXT("Should be blueprint-readable"), Prop->bBlueprintReadable);
+						ASSERT_THAT(IsTrue(Prop->bInstancedReference, TEXT("Should be instanced reference")));
+						ASSERT_THAT(IsTrue(Prop->bEditableOnDefaults, TEXT("Should be editable on defaults")));
+						ASSERT_THAT(IsTrue(Prop->bEditableOnInstance, TEXT("Should be editable on instances")));
+						ASSERT_THAT(IsTrue(Prop->bBlueprintReadable, TEXT("Should be blueprint-readable")));
 
 						// Check metadata
 						const FString* DefaultComponentMeta = Prop->Meta.Find(FName(TEXT("DefaultComponent")));
-						TestRunner->TestNotNull(TEXT("Should have DefaultComponent metadata"), DefaultComponentMeta);
-						TestRunner->TestTrue(TEXT("Should have RootComponent metadata"),
-							Prop->Meta.Contains(FName(TEXT("RootComponent"))));
+						ASSERT_THAT(IsNotNull(DefaultComponentMeta, TEXT("Should have DefaultComponent metadata")));
+						ASSERT_THAT(IsTrue(
+							Prop->Meta.Contains(FName(TEXT("RootComponent"))),
+							TEXT("Should have RootComponent metadata")));
 					}
 				}
 			}

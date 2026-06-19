@@ -40,34 +40,34 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKConfigGroupTests,
 	TEST_METHOD(BeginEnd)
 	{
 		asIScriptEngine* const SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		int R = SE->BeginConfigGroup("TestGroup");
-		TestRunner->TestTrue(TEXT("BeginConfigGroup should succeed"), R >= 0);
+		ASSERT_THAT(IsTrue(R >= 0, TEXT("BeginConfigGroup should succeed")));
 
 		R = SE->RegisterGlobalFunction("int TestGroupFunc()", asFUNCTION(ReturnNinetyNine), asCALL_CDECL);
-		TestRunner->TestTrue(TEXT("Register in group should succeed"), R >= 0);
+		ASSERT_THAT(IsTrue(R >= 0, TEXT("Register in group should succeed")));
 
 		R = SE->EndConfigGroup();
-		TestRunner->TestTrue(TEXT("EndConfigGroup should succeed"), R >= 0);
+		ASSERT_THAT(IsTrue(R >= 0, TEXT("EndConfigGroup should succeed")));
 
 		// Verify function is accessible
 		FScopedNativeModuleName ModuleScope(Engine, "CfgGroupTest");
 		asIScriptModule* M = BuildNativeModule(SE, "CfgGroupTest", "int Entry() { return TestGroupFunc(); }\n");
-		TestRunner->TestNotNull(TEXT("Module using group function should compile"), M);
+		ASSERT_THAT(IsNotNull(M, TEXT("Module using group function should compile")));
 	}
 
 	TEST_METHOD(RemoveCleansTypes)
 	{
 		asIScriptEngine* const SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		SE->BeginConfigGroup("RemovableGroup");
 		SE->RegisterGlobalFunction("int RemovableFunc()", asFUNCTION(ReturnOne), asCALL_CDECL);
 		SE->EndConfigGroup();
 
 		int R = SE->RemoveConfigGroup("RemovableGroup");
-		TestRunner->TestTrue(TEXT("RemoveConfigGroup should succeed"), R >= 0);
+		ASSERT_THAT(IsTrue(R >= 0, TEXT("RemoveConfigGroup should succeed")));
 
 		// After removal, function should not be available
 		Engine.ResetMessages();
@@ -85,10 +85,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKConfigGroupTests,
 	TEST_METHOD(NestedError)
 	{
 		asIScriptEngine* const SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		int R1 = SE->BeginConfigGroup("Outer");
-		TestRunner->TestTrue(TEXT("First BeginConfigGroup should succeed"), R1 >= 0);
+		ASSERT_THAT(IsTrue(R1 >= 0, TEXT("First BeginConfigGroup should succeed")));
 
 		// Nested begin — behavior depends on AS engine version.
 		// In AS 2.33 fork, nested config groups may be allowed.

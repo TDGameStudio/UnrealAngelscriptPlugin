@@ -146,10 +146,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKObjectTests, "Angelscript.TestModule.AngelS
 	TEST_METHOD(ValueType)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK object value-type test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK object value-type test should create a standalone engine")));
 
 		const int RegisterObjectResult = ScriptEngine->RegisterObjectType("Object", sizeof(CObject), asOBJ_VALUE | asOBJ_POD | asGetTypeTraits<CObject>() | asOBJ_APP_CLASS_ALLINTS);
 		const ASAutoCaller::FunctionCaller ObjectConstructCaller = ASAutoCaller::MakeFunctionCaller(ConstructObject);
@@ -157,14 +154,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKObjectTests, "Angelscript.TestModule.AngelS
 		const int RegisterDestructResult = ScriptEngine->RegisterObjectBehaviour("Object", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(DestructObject), asCALL_CDECL_OBJLAST);
 		const int RegisterPropertyResult = ScriptEngine->RegisterObjectProperty("Object", "int Value", asOFFSET(CObject, Value));
 
-		if (!TestRunner->TestTrue(TEXT("SDK object value-type test should register all object APIs"),
+		ASSERT_THAT(IsTrue(
 			RegisterObjectResult >= 0 &&
 			RegisterConstructResult >= 0 &&
 			RegisterDestructResult >= 0 &&
-			RegisterPropertyResult >= 0))
-		{
-			return;
-		}
+			RegisterPropertyResult >= 0,
+			TEXT("SDK object value-type test should register all object APIs")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKObjectValueType", R"(
 bool CopyObjectValue()
@@ -180,16 +175,14 @@ bool CopyObjectValue()
 			return;
 		}
 
-		TestRunner->TestNotNull(TEXT("SDK object value-type test should expose the named object-copy function"), GetNativeFunctionByDecl(Module, "bool CopyObjectValue()"));
+		ASSERT_THAT(IsNotNull(GetNativeFunctionByDecl(Module, "bool CopyObjectValue()"),
+			TEXT("SDK object value-type test should expose the named object-copy function")));
 	}
 
 	TEST_METHOD(ConstructorChain)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK object constructor-chain test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK object constructor-chain test should create a standalone engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKObjectConstructorChain", R"(
 class InternalClass
@@ -227,16 +220,14 @@ bool ConstructNestedMember()
 			return;
 		}
 
-		TestRunner->TestNotNull(TEXT("SDK object constructor-chain test should expose the named constructor-chain function"), GetNativeFunctionByDecl(Module, "bool ConstructNestedMember()"));
+		ASSERT_THAT(IsNotNull(GetNativeFunctionByDecl(Module, "bool ConstructNestedMember()"),
+			TEXT("SDK object constructor-chain test should expose the named constructor-chain function")));
 	}
 
 	TEST_METHOD(NativeFloatWrapper)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK object native-float wrapper test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK object native-float wrapper test should create a standalone engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKObjectFloatValue", R"(
 class FloatValue
@@ -256,7 +247,8 @@ bool StoreNativeFloat()
 			return;
 		}
 
-		TestRunner->TestNotNull(TEXT("SDK object native-float wrapper test should expose the named float-value function"), GetNativeFunctionByDecl(Module, "bool StoreNativeFloat()"));
+		ASSERT_THAT(IsNotNull(GetNativeFunctionByDecl(Module, "bool StoreNativeFloat()"),
+			TEXT("SDK object native-float wrapper test should expose the named float-value function")));
 	}
 };
 

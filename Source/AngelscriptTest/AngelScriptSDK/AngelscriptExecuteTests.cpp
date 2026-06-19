@@ -190,10 +190,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
 	TEST_METHOD(BasicCallback)
 	{
 		asIScriptEngine* const ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK execute basic-callback test should create a script engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK execute basic-callback test should create a script engine")));
 
 		const int RegisterResult = UsesMaxPortability()
 			? ScriptEngine->RegisterGlobalFunction("void cfunction_basic()", asFUNCTION(CFunctionBasicGeneric), asCALL_GENERIC)
@@ -202,45 +199,38 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
 				const ASAutoCaller::FunctionCaller Caller = ASAutoCaller::MakeFunctionCaller(CFunctionBasic);
 				return ScriptEngine->RegisterGlobalFunction("void cfunction_basic()", asFUNCTION(CFunctionBasic), asCALL_CDECL, *(asFunctionCaller*)&Caller);
 			}();
-		if (!TestRunner->TestEqual(TEXT("SDK execute basic-callback test should register the callback"), RegisterResult >= 0, true))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(RegisterResult >= 0, TEXT("SDK execute basic-callback test should register the callback")));
 
 		const int ExecuteResult = SDKExecuteString(ScriptEngine, "cfunction_basic();");
-		if (!TestRunner->TestEqual(TEXT("SDK execute basic-callback test should execute a statement snippet"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_FINISHED), ExecuteResult,
+			TEXT("SDK execute basic-callback test should execute a statement snippet")));
+
+		ASSERT_THAT(IsTrue(GCalled, TEXT("SDK execute basic-callback test should call the registered function")));
+
 		{
-			return;
+			asIScriptContext* Context = ScriptEngine->CreateContext();
+			ASSERT_THAT(IsNotNull(Context, TEXT("SDK execute basic-callback test should create a context")));
+			ON_SCOPE_EXIT
+			{
+				Context->Release();
+			};
+
+			Context->SetUserData(reinterpret_cast<void*>(static_cast<SIZE_T>(0xDEADF00D)));
+			ScriptEngine->SetContextUserDataCleanupCallback(CleanupContext);
+			const int PrepareResult = Context->Prepare(ScriptEngine->GetGlobalFunctionByDecl("void cfunction_basic()"));
+
+			ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), PrepareResult,
+				TEXT("SDK execute basic-callback test should prepare the callback function")));
 		}
 
-		if (!TestRunner->TestTrue(TEXT("SDK execute basic-callback test should call the registered function"), GCalled))
-		{
-			return;
-		}
-
-		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("SDK execute basic-callback test should create a context"), Context))
-		{
-			return;
-		}
-
-		Context->SetUserData(reinterpret_cast<void*>(static_cast<SIZE_T>(0xDEADF00D)));
-		ScriptEngine->SetContextUserDataCleanupCallback(CleanupContext);
-		const int PrepareResult = Context->Prepare(ScriptEngine->GetGlobalFunctionByDecl("void cfunction_basic()"));
-		Context->Release();
-
-		TestRunner->TestEqual(TEXT("SDK execute basic-callback test should prepare the callback function"), PrepareResult, static_cast<int32>(asSUCCESS));
-		TestRunner->TestTrue(TEXT("SDK execute basic-callback test should trigger context cleanup on release"), GCleanupCalled);
-		TestRunner->TestTrue(TEXT("SDK execute basic-callback test should preserve context user data for cleanup"), GCleanupUserDataMatched);
+		ASSERT_THAT(IsTrue(GCleanupCalled, TEXT("SDK execute basic-callback test should trigger context cleanup on release")));
+		ASSERT_THAT(IsTrue(GCleanupUserDataMatched, TEXT("SDK execute basic-callback test should preserve context user data for cleanup")));
 	}
 
 	TEST_METHOD(OneArg)
 	{
 		asIScriptEngine* const ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK execute one-arg test should create a script engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK execute one-arg test should create a script engine")));
 
 		const int FunctionId = UsesMaxPortability()
 			? ScriptEngine->RegisterGlobalFunction("void cfunction_one(int value)", asFUNCTION(CFunctionOneArgGeneric), asCALL_GENERIC)
@@ -249,57 +239,42 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
 				const ASAutoCaller::FunctionCaller Caller = ASAutoCaller::MakeFunctionCaller(CFunctionOneArg);
 				return ScriptEngine->RegisterGlobalFunction("void cfunction_one(int value)", asFUNCTION(CFunctionOneArg), asCALL_CDECL, *(asFunctionCaller*)&Caller);
 			}();
-		if (!TestRunner->TestTrue(TEXT("SDK execute one-arg test should register the callback"), FunctionId >= 0))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(FunctionId >= 0, TEXT("SDK execute one-arg test should register the callback")));
 
 		const int ExecuteResult = SDKExecuteString(ScriptEngine, "cfunction_one(5);");
-		if (!TestRunner->TestEqual(TEXT("SDK execute one-arg test should execute the statement snippet"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_FINISHED), ExecuteResult,
+			TEXT("SDK execute one-arg test should execute the statement snippet")));
 
-		if (!TestRunner->TestTrue(TEXT("SDK execute one-arg test should call the registered function"), GCalled))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(GCalled, TEXT("SDK execute one-arg test should call the registered function")));
 
-		if (!TestRunner->TestEqual(TEXT("SDK execute one-arg test should pass the correct value through the snippet"), GIntResult, 5))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(5, GIntResult,
+			TEXT("SDK execute one-arg test should pass the correct value through the snippet")));
 
 		ResetExecuteState();
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("SDK execute one-arg test should create a direct-call context"), Context))
-		{
-			return;
-		}
-
-		const int PrepareResult = Context->Prepare(ScriptEngine->GetFunctionById(FunctionId));
-		if (!TestRunner->TestEqual(TEXT("SDK execute one-arg test should prepare the direct-call context"), PrepareResult, static_cast<int32>(asSUCCESS)))
+		ASSERT_THAT(IsNotNull(Context, TEXT("SDK execute one-arg test should create a direct-call context")));
+		ON_SCOPE_EXIT
 		{
 			Context->Release();
-			return;
-		}
+		};
+
+		const int PrepareResult = Context->Prepare(ScriptEngine->GetFunctionById(FunctionId));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), PrepareResult,
+			TEXT("SDK execute one-arg test should prepare the direct-call context")));
 
 		Context->SetArgDWord(0, 5);
 		const int DirectExecuteResult = Context->Execute();
-		Context->Release();
 
-		TestRunner->TestEqual(TEXT("SDK execute one-arg test should finish the direct callback execution"), DirectExecuteResult, static_cast<int32>(asEXECUTION_FINISHED));
-		TestRunner->TestTrue(TEXT("SDK execute one-arg test should call the direct callback"), GCalled);
-		TestRunner->TestEqual(TEXT("SDK execute one-arg test should preserve the direct callback argument"), GIntResult, 5);
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_FINISHED), DirectExecuteResult,
+			TEXT("SDK execute one-arg test should finish the direct callback execution")));
+		ASSERT_THAT(IsTrue(GCalled, TEXT("SDK execute one-arg test should call the direct callback")));
+		ASSERT_THAT(AreEqual(5, GIntResult, TEXT("SDK execute one-arg test should preserve the direct callback argument")));
 	}
 
 	TEST_METHOD(TwoArgs)
 	{
 		asIScriptEngine* const ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK execute two-args test should create a script engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK execute two-args test should create a script engine")));
 
 		const int RegisterResult = UsesMaxPortability()
 			? ScriptEngine->RegisterGlobalFunction("void cfunction_two(int left, int right)", asFUNCTION(CFunctionTwoArgsGeneric), asCALL_GENERIC)
@@ -308,24 +283,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
 				const ASAutoCaller::FunctionCaller Caller = ASAutoCaller::MakeFunctionCaller(CFunctionTwoArgs);
 				return ScriptEngine->RegisterGlobalFunction("void cfunction_two(int left, int right)", asFUNCTION(CFunctionTwoArgs), asCALL_CDECL, *(asFunctionCaller*)&Caller);
 			}();
-		if (!TestRunner->TestTrue(TEXT("SDK execute two-args test should register the callback"), RegisterResult >= 0))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(RegisterResult >= 0, TEXT("SDK execute two-args test should register the callback")));
 
 		const int ExecuteResult = SDKExecuteString(ScriptEngine, "cfunction_two(5, 9);");
-		TestRunner->TestEqual(TEXT("SDK execute two-args test should execute the statement snippet"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED));
-		TestRunner->TestTrue(TEXT("SDK execute two-args test should call the registered function"), GCalled);
-		TestRunner->TestEqual(TEXT("SDK execute two-args test should sum both arguments"), GIntResult, 14);
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_FINISHED), ExecuteResult,
+			TEXT("SDK execute two-args test should execute the statement snippet")));
+		ASSERT_THAT(IsTrue(GCalled, TEXT("SDK execute two-args test should call the registered function")));
+		ASSERT_THAT(AreEqual(14, GIntResult, TEXT("SDK execute two-args test should sum both arguments")));
 	}
 
 	TEST_METHOD(FourArgs)
 	{
 		asIScriptEngine* const ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK execute four-args test should create a script engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK execute four-args test should create a script engine")));
 
 		const int RegisterResult = UsesMaxPortability()
 			? ScriptEngine->RegisterGlobalFunction("void cfunction_four(int first, int16 second, int8 third, int fourth)", asFUNCTION(CFunctionFourArgsGeneric), asCALL_GENERIC)
@@ -334,27 +304,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
 				const ASAutoCaller::FunctionCaller Caller = ASAutoCaller::MakeFunctionCaller(CFunctionFourArgs);
 				return ScriptEngine->RegisterGlobalFunction("void cfunction_four(int first, int16 second, int8 third, int fourth)", asFUNCTION(CFunctionFourArgs), asCALL_CDECL, *(asFunctionCaller*)&Caller);
 			}();
-		if (!TestRunner->TestTrue(TEXT("SDK execute four-args test should register the callback"), RegisterResult >= 0))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(RegisterResult >= 0, TEXT("SDK execute four-args test should register the callback")));
 
 		const int ExecuteResult = SDKExecuteString(ScriptEngine, "cfunction_four(5, 9, 1, 3);");
-		TestRunner->TestEqual(TEXT("SDK execute four-args test should execute the statement snippet"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED));
-		TestRunner->TestTrue(TEXT("SDK execute four-args test should call the registered function"), GCalled);
-		TestRunner->TestEqual(TEXT("SDK execute four-args test should preserve the first argument"), GFourArgInt, 5);
-		TestRunner->TestEqual(TEXT("SDK execute four-args test should preserve the int16 argument"), GFourArgShort, 9);
-		TestRunner->TestEqual(TEXT("SDK execute four-args test should preserve the int8 argument"), GFourArgByte, 1);
-		TestRunner->TestEqual(TEXT("SDK execute four-args test should preserve the trailing argument"), GFourArgTail, 3);
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_FINISHED), ExecuteResult,
+			TEXT("SDK execute four-args test should execute the statement snippet")));
+		ASSERT_THAT(IsTrue(GCalled, TEXT("SDK execute four-args test should call the registered function")));
+		ASSERT_THAT(AreEqual(5, GFourArgInt, TEXT("SDK execute four-args test should preserve the first argument")));
+		ASSERT_THAT(AreEqual(9, GFourArgShort, TEXT("SDK execute four-args test should preserve the int16 argument")));
+		ASSERT_THAT(AreEqual(1, GFourArgByte, TEXT("SDK execute four-args test should preserve the int8 argument")));
+		ASSERT_THAT(AreEqual(3, GFourArgTail, TEXT("SDK execute four-args test should preserve the trailing argument")));
 	}
 
 	TEST_METHOD(FloatArgs)
 	{
 		asIScriptEngine* const ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK execute float-args test should create a script engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK execute float-args test should create a script engine")));
 
 		const bool bFloatUsesFloat64 = ScriptEngine->GetEngineProperty(asEP_FLOAT_IS_FLOAT64) != 0;
 		const char* Declaration = bFloatUsesFloat64
@@ -384,27 +349,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
 				bFloatUsesFloat64 ? asFUNCTION(CFunctionDoubleArgsGeneric) : asFUNCTION(CFunctionFloatArgsGeneric),
 				asCALL_GENERIC);
 		}
-		if (!TestRunner->TestTrue(TEXT("SDK execute float-args test should register the callback"), RegisterResult >= 0))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(RegisterResult >= 0, TEXT("SDK execute float-args test should register the callback")));
 
 		const int ExecuteResult = SDKExecuteString(ScriptEngine, ScriptCall);
-		TestRunner->TestEqual(TEXT("SDK execute float-args test should execute the statement snippet"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED));
-		TestRunner->TestTrue(TEXT("SDK execute float-args test should call the registered function"), GCalled);
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_FINISHED), ExecuteResult,
+			TEXT("SDK execute float-args test should execute the statement snippet")));
+		ASSERT_THAT(IsTrue(GCalled, TEXT("SDK execute float-args test should call the registered function")));
 		if (bFloatUsesFloat64)
 		{
-			TestRunner->TestTrue(TEXT("SDK execute float-args test should preserve the first promoted double"), FMath::IsNearlyEqual(GDoubleArgA, 9.2, 0.0001));
-			TestRunner->TestTrue(TEXT("SDK execute float-args test should preserve the second promoted double"), FMath::IsNearlyEqual(GDoubleArgB, 13.3, 0.0001));
-			TestRunner->TestTrue(TEXT("SDK execute float-args test should preserve the third double"), FMath::IsNearlyEqual(GDoubleArgC, 18.8, 0.0001));
-			TestRunner->TestTrue(TEXT("SDK execute float-args test should preserve the fourth promoted double"), FMath::IsNearlyEqual(GDoubleArgD, 3.1415, 0.0001));
+			ASSERT_THAT(IsNear(9.2, GDoubleArgA, 0.0001, TEXT("SDK execute float-args test should preserve the first promoted double")));
+			ASSERT_THAT(IsNear(13.3, GDoubleArgB, 0.0001, TEXT("SDK execute float-args test should preserve the second promoted double")));
+			ASSERT_THAT(IsNear(18.8, GDoubleArgC, 0.0001, TEXT("SDK execute float-args test should preserve the third double")));
+			ASSERT_THAT(IsNear(3.1415, GDoubleArgD, 0.0001, TEXT("SDK execute float-args test should preserve the fourth promoted double")));
 		}
 		else
 		{
-			TestRunner->TestTrue(TEXT("SDK execute float-args test should preserve the first float"), FMath::IsNearlyEqual(GFloatArgA, 9.2f, 0.0001f));
-			TestRunner->TestTrue(TEXT("SDK execute float-args test should preserve the second float"), FMath::IsNearlyEqual(GFloatArgB, 13.3f, 0.0001f));
-			TestRunner->TestTrue(TEXT("SDK execute float-args test should preserve the double argument"), FMath::IsNearlyEqual(GFloatArgC, 18.8, 0.0001));
-			TestRunner->TestTrue(TEXT("SDK execute float-args test should preserve the trailing float"), FMath::IsNearlyEqual(GFloatArgD, 3.1415f, 0.0001f));
+			ASSERT_THAT(IsNear(9.2f, GFloatArgA, 0.0001f, TEXT("SDK execute float-args test should preserve the first float")));
+			ASSERT_THAT(IsNear(13.3f, GFloatArgB, 0.0001f, TEXT("SDK execute float-args test should preserve the second float")));
+			ASSERT_THAT(IsNear(18.8, GFloatArgC, 0.0001, TEXT("SDK execute float-args test should preserve the double argument")));
+			ASSERT_THAT(IsNear(3.1415f, GFloatArgD, 0.0001f, TEXT("SDK execute float-args test should preserve the trailing float")));
 		}
 	}
 };

@@ -66,17 +66,17 @@ int Entry()
 		if (Module != nullptr)
 		{
 			const FString Code = Result.JoinedCode(*Module);
-			TestRunner->TestFalse(TEXT("Should remove n\"Alpha\" text"), Code.Contains(TEXT("n\"Alpha\"")));
-			TestRunner->TestFalse(TEXT("Should remove n\"Beta\" text"), Code.Contains(TEXT("n\"Beta\"")));
-			TestRunner->TestTrue(TEXT("Should contain __STATIC_NAME references"), Code.Contains(TEXT("__STATIC_NAME(")));
+			ASSERT_THAT(IsFalse(Code.Contains(TEXT("n\"Alpha\"")), TEXT("Should remove n\"Alpha\" text")));
+			ASSERT_THAT(IsFalse(Code.Contains(TEXT("n\"Beta\"")), TEXT("Should remove n\"Beta\" text")));
+			ASSERT_THAT(IsTrue(Code.Contains(TEXT("__STATIC_NAME(")), TEXT("Should contain __STATIC_NAME references")));
 
 			// Count __STATIC_NAME occurrences
 			TArray<int32> Indices = ExtractStaticNameIndices(Code);
-			TestRunner->TestEqual(TEXT("Should have 3 static name refs"), Indices.Num(), 3);
+			ASSERT_THAT(AreEqual(3, Indices.Num(), TEXT("Should have 3 static name refs")));
 			if (Indices.Num() == 3)
 			{
-				TestRunner->TestEqual(TEXT("Duplicate Alpha refs share index"), Indices[0], Indices[1]);
-				TestRunner->TestTrue(TEXT("Beta has different index"), Indices[2] != Indices[0]);
+				ASSERT_THAT(AreEqual(Indices[1], Indices[0], TEXT("Duplicate Alpha refs share index")));
+				ASSERT_THAT(IsTrue(Indices[2] != Indices[0], TEXT("Beta has different index")));
 			}
 		}
 
@@ -87,17 +87,17 @@ int Entry()
 			&Engine, ECompileType::SoftReloadOnly, ModuleName,
 			RelativeScriptPath, ScriptSource, true, Summary, true);
 
-		TestRunner->TestTrue(TEXT("Should compile"), bCompiled);
-		TestRunner->TestTrue(TEXT("Should use preprocessor"), Summary.bUsedPreprocessor);
-		TestRunner->TestEqual(TEXT("No compile diagnostics"), Summary.Diagnostics.Num(), 0);
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Should compile")));
+		ASSERT_THAT(IsTrue(Summary.bUsedPreprocessor, TEXT("Should use preprocessor")));
+		ASSERT_THAT(AreEqual(0, Summary.Diagnostics.Num(), TEXT("No compile diagnostics")));
 
 		int32 EntryResult = 0;
 		const bool bExecuted = bCompiled
 			&& ExecuteIntFunction(&Engine, RelativeScriptPath, ModuleName, TEXT("int Entry()"), EntryResult);
-		TestRunner->TestTrue(TEXT("Should execute"), bExecuted);
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("Should execute")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(TEXT("Name equality check → 42"), EntryResult, 42);
+			ASSERT_THAT(AreEqual(42, EntryResult, TEXT("Name equality check → 42")));
 		}
 
 		}
@@ -154,12 +154,12 @@ int Entry()
 			if (Module != nullptr)
 			{
 				const FString Code = Result.JoinedCode(*Module);
-				TestRunner->TestTrue(
-					FString::Printf(TEXT("%s: should preserve malformed token"), Case.Label),
-					Code.Contains(Case.PreservedToken));
-				TestRunner->TestFalse(
-					FString::Printf(TEXT("%s: should NOT rewrite to helper"), Case.Label),
-					Code.Contains(Case.UnexpectedRewrite));
+				ASSERT_THAT(IsTrue(
+					Code.Contains(Case.PreservedToken),
+					FString::Printf(TEXT("%s: should preserve malformed token"), Case.Label)));
+				ASSERT_THAT(IsFalse(
+					Code.Contains(Case.UnexpectedRewrite),
+					FString::Printf(TEXT("%s: should NOT rewrite to helper"), Case.Label)));
 			}
 
 			// Verify it fails at compile time (not preprocess)
@@ -171,11 +171,12 @@ int Entry()
 				&Engine, ECompileType::SoftReloadOnly, FName(*FixtureModuleName),
 				Case.RelativePath, Case.Source, true, Summary, true);
 
-			TestRunner->TestFalse(
-				FString::Printf(TEXT("%s: should fail at compile"), Case.Label), bCompiled);
-			TestRunner->TestTrue(
-				FString::Printf(TEXT("%s: should have compile diagnostics"), Case.Label),
-				Summary.Diagnostics.Num() > 0);
+			ASSERT_THAT(IsFalse(
+				bCompiled,
+				FString::Printf(TEXT("%s: should fail at compile"), Case.Label)));
+			ASSERT_THAT(IsTrue(
+				Summary.Diagnostics.Num() > 0,
+				FString::Printf(TEXT("%s: should have compile diagnostics"), Case.Label)));
 
 			Engine.DiscardModule(*FixtureModuleName);
 		}
@@ -216,24 +217,16 @@ int Entry()
 		{
 			const FString Code = Session.Result.JoinedCode(*Module);
 
-			TestRunner->TestFalse(TEXT("Should strip original asset declaration"),
-				Code.Contains(TEXT("asset PreviewAsset of UObject")));
-			TestRunner->TestTrue(TEXT("Should keep Entry function"),
-				Code.Contains(TEXT("int Entry()")));
-			TestRunner->TestTrue(TEXT("Should generate backing field"),
-				Code.Contains(TEXT("UObject __Asset_PreviewAsset;")));
-			TestRunner->TestTrue(TEXT("Should generate explicit asset getter"),
-				Code.Contains(TEXT("UObject GetPreviewAsset()")));
-			TestRunner->TestTrue(TEXT("Should generate __CreateLiteralAsset call"),
-				Code.Contains(TEXT("__CreateLiteralAsset(UObject, \"PreviewAsset\")")));
-			TestRunner->TestTrue(TEXT("Should generate __PostLiteralAssetSetup call"),
-				Code.Contains(TEXT("__PostLiteralAssetSetup(__Asset_PreviewAsset, \"PreviewAsset\");")));
-			TestRunner->TestEqual(TEXT("Should register one PostInitFunction"),
-				Module->PostInitFunctions.Num(), 1);
+			ASSERT_THAT(IsFalse(Code.Contains(TEXT("asset PreviewAsset of UObject")), TEXT("Should strip original asset declaration")));
+			ASSERT_THAT(IsTrue(Code.Contains(TEXT("int Entry()")), TEXT("Should keep Entry function")));
+			ASSERT_THAT(IsTrue(Code.Contains(TEXT("UObject __Asset_PreviewAsset;")), TEXT("Should generate backing field")));
+			ASSERT_THAT(IsTrue(Code.Contains(TEXT("UObject GetPreviewAsset()")), TEXT("Should generate explicit asset getter")));
+			ASSERT_THAT(IsTrue(Code.Contains(TEXT("__CreateLiteralAsset(UObject, \"PreviewAsset\")")), TEXT("Should generate __CreateLiteralAsset call")));
+			ASSERT_THAT(IsTrue(Code.Contains(TEXT("__PostLiteralAssetSetup(__Asset_PreviewAsset, \"PreviewAsset\");")), TEXT("Should generate __PostLiteralAssetSetup call")));
+			ASSERT_THAT(AreEqual(1, Module->PostInitFunctions.Num(), TEXT("Should register one PostInitFunction")));
 			if (Module->PostInitFunctions.Num() == 1)
 			{
-				TestRunner->TestEqual(TEXT("PostInitFunction should be GetPreviewAsset"),
-					Module->PostInitFunctions[0], FString(TEXT("GetPreviewAsset")));
+				ASSERT_THAT(AreEqual(FString(TEXT("GetPreviewAsset")), Module->PostInitFunctions[0], TEXT("PostInitFunction should be GetPreviewAsset")));
 			}
 		}
 
@@ -277,32 +270,23 @@ int Entry()
 			const FString Code = Session.Result.JoinedCode(*Module);
 
 			// Real asset should expand
-			TestRunner->TestTrue(TEXT("Should generate real asset field"),
-				Code.Contains(TEXT("UObject __Asset_RealAsset;")));
-			TestRunner->TestTrue(TEXT("Should generate real asset getter"),
-				Code.Contains(TEXT("UObject GetRealAsset()")));
+			ASSERT_THAT(IsTrue(Code.Contains(TEXT("UObject __Asset_RealAsset;")), TEXT("Should generate real asset field")));
+			ASSERT_THAT(IsTrue(Code.Contains(TEXT("UObject GetRealAsset()")), TEXT("Should generate real asset getter")));
 
 			// Fake/comment assets should NOT expand
-			TestRunner->TestFalse(TEXT("Should not generate fake asset field"),
-				Code.Contains(TEXT("__Asset_FakeAsset")));
-			TestRunner->TestFalse(TEXT("Should not generate fake asset getter"),
-				Code.Contains(TEXT("GetFakeAsset()")));
-			TestRunner->TestFalse(TEXT("Should not generate comment asset field"),
-				Code.Contains(TEXT("__Asset_CommentAsset")));
-			TestRunner->TestFalse(TEXT("Should not generate comment asset getter"),
-				Code.Contains(TEXT("GetCommentAsset()")));
+			ASSERT_THAT(IsFalse(Code.Contains(TEXT("__Asset_FakeAsset")), TEXT("Should not generate fake asset field")));
+			ASSERT_THAT(IsFalse(Code.Contains(TEXT("GetFakeAsset()")), TEXT("Should not generate fake asset getter")));
+			ASSERT_THAT(IsFalse(Code.Contains(TEXT("__Asset_CommentAsset")), TEXT("Should not generate comment asset field")));
+			ASSERT_THAT(IsFalse(Code.Contains(TEXT("GetCommentAsset()")), TEXT("Should not generate comment asset getter")));
 
 			// String literal should be preserved
-			TestRunner->TestTrue(TEXT("Should preserve string literal text"),
-				Code.Contains(TEXT("\"asset FakeAsset of UObject\"")));
+			ASSERT_THAT(IsTrue(Code.Contains(TEXT("\"asset FakeAsset of UObject\"")), TEXT("Should preserve string literal text")));
 
 			// Only one PostInitFunction
-			TestRunner->TestEqual(TEXT("Should register one PostInitFunction"),
-				Module->PostInitFunctions.Num(), 1);
+			ASSERT_THAT(AreEqual(1, Module->PostInitFunctions.Num(), TEXT("Should register one PostInitFunction")));
 			if (Module->PostInitFunctions.Num() == 1)
 			{
-				TestRunner->TestEqual(TEXT("PostInitFunction should be GetRealAsset"),
-					Module->PostInitFunctions[0], FString(TEXT("GetRealAsset")));
+				ASSERT_THAT(AreEqual(FString(TEXT("GetRealAsset")), Module->PostInitFunctions[0], TEXT("PostInitFunction should be GetRealAsset")));
 			}
 		}
 
@@ -334,7 +318,7 @@ int Entry()
 			TEXT("UCLASS()\nclass UMissingTypeAssetOwner : UObject\n{\n\tasset BrokenAsset of\n}\n"),
 			CompileResult);
 
-		TestRunner->TestFalse(TEXT("asset with missing type should fail"), bCompiled);
+		ASSERT_THAT(IsFalse(bCompiled, TEXT("asset with missing type should fail")));
 
 		}
 	}
@@ -365,7 +349,7 @@ int Entry()
 			TEXT("UCLASS()\nclass UFunctionBodyAssetOwner : UObject\n{\n\tUFUNCTION()\n\tvoid TryDeclareAsset()\n\t{\n\t\tasset LocalAsset of UObject\n\t}\n}\n"),
 			CompileResult);
 
-		TestRunner->TestFalse(TEXT("asset inside function body should fail"), bCompiled);
+		ASSERT_THAT(IsFalse(bCompiled, TEXT("asset inside function body should fail")));
 
 		}
 	}
@@ -408,12 +392,12 @@ int Entry()
 		{
 			const FString Code = Result.JoinedCode(*Module);
 			// The f"..." syntax should be rewritten — original text removed
-			TestRunner->TestFalse(TEXT("Should remove f\"...\" text"),
-				Code.Contains(TEXT("f\"Hello {Name}!\"")));
+			ASSERT_THAT(IsFalse(Code.Contains(TEXT("f\"Hello {Name}!\"")), TEXT("Should remove f\"...\" text")));
 			// Should contain string concatenation or FString construction
-			TestRunner->TestTrue(TEXT("Should contain rewritten string code"),
+			ASSERT_THAT(IsTrue(
 				Code.Contains(TEXT("FString()")) || Code.Contains(TEXT("\"Hello \""))
-				|| Code.Contains(TEXT("Name")) );
+				|| Code.Contains(TEXT("Name")),
+				TEXT("Should contain rewritten string code")));
 		}
 
 		// Compile and execute
@@ -423,17 +407,17 @@ int Entry()
 			&Engine, ECompileType::SoftReloadOnly, ModuleName,
 			RelativeScriptPath, ScriptSource, true, Summary, true);
 
-		TestRunner->TestTrue(TEXT("Should compile"), bCompiled);
-		TestRunner->TestTrue(TEXT("Should use preprocessor"), Summary.bUsedPreprocessor);
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Should compile")));
+		ASSERT_THAT(IsTrue(Summary.bUsedPreprocessor, TEXT("Should use preprocessor")));
 
 		int32 EntryResult = 0;
 		const bool bExecuted = bCompiled
 			&& ExecuteIntFunction(&Engine, RelativeScriptPath, ModuleName, TEXT("int Entry()"), EntryResult);
-		TestRunner->TestTrue(TEXT("Should execute"), bExecuted);
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("Should execute")));
 		if (bExecuted)
 		{
 			// "Hello World!" = 12 chars
-			TestRunner->TestEqual(TEXT("f-string should produce 'Hello World!' → Len 12"), EntryResult, 12);
+			ASSERT_THAT(AreEqual(12, EntryResult, TEXT("f-string should produce 'Hello World!' → Len 12")));
 		}
 
 		}

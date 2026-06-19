@@ -14,14 +14,16 @@ namespace
 		asIScriptEngine*& OutScriptEngine,
 		asIScriptModule*& OutModule)
 	{
+		FNoDiscardAsserter Assert(Test);
+
 		OutScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
-		if (!Test.TestNotNull(TEXT("Reference context test should create a native engine"), OutScriptEngine))
+		if (!Assert.IsNotNull(OutScriptEngine, TEXT("Reference context test should create a native engine")))
 		{
 			return false;
 		}
 
 		OutModule = AngelscriptNativeTestSupport::BuildNativeModule(OutScriptEngine, ModuleName, Source);
-		if (!Test.TestNotNull(TEXT("Reference context test should build the module"), OutModule))
+		if (!Assert.IsNotNull(OutModule, TEXT("Reference context test should build the module")))
 		{
 			Test.AddInfo(AngelscriptNativeTestSupport::CollectMessages(Messages));
 			return false;
@@ -76,32 +78,26 @@ int Safe(int Value)
 
 		asIScriptFunction* ThrowingFunction = AngelscriptNativeTestSupport::GetNativeFunctionByDecl(Module, "int Throwing()");
 		asIScriptFunction* SafeFunction = AngelscriptNativeTestSupport::GetNativeFunctionByDecl(Module, "int Safe(int)");
-		if (!TestRunner->TestNotNull(TEXT("Reference context test should resolve the throwing function"), ThrowingFunction)
-			|| !TestRunner->TestNotNull(TEXT("Reference context test should resolve the safe function"), SafeFunction))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ThrowingFunction, TEXT("Reference context test should resolve the throwing function")));
+		ASSERT_THAT(IsNotNull(SafeFunction, TEXT("Reference context test should resolve the safe function")));
 
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("Reference context test should create a context"), Context))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Context, TEXT("Reference context test should create a context")));
 
 		ON_SCOPE_EXIT
 		{
 			Context->Release();
 		};
 
-		TestRunner->TestEqual(TEXT("Reference context test should prepare the throwing function"), Context->Prepare(ThrowingFunction), static_cast<int32>(asSUCCESS));
-		TestRunner->TestEqual(TEXT("Reference context test should observe the expected deep-stack exception"), Context->Execute(), static_cast<int32>(asEXECUTION_EXCEPTION));
-		TestRunner->TestTrue(TEXT("Reference context test should keep exception line metadata"), Context->GetExceptionLineNumber() > 0);
-		TestRunner->TestNotNull(TEXT("Reference context test should keep exception text before reuse"), Context->GetExceptionString());
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), Context->Prepare(ThrowingFunction), TEXT("Reference context test should prepare the throwing function")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_EXCEPTION), Context->Execute(), TEXT("Reference context test should observe the expected deep-stack exception")));
+		ASSERT_THAT(IsTrue(Context->GetExceptionLineNumber() > 0, TEXT("Reference context test should keep exception line metadata")));
+		ASSERT_THAT(IsNotNull(Context->GetExceptionString(), TEXT("Reference context test should keep exception text before reuse")));
 
-		TestRunner->TestEqual(TEXT("Reference context test should prepare the safe function after an exception"), Context->Prepare(SafeFunction), static_cast<int32>(asSUCCESS));
-		TestRunner->TestEqual(TEXT("Reference context test should accept safe function argument after an exception"), Context->SetArgDWord(0, 40), static_cast<int32>(asSUCCESS));
-		TestRunner->TestEqual(TEXT("Reference context test should execute safely after exception reuse"), Context->Execute(), static_cast<int32>(asEXECUTION_FINISHED));
-		TestRunner->TestEqual(TEXT("Reference context test should return the safe function result after reuse"), static_cast<int32>(Context->GetReturnDWord()), 42);
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), Context->Prepare(SafeFunction), TEXT("Reference context test should prepare the safe function after an exception")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), Context->SetArgDWord(0, 40), TEXT("Reference context test should accept safe function argument after an exception")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_FINISHED), Context->Execute(), TEXT("Reference context test should execute safely after exception reuse")));
+		ASSERT_THAT(AreEqual(42, static_cast<int32>(Context->GetReturnDWord()), TEXT("Reference context test should return the safe function result after reuse")));
 	}
 
 	TEST_METHOD(ContextCanSwitchSignaturesAfterException)
@@ -141,35 +137,29 @@ int OneArg(int Value)
 		asIScriptFunction* ThrowingFunction = AngelscriptNativeTestSupport::GetNativeFunctionByDecl(Module, "int Throwing()");
 		asIScriptFunction* NoArgFunction = AngelscriptNativeTestSupport::GetNativeFunctionByDecl(Module, "int NoArg()");
 		asIScriptFunction* OneArgFunction = AngelscriptNativeTestSupport::GetNativeFunctionByDecl(Module, "int OneArg(int)");
-		if (!TestRunner->TestNotNull(TEXT("Reference context signature switch should resolve throwing function"), ThrowingFunction)
-			|| !TestRunner->TestNotNull(TEXT("Reference context signature switch should resolve no-arg function"), NoArgFunction)
-			|| !TestRunner->TestNotNull(TEXT("Reference context signature switch should resolve one-arg function"), OneArgFunction))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ThrowingFunction, TEXT("Reference context signature switch should resolve throwing function")));
+		ASSERT_THAT(IsNotNull(NoArgFunction, TEXT("Reference context signature switch should resolve no-arg function")));
+		ASSERT_THAT(IsNotNull(OneArgFunction, TEXT("Reference context signature switch should resolve one-arg function")));
 
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("Reference context signature switch should create a context"), Context))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Context, TEXT("Reference context signature switch should create a context")));
 
 		ON_SCOPE_EXIT
 		{
 			Context->Release();
 		};
 
-		TestRunner->TestEqual(TEXT("Reference context signature switch should prepare the throwing function"), Context->Prepare(ThrowingFunction), static_cast<int32>(asSUCCESS));
-		TestRunner->TestEqual(TEXT("Reference context signature switch should observe the exception"), Context->Execute(), static_cast<int32>(asEXECUTION_EXCEPTION));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), Context->Prepare(ThrowingFunction), TEXT("Reference context signature switch should prepare the throwing function")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_EXCEPTION), Context->Execute(), TEXT("Reference context signature switch should observe the exception")));
 
-		TestRunner->TestEqual(TEXT("Reference context signature switch should prepare no-arg function after exception"), Context->Prepare(NoArgFunction), static_cast<int32>(asSUCCESS));
-		TestRunner->TestEqual(TEXT("Reference context signature switch should execute no-arg function"), Context->Execute(), static_cast<int32>(asEXECUTION_FINISHED));
-		TestRunner->TestEqual(TEXT("Reference context signature switch should return no-arg result"), static_cast<int32>(Context->GetReturnDWord()), 11);
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), Context->Prepare(NoArgFunction), TEXT("Reference context signature switch should prepare no-arg function after exception")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_FINISHED), Context->Execute(), TEXT("Reference context signature switch should execute no-arg function")));
+		ASSERT_THAT(AreEqual(11, static_cast<int32>(Context->GetReturnDWord()), TEXT("Reference context signature switch should return no-arg result")));
 
-		TestRunner->TestEqual(TEXT("Reference context signature switch should prepare one-arg function after no-arg execution"), Context->Prepare(OneArgFunction), static_cast<int32>(asSUCCESS));
-		TestRunner->TestEqual(TEXT("Reference context signature switch should accept one-arg value"), Context->SetArgDWord(0, 21), static_cast<int32>(asSUCCESS));
-		TestRunner->TestEqual(TEXT("Reference context signature switch should execute one-arg function"), Context->Execute(), static_cast<int32>(asEXECUTION_FINISHED));
-		TestRunner->TestEqual(TEXT("Reference context signature switch should return one-arg result"), static_cast<int32>(Context->GetReturnDWord()), 42);
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), Context->Prepare(OneArgFunction), TEXT("Reference context signature switch should prepare one-arg function after no-arg execution")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), Context->SetArgDWord(0, 21), TEXT("Reference context signature switch should accept one-arg value")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_FINISHED), Context->Execute(), TEXT("Reference context signature switch should execute one-arg function")));
+		ASSERT_THAT(AreEqual(42, static_cast<int32>(Context->GetReturnDWord()), TEXT("Reference context signature switch should return one-arg result")));
 	}
 };
 

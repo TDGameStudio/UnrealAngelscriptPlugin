@@ -132,7 +132,7 @@ int Throw_Entry()
 		if (ThrowFunction == nullptr) return;
 
 		asIScriptContext* Context = Engine.CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("Should create execution context"), Context)) return;
+		ASSERT_THAT(IsNotNull(Context, TEXT("Should create execution context")));
 
 		ON_SCOPE_EXIT
 		{
@@ -151,11 +151,11 @@ int Throw_Entry()
 			ExceptionFunctionDeclaration = UTF8_TO_TCHAR(ExceptionFunction->GetDeclaration());
 		}
 
-		TestRunner->TestEqual(TEXT("Throw path should prepare the entry function"), PrepareResult, static_cast<int32>(asSUCCESS));
-		TestRunner->TestEqual(TEXT("Throw path should raise a script exception"), ExecuteResult, static_cast<int32>(asEXECUTION_EXCEPTION));
-		TestRunner->TestTrue(TEXT("Throw path should surface the thrown message"), ExceptionString.Contains(TEXT("DebuggingThrowCompat")));
-		TestRunner->TestFalse(TEXT("Throw path should capture a non-empty exception function name"), ExceptionFunctionName.IsEmpty());
-		TestRunner->TestTrue(TEXT("Throw path should report ThrowLeaf as the exception site"), ExceptionFunctionDeclaration.Contains(TEXT("Throw_ThrowLeaf")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), PrepareResult, TEXT("Throw path should prepare the entry function")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_EXCEPTION), ExecuteResult, TEXT("Throw path should raise a script exception")));
+		ASSERT_THAT(IsTrue(ExceptionString.Contains(TEXT("DebuggingThrowCompat")), TEXT("Throw path should surface the thrown message")));
+		ASSERT_THAT(IsFalse(ExceptionFunctionName.IsEmpty(), TEXT("Throw path should capture a non-empty exception function name")));
+		ASSERT_THAT(IsTrue(ExceptionFunctionDeclaration.Contains(TEXT("Throw_ThrowLeaf")), TEXT("Throw path should report ThrowLeaf as the exception site")));
 	}
 };
 

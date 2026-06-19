@@ -266,9 +266,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerPauseTests,
 			CollectGarbage(RF_NoFlags, true);
 		};
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should compile the pause fixture"),
-			Fixture.Compile(Engine))));
+		ASSERT_THAT(IsTrue(
+			Fixture.Compile(Engine),
+			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should compile the pause fixture")));
 
 		TAtomic<bool> bMonitorReady(false);
 		TAtomic<bool> bInvocationCompleted(false);
@@ -308,9 +308,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerPauseTests,
 		Breakpoint.Filename = Fixture.Filename;
 		Breakpoint.ModuleName = Fixture.ModuleName.ToString();
 		Breakpoint.LineNumber = Fixture.GetLine(TEXT("PauseReadyLine"));
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should set the pause-ready breakpoint"),
-			Ctx.Client.SendSetBreakpoint(Breakpoint))));
+		ASSERT_THAT(IsTrue(
+			Ctx.Client.SendSetBreakpoint(Breakpoint),
+			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should set the pause-ready breakpoint")));
 
 		ASSERT_THAT(IsTrue(WaitForBreakpointCount(
 			*TestRunner,
@@ -342,91 +342,85 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerPauseTests,
 		const FPauseMonitorResult MonitorResult = MonitorFuture.Get();
 		const FControlPauseResult ControlPauseResult = ControlPauseFuture.Get();
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should let the control client observe HasContinued without errors"),
-			ControlPauseResult.Error.IsEmpty())));
+		ASSERT_THAT(IsTrue(
+			ControlPauseResult.Error.IsEmpty(),
+			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should let the control client observe HasContinued without errors")));
 		if (!ControlPauseResult.Error.IsEmpty())
 		{
 			TestRunner->AddError(ControlPauseResult.Error);
 		}
 
-		ASSERT_THAT(IsTrue(TestRunner->TestFalse(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should not time out while waiting for the control-client HasContinued"),
-			ControlPauseResult.bTimedOut)));
+		ASSERT_THAT(IsFalse(
+			ControlPauseResult.bTimedOut,
+			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should not time out while waiting for the control-client HasContinued")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should observe HasContinued on the control client before sending Pause"),
-			ControlPauseResult.bObservedContinued)));
+		ASSERT_THAT(IsTrue(
+			ControlPauseResult.bObservedContinued,
+			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should observe HasContinued on the control client before sending Pause")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should send Pause from the control client after HasContinued"),
-			ControlPauseResult.bSentPause)));
+		ASSERT_THAT(IsTrue(
+			ControlPauseResult.bSentPause,
+			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should send Pause from the control client after HasContinued")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should keep the pause monitor error-free"),
-			MonitorResult.Error.IsEmpty())));
+		ASSERT_THAT(IsTrue(
+			MonitorResult.Error.IsEmpty(),
+			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should keep the pause monitor error-free")));
 		if (!MonitorResult.Error.IsEmpty())
 		{
 			TestRunner->AddError(MonitorResult.Error);
 		}
 
-		ASSERT_THAT(IsTrue(TestRunner->TestFalse(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should not time out while driving the pause test case"),
-			MonitorResult.bTimedOut)));
+		ASSERT_THAT(IsFalse(
+			MonitorResult.bTimedOut,
+			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should not time out while driving the pause test case")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should capture the initial breakpoint stop"),
-			MonitorResult.FirstStopMessage.IsSet())));
+		ASSERT_THAT(IsTrue(
+			MonitorResult.FirstStopMessage.IsSet(),
+			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should capture the initial breakpoint stop")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should capture the initial callstack"),
-			MonitorResult.FirstCallstack.IsSet())));
+		ASSERT_THAT(IsTrue(
+			MonitorResult.FirstCallstack.IsSet(),
+			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should capture the initial callstack")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should capture the pause stop"),
-			MonitorResult.SecondStopMessage.IsSet())));
+		ASSERT_THAT(IsTrue(
+			MonitorResult.SecondStopMessage.IsSet(),
+			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should capture the pause stop")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should capture the pause callstack"),
-			MonitorResult.SecondCallstack.IsSet())));
+		ASSERT_THAT(IsTrue(
+			MonitorResult.SecondCallstack.IsSet(),
+			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should capture the pause callstack")));
 
-		TestRunner->TestEqual(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should stop first because of the breakpoint"),
-			MonitorResult.FirstStopMessage->Reason, FString(TEXT("breakpoint")));
-		TestRunner->TestTrue(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should report the fixture filename on the first stop"),
-			MonitorResult.FirstCallstack->Frames.Num() > 0 && MonitorResult.FirstCallstack->Frames[0].Source.EndsWith(Fixture.Filename));
-		TestRunner->TestEqual(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should stop first at PauseReadyLine"),
-			MonitorResult.FirstCallstack->Frames[0].LineNumber, Fixture.GetLine(TEXT("PauseReadyLine")));
-		TestRunner->TestEqual(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should observe exactly one HasContinued after the initial resume"),
-			MonitorResult.ContinuedCount, 1);
-		TestRunner->TestEqual(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should stop the second time because of Pause"),
-			MonitorResult.SecondStopMessage->Reason, FString(TEXT("pause")));
-		TestRunner->TestTrue(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should report the fixture filename on the pause stop"),
-			MonitorResult.SecondCallstack->Frames.Num() > 0 && MonitorResult.SecondCallstack->Frames[0].Source.EndsWith(Fixture.Filename));
+		ASSERT_THAT(AreEqual(FString(TEXT("breakpoint")), MonitorResult.FirstStopMessage->Reason, TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should stop first because of the breakpoint")));
+		ASSERT_THAT(IsTrue(
+			MonitorResult.FirstCallstack->Frames.Num() > 0 && MonitorResult.FirstCallstack->Frames[0].Source.EndsWith(Fixture.Filename),
+			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should report the fixture filename on the first stop")));
+		ASSERT_THAT(AreEqual(Fixture.GetLine(TEXT("PauseReadyLine")), MonitorResult.FirstCallstack->Frames[0].LineNumber, TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should stop first at PauseReadyLine")));
+		ASSERT_THAT(AreEqual(1, MonitorResult.ContinuedCount, TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should observe exactly one HasContinued after the initial resume")));
+		ASSERT_THAT(AreEqual(FString(TEXT("pause")), MonitorResult.SecondStopMessage->Reason, TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should stop the second time because of Pause")));
+		ASSERT_THAT(IsTrue(
+			MonitorResult.SecondCallstack->Frames.Num() > 0 && MonitorResult.SecondCallstack->Frames[0].Source.EndsWith(Fixture.Filename),
+			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should report the fixture filename on the pause stop")));
 
 		// UE 5.7: VM line-event granularity may pause at either the for-header (PauseForHeaderLine)
 		// or the loop body (PauseLoopLine) depending on engine state and test ordering.
 		const int32 ActualPauseLine = MonitorResult.SecondCallstack->Frames[0].LineNumber;
 		const int32 ForHeaderLine = Fixture.GetLine(TEXT("PauseForHeaderLine"));
 		const int32 LoopBodyLine = Fixture.GetLine(TEXT("PauseLoopLine"));
-		TestRunner->TestTrue(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should stop the second time at either PauseForHeaderLine or PauseLoopLine"),
-			ActualPauseLine == ForHeaderLine || ActualPauseLine == LoopBodyLine);
+		ASSERT_THAT(IsTrue(
+			ActualPauseLine == ForHeaderLine || ActualPauseLine == LoopBodyLine,
+			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should stop the second time at either PauseForHeaderLine or PauseLoopLine")));
 
-		TestRunner->TestEqual(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should not receive any unexpected extra HasStopped messages after resuming from Pause"),
-			MonitorResult.UnexpectedStopCount, 0);
-		TestRunner->TestTrue(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should finish the invocation successfully"),
-			InvocationState->bSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should preserve the pause fixture return value"),
-			InvocationState->Result, 5001);
+		ASSERT_THAT(AreEqual(
+			0,
+			MonitorResult.UnexpectedStopCount,
+			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should not receive any unexpected extra HasStopped messages after resuming from Pause")));
+		ASSERT_THAT(IsTrue(
+			InvocationState->bSucceeded,
+			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should finish the invocation successfully")));
+		ASSERT_THAT(AreEqual(
+			5001,
+			InvocationState->Result,
+			TEXT("Debugger.Pause.PauseStopsAtNextScriptLine should preserve the pause fixture return value")));
 	}
 };
 

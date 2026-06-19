@@ -19,6 +19,7 @@
 // =============================================================================
 
 #include "CoreMinimal.h"
+#include "Assert/NoDiscardAsserter.h"
 #include "Misc/AutomationTest.h"
 
 #include "AngelscriptDebuggerScriptFixture.h"
@@ -50,16 +51,17 @@ struct FDebuggerTestContext
 		FAngelscriptDebuggerSessionConfig SessionConfig;
 		SessionConfig.DefaultTimeoutSeconds = TimeoutSeconds;
 
-		if (!Test.TestTrue(
-				TEXT("Debugger context should initialize the session"),
-				Session.Initialize(SessionConfig)))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsTrue(
+				Session.Initialize(SessionConfig),
+				TEXT("Debugger context should initialize the session")))
 		{
 			return false;
 		}
 
-		if (!Test.TestTrue(
-				TEXT("Debugger context should connect the primary client"),
-				Client.Connect(TEXT("127.0.0.1"), Session.GetPort())))
+		if (!Assert.IsTrue(
+				Client.Connect(TEXT("127.0.0.1"), Session.GetPort()),
+				TEXT("Debugger context should connect the primary client")))
 		{
 			Test.AddError(Client.GetLastError());
 			return false;
@@ -79,9 +81,9 @@ struct FDebuggerTestContext
 			},
 			Session.GetDefaultTimeoutSeconds());
 
-		if (!Test.TestTrue(
-				TEXT("Debugger context should send StartDebugging"),
-				bStartMessageSent))
+		if (!Assert.IsTrue(
+				bStartMessageSent,
+				TEXT("Debugger context should send StartDebugging")))
 		{
 			Test.AddError(Client.GetLastError());
 			return false;
@@ -101,9 +103,9 @@ struct FDebuggerTestContext
 			},
 			Session.GetDefaultTimeoutSeconds());
 
-		if (!Test.TestTrue(
-				TEXT("Debugger context should receive the DebugServerVersion response"),
-				bReceivedVersion))
+		if (!Assert.IsTrue(
+				bReceivedVersion,
+				TEXT("Debugger context should receive the DebugServerVersion response")))
 		{
 			Test.AddError(Client.GetLastError());
 			return false;
@@ -123,9 +125,10 @@ struct FDebuggerTestContext
 		FAngelscriptDebuggerSessionConfig SessionConfig;
 		SessionConfig.DefaultTimeoutSeconds = TimeoutSeconds;
 
-		return Test.TestTrue(
-			TEXT("Debugger context should initialize a session-only setup"),
-			Session.Initialize(SessionConfig));
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsTrue(
+			Session.Initialize(SessionConfig),
+			TEXT("Debugger context should initialize a session-only setup"));
 	}
 
 	// ---- TearDown ----

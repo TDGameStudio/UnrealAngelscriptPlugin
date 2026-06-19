@@ -312,6 +312,7 @@ void AssignClass(TSubclassOf<AActor>& OutValue, UClass NewClass)
 		asIScriptModule& Module = ModuleScope.GetModule();
 
 		bool bPassed = true;
+		FNoDiscardAsserter Assert(Test);
 
 		// (3) Positive sanity: null assignment via the AssignClass(out, null) path.
 		// Drive AssignClass directly with FASGlobalFunctionInvoker so we can pass
@@ -326,16 +327,16 @@ void AssignClass(TSubclassOf<AActor>& OutValue, UClass NewClass)
 			{
 				NullInvoker.AddArgRef(ResetTarget);
 				NullInvoker.AddArgObject(nullptr);
-				bPassed &= Test.TestTrue(
-					TEXT("[Class] AssignClass(out, null) should execute"),
-					NullInvoker.Call());
+				bPassed &= Assert.IsTrue(
+					NullInvoker.Call(),
+					TEXT("[Class] AssignClass(out, null) should execute"));
 
-				bPassed &= Test.TestNull(
-					TEXT("[Class] AssignClass(null) should clear stored class pointer"),
-					ResetTarget.Get());
-				bPassed &= Test.TestNull(
-					TEXT("[Class] AssignClass(null) should clear default object path"),
-					ResetTarget.GetDefaultObject());
+				bPassed &= Assert.IsNull(
+					ResetTarget.Get(),
+					TEXT("[Class] AssignClass(null) should clear stored class pointer"));
+				bPassed &= Assert.IsNull(
+					ResetTarget.GetDefaultObject(),
+					TEXT("[Class] AssignClass(null) should clear default object path"));
 			}
 			else
 			{
@@ -369,12 +370,12 @@ void AssignClass(TSubclassOf<AActor>& OutValue, UClass NewClass)
 				// outcome here. Don't TestTrue it.
 				(void)bCalled;
 
-				bPassed &= Test.TestNull(
-					TEXT("[Class] AssignClass(unrelated) should clear stored class pointer"),
-					AssignmentTarget.Get());
-				bPassed &= Test.TestNull(
-					TEXT("[Class] AssignClass(unrelated) should clear default object path"),
-					AssignmentTarget.GetDefaultObject());
+				bPassed &= Assert.IsNull(
+					AssignmentTarget.Get(),
+					TEXT("[Class] AssignClass(unrelated) should clear stored class pointer"));
+				bPassed &= Assert.IsNull(
+					AssignmentTarget.GetDefaultObject(),
+					TEXT("[Class] AssignClass(unrelated) should clear default object path"));
 			}
 			else
 			{
@@ -544,6 +545,7 @@ int GetAssetName_NonEmpty()
 		FAngelscriptEngine& Engine)
 	{
 		bool bPassed = true;
+		FNoDiscardAsserter Assert(Test);
 
 		// (a) Plain native StaticClass module.
 		{
@@ -614,42 +616,43 @@ class ABindingStaticClassActor : AActor
 )"));
 			ON_SCOPE_EXIT { Engine.DiscardModule(AnnotatedModuleName); };
 
-			bPassed &= Test.TestTrue(
-				TEXT("[Class] Annotated StaticClass compat module should compile"),
-				bAnnotatedCompiled);
+			bPassed &= Assert.IsTrue(
+				bAnnotatedCompiled,
+				TEXT("[Class] Annotated StaticClass compat module should compile"));
 
 			if (bAnnotatedCompiled)
 			{
 				UClass* RuntimeActorClass = FindGeneratedClass(&Engine, TEXT("ABindingStaticClassActor"));
-				bPassed &= Test.TestNotNull(
-					TEXT("[Class] Generated actor class for StaticClass compat should exist"),
-					RuntimeActorClass);
+				bPassed &= Assert.IsNotNull(
+					RuntimeActorClass,
+					TEXT("[Class] Generated actor class for StaticClass compat should exist"));
 
 				UFunction* ReadStaticClassCompatFunction = RuntimeActorClass != nullptr
 					? FindGeneratedFunction(RuntimeActorClass, TEXT("ReadStaticClassCompat"))
 					: nullptr;
-				bPassed &= Test.TestNotNull(
-					TEXT("[Class] StaticClass compat function should exist"),
-					ReadStaticClassCompatFunction);
+				bPassed &= Assert.IsNotNull(
+					ReadStaticClassCompatFunction,
+					TEXT("[Class] StaticClass compat function should exist"));
 
 				if (RuntimeActorClass != nullptr && ReadStaticClassCompatFunction != nullptr)
 				{
 					AActor* RuntimeActor = NewObject<AActor>(GetTransientPackage(), RuntimeActorClass);
-					bPassed &= Test.TestNotNull(
-						TEXT("[Class] Generated actor for StaticClass compat should instantiate"),
-						RuntimeActor);
+					bPassed &= Assert.IsNotNull(
+						RuntimeActor,
+						TEXT("[Class] Generated actor for StaticClass compat should instantiate"));
 
 					if (RuntimeActor != nullptr)
 					{
 						int32 AnnotatedResult = 0;
 						const bool bExecuted = ExecuteGeneratedIntEventOnGameThread(
 							&Engine, RuntimeActor, ReadStaticClassCompatFunction, AnnotatedResult);
-						bPassed &= Test.TestTrue(
-							TEXT("[Class] Reflected call should execute on game thread"),
-							bExecuted);
-						bPassed &= Test.TestEqual(
-							TEXT("[Class] Annotated module StaticClass should report success (1)"),
-							AnnotatedResult, 1);
+						bPassed &= Assert.IsTrue(
+							bExecuted,
+							TEXT("[Class] Reflected call should execute on game thread"));
+						bPassed &= Assert.AreEqual(
+							1,
+							AnnotatedResult,
+							TEXT("[Class] Annotated module StaticClass should report success (1)"));
 					}
 				}
 			}
@@ -707,32 +710,33 @@ int Query_TSubclassOf_IsChildOfBoth()
 
 		FAngelscriptEngineScope EngineScope(Engine);
 		asIScriptEngine* ScriptEngine = Engine.Engine;
-		if (!Test.TestNotNull(TEXT("[Class] AS engine pointer should exist"), ScriptEngine))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(ScriptEngine, TEXT("[Class] AS engine pointer should exist")))
 		{
 			return false;
 		}
 
 		bool bPassed = true;
-		bPassed &= Test.TestTrue(
-			TEXT("[Class] Set namespace to AActor should succeed"),
-			ScriptEngine->SetDefaultNamespace("AActor") >= 0);
+		bPassed &= Assert.IsTrue(
+			ScriptEngine->SetDefaultNamespace("AActor") >= 0,
+			TEXT("[Class] Set namespace to AActor should succeed"));
 
 		asIScriptFunction* StaticClassFunction = ScriptEngine->GetGlobalFunctionByDecl("UClass StaticClass()");
-		bPassed &= Test.TestNotNull(
-			TEXT("[Class] Native AActor namespace should expose StaticClass"),
-			StaticClassFunction);
+		bPassed &= Assert.IsNotNull(
+			StaticClassFunction,
+			TEXT("[Class] Native AActor namespace should expose StaticClass"));
 
 		if (StaticClassFunction != nullptr)
 		{
-			bPassed &= Test.TestEqual(
-				TEXT("[Class] StaticClass userdata should equal AActor::StaticClass()"),
+			bPassed &= Assert.AreEqual(
+				AActor::StaticClass(),
 				static_cast<UClass*>(StaticClassFunction->GetUserData()),
-				AActor::StaticClass());
+				TEXT("[Class] StaticClass userdata should equal AActor::StaticClass()"));
 		}
 
-		bPassed &= Test.TestTrue(
-			TEXT("[Class] Restoring global namespace should succeed"),
-			ScriptEngine->SetDefaultNamespace("") >= 0);
+		bPassed &= Assert.IsTrue(
+			ScriptEngine->SetDefaultNamespace("") >= 0,
+			TEXT("[Class] Restoring global namespace should succeed"));
 
 		return bPassed;
 	}
@@ -795,6 +799,7 @@ int StaticType_RoundTrip_MatchNamespace()
 		FAngelscriptEngine& Engine)
 	{
 		bool bPassed = true;
+		FNoDiscardAsserter Assert(Test);
 
 		// (a) Annotated ASClass — reflection queries that require a script class.
 		{
@@ -842,42 +847,43 @@ class ABindingReflectionActor : AActor
 )"));
 			ON_SCOPE_EXIT { Engine.DiscardModule(ReflModuleName); };
 
-			bPassed &= Test.TestTrue(
-				TEXT("[Class] Reflection compat module should compile"),
-				bCompiled);
+			bPassed &= Assert.IsTrue(
+				bCompiled,
+				TEXT("[Class] Reflection compat module should compile"));
 
 			if (bCompiled)
 			{
 				UClass* ReflActorClass = FindGeneratedClass(&Engine, TEXT("ABindingReflectionActor"));
-				bPassed &= Test.TestNotNull(
-					TEXT("[Class] Generated reflection actor class should exist"),
-					ReflActorClass);
+				bPassed &= Assert.IsNotNull(
+					ReflActorClass,
+					TEXT("[Class] Generated reflection actor class should exist"));
 
 				UFunction* ReadReflectionFunc = ReflActorClass != nullptr
 					? FindGeneratedFunction(ReflActorClass, TEXT("ReadReflection"))
 					: nullptr;
-				bPassed &= Test.TestNotNull(
-					TEXT("[Class] ReadReflection function should exist"),
-					ReadReflectionFunc);
+				bPassed &= Assert.IsNotNull(
+					ReadReflectionFunc,
+					TEXT("[Class] ReadReflection function should exist"));
 
 				if (ReflActorClass != nullptr && ReadReflectionFunc != nullptr)
 				{
 					AActor* ReflActor = NewObject<AActor>(GetTransientPackage(), ReflActorClass);
-					bPassed &= Test.TestNotNull(
-						TEXT("[Class] Reflection actor should instantiate"),
-						ReflActor);
+					bPassed &= Assert.IsNotNull(
+						ReflActor,
+						TEXT("[Class] Reflection actor should instantiate"));
 
 					if (ReflActor != nullptr)
 					{
 						int32 Result = 0;
 						const bool bExecuted = ExecuteGeneratedIntEventOnGameThread(
 							&Engine, ReflActor, ReadReflectionFunc, Result);
-						bPassed &= Test.TestTrue(
-							TEXT("[Class] Reflection call should execute"),
-							bExecuted);
-						bPassed &= Test.TestEqual(
-							TEXT("[Class] Reflection queries should all pass (1)"),
-							Result, 1);
+						bPassed &= Assert.IsTrue(
+							bExecuted,
+							TEXT("[Class] Reflection call should execute"));
+						bPassed &= Assert.AreEqual(
+							1,
+							Result,
+							TEXT("[Class] Reflection queries should all pass (1)"));
 					}
 				}
 			}
@@ -918,9 +924,10 @@ int IsAbstract_FindAbstract()
 					const int32 Val = Invoker.CallAndReturn<int32>(INDEX_NONE);
 					if (Val >= 0)
 					{
-						bPassed &= Test.TestEqual(
-							TEXT("[Class] ANavigationData should be abstract"),
-							Val, 1);
+						bPassed &= Assert.AreEqual(
+							1,
+							Val,
+							TEXT("[Class] ANavigationData should be abstract"));
 					}
 					else
 					{

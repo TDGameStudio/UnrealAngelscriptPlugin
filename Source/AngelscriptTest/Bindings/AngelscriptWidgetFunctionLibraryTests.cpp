@@ -80,10 +80,7 @@ void ReadWidgetTransformNull()
 
 		// ---- Create the concrete test widget ----
 		UButton* TestWidget = NewObject<UButton>(GetTransientPackage(), TEXT("FunctionLibraryWidget"));
-		if (!TestRunner->TestNotNull(TEXT("Widget function library test should create a concrete widget"), TestWidget))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(TestWidget, TEXT("Widget function library test should create a concrete widget")));
 
 		FWidgetTransform ExpectedTransform;
 		ExpectedTransform.Translation = FVector2D(13.5f, -9.25f);
@@ -97,10 +94,10 @@ void ReadWidgetTransformNull()
 			if (!Invoker.IsValid()) return;
 			Invoker.AddArgObject(TestWidget);
 			const int32 Result = Invoker.CallAndReturn<int32>(INDEX_NONE);
-			TestRunner->TestEqual(
-				TEXT("GetRenderTransform should preserve the native translation, scale, and angle for a valid widget"),
+			ASSERT_THAT(AreEqual(
+				1,
 				Result,
-				1);
+				TEXT("GetRenderTransform should preserve the native translation, scale, and angle for a valid widget")));
 		}
 
 		// ---- Null widget: expect script exception ----

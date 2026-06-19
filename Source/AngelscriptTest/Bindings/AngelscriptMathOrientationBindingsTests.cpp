@@ -303,9 +303,9 @@ FTransform GetSetRotationTransform()
 			TEXT("FRotator.Compose should preserve the native B * A multiplication order"),
 			ScriptComposedRotator,
 			ExpectedComposedRotator);
-		TestRunner->TestTrue(
-			TEXT("FRotator.AngularDistance should expose orientation distance as an instance method"),
-			FMath::Abs(ScriptRotatorAngularDistance - ExpectedRotatorAngularDistance) <= 0.05);
+		ASSERT_THAT(IsTrue(
+			FMath::Abs(ScriptRotatorAngularDistance - ExpectedRotatorAngularDistance) <= 0.05,
+			TEXT("FRotator.AngularDistance should expose orientation distance as an instance method")));
 		VerifyMathBindingsQuat(
 			*TestRunner,
 			TEXT("FQuat::MakeFromX should match the native rotation matrix factory"),

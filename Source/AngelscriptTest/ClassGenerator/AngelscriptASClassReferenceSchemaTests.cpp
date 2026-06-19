@@ -32,7 +32,8 @@ namespace AngelscriptTest_ClassGenerator_AngelscriptASClassReferenceSchemaTests_
 	UFunction* RequireGeneratedFunction(FAutomationTestBase& Test, UClass* OwnerClass, FName FunctionName, const TCHAR* Context)
 	{
 		UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
-		Test.TestNotNull(*FString::Printf(TEXT("%s should expose generated function '%s'"), Context, *FunctionName.ToString()), Function);
+		FNoDiscardAsserter Assert(Test);
+		(void)Assert.IsNotNull(Function, *FString::Printf(TEXT("%s should expose generated function '%s'"), Context, *FunctionName.ToString()));
 		return Function;
 	}
 
@@ -118,17 +119,17 @@ class UReferenceSchemaHolder : UObject
 		if (ScriptClass == nullptr) { return; }
 
 		UASClass* ScriptASClass = Cast<UASClass>(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Reference-schema GC test case should compile to a UASClass"), ScriptASClass)) { return; }
+		if (!this->Assert.IsNotNull(ScriptASClass, TEXT("Reference-schema GC test case should compile to a UASClass"))) { return; }
 
-		TestRunner->TestNull(TEXT("Reference-schema GC test case should keep HiddenRef out of reflected UPROPERTY storage"), FindFProperty<FProperty>(ScriptClass, TEXT("HiddenRef")));
-		TestRunner->TestTrue(TEXT("Reference-schema GC test case should build a non-empty GC schema"), !ScriptASClass->ReferenceSchema.Get().IsEmpty());
+		ASSERT_THAT(IsNull(FindFProperty<FProperty>(ScriptClass, TEXT("HiddenRef")), TEXT("Reference-schema GC test case should keep HiddenRef out of reflected UPROPERTY storage")));
+		ASSERT_THAT(IsTrue(!ScriptASClass->ReferenceSchema.Get().IsEmpty(), TEXT("Reference-schema GC test case should build a non-empty GC schema")));
 
 		UFunction* StoreFunction = RequireGeneratedFunction(*TestRunner, ScriptClass, TEXT("Store"), TEXT("Reference-schema GC test case"));
 		UFunction* GetStoredFunction = RequireGeneratedFunction(*TestRunner, ScriptClass, TEXT("GetStored"), TEXT("Reference-schema GC test case"));
 		if (StoreFunction == nullptr || GetStoredFunction == nullptr) { return; }
 
 		UObject* Holder = NewObject<UObject>(GetTransientPackage(), ScriptClass, TEXT("ReferenceSchemaHolder"));
-		if (!TestRunner->TestNotNull(TEXT("Reference-schema GC test case should instantiate the generated holder"), Holder)) { return; }
+		if (!this->Assert.IsNotNull(Holder, TEXT("Reference-schema GC test case should instantiate the generated holder"))) { return; }
 
 		Holder->AddToRoot();
 		ON_SCOPE_EXIT
@@ -138,34 +139,34 @@ class UReferenceSchemaHolder : UObject
 		};
 
 		UAngelscriptNativeScriptTestObject* StrongTarget = NewObject<UAngelscriptNativeScriptTestObject>(GetTransientPackage(), TEXT("ReferenceSchemaTarget"));
-		if (!TestRunner->TestNotNull(TEXT("Reference-schema GC test case should create a transient target UObject"), StrongTarget)) { return; }
+		if (!this->Assert.IsNotNull(StrongTarget, TEXT("Reference-schema GC test case should create a transient target UObject"))) { return; }
 		TWeakObjectPtr<UAngelscriptNativeScriptTestObject> WeakTarget = StrongTarget;
 
 		FStoreParams StoreParams;
 		StoreParams.InValue = StrongTarget;
-		if (!TestRunner->TestTrue(TEXT("Reference-schema GC test case should store the transient target"), InvokeGeneratedFunction(Engine, Holder, StoreFunction, &StoreParams))) { return; }
+		if (!this->Assert.IsTrue(InvokeGeneratedFunction(Engine, Holder, StoreFunction, &StoreParams), TEXT("Reference-schema GC test case should store the transient target"))) { return; }
 
 		FGetStoredParams GetStoredBeforeGC;
-		if (!TestRunner->TestTrue(TEXT("Reference-schema GC test case should read back stored object before GC"), InvokeGeneratedFunction(Engine, Holder, GetStoredFunction, &GetStoredBeforeGC))) { return; }
-		TestRunner->TestTrue(TEXT("Reference-schema GC test case should return the same target before GC"), GetStoredBeforeGC.ReturnValue == StrongTarget);
+		if (!this->Assert.IsTrue(InvokeGeneratedFunction(Engine, Holder, GetStoredFunction, &GetStoredBeforeGC), TEXT("Reference-schema GC test case should read back stored object before GC"))) { return; }
+		ASSERT_THAT(IsTrue(GetStoredBeforeGC.ReturnValue == StrongTarget, TEXT("Reference-schema GC test case should return the same target before GC")));
 
 		StrongTarget = nullptr;
 		CollectGarbage(RF_NoFlags, true);
-		TestRunner->TestTrue(TEXT("Reference-schema GC test case should keep target alive while rooted holder has script-only reference"), WeakTarget.IsValid());
+		ASSERT_THAT(IsTrue(WeakTarget.IsValid(), TEXT("Reference-schema GC test case should keep target alive while rooted holder has script-only reference")));
 
 		FGetStoredParams GetStoredAfterGC;
-		if (!TestRunner->TestTrue(TEXT("Reference-schema GC test case should still expose stored object after GC"), InvokeGeneratedFunction(Engine, Holder, GetStoredFunction, &GetStoredAfterGC))) { return; }
-		TestRunner->TestTrue(TEXT("Reference-schema GC test case should preserve same object identity after GC"), GetStoredAfterGC.ReturnValue == WeakTarget.Get());
+		if (!this->Assert.IsTrue(InvokeGeneratedFunction(Engine, Holder, GetStoredFunction, &GetStoredAfterGC), TEXT("Reference-schema GC test case should still expose stored object after GC"))) { return; }
+		ASSERT_THAT(IsTrue(GetStoredAfterGC.ReturnValue == WeakTarget.Get(), TEXT("Reference-schema GC test case should preserve same object identity after GC")));
 
 		FStoreParams ClearParams;
-		if (!TestRunner->TestTrue(TEXT("Reference-schema GC test case should clear the script-only reference"), InvokeGeneratedFunction(Engine, Holder, StoreFunction, &ClearParams))) { return; }
+		if (!this->Assert.IsTrue(InvokeGeneratedFunction(Engine, Holder, StoreFunction, &ClearParams), TEXT("Reference-schema GC test case should clear the script-only reference"))) { return; }
 
 		FGetStoredParams GetStoredAfterClear;
-		if (!TestRunner->TestTrue(TEXT("Reference-schema GC test case should execute GetStored after clearing"), InvokeGeneratedFunction(Engine, Holder, GetStoredFunction, &GetStoredAfterClear))) { return; }
-		TestRunner->TestNull(TEXT("Reference-schema GC test case should report null after clearing"), GetStoredAfterClear.ReturnValue);
+		if (!this->Assert.IsTrue(InvokeGeneratedFunction(Engine, Holder, GetStoredFunction, &GetStoredAfterClear), TEXT("Reference-schema GC test case should execute GetStored after clearing"))) { return; }
+		ASSERT_THAT(IsNull(GetStoredAfterClear.ReturnValue, TEXT("Reference-schema GC test case should report null after clearing")));
 
 		CollectGarbage(RF_NoFlags, true);
-		TestRunner->TestFalse(TEXT("Reference-schema GC test case should release target after clearing last reference"), WeakTarget.IsValid());
+		ASSERT_THAT(IsFalse(WeakTarget.IsValid(), TEXT("Reference-schema GC test case should release target after clearing last reference")));
 		}
 	}
 
@@ -197,10 +198,10 @@ class UReferenceSchemaReloadHolder : UObject
 		UClass* InitialClass = CompileScriptModule(*TestRunner, Engine, ReferenceSchemaSoftReloadModuleName, ReferenceSchemaSoftReloadFilename, MakeScript(1), ReferenceSchemaSoftReloadClassName);
 		if (InitialClass == nullptr) { return; }
 		UASClass* InitialASClass = Cast<UASClass>(InitialClass);
-		if (!TestRunner->TestNotNull(TEXT("Reference-schema soft-reload should compile as UASClass"), InitialASClass)) { return; }
+		if (!this->Assert.IsNotNull(InitialASClass, TEXT("Reference-schema soft-reload should compile as UASClass"))) { return; }
 
 		const int32 InitialMemberCount = CountSchemaMembers(InitialASClass->ReferenceSchema.Get());
-		if (!TestRunner->TestTrue(TEXT("Reference-schema soft-reload should start with non-empty GC schema"), InitialMemberCount > 0)) { return; }
+		if (!this->Assert.IsTrue(InitialMemberCount > 0, TEXT("Reference-schema soft-reload should start with non-empty GC schema"))) { return; }
 
 		UFunction* StoreFunction = RequireGeneratedFunction(*TestRunner, InitialClass, TEXT("Store"), TEXT("Reference-schema soft-reload"));
 		UFunction* GetStoredFunction = RequireGeneratedFunction(*TestRunner, InitialClass, TEXT("GetStored"), TEXT("Reference-schema soft-reload"));
@@ -208,50 +209,52 @@ class UReferenceSchemaReloadHolder : UObject
 		if (StoreFunction == nullptr || GetStoredFunction == nullptr || GetVersionFunction == nullptr) { return; }
 
 		FGetVersionParams GetVersionBeforeReload;
-		if (!TestRunner->TestTrue(TEXT("Should execute GetVersion before reload"), InvokeGeneratedFunction(Engine, InitialASClass->GetDefaultObject(), GetVersionFunction, &GetVersionBeforeReload))) { return; }
-		TestRunner->TestEqual(TEXT("Should start at version 1"), GetVersionBeforeReload.ReturnValue, 1);
+		if (!this->Assert.IsTrue(InvokeGeneratedFunction(Engine, InitialASClass->GetDefaultObject(), GetVersionFunction, &GetVersionBeforeReload), TEXT("Should execute GetVersion before reload"))) { return; }
+		ASSERT_THAT(AreEqual(1, GetVersionBeforeReload.ReturnValue, TEXT("Should start at version 1")));
 
 		// First soft reload
 		ECompileResult FirstReloadResult = ECompileResult::Error;
-		if (!TestRunner->TestTrue(TEXT("First soft reload should compile"),
-			CompileModuleWithResult(&Engine, ECompileType::SoftReloadOnly, ReferenceSchemaSoftReloadModuleName, ReferenceSchemaSoftReloadFilename, MakeScript(2), FirstReloadResult)))
+		if (!this->Assert.IsTrue(
+				CompileModuleWithResult(&Engine, ECompileType::SoftReloadOnly, ReferenceSchemaSoftReloadModuleName, ReferenceSchemaSoftReloadFilename, MakeScript(2), FirstReloadResult),
+				TEXT("First soft reload should compile")))
 		{ return; }
-		if (!TestRunner->TestTrue(TEXT("First reload should be handled"), FirstReloadResult == ECompileResult::FullyHandled || FirstReloadResult == ECompileResult::PartiallyHandled))
+		if (!this->Assert.IsTrue(FirstReloadResult == ECompileResult::FullyHandled || FirstReloadResult == ECompileResult::PartiallyHandled, TEXT("First reload should be handled")))
 		{ return; }
 
 		UASClass* FirstReloadClass = Cast<UASClass>(FindGeneratedClass(&Engine, ReferenceSchemaSoftReloadClassName));
-		if (!TestRunner->TestNotNull(TEXT("Should still expose holder after first reload"), FirstReloadClass)) { return; }
-		TestRunner->TestTrue(TEXT("Should preserve UASClass instance after first reload"), FirstReloadClass == InitialASClass);
-		TestRunner->TestEqual(TEXT("Schema member count should be stable after first reload"), CountSchemaMembers(FirstReloadClass->ReferenceSchema.Get()), InitialMemberCount);
+		if (!this->Assert.IsNotNull(FirstReloadClass, TEXT("Should still expose holder after first reload"))) { return; }
+		ASSERT_THAT(IsTrue(FirstReloadClass == InitialASClass, TEXT("Should preserve UASClass instance after first reload")));
+		ASSERT_THAT(AreEqual(InitialMemberCount, CountSchemaMembers(FirstReloadClass->ReferenceSchema.Get()), TEXT("Schema member count should be stable after first reload")));
 
 		UFunction* GetVersionAfterFirstReload = FindGeneratedFunction(FirstReloadClass, TEXT("GetVersion"));
 		FGetVersionParams GetVersionAfterReloadOne;
-		if (!TestRunner->TestNotNull(TEXT("Should still expose GetVersion after first reload"), GetVersionAfterFirstReload)) { return; }
-		if (!TestRunner->TestTrue(TEXT("Should execute GetVersion after first reload"), InvokeGeneratedFunction(Engine, FirstReloadClass->GetDefaultObject(), GetVersionAfterFirstReload, &GetVersionAfterReloadOne))) { return; }
-		TestRunner->TestEqual(TEXT("Should advance to version 2"), GetVersionAfterReloadOne.ReturnValue, 2);
+		if (!this->Assert.IsNotNull(GetVersionAfterFirstReload, TEXT("Should still expose GetVersion after first reload"))) { return; }
+		if (!this->Assert.IsTrue(InvokeGeneratedFunction(Engine, FirstReloadClass->GetDefaultObject(), GetVersionAfterFirstReload, &GetVersionAfterReloadOne), TEXT("Should execute GetVersion after first reload"))) { return; }
+		ASSERT_THAT(AreEqual(2, GetVersionAfterReloadOne.ReturnValue, TEXT("Should advance to version 2")));
 
 		// Second soft reload
 		ECompileResult SecondReloadResult = ECompileResult::Error;
-		if (!TestRunner->TestTrue(TEXT("Second soft reload should compile"),
-			CompileModuleWithResult(&Engine, ECompileType::SoftReloadOnly, ReferenceSchemaSoftReloadModuleName, ReferenceSchemaSoftReloadFilename, MakeScript(3), SecondReloadResult)))
+		if (!this->Assert.IsTrue(
+				CompileModuleWithResult(&Engine, ECompileType::SoftReloadOnly, ReferenceSchemaSoftReloadModuleName, ReferenceSchemaSoftReloadFilename, MakeScript(3), SecondReloadResult),
+				TEXT("Second soft reload should compile")))
 		{ return; }
-		if (!TestRunner->TestTrue(TEXT("Second reload should be handled"), SecondReloadResult == ECompileResult::FullyHandled || SecondReloadResult == ECompileResult::PartiallyHandled))
+		if (!this->Assert.IsTrue(SecondReloadResult == ECompileResult::FullyHandled || SecondReloadResult == ECompileResult::PartiallyHandled, TEXT("Second reload should be handled")))
 		{ return; }
 
 		UASClass* SecondReloadClass = Cast<UASClass>(FindGeneratedClass(&Engine, ReferenceSchemaSoftReloadClassName));
-		if (!TestRunner->TestNotNull(TEXT("Should still expose holder after second reload"), SecondReloadClass)) { return; }
-		TestRunner->TestTrue(TEXT("Should preserve UASClass instance after second reload"), SecondReloadClass == InitialASClass);
-		TestRunner->TestEqual(TEXT("Schema member count should be stable after second reload"), CountSchemaMembers(SecondReloadClass->ReferenceSchema.Get()), InitialMemberCount);
+		if (!this->Assert.IsNotNull(SecondReloadClass, TEXT("Should still expose holder after second reload"))) { return; }
+		ASSERT_THAT(IsTrue(SecondReloadClass == InitialASClass, TEXT("Should preserve UASClass instance after second reload")));
+		ASSERT_THAT(AreEqual(InitialMemberCount, CountSchemaMembers(SecondReloadClass->ReferenceSchema.Get()), TEXT("Schema member count should be stable after second reload")));
 
 		UFunction* GetVersionAfterSecondReload = FindGeneratedFunction(SecondReloadClass, TEXT("GetVersion"));
 		FGetVersionParams GetVersionAfterReloadTwo;
-		if (!TestRunner->TestNotNull(TEXT("Should still expose GetVersion after second reload"), GetVersionAfterSecondReload)) { return; }
-		if (!TestRunner->TestTrue(TEXT("Should execute GetVersion after second reload"), InvokeGeneratedFunction(Engine, SecondReloadClass->GetDefaultObject(), GetVersionAfterSecondReload, &GetVersionAfterReloadTwo))) { return; }
-		TestRunner->TestEqual(TEXT("Should advance to version 3"), GetVersionAfterReloadTwo.ReturnValue, 3);
+		if (!this->Assert.IsNotNull(GetVersionAfterSecondReload, TEXT("Should still expose GetVersion after second reload"))) { return; }
+		if (!this->Assert.IsTrue(InvokeGeneratedFunction(Engine, SecondReloadClass->GetDefaultObject(), GetVersionAfterSecondReload, &GetVersionAfterReloadTwo), TEXT("Should execute GetVersion after second reload"))) { return; }
+		ASSERT_THAT(AreEqual(3, GetVersionAfterReloadTwo.ReturnValue, TEXT("Should advance to version 3")));
 
 		// Verify GC still works after repeated reloads
 		UObject* Holder = NewObject<UObject>(GetTransientPackage(), SecondReloadClass, TEXT("ReferenceSchemaSoftReloadHolder"));
-		if (!TestRunner->TestNotNull(TEXT("Should instantiate reloaded holder"), Holder)) { return; }
+		if (!this->Assert.IsNotNull(Holder, TEXT("Should instantiate reloaded holder"))) { return; }
 		Holder->AddToRoot();
 		ON_SCOPE_EXIT
 		{
@@ -260,20 +263,20 @@ class UReferenceSchemaReloadHolder : UObject
 		};
 
 		UAngelscriptNativeScriptTestObject* StrongTarget = NewObject<UAngelscriptNativeScriptTestObject>(GetTransientPackage(), TEXT("ReferenceSchemaSoftReloadTarget"));
-		if (!TestRunner->TestNotNull(TEXT("Should create transient target"), StrongTarget)) { return; }
+		if (!this->Assert.IsNotNull(StrongTarget, TEXT("Should create transient target"))) { return; }
 		TWeakObjectPtr<UAngelscriptNativeScriptTestObject> WeakTarget = StrongTarget;
 
 		FStoreParams StoreParams;
 		StoreParams.InValue = StrongTarget;
-		if (!TestRunner->TestTrue(TEXT("Should store target after repeated reloads"), InvokeGeneratedFunction(Engine, Holder, StoreFunction, &StoreParams))) { return; }
+		if (!this->Assert.IsTrue(InvokeGeneratedFunction(Engine, Holder, StoreFunction, &StoreParams), TEXT("Should store target after repeated reloads"))) { return; }
 
 		StrongTarget = nullptr;
 		CollectGarbage(RF_NoFlags, true);
-		TestRunner->TestTrue(TEXT("Should keep target alive after repeated reloads"), WeakTarget.IsValid());
+		ASSERT_THAT(IsTrue(WeakTarget.IsValid(), TEXT("Should keep target alive after repeated reloads")));
 
 		FGetStoredParams GetStoredAfterGC;
-		if (!TestRunner->TestTrue(TEXT("Should expose stored object after repeated reloads and GC"), InvokeGeneratedFunction(Engine, Holder, GetStoredFunction, &GetStoredAfterGC))) { return; }
-		TestRunner->TestTrue(TEXT("Should preserve same stored object identity after repeated reloads"), GetStoredAfterGC.ReturnValue == WeakTarget.Get());
+		if (!this->Assert.IsTrue(InvokeGeneratedFunction(Engine, Holder, GetStoredFunction, &GetStoredAfterGC), TEXT("Should expose stored object after repeated reloads and GC"))) { return; }
+		ASSERT_THAT(IsTrue(GetStoredAfterGC.ReturnValue == WeakTarget.Get(), TEXT("Should preserve same stored object identity after repeated reloads")));
 
 		}
 	}

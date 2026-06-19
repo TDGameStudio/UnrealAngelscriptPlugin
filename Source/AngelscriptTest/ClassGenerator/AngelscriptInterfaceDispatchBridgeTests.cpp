@@ -141,9 +141,9 @@ class AInterfaceDispatchBridgeCarrier : AActor, UAngelscriptNativeParentInterfac
 			return;
 		}
 
-		TestRunner->TestTrue(
-			TEXT("Production bridge test case should generate a class that implements the native parent interface"),
-			ScriptClass->ImplementsInterface(UAngelscriptNativeParentInterface::StaticClass()));
+		ASSERT_THAT(IsTrue(
+			ScriptClass->ImplementsInterface(UAngelscriptNativeParentInterface::StaticClass()),
+			TEXT("Production bridge test case should generate a class that implements the native parent interface")));
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
@@ -166,18 +166,18 @@ class AInterfaceDispatchBridgeCarrier : AActor, UAngelscriptNativeParentInterfac
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Production bridge should dispatch GetNativeValue through the implementing UFunction"),
+		ASSERT_THAT(AreEqual(
+			55,
 			ScriptObservedValue,
-			55);
-		TestRunner->TestEqual(
-			TEXT("Production bridge should round-trip ref parameters through the implementing UFunction"),
+			TEXT("Production bridge should dispatch GetNativeValue through the implementing UFunction")));
+		ASSERT_THAT(AreEqual(
+			15,
 			ScriptAdjustedValue,
-			15);
-		TestRunner->TestEqual(
-			TEXT("Production bridge should route void calls with payload arguments through the implementing UFunction"),
+			TEXT("Production bridge should round-trip ref parameters through the implementing UFunction")));
+		ASSERT_THAT(AreEqual(
+			FName(TEXT("BridgeHit")),
 			ScriptObservedMarker,
-			FName(TEXT("BridgeHit")));
+			TEXT("Production bridge should route void calls with payload arguments through the implementing UFunction")));
 
 		}
 	}

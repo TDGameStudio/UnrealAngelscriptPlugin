@@ -53,18 +53,18 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUPropertySpecifierMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("EditConst should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("EditConst should compile")))
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UEditConstTestObj"));
-		if (!TestRunner->TestNotNull(TEXT("Class should exist"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Class should exist")))
 			return;
 
 		FProperty* Prop = GeneratedClass->FindPropertyByName(TEXT("LockedValue"));
-		if (!TestRunner->TestNotNull(TEXT("Property should exist"), Prop))
+		if (!this->Assert.IsNotNull(Prop, TEXT("Property should exist")))
 			return;
 
-		TestRunner->TestTrue(TEXT("EditConst should set CPF_EditConst"), Prop->HasAnyPropertyFlags(CPF_EditConst));
+		ASSERT_THAT(IsTrue(Prop->HasAnyPropertyFlags(CPF_EditConst), TEXT("EditConst should set CPF_EditConst")));
 
 		}
 
@@ -98,18 +98,18 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUPropertySpecifierMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("NotEditable should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("NotEditable should compile")))
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UNotEditableTestObj"));
-		if (!TestRunner->TestNotNull(TEXT("Class should exist"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Class should exist")))
 			return;
 
 		FProperty* Prop = GeneratedClass->FindPropertyByName(TEXT("HiddenValue"));
-		if (!TestRunner->TestNotNull(TEXT("Property should exist"), Prop))
+		if (!this->Assert.IsNotNull(Prop, TEXT("Property should exist")))
 			return;
 
-		TestRunner->TestFalse(TEXT("NotEditable should clear CPF_Edit"), Prop->HasAnyPropertyFlags(CPF_Edit));
+		ASSERT_THAT(IsFalse(Prop->HasAnyPropertyFlags(CPF_Edit), TEXT("NotEditable should clear CPF_Edit")));
 
 		}
 
@@ -143,18 +143,18 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUPropertySpecifierMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("AdvancedDisplay should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("AdvancedDisplay should compile")))
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UAdvancedDisplayTestObj"));
-		if (!TestRunner->TestNotNull(TEXT("Class should exist"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Class should exist")))
 			return;
 
 		FProperty* Prop = GeneratedClass->FindPropertyByName(TEXT("AdvancedProp"));
-		if (!TestRunner->TestNotNull(TEXT("Property should exist"), Prop))
+		if (!this->Assert.IsNotNull(Prop, TEXT("Property should exist")))
 			return;
 
-		TestRunner->TestTrue(TEXT("AdvancedDisplay should set CPF_AdvancedDisplay"), Prop->HasAnyPropertyFlags(CPF_AdvancedDisplay));
+		ASSERT_THAT(IsTrue(Prop->HasAnyPropertyFlags(CPF_AdvancedDisplay), TEXT("AdvancedDisplay should set CPF_AdvancedDisplay")));
 
 		}
 
@@ -188,18 +188,18 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUPropertySpecifierMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("SaveGame should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("SaveGame should compile")))
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("USaveGameTestObj"));
-		if (!TestRunner->TestNotNull(TEXT("Class should exist"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Class should exist")))
 			return;
 
 		FProperty* Prop = GeneratedClass->FindPropertyByName(TEXT("SavedScore"));
-		if (!TestRunner->TestNotNull(TEXT("Property should exist"), Prop))
+		if (!this->Assert.IsNotNull(Prop, TEXT("Property should exist")))
 			return;
 
-		TestRunner->TestTrue(TEXT("SaveGame should set CPF_SaveGame"), Prop->HasAnyPropertyFlags(CPF_SaveGame));
+		ASSERT_THAT(IsTrue(Prop->HasAnyPropertyFlags(CPF_SaveGame), TEXT("SaveGame should set CPF_SaveGame")));
 
 		}
 
@@ -233,18 +233,18 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUPropertySpecifierMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("Transient should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("Transient should compile")))
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UTransientTestObj"));
-		if (!TestRunner->TestNotNull(TEXT("Class should exist"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Class should exist")))
 			return;
 
 		FProperty* Prop = GeneratedClass->FindPropertyByName(TEXT("CachedValue"));
-		if (!TestRunner->TestNotNull(TEXT("Property should exist"), Prop))
+		if (!this->Assert.IsNotNull(Prop, TEXT("Property should exist")))
 			return;
 
-		TestRunner->TestTrue(TEXT("Transient should set CPF_Transient"), Prop->HasAnyPropertyFlags(CPF_Transient));
+		ASSERT_THAT(IsTrue(Prop->HasAnyPropertyFlags(CPF_Transient), TEXT("Transient should set CPF_Transient")));
 
 		}
 
@@ -278,18 +278,18 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUPropertySpecifierMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("Config should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("Config should compile")))
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UConfigTestObj"));
-		if (!TestRunner->TestNotNull(TEXT("Class should exist"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Class should exist")))
 			return;
 
 		FProperty* Prop = GeneratedClass->FindPropertyByName(TEXT("ConfigValue"));
-		if (!TestRunner->TestNotNull(TEXT("Property should exist"), Prop))
+		if (!this->Assert.IsNotNull(Prop, TEXT("Property should exist")))
 			return;
 
-		TestRunner->TestTrue(TEXT("Config should set CPF_Config"), Prop->HasAnyPropertyFlags(CPF_Config));
+		ASSERT_THAT(IsTrue(Prop->HasAnyPropertyFlags(CPF_Config), TEXT("Config should set CPF_Config")));
 
 		}
 

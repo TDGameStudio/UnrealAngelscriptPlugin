@@ -67,39 +67,36 @@ class UWrongContextCarrier : UObject
 			return;
 		}
 
-		TestRunner->TestFalse(
-			TEXT("Inactive context branch should not be detected"),
-			Module->GetClass(TEXT("UWrongContextCarrier")).IsValid());
+		ASSERT_THAT(IsFalse(
+			Module->GetClass(TEXT("UWrongContextCarrier")).IsValid(),
+			TEXT("Inactive context branch should not be detected")));
 
 		const TSharedPtr<FAngelscriptClassDesc> ClassDesc = Module->GetClass(TEXT("UExplicitContextCarrier"));
-		if (!TestRunner->TestTrue(TEXT("Explicit context class should be detected"), ClassDesc.IsValid()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(ClassDesc.IsValid(), TEXT("Explicit context class should be detected")));
 
 		const TSharedPtr<FAngelscriptFunctionDesc> FunctionDesc = ClassDesc->GetMethod(TEXT("ImplicitFunction"));
-		if (TestRunner->TestTrue(TEXT("Implicit function should be detected"), FunctionDesc.IsValid()))
+		if (this->Assert.IsTrue(FunctionDesc.IsValid(), TEXT("Implicit function should be detected")))
 		{
-			TestRunner->TestFalse(
-				TEXT("Implicit UFUNCTION should use explicit context default callable flag"),
-				FunctionDesc->bBlueprintCallable);
+			ASSERT_THAT(IsFalse(
+				FunctionDesc->bBlueprintCallable,
+				TEXT("Implicit UFUNCTION should use explicit context default callable flag")));
 		}
 
 		const TSharedPtr<FAngelscriptPropertyDesc> PropertyDesc = ClassDesc->GetProperty(TEXT("ImplicitProperty"));
-		if (TestRunner->TestTrue(TEXT("Implicit property should be detected"), PropertyDesc.IsValid()))
+		if (this->Assert.IsTrue(PropertyDesc.IsValid(), TEXT("Implicit property should be detected")))
 		{
-			TestRunner->TestTrue(
-				TEXT("Implicit property should use explicit EditDefaultsOnly default"),
-				PropertyDesc->bEditableOnDefaults);
-			TestRunner->TestFalse(
-				TEXT("Implicit property should not be instance-editable under explicit EditDefaultsOnly default"),
-				PropertyDesc->bEditableOnInstance);
-			TestRunner->TestTrue(
-				TEXT("Implicit property should be blueprint-readable under explicit BlueprintReadOnly default"),
-				PropertyDesc->bBlueprintReadable);
-			TestRunner->TestFalse(
-				TEXT("Implicit property should not be blueprint-writable under explicit BlueprintReadOnly default"),
-				PropertyDesc->bBlueprintWritable);
+			ASSERT_THAT(IsTrue(
+				PropertyDesc->bEditableOnDefaults,
+				TEXT("Implicit property should use explicit EditDefaultsOnly default")));
+			ASSERT_THAT(IsFalse(
+				PropertyDesc->bEditableOnInstance,
+				TEXT("Implicit property should not be instance-editable under explicit EditDefaultsOnly default")));
+			ASSERT_THAT(IsTrue(
+				PropertyDesc->bBlueprintReadable,
+				TEXT("Implicit property should be blueprint-readable under explicit BlueprintReadOnly default")));
+			ASSERT_THAT(IsFalse(
+				PropertyDesc->bBlueprintWritable,
+				TEXT("Implicit property should not be blueprint-writable under explicit BlueprintReadOnly default")));
 		}
 
 		}
@@ -114,41 +111,41 @@ class UWrongContextCarrier : UObject
 		const FAngelscriptPreprocessorContext Context = FAngelscriptPreprocessorContext::CreateFromCurrentEngineContext();
 		FAngelscriptPreprocessor ExplicitPreprocessor(Context);
 
-		TestRunner->TestEqual(
-			TEXT("Context factory should preserve compatibility constructor flag count"),
+		ASSERT_THAT(AreEqual(
+			CompatibilityPreprocessor.PreprocessorFlags.Num(),
 			ExplicitPreprocessor.PreprocessorFlags.Num(),
-			CompatibilityPreprocessor.PreprocessorFlags.Num());
+			TEXT("Context factory should preserve compatibility constructor flag count")));
 
 		for (const TPair<FString, bool>& Flag : CompatibilityPreprocessor.PreprocessorFlags)
 		{
 			const bool* ExplicitValue = ExplicitPreprocessor.PreprocessorFlags.Find(Flag.Key);
-			if (TestRunner->TestNotNull(
-				*FString::Printf(TEXT("Explicit context should contain flag %s"), *Flag.Key),
-				ExplicitValue))
+			if (this->Assert.IsNotNull(
+				ExplicitValue,
+				*FString::Printf(TEXT("Explicit context should contain flag %s"), *Flag.Key)))
 			{
-				TestRunner->TestEqual(
-					*FString::Printf(TEXT("Explicit context flag %s should match compatibility constructor"), *Flag.Key),
+				ASSERT_THAT(AreEqual(
+					Flag.Value,
 					*ExplicitValue,
-					Flag.Value);
+					*FString::Printf(TEXT("Explicit context flag %s should match compatibility constructor"), *Flag.Key)));
 			}
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Default function callable setting should match compatibility constructor"),
+		ASSERT_THAT(AreEqual(
+			CompatibilityPreprocessor.bDefaultFunctionBlueprintCallable,
 			ExplicitPreprocessor.bDefaultFunctionBlueprintCallable,
-			CompatibilityPreprocessor.bDefaultFunctionBlueprintCallable);
-		TestRunner->TestEqual(
-			TEXT("Default class property edit setting should match compatibility constructor"),
+			TEXT("Default function callable setting should match compatibility constructor")));
+		ASSERT_THAT(AreEqual(
+			CompatibilityPreprocessor.DefaultPropertyEditSpecifier,
 			ExplicitPreprocessor.DefaultPropertyEditSpecifier,
-			CompatibilityPreprocessor.DefaultPropertyEditSpecifier);
-		TestRunner->TestEqual(
-			TEXT("Default struct property edit setting should match compatibility constructor"),
+			TEXT("Default class property edit setting should match compatibility constructor")));
+		ASSERT_THAT(AreEqual(
+			CompatibilityPreprocessor.DefaultPropertyEditSpecifierForStructs,
 			ExplicitPreprocessor.DefaultPropertyEditSpecifierForStructs,
-			CompatibilityPreprocessor.DefaultPropertyEditSpecifierForStructs);
-		TestRunner->TestEqual(
-			TEXT("Default property blueprint setting should match compatibility constructor"),
+			TEXT("Default struct property edit setting should match compatibility constructor")));
+		ASSERT_THAT(AreEqual(
+			CompatibilityPreprocessor.DefaultPropertyBlueprintSpecifier,
 			ExplicitPreprocessor.DefaultPropertyBlueprintSpecifier,
-			CompatibilityPreprocessor.DefaultPropertyBlueprintSpecifier);
+			TEXT("Default property blueprint setting should match compatibility constructor")));
 
 		}
 	}

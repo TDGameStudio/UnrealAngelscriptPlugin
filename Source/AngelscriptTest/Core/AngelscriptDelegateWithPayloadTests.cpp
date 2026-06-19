@@ -13,9 +13,10 @@ namespace AngelscriptTest_Core_AngelscriptDelegateWithPayloadTests_Private
 {
 	TStrongObjectPtr<UAngelscriptNativeScriptTestObject> CreateDelegateWithPayloadReceiver(FAutomationTestBase& Test)
 	{
+		FNoDiscardAsserter Assert(Test);
 		TStrongObjectPtr<UAngelscriptNativeScriptTestObject> Receiver(
 			NewObject<UAngelscriptNativeScriptTestObject>(GetTransientPackage(), TEXT("DelegateWithPayloadRuntimeReceiver")));
-		if (!Test.TestNotNull(TEXT("DelegateWithPayload runtime test should create a transient receiver object"), Receiver.Get()))
+		if (!Assert.IsNotNull(Receiver.Get(), TEXT("DelegateWithPayload runtime test should create a transient receiver object")))
 		{
 			return nullptr;
 		}
@@ -28,15 +29,16 @@ namespace AngelscriptTest_Core_AngelscriptDelegateWithPayloadTests_Private
 
 	bool ExpectClearedDelegateState(FAutomationTestBase& Test, const FAngelscriptDelegateWithPayload& Delegate)
 	{
-		const bool bPayloadCleared = Test.TestFalse(
-			TEXT("DelegateWithPayload Reset should clear the instanced payload"),
-			Delegate.Payload.IsValid());
-		const bool bObjectCleared = Test.TestFalse(
-			TEXT("DelegateWithPayload Reset should clear the target object weak pointer"),
-			Delegate.Object.IsValid());
-		const bool bFunctionCleared = Test.TestTrue(
-			TEXT("DelegateWithPayload Reset should clear the bound function name"),
-			Delegate.FunctionName.IsNone());
+		FNoDiscardAsserter Assert(Test);
+		const bool bPayloadCleared = Assert.IsFalse(
+			Delegate.Payload.IsValid(),
+			TEXT("DelegateWithPayload Reset should clear the instanced payload"));
+		const bool bObjectCleared = Assert.IsFalse(
+			Delegate.Object.IsValid(),
+			TEXT("DelegateWithPayload Reset should clear the target object weak pointer"));
+		const bool bFunctionCleared = Assert.IsTrue(
+			Delegate.FunctionName.IsNone(),
+			TEXT("DelegateWithPayload Reset should clear the bound function name"));
 		return bPayloadCleared && bObjectCleared && bFunctionCleared;
 	}
 
@@ -45,29 +47,32 @@ namespace AngelscriptTest_Core_AngelscriptDelegateWithPayloadTests_Private
 		const FAngelscriptDelegateWithPayload& Delegate,
 		const float ExpectedValue)
 	{
-		if (!Test.TestTrue(
-				TEXT("DelegateWithPayload float bind should store an instanced payload"),
-				Delegate.Payload.IsValid()))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsTrue(
+				Delegate.Payload.IsValid(),
+				TEXT("DelegateWithPayload float bind should store an instanced payload")))
 		{
 			return false;
 		}
 
-		if (!Test.TestTrue(
-				TEXT("DelegateWithPayload float bind should use the boxed-float helper struct"),
-				Delegate.Payload.GetScriptStruct() == FAngelscriptBoxedFloat::StaticStruct()))
+		if (!Assert.IsTrue(
+				Delegate.Payload.GetScriptStruct() == FAngelscriptBoxedFloat::StaticStruct(),
+				TEXT("DelegateWithPayload float bind should use the boxed-float helper struct")))
 		{
 			return false;
 		}
 
 		const FAngelscriptBoxedFloat* BoxedFloat = reinterpret_cast<const FAngelscriptBoxedFloat*>(Delegate.Payload.GetMemory());
-		if (!Test.TestNotNull(TEXT("DelegateWithPayload float bind should expose boxed payload memory"), BoxedFloat))
+		if (!Assert.IsNotNull(BoxedFloat, TEXT("DelegateWithPayload float bind should expose boxed payload memory")))
 		{
 			return false;
 		}
 
-		return Test.TestTrue(
-			TEXT("DelegateWithPayload float bind should preserve the boxed primitive value"),
-			FMath::IsNearlyEqual(BoxedFloat->Value, ExpectedValue, KINDA_SMALL_NUMBER));
+		return Assert.IsNear(
+			ExpectedValue,
+			BoxedFloat->Value,
+			KINDA_SMALL_NUMBER,
+			TEXT("DelegateWithPayload float bind should preserve the boxed primitive value"));
 	}
 }
 
@@ -90,66 +95,36 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDelegateWithPayloadTests,
 		}
 
 		FAngelscriptDelegateWithPayload Delegate;
-		if (!TestRunner->TestFalse(TEXT("DelegateWithPayload should begin unbound"), Delegate.IsBound()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsFalse(Delegate.IsBound(), TEXT("DelegateWithPayload should begin unbound")));
 
 		Delegate.ExecuteIfBound();
-		if (!TestRunner->TestFalse(TEXT("Unbound DelegateWithPayload ExecuteIfBound should not toggle the receiver flag"), Receiver->bNativeFlag))
-		{
-			return;
-		}
+		ASSERT_THAT(IsFalse(Receiver->bNativeFlag, TEXT("Unbound DelegateWithPayload ExecuteIfBound should not toggle the receiver flag")));
 
 		const FName NoPayloadFunctionName = GET_FUNCTION_NAME_CHECKED(UAngelscriptNativeScriptTestObject, MarkNativeFlagFromDelegate);
 		Delegate.BindUFunction(Receiver.Get(), NoPayloadFunctionName);
-		if (!TestRunner->TestTrue(TEXT("BindUFunction should mark DelegateWithPayload as bound"), Delegate.IsBound()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(Delegate.IsBound(), TEXT("BindUFunction should mark DelegateWithPayload as bound")));
 
-		if (!TestRunner->TestTrue(TEXT("BindUFunction should store the receiver object"), Delegate.Object.Get() == Receiver.Get()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(Delegate.Object.Get() == Receiver.Get(), TEXT("BindUFunction should store the receiver object")));
 
-		if (!TestRunner->TestEqual(TEXT("BindUFunction should store the receiver function name"), Delegate.FunctionName, NoPayloadFunctionName))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(NoPayloadFunctionName, Delegate.FunctionName, TEXT("BindUFunction should store the receiver function name")));
 
-		if (!TestRunner->TestFalse(TEXT("BindUFunction should not retain a payload"), Delegate.Payload.IsValid()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsFalse(Delegate.Payload.IsValid(), TEXT("BindUFunction should not retain a payload")));
 
 		Delegate.ExecuteIfBound();
-		if (!TestRunner->TestTrue(TEXT("BindUFunction ExecuteIfBound should invoke the no-payload receiver function"), Receiver->bNativeFlag))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(Receiver->bNativeFlag, TEXT("BindUFunction ExecuteIfBound should invoke the no-payload receiver function")));
 
 		const int32 FloatTypeId = asTYPEID_FLOAT32;
 
-		if (!TestRunner->TestTrue(
-				TEXT("GetBoxedPrimitiveStructFromTypeId should map float to the boxed-float helper"),
-				FAngelscriptDelegateWithPayload::GetBoxedPrimitiveStructFromTypeId(FloatTypeId) == FAngelscriptBoxedFloat::StaticStruct()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(
+			FAngelscriptDelegateWithPayload::GetBoxedPrimitiveStructFromTypeId(FloatTypeId) == FAngelscriptBoxedFloat::StaticStruct(),
+			TEXT("GetBoxedPrimitiveStructFromTypeId should map float to the boxed-float helper")));
 
 		const float PayloadValue = 3.25f;
 		const FName PayloadFunctionName = GET_FUNCTION_NAME_CHECKED(UAngelscriptNativeScriptTestObject, SetPreciseValueFromDelegate);
 		Delegate.BindUFunctionWithPayload(Receiver.Get(), PayloadFunctionName, (void*)&PayloadValue, FloatTypeId);
-		if (!TestRunner->TestTrue(TEXT("BindUFunctionWithPayload should keep DelegateWithPayload bound"), Delegate.IsBound()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(Delegate.IsBound(), TEXT("BindUFunctionWithPayload should keep DelegateWithPayload bound")));
 
-		if (!TestRunner->TestEqual(TEXT("BindUFunctionWithPayload should replace the stored function name"), Delegate.FunctionName, PayloadFunctionName))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(PayloadFunctionName, Delegate.FunctionName, TEXT("BindUFunctionWithPayload should replace the stored function name")));
 
 		if (!ExpectBoxedFloatPayload(*TestRunner, Delegate, PayloadValue))
 		{
@@ -157,37 +132,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDelegateWithPayloadTests,
 		}
 
 		Delegate.ExecuteIfBound();
-		if (!TestRunner->TestTrue(
-				TEXT("BindUFunctionWithPayload ExecuteIfBound should forward the boxed float to the receiver"),
-				FMath::IsNearlyEqual(static_cast<float>(Receiver->PreciseValue), PayloadValue, KINDA_SMALL_NUMBER)))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNear(
+			PayloadValue,
+			static_cast<float>(Receiver->PreciseValue),
+			KINDA_SMALL_NUMBER,
+			TEXT("BindUFunctionWithPayload ExecuteIfBound should forward the boxed float to the receiver")));
 
 		Receiver->bNativeFlag = false;
 		Delegate.BindUFunction(Receiver.Get(), NoPayloadFunctionName);
-		if (!TestRunner->TestFalse(
-				TEXT("BindUFunction should clear any previously boxed payload"),
-				Delegate.Payload.IsValid()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsFalse(
+			Delegate.Payload.IsValid(),
+			TEXT("BindUFunction should clear any previously boxed payload")));
 
 		Delegate.ExecuteIfBound();
-		if (!TestRunner->TestTrue(
-				TEXT("BindUFunction should still execute correctly after rebinding from a payload delegate"),
-				Receiver->bNativeFlag))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(
+			Receiver->bNativeFlag,
+			TEXT("BindUFunction should still execute correctly after rebinding from a payload delegate")));
 
 		Receiver->bNativeFlag = false;
 		Receiver->PreciseValue = 9.5;
 		Delegate.Reset();
-		if (!TestRunner->TestFalse(TEXT("Reset should leave DelegateWithPayload unbound"), Delegate.IsBound()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsFalse(Delegate.IsBound(), TEXT("Reset should leave DelegateWithPayload unbound")));
 
 		if (!ExpectClearedDelegateState(*TestRunner, Delegate))
 		{
@@ -195,10 +160,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDelegateWithPayloadTests,
 		}
 
 		Delegate.ExecuteIfBound();
-		TestRunner->TestFalse(TEXT("Reset delegate should no longer call the no-payload receiver function"), Receiver->bNativeFlag);
-		TestRunner->TestTrue(
-			TEXT("Reset delegate should become a no-op for payload execution"),
-			FMath::IsNearlyEqual(static_cast<float>(Receiver->PreciseValue), 9.5f, KINDA_SMALL_NUMBER));
+		ASSERT_THAT(IsFalse(Receiver->bNativeFlag, TEXT("Reset delegate should no longer call the no-payload receiver function")));
+		ASSERT_THAT(IsNear(
+			9.5f,
+			static_cast<float>(Receiver->PreciseValue),
+			KINDA_SMALL_NUMBER,
+			TEXT("Reset delegate should become a no-op for payload execution")));
 		}
 	}
 };

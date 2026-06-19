@@ -30,25 +30,26 @@ namespace AngelscriptTest_Core_AngelscriptScriptObjectTypeTests_Private
 		bool& bPassed,
 		const FScriptObjectTypeFixture& Fixture)
 	{
-		bPassed &= Test.TestTrue(
-			*FString::Printf(TEXT("%s should compile the annotated script object module"), *Fixture.ModuleName.ToString()),
-			CompileAnnotatedModuleFromMemory(&Engine, Fixture.ModuleName, Fixture.Filename, Fixture.ScriptSource));
+		FNoDiscardAsserter Assert(Test);
+		bPassed &= Assert.IsTrue(
+			CompileAnnotatedModuleFromMemory(&Engine, Fixture.ModuleName, Fixture.Filename, Fixture.ScriptSource),
+			*FString::Printf(TEXT("%s should compile the annotated script object module"), *Fixture.ModuleName.ToString()));
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, Fixture.GeneratedClassName);
-		bPassed &= Test.TestNotNull(
-			*FString::Printf(TEXT("%s should resolve the generated class"), *Fixture.GeneratedClassName.ToString()),
-			GeneratedClass);
+		bPassed &= Assert.IsNotNull(
+			GeneratedClass,
+			*FString::Printf(TEXT("%s should resolve the generated class"), *Fixture.GeneratedClassName.ToString()));
 
 		UASClass* GeneratedASClass = Cast<UASClass>(GeneratedClass);
-		bPassed &= Test.TestNotNull(
-			*FString::Printf(TEXT("%s should resolve as a generated UASClass"), *Fixture.GeneratedClassName.ToString()),
-			GeneratedASClass);
+		bPassed &= Assert.IsNotNull(
+			GeneratedASClass,
+			*FString::Printf(TEXT("%s should resolve as a generated UASClass"), *Fixture.GeneratedClassName.ToString()));
 
 		if (GeneratedASClass != nullptr)
 		{
-			bPassed &= Test.TestNotNull(
-				*FString::Printf(TEXT("%s should publish a non-null ScriptTypePtr"), *Fixture.GeneratedClassName.ToString()),
-				reinterpret_cast<asITypeInfo*>(GeneratedASClass->ScriptTypePtr));
+			bPassed &= Assert.IsNotNull(
+				reinterpret_cast<asITypeInfo*>(GeneratedASClass->ScriptTypePtr),
+				*FString::Printf(TEXT("%s should publish a non-null ScriptTypePtr"), *Fixture.GeneratedClassName.ToString()));
 		}
 
 		return GeneratedASClass;
@@ -123,46 +124,34 @@ class UObjectTypeProbeObjectB : UObject
 		}
 
 		UObject* FirstScriptObject = NewObject<UObject>(GetTransientPackage(), FirstASClass);
-		if (!TestRunner->TestNotNull(TEXT("Script object type test should instantiate the first generated UObject"), FirstScriptObject))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(FirstScriptObject, TEXT("Script object type test should instantiate the first generated UObject")));
 
 		asIScriptObject* FirstScriptInterface = FAngelscriptEngine::UObjectToAngelscript(FirstScriptObject);
-		if (!TestRunner->TestNotNull(TEXT("Script object type test should expose the generated UObject through the script-object view"), FirstScriptInterface))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(FirstScriptInterface, TEXT("Script object type test should expose the generated UObject through the script-object view")));
 
 		asITypeInfo* FirstObjectType = FirstScriptInterface->GetObjectType();
 		asITypeInfo* FirstExpectedType = reinterpret_cast<asITypeInfo*>(FirstASClass->ScriptTypePtr);
-		TestRunner->TestNotNull(TEXT("Script object type test should return a script type for the generated UObject instance"), FirstObjectType);
+		ASSERT_THAT(IsNotNull(FirstObjectType, TEXT("Script object type test should return a script type for the generated UObject instance")));
 		if (FirstObjectType != nullptr && FirstExpectedType != nullptr)
 		{
-			TestRunner->TestTrue(
-				TEXT("Script object type test should map the generated UObject instance to the owning UASClass ScriptTypePtr"),
-				FirstObjectType == FirstExpectedType);
-			TestRunner->TestEqual(
-				TEXT("Script object type test should preserve the generated class name in the returned type info"),
+			ASSERT_THAT(IsTrue(
+				FirstObjectType == FirstExpectedType,
+				TEXT("Script object type test should map the generated UObject instance to the owning UASClass ScriptTypePtr")));
+			ASSERT_THAT(AreEqual(
+				FirstFixture.GeneratedClassName.ToString(),
 				FString(UTF8_TO_TCHAR(FirstObjectType->GetName())),
-				FirstFixture.GeneratedClassName.ToString());
+				TEXT("Script object type test should preserve the generated class name in the returned type info")));
 		}
 
 		UObject* NativeObject = NewObject<UAngelscriptNativeScriptTestObject>(GetTransientPackage());
-		if (!TestRunner->TestNotNull(TEXT("Script object type test should instantiate a native UObject control case"), NativeObject))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(NativeObject, TEXT("Script object type test should instantiate a native UObject control case")));
 
 		asIScriptObject* NativeScriptView = FAngelscriptEngine::UObjectToAngelscript(NativeObject);
-		if (!TestRunner->TestNotNull(TEXT("Script object type test should expose the native UObject through the script-object view"), NativeScriptView))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(NativeScriptView, TEXT("Script object type test should expose the native UObject through the script-object view")));
 
-		TestRunner->TestTrue(
-			TEXT("Script object type test should not report a script type for a native UObject control case"),
-			NativeScriptView->GetObjectType() == nullptr);
+		ASSERT_THAT(IsTrue(
+			NativeScriptView->GetObjectType() == nullptr,
+			TEXT("Script object type test should not report a script type for a native UObject control case")));
 
 		FirstScriptObject = nullptr;
 		NativeObject = nullptr;
@@ -170,9 +159,9 @@ class UObjectTypeProbeObjectB : UObject
 
 		{
 			FAngelscriptEngineScope Scope(Engine);
-			TestRunner->TestTrue(
-				TEXT("Script object type test should discard the first generated module before compiling the next epoch"),
-				Engine.DiscardModule(*FirstFixture.ModuleName.ToString()));
+			ASSERT_THAT(IsTrue(
+				Engine.DiscardModule(*FirstFixture.ModuleName.ToString()),
+				TEXT("Script object type test should discard the first generated module before compiling the next epoch")));
 		}
 		CollectGarbage(RF_NoFlags, true);
 
@@ -183,32 +172,26 @@ class UObjectTypeProbeObjectB : UObject
 		}
 
 		UObject* SecondScriptObject = NewObject<UObject>(GetTransientPackage(), SecondASClass);
-		if (!TestRunner->TestNotNull(TEXT("Script object type test should instantiate the recompiled generated UObject"), SecondScriptObject))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(SecondScriptObject, TEXT("Script object type test should instantiate the recompiled generated UObject")));
 
 		asIScriptObject* SecondScriptInterface = FAngelscriptEngine::UObjectToAngelscript(SecondScriptObject);
-		if (!TestRunner->TestNotNull(TEXT("Script object type test should expose the recompiled UObject through the script-object view"), SecondScriptInterface))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(SecondScriptInterface, TEXT("Script object type test should expose the recompiled UObject through the script-object view")));
 
 		asITypeInfo* SecondObjectType = SecondScriptInterface->GetObjectType();
 		asITypeInfo* SecondExpectedType = reinterpret_cast<asITypeInfo*>(SecondASClass->ScriptTypePtr);
-		TestRunner->TestNotNull(TEXT("Script object type test should return a script type for the recompiled generated UObject instance"), SecondObjectType);
+		ASSERT_THAT(IsNotNull(SecondObjectType, TEXT("Script object type test should return a script type for the recompiled generated UObject instance")));
 		if (SecondObjectType != nullptr && SecondExpectedType != nullptr)
 		{
-			TestRunner->TestTrue(
-				TEXT("Script object type test should map the recompiled UObject instance to the current UASClass ScriptTypePtr"),
-				SecondObjectType == SecondExpectedType);
-			TestRunner->TestTrue(
-				TEXT("Script object type test should return the current epoch type info instead of the discarded pointer"),
-				SecondObjectType != FirstObjectType);
-			TestRunner->TestEqual(
-				TEXT("Script object type test should preserve the recompiled generated class name in the returned type info"),
+			ASSERT_THAT(IsTrue(
+				SecondObjectType == SecondExpectedType,
+				TEXT("Script object type test should map the recompiled UObject instance to the current UASClass ScriptTypePtr")));
+			ASSERT_THAT(IsTrue(
+				SecondObjectType != FirstObjectType,
+				TEXT("Script object type test should return the current epoch type info instead of the discarded pointer")));
+			ASSERT_THAT(AreEqual(
+				SecondFixture.GeneratedClassName.ToString(),
 				FString(UTF8_TO_TCHAR(SecondObjectType->GetName())),
-				SecondFixture.GeneratedClassName.ToString());
+				TEXT("Script object type test should preserve the recompiled generated class name in the returned type info")));
 		}
 
 		}

@@ -58,7 +58,7 @@ class AFunctionalMultiLevelActor : AActor
 		BeginPlayActor(Engine, *Actor);
 
 		USceneComponent* RootSc = Actor->GetRootComponent();
-		if (!TestRunner->TestNotNull(TEXT("Actor should expose a root SceneComponent"), RootSc)) { return; }
+		ASSERT_THAT(IsNotNull(RootSc, TEXT("Actor should expose a root SceneComponent")));
 
 		auto FindChild = [&](USceneComponent* Parent, UClass* ChildClass) -> USceneComponent*
 		{
@@ -76,21 +76,21 @@ class AFunctionalMultiLevelActor : AActor
 		};
 
 		USceneComponent* Middle = FindChild(RootSc, USceneComponent::StaticClass());
-		if (!TestRunner->TestNotNull(TEXT("Middle SceneComponent should be attached to Root"), Middle)) { return; }
+		ASSERT_THAT(IsNotNull(Middle, TEXT("Middle SceneComponent should be attached to Root")));
 
 		UStaticMeshComponent* LeafMesh = Cast<UStaticMeshComponent>(FindChild(Middle, UStaticMeshComponent::StaticClass()));
-		if (!TestRunner->TestNotNull(TEXT("LeafMesh StaticMeshComponent should be attached to Middle"), LeafMesh)) { return; }
+		ASSERT_THAT(IsNotNull(LeafMesh, TEXT("LeafMesh StaticMeshComponent should be attached to Middle")));
 
 		UPointLightComponent* DeepLight = Cast<UPointLightComponent>(FindChild(LeafMesh, UPointLightComponent::StaticClass()));
-		if (!TestRunner->TestNotNull(TEXT("DeepLight PointLightComponent should be attached to LeafMesh"), DeepLight)) { return; }
+		ASSERT_THAT(IsNotNull(DeepLight, TEXT("DeepLight PointLightComponent should be attached to LeafMesh")));
 
-		TestRunner->TestEqual(TEXT("Middle's GetAttachParent should be Root"), Middle->GetAttachParent(), RootSc);
-		TestRunner->TestEqual(TEXT("LeafMesh's GetAttachParent should be Middle"), LeafMesh->GetAttachParent(), static_cast<USceneComponent*>(Middle));
-		TestRunner->TestEqual(TEXT("DeepLight's GetAttachParent should be LeafMesh"), DeepLight->GetAttachParent(), static_cast<USceneComponent*>(LeafMesh));
+		ASSERT_THAT(AreEqual(RootSc, Middle->GetAttachParent(), TEXT("Middle's GetAttachParent should be Root")));
+		ASSERT_THAT(AreEqual(static_cast<USceneComponent*>(Middle), LeafMesh->GetAttachParent(), TEXT("LeafMesh's GetAttachParent should be Middle")));
+		ASSERT_THAT(AreEqual(static_cast<USceneComponent*>(LeafMesh), DeepLight->GetAttachParent(), TEXT("DeepLight's GetAttachParent should be LeafMesh")));
 
 		TArray<USceneComponent*> DeepLightChildren;
 		DeepLight->GetChildrenComponents(false, DeepLightChildren);
-		TestRunner->TestEqual(TEXT("DeepLight should have no children"), DeepLightChildren.Num(), 0);
+		ASSERT_THAT(AreEqual(0, DeepLightChildren.Num(), TEXT("DeepLight should have no children")));
 	}
 };
 

@@ -12,6 +12,28 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
+namespace AngelscriptDebuggerSessionTests_Private
+{
+	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsTrue(bActual, Message);
+	}
+
+	static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsFalse(bActual, Message);
+	}
+
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.AreEqual(Expected, Actual, Message);
+	}
+}
+
 TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionTests,
 	"Angelscript.TestModule.Debugger.Session",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -30,6 +52,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionTests,
 
 	TEST_METHOD(DisconnectClearsDebugState)
 	{
+		using namespace AngelscriptDebuggerSessionTests_Private;
+
 		FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBreakpointFixture();
 		ON_SCOPE_EXIT
@@ -38,33 +62,33 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionTests,
 			CollectGarbage(RF_NoFlags, true);
 		};
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Session.DisconnectClearsDebugState should compile the breakpoint fixture"), Fixture.Compile(Engine))));
+		ASSERT_THAT(IsTrue(Fixture.Compile(Engine), TEXT("Debugger.Session.DisconnectClearsDebugState should compile the breakpoint fixture")));
 
 		FAngelscriptBreakpoint Breakpoint;
 		Breakpoint.Filename = Fixture.Filename;
 		Breakpoint.ModuleName = Fixture.ModuleName.ToString();
 		Breakpoint.LineNumber = Fixture.GetLine(TEXT("BreakpointHelperLine"));
 		Breakpoint.Id = 2201;
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Session.DisconnectClearsDebugState should send the target breakpoint"), Ctx.Client.SendSetBreakpoint(Breakpoint))));
+		ASSERT_THAT(IsTrue(Ctx.Client.SendSetBreakpoint(Breakpoint), TEXT("Debugger.Session.DisconnectClearsDebugState should send the target breakpoint")));
 
 		ASSERT_THAT(IsTrue(WaitForBreakpointCount(*TestRunner, Ctx.Session, 1, TEXT("Debugger.Session.DisconnectClearsDebugState should observe the breakpoint registration before disconnecting the last client"))));
 
-		TestRunner->TestTrue(TEXT("Debugger.Session.DisconnectClearsDebugState should enter debugging before the disconnect"), Ctx.GetDebugServer().bIsDebugging);
-		TestRunner->TestEqual(TEXT("Debugger.Session.DisconnectClearsDebugState should hold exactly one authoritative breakpoint before disconnect"), Ctx.GetDebugServer().BreakpointCount, 1);
+		ASSERT_THAT(IsTrue(Ctx.GetDebugServer().bIsDebugging, TEXT("Debugger.Session.DisconnectClearsDebugState should enter debugging before the disconnect")));
+		ASSERT_THAT(AreEqual(1, Ctx.GetDebugServer().BreakpointCount, TEXT("Debugger.Session.DisconnectClearsDebugState should hold exactly one authoritative breakpoint before disconnect")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.Session.DisconnectClearsDebugState should send Disconnect from the primary client"), Ctx.Client.SendDisconnect())));
+		ASSERT_THAT(IsTrue(Ctx.Client.SendDisconnect(), TEXT("Debugger.Session.DisconnectClearsDebugState should send Disconnect from the primary client")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(
-			TEXT("Debugger.Session.DisconnectClearsDebugState should let the server return to an idle state after the last client disconnects"),
-			WaitForDebugServerIdle(Ctx.Session, Ctx.GetDefaultTimeoutSeconds()))));
+		ASSERT_THAT(IsTrue(
+			WaitForDebugServerIdle(Ctx.Session, Ctx.GetDefaultTimeoutSeconds()),
+			TEXT("Debugger.Session.DisconnectClearsDebugState should let the server return to an idle state after the last client disconnects")));
 
 		Ctx.Client.Disconnect();
 
-		TestRunner->TestFalse(TEXT("Debugger.Session.DisconnectClearsDebugState should clear bIsDebugging after the last client disconnects"), Ctx.GetDebugServer().bIsDebugging);
-		TestRunner->TestFalse(TEXT("Debugger.Session.DisconnectClearsDebugState should clear bIsPaused after the last client disconnects"), Ctx.GetDebugServer().bIsPaused);
-		TestRunner->TestFalse(TEXT("Debugger.Session.DisconnectClearsDebugState should clear bPauseRequested after the last client disconnects"), Ctx.GetDebugServer().bPauseRequested);
-		TestRunner->TestFalse(TEXT("Debugger.Session.DisconnectClearsDebugState should remove the disconnected socket from the client list"), Ctx.GetDebugServer().HasAnyClients());
-		TestRunner->TestEqual(TEXT("Debugger.Session.DisconnectClearsDebugState should clear all breakpoints after the last client disconnects"), Ctx.GetDebugServer().BreakpointCount, 0);
+		ASSERT_THAT(IsFalse(Ctx.GetDebugServer().bIsDebugging, TEXT("Debugger.Session.DisconnectClearsDebugState should clear bIsDebugging after the last client disconnects")));
+		ASSERT_THAT(IsFalse(Ctx.GetDebugServer().bIsPaused, TEXT("Debugger.Session.DisconnectClearsDebugState should clear bIsPaused after the last client disconnects")));
+		ASSERT_THAT(IsFalse(Ctx.GetDebugServer().bPauseRequested, TEXT("Debugger.Session.DisconnectClearsDebugState should clear bPauseRequested after the last client disconnects")));
+		ASSERT_THAT(IsFalse(Ctx.GetDebugServer().HasAnyClients(), TEXT("Debugger.Session.DisconnectClearsDebugState should remove the disconnected socket from the client list")));
+		ASSERT_THAT(AreEqual(0, Ctx.GetDebugServer().BreakpointCount, TEXT("Debugger.Session.DisconnectClearsDebugState should clear all breakpoints after the last client disconnects")));
 
 		TAtomic<bool> bMonitorReady(false);
 		TAtomic<bool> bMonitorShouldStop(false);
@@ -102,25 +126,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionTests,
 		bMonitorShouldStop = true;
 		const FLifecycleNoStopMonitorResult MonitorResult = MonitorFuture.Get();
 
-		if (!TestRunner->TestTrue(TEXT("Debugger.Session.DisconnectClearsDebugState should keep the reconnect monitor error-free"), MonitorResult.Error.IsEmpty()))
+		if (!CheckTrue(*TestRunner, TEXT("Debugger.Session.DisconnectClearsDebugState should keep the reconnect monitor error-free"), MonitorResult.Error.IsEmpty()))
 		{
 			TestRunner->AddError(MonitorResult.Error);
 			return;
 		}
 
-		ASSERT_THAT(IsTrue(TestRunner->TestFalse(TEXT("Debugger.Session.DisconnectClearsDebugState should not time out while monitoring the reconnect run"), MonitorResult.bTimedOut)));
+		ASSERT_THAT(IsFalse(MonitorResult.bTimedOut, TEXT("Debugger.Session.DisconnectClearsDebugState should not time out while monitoring the reconnect run")));
 
-		TestRunner->TestTrue(TEXT("Debugger.Session.DisconnectClearsDebugState should let the second client receive DebugServerVersion during reconnect"), MonitorResult.bReceivedVersion);
-		TestRunner->TestEqual(TEXT("Debugger.Session.DisconnectClearsDebugState should not leave residual messages queued after the reconnect handshake"), MonitorResult.ResidualMessagesAfterHandshake.Num(), 0);
-		TestRunner->TestEqual(TEXT("Debugger.Session.DisconnectClearsDebugState should not emit any HasStopped during the reconnect run without re-registering breakpoints"), MonitorResult.UnexpectedStopCount, 0);
-		TestRunner->TestEqual(TEXT("Debugger.Session.DisconnectClearsDebugState should not need any HasContinued messages during the reconnect run"), MonitorResult.ContinuedCount, 0);
-		TestRunner->TestEqual(TEXT("Debugger.Session.DisconnectClearsDebugState should not leave residual debugger messages queued after the reconnect invocation"), MonitorResult.ResidualMessagesAfterInvocation.Num(), 0);
-		TestRunner->TestTrue(TEXT("Debugger.Session.DisconnectClearsDebugState should complete the reconnect invocation successfully"), InvocationState->bSucceeded);
-		TestRunner->TestEqual(TEXT("Debugger.Session.DisconnectClearsDebugState should preserve the reconnect invocation return value"), InvocationState->Result, 8);
+		ASSERT_THAT(IsTrue(MonitorResult.bReceivedVersion, TEXT("Debugger.Session.DisconnectClearsDebugState should let the second client receive DebugServerVersion during reconnect")));
+		ASSERT_THAT(AreEqual(0, MonitorResult.ResidualMessagesAfterHandshake.Num(), TEXT("Debugger.Session.DisconnectClearsDebugState should not leave residual messages queued after the reconnect handshake")));
+		ASSERT_THAT(AreEqual(0, MonitorResult.UnexpectedStopCount, TEXT("Debugger.Session.DisconnectClearsDebugState should not emit any HasStopped during the reconnect run without re-registering breakpoints")));
+		ASSERT_THAT(AreEqual(0, MonitorResult.ContinuedCount, TEXT("Debugger.Session.DisconnectClearsDebugState should not need any HasContinued messages during the reconnect run")));
+		ASSERT_THAT(AreEqual(0, MonitorResult.ResidualMessagesAfterInvocation.Num(), TEXT("Debugger.Session.DisconnectClearsDebugState should not leave residual debugger messages queued after the reconnect invocation")));
+		ASSERT_THAT(IsTrue(InvocationState->bSucceeded, TEXT("Debugger.Session.DisconnectClearsDebugState should complete the reconnect invocation successfully")));
+		ASSERT_THAT(AreEqual(8, InvocationState->Result, TEXT("Debugger.Session.DisconnectClearsDebugState should preserve the reconnect invocation return value")));
 	}
 
 	TEST_METHOD(SecondClientStartPreservesBreakpoints)
 	{
+		using namespace AngelscriptDebuggerSessionTests_Private;
+
 		FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBreakpointFixture();
 		TAtomic<bool> bAdditionalMonitorReady(false);
@@ -141,7 +167,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionTests,
 			CollectGarbage(RF_NoFlags, true);
 		};
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger multi-client test should compile the breakpoint fixture"), Fixture.Compile(Engine))));
+		ASSERT_THAT(IsTrue(Fixture.Compile(Engine), TEXT("Debugger multi-client test should compile the breakpoint fixture")));
 
 		Ctx.Client.DrainPendingMessages();
 
@@ -150,7 +176,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionTests,
 		Breakpoint.ModuleName = Fixture.ModuleName.ToString();
 		Breakpoint.LineNumber = Fixture.GetLine(TEXT("BreakpointHelperLine"));
 		Breakpoint.Id = 421;
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger multi-client test should register the primary breakpoint before connecting the second client"), Ctx.Client.SendSetBreakpoint(Breakpoint))));
+		ASSERT_THAT(IsTrue(Ctx.Client.SendSetBreakpoint(Breakpoint), TEXT("Debugger multi-client test should register the primary breakpoint before connecting the second client")));
 
 		ASSERT_THAT(IsTrue(WaitForBreakpointCount(*TestRunner, Ctx.Session, 1, TEXT("Debugger multi-client test should observe one registered breakpoint before the second client starts debugging"))));
 
@@ -177,7 +203,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionTests,
 				return bAdditionalMonitorReady.Load();
 			},
 			Ctx.GetDefaultTimeoutSeconds());
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger multi-client test should bring the additional debugger client to the post-StartDebugging ready state"), bAdditionalMonitorReadyReached)));
+		ASSERT_THAT(IsTrue(bAdditionalMonitorReadyReached, TEXT("Debugger multi-client test should bring the additional debugger client to the post-StartDebugging ready state")));
 
 		if (!bAdditionalMonitorHandshakeSucceeded.Load())
 		{
@@ -189,10 +215,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionTests,
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Debugger multi-client test should not let breakpoint count dip during the second client StartDebugging handshake"),
+		ASSERT_THAT(AreEqual(
+			1,
 			MinObservedBreakpointCountDuringSecondHandshake.Load(),
-			1);
+			TEXT("Debugger multi-client test should not let breakpoint count dip during the second client StartDebugging handshake")));
 
 		ASSERT_THAT(IsTrue(WaitForBreakpointCount(*TestRunner, Ctx.Session, 1, TEXT("Debugger multi-client test should preserve the authoritative breakpoint count after the second client starts debugging"))));
 
@@ -213,7 +239,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionTests,
 		bInvocationCompleted = true;
 
 		const FAdditionalDebuggerMonitorResult MonitorResult = AdditionalMonitorFuture.Get();
-		if (!TestRunner->TestTrue(TEXT("Debugger multi-client test should complete the additional-client monitor without transport errors"), MonitorResult.Error.IsEmpty()))
+		if (!CheckTrue(*TestRunner, TEXT("Debugger multi-client test should complete the additional-client monitor without transport errors"), MonitorResult.Error.IsEmpty()))
 		{
 			if (!MonitorResult.Error.IsEmpty())
 			{
@@ -222,28 +248,30 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionTests,
 			return;
 		}
 
-		ASSERT_THAT(IsTrue(TestRunner->TestFalse(TEXT("Debugger multi-client test should not time out while waiting for the preserved breakpoint stop"), MonitorResult.bTimedOut)));
-		ASSERT_THAT(IsTrue(TestRunner->TestFalse(TEXT("Debugger multi-client test should not complete the invocation before any additional client observes the preserved breakpoint stop"), MonitorResult.bCompletedWithoutStop)));
-		ASSERT_THAT(IsTrue(TestRunner->TestEqual(TEXT("Debugger multi-client test should emit exactly one preserved breakpoint stop for the additional debugger client"), MonitorResult.StopEnvelopes.Num(), 1)));
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger multi-client test should deserialize the preserved HasStopped payload"), MonitorResult.StopMessage.IsSet())));
+		ASSERT_THAT(IsFalse(MonitorResult.bTimedOut, TEXT("Debugger multi-client test should not time out while waiting for the preserved breakpoint stop")));
+		ASSERT_THAT(IsFalse(MonitorResult.bCompletedWithoutStop, TEXT("Debugger multi-client test should not complete the invocation before any additional client observes the preserved breakpoint stop")));
+		ASSERT_THAT(AreEqual(1, MonitorResult.StopEnvelopes.Num(), TEXT("Debugger multi-client test should emit exactly one preserved breakpoint stop for the additional debugger client")));
+		ASSERT_THAT(IsTrue(MonitorResult.StopMessage.IsSet(), TEXT("Debugger multi-client test should deserialize the preserved HasStopped payload")));
 
-		TestRunner->TestEqual(TEXT("Debugger multi-client test should stop because of a breakpoint"), MonitorResult.StopMessage->Reason, FString(TEXT("breakpoint")));
+		ASSERT_THAT(AreEqual(FString(TEXT("breakpoint")), MonitorResult.StopMessage->Reason, TEXT("Debugger multi-client test should stop because of a breakpoint")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger multi-client test should capture a callstack from the additional debugger client after the preserved breakpoint stop"), MonitorResult.CapturedCallstack.IsSet())));
+		ASSERT_THAT(IsTrue(MonitorResult.CapturedCallstack.IsSet(), TEXT("Debugger multi-client test should capture a callstack from the additional debugger client after the preserved breakpoint stop")));
 
 		const FAngelscriptCallStack& Callstack = MonitorResult.CapturedCallstack.GetValue();
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger multi-client test should return at least one frame after the preserved breakpoint stop"), Callstack.Frames.Num() > 0)));
+		ASSERT_THAT(IsTrue(Callstack.Frames.Num() > 0, TEXT("Debugger multi-client test should return at least one frame after the preserved breakpoint stop")));
 
-		TestRunner->TestTrue(TEXT("Debugger multi-client test should report the fixture filename in the top stack frame"), Callstack.Frames[0].Source.EndsWith(Fixture.Filename));
-		TestRunner->TestEqual(TEXT("Debugger multi-client test should stop at BreakpointHelperLine"), Callstack.Frames[0].LineNumber, Fixture.GetLine(TEXT("BreakpointHelperLine")));
-		TestRunner->TestEqual(TEXT("Debugger multi-client test should observe a single HasContinued after the preserved breakpoint stop"), MonitorResult.ContinuedCount, 1);
+		ASSERT_THAT(IsTrue(Callstack.Frames[0].Source.EndsWith(Fixture.Filename), TEXT("Debugger multi-client test should report the fixture filename in the top stack frame")));
+		ASSERT_THAT(AreEqual(Fixture.GetLine(TEXT("BreakpointHelperLine")), Callstack.Frames[0].LineNumber, TEXT("Debugger multi-client test should stop at BreakpointHelperLine")));
+		ASSERT_THAT(AreEqual(1, MonitorResult.ContinuedCount, TEXT("Debugger multi-client test should observe a single HasContinued after the preserved breakpoint stop")));
 
-		TestRunner->TestTrue(TEXT("Debugger multi-client test should execute the breakpoint fixture successfully after continue"), InvocationState->bSucceeded);
-		TestRunner->TestEqual(TEXT("Debugger multi-client test should preserve the fixture return value"), InvocationState->Result, 8);
+		ASSERT_THAT(IsTrue(InvocationState->bSucceeded, TEXT("Debugger multi-client test should execute the breakpoint fixture successfully after continue")));
+		ASSERT_THAT(AreEqual(8, InvocationState->Result, TEXT("Debugger multi-client test should preserve the fixture return value")));
 	}
 
 	TEST_METHOD(SingleClientBreakpointRoundtrip)
 	{
+		using namespace AngelscriptDebuggerSessionTests_Private;
+
 		FAngelscriptEngine& Engine = Ctx.GetEngine();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 			const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBreakpointFixture();
@@ -265,10 +293,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionTests,
 				CollectGarbage(RF_NoFlags, true);
 			};
 
-			ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.SingleClient.BreakpointRoundtrip should compile the breakpoint fixture"), Fixture.Compile(Engine))));
+			ASSERT_THAT(IsTrue(Fixture.Compile(Engine), TEXT("Debugger.SingleClient.BreakpointRoundtrip should compile the breakpoint fixture")));
 
 			TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModuleByFilenameOrModuleName(Fixture.Filename, Fixture.ModuleName.ToString());
-			ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.SingleClient.BreakpointRoundtrip should resolve the compiled module immediately after compilation"), ModuleDesc.IsValid() && ModuleDesc->ScriptModule != nullptr)));
+			ASSERT_THAT(IsTrue(ModuleDesc.IsValid() && ModuleDesc->ScriptModule != nullptr, TEXT("Debugger.SingleClient.BreakpointRoundtrip should resolve the compiled module immediately after compilation")));
 
 			FAngelscriptBreakpoint Breakpoint;
 			Breakpoint.Filename = Fixture.Filename;
@@ -304,33 +332,33 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionTests,
 				return;
 			}
 
-			TestRunner->TestFalse(TEXT("Debugger.SingleClient.BreakpointRoundtrip should not time out"), Transcript.bTimedOut);
-			ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.SingleClient.BreakpointRoundtrip should receive DebugServerVersion on the same client"), Transcript.DebugServerVersion.IsSet())));
+			ASSERT_THAT(IsFalse(Transcript.bTimedOut, TEXT("Debugger.SingleClient.BreakpointRoundtrip should not time out")));
+			ASSERT_THAT(IsTrue(Transcript.DebugServerVersion.IsSet(), TEXT("Debugger.SingleClient.BreakpointRoundtrip should receive DebugServerVersion on the same client")));
 
-			TestRunner->TestEqual(TEXT("Debugger.SingleClient.BreakpointRoundtrip should keep the adapter handshake on the same socket"), Transcript.DebugServerVersion->DebugServerVersion, DEBUG_SERVER_VERSION);
-			TestRunner->TestEqual(TEXT("Debugger.SingleClient.BreakpointRoundtrip should receive exactly one DebugServerVersion envelope"), CountMessagesByType(Transcript, EDebugMessageType::DebugServerVersion), 1);
-			TestRunner->TestEqual(TEXT("Debugger.SingleClient.BreakpointRoundtrip should receive exactly one HasStopped envelope"), CountMessagesByType(Transcript, EDebugMessageType::HasStopped), 1);
-			TestRunner->TestEqual(TEXT("Debugger.SingleClient.BreakpointRoundtrip should receive exactly one CallStack envelope"), CountMessagesByType(Transcript, EDebugMessageType::CallStack), 1);
-			TestRunner->TestEqual(TEXT("Debugger.SingleClient.BreakpointRoundtrip should receive exactly one HasContinued envelope"), CountMessagesByType(Transcript, EDebugMessageType::HasContinued), 1);
+			ASSERT_THAT(AreEqual(DEBUG_SERVER_VERSION, Transcript.DebugServerVersion->DebugServerVersion, TEXT("Debugger.SingleClient.BreakpointRoundtrip should keep the adapter handshake on the same socket")));
+			ASSERT_THAT(AreEqual(1, CountMessagesByType(Transcript, EDebugMessageType::DebugServerVersion), TEXT("Debugger.SingleClient.BreakpointRoundtrip should receive exactly one DebugServerVersion envelope")));
+			ASSERT_THAT(AreEqual(1, CountMessagesByType(Transcript, EDebugMessageType::HasStopped), TEXT("Debugger.SingleClient.BreakpointRoundtrip should receive exactly one HasStopped envelope")));
+			ASSERT_THAT(AreEqual(1, CountMessagesByType(Transcript, EDebugMessageType::CallStack), TEXT("Debugger.SingleClient.BreakpointRoundtrip should receive exactly one CallStack envelope")));
+			ASSERT_THAT(AreEqual(1, CountMessagesByType(Transcript, EDebugMessageType::HasContinued), TEXT("Debugger.SingleClient.BreakpointRoundtrip should receive exactly one HasContinued envelope")));
 			const int32 PingAliveCount = CountMessagesByType(Transcript, EDebugMessageType::PingAlive);
-			TestRunner->TestTrue(TEXT("Debugger.SingleClient.BreakpointRoundtrip should observe at most one PingAlive heartbeat during the roundtrip"), PingAliveCount <= 1);
-			TestRunner->TestEqual(TEXT("Debugger.SingleClient.BreakpointRoundtrip should only observe handshake, stop, callstack, continue and optional PingAlive"), Transcript.ReceivedMessages.Num(), 4 + PingAliveCount);
-			TestRunner->TestEqual(TEXT("Debugger.SingleClient.BreakpointRoundtrip should deserialize exactly one stop message"), Transcript.StopMessages.Num(), 1);
-			TestRunner->TestEqual(TEXT("Debugger.SingleClient.BreakpointRoundtrip should deserialize exactly one callstack"), Transcript.CallStacks.Num(), 1);
-			TestRunner->TestEqual(TEXT("Debugger.SingleClient.BreakpointRoundtrip should count exactly one HasContinued notification"), Transcript.HasContinuedCount, 1);
-			TestRunner->TestTrue(TEXT("Debugger.SingleClient.BreakpointRoundtrip should finish the script invocation successfully"), InvocationState->bSucceeded);
-			TestRunner->TestEqual(TEXT("Debugger.SingleClient.BreakpointRoundtrip should preserve the expected script result"), InvocationState->Result, 8);
+			ASSERT_THAT(IsTrue(PingAliveCount <= 1, TEXT("Debugger.SingleClient.BreakpointRoundtrip should observe at most one PingAlive heartbeat during the roundtrip")));
+			ASSERT_THAT(AreEqual(4 + PingAliveCount, Transcript.ReceivedMessages.Num(), TEXT("Debugger.SingleClient.BreakpointRoundtrip should only observe handshake, stop, callstack, continue and optional PingAlive")));
+			ASSERT_THAT(AreEqual(1, Transcript.StopMessages.Num(), TEXT("Debugger.SingleClient.BreakpointRoundtrip should deserialize exactly one stop message")));
+			ASSERT_THAT(AreEqual(1, Transcript.CallStacks.Num(), TEXT("Debugger.SingleClient.BreakpointRoundtrip should deserialize exactly one callstack")));
+			ASSERT_THAT(AreEqual(1, Transcript.HasContinuedCount, TEXT("Debugger.SingleClient.BreakpointRoundtrip should count exactly one HasContinued notification")));
+			ASSERT_THAT(IsTrue(InvocationState->bSucceeded, TEXT("Debugger.SingleClient.BreakpointRoundtrip should finish the script invocation successfully")));
+			ASSERT_THAT(AreEqual(8, InvocationState->Result, TEXT("Debugger.SingleClient.BreakpointRoundtrip should preserve the expected script result")));
 
-			ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.SingleClient.BreakpointRoundtrip should deserialize the stop reason"), Transcript.StopMessages.Num() == 1)));
-			TestRunner->TestEqual(TEXT("Debugger.SingleClient.BreakpointRoundtrip should stop because of a breakpoint"), Transcript.StopMessages[0].Reason, FString(TEXT("breakpoint")));
+			ASSERT_THAT(IsTrue(Transcript.StopMessages.Num() == 1, TEXT("Debugger.SingleClient.BreakpointRoundtrip should deserialize the stop reason")));
+			ASSERT_THAT(AreEqual(FString(TEXT("breakpoint")), Transcript.StopMessages[0].Reason, TEXT("Debugger.SingleClient.BreakpointRoundtrip should stop because of a breakpoint")));
 
-			ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.SingleClient.BreakpointRoundtrip should capture exactly one callstack"), Transcript.CallStacks.Num() == 1)));
+			ASSERT_THAT(IsTrue(Transcript.CallStacks.Num() == 1, TEXT("Debugger.SingleClient.BreakpointRoundtrip should capture exactly one callstack")));
 
 			const FAngelscriptCallStack& CallStack = Transcript.CallStacks[0];
-			ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.SingleClient.BreakpointRoundtrip should return at least one frame"), CallStack.Frames.Num() > 0)));
+			ASSERT_THAT(IsTrue(CallStack.Frames.Num() > 0, TEXT("Debugger.SingleClient.BreakpointRoundtrip should return at least one frame")));
 
-			TestRunner->TestTrue(TEXT("Debugger.SingleClient.BreakpointRoundtrip should report the fixture filename in the top stack frame"), CallStack.Frames[0].Source.EndsWith(Fixture.Filename));
-			TestRunner->TestEqual(TEXT("Debugger.SingleClient.BreakpointRoundtrip should stop at the requested helper line"), CallStack.Frames[0].LineNumber, Fixture.GetLine(TEXT("BreakpointHelperLine")));
+			ASSERT_THAT(IsTrue(CallStack.Frames[0].Source.EndsWith(Fixture.Filename), TEXT("Debugger.SingleClient.BreakpointRoundtrip should report the fixture filename in the top stack frame")));
+			ASSERT_THAT(AreEqual(Fixture.GetLine(TEXT("BreakpointHelperLine")), CallStack.Frames[0].LineNumber, TEXT("Debugger.SingleClient.BreakpointRoundtrip should stop at the requested helper line")));
 		}
 	}
 };

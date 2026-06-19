@@ -52,15 +52,8 @@ int ReturnSeven()
 			*TestRunner, Result, TEXT("Tests.Preprocessor.BasicModule"));
 		if (Module != nullptr)
 		{
-			TestRunner->TestEqual(
-				TEXT("Basic parse should emit a single code section"),
-				Module->Code.Num(), 1);
-			if (Module->Code.Num() > 0)
-			{
-				TestRunner->TestTrue(
-					TEXT("Processed code should contain the function body"),
-					Module->Code[0].Code.Contains(TEXT("ReturnSeven")));
-			}
+			ASSERT_THAT(AreEqual(1, Module->Code.Num(), TEXT("Basic parse should emit a single code section")));
+			ASSERT_THAT(IsTrue(Module->Code[0].Code.Contains(TEXT("ReturnSeven")), TEXT("Processed code should contain the function body")));
 		}
 
 		}
@@ -106,8 +99,8 @@ class AMacroActor : AActor
 					&& Macro->Name == TEXT("BeginPlay");
 			});
 
-		TestRunner->TestTrue(TEXT("Should record UPROPERTY macro for Mesh"), bHasPropertyMacro);
-		TestRunner->TestTrue(TEXT("Should record UFUNCTION macro for BeginPlay"), bHasFunctionMacro);
+		ASSERT_THAT(IsTrue(bHasPropertyMacro, TEXT("Should record UPROPERTY macro for Mesh")));
+		ASSERT_THAT(IsTrue(bHasFunctionMacro, TEXT("Should record UFUNCTION macro for BeginPlay")));
 
 		}
 	}
@@ -200,9 +193,7 @@ int UseShared()
 		Source += FString::Printf(TEXT("    return Value_%03d();\n"), FunctionCount - 1);
 		Source += TEXT("}\n");
 
-		TestRunner->TestTrue(
-			TEXT("Stress fixture should exceed minimum length"),
-			Source.Len() > MinimumCodeLength);
+		ASSERT_THAT(IsTrue(Source.Len() > MinimumCodeLength, TEXT("Stress fixture should exceed minimum length")));
 
 		const FString RelativePath = TEXT("Tests/Preprocessor/Stress/LongSourceRemainsDeterministic.as");
 		FFixtureFile File(RelativePath, Source);
@@ -214,14 +205,13 @@ int UseShared()
 		AssertModuleCount(*TestRunner, Result1, 1);
 
 		const FAngelscriptModuleDesc* Module1 = Result1.FindModule(ModuleName.ToString());
-		if (!TestRunner->TestNotNull(TEXT("First preprocess should produce the module"), Module1))
+		if (!this->Assert.IsNotNull(Module1, TEXT("First preprocess should produce the module")))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("Code should be non-empty"), !Module1->Code[0].Code.IsEmpty());
-		TestRunner->TestTrue(TEXT("Code should exceed minimum length"),
-			Module1->Code[0].Code.Len() > MinimumCodeLength);
+		ASSERT_THAT(IsTrue(!Module1->Code[0].Code.IsEmpty(), TEXT("Code should be non-empty")));
+		ASSERT_THAT(IsTrue(Module1->Code[0].Code.Len() > MinimumCodeLength, TEXT("Code should exceed minimum length")));
 
 		const int64 FirstCodeHash = Module1->CodeHash;
 		const FString FirstCode = Module1->Code[0].Code;
@@ -232,13 +222,9 @@ int UseShared()
 		AssertPreprocessSucceeded(*TestRunner, Result2);
 
 		const FAngelscriptModuleDesc* Module2 = Result2.FindModule(ModuleName.ToString());
-		if (Module2 != nullptr)
-		{
-			TestRunner->TestEqual(TEXT("Repeated preprocess should keep same code hash"),
-				Module2->CodeHash, FirstCodeHash);
-			TestRunner->TestEqual(TEXT("Repeated preprocess should keep same code"),
-				Module2->Code[0].Code, FirstCode);
-		}
+		ASSERT_THAT(IsNotNull(Module2, TEXT("Second preprocess should produce the module")));
+		ASSERT_THAT(AreEqual(FirstCodeHash, Module2->CodeHash, TEXT("Repeated preprocess should keep same code hash")));
+		ASSERT_THAT(AreEqual(FirstCode, Module2->Code[0].Code, TEXT("Repeated preprocess should keep same code")));
 
 		// Compile and execute
 		FAngelscriptCompileTraceSummary Summary;
@@ -246,19 +232,15 @@ int UseShared()
 			&Engine, ECompileType::SoftReloadOnly, ModuleName,
 			RelativePath, Source, true, Summary);
 
-		TestRunner->TestTrue(TEXT("Long source should compile successfully"), bCompiled);
-		TestRunner->TestEqual(TEXT("Should compile exactly one module"), Summary.CompiledModuleCount, 1);
-		TestRunner->TestEqual(TEXT("Should emit no diagnostics"), Summary.Diagnostics.Num(), 0);
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Long source should compile successfully")));
+		ASSERT_THAT(AreEqual(1, Summary.CompiledModuleCount, TEXT("Should compile exactly one module")));
+		ASSERT_THAT(AreEqual(0, Summary.Diagnostics.Num(), TEXT("Should emit no diagnostics")));
 
 		int32 EntryResult = 0;
 		const bool bExecuted = bCompiled
 			&& ExecuteIntFunction(&Engine, RelativePath, ModuleName, TEXT("int Entry()"), EntryResult);
-		TestRunner->TestTrue(TEXT("Entry should execute"), bExecuted);
-		if (bExecuted)
-		{
-			TestRunner->TestEqual(TEXT("Entry should return expected chained value"),
-				EntryResult, ExpectedEntryResult);
-		}
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("Entry should execute")));
+		ASSERT_THAT(AreEqual(ExpectedEntryResult, EntryResult, TEXT("Entry should return expected chained value")));
 
 		}
 	}
@@ -305,8 +287,8 @@ int Entry()
 		const bool bFirstSucceeded = Preprocessor.Preprocess();
 		const TArray<TSharedRef<FAngelscriptModuleDesc>> FirstModules = Preprocessor.GetModulesToCompile();
 
-		TestRunner->TestTrue(TEXT("First Preprocess() should succeed"), bFirstSucceeded);
-		TestRunner->TestEqual(TEXT("First Preprocess() should emit one module"), FirstModules.Num(), 1);
+		ASSERT_THAT(IsTrue(bFirstSucceeded, TEXT("First Preprocess() should succeed")));
+		ASSERT_THAT(AreEqual(1, FirstModules.Num(), TEXT("First Preprocess() should emit one module")));
 
 		// Capture snapshot of first module
 		const FString FirstModuleName = TEXT("Tests.Preprocessor.ApiContract.First");
@@ -321,7 +303,7 @@ int Entry()
 				break;
 			}
 		}
-		if (!TestRunner->TestNotNull(TEXT("First module should exist"), FirstModule))
+		if (!this->Assert.IsNotNull(FirstModule, TEXT("First module should exist")))
 		{
 			return;
 		}
@@ -333,25 +315,21 @@ int Entry()
 		Preprocessor.AddFile(SecondFile.RelativePath, SecondFile.AbsolutePath);
 		const TArray<TSharedRef<FAngelscriptModuleDesc>> ModulesAfterLateAdd = Preprocessor.GetModulesToCompile();
 
-		TestRunner->TestEqual(
-			TEXT("Late AddFile should not change module count"),
-			ModulesAfterLateAdd.Num(), 1);
+		ASSERT_THAT(AreEqual(1, ModulesAfterLateAdd.Num(), TEXT("Late AddFile should not change module count")));
 
 		bool bSecondModuleFound = false;
 		for (const auto& M : ModulesAfterLateAdd)
 		{
 			if (M->ModuleName == SecondModuleName) { bSecondModuleFound = true; break; }
 		}
-		TestRunner->TestFalse(TEXT("Late AddFile should not materialize second module"), bSecondModuleFound);
+		ASSERT_THAT(IsFalse(bSecondModuleFound, TEXT("Late AddFile should not materialize second module")));
 
 		// Second Preprocess() should fail
 		const bool bSecondSucceeded = Preprocessor.Preprocess();
-		TestRunner->TestFalse(TEXT("Second Preprocess() should fail"), bSecondSucceeded);
+		ASSERT_THAT(IsFalse(bSecondSucceeded, TEXT("Second Preprocess() should fail")));
 
 		const TArray<TSharedRef<FAngelscriptModuleDesc>> ModulesAfterSecond = Preprocessor.GetModulesToCompile();
-		TestRunner->TestEqual(
-			TEXT("Second Preprocess() should keep module count unchanged"),
-			ModulesAfterSecond.Num(), 1);
+		ASSERT_THAT(AreEqual(1, ModulesAfterSecond.Num(), TEXT("Second Preprocess() should keep module count unchanged")));
 
 		}
 	}

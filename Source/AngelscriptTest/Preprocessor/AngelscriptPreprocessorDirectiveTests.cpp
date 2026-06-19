@@ -96,18 +96,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorDirectiveTest,
 			&Engine, ECompileType::SoftReloadOnly, ModuleName,
 			RelativeScriptPath, ScriptSource, true, Summary);
 
-		TestRunner->TestTrue(TEXT("Should compile after preprocessing"), bCompiled);
-		TestRunner->TestEqual(TEXT("Should emit no compile diagnostics"), Summary.Diagnostics.Num(), 0);
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Should compile after preprocessing")));
+		ASSERT_THAT(AreEqual(0, Summary.Diagnostics.Num(), TEXT("Should emit no compile diagnostics")));
 
 		int32 EntryResult = 0;
 		const bool bExecuted = bCompiled
 			&& ExecuteIntFunction(&Engine, RelativeScriptPath, ModuleName, TEXT("int Entry()"), EntryResult);
-		TestRunner->TestTrue(TEXT("Entry should execute"), bExecuted);
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("Entry should execute")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(
-				TEXT("False MYFLAG: #ifdef→else(2), #ifndef→body(3) → 23"),
-				EntryResult, 23);
+			ASSERT_THAT(AreEqual(
+				23,
+				EntryResult,
+				TEXT("False MYFLAG: #ifdef→else(2), #ifndef→body(3) → 23")));
 		}
 
 		}
@@ -120,7 +121,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorDirectiveTest,
 	TEST_METHOD(InactiveBranchSkipsUnknownConditions)
 	{
 		TUniquePtr<FAngelscriptEngine> OwnedEngine = CreateEditorEngine();
-		if (!TestRunner->TestNotNull(TEXT("Should create editor engine"), OwnedEngine.Get()))
+		if (!this->Assert.IsNotNull(OwnedEngine.Get(), TEXT("Should create editor engine")))
 		{
 			return;
 		}
@@ -137,9 +138,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorDirectiveTest,
 			}
 		};
 
-		TestRunner->TestTrue(
-			TEXT("Should run with EDITOR flag enabled"),
-			FAngelscriptEngine::ShouldUseEditorScriptsForCurrentContext());
+		ASSERT_THAT(IsTrue(
+			FAngelscriptEngine::ShouldUseEditorScriptsForCurrentContext(),
+			TEXT("Should run with EDITOR flag enabled")));
 
 		static const FName ModuleName(TEXT("Tests.Preprocessor.Directives.InactiveUnknownConditions"));
 		ON_SCOPE_EXIT { Engine.DiscardModule(*ModuleName.ToString()); };
@@ -196,21 +197,21 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorDirectiveTest,
 			&Engine, ECompileType::SoftReloadOnly, ModuleName,
 			RelativeScriptPath, ScriptSource, true, Summary, true);
 
-		TestRunner->TestTrue(TEXT("Should compile successfully"), bCompiled);
-		TestRunner->TestTrue(TEXT("Should report preprocessor usage"), Summary.bUsedPreprocessor);
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Should compile successfully")));
+		ASSERT_THAT(IsTrue(Summary.bUsedPreprocessor, TEXT("Should report preprocessor usage")));
 
 		const bool bSummaryHasInvalidCondition = Summary.Diagnostics.ContainsByPredicate(
 			[](const FAngelscriptCompileTraceDiagnosticSummary& D)
 			{ return D.Message.Contains(TEXT("Invalid preprocessor condition")); });
-		TestRunner->TestFalse(TEXT("Compile summary should not report invalid-condition"), bSummaryHasInvalidCondition);
+		ASSERT_THAT(IsFalse(bSummaryHasInvalidCondition, TEXT("Compile summary should not report invalid-condition")));
 
 		int32 EntryResult = 0;
 		const bool bExecuted = bCompiled
 			&& ExecuteIntFunction(&Engine, RelativeScriptPath, ModuleName, TEXT("int Entry()"), EntryResult);
-		TestRunner->TestTrue(TEXT("Entry should execute"), bExecuted);
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("Entry should execute")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(TEXT("Active EDITOR branch should return 7"), EntryResult, 7);
+			ASSERT_THAT(AreEqual(7, EntryResult, TEXT("Active EDITOR branch should return 7")));
 		}
 
 		}
@@ -223,7 +224,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorDirectiveTest,
 	TEST_METHOD(ElifShortCircuitsAfterTakenBranch)
 	{
 		TUniquePtr<FAngelscriptEngine> OwnedEngine = CreateEditorEngine();
-		if (!TestRunner->TestNotNull(TEXT("Should create editor engine"), OwnedEngine.Get()))
+		if (!this->Assert.IsNotNull(OwnedEngine.Get(), TEXT("Should create editor engine")))
 		{
 			return;
 		}
@@ -287,17 +288,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorDirectiveTest,
 			&Engine, ECompileType::SoftReloadOnly, ModuleName,
 			RelativeScriptPath, ScriptSource, true, Summary, true);
 
-		TestRunner->TestTrue(TEXT("Should compile successfully"), bCompiled);
-		TestRunner->TestTrue(TEXT("Should report preprocessor usage"), Summary.bUsedPreprocessor);
-		TestRunner->TestEqual(TEXT("Should emit no compile diagnostics"), Summary.Diagnostics.Num(), 0);
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Should compile successfully")));
+		ASSERT_THAT(IsTrue(Summary.bUsedPreprocessor, TEXT("Should report preprocessor usage")));
+		ASSERT_THAT(AreEqual(0, Summary.Diagnostics.Num(), TEXT("Should emit no compile diagnostics")));
 
 		int32 EntryResult = 0;
 		const bool bExecuted = bCompiled
 			&& ExecuteIntFunction(&Engine, RelativeScriptPath, ModuleName, TEXT("int Entry()"), EntryResult);
-		TestRunner->TestTrue(TEXT("Entry should execute"), bExecuted);
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("Entry should execute")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(TEXT("Active EDITOR branch should return 7"), EntryResult, 7);
+			ASSERT_THAT(AreEqual(7, EntryResult, TEXT("Active EDITOR branch should return 7")));
 		}
 
 		}
@@ -310,7 +311,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorDirectiveTest,
 	TEST_METHOD(StringLiteralDoesNotTriggerDirectiveLexer)
 	{
 		TUniquePtr<FAngelscriptEngine> OwnedEngine = CreateEditorEngine();
-		if (!TestRunner->TestNotNull(TEXT("Should create editor engine"), OwnedEngine.Get()))
+		if (!this->Assert.IsNotNull(OwnedEngine.Get(), TEXT("Should create editor engine")))
 		{
 			return;
 		}
@@ -366,16 +367,16 @@ int Entry()
 			&Engine, ECompileType::SoftReloadOnly, ModuleName,
 			RelativeScriptPath, ScriptSource, true, Summary, true);
 
-		TestRunner->TestTrue(TEXT("Should compile successfully"), bCompiled);
-		TestRunner->TestEqual(TEXT("Should emit no compile diagnostics"), Summary.Diagnostics.Num(), 0);
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Should compile successfully")));
+		ASSERT_THAT(AreEqual(0, Summary.Diagnostics.Num(), TEXT("Should emit no compile diagnostics")));
 
 		int32 EntryResult = 0;
 		const bool bExecuted = bCompiled
 			&& ExecuteIntFunction(&Engine, RelativeScriptPath, ModuleName, TEXT("int Entry()"), EntryResult);
-		TestRunner->TestTrue(TEXT("Entry should execute"), bExecuted);
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("Entry should execute")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(TEXT("String comparison should match → 42"), EntryResult, 42);
+			ASSERT_THAT(AreEqual(42, EntryResult, TEXT("String comparison should match → 42")));
 		}
 
 		}
@@ -480,17 +481,18 @@ int Entry()
 			auto Result = RunPreprocess(Engine, File);
 			LogProcessedCode(Result, *FString::Printf(TEXT("StructuralError_%s"), Case.Label));
 
-			TestRunner->TestFalse(
-				FString::Printf(TEXT("%s should fail preprocessing"), Case.Label),
-				Result.bSuccess);
-			TestRunner->TestEqual(
-				FString::Printf(TEXT("%s should emit exactly one error"), Case.Label),
-				Result.ErrorCount, 1);
+			ASSERT_THAT(IsFalse(
+				Result.bSuccess,
+				FString::Printf(TEXT("%s should fail preprocessing"), Case.Label)));
+			ASSERT_THAT(AreEqual(
+				1,
+				Result.ErrorCount,
+				FString::Printf(TEXT("%s should emit exactly one error"), Case.Label)));
 			AssertDiagnosticContains(*TestRunner, Result, Case.ExpectedMessage);
 			AssertDiagnosticAt(*TestRunner, Result, Case.ExpectedMessage, Case.ExpectedRow, 1);
-			TestRunner->TestFalse(
-				FString::Printf(TEXT("%s should not leave compilable code"), Case.Label),
-				ContainsCompilableCode(Result));
+			ASSERT_THAT(IsFalse(
+				ContainsCompilableCode(Result),
+				FString::Printf(TEXT("%s should not leave compilable code"), Case.Label)));
 		}
 
 		}
@@ -503,7 +505,7 @@ int Entry()
 	TEST_METHOD(TabSeparatedDirectiveParsing)
 	{
 		TUniquePtr<FAngelscriptEngine> OwnedEngine = CreateEditorEngine();
-		if (!TestRunner->TestNotNull(TEXT("Should create editor engine"), OwnedEngine.Get()))
+		if (!this->Assert.IsNotNull(OwnedEngine.Get(), TEXT("Should create editor engine")))
 		{
 			return;
 		}
@@ -568,15 +570,14 @@ int Entry()
 			AssertModuleCodeNotContains(*TestRunner, Result, *Module, TEXT("#restrict"));
 
 #if WITH_EDITOR
-			TestRunner->TestEqual(
-				TEXT("Should record one usage restriction"),
-				Module->UsageRestrictions.Num(), 1);
+			ASSERT_THAT(AreEqual(
+				1,
+				Module->UsageRestrictions.Num(),
+				TEXT("Should record one usage restriction")));
 			if (Module->UsageRestrictions.Num() == 1)
 			{
-				TestRunner->TestTrue(TEXT("Should be an allow restriction"),
-					Module->UsageRestrictions[0].bIsAllow);
-				TestRunner->TestEqual(TEXT("Pattern should be Game.*"),
-					Module->UsageRestrictions[0].Pattern, FString(TEXT("Game.*")));
+				ASSERT_THAT(IsTrue(Module->UsageRestrictions[0].bIsAllow, TEXT("Should be an allow restriction")));
+				ASSERT_THAT(AreEqual(FString(TEXT("Game.*")), Module->UsageRestrictions[0].Pattern, TEXT("Pattern should be Game.*")));
 			}
 #endif
 		}
@@ -588,17 +589,17 @@ int Entry()
 			&Engine, ECompileType::SoftReloadOnly, ModuleName,
 			RelativeScriptPath, ScriptSource, true, Summary, true);
 
-		TestRunner->TestTrue(TEXT("Should compile successfully"), bCompiled);
-		TestRunner->TestTrue(TEXT("Should report preprocessor usage"), Summary.bUsedPreprocessor);
-		TestRunner->TestEqual(TEXT("Should emit no compile diagnostics"), Summary.Diagnostics.Num(), 0);
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Should compile successfully")));
+		ASSERT_THAT(IsTrue(Summary.bUsedPreprocessor, TEXT("Should report preprocessor usage")));
+		ASSERT_THAT(AreEqual(0, Summary.Diagnostics.Num(), TEXT("Should emit no compile diagnostics")));
 
 		int32 EntryResult = 0;
 		const bool bExecuted = bCompiled
 			&& ExecuteIntFunction(&Engine, RelativeScriptPath, ModuleName, TEXT("int Entry()"), EntryResult);
-		TestRunner->TestTrue(TEXT("Entry should execute"), bExecuted);
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("Entry should execute")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(TEXT("Nested tab-separated EDITOR branch should return 74"), EntryResult, 74);
+			ASSERT_THAT(AreEqual(74, EntryResult, TEXT("Nested tab-separated EDITOR branch should return 74")));
 		}
 
 		}
@@ -643,10 +644,10 @@ int Entry()
 			&Engine, ECompileType::SoftReloadOnly, ModuleName,
 			RelativeScriptPath, ScriptSource, true, Summary, true);
 
-		TestRunner->TestFalse(TEXT("Should fail through compile pipeline"), bCompiled);
-		TestRunner->TestTrue(TEXT("Should report preprocessor usage"), Summary.bUsedPreprocessor);
-		TestRunner->TestEqual(TEXT("CompileResult should be Error"), Summary.CompileResult, ECompileResult::Error);
-		TestRunner->TestEqual(TEXT("Should not compile any module"), Summary.CompiledModuleCount, 0);
+		ASSERT_THAT(IsFalse(bCompiled, TEXT("Should fail through compile pipeline")));
+		ASSERT_THAT(IsTrue(Summary.bUsedPreprocessor, TEXT("Should report preprocessor usage")));
+		ASSERT_THAT(AreEqual(ECompileResult::Error, Summary.CompileResult, TEXT("CompileResult should be Error")));
+		ASSERT_THAT(AreEqual(0, Summary.CompiledModuleCount, TEXT("Should not compile any module")));
 
 		// Verify the same diagnostic is collected by the compile-trace summary.
 		// Note: CompileModuleWithSummary uses an internal preprocessor instance,
@@ -655,9 +656,9 @@ int Entry()
 		const bool bSummaryHasIncludeDiag = Summary.Diagnostics.ContainsByPredicate(
 			[](const FAngelscriptCompileTraceDiagnosticSummary& D)
 			{ return D.bIsError && D.Message.Contains(ExpectedDiagnostic); });
-		TestRunner->TestTrue(
-			TEXT("Compile-trace summary should record the #include diagnostic"),
-			bSummaryHasIncludeDiag);
+		ASSERT_THAT(IsTrue(
+			bSummaryHasIncludeDiag,
+			TEXT("Compile-trace summary should record the #include diagnostic")));
 
 		}
 	}

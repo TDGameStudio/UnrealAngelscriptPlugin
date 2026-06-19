@@ -199,8 +199,8 @@ int PopulateCollisionResults(FHitResult& OutHit, FOverlapResult& OutOverlap, AAc
 
 		AActor* TestActor = NewObject<AActor>(GetTransientPackage(), NAME_None, RF_Transient);
 		UBoxComponent* TestComponent = NewObject<UBoxComponent>(TestActor, NAME_None, RF_Transient);
-		if (!TestRunner->TestNotNull(TEXT("CollisionResultAccessors should create a transient actor"), TestActor) ||
-			!TestRunner->TestNotNull(TEXT("CollisionResultAccessors should create a transient primitive component"), TestComponent))
+		if (!this->Assert.IsNotNull(TestActor, TEXT("CollisionResultAccessors should create a transient actor")) ||
+			!this->Assert.IsNotNull(TestComponent, TEXT("CollisionResultAccessors should create a transient primitive component")))
 		{
 			return;
 		}
@@ -220,21 +220,21 @@ int PopulateCollisionResults(FHitResult& OutHit, FOverlapResult& OutOverlap, AAc
 
 		const int32 ResultMask = Invoker.CallAndReturn<int32>(INDEX_NONE);
 
-		TestRunner->TestEqual(TEXT("CollisionResultAccessors should preserve script-side round-trip checks"), ResultMask, 0);
-		TestRunner->TestEqual(TEXT("CollisionResultAccessors should write FaceIndex into native FHitResult state"), ScriptHit.FaceIndex, 1);
-		TestRunner->TestEqual(TEXT("CollisionResultAccessors should write ElementIndex into native FHitResult state"), ScriptHit.ElementIndex, static_cast<uint8>(2));
-		TestRunner->TestEqual(TEXT("CollisionResultAccessors should write Item into native FHitResult state"), ScriptHit.Item, 3);
-		TestRunner->TestEqual(TEXT("CollisionResultAccessors should write MyItem into native FHitResult state"), ScriptHit.MyItem, 4);
-		TestRunner->TestTrue(TEXT("CollisionResultAccessors should write TraceStart into native FHitResult state"), ScriptHit.TraceStart.Equals(FVector(-2.0f, 1.0f, 0.0f)));
-		TestRunner->TestTrue(TEXT("CollisionResultAccessors should write TraceEnd into native FHitResult state"), ScriptHit.TraceEnd.Equals(FVector(3.0f, 4.0f, 5.0f)));
-		TestRunner->TestTrue(TEXT("CollisionResultAccessors should write ImpactPoint into native FHitResult state"), ScriptHit.ImpactPoint.Equals(FVector(6.0f, 7.0f, 8.0f)));
-		TestRunner->TestTrue(TEXT("CollisionResultAccessors should write ImpactNormal into native FHitResult state"), ScriptHit.ImpactNormal.Equals(FVector(0.0f, 0.0f, 1.0f)));
-		TestRunner->TestEqual(TEXT("CollisionResultAccessors should write BoneName into native FHitResult state"), ScriptHit.BoneName, FName(TEXT("Bone")));
-		TestRunner->TestEqual(TEXT("CollisionResultAccessors should write MyBoneName into native FHitResult state"), ScriptHit.MyBoneName, FName(TEXT("MyBone")));
-		TestRunner->TestEqual(TEXT("CollisionResultAccessors should write ItemIndex into native FOverlapResult state"), ScriptOverlap.ItemIndex, 9);
-		TestRunner->TestEqual(TEXT("CollisionResultAccessors should round-trip actor handle through native FOverlapResult state"), ScriptOverlap.GetActor(), TestActor);
-		TestRunner->TestEqual(TEXT("CollisionResultAccessors should round-trip component handle through native FOverlapResult state"), ScriptOverlap.GetComponent(), static_cast<UPrimitiveComponent*>(TestComponent));
-		TestRunner->TestFalse(TEXT("CollisionResultAccessors should leave bBlockingHit cleared after final SetBlockingHit(false)"), ScriptOverlap.bBlockingHit);
+		ASSERT_THAT(AreEqual(0, ResultMask, TEXT("CollisionResultAccessors should preserve script-side round-trip checks")));
+		ASSERT_THAT(AreEqual(1, ScriptHit.FaceIndex, TEXT("CollisionResultAccessors should write FaceIndex into native FHitResult state")));
+		ASSERT_THAT(AreEqual(static_cast<uint8>(2), ScriptHit.ElementIndex, TEXT("CollisionResultAccessors should write ElementIndex into native FHitResult state")));
+		ASSERT_THAT(AreEqual(3, ScriptHit.Item, TEXT("CollisionResultAccessors should write Item into native FHitResult state")));
+		ASSERT_THAT(AreEqual(4, ScriptHit.MyItem, TEXT("CollisionResultAccessors should write MyItem into native FHitResult state")));
+		ASSERT_THAT(IsTrue(ScriptHit.TraceStart.Equals(FVector(-2.0f, 1.0f, 0.0f)), TEXT("CollisionResultAccessors should write TraceStart into native FHitResult state")));
+		ASSERT_THAT(IsTrue(ScriptHit.TraceEnd.Equals(FVector(3.0f, 4.0f, 5.0f)), TEXT("CollisionResultAccessors should write TraceEnd into native FHitResult state")));
+		ASSERT_THAT(IsTrue(ScriptHit.ImpactPoint.Equals(FVector(6.0f, 7.0f, 8.0f)), TEXT("CollisionResultAccessors should write ImpactPoint into native FHitResult state")));
+		ASSERT_THAT(IsTrue(ScriptHit.ImpactNormal.Equals(FVector(0.0f, 0.0f, 1.0f)), TEXT("CollisionResultAccessors should write ImpactNormal into native FHitResult state")));
+		ASSERT_THAT(AreEqual(FName(TEXT("Bone")), ScriptHit.BoneName, TEXT("CollisionResultAccessors should write BoneName into native FHitResult state")));
+		ASSERT_THAT(AreEqual(FName(TEXT("MyBone")), ScriptHit.MyBoneName, TEXT("CollisionResultAccessors should write MyBoneName into native FHitResult state")));
+		ASSERT_THAT(AreEqual(9, ScriptOverlap.ItemIndex, TEXT("CollisionResultAccessors should write ItemIndex into native FOverlapResult state")));
+		ASSERT_THAT(AreEqual(TestActor, ScriptOverlap.GetActor(), TEXT("CollisionResultAccessors should round-trip actor handle through native FOverlapResult state")));
+		ASSERT_THAT(AreEqual(static_cast<UPrimitiveComponent*>(TestComponent), ScriptOverlap.GetComponent(), TEXT("CollisionResultAccessors should round-trip component handle through native FOverlapResult state")));
+		ASSERT_THAT(IsFalse(ScriptOverlap.bBlockingHit, TEXT("CollisionResultAccessors should leave bBlockingHit cleared after final SetBlockingHit(false)")));
 	}
 };
 

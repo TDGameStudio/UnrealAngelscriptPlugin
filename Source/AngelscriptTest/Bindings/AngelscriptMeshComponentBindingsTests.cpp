@@ -42,11 +42,8 @@ int Projectile_HomingTargetRoundTrip(UProjectileMovementComponent Comp, USceneCo
 
 		UProjectileMovementComponent* Movement = NewObject<UProjectileMovementComponent>();
 		USceneComponent* Target = NewObject<USceneComponent>();
-		if (!TestRunner->TestNotNull(TEXT("Projectile movement component should be constructible from C++ in headless automation"), Movement)
-			|| !TestRunner->TestNotNull(TEXT("Scene component target should be constructible from C++ in headless automation"), Target))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Movement, TEXT("Projectile movement component should be constructible from C++ in headless automation")));
+		ASSERT_THAT(IsNotNull(Target, TEXT("Scene component target should be constructible from C++ in headless automation")));
 
 		FASGlobalFunctionInvoker Invoker(
 			*TestRunner,
@@ -58,10 +55,10 @@ int Projectile_HomingTargetRoundTrip(UProjectileMovementComponent Comp, USceneCo
 			return;
 		}
 		Invoker.AddArgObject(Movement).AddArgObject(Target);
-		TestRunner->TestEqual(
-			TEXT("UProjectileMovementComponent homing target binding should round-trip a C++-constructed component"),
+		ASSERT_THAT(AreEqual(
+			1,
 			Invoker.CallAndReturn<int32>(INDEX_NONE),
-			1);
+			TEXT("UProjectileMovementComponent homing target binding should round-trip a C++-constructed component")));
 	}
 
 	TEST_METHOD(SkeletalMeshTypeCheck)
@@ -77,7 +74,7 @@ int Skeletal_TypeExists()
 		)"));
 		if (!Mod.IsValid())
 		{
-			TestRunner->TestTrue(TEXT("USkeletalMeshComponent type binding module should compile"), false);
+			ASSERT_THAT(IsTrue(false, TEXT("USkeletalMeshComponent type binding module should compile")));
 			return;
 		}
 		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
@@ -102,7 +99,7 @@ int Skeletal_SetAndGetAssetEntry()
 		)"));
 		if (!Mod.IsValid())
 		{
-			TestRunner->TestTrue(TEXT("USkeletalMeshComponent asset accessor binding module should compile"), false);
+			ASSERT_THAT(IsTrue(false, TEXT("USkeletalMeshComponent asset accessor binding module should compile")));
 			return;
 		}
 		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 

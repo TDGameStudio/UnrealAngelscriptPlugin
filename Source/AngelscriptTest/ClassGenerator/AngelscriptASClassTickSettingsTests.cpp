@@ -58,21 +58,20 @@ class AScriptTickChild : AScriptTickParent
 
 		UASClass* ParentASClass = Cast<UASClass>(FindGeneratedClass(&Engine, ASClassTickParentName));
 		UASClass* ChildASClass = Cast<UASClass>(ChildClass);
-		if (!TestRunner->TestNotNull(TEXT("ASClass tick-settings test should resolve the generated parent UASClass"), ParentASClass)
-			|| !TestRunner->TestNotNull(TEXT("ASClass tick-settings test should compile the child actor as a UASClass"), ChildASClass))
-		{ return; }
+		ASSERT_THAT(IsNotNull(ParentASClass, TEXT("ASClass tick-settings test should resolve the generated parent UASClass")));
+		ASSERT_THAT(IsNotNull(ChildASClass, TEXT("ASClass tick-settings test should compile the child actor as a UASClass")));
 
-		TestRunner->TestFalse(TEXT("ASClass tick-settings test should keep the parent class out of tick when it declares no tick overrides"), ParentASClass->bCanEverTick);
-		TestRunner->TestTrue(TEXT("ASClass tick-settings test should enable tick on the child class when Tick is implemented"), ChildASClass->bCanEverTick);
-		TestRunner->TestTrue(TEXT("ASClass tick-settings test should start the child class with tick enabled when Tick is implemented"), ChildASClass->bStartWithTickEnabled);
+		ASSERT_THAT(IsFalse(ParentASClass->bCanEverTick, TEXT("ASClass tick-settings test should keep the parent class out of tick when it declares no tick overrides")));
+		ASSERT_THAT(IsTrue(ChildASClass->bCanEverTick, TEXT("ASClass tick-settings test should enable tick on the child class when Tick is implemented")));
+		ASSERT_THAT(IsTrue(ChildASClass->bStartWithTickEnabled, TEXT("ASClass tick-settings test should start the child class with tick enabled when Tick is implemented")));
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* SpawnedChild = SpawnScriptActor(*TestRunner, Spawner, ChildClass);
-		if (!TestRunner->TestNotNull(TEXT("ASClass tick-settings test should spawn a child actor instance"), SpawnedChild)) { return; }
+		ASSERT_THAT(IsNotNull(SpawnedChild, TEXT("ASClass tick-settings test should spawn a child actor instance")));
 
-		TestRunner->TestTrue(TEXT("ASClass tick-settings test should propagate bCanEverTick onto a spawned child actor"), SpawnedChild->PrimaryActorTick.bCanEverTick);
-		TestRunner->TestTrue(TEXT("ASClass tick-settings test should propagate bStartWithTickEnabled onto a spawned child actor"), SpawnedChild->PrimaryActorTick.bStartWithTickEnabled);
+		ASSERT_THAT(IsTrue(SpawnedChild->PrimaryActorTick.bCanEverTick, TEXT("ASClass tick-settings test should propagate bCanEverTick onto a spawned child actor")));
+		ASSERT_THAT(IsTrue(SpawnedChild->PrimaryActorTick.bStartWithTickEnabled, TEXT("ASClass tick-settings test should propagate bStartWithTickEnabled onto a spawned child actor")));
 		}
 	}
 };

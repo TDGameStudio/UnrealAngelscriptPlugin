@@ -47,7 +47,11 @@ namespace
 		const TCHAR* ContextLabel)
 	{
 		const FAngelscriptBindingDataTableRow* Row = DataTable.FindRow<FAngelscriptBindingDataTableRow>(FName(RowName), ContextLabel);
-		Test.TestNotNull(*FString::Printf(TEXT("%s should resolve row '%s'"), ContextLabel, RowName), Row);
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(Row, *FString::Printf(TEXT("%s should resolve row '%s'"), ContextLabel, RowName)))
+		{
+			return nullptr;
+		}
 		return Row;
 	}
 }
@@ -82,7 +86,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDataTableBindingsTest,
 
 		const FName TableName = MakeUniqueObjectName(GetTransientPackage(), UDataTable::StaticClass(), TEXT("BindingDataTableCompat"));
 		UDataTable* DataTable = NewObject<UDataTable>(GetTransientPackage(), TableName);
-		if (!TestRunner->TestNotNull(TEXT("Data table binding test should create a transient UDataTable"), DataTable))
+		if (!this->Assert.IsNotNull(DataTable, TEXT("Data table binding test should create a transient UDataTable")))
 		{
 			return;
 		}
@@ -226,15 +230,21 @@ int Entry()
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Data table row, handle and category bindings should preserve row copy, append and category-filter semantics"),
+		if (!this->Assert.AreEqual(
+			1,
 			Result,
-			1);
+			TEXT("Data table row, handle and category bindings should preserve row copy, append and category-filter semantics")))
+		{
+			return;
+		}
 
-		TestRunner->TestEqual(
-			TEXT("Native data table should contain three rows after the script add-row round-trip"),
+		if (!this->Assert.AreEqual(
+			3,
 			DataTable->GetRowNames().Num(),
-			3);
+			TEXT("Native data table should contain three rows after the script add-row round-trip")))
+		{
+			return;
+		}
 
 		const FAngelscriptBindingDataTableRow* AlphaRow = FindBindingRow(*TestRunner, *DataTable, TEXT("Alpha"), TEXT("Data table row handle compat"));
 		const FAngelscriptBindingDataTableRow* BetaRow = FindBindingRow(*TestRunner, *DataTable, TEXT("Beta"), TEXT("Data table row handle compat"));
@@ -244,15 +254,15 @@ int Entry()
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Alpha row category should match the script-authored value"), AlphaRow->Category, FName(TEXT("Enemy")));
-		TestRunner->TestEqual(TEXT("Alpha row count should match the script-authored value"), AlphaRow->Count, 2);
-		TestRunner->TestEqual(TEXT("Alpha row label should match the script-authored value"), AlphaRow->Label, FString(TEXT("Alpha")));
-		TestRunner->TestEqual(TEXT("Beta row category should match the script-authored value"), BetaRow->Category, FName(TEXT("Item")));
-		TestRunner->TestEqual(TEXT("Beta row count should match the script-authored value"), BetaRow->Count, 7);
-		TestRunner->TestEqual(TEXT("Beta row label should match the script-authored value"), BetaRow->Label, FString(TEXT("Beta")));
-		TestRunner->TestEqual(TEXT("Gamma row category should match the script-authored value"), GammaRow->Category, FName(TEXT("Enemy")));
-		TestRunner->TestEqual(TEXT("Gamma row count should match the script-authored value"), GammaRow->Count, 5);
-		TestRunner->TestEqual(TEXT("Gamma row label should match the script-authored value"), GammaRow->Label, FString(TEXT("Gamma")));
+		ASSERT_THAT(AreEqual(FName(TEXT("Enemy")), AlphaRow->Category, TEXT("Alpha row category should match the script-authored value")));
+		ASSERT_THAT(AreEqual(2, AlphaRow->Count, TEXT("Alpha row count should match the script-authored value")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Alpha")), AlphaRow->Label, TEXT("Alpha row label should match the script-authored value")));
+		ASSERT_THAT(AreEqual(FName(TEXT("Item")), BetaRow->Category, TEXT("Beta row category should match the script-authored value")));
+		ASSERT_THAT(AreEqual(7, BetaRow->Count, TEXT("Beta row count should match the script-authored value")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Beta")), BetaRow->Label, TEXT("Beta row label should match the script-authored value")));
+		ASSERT_THAT(AreEqual(FName(TEXT("Enemy")), GammaRow->Category, TEXT("Gamma row category should match the script-authored value")));
+		ASSERT_THAT(AreEqual(5, GammaRow->Count, TEXT("Gamma row count should match the script-authored value")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Gamma")), GammaRow->Label, TEXT("Gamma row label should match the script-authored value")));
 	}
 
 	// ====================================================================
@@ -271,7 +281,7 @@ int Entry()
 
 		const FName TableName = MakeUniqueObjectName(GetTransientPackage(), UDataTable::StaticClass(), TEXT("BindingDataTableErrorPaths"));
 		UDataTable* DataTable = NewObject<UDataTable>(GetTransientPackage(), TableName);
-		if (!TestRunner->TestNotNull(TEXT("Data table error-path test should create a transient UDataTable"), DataTable))
+		if (!this->Assert.IsNotNull(DataTable, TEXT("Data table error-path test should create a transient UDataTable")))
 		{
 			return;
 		}
@@ -378,17 +388,26 @@ int Entry()
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Data table error paths should keep wrong-struct, null-handle and invalid-category operations fail-closed"),
+		if (!this->Assert.AreEqual(
+			1,
 			StateResult,
-			1);
-		TestRunner->TestEqual(
-			TEXT("Data table error paths should keep the native table row count unchanged after wrong-struct AddRow"),
+			TEXT("Data table error paths should keep wrong-struct, null-handle and invalid-category operations fail-closed")))
+		{
+			return;
+		}
+		if (!this->Assert.AreEqual(
+			1,
 			DataTable->GetRowNames().Num(),
-			1);
-		TestRunner->TestFalse(
-			TEXT("Data table error paths should not create a new row when AddRow receives the wrong struct type"),
-			DataTable->GetRowNames().Contains(TEXT("Bad")));
+			TEXT("Data table error paths should keep the native table row count unchanged after wrong-struct AddRow")))
+		{
+			return;
+		}
+		if (!this->Assert.IsFalse(
+			DataTable->GetRowNames().Contains(TEXT("Bad")),
+			TEXT("Data table error paths should not create a new row when AddRow receives the wrong struct type")))
+		{
+			return;
+		}
 
 		asIScriptModule* WrongArrayModule = BuildModule(*TestRunner, Engine, "ASDataTableErrorPathsWrongArray", WrongArrayScript);
 		if (WrongArrayModule == nullptr)
@@ -407,7 +426,7 @@ int Entry()
 		TestRunner->AddExpectedError(TEXT("OutArray must be a TArray of structs."), EAutomationExpectedErrorFlags::Contains, 1);
 
 		asIScriptContext* WrongArrayContext = Engine.CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("Data table error paths should create a context for the wrong-array test case"), WrongArrayContext))
+		if (!this->Assert.IsNotNull(WrongArrayContext, TEXT("Data table error paths should create a context for the wrong-array test case")))
 		{
 			return;
 		}
@@ -418,30 +437,30 @@ int Entry()
 		};
 
 		const int WrongArrayPrepareResult = WrongArrayContext->Prepare(WrongArrayEntryFunction);
-		if (!TestRunner->TestEqual(
-				TEXT("Data table error paths should prepare the wrong-array test case successfully"),
+		if (!this->Assert.AreEqual(
+				static_cast<int32>(asSUCCESS),
 				WrongArrayPrepareResult,
-				static_cast<int32>(asSUCCESS)))
+				TEXT("Data table error paths should prepare the wrong-array test case successfully")))
 		{
 			return;
 		}
 
 		const int WrongArrayExecuteResult = WrongArrayContext->Execute();
-		TestRunner->TestEqual(
-			TEXT("Data table error paths should raise a script exception when GetAllRows receives a TArray with the wrong subtype"),
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(asEXECUTION_EXCEPTION),
 			WrongArrayExecuteResult,
-			static_cast<int32>(asEXECUTION_EXCEPTION));
+			TEXT("Data table error paths should raise a script exception when GetAllRows receives a TArray with the wrong subtype")));
 		const FString WrongArrayException = WrongArrayContext->GetExceptionString() != nullptr
 			? UTF8_TO_TCHAR(WrongArrayContext->GetExceptionString())
 			: TEXT("");
-		TestRunner->TestEqual(
-			TEXT("Data table error paths should preserve the thrown wrong-array exception text"),
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("OutArray must be a TArray of structs.")),
 			WrongArrayException,
-			FString(TEXT("OutArray must be a TArray of structs.")));
-		TestRunner->TestEqual(
-			TEXT("Data table error paths should keep the native table unchanged after wrong-array execution fails"),
+			TEXT("Data table error paths should preserve the thrown wrong-array exception text")));
+		ASSERT_THAT(AreEqual(
+			1,
 			DataTable->GetRowNames().Num(),
-			1);
+			TEXT("Data table error paths should keep the native table unchanged after wrong-array execution fails")));
 	}
 };
 

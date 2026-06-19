@@ -103,10 +103,11 @@ class UComposeOntoProjected : UObject
 		}
 
 		OutPreparedModules.Modules = Preprocessor.GetModulesToCompile();
-		if (!Test.TestEqual(
-			TEXT("ComposeOntoClass missing-target test should preprocess exactly one module descriptor"),
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.AreEqual(
+			1,
 			OutPreparedModules.Modules.Num(),
-			1))
+			TEXT("ComposeOntoClass missing-target test should preprocess exactly one module descriptor")))
 		{
 			return false;
 		}
@@ -203,16 +204,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComposeOntoClassTests,
 			}
 		};
 
-		if (!TestRunner->TestEqual(
-			TEXT("ComposeOntoClass missing-target test should preprocess exactly one class descriptor"),
+		if (!this->Assert.AreEqual(
+			1,
 			PreparedModules.Modules[0]->Classes.Num(),
-			1))
+			TEXT("ComposeOntoClass missing-target test should preprocess exactly one class descriptor")))
 		{
 			return;
 		}
 
 		TSharedPtr<FAngelscriptClassDesc> ClassDesc = PreparedModules.Modules[0]->Classes[0];
-		if (!TestRunner->TestNotNull(TEXT("ComposeOntoClass missing-target test should preprocess a class descriptor"), ClassDesc.Get()))
+		if (!this->Assert.IsNotNull(ClassDesc.Get(), TEXT("ComposeOntoClass missing-target test should preprocess a class descriptor")))
 		{
 			return;
 		}
@@ -227,22 +228,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComposeOntoClassTests,
 			ComposeOntoClassTest::MissingComposeTarget
 		};
 
-		TestRunner->TestEqual(
-			TEXT("ComposeOntoClass missing-target test should fail compilation instead of silently succeeding"),
+		ASSERT_THAT(AreEqual(
+			ECompileResult::Error,
 			CompileResult,
-			ECompileResult::Error);
-		TestRunner->TestTrue(
-			TEXT("ComposeOntoClass missing-target test should emit a diagnostic naming the missing compose target"),
+			TEXT("ComposeOntoClass missing-target test should fail compilation instead of silently succeeding")));
+		ASSERT_THAT(IsTrue(
 			ComposeOntoClassTest::DiagnosticsContainAllFragments(
 				Engine,
 				PreparedModules.AbsoluteFilename,
-				ExpectedDiagnosticFragments));
-		TestRunner->TestNull(
-			TEXT("ComposeOntoClass missing-target test should not publish the composed script class"),
-			FindGeneratedClass(&Engine, ComposeOntoClassTest::GeneratedClassName));
-		TestRunner->TestTrue(
-			TEXT("ComposeOntoClass missing-target test should not publish a module record after failure"),
-			!Engine.GetModuleByModuleName(PreparedModuleName).IsValid());
+				ExpectedDiagnosticFragments),
+			TEXT("ComposeOntoClass missing-target test should emit a diagnostic naming the missing compose target")));
+		ASSERT_THAT(IsNull(
+			FindGeneratedClass(&Engine, ComposeOntoClassTest::GeneratedClassName),
+			TEXT("ComposeOntoClass missing-target test should not publish the composed script class")));
+		ASSERT_THAT(IsTrue(
+			!Engine.GetModuleByModuleName(PreparedModuleName).IsValid(),
+			TEXT("ComposeOntoClass missing-target test should not publish a module record after failure")));
 
 		}
 	}
@@ -288,10 +289,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComposeOntoClassTests,
 			}
 		};
 
-		if (!TestRunner->TestEqual(
-			TEXT("ComposeOntoClass valid-target test should preprocess exactly two class descriptors"),
+		if (!this->Assert.AreEqual(
+			2,
 			PreparedModules.Modules[0]->Classes.Num(),
-			2))
+			TEXT("ComposeOntoClass valid-target test should preprocess exactly two class descriptors")))
 		{
 			return;
 		}
@@ -310,8 +311,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComposeOntoClassTests,
 			}
 		}
 
-		if (!TestRunner->TestNotNull(TEXT("ComposeOntoClass valid-target test should preprocess the compose host descriptor"), HostClassDesc.Get())
-			|| !TestRunner->TestNotNull(TEXT("ComposeOntoClass valid-target test should preprocess the projected descriptor"), ProjectedClassDesc.Get()))
+		if (!this->Assert.IsNotNull(HostClassDesc.Get(), TEXT("ComposeOntoClass valid-target test should preprocess the compose host descriptor"))
+			|| !this->Assert.IsNotNull(ProjectedClassDesc.Get(), TEXT("ComposeOntoClass valid-target test should preprocess the projected descriptor")))
 		{
 			return;
 		}
@@ -327,22 +328,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComposeOntoClassTests,
 			ComposeOntoClassTest::ExpectedComposeUnsupportedFragment
 		};
 
-		TestRunner->TestEqual(
-			TEXT("ComposeOntoClass valid-target test should fail compilation instead of silently publishing a no-op composed class"),
+		ASSERT_THAT(AreEqual(
+			ECompileResult::Error,
 			CompileResult,
-			ECompileResult::Error);
-		TestRunner->TestTrue(
-			TEXT("ComposeOntoClass valid-target test should emit an unsupported-yet diagnostic for the real compose target"),
+			TEXT("ComposeOntoClass valid-target test should fail compilation instead of silently publishing a no-op composed class")));
+		ASSERT_THAT(IsTrue(
 			ComposeOntoClassTest::DiagnosticsContainAllFragments(
 				Engine,
 				PreparedModules.AbsoluteFilename,
-				ExpectedDiagnosticFragments));
-		TestRunner->TestNull(
-			TEXT("ComposeOntoClass valid-target test should not publish the projected compose class while compose materialization is unsupported"),
-			FindGeneratedClass(&Engine, ComposeOntoClassTest::ComposeProjectedClassName));
-		TestRunner->TestTrue(
-			TEXT("ComposeOntoClass valid-target test should not publish a module record after the unsupported compose path"),
-			!Engine.GetModuleByModuleName(PreparedModuleName).IsValid());
+				ExpectedDiagnosticFragments),
+			TEXT("ComposeOntoClass valid-target test should emit an unsupported-yet diagnostic for the real compose target")));
+		ASSERT_THAT(IsNull(
+			FindGeneratedClass(&Engine, ComposeOntoClassTest::ComposeProjectedClassName),
+			TEXT("ComposeOntoClass valid-target test should not publish the projected compose class while compose materialization is unsupported")));
+		ASSERT_THAT(IsTrue(
+			!Engine.GetModuleByModuleName(PreparedModuleName).IsValid(),
+			TEXT("ComposeOntoClass valid-target test should not publish a module record after the unsupported compose path")));
 
 		}
 	}

@@ -52,14 +52,14 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUClassSpecifierMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("Abstract class specifier should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("Abstract class specifier should compile")))
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UAbstractTestObj"));
-		if (!TestRunner->TestNotNull(TEXT("Class should exist"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Class should exist")))
 			return;
 
-		TestRunner->TestTrue(TEXT("Abstract should set CLASS_Abstract"), GeneratedClass->HasAnyClassFlags(CLASS_Abstract));
+		ASSERT_THAT(IsTrue(GeneratedClass->HasAnyClassFlags(CLASS_Abstract), TEXT("Abstract should set CLASS_Abstract")));
 
 		}
 
@@ -93,15 +93,16 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUClassSpecifierMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("BlueprintType class specifier should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("BlueprintType class specifier should compile")))
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UBlueprintTypeTestObj"));
-		if (!TestRunner->TestNotNull(TEXT("Class should exist"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Class should exist")))
 			return;
 
-		TestRunner->TestTrue(TEXT("BlueprintType should set metadata"),
-			GeneratedClass->HasMetaData(TEXT("BlueprintType")));
+		ASSERT_THAT(IsTrue(
+			GeneratedClass->HasMetaData(TEXT("BlueprintType")),
+			TEXT("BlueprintType should set metadata")));
 
 		}
 
@@ -135,15 +136,16 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUClassSpecifierMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("DefaultToInstanced class specifier should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("DefaultToInstanced class specifier should compile")))
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UInstancedTestObj"));
-		if (!TestRunner->TestNotNull(TEXT("Class should exist"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Class should exist")))
 			return;
 
-		TestRunner->TestTrue(TEXT("DefaultToInstanced should set CLASS_DefaultToInstanced"),
-			GeneratedClass->HasAnyClassFlags(CLASS_DefaultToInstanced));
+		ASSERT_THAT(IsTrue(
+			GeneratedClass->HasAnyClassFlags(CLASS_DefaultToInstanced),
+			TEXT("DefaultToInstanced should set CLASS_DefaultToInstanced")));
 
 		}
 
@@ -177,15 +179,16 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUClassSpecifierMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("Deprecated class specifier should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("Deprecated class specifier should compile")))
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UDeprecatedTestObj"));
-		if (!TestRunner->TestNotNull(TEXT("Class should exist"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Class should exist")))
 			return;
 
-		TestRunner->TestTrue(TEXT("Deprecated should set CLASS_Deprecated"),
-			GeneratedClass->HasAnyClassFlags(CLASS_Deprecated));
+		ASSERT_THAT(IsTrue(
+			GeneratedClass->HasAnyClassFlags(CLASS_Deprecated),
+			TEXT("Deprecated should set CLASS_Deprecated")));
 
 		}
 
@@ -219,15 +222,16 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineUClassSpecifierMatrixTests,
 	)AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("HideCategories class specifier should compile"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("HideCategories class specifier should compile")))
 			return;
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UHideCategoriesTestObj"));
-		if (!TestRunner->TestNotNull(TEXT("Class should exist"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Class should exist")))
 			return;
 
-		TestRunner->TestTrue(TEXT("HideCategories should set metadata"),
-			GeneratedClass->HasMetaData(TEXT("HideCategories")));
+		ASSERT_THAT(IsTrue(
+			GeneratedClass->HasMetaData(TEXT("HideCategories")),
+			TEXT("HideCategories should set metadata")));
 
 		}
 

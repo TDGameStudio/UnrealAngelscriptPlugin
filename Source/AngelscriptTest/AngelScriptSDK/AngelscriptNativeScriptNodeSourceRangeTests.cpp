@@ -17,10 +17,10 @@ using namespace AngelscriptNativeTestSupport;
 
 namespace
 {
-	bool ParseRangeScript(FAutomationTestBase& Test, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(asCScriptCode&, const asCScriptNode&)> Verify)
+	bool ParseRangeScript(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(asCScriptCode&, const asCScriptNode&)> Verify)
 	{
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
-		if (!Test.TestNotNull(FString::Printf(TEXT("%s should create a source-range module"), UTF8_TO_TCHAR(ModuleName)), Module))
+		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a source-range module"), UTF8_TO_TCHAR(ModuleName))))
 		{
 			return false;
 		}
@@ -31,13 +31,13 @@ namespace
 
 		FParserAccessor Parser(&Builder);
 		const int ParseResult = Parser.ParseScript(&Code);
-		if (!Test.TestEqual(FString::Printf(TEXT("%s should parse successfully"), UTF8_TO_TCHAR(ModuleName)), ParseResult, 0))
+		if (!Assert.AreEqual(0, ParseResult, FString::Printf(TEXT("%s should parse successfully"), UTF8_TO_TCHAR(ModuleName))))
 		{
 			return false;
 		}
 
 		const asCScriptNode* Root = Parser.GetScriptNode();
-		if (!Test.TestNotNull(FString::Printf(TEXT("%s should produce a script root"), UTF8_TO_TCHAR(ModuleName)), Root))
+		if (!Assert.IsNotNull(Root, FString::Printf(TEXT("%s should produce a script root"), UTF8_TO_TCHAR(ModuleName))))
 		{
 			return false;
 		}
@@ -62,63 +62,74 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeSourceRangeTests,
 	TEST_METHOD(LineColPropagatedToFunction)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("ScriptNode source-range test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode source-range test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseRangeScript(*TestRunner, BareEngine, "ScriptNodeRangeFunction", "\n\nint Read() { return 7; }", [&](asCScriptCode& Code, const asCScriptNode& Root)
+		ParseRangeScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeRangeFunction", "\n\nint Read() { return 7; }", [&](asCScriptCode& Code, const asCScriptNode& Root)
 		{
 			const asCScriptNode* FunctionNode = FindFirstNodeOfType(&Root, snFunction);
-			if (!TestRunner->TestNotNull(TEXT("Function source-range test should find a function node"), FunctionNode))
+			if (!this->Assert.IsNotNull(FunctionNode, TEXT("Function source-range test should find a function node")))
 			{
 				return;
 			}
 
 			const FIntPoint RowCol = RowColFor(Code, *FunctionNode);
-			TestRunner->TestEqual(TEXT("Function node should start on the third source line"), RowCol.X, 3);
-			TestRunner->TestEqual(TEXT("Function node should start at the first source column"), RowCol.Y, 1);
-			TestRunner->TestTrue(TEXT("Function node source range should cover the function body"), FunctionNode->tokenLength >= std::strlen("int Read() { return 7; }"));
+			if (!this->Assert.AreEqual(3, RowCol.X,
+				TEXT("Function node should start on the third source line")))
+			{
+				return;
+			}
+			if (!this->Assert.AreEqual(1, RowCol.Y,
+				TEXT("Function node should start at the first source column")))
+			{
+				return;
+			}
+			if (!this->Assert.IsTrue(FunctionNode->tokenLength >= std::strlen("int Read() { return 7; }"),
+				TEXT("Function node source range should cover the function body")))
+			{
+				return;
+			}
 		});
 	}
 
 	TEST_METHOD(LineColPropagatedToClassMember)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("ScriptNode source-range test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode source-range test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseRangeScript(*TestRunner, BareEngine, "ScriptNodeRangeClassMember", "class FRange\n{\n\tint Value;\n}", [&](asCScriptCode& Code, const asCScriptNode& Root)
+		ParseRangeScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeRangeClassMember", "class FRange\n{\n\tint Value;\n}", [&](asCScriptCode& Code, const asCScriptNode& Root)
 		{
 			const asCScriptNode* DeclarationNode = FindFirstNodeOfType(&Root, snDeclaration);
-			if (!TestRunner->TestNotNull(TEXT("Class-member source-range test should find a declaration node"), DeclarationNode))
+			if (!this->Assert.IsNotNull(DeclarationNode, TEXT("Class-member source-range test should find a declaration node")))
 			{
 				return;
 			}
 
 			const FIntPoint RowCol = RowColFor(Code, *DeclarationNode);
-			TestRunner->TestEqual(TEXT("Class member declaration should start on the third source line"), RowCol.X, 3);
-			TestRunner->TestEqual(TEXT("Class member declaration should start after the tab indentation"), RowCol.Y, 2);
+			if (!this->Assert.AreEqual(3, RowCol.X,
+				TEXT("Class member declaration should start on the third source line")))
+			{
+				return;
+			}
+			if (!this->Assert.AreEqual(2, RowCol.Y,
+				TEXT("Class member declaration should start after the tab indentation")))
+			{
+				return;
+			}
 		});
 	}
 
 	TEST_METHOD(MultilineStatementSpansCorrectRange)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("ScriptNode source-range test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode source-range test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseRangeScript(*TestRunner, BareEngine, "ScriptNodeRangeMultiline", "int Value =\n\t1 +\n\t2;", [&](asCScriptCode& Code, const asCScriptNode& Root)
+		ParseRangeScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeRangeMultiline", "int Value =\n\t1 +\n\t2;", [&](asCScriptCode& Code, const asCScriptNode& Root)
 		{
 			const asCScriptNode* DeclarationNode = FindFirstNodeOfType(&Root, snDeclaration);
-			if (!TestRunner->TestNotNull(TEXT("Multiline source-range test should find a declaration node"), DeclarationNode))
+			if (!this->Assert.IsNotNull(DeclarationNode, TEXT("Multiline source-range test should find a declaration node")))
 			{
 				return;
 			}
@@ -127,56 +138,78 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeSourceRangeTests,
 			int EndRow = 0;
 			int EndColumn = 0;
 			Code.ConvertPosToRowCol(DeclarationNode->tokenPos + DeclarationNode->tokenLength - 1, &EndRow, &EndColumn);
-			TestRunner->TestEqual(TEXT("Multiline declaration should start on the first line"), Start.X, 1);
-			TestRunner->TestTrue(TEXT("Multiline declaration source range should reach the third line"), EndRow >= 3);
-			TestRunner->TestTrue(TEXT("Multiline declaration source range should include more than the identifier"), DeclarationNode->tokenLength > std::strlen("Value"));
+			if (!this->Assert.AreEqual(1, Start.X,
+				TEXT("Multiline declaration should start on the first line")))
+			{
+				return;
+			}
+			if (!this->Assert.IsTrue(EndRow >= 3,
+				TEXT("Multiline declaration source range should reach the third line")))
+			{
+				return;
+			}
+			if (!this->Assert.IsTrue(DeclarationNode->tokenLength > std::strlen("Value"),
+				TEXT("Multiline declaration source range should include more than the identifier")))
+			{
+				return;
+			}
 		});
 	}
 
 	TEST_METHOD(CommentSkippedDoesNotShiftNextNodeLine)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("ScriptNode source-range test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode source-range test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseRangeScript(*TestRunner, BareEngine, "ScriptNodeRangeComment", "// skipped comment\nint Value = 1;", [&](asCScriptCode& Code, const asCScriptNode& Root)
+		ParseRangeScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeRangeComment", "// skipped comment\nint Value = 1;", [&](asCScriptCode& Code, const asCScriptNode& Root)
 		{
 			const asCScriptNode* DeclarationNode = FindFirstNodeOfType(&Root, snDeclaration);
-			if (!TestRunner->TestNotNull(TEXT("Comment source-range test should find a declaration node"), DeclarationNode))
+			if (!this->Assert.IsNotNull(DeclarationNode, TEXT("Comment source-range test should find a declaration node")))
 			{
 				return;
 			}
 
 			const FIntPoint RowCol = RowColFor(Code, *DeclarationNode);
-			TestRunner->TestEqual(TEXT("Declaration after a line comment should start on the second line"), RowCol.X, 2);
-			TestRunner->TestEqual(TEXT("Declaration after a line comment should start at column one"), RowCol.Y, 1);
+			if (!this->Assert.AreEqual(2, RowCol.X,
+				TEXT("Declaration after a line comment should start on the second line")))
+			{
+				return;
+			}
+			if (!this->Assert.AreEqual(1, RowCol.Y,
+				TEXT("Declaration after a line comment should start at column one")))
+			{
+				return;
+			}
 		});
 	}
 
 	TEST_METHOD(BomDoesNotPoisonFirstNodeColumn)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		if (!TestRunner->TestNotNull(TEXT("ScriptNode source-range test should create a bare engine"), BareEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode source-range test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
 		const char SourceWithBom[] = "\xEF\xBB\xBFint Value = 1;";
-		ParseRangeScript(*TestRunner, BareEngine, "ScriptNodeRangeBom", SourceWithBom, [&](asCScriptCode& Code, const asCScriptNode& Root)
+		ParseRangeScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeRangeBom", SourceWithBom, [&](asCScriptCode& Code, const asCScriptNode& Root)
 		{
 			const asCScriptNode* DeclarationNode = FindFirstNodeOfType(&Root, snDeclaration);
-			if (!TestRunner->TestNotNull(TEXT("BOM source-range test should find a declaration node"), DeclarationNode))
+			if (!this->Assert.IsNotNull(DeclarationNode, TEXT("BOM source-range test should find a declaration node")))
 			{
 				return;
 			}
 
 			const FIntPoint RowCol = RowColFor(Code, *DeclarationNode);
-			TestRunner->TestEqual(TEXT("Declaration after a UTF-8 BOM should remain on the first line"), RowCol.X, 1);
-			TestRunner->TestEqual(TEXT("Declaration after a UTF-8 BOM should start after the three BOM bytes"), RowCol.Y, 4);
+			if (!this->Assert.AreEqual(1, RowCol.X,
+				TEXT("Declaration after a UTF-8 BOM should remain on the first line")))
+			{
+				return;
+			}
+			if (!this->Assert.AreEqual(4, RowCol.Y,
+				TEXT("Declaration after a UTF-8 BOM should start after the three BOM bytes")))
+			{
+				return;
+			}
 		});
 	}
 };

@@ -31,7 +31,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOptimizeTests,
 		Fixture.ByteCode->Optimize();
 		const int32 AfterSize = Fixture.ByteCode->GetSize();
 
-		TestRunner->TestTrue(TEXT("Optimize should reduce or preserve bytecode size"), AfterSize <= BeforeSize);
+		ASSERT_THAT(IsTrue(AfterSize <= BeforeSize,
+			TEXT("Optimize should reduce or preserve bytecode size")));
 	}
 
 	TEST_METHOD(OptimizeKeepsSemanticHeadAndTail)
@@ -46,8 +47,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOptimizeTests,
 		Fixture.ByteCode->Ret(0);
 		Fixture.ByteCode->Optimize();
 
-		TestRunner->TestEqual(TEXT("Optimize should keep the first semantic opcode"), static_cast<int32>(Fixture.ByteCode->GetFirstInstr()->op), static_cast<int32>(asBC_PshC4));
-		TestRunner->TestEqual(TEXT("Optimize should keep the tail RET opcode"), Fixture.ByteCode->GetLastInstr(), static_cast<int32>(asBC_RET));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asBC_PshC4), static_cast<int32>(Fixture.ByteCode->GetFirstInstr()->op),
+			TEXT("Optimize should keep the first semantic opcode")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asBC_RET), Fixture.ByteCode->GetLastInstr(),
+			TEXT("Optimize should keep the tail RET opcode")));
 	}
 
 	TEST_METHOD(OutputBufferSizeMatchesGetSize)
@@ -62,8 +65,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOptimizeTests,
 		Fixture.ByteCode->InstrDWORD(asBC_PshC4, 22);
 		const TArray<asDWORD> Buffer = AngelscriptNativeTestSupport::EmitToBuffer(*Fixture.ByteCode);
 
-		TestRunner->TestEqual(TEXT("Output buffer should have one dword per GetSize unit"), Buffer.Num(), Fixture.ByteCode->GetSize());
-		TestRunner->TestTrue(TEXT("Output buffer should not be empty for emitted bytecode"), Buffer.Num() > 0);
+		ASSERT_THAT(AreEqual(Fixture.ByteCode->GetSize(), Buffer.Num(),
+			TEXT("Output buffer should have one dword per GetSize unit")));
+		ASSERT_THAT(IsTrue(Buffer.Num() > 0,
+			TEXT("Output buffer should not be empty for emitted bytecode")));
 	}
 
 	TEST_METHOD(OutputBufferRoundTripStable)
@@ -79,8 +84,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOptimizeTests,
 		const TArray<asDWORD> FirstBuffer = AngelscriptNativeTestSupport::EmitToBuffer(*Fixture.ByteCode);
 		const TArray<asDWORD> SecondBuffer = AngelscriptNativeTestSupport::EmitToBuffer(*Fixture.ByteCode);
 
-		TestRunner->TestEqual(TEXT("Repeated Output calls should produce the same buffer size"), SecondBuffer.Num(), FirstBuffer.Num());
-		TestRunner->TestTrue(TEXT("Repeated Output calls should produce byte-for-byte stable buffers"), FirstBuffer == SecondBuffer);
+		ASSERT_THAT(AreEqual(FirstBuffer.Num(), SecondBuffer.Num(),
+			TEXT("Repeated Output calls should produce the same buffer size")));
+		ASSERT_THAT(IsTrue(FirstBuffer == SecondBuffer,
+			TEXT("Repeated Output calls should produce byte-for-byte stable buffers")));
 	}
 
 	TEST_METHOD(OutputAfterAppendIsContiguous)
@@ -99,8 +106,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOptimizeTests,
 		Fixture.ByteCode->AddCode(&Tail);
 
 		const TArray<asDWORD> Buffer = AngelscriptNativeTestSupport::EmitToBuffer(*Fixture.ByteCode);
-		TestRunner->TestEqual(TEXT("Appended output should equal head plus tail sizes"), Buffer.Num(), HeadSize + TailSize);
-		TestRunner->TestEqual(TEXT("Appended output should keep the second payload after the second opcode"), static_cast<int32>(Buffer[HeadSize + 1]), 2);
+		ASSERT_THAT(AreEqual(HeadSize + TailSize, Buffer.Num(),
+			TEXT("Appended output should equal head plus tail sizes")));
+		ASSERT_THAT(AreEqual(2, static_cast<int32>(Buffer[HeadSize + 1]),
+			TEXT("Appended output should keep the second payload after the second opcode")));
 	}
 
 	TEST_METHOD(EmptyByteCodeGetSizeIsZero)
@@ -111,9 +120,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOptimizeTests,
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Fresh bytecode should have zero emitted size"), Fixture.ByteCode->GetSize(), 0);
-		TestRunner->TestEqual(TEXT("Fresh bytecode output helper should return an empty buffer"), AngelscriptNativeTestSupport::EmitToBuffer(*Fixture.ByteCode).Num(), 0);
-		TestRunner->TestEqual(TEXT("Fresh bytecode should report no last instruction"), Fixture.ByteCode->GetLastInstr(), -1);
+		ASSERT_THAT(AreEqual(0, Fixture.ByteCode->GetSize(),
+			TEXT("Fresh bytecode should have zero emitted size")));
+		ASSERT_THAT(AreEqual(0, AngelscriptNativeTestSupport::EmitToBuffer(*Fixture.ByteCode).Num(),
+			TEXT("Fresh bytecode output helper should return an empty buffer")));
+		ASSERT_THAT(AreEqual(-1, Fixture.ByteCode->GetLastInstr(),
+			TEXT("Fresh bytecode should report no last instruction")));
 	}
 
 	TEST_METHOD(LastInstrValueDwAfterMixedOps)
@@ -127,8 +139,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOptimizeTests,
 		Fixture.ByteCode->InstrDWORD(asBC_PshC4, 7);
 		Fixture.ByteCode->InstrDWORD(asBC_JMP, 12);
 
-		TestRunner->TestEqual(TEXT("GetLastInstr should report the final DWORD opcode"), Fixture.ByteCode->GetLastInstr(), static_cast<int32>(asBC_JMP));
-		TestRunner->TestEqual(TEXT("GetLastInstrValueDW should read the final DWORD payload"), static_cast<int32>(Fixture.ByteCode->GetLastInstrValueDW()), 12);
+		ASSERT_THAT(AreEqual(static_cast<int32>(asBC_JMP), Fixture.ByteCode->GetLastInstr(),
+			TEXT("GetLastInstr should report the final DWORD opcode")));
+		ASSERT_THAT(AreEqual(12, static_cast<int32>(Fixture.ByteCode->GetLastInstrValueDW()),
+			TEXT("GetLastInstrValueDW should read the final DWORD payload")));
 	}
 
 	TEST_METHOD(GetLastInstrTypeAfterRet)
@@ -142,9 +156,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOptimizeTests,
 		Fixture.ByteCode->InstrDWORD(asBC_PshC4, 7);
 		Fixture.ByteCode->Ret(0);
 
-		TestRunner->TestEqual(TEXT("GetLastInstr should report RET after Ret helper"), Fixture.ByteCode->GetLastInstr(), static_cast<int32>(asBC_RET));
-		TestRunner->TestTrue(TEXT("Bytecode should still contain the earlier PshC4"), ContainsOpcode(*Fixture.ByteCode, asBC_PshC4));
-		TestRunner->TestEqual(TEXT("Ret helper should add exactly two instructions in this sequence"), CountInstructions(*Fixture.ByteCode), 2);
+		ASSERT_THAT(AreEqual(static_cast<int32>(asBC_RET), Fixture.ByteCode->GetLastInstr(),
+			TEXT("GetLastInstr should report RET after Ret helper")));
+		ASSERT_THAT(IsTrue(ContainsOpcode(*Fixture.ByteCode, asBC_PshC4),
+			TEXT("Bytecode should still contain the earlier PshC4")));
+		ASSERT_THAT(AreEqual(2, CountInstructions(*Fixture.ByteCode),
+			TEXT("Ret helper should add exactly two instructions in this sequence")));
 	}
 };
 

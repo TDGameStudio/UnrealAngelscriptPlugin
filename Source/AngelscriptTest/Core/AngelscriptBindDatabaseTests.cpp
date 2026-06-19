@@ -88,29 +88,31 @@ namespace AngelscriptTest_Core_AngelscriptBindDatabaseTests_Private
 
 	bool ExpectPropertyBindEquals(FAutomationTestBase& Test, const TCHAR* Context, const FAngelscriptPropertyBind& Actual, const FAngelscriptPropertyBind& Expected)
 	{
+		FNoDiscardAsserter Assert(Test);
 		bool bOk = true;
-		bOk &= Test.TestEqual(*FString::Printf(TEXT("%s should round-trip property declaration"), Context), Actual.Declaration, Expected.Declaration);
-		bOk &= Test.TestEqual(*FString::Printf(TEXT("%s should round-trip property UnrealPath"), Context), Actual.UnrealPath, Expected.UnrealPath);
-		bOk &= Test.TestEqual(*FString::Printf(TEXT("%s should round-trip property bCanWrite"), Context), Actual.bCanWrite, Expected.bCanWrite);
-		bOk &= Test.TestEqual(*FString::Printf(TEXT("%s should round-trip property bCanRead"), Context), Actual.bCanRead, Expected.bCanRead);
-		bOk &= Test.TestEqual(*FString::Printf(TEXT("%s should round-trip property bCanEdit"), Context), Actual.bCanEdit, Expected.bCanEdit);
+		bOk &= Assert.AreEqual(Expected.Declaration, Actual.Declaration, *FString::Printf(TEXT("%s should round-trip property declaration"), Context));
+		bOk &= Assert.AreEqual(Expected.UnrealPath, Actual.UnrealPath, *FString::Printf(TEXT("%s should round-trip property UnrealPath"), Context));
+		bOk &= Assert.AreEqual(Expected.bCanWrite, Actual.bCanWrite, *FString::Printf(TEXT("%s should round-trip property bCanWrite"), Context));
+		bOk &= Assert.AreEqual(Expected.bCanRead, Actual.bCanRead, *FString::Printf(TEXT("%s should round-trip property bCanRead"), Context));
+		bOk &= Assert.AreEqual(Expected.bCanEdit, Actual.bCanEdit, *FString::Printf(TEXT("%s should round-trip property bCanEdit"), Context));
 		return bOk;
 	}
 
 	bool ExpectMethodBindEquals(FAutomationTestBase& Test, const FAngelscriptMethodBind& Actual, const FAngelscriptMethodBind& Expected)
 	{
+		FNoDiscardAsserter Assert(Test);
 		bool bOk = true;
-		bOk &= Test.TestEqual(TEXT("BindDatabase round-trip should preserve method declaration"), Actual.Declaration, Expected.Declaration);
-		bOk &= Test.TestEqual(TEXT("BindDatabase round-trip should preserve method UnrealPath"), Actual.UnrealPath, Expected.UnrealPath);
-		bOk &= Test.TestEqual(TEXT("BindDatabase round-trip should preserve method ClassName"), Actual.ClassName, Expected.ClassName);
-		bOk &= Test.TestEqual(TEXT("BindDatabase round-trip should preserve method ScriptName"), Actual.ScriptName, Expected.ScriptName);
-		bOk &= Test.TestEqual(TEXT("BindDatabase round-trip should preserve method WorldContextArgument"), static_cast<int32>(Actual.WorldContextArgument), static_cast<int32>(Expected.WorldContextArgument));
-		bOk &= Test.TestEqual(TEXT("BindDatabase round-trip should preserve method DeterminesOutputTypeArgument"), static_cast<int32>(Actual.DeterminesOutputTypeArgument), static_cast<int32>(Expected.DeterminesOutputTypeArgument));
-		bOk &= Test.TestEqual(TEXT("BindDatabase round-trip should preserve method bStaticInUnreal"), Actual.bStaticInUnreal, Expected.bStaticInUnreal);
-		bOk &= Test.TestEqual(TEXT("BindDatabase round-trip should preserve method bStaticInScript"), Actual.bStaticInScript, Expected.bStaticInScript);
-		bOk &= Test.TestEqual(TEXT("BindDatabase round-trip should preserve method bGlobalScope"), Actual.bGlobalScope, Expected.bGlobalScope);
-		bOk &= Test.TestEqual(TEXT("BindDatabase round-trip should preserve method bNotAngelscriptProperty"), Actual.bNotAngelscriptProperty, Expected.bNotAngelscriptProperty);
-		bOk &= Test.TestEqual(TEXT("BindDatabase round-trip should preserve method bTrivial"), Actual.bTrivial, Expected.bTrivial);
+		bOk &= Assert.AreEqual(Expected.Declaration, Actual.Declaration, TEXT("BindDatabase round-trip should preserve method declaration"));
+		bOk &= Assert.AreEqual(Expected.UnrealPath, Actual.UnrealPath, TEXT("BindDatabase round-trip should preserve method UnrealPath"));
+		bOk &= Assert.AreEqual(Expected.ClassName, Actual.ClassName, TEXT("BindDatabase round-trip should preserve method ClassName"));
+		bOk &= Assert.AreEqual(Expected.ScriptName, Actual.ScriptName, TEXT("BindDatabase round-trip should preserve method ScriptName"));
+		bOk &= Assert.AreEqual(static_cast<int32>(Expected.WorldContextArgument), static_cast<int32>(Actual.WorldContextArgument), TEXT("BindDatabase round-trip should preserve method WorldContextArgument"));
+		bOk &= Assert.AreEqual(static_cast<int32>(Expected.DeterminesOutputTypeArgument), static_cast<int32>(Actual.DeterminesOutputTypeArgument), TEXT("BindDatabase round-trip should preserve method DeterminesOutputTypeArgument"));
+		bOk &= Assert.AreEqual(Expected.bStaticInUnreal, Actual.bStaticInUnreal, TEXT("BindDatabase round-trip should preserve method bStaticInUnreal"));
+		bOk &= Assert.AreEqual(Expected.bStaticInScript, Actual.bStaticInScript, TEXT("BindDatabase round-trip should preserve method bStaticInScript"));
+		bOk &= Assert.AreEqual(Expected.bGlobalScope, Actual.bGlobalScope, TEXT("BindDatabase round-trip should preserve method bGlobalScope"));
+		bOk &= Assert.AreEqual(Expected.bNotAngelscriptProperty, Actual.bNotAngelscriptProperty, TEXT("BindDatabase round-trip should preserve method bNotAngelscriptProperty"));
+		bOk &= Assert.AreEqual(Expected.bTrivial, Actual.bTrivial, TEXT("BindDatabase round-trip should preserve method bTrivial"));
 		return bOk;
 	}
 
@@ -133,16 +135,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 	{
 		using namespace AngelscriptTest_Core_AngelscriptBindDatabaseTests_Private;
 		FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
-		if (!TestRunner->TestTrue(TEXT("BindDatabase.SaveLoadRoundTripsClassesAndHeaders should acquire an isolated full engine"), Fixture.IsValid())) { return; }
+		if (!this->Assert.IsTrue(Fixture.IsValid(), TEXT("BindDatabase.SaveLoadRoundTripsClassesAndHeaders should acquire an isolated full engine"))) { return; }
 		FAngelscriptEngine& Engine = Fixture.GetEngine();
 		FAngelscriptBindDatabase* LocalDatabase = Engine.GetBindDatabase();
-		if (!TestRunner->TestNotNull(TEXT("BindDatabase.SaveLoadRoundTripsClassesAndHeaders should expose an engine-local bind database"), LocalDatabase)) { return; }
+		if (!this->Assert.IsNotNull(LocalDatabase, TEXT("BindDatabase.SaveLoadRoundTripsClassesAndHeaders should expose an engine-local bind database"))) { return; }
 		FAngelscriptBindDatabase& Database = Engine.GetBindDatabaseForTesting();
-		if (!TestRunner->TestTrue(TEXT("BindDatabase.SaveLoadRoundTripsClassesAndHeaders should resolve GetBindDatabaseForTesting through the scoped engine"), &Database == LocalDatabase)) { return; }
+		if (!this->Assert.IsTrue(&Database == LocalDatabase, TEXT("BindDatabase.SaveLoadRoundTripsClassesAndHeaders should resolve GetBindDatabaseForTesting through the scoped engine"))) { return; }
 
 		UClass* ActorClass = AActor::StaticClass();
 		UScriptStruct* HitResultStruct = TBaseStructure<FHitResult>::Get();
-		if (!TestRunner->TestNotNull(TEXT("should resolve AActor"), ActorClass) || !TestRunner->TestNotNull(TEXT("should resolve FHitResult"), HitResultStruct)) { return; }
+		if (!this->Assert.IsNotNull(ActorClass, TEXT("should resolve AActor")) || !this->Assert.IsNotNull(HitResultStruct, TEXT("should resolve FHitResult"))) { return; }
 
 		const FAngelscriptClassBind ExpectedClassBind = MakeSampleClassBind(ActorClass);
 		const FAngelscriptStructBind ExpectedStructBind = MakeSampleStructBind(HitResultStruct);
@@ -156,37 +158,37 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 		Database.Classes.Add(ExpectedClassBind); Database.Structs.Add(ExpectedStructBind);
 		Database.HeaderLinks.Add(ActorClass, TEXT("Dummy/ActorHeader.h")); Database.HeaderLinks.Add(HitResultStruct, TEXT("Dummy/HitResultHeader.h"));
 		Database.Save(CachePath);
-		if (!TestRunner->TestTrue(TEXT("should write Binds.Cache"), IFileManager::Get().FileExists(*CachePath)) || !TestRunner->TestTrue(TEXT("should write Binds.Cache.Headers"), IFileManager::Get().FileExists(*HeadersPath))) { return; }
+		if (!this->Assert.IsTrue(IFileManager::Get().FileExists(*CachePath), TEXT("should write Binds.Cache")) || !this->Assert.IsTrue(IFileManager::Get().FileExists(*HeadersPath), TEXT("should write Binds.Cache.Headers"))) { return; }
 
 		TArray<uint8> CacheBytes;
-		if (!TestRunner->TestTrue(TEXT("should read Binds.Cache bytes"), FFileHelper::LoadFileToArray(CacheBytes, *CachePath))) { return; }
+		if (!this->Assert.IsTrue(FFileHelper::LoadFileToArray(CacheBytes, *CachePath), TEXT("should read Binds.Cache bytes"))) { return; }
 		FMemoryReader CacheReader(CacheBytes);
 		uint32 CacheMagic = 0;
 		int32 CacheVersion = 0;
 		CacheReader << CacheMagic;
 		CacheReader << CacheVersion;
-		if (!TestRunner->TestEqual(TEXT("should write bind database magic header"), CacheMagic, FAngelscriptBindDatabase::CacheMagic)
-			|| !TestRunner->TestEqual(TEXT("should write current bind database version"), CacheVersion, FAngelscriptBindDatabase::CacheVersion))
+		if (!this->Assert.AreEqual(FAngelscriptBindDatabase::CacheMagic, CacheMagic, TEXT("should write bind database magic header"))
+			|| !this->Assert.AreEqual(FAngelscriptBindDatabase::CacheVersion, CacheVersion, TEXT("should write current bind database version")))
 		{
 			return;
 		}
 
 		Database.Clear();
-		if (!TestRunner->TestEqual(TEXT("should clear class binds"), Database.Classes.Num(), 0) || !TestRunner->TestEqual(TEXT("should clear struct binds"), Database.Structs.Num(), 0) || !TestRunner->TestEqual(TEXT("should clear header links"), Database.HeaderLinks.Num(), 0)) { return; }
+		if (!this->Assert.AreEqual(0, Database.Classes.Num(), TEXT("should clear class binds")) || !this->Assert.AreEqual(0, Database.Structs.Num(), TEXT("should clear struct binds")) || !this->Assert.AreEqual(0, Database.HeaderLinks.Num(), TEXT("should clear header links"))) { return; }
 
 		Database.Load(CachePath, false);
-		if (!TestRunner->TestEqual(TEXT("should restore one class bind"), Database.Classes.Num(), 1) || !TestRunner->TestEqual(TEXT("should restore one struct bind"), Database.Structs.Num(), 1) || !TestRunner->TestEqual(TEXT("should keep header links empty without precompiled"), Database.HeaderLinks.Num(), 0)) { return; }
+		if (!this->Assert.AreEqual(1, Database.Classes.Num(), TEXT("should restore one class bind")) || !this->Assert.AreEqual(1, Database.Structs.Num(), TEXT("should restore one struct bind")) || !this->Assert.AreEqual(0, Database.HeaderLinks.Num(), TEXT("should keep header links empty without precompiled"))) { return; }
 
 		const FAngelscriptClassBind& LoadedClassBind = Database.Classes[0];
 		const FAngelscriptStructBind& LoadedStructBind = Database.Structs[0];
 		bool bOk = true;
-		bOk &= TestRunner->TestEqual(TEXT("should round-trip class TypeName"), LoadedClassBind.TypeName, ExpectedClassBind.TypeName);
-		bOk &= TestRunner->TestEqual(TEXT("should round-trip class UnrealPath"), LoadedClassBind.UnrealPath, ExpectedClassBind.UnrealPath);
-		bOk &= TestRunner->TestEqual(TEXT("should round-trip class method count"), LoadedClassBind.Methods.Num(), ExpectedClassBind.Methods.Num());
-		bOk &= TestRunner->TestEqual(TEXT("should round-trip class property count"), LoadedClassBind.Properties.Num(), ExpectedClassBind.Properties.Num());
-		bOk &= TestRunner->TestEqual(TEXT("should round-trip struct TypeName"), LoadedStructBind.TypeName, ExpectedStructBind.TypeName);
-		bOk &= TestRunner->TestEqual(TEXT("should round-trip struct UnrealPath"), LoadedStructBind.UnrealPath, ExpectedStructBind.UnrealPath);
-		bOk &= TestRunner->TestEqual(TEXT("should round-trip struct property count"), LoadedStructBind.Properties.Num(), ExpectedStructBind.Properties.Num());
+		bOk &= this->Assert.AreEqual(ExpectedClassBind.TypeName, LoadedClassBind.TypeName, TEXT("should round-trip class TypeName"));
+		bOk &= this->Assert.AreEqual(ExpectedClassBind.UnrealPath, LoadedClassBind.UnrealPath, TEXT("should round-trip class UnrealPath"));
+		bOk &= this->Assert.AreEqual(ExpectedClassBind.Methods.Num(), LoadedClassBind.Methods.Num(), TEXT("should round-trip class method count"));
+		bOk &= this->Assert.AreEqual(ExpectedClassBind.Properties.Num(), LoadedClassBind.Properties.Num(), TEXT("should round-trip class property count"));
+		bOk &= this->Assert.AreEqual(ExpectedStructBind.TypeName, LoadedStructBind.TypeName, TEXT("should round-trip struct TypeName"));
+		bOk &= this->Assert.AreEqual(ExpectedStructBind.UnrealPath, LoadedStructBind.UnrealPath, TEXT("should round-trip struct UnrealPath"));
+		bOk &= this->Assert.AreEqual(ExpectedStructBind.Properties.Num(), LoadedStructBind.Properties.Num(), TEXT("should round-trip struct property count"));
 		if (!bOk) { return; }
 
 		if (!ExpectMethodBindEquals(*TestRunner, LoadedClassBind.Methods[0], ExpectedClassBind.Methods[0]) ||
@@ -196,29 +198,30 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 
 		Database.Clear();
 		Database.Load(CachePath, true);
-		if (!TestRunner->TestTrue(TEXT("should populate class header links with precompiled"), Database.HeaderLinks.Contains(ActorClass)) ||
-			!TestRunner->TestTrue(TEXT("should populate struct header links with precompiled"), Database.HeaderLinks.Contains(HitResultStruct)))
+		if (!this->Assert.IsTrue(Database.HeaderLinks.Contains(ActorClass), TEXT("should populate class header links with precompiled")) ||
+			!this->Assert.IsTrue(Database.HeaderLinks.Contains(HitResultStruct), TEXT("should populate struct header links with precompiled")))
 		{ return; }
 
 		const FString ActorHeader = Database.HeaderLinks.FindRef(ActorClass);
 		const FString StructHeader = Database.HeaderLinks.FindRef(HitResultStruct);
-		TestRunner->TestFalse(TEXT("should load a non-empty header for AActor"), ActorHeader.IsEmpty());
-		TestRunner->TestFalse(TEXT("should load a non-empty header for FHitResult"), StructHeader.IsEmpty());
-		TestRunner->TestTrue(TEXT("should load an existing header path for AActor"), IFileManager::Get().FileExists(*ActorHeader));
-		TestRunner->TestTrue(TEXT("should load an existing header path for FHitResult"), IFileManager::Get().FileExists(*StructHeader));
+		bOk &= this->Assert.IsFalse(ActorHeader.IsEmpty(), TEXT("should load a non-empty header for AActor"));
+		bOk &= this->Assert.IsFalse(StructHeader.IsEmpty(), TEXT("should load a non-empty header for FHitResult"));
+		bOk &= this->Assert.IsTrue(IFileManager::Get().FileExists(*ActorHeader), TEXT("should load an existing header path for AActor"));
+		bOk &= this->Assert.IsTrue(IFileManager::Get().FileExists(*StructHeader), TEXT("should load an existing header path for FHitResult"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(RejectsLegacyUnversionedCache)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptBindDatabaseTests_Private;
 		FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
-		if (!TestRunner->TestTrue(TEXT("should acquire an isolated full engine"), Fixture.IsValid())) { return; }
+		if (!this->Assert.IsTrue(Fixture.IsValid(), TEXT("should acquire an isolated full engine"))) { return; }
 		FAngelscriptEngine& Engine = Fixture.GetEngine();
 		FAngelscriptBindDatabase& Database = Engine.GetBindDatabaseForTesting();
 
 		UClass* ActorClass = AActor::StaticClass();
 		UScriptStruct* HitResultStruct = TBaseStructure<FHitResult>::Get();
-		if (!TestRunner->TestNotNull(TEXT("should resolve AActor"), ActorClass) || !TestRunner->TestNotNull(TEXT("should resolve FHitResult"), HitResultStruct)) { return; }
+		if (!this->Assert.IsNotNull(ActorClass, TEXT("should resolve AActor")) || !this->Assert.IsNotNull(HitResultStruct, TEXT("should resolve FHitResult"))) { return; }
 
 		const FString CacheDirectory = MakeBindDatabaseAutomationDirectory();
 		const FString CachePath = FPaths::Combine(CacheDirectory, TEXT("Binds.Cache"));
@@ -231,10 +234,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 
 		FString LoadError;
 		const bool bLoaded = Database.TryLoad(CachePath, false, &LoadError);
-		TestRunner->TestFalse(TEXT("legacy unversioned Binds.Cache should be rejected"), bLoaded);
-		TestRunner->TestTrue(TEXT("legacy rejection should explain cache regeneration"), LoadError.Contains(TEXT("regenerate Script/Binds.Cache")));
-		TestRunner->TestEqual(TEXT("failed legacy load should preserve existing class binds"), Database.Classes.Num(), 1);
-		TestRunner->TestTrue(TEXT("failed legacy load should preserve existing sentinel bind"), DatabaseContainsClassBindNamed(Database, TEXT("BindDatabaseSentinelBeforeRejectedLoad")));
+		bool bOk = true;
+		bOk &= this->Assert.IsFalse(bLoaded, TEXT("legacy unversioned Binds.Cache should be rejected"));
+		bOk &= this->Assert.IsTrue(LoadError.Contains(TEXT("regenerate Script/Binds.Cache")), TEXT("legacy rejection should explain cache regeneration"));
+		bOk &= this->Assert.AreEqual(1, Database.Classes.Num(), TEXT("failed legacy load should preserve existing class binds"));
+		bOk &= this->Assert.IsTrue(DatabaseContainsClassBindNamed(Database, TEXT("BindDatabaseSentinelBeforeRejectedLoad")), TEXT("failed legacy load should preserve existing sentinel bind"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(GetPrefersCurrentEngineSharedDatabaseAndFallsBackToLegacySingleton)
@@ -248,7 +253,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 		static const FString LegacySentinelTypeName(TEXT("BindDatabaseLegacySentinel"));
 		static const FString EngineASentinelTypeName(TEXT("BindDatabaseEngineASentinel"));
 		FAngelscriptBindDatabase* LegacyDatabase = &FAngelscriptBindDatabase::Get();
-		if (!TestRunner->TestNotNull(TEXT("should expose a legacy database without a current engine"), LegacyDatabase)) { return; }
+		if (!this->Assert.IsNotNull(LegacyDatabase, TEXT("should expose a legacy database without a current engine"))) { return; }
 
 		ON_SCOPE_EXIT { LegacyDatabase->Clear(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine(); } DestroySharedTestEngine(); };
 
@@ -257,12 +262,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 		FAngelscriptBindDatabase* LegacyDatabaseSecondRead = &FAngelscriptBindDatabase::Get();
 
 		bool bOk = true;
-		bOk &= TestRunner->TestNull(TEXT("should start without a current engine"), FAngelscriptTestEngineScopeAccess::GetCurrentEngine());
-		bOk &= TestRunner->TestTrue(TEXT("should reuse the same legacy singleton"), LegacyDatabaseSecondRead == LegacyDatabase);
-		bOk &= TestRunner->TestTrue(TEXT("should preserve legacy sentinel data"), DatabaseContainsClassBindNamed(*LegacyDatabase, LegacySentinelTypeName));
+		bOk &= this->Assert.IsNull(FAngelscriptTestEngineScopeAccess::GetCurrentEngine(), TEXT("should start without a current engine"));
+		bOk &= this->Assert.IsTrue(LegacyDatabaseSecondRead == LegacyDatabase, TEXT("should reuse the same legacy singleton"));
+		bOk &= this->Assert.IsTrue(DatabaseContainsClassBindNamed(*LegacyDatabase, LegacySentinelTypeName), TEXT("should preserve legacy sentinel data"));
 
 		TUniquePtr<FAngelscriptEngine> EngineA = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("should create engine A"), EngineA.Get())) { return; }
+		if (!this->Assert.IsNotNull(EngineA.Get(), TEXT("should create engine A"))) { return; }
 		FAngelscriptBindDatabase* EngineADatabaseFromGet = nullptr;
 		FAngelscriptBindDatabase* EngineADirectDatabase = nullptr;
 
@@ -271,15 +276,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 			EngineADirectDatabase = EngineA->GetBindDatabase();
 			EngineADatabaseFromGet = &FAngelscriptBindDatabase::Get();
 			FAngelscriptBindDatabase& EngineADatabaseFromTesting = EngineA->GetBindDatabaseForTesting();
-			bOk &= TestRunner->TestNotNull(TEXT("should expose an engine-owned bind database"), EngineADirectDatabase);
-			bOk &= TestRunner->TestTrue(TEXT("should prefer current engine bind database"), EngineADatabaseFromGet == EngineADirectDatabase);
-			bOk &= TestRunner->TestTrue(TEXT("should align GetBindDatabaseForTesting"), &EngineADatabaseFromTesting == EngineADirectDatabase);
-			bOk &= TestRunner->TestTrue(TEXT("should not alias legacy singleton"), EngineADirectDatabase != LegacyDatabase);
+			bOk &= this->Assert.IsNotNull(EngineADirectDatabase, TEXT("should expose an engine-owned bind database"));
+			bOk &= this->Assert.IsTrue(EngineADatabaseFromGet == EngineADirectDatabase, TEXT("should prefer current engine bind database"));
+			bOk &= this->Assert.IsTrue(&EngineADatabaseFromTesting == EngineADirectDatabase, TEXT("should align GetBindDatabaseForTesting"));
+			bOk &= this->Assert.IsTrue(EngineADirectDatabase != LegacyDatabase, TEXT("should not alias legacy singleton"));
 
 			EngineADirectDatabase->Clear();
 			EngineADirectDatabase->Classes.Add(MakeNamedSampleClassBind(AActor::StaticClass(), EngineASentinelTypeName));
-			bOk &= TestRunner->TestTrue(TEXT("should keep engine A sentinel in engine-owned database"), DatabaseContainsClassBindNamed(*EngineADirectDatabase, EngineASentinelTypeName));
-			bOk &= TestRunner->TestFalse(TEXT("should keep engine A sentinel out of legacy singleton"), DatabaseContainsClassBindNamed(*LegacyDatabase, EngineASentinelTypeName));
+			bOk &= this->Assert.IsTrue(DatabaseContainsClassBindNamed(*EngineADirectDatabase, EngineASentinelTypeName), TEXT("should keep engine A sentinel in engine-owned database"));
+			bOk &= this->Assert.IsFalse(DatabaseContainsClassBindNamed(*LegacyDatabase, EngineASentinelTypeName), TEXT("should keep engine A sentinel out of legacy singleton"));
 
 			// Clone-shares-database sub-test removed alongside the Clone
 			// engine mechanism; independent Full engines have independent
@@ -288,37 +293,38 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 		}
 
 		EngineA.Reset();
-		bOk &= TestRunner->TestNull(TEXT("should restore no-current-engine baseline after destroying engine A"), FAngelscriptTestEngineScopeAccess::GetCurrentEngine());
+		bOk &= this->Assert.IsNull(FAngelscriptTestEngineScopeAccess::GetCurrentEngine(), TEXT("should restore no-current-engine baseline after destroying engine A"));
 
 		TUniquePtr<FAngelscriptEngine> EngineC = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("should create engine C"), EngineC.Get())) { return; }
+		if (!this->Assert.IsNotNull(EngineC.Get(), TEXT("should create engine C"))) { return; }
 		{
 			FAngelscriptEngineScope ScopeC(*EngineC);
 			FAngelscriptBindDatabase* EngineCDirectDatabase = EngineC->GetBindDatabase();
 			FAngelscriptBindDatabase* EngineCDatabaseFromGet = &FAngelscriptBindDatabase::Get();
-			bOk &= TestRunner->TestNotNull(TEXT("should expose bind database for engine C"), EngineCDirectDatabase);
-			bOk &= TestRunner->TestTrue(TEXT("Get() should route through engine C database"), EngineCDatabaseFromGet == EngineCDirectDatabase);
-			bOk &= TestRunner->TestTrue(TEXT("should allocate fresh bind database for recreated full engine"), EngineCDirectDatabase != EngineADatabaseFromGet);
-			bOk &= TestRunner->TestFalse(TEXT("should not leak engine A sentinel into recreated engine C"), DatabaseContainsClassBindNamed(*EngineCDirectDatabase, EngineASentinelTypeName));
+			bOk &= this->Assert.IsNotNull(EngineCDirectDatabase, TEXT("should expose bind database for engine C"));
+			bOk &= this->Assert.IsTrue(EngineCDatabaseFromGet == EngineCDirectDatabase, TEXT("Get() should route through engine C database"));
+			bOk &= this->Assert.IsTrue(EngineCDirectDatabase != EngineADatabaseFromGet, TEXT("should allocate fresh bind database for recreated full engine"));
+			bOk &= this->Assert.IsFalse(DatabaseContainsClassBindNamed(*EngineCDirectDatabase, EngineASentinelTypeName), TEXT("should not leak engine A sentinel into recreated engine C"));
 		}
 		EngineC.Reset();
 
-		bOk &= TestRunner->TestNull(TEXT("should end without a current engine"), FAngelscriptTestEngineScopeAccess::GetCurrentEngine());
-		bOk &= TestRunner->TestTrue(TEXT("should fall back to legacy singleton after all engines gone"), &FAngelscriptBindDatabase::Get() == LegacyDatabase);
-		bOk &= TestRunner->TestTrue(TEXT("should preserve legacy sentinel after scoped engine lifetimes end"), DatabaseContainsClassBindNamed(*LegacyDatabase, LegacySentinelTypeName));
+		bOk &= this->Assert.IsNull(FAngelscriptTestEngineScopeAccess::GetCurrentEngine(), TEXT("should end without a current engine"));
+		bOk &= this->Assert.IsTrue(&FAngelscriptBindDatabase::Get() == LegacyDatabase, TEXT("should fall back to legacy singleton after all engines gone"));
+		bOk &= this->Assert.IsTrue(DatabaseContainsClassBindNamed(*LegacyDatabase, LegacySentinelTypeName), TEXT("should preserve legacy sentinel after scoped engine lifetimes end"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(LoadWithoutHeadersSidecarLeavesHeaderLinksEmptyButRestoresBinds)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptBindDatabaseTests_Private;
 		FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
-		if (!TestRunner->TestTrue(TEXT("should acquire an isolated full engine"), Fixture.IsValid())) { return; }
+		if (!this->Assert.IsTrue(Fixture.IsValid(), TEXT("should acquire an isolated full engine"))) { return; }
 		FAngelscriptEngine& Engine = Fixture.GetEngine();
 		FAngelscriptBindDatabase& Database = Engine.GetBindDatabaseForTesting();
 
 		UClass* ActorClass = AActor::StaticClass();
 		UScriptStruct* HitResultStruct = TBaseStructure<FHitResult>::Get();
-		if (!TestRunner->TestNotNull(TEXT("should resolve AActor"), ActorClass) || !TestRunner->TestNotNull(TEXT("should resolve FHitResult"), HitResultStruct)) { return; }
+		if (!this->Assert.IsNotNull(ActorClass, TEXT("should resolve AActor")) || !this->Assert.IsNotNull(HitResultStruct, TEXT("should resolve FHitResult"))) { return; }
 
 		const FAngelscriptClassBind ExpectedClassBind = MakeSampleClassBind(ActorClass);
 		const FAngelscriptStructBind ExpectedStructBind = MakeSampleStructBind(HitResultStruct);
@@ -333,28 +339,28 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 		Database.Classes.Add(ExpectedClassBind); Database.Structs.Add(ExpectedStructBind);
 		Database.HeaderLinks.Add(ActorClass, TEXT("Dummy/ActorHeader.h")); Database.HeaderLinks.Add(HitResultStruct, TEXT("Dummy/HitResultHeader.h"));
 		Database.Save(CachePath);
-		if (!TestRunner->TestTrue(TEXT("should write Binds.Cache"), IFileManager::Get().FileExists(*CachePath)) || !TestRunner->TestTrue(TEXT("should write Binds.Cache.Headers"), IFileManager::Get().FileExists(*HeadersPath))) { return; }
+		if (!this->Assert.IsTrue(IFileManager::Get().FileExists(*CachePath), TEXT("should write Binds.Cache")) || !this->Assert.IsTrue(IFileManager::Get().FileExists(*HeadersPath), TEXT("should write Binds.Cache.Headers"))) { return; }
 
 		Database.Clear();
 		Database.HeaderLinks.Add(ActorClass, SentinelHeaderPath);
-		if (!TestRunner->TestEqual(TEXT("should stage one sentinel header link"), Database.HeaderLinks.Num(), 1) || !TestRunner->TestEqual(TEXT("should preserve staged sentinel header path"), Database.HeaderLinks.FindRef(ActorClass), SentinelHeaderPath)) { return; }
-		if (!TestRunner->TestTrue(TEXT("should delete .Headers sidecar"), IFileManager::Get().Delete(*HeadersPath, false, true)) || !TestRunner->TestFalse(TEXT("should confirm .Headers sidecar missing"), IFileManager::Get().FileExists(*HeadersPath))) { return; }
+		if (!this->Assert.AreEqual(1, Database.HeaderLinks.Num(), TEXT("should stage one sentinel header link")) || !this->Assert.AreEqual(SentinelHeaderPath, Database.HeaderLinks.FindRef(ActorClass), TEXT("should preserve staged sentinel header path"))) { return; }
+		if (!this->Assert.IsTrue(IFileManager::Get().Delete(*HeadersPath, false, true), TEXT("should delete .Headers sidecar")) || !this->Assert.IsFalse(IFileManager::Get().FileExists(*HeadersPath), TEXT("should confirm .Headers sidecar missing"))) { return; }
 
 		Database.Load(CachePath, true);
-		if (!TestRunner->TestEqual(TEXT("should restore one class bind"), Database.Classes.Num(), 1) || !TestRunner->TestEqual(TEXT("should restore one struct bind"), Database.Structs.Num(), 1)) { return; }
+		if (!this->Assert.AreEqual(1, Database.Classes.Num(), TEXT("should restore one class bind")) || !this->Assert.AreEqual(1, Database.Structs.Num(), TEXT("should restore one struct bind"))) { return; }
 
 		const FAngelscriptClassBind& LoadedClassBind = Database.Classes[0];
 		const FAngelscriptStructBind& LoadedStructBind = Database.Structs[0];
 		bool bOk = true;
-		bOk &= TestRunner->TestEqual(TEXT("should round-trip class TypeName"), LoadedClassBind.TypeName, ExpectedClassBind.TypeName);
-		bOk &= TestRunner->TestEqual(TEXT("should round-trip class UnrealPath"), LoadedClassBind.UnrealPath, ExpectedClassBind.UnrealPath);
-		bOk &= TestRunner->TestEqual(TEXT("should round-trip class method count"), LoadedClassBind.Methods.Num(), ExpectedClassBind.Methods.Num());
-		bOk &= TestRunner->TestEqual(TEXT("should round-trip class property count"), LoadedClassBind.Properties.Num(), ExpectedClassBind.Properties.Num());
-		bOk &= TestRunner->TestEqual(TEXT("should round-trip struct TypeName"), LoadedStructBind.TypeName, ExpectedStructBind.TypeName);
-		bOk &= TestRunner->TestEqual(TEXT("should round-trip struct UnrealPath"), LoadedStructBind.UnrealPath, ExpectedStructBind.UnrealPath);
-		bOk &= TestRunner->TestEqual(TEXT("should round-trip struct property count"), LoadedStructBind.Properties.Num(), ExpectedStructBind.Properties.Num());
-		bOk &= TestRunner->TestEqual(TEXT("should clear stale header links when sidecar missing"), Database.HeaderLinks.Num(), 0);
-		bOk &= TestRunner->TestFalse(TEXT("should remove sentinel actor header link when sidecar missing"), Database.HeaderLinks.Contains(ActorClass));
+		bOk &= this->Assert.AreEqual(ExpectedClassBind.TypeName, LoadedClassBind.TypeName, TEXT("should round-trip class TypeName"));
+		bOk &= this->Assert.AreEqual(ExpectedClassBind.UnrealPath, LoadedClassBind.UnrealPath, TEXT("should round-trip class UnrealPath"));
+		bOk &= this->Assert.AreEqual(ExpectedClassBind.Methods.Num(), LoadedClassBind.Methods.Num(), TEXT("should round-trip class method count"));
+		bOk &= this->Assert.AreEqual(ExpectedClassBind.Properties.Num(), LoadedClassBind.Properties.Num(), TEXT("should round-trip class property count"));
+		bOk &= this->Assert.AreEqual(ExpectedStructBind.TypeName, LoadedStructBind.TypeName, TEXT("should round-trip struct TypeName"));
+		bOk &= this->Assert.AreEqual(ExpectedStructBind.UnrealPath, LoadedStructBind.UnrealPath, TEXT("should round-trip struct UnrealPath"));
+		bOk &= this->Assert.AreEqual(ExpectedStructBind.Properties.Num(), LoadedStructBind.Properties.Num(), TEXT("should round-trip struct property count"));
+		bOk &= this->Assert.AreEqual(0, Database.HeaderLinks.Num(), TEXT("should clear stale header links when sidecar missing"));
+		bOk &= this->Assert.IsFalse(Database.HeaderLinks.Contains(ActorClass), TEXT("should remove sentinel actor header link when sidecar missing"));
 		if (!bOk) { return; }
 		if (!ExpectMethodBindEquals(*TestRunner, LoadedClassBind.Methods[0], ExpectedClassBind.Methods[0]) ||
 			!ExpectPropertyBindEquals(*TestRunner, TEXT("BindDatabase missing-sidecar class bind"), LoadedClassBind.Properties[0], ExpectedClassBind.Properties[0]) ||
@@ -366,7 +372,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 	{
 		using namespace AngelscriptTest_Core_AngelscriptBindDatabaseTests_Private;
 		FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
-		if (!TestRunner->TestTrue(TEXT("should acquire an isolated full engine"), Fixture.IsValid())) { return; }
+		if (!this->Assert.IsTrue(Fixture.IsValid(), TEXT("should acquire an isolated full engine"))) { return; }
 		FAngelscriptEngine& Engine = Fixture.GetEngine();
 		FAngelscriptBindDatabase& Database = Engine.GetBindDatabaseForTesting();
 
@@ -374,25 +380,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 		UScriptStruct* HitResultStruct = TBaseStructure<FHitResult>::Get();
 		UEnum* CollisionEnum = StaticEnum<ECollisionChannel>();
 		UDelegateFunction* DelegateFunction = GetSampleDelegateFunction();
-		if (!TestRunner->TestNotNull(TEXT("should resolve AActor"), ActorClass) || !TestRunner->TestNotNull(TEXT("should resolve FHitResult"), HitResultStruct)
-			|| !TestRunner->TestNotNull(TEXT("should resolve ECollisionChannel"), CollisionEnum) || !TestRunner->TestNotNull(TEXT("should resolve sample delegate"), DelegateFunction))
+		if (!this->Assert.IsNotNull(ActorClass, TEXT("should resolve AActor")) || !this->Assert.IsNotNull(HitResultStruct, TEXT("should resolve FHitResult"))
+			|| !this->Assert.IsNotNull(CollisionEnum, TEXT("should resolve ECollisionChannel")) || !this->Assert.IsNotNull(DelegateFunction, TEXT("should resolve sample delegate")))
 		{ return; }
 
 		ON_SCOPE_EXIT { Database.Clear(); };
 		Database.Clear();
 		Database.Classes.Add(MakeSampleClassBind(ActorClass)); Database.Structs.Add(MakeSampleStructBind(HitResultStruct));
 		Database.HeaderLinks.Add(ActorClass, TEXT("Dummy/ActorHeader.h")); Database.BoundEnums.Add(CollisionEnum); Database.BoundDelegateFunctions.Add(DelegateFunction);
-		if (!TestRunner->TestEqual(TEXT("should stage one class bind"), Database.Classes.Num(), 1) || !TestRunner->TestEqual(TEXT("should stage one struct bind"), Database.Structs.Num(), 1)
-			|| !TestRunner->TestEqual(TEXT("should stage one header link"), Database.HeaderLinks.Num(), 1) || !TestRunner->TestEqual(TEXT("should stage one enum"), Database.BoundEnums.Num(), 1)
-			|| !TestRunner->TestEqual(TEXT("should stage one delegate"), Database.BoundDelegateFunctions.Num(), 1))
+		if (!this->Assert.AreEqual(1, Database.Classes.Num(), TEXT("should stage one class bind")) || !this->Assert.AreEqual(1, Database.Structs.Num(), TEXT("should stage one struct bind"))
+			|| !this->Assert.AreEqual(1, Database.HeaderLinks.Num(), TEXT("should stage one header link")) || !this->Assert.AreEqual(1, Database.BoundEnums.Num(), TEXT("should stage one enum"))
+			|| !this->Assert.AreEqual(1, Database.BoundDelegateFunctions.Num(), TEXT("should stage one delegate")))
 		{ return; }
 
 		Database.Clear();
-		TestRunner->TestEqual(TEXT("should clear class binds"), Database.Classes.Num(), 0);
-		TestRunner->TestEqual(TEXT("should clear struct binds"), Database.Structs.Num(), 0);
-		TestRunner->TestEqual(TEXT("should clear header links"), Database.HeaderLinks.Num(), 0);
-		TestRunner->TestEqual(TEXT("should clear bound enums"), Database.BoundEnums.Num(), 0);
-		TestRunner->TestEqual(TEXT("should clear bound delegate functions"), Database.BoundDelegateFunctions.Num(), 0);
+		bool bOk = true;
+		bOk &= this->Assert.AreEqual(0, Database.Classes.Num(), TEXT("should clear class binds"));
+		bOk &= this->Assert.AreEqual(0, Database.Structs.Num(), TEXT("should clear struct binds"));
+		bOk &= this->Assert.AreEqual(0, Database.HeaderLinks.Num(), TEXT("should clear header links"));
+		bOk &= this->Assert.AreEqual(0, Database.BoundEnums.Num(), TEXT("should clear bound enums"));
+		bOk &= this->Assert.AreEqual(0, Database.BoundDelegateFunctions.Num(), TEXT("should clear bound delegate functions"));
+		(void)bOk;
 	}
 };
 

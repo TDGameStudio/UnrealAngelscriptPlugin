@@ -104,23 +104,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHeaderShimTests,
 	{
 		using namespace AngelscriptTest_Core_AngelscriptHeaderShimTests_Private;
 		const ANSICHAR* RawLibraryVersion = asGetLibraryVersion();
-		if (!TestRunner->TestNotNull(TEXT("HeaderShim native API test should expose a library version string"), RawLibraryVersion))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(RawLibraryVersion, TEXT("HeaderShim native API test should expose a library version string")));
 
 		const FString LibraryVersion = ANSI_TO_TCHAR(RawLibraryVersion);
-		if (!TestRunner->TestFalse(TEXT("HeaderShim native API test should expose a non-empty library version string"), LibraryVersion.IsEmpty()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsFalse(LibraryVersion.IsEmpty(), TEXT("HeaderShim native API test should expose a non-empty library version string")));
 
 		FNativeMessageCollector MessageCollector;
 		asIScriptEngine* NativeEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-		if (!TestRunner->TestNotNull(TEXT("HeaderShim native API test should create a raw AngelScript engine"), NativeEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(NativeEngine, TEXT("HeaderShim native API test should create a raw AngelScript engine")));
 
 		FScopedAsEngineRelease EngineScope(NativeEngine);
 
@@ -128,56 +119,35 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHeaderShimTests,
 			asFUNCTION(FNativeMessageCollector::Callback),
 			&MessageCollector,
 			asCALL_CDECL);
-		if (!TestRunner->TestEqual(TEXT("HeaderShim native API test should install the message callback"), CallbackResult, static_cast<int32>(asSUCCESS)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), CallbackResult, TEXT("HeaderShim native API test should install the message callback")));
 
 		asIScriptModule* Module = NativeEngine->GetModule("ASHeaderShimRoundTrip", asGM_ALWAYS_CREATE);
-		if (!TestRunner->TestNotNull(TEXT("HeaderShim native API test should create a native script module"), Module))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Module, TEXT("HeaderShim native API test should create a native script module")));
 
 		const char* Source = "int Entry() { return 5; }";
 		asIScriptFunction* Function = nullptr;
 		const int32 CompileResult = Module->CompileFunction("ASHeaderShimRoundTrip", Source, 0, 0, &Function);
-		if (!TestRunner->TestEqual(
-				*FString::Printf(TEXT("HeaderShim native API test should compile the raw function successfully. Diagnostics: %s"), *MessageCollector.Format()),
-				CompileResult,
-				static_cast<int32>(asSUCCESS)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(asSUCCESS),
+			CompileResult,
+			FString::Printf(TEXT("HeaderShim native API test should compile the raw function successfully. Diagnostics: %s"), *MessageCollector.Format())));
 
-		if (!TestRunner->TestNotNull(TEXT("HeaderShim native API test should receive a compiled function"), Function))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Function, TEXT("HeaderShim native API test should receive a compiled function")));
 
 		TScopedAsRelease<asIScriptFunction> FunctionScope(Function);
 
 		asIScriptContext* Context = NativeEngine->CreateContext();
-		if (!TestRunner->TestNotNull(TEXT("HeaderShim native API test should create a native script context"), Context))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Context, TEXT("HeaderShim native API test should create a native script context")));
 
 		TScopedAsRelease<asIScriptContext> ContextScope(Context);
 
 		const int32 PrepareResult = Context->Prepare(Function);
-		if (!TestRunner->TestEqual(TEXT("HeaderShim native API test should prepare the raw function successfully"), PrepareResult, static_cast<int32>(asSUCCESS)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), PrepareResult, TEXT("HeaderShim native API test should prepare the raw function successfully")));
 
 		const int32 ExecuteResult = Context->Execute();
-		if (!TestRunner->TestEqual(TEXT("HeaderShim native API test should finish execution successfully"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_FINISHED), ExecuteResult, TEXT("HeaderShim native API test should finish execution successfully")));
 
-		TestRunner->TestEqual(TEXT("HeaderShim native API test should return the compiled Entry() result"), static_cast<int32>(Context->GetReturnDWord()), 5);
+		ASSERT_THAT(AreEqual(5, static_cast<int32>(Context->GetReturnDWord()), TEXT("HeaderShim native API test should return the compiled Entry() result")));
 	}
 };
 

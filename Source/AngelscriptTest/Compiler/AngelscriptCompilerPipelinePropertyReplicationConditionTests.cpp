@@ -88,23 +88,23 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyReplicationConditionTests,
 				*CompilerPipelinePropertyReplicationConditionTest::JoinDiagnostics(Summary.Diagnostics)));
 		}
 
-		TestRunner->TestTrue(
-			TEXT("Property replication-condition round-trip should compile through the normal preprocessor pipeline"),
-			bCompiled);
-		TestRunner->TestTrue(
-			TEXT("Property replication-condition round-trip should record preprocessor usage in the compile summary"),
-			Summary.bUsedPreprocessor);
-		TestRunner->TestTrue(
-			TEXT("Property replication-condition round-trip should mark compile succeeded in the summary"),
-			Summary.bCompileSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Property replication-condition round-trip should stay on the full-reload handled path"),
+		ASSERT_THAT(IsTrue(
+			bCompiled,
+			TEXT("Property replication-condition round-trip should compile through the normal preprocessor pipeline")));
+		ASSERT_THAT(IsTrue(
+			Summary.bUsedPreprocessor,
+			TEXT("Property replication-condition round-trip should record preprocessor usage in the compile summary")));
+		ASSERT_THAT(IsTrue(
+			Summary.bCompileSucceeded,
+			TEXT("Property replication-condition round-trip should mark compile succeeded in the summary")));
+		ASSERT_THAT(AreEqual(
+			ECompileResult::FullyHandled,
 			Summary.CompileResult,
-			ECompileResult::FullyHandled);
-		TestRunner->TestEqual(
-			TEXT("Property replication-condition round-trip should keep compile diagnostics empty"),
+			TEXT("Property replication-condition round-trip should stay on the full-reload handled path")));
+		ASSERT_THAT(AreEqual(
+			0,
 			Summary.Diagnostics.Num(),
-			0);
+			TEXT("Property replication-condition round-trip should keep compile diagnostics empty")));
 		if (!bCompiled || !Summary.bCompileSucceeded)
 		{
 			return;
@@ -117,45 +117,42 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyReplicationConditionTests,
 			CompilerPipelinePropertyReplicationConditionTest::ModuleName,
 			CompilerPipelinePropertyReplicationConditionTest::EntryFunctionDeclaration,
 			EntryResult);
-		TestRunner->TestTrue(
-			TEXT("Property replication-condition round-trip should execute the compiled entry function"),
-			bExecuted);
-		if (bExecuted)
-		{
-			TestRunner->TestEqual(
-				TEXT("Property replication-condition round-trip should preserve module execution after metadata propagation"),
-				EntryResult,
-				CompilerPipelinePropertyReplicationConditionTest::ExpectedEntryValue);
-		}
+		ASSERT_THAT(IsTrue(
+			bExecuted,
+			TEXT("Property replication-condition round-trip should execute the compiled entry function")));
+		ASSERT_THAT(AreEqual(
+			CompilerPipelinePropertyReplicationConditionTest::ExpectedEntryValue,
+			EntryResult,
+			TEXT("Property replication-condition round-trip should preserve module execution after metadata propagation")));
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, *CompilerPipelinePropertyReplicationConditionTest::ClassName);
-		if (!TestRunner->TestNotNull(TEXT("Property replication-condition round-trip should materialize the generated class"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Property replication-condition round-trip should materialize the generated class")))
 		{
 			return;
 		}
 
 		FIntProperty* OwnerOnlyProperty = FindFProperty<FIntProperty>(GeneratedClass, *CompilerPipelinePropertyReplicationConditionTest::OwnerOnlyPropertyName);
 		FIntProperty* SkipReplayProperty = FindFProperty<FIntProperty>(GeneratedClass, *CompilerPipelinePropertyReplicationConditionTest::SkipReplayPropertyName);
-		if (!TestRunner->TestNotNull(TEXT("Property replication-condition round-trip should materialize the OwnerOnly property"), OwnerOnlyProperty)
-			|| !TestRunner->TestNotNull(TEXT("Property replication-condition round-trip should materialize the SkipReplay property"), SkipReplayProperty))
+		if (!this->Assert.IsNotNull(OwnerOnlyProperty, TEXT("Property replication-condition round-trip should materialize the OwnerOnly property"))
+			|| !this->Assert.IsNotNull(SkipReplayProperty, TEXT("Property replication-condition round-trip should materialize the SkipReplay property")))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(
-			TEXT("OwnerOnly property should carry CPF_Net"),
-			OwnerOnlyProperty->HasAnyPropertyFlags(CPF_Net));
-		TestRunner->TestTrue(
-			TEXT("SkipReplay property should carry CPF_Net"),
-			SkipReplayProperty->HasAnyPropertyFlags(CPF_Net));
-		TestRunner->TestEqual(
-			TEXT("OwnerOnly property should preserve COND_OwnerOnly"),
+		ASSERT_THAT(IsTrue(
+			OwnerOnlyProperty->HasAnyPropertyFlags(CPF_Net),
+			TEXT("OwnerOnly property should carry CPF_Net")));
+		ASSERT_THAT(IsTrue(
+			SkipReplayProperty->HasAnyPropertyFlags(CPF_Net),
+			TEXT("SkipReplay property should carry CPF_Net")));
+		ASSERT_THAT(AreEqual(
+			COND_OwnerOnly,
 			OwnerOnlyProperty->GetBlueprintReplicationCondition(),
-			COND_OwnerOnly);
-		TestRunner->TestEqual(
-			TEXT("SkipReplay property should preserve COND_SkipReplay"),
+			TEXT("OwnerOnly property should preserve COND_OwnerOnly")));
+		ASSERT_THAT(AreEqual(
+			COND_SkipReplay,
 			SkipReplayProperty->GetBlueprintReplicationCondition(),
-			COND_SkipReplay);
+			TEXT("SkipReplay property should preserve COND_SkipReplay")));
 
 		}
 

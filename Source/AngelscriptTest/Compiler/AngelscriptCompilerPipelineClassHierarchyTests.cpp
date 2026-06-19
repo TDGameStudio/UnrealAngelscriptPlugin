@@ -145,20 +145,20 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassHierarchyTests,
 				PreprocessErrorCount),
 			TEXT("\n"));
 
-		TestRunner->TestTrue(
-			TEXT("Script superclass round-trip should preprocess successfully"),
-			bPreprocessSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Script superclass round-trip should keep preprocessing diagnostics empty"),
+		ASSERT_THAT(IsTrue(
+			bPreprocessSucceeded,
+			TEXT("Script superclass round-trip should preprocess successfully")));
+		ASSERT_THAT(AreEqual(
+			0,
 			PreprocessErrorCount,
-			0);
-		TestRunner->TestTrue(
-			TEXT("Script superclass round-trip should not accumulate preprocessing messages"),
-			PreprocessDiagnostics.IsEmpty());
-		TestRunner->TestEqual(
-			TEXT("Script superclass round-trip should emit two module descriptors"),
+			TEXT("Script superclass round-trip should keep preprocessing diagnostics empty")));
+		ASSERT_THAT(IsTrue(
+			PreprocessDiagnostics.IsEmpty(),
+			TEXT("Script superclass round-trip should not accumulate preprocessing messages")));
+		ASSERT_THAT(AreEqual(
+			2,
 			ModulesToCompile.Num(),
-			2);
+			TEXT("Script superclass round-trip should emit two module descriptors")));
 		if (!bPreprocessSucceeded || ModulesToCompile.Num() != 2)
 		{
 			return;
@@ -170,22 +170,22 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassHierarchyTests,
 		FAngelscriptModuleDesc* ChildModuleDesc = CompilerPipelineClassHierarchyTest::FindModuleByName(
 			ModulesToCompile,
 			CompilerPipelineClassHierarchyTest::ChildModuleName.ToString());
-		if (!TestRunner->TestNotNull(TEXT("Script superclass round-trip should emit the base module descriptor"), BaseModuleDesc)
-			|| !TestRunner->TestNotNull(TEXT("Script superclass round-trip should emit the child module descriptor"), ChildModuleDesc))
+		if (!this->Assert.IsNotNull(BaseModuleDesc, TEXT("Script superclass round-trip should emit the base module descriptor"))
+			|| !this->Assert.IsNotNull(ChildModuleDesc, TEXT("Script superclass round-trip should emit the child module descriptor")))
 		{
 			return;
 		}
 
 		TSharedPtr<FAngelscriptClassDesc> ChildClassDesc = ChildModuleDesc->GetClass(CompilerPipelineClassHierarchyTest::ChildClassName.ToString());
-		if (!TestRunner->TestNotNull(TEXT("Script superclass round-trip should preserve the child class descriptor after preprocessing"), ChildClassDesc.Get()))
+		if (!this->Assert.IsNotNull(ChildClassDesc.Get(), TEXT("Script superclass round-trip should preserve the child class descriptor after preprocessing")))
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Script superclass round-trip should keep the child descriptor super class text stable"),
+		ASSERT_THAT(AreEqual(
+			CompilerPipelineClassHierarchyTest::BaseClassName.ToString(),
 			ChildClassDesc->SuperClass,
-			CompilerPipelineClassHierarchyTest::BaseClassName.ToString());
+			TEXT("Script superclass round-trip should keep the child descriptor super class text stable")));
 
 		Engine.ResetDiagnostics();
 
@@ -203,21 +203,21 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassHierarchyTests,
 				CompileErrorCount),
 			TEXT("\n"));
 
-		TestRunner->TestEqual(
-			TEXT("Script superclass round-trip should compile as FullyHandled"),
+		ASSERT_THAT(AreEqual(
+			ECompileResult::FullyHandled,
 			CompileResult,
-			ECompileResult::FullyHandled);
-		TestRunner->TestEqual(
-			TEXT("Script superclass round-trip should keep compile diagnostics empty"),
+			TEXT("Script superclass round-trip should compile as FullyHandled")));
+		ASSERT_THAT(AreEqual(
+			0,
 			CompileErrorCount,
-			0);
-		TestRunner->TestTrue(
-			TEXT("Script superclass round-trip should not accumulate compile messages"),
-			CompileDiagnostics.IsEmpty());
-		TestRunner->TestEqual(
-			TEXT("Script superclass round-trip should materialize exactly two compiled modules"),
+			TEXT("Script superclass round-trip should keep compile diagnostics empty")));
+		ASSERT_THAT(IsTrue(
+			CompileDiagnostics.IsEmpty(),
+			TEXT("Script superclass round-trip should not accumulate compile messages")));
+		ASSERT_THAT(AreEqual(
+			2,
 			CompiledModules.Num(),
-			2);
+			TEXT("Script superclass round-trip should materialize exactly two compiled modules")));
 		if (CompileResult != ECompileResult::FullyHandled || CompiledModules.Num() != 2)
 		{
 			return;
@@ -225,39 +225,39 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassHierarchyTests,
 
 		UClass* GeneratedBaseClass = FindGeneratedClass(&Engine, CompilerPipelineClassHierarchyTest::BaseClassName);
 		UClass* GeneratedChildClass = FindGeneratedClass(&Engine, CompilerPipelineClassHierarchyTest::ChildClassName);
-		if (!TestRunner->TestNotNull(TEXT("Script superclass round-trip should generate the base class"), GeneratedBaseClass)
-			|| !TestRunner->TestNotNull(TEXT("Script superclass round-trip should generate the child class"), GeneratedChildClass))
+		if (!this->Assert.IsNotNull(GeneratedBaseClass, TEXT("Script superclass round-trip should generate the base class"))
+			|| !this->Assert.IsNotNull(GeneratedChildClass, TEXT("Script superclass round-trip should generate the child class")))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(
-			TEXT("Script superclass round-trip should keep the generated child super chain pointing at the generated base"),
-			GeneratedChildClass->GetSuperClass() == GeneratedBaseClass);
+		ASSERT_THAT(IsTrue(
+			GeneratedChildClass->GetSuperClass() == GeneratedBaseClass,
+			TEXT("Script superclass round-trip should keep the generated child super chain pointing at the generated base")));
 
 		UFunction* DerivedFunction = FindGeneratedFunction(GeneratedChildClass, CompilerPipelineClassHierarchyTest::DerivedFunctionName);
-		if (!TestRunner->TestNotNull(TEXT("Script superclass round-trip should expose GetDerivedValue on the generated child class"), DerivedFunction))
+		if (!this->Assert.IsNotNull(DerivedFunction, TEXT("Script superclass round-trip should expose GetDerivedValue on the generated child class")))
 		{
 			return;
 		}
 
 		UObject* RuntimeObject = GeneratedChildClass->GetDefaultObject();
-		if (!TestRunner->TestNotNull(TEXT("Script superclass round-trip should materialize the child default object"), RuntimeObject))
+		if (!this->Assert.IsNotNull(RuntimeObject, TEXT("Script superclass round-trip should materialize the child default object")))
 		{
 			return;
 		}
 
 		int32 Result = 0;
 		const bool bExecuted = ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeObject, DerivedFunction, Result);
-		TestRunner->TestTrue(
-			TEXT("Script superclass round-trip should execute the generated child method"),
-			bExecuted);
+		ASSERT_THAT(IsTrue(
+			bExecuted,
+			TEXT("Script superclass round-trip should execute the generated child method")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(
-				TEXT("Script superclass round-trip should let the child method call through to the scripted base implementation"),
+			ASSERT_THAT(AreEqual(
+				7,
 				Result,
-				7);
+				TEXT("Script superclass round-trip should let the child method call through to the scripted base implementation")));
 		}
 
 		}

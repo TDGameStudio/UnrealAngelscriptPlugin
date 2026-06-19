@@ -31,10 +31,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKDefaultTraitTests,
 	TEST_METHOD(DefaultTraitModifiers)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("SDK default-trait modifier test should create a standalone engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK default-trait modifier test should create a standalone engine")));
 
 		FScopedNativeModule Module(*TestRunner, Engine, "SDKDefaultTraitModifiers", R"(
 int DefaultsOnlyValue() defaults

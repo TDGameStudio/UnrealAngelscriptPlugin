@@ -61,52 +61,52 @@ class UCompilerExecutionCarrier : UObject
 			CompilerPipelineExecutionTest::ModuleName,
 			CompilerPipelineExecutionTest::ScriptFilename,
 			ScriptSource);
-		if (!TestRunner->TestTrue(TEXT("Annotated execution test should compile the generated class module"), bCompiled))
+		if (!this->Assert.IsTrue(bCompiled, TEXT("Annotated execution test should compile the generated class module")))
 		{
 			return;
 		}
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, CompilerPipelineExecutionTest::GeneratedClassName);
-		if (!TestRunner->TestNotNull(TEXT("Annotated execution test should find the generated class"), GeneratedClass))
+		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Annotated execution test should find the generated class")))
 		{
 			return;
 		}
 
 		UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, CompilerPipelineExecutionTest::ExecutionFunctionName);
-		if (!TestRunner->TestNotNull(TEXT("Annotated execution test should find the generated execution function"), GeneratedFunction))
+		if (!this->Assert.IsNotNull(GeneratedFunction, TEXT("Annotated execution test should find the generated execution function")))
 		{
 			return;
 		}
 
 		FIntProperty* ScoreProperty = FindFProperty<FIntProperty>(GeneratedClass, CompilerPipelineExecutionTest::ScorePropertyName);
-		if (!TestRunner->TestNotNull(TEXT("Annotated execution test should expose the generated Score property"), ScoreProperty))
+		if (!this->Assert.IsNotNull(ScoreProperty, TEXT("Annotated execution test should expose the generated Score property")))
 		{
 			return;
 		}
 
 		UObject* RuntimeObject = NewObject<UObject>(GetTransientPackage(), GeneratedClass, TEXT("CompilerExecutionCarrier"));
-		if (!TestRunner->TestNotNull(TEXT("Annotated execution test should instantiate the generated class"), RuntimeObject))
+		if (!this->Assert.IsNotNull(RuntimeObject, TEXT("Annotated execution test should instantiate the generated class")))
 		{
 			return;
 		}
 
 		const int32 InitialScore = ScoreProperty->GetPropertyValue_InContainer(RuntimeObject);
-		if (!TestRunner->TestEqual(TEXT("Annotated execution test should materialize the scripted default before invocation"), InitialScore, 41))
+		if (!this->Assert.AreEqual(41, InitialScore, TEXT("Annotated execution test should materialize the scripted default before invocation")))
 		{
 			return;
 		}
 
 		int32 Result = 0;
-		if (!TestRunner->TestTrue(
-			TEXT("Annotated execution test should execute the generated method on the game thread"),
-			ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeObject, GeneratedFunction, Result)))
+		if (!this->Assert.IsTrue(
+			ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeObject, GeneratedFunction, Result),
+			TEXT("Annotated execution test should execute the generated method on the game thread")))
 		{
 			return;
 		}
 
 		const int32 ScoreAfterCall = ScoreProperty->GetPropertyValue_InContainer(RuntimeObject);
-		TestRunner->TestEqual(TEXT("Annotated execution test should return the updated scripted value"), Result, 42);
-		TestRunner->TestEqual(TEXT("Annotated execution test should persist the scripted state mutation on the UObject instance"), ScoreAfterCall, 42);
+		ASSERT_THAT(AreEqual(42, Result, TEXT("Annotated execution test should return the updated scripted value")));
+		ASSERT_THAT(AreEqual(42, ScoreAfterCall, TEXT("Annotated execution test should persist the scripted state mutation on the UObject instance")));
 
 		}
 	}
@@ -141,37 +141,37 @@ int Entry()
 			Summary,
 			true);
 
-		TestRunner->TestTrue(
-			TEXT("Plain source preprocessor round-trip should compile successfully"),
-			bCompiled);
-		TestRunner->TestTrue(
-			TEXT("Plain source preprocessor round-trip should report preprocessor usage"),
-			Summary.bUsedPreprocessor);
-		TestRunner->TestTrue(
-			TEXT("Plain source preprocessor round-trip should mark compile succeeded in the summary"),
-			Summary.bCompileSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Plain source preprocessor round-trip should report FullyHandled"),
+		ASSERT_THAT(IsTrue(
+			bCompiled,
+			TEXT("Plain source preprocessor round-trip should compile successfully")));
+		ASSERT_THAT(IsTrue(
+			Summary.bUsedPreprocessor,
+			TEXT("Plain source preprocessor round-trip should report preprocessor usage")));
+		ASSERT_THAT(IsTrue(
+			Summary.bCompileSucceeded,
+			TEXT("Plain source preprocessor round-trip should mark compile succeeded in the summary")));
+		ASSERT_THAT(AreEqual(
+			ECompileResult::FullyHandled,
 			Summary.CompileResult,
-			ECompileResult::FullyHandled);
-		TestRunner->TestEqual(
-			TEXT("Plain source preprocessor round-trip should produce exactly one module descriptor"),
+			TEXT("Plain source preprocessor round-trip should report FullyHandled")));
+		ASSERT_THAT(AreEqual(
+			1,
 			Summary.ModuleDescCount,
-			1);
-		TestRunner->TestEqual(
-			TEXT("Plain source preprocessor round-trip should keep diagnostics empty"),
+			TEXT("Plain source preprocessor round-trip should produce exactly one module descriptor")));
+		ASSERT_THAT(AreEqual(
+			0,
 			Summary.Diagnostics.Num(),
-			0);
-		TestRunner->TestEqual(
-			TEXT("Plain source preprocessor round-trip should record exactly one module name"),
+			TEXT("Plain source preprocessor round-trip should keep diagnostics empty")));
+		ASSERT_THAT(AreEqual(
+			1,
 			Summary.ModuleNames.Num(),
-			1);
+			TEXT("Plain source preprocessor round-trip should record exactly one module name")));
 		if (Summary.ModuleNames.Num() > 0)
 		{
-			TestRunner->TestEqual(
-				TEXT("Plain source preprocessor round-trip should normalize the module name from the relative script path"),
+			ASSERT_THAT(AreEqual(
+				FString(TEXT("Tests.Compiler.PlainSourceRoundTrip")),
 				Summary.ModuleNames[0],
-				TEXT("Tests.Compiler.PlainSourceRoundTrip"));
+				TEXT("Plain source preprocessor round-trip should normalize the module name from the relative script path")));
 		}
 
 		int32 EntryResult = 0;
@@ -182,15 +182,15 @@ int Entry()
 				CompilerPipelinePlainSourceRoundTripTest::ModuleName,
 				TEXT("int Entry()"),
 				EntryResult);
-		TestRunner->TestTrue(
-			TEXT("Plain source preprocessor round-trip should execute the compiled Entry function"),
-			bExecuted);
+		ASSERT_THAT(IsTrue(
+			bExecuted,
+			TEXT("Plain source preprocessor round-trip should execute the compiled Entry function")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(
-				TEXT("Plain source preprocessor round-trip should preserve the plain-source return value"),
+			ASSERT_THAT(AreEqual(
+				42,
 				EntryResult,
-				42);
+				TEXT("Plain source preprocessor round-trip should preserve the plain-source return value")));
 		}
 
 		}

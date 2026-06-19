@@ -60,9 +60,10 @@ enum class EMacroState : uint8
 
 		const TArray<const FAngelscriptPreprocessor::FMacro*> Macros = Session.GatherMacros();
 
-		TestRunner->TestEqual(
-			TEXT("Class/enum/meta macro shape fixture should emit exactly four macro records"),
-			Macros.Num(), 4);
+		ASSERT_THAT(AreEqual(
+			4,
+			Macros.Num(),
+			TEXT("Class/enum/meta macro shape fixture should emit exactly four macro records")));
 
 		// Look up individual macro records
 		const FAngelscriptPreprocessor::FMacro* ClassMacro =
@@ -74,47 +75,47 @@ enum class EMacroState : uint8
 		const FAngelscriptPreprocessor::FMacro* EnumMetaMacro =
 			Session.FindMacroBySubjectIndex(FAngelscriptPreprocessor::EMacroType::EnumMeta, 1);
 
-		TestRunner->TestNotNull(
-			TEXT("Macro set should include a named UCLASS record for UMacroCarrier"),
-			ClassMacro);
-		TestRunner->TestNotNull(
-			TEXT("Macro set should include a named UENUM record for EMacroState"),
-			EnumMacro);
-		TestRunner->TestNotNull(
-			TEXT("Macro set should include an EnumValue record for subject index 0"),
-			EnumValueMacro);
-		TestRunner->TestNotNull(
-			TEXT("Macro set should include an EnumMeta record for subject index 1"),
-			EnumMetaMacro);
+		ASSERT_THAT(IsNotNull(
+			ClassMacro,
+			TEXT("Macro set should include a named UCLASS record for UMacroCarrier")));
+		ASSERT_THAT(IsNotNull(
+			EnumMacro,
+			TEXT("Macro set should include a named UENUM record for EMacroState")));
+		ASSERT_THAT(IsNotNull(
+			EnumValueMacro,
+			TEXT("Macro set should include an EnumValue record for subject index 0")));
+		ASSERT_THAT(IsNotNull(
+			EnumMetaMacro,
+			TEXT("Macro set should include an EnumMeta record for subject index 1")));
 
 		// Validate UCLASS record details
 		if (ClassMacro != nullptr)
 		{
-			TestRunner->TestEqual(
-				TEXT("UCLASS record should keep the original class specifier list"),
+			ASSERT_THAT(AreEqual(
+				FString(TEXT("Abstract, BlueprintType")),
 				ClassMacro->Arguments,
-				FString(TEXT("Abstract, BlueprintType")));
+				TEXT("UCLASS record should keep the original class specifier list")));
 
 			const FAngelscriptPreprocessor::FChunk* ClassChunk =
 				Session.FindFirstChunkOfType(FAngelscriptPreprocessor::EChunkType::Class);
-			TestRunner->TestNotNull(
-				TEXT("UCLASS record should stay attached to a class chunk"),
-				ClassChunk);
+			ASSERT_THAT(IsNotNull(
+				ClassChunk,
+				TEXT("UCLASS record should stay attached to a class chunk")));
 			if (ClassChunk != nullptr)
 			{
-				TestRunner->TestEqual(
-					TEXT("UCLASS record should belong to a class chunk"),
+				ASSERT_THAT(AreEqual(
+					static_cast<int32>(FAngelscriptPreprocessor::EChunkType::Class),
 					static_cast<int32>(ClassChunk->Type),
-					static_cast<int32>(FAngelscriptPreprocessor::EChunkType::Class));
-				TestRunner->TestNotNull(
-					TEXT("UCLASS chunk should keep the resolved class descriptor"),
-					ClassChunk->ClassDesc.Get());
+					TEXT("UCLASS record should belong to a class chunk")));
+				ASSERT_THAT(IsNotNull(
+					ClassChunk->ClassDesc.Get(),
+					TEXT("UCLASS chunk should keep the resolved class descriptor")));
 				if (ClassChunk->ClassDesc.IsValid())
 				{
-					TestRunner->TestEqual(
-						TEXT("UCLASS chunk should resolve the same class name as the macro"),
+					ASSERT_THAT(AreEqual(
+						FString(TEXT("UMacroCarrier")),
 						ClassChunk->ClassDesc->ClassName,
-						FString(TEXT("UMacroCarrier")));
+						TEXT("UCLASS chunk should resolve the same class name as the macro")));
 				}
 			}
 		}
@@ -122,45 +123,47 @@ enum class EMacroState : uint8
 		// Validate UENUM record details
 		if (EnumMacro != nullptr)
 		{
-			TestRunner->TestEqual(
-				TEXT("UENUM record should keep the original enum specifier list"),
+			ASSERT_THAT(AreEqual(
+				FString(TEXT("BlueprintType")),
 				EnumMacro->Arguments,
-				FString(TEXT("BlueprintType")));
+				TEXT("UENUM record should keep the original enum specifier list")));
 
 			const FAngelscriptPreprocessor::FChunk* EnumChunk =
 				Session.FindFirstChunkOfType(FAngelscriptPreprocessor::EChunkType::Enum);
-			TestRunner->TestNotNull(
-				TEXT("UENUM record should stay attached to an enum chunk"),
-				EnumChunk);
+			ASSERT_THAT(IsNotNull(
+				EnumChunk,
+				TEXT("UENUM record should stay attached to an enum chunk")));
 			if (EnumChunk != nullptr)
 			{
-				TestRunner->TestEqual(
-					TEXT("UENUM record should belong to an enum chunk"),
+				ASSERT_THAT(AreEqual(
+					static_cast<int32>(FAngelscriptPreprocessor::EChunkType::Enum),
 					static_cast<int32>(EnumChunk->Type),
-					static_cast<int32>(FAngelscriptPreprocessor::EChunkType::Enum));
+					TEXT("UENUM record should belong to an enum chunk")));
 			}
 		}
 
 		// Validate EnumValue record details
 		if (EnumValueMacro != nullptr)
 		{
-			TestRunner->TestTrue(
-				TEXT("EnumValue record should preserve the preceding comment text"),
-				EnumValueMacro->Comment.Contains(TEXT("Alpha Friendly")));
-			TestRunner->TestEqual(
-				TEXT("EnumValue record should pin its subject index to the first enum entry"),
-				EnumValueMacro->SubjectIndex, 0);
+			ASSERT_THAT(IsTrue(
+				EnumValueMacro->Comment.Contains(TEXT("Alpha Friendly")),
+				TEXT("EnumValue record should preserve the preceding comment text")));
+			ASSERT_THAT(AreEqual(
+				0,
+				EnumValueMacro->SubjectIndex,
+				TEXT("EnumValue record should pin its subject index to the first enum entry")));
 		}
 
 		// Validate EnumMeta record details
 		if (EnumMetaMacro != nullptr)
 		{
-			TestRunner->TestTrue(
-				TEXT("EnumMeta record should preserve the DisplayName payload"),
-				EnumMetaMacro->Arguments.Contains(TEXT("DisplayName=\"Beta Friendly\"")));
-			TestRunner->TestEqual(
-				TEXT("EnumMeta record should pin its subject index to the second enum entry"),
-				EnumMetaMacro->SubjectIndex, 1);
+			ASSERT_THAT(IsTrue(
+				EnumMetaMacro->Arguments.Contains(TEXT("DisplayName=\"Beta Friendly\"")),
+				TEXT("EnumMeta record should preserve the DisplayName payload")));
+			ASSERT_THAT(AreEqual(
+				1,
+				EnumMetaMacro->SubjectIndex,
+				TEXT("EnumMeta record should pin its subject index to the second enum entry")));
 		}
 
 		}
@@ -176,49 +179,49 @@ enum class EMacroState : uint8
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		// IsAllSameChar / IsLineSeparator utilities
-		TestRunner->TestTrue(
-			TEXT("IsAllSameChar should accept uniform dash separators"),
-			IsAllSameChar(TEXT("----"), TEXT('-')));
-		TestRunner->TestFalse(
-			TEXT("IsAllSameChar should reject mixed separator characters"),
-			IsAllSameChar(TEXT("--=-"), TEXT('-')));
-		TestRunner->TestTrue(
-			TEXT("IsLineSeparator should accept equals separators"),
-			IsLineSeparator(TEXT("====")));
-		TestRunner->TestFalse(
-			TEXT("IsLineSeparator should reject lines containing non-separator content"),
-			IsLineSeparator(TEXT("-- body --")));
+		ASSERT_THAT(IsTrue(
+			IsAllSameChar(TEXT("----"), TEXT('-')),
+			TEXT("IsAllSameChar should accept uniform dash separators")));
+		ASSERT_THAT(IsFalse(
+			IsAllSameChar(TEXT("--=-"), TEXT('-')),
+			TEXT("IsAllSameChar should reject mixed separator characters")));
+		ASSERT_THAT(IsTrue(
+			IsLineSeparator(TEXT("====")),
+			TEXT("IsLineSeparator should accept equals separators")));
+		ASSERT_THAT(IsFalse(
+			IsLineSeparator(TEXT("-- body --")),
+			TEXT("IsLineSeparator should reject lines containing non-separator content")));
 
 		// FormatCommentForToolTip transformations
-		TestRunner->TestEqual(
-			TEXT("JavaDoc comments should strip markers and leading stars"),
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("Summary line\nDetail line")),
 			FormatCommentForToolTip(TEXT("/**\n * Summary line\n * Detail line\n */")),
-			FString(TEXT("Summary line\nDetail line")));
+			TEXT("JavaDoc comments should strip markers and leading stars")));
 
-		TestRunner->TestEqual(
-			TEXT("Cpp comments should drop //~ ignored lines before tooltip normalization"),
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("Summary line\nFollowup line")),
 			FormatCommentForToolTip(TEXT("// Summary line\n//~ Hidden line\n// Followup line")),
-			FString(TEXT("Summary line\nFollowup line")));
+			TEXT("Cpp comments should drop //~ ignored lines before tooltip normalization")));
 
-		TestRunner->TestEqual(
-			TEXT("Separator-only wrapper lines should be removed from tooltip output"),
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("Body text")),
 			FormatCommentForToolTip(TEXT("/**\n * =====\n * Body text\n * =====\n */")),
-			FString(TEXT("Body text")));
+			TEXT("Separator-only wrapper lines should be removed from tooltip output")));
 
-		TestRunner->TestEqual(
-			TEXT("Pure CJK tooltip comments should not be treated as empty"),
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("\u7eaf\u4e2d\u6587\u63d0\u793a")),
 			FormatCommentForToolTip(TEXT("// \u7eaf\u4e2d\u6587\u63d0\u793a")),
-			FString(TEXT("\u7eaf\u4e2d\u6587\u63d0\u793a")));
+			TEXT("Pure CJK tooltip comments should not be treated as empty")));
 
-		TestRunner->TestEqual(
-			TEXT("Tabs and carriage returns should normalize into stable plain-text indentation"),
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("Tabbed line\nSecond line")),
 			FormatCommentForToolTip(TEXT("//\tTabbed line\r\n//\tSecond line")),
-			FString(TEXT("Tabbed line\nSecond line")));
+			TEXT("Tabs and carriage returns should normalize into stable plain-text indentation")));
 
-		TestRunner->TestEqual(
-			TEXT("Comments without alnum or CJK content should normalize to empty text"),
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("")),
 			FormatCommentForToolTip(TEXT("/* ===== */")),
-			FString(TEXT("")));
+			TEXT("Comments without alnum or CJK content should normalize to empty text")));
 
 		}
 	}
@@ -286,16 +289,13 @@ enum class EMacroState : uint8
 		if (Module != nullptr)
 		{
 			// Verify enum descriptor is recorded
-			TestRunner->TestTrue(TEXT("Should have at least one enum descriptor"),
-				Module->Enums.Num() >= 1);
+			ASSERT_THAT(IsTrue(Module->Enums.Num() >= 1, TEXT("Should have at least one enum descriptor")));
 
 			if (Module->Enums.Num() > 0)
 			{
 				const FAngelscriptEnumDesc& EnumDesc = Module->Enums[0].Get();
-				TestRunner->TestEqual(TEXT("Enum name should be ETestDirection"),
-					EnumDesc.EnumName, FString(TEXT("ETestDirection")));
-				TestRunner->TestEqual(TEXT("Should have 4 enum value names"),
-					EnumDesc.ValueNames.Num(), 4);
+				ASSERT_THAT(AreEqual(FString(TEXT("ETestDirection")), EnumDesc.EnumName, TEXT("Enum name should be ETestDirection")));
+				ASSERT_THAT(AreEqual(4, EnumDesc.ValueNames.Num(), TEXT("Should have 4 enum value names")));
 			}
 		}
 
@@ -305,16 +305,16 @@ enum class EMacroState : uint8
 			&Engine, ECompileType::SoftReloadOnly, ModuleName,
 			RelativeScriptPath, ScriptSource, true, Summary);
 
-		TestRunner->TestTrue(TEXT("Enum module should compile"), bCompiled);
-		TestRunner->TestEqual(TEXT("No compile diagnostics"), Summary.Diagnostics.Num(), 0);
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Enum module should compile")));
+		ASSERT_THAT(AreEqual(0, Summary.Diagnostics.Num(), TEXT("No compile diagnostics")));
 
 		int32 EntryResult = 0;
 		const bool bExecuted = bCompiled
 			&& ExecuteIntFunction(&Engine, RelativeScriptPath, ModuleName, TEXT("int Entry()"), EntryResult);
-		TestRunner->TestTrue(TEXT("Entry should execute"), bExecuted);
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("Entry should execute")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(TEXT("South direction should return 180"), EntryResult, 180);
+			ASSERT_THAT(AreEqual(180, EntryResult, TEXT("South direction should return 180")));
 		}
 
 		}
@@ -355,18 +355,15 @@ enum class EMacroState : uint8
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("Should have at least one enum descriptor"),
-			Module->Enums.Num() >= 1);
+		ASSERT_THAT(IsTrue(Module->Enums.Num() >= 1, TEXT("Should have at least one enum descriptor")));
 		if (Module->Enums.Num() == 0)
 		{
 			return;
 		}
 
 		const FAngelscriptEnumDesc& EnumDesc = Module->Enums[0].Get();
-		TestRunner->TestEqual(TEXT("Enum name should be EWeaponType"),
-			EnumDesc.EnumName, FString(TEXT("EWeaponType")));
-		TestRunner->TestEqual(TEXT("Should have 3 enum value names"),
-			EnumDesc.ValueNames.Num(), 3);
+		ASSERT_THAT(AreEqual(FString(TEXT("EWeaponType")), EnumDesc.EnumName, TEXT("Enum name should be EWeaponType")));
+		ASSERT_THAT(AreEqual(3, EnumDesc.ValueNames.Num(), TEXT("Should have 3 enum value names")));
 
 		// Verify macro records for UMETA
 		const TArray<const FAngelscriptPreprocessor::FMacro*> Macros = Session.GatherMacros();
@@ -386,28 +383,24 @@ enum class EMacroState : uint8
 			}
 		}
 
-		TestRunner->TestEqual(TEXT("Should have 3 EnumValue macro records"),
-			EnumValueMacros.Num(), 3);
-		TestRunner->TestEqual(TEXT("Should have 3 EnumMeta macro records"),
-			EnumMetaMacros.Num(), 3);
+		ASSERT_THAT(AreEqual(3, EnumValueMacros.Num(), TEXT("Should have 3 EnumValue macro records")));
+		ASSERT_THAT(AreEqual(3, EnumMetaMacros.Num(), TEXT("Should have 3 EnumMeta macro records")));
 
 		// Check first value comment
 		if (EnumValueMacros.Num() > 0)
 		{
-			TestRunner->TestTrue(TEXT("First EnumValue should have 'melee weapon' comment"),
-				EnumValueMacros[0]->Comment.Contains(TEXT("melee weapon")));
+			ASSERT_THAT(IsTrue(EnumValueMacros[0]->Comment.Contains(TEXT("melee weapon")), TEXT("First EnumValue should have 'melee weapon' comment")));
 		}
 
 		// Check UMETA arguments
 		if (EnumMetaMacros.Num() >= 3)
 		{
-			TestRunner->TestTrue(TEXT("First UMETA should contain 'Melee Sword'"),
-				EnumMetaMacros[0]->Arguments.Contains(TEXT("DisplayName=\"Melee Sword\"")));
-			TestRunner->TestTrue(TEXT("Second UMETA should contain 'Ranged Bow'"),
-				EnumMetaMacros[1]->Arguments.Contains(TEXT("DisplayName=\"Ranged Bow\"")));
-			TestRunner->TestTrue(TEXT("Third UMETA should contain 'Magic Staff' and Hidden"),
+			ASSERT_THAT(IsTrue(EnumMetaMacros[0]->Arguments.Contains(TEXT("DisplayName=\"Melee Sword\"")), TEXT("First UMETA should contain 'Melee Sword'")));
+			ASSERT_THAT(IsTrue(EnumMetaMacros[1]->Arguments.Contains(TEXT("DisplayName=\"Ranged Bow\"")), TEXT("Second UMETA should contain 'Ranged Bow'")));
+			ASSERT_THAT(IsTrue(
 				EnumMetaMacros[2]->Arguments.Contains(TEXT("DisplayName=\"Magic Staff\""))
-				&& EnumMetaMacros[2]->Arguments.Contains(TEXT("Hidden")));
+				&& EnumMetaMacros[2]->Arguments.Contains(TEXT("Hidden")),
+				TEXT("Third UMETA should contain 'Magic Staff' and Hidden")));
 		}
 
 		}
@@ -451,8 +444,7 @@ enum class EMacroState : uint8
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Should have exactly 2 enum descriptors"),
-			Module->Enums.Num(), 2);
+		ASSERT_THAT(AreEqual(2, Module->Enums.Num(), TEXT("Should have exactly 2 enum descriptors")));
 
 		if (Module->Enums.Num() >= 2)
 		{
@@ -476,20 +468,16 @@ enum class EMacroState : uint8
 			// inserts the "BlueprintType" entry; plain UENUM() does not.
 			const TPair<FName, int32> BlueprintTypeKey(FName(TEXT("BlueprintType")), INDEX_NONE);
 
-			if (TestRunner->TestNotNull(TEXT("Should find EBPEnum"), BPEnum))
+			if (this->Assert.IsNotNull(BPEnum, TEXT("Should find EBPEnum")))
 			{
-				TestRunner->TestTrue(TEXT("EBPEnum should record BlueprintType meta"),
-					BPEnum->Meta.Contains(BlueprintTypeKey));
-				TestRunner->TestEqual(TEXT("EBPEnum should have 2 value names"),
-					BPEnum->ValueNames.Num(), 2);
+				ASSERT_THAT(IsTrue(BPEnum->Meta.Contains(BlueprintTypeKey), TEXT("EBPEnum should record BlueprintType meta")));
+				ASSERT_THAT(AreEqual(2, BPEnum->ValueNames.Num(), TEXT("EBPEnum should have 2 value names")));
 			}
 
-			if (TestRunner->TestNotNull(TEXT("Should find ENonBPEnum"), NonBPEnum))
+			if (this->Assert.IsNotNull(NonBPEnum, TEXT("Should find ENonBPEnum")))
 			{
-				TestRunner->TestFalse(TEXT("ENonBPEnum should not record BlueprintType meta"),
-					NonBPEnum->Meta.Contains(BlueprintTypeKey));
-				TestRunner->TestEqual(TEXT("ENonBPEnum should have 2 value names"),
-					NonBPEnum->ValueNames.Num(), 2);
+				ASSERT_THAT(IsFalse(NonBPEnum->Meta.Contains(BlueprintTypeKey), TEXT("ENonBPEnum should not record BlueprintType meta")));
+				ASSERT_THAT(AreEqual(2, NonBPEnum->ValueNames.Num(), TEXT("ENonBPEnum should have 2 value names")));
 			}
 		}
 
@@ -549,17 +537,13 @@ enum class EMacroState : uint8
 		if (Module != nullptr)
 		{
 			// Should have both class and enum descriptors
-			TestRunner->TestTrue(TEXT("Should have class descriptors"),
-				Module->Classes.Num() >= 1);
-			TestRunner->TestTrue(TEXT("Should have enum descriptors"),
-				Module->Enums.Num() >= 1);
+			ASSERT_THAT(IsTrue(Module->Classes.Num() >= 1, TEXT("Should have class descriptors")));
+			ASSERT_THAT(IsTrue(Module->Enums.Num() >= 1, TEXT("Should have enum descriptors")));
 
 			if (Module->Enums.Num() > 0)
 			{
-				TestRunner->TestEqual(TEXT("Enum should be EOwnerState"),
-					Module->Enums[0]->EnumName, FString(TEXT("EOwnerState")));
-				TestRunner->TestEqual(TEXT("EOwnerState should have 3 value names"),
-					Module->Enums[0]->ValueNames.Num(), 3);
+				ASSERT_THAT(AreEqual(FString(TEXT("EOwnerState")), Module->Enums[0]->EnumName, TEXT("Enum should be EOwnerState")));
+				ASSERT_THAT(AreEqual(3, Module->Enums[0]->ValueNames.Num(), TEXT("EOwnerState should have 3 value names")));
 			}
 		}
 
@@ -569,18 +553,17 @@ enum class EMacroState : uint8
 			&Engine, ECompileType::SoftReloadOnly, ModuleName,
 			RelativeScriptPath, ScriptSource, true, Summary);
 
-		TestRunner->TestTrue(TEXT("Should compile"), bCompiled);
-		TestRunner->TestEqual(TEXT("No compile diagnostics"), Summary.Diagnostics.Num(), 0);
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Should compile")));
+		ASSERT_THAT(AreEqual(0, Summary.Diagnostics.Num(), TEXT("No compile diagnostics")));
 
 		int32 EntryResult = 0;
 		const bool bExecuted = bCompiled
 			&& ExecuteIntFunction(&Engine, RelativeScriptPath, ModuleName, TEXT("int Entry()"), EntryResult);
-		TestRunner->TestTrue(TEXT("Entry should execute"), bExecuted);
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("Entry should execute")));
 		if (bExecuted)
 		{
 			// Active=1, Disabled=2 → 1*10 + 2 = 12
-			TestRunner->TestEqual(TEXT("Enum values: Active(1)*10 + Disabled(2) = 12"),
-				EntryResult, 12);
+			ASSERT_THAT(AreEqual(12, EntryResult, TEXT("Enum values: Active(1)*10 + Disabled(2) = 12")));
 		}
 
 		}
@@ -619,13 +602,11 @@ int Entry()
 		if (Module != nullptr)
 		{
 			// Verify delegate descriptors are recorded
-			TestRunner->TestTrue(TEXT("Should have at least one delegate"),
-				Module->Delegates.Num() >= 1);
+			ASSERT_THAT(IsTrue(Module->Delegates.Num() >= 1, TEXT("Should have at least one delegate")));
 
 			// Check code is produced
 			const FString Code = Session.Result.JoinedCode(*Module);
-			TestRunner->TestTrue(TEXT("Should contain Entry function"),
-				Code.Contains(TEXT("int Entry()")));
+			ASSERT_THAT(IsTrue(Code.Contains(TEXT("int Entry()")), TEXT("Should contain Entry function")));
 		}
 
 		}

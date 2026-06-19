@@ -45,26 +45,26 @@ class UFunctionalAnimNotifyState_ScriptWindow : UAnimNotifyState
 			TEXT("UFunctionalAnimNotifyState_ScriptWindow"));
 		if (StateClass == nullptr) { return; }
 
-		TestRunner->TestTrue(
-			TEXT("UFunctionalAnimNotifyState_ScriptWindow should derive from UAnimNotifyState"),
-			StateClass->IsChildOf(UAnimNotifyState::StaticClass()));
+		ASSERT_THAT(IsTrue(
+			StateClass->IsChildOf(UAnimNotifyState::StaticClass()),
+			TEXT("UFunctionalAnimNotifyState_ScriptWindow should derive from UAnimNotifyState")));
 
 		// AngelscriptSettings::bScriptFloatIsFloat64 defaults to true, so AS 'float' lowers to FDoubleProperty.
 		FDoubleProperty* WindowStrengthProp = FindFProperty<FDoubleProperty>(StateClass, TEXT("WindowStrength"));
-		TestRunner->TestNotNull(TEXT("WindowStrength FDoubleProperty should be registered"), WindowStrengthProp);
+		ASSERT_THAT(IsNotNull(WindowStrengthProp, TEXT("WindowStrength FDoubleProperty should be registered")));
 
 		FIntProperty* WindowPriorityProp = FindFProperty<FIntProperty>(StateClass, TEXT("WindowPriority"));
-		TestRunner->TestNotNull(TEXT("WindowPriority FIntProperty should be registered"), WindowPriorityProp);
+		ASSERT_THAT(IsNotNull(WindowPriorityProp, TEXT("WindowPriority FIntProperty should be registered")));
 
 		FBoolProperty* FiresOnTickProp = FindFProperty<FBoolProperty>(StateClass, TEXT("bFiresOnTick"));
-		if (TestRunner->TestNotNull(TEXT("bFiresOnTick FBoolProperty should be registered"), FiresOnTickProp))
+		if (this->Assert.IsNotNull(FiresOnTickProp, TEXT("bFiresOnTick FBoolProperty should be registered")))
 		{
 			UObject* CDO = StateClass->GetDefaultObject();
-			if (TestRunner->TestNotNull(TEXT("UFunctionalAnimNotifyState_ScriptWindow should have a valid CDO"), CDO))
+			if (this->Assert.IsNotNull(CDO, TEXT("UFunctionalAnimNotifyState_ScriptWindow should have a valid CDO")))
 			{
-				TestRunner->TestTrue(
-					TEXT("bFiresOnTick CDO default should be true"),
-					FiresOnTickProp->GetPropertyValue_InContainer(CDO));
+				ASSERT_THAT(IsTrue(
+					FiresOnTickProp->GetPropertyValue_InContainer(CDO),
+					TEXT("bFiresOnTick CDO default should be true")));
 			}
 		}
 	}

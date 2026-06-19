@@ -45,10 +45,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionCallerErasureTests,
 		const ASAutoCaller::FunctionCaller Caller = ASAutoCaller::MakeFunctionCaller(Method);
 		ASAutoCaller::TMethodPtr ErasedMethod = MakeErasedMethodPointer(Method);
 
-		TestRunner->TestTrue(TEXT("const& qualified method caller should produce a bound generic method pointer"), GenericMethod.IsBound());
-		TestRunner->TestEqual(TEXT("const& qualified method caller should encode the method pointer as a class method"), static_cast<int32>(GenericMethod.flag), 3);
-		TestRunner->TestTrue(TEXT("const& qualified method caller should produce a bound auto caller"), Caller.IsBound());
-		TestRunner->TestEqual(TEXT("const& qualified method caller should select the method caller path"), Caller.type, 2);
+		ASSERT_THAT(IsTrue(GenericMethod.IsBound(),
+			TEXT("const& qualified method caller should produce a bound generic method pointer")));
+		ASSERT_THAT(AreEqual(3, static_cast<int32>(GenericMethod.flag),
+			TEXT("const& qualified method caller should encode the method pointer as a class method")));
+		ASSERT_THAT(IsTrue(Caller.IsBound(),
+			TEXT("const& qualified method caller should produce a bound auto caller")));
+		ASSERT_THAT(AreEqual(2, Caller.type,
+			TEXT("const& qualified method caller should select the method caller path")));
 
 		FConstRefQualifiedProbe Probe;
 		int32 Delta = 5;
@@ -61,8 +65,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionCallerErasureTests,
 
 		Caller.MethodPtr(ErasedMethod, Arguments, &Result);
 
-		TestRunner->TestEqual(TEXT("const& qualified method caller should preserve the erased return value"), Result, 16);
-		TestRunner->TestEqual(TEXT("const& qualified method caller should not mutate the probe object"), Probe.Base, 11);
+		ASSERT_THAT(AreEqual(16, Result,
+			TEXT("const& qualified method caller should preserve the erased return value")));
+		ASSERT_THAT(AreEqual(11, Probe.Base,
+			TEXT("const& qualified method caller should not mutate the probe object")));
 
 		}
 	}

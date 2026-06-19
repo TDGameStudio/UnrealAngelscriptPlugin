@@ -86,6 +86,7 @@ static FName MakeUniqueStartupBindName(const TCHAR* Prefix)
 
 bool RunCloneModuleIsolation(FAutomationTestBase& Test)
 {
+	FNoDiscardAsserter Assert(Test);
 	// Note: the historic name is preserved while the test method name in
 	// the TEST_CLASS still references "CloneModuleIsolation" so test report
 	// archives stay greppable. The semantics are now "two independent test
@@ -99,8 +100,8 @@ bool RunCloneModuleIsolation(FAutomationTestBase& Test)
 	TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(Config, Dependencies);
 	TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptTestEngine::Create(Config, Dependencies);
 
-	if (!Test.TestNotNull(TEXT("MultiEngine.IndependentEngines should create the first test engine"), EngineA.Get())
-		|| !Test.TestNotNull(TEXT("MultiEngine.IndependentEngines should create the second test engine"), EngineB.Get()))
+	if (!Assert.IsNotNull(EngineA.Get(), TEXT("MultiEngine.IndependentEngines should create the first test engine"))
+		|| !Assert.IsNotNull(EngineB.Get(), TEXT("MultiEngine.IndependentEngines should create the second test engine")))
 	{
 		return false;
 	}
@@ -110,26 +111,29 @@ bool RunCloneModuleIsolation(FAutomationTestBase& Test)
 	FAngelscriptMultiEngineTestAccess::TrackNamedModule(*EngineA, ModuleName, EngineAModule);
 	FAngelscriptMultiEngineTestAccess::TrackNamedModule(*EngineB, ModuleName, EngineBModule);
 
-	Test.TestNotNull(TEXT("MultiEngine.IndependentEngines should create the first underlying script module"), EngineAModule);
-	Test.TestNotNull(TEXT("MultiEngine.IndependentEngines should create the second underlying script module"), EngineBModule);
-	Test.TestTrue(TEXT("MultiEngine.IndependentEngines should keep external lookup working for engine A"), EngineA->GetModuleByModuleName(ModuleName).IsValid());
-	Test.TestTrue(TEXT("MultiEngine.IndependentEngines should keep external lookup working for engine B"), EngineB->GetModuleByModuleName(ModuleName).IsValid());
+	bool bOk = true;
+	bOk &= Assert.IsNotNull(EngineAModule, TEXT("MultiEngine.IndependentEngines should create the first underlying script module"));
+	bOk &= Assert.IsNotNull(EngineBModule, TEXT("MultiEngine.IndependentEngines should create the second underlying script module"));
+	bOk &= Assert.IsTrue(EngineA->GetModuleByModuleName(ModuleName).IsValid(), TEXT("MultiEngine.IndependentEngines should keep external lookup working for engine A"));
+	bOk &= Assert.IsTrue(EngineB->GetModuleByModuleName(ModuleName).IsValid(), TEXT("MultiEngine.IndependentEngines should keep external lookup working for engine B"));
 
 	// The structural invariant: distinct asCScriptEngine instances allocate
 	// their modules independently, so two engines compiling under the same
 	// module name must produce distinct underlying objects.
-	Test.TestTrue(TEXT("MultiEngine.IndependentEngines should produce distinct underlying script modules per engine"), EngineAModule != EngineBModule);
+	bOk &= Assert.IsTrue(EngineAModule != EngineBModule, TEXT("MultiEngine.IndependentEngines should produce distinct underlying script modules per engine"));
 
 	// Cross-engine lookup must miss: if engine A discards its module, engine B's
 	// module is still reachable via engine B and the asCScriptEngine of B never
 	// learns about engine A's discard.
 	EngineA->DiscardModule(*ModuleName);
-	Test.TestFalse(TEXT("MultiEngine.IndependentEngines should not leak engine A's discarded module back to engine A's lookup"), EngineA->GetModuleByModuleName(ModuleName).IsValid());
-	return Test.TestTrue(TEXT("MultiEngine.IndependentEngines should keep engine B's module reachable after engine A discards"), EngineB->GetModuleByModuleName(ModuleName).IsValid());
+	bOk &= Assert.IsFalse(EngineA->GetModuleByModuleName(ModuleName).IsValid(), TEXT("MultiEngine.IndependentEngines should not leak engine A's discarded module back to engine A's lookup"));
+	bOk &= Assert.IsTrue(EngineB->GetModuleByModuleName(ModuleName).IsValid(), TEXT("MultiEngine.IndependentEngines should keep engine B's module reachable after engine A discards"));
+	return bOk;
 }
 
 bool RunCloneDestroyDoesNotAffectPrimary(FAutomationTestBase& Test)
 {
+	FNoDiscardAsserter Assert(Test);
 	ResetToIsolatedEngineState();
 
 	const FString ModuleName = TEXT("Tests.SharedModule");
@@ -138,8 +142,8 @@ bool RunCloneDestroyDoesNotAffectPrimary(FAutomationTestBase& Test)
 	TUniquePtr<FAngelscriptEngine> PrimaryEngine = FAngelscriptTestEngine::Create(Config, Dependencies);
 	TUniquePtr<FAngelscriptEngine> CloneEngine = FAngelscriptTestEngine::Create(Config, Dependencies);
 
-	if (!Test.TestNotNull(TEXT("MultiEngine.CloneDestroyDoesNotAffectPrimary should create primary engine"), PrimaryEngine.Get())
-		|| !Test.TestNotNull(TEXT("MultiEngine.CloneDestroyDoesNotAffectPrimary should create clone engine"), CloneEngine.Get()))
+	if (!Assert.IsNotNull(PrimaryEngine.Get(), TEXT("MultiEngine.CloneDestroyDoesNotAffectPrimary should create primary engine"))
+		|| !Assert.IsNotNull(CloneEngine.Get(), TEXT("MultiEngine.CloneDestroyDoesNotAffectPrimary should create clone engine")))
 	{
 		return false;
 	}
@@ -149,16 +153,17 @@ bool RunCloneDestroyDoesNotAffectPrimary(FAutomationTestBase& Test)
 	FAngelscriptMultiEngineTestAccess::TrackNamedModule(*PrimaryEngine, ModuleName, PrimaryModule);
 	FAngelscriptMultiEngineTestAccess::TrackNamedModule(*CloneEngine, ModuleName, CloneModule);
 
-	if (!Test.TestNotNull(TEXT("MultiEngine.CloneDestroyDoesNotAffectPrimary should create the primary module"), PrimaryModule)
-		|| !Test.TestNotNull(TEXT("MultiEngine.CloneDestroyDoesNotAffectPrimary should create the clone module"), CloneModule))
+	if (!Assert.IsNotNull(PrimaryModule, TEXT("MultiEngine.CloneDestroyDoesNotAffectPrimary should create the primary module"))
+		|| !Assert.IsNotNull(CloneModule, TEXT("MultiEngine.CloneDestroyDoesNotAffectPrimary should create the clone module")))
 	{
 		return false;
 	}
 
 	CloneEngine.Reset();
 
-	Test.TestTrue(TEXT("MultiEngine.CloneDestroyDoesNotAffectPrimary should keep the primary module descriptor registered"), PrimaryEngine->GetModuleByModuleName(ModuleName).IsValid());
-	return Test.TestNotNull(TEXT("MultiEngine.CloneDestroyDoesNotAffectPrimary should keep the primary underlying script module alive"), FAngelscriptMultiEngineTestAccess::FindNamedModule(*PrimaryEngine, ModuleName));
+	bool bOk = Assert.IsTrue(PrimaryEngine->GetModuleByModuleName(ModuleName).IsValid(), TEXT("MultiEngine.CloneDestroyDoesNotAffectPrimary should keep the primary module descriptor registered"));
+	bOk &= Assert.IsNotNull(FAngelscriptMultiEngineTestAccess::FindNamedModule(*PrimaryEngine, ModuleName), TEXT("MultiEngine.CloneDestroyDoesNotAffectPrimary should keep the primary underlying script module alive"));
+	return bOk;
 }
 
 bool RunCloneKeepsSharedStateAlive(FAutomationTestBase& Test)
@@ -187,6 +192,7 @@ bool RunDeferredSharedStateReleasePurgesLocalContextPool(FAutomationTestBase& Te
 
 bool RunCloneHonorsInjectedDependencies(FAutomationTestBase& Test)
 {
+	FNoDiscardAsserter Assert(Test);
 	// Verifies the post-clone-removal contract: two independent Full engines
 	// each carry their own FAngelscriptEngineDependencies callbacks, and one
 	// engine's filesystem hooks must never fire on behalf of the other.
@@ -228,37 +234,39 @@ bool RunCloneHonorsInjectedDependencies(FAutomationTestBase& Test)
 
 	TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(Config, EngineADeps);
 	TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptTestEngine::Create(Config, EngineBDeps);
-	if (!Test.TestNotNull(TEXT("MultiEngine.IndependentInjectedDependencies should create engine A"), EngineA.Get())
-		|| !Test.TestNotNull(TEXT("MultiEngine.IndependentInjectedDependencies should create engine B"), EngineB.Get()))
+	if (!Assert.IsNotNull(EngineA.Get(), TEXT("MultiEngine.IndependentInjectedDependencies should create engine A"))
+		|| !Assert.IsNotNull(EngineB.Get(), TEXT("MultiEngine.IndependentInjectedDependencies should create engine B")))
 	{
 		return false;
 	}
 
 	// Each engine's DiscoverScriptRoots must drive its own injected callbacks.
 	const TArray<FString> EngineARoots = EngineA->DiscoverScriptRoots(false);
-	Test.TestTrue(TEXT("MultiEngine.IndependentInjectedDependencies engine A should fire its own MakeDirectory hook"), bEngineAMakeDirCalled);
-	Test.TestFalse(TEXT("MultiEngine.IndependentInjectedDependencies discovering on engine A must not fire engine B's MakeDirectory"), bEngineBMakeDirCalled);
-	Test.TestEqual(TEXT("MultiEngine.IndependentInjectedDependencies engine A should resolve the injected engine A project root"), EngineACreatedPath, FString(TEXT("C:/InjectedEngineAProject/Script")));
+	bool bOk = true;
+	bOk &= Assert.IsTrue(bEngineAMakeDirCalled, TEXT("MultiEngine.IndependentInjectedDependencies engine A should fire its own MakeDirectory hook"));
+	bOk &= Assert.IsFalse(bEngineBMakeDirCalled, TEXT("MultiEngine.IndependentInjectedDependencies discovering on engine A must not fire engine B's MakeDirectory"));
+	bOk &= Assert.AreEqual(FString(TEXT("C:/InjectedEngineAProject/Script")), EngineACreatedPath, TEXT("MultiEngine.IndependentInjectedDependencies engine A should resolve the injected engine A project root"));
 	if (EngineARoots.Num() > 0)
 	{
-		Test.TestEqual(TEXT("MultiEngine.IndependentInjectedDependencies engine A's discovered root should reflect its own GetProjectDir"), EngineARoots[0], FString(TEXT("C:/InjectedEngineAProject/Script")));
+		bOk &= Assert.AreEqual(FString(TEXT("C:/InjectedEngineAProject/Script")), EngineARoots[0], TEXT("MultiEngine.IndependentInjectedDependencies engine A's discovered root should reflect its own GetProjectDir"));
 	}
 
 	const TArray<FString> EngineBRoots = EngineB->DiscoverScriptRoots(false);
-	Test.TestTrue(TEXT("MultiEngine.IndependentInjectedDependencies engine B should fire its own MakeDirectory hook"), bEngineBMakeDirCalled);
-	Test.TestEqual(TEXT("MultiEngine.IndependentInjectedDependencies engine B should resolve the injected engine B project root"), EngineBCreatedPath, FString(TEXT("C:/InjectedEngineBProject/Script")));
+	bOk &= Assert.IsTrue(bEngineBMakeDirCalled, TEXT("MultiEngine.IndependentInjectedDependencies engine B should fire its own MakeDirectory hook"));
+	bOk &= Assert.AreEqual(FString(TEXT("C:/InjectedEngineBProject/Script")), EngineBCreatedPath, TEXT("MultiEngine.IndependentInjectedDependencies engine B should resolve the injected engine B project root"));
 	if (EngineBRoots.Num() > 0)
 	{
-		Test.TestEqual(TEXT("MultiEngine.IndependentInjectedDependencies engine B's discovered root should reflect its own GetProjectDir"), EngineBRoots[0], FString(TEXT("C:/InjectedEngineBProject/Script")));
+		bOk &= Assert.AreEqual(FString(TEXT("C:/InjectedEngineBProject/Script")), EngineBRoots[0], TEXT("MultiEngine.IndependentInjectedDependencies engine B's discovered root should reflect its own GetProjectDir"));
 	}
 
 	// The two engines must not have mutated each other's captured paths.
-	Test.TestNotEqual(TEXT("MultiEngine.IndependentInjectedDependencies the two engines' captured paths must remain distinct"), EngineACreatedPath, EngineBCreatedPath);
-	return true;
+	bOk &= Assert.AreNotEqual(EngineBCreatedPath, EngineACreatedPath, TEXT("MultiEngine.IndependentInjectedDependencies the two engines' captured paths must remain distinct"));
+	return bOk;
 }
 
 bool RunStartupBindObservationFullCreate(FAutomationTestBase& Test)
 {
+	FNoDiscardAsserter Assert(Test);
 	ResetToIsolatedEngineState();
 
 	const FName FirstBindName = MakeUniqueStartupBindName(TEXT("Automation.StartupBind.Full.First"));
@@ -271,26 +279,26 @@ bool RunStartupBindObservationFullCreate(FAutomationTestBase& Test)
 	const FAngelscriptEngineConfig Config;
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptTestEngine::Create(Config, Dependencies);
-	if (!Test.TestNotNull(TEXT("MultiEngine.StartupBindObservation.FullCreateRecordsOrderedBinds should create a full engine"), Engine.Get()))
+	if (!Assert.IsNotNull(Engine.Get(), TEXT("MultiEngine.StartupBindObservation.FullCreateRecordsOrderedBinds should create a full engine")))
 	{
 		return false;
 	}
 
 	const FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
-	if (!Test.TestEqual(TEXT("MultiEngine.StartupBindObservation.FullCreateRecordsOrderedBinds should observe a single startup bind pass"), FAngelscriptBindExecutionObservation::GetInvocationCount(), 1))
+	if (!Assert.AreEqual(1, FAngelscriptBindExecutionObservation::GetInvocationCount(), TEXT("MultiEngine.StartupBindObservation.FullCreateRecordsOrderedBinds should observe a single startup bind pass")))
 	{
 		return false;
 	}
 
 	const int32 FirstIndex = Snapshot.ExecutedBindNames.IndexOfByKey(FirstBindName);
 	const int32 SecondIndex = Snapshot.ExecutedBindNames.IndexOfByKey(SecondBindName);
-	if (!Test.TestTrue(TEXT("MultiEngine.StartupBindObservation.FullCreateRecordsOrderedBinds should observe the first named bind"), FirstIndex != INDEX_NONE)
-		|| !Test.TestTrue(TEXT("MultiEngine.StartupBindObservation.FullCreateRecordsOrderedBinds should observe the second named bind"), SecondIndex != INDEX_NONE))
+	if (!Assert.IsTrue(FirstIndex != INDEX_NONE, TEXT("MultiEngine.StartupBindObservation.FullCreateRecordsOrderedBinds should observe the first named bind"))
+		|| !Assert.IsTrue(SecondIndex != INDEX_NONE, TEXT("MultiEngine.StartupBindObservation.FullCreateRecordsOrderedBinds should observe the second named bind")))
 	{
 		return false;
 	}
 
-	return Test.TestTrue(TEXT("MultiEngine.StartupBindObservation.FullCreateRecordsOrderedBinds should preserve bind order in the observed startup pass"), FirstIndex < SecondIndex);
+	return Assert.IsTrue(FirstIndex < SecondIndex, TEXT("MultiEngine.StartupBindObservation.FullCreateRecordsOrderedBinds should preserve bind order in the observed startup pass"));
 }
 
 bool RunStartupBindObservationCloneCreate(FAutomationTestBase& Test)
@@ -310,6 +318,7 @@ bool RunStartupBindObservationCreateForTestingClone(FAutomationTestBase& Test)
 
 bool RunStartupBindObservationCreateForTestingFullFallback(FAutomationTestBase& Test)
 {
+	FNoDiscardAsserter Assert(Test);
 	ResetToIsolatedEngineState();
 	FMultiEngineContextStackGuard StackGuard;
 
@@ -324,12 +333,12 @@ bool RunStartupBindObservationCreateForTestingFullFallback(FAutomationTestBase& 
 	Config.bIsEditor = true;
 	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 	TUniquePtr<FAngelscriptEngine> TestEngine = FAngelscriptTestEngine::Create(Config, Dependencies);
-	if (!Test.TestNotNull(TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should create a fallback full engine"), TestEngine.Get()))
+	if (!Assert.IsNotNull(TestEngine.Get(), TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should create a fallback full engine")))
 	{
 		return false;
 	}
 
-	if (!Test.TestEqual(TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should observe one startup bind pass"), FAngelscriptBindExecutionObservation::GetInvocationCount(), 1))
+	if (!Assert.AreEqual(1, FAngelscriptBindExecutionObservation::GetInvocationCount(), TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should observe one startup bind pass")))
 	{
 		return false;
 	}
@@ -337,13 +346,13 @@ bool RunStartupBindObservationCreateForTestingFullFallback(FAutomationTestBase& 
 	const FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
 	const int32 FirstIndex = Snapshot.ExecutedBindNames.IndexOfByKey(FirstBindName);
 	const int32 SecondIndex = Snapshot.ExecutedBindNames.IndexOfByKey(SecondBindName);
-	if (!Test.TestTrue(TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should observe the first bind"), FirstIndex != INDEX_NONE)
-		|| !Test.TestTrue(TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should observe the second bind"), SecondIndex != INDEX_NONE))
+	if (!Assert.IsTrue(FirstIndex != INDEX_NONE, TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should observe the first bind"))
+		|| !Assert.IsTrue(SecondIndex != INDEX_NONE, TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should observe the second bind")))
 	{
 		return false;
 	}
 
-	return Test.TestTrue(TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should preserve order for the fallback full startup pass"), FirstIndex < SecondIndex);
+	return Assert.IsTrue(FirstIndex < SecondIndex, TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should preserve order for the fallback full startup pass"));
 }
 
 }

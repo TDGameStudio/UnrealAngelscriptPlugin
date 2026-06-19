@@ -77,14 +77,15 @@ namespace AngelscriptTest_Bindings_AngelscriptWorldCollisionFunctionLibraryCompo
 	template <typename TResult>
 	bool ExpectArrayParity(FAutomationTestBase& Test, const TCHAR* Label, bool bScriptReturnValue, bool bNativeReturnValue, const TArray<TResult>& ScriptResults, const TArray<TResult>& NativeResults)
 	{
+		FNoDiscardAsserter Assert(Test);
 		bool bPassed = true;
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve the bool return value"), Label), bScriptReturnValue, bNativeReturnValue);
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve the result count"), Label), ScriptResults.Num(), NativeResults.Num());
+		bPassed &= Assert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), Label));
+		bPassed &= Assert.AreEqual(NativeResults.Num(), ScriptResults.Num(), *FString::Printf(TEXT("%s should preserve the result count"), Label));
 
 		for (int32 ResultIndex = 0; ResultIndex < FMath::Min(ScriptResults.Num(), NativeResults.Num()); ++ResultIndex)
 		{
-			bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve actor for result %d"), Label, ResultIndex), ScriptResults[ResultIndex].GetActor(), NativeResults[ResultIndex].GetActor());
-			bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should preserve component for result %d"), Label, ResultIndex), ScriptResults[ResultIndex].GetComponent(), NativeResults[ResultIndex].GetComponent());
+			bPassed &= Assert.AreEqual(NativeResults[ResultIndex].GetActor(), ScriptResults[ResultIndex].GetActor(), *FString::Printf(TEXT("%s should preserve actor for result %d"), Label, ResultIndex));
+			bPassed &= Assert.AreEqual(NativeResults[ResultIndex].GetComponent(), ScriptResults[ResultIndex].GetComponent(), *FString::Printf(TEXT("%s should preserve component for result %d"), Label, ResultIndex));
 		}
 
 		return bPassed;
@@ -188,15 +189,15 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 		UBoxComponent* OverlapBox = AngelscriptTest_Bindings_AngelscriptWorldCollisionFunctionLibraryComponentTests_Private::AddCollisionBox(CollisionOverlapActor, FName(TEXT("OverlapTarget")), OverlapExtent, OverlapTargetLocation);
 		AActor& CollisionQueryActor = Spawner.SpawnActor<AActor>();
 		UBoxComponent* QueryBox = AngelscriptTest_Bindings_AngelscriptWorldCollisionFunctionLibraryComponentTests_Private::AddCollisionBox(CollisionQueryActor, FName(TEXT("QueryComponent")), QueryExtent, QueryComponentSpawnLocation);
-		if (!TestRunner->TestNotNull(TEXT("World collision function library blocker should be created"), BlockingBox)
-			|| !TestRunner->TestNotNull(TEXT("World collision function library overlap target should be created"), OverlapBox)
-			|| !TestRunner->TestNotNull(TEXT("World collision function library query component should be created"), QueryBox))
+		if (!this->Assert.IsNotNull(BlockingBox, TEXT("World collision function library blocker should be created"))
+			|| !this->Assert.IsNotNull(OverlapBox, TEXT("World collision function library overlap target should be created"))
+			|| !this->Assert.IsNotNull(QueryBox, TEXT("World collision function library query component should be created")))
 		{
 			return;
 		}
 
 		UWorld* World = CollisionBlockingActor.GetWorld();
-		if (!TestRunner->TestNotNull(TEXT("World collision function library component test should access the spawned world"), World))
+		if (!this->Assert.IsNotNull(World, TEXT("World collision function library component test should access the spawned world")))
 		{
 			return;
 		}
@@ -229,8 +230,8 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 			return;
 		}
 		ExpectArrayParity(*TestRunner, TEXT("ComponentSweepMulti hit"), bScriptComponentSweepHit, bNativeComponentSweepHit, ScriptComponentSweepHits, NativeComponentSweepHits);
-		TestRunner->TestTrue(TEXT("ComponentSweepMulti hit should produce at least one hit"), ScriptComponentSweepHits.Num() >= 1);
-		TestRunner->TestTrue(TEXT("ComponentSweepMulti hit should include the blocker component"), HitResultsContainComponent(ScriptComponentSweepHits, BlockingBox));
+		ASSERT_THAT(IsTrue(ScriptComponentSweepHits.Num() >= 1, TEXT("ComponentSweepMulti hit should produce at least one hit")));
+		ASSERT_THAT(IsTrue(HitResultsContainComponent(ScriptComponentSweepHits, BlockingBox), TEXT("ComponentSweepMulti hit should include the blocker component")));
 
 		// ComponentSweepMulti miss
 		TArray<FHitResult> NativeComponentSweepMisses;
@@ -255,7 +256,7 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 			return;
 		}
 		ExpectArrayParity(*TestRunner, TEXT("ComponentSweepMulti miss"), bScriptComponentSweepMiss, bNativeComponentSweepMiss, ScriptComponentSweepMisses, NativeComponentSweepMisses);
-		TestRunner->TestEqual(TEXT("ComponentSweepMulti miss should clear stale hit results"), ScriptComponentSweepMisses.Num(), 0);
+		ASSERT_THAT(AreEqual(0, ScriptComponentSweepMisses.Num(), TEXT("ComponentSweepMulti miss should clear stale hit results")));
 
 		// ComponentOverlapMulti hit
 		TArray<FOverlapResult> NativeComponentOverlapHits;
@@ -278,7 +279,7 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 			return;
 		}
 		ExpectArrayParity(*TestRunner, TEXT("ComponentOverlapMulti hit"), bScriptComponentOverlapHit, bNativeComponentOverlapHit, ScriptComponentOverlapHits, NativeComponentOverlapHits);
-		TestRunner->TestTrue(TEXT("ComponentOverlapMulti hit should include the overlap target component"), OverlapsContainComponent(ScriptComponentOverlapHits, OverlapBox));
+		ASSERT_THAT(IsTrue(OverlapsContainComponent(ScriptComponentOverlapHits, OverlapBox), TEXT("ComponentOverlapMulti hit should include the overlap target component")));
 
 		// ComponentOverlapMulti miss
 		TArray<FOverlapResult> NativeComponentOverlapMisses;
@@ -303,7 +304,7 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 			return;
 		}
 		ExpectArrayParity(*TestRunner, TEXT("ComponentOverlapMulti miss"), bScriptComponentOverlapMiss, bNativeComponentOverlapMiss, ScriptComponentOverlapMisses, NativeComponentOverlapMisses);
-		TestRunner->TestEqual(TEXT("ComponentOverlapMulti miss should clear stale overlap results"), ScriptComponentOverlapMisses.Num(), 0);
+		ASSERT_THAT(AreEqual(0, ScriptComponentOverlapMisses.Num(), TEXT("ComponentOverlapMulti miss should clear stale overlap results")));
 
 		}
 	}
@@ -378,15 +379,15 @@ bool RunComponentOverlapMultiNull(UPrimitiveComponent QueryComponent, TArray<FOv
 		UBoxComponent* OverlapBox = AngelscriptTest_Bindings_AngelscriptWorldCollisionFunctionLibraryComponentTests_Private::AddCollisionBox(CollisionOverlapActor, FName(TEXT("NullGuardOverlapTarget")), OverlapExtent, OverlapTargetLocation);
 		AActor& CollisionQueryActor = Spawner.SpawnActor<AActor>();
 		UBoxComponent* QueryBox = AngelscriptTest_Bindings_AngelscriptWorldCollisionFunctionLibraryComponentTests_Private::AddCollisionBox(CollisionQueryActor, FName(TEXT("NullGuardQueryComponent")), QueryExtent, QueryComponentSpawnLocation);
-		if (!TestRunner->TestNotNull(TEXT("World collision null-component test should create the blocker component"), BlockingBox)
-			|| !TestRunner->TestNotNull(TEXT("World collision null-component test should create the overlap target"), OverlapBox)
-			|| !TestRunner->TestNotNull(TEXT("World collision null-component test should create the query component"), QueryBox))
+		if (!this->Assert.IsNotNull(BlockingBox, TEXT("World collision null-component test should create the blocker component"))
+			|| !this->Assert.IsNotNull(OverlapBox, TEXT("World collision null-component test should create the overlap target"))
+			|| !this->Assert.IsNotNull(QueryBox, TEXT("World collision null-component test should create the query component")))
 		{
 			return;
 		}
 
 		UWorld* World = CollisionBlockingActor.GetWorld();
-		if (!TestRunner->TestNotNull(TEXT("World collision null-component test should access the spawned world"), World))
+		if (!this->Assert.IsNotNull(World, TEXT("World collision null-component test should access the spawned world")))
 		{
 			return;
 		}
@@ -419,7 +420,7 @@ bool RunComponentOverlapMultiNull(UPrimitiveComponent QueryComponent, TArray<FOv
 			return;
 		}
 		ExpectArrayParity(*TestRunner, TEXT("ComponentSweepMulti baseline"), bScriptBaselineSweep, bNativeBaselineSweep, ScriptBaselineSweepHits, NativeBaselineSweepHits);
-		TestRunner->TestTrue(TEXT("ComponentSweepMulti baseline should still hit the blocker component"), HitResultsContainComponent(ScriptBaselineSweepHits, BlockingBox));
+		ASSERT_THAT(IsTrue(HitResultsContainComponent(ScriptBaselineSweepHits, BlockingBox), TEXT("ComponentSweepMulti baseline should still hit the blocker component")));
 
 		// Null component sweep
 		TArray<FHitResult> ScriptNullSweepHits = ScriptBaselineSweepHits;
@@ -439,8 +440,8 @@ bool RunComponentOverlapMultiNull(UPrimitiveComponent QueryComponent, TArray<FOv
 		{
 			return;
 		}
-		TestRunner->TestFalse(TEXT("ComponentSweepMulti should return false when the source component is null"), bScriptNullSweep);
-		TestRunner->TestEqual(TEXT("ComponentSweepMulti should clear stale hit results when the source component is null"), ScriptNullSweepHits.Num(), 0);
+		ASSERT_THAT(IsFalse(bScriptNullSweep, TEXT("ComponentSweepMulti should return false when the source component is null")));
+		ASSERT_THAT(AreEqual(0, ScriptNullSweepHits.Num(), TEXT("ComponentSweepMulti should clear stale hit results when the source component is null")));
 
 		// Baseline overlap
 		TArray<FOverlapResult> NativeBaselineOverlaps;
@@ -463,7 +464,7 @@ bool RunComponentOverlapMultiNull(UPrimitiveComponent QueryComponent, TArray<FOv
 			return;
 		}
 		ExpectArrayParity(*TestRunner, TEXT("ComponentOverlapMulti baseline"), bScriptBaselineOverlap, bNativeBaselineOverlap, ScriptBaselineOverlaps, NativeBaselineOverlaps);
-		TestRunner->TestTrue(TEXT("ComponentOverlapMulti baseline should still hit the overlap target component"), OverlapsContainComponent(ScriptBaselineOverlaps, OverlapBox));
+		ASSERT_THAT(IsTrue(OverlapsContainComponent(ScriptBaselineOverlaps, OverlapBox), TEXT("ComponentOverlapMulti baseline should still hit the overlap target component")));
 
 		// Null component overlap
 		TArray<FOverlapResult> ScriptNullOverlaps = ScriptBaselineOverlaps;
@@ -483,8 +484,8 @@ bool RunComponentOverlapMultiNull(UPrimitiveComponent QueryComponent, TArray<FOv
 		{
 			return;
 		}
-		TestRunner->TestFalse(TEXT("ComponentOverlapMulti should return false when the source component is null"), bScriptNullOverlap);
-		TestRunner->TestEqual(TEXT("ComponentOverlapMulti should clear stale overlap results when the source component is null"), ScriptNullOverlaps.Num(), 0);
+		ASSERT_THAT(IsFalse(bScriptNullOverlap, TEXT("ComponentOverlapMulti should return false when the source component is null")));
+		ASSERT_THAT(AreEqual(0, ScriptNullOverlaps.Num(), TEXT("ComponentOverlapMulti should clear stale overlap results when the source component is null")));
 
 		}
 	}

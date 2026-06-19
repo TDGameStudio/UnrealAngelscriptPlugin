@@ -59,59 +59,35 @@ class AFunctionalWeaponActor : AActor
 			TEXT("UFunctionalWeaponData"));
 		if (DataAssetClass == nullptr) { return; }
 
-		TestRunner->TestTrue(
-			TEXT("UFunctionalWeaponData should derive from UDataAsset"),
-			DataAssetClass->IsChildOf(UDataAsset::StaticClass()));
+		ASSERT_THAT(IsTrue(
+			DataAssetClass->IsChildOf(UDataAsset::StaticClass()),
+			TEXT("UFunctionalWeaponData should derive from UDataAsset")));
 
 		FStrProperty* WeaponNameProp = FindFProperty<FStrProperty>(DataAssetClass, TEXT("WeaponName"));
-		TestRunner->TestNotNull(TEXT("WeaponName FStrProperty should be registered"), WeaponNameProp);
+		ASSERT_THAT(IsNotNull(WeaponNameProp, TEXT("WeaponName FStrProperty should be registered")));
 		// AngelscriptSettings::bScriptFloatIsFloat64 defaults to true, so AS 'float' lowers to FDoubleProperty.
 		FDoubleProperty* BaseDamageProp = FindFProperty<FDoubleProperty>(DataAssetClass, TEXT("BaseDamage"));
-		TestRunner->TestNotNull(TEXT("BaseDamage FDoubleProperty should be registered"), BaseDamageProp);
+		ASSERT_THAT(IsNotNull(BaseDamageProp, TEXT("BaseDamage FDoubleProperty should be registered")));
 		FDoubleProperty* FireRateProp = FindFProperty<FDoubleProperty>(DataAssetClass, TEXT("FireRate"));
-		TestRunner->TestNotNull(TEXT("FireRate FDoubleProperty should be registered"), FireRateProp);
+		ASSERT_THAT(IsNotNull(FireRateProp, TEXT("FireRate FDoubleProperty should be registered")));
 		FIntProperty* MaxAmmoProp = FindFProperty<FIntProperty>(DataAssetClass, TEXT("MaxAmmo"));
-		TestRunner->TestNotNull(TEXT("MaxAmmo FIntProperty should be registered"), MaxAmmoProp);
+		ASSERT_THAT(IsNotNull(MaxAmmoProp, TEXT("MaxAmmo FIntProperty should be registered")));
 		FArrayProperty* AttachmentsProp = FindFProperty<FArrayProperty>(DataAssetClass, TEXT("AllowedAttachments"));
-		TestRunner->TestNotNull(TEXT("AllowedAttachments FArrayProperty should be registered"), AttachmentsProp);
+		ASSERT_THAT(IsNotNull(AttachmentsProp, TEXT("AllowedAttachments FArrayProperty should be registered")));
 
 		UObject* CDO = DataAssetClass->GetDefaultObject();
-		if (TestRunner->TestNotNull(TEXT("UFunctionalWeaponData should have a valid CDO"), CDO))
-		{
-			if (BaseDamageProp != nullptr)
-			{
-				TestRunner->TestEqual(
-					TEXT("BaseDamage CDO default should be 10.0"),
-					BaseDamageProp->GetPropertyValue_InContainer(CDO),
-					10.0);
-			}
-			if (FireRateProp != nullptr)
-			{
-				TestRunner->TestEqual(
-					TEXT("FireRate CDO default should be 0.5"),
-					FireRateProp->GetPropertyValue_InContainer(CDO),
-					0.5);
-			}
-			if (MaxAmmoProp != nullptr)
-			{
-				TestRunner->TestEqual(
-					TEXT("MaxAmmo CDO default should be 30"),
-					MaxAmmoProp->GetPropertyValue_InContainer(CDO),
-					30);
-			}
-		}
+		ASSERT_THAT(IsNotNull(CDO, TEXT("UFunctionalWeaponData should have a valid CDO")));
+		ASSERT_THAT(IsNear(10.0, BaseDamageProp->GetPropertyValue_InContainer(CDO), static_cast<double>(UE_KINDA_SMALL_NUMBER), TEXT("BaseDamage CDO default should be 10.0")));
+		ASSERT_THAT(IsNear(0.5, FireRateProp->GetPropertyValue_InContainer(CDO), static_cast<double>(UE_KINDA_SMALL_NUMBER), TEXT("FireRate CDO default should be 0.5")));
+		ASSERT_THAT(AreEqual(30, MaxAmmoProp->GetPropertyValue_InContainer(CDO), TEXT("MaxAmmo CDO default should be 30")));
 
 		UClass* ActorClass = FindGeneratedClass(&Engine, TEXT("AFunctionalWeaponActor"));
-		if (TestRunner->TestNotNull(TEXT("AFunctionalWeaponActor class should be generated"), ActorClass))
-		{
-			FObjectProperty* WeaponConfigProp = FindFProperty<FObjectProperty>(ActorClass, TEXT("WeaponConfig"));
-			if (TestRunner->TestNotNull(TEXT("WeaponConfig FObjectProperty should be registered"), WeaponConfigProp))
-			{
-				TestRunner->TestTrue(
-					TEXT("WeaponConfig FObjectProperty class should reference UFunctionalWeaponData"),
-					WeaponConfigProp->PropertyClass == DataAssetClass);
-			}
-		}
+		ASSERT_THAT(IsNotNull(ActorClass, TEXT("AFunctionalWeaponActor class should be generated")));
+		FObjectProperty* WeaponConfigProp = FindFProperty<FObjectProperty>(ActorClass, TEXT("WeaponConfig"));
+		ASSERT_THAT(IsNotNull(WeaponConfigProp, TEXT("WeaponConfig FObjectProperty should be registered")));
+		ASSERT_THAT(IsTrue(
+			WeaponConfigProp->PropertyClass == DataAssetClass,
+			TEXT("WeaponConfig FObjectProperty class should reference UFunctionalWeaponData")));
 	}
 };
 

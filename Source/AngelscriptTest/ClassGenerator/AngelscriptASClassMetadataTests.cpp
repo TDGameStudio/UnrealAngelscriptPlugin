@@ -33,17 +33,21 @@ class %s : AActor
 )AS"),
 			*TestCase.GeneratedClassName.ToString());
 
-		if (!Test.TestTrue(
-			*FString::Printf(TEXT("ASClass metadata case '%s' should compile"), *TestCase.ModuleName.ToString()),
-			CompileAnnotatedModuleFromMemory(&Engine, TestCase.ModuleName, TestCase.Filename, ScriptSource)))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsTrue(
+			CompileAnnotatedModuleFromMemory(&Engine, TestCase.ModuleName, TestCase.Filename, ScriptSource),
+			FString::Printf(TEXT("ASClass metadata case '%s' should compile"), *TestCase.ModuleName.ToString())))
 		{
 			return nullptr;
 		}
 
 		UASClass* GeneratedClass = Cast<UASClass>(FindGeneratedClass(&Engine, TestCase.GeneratedClassName));
-		Test.TestNotNull(
-			*FString::Printf(TEXT("ASClass metadata case '%s' should generate '%s'"), *TestCase.ModuleName.ToString(), *TestCase.GeneratedClassName.ToString()),
-			GeneratedClass);
+		if (!Assert.IsNotNull(
+			GeneratedClass,
+			FString::Printf(TEXT("ASClass metadata case '%s' should generate '%s'"), *TestCase.ModuleName.ToString(), *TestCase.GeneratedClassName.ToString())))
+		{
+			return nullptr;
+		}
 		return GeneratedClass;
 	}
 }
@@ -97,12 +101,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassMetadataTests,
 				return;
 			}
 
-			TestRunner->TestEqual(
-				*FString::Printf(
-					TEXT("ASClass metadata case '%s' should report the expected developer-only state"),
-					*TestCase.ModuleName.ToString()),
+			ASSERT_THAT(AreEqual(
+				TestCase.bExpectedDeveloperOnly,
 				GeneratedClass->IsDeveloperOnly(),
-				TestCase.bExpectedDeveloperOnly);
+				FString::Printf(
+					TEXT("ASClass metadata case '%s' should report the expected developer-only state"),
+					*TestCase.ModuleName.ToString())));
 		}
 
 		}
@@ -137,28 +141,19 @@ class UMetadataDiscardCarrier : UObject
 }
 )AS");
 
-		if (!TestRunner->TestTrue(
-				TEXT("ASClass discard metadata case should compile"),
-				CompileAnnotatedModuleFromMemory(
-					&Engine,
-					DiscardModuleName,
-					TEXT("Game/Tools/Runtime/DiscardMetadata.as"),
-					ScriptSource)))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(
+			CompileAnnotatedModuleFromMemory(
+				&Engine,
+				DiscardModuleName,
+				TEXT("Game/Tools/Runtime/DiscardMetadata.as"),
+				ScriptSource),
+			TEXT("ASClass discard metadata case should compile")));
 
 		UASClass* GeneratedClass = Cast<UASClass>(FindGeneratedClass(&Engine, DiscardGeneratedClassName));
-		if (!TestRunner->TestNotNull(TEXT("ASClass discard metadata case should generate the script class"), GeneratedClass))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(GeneratedClass, TEXT("ASClass discard metadata case should generate the script class")));
 
 		UASFunction* GeneratedFunction = Cast<UASFunction>(FindGeneratedFunction(GeneratedClass, TEXT("ComputeValue")));
-		if (!TestRunner->TestNotNull(TEXT("ASClass discard metadata case should resolve the generated script function"), GeneratedFunction))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(GeneratedFunction, TEXT("ASClass discard metadata case should resolve the generated script function")));
 
 		const bool bImplementedBeforeDiscard = GeneratedClass->IsFunctionImplementedInScript(TEXT("ComputeValue"));
 		const FString SourcePathBeforeDiscard = GeneratedFunction->GetSourceFilePath();
@@ -177,13 +172,13 @@ class UMetadataDiscardCarrier : UObject
 		const FString SourcePathAfterDiscard = GeneratedFunction->GetSourceFilePath();
 		const int32 SourceLineAfterDiscard = GeneratedFunction->GetSourceLineNumber();
 
-		TestRunner->TestTrue(TEXT("ASClass should report the function implemented before discard"), bImplementedBeforeDiscard);
-		TestRunner->TestFalse(TEXT("ASClass should stop reporting the function implemented after discard"), bImplementedAfterDiscard);
-		TestRunner->TestFalse(TEXT("Generated script function should expose a non-empty source path before discard"), SourcePathBeforeDiscard.IsEmpty());
-		TestRunner->TestTrue(TEXT("Generated script function should expose a positive source line before discard"), SourceLineBeforeDiscard > 0);
-		TestRunner->TestTrue(
-			TEXT("Generated script function should clear its source metadata after discard"),
-			SourcePathAfterDiscard.IsEmpty() || SourceLineAfterDiscard == -1);
+		ASSERT_THAT(IsTrue(bImplementedBeforeDiscard, TEXT("ASClass should report the function implemented before discard")));
+		ASSERT_THAT(IsFalse(bImplementedAfterDiscard, TEXT("ASClass should stop reporting the function implemented after discard")));
+		ASSERT_THAT(IsFalse(SourcePathBeforeDiscard.IsEmpty(), TEXT("Generated script function should expose a non-empty source path before discard")));
+		ASSERT_THAT(IsTrue(SourceLineBeforeDiscard > 0, TEXT("Generated script function should expose a positive source line before discard")));
+		ASSERT_THAT(IsTrue(
+			SourcePathAfterDiscard.IsEmpty() || SourceLineAfterDiscard == -1,
+			TEXT("Generated script function should clear its source metadata after discard")));
 
 		}
 	}

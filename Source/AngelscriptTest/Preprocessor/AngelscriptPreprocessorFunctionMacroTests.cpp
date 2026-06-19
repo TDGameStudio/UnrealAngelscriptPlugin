@@ -92,8 +92,9 @@ class UBadPropertyConditionalCarrier : UObject
 			FFixtureFile File(Case.RelativePath, Case.Source);
 			auto Result = RunPreprocess(Engine, File);
 
-			TestRunner->TestFalse(
-				FString::Printf(TEXT("%s should fail"), Case.Label), Result.bSuccess);
+			ASSERT_THAT(IsFalse(
+				Result.bSuccess,
+				FString::Printf(TEXT("%s should fail"), Case.Label)));
 			AssertErrorCount(*TestRunner, Result, 1);
 			AssertDiagnosticContains(*TestRunner, Result,
 				TEXT("Cannot put a UPROPERTY or UFUNCTION inside preprocessor conditions"));
@@ -132,28 +133,21 @@ class UEditorConditionalCarrier : UObject
 
 		FAngelscriptModuleDesc* EditorModule = EditorResult.FindModule(
 			TEXT("Tests.Preprocessor.FunctionMacros.EditorConditionalMembers"));
-		if (TestRunner->TestNotNull(TEXT("Should find editor module"), EditorModule))
-		{
-			const TSharedPtr<FAngelscriptClassDesc> ClassDesc = EditorModule->GetClass(TEXT("UEditorConditionalCarrier"));
-			TestRunner->TestTrue(TEXT("Should have class descriptor"), ClassDesc.IsValid());
-			if (ClassDesc.IsValid())
-			{
-				const TSharedPtr<FAngelscriptPropertyDesc> Prop = ClassDesc->GetProperty(TEXT("EditorValue"));
-				const TSharedPtr<FAngelscriptFunctionDesc> Func = ClassDesc->GetMethod(TEXT("ReadEditorValue"));
-				TestRunner->TestTrue(TEXT("Should have EditorValue property"), Prop.IsValid());
-				TestRunner->TestTrue(TEXT("Should have ReadEditorValue method"), Func.IsValid());
-				if (Prop.IsValid())
-				{
-					TestRunner->TestTrue(TEXT("Property should have EditorOnly meta"),
-						Prop->Meta.Contains(FName(TEXT("EditorOnly"))));
-				}
-				if (Func.IsValid())
-				{
-					TestRunner->TestTrue(TEXT("Function should have EditorOnly meta"),
-						Func->Meta.Contains(FName(TEXT("EditorOnly"))));
-				}
-			}
-		}
+		ASSERT_THAT(IsNotNull(EditorModule, TEXT("Should find editor module")));
+
+		const TSharedPtr<FAngelscriptClassDesc> ClassDesc = EditorModule->GetClass(TEXT("UEditorConditionalCarrier"));
+		ASSERT_THAT(IsTrue(ClassDesc.IsValid(), TEXT("Should have class descriptor")));
+
+		const TSharedPtr<FAngelscriptPropertyDesc> Prop = ClassDesc->GetProperty(TEXT("EditorValue"));
+		const TSharedPtr<FAngelscriptFunctionDesc> Func = ClassDesc->GetMethod(TEXT("ReadEditorValue"));
+		ASSERT_THAT(IsTrue(Prop.IsValid(), TEXT("Should have EditorValue property")));
+		ASSERT_THAT(IsTrue(Func.IsValid(), TEXT("Should have ReadEditorValue method")));
+		ASSERT_THAT(IsTrue(
+			Prop->Meta.Contains(FName(TEXT("EditorOnly"))),
+			TEXT("Property should have EditorOnly meta")));
+		ASSERT_THAT(IsTrue(
+			Func->Meta.Contains(FName(TEXT("EditorOnly"))),
+			TEXT("Function should have EditorOnly meta")));
 
 		}
 	}
@@ -243,8 +237,9 @@ class UBadCarrier : UObject
 			FFixtureFile File(Case.RelativePath, Case.Source);
 			auto Result = RunPreprocess(Engine, File);
 
-			TestRunner->TestFalse(
-				FString::Printf(TEXT("%s should fail"), Case.Label), Result.bSuccess);
+			ASSERT_THAT(IsFalse(
+				Result.bSuccess,
+				FString::Printf(TEXT("%s should fail"), Case.Label)));
 			AssertErrorCount(*TestRunner, Result, 1);
 			AssertDiagnosticContains(*TestRunner, Result, Case.ExpectedMessage);
 			AssertDiagnosticAt(*TestRunner, Result, Case.ExpectedMessage, Case.ExpectedRow, 1);

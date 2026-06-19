@@ -121,11 +121,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadMultiEngineHooksTests,
 
 		TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(Config, Dependencies);
 		TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptTestEngine::Create(Config, Dependencies);
-		if (!TestRunner->TestNotNull(TEXT("MultiEngineHooks: engine A"), EngineA.Get())
-			|| !TestRunner->TestNotNull(TEXT("MultiEngineHooks: engine B"), EngineB.Get()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(EngineA.Get(), TEXT("MultiEngineHooks: engine A")));
+		ASSERT_THAT(IsNotNull(EngineB.Get(), TEXT("MultiEngineHooks: engine B")));
 
 		FHookCounters CountersA;
 		FHookCounters CountersB;
@@ -146,34 +143,34 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadMultiEngineHooksTests,
 		EngineA->GetOnLiteralAssetReload().Broadcast(nullptr, nullptr);
 
 		// Engine A's counters should each be 1.
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: A.PostReload"), CountersA.PostReload, 1);
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: A.FullReload"), CountersA.FullReload, 1);
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: A.ClassReload"), CountersA.ClassReload, 1);
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: A.StructReload"), CountersA.StructReload, 1);
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: A.EnumCreated"), CountersA.EnumCreated, 1);
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: A.EnumChanged"), CountersA.EnumChanged, 1);
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: A.DelegateReload"), CountersA.DelegateReload, 1);
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: A.LiteralAssetReload"), CountersA.LiteralAssetReload, 1);
+		ASSERT_THAT(AreEqual(1, CountersA.PostReload, TEXT("MultiEngineHooks: A.PostReload")));
+		ASSERT_THAT(AreEqual(1, CountersA.FullReload, TEXT("MultiEngineHooks: A.FullReload")));
+		ASSERT_THAT(AreEqual(1, CountersA.ClassReload, TEXT("MultiEngineHooks: A.ClassReload")));
+		ASSERT_THAT(AreEqual(1, CountersA.StructReload, TEXT("MultiEngineHooks: A.StructReload")));
+		ASSERT_THAT(AreEqual(1, CountersA.EnumCreated, TEXT("MultiEngineHooks: A.EnumCreated")));
+		ASSERT_THAT(AreEqual(1, CountersA.EnumChanged, TEXT("MultiEngineHooks: A.EnumChanged")));
+		ASSERT_THAT(AreEqual(1, CountersA.DelegateReload, TEXT("MultiEngineHooks: A.DelegateReload")));
+		ASSERT_THAT(AreEqual(1, CountersA.LiteralAssetReload, TEXT("MultiEngineHooks: A.LiteralAssetReload")));
 
 		// Engine B's counters must NOT have advanced.
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: B.PostReload (no leak)"), CountersB.PostReload, 0);
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: B.FullReload (no leak)"), CountersB.FullReload, 0);
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: B.ClassReload (no leak)"), CountersB.ClassReload, 0);
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: B.StructReload (no leak)"), CountersB.StructReload, 0);
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: B.EnumCreated (no leak)"), CountersB.EnumCreated, 0);
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: B.EnumChanged (no leak)"), CountersB.EnumChanged, 0);
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: B.DelegateReload (no leak)"), CountersB.DelegateReload, 0);
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: B.LiteralAssetReload (no leak)"), CountersB.LiteralAssetReload, 0);
+		ASSERT_THAT(AreEqual(0, CountersB.PostReload, TEXT("MultiEngineHooks: B.PostReload (no leak)")));
+		ASSERT_THAT(AreEqual(0, CountersB.FullReload, TEXT("MultiEngineHooks: B.FullReload (no leak)")));
+		ASSERT_THAT(AreEqual(0, CountersB.ClassReload, TEXT("MultiEngineHooks: B.ClassReload (no leak)")));
+		ASSERT_THAT(AreEqual(0, CountersB.StructReload, TEXT("MultiEngineHooks: B.StructReload (no leak)")));
+		ASSERT_THAT(AreEqual(0, CountersB.EnumCreated, TEXT("MultiEngineHooks: B.EnumCreated (no leak)")));
+		ASSERT_THAT(AreEqual(0, CountersB.EnumChanged, TEXT("MultiEngineHooks: B.EnumChanged (no leak)")));
+		ASSERT_THAT(AreEqual(0, CountersB.DelegateReload, TEXT("MultiEngineHooks: B.DelegateReload (no leak)")));
+		ASSERT_THAT(AreEqual(0, CountersB.LiteralAssetReload, TEXT("MultiEngineHooks: B.LiteralAssetReload (no leak)")));
 
 		// Reverse direction: broadcast on Engine B, only Engine B counters
 		// should advance (pre-existing 1s on A stay at 1).
 		EngineB->GetOnPostReload().Broadcast(true);
 		EngineB->GetOnFullReload().Broadcast();
 
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: B.PostReload (after B broadcast)"), CountersB.PostReload, 1);
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: B.FullReload (after B broadcast)"), CountersB.FullReload, 1);
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: A.PostReload (no echo from B)"), CountersA.PostReload, 1);
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: A.FullReload (no echo from B)"), CountersA.FullReload, 1);
+		ASSERT_THAT(AreEqual(1, CountersB.PostReload, TEXT("MultiEngineHooks: B.PostReload (after B broadcast)")));
+		ASSERT_THAT(AreEqual(1, CountersB.FullReload, TEXT("MultiEngineHooks: B.FullReload (after B broadcast)")));
+		ASSERT_THAT(AreEqual(1, CountersA.PostReload, TEXT("MultiEngineHooks: A.PostReload (no echo from B)")));
+		ASSERT_THAT(AreEqual(1, CountersA.FullReload, TEXT("MultiEngineHooks: A.FullReload (no echo from B)")));
 	}
 
 	// After Engine A is destroyed, broadcasting on Engine B's hook must still
@@ -194,17 +191,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadMultiEngineHooksTests,
 		// listening. Engine A's subscription must die with Engine A.
 		{
 			TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(Config, Dependencies);
-			if (!TestRunner->TestNotNull(TEXT("MultiEngineHooks: engine A (transient)"), EngineA.Get()))
-			{
-				return;
-			}
+			ASSERT_THAT(IsNotNull(EngineA.Get(), TEXT("MultiEngineHooks: engine A (transient)")));
 
 			FHookCounters CountersA;
 			FScopedAllHookSubscriptions SubsA(*EngineA, CountersA);
 
 			// One broadcast on A so we know A's path is functional before teardown.
 			EngineA->GetOnFullReload().Broadcast();
-			TestRunner->TestEqual(TEXT("MultiEngineHooks: A.FullReload pre-teardown"), CountersA.FullReload, 1);
+			ASSERT_THAT(AreEqual(1, CountersA.FullReload, TEXT("MultiEngineHooks: A.FullReload pre-teardown")));
 
 			// SubsA destructor unsubscribes; EngineA destructor releases the
 			// hook container.
@@ -214,17 +208,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadMultiEngineHooksTests,
 		// residue from Engine A's prior subscription (which has been gone for
 		// the lifetime of Engine B).
 		TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptTestEngine::Create(Config, Dependencies);
-		if (!TestRunner->TestNotNull(TEXT("MultiEngineHooks: engine B"), EngineB.Get()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(EngineB.Get(), TEXT("MultiEngineHooks: engine B")));
 		FScopedAllHookSubscriptions SubsB(*EngineB, CountersB);
 
 		EngineB->GetOnPostReload().Broadcast(true);
 		EngineB->GetOnFullReload().Broadcast();
 
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: B.PostReload after A teardown"), CountersB.PostReload, 1);
-		TestRunner->TestEqual(TEXT("MultiEngineHooks: B.FullReload after A teardown"), CountersB.FullReload, 1);
+		ASSERT_THAT(AreEqual(1, CountersB.PostReload, TEXT("MultiEngineHooks: B.PostReload after A teardown")));
+		ASSERT_THAT(AreEqual(1, CountersB.FullReload, TEXT("MultiEngineHooks: B.FullReload after A teardown")));
 	}
 };
 

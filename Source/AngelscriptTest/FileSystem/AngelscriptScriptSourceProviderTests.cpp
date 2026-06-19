@@ -114,34 +114,28 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptSourceProviderTest,
 		TArray<FAngelscriptSource> Sources;
 		Engine.FindAllScriptSources(Sources);
 
-		TestRunner->TestEqual(TEXT("Discovery should ask the injected provider once"), Provider->FindSourcesCallCount, 1);
-		TestRunner->TestEqual(TEXT("Provider-backed discovery should return the provider sources"), Sources.Num(), 2);
-		TestRunner->TestEqual(TEXT("Provider should receive the effective script roots"), Provider->LastScriptRoots.Num(), 2);
-		TestRunner->TestTrue(TEXT("Provider discovery should inherit development-script skip flag"), Provider->bLastSkipDevelopmentScripts);
-		TestRunner->TestTrue(TEXT("Provider discovery should inherit editor-script skip flag"), Provider->bLastSkipEditorScripts);
+		ASSERT_THAT(AreEqual(1, Provider->FindSourcesCallCount, TEXT("Discovery should ask the injected provider once")));
+		ASSERT_THAT(AreEqual(2, Sources.Num(), TEXT("Provider-backed discovery should return the provider sources")));
+		ASSERT_THAT(AreEqual(2, Provider->LastScriptRoots.Num(), TEXT("Provider should receive the effective script roots")));
+		ASSERT_THAT(IsTrue(Provider->bLastSkipDevelopmentScripts, TEXT("Provider discovery should inherit development-script skip flag")));
+		ASSERT_THAT(IsTrue(Provider->bLastSkipEditorScripts, TEXT("Provider discovery should inherit editor-script skip flag")));
 
-		if (Sources.Num() == 2)
-		{
-			TestRunner->TestEqual(
-				TEXT("Game source should keep its canonical virtual path"),
-				Sources[0].VirtualPath.ToString(),
-				FString(TEXT("/Angelscript/Game/Gameplay/Player.as")));
-			TestRunner->TestEqual(
-				TEXT("Plugin source should keep its canonical virtual path"),
-				Sources[1].VirtualPath.ToString(),
-				FString(TEXT("/Angelscript/Plugin/Inventory/Gameplay/Item.as")));
-		}
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("/Angelscript/Game/Gameplay/Player.as")),
+			Sources[0].VirtualPath.ToString(),
+			TEXT("Game source should keep its canonical virtual path")));
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("/Angelscript/Plugin/Inventory/Gameplay/Item.as")),
+			Sources[1].VirtualPath.ToString(),
+			TEXT("Plugin source should keep its canonical virtual path")));
 
 		TArray<FAngelscriptEngine::FFilenamePair> FilenamePairs;
 		Engine.FindAllScriptFilenames(FilenamePairs);
-		TestRunner->TestEqual(TEXT("Filename compatibility adapter should use provider-backed discovery"), FilenamePairs.Num(), 2);
-		if (FilenamePairs.Num() == 2)
-		{
-			TestRunner->TestEqual(
-				TEXT("Filename adapter should preserve provider virtual path"),
-				FilenamePairs[1].VirtualPath,
-				FString(TEXT("/Angelscript/Plugin/Inventory/Gameplay/Item.as")));
-		}
+		ASSERT_THAT(AreEqual(2, FilenamePairs.Num(), TEXT("Filename compatibility adapter should use provider-backed discovery")));
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("/Angelscript/Plugin/Inventory/Gameplay/Item.as")),
+			FilenamePairs[1].VirtualPath,
+			TEXT("Filename adapter should preserve provider virtual path")));
 	}
 
 	TEST_METHOD(PreprocessorLoadsDiskBackedSourceThroughProvider)
@@ -163,16 +157,13 @@ int Entry()
 		Preprocessor.SetSourceProvider(&Provider.Get());
 		Preprocessor.AddSource(Source);
 
-		TestRunner->TestTrue(TEXT("Provider-loaded source should preprocess"), Preprocessor.Preprocess());
-		TestRunner->TestEqual(TEXT("Provider should be asked to load disk-backed source once"), Provider->LoadSourceTextCallCount, 1);
+		ASSERT_THAT(IsTrue(Preprocessor.Preprocess(), TEXT("Provider-loaded source should preprocess")));
+		ASSERT_THAT(AreEqual(1, Provider->LoadSourceTextCallCount, TEXT("Provider should be asked to load disk-backed source once")));
 
 		TArray<TSharedRef<FAngelscriptModuleDesc>> Modules = Preprocessor.GetModulesToCompile();
-		TestRunner->TestEqual(TEXT("Provider-loaded source should emit one module"), Modules.Num(), 1);
-		if (Modules.Num() == 1)
-		{
-			TestRunner->TestEqual(TEXT("Provider-loaded module should keep the source module name"), Modules[0]->ModuleName, FString(TEXT("Provider.Loaded")));
-			TestRunner->TestEqual(TEXT("Provider-loaded module should keep source virtual path"), Modules[0]->Code[0].VirtualPath, Source.VirtualPath.ToString());
-		}
+		ASSERT_THAT(AreEqual(1, Modules.Num(), TEXT("Provider-loaded source should emit one module")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Provider.Loaded")), Modules[0]->ModuleName, TEXT("Provider-loaded module should keep the source module name")));
+		ASSERT_THAT(AreEqual(Source.VirtualPath.ToString(), Modules[0]->Code[0].VirtualPath, TEXT("Provider-loaded module should keep source virtual path")));
 	}
 
 	TEST_METHOD(PreprocessorBypassesProviderForMemorySource)
@@ -192,8 +183,8 @@ int Entry()
 }
 )")));
 
-		TestRunner->TestTrue(TEXT("Memory source should preprocess without provider text loading"), Preprocessor.Preprocess());
-		TestRunner->TestEqual(TEXT("Provider should not load memory-backed source text"), Provider->LoadSourceTextCallCount, 0);
+		ASSERT_THAT(IsTrue(Preprocessor.Preprocess(), TEXT("Memory source should preprocess without provider text loading")));
+		ASSERT_THAT(AreEqual(0, Provider->LoadSourceTextCallCount, TEXT("Provider should not load memory-backed source text")));
 	}
 
 	TEST_METHOD(DiskProviderDiscoversProjectPluginAndLegacyRoots)
@@ -214,15 +205,15 @@ int Entry()
 		FString ProjectScriptPath;
 		FString PluginScriptPath;
 		FString LegacyScriptPath;
-		if (!TestRunner->TestTrue(
-				TEXT("Project provider fixture should write a script file"),
-				WriteProviderFixtureFile(ProjectRoot, TEXT("Gameplay/Player.as"), TEXT("int PlayerEntry() { return 1; }"), ProjectScriptPath))
-			|| !TestRunner->TestTrue(
-				TEXT("Plugin provider fixture should write a script file"),
-				WriteProviderFixtureFile(PluginRoot, TEXT("Gameplay/Item.as"), TEXT("int ItemEntry() { return 2; }"), PluginScriptPath))
-			|| !TestRunner->TestTrue(
-				TEXT("Legacy provider fixture should write a script file"),
-				WriteProviderFixtureFile(LegacyRoot, TEXT("Gameplay/Legacy.as"), TEXT("int LegacyEntry() { return 3; }"), LegacyScriptPath)))
+		if (!this->Assert.IsTrue(
+				WriteProviderFixtureFile(ProjectRoot, TEXT("Gameplay/Player.as"), TEXT("int PlayerEntry() { return 1; }"), ProjectScriptPath),
+				TEXT("Project provider fixture should write a script file"))
+			|| !this->Assert.IsTrue(
+				WriteProviderFixtureFile(PluginRoot, TEXT("Gameplay/Item.as"), TEXT("int ItemEntry() { return 2; }"), PluginScriptPath),
+				TEXT("Plugin provider fixture should write a script file"))
+			|| !this->Assert.IsTrue(
+				WriteProviderFixtureFile(LegacyRoot, TEXT("Gameplay/Legacy.as"), TEXT("int LegacyEntry() { return 3; }"), LegacyScriptPath),
+				TEXT("Legacy provider fixture should write a script file")))
 		{
 			return;
 		}
@@ -243,12 +234,12 @@ int Entry()
 			SourcesByVirtualPath.Add(Source.VirtualPath.ToString(), Source);
 		}
 
-		TestRunner->TestTrue(
-			TEXT("Disk provider should discover project root as /Angelscript/Game"),
-			SourcesByVirtualPath.Contains(TEXT("/Angelscript/Game/Gameplay/Player.as")));
-		TestRunner->TestTrue(
-			TEXT("Disk provider should discover plugin root with plugin mount name"),
-			SourcesByVirtualPath.Contains(TEXT("/Angelscript/Plugin/Inventory/Gameplay/Item.as")));
+		ASSERT_THAT(IsTrue(
+			SourcesByVirtualPath.Contains(TEXT("/Angelscript/Game/Gameplay/Player.as")),
+			TEXT("Disk provider should discover project root as /Angelscript/Game")));
+		ASSERT_THAT(IsTrue(
+			SourcesByVirtualPath.Contains(TEXT("/Angelscript/Plugin/Inventory/Gameplay/Item.as")),
+			TEXT("Disk provider should discover plugin root with plugin mount name")));
 
 		Engine.AllScriptRoots = {
 			FAngelscriptSourceRoot::FromPluginRoot(TEXT("StalePlugin"), ProjectRoot),
@@ -260,18 +251,15 @@ int Entry()
 		TArray<FAngelscriptEngine::FFilenamePair> FilenamePairs;
 		Engine.FindAllScriptFilenames(FilenamePairs);
 
-		TestRunner->TestEqual(TEXT("Legacy AllRootPaths fallback should still discover one source"), FilenamePairs.Num(), 1);
-		if (FilenamePairs.Num() == 1)
-		{
-			TestRunner->TestEqual(
-				TEXT("Legacy AllRootPaths fallback should synthesize game virtual path metadata"),
-				FilenamePairs[0].VirtualPath,
-				FString(TEXT("/Angelscript/Game/Gameplay/Legacy.as")));
-			TestRunner->TestEqual(
-				TEXT("Legacy AllRootPaths fallback should keep the legacy absolute path"),
-				NormalizePath(FilenamePairs[0].AbsolutePath),
-				LegacyScriptPath);
-		}
+		ASSERT_THAT(AreEqual(1, FilenamePairs.Num(), TEXT("Legacy AllRootPaths fallback should still discover one source")));
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("/Angelscript/Game/Gameplay/Legacy.as")),
+			FilenamePairs[0].VirtualPath,
+			TEXT("Legacy AllRootPaths fallback should synthesize game virtual path metadata")));
+		ASSERT_THAT(AreEqual(
+			LegacyScriptPath,
+			NormalizePath(FilenamePairs[0].AbsolutePath),
+			TEXT("Legacy AllRootPaths fallback should keep the legacy absolute path")));
 	}
 };
 

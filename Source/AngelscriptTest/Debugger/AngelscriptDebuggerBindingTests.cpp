@@ -15,6 +15,26 @@
 
 namespace AngelscriptDebuggerBindingTests_Private
 {
+	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsTrue(bActual, Message);
+	}
+
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.AreEqual(Expected, Actual, Message);
+	}
+
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsNotNull(Value, Message);
+	}
+
 	template <typename TInvocationState>
 	bool WaitForBindingInvocationCompletion(
 		FAutomationTestBase& Test,
@@ -29,7 +49,7 @@ namespace AngelscriptDebuggerBindingTests_Private
 			},
 			Session.GetDefaultTimeoutSeconds());
 
-		return Test.TestTrue(Context, bCompleted);
+		return CheckTrue(Test, Context, bCompleted);
 	}
 
 	template <typename T>
@@ -243,25 +263,25 @@ namespace AngelscriptDebuggerBindingTests_Private
 		FBindingFixtureRuntime& OutRuntime)
 	{
 		OutRuntime.GeneratedClass = Fixture.FindGeneratedClass(Engine);
-		if (!Test.TestNotNull(TEXT("Debugger.Binding.DebugBreakAndEnsure should resolve the generated binding fixture class"), OutRuntime.GeneratedClass))
+		if (!CheckNotNull(Test, TEXT("Debugger.Binding.DebugBreakAndEnsure should resolve the generated binding fixture class"), OutRuntime.GeneratedClass))
 		{
 			return false;
 		}
 
 		OutRuntime.TriggerDebugBreakFunction = Fixture.FindGeneratedFunction(Engine, TEXT("TriggerDebugBreak"));
-		if (!Test.TestNotNull(TEXT("Debugger.Binding.DebugBreakAndEnsure should resolve TriggerDebugBreak on the generated binding fixture"), OutRuntime.TriggerDebugBreakFunction))
+		if (!CheckNotNull(Test, TEXT("Debugger.Binding.DebugBreakAndEnsure should resolve TriggerDebugBreak on the generated binding fixture"), OutRuntime.TriggerDebugBreakFunction))
 		{
 			return false;
 		}
 
 		OutRuntime.TriggerEnsureFunction = Fixture.FindGeneratedFunction(Engine, TEXT("TriggerEnsure"));
-		if (!Test.TestNotNull(TEXT("Debugger.Binding.DebugBreakAndEnsure should resolve TriggerEnsure on the generated binding fixture"), OutRuntime.TriggerEnsureFunction))
+		if (!CheckNotNull(Test, TEXT("Debugger.Binding.DebugBreakAndEnsure should resolve TriggerEnsure on the generated binding fixture"), OutRuntime.TriggerEnsureFunction))
 		{
 			return false;
 		}
 
 		OutRuntime.Object = NewObject<UObject>(GetTransientPackage(), OutRuntime.GeneratedClass);
-		return Test.TestNotNull(TEXT("Debugger.Binding.DebugBreakAndEnsure should create a runtime UObject from the generated binding fixture class"), OutRuntime.Object);
+		return CheckNotNull(Test, TEXT("Debugger.Binding.DebugBreakAndEnsure should create a runtime UObject from the generated binding fixture class"), OutRuntime.Object);
 	}
 
 	struct FBindingCheckFixtureRuntime
@@ -277,19 +297,19 @@ namespace AngelscriptDebuggerBindingTests_Private
 		FBindingCheckFixtureRuntime& OutRuntime)
 	{
 		UClass* GeneratedClass = Fixture.FindGeneratedClass(Engine);
-		if (!Test.TestNotNull(TEXT("Debugger.Binding.CheckBreaksEveryInvocation should resolve the generated binding fixture class"), GeneratedClass))
+		if (!CheckNotNull(Test, TEXT("Debugger.Binding.CheckBreaksEveryInvocation should resolve the generated binding fixture class"), GeneratedClass))
 		{
 			return false;
 		}
 
 		OutRuntime.TriggerCheckFunction = Fixture.FindGeneratedFunction(Engine, TEXT("TriggerCheck"));
-		if (!Test.TestNotNull(TEXT("Debugger.Binding.CheckBreaksEveryInvocation should resolve TriggerCheck on the generated binding fixture"), OutRuntime.TriggerCheckFunction))
+		if (!CheckNotNull(Test, TEXT("Debugger.Binding.CheckBreaksEveryInvocation should resolve TriggerCheck on the generated binding fixture"), OutRuntime.TriggerCheckFunction))
 		{
 			return false;
 		}
 
 		OutRuntime.Object = NewObject<UObject>(GetTransientPackage(), GeneratedClass);
-		return Test.TestNotNull(TEXT("Debugger.Binding.CheckBreaksEveryInvocation should create a runtime UObject from the generated binding fixture class"), OutRuntime.Object);
+		return CheckNotNull(Test, TEXT("Debugger.Binding.CheckBreaksEveryInvocation should create a runtime UObject from the generated binding fixture class"), OutRuntime.Object);
 	}
 }
 
@@ -381,11 +401,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBindingTests,
 		const FAngelscriptCallStack& DebugBreakCallstack = DebugBreakMonitorResult.Callstack.GetValue();
 		ASSERT_THAT(IsTrue(DebugBreakCallstack.Frames.Num() > 0));
 
-		TestRunner->TestEqual(TEXT("Debugger.Binding.DebugBreakAndEnsure should report a breakpoint stop for TriggerDebugBreak"), DebugBreakMonitorResult.StopMessage->Reason, FString(TEXT("breakpoint")));
-		TestRunner->TestTrue(TEXT("Debugger.Binding.DebugBreakAndEnsure should report the binding fixture filename for TriggerDebugBreak"), DebugBreakCallstack.Frames[0].Source.EndsWith(Fixture.Filename));
-		TestRunner->TestEqual(TEXT("Debugger.Binding.DebugBreakAndEnsure should stop TriggerDebugBreak at BindingDebugBreakLine"), DebugBreakCallstack.Frames[0].LineNumber, Fixture.GetLine(TEXT("BindingDebugBreakLine")));
-		TestRunner->TestEqual(TEXT("Debugger.Binding.DebugBreakAndEnsure should observe a single HasContinued after TriggerDebugBreak"), DebugBreakMonitorResult.ContinuedCount, 1);
-		TestRunner->TestTrue(TEXT("Debugger.Binding.DebugBreakAndEnsure should execute TriggerDebugBreak successfully after resume"), bDebugBreakInvocationSucceeded);
+		ASSERT_THAT(AreEqual(FString(TEXT("breakpoint")), DebugBreakMonitorResult.StopMessage->Reason, TEXT("Debugger.Binding.DebugBreakAndEnsure should report a breakpoint stop for TriggerDebugBreak")));
+		ASSERT_THAT(IsTrue(DebugBreakCallstack.Frames[0].Source.EndsWith(Fixture.Filename), TEXT("Debugger.Binding.DebugBreakAndEnsure should report the binding fixture filename for TriggerDebugBreak")));
+		ASSERT_THAT(AreEqual(Fixture.GetLine(TEXT("BindingDebugBreakLine")), DebugBreakCallstack.Frames[0].LineNumber, TEXT("Debugger.Binding.DebugBreakAndEnsure should stop TriggerDebugBreak at BindingDebugBreakLine")));
+		ASSERT_THAT(AreEqual(1, DebugBreakMonitorResult.ContinuedCount, TEXT("Debugger.Binding.DebugBreakAndEnsure should observe a single HasContinued after TriggerDebugBreak")));
+		ASSERT_THAT(IsTrue(bDebugBreakInvocationSucceeded, TEXT("Debugger.Binding.DebugBreakAndEnsure should execute TriggerDebugBreak successfully after resume")));
 
 		// --- Ensure phase (first invocation) ---
 		TestRunner->AddExpectedError(TEXT("Ensure condition failed: Once"), EAutomationExpectedErrorFlags::Contains, 1);
@@ -447,12 +467,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBindingTests,
 		const FAngelscriptCallStack& EnsureCallstack = EnsureMonitorResult.Callstack.GetValue();
 		ASSERT_THAT(IsTrue(EnsureCallstack.Frames.Num() > 0));
 
-		TestRunner->TestEqual(TEXT("Debugger.Binding.DebugBreakAndEnsure should report a breakpoint stop for TriggerEnsure(false, Once)"), EnsureMonitorResult.StopMessage->Reason, FString(TEXT("breakpoint")));
-		TestRunner->TestTrue(TEXT("Debugger.Binding.DebugBreakAndEnsure should report the binding fixture filename for TriggerEnsure(false, Once)"), EnsureCallstack.Frames[0].Source.EndsWith(Fixture.Filename));
-		TestRunner->TestEqual(TEXT("Debugger.Binding.DebugBreakAndEnsure should stop TriggerEnsure(false, Once) at BindingEnsureLine"), EnsureCallstack.Frames[0].LineNumber, Fixture.GetLine(TEXT("BindingEnsureLine")));
-		TestRunner->TestEqual(TEXT("Debugger.Binding.DebugBreakAndEnsure should observe a single HasContinued after TriggerEnsure(false, Once)"), EnsureMonitorResult.ContinuedCount, 1);
-		TestRunner->TestTrue(TEXT("Debugger.Binding.DebugBreakAndEnsure should execute TriggerEnsure(false, Once) successfully after resume"), bEnsureInvocationSucceeded);
-		TestRunner->TestFalse(TEXT("Debugger.Binding.DebugBreakAndEnsure should return false after TriggerEnsure(false, Once)"), bEnsureReturnValue);
+		ASSERT_THAT(AreEqual(FString(TEXT("breakpoint")), EnsureMonitorResult.StopMessage->Reason, TEXT("Debugger.Binding.DebugBreakAndEnsure should report a breakpoint stop for TriggerEnsure(false, Once)")));
+		ASSERT_THAT(IsTrue(EnsureCallstack.Frames[0].Source.EndsWith(Fixture.Filename), TEXT("Debugger.Binding.DebugBreakAndEnsure should report the binding fixture filename for TriggerEnsure(false, Once)")));
+		ASSERT_THAT(AreEqual(Fixture.GetLine(TEXT("BindingEnsureLine")), EnsureCallstack.Frames[0].LineNumber, TEXT("Debugger.Binding.DebugBreakAndEnsure should stop TriggerEnsure(false, Once) at BindingEnsureLine")));
+		ASSERT_THAT(AreEqual(1, EnsureMonitorResult.ContinuedCount, TEXT("Debugger.Binding.DebugBreakAndEnsure should observe a single HasContinued after TriggerEnsure(false, Once)")));
+		ASSERT_THAT(IsTrue(bEnsureInvocationSucceeded, TEXT("Debugger.Binding.DebugBreakAndEnsure should execute TriggerEnsure(false, Once) successfully after resume")));
+		ASSERT_THAT(IsFalse(bEnsureReturnValue, TEXT("Debugger.Binding.DebugBreakAndEnsure should return false after TriggerEnsure(false, Once)")));
 
 		// --- Ensure phase (repeat invocation - should NOT stop again) ---
 		FBindingNoStopMonitorResult EnsureRepeatMonitorResult;
@@ -506,10 +526,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBindingTests,
 
 		ASSERT_THAT(IsFalse(EnsureRepeatMonitorResult.bTimedOut));
 
-		TestRunner->TestEqual(TEXT("Debugger.Binding.DebugBreakAndEnsure should not emit another stop for the same ensure location in the same session"), EnsureRepeatMonitorResult.UnexpectedStopCount, 0);
-		TestRunner->TestEqual(TEXT("Debugger.Binding.DebugBreakAndEnsure should not need any extra HasContinued messages during the repeat ensure phase"), EnsureRepeatMonitorResult.ContinuedCount, 0);
-		TestRunner->TestTrue(TEXT("Debugger.Binding.DebugBreakAndEnsure should execute TriggerEnsure(false, Repeat) successfully without another stop"), bEnsureRepeatInvocationSucceeded);
-		TestRunner->TestFalse(TEXT("Debugger.Binding.DebugBreakAndEnsure should still return false after TriggerEnsure(false, Repeat)"), bEnsureRepeatReturnValue);
+		ASSERT_THAT(AreEqual(0, EnsureRepeatMonitorResult.UnexpectedStopCount, TEXT("Debugger.Binding.DebugBreakAndEnsure should not emit another stop for the same ensure location in the same session")));
+		ASSERT_THAT(AreEqual(0, EnsureRepeatMonitorResult.ContinuedCount, TEXT("Debugger.Binding.DebugBreakAndEnsure should not need any extra HasContinued messages during the repeat ensure phase")));
+		ASSERT_THAT(IsTrue(bEnsureRepeatInvocationSucceeded, TEXT("Debugger.Binding.DebugBreakAndEnsure should execute TriggerEnsure(false, Repeat) successfully without another stop")));
+		ASSERT_THAT(IsFalse(bEnsureRepeatReturnValue, TEXT("Debugger.Binding.DebugBreakAndEnsure should still return false after TriggerEnsure(false, Repeat)")));
 	}
 
 	TEST_METHOD(CheckBreaksEveryInvocation)
@@ -588,11 +608,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBindingTests,
 		const FAngelscriptCallStack& CheckACallstack = CheckAMonitorResult.Callstack.GetValue();
 		ASSERT_THAT(IsTrue(CheckACallstack.Frames.Num() > 0));
 
-		TestRunner->TestEqual(TEXT("Debugger.Binding.CheckBreaksEveryInvocation should report a breakpoint stop for TriggerCheck(false, CheckA)"), CheckAMonitorResult.StopMessage->Reason, FString(TEXT("breakpoint")));
-		TestRunner->TestTrue(TEXT("Debugger.Binding.CheckBreaksEveryInvocation should report the binding fixture filename for TriggerCheck(false, CheckA)"), CheckACallstack.Frames[0].Source.EndsWith(Fixture.Filename));
-		TestRunner->TestEqual(TEXT("Debugger.Binding.CheckBreaksEveryInvocation should stop TriggerCheck(false, CheckA) at BindingCheckLine"), CheckACallstack.Frames[0].LineNumber, Fixture.GetLine(TEXT("BindingCheckLine")));
-		TestRunner->TestEqual(TEXT("Debugger.Binding.CheckBreaksEveryInvocation should observe a single HasContinued after TriggerCheck(false, CheckA)"), CheckAMonitorResult.ContinuedCount, 1);
-		TestRunner->TestTrue(TEXT("Debugger.Binding.CheckBreaksEveryInvocation should execute TriggerCheck(false, CheckA) successfully after resume"), bCheckAInvocationSucceeded);
+		ASSERT_THAT(AreEqual(FString(TEXT("breakpoint")), CheckAMonitorResult.StopMessage->Reason, TEXT("Debugger.Binding.CheckBreaksEveryInvocation should report a breakpoint stop for TriggerCheck(false, CheckA)")));
+		ASSERT_THAT(IsTrue(CheckACallstack.Frames[0].Source.EndsWith(Fixture.Filename), TEXT("Debugger.Binding.CheckBreaksEveryInvocation should report the binding fixture filename for TriggerCheck(false, CheckA)")));
+		ASSERT_THAT(AreEqual(Fixture.GetLine(TEXT("BindingCheckLine")), CheckACallstack.Frames[0].LineNumber, TEXT("Debugger.Binding.CheckBreaksEveryInvocation should stop TriggerCheck(false, CheckA) at BindingCheckLine")));
+		ASSERT_THAT(AreEqual(1, CheckAMonitorResult.ContinuedCount, TEXT("Debugger.Binding.CheckBreaksEveryInvocation should observe a single HasContinued after TriggerCheck(false, CheckA)")));
+		ASSERT_THAT(IsTrue(bCheckAInvocationSucceeded, TEXT("Debugger.Binding.CheckBreaksEveryInvocation should execute TriggerCheck(false, CheckA) successfully after resume")));
 
 		// --- Second check invocation (CheckB) - should STILL stop ---
 		TestRunner->AddExpectedError(TEXT("Check condition failed: CheckB"), EAutomationExpectedErrorFlags::Contains, 1);
@@ -652,11 +672,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBindingTests,
 		const FAngelscriptCallStack& CheckBCallstack = CheckBMonitorResult.Callstack.GetValue();
 		ASSERT_THAT(IsTrue(CheckBCallstack.Frames.Num() > 0));
 
-		TestRunner->TestEqual(TEXT("Debugger.Binding.CheckBreaksEveryInvocation should report a breakpoint stop for TriggerCheck(false, CheckB)"), CheckBMonitorResult.StopMessage->Reason, FString(TEXT("breakpoint")));
-		TestRunner->TestTrue(TEXT("Debugger.Binding.CheckBreaksEveryInvocation should report the binding fixture filename for TriggerCheck(false, CheckB)"), CheckBCallstack.Frames[0].Source.EndsWith(Fixture.Filename));
-		TestRunner->TestEqual(TEXT("Debugger.Binding.CheckBreaksEveryInvocation should stop TriggerCheck(false, CheckB) at BindingCheckLine"), CheckBCallstack.Frames[0].LineNumber, Fixture.GetLine(TEXT("BindingCheckLine")));
-		TestRunner->TestEqual(TEXT("Debugger.Binding.CheckBreaksEveryInvocation should observe a single HasContinued after TriggerCheck(false, CheckB)"), CheckBMonitorResult.ContinuedCount, 1);
-		TestRunner->TestTrue(TEXT("Debugger.Binding.CheckBreaksEveryInvocation should execute TriggerCheck(false, CheckB) successfully after resume"), bCheckBInvocationSucceeded);
+		ASSERT_THAT(AreEqual(FString(TEXT("breakpoint")), CheckBMonitorResult.StopMessage->Reason, TEXT("Debugger.Binding.CheckBreaksEveryInvocation should report a breakpoint stop for TriggerCheck(false, CheckB)")));
+		ASSERT_THAT(IsTrue(CheckBCallstack.Frames[0].Source.EndsWith(Fixture.Filename), TEXT("Debugger.Binding.CheckBreaksEveryInvocation should report the binding fixture filename for TriggerCheck(false, CheckB)")));
+		ASSERT_THAT(AreEqual(Fixture.GetLine(TEXT("BindingCheckLine")), CheckBCallstack.Frames[0].LineNumber, TEXT("Debugger.Binding.CheckBreaksEveryInvocation should stop TriggerCheck(false, CheckB) at BindingCheckLine")));
+		ASSERT_THAT(AreEqual(1, CheckBMonitorResult.ContinuedCount, TEXT("Debugger.Binding.CheckBreaksEveryInvocation should observe a single HasContinued after TriggerCheck(false, CheckB)")));
+		ASSERT_THAT(IsTrue(bCheckBInvocationSucceeded, TEXT("Debugger.Binding.CheckBreaksEveryInvocation should execute TriggerCheck(false, CheckB) successfully after resume")));
 	}
 };
 

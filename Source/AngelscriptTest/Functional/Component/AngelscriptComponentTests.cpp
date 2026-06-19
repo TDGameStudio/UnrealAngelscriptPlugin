@@ -20,6 +20,26 @@ namespace AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private
 
 	constexpr float ComponentTestCaseDeltaTime = 0.016f;
 
+	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsTrue(bActual, Message);
+	}
+
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.AreEqual(Expected, Actual, Message);
+	}
+
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsNotNull(Value, Message);
+	}
+
 	void InitializeComponentTestCaseSpawner(FActorTestSpawner& Spawner)
 	{
 		Spawner.InitializeGameSubsystems();
@@ -32,13 +52,13 @@ namespace AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private
 		UClass* ComponentClass,
 		const TCHAR* Context)
 	{
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should compile to a valid component class"), Context), ComponentClass))
+		if (!CheckNotNull(Test, *FString::Printf(TEXT("%s should compile to a valid component class"), Context), ComponentClass))
 		{
 			return nullptr;
 		}
 
 		UActorComponent* Component = NewObject<UActorComponent>(&OwnerActor, ComponentClass);
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should instantiate a runtime component"), Context), Component))
+		if (!CheckNotNull(Test, *FString::Printf(TEXT("%s should instantiate a runtime component"), Context), Component))
 		{
 			return nullptr;
 		}
@@ -49,7 +69,7 @@ namespace AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private
 		Component->Activate(true);
 
 		ComponentType* TypedComponent = Cast<ComponentType>(Component);
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should produce the expected component base type"), Context), TypedComponent))
+		if (!CheckNotNull(Test, *FString::Printf(TEXT("%s should produce the expected component base type"), Context), TypedComponent))
 		{
 			return nullptr;
 		}
@@ -90,9 +110,41 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComponentTests,
 	"Angelscript.TestModule.Component",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	static constexpr float ComponentTestCaseDeltaTime =
+		AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private::ComponentTestCaseDeltaTime;
+
+	static void InitializeComponentTestCaseSpawner(FActorTestSpawner& Spawner)
+	{
+		AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private::InitializeComponentTestCaseSpawner(Spawner);
+	}
+
+	template <typename ComponentType = UActorComponent>
+	static ComponentType* CreateComponentTestCaseScriptComponent(
+		FAutomationTestBase& Test,
+		AActor& OwnerActor,
+		UClass* ComponentClass,
+		const TCHAR* Context)
+	{
+		return AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private::CreateComponentTestCaseScriptComponent<ComponentType>(
+			Test,
+			OwnerActor,
+			ComponentClass,
+			Context);
+	}
+
+	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		return AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private::CheckTrue(Test, Message, bActual);
+	}
+
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		return AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private::CheckNotNull(Test, Message, Value);
+	}
+
 	TEST_METHOD(BeginPlay)
 	{
-		using namespace AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		static const FName ModuleName(TEXT("TestComponentBeginPlay"));
@@ -135,13 +187,12 @@ class UTestComponentBeginPlay : UActorComponent
 		bool bReady = false;
 		if (!ReadPropertyValue<FBoolProperty>(*TestRunner, Component, TEXT("bReady"), bReady)) { return; }
 
-		TestRunner->TestTrue(TEXT("TestCase component BeginPlay should set the readiness flag"), bReady);
+		ASSERT_THAT(IsTrue(bReady, TEXT("TestCase component BeginPlay should set the readiness flag")));
 		}
 	}
 
 	TEST_METHOD(Tick)
 	{
-		using namespace AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		static const FName ModuleName(TEXT("TestComponentTick"));
@@ -187,13 +238,12 @@ class UTestComponentTick : UActorComponent
 		int32 TickCount = 0;
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Component, TEXT("TickCount"), TickCount)) { return; }
 
-		TestRunner->TestTrue(TEXT("TestCase component Tick should run during manual world ticking"), TickCount >= 5);
+		ASSERT_THAT(IsTrue(TickCount >= 5, TEXT("TestCase component Tick should run during manual world ticking")));
 		}
 	}
 
 	TEST_METHOD(ReceiveEndPlay)
 	{
-		using namespace AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		static const FName ModuleName(TEXT("TestComponentReceiveEndPlay"));
@@ -238,13 +288,12 @@ class UTestComponentReceiveEndPlay : UActorComponent
 		bool bCleanedUp = false;
 		if (!ReadPropertyValue<FBoolProperty>(*TestRunner, Component, TEXT("bCleanedUp"), bCleanedUp)) { return; }
 
-		TestRunner->TestTrue(TEXT("TestCase component EndPlay should run when the owning actor is destroyed"), bCleanedUp);
+		ASSERT_THAT(IsTrue(bCleanedUp, TEXT("TestCase component EndPlay should run when the owning actor is destroyed")));
 		}
 	}
 
 	TEST_METHOD(ActorOwner)
 	{
-		using namespace AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		static const FName ModuleName(TEXT("TestComponentActorOwner"));
@@ -288,7 +337,7 @@ class UTestComponentActorOwner : UActorComponent
 		if (OwnerActorClass == nullptr) { return; }
 
 		UClass* ComponentClass = FindGeneratedClass(&Engine, TEXT("UTestComponentActorOwner"));
-		if (!TestRunner->TestNotNull(TEXT("TestCase component owner-access class should be generated"), ComponentClass)) { return; }
+		if (!CheckNotNull(*TestRunner, TEXT("TestCase component owner-access class should be generated"), ComponentClass)) { return; }
 
 		FActorTestSpawner Spawner;
 		InitializeComponentTestCaseSpawner(Spawner);
@@ -303,7 +352,7 @@ class UTestComponentActorOwner : UActorComponent
 		int32 ReadOwnerValue = 0;
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Component, TEXT("ReadOwnerValue"), ReadOwnerValue)) { return; }
 
-		TestRunner->TestEqual(TEXT("TestCase component should read the owning script actor's property in BeginPlay"), ReadOwnerValue, 42);
+		ASSERT_THAT(AreEqual(42, ReadOwnerValue, TEXT("TestCase component should read the owning script actor's property in BeginPlay")));
 		}
 	}
 };
@@ -316,9 +365,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDefaultComponentTests,
 	"Angelscript.TestModule.Component.DefaultComponent",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	static void InitializeComponentTestCaseSpawner(FActorTestSpawner& Spawner)
+	{
+		AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private::InitializeComponentTestCaseSpawner(Spawner);
+	}
+
+	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		return AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private::CheckTrue(Test, Message, bActual);
+	}
+
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		return AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private::CheckNotNull(Test, Message, Value);
+	}
+
 	TEST_METHOD(Basic)
 	{
-		using namespace AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private;
 		DestroySharedTestEngine();
 		FActorTestSpawner Spawner;
 		InitializeComponentTestCaseSpawner(Spawner);
@@ -356,17 +420,16 @@ class ATestDefaultComponentBasic : AActor
 		BeginPlayActor(Engine, *Actor);
 
 		UClass* RootComponentClass = FindGeneratedClass(&Engine, TEXT("UTestDefaultComponentBasicRoot"));
-		if (!TestRunner->TestNotNull(TEXT("TestCase default-component root class should be generated"), RootComponentClass)) { return; }
+		if (!CheckNotNull(*TestRunner, TEXT("TestCase default-component root class should be generated"), RootComponentClass)) { return; }
 
 		USceneComponent* RootComponent = Actor->GetRootComponent();
-		if (!TestRunner->TestNotNull(TEXT("TestCase actor should create a default root component"), RootComponent)) { return; }
+		if (!CheckNotNull(*TestRunner, TEXT("TestCase actor should create a default root component"), RootComponent)) { return; }
 
-		TestRunner->TestTrue(TEXT("TestCase actor root component should be the scripted default component"), RootComponent->IsA(RootComponentClass));
+		ASSERT_THAT(IsTrue(RootComponent->IsA(RootComponentClass), TEXT("TestCase actor root component should be the scripted default component")));
 	}
 
 	TEST_METHOD(Multiple)
 	{
-		using namespace AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private;
 		DestroySharedTestEngine();
 		FActorTestSpawner Spawner;
 		InitializeComponentTestCaseSpawner(Spawner);
@@ -413,13 +476,13 @@ class ATestDefaultComponentMultiple : AActor
 
 		UClass* RootSceneClass = FindGeneratedClass(&Engine, TEXT("UTestDefaultComponentMultipleRoot"));
 		UClass* BillboardClass = FindGeneratedClass(&Engine, TEXT("UTestDefaultComponentMultipleBillboard"));
-		if (!TestRunner->TestNotNull(TEXT("TestCase multi-default root class should be generated"), RootSceneClass)
-			|| !TestRunner->TestNotNull(TEXT("TestCase multi-default child class should be generated"), BillboardClass))
+		if (!CheckNotNull(*TestRunner, TEXT("TestCase multi-default root class should be generated"), RootSceneClass)
+			|| !CheckNotNull(*TestRunner, TEXT("TestCase multi-default child class should be generated"), BillboardClass))
 		{ return; }
 
 		USceneComponent* RootScene = Actor->GetRootComponent();
-		if (!TestRunner->TestNotNull(TEXT("TestCase actor should create a scripted root scene component"), RootScene)) { return; }
-		if (!TestRunner->TestTrue(TEXT("TestCase actor root component should use the scripted root component class"), RootScene->IsA(RootSceneClass))) { return; }
+		if (!CheckNotNull(*TestRunner, TEXT("TestCase actor should create a scripted root scene component"), RootScene)) { return; }
+		if (!CheckTrue(*TestRunner, TEXT("TestCase actor root component should use the scripted root component class"), RootScene->IsA(RootSceneClass))) { return; }
 
 		UBillboardComponent* Billboard = nullptr;
 		for (UActorComponent* Component : Actor->GetComponents())
@@ -430,14 +493,13 @@ class ATestDefaultComponentMultiple : AActor
 				break;
 			}
 		}
-		if (!TestRunner->TestNotNull(TEXT("TestCase actor should create the attached billboard component"), Billboard)) { return; }
+		if (!CheckNotNull(*TestRunner, TEXT("TestCase actor should create the attached billboard component"), Billboard)) { return; }
 
-		TestRunner->TestTrue(TEXT("TestCase actor attached default component should preserve the scripted hierarchy"), Billboard->GetAttachParent() == RootScene);
+		ASSERT_THAT(IsTrue(Billboard->GetAttachParent() == RootScene, TEXT("TestCase actor attached default component should preserve the scripted hierarchy")));
 	}
 
 	TEST_METHOD(NativeTypes)
 	{
-		using namespace AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private;
 		DestroySharedTestEngine();
 		FActorTestSpawner Spawner;
 		InitializeComponentTestCaseSpawner(Spawner);
@@ -473,8 +535,8 @@ class ATestDefaultComponentNativeTypes : AActor
 		BeginPlayActor(Engine, *Actor);
 
 		USceneComponent* RootScene = Actor->GetRootComponent();
-		if (!TestRunner->TestNotNull(TEXT("TestCase actor should create a native static mesh root component"), RootScene)) { return; }
-		if (!TestRunner->TestTrue(TEXT("TestCase actor root component should use UStaticMeshComponent"), RootScene->IsA(UStaticMeshComponent::StaticClass()))) { return; }
+		if (!CheckNotNull(*TestRunner, TEXT("TestCase actor should create a native static mesh root component"), RootScene)) { return; }
+		if (!CheckTrue(*TestRunner, TEXT("TestCase actor root component should use UStaticMeshComponent"), RootScene->IsA(UStaticMeshComponent::StaticClass()))) { return; }
 
 		UBillboardComponent* Billboard = nullptr;
 		for (UActorComponent* Component : Actor->GetComponents())
@@ -485,15 +547,13 @@ class ATestDefaultComponentNativeTypes : AActor
 				break;
 			}
 		}
-		if (!TestRunner->TestNotNull(TEXT("TestCase actor should create the native billboard component"), Billboard)) { return; }
+		if (!CheckNotNull(*TestRunner, TEXT("TestCase actor should create the native billboard component"), Billboard)) { return; }
 
-		TestRunner->TestTrue(TEXT("TestCase actor native billboard component should attach to the native mesh root"), Billboard->GetAttachParent() == RootScene);
+		ASSERT_THAT(IsTrue(Billboard->GetAttachParent() == RootScene, TEXT("TestCase actor native billboard component should attach to the native mesh root")));
 	}
 
 	TEST_METHOD(DeepAttachChain)
 	{
-		using namespace AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private;
-
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
@@ -524,22 +584,20 @@ class ADeepAttachActor : AActor
 )AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("Deep attach chain should compile"), bCompiled)) { return; }
+		if (!CheckTrue(*TestRunner, TEXT("Deep attach chain should compile"), bCompiled)) { return; }
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("ADeepAttachActor"));
-		if (!TestRunner->TestNotNull(TEXT("Class should be materialized"), GeneratedClass)) { return; }
+		if (!CheckNotNull(*TestRunner, TEXT("Class should be materialized"), GeneratedClass)) { return; }
 
 		FProperty* MidProp = GeneratedClass->FindPropertyByName(TEXT("MidScene"));
 		FProperty* LeafProp = GeneratedClass->FindPropertyByName(TEXT("LeafScene"));
-		TestRunner->TestNotNull(TEXT("MidScene property should exist on class"), MidProp);
-		TestRunner->TestNotNull(TEXT("LeafScene property should exist on class"), LeafProp);
+		ASSERT_THAT(IsNotNull(MidProp, TEXT("MidScene property should exist on class")));
+		ASSERT_THAT(IsNotNull(LeafProp, TEXT("LeafScene property should exist on class")));
 		}
 	}
 
 	TEST_METHOD(OverrideComponentMultiLayerInheritance)
 	{
-		using namespace AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private;
-
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
@@ -581,17 +639,15 @@ class ATopLayerActor : AMidLayerActor
 )AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("Multi-layer OverrideComponent should compile"), bCompiled)) { return; }
+		if (!CheckTrue(*TestRunner, TEXT("Multi-layer OverrideComponent should compile"), bCompiled)) { return; }
 
 		UClass* TopClass = FindGeneratedClass(&Engine, TEXT("ATopLayerActor"));
-		TestRunner->TestNotNull(TEXT("Top layer class should be materialized"), TopClass);
+		ASSERT_THAT(IsNotNull(TopClass, TEXT("Top layer class should be materialized")));
 		}
 	}
 
 	TEST_METHOD(NativeActorWithExtraScriptComponent)
 	{
-		using namespace AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private;
-
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
@@ -616,17 +672,15 @@ class AExtendedCharacter : ACharacter
 )AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("Native actor with extra script component should compile"), bCompiled)) { return; }
+		if (!CheckTrue(*TestRunner, TEXT("Native actor with extra script component should compile"), bCompiled)) { return; }
 
 		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("AExtendedCharacter"));
-		TestRunner->TestNotNull(TEXT("Extended character class should be materialized"), GeneratedClass);
+		ASSERT_THAT(IsNotNull(GeneratedClass, TEXT("Extended character class should be materialized")));
 		}
 	}
 
 	TEST_METHOD(OverrideComponentMetadataMultiLayer)
 	{
-		using namespace AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private;
-
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
@@ -668,19 +722,19 @@ class AMetaTopActor : AMetaMidActor
 )AS"),
 			CompileResult);
 
-		if (!TestRunner->TestTrue(TEXT("Override metadata multi-layer should compile"), bCompiled)) { return; }
+		if (!CheckTrue(*TestRunner, TEXT("Override metadata multi-layer should compile"), bCompiled)) { return; }
 
 		UClass* TopClass = FindGeneratedClass(&Engine, TEXT("AMetaTopActor"));
-		if (!TestRunner->TestNotNull(TEXT("Top class should exist"), TopClass)) { return; }
+		if (!CheckNotNull(*TestRunner, TEXT("Top class should exist"), TopClass)) { return; }
 
 		UClass* MidClass = FindGeneratedClass(&Engine, TEXT("AMetaMidActor"));
-		if (!TestRunner->TestNotNull(TEXT("Mid class should exist"), MidClass)) { return; }
+		if (!CheckNotNull(*TestRunner, TEXT("Mid class should exist"), MidClass)) { return; }
 
 		UClass* BaseClass = FindGeneratedClass(&Engine, TEXT("AMetaBaseActor"));
-		if (!TestRunner->TestNotNull(TEXT("Base class should exist"), BaseClass)) { return; }
+		if (!CheckNotNull(*TestRunner, TEXT("Base class should exist"), BaseClass)) { return; }
 
-		TestRunner->TestTrue(TEXT("Top class should inherit from Mid"), TopClass->IsChildOf(MidClass));
-		TestRunner->TestTrue(TEXT("Mid class should inherit from Base"), MidClass->IsChildOf(BaseClass));
+		ASSERT_THAT(IsTrue(TopClass->IsChildOf(MidClass), TEXT("Top class should inherit from Mid")));
+		ASSERT_THAT(IsTrue(MidClass->IsChildOf(BaseClass), TEXT("Mid class should inherit from Base")));
 		}
 	}
 };

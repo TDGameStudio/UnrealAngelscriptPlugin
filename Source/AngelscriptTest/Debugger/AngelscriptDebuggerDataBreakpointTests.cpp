@@ -315,7 +315,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerDataBreakpointTests,
 			CollectGarbage(RF_NoFlags, true);
 		};
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should compile the data breakpoint fixture"), Fixture.Compile(Engine))));
+		ASSERT_THAT(IsTrue(Fixture.Compile(Engine), TEXT("Debugger.DataBreakpoint.LocalValueHitCount should compile the data breakpoint fixture")));
 
 		TAtomic<bool> bDataMonitorReady(false);
 		TAtomic<bool> bDataMonitorShouldStop(false);
@@ -340,7 +340,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerDataBreakpointTests,
 		Breakpoint.Filename = Fixture.Filename;
 		Breakpoint.ModuleName = Fixture.ModuleName.ToString();
 		Breakpoint.LineNumber = Fixture.GetLine(TEXT("StepAfterCallLine"));
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should set the step-after-call breakpoint"), Ctx.Client.SendSetBreakpoint(Breakpoint))));
+		ASSERT_THAT(IsTrue(Ctx.Client.SendSetBreakpoint(Breakpoint), TEXT("Debugger.DataBreakpoint.LocalValueHitCount should set the step-after-call breakpoint")));
 
 		ASSERT_THAT(IsTrue(WaitForBreakpointCount(*TestRunner, Ctx.Session, 1, TEXT("Debugger.DataBreakpoint.LocalValueHitCount should observe the line breakpoint registration"))));
 
@@ -353,30 +353,30 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerDataBreakpointTests,
 
 		const FDataBreakpointMonitorResult DataMonitorResult = DataMonitorFuture.Get();
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should finish the data breakpoint monitor without transport errors"), DataMonitorResult.Error.IsEmpty())));
+		ASSERT_THAT(IsTrue(DataMonitorResult.Error.IsEmpty(), TEXT("Debugger.DataBreakpoint.LocalValueHitCount should finish the data breakpoint monitor without transport errors")));
 		if (!DataMonitorResult.Error.IsEmpty())
 		{
 			TestRunner->AddError(DataMonitorResult.Error);
 		}
 
-		ASSERT_THAT(IsTrue(TestRunner->TestFalse(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should not time out while driving the data breakpoint sequence"), DataMonitorResult.bTimedOut)));
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should capture the initial breakpoint stop"), DataMonitorResult.InitialStopMessage.IsSet())));
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should capture the evaluate reply for Result"), DataMonitorResult.ResultVariable.IsSet())));
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should capture the data breakpoint stop"), DataMonitorResult.DataBreakpointStopMessage.IsSet())));
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should capture the ClearDataBreakpoints reply"), DataMonitorResult.ClearDataBreakpoints.IsSet())));
+		ASSERT_THAT(IsFalse(DataMonitorResult.bTimedOut, TEXT("Debugger.DataBreakpoint.LocalValueHitCount should not time out while driving the data breakpoint sequence")));
+		ASSERT_THAT(IsTrue(DataMonitorResult.InitialStopMessage.IsSet(), TEXT("Debugger.DataBreakpoint.LocalValueHitCount should capture the initial breakpoint stop")));
+		ASSERT_THAT(IsTrue(DataMonitorResult.ResultVariable.IsSet(), TEXT("Debugger.DataBreakpoint.LocalValueHitCount should capture the evaluate reply for Result")));
+		ASSERT_THAT(IsTrue(DataMonitorResult.DataBreakpointStopMessage.IsSet(), TEXT("Debugger.DataBreakpoint.LocalValueHitCount should capture the data breakpoint stop")));
+		ASSERT_THAT(IsTrue(DataMonitorResult.ClearDataBreakpoints.IsSet(), TEXT("Debugger.DataBreakpoint.LocalValueHitCount should capture the ClearDataBreakpoints reply")));
 
-		TestRunner->TestEqual(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should stop initially because of the explicit line breakpoint"), DataMonitorResult.InitialStopMessage->Reason, FString(TEXT("breakpoint")));
-		TestRunner->TestEqual(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should evaluate Result before mutation"), DataMonitorResult.ResultVariable->Value, FString(TEXT("13")));
-		TestRunner->TestTrue(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should expose a non-zero ValueAddress for Result"), DataMonitorResult.ResultVariable->ValueAddress != 0);
-		TestRunner->TestTrue(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should expose a positive ValueSize for Result"), DataMonitorResult.ResultVariable->ValueSize > 0);
-		TestRunner->TestEqual(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should stop because of an exception when the data breakpoint fires"), DataMonitorResult.DataBreakpointStopMessage->Reason, FString(TEXT("exception")));
-		TestRunner->TestTrue(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should report the data breakpoint name in the stop text"), DataMonitorResult.DataBreakpointStopMessage->Text.Contains(TEXT("Data breakpoint (Result) triggered!")));
-		TestRunner->TestEqual(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should clear exactly one data breakpoint"), DataMonitorResult.ClearDataBreakpoints->Ids.Num(), 1);
-		TestRunner->TestEqual(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should clear the hit-count-limited data breakpoint id"), DataMonitorResult.ClearDataBreakpoints->Ids[0], 11);
-		TestRunner->TestTrue(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should complete the first invocation successfully"), FirstInvocation->bSucceeded);
-		TestRunner->TestEqual(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should preserve the first invocation result"), FirstInvocation->Result, 14);
+		ASSERT_THAT(AreEqual(FString(TEXT("breakpoint")), DataMonitorResult.InitialStopMessage->Reason, TEXT("Debugger.DataBreakpoint.LocalValueHitCount should stop initially because of the explicit line breakpoint")));
+		ASSERT_THAT(AreEqual(FString(TEXT("13")), DataMonitorResult.ResultVariable->Value, TEXT("Debugger.DataBreakpoint.LocalValueHitCount should evaluate Result before mutation")));
+		ASSERT_THAT(IsTrue(DataMonitorResult.ResultVariable->ValueAddress != 0, TEXT("Debugger.DataBreakpoint.LocalValueHitCount should expose a non-zero ValueAddress for Result")));
+		ASSERT_THAT(IsTrue(DataMonitorResult.ResultVariable->ValueSize > 0, TEXT("Debugger.DataBreakpoint.LocalValueHitCount should expose a positive ValueSize for Result")));
+		ASSERT_THAT(AreEqual(FString(TEXT("exception")), DataMonitorResult.DataBreakpointStopMessage->Reason, TEXT("Debugger.DataBreakpoint.LocalValueHitCount should stop because of an exception when the data breakpoint fires")));
+		ASSERT_THAT(IsTrue(DataMonitorResult.DataBreakpointStopMessage->Text.Contains(TEXT("Data breakpoint (Result) triggered!")), TEXT("Debugger.DataBreakpoint.LocalValueHitCount should report the data breakpoint name in the stop text")));
+		ASSERT_THAT(AreEqual(1, DataMonitorResult.ClearDataBreakpoints->Ids.Num(), TEXT("Debugger.DataBreakpoint.LocalValueHitCount should clear exactly one data breakpoint")));
+		ASSERT_THAT(AreEqual(11, DataMonitorResult.ClearDataBreakpoints->Ids[0], TEXT("Debugger.DataBreakpoint.LocalValueHitCount should clear the hit-count-limited data breakpoint id")));
+		ASSERT_THAT(IsTrue(FirstInvocation->bSucceeded, TEXT("Debugger.DataBreakpoint.LocalValueHitCount should complete the first invocation successfully")));
+		ASSERT_THAT(AreEqual(14, FirstInvocation->Result, TEXT("Debugger.DataBreakpoint.LocalValueHitCount should preserve the first invocation result")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should clear the line breakpoint before the second invocation"), Ctx.Client.SendClearBreakpoints(ClearBreakpoints))));
+		ASSERT_THAT(IsTrue(Ctx.Client.SendClearBreakpoints(ClearBreakpoints), TEXT("Debugger.DataBreakpoint.LocalValueHitCount should clear the line breakpoint before the second invocation")));
 
 		ASSERT_THAT(IsTrue(WaitForBreakpointCount(*TestRunner, Ctx.Session, 0, TEXT("Debugger.DataBreakpoint.LocalValueHitCount should observe the breakpoint removal before the second invocation"))));
 
@@ -410,17 +410,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerDataBreakpointTests,
 		bPassiveMonitorShouldStop = true;
 		const FPassiveBreakpointMonitorResult PassiveMonitorResult = PassiveMonitorFuture.Get();
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should keep the passive monitor error-free on the second invocation"), PassiveMonitorResult.Error.IsEmpty())));
+		ASSERT_THAT(IsTrue(PassiveMonitorResult.Error.IsEmpty(), TEXT("Debugger.DataBreakpoint.LocalValueHitCount should keep the passive monitor error-free on the second invocation")));
 		if (!PassiveMonitorResult.Error.IsEmpty())
 		{
 			TestRunner->AddError(PassiveMonitorResult.Error);
 		}
 
-		ASSERT_THAT(IsTrue(TestRunner->TestFalse(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should not time out while passively watching the second invocation"), PassiveMonitorResult.bTimedOut)));
+		ASSERT_THAT(IsFalse(PassiveMonitorResult.bTimedOut, TEXT("Debugger.DataBreakpoint.LocalValueHitCount should not time out while passively watching the second invocation")));
 
-		TestRunner->TestEqual(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should not stop again after the hit-count-limited data breakpoint auto-clears"), PassiveMonitorResult.StopMessages.Num(), 0);
-		TestRunner->TestTrue(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should complete the second invocation successfully"), SecondInvocation->bSucceeded);
-		TestRunner->TestEqual(TEXT("Debugger.DataBreakpoint.LocalValueHitCount should preserve the second invocation result"), SecondInvocation->Result, 14);
+		ASSERT_THAT(AreEqual(0, PassiveMonitorResult.StopMessages.Num(), TEXT("Debugger.DataBreakpoint.LocalValueHitCount should not stop again after the hit-count-limited data breakpoint auto-clears")));
+		ASSERT_THAT(IsTrue(SecondInvocation->bSucceeded, TEXT("Debugger.DataBreakpoint.LocalValueHitCount should complete the second invocation successfully")));
+		ASSERT_THAT(AreEqual(14, SecondInvocation->Result, TEXT("Debugger.DataBreakpoint.LocalValueHitCount should preserve the second invocation result")));
 	}
 };
 

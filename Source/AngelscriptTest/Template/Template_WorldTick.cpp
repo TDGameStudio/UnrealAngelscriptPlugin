@@ -186,8 +186,8 @@ class ATemplateWorldTickBasicActor : AActor
 		ASSERT_THAT(IsTrue(ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("BeginPlayCount"), BeginPlayCount)));
 		ASSERT_THAT(IsTrue(ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("TickCount"), TickCount)));
 
-		TestRunner->TestTrue(TEXT("[BasicTickFlow] BeginPlay should be dispatched at least once"), BeginPlayCount >= 1);
-		TestRunner->TestTrue(TEXT("[BasicTickFlow] Tick should be dispatched at least once"), TickCount >= 1);
+		ASSERT_THAT(IsTrue(BeginPlayCount >= 1, TEXT("[BasicTickFlow] BeginPlay should be dispatched at least once")));
+		ASSERT_THAT(IsTrue(TickCount >= 1, TEXT("[BasicTickFlow] Tick should be dispatched at least once")));
 	}
 
 	// =================================================================
@@ -237,7 +237,7 @@ class ATemplateWorldTickExplicitActor : AActor
 
 		int32 TickCount = 0;
 		ASSERT_THAT(IsTrue(ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("TickCount"), TickCount)));
-		TestRunner->TestEqual(TEXT("[ExplicitTickCount] TickCount should equal NumTicks exactly"), TickCount, NumTicks);
+		ASSERT_THAT(AreEqual(NumTicks, TickCount, TEXT("[ExplicitTickCount] TickCount should equal NumTicks exactly")));
 	}
 
 	// =================================================================
@@ -292,10 +292,10 @@ class ATemplateWorldTickAccumDtActor : AActor
 
 		const double Expected = static_cast<double>(DeltaTime) * NumTicks;
 		const double Diff = FMath::Abs(TotalDeltaTime - Expected);
-		TestRunner->TestTrue(
-			*FString::Printf(TEXT("[AccumulatedDeltaTime] TotalDeltaTime=%.6f, Expected=%.6f, Diff=%.6f"),
-				TotalDeltaTime, Expected, Diff),
-			Diff < TemplateWorldTickTest::DeltaTimeAccumulationTolerance);
+		ASSERT_THAT(IsTrue(
+			Diff < TemplateWorldTickTest::DeltaTimeAccumulationTolerance,
+			FString::Printf(TEXT("[AccumulatedDeltaTime] TotalDeltaTime=%.6f, Expected=%.6f, Diff=%.6f"),
+				TotalDeltaTime, Expected, Diff)));
 	}
 
 	// =================================================================
@@ -358,14 +358,16 @@ class ATemplateWorldTickVarDtActor : AActor
 		ASSERT_THAT(IsTrue(ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("TickCount"), TickCount)));
 		ASSERT_THAT(IsTrue(ReadPropertyValue<FDoubleProperty>(*TestRunner, Actor, TEXT("TotalDeltaTime"), TotalDeltaTime)));
 
-		TestRunner->TestEqual(TEXT("[VariableDeltaTime] TickCount should equal the dispatched frame count"),
-			TickCount, static_cast<int32>(UE_ARRAY_COUNT(DeltaSeries)));
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(UE_ARRAY_COUNT(DeltaSeries)),
+			TickCount,
+			TEXT("[VariableDeltaTime] TickCount should equal the dispatched frame count")));
 
 		const double Diff = FMath::Abs(TotalDeltaTime - ExpectedTotal);
-		TestRunner->TestTrue(
-			*FString::Printf(TEXT("[VariableDeltaTime] Accumulated DeltaTime should equal the series sum: actual=%.6f expected=%.6f"),
-				TotalDeltaTime, ExpectedTotal),
-			Diff < TemplateWorldTickTest::DeltaTimeAccumulationTolerance);
+		ASSERT_THAT(IsTrue(
+			Diff < TemplateWorldTickTest::DeltaTimeAccumulationTolerance,
+			FString::Printf(TEXT("[VariableDeltaTime] Accumulated DeltaTime should equal the series sum: actual=%.6f expected=%.6f"),
+				TotalDeltaTime, ExpectedTotal)));
 	}
 
 	// =================================================================
@@ -431,9 +433,10 @@ class ATemplateWorldTickMultiActor : AActor
 		{
 			int32 TickCount = 0;
 			ASSERT_THAT(IsTrue(ReadPropertyValue<FIntProperty>(*TestRunner, Actors[i], TEXT("TickCount"), TickCount)));
-			TestRunner->TestEqual(
-				*FString::Printf(TEXT("[MultipleActors] Actor[%d] TickCount should equal NumTicks"), i),
-				TickCount, NumTicks);
+			ASSERT_THAT(AreEqual(
+				NumTicks,
+				TickCount,
+				FString::Printf(TEXT("[MultipleActors] Actor[%d] TickCount should equal NumTicks"), i)));
 		}
 	}
 
@@ -503,7 +506,7 @@ class UTemplateWorldTickComponent : UActorComponent
 
 		int32 TickCount = 0;
 		ASSERT_THAT(IsTrue(ReadPropertyValue<FIntProperty>(*TestRunner, Component, TEXT("TickCount"), TickCount)));
-		TestRunner->TestEqual(TEXT("[ComponentTick] Component TickCount should equal NumTicks"), TickCount, NumTicks);
+		ASSERT_THAT(AreEqual(NumTicks, TickCount, TEXT("[ComponentTick] Component TickCount should equal NumTicks")));
 	}
 };
 

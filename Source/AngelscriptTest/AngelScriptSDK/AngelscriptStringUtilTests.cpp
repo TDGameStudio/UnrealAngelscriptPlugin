@@ -46,70 +46,70 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKStringUtilTests, "Angelscript.TestModule.An
 	{
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
-		if (!TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
 		RegisterStringFactory(SE);
 		asIScriptModule* M = BuildNativeModule(SE, "StrUtilPI", "int Entry() { string s = \"42\"; return s.parseInt(); }\n");
-		if (!TestNotNull(TEXT("Should compile"), M)) { AddInfo(CollectMessages(Messages)); return; }
+		if (!this->Assert.IsNotNull(M, TEXT("Should compile"))) { AddInfo(CollectMessages(Messages)); return; }
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*this, SE, M, "int Entry()", Result)) return;
-		TestEqual(TEXT("parseInt 42"), Result, 42);
+		ASSERT_THAT(AreEqual(42, Result, TEXT("parseInt 42")));
 	}
 
 	TEST_METHOD(ParseNegativeInt)
 	{
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
-		if (!TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
 		RegisterStringFactory(SE);
 		asIScriptModule* M = BuildNativeModule(SE, "StrUtilNI", "int Entry() { string s = \"-100\"; return s.parseInt(); }\n");
-		if (!TestNotNull(TEXT("Should compile"), M)) { AddInfo(CollectMessages(Messages)); return; }
+		if (!this->Assert.IsNotNull(M, TEXT("Should compile"))) { AddInfo(CollectMessages(Messages)); return; }
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*this, SE, M, "int Entry()", Result)) return;
-		TestEqual(TEXT("parseInt -100"), Result, -100);
+		ASSERT_THAT(AreEqual(-100, Result, TEXT("parseInt -100")));
 	}
 
 	TEST_METHOD(ParseFloat)
 	{
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
-		if (!TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
 		RegisterStringFactory(SE);
 		asIScriptModule* M = BuildNativeModule(SE, "StrUtilPF", "double Entry() { string s = \"3.14\"; return s.parseFloat(); }\n");
-		if (!TestNotNull(TEXT("Should compile"), M)) { AddInfo(CollectMessages(Messages)); return; }
+		if (!this->Assert.IsNotNull(M, TEXT("Should compile"))) { AddInfo(CollectMessages(Messages)); return; }
 		double Result = 0.0;
 		if (!ExecuteScriptFunction(*this, SE, M, "double Entry()", Result)) return;
-		TestTrue(TEXT("parseFloat 3.14"), FMath::IsNearlyEqual(Result, 3.14, 0.001));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Result, 3.14, 0.001), TEXT("parseFloat 3.14")));
 	}
 
 	TEST_METHOD(ParseZero)
 	{
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
-		if (!TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
 		RegisterStringFactory(SE);
 		asIScriptModule* M = BuildNativeModule(SE, "StrUtilZ", "int Entry() { string s = \"0\"; return s.parseInt(); }\n");
-		if (!TestNotNull(TEXT("Should compile"), M)) { AddInfo(CollectMessages(Messages)); return; }
+		if (!this->Assert.IsNotNull(M, TEXT("Should compile"))) { AddInfo(CollectMessages(Messages)); return; }
 		int32 Result = -1;
 		if (!ExecuteScriptFunction(*this, SE, M, "int Entry()", Result)) return;
-		TestEqual(TEXT("parseInt 0"), Result, 0);
+		ASSERT_THAT(AreEqual(0, Result, TEXT("parseInt 0")));
 	}
 
 	TEST_METHOD(LargeValue)
 	{
 		FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
-		if (!TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
 		RegisterStringFactory(SE);
 		asIScriptModule* M = BuildNativeModule(SE, "StrUtilLV", "int Entry() { string s = \"2147483647\"; return s.parseInt(); }\n");
-		if (!TestNotNull(TEXT("Should compile"), M)) { AddInfo(CollectMessages(Messages)); return; }
+		if (!this->Assert.IsNotNull(M, TEXT("Should compile"))) { AddInfo(CollectMessages(Messages)); return; }
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*this, SE, M, "int Entry()", Result)) return;
-		TestEqual(TEXT("parseInt INT32_MAX"), Result, 2147483647);
+		ASSERT_THAT(AreEqual(2147483647, Result, TEXT("parseInt INT32_MAX")));
 	}
 };
 

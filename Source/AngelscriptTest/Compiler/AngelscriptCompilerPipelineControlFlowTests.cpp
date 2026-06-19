@@ -139,40 +139,37 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineControlFlowTests,
 			? Modules[0]->Code[0].Code
 			: FString();
 
-		TestRunner->TestTrue(
-			TEXT("Range-based for rewrite test case should preprocess successfully"),
-			bPreprocessSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Range-based for rewrite test case should not emit preprocessing errors"),
+		ASSERT_THAT(IsTrue(
+			bPreprocessSucceeded,
+			TEXT("Range-based for rewrite test case should preprocess successfully")));
+		ASSERT_THAT(AreEqual(
+			0,
 			PreprocessErrorCount,
-			0);
-		TestRunner->TestEqual(
-			TEXT("Range-based for rewrite test case should keep preprocessing diagnostics empty"),
+			TEXT("Range-based for rewrite test case should not emit preprocessing errors")));
+		ASSERT_THAT(AreEqual(
+			0,
 			PreprocessMessages.Num(),
-			0);
-		TestRunner->TestEqual(
-			TEXT("Range-based for rewrite test case should produce exactly one module descriptor"),
+			TEXT("Range-based for rewrite test case should keep preprocessing diagnostics empty")));
+		ASSERT_THAT(AreEqual(
+			1,
 			Modules.Num(),
-			1);
-		if (Modules.Num() > 0)
-		{
-			TestRunner->TestEqual(
-				TEXT("Range-based for rewrite test case should preserve the expected module name"),
-				Modules[0]->ModuleName,
-				CompilerPipelineControlFlowTest::ModuleName.ToString());
-		}
+			TEXT("Range-based for rewrite test case should produce exactly one module descriptor")));
+		ASSERT_THAT(AreEqual(
+			CompilerPipelineControlFlowTest::ModuleName.ToString(),
+			Modules[0]->ModuleName,
+			TEXT("Range-based for rewrite test case should preserve the expected module name")));
 
-		TestRunner->TestEqual(
-			TEXT("Range-based for rewrite test case should rewrite both loops into iterator advance conditions"),
+		ASSERT_THAT(AreEqual(
+			2,
 			CompilerPipelineControlFlowTest::CountOccurrences(ProcessedCode, TEXT("_Iterator.CanProceed; )")),
-			2);
-		TestRunner->TestEqual(
-			TEXT("Range-based for rewrite test case should rewrite both loops into iterator proceed calls"),
+			TEXT("Range-based for rewrite test case should rewrite both loops into iterator advance conditions")));
+		ASSERT_THAT(AreEqual(
+			2,
 			CompilerPipelineControlFlowTest::CountOccurrences(ProcessedCode, TEXT("_Iterator.Proceed();")),
-			2);
-		TestRunner->TestTrue(
-			TEXT("Range-based for rewrite test case should materialize the const-ref storage marker in processed code"),
-			ProcessedCode.Contains(TEXT("__auto_constref_type")));
+			TEXT("Range-based for rewrite test case should rewrite both loops into iterator proceed calls")));
+		ASSERT_THAT(IsTrue(
+			ProcessedCode.Contains(TEXT("__auto_constref_type")),
+			TEXT("Range-based for rewrite test case should materialize the const-ref storage marker in processed code")));
 
 		Engine.ResetDiagnostics();
 
@@ -187,19 +184,19 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineControlFlowTests,
 			Summary,
 			true);
 
-		TestRunner->TestTrue(
-			TEXT("Range-based for rewrite test case should compile through the normal preprocessor pipeline"),
-			bCompiled);
-		TestRunner->TestTrue(
-			TEXT("Range-based for rewrite test case should report that it used the preprocessor"),
-			Summary.bUsedPreprocessor);
-		TestRunner->TestTrue(
-			TEXT("Range-based for rewrite test case should mark compile succeeded in the summary"),
-			Summary.bCompileSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Range-based for rewrite test case should keep compile diagnostics empty"),
+		ASSERT_THAT(IsTrue(
+			bCompiled,
+			TEXT("Range-based for rewrite test case should compile through the normal preprocessor pipeline")));
+		ASSERT_THAT(IsTrue(
+			Summary.bUsedPreprocessor,
+			TEXT("Range-based for rewrite test case should report that it used the preprocessor")));
+		ASSERT_THAT(IsTrue(
+			Summary.bCompileSucceeded,
+			TEXT("Range-based for rewrite test case should mark compile succeeded in the summary")));
+		ASSERT_THAT(AreEqual(
+			0,
 			Summary.Diagnostics.Num(),
-			0);
+			TEXT("Range-based for rewrite test case should keep compile diagnostics empty")));
 
 		int32 EntryResult = 0;
 		const bool bExecuted = bCompiled
@@ -209,16 +206,13 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineControlFlowTests,
 				CompilerPipelineControlFlowTest::ModuleName,
 				TEXT("int Entry()"),
 				EntryResult);
-		TestRunner->TestTrue(
-			TEXT("Range-based for rewrite test case should execute the compiled Entry function"),
-			bExecuted);
-		if (bExecuted)
-		{
-			TestRunner->TestEqual(
-				TEXT("Range-based for rewrite test case should keep both block and single-line loop sums executable"),
-				EntryResult,
-				4242);
-		}
+		ASSERT_THAT(IsTrue(
+			bExecuted,
+			TEXT("Range-based for rewrite test case should execute the compiled Entry function")));
+		ASSERT_THAT(AreEqual(
+			4242,
+			EntryResult,
+			TEXT("Range-based for rewrite test case should keep both block and single-line loop sums executable")));
 
 		}
 

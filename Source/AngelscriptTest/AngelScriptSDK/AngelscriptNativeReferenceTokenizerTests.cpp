@@ -26,8 +26,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceTokenizerTests,
 			static_cast<size_t>(LongIdentifierUtf8.Length()),
 			&TokenLength);
 
-		TestRunner->TestEqual(TEXT("Reference long-token identifier should remain a single identifier token"), static_cast<int32>(TokenType), static_cast<int32>(ttIdentifier));
-		TestRunner->TestEqual(TEXT("Reference long-token identifier should preserve the full token length"), static_cast<int32>(TokenLength), 400);
+		ASSERT_THAT(AreEqual(static_cast<int32>(ttIdentifier), static_cast<int32>(TokenType),
+			TEXT("Reference long-token identifier should remain a single identifier token")));
+		ASSERT_THAT(AreEqual(400, static_cast<int32>(TokenLength),
+			TEXT("Reference long-token identifier should preserve the full token length")));
 	}
 
 	TEST_METHOD(LongIdentifierFollowedByAssignmentTokenizesInOrder)
@@ -40,14 +42,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceTokenizerTests,
 			SourceUtf8.Get(),
 			static_cast<size_t>(SourceUtf8.Length()));
 
-		TestRunner->TestTrue(TEXT("Reference long-token assignment should emit at least five raw tokens"), Tokens.Num() >= 5);
+		ASSERT_THAT(IsTrue(Tokens.Num() >= 5,
+			TEXT("Reference long-token assignment should emit at least five raw tokens")));
 		if (Tokens.Num() >= 5)
 		{
-			TestRunner->TestEqual(TEXT("Reference long-token assignment should start with the long identifier"), static_cast<int32>(Tokens[0].Key), static_cast<int32>(ttIdentifier));
-			TestRunner->TestEqual(TEXT("Reference long-token assignment should keep the long identifier length"), static_cast<int32>(Tokens[0].Value), 400);
-			TestRunner->TestEqual(TEXT("Reference long-token assignment should keep whitespace after the identifier"), static_cast<int32>(Tokens[1].Key), static_cast<int32>(ttWhiteSpace));
-			TestRunner->TestEqual(TEXT("Reference long-token assignment should expose the assignment operator"), static_cast<int32>(Tokens[2].Key), static_cast<int32>(ttAssignment));
-			TestRunner->TestEqual(TEXT("Reference long-token assignment should expose the integer literal"), static_cast<int32>(Tokens[4].Key), static_cast<int32>(ttIntConstant));
+			ASSERT_THAT(AreEqual(static_cast<int32>(ttIdentifier), static_cast<int32>(Tokens[0].Key),
+				TEXT("Reference long-token assignment should start with the long identifier")));
+			ASSERT_THAT(AreEqual(400, static_cast<int32>(Tokens[0].Value),
+				TEXT("Reference long-token assignment should keep the long identifier length")));
+			ASSERT_THAT(AreEqual(static_cast<int32>(ttWhiteSpace), static_cast<int32>(Tokens[1].Key),
+				TEXT("Reference long-token assignment should keep whitespace after the identifier")));
+			ASSERT_THAT(AreEqual(static_cast<int32>(ttAssignment), static_cast<int32>(Tokens[2].Key),
+				TEXT("Reference long-token assignment should expose the assignment operator")));
+			ASSERT_THAT(AreEqual(static_cast<int32>(ttIntConstant), static_cast<int32>(Tokens[4].Key),
+				TEXT("Reference long-token assignment should expose the integer literal")));
 		}
 	}
 
@@ -58,12 +66,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceTokenizerTests,
 		size_t TokenLength = 0;
 
 		const eTokenType FirstToken = Tokenizer.GetToken(Source, std::strlen(Source), &TokenLength);
-		TestRunner->TestEqual(TEXT("Reference tokenizer recovery should classify the leading bad token"), static_cast<int32>(FirstToken), static_cast<int32>(ttUnrecognizedToken));
-		TestRunner->TestEqual(TEXT("Reference tokenizer recovery should consume only the bad token"), static_cast<int32>(TokenLength), 1);
+		ASSERT_THAT(AreEqual(static_cast<int32>(ttUnrecognizedToken), static_cast<int32>(FirstToken),
+			TEXT("Reference tokenizer recovery should classify the leading bad token")));
+		ASSERT_THAT(AreEqual(1, static_cast<int32>(TokenLength),
+			TEXT("Reference tokenizer recovery should consume only the bad token")));
 
 		const eTokenType SecondToken = Tokenizer.GetToken(Source + TokenLength, std::strlen(Source) - TokenLength, &TokenLength);
-		TestRunner->TestEqual(TEXT("Reference tokenizer recovery should resume with the following identifier"), static_cast<int32>(SecondToken), static_cast<int32>(ttIdentifier));
-		TestRunner->TestEqual(TEXT("Reference tokenizer recovery should preserve the following identifier length"), static_cast<int32>(TokenLength), 5);
+		ASSERT_THAT(AreEqual(static_cast<int32>(ttIdentifier), static_cast<int32>(SecondToken),
+			TEXT("Reference tokenizer recovery should resume with the following identifier")));
+		ASSERT_THAT(AreEqual(5, static_cast<int32>(TokenLength),
+			TEXT("Reference tokenizer recovery should preserve the following identifier length")));
 	}
 
 	TEST_METHOD(UnterminatedStringReportsDedicatedToken)
@@ -73,8 +85,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceTokenizerTests,
 		size_t TokenLength = 0;
 
 		const eTokenType TokenType = Tokenizer.GetToken(Source, std::strlen(Source), &TokenLength);
-		TestRunner->TestEqual(TEXT("Reference unterminated string should use the dedicated token type"), static_cast<int32>(TokenType), static_cast<int32>(ttNonTerminatedStringConstant));
-		TestRunner->TestEqual(TEXT("Reference unterminated string should consume the full input"), static_cast<int32>(TokenLength), static_cast<int32>(std::strlen(Source)));
+		ASSERT_THAT(AreEqual(static_cast<int32>(ttNonTerminatedStringConstant), static_cast<int32>(TokenType),
+			TEXT("Reference unterminated string should use the dedicated token type")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(std::strlen(Source)), static_cast<int32>(TokenLength),
+			TEXT("Reference unterminated string should consume the full input")));
 	}
 };
 

@@ -39,6 +39,7 @@ namespace AngelscriptDebuggerSmokeTests_Private
 		TOptional<FAngelscriptDebugMessageEnvelope>& OutEnvelope,
 		const TCHAR* Context)
 	{
+		FNoDiscardAsserter Assert(Test);
 		const bool bReceivedEnvelope = Session.PumpUntil(
 			[&Client, &OutEnvelope, ExpectedType]()
 			{
@@ -58,7 +59,7 @@ namespace AngelscriptDebuggerSmokeTests_Private
 			},
 			Session.GetDefaultTimeoutSeconds());
 
-		if (!Test.TestTrue(Context, bReceivedEnvelope))
+		if (!Assert.IsTrue(bReceivedEnvelope, Context))
 		{
 			if (!Client.GetLastError().IsEmpty())
 			{
@@ -89,13 +90,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSmokeTests,
 
 	TEST_METHOD(Handshake)
 	{
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(
-			TEXT("Debugger.Smoke.Handshake should put the session in debugging mode after StartDebugging"),
-			Ctx.GetDebugServer().bIsDebugging)));
+		ASSERT_THAT(IsTrue(
+			Ctx.GetDebugServer().bIsDebugging,
+			TEXT("Debugger.Smoke.Handshake should put the session in debugging mode after StartDebugging")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(
-			TEXT("Debugger.Smoke.Handshake should request debugger break filters"),
-			Ctx.Client.SendRequestBreakFilters())));
+		ASSERT_THAT(IsTrue(
+			Ctx.Client.SendRequestBreakFilters(),
+			TEXT("Debugger.Smoke.Handshake should request debugger break filters")));
 
 		TOptional<FAngelscriptDebugMessageEnvelope> BreakFiltersEnvelope;
 		const bool bReceivedBreakFilters = Ctx.Session.PumpUntil(
@@ -117,26 +118,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSmokeTests,
 			},
 			Ctx.GetDefaultTimeoutSeconds());
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(
-			TEXT("Debugger.Smoke.Handshake should receive a BreakFilters response"),
-			bReceivedBreakFilters)));
+		ASSERT_THAT(IsTrue(
+			bReceivedBreakFilters,
+			TEXT("Debugger.Smoke.Handshake should receive a BreakFilters response")));
 
 		const TOptional<FAngelscriptBreakFilters> BreakFilters =
 			FAngelscriptDebuggerTestClient::DeserializeMessage<FAngelscriptBreakFilters>(BreakFiltersEnvelope.GetValue());
-		TestRunner->TestTrue(
-			TEXT("Debugger.Smoke.Handshake should deserialize the BreakFilters payload"),
-			BreakFilters.IsSet());
+		ASSERT_THAT(IsTrue(
+			BreakFilters.IsSet(),
+			TEXT("Debugger.Smoke.Handshake should deserialize the BreakFilters payload")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(
-			TEXT("Debugger.Smoke.Handshake should send StopDebugging"),
-			Ctx.Client.SendStopDebugging())));
+		ASSERT_THAT(IsTrue(
+			Ctx.Client.SendStopDebugging(),
+			TEXT("Debugger.Smoke.Handshake should send StopDebugging")));
 
 		const bool bStoppedDebugging = Ctx.Session.PumpUntil(
 			[this]() { return !Ctx.GetDebugServer().bIsDebugging; },
 			Ctx.GetDefaultTimeoutSeconds());
-		TestRunner->TestTrue(
-			TEXT("Debugger.Smoke.Handshake should leave debugging mode after StopDebugging"),
-			bStoppedDebugging);
+		ASSERT_THAT(IsTrue(
+			bStoppedDebugging,
+			TEXT("Debugger.Smoke.Handshake should leave debugging mode after StopDebugging")));
 	}
 
 	TEST_METHOD(BreakFiltersRoundtrip)
@@ -151,13 +152,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSmokeTests,
 				OutFilters.Add(FName(TEXT("break:script")), TEXT("Script"));
 			});
 
-		TestRunner->TestTrue(
-			TEXT("Debugger smoke protocol should enter debugging mode after StartDebugging"),
-			Ctx.GetDebugServer().bIsDebugging);
+		ASSERT_THAT(IsTrue(
+			Ctx.GetDebugServer().bIsDebugging,
+			TEXT("Debugger smoke protocol should enter debugging mode after StartDebugging")));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(
-			TEXT("Debugger smoke protocol should request break filters"),
-			Ctx.Client.SendRequestBreakFilters())));
+		ASSERT_THAT(IsTrue(
+			Ctx.Client.SendRequestBreakFilters(),
+			TEXT("Debugger smoke protocol should request break filters")));
 
 		TOptional<FAngelscriptDebugMessageEnvelope> BreakFiltersEnvelope;
 		ASSERT_THAT(IsTrue(WaitForDebuggerEnvelopeType(
@@ -170,19 +171,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSmokeTests,
 
 		const TOptional<FAngelscriptBreakFilters> BreakFilters =
 			FAngelscriptDebuggerTestClient::DeserializeMessage<FAngelscriptBreakFilters>(BreakFiltersEnvelope.GetValue());
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(
-			TEXT("Debugger smoke protocol should deserialize the BreakFilters payload"),
-			BreakFilters.IsSet())));
+		ASSERT_THAT(IsTrue(
+			BreakFilters.IsSet(),
+			TEXT("Debugger smoke protocol should deserialize the BreakFilters payload")));
 
-		TestRunner->TestTrue(
-			TEXT("Debugger smoke protocol should stay in debugging mode after querying break filters"),
-			Ctx.GetDebugServer().bIsDebugging);
-		TestRunner->TestEqual(
-			TEXT("Debugger smoke protocol should report two break filters"),
-			BreakFilters->Filters.Num(), 2);
-		TestRunner->TestEqual(
-			TEXT("Debugger smoke protocol should report two filter titles"),
-			BreakFilters->FilterTitles.Num(), 2);
+		ASSERT_THAT(IsTrue(
+			Ctx.GetDebugServer().bIsDebugging,
+			TEXT("Debugger smoke protocol should stay in debugging mode after querying break filters")));
+		ASSERT_THAT(AreEqual(2, BreakFilters->Filters.Num(), TEXT("Debugger smoke protocol should report two break filters")));
+		ASSERT_THAT(AreEqual(2, BreakFilters->FilterTitles.Num(), TEXT("Debugger smoke protocol should report two filter titles")));
 
 		TMap<FString, FString> ActualPairs;
 		for (int32 Index = 0; Index < BreakFilters->Filters.Num() && Index < BreakFilters->FilterTitles.Num(); ++Index)
@@ -190,25 +187,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSmokeTests,
 			ActualPairs.Add(BreakFilters->Filters[Index], BreakFilters->FilterTitles[Index]);
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Debugger smoke protocol should preserve two unique filter/title pairs"),
-			ActualPairs.Num(), 2);
+		ASSERT_THAT(AreEqual(2, ActualPairs.Num(), TEXT("Debugger smoke protocol should preserve two unique filter/title pairs")));
 
 		const FString* EnsureTitle = ActualPairs.Find(TEXT("break:ensure"));
-		ASSERT_THAT(IsTrue(TestRunner->TestNotNull(
-			TEXT("Debugger smoke protocol should include the break:ensure filter"),
-			EnsureTitle)));
-		TestRunner->TestEqual(
-			TEXT("Debugger smoke protocol should preserve the break:ensure title"),
-			*EnsureTitle, FString(TEXT("Ensure")));
+		ASSERT_THAT(IsNotNull(EnsureTitle, TEXT("Debugger smoke protocol should include the break:ensure filter")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Ensure")), *EnsureTitle, TEXT("Debugger smoke protocol should preserve the break:ensure title")));
 
 		const FString* ScriptTitle = ActualPairs.Find(TEXT("break:script"));
-		ASSERT_THAT(IsTrue(TestRunner->TestNotNull(
-			TEXT("Debugger smoke protocol should include the break:script filter"),
-			ScriptTitle)));
-		TestRunner->TestEqual(
-			TEXT("Debugger smoke protocol should preserve the break:script title"),
-			*ScriptTitle, FString(TEXT("Script")));
+		ASSERT_THAT(IsNotNull(ScriptTitle, TEXT("Debugger smoke protocol should include the break:script filter")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Script")), *ScriptTitle, TEXT("Debugger smoke protocol should preserve the break:script title")));
 	}
 };
 

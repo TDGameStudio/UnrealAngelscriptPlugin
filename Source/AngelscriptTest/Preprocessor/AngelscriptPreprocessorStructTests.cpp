@@ -71,10 +71,7 @@ USTRUCT() struct FDerivedStruct : FBaseStruct
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
 		UAngelscriptSettings* Settings = GetMutableDefault<UAngelscriptSettings>();
-		if (!TestRunner->TestNotNull(TEXT("Should access mutable settings"), Settings))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Settings, TEXT("Should access mutable settings")));
 
 		const EAngelscriptPropertyEditSpecifier PrevClassSpec = Settings->DefaultPropertyEditSpecifier;
 		const EAngelscriptPropertyEditSpecifier PrevStructSpec = Settings->DefaultPropertyEditSpecifierForStructs;
@@ -118,29 +115,21 @@ class UClassDefaultSpecifierCarrier : UObject
 
 		// Check struct property
 		const TSharedPtr<FAngelscriptClassDesc> StructDesc = Module->GetClass(TEXT("FStructDefaultSpecifierCarrier"));
-		if (TestRunner->TestTrue(TEXT("Should find struct descriptor"), StructDesc.IsValid()))
-		{
-			TestRunner->TestTrue(TEXT("Should be marked as struct"), StructDesc->bIsStruct);
-			const TSharedPtr<FAngelscriptPropertyDesc> Prop = StructDesc->GetProperty(TEXT("StructValue"));
-			if (TestRunner->TestTrue(TEXT("Should find StructValue property"), Prop.IsValid()))
-			{
-				TestRunner->TestTrue(TEXT("Struct prop: editable on defaults (EditDefaultsOnly)"), Prop->bEditableOnDefaults);
-				TestRunner->TestFalse(TEXT("Struct prop: not editable on instances"), Prop->bEditableOnInstance);
-			}
-		}
+		ASSERT_THAT(IsTrue(StructDesc.IsValid(), TEXT("Should find struct descriptor")));
+		ASSERT_THAT(IsTrue(StructDesc->bIsStruct, TEXT("Should be marked as struct")));
+		const TSharedPtr<FAngelscriptPropertyDesc> StructProp = StructDesc->GetProperty(TEXT("StructValue"));
+		ASSERT_THAT(IsTrue(StructProp.IsValid(), TEXT("Should find StructValue property")));
+		ASSERT_THAT(IsTrue(StructProp->bEditableOnDefaults, TEXT("Struct prop: editable on defaults (EditDefaultsOnly)")));
+		ASSERT_THAT(IsFalse(StructProp->bEditableOnInstance, TEXT("Struct prop: not editable on instances")));
 
 		// Check class property
 		const TSharedPtr<FAngelscriptClassDesc> ClassDesc = Module->GetClass(TEXT("UClassDefaultSpecifierCarrier"));
-		if (TestRunner->TestTrue(TEXT("Should find class descriptor"), ClassDesc.IsValid()))
-		{
-			TestRunner->TestFalse(TEXT("Should not be marked as struct"), ClassDesc->bIsStruct);
-			const TSharedPtr<FAngelscriptPropertyDesc> Prop = ClassDesc->GetProperty(TEXT("ClassValue"));
-			if (TestRunner->TestTrue(TEXT("Should find ClassValue property"), Prop.IsValid()))
-			{
-				TestRunner->TestFalse(TEXT("Class prop: not editable on defaults (NotEditable)"), Prop->bEditableOnDefaults);
-				TestRunner->TestFalse(TEXT("Class prop: not editable on instances"), Prop->bEditableOnInstance);
-			}
-		}
+		ASSERT_THAT(IsTrue(ClassDesc.IsValid(), TEXT("Should find class descriptor")));
+		ASSERT_THAT(IsFalse(ClassDesc->bIsStruct, TEXT("Should not be marked as struct")));
+		const TSharedPtr<FAngelscriptPropertyDesc> ClassProp = ClassDesc->GetProperty(TEXT("ClassValue"));
+		ASSERT_THAT(IsTrue(ClassProp.IsValid(), TEXT("Should find ClassValue property")));
+		ASSERT_THAT(IsFalse(ClassProp->bEditableOnDefaults, TEXT("Class prop: not editable on defaults (NotEditable)")));
+		ASSERT_THAT(IsFalse(ClassProp->bEditableOnInstance, TEXT("Class prop: not editable on instances")));
 
 		}
 	}

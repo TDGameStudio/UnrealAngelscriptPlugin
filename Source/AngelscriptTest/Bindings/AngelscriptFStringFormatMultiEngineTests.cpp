@@ -53,10 +53,11 @@ static asIScriptFunction* CompileIntFunction(
 	const ANSICHAR* SourceBody)
 {
 	FAngelscriptEngineScope GlobalScope(Engine);
+	FNoDiscardAsserter Assert(Test);
 
 	asIScriptModule* Module = Engine.GetScriptEngine()->GetModule(
 		TCHAR_TO_ANSI(*ModuleName), asGM_ALWAYS_CREATE);
-	if (!Test.TestNotNull(*FString::Printf(TEXT("FormatMultiEngine: should create module '%s'"), *ModuleName), Module))
+	if (!Assert.IsNotNull(Module, *FString::Printf(TEXT("FormatMultiEngine: should create module '%s'"), *ModuleName)))
 	{
 		return nullptr;
 	}
@@ -64,14 +65,15 @@ static asIScriptFunction* CompileIntFunction(
 	asIScriptFunction* Function = nullptr;
 	const int32 CompileResult = Module->CompileFunction(
 		TCHAR_TO_ANSI(*ModuleName), SourceBody, 0, asCOMP_ADD_TO_MODULE, &Function);
-	if (!Test.TestEqual(*FString::Printf(TEXT("FormatMultiEngine: should compile '%s'"), *ModuleName),
-		CompileResult, asSUCCESS))
+	if (!Assert.AreEqual(asSUCCESS, CompileResult, *FString::Printf(TEXT("FormatMultiEngine: should compile '%s'"), *ModuleName)))
 	{
 		return nullptr;
 	}
 
-	Test.TestNotNull(*FString::Printf(TEXT("FormatMultiEngine: should resolve function in '%s'"), *ModuleName),
-		Function);
+	if (!Assert.IsNotNull(Function, *FString::Printf(TEXT("FormatMultiEngine: should resolve function in '%s'"), *ModuleName)))
+	{
+		return nullptr;
+	}
 	return Function;
 }
 
@@ -84,24 +86,22 @@ static int32 ExecuteIntFunction(
 	asIScriptFunction& Function,
 	const TCHAR* WhatLabel)
 {
+	FNoDiscardAsserter Assert(Test);
 	asIScriptContext* Context = Engine.GetScriptEngine()->RequestContext();
-	if (!Test.TestNotNull(*FString::Printf(TEXT("FormatMultiEngine [%s]: should acquire a context"), WhatLabel),
-		Context))
+	if (!Assert.IsNotNull(Context, *FString::Printf(TEXT("FormatMultiEngine [%s]: should acquire a context"), WhatLabel)))
 	{
 		return INDEX_NONE;
 	}
 
 	const int32 PrepareResult = Context->Prepare(&Function);
-	if (!Test.TestEqual(*FString::Printf(TEXT("FormatMultiEngine [%s]: Prepare succeeds"), WhatLabel),
-		PrepareResult, asSUCCESS))
+	if (!Assert.AreEqual(asSUCCESS, PrepareResult, *FString::Printf(TEXT("FormatMultiEngine [%s]: Prepare succeeds"), WhatLabel)))
 	{
 		Engine.GetScriptEngine()->ReturnContext(Context);
 		return INDEX_NONE;
 	}
 
 	const int32 ExecuteResult = Context->Execute();
-	if (!Test.TestEqual(*FString::Printf(TEXT("FormatMultiEngine [%s]: Execute reaches asEXECUTION_FINISHED"), WhatLabel),
-		ExecuteResult, asEXECUTION_FINISHED))
+	if (!Assert.AreEqual(asEXECUTION_FINISHED, ExecuteResult, *FString::Printf(TEXT("FormatMultiEngine [%s]: Execute reaches asEXECUTION_FINISHED"), WhatLabel)))
 	{
 		Engine.GetScriptEngine()->ReturnContext(Context);
 		return INDEX_NONE;
@@ -137,7 +137,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFStringFormatMultiEngineTests,
 		// Engine A: bind, format, destroy.
 		{
 			TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(Config, Dependencies);
-			if (!TestRunner->TestNotNull(TEXT("FormatMultiEngine: should construct engine A"), EngineA.Get()))
+			if (!this->Assert.IsNotNull(EngineA.Get(), TEXT("FormatMultiEngine: should construct engine A")))
 			{
 				return;
 			}
@@ -157,10 +157,15 @@ int Test()
 
 			FAngelscriptEngineScope ScopeA(*EngineA);
 			const int32 ResultA = ExecuteIntFunction(*TestRunner, *EngineA, *FunctionA, TEXT("EngineA"));
-			TestRunner->TestEqual(
-				TEXT("FormatMultiEngine: FString::Format in engine A should return 1 ('Hello' matched)"),
-				ResultA, 1);
+			const bool bResultAOk = this->Assert.AreEqual(
+				1,
+				ResultA,
+				TEXT("FormatMultiEngine: FString::Format in engine A should return 1 ('Hello' matched)"));
 			FunctionA->Release();
+			if (!bResultAOk)
+			{
+				return;
+			}
 			// EngineA goes out of scope here; teardown clears engine-keyed
 			// type-info caches before the AS engine is released.
 		}
@@ -170,8 +175,9 @@ int Test()
 		// to compile or reject the runtime argument.
 		{
 			TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptTestEngine::Create(Config, Dependencies);
-			if (!TestRunner->TestNotNull(TEXT("FormatMultiEngine: should construct engine B after A's teardown"),
-				EngineB.Get()))
+			if (!this->Assert.IsNotNull(
+				EngineB.Get(),
+				TEXT("FormatMultiEngine: should construct engine B after A's teardown")))
 			{
 				return;
 			}
@@ -191,10 +197,15 @@ int Test()
 
 			FAngelscriptEngineScope ScopeB(*EngineB);
 			const int32 ResultB = ExecuteIntFunction(*TestRunner, *EngineB, *FunctionB, TEXT("EngineB"));
-			TestRunner->TestEqual(
-				TEXT("FormatMultiEngine: FString::Format in engine B (post engine-A teardown) should return 1"),
-				ResultB, 1);
+			const bool bResultBOk = this->Assert.AreEqual(
+				1,
+				ResultB,
+				TEXT("FormatMultiEngine: FString::Format in engine B (post engine-A teardown) should return 1"));
 			FunctionB->Release();
+			if (!bResultBOk)
+			{
+				return;
+			}
 		}
 	}
 
@@ -210,8 +221,8 @@ int Test()
 
 		TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(Config, Dependencies);
 		TUniquePtr<FAngelscriptEngine> EngineB = FAngelscriptTestEngine::Create(Config, Dependencies);
-		if (!TestRunner->TestNotNull(TEXT("FormatMultiEngine concurrent: should construct engine A"), EngineA.Get())
-			|| !TestRunner->TestNotNull(TEXT("FormatMultiEngine concurrent: should construct engine B"), EngineB.Get()))
+		if (!this->Assert.IsNotNull(EngineA.Get(), TEXT("FormatMultiEngine concurrent: should construct engine A"))
+			|| !this->Assert.IsNotNull(EngineB.Get(), TEXT("FormatMultiEngine concurrent: should construct engine B")))
 		{
 			return;
 		}
@@ -244,9 +255,15 @@ int Test()
 		{
 			FAngelscriptEngineScope ScopeA(*EngineA);
 			const int32 ResultA = ExecuteIntFunction(*TestRunner, *EngineA, *FunctionA, TEXT("EngineA-Concurrent"));
-			TestRunner->TestEqual(
-				TEXT("FormatMultiEngine concurrent: engine A's Format returns 1 even with engine B alive"),
-				ResultA, 1);
+			if (!this->Assert.AreEqual(
+				1,
+				ResultA,
+				TEXT("FormatMultiEngine concurrent: engine A's Format returns 1 even with engine B alive")))
+			{
+				FunctionA->Release();
+				FunctionB->Release();
+				return;
+			}
 		}
 
 		// Now run on engine B. Even though engine A is still alive (and
@@ -254,9 +271,15 @@ int Test()
 		{
 			FAngelscriptEngineScope ScopeB(*EngineB);
 			const int32 ResultB = ExecuteIntFunction(*TestRunner, *EngineB, *FunctionB, TEXT("EngineB-Concurrent"));
-			TestRunner->TestEqual(
-				TEXT("FormatMultiEngine concurrent: engine B's Format returns 1 even with engine A alive"),
-				ResultB, 1);
+			if (!this->Assert.AreEqual(
+				1,
+				ResultB,
+				TEXT("FormatMultiEngine concurrent: engine B's Format returns 1 even with engine A alive")))
+			{
+				FunctionA->Release();
+				FunctionB->Release();
+				return;
+			}
 		}
 
 		FunctionA->Release();

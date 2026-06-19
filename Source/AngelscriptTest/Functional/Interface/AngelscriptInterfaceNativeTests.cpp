@@ -30,6 +30,25 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
+namespace AngelscriptInterfaceNativeTests_Private
+{
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.AreEqual(Expected, Actual, Message);
+	}
+
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsNotNull(Value, Message);
+	}
+}
+
+using namespace AngelscriptInterfaceNativeTests_Private;
+
 // ----------------------------------------------------------------------------
 // Profile
 // ----------------------------------------------------------------------------
@@ -110,7 +129,7 @@ class ATestInterfaceNativeImplement : AActor, UAngelscriptNativeParentInterface
 }
 )AS"),
 			TEXT("ATestInterfaceNativeImplement"));
-		if (!TestRunner->TestNotNull(TEXT("ScriptClass should be valid"), ScriptClass))
+		if (!CheckNotNull(*TestRunner, TEXT("ScriptClass should be valid"), ScriptClass))
 		{
 			return;
 		}
@@ -118,45 +137,45 @@ class ATestInterfaceNativeImplement : AActor, UAngelscriptNativeParentInterface
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should be valid"), Actor))
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should be valid"), Actor))
 		{
 			return;
 		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		TestRunner->TestTrue(TEXT("Script actor should implement native parent interface"), ScriptClass->ImplementsInterface(UAngelscriptNativeParentInterface::StaticClass()));
+		ASSERT_THAT(IsTrue(ScriptClass->ImplementsInterface(UAngelscriptNativeParentInterface::StaticClass()), TEXT("Script actor should implement native parent interface")));
 
 		int32 ParentCastWorked = 0;
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("ParentCastWorked"), ParentCastWorked))
 		{
 			return;
 		}
-		TestRunner->TestEqual(TEXT("Cast to native parent interface should succeed in script"), ParentCastWorked, 1);
+		ASSERT_THAT(AreEqual(1, ParentCastWorked, TEXT("Cast to native parent interface should succeed in script")));
 
 		int32 NativeValue = 0;
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("NativeValue"), NativeValue))
 		{
 			return;
 		}
-		TestRunner->TestEqual(TEXT("Script-side native interface call should preserve the returned value"), NativeValue, 123);
+		ASSERT_THAT(AreEqual(123, NativeValue, TEXT("Script-side native interface call should preserve the returned value")));
 
 		FName NativeMarker = NAME_None;
 		if (!ReadPropertyValue<FNameProperty>(*TestRunner, Actor, TEXT("NativeMarker"), NativeMarker))
 		{
 			return;
 		}
-		TestRunner->TestEqual(TEXT("Script-side native interface setter should run through the interface reference"), NativeMarker, FName(TEXT("FromScript")));
+		ASSERT_THAT(AreEqual(FName(TEXT("FromScript")), NativeMarker, TEXT("Script-side native interface setter should run through the interface reference")));
 
-		TestRunner->TestEqual(TEXT("C++ Execute_ bridge should call the script implementation of GetNativeValue"),
-			IAngelscriptNativeParentInterface::Execute_GetNativeValue(Actor), 123);
+		ASSERT_THAT(AreEqual(123, IAngelscriptNativeParentInterface::Execute_GetNativeValue(Actor),
+			TEXT("C++ Execute_ bridge should call the script implementation of GetNativeValue")));
 		IAngelscriptNativeParentInterface::Execute_SetNativeMarker(Actor, TEXT("FromCpp"));
 
 		if (!ReadPropertyValue<FNameProperty>(*TestRunner, Actor, TEXT("NativeMarker"), NativeMarker))
 		{
 			return;
 		}
-		TestRunner->TestEqual(TEXT("C++ Execute_ bridge should call the script implementation of SetNativeMarker"), NativeMarker, FName(TEXT("FromCpp")));
+		ASSERT_THAT(AreEqual(FName(TEXT("FromCpp")), NativeMarker, TEXT("C++ Execute_ bridge should call the script implementation of SetNativeMarker")));
 	}
 
 	TEST_METHOD(NativeInheritedImplement)
@@ -244,7 +263,7 @@ class ATestInterfaceNativeInheritedImplement : AActor, UAngelscriptNativeChildIn
 }
 )AS"),
 			TEXT("ATestInterfaceNativeInheritedImplement"));
-		if (!TestRunner->TestNotNull(TEXT("ScriptClass should be valid"), ScriptClass))
+		if (!CheckNotNull(*TestRunner, TEXT("ScriptClass should be valid"), ScriptClass))
 		{
 			return;
 		}
@@ -252,15 +271,15 @@ class ATestInterfaceNativeInheritedImplement : AActor, UAngelscriptNativeChildIn
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should be valid"), Actor))
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should be valid"), Actor))
 		{
 			return;
 		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		TestRunner->TestTrue(TEXT("Script actor should implement native child interface"), ScriptClass->ImplementsInterface(UAngelscriptNativeChildInterface::StaticClass()));
-		TestRunner->TestTrue(TEXT("Script actor implementing child interface should also satisfy native parent interface"), ScriptClass->ImplementsInterface(UAngelscriptNativeParentInterface::StaticClass()));
+		ASSERT_THAT(IsTrue(ScriptClass->ImplementsInterface(UAngelscriptNativeChildInterface::StaticClass()), TEXT("Script actor should implement native child interface")));
+		ASSERT_THAT(IsTrue(ScriptClass->ImplementsInterface(UAngelscriptNativeParentInterface::StaticClass()), TEXT("Script actor implementing child interface should also satisfy native parent interface")));
 
 		int32 ParentCastWorked = 0;
 		int32 ChildCastWorked = 0;
@@ -277,16 +296,16 @@ class ATestInterfaceNativeInheritedImplement : AActor, UAngelscriptNativeChildIn
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Script-side cast to native parent interface should succeed through child implementation"), ParentCastWorked, 1);
-		TestRunner->TestEqual(TEXT("Script-side cast to native child interface should succeed"), ChildCastWorked, 1);
-		TestRunner->TestEqual(TEXT("Parent native interface method should return the script implementation value"), ParentResult, 7);
-		TestRunner->TestEqual(TEXT("Child native interface method should return the script implementation value"), ChildResult, 11);
-		TestRunner->TestEqual(TEXT("Parent native interface setter should execute through the parent reference"), NativeMarker, FName(TEXT("ParentRoute")));
+		ASSERT_THAT(AreEqual(1, ParentCastWorked, TEXT("Script-side cast to native parent interface should succeed through child implementation")));
+		ASSERT_THAT(AreEqual(1, ChildCastWorked, TEXT("Script-side cast to native child interface should succeed")));
+		ASSERT_THAT(AreEqual(7, ParentResult, TEXT("Parent native interface method should return the script implementation value")));
+		ASSERT_THAT(AreEqual(11, ChildResult, TEXT("Child native interface method should return the script implementation value")));
+		ASSERT_THAT(AreEqual(FName(TEXT("ParentRoute")), NativeMarker, TEXT("Parent native interface setter should execute through the parent reference")));
 
-		TestRunner->TestEqual(TEXT("C++ Execute_ should dispatch parent interface method on child implementation"),
-			IAngelscriptNativeParentInterface::Execute_GetNativeValue(Actor), 7);
-		TestRunner->TestEqual(TEXT("C++ Execute_ should dispatch child interface method on child implementation"),
-			IAngelscriptNativeChildInterface::Execute_GetChildValue(Actor), 11);
+		ASSERT_THAT(AreEqual(7, IAngelscriptNativeParentInterface::Execute_GetNativeValue(Actor),
+			TEXT("C++ Execute_ should dispatch parent interface method on child implementation")));
+		ASSERT_THAT(AreEqual(11, IAngelscriptNativeChildInterface::Execute_GetChildValue(Actor),
+			TEXT("C++ Execute_ should dispatch child interface method on child implementation")));
 	}
 
 	TEST_METHOD(NativeReferenceRoundTrip)
@@ -348,7 +367,7 @@ class ATestInterfaceNativeReferenceRoundTrip : AActor, UAngelscriptNativeParentI
 }
 )AS"),
 			TEXT("ATestInterfaceNativeReferenceRoundTrip"));
-		if (!TestRunner->TestNotNull(TEXT("ScriptClass should be valid"), ScriptClass))
+		if (!CheckNotNull(*TestRunner, TEXT("ScriptClass should be valid"), ScriptClass))
 		{
 			return;
 		}
@@ -356,7 +375,7 @@ class ATestInterfaceNativeReferenceRoundTrip : AActor, UAngelscriptNativeParentI
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should be valid"), Actor))
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should be valid"), Actor))
 		{
 			return;
 		}
@@ -368,11 +387,11 @@ class ATestInterfaceNativeReferenceRoundTrip : AActor, UAngelscriptNativeParentI
 		{
 			return;
 		}
-		TestRunner->TestEqual(TEXT("Script-side native interface call should round-trip ref parameters"), ScriptAdjustedValue, 15);
+		ASSERT_THAT(AreEqual(15, ScriptAdjustedValue, TEXT("Script-side native interface call should round-trip ref parameters")));
 
 		int32 CppAdjustedValue = 20;
 		IAngelscriptNativeParentInterface::Execute_AdjustNativeValue(Actor, 7, CppAdjustedValue);
-		TestRunner->TestEqual(TEXT("C++ Execute_ bridge should round-trip ref parameters through the script implementation"), CppAdjustedValue, 27);
+		ASSERT_THAT(AreEqual(27, CppAdjustedValue, TEXT("C++ Execute_ bridge should round-trip ref parameters through the script implementation")));
 	}
 
 	TEST_METHOD(NativeReferenceRoundTripCppBridgeMutatesActorState)
@@ -442,7 +461,7 @@ class ATestInterfaceNativeReferenceRoundTripCppBridgeState : AActor, UAngelscrip
 }
 )AS"),
 			TEXT("ATestInterfaceNativeReferenceRoundTripCppBridgeState"));
-		if (!TestRunner->TestNotNull(TEXT("ScriptClass should be valid"), ScriptClass))
+		if (!CheckNotNull(*TestRunner, TEXT("ScriptClass should be valid"), ScriptClass))
 		{
 			return;
 		}
@@ -450,7 +469,7 @@ class ATestInterfaceNativeReferenceRoundTripCppBridgeState : AActor, UAngelscrip
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should be valid"), Actor))
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should be valid"), Actor))
 		{
 			return;
 		}
@@ -467,13 +486,13 @@ class ATestInterfaceNativeReferenceRoundTripCppBridgeState : AActor, UAngelscrip
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Script-side native interface call should still round-trip ref parameters"), ScriptAdjustedValue, 15);
-		TestRunner->TestEqual(TEXT("Script-side BeginPlay route should increment the adjust call count once"), AdjustCallCount, 1);
-		TestRunner->TestEqual(TEXT("Script-side BeginPlay route should persist the last adjusted value on the actor state"), LastAdjustedValue, 15);
+		ASSERT_THAT(AreEqual(15, ScriptAdjustedValue, TEXT("Script-side native interface call should still round-trip ref parameters")));
+		ASSERT_THAT(AreEqual(1, AdjustCallCount, TEXT("Script-side BeginPlay route should increment the adjust call count once")));
+		ASSERT_THAT(AreEqual(15, LastAdjustedValue, TEXT("Script-side BeginPlay route should persist the last adjusted value on the actor state")));
 
 		int32 CppAdjustedValue = 20;
 		IAngelscriptNativeParentInterface::Execute_AdjustNativeValue(Actor, 7, CppAdjustedValue);
-		TestRunner->TestEqual(TEXT("C++ Execute_ bridge should still round-trip ref parameters through the script implementation"), CppAdjustedValue, 27);
+		ASSERT_THAT(AreEqual(27, CppAdjustedValue, TEXT("C++ Execute_ bridge should still round-trip ref parameters through the script implementation")));
 
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("AdjustCallCount"), AdjustCallCount)
 			|| !ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("LastAdjustedValue"), LastAdjustedValue))
@@ -481,8 +500,8 @@ class ATestInterfaceNativeReferenceRoundTripCppBridgeState : AActor, UAngelscrip
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("C++ Execute_ bridge should re-enter the script implementation and increment actor state"), AdjustCallCount, 2);
-		TestRunner->TestEqual(TEXT("C++ Execute_ bridge should update the actor's last adjusted value after mutating the caller buffer"), LastAdjustedValue, 27);
+		ASSERT_THAT(AreEqual(2, AdjustCallCount, TEXT("C++ Execute_ bridge should re-enter the script implementation and increment actor state")));
+		ASSERT_THAT(AreEqual(27, LastAdjustedValue, TEXT("C++ Execute_ bridge should update the actor's last adjusted value after mutating the caller buffer")));
 	}
 
 	TEST_METHOD(NativeInheritedParentBridgeSetterAndRef)
@@ -542,7 +561,7 @@ class ATestInterfaceNativeInheritedParentBridge : AActor, UAngelscriptNativeChil
 }
 )AS"),
 			TEXT("ATestInterfaceNativeInheritedParentBridge"));
-		if (!TestRunner->TestNotNull(TEXT("ScriptClass should be valid"), ScriptClass))
+		if (!CheckNotNull(*TestRunner, TEXT("ScriptClass should be valid"), ScriptClass))
 		{
 			return;
 		}
@@ -550,7 +569,7 @@ class ATestInterfaceNativeInheritedParentBridge : AActor, UAngelscriptNativeChil
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should be valid"), Actor))
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should be valid"), Actor))
 		{
 			return;
 		}
@@ -568,9 +587,9 @@ class ATestInterfaceNativeInheritedParentBridge : AActor, UAngelscriptNativeChil
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Parent Execute_ setter should dispatch through the child implementation"), NativeMarker, FName(TEXT("FromParentExecute")));
-		TestRunner->TestEqual(TEXT("Parent Execute_ ref parameter should round-trip through the child implementation"), AdjustedValue, 29);
-		TestRunner->TestEqual(TEXT("Child implementation should persist the adjusted parent-interface value"), ParentAdjustedValue, 29);
+		ASSERT_THAT(AreEqual(FName(TEXT("FromParentExecute")), NativeMarker, TEXT("Parent Execute_ setter should dispatch through the child implementation")));
+		ASSERT_THAT(AreEqual(29, AdjustedValue, TEXT("Parent Execute_ ref parameter should round-trip through the child implementation")));
+		ASSERT_THAT(AreEqual(29, ParentAdjustedValue, TEXT("Child implementation should persist the adjusted parent-interface value")));
 	}
 };
 

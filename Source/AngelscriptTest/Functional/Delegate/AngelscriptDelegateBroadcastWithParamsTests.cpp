@@ -103,22 +103,21 @@ class AFunctionalBroadcastActor : AActor
 
 		int32 ListenerOneCount = 0;
 		ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("ListenerOneCount"), ListenerOneCount);
-		TestRunner->TestEqual(TEXT("Listener One should fire on both broadcasts"), ListenerOneCount, 2);
+		ASSERT_THAT(AreEqual(2, ListenerOneCount, TEXT("Listener One should fire on both broadcasts")));
 
 		int32 ListenerTwoCount = 0;
 		ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("ListenerTwoCount"), ListenerTwoCount);
-		TestRunner->TestEqual(TEXT("Listener Two should only fire on the first broadcast (unbound before second)"), ListenerTwoCount, 1);
+		ASSERT_THAT(AreEqual(1, ListenerTwoCount, TEXT("Listener Two should only fire on the first broadcast (unbound before second)")));
 
-		float LastDamage = 0.0f;
 		FFloatProperty* DoubleAsFloat = FindFProperty<FFloatProperty>(ActorClass, TEXT("LastDamage"));
 		FDoubleProperty* DoubleProp = FindFProperty<FDoubleProperty>(ActorClass, TEXT("LastDamage"));
 		if (DoubleProp != nullptr)
 		{
-			TestRunner->TestEqual(TEXT("LastDamage from second broadcast should be 7.0"), DoubleProp->GetPropertyValue_InContainer(Actor), 7.0);
+			ASSERT_THAT(IsNear(7.0, DoubleProp->GetPropertyValue_InContainer(Actor), static_cast<double>(UE_KINDA_SMALL_NUMBER), TEXT("LastDamage from second broadcast should be 7.0")));
 		}
 		else if (DoubleAsFloat != nullptr)
 		{
-			TestRunner->TestEqual(TEXT("LastDamage from second broadcast should be 7.0"), DoubleAsFloat->GetPropertyValue_InContainer(Actor), 7.0f);
+			ASSERT_THAT(IsNear(7.0f, DoubleAsFloat->GetPropertyValue_InContainer(Actor), UE_KINDA_SMALL_NUMBER, TEXT("LastDamage from second broadcast should be 7.0")));
 		}
 		else
 		{
@@ -127,11 +126,11 @@ class AFunctionalBroadcastActor : AActor
 
 		bool bDelegateWasBound = false;
 		ReadPropertyValue<FBoolProperty>(*TestRunner, Actor, TEXT("DelegateWasBound"), bDelegateWasBound);
-		TestRunner->TestTrue(TEXT("CanInteract delegate should report IsBound after BindUFunction"), bDelegateWasBound);
+		ASSERT_THAT(IsTrue(bDelegateWasBound, TEXT("CanInteract delegate should report IsBound after BindUFunction")));
 
 		bool bLastCanInteractResult = false;
 		ReadPropertyValue<FBoolProperty>(*TestRunner, Actor, TEXT("LastCanInteractResult"), bLastCanInteractResult);
-		TestRunner->TestTrue(TEXT("CanInteract delegate Execute(3) should return true"), bLastCanInteractResult);
+		ASSERT_THAT(IsTrue(bLastCanInteractResult, TEXT("CanInteract delegate Execute(3) should return true")));
 	}
 };
 

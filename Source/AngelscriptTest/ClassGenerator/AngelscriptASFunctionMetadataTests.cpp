@@ -15,6 +15,48 @@ using namespace AngelscriptFunctionalTestUtils;
 
 namespace AngelscriptTest_ClassGenerator_AngelscriptASFunctionMetadataTests_Private
 {
+	static const TCHAR* CQMessage(const TCHAR* Message)
+	{
+		return Message;
+	}
+
+	static const TCHAR* CQMessage(const FString& Message)
+	{
+		return *Message;
+	}
+
+	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsTrue(bActual, Message);
+	}
+
+	static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsFalse(bActual, Message);
+	}
+
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.AreEqual(Expected, Actual, Message);
+	}
+
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const FString& Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		return CheckEqual(Test, CQMessage(Message), Actual, Expected);
+	}
+
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsNotNull(Value, Message);
+	}
+
 	static const FName NetValidateModuleName(TEXT("ASFunctionNetValidateCache"));
 	static const FString NetValidateFilename(TEXT("ASFunctionNetValidateCache.as"));
 	static const FName ClassificationModuleName(TEXT("ASFunctionMetadataClassification"));
@@ -44,7 +86,7 @@ namespace AngelscriptTest_ClassGenerator_AngelscriptASFunctionMetadataTests_Priv
 		CollectNonReturnParameters(ServerFunction, ServerParameters);
 		CollectNonReturnParameters(ValidateFunction, ValidateParameters);
 
-		if (!Test.TestEqual(
+		if (!CheckEqual(Test,
 				TEXT("ASFunction.NetValidateCachesValidateFunction should keep the same parameter count on the _Validate function"),
 				ValidateParameters.Num(),
 				ServerParameters.Num()))
@@ -57,9 +99,9 @@ namespace AngelscriptTest_ClassGenerator_AngelscriptASFunctionMetadataTests_Priv
 			FProperty* ServerParameter = ServerParameters[Index];
 			FProperty* ValidateParameter = ValidateParameters[Index];
 			const FString Context = FString::Printf(TEXT("ASFunction.NetValidateCachesValidateFunction parameter %d"), Index);
-			if (!Test.TestEqual(*(Context + TEXT(" should preserve the parameter name")), ValidateParameter->GetFName(), ServerParameter->GetFName())
-				|| !Test.TestEqual(*(Context + TEXT(" should preserve the parameter property class")), ValidateParameter->GetClass(), ServerParameter->GetClass())
-				|| !Test.TestEqual(*(Context + TEXT(" should preserve the parameter cpp type")), ValidateParameter->GetCPPType(), ServerParameter->GetCPPType()))
+			if (!CheckEqual(Test, Context + TEXT(" should preserve the parameter name"), ValidateParameter->GetFName(), ServerParameter->GetFName())
+				|| !CheckEqual(Test, Context + TEXT(" should preserve the parameter property class"), ValidateParameter->GetClass(), ServerParameter->GetClass())
+				|| !CheckEqual(Test, Context + TEXT(" should preserve the parameter cpp type"), ValidateParameter->GetCPPType(), ServerParameter->GetCPPType()))
 			{
 				return false;
 			}
@@ -107,20 +149,20 @@ class AASFunctionNetValidateCache : AActor
 		UFunction* ServerFunction = FindGeneratedFunction(ScriptClass, TEXT("Server_SetValue"));
 		UFunction* ValidateFunction = FindGeneratedFunction(ScriptClass, TEXT("Server_SetValue_Validate"));
 		UASFunction* GeneratedServerFunction = Cast<UASFunction>(ServerFunction);
-		if (!TestRunner->TestNotNull(TEXT("ASFunction.NetValidateCachesValidateFunction should generate the server RPC"), ServerFunction)
-			|| !TestRunner->TestNotNull(TEXT("ASFunction.NetValidateCachesValidateFunction should generate the _Validate companion function"), ValidateFunction)
-			|| !TestRunner->TestNotNull(TEXT("ASFunction.NetValidateCachesValidateFunction should expose the server RPC as UASFunction"), GeneratedServerFunction))
+		if (!CheckNotNull(*TestRunner, TEXT("ASFunction.NetValidateCachesValidateFunction should generate the server RPC"), ServerFunction)
+			|| !CheckNotNull(*TestRunner, TEXT("ASFunction.NetValidateCachesValidateFunction should generate the _Validate companion function"), ValidateFunction)
+			|| !CheckNotNull(*TestRunner, TEXT("ASFunction.NetValidateCachesValidateFunction should expose the server RPC as UASFunction"), GeneratedServerFunction))
 		{ return; }
 
-		TestRunner->TestTrue(TEXT("ASFunction.NetValidateCachesValidateFunction should mark the server RPC as net"), ServerFunction->HasAnyFunctionFlags(FUNC_Net));
-		TestRunner->TestTrue(TEXT("ASFunction.NetValidateCachesValidateFunction should mark the server RPC as requiring validation"), ServerFunction->HasAnyFunctionFlags(FUNC_NetValidate));
+		ASSERT_THAT(IsTrue(ServerFunction->HasAnyFunctionFlags(FUNC_Net), TEXT("ASFunction.NetValidateCachesValidateFunction should mark the server RPC as net")));
+		ASSERT_THAT(IsTrue(ServerFunction->HasAnyFunctionFlags(FUNC_NetValidate), TEXT("ASFunction.NetValidateCachesValidateFunction should mark the server RPC as requiring validation")));
 
 		UFunction* CachedValidateFunction = GeneratedServerFunction->GetRuntimeValidateFunction();
-		if (!TestRunner->TestNotNull(TEXT("ASFunction.NetValidateCachesValidateFunction should cache the _Validate function on the generated RPC"), CachedValidateFunction))
+		if (!CheckNotNull(*TestRunner, TEXT("ASFunction.NetValidateCachesValidateFunction should cache the _Validate function on the generated RPC"), CachedValidateFunction))
 		{ return; }
 
-		if (!TestRunner->TestTrue(TEXT("ASFunction.NetValidateCachesValidateFunction should return the reflected _Validate function"), CachedValidateFunction == ValidateFunction)
-			|| !TestRunner->TestTrue(TEXT("ASFunction.NetValidateCachesValidateFunction should return the same cached pointer on repeated lookups"), GeneratedServerFunction->GetRuntimeValidateFunction() == CachedValidateFunction))
+		if (!CheckTrue(*TestRunner, TEXT("ASFunction.NetValidateCachesValidateFunction should return the reflected _Validate function"), CachedValidateFunction == ValidateFunction)
+			|| !CheckTrue(*TestRunner, TEXT("ASFunction.NetValidateCachesValidateFunction should return the same cached pointer on repeated lookups"), GeneratedServerFunction->GetRuntimeValidateFunction() == CachedValidateFunction))
 		{ return; }
 
 		FProperty* ReturnProperty = nullptr;
@@ -133,8 +175,8 @@ class AASFunctionNetValidateCache : AActor
 			}
 		}
 
-		if (!TestRunner->TestNotNull(TEXT("ASFunction.NetValidateCachesValidateFunction should expose a return property on the _Validate function"), ReturnProperty)
-			|| !TestRunner->TestTrue(TEXT("ASFunction.NetValidateCachesValidateFunction should keep the _Validate return type as bool"), ReturnProperty->IsA<FBoolProperty>()))
+		if (!CheckNotNull(*TestRunner, TEXT("ASFunction.NetValidateCachesValidateFunction should expose a return property on the _Validate function"), ReturnProperty)
+			|| !CheckTrue(*TestRunner, TEXT("ASFunction.NetValidateCachesValidateFunction should keep the _Validate return type as bool"), ReturnProperty->IsA<FBoolProperty>()))
 		{ return; }
 
 		if (!ExpectMatchingParameterSignature(*TestRunner, *ServerFunction, *ValidateFunction))
@@ -180,7 +222,7 @@ int CheckMetadataWorldContext(UObject WorldContextObject, int Value)
 }
 )AS");
 
-		if (!TestRunner->TestTrue(
+		if (!CheckTrue(*TestRunner,
 				TEXT("ASFunction metadata classification test should compile"),
 				CompileAnnotatedModuleFromMemory(&Engine, ClassificationModuleName, ClassificationFilename, ScriptSource)))
 		{
@@ -189,8 +231,8 @@ int CheckMetadataWorldContext(UObject WorldContextObject, int Value)
 
 		UClass* ScriptClass = FindGeneratedClass(&Engine, ClassificationClassName);
 		UClass* StaticsClass = FindGeneratedClass(&Engine, ClassificationStaticsClassName);
-		if (!TestRunner->TestNotNull(TEXT("ASFunction metadata classification test should generate the UObject class"), ScriptClass)
-			|| !TestRunner->TestNotNull(TEXT("ASFunction metadata classification test should generate the module statics class"), StaticsClass))
+		if (!CheckNotNull(*TestRunner, TEXT("ASFunction metadata classification test should generate the UObject class"), ScriptClass)
+			|| !CheckNotNull(*TestRunner, TEXT("ASFunction metadata classification test should generate the module statics class"), StaticsClass))
 		{
 			return;
 		}
@@ -199,10 +241,10 @@ int CheckMetadataWorldContext(UObject WorldContextObject, int Value)
 		FIntProperty* GeneratedClassProperty = FindFProperty<FIntProperty>(ScriptClass, TEXT("StoredValue"));
 		FIntProperty* GeneratedParamProperty = GeneratedFunction != nullptr ? FindFProperty<FIntProperty>(GeneratedFunction, TEXT("Value")) : nullptr;
 		FIntProperty* GeneratedReturnProperty = GeneratedFunction != nullptr ? FindFProperty<FIntProperty>(GeneratedFunction, TEXT("ReturnValue")) : nullptr;
-		if (!TestRunner->TestNotNull(TEXT("ASFunction metadata classification test should expose ComputeValue as a UASFunction"), GeneratedFunction)
-			|| !TestRunner->TestNotNull(TEXT("ASFunction metadata classification test should expose a generated class property"), GeneratedClassProperty)
-			|| !TestRunner->TestNotNull(TEXT("ASFunction metadata classification test should expose a generated parameter property"), GeneratedParamProperty)
-			|| !TestRunner->TestNotNull(TEXT("ASFunction metadata classification test should expose a generated return property"), GeneratedReturnProperty))
+		if (!CheckNotNull(*TestRunner, TEXT("ASFunction metadata classification test should expose ComputeValue as a UASFunction"), GeneratedFunction)
+			|| !CheckNotNull(*TestRunner, TEXT("ASFunction metadata classification test should expose a generated class property"), GeneratedClassProperty)
+			|| !CheckNotNull(*TestRunner, TEXT("ASFunction metadata classification test should expose a generated parameter property"), GeneratedParamProperty)
+			|| !CheckNotNull(*TestRunner, TEXT("ASFunction metadata classification test should expose a generated return property"), GeneratedReturnProperty))
 		{
 			return;
 		}
@@ -210,43 +252,43 @@ int CheckMetadataWorldContext(UObject WorldContextObject, int Value)
 		UASFunction* WorldContextFunction = Cast<UASFunction>(FindGeneratedFunction(StaticsClass, TEXT("CheckMetadataWorldContext")));
 		FObjectProperty* WorldContextProperty = WorldContextFunction != nullptr ? FindFProperty<FObjectProperty>(WorldContextFunction, TEXT("WorldContextObject")) : nullptr;
 		FIntProperty* WorldContextValueProperty = WorldContextFunction != nullptr ? FindFProperty<FIntProperty>(WorldContextFunction, TEXT("Value")) : nullptr;
-		if (!TestRunner->TestNotNull(TEXT("ASFunction metadata classification test should expose the world-context UASFunction"), WorldContextFunction)
-			|| !TestRunner->TestNotNull(TEXT("ASFunction metadata classification test should expose the WorldContextObject property"), WorldContextProperty)
-			|| !TestRunner->TestNotNull(TEXT("ASFunction metadata classification test should expose the ordinary world-context function property"), WorldContextValueProperty))
+		if (!CheckNotNull(*TestRunner, TEXT("ASFunction metadata classification test should expose the world-context UASFunction"), WorldContextFunction)
+			|| !CheckNotNull(*TestRunner, TEXT("ASFunction metadata classification test should expose the WorldContextObject property"), WorldContextProperty)
+			|| !CheckNotNull(*TestRunner, TEXT("ASFunction metadata classification test should expose the ordinary world-context function property"), WorldContextValueProperty))
 		{
 			return;
 		}
 
 		UFunction* NativeFunction = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("RequiresWorldContext"));
 		FIntProperty* NativeValueProperty = NativeFunction != nullptr ? FindFProperty<FIntProperty>(NativeFunction, TEXT("Value")) : nullptr;
-		if (!TestRunner->TestNotNull(TEXT("ASFunction metadata classification test should find a native comparison function"), NativeFunction)
-			|| !TestRunner->TestNotNull(TEXT("ASFunction metadata classification test should find a native comparison property"), NativeValueProperty))
+		if (!CheckNotNull(*TestRunner, TEXT("ASFunction metadata classification test should find a native comparison function"), NativeFunction)
+			|| !CheckNotNull(*TestRunner, TEXT("ASFunction metadata classification test should find a native comparison property"), NativeValueProperty))
 		{
 			return;
 		}
 
-		TestRunner->TestFalse(TEXT("Null UFunction should not be classified as Angelscript-generated"), IsAngelscriptGenerated(static_cast<const UFunction*>(nullptr)));
-		TestRunner->TestFalse(TEXT("Null FProperty should not be classified as Angelscript-generated"), IsAngelscriptGenerated(static_cast<const FProperty*>(nullptr)));
-		TestRunner->TestFalse(TEXT("Null FProperty should not be classified as an Angelscript world-context property"), IsAngelscriptWorldContextProperty(static_cast<const FProperty*>(nullptr)));
+		ASSERT_THAT(IsFalse(IsAngelscriptGenerated(static_cast<const UFunction*>(nullptr)), TEXT("Null UFunction should not be classified as Angelscript-generated")));
+		ASSERT_THAT(IsFalse(IsAngelscriptGenerated(static_cast<const FProperty*>(nullptr)), TEXT("Null FProperty should not be classified as Angelscript-generated")));
+		ASSERT_THAT(IsFalse(IsAngelscriptWorldContextProperty(static_cast<const FProperty*>(nullptr)), TEXT("Null FProperty should not be classified as an Angelscript world-context property")));
 
-		TestRunner->TestTrue(TEXT("Generated UASFunction should be classified as Angelscript-generated"), IsAngelscriptGenerated(GeneratedFunction));
-		TestRunner->TestTrue(TEXT("Generated class property should be classified as Angelscript-generated"), IsAngelscriptGenerated(GeneratedClassProperty));
-		TestRunner->TestTrue(TEXT("Generated parameter property should be classified as Angelscript-generated"), IsAngelscriptGenerated(GeneratedParamProperty));
-		TestRunner->TestTrue(TEXT("Generated return property should be classified as Angelscript-generated"), IsAngelscriptGenerated(GeneratedReturnProperty));
+		ASSERT_THAT(IsTrue(IsAngelscriptGenerated(GeneratedFunction), TEXT("Generated UASFunction should be classified as Angelscript-generated")));
+		ASSERT_THAT(IsTrue(IsAngelscriptGenerated(GeneratedClassProperty), TEXT("Generated class property should be classified as Angelscript-generated")));
+		ASSERT_THAT(IsTrue(IsAngelscriptGenerated(GeneratedParamProperty), TEXT("Generated parameter property should be classified as Angelscript-generated")));
+		ASSERT_THAT(IsTrue(IsAngelscriptGenerated(GeneratedReturnProperty), TEXT("Generated return property should be classified as Angelscript-generated")));
 
-		TestRunner->TestFalse(TEXT("Native UFunction should not be classified as Angelscript-generated"), IsAngelscriptGenerated(NativeFunction));
-		TestRunner->TestFalse(TEXT("Native UFunction property should not be classified as Angelscript-generated"), IsAngelscriptGenerated(NativeValueProperty));
-		TestRunner->TestFalse(TEXT("Native UFunction property should not be classified as an Angelscript world-context property"), IsAngelscriptWorldContextProperty(NativeValueProperty));
+		ASSERT_THAT(IsFalse(IsAngelscriptGenerated(NativeFunction), TEXT("Native UFunction should not be classified as Angelscript-generated")));
+		ASSERT_THAT(IsFalse(IsAngelscriptGenerated(NativeValueProperty), TEXT("Native UFunction property should not be classified as Angelscript-generated")));
+		ASSERT_THAT(IsFalse(IsAngelscriptWorldContextProperty(NativeValueProperty), TEXT("Native UFunction property should not be classified as an Angelscript world-context property")));
 
-		TestRunner->TestTrue(TEXT("Generated world-context parameter should be classified as Angelscript-generated"), IsAngelscriptGenerated(WorldContextProperty));
-		TestRunner->TestTrue(TEXT("Generated world-context parameter should be classified as an Angelscript world-context property"), IsAngelscriptWorldContextProperty(WorldContextProperty));
-		TestRunner->TestTrue(TEXT("Generated ordinary world-context function parameter should be classified as Angelscript-generated"), IsAngelscriptGenerated(WorldContextValueProperty));
-		TestRunner->TestFalse(TEXT("Generated ordinary world-context function parameter should not be classified as a world-context property"), IsAngelscriptWorldContextProperty(WorldContextValueProperty));
+		ASSERT_THAT(IsTrue(IsAngelscriptGenerated(WorldContextProperty), TEXT("Generated world-context parameter should be classified as Angelscript-generated")));
+		ASSERT_THAT(IsTrue(IsAngelscriptWorldContextProperty(WorldContextProperty), TEXT("Generated world-context parameter should be classified as an Angelscript world-context property")));
+		ASSERT_THAT(IsTrue(IsAngelscriptGenerated(WorldContextValueProperty), TEXT("Generated ordinary world-context function parameter should be classified as Angelscript-generated")));
+		ASSERT_THAT(IsFalse(IsAngelscriptWorldContextProperty(WorldContextValueProperty), TEXT("Generated ordinary world-context function parameter should not be classified as a world-context property")));
 
 		const FString SourcePathBeforeDiscard = GeneratedFunction->GetSourceFilePath();
 		const int32 SourceLineBeforeDiscard = GeneratedFunction->GetSourceLineNumber();
-		if (!TestRunner->TestFalse(TEXT("Generated UASFunction should expose non-empty source path before discard"), SourcePathBeforeDiscard.IsEmpty())
-			|| !TestRunner->TestTrue(TEXT("Generated UASFunction should expose positive source line before discard"), SourceLineBeforeDiscard > 0))
+		if (!CheckFalse(*TestRunner, TEXT("Generated UASFunction should expose non-empty source path before discard"), SourcePathBeforeDiscard.IsEmpty())
+			|| !CheckTrue(*TestRunner, TEXT("Generated UASFunction should expose positive source line before discard"), SourceLineBeforeDiscard > 0))
 		{
 			return;
 		}
@@ -258,10 +300,10 @@ int CheckMetadataWorldContext(UObject WorldContextObject, int Value)
 		const FString SourcePathAfterDiscard = GeneratedFunction->GetSourceFilePath();
 		const int32 SourceLineAfterDiscard = GeneratedFunction->GetSourceLineNumber();
 
-		TestRunner->TestTrue(TEXT("Stale generated UASFunction should remain classified as Angelscript-generated"), IsAngelscriptGenerated(GeneratedFunction));
-		TestRunner->TestTrue(
-			TEXT("Stale generated UASFunction should clear or invalidate source metadata after discard"),
-			SourcePathAfterDiscard.IsEmpty() || SourceLineAfterDiscard == -1);
+		ASSERT_THAT(IsTrue(IsAngelscriptGenerated(GeneratedFunction), TEXT("Stale generated UASFunction should remain classified as Angelscript-generated")));
+		ASSERT_THAT(IsTrue(
+			SourcePathAfterDiscard.IsEmpty() || SourceLineAfterDiscard == -1,
+			TEXT("Stale generated UASFunction should clear or invalidate source metadata after discard")));
 
 		}
 	}

@@ -46,12 +46,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeJumpsTests,
 		const int ResolveResult = Fixture.ByteCode->ResolveJumpAddresses();
 
 		const asCByteInstruction* Jump = FindOpcode(*Fixture.ByteCode, asBC_JMP);
-		if (!TestRunner->TestEqual(TEXT("Forward jump should resolve"), ResolveResult, 0) || !TestRunner->TestNotNull(TEXT("Forward jump instruction should remain present"), Jump))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(0, ResolveResult, TEXT("Forward jump should resolve")));
+		ASSERT_THAT(IsNotNull(Jump, TEXT("Forward jump instruction should remain present")));
 
-		TestRunner->TestTrue(TEXT("Forward jump should be rewritten from label id to a positive relative offset"), static_cast<int32>(*reinterpret_cast<const int*>(&Jump->arg)) > 0);
+		ASSERT_THAT(IsTrue(static_cast<int32>(*reinterpret_cast<const int*>(&Jump->arg)) > 0,
+			TEXT("Forward jump should be rewritten from label id to a positive relative offset")));
 	}
 
 	TEST_METHOD(BackwardJumpResolves)
@@ -68,12 +67,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeJumpsTests,
 		const int ResolveResult = Fixture.ByteCode->ResolveJumpAddresses();
 
 		const asCByteInstruction* Jump = FindOpcode(*Fixture.ByteCode, asBC_JMP);
-		if (!TestRunner->TestEqual(TEXT("Backward jump should resolve"), ResolveResult, 0) || !TestRunner->TestNotNull(TEXT("Backward jump instruction should remain present"), Jump))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(0, ResolveResult, TEXT("Backward jump should resolve")));
+		ASSERT_THAT(IsNotNull(Jump, TEXT("Backward jump instruction should remain present")));
 
-		TestRunner->TestTrue(TEXT("Backward jump should be rewritten to a negative relative offset"), *reinterpret_cast<const int*>(&Jump->arg) < 0);
+		ASSERT_THAT(IsTrue(*reinterpret_cast<const int*>(&Jump->arg) < 0,
+			TEXT("Backward jump should be rewritten to a negative relative offset")));
 	}
 
 	TEST_METHOD(MultipleLabelsResolveIndependently)
@@ -91,9 +89,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeJumpsTests,
 		Fixture.ByteCode->InstrDWORD(asBC_PshC4, 20);
 		Fixture.ByteCode->Label(2);
 
-		TestRunner->TestEqual(TEXT("Multiple label jumps should resolve together"), Fixture.ByteCode->ResolveJumpAddresses(), 0);
-		TestRunner->TestNotNull(TEXT("Resolved sequence should still contain JZ"), FindOpcode(*Fixture.ByteCode, asBC_JZ));
-		TestRunner->TestNotNull(TEXT("Resolved sequence should still contain JNZ"), FindOpcode(*Fixture.ByteCode, asBC_JNZ));
+		ASSERT_THAT(AreEqual(0, Fixture.ByteCode->ResolveJumpAddresses(),
+			TEXT("Multiple label jumps should resolve together")));
+		ASSERT_THAT(IsNotNull(FindOpcode(*Fixture.ByteCode, asBC_JZ),
+			TEXT("Resolved sequence should still contain JZ")));
+		ASSERT_THAT(IsNotNull(FindOpcode(*Fixture.ByteCode, asBC_JNZ),
+			TEXT("Resolved sequence should still contain JNZ")));
 	}
 
 	TEST_METHOD(JumpToUnresolvedLabelReturnsError)
@@ -107,7 +108,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeJumpsTests,
 		Fixture.ByteCode->InstrDWORD(asBC_JMP, 99);
 		Fixture.ByteCode->Instr(asBC_RET);
 
-		TestRunner->TestTrue(TEXT("Jump to an unknown label should fail resolution"), Fixture.ByteCode->ResolveJumpAddresses() < 0);
+		ASSERT_THAT(IsTrue(Fixture.ByteCode->ResolveJumpAddresses() < 0,
+			TEXT("Jump to an unknown label should fail resolution")));
 	}
 
 	TEST_METHOD(JumpAcrossAddedSequences)
@@ -127,8 +129,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeJumpsTests,
 		const int InitialSize = Fixture.ByteCode->GetSize();
 		Fixture.ByteCode->AddCode(&Tail);
 
-		TestRunner->TestTrue(TEXT("AddCode should append the tail sequence before jump resolution"), Fixture.ByteCode->GetSize() > InitialSize);
-		TestRunner->TestEqual(TEXT("Jump target in an appended sequence should resolve"), Fixture.ByteCode->ResolveJumpAddresses(), 0);
+		ASSERT_THAT(IsTrue(Fixture.ByteCode->GetSize() > InitialSize,
+			TEXT("AddCode should append the tail sequence before jump resolution")));
+		ASSERT_THAT(AreEqual(0, Fixture.ByteCode->ResolveJumpAddresses(),
+			TEXT("Jump target in an appended sequence should resolve")));
 	}
 };
 

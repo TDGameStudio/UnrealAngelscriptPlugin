@@ -8,16 +8,18 @@ namespace
 {
 	bool TestHasMessageContaining(FAutomationTestBase& Test, const AngelscriptNativeTestSupport::FNativeMessageCollector& Messages, const TCHAR* ExpectedText, const TCHAR* Context)
 	{
+		FNoDiscardAsserter Assert(Test);
+
 		for (const AngelscriptNativeTestSupport::FNativeMessageEntry& Entry : Messages.Entries)
 		{
 			if (Entry.Message.Contains(ExpectedText))
 			{
-				return Test.TestTrue(Context, true);
+				return Assert.IsTrue(true, Context);
 			}
 		}
 
 		Test.AddInfo(AngelscriptNativeTestSupport::CollectMessages(Messages));
-		return Test.TestTrue(Context, false);
+		return Assert.IsTrue(false, Context);
 	}
 
 	bool TestTypeHasProperty(asITypeInfo* TypeInfo, const char* ExpectedName)
@@ -50,9 +52,11 @@ namespace
 
 	bool TestTypeHasBehaviour(FAutomationTestBase& Test, asITypeInfo* TypeInfo, asEBehaviours ExpectedBehaviour, const TCHAR* Context)
 	{
+		FNoDiscardAsserter Assert(Test);
+
 		if (TypeInfo == nullptr)
 		{
-			return Test.TestNotNull(Context, TypeInfo);
+			return Assert.IsNotNull(TypeInfo, Context);
 		}
 
 		for (asUINT BehaviourIndex = 0; BehaviourIndex < TypeInfo->GetBehaviourCount(); ++BehaviourIndex)
@@ -61,7 +65,7 @@ namespace
 			asIScriptFunction* const Function = TypeInfo->GetBehaviourByIndex(BehaviourIndex, &Behaviour);
 			if (Function != nullptr && Behaviour == ExpectedBehaviour)
 			{
-				return Test.TestTrue(Context, true);
+				return Assert.IsTrue(true, Context);
 			}
 		}
 
@@ -80,14 +84,16 @@ namespace
 				Function != nullptr ? UTF8_TO_TCHAR(Function->GetDeclaration()) : TEXT("<null>"));
 		}
 		Test.AddInfo(Details);
-		return Test.TestTrue(Context, false);
+		return Assert.IsTrue(false, Context);
 	}
 
 	bool TestTypeHasConstructorWithParamCount(FAutomationTestBase& Test, asITypeInfo* TypeInfo, asUINT ExpectedParamCount, const TCHAR* Context)
 	{
+		FNoDiscardAsserter Assert(Test);
+
 		if (TypeInfo == nullptr)
 		{
-			return Test.TestNotNull(Context, TypeInfo);
+			return Assert.IsNotNull(TypeInfo, Context);
 		}
 
 		for (asUINT BehaviourIndex = 0; BehaviourIndex < TypeInfo->GetBehaviourCount(); ++BehaviourIndex)
@@ -96,7 +102,7 @@ namespace
 			asIScriptFunction* const Function = TypeInfo->GetBehaviourByIndex(BehaviourIndex, &Behaviour);
 			if (Function != nullptr && Behaviour == asBEHAVE_CONSTRUCT && Function->GetParamCount() == ExpectedParamCount)
 			{
-				return Test.TestTrue(Context, true);
+				return Assert.IsTrue(true, Context);
 			}
 		}
 
@@ -116,19 +122,21 @@ namespace
 				Function != nullptr ? UTF8_TO_TCHAR(Function->GetDeclaration()) : TEXT("<null>"));
 		}
 		Test.AddInfo(Details);
-		return Test.TestTrue(Context, false);
+		return Assert.IsTrue(false, Context);
 	}
 
 	bool ExecuteIntFunctionAndCapture(FAutomationTestBase& Test, asIScriptEngine* ScriptEngine, asIScriptModule* Module, const char* Declaration, FScriptExecutionResult& OutResult)
 	{
+		FNoDiscardAsserter Assert(Test);
+
 		asIScriptFunction* Function = AngelscriptNativeTestSupport::GetNativeFunctionByExactDecl(Module, Declaration);
-		if (!Test.TestNotNull(TEXT("Reference script-class test should resolve the requested function"), Function))
+		if (!Assert.IsNotNull(Function, TEXT("Reference script-class test should resolve the requested function")))
 		{
 			return false;
 		}
 
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!Test.TestNotNull(TEXT("Reference script-class test should create an execution context"), Context))
+		if (!Assert.IsNotNull(Context, TEXT("Reference script-class test should create an execution context")))
 		{
 			return false;
 		}
@@ -148,11 +156,12 @@ namespace
 
 	bool TestIsolatedScriptClassInstantiationRaisesNullPointer(FAutomationTestBase& Test, const FScriptExecutionResult& Result, const TCHAR* Context)
 	{
+		FNoDiscardAsserter Assert(Test);
 		bool bPassed = true;
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should raise the current isolated native-engine script-class exception"), Context), Result.ExecuteResult, static_cast<int32>(asEXECUTION_EXCEPTION));
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should report the current fork null-pointer exception text"), Context), Result.ExceptionString, FString(TEXT("Null pointer access")));
-		bPassed &= Test.TestTrue(*FString::Printf(TEXT("%s should keep a positive exception line, got %d"), Context, Result.ExceptionLine), Result.ExceptionLine > 0);
-		bPassed &= Test.TestEqual(*FString::Printf(TEXT("%s should attribute the exception to Entry()"), Context), Result.ExceptionFunctionDeclaration, FString(TEXT("int Entry()")));
+		bPassed &= Assert.AreEqual(static_cast<int32>(asEXECUTION_EXCEPTION), Result.ExecuteResult, *FString::Printf(TEXT("%s should raise the current isolated native-engine script-class exception"), Context));
+		bPassed &= Assert.AreEqual(FString(TEXT("Null pointer access")), Result.ExceptionString, *FString::Printf(TEXT("%s should report the current fork null-pointer exception text"), Context));
+		bPassed &= Assert.IsTrue(Result.ExceptionLine > 0, *FString::Printf(TEXT("%s should keep a positive exception line, got %d"), Context, Result.ExceptionLine));
+		bPassed &= Assert.AreEqual(FString(TEXT("int Entry()")), Result.ExceptionFunctionDeclaration, *FString::Printf(TEXT("%s should attribute the exception to Entry()"), Context));
 		return bPassed;
 	}
 
@@ -176,10 +185,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceScriptClassTests,
 	{
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("Reference script-class constructor test should create a native engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference script-class constructor test should create a native engine")));
 
 		ON_SCOPE_EXIT
 		{
@@ -209,42 +215,35 @@ int Entry()
 }
 )",
 			Messages);
-		if (!TestRunner->TestNotNull(TEXT("Reference script-class constructor test should build module"), Module))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Module, TEXT("Reference script-class constructor test should build module")));
 
 		asITypeInfo* CounterType = Module->GetTypeInfoByName("Counter");
-		if (!TestRunner->TestNotNull(TEXT("Reference script-class constructor test should expose Counter type metadata"), CounterType))
+		ASSERT_THAT(IsNotNull(CounterType, TEXT("Reference script-class constructor test should expose Counter type metadata")));
+		ASSERT_THAT(IsTrue(TestTypeHasProperty(CounterType, "Value"), TEXT("Reference script-class constructor test should expose Value property metadata")));
+		ASSERT_THAT(IsTrue(CounterType->GetBehaviourCount() > 0, TEXT("Reference script-class constructor test should expose at least one constructor behaviour")));
+		if (!TestTypeHasBehaviour(*TestRunner, CounterType, asBEHAVE_CONSTRUCT, TEXT("Reference script-class constructor test should expose constructor behaviour metadata")))
 		{
 			return;
 		}
-		TestRunner->TestTrue(TEXT("Reference script-class constructor test should expose Value property metadata"), TestTypeHasProperty(CounterType, "Value"));
-		TestRunner->TestTrue(TEXT("Reference script-class constructor test should expose at least one constructor behaviour"), CounterType->GetBehaviourCount() > 0);
-		TestTypeHasBehaviour(*TestRunner, CounterType, asBEHAVE_CONSTRUCT, TEXT("Reference script-class constructor test should expose constructor behaviour metadata"));
-		TestRunner->TestNotNull(TEXT("Reference script-class constructor test should expose Get method metadata"), CounterType->GetMethodByDecl("int Get()"));
-		TestRunner->TestNotNull(TEXT("Reference script-class constructor test should expose int Entry() without executing script-class instances"),
-			AngelscriptNativeTestSupport::GetNativeFunctionByDecl(Module, "int Entry()"));
+		ASSERT_THAT(IsNotNull(CounterType->GetMethodByDecl("int Get()"), TEXT("Reference script-class constructor test should expose Get method metadata")));
+		ASSERT_THAT(IsNotNull(AngelscriptNativeTestSupport::GetNativeFunctionByDecl(Module, "int Entry()"), TEXT("Reference script-class constructor test should expose int Entry() without executing script-class instances")));
 
 		FScriptExecutionResult EntryResult;
 		if (!ExecuteIntFunctionAndCapture(*TestRunner, ScriptEngine, Module, "int Entry()", EntryResult))
 		{
 			return;
 		}
-		TestIsolatedScriptClassInstantiationRaisesNullPointer(
+		ASSERT_THAT(IsTrue(TestIsolatedScriptClassInstantiationRaisesNullPointer(
 			*TestRunner,
 			EntryResult,
-			TEXT("Reference script-class constructor test"));
+			TEXT("Reference script-class constructor test"))));
 	}
 
 	TEST_METHOD(ConstructorArgumentsAreRejectedForValueStyleConstruction)
 	{
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("Reference script-class argument constructor test should create a native engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference script-class argument constructor test should create a native engine")));
 
 		ON_SCOPE_EXIT
 		{
@@ -277,18 +276,18 @@ int Entry()
 }
 )",
 			Module);
-		TestRunner->TestTrue(TEXT("Reference script-class argument constructor should document current value-style construction rejection"), CompileResult < 0);
-		TestHasMessageContaining(*TestRunner, Messages, TEXT("Only objects have constructors"), TEXT("Reference script-class argument constructor should report current fork diagnostic"));
+		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference script-class argument constructor should document current value-style construction rejection")));
+		if (!TestHasMessageContaining(*TestRunner, Messages, TEXT("Only objects have constructors"), TEXT("Reference script-class argument constructor should report current fork diagnostic")))
+		{
+			return;
+		}
 	}
 
 	TEST_METHOD(InheritanceMetadataAndIsolatedExecutionException)
 	{
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("Reference script-class inheritance test should create a native engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference script-class inheritance test should create a native engine")));
 
 		ON_SCOPE_EXIT
 		{
@@ -317,42 +316,32 @@ int Entry()
 }
 )",
 			Messages);
-		if (!TestRunner->TestNotNull(TEXT("Reference script-class inheritance test should build module"), Module))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Module, TEXT("Reference script-class inheritance test should build module")));
 
 		asITypeInfo* BaseType = Module->GetTypeInfoByName("Base");
 		asITypeInfo* DerivedType = Module->GetTypeInfoByName("Derived");
-		if (!TestRunner->TestNotNull(TEXT("Reference script-class inheritance test should expose Base type metadata"), BaseType) ||
-			!TestRunner->TestNotNull(TEXT("Reference script-class inheritance test should expose Derived type metadata"), DerivedType))
-		{
-			return;
-		}
-		TestRunner->TestTrue(TEXT("Reference script-class inheritance test should expose derived-to-base relationship"), DerivedType->DerivesFrom(BaseType));
-		TestRunner->TestNotNull(TEXT("Reference script-class inheritance test should expose base method metadata"), BaseType->GetMethodByDecl("int Twice()"));
-		TestRunner->TestNotNull(TEXT("Reference script-class inheritance test should expose int Entry() without executing inherited script-class instances"),
-			AngelscriptNativeTestSupport::GetNativeFunctionByDecl(Module, "int Entry()"));
+		ASSERT_THAT(IsNotNull(BaseType, TEXT("Reference script-class inheritance test should expose Base type metadata")));
+		ASSERT_THAT(IsNotNull(DerivedType, TEXT("Reference script-class inheritance test should expose Derived type metadata")));
+		ASSERT_THAT(IsTrue(DerivedType->DerivesFrom(BaseType), TEXT("Reference script-class inheritance test should expose derived-to-base relationship")));
+		ASSERT_THAT(IsNotNull(BaseType->GetMethodByDecl("int Twice()"), TEXT("Reference script-class inheritance test should expose base method metadata")));
+		ASSERT_THAT(IsNotNull(AngelscriptNativeTestSupport::GetNativeFunctionByDecl(Module, "int Entry()"), TEXT("Reference script-class inheritance test should expose int Entry() without executing inherited script-class instances")));
 
 		FScriptExecutionResult EntryResult;
 		if (!ExecuteIntFunctionAndCapture(*TestRunner, ScriptEngine, Module, "int Entry()", EntryResult))
 		{
 			return;
 		}
-		TestIsolatedScriptClassInstantiationRaisesNullPointer(
+		ASSERT_THAT(IsTrue(TestIsolatedScriptClassInstantiationRaisesNullPointer(
 			*TestRunner,
 			EntryResult,
-			TEXT("Reference script-class inheritance test"));
+			TEXT("Reference script-class inheritance test"))));
 	}
 
 	TEST_METHOD(PrivateConstructorBlocksDerivedSuperCall)
 	{
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("Reference script-class private constructor test should create a native engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference script-class private constructor test should create a native engine")));
 
 		ON_SCOPE_EXIT
 		{
@@ -391,18 +380,18 @@ class B : A
 )",
 			Module);
 
-		TestRunner->TestTrue(TEXT("Reference private constructor script should fail to compile when a derived class calls super()"), CompileResult < 0);
-		TestHasMessageContaining(*TestRunner, Messages, TEXT("Illegal call to private method"), TEXT("Reference private constructor diagnostic should be preserved"));
+		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference private constructor script should fail to compile when a derived class calls super()")));
+		if (!TestHasMessageContaining(*TestRunner, Messages, TEXT("Illegal call to private method"), TEXT("Reference private constructor diagnostic should be preserved")))
+		{
+			return;
+		}
 	}
 
 	TEST_METHOD(ProtectedConstructorAllowsDerivedSuperCall)
 	{
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("Reference script-class protected constructor test should create a native engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference script-class protected constructor test should create a native engine")));
 
 		ON_SCOPE_EXIT
 		{
@@ -428,33 +417,30 @@ class B : A
 )",
 			Module);
 
-		TestRunner->TestTrue(TEXT("Reference protected constructor script should compile when the derived class calls super(1.4f)"), CompileResult >= 0);
-		if (!TestRunner->TestNotNull(TEXT("Reference protected constructor script should expose the compiled module"), Module))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(CompileResult >= 0, TEXT("Reference protected constructor script should compile when the derived class calls super(1.4f)")));
+		ASSERT_THAT(IsNotNull(Module, TEXT("Reference protected constructor script should expose the compiled module")));
 
 		asITypeInfo* AType = Module->GetTypeInfoByName("A");
 		asITypeInfo* BType = Module->GetTypeInfoByName("B");
-		if (!TestRunner->TestNotNull(TEXT("Reference protected constructor script should expose A type metadata"), AType) ||
-			!TestRunner->TestNotNull(TEXT("Reference protected constructor script should expose B type metadata"), BType))
+		ASSERT_THAT(IsNotNull(AType, TEXT("Reference protected constructor script should expose A type metadata")));
+		ASSERT_THAT(IsNotNull(BType, TEXT("Reference protected constructor script should expose B type metadata")));
+
+		ASSERT_THAT(IsTrue(BType->DerivesFrom(AType), TEXT("Reference protected constructor script should preserve the derived-to-base relationship")));
+		if (!TestTypeHasBehaviour(*TestRunner, AType, asBEHAVE_CONSTRUCT, TEXT("Reference protected constructor script should expose constructor behaviour metadata on A")))
 		{
 			return;
 		}
-
-		TestRunner->TestTrue(TEXT("Reference protected constructor script should preserve the derived-to-base relationship"), BType->DerivesFrom(AType));
-		TestRunner->TestTrue(TEXT("Reference protected constructor script should expose a constructor behaviour on A"), TestTypeHasBehaviour(*TestRunner, AType, asBEHAVE_CONSTRUCT, TEXT("Reference protected constructor script should expose constructor behaviour metadata on A")));
-		TestRunner->TestTrue(TEXT("Reference protected constructor script should expose a default constructor on B"), TestTypeHasConstructorWithParamCount(*TestRunner, BType, 0, TEXT("Reference protected constructor script should expose default constructor metadata on B")));
+		if (!TestTypeHasConstructorWithParamCount(*TestRunner, BType, 0, TEXT("Reference protected constructor script should expose default constructor metadata on B")))
+		{
+			return;
+		}
 	}
 
 	TEST_METHOD(BaseWithoutDefaultConstructorGetsAutoGeneratedDefaultConstructor)
 	{
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("Reference script-class base-constructor test should create a native engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference script-class base-constructor test should create a native engine")));
 
 		ON_SCOPE_EXIT
 		{
@@ -487,37 +473,37 @@ class GoodDerived : Base
 )",
 			Module);
 
-		TestRunner->TestTrue(TEXT("Reference base-constructor script should compile because the fork auto-creates a default constructor"), CompileResult >= 0);
-		if (!TestRunner->TestNotNull(TEXT("Reference base-constructor script should expose the compiled module"), Module))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(CompileResult >= 0, TEXT("Reference base-constructor script should compile because the fork auto-creates a default constructor")));
+		ASSERT_THAT(IsNotNull(Module, TEXT("Reference base-constructor script should expose the compiled module")));
 
 		asITypeInfo* BaseType = Module->GetTypeInfoByName("Base");
 		asITypeInfo* BadDerivedType = Module->GetTypeInfoByName("BadDerived");
 		asITypeInfo* GoodDerivedType = Module->GetTypeInfoByName("GoodDerived");
-		if (!TestRunner->TestNotNull(TEXT("Reference base-constructor script should expose Base type metadata"), BaseType) ||
-			!TestRunner->TestNotNull(TEXT("Reference base-constructor script should expose BadDerived type metadata"), BadDerivedType) ||
-			!TestRunner->TestNotNull(TEXT("Reference base-constructor script should expose GoodDerived type metadata"), GoodDerivedType))
+		ASSERT_THAT(IsNotNull(BaseType, TEXT("Reference base-constructor script should expose Base type metadata")));
+		ASSERT_THAT(IsNotNull(BadDerivedType, TEXT("Reference base-constructor script should expose BadDerived type metadata")));
+		ASSERT_THAT(IsNotNull(GoodDerivedType, TEXT("Reference base-constructor script should expose GoodDerived type metadata")));
+
+		ASSERT_THAT(IsTrue(BadDerivedType->DerivesFrom(BaseType), TEXT("Reference base-constructor script should preserve the derived-to-base relationship for BadDerived")));
+		ASSERT_THAT(IsTrue(GoodDerivedType->DerivesFrom(BaseType), TEXT("Reference base-constructor script should preserve the derived-to-base relationship for GoodDerived")));
+		if (!TestTypeHasConstructorWithParamCount(*TestRunner, BaseType, 0, TEXT("Reference base-constructor script should expose default constructor metadata on Base")))
 		{
 			return;
 		}
-
-		TestRunner->TestTrue(TEXT("Reference base-constructor script should preserve the derived-to-base relationship for BadDerived"), BadDerivedType->DerivesFrom(BaseType));
-		TestRunner->TestTrue(TEXT("Reference base-constructor script should preserve the derived-to-base relationship for GoodDerived"), GoodDerivedType->DerivesFrom(BaseType));
-		TestRunner->TestTrue(TEXT("Reference base-constructor script should expose an auto-generated default constructor on Base"), TestTypeHasConstructorWithParamCount(*TestRunner, BaseType, 0, TEXT("Reference base-constructor script should expose default constructor metadata on Base")));
-		TestRunner->TestTrue(TEXT("Reference base-constructor script should expose an auto-generated default constructor on BadDerived"), TestTypeHasConstructorWithParamCount(*TestRunner, BadDerivedType, 0, TEXT("Reference base-constructor script should expose default constructor metadata on BadDerived")));
-		TestRunner->TestTrue(TEXT("Reference base-constructor script should expose a default constructor on GoodDerived"), TestTypeHasConstructorWithParamCount(*TestRunner, GoodDerivedType, 0, TEXT("Reference base-constructor script should expose default constructor metadata on GoodDerived")));
+		if (!TestTypeHasConstructorWithParamCount(*TestRunner, BadDerivedType, 0, TEXT("Reference base-constructor script should expose default constructor metadata on BadDerived")))
+		{
+			return;
+		}
+		if (!TestTypeHasConstructorWithParamCount(*TestRunner, GoodDerivedType, 0, TEXT("Reference base-constructor script should expose default constructor metadata on GoodDerived")))
+		{
+			return;
+		}
 	}
 
 	TEST_METHOD(MemberInitializationExpressionReportsMissingSymbol)
 	{
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("Reference member-init diagnostic test should create a native engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference member-init diagnostic test should create a native engine")));
 
 		ON_SCOPE_EXIT
 		{
@@ -543,18 +529,18 @@ class B
 )",
 			Module);
 
-		TestRunner->TestTrue(TEXT("Reference member-init diagnostic script should fail to compile"), CompileResult < 0);
-		TestHasMessageContaining(*TestRunner, Messages, TEXT("'en_B' is not declared"), TEXT("Reference member-init missing symbol diagnostic should be preserved"));
+		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference member-init diagnostic script should fail to compile")));
+		if (!TestHasMessageContaining(*TestRunner, Messages, TEXT("'en_B' is not declared"), TEXT("Reference member-init missing symbol diagnostic should be preserved")))
+		{
+			return;
+		}
 	}
 
 	TEST_METHOD(DeletedDefaultConstructorIsRejectedOrDocumented)
 	{
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("Reference script-class deleted constructor test should create a native engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference script-class deleted constructor test should create a native engine")));
 
 		ON_SCOPE_EXIT
 		{
@@ -576,8 +562,8 @@ int Entry()
 )",
 			Module);
 
-		TestRunner->TestTrue(TEXT("Reference deleted default constructor should not allow default construction"), CompileResult < 0);
-		TestRunner->TestTrue(TEXT("Reference deleted default constructor should report at least one diagnostic"), Messages.Entries.Num() > 0);
+		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference deleted default constructor should not allow default construction")));
+		ASSERT_THAT(IsTrue(Messages.Entries.Num() > 0, TEXT("Reference deleted default constructor should report at least one diagnostic")));
 	}
 };
 

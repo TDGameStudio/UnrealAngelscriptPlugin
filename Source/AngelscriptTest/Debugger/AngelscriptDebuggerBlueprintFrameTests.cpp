@@ -26,6 +26,38 @@
 
 namespace AngelscriptDebuggerBlueprintFrameTests_Private
 {
+	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsTrue(bActual, Message);
+	}
+
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.AreEqual(Expected, Actual, Message);
+	}
+
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const FString& Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		return CheckEqual(Test, *Message, Actual, Expected);
+	}
+
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsNotNull(Value, Message);
+	}
+
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const FString& Message, const ValueType& Value)
+	{
+		return CheckNotNull(Test, *Message, Value);
+	}
+
 	static const FName BlueprintInvocationFunctionName(TEXT("CallIntoScript"));
 	static const FName ScriptBreakpointFunctionName(TEXT("BreakInScript"));
 	static const FName ScriptValuePropertyName(TEXT("ScriptValue"));
@@ -37,7 +69,8 @@ namespace AngelscriptDebuggerBlueprintFrameTests_Private
 		const TSharedRef<FAsyncGeneratedVoidInvocationState>& InvocationState,
 		const TCHAR* Context)
 	{
-		return Test.TestTrue(
+		return CheckTrue(
+			Test,
 			Context,
 			Session.PumpUntil(
 				[&InvocationState]()
@@ -94,7 +127,7 @@ namespace AngelscriptDebuggerBlueprintFrameTests_Private
 		FStringView Suffix,
 		const TCHAR* CallingContext = TEXT("AngelscriptDebuggerBlueprintFrameTests"))
 	{
-		if (!Test.TestNotNull(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should resolve the script parent class before creating a transient child blueprint"), ParentClass))
+		if (!CheckNotNull(Test, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should resolve the script parent class before creating a transient child blueprint"), ParentClass))
 		{
 			return nullptr;
 		}
@@ -105,7 +138,7 @@ namespace AngelscriptDebuggerBlueprintFrameTests_Private
 			Suffix.GetData(),
 			*FGuid::NewGuid().ToString(EGuidFormats::Digits));
 		UPackage* BlueprintPackage = CreatePackage(*PackagePath);
-		if (!Test.TestNotNull(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should create a transient blueprint package"), BlueprintPackage))
+		if (!CheckNotNull(Test, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should create a transient blueprint package"), BlueprintPackage))
 		{
 			return nullptr;
 		}
@@ -120,7 +153,7 @@ namespace AngelscriptDebuggerBlueprintFrameTests_Private
 			UBlueprint::StaticClass(),
 			UBlueprintGeneratedClass::StaticClass(),
 			CallingContext);
-		if (!Test.TestNotNull(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should create a transient child blueprint"), Blueprint))
+		if (!CheckNotNull(Test, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should create a transient child blueprint"), Blueprint))
 		{
 			return nullptr;
 		}
@@ -164,13 +197,13 @@ namespace AngelscriptDebuggerBlueprintFrameTests_Private
 		FName ScriptFunctionName)
 	{
 		UFunction* ScriptFunction = ParentClass.FindFunctionByName(ScriptFunctionName);
-		if (!Test.TestNotNull(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should expose the script function that the transient blueprint calls"), ScriptFunction))
+		if (!CheckNotNull(Test, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should expose the script function that the transient blueprint calls"), ScriptFunction))
 		{
 			return false;
 		}
 
 		UEdGraph* FunctionGraph = FBlueprintEditorUtils::CreateNewGraph(&Blueprint, FunctionName, UEdGraph::StaticClass(), UEdGraphSchema_K2::StaticClass());
-		if (!Test.TestNotNull(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should create a Blueprint function graph"), FunctionGraph))
+		if (!CheckNotNull(Test, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should create a Blueprint function graph"), FunctionGraph))
 		{
 			return false;
 		}
@@ -180,25 +213,25 @@ namespace AngelscriptDebuggerBlueprintFrameTests_Private
 		TArray<UK2Node_FunctionEntry*> EntryNodes;
 		FunctionGraph->GetNodesOfClass(EntryNodes);
 		UK2Node_FunctionEntry* EntryNode = EntryNodes.Num() > 0 ? EntryNodes[0] : nullptr;
-		if (!Test.TestNotNull(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should create a function entry node for the Blueprint caller graph"), EntryNode))
+		if (!CheckNotNull(Test, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should create a function entry node for the Blueprint caller graph"), EntryNode))
 		{
 			return false;
 		}
 
 		UEdGraphPin* EntryThenPin = EntryNode->FindPin(UEdGraphSchema_K2::PN_Then);
-		if (!Test.TestNotNull(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should expose the function entry exec pin"), EntryThenPin))
+		if (!CheckNotNull(Test, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should expose the function entry exec pin"), EntryThenPin))
 		{
 			return false;
 		}
 
 		UK2Node_CallFunction* CallNode = AddCallFunctionNode(*FunctionGraph, *ScriptFunction, EntryThenPin);
-		if (!Test.TestNotNull(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should place a call-function node in the transient Blueprint graph"), CallNode))
+		if (!CheckNotNull(Test, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should place a call-function node in the transient Blueprint graph"), CallNode))
 		{
 			return false;
 		}
 
 		UEdGraphPin* InputPin = CallNode->FindPin(TEXT("Input"));
-		if (!Test.TestNotNull(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should expose the Input pin on the Blueprint call node"), InputPin))
+		if (!CheckNotNull(Test, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should expose the Input pin on the Blueprint call node"), InputPin))
 		{
 			return false;
 		}
@@ -206,7 +239,7 @@ namespace AngelscriptDebuggerBlueprintFrameTests_Private
 		InputPin->DefaultValue = TEXT("7");
 		FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(&Blueprint);
 		FKismetEditorUtilities::CompileBlueprint(&Blueprint);
-		return Test.TestNotNull(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should compile the transient Blueprint caller into a generated class"), Blueprint.GeneratedClass.Get());
+		return CheckNotNull(Test, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should compile the transient Blueprint caller into a generated class"), Blueprint.GeneratedClass.Get());
 	}
 
 	int32 FindCallstackFrameIndexByPrefix(const FAngelscriptCallStack& Callstack, const FString& Prefix)
@@ -230,7 +263,7 @@ namespace AngelscriptDebuggerBlueprintFrameTests_Private
 		const TCHAR* Context)
 	{
 		const FIntProperty* Property = FindFProperty<FIntProperty>(Object.GetClass(), PropertyName);
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should expose int property '%s'"), Context, *PropertyName.ToString()), Property))
+		if (!CheckNotNull(Test, FString::Printf(TEXT("%s should expose int property '%s'"), Context, *PropertyName.ToString()), Property))
 		{
 			return false;
 		}
@@ -381,10 +414,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBlueprintFrameTests,
 			CollectGarbage(RF_NoFlags, true);
 		};
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should compile the Blueprint-frame script fixture"), Fixture.Compile(Engine))));
+		ASSERT_THAT(IsTrue(Fixture.Compile(Engine), TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should compile the Blueprint-frame script fixture")));
 
 		UClass* ScriptParentClass = Fixture.FindGeneratedClass(Engine);
-		ASSERT_THAT(IsTrue(TestRunner->TestNotNull(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should publish the script parent class"), ScriptParentClass)));
+		ASSERT_THAT(IsNotNull(ScriptParentClass, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should publish the script parent class")));
 
 		Blueprint = CreateTransientBlueprintChild(*TestRunner, ScriptParentClass, TEXT("MixedCallstack"));
 		ASSERT_THAT(IsTrue(Blueprint != nullptr));
@@ -392,13 +425,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBlueprintFrameTests,
 		ASSERT_THAT(IsTrue(CreateTransientBlueprintCallingScriptFunction(*TestRunner, *ScriptParentClass, *Blueprint, BlueprintInvocationFunctionName, ScriptBreakpointFunctionName)));
 
 		UClass* BlueprintClass = Blueprint->GeneratedClass.Get();
-		ASSERT_THAT(IsTrue(TestRunner->TestNotNull(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should expose the transient Blueprint generated class"), BlueprintClass)));
+		ASSERT_THAT(IsNotNull(BlueprintClass, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should expose the transient Blueprint generated class")));
 
 		BlueprintObject = NewObject<UObject>(GetTransientPackage(), BlueprintClass);
-		ASSERT_THAT(IsTrue(TestRunner->TestNotNull(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should instantiate the transient Blueprint caller"), BlueprintObject)));
+		ASSERT_THAT(IsNotNull(BlueprintObject, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should instantiate the transient Blueprint caller")));
 
 		UFunction* BlueprintFunction = BlueprintObject->FindFunction(BlueprintInvocationFunctionName);
-		ASSERT_THAT(IsTrue(TestRunner->TestNotNull(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should expose the Blueprint caller function on the transient object"), BlueprintFunction)));
+		ASSERT_THAT(IsNotNull(BlueprintFunction, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should expose the Blueprint caller function on the transient object")));
 
 		TAtomic<bool> bMonitorReady(false);
 		TAtomic<bool> bShouldStop(false);
@@ -421,7 +454,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBlueprintFrameTests,
 		Breakpoint.ModuleName = Fixture.ModuleName.ToString();
 		Breakpoint.LineNumber = Fixture.GetLine(TEXT("BlueprintScriptBreakLine"));
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should send the script breakpoint"), Ctx.Client.SendSetBreakpoint(Breakpoint))));
+		ASSERT_THAT(IsTrue(Ctx.Client.SendSetBreakpoint(Breakpoint), TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should send the script breakpoint")));
 
 		ASSERT_THAT(IsTrue(WaitForBreakpointCount(*TestRunner, Ctx.Session, 1, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should observe the breakpoint registration after both debugger clients finish handshaking"))));
 
@@ -432,33 +465,33 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBlueprintFrameTests,
 		bShouldStop = true;
 		const FBlueprintFrameMonitorResult MonitorResult = MonitorFuture.Get();
 
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should finish without monitor errors"), MonitorResult.Error.IsEmpty())));
+		ASSERT_THAT(IsTrue(MonitorResult.Error.IsEmpty(), TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should finish without monitor errors")));
 		if (!MonitorResult.Error.IsEmpty())
 		{
 			TestRunner->AddError(MonitorResult.Error);
 		}
 
-		ASSERT_THAT(IsTrue(TestRunner->TestFalse(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should not time out while collecting debugger payloads"), MonitorResult.bTimedOut)));
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should finish the Blueprint caller invocation successfully"), InvocationState->bSucceeded)));
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should deserialize the stop payload"), MonitorResult.StopMessage.IsSet())));
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should capture a mixed callstack"), MonitorResult.Callstack.IsSet())));
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should capture the Blueprint-frame ScriptValue evaluation"), MonitorResult.BlueprintScriptValue.IsSet())));
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should capture the Blueprint-frame %this% scope"), MonitorResult.BlueprintThisScope.IsSet())));
+		ASSERT_THAT(IsFalse(MonitorResult.bTimedOut, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should not time out while collecting debugger payloads")));
+		ASSERT_THAT(IsTrue(InvocationState->bSucceeded, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should finish the Blueprint caller invocation successfully")));
+		ASSERT_THAT(IsTrue(MonitorResult.StopMessage.IsSet(), TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should deserialize the stop payload")));
+		ASSERT_THAT(IsTrue(MonitorResult.Callstack.IsSet(), TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should capture a mixed callstack")));
+		ASSERT_THAT(IsTrue(MonitorResult.BlueprintScriptValue.IsSet(), TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should capture the Blueprint-frame ScriptValue evaluation")));
+		ASSERT_THAT(IsTrue(MonitorResult.BlueprintThisScope.IsSet(), TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should capture the Blueprint-frame %this% scope")));
 
 		const FAngelscriptCallStack& Callstack = MonitorResult.Callstack.GetValue();
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should return at least two frames"), Callstack.Frames.Num() >= 2)));
-		ASSERT_THAT(IsTrue(TestRunner->TestTrue(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should locate a Blueprint frame inside the mixed callstack"), Callstack.Frames.IsValidIndex(MonitorResult.BlueprintFrameIndex))));
+		ASSERT_THAT(IsTrue(Callstack.Frames.Num() >= 2, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should return at least two frames")));
+		ASSERT_THAT(IsTrue(Callstack.Frames.IsValidIndex(MonitorResult.BlueprintFrameIndex), TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should locate a Blueprint frame inside the mixed callstack")));
 
 		const FAngelscriptCallFrame& ScriptFrame = Callstack.Frames[0];
 		const FAngelscriptCallFrame& BlueprintFrame = Callstack.Frames[MonitorResult.BlueprintFrameIndex];
 
-		TestRunner->TestEqual(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should stop because of a breakpoint"), MonitorResult.StopMessage->Reason, FString(TEXT("breakpoint")));
-		TestRunner->TestTrue(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should keep the script frame on top of the mixed callstack"), ScriptFrame.Source.EndsWith(Fixture.Filename));
-		TestRunner->TestEqual(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should report the script breakpoint line on the top frame"), ScriptFrame.LineNumber, Fixture.GetLine(TEXT("BlueprintScriptBreakLine")));
-		TestRunner->TestTrue(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should tag the Blueprint caller frame with the (BP) prefix"), BlueprintFrame.Name.StartsWith(TEXT("(BP)")));
-		TestRunner->TestTrue(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should report the Blueprint caller source as a transient outer/class path"), BlueprintFrame.Source.StartsWith(TEXT("::")));
-		TestRunner->TestEqual(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should evaluate Blueprint-frame ScriptValue to 5"), MonitorResult.BlueprintScriptValue->Value, FString(TEXT("5")));
-		TestRunner->TestEqual(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should observe a single HasContinued after resuming"), MonitorResult.ContinuedCount, 1);
+		ASSERT_THAT(AreEqual(FString(TEXT("breakpoint")), MonitorResult.StopMessage->Reason, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should stop because of a breakpoint")));
+		ASSERT_THAT(IsTrue(ScriptFrame.Source.EndsWith(Fixture.Filename), TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should keep the script frame on top of the mixed callstack")));
+		ASSERT_THAT(AreEqual(Fixture.GetLine(TEXT("BlueprintScriptBreakLine")), ScriptFrame.LineNumber, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should report the script breakpoint line on the top frame")));
+		ASSERT_THAT(IsTrue(BlueprintFrame.Name.StartsWith(TEXT("(BP)")), TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should tag the Blueprint caller frame with the (BP) prefix")));
+		ASSERT_THAT(IsTrue(BlueprintFrame.Source.StartsWith(TEXT("::")), TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should report the Blueprint caller source as a transient outer/class path")));
+		ASSERT_THAT(AreEqual(FString(TEXT("5")), MonitorResult.BlueprintScriptValue->Value, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should evaluate Blueprint-frame ScriptValue to 5")));
+		ASSERT_THAT(AreEqual(1, MonitorResult.ContinuedCount, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should observe a single HasContinued after resuming")));
 
 		const TArray<FAngelscriptVariable>& BlueprintThisVariables = MonitorResult.BlueprintThisScope->Variables;
 		const FAngelscriptVariable* ScriptValueVariable = BlueprintThisVariables.FindByPredicate(
@@ -466,15 +499,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBlueprintFrameTests,
 			{
 				return Variable.Name == TEXT("ScriptValue");
 			});
-		ASSERT_THAT(IsTrue(TestRunner->TestNotNull(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should expose ScriptValue inside the Blueprint-frame %this% scope"), ScriptValueVariable)));
+		ASSERT_THAT(IsNotNull(ScriptValueVariable, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should expose ScriptValue inside the Blueprint-frame %this% scope")));
 
-		TestRunner->TestEqual(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should report ScriptValue = 5 inside the Blueprint-frame %this% scope"), ScriptValueVariable->Value, FString(TEXT("5")));
-		TestRunner->TestTrue(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should expose a non-zero ValueAddress for ScriptValue inside the Blueprint-frame %this% scope"), ScriptValueVariable->ValueAddress != 0);
+		ASSERT_THAT(AreEqual(FString(TEXT("5")), ScriptValueVariable->Value, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should report ScriptValue = 5 inside the Blueprint-frame %this% scope")));
+		ASSERT_THAT(IsTrue(ScriptValueVariable->ValueAddress != 0, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should expose a non-zero ValueAddress for ScriptValue inside the Blueprint-frame %this% scope")));
 
 		int32 LastBreakResult = INDEX_NONE;
 		ASSERT_THAT(IsTrue(ReadIntProperty(*TestRunner, *BlueprintObject, LastBreakResultPropertyName, LastBreakResult, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope"))));
 
-		TestRunner->TestEqual(TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should preserve the expected script-side result after the Blueprint caller resumes"), LastBreakResult, 12);
+		ASSERT_THAT(AreEqual(12, LastBreakResult, TEXT("Debugger.BlueprintFrame.BlueprintMixedCallstackAndThisScope should preserve the expected script-side result after the Blueprint caller resumes")));
 	}
 };
 

@@ -12,6 +12,7 @@ namespace
 {
 	UScriptStruct* BuildScriptStruct(
 		FAutomationTestBase& Test,
+		FNoDiscardAsserter& Assert,
 		FAngelscriptEngine& Engine,
 		const char* ModuleName,
 		const FString& Source,
@@ -30,7 +31,7 @@ namespace
 		}
 
 		UScriptStruct* Struct = FindObject<UScriptStruct>(FAngelscriptEngine::GetPackage(), *UnrealName);
-		if (!Test.TestNotNull(TEXT("Compiled script struct should have a backing UScriptStruct"), Struct))
+		if (!Assert.IsNotNull(Struct, TEXT("Compiled script struct should have a backing UScriptStruct")))
 		{
 			return nullptr;
 		}
@@ -49,6 +50,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptStructCppOpsTests,
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		UScriptStruct* Struct = BuildScriptStruct(
 			*TestRunner,
+			this->Assert,
 			Engine,
 			"StructCppOpsScopeModule",
 			TEXT(R"ANGELSCRIPT(
@@ -63,7 +65,8 @@ struct FScopeConstructStruct
 			return;
 		}
 
-		TestRunner->TestFalse(TEXT("Script structs should not be BlueprintType by default"), Struct->GetBoolMetaData(TEXT("BlueprintType")));
+		ASSERT_THAT(IsFalse(Struct->GetBoolMetaData(TEXT("BlueprintType")),
+			TEXT("Script structs should not be BlueprintType by default")));
 		}
 	}
 
@@ -74,31 +77,31 @@ struct FScopeConstructStruct
 
 		FAngelscriptStructCppOpsLifecycleFixture::ResetCounters();
 		UScriptStruct* Struct = FAngelscriptStructCppOpsLifecycleFixture::StaticStruct();
-		if (!TestRunner->TestNotNull(TEXT("StructCppOps fixture should expose a native UScriptStruct"), Struct))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Struct,
+			TEXT("StructCppOps fixture should expose a native UScriptStruct")));
 
 		UScriptStruct::ICppStructOps* Ops = Struct->GetCppStructOps();
-		if (!TestRunner->TestNotNull(TEXT("StructCppOps fixture should expose cpp struct ops"), Ops))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Ops,
+			TEXT("StructCppOps fixture should expose cpp struct ops")));
 
-		TestRunner->TestEqual(TEXT("StructCppOps fixture should keep the expected native alignment"), Struct->GetMinAlignment(), static_cast<int32>(alignof(FAngelscriptStructCppOpsLifecycleFixture)));
-		TestRunner->TestEqual(TEXT("StructCppOps fixture should report cpp ops size"), Ops->GetSize(), static_cast<int32>(sizeof(FAngelscriptStructCppOpsLifecycleFixture)));
-		TestRunner->TestTrue(TEXT("StructCppOps fixture should expose copy support through cpp ops"), Ops->HasCopy());
-		TestRunner->TestTrue(TEXT("StructCppOps fixture should expose destructor support through cpp ops"), Ops->HasDestructor());
+		ASSERT_THAT(AreEqual(static_cast<int32>(alignof(FAngelscriptStructCppOpsLifecycleFixture)), Struct->GetMinAlignment(),
+			TEXT("StructCppOps fixture should keep the expected native alignment")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(sizeof(FAngelscriptStructCppOpsLifecycleFixture)), Ops->GetSize(),
+			TEXT("StructCppOps fixture should report cpp ops size")));
+		ASSERT_THAT(IsTrue(Ops->HasCopy(),
+			TEXT("StructCppOps fixture should expose copy support through cpp ops")));
+		ASSERT_THAT(IsTrue(Ops->HasDestructor(),
+			TEXT("StructCppOps fixture should expose destructor support through cpp ops")));
 
 		FAngelscriptBinds BoundType = FAngelscriptBinds::ValueClass("FStructCppOpsLifecycleFixtureNative", Struct, FBindFlags());
 		asITypeInfo* TypeInfo = BoundType.GetTypeInfo();
-		if (!TestRunner->TestNotNull(TEXT("ValueClass should register a script type for the native struct"), TypeInfo))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(TypeInfo,
+			TEXT("ValueClass should register a script type for the native struct")));
 
-		TestRunner->TestEqual(TEXT("ValueClass should use cpp ops size for the bound type"), static_cast<int32>(TypeInfo->GetSize()), Ops->GetSize());
-		TestRunner->TestEqual(TEXT("ValueClass should preserve the struct alignment"), TypeInfo->alignment, Struct->GetMinAlignment());
+		ASSERT_THAT(AreEqual(Ops->GetSize(), static_cast<int32>(TypeInfo->GetSize()),
+			TEXT("ValueClass should use cpp ops size for the bound type")));
+		ASSERT_THAT(AreEqual(Struct->GetMinAlignment(), TypeInfo->alignment,
+			TEXT("ValueClass should preserve the struct alignment")));
 
 		void* SourceMemory = FMemory::Malloc(Ops->GetSize(), Struct->GetMinAlignment());
 		void* DestinationMemory = FMemory::Malloc(Ops->GetSize(), Struct->GetMinAlignment());
@@ -120,36 +123,43 @@ struct FScopeConstructStruct
 			FMemory::Free(SourceMemory);
 		};
 
-		if (!TestRunner->TestNotNull(TEXT("StructCppOps fixture should allocate source memory"), SourceMemory)
-			|| !TestRunner->TestNotNull(TEXT("StructCppOps fixture should allocate destination memory"), DestinationMemory))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(SourceMemory,
+			TEXT("StructCppOps fixture should allocate source memory")));
+		ASSERT_THAT(IsNotNull(DestinationMemory,
+			TEXT("StructCppOps fixture should allocate destination memory")));
 
 		Struct->InitializeStruct(SourceMemory, 1);
 		bSourceInitialized = true;
 		auto* SourceValue = static_cast<FAngelscriptStructCppOpsLifecycleFixture*>(SourceMemory);
-		TestRunner->TestEqual(TEXT("InitializeStruct should run the default constructor once"), FAngelscriptStructCppOpsLifecycleFixture::DefaultConstructorCount, 1);
-		TestRunner->TestEqual(TEXT("InitializeStruct should write the sentinel value"), SourceValue->SentinelValue, FAngelscriptStructCppOpsLifecycleFixture::DefaultSentinelValue);
-		TestRunner->TestEqual(TEXT("InitializeStruct should write the payload value"), SourceValue->PayloadValue, FAngelscriptStructCppOpsLifecycleFixture::DefaultPayloadValue);
+		ASSERT_THAT(AreEqual(1, FAngelscriptStructCppOpsLifecycleFixture::DefaultConstructorCount,
+			TEXT("InitializeStruct should run the default constructor once")));
+		ASSERT_THAT(AreEqual(FAngelscriptStructCppOpsLifecycleFixture::DefaultSentinelValue, SourceValue->SentinelValue,
+			TEXT("InitializeStruct should write the sentinel value")));
+		ASSERT_THAT(AreEqual(FAngelscriptStructCppOpsLifecycleFixture::DefaultPayloadValue, SourceValue->PayloadValue,
+			TEXT("InitializeStruct should write the payload value")));
 
 		SourceValue->PayloadValue = 9001;
 
 		Struct->InitializeStruct(DestinationMemory, 1);
 		bDestinationInitialized = true;
-		TestRunner->TestEqual(TEXT("Destination InitializeStruct should run the default constructor again"), FAngelscriptStructCppOpsLifecycleFixture::DefaultConstructorCount, 2);
+		ASSERT_THAT(AreEqual(2, FAngelscriptStructCppOpsLifecycleFixture::DefaultConstructorCount,
+			TEXT("Destination InitializeStruct should run the default constructor again")));
 
 		Struct->CopyScriptStruct(DestinationMemory, SourceMemory, 1);
 		auto* DestinationValue = static_cast<FAngelscriptStructCppOpsLifecycleFixture*>(DestinationMemory);
-		TestRunner->TestEqual(TEXT("CopyScriptStruct should route through the native copy op"), FAngelscriptStructCppOpsLifecycleFixture::CopyCount, 1);
-		TestRunner->TestEqual(TEXT("CopyScriptStruct should copy the sentinel value"), DestinationValue->SentinelValue, SourceValue->SentinelValue);
-		TestRunner->TestEqual(TEXT("CopyScriptStruct should copy the payload value"), DestinationValue->PayloadValue, SourceValue->PayloadValue);
+		ASSERT_THAT(AreEqual(1, FAngelscriptStructCppOpsLifecycleFixture::CopyCount,
+			TEXT("CopyScriptStruct should route through the native copy op")));
+		ASSERT_THAT(AreEqual(SourceValue->SentinelValue, DestinationValue->SentinelValue,
+			TEXT("CopyScriptStruct should copy the sentinel value")));
+		ASSERT_THAT(AreEqual(SourceValue->PayloadValue, DestinationValue->PayloadValue,
+			TEXT("CopyScriptStruct should copy the payload value")));
 
 		Struct->DestroyStruct(DestinationMemory, 1);
 		bDestinationInitialized = false;
 		Struct->DestroyStruct(SourceMemory, 1);
 		bSourceInitialized = false;
-		TestRunner->TestEqual(TEXT("DestroyStruct should run both native destructors"), FAngelscriptStructCppOpsLifecycleFixture::DestructorCount, 2);
+		ASSERT_THAT(AreEqual(2, FAngelscriptStructCppOpsLifecycleFixture::DestructorCount,
+			TEXT("DestroyStruct should run both native destructors")));
 
 		}
 	}

@@ -70,47 +70,38 @@ struct FDiscardableStruct
 };
 )AS");
 
-		if (!TestRunner->TestTrue(
-				TEXT("ASStruct discard test should compile the struct module"),
-				CompileAnnotatedModuleFromMemory(&Engine, ASStructDiscardTest::ModuleName, ASStructDiscardTest::ScriptFilename, ScriptSource)))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(
+			CompileAnnotatedModuleFromMemory(&Engine, ASStructDiscardTest::ModuleName, ASStructDiscardTest::ScriptFilename, ScriptSource),
+			TEXT("ASStruct discard test should compile the struct module")));
 
 		UASStruct* Struct = ASStructDiscardTest::FindStruct();
-		if (!TestRunner->TestNotNull(TEXT("ASStruct discard test should register the generated struct in the Angelscript package"), Struct))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Struct, TEXT("ASStruct discard test should register the generated struct in the Angelscript package")));
 
 		Struct->PrepareCppStructOps();
 
-		if (!TestRunner->TestNotNull(TEXT("ASStruct discard test should publish a script type before discard"), Struct->ScriptType)
-			|| !TestRunner->TestNotNull(TEXT("ASStruct discard test should create cpp struct ops before discard"), Struct->GetCppStructOps())
-			|| !TestRunner->TestNotNull(TEXT("ASStruct discard test should keep the script ToString binding before discard"), Struct->GetToStringFunction()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Struct->ScriptType, TEXT("ASStruct discard test should publish a script type before discard")));
+		ASSERT_THAT(IsNotNull(Struct->GetCppStructOps(), TEXT("ASStruct discard test should create cpp struct ops before discard")));
+		ASSERT_THAT(IsNotNull(Struct->GetToStringFunction(), TEXT("ASStruct discard test should keep the script ToString binding before discard")));
 
-		TestRunner->TestTrue(
-			TEXT("ASStruct discard test should advertise identical-native support before discard"),
-			EnumHasAnyFlags(Struct->StructFlags, STRUCT_IdenticalNative));
+		ASSERT_THAT(IsTrue(
+			EnumHasAnyFlags(Struct->StructFlags, STRUCT_IdenticalNative),
+			TEXT("ASStruct discard test should advertise identical-native support before discard")));
 
 		const bool bDiscarded = Engine.DiscardModule(*ASStructDiscardTest::ModuleName.ToString());
-		TestRunner->TestTrue(TEXT("ASStruct discard test should discard the owning module successfully"), bDiscarded);
-		TestRunner->TestFalse(
-			TEXT("ASStruct discard test should remove the module record after discard"),
-			Engine.GetModuleByModuleName(ASStructDiscardTest::ModuleName.ToString()).IsValid());
-		TestRunner->TestNull(TEXT("ASStruct discard test should clear the struct script type after discard"), Struct->ScriptType);
-		TestRunner->TestNotNull(
-			TEXT("ASStruct discard test should keep the cached cpp struct ops object alive after discard"),
-			Struct->GetCppStructOps());
-		TestRunner->TestNull(
-			TEXT("ASStruct discard test should clear the cached ToString function after discard"),
-			Struct->GetToStringFunction());
-		TestRunner->TestFalse(
-			TEXT("ASStruct discard test should clear STRUCT_IdenticalNative after discard"),
-			EnumHasAnyFlags(Struct->StructFlags, STRUCT_IdenticalNative));
+		ASSERT_THAT(IsTrue(bDiscarded, TEXT("ASStruct discard test should discard the owning module successfully")));
+		ASSERT_THAT(IsFalse(
+			Engine.GetModuleByModuleName(ASStructDiscardTest::ModuleName.ToString()).IsValid(),
+			TEXT("ASStruct discard test should remove the module record after discard")));
+		ASSERT_THAT(IsNull(Struct->ScriptType, TEXT("ASStruct discard test should clear the struct script type after discard")));
+		ASSERT_THAT(IsNotNull(
+			Struct->GetCppStructOps(),
+			TEXT("ASStruct discard test should keep the cached cpp struct ops object alive after discard")));
+		ASSERT_THAT(IsNull(
+			Struct->GetToStringFunction(),
+			TEXT("ASStruct discard test should clear the cached ToString function after discard")));
+		ASSERT_THAT(IsFalse(
+			EnumHasAnyFlags(Struct->StructFlags, STRUCT_IdenticalNative),
+			TEXT("ASStruct discard test should clear STRUCT_IdenticalNative after discard")));
 
 		}
 	}

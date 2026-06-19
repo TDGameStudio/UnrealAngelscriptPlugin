@@ -139,18 +139,20 @@ int ResetHitResult(FHitResult& Hit)
 
 		AActor& TestActor = Spawner.SpawnActor<AActor>();
 		UBoxComponent* TestComponent = AddHitResultTestComponent(TestActor, TEXT("HitResultTestComponent"));
-		if (!TestRunner->TestNotNull(TEXT("HitResult accessor test should create a primitive component"), TestComponent))
+		if (!this->Assert.IsNotNull(TestComponent, TEXT("HitResult accessor test should create a primitive component")))
 		{
 			return;
 		}
-		if (!TestRunner->TestEqual(TEXT("HitResult accessor test component should belong to the spawned actor"),
-				TestComponent->GetOwner(), &TestActor))
+		if (!this->Assert.AreEqual(
+				&TestActor,
+				TestComponent->GetOwner(),
+				TEXT("HitResult accessor test component should belong to the spawned actor")))
 		{
 			return;
 		}
 
 		UWorld* TestWorld = TestActor.GetWorld();
-		if (!TestRunner->TestNotNull(TEXT("HitResult accessor test should access the spawned world"), TestWorld))
+		if (!this->Assert.IsNotNull(TestWorld, TEXT("HitResult accessor test should access the spawned world")))
 		{
 			return;
 		}
@@ -158,10 +160,10 @@ int ResetHitResult(FHitResult& Hit)
 		FScopedTestWorldContextScope WorldContextScope(&TestActor);
 
 		FHitResult ScriptHit(FVector::ZeroVector, FVector::ForwardVector);
-		TestRunner->TestNull(TEXT("HitResult accessor test should start with no actor handle"), ScriptHit.GetActor());
-		TestRunner->TestNull(TEXT("HitResult accessor test should start with no component handle"), ScriptHit.GetComponent());
-		TestRunner->TestFalse(TEXT("HitResult accessor test should start with bBlockingHit cleared"), ScriptHit.bBlockingHit);
-		TestRunner->TestFalse(TEXT("HitResult accessor test should start with bStartPenetrating cleared"), ScriptHit.bStartPenetrating);
+		ASSERT_THAT(IsNull(ScriptHit.GetActor(), TEXT("HitResult accessor test should start with no actor handle")));
+		ASSERT_THAT(IsNull(ScriptHit.GetComponent(), TEXT("HitResult accessor test should start with no component handle")));
+		ASSERT_THAT(IsFalse(ScriptHit.bBlockingHit, TEXT("HitResult accessor test should start with bBlockingHit cleared")));
+		ASSERT_THAT(IsFalse(ScriptHit.bStartPenetrating, TEXT("HitResult accessor test should start with bStartPenetrating cleared")));
 
 		// --- PopulateHitResult ---
 		{
@@ -175,17 +177,24 @@ int ResetHitResult(FHitResult& Hit)
 
 			const int32 PopulateResultMask = PopulateInvoker.CallAndReturn<int32>(INDEX_NONE);
 
-			TestRunner->TestEqual(
-				TEXT("FHitResult function library accessors should allow script-side helper calls without flag mismatches"),
-				PopulateResultMask, 0);
-			TestRunner->TestEqual(TEXT("HitResult accessor test should round-trip the actor handle back into native state"),
-				ScriptHit.GetActor(), &TestActor);
-			TestRunner->TestEqual(TEXT("HitResult accessor test should round-trip the component handle back into native state"),
-				ScriptHit.GetComponent(), static_cast<UPrimitiveComponent*>(TestComponent));
-			TestRunner->TestFalse(TEXT("HitResult accessor test should leave bBlockingHit cleared after SetbBlockingHit(false)"),
-				ScriptHit.bBlockingHit);
-			TestRunner->TestTrue(TEXT("HitResult accessor test should preserve the start penetrating flag set by script"),
-				ScriptHit.bStartPenetrating);
+			ASSERT_THAT(AreEqual(
+				0,
+				PopulateResultMask,
+				TEXT("FHitResult function library accessors should allow script-side helper calls without flag mismatches")));
+			ASSERT_THAT(AreEqual(
+				&TestActor,
+				ScriptHit.GetActor(),
+				TEXT("HitResult accessor test should round-trip the actor handle back into native state")));
+			ASSERT_THAT(AreEqual(
+				static_cast<UPrimitiveComponent*>(TestComponent),
+				ScriptHit.GetComponent(),
+				TEXT("HitResult accessor test should round-trip the component handle back into native state")));
+			ASSERT_THAT(IsFalse(
+				ScriptHit.bBlockingHit,
+				TEXT("HitResult accessor test should leave bBlockingHit cleared after SetbBlockingHit(false)")));
+			ASSERT_THAT(IsTrue(
+				ScriptHit.bStartPenetrating,
+				TEXT("HitResult accessor test should preserve the start penetrating flag set by script")));
 		}
 
 		// --- ResetHitResult ---
@@ -198,13 +207,14 @@ int ResetHitResult(FHitResult& Hit)
 
 			const int32 ResetResultMask = ResetInvoker.CallAndReturn<int32>(INDEX_NONE);
 
-			TestRunner->TestEqual(
-				TEXT("FHitResult function library Reset helper should clear script-visible blocking and penetration flags"),
-				ResetResultMask, 0);
-			TestRunner->TestNull(TEXT("HitResult accessor test should clear the actor handle after Reset"), ScriptHit.GetActor());
-			TestRunner->TestNull(TEXT("HitResult accessor test should clear the component handle after Reset"), ScriptHit.GetComponent());
-			TestRunner->TestFalse(TEXT("HitResult accessor test should clear bBlockingHit after Reset"), ScriptHit.bBlockingHit);
-			TestRunner->TestFalse(TEXT("HitResult accessor test should clear bStartPenetrating after Reset"), ScriptHit.bStartPenetrating);
+			ASSERT_THAT(AreEqual(
+				0,
+				ResetResultMask,
+				TEXT("FHitResult function library Reset helper should clear script-visible blocking and penetration flags")));
+			ASSERT_THAT(IsNull(ScriptHit.GetActor(), TEXT("HitResult accessor test should clear the actor handle after Reset")));
+			ASSERT_THAT(IsNull(ScriptHit.GetComponent(), TEXT("HitResult accessor test should clear the component handle after Reset")));
+			ASSERT_THAT(IsFalse(ScriptHit.bBlockingHit, TEXT("HitResult accessor test should clear bBlockingHit after Reset")));
+			ASSERT_THAT(IsFalse(ScriptHit.bStartPenetrating, TEXT("HitResult accessor test should clear bStartPenetrating after Reset")));
 		}
 	}
 };

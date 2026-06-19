@@ -52,12 +52,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTestWorldHarnessTest,
 		{
 			FAngelscriptTestWorld W(*TestRunner, Engine);
 			ASSERT_THAT(IsTrue(W.IsValid()));
-			TestRunner->TestEqual(TEXT("[Construct] GetEngine() should return the supplied engine"),
-				static_cast<const void*>(&W.GetEngine()), static_cast<const void*>(&Engine));
-			TestRunner->TestNotNull(TEXT("[Construct] GetWorld() should return a valid UWorld"), &W.GetWorld());
-			TestRunner->TestEqual(TEXT("[Construct] Harness should establish current AS engine scope"),
+			ASSERT_THAT(AreEqual(
+				static_cast<const void*>(&Engine),
+				static_cast<const void*>(&W.GetEngine()),
+				TEXT("[Construct] GetEngine() should return the supplied engine")));
+			ASSERT_THAT(IsNotNull(&W.GetWorld(), TEXT("[Construct] GetWorld() should return a valid UWorld")));
+			ASSERT_THAT(AreEqual(
+				static_cast<const void*>(&Engine),
 				static_cast<const void*>(FAngelscriptEngine::TryGetCurrentEngine()),
-				static_cast<const void*>(&Engine));
+				TEXT("[Construct] Harness should establish current AS engine scope")));
 		}
 	}
 
@@ -87,10 +90,13 @@ class ATestWorldHarnessSpawnActor : AActor
 
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor));
-		TestRunner->TestTrue(TEXT("[Spawn] Returned actor should be an instance of the requested class"),
-			Actor->IsA(ScriptClass));
-		TestRunner->TestEqual(TEXT("[Spawn] Returned actor should belong to the harness world"),
-			static_cast<const void*>(Actor->GetWorld()), static_cast<const void*>(&W.GetWorld()));
+		ASSERT_THAT(IsTrue(
+			Actor->IsA(ScriptClass),
+			TEXT("[Spawn] Returned actor should be an instance of the requested class")));
+		ASSERT_THAT(AreEqual(
+			static_cast<const void*>(&W.GetWorld()),
+			static_cast<const void*>(Actor->GetWorld()),
+			TEXT("[Spawn] Returned actor should belong to the harness world")));
 	}
 
 	// Drive Actor->Tick exactly N times via DispatchActorTick and verify the
@@ -134,7 +140,7 @@ class ATestWorldHarnessActorTickActor : AActor
 
 		int32 TickCount = 0;
 		ASSERT_THAT(IsTrue(ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("TickCount"), TickCount)));
-		TestRunner->TestEqual(TEXT("[DispatchActorTick] AS TickCount should equal NumTicks"), TickCount, NumTicks);
+		ASSERT_THAT(AreEqual(NumTicks, TickCount, TEXT("[DispatchActorTick] AS TickCount should equal NumTicks")));
 	}
 
 	// Drive Component->TickComponent exactly N times via DispatchComponentTick
@@ -189,7 +195,7 @@ class UTestWorldHarnessComponentTickComp : UActorComponent
 
 		int32 TickCount = 0;
 		ASSERT_THAT(IsTrue(ReadPropertyValue<FIntProperty>(*TestRunner, Component, TEXT("TickCount"), TickCount)));
-		TestRunner->TestEqual(TEXT("[DispatchComponentTick] AS TickCount should equal NumTicks"), TickCount, NumTicks);
+		ASSERT_THAT(AreEqual(NumTicks, TickCount, TEXT("[DispatchComponentTick] AS TickCount should equal NumTicks")));
 	}
 
 	// DestroyAndDrain should synchronously dispatch EndPlay (with reason
@@ -249,13 +255,15 @@ class ATestWorldHarnessDestroyDrainActor : AActor
 		ASSERT_THAT(IsTrue(ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("EndPlayCount"), EndPlayCount)));
 		ASSERT_THAT(IsTrue(ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("DestroyedCount"), DestroyedCount)));
 
-		TestRunner->TestEqual(TEXT("[DestroyAndDrain] EndPlay should fire exactly once"), EndPlayCount, 1);
-		TestRunner->TestEqual(TEXT("[DestroyAndDrain] Destroyed should fire exactly once"), DestroyedCount, 1);
+		ASSERT_THAT(AreEqual(1, EndPlayCount, TEXT("[DestroyAndDrain] EndPlay should fire exactly once")));
+		ASSERT_THAT(AreEqual(1, DestroyedCount, TEXT("[DestroyAndDrain] Destroyed should fire exactly once")));
 
 		int64 LastEndPlayReason = -1;
 		ASSERT_THAT(IsTrue(GetEnumByPath(*TestRunner, Actor, TEXT("LastEndPlayReason"), LastEndPlayReason)));
-		TestRunner->TestEqual(TEXT("[DestroyAndDrain] EndPlay reason should be EEndPlayReason::Destroyed"),
-			LastEndPlayReason, static_cast<int64>(EEndPlayReason::Destroyed));
+		ASSERT_THAT(AreEqual(
+			static_cast<int64>(EEndPlayReason::Destroyed),
+			LastEndPlayReason,
+			TEXT("[DestroyAndDrain] EndPlay reason should be EEndPlayReason::Destroyed")));
 	}
 
 	// Calling BeginPlay twice on the same actor must not redispatch BeginPlay
@@ -298,7 +306,7 @@ class ATestWorldHarnessBeginPlayIdempotentActor : AActor
 
 		int32 BeginPlayCount = 0;
 		ASSERT_THAT(IsTrue(ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("BeginPlayCount"), BeginPlayCount)));
-		TestRunner->TestEqual(TEXT("[BeginPlay] Repeated BeginPlay calls should not redispatch"), BeginPlayCount, 1);
+		ASSERT_THAT(AreEqual(1, BeginPlayCount, TEXT("[BeginPlay] Repeated BeginPlay calls should not redispatch")));
 	}
 };
 

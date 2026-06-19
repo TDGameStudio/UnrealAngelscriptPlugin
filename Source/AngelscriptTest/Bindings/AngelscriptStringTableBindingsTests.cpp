@@ -127,34 +127,34 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptStringTableBindingsTest,
 
 		// Verify C++ registry state after script execution
 		FStringTableConstPtr StringTable = FStringTableRegistry::Get().FindStringTable(TableId);
-		TestRunner->TestNotNull(
-			TEXT("[StringTable] registered string table exists in FStringTableRegistry"),
-			StringTable.Get());
+		ASSERT_THAT(IsNotNull(
+			StringTable.Get(),
+			TEXT("[StringTable] registered string table exists in FStringTableRegistry")));
 
 		if (StringTable.Get() != nullptr)
 		{
 			FString SourceString;
 			const bool bHasSourceString = StringTable->GetSourceString(GreetingKey, SourceString);
-			TestRunner->TestTrue(
-				TEXT("[StringTable] Greeting source string is addressable in registry"),
-				bHasSourceString);
-			TestRunner->TestEqual(
-				TEXT("[StringTable] Greeting source string contents match"),
+			ASSERT_THAT(IsTrue(
+				bHasSourceString,
+				TEXT("[StringTable] Greeting source string is addressable in registry")));
+			ASSERT_THAT(AreEqual(
+				ExpectedGreeting,
 				SourceString,
-				ExpectedGreeting);
+				TEXT("[StringTable] Greeting source string contents match")));
 
 			const FString MetaData = StringTable->GetMetaData(GreetingKey, CommentMetaDataId);
-			TestRunner->TestEqual(
-				TEXT("[StringTable] Greeting metadata payload matches"),
+			ASSERT_THAT(AreEqual(
+				ExpectedComment,
 				MetaData,
-				ExpectedComment);
+				TEXT("[StringTable] Greeting metadata payload matches")));
 		}
 
 		// Verify table survives module discard (Mod destructor hasn't run yet,
 		// but we can check it's still registered before scope exit)
-		TestRunner->TestNotNull(
-			TEXT("[StringTable] registered table alive before explicit registry cleanup"),
-			FStringTableRegistry::Get().FindStringTable(TableId).Get());
+		ASSERT_THAT(IsNotNull(
+			FStringTableRegistry::Get().FindStringTable(TableId).Get(),
+			TEXT("[StringTable] registered table alive before explicit registry cleanup")));
 	}
 };
 

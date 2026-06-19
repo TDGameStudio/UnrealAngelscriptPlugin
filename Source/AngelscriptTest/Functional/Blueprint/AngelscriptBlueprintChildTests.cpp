@@ -14,10 +14,26 @@ namespace BlueprintChildTestConstants
 	constexpr int32 OverrideChainTickCount = 4;
 }
 
+namespace BlueprintChildTests_Private
+{
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsNotNull(Value, Message);
+	}
+}
+
 TEST_CLASS_WITH_FLAGS(FAngelscriptBlueprintChildTest,
 	"Angelscript.TestModule.Blueprint.Child",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		return BlueprintChildTests_Private::CheckNotNull(Test, Message, Value);
+	}
+
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -63,14 +79,14 @@ class ATestBPChildInheritsBeginPlayParent : AActor
 		if (!BPWorld.IsValid()) return;
 
 		AActor* Actor = BPWorld.SpawnActorOfClass(BP.GetGeneratedClass());
-		if (!TestRunner->TestNotNull(TEXT("Should spawn BP child"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Should spawn BP child"), Actor)) return;
 
 		BPWorld.BeginPlay(Engine, *Actor);
 
 		int32 BeginPlayCount = 0;
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("BeginPlayCount"), BeginPlayCount)) return;
 
-		TestRunner->TestEqual(TEXT("BP child should inherit and execute script BeginPlay"), BeginPlayCount, 1);
+		ASSERT_THAT(AreEqual(1, BeginPlayCount, TEXT("BP child should inherit and execute script BeginPlay")));
 	}
 
 	// =================================================================
@@ -111,7 +127,7 @@ class ATestBPChildInheritsTickParent : AActor
 		if (!BPWorld.IsValid()) return;
 
 		AActor* Actor = BPWorld.SpawnActorOfClass(BP.GetGeneratedClass());
-		if (!TestRunner->TestNotNull(TEXT("Should spawn BP child"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Should spawn BP child"), Actor)) return;
 
 		BPWorld.BeginPlay(Engine, *Actor);
 		BPWorld.Tick(Engine, BlueprintChildTestConstants::TickDeltaTime, BlueprintChildTestConstants::DefaultTickCount);
@@ -119,9 +135,9 @@ class ATestBPChildInheritsTickParent : AActor
 		int32 TickCount = 0;
 		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("TickCount"), TickCount)) return;
 
-		TestRunner->TestTrue(
-			TEXT("BP child should inherit script Tick for each world tick"),
-			TickCount >= BlueprintChildTestConstants::DefaultTickCount);
+		ASSERT_THAT(IsTrue(
+			TickCount >= BlueprintChildTestConstants::DefaultTickCount,
+			TEXT("BP child should inherit script Tick for each world tick")));
 	}
 
 	// =================================================================
@@ -166,7 +182,7 @@ class ATestBPChildScriptUFunctionCallableParent : AActor
 		if (!BPWorld.IsValid()) return;
 
 		AActor* Actor = BPWorld.SpawnActorOfClass(BP.GetGeneratedClass());
-		if (!TestRunner->TestNotNull(TEXT("Should spawn BP child"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Should spawn BP child"), Actor)) return;
 
 		if (!InvokeIntScriptFunction(*TestRunner, Engine, Actor,
 			TEXT("RecordExternalCall"), 77, TEXT("UFUNCTION invocation"))) return;
@@ -176,8 +192,8 @@ class ATestBPChildScriptUFunctionCallableParent : AActor
 		int32 LastCallValue = 0;
 		ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("LastCallValue"), LastCallValue);
 
-		TestRunner->TestEqual(TEXT("BP child should preserve script UFUNCTION dispatch"), ScriptCallCount, 1);
-		TestRunner->TestEqual(TEXT("BP child should preserve reflected integer parameters"), LastCallValue, 77);
+		ASSERT_THAT(AreEqual(1, ScriptCallCount, TEXT("BP child should preserve script UFUNCTION dispatch")));
+		ASSERT_THAT(AreEqual(77, LastCallValue, TEXT("BP child should preserve reflected integer parameters")));
 	}
 
 	// =================================================================
@@ -230,7 +246,7 @@ class ATestBPChildRecreateNoLeakParent : AActor
 		UClass* BPClass = BP.GetGeneratedClass();
 
 		AActor* First = BPWorld.SpawnActorOfClass(BPClass);
-		if (!TestRunner->TestNotNull(TEXT("Should spawn first actor"), First)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Should spawn first actor"), First)) return;
 
 		BPWorld.BeginPlay(Engine, *First);
 		if (!InvokeNoParamScriptFunction(*TestRunner, Engine, First,
@@ -243,7 +259,7 @@ class ATestBPChildRecreateNoLeakParent : AActor
 		BPWorld.Tick(Engine, 0.0f, 1);
 
 		AActor* Second = BPWorld.SpawnActorOfClass(BPClass);
-		if (!TestRunner->TestNotNull(TEXT("Should spawn second actor"), Second)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Should spawn second actor"), Second)) return;
 
 		BPWorld.BeginPlay(Engine, *Second);
 
@@ -252,9 +268,9 @@ class ATestBPChildRecreateNoLeakParent : AActor
 		int32 SecondBeginPlay = 0;
 		ReadPropertyValue<FIntProperty>(*TestRunner, Second, TEXT("BeginPlayCount"), SecondBeginPlay);
 
-		TestRunner->TestEqual(TEXT("First actor should have mutated state (10+1+37=48)"), FirstStateful, 48);
-		TestRunner->TestEqual(TEXT("Second actor should reset to defaults (10+1=11)"), SecondStateful, 11);
-		TestRunner->TestEqual(TEXT("Second actor should execute BeginPlay independently"), SecondBeginPlay, 1);
+		ASSERT_THAT(AreEqual(48, FirstStateful, TEXT("First actor should have mutated state (10+1+37=48)")));
+		ASSERT_THAT(AreEqual(11, SecondStateful, TEXT("Second actor should reset to defaults (10+1=11)")));
+		ASSERT_THAT(AreEqual(1, SecondBeginPlay, TEXT("Second actor should execute BeginPlay independently")));
 	}
 
 	// =================================================================
@@ -292,10 +308,10 @@ class ATestBPChildDefaultPreservationParent : AActor
 		if (!BP.CreateAndCompile(*TestRunner, ScriptClass, TEXT("DefaultPreservation"))) return;
 
 		UClass* BPClass = BP.GetGeneratedClass();
-		if (!TestRunner->TestNotNull(TEXT("BP should have a generated class"), BPClass)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("BP should have a generated class"), BPClass)) return;
 
 		UObject* CDO = BPClass->GetDefaultObject();
-		if (!TestRunner->TestNotNull(TEXT("BP should have a CDO"), CDO)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("BP should have a CDO"), CDO)) return;
 
 		int32 CDOCounter = 0;
 		ReadPropertyValue<FIntProperty>(*TestRunner, CDO, TEXT("DefaultCounter"), CDOCounter);
@@ -304,15 +320,15 @@ class ATestBPChildDefaultPreservationParent : AActor
 		FString CDOLabel;
 		ReadPropertyValue<FStrProperty>(*TestRunner, CDO, TEXT("DefaultLabel"), CDOLabel);
 
-		TestRunner->TestEqual(TEXT("CDO int default should be preserved"), CDOCounter, 23);
-		TestRunner->TestTrue(TEXT("CDO bool default should be preserved"), bCDOToggle);
-		TestRunner->TestEqual(TEXT("CDO string default should be preserved"), CDOLabel, FString(TEXT("ScriptParentDefault")));
+		ASSERT_THAT(AreEqual(23, CDOCounter, TEXT("CDO int default should be preserved")));
+		ASSERT_THAT(IsTrue(bCDOToggle, TEXT("CDO bool default should be preserved")));
+		ASSERT_THAT(AreEqual(FString(TEXT("ScriptParentDefault")), CDOLabel, TEXT("CDO string default should be preserved")));
 
 		FScopedBlueprintWorld BPWorld(*TestRunner);
 		if (!BPWorld.IsValid()) return;
 
 		AActor* Actor = BPWorld.SpawnActorOfClass(BPClass);
-		if (!TestRunner->TestNotNull(TEXT("Should spawn BP child"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Should spawn BP child"), Actor)) return;
 
 		int32 InstanceCounter = 0;
 		ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("DefaultCounter"), InstanceCounter);
@@ -321,9 +337,9 @@ class ATestBPChildDefaultPreservationParent : AActor
 		FString InstanceLabel;
 		ReadPropertyValue<FStrProperty>(*TestRunner, Actor, TEXT("DefaultLabel"), InstanceLabel);
 
-		TestRunner->TestEqual(TEXT("Instance int default should match parent"), InstanceCounter, 23);
-		TestRunner->TestTrue(TEXT("Instance bool default should match parent"), bInstanceToggle);
-		TestRunner->TestEqual(TEXT("Instance string default should match parent"), InstanceLabel, FString(TEXT("ScriptParentDefault")));
+		ASSERT_THAT(AreEqual(23, InstanceCounter, TEXT("Instance int default should match parent")));
+		ASSERT_THAT(IsTrue(bInstanceToggle, TEXT("Instance bool default should match parent")));
+		ASSERT_THAT(AreEqual(FString(TEXT("ScriptParentDefault")), InstanceLabel, TEXT("Instance string default should match parent")));
 	}
 
 	// =================================================================
@@ -421,7 +437,7 @@ class ATestBPChildOverrideChainScriptChild : ATestBPChildOverrideChainParent
 		if (!BPWorld.IsValid()) return;
 
 		AActor* Actor = BPWorld.SpawnActorOfClass(BP.GetGeneratedClass());
-		if (!TestRunner->TestNotNull(TEXT("Should spawn BP child"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Should spawn BP child"), Actor)) return;
 
 		BPWorld.BeginPlay(Engine, *Actor);
 		BPWorld.Tick(Engine, BlueprintChildTestConstants::TickDeltaTime, BlueprintChildTestConstants::OverrideChainTickCount);
@@ -432,12 +448,14 @@ class ATestBPChildOverrideChainScriptChild : ATestBPChildOverrideChainParent
 		ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("ParentTickCount"), ParentTick);
 		ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("ChildTickCount"), ChildTick);
 
-		TestRunner->TestEqual(TEXT("Parent BeginPlay step should execute once"), ParentBeginPlay, 1);
-		TestRunner->TestEqual(TEXT("Child BeginPlay step should execute once"), ChildBeginPlay, 1);
-		TestRunner->TestTrue(TEXT("Parent Tick step should execute at least once per world tick"),
-			ParentTick >= BlueprintChildTestConstants::OverrideChainTickCount);
-		TestRunner->TestTrue(TEXT("Child Tick step should execute at least once per world tick"),
-			ChildTick >= BlueprintChildTestConstants::OverrideChainTickCount);
+		ASSERT_THAT(AreEqual(1, ParentBeginPlay, TEXT("Parent BeginPlay step should execute once")));
+		ASSERT_THAT(AreEqual(1, ChildBeginPlay, TEXT("Child BeginPlay step should execute once")));
+		ASSERT_THAT(IsTrue(
+			ParentTick >= BlueprintChildTestConstants::OverrideChainTickCount,
+			TEXT("Parent Tick step should execute at least once per world tick")));
+		ASSERT_THAT(IsTrue(
+			ChildTick >= BlueprintChildTestConstants::OverrideChainTickCount,
+			TEXT("Child Tick step should execute at least once per world tick")));
 	}
 
 	// =================================================================
@@ -503,40 +521,40 @@ class ATestBPMultiLevelParent : ATestBPMultiLevelGrandParent
 		if (!BP.CreateAndCompile(*TestRunner, ScriptGrandchild, TEXT("MultiLevel"))) return;
 
 		UClass* BPClass = BP.GetGeneratedClass();
-		if (!TestRunner->TestNotNull(TEXT("BP should have a generated class"), BPClass)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("BP should have a generated class"), BPClass)) return;
 
-		TestRunner->TestTrue(TEXT("BP child should be child of the script parent"),
-			BPClass->IsChildOf(ScriptGrandchild));
+		ASSERT_THAT(IsTrue(BPClass->IsChildOf(ScriptGrandchild),
+			TEXT("BP child should be child of the script parent")));
 
 		UObject* CDO = BPClass->GetDefaultObject();
-		if (!TestRunner->TestNotNull(TEXT("BP should have a CDO"), CDO)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("BP should have a CDO"), CDO)) return;
 
 		int32 GrandParentVal = 0;
 		ReadPropertyValue<FIntProperty>(*TestRunner, CDO, TEXT("GrandParentValue"), GrandParentVal);
 		int32 ParentVal = 0;
 		ReadPropertyValue<FIntProperty>(*TestRunner, CDO, TEXT("ParentValue"), ParentVal);
 
-		TestRunner->TestEqual(TEXT("GrandParent property should propagate to BP CDO"), GrandParentVal, 100);
+		ASSERT_THAT(AreEqual(100, GrandParentVal, TEXT("GrandParent property should propagate to BP CDO")));
 		// ParentValue CDO default may not propagate through multi-level
 		// script inheritance; verify the property exists and is readable.
 		FIntProperty* ParentProp = FindFProperty<FIntProperty>(BPClass, TEXT("ParentValue"));
-		TestRunner->TestNotNull(TEXT("Parent property should exist on BP child class"), ParentProp);
+		ASSERT_THAT(IsNotNull(ParentProp, TEXT("Parent property should exist on BP child class")));
 
 		FScopedBlueprintWorld BPWorld(*TestRunner);
 		if (!BPWorld.IsValid()) return;
 
 		AActor* Actor = BPWorld.SpawnActorOfClass(BPClass);
-		if (!TestRunner->TestNotNull(TEXT("Should spawn BP child"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Should spawn BP child"), Actor)) return;
 
 		BPWorld.BeginPlay(Engine, *Actor);
 
 		int32 Chain = 0;
 		ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("BeginPlayChain"), Chain);
-		TestRunner->TestEqual(TEXT("Multi-level BeginPlay chain should execute child override (10)"), Chain, 10);
+		ASSERT_THAT(AreEqual(10, Chain, TEXT("Multi-level BeginPlay chain should execute child override (10)")));
 
 		int32 InstanceGPVal = 0;
 		ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("GrandParentValue"), InstanceGPVal);
-		TestRunner->TestEqual(TEXT("GrandParent property should be accessible on instance"), InstanceGPVal, 100);
+		ASSERT_THAT(AreEqual(100, InstanceGPVal, TEXT("GrandParent property should be accessible on instance")));
 	}
 
 	// =================================================================
@@ -580,38 +598,38 @@ class ATestBPChildScriptInterfaceActor : AActor
 		if (!BP.CreateAndCompile(*TestRunner, ScriptClass, TEXT("ScriptInterface"))) return;
 
 		UClass* BPClass = BP.GetGeneratedClass();
-		if (!TestRunner->TestNotNull(TEXT("BP should have a generated class"), BPClass)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("BP should have a generated class"), BPClass)) return;
 
-		TestRunner->TestTrue(TEXT("BP child class should be child of script parent"),
-			BPClass->IsChildOf(ScriptClass));
+		ASSERT_THAT(IsTrue(BPClass->IsChildOf(ScriptClass),
+			TEXT("BP child class should be child of script parent")));
 
 		FScopedBlueprintWorld BPWorld(*TestRunner);
 		if (!BPWorld.IsValid()) return;
 
 		AActor* Actor = BPWorld.SpawnActorOfClass(BPClass);
-		if (!TestRunner->TestNotNull(TEXT("Should spawn BP child"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Should spawn BP child"), Actor)) return;
 
 		// Verify multiple UFUNCTIONs are callable on the BP child
 		{
 			UFunction* GetValueFn = Actor->FindFunction(TEXT("GetInterfaceValue"));
-			if (TestRunner->TestNotNull(TEXT("BP child should expose GetInterfaceValue"), GetValueFn))
+			if (CheckNotNull(*TestRunner, TEXT("BP child should expose GetInterfaceValue"), GetValueFn))
 			{
 				struct FReturnInt { int32 ReturnValue = 0; };
 				FReturnInt Result;
 				FAngelscriptEngineScope FnScope(Engine, Actor);
 				Actor->ProcessEvent(GetValueFn, &Result);
-				TestRunner->TestEqual(TEXT("GetInterfaceValue should return 42"), Result.ReturnValue, 42);
+				ASSERT_THAT(AreEqual(42, Result.ReturnValue, TEXT("GetInterfaceValue should return 42")));
 			}
 		}
 
 		{
 			UFunction* GetLabelFn = Actor->FindFunction(TEXT("GetLabel"));
-			TestRunner->TestNotNull(TEXT("BP child should also expose GetLabel"), GetLabelFn);
+			ASSERT_THAT(IsNotNull(GetLabelFn, TEXT("BP child should also expose GetLabel")));
 		}
 
 		int32 InterfaceResult = 0;
 		ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("InterfaceResult"), InterfaceResult);
-		TestRunner->TestEqual(TEXT("UPROPERTY default should propagate to BP child instance"), InterfaceResult, 42);
+		ASSERT_THAT(AreEqual(42, InterfaceResult, TEXT("UPROPERTY default should propagate to BP child instance")));
 	}
 };
 

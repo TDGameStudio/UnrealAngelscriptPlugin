@@ -114,13 +114,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 		};
 
 		FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
-		if (!TestRunner->TestNull(TEXT("RuntimeModule initialize-override test should start without a current engine"), FAngelscriptEngine::TryGetCurrentEngine()))
+		if (!this->Assert.IsNull(FAngelscriptEngine::TryGetCurrentEngine(), TEXT("RuntimeModule initialize-override test should start without a current engine")))
 		{
 			return;
 		}
 
 		TUniquePtr<FAngelscriptEngine> OverrideEngine = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("RuntimeModule initialize-override test should create an isolated override engine"), OverrideEngine.Get()))
+		if (!this->Assert.IsNotNull(OverrideEngine.Get(), TEXT("RuntimeModule initialize-override test should create an isolated override engine")))
 		{
 			return;
 		}
@@ -131,9 +131,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 		});
 
 		FAngelscriptRuntimeModule::InitializeAngelscript();
-		if (!TestRunner->TestTrue(
-				TEXT("RuntimeModule initialize-override test should make the override engine current after first initialize"),
-				FAngelscriptEngine::TryGetCurrentEngine() == OverrideEngine.Get()))
+		if (!this->Assert.IsTrue(
+				FAngelscriptEngine::TryGetCurrentEngine() == OverrideEngine.Get(),
+				TEXT("RuntimeModule initialize-override test should make the override engine current after first initialize")))
 		{
 			return;
 		}
@@ -141,13 +141,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 		FAngelscriptRuntimeModule::InitializeAngelscript();
 
 		TArray<FAngelscriptEngine*> StackAfterSecondInitialize = FAngelscriptEngineContextStack::SnapshotAndClear();
-		if (!TestRunner->TestEqual(
-				TEXT("RuntimeModule initialize-override test should keep exactly one engine on the context stack after repeated initialize"),
+		if (!this->Assert.AreEqual(
+				1,
 				StackAfterSecondInitialize.Num(),
-				1)
-			|| !TestRunner->TestTrue(
-				TEXT("RuntimeModule initialize-override test should keep the override engine as the only stack entry"),
-				StackAfterSecondInitialize.Num() == 1 && StackAfterSecondInitialize[0] == OverrideEngine.Get()))
+				TEXT("RuntimeModule initialize-override test should keep exactly one engine on the context stack after repeated initialize"))
+			|| !this->Assert.IsTrue(
+				StackAfterSecondInitialize.Num() == 1 && StackAfterSecondInitialize[0] == OverrideEngine.Get(),
+				TEXT("RuntimeModule initialize-override test should keep the override engine as the only stack entry")))
 		{
 			return;
 		}
@@ -155,18 +155,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 		FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(StackAfterSecondInitialize));
 		FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
 
-		if (!TestRunner->TestNull(
-				TEXT("RuntimeModule initialize-override test should clear the current engine after reset"),
-				FAngelscriptEngine::TryGetCurrentEngine()))
+		if (!this->Assert.IsNull(
+				FAngelscriptEngine::TryGetCurrentEngine(),
+				TEXT("RuntimeModule initialize-override test should clear the current engine after reset")))
 		{
 			return;
 		}
 
 		const TArray<FAngelscriptEngine*> StackAfterReset = FAngelscriptEngineContextStack::SnapshotAndClear();
-		TestRunner->TestEqual(
-			TEXT("RuntimeModule initialize-override test should leave the context stack empty after reset"),
+		(void)this->Assert.AreEqual(
+			0,
 			StackAfterReset.Num(),
-			0);
+			TEXT("RuntimeModule initialize-override test should leave the context stack empty after reset"));
 	}
 
 	TEST_METHOD(InitializeRoutesToEngineSubsystem)
@@ -183,7 +183,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 		FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
 		FAngelscriptRuntimeModule RuntimeModule;
 		UAngelscriptEngineSubsystem* EngineSubsystem = UAngelscriptEngineSubsystem::Get();
-		if (!TestRunner->TestNotNull(TEXT("RuntimeModule subsystem-route test should have an engine subsystem in editor automation"), EngineSubsystem))
+		if (!this->Assert.IsNotNull(EngineSubsystem, TEXT("RuntimeModule subsystem-route test should have an engine subsystem in editor automation")))
 		{
 			return;
 		}
@@ -200,65 +200,67 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 			DestroySharedTestEngine();
 		};
 
-		if (!TestRunner->TestNull(TEXT("RuntimeModule shutdown test should start without a current engine"), FAngelscriptEngine::TryGetCurrentEngine()))
+		if (!this->Assert.IsNull(FAngelscriptEngine::TryGetCurrentEngine(), TEXT("RuntimeModule shutdown test should start without a current engine")))
 		{
 			return;
 		}
 
 		FAngelscriptRuntimeModule::InitializeAngelscript();
-		if (!TestRunner->TestFalse(
-				TEXT("RuntimeModule subsystem-route test should not create a module-owned primary engine when the engine subsystem exists"),
-				FAngelscriptRuntimeModuleTickTestAccess::HasOwnedPrimaryEngine()))
+		if (!this->Assert.IsFalse(
+				FAngelscriptRuntimeModuleTickTestAccess::HasOwnedPrimaryEngine(),
+				TEXT("RuntimeModule subsystem-route test should not create a module-owned primary engine when the engine subsystem exists")))
 		{
 			return;
 		}
 
 		FAngelscriptEngine* SubsystemEngine = EngineSubsystem->GetEngine();
-		if (!TestRunner->TestNotNull(
-				TEXT("RuntimeModule subsystem-route test should expose the subsystem primary engine instance"),
-				SubsystemEngine))
+		if (!this->Assert.IsNotNull(
+				SubsystemEngine,
+				TEXT("RuntimeModule subsystem-route test should expose the subsystem primary engine instance")))
 		{
 			return;
 		}
-		if (!TestRunner->TestTrue(
-				TEXT("RuntimeModule subsystem-route test should make the subsystem primary engine current"),
-				FAngelscriptEngine::TryGetCurrentEngine() == SubsystemEngine))
+		if (!this->Assert.IsTrue(
+				FAngelscriptEngine::TryGetCurrentEngine() == SubsystemEngine,
+				TEXT("RuntimeModule subsystem-route test should make the subsystem primary engine current")))
 		{
 			return;
 		}
 
 		RuntimeModule.ShutdownModule();
 
-		TestRunner->TestFalse(
-			TEXT("RuntimeModule subsystem-route test should still not own the primary engine after shutdown"),
-			FAngelscriptRuntimeModuleTickTestAccess::HasOwnedPrimaryEngine());
-		TestRunner->TestTrue(
-			TEXT("RuntimeModule subsystem-route test should leave the subsystem primary engine current after module shutdown"),
-			FAngelscriptEngine::TryGetCurrentEngine() == SubsystemEngine);
+		bool bOk = true;
+		bOk &= this->Assert.IsFalse(
+			FAngelscriptRuntimeModuleTickTestAccess::HasOwnedPrimaryEngine(),
+			TEXT("RuntimeModule subsystem-route test should still not own the primary engine after shutdown"));
+		bOk &= this->Assert.IsTrue(
+			FAngelscriptEngine::TryGetCurrentEngine() == SubsystemEngine,
+			TEXT("RuntimeModule subsystem-route test should leave the subsystem primary engine current after module shutdown"));
 
 		TArray<FAngelscriptEngine*> StackAfterFirstShutdown = FAngelscriptEngineContextStack::SnapshotAndClear();
-		TestRunner->TestEqual(
-			TEXT("RuntimeModule subsystem-route test should leave exactly one subsystem engine on the context stack after first shutdown"),
+		bOk &= this->Assert.AreEqual(
+			1,
 			StackAfterFirstShutdown.Num(),
-			1);
-		TestRunner->TestTrue(
-			TEXT("RuntimeModule subsystem-route test should keep the subsystem engine as the only stack entry"),
-			StackAfterFirstShutdown.Num() == 1 && StackAfterFirstShutdown[0] == SubsystemEngine);
+			TEXT("RuntimeModule subsystem-route test should leave exactly one subsystem engine on the context stack after first shutdown"));
+		bOk &= this->Assert.IsTrue(
+			StackAfterFirstShutdown.Num() == 1 && StackAfterFirstShutdown[0] == SubsystemEngine,
+			TEXT("RuntimeModule subsystem-route test should keep the subsystem engine as the only stack entry"));
 
 		RuntimeModule.ShutdownModule();
 
-		TestRunner->TestFalse(
-			TEXT("RuntimeModule subsystem-route test should keep module-owned engine absent on repeated shutdown"),
-			FAngelscriptRuntimeModuleTickTestAccess::HasOwnedPrimaryEngine());
-		TestRunner->TestNull(
-			TEXT("RuntimeModule subsystem-route test should keep the current engine cleared after the test manually clears the stack"),
-			FAngelscriptEngine::TryGetCurrentEngine());
+		bOk &= this->Assert.IsFalse(
+			FAngelscriptRuntimeModuleTickTestAccess::HasOwnedPrimaryEngine(),
+			TEXT("RuntimeModule subsystem-route test should keep module-owned engine absent on repeated shutdown"));
+		bOk &= this->Assert.IsNull(
+			FAngelscriptEngine::TryGetCurrentEngine(),
+			TEXT("RuntimeModule subsystem-route test should keep the current engine cleared after the test manually clears the stack"));
 
 		TArray<FAngelscriptEngine*> StackAfterSecondShutdown = FAngelscriptEngineContextStack::SnapshotAndClear();
-		TestRunner->TestEqual(
-			TEXT("RuntimeModule subsystem-route test should keep the context stack empty after manual clear and repeated shutdown"),
+		bOk &= this->Assert.AreEqual(
+			0,
 			StackAfterSecondShutdown.Num(),
-			0);
+			TEXT("RuntimeModule subsystem-route test should keep the context stack empty after manual clear and repeated shutdown"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(StartupModuleDoesNotBootstrapPrimaryEngine)
@@ -291,7 +293,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 			return nullptr;
 		});
 
-		if (!TestRunner->TestNull(TEXT("RuntimeModule startup test should start without a current engine"), FAngelscriptEngine::TryGetCurrentEngine()))
+		if (!this->Assert.IsNull(FAngelscriptEngine::TryGetCurrentEngine(), TEXT("RuntimeModule startup test should start without a current engine")))
 		{
 			return;
 		}
@@ -299,24 +301,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 		FAngelscriptRuntimeModule RuntimeModule;
 		RuntimeModule.StartupModule();
 
-		TestRunner->TestEqual(
-			TEXT("RuntimeModule startup test should not call compatibility initialization"),
+		bool bOk = true;
+		bOk &= this->Assert.AreEqual(
+			0,
 			InitializeCalls,
-			0);
-		TestRunner->TestFalse(
-			TEXT("RuntimeModule startup test should leave InitializeAngelscript uncalled"),
-			FAngelscriptRuntimeModuleTickTestAccess::WasInitializeAngelscriptCalled());
-		TestRunner->TestNull(
-			TEXT("RuntimeModule startup test should leave the context stack empty"),
-			FAngelscriptEngine::TryGetCurrentEngine());
+			TEXT("RuntimeModule startup test should not call compatibility initialization"));
+		bOk &= this->Assert.IsFalse(
+			FAngelscriptRuntimeModuleTickTestAccess::WasInitializeAngelscriptCalled(),
+			TEXT("RuntimeModule startup test should leave InitializeAngelscript uncalled"));
+		bOk &= this->Assert.IsNull(
+			FAngelscriptEngine::TryGetCurrentEngine(),
+			TEXT("RuntimeModule startup test should leave the context stack empty"));
 
 		RuntimeModule.ShutdownModule();
 
 		const TArray<FAngelscriptEngine*> StackAfterStartup = FAngelscriptEngineContextStack::SnapshotAndClear();
-		TestRunner->TestEqual(
-			TEXT("RuntimeModule startup test should leave the context stack empty after shutdown"),
+		bOk &= this->Assert.AreEqual(
+			0,
 			StackAfterStartup.Num(),
-			0);
+			TEXT("RuntimeModule startup test should leave the context stack empty after shutdown"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(InitializeAdoptsAmbientEngineWithoutOwningIt)
@@ -342,81 +346,83 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 		};
 
 		FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
-		if (!TestRunner->TestNull(TEXT("RuntimeModule ambient-initialize test should start without a current engine"), FAngelscriptEngine::TryGetCurrentEngine()))
+		if (!this->Assert.IsNull(FAngelscriptEngine::TryGetCurrentEngine(), TEXT("RuntimeModule ambient-initialize test should start without a current engine")))
 		{
 			return;
 		}
 
 		TUniquePtr<FAngelscriptEngine> AmbientEngine = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("RuntimeModule ambient-initialize test should create an isolated ambient engine"), AmbientEngine.Get()))
+		if (!this->Assert.IsNotNull(AmbientEngine.Get(), TEXT("RuntimeModule ambient-initialize test should create an isolated ambient engine")))
 		{
 			return;
 		}
 
 		{
 			FAngelscriptEngineScope AmbientScope(*AmbientEngine);
-			TestRunner->TestTrue(
-				TEXT("RuntimeModule ambient-initialize test should make the isolated engine current inside the scope"),
-				FAngelscriptEngine::TryGetCurrentEngine() == AmbientEngine.Get());
+			bool bOk = true;
+			bOk &= this->Assert.IsTrue(
+				FAngelscriptEngine::TryGetCurrentEngine() == AmbientEngine.Get(),
+				TEXT("RuntimeModule ambient-initialize test should make the isolated engine current inside the scope"));
 
 			TArray<FAngelscriptEngine*> StackBeforeInitialize = FAngelscriptEngineContextStack::SnapshotAndClear();
-			TestRunner->TestEqual(
-				TEXT("RuntimeModule ambient-initialize test should start with exactly one ambient engine on the context stack"),
+			bOk &= this->Assert.AreEqual(
+				1,
 				StackBeforeInitialize.Num(),
-				1);
-			TestRunner->TestTrue(
-				TEXT("RuntimeModule ambient-initialize test should keep the ambient engine as the only pre-initialize stack entry"),
-				StackBeforeInitialize.Num() == 1 && StackBeforeInitialize[0] == AmbientEngine.Get());
+				TEXT("RuntimeModule ambient-initialize test should start with exactly one ambient engine on the context stack"));
+			bOk &= this->Assert.IsTrue(
+				StackBeforeInitialize.Num() == 1 && StackBeforeInitialize[0] == AmbientEngine.Get(),
+				TEXT("RuntimeModule ambient-initialize test should keep the ambient engine as the only pre-initialize stack entry"));
 			FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(StackBeforeInitialize));
 
 			FAngelscriptRuntimeModule::InitializeAngelscript();
 
-			TestRunner->TestTrue(
-				TEXT("RuntimeModule ambient-initialize test should mark initialize as called after initialization"),
-				FAngelscriptRuntimeModuleTickTestAccess::WasInitializeAngelscriptCalled());
-			TestRunner->TestTrue(
-				TEXT("RuntimeModule ambient-initialize test should keep the ambient engine current after initialization"),
-				FAngelscriptEngine::TryGetCurrentEngine() == AmbientEngine.Get());
-			TestRunner->TestFalse(
-				TEXT("RuntimeModule ambient-initialize test should not create an owned primary engine when an ambient engine already exists"),
-				FAngelscriptRuntimeModuleTickTestAccess::HasOwnedPrimaryEngine());
+			bOk &= this->Assert.IsTrue(
+				FAngelscriptRuntimeModuleTickTestAccess::WasInitializeAngelscriptCalled(),
+				TEXT("RuntimeModule ambient-initialize test should mark initialize as called after initialization"));
+			bOk &= this->Assert.IsTrue(
+				FAngelscriptEngine::TryGetCurrentEngine() == AmbientEngine.Get(),
+				TEXT("RuntimeModule ambient-initialize test should keep the ambient engine current after initialization"));
+			bOk &= this->Assert.IsFalse(
+				FAngelscriptRuntimeModuleTickTestAccess::HasOwnedPrimaryEngine(),
+				TEXT("RuntimeModule ambient-initialize test should not create an owned primary engine when an ambient engine already exists"));
 
 			TArray<FAngelscriptEngine*> StackAfterInitialize = FAngelscriptEngineContextStack::SnapshotAndClear();
-			TestRunner->TestEqual(
-				TEXT("RuntimeModule ambient-initialize test should keep the context stack depth unchanged after initialization"),
+			bOk &= this->Assert.AreEqual(
+				1,
 				StackAfterInitialize.Num(),
-				1);
-			TestRunner->TestTrue(
-				TEXT("RuntimeModule ambient-initialize test should keep the ambient engine as the only stack entry after initialization"),
-				StackAfterInitialize.Num() == 1 && StackAfterInitialize[0] == AmbientEngine.Get());
+				TEXT("RuntimeModule ambient-initialize test should keep the context stack depth unchanged after initialization"));
+			bOk &= this->Assert.IsTrue(
+				StackAfterInitialize.Num() == 1 && StackAfterInitialize[0] == AmbientEngine.Get(),
+				TEXT("RuntimeModule ambient-initialize test should keep the ambient engine as the only stack entry after initialization"));
 			FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(StackAfterInitialize));
 
 			FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
 
-			TestRunner->TestFalse(
-				TEXT("RuntimeModule ambient-initialize test should clear the initialize-called flag on reset"),
-				FAngelscriptRuntimeModuleTickTestAccess::WasInitializeAngelscriptCalled());
-			TestRunner->TestTrue(
-				TEXT("RuntimeModule ambient-initialize test should preserve the ambient current engine after reset"),
-				FAngelscriptEngine::TryGetCurrentEngine() == AmbientEngine.Get());
-			TestRunner->TestFalse(
-				TEXT("RuntimeModule ambient-initialize test should still avoid owned-engine creation after reset"),
-				FAngelscriptRuntimeModuleTickTestAccess::HasOwnedPrimaryEngine());
+			bOk &= this->Assert.IsFalse(
+				FAngelscriptRuntimeModuleTickTestAccess::WasInitializeAngelscriptCalled(),
+				TEXT("RuntimeModule ambient-initialize test should clear the initialize-called flag on reset"));
+			bOk &= this->Assert.IsTrue(
+				FAngelscriptEngine::TryGetCurrentEngine() == AmbientEngine.Get(),
+				TEXT("RuntimeModule ambient-initialize test should preserve the ambient current engine after reset"));
+			bOk &= this->Assert.IsFalse(
+				FAngelscriptRuntimeModuleTickTestAccess::HasOwnedPrimaryEngine(),
+				TEXT("RuntimeModule ambient-initialize test should still avoid owned-engine creation after reset"));
 
 			TArray<FAngelscriptEngine*> StackAfterReset = FAngelscriptEngineContextStack::SnapshotAndClear();
-			TestRunner->TestEqual(
-				TEXT("RuntimeModule ambient-initialize test should preserve the ambient stack depth after reset"),
+			bOk &= this->Assert.AreEqual(
+				1,
 				StackAfterReset.Num(),
-				1);
-			TestRunner->TestTrue(
-				TEXT("RuntimeModule ambient-initialize test should keep the ambient engine as the only stack entry after reset"),
-				StackAfterReset.Num() == 1 && StackAfterReset[0] == AmbientEngine.Get());
+				TEXT("RuntimeModule ambient-initialize test should preserve the ambient stack depth after reset"));
+			bOk &= this->Assert.IsTrue(
+				StackAfterReset.Num() == 1 && StackAfterReset[0] == AmbientEngine.Get(),
+				TEXT("RuntimeModule ambient-initialize test should keep the ambient engine as the only stack entry after reset"));
 			FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(StackAfterReset));
+			(void)bOk;
 		}
 
-		TestRunner->TestNull(
-			TEXT("RuntimeModule ambient-initialize test should clear the current engine after the ambient scope exits"),
-			FAngelscriptEngine::TryGetCurrentEngine());
+		(void)this->Assert.IsNull(
+			FAngelscriptEngine::TryGetCurrentEngine(),
+			TEXT("RuntimeModule ambient-initialize test should clear the current engine after the ambient scope exits"));
 	}
 };
 
@@ -449,19 +455,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineSubsystemTickTests,
 		};
 
 		TUniquePtr<FAngelscriptEngine> TestEngine = CreateFullTestEngine();
-		if (!TestRunner->TestNotNull(TEXT("EngineSubsystem tick test should create an isolated full engine"), TestEngine.Get()))
+		if (!this->Assert.IsNotNull(TestEngine.Get(), TEXT("EngineSubsystem tick test should create an isolated full engine")))
 		{
 			return;
 		}
 
 		FAngelscriptEngineScope EngineScope(*TestEngine);
-		if (!TestRunner->TestTrue(TEXT("EngineSubsystem tick test should make the isolated engine current"), FAngelscriptEngine::TryGetCurrentEngine() == TestEngine.Get()))
+		if (!this->Assert.IsTrue(FAngelscriptEngine::TryGetCurrentEngine() == TestEngine.Get(), TEXT("EngineSubsystem tick test should make the isolated engine current")))
 		{
 			return;
 		}
 
 		TStrongObjectPtr<UAngelscriptEngineSubsystem> EngineSubsystem(NewObject<UAngelscriptEngineSubsystem>(GetTransientPackage()));
-		if (!TestRunner->TestNotNull(TEXT("EngineSubsystem tick test should create a native subsystem object"), EngineSubsystem.Get()))
+		if (!this->Assert.IsNotNull(EngineSubsystem.Get(), TEXT("EngineSubsystem tick test should create a native subsystem object")))
 		{
 			return;
 		}
@@ -471,27 +477,29 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineSubsystemTickTests,
 		FAngelscriptTickBehaviorTestAccess::SetActiveTickOwners(0);
 		FAngelscriptTickBehaviorTestAccess::PrepareTickProbe(*TestEngine, -1.0);
 
-		TestRunner->TestFalse(
-			TEXT("EngineSubsystem tick test should start without game instance tick owners"),
-			UAngelscriptGameInstanceSubsystem::HasAnyTickOwner());
+		bool bOk = this->Assert.IsFalse(
+			UAngelscriptGameInstanceSubsystem::HasAnyTickOwner(),
+			TEXT("EngineSubsystem tick test should start without game instance tick owners"));
 		EngineSubsystem->Tick(0.016f);
-		TestRunner->TestTrue(
-			TEXT("EngineSubsystem tick test should advance NextHotReloadCheck when no game instance owner exists"),
-			FAngelscriptTickBehaviorTestAccess::GetNextHotReloadCheck(*TestEngine) > 0.0);
+		bOk &= this->Assert.IsTrue(
+			FAngelscriptTickBehaviorTestAccess::GetNextHotReloadCheck(*TestEngine) > 0.0,
+			TEXT("EngineSubsystem tick test should advance NextHotReloadCheck when no game instance owner exists"));
 
 		FAngelscriptTickBehaviorTestAccess::SetActiveTickOwners(1);
 		FAngelscriptTickBehaviorTestAccess::PrepareTickProbe(*TestEngine, -1.0);
 
-		TestRunner->TestTrue(
-			TEXT("EngineSubsystem tick test should report an active game instance tick owner after setup"),
-			UAngelscriptGameInstanceSubsystem::HasAnyTickOwner());
+		bOk &= this->Assert.IsTrue(
+			UAngelscriptGameInstanceSubsystem::HasAnyTickOwner(),
+			TEXT("EngineSubsystem tick test should report an active game instance tick owner after setup"));
 		EngineSubsystem->Tick(0.016f);
-		TestRunner->TestEqual(
-			TEXT("EngineSubsystem tick test should leave NextHotReloadCheck unchanged while a game instance owner exists"),
+		bOk &= this->Assert.IsNear(
+			-1.0,
 			FAngelscriptTickBehaviorTestAccess::GetNextHotReloadCheck(*TestEngine),
-			-1.0);
+			0.0,
+			TEXT("EngineSubsystem tick test should leave NextHotReloadCheck unchanged while a game instance owner exists"));
 
 		EngineSubsystem->Deinitialize();
+		(void)bOk;
 	}
 };
 

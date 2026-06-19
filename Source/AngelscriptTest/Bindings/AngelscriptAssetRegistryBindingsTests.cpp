@@ -140,17 +140,17 @@ void TriggerNullParent(TArray<UObject>& OutAssets)
 		// Compute native baseline
 		TArray<FAssetData> NativeAssets;
 		const bool bNativeQuerySucceeded = GetAssetRegistryChecked().GetAssetsByClass(FTopLevelAssetPath(UBlueprint::StaticClass()), NativeAssets);
-		TestRunner->TestTrue(TEXT("Native AssetRegistry GetAssetsByClass(UBlueprint) baseline should succeed"), bNativeQuerySucceeded);
+		ASSERT_THAT(IsTrue(bNativeQuerySucceeded, TEXT("Native AssetRegistry GetAssetsByClass(UBlueprint) baseline should succeed")));
 
 		// Validate Entry result matches native count
 		FASGlobalFunctionInvoker EntryInvoker(*TestRunner, Engine, M, TEXT("int Entry()"));
 		if (EntryInvoker.IsValid())
 		{
 			const int32 ScriptResult = EntryInvoker.CallAndReturn<int32>(INDEX_NONE);
-			TestRunner->TestEqual(
-				TEXT("FTopLevelAssetPath round-trip and AssetRegistry::GetAssetsByClass should preserve native UBlueprint asset count"),
+			ASSERT_THAT(AreEqual(
+				NativeAssets.Num() + 1,
 				ScriptResult,
-				NativeAssets.Num() + 1);
+				TEXT("FTopLevelAssetPath round-trip and AssetRegistry::GetAssetsByClass should preserve native UBlueprint asset count")));
 		}
 
 		// Negative path: null parent exception
@@ -167,10 +167,10 @@ void TriggerNullParent(TArray<UObject>& OutAssets)
 			TEXT("TriggerNullParent"),
 			TEXT("A null Class was passed to GetBlueprintCDOsByParentClass.")))
 		{
-			TestRunner->TestEqual(
-				TEXT("GetBlueprintCDOsByParentClass(null) should leave output array empty"),
+			ASSERT_THAT(AreEqual(
+				0,
 				NativeBlueprintCDOs.Num(),
-				0);
+				TEXT("GetBlueprintCDOsByParentClass(null) should leave output array empty")));
 		}
 	}
 
@@ -201,15 +201,12 @@ void TriggerNullParent(TArray<UObject>& OutAssets)
 		const FTopLevelAssetPath NativeTopLevelPath(TargetObjectPath);
 		const FString NativeTopLevelPathString = NativeTopLevelPath.ToString();
 
-		if (!TestRunner->TestTrue(TEXT("Native HasAssets baseline"), bNativeHasAssets)
-			|| !TestRunner->TestTrue(TEXT("Native GetAssetsByPath baseline"), bNativeGetAssetsByPath)
-			|| !TestRunner->TestTrue(TEXT("Native GetAssetByObjectPath baseline"), NativeObjectPathString == TargetObjectPath)
-			|| !TestRunner->TestTrue(TEXT("Native GetAllAssets baseline"), bNativeGetAllAssets)
-			|| !TestRunner->TestTrue(TEXT("Native GetAllAssets contains target"), bNativeAllAssetsContainTarget)
-			|| !TestRunner->TestTrue(TEXT("Native FTopLevelAssetPath valid"), NativeTopLevelPath.IsValid()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(bNativeHasAssets, TEXT("Native HasAssets baseline")));
+		ASSERT_THAT(IsTrue(bNativeGetAssetsByPath, TEXT("Native GetAssetsByPath baseline")));
+		ASSERT_THAT(IsTrue(NativeObjectPathString == TargetObjectPath, TEXT("Native GetAssetByObjectPath baseline")));
+		ASSERT_THAT(IsTrue(bNativeGetAllAssets, TEXT("Native GetAllAssets baseline")));
+		ASSERT_THAT(IsTrue(bNativeAllAssetsContainTarget, TEXT("Native GetAllAssets contains target")));
+		ASSERT_THAT(IsTrue(NativeTopLevelPath.IsValid(), TEXT("Native FTopLevelAssetPath valid")));
 
 		FString Script = TEXT(R"(
 int VerifyTopLevelPathRoundTrip()

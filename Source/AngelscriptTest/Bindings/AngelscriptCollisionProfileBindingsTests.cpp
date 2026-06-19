@@ -53,8 +53,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCollisionProfileBindingsTest,
 
 		// Compute native baselines
 		UCollisionProfile* CP = UCollisionProfile::Get();
-		if (!TestRunner->TestNotNull(TEXT("CollisionProfile singleton should be available"), CP))
+		if (!this->Assert.IsNotNull(CP, TEXT("CollisionProfile singleton should be available")))
+		{
 			return;
+		}
 
 		const int32 WorldStaticObjType = static_cast<int32>(CP->ConvertToObjectType(ECC_WorldStatic));
 		const int32 WorldDynamicObjType = static_cast<int32>(CP->ConvertToObjectType(ECC_WorldDynamic));
@@ -119,8 +121,10 @@ int ObjType_WorldDynamicRoundTrip()
 
 		// Compute native baselines
 		UCollisionProfile* CP = UCollisionProfile::Get();
-		if (!TestRunner->TestNotNull(TEXT("CollisionProfile singleton should be available"), CP))
+		if (!this->Assert.IsNotNull(CP, TEXT("CollisionProfile singleton should be available")))
+		{
 			return;
+		}
 
 		const int32 VisibilityTraceType = static_cast<int32>(CP->ConvertToTraceType(ECC_Visibility));
 		const int32 CameraTraceType = static_cast<int32>(CP->ConvertToTraceType(ECC_Camera));

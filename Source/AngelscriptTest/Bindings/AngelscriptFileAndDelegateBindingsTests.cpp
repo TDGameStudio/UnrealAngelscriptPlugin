@@ -128,10 +128,7 @@ int DelegateBind_ClearMakesUnbound()
 		FAngelscriptEngineScope Scope(Engine);
 
 		UAngelscriptNativeScriptTestObject* NativeTestObject = GetMutableDefault<UAngelscriptNativeScriptTestObject>();
-		if (!TestRunner->TestNotNull(TEXT("Script delegate execute compat test should resolve the native test object"), NativeTestObject))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(NativeTestObject, TEXT("Script delegate execute compat test should resolve the native test object")));
 		NativeTestObject->NameCounts.Reset();
 		ON_SCOPE_EXIT { NativeTestObject->NameCounts.Reset(); };
 
@@ -164,12 +161,9 @@ int DelegateExec_MulticastBroadcast()
 		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegateExec_MulticastBroadcast()"), TEXT("Multicast broadcast then unbind should leave unbound"), 1);
 
 		const int32* AlphaCount = NativeTestObject->NameCounts.Find(TEXT("Alpha"));
-		TestRunner->TestNotNull(TEXT("Multicast delegate broadcast should write the expected label key"), AlphaCount);
-		if (AlphaCount != nullptr)
-		{
-			TestRunner->TestEqual(TEXT("Multicast delegate broadcast should forward the expected value"), *AlphaCount, 7);
-		}
-		TestRunner->TestFalse(TEXT("Unbound multicast delegate should not write additional label entries"), NativeTestObject->NameCounts.Contains(TEXT("Beta")));
+		ASSERT_THAT(IsNotNull(AlphaCount, TEXT("Multicast delegate broadcast should write the expected label key")));
+		ASSERT_THAT(AreEqual(7, *AlphaCount, TEXT("Multicast delegate broadcast should forward the expected value")));
+		ASSERT_THAT(IsFalse(NativeTestObject->NameCounts.Contains(TEXT("Beta")), TEXT("Unbound multicast delegate should not write additional label entries")));
 	}
 
 	// ====================================================================
@@ -267,10 +261,7 @@ int SoftPath_ClassPathFromString()
 		FAngelscriptEngineScope Scope(Engine);
 
 		UClass* NativeActorClass = AActor::StaticClass();
-		if (!TestRunner->TestNotNull(TEXT("SoftPath resolve compat test should resolve the native actor class"), NativeActorClass))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(NativeActorClass, TEXT("SoftPath resolve compat test should resolve the native actor class")));
 
 		const FSoftObjectPath NativeObjectPath(NativeActorClass);
 		const FSoftClassPath NativeClassPath(NativeActorClass);
@@ -281,11 +272,8 @@ int SoftPath_ClassPathFromString()
 		const FString ExpectedObjectAssetPathString = NativeObjectPath.GetAssetPath().ToString();
 		const FString ExpectedClassAssetPathString = NativeClassPath.GetAssetPath().ToString();
 
-		if (!TestRunner->TestTrue(TEXT("Native soft object path baseline should be valid"), NativeObjectPath.IsValid())
-			|| !TestRunner->TestTrue(TEXT("Native soft class path baseline should be valid"), NativeClassPath.IsValid()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(NativeObjectPath.IsValid(), TEXT("Native soft object path baseline should be valid")));
+		ASSERT_THAT(IsTrue(NativeClassPath.IsValid(), TEXT("Native soft class path baseline should be valid")));
 
 		FString Script = TEXT(R"(
 int SoftResolve_ObjectPathValid()
@@ -416,16 +404,12 @@ class UBindingSourceMetadataCarrier : UObject
 			IFileManager::Get().Delete(*ScriptPath, false, true, true);
 		};
 
-		if (!TestRunner->TestTrue(TEXT("Write source metadata script file should succeed"), FFileHelper::SaveStringToFile(ScriptSource, *ScriptPath)))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(
+			FFileHelper::SaveStringToFile(ScriptSource, *ScriptPath),
+			TEXT("Write source metadata script file should succeed")));
 
 		const bool bAnnotatedCompiled = CompileAnnotatedModuleFromMemory(&Engine, TEXT("RuntimeSourceMetadataBindingsTest"), ScriptPath, ScriptSource);
-		if (!TestRunner->TestTrue(TEXT("Compile annotated source metadata module should succeed"), bAnnotatedCompiled))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(bAnnotatedCompiled, TEXT("Compile annotated source metadata module should succeed")));
 
 		FString Script = TEXT(R"AS(
 int SourceMeta_ClassFilePath()
@@ -539,10 +523,7 @@ int FileHelper_SaveAndLoad()
 		FAngelscriptEngineScope Scope(Engine);
 
 		UAngelscriptNativeScriptTestObject* NativeTestObject = GetMutableDefault<UAngelscriptNativeScriptTestObject>();
-		if (!TestRunner->TestNotNull(TEXT("DelegateWithPayload compat test should resolve the native test object"), NativeTestObject))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(NativeTestObject, TEXT("DelegateWithPayload compat test should resolve the native test object")));
 		NativeTestObject->bNativeFlag = false;
 		NativeTestObject->LargeCount = 0;
 
@@ -593,8 +574,8 @@ void TriggerSignatureMismatch()
 		auto& M = Mod.GetModule();
 
 		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegatePayload_HappyPath()"), TEXT("DelegateWithPayload happy path should execute both bindings"), 1);
-		TestRunner->TestTrue(TEXT("DelegateWithPayload should execute the bound no-payload native function"), NativeTestObject->bNativeFlag);
-		TestRunner->TestEqual(TEXT("DelegateWithPayload should forward the boxed int payload"), NativeTestObject->LargeCount, static_cast<int64>(123));
+		ASSERT_THAT(IsTrue(NativeTestObject->bNativeFlag, TEXT("DelegateWithPayload should execute the bound no-payload native function")));
+		ASSERT_THAT(AreEqual(static_cast<int64>(123), NativeTestObject->LargeCount, TEXT("DelegateWithPayload should forward the boxed int payload")));
 
 		ExecuteFunctionExpectingScriptException(*TestRunner, Engine, M, 
 			TEXT("void TriggerInvalidPayloadType()"),

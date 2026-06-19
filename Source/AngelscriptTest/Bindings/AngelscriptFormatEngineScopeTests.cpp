@@ -13,6 +13,7 @@ namespace AngelscriptTest_Bindings_FormatEngineScope_Private
 		const TCHAR* ModuleName)
 	{
 		FAngelscriptEngineScope Scope(Engine);
+		FNoDiscardAsserter Assert(Test);
 		FScopedAngelscriptModule Module(Test, Engine, ModuleName, TEXT(R"(
 int FStringFormatLiteralArg()
 {
@@ -35,9 +36,9 @@ int FTextFormatValueArg()
 	return Result.ToString() == "Text" ? 1 : 0;
 }
 )"));
-		if (!Test.TestTrue(
-			*FString::Printf(TEXT("%s should compile"), ModuleName),
-			Module.IsValid()))
+		if (!Assert.IsTrue(
+			Module.IsValid(),
+			*FString::Printf(TEXT("%s should compile"), ModuleName)))
 		{
 			return false;
 		}

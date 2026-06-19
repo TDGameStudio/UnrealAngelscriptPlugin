@@ -58,21 +58,22 @@ namespace ASFunctionDispatchTests
 
 	bool ExpectFunctionClass(FAutomationTestBase& Test, UClass* OwnerClass, const FMatrixCase& TestCase)
 	{
+		FNoDiscardAsserter Assert(Test);
 		UASFunction* Function = Cast<UASFunction>(FindGeneratedFunction(OwnerClass, TestCase.FunctionName));
-		if (!Test.TestNotNull(
-				*FString::Printf(TEXT("AllocateFunctionFor matrix should expose '%s'"), TestCase.FunctionName),
-				Function))
+		if (!Assert.IsNotNull(
+				Function,
+				*FString::Printf(TEXT("AllocateFunctionFor matrix should expose '%s'"), TestCase.FunctionName)))
 		{
 			return false;
 		}
 
-		return Test.TestTrue(
+		return Assert.IsTrue(
+			Function->GetClass() == TestCase.ExpectedFunctionClass,
 			*FString::Printf(
 				TEXT("AllocateFunctionFor %s should select %s (actual: %s)"),
 				TestCase.CaseLabel,
 				*GetNameSafe(TestCase.ExpectedFunctionClass),
-				*DescribeActualFunctionClass(Function)),
-			Function->GetClass() == TestCase.ExpectedFunctionClass);
+				*DescribeActualFunctionClass(Function)));
 	}
 
 	UASClass* CompileMatrixClass(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
@@ -294,41 +295,41 @@ class UASFunctionDispatchClassThreadSafeWithOverride : UObject
 			}
 
 			UASFunction* GeneratedFunction = Cast<UASFunction>(FindGeneratedFunction(ScriptClass, TEXT("GetValue")));
-			if (!TestRunner->TestNotNull(
-					*FString::Printf(TEXT("AllocateFunctionFor %s case should generate GetValue"), TestCase.CaseLabel),
-					GeneratedFunction))
+			if (!this->Assert.IsNotNull(
+					GeneratedFunction,
+					*FString::Printf(TEXT("AllocateFunctionFor %s case should generate GetValue"), TestCase.CaseLabel)))
 			{
 				return;
 			}
 
-			TestRunner->TestTrue(
+			ASSERT_THAT(IsTrue(
+				ASFunctionDispatchTests::MatchesExpectedFunctionClass(*GeneratedFunction, TestCase),
 				*FString::Printf(
 					TEXT("AllocateFunctionFor %s case should select %s (actual: %s)"),
 					TestCase.CaseLabel,
 					*ASFunctionDispatchTests::DescribeExpectedFunctionClasses(TestCase),
-					*ASFunctionDispatchTests::DescribeActualFunctionClass(GeneratedFunction)),
-				ASFunctionDispatchTests::MatchesExpectedFunctionClass(*GeneratedFunction, TestCase));
+					*ASFunctionDispatchTests::DescribeActualFunctionClass(GeneratedFunction))));
 
 			UObject* Instance = NewObject<UObject>(GetTransientPackage(), ScriptClass);
-			if (!TestRunner->TestNotNull(
-					*FString::Printf(TEXT("AllocateFunctionFor %s case should instantiate the generated class"), TestCase.CaseLabel),
-					Instance))
+			if (!this->Assert.IsNotNull(
+					Instance,
+					*FString::Printf(TEXT("AllocateFunctionFor %s case should instantiate the generated class"), TestCase.CaseLabel)))
 			{
 				return;
 			}
 
 			int32 Result = 0;
-			if (!TestRunner->TestTrue(
-					*FString::Printf(TEXT("AllocateFunctionFor %s case should execute the generated function"), TestCase.CaseLabel),
-					ExecuteGeneratedIntEventOnGameThread(&Engine, Instance, GeneratedFunction, Result)))
+			if (!this->Assert.IsTrue(
+					ExecuteGeneratedIntEventOnGameThread(&Engine, Instance, GeneratedFunction, Result),
+					*FString::Printf(TEXT("AllocateFunctionFor %s case should execute the generated function"), TestCase.CaseLabel)))
 			{
 				return;
 			}
 
-			TestRunner->TestEqual(
-				*FString::Printf(TEXT("AllocateFunctionFor %s case should keep GetValue returning 1"), TestCase.CaseLabel),
+			ASSERT_THAT(AreEqual(
+				1,
 				Result,
-				1);
+				*FString::Printf(TEXT("AllocateFunctionFor %s case should keep GetValue returning 1"), TestCase.CaseLabel)));
 		}
 
 		}
@@ -347,13 +348,13 @@ class UASFunctionDispatchClassThreadSafeWithOverride : UObject
 		};
 
 		UASClass* ScriptClass = ASFunctionDispatchTests::CompileMatrixClass(*TestRunner, Engine);
-		if (!TestRunner->TestNotNull(TEXT("AllocateFunctionFor matrix should compile a script class"), ScriptClass))
+		if (!this->Assert.IsNotNull(ScriptClass, TEXT("AllocateFunctionFor matrix should compile a script class")))
 		{
 			return;
 		}
 
 		UClass* StaticsClass = FindGeneratedClass(&Engine, MatrixStaticsClassName);
-		if (!TestRunner->TestNotNull(TEXT("AllocateFunctionFor matrix should generate the module statics class"), StaticsClass))
+		if (!this->Assert.IsNotNull(StaticsClass, TEXT("AllocateFunctionFor matrix should generate the module statics class")))
 		{
 			return;
 		}
@@ -399,21 +400,21 @@ class UASFunctionDispatchClassThreadSafeWithOverride : UObject
 
 		UASFunction* ReturnDWordFunction = Cast<UASFunction>(FindGeneratedFunction(ScriptClass, TEXT("ReturnDWord")));
 		UObject* Instance = NewObject<UObject>(GetTransientPackage(), ScriptClass, TEXT("ASFunctionDispatchMatrixInstance"));
-		if (!TestRunner->TestNotNull(TEXT("AllocateFunctionFor matrix should instantiate the generated class"), Instance)
-			|| !TestRunner->TestNotNull(TEXT("AllocateFunctionFor matrix should expose ReturnDWord"), ReturnDWordFunction))
+		if (!this->Assert.IsNotNull(Instance, TEXT("AllocateFunctionFor matrix should instantiate the generated class"))
+			|| !this->Assert.IsNotNull(ReturnDWordFunction, TEXT("AllocateFunctionFor matrix should expose ReturnDWord")))
 		{
 			return;
 		}
 
 		int32 Result = 0;
-		if (!TestRunner->TestTrue(
-				TEXT("AllocateFunctionFor matrix should execute a representative return wrapper"),
-				ExecuteGeneratedIntEventOnGameThread(&Engine, Instance, ReturnDWordFunction, Result)))
+		if (!this->Assert.IsTrue(
+				ExecuteGeneratedIntEventOnGameThread(&Engine, Instance, ReturnDWordFunction, Result),
+				TEXT("AllocateFunctionFor matrix should execute a representative return wrapper")))
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Representative dispatch matrix wrapper should preserve script behavior"), Result, 11);
+		ASSERT_THAT(AreEqual(11, Result, TEXT("Representative dispatch matrix wrapper should preserve script behavior")));
 
 		}
 	}

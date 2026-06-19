@@ -122,43 +122,51 @@ class UAdditionalChecksRejectedTarget : UObject
 }
 )AS");
 
-		if (!TestRunner->TestTrue(TEXT("Initial additional-compile-checks module compile should succeed"),
-			CompileAnnotatedModuleFromMemory(&Engine, AdditionalChecksModuleName, AdditionalChecksFilename, ScriptV1)))
+		ASSERT_THAT(IsTrue(
+			CompileAnnotatedModuleFromMemory(&Engine, AdditionalChecksModuleName, AdditionalChecksFilename, ScriptV1),
+			TEXT("Initial additional-compile-checks module compile should succeed")));
+		if (FindGeneratedClass(&Engine, AdditionalChecksClassName) == nullptr)
 		{ return; }
 
 		UClass* InitialGeneratedClass = FindGeneratedClass(&Engine, AdditionalChecksClassName);
-		if (!TestRunner->TestNotNull(TEXT("Initial additional-compile-checks compile should publish the generated script class"), InitialGeneratedClass))
+		ASSERT_THAT(IsNotNull(InitialGeneratedClass, TEXT("Initial additional-compile-checks compile should publish the generated script class")));
+		if (InitialGeneratedClass == nullptr)
 		{ return; }
 
-		TestRunner->TestEqual(TEXT("Initial annotated compile should invoke the compile hook exactly once"), Recorder->CompileCheckCount, 1);
-		TestRunner->TestEqual(TEXT("Initial annotated compile should invoke the post-reload hook exactly once"), Recorder->PostReloadCount, 1);
-		TestRunner->TestEqual(TEXT("Initial annotated compile should report the module name to the hook"), Recorder->LastModuleName, AdditionalChecksModuleName.ToString());
-		TestRunner->TestEqual(TEXT("Initial annotated compile should report the generated class name to the hook"), Recorder->LastClassName, AdditionalChecksClassName.ToString());
-		if (!TestRunner->TestEqual(TEXT("Initial annotated compile should record exactly one post-reload event"), Recorder->PostReloadHistory.Num(), 1))
+		ASSERT_THAT(AreEqual(1, Recorder->CompileCheckCount, TEXT("Initial annotated compile should invoke the compile hook exactly once")));
+		ASSERT_THAT(AreEqual(1, Recorder->PostReloadCount, TEXT("Initial annotated compile should invoke the post-reload hook exactly once")));
+		ASSERT_THAT(AreEqual(AdditionalChecksModuleName.ToString(), Recorder->LastModuleName, TEXT("Initial annotated compile should report the module name to the hook")));
+		ASSERT_THAT(AreEqual(AdditionalChecksClassName.ToString(), Recorder->LastClassName, TEXT("Initial annotated compile should report the generated class name to the hook")));
+		ASSERT_THAT(AreEqual(1, Recorder->PostReloadHistory.Num(), TEXT("Initial annotated compile should record exactly one post-reload event")));
+		if (Recorder->PostReloadHistory.Num() != 1)
 		{ return; }
-		TestRunner->TestTrue(TEXT("Initial annotated compile helper should surface the post-reload hook as a full reload"), Recorder->PostReloadHistory[0]);
-		TestRunner->TestTrue(TEXT("Initial annotated compile helper should leave the last post-reload flag in full-reload state"), Recorder->bLastFullReload);
+		ASSERT_THAT(IsTrue(Recorder->PostReloadHistory[0], TEXT("Initial annotated compile helper should surface the post-reload hook as a full reload")));
+		ASSERT_THAT(IsTrue(Recorder->bLastFullReload, TEXT("Initial annotated compile helper should leave the last post-reload flag in full-reload state")));
 
 		ECompileResult ReloadResult = ECompileResult::Error;
-		if (!TestRunner->TestTrue(TEXT("Additional-compile-checks structural reload should compile successfully"),
-			CompileModuleWithResult(&Engine, ECompileType::FullReload, AdditionalChecksModuleName, AdditionalChecksFilename, ScriptV2, ReloadResult)))
+		const bool bReloadCompiled = CompileModuleWithResult(&Engine, ECompileType::FullReload, AdditionalChecksModuleName, AdditionalChecksFilename, ScriptV2, ReloadResult);
+		ASSERT_THAT(IsTrue(bReloadCompiled, TEXT("Additional-compile-checks structural reload should compile successfully")));
+		if (!bReloadCompiled)
 		{ return; }
-		if (!TestRunner->TestTrue(TEXT("Additional-compile-checks structural reload should stay on a handled reload path"), IsHandledReloadResult(ReloadResult)))
+		ASSERT_THAT(IsTrue(IsHandledReloadResult(ReloadResult), TEXT("Additional-compile-checks structural reload should stay on a handled reload path")));
+		if (!IsHandledReloadResult(ReloadResult))
 		{ return; }
 
 		UClass* ReloadedGeneratedClass = FindGeneratedClass(&Engine, AdditionalChecksClassName);
-		if (!TestRunner->TestNotNull(TEXT("Additional-compile-checks full reload should keep the generated script class queryable"), ReloadedGeneratedClass))
+		ASSERT_THAT(IsNotNull(ReloadedGeneratedClass, TEXT("Additional-compile-checks full reload should keep the generated script class queryable")));
+		if (ReloadedGeneratedClass == nullptr)
 		{ return; }
 
-		TestRunner->TestNotEqual(TEXT("Additional-compile-checks full reload should replace the generated class object after a structural change"), ReloadedGeneratedClass, InitialGeneratedClass);
-		TestRunner->TestEqual(TEXT("Full reload should invoke the compile hook for the replacement class"), Recorder->CompileCheckCount, 2);
-		TestRunner->TestEqual(TEXT("Full reload should invoke the post-reload hook a second time"), Recorder->PostReloadCount, 2);
-		if (!TestRunner->TestEqual(TEXT("Full reload should record two post-reload events in total"), Recorder->PostReloadHistory.Num(), 2))
+		ASSERT_THAT(AreNotEqual(ReloadedGeneratedClass, InitialGeneratedClass, TEXT("Additional-compile-checks full reload should replace the generated class object after a structural change")));
+		ASSERT_THAT(AreEqual(2, Recorder->CompileCheckCount, TEXT("Full reload should invoke the compile hook for the replacement class")));
+		ASSERT_THAT(AreEqual(2, Recorder->PostReloadCount, TEXT("Full reload should invoke the post-reload hook a second time")));
+		ASSERT_THAT(AreEqual(2, Recorder->PostReloadHistory.Num(), TEXT("Full reload should record two post-reload events in total")));
+		if (Recorder->PostReloadHistory.Num() != 2)
 		{ return; }
-		TestRunner->TestTrue(TEXT("Full reload should report the second post-reload event as a full reload"), Recorder->PostReloadHistory[1]);
-		TestRunner->TestTrue(TEXT("Full reload should leave the last post-reload flag in full-reload state"), Recorder->bLastFullReload);
-		TestRunner->TestEqual(TEXT("Full reload should continue reporting the target module name"), Recorder->LastModuleName, AdditionalChecksModuleName.ToString());
-		TestRunner->TestEqual(TEXT("Full reload should continue reporting the target class name"), Recorder->LastClassName, AdditionalChecksClassName.ToString());
+		ASSERT_THAT(IsTrue(Recorder->PostReloadHistory[1], TEXT("Full reload should report the second post-reload event as a full reload")));
+		ASSERT_THAT(IsTrue(Recorder->bLastFullReload, TEXT("Full reload should leave the last post-reload flag in full-reload state")));
+		ASSERT_THAT(AreEqual(AdditionalChecksModuleName.ToString(), Recorder->LastModuleName, TEXT("Full reload should continue reporting the target module name")));
+		ASSERT_THAT(AreEqual(AdditionalChecksClassName.ToString(), Recorder->LastClassName, TEXT("Full reload should continue reporting the target class name")));
 
 		Recorder->bRejectCompile = true;
 
@@ -167,15 +175,15 @@ class UAdditionalChecksRejectedTarget : UObject
 			&Engine, ECompileType::FullReload, AdditionalChecksRejectedModuleName, AdditionalChecksRejectedFilename,
 			RejectScript, true, RejectSummary, true);
 
-		TestRunner->TestFalse(TEXT("A rejecting additional compile check should fail compilation"), bRejectedCompiled);
-		TestRunner->TestEqual(TEXT("A rejecting additional compile check should surface an error compile result"), RejectSummary.CompileResult, ECompileResult::Error);
-		TestRunner->TestTrue(TEXT("A rejecting additional compile check should emit at least one diagnostic"), RejectSummary.Diagnostics.Num() > 0);
-		TestRunner->TestTrue(TEXT("A rejecting additional compile check should preserve the rejection text in diagnostics"), SummaryContainsDiagnosticMessage(RejectSummary, Recorder->RejectMessage));
-		TestRunner->TestEqual(TEXT("A rejecting additional compile check should still invoke the compile hook"), Recorder->CompileCheckCount, 3);
-		TestRunner->TestEqual(TEXT("A rejecting additional compile check should not advance the post-reload hook count"), Recorder->PostReloadCount, 2);
-		TestRunner->TestEqual(TEXT("A rejecting additional compile check should report the rejected module name"), Recorder->LastModuleName, AdditionalChecksRejectedModuleName.ToString());
-		TestRunner->TestEqual(TEXT("A rejecting additional compile check should report the rejected class name"), Recorder->LastClassName, AdditionalChecksRejectedClassName.ToString());
-		TestRunner->TestNull(TEXT("A rejecting additional compile check should not publish the rejected class"), FindGeneratedClass(&Engine, AdditionalChecksRejectedClassName));
+		ASSERT_THAT(IsFalse(bRejectedCompiled, TEXT("A rejecting additional compile check should fail compilation")));
+		ASSERT_THAT(AreEqual(ECompileResult::Error, RejectSummary.CompileResult, TEXT("A rejecting additional compile check should surface an error compile result")));
+		ASSERT_THAT(IsTrue(RejectSummary.Diagnostics.Num() > 0, TEXT("A rejecting additional compile check should emit at least one diagnostic")));
+		ASSERT_THAT(IsTrue(SummaryContainsDiagnosticMessage(RejectSummary, Recorder->RejectMessage), TEXT("A rejecting additional compile check should preserve the rejection text in diagnostics")));
+		ASSERT_THAT(AreEqual(3, Recorder->CompileCheckCount, TEXT("A rejecting additional compile check should still invoke the compile hook")));
+		ASSERT_THAT(AreEqual(2, Recorder->PostReloadCount, TEXT("A rejecting additional compile check should not advance the post-reload hook count")));
+		ASSERT_THAT(AreEqual(AdditionalChecksRejectedModuleName.ToString(), Recorder->LastModuleName, TEXT("A rejecting additional compile check should report the rejected module name")));
+		ASSERT_THAT(AreEqual(AdditionalChecksRejectedClassName.ToString(), Recorder->LastClassName, TEXT("A rejecting additional compile check should report the rejected class name")));
+		ASSERT_THAT(IsNull(FindGeneratedClass(&Engine, AdditionalChecksRejectedClassName), TEXT("A rejecting additional compile check should not publish the rejected class")));
 
 		}
 	}

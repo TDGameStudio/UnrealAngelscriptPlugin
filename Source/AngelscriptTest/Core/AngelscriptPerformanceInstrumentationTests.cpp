@@ -12,7 +12,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPerformanceInstrumentationTests,
 	{
 		const TArray<FName> ScopeNames = FAngelscriptPerformanceStats::GetKnownScopeNamesForTesting();
 		const TSet<FName> UniqueScopeNames(ScopeNames);
-		TestRunner->TestEqual(TEXT("Performance instrumentation scope catalog should not contain duplicates"), ScopeNames.Num(), UniqueScopeNames.Num());
+		ASSERT_THAT(AreEqual(
+			UniqueScopeNames.Num(),
+			ScopeNames.Num(),
+			TEXT("Performance instrumentation scope catalog should not contain duplicates")));
 
 		const FName ExpectedScopes[] = {
 			TEXT("Angelscript.Startup.BindDatabase"),
@@ -34,7 +37,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPerformanceInstrumentationTests,
 		for (const FName& ExpectedScope : ExpectedScopes)
 		{
 			const bool bContainsScope = UniqueScopeNames.Contains(ExpectedScope);
-			TestRunner->TestTrue(*FString::Printf(TEXT("Performance instrumentation should register scope %s"), *ExpectedScope.ToString()), bContainsScope);
+			ASSERT_THAT(IsTrue(
+				bContainsScope,
+				*FString::Printf(TEXT("Performance instrumentation should register scope %s"), *ExpectedScope.ToString())));
 		}
 	}
 };

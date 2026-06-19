@@ -116,39 +116,39 @@ class USummaryConsumer : UObject
 		AssertNoDiagnostics(*TestRunner, Session.Result);
 
 		const FAngelscriptPreprocessorSummary Summary = Session.Preprocessor.GetSummary();
-		TestRunner->TestTrue(TEXT("Summary should report success"), Summary.bSucceeded);
-		TestRunner->TestEqual(TEXT("Summary should report two files"), Summary.FileCount, 2);
-		TestRunner->TestEqual(TEXT("Summary should report two modules"), Summary.ModuleCount, 2);
-		TestRunner->TestEqual(TEXT("Summary should report one explicit import"), Summary.ImportCount, 1);
-		TestRunner->TestEqual(TEXT("Summary should report two classes"), Summary.ClassCount, 2);
-		TestRunner->TestEqual(TEXT("Summary should report one function"), Summary.FunctionCount, 1);
-		TestRunner->TestEqual(TEXT("Summary should report two properties"), Summary.PropertyCount, 2);
-		TestRunner->TestEqual(TEXT("Summary should report one enum"), Summary.EnumCount, 1);
-		TestRunner->TestEqual(TEXT("Summary should report one delegate"), Summary.DelegateCount, 1);
-		TestRunner->TestTrue(TEXT("Summary should report generated code"), Summary.GeneratedCodeSectionCount > 0);
-		TestRunner->TestTrue(TEXT("Summary should report processed code"), Summary.ProcessedCodeCharacterCount > 0);
+		ASSERT_THAT(IsTrue(Summary.bSucceeded, TEXT("Summary should report success")));
+		ASSERT_THAT(AreEqual(2, Summary.FileCount, TEXT("Summary should report two files")));
+		ASSERT_THAT(AreEqual(2, Summary.ModuleCount, TEXT("Summary should report two modules")));
+		ASSERT_THAT(AreEqual(1, Summary.ImportCount, TEXT("Summary should report one explicit import")));
+		ASSERT_THAT(AreEqual(2, Summary.ClassCount, TEXT("Summary should report two classes")));
+		ASSERT_THAT(AreEqual(1, Summary.FunctionCount, TEXT("Summary should report one function")));
+		ASSERT_THAT(AreEqual(2, Summary.PropertyCount, TEXT("Summary should report two properties")));
+		ASSERT_THAT(AreEqual(1, Summary.EnumCount, TEXT("Summary should report one enum")));
+		ASSERT_THAT(AreEqual(1, Summary.DelegateCount, TEXT("Summary should report one delegate")));
+		ASSERT_THAT(IsTrue(Summary.GeneratedCodeSectionCount > 0, TEXT("Summary should report generated code")));
+		ASSERT_THAT(IsTrue(Summary.ProcessedCodeCharacterCount > 0, TEXT("Summary should report processed code")));
 
-		TestRunner->TestTrue(
-			TEXT("Summary should contain shared module name"),
-			Summary.ModuleNames.Contains(TEXT("Tests.Preprocessor.Summary.Shared")));
-		TestRunner->TestTrue(
-			TEXT("Summary should contain consumer module name"),
-			Summary.ModuleNames.Contains(TEXT("Tests.Preprocessor.Summary.Consumer")));
-		TestRunner->TestTrue(
-			TEXT("Summary should contain class names"),
-			Summary.ClassNames.Contains(TEXT("USummaryShared")) && Summary.ClassNames.Contains(TEXT("USummaryConsumer")));
-		TestRunner->TestTrue(
-			TEXT("Summary should contain function name"),
-			Summary.FunctionNames.Contains(TEXT("GetAmount")));
-		TestRunner->TestTrue(
-			TEXT("Summary should contain property names"),
-			Summary.PropertyNames.Contains(TEXT("SharedValue")) && Summary.PropertyNames.Contains(TEXT("ConsumerValue")));
-		TestRunner->TestTrue(
-			TEXT("Summary should contain enum name"),
-			Summary.EnumNames.Contains(TEXT("ESummaryState")));
-		TestRunner->TestTrue(
-			TEXT("Summary should contain delegate name"),
-			Summary.DelegateNames.Contains(TEXT("FSummaryDelegate")));
+		ASSERT_THAT(IsTrue(
+			Summary.ModuleNames.Contains(TEXT("Tests.Preprocessor.Summary.Shared")),
+			TEXT("Summary should contain shared module name")));
+		ASSERT_THAT(IsTrue(
+			Summary.ModuleNames.Contains(TEXT("Tests.Preprocessor.Summary.Consumer")),
+			TEXT("Summary should contain consumer module name")));
+		ASSERT_THAT(IsTrue(
+			Summary.ClassNames.Contains(TEXT("USummaryShared")) && Summary.ClassNames.Contains(TEXT("USummaryConsumer")),
+			TEXT("Summary should contain class names")));
+		ASSERT_THAT(IsTrue(
+			Summary.FunctionNames.Contains(TEXT("GetAmount")),
+			TEXT("Summary should contain function name")));
+		ASSERT_THAT(IsTrue(
+			Summary.PropertyNames.Contains(TEXT("SharedValue")) && Summary.PropertyNames.Contains(TEXT("ConsumerValue")),
+			TEXT("Summary should contain property names")));
+		ASSERT_THAT(IsTrue(
+			Summary.EnumNames.Contains(TEXT("ESummaryState")),
+			TEXT("Summary should contain enum name")));
+		ASSERT_THAT(IsTrue(
+			Summary.DelegateNames.Contains(TEXT("FSummaryDelegate")),
+			TEXT("Summary should contain delegate name")));
 
 		const FAngelscriptPreprocessorFileSummary* ConsumerFile = Summary.Files.FindByPredicate(
 			[](const FAngelscriptPreprocessorFileSummary& FileSummary)
@@ -156,11 +156,11 @@ class USummaryConsumer : UObject
 				return FileSummary.ModuleName == TEXT("Tests.Preprocessor.Summary.Consumer");
 			});
 
-		if (TestRunner->TestNotNull(TEXT("Summary should include a consumer file summary"), ConsumerFile))
+		if (this->Assert.IsNotNull(ConsumerFile, TEXT("Summary should include a consumer file summary")))
 		{
-			TestRunner->TestEqual(TEXT("Consumer file should report one import"), ConsumerFile->ImportCount, 1);
-			TestRunner->TestTrue(TEXT("Consumer file should report its imported module"), ConsumerFile->ImportedModuleNames.Contains(TEXT("Tests.Preprocessor.Summary.Shared")));
-			TestRunner->TestEqual(TEXT("Consumer file should report one class"), ConsumerFile->ClassCount, 1);
+			ASSERT_THAT(AreEqual(1, ConsumerFile->ImportCount, TEXT("Consumer file should report one import")));
+			ASSERT_THAT(IsTrue(ConsumerFile->ImportedModuleNames.Contains(TEXT("Tests.Preprocessor.Summary.Shared")), TEXT("Consumer file should report its imported module")));
+			ASSERT_THAT(AreEqual(1, ConsumerFile->ClassCount, TEXT("Consumer file should report one class")));
 		}
 
 		}
@@ -194,25 +194,25 @@ class USummaryHookCarrier : UObject
 		AssertPreprocessSucceeded(*TestRunner, Result);
 		AssertNoDiagnostics(*TestRunner, Result);
 
-		TestRunner->TestEqual(TEXT("ProcessChunks hook should capture one summary"), Capture.ProcessChunksSummaries.Num(), 1);
-		TestRunner->TestEqual(TEXT("PostProcessCode hook should capture one summary"), Capture.PostProcessCodeSummaries.Num(), 1);
+		ASSERT_THAT(AreEqual(1, Capture.ProcessChunksSummaries.Num(), TEXT("ProcessChunks hook should capture one summary")));
+		ASSERT_THAT(AreEqual(1, Capture.PostProcessCodeSummaries.Num(), TEXT("PostProcessCode hook should capture one summary")));
 
 		if (Capture.ProcessChunksSummaries.Num() == 1)
 		{
 			const FAngelscriptPreprocessorSummary& ProcessSummary = Capture.ProcessChunksSummaries[0];
-			TestRunner->TestEqual(TEXT("ProcessChunks summary should identify its phase"), ProcessSummary.Stage, EAngelscriptPreprocessorSummaryStage::ProcessChunks);
-			TestRunner->TestEqual(TEXT("ProcessChunks summary should report class count"), ProcessSummary.ClassCount, 1);
-			TestRunner->TestEqual(TEXT("ProcessChunks summary should report property count"), ProcessSummary.PropertyCount, 1);
-			TestRunner->TestEqual(TEXT("ProcessChunks summary should not report final processed code yet"), ProcessSummary.ProcessedCodeCharacterCount, 0);
+			ASSERT_THAT(AreEqual(EAngelscriptPreprocessorSummaryStage::ProcessChunks, ProcessSummary.Stage, TEXT("ProcessChunks summary should identify its phase")));
+			ASSERT_THAT(AreEqual(1, ProcessSummary.ClassCount, TEXT("ProcessChunks summary should report class count")));
+			ASSERT_THAT(AreEqual(1, ProcessSummary.PropertyCount, TEXT("ProcessChunks summary should report property count")));
+			ASSERT_THAT(AreEqual(0, ProcessSummary.ProcessedCodeCharacterCount, TEXT("ProcessChunks summary should not report final processed code yet")));
 		}
 
 		if (Capture.PostProcessCodeSummaries.Num() == 1)
 		{
 			const FAngelscriptPreprocessorSummary& PostSummary = Capture.PostProcessCodeSummaries[0];
-			TestRunner->TestEqual(TEXT("PostProcessCode summary should identify its phase"), PostSummary.Stage, EAngelscriptPreprocessorSummaryStage::PostProcessCode);
-			TestRunner->TestEqual(TEXT("PostProcessCode summary should report class count"), PostSummary.ClassCount, 1);
-			TestRunner->TestEqual(TEXT("PostProcessCode summary should report property count"), PostSummary.PropertyCount, 1);
-			TestRunner->TestTrue(TEXT("PostProcessCode summary should report final processed code"), PostSummary.ProcessedCodeCharacterCount > 0);
+			ASSERT_THAT(AreEqual(EAngelscriptPreprocessorSummaryStage::PostProcessCode, PostSummary.Stage, TEXT("PostProcessCode summary should identify its phase")));
+			ASSERT_THAT(AreEqual(1, PostSummary.ClassCount, TEXT("PostProcessCode summary should report class count")));
+			ASSERT_THAT(AreEqual(1, PostSummary.PropertyCount, TEXT("PostProcessCode summary should report property count")));
+			ASSERT_THAT(IsTrue(PostSummary.ProcessedCodeCharacterCount > 0, TEXT("PostProcessCode summary should report final processed code")));
 		}
 
 		}

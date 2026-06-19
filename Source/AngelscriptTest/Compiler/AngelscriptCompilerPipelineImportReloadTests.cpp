@@ -154,20 +154,20 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 				InitialPreprocessErrorCount),
 			TEXT("\n"));
 
-		TestRunner->TestTrue(
-			TEXT("Declared import reload should preprocess the initial provider and consumer"),
-			bInitialPreprocessSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Declared import reload should keep initial preprocessing diagnostics empty"),
+		ASSERT_THAT(IsTrue(
+			bInitialPreprocessSucceeded,
+			TEXT("Declared import reload should preprocess the initial provider and consumer")));
+		ASSERT_THAT(AreEqual(
+			0,
 			InitialPreprocessErrorCount,
-			0);
-		TestRunner->TestTrue(
-			TEXT("Declared import reload should not accumulate initial preprocessing messages"),
-			InitialPreprocessDiagnostics.IsEmpty());
-		TestRunner->TestEqual(
-			TEXT("Declared import reload should emit two module descriptors on the initial compile"),
+			TEXT("Declared import reload should keep initial preprocessing diagnostics empty")));
+		ASSERT_THAT(IsTrue(
+			InitialPreprocessDiagnostics.IsEmpty(),
+			TEXT("Declared import reload should not accumulate initial preprocessing messages")));
+		ASSERT_THAT(AreEqual(
+			2,
 			InitialModulesToCompile.Num(),
-			2);
+			TEXT("Declared import reload should emit two module descriptors on the initial compile")));
 		if (!bInitialPreprocessSucceeded || InitialModulesToCompile.Num() != 2)
 		{
 			return;
@@ -189,21 +189,21 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 				InitialCompileErrorCount),
 			TEXT("\n"));
 
-		TestRunner->TestEqual(
-			TEXT("Declared import reload should compile the initial provider and consumer as FullyHandled"),
+		ASSERT_THAT(AreEqual(
+			ECompileResult::FullyHandled,
 			InitialCompileResult,
-			ECompileResult::FullyHandled);
-		TestRunner->TestEqual(
-			TEXT("Declared import reload should keep initial compile diagnostics empty"),
+			TEXT("Declared import reload should compile the initial provider and consumer as FullyHandled")));
+		ASSERT_THAT(AreEqual(
+			0,
 			InitialCompileErrorCount,
-			0);
-		TestRunner->TestTrue(
-			TEXT("Declared import reload should not accumulate initial compile messages"),
-			InitialCompileDiagnostics.IsEmpty());
-		TestRunner->TestEqual(
-			TEXT("Declared import reload should materialize two compiled modules on the initial compile"),
+			TEXT("Declared import reload should keep initial compile diagnostics empty")));
+		ASSERT_THAT(IsTrue(
+			InitialCompileDiagnostics.IsEmpty(),
+			TEXT("Declared import reload should not accumulate initial compile messages")));
+		ASSERT_THAT(AreEqual(
+			2,
 			InitialCompiledModules.Num(),
-			2);
+			TEXT("Declared import reload should materialize two compiled modules on the initial compile")));
 		if (InitialCompileResult != ECompileResult::FullyHandled || InitialCompiledModules.Num() != 2)
 		{
 			return;
@@ -211,28 +211,28 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 
 		TSharedPtr<FAngelscriptModuleDesc> InitialConsumerModule = Engine.GetModule(
 			CompilerPipelineImportReloadTest::ConsumerModuleName.ToString());
-		if (!TestRunner->TestTrue(
-				TEXT("Declared import reload should keep the consumer module active after the initial compile"),
-				InitialConsumerModule.IsValid()))
+		if (!this->Assert.IsTrue(
+				InitialConsumerModule.IsValid(),
+				TEXT("Declared import reload should keep the consumer module active after the initial compile")))
 		{
 			return;
 		}
 
 		const int ImportedFunctionCount = static_cast<int32>(InitialConsumerModule->ScriptModule->GetImportedFunctionCount());
-		TestRunner->TestEqual(
-			TEXT("Declared import reload should preserve exactly one declared imported function on the consumer"),
+		ASSERT_THAT(AreEqual(
+			1,
 			ImportedFunctionCount,
-			1);
+			TEXT("Declared import reload should preserve exactly one declared imported function on the consumer")));
 		if (ImportedFunctionCount > 0)
 		{
-			TestRunner->TestEqual(
-				TEXT("Declared import reload should preserve the consumer imported function source module"),
+			ASSERT_THAT(AreEqual(
+				CompilerPipelineImportReloadTest::ProviderModuleName.ToString(),
 				FString(UTF8_TO_TCHAR(InitialConsumerModule->ScriptModule->GetImportedFunctionSourceModule(0))),
-				CompilerPipelineImportReloadTest::ProviderModuleName.ToString());
-			TestRunner->TestEqual(
-				TEXT("Declared import reload should preserve the consumer imported function declaration"),
+				TEXT("Declared import reload should preserve the consumer imported function source module")));
+			ASSERT_THAT(AreEqual(
+				CompilerPipelineImportReloadTest::ImportedFunctionDeclaration,
 				FString(UTF8_TO_TCHAR(InitialConsumerModule->ScriptModule->GetImportedFunctionDeclaration(0))),
-				CompilerPipelineImportReloadTest::ImportedFunctionDeclaration);
+				TEXT("Declared import reload should preserve the consumer imported function declaration")));
 		}
 
 		int32 EntryResultBeforeReload = 0;
@@ -242,15 +242,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 			CompilerPipelineImportReloadTest::ConsumerModuleName,
 			CompilerPipelineImportReloadTest::EntryFunctionDeclaration,
 			EntryResultBeforeReload);
-		TestRunner->TestTrue(
-			TEXT("Declared import reload should execute the consumer entry point before the provider reload"),
-			bExecutedBeforeReload);
+		ASSERT_THAT(IsTrue(
+			bExecutedBeforeReload,
+			TEXT("Declared import reload should execute the consumer entry point before the provider reload")));
 		if (bExecutedBeforeReload)
 		{
-			TestRunner->TestEqual(
-				TEXT("Declared import reload should execute the initial provider implementation before the provider reload"),
+			ASSERT_THAT(AreEqual(
+				1,
 				EntryResultBeforeReload,
-				1);
+				TEXT("Declared import reload should execute the initial provider implementation before the provider reload")));
 		}
 
 		CompilerPipelineImportReloadTest::WriteFixture(
@@ -275,20 +275,20 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 				ReloadPreprocessErrorCount),
 			TEXT("\n"));
 
-		TestRunner->TestTrue(
-			TEXT("Declared import reload should preprocess the provider-only reload successfully"),
-			bReloadPreprocessSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Declared import reload should keep provider-only preprocessing diagnostics empty"),
+		ASSERT_THAT(IsTrue(
+			bReloadPreprocessSucceeded,
+			TEXT("Declared import reload should preprocess the provider-only reload successfully")));
+		ASSERT_THAT(AreEqual(
+			0,
 			ReloadPreprocessErrorCount,
-			0);
-		TestRunner->TestTrue(
-			TEXT("Declared import reload should not accumulate provider-only preprocessing messages"),
-			ReloadPreprocessDiagnostics.IsEmpty());
-		TestRunner->TestEqual(
-			TEXT("Declared import reload should emit a single module descriptor when only the provider reloads"),
+			TEXT("Declared import reload should keep provider-only preprocessing diagnostics empty")));
+		ASSERT_THAT(IsTrue(
+			ReloadPreprocessDiagnostics.IsEmpty(),
+			TEXT("Declared import reload should not accumulate provider-only preprocessing messages")));
+		ASSERT_THAT(AreEqual(
+			1,
 			ReloadModulesToCompile.Num(),
-			1);
+			TEXT("Declared import reload should emit a single module descriptor when only the provider reloads")));
 		if (!bReloadPreprocessSucceeded || ReloadModulesToCompile.Num() != 1)
 		{
 			return;
@@ -297,9 +297,9 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 		const FAngelscriptModuleDesc* ReloadProviderModuleDesc = CompilerPipelineImportReloadTest::FindModuleByName(
 			ReloadModulesToCompile,
 			CompilerPipelineImportReloadTest::ProviderModuleName.ToString());
-		if (!TestRunner->TestNotNull(
-				TEXT("Declared import reload should only emit the provider module descriptor during the provider-only reload"),
-				ReloadProviderModuleDesc))
+		if (!this->Assert.IsNotNull(
+				ReloadProviderModuleDesc,
+				TEXT("Declared import reload should only emit the provider module descriptor during the provider-only reload")))
 		{
 			return;
 		}
@@ -320,21 +320,21 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 				ReloadCompileErrorCount),
 			TEXT("\n"));
 
-		TestRunner->TestEqual(
-			TEXT("Declared import reload should compile the provider-only reload as FullyHandled"),
+		ASSERT_THAT(AreEqual(
+			ECompileResult::FullyHandled,
 			ReloadCompileResult,
-			ECompileResult::FullyHandled);
-		TestRunner->TestEqual(
-			TEXT("Declared import reload should keep provider-only compile diagnostics empty"),
+			TEXT("Declared import reload should compile the provider-only reload as FullyHandled")));
+		ASSERT_THAT(AreEqual(
+			0,
 			ReloadCompileErrorCount,
-			0);
-		TestRunner->TestTrue(
-			TEXT("Declared import reload should not accumulate provider-only compile messages"),
-			ReloadCompileDiagnostics.IsEmpty());
-		TestRunner->TestEqual(
-			TEXT("Declared import reload should materialize only one compiled module when only the provider reloads"),
+			TEXT("Declared import reload should keep provider-only compile diagnostics empty")));
+		ASSERT_THAT(IsTrue(
+			ReloadCompileDiagnostics.IsEmpty(),
+			TEXT("Declared import reload should not accumulate provider-only compile messages")));
+		ASSERT_THAT(AreEqual(
+			1,
 			ReloadCompiledModules.Num(),
-			1);
+			TEXT("Declared import reload should materialize only one compiled module when only the provider reloads")));
 		if (ReloadCompileResult != ECompileResult::FullyHandled || ReloadCompiledModules.Num() != 1)
 		{
 			return;
@@ -342,26 +342,26 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 
 		TSharedPtr<FAngelscriptModuleDesc> ReloadedConsumerModule = Engine.GetModule(
 			CompilerPipelineImportReloadTest::ConsumerModuleName.ToString());
-		TestRunner->TestTrue(
-			TEXT("Declared import reload should keep the consumer module active after the provider-only reload"),
-			ReloadedConsumerModule.IsValid());
+		ASSERT_THAT(IsTrue(
+			ReloadedConsumerModule.IsValid(),
+			TEXT("Declared import reload should keep the consumer module active after the provider-only reload")));
 		if (ReloadedConsumerModule.IsValid())
 		{
 			const int ReloadImportedFunctionCount = static_cast<int32>(ReloadedConsumerModule->ScriptModule->GetImportedFunctionCount());
-			TestRunner->TestEqual(
-				TEXT("Declared import reload should keep exactly one declared imported function on the active consumer after the provider-only reload"),
+			ASSERT_THAT(AreEqual(
+				1,
 				ReloadImportedFunctionCount,
-				1);
+				TEXT("Declared import reload should keep exactly one declared imported function on the active consumer after the provider-only reload")));
 			if (ReloadImportedFunctionCount > 0)
 			{
-				TestRunner->TestEqual(
-					TEXT("Declared import reload should keep the reloaded consumer import source module stable"),
+				ASSERT_THAT(AreEqual(
+					CompilerPipelineImportReloadTest::ProviderModuleName.ToString(),
 					FString(UTF8_TO_TCHAR(ReloadedConsumerModule->ScriptModule->GetImportedFunctionSourceModule(0))),
-					CompilerPipelineImportReloadTest::ProviderModuleName.ToString());
-				TestRunner->TestEqual(
-					TEXT("Declared import reload should keep the reloaded consumer import declaration stable"),
+					TEXT("Declared import reload should keep the reloaded consumer import source module stable")));
+				ASSERT_THAT(AreEqual(
+					CompilerPipelineImportReloadTest::ImportedFunctionDeclaration,
 					FString(UTF8_TO_TCHAR(ReloadedConsumerModule->ScriptModule->GetImportedFunctionDeclaration(0))),
-					CompilerPipelineImportReloadTest::ImportedFunctionDeclaration);
+					TEXT("Declared import reload should keep the reloaded consumer import declaration stable")));
 			}
 		}
 
@@ -372,15 +372,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 			CompilerPipelineImportReloadTest::ConsumerModuleName,
 			CompilerPipelineImportReloadTest::EntryFunctionDeclaration,
 			EntryResultAfterReload);
-		TestRunner->TestTrue(
-			TEXT("Declared import reload should execute the same consumer entry point after the provider-only reload"),
-			bExecutedAfterReload);
+		ASSERT_THAT(IsTrue(
+			bExecutedAfterReload,
+			TEXT("Declared import reload should execute the same consumer entry point after the provider-only reload")));
 		if (bExecutedAfterReload)
 		{
-			TestRunner->TestEqual(
-				TEXT("Declared import reload should rebind the active consumer import to the reloaded provider implementation"),
+			ASSERT_THAT(AreEqual(
+				2,
 				EntryResultAfterReload,
-				2);
+				TEXT("Declared import reload should rebind the active consumer import to the reloaded provider implementation")));
 		}
 
 		}

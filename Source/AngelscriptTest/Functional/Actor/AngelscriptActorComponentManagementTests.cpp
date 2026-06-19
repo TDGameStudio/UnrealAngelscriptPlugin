@@ -13,6 +13,26 @@ using namespace AngelscriptFunctionalTestUtils;
 
 namespace AngelscriptTest_Actor_ComponentManagement_Private
 {
+	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsTrue(bActual, Message);
+	}
+
+	template <typename ActualType, typename ExpectedType>
+	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.AreEqual(Expected, Actual, Message);
+	}
+
+	template <typename ValueType>
+	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+	{
+		FNoDiscardAsserter Assert(Test);
+		return Assert.IsNotNull(Value, Message);
+	}
+
 	UActorComponent* FindComponentByName(AActor* Actor, FName ComponentName)
 	{
 		if (Actor == nullptr)
@@ -68,6 +88,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptActorComponentManagementTest,
 
 	TEST_METHOD(CreateSceneComponentsRegistersRootAndAttachment)
 	{
+		using namespace AngelscriptTest_Actor_ComponentManagement_Private;
+
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		static const FName ModuleName(TEXT("TestActorComponentManagementCreateScene"));
@@ -106,12 +128,12 @@ class ATestActorComponentManagementCreateScene : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		W.BeginPlay(*Actor);
 
 		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("CreateRuntimeComponents")));
 		if (!Invoker.IsValid()) return;
-		if (!TestRunner->TestEqual(TEXT("Script should create both scene components"), Invoker.CallAndReturn<int32>(INDEX_NONE), 1)) return;
+		if (!CheckEqual(*TestRunner, TEXT("Script should create both scene components"), Invoker.CallAndReturn<int32>(INDEX_NONE), 1)) return;
 
 		UObject* FirstObject = nullptr;
 		UObject* SecondObject = nullptr;
@@ -123,18 +145,18 @@ class ATestActorComponentManagementCreateScene : AActor
 
 		USceneComponent* First = Cast<USceneComponent>(FirstObject);
 		USceneComponent* Second = Cast<USceneComponent>(SecondObject);
-		if (!TestRunner->TestNotNull(TEXT("First created component should be a scene component"), First)
-			|| !TestRunner->TestNotNull(TEXT("Second created component should be a scene component"), Second))
+		if (!CheckNotNull(*TestRunner, TEXT("First created component should be a scene component"), First)
+			|| !CheckNotNull(*TestRunner, TEXT("Second created component should be a scene component"), Second))
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("First runtime scene component should become actor root"), Actor->GetRootComponent(), First);
-		TestRunner->TestEqual(TEXT("Second runtime scene component should attach to root"), Second->GetAttachParent(), First);
-		TestRunner->TestTrue(TEXT("First runtime component should be registered"), First->IsRegistered());
-		TestRunner->TestTrue(TEXT("Second runtime component should be registered"), Second->IsRegistered());
-		TestRunner->TestEqual(TEXT("First runtime component should have the actor as owner"), First->GetOwner(), Actor);
-		TestRunner->TestEqual(TEXT("Second runtime component should have the actor as owner"), Second->GetOwner(), Actor);
+		ASSERT_THAT(AreEqual(First, Actor->GetRootComponent(), TEXT("First runtime scene component should become actor root")));
+		ASSERT_THAT(AreEqual(First, Second->GetAttachParent(), TEXT("Second runtime scene component should attach to root")));
+		ASSERT_THAT(IsTrue(First->IsRegistered(), TEXT("First runtime component should be registered")));
+		ASSERT_THAT(IsTrue(Second->IsRegistered(), TEXT("Second runtime component should be registered")));
+		ASSERT_THAT(AreEqual(Actor, First->GetOwner(), TEXT("First runtime component should have the actor as owner")));
+		ASSERT_THAT(AreEqual(Actor, Second->GetOwner(), TEXT("Second runtime component should have the actor as owner")));
 	}
 
 	TEST_METHOD(StaticTypedAccessorsCreateGetAndReuse)
@@ -189,17 +211,17 @@ class ATestActorComponentManagementTypedAccessors : AActor
 		if (ScriptClass == nullptr) return;
 
 		UClass* ComponentClass = FindGeneratedClass(&Engine, TEXT("UTestActorComponentManagementTypedScene"));
-		if (!TestRunner->TestNotNull(TEXT("Typed test component class should be generated"), ComponentClass)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Typed test component class should be generated"), ComponentClass)) return;
 
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		W.BeginPlay(*Actor);
 
 		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("RunTypedAccessorTest")));
 		if (!Invoker.IsValid()) return;
-		if (!TestRunner->TestEqual(TEXT("Static typed component accessors should create, get, and reuse the component"), Invoker.CallAndReturn<int32>(INDEX_NONE), 1)) return;
+		if (!CheckEqual(*TestRunner, TEXT("Static typed component accessors should create, get, and reuse the component"), Invoker.CallAndReturn<int32>(INDEX_NONE), 1)) return;
 
 		UObject* CreatedObject = nullptr;
 		UObject* FoundObject = nullptr;
@@ -211,10 +233,10 @@ class ATestActorComponentManagementTypedAccessors : AActor
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("Created component should use the generated typed component class"), CreatedObject != nullptr && CreatedObject->IsA(ComponentClass));
-		TestRunner->TestEqual(TEXT("Static Get should return the component created through Create"), FoundObject, CreatedObject);
-		TestRunner->TestEqual(TEXT("Static GetOrCreate should reuse the existing named component"), ReusedObject, CreatedObject);
-		TestRunner->TestEqual(TEXT("Only one typed component should exist after Create/Get/GetOrCreate"), CountComponentsOfClass(Actor, ComponentClass), 1);
+		ASSERT_THAT(IsTrue(CreatedObject != nullptr && CreatedObject->IsA(ComponentClass), TEXT("Created component should use the generated typed component class")));
+		ASSERT_THAT(AreEqual(CreatedObject, FoundObject, TEXT("Static Get should return the component created through Create")));
+		ASSERT_THAT(AreEqual(CreatedObject, ReusedObject, TEXT("Static GetOrCreate should reuse the existing named component")));
+		ASSERT_THAT(AreEqual(1, CountComponentsOfClass(Actor, ComponentClass), TEXT("Only one typed component should exist after Create/Get/GetOrCreate")));
 	}
 
 	TEST_METHOD(NameAndClassFilteringAreStrict)
@@ -265,19 +287,21 @@ class ATestActorComponentManagementNameClassFilter : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		W.BeginPlay(*Actor);
 
 		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("RunNameClassFilterTest")));
 		if (!Invoker.IsValid()) return;
-		TestRunner->TestEqual(TEXT("GetComponent should require both class and name to match"), Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+		ASSERT_THAT(AreEqual(1, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("GetComponent should require both class and name to match")));
 
-		TestRunner->TestNotNull(TEXT("RootScene should exist as a component on the actor"), FindComponentByName(Actor, TEXT("RootScene")));
-		TestRunner->TestNotNull(TEXT("MeshScene should exist as a component on the actor"), FindComponentByName(Actor, TEXT("MeshScene")));
+		ASSERT_THAT(IsNotNull(FindComponentByName(Actor, TEXT("RootScene")), TEXT("RootScene should exist as a component on the actor")));
+		ASSERT_THAT(IsNotNull(FindComponentByName(Actor, TEXT("MeshScene")), TEXT("MeshScene should exist as a component on the actor")));
 	}
 
 	TEST_METHOD(GetAllComponentsFiltersSubclassesAndAppends)
 	{
+		using namespace AngelscriptTest_Actor_ComponentManagement_Private;
+
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		static const FName ModuleName(TEXT("TestActorComponentManagementGetAllAppend"));
@@ -330,12 +354,12 @@ class ATestActorComponentManagementGetAllAppend : AActor
 		FAngelscriptTestWorld W(*TestRunner, Engine);
 		if (!W.IsValid()) return;
 		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
-		if (!TestRunner->TestNotNull(TEXT("Actor should spawn"), Actor)) return;
+		if (!CheckNotNull(*TestRunner, TEXT("Actor should spawn"), Actor)) return;
 		W.BeginPlay(*Actor);
 
 		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("RunGetAllAppendTest")));
 		if (!Invoker.IsValid()) return;
-		TestRunner->TestEqual(TEXT("GetAllComponents should filter subclasses and append to the output array"), Invoker.CallAndReturn<int32>(INDEX_NONE), 1);
+		ASSERT_THAT(AreEqual(1, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("GetAllComponents should filter subclasses and append to the output array")));
 	}
 };
 

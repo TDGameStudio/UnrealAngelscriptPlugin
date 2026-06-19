@@ -107,13 +107,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComponentMetadataValidationTests,
 		const TSharedPtr<FAngelscriptModuleDesc> FailedModuleRecord =
 			Engine.GetModuleByModuleName(ComponentMetadataValidationModuleName.ToString());
 
-		TestRunner->TestFalse(TEXT("Invalid attach-parent metadata should fail compilation instead of silently succeeding"), bCompiled);
-		TestRunner->TestEqual(TEXT("Invalid attach-parent metadata should surface an error compile result"), Summary.CompileResult, ECompileResult::Error);
-		TestRunner->TestTrue(TEXT("Invalid attach-parent metadata should compile through the annotated preprocessor path"), Summary.bUsedPreprocessor);
-		TestRunner->TestTrue(TEXT("Invalid attach-parent metadata should emit at least one diagnostic"), Summary.Diagnostics.Num() > 0);
-		TestRunner->TestNotNull(TEXT("Invalid attach-parent metadata should report the missing attach-parent diagnostic"), MissingParentDiagnostic);
-		TestRunner->TestNull(TEXT("Invalid attach-parent metadata should not publish the generated actor class after failure"), FindGeneratedClass(&Engine, InvalidAttachParentClassName));
-		TestRunner->TestTrue(TEXT("Invalid attach-parent metadata should not publish a module record after failure"), !FailedModuleRecord.IsValid());
+		ASSERT_THAT(IsFalse(bCompiled, TEXT("Invalid attach-parent metadata should fail compilation instead of silently succeeding")));
+		ASSERT_THAT(AreEqual(ECompileResult::Error, Summary.CompileResult, TEXT("Invalid attach-parent metadata should surface an error compile result")));
+		ASSERT_THAT(IsTrue(Summary.bUsedPreprocessor, TEXT("Invalid attach-parent metadata should compile through the annotated preprocessor path")));
+		ASSERT_THAT(IsTrue(Summary.Diagnostics.Num() > 0, TEXT("Invalid attach-parent metadata should emit at least one diagnostic")));
+		ASSERT_THAT(IsNotNull(MissingParentDiagnostic, TEXT("Invalid attach-parent metadata should report the missing attach-parent diagnostic")));
+		ASSERT_THAT(IsNull(FindGeneratedClass(&Engine, InvalidAttachParentClassName), TEXT("Invalid attach-parent metadata should not publish the generated actor class after failure")));
+		ASSERT_THAT(IsTrue(!FailedModuleRecord.IsValid(), TEXT("Invalid attach-parent metadata should not publish a module record after failure")));
 
 		}
 	}
@@ -139,15 +139,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComponentMetadataValidationTests,
 		const TSharedPtr<FAngelscriptModuleDesc> FailedModuleRecord =
 			Engine.GetModuleByModuleName(MissingOverrideTargetModuleName.ToString());
 
-		TestRunner->TestFalse(TEXT("Missing override-target metadata should fail compilation instead of silently succeeding"), bCompiled);
-		TestRunner->TestEqual(TEXT("Missing override-target metadata should surface an error compile result"), Summary.CompileResult, ECompileResult::Error);
-		TestRunner->TestTrue(TEXT("Missing override-target metadata should compile through the annotated preprocessor path"), Summary.bUsedPreprocessor);
-		TestRunner->TestTrue(TEXT("Missing override-target metadata should emit at least one diagnostic"), Summary.Diagnostics.Num() > 0);
-		TestRunner->TestNotNull(TEXT("Missing override-target metadata should report the missing base-component diagnostic"), MissingOverrideTargetDiagnostic);
-		TestRunner->TestNull(TEXT("Missing override-target metadata should not publish the derived actor class after failure"), FindGeneratedClass(&Engine, MissingOverrideTargetDerivedClassName));
-		TestRunner->TestTrue(TEXT("Missing override-target metadata should not publish a live module record after failure"), !FailedModuleRecord.IsValid());
-		TestRunner->TestTrue(TEXT("Missing override-target metadata should not silently publish the broken derived class"),
-			FindGeneratedClass(&Engine, MissingOverrideTargetBaseClassName) == nullptr || FindGeneratedClass(&Engine, MissingOverrideTargetDerivedClassName) == nullptr);
+		ASSERT_THAT(IsFalse(bCompiled, TEXT("Missing override-target metadata should fail compilation instead of silently succeeding")));
+		ASSERT_THAT(AreEqual(ECompileResult::Error, Summary.CompileResult, TEXT("Missing override-target metadata should surface an error compile result")));
+		ASSERT_THAT(IsTrue(Summary.bUsedPreprocessor, TEXT("Missing override-target metadata should compile through the annotated preprocessor path")));
+		ASSERT_THAT(IsTrue(Summary.Diagnostics.Num() > 0, TEXT("Missing override-target metadata should emit at least one diagnostic")));
+		ASSERT_THAT(IsNotNull(MissingOverrideTargetDiagnostic, TEXT("Missing override-target metadata should report the missing base-component diagnostic")));
+		ASSERT_THAT(IsNull(FindGeneratedClass(&Engine, MissingOverrideTargetDerivedClassName), TEXT("Missing override-target metadata should not publish the derived actor class after failure")));
+		ASSERT_THAT(IsTrue(!FailedModuleRecord.IsValid(), TEXT("Missing override-target metadata should not publish a live module record after failure")));
+		ASSERT_THAT(IsTrue(
+			FindGeneratedClass(&Engine, MissingOverrideTargetBaseClassName) == nullptr || FindGeneratedClass(&Engine, MissingOverrideTargetDerivedClassName) == nullptr,
+			TEXT("Missing override-target metadata should not silently publish the broken derived class")));
 
 		}
 	}

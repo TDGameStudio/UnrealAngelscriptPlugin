@@ -196,7 +196,8 @@ FString FormatValue()
 			TEXT("Concatenation produces Hello World"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				return T.TestEqual(TEXT("greeting"), V, TEXT("Hello World"));
+				FNoDiscardAsserter Assert(T);
+				return Assert.AreEqual(TEXT("Hello World"), V, TEXT("greeting"));
 			});
 
 		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
@@ -204,7 +205,8 @@ FString FormatValue()
 			TEXT("ToUpper transforms to TEMPLATE"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				return T.TestEqual(TEXT("upper"), V, TEXT("TEMPLATE"));
+				FNoDiscardAsserter Assert(T);
+				return Assert.AreEqual(TEXT("TEMPLATE"), V, TEXT("upper"));
 			});
 
 		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
@@ -212,7 +214,8 @@ FString FormatValue()
 			TEXT("FString::Format produces result=42"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				return T.TestEqual(TEXT("format"), V, TEXT("result=42"));
+				FNoDiscardAsserter Assert(T);
+				return Assert.AreEqual(TEXT("result=42"), V, TEXT("format"));
 			});
 	}
 
@@ -257,7 +260,7 @@ int StringLen(const FString& in S)
 				TEXT("int AddInts(int, int)"));
 			Inv.AddArg(static_cast<int32>(17)).AddArg(static_cast<int32>(25));
 			int32 Result = Inv.CallAndReturn<int32>(-1);
-			TestRunner->TestEqual(TEXT("[PassArgs] AddInts(17,25)=42"), Result, 42);
+			ASSERT_THAT(AreEqual(42, Result, TEXT("[PassArgs] AddInts(17,25)=42")));
 		}
 
 		// FString ref arg: C++ passes a string, AS builds a greeting
@@ -271,9 +274,10 @@ int StringLen(const FString& in S)
 				FString Result;
 				if (Inv.ReadReturnStruct(Result))
 				{
-					TestRunner->TestEqual(
-						TEXT("[PassArgs] Greet returns Hello, CQTest!"),
-						Result, TEXT("Hello, CQTest!"));
+					ASSERT_THAT(AreEqual(
+						TEXT("Hello, CQTest!"),
+						Result,
+						TEXT("[PassArgs] Greet returns Hello, CQTest!")));
 				}
 			}
 		}
@@ -284,9 +288,10 @@ int StringLen(const FString& in S)
 			FASGlobalFunctionInvoker Inv(*TestRunner, Engine, M,
 				TEXT("int StringLen(const FString& in)"));
 			Inv.AddArgRef(Input);
-			TestRunner->TestEqual(
-				TEXT("[PassArgs] StringLen matches C++ Len()"),
-				Inv.CallAndReturn<int32>(0), Input.Len());
+			ASSERT_THAT(AreEqual(
+				Input.Len(),
+				Inv.CallAndReturn<int32>(0),
+				TEXT("[PassArgs] StringLen matches C++ Len()")));
 		}
 	}
 
@@ -387,7 +392,8 @@ FString GetMessage() { return "success"; }
 			TEXT("Message is 'success'"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				return T.TestEqual(TEXT("message"), V, TEXT("success"));
+				FNoDiscardAsserter Assert(T);
+				return Assert.AreEqual(TEXT("success"), V, TEXT("message"));
 			});
 	}
 };

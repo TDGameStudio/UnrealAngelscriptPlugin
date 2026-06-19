@@ -1720,7 +1720,8 @@ FString Format_Ret_FloatPrecision()
 			TEXT("Format repeated index returns Echo=Echo"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				return T.TestEqual(TEXT("Repeated"), V, TEXT("Echo=Echo"));
+				FNoDiscardAsserter Assert(T);
+				return Assert.AreEqual(FString(TEXT("Echo=Echo")), V, TEXT("Repeated"));
 			});
 
 		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
@@ -1728,10 +1729,11 @@ FString Format_Ret_FloatPrecision()
 			TEXT("Format 5-arg mixed returns pipe-separated"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
+				FNoDiscardAsserter Assert(T);
 				bool bOk = true;
-				bOk &= T.TestTrue(TEXT("starts with Hello|42|"), V.StartsWith(TEXT("Hello|42|")));
-				bOk &= T.TestTrue(TEXT("contains 3.14"), V.Contains(TEXT("3.14")));
-				bOk &= T.TestTrue(TEXT("ends with |-1"), V.EndsWith(TEXT("|-1")));
+				bOk &= Assert.IsTrue(V.StartsWith(TEXT("Hello|42|")), TEXT("starts with Hello|42|"));
+				bOk &= Assert.IsTrue(V.Contains(TEXT("3.14")), TEXT("contains 3.14"));
+				bOk &= Assert.IsTrue(V.EndsWith(TEXT("|-1")), TEXT("ends with |-1"));
 				return bOk;
 			});
 
@@ -1740,7 +1742,8 @@ FString Format_Ret_FloatPrecision()
 			TEXT("Format float shows decimal digits"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				return T.TestTrue(TEXT("contains pi~3.14"), V.Contains(TEXT("pi~3.14")));
+				FNoDiscardAsserter Assert(T);
+				return Assert.IsTrue(V.Contains(TEXT("pi~3.14")), TEXT("contains pi~3.14"));
 			});
 	}
 
@@ -2269,9 +2272,10 @@ FString ApplyFmt_Ret_NegSignPlus()
 			TEXT("ApplyFormat int #X returns 0xFF-style"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
+				FNoDiscardAsserter Assert(T);
 				bool bOk = true;
-				bOk &= T.TestTrue(TEXT("contains 0x prefix"), V.Contains(TEXT("0x")) || V.Contains(TEXT("0X")));
-				bOk &= T.TestTrue(TEXT("contains FF"), V.ToUpper().Contains(TEXT("FF")));
+				bOk &= Assert.IsTrue(V.Contains(TEXT("0x")) || V.Contains(TEXT("0X")), TEXT("contains 0x prefix"));
+				bOk &= Assert.IsTrue(V.ToUpper().Contains(TEXT("FF")), TEXT("contains FF"));
 				return bOk;
 			});
 
@@ -2280,7 +2284,8 @@ FString ApplyFmt_Ret_NegSignPlus()
 			TEXT("ApplyFormat float .3f returns 3.142"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				return T.TestTrue(TEXT("contains 3.142"), V.Contains(TEXT("3.142")));
+				FNoDiscardAsserter Assert(T);
+				return Assert.IsTrue(V.Contains(TEXT("3.142")), TEXT("contains 3.142"));
 			});
 
 		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
@@ -2288,7 +2293,8 @@ FString ApplyFmt_Ret_NegSignPlus()
 			TEXT("ApplyFormat bool true returns 'true'"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				return T.TestEqual(TEXT("bool true text"), V, TEXT("true"));
+				FNoDiscardAsserter Assert(T);
+				return Assert.AreEqual(FString(TEXT("true")), V, TEXT("bool true text"));
 			});
 
 		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
@@ -2296,10 +2302,11 @@ FString ApplyFmt_Ret_NegSignPlus()
 			TEXT("ApplyFormat string center with dash fill"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
+				FNoDiscardAsserter Assert(T);
 				bool bOk = true;
-				bOk &= T.TestTrue(TEXT("length >= 8"), V.Len() >= 8);
-				bOk &= T.TestTrue(TEXT("contains Hi"), V.Contains(TEXT("Hi")));
-				bOk &= T.TestTrue(TEXT("contains dash fill"), V.Contains(TEXT("-")));
+				bOk &= Assert.IsTrue(V.Len() >= 8, TEXT("length >= 8"));
+				bOk &= Assert.IsTrue(V.Contains(TEXT("Hi")), TEXT("contains Hi"));
+				bOk &= Assert.IsTrue(V.Contains(TEXT("-")), TEXT("contains dash fill"));
 				return bOk;
 			});
 
@@ -2308,9 +2315,10 @@ FString ApplyFmt_Ret_NegSignPlus()
 			TEXT("ApplyFormat int #b returns 0b1010"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
+				FNoDiscardAsserter Assert(T);
 				bool bOk = true;
-				bOk &= T.TestTrue(TEXT("contains 0b prefix"), V.Contains(TEXT("0b")));
-				bOk &= T.TestTrue(TEXT("contains 1010"), V.Contains(TEXT("1010")));
+				bOk &= Assert.IsTrue(V.Contains(TEXT("0b")), TEXT("contains 0b prefix"));
+				bOk &= Assert.IsTrue(V.Contains(TEXT("1010")), TEXT("contains 1010"));
 				return bOk;
 			});
 
@@ -2319,7 +2327,8 @@ FString ApplyFmt_Ret_NegSignPlus()
 			TEXT("ApplyFormat negative with + spec still shows minus"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				return T.TestTrue(TEXT("contains -42"), V.Contains(TEXT("-42")));
+				FNoDiscardAsserter Assert(T);
+				return Assert.IsTrue(V.Contains(TEXT("-42")), TEXT("contains -42"));
 			});
 	}
 
@@ -2497,9 +2506,11 @@ FString Ret_AppendChain()
 			ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M,  Decl, Label,
 				[&](FAutomationTestBase& T, const FString& Actual) -> bool
 				{
-					return T.TestEqual(
-						*FString::Printf(TEXT("[FString] %s: \"%s\" vs \"%s\""), Label, *Actual, *Expected),
-						Actual, Expected);
+					FNoDiscardAsserter Assert(T);
+					return Assert.AreEqual(
+						Expected,
+						Actual,
+						*FString::Printf(TEXT("[FString] %s: \"%s\" vs \"%s\""), Label, *Actual, *Expected));
 				});
 		};
 
@@ -2557,9 +2568,10 @@ FString Ret_AppendChain()
 			TEXT("LeftPad(5) returns 5-char string ending with AB"),
 			[](FAutomationTestBase& T, const FString& Actual) -> bool
 			{
+				FNoDiscardAsserter Assert(T);
 				bool bPass = true;
-				bPass &= T.TestEqual(TEXT("LeftPad result length should be 5"), Actual.Len(), 5);
-				bPass &= T.TestTrue(TEXT("LeftPad result should end with AB"), Actual.EndsWith(TEXT("AB")));
+				bPass &= Assert.AreEqual(5, Actual.Len(), TEXT("LeftPad result length should be 5"));
+				bPass &= Assert.IsTrue(Actual.EndsWith(TEXT("AB")), TEXT("LeftPad result should end with AB"));
 				return bPass;
 			});
 
@@ -2670,7 +2682,7 @@ FString Pass_Reverse(const FString& in S)
 				FString Result;
 				if (Inv.ReadReturnStruct(Result))
 				{
-					TestRunner->TestEqual(TEXT("[PassFString] Echo round-trip"), Result, Input);
+					ASSERT_THAT(AreEqual(Input, Result, TEXT("[PassFString] Echo round-trip")));
 				}
 			}
 		}
@@ -2682,7 +2694,7 @@ FString Pass_Reverse(const FString& in S)
 				TEXT("int Pass_Len(const FString& in)"));
 			Inv.AddArgRef(Input);
 			int32 Len = Inv.CallAndReturn<int32>(-1);
-			TestRunner->TestEqual(TEXT("[PassFString] Len matches C++"), Len, Input.Len());
+			ASSERT_THAT(AreEqual(Input.Len(), Len, TEXT("[PassFString] Len matches C++")));
 		}
 
 		// -- Upper: C++ sends lowercase, AS returns uppercase --
@@ -2696,7 +2708,7 @@ FString Pass_Reverse(const FString& in S)
 				FString Result;
 				if (Inv.ReadReturnStruct(Result))
 				{
-					TestRunner->TestEqual(TEXT("[PassFString] Upper transform"), Result, TEXT("HELLO WORLD"));
+					ASSERT_THAT(AreEqual(FString(TEXT("HELLO WORLD")), Result, TEXT("[PassFString] Upper transform")));
 				}
 			}
 		}
@@ -2708,7 +2720,7 @@ FString Pass_Reverse(const FString& in S)
 			FASGlobalFunctionInvoker Inv(*TestRunner, Engine, M,
 				TEXT("int Pass_Contains(const FString& in, const FString& in)"));
 			Inv.AddArgRef(Haystack).AddArgRef(Needle);
-			TestRunner->TestEqual(TEXT("[PassFString] Contains found"), Inv.CallAndReturn<int32>(0), 1);
+			ASSERT_THAT(AreEqual(1, Inv.CallAndReturn<int32>(0), TEXT("[PassFString] Contains found")));
 		}
 
 		// -- Contains negative: substring not present --
@@ -2718,7 +2730,7 @@ FString Pass_Reverse(const FString& in S)
 			FASGlobalFunctionInvoker Inv(*TestRunner, Engine, M,
 				TEXT("int Pass_Contains(const FString& in, const FString& in)"));
 			Inv.AddArgRef(Haystack).AddArgRef(Needle);
-			TestRunner->TestEqual(TEXT("[PassFString] Contains not found"), Inv.CallAndReturn<int32>(1), 0);
+			ASSERT_THAT(AreEqual(0, Inv.CallAndReturn<int32>(1), TEXT("[PassFString] Contains not found")));
 		}
 
 		// -- Replace: three FStrings from C++ --
@@ -2734,7 +2746,7 @@ FString Pass_Reverse(const FString& in S)
 				FString Result;
 				if (Inv.ReadReturnStruct(Result))
 				{
-					TestRunner->TestEqual(TEXT("[PassFString] Replace - to _"), Result, TEXT("aaa_bbb_ccc"));
+					ASSERT_THAT(AreEqual(FString(TEXT("aaa_bbb_ccc")), Result, TEXT("[PassFString] Replace - to _")));
 				}
 			}
 		}
@@ -2751,7 +2763,7 @@ FString Pass_Reverse(const FString& in S)
 				FString Result;
 				if (Inv.ReadReturnStruct(Result))
 				{
-					TestRunner->TestEqual(TEXT("[PassFString] Concat A+B"), Result, TEXT("Hello World"));
+					ASSERT_THAT(AreEqual(FString(TEXT("Hello World")), Result, TEXT("[PassFString] Concat A+B")));
 				}
 			}
 		}
@@ -2767,7 +2779,7 @@ FString Pass_Reverse(const FString& in S)
 				FString Result;
 				if (Inv.ReadReturnStruct(Result))
 				{
-					TestRunner->TestEqual(TEXT("[PassFString] Mid(6,5)"), Result, TEXT("World"));
+					ASSERT_THAT(AreEqual(FString(TEXT("World")), Result, TEXT("[PassFString] Mid(6,5)")));
 				}
 			}
 		}
@@ -2778,7 +2790,7 @@ FString Pass_Reverse(const FString& in S)
 			FASGlobalFunctionInvoker Inv(*TestRunner, Engine, M,
 				TEXT("int Pass_IsEmpty(const FString& in)"));
 			Inv.AddArgRef(Empty);
-			TestRunner->TestEqual(TEXT("[PassFString] Empty string detected in AS"), Inv.CallAndReturn<int32>(0), 1);
+			ASSERT_THAT(AreEqual(1, Inv.CallAndReturn<int32>(0), TEXT("[PassFString] Empty string detected in AS")));
 		}
 
 		// -- IsEmpty negative: non-empty --
@@ -2787,7 +2799,7 @@ FString Pass_Reverse(const FString& in S)
 			FASGlobalFunctionInvoker Inv(*TestRunner, Engine, M,
 				TEXT("int Pass_IsEmpty(const FString& in)"));
 			Inv.AddArgRef(NonEmpty);
-			TestRunner->TestEqual(TEXT("[PassFString] Non-empty string not empty in AS"), Inv.CallAndReturn<int32>(1), 0);
+			ASSERT_THAT(AreEqual(0, Inv.CallAndReturn<int32>(1), TEXT("[PassFString] Non-empty string not empty in AS")));
 		}
 
 		// -- Trim: whitespace-padded C++ string trimmed in AS --
@@ -2801,7 +2813,7 @@ FString Pass_Reverse(const FString& in S)
 				FString Result;
 				if (Inv.ReadReturnStruct(Result))
 				{
-					TestRunner->TestEqual(TEXT("[PassFString] Trim whitespace"), Result, TEXT("trimmed"));
+					ASSERT_THAT(AreEqual(FString(TEXT("trimmed")), Result, TEXT("[PassFString] Trim whitespace")));
 				}
 			}
 		}
@@ -2817,7 +2829,7 @@ FString Pass_Reverse(const FString& in S)
 				FString Result;
 				if (Inv.ReadReturnStruct(Result))
 				{
-					TestRunner->TestEqual(TEXT("[PassFString] Format with C++ template"), Result, TEXT("Value=42"));
+					ASSERT_THAT(AreEqual(FString(TEXT("Value=42")), Result, TEXT("[PassFString] Format with C++ template")));
 				}
 			}
 		}
@@ -2831,9 +2843,9 @@ FString Pass_Reverse(const FString& in S)
 				TEXT("int Pass_Split(const FString& in, const FString& in, FString& out, FString& out)"));
 			Inv.AddArgRef(Input).AddArgRef(Delim).AddArgRef(Left).AddArgRef(Right);
 			int32 Found = Inv.CallAndReturn<int32>(0);
-			TestRunner->TestEqual(TEXT("[PassFString] Split found delimiter"), Found, 1);
-			TestRunner->TestEqual(TEXT("[PassFString] Split left part"), Left, TEXT("Key"));
-			TestRunner->TestEqual(TEXT("[PassFString] Split right part"), Right, TEXT("Value"));
+			ASSERT_THAT(AreEqual(1, Found, TEXT("[PassFString] Split found delimiter")));
+			ASSERT_THAT(AreEqual(FString(TEXT("Key")), Left, TEXT("[PassFString] Split left part")));
+			ASSERT_THAT(AreEqual(FString(TEXT("Value")), Right, TEXT("[PassFString] Split right part")));
 		}
 
 		// -- Reverse: C++ string reversed in AS --
@@ -2847,7 +2859,7 @@ FString Pass_Reverse(const FString& in S)
 				FString Result;
 				if (Inv.ReadReturnStruct(Result))
 				{
-					TestRunner->TestEqual(TEXT("[PassFString] Reverse"), Result, TEXT("EDCBA"));
+					ASSERT_THAT(AreEqual(FString(TEXT("EDCBA")), Result, TEXT("[PassFString] Reverse")));
 				}
 			}
 		}
@@ -2863,7 +2875,7 @@ FString Pass_Reverse(const FString& in S)
 				FString Result;
 				if (Inv.ReadReturnStruct(Result))
 				{
-					TestRunner->TestEqual(TEXT("[PassFString] Unicode round-trip"), Result, Input);
+					ASSERT_THAT(AreEqual(Input, Result, TEXT("[PassFString] Unicode round-trip")));
 				}
 			}
 		}
@@ -2875,7 +2887,7 @@ FString Pass_Reverse(const FString& in S)
 			FASGlobalFunctionInvoker Inv(*TestRunner, Engine, M,
 				TEXT("int Pass_Len(const FString& in)"));
 			Inv.AddArgRef(Input);
-			TestRunner->TestEqual(TEXT("[PassFString] Long string length"), Inv.CallAndReturn<int32>(0), 1000);
+			ASSERT_THAT(AreEqual(1000, Inv.CallAndReturn<int32>(0), TEXT("[PassFString] Long string length")));
 		}
 	}
 };

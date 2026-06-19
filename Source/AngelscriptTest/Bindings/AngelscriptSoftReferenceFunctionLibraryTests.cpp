@@ -88,16 +88,17 @@ namespace
 		int32& OutResult)
 	{
 		UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
-		if (!Test.TestNotNull(
-			*FString::Printf(TEXT("Soft-reference async method '%s' should exist"), *FunctionName.ToString()),
-			Function))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(
+			Function,
+			*FString::Printf(TEXT("Soft-reference async method '%s' should exist"), *FunctionName.ToString())))
 		{
 			return false;
 		}
 
-		return Test.TestTrue(
-			*FString::Printf(TEXT("Soft-reference async method '%s' should execute"), *FunctionName.ToString()),
-			ExecuteGeneratedIntEventOnGameThread(&Engine, Object, Function, OutResult));
+		return Assert.IsTrue(
+			ExecuteGeneratedIntEventOnGameThread(&Engine, Object, Function, OutResult),
+			*FString::Printf(TEXT("Soft-reference async method '%s' should execute"), *FunctionName.ToString()));
 	}
 
 	// ReadIntPropertyChecked / ReadStringPropertyChecked provided by
@@ -111,25 +112,26 @@ namespace
 		UClass* ExpectedClass)
 	{
 		UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
-		if (!Test.TestNotNull(
-			*FString::Printf(TEXT("Soft-reference callback '%s' should exist"), *FunctionName.ToString()),
-			Function))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(
+			Function,
+			*FString::Printf(TEXT("Soft-reference callback '%s' should exist"), *FunctionName.ToString())))
 		{
 			return false;
 		}
 
 		FObjectProperty* Property = FindFProperty<FObjectProperty>(Function, ParameterName);
-		if (!Test.TestNotNull(
-			*FString::Printf(TEXT("Soft-reference callback '%s' should expose object parameter '%s'"), *FunctionName.ToString(), *ParameterName.ToString()),
-			Property))
+		if (!Assert.IsNotNull(
+			Property,
+			*FString::Printf(TEXT("Soft-reference callback '%s' should expose object parameter '%s'"), *FunctionName.ToString(), *ParameterName.ToString())))
 		{
 			return false;
 		}
 
-		return Test.TestEqual(
-			*FString::Printf(TEXT("Soft-reference callback '%s' should keep the current UObject delegate surface"), *FunctionName.ToString()),
+		return Assert.AreEqual(
+			ExpectedClass,
 			Property->PropertyClass.Get(),
-			ExpectedClass);
+			*FString::Printf(TEXT("Soft-reference callback '%s' should keep the current UObject delegate surface"), *FunctionName.ToString()));
 	}
 
 	bool VerifyClassCallbackSignature(
@@ -140,25 +142,26 @@ namespace
 		UClass* ExpectedMetaClass)
 	{
 		UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
-		if (!Test.TestNotNull(
-			*FString::Printf(TEXT("Soft-reference callback '%s' should exist"), *FunctionName.ToString()),
-			Function))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(
+			Function,
+			*FString::Printf(TEXT("Soft-reference callback '%s' should exist"), *FunctionName.ToString())))
 		{
 			return false;
 		}
 
 		FClassProperty* Property = FindFProperty<FClassProperty>(Function, ParameterName);
-		if (!Test.TestNotNull(
-			*FString::Printf(TEXT("Soft-reference callback '%s' should expose class parameter '%s'"), *FunctionName.ToString(), *ParameterName.ToString()),
-			Property))
+		if (!Assert.IsNotNull(
+			Property,
+			*FString::Printf(TEXT("Soft-reference callback '%s' should expose class parameter '%s'"), *FunctionName.ToString(), *ParameterName.ToString())))
 		{
 			return false;
 		}
 
-		return Test.TestEqual(
-			*FString::Printf(TEXT("Soft-reference callback '%s' should keep the current UClass delegate surface"), *FunctionName.ToString()),
+		return Assert.AreEqual(
+			ExpectedMetaClass,
 			Property->MetaClass.Get(),
-			ExpectedMetaClass);
+			*FString::Printf(TEXT("Soft-reference callback '%s' should keep the current UClass delegate surface"), *FunctionName.ToString()));
 	}
 }
 
@@ -323,7 +326,7 @@ class USoftReferenceAsyncScriptHarness : UObject
 		}
 
 		UObject* ScriptHarness = NewObject<UObject>(GetTransientPackage(), ScriptHarnessClass, TEXT("SoftReferenceAsyncHarness"));
-		if (!TestRunner->TestNotNull(TEXT("Soft-reference async harness should be created"), ScriptHarness))
+		if (!this->Assert.IsNotNull(ScriptHarness, TEXT("Soft-reference async harness should be created")))
 		{
 			return;
 		}
@@ -345,10 +348,10 @@ class USoftReferenceAsyncScriptHarness : UObject
 				return false;
 			}
 
-			if (!TestRunner->TestEqual(
-				*FString::Printf(TEXT("Soft-reference async starter '%s' should acknowledge launch"), *StartFunctionName.ToString()),
+			if (!this->Assert.AreEqual(
+				1,
 				StartResult,
-				1))
+				*FString::Printf(TEXT("Soft-reference async starter '%s' should acknowledge launch"), *StartFunctionName.ToString())))
 			{
 				return false;
 			}
@@ -400,18 +403,18 @@ class USoftReferenceAsyncScriptHarness : UObject
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("Soft object success load should invoke the callback exactly once"), ObjectSuccessCallbackCount, 1);
-		TestRunner->TestEqual(TEXT("Soft object failure load should invoke the callback exactly once"), ObjectFailureCallbackCount, 1);
-		TestRunner->TestEqual(TEXT("Soft class success load should invoke the callback exactly once"), ClassSuccessCallbackCount, 1);
-		TestRunner->TestEqual(TEXT("Soft class failure load should invoke the callback exactly once"), ClassFailureCallbackCount, 1);
-		TestRunner->TestEqual(TEXT("Soft object success callback should receive a non-null payload"), bObjectSuccessWasNonNull, 1);
-		TestRunner->TestEqual(TEXT("Soft object failure callback should receive a null payload"), bObjectFailureWasNull, 1);
-		TestRunner->TestEqual(TEXT("Soft class success callback should receive a non-null payload"), bClassSuccessWasNonNull, 1);
-		TestRunner->TestEqual(TEXT("Soft class failure callback should receive a null payload"), bClassFailureWasNull, 1);
-		TestRunner->TestEqual(TEXT("Soft object success callback should deliver an object of the expected texture type"), bObjectPayloadMatchesExpectedType, 1);
-		TestRunner->TestEqual(TEXT("Soft class success callback should deliver a class of the expected actor type"), bClassPayloadMatchesExpectedType, 1);
-		TestRunner->TestEqual(TEXT("Soft object success callback should resolve the expected texture asset"), LastObjectName, FString(TEXT("DefaultTexture")));
-		TestRunner->TestEqual(TEXT("Soft class success callback should resolve the expected actor class"), LastClassName, AActor::StaticClass()->GetName());
+		ASSERT_THAT(AreEqual(1, ObjectSuccessCallbackCount, TEXT("Soft object success load should invoke the callback exactly once")));
+		ASSERT_THAT(AreEqual(1, ObjectFailureCallbackCount, TEXT("Soft object failure load should invoke the callback exactly once")));
+		ASSERT_THAT(AreEqual(1, ClassSuccessCallbackCount, TEXT("Soft class success load should invoke the callback exactly once")));
+		ASSERT_THAT(AreEqual(1, ClassFailureCallbackCount, TEXT("Soft class failure load should invoke the callback exactly once")));
+		ASSERT_THAT(AreEqual(1, bObjectSuccessWasNonNull, TEXT("Soft object success callback should receive a non-null payload")));
+		ASSERT_THAT(AreEqual(1, bObjectFailureWasNull, TEXT("Soft object failure callback should receive a null payload")));
+		ASSERT_THAT(AreEqual(1, bClassSuccessWasNonNull, TEXT("Soft class success callback should receive a non-null payload")));
+		ASSERT_THAT(AreEqual(1, bClassFailureWasNull, TEXT("Soft class failure callback should receive a null payload")));
+		ASSERT_THAT(AreEqual(1, bObjectPayloadMatchesExpectedType, TEXT("Soft object success callback should deliver an object of the expected texture type")));
+		ASSERT_THAT(AreEqual(1, bClassPayloadMatchesExpectedType, TEXT("Soft class success callback should deliver a class of the expected actor type")));
+		ASSERT_THAT(AreEqual(FString(TEXT("DefaultTexture")), LastObjectName, TEXT("Soft object success callback should resolve the expected texture asset")));
+		ASSERT_THAT(AreEqual(AActor::StaticClass()->GetName(), LastClassName, TEXT("Soft class success callback should resolve the expected actor class")));
 	}
 };
 

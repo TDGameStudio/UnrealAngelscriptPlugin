@@ -51,10 +51,11 @@ namespace SubsystemGetterMetadataTest
 		const TSharedRef<FAngelscriptType>& HostType,
 		const FSubsystemGetterExpectation& Expectation)
 	{
+		FNoDiscardAsserter Assert(Test);
 		UFunction* Function = USubsystemLibrary::StaticClass()->FindFunctionByName(Expectation.FunctionName);
-		if (!Test.TestNotNull(
-				FString::Printf(TEXT("SubsystemGetterMetadata should find reflected function %s"), Expectation.FunctionName),
-				Function))
+		if (!Assert.IsNotNull(
+				Function,
+				FString::Printf(TEXT("SubsystemGetterMetadata should find reflected function %s"), Expectation.FunctionName)))
 		{
 			return false;
 		}
@@ -64,59 +65,59 @@ namespace SubsystemGetterMetadataTest
 		Signature.ModifyScriptFunction(FunctionId);
 
 		auto* ScriptFunction = reinterpret_cast<asCScriptFunction*>(FAngelscriptEngine::Get().GetScriptEngine()->GetFunctionById(FunctionId));
-		if (!Test.TestNotNull(
-				FString::Printf(TEXT("SubsystemGetterMetadata should create script function %s"), Expectation.FunctionName),
-				ScriptFunction))
+		if (!Assert.IsNotNull(
+				ScriptFunction,
+				FString::Printf(TEXT("SubsystemGetterMetadata should create script function %s"), Expectation.FunctionName)))
 		{
 			return false;
 		}
 
 		bool bPassed = true;
-		bPassed &= Test.TestEqual(
-			FString::Printf(TEXT("%s should bind under the full subsystem library namespace"), Expectation.FunctionName),
+		bPassed &= Assert.AreEqual(
+			FString(Expectation.ExpectedNamespace),
 			Signature.ClassName,
-			FString(Expectation.ExpectedNamespace));
-		bPassed &= Test.TestTrue(
-			FString::Printf(TEXT("%s should remain a static script function"), Expectation.FunctionName),
-			Signature.bStaticInScript);
-		bPassed &= Test.TestTrue(
-			FString::Printf(TEXT("%s should keep the generated declaration non-empty"), Expectation.FunctionName),
-			!Signature.Declaration.IsEmpty());
-		bPassed &= Test.TestTrue(
-			FString::Printf(TEXT("%s should preserve the original function name in the declaration"), Expectation.FunctionName),
-			Signature.Declaration.Contains(Expectation.FunctionName));
-		bPassed &= Test.TestTrue(
-			FString::Printf(TEXT("%s should append no_discard to the declaration"), Expectation.FunctionName),
-			Signature.Declaration.Contains(TEXT("no_discard")));
-		bPassed &= Test.TestEqual(
-			FString::Printf(TEXT("%s should set the expected hidden world-context argument index"), Expectation.FunctionName),
+			FString::Printf(TEXT("%s should bind under the full subsystem library namespace"), Expectation.FunctionName));
+		bPassed &= Assert.IsTrue(
+			Signature.bStaticInScript,
+			FString::Printf(TEXT("%s should remain a static script function"), Expectation.FunctionName));
+		bPassed &= Assert.IsTrue(
+			!Signature.Declaration.IsEmpty(),
+			FString::Printf(TEXT("%s should keep the generated declaration non-empty"), Expectation.FunctionName));
+		bPassed &= Assert.IsTrue(
+			Signature.Declaration.Contains(Expectation.FunctionName),
+			FString::Printf(TEXT("%s should preserve the original function name in the declaration"), Expectation.FunctionName));
+		bPassed &= Assert.IsTrue(
+			Signature.Declaration.Contains(TEXT("no_discard")),
+			FString::Printf(TEXT("%s should append no_discard to the declaration"), Expectation.FunctionName));
+		bPassed &= Assert.AreEqual(
+			Expectation.ExpectedHiddenArgumentIndex,
 			static_cast<int32>(ScriptFunction->hiddenArgumentIndex),
-			Expectation.ExpectedHiddenArgumentIndex);
-		bPassed &= Test.TestEqual(
-			FString::Printf(TEXT("%s should set the expected world-context trait"), Expectation.FunctionName),
+			FString::Printf(TEXT("%s should set the expected hidden world-context argument index"), Expectation.FunctionName));
+		bPassed &= Assert.AreEqual(
+			Expectation.bExpectWorldContextTrait,
 			ScriptFunction->traits.GetTrait(asTRAIT_USES_WORLDCONTEXT),
-			Expectation.bExpectWorldContextTrait);
+			FString::Printf(TEXT("%s should set the expected world-context trait"), Expectation.FunctionName));
 
 		if (Expectation.RequiredDeclarationFragment != nullptr)
 		{
-			bPassed &= Test.TestTrue(
-				FString::Printf(TEXT("%s should preserve declaration fragment %s"), Expectation.FunctionName, Expectation.RequiredDeclarationFragment),
-				Signature.Declaration.Contains(Expectation.RequiredDeclarationFragment));
+			bPassed &= Assert.IsTrue(
+				Signature.Declaration.Contains(Expectation.RequiredDeclarationFragment),
+				FString::Printf(TEXT("%s should preserve declaration fragment %s"), Expectation.FunctionName, Expectation.RequiredDeclarationFragment));
 		}
 
 		if (Expectation.bExpectHiddenWorldContext)
 		{
-			bPassed &= Test.TestEqual(
-				FString::Printf(TEXT("%s should record the same world-context argument before script-function mutation"), Expectation.FunctionName),
+			bPassed &= Assert.AreEqual(
+				Expectation.ExpectedHiddenArgumentIndex,
 				static_cast<int32>(Signature.WorldContextArgument),
-				Expectation.ExpectedHiddenArgumentIndex);
+				FString::Printf(TEXT("%s should record the same world-context argument before script-function mutation"), Expectation.FunctionName));
 		}
 		else
 		{
-			bPassed &= Test.TestEqual(
-				FString::Printf(TEXT("%s should not record a hidden world-context argument in the signature"), Expectation.FunctionName),
+			bPassed &= Assert.AreEqual(
+				-1,
 				static_cast<int32>(Signature.WorldContextArgument),
-				-1);
+				FString::Printf(TEXT("%s should not record a hidden world-context argument in the signature"), Expectation.FunctionName));
 		}
 
 		return bPassed;
@@ -139,10 +140,11 @@ namespace MathReturnValueHelperMetadataTest
 		const TSharedRef<FAngelscriptType>& HostType,
 		const FMathHelperExpectation& Expectation)
 	{
+		FNoDiscardAsserter Assert(Test);
 		UFunction* Function = UAngelscriptMathLibrary::StaticClass()->FindFunctionByName(Expectation.FunctionName);
-		if (!Test.TestNotNull(
-				FString::Printf(TEXT("MathReturnValueHelperMetadata should find reflected function %s"), Expectation.FunctionName),
-				Function))
+		if (!Assert.IsNotNull(
+				Function,
+				FString::Printf(TEXT("MathReturnValueHelperMetadata should find reflected function %s"), Expectation.FunctionName)))
 		{
 			return false;
 		}
@@ -152,55 +154,55 @@ namespace MathReturnValueHelperMetadataTest
 		Signature.ModifyScriptFunction(FunctionId);
 
 		auto* ScriptFunction = reinterpret_cast<asCScriptFunction*>(FAngelscriptEngine::Get().GetScriptEngine()->GetFunctionById(FunctionId));
-		if (!Test.TestNotNull(
-				FString::Printf(TEXT("MathReturnValueHelperMetadata should create script function %s"), Expectation.FunctionName),
-				ScriptFunction))
+		if (!Assert.IsNotNull(
+				ScriptFunction,
+				FString::Printf(TEXT("MathReturnValueHelperMetadata should create script function %s"), Expectation.FunctionName)))
 		{
 			return false;
 		}
 
 		bool bPassed = true;
-		bPassed &= Test.TestEqual(
-			FString::Printf(TEXT("%s should bind under the full math library namespace"), Expectation.FunctionName),
+		bPassed &= Assert.AreEqual(
+			FString(Expectation.ExpectedNamespace),
 			Signature.ClassName,
-			FString(Expectation.ExpectedNamespace));
-		bPassed &= Test.TestTrue(
-			FString::Printf(TEXT("%s should remain a static script function"), Expectation.FunctionName),
-			Signature.bStaticInScript);
-		bPassed &= Test.TestEqual(
-			FString::Printf(TEXT("%s should expose the expected script alias"), Expectation.FunctionName),
+			FString::Printf(TEXT("%s should bind under the full math library namespace"), Expectation.FunctionName));
+		bPassed &= Assert.IsTrue(
+			Signature.bStaticInScript,
+			FString::Printf(TEXT("%s should remain a static script function"), Expectation.FunctionName));
+		bPassed &= Assert.AreEqual(
+			FString(Expectation.ExpectedScriptName),
 			Signature.ScriptName,
-			FString(Expectation.ExpectedScriptName));
-		bPassed &= Test.TestTrue(
-			FString::Printf(TEXT("%s should append no_discard to the declaration"), Expectation.FunctionName),
-			Signature.Declaration.Contains(TEXT("no_discard")));
-		bPassed &= Test.TestTrue(
-			FString::Printf(TEXT("%s should keep the expected alias in the declaration"), Expectation.FunctionName),
-			Signature.Declaration.Contains(Expectation.ExpectedScriptName));
-		bPassed &= Test.TestTrue(
-			FString::Printf(TEXT("%s should remain a trivial bind"), Expectation.FunctionName),
-			Signature.bTrivial);
-		bPassed &= Test.TestEqual(
-			FString::Printf(TEXT("%s should not hide a world-context argument"), Expectation.FunctionName),
+			FString::Printf(TEXT("%s should expose the expected script alias"), Expectation.FunctionName));
+		bPassed &= Assert.IsTrue(
+			Signature.Declaration.Contains(TEXT("no_discard")),
+			FString::Printf(TEXT("%s should append no_discard to the declaration"), Expectation.FunctionName));
+		bPassed &= Assert.IsTrue(
+			Signature.Declaration.Contains(Expectation.ExpectedScriptName),
+			FString::Printf(TEXT("%s should keep the expected alias in the declaration"), Expectation.FunctionName));
+		bPassed &= Assert.IsTrue(
+			Signature.bTrivial,
+			FString::Printf(TEXT("%s should remain a trivial bind"), Expectation.FunctionName));
+		bPassed &= Assert.AreEqual(
+			-1,
 			static_cast<int32>(Signature.WorldContextArgument),
-			-1);
-		bPassed &= Test.TestEqual(
-			FString::Printf(TEXT("%s should not mark a determines-output-type argument"), Expectation.FunctionName),
+			FString::Printf(TEXT("%s should not hide a world-context argument"), Expectation.FunctionName));
+		bPassed &= Assert.AreEqual(
+			-1,
 			static_cast<int32>(Signature.DeterminesOutputTypeArgument),
-			-1);
-		bPassed &= Test.TestEqual(
-			FString::Printf(TEXT("%s should keep the script function free of hidden arguments"), Expectation.FunctionName),
+			FString::Printf(TEXT("%s should not mark a determines-output-type argument"), Expectation.FunctionName));
+		bPassed &= Assert.AreEqual(
+			-1,
 			static_cast<int32>(ScriptFunction->hiddenArgumentIndex),
-			-1);
-		bPassed &= Test.TestEqual(
-			FString::Printf(TEXT("%s should keep the script function free of determines-output-type arguments"), Expectation.FunctionName),
+			FString::Printf(TEXT("%s should keep the script function free of hidden arguments"), Expectation.FunctionName));
+		bPassed &= Assert.AreEqual(
+			-1,
 			static_cast<int32>(ScriptFunction->determinesOutputTypeArgumentIndex),
-			-1);
+			FString::Printf(TEXT("%s should keep the script function free of determines-output-type arguments"), Expectation.FunctionName));
 		if (FCString::Strcmp(Expectation.FunctionName, Expectation.ExpectedScriptName) != 0)
 		{
-			bPassed &= Test.TestFalse(
-				FString::Printf(TEXT("%s should not leak the Unreal-only name into the declaration"), Expectation.FunctionName),
-				Signature.Declaration.Contains(Expectation.FunctionName));
+			bPassed &= Assert.IsFalse(
+				Signature.Declaration.Contains(Expectation.FunctionName),
+				FString::Printf(TEXT("%s should not leak the Unreal-only name into the declaration"), Expectation.FunctionName));
 		}
 
 		return bPassed;
@@ -268,18 +270,19 @@ namespace ProductionScriptMixinSignatureTest
 		FAutomationTestBase& Test,
 		const FProductionScriptMixinExpectation& Expectation)
 	{
+		FNoDiscardAsserter Assert(Test);
 		UFunction* Function = Expectation.FunctionLibraryClass->FindFunctionByName(Expectation.FunctionName);
-		if (!Test.TestNotNull(
-				FString::Printf(TEXT("ProductionScriptMixinSignatures should find reflected function %s"), Expectation.FunctionName),
-				Function))
+		if (!Assert.IsNotNull(
+				Function,
+				FString::Printf(TEXT("ProductionScriptMixinSignatures should find reflected function %s"), Expectation.FunctionName)))
 		{
 			return false;
 		}
 
 		TSharedPtr<FAngelscriptType> HostType = ResolveHostTypeFromFirstParameter(Function);
-		if (!Test.TestTrue(
-				FString::Printf(TEXT("ProductionScriptMixinSignatures should resolve the host type for %s from its first parameter"), Expectation.FunctionName),
-				HostType.IsValid()))
+		if (!Assert.IsTrue(
+				HostType.IsValid(),
+				FString::Printf(TEXT("ProductionScriptMixinSignatures should resolve the host type for %s from its first parameter"), Expectation.FunctionName)))
 		{
 			return false;
 		}
@@ -290,9 +293,9 @@ namespace ProductionScriptMixinSignatureTest
 		Signature.ModifyScriptFunction(FunctionId);
 
 		auto* ScriptFunction = reinterpret_cast<asCScriptFunction*>(FAngelscriptEngine::Get().GetScriptEngine()->GetFunctionById(FunctionId));
-		if (!Test.TestNotNull(
-				FString::Printf(TEXT("ProductionScriptMixinSignatures should create a script function for %s"), Expectation.FunctionName),
-				ScriptFunction))
+		if (!Assert.IsNotNull(
+				ScriptFunction,
+				FString::Printf(TEXT("ProductionScriptMixinSignatures should create a script function for %s"), Expectation.FunctionName)))
 		{
 			return false;
 		}
@@ -300,86 +303,86 @@ namespace ProductionScriptMixinSignatureTest
 		const FString ScriptDeclaration = ANSI_TO_TCHAR(ScriptFunction->GetDeclaration(true, false, true, true));
 
 		bool bPassed = true;
-		bPassed &= Test.TestEqual(
-			FString::Printf(TEXT("%s should resolve the expected host type name"), Expectation.FunctionName),
+		bPassed &= Assert.AreEqual(
+			FString(Expectation.ExpectedClassName),
 			HostType->GetAngelscriptTypeName(),
-			FString(Expectation.ExpectedClassName));
-		bPassed &= Test.TestTrue(
-			FString::Printf(TEXT("%s should keep the Unreal function static"), Expectation.FunctionName),
-			Signature.bStaticInUnreal);
-		bPassed &= Test.TestFalse(
-			FString::Printf(TEXT("%s should bind production ScriptMixin functions as script members"), Expectation.FunctionName),
-			Signature.bStaticInScript);
-		bPassed &= Test.TestEqual(
-			FString::Printf(TEXT("%s should expose the expected script member owner"), Expectation.FunctionName),
+			FString::Printf(TEXT("%s should resolve the expected host type name"), Expectation.FunctionName));
+		bPassed &= Assert.IsTrue(
+			Signature.bStaticInUnreal,
+			FString::Printf(TEXT("%s should keep the Unreal function static"), Expectation.FunctionName));
+		bPassed &= Assert.IsFalse(
+			Signature.bStaticInScript,
+			FString::Printf(TEXT("%s should bind production ScriptMixin functions as script members"), Expectation.FunctionName));
+		bPassed &= Assert.AreEqual(
+			FString(Expectation.ExpectedClassName),
 			Signature.ClassName,
-			FString(Expectation.ExpectedClassName));
-		bPassed &= Test.TestEqual(
-			FString::Printf(TEXT("%s should expose the expected number of public parameters in the signature"), Expectation.FunctionName),
+			FString::Printf(TEXT("%s should expose the expected script member owner"), Expectation.FunctionName));
+		bPassed &= Assert.AreEqual(
+			Expectation.ExpectedPublicArgumentCount,
 			Signature.ArgumentTypes.Num(),
-			Expectation.ExpectedPublicArgumentCount);
-		bPassed &= Test.TestEqual(
-			FString::Printf(TEXT("%s should expose the expected number of public parameters in the script function"), Expectation.FunctionName),
+			FString::Printf(TEXT("%s should expose the expected number of public parameters in the signature"), Expectation.FunctionName));
+		bPassed &= Assert.AreEqual(
+			Expectation.ExpectedPublicArgumentCount,
 			static_cast<int32>(ScriptFunction->GetParamCount()),
-			Expectation.ExpectedPublicArgumentCount);
-		bPassed &= Test.TestEqual(
-			FString::Printf(TEXT("%s should not leave a hidden world-context argument in the signature"), Expectation.FunctionName),
+			FString::Printf(TEXT("%s should expose the expected number of public parameters in the script function"), Expectation.FunctionName));
+		bPassed &= Assert.AreEqual(
+			-1,
 			static_cast<int32>(Signature.WorldContextArgument),
-			-1);
-		bPassed &= Test.TestEqual(
-			FString::Printf(TEXT("%s should not hide a world-context argument on the script function"), Expectation.FunctionName),
+			FString::Printf(TEXT("%s should not leave a hidden world-context argument in the signature"), Expectation.FunctionName));
+		bPassed &= Assert.AreEqual(
+			-1,
 			static_cast<int32>(ScriptFunction->hiddenArgumentIndex),
-			-1);
-		bPassed &= Test.TestFalse(
-			FString::Printf(TEXT("%s should not mark the script function with the world-context trait"), Expectation.FunctionName),
-			ScriptFunction->traits.GetTrait(asTRAIT_USES_WORLDCONTEXT));
+			FString::Printf(TEXT("%s should not hide a world-context argument on the script function"), Expectation.FunctionName));
+		bPassed &= Assert.IsFalse(
+			ScriptFunction->traits.GetTrait(asTRAIT_USES_WORLDCONTEXT),
+			FString::Printf(TEXT("%s should not mark the script function with the world-context trait"), Expectation.FunctionName));
 
 		if (Expectation.RequiredDeclarationFragment != nullptr)
 		{
-			bPassed &= Test.TestTrue(
-				FString::Printf(TEXT("%s should preserve declaration fragment %s in the generated signature"), Expectation.FunctionName, Expectation.RequiredDeclarationFragment),
-				Signature.Declaration.Contains(Expectation.RequiredDeclarationFragment));
-			bPassed &= Test.TestTrue(
-				FString::Printf(TEXT("%s should preserve declaration fragment %s on the script function"), Expectation.FunctionName, Expectation.RequiredDeclarationFragment),
-				ScriptDeclaration.Contains(Expectation.RequiredDeclarationFragment));
+			bPassed &= Assert.IsTrue(
+				Signature.Declaration.Contains(Expectation.RequiredDeclarationFragment),
+				FString::Printf(TEXT("%s should preserve declaration fragment %s in the generated signature"), Expectation.FunctionName, Expectation.RequiredDeclarationFragment));
+			bPassed &= Assert.IsTrue(
+				ScriptDeclaration.Contains(Expectation.RequiredDeclarationFragment),
+				FString::Printf(TEXT("%s should preserve declaration fragment %s on the script function"), Expectation.FunctionName, Expectation.RequiredDeclarationFragment));
 		}
 
 		if (Expectation.RequiredArgumentTypeFragment != nullptr)
 		{
-			bPassed &= Test.TestEqual(
-				FString::Printf(TEXT("%s should expose exactly one explicit argument before checking its type"), Expectation.FunctionName),
+			bPassed &= Assert.AreEqual(
+				1,
 				Signature.ArgumentTypes.Num(),
-				1);
+				FString::Printf(TEXT("%s should expose exactly one explicit argument before checking its type"), Expectation.FunctionName));
 			if (Signature.ArgumentTypes.Num() == 1)
 			{
 				const FString ExposedArgumentType = Signature.ArgumentTypes[0].GetAngelscriptDeclaration();
-				bPassed &= Test.TestTrue(
-					FString::Printf(TEXT("%s should expose the expected explicit argument type"), Expectation.FunctionName),
-					ExposedArgumentType.Contains(Expectation.RequiredArgumentTypeFragment));
-				bPassed &= Test.TestTrue(
-					FString::Printf(TEXT("%s should preserve the explicit argument name after mixin trimming"), Expectation.FunctionName),
-					Signature.ArgumentNames[0] == TEXT("Tags"));
+				bPassed &= Assert.IsTrue(
+					ExposedArgumentType.Contains(Expectation.RequiredArgumentTypeFragment),
+					FString::Printf(TEXT("%s should expose the expected explicit argument type"), Expectation.FunctionName));
+				bPassed &= Assert.IsTrue(
+					Signature.ArgumentNames[0] == TEXT("Tags"),
+					FString::Printf(TEXT("%s should preserve the explicit argument name after mixin trimming"), Expectation.FunctionName));
 			}
 		}
 
 		if (Expectation.ForbiddenDeclarationFragment != nullptr)
 		{
-			bPassed &= Test.TestFalse(
-				FString::Printf(TEXT("%s should not leak declaration fragment %s into the generated signature"), Expectation.FunctionName, Expectation.ForbiddenDeclarationFragment),
-				Signature.Declaration.Contains(Expectation.ForbiddenDeclarationFragment));
-			bPassed &= Test.TestFalse(
-				FString::Printf(TEXT("%s should not leak declaration fragment %s into the script function"), Expectation.FunctionName, Expectation.ForbiddenDeclarationFragment),
-				ScriptDeclaration.Contains(Expectation.ForbiddenDeclarationFragment));
+			bPassed &= Assert.IsFalse(
+				Signature.Declaration.Contains(Expectation.ForbiddenDeclarationFragment),
+				FString::Printf(TEXT("%s should not leak declaration fragment %s into the generated signature"), Expectation.FunctionName, Expectation.ForbiddenDeclarationFragment));
+			bPassed &= Assert.IsFalse(
+				ScriptDeclaration.Contains(Expectation.ForbiddenDeclarationFragment),
+				FString::Printf(TEXT("%s should not leak declaration fragment %s into the script function"), Expectation.FunctionName, Expectation.ForbiddenDeclarationFragment));
 		}
 
 		if (Expectation.bExpectConstMethod)
 		{
-			bPassed &= Test.TestTrue(
-				FString::Printf(TEXT("%s should generate a const member declaration"), Expectation.FunctionName),
-				Signature.Declaration.Contains(TEXT("const")));
-			bPassed &= Test.TestTrue(
-				FString::Printf(TEXT("%s should keep the script declaration const"), Expectation.FunctionName),
-				ScriptDeclaration.Contains(TEXT("const")));
+			bPassed &= Assert.IsTrue(
+				Signature.Declaration.Contains(TEXT("const")),
+				FString::Printf(TEXT("%s should generate a const member declaration"), Expectation.FunctionName));
+			bPassed &= Assert.IsTrue(
+				ScriptDeclaration.Contains(TEXT("const")),
+				FString::Printf(TEXT("%s should keep the script declaration const"), Expectation.FunctionName));
 		}
 
 		return bPassed;
@@ -400,7 +403,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
-		if (!TestRunner->TestTrue(TEXT("SubsystemGetterMetadata should create a testing engine"), Engine.IsValid()))
+		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("SubsystemGetterMetadata should create a testing engine")))
 		{
 			return;
 		}
@@ -408,7 +411,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 		FAngelscriptEngineScope EngineScope(*Engine);
 
 		TSharedPtr<FAngelscriptType> HostType = FAngelscriptType::GetByClass(USubsystemLibrary::StaticClass());
-		if (!TestRunner->TestTrue(TEXT("SubsystemGetterMetadata should resolve the subsystem library host type"), HostType.IsValid()))
+		if (!this->Assert.IsTrue(HostType.IsValid(), TEXT("SubsystemGetterMetadata should resolve the subsystem library host type")))
 		{
 			return;
 		}
@@ -483,20 +486,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
-		if (!TestRunner->TestTrue(TEXT("SubsystemHelperNamespaceBinds should create a testing engine"), Engine.IsValid()))
+		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("SubsystemHelperNamespaceBinds should create a testing engine")))
 		{
 			return;
 		}
 
 		FAngelscriptEngineScope EngineScope(*Engine);
 		asIScriptEngine* ScriptEngine = Engine->GetScriptEngine();
-		if (!TestRunner->TestNotNull(TEXT("SubsystemHelperNamespaceBinds should expose the AS engine"), ScriptEngine))
+		if (!this->Assert.IsNotNull(ScriptEngine, TEXT("SubsystemHelperNamespaceBinds should expose the AS engine")))
 		{
 			return;
 		}
 
 		const FString PreviousNamespace = ANSI_TO_TCHAR(ScriptEngine->GetDefaultNamespace());
-		if (!TestRunner->TestTrue(TEXT("Subsystem helper namespace should be selectable"), ScriptEngine->SetDefaultNamespace("USubsystemLibrary") >= 0))
+		if (!this->Assert.IsTrue(ScriptEngine->SetDefaultNamespace("USubsystemLibrary") >= 0, TEXT("Subsystem helper namespace should be selectable")))
 		{
 			return;
 		}
@@ -529,9 +532,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 				}
 			}
 
-			TestRunner->TestTrue(
-				FString::Printf(TEXT("Subsystem helper namespace should bind %hs"), ExpectedName),
-				bFound);
+			(void)this->Assert.IsTrue(
+				bFound,
+				FString::Printf(TEXT("Subsystem helper namespace should bind %hs"), ExpectedName));
 		}
 
 		for (asUINT FunctionIndex = 0, FunctionCount = ScriptEngine->GetGlobalFunctionCount(); FunctionIndex < FunctionCount; ++FunctionIndex)
@@ -557,7 +560,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
-		if (!TestRunner->TestTrue(TEXT("MathReturnValueHelperMetadata should create a testing engine"), Engine.IsValid()))
+		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("MathReturnValueHelperMetadata should create a testing engine")))
 		{
 			return;
 		}
@@ -565,7 +568,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 		FAngelscriptEngineScope EngineScope(*Engine);
 
 		TSharedPtr<FAngelscriptType> HostType = FAngelscriptType::GetByClass(UAngelscriptMathLibrary::StaticClass());
-		if (!TestRunner->TestTrue(TEXT("MathReturnValueHelperMetadata should resolve the math library host type"), HostType.IsValid()))
+		if (!this->Assert.IsTrue(HostType.IsValid(), TEXT("MathReturnValueHelperMetadata should resolve the math library host type")))
 		{
 			return;
 		}
@@ -602,7 +605,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
-		if (!TestRunner->TestTrue(TEXT("ProductionScriptMixinSignatures should create a testing engine"), Engine.IsValid()))
+		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("ProductionScriptMixinSignatures should create a testing engine")))
 		{
 			return;
 		}

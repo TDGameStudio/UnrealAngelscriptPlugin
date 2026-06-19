@@ -96,33 +96,21 @@ int Entry()
 			}
 		}
 
-		TestRunner->TestNotNull(
-			TEXT("Should still parse the class chunk before fail-closed cleanup"),
-			ClassChunk);
-		TestRunner->TestNotNull(
-			TEXT("Should still keep the trailing Entry chunk available for inspection"),
-			EntryChunk);
+		ASSERT_THAT(IsNotNull(ClassChunk, TEXT("Should still parse the class chunk before fail-closed cleanup")));
+		ASSERT_THAT(IsNotNull(EntryChunk, TEXT("Should still keep the trailing Entry chunk available for inspection")));
 
-		if (ClassChunk != nullptr)
-		{
-			TestRunner->TestFalse(
-				TEXT("Gameplay namespace should not leak into the class chunk"),
-				ClassChunk->Namespace.IsSet());
-		}
+		ASSERT_THAT(IsFalse(
+			ClassChunk->Namespace.IsSet(),
+			TEXT("Gameplay namespace should not leak into the class chunk")));
 
-		if (EntryChunk != nullptr)
-		{
-			TestRunner->TestFalse(
-				TEXT("Gameplay namespace should not leak into the trailing global chunk"),
-				EntryChunk->Namespace.IsSet());
-		}
+		ASSERT_THAT(IsFalse(
+			EntryChunk->Namespace.IsSet(),
+			TEXT("Gameplay namespace should not leak into the trailing global chunk")));
 
 		if (Result.Modules.Num() == 1)
 		{
 			FAngelscriptModuleDesc& Module = Result.Modules[0].Get();
-			TestRunner->TestEqual(
-				TEXT("Should not emit any processed code sections"),
-				Module.Code.Num(), 0);
+			ASSERT_THAT(AreEqual(0, Module.Code.Num(), TEXT("Should not emit any processed code sections")));
 			AssertModuleNotDeclaresClass(*TestRunner, Module, TEXT("UBrokenNamespaceCarrier"));
 		}
 
@@ -138,8 +126,9 @@ int Entry()
 	TEST_METHOD(RestrictUsageInactiveBranchIgnored)
 	{
 		TUniquePtr<FAngelscriptEngine> OwnedEngine = NamespaceTestHelpers::CreateEditorEngine();
-		if (!TestRunner->TestNotNull(
-				TEXT("Should create an editor-configured engine"), OwnedEngine.Get()))
+		if (!this->Assert.IsNotNull(
+				OwnedEngine.Get(),
+				TEXT("Should create an editor-configured engine")))
 		{
 			return;
 		}
@@ -156,9 +145,9 @@ int Entry()
 			}
 		};
 
-		TestRunner->TestTrue(
-			TEXT("Should run with EDITOR enabled"),
-			FAngelscriptEngine::ShouldUseEditorScriptsForCurrentContext());
+		ASSERT_THAT(IsTrue(
+			FAngelscriptEngine::ShouldUseEditorScriptsForCurrentContext(),
+			TEXT("Should run with EDITOR enabled")));
 
 		FFixtureFile File(
 			TEXT("Game/Preprocessor/RestrictUsage/InactiveBranchIgnored.as"), TEXT(R"(
@@ -184,18 +173,19 @@ int Entry()
 
 			if (Module.Code.Num() > 0)
 			{
-				TestRunner->TestFalse(
-					TEXT("Should strip raw #restrict text from processed code"),
-					Module.Code[0].Code.Contains(TEXT("#restrict")));
-				TestRunner->TestFalse(
-					TEXT("Should not leak the dead-branch pattern into processed code"),
-					Module.Code[0].Code.Contains(TEXT("Runtime.*")));
+				ASSERT_THAT(IsFalse(
+					Module.Code[0].Code.Contains(TEXT("#restrict")),
+					TEXT("Should strip raw #restrict text from processed code")));
+				ASSERT_THAT(IsFalse(
+					Module.Code[0].Code.Contains(TEXT("Runtime.*")),
+					TEXT("Should not leak the dead-branch pattern into processed code")));
 			}
 
 #if WITH_EDITOR
-			TestRunner->TestEqual(
-				TEXT("Should not record usage restriction metadata for inactive branch"),
-				Module.UsageRestrictions.Num(), 0);
+			ASSERT_THAT(AreEqual(
+				0,
+				Module.UsageRestrictions.Num(),
+				TEXT("Should not record usage restriction metadata for inactive branch")));
 #endif
 		}
 
@@ -229,23 +219,14 @@ int Entry()
 			Summary,
 			true);
 
-		TestRunner->TestTrue(
-			TEXT("Should compile through the preprocessor pipeline"), bCompiled);
-		TestRunner->TestEqual(
-			TEXT("Should have no compile diagnostics"),
-			Summary.Diagnostics.Num(), 0);
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Should compile through the preprocessor pipeline")));
+		ASSERT_THAT(AreEqual(0, Summary.Diagnostics.Num(), TEXT("Should have no compile diagnostics")));
 
 		int32 EntryResult = 0;
 		const bool bExecuted = bCompiled
 			&& ExecuteIntFunction(&Engine, File.RelativePath, ModuleName, TEXT("int Entry()"), EntryResult);
-		TestRunner->TestTrue(
-			TEXT("Should execute the compiled Entry function"), bExecuted);
-		if (bExecuted)
-		{
-			TestRunner->TestEqual(
-				TEXT("Entry should return the active branch result"),
-				EntryResult, 7);
-		}
+		ASSERT_THAT(IsTrue(bExecuted, TEXT("Should execute the compiled Entry function")));
+		ASSERT_THAT(AreEqual(7, EntryResult, TEXT("Entry should return the active branch result")));
 
 		}
 	}
@@ -257,7 +238,7 @@ int Entry()
 	TEST_METHOD(RestrictUsageAllowPattern)
 	{
 		TUniquePtr<FAngelscriptEngine> OwnedEngine = NamespaceTestHelpers::CreateEditorEngine();
-		if (!TestRunner->TestNotNull(TEXT("Should create editor engine"), OwnedEngine.Get()))
+		if (!this->Assert.IsNotNull(OwnedEngine.Get(), TEXT("Should create editor engine")))
 		{
 			return;
 		}
@@ -292,27 +273,16 @@ int Entry()
 
 		FAngelscriptModuleDesc* Module = Result.FindModule(
 			TEXT("Game.Preprocessor.Namespace.RestrictAllow"));
-		if (TestRunner->TestNotNull(TEXT("Should find module"), Module))
-		{
-			AssertModuleCodeNotContains(*TestRunner, Result, *Module, TEXT("#restrict"));
+		ASSERT_THAT(IsNotNull(Module, TEXT("Should find module")));
+		AssertModuleCodeNotContains(*TestRunner, Result, *Module, TEXT("#restrict"));
 
 #if WITH_EDITOR
-			TestRunner->TestEqual(TEXT("Should record two usage restrictions"),
-				Module->UsageRestrictions.Num(), 2);
-			if (Module->UsageRestrictions.Num() >= 2)
-			{
-				TestRunner->TestTrue(TEXT("First restriction should be allow"),
-					Module->UsageRestrictions[0].bIsAllow);
-				TestRunner->TestEqual(TEXT("First pattern should be Game.UI.*"),
-					Module->UsageRestrictions[0].Pattern, FString(TEXT("Game.UI.*")));
-
-				TestRunner->TestFalse(TEXT("Second restriction should be disallow"),
-					Module->UsageRestrictions[1].bIsAllow);
-				TestRunner->TestEqual(TEXT("Second pattern should be Game.Internal.*"),
-					Module->UsageRestrictions[1].Pattern, FString(TEXT("Game.Internal.*")));
-			}
+		ASSERT_THAT(AreEqual(2, Module->UsageRestrictions.Num(), TEXT("Should record two usage restrictions")));
+		ASSERT_THAT(IsTrue(Module->UsageRestrictions[0].bIsAllow, TEXT("First restriction should be allow")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Game.UI.*")), Module->UsageRestrictions[0].Pattern, TEXT("First pattern should be Game.UI.*")));
+		ASSERT_THAT(IsFalse(Module->UsageRestrictions[1].bIsAllow, TEXT("Second restriction should be disallow")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Game.Internal.*")), Module->UsageRestrictions[1].Pattern, TEXT("Second pattern should be Game.Internal.*")));
 #endif
-		}
 
 		}
 	}

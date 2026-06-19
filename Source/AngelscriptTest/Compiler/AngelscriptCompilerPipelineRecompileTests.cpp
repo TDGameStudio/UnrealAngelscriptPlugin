@@ -69,18 +69,19 @@ int Entry()
 			ModuleName,
 			TEXT("int Entry()"),
 			EntryResult);
-		const bool bExecutePassed = Test.TestTrue(
-			*FString::Printf(TEXT("Successful recompile test case should execute Entry() for value %d"), ExpectedValue),
-			bExecuted);
+		FNoDiscardAsserter Assert(Test);
+		const bool bExecutePassed = Assert.IsTrue(
+			bExecuted,
+			*FString::Printf(TEXT("Successful recompile test case should execute Entry() for value %d"), ExpectedValue));
 		if (!bExecutePassed)
 		{
 			return false;
 		}
 
-		return Test.TestEqual(
-			*FString::Printf(TEXT("Successful recompile test case should observe Entry() == %d"), ExpectedValue),
+		return Assert.AreEqual(
+			ExpectedValue,
 			EntryResult,
-			ExpectedValue);
+			*FString::Printf(TEXT("Successful recompile test case should observe Entry() == %d"), ExpectedValue));
 	}
 
 	bool ExecuteGeneratedValueAndExpect(
@@ -90,52 +91,53 @@ int Entry()
 		UFunction* GeneratedFunction,
 		int32 ExpectedValue)
 	{
-		if (!Test.TestNotNull(
-				*FString::Printf(TEXT("Successful recompile test case should materialize a generated class for value %d"), ExpectedValue),
-				GeneratedClass)
-			|| !Test.TestNotNull(
-				*FString::Printf(TEXT("Successful recompile test case should expose GetValue for value %d"), ExpectedValue),
-				GeneratedFunction))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(
+				GeneratedClass,
+				*FString::Printf(TEXT("Successful recompile test case should materialize a generated class for value %d"), ExpectedValue))
+			|| !Assert.IsNotNull(
+				GeneratedFunction,
+				*FString::Printf(TEXT("Successful recompile test case should expose GetValue for value %d"), ExpectedValue)))
 		{
 			return false;
 		}
 
 		FIntProperty* ScoreProperty = FindFProperty<FIntProperty>(GeneratedClass, ScorePropertyName);
-		if (!Test.TestNotNull(
-				*FString::Printf(TEXT("Successful recompile test case should expose Score for value %d"), ExpectedValue),
-				ScoreProperty))
+		if (!Assert.IsNotNull(
+				ScoreProperty,
+				*FString::Printf(TEXT("Successful recompile test case should expose Score for value %d"), ExpectedValue)))
 		{
 			return false;
 		}
 
 		UObject* RuntimeObject = NewObject<UObject>(GetTransientPackage(), GeneratedClass);
-		if (!Test.TestNotNull(
-				*FString::Printf(TEXT("Successful recompile test case should instantiate the generated class for value %d"), ExpectedValue),
-				RuntimeObject))
+		if (!Assert.IsNotNull(
+				RuntimeObject,
+				*FString::Printf(TEXT("Successful recompile test case should instantiate the generated class for value %d"), ExpectedValue)))
 		{
 			return false;
 		}
 
 		const int32 DefaultScore = ScoreProperty->GetPropertyValue_InContainer(RuntimeObject);
-		const bool bDefaultScoreMatches = Test.TestEqual(
-			*FString::Printf(TEXT("Successful recompile test case should materialize Score == %d on new instances"), ExpectedValue),
+		const bool bDefaultScoreMatches = Assert.AreEqual(
+			ExpectedValue,
 			DefaultScore,
-			ExpectedValue);
+			*FString::Printf(TEXT("Successful recompile test case should materialize Score == %d on new instances"), ExpectedValue));
 
 		int32 MethodResult = 0;
 		const bool bExecuted = ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeObject, GeneratedFunction, MethodResult);
-		const bool bExecutePassed = Test.TestTrue(
-			*FString::Printf(TEXT("Successful recompile test case should execute GetValue() for value %d"), ExpectedValue),
-			bExecuted);
+		const bool bExecutePassed = Assert.IsTrue(
+			bExecuted,
+			*FString::Printf(TEXT("Successful recompile test case should execute GetValue() for value %d"), ExpectedValue));
 		if (!bDefaultScoreMatches || !bExecutePassed)
 		{
 			return false;
 		}
 
-		return Test.TestEqual(
-			*FString::Printf(TEXT("Successful recompile test case should observe GetValue() == %d"), ExpectedValue),
+		return Assert.AreEqual(
+			ExpectedValue,
 			MethodResult,
-			ExpectedValue);
+			*FString::Printf(TEXT("Successful recompile test case should observe GetValue() == %d"), ExpectedValue));
 	}
 }
 
@@ -167,17 +169,17 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRecompileTests,
 			CompilerPipelineRecompileTest::MakeScriptSource(7),
 			true,
 			InitialSummary);
-		TestRunner->TestTrue(
-			TEXT("Successful recompile test case should compile the initial annotated module"),
-			bInitialCompiled);
-		TestRunner->TestEqual(
-			TEXT("Successful recompile test case should report FullyHandled for the initial compile"),
+		ASSERT_THAT(IsTrue(
+			bInitialCompiled,
+			TEXT("Successful recompile test case should compile the initial annotated module")));
+		ASSERT_THAT(AreEqual(
+			ECompileResult::FullyHandled,
 			InitialSummary.CompileResult,
-			ECompileResult::FullyHandled);
-		TestRunner->TestEqual(
-			TEXT("Successful recompile test case should emit no diagnostics for the initial compile"),
+			TEXT("Successful recompile test case should report FullyHandled for the initial compile")));
+		ASSERT_THAT(AreEqual(
+			0,
 			InitialSummary.Diagnostics.Num(),
-			0);
+			TEXT("Successful recompile test case should emit no diagnostics for the initial compile")));
 		if (!bInitialCompiled)
 		{
 			return;
@@ -186,7 +188,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRecompileTests,
 		TSharedPtr<FAngelscriptModuleDesc> InitialModuleDesc = Engine.GetModuleByFilenameOrModuleName(
 			CompilerPipelineRecompileTest::ScriptFilename,
 			CompilerPipelineRecompileTest::ModuleName.ToString());
-		if (!TestRunner->TestNotNull(TEXT("Successful recompile test case should publish the initial module descriptor"), InitialModuleDesc.Get()))
+		if (!this->Assert.IsNotNull(InitialModuleDesc.Get(), TEXT("Successful recompile test case should publish the initial module descriptor")))
 		{
 			return;
 		}
@@ -201,10 +203,10 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRecompileTests,
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Successful recompile test case should keep exactly one active module after the initial compile"),
+		ASSERT_THAT(AreEqual(
+			1,
 			CompilerPipelineRecompileTest::CountActiveModulesByName(Engine, CompilerPipelineRecompileTest::ModuleName.ToString()),
-			1);
+			TEXT("Successful recompile test case should keep exactly one active module after the initial compile")));
 
 		Engine.ResetDiagnostics();
 
@@ -217,17 +219,17 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRecompileTests,
 			CompilerPipelineRecompileTest::MakeScriptSource(42),
 			true,
 			RecompiledSummary);
-		TestRunner->TestTrue(
-			TEXT("Successful recompile test case should compile the updated annotated module"),
-			bRecompiled);
-		TestRunner->TestEqual(
-			TEXT("Successful recompile test case should report FullyHandled for the updated compile"),
+		ASSERT_THAT(IsTrue(
+			bRecompiled,
+			TEXT("Successful recompile test case should compile the updated annotated module")));
+		ASSERT_THAT(AreEqual(
+			ECompileResult::FullyHandled,
 			RecompiledSummary.CompileResult,
-			ECompileResult::FullyHandled);
-		TestRunner->TestEqual(
-			TEXT("Successful recompile test case should emit no diagnostics for the updated compile"),
+			TEXT("Successful recompile test case should report FullyHandled for the updated compile")));
+		ASSERT_THAT(AreEqual(
+			0,
 			RecompiledSummary.Diagnostics.Num(),
-			0);
+			TEXT("Successful recompile test case should emit no diagnostics for the updated compile")));
 		if (!bRecompiled)
 		{
 			return;
@@ -236,7 +238,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRecompileTests,
 		TSharedPtr<FAngelscriptModuleDesc> RecompiledModuleDesc = Engine.GetModuleByFilenameOrModuleName(
 			CompilerPipelineRecompileTest::ScriptFilename,
 			CompilerPipelineRecompileTest::ModuleName.ToString());
-		if (!TestRunner->TestNotNull(TEXT("Successful recompile test case should publish the recompiled module descriptor"), RecompiledModuleDesc.Get()))
+		if (!this->Assert.IsNotNull(RecompiledModuleDesc.Get(), TEXT("Successful recompile test case should publish the recompiled module descriptor")))
 		{
 			return;
 		}
@@ -251,17 +253,17 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRecompileTests,
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Successful recompile test case should keep exactly one active module after the updated compile"),
+		ASSERT_THAT(AreEqual(
+			1,
 			CompilerPipelineRecompileTest::CountActiveModulesByName(Engine, CompilerPipelineRecompileTest::ModuleName.ToString()),
-			1);
-		TestRunner->TestNotEqual(
-			TEXT("Successful recompile test case should replace the active module descriptor after the updated compile"),
+			TEXT("Successful recompile test case should keep exactly one active module after the updated compile")));
+		ASSERT_THAT(AreNotEqual(
+			InitialModuleDesc.Get(),
 			RecompiledModuleDesc.Get(),
-			InitialModuleDesc.Get());
-		TestRunner->TestTrue(
-			TEXT("Successful recompile test case should replace the underlying script module after the updated compile"),
-			RecompiledModuleDesc->ScriptModule != InitialModuleDesc->ScriptModule);
+			TEXT("Successful recompile test case should replace the active module descriptor after the updated compile")));
+		ASSERT_THAT(IsTrue(
+			RecompiledModuleDesc->ScriptModule != InitialModuleDesc->ScriptModule,
+			TEXT("Successful recompile test case should replace the underlying script module after the updated compile")));
 
 		if (RecompiledClass == InitialClass && RecompiledFunction == InitialFunction)
 		{

@@ -71,95 +71,104 @@ namespace
 
 		bool VerifyCommandExists(const FString& Name, const TCHAR* ContextLabel) const
 		{
-			return Test.TestNotNull(
-				*FString::Printf(TEXT("%s should register the console command"), ContextLabel),
-				FindCommand(Name));
+			FNoDiscardAsserter Assert(Test);
+			return Assert.IsNotNull(
+				FindCommand(Name),
+				*FString::Printf(TEXT("%s should register the console command"), ContextLabel));
 		}
 
 		bool VerifyCommandMissing(const FString& Name, const TCHAR* ContextLabel) const
 		{
-			return Test.TestNull(
-				*FString::Printf(TEXT("%s should not leave a registered console command"), ContextLabel),
-				FindCommand(Name));
+			FNoDiscardAsserter Assert(Test);
+			return Assert.IsNull(
+				FindCommand(Name),
+				*FString::Printf(TEXT("%s should not leave a registered console command"), ContextLabel));
 		}
 
 		bool ExecuteCommand(const FString& Name, const TArray<FString>& Args, const TCHAR* ContextLabel) const
 		{
 			IConsoleCommand* Command = FindCommand(Name);
-			if (!Test.TestNotNull(
-					*FString::Printf(TEXT("%s should find the registered command before execution"), ContextLabel),
-					Command))
+			FNoDiscardAsserter Assert(Test);
+			if (!Assert.IsNotNull(
+					Command,
+					*FString::Printf(TEXT("%s should find the registered command before execution"), ContextLabel)))
 			{
 				return false;
 			}
 
 			FOutputDeviceNull OutputDevice;
-			return Test.TestTrue(
-				*FString::Printf(TEXT("%s should execute the registered delegate"), ContextLabel),
-				Command->Execute(Args, nullptr, OutputDevice));
+			return Assert.IsTrue(
+				Command->Execute(Args, nullptr, OutputDevice),
+				*FString::Printf(TEXT("%s should execute the registered delegate"), ContextLabel));
 		}
 
 		bool VerifyInt(const FString& Name, int32 ExpectedValue, const TCHAR* ContextLabel) const
 		{
 			IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(*Name);
-			if (!Test.TestNotNull(
-					*FString::Printf(TEXT("%s should find int cvar '%s'"), ContextLabel, *Name),
-					Variable))
+			FNoDiscardAsserter Assert(Test);
+			if (!Assert.IsNotNull(
+					Variable,
+					*FString::Printf(TEXT("%s should find int cvar '%s'"), ContextLabel, *Name)))
 			{
 				return false;
 			}
 
-			return Test.TestEqual(
-				*FString::Printf(TEXT("%s should preserve expected int value"), ContextLabel),
+			return Assert.AreEqual(
+				ExpectedValue,
 				Variable->GetInt(),
-				ExpectedValue);
+				*FString::Printf(TEXT("%s should preserve expected int value"), ContextLabel));
 		}
 
 		bool VerifyFloat(const FString& Name, float ExpectedValue, const TCHAR* ContextLabel) const
 		{
 			IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(*Name);
-			if (!Test.TestNotNull(
-					*FString::Printf(TEXT("%s should find float cvar '%s'"), ContextLabel, *Name),
-					Variable))
+			FNoDiscardAsserter Assert(Test);
+			if (!Assert.IsNotNull(
+					Variable,
+					*FString::Printf(TEXT("%s should find float cvar '%s'"), ContextLabel, *Name)))
 			{
 				return false;
 			}
 
-			return Test.TestTrue(
-				*FString::Printf(TEXT("%s should preserve expected float value"), ContextLabel),
-				FMath::IsNearlyEqual(Variable->GetFloat(), ExpectedValue, 0.0001f));
+			return Assert.IsNear(
+				ExpectedValue,
+				Variable->GetFloat(),
+				0.0001f,
+				*FString::Printf(TEXT("%s should preserve expected float value"), ContextLabel));
 		}
 
 		bool VerifyBool(const FString& Name, bool bExpectedValue, const TCHAR* ContextLabel) const
 		{
 			IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(*Name);
-			if (!Test.TestNotNull(
-					*FString::Printf(TEXT("%s should find bool cvar '%s'"), ContextLabel, *Name),
-					Variable))
+			FNoDiscardAsserter Assert(Test);
+			if (!Assert.IsNotNull(
+					Variable,
+					*FString::Printf(TEXT("%s should find bool cvar '%s'"), ContextLabel, *Name)))
 			{
 				return false;
 			}
 
-			return Test.TestEqual(
-				*FString::Printf(TEXT("%s should preserve expected bool value"), ContextLabel),
+			return Assert.AreEqual(
+				bExpectedValue,
 				Variable->GetBool(),
-				bExpectedValue);
+				*FString::Printf(TEXT("%s should preserve expected bool value"), ContextLabel));
 		}
 
 		bool VerifyString(const FString& Name, const FString& ExpectedValue, const TCHAR* ContextLabel) const
 		{
 			IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(*Name);
-			if (!Test.TestNotNull(
-					*FString::Printf(TEXT("%s should find string cvar '%s'"), ContextLabel, *Name),
-					Variable))
+			FNoDiscardAsserter Assert(Test);
+			if (!Assert.IsNotNull(
+					Variable,
+					*FString::Printf(TEXT("%s should find string cvar '%s'"), ContextLabel, *Name)))
 			{
 				return false;
 			}
 
-			return Test.TestEqual(
-				*FString::Printf(TEXT("%s should preserve expected string value"), ContextLabel),
+			return Assert.AreEqual(
+				ExpectedValue,
 				FString(Variable->GetString()),
-				ExpectedValue);
+				*FString::Printf(TEXT("%s should preserve expected string value"), ContextLabel));
 		}
 
 		bool VerifyIdentity(
@@ -170,9 +179,10 @@ namespace
 			const TCHAR* ContextLabel) const
 		{
 			IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(*Name);
-			if (!Test.TestNotNull(
-					*FString::Printf(TEXT("%s should find existing cvar '%s'"), ContextLabel, *Name),
-					Variable))
+			FNoDiscardAsserter Assert(Test);
+			if (!Assert.IsNotNull(
+					Variable,
+					*FString::Printf(TEXT("%s should find existing cvar '%s'"), ContextLabel, *Name)))
 			{
 				return false;
 			}
@@ -182,17 +192,17 @@ namespace
 			const uint32 CurrentPersistentFlags = static_cast<uint32>(Variable->GetFlags()) & ~SetByMaskBits;
 
 			bool bPassed = true;
-			bPassed &= Test.TestTrue(
-				*FString::Printf(TEXT("%s should preserve the native IConsoleVariable pointer"), ContextLabel),
-				Variable == ExpectedVariable);
-			bPassed &= Test.TestEqual(
-				*FString::Printf(TEXT("%s should preserve native help text"), ContextLabel),
+			bPassed &= Assert.IsTrue(
+				Variable == ExpectedVariable,
+				*FString::Printf(TEXT("%s should preserve the native IConsoleVariable pointer"), ContextLabel));
+			bPassed &= Assert.AreEqual(
+				ExpectedHelp,
 				FString(Variable->GetHelp()),
-				ExpectedHelp);
-			bPassed &= Test.TestEqual(
-				*FString::Printf(TEXT("%s should preserve persistent native flags"), ContextLabel),
+				*FString::Printf(TEXT("%s should preserve native help text"), ContextLabel));
+			bPassed &= Assert.AreEqual(
+				ExpectedPersistentFlags,
 				CurrentPersistentFlags,
-				ExpectedPersistentFlags);
+				*FString::Printf(TEXT("%s should preserve persistent native flags"), ContextLabel));
 			return bPassed;
 		}
 
@@ -219,10 +229,11 @@ namespace
 				return false;
 			}
 
-			return Test.TestEqual(
-				*FString::Printf(TEXT("%s should leave no '%s' console objects"), ContextLabel, ConsoleObjectPrefix),
+			FNoDiscardAsserter Assert(Test);
+			return Assert.AreEqual(
+				0,
 				LeakedNames.Num(),
-				0);
+				*FString::Printf(TEXT("%s should leave no '%s' console objects"), ContextLabel, ConsoleObjectPrefix));
 		}
 
 	private:
@@ -286,7 +297,8 @@ int CommandReady()
 			OutputName,
 			TEXT("__native_unset__"),
 			TEXT("Console command argument output sink"));
-		if (!Test.TestNotNull(TEXT("Console command argument section should pre-register output cvar"), OutputVariable))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(OutputVariable, TEXT("Console command argument section should pre-register output cvar")))
 		{
 			return false;
 		}
@@ -452,7 +464,8 @@ bool RunConsoleVariableExistingSection(
 		ExistingName,
 		7,
 		TEXT("Existing native cvar for bindings test"));
-	if (!Test.TestNotNull(TEXT("Console variable existing section should pre-register native cvar"), ExistingVariable))
+	FNoDiscardAsserter Assert(Test);
+	if (!Assert.IsNotNull(ExistingVariable, TEXT("Console variable existing section should pre-register native cvar")))
 	{
 		return false;
 	}
@@ -501,7 +514,8 @@ bool RunConsoleVariableIdentitySection(
 		7,
 		TEXT("Existing native cvar identity/help/flags should survive bindings test"),
 		ECVF_Cheat);
-	if (!Test.TestNotNull(TEXT("Console variable identity section should pre-register native cvar"), ExistingVariable))
+	FNoDiscardAsserter Assert(Test);
+	if (!Assert.IsNotNull(ExistingVariable, TEXT("Console variable identity section should pre-register native cvar")))
 	{
 		return false;
 	}
@@ -543,9 +557,9 @@ return ExistingVar.GetInt();
 		ExistingHelp,
 		ExistingFlags,
 		TEXT("Console variable identity native metadata"));
-	bPassed &= Test.TestTrue(
-		TEXT("Console variable identity should preserve the native cheat flag"),
-		ExistingVariable->TestFlags(ECVF_Cheat));
+	bPassed &= Assert.IsTrue(
+		ExistingVariable->TestFlags(ECVF_Cheat),
+		TEXT("Console variable identity should preserve the native cheat flag"));
 	bPassed &= ConsoleScope.VerifyNoLeaks(TEXT("Console variable identity section"));
 	return bPassed;
 }
@@ -562,7 +576,8 @@ bool RunConsoleCommandBasicSection(
 		OutputName,
 		-1,
 		TEXT("Console command output sink"));
-	if (!Test.TestNotNull(TEXT("Console command basic section should pre-register output cvar"), OutputVariable))
+	FNoDiscardAsserter Assert(Test);
+	if (!Assert.IsNotNull(OutputVariable, TEXT("Console command basic section should pre-register output cvar")))
 	{
 		return false;
 	}
@@ -650,7 +665,8 @@ bool RunConsoleCommandReplacementSection(
 		OutputName,
 		-1,
 		TEXT("Console command replacement output sink"));
-	if (!Test.TestNotNull(TEXT("Console command replacement section should pre-register output cvar"), OutputVariable))
+	FNoDiscardAsserter Assert(Test);
+	if (!Assert.IsNotNull(OutputVariable, TEXT("Console command replacement section should pre-register output cvar")))
 	{
 		return false;
 	}
@@ -705,7 +721,8 @@ bool RunConsoleCommandLifecycleSection(
 		OutputName,
 		-1,
 		TEXT("Console command lifecycle output sink"));
-	if (!Test.TestNotNull(TEXT("Console command lifecycle section should pre-register output cvar"), OutputVariable))
+	FNoDiscardAsserter Assert(Test);
+	if (!Assert.IsNotNull(OutputVariable, TEXT("Console command lifecycle section should pre-register output cvar")))
 	{
 		return false;
 	}

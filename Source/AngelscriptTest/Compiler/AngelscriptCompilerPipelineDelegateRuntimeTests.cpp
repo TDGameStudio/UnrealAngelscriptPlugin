@@ -29,7 +29,11 @@ namespace CompilerPipelineDelegateRuntimeTest
 	{
 		const auto ModuleNameUtf8 = StringCast<ANSICHAR>(*ModuleName.ToString());
 		asIScriptModule* Module = Engine.GetScriptEngine()->GetModule(ModuleNameUtf8.Get(), asGM_ONLY_IF_EXISTS);
-		Test.TestNotNull(TEXT("Delegate execute runtime error compile should publish a script module"), Module);
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(Module, TEXT("Delegate execute runtime error compile should publish a script module")))
+		{
+			return nullptr;
+		}
 		return Module;
 	}
 
@@ -47,7 +51,8 @@ namespace CompilerPipelineDelegateRuntimeTest
 
 		FAngelscriptEngineScope EngineScope(Engine);
 		asIScriptContext* Context = Engine.CreateContext();
-		if (!Test.TestNotNull(TEXT("Delegate execute runtime error test case should create an execution context"), Context))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(Context, TEXT("Delegate execute runtime error test case should create an execution context")))
 		{
 			return false;
 		}
@@ -109,23 +114,23 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineDelegateRuntimeTests,
 			true,
 			Summary);
 
-		TestRunner->TestTrue(
-			TEXT("Delegate execute runtime error test case should compile successfully"),
-			bCompiled);
-		TestRunner->TestTrue(
-			TEXT("Delegate execute runtime error test case should run through the preprocessor pipeline"),
-			Summary.bUsedPreprocessor);
-		TestRunner->TestTrue(
-			TEXT("Delegate execute runtime error test case should report compile success before execution"),
-			Summary.bCompileSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Delegate execute runtime error test case should finish with FullyHandled"),
+		ASSERT_THAT(IsTrue(
+			bCompiled,
+			TEXT("Delegate execute runtime error test case should compile successfully")));
+		ASSERT_THAT(IsTrue(
+			Summary.bUsedPreprocessor,
+			TEXT("Delegate execute runtime error test case should run through the preprocessor pipeline")));
+		ASSERT_THAT(IsTrue(
+			Summary.bCompileSucceeded,
+			TEXT("Delegate execute runtime error test case should report compile success before execution")));
+		ASSERT_THAT(AreEqual(
+			ECompileResult::FullyHandled,
 			Summary.CompileResult,
-			ECompileResult::FullyHandled);
-		TestRunner->TestEqual(
-			TEXT("Delegate execute runtime error test case should keep compile diagnostics empty"),
+			TEXT("Delegate execute runtime error test case should finish with FullyHandled")));
+		ASSERT_THAT(AreEqual(
+			0,
 			Summary.Diagnostics.Num(),
-			0);
+			TEXT("Delegate execute runtime error test case should keep compile diagnostics empty")));
 		if (!bCompiled)
 		{
 			return;
@@ -148,34 +153,34 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineDelegateRuntimeTests,
 			Engine,
 			*Module,
 			ExecutionResult);
-		TestRunner->TestTrue(
-			TEXT("Delegate execute runtime error test case should reach the manual execution path"),
-			bExecuted);
+		ASSERT_THAT(IsTrue(
+			bExecuted,
+			TEXT("Delegate execute runtime error test case should reach the manual execution path")));
 		if (!bExecuted)
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Delegate execute runtime error test case should prepare the entry function successfully"),
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(asSUCCESS),
 			ExecutionResult.PrepareResult,
-			static_cast<int32>(asSUCCESS));
-		TestRunner->TestEqual(
-			TEXT("Delegate execute runtime error test case should fail during execution with a script exception"),
+			TEXT("Delegate execute runtime error test case should prepare the entry function successfully")));
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(asEXECUTION_EXCEPTION),
 			ExecutionResult.ExecuteResult,
-			static_cast<int32>(asEXECUTION_EXCEPTION));
-		TestRunner->TestEqual(
-			TEXT("Delegate execute runtime error test case should report the generated unbound delegate message"),
+			TEXT("Delegate execute runtime error test case should fail during execution with a script exception")));
+		ASSERT_THAT(AreEqual(
+			FString(CompilerPipelineDelegateRuntimeTest::ExpectedExceptionString),
 			ExecutionResult.ExceptionString,
-			FString(CompilerPipelineDelegateRuntimeTest::ExpectedExceptionString));
-		TestRunner->TestEqual(
-			TEXT("Delegate execute runtime error test case should report the generated delegate Execute wrapper line"),
+			TEXT("Delegate execute runtime error test case should report the generated unbound delegate message")));
+		ASSERT_THAT(AreEqual(
+			CompilerPipelineDelegateRuntimeTest::ExpectedExceptionLine,
 			ExecutionResult.ExceptionLine,
-			CompilerPipelineDelegateRuntimeTest::ExpectedExceptionLine);
-		TestRunner->TestEqual(
-			TEXT("Delegate execute runtime error test case should attribute the exception to the generated delegate Execute wrapper"),
+			TEXT("Delegate execute runtime error test case should report the generated delegate Execute wrapper line")));
+		ASSERT_THAT(AreEqual(
+			FString(CompilerPipelineDelegateRuntimeTest::ExpectedExceptionFunctionDeclaration),
 			ExecutionResult.ExceptionFunctionDeclaration,
-			FString(CompilerPipelineDelegateRuntimeTest::ExpectedExceptionFunctionDeclaration));
+			TEXT("Delegate execute runtime error test case should attribute the exception to the generated delegate Execute wrapper")));
 
 		}
 
@@ -223,23 +228,23 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineDelegateRuntimeTests,
 			true,
 			Summary);
 
-		TestRunner->TestTrue(
-			TEXT("Delegate ExecuteIfBound default-value test case should compile successfully"),
-			bCompiled);
-		TestRunner->TestTrue(
-			TEXT("Delegate ExecuteIfBound default-value test case should run through the preprocessor pipeline"),
-			Summary.bUsedPreprocessor);
-		TestRunner->TestTrue(
-			TEXT("Delegate ExecuteIfBound default-value test case should report compile success before execution"),
-			Summary.bCompileSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Delegate ExecuteIfBound default-value test case should finish with FullyHandled"),
+		ASSERT_THAT(IsTrue(
+			bCompiled,
+			TEXT("Delegate ExecuteIfBound default-value test case should compile successfully")));
+		ASSERT_THAT(IsTrue(
+			Summary.bUsedPreprocessor,
+			TEXT("Delegate ExecuteIfBound default-value test case should run through the preprocessor pipeline")));
+		ASSERT_THAT(IsTrue(
+			Summary.bCompileSucceeded,
+			TEXT("Delegate ExecuteIfBound default-value test case should report compile success before execution")));
+		ASSERT_THAT(AreEqual(
+			ECompileResult::FullyHandled,
 			Summary.CompileResult,
-			ECompileResult::FullyHandled);
-		TestRunner->TestEqual(
-			TEXT("Delegate ExecuteIfBound default-value test case should keep compile diagnostics empty"),
+			TEXT("Delegate ExecuteIfBound default-value test case should finish with FullyHandled")));
+		ASSERT_THAT(AreEqual(
+			0,
 			Summary.Diagnostics.Num(),
-			0);
+			TEXT("Delegate ExecuteIfBound default-value test case should keep compile diagnostics empty")));
 		if (!bCompiled)
 		{
 			return;
@@ -247,7 +252,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineDelegateRuntimeTests,
 
 		const auto ModuleNameUtf8 = StringCast<ANSICHAR>(*LocalModuleName.ToString());
 		asIScriptModule* Module = Engine.GetScriptEngine()->GetModule(ModuleNameUtf8.Get(), asGM_ONLY_IF_EXISTS);
-		if (!TestRunner->TestNotNull(TEXT("Delegate ExecuteIfBound default-value test case should publish a script module"), Module))
+		if (!this->Assert.IsNotNull(Module, TEXT("Delegate ExecuteIfBound default-value test case should publish a script module")))
 		{
 			return;
 		}
@@ -264,14 +269,14 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineDelegateRuntimeTests,
 		ExecuteIntFunction(*TestRunner, Engine, *EntryFunction, IntResult);
 		ExecuteIntFunction(*TestRunner, Engine, *EntryBoolFunction, BoolResult);
 
-		TestRunner->TestEqual(
-			TEXT("Delegate ExecuteIfBound default-value test case should return 0 for unbound int delegates"),
+		ASSERT_THAT(AreEqual(
+			0,
 			IntResult,
-			0);
-		TestRunner->TestEqual(
-			TEXT("Delegate ExecuteIfBound default-value test case should return 0 for unbound bool delegates"),
+			TEXT("Delegate ExecuteIfBound default-value test case should return 0 for unbound int delegates")));
+		ASSERT_THAT(AreEqual(
+			0,
 			BoolResult,
-			0);
+			TEXT("Delegate ExecuteIfBound default-value test case should return 0 for unbound bool delegates")));
 
 		}
 

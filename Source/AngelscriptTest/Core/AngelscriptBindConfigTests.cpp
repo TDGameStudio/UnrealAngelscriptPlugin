@@ -199,7 +199,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 	{
 		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
 		UAngelscriptSettings* Settings = GetMutableDefault<UAngelscriptSettings>();
-		if (!TestRunner->TestNotNull(TEXT("BindConfig.GlobalDisabledBindNames should access mutable settings"), Settings))
+		if (!this->Assert.IsNotNull(Settings, TEXT("BindConfig.GlobalDisabledBindNames should access mutable settings")))
 		{
 			return;
 		}
@@ -220,13 +220,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 		});
 
 		const TArray<FName> AllBindNames = FAngelscriptBinds::GetAllRegisteredBindNames();
-		TestRunner->TestTrue(TEXT("BindConfig.GlobalDisabledBindNames should expose newly registered named binds"), AllBindNames.Contains(NamedBindName));
+		bool bOk = this->Assert.IsTrue(AllBindNames.Contains(NamedBindName), TEXT("BindConfig.GlobalDisabledBindNames should expose newly registered named binds"));
 
 		TSet<FName> AllowedBindNames;
 		AllowedBindNames.Add(NamedBindName);
 
 		ExecuteIsolatedBinds(BuildDisabledSetExcluding(AllBindNames, AllowedBindNames));
-		TestRunner->TestEqual(TEXT("BindConfig.GlobalDisabledBindNames should execute the named bind when it is enabled"), FBindExecutionRecorder::Get(CounterKey), 1);
+		bOk &= this->Assert.AreEqual(1, FBindExecutionRecorder::Get(CounterKey), TEXT("BindConfig.GlobalDisabledBindNames should execute the named bind when it is enabled"));
 
 		FBindExecutionRecorder::Reset(CounterKey);
 		Settings->DisabledBindNames = { NamedBindName };
@@ -236,29 +236,30 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 		FAngelscriptEngine Engine(Config, Dependencies);
 		FAngelscriptEngineScope EngineScope(Engine);
 		const TSet<FName> MergedDisabledBindNames = FAngelscriptBindConfigTestAccess::CollectDisabledBindNames(Engine);
-		TestRunner->TestTrue(TEXT("BindConfig.GlobalDisabledBindNames should merge the settings-level disabled bind name"), MergedDisabledBindNames.Contains(NamedBindName));
+		bOk &= this->Assert.IsTrue(MergedDisabledBindNames.Contains(NamedBindName), TEXT("BindConfig.GlobalDisabledBindNames should merge the settings-level disabled bind name"));
 
 		TSet<FName> DisabledBindNames = BuildDisabledSetExcluding(AllBindNames, AllowedBindNames);
 		DisabledBindNames.Append(MergedDisabledBindNames);
 		ExecuteIsolatedBinds(DisabledBindNames);
 
-		TestRunner->TestEqual(TEXT("BindConfig.GlobalDisabledBindNames should skip execution when disabled in settings"), FBindExecutionRecorder::Get(CounterKey), 0);
+		bOk &= this->Assert.AreEqual(0, FBindExecutionRecorder::Get(CounterKey), TEXT("BindConfig.GlobalDisabledBindNames should skip execution when disabled in settings"));
 
 		const TArray<FAngelscriptBinds::FBindInfo> BindInfos = FAngelscriptBinds::GetBindInfoList(MergedDisabledBindNames);
 		const FAngelscriptBinds::FBindInfo* NamedBindInfo = FindBindInfoByName(BindInfos, NamedBindName);
-		if (!TestRunner->TestNotNull(TEXT("BindConfig.GlobalDisabledBindNames should expose bind info for the named bind"), NamedBindInfo))
+		if (!this->Assert.IsNotNull(NamedBindInfo, TEXT("BindConfig.GlobalDisabledBindNames should expose bind info for the named bind")))
 		{
 			return;
 		}
 
-		TestRunner->TestFalse(TEXT("BindConfig.GlobalDisabledBindNames should report the disabled named bind as disabled"), NamedBindInfo->bEnabled);
+		bOk &= this->Assert.IsFalse(NamedBindInfo->bEnabled, TEXT("BindConfig.GlobalDisabledBindNames should report the disabled named bind as disabled"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(EngineDisabledBindNames)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
 		UAngelscriptSettings* Settings = GetMutableDefault<UAngelscriptSettings>();
-		if (!TestRunner->TestNotNull(TEXT("BindConfig.EngineDisabledBindNames should access mutable settings"), Settings))
+		if (!this->Assert.IsNotNull(Settings, TEXT("BindConfig.EngineDisabledBindNames should access mutable settings")))
 		{
 			return;
 		}
@@ -280,13 +281,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 		});
 
 		const TArray<FName> AllBindNames = FAngelscriptBinds::GetAllRegisteredBindNames();
-		TestRunner->TestTrue(TEXT("BindConfig.EngineDisabledBindNames should expose the named bind through the query API"), AllBindNames.Contains(NamedBindName));
+		bool bOk = this->Assert.IsTrue(AllBindNames.Contains(NamedBindName), TEXT("BindConfig.EngineDisabledBindNames should expose the named bind through the query API"));
 
 		TSet<FName> AllowedBindNames;
 		AllowedBindNames.Add(NamedBindName);
 
 		ExecuteIsolatedBinds(BuildDisabledSetExcluding(AllBindNames, AllowedBindNames));
-		TestRunner->TestEqual(TEXT("BindConfig.EngineDisabledBindNames should execute the named bind before engine-level filtering is applied"), FBindExecutionRecorder::Get(CounterKey), 1);
+		bOk &= this->Assert.AreEqual(1, FBindExecutionRecorder::Get(CounterKey), TEXT("BindConfig.EngineDisabledBindNames should execute the named bind before engine-level filtering is applied"));
 
 		FBindExecutionRecorder::Reset(CounterKey);
 
@@ -296,13 +297,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 		FAngelscriptEngine Engine(Config, Dependencies);
 		FAngelscriptEngineScope EngineScope(Engine);
 		const TSet<FName> MergedDisabledBindNames = FAngelscriptBindConfigTestAccess::CollectDisabledBindNames(Engine);
-		TestRunner->TestTrue(TEXT("BindConfig.EngineDisabledBindNames should include the engine-level disabled bind name"), MergedDisabledBindNames.Contains(NamedBindName));
+		bOk &= this->Assert.IsTrue(MergedDisabledBindNames.Contains(NamedBindName), TEXT("BindConfig.EngineDisabledBindNames should include the engine-level disabled bind name"));
 
 		TSet<FName> DisabledBindNames = BuildDisabledSetExcluding(AllBindNames, AllowedBindNames);
 		DisabledBindNames.Append(MergedDisabledBindNames);
 		ExecuteIsolatedBinds(DisabledBindNames);
 
-		TestRunner->TestEqual(TEXT("BindConfig.EngineDisabledBindNames should skip execution when disabled in the engine config"), FBindExecutionRecorder::Get(CounterKey), 0);
+		bOk &= this->Assert.AreEqual(0, FBindExecutionRecorder::Get(CounterKey), TEXT("BindConfig.EngineDisabledBindNames should skip execution when disabled in the engine config"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(UnnamedBindBackwardCompatibility)
@@ -330,31 +332,33 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 			}
 		}
 
-		if (!TestRunner->TestFalse(TEXT("BindConfig.UnnamedBindBackwardCompatibility should register at least one new bind name"), NewBindNames.IsEmpty()))
+		if (!this->Assert.IsFalse(NewBindNames.IsEmpty(), TEXT("BindConfig.UnnamedBindBackwardCompatibility should register at least one new bind name")))
 		{
 			return;
 		}
 
-		if (!TestRunner->TestTrue(TEXT("BindConfig.UnnamedBindBackwardCompatibility should auto-generate an unnamed bind name"), GeneratedUnnamedBindName != NAME_None))
+		if (!this->Assert.IsTrue(GeneratedUnnamedBindName != NAME_None, TEXT("BindConfig.UnnamedBindBackwardCompatibility should auto-generate an unnamed bind name")))
 		{
 			return;
 		}
 
 		const TArray<FAngelscriptBinds::FBindInfo> BindInfos = FAngelscriptBinds::GetBindInfoList();
 		const FAngelscriptBinds::FBindInfo* UnnamedBindInfo = FindBindInfoByName(BindInfos, GeneratedUnnamedBindName);
-		if (!TestRunner->TestNotNull(TEXT("BindConfig.UnnamedBindBackwardCompatibility should expose bind info for the unnamed bind"), UnnamedBindInfo))
+		if (!this->Assert.IsNotNull(UnnamedBindInfo, TEXT("BindConfig.UnnamedBindBackwardCompatibility should expose bind info for the unnamed bind")))
 		{
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("BindConfig.UnnamedBindBackwardCompatibility should default unnamed bind order to zero"), UnnamedBindInfo->BindOrder, 0);
-		TestRunner->TestTrue(TEXT("BindConfig.UnnamedBindBackwardCompatibility should report unnamed binds as enabled by default"), UnnamedBindInfo->bEnabled);
+		bool bOk = true;
+		bOk &= this->Assert.AreEqual(0, UnnamedBindInfo->BindOrder, TEXT("BindConfig.UnnamedBindBackwardCompatibility should default unnamed bind order to zero"));
+		bOk &= this->Assert.IsTrue(UnnamedBindInfo->bEnabled, TEXT("BindConfig.UnnamedBindBackwardCompatibility should report unnamed binds as enabled by default"));
 
 		TSet<FName> AllowedBindNames;
 		AllowedBindNames.Add(GeneratedUnnamedBindName);
 		ExecuteIsolatedBinds(BuildDisabledSetExcluding(AllBindNames, AllowedBindNames));
 
-		TestRunner->TestEqual(TEXT("BindConfig.UnnamedBindBackwardCompatibility should continue executing unnamed binds"), FBindExecutionRecorder::Get(CounterKey), 1);
+		bOk &= this->Assert.AreEqual(1, FBindExecutionRecorder::Get(CounterKey), TEXT("BindConfig.UnnamedBindBackwardCompatibility should continue executing unnamed binds"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(StartupBindInfoPreservesOrder)
@@ -368,35 +372,37 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 		const TArray<FAngelscriptBinds::FBindInfo> BindInfos = FAngelscriptBinds::GetBindInfoList();
 		const int32 EarlyInfoIndex = FindBindIndexByName(BindInfos, EarlyBindName);
 		const int32 LateInfoIndex = FindBindIndexByName(BindInfos, LateBindName);
-		if (!TestRunner->TestTrue(TEXT("BindConfig.StartupBindInfoPreservesOrder should expose the early named bind in bind info"), EarlyInfoIndex != INDEX_NONE)
-			|| !TestRunner->TestTrue(TEXT("BindConfig.StartupBindInfoPreservesOrder should expose the late named bind in bind info"), LateInfoIndex != INDEX_NONE))
+		if (!this->Assert.IsTrue(EarlyInfoIndex != INDEX_NONE, TEXT("BindConfig.StartupBindInfoPreservesOrder should expose the early named bind in bind info"))
+			|| !this->Assert.IsTrue(LateInfoIndex != INDEX_NONE, TEXT("BindConfig.StartupBindInfoPreservesOrder should expose the late named bind in bind info")))
 		{
 			return;
 		}
 
 		const FAngelscriptBindExecutionSnapshot Snapshot = ObserveStartupBindPass(FAngelscriptEngineConfig());
-		if (!TestRunner->TestEqual(TEXT("BindConfig.StartupBindInfoPreservesOrder should observe a single startup bind pass"), FAngelscriptBindExecutionObservation::GetInvocationCount(), 1))
+		if (!this->Assert.AreEqual(1, FAngelscriptBindExecutionObservation::GetInvocationCount(), TEXT("BindConfig.StartupBindInfoPreservesOrder should observe a single startup bind pass")))
 		{
 			return;
 		}
 
 		const int32 EarlyExecutionIndex = Snapshot.ExecutedBindNames.IndexOfByKey(EarlyBindName);
 		const int32 LateExecutionIndex = Snapshot.ExecutedBindNames.IndexOfByKey(LateBindName);
-		if (!TestRunner->TestTrue(TEXT("BindConfig.StartupBindInfoPreservesOrder should execute the early named bind during startup"), EarlyExecutionIndex != INDEX_NONE)
-			|| !TestRunner->TestTrue(TEXT("BindConfig.StartupBindInfoPreservesOrder should execute the late named bind during startup"), LateExecutionIndex != INDEX_NONE))
+		if (!this->Assert.IsTrue(EarlyExecutionIndex != INDEX_NONE, TEXT("BindConfig.StartupBindInfoPreservesOrder should execute the early named bind during startup"))
+			|| !this->Assert.IsTrue(LateExecutionIndex != INDEX_NONE, TEXT("BindConfig.StartupBindInfoPreservesOrder should execute the late named bind during startup")))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("BindConfig.StartupBindInfoPreservesOrder should sort bind info by bind order"), EarlyInfoIndex < LateInfoIndex);
-		TestRunner->TestTrue(TEXT("BindConfig.StartupBindInfoPreservesOrder should preserve the same order in the startup bind pass"), EarlyExecutionIndex < LateExecutionIndex);
+		bool bOk = true;
+		bOk &= this->Assert.IsTrue(EarlyInfoIndex < LateInfoIndex, TEXT("BindConfig.StartupBindInfoPreservesOrder should sort bind info by bind order"));
+		bOk &= this->Assert.IsTrue(EarlyExecutionIndex < LateExecutionIndex, TEXT("BindConfig.StartupBindInfoPreservesOrder should preserve the same order in the startup bind pass"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(StartupPathMergesDisabledBindNames)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
 		UAngelscriptSettings* Settings = GetMutableDefault<UAngelscriptSettings>();
-		if (!TestRunner->TestNotNull(TEXT("BindConfig.StartupPathMergesDisabledBindNames should access mutable settings"), Settings))
+		if (!this->Assert.IsNotNull(Settings, TEXT("BindConfig.StartupPathMergesDisabledBindNames should access mutable settings")))
 		{
 			return;
 		}
@@ -420,16 +426,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 		Config.DisabledBindNames.Add(EngineDisabledBindName);
 
 		const FAngelscriptBindExecutionSnapshot Snapshot = ObserveStartupBindPass(Config);
-		if (!TestRunner->TestEqual(TEXT("BindConfig.StartupPathMergesDisabledBindNames should observe one startup bind pass"), FAngelscriptBindExecutionObservation::GetInvocationCount(), 1))
+		if (!this->Assert.AreEqual(1, FAngelscriptBindExecutionObservation::GetInvocationCount(), TEXT("BindConfig.StartupPathMergesDisabledBindNames should observe one startup bind pass")))
 		{
 			return;
 		}
 
-		TestRunner->TestTrue(TEXT("BindConfig.StartupPathMergesDisabledBindNames should surface the settings-level disabled bind in the observed startup pass"), Snapshot.DisabledBindNames.Contains(SettingsDisabledBindName));
-		TestRunner->TestTrue(TEXT("BindConfig.StartupPathMergesDisabledBindNames should surface the engine-level disabled bind in the observed startup pass"), Snapshot.DisabledBindNames.Contains(EngineDisabledBindName));
-		TestRunner->TestFalse(TEXT("BindConfig.StartupPathMergesDisabledBindNames should skip the settings-disabled bind during startup"), Snapshot.ExecutedBindNames.Contains(SettingsDisabledBindName));
-		TestRunner->TestFalse(TEXT("BindConfig.StartupPathMergesDisabledBindNames should skip the engine-disabled bind during startup"), Snapshot.ExecutedBindNames.Contains(EngineDisabledBindName));
-		TestRunner->TestTrue(TEXT("BindConfig.StartupPathMergesDisabledBindNames should keep enabled binds visible in the startup execution list"), Snapshot.ExecutedBindNames.Contains(EnabledBindName));
+		bool bOk = true;
+		bOk &= this->Assert.IsTrue(Snapshot.DisabledBindNames.Contains(SettingsDisabledBindName), TEXT("BindConfig.StartupPathMergesDisabledBindNames should surface the settings-level disabled bind in the observed startup pass"));
+		bOk &= this->Assert.IsTrue(Snapshot.DisabledBindNames.Contains(EngineDisabledBindName), TEXT("BindConfig.StartupPathMergesDisabledBindNames should surface the engine-level disabled bind in the observed startup pass"));
+		bOk &= this->Assert.IsFalse(Snapshot.ExecutedBindNames.Contains(SettingsDisabledBindName), TEXT("BindConfig.StartupPathMergesDisabledBindNames should skip the settings-disabled bind during startup"));
+		bOk &= this->Assert.IsFalse(Snapshot.ExecutedBindNames.Contains(EngineDisabledBindName), TEXT("BindConfig.StartupPathMergesDisabledBindNames should skip the engine-disabled bind during startup"));
+		bOk &= this->Assert.IsTrue(Snapshot.ExecutedBindNames.Contains(EnabledBindName), TEXT("BindConfig.StartupPathMergesDisabledBindNames should keep enabled binds visible in the startup execution list"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(GeneratedBlueprintCallableEntriesPopulateClassMaps)
@@ -443,34 +451,34 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 		UFunction* DestroyActorFunction = AActor::StaticClass()->FindFunctionByName(TEXT("K2_DestroyActor"));
 		UFunction* GetPlayerControllerFunction = UGameplayStatics::StaticClass()->FindFunctionByName(TEXT("GetPlayerController"));
 		UFunction* IsDeveloperOnlyFunction = UASClass::StaticClass()->FindFunctionByName(TEXT("IsDeveloperOnly"));
-		if (!TestRunner->TestNotNull(TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should find AActor::K2_DestroyActor"), DestroyActorFunction)
-			|| !TestRunner->TestNotNull(TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should find UGameplayStatics::GetPlayerController"), GetPlayerControllerFunction)
-			|| !TestRunner->TestNotNull(TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should find UASClass::IsDeveloperOnly"), IsDeveloperOnlyFunction))
+		if (!this->Assert.IsNotNull(DestroyActorFunction, TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should find AActor::K2_DestroyActor"))
+			|| !this->Assert.IsNotNull(GetPlayerControllerFunction, TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should find UGameplayStatics::GetPlayerController"))
+			|| !this->Assert.IsNotNull(IsDeveloperOnlyFunction, TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should find UASClass::IsDeveloperOnly")))
 		{ return; }
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
-		if (!TestRunner->TestTrue(TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should create a testing engine"), Engine.IsValid())) { return; }
+		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should create a testing engine"))) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
 
 		auto& ClassFuncMaps = FAngelscriptBinds::GetClassFuncMaps();
 		const TMap<FString, FFuncEntry>* ActorEntries = ClassFuncMaps.Find(AActor::StaticClass());
 		const TMap<FString, FFuncEntry>* GameplayStaticsEntries = ClassFuncMaps.Find(UGameplayStatics::StaticClass());
 		const TMap<FString, FFuncEntry>* ScriptClassEntries = ClassFuncMaps.Find(UASClass::StaticClass());
-		if (!TestRunner->TestNotNull(TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should populate entries for AActor"), ActorEntries)
-			|| !TestRunner->TestNotNull(TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should populate entries for UGameplayStatics"), GameplayStaticsEntries)
-			|| !TestRunner->TestNotNull(TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should populate entries for UASClass"), ScriptClassEntries))
+		if (!this->Assert.IsNotNull(ActorEntries, TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should populate entries for AActor"))
+			|| !this->Assert.IsNotNull(GameplayStaticsEntries, TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should populate entries for UGameplayStatics"))
+			|| !this->Assert.IsNotNull(ScriptClassEntries, TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should populate entries for UASClass")))
 		{ return; }
 
 		const FFuncEntry* DestroyActorEntry = ActorEntries->Find(DestroyActorFunction->GetName());
 		const FFuncEntry* GetPlayerControllerEntry = GameplayStaticsEntries->Find(GetPlayerControllerFunction->GetName());
 		const FFuncEntry* IsDeveloperOnlyEntry = ScriptClassEntries->Find(IsDeveloperOnlyFunction->GetName());
-		if (!TestRunner->TestNotNull(TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should register AActor::K2_DestroyActor"), DestroyActorEntry)
-			|| !TestRunner->TestNotNull(TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should register UGameplayStatics::GetPlayerController"), GetPlayerControllerEntry)
-			|| !TestRunner->TestNotNull(TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should register UASClass::IsDeveloperOnly"), IsDeveloperOnlyEntry))
+		if (!this->Assert.IsNotNull(DestroyActorEntry, TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should register AActor::K2_DestroyActor"))
+			|| !this->Assert.IsNotNull(GetPlayerControllerEntry, TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should register UGameplayStatics::GetPlayerController"))
+			|| !this->Assert.IsNotNull(IsDeveloperOnlyEntry, TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should register UASClass::IsDeveloperOnly")))
 		{ return; }
 
-		TestRunner->TestTrue(TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should bind UASClass::IsDeveloperOnly to a direct native function entry"), IsFunctionEntryBound(*IsDeveloperOnlyEntry));
+		(void)this->Assert.IsTrue(IsFunctionEntryBound(*IsDeveloperOnlyEntry), TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should bind UASClass::IsDeveloperOnly to a direct native function entry"));
 	}
 
 	TEST_METHOD(AddFunctionEntryPreservesFirstRegistration)
@@ -486,13 +494,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 		FAngelscriptBinds::AddFunctionEntry(AActor::StaticClass(), FunctionName, SecondEntry);
 
 		const TMap<FString, FFuncEntry>* ActorEntries = FAngelscriptBinds::GetClassFuncMaps().Find(AActor::StaticClass());
-		if (!TestRunner->TestNotNull(TEXT("AddFunctionEntryPreservesFirstRegistration should create a function entry map for AActor"), ActorEntries)) { return; }
+		if (!this->Assert.IsNotNull(ActorEntries, TEXT("AddFunctionEntryPreservesFirstRegistration should create a function entry map for AActor"))) { return; }
 		const FFuncEntry* StoredEntry = ActorEntries->Find(FunctionName);
-		if (!TestRunner->TestNotNull(TEXT("AddFunctionEntryPreservesFirstRegistration should keep the first function entry"), StoredEntry)) { return; }
+		if (!this->Assert.IsNotNull(StoredEntry, TEXT("AddFunctionEntryPreservesFirstRegistration should keep the first function entry"))) { return; }
 
-		TestRunner->TestTrue(TEXT("AddFunctionEntryPreservesFirstRegistration should keep the first registration bound"), IsFunctionEntryBound(*StoredEntry));
-		TestRunner->TestTrue(TEXT("AddFunctionEntryPreservesFirstRegistration should preserve the first stored function pointer and caller"), AreFunctionEntriesEqual(*StoredEntry, FirstEntry));
-		TestRunner->TestFalse(TEXT("AddFunctionEntryPreservesFirstRegistration should ignore the later duplicate registration"), AreFunctionEntriesEqual(*StoredEntry, SecondEntry));
+		bool bOk = true;
+		bOk &= this->Assert.IsTrue(IsFunctionEntryBound(*StoredEntry), TEXT("AddFunctionEntryPreservesFirstRegistration should keep the first registration bound"));
+		bOk &= this->Assert.IsTrue(AreFunctionEntriesEqual(*StoredEntry, FirstEntry), TEXT("AddFunctionEntryPreservesFirstRegistration should preserve the first stored function pointer and caller"));
+		bOk &= this->Assert.IsFalse(AreFunctionEntriesEqual(*StoredEntry, SecondEntry), TEXT("AddFunctionEntryPreservesFirstRegistration should ignore the later duplicate registration"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(BlueprintInternalUseOnlyCanBeOverriddenForAngelscript)
@@ -500,14 +510,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
 		UFunction* WithOverride = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("InternalCallableWithOverride"));
 		UFunction* WithoutOverride = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("InternalCallableWithoutOverride"));
-		if (!TestRunner->TestNotNull(TEXT("BlueprintInternalUseOnlyCanBeOverriddenForAngelscript should find the override test function"), WithOverride)
-			|| !TestRunner->TestNotNull(TEXT("BlueprintInternalUseOnlyCanBeOverriddenForAngelscript should find the control test function"), WithoutOverride))
+		if (!this->Assert.IsNotNull(WithOverride, TEXT("BlueprintInternalUseOnlyCanBeOverriddenForAngelscript should find the override test function"))
+			|| !this->Assert.IsNotNull(WithoutOverride, TEXT("BlueprintInternalUseOnlyCanBeOverriddenForAngelscript should find the control test function")))
 		{ return; }
 
-		TestRunner->TestTrue(TEXT("BlueprintInternalUseOnlyCanBeOverriddenForAngelscript should keep the control function marked as BlueprintInternalUseOnly"), WithoutOverride->HasMetaData(TEXT("BlueprintInternalUseOnly")));
-		TestRunner->TestTrue(TEXT("BlueprintInternalUseOnlyCanBeOverriddenForAngelscript should mark the override function as UsableInAngelscript"), WithOverride->HasMetaData(TEXT("UsableInAngelscript")));
-		TestRunner->TestFalse(TEXT("BlueprintInternalUseOnlyCanBeOverriddenForAngelscript should not skip override-marked functions"), FAngelscriptBinds::ShouldSkipBlueprintCallableFunction(WithOverride));
-		TestRunner->TestTrue(TEXT("BlueprintInternalUseOnlyCanBeOverriddenForAngelscript should still skip BlueprintInternalUseOnly functions without an override"), FAngelscriptBinds::ShouldSkipBlueprintCallableFunction(WithoutOverride));
+		bool bOk = true;
+		bOk &= this->Assert.IsTrue(WithoutOverride->HasMetaData(TEXT("BlueprintInternalUseOnly")), TEXT("BlueprintInternalUseOnlyCanBeOverriddenForAngelscript should keep the control function marked as BlueprintInternalUseOnly"));
+		bOk &= this->Assert.IsTrue(WithOverride->HasMetaData(TEXT("UsableInAngelscript")), TEXT("BlueprintInternalUseOnlyCanBeOverriddenForAngelscript should mark the override function as UsableInAngelscript"));
+		bOk &= this->Assert.IsFalse(FAngelscriptBinds::ShouldSkipBlueprintCallableFunction(WithOverride), TEXT("BlueprintInternalUseOnlyCanBeOverriddenForAngelscript should not skip override-marked functions"));
+		bOk &= this->Assert.IsTrue(FAngelscriptBinds::ShouldSkipBlueprintCallableFunction(WithoutOverride), TEXT("BlueprintInternalUseOnlyCanBeOverriddenForAngelscript should still skip BlueprintInternalUseOnly functions without an override"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(FunctionLevelScriptMethodUsesFirstParameterAsMixin)
@@ -520,21 +532,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
-		if (!TestRunner->TestTrue(TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should create a testing engine"), Engine.IsValid())) { return; }
+		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should create a testing engine"))) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
 
 		TSharedPtr<FAngelscriptType> HostType = FAngelscriptType::GetByClass(UObject::StaticClass());
 		UFunction* ScriptMethodFunction = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("GetCoverageValue"));
-		if (!TestRunner->TestTrue(TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should resolve a host type for signature construction"), HostType.IsValid())
-			|| !TestRunner->TestNotNull(TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should find the ScriptMethod test function"), ScriptMethodFunction))
+		if (!this->Assert.IsTrue(HostType.IsValid(), TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should resolve a host type for signature construction"))
+			|| !this->Assert.IsNotNull(ScriptMethodFunction, TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should find the ScriptMethod test function")))
 		{ return; }
 
 		FAngelscriptFunctionSignature Signature(HostType.ToSharedRef(), ScriptMethodFunction);
-		TestRunner->TestTrue(TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should keep the Unreal function static"), Signature.bStaticInUnreal);
-		TestRunner->TestFalse(TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should bind ScriptMethod functions as script members"), Signature.bStaticInScript);
-		TestRunner->TestEqual(TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should remove the first parameter from the exposed signature"), Signature.ArgumentTypes.Num(), 0);
-		TestRunner->TestTrue(TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should expose a const member declaration when the first parameter is const"), Signature.Declaration.Contains(TEXT("const")));
-		TestRunner->TestTrue(TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should keep the generated script name"), Signature.Declaration.Contains(TEXT("GetCoverageValue")));
+		bool bOk = true;
+		bOk &= this->Assert.IsTrue(Signature.bStaticInUnreal, TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should keep the Unreal function static"));
+		bOk &= this->Assert.IsFalse(Signature.bStaticInScript, TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should bind ScriptMethod functions as script members"));
+		bOk &= this->Assert.AreEqual(0, Signature.ArgumentTypes.Num(), TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should remove the first parameter from the exposed signature"));
+		bOk &= this->Assert.IsTrue(Signature.Declaration.Contains(TEXT("const")), TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should expose a const member declaration when the first parameter is const"));
+		bOk &= this->Assert.IsTrue(Signature.Declaration.Contains(TEXT("GetCoverageValue")), TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should keep the generated script name"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait)
@@ -547,15 +561,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
-		if (!TestRunner->TestTrue(TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should create a testing engine"), Engine.IsValid())) { return; }
+		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should create a testing engine"))) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
 
 		TSharedPtr<FAngelscriptType> HostType = FAngelscriptType::GetByClass(UObject::StaticClass());
 		UFunction* RequiredWorldContextFunction = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("RequiresWorldContext"));
 		UFunction* OptionalWorldContextFunction = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("CallableWithoutWorldContext"));
-		if (!TestRunner->TestTrue(TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should resolve a host type for signature construction"), HostType.IsValid())
-			|| !TestRunner->TestNotNull(TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should find the required world-context function"), RequiredWorldContextFunction)
-			|| !TestRunner->TestNotNull(TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should find the optional world-context function"), OptionalWorldContextFunction))
+		if (!this->Assert.IsTrue(HostType.IsValid(), TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should resolve a host type for signature construction"))
+			|| !this->Assert.IsNotNull(RequiredWorldContextFunction, TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should find the required world-context function"))
+			|| !this->Assert.IsNotNull(OptionalWorldContextFunction, TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should find the optional world-context function")))
 		{ return; }
 
 		FAngelscriptFunctionSignature RequiredSignature(HostType.ToSharedRef(), RequiredWorldContextFunction);
@@ -567,14 +581,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 		auto* RequiredScriptFunction = reinterpret_cast<asCScriptFunction*>(FAngelscriptEngine::Get().GetScriptEngine()->GetFunctionById(RequiredFunctionId));
 		auto* OptionalScriptFunction = reinterpret_cast<asCScriptFunction*>(FAngelscriptEngine::Get().GetScriptEngine()->GetFunctionById(OptionalFunctionId));
-		if (!TestRunner->TestNotNull(TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should create a script function for the required world-context case"), RequiredScriptFunction)
-			|| !TestRunner->TestNotNull(TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should create a script function for the optional world-context case"), OptionalScriptFunction))
+		if (!this->Assert.IsNotNull(RequiredScriptFunction, TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should create a script function for the required world-context case"))
+			|| !this->Assert.IsNotNull(OptionalScriptFunction, TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should create a script function for the optional world-context case")))
 		{ return; }
 
-		TestRunner->TestEqual(TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should hide the world-context argument for required functions"), RequiredScriptFunction->hiddenArgumentIndex, 0);
-		TestRunner->TestEqual(TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should hide the world-context argument for callable-without-world-context functions"), OptionalScriptFunction->hiddenArgumentIndex, 0);
-		TestRunner->TestTrue(TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should mark required world-context functions with the world-context trait"), RequiredScriptFunction->traits.GetTrait(asTRAIT_USES_WORLDCONTEXT));
-		TestRunner->TestFalse(TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should not mark callable-without-world-context functions with the world-context trait"), OptionalScriptFunction->traits.GetTrait(asTRAIT_USES_WORLDCONTEXT));
+		bool bOk = true;
+		bOk &= this->Assert.AreEqual(0, RequiredScriptFunction->hiddenArgumentIndex, TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should hide the world-context argument for required functions"));
+		bOk &= this->Assert.AreEqual(0, OptionalScriptFunction->hiddenArgumentIndex, TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should hide the world-context argument for callable-without-world-context functions"));
+		bOk &= this->Assert.IsTrue(RequiredScriptFunction->traits.GetTrait(asTRAIT_USES_WORLDCONTEXT), TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should mark required world-context functions with the world-context trait"));
+		bOk &= this->Assert.IsFalse(OptionalScriptFunction->traits.GetTrait(asTRAIT_USES_WORLDCONTEXT), TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should not mark callable-without-world-context functions with the world-context trait"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(ScriptAllowTemporaryThisAppendsAcceptTemporaryThis)
@@ -587,18 +603,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
-		if (!TestRunner->TestTrue(TEXT("ScriptAllowTemporaryThisAppendsAcceptTemporaryThis should create a testing engine"), Engine.IsValid())) { return; }
+		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("ScriptAllowTemporaryThisAppendsAcceptTemporaryThis should create a testing engine"))) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
 
 		TSharedPtr<FAngelscriptType> HostType = FAngelscriptType::GetByClass(UObject::StaticClass());
 		UFunction* TemporaryThisFunction = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("GetTemporaryThisValue"));
-		if (!TestRunner->TestTrue(TEXT("ScriptAllowTemporaryThisAppendsAcceptTemporaryThis should resolve the host type"), HostType.IsValid())
-			|| !TestRunner->TestNotNull(TEXT("ScriptAllowTemporaryThisAppendsAcceptTemporaryThis should find the test function"), TemporaryThisFunction))
+		if (!this->Assert.IsTrue(HostType.IsValid(), TEXT("ScriptAllowTemporaryThisAppendsAcceptTemporaryThis should resolve the host type"))
+			|| !this->Assert.IsNotNull(TemporaryThisFunction, TEXT("ScriptAllowTemporaryThisAppendsAcceptTemporaryThis should find the test function")))
 		{ return; }
 
 		FAngelscriptFunctionSignature Signature(HostType.ToSharedRef(), TemporaryThisFunction);
-		TestRunner->TestTrue(TEXT("ScriptAllowTemporaryThisAppendsAcceptTemporaryThis should bind ScriptMethod functions as members"), !Signature.bStaticInScript);
-		TestRunner->TestTrue(TEXT("ScriptAllowTemporaryThisAppendsAcceptTemporaryThis should append accept_temporary_this to the declaration"), Signature.Declaration.Contains(TEXT(" accept_temporary_this")));
+		bool bOk = true;
+		bOk &= this->Assert.IsTrue(!Signature.bStaticInScript, TEXT("ScriptAllowTemporaryThisAppendsAcceptTemporaryThis should bind ScriptMethod functions as members"));
+		bOk &= this->Assert.IsTrue(Signature.Declaration.Contains(TEXT(" accept_temporary_this")), TEXT("ScriptAllowTemporaryThisAppendsAcceptTemporaryThis should append accept_temporary_this to the declaration"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(UnsafeDuringActorConstructionSetsUnsafeTrait)
@@ -611,15 +629,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
-		if (!TestRunner->TestTrue(TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should create a testing engine"), Engine.IsValid())) { return; }
+		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should create a testing engine"))) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
 
 		TSharedPtr<FAngelscriptType> HostType = FAngelscriptType::GetByClass(UObject::StaticClass());
 		UFunction* UnsafeFunction = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("UnsafeDuringConstruction"));
 		UFunction* SafeFunction = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("SafeDuringConstruction"));
-		if (!TestRunner->TestTrue(TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should resolve the host type"), HostType.IsValid())
-			|| !TestRunner->TestNotNull(TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should find the unsafe test function"), UnsafeFunction)
-			|| !TestRunner->TestNotNull(TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should find the safe test function"), SafeFunction))
+		if (!this->Assert.IsTrue(HostType.IsValid(), TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should resolve the host type"))
+			|| !this->Assert.IsNotNull(UnsafeFunction, TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should find the unsafe test function"))
+			|| !this->Assert.IsNotNull(SafeFunction, TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should find the safe test function")))
 		{ return; }
 
 		FAngelscriptFunctionSignature UnsafeSignature(HostType.ToSharedRef(), UnsafeFunction);
@@ -631,12 +649,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 		auto* UnsafeScriptFunction = reinterpret_cast<asCScriptFunction*>(FAngelscriptEngine::Get().GetScriptEngine()->GetFunctionById(UnsafeFunctionId));
 		auto* SafeScriptFunction = reinterpret_cast<asCScriptFunction*>(FAngelscriptEngine::Get().GetScriptEngine()->GetFunctionById(SafeFunctionId));
-		if (!TestRunner->TestNotNull(TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should create the unsafe script function"), UnsafeScriptFunction)
-			|| !TestRunner->TestNotNull(TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should create the safe script function"), SafeScriptFunction))
+		if (!this->Assert.IsNotNull(UnsafeScriptFunction, TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should create the unsafe script function"))
+			|| !this->Assert.IsNotNull(SafeScriptFunction, TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should create the safe script function")))
 		{ return; }
 
-		TestRunner->TestTrue(TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should mark meta-present functions as unsafe during construction"), UnsafeScriptFunction->traits.GetTrait(asTRAIT_UNSAFE_DURING_CONSTRUCTION));
-		TestRunner->TestFalse(TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should not mark explicit false meta functions as unsafe during construction"), SafeScriptFunction->traits.GetTrait(asTRAIT_UNSAFE_DURING_CONSTRUCTION));
+		bool bOk = true;
+		bOk &= this->Assert.IsTrue(UnsafeScriptFunction->traits.GetTrait(asTRAIT_UNSAFE_DURING_CONSTRUCTION), TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should mark meta-present functions as unsafe during construction"));
+		bOk &= this->Assert.IsFalse(SafeScriptFunction->traits.GetTrait(asTRAIT_UNSAFE_DURING_CONSTRUCTION), TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should not mark explicit false meta functions as unsafe during construction"));
+		(void)bOk;
 	}
 
 	TEST_METHOD(OverloadedExportedFunctionsCanRecoverDirectBind)
@@ -649,19 +669,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
-		if (!TestRunner->TestTrue(TEXT("OverloadedExportedFunctionsCanRecoverDirectBind should create a testing engine"), Engine.IsValid())) { return; }
+		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("OverloadedExportedFunctionsCanRecoverDirectBind should create a testing engine"))) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
 
 		UFunction* OverloadFunction = UAngelscriptUhtOverloadCoverageLibrary::StaticClass()->FindFunctionByName(TEXT("ResolveCoverageOverload"));
-		if (!TestRunner->TestNotNull(TEXT("OverloadedExportedFunctionsCanRecoverDirectBind should find the reflected overload function"), OverloadFunction)) { return; }
+		if (!this->Assert.IsNotNull(OverloadFunction, TEXT("OverloadedExportedFunctionsCanRecoverDirectBind should find the reflected overload function"))) { return; }
 
 		const TMap<FString, FFuncEntry>* OverloadEntries = FAngelscriptBinds::GetClassFuncMaps().Find(UAngelscriptUhtOverloadCoverageLibrary::StaticClass());
-		if (!TestRunner->TestNotNull(TEXT("OverloadedExportedFunctionsCanRecoverDirectBind should populate entries for the overload test library"), OverloadEntries)) { return; }
+		if (!this->Assert.IsNotNull(OverloadEntries, TEXT("OverloadedExportedFunctionsCanRecoverDirectBind should populate entries for the overload test library"))) { return; }
 
 		const FFuncEntry* OverloadEntry = OverloadEntries->Find(OverloadFunction->GetName());
-		if (!TestRunner->TestNotNull(TEXT("OverloadedExportedFunctionsCanRecoverDirectBind should register the reflected overload function"), OverloadEntry)) { return; }
+		if (!this->Assert.IsNotNull(OverloadEntry, TEXT("OverloadedExportedFunctionsCanRecoverDirectBind should register the reflected overload function"))) { return; }
 
-		TestRunner->TestTrue(TEXT("OverloadedExportedFunctionsCanRecoverDirectBind should recover a direct bind instead of ERASE_NO_FUNCTION"), IsFunctionEntryBound(*OverloadEntry));
+		(void)this->Assert.IsTrue(IsFunctionEntryBound(*OverloadEntry), TEXT("OverloadedExportedFunctionsCanRecoverDirectBind should recover a direct bind instead of ERASE_NO_FUNCTION"));
 	}
 
 	TEST_METHOD(InlineDefinitionFunctionsCanRecoverDirectBind)
@@ -674,17 +694,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
-		if (!TestRunner->TestTrue(TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should create a testing engine"), Engine.IsValid())) { return; }
+		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should create a testing engine"))) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
 
 		UFunction* InlineFunction = URuntimeFloatCurveMixinLibrary::StaticClass()->FindFunctionByName(TEXT("GetNumKeys"));
-		if (!TestRunner->TestNotNull(TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should find the reflected inline function"), InlineFunction)) { return; }
+		if (!this->Assert.IsNotNull(InlineFunction, TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should find the reflected inline function"))) { return; }
 		const TMap<FString, FFuncEntry>* InlineEntries = FAngelscriptBinds::GetClassFuncMaps().Find(URuntimeFloatCurveMixinLibrary::StaticClass());
-		if (!TestRunner->TestNotNull(TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should populate entries for the inline function library"), InlineEntries)) { return; }
+		if (!this->Assert.IsNotNull(InlineEntries, TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should populate entries for the inline function library"))) { return; }
 		const FFuncEntry* InlineEntry = InlineEntries->Find(InlineFunction->GetName());
-		if (!TestRunner->TestNotNull(TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should register the reflected inline function"), InlineEntry)) { return; }
+		if (!this->Assert.IsNotNull(InlineEntry, TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should register the reflected inline function"))) { return; }
 
-		TestRunner->TestTrue(TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should recover a direct bind instead of ERASE_NO_FUNCTION"), IsFunctionEntryBound(*InlineEntry));
+		(void)this->Assert.IsTrue(IsFunctionEntryBound(*InlineEntry), TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should recover a direct bind instead of ERASE_NO_FUNCTION"));
 	}
 
 	TEST_METHOD(InlineOutRefFunctionsCanRecoverDirectBind)
@@ -697,17 +717,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
-		if (!TestRunner->TestTrue(TEXT("InlineOutRefFunctionsCanRecoverDirectBind should create a testing engine"), Engine.IsValid())) { return; }
+		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("InlineOutRefFunctionsCanRecoverDirectBind should create a testing engine"))) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
 
 		UFunction* InlineFunction = URuntimeFloatCurveMixinLibrary::StaticClass()->FindFunctionByName(TEXT("GetTimeRange"));
-		if (!TestRunner->TestNotNull(TEXT("InlineOutRefFunctionsCanRecoverDirectBind should find the reflected out-ref function"), InlineFunction)) { return; }
+		if (!this->Assert.IsNotNull(InlineFunction, TEXT("InlineOutRefFunctionsCanRecoverDirectBind should find the reflected out-ref function"))) { return; }
 		const TMap<FString, FFuncEntry>* InlineEntries = FAngelscriptBinds::GetClassFuncMaps().Find(URuntimeFloatCurveMixinLibrary::StaticClass());
-		if (!TestRunner->TestNotNull(TEXT("InlineOutRefFunctionsCanRecoverDirectBind should populate entries for the inline function library"), InlineEntries)) { return; }
+		if (!this->Assert.IsNotNull(InlineEntries, TEXT("InlineOutRefFunctionsCanRecoverDirectBind should populate entries for the inline function library"))) { return; }
 		const FFuncEntry* InlineEntry = InlineEntries->Find(InlineFunction->GetName());
-		if (!TestRunner->TestNotNull(TEXT("InlineOutRefFunctionsCanRecoverDirectBind should register the reflected out-ref function"), InlineEntry)) { return; }
+		if (!this->Assert.IsNotNull(InlineEntry, TEXT("InlineOutRefFunctionsCanRecoverDirectBind should register the reflected out-ref function"))) { return; }
 
-		TestRunner->TestTrue(TEXT("InlineOutRefFunctionsCanRecoverDirectBind should recover a direct bind instead of ERASE_NO_FUNCTION"), IsFunctionEntryBound(*InlineEntry));
+		(void)this->Assert.IsTrue(IsFunctionEntryBound(*InlineEntry), TEXT("InlineOutRefFunctionsCanRecoverDirectBind should recover a direct bind instead of ERASE_NO_FUNCTION"));
 	}
 };
 

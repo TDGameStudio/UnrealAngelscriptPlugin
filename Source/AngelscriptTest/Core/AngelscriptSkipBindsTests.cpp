@@ -29,7 +29,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSkipBindsTests,
 	TEST_METHOD(DefaultSkipListIsRegistered)
 	{
 		using namespace AngelscriptTest_Core_AngelscriptSkipBindsTests_Private;
-		bool bPassed = true;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		{
 			FAngelscriptEngineScope _AutoEngineScope(Engine);
@@ -67,14 +66,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSkipBindsTests,
 			const bool bSecondRead = FAngelscriptBinds::CheckForSkipEntry(EntryCase.ClassName, EntryCase.FunctionName);
 			const FString EntryLabel = FString::Printf(TEXT("%s.%s"), EntryCase.ClassName, EntryCase.FunctionName);
 
-			bPassed &= TestRunner->TestEqual(
-				*FString::Printf(TEXT("SkipBinds default list should return the expected registration state for %s"), *EntryLabel),
+			ASSERT_THAT(AreEqual(
+				EntryCase.bExpectedSkipped,
 				bFirstRead,
-				EntryCase.bExpectedSkipped);
-			bPassed &= TestRunner->TestEqual(
-				*FString::Printf(TEXT("SkipBinds repeated reads should keep the same result for %s"), *EntryLabel),
+				*FString::Printf(TEXT("SkipBinds default list should return the expected registration state for %s"), *EntryLabel)));
+			ASSERT_THAT(AreEqual(
+				bFirstRead,
 				bSecondRead,
-				bFirstRead);
+				*FString::Printf(TEXT("SkipBinds repeated reads should keep the same result for %s"), *EntryLabel)));
 		}
 
 		for (const FSkipClassExpectation& ClassCase : ClassCases)
@@ -82,14 +81,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSkipBindsTests,
 			const bool bFirstRead = FAngelscriptBinds::CheckForSkipClass(ClassCase.ClassName);
 			const bool bSecondRead = FAngelscriptBinds::CheckForSkipClass(ClassCase.ClassName);
 
-			bPassed &= TestRunner->TestEqual(
-				*FString::Printf(TEXT("SkipBinds default list should return the expected registration state for class %s"), ClassCase.ClassName),
+			ASSERT_THAT(AreEqual(
+				ClassCase.bExpectedSkipped,
 				bFirstRead,
-				ClassCase.bExpectedSkipped);
-			bPassed &= TestRunner->TestEqual(
-				*FString::Printf(TEXT("SkipBinds repeated reads should keep the same result for class %s"), ClassCase.ClassName),
+				*FString::Printf(TEXT("SkipBinds default list should return the expected registration state for class %s"), ClassCase.ClassName)));
+			ASSERT_THAT(AreEqual(
+				bFirstRead,
 				bSecondRead,
-				bFirstRead);
+				*FString::Printf(TEXT("SkipBinds repeated reads should keep the same result for class %s"), ClassCase.ClassName)));
 		}
 
 		}

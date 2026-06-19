@@ -176,50 +176,50 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRangeForTests,
 			? Modules[0]->Code[0].Code
 			: FString();
 
-		TestRunner->TestTrue(
-			TEXT("Range-based for literal/comment guard test case should preprocess successfully"),
-			bPreprocessSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Range-based for literal/comment guard test case should not emit preprocessing errors"),
+		ASSERT_THAT(IsTrue(
+			bPreprocessSucceeded,
+			TEXT("Range-based for literal/comment guard test case should preprocess successfully")));
+		ASSERT_THAT(AreEqual(
+			0,
 			PreprocessErrorCount,
-			0);
-		TestRunner->TestEqual(
-			TEXT("Range-based for literal/comment guard test case should keep preprocessing diagnostics empty"),
+			TEXT("Range-based for literal/comment guard test case should not emit preprocessing errors")));
+		ASSERT_THAT(AreEqual(
+			0,
 			PreprocessMessages.Num(),
-			0);
-		TestRunner->TestEqual(
-			TEXT("Range-based for literal/comment guard test case should produce exactly one module descriptor"),
+			TEXT("Range-based for literal/comment guard test case should keep preprocessing diagnostics empty")));
+		ASSERT_THAT(AreEqual(
+			1,
 			Modules.Num(),
-			1);
+			TEXT("Range-based for literal/comment guard test case should produce exactly one module descriptor")));
 		if (Modules.Num() > 0)
 		{
-			TestRunner->TestEqual(
-				TEXT("Range-based for literal/comment guard test case should preserve the expected module name"),
+			ASSERT_THAT(AreEqual(
+				CompilerPipelineRangeForTest::ModuleName.ToString(),
 				Modules[0]->ModuleName,
-				CompilerPipelineRangeForTest::ModuleName.ToString());
+				TEXT("Range-based for literal/comment guard test case should preserve the expected module name")));
 		}
 
-		TestRunner->TestEqual(
-			TEXT("Range-based for literal/comment guard test case should rewrite exactly one real loop into iterator advance form"),
+		ASSERT_THAT(AreEqual(
+			1,
 			CompilerPipelineRangeForTest::CountOccurrences(ProcessedCode, TEXT("_Iterator.CanProceed; )")),
-			1);
-		TestRunner->TestEqual(
-			TEXT("Range-based for literal/comment guard test case should rewrite exactly one real loop into iterator proceed form"),
+			TEXT("Range-based for literal/comment guard test case should rewrite exactly one real loop into iterator advance form")));
+		ASSERT_THAT(AreEqual(
+			1,
 			CompilerPipelineRangeForTest::CountOccurrences(ProcessedCode, TEXT("_Iterator.Proceed();")),
-			1);
-		TestRunner->TestEqual(
-			TEXT("Range-based for literal/comment guard test case should preserve the raw loop text only inside the two strings and two comments"),
+			TEXT("Range-based for literal/comment guard test case should rewrite exactly one real loop into iterator proceed form")));
+		ASSERT_THAT(AreEqual(
+			CompilerPipelineRangeForTest::ExpectedRawLoopTextOccurrences,
 			CompilerPipelineRangeForTest::CountOccurrences(ProcessedCode, CompilerPipelineRangeForTest::RawLoopText),
-			CompilerPipelineRangeForTest::ExpectedRawLoopTextOccurrences);
-		TestRunner->TestTrue(
-			TEXT("Range-based for literal/comment guard test case should preserve the exact string literal payload"),
-			ProcessedCode.Contains(CompilerPipelineRangeForTest::StringLiteralToken));
-		TestRunner->TestTrue(
-			TEXT("Range-based for literal/comment guard test case should preserve the single-line comment payload"),
-			ProcessedCode.Contains(CompilerPipelineRangeForTest::LineCommentToken));
-		TestRunner->TestTrue(
-			TEXT("Range-based for literal/comment guard test case should preserve the block comment payload"),
-			ProcessedCode.Contains(CompilerPipelineRangeForTest::BlockCommentToken));
+			TEXT("Range-based for literal/comment guard test case should preserve the raw loop text only inside the two strings and two comments")));
+		ASSERT_THAT(IsTrue(
+			ProcessedCode.Contains(CompilerPipelineRangeForTest::StringLiteralToken),
+			TEXT("Range-based for literal/comment guard test case should preserve the exact string literal payload")));
+		ASSERT_THAT(IsTrue(
+			ProcessedCode.Contains(CompilerPipelineRangeForTest::LineCommentToken),
+			TEXT("Range-based for literal/comment guard test case should preserve the single-line comment payload")));
+		ASSERT_THAT(IsTrue(
+			ProcessedCode.Contains(CompilerPipelineRangeForTest::BlockCommentToken),
+			TEXT("Range-based for literal/comment guard test case should preserve the block comment payload")));
 
 		Engine.ResetDiagnostics();
 
@@ -240,19 +240,19 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRangeForTests,
 				*CompilerPipelineRangeForTest::JoinDiagnostics(Summary.Diagnostics)));
 		}
 
-		TestRunner->TestTrue(
-			TEXT("Range-based for literal/comment guard test case should compile through the normal preprocessor pipeline"),
-			bCompiled);
-		TestRunner->TestTrue(
-			TEXT("Range-based for literal/comment guard test case should report that it used the preprocessor"),
-			Summary.bUsedPreprocessor);
-		TestRunner->TestTrue(
-			TEXT("Range-based for literal/comment guard test case should mark compile succeeded in the summary"),
-			Summary.bCompileSucceeded);
-		TestRunner->TestEqual(
-			TEXT("Range-based for literal/comment guard test case should keep compile diagnostics empty"),
+		ASSERT_THAT(IsTrue(
+			bCompiled,
+			TEXT("Range-based for literal/comment guard test case should compile through the normal preprocessor pipeline")));
+		ASSERT_THAT(IsTrue(
+			Summary.bUsedPreprocessor,
+			TEXT("Range-based for literal/comment guard test case should report that it used the preprocessor")));
+		ASSERT_THAT(IsTrue(
+			Summary.bCompileSucceeded,
+			TEXT("Range-based for literal/comment guard test case should mark compile succeeded in the summary")));
+		ASSERT_THAT(AreEqual(
+			0,
 			Summary.Diagnostics.Num(),
-			0);
+			TEXT("Range-based for literal/comment guard test case should keep compile diagnostics empty")));
 
 		int32 EntryResult = 0;
 		const bool bExecuted = bCompiled
@@ -262,15 +262,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRangeForTests,
 				CompilerPipelineRangeForTest::ModuleName,
 				TEXT("int Entry()"),
 				EntryResult);
-		TestRunner->TestTrue(
-			TEXT("Range-based for literal/comment guard test case should execute the compiled Entry function"),
-			bExecuted);
+		ASSERT_THAT(IsTrue(
+			bExecuted,
+			TEXT("Range-based for literal/comment guard test case should execute the compiled Entry function")));
 		if (bExecuted)
 		{
-			TestRunner->TestEqual(
-				TEXT("Range-based for literal/comment guard test case should preserve the string literal while keeping the real loop executable"),
+			ASSERT_THAT(AreEqual(
+				CompilerPipelineRangeForTest::ExpectedEntryResult,
 				EntryResult,
-				CompilerPipelineRangeForTest::ExpectedEntryResult);
+				TEXT("Range-based for literal/comment guard test case should preserve the string literal while keeping the real loop executable")));
 		}
 
 		}

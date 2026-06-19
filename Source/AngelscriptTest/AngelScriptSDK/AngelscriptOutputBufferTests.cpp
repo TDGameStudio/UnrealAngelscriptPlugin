@@ -32,13 +32,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOutputBufferTests, "Angelscript.TestModule.
 	TEST_METHOD(ErrorCapture)
 	{
 		asIScriptEngine* const SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		// Compile invalid code - should produce error messages
 		Engine.ResetMessages();
 		FScopedNativeModuleName ModuleScope(Engine, "BadCode");
 		asIScriptModule* M = BuildNativeModule(SE, "BadCode", "int Entry() { return undeclared_var; }\n");
-		TestRunner->TestNull(TEXT("Invalid code should fail to compile"), M);
+		ASSERT_THAT(IsNull(M, TEXT("Invalid code should fail to compile")));
 
 		// Verify error was captured
 		bool HasError = false;
@@ -50,14 +50,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOutputBufferTests, "Angelscript.TestModule.
 				break;
 			}
 		}
-		TestRunner->TestTrue(TEXT("Message callback should capture at least one error"), HasError);
-		TestRunner->TestTrue(TEXT("Error messages should be non-empty"), Engine.GetMessages().Entries.Num() > 0);
+		ASSERT_THAT(IsTrue(HasError, TEXT("Message callback should capture at least one error")));
+		ASSERT_THAT(IsTrue(Engine.GetMessages().Entries.Num() > 0, TEXT("Error messages should be non-empty")));
 	}
 
 	TEST_METHOD(WarningCapture)
 	{
 		asIScriptEngine* const SE = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("Should create engine"), SE)) return;
+		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		// Code that compiles but may produce warnings (unused variable)
 		Engine.ResetMessages();

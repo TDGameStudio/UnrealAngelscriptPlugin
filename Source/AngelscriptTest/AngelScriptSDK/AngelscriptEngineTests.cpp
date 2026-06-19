@@ -15,10 +15,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKEngineTests,
 	{
 		FSDKBufferedOutStream BufferedOutStream;
 		asIScriptEngine* PrimaryEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-		if (!TestRunner->TestNotNull(TEXT("SDK engine-create test should create the primary engine"), PrimaryEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(PrimaryEngine, TEXT("SDK engine-create test should create the primary engine")));
 
 		ON_SCOPE_EXIT
 		{
@@ -32,16 +29,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKEngineTests,
 			asMETHODPR(FSDKBufferedOutStream, Callback, (asSMessageInfo*), void),
 			&BufferedOutStream,
 			asCALL_THISCALL);
-		if (!TestRunner->TestEqual(TEXT("SDK engine-create test should install the primary engine callback"), PrimaryCallbackResult, static_cast<int32>(asSUCCESS)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), PrimaryCallbackResult,
+			TEXT("SDK engine-create test should install the primary engine callback")));
 
 		asIScriptEngine* SecondaryEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-		if (!TestRunner->TestNotNull(TEXT("SDK engine-create test should create the secondary engine"), SecondaryEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(SecondaryEngine, TEXT("SDK engine-create test should create the secondary engine")));
 
 		ON_SCOPE_EXIT
 		{
@@ -55,34 +47,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKEngineTests,
 		void* CallbackObject = nullptr;
 		asDWORD CallConv = 0;
 		const int GetCallbackResult = PrimaryEngine->GetMessageCallback(&MessageCallback, &CallbackObject, &CallConv);
-		if (!TestRunner->TestEqual(TEXT("SDK engine-create test should read back the primary callback"), GetCallbackResult, static_cast<int32>(asSUCCESS)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), GetCallbackResult,
+			TEXT("SDK engine-create test should read back the primary callback")));
 
 		const int ReuseCallbackResult = SecondaryEngine->SetMessageCallback(MessageCallback, CallbackObject, CallConv);
-		if (!TestRunner->TestEqual(TEXT("SDK engine-create test should reuse the primary callback on the secondary engine"), ReuseCallbackResult, static_cast<int32>(asSUCCESS)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), ReuseCallbackResult,
+			TEXT("SDK engine-create test should reuse the primary callback on the secondary engine")));
 
 		const int WriteMessageResult = SecondaryEngine->WriteMessage("test", 0, 0, asMSGTYPE_INFORMATION, "Hello from engine2");
-		if (!TestRunner->TestEqual(TEXT("SDK engine-create test should emit a callback message from the secondary engine"), WriteMessageResult, static_cast<int32>(asSUCCESS)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), WriteMessageResult,
+			TEXT("SDK engine-create test should emit a callback message from the secondary engine")));
 
-		TestRunner->TestTrue(TEXT("SDK engine-create test should preserve the upstream callback payload"), BufferedOutStream.Buffer.find("Hello from engine2") != std::string::npos);
-		TestRunner->TestTrue(TEXT("SDK engine-create test should preserve the upstream callback section"), BufferedOutStream.Buffer.find("test (0, 0)") != std::string::npos);
+		ASSERT_THAT(IsTrue(BufferedOutStream.Buffer.find("Hello from engine2") != std::string::npos,
+			TEXT("SDK engine-create test should preserve the upstream callback payload")));
+		ASSERT_THAT(IsTrue(BufferedOutStream.Buffer.find("test (0, 0)") != std::string::npos,
+			TEXT("SDK engine-create test should preserve the upstream callback section")));
 	}
 
 	TEST_METHOD(PropertyGetSet)
 	{
 		asIScriptEngine* Engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-		if (!TestRunner->TestNotNull(TEXT("SDK engine property test should create an engine"), Engine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Engine, TEXT("SDK engine property test should create an engine")));
 
 		ON_SCOPE_EXIT
 		{
@@ -94,23 +79,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKEngineTests,
 
 		// Set a property and read it back.
 		const int SetResult = Engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, 1);
-		if (!TestRunner->TestEqual(TEXT("SDK engine property test should set asEP_ALLOW_UNSAFE_REFERENCES"), SetResult, static_cast<int32>(asSUCCESS)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), SetResult,
+			TEXT("SDK engine property test should set asEP_ALLOW_UNSAFE_REFERENCES")));
 
 		const asPWORD Value = Engine->GetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES);
-		TestRunner->TestEqual(TEXT("SDK engine property test should verify the round-trip value"), static_cast<int32>(Value), 1);
+		ASSERT_THAT(AreEqual(1, static_cast<int32>(Value),
+			TEXT("SDK engine property test should verify the round-trip value")));
 	}
 
 	TEST_METHOD(ModuleEnumeration)
 	{
 		FNativeMessageCollector Messages;
 		asIScriptEngine* Engine = CreateNativeEngine(&Messages);
-		if (!TestRunner->TestNotNull(TEXT("SDK engine module-enumeration test should create an engine"), Engine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Engine, TEXT("SDK engine module-enumeration test should create an engine")));
 
 		ON_SCOPE_EXIT
 		{
@@ -119,26 +100,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKEngineTests,
 
 		// Before building any modules.
 		const asUINT InitialCount = Engine->GetModuleCount();
-		if (!TestRunner->TestEqual(TEXT("SDK engine module-enumeration test should start with zero modules"), static_cast<int32>(InitialCount), 0))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(0, static_cast<int32>(InitialCount),
+			TEXT("SDK engine module-enumeration test should start with zero modules")));
 
 		// Build two modules.
 		asIScriptModule* M1 = BuildNativeModule(Engine, "ModEnumA", "const int a = 1;");
 		asIScriptModule* M2 = BuildNativeModule(Engine, "ModEnumB", "const int b = 2;");
-		if (!TestRunner->TestNotNull(TEXT("SDK engine module-enumeration test should compile ModEnumA"), M1) ||
-			!TestRunner->TestNotNull(TEXT("SDK engine module-enumeration test should compile ModEnumB"), M2))
+		if (!this->Assert.IsNotNull(M1, TEXT("SDK engine module-enumeration test should compile ModEnumA")) ||
+			!this->Assert.IsNotNull(M2, TEXT("SDK engine module-enumeration test should compile ModEnumB")))
 		{
 			TestRunner->AddInfo(CollectMessages(Messages));
 			return;
 		}
 
 		const asUINT PostBuildCount = Engine->GetModuleCount();
-		if (!TestRunner->TestEqual(TEXT("SDK engine module-enumeration test should have 2 modules after build"), static_cast<int32>(PostBuildCount), 2))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(2, static_cast<int32>(PostBuildCount),
+			TEXT("SDK engine module-enumeration test should have 2 modules after build")));
 
 		// Enumerate and verify both modules are present.
 		bool bFoundA = false, bFoundB = false;
@@ -153,17 +130,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKEngineTests,
 			}
 		}
 
-		TestRunner->TestTrue(TEXT("SDK engine module-enumeration test should find ModEnumA via GetModuleByIndex"), bFoundA);
-		TestRunner->TestTrue(TEXT("SDK engine module-enumeration test should find ModEnumB via GetModuleByIndex"), bFoundB);
+		ASSERT_THAT(IsTrue(bFoundA, TEXT("SDK engine module-enumeration test should find ModEnumA via GetModuleByIndex")));
+		ASSERT_THAT(IsTrue(bFoundB, TEXT("SDK engine module-enumeration test should find ModEnumB via GetModuleByIndex")));
 	}
 
 	TEST_METHOD(GarbageCollectCycle)
 	{
 		asIScriptEngine* Engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-		if (!TestRunner->TestNotNull(TEXT("SDK engine GC test should create an engine"), Engine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Engine, TEXT("SDK engine GC test should create an engine")));
 
 		ON_SCOPE_EXIT
 		{
@@ -175,14 +149,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKEngineTests,
 
 		// GC calls should succeed even with no objects in the engine.
 		const int FullResult = Engine->GarbageCollect();
-		if (!TestRunner->TestTrue(TEXT("SDK engine GC test should run a full GC cycle without error"), FullResult >= 0))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(FullResult >= 0,
+			TEXT("SDK engine GC test should run a full GC cycle without error")));
 
 		// Incremental step (asGC_ONE_STEP) should also succeed.
 		const int StepResult = Engine->GarbageCollect(asGC_ONE_STEP);
-		TestRunner->TestTrue(TEXT("SDK engine GC test should run an incremental GC step without error"), StepResult >= 0);
+		ASSERT_THAT(IsTrue(StepResult >= 0,
+			TEXT("SDK engine GC test should run an incremental GC step without error")));
 	}
 };
 

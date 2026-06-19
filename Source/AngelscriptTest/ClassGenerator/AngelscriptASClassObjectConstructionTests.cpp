@@ -71,22 +71,28 @@ class UObjectConstructionCarrier : UObject
 		}
 
 		UASClass* GeneratedASClass = Cast<UASClass>(GeneratedClass);
-		if (!Test.TestNotNull(
-				TEXT("ASClass object-construction test case should compile the carrier into a UASClass"),
-				GeneratedASClass))
+		FNoDiscardAsserter Assert(Test);
+		if (!Assert.IsNotNull(
+				GeneratedASClass,
+				TEXT("ASClass object-construction test case should compile the carrier into a UASClass")))
 		{
 			return nullptr;
 		}
 
-		Test.TestNotNull(
-			TEXT("ASClass object-construction test case should bind the script constructor function"),
-			GeneratedASClass->ConstructFunction);
-		Test.TestNotNull(
-			TEXT("ASClass object-construction test case should bind the defaults function"),
-			GeneratedASClass->DefaultsFunction);
-		Test.TestNotNull(
-			TEXT("ASClass object-construction test case should keep a live script type pointer"),
-			GeneratedASClass->ScriptTypePtr);
+		bool bHasRequiredFunctions = true;
+		bHasRequiredFunctions &= Assert.IsNotNull(
+			GeneratedASClass->ConstructFunction,
+			TEXT("ASClass object-construction test case should bind the script constructor function"));
+		bHasRequiredFunctions &= Assert.IsNotNull(
+			GeneratedASClass->DefaultsFunction,
+			TEXT("ASClass object-construction test case should bind the defaults function"));
+		bHasRequiredFunctions &= Assert.IsNotNull(
+			GeneratedASClass->ScriptTypePtr,
+			TEXT("ASClass object-construction test case should keep a live script type pointer"));
+		if (!bHasRequiredFunctions)
+		{
+			return nullptr;
+		}
 
 		return GeneratedASClass;
 	}
@@ -120,18 +126,19 @@ class UObjectConstructionCarrier : UObject
 		const FObjectConstructionSnapshot& Snapshot,
 		int32 ExpectedCtorCountForScope)
 	{
-		const bool bCtorCountMatches = Test.TestEqual(
-			*FString::Printf(TEXT("%s should observe the expected constructor count"), *ScopeLabel),
+		FNoDiscardAsserter Assert(Test);
+		const bool bCtorCountMatches = Assert.AreEqual(
+			ExpectedCtorCountForScope,
 			Snapshot.CtorCount,
-			ExpectedCtorCountForScope);
-		const bool bDefaultValueMatches = Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the scripted integer default"), *ScopeLabel),
+			*FString::Printf(TEXT("%s should observe the expected constructor count"), *ScopeLabel));
+		const bool bDefaultValueMatches = Assert.AreEqual(
+			ExpectedDefaultValue,
 			Snapshot.DefaultValue,
-			ExpectedDefaultValue);
-		const bool bDefaultLabelMatches = Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the scripted string default"), *ScopeLabel),
+			*FString::Printf(TEXT("%s should preserve the scripted integer default"), *ScopeLabel));
+		const bool bDefaultLabelMatches = Assert.AreEqual(
+			ExpectedDefaultLabel,
 			Snapshot.DefaultLabel,
-			ExpectedDefaultLabel);
+			*FString::Printf(TEXT("%s should preserve the scripted string default"), *ScopeLabel));
 
 		return bCtorCountMatches && bDefaultValueMatches && bDefaultLabelMatches;
 	}
@@ -173,9 +180,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassObjectConstructionTests,
 		}
 
 		UObject* DefaultObject = GeneratedASClass->GetDefaultObject();
-		if (!TestRunner->TestNotNull(
-				TEXT("ASClass object-construction test case should expose a generated class default object"),
-				DefaultObject))
+		ASSERT_THAT(IsNotNull(DefaultObject, TEXT("ASClass object-construction test case should expose a generated class default object")));
+		if (DefaultObject == nullptr)
 		{
 			return;
 		}
@@ -188,12 +194,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassObjectConstructionTests,
 
 		UObject* FirstInstance = NewObject<UObject>(GetTransientPackage(), GeneratedASClass, TEXT("ObjectConstructionCarrierA"));
 		UObject* SecondInstance = NewObject<UObject>(GetTransientPackage(), GeneratedASClass, TEXT("ObjectConstructionCarrierB"));
-		if (!TestRunner->TestNotNull(
-				TEXT("ASClass object-construction test case should create the first generated UObject instance"),
-				FirstInstance)
-			|| !TestRunner->TestNotNull(
-				TEXT("ASClass object-construction test case should create the second generated UObject instance"),
-				SecondInstance))
+		ASSERT_THAT(IsNotNull(FirstInstance, TEXT("ASClass object-construction test case should create the first generated UObject instance")));
+		ASSERT_THAT(IsNotNull(SecondInstance, TEXT("ASClass object-construction test case should create the second generated UObject instance")));
+		if (FirstInstance == nullptr || SecondInstance == nullptr)
 		{
 			return;
 		}
@@ -217,18 +220,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassObjectConstructionTests,
 			return;
 		}
 
-		TestRunner->TestTrue(
-			TEXT("ASClass object-construction test case should compile a plain UObject-generated class"),
-			GeneratedASClass->IsChildOf(UObject::StaticClass()));
-		TestRunner->TestFalse(
-			TEXT("ASClass object-construction test case should keep the generated class out of the actor hierarchy"),
-			GeneratedASClass->IsChildOf(AActor::StaticClass()));
-		TestRunner->TestTrue(
-			TEXT("ASClass object-construction test case should create distinct runtime instances"),
-			FirstInstance != SecondInstance);
-		TestRunner->TestTrue(
-			TEXT("ASClass object-construction test case should keep runtime instances distinct from the class default object"),
-			FirstInstance != DefaultObject && SecondInstance != DefaultObject);
+		ASSERT_THAT(IsTrue(
+			GeneratedASClass->IsChildOf(UObject::StaticClass()),
+			TEXT("ASClass object-construction test case should compile a plain UObject-generated class")));
+		ASSERT_THAT(IsFalse(
+			GeneratedASClass->IsChildOf(AActor::StaticClass()),
+			TEXT("ASClass object-construction test case should keep the generated class out of the actor hierarchy")));
+		ASSERT_THAT(IsTrue(
+			FirstInstance != SecondInstance,
+			TEXT("ASClass object-construction test case should create distinct runtime instances")));
+		ASSERT_THAT(IsTrue(
+			FirstInstance != DefaultObject && SecondInstance != DefaultObject,
+			TEXT("ASClass object-construction test case should keep runtime instances distinct from the class default object")));
 
 		ASClassObjectConstructionTest::VerifySnapshot(
 			*TestRunner,
@@ -246,18 +249,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassObjectConstructionTests,
 			SecondSnapshot,
 			ASClassObjectConstructionTest::ExpectedCtorCount);
 
-		TestRunner->TestEqual(
-			TEXT("ASClass object-construction test case should keep the second instance constructor count isolated from the first instance"),
+		ASSERT_THAT(AreEqual(
+			ASClassObjectConstructionTest::ExpectedCtorCount,
 			SecondSnapshot.CtorCount,
-			ASClassObjectConstructionTest::ExpectedCtorCount);
-		TestRunner->TestEqual(
-			TEXT("ASClass object-construction test case should keep both runtime instances on the same scripted integer default"),
+			TEXT("ASClass object-construction test case should keep the second instance constructor count isolated from the first instance")));
+		ASSERT_THAT(AreEqual(
 			FirstSnapshot.DefaultValue,
-			SecondSnapshot.DefaultValue);
-		TestRunner->TestEqual(
-			TEXT("ASClass object-construction test case should keep both runtime instances on the same scripted string default"),
+			SecondSnapshot.DefaultValue,
+			TEXT("ASClass object-construction test case should keep both runtime instances on the same scripted integer default")));
+		ASSERT_THAT(AreEqual(
 			FirstSnapshot.DefaultLabel,
-			SecondSnapshot.DefaultLabel);
+			SecondSnapshot.DefaultLabel,
+			TEXT("ASClass object-construction test case should keep both runtime instances on the same scripted string default")));
 
 		}
 	}

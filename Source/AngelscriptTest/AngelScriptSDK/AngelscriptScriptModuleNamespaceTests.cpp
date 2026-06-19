@@ -34,22 +34,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptModuleNamespaceTests,
 	TEST_METHOD(DefaultNamespaceDoesNotRehomeDeclarations)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule namespace default test should create a standalone SDK engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine,
+			TEXT("ScriptModule namespace default test should create a standalone SDK engine")));
 
 		FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleNamespaceDefault");
 		asIScriptModule* Module = ScriptEngine->GetModule(ModuleScope.Get(), asGM_ALWAYS_CREATE);
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule namespace default test should create a module"), Module))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Module,
+			TEXT("ScriptModule namespace default test should create a module")));
 
-		if (!TestRunner->TestEqual(TEXT("ScriptModule namespace default test should set the default namespace"), Module->SetDefaultNamespace("Gameplay"), static_cast<int32>(asSUCCESS)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), Module->SetDefaultNamespace("Gameplay"),
+			TEXT("ScriptModule namespace default test should set the default namespace")));
 
 		const char* Source = R"(
 const int Value = 42;
@@ -63,45 +57,40 @@ class Agent
 {
 }
 )";
-		if (!TestRunner->TestTrue(TEXT("ScriptModule namespace default test should add script source"), Module->AddScriptSection("ScriptModuleNamespaceDefault", Source, std::strlen(Source), 0) >= 0))
-		{
-			return;
-		}
-		if (!TestRunner->TestEqual(TEXT("ScriptModule namespace default test should build the module"), Module->Build(), static_cast<int32>(asSUCCESS)))
+		ASSERT_THAT(IsTrue(Module->AddScriptSection("ScriptModuleNamespaceDefault", Source, std::strlen(Source), 0) >= 0,
+			TEXT("ScriptModule namespace default test should add script source")));
+		if (!this->Assert.AreEqual(static_cast<int32>(asSUCCESS), Module->Build(),
+			TEXT("ScriptModule namespace default test should build the module")))
 		{
 			TestRunner->AddInfo(Engine.GetMessagesText());
 			return;
 		}
 
 		asIScriptFunction* Function = Module->GetFunctionByDecl("int Entry()");
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule namespace default test should resolve Entry through parent namespace fallback"), Function))
-		{
-			return;
-		}
-		TestRunner->TestEqual(TEXT("ScriptModule namespace default test should keep unqualified declarations in the global namespace"), FString(UTF8_TO_TCHAR(Function->GetNamespace())), FString(TEXT("")));
-		TestRunner->TestTrue(TEXT("ScriptModule namespace default test should resolve the global through parent namespace fallback"), static_cast<asCModule*>(Module)->GetGlobalVarIndexByDecl("const int Value") >= 0);
-		TestRunner->TestNotNull(TEXT("ScriptModule namespace default test should expose the class through parent namespace fallback"), Module->GetTypeInfoByDecl("Agent"));
-		TestRunner->TestEqual(TEXT("ScriptModule namespace default test should keep the module default namespace setting"), FString(UTF8_TO_TCHAR(Module->GetDefaultNamespace())), FString(TEXT("Gameplay")));
+		ASSERT_THAT(IsNotNull(Function,
+			TEXT("ScriptModule namespace default test should resolve Entry through parent namespace fallback")));
+		ASSERT_THAT(AreEqual(FString(TEXT("")), FString(UTF8_TO_TCHAR(Function->GetNamespace())),
+			TEXT("ScriptModule namespace default test should keep unqualified declarations in the global namespace")));
+		ASSERT_THAT(IsTrue(static_cast<asCModule*>(Module)->GetGlobalVarIndexByDecl("const int Value") >= 0,
+			TEXT("ScriptModule namespace default test should resolve the global through parent namespace fallback")));
+		ASSERT_THAT(IsNotNull(Module->GetTypeInfoByDecl("Agent"),
+			TEXT("ScriptModule namespace default test should expose the class through parent namespace fallback")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Gameplay")), FString(UTF8_TO_TCHAR(Module->GetDefaultNamespace())),
+			TEXT("ScriptModule namespace default test should keep the module default namespace setting")));
 	}
 
 	TEST_METHOD(ExplicitNamespaceOverridesDefaultLookup)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule namespace explicit test should create a standalone SDK engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine,
+			TEXT("ScriptModule namespace explicit test should create a standalone SDK engine")));
 
 		FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleNamespaceExplicit");
 		asIScriptModule* Module = ScriptEngine->GetModule(ModuleScope.Get(), asGM_ALWAYS_CREATE);
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule namespace explicit test should create a module"), Module))
-		{
-			return;
-		}
-		if (!TestRunner->TestEqual(TEXT("ScriptModule namespace explicit test should set the default namespace"), Module->SetDefaultNamespace("Gameplay"), static_cast<int32>(asSUCCESS)))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Module,
+			TEXT("ScriptModule namespace explicit test should create a module")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), Module->SetDefaultNamespace("Gameplay"),
+			TEXT("ScriptModule namespace explicit test should set the default namespace")));
 
 		const char* Source = R"(
 int DefaultEntry()
@@ -121,11 +110,10 @@ namespace Tools
 	}
 }
 )";
-		if (!TestRunner->TestTrue(TEXT("ScriptModule namespace explicit test should add script source"), Module->AddScriptSection("ScriptModuleNamespaceExplicit", Source, std::strlen(Source), 0) >= 0))
-		{
-			return;
-		}
-		if (!TestRunner->TestEqual(TEXT("ScriptModule namespace explicit test should build the module"), Module->Build(), static_cast<int32>(asSUCCESS)))
+		ASSERT_THAT(IsTrue(Module->AddScriptSection("ScriptModuleNamespaceExplicit", Source, std::strlen(Source), 0) >= 0,
+			TEXT("ScriptModule namespace explicit test should add script source")));
+		if (!this->Assert.AreEqual(static_cast<int32>(asSUCCESS), Module->Build(),
+			TEXT("ScriptModule namespace explicit test should build the module")))
 		{
 			TestRunner->AddInfo(Engine.GetMessagesText());
 			return;
@@ -133,40 +121,39 @@ namespace Tools
 
 		asIScriptFunction* DefaultFunction = Module->GetFunctionByDecl("int DefaultEntry()");
 		asIScriptFunction* ExplicitFunction = Module->GetFunctionByDecl("int Tools::ExplicitEntry()");
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule namespace explicit test should resolve the default namespace function"), DefaultFunction) ||
-			!TestRunner->TestNotNull(TEXT("ScriptModule namespace explicit test should resolve the explicit namespace function"), ExplicitFunction))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(DefaultFunction,
+			TEXT("ScriptModule namespace explicit test should resolve the default namespace function")));
+		ASSERT_THAT(IsNotNull(ExplicitFunction,
+			TEXT("ScriptModule namespace explicit test should resolve the explicit namespace function")));
 
-		TestRunner->TestEqual(TEXT("ScriptModule namespace explicit test should keep unqualified default function in the global namespace"), FString(UTF8_TO_TCHAR(DefaultFunction->GetNamespace())), FString(TEXT("")));
-		TestRunner->TestEqual(TEXT("ScriptModule namespace explicit test should store explicit function in Tools"), FString(UTF8_TO_TCHAR(ExplicitFunction->GetNamespace())), FString(TEXT("Tools")));
-		TestRunner->TestNull(TEXT("ScriptModule namespace explicit test should not resolve an explicit namespace function as default"), Module->GetFunctionByDecl("int ExplicitEntry()"));
-		TestRunner->TestNotNull(TEXT("ScriptModule namespace explicit test should expose the explicit namespace type"), Module->GetTypeInfoByDecl("Tools::ToolState"));
+		ASSERT_THAT(AreEqual(FString(TEXT("")), FString(UTF8_TO_TCHAR(DefaultFunction->GetNamespace())),
+			TEXT("ScriptModule namespace explicit test should keep unqualified default function in the global namespace")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Tools")), FString(UTF8_TO_TCHAR(ExplicitFunction->GetNamespace())),
+			TEXT("ScriptModule namespace explicit test should store explicit function in Tools")));
+		ASSERT_THAT(IsNull(Module->GetFunctionByDecl("int ExplicitEntry()"),
+			TEXT("ScriptModule namespace explicit test should not resolve an explicit namespace function as default")));
+		ASSERT_THAT(IsNotNull(Module->GetTypeInfoByDecl("Tools::ToolState"),
+			TEXT("ScriptModule namespace explicit test should expose the explicit namespace type")));
 	}
 
 	TEST_METHOD(InvalidDefaultNamespaceRejected)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule namespace invalid test should create a standalone SDK engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine,
+			TEXT("ScriptModule namespace invalid test should create a standalone SDK engine")));
 
 		FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleNamespaceInvalid");
 		asIScriptModule* Module = ScriptEngine->GetModule(ModuleScope.Get(), asGM_ALWAYS_CREATE);
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule namespace invalid test should create a module"), Module))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(Module,
+			TEXT("ScriptModule namespace invalid test should create a module")));
 
-		if (!TestRunner->TestEqual(TEXT("ScriptModule namespace invalid test should set a known valid namespace"), Module->SetDefaultNamespace("Valid"), static_cast<int32>(asSUCCESS)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), Module->SetDefaultNamespace("Valid"),
+			TEXT("ScriptModule namespace invalid test should set a known valid namespace")));
 
-		TestRunner->TestEqual(TEXT("ScriptModule namespace invalid test should reject malformed namespace syntax"), Module->SetDefaultNamespace("Invalid::123"), static_cast<int32>(asINVALID_DECLARATION));
-		TestRunner->TestEqual(TEXT("ScriptModule namespace invalid test should preserve the previous namespace"), FString(UTF8_TO_TCHAR(Module->GetDefaultNamespace())), FString(TEXT("Valid")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asINVALID_DECLARATION), Module->SetDefaultNamespace("Invalid::123"),
+			TEXT("ScriptModule namespace invalid test should reject malformed namespace syntax")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Valid")), FString(UTF8_TO_TCHAR(Module->GetDefaultNamespace())),
+			TEXT("ScriptModule namespace invalid test should preserve the previous namespace")));
 	}
 };
 

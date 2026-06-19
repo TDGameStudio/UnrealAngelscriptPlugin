@@ -49,11 +49,9 @@ class ATestInheritanceBaseline : AActor
 {
 }
 )AS");
-		if (!TestRunner->TestTrue(TEXT("TestCase inheritance baseline module should compile before reload analysis"),
-			CompileAnnotatedModuleFromMemory(&Engine, ModuleName, TEXT("TestInheritanceScriptToScript.as"), BaselineScript)))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(
+			CompileAnnotatedModuleFromMemory(&Engine, ModuleName, TEXT("TestInheritanceScriptToScript.as"), BaselineScript),
+			TEXT("TestCase inheritance baseline module should compile before reload analysis")));
 
 		FAngelscriptClassGenerator::EReloadRequirement ReloadRequirement = FAngelscriptClassGenerator::Error;
 		bool bWantsFullReload = false;
@@ -87,12 +85,11 @@ class ATestInheritanceDerived : ATestCaseInheritanceBase
 			bWantsFullReload,
 			bNeedsFullReload);
 
-		if (!TestRunner->TestFalse(TEXT("TestCase script-to-script actor inheritance with overridden UFUNCTIONs remains unsupported on this branch"), bAnalyzed))
-		{
-			return;
-		}
+		ASSERT_THAT(IsFalse(
+			bAnalyzed,
+			TEXT("TestCase script-to-script actor inheritance with overridden UFUNCTIONs remains unsupported on this branch")));
 
-		TestRunner->TestEqual(TEXT("TestCase script-to-script actor inheritance should currently stay in the error state"), ReloadRequirement, FAngelscriptClassGenerator::Error);
+		ASSERT_THAT(AreEqual(FAngelscriptClassGenerator::Error, ReloadRequirement, TEXT("TestCase script-to-script actor inheritance should currently stay in the error state")));
 	}
 
 	TEST_METHOD(Super)
@@ -112,11 +109,9 @@ class ATestInheritanceSuperBaseline : AActor
 {
 }
 )AS");
-		if (!TestRunner->TestTrue(TEXT("TestCase inheritance super baseline module should compile before reload analysis"),
-			CompileAnnotatedModuleFromMemory(&Engine, ModuleName, TEXT("TestInheritanceSuper.as"), BaselineScript)))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(
+			CompileAnnotatedModuleFromMemory(&Engine, ModuleName, TEXT("TestInheritanceSuper.as"), BaselineScript),
+			TEXT("TestCase inheritance super baseline module should compile before reload analysis")));
 
 		FAngelscriptClassGenerator::EReloadRequirement ReloadRequirement = FAngelscriptClassGenerator::Error;
 		bool bWantsFullReload = false;
@@ -150,12 +145,11 @@ class ATestInheritanceSuperDerived : ATestCaseInheritanceSuperBase
 			bWantsFullReload,
 			bNeedsFullReload);
 
-		if (!TestRunner->TestFalse(TEXT("TestCase script-to-script Super calls remain unsupported on this branch"), bAnalyzed))
-		{
-			return;
-		}
+		ASSERT_THAT(IsFalse(
+			bAnalyzed,
+			TEXT("TestCase script-to-script Super calls remain unsupported on this branch")));
 
-		TestRunner->TestEqual(TEXT("TestCase inheritance with Super should currently stay in the error state"), ReloadRequirement, FAngelscriptClassGenerator::Error);
+		ASSERT_THAT(AreEqual(FAngelscriptClassGenerator::Error, ReloadRequirement, TEXT("TestCase inheritance with Super should currently stay in the error state")));
 	}
 
 	TEST_METHOD(IsA)
@@ -175,11 +169,9 @@ class ATestInheritanceIsABaseline : AActor
 {
 }
 )AS");
-		if (!TestRunner->TestTrue(TEXT("TestCase inheritance IsA baseline module should compile before reload analysis"),
-			CompileAnnotatedModuleFromMemory(&Engine, ModuleName, TEXT("TestInheritanceIsA.as"), BaselineScript)))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(
+			CompileAnnotatedModuleFromMemory(&Engine, ModuleName, TEXT("TestInheritanceIsA.as"), BaselineScript),
+			TEXT("TestCase inheritance IsA baseline module should compile before reload analysis")));
 
 		FAngelscriptClassGenerator::EReloadRequirement ReloadRequirement = FAngelscriptClassGenerator::Error;
 		bool bWantsFullReload = false;
@@ -209,15 +201,17 @@ class ATestInheritanceIsADerived : ATestInheritanceIsABase
 			bWantsFullReload,
 			bNeedsFullReload);
 
-		if (!TestRunner->TestTrue(TEXT("TestCase inheritance IsA/Cast syntax should analyze without crashing"), bAnalyzed))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(
+			bAnalyzed,
+			TEXT("TestCase inheritance IsA/Cast syntax should analyze without crashing")));
 
-		TestRunner->TestTrue(TEXT("TestCase inheritance IsA/Cast currently requires the full-reload path on this branch"), bWantsFullReload || bNeedsFullReload);
-		TestRunner->TestTrue(TEXT("TestCase inheritance IsA/Cast should not remain on the soft-reload path"),
+		ASSERT_THAT(IsTrue(
+			bWantsFullReload || bNeedsFullReload,
+			TEXT("TestCase inheritance IsA/Cast currently requires the full-reload path on this branch")));
+		ASSERT_THAT(IsTrue(
 			ReloadRequirement == FAngelscriptClassGenerator::FullReloadRequired
-			|| ReloadRequirement == FAngelscriptClassGenerator::FullReloadSuggested);
+			|| ReloadRequirement == FAngelscriptClassGenerator::FullReloadSuggested,
+			TEXT("TestCase inheritance IsA/Cast should not remain on the soft-reload path")));
 	}
 };
 

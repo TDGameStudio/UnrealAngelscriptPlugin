@@ -258,10 +258,7 @@ int MapValue_EmptyCompare()
 		FAngelscriptTypeUsage OptionalUsage(FAngelscriptType::GetByAngelscriptTypeName(TEXT("TOptional")));
 		OptionalUsage.SubTypes.Add(IntUsage);
 
-		if (!TestRunner->TestTrue(TEXT("TOptional<int> should report type-level compare support"), OptionalUsage.CanCompare()))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(OptionalUsage.CanCompare(), TEXT("TOptional<int> should report type-level compare support")));
 
 		const SIZE_T OptionalSize = static_cast<SIZE_T>(OptionalUsage.GetValueSize());
 		const uint32 OptionalAlignment = static_cast<uint32>(OptionalUsage.GetValueAlignment());
@@ -281,7 +278,7 @@ int MapValue_EmptyCompare()
 		FAngelscriptOptional& LeftOptional = *static_cast<FAngelscriptOptional*>(LeftStorage);
 		FAngelscriptOptional& RightOptional = *static_cast<FAngelscriptOptional*>(RightStorage);
 
-		if (!TestRunner->TestTrue(TEXT("Two unset optionals should compare equal"), OptionalUsage.IsValueEqual(&LeftOptional, &RightOptional)))
+		if (!this->Assert.IsTrue(OptionalUsage.IsValueEqual(&LeftOptional, &RightOptional), TEXT("Two unset optionals should compare equal")))
 		{
 			OptionalUsage.DestructValue(LeftStorage);
 			OptionalUsage.DestructValue(RightStorage);
@@ -293,7 +290,7 @@ int MapValue_EmptyCompare()
 		OptionalOps.Set(LeftOptional, &LeftValue);
 		OptionalOps.Set(RightOptional, &RightValue);
 
-		if (!TestRunner->TestTrue(TEXT("Two equal set optionals should compare equal"), OptionalUsage.IsValueEqual(&LeftOptional, &RightOptional)))
+		if (!this->Assert.IsTrue(OptionalUsage.IsValueEqual(&LeftOptional, &RightOptional), TEXT("Two equal set optionals should compare equal")))
 		{
 			OptionalUsage.DestructValue(LeftStorage);
 			OptionalUsage.DestructValue(RightStorage);
@@ -302,7 +299,7 @@ int MapValue_EmptyCompare()
 
 		RightValue = 9;
 		OptionalOps.Set(RightOptional, &RightValue);
-		if (!TestRunner->TestFalse(TEXT("Different set optionals should compare unequal"), OptionalUsage.IsValueEqual(&LeftOptional, &RightOptional)))
+		if (!this->Assert.IsFalse(OptionalUsage.IsValueEqual(&LeftOptional, &RightOptional), TEXT("Different set optionals should compare unequal")))
 		{
 			OptionalUsage.DestructValue(LeftStorage);
 			OptionalUsage.DestructValue(RightStorage);
@@ -314,7 +311,7 @@ int MapValue_EmptyCompare()
 		OptionalUsage.DestructValue(LeftStorage);
 		OptionalUsage.DestructValue(RightStorage);
 
-		TestRunner->TestFalse(TEXT("Set and unset optionals should compare unequal"), bSetVsUnsetEqual);
+		ASSERT_THAT(IsFalse(bSetVsUnsetEqual, TEXT("Set and unset optionals should compare unequal")));
 	}
 
 	// ====================================================================
@@ -343,31 +340,28 @@ int MapValue_EmptyCompare()
 		MapOps.Add(TestMap, &BetaName, &BetaValue);
 
 		FDebuggerValue SummaryValue;
-		if (!TestRunner->TestTrue(TEXT("TMap debugger summary should be available"), MapUsage.GetDebuggerValue(&TestMap, SummaryValue)))
+		if (!this->Assert.IsTrue(MapUsage.GetDebuggerValue(&TestMap, SummaryValue), TEXT("TMap debugger summary should be available")))
 		{
 			MapOps.Empty(TestMap, 0);
 			return;
 		}
-		TestRunner->TestEqual(TEXT("TMap debugger summary should show element count"), SummaryValue.Value, FString(TEXT("Num = 2")));
-		TestRunner->TestTrue(TEXT("TMap debugger summary should report child members"), SummaryValue.bHasMembers);
+		ASSERT_THAT(AreEqual(FString(TEXT("Num = 2")), SummaryValue.Value, TEXT("TMap debugger summary should show element count")));
+		ASSERT_THAT(IsTrue(SummaryValue.bHasMembers, TEXT("TMap debugger summary should report child members")));
 
 		FDebuggerValue NumValue;
-		if (!TestRunner->TestTrue(TEXT("TMap debugger should expose Num member"), MapUsage.GetDebuggerMember(&TestMap, TEXT("Num"), NumValue)))
+		if (!this->Assert.IsTrue(MapUsage.GetDebuggerMember(&TestMap, TEXT("Num"), NumValue), TEXT("TMap debugger should expose Num member")))
 		{
 			MapOps.Empty(TestMap, 0);
 			return;
 		}
-		TestRunner->TestEqual(TEXT("TMap debugger Num member should match element count"), NumValue.Value, FString(TEXT("2")));
+		ASSERT_THAT(AreEqual(FString(TEXT("2")), NumValue.Value, TEXT("TMap debugger Num member should match element count")));
 
 		FDebuggerValue AlphaDebugValue;
 		const bool bAlphaFound = MapUsage.GetDebuggerMember(&TestMap, TEXT("[Alpha]"), AlphaDebugValue);
 		MapOps.Empty(TestMap, 0);
-		if (!TestRunner->TestTrue(TEXT("TMap debugger should expose FName-keyed members by string identifier"), bAlphaFound))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(bAlphaFound, TEXT("TMap debugger should expose FName-keyed members by string identifier")));
 
-		TestRunner->TestEqual(TEXT("TMap debugger key lookup should return the mapped value"), AlphaDebugValue.Value, FString(TEXT("2")));
+		ASSERT_THAT(AreEqual(FString(TEXT("2")), AlphaDebugValue.Value, TEXT("TMap debugger key lookup should return the mapped value")));
 	}
 };
 

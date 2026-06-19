@@ -36,8 +36,9 @@ class myclass
 )",
 			Messages);
 
-		TestRunner->TestTrue(TEXT("Reference unfinished class should fail to build"), CompileResult < 0);
-		TestRunner->TestTrue(TEXT("Reference unfinished class should report a missing class body terminator"), ContainsError(Messages, TEXT("Expected '}'")) || ContainsError(Messages, TEXT("<end of file>")));
+		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference unfinished class should fail to build")));
+		ASSERT_THAT(IsTrue(ContainsError(Messages, TEXT("Expected '}'")) || ContainsError(Messages, TEXT("<end of file>")),
+			TEXT("Reference unfinished class should report a missing class body terminator")));
 	}
 
 	TEST_METHOD(CapitalConstInParameterIsRejected)
@@ -51,9 +52,10 @@ class myclass
 )",
 			Messages);
 
-		TestRunner->TestTrue(TEXT("Reference capital Const parameter should fail to build"), CompileResult < 0);
-		TestRunner->TestTrue(TEXT("Reference capital Const parameter should emit at least one syntax error"), CountErrors(Messages) > 0);
-		TestRunner->TestTrue(TEXT("Reference capital Const parameter should keep useful diagnostic context"), ContainsError(Messages, TEXT("Const")) || ContainsError(Messages, TEXT("int")) || ContainsError(Messages, TEXT("Expected")));
+		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference capital Const parameter should fail to build")));
+		ASSERT_THAT(IsTrue(CountErrors(Messages) > 0, TEXT("Reference capital Const parameter should emit at least one syntax error")));
+		ASSERT_THAT(IsTrue(ContainsError(Messages, TEXT("Const")) || ContainsError(Messages, TEXT("int")) || ContainsError(Messages, TEXT("Expected")),
+			TEXT("Reference capital Const parameter should keep useful diagnostic context")));
 	}
 
 	TEST_METHOD(UnclosedNamespaceReportsEndOfFile)
@@ -67,9 +69,10 @@ namespace Outer
 )",
 			Messages);
 
-		TestRunner->TestTrue(TEXT("Reference unclosed namespace should fail to build"), CompileResult < 0);
-		TestRunner->TestTrue(TEXT("Reference unclosed namespace should report parser errors"), CountErrors(Messages) >= 1);
-		TestRunner->TestTrue(TEXT("Reference unclosed namespace should mention expected structure or EOF"), ContainsError(Messages, TEXT("Expected")) || ContainsError(Messages, TEXT("<end of file>")));
+		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference unclosed namespace should fail to build")));
+		ASSERT_THAT(IsTrue(CountErrors(Messages) >= 1, TEXT("Reference unclosed namespace should report parser errors")));
+		ASSERT_THAT(IsTrue(ContainsError(Messages, TEXT("Expected")) || ContainsError(Messages, TEXT("<end of file>")),
+			TEXT("Reference unclosed namespace should mention expected structure or EOF")));
 	}
 
 	TEST_METHOD(BadParameterListAccumulatesSyntaxError)
@@ -82,8 +85,9 @@ void Bad(int A,, int B)
 )",
 			Messages);
 
-		TestRunner->TestTrue(TEXT("Reference bad parameter list should fail to build"), CompileResult < 0);
-		TestRunner->TestTrue(TEXT("Reference bad parameter list should produce a syntax diagnostic"), ContainsError(Messages, TEXT("Expected")) || ContainsError(Messages, TEXT("Instead found")));
+		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference bad parameter list should fail to build")));
+		ASSERT_THAT(IsTrue(ContainsError(Messages, TEXT("Expected")) || ContainsError(Messages, TEXT("Instead found")),
+			TEXT("Reference bad parameter list should produce a syntax diagnostic")));
 	}
 
 	TEST_METHOD(MultipleMalformedDeclarationsReportMultipleErrors)
@@ -96,8 +100,9 @@ int Read() { return ; }
 )",
 			Messages);
 
-		TestRunner->TestTrue(TEXT("Reference malformed declarations should fail to build"), CompileResult < 0);
-		TestRunner->TestTrue(TEXT("Reference malformed declarations should accumulate more than one error"), CountErrors(Messages) >= 2);
+		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference malformed declarations should fail to build")));
+		ASSERT_THAT(IsTrue(CountErrors(Messages) >= 2,
+			TEXT("Reference malformed declarations should accumulate more than one error")));
 	}
 };
 

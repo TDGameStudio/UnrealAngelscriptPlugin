@@ -14,23 +14,24 @@ namespace AngelscriptTest_Core_AngelscriptBindStringTests_Private
 		const TCHAR* ExpectedUnreal,
 		const ANSICHAR* ExpectedAnsi)
 	{
+		FNoDiscardAsserter Assert(Test);
 		bool bOk = true;
-		bOk &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should report the expected empty state"), Context),
+		bOk &= Assert.AreEqual(
+			bExpectedEmpty,
 			BindString.IsEmpty(),
-			bExpectedEmpty);
-		bOk &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should round-trip to FString"), Context),
+			*FString::Printf(TEXT("%s should report the expected empty state"), Context));
+		bOk &= Assert.AreEqual(
+			FString(ExpectedUnreal),
 			BindString.ToFString(),
-			FString(ExpectedUnreal));
-		bOk &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should round-trip to ANSI text"), Context),
+			*FString::Printf(TEXT("%s should round-trip to FString"), Context));
+		bOk &= Assert.AreEqual(
+			FString(ExpectedUnreal),
 			FString(ANSI_TO_TCHAR(BindString.ToCString())),
-			FString(ExpectedUnreal));
-		bOk &= Test.TestEqual(
-			*FString::Printf(TEXT("%s should preserve the expected ANSI payload"), Context),
+			*FString::Printf(TEXT("%s should round-trip to ANSI text"), Context));
+		bOk &= Assert.AreEqual(
+			0,
 			FCStringAnsi::Strcmp(BindString.ToCString(), ExpectedAnsi),
-			0);
+			*FString::Printf(TEXT("%s should preserve the expected ANSI payload"), Context));
 		return bOk;
 	}
 }
@@ -49,10 +50,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindStringTests,
 			return;
 		}
 
-		if (!TestRunner->TestEqual(
-				TEXT("BindString constant empty should expose the same constant ANSI pointer content"),
+		if (!this->Assert.AreEqual(
+				0,
 				FCStringAnsi::Strcmp(ConstantEmpty.ToCString_EnsureConstant(), ""),
-				0))
+				TEXT("BindString constant empty should expose the same constant ANSI pointer content")))
 		{
 			return;
 		}
@@ -63,10 +64,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindStringTests,
 			return;
 		}
 
-		if (!TestRunner->TestEqual(
-				TEXT("BindString constant value should keep the constant ANSI source available"),
+		if (!this->Assert.AreEqual(
+				0,
 				FCStringAnsi::Strcmp(ConstantValue.ToCString_EnsureConstant(), "Constant::Value"),
-				0))
+				TEXT("BindString constant value should keep the constant ANSI source available")))
 		{
 			return;
 		}

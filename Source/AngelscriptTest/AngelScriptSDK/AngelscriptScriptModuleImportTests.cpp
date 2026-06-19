@@ -32,10 +32,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptModuleImportTests,
 	TEST_METHOD(ImportMetadataBeforeBinding)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule import metadata test should create a standalone SDK engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine,
+			TEXT("ScriptModule import metadata test should create a standalone SDK engine")));
 
 		FScopedNativeModule Consumer(*TestRunner, Engine, "ScriptModuleImportMetadataConsumer", R"(
 import int SharedValue() from "ScriptModuleImportMetadataProvider";
@@ -51,19 +49,21 @@ int Entry()
 			return;
 		}
 
-		TestRunner->TestEqual(TEXT("ScriptModule import metadata should expose one imported function"), static_cast<int32>(Consumer->GetImportedFunctionCount()), 1);
-		TestRunner->TestEqual(TEXT("ScriptModule import metadata should resolve the import index by declaration"), Consumer->GetImportedFunctionIndexByDecl("int SharedValue()"), 0);
-		TestRunner->TestEqual(TEXT("ScriptModule import metadata should preserve the imported declaration"), FString(UTF8_TO_TCHAR(Consumer->GetImportedFunctionDeclaration(0))), FString(TEXT("int SharedValue()")));
-		TestRunner->TestEqual(TEXT("ScriptModule import metadata should preserve the source module name"), FString(UTF8_TO_TCHAR(Consumer->GetImportedFunctionSourceModule(0))), FString(TEXT("ScriptModuleImportMetadataProvider")));
+		ASSERT_THAT(AreEqual(1, static_cast<int32>(Consumer->GetImportedFunctionCount()),
+			TEXT("ScriptModule import metadata should expose one imported function")));
+		ASSERT_THAT(AreEqual(0, Consumer->GetImportedFunctionIndexByDecl("int SharedValue()"),
+			TEXT("ScriptModule import metadata should resolve the import index by declaration")));
+		ASSERT_THAT(AreEqual(FString(TEXT("int SharedValue()")), FString(UTF8_TO_TCHAR(Consumer->GetImportedFunctionDeclaration(0))),
+			TEXT("ScriptModule import metadata should preserve the imported declaration")));
+		ASSERT_THAT(AreEqual(FString(TEXT("ScriptModuleImportMetadataProvider")), FString(UTF8_TO_TCHAR(Consumer->GetImportedFunctionSourceModule(0))),
+			TEXT("ScriptModule import metadata should preserve the source module name")));
 	}
 
 	TEST_METHOD(BindImportedFunctionExecutesProvider)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule import bind test should create a standalone SDK engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine,
+			TEXT("ScriptModule import bind test should create a standalone SDK engine")));
 
 		FScopedNativeModule Provider(*TestRunner, Engine, "ScriptModuleImportBindProvider", R"(
 int SharedValue()
@@ -86,30 +86,25 @@ int Entry()
 		}
 
 		asIScriptFunction* SourceFunction = Provider->GetFunctionByDecl("int SharedValue()");
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule import bind test should expose the provider function"), SourceFunction))
-		{
-			return;
-		}
-		if (!TestRunner->TestEqual(TEXT("ScriptModule import bind test should bind the imported function"), Consumer->BindImportedFunction(0, SourceFunction), static_cast<int32>(asSUCCESS)))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(SourceFunction,
+			TEXT("ScriptModule import bind test should expose the provider function")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), Consumer->BindImportedFunction(0, SourceFunction),
+			TEXT("ScriptModule import bind test should bind the imported function")));
 
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, Consumer, "int Entry()", Result))
 		{
 			return;
 		}
-		TestRunner->TestEqual(TEXT("ScriptModule import bind test should execute the provider function through the consumer"), Result, 77);
+		ASSERT_THAT(AreEqual(77, Result,
+			TEXT("ScriptModule import bind test should execute the provider function through the consumer")));
 	}
 
 	TEST_METHOD(BindImportedFunctionRejectsSignatureMismatch)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule import mismatch test should create a standalone SDK engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine,
+			TEXT("ScriptModule import mismatch test should create a standalone SDK engine")));
 
 		FScopedNativeModule Provider(*TestRunner, Engine, "ScriptModuleImportMismatchProvider", R"(
 int SharedValue(int Value)
@@ -132,26 +127,22 @@ int Entry()
 		}
 
 		asIScriptFunction* SourceFunction = GetNativeFunctionByDecl(Provider, "int SharedValue(int)");
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule import mismatch test should expose the mismatched provider function"), SourceFunction))
-		{
-			return;
-		}
-		if (!TestRunner->TestEqual(TEXT("ScriptModule import mismatch test should use a one-parameter provider"), static_cast<int32>(SourceFunction->GetParamCount()), 1))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(SourceFunction,
+			TEXT("ScriptModule import mismatch test should expose the mismatched provider function")));
+		ASSERT_THAT(AreEqual(1, static_cast<int32>(SourceFunction->GetParamCount()),
+			TEXT("ScriptModule import mismatch test should use a one-parameter provider")));
 
-		TestRunner->TestEqual(TEXT("ScriptModule import mismatch test should reject incompatible signatures"), Consumer->BindImportedFunction(0, SourceFunction), static_cast<int32>(asINVALID_INTERFACE));
-		TestRunner->TestEqual(TEXT("ScriptModule import mismatch test should reject an invalid import index"), Consumer->BindImportedFunction(7, SourceFunction), static_cast<int32>(asINVALID_ARG));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asINVALID_INTERFACE), Consumer->BindImportedFunction(0, SourceFunction),
+			TEXT("ScriptModule import mismatch test should reject incompatible signatures")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asINVALID_ARG), Consumer->BindImportedFunction(7, SourceFunction),
+			TEXT("ScriptModule import mismatch test should reject an invalid import index")));
 	}
 
 	TEST_METHOD(UnbindImportedFunctionAllowsRebind)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule import rebind test should create a standalone SDK engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine,
+			TEXT("ScriptModule import rebind test should create a standalone SDK engine")));
 
 		FScopedNativeModule ProviderA(*TestRunner, Engine, "ScriptModuleImportRebindProviderA", R"(
 int SharedValue()
@@ -181,45 +172,41 @@ int Entry()
 
 		asIScriptFunction* FirstFunction = ProviderA->GetFunctionByDecl("int SharedValue()");
 		asIScriptFunction* SecondFunction = ProviderB->GetFunctionByDecl("int SharedValue()");
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule import rebind test should expose the first provider function"), FirstFunction) ||
-			!TestRunner->TestNotNull(TEXT("ScriptModule import rebind test should expose the second provider function"), SecondFunction))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(FirstFunction,
+			TEXT("ScriptModule import rebind test should expose the first provider function")));
+		ASSERT_THAT(IsNotNull(SecondFunction,
+			TEXT("ScriptModule import rebind test should expose the second provider function")));
 
-		if (!TestRunner->TestEqual(TEXT("ScriptModule import rebind test should bind the first provider"), Consumer->BindImportedFunction(0, FirstFunction), static_cast<int32>(asSUCCESS)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), Consumer->BindImportedFunction(0, FirstFunction),
+			TEXT("ScriptModule import rebind test should bind the first provider")));
 
 		int32 FirstResult = 0;
 		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, Consumer, "int Entry()", FirstResult))
 		{
 			return;
 		}
-		TestRunner->TestEqual(TEXT("ScriptModule import rebind test should execute the first provider"), FirstResult, 11);
+		ASSERT_THAT(AreEqual(11, FirstResult,
+			TEXT("ScriptModule import rebind test should execute the first provider")));
 
-		if (!TestRunner->TestEqual(TEXT("ScriptModule import rebind test should unbind the import"), Consumer->UnbindImportedFunction(0), static_cast<int32>(asSUCCESS)) ||
-			!TestRunner->TestEqual(TEXT("ScriptModule import rebind test should bind the second provider"), Consumer->BindImportedFunction(0, SecondFunction), static_cast<int32>(asSUCCESS)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), Consumer->UnbindImportedFunction(0),
+			TEXT("ScriptModule import rebind test should unbind the import")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), Consumer->BindImportedFunction(0, SecondFunction),
+			TEXT("ScriptModule import rebind test should bind the second provider")));
 
 		int32 SecondResult = 0;
 		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, Consumer, "int Entry()", SecondResult))
 		{
 			return;
 		}
-		TestRunner->TestEqual(TEXT("ScriptModule import rebind test should execute the rebound provider"), SecondResult, 29);
+		ASSERT_THAT(AreEqual(29, SecondResult,
+			TEXT("ScriptModule import rebind test should execute the rebound provider")));
 	}
 
 	TEST_METHOD(BindAllImportedFunctions)
 	{
 		asIScriptEngine* ScriptEngine = Engine.Get();
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule import bind-all test should create a standalone SDK engine"), ScriptEngine))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(ScriptEngine,
+			TEXT("ScriptModule import bind-all test should create a standalone SDK engine")));
 
 		FScopedNativeModuleName MissingScope(Engine, "ScriptModuleImportBindAllMissingConsumer");
 		asIScriptModule* MissingConsumer = BuildNativeModule(ScriptEngine, MissingScope.Get(), R"(
@@ -230,12 +217,14 @@ int Entry()
 	return SharedValue();
 }
 )");
-		if (!TestRunner->TestNotNull(TEXT("ScriptModule import bind-all test should compile the missing-provider consumer"), MissingConsumer))
+		if (!this->Assert.IsNotNull(MissingConsumer,
+			TEXT("ScriptModule import bind-all test should compile the missing-provider consumer")))
 		{
 			TestRunner->AddInfo(Engine.GetMessagesText());
 			return;
 		}
-		TestRunner->TestEqual(TEXT("ScriptModule import bind-all test should fail when provider is missing"), MissingConsumer->BindAllImportedFunctions(), static_cast<int32>(asCANT_BIND_ALL_FUNCTIONS));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asCANT_BIND_ALL_FUNCTIONS), MissingConsumer->BindAllImportedFunctions(),
+			TEXT("ScriptModule import bind-all test should fail when provider is missing")));
 
 		FScopedNativeModule Provider(*TestRunner, Engine, "ScriptModuleImportBindAllProvider", R"(
 int SharedValue()
@@ -257,17 +246,16 @@ int Entry()
 			return;
 		}
 
-		if (!TestRunner->TestEqual(TEXT("ScriptModule import bind-all test should bind all matching imports"), Consumer->BindAllImportedFunctions(), static_cast<int32>(asSUCCESS)))
-		{
-			return;
-		}
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), Consumer->BindAllImportedFunctions(),
+			TEXT("ScriptModule import bind-all test should bind all matching imports")));
 
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, Consumer, "int Entry()", Result))
 		{
 			return;
 		}
-		TestRunner->TestEqual(TEXT("ScriptModule import bind-all test should execute after automatic binding"), Result, 42);
+		ASSERT_THAT(AreEqual(42, Result,
+			TEXT("ScriptModule import bind-all test should execute after automatic binding")));
 	}
 };
 
