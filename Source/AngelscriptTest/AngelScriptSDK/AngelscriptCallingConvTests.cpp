@@ -9,14 +9,17 @@
 using namespace AngelscriptNativeTestSupport;
 using namespace AngelscriptSDKTestSupport;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptSDKCallingConvTests,
+	"Angelscript.TestModule.AngelScriptSDK.CallingConv",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	int32 DoubleNativeValue(int32 Value)
+private:
+	static int32 DoubleNativeValue(int32 Value)
 	{
 		return Value * 2;
 	}
 
-	void TripleGenericValue(asIScriptGeneric* Generic)
+	static void TripleGenericValue(asIScriptGeneric* Generic)
 	{
 		const int32 Value = *static_cast<int32*>(Generic->GetAddressOfArg(0));
 		Generic->SetReturnDWord(static_cast<asDWORD>(Value * 3));
@@ -32,17 +35,12 @@ namespace
 		}
 	};
 
-	void ConstructNativeAdder(FNativeAdder* Address)
+	static void ConstructNativeAdder(FNativeAdder* Address)
 	{
 		new (Address) FNativeAdder();
 	}
-}
 
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptSDKCallingConvTests,
-	"Angelscript.TestModule.AngelScriptSDK.CallingConv",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	inline static FNativeTestEngine Engine;
 	inline static bool bCDeclRegistered = false;
 	inline static bool bGenericRegistered = false;

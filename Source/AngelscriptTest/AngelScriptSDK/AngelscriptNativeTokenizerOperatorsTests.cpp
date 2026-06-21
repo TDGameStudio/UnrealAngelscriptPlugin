@@ -10,8 +10,11 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
+	"Angelscript.TestModule.AngelScriptSDK.Tokenizer.Operators",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
 	struct FTokenCase
 	{
 		const char* Input;
@@ -20,7 +23,7 @@ namespace
 		const TCHAR* Description;
 	};
 
-	bool ReadToken(const char* Input, eTokenType& OutTokenType, int32& OutTokenLength)
+	static bool ReadToken(const char* Input, eTokenType& OutTokenType, int32& OutTokenLength)
 	{
 		FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
@@ -28,12 +31,7 @@ namespace
 		OutTokenLength = static_cast<int32>(TokenLength);
 		return true;
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
-	"Angelscript.TestModule.AngelScriptSDK.Tokenizer.Operators",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
 	void ExpectTokens(const FTokenCase* Cases, const int32 NumCases)
 	{
 		for (int32 Index = 0; Index < NumCases; ++Index)
@@ -50,6 +48,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 		}
 	}
 
+public:
 	TEST_METHOD(ArithmeticOps_PlusMinusStarSlashPercent)
 	{
 		const FTokenCase Cases[] = {

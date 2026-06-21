@@ -15,8 +15,9 @@
 // TODO: asCThreadManager symbols not exported from AngelscriptRuntime. Disabled until linkage resolved.
 #if 0 // WITH_DEV_AUTOMATION_TESTS
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptSDKThreadTests, "Angelscript.TestModule.AngelScriptSDK.Thread", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
 	class FTLSCaptureRunnable : public FRunnable
 	{
 	public:
@@ -32,10 +33,8 @@ namespace
 			return 0;
 		}
 	};
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptSDKThreadTests, "Angelscript.TestModule.AngelScriptSDK.Thread", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(GetLocalDataNonNull)
 	{
 		asCThreadLocalData* TLS = asCThreadManager::GetLocalData();

@@ -14,22 +14,25 @@
 using namespace AngelscriptNativeTestSupport;
 using namespace AngelscriptSDKTestSupport;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptBuilderTests,
+	"Angelscript.TestModule.AngelScriptSDK.Builder",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	asCModule* CreateBuilderModule(asIScriptEngine* ScriptEngine, const char* ModuleName)
+private:
+	static asCModule* CreateBuilderModule(asIScriptEngine* ScriptEngine, const char* ModuleName)
 	{
 		return ScriptEngine != nullptr
 			? static_cast<asCModule*>(ScriptEngine->GetModule(ModuleName, asGM_ALWAYS_CREATE))
 			: nullptr;
 	}
 
-	bool AddBuilderSection(asCModule& Module, const char* SectionName, const char* Source)
+	static bool AddBuilderSection(asCModule& Module, const char* SectionName, const char* Source)
 	{
 		const int Result = Module.AddScriptSection(SectionName, Source, std::strlen(Source), 0);
 		return Result >= 0;
 	}
 
-	bool RunBuilderPipelineThroughLayout(asCBuilder& Builder)
+	static bool RunBuilderPipelineThroughLayout(asCBuilder& Builder)
 	{
 		if (Builder.BuildParallelParseScripts() != asSUCCESS)
 		{
@@ -50,12 +53,8 @@ namespace
 		Builder.BuildAllocateGlobalVariables();
 		return Builder.BuildLayoutFunctions() == asSUCCESS;
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptBuilderTests,
-	"Angelscript.TestModule.AngelScriptSDK.Builder",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()

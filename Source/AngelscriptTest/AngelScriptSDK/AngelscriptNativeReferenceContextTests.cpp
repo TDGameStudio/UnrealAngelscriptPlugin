@@ -4,9 +4,12 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceContextTests,
+	"Angelscript.TestModule.AngelScriptSDK.Reference.Context",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	bool BuildContextModule(
+private:
+	static bool BuildContextModule(
 		FAutomationTestBase& Test,
 		const char* ModuleName,
 		const char* Source,
@@ -31,12 +34,8 @@ namespace
 
 		return true;
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceContextTests,
-	"Angelscript.TestModule.AngelScriptSDK.Reference.Context",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(ContextCanBeReusedAfterDeepStackException)
 	{
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;

@@ -17,9 +17,13 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeCopyTests,
+	"Angelscript.TestModule.AngelScriptSDK.ScriptNode.Copy",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	bool ParseCopyScript(
+private:
+	static bool ParseCopyScript(
 		FAutomationTestBase& Test,
 		FNoDiscardAsserter& Assert,
 		asCScriptEngine* ScriptEngine,
@@ -54,7 +58,7 @@ namespace
 		return true;
 	}
 
-	bool HistogramsMatch(const TMap<eScriptNode, int32>& Left, const TMap<eScriptNode, int32>& Right)
+	static bool HistogramsMatch(const TMap<eScriptNode, int32>& Left, const TMap<eScriptNode, int32>& Right)
 	{
 		if (Left.Num() != Right.Num())
 		{
@@ -73,7 +77,7 @@ namespace
 		return true;
 	}
 
-	int32 CountSiblings(const asCScriptNode* Node)
+	static int32 CountSiblings(const asCScriptNode* Node)
 	{
 		int32 Count = 0;
 		for (const asCScriptNode* Current = Node; Current != nullptr; Current = Current->next)
@@ -83,7 +87,7 @@ namespace
 		return Count;
 	}
 
-	std::string MakeDeepBlockSource(const int32 Depth)
+	static std::string MakeDeepBlockSource(const int32 Depth)
 	{
 		std::string Source = "void Run() ";
 		for (int32 Index = 0; Index < Depth; ++Index)
@@ -97,12 +101,8 @@ namespace
 		}
 		return Source;
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeCopyTests,
-	"Angelscript.TestModule.AngelScriptSDK.ScriptNode.Copy",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(CreateCopyPreservesNodeTypes)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);

@@ -14,14 +14,17 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
+	"Angelscript.TestModule.AngelScriptSDK.Restore",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	asCModule* CreateRestoreModule(asCScriptEngine* ScriptEngine, const char* ModuleName)
+private:
+	static asCModule* CreateRestoreModule(asCScriptEngine* ScriptEngine, const char* ModuleName)
 	{
 		return static_cast<asCModule*>(ScriptEngine->GetModule(ModuleName, asGM_ALWAYS_CREATE));
 	}
 
-	asCModule* BuildRestoreModule(FAutomationTestBase& Test, FAngelscriptEngine& Engine, const char* ModuleName)
+	static asCModule* BuildRestoreModule(FAutomationTestBase& Test, FAngelscriptEngine& Engine, const char* ModuleName)
 	{
 		asIScriptModule* Module = BuildModule(
 			Test,
@@ -31,7 +34,7 @@ namespace
 		return static_cast<asCModule*>(Module);
 	}
 
-	bool ExecuteRestoreFunction(FAutomationTestBase& Test, FAngelscriptEngine& Engine, asCModule& Module, int32& OutValue)
+	static bool ExecuteRestoreFunction(FAutomationTestBase& Test, FAngelscriptEngine& Engine, asCModule& Module, int32& OutValue)
 	{
 		asIScriptFunction* Function = GetFunctionByDecl(Test, Module, TEXT("int Test()"));
 		if (Function == nullptr)
@@ -41,13 +44,8 @@ namespace
 
 		return ExecuteIntFunction(Test, Engine, *Function, OutValue);
 	}
-}
 
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
-	"Angelscript.TestModule.AngelScriptSDK.Restore",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(RoundTrip)
 	{
 		TUniquePtr<FAngelscriptEngine> SourceEngineOwner = CreateIsolatedCloneEngine();

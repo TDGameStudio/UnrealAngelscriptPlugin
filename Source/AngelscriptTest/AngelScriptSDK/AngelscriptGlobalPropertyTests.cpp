@@ -11,20 +11,18 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace
-{
-	static int32 GTestValue = 0;
-	static int32 GTestA = 0;
-	static int32 GTestB = 0;
-	static double GTestDouble = 0.0;
-	static bool GTestBool = false;
-}
-
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 	"Angelscript.TestModule.AngelScriptSDK.GlobalProperty",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	inline static int32 GTestValue = 0;
+	inline static int32 GTestA = 0;
+	inline static int32 GTestB = 0;
+	inline static double GTestDouble = 0.0;
+	inline static bool GTestBool = false;
+
+public:
 	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()

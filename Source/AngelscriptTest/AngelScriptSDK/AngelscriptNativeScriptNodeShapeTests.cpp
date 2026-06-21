@@ -15,9 +15,13 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
+	"Angelscript.TestModule.AngelScriptSDK.ScriptNode.Shape",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	bool ParseShapeScript(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
+private:
+	static bool ParseShapeScript(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a script-node module"), UTF8_TO_TCHAR(ModuleName))))
@@ -46,7 +50,7 @@ namespace
 		return true;
 	}
 
-	bool ParseStatement(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
+	static bool ParseStatement(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a statement parser module"), UTF8_TO_TCHAR(ModuleName))))
@@ -69,7 +73,7 @@ namespace
 		return true;
 	}
 
-	int32 CountDirectChildren(const asCScriptNode* Node)
+	static int32 CountDirectChildren(const asCScriptNode* Node)
 	{
 		int32 Count = 0;
 		for (const asCScriptNode* Child = Node != nullptr ? Node->firstChild : nullptr; Child != nullptr; Child = Child->next)
@@ -78,12 +82,8 @@ namespace
 		}
 		return Count;
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
-	"Angelscript.TestModule.AngelScriptSDK.ScriptNode.Shape",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(FunctionNodeChildrenLayout)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);

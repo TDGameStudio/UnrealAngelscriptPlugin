@@ -4,21 +4,19 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptDebugReificationTests,
+	"Angelscript.TestModule.AngelScriptSDK.DebugReification",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	bool ExpectReifyType(
+private:
+	static bool ExpectReifyType(
 		const int32 ActualType,
 		const EReifiedType ExpectedType)
 	{
 		return ActualType == static_cast<int32>(ExpectedType);
 	}
-}
 
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptDebugReificationTests,
-	"Angelscript.TestModule.AngelScriptSDK.DebugReification",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(TypeMapAndFallback)
 	{
 		const int32 Int32Type = GetReifyType<int32>();

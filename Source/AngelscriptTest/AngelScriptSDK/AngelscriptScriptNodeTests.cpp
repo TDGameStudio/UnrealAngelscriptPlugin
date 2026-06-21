@@ -12,26 +12,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace
-{
-	// Create a temporary raw SDK module so the parser has a builder target.
-	asCModule* CreateScriptNodeModule(asCScriptEngine* ScriptEngine, const char* ModuleName)
-	{
-		return static_cast<asCModule*>(ScriptEngine->GetModule(ModuleName, asGM_ALWAYS_CREATE));
-	}
-
-	// Count direct children hanging off the script root node.
-	int32 CountDirectChildren(const asCScriptNode* Node)
-	{
-		int32 Count = 0;
-		for (const asCScriptNode* Child = Node != nullptr ? Node->firstChild : nullptr; Child != nullptr; Child = Child->next)
-		{
-			++Count;
-		}
-		return Count;
-	}
-}
-
 // ---------------------------------------------------------------------------
 // ScriptNode coverage map
 // ---------------------------------------------------------------------------
@@ -51,6 +31,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptNodeTests,
 	"Angelscript.TestModule.AngelScriptSDK.ScriptNode",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	static asCModule* CreateScriptNodeModule(asCScriptEngine* ScriptEngine, const char* ModuleName)
+	{
+		return static_cast<asCModule*>(ScriptEngine->GetModule(ModuleName, asGM_ALWAYS_CREATE));
+	}
+
+	static int32 CountDirectChildren(const asCScriptNode* Node)
+	{
+		int32 Count = 0;
+		for (const asCScriptNode* Child = Node != nullptr ? Node->firstChild : nullptr; Child != nullptr; Child = Child->next)
+		{
+			++Count;
+		}
+		return Count;
+	}
+
+public:
 	TEST_METHOD(Types)
 	{
 		// Enum smoke test: these values are consumed by parser/tree walkers.

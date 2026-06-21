@@ -8,9 +8,12 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptStructCppOpsTests,
+	"Angelscript.TestModule.AngelScriptSDK.StructCppOps",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	UScriptStruct* BuildScriptStruct(
+private:
+	static UScriptStruct* BuildScriptStruct(
 		FAutomationTestBase& Test,
 		FNoDiscardAsserter& Assert,
 		FAngelscriptEngine& Engine,
@@ -37,13 +40,8 @@ namespace
 		}
 		return Struct;
 	}
-}
 
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptStructCppOpsTests,
-	"Angelscript.TestModule.AngelScriptSDK.StructCppOps",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(NotBlueprintTypeByDefault)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();

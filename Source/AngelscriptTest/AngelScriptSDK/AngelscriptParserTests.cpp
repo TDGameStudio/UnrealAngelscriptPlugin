@@ -12,47 +12,46 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-	using namespace AngelscriptNativeTestSupport;
-
-	namespace
-	{
-		bool ContainsNodeType(const asCScriptNode* Node, eScriptNode ExpectedType)
-		{
-			for (const asCScriptNode* Current = Node; Current != nullptr; Current = Current->next)
-			{
-				if (Current->nodeType == ExpectedType)
-				{
-					return true;
-				}
-
-				if (Current->firstChild != nullptr && ContainsNodeType(Current->firstChild, ExpectedType))
-				{
-					return true;
-				}
-			}
-
-			return false;
-		}
-
-	asCModule* CreateParserModule(asCScriptEngine* ScriptEngine, const char* ModuleName)
-	{
-		return static_cast<asCModule*>(ScriptEngine->GetModule(ModuleName, asGM_ALWAYS_CREATE));
-	}
-}
+using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptParserTests,
 	"Angelscript.TestModule.AngelScriptSDK.Parser",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	static bool ContainsNodeType(const asCScriptNode* Node, eScriptNode ExpectedType)
+	{
+		for (const asCScriptNode* Current = Node; Current != nullptr; Current = Current->next)
+		{
+			if (Current->nodeType == ExpectedType)
+			{
+				return true;
+			}
+
+			if (Current->firstChild != nullptr && ContainsNodeType(Current->firstChild, ExpectedType))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	static asCModule* CreateParserModule(asCScriptEngine* ScriptEngine, const char* ModuleName)
+	{
+		return static_cast<asCModule*>(ScriptEngine->GetModule(ModuleName, asGM_ALWAYS_CREATE));
+	}
+
+public:
 	TEST_METHOD(Declarations)
 	{
 		asCScriptEngine* BareEngine = reinterpret_cast<asCScriptEngine*>(ASTEST_CREATE_ENGINE_NATIVE());
 		if (BareEngine == nullptr)
-	{
-		TestRunner->AddError(TEXT("Failed to create bare AngelScript SDK engine"));
-		return;
-	}
-	{
+		{
+			TestRunner->AddError(TEXT("Failed to create bare AngelScript SDK engine"));
+			return;
+		}
+
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 		asCModule* Module = CreateParserModule(BareEngine, "ParserDeclarations");
 		ASSERT_THAT(IsNotNull(Module,
@@ -77,18 +76,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptParserTests,
 			TEXT("Parser should emit a declaration node for the global variable")));
 		ASSERT_THAT(IsTrue(ContainsNodeType(Root, snClass),
 			TEXT("Parser should emit a class node for the class declaration")));
-		}
 	}
 
 	TEST_METHOD(ExpressionAst)
 	{
 		asCScriptEngine* BareEngine = reinterpret_cast<asCScriptEngine*>(ASTEST_CREATE_ENGINE_NATIVE());
 		if (BareEngine == nullptr)
-	{
-		TestRunner->AddError(TEXT("Failed to create bare AngelScript SDK engine"));
-		return;
-	}
-	{
+		{
+			TestRunner->AddError(TEXT("Failed to create bare AngelScript SDK engine"));
+			return;
+		}
+
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 		asCModule* Module = CreateParserModule(BareEngine, "ParserExpressions");
 		ASSERT_THAT(IsNotNull(Module,
@@ -107,18 +105,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptParserTests,
 			TEXT("Expression root should be an expression node")));
 		ASSERT_THAT(IsTrue(ContainsNodeType(Root, snExprOperator),
 			TEXT("Parser should emit an expression operator node")));
-		}
 	}
 
 	TEST_METHOD(ControlFlow)
 	{
 		asCScriptEngine* BareEngine = reinterpret_cast<asCScriptEngine*>(ASTEST_CREATE_ENGINE_NATIVE());
 		if (BareEngine == nullptr)
-	{
-		TestRunner->AddError(TEXT("Failed to create bare AngelScript SDK engine"));
-		return;
-	}
-	{
+		{
+			TestRunner->AddError(TEXT("Failed to create bare AngelScript SDK engine"));
+			return;
+		}
+
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 		asCModule* Module = CreateParserModule(BareEngine, "ParserControlFlow");
 		ASSERT_THAT(IsNotNull(Module,
@@ -141,18 +138,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptParserTests,
 			TEXT("Parser should emit a for node")));
 		ASSERT_THAT(IsTrue(ContainsNodeType(Root, snWhile),
 			TEXT("Parser should emit a while node")));
-		}
 	}
 
 	TEST_METHOD(SyntaxErrors)
 	{
 		asCScriptEngine* BareEngine = reinterpret_cast<asCScriptEngine*>(ASTEST_CREATE_ENGINE_NATIVE());
 		if (BareEngine == nullptr)
-	{
-		TestRunner->AddError(TEXT("Failed to create bare AngelScript SDK engine"));
-		return;
-	}
-	{
+		{
+			TestRunner->AddError(TEXT("Failed to create bare AngelScript SDK engine"));
+			return;
+		}
+
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 		asCModule* Module = CreateParserModule(BareEngine, "ParserSyntaxErrors");
 		ASSERT_THAT(IsNotNull(Module,
@@ -167,18 +163,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptParserTests,
 		const int ParseResult = Parser.ParseScript(&Code);
 		ASSERT_THAT(IsTrue(ParseResult < 0,
 			TEXT("Parser should reject malformed syntax")));
-		}
 	}
 
 	TEST_METHOD(ReuseAfterSyntaxError)
 	{
 		asCScriptEngine* BareEngine = reinterpret_cast<asCScriptEngine*>(ASTEST_CREATE_ENGINE_NATIVE());
 		if (BareEngine == nullptr)
-	{
-		TestRunner->AddError(TEXT("Failed to create bare AngelScript SDK engine"));
-		return;
-	}
-	{
+		{
+			TestRunner->AddError(TEXT("Failed to create bare AngelScript SDK engine"));
+			return;
+		}
+
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 		asCModule* Module = CreateParserModule(BareEngine, "ParserReuseAfterSyntaxError");
 		ASSERT_THAT(IsNotNull(Module,
@@ -214,8 +209,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptParserTests,
 			TEXT("Parser.ReuseAfterSyntaxError should recover a declaration node after Reset")));
 		ASSERT_THAT(IsTrue(ContainsNodeType(Root, snClass),
 			TEXT("Parser.ReuseAfterSyntaxError should recover a class node after Reset")));
-
-		}
 	}
 };
 

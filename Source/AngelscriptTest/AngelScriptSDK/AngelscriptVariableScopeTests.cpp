@@ -11,11 +11,6 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace
-{
-}
-
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKVariableScopeTests, "Angelscript.TestModule.AngelScriptSDK.VariableScope", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	inline static FNativeTestEngine Engine;

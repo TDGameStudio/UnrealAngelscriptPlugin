@@ -9,16 +9,14 @@
 using namespace AngelscriptNativeTestSupport;
 using namespace AngelscriptSDKTestSupport;
 
-namespace
-{
-	void VoidHelper() { }
-}
-
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKCompilerTests,
 	"Angelscript.TestModule.AngelScriptSDK.Compiler",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	static void VoidHelper() { }
+
+public:
 	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()

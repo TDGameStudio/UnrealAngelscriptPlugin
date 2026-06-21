@@ -9,32 +9,30 @@
 using namespace AngelscriptNativeTestSupport;
 using namespace AngelscriptSDKTestSupport;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptSDKConversionTests,
+	"Angelscript.TestModule.AngelScriptSDK.Conversion",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	void TestValueConstruct0(asIScriptGeneric* Generic)
+private:
+	static void TestValueConstruct0(asIScriptGeneric* Generic)
 	{
 		int* Value = static_cast<int*>(Generic->GetObject());
 		*Value = 0;
 	}
 
-	void TestValueConstruct1(asIScriptGeneric* Generic)
+	static void TestValueConstruct1(asIScriptGeneric* Generic)
 	{
 		int* Value = static_cast<int*>(Generic->GetObject());
 		*Value = *static_cast<int*>(Generic->GetAddressOfArg(0));
 	}
 
-	void TestValueCastInt(asIScriptGeneric* Generic)
+	static void TestValueCastInt(asIScriptGeneric* Generic)
 	{
 		int* Value = static_cast<int*>(Generic->GetObject());
 		*static_cast<int*>(Generic->GetAddressOfReturnLocation()) = *Value;
 	}
-}
 
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptSDKConversionTests,
-	"Angelscript.TestModule.AngelScriptSDK.Conversion",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()

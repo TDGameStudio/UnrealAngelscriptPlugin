@@ -21,8 +21,11 @@
 // TODO: asCAtomic symbols not exported from AngelscriptRuntime. Disabled until linkage resolved.
 #if 0 // WITH_DEV_AUTOMATION_TESTS
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptSDKAtomicTest,
+	"Angelscript.TestModule.AngelScriptSDK.Atomic",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
 	static constexpr int32 GNumThreads = 4;
 	static constexpr int32 GIterationsPerThread = 1000;
 
@@ -50,12 +53,8 @@ namespace
 	private:
 		asCAtomic& Atomic;
 	};
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptSDKAtomicTest,
-	"Angelscript.TestModule.AngelScriptSDK.Atomic",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	// -------------------------------------------------------------------------
 	// InitZero — default constructed asCAtomic should read as 0
 	// -------------------------------------------------------------------------

@@ -8,9 +8,12 @@
 using namespace AngelscriptNativeTestSupport;
 using namespace AngelscriptSDKTestSupport;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalVarTests,
+	"Angelscript.TestModule.AngelScriptSDK.GlobalVar",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	static const char* RecursiveScript = R"(
+public:
+	inline static const char* RecursiveScript = R"(
 void recursive(int n)
 {
 	if (n > 0)
@@ -20,7 +23,7 @@ void recursive(int n)
 }
 )";
 
-	int FindGlobalVarIndexByName(asIScriptModule* Module, const char* Name)
+	static int FindGlobalVarIndexByName(asIScriptModule* Module, const char* Name)
 	{
 		if (Module == nullptr || Name == nullptr)
 		{
@@ -40,7 +43,7 @@ void recursive(int n)
 		return -1;
 	}
 
-	int FindGlobalVarIndexByDeclaration(asIScriptModule* Module, const char* Declaration)
+	static int FindGlobalVarIndexByDeclaration(asIScriptModule* Module, const char* Declaration)
 	{
 		if (Module == nullptr || Declaration == nullptr)
 		{
@@ -59,13 +62,7 @@ void recursive(int n)
 
 		return -1;
 	}
-}
 
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalVarTests,
-	"Angelscript.TestModule.AngelScriptSDK.GlobalVar",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
 	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()
@@ -288,7 +285,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKStackTests,
 			DestroyNativeEngine(ScriptEngine);
 		};
 
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKStackDataLimit", RecursiveScript);
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKStackDataLimit", FAngelscriptSDKGlobalVarTests::RecursiveScript);
 		if (!this->Assert.IsNotNull(Module, TEXT("SDK stack data-limit test should compile the recursive module")))
 		{
 			TestRunner->AddInfo(CollectMessages(Messages));
@@ -318,7 +315,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKStackTests,
 			DestroyNativeEngine(ScriptEngine);
 		};
 
-		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKStackCallLimit", RecursiveScript);
+		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKStackCallLimit", FAngelscriptSDKGlobalVarTests::RecursiveScript);
 		if (!this->Assert.IsNotNull(Module, TEXT("SDK stack call-limit test should compile the recursive module")))
 		{
 			TestRunner->AddInfo(CollectMessages(Messages));
@@ -353,7 +350,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKStackTests,
 		asIScriptModule* Module = BuildNativeModule(
 			ScriptEngine,
 			"SDKStackExceptionLocation",
-			RecursiveScript);
+			FAngelscriptSDKGlobalVarTests::RecursiveScript);
 		if (!this->Assert.IsNotNull(Module, TEXT("SDK stack exception-location test should compile the overflow module")))
 		{
 			TestRunner->AddInfo(CollectMessages(Messages));

@@ -9,17 +9,18 @@
 using namespace AngelscriptNativeTestSupport;
 using namespace AngelscriptSDKTestSupport;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptSDKTypeTests, "Angelscript.TestModule.AngelScriptSDK.Type", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	int32 GEnumValue = 0;
-	asBYTE GInt8Value = 0;
+private:
+	inline static int32 GEnumValue = 0;
+	inline static asBYTE GInt8Value = 0;
 
-	asBYTE RetInt8(asBYTE InValue)
+	static asBYTE RetInt8(asBYTE InValue)
 	{
 		return InValue;
 	}
 
-	void CaptureEnum(asIScriptGeneric* Generic)
+	static void CaptureEnum(asIScriptGeneric* Generic)
 	{
 		if (Generic != nullptr)
 		{
@@ -27,7 +28,7 @@ namespace
 		}
 	}
 
-	int FindEngineGlobalPropertyIndexByName(asIScriptEngine* ScriptEngine, const char* Name)
+	static int FindEngineGlobalPropertyIndexByName(asIScriptEngine* ScriptEngine, const char* Name)
 	{
 		if (ScriptEngine == nullptr || Name == nullptr)
 		{
@@ -46,11 +47,8 @@ namespace
 
 		return -1;
 	}
-}
 
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptSDKTypeTests, "Angelscript.TestModule.AngelScriptSDK.Type", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()

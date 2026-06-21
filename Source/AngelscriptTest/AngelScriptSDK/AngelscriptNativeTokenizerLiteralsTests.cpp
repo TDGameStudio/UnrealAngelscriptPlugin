@@ -10,9 +10,12 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerLiteralsTests,
+	"Angelscript.TestModule.AngelScriptSDK.Tokenizer.Literals",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	bool ExpectTokenType(const char* Input, const eTokenType ExpectedType, int32& OutTokenLength)
+private:
+	static bool ExpectTokenType(const char* Input, const eTokenType ExpectedType, int32& OutTokenLength)
 	{
 		FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
@@ -21,12 +24,8 @@ namespace
 
 		return TokenType == ExpectedType;
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerLiteralsTests,
-	"Angelscript.TestModule.AngelScriptSDK.Tokenizer.Literals",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(HexIntegerLiteral)
 	{
 		int32 TokenLength = 0;

@@ -6,8 +6,11 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptMemoryTests,
+	"Angelscript.TestModule.AngelScriptSDK.Memory",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
 	class FMemoryManagerProbe final : public asCMemoryMgr
 	{
 	public:
@@ -21,13 +24,8 @@ namespace
 			return byteInstructionPool.Num();
 		}
 	};
-}
 
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptMemoryTests,
-	"Angelscript.TestModule.AngelScriptSDK.Memory",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(Construction)
 	{
 		asCMemoryMgr Manager;

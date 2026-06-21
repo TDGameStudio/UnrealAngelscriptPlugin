@@ -12,9 +12,12 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeJumpsTests,
+	"Angelscript.TestModule.AngelScriptSDK.Bytecode.Jumps",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	const asCByteInstruction* FindOpcode(const asCByteCode& ByteCode, const asEBCInstr Opcode)
+private:
+	static const asCByteInstruction* FindOpcode(const asCByteCode& ByteCode, const asEBCInstr Opcode)
 	{
 		for (const asCByteInstruction* Instruction = const_cast<asCByteCode&>(ByteCode).GetFirstInstr(); Instruction != nullptr; Instruction = Instruction->next)
 		{
@@ -26,12 +29,8 @@ namespace
 
 		return nullptr;
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeJumpsTests,
-	"Angelscript.TestModule.AngelScriptSDK.Bytecode.Jumps",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(ForwardJumpResolves)
 	{
 		FBytecodeFixture Fixture("BytecodeJumpForward");

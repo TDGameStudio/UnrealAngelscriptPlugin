@@ -6,9 +6,12 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceParserErrorTests,
+	"Angelscript.TestModule.AngelScriptSDK.Reference.ParserErrors",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	int32 CountErrors(const AngelscriptNativeTestSupport::FNativeMessageCollector& Messages)
+private:
+	static int32 CountErrors(const AngelscriptNativeTestSupport::FNativeMessageCollector& Messages)
 	{
 		int32 Count = 0;
 		for (const AngelscriptNativeTestSupport::FNativeMessageEntry& Entry : Messages.Entries)
@@ -21,12 +24,8 @@ namespace
 
 		return Count;
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceParserErrorTests,
-	"Angelscript.TestModule.AngelScriptSDK.Reference.ParserErrors",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(UnfinishedClassReportsMissingBrace)
 	{
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;

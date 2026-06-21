@@ -8,21 +8,24 @@
 using namespace AngelscriptNativeTestSupport;
 using namespace AngelscriptSDKTestSupport;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptScriptModuleTests,
+	"Angelscript.TestModule.AngelScriptSDK.ScriptModule",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	asIScriptModule* CreateScriptModule(asIScriptEngine* ScriptEngine, const char* ModuleName)
+private:
+	static asIScriptModule* CreateScriptModule(asIScriptEngine* ScriptEngine, const char* ModuleName)
 	{
 		return ScriptEngine != nullptr
 			? ScriptEngine->GetModule(ModuleName, asGM_ALWAYS_CREATE)
 			: nullptr;
 	}
 
-	FString FormatPointer(const void* Pointer)
+	static FString FormatPointer(const void* Pointer)
 	{
 		return FString::Printf(TEXT("%p"), Pointer);
 	}
 
-	FString DescribeObjectTypes(asIScriptModule* Module)
+	static FString DescribeObjectTypes(asIScriptModule* Module)
 	{
 		if (Module == nullptr)
 		{
@@ -50,7 +53,7 @@ namespace
 		return Result.IsEmpty() ? TEXT("<no object types>") : Result;
 	}
 
-	FString DescribeGlobals(asIScriptModule* Module)
+	static FString DescribeGlobals(asIScriptModule* Module)
 	{
 		if (Module == nullptr)
 		{
@@ -78,7 +81,7 @@ namespace
 		return Result.IsEmpty() ? TEXT("<no globals>") : Result;
 	}
 
-	FString DescribeTypeInfoList(asIScriptModule* Module, asUINT Count, asITypeInfo* (asIScriptModule::*Getter)(asUINT) const, const TCHAR* EmptyText)
+	static FString DescribeTypeInfoList(asIScriptModule* Module, asUINT Count, asITypeInfo* (asIScriptModule::*Getter)(asUINT) const, const TCHAR* EmptyText)
 	{
 		if (Module == nullptr)
 		{
@@ -111,7 +114,7 @@ namespace
 		return Result.IsEmpty() ? EmptyText : Result;
 	}
 
-	int32 FindGlobalVarIndexByName(asIScriptModule* Module, const char* Name)
+	static int32 FindGlobalVarIndexByName(asIScriptModule* Module, const char* Name)
 	{
 		if (Module == nullptr || Name == nullptr)
 		{
@@ -133,7 +136,7 @@ namespace
 		return INDEX_NONE;
 	}
 
-	asIScriptFunction* FindFunctionByNameAndNamespace(asIScriptModule* Module, const char* Name, const char* Namespace)
+	static asIScriptFunction* FindFunctionByNameAndNamespace(asIScriptModule* Module, const char* Name, const char* Namespace)
 	{
 		if (Module == nullptr || Name == nullptr || Namespace == nullptr)
 		{
@@ -155,7 +158,7 @@ namespace
 		return nullptr;
 	}
 
-	void LogModuleState(FAutomationTestBase& Test, asIScriptEngine* ScriptEngine, asIScriptModule* Module, const TCHAR* Stage)
+	static void LogModuleState(FAutomationTestBase& Test, asIScriptEngine* ScriptEngine, asIScriptModule* Module, const TCHAR* Stage)
 	{
 		Test.AddInfo(FString::Printf(
 			TEXT("ScriptModule state [%s]: engineModuleCount=%u module=%s name=%s defaultNamespace=%s functions={%s} globals={%s} objectTypes={%s} enums={%s} typedefs={%s} imports=%u"),
@@ -171,12 +174,8 @@ namespace
 			*DescribeTypeInfoList(Module, Module != nullptr ? Module->GetTypedefCount() : 0, &asIScriptModule::GetTypedefByIndex, TEXT("<no typedefs>")),
 			Module != nullptr ? Module->GetImportedFunctionCount() : 0));
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptScriptModuleTests,
-	"Angelscript.TestModule.AngelScriptSDK.ScriptModule",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()

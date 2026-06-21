@@ -14,9 +14,14 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace
+
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptTypeUsageTests,
+	"Angelscript.TestModule.AngelScriptSDK",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	asITypeInfo* FindTypeInfoByDecl(FAutomationTestBase& Test, asIScriptModule& Module, const FString& Declaration)
+private:
+	static asITypeInfo* FindTypeInfoByDecl(FAutomationTestBase& Test, asIScriptModule& Module, const FString& Declaration)
 	{
 		FTCHARToUTF8 DeclarationUtf8(*Declaration);
 		asITypeInfo* TypeInfo = Module.GetTypeInfoByDecl(DeclarationUtf8.Get());
@@ -27,7 +32,7 @@ namespace
 		return TypeInfo;
 	}
 
-	int GetPropertyTypeIdByName(FAutomationTestBase& Test, asITypeInfo& ScriptType, const FString& PropertyName)
+	static int GetPropertyTypeIdByName(FAutomationTestBase& Test, asITypeInfo& ScriptType, const FString& PropertyName)
 	{
 		FTCHARToUTF8 PropertyNameUtf8(*PropertyName);
 		for (asUINT PropertyIndex = 0, PropertyCount = ScriptType.GetPropertyCount(); PropertyIndex < PropertyCount; ++PropertyIndex)
@@ -48,7 +53,7 @@ namespace
 		return asINVALID_TYPE;
 	}
 
-	int32 GetPropertyIndexByName(FAutomationTestBase& Test, asITypeInfo& ScriptType, const FString& PropertyName)
+	static int32 GetPropertyIndexByName(FAutomationTestBase& Test, asITypeInfo& ScriptType, const FString& PropertyName)
 	{
 		FTCHARToUTF8 PropertyNameUtf8(*PropertyName);
 		for (asUINT PropertyIndex = 0, PropertyCount = ScriptType.GetPropertyCount(); PropertyIndex < PropertyCount; ++PropertyIndex)
@@ -68,7 +73,7 @@ namespace
 		return INDEX_NONE;
 	}
 
-	asITypeInfo* FindTypeInfoById(FAutomationTestBase& Test, asIScriptEngine& ScriptEngine, int TypeId, const FString& Context)
+	static asITypeInfo* FindTypeInfoById(FAutomationTestBase& Test, asIScriptEngine& ScriptEngine, int TypeId, const FString& Context)
 	{
 		asITypeInfo* TypeInfo = (TypeId != asINVALID_TYPE) ? ScriptEngine.GetTypeInfoById(TypeId) : nullptr;
 		FNoDiscardAsserter Assert(Test);
@@ -76,7 +81,7 @@ namespace
 		return TypeInfo;
 	}
 
-	asITypeInfo* FindArrayIntTypeInfo(FAutomationTestBase& Test, asIScriptEngine& ScriptEngine)
+	static asITypeInfo* FindArrayIntTypeInfo(FAutomationTestBase& Test, asIScriptEngine& ScriptEngine)
 	{
 		static constexpr const ANSICHAR* CandidateDecls[] =
 		{
@@ -96,7 +101,7 @@ namespace
 		return nullptr;
 	}
 
-	FProperty* FindPropertyByName(FAutomationTestBase& Test, UStruct& Owner, const TCHAR* PropertyName)
+	static FProperty* FindPropertyByName(FAutomationTestBase& Test, UStruct& Owner, const TCHAR* PropertyName)
 	{
 		FProperty* Property = FindFProperty<FProperty>(&Owner, PropertyName);
 		FNoDiscardAsserter Assert(Test);
@@ -106,7 +111,7 @@ namespace
 		return Property;
 	}
 
-	bool ExpectUsageMatches(
+	static bool ExpectUsageMatches(
 		FAutomationTestBase& Test,
 		const FString& Context,
 		const FAngelscriptTypeUsage& Usage,
@@ -128,7 +133,7 @@ namespace
 		return bMatches;
 	}
 
-	bool ExpectQualifierFlags(
+	static bool ExpectQualifierFlags(
 		FAutomationTestBase& Test,
 		const FString& Context,
 		const FAngelscriptTypeUsage& Usage,
@@ -150,13 +155,8 @@ namespace
 			*FString::Printf(TEXT("%s should preserve the reference qualifier"), *Context));
 		return bMatches;
 	}
-}
 
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptTypeUsageTests,
-	"Angelscript.TestModule.AngelScriptSDK",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(TypeUsageFromTypeIdScriptKinds)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();

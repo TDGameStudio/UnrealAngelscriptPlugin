@@ -9,15 +9,20 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace
+
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptGCInternalTests,
+	"Angelscript.TestModule.AngelScriptSDK.GC",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
 	struct FGCProbeObject;
 
-	static asIScriptEngine* GGCProbeScriptEngine = nullptr;
+	inline static asIScriptEngine* GGCProbeScriptEngine = nullptr;
 
 	struct FGCProbeObject
 	{
-		static int32 LiveCount;
+		inline static int32 LiveCount = 0;
 
 		explicit FGCProbeObject()
 		{
@@ -106,40 +111,38 @@ namespace
 		FGCProbeObject* Peer = nullptr;
 	};
 
-	int32 FGCProbeObject::LiveCount = 0;
-
-	void GCProbeAddRef(FGCProbeObject* Self)
+	static void GCProbeAddRef(FGCProbeObject* Self)
 	{
 		Self->AddRef();
 	}
 
-	void GCProbeRelease(FGCProbeObject* Self)
+	static void GCProbeRelease(FGCProbeObject* Self)
 	{
 		Self->Release();
 	}
 
-	int GCProbeGetRefCount(FGCProbeObject* Self)
+	static int GCProbeGetRefCount(FGCProbeObject* Self)
 	{
 		return Self->GetRefCount();
 	}
 
-	void GCProbeSetGCFlag(FGCProbeObject* Self)
+	static void GCProbeSetGCFlag(FGCProbeObject* Self)
 	{
 		Self->SetGCFlag();
 	}
 
-	bool GCProbeGetGCFlag(FGCProbeObject* Self)
+	static bool GCProbeGetGCFlag(FGCProbeObject* Self)
 	{
 		return Self->GetGCFlag();
 	}
 
-	void GCProbeEnumReferences(FGCProbeObject* Self, int&)
+	static void GCProbeEnumReferences(FGCProbeObject* Self, int&)
 	{
 		int Dummy = 0;
 		Self->EnumReferences(Dummy);
 	}
 
-	void GCProbeReleaseAllReferences(FGCProbeObject* Self, int&)
+	static void GCProbeReleaseAllReferences(FGCProbeObject* Self, int&)
 	{
 		int Dummy = 0;
 		Self->ReleaseAllReferences(Dummy);
@@ -154,7 +157,7 @@ namespace
 		asUINT TotalNewDestroyed = 0;
 	};
 
-	FGCStatisticsSnapshot GetGCStatisticsSnapshot(asIScriptEngine& ScriptEngine)
+	static FGCStatisticsSnapshot GetGCStatisticsSnapshot(asIScriptEngine& ScriptEngine)
 	{
 		FGCStatisticsSnapshot Snapshot;
 		ScriptEngine.GetGCStatistics(
@@ -166,7 +169,7 @@ namespace
 		return Snapshot;
 	}
 
-	bool RegisterGCProbeType(FNoDiscardAsserter& Assert, asIScriptEngine& ScriptEngine, asITypeInfo*& OutType)
+	static bool RegisterGCProbeType(FNoDiscardAsserter& Assert, asIScriptEngine& ScriptEngine, asITypeInfo*& OutType)
 	{
 		GGCProbeScriptEngine = &ScriptEngine;
 		OutType = ScriptEngine.GetTypeInfoByName("GCProbeObject");
@@ -199,7 +202,7 @@ namespace
 		return Assert.IsNotNull(OutType, TEXT("GC probe object should be visible through the type system"));
 	}
 
-	FGCProbeObject* CreateSelfCycle(asIScriptEngine& ScriptEngine, asITypeInfo& Type)
+	static FGCProbeObject* CreateSelfCycle(asIScriptEngine& ScriptEngine, asITypeInfo& Type)
 	{
 		FGCProbeObject* Node = new FGCProbeObject();
 		Node->LinkTo(Node);
@@ -207,7 +210,7 @@ namespace
 		return Node;
 	}
 
-	FGCProbeObject* CreateTwoNodeCycle(asIScriptEngine& ScriptEngine, asITypeInfo& Type)
+	static FGCProbeObject* CreateTwoNodeCycle(asIScriptEngine& ScriptEngine, asITypeInfo& Type)
 	{
 		FGCProbeObject* A = new FGCProbeObject();
 		FGCProbeObject* B = new FGCProbeObject();
@@ -218,7 +221,7 @@ namespace
 		return A;
 	}
 
-	bool RunFullGarbageCollection(asIScriptEngine& ScriptEngine)
+	static bool RunFullGarbageCollection(asIScriptEngine& ScriptEngine)
 	{
 		for (int Iteration = 0; Iteration < 8; ++Iteration)
 		{
@@ -230,13 +233,7 @@ namespace
 		}
 		return true;
 	}
-}
-
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptGCInternalTests,
-	"Angelscript.TestModule.AngelScriptSDK.GC",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(Statistics)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();

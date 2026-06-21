@@ -15,9 +15,12 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeSourceRangeTests,
+	"Angelscript.TestModule.AngelScriptSDK.ScriptNode.SourceRange",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	bool ParseRangeScript(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(asCScriptCode&, const asCScriptNode&)> Verify)
+private:
+	static bool ParseRangeScript(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(asCScriptCode&, const asCScriptNode&)> Verify)
 	{
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a source-range module"), UTF8_TO_TCHAR(ModuleName))))
@@ -46,19 +49,15 @@ namespace
 		return true;
 	}
 
-	FIntPoint RowColFor(asCScriptCode& Code, const asCScriptNode& Node)
+	static FIntPoint RowColFor(asCScriptCode& Code, const asCScriptNode& Node)
 	{
 		int Row = 0;
 		int Column = 0;
 		Code.ConvertPosToRowCol(Node.tokenPos, &Row, &Column);
 		return FIntPoint(Row, Column);
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeSourceRangeTests,
-	"Angelscript.TestModule.AngelScriptSDK.ScriptNode.SourceRange",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(LineColPropagatedToFunction)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);

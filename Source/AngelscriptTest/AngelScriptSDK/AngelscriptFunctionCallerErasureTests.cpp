@@ -6,8 +6,11 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionCallerErasureTests,
+	"Angelscript.TestModule.AngelScriptSDK.FunctionCallers",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
 	struct FConstRefQualifiedProbe
 	{
 		int32 Base = 11;
@@ -19,20 +22,15 @@ namespace
 	};
 
 	template <typename MethodType>
-	ASAutoCaller::TMethodPtr MakeErasedMethodPointer(MethodType Method)
+	static ASAutoCaller::TMethodPtr MakeErasedMethodPointer(MethodType Method)
 	{
 		const FGenericFuncPtr GenericMethod = MakeAutoMethodPtr(Method);
 		ASAutoCaller::TMethodPtr ErasedMethod = nullptr;
 		FMemory::Memcpy(&ErasedMethod, GenericMethod.ptr.dummy, sizeof(ErasedMethod));
 		return ErasedMethod;
 	}
-}
 
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionCallerErasureTests,
-	"Angelscript.TestModule.AngelScriptSDK.FunctionCallers",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(ConstRefQualifiedMethodCaller)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();

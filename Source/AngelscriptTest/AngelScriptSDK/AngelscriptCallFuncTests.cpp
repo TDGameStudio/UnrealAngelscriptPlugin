@@ -12,24 +12,27 @@
 using namespace AngelscriptNativeTestSupport;
 using namespace AngelscriptSDKTestSupport;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
+	"Angelscript.TestModule.AngelScriptSDK.CallFunc",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	int32 AddFour(int32 A, int32 B, int32 C, int32 D) { return A + B + C + D; }
-	double MultiplyDouble(double A, double B) { return A * B; }
-	static int32 GSideEffectAccumulator = 0;
-	void AccumulateValue(int32 Value) { GSideEffectAccumulator += Value; }
-	int32 IncrementAndReturn(int32 Value) { return Value + 1; }
-	int32 SumSix(int32 A, int32 B, int32 C, int32 D, int32 E, int32 F) { return A+B+C+D+E+F; }
-	int64 WidenAndScale(int32 Value) { return static_cast<int64>(Value) * 1000000000LL; }
-	double MixIn025(int32 I, double D) { return static_cast<double>(I) + D; }
-	bool IsPositive(int32 Value) { return Value > 0; }
-	void DivMod(int32 A, int32 B, int32& OutQuotient, int32& OutRemainder)
+private:
+	static int32 AddFour(int32 A, int32 B, int32 C, int32 D) { return A + B + C + D; }
+	static double MultiplyDouble(double A, double B) { return A * B; }
+	inline static int32 GSideEffectAccumulator = 0;
+	static void AccumulateValue(int32 Value) { GSideEffectAccumulator += Value; }
+	static int32 IncrementAndReturn(int32 Value) { return Value + 1; }
+	static int32 SumSix(int32 A, int32 B, int32 C, int32 D, int32 E, int32 F) { return A+B+C+D+E+F; }
+	static int64 WidenAndScale(int32 Value) { return static_cast<int64>(Value) * 1000000000LL; }
+	static double MixIn025(int32 I, double D) { return static_cast<double>(I) + D; }
+	static bool IsPositive(int32 Value) { return Value > 0; }
+	static void DivMod(int32 A, int32 B, int32& OutQuotient, int32& OutRemainder)
 	{
 		OutQuotient = (B != 0) ? (A / B) : 0;
 		OutRemainder = (B != 0) ? (A % B) : 0;
 	}
 
-	bool RegisterHelpers(FAutomationTestBase& Test, asIScriptEngine* SE)
+	static bool RegisterHelpers(FAutomationTestBase& Test, asIScriptEngine* SE)
 	{
 		ASAutoCaller::FunctionCaller Caller;
 		int R;
@@ -62,13 +65,8 @@ namespace
 		if (R < 0) { Test.AddInfo(TEXT("Native function registration not available in headless mode, skipping")); return false; }
 		return true;
 	}
-}
 
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
-	"Angelscript.TestModule.AngelScriptSDK.CallFunc",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	inline static FNativeTestEngine Engine;
 	inline static bool bHelpersRegistered = false;
 

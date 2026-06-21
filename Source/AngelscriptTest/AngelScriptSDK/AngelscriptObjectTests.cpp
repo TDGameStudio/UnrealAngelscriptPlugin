@@ -8,8 +8,11 @@
 using namespace AngelscriptNativeTestSupport;
 using namespace AngelscriptSDKTestSupport;
 
-namespace
+
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptSDKObjectTests, "Angelscript.TestModule.AngelScriptSDK.Object", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
 	class CObject
 	{
 	public:
@@ -36,33 +39,33 @@ namespace
 		int32 Value;
 	};
 
-	void ConstructObject(CObject* Address)
+	static void ConstructObject(CObject* Address)
 	{
 		new (Address) CObject();
 	}
 
-	void DestructObject(CObject* Address)
+	static void DestructObject(CObject* Address)
 	{
 		Address->~CObject();
 	}
 
-	CObject GReturnedObject;
+	inline static CObject GReturnedObject;
 
-	CObject ReturnObjectValue()
+	static CObject ReturnObjectValue()
 	{
 		CObject Result;
 		Result.Value = 12;
 		return Result;
 	}
 
-	CObject* ReturnObjectRef()
+	static CObject* ReturnObjectRef()
 	{
 		return &GReturnedObject;
 	}
 
-	void ConstructDefaultMyObj(class CMyObj& Address);
-	void ConstructCopyMyObj(class CMyObj& Address, const class CMyObj& Other);
-	void DestructMyObj(class CMyObj& Address);
+	static void ConstructDefaultMyObj(class CMyObj& Address);
+	static void ConstructCopyMyObj(class CMyObj& Address, const class CMyObj& Other);
+	static void DestructMyObj(class CMyObj& Address);
 	class CMyObj
 	{
 public:
@@ -70,17 +73,17 @@ public:
 		CMyObj(const CMyObj&) = default;
 	};
 
-	void ConstructDefaultMyObj(CMyObj& Address)
+	static void ConstructDefaultMyObj(CMyObj& Address)
 	{
 		new (&Address) CMyObj();
 	}
 
-	void ConstructCopyMyObj(CMyObj& Address, const CMyObj& Other)
+	static void ConstructCopyMyObj(CMyObj& Address, const CMyObj& Other)
 	{
 		new (&Address) CMyObj(Other);
 	}
 
-	void DestructMyObj(CMyObj& Address)
+	static void DestructMyObj(CMyObj& Address)
 	{
 		Address.~CMyObj();
 	}
@@ -95,37 +98,33 @@ public:
 		}
 	};
 
-	void ConstructFloatWrapper(CFloatWrapper* Address)
+	static void ConstructFloatWrapper(CFloatWrapper* Address)
 	{
 		new (Address) CFloatWrapper();
 	}
 
-	CFloatWrapper& AssignFloatToWrapper(float InValue, CFloatWrapper& Target)
+	static CFloatWrapper& AssignFloatToWrapper(float InValue, CFloatWrapper& Target)
 	{
 		Target.Value = InValue;
 		return Target;
 	}
 
-	float AddWrapperToWrapper(CFloatWrapper* Self, CFloatWrapper* Other)
+	static float AddWrapperToWrapper(CFloatWrapper* Self, CFloatWrapper* Other)
 	{
 		return Self->Value + Other->Value;
 	}
 
-	float MultiplyWrapperByFloat(CFloatWrapper* Self, float Other)
+	static float MultiplyWrapperByFloat(CFloatWrapper* Self, float Other)
 	{
 		return Self->Value * Other;
 	}
 
-	CFloatWrapper& AccessWrapperSlot(int32 Index)
+	static CFloatWrapper& AccessWrapperSlot(int32 Index)
 	{
 		static CFloatWrapper Slots[8];
 		return Slots[Index];
 	}
-}
-
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptSDKObjectTests, "Angelscript.TestModule.AngelScriptSDK.Object", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()

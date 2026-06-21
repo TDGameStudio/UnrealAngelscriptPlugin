@@ -10,16 +10,15 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace
-{
-	int ReturnNinetyNine() { return 99; }
-	int ReturnOne() { return 1; }
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKConfigGroupTests,
 	"Angelscript.TestModule.AngelScriptSDK.ConfigGroup",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	static int ReturnNinetyNine() { return 99; }
+	static int ReturnOne() { return 1; }
+
+public:
 	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()

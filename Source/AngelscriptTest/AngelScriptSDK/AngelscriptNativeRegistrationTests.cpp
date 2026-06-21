@@ -7,11 +7,16 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace
-{
-	int32 GNativeGlobalValue = 21;
 
-	int32 NativeDoubleValue(int32 Value)
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
+	"Angelscript.TestModule.AngelScriptSDK.Register",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+private:
+	inline static int32 GNativeGlobalValue = 21;
+
+	static int32 NativeDoubleValue(int32 Value)
 	{
 		return Value * 2;
 	}
@@ -21,12 +26,12 @@ namespace
 		int32 Value;
 	};
 
-	void ConstructNativeCounter(FNativeCounter* Address)
+	static void ConstructNativeCounter(FNativeCounter* Address)
 	{
 		new(Address) FNativeCounter{0};
 	}
 
-	bool RegisterNativeCounter(asIScriptEngine* ScriptEngine)
+	static bool RegisterNativeCounter(asIScriptEngine* ScriptEngine)
 	{
 		if (ScriptEngine == nullptr)
 		{
@@ -62,19 +67,19 @@ namespace
 		return PropertyResult >= 0;
 	}
 
-	bool ExecuteRegisteredScript(
+	static bool ExecuteRegisteredScript(
 		asIScriptEngine* ScriptEngine,
 		const char* ModuleName,
 		const char* Source,
 		const char* Declaration,
-		FNativeTestEngine& Engine,
+		FNativeTestEngine& NativeEngine,
 		int32& OutValue,
 		FString& OutDiagnostics)
 	{
 		asIScriptModule* Module = BuildNativeModule(ScriptEngine, ModuleName, Source);
 		if (Module == nullptr)
 		{
-			OutDiagnostics = Engine.GetMessagesText();
+			OutDiagnostics = NativeEngine.GetMessagesText();
 			return false;
 		}
 
@@ -105,7 +110,7 @@ namespace
 				const FString ExceptionString = UTF8_TO_TCHAR(Context->GetExceptionString() != nullptr ? Context->GetExceptionString() : "");
 				OutDiagnostics += FString::Printf(TEXT("Native registration exception at line %d: %s"), ExceptionLine, *ExceptionString);
 			}
-			const FString Diagnostics = Engine.GetMessagesText();
+			const FString Diagnostics = NativeEngine.GetMessagesText();
 			if (!Diagnostics.IsEmpty())
 			{
 				if (!OutDiagnostics.IsEmpty())
@@ -120,13 +125,7 @@ namespace
 		OutValue = static_cast<int32>(Context->GetReturnDWord());
 		return true;
 	}
-}
-
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptNativeRegistrationTests,
-	"Angelscript.TestModule.AngelScriptSDK.Register",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	inline static FNativeTestEngine Engine;
 	inline static bool bGlobalFunctionRegistered = false;
 	inline static bool bGlobalPropertyRegistered = false;

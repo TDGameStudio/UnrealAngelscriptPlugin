@@ -7,8 +7,11 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptContextPoolTests,
+	"Angelscript.TestModule.AngelScriptSDK.ContextPool",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
 	struct FContextPoolEngineStackGuard
 	{
 		TArray<FAngelscriptEngine*> SavedStack;
@@ -24,12 +27,12 @@ namespace
 		}
 	};
 
-	FString MakeContextPoolModuleName(const TCHAR* Prefix)
+	static FString MakeContextPoolModuleName(const TCHAR* Prefix)
 	{
 		return FString::Printf(TEXT("%s_%s"), Prefix, *FGuid::NewGuid().ToString(EGuidFormats::Digits));
 	}
 
-	asIScriptFunction* CompileContextPoolFunction(
+	static asIScriptFunction* CompileContextPoolFunction(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		const FString& ModuleName,
@@ -63,17 +66,12 @@ namespace
 		return Function;
 	}
 
-	int32 GetLocalPooledContextCount(asIScriptEngine* ScriptEngine)
+	static int32 GetLocalPooledContextCount(asIScriptEngine* ScriptEngine)
 	{
 		return FAngelscriptEngine::GetLocalPooledContextCountForTesting(ScriptEngine);
 	}
-}
 
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptContextPoolTests,
-	"Angelscript.TestModule.AngelScriptSDK.ContextPool",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(ReuseAndResetPerEngine)
 	{
 		FContextPoolEngineStackGuard ContextStackGuard;

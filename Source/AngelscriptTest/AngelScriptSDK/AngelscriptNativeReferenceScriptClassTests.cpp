@@ -4,9 +4,13 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceScriptClassTests,
+	"Angelscript.TestModule.AngelScriptSDK.Reference.ScriptClass",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	bool TestHasMessageContaining(FAutomationTestBase& Test, const AngelscriptNativeTestSupport::FNativeMessageCollector& Messages, const TCHAR* ExpectedText, const TCHAR* Context)
+private:
+	static bool TestHasMessageContaining(FAutomationTestBase& Test, const AngelscriptNativeTestSupport::FNativeMessageCollector& Messages, const TCHAR* ExpectedText, const TCHAR* Context)
 	{
 		FNoDiscardAsserter Assert(Test);
 
@@ -22,7 +26,7 @@ namespace
 		return Assert.IsTrue(false, Context);
 	}
 
-	bool TestTypeHasProperty(asITypeInfo* TypeInfo, const char* ExpectedName)
+	static bool TestTypeHasProperty(asITypeInfo* TypeInfo, const char* ExpectedName)
 	{
 		if (TypeInfo == nullptr || ExpectedName == nullptr)
 		{
@@ -50,7 +54,7 @@ namespace
 		FString ExceptionFunctionDeclaration;
 	};
 
-	bool TestTypeHasBehaviour(FAutomationTestBase& Test, asITypeInfo* TypeInfo, asEBehaviours ExpectedBehaviour, const TCHAR* Context)
+	static bool TestTypeHasBehaviour(FAutomationTestBase& Test, asITypeInfo* TypeInfo, asEBehaviours ExpectedBehaviour, const TCHAR* Context)
 	{
 		FNoDiscardAsserter Assert(Test);
 
@@ -87,7 +91,7 @@ namespace
 		return Assert.IsTrue(false, Context);
 	}
 
-	bool TestTypeHasConstructorWithParamCount(FAutomationTestBase& Test, asITypeInfo* TypeInfo, asUINT ExpectedParamCount, const TCHAR* Context)
+	static bool TestTypeHasConstructorWithParamCount(FAutomationTestBase& Test, asITypeInfo* TypeInfo, asUINT ExpectedParamCount, const TCHAR* Context)
 	{
 		FNoDiscardAsserter Assert(Test);
 
@@ -125,7 +129,7 @@ namespace
 		return Assert.IsTrue(false, Context);
 	}
 
-	bool ExecuteIntFunctionAndCapture(FAutomationTestBase& Test, asIScriptEngine* ScriptEngine, asIScriptModule* Module, const char* Declaration, FScriptExecutionResult& OutResult)
+	static bool ExecuteIntFunctionAndCapture(FAutomationTestBase& Test, asIScriptEngine* ScriptEngine, asIScriptModule* Module, const char* Declaration, FScriptExecutionResult& OutResult)
 	{
 		FNoDiscardAsserter Assert(Test);
 
@@ -154,7 +158,7 @@ namespace
 		return true;
 	}
 
-	bool TestIsolatedScriptClassInstantiationRaisesNullPointer(FAutomationTestBase& Test, const FScriptExecutionResult& Result, const TCHAR* Context)
+	static bool TestIsolatedScriptClassInstantiationRaisesNullPointer(FAutomationTestBase& Test, const FScriptExecutionResult& Result, const TCHAR* Context)
 	{
 		FNoDiscardAsserter Assert(Test);
 		bool bPassed = true;
@@ -165,7 +169,7 @@ namespace
 		return bPassed;
 	}
 
-	asIScriptModule* BuildScriptClassModule(FAutomationTestBase& Test, asIScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, AngelscriptNativeTestSupport::FNativeMessageCollector& Messages)
+	static asIScriptModule* BuildScriptClassModule(FAutomationTestBase& Test, asIScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, AngelscriptNativeTestSupport::FNativeMessageCollector& Messages)
 	{
 		asIScriptModule* Module = AngelscriptNativeTestSupport::BuildNativeModule(ScriptEngine, ModuleName, Source);
 		if (Module == nullptr)
@@ -175,12 +179,7 @@ namespace
 
 		return Module;
 	}
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceScriptClassTests,
-	"Angelscript.TestModule.AngelScriptSDK.Reference.ScriptClass",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(ConstructorMetadataAndIsolatedExecutionException)
 	{
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;

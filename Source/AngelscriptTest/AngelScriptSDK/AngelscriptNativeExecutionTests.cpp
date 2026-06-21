@@ -7,17 +7,20 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionTests,
+	"Angelscript.TestModule.AngelScriptSDK.Execute",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	bool BuildModuleForExecution(
+private:
+	static bool BuildModuleForExecution(
 		FAutomationTestBase& Test,
 		FNoDiscardAsserter& Assert,
-		FNativeTestEngine& Engine,
+		FNativeTestEngine& NativeEngine,
 		const char* ModuleName,
 		const char* Source,
 		asIScriptModule*& OutModule)
 	{
-		asIScriptEngine* const ScriptEngine = Engine.Get();
+		asIScriptEngine* const ScriptEngine = NativeEngine.Get();
 		if (!Assert.IsNotNull(ScriptEngine,
 			TEXT("Native execution tests should create a standalone AngelScript engine")))
 		{
@@ -28,19 +31,14 @@ namespace
 		if (!Assert.IsNotNull(OutModule,
 			TEXT("Native execution tests should compile the requested module from memory")))
 		{
-			Test.AddInfo(Engine.GetMessagesText());
+			Test.AddInfo(NativeEngine.GetMessagesText());
 			return false;
 		}
 
 		return true;
 	}
-}
 
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionTests,
-	"Angelscript.TestModule.AngelScriptSDK.Execute",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()

@@ -6,9 +6,12 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceSaveLoadTests,
+	"Angelscript.TestModule.AngelScriptSDK.Reference.SaveLoad",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	bool ExecuteIntFunction(FAutomationTestBase& Test, asIScriptEngine* ScriptEngine, asIScriptModule* Module, const char* Declaration, int32& OutValue)
+private:
+	static bool ExecuteIntFunction(FAutomationTestBase& Test, asIScriptEngine* ScriptEngine, asIScriptModule* Module, const char* Declaration, int32& OutValue)
 	{
 		FNoDiscardAsserter Assert(Test);
 
@@ -30,19 +33,15 @@ namespace
 		return Assert.AreEqual(static_cast<int32>(asEXECUTION_FINISHED), ExecuteResult, TEXT("Reference save/load test should execute successfully"));
 	}
 
-	asIScriptModule* LoadModuleFromStream(asIScriptEngine* ScriptEngine, const char* ModuleName, FMemoryBinaryStream& Stream, bool& bWasDebugInfoStripped, int& OutLoadResult)
+	static asIScriptModule* LoadModuleFromStream(asIScriptEngine* ScriptEngine, const char* ModuleName, FMemoryBinaryStream& Stream, bool& bWasDebugInfoStripped, int& OutLoadResult)
 	{
 		Stream.ResetReadOffset();
 		asIScriptModule* Module = ScriptEngine != nullptr ? ScriptEngine->GetModule(ModuleName, asGM_ALWAYS_CREATE) : nullptr;
 		OutLoadResult = Module != nullptr ? Module->LoadByteCode(&Stream, &bWasDebugInfoStripped) : asNO_MODULE;
 		return Module;
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceSaveLoadTests,
-	"Angelscript.TestModule.AngelScriptSDK.Reference.SaveLoad",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(RoundTripPreservesFunctionDeclarations)
 	{
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;

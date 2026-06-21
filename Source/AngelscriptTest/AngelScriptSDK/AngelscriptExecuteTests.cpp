@@ -9,26 +9,31 @@
 
 using namespace AngelscriptSDKTestSupport;
 
-namespace
-{
-	bool GCalled = false;
-	int32 GIntResult = 0;
-	bool GCleanupCalled = false;
-	bool GCleanupUserDataMatched = false;
-	int32 GFourArgInt = 0;
-	int32 GFourArgShort = 0;
-	int32 GFourArgByte = 0;
-	int32 GFourArgTail = 0;
-	float GFloatArgA = 0.0f;
-	float GFloatArgB = 0.0f;
-	double GFloatArgC = 0.0;
-	float GFloatArgD = 0.0f;
-	double GDoubleArgA = 0.0;
-	double GDoubleArgB = 0.0;
-	double GDoubleArgC = 0.0;
-	double GDoubleArgD = 0.0;
 
-	void ResetExecuteState()
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
+	"Angelscript.TestModule.AngelScriptSDK.Execute",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+private:
+	inline static bool GCalled = false;
+	inline static int32 GIntResult = 0;
+	inline static bool GCleanupCalled = false;
+	inline static bool GCleanupUserDataMatched = false;
+	inline static int32 GFourArgInt = 0;
+	inline static int32 GFourArgShort = 0;
+	inline static int32 GFourArgByte = 0;
+	inline static int32 GFourArgTail = 0;
+	inline static float GFloatArgA = 0.0f;
+	inline static float GFloatArgB = 0.0f;
+	inline static double GFloatArgC = 0.0;
+	inline static float GFloatArgD = 0.0f;
+	inline static double GDoubleArgA = 0.0;
+	inline static double GDoubleArgB = 0.0;
+	inline static double GDoubleArgC = 0.0;
+	inline static double GDoubleArgD = 0.0;
+
+	static void ResetExecuteState()
 	{
 		GCalled = false;
 		GIntResult = 0;
@@ -48,17 +53,17 @@ namespace
 		GDoubleArgD = 0.0;
 	}
 
-	bool UsesMaxPortability()
+	static bool UsesMaxPortability()
 	{
 		return std::strstr(asGetLibraryOptions(), "AS_MAX_PORTABILITY") != nullptr;
 	}
 
-	void CFunctionBasic()
+	static void CFunctionBasic()
 	{
 		GCalled = true;
 	}
 
-	void CFunctionBasicGeneric(asIScriptGeneric* Generic)
+	static void CFunctionBasicGeneric(asIScriptGeneric* Generic)
 	{
 		if (Generic != nullptr)
 		{
@@ -66,19 +71,19 @@ namespace
 		}
 	}
 
-	void CleanupContext(asIScriptContext* Context)
+	static void CleanupContext(asIScriptContext* Context)
 	{
 		GCleanupCalled = true;
 		GCleanupUserDataMatched = Context != nullptr && Context->GetUserData() == reinterpret_cast<void*>(static_cast<SIZE_T>(0xDEADF00D));
 	}
 
-	void CFunctionOneArg(int Value)
+	static void CFunctionOneArg(int Value)
 	{
 		GCalled = true;
 		GIntResult = Value;
 	}
 
-	void CFunctionOneArgGeneric(asIScriptGeneric* Generic)
+	static void CFunctionOneArgGeneric(asIScriptGeneric* Generic)
 	{
 		if (Generic != nullptr)
 		{
@@ -86,13 +91,13 @@ namespace
 		}
 	}
 
-	void CFunctionTwoArgs(int A, int B)
+	static void CFunctionTwoArgs(int A, int B)
 	{
 		GCalled = true;
 		GIntResult = A + B;
 	}
 
-	void CFunctionTwoArgsGeneric(asIScriptGeneric* Generic)
+	static void CFunctionTwoArgsGeneric(asIScriptGeneric* Generic)
 	{
 		if (Generic != nullptr)
 		{
@@ -100,7 +105,7 @@ namespace
 		}
 	}
 
-	void CFunctionFourArgs(int A, short B, char C, int D)
+	static void CFunctionFourArgs(int A, short B, char C, int D)
 	{
 		GCalled = true;
 		GFourArgInt = A;
@@ -109,7 +114,7 @@ namespace
 		GFourArgTail = D;
 	}
 
-	void CFunctionFourArgsGeneric(asIScriptGeneric* Generic)
+	static void CFunctionFourArgsGeneric(asIScriptGeneric* Generic)
 	{
 		if (Generic != nullptr)
 		{
@@ -121,7 +126,7 @@ namespace
 		}
 	}
 
-	void CFunctionFloatArgs(float A, float B, double C, float D)
+	static void CFunctionFloatArgs(float A, float B, double C, float D)
 	{
 		GCalled = true;
 		GFloatArgA = A;
@@ -130,7 +135,7 @@ namespace
 		GFloatArgD = D;
 	}
 
-	void CFunctionDoubleArgs(double A, double B, double C, double D)
+	static void CFunctionDoubleArgs(double A, double B, double C, double D)
 	{
 		GCalled = true;
 		GDoubleArgA = A;
@@ -139,7 +144,7 @@ namespace
 		GDoubleArgD = D;
 	}
 
-	void CFunctionFloatArgsGeneric(asIScriptGeneric* Generic)
+	static void CFunctionFloatArgsGeneric(asIScriptGeneric* Generic)
 	{
 		if (Generic != nullptr)
 		{
@@ -151,7 +156,7 @@ namespace
 		}
 	}
 
-	void CFunctionDoubleArgsGeneric(asIScriptGeneric* Generic)
+	static void CFunctionDoubleArgsGeneric(asIScriptGeneric* Generic)
 	{
 		if (Generic != nullptr)
 		{
@@ -162,13 +167,7 @@ namespace
 				Generic->GetArgDouble(3));
 		}
 	}
-}
-
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptSDKExecuteTests,
-	"Angelscript.TestModule.AngelScriptSDK.Execute",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	inline static FNativeTestEngine Engine;
 
 	BEFORE_ALL()

@@ -15,9 +15,12 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserErrorsTests,
+	"Angelscript.TestModule.AngelScriptSDK.Parser.Errors",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	int ParseScriptWithResult(asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source)
+private:
+	static int ParseScriptWithResult(asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source)
 	{
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		asCBuilder Builder(ScriptEngine, Module);
@@ -29,12 +32,8 @@ namespace
 		FParserAccessor Parser(&Builder);
 		return Parser.ParseScript(&Code);
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserErrorsTests,
-	"Angelscript.TestModule.AngelScriptSDK.Parser.Errors",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(MissingSemicolonRecovers)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);

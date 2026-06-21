@@ -11,9 +11,12 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerTests,
+	"Angelscript.TestModule.AngelScriptSDK.Compiler",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	const FAngelscriptCompileTraceDiagnosticSummary* FindErrorDiagnosticContaining(
+private:
+	static const FAngelscriptCompileTraceDiagnosticSummary* FindErrorDiagnosticContaining(
 		const TArray<FAngelscriptCompileTraceDiagnosticSummary>& Diagnostics,
 		const FString& Needle)
 	{
@@ -28,7 +31,7 @@ namespace
 		return nullptr;
 	}
 
-	bool FindLastBytecodeOpcode(const asDWORD* Bytecode, asUINT BytecodeLength, asBYTE& OutOpcode)
+	static bool FindLastBytecodeOpcode(const asDWORD* Bytecode, asUINT BytecodeLength, asBYTE& OutOpcode)
 	{
 		if (Bytecode == nullptr || BytecodeLength == 0)
 		{
@@ -53,13 +56,8 @@ namespace
 		OutOpcode = LastOpcode;
 		return true;
 	}
-}
 
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerTests,
-	"Angelscript.TestModule.AngelScriptSDK.Compiler",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(BytecodeGeneration)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();

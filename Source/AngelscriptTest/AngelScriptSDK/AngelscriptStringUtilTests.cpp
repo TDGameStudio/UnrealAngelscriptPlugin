@@ -14,11 +14,10 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptSDKStringUtilTests, "Angelscript.TestModule.AngelScriptSDK.StringUtil", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-
-
-	void RegisterStringFactory(asIScriptEngine* SE)
+private:
+	static void RegisterStringFactory(asIScriptEngine* SE)
 	{
 		SE->RegisterObjectType("string", sizeof(std::string), asOBJ_VALUE | asGetTypeTraits<std::string>());
 		SE->RegisterStringFactory("string", asFUNCTION(+[](asUINT Length, const char* Data) -> std::string {
@@ -37,11 +36,8 @@ namespace
 				return std::strtod(S.c_str(), nullptr);
 			}), asCALL_CDECL_OBJFIRST);
 	}
-}
 
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptSDKStringUtilTests, "Angelscript.TestModule.AngelScriptSDK.StringUtil", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(ParseInt)
 	{
 		FNativeMessageCollector Messages;

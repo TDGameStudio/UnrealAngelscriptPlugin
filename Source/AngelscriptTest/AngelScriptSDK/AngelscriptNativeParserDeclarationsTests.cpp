@@ -15,9 +15,13 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
+	"Angelscript.TestModule.AngelScriptSDK.Parser.Declarations",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	bool ParseDeclScript(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
+private:
+	static bool ParseDeclScript(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a parser module"), UTF8_TO_TCHAR(ModuleName))))
@@ -46,7 +50,7 @@ namespace
 		return true;
 	}
 
-	int ParseDeclScriptWithResult(asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source)
+	static int ParseDeclScriptWithResult(asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source)
 	{
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		asCBuilder Builder(ScriptEngine, Module);
@@ -59,7 +63,7 @@ namespace
 		return Parser.ParseScript(&Code);
 	}
 
-	bool ParseDeclExpression(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
+	static bool ParseDeclExpression(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a parser-expression module"), UTF8_TO_TCHAR(ModuleName))))
@@ -82,17 +86,13 @@ namespace
 		return true;
 	}
 
-	bool RegisterArrayTemplate(FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const TCHAR* Context)
+	static bool RegisterArrayTemplate(FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const TCHAR* Context)
 	{
 		const int RegisterResult = ScriptEngine->RegisterObjectType("array<class T>", 0, asOBJ_REF | asOBJ_TEMPLATE | asOBJ_NOCOUNT);
 		return Assert.IsTrue(RegisterResult >= 0, FString::Printf(TEXT("%s should register the parser-only array<T> template type"), Context));
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
-	"Angelscript.TestModule.AngelScriptSDK.Parser.Declarations",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(FunctionWithDefaultParam)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);

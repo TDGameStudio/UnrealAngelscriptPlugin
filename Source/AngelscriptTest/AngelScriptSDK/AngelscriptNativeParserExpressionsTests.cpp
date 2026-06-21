@@ -15,9 +15,12 @@
 
 using namespace AngelscriptNativeTestSupport;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserExpressionsTests,
+	"Angelscript.TestModule.AngelScriptSDK.Parser.Expressions",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	bool ParseExpression(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
+private:
+	static bool ParseExpression(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a parser module"), UTF8_TO_TCHAR(ModuleName))))
@@ -44,7 +47,7 @@ namespace
 		return true;
 	}
 
-	bool ParseAssignment(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
+	static bool ParseAssignment(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a parser module"), UTF8_TO_TCHAR(ModuleName))))
@@ -71,7 +74,7 @@ namespace
 		return true;
 	}
 
-	bool ParseCondition(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
+	static bool ParseCondition(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a parser module"), UTF8_TO_TCHAR(ModuleName))))
@@ -97,12 +100,8 @@ namespace
 		Verify(*Root);
 		return true;
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserExpressionsTests,
-	"Angelscript.TestModule.AngelScriptSDK.Parser.Expressions",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(PrecedenceMulOverAdd)
 	{
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);

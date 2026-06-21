@@ -14,9 +14,14 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
-namespace
+
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerValueTests,
+	"Angelscript.TestModule.AngelScriptSDK.DebuggerValue",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	asITypeInfo* FindScriptTypeInfoForClass(
+private:
+	static asITypeInfo* FindScriptTypeInfoForClass(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		UClass* ScriptClass)
@@ -41,7 +46,7 @@ namespace
 		return ScriptType;
 	}
 
-	asIScriptFunction* FindMethodByDecl(
+	static asIScriptFunction* FindMethodByDecl(
 		FAutomationTestBase& Test,
 		asITypeInfo& ScriptType,
 		const FString& Declaration)
@@ -76,7 +81,7 @@ namespace
 		return Function;
 	}
 
-	bool ExpectTrackedDebuggerValue(
+	static bool ExpectTrackedDebuggerValue(
 		FAutomationTestBase& Test,
 		const TCHAR* Context,
 		const FDebuggerValue& DebugValue,
@@ -105,7 +110,7 @@ namespace
 		return bOk;
 	}
 
-	FString BuildDebuggerFunctionPath(const asIScriptFunction& ScriptFunction)
+	static FString BuildDebuggerFunctionPath(const asIScriptFunction& ScriptFunction)
 	{
 		FString FunctionPath;
 		if (ScriptFunction.GetObjectType() != nullptr)
@@ -117,13 +122,8 @@ namespace
 		FunctionPath += ANSI_TO_TCHAR(ScriptFunction.GetName());
 		return FunctionPath;
 	}
-}
 
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerValueTests,
-	"Angelscript.TestModule.AngelScriptSDK.DebuggerValue",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(GetterPropertyTracking)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
