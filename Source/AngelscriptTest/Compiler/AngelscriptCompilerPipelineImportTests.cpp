@@ -72,11 +72,11 @@ namespace CompilerPipelineImportTest
 
 	const FAngelscriptModuleDesc* FindModuleByName(
 		const TArray<TSharedRef<FAngelscriptModuleDesc>>& Modules,
-		const FString& ModuleName)
+		const FString& TargetModuleName)
 	{
 		for (const TSharedRef<FAngelscriptModuleDesc>& Module : Modules)
 		{
-			if (Module->ModuleName == ModuleName)
+			if (Module->ModuleName == TargetModuleName)
 			{
 				return &Module.Get();
 			}

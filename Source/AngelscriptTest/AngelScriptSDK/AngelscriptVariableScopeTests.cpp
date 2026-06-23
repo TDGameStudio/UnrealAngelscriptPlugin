@@ -10,6 +10,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace AngelscriptNativeTestSupport;
+using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKVariableScopeTests, "Angelscript.TestModule.AngelScriptSDK.VariableScope", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
