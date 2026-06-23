@@ -13,11 +13,10 @@
 // Test Layer: UE Functional
 #if WITH_DEV_AUTOMATION_TESTS
 
+using namespace AngelscriptFunctionalTestUtils;
 
 namespace AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private
 {
-	using namespace AngelscriptFunctionalTestUtils;
-
 	constexpr float ComponentTestCaseDeltaTime = 0.016f;
 
 	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
