@@ -5,12 +5,11 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKSmokeTests, "Angelscript.TestModule.AngelScriptSDK", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FSDKBufferedOutStream BufferedOutStream;
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FSDKBufferedOutStream BufferedOutStream;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -29,6 +28,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKSmokeTests, "Angelscript.TestModule.AngelSc
 
 	TEST_METHOD(Smoke)
 	{
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK smoke test should create a standalone script engine")));
 

@@ -18,8 +18,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace PreprocessorTestHelpers;
-
 // ============================================================================
 // Test class
 // ============================================================================
@@ -34,6 +32,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorClassTest,
 	// ========================================================================
 	TEST_METHOD(UnknownSuperTypeReportsDiagnostic)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		TestRunner->AddExpectedErrorPlain(
 			TEXT("Class UUnknownSuperCarrier has an unknown super type UMissingBaseType."),
 			EAutomationExpectedErrorFlags::Contains, 1);
@@ -77,6 +77,8 @@ class UUnknownSuperCarrier : UMissingBaseType
 	// ========================================================================
 		TEST_METHOD(DuplicateClassNameAcrossHotReloadBatchReportsConflict)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		// This test requires an isolated engine to seed a module first
 		FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
 		ASSERT_THAT(IsTrue(Fixture.IsValid(), TEXT("Should acquire isolated engine")));

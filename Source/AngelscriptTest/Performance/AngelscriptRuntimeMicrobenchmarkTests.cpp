@@ -13,11 +13,14 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
-namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private
+TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeMicrobenchmarkTests,
+	"Angelscript.TestModule.Performance",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	constexpr int32 WarmupRuns = 1;
-	constexpr int32 MeasurementRuns = 3;
-	constexpr int32 IterationsPerMeasurement = 10000;
+private:
+	static constexpr int32 WarmupRuns = 1;
+	static constexpr int32 MeasurementRuns = 3;
+	static constexpr int32 IterationsPerMeasurement = 10000;
 
 	struct FMeasuredSamples
 	{
@@ -26,7 +29,7 @@ namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private
 	};
 
 	template <typename CallableType>
-	FMeasuredSamples MeasureSamples(CallableType&& Callable)
+	static FMeasuredSamples MeasureSamples(CallableType&& Callable)
 	{
 		for (int32 WarmupIndex = 0; WarmupIndex < WarmupRuns; ++WarmupIndex)
 		{
@@ -43,7 +46,7 @@ namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private
 		return Result;
 	}
 
-	void AddMetric(
+	static void AddMetric(
 		TArray<FAngelscriptPerformanceMetric>& Metrics,
 		const FString& Name,
 		const TArray<double>& Samples,
@@ -52,7 +55,7 @@ namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private
 		Metrics.Add({ Name, Samples, ComputeMedian(Samples), TEXT("seconds"), Source });
 	}
 
-	bool WriteAndVerifyMetrics(
+	static bool WriteAndVerifyMetrics(
 		FAutomationTestBase& Test,
 		const FString& RunId,
 		const FString& TestGroup,
@@ -73,7 +76,7 @@ namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private
 			FPlatformFileManager::Get().GetPlatformFile().FileExists(*MetricsPath));
 	}
 
-	UClass* CompileBenchmarkCarrier(
+	static UClass* CompileBenchmarkCarrier(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		FName ModuleName,
@@ -89,7 +92,7 @@ namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private
 			GeneratedClassName);
 	}
 
-	TUniquePtr<FAngelscriptEngine> CreatePerformanceEditorBindingEngine()
+	static TUniquePtr<FAngelscriptEngine> CreatePerformanceEditorBindingEngine()
 	{
 		UAngelscriptPerformanceTestTargetObject::StaticClass();
 
@@ -99,15 +102,31 @@ namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private
 
 		return CreateScriptScanFreeFullEngineForTesting(Config, FAngelscriptEngineDependencies::CreateDefault());
 	}
-}
 
+	static bool RunRuntimePerformanceScriptSelf(FAutomationTestBase& Test);
+	static bool RunRuntimePerformanceNativeProperty(FAutomationTestBase& Test);
+	static bool RunRuntimePerformanceNativeFunction(FAutomationTestBase& Test);
 
-namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private
+public:
+	TEST_METHOD(ScriptSelf)
+	{
+		ASSERT_THAT(IsTrue(RunRuntimePerformanceScriptSelf(*TestRunner)));
+	}
+
+	TEST_METHOD(NativeProperty)
+	{
+		ASSERT_THAT(IsTrue(RunRuntimePerformanceNativeProperty(*TestRunner)));
+	}
+
+	TEST_METHOD(NativeFunction)
+	{
+		ASSERT_THAT(IsTrue(RunRuntimePerformanceNativeFunction(*TestRunner)));
+	}
+};
+
+bool FAngelscriptRuntimeMicrobenchmarkTests::RunRuntimePerformanceScriptSelf(FAutomationTestBase& Test)
 {
 
-bool RunRuntimePerformanceScriptSelf(FAutomationTestBase& Test)
-{
-	using namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	bool bWroteMetrics = false;
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
@@ -223,9 +242,8 @@ class URuntimePerformanceScriptSelfCarrier : UObject
 	return !Test.HasAnyErrors() && bWroteMetrics;
 }
 
-bool RunRuntimePerformanceNativeProperty(FAutomationTestBase& Test)
+bool FAngelscriptRuntimeMicrobenchmarkTests::RunRuntimePerformanceNativeProperty(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private;
 	TUniquePtr<FAngelscriptEngine> EngineOwner = CreatePerformanceEditorBindingEngine();
 	if (!Test.TestTrue(TEXT("Native property benchmark engine should create"), EngineOwner.IsValid()))
 	{
@@ -350,9 +368,8 @@ class URuntimePerformanceNativePropertyCarrier : UObject
 	return !Test.HasAnyErrors() && bWroteMetrics;
 }
 
-bool RunRuntimePerformanceNativeFunction(FAutomationTestBase& Test)
+bool FAngelscriptRuntimeMicrobenchmarkTests::RunRuntimePerformanceNativeFunction(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private;
 	TUniquePtr<FAngelscriptEngine> EngineOwner = CreatePerformanceEditorBindingEngine();
 	if (!Test.TestTrue(TEXT("Native function benchmark engine should create"), EngineOwner.IsValid()))
 	{
@@ -484,30 +501,5 @@ class URuntimePerformanceNativeFunctionCarrier : UObject
 	}
 	return !Test.HasAnyErrors() && bWroteMetrics;
 }
-
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeMicrobenchmarkTests,
-	"Angelscript.TestModule.Performance",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
-	TEST_METHOD(ScriptSelf)
-	{
-		using namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private;
-		ASSERT_THAT(IsTrue(RunRuntimePerformanceScriptSelf(*TestRunner)));
-	}
-
-	TEST_METHOD(NativeProperty)
-	{
-		using namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private;
-		ASSERT_THAT(IsTrue(RunRuntimePerformanceNativeProperty(*TestRunner)));
-	}
-
-	TEST_METHOD(NativeFunction)
-	{
-		using namespace AngelscriptTest_Performance_RuntimeMicrobenchmarkTests_Private;
-		ASSERT_THAT(IsTrue(RunRuntimePerformanceNativeFunction(*TestRunner)));
-	}
-};
 
 #endif

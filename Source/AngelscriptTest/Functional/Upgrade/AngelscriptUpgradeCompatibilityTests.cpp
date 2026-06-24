@@ -9,65 +9,64 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_Angelscript_AngelscriptUpgradeCompatibilityTests_Private
-{
-	constexpr int32 P9BAutomaticImportsPropertyId = 41;
-	constexpr int32 P9BTypecheckSwitchEnumsPropertyId = 42;
-	constexpr int32 P9BAllowDoubleTypePropertyId = 43;
-	constexpr int32 P9BFloatIsFloat64PropertyId = 44;
-	constexpr int32 P9BWarnOnFloatConstantsForDoublesPropertyId = 45;
-	constexpr int32 P9BWarnIntegerDivisionPropertyId = 46;
-	constexpr uint64 P9BScriptObjectFlag = (uint64(1) << 21);
-	constexpr uint64 P9BSharedFlag = (uint64(1) << 22);
-	constexpr uint64 P9BNoInheritFlag = (uint64(1) << 23);
-	constexpr uint64 P9BFuncdefFlag = (uint64(1) << 24);
-	constexpr uint64 P9BListPatternFlag = (uint64(1) << 25);
-	constexpr uint64 P9BEnumFlag = (uint64(1) << 26);
-	constexpr uint64 P9BTemplateSubtypeFlag = (uint64(1) << 27);
-	constexpr uint64 P9BTypedefFlag = (uint64(1) << 28);
-	constexpr uint64 P9BAbstractFlag = (uint64(1) << 29);
-	constexpr uint64 P9BStockMoreConstructorsFlag = (uint64(1) << 31);
-	constexpr uint64 P9BStockUnionFlag = (uint64(1) << 32);
-	constexpr uint64 P9BCovariantSubtypeFlag = (uint64(1) << 48);
-	constexpr uint64 P9BDeterminesSizeFlag = (uint64(1) << 49);
-	constexpr uint64 P9BDisallowInstantiationFlag = (uint64(1) << 50);
-	constexpr uint64 P9BBasicMathTypeFlag = (uint64(1) << 51);
-	constexpr uint64 P9BEditorOnlyFlag = (uint64(1) << 52);
-
-	bool GUpgradeMessageCallbackInvoked = false;
-	FString GUpgradeMessageText;
-	asEMsgType GUpgradeMessageType = asMSGTYPE_INFORMATION;
-	int32 GUpgradeMessageCallbackACount = 0;
-	int32 GUpgradeMessageCallbackBCount = 0;
-	FString GUpgradeMessageCallbackAText;
-	FString GUpgradeMessageCallbackBText;
-
-	void CaptureUpgradeMessage(asSMessageInfo* Message)
-	{
-		GUpgradeMessageCallbackInvoked = true;
-		GUpgradeMessageText = UTF8_TO_TCHAR(Message->message);
-		GUpgradeMessageType = Message->type;
-	}
-
-	void CaptureUpgradeMessageA(asSMessageInfo* Message)
-	{
-		++GUpgradeMessageCallbackACount;
-		GUpgradeMessageCallbackAText = UTF8_TO_TCHAR(Message->message);
-	}
-
-	void CaptureUpgradeMessageB(asSMessageInfo* Message)
-	{
-		++GUpgradeMessageCallbackBCount;
-		GUpgradeMessageCallbackBText = UTF8_TO_TCHAR(Message->message);
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(
 	FAngelscriptUpgradeCompatibilityTests,
 	"Angelscript.TestModule.Functional.Upgrade",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static constexpr int32 P9BAutomaticImportsPropertyId = 41;
+static constexpr int32 P9BTypecheckSwitchEnumsPropertyId = 42;
+static constexpr int32 P9BAllowDoubleTypePropertyId = 43;
+static constexpr int32 P9BFloatIsFloat64PropertyId = 44;
+static constexpr int32 P9BWarnOnFloatConstantsForDoublesPropertyId = 45;
+static constexpr int32 P9BWarnIntegerDivisionPropertyId = 46;
+static constexpr uint64 P9BScriptObjectFlag = (uint64(1) << 21);
+static constexpr uint64 P9BSharedFlag = (uint64(1) << 22);
+static constexpr uint64 P9BNoInheritFlag = (uint64(1) << 23);
+static constexpr uint64 P9BFuncdefFlag = (uint64(1) << 24);
+static constexpr uint64 P9BListPatternFlag = (uint64(1) << 25);
+static constexpr uint64 P9BEnumFlag = (uint64(1) << 26);
+static constexpr uint64 P9BTemplateSubtypeFlag = (uint64(1) << 27);
+static constexpr uint64 P9BTypedefFlag = (uint64(1) << 28);
+static constexpr uint64 P9BAbstractFlag = (uint64(1) << 29);
+static constexpr uint64 P9BStockMoreConstructorsFlag = (uint64(1) << 31);
+static constexpr uint64 P9BStockUnionFlag = (uint64(1) << 32);
+static constexpr uint64 P9BCovariantSubtypeFlag = (uint64(1) << 48);
+static constexpr uint64 P9BDeterminesSizeFlag = (uint64(1) << 49);
+static constexpr uint64 P9BDisallowInstantiationFlag = (uint64(1) << 50);
+static constexpr uint64 P9BBasicMathTypeFlag = (uint64(1) << 51);
+static constexpr uint64 P9BEditorOnlyFlag = (uint64(1) << 52);
+
+inline static bool GUpgradeMessageCallbackInvoked = false;
+inline static FString GUpgradeMessageText;
+inline static asEMsgType GUpgradeMessageType = asMSGTYPE_INFORMATION;
+inline static int32 GUpgradeMessageCallbackACount = 0;
+inline static int32 GUpgradeMessageCallbackBCount = 0;
+inline static FString GUpgradeMessageCallbackAText;
+inline static FString GUpgradeMessageCallbackBText;
+
+static void CaptureUpgradeMessage(asSMessageInfo* Message)
+{
+	GUpgradeMessageCallbackInvoked = true;
+	GUpgradeMessageText = UTF8_TO_TCHAR(Message->message);
+	GUpgradeMessageType = Message->type;
+}
+
+static void CaptureUpgradeMessageA(asSMessageInfo* Message)
+{
+	++GUpgradeMessageCallbackACount;
+	GUpgradeMessageCallbackAText = UTF8_TO_TCHAR(Message->message);
+}
+
+static void CaptureUpgradeMessageB(asSMessageInfo* Message)
+{
+	++GUpgradeMessageCallbackBCount;
+	GUpgradeMessageCallbackBText = UTF8_TO_TCHAR(Message->message);
+}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -77,8 +76,7 @@ TEST_CLASS_WITH_FLAGS(
 
 	TEST_METHOD(HeaderCompatibility)
 	{
-		using namespace AngelscriptTest_Angelscript_AngelscriptUpgradeCompatibilityTests_Private;
-		ASSERT_THAT(AreEqual(23300, ANGELSCRIPT_VERSION, TEXT("Embedded Angelscript version should remain pinned to 2.33.0 until the 2.38 upgrade resumes")));
+ASSERT_THAT(AreEqual(23300, ANGELSCRIPT_VERSION, TEXT("Embedded Angelscript version should remain pinned to 2.33.0 until the 2.38 upgrade resumes")));
 		ASSERT_THAT(AreEqual(FString(TEXT("2.33.0 WIP")), FString(ANSI_TO_TCHAR(ANGELSCRIPT_VERSION_STRING)), TEXT("Embedded Angelscript version string should report 2.33.0 WIP")));
 
 		ASSERT_THAT(AreEqual(29, static_cast<int32>(asEP_INIT_STACK_SIZE), TEXT("Stock 2.38 init stack size property id should remain available")));
@@ -238,8 +236,7 @@ TEST_CLASS_WITH_FLAGS(
 
 	TEST_METHOD(MessageCallback)
 	{
-	using namespace AngelscriptTest_Angelscript_AngelscriptUpgradeCompatibilityTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 	FAngelscriptEngineScope Scope(Engine);
 
 	asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
@@ -267,8 +264,7 @@ TEST_CLASS_WITH_FLAGS(
 
 	TEST_METHOD(MessageCallback_ClearAndReRegister)
 	{
-	using namespace AngelscriptTest_Angelscript_AngelscriptUpgradeCompatibilityTests_Private;
-	TUniquePtr<FAngelscriptEngine> IsolatedEngine = CreateIsolatedCloneEngine();
+TUniquePtr<FAngelscriptEngine> IsolatedEngine = CreateIsolatedCloneEngine();
 	ASSERT_THAT(IsNotNull(IsolatedEngine.Get(), TEXT("Upgrade.MessageCallback.ClearAndReRegister should create an isolated clone engine")));
 
 	FAngelscriptEngine& Engine = *IsolatedEngine;
@@ -314,8 +310,7 @@ TEST_CLASS_WITH_FLAGS(
 
 	TEST_METHOD(RegisterObjectTypeFlags)
 	{
-	using namespace AngelscriptTest_Angelscript_AngelscriptUpgradeCompatibilityTests_Private;
-	asQWORD Flags = 0;
+asQWORD Flags = 0;
 	FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 	FAngelscriptEngineScope Scope(Engine);
 

@@ -13,7 +13,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserExpressionsTests,
 	"Angelscript.TestModule.AngelScriptSDK.Parser.Expressions",
@@ -22,6 +21,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserExpressionsTests,
 private:
 	static bool ParseExpression(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a parser module"), UTF8_TO_TCHAR(ModuleName))))
 		{
@@ -32,7 +33,7 @@ private:
 		asCScriptCode Code;
 		Code.SetCode(ModuleName, Source, true);
 
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 		asCScriptNode* Root = Parser.ParseExpressionSnippet(&Code);
 		if (!Assert.IsNotNull(Root, FString::Printf(TEXT("%s should parse an expression root"), UTF8_TO_TCHAR(ModuleName))))
 		{
@@ -49,6 +50,8 @@ private:
 
 	static bool ParseAssignment(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a parser module"), UTF8_TO_TCHAR(ModuleName))))
 		{
@@ -59,7 +62,7 @@ private:
 		asCScriptCode Code;
 		Code.SetCode(ModuleName, Source, true);
 
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 		asCScriptNode* Root = Parser.ParseAssignmentSnippet(&Code);
 		if (!Assert.IsNotNull(Root, FString::Printf(TEXT("%s should parse an assignment root"), UTF8_TO_TCHAR(ModuleName))))
 		{
@@ -76,6 +79,8 @@ private:
 
 	static bool ParseCondition(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a parser module"), UTF8_TO_TCHAR(ModuleName))))
 		{
@@ -86,7 +91,7 @@ private:
 		asCScriptCode Code;
 		Code.SetCode(ModuleName, Source, true);
 
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 		asCScriptNode* Root = Parser.ParseConditionSnippet(&Code);
 		if (!Assert.IsNotNull(Root, FString::Printf(TEXT("%s should parse a condition root"), UTF8_TO_TCHAR(ModuleName))))
 		{

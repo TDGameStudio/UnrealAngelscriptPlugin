@@ -5,13 +5,12 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeSmokeTest,
 	"Angelscript.TestModule.AngelScriptSDK",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -30,10 +29,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeSmokeTest,
 
 	TEST_METHOD(Smoke)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Native smoke test should create a standalone AngelScript engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "NativeSmoke", "int Test() { return 1; }");
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "NativeSmoke", "int Test() { return 1; }");
 		if (!Module.IsValid())
 		{
 			TestRunner->AddInfo(Engine.GetMessagesText());

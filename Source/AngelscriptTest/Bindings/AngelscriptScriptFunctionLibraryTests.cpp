@@ -1,12 +1,12 @@
 // ============================================================================
 // AngelscriptScriptFunctionLibraryTests.cpp
 //
-// Script function library binding coverage — CQTest refactor. Automation IDs:
+// Script function library binding coverage �?CQTest refactor. Automation IDs:
 //   Angelscript.TestModule.FunctionLibraries.Script.FAngelscriptScriptFunctionLibraryTest.*
 //
 // Sections:
-//   GlobalInitContextHotReloadName — hot-reload module name propagation
-//   GlobalInitContext              — direct module name propagation
+//   GlobalInitContextHotReloadName �?hot-reload module name propagation
+//   GlobalInitContext              �?direct module name propagation
 //
 // CQTest adaptation notes:
 //   Two legacy automation tests merged into one TEST_CLASS.
@@ -31,60 +31,73 @@
 // Helper utilities (retained from original)
 // ----------------------------------------------------------------------------
 
-namespace AngelscriptTest_Bindings_AngelscriptScriptFunctionLibraryTests_Private
+
+// ----------------------------------------------------------------------------
+// Profile
+// ----------------------------------------------------------------------------
+
+
+// ----------------------------------------------------------------------------
+// Test class
+// ----------------------------------------------------------------------------
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptScriptFunctionLibraryTest,
+	"Angelscript.TestModule.FunctionLibraries.Script",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	static const FName ScriptFunctionLibraryModuleName(TEXT("ASGlobalInitContext_HotReload_42"));
-	static const FString ScriptFunctionLibraryFilename(TEXT("ASGlobalInitContext_HotReload_42.as"));
-	static const FString DirectScriptFunctionLibraryModuleName(TEXT("ASGlobalInitContext_Stable"));
-	static const FString ScriptFunctionLibraryNamespace(TEXT("ScopedContext"));
-	static const FString HotReloadMarker(TEXT("_NEW_"));
+private:
+inline static const FName ScriptFunctionLibraryModuleName = FName(TEXT("ASGlobalInitContext_HotReload_42"));
+inline static const FString ScriptFunctionLibraryFilename = FString(TEXT("ASGlobalInitContext_HotReload_42.as"));
+inline static const FString DirectScriptFunctionLibraryModuleName = FString(TEXT("ASGlobalInitContext_Stable"));
+inline static const FString ScriptFunctionLibraryNamespace = FString(TEXT("ScopedContext"));
+inline static const FString HotReloadMarker = FString(TEXT("_NEW_"));
 
-	template <typename TValue>
-	bool ExecuteStringGlobalFunction(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const TCHAR* FunctionDecl,
-		TValue& OutValue)
+template <typename TValue>
+static bool ExecuteStringGlobalFunction(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine,
+	asIScriptModule& Module,
+	const TCHAR* FunctionDecl,
+	TValue& OutValue)
+{
+	FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
+	return Executor.ExecuteAndExtractStruct(OutValue);
+}
+
+static asIScriptModule* GetCompiledModule(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
+{
+	TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModule(ScriptFunctionLibraryModuleName.ToString());
+	FNoDiscardAsserter LocalAssert(Test);
+	if (!LocalAssert.IsTrue(
+			ModuleDesc.IsValid(),
+			TEXT("Script function library global-init test should keep the module registered after compile")))
 	{
-		FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
-		return Executor.ExecuteAndExtractStruct(OutValue);
+		return nullptr;
 	}
 
-	asIScriptModule* GetCompiledModule(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
+	asIScriptModule* Module = ModuleDesc.IsValid() ? ModuleDesc->ScriptModule : nullptr;
+	if (!LocalAssert.IsNotNull(
+			Module,
+			TEXT("Script function library global-init test should expose the backing asIScriptModule")))
 	{
-		TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModule(ScriptFunctionLibraryModuleName.ToString());
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsTrue(
-				ModuleDesc.IsValid(),
-				TEXT("Script function library global-init test should keep the module registered after compile")))
-		{
-			return nullptr;
-		}
-
-		asIScriptModule* Module = ModuleDesc.IsValid() ? ModuleDesc->ScriptModule : nullptr;
-		if (!Assert.IsNotNull(
-				Module,
-				TEXT("Script function library global-init test should expose the backing asIScriptModule")))
-		{
-			return nullptr;
-		}
-
-		return Module;
+		return nullptr;
 	}
 
-	FString BuildScriptSource(const int32 Version)
-	{
-		return FString::Printf(TEXT(R"(
+	return Module;
+}
+
+static FString BuildScriptSource(const int32 Version)
+{
+	return FString::Printf(TEXT(R"(
 const FString PlainNameCapture = Script::GetNameOfGlobalVariableBeingInitialized();
 const FString PlainNamespaceCapture = Script::GetNamespaceOfGlobalVariableBeingInitialized();
 const FString PlainModuleCapture = Script::GetModuleNameOfGlobalVariableBeingInitialized();
 
 namespace %s
 {
-	const FString ScopedNameCapture = Script::GetNameOfGlobalVariableBeingInitialized();
-	const FString ScopedNamespaceCapture = Script::GetNamespaceOfGlobalVariableBeingInitialized();
-	const FString ScopedModuleCapture = Script::GetModuleNameOfGlobalVariableBeingInitialized();
+const FString ScopedNameCapture = Script::GetNameOfGlobalVariableBeingInitialized();
+const FString ScopedNamespaceCapture = Script::GetNamespaceOfGlobalVariableBeingInitialized();
+const FString ScopedModuleCapture = Script::GetModuleNameOfGlobalVariableBeingInitialized();
 }
 
 FString GetPlainNameCapture() { return PlainNameCapture; }
@@ -101,25 +114,25 @@ FString GetOutsideInitModule() { return Script::GetModuleNameOfGlobalVariableBei
 
 int GetVersion() { return %d; }
 )"),
-			*ScriptFunctionLibraryNamespace,
-			*ScriptFunctionLibraryNamespace,
-			*ScriptFunctionLibraryNamespace,
-			*ScriptFunctionLibraryNamespace,
-			Version);
-	}
+		*ScriptFunctionLibraryNamespace,
+		*ScriptFunctionLibraryNamespace,
+		*ScriptFunctionLibraryNamespace,
+		*ScriptFunctionLibraryNamespace,
+		Version);
+}
 
-	FString BuildDirectContextScriptSource()
-	{
-		return FString::Printf(TEXT(R"(
+static FString BuildDirectContextScriptSource()
+{
+	return FString::Printf(TEXT(R"(
 const FString PlainNameCapture = Script::GetNameOfGlobalVariableBeingInitialized();
 const FString PlainNamespaceCapture = Script::GetNamespaceOfGlobalVariableBeingInitialized();
 const FString PlainModuleCapture = Script::GetModuleNameOfGlobalVariableBeingInitialized();
 
 namespace %s
 {
-	const FString ScopedNameCapture = Script::GetNameOfGlobalVariableBeingInitialized();
-	const FString ScopedNamespaceCapture = Script::GetNamespaceOfGlobalVariableBeingInitialized();
-	const FString ScopedModuleCapture = Script::GetModuleNameOfGlobalVariableBeingInitialized();
+const FString ScopedNameCapture = Script::GetNameOfGlobalVariableBeingInitialized();
+const FString ScopedNamespaceCapture = Script::GetNamespaceOfGlobalVariableBeingInitialized();
+const FString ScopedModuleCapture = Script::GetModuleNameOfGlobalVariableBeingInitialized();
 }
 
 FString GetPlainNameCapture() { return PlainNameCapture; }
@@ -134,27 +147,13 @@ FString GetOutsideInitName() { return Script::GetNameOfGlobalVariableBeingInitia
 FString GetOutsideInitNamespace() { return Script::GetNamespaceOfGlobalVariableBeingInitialized(); }
 FString GetOutsideInitModule() { return Script::GetModuleNameOfGlobalVariableBeingInitialized(); }
 )"),
-			*ScriptFunctionLibraryNamespace,
-			*ScriptFunctionLibraryNamespace,
-			*ScriptFunctionLibraryNamespace,
-			*ScriptFunctionLibraryNamespace);
-	}
+		*ScriptFunctionLibraryNamespace,
+		*ScriptFunctionLibraryNamespace,
+		*ScriptFunctionLibraryNamespace,
+		*ScriptFunctionLibraryNamespace);
 }
 
-
-// ----------------------------------------------------------------------------
-// Profile
-// ----------------------------------------------------------------------------
-
-
-// ----------------------------------------------------------------------------
-// Test class
-// ----------------------------------------------------------------------------
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptScriptFunctionLibraryTest,
-	"Angelscript.TestModule.FunctionLibraries.Script",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -168,8 +167,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptFunctionLibraryTest,
 
 	TEST_METHOD(GlobalInitContextHotReloadName)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptScriptFunctionLibraryTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		ON_SCOPE_EXIT
@@ -275,8 +273,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptFunctionLibraryTest,
 
 	TEST_METHOD(GlobalInitContext)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptScriptFunctionLibraryTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		asIScriptModule* Module = BuildModule(

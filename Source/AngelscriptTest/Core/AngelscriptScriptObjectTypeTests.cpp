@@ -14,57 +14,55 @@
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Core_AngelscriptScriptObjectTypeTests_Private
-{
-	struct FScriptObjectTypeFixture
-	{
-		FName ModuleName;
-		FName GeneratedClassName;
-		const TCHAR* Filename;
-		const TCHAR* ScriptSource;
-	};
-
-	UASClass* CompileGeneratedObjectClass(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		bool& bPassed,
-		const FScriptObjectTypeFixture& Fixture)
-	{
-		FNoDiscardAsserter Assert(Test);
-		bPassed &= Assert.IsTrue(
-			CompileAnnotatedModuleFromMemory(&Engine, Fixture.ModuleName, Fixture.Filename, Fixture.ScriptSource),
-			*FString::Printf(TEXT("%s should compile the annotated script object module"), *Fixture.ModuleName.ToString()));
-
-		UClass* GeneratedClass = FindGeneratedClass(&Engine, Fixture.GeneratedClassName);
-		bPassed &= Assert.IsNotNull(
-			GeneratedClass,
-			*FString::Printf(TEXT("%s should resolve the generated class"), *Fixture.GeneratedClassName.ToString()));
-
-		UASClass* GeneratedASClass = Cast<UASClass>(GeneratedClass);
-		bPassed &= Assert.IsNotNull(
-			GeneratedASClass,
-			*FString::Printf(TEXT("%s should resolve as a generated UASClass"), *Fixture.GeneratedClassName.ToString()));
-
-		if (GeneratedASClass != nullptr)
-		{
-			bPassed &= Assert.IsNotNull(
-				reinterpret_cast<asITypeInfo*>(GeneratedASClass->ScriptTypePtr),
-				*FString::Printf(TEXT("%s should publish a non-null ScriptTypePtr"), *Fixture.GeneratedClassName.ToString()));
-		}
-
-		return GeneratedASClass;
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptScriptObjectTypeTests,
 	"Angelscript.TestModule.Engine.ObjectModel",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+struct FScriptObjectTypeFixture
+{
+	FName ModuleName;
+	FName GeneratedClassName;
+	const TCHAR* Filename;
+	const TCHAR* ScriptSource;
+};
+
+static UASClass* CompileGeneratedObjectClass(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine,
+	bool& bPassed,
+	const FScriptObjectTypeFixture& Fixture)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	bPassed &= LocalAssert.IsTrue(
+		CompileAnnotatedModuleFromMemory(&Engine, Fixture.ModuleName, Fixture.Filename, Fixture.ScriptSource),
+		*FString::Printf(TEXT("%s should compile the annotated script object module"), *Fixture.ModuleName.ToString()));
+
+	UClass* GeneratedClass = FindGeneratedClass(&Engine, Fixture.GeneratedClassName);
+	bPassed &= LocalAssert.IsNotNull(
+		GeneratedClass,
+		*FString::Printf(TEXT("%s should resolve the generated class"), *Fixture.GeneratedClassName.ToString()));
+
+	UASClass* GeneratedASClass = Cast<UASClass>(GeneratedClass);
+	bPassed &= LocalAssert.IsNotNull(
+		GeneratedASClass,
+		*FString::Printf(TEXT("%s should resolve as a generated UASClass"), *Fixture.GeneratedClassName.ToString()));
+
+	if (GeneratedASClass != nullptr)
+	{
+		bPassed &= LocalAssert.IsNotNull(
+			reinterpret_cast<asITypeInfo*>(GeneratedASClass->ScriptTypePtr),
+			*FString::Printf(TEXT("%s should publish a non-null ScriptTypePtr"), *Fixture.GeneratedClassName.ToString()));
+	}
+
+	return GeneratedASClass;
+}
+
+public:
 	TEST_METHOD(ScriptObjectGetObjectTypeMatchesGeneratedASClass)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptScriptObjectTypeTests_Private;
-		bool bPassed = true;
+bool bPassed = true;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		{
 			FAngelscriptEngineScope _AutoEngineScope(Engine);

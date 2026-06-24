@@ -13,46 +13,44 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_Core_AngelscriptEngineTypeInteropTests_Private
-{
-	struct FEngineTypeInteropContextStackGuard
-	{
-		TArray<FAngelscriptEngine*> SavedStack;
-
-		FEngineTypeInteropContextStackGuard()
-		{
-			SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
-		}
-
-		~FEngineTypeInteropContextStackGuard()
-		{
-			FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
-		}
-
-		void DiscardSavedStack()
-		{
-			SavedStack.Reset();
-		}
-	};
-
-	FString MakeAutomationTypeInteropName(const TCHAR* Prefix)
-	{
-		return FString::Printf(
-			TEXT("%s_%s"),
-			Prefix,
-			*FGuid::NewGuid().ToString(EGuidFormats::Digits).Left(8));
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptEngineTypeInteropTests,
 	"Angelscript.CppTests.Engine.TypeInterop",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+struct FEngineTypeInteropContextStackGuard
+{
+	TArray<FAngelscriptEngine*> SavedStack;
+
+	FEngineTypeInteropContextStackGuard()
+	{
+		SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
+	}
+
+	~FEngineTypeInteropContextStackGuard()
+	{
+		FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
+	}
+
+	void DiscardSavedStack()
+	{
+		SavedStack.Reset();
+	}
+};
+
+static FString MakeAutomationTypeInteropName(const TCHAR* Prefix)
+{
+	return FString::Printf(
+		TEXT("%s_%s"),
+		Prefix,
+		*FGuid::NewGuid().ToString(EGuidFormats::Digits).Left(8));
+}
+
+public:
 	TEST_METHOD(GetUnrealStructFromTypeIdRejectsNonStructAndPreservesPlainStructs)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptEngineTypeInteropTests_Private;
-		FEngineTypeInteropContextStackGuard ContextGuard;
+FEngineTypeInteropContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
@@ -121,7 +119,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineTypeInteropTests,
 		if (PlainStruct != TBaseStructure<FIntPoint>::Get())
 		{
 			TestRunner->AddWarning(FString::Printf(
-				TEXT("FIntPoint struct mapping: got %s, expected %s. Known full-suite issue — prior tests contaminate global type binding state. Passes in isolation."),
+				TEXT("FIntPoint struct mapping: got %s, expected %s. Known full-suite issue �?prior tests contaminate global type binding state. Passes in isolation."),
 				PlainStruct ? *PlainStruct->GetName() : TEXT("null"),
 				*TBaseStructure<FIntPoint>::Get()->GetName()));
 		}

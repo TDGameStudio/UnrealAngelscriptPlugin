@@ -7,8 +7,11 @@
 
 #if WITH_DEV_AUTOMATION_TESTS && AS_JIT_DEBUG_CALLSTACKS
 
-namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITDebugCallstackTests_Private
+TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITDebugCallstackTests,
+	"Angelscript.TestModule.StaticJIT.DebugCallstack",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
 	struct FExpectedDebugFrame
 	{
 		const ANSICHAR* Filename = "";
@@ -18,7 +21,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITDebugCallstackTests_Priv
 		FScopeJITDebugCallstack* PrevFrame = nullptr;
 	};
 
-	FString DescribeObservedFrame(const FScopeJITDebugCallstack* Frame)
+	static FString DescribeObservedFrame(const FScopeJITDebugCallstack* Frame)
 	{
 		if (Frame == nullptr)
 		{
@@ -36,7 +39,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITDebugCallstackTests_Priv
 			Frame->PrevFrame);
 	}
 
-	bool VerifyTopFrame(
+	static bool VerifyTopFrame(
 		FAutomationTestBase& Test,
 		const FScopeJITDebugCallstack* ActualFrame,
 		const FExpectedDebugFrame& ExpectedFrame,
@@ -81,15 +84,19 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITDebugCallstackTests_Priv
 
 		return bAllMatched;
 	}
-}
 
+	static bool RunDebugCallstackScopePushPop(FAutomationTestBase& Test);
 
-namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITDebugCallstackTests_Private
+public:
+	TEST_METHOD(ScopePushPop)
+	{
+		ASSERT_THAT(IsTrue(RunDebugCallstackScopePushPop(*TestRunner)));
+	}
+};
+
+bool FAngelscriptStaticJITDebugCallstackTests::RunDebugCallstackScopePushPop(FAutomationTestBase& Test)
 {
 
-bool RunDebugCallstackScopePushPop(FAutomationTestBase& Test)
-{
-	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITDebugCallstackTests_Private;
 	bool bPassed = false;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
@@ -216,18 +223,5 @@ bool RunDebugCallstackScopePushPop(FAutomationTestBase& Test)
 	}
 	return bPassed;
 }
-
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITDebugCallstackTests,
-	"Angelscript.TestModule.StaticJIT.DebugCallstack",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
-	TEST_METHOD(ScopePushPop)
-	{
-		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITDebugCallstackTests_Private;
-		ASSERT_THAT(IsTrue(RunDebugCallstackScopePushPop(*TestRunner)));
-	}
-};
 
 #endif

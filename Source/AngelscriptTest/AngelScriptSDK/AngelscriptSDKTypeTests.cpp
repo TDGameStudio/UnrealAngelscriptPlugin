@@ -6,8 +6,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKTypeTests, "Angelscript.TestModule.AngelScriptSDK.Type", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -49,7 +47,7 @@ private:
 	}
 
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -73,7 +71,7 @@ public:
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK bool type test should create a standalone engine")));
 
-		FScopedNativeModule Module(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(
 			*TestRunner,
 			Engine,
 			"SDKTypeBool",
@@ -84,7 +82,7 @@ public:
 			return;
 		}
 
-		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool AllTrue()");
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool AllTrue()");
 		if (!Invoker.IsValid())
 		{
 			return;
@@ -98,7 +96,7 @@ public:
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK bits type test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKTypeBits", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKTypeBits", R"(
 bool CheckBits()
 {
 	uint oct = 0o777;
@@ -118,7 +116,7 @@ bool CheckBits()
 			return;
 		}
 
-		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool CheckBits()");
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool CheckBits()");
 		if (!Invoker.IsValid())
 		{
 			return;
@@ -147,7 +145,7 @@ bool CheckBits()
 				TEXT("SDK int8 type test should register the int8 global property")));
 		}
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKTypeInt8", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKTypeInt8", R"(
 int ReadInt8RoundTrip()
 {
 	gvar = RetInt8(1);
@@ -160,7 +158,7 @@ int ReadInt8RoundTrip()
 			return;
 		}
 
-		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int ReadInt8RoundTrip()");
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int ReadInt8RoundTrip()");
 		if (!Invoker.IsValid())
 		{
 			return;
@@ -179,14 +177,14 @@ int ReadInt8RoundTrip()
 			? "double CheckFloat() { double a = 1e5; double b = 1.0e5; return (a == b) ? 3.14 : 0.0; }"
 			: "double CheckFloat() { float a = 1e5; float b = 1.0e5; return (a == b) ? 3.14f : 0.0f; }";
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKTypeFloat", Source);
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKTypeFloat", Source);
 		if (!Module.IsValid())
 		{
 			TestRunner->AddInfo(Engine.GetMessagesText());
 			return;
 		}
 
-		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "double CheckFloat()");
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "double CheckFloat()");
 		if (!Invoker.IsValid())
 		{
 			return;
@@ -197,7 +195,10 @@ int ReadInt8RoundTrip()
 
 	TEST_METHOD(TypedefBytecode)
 	{
-		FNativeMessageCollector Messages;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
+		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* SaveEngine = CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(SaveEngine, TEXT("SDK typedef bytecode test should create the save engine")));
 
@@ -230,13 +231,13 @@ int ReturnTypedefRoundTrip()
 			return;
 		}
 
-		FSDKBytecodeStream Bytecode;
+		AngelscriptSDKTestSupport::FSDKBytecodeStream Bytecode;
 		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), SaveModule->SaveByteCode(&Bytecode),
 			TEXT("SDK typedef bytecode test should save bytecode successfully")));
 
 		Bytecode.Restart();
 
-		FNativeMessageCollector LoadMessages;
+		AngelscriptNativeTestSupport::FNativeMessageCollector LoadMessages;
 		asIScriptEngine* LoadEngine = CreateNativeEngine(&LoadMessages);
 		ASSERT_THAT(IsNotNull(LoadEngine, TEXT("SDK typedef bytecode test should create the load engine")));
 
@@ -299,7 +300,7 @@ int ReturnTypedefRoundTrip()
 				TEXT("SDK enum type test should register ENUM1")));
 		}
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKTypeEnum", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKTypeEnum", R"(
 enum LocalEnum
 {
 	LocalValue = 1
@@ -317,7 +318,7 @@ int ReturnLocalEnumValue()
 			return;
 		}
 
-		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int ReturnLocalEnumValue()");
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int ReturnLocalEnumValue()");
 		if (!Invoker.IsValid())
 		{
 			return;
@@ -331,10 +332,13 @@ int ReturnLocalEnumValue()
 
 	TEST_METHOD(Auto)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK auto type test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKTypeAuto", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKTypeAuto", R"(
 namespace A
 {
 	class X
@@ -366,7 +370,7 @@ int CreateAutoValue()
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK integer-width type test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKTypeIntegerWidths", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKTypeIntegerWidths", R"(
 bool CheckIntegerWidths()
 {
 	int8 i8 = 127;
@@ -395,7 +399,7 @@ bool CheckIntegerWidths()
 			return;
 		}
 
-		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool CheckIntegerWidths()");
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool CheckIntegerWidths()");
 		if (!Invoker.IsValid())
 		{
 			return;
@@ -409,7 +413,7 @@ bool CheckIntegerWidths()
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK integer-overflow type test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKTypeIntegerOverflow", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKTypeIntegerOverflow", R"(
 bool CheckIntegerOverflow()
 {
 	uint8 u8 = 255; u8 += 1;
@@ -433,7 +437,7 @@ bool CheckIntegerOverflow()
 			return;
 		}
 
-		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool CheckIntegerOverflow()");
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool CheckIntegerOverflow()");
 		if (!Invoker.IsValid())
 		{
 			return;
@@ -447,7 +451,7 @@ bool CheckIntegerOverflow()
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK enum-underlying type test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKTypeEnumUnderlying", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKTypeEnumUnderlying", R"(
 enum EFlags
 {
 	None = 0,
@@ -473,7 +477,7 @@ bool CheckEnumUnderlyingValues()
 			return;
 		}
 
-		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool CheckEnumUnderlyingValues()");
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool CheckEnumUnderlyingValues()");
 		if (!Invoker.IsValid())
 		{
 			return;

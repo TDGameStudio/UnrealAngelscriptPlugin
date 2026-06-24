@@ -10,64 +10,63 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_Angelscript_AngelscriptControlFlowTests_Private
-{
-	bool ContainsWarningDiagnostic(const FAngelscriptEngine& Engine, const FString& Needle)
-	{
-		for (const TPair<FString, FAngelscriptEngine::FDiagnostics>& Pair : Engine.Diagnostics)
-		{
-			for (const FAngelscriptEngine::FDiagnostic& Diagnostic : Pair.Value.Diagnostics)
-			{
-				if (!Diagnostic.bIsError && Diagnostic.Message.Contains(Needle))
-				{
-					return true;
-				}
-			}
-		}
-
-		return false;
-	}
-
-	const FAngelscriptCompileTraceDiagnosticSummary* FindErrorDiagnostic(
-		const FAngelscriptCompileTraceSummary& Summary,
-		const FString& Needle)
-	{
-		for (const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
-		{
-			if (Diagnostic.bIsError && Diagnostic.Message.Contains(Needle))
-			{
-				return &Diagnostic;
-			}
-		}
-
-		return nullptr;
-	}
-
-	const FAngelscriptCompileTraceDiagnosticSummary* FindWarningDiagnostic(
-		const FAngelscriptCompileTraceSummary& Summary,
-		const FString& MessageFragment,
-		const FString& DetailFragment)
-	{
-		for (const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
-		{
-			if (!Diagnostic.bIsError
-				&& Diagnostic.Message.Contains(MessageFragment)
-				&& Diagnostic.Message.Contains(DetailFragment))
-			{
-				return &Diagnostic;
-			}
-		}
-
-		return nullptr;
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(
 	FAngelscriptControlFlowTests,
 	"Angelscript.TestModule.Functional.ControlFlow",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static bool ContainsWarningDiagnostic(const FAngelscriptEngine& Engine, const FString& Needle)
+{
+	for (const TPair<FString, FAngelscriptEngine::FDiagnostics>& Pair : Engine.Diagnostics)
+	{
+		for (const FAngelscriptEngine::FDiagnostic& Diagnostic : Pair.Value.Diagnostics)
+		{
+			if (!Diagnostic.bIsError && Diagnostic.Message.Contains(Needle))
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+static const FAngelscriptCompileTraceDiagnosticSummary* FindErrorDiagnostic(
+	const FAngelscriptCompileTraceSummary& Summary,
+	const FString& Needle)
+{
+	for (const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
+	{
+		if (Diagnostic.bIsError && Diagnostic.Message.Contains(Needle))
+		{
+			return &Diagnostic;
+		}
+	}
+
+	return nullptr;
+}
+
+static const FAngelscriptCompileTraceDiagnosticSummary* FindWarningDiagnostic(
+	const FAngelscriptCompileTraceSummary& Summary,
+	const FString& MessageFragment,
+	const FString& DetailFragment)
+{
+	for (const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
+	{
+		if (!Diagnostic.bIsError
+			&& Diagnostic.Message.Contains(MessageFragment)
+			&& Diagnostic.Message.Contains(DetailFragment))
+		{
+			return &Diagnostic;
+		}
+	}
+
+	return nullptr;
+}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE_FULL();
@@ -173,8 +172,7 @@ TEST_CLASS_WITH_FLAGS(
 
 	TEST_METHOD(InvalidBreakContinueDiagnostics)
 	{
-		using namespace AngelscriptTest_Angelscript_AngelscriptControlFlowTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		ON_SCOPE_EXIT
@@ -246,8 +244,7 @@ TEST_CLASS_WITH_FLAGS(
 
 	TEST_METHOD(NotInitialized)
 	{
-		using namespace AngelscriptTest_Angelscript_AngelscriptControlFlowTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASControlFlowNotInitialized"),
@@ -262,8 +259,7 @@ TEST_CLASS_WITH_FLAGS(
 
 	TEST_METHOD(NotInitialized_BranchDefiniteAssignmentMatrix)
 	{
-		using namespace AngelscriptTest_Angelscript_AngelscriptControlFlowTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 	const FName PartialModuleName(TEXT("ASControlFlowNotInitializedBranchPartial"));

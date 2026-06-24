@@ -7,26 +7,45 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITPrimitiveConversionTests_Private
+TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITPrimitiveConversionTests,
+	"Angelscript.TestModule.StaticJIT.PrimitiveConversions",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	bool VerifyCurrentEngine(
-		FAutomationTestBase& Test,
-		const TCHAR* CaseLabel,
-		FAngelscriptEngine& Engine)
+private:
+	static bool VerifyCurrentEngine(FAutomationTestBase& Test, const TCHAR* CaseLabel, FAngelscriptEngine& Engine);
+	static bool RunPrimitiveBitCastRoundTrip(FAutomationTestBase& Test);
+	static bool RunPrimitiveZeroExtendParity(FAutomationTestBase& Test);
+	static bool RunPrimitiveNumericConversionParity(FAutomationTestBase& Test);
+
+public:
+	TEST_METHOD(BitCastFloatRoundTrip)
 	{
-		return Test.TestTrue(
-			*FString::Printf(TEXT("%s should run with the current Angelscript engine installed"), CaseLabel),
-			FAngelscriptEngine::TryGetCurrentEngine() == &Engine);
+		ASSERT_THAT(IsTrue(RunPrimitiveBitCastRoundTrip(*TestRunner)));
 	}
+
+	TEST_METHOD(ZeroExtendParity)
+	{
+		ASSERT_THAT(IsTrue(RunPrimitiveZeroExtendParity(*TestRunner)));
+	}
+
+	TEST_METHOD(BitCastAndNumericParity)
+	{
+		ASSERT_THAT(IsTrue(RunPrimitiveNumericConversionParity(*TestRunner)));
+	}
+};
+
+bool FAngelscriptStaticJITPrimitiveConversionTests::VerifyCurrentEngine(
+	FAutomationTestBase& Test,
+	const TCHAR* CaseLabel,
+	FAngelscriptEngine& Engine)
+{
+	return Test.TestTrue(
+		*FString::Printf(TEXT("%s should run with the current Angelscript engine installed"), CaseLabel),
+		FAngelscriptEngine::TryGetCurrentEngine() == &Engine);
 }
 
-
-namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITPrimitiveConversionTests_Private
+bool FAngelscriptStaticJITPrimitiveConversionTests::RunPrimitiveBitCastRoundTrip(FAutomationTestBase& Test)
 {
-
-bool RunPrimitiveBitCastRoundTrip(FAutomationTestBase& Test)
-{
-	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITPrimitiveConversionTests_Private;
 	bool bPassed = false;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 	{
@@ -86,9 +105,8 @@ bool RunPrimitiveBitCastRoundTrip(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunPrimitiveZeroExtendParity(FAutomationTestBase& Test)
+bool FAngelscriptStaticJITPrimitiveConversionTests::RunPrimitiveZeroExtendParity(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITPrimitiveConversionTests_Private;
 	bool bPassed = false;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 	{
@@ -140,9 +158,8 @@ bool RunPrimitiveZeroExtendParity(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunPrimitiveNumericConversionParity(FAutomationTestBase& Test)
+bool FAngelscriptStaticJITPrimitiveConversionTests::RunPrimitiveNumericConversionParity(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITPrimitiveConversionTests_Private;
 	bool bPassed = false;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 	{
@@ -199,30 +216,5 @@ bool RunPrimitiveNumericConversionParity(FAutomationTestBase& Test)
 	}
 	return bPassed;
 }
-
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITPrimitiveConversionTests,
-	"Angelscript.TestModule.StaticJIT.PrimitiveConversions",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
-	TEST_METHOD(BitCastFloatRoundTrip)
-	{
-		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITPrimitiveConversionTests_Private;
-		ASSERT_THAT(IsTrue(RunPrimitiveBitCastRoundTrip(*TestRunner)));
-	}
-
-	TEST_METHOD(ZeroExtendParity)
-	{
-		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITPrimitiveConversionTests_Private;
-		ASSERT_THAT(IsTrue(RunPrimitiveZeroExtendParity(*TestRunner)));
-	}
-
-	TEST_METHOD(BitCastAndNumericParity)
-	{
-		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITPrimitiveConversionTests_Private;
-		ASSERT_THAT(IsTrue(RunPrimitiveNumericConversionParity(*TestRunner)));
-	}
-};
 
 #endif

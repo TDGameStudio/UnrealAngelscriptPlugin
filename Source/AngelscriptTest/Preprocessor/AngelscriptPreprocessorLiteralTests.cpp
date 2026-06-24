@@ -20,8 +20,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace PreprocessorTestHelpers;
-
 // ============================================================================
 // Test class
 // ============================================================================
@@ -36,6 +34,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorLiteralTest,
 	// ========================================================================
 	TEST_METHOD(NameLiteralRoundTrip)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -109,6 +109,8 @@ int Entry()
 	// ========================================================================
 	TEST_METHOD(PrefixedLiteralsRequireTokenBoundary)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -190,6 +192,8 @@ int Entry()
 	// ========================================================================
 	TEST_METHOD(LiteralAsset_GenerateGetterAndPostInitRegistration)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -239,6 +243,8 @@ int Entry()
 	// ========================================================================
 	TEST_METHOD(LiteralAsset_SkipStringAndCommentDecoys)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -360,6 +366,8 @@ int Entry()
 	// ========================================================================
 	TEST_METHOD(FormatStringExpansion)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 

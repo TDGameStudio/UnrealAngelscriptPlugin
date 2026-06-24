@@ -12,19 +12,23 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_Angelscript_AngelscriptExecutionLifecycleTests_Private
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptExecutionLifecycleTests,
+	"Angelscript.TestModule.Functional.Execute.Discard",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	static const FName ExecutionDiscardLifecycleModuleName(TEXT("ASExecutionDiscardCleansTypeRegistries"));
-	static const FString ExecutionDiscardLifecycleFilename(TEXT("ASExecutionDiscardCleansTypeRegistries.as"));
-	static const FName ExecutionDiscardLifecycleClassName(TEXT("ADiscardCarrier"));
-	static const FName ExecutionDiscardLifecycleEnumName(TEXT("EDiscardState"));
-	static const FName ExecutionDiscardLifecycleDelegateName(TEXT("FDiscardDelegate"));
-	static const FName ExecutionDiscardLifecycleGetValueName(TEXT("GetValue"));
-	static const FName ExecutionDiscardLifecycleServerFunctionName(TEXT("Server_SetValue"));
-	static const FName ExecutionDiscardLifecycleValidateFunctionName(TEXT("Server_SetValue_Validate"));
-	static const FString ExecutionDiscardLifecycleRunDecl(TEXT("int Run()"));
+private:
+	inline static const FName ExecutionDiscardLifecycleModuleName = FName(TEXT("ASExecutionDiscardCleansTypeRegistries"));
+	inline static const FString ExecutionDiscardLifecycleFilename = FString(TEXT("ASExecutionDiscardCleansTypeRegistries.as"));
+	inline static const FName ExecutionDiscardLifecycleClassName = FName(TEXT("ADiscardCarrier"));
+	inline static const FName ExecutionDiscardLifecycleEnumName = FName(TEXT("EDiscardState"));
+	inline static const FName ExecutionDiscardLifecycleDelegateName = FName(TEXT("FDiscardDelegate"));
+	inline static const FName ExecutionDiscardLifecycleGetValueName = FName(TEXT("GetValue"));
+	inline static const FName ExecutionDiscardLifecycleServerFunctionName = FName(TEXT("Server_SetValue"));
+	inline static const FName ExecutionDiscardLifecycleValidateFunctionName = FName(TEXT("Server_SetValue_Validate"));
+	inline static const FString ExecutionDiscardLifecycleRunDecl = FString(TEXT("int Run()"));
 
-	static const FString ExecutionDiscardLifecycleScriptV1 = TEXT(R"AS(
+	inline static const FString ExecutionDiscardLifecycleScriptV1 = FString(TEXT(R"AS(
 UENUM()
 enum class EDiscardState : uint8
 {
@@ -64,9 +68,9 @@ int Run()
 {
 	return int(EDiscardState::Ready) + 41;
 }
-)AS");
+)AS"));
 
-	static const FString ExecutionDiscardLifecycleScriptV2 = TEXT(R"AS(
+	inline static const FString ExecutionDiscardLifecycleScriptV2 = FString(TEXT(R"AS(
 UENUM()
 enum class EDiscardState : uint8
 {
@@ -106,7 +110,7 @@ int Run()
 {
 	return int(EDiscardState::Ready) + 82;
 }
-)AS");
+)AS"));
 
 	struct FExecutionDiscardLifecycleState
 	{
@@ -121,7 +125,7 @@ int Run()
 		int32 RunResult = 0;
 	};
 
-	bool CompileAndCaptureDiscardLifecycleState(
+	static bool CompileAndCaptureDiscardLifecycleState(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		const FString& ScriptSource,
@@ -201,86 +205,77 @@ int Run()
 			OutState.RunResult,
 			ExpectedRunResult);
 	}
-}
 
-
-namespace AngelscriptTest_Angelscript_AngelscriptExecutionLifecycleTests_Private
-{
-bool RunDiscardCleansTypeRegistries(FAutomationTestBase& Test)
-{
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	ON_SCOPE_EXIT
+	static bool RunDiscardCleansTypeRegistries(FAutomationTestBase& Test)
 	{
-		Engine.DiscardModule(*ExecutionDiscardLifecycleModuleName.ToString());
-		ASTEST_RESET_ENGINE(Engine);
-	};
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ExecutionDiscardLifecycleModuleName.ToString());
+			ASTEST_RESET_ENGINE(Engine);
+		};
 
-	FExecutionDiscardLifecycleState InitialState;
-	if (!CompileAndCaptureDiscardLifecycleState(Test, Engine, ExecutionDiscardLifecycleScriptV1, 42, InitialState))
-	{
-		return false;
+		FExecutionDiscardLifecycleState InitialState;
+		if (!CompileAndCaptureDiscardLifecycleState(Test, Engine, ExecutionDiscardLifecycleScriptV1, 42, InitialState))
+		{
+			return false;
+		}
+
+		UASClass* OriginalClass = InitialState.GeneratedClass;
+		UASFunction* OriginalGetValueFunction = InitialState.GetValueFunction;
+		UASFunction* OriginalServerFunction = InitialState.ServerFunction;
+		UFunction* OriginalValidateFunction = InitialState.ValidateFunction;
+
+		if (!Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should discard the compiled module"), Engine.DiscardModule(*ExecutionDiscardLifecycleModuleName.ToString())))
+		{
+			return false;
+		}
+
+		if (!Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should remove the module record after discard"), !Engine.GetModuleByModuleName(ExecutionDiscardLifecycleModuleName.ToString()).IsValid())
+			|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should remove the class registry entry after discard"), !Engine.GetClass(ExecutionDiscardLifecycleClassName.ToString()).IsValid())
+			|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should remove the enum registry entry after discard"), !Engine.GetEnum(ExecutionDiscardLifecycleEnumName.ToString()).IsValid())
+			|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should remove the delegate registry entry after discard"), !Engine.GetDelegate(ExecutionDiscardLifecycleDelegateName.ToString()).IsValid())
+			|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should clear ScriptTypePtr on the discarded class"), OriginalClass->ScriptTypePtr == nullptr)
+			|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should clear ConstructFunction on the discarded class"), OriginalClass->ConstructFunction == nullptr)
+			|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should clear DefaultsFunction on the discarded class"), OriginalClass->DefaultsFunction == nullptr)
+			|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should clear ScriptFunction on the discarded GetValue function"), OriginalGetValueFunction->ScriptFunction == nullptr)
+			|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should clear ScriptFunction on the discarded RPC function"), OriginalServerFunction->ScriptFunction == nullptr)
+			|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should clear ValidateFunction on the discarded RPC function"), OriginalServerFunction->ValidateFunction == nullptr)
+			|| !Test.TestTrue(
+				TEXT("Execution.Discard.CleansTypeRegistries should clear source metadata on the discarded generated function"),
+				OriginalGetValueFunction->GetSourceFilePath().IsEmpty() || OriginalGetValueFunction->GetSourceLineNumber() == -1)
+			|| !Test.TestFalse(TEXT("Execution.Discard.CleansTypeRegistries should fail when discarding the same module twice"), Engine.DiscardModule(*ExecutionDiscardLifecycleModuleName.ToString())))
+		{
+			return false;
+		}
+
+		FExecutionDiscardLifecycleState ReloadedState;
+		if (!CompileAndCaptureDiscardLifecycleState(Test, Engine, ExecutionDiscardLifecycleScriptV2, 84, ReloadedState))
+		{
+			return false;
+		}
+
+		if (!Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should replace the generated class object on recompile"), ReloadedState.GeneratedClass != OriginalClass)
+			|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should replace the generated GetValue function object on recompile"), ReloadedState.GetValueFunction != OriginalGetValueFunction)
+			|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should replace the generated RPC function object on recompile"), ReloadedState.ServerFunction != OriginalServerFunction)
+			|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should replace the generated _Validate function object on recompile"), ReloadedState.ValidateFunction != OriginalValidateFunction)
+			|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should bind a new live script type after recompile"), ReloadedState.GeneratedClass->ScriptTypePtr != nullptr)
+			|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should bind a new construct function after recompile"), ReloadedState.GeneratedClass->ConstructFunction != nullptr)
+			|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should bind a new defaults function after recompile"), ReloadedState.GeneratedClass->DefaultsFunction != nullptr)
+			|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should rebind the RPC validate cache after recompile"), ReloadedState.ServerFunction->ValidateFunction == ReloadedState.ValidateFunction))
+		{
+			return false;
+		}
+
+		}
+		return true;
 	}
 
-	UASClass* OriginalClass = InitialState.GeneratedClass;
-	UASFunction* OriginalGetValueFunction = InitialState.GetValueFunction;
-	UASFunction* OriginalServerFunction = InitialState.ServerFunction;
-	UFunction* OriginalValidateFunction = InitialState.ValidateFunction;
-
-	if (!Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should discard the compiled module"), Engine.DiscardModule(*ExecutionDiscardLifecycleModuleName.ToString())))
-	{
-		return false;
-	}
-
-	if (!Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should remove the module record after discard"), !Engine.GetModuleByModuleName(ExecutionDiscardLifecycleModuleName.ToString()).IsValid())
-		|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should remove the class registry entry after discard"), !Engine.GetClass(ExecutionDiscardLifecycleClassName.ToString()).IsValid())
-		|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should remove the enum registry entry after discard"), !Engine.GetEnum(ExecutionDiscardLifecycleEnumName.ToString()).IsValid())
-		|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should remove the delegate registry entry after discard"), !Engine.GetDelegate(ExecutionDiscardLifecycleDelegateName.ToString()).IsValid())
-		|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should clear ScriptTypePtr on the discarded class"), OriginalClass->ScriptTypePtr == nullptr)
-		|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should clear ConstructFunction on the discarded class"), OriginalClass->ConstructFunction == nullptr)
-		|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should clear DefaultsFunction on the discarded class"), OriginalClass->DefaultsFunction == nullptr)
-		|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should clear ScriptFunction on the discarded GetValue function"), OriginalGetValueFunction->ScriptFunction == nullptr)
-		|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should clear ScriptFunction on the discarded RPC function"), OriginalServerFunction->ScriptFunction == nullptr)
-		|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should clear ValidateFunction on the discarded RPC function"), OriginalServerFunction->ValidateFunction == nullptr)
-		|| !Test.TestTrue(
-			TEXT("Execution.Discard.CleansTypeRegistries should clear source metadata on the discarded generated function"),
-			OriginalGetValueFunction->GetSourceFilePath().IsEmpty() || OriginalGetValueFunction->GetSourceLineNumber() == -1)
-		|| !Test.TestFalse(TEXT("Execution.Discard.CleansTypeRegistries should fail when discarding the same module twice"), Engine.DiscardModule(*ExecutionDiscardLifecycleModuleName.ToString())))
-	{
-		return false;
-	}
-
-	FExecutionDiscardLifecycleState ReloadedState;
-	if (!CompileAndCaptureDiscardLifecycleState(Test, Engine, ExecutionDiscardLifecycleScriptV2, 84, ReloadedState))
-	{
-		return false;
-	}
-
-	if (!Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should replace the generated class object on recompile"), ReloadedState.GeneratedClass != OriginalClass)
-		|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should replace the generated GetValue function object on recompile"), ReloadedState.GetValueFunction != OriginalGetValueFunction)
-		|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should replace the generated RPC function object on recompile"), ReloadedState.ServerFunction != OriginalServerFunction)
-		|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should replace the generated _Validate function object on recompile"), ReloadedState.ValidateFunction != OriginalValidateFunction)
-		|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should bind a new live script type after recompile"), ReloadedState.GeneratedClass->ScriptTypePtr != nullptr)
-		|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should bind a new construct function after recompile"), ReloadedState.GeneratedClass->ConstructFunction != nullptr)
-		|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should bind a new defaults function after recompile"), ReloadedState.GeneratedClass->DefaultsFunction != nullptr)
-		|| !Test.TestTrue(TEXT("Execution.Discard.CleansTypeRegistries should rebind the RPC validate cache after recompile"), ReloadedState.ServerFunction->ValidateFunction == ReloadedState.ValidateFunction))
-	{
-		return false;
-	}
-
-	}
-	return true;
-}
-}
-
-TEST_CLASS_WITH_FLAGS(
-	FAngelscriptExecutionLifecycleTests,
-	"Angelscript.TestModule.Functional.Execute.Discard",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(CleansTypeRegistries)
 	{
-		ASSERT_THAT(IsTrue(AngelscriptTest_Angelscript_AngelscriptExecutionLifecycleTests_Private::RunDiscardCleansTypeRegistries(*TestRunner)));
+		ASSERT_THAT(IsTrue(RunDiscardCleansTypeRegistries(*TestRunner)));
 	}
 };
 

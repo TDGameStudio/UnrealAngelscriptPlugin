@@ -8,12 +8,15 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Private
+TEST_CLASS_WITH_FLAGS(FAngelscriptPrecompiledDataArchiveTests,
+	"Angelscript.TestModule.StaticJIT.PrecompiledData",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	constexpr TCHAR SourceFilename[] = TEXT("PrecompiledDataBuildIdentifierValidation.as");
-	const FName ModuleName(TEXT("ASPrecompiledDataBuildIdentifierValidation"));
+private:
+	inline static constexpr TCHAR SourceFilename[] = TEXT("PrecompiledDataBuildIdentifierValidation.as");
+	inline static const FName ModuleName = FName(TEXT("ASPrecompiledDataBuildIdentifierValidation"));
 
-	FString MakeScriptSource()
+	static FString MakeScriptSource()
 	{
 		return
 			TEXT("int Add(int Left, int Right)\n")
@@ -27,7 +30,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Priva
 			TEXT("}\n");
 	}
 
-	FString DescribeSavedModuleNames(const FAngelscriptPrecompiledData& Data)
+	static FString DescribeSavedModuleNames(const FAngelscriptPrecompiledData& Data)
 	{
 		TArray<FString> ModuleNames;
 		Data.Modules.GetKeys(ModuleNames);
@@ -35,12 +38,12 @@ namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Priva
 		return FString::Join(ModuleNames, TEXT(", "));
 	}
 
-	FString GuidToString(const FGuid& Guid)
+	static FString GuidToString(const FGuid& Guid)
 	{
 		return Guid.ToString(EGuidFormats::DigitsWithHyphensLower);
 	}
 
-	int32 MakeInvalidBuildIdentifier(int32 CurrentBuildIdentifier)
+	static int32 MakeInvalidBuildIdentifier(int32 CurrentBuildIdentifier)
 	{
 		if (CurrentBuildIdentifier == -1)
 		{
@@ -50,7 +53,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Priva
 		return CurrentBuildIdentifier + 100;
 	}
 
-	bool ValidateRoundtripSnapshot(
+	static bool ValidateRoundtripSnapshot(
 		FAutomationTestBase& Test,
 		const FAngelscriptPrecompiledData& Snapshot,
 		FAngelscriptPrecompiledData& Loaded,
@@ -83,7 +86,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Priva
 		return bGuidMatches && bBuildIdentifierMatches && bModuleCountMatches && bModuleKeyExists && bStillValid;
 	}
 
-	bool SimulateEngineStartupDiscard(
+	static bool SimulateEngineStartupDiscard(
 		FAutomationTestBase& Test,
 		TUniquePtr<FAngelscriptPrecompiledData>& PrecompiledData)
 	{
@@ -105,7 +108,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Priva
 			PrecompiledData.Get());
 	}
 
-	asIScriptModule* FindCompiledModule(FAutomationTestBase& Test, FAngelscriptEngine& Engine, FName InModuleName)
+	static asIScriptModule* FindCompiledModule(FAutomationTestBase& Test, FAngelscriptEngine& Engine, FName InModuleName)
 	{
 		TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModuleByModuleName(InModuleName.ToString());
 		if (!ModuleDesc.IsValid() || ModuleDesc->ScriptModule == nullptr)
@@ -117,7 +120,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Priva
 		return ModuleDesc->ScriptModule;
 	}
 
-	void* FindGlobalVariableAddress(FAutomationTestBase& Test, asIScriptModule* Module, const char* GlobalName)
+	static void* FindGlobalVariableAddress(FAutomationTestBase& Test, asIScriptModule* Module, const char* GlobalName)
 	{
 		if (Module == nullptr)
 		{
@@ -140,7 +143,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Priva
 		return nullptr;
 	}
 
-	bool CompileGlobalReferenceFixture(FAutomationTestBase& Test, FAngelscriptEngine& Engine, FName InModuleName, const TCHAR* InSourceFilename)
+	static bool CompileGlobalReferenceFixture(FAutomationTestBase& Test, FAngelscriptEngine& Engine, FName InModuleName, const TCHAR* InSourceFilename)
 	{
 		const FString ScriptSource =
 			TEXT("const int ReferencedGlobal = 10;\n")
@@ -157,15 +160,31 @@ namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Priva
 				InSourceFilename,
 				ScriptSource));
 	}
-}
 
+	static bool RunBuildIdentifierValidation(FAutomationTestBase& Test);
+	static bool RunGlobalReferenceNameReuse(FAutomationTestBase& Test);
+	static bool RunRepeatedLoadClearsRuntimeCache(FAutomationTestBase& Test);
 
-namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Private
+public:
+	TEST_METHOD(BuildIdentifierValidation)
+	{
+		ASSERT_THAT(IsTrue(RunBuildIdentifierValidation(*TestRunner)));
+	}
+
+	TEST_METHOD(GlobalReferenceNameReuse)
+	{
+		ASSERT_THAT(IsTrue(RunGlobalReferenceNameReuse(*TestRunner)));
+	}
+
+	TEST_METHOD(RepeatedLoadClearsRuntimeCache)
+	{
+		ASSERT_THAT(IsTrue(RunRepeatedLoadClearsRuntimeCache(*TestRunner)));
+	}
+};
+
+bool FAngelscriptPrecompiledDataArchiveTests::RunBuildIdentifierValidation(FAutomationTestBase& Test)
 {
 
-bool RunBuildIdentifierValidation(FAutomationTestBase& Test)
-{
-	using namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Private;
 	bool bPassed = false;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 	{
@@ -265,10 +284,8 @@ bool RunBuildIdentifierValidation(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunGlobalReferenceNameReuse(FAutomationTestBase& Test)
+bool FAngelscriptPrecompiledDataArchiveTests::RunGlobalReferenceNameReuse(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Private;
-
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 	FAngelscriptEngineScope EngineScope(Engine);
 	ON_SCOPE_EXIT
@@ -313,10 +330,8 @@ bool RunGlobalReferenceNameReuse(FAutomationTestBase& Test)
 	return true;
 }
 
-bool RunRepeatedLoadClearsRuntimeCache(FAutomationTestBase& Test)
+bool FAngelscriptPrecompiledDataArchiveTests::RunRepeatedLoadClearsRuntimeCache(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Private;
-
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 	FAngelscriptEngineScope EngineScope(Engine);
 	ON_SCOPE_EXIT
@@ -389,30 +404,5 @@ bool RunRepeatedLoadClearsRuntimeCache(FAutomationTestBase& Test)
 		SecondResolvedAddress == FirstResolvedAddress);
 	return true;
 }
-
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptPrecompiledDataArchiveTests,
-	"Angelscript.TestModule.StaticJIT.PrecompiledData",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
-	TEST_METHOD(BuildIdentifierValidation)
-	{
-		using namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Private;
-		ASSERT_THAT(IsTrue(RunBuildIdentifierValidation(*TestRunner)));
-	}
-
-	TEST_METHOD(GlobalReferenceNameReuse)
-	{
-		using namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Private;
-		ASSERT_THAT(IsTrue(RunGlobalReferenceNameReuse(*TestRunner)));
-	}
-
-	TEST_METHOD(RepeatedLoadClearsRuntimeCache)
-	{
-		using namespace AngelscriptTest_StaticJIT_AngelscriptPrecompiledDataArchiveTests_Private;
-		ASSERT_THAT(IsTrue(RunRepeatedLoadClearsRuntimeCache(*TestRunner)));
-	}
-};
 
 #endif

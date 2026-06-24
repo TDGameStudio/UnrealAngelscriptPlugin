@@ -22,8 +22,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace PreprocessorTestHelpers;
-
 // ============================================================================
 // Test class
 // ============================================================================
@@ -38,6 +36,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorImportTest,
 	// ========================================================================
 	TEST_METHOD(CircularDependencyReportsChain)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -95,6 +95,8 @@ int FromB()
 	// ========================================================================
 	TEST_METHOD(AutomaticModeManualImportCompatibility)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -173,6 +175,8 @@ int UseShared()
 	// ========================================================================
 	TEST_METHOD(MissingSemicolonReportsSyntax)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -226,6 +230,8 @@ int UseShared()
 	// ========================================================================
 	TEST_METHOD(TrailingBlockCommentDoesNotPolluteModuleName)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -313,6 +319,8 @@ int Entry()
 	// ========================================================================
 	TEST_METHOD(DuplicateStatementsDeduplicateDependency)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -407,6 +415,8 @@ int Entry()
 	// ========================================================================
 	TEST_METHOD(TopologicalOrderRespectsDependencyChain)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -489,6 +499,8 @@ int Entry()
 	// ========================================================================
 	TEST_METHOD(AutomaticWarningRespectsConfig)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -595,6 +607,8 @@ int Entry()
 	// ========================================================================
 	TEST_METHOD(ImportInsideConditionalBranch)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -707,6 +721,8 @@ int Entry()
 	// ========================================================================
 	TEST_METHOD(WideImportGraph)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 

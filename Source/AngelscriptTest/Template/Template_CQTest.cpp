@@ -196,8 +196,8 @@ FString FormatValue()
 			TEXT("Concatenation produces Hello World"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				FNoDiscardAsserter Assert(T);
-				return Assert.AreEqual(TEXT("Hello World"), V, TEXT("greeting"));
+				FNoDiscardAsserter LocalAssert(T);
+				return LocalAssert.AreEqual(TEXT("Hello World"), V, TEXT("greeting"));
 			});
 
 		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
@@ -205,8 +205,8 @@ FString FormatValue()
 			TEXT("ToUpper transforms to TEMPLATE"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				FNoDiscardAsserter Assert(T);
-				return Assert.AreEqual(TEXT("TEMPLATE"), V, TEXT("upper"));
+				FNoDiscardAsserter LocalAssert(T);
+				return LocalAssert.AreEqual(TEXT("TEMPLATE"), V, TEXT("upper"));
 			});
 
 		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
@@ -214,8 +214,8 @@ FString FormatValue()
 			TEXT("FString::Format produces result=42"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				FNoDiscardAsserter Assert(T);
-				return Assert.AreEqual(TEXT("result=42"), V, TEXT("format"));
+				FNoDiscardAsserter LocalAssert(T);
+				return LocalAssert.AreEqual(TEXT("result=42"), V, TEXT("format"));
 			});
 	}
 
@@ -392,8 +392,8 @@ FString GetMessage() { return "success"; }
 			TEXT("Message is 'success'"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				FNoDiscardAsserter Assert(T);
-				return Assert.AreEqual(TEXT("success"), V, TEXT("message"));
+				FNoDiscardAsserter LocalAssert(T);
+				return LocalAssert.AreEqual(TEXT("success"), V, TEXT("message"));
 			});
 	}
 };

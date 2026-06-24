@@ -5,12 +5,15 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITGeneratedOutputTests_Private
+TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITGeneratedOutputTests,
+	"Angelscript.TestModule.StaticJIT.GeneratedOutput",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	constexpr TCHAR SourceFilename[] = TEXT("StaticJITGeneratedOutputDebugMetadata.as");
-	const FName ModuleName(TEXT("ASStaticJITGeneratedOutputDebugMetadata"));
+private:
+	inline static constexpr TCHAR SourceFilename[] = TEXT("StaticJITGeneratedOutputDebugMetadata.as");
+	inline static const FName ModuleName = FName(TEXT("ASStaticJITGeneratedOutputDebugMetadata"));
 
-	FString MakeScriptSource()
+	static FString MakeScriptSource()
 	{
 		return
 			TEXT("int AddOne(int Value)\n")
@@ -31,7 +34,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITGeneratedOutputTests_Pri
 			TEXT("}\n");
 	}
 
-	int32 FindScriptLineNumberContaining(const FString& ScriptSource, const FString& Needle)
+	static int32 FindScriptLineNumberContaining(const FString& ScriptSource, const FString& Needle)
 	{
 		TArray<FString> Lines;
 		ScriptSource.ParseIntoArrayLines(Lines, false);
@@ -46,7 +49,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITGeneratedOutputTests_Pri
 		return INDEX_NONE;
 	}
 
-	TArray<int32> ExtractGeneratedLineMarkers(const FString& GeneratedSource)
+	static TArray<int32> ExtractGeneratedLineMarkers(const FString& GeneratedSource)
 	{
 		TArray<int32> LineMarkers;
 		const FString Needle = TEXT("SCRIPT_DEBUG_CALLSTACK_LINE(");
@@ -74,7 +77,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITGeneratedOutputTests_Pri
 		return LineMarkers;
 	}
 
-	FString JoinLineMarkers(const TArray<int32>& LineMarkers)
+	static FString JoinLineMarkers(const TArray<int32>& LineMarkers)
 	{
 		TArray<FString> MarkerStrings;
 		MarkerStrings.Reserve(LineMarkers.Num());
@@ -85,15 +88,19 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITGeneratedOutputTests_Pri
 
 		return FString::Join(MarkerStrings, TEXT(", "));
 	}
-}
 
+	static bool RunGeneratedOutputDebugMetadataHooks(FAutomationTestBase& Test);
 
-namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITGeneratedOutputTests_Private
+public:
+	TEST_METHOD(DebugMetadataHooks)
+	{
+		ASSERT_THAT(IsTrue(RunGeneratedOutputDebugMetadataHooks(*TestRunner)));
+	}
+};
+
+bool FAngelscriptStaticJITGeneratedOutputTests::RunGeneratedOutputDebugMetadataHooks(FAutomationTestBase& Test)
 {
 
-bool RunGeneratedOutputDebugMetadataHooks(FAutomationTestBase& Test)
-{
-	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITGeneratedOutputTests_Private;
 	const FString ScriptSource = MakeScriptSource();
 	const int32 FirstCallLine = FindScriptLineNumberContaining(ScriptSource, TEXT("AddOne(1);"));
 	const int32 SecondCallLine = FindScriptLineNumberContaining(ScriptSource, TEXT("AddTwo(First);"));
@@ -179,18 +186,5 @@ bool RunGeneratedOutputDebugMetadataHooks(FAutomationTestBase& Test)
 	}
 	return bPassed;
 }
-
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITGeneratedOutputTests,
-	"Angelscript.TestModule.StaticJIT.GeneratedOutput",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
-	TEST_METHOD(DebugMetadataHooks)
-	{
-		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITGeneratedOutputTests_Private;
-		ASSERT_THAT(IsTrue(RunGeneratedOutputDebugMetadataHooks(*TestRunner)));
-	}
-};
 
 #endif

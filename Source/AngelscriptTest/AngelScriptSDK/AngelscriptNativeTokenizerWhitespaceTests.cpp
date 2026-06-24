@@ -8,7 +8,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 	"Angelscript.TestModule.AngelScriptSDK.Tokenizer.Whitespace",
@@ -16,7 +15,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 {
 	TEST_METHOD(LineCommentEmpty)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
 		ASSERT_THAT(AreEqual(static_cast<int32>(ttOnelineComment), static_cast<int32>(Tokenizer.GetToken("//\n", 3, &TokenLength)),
@@ -27,7 +26,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 
 	TEST_METHOD(BlockCommentNested_DocumentBehavior)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		const char* Input = "/* outer /* inner */ tail */";
 		size_t TokenLength = 0;
 
@@ -39,7 +38,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 
 	TEST_METHOD(UnterminatedBlockCommentReachesEOF)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		const char* Input = "/* comment";
 		size_t TokenLength = 0;
 
@@ -51,7 +50,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 
 	TEST_METHOD(MixedCRLFWhitespace)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		const char* Input = " \t\r\n  ";
 		size_t TokenLength = 0;
 
@@ -63,7 +62,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 
 	TEST_METHOD(BomAtStartOfSource)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		const char Input[] = "\xEF\xBB\xBF" "class";
 		size_t TokenLength = 0;
 
@@ -75,7 +74,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 
 	TEST_METHOD(IdentifierLeadingUnderscore)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
 		ASSERT_THAT(AreEqual(static_cast<int32>(ttIdentifier), static_cast<int32>(Tokenizer.GetToken("_Value", 6, &TokenLength)),
@@ -86,7 +85,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 
 	TEST_METHOD(IdentifierWithDigits)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
 		ASSERT_THAT(AreEqual(static_cast<int32>(ttIdentifier), static_cast<int32>(Tokenizer.GetToken("Value123", 8, &TokenLength)),
@@ -97,7 +96,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 
 	TEST_METHOD(KeywordVsIdentifierBoundary)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
 		ASSERT_THAT(AreEqual(static_cast<int32>(ttIdentifier), static_cast<int32>(Tokenizer.GetToken("className", 9, &TokenLength)),
@@ -108,7 +107,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 
 	TEST_METHOD(ZeroLengthInputReturnsEnd)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 		const eTokenType TokenType = Tokenizer.GetToken("", 0, &TokenLength);
 
@@ -118,7 +117,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerWhitespaceTests,
 
 	TEST_METHOD(PastEofGracefulHandling)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 		const char Input[] = "";
 		const eTokenType TokenType = Tokenizer.GetToken(Input, 0, &TokenLength);

@@ -4,15 +4,13 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptBuilderTestSupport;
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptBuilderLifecycleTests,
 	"Angelscript.TestModule.AngelScriptSDK.Builder.Lifecycle",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -31,10 +29,13 @@ public:
 
 	TEST_METHOD(ModuleBuildCreatesAndDestroysBuilder)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder lifecycle test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderLifecycleModuleBuild");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderLifecycleModuleBuild");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder lifecycle test should create a module")));
 		ASSERT_THAT(IsNull(Module->builder, TEXT("Builder lifecycle test should start without a builder before adding sections")));
@@ -59,11 +60,14 @@ public:
 
 	TEST_METHOD(FailedBuildClearsBuilderAndAllowsCleanRebuild)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder failed-build lifecycle test should create a standalone SDK engine")));
 
 		{
-			FScopedNativeModuleName BadModuleScope(Engine, "BuilderLifecycleFailedBuild");
+			AngelscriptNativeTestSupport::FScopedNativeModuleName BadModuleScope(Engine, "BuilderLifecycleFailedBuild");
 			asCModule* BadModule = CreateBuilderModule(ScriptEngine, BadModuleScope.Get());
 			ASSERT_THAT(IsNotNull(BadModule, TEXT("Builder failed-build lifecycle test should create the broken module")));
 
@@ -85,7 +89,7 @@ public:
 		}
 
 		Engine.ResetMessages();
-		FScopedNativeModuleName GoodModuleScope(Engine, "BuilderLifecycleFailedBuild");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName GoodModuleScope(Engine, "BuilderLifecycleFailedBuild");
 		asCModule* GoodModule = CreateBuilderModule(ScriptEngine, GoodModuleScope.Get());
 		ASSERT_THAT(IsNotNull(GoodModule, TEXT("Builder failed-build lifecycle test should recreate the module name")));
 
@@ -106,10 +110,13 @@ public:
 
 	TEST_METHOD(StandaloneBuilderResetClearsTransientState)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Standalone builder lifecycle test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderLifecycleStandaloneReset");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderLifecycleStandaloneReset");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Standalone builder lifecycle test should create a module")));
 

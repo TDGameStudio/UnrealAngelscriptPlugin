@@ -9,115 +9,113 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_Core_AngelscriptTypeDatabaseTests_Private
-{
-	struct FCoreTestContextStackGuard
-	{
-		TArray<FAngelscriptEngine*> SavedStack;
-
-		FCoreTestContextStackGuard()
-		{
-			SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
-		}
-
-		~FCoreTestContextStackGuard()
-		{
-			FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
-		}
-
-		void DiscardSavedStack()
-		{
-			SavedStack.Reset();
-		}
-	};
-
-	class FAutomationRegisteredType final : public FAngelscriptType
-	{
-	public:
-		explicit FAutomationRegisteredType(FString InTypeName)
-			: TypeName(MoveTemp(InTypeName))
-		{
-		}
-
-		virtual FString GetAngelscriptTypeName() const override
-		{
-			return TypeName;
-		}
-
-	private:
-		FString TypeName;
-	};
-
-	class FAutomationPropertyMatchedType final : public FAngelscriptType
-	{
-	public:
-		FAutomationPropertyMatchedType(FString InTypeName, const FProperty* InExpectedProperty)
-			: TypeName(MoveTemp(InTypeName))
-			, ExpectedProperty(InExpectedProperty)
-		{
-		}
-
-		virtual FString GetAngelscriptTypeName() const override
-		{
-			return TypeName;
-		}
-
-		virtual bool MatchesProperty(
-			const FAngelscriptTypeUsage& Usage,
-			const FProperty* Property,
-			EPropertyMatchType MatchType) const override
-		{
-			return MatchType == EPropertyMatchType::TypeFinder && Property == ExpectedProperty;
-		}
-
-	private:
-		FString TypeName;
-		const FProperty* ExpectedProperty = nullptr;
-	};
-
-	bool ExpectUsageMatches(
-		FAutomationTestBase& Test,
-		const TCHAR* Context,
-		const FAngelscriptTypeUsage& Usage,
-		const TSharedRef<FAngelscriptType>& ExpectedType,
-		const FString& ExpectedDeclaration)
-	{
-		FNoDiscardAsserter Assert(Test);
-		const FAngelscriptType* ExpectedTypePtr = &ExpectedType.Get();
-		bool bOk = true;
-		bOk &= Assert.IsTrue(
-			Usage.IsValid(),
-			*FString::Printf(TEXT("%s should resolve to a valid usage"), Context));
-		bOk &= Assert.IsTrue(
-			Usage.Type.Get() == ExpectedTypePtr,
-			*FString::Printf(TEXT("%s should resolve to the expected registered type"), Context));
-		bOk &= Assert.IsFalse(
-			Usage.bIsConst,
-			*FString::Printf(TEXT("%s should not carry const qualifiers for a plain reflected property"), Context));
-		bOk &= Assert.IsFalse(
-			Usage.bIsReference,
-			*FString::Printf(TEXT("%s should not carry reference qualifiers for a plain reflected property"), Context));
-		bOk &= Assert.AreEqual(
-			ExpectedDeclaration,
-			Usage.GetAngelscriptDeclaration(),
-			*FString::Printf(TEXT("%s should preserve the fake declaration"), Context));
-		bOk &= Assert.AreEqual(
-			0,
-			Usage.SubTypes.Num(),
-			*FString::Printf(TEXT("%s should not create synthetic template subtypes"), Context));
-		return bOk;
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptTypeDatabaseTests,
 	"Angelscript.TestModule.Engine.TypeDatabase",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+struct FCoreTestContextStackGuard
+{
+	TArray<FAngelscriptEngine*> SavedStack;
+
+	FCoreTestContextStackGuard()
+	{
+		SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
+	}
+
+	~FCoreTestContextStackGuard()
+	{
+		FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
+	}
+
+	void DiscardSavedStack()
+	{
+		SavedStack.Reset();
+	}
+};
+
+class FAutomationRegisteredType final : public FAngelscriptType
+{
+public:
+	explicit FAutomationRegisteredType(FString InTypeName)
+		: TypeName(MoveTemp(InTypeName))
+	{
+	}
+
+	virtual FString GetAngelscriptTypeName() const override
+	{
+		return TypeName;
+	}
+
+private:
+	FString TypeName;
+};
+
+class FAutomationPropertyMatchedType final : public FAngelscriptType
+{
+public:
+	FAutomationPropertyMatchedType(FString InTypeName, const FProperty* InExpectedProperty)
+		: TypeName(MoveTemp(InTypeName))
+		, ExpectedProperty(InExpectedProperty)
+	{
+	}
+
+	virtual FString GetAngelscriptTypeName() const override
+	{
+		return TypeName;
+	}
+
+	virtual bool MatchesProperty(
+		const FAngelscriptTypeUsage& Usage,
+		const FProperty* Property,
+		EPropertyMatchType MatchType) const override
+	{
+		return MatchType == EPropertyMatchType::TypeFinder && Property == ExpectedProperty;
+	}
+
+private:
+	FString TypeName;
+	const FProperty* ExpectedProperty = nullptr;
+};
+
+static bool ExpectUsageMatches(
+	FAutomationTestBase& Test,
+	const TCHAR* Context,
+	const FAngelscriptTypeUsage& Usage,
+	const TSharedRef<FAngelscriptType>& ExpectedType,
+	const FString& ExpectedDeclaration)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	const FAngelscriptType* ExpectedTypePtr = &ExpectedType.Get();
+	bool bOk = true;
+	bOk &= LocalAssert.IsTrue(
+		Usage.IsValid(),
+		*FString::Printf(TEXT("%s should resolve to a valid usage"), Context));
+	bOk &= LocalAssert.IsTrue(
+		Usage.Type.Get() == ExpectedTypePtr,
+		*FString::Printf(TEXT("%s should resolve to the expected registered type"), Context));
+	bOk &= LocalAssert.IsFalse(
+		Usage.bIsConst,
+		*FString::Printf(TEXT("%s should not carry const qualifiers for a plain reflected property"), Context));
+	bOk &= LocalAssert.IsFalse(
+		Usage.bIsReference,
+		*FString::Printf(TEXT("%s should not carry reference qualifiers for a plain reflected property"), Context));
+	bOk &= LocalAssert.AreEqual(
+		ExpectedDeclaration,
+		Usage.GetAngelscriptDeclaration(),
+		*FString::Printf(TEXT("%s should preserve the fake declaration"), Context));
+	bOk &= LocalAssert.AreEqual(
+		0,
+		Usage.SubTypes.Num(),
+		*FString::Printf(TEXT("%s should not create synthetic template subtypes"), Context));
+	return bOk;
+}
+
+public:
 	TEST_METHOD(AliasAndTypeFindersResetCleanly)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptTypeDatabaseTests_Private;
-		FCoreTestContextStackGuard ContextGuard;
+FCoreTestContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{

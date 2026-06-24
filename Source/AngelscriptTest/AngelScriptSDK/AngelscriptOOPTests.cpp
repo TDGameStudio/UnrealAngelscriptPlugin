@@ -5,14 +5,12 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptSDKTestSupport;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOOPTests, "Angelscript.TestModule.AngelScriptSDK.OOP", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FSDKBufferedOutStream Buffered;
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FSDKBufferedOutStream Buffered;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -54,10 +52,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOOPTests, "Angelscript.TestModule.AngelScri
 
 	TEST_METHOD(MixinNamespace)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK OOP mixin test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOOPMixinNamespace", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKOOPMixinNamespace", R"(
 struct Counter
 {
 	int Value = 0;
@@ -87,10 +88,13 @@ bool ApplyMixin()
 
 	TEST_METHOD(InheritedInterfaceMethod)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK OOP inherited-interface-method test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOOPInheritedInterfaceMethod", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKOOPInheritedInterfaceMethod", R"(
 class B
 {
 	bool touched = false;

@@ -108,8 +108,8 @@ int TouchExampleAssetAgain()
 		int32& OutResult)
 	{
 		const bool bExecuted = ExecuteIntFunction(&Engine, ModuleName, Declaration, OutResult);
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsTrue(bExecuted, Context);
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsTrue(bExecuted, Context);
 	}
 }
 
@@ -209,8 +209,8 @@ int TouchExampleAssetAgain()
 		int32& OutResult)
 	{
 		const bool bExecuted = ExecuteIntFunction(&Engine, ModuleName, Declaration, OutResult);
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsTrue(bExecuted, Context);
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsTrue(bExecuted, Context);
 	}
 }
 

@@ -81,8 +81,6 @@ namespace CompilerPipelineClassHierarchyTest
 	}
 }
 
-using namespace CompilerPipelineClassHierarchyTest;
-
 TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassHierarchyTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

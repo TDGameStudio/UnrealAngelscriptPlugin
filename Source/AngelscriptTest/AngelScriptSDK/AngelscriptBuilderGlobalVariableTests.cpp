@@ -4,17 +4,18 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptBuilderTestSupport;
-using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptBuilderGlobalVariableTests,
 	"Angelscript.TestModule.AngelScriptSDK.Builder.GlobalVariables",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
-	static bool CompileBuilderGlobals(FAutomationTestBase& Test, FNativeTestEngine& TestEngine, asCModule& Module, const FString& Stage)
+	static bool CompileBuilderGlobals(FAutomationTestBase& Test, AngelscriptNativeTestSupport::FNativeTestEngine& TestEngine, asCModule& Module, const FString& Stage)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asCBuilder* Builder = Module.builder;
 		if (Builder == nullptr)
 		{
@@ -38,7 +39,7 @@ private:
 	}
 
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -57,10 +58,14 @@ public:
 
 	TEST_METHOD(ConstGlobalsAllocateDescriptorsAndAddresses)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder global variable test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderGlobalConstDescriptors");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderGlobalConstDescriptors");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder global variable test should create a module")));
 
@@ -132,10 +137,14 @@ public:
 
 	TEST_METHOD(ConstGlobalsKeepModuleMetadataBeforeRuntimeInitialization)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder global metadata test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderGlobalMetadata");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderGlobalMetadata");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder global metadata test should create a module")));
 
@@ -180,10 +189,14 @@ public:
 
 	TEST_METHOD(MutableGlobalIsRejectedWithoutExecutableLeak)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder mutable global test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderGlobalMutableRejected");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderGlobalMutableRejected");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder mutable global test should create a module")));
 
@@ -209,7 +222,7 @@ public:
 		ReportBuilderFailureDiagnostics(*TestRunner, Engine);
 		ASSERT_THAT(IsFalse(bGeneratedFunctions, TEXT("Builder mutable global test should reject mutable global during function/global registration")));
 		ASSERT_THAT(IsTrue(AssertBuilderDiagnostic(*TestRunner, Engine.GetMessages(),
-			FExpectedBuilderDiagnostic::Error(TEXT("BuilderGlobalMutableRejected.as"), INDEX_NONE, TEXT("Mutable global variables are not supported")),
+			AngelscriptBuilderTestSupport::FExpectedBuilderDiagnostic::Error(TEXT("BuilderGlobalMutableRejected.as"), INDEX_NONE, TEXT("Mutable global variables are not supported")),
 			TEXT("MutableGlobal.Rejected")),
 			TEXT("Builder mutable global test should report unsupported mutable global")));
 		sGlobalVariableDescription* MutableCounter = FindGlobalVariableDescriptionByName(*Builder, "MutableCounter");

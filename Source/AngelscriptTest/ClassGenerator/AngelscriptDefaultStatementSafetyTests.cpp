@@ -8,63 +8,61 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_ClassGenerator_DefaultStatementSafetyTests_Private
-{
-	bool SummaryContainsDiagnosticMessage(const FAngelscriptCompileTraceSummary& Summary, const FString& ExpectedMessage)
-	{
-		for (const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
-		{
-			if (Diagnostic.Message.Contains(ExpectedMessage))
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	bool CompileSafetyScript(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FName ModuleName,
-		const FString& ClassName,
-		const FString& Script,
-		const bool bExpectedCompile,
-		FAngelscriptCompileTraceSummary& OutSummary)
-	{
-		const bool bCompiled = CompileModuleWithSummary(
-			&Engine,
-			ECompileType::FullReload,
-			ModuleName,
-			FString::Printf(TEXT("%s.as"), *ModuleName.ToString()),
-			Script,
-			true,
-			OutSummary,
-			!bExpectedCompile);
-
-		FNoDiscardAsserter Assert(Test);
-		if (bExpectedCompile)
-		{
-			if (!Assert.IsTrue(bCompiled, *FString::Printf(TEXT("%s should compile"), *ClassName)))
-			{
-				return false;
-			}
-
-			return Assert.IsNotNull(FindGeneratedClass(&Engine, *ClassName), *FString::Printf(TEXT("%s should publish a generated class"), *ClassName));
-		}
-
-		return Assert.IsFalse(bCompiled, *FString::Printf(TEXT("%s should fail compilation"), *ClassName));
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptDefaultStatementSafetyTests,
 	"Angelscript.TestModule.ClassGenerator.DefaultStatementSafety",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static bool SummaryContainsDiagnosticMessage(const FAngelscriptCompileTraceSummary& Summary, const FString& ExpectedMessage)
+{
+	for (const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
+	{
+		if (Diagnostic.Message.Contains(ExpectedMessage))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+static bool CompileSafetyScript(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine,
+	const FName ModuleName,
+	const FString& ClassName,
+	const FString& Script,
+	const bool bExpectedCompile,
+	FAngelscriptCompileTraceSummary& OutSummary)
+{
+	const bool bCompiled = CompileModuleWithSummary(
+		&Engine,
+		ECompileType::FullReload,
+		ModuleName,
+		FString::Printf(TEXT("%s.as"), *ModuleName.ToString()),
+		Script,
+		true,
+		OutSummary,
+		!bExpectedCompile);
+
+	FNoDiscardAsserter LocalAssert(Test);
+	if (bExpectedCompile)
+	{
+		if (!LocalAssert.IsTrue(bCompiled, *FString::Printf(TEXT("%s should compile"), *ClassName)))
+		{
+			return false;
+		}
+
+		return LocalAssert.IsNotNull(FindGeneratedClass(&Engine, *ClassName), *FString::Printf(TEXT("%s should publish a generated class"), *ClassName));
+	}
+
+	return LocalAssert.IsFalse(bCompiled, *FString::Printf(TEXT("%s should fail compilation"), *ClassName));
+}
+
+public:
 	TEST_METHOD(UnsafeDuringConstructionRejectsDefaultAndConstructor)
 	{
-		using namespace AngelscriptTest_ClassGenerator_DefaultStatementSafetyTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
@@ -156,8 +154,7 @@ class UUnsafeOrdinaryTarget : UObject
 
 	TEST_METHOD(DefaultsOnlyAccess)
 	{
-		using namespace AngelscriptTest_ClassGenerator_DefaultStatementSafetyTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
 		{

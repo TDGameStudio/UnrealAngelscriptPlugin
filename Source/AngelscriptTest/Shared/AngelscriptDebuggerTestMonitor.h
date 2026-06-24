@@ -3,7 +3,7 @@
 // =============================================================================
 // AngelscriptDebuggerTestMonitor.h
 //
-// Shared monitor patterns extracted from Debugger test _Private namespaces.
+// Shared monitor patterns extracted from debugger test-local helpers.
 // Each monitor runs on a ThreadPool thread, connects as a second DAP client,
 // and interacts with the DebugServer while the GameThread is blocked in
 // PauseExecution().

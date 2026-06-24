@@ -13,7 +13,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
@@ -23,6 +22,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeShapeTests,
 private:
 	static bool ParseShapeScript(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a script-node module"), UTF8_TO_TCHAR(ModuleName))))
 		{
@@ -33,7 +34,7 @@ private:
 		asCScriptCode Code;
 		Code.SetCode(ModuleName, Source, true);
 
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 		const int ParseResult = Parser.ParseScript(&Code);
 		if (!Assert.AreEqual(0, ParseResult, FString::Printf(TEXT("%s should parse successfully"), UTF8_TO_TCHAR(ModuleName))))
 		{
@@ -52,6 +53,8 @@ private:
 
 	static bool ParseStatement(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a statement parser module"), UTF8_TO_TCHAR(ModuleName))))
 		{
@@ -62,7 +65,7 @@ private:
 		asCScriptCode Code;
 		Code.SetCode(ModuleName, Source, true);
 
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 		const asCScriptNode* Root = Parser.ParseStatementSnippet(&Code);
 		if (!Assert.IsNotNull(Root, FString::Printf(TEXT("%s should parse a statement root"), UTF8_TO_TCHAR(ModuleName))))
 		{
@@ -288,6 +291,8 @@ public:
 
 	TEST_METHOD(InterfaceNodeShape)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
@@ -297,7 +302,7 @@ public:
 		Builder.silent = true;
 		asCScriptCode Code;
 		Code.SetCode("ScriptNodeShapeInterface", "interface IThing { void Run(); }", true);
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 		ASSERT_THAT(IsTrue(Parser.ParseScript(&Code) < 0,
 			TEXT("Script-level interface declaration should remain rejected in this native parser mode")));
 	}
@@ -325,6 +330,8 @@ public:
 
 	TEST_METHOD(FuncDefNodeShape)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
@@ -334,13 +341,15 @@ public:
 		Builder.silent = true;
 		asCScriptCode Code;
 		Code.SetCode("ScriptNodeShapeFuncDef", "funcdef void FCallback(int Value);", true);
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 		ASSERT_THAT(IsTrue(Parser.ParseScript(&Code) < 0,
 			TEXT("Script-level funcdef declaration should remain rejected in this native parser mode")));
 	}
 
 	TEST_METHOD(TypedefNodeShape)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
@@ -350,13 +359,15 @@ public:
 		Builder.silent = true;
 		asCScriptCode Code;
 		Code.SetCode("ScriptNodeShapeTypedef", "typedef int32 FScore;", true);
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 		ASSERT_THAT(IsTrue(Parser.ParseScript(&Code) < 0,
 			TEXT("Script-level typedef declaration should remain rejected in this native parser mode")));
 	}
 
 	TEST_METHOD(VirtualPropertyNodeShape)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
@@ -369,7 +380,7 @@ public:
 		Builder.silent = true;
 		asCScriptCode Code;
 		Code.SetCode("ScriptNodeShapeVirtualProperty", "int Value { get { return 1; } set { } }", true);
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 		ASSERT_THAT(IsTrue(Parser.ParseScript(&Code) < 0,
 			TEXT("Virtual property declaration should be rejected after autoaccessor removal")));
 	}

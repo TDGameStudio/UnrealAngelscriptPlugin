@@ -19,8 +19,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace PreprocessorTestHelpers;
-
 // ============================================================================
 // Test class
 // ============================================================================
@@ -36,6 +34,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorPathTest,
 	// ========================================================================
 	TEST_METHOD(BackslashRelativePathNormalizesModuleName)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 

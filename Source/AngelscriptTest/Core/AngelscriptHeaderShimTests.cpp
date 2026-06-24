@@ -5,105 +5,103 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Core_AngelscriptHeaderShimTests_Private
-{
-	struct FNativeMessageEntry
-	{
-		FString Section;
-		int32 Row = 0;
-		int32 Column = 0;
-		FString Message;
-	};
-
-	struct FNativeMessageCollector
-	{
-		TArray<FNativeMessageEntry> Entries;
-
-		static void Callback(const asSMessageInfo* MessageInfo, void* UserData)
-		{
-			if (MessageInfo == nullptr || UserData == nullptr)
-			{
-				return;
-			}
-
-			FNativeMessageCollector* Collector = static_cast<FNativeMessageCollector*>(UserData);
-			FNativeMessageEntry Entry;
-			Entry.Section = UTF8_TO_TCHAR(MessageInfo->section != nullptr ? MessageInfo->section : "");
-			Entry.Row = MessageInfo->row;
-			Entry.Column = MessageInfo->col;
-			Entry.Message = UTF8_TO_TCHAR(MessageInfo->message != nullptr ? MessageInfo->message : "");
-			Collector->Entries.Add(MoveTemp(Entry));
-		}
-
-		FString Format() const
-		{
-			FString Result;
-			for (const FNativeMessageEntry& Entry : Entries)
-			{
-				if (!Result.IsEmpty())
-				{
-					Result += LINE_TERMINATOR;
-				}
-
-				Result += FString::Printf(
-					TEXT("%s:%d:%d %s"),
-					Entry.Section.IsEmpty() ? TEXT("<memory>") : *Entry.Section,
-					Entry.Row,
-					Entry.Column,
-					*Entry.Message);
-			}
-
-			return Result.IsEmpty() ? TEXT("<no native AngelScript diagnostics>") : Result;
-		}
-	};
-
-	template<typename TObjectType>
-	struct TScopedAsRelease
-	{
-		TObjectType* Object = nullptr;
-
-		explicit TScopedAsRelease(TObjectType* InObject)
-			: Object(InObject)
-		{
-		}
-
-		~TScopedAsRelease()
-		{
-			if (Object != nullptr)
-			{
-				Object->Release();
-			}
-		}
-	};
-
-	struct FScopedAsEngineRelease
-	{
-		asIScriptEngine* Engine = nullptr;
-
-		explicit FScopedAsEngineRelease(asIScriptEngine* InEngine)
-			: Engine(InEngine)
-		{
-		}
-
-		~FScopedAsEngineRelease()
-		{
-			if (Engine != nullptr)
-			{
-				Engine->ShutDownAndRelease();
-			}
-		}
-	};
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptHeaderShimTests,
 	"Angelscript.TestModule.Engine.HeaderShim",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+struct FNativeMessageEntry
+{
+	FString Section;
+	int32 Row = 0;
+	int32 Column = 0;
+	FString Message;
+};
+
+struct FNativeMessageCollector
+{
+	TArray<FNativeMessageEntry> Entries;
+
+	static void Callback(const asSMessageInfo* MessageInfo, void* UserData)
+	{
+		if (MessageInfo == nullptr || UserData == nullptr)
+		{
+			return;
+		}
+
+		FNativeMessageCollector* Collector = static_cast<FNativeMessageCollector*>(UserData);
+		FNativeMessageEntry Entry;
+		Entry.Section = UTF8_TO_TCHAR(MessageInfo->section != nullptr ? MessageInfo->section : "");
+		Entry.Row = MessageInfo->row;
+		Entry.Column = MessageInfo->col;
+		Entry.Message = UTF8_TO_TCHAR(MessageInfo->message != nullptr ? MessageInfo->message : "");
+		Collector->Entries.Add(MoveTemp(Entry));
+	}
+
+	FString Format() const
+	{
+		FString Result;
+		for (const FNativeMessageEntry& Entry : Entries)
+		{
+			if (!Result.IsEmpty())
+			{
+				Result += LINE_TERMINATOR;
+			}
+
+			Result += FString::Printf(
+				TEXT("%s:%d:%d %s"),
+				Entry.Section.IsEmpty() ? TEXT("<memory>") : *Entry.Section,
+				Entry.Row,
+				Entry.Column,
+				*Entry.Message);
+		}
+
+		return Result.IsEmpty() ? TEXT("<no native AngelScript diagnostics>") : Result;
+	}
+};
+
+template<typename TObjectType>
+struct TScopedAsRelease
+{
+	TObjectType* Object = nullptr;
+
+	explicit TScopedAsRelease(TObjectType* InObject)
+		: Object(InObject)
+	{
+	}
+
+	~TScopedAsRelease()
+	{
+		if (Object != nullptr)
+		{
+			Object->Release();
+		}
+	}
+};
+
+struct FScopedAsEngineRelease
+{
+	asIScriptEngine* Engine = nullptr;
+
+	explicit FScopedAsEngineRelease(asIScriptEngine* InEngine)
+		: Engine(InEngine)
+	{
+	}
+
+	~FScopedAsEngineRelease()
+	{
+		if (Engine != nullptr)
+		{
+			Engine->ShutDownAndRelease();
+		}
+	}
+};
+
+public:
 	TEST_METHOD(RawAngelscriptApiRoundTrip)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptHeaderShimTests_Private;
-		const ANSICHAR* RawLibraryVersion = asGetLibraryVersion();
+const ANSICHAR* RawLibraryVersion = asGetLibraryVersion();
 		ASSERT_THAT(IsNotNull(RawLibraryVersion, TEXT("HeaderShim native API test should expose a library version string")));
 
 		const FString LibraryVersion = ANSI_TO_TCHAR(RawLibraryVersion);

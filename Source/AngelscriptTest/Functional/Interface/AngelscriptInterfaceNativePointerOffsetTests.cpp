@@ -2,7 +2,7 @@
 // AngelscriptInterfaceNativePointerOffsetTests.cpp
 //
 // Phase 2 regression tests for FScriptInterface pointer offset handling on
-// C++ native implementing classes — CQTest refactor. Automation IDs:
+// C++ native implementing classes �?CQTest refactor. Automation IDs:
 //   Angelscript.TestModule.Interface.NativePointerOffset.MultiInterfaceCast
 //   Angelscript.TestModule.Interface.NativePointerOffset.ScriptClassStillZeroOffset
 //
@@ -48,43 +48,6 @@ using namespace AngelscriptFunctionalTestUtils;
 // Helpers
 // ----------------------------------------------------------------------------
 
-namespace AngelscriptTest_InterfaceNativePointerOffset_Private
-{
-	static const FName ModuleName(TEXT("TestInterfaceNativePointerOffset"));
-	static const FString ScriptFilename(TEXT("TestInterfaceNativePointerOffset.as"));
-	static const FName GeneratedClassName(TEXT("ATestInterfaceNativePointerOffset"));
-	static const FName TargetPropertyName(TEXT("Target"));
-	static const FName ParentCastPropertyName(TEXT("bParentCastSucceeded"));
-	static const FName SecondaryCastPropertyName(TEXT("bSecondaryCastSucceeded"));
-	static const FName ParentReadValuePropertyName(TEXT("ParentReadValue"));
-	static const FName SecondaryReadValuePropertyName(TEXT("SecondaryReadValue"));
-
-	bool SetObjectReferenceProperty(
-		FAutomationTestBase& Test,
-		UObject* Object,
-		FName PropertyName,
-		UObject* ReferencedObject,
-		const TCHAR* Context)
-	{
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(Object, *FString::Printf(TEXT("%s should have a valid object"), Context)))
-		{
-			return false;
-		}
-
-		FObjectPropertyBase* Property = FindFProperty<FObjectPropertyBase>(Object->GetClass(), PropertyName);
-		if (!Assert.IsNotNull(
-			Property,
-			*FString::Printf(TEXT("%s should expose object property '%s'"), Context, *PropertyName.ToString())))
-		{
-			return false;
-		}
-
-		Property->SetObjectPropertyValue_InContainer(Object, ReferencedObject);
-		return true;
-	}
-}
-
 
 // ----------------------------------------------------------------------------
 // Test Class
@@ -92,13 +55,48 @@ namespace AngelscriptTest_InterfaceNativePointerOffset_Private
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptInterfaceNativePointerOffsetTest, "Angelscript.TestModule.Interface.NativePointerOffset", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+inline static const FName ModuleName = FName(TEXT("TestInterfaceNativePointerOffset"));
+inline static const FString ScriptFilename = FString(TEXT("TestInterfaceNativePointerOffset.as"));
+inline static const FName GeneratedClassName = FName(TEXT("ATestInterfaceNativePointerOffset"));
+inline static const FName TargetPropertyName = FName(TEXT("Target"));
+inline static const FName ParentCastPropertyName = FName(TEXT("bParentCastSucceeded"));
+inline static const FName SecondaryCastPropertyName = FName(TEXT("bSecondaryCastSucceeded"));
+inline static const FName ParentReadValuePropertyName = FName(TEXT("ParentReadValue"));
+inline static const FName SecondaryReadValuePropertyName = FName(TEXT("SecondaryReadValue"));
+
+static bool SetObjectReferenceProperty(
+	FAutomationTestBase& Test,
+	UObject* Object,
+	FName PropertyName,
+	UObject* ReferencedObject,
+	const TCHAR* Context)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	if (!LocalAssert.IsNotNull(Object, *FString::Printf(TEXT("%s should have a valid object"), Context)))
+	{
+		return false;
+	}
+
+	FObjectPropertyBase* Property = FindFProperty<FObjectPropertyBase>(Object->GetClass(), PropertyName);
+	if (!LocalAssert.IsNotNull(
+		Property,
+		*FString::Printf(TEXT("%s should expose object property '%s'"), Context, *PropertyName.ToString())))
+	{
+		return false;
+	}
+
+	Property->SetObjectPropertyValue_InContainer(Object, ReferencedObject);
+	return true;
+}
+
+public:
 	BEFORE_ALL() { ASTEST_CREATE_ENGINE(); }
 	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
 
 	TEST_METHOD(MultiInterfaceCast)
 	{
-		using namespace AngelscriptTest_InterfaceNativePointerOffset_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		AngelscriptNativeInterfaceTestHelpers::EnsureNativeInterfaceBound(UAngelscriptNativeParentInterface::StaticClass());
@@ -201,8 +199,7 @@ class ATestInterfaceNativePointerOffset : AActor
 
 	TEST_METHOD(ScriptClassStillZeroOffset)
 	{
-		using namespace AngelscriptTest_InterfaceNativePointerOffset_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		AngelscriptNativeInterfaceTestHelpers::EnsureNativeInterfaceBound(UAngelscriptNativeParentInterface::StaticClass());

@@ -66,7 +66,7 @@ The following four pure-forward wrappers were removed from `AngelscriptTestSuppo
 
 ## Bindings `Execute*` migration (completed 2026-05-25)
 
-The 11 `Bindings/*.cpp` files that previously duplicated `Execute*` helpers in `AngelscriptTest_*_Private` now use global `FAngelscriptTestExecutor` / `ExecuteAndExpect*` from `AngelscriptTestExecute.h`. Bindings-local scaffolding lives in module headers (not Shared):
+The 11 `Bindings/*.cpp` files that previously duplicated `Execute*` helpers in file-local test helper namespaces now use global `FAngelscriptTestExecutor` / `ExecuteAndExpect*` from `AngelscriptTestExecute.h`. Bindings-local scaffolding lives in module headers (not Shared):
 
 | Header | Role |
 |---|---|
@@ -76,7 +76,7 @@ The 11 `Bindings/*.cpp` files that previously duplicated `Execute*` helpers in `
 
 **Reference test shape:** `Bindings/AngelscriptQuatBindingsTests.cpp` (`FScopedAngelscriptModule` + global `ExpectGlobal*`).
 
-**Optional follow-ups (not blocking):** P3-only Private in ReflectiveFallback / TextFormatting / MathAndPlatform; Syntax theme still on forward shims; full-module `AngelscriptTest_*_Private` convergence outside Bindings.
+**Optional follow-ups (not blocking):** Syntax theme still on forward shims; remaining single-file helpers should stay inside their CQTest class unless they are intentionally shared.
 
 ## Scope guards
 

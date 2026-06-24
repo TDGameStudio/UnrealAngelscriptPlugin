@@ -14,11 +14,12 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace PreprocessorTestHelpers;
-
-namespace AngelscriptPreprocessorCompilationEventsTests_Private
+TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorCompilationEventsTest,
+	"Angelscript.TestModule.Preprocessor.CompilationEvents",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
- const FAngelscriptCompilationEvent* FindFirstEvent(
+private:
+ static const FAngelscriptCompilationEvent* FindFirstEvent(
  	const TArray<FAngelscriptCompilationEvent>& Events,
  	EAngelscriptCompilationEventType EventType)
  {
@@ -28,14 +29,12 @@ namespace AngelscriptPreprocessorCompilationEventsTests_Private
  			return Event.Type == EventType;
  		});
  }
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorCompilationEventsTest,
- 	"Angelscript.TestModule.Preprocessor.CompilationEvents",
- 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
  TEST_METHOD(HookMomentsEmitSummaryBackedCompilationEvents)
  {
+	using namespace PreprocessorTestHelpers;
+
  	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
  	{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -70,10 +69,10 @@ class UCompilationEventsHookMoments : UObject
  	AssertPreprocessSucceeded(*TestRunner, Result);
  	AssertNoDiagnostics(*TestRunner, Result);
 
- 	const FAngelscriptCompilationEvent* ProcessChunksEvent = AngelscriptPreprocessorCompilationEventsTests_Private::FindFirstEvent(
+	const FAngelscriptCompilationEvent* ProcessChunksEvent = FindFirstEvent(
  		Events,
  		EAngelscriptCompilationEventType::PreprocessProcessChunks);
- 	const FAngelscriptCompilationEvent* PostProcessCodeEvent = AngelscriptPreprocessorCompilationEventsTests_Private::FindFirstEvent(
+	const FAngelscriptCompilationEvent* PostProcessCodeEvent = FindFirstEvent(
  		Events,
  		EAngelscriptCompilationEventType::PreprocessPostProcessCode);
 
@@ -102,6 +101,8 @@ class UCompilationEventsHookMoments : UObject
 
  TEST_METHOD(ClassAnalyzeHookMutatesGeneratedStaticsThroughEngineHooks)
  {
+	using namespace PreprocessorTestHelpers;
+
  	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
  	{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 

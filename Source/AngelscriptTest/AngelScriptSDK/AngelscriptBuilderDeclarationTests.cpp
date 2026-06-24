@@ -4,15 +4,13 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptBuilderTestSupport;
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptBuilderDeclarationTests,
 	"Angelscript.TestModule.AngelScriptSDK.Builder.Declarations",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -31,10 +29,13 @@ public:
 
 	TEST_METHOD(TypeGenerationRegistersNamespacedClassAndEnum)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder declaration test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderDeclTypes");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderDeclTypes");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder declaration test should create a module")));
 
@@ -71,10 +72,13 @@ public:
 
 	TEST_METHOD(FunctionGenerationRegistersFunctionsImportsAndConstGlobals)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder declaration function test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderDeclFunctions");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderDeclFunctions");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder declaration function test should create a module")));
 

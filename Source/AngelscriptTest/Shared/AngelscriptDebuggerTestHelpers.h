@@ -10,8 +10,8 @@
 /**
  * AngelscriptDebuggerTestHelpers — shared session/breakpoint pump helpers
  * used by every Debugger/*Tests.cpp file. These were previously duplicated
- * (with minor wording variations) inside each file's `_Private` namespace,
- * causing unity-build name collisions.
+ * (with minor wording variations) as file-local helpers, causing unity-build
+ * name collisions.
  *
  * All helpers preserve the original behaviour:
  *   - 45 second default session timeout (UE 5.7 headless default).

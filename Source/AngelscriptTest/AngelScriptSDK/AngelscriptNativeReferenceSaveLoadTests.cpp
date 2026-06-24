@@ -4,7 +4,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceSaveLoadTests,
 	"Angelscript.TestModule.AngelScriptSDK.Reference.SaveLoad",
@@ -13,16 +12,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceSaveLoadTests,
 private:
 	static bool ExecuteIntFunction(FAutomationTestBase& Test, asIScriptEngine* ScriptEngine, asIScriptModule* Module, const char* Declaration, int32& OutValue)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 
 		asIScriptFunction* Function = AngelscriptNativeTestSupport::GetNativeFunctionByExactDecl(Module, Declaration);
-		if (!Assert.IsNotNull(Function, TEXT("Reference save/load test should resolve the requested function")))
+		if (!LocalAssert.IsNotNull(Function, TEXT("Reference save/load test should resolve the requested function")))
 		{
 			return false;
 		}
 
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!Assert.IsNotNull(Context, TEXT("Reference save/load test should create an execution context")))
+		if (!LocalAssert.IsNotNull(Context, TEXT("Reference save/load test should create an execution context")))
 		{
 			return false;
 		}
@@ -30,10 +29,10 @@ private:
 		const int ExecuteResult = AngelscriptNativeTestSupport::PrepareAndExecute(Context, Function);
 		OutValue = static_cast<int32>(Context->GetReturnDWord());
 		Context->Release();
-		return Assert.AreEqual(static_cast<int32>(asEXECUTION_FINISHED), ExecuteResult, TEXT("Reference save/load test should execute successfully"));
+		return LocalAssert.AreEqual(static_cast<int32>(asEXECUTION_FINISHED), ExecuteResult, TEXT("Reference save/load test should execute successfully"));
 	}
 
-	static asIScriptModule* LoadModuleFromStream(asIScriptEngine* ScriptEngine, const char* ModuleName, FMemoryBinaryStream& Stream, bool& bWasDebugInfoStripped, int& OutLoadResult)
+	static asIScriptModule* LoadModuleFromStream(asIScriptEngine* ScriptEngine, const char* ModuleName, AngelscriptNativeTestSupport::FMemoryBinaryStream& Stream, bool& bWasDebugInfoStripped, int& OutLoadResult)
 	{
 		Stream.ResetReadOffset();
 		asIScriptModule* Module = ScriptEngine != nullptr ? ScriptEngine->GetModule(ModuleName, asGM_ALWAYS_CREATE) : nullptr;
@@ -77,7 +76,7 @@ int Add(int A, int B)
 		}
 		ASSERT_THAT(AreEqual(42, SourceValue, TEXT("Reference save/load roundtrip should execute before serialization")));
 
-		FMemoryBinaryStream Stream;
+		AngelscriptNativeTestSupport::FMemoryBinaryStream Stream;
 		const int SaveResult = SourceModule->SaveByteCode(&Stream, false);
 		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), SaveResult, TEXT("Reference save/load roundtrip should save bytecode successfully")));
 		ASSERT_THAT(IsTrue(Stream.Num() > 0, TEXT("Reference save/load roundtrip should emit a non-empty byte stream")));
@@ -117,7 +116,7 @@ int Add(int A, int B)
 			return;
 		}
 
-		FMemoryBinaryStream Stream;
+		AngelscriptNativeTestSupport::FMemoryBinaryStream Stream;
 		const int SaveResult = SourceModule->SaveByteCode(&Stream, true);
 		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), SaveResult, TEXT("Reference stripped save/load should save bytecode successfully")));
 
@@ -152,12 +151,12 @@ int Add(int A, int B)
 			return;
 		}
 
-		FMemoryBinaryStream CompleteStream;
+		AngelscriptNativeTestSupport::FMemoryBinaryStream CompleteStream;
 		const int SaveResult = SourceModule->SaveByteCode(&CompleteStream, false);
 		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), SaveResult, TEXT("Reference truncated save/load should save bytecode successfully")));
 		ScriptEngine->DiscardModule("ReferenceSaveLoadTruncateSource");
 
-		FMemoryBinaryStream TruncatedStream = CompleteStream;
+		AngelscriptNativeTestSupport::FMemoryBinaryStream TruncatedStream = CompleteStream;
 		TruncatedStream.TruncateBy(16);
 		bool bWasDebugInfoStripped = false;
 		int LoadResult = asSUCCESS;
@@ -213,7 +212,7 @@ int Right()
 			return;
 		}
 
-		FMemoryBinaryStream Stream;
+		AngelscriptNativeTestSupport::FMemoryBinaryStream Stream;
 		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), SourceModule->SaveByteCode(&Stream, false), TEXT("Reference multi-function save/load should save bytecode")));
 		ScriptEngine->DiscardModule("ReferenceSaveLoadMultiSource");
 

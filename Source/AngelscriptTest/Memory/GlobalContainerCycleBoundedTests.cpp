@@ -13,7 +13,7 @@
 // Cycle 1 is the baseline because the very first cycle creates all the global
 // state (FName pool entries, doc tables, JIT native forms) that subsequent
 // cycles re-use. If a real leak is introduced, the count will *grow*
-// monotonically across cycles 2..N — the tolerance catches that pattern
+// monotonically across cycles 2..N -the tolerance catches that pattern
 // before it shows up as a 200 MB allocator residual months later.
 
 #include "CQTest.h"
@@ -39,47 +39,46 @@
 // or duplicating the type (fragile).
 ANGELSCRIPTRUNTIME_API int32 GetBlueprintEventsByScriptNameTotalCount();
 
-namespace AngelscriptTest_Memory_GlobalContainerCycleBounded_Private
-{
-	// Drop any transient engine the test storage may be holding, GC, then
-	// Trim so each cycle starts from a stable allocator state.
-	static void ResetToCleanSlate()
-	{
-		GetTransientFullTestEngineStorage().Reset();
-		CollectGarbage(RF_NoFlags, true);
-		FMemory::Trim(true);
-	}
-
-	// Returns the number of UASClass objects whose engine pointer has been
-	// nulled out (i.e. the engine that owned them has been Shutdown()'d) but
-	// which are still rooted. This is the post-fix guard for the
-	// `ClassGenerator UObject leak` originally identified in the
-	// `fix-as-engine-shutdown-memory-leak` change — if it ever drifts, the
-	// shutdown path lost an unroot.
-	static int32 CountRootedDetachedASClasses()
-	{
-		int32 Count = 0;
-		for (TObjectIterator<UASClass> It; It; ++It)
-		{
-			if (It->ScriptTypePtr == nullptr && It->IsRooted())
-			{
-				++Count;
-			}
-		}
-		return Count;
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 	"Angelscript.TestModule.Memory.GlobalContainerCycleBounded",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+// Drop any transient engine the test storage may be holding, GC, then
+// Trim so each cycle starts from a stable allocator state.
+static void ResetToCleanSlate()
+{
+	GetTransientFullTestEngineStorage().Reset();
+	CollectGarbage(RF_NoFlags, true);
+	FMemory::Trim(true);
+}
+
+// Returns the number of UASClass objects whose engine pointer has been
+// nulled out (i.e. the engine that owned them has been Shutdown()'d) but
+// which are still rooted. This is the post-fix guard for the
+// `ClassGenerator UObject leak` originally identified in the
+// `fix-as-engine-shutdown-memory-leak` change -if it ever drifts, the
+// shutdown path lost an unroot.
+static int32 CountRootedDetachedASClasses()
+{
+	int32 Count = 0;
+	for (TObjectIterator<UASClass> It; It; ++It)
+	{
+		if (It->ScriptTypePtr == nullptr && It->IsRooted())
+		{
+			++Count;
+		}
+	}
+	return Count;
+}
+
+public:
 	// Common rig: drive `NumCycles` engine create/destroy cycles, capture the
 	// container size at the end of each cycle, and assert the size stays
 	// within `TolerancePerCycle` of the post-warmup baseline.
 	//
 	// Cycle 1 is treated as a warm-up because the test process is rarely
-	// pristine when this test runs — earlier tests (or engine bootstrap)
+	// pristine when this test runs -earlier tests (or engine bootstrap)
 	// may have populated process-level globals that our engine cleanup then
 	// wipes on first acquisition. We anchor the steady-state baseline at
 	// cycle 2 and assert cycles 3..N stay near it; that's what catches a
@@ -87,7 +86,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 	// from cycle 2 onward).
 	//
 	// `bAllowEmptyBaseline` controls cycle-2 behaviour. The default (false)
-	// asserts the bind path produced *something* — the failure mode we want
+	// asserts the bind path produced *something* -the failure mode we want
 	// is "the test wired a probe at the wrong global". Containers gated by
 	// `IsGeneratingPrecompiledData()` (StaticJIT NativeForms) are empty
 	// under normal headless test runs, so callers for those probes pass
@@ -100,10 +99,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 		FnSampleSize&& SampleSize,
 		bool bAllowEmptyBaseline = false)
 	{
-		using namespace AngelscriptTest_Memory_GlobalContainerCycleBounded_Private;
-
-		// Need at least 3 cycles: 1 warm-up + 1 baseline + >=1 follow-up.
-		check(NumCycles >= 3);
+check(NumCycles >= 3);
 
 		ResetToCleanSlate();
 
@@ -124,7 +120,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 			{
 				// Warm-up cycle: the engine cleanup we run during acquisition
 				// may wipe state populated by earlier tests / engine
-				// bootstrap. We don't anchor on this — drift between cycle 1
+				// bootstrap. We don't anchor on this -drift between cycle 1
 				// and cycle 2 is expected and not informative.
 				continue;
 			}
@@ -137,7 +133,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 					bProbePassed &= this->Assert.IsTrue(
 						ThisCount > 0,
 						*FString::Printf(
-							TEXT("%s cycle 2 must register at least one entry (got %d) — otherwise the bind path didn't run"),
+							TEXT("%s cycle 2 must register at least one entry (got %d) -otherwise the bind path didn't run"),
 							ContainerLabel, ThisCount));
 				}
 				else if (ThisCount == 0)
@@ -153,7 +149,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 				bProbePassed &= this->Assert.IsTrue(
 					FMath::Abs(Delta) <= TolerancePerCycle,
 					*FString::Printf(
-						TEXT("%s cycle %d count=%d must stay within +/-%d of cycle-2 baseline %d (delta=%d) — drift means the cleanup is missing a Reset()/Empty() somewhere"),
+						TEXT("%s cycle %d count=%d must stay within +/-%d of cycle-2 baseline %d (delta=%d) -drift means the cleanup is missing a Reset()/Empty() somewhere"),
 						ContainerLabel, Cycle, ThisCount, TolerancePerCycle, BaselineCount, Delta));
 			}
 		}
@@ -170,12 +166,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 	// refactor drops the `Empty()` call, this catches it within 6 cycles.
 	TEST_METHOD(BlueprintEventsByScriptName_BoundedAcrossCycles)
 	{
-		using namespace AngelscriptTest_Memory_GlobalContainerCycleBounded_Private;
-
-		// 8 entries of slack: hot-reload paths or rebind-on-clone scenarios
-		// can re-add an entry that was already in flight from cycle 1. The
-		// failure mode we want to catch is *unbounded* growth (~1k/cycle).
-		RunBoundedCycleProbe(
+RunBoundedCycleProbe(
 			TEXT("GBlueprintEventsByScriptName"),
 			/*NumCycles=*/5,
 			/*TolerancePerCycle=*/8,
@@ -184,15 +175,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 
 	// Regression for the `GScriptNativeForms` map. Only meaningful when JIT
 	// is on AND `IsGeneratingPrecompiledData()` is true (binds are gated by
-	// that). Under regular headless test runs the table is empty — we still
+	// that). Under regular headless test runs the table is empty -we still
 	// assert it stays stable across cycles, so a future bind-path change
 	// that *does* populate it cannot regress silently.
 	TEST_METHOD(ScriptNativeForms_BoundedAcrossCycles)
 	{
 #if AS_CAN_GENERATE_JIT
-		using namespace AngelscriptTest_Memory_GlobalContainerCycleBounded_Private;
-
-		RunBoundedCycleProbe(
+RunBoundedCycleProbe(
 			TEXT("GScriptNativeForms"),
 			/*NumCycles=*/5,
 			/*TolerancePerCycle=*/4,
@@ -213,9 +202,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 	// any future drift.
 	TEST_METHOD(AngelscriptDocs_BoundedAcrossCycles)
 	{
-		using namespace AngelscriptTest_Memory_GlobalContainerCycleBounded_Private;
-
-		RunBoundedCycleProbe(
+RunBoundedCycleProbe(
 			TEXT("AngelscriptDocs.UnrealDocumentation"),
 			/*NumCycles=*/5,
 			/*TolerancePerCycle=*/4,
@@ -250,9 +237,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 	// (RF_MarkAsRootSet was never paired with a RemoveFromRoot on shutdown).
 	TEST_METHOD(RootedDetachedASClasses_BoundedAcrossCycles)
 	{
-		using namespace AngelscriptTest_Memory_GlobalContainerCycleBounded_Private;
-
-		ResetToCleanSlate();
+ResetToCleanSlate();
 
 		const int32 BaselineRootedDetached = CountRootedDetachedASClasses();
 		UE_LOG(Angelscript, Log,
@@ -266,7 +251,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGlobalContainerCycleBoundedTests,
 			(void)Engine.GetScriptEngine();
 		}
 
-		// Final teardown — the test storage is still holding the last
+		// Final teardown -the test storage is still holding the last
 		// engine; release it so the count we read after GC reflects only
 		// engines that were actually shut down.
 		GetTransientFullTestEngineStorage().Reset();

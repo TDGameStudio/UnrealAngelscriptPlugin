@@ -117,10 +117,10 @@ Everything else (bindings, syntax, compiler, functional):
 |-----------|----------|---------|
 | Used by ≥2 theme directories (Bindings + Syntax + HotReload…) | `Shared/*.h` on disk; include as `AngelscriptTestExecute.h` etc. | `BuildModule`, `FAngelscriptTestExecutor`, `ExecuteAndExpectInt` |
 | Used by ≥2 files under `Bindings/` only | `Bindings/Angelscript*TestHelpers.h` | `Bindings/AngelscriptTArrayBindingsTestHelpers.h` 等 |
-| Single `.cpp` only | Keep `namespace AngelscriptTest_<File>_Private` | ReflectiveFallback cache probes |
+| Single CQTest `.cpp` only | Put helpers inside the owning `TEST_CLASS_WITH_FLAGS` class under `private:` | Nested fixture structs, runner functions, local constants |
 | Large file split by section | `Bindings/*Sections.h` + main `.cpp` | Console bindings cluster |
 
-`AngelscriptTest_<File>_Private` is for Unity Build / ODR isolation — do not remove it just to "drop namespaces"; only lift **reusable Execute / module scaffolding** into Shared or a Bindings helper header.
+Single-file CQTest helpers should live inside the owning test class. Use `private:` for helper constants, nested structs, and runner functions, then restore `public:` before `BEFORE_*`, `AFTER_*`, and `TEST_METHOD` entries so CQTest registration stays visible. Keep file-level helper namespaces only for explicitly reviewed non-CQTest or multi-class cases where moving the helper would duplicate meaningful setup.
 
 **Bindings reference:** `Bindings/AngelscriptQuatBindingsTests.cpp` (`FScopedAngelscriptModule` + `ExpectGlobalInt` / `ExecuteAndExpect*`).
 

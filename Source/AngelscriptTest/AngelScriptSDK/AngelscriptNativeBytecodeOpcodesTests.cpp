@@ -11,7 +11,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 	"Angelscript.TestModule.AngelScriptSDK.Bytecode.Opcodes",
@@ -19,7 +18,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 {
 	TEST_METHOD(Push_PshC4_PshV4_PshRPtr)
 	{
-		FBytecodeFixture Fixture("BytecodeOpcodesPush");
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOpcodesPush");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -39,7 +40,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 
 	TEST_METHOD(Load_LoadObj_LoadThisR)
 	{
-		FBytecodeFixture Fixture("BytecodeOpcodesLoad");
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOpcodesLoad");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -59,7 +62,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 
 	TEST_METHOD(Call_CALL_CALLSYS_CALLINTF)
 	{
-		FBytecodeFixture Fixture("BytecodeOpcodesCall");
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOpcodesCall");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -82,7 +87,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 
 	TEST_METHOD(BranchOps_JZ_JNZ_JLowZ_JLowNZ)
 	{
-		FBytecodeFixture Fixture("BytecodeOpcodesBranch");
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOpcodesBranch");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -107,7 +114,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 
 	TEST_METHOD(Misc_LINE_SUSPEND_JitEntry)
 	{
-		FBytecodeFixture Fixture("BytecodeOpcodesMisc");
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOpcodesMisc");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -127,7 +136,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 
 	TEST_METHOD(RetVariants_RET_RetWithValue)
 	{
-		FBytecodeFixture Fixture("BytecodeOpcodesRet");
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOpcodesRet");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -146,7 +157,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 
 	TEST_METHOD(MathOps_AddInt_SubInt_MulInt_Float)
 	{
-		FBytecodeFixture Fixture("BytecodeOpcodesMath");
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOpcodesMath");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -169,7 +182,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 
 	TEST_METHOD(CompareOps_CMPi_CMPf)
 	{
-		FBytecodeFixture Fixture("BytecodeOpcodesCompare");
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOpcodesCompare");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -190,7 +205,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeOpcodesTests,
 
 	TEST_METHOD(InstrSizeMatchesInfoTable)
 	{
-		FBytecodeFixture Fixture("BytecodeOpcodesSize");
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOpcodesSize");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;

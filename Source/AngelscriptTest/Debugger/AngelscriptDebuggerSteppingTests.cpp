@@ -19,402 +19,401 @@
 // Local helpers for StepOutTopFrameCompletes (unique monitor pattern)
 // =============================================================================
 
-namespace AngelscriptDebuggerSteppingTests_Private
-{
-	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsTrue(bActual, Message);
-	}
-
-	static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsFalse(bActual, Message);
-	}
-
-	template <typename ActualType, typename ExpectedType>
-	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreEqual(Expected, Actual, Message);
-	}
-
-	struct FStepOutTopFrameMonitorResult
-	{
-		TOptional<FAngelscriptDebugMessageEnvelope> InitialStopEnvelope;
-		TOptional<FAngelscriptCallStack> InitialCallstack;
-		int32 UnexpectedStopCount = 0;
-		bool bTimedOut = false;
-		FString Error;
-	};
-
-	TFuture<FStepOutTopFrameMonitorResult> StartActionThenExpectCompletionMonitor(
-		int32 Port,
-		TAtomic<bool>& bMonitorReady,
-		TAtomic<bool>& bShouldStop,
-		TAtomic<bool>& bInvocationCompleted,
-		float TimeoutSeconds)
-	{
-		return Async(EAsyncExecution::ThreadPool,
-			[Port, &bMonitorReady, &bShouldStop, &bInvocationCompleted, TimeoutSeconds]() -> FStepOutTopFrameMonitorResult
-			{
-				FStepOutTopFrameMonitorResult Result;
-				FAngelscriptDebuggerTestClient MonitorClient;
-				if (!MonitorClient.Connect(TEXT("127.0.0.1"), Port))
-				{
-					Result.Error = FString::Printf(TEXT("StepOut top-frame monitor failed to connect: %s"), *MonitorClient.GetLastError());
-					bMonitorReady = true;
-					return Result;
-				}
-
-				ON_SCOPE_EXIT
-				{
-					MonitorClient.SendStopDebugging();
-					MonitorClient.SendDisconnect();
-					MonitorClient.Disconnect();
-				};
-
-				const double HandshakeEnd = FPlatformTime::Seconds() + TimeoutSeconds;
-				bool bSentStart = false;
-				bool bReceivedVersion = false;
-				while (FPlatformTime::Seconds() < HandshakeEnd && !bShouldStop.Load())
-				{
-					if (!bSentStart)
-					{
-						bSentStart = MonitorClient.SendStartDebugging(2);
-					}
-
-					if (bSentStart)
-					{
-						TOptional<FAngelscriptDebugMessageEnvelope> Envelope = MonitorClient.ReceiveEnvelope();
-						if (Envelope.IsSet() && Envelope->MessageType == EDebugMessageType::DebugServerVersion)
-						{
-							bReceivedVersion = true;
-							break;
-						}
-					}
-
-					FPlatformProcess::Sleep(0.001f);
-				}
-
-				if (!bReceivedVersion)
-				{
-					Result.Error = TEXT("StepOut top-frame monitor timed out waiting for DebugServerVersion.");
-					Result.bTimedOut = true;
-					bMonitorReady = true;
-					return Result;
-				}
-
-				bMonitorReady = true;
-
-				const double InitialStopEnd = FPlatformTime::Seconds() + TimeoutSeconds;
-				while (FPlatformTime::Seconds() < InitialStopEnd && !bShouldStop.Load())
-				{
-					TOptional<FAngelscriptDebugMessageEnvelope> Envelope = MonitorClient.ReceiveEnvelope();
-					if (!Envelope.IsSet())
-					{
-						FPlatformProcess::Sleep(0.001f);
-						continue;
-					}
-
-					if (Envelope->MessageType == EDebugMessageType::HasStopped)
-					{
-						Result.InitialStopEnvelope = MoveTemp(Envelope);
-						break;
-					}
-				}
-
-				if (!Result.InitialStopEnvelope.IsSet())
-				{
-					Result.Error = TEXT("StepOut top-frame monitor timed out waiting for the initial HasStopped.");
-					Result.bTimedOut = true;
-					return Result;
-				}
-
-				if (!MonitorClient.SendRequestCallStack())
-				{
-					Result.Error = FString::Printf(TEXT("StepOut top-frame monitor failed to request the initial callstack: %s"), *MonitorClient.GetLastError());
-					return Result;
-				}
-
-				const double CallstackEnd = FPlatformTime::Seconds() + 10.0;
-				while (FPlatformTime::Seconds() < CallstackEnd && !bShouldStop.Load())
-				{
-					TOptional<FAngelscriptDebugMessageEnvelope> Envelope = MonitorClient.ReceiveEnvelope();
-					if (Envelope.IsSet() && Envelope->MessageType == EDebugMessageType::CallStack)
-					{
-						Result.InitialCallstack = FAngelscriptDebuggerTestClient::DeserializeMessage<FAngelscriptCallStack>(Envelope.GetValue());
-						break;
-					}
-
-					FPlatformProcess::Sleep(0.001f);
-				}
-
-				if (!Result.InitialCallstack.IsSet())
-				{
-					Result.Error = TEXT("StepOut top-frame monitor failed to receive the initial callstack.");
-					return Result;
-				}
-
-				if (!MonitorClient.SendStepOut())
-				{
-					Result.Error = FString::Printf(TEXT("StepOut top-frame monitor failed to send StepOut: %s"), *MonitorClient.GetLastError());
-					return Result;
-				}
-
-				const double CompletionEnd = FPlatformTime::Seconds() + TimeoutSeconds;
-				while (FPlatformTime::Seconds() < CompletionEnd && !bShouldStop.Load())
-				{
-					if (bInvocationCompleted.Load())
-					{
-						return Result;
-					}
-
-					TOptional<FAngelscriptDebugMessageEnvelope> Envelope = MonitorClient.ReceiveEnvelope();
-					if (!Envelope.IsSet())
-					{
-						FPlatformProcess::Sleep(0.001f);
-						continue;
-					}
-
-					if (Envelope->MessageType == EDebugMessageType::HasStopped)
-					{
-						++Result.UnexpectedStopCount;
-						if (Result.Error.IsEmpty())
-						{
-							Result.Error = FString::Printf(TEXT("StepOut top-frame monitor received an unexpected HasStopped after StepOut (count: %d)."), Result.UnexpectedStopCount);
-						}
-
-						MonitorClient.SendContinue();
-					}
-				}
-
-				Result.bTimedOut = !bInvocationCompleted.Load();
-				if (Result.bTimedOut && Result.Error.IsEmpty())
-				{
-					Result.Error = TEXT("StepOut top-frame monitor timed out waiting for invocation completion.");
-				}
-
-				return Result;
-			});
-	}
-
-	// =========================================================================
-	// Cross-file stepping fixture (two source files in one module)
-	// =========================================================================
-
-	struct FCrossFileScriptSection
-	{
-		FString Filename;
-		FString AbsoluteFilename;
-		FString ScriptSource;
-	};
-
-	struct FCrossFileSteppingFixture
-	{
-		FName ModuleName;
-		FString EntryFunctionDeclaration;
-		FString EntryFilename;
-		FString CalleeFilename;
-		TArray<FCrossFileScriptSection> Sections;
-		TMap<FName, int32> LineMarkers;
-
-		bool Compile(FAngelscriptEngine& Engine) const
-		{
-			TSharedRef<FAngelscriptModuleDesc> ModuleDesc = MakeShared<FAngelscriptModuleDesc>();
-			ModuleDesc->ModuleName = ModuleName.ToString();
-
-			for (const FCrossFileScriptSection& SectionData : Sections)
-			{
-				FAngelscriptModuleDesc::FCodeSection& Section = ModuleDesc->Code.AddDefaulted_GetRef();
-				Section.RelativeFilename = FPaths::Combine(TEXT("Automation"), SectionData.Filename);
-				Section.AbsoluteFilename = SectionData.AbsoluteFilename;
-				Section.Code = SectionData.ScriptSource;
-				Section.CodeHash = static_cast<int64>(FCrc::StrCrc32(*Section.Code));
-				ModuleDesc->CodeHash ^= Section.CodeHash;
-			}
-
-			TArray<TSharedRef<FAngelscriptModuleDesc>> ModulesToCompile;
-			ModulesToCompile.Add(ModuleDesc);
-
-			TArray<TSharedRef<FAngelscriptModuleDesc>> CompiledModules;
-			TGuardValue<bool> AutomaticImportGuard(Engine.bUseAutomaticImportMethod, false);
-			FScopedAutomaticImportsOverride AutomaticImportsOverride(Engine.GetScriptEngine());
-			FAngelscriptEngineScope EngineScope(Engine);
-			const ECompileResult CompileResult = Engine.CompileModules(ECompileType::SoftReloadOnly, ModulesToCompile, CompiledModules);
-			return CompileResult == ECompileResult::FullyHandled || CompileResult == ECompileResult::PartiallyHandled;
-		}
-
-		int32 GetLine(FName Marker) const
-		{
-			const int32* Line = LineMarkers.Find(Marker);
-			check(Line != nullptr);
-			return *Line;
-		}
-	};
-
-	FCrossFileScriptSection MakeCrossFileSection(const FString& Filename, const FString& RawScriptSource, TMap<FName, int32>& InOutLineMarkers)
-	{
-		TArray<FString> Lines;
-		RawScriptSource.ParseIntoArrayLines(Lines, false);
-		for (int32 LineIndex = 0; LineIndex < Lines.Num(); ++LineIndex)
-		{
-			FString& Line = Lines[LineIndex];
-			int32 MarkerStart = INDEX_NONE;
-			while (Line.FindChar(TEXT('/'), MarkerStart))
-			{
-				if (!Line.Mid(MarkerStart).StartsWith(TEXT("/*MARK:")))
-				{
-					MarkerStart += 1;
-					continue;
-				}
-
-				const int32 MarkerNameStart = MarkerStart + 7;
-				const int32 MarkerEnd = Line.Find(TEXT("*/"), ESearchCase::CaseSensitive, ESearchDir::FromStart, MarkerNameStart);
-				if (MarkerEnd == INDEX_NONE)
-				{
-					break;
-				}
-
-				const FString MarkerName = Line.Mid(MarkerNameStart, MarkerEnd - MarkerNameStart);
-				InOutLineMarkers.Add(FName(*MarkerName), LineIndex + 1);
-				Line.RemoveAt(MarkerStart, (MarkerEnd - MarkerStart) + 2, EAllowShrinking::No);
-			}
-		}
-
-		FCrossFileScriptSection Section;
-		Section.Filename = Filename;
-		Section.AbsoluteFilename = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation"), Filename);
-		Section.ScriptSource = FString::Join(Lines, TEXT("\n"));
-		return Section;
-	}
-
-	FCrossFileSteppingFixture CreateCrossFileSteppingFixture()
-	{
-		FCrossFileSteppingFixture Fixture;
-		Fixture.ModuleName = TEXT("DebuggerCrossFileSteppingFixture");
-		Fixture.EntryFunctionDeclaration = TEXT("int RunTestCase()");
-		Fixture.EntryFilename = TEXT("DebuggerCrossFileSteppingA.as");
-		Fixture.CalleeFilename = TEXT("DebuggerCrossFileSteppingB.as");
-		Fixture.Sections.Add(MakeCrossFileSection(
-			Fixture.CalleeFilename,
-			TEXT(R"AS(int Inner(int Value)
-{
-	/*MARK:StepInnerEntryLine*/ int StoredValue = 9;
-	int InnerValue = Value + StoredValue;
-	return InnerValue;
-}
-)AS"),
-			Fixture.LineMarkers));
-		Fixture.Sections.Add(MakeCrossFileSection(
-			Fixture.EntryFilename,
-			TEXT(R"AS(int RunTestCase()
-{
-	int StartValue = 4;
-	int Seed = StartValue + 1;
-	int Offset = Seed * 2;
-	int Warmup = Offset - 1;
-	int Guard = Warmup + 3;
-	/*MARK:StepCallLine*/ int Result = Inner(Guard);
-	/*MARK:StepAfterCallLine*/ Result += 1;
-	return Result;
-}
-)AS"),
-			Fixture.LineMarkers));
-		return Fixture;
-	}
-
-	bool AssertTopFrameMatches(
-		FAutomationTestBase& Test,
-		const TOptional<FAngelscriptCallStack>& Callstack,
-		const FString& ExpectedSource,
-		int32 ExpectedLine,
-		const TCHAR* Context)
-	{
-		const FString CallstackContext = FString::Printf(TEXT("%s should include a callstack"), Context);
-		if (!CheckTrue(Test, *CallstackContext, Callstack.IsSet()))
-		{
-			return false;
-		}
-
-		const FString FrameContext = FString::Printf(TEXT("%s should include at least one frame"), Context);
-		if (!CheckTrue(Test, *FrameContext, Callstack->Frames.Num() > 0))
-		{
-			return false;
-		}
-
-		const FAngelscriptCallFrame& TopFrame = Callstack->Frames[0];
-		bool bPassed = true;
-		const FString SourceContext = FString::Printf(TEXT("%s should report the expected source file"), Context);
-		bPassed &= CheckTrue(
-			Test,
-			*SourceContext,
-			FPaths::IsSamePath(TopFrame.Source, ExpectedSource));
-		const FString LineContext = FString::Printf(TEXT("%s should report the expected line"), Context);
-		bPassed &= CheckEqual(
-			Test,
-			*LineContext,
-			TopFrame.LineNumber,
-			ExpectedLine);
-		return bPassed;
-	}
-
-	bool AssertStopReason(
-		FAutomationTestBase& Test,
-		const FAngelscriptDebugMessageEnvelope& Envelope,
-		const FString& ExpectedReason,
-		const TCHAR* Context)
-	{
-		const TOptional<FStoppedMessage> StoppedMessage = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(Envelope);
-		const FString DeserializeContext = FString::Printf(TEXT("%s should deserialize into a stopped message"), Context);
-		if (!CheckTrue(Test, *DeserializeContext, StoppedMessage.IsSet()))
-		{
-			return false;
-		}
-
-		const FString ReasonContext = FString::Printf(TEXT("%s should report the expected stop reason"), Context);
-		return CheckEqual(Test, *ReasonContext, StoppedMessage->Reason, ExpectedReason);
-	}
-
-	bool AssertFrameMatches(
-		FAutomationTestBase& Test,
-		const TOptional<FAngelscriptCallStack>& Callstack,
-		int32 FrameIndex,
-		const FString& ExpectedFilename,
-		int32 ExpectedLine,
-		const TCHAR* Context)
-	{
-		const FString CallstackContext = FString::Printf(TEXT("%s should include a callstack"), Context);
-		if (!CheckTrue(Test, *CallstackContext, Callstack.IsSet()))
-		{
-			return false;
-		}
-
-		const FString FrameCountContext = FString::Printf(TEXT("%s should include frame %d"), Context, FrameIndex);
-		if (!CheckTrue(Test, *FrameCountContext, Callstack->Frames.IsValidIndex(FrameIndex)))
-		{
-			return false;
-		}
-
-		const FAngelscriptCallFrame& Frame = Callstack->Frames[FrameIndex];
-		bool bPassed = true;
-		const FString SourceContext = FString::Printf(TEXT("%s should stay on the expected source file"), Context);
-		bPassed &= CheckEqual(Test, *SourceContext, FPaths::GetCleanFilename(Frame.Source), ExpectedFilename);
-		const FString LineContext = FString::Printf(TEXT("%s should report the expected line"), Context);
-		bPassed &= CheckEqual(Test, *LineContext, Frame.LineNumber, ExpectedLine);
-		return bPassed;
-	}
-}
-
 // =============================================================================
-// FAngelscriptDebuggerSteppingTests — 8 tests merged from 5 source files
+// FAngelscriptDebuggerSteppingTests �?8 tests merged from 5 source files
 // =============================================================================
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 	"Angelscript.TestModule.Debugger.Stepping",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsTrue(bActual, Message);
+}
+
+static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsFalse(bActual, Message);
+}
+
+template <typename ActualType, typename ExpectedType>
+static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.AreEqual(Expected, Actual, Message);
+}
+
+struct FStepOutTopFrameMonitorResult
+{
+	TOptional<FAngelscriptDebugMessageEnvelope> InitialStopEnvelope;
+	TOptional<FAngelscriptCallStack> InitialCallstack;
+	int32 UnexpectedStopCount = 0;
+	bool bTimedOut = false;
+	FString Error;
+};
+
+static TFuture<FStepOutTopFrameMonitorResult> StartActionThenExpectCompletionMonitor(
+	int32 Port,
+	TAtomic<bool>& bMonitorReady,
+	TAtomic<bool>& bShouldStop,
+	TAtomic<bool>& bInvocationCompleted,
+	float TimeoutSeconds)
+{
+	return Async(EAsyncExecution::ThreadPool,
+		[Port, &bMonitorReady, &bShouldStop, &bInvocationCompleted, TimeoutSeconds]() -> FStepOutTopFrameMonitorResult
+		{
+			FStepOutTopFrameMonitorResult Result;
+			FAngelscriptDebuggerTestClient MonitorClient;
+			if (!MonitorClient.Connect(TEXT("127.0.0.1"), Port))
+			{
+				Result.Error = FString::Printf(TEXT("StepOut top-frame monitor failed to connect: %s"), *MonitorClient.GetLastError());
+				bMonitorReady = true;
+				return Result;
+			}
+
+			ON_SCOPE_EXIT
+			{
+				MonitorClient.SendStopDebugging();
+				MonitorClient.SendDisconnect();
+				MonitorClient.Disconnect();
+			};
+
+			const double HandshakeEnd = FPlatformTime::Seconds() + TimeoutSeconds;
+			bool bSentStart = false;
+			bool bReceivedVersion = false;
+			while (FPlatformTime::Seconds() < HandshakeEnd && !bShouldStop.Load())
+			{
+				if (!bSentStart)
+				{
+					bSentStart = MonitorClient.SendStartDebugging(2);
+				}
+
+				if (bSentStart)
+				{
+					TOptional<FAngelscriptDebugMessageEnvelope> Envelope = MonitorClient.ReceiveEnvelope();
+					if (Envelope.IsSet() && Envelope->MessageType == EDebugMessageType::DebugServerVersion)
+					{
+						bReceivedVersion = true;
+						break;
+					}
+				}
+
+				FPlatformProcess::Sleep(0.001f);
+			}
+
+			if (!bReceivedVersion)
+			{
+				Result.Error = TEXT("StepOut top-frame monitor timed out waiting for DebugServerVersion.");
+				Result.bTimedOut = true;
+				bMonitorReady = true;
+				return Result;
+			}
+
+			bMonitorReady = true;
+
+			const double InitialStopEnd = FPlatformTime::Seconds() + TimeoutSeconds;
+			while (FPlatformTime::Seconds() < InitialStopEnd && !bShouldStop.Load())
+			{
+				TOptional<FAngelscriptDebugMessageEnvelope> Envelope = MonitorClient.ReceiveEnvelope();
+				if (!Envelope.IsSet())
+				{
+					FPlatformProcess::Sleep(0.001f);
+					continue;
+				}
+
+				if (Envelope->MessageType == EDebugMessageType::HasStopped)
+				{
+					Result.InitialStopEnvelope = MoveTemp(Envelope);
+					break;
+				}
+			}
+
+			if (!Result.InitialStopEnvelope.IsSet())
+			{
+				Result.Error = TEXT("StepOut top-frame monitor timed out waiting for the initial HasStopped.");
+				Result.bTimedOut = true;
+				return Result;
+			}
+
+			if (!MonitorClient.SendRequestCallStack())
+			{
+				Result.Error = FString::Printf(TEXT("StepOut top-frame monitor failed to request the initial callstack: %s"), *MonitorClient.GetLastError());
+				return Result;
+			}
+
+			const double CallstackEnd = FPlatformTime::Seconds() + 10.0;
+			while (FPlatformTime::Seconds() < CallstackEnd && !bShouldStop.Load())
+			{
+				TOptional<FAngelscriptDebugMessageEnvelope> Envelope = MonitorClient.ReceiveEnvelope();
+				if (Envelope.IsSet() && Envelope->MessageType == EDebugMessageType::CallStack)
+				{
+					Result.InitialCallstack = FAngelscriptDebuggerTestClient::DeserializeMessage<FAngelscriptCallStack>(Envelope.GetValue());
+					break;
+				}
+
+				FPlatformProcess::Sleep(0.001f);
+			}
+
+			if (!Result.InitialCallstack.IsSet())
+			{
+				Result.Error = TEXT("StepOut top-frame monitor failed to receive the initial callstack.");
+				return Result;
+			}
+
+			if (!MonitorClient.SendStepOut())
+			{
+				Result.Error = FString::Printf(TEXT("StepOut top-frame monitor failed to send StepOut: %s"), *MonitorClient.GetLastError());
+				return Result;
+			}
+
+			const double CompletionEnd = FPlatformTime::Seconds() + TimeoutSeconds;
+			while (FPlatformTime::Seconds() < CompletionEnd && !bShouldStop.Load())
+			{
+				if (bInvocationCompleted.Load())
+				{
+					return Result;
+				}
+
+				TOptional<FAngelscriptDebugMessageEnvelope> Envelope = MonitorClient.ReceiveEnvelope();
+				if (!Envelope.IsSet())
+				{
+					FPlatformProcess::Sleep(0.001f);
+					continue;
+				}
+
+				if (Envelope->MessageType == EDebugMessageType::HasStopped)
+				{
+					++Result.UnexpectedStopCount;
+					if (Result.Error.IsEmpty())
+					{
+						Result.Error = FString::Printf(TEXT("StepOut top-frame monitor received an unexpected HasStopped after StepOut (count: %d)."), Result.UnexpectedStopCount);
+					}
+
+					MonitorClient.SendContinue();
+				}
+			}
+
+			Result.bTimedOut = !bInvocationCompleted.Load();
+			if (Result.bTimedOut && Result.Error.IsEmpty())
+			{
+				Result.Error = TEXT("StepOut top-frame monitor timed out waiting for invocation completion.");
+			}
+
+			return Result;
+		});
+}
+
+// =========================================================================
+// Cross-file stepping fixture (two source files in one module)
+// =========================================================================
+
+struct FCrossFileScriptSection
+{
+	FString Filename;
+	FString AbsoluteFilename;
+	FString ScriptSource;
+};
+
+struct FCrossFileSteppingFixture
+{
+	FName ModuleName;
+	FString EntryFunctionDeclaration;
+	FString EntryFilename;
+	FString CalleeFilename;
+	TArray<FCrossFileScriptSection> Sections;
+	TMap<FName, int32> LineMarkers;
+
+	bool Compile(FAngelscriptEngine& Engine) const
+	{
+		TSharedRef<FAngelscriptModuleDesc> ModuleDesc = MakeShared<FAngelscriptModuleDesc>();
+		ModuleDesc->ModuleName = ModuleName.ToString();
+
+		for (const FCrossFileScriptSection& SectionData : Sections)
+		{
+			FAngelscriptModuleDesc::FCodeSection& Section = ModuleDesc->Code.AddDefaulted_GetRef();
+			Section.RelativeFilename = FPaths::Combine(TEXT("Automation"), SectionData.Filename);
+			Section.AbsoluteFilename = SectionData.AbsoluteFilename;
+			Section.Code = SectionData.ScriptSource;
+			Section.CodeHash = static_cast<int64>(FCrc::StrCrc32(*Section.Code));
+			ModuleDesc->CodeHash ^= Section.CodeHash;
+		}
+
+		TArray<TSharedRef<FAngelscriptModuleDesc>> ModulesToCompile;
+		ModulesToCompile.Add(ModuleDesc);
+
+		TArray<TSharedRef<FAngelscriptModuleDesc>> CompiledModules;
+		TGuardValue<bool> AutomaticImportGuard(Engine.bUseAutomaticImportMethod, false);
+		FScopedAutomaticImportsOverride AutomaticImportsOverride(Engine.GetScriptEngine());
+		FAngelscriptEngineScope EngineScope(Engine);
+		const ECompileResult CompileResult = Engine.CompileModules(ECompileType::SoftReloadOnly, ModulesToCompile, CompiledModules);
+		return CompileResult == ECompileResult::FullyHandled || CompileResult == ECompileResult::PartiallyHandled;
+	}
+
+	int32 GetLine(FName Marker) const
+	{
+		const int32* Line = LineMarkers.Find(Marker);
+		check(Line != nullptr);
+		return *Line;
+	}
+};
+
+static FCrossFileScriptSection MakeCrossFileSection(const FString& Filename, const FString& RawScriptSource, TMap<FName, int32>& InOutLineMarkers)
+{
+	TArray<FString> Lines;
+	RawScriptSource.ParseIntoArrayLines(Lines, false);
+	for (int32 LineIndex = 0; LineIndex < Lines.Num(); ++LineIndex)
+	{
+		FString& Line = Lines[LineIndex];
+		int32 MarkerStart = INDEX_NONE;
+		while (Line.FindChar(TEXT('/'), MarkerStart))
+		{
+			if (!Line.Mid(MarkerStart).StartsWith(TEXT("/*MARK:")))
+			{
+				MarkerStart += 1;
+				continue;
+			}
+
+			const int32 MarkerNameStart = MarkerStart + 7;
+			const int32 MarkerEnd = Line.Find(TEXT("*/"), ESearchCase::CaseSensitive, ESearchDir::FromStart, MarkerNameStart);
+			if (MarkerEnd == INDEX_NONE)
+			{
+				break;
+			}
+
+			const FString MarkerName = Line.Mid(MarkerNameStart, MarkerEnd - MarkerNameStart);
+			InOutLineMarkers.Add(FName(*MarkerName), LineIndex + 1);
+			Line.RemoveAt(MarkerStart, (MarkerEnd - MarkerStart) + 2, EAllowShrinking::No);
+		}
+	}
+
+	FCrossFileScriptSection Section;
+	Section.Filename = Filename;
+	Section.AbsoluteFilename = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation"), Filename);
+	Section.ScriptSource = FString::Join(Lines, TEXT("\n"));
+	return Section;
+}
+
+static FCrossFileSteppingFixture CreateCrossFileSteppingFixture()
+{
+	FCrossFileSteppingFixture Fixture;
+	Fixture.ModuleName = TEXT("DebuggerCrossFileSteppingFixture");
+	Fixture.EntryFunctionDeclaration = TEXT("int RunTestCase()");
+	Fixture.EntryFilename = TEXT("DebuggerCrossFileSteppingA.as");
+	Fixture.CalleeFilename = TEXT("DebuggerCrossFileSteppingB.as");
+	Fixture.Sections.Add(MakeCrossFileSection(
+		Fixture.CalleeFilename,
+		TEXT(R"AS(int Inner(int Value)
+{
+/*MARK:StepInnerEntryLine*/ int StoredValue = 9;
+int InnerValue = Value + StoredValue;
+return InnerValue;
+}
+)AS"),
+		Fixture.LineMarkers));
+	Fixture.Sections.Add(MakeCrossFileSection(
+		Fixture.EntryFilename,
+		TEXT(R"AS(int RunTestCase()
+{
+int StartValue = 4;
+int Seed = StartValue + 1;
+int Offset = Seed * 2;
+int Warmup = Offset - 1;
+int Guard = Warmup + 3;
+/*MARK:StepCallLine*/ int Result = Inner(Guard);
+/*MARK:StepAfterCallLine*/ Result += 1;
+return Result;
+}
+)AS"),
+		Fixture.LineMarkers));
+	return Fixture;
+}
+
+static bool AssertTopFrameMatches(
+	FAutomationTestBase& Test,
+	const TOptional<FAngelscriptCallStack>& Callstack,
+	const FString& ExpectedSource,
+	int32 ExpectedLine,
+	const TCHAR* Context)
+{
+	const FString CallstackContext = FString::Printf(TEXT("%s should include a callstack"), Context);
+	if (!CheckTrue(Test, *CallstackContext, Callstack.IsSet()))
+	{
+		return false;
+	}
+
+	const FString FrameContext = FString::Printf(TEXT("%s should include at least one frame"), Context);
+	if (!CheckTrue(Test, *FrameContext, Callstack->Frames.Num() > 0))
+	{
+		return false;
+	}
+
+	const FAngelscriptCallFrame& TopFrame = Callstack->Frames[0];
+	bool bPassed = true;
+	const FString SourceContext = FString::Printf(TEXT("%s should report the expected source file"), Context);
+	bPassed &= CheckTrue(
+		Test,
+		*SourceContext,
+		FPaths::IsSamePath(TopFrame.Source, ExpectedSource));
+	const FString LineContext = FString::Printf(TEXT("%s should report the expected line"), Context);
+	bPassed &= CheckEqual(
+		Test,
+		*LineContext,
+		TopFrame.LineNumber,
+		ExpectedLine);
+	return bPassed;
+}
+
+static bool AssertStopReason(
+	FAutomationTestBase& Test,
+	const FAngelscriptDebugMessageEnvelope& Envelope,
+	const FString& ExpectedReason,
+	const TCHAR* Context)
+{
+	const TOptional<FStoppedMessage> StoppedMessage = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(Envelope);
+	const FString DeserializeContext = FString::Printf(TEXT("%s should deserialize into a stopped message"), Context);
+	if (!CheckTrue(Test, *DeserializeContext, StoppedMessage.IsSet()))
+	{
+		return false;
+	}
+
+	const FString ReasonContext = FString::Printf(TEXT("%s should report the expected stop reason"), Context);
+	return CheckEqual(Test, *ReasonContext, StoppedMessage->Reason, ExpectedReason);
+}
+
+static bool AssertFrameMatches(
+	FAutomationTestBase& Test,
+	const TOptional<FAngelscriptCallStack>& Callstack,
+	int32 FrameIndex,
+	const FString& ExpectedFilename,
+	int32 ExpectedLine,
+	const TCHAR* Context)
+{
+	const FString CallstackContext = FString::Printf(TEXT("%s should include a callstack"), Context);
+	if (!CheckTrue(Test, *CallstackContext, Callstack.IsSet()))
+	{
+		return false;
+	}
+
+	const FString FrameCountContext = FString::Printf(TEXT("%s should include frame %d"), Context, FrameIndex);
+	if (!CheckTrue(Test, *FrameCountContext, Callstack->Frames.IsValidIndex(FrameIndex)))
+	{
+		return false;
+	}
+
+	const FAngelscriptCallFrame& Frame = Callstack->Frames[FrameIndex];
+	bool bPassed = true;
+	const FString SourceContext = FString::Printf(TEXT("%s should stay on the expected source file"), Context);
+	bPassed &= CheckEqual(Test, *SourceContext, FPaths::GetCleanFilename(Frame.Source), ExpectedFilename);
+	const FString LineContext = FString::Printf(TEXT("%s should report the expected line"), Context);
+	bPassed &= CheckEqual(Test, *LineContext, Frame.LineNumber, ExpectedLine);
+	return bPassed;
+}
+
+public:
 	FDebuggerTestContext Ctx;
 
 	BEFORE_EACH()
@@ -428,14 +427,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 	}
 
 	// =========================================================================
-	// 1. StepIn — from AngelscriptDebuggerSteppingTests.cpp
+	// 1. StepIn �?from AngelscriptDebuggerSteppingTests.cpp
 	// =========================================================================
 
 	TEST_METHOD(StepIn)
 	{
-		using namespace AngelscriptDebuggerSteppingTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateSteppingFixture();
 		ON_SCOPE_EXIT
 		{
@@ -520,14 +517,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 	}
 
 	// =========================================================================
-	// 2. StepOver — from AngelscriptDebuggerSteppingTests.cpp
+	// 2. StepOver �?from AngelscriptDebuggerSteppingTests.cpp
 	// =========================================================================
 
 	TEST_METHOD(StepOver)
 	{
-		using namespace AngelscriptDebuggerSteppingTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateSteppingFixture();
 		ON_SCOPE_EXIT
 		{
@@ -606,14 +601,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 	}
 
 	// =========================================================================
-	// 3. StepOut — from AngelscriptDebuggerSteppingTests.cpp
+	// 3. StepOut �?from AngelscriptDebuggerSteppingTests.cpp
 	// =========================================================================
 
 	TEST_METHOD(StepOut)
 	{
-		using namespace AngelscriptDebuggerSteppingTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateSteppingFixture();
 		ON_SCOPE_EXIT
 		{
@@ -693,14 +686,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 	}
 
 	// =========================================================================
-	// 4. StepInOnStatementAdvancesWithinFrame — from AngelscriptDebuggerStepInStatementTests.cpp
+	// 4. StepInOnStatementAdvancesWithinFrame �?from AngelscriptDebuggerStepInStatementTests.cpp
 	// =========================================================================
 
 	TEST_METHOD(StepInOnStatementAdvancesWithinFrame)
 	{
-		using namespace AngelscriptDebuggerSteppingTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateSteppingFixture();
 		TFuture<FStepMonitorResult> MonitorFuture;
 		bool bMonitorStarted = false;
@@ -821,14 +812,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 	}
 
 	// =========================================================================
-	// 5. StepOutTopFrameCompletes — from AngelscriptDebuggerStepOutEdgeTests.cpp
+	// 5. StepOutTopFrameCompletes �?from AngelscriptDebuggerStepOutEdgeTests.cpp
 	// =========================================================================
 
 	TEST_METHOD(StepOutTopFrameCompletes)
 	{
-		using namespace AngelscriptDebuggerSteppingTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateSteppingFixture();
 		ON_SCOPE_EXIT
 		{
@@ -929,14 +918,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 	}
 
 	// =========================================================================
-	// 6. StepOverWithinCallee — from AngelscriptDebuggerStepOverInFunctionTests.cpp
+	// 6. StepOverWithinCallee �?from AngelscriptDebuggerStepOverInFunctionTests.cpp
 	// =========================================================================
 
 	TEST_METHOD(StepOverWithinCallee)
 	{
-		using namespace AngelscriptDebuggerSteppingTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateSteppingFixture();
 		TFuture<FStepMonitorResult> MonitorFuture;
 		bool bMonitorStarted = false;
@@ -1065,14 +1052,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 	}
 
 	// =========================================================================
-	// 7. CrossFileStepping — from AngelscriptDebuggerCrossFileSteppingTests.cpp
+	// 7. CrossFileStepping �?from AngelscriptDebuggerCrossFileSteppingTests.cpp
 	// =========================================================================
 
 	TEST_METHOD(CrossFileStepping)
 	{
-		using namespace AngelscriptDebuggerSteppingTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FCrossFileSteppingFixture Fixture = CreateCrossFileSteppingFixture();
 		TFuture<FStepMonitorResult> MonitorFuture;
 		bool bMonitorStarted = false;
@@ -1173,14 +1158,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSteppingTests,
 	}
 
 	// =========================================================================
-	// 8. CrossFileStepOverStaysInCaller — from AngelscriptDebuggerCrossFileSteppingTests.cpp
+	// 8. CrossFileStepOverStaysInCaller �?from AngelscriptDebuggerCrossFileSteppingTests.cpp
 	// =========================================================================
 
 	TEST_METHOD(CrossFileStepOverStaysInCaller)
 	{
-		using namespace AngelscriptDebuggerSteppingTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FCrossFileSteppingFixture Fixture = CreateCrossFileSteppingFixture();
 		TFuture<FStepMonitorResult> MonitorFuture;
 		bool bMonitorStarted = false;

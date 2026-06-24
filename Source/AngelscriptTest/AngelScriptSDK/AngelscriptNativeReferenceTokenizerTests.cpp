@@ -8,7 +8,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceTokenizerTests,
 	"Angelscript.TestModule.AngelScriptSDK.Reference.Tokenizer",
@@ -19,7 +18,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceTokenizerTests,
 		const FString LongIdentifier = FString::ChrN(400, TEXT('a'));
 		const FTCHARToUTF8 LongIdentifierUtf8(*LongIdentifier);
 
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 		const eTokenType TokenType = Tokenizer.GetToken(
 			LongIdentifierUtf8.Get(),
@@ -61,7 +60,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceTokenizerTests,
 
 	TEST_METHOD(UnrecognizedTokenDoesNotPoisonFollowingIdentifier)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		const char* Source = "`Value";
 		size_t TokenLength = 0;
 
@@ -80,7 +79,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceTokenizerTests,
 
 	TEST_METHOD(UnterminatedStringReportsDedicatedToken)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		const char* Source = "\"unterminated";
 		size_t TokenLength = 0;
 

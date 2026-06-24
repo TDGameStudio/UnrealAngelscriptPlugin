@@ -8,11 +8,10 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOutputBufferTests, "Angelscript.TestModule.AngelScriptSDK.OutputBuffer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -31,18 +30,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOutputBufferTests, "Angelscript.TestModule.
 
 	TEST_METHOD(ErrorCapture)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* const SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		// Compile invalid code - should produce error messages
 		Engine.ResetMessages();
-		FScopedNativeModuleName ModuleScope(Engine, "BadCode");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BadCode");
 		asIScriptModule* M = BuildNativeModule(SE, "BadCode", "int Entry() { return undeclared_var; }\n");
 		ASSERT_THAT(IsNull(M, TEXT("Invalid code should fail to compile")));
 
 		// Verify error was captured
 		bool HasError = false;
-		for (const FNativeMessageEntry& Entry : Engine.GetMessages().Entries)
+		for (const AngelscriptNativeTestSupport::FNativeMessageEntry& Entry : Engine.GetMessages().Entries)
 		{
 			if (Entry.Type == asMSGTYPE_ERROR)
 			{
@@ -56,19 +57,21 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOutputBufferTests, "Angelscript.TestModule.
 
 	TEST_METHOD(WarningCapture)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* const SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		// Code that compiles but may produce warnings (unused variable)
 		Engine.ResetMessages();
-		FScopedNativeModuleName ModuleScope(Engine, "WarnCode");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "WarnCode");
 		asIScriptModule* M = BuildNativeModule(SE, "WarnCode",
 			"int Entry() { int unused = 42; return 1; }\n");
 
 		// Whether or not there are warnings depends on engine config.
 		// The key assertion is that message callback works and does not crash.
 		TestRunner->AddInfo(FString::Printf(TEXT("Messages captured: %d"), Engine.GetMessages().Entries.Num()));
-		for (const FNativeMessageEntry& Entry : Engine.GetMessages().Entries)
+		for (const AngelscriptNativeTestSupport::FNativeMessageEntry& Entry : Engine.GetMessages().Entries)
 		{
 			TestRunner->AddInfo(FString::Printf(TEXT("  [%s] %s"), *FString(ToMessageTypeString(Entry.Type)), *Entry.Message));
 		}

@@ -9,10 +9,14 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_Angelscript_AngelscriptExecutionNestedCallTests_Private
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptExecutionNestedCallTests,
+	"Angelscript.TestModule.Functional.Execute.Nested",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	constexpr ANSICHAR ModuleName[] = "ASExecutionNestedRecursiveFrameIsolation";
-	const TCHAR* const ScriptSource = TEXT(R"AS(
+private:
+	inline static constexpr ANSICHAR ModuleName[] = "ASExecutionNestedRecursiveFrameIsolation";
+	inline static const TCHAR* const ScriptSource = TEXT(R"AS(
 int Encode(int Value)
 {
 	if (Value == 0)
@@ -30,40 +34,9 @@ int Run()
 }
 )AS");
 
-	constexpr ANSICHAR ExceptionModuleName[] = "ASExecutionExceptionCallstackInspection";
-	const TCHAR* const ExceptionScriptSource = TEXT(R"AS(
-void FailInner(int Value)
-{
-	int Inner = Value * 2;
-	if (Inner > 0)
-	{
-		throw("ContextCallstackFailure");
-	}
-}
-
-void TriggerFailure(int Seed)
-{
-	int Local = Seed + 1;
-	FailInner(Local);
-}
-
-int Entry()
-{
-	TriggerFailure(20);
-	return 0;
-}
-)AS");
-}
-
-
-TEST_CLASS_WITH_FLAGS(
-	FAngelscriptExecutionNestedCallTests,
-	"Angelscript.TestModule.Functional.Execute.Nested",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(RecursiveFrameIsolation)
 	{
-		using namespace AngelscriptTest_Angelscript_AngelscriptExecutionNestedCallTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
@@ -87,9 +60,34 @@ TEST_CLASS_WITH_FLAGS(
 	"Angelscript.TestModule.Functional.Execute.Context",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	inline static constexpr ANSICHAR ExceptionModuleName[] = "ASExecutionExceptionCallstackInspection";
+	inline static const TCHAR* const ExceptionScriptSource = TEXT(R"AS(
+void FailInner(int Value)
+{
+	int Inner = Value * 2;
+	if (Inner > 0)
+	{
+		throw("ContextCallstackFailure");
+	}
+}
+
+void TriggerFailure(int Seed)
+{
+	int Local = Seed + 1;
+	FailInner(Local);
+}
+
+int Entry()
+{
+	TriggerFailure(20);
+	return 0;
+}
+)AS");
+
+public:
 	TEST_METHOD(ExceptionCallstackInspection)
 	{
-		using namespace AngelscriptTest_Angelscript_AngelscriptExecutionNestedCallTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 

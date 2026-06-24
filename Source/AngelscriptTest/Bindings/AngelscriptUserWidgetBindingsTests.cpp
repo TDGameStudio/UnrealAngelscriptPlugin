@@ -83,14 +83,14 @@ class %s : UUserWidget
 {
 }
 )AS"), RuntimeWidgetClassName));
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsTrue(bCompiled, TEXT("UserWidget fixture class should compile")))
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsTrue(bCompiled, TEXT("UserWidget fixture class should compile")))
 		{
 			return nullptr;
 		}
 
 		UClass* WidgetClass = FindGeneratedClass(&Engine, FName(RuntimeWidgetClassName));
-		if (!Assert.IsNotNull(WidgetClass, TEXT("UserWidget fixture class should be published")))
+		if (!LocalAssert.IsNotNull(WidgetClass, TEXT("UserWidget fixture class should be published")))
 		{
 			return nullptr;
 		}
@@ -101,8 +101,8 @@ class %s : UUserWidget
 	{
 		FUserWidgetFixture Fixture;
 		Fixture.Widget = NewObject<UUserWidget>(GetTransientPackage(), WidgetClass, WidgetName, RF_Transient);
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(Fixture.Widget, TEXT("UserWidget fixture should be created")))
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(Fixture.Widget, TEXT("UserWidget fixture should be created")))
 		{
 			return Fixture;
 		}
@@ -114,7 +114,7 @@ class %s : UUserWidget
 		}
 
 		Fixture.WidgetTree = NewObject<UWidgetTree>(Fixture.Widget, UWidgetTree::StaticClass(), TEXT("WidgetTree"), RF_Transient);
-		if (!Assert.IsNotNull(Fixture.WidgetTree, TEXT("UserWidget fixture should create a WidgetTree")))
+		if (!LocalAssert.IsNotNull(Fixture.WidgetTree, TEXT("UserWidget fixture should create a WidgetTree")))
 		{
 			return Fixture;
 		}
@@ -144,12 +144,12 @@ class %s : UUserWidget
 	{
 		bool bContainsRuntimeRoot = false;
 		const int32 WidgetCount = CountWidgets(Fixture, bContainsRuntimeRoot);
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bPassed = true;
-		bPassed &= Assert.IsNull(Fixture.Widget ? Fixture.Widget->GetRootWidget() : nullptr, *FString::Printf(TEXT("%s should have no root widget"), Context));
-		bPassed &= Assert.IsNull(Fixture.WidgetTree ? Fixture.WidgetTree->RootWidget : nullptr, *FString::Printf(TEXT("%s should have no WidgetTree root"), Context));
-		bPassed &= Assert.AreEqual(0, WidgetCount, *FString::Printf(TEXT("%s should have no tree widgets"), Context));
-		bPassed &= Assert.IsFalse(bContainsRuntimeRoot, *FString::Printf(TEXT("%s should not contain the runtime root name"), Context));
+		bPassed &= LocalAssert.IsNull(Fixture.Widget ? Fixture.Widget->GetRootWidget() : nullptr, *FString::Printf(TEXT("%s should have no root widget"), Context));
+		bPassed &= LocalAssert.IsNull(Fixture.WidgetTree ? Fixture.WidgetTree->RootWidget : nullptr, *FString::Printf(TEXT("%s should have no WidgetTree root"), Context));
+		bPassed &= LocalAssert.AreEqual(0, WidgetCount, *FString::Printf(TEXT("%s should have no tree widgets"), Context));
+		bPassed &= LocalAssert.IsFalse(bContainsRuntimeRoot, *FString::Printf(TEXT("%s should not contain the runtime root name"), Context));
 		return bPassed;
 	}
 
@@ -254,12 +254,12 @@ int MissingTreeRemoveReturnsFalse() { UUserWidget Widget = WithoutTreeWidget(); 
 		FScopedRootedObject DetachedRoot(DetachedTextBlock);
 
 		bool bPassed = true;
-		FNoDiscardAsserter Assert(Test);
-		bPassed &= Assert.IsFalse(WithTree.WidgetPath.IsEmpty(), TEXT("UserWidgetTreeErrorPaths tree-backed fixture path should be non-empty"));
-		bPassed &= Assert.IsFalse(WithoutTree.WidgetPath.IsEmpty(), TEXT("UserWidgetTreeErrorPaths missing-tree fixture path should be non-empty"));
-		bPassed &= Assert.IsNull(WithoutTree.Widget->WidgetTree, TEXT("UserWidgetTreeErrorPaths missing-tree fixture should start without WidgetTree"));
-		bPassed &= Assert.IsNull(WithoutTree.Widget->GetRootWidget(), TEXT("UserWidgetTreeErrorPaths missing-tree fixture should start without root"));
-		bPassed &= Assert.IsNull(DetachedTextBlock->GetParent(), TEXT("UserWidgetTreeErrorPaths detached text block should start parentless"));
+		FNoDiscardAsserter LocalAssert(Test);
+		bPassed &= LocalAssert.IsFalse(WithTree.WidgetPath.IsEmpty(), TEXT("UserWidgetTreeErrorPaths tree-backed fixture path should be non-empty"));
+		bPassed &= LocalAssert.IsFalse(WithoutTree.WidgetPath.IsEmpty(), TEXT("UserWidgetTreeErrorPaths missing-tree fixture path should be non-empty"));
+		bPassed &= LocalAssert.IsNull(WithoutTree.Widget->WidgetTree, TEXT("UserWidgetTreeErrorPaths missing-tree fixture should start without WidgetTree"));
+		bPassed &= LocalAssert.IsNull(WithoutTree.Widget->GetRootWidget(), TEXT("UserWidgetTreeErrorPaths missing-tree fixture should start without root"));
+		bPassed &= LocalAssert.IsNull(DetachedTextBlock->GetParent(), TEXT("UserWidgetTreeErrorPaths detached text block should start parentless"));
 
 		Test.AddExpectedErrorPlain(TEXT("Ensure condition failed: WidgetClass && WidgetClass->IsChildOf(UWidget::StaticClass())"), EAutomationExpectedErrorFlags::Contains, 2);
 		Test.AddExpectedErrorPlain(TEXT("LogOutputDevice:"), EAutomationExpectedErrorFlags::Contains, 0);
@@ -280,9 +280,9 @@ int MissingTreeRemoveReturnsFalse() { UUserWidget Widget = WithoutTreeWidget(); 
 		};
 		bPassed &= ExpectGlobalInts(Test, Engine, Module,  Cases);
 		bPassed &= VerifyEmptyTreeState(Test, WithTree, TEXT("UserWidgetTreeErrorPaths tree-backed postcondition"));
-		bPassed &= Assert.IsNull(WithoutTree.Widget->WidgetTree, TEXT("UserWidgetTreeErrorPaths missing-tree fixture should keep WidgetTree null"));
-		bPassed &= Assert.IsNull(WithoutTree.Widget->GetRootWidget(), TEXT("UserWidgetTreeErrorPaths missing-tree fixture should keep root null"));
-		bPassed &= Assert.IsNull(DetachedTextBlock->GetParent(), TEXT("UserWidgetTreeErrorPaths detached text block should remain parentless"));
+		bPassed &= LocalAssert.IsNull(WithoutTree.Widget->WidgetTree, TEXT("UserWidgetTreeErrorPaths missing-tree fixture should keep WidgetTree null"));
+		bPassed &= LocalAssert.IsNull(WithoutTree.Widget->GetRootWidget(), TEXT("UserWidgetTreeErrorPaths missing-tree fixture should keep root null"));
+		bPassed &= LocalAssert.IsNull(DetachedTextBlock->GetParent(), TEXT("UserWidgetTreeErrorPaths detached text block should remain parentless"));
 		return bPassed;
 	}
 }

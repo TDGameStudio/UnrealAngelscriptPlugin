@@ -11,70 +11,69 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
-namespace AngelscriptTest_Actor_ComponentManagement_Private
-{
-	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsTrue(bActual, Message);
-	}
-
-	template <typename ActualType, typename ExpectedType>
-	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreEqual(Expected, Actual, Message);
-	}
-
-	template <typename ValueType>
-	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsNotNull(Value, Message);
-	}
-
-	UActorComponent* FindComponentByName(AActor* Actor, FName ComponentName)
-	{
-		if (Actor == nullptr)
-		{
-			return nullptr;
-		}
-
-		for (UActorComponent* Component : Actor->GetComponents())
-		{
-			if (Component != nullptr && Component->GetFName() == ComponentName)
-			{
-				return Component;
-			}
-		}
-
-		return nullptr;
-	}
-
-	int32 CountComponentsOfClass(AActor* Actor, UClass* ComponentClass)
-	{
-		if (Actor == nullptr || ComponentClass == nullptr)
-		{
-			return 0;
-		}
-
-		int32 Count = 0;
-		for (UActorComponent* Component : Actor->GetComponents())
-		{
-			if (Component != nullptr && Component->IsA(ComponentClass))
-			{
-				++Count;
-			}
-		}
-
-		return Count;
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptActorComponentManagementTest,
 	"Angelscript.TestModule.Actor.Component.Management",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsTrue(bActual, Message);
+}
+
+template <typename ActualType, typename ExpectedType>
+static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.AreEqual(Expected, Actual, Message);
+}
+
+template <typename ValueType>
+static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsNotNull(Value, Message);
+}
+
+static UActorComponent* FindComponentByName(AActor* Actor, FName ComponentName)
+{
+	if (Actor == nullptr)
+	{
+		return nullptr;
+	}
+
+	for (UActorComponent* Component : Actor->GetComponents())
+	{
+		if (Component != nullptr && Component->GetFName() == ComponentName)
+		{
+			return Component;
+		}
+	}
+
+	return nullptr;
+}
+
+static int32 CountComponentsOfClass(AActor* Actor, UClass* ComponentClass)
+{
+	if (Actor == nullptr || ComponentClass == nullptr)
+	{
+		return 0;
+	}
+
+	int32 Count = 0;
+	for (UActorComponent* Component : Actor->GetComponents())
+	{
+		if (Component != nullptr && Component->IsA(ComponentClass))
+		{
+			++Count;
+		}
+	}
+
+	return Count;
+}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -88,9 +87,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptActorComponentManagementTest,
 
 	TEST_METHOD(CreateSceneComponentsRegistersRootAndAttachment)
 	{
-		using namespace AngelscriptTest_Actor_ComponentManagement_Private;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		static const FName ModuleName(TEXT("TestActorComponentManagementCreateScene"));
 		ON_SCOPE_EXIT { Engine.DiscardModule(*ModuleName.ToString()); };
@@ -161,9 +158,7 @@ class ATestActorComponentManagementCreateScene : AActor
 
 	TEST_METHOD(StaticTypedAccessorsCreateGetAndReuse)
 	{
-		using namespace AngelscriptTest_Actor_ComponentManagement_Private;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		static const FName ModuleName(TEXT("TestActorComponentManagementTypedAccessors"));
 		ON_SCOPE_EXIT { Engine.DiscardModule(*ModuleName.ToString()); };
@@ -241,9 +236,7 @@ class ATestActorComponentManagementTypedAccessors : AActor
 
 	TEST_METHOD(NameAndClassFilteringAreStrict)
 	{
-		using namespace AngelscriptTest_Actor_ComponentManagement_Private;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		static const FName ModuleName(TEXT("TestActorComponentManagementNameClassFilter"));
 		ON_SCOPE_EXIT { Engine.DiscardModule(*ModuleName.ToString()); };
@@ -300,9 +293,7 @@ class ATestActorComponentManagementNameClassFilter : AActor
 
 	TEST_METHOD(GetAllComponentsFiltersSubclassesAndAppends)
 	{
-		using namespace AngelscriptTest_Actor_ComponentManagement_Private;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		static const FName ModuleName(TEXT("TestActorComponentManagementGetAllAppend"));
 		ON_SCOPE_EXIT { Engine.DiscardModule(*ModuleName.ToString()); };

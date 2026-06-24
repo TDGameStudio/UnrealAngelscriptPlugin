@@ -40,10 +40,10 @@ private:
 		const ANSICHAR* Declaration)
 	{
 		FAngelscriptEngineScope EngineScope(Engine);
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 
 		asIScriptModule* Module = Engine.GetScriptEngine()->GetModule(TCHAR_TO_ANSI(*ModuleName), asGM_ALWAYS_CREATE);
-		if (!Assert.IsNotNull(
+		if (!LocalAssert.IsNotNull(
 				Module,
 				*FString::Printf(TEXT("Context pool helper should create module '%s'"), *ModuleName)))
 		{
@@ -52,7 +52,7 @@ private:
 
 		asIScriptFunction* Function = nullptr;
 		const int32 CompileResult = Module->CompileFunction(TCHAR_TO_ANSI(*ModuleName), Source, 0, 0, &Function);
-		if (!Assert.AreEqual(
+		if (!LocalAssert.AreEqual(
 				asSUCCESS,
 				CompileResult,
 				*FString::Printf(TEXT("Context pool helper should compile '%s'"), *ModuleName)))
@@ -60,7 +60,7 @@ private:
 			return nullptr;
 		}
 
-		(void)Assert.IsNotNull(
+		(void)LocalAssert.IsNotNull(
 			Function,
 			*FString::Printf(TEXT("Context pool helper should resolve '%s'"), ANSI_TO_TCHAR(Declaration)));
 		return Function;

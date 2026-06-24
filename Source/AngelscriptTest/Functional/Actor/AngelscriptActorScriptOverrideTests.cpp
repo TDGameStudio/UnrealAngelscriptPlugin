@@ -9,55 +9,38 @@
 using namespace AngelscriptFunctionalTestUtils;
 using namespace AngelscriptActorTestUtils;
 
-namespace AngelscriptActorScriptOverrideTests_Private
-{
-	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsTrue(bActual, Message);
-	}
-
-	static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsFalse(bActual, Message);
-	}
-
-	template <typename ActualType, typename ExpectedType>
-	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreEqual(Expected, Actual, Message);
-	}
-
-	template <typename ValueType>
-	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsNotNull(Value, Message);
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptActorScriptOverrideTest,
 	"Angelscript.TestModule.Actor.ScriptOverride",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		return AngelscriptActorScriptOverrideTests_Private::CheckTrue(Test, Message, bActual);
-	}
+private:
+static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsTrue(bActual, Message);
+}
 
-	static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		return AngelscriptActorScriptOverrideTests_Private::CheckFalse(Test, Message, bActual);
-	}
+static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsFalse(bActual, Message);
+}
 
-	template <typename ValueType>
-	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
-	{
-		return AngelscriptActorScriptOverrideTests_Private::CheckNotNull(Test, Message, Value);
-	}
+template <typename ActualType, typename ExpectedType>
+static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.AreEqual(Expected, Actual, Message);
+}
 
+template <typename ValueType>
+static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsNotNull(Value, Message);
+}
+
+public:
 	BEFORE_ALL()
 	{
 		AcquireFreshActorEngine();
@@ -590,7 +573,7 @@ class ATestInhHealthPickup2 : ATestInhParentBase2
 		ASSERT_THAT(AreEqual(0, ParentCallCount, TEXT("Parent OnPickedUp should not be called when child overrides")));
 		ASSERT_THAT(AreEqual(0, ParentLastHash, TEXT("Parent LastPickedUpActorHash should remain 0 when child overrides")));
 		// NOTE: `default PickupValue = 25` and inline `int HealAmount = 25` on a script
-		// child class currently do NOT propagate to spawned actor instances — the parent
+		// child class currently do NOT propagate to spawned actor instances �?the parent
 		// default (10) and zero-init (0) are observed instead. This is a known limitation
 		// tracked here as a regression baseline.
 		ASSERT_THAT(AreEqual(10, PickupValue, TEXT("Child PickupValue should reflect current default propagation behavior")));

@@ -71,8 +71,8 @@ class UObjectConstructionCarrier : UObject
 		}
 
 		UASClass* GeneratedASClass = Cast<UASClass>(GeneratedClass);
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(
 				GeneratedASClass,
 				TEXT("ASClass object-construction test case should compile the carrier into a UASClass")))
 		{
@@ -80,13 +80,13 @@ class UObjectConstructionCarrier : UObject
 		}
 
 		bool bHasRequiredFunctions = true;
-		bHasRequiredFunctions &= Assert.IsNotNull(
+		bHasRequiredFunctions &= LocalAssert.IsNotNull(
 			GeneratedASClass->ConstructFunction,
 			TEXT("ASClass object-construction test case should bind the script constructor function"));
-		bHasRequiredFunctions &= Assert.IsNotNull(
+		bHasRequiredFunctions &= LocalAssert.IsNotNull(
 			GeneratedASClass->DefaultsFunction,
 			TEXT("ASClass object-construction test case should bind the defaults function"));
-		bHasRequiredFunctions &= Assert.IsNotNull(
+		bHasRequiredFunctions &= LocalAssert.IsNotNull(
 			GeneratedASClass->ScriptTypePtr,
 			TEXT("ASClass object-construction test case should keep a live script type pointer"));
 		if (!bHasRequiredFunctions)
@@ -126,16 +126,16 @@ class UObjectConstructionCarrier : UObject
 		const FObjectConstructionSnapshot& Snapshot,
 		int32 ExpectedCtorCountForScope)
 	{
-		FNoDiscardAsserter Assert(Test);
-		const bool bCtorCountMatches = Assert.AreEqual(
+		FNoDiscardAsserter LocalAssert(Test);
+		const bool bCtorCountMatches = LocalAssert.AreEqual(
 			ExpectedCtorCountForScope,
 			Snapshot.CtorCount,
 			*FString::Printf(TEXT("%s should observe the expected constructor count"), *ScopeLabel));
-		const bool bDefaultValueMatches = Assert.AreEqual(
+		const bool bDefaultValueMatches = LocalAssert.AreEqual(
 			ExpectedDefaultValue,
 			Snapshot.DefaultValue,
 			*FString::Printf(TEXT("%s should preserve the scripted integer default"), *ScopeLabel));
-		const bool bDefaultLabelMatches = Assert.AreEqual(
+		const bool bDefaultLabelMatches = LocalAssert.AreEqual(
 			ExpectedDefaultLabel,
 			Snapshot.DefaultLabel,
 			*FString::Printf(TEXT("%s should preserve the scripted string default"), *ScopeLabel));

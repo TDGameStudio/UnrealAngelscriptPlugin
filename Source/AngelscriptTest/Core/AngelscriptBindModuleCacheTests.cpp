@@ -9,60 +9,58 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Core_AngelscriptBindModuleCacheTests_Private
-{
-	FString MakeBindModuleCacheAutomationDirectory()
-	{
-		return FPaths::Combine(
-			FPaths::ProjectSavedDir(),
-			TEXT("Automation"),
-			TEXT("BindModulesCache"),
-			FGuid::NewGuid().ToString(EGuidFormats::Digits));
-	}
-
-	TArray<FString> MakeExpectedBindModules()
-	{
-		return {
-			TEXT("ASRuntimeBind_Alpha"),
-			TEXT("ASEditorBind_Beta"),
-			TEXT("ASRuntimeBind_Gamma"),
-		};
-	}
-
-	bool ExpectBindModuleSequence(
-		FAutomationTestBase& Test,
-		const TCHAR* Context,
-		const TArray<FString>& Actual,
-		const TArray<FString>& Expected)
-	{
-		FNoDiscardAsserter Assert(Test);
-		bool bOk = true;
-		bOk &= Assert.AreEqual(
-			Expected.Num(),
-			Actual.Num(),
-			*FString::Printf(TEXT("%s should preserve the bind module count"), Context));
-
-		for (int32 Index = 0; Index < FMath::Min(Actual.Num(), Expected.Num()); ++Index)
-		{
-			bOk &= Assert.AreEqual(
-				Expected[Index],
-				Actual[Index],
-				*FString::Printf(TEXT("%s should preserve the bind module at index %d"), Context, Index));
-		}
-
-		return bOk;
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptBindModuleCacheTests,
 	"Angelscript.TestModule.Engine.BindConfig.BindModuleCache",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static FString MakeBindModuleCacheAutomationDirectory()
+{
+	return FPaths::Combine(
+		FPaths::ProjectSavedDir(),
+		TEXT("Automation"),
+		TEXT("BindModulesCache"),
+		FGuid::NewGuid().ToString(EGuidFormats::Digits));
+}
+
+static TArray<FString> MakeExpectedBindModules()
+{
+	return {
+		TEXT("ASRuntimeBind_Alpha"),
+		TEXT("ASEditorBind_Beta"),
+		TEXT("ASRuntimeBind_Gamma"),
+	};
+}
+
+static bool ExpectBindModuleSequence(
+	FAutomationTestBase& Test,
+	const TCHAR* Context,
+	const TArray<FString>& Actual,
+	const TArray<FString>& Expected)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	bool bOk = true;
+	bOk &= LocalAssert.AreEqual(
+		Expected.Num(),
+		Actual.Num(),
+		*FString::Printf(TEXT("%s should preserve the bind module count"), Context));
+
+	for (int32 Index = 0; Index < FMath::Min(Actual.Num(), Expected.Num()); ++Index)
+	{
+		bOk &= LocalAssert.AreEqual(
+			Expected[Index],
+			Actual[Index],
+			*FString::Printf(TEXT("%s should preserve the bind module at index %d"), Context, Index));
+	}
+
+	return bOk;
+}
+
+public:
 	TEST_METHOD(RoundTripsOrderAndClearsOnMissingFile)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindModuleCacheTests_Private;
-		const TArray<FString> ExpectedBindModules = MakeExpectedBindModules();
+const TArray<FString> ExpectedBindModules = MakeExpectedBindModules();
 		const FString CacheDirectory = MakeBindModuleCacheAutomationDirectory();
 		const FString CachePath = FPaths::Combine(CacheDirectory, TEXT("BindModules.Cache"));
 		const FString MissingCachePath = FPaths::Combine(CacheDirectory, TEXT("MissingBindModules.Cache"));

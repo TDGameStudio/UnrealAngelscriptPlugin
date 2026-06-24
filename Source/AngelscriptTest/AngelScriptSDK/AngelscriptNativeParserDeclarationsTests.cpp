@@ -13,7 +13,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
@@ -23,6 +22,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserDeclarationsTests,
 private:
 	static bool ParseDeclScript(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a parser module"), UTF8_TO_TCHAR(ModuleName))))
 		{
@@ -33,7 +34,7 @@ private:
 		asCScriptCode Code;
 		Code.SetCode(ModuleName, Source, true);
 
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 		const int ParseResult = Parser.ParseScript(&Code);
 		if (!Assert.AreEqual(0, ParseResult, FString::Printf(TEXT("%s should parse successfully"), UTF8_TO_TCHAR(ModuleName))))
 		{
@@ -52,6 +53,8 @@ private:
 
 	static int ParseDeclScriptWithResult(asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		asCBuilder Builder(ScriptEngine, Module);
 		Builder.silent = true;
@@ -59,12 +62,14 @@ private:
 		asCScriptCode Code;
 		Code.SetCode(ModuleName, Source, true);
 
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 		return Parser.ParseScript(&Code);
 	}
 
 	static bool ParseDeclExpression(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(const asCScriptNode&)> Verify)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a parser-expression module"), UTF8_TO_TCHAR(ModuleName))))
 		{
@@ -75,7 +80,7 @@ private:
 		asCScriptCode Code;
 		Code.SetCode(ModuleName, Source, true);
 
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 		asCScriptNode* Root = Parser.ParseExpressionSnippet(&Code);
 		if (!Assert.IsNotNull(Root, FString::Printf(TEXT("%s should parse an expression root"), UTF8_TO_TCHAR(ModuleName))))
 		{

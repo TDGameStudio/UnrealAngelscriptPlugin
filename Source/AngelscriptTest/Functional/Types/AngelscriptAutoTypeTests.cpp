@@ -7,46 +7,45 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_Angelscript_AngelscriptAutoTypeTests_Private
-{
-	FString BuildAutoInferenceByOverloadScript(const bool bFloatUsesFloat64)
-	{
-		return bFloatUsesFloat64
-			? TEXT(R"AS(
-int Pick(int Value) { return 1; }
-int Pick(double Value) { return 2; }
-int Pick(bool Value) { return 3; }
-
-int Run()
-{
-	auto I = 42;
-	auto F = 3.5;
-	auto B = true;
-	return Pick(I) * 100 + Pick(F) * 10 + Pick(B);
-}
-)AS")
-			: TEXT(R"AS(
-int Pick(int Value) { return 1; }
-int Pick(float Value) { return 2; }
-int Pick(bool Value) { return 3; }
-
-int Run()
-{
-	auto I = 42;
-	auto F = 3.5f;
-	auto B = true;
-	return Pick(I) * 100 + Pick(F) * 10 + Pick(B);
-}
-)AS");
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(
 	FAngelscriptAutoTypeTests,
 	"Angelscript.TestModule.Functional.Types.Auto",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static FString BuildAutoInferenceByOverloadScript(const bool bFloatUsesFloat64)
+{
+	return bFloatUsesFloat64
+		? TEXT(R"AS(
+int Pick(int Value) { return 1; }
+int Pick(double Value) { return 2; }
+int Pick(bool Value) { return 3; }
+
+int Run()
+{
+auto I = 42;
+auto F = 3.5;
+auto B = true;
+return Pick(I) * 100 + Pick(F) * 10 + Pick(B);
+}
+)AS")
+		: TEXT(R"AS(
+int Pick(int Value) { return 1; }
+int Pick(float Value) { return 2; }
+int Pick(bool Value) { return 3; }
+
+int Run()
+{
+auto I = 42;
+auto F = 3.5f;
+auto B = true;
+return Pick(I) * 100 + Pick(F) * 10 + Pick(B);
+}
+)AS");
+}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -56,8 +55,7 @@ TEST_CLASS_WITH_FLAGS(
 
 	TEST_METHOD(InferenceByOverload)
 	{
-		using namespace AngelscriptTest_Angelscript_AngelscriptAutoTypeTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();

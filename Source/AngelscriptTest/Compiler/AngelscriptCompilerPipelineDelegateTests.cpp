@@ -67,19 +67,19 @@ namespace CompilerPipelineDelegateMetadataTest
 		FProperty* Property,
 		const FExpectedArgument& Expected)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		switch (Expected.PropertyKind)
 		{
 		case EExpectedPropertyKind::Int:
-			return Assert.IsNotNull(CastField<FIntProperty>(Property), *FString::Printf(TEXT("%s should materialize '%s' as FIntProperty"), *Context, *Expected.Name.ToString()));
+			return LocalAssert.IsNotNull(CastField<FIntProperty>(Property), *FString::Printf(TEXT("%s should materialize '%s' as FIntProperty"), *Context, *Expected.Name.ToString()));
 
 		case EExpectedPropertyKind::String:
-			return Assert.IsNotNull(CastField<FStrProperty>(Property), *FString::Printf(TEXT("%s should materialize '%s' as FStrProperty"), *Context, *Expected.Name.ToString()));
+			return LocalAssert.IsNotNull(CastField<FStrProperty>(Property), *FString::Printf(TEXT("%s should materialize '%s' as FStrProperty"), *Context, *Expected.Name.ToString()));
 
 		case EExpectedPropertyKind::Class:
 		{
 			FClassProperty* ClassProperty = CastField<FClassProperty>(Property);
-			const bool bHasClassProperty = Assert.IsNotNull(
+			const bool bHasClassProperty = LocalAssert.IsNotNull(
 				ClassProperty,
 				*FString::Printf(TEXT("%s should materialize '%s' as FClassProperty"), *Context, *Expected.Name.ToString()));
 			if (!bHasClassProperty || Expected.ExpectedMetaClass == nullptr)
@@ -87,7 +87,7 @@ namespace CompilerPipelineDelegateMetadataTest
 				return bHasClassProperty;
 			}
 
-			return Assert.IsTrue(
+			return LocalAssert.IsTrue(
 				ClassProperty->MetaClass == Expected.ExpectedMetaClass,
 				*FString::Printf(TEXT("%s should materialize '%s' with the expected MetaClass"), *Context, *Expected.Name.ToString()));
 		}
@@ -104,9 +104,9 @@ namespace CompilerPipelineDelegateMetadataTest
 		const TArray<FExpectedArgument>& ExpectedArguments)
 	{
 		bool bPassed = true;
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 
-		bPassed &= Assert.IsTrue(
+		bPassed &= LocalAssert.IsTrue(
 			DelegateDesc.IsValid(),
 			*FString::Printf(TEXT("%s should expose delegate metadata"), *Context));
 		if (!DelegateDesc.IsValid())
@@ -114,14 +114,14 @@ namespace CompilerPipelineDelegateMetadataTest
 			return false;
 		}
 
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			bExpectedMulticast,
 			DelegateDesc->bIsMulticast,
 			*FString::Printf(TEXT("%s should preserve the multicast flag"), *Context));
-		bPassed &= Assert.IsTrue(
+		bPassed &= LocalAssert.IsTrue(
 			DelegateDesc->Signature.IsValid(),
 			*FString::Printf(TEXT("%s should keep a signature description"), *Context));
-		bPassed &= Assert.IsNotNull(
+		bPassed &= LocalAssert.IsNotNull(
 			DelegateDesc->Function,
 			*FString::Printf(TEXT("%s should materialize a UDelegateFunction"), *Context));
 		if (!DelegateDesc->Signature.IsValid() || DelegateDesc->Function == nullptr)
@@ -129,20 +129,20 @@ namespace CompilerPipelineDelegateMetadataTest
 			return false;
 		}
 
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			FString(TEXT("void")),
 			DelegateDesc->Signature->ReturnType.GetAngelscriptDeclaration(),
 			*FString::Printf(TEXT("%s should preserve a void return type in the signature description"), *Context));
-		bPassed &= Assert.IsNull(
+		bPassed &= LocalAssert.IsNull(
 			DelegateDesc->Function->GetReturnProperty(),
 			*FString::Printf(TEXT("%s should not generate a reflected return property for void"), *Context));
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			ExpectedArguments.Num(),
 			DelegateDesc->Signature->Arguments.Num(),
 			*FString::Printf(TEXT("%s should preserve the expected argument count in the signature description"), *Context));
 
 		TArray<FProperty*> ParameterProperties = GetOrderedParameterProperties(DelegateDesc->Function);
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			ExpectedArguments.Num(),
 			ParameterProperties.Num(),
 			*FString::Printf(TEXT("%s should materialize the expected reflected parameter count"), *Context));
@@ -157,15 +157,15 @@ namespace CompilerPipelineDelegateMetadataTest
 			const FAngelscriptArgumentDesc& ActualArgument = DelegateDesc->Signature->Arguments[ArgumentIndex];
 			FProperty* ParameterProperty = ParameterProperties[ArgumentIndex];
 
-			bPassed &= Assert.AreEqual(
+			bPassed &= LocalAssert.AreEqual(
 				Expected.Name,
 				FName(*ActualArgument.ArgumentName),
 				*FString::Printf(TEXT("%s should preserve signature argument %d name"), *Context, ArgumentIndex));
-			bPassed &= Assert.AreEqual(
+			bPassed &= LocalAssert.AreEqual(
 				Expected.TypeDeclaration,
 				ActualArgument.Type.GetAngelscriptDeclaration(),
 				*FString::Printf(TEXT("%s should preserve signature argument %d type"), *Context, ArgumentIndex));
-			bPassed &= Assert.IsNotNull(
+			bPassed &= LocalAssert.IsNotNull(
 				ParameterProperty,
 				*FString::Printf(TEXT("%s should expose reflected parameter %d"), *Context, ArgumentIndex));
 			if (ParameterProperty == nullptr)
@@ -173,11 +173,11 @@ namespace CompilerPipelineDelegateMetadataTest
 				continue;
 			}
 
-			bPassed &= Assert.AreEqual(
+			bPassed &= LocalAssert.AreEqual(
 				Expected.Name,
 				ParameterProperty->GetFName(),
 				*FString::Printf(TEXT("%s should preserve reflected parameter %d name order"), *Context, ArgumentIndex));
-			bPassed &= Assert.IsTrue(
+			bPassed &= LocalAssert.IsTrue(
 				ActualArgument.Type.MatchesProperty(ParameterProperty, FAngelscriptType::EPropertyMatchType::OverrideArgument),
 				*FString::Printf(TEXT("%s should keep signature argument '%s' compatible with the reflected property"), *Context, *Expected.Name.ToString()));
 			bPassed &= VerifyReflectedPropertyKind(Test, Context, ParameterProperty, Expected);
@@ -186,8 +186,6 @@ namespace CompilerPipelineDelegateMetadataTest
 		return bPassed;
 	}
 }
-
-using namespace CompilerPipelineDelegateMetadataTest;
 
 TEST_CLASS_WITH_FLAGS(FCompilerPipelineDelegateTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",

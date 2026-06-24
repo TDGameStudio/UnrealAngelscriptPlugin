@@ -11,24 +11,6 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
-namespace AngelscriptTest_HotReload_AngelscriptHotReloadLiteralAssetTests_Private
-{
-	static const FName LiteralAssetReloadModuleName(TEXT("HotReloadLiteralAssetMod"));
-	static const FString LiteralAssetReloadFilename(TEXT("HotReloadLiteralAssetMod.as"));
-	static const FName LiteralAssetClassName(TEXT("ULiteralReloadAsset"));
-	static const FName LiteralAssetObjectName(TEXT("ReloadExampleAsset"));
-
-	bool IsHandledReloadResult(const ECompileResult ReloadResult)
-	{
-		return ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled;
-	}
-
-	UObject* FindLiteralAsset()
-	{
-		return FindObject<UObject>(FAngelscriptEngine::Get().AssetsPackage, *LiteralAssetObjectName.ToString());
-	}
-}
-
 
 #define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 #define TestFalse(...) Test.TestFalse(__VA_ARGS__)
@@ -38,10 +20,29 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadLiteralAssetTests_Privat
 #define TestNull(...) Test.TestNull(__VA_ARGS__)
 #define AddExpectedError(...) Test.AddExpectedError(__VA_ARGS__)
 
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadLiteralAssetTests,
+	"Angelscript.TestModule.HotReload.LiteralAsset",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+private:
+inline static const FName LiteralAssetReloadModuleName = FName(TEXT("HotReloadLiteralAssetMod"));
+inline static const FString LiteralAssetReloadFilename = FString(TEXT("HotReloadLiteralAssetMod.as"));
+inline static const FName LiteralAssetClassName = FName(TEXT("ULiteralReloadAsset"));
+inline static const FName LiteralAssetObjectName = FName(TEXT("ReloadExampleAsset"));
+
+static bool IsHandledReloadResult(const ECompileResult ReloadResult)
+{
+	return ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled;
+}
+
+static UObject* FindLiteralAsset()
+{
+	return FindObject<UObject>(FAngelscriptEngine::Get().AssetsPackage, *LiteralAssetObjectName.ToString());
+}
+
 static bool LiteralAssetBroadcastsReloadedObjectReplacement(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadLiteralAssetTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	AddExpectedError(TEXT("LogUObjectBase: Class pointer is invalid or CDO is invalid."), EAutomationExpectedErrorFlags::Contains, 2);
@@ -182,6 +183,13 @@ asset ReloadExampleAsset of ULiteralReloadAsset
 	return true;
 }
 
+public:
+	TEST_METHOD(BroadcastsReloadedObjectReplacement)
+	{
+		ASSERT_THAT(IsTrue(LiteralAssetBroadcastsReloadedObjectReplacement(*TestRunner)));
+	}
+};
+
 #undef TestTrue
 #undef TestFalse
 #undef TestEqual
@@ -189,15 +197,5 @@ asset ReloadExampleAsset of ULiteralReloadAsset
 #undef TestNotNull
 #undef TestNull
 #undef AddExpectedError
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadLiteralAssetTests,
-	"Angelscript.TestModule.HotReload.LiteralAsset",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
-	TEST_METHOD(BroadcastsReloadedObjectReplacement)
-	{
-		ASSERT_THAT(IsTrue(LiteralAssetBroadcastsReloadedObjectReplacement(*TestRunner)));
-	}
-};
 
 #endif

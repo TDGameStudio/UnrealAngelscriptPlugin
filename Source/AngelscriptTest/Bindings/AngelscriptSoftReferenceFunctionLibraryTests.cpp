@@ -25,6 +25,7 @@
 #include "HAL/PlatformProcess.h"
 #include "Misc/Guid.h"
 #include "Misc/ScopeExit.h"
+#include "UObject/Package.h"
 #include "UObject/UObjectGlobals.h"
 #include "UObject/SoftObjectPath.h"
 #include "UObject/UnrealType.h"
@@ -58,7 +59,7 @@ namespace
 		FPlatformProcess::Sleep(0.001f);
 	}
 
-	bool WaitUntil(
+	bool WaitUntilSoftReference(
 		FAutomationTestBase& Test,
 		TFunctionRef<bool()> Predicate,
 		double TimeoutSeconds,
@@ -88,15 +89,15 @@ namespace
 		int32& OutResult)
 	{
 		UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(
 			Function,
 			*FString::Printf(TEXT("Soft-reference async method '%s' should exist"), *FunctionName.ToString())))
 		{
 			return false;
 		}
 
-		return Assert.IsTrue(
+		return LocalAssert.IsTrue(
 			ExecuteGeneratedIntEventOnGameThread(&Engine, Object, Function, OutResult),
 			*FString::Printf(TEXT("Soft-reference async method '%s' should execute"), *FunctionName.ToString()));
 	}
@@ -112,8 +113,8 @@ namespace
 		UClass* ExpectedClass)
 	{
 		UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(
 			Function,
 			*FString::Printf(TEXT("Soft-reference callback '%s' should exist"), *FunctionName.ToString())))
 		{
@@ -121,14 +122,14 @@ namespace
 		}
 
 		FObjectProperty* Property = FindFProperty<FObjectProperty>(Function, ParameterName);
-		if (!Assert.IsNotNull(
+		if (!LocalAssert.IsNotNull(
 			Property,
 			*FString::Printf(TEXT("Soft-reference callback '%s' should expose object parameter '%s'"), *FunctionName.ToString(), *ParameterName.ToString())))
 		{
 			return false;
 		}
 
-		return Assert.AreEqual(
+		return LocalAssert.AreEqual(
 			ExpectedClass,
 			Property->PropertyClass.Get(),
 			*FString::Printf(TEXT("Soft-reference callback '%s' should keep the current UObject delegate surface"), *FunctionName.ToString()));
@@ -142,8 +143,8 @@ namespace
 		UClass* ExpectedMetaClass)
 	{
 		UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(
 			Function,
 			*FString::Printf(TEXT("Soft-reference callback '%s' should exist"), *FunctionName.ToString())))
 		{
@@ -151,14 +152,14 @@ namespace
 		}
 
 		FClassProperty* Property = FindFProperty<FClassProperty>(Function, ParameterName);
-		if (!Assert.IsNotNull(
+		if (!LocalAssert.IsNotNull(
 			Property,
 			*FString::Printf(TEXT("Soft-reference callback '%s' should expose class parameter '%s'"), *FunctionName.ToString(), *ParameterName.ToString())))
 		{
 			return false;
 		}
 
-		return Assert.AreEqual(
+		return LocalAssert.AreEqual(
 			ExpectedMetaClass,
 			Property->MetaClass.Get(),
 			*FString::Printf(TEXT("Soft-reference callback '%s' should keep the current UClass delegate surface"), *FunctionName.ToString()));
@@ -356,7 +357,7 @@ class USoftReferenceAsyncScriptHarness : UObject
 				return false;
 			}
 
-			return WaitUntil(
+			return WaitUntilSoftReference(
 				*TestRunner,
 				[this, ScriptHarness, CounterPropertyName]()
 				{

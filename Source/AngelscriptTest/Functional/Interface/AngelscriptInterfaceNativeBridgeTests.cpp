@@ -51,14 +51,14 @@ namespace InterfaceNativeBridgeTests
 		UObject* ReferencedObject,
 		const TCHAR* Context)
 	{
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(Object, FString::Printf(TEXT("%s should have a valid object"), Context)))
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(Object, FString::Printf(TEXT("%s should have a valid object"), Context)))
 		{
 			return false;
 		}
 
 		FObjectPropertyBase* Property = FindFProperty<FObjectPropertyBase>(Object->GetClass(), PropertyName);
-		if (!Assert.IsNotNull(
+		if (!LocalAssert.IsNotNull(
 			Property,
 			FString::Printf(TEXT("%s should expose object property '%s'"), Context, *PropertyName.ToString())))
 		{

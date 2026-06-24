@@ -8,7 +8,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKConfigGroupTests,
 	"Angelscript.TestModule.AngelScriptSDK.ConfigGroup",
@@ -19,7 +18,7 @@ private:
 	static int ReturnOne() { return 1; }
 
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -38,6 +37,8 @@ public:
 
 	TEST_METHOD(BeginEnd)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* const SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
@@ -51,13 +52,15 @@ public:
 		ASSERT_THAT(IsTrue(R >= 0, TEXT("EndConfigGroup should succeed")));
 
 		// Verify function is accessible
-		FScopedNativeModuleName ModuleScope(Engine, "CfgGroupTest");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "CfgGroupTest");
 		asIScriptModule* M = BuildNativeModule(SE, "CfgGroupTest", "int Entry() { return TestGroupFunc(); }\n");
 		ASSERT_THAT(IsNotNull(M, TEXT("Module using group function should compile")));
 	}
 
 	TEST_METHOD(RemoveCleansTypes)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* const SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
@@ -70,7 +73,7 @@ public:
 
 		// After removal, function should not be available
 		Engine.ResetMessages();
-		FScopedNativeModuleName ModuleScope(Engine, "AfterRemove");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "AfterRemove");
 		asIScriptModule* M = BuildNativeModule(SE, "AfterRemove", "int Entry() { return RemovableFunc(); }\n");
 		// Note: In the current AS 2.33 fork, RemoveConfigGroup may or may not
 		// fully clean up — we just verify the call itself succeeds.

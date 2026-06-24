@@ -36,8 +36,8 @@ namespace PropertyAccessorRemovalTest
 	{
 		OutEngine = CreateEditorScanFreeFullEngine();
 		OutEnginePtr = OutEngine.Get();
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsNotNull(OutEnginePtr, TEXT("Accessor removal test should create an editor-configured scan-free engine"));
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsNotNull(OutEnginePtr, TEXT("Accessor removal test should create an editor-configured scan-free engine"));
 	}
 
 	static const FAngelscriptCompileTraceDiagnosticSummary* FindDiagnosticContaining(
@@ -73,8 +73,8 @@ namespace PropertyAccessorRemovalTest
 			OutSummary,
 			true);
 
-		FNoDiscardAsserter Assert(Test);
-		const bool bPassed = Assert.IsTrue(
+		FNoDiscardAsserter LocalAssert(Test);
+		const bool bPassed = LocalAssert.IsTrue(
 			bCompiled,
 			*FString::Printf(TEXT("Module '%s' should compile"), *ModuleName.ToString()));
 

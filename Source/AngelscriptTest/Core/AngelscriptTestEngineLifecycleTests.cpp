@@ -8,49 +8,44 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Core_AngelscriptTestEngineLifecycleTests_Private
-{
-
-// Capture the pointer before reset so we can assert "the engine was real,
-// then it went away" symbolically. We do NOT dereference the captured
-// pointer post-reset â€” that would be UB. The pointer is used only to
-// (a) assert non-null pre-reset and (b) document the lifetime boundary
-// in test logs.
-struct FCapturedEnginePointers
-{
-	asIScriptEngine* ScriptEngine = nullptr;
-};
-
-static FCapturedEnginePointers CapturePointers(FAngelscriptEngine& Engine)
-{
-	FCapturedEnginePointers Captured;
-	Captured.ScriptEngine = Engine.GetScriptEngine();
-	return Captured;
-}
-
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptTestEngineLifecycleTests,
 	"Angelscript.TestModule.Engine.TestEngine",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+// Capture the pointer before reset so we can assert "the engine was real,
+// then it went away" symbolically. We do NOT dereference the captured
+// pointer post-reset â€?that would be UB. The pointer is used only to
+// (a) assert non-null pre-reset and (b) document the lifetime boundary
+// in test logs.
+struct FCapturedEnginePointers
+{
+asIScriptEngine* ScriptEngine = nullptr;
+};
+
+static FCapturedEnginePointers CapturePointers(FAngelscriptEngine& Engine)
+{
+FCapturedEnginePointers Captured;
+Captured.ScriptEngine = Engine.GetScriptEngine();
+return Captured;
+}
+
+public:
 	// The single-owner shutdown contract: every test engine is the sole owner
 	// of its shared state, so destroying the TUniquePtr must complete teardown
-	// synchronously â€” no deferred-release handshake. The observable contract:
+	// synchronously â€?no deferred-release handshake. The observable contract:
 	// (a) the first reset returns synchronously without deadlock, and (b) two
 	// engines held simultaneously have distinct underlying asCScriptEngine
 	// objects.
 	//
 	// Note: we do NOT compare a captured pre-reset pointer against a
-	// post-reset newly-allocated pointer â€” the OS allocator is free to
+	// post-reset newly-allocated pointer â€?the OS allocator is free to
 	// reuse the just-freed address for the next allocation, so that
 	// comparison is intrinsically flaky. Holding both engines at the
 	// same time gives a deterministic distinctness check.
 	TEST_METHOD(SharedStateReleaseIsImmediate)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptTestEngineLifecycleTests_Private;
-
-		FAngelscriptEngineConfig Config;
+FAngelscriptEngineConfig Config;
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 
 		// Hold both engines simultaneously: the heap can't give them the
@@ -77,7 +72,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTestEngineLifecycleTests,
 		EngineA.Reset();
 
 		// Engine B must remain fully functional after engine A's teardown
-		// â€” its asCScriptEngine pointer is unchanged, and its database
+		// â€?its asCScriptEngine pointer is unchanged, and its database
 		// fields still answer non-null. This is the "no cross-engine
 		// contamination" half of the contract.
 		ASSERT_THAT(AreEqual(
@@ -96,7 +91,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTestEngineLifecycleTests,
 	// test engine singleton.
 	//
 	// Note: we deliberately do NOT compare the pre-destroy pointer
-	// against the post-recreate pointer â€” the OS allocator is free to
+	// against the post-recreate pointer â€?the OS allocator is free to
 	// reuse the just-freed address, making such a comparison flaky.
 	// The observable contract here is "destroy + recreate produces a
 	// usable engine", which is what we assert.
@@ -107,7 +102,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTestEngineLifecycleTests,
 		ASSERT_THAT(IsNotNull(
 			static_cast<void*>(First.GetScriptEngine()),
 			TEXT("TestEngine.DestroySharedEngineThenReconstruct should expose a non-null asIScriptEngine on the first shared engine")));
-		// First engine's TypeDatabase is live â€” proves Initialize* fully
+		// First engine's TypeDatabase is live â€?proves Initialize* fully
 		// wired the inlined database fields after construction.
 		ASSERT_THAT(IsNotNull(
 			First.GetTypeDatabase(),

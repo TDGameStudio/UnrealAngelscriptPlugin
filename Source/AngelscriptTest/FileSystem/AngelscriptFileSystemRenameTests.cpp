@@ -11,34 +11,32 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_FileSystem_AngelscriptFileSystemRenameTests_Private
-{
-	FString GetFileSystemRenameTestRoot()
-	{
-		return FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("Automation") / TEXT("FileSystemRename"));
-	}
-
-	void CleanFileSystemRenameTestRoot()
-	{
-		IFileManager::Get().DeleteDirectory(*GetFileSystemRenameTestRoot(), false, true);
-	}
-
-	bool WriteFileSystemRenameTestFile(const FString& RelativePath, const FString& Content, FString& OutAbsolutePath)
-	{
-		OutAbsolutePath = FPaths::Combine(GetFileSystemRenameTestRoot(), RelativePath);
-		IFileManager::Get().MakeDirectory(*FPaths::GetPath(OutAbsolutePath), true);
-		return FFileHelper::SaveStringToFile(Content, *OutAbsolutePath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptFileSystemRenameTest,
 	"Angelscript.TestModule.FileSystem.RenameUpdatesModuleLookup",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static FString GetFileSystemRenameTestRoot()
+{
+	return FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("Automation") / TEXT("FileSystemRename"));
+}
+
+static void CleanFileSystemRenameTestRoot()
+{
+	IFileManager::Get().DeleteDirectory(*GetFileSystemRenameTestRoot(), false, true);
+}
+
+static bool WriteFileSystemRenameTestFile(const FString& RelativePath, const FString& Content, FString& OutAbsolutePath)
+{
+	OutAbsolutePath = FPaths::Combine(GetFileSystemRenameTestRoot(), RelativePath);
+	IFileManager::Get().MakeDirectory(*FPaths::GetPath(OutAbsolutePath), true);
+	return FFileHelper::SaveStringToFile(Content, *OutAbsolutePath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+}
+
+public:
 	TEST_METHOD(InPlaceRenameRemapsFilenameWithoutDiscard)
 	{
-		using namespace AngelscriptTest_FileSystem_AngelscriptFileSystemRenameTests_Private;
-		CleanFileSystemRenameTestRoot();
+CleanFileSystemRenameTestRoot();
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);

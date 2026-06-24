@@ -14,123 +14,119 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Core_AngelscriptEngineParityTests_Private
-{
-	FString SanitizeCollisionProfileIdentifier(const FName& ProfileName)
-	{
-		FString Identifier = ProfileName.ToString();
-		for (int32 Index = Identifier.Len() - 1; Index >= 0; --Index)
-		{
-			if (!FAngelscriptEngine::IsValidIdentifierCharacter(Identifier[Index]))
-			{
-				Identifier[Index] = '_';
-			}
-		}
-
-		if (!Identifier.IsEmpty() && Identifier[0] >= '0' && Identifier[0] <= '9')
-		{
-			Identifier = TEXT("_") + Identifier;
-		}
-
-		return Identifier;
-	}
-
-	FAngelscriptTypeUsage MakeTemplateTypeUsage(const TCHAR* BaseTypeName, UClass* SubTypeClass)
-	{
-		FAngelscriptTypeUsage Usage(FAngelscriptType::GetByAngelscriptTypeName(BaseTypeName));
-		Usage.SubTypes.Add(FAngelscriptTypeUsage(FAngelscriptType::GetByClass(SubTypeClass)));
-		return Usage;
-	}
-
-	// Compile a snippet inside the production engine. Returns true on success.
-	bool CompileSnippet(FAutomationTestBase& Test, FAngelscriptEngine& Engine,
-		const char* ModuleName, const char* Source)
-	{
-		FNoDiscardAsserter Assert(Test);
-		asIScriptModule* Module = Engine.GetScriptEngine()->GetModule(ModuleName, asGM_ALWAYS_CREATE);
-		if (!Assert.IsNotNull(
-				Module,
-				*FString::Printf(TEXT("%hs should create a script module"), ModuleName)))
-		{
-			return false;
-		}
-
-		asIScriptFunction* Function = nullptr;
-		const int CompileResult = Module->CompileFunction(ModuleName, Source, 0, 0, &Function);
-		const bool bOk = Assert.AreEqual(
-			asSUCCESS,
-			CompileResult,
-			*FString::Printf(TEXT("%hs should compile successfully"), ModuleName));
-		if (Function != nullptr)
-		{
-			Function->Release();
-		}
-		return bOk;
-	}
-
-	// Compile + execute a snippet that returns int32. Returns true on success.
-	bool CompileAndExecuteInt(FAutomationTestBase& Test, FAngelscriptEngine& Engine,
-		const char* ModuleName, const char* Source, int32& OutResult)
-	{
-		FNoDiscardAsserter Assert(Test);
-		asIScriptModule* Module = Engine.GetScriptEngine()->GetModule(ModuleName, asGM_ALWAYS_CREATE);
-		if (!Assert.IsNotNull(
-				Module,
-				*FString::Printf(TEXT("%hs should create a script module"), ModuleName)))
-		{
-			return false;
-		}
-
-		asIScriptFunction* Function = nullptr;
-		const int CompileResult = Module->CompileFunction(ModuleName, Source, 0, 0, &Function);
-		if (!Assert.AreEqual(
-				asSUCCESS,
-				CompileResult,
-				*FString::Printf(TEXT("%hs should compile successfully"), ModuleName))
-			|| !Assert.IsNotNull(
-				Function,
-				*FString::Printf(TEXT("%hs should produce a function"), ModuleName)))
-		{
-			if (Function) Function->Release();
-			return false;
-		}
-
-		asIScriptContext* Context = Engine.CreateContext();
-		if (!Assert.IsNotNull(
-				Context,
-				*FString::Printf(TEXT("%hs should create a script context"), ModuleName)))
-		{
-			Function->Release();
-			return false;
-		}
-
-		const int PrepareResult = Context->Prepare(Function);
-		const int ExecuteResult = PrepareResult == asSUCCESS ? Context->Execute() : PrepareResult;
-		bool bPassed = true;
-		bPassed &= Assert.AreEqual(
-			asSUCCESS,
-			PrepareResult,
-			*FString::Printf(TEXT("%hs should prepare successfully"), ModuleName));
-		bPassed &= Assert.AreEqual(
-			asEXECUTION_FINISHED,
-			ExecuteResult,
-			*FString::Printf(TEXT("%hs should finish successfully"), ModuleName));
-
-		OutResult = static_cast<int32>(Context->GetReturnDWord());
-
-		Context->Release();
-		Function->Release();
-		return bPassed;
-	}
-}
-
-
-using namespace AngelscriptTest_Core_AngelscriptEngineParityTests_Private;
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 	"Angelscript.TestModule.Parity",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static FString SanitizeCollisionProfileIdentifier(const FName& ProfileName)
+{
+	FString Identifier = ProfileName.ToString();
+	for (int32 Index = Identifier.Len() - 1; Index >= 0; --Index)
+	{
+		if (!FAngelscriptEngine::IsValidIdentifierCharacter(Identifier[Index]))
+		{
+			Identifier[Index] = '_';
+		}
+	}
+
+	if (!Identifier.IsEmpty() && Identifier[0] >= '0' && Identifier[0] <= '9')
+	{
+		Identifier = TEXT("_") + Identifier;
+	}
+
+	return Identifier;
+}
+
+static FAngelscriptTypeUsage MakeTemplateTypeUsage(const TCHAR* BaseTypeName, UClass* SubTypeClass)
+{
+	FAngelscriptTypeUsage Usage(FAngelscriptType::GetByAngelscriptTypeName(BaseTypeName));
+	Usage.SubTypes.Add(FAngelscriptTypeUsage(FAngelscriptType::GetByClass(SubTypeClass)));
+	return Usage;
+}
+
+// Compile a snippet inside the production engine. Returns true on success.
+static bool CompileSnippet(FAutomationTestBase& Test, FAngelscriptEngine& Engine,
+	const char* ModuleName, const char* Source)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	asIScriptModule* Module = Engine.GetScriptEngine()->GetModule(ModuleName, asGM_ALWAYS_CREATE);
+	if (!LocalAssert.IsNotNull(
+			Module,
+			*FString::Printf(TEXT("%hs should create a script module"), ModuleName)))
+	{
+		return false;
+	}
+
+	asIScriptFunction* Function = nullptr;
+	const int CompileResult = Module->CompileFunction(ModuleName, Source, 0, 0, &Function);
+	const bool bOk = LocalAssert.AreEqual(
+		asSUCCESS,
+		CompileResult,
+		*FString::Printf(TEXT("%hs should compile successfully"), ModuleName));
+	if (Function != nullptr)
+	{
+		Function->Release();
+	}
+	return bOk;
+}
+
+// Compile + execute a snippet that returns int32. Returns true on success.
+static bool CompileAndExecuteInt(FAutomationTestBase& Test, FAngelscriptEngine& Engine,
+	const char* ModuleName, const char* Source, int32& OutResult)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	asIScriptModule* Module = Engine.GetScriptEngine()->GetModule(ModuleName, asGM_ALWAYS_CREATE);
+	if (!LocalAssert.IsNotNull(
+			Module,
+			*FString::Printf(TEXT("%hs should create a script module"), ModuleName)))
+	{
+		return false;
+	}
+
+	asIScriptFunction* Function = nullptr;
+	const int CompileResult = Module->CompileFunction(ModuleName, Source, 0, 0, &Function);
+	if (!LocalAssert.AreEqual(
+			asSUCCESS,
+			CompileResult,
+			*FString::Printf(TEXT("%hs should compile successfully"), ModuleName))
+		|| !LocalAssert.IsNotNull(
+			Function,
+			*FString::Printf(TEXT("%hs should produce a function"), ModuleName)))
+	{
+		if (Function) Function->Release();
+		return false;
+	}
+
+	asIScriptContext* Context = Engine.CreateContext();
+	if (!LocalAssert.IsNotNull(
+			Context,
+			*FString::Printf(TEXT("%hs should create a script context"), ModuleName)))
+	{
+		Function->Release();
+		return false;
+	}
+
+	const int PrepareResult = Context->Prepare(Function);
+	const int ExecuteResult = PrepareResult == asSUCCESS ? Context->Execute() : PrepareResult;
+	bool bPassed = true;
+	bPassed &= LocalAssert.AreEqual(
+		asSUCCESS,
+		PrepareResult,
+		*FString::Printf(TEXT("%hs should prepare successfully"), ModuleName));
+	bPassed &= LocalAssert.AreEqual(
+		asEXECUTION_FINISHED,
+		ExecuteResult,
+		*FString::Printf(TEXT("%hs should finish successfully"), ModuleName));
+
+	OutResult = static_cast<int32>(Context->GetReturnDWord());
+
+	Context->Release();
+	Function->Release();
+	return bPassed;
+}
+
+public:
 	FAngelscriptEngine* Engine = nullptr;
 
 	BEFORE_EACH()
@@ -169,7 +165,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 
 	TEST_METHOD(CollisionProfileCompile)
 	{
-		ASSERT_THAT(IsNotNull(Engine));
+ASSERT_THAT(IsNotNull(Engine));
 
 		TArray<TSharedPtr<FName>> CollisionProfiles;
 		UCollisionProfile::GetProfileNames(CollisionProfiles);
@@ -192,7 +188,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 
 	TEST_METHOD(CollisionQueryParamsCompile)
 	{
-		ASSERT_THAT(IsNotNull(Engine));
+ASSERT_THAT(IsNotNull(Engine));
 
 		ASSERT_THAT(IsNotNull(
 			Engine->GetScriptEngine()->GetTypeInfoByName("FCollisionEnabledMask"),
@@ -207,7 +203,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 
 	TEST_METHOD(WorldCollisionCompile)
 	{
-		ASSERT_THAT(IsNotNull(Engine));
+ASSERT_THAT(IsNotNull(Engine));
 
 		CompileSnippet(*TestRunner, *Engine, "WorldCollisionParity",
 			"void CheckWorldCollision(UPrimitiveComponent PrimitiveComponent)\n"
@@ -231,7 +227,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 
 	TEST_METHOD(FIntPointCompile)
 	{
-		ASSERT_THAT(IsNotNull(Engine));
+ASSERT_THAT(IsNotNull(Engine));
 		ASSERT_THAT(IsNotNull(Engine->GetScriptEngine()->GetTypeInfoByName("FIntPoint")));
 
 		int32 Result = 0;
@@ -244,7 +240,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 
 	TEST_METHOD(FVector2fCompile)
 	{
-		ASSERT_THAT(IsNotNull(Engine));
+ASSERT_THAT(IsNotNull(Engine));
 		ASSERT_THAT(IsNotNull(Engine->GetScriptEngine()->GetTypeInfoByName("FVector2f")));
 
 		// Compile-only verification; float return value checked via CompileSnippet.
@@ -254,7 +250,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 
 	TEST_METHOD(SoftReferenceCppForm)
 	{
-		ASSERT_THAT(IsNotNull(Engine));
+ASSERT_THAT(IsNotNull(Engine));
 
 		const FAngelscriptTypeUsage SoftObjectUsage = MakeTemplateTypeUsage(TEXT("TSoftObjectPtr"), UTexture2D::StaticClass());
 		const FAngelscriptTypeUsage SoftClassUsage = MakeTemplateTypeUsage(TEXT("TSoftClassPtr"), AActor::StaticClass());
@@ -347,7 +343,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 
 	TEST_METHOD(RuntimeCurveLinearColorCompile)
 	{
-		ASSERT_THAT(IsNotNull(Engine));
+ASSERT_THAT(IsNotNull(Engine));
 
 		asITypeInfo* TypeInfo = Engine->GetScriptEngine()->GetTypeInfoByName("FRuntimeCurveLinearColor");
 		ASSERT_THAT(IsNotNull(TypeInfo));
@@ -359,7 +355,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 
 	TEST_METHOD(HitResultCompile)
 	{
-		ASSERT_THAT(IsNotNull(Engine));
+ASSERT_THAT(IsNotNull(Engine));
 
 		int32 Result = 0;
 		if (CompileAndExecuteInt(*TestRunner, *Engine, "HitResultParity",
@@ -397,7 +393,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineParityTests,
 
 	TEST_METHOD(StartupBindRegistrySmoke)
 	{
-		ASSERT_THAT(IsNotNull(Engine));
+ASSERT_THAT(IsNotNull(Engine));
 
 		const TArray<FName> RegisteredBindNames = FAngelscriptBinds::GetAllRegisteredBindNames();
 		const TArray<FAngelscriptBinds::FBindInfo> BindInfos = FAngelscriptBinds::GetBindInfoList();

@@ -35,152 +35,151 @@
 
 
 
-namespace AngelscriptSubsystemBindingsTest_Private
-{
-	constexpr int32 LocalPlayerControllerId = 0;
-
-	bool ExecuteGlobalIntWithObjects(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const TCHAR* FunctionDecl,
-		TArrayView<UObject* const> Args,
-		int32& OutResult)
-	{
-		FASGlobalFunctionInvoker Invoker(Test, Engine, Module, FunctionDecl);
-		if (!Invoker.IsValid())
-		{
-			return false;
-		}
-
-		for (UObject* Arg : Args)
-		{
-			Invoker.AddArgObject(Arg);
-		}
-
-		OutResult = Invoker.CallAndReturn<int32>(INDEX_NONE);
-		return Invoker.HasRun();
-	}
-
-	bool ExecuteGlobalIntWithObject(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		asIScriptModule& Module,
-		const TCHAR* FunctionDecl,
-		UObject* Arg,
-		int32& OutResult)
-	{
-		TArray<UObject*, TInlineAllocator<1>> Args;
-		Args.Add(Arg);
-		return ExecuteGlobalIntWithObjects(Test, Engine, Module, FunctionDecl, Args, OutResult);
-	}
-
-	struct FStandaloneLocalPlayerFixture
-	{
-		~FStandaloneLocalPlayerFixture()
-		{
-			Shutdown();
-		}
-
-		bool Initialize(FAutomationTestBase& Test)
-		{
-			FNoDiscardAsserter Assert(Test);
-			if (!Assert.IsNotNull(GEngine, TEXT("Subsystem local-player fixture should have a live GEngine")))
-			{
-				return false;
-			}
-
-			const FName PackageName = MakeUniqueObjectName(
-				nullptr,
-				UPackage::StaticClass(),
-				FName(TEXT("/Angelscript_Test_SubsystemBindingsLocalPlayer")));
-			Package = NewObject<UPackage>(GetTransientPackage(), PackageName, RF_Transient);
-			if (!Assert.IsNotNull(Package, TEXT("Subsystem local-player fixture should create a transient world package")))
-			{
-				return false;
-			}
-
-			GameInstance = NewObject<UGameInstance>(GEngine, UGameInstance::StaticClass());
-			if (!Assert.IsNotNull(GameInstance, TEXT("Subsystem local-player fixture should create an engine-owned game instance")))
-			{
-				return false;
-			}
-
-			GameInstance->InitializeStandalone(TEXT("AngelscriptSubsystemBindingsLocalPlayerWorld"), Package);
-			World = GameInstance->GetWorld();
-			WorldContext = GameInstance->GetWorldContext();
-			bool bHasWorldContext = true;
-			bHasWorldContext &= Assert.IsNotNull(World, TEXT("Subsystem local-player fixture should initialize a standalone world"));
-			bHasWorldContext &= Assert.IsNotNull(WorldContext, TEXT("Subsystem local-player fixture should expose a world context"));
-			if (!bHasWorldContext)
-			{
-				return false;
-			}
-
-			UClass* ViewportClass = GEngine->GameViewportClientClass != nullptr
-				? GEngine->GameViewportClientClass.Get()
-				: UGameViewportClient::StaticClass();
-			GameViewport = NewObject<UGameViewportClient>(GEngine, ViewportClass);
-			if (!Assert.IsNotNull(GameViewport, TEXT("Subsystem local-player fixture should create a viewport client")))
-			{
-				return false;
-			}
-
-			GameViewport->Init(*WorldContext, GameInstance, /*bCreateNewAudioDevice*/false);
-			WorldContext->GameViewport = GameViewport;
-			return true;
-		}
-
-		void Shutdown()
-		{
-			if (GameInstance == nullptr && World == nullptr)
-			{
-				return;
-			}
-
-			if (World != nullptr)
-			{
-				World->BeginTearingDown();
-			}
-
-			if (GameInstance != nullptr)
-			{
-				GameInstance->Shutdown();
-			}
-
-			if (WorldContext != nullptr)
-			{
-				WorldContext->GameViewport = nullptr;
-			}
-
-			if (World != nullptr)
-			{
-				World->DestroyWorld(false);
-				if (GEngine != nullptr)
-				{
-					GEngine->DestroyWorldContext(World);
-				}
-			}
-
-			GameViewport = nullptr;
-			WorldContext = nullptr;
-			World = nullptr;
-			GameInstance = nullptr;
-			Package = nullptr;
-		}
-
-		UPackage* Package = nullptr;
-		UGameInstance* GameInstance = nullptr;
-		UWorld* World = nullptr;
-		FWorldContext* WorldContext = nullptr;
-		UGameViewportClient* GameViewport = nullptr;
-	};
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptSubsystemBindingsTest,
 	"Angelscript.TestModule.Bindings.Subsystem",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static constexpr int32 LocalPlayerControllerId = 0;
+
+static bool ExecuteGlobalIntWithObjects(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine,
+	asIScriptModule& Module,
+	const TCHAR* FunctionDecl,
+	TArrayView<UObject* const> Args,
+	int32& OutResult)
+{
+	FASGlobalFunctionInvoker Invoker(Test, Engine, Module, FunctionDecl);
+	if (!Invoker.IsValid())
+	{
+		return false;
+	}
+
+	for (UObject* Arg : Args)
+	{
+		Invoker.AddArgObject(Arg);
+	}
+
+	OutResult = Invoker.CallAndReturn<int32>(INDEX_NONE);
+	return Invoker.HasRun();
+}
+
+static bool ExecuteGlobalIntWithObject(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine,
+	asIScriptModule& Module,
+	const TCHAR* FunctionDecl,
+	UObject* Arg,
+	int32& OutResult)
+{
+	TArray<UObject*, TInlineAllocator<1>> Args;
+	Args.Add(Arg);
+	return ExecuteGlobalIntWithObjects(Test, Engine, Module, FunctionDecl, Args, OutResult);
+}
+
+struct FStandaloneLocalPlayerFixture
+{
+	~FStandaloneLocalPlayerFixture()
+	{
+		Shutdown();
+	}
+
+	bool Initialize(FAutomationTestBase& Test)
+	{
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(GEngine, TEXT("Subsystem local-player fixture should have a live GEngine")))
+		{
+			return false;
+		}
+
+		const FName PackageName = MakeUniqueObjectName(
+			nullptr,
+			UPackage::StaticClass(),
+			FName(TEXT("/Angelscript_Test_SubsystemBindingsLocalPlayer")));
+		Package = NewObject<UPackage>(GetTransientPackage(), PackageName, RF_Transient);
+		if (!LocalAssert.IsNotNull(Package, TEXT("Subsystem local-player fixture should create a transient world package")))
+		{
+			return false;
+		}
+
+		GameInstance = NewObject<UGameInstance>(GEngine, UGameInstance::StaticClass());
+		if (!LocalAssert.IsNotNull(GameInstance, TEXT("Subsystem local-player fixture should create an engine-owned game instance")))
+		{
+			return false;
+		}
+
+		GameInstance->InitializeStandalone(TEXT("AngelscriptSubsystemBindingsLocalPlayerWorld"), Package);
+		World = GameInstance->GetWorld();
+		WorldContext = GameInstance->GetWorldContext();
+		bool bHasWorldContext = true;
+		bHasWorldContext &= LocalAssert.IsNotNull(World, TEXT("Subsystem local-player fixture should initialize a standalone world"));
+		bHasWorldContext &= LocalAssert.IsNotNull(WorldContext, TEXT("Subsystem local-player fixture should expose a world context"));
+		if (!bHasWorldContext)
+		{
+			return false;
+		}
+
+		UClass* ViewportClass = GEngine->GameViewportClientClass != nullptr
+			? GEngine->GameViewportClientClass.Get()
+			: UGameViewportClient::StaticClass();
+		GameViewport = NewObject<UGameViewportClient>(GEngine, ViewportClass);
+		if (!LocalAssert.IsNotNull(GameViewport, TEXT("Subsystem local-player fixture should create a viewport client")))
+		{
+			return false;
+		}
+
+		GameViewport->Init(*WorldContext, GameInstance, /*bCreateNewAudioDevice*/false);
+		WorldContext->GameViewport = GameViewport;
+		return true;
+	}
+
+	void Shutdown()
+	{
+		if (GameInstance == nullptr && World == nullptr)
+		{
+			return;
+		}
+
+		if (World != nullptr)
+		{
+			World->BeginTearingDown();
+		}
+
+		if (GameInstance != nullptr)
+		{
+			GameInstance->Shutdown();
+		}
+
+		if (WorldContext != nullptr)
+		{
+			WorldContext->GameViewport = nullptr;
+		}
+
+		if (World != nullptr)
+		{
+			World->DestroyWorld(false);
+			if (GEngine != nullptr)
+			{
+				GEngine->DestroyWorldContext(World);
+			}
+		}
+
+		GameViewport = nullptr;
+		WorldContext = nullptr;
+		World = nullptr;
+		GameInstance = nullptr;
+		Package = nullptr;
+	}
+
+	UPackage* Package = nullptr;
+	UGameInstance* GameInstance = nullptr;
+	UWorld* World = nullptr;
+	FWorldContext* WorldContext = nullptr;
+	UGameViewportClient* GameViewport = nullptr;
+};
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -194,9 +193,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSubsystemBindingsTest,
 
 	TEST_METHOD(NamespaceHelpers)
 	{
-		using namespace AngelscriptSubsystemBindingsTest_Private;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		FActorTestSpawner Spawner;
@@ -284,9 +281,7 @@ int VerifySubsystemNamespaceHelpers(
 
 	TEST_METHOD(NativeStaticGetAccessors)
 	{
-		using namespace AngelscriptSubsystemBindingsTest_Private;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		FActorTestSpawner Spawner;
@@ -356,9 +351,7 @@ int VerifyNativeSubsystemStaticGetAccessors(
 
 	TEST_METHOD(LocalPlayerAccessors)
 	{
-		using namespace AngelscriptSubsystemBindingsTest_Private;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		FStandaloneLocalPlayerFixture Fixture;
@@ -373,7 +366,10 @@ int VerifyNativeSubsystemStaticGetAccessors(
 		ASSERT_THAT(IsNotNull(GameInstance, TEXT("Subsystem local-player accessor test should expose a game instance")));
 
 		FString OutError;
-		ULocalPlayer* LocalPlayer = GameInstance->CreateLocalPlayer(LocalPlayerControllerId, OutError, false);
+		ULocalPlayer* LocalPlayer = GameInstance->CreateLocalPlayer(
+			LocalPlayerControllerId,
+			OutError,
+			false);
 		ON_SCOPE_EXIT
 		{
 			if (GameInstance != nullptr && LocalPlayer != nullptr && GameInstance->GetLocalPlayers().Contains(LocalPlayer))

@@ -3,30 +3,25 @@
 #include "ClassGenerator/ASClass.h"
 #include "UObject/WeakObjectPtrTemplates.h"
 
-namespace AngelscriptTest_Shared_AngelscriptConstructionContextProbe_Private
-{
-	TWeakObjectPtr<UObject> GCapturedConstructingObject;
-	int32 GConstructingObjectCaptureCount = 0;
-}
-
-using namespace AngelscriptTest_Shared_AngelscriptConstructionContextProbe_Private;
+static TWeakObjectPtr<UObject> GAngelscriptConstructionContextProbeCapturedObject;
+static int32 GAngelscriptConstructionContextProbeCaptureCount = 0;
 
 UObject* UAngelscriptConstructionContextProbe::CaptureConstructingObject()
 {
 	UObject* ConstructingObject = UASClass::GetConstructingASObject();
-	GCapturedConstructingObject = ConstructingObject;
-	++GConstructingObjectCaptureCount;
+	GAngelscriptConstructionContextProbeCapturedObject = ConstructingObject;
+	++GAngelscriptConstructionContextProbeCaptureCount;
 	return ConstructingObject;
 }
 
 UObject* UAngelscriptConstructionContextProbe::GetCapturedObject() const
 {
-	return GCapturedConstructingObject.Get();
+	return GAngelscriptConstructionContextProbeCapturedObject.Get();
 }
 
 int32 UAngelscriptConstructionContextProbe::GetCaptureCount() const
 {
-	return GConstructingObjectCaptureCount;
+	return GAngelscriptConstructionContextProbeCaptureCount;
 }
 
 void UAngelscriptConstructionContextProbe::ResetCapturedObject()
@@ -36,16 +31,16 @@ void UAngelscriptConstructionContextProbe::ResetCapturedObject()
 
 UObject* UAngelscriptConstructionContextProbe::GetLastCapturedObject()
 {
-	return GCapturedConstructingObject.Get();
+	return GAngelscriptConstructionContextProbeCapturedObject.Get();
 }
 
 int32 UAngelscriptConstructionContextProbe::GetLastCaptureCount()
 {
-	return GConstructingObjectCaptureCount;
+	return GAngelscriptConstructionContextProbeCaptureCount;
 }
 
 void UAngelscriptConstructionContextProbe::ResetCaptureState()
 {
-	GCapturedConstructingObject.Reset();
-	GConstructingObjectCaptureCount = 0;
+	GAngelscriptConstructionContextProbeCapturedObject.Reset();
+	GAngelscriptConstructionContextProbeCaptureCount = 0;
 }

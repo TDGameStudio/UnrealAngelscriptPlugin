@@ -8,8 +8,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptBuilderTestSupport;
-using namespace AngelscriptNativeTestSupport;
 
 namespace AngelscriptBuilderAppInterfaceTest
 {
@@ -47,7 +45,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBuilderAppInterfaceTests,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -66,10 +64,13 @@ public:
 
 	TEST_METHOD(ParseDataTypeResolvesPrimitiveAndScriptClass)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder app-interface data type test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderAppInterfaceDataType");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderAppInterfaceDataType");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder app-interface data type test should create a module")));
 
@@ -115,10 +116,13 @@ public:
 
 	TEST_METHOD(ParseFunctionDeclarationPreservesParamsDefaultsAndTraits)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder app-interface function test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderAppInterfaceFunction");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderAppInterfaceFunction");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder app-interface function test should create a module")));
 
@@ -171,10 +175,13 @@ public:
 
 	TEST_METHOD(ParseVariableDeclarationExtractsNamespaceNameAndType)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder app-interface variable test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderAppInterfaceVariable");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderAppInterfaceVariable");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder app-interface variable test should create a module")));
 
@@ -198,10 +205,13 @@ public:
 
 	TEST_METHOD(ParseTemplateDeclSplitsNameAndSubtypeIdentifiers)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder app-interface template test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderAppInterfaceTemplate");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderAppInterfaceTemplate");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder app-interface template test should create a module")));
 
@@ -223,6 +233,9 @@ public:
 
 	TEST_METHOD(VerifyPropertyAcceptsValidDeclarationAndRejectsNameConflict)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder app-interface property test should create a standalone SDK engine")));
 
@@ -233,7 +246,7 @@ public:
 		ASSERT_THAT(IsTrue(PropertyResult >= 0 || PropertyResult == asALREADY_REGISTERED,
 			TEXT("Builder app-interface property test should register existing property")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderAppInterfaceProperty");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderAppInterfaceProperty");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder app-interface property test should create a module")));
 
@@ -259,7 +272,7 @@ public:
 		ASSERT_THAT(AreEqual(static_cast<int32>(asNAME_TAKEN), ConflictResult,
 			TEXT("Builder app-interface property test should reject a property name conflict")));
 		ASSERT_THAT(IsTrue(AssertBuilderDiagnostic(*TestRunner, Engine.GetMessages(),
-			FExpectedBuilderDiagnostic::Error(TEXT("Property"), INDEX_NONE, TEXT("Name conflict. 'Existing' is an object property.")),
+			AngelscriptBuilderTestSupport::FExpectedBuilderDiagnostic::Error(TEXT("Property"), INDEX_NONE, TEXT("Name conflict. 'Existing' is an object property.")),
 			TEXT("VerifyProperty.NameConflict")),
 			TEXT("Builder app-interface property test should report the property name conflict")));
 	}

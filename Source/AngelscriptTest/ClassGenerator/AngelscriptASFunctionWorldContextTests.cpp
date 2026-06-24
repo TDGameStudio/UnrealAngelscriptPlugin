@@ -12,28 +12,26 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
-namespace AngelscriptTest_ClassGenerator_AngelscriptASFunctionWorldContextTests_Private
-{
-	static const FName WorldContextModuleName(TEXT("ASFunctionWorldContext"));
-	static const FString WorldContextFilename(TEXT("ASFunctionWorldContext.as"));
-	static const FName WorldContextStaticsClassName(TEXT("UModule_ASFunctionWorldContextStatics"));
-
-	struct FCheckWorldContextParams
-	{
-		AActor* WorldContextObject = nullptr;
-		int32 Value = 0;
-		int32 ReturnValue = 0;
-	};
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionWorldContextTests,
 	"Angelscript.TestModule.ClassGenerator.ASFunction",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+inline static const FName WorldContextModuleName = FName(TEXT("ASFunctionWorldContext"));
+inline static const FString WorldContextFilename = FString(TEXT("ASFunctionWorldContext.as"));
+inline static const FName WorldContextStaticsClassName = FName(TEXT("UModule_ASFunctionWorldContextStatics"));
+
+struct FCheckWorldContextParams
+{
+	AActor* WorldContextObject = nullptr;
+	int32 Value = 0;
+	int32 ReturnValue = 0;
+};
+
+public:
 	TEST_METHOD(StaticWorldContextRuntimeCallUsesValidParmOffset)
 	{
-		using namespace AngelscriptTest_ClassGenerator_AngelscriptASFunctionWorldContextTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
 		{

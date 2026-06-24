@@ -29,8 +29,8 @@ namespace CompilerPipelineDelegateRuntimeTest
 	{
 		const auto ModuleNameUtf8 = StringCast<ANSICHAR>(*ModuleName.ToString());
 		asIScriptModule* Module = Engine.GetScriptEngine()->GetModule(ModuleNameUtf8.Get(), asGM_ONLY_IF_EXISTS);
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(Module, TEXT("Delegate execute runtime error compile should publish a script module")))
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(Module, TEXT("Delegate execute runtime error compile should publish a script module")))
 		{
 			return nullptr;
 		}
@@ -51,8 +51,8 @@ namespace CompilerPipelineDelegateRuntimeTest
 
 		FAngelscriptEngineScope EngineScope(Engine);
 		asIScriptContext* Context = Engine.CreateContext();
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(Context, TEXT("Delegate execute runtime error test case should create an execution context")))
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(Context, TEXT("Delegate execute runtime error test case should create an execution context")))
 		{
 			return false;
 		}
@@ -75,8 +75,6 @@ namespace CompilerPipelineDelegateRuntimeTest
 		return true;
 	}
 }
-
-using namespace CompilerPipelineDelegateRuntimeTest;
 
 TEST_CLASS_WITH_FLAGS(FCompilerPipelineDelegateRuntimeTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",

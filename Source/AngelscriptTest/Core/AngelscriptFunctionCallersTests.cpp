@@ -4,71 +4,69 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Core_AngelscriptFunctionCallersTests_Private
-{
-	struct FFunctionCallerHarness
-	{
-		int32 Bias = 0;
-
-		int32 AddToBias(int32 Value, int32& InOut)
-		{
-			InOut += Bias;
-			return Bias + Value + InOut;
-		}
-
-		const int32& GetBiasRef() const
-		{
-			return Bias;
-		}
-	};
-
-	int32 GlobalAddAndBump(int32 Value, int32& InOut)
-	{
-		InOut += 6;
-		return Value + InOut;
-	}
-
-	void CopyFromPtr(const int32* InValue, int32& OutValue)
-	{
-		OutValue = InValue != nullptr ? *InValue : -1;
-	}
-
-	void InvokeCaller(const FFuncEntry& Entry, void** Arguments, void* ReturnValue)
-	{
-		if (Entry.Caller.type == 1)
-		{
-			Entry.Caller.FuncPtr(
-				reinterpret_cast<ASAutoCaller::TFunctionPtr>(Entry.FuncPtr.ptr.f.func),
-				Arguments,
-				ReturnValue);
-			return;
-		}
-
-		if (Entry.Caller.type == 2)
-		{
-			union FMethodPtrBridge
-			{
-				FTypeErasedMethodPtr Erased;
-				ASAutoCaller::TMethodPtr Auto;
-			};
-
-			FMethodPtrBridge MethodPtrBridge;
-			FMemory::Memzero(MethodPtrBridge);
-			MethodPtrBridge.Erased = Entry.FuncPtr.ptr.m.mthd;
-			Entry.Caller.MethodPtr(MethodPtrBridge.Auto, Arguments, ReturnValue);
-		}
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionCallersTests,
 	"Angelscript.TestModule.Engine.FunctionCallers",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+struct FFunctionCallerHarness
+{
+	int32 Bias = 0;
+
+	int32 AddToBias(int32 Value, int32& InOut)
+	{
+		InOut += Bias;
+		return Bias + Value + InOut;
+	}
+
+	const int32& GetBiasRef() const
+	{
+		return Bias;
+	}
+};
+
+static int32 GlobalAddAndBump(int32 Value, int32& InOut)
+{
+	InOut += 6;
+	return Value + InOut;
+}
+
+static void CopyFromPtr(const int32* InValue, int32& OutValue)
+{
+	OutValue = InValue != nullptr ? *InValue : -1;
+}
+
+static void InvokeCaller(const FFuncEntry& Entry, void** Arguments, void* ReturnValue)
+{
+	if (Entry.Caller.type == 1)
+	{
+		Entry.Caller.FuncPtr(
+			reinterpret_cast<ASAutoCaller::TFunctionPtr>(Entry.FuncPtr.ptr.f.func),
+			Arguments,
+			ReturnValue);
+		return;
+	}
+
+	if (Entry.Caller.type == 2)
+	{
+		union FMethodPtrBridge
+		{
+			FTypeErasedMethodPtr Erased;
+			ASAutoCaller::TMethodPtr Auto;
+		};
+
+		FMethodPtrBridge MethodPtrBridge;
+		FMemory::Memzero(MethodPtrBridge);
+		MethodPtrBridge.Erased = Entry.FuncPtr.ptr.m.mthd;
+		Entry.Caller.MethodPtr(MethodPtrBridge.Auto, Arguments, ReturnValue);
+	}
+}
+
+public:
 	TEST_METHOD(DirectCallersRoundTripValueReferenceAndPointerArguments)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptFunctionCallersTests_Private;
-		FFuncEntry GlobalEntry = { ERASE_AUTO_FUNCTION_PTR(GlobalAddAndBump) };
+FFuncEntry GlobalEntry = { ERASE_AUTO_FUNCTION_PTR(GlobalAddAndBump) };
 		FFuncEntry MethodEntry = { ERASE_AUTO_METHOD_PTR(FFunctionCallerHarness, AddToBias) };
 		FFuncEntry ConstMethodEntry = { ERASE_AUTO_METHOD_PTR(FFunctionCallerHarness, GetBiasRef) };
 		FFuncEntry PointerEntry = { ERASE_AUTO_FUNCTION_PTR(CopyFromPtr) };

@@ -4,16 +4,13 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptBuilderTestSupport;
-using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptBuilderDiagnosticsTests,
 	"Angelscript.TestModule.AngelScriptSDK.Builder.Diagnostics",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -32,8 +29,12 @@ public:
 
 	TEST_METHOD(CompilerMessageCollectorCanMatchWarnings)
 	{
-		FNativeMessageCollector Messages;
-		FNativeMessageEntry Warning;
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
+		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
+		AngelscriptNativeTestSupport::FNativeMessageEntry Warning;
 		Warning.Section = TEXT("BuilderDiagSyntheticWarning.as");
 		Warning.Row = 7;
 		Warning.Column = 3;
@@ -44,16 +45,20 @@ public:
 		ASSERT_THAT(IsTrue(AssertBuilderDiagnostic(
 			*TestRunner,
 			Messages,
-			FExpectedBuilderDiagnostic::Warning(TEXT("BuilderDiagSyntheticWarning.as"), 7, TEXT("builder warning"), 3),
+			AngelscriptBuilderTestSupport::FExpectedBuilderDiagnostic::Warning(TEXT("BuilderDiagSyntheticWarning.as"), 7, TEXT("builder warning"), 3),
 			TEXT("synthetic warning diagnostic should match type, section, row, column and message"))));
 	}
 
 	TEST_METHOD(ParseErrorReportsSectionAndDoesNotPublishDeclarations)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder diagnostic test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagParseError");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagParseError");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder diagnostic test should create a module")));
 
@@ -84,16 +89,20 @@ public:
 		ASSERT_THAT(IsTrue(AssertBuilderDiagnostic(
 			*TestRunner,
 			Engine.GetMessages(),
-			FExpectedBuilderDiagnostic::Error(TEXT("BuilderDiagParseError.as"), 2, TEXT("Expected")),
+			AngelscriptBuilderTestSupport::FExpectedBuilderDiagnostic::Error(TEXT("BuilderDiagParseError.as"), 2, TEXT("Expected")),
 			TEXT("parse diagnostic should carry section, row and message keyword"))));
 	}
 
 	TEST_METHOD(DuplicateClassFailsDuringTypeGenerationWithoutFunctionLeak)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder duplicate diagnostic test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagDuplicateClass");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagDuplicateClass");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder duplicate diagnostic test should create a module")));
 
@@ -136,16 +145,20 @@ public:
 		ASSERT_THAT(IsTrue(AssertBuilderDiagnostic(
 			*TestRunner,
 			Engine.GetMessages(),
-			FExpectedBuilderDiagnostic::Error(TEXT("BuilderDiagDuplicateClass.as"), INDEX_NONE, TEXT("DuplicateType")),
+			AngelscriptBuilderTestSupport::FExpectedBuilderDiagnostic::Error(TEXT("BuilderDiagDuplicateClass.as"), INDEX_NONE, TEXT("DuplicateType")),
 			TEXT("duplicate diagnostic should mention the duplicate class"))));
 	}
 
 	TEST_METHOD(UnknownTypeReportsFunctionSectionAndKeepsBytecodeEmpty)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder unknown-type diagnostic test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagUnknownType");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagUnknownType");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder unknown-type diagnostic test should create a module")));
 
@@ -176,16 +189,20 @@ public:
 		ASSERT_THAT(IsTrue(AssertBuilderDiagnostic(
 			*TestRunner,
 			Engine.GetMessages(),
-			FExpectedBuilderDiagnostic::Error(TEXT("BuilderDiagUnknownType.as"), 3, TEXT("GhostType")),
+			AngelscriptBuilderTestSupport::FExpectedBuilderDiagnostic::Error(TEXT("BuilderDiagUnknownType.as"), 3, TEXT("GhostType")),
 			TEXT("unknown-type diagnostic should carry section, row and symbol keyword"))));
 	}
 
 	TEST_METHOD(WarningReportsSectionRowAndDoesNotFailByDefault)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder warning diagnostic test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagWarningDefault");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagWarningDefault");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder warning diagnostic test should create a module")));
 
@@ -228,7 +245,7 @@ public:
 		ASSERT_THAT(IsTrue(AssertBuilderDiagnostic(
 			*TestRunner,
 			Engine.GetMessages(),
-			FExpectedBuilderDiagnostic::Warning(TEXT("BuilderDiagWarningDefault.as"), 8, TEXT("overload")),
+			AngelscriptBuilderTestSupport::FExpectedBuilderDiagnostic::Warning(TEXT("BuilderDiagWarningDefault.as"), 8, TEXT("overload")),
 			TEXT("default-arg overload warning should carry section, row and message keyword"))));
 
 		asIScriptFunction* EntryFunction = Module->GetFunctionByDecl("int Entry()");
@@ -238,6 +255,10 @@ public:
 
 	TEST_METHOD(WarningsAsErrorsFailBuildAndPreserveWarningDiagnostic)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder warnings-as-errors diagnostic test should create a standalone SDK engine")));
 
@@ -249,7 +270,7 @@ public:
 			ScriptEngine->SetEngineProperty(asEP_COMPILER_WARNINGS, PreviousCompilerWarnings);
 		};
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagWarningsAsErrors");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagWarningsAsErrors");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder warnings-as-errors diagnostic test should create a module")));
 
@@ -291,21 +312,25 @@ public:
 		ASSERT_THAT(IsTrue(AssertBuilderDiagnostic(
 			*TestRunner,
 			Engine.GetMessages(),
-			FExpectedBuilderDiagnostic::Warning(TEXT("BuilderDiagWarningsAsErrors.as"), 8, TEXT("overload")),
+			AngelscriptBuilderTestSupport::FExpectedBuilderDiagnostic::Warning(TEXT("BuilderDiagWarningsAsErrors.as"), 8, TEXT("overload")),
 			TEXT("warnings-as-errors should preserve the original warning diagnostic"))));
 		ASSERT_THAT(IsTrue(AssertBuilderDiagnostic(
 			*TestRunner,
 			Engine.GetMessages(),
-			FExpectedBuilderDiagnostic::Error(TEXT(""), 0, TEXT("Warnings are treated as errors")),
+			AngelscriptBuilderTestSupport::FExpectedBuilderDiagnostic::Error(TEXT(""), 0, TEXT("Warnings are treated as errors")),
 			TEXT("warnings-as-errors should add the promotion error"))));
 	}
 
 	TEST_METHOD(MultiSectionErrorReportsOwningSectionOnly)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder multi-section diagnostic test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagMultiSection");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagMultiSection");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder multi-section diagnostic test should create a module")));
 
@@ -340,11 +365,11 @@ public:
 		ASSERT_THAT(IsTrue(AssertBuilderDiagnostic(
 			*TestRunner,
 			Engine.GetMessages(),
-			FExpectedBuilderDiagnostic::Error(TEXT("BuilderDiagMultiSection_Bad.as"), 3, TEXT("GhostType")),
+			AngelscriptBuilderTestSupport::FExpectedBuilderDiagnostic::Error(TEXT("BuilderDiagMultiSection_Bad.as"), 3, TEXT("GhostType")),
 			TEXT("multi-section diagnostic should report the owning bad section"))));
 
 		bool bGoodSectionReportedError = false;
-		for (const FNativeMessageEntry& Entry : Engine.GetMessages().Entries)
+		for (const AngelscriptNativeTestSupport::FNativeMessageEntry& Entry : Engine.GetMessages().Entries)
 		{
 			if (Entry.Type == asMSGTYPE_ERROR && Entry.Section == TEXT("BuilderDiagMultiSection_Good.as"))
 			{
@@ -365,10 +390,14 @@ public:
 
 	TEST_METHOD(GlobalInitializerErrorDoesNotMarkGlobalCompiled)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder global-initializer diagnostic test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagGlobalInitializer");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagGlobalInitializer");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder global-initializer diagnostic test should create a module")));
 
@@ -406,7 +435,7 @@ public:
 		ASSERT_THAT(IsTrue(AssertBuilderDiagnostic(
 			*TestRunner,
 			Engine.GetMessages(),
-			FExpectedBuilderDiagnostic::Error(TEXT("BuilderDiagGlobalInitializer.as"), 1, TEXT("MissingFunction")),
+			AngelscriptBuilderTestSupport::FExpectedBuilderDiagnostic::Error(TEXT("BuilderDiagGlobalInitializer.as"), 1, TEXT("MissingFunction")),
 			TEXT("global initializer diagnostic should carry section, row and symbol keyword"))));
 
 		sGlobalVariableDescription* BrokenGlobal = FindGlobalVariableDescriptionByName(*Builder, "BrokenGlobal");
@@ -420,10 +449,14 @@ public:
 
 	TEST_METHOD(CompileFunctionWarningUsesLineOffset)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder CompileFunction warning diagnostic test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagCompileFunctionWarning");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagCompileFunctionWarning");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder CompileFunction warning diagnostic test should create a module")));
 
@@ -447,7 +480,7 @@ public:
 		ASSERT_THAT(IsNotNull(Function, TEXT("Builder CompileFunction warning diagnostic test should return the compiled function")));
 		ASSERT_THAT(IsTrue(Builder.numWarnings > 0, TEXT("Builder CompileFunction warning diagnostic test should increment warning count")));
 		bool bMatchedOffsetWarning = false;
-		for (const FNativeMessageEntry& Entry : Engine.GetMessages().Entries)
+		for (const AngelscriptNativeTestSupport::FNativeMessageEntry& Entry : Engine.GetMessages().Entries)
 		{
 			if (Entry.Type == asMSGTYPE_WARNING &&
 				Entry.Section == TEXT("BuilderDiagCompileFunctionWarning.as") &&
@@ -464,10 +497,14 @@ public:
 
 	TEST_METHOD(DuplicateFunctionDiagnosticReportsFunctionSection)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder duplicate-function diagnostic test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagDuplicateFunction");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagDuplicateFunction");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder duplicate-function diagnostic test should create a module")));
 
@@ -501,7 +538,7 @@ public:
 		ASSERT_THAT(IsTrue(AssertBuilderDiagnostic(
 			*TestRunner,
 			Engine.GetMessages(),
-			FExpectedBuilderDiagnostic::Error(TEXT("BuilderDiagDuplicateFunction.as"), 6, TEXT("same name and parameters")),
+			AngelscriptBuilderTestSupport::FExpectedBuilderDiagnostic::Error(TEXT("BuilderDiagDuplicateFunction.as"), 6, TEXT("same name and parameters")),
 			TEXT("duplicate function diagnostic should carry section, row and duplicate-signature message"))));
 		ASSERT_THAT(IsTrue(CountGlobalFunctionDescriptions(*Builder, "Entry") >= 2,
 			TEXT("Builder duplicate-function diagnostic test should retain the duplicate Entry descriptions for diagnostics")));

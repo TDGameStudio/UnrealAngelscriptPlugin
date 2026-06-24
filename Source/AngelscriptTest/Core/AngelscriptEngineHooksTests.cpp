@@ -24,77 +24,75 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Core_AngelscriptEngineHooksTests_Private
-{
-	struct FEngineHooksContextGuard
-	{
-		TArray<FAngelscriptEngine*> SavedStack;
-
-		FEngineHooksContextGuard()
-		{
-			SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
-		}
-
-		~FEngineHooksContextGuard()
-		{
-			FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
-		}
-
-		void DiscardSavedStack()
-		{
-			SavedStack.Reset();
-		}
-	};
-
-	bool WaitForDebuggerEnvelopeType(
-		FAutomationTestBase& Test,
-		FAngelscriptDebuggerTestSession& Session,
-		FAngelscriptDebuggerTestClient& Client,
-		EDebugMessageType ExpectedType,
-		TOptional<FAngelscriptDebugMessageEnvelope>& OutEnvelope,
-		const TCHAR* Context)
-	{
-		FNoDiscardAsserter Assert(Test);
-		const bool bReceivedEnvelope = Session.PumpUntil(
-			[&Client, &OutEnvelope, ExpectedType]()
-			{
-				if (OutEnvelope.IsSet())
-				{
-					return true;
-				}
-
-				TOptional<FAngelscriptDebugMessageEnvelope> Envelope = Client.ReceiveEnvelope();
-				if (Envelope.IsSet() && Envelope->MessageType == ExpectedType)
-				{
-					OutEnvelope = MoveTemp(Envelope);
-					return true;
-				}
-
-				return false;
-			},
-			Session.GetDefaultTimeoutSeconds());
-
-		if (!Assert.IsTrue(bReceivedEnvelope, Context))
-		{
-			if (!Client.GetLastError().IsEmpty())
-			{
-				Test.AddError(Client.GetLastError());
-			}
-			return false;
-		}
-
-		return true;
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 	"Angelscript.TestModule.CppTests.Engine.Hooks",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+struct FEngineHooksContextGuard
+{
+	TArray<FAngelscriptEngine*> SavedStack;
+
+	FEngineHooksContextGuard()
+	{
+		SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
+	}
+
+	~FEngineHooksContextGuard()
+	{
+		FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
+	}
+
+	void DiscardSavedStack()
+	{
+		SavedStack.Reset();
+	}
+};
+
+static bool WaitForDebuggerEnvelopeType(
+	FAutomationTestBase& Test,
+	FAngelscriptDebuggerTestSession& Session,
+	FAngelscriptDebuggerTestClient& Client,
+	EDebugMessageType ExpectedType,
+	TOptional<FAngelscriptDebugMessageEnvelope>& OutEnvelope,
+	const TCHAR* Context)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	const bool bReceivedEnvelope = Session.PumpUntil(
+		[&Client, &OutEnvelope, ExpectedType]()
+		{
+			if (OutEnvelope.IsSet())
+			{
+				return true;
+			}
+
+			TOptional<FAngelscriptDebugMessageEnvelope> Envelope = Client.ReceiveEnvelope();
+			if (Envelope.IsSet() && Envelope->MessageType == ExpectedType)
+			{
+				OutEnvelope = MoveTemp(Envelope);
+				return true;
+			}
+
+			return false;
+		},
+		Session.GetDefaultTimeoutSeconds());
+
+	if (!LocalAssert.IsTrue(bReceivedEnvelope, Context))
+	{
+		if (!Client.GetLastError().IsEmpty())
+		{
+			Test.AddError(Client.GetLastError());
+		}
+		return false;
+	}
+
+	return true;
+}
+
+public:
 	TEST_METHOD(PreCompileHookDoesNotLeakBetweenEngines)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptEngineHooksTests_Private;
-		FEngineHooksContextGuard ContextGuard;
+FEngineHooksContextGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
@@ -148,8 +146,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineHooksTests,
 
 	TEST_METHOD(RuntimeHookDelegatesAreEngineOwned)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptEngineHooksTests_Private;
-		FEngineHooksContextGuard ContextGuard;
+FEngineHooksContextGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
@@ -547,7 +544,7 @@ class ADebugHookObjectSuffixActor : AActor
 		}
 
 		TOptional<FAngelscriptDebugMessageEnvelope> VersionEnvelope;
-		if (!AngelscriptTest_Core_AngelscriptEngineHooksTests_Private::WaitForDebuggerEnvelopeType(
+		if (!WaitForDebuggerEnvelopeType(
 			*TestRunner,
 			Session,
 			Client,
@@ -565,7 +562,7 @@ class ADebugHookObjectSuffixActor : AActor
 		}
 
 		TOptional<FAngelscriptDebugMessageEnvelope> BreakFiltersEnvelope;
-		if (!AngelscriptTest_Core_AngelscriptEngineHooksTests_Private::WaitForDebuggerEnvelopeType(
+		if (!WaitForDebuggerEnvelopeType(
 			*TestRunner,
 			Session,
 			Client,

@@ -1720,8 +1720,8 @@ FString Format_Ret_FloatPrecision()
 			TEXT("Format repeated index returns Echo=Echo"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				FNoDiscardAsserter Assert(T);
-				return Assert.AreEqual(FString(TEXT("Echo=Echo")), V, TEXT("Repeated"));
+				FNoDiscardAsserter LocalAssert(T);
+				return LocalAssert.AreEqual(FString(TEXT("Echo=Echo")), V, TEXT("Repeated"));
 			});
 
 		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
@@ -1729,11 +1729,11 @@ FString Format_Ret_FloatPrecision()
 			TEXT("Format 5-arg mixed returns pipe-separated"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				FNoDiscardAsserter Assert(T);
+				FNoDiscardAsserter LocalAssert(T);
 				bool bOk = true;
-				bOk &= Assert.IsTrue(V.StartsWith(TEXT("Hello|42|")), TEXT("starts with Hello|42|"));
-				bOk &= Assert.IsTrue(V.Contains(TEXT("3.14")), TEXT("contains 3.14"));
-				bOk &= Assert.IsTrue(V.EndsWith(TEXT("|-1")), TEXT("ends with |-1"));
+				bOk &= LocalAssert.IsTrue(V.StartsWith(TEXT("Hello|42|")), TEXT("starts with Hello|42|"));
+				bOk &= LocalAssert.IsTrue(V.Contains(TEXT("3.14")), TEXT("contains 3.14"));
+				bOk &= LocalAssert.IsTrue(V.EndsWith(TEXT("|-1")), TEXT("ends with |-1"));
 				return bOk;
 			});
 
@@ -1742,8 +1742,8 @@ FString Format_Ret_FloatPrecision()
 			TEXT("Format float shows decimal digits"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				FNoDiscardAsserter Assert(T);
-				return Assert.IsTrue(V.Contains(TEXT("pi~3.14")), TEXT("contains pi~3.14"));
+				FNoDiscardAsserter LocalAssert(T);
+				return LocalAssert.IsTrue(V.Contains(TEXT("pi~3.14")), TEXT("contains pi~3.14"));
 			});
 	}
 
@@ -2272,10 +2272,10 @@ FString ApplyFmt_Ret_NegSignPlus()
 			TEXT("ApplyFormat int #X returns 0xFF-style"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				FNoDiscardAsserter Assert(T);
+				FNoDiscardAsserter LocalAssert(T);
 				bool bOk = true;
-				bOk &= Assert.IsTrue(V.Contains(TEXT("0x")) || V.Contains(TEXT("0X")), TEXT("contains 0x prefix"));
-				bOk &= Assert.IsTrue(V.ToUpper().Contains(TEXT("FF")), TEXT("contains FF"));
+				bOk &= LocalAssert.IsTrue(V.Contains(TEXT("0x")) || V.Contains(TEXT("0X")), TEXT("contains 0x prefix"));
+				bOk &= LocalAssert.IsTrue(V.ToUpper().Contains(TEXT("FF")), TEXT("contains FF"));
 				return bOk;
 			});
 
@@ -2284,8 +2284,8 @@ FString ApplyFmt_Ret_NegSignPlus()
 			TEXT("ApplyFormat float .3f returns 3.142"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				FNoDiscardAsserter Assert(T);
-				return Assert.IsTrue(V.Contains(TEXT("3.142")), TEXT("contains 3.142"));
+				FNoDiscardAsserter LocalAssert(T);
+				return LocalAssert.IsTrue(V.Contains(TEXT("3.142")), TEXT("contains 3.142"));
 			});
 
 		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
@@ -2293,8 +2293,8 @@ FString ApplyFmt_Ret_NegSignPlus()
 			TEXT("ApplyFormat bool true returns 'true'"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				FNoDiscardAsserter Assert(T);
-				return Assert.AreEqual(FString(TEXT("true")), V, TEXT("bool true text"));
+				FNoDiscardAsserter LocalAssert(T);
+				return LocalAssert.AreEqual(FString(TEXT("true")), V, TEXT("bool true text"));
 			});
 
 		ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M, 
@@ -2302,11 +2302,11 @@ FString ApplyFmt_Ret_NegSignPlus()
 			TEXT("ApplyFormat string center with dash fill"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				FNoDiscardAsserter Assert(T);
+				FNoDiscardAsserter LocalAssert(T);
 				bool bOk = true;
-				bOk &= Assert.IsTrue(V.Len() >= 8, TEXT("length >= 8"));
-				bOk &= Assert.IsTrue(V.Contains(TEXT("Hi")), TEXT("contains Hi"));
-				bOk &= Assert.IsTrue(V.Contains(TEXT("-")), TEXT("contains dash fill"));
+				bOk &= LocalAssert.IsTrue(V.Len() >= 8, TEXT("length >= 8"));
+				bOk &= LocalAssert.IsTrue(V.Contains(TEXT("Hi")), TEXT("contains Hi"));
+				bOk &= LocalAssert.IsTrue(V.Contains(TEXT("-")), TEXT("contains dash fill"));
 				return bOk;
 			});
 
@@ -2315,10 +2315,10 @@ FString ApplyFmt_Ret_NegSignPlus()
 			TEXT("ApplyFormat int #b returns 0b1010"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				FNoDiscardAsserter Assert(T);
+				FNoDiscardAsserter LocalAssert(T);
 				bool bOk = true;
-				bOk &= Assert.IsTrue(V.Contains(TEXT("0b")), TEXT("contains 0b prefix"));
-				bOk &= Assert.IsTrue(V.Contains(TEXT("1010")), TEXT("contains 1010"));
+				bOk &= LocalAssert.IsTrue(V.Contains(TEXT("0b")), TEXT("contains 0b prefix"));
+				bOk &= LocalAssert.IsTrue(V.Contains(TEXT("1010")), TEXT("contains 1010"));
 				return bOk;
 			});
 
@@ -2327,8 +2327,8 @@ FString ApplyFmt_Ret_NegSignPlus()
 			TEXT("ApplyFormat negative with + spec still shows minus"),
 			[](FAutomationTestBase& T, const FString& V) -> bool
 			{
-				FNoDiscardAsserter Assert(T);
-				return Assert.IsTrue(V.Contains(TEXT("-42")), TEXT("contains -42"));
+				FNoDiscardAsserter LocalAssert(T);
+				return LocalAssert.IsTrue(V.Contains(TEXT("-42")), TEXT("contains -42"));
 			});
 	}
 
@@ -2506,8 +2506,8 @@ FString Ret_AppendChain()
 			ExpectGlobalReturnCustom<FString>(*TestRunner, Engine, M,  Decl, Label,
 				[&](FAutomationTestBase& T, const FString& Actual) -> bool
 				{
-					FNoDiscardAsserter Assert(T);
-					return Assert.AreEqual(
+					FNoDiscardAsserter LocalAssert(T);
+					return LocalAssert.AreEqual(
 						Expected,
 						Actual,
 						*FString::Printf(TEXT("[FString] %s: \"%s\" vs \"%s\""), Label, *Actual, *Expected));
@@ -2568,10 +2568,10 @@ FString Ret_AppendChain()
 			TEXT("LeftPad(5) returns 5-char string ending with AB"),
 			[](FAutomationTestBase& T, const FString& Actual) -> bool
 			{
-				FNoDiscardAsserter Assert(T);
+				FNoDiscardAsserter LocalAssert(T);
 				bool bPass = true;
-				bPass &= Assert.AreEqual(5, Actual.Len(), TEXT("LeftPad result length should be 5"));
-				bPass &= Assert.IsTrue(Actual.EndsWith(TEXT("AB")), TEXT("LeftPad result should end with AB"));
+				bPass &= LocalAssert.AreEqual(5, Actual.Len(), TEXT("LeftPad result length should be 5"));
+				bPass &= LocalAssert.IsTrue(Actual.EndsWith(TEXT("AB")), TEXT("LeftPad result should end with AB"));
 				return bPass;
 			});
 

@@ -9,7 +9,7 @@
 // Pre-fix, all 8 reload hooks (OnClassReload, OnEnumCreated, OnEnumChanged,
 // OnStructReload, OnDelegateReload, OnFullReload, OnPostReload,
 // OnLiteralAssetReload) were process-wide multicast statics. Subscribers
-// always received events from every engine in the process â€” there was no
+// always received events from every engine in the process â€?there was no
 // way to scope a listener to a single engine.
 //
 // Post-fix, each engine owns its own hooks. A listener bound on Engine A's
@@ -28,85 +28,84 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_HotReload_MultiEngineHooks_Private
-{
+ // namespace
 
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadMultiEngineHooksTests,
+	"Angelscript.TestModule.HotReload.MultiEngineHooks",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+private:
 // Lightweight counter pair used by every test below: each engine gets a
 // FHookCounters instance that tracks how many times each hook fires for that
 // engine. Tests then broadcast on one engine's hook and assert only that
 // engine's counter advanced.
 struct FHookCounters
 {
-	int32 PostReload = 0;
-	int32 FullReload = 0;
-	int32 ClassReload = 0;
-	int32 StructReload = 0;
-	int32 EnumCreated = 0;
-	int32 EnumChanged = 0;
-	int32 DelegateReload = 0;
-	int32 LiteralAssetReload = 0;
+int32 PostReload = 0;
+int32 FullReload = 0;
+int32 ClassReload = 0;
+int32 StructReload = 0;
+int32 EnumCreated = 0;
+int32 EnumChanged = 0;
+int32 DelegateReload = 0;
+int32 LiteralAssetReload = 0;
 };
 
 // Subscribes a counter to every hook on a single engine. RAII unsubscribes on
 // destruction so the per-engine hook subscription doesn't outlive the engine.
 struct FScopedAllHookSubscriptions
 {
-	FScopedAllHookSubscriptions(FAngelscriptEngine& InEngine, FHookCounters& InCounters)
-		: Engine(&InEngine)
+FScopedAllHookSubscriptions(FAngelscriptEngine& InEngine, FHookCounters& InCounters)
+	: Engine(&InEngine)
+{
+	FHookCounters* Counters = &InCounters;
+
+	PostReloadHandle = InEngine.GetOnPostReload().AddLambda(
+		[Counters](bool) { ++Counters->PostReload; });
+	FullReloadHandle = InEngine.GetOnFullReload().AddLambda(
+		[Counters]() { ++Counters->FullReload; });
+	ClassReloadHandle = InEngine.GetOnClassReload().AddLambda(
+		[Counters](UClass*, UClass*) { ++Counters->ClassReload; });
+	StructReloadHandle = InEngine.GetOnStructReload().AddLambda(
+		[Counters](UScriptStruct*, UScriptStruct*) { ++Counters->StructReload; });
+	EnumCreatedHandle = InEngine.GetOnEnumCreated().AddLambda(
+		[Counters](UEnum*) { ++Counters->EnumCreated; });
+	EnumChangedHandle = InEngine.GetOnEnumChanged().AddLambda(
+		[Counters](UEnum*, EnumNameList) { ++Counters->EnumChanged; });
+	DelegateReloadHandle = InEngine.GetOnDelegateReload().AddLambda(
+		[Counters](UDelegateFunction*, UDelegateFunction*) { ++Counters->DelegateReload; });
+	LiteralAssetReloadHandle = InEngine.GetOnLiteralAssetReload().AddLambda(
+		[Counters](UObject*, UObject*) { ++Counters->LiteralAssetReload; });
+}
+
+~FScopedAllHookSubscriptions()
+{
+	if (Engine == nullptr)
 	{
-		FHookCounters* Counters = &InCounters;
-
-		PostReloadHandle = InEngine.GetOnPostReload().AddLambda(
-			[Counters](bool) { ++Counters->PostReload; });
-		FullReloadHandle = InEngine.GetOnFullReload().AddLambda(
-			[Counters]() { ++Counters->FullReload; });
-		ClassReloadHandle = InEngine.GetOnClassReload().AddLambda(
-			[Counters](UClass*, UClass*) { ++Counters->ClassReload; });
-		StructReloadHandle = InEngine.GetOnStructReload().AddLambda(
-			[Counters](UScriptStruct*, UScriptStruct*) { ++Counters->StructReload; });
-		EnumCreatedHandle = InEngine.GetOnEnumCreated().AddLambda(
-			[Counters](UEnum*) { ++Counters->EnumCreated; });
-		EnumChangedHandle = InEngine.GetOnEnumChanged().AddLambda(
-			[Counters](UEnum*, EnumNameList) { ++Counters->EnumChanged; });
-		DelegateReloadHandle = InEngine.GetOnDelegateReload().AddLambda(
-			[Counters](UDelegateFunction*, UDelegateFunction*) { ++Counters->DelegateReload; });
-		LiteralAssetReloadHandle = InEngine.GetOnLiteralAssetReload().AddLambda(
-			[Counters](UObject*, UObject*) { ++Counters->LiteralAssetReload; });
+		return;
 	}
+	Engine->GetOnPostReload().Remove(PostReloadHandle);
+	Engine->GetOnFullReload().Remove(FullReloadHandle);
+	Engine->GetOnClassReload().Remove(ClassReloadHandle);
+	Engine->GetOnStructReload().Remove(StructReloadHandle);
+	Engine->GetOnEnumCreated().Remove(EnumCreatedHandle);
+	Engine->GetOnEnumChanged().Remove(EnumChangedHandle);
+	Engine->GetOnDelegateReload().Remove(DelegateReloadHandle);
+	Engine->GetOnLiteralAssetReload().Remove(LiteralAssetReloadHandle);
+}
 
-	~FScopedAllHookSubscriptions()
-	{
-		if (Engine == nullptr)
-		{
-			return;
-		}
-		Engine->GetOnPostReload().Remove(PostReloadHandle);
-		Engine->GetOnFullReload().Remove(FullReloadHandle);
-		Engine->GetOnClassReload().Remove(ClassReloadHandle);
-		Engine->GetOnStructReload().Remove(StructReloadHandle);
-		Engine->GetOnEnumCreated().Remove(EnumCreatedHandle);
-		Engine->GetOnEnumChanged().Remove(EnumChangedHandle);
-		Engine->GetOnDelegateReload().Remove(DelegateReloadHandle);
-		Engine->GetOnLiteralAssetReload().Remove(LiteralAssetReloadHandle);
-	}
-
-	FAngelscriptEngine* Engine = nullptr;
-	FDelegateHandle PostReloadHandle;
-	FDelegateHandle FullReloadHandle;
-	FDelegateHandle ClassReloadHandle;
-	FDelegateHandle StructReloadHandle;
-	FDelegateHandle EnumCreatedHandle;
-	FDelegateHandle EnumChangedHandle;
-	FDelegateHandle DelegateReloadHandle;
-	FDelegateHandle LiteralAssetReloadHandle;
+FAngelscriptEngine* Engine = nullptr;
+FDelegateHandle PostReloadHandle;
+FDelegateHandle FullReloadHandle;
+FDelegateHandle ClassReloadHandle;
+FDelegateHandle StructReloadHandle;
+FDelegateHandle EnumCreatedHandle;
+FDelegateHandle EnumChangedHandle;
+FDelegateHandle DelegateReloadHandle;
+FDelegateHandle LiteralAssetReloadHandle;
 };
 
-} // namespace
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadMultiEngineHooksTests,
-	"Angelscript.TestModule.HotReload.MultiEngineHooks",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	// Two engines alive simultaneously. A listener bound on Engine A's hook
 	// MUST NOT fire when Engine B broadcasts the same hook, and a listener on
 	// Engine B MUST NOT fire when Engine A broadcasts. Pre-deglobalization
@@ -114,9 +113,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadMultiEngineHooksTests,
 	// would always fire.
 	TEST_METHOD(BroadcastOnEngineA_DoesNotFireEngineBListeners)
 	{
-		using namespace AngelscriptTest_HotReload_MultiEngineHooks_Private;
-
-		const FAngelscriptEngineConfig Config;
+const FAngelscriptEngineConfig Config;
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 
 		TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(Config, Dependencies);
@@ -180,9 +177,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadMultiEngineHooksTests,
 	// test guards against that.
 	TEST_METHOD(BroadcastOnEngineB_AfterEngineADestroyed_StillWorks)
 	{
-		using namespace AngelscriptTest_HotReload_MultiEngineHooks_Private;
-
-		const FAngelscriptEngineConfig Config;
+const FAngelscriptEngineConfig Config;
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 
 		FHookCounters CountersB;

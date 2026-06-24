@@ -11,24 +11,25 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_HotReload_AngelscriptHotReloadEnumDelegateTests_Private
-{
-	static const FName EnumCreatedWarmupModuleName(TEXT("HotReloadEnumCreatedWarmupMod"));
-	static const FString EnumCreatedWarmupFilename(TEXT("HotReloadEnumCreatedWarmupMod.as"));
-	static const FName EnumCreatedModuleName(TEXT("HotReloadEnumCreatedMod"));
-	static const FString EnumCreatedFilename(TEXT("HotReloadEnumCreatedMod.as"));
-	static const FString EnumCreatedName(TEXT("EHotReloadCreatedState"));
-}
-
 
 #define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 #define TestEqual(...) Test.TestEqual(__VA_ARGS__)
 #define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadEnumDelegateTests,
+	"Angelscript.TestModule.HotReload.ReloadDelegates",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+private:
+inline static const FName EnumCreatedWarmupModuleName = FName(TEXT("HotReloadEnumCreatedWarmupMod"));
+inline static const FString EnumCreatedWarmupFilename = FString(TEXT("HotReloadEnumCreatedWarmupMod.as"));
+inline static const FName EnumCreatedModuleName = FName(TEXT("HotReloadEnumCreatedMod"));
+inline static const FString EnumCreatedFilename = FString(TEXT("HotReloadEnumCreatedMod.as"));
+inline static const FString EnumCreatedName = FString(TEXT("EHotReloadCreatedState"));
+
 static bool ReloadDelegatesBroadcastEnumCreatedOnFirstCompile(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadEnumDelegateTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	int32 EnumCreatedCount = 0;
@@ -119,18 +120,15 @@ enum class EHotReloadCreatedState : uint8
 	return true;
 }
 
-#undef TestTrue
-#undef TestEqual
-#undef TestNotNull
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadEnumDelegateTests,
-	"Angelscript.TestModule.HotReload.ReloadDelegates",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(BroadcastEnumCreatedOnFirstCompile)
 	{
 		ASSERT_THAT(IsTrue(ReloadDelegatesBroadcastEnumCreatedOnFirstCompile(*TestRunner)));
 	}
 };
+
+#undef TestTrue
+#undef TestEqual
+#undef TestNotNull
 
 #endif

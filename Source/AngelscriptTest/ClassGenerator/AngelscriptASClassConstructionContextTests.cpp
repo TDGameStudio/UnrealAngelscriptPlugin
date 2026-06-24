@@ -27,11 +27,11 @@ namespace ASClassConstructionContextTest
 
 	bool VerifyProbeBaseline(FAutomationTestBase& Test)
 	{
-		FNoDiscardAsserter Assert(Test);
-		const bool bCapturedObjectCleared = Assert.IsNull(
+		FNoDiscardAsserter LocalAssert(Test);
+		const bool bCapturedObjectCleared = LocalAssert.IsNull(
 			UAngelscriptConstructionContextProbe::GetLastCapturedObject(),
 			TEXT("Construction-context probe should start without a captured object"));
-		const bool bCaptureCountCleared = Assert.AreEqual(
+		const bool bCaptureCountCleared = LocalAssert.AreEqual(
 			0,
 			UAngelscriptConstructionContextProbe::GetLastCaptureCount(),
 			TEXT("Construction-context probe should start with a zero capture count"));
@@ -70,8 +70,8 @@ class UConstructionContextCarrier : UObject
 		}
 
 		UASClass* GeneratedASClass = Cast<UASClass>(GeneratedClass);
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(
 			GeneratedASClass,
 			TEXT("Construction-context test case should compile to a generated UASClass")))
 		{
@@ -84,23 +84,23 @@ class UConstructionContextCarrier : UObject
 		FAutomationTestBase& Test,
 		UObject* Instance)
 	{
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(Instance, TEXT("Construction-context test case should create the generated script object")))
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(Instance, TEXT("Construction-context test case should create the generated script object")))
 		{
 			return false;
 		}
 
-		const bool bCaptureCountMatches = Assert.AreEqual(
+		const bool bCaptureCountMatches = LocalAssert.AreEqual(
 			1,
 			UAngelscriptConstructionContextProbe::GetLastCaptureCount(),
 			TEXT("Construction-context test case should capture the constructing object exactly once during instance defaults"));
 
 		UObject* CapturedObject = UAngelscriptConstructionContextProbe::GetLastCapturedObject();
-		const bool bProbeCapturedInstance = Assert.IsTrue(
+		const bool bProbeCapturedInstance = LocalAssert.IsTrue(
 			CapturedObject == Instance,
 			TEXT("Construction-context test case should record the final instance through the native probe"));
 
-		const bool bConstructionStateCleared = Assert.IsNull(
+		const bool bConstructionStateCleared = LocalAssert.IsNull(
 			UASClass::GetConstructingASObject(),
 			TEXT("Construction-context test case should clear GetConstructingASObject after NewObject completes"));
 

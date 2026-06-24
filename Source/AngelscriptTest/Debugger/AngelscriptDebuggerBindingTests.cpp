@@ -13,310 +13,309 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptDebuggerBindingTests_Private
-{
-	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsTrue(bActual, Message);
-	}
-
-	template <typename ActualType, typename ExpectedType>
-	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreEqual(Expected, Actual, Message);
-	}
-
-	template <typename ValueType>
-	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsNotNull(Value, Message);
-	}
-
-	template <typename TInvocationState>
-	bool WaitForBindingInvocationCompletion(
-		FAutomationTestBase& Test,
-		FAngelscriptDebuggerTestSession& Session,
-		const TSharedRef<TInvocationState>& InvocationState,
-		const TCHAR* Context)
-	{
-		const bool bCompleted = Session.PumpUntil(
-			[&InvocationState]()
-			{
-				return InvocationState->bCompleted.Load();
-			},
-			Session.GetDefaultTimeoutSeconds());
-
-		return CheckTrue(Test, Context, bCompleted);
-	}
-
-	template <typename T>
-	bool WaitForTypedBindingMessage(
-		FAngelscriptDebuggerTestClient& Client,
-		EDebugMessageType ExpectedType,
-		float TimeoutSeconds,
-		TOptional<T>& OutValue,
-		FString& OutError,
-		const TCHAR* Context)
-	{
-		OutValue = Client.WaitForTypedMessage<T>(ExpectedType, TimeoutSeconds);
-		if (!OutValue.IsSet())
-		{
-			OutError = FString::Printf(TEXT("%s: %s"), Context, *Client.GetLastError());
-			return false;
-		}
-
-		return true;
-	}
-
-	struct FBindingStopMonitorResult
-	{
-		TArray<FAngelscriptDebugMessageEnvelope> StopEnvelopes;
-		TOptional<FStoppedMessage> StopMessage;
-		TOptional<FAngelscriptCallStack> Callstack;
-		int32 ContinuedCount = 0;
-		bool bTimedOut = false;
-		FString Error;
-	};
-
-	struct FBindingNoStopMonitorResult
-	{
-		int32 UnexpectedStopCount = 0;
-		int32 ContinuedCount = 0;
-		bool bTimedOut = false;
-		FString Error;
-	};
-
-	TFuture<FBindingStopMonitorResult> StartBindingStopMonitor(
-		int32 Port,
-		TAtomic<bool>& bMonitorReady,
-		TAtomic<bool>& bShouldStop,
-		float TimeoutSeconds)
-	{
-		return Async(EAsyncExecution::ThreadPool,
-			[Port, &bMonitorReady, &bShouldStop, TimeoutSeconds]() -> FBindingStopMonitorResult
-			{
-				FBindingStopMonitorResult Result;
-				FAngelscriptDebuggerTestClient MonitorClient;
-				ON_SCOPE_EXIT
-				{
-					MonitorClient.SendStopDebugging();
-					MonitorClient.SendDisconnect();
-					MonitorClient.Disconnect();
-				};
-
-				if (!MonitorClient.Connect(TEXT("127.0.0.1"), Port))
-				{
-					Result.Error = FString::Printf(TEXT("Binding monitor failed to connect: %s"), *MonitorClient.GetLastError());
-					bMonitorReady = true;
-					return Result;
-				}
-
-				if (!HandshakeMonitorClient(MonitorClient, bShouldStop, TimeoutSeconds, Result.Error))
-				{
-					Result.bTimedOut = !bShouldStop.Load();
-					bMonitorReady = true;
-					return Result;
-				}
-
-				bMonitorReady = true;
-
-				TOptional<FAngelscriptDebugMessageEnvelope> StopEnvelope = MonitorClient.WaitForMessageType(EDebugMessageType::HasStopped, TimeoutSeconds);
-				if (!StopEnvelope.IsSet())
-				{
-					Result.Error = FString::Printf(TEXT("Binding monitor timed out waiting for HasStopped: %s"), *MonitorClient.GetLastError());
-					Result.bTimedOut = !bShouldStop.Load();
-					return Result;
-				}
-
-				Result.StopEnvelopes.Add(StopEnvelope.GetValue());
-				Result.StopMessage = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(StopEnvelope.GetValue());
-				if (!Result.StopMessage.IsSet())
-				{
-					Result.Error = TEXT("Binding monitor failed to deserialize the HasStopped payload.");
-					return Result;
-				}
-
-				if (!MonitorClient.SendRequestCallStack() ||
-					!WaitForTypedBindingMessage(MonitorClient, EDebugMessageType::CallStack, TimeoutSeconds, Result.Callstack, Result.Error, TEXT("Binding monitor failed to receive CallStack")))
-				{
-					Result.bTimedOut = !bShouldStop.Load();
-					return Result;
-				}
-
-				if (!MonitorClient.SendContinue())
-				{
-					Result.Error = FString::Printf(TEXT("Binding monitor failed to send Continue: %s"), *MonitorClient.GetLastError());
-					return Result;
-				}
-
-				TOptional<FEmptyMessage> ContinuedMessage;
-				if (!WaitForTypedBindingMessage(MonitorClient, EDebugMessageType::HasContinued, TimeoutSeconds, ContinuedMessage, Result.Error, TEXT("Binding monitor failed to receive HasContinued")))
-				{
-					Result.bTimedOut = !bShouldStop.Load();
-					return Result;
-				}
-
-				Result.ContinuedCount = 1;
-				return Result;
-			});
-	}
-
-	TFuture<FBindingNoStopMonitorResult> StartBindingNoStopMonitor(
-		int32 Port,
-		TAtomic<bool>& bMonitorReady,
-		TAtomic<bool>& bShouldStop,
-		TAtomic<bool>& bInvocationCompleted,
-		float TimeoutSeconds)
-	{
-		return Async(EAsyncExecution::ThreadPool,
-			[Port, &bMonitorReady, &bShouldStop, &bInvocationCompleted, TimeoutSeconds]() -> FBindingNoStopMonitorResult
-			{
-				FBindingNoStopMonitorResult Result;
-				FAngelscriptDebuggerTestClient MonitorClient;
-				ON_SCOPE_EXIT
-				{
-					MonitorClient.SendStopDebugging();
-					MonitorClient.SendDisconnect();
-					MonitorClient.Disconnect();
-				};
-
-				if (!MonitorClient.Connect(TEXT("127.0.0.1"), Port))
-				{
-					Result.Error = FString::Printf(TEXT("Binding no-stop monitor failed to connect: %s"), *MonitorClient.GetLastError());
-					bMonitorReady = true;
-					return Result;
-				}
-
-				if (!HandshakeMonitorClient(MonitorClient, bShouldStop, TimeoutSeconds, Result.Error))
-				{
-					Result.bTimedOut = !bShouldStop.Load();
-					bMonitorReady = true;
-					return Result;
-				}
-
-				bMonitorReady = true;
-
-				const double EndTime = FPlatformTime::Seconds() + TimeoutSeconds;
-				while (FPlatformTime::Seconds() < EndTime && !bShouldStop.Load())
-				{
-					if (bInvocationCompleted.Load())
-					{
-						return Result;
-					}
-
-					TOptional<FAngelscriptDebugMessageEnvelope> Envelope = MonitorClient.ReceiveEnvelope();
-					if (Envelope.IsSet())
-					{
-						if (Envelope->MessageType == EDebugMessageType::HasStopped)
-						{
-							++Result.UnexpectedStopCount;
-							if (!MonitorClient.SendContinue())
-							{
-								Result.Error = FString::Printf(TEXT("Binding no-stop monitor failed to send Continue after an unexpected stop: %s"), *MonitorClient.GetLastError());
-								return Result;
-							}
-
-							TOptional<FEmptyMessage> ContinuedMessage;
-							if (!WaitForTypedBindingMessage(MonitorClient, EDebugMessageType::HasContinued, TimeoutSeconds, ContinuedMessage, Result.Error, TEXT("Binding no-stop monitor failed to receive HasContinued after an unexpected stop")))
-							{
-								Result.bTimedOut = !bShouldStop.Load();
-								return Result;
-							}
-
-							++Result.ContinuedCount;
-						}
-					}
-					else if (!MonitorClient.GetLastError().IsEmpty())
-					{
-						Result.Error = FString::Printf(TEXT("Binding no-stop monitor failed while waiting for invocation completion: %s"), *MonitorClient.GetLastError());
-						return Result;
-					}
-
-					FPlatformProcess::Sleep(0.001f);
-				}
-
-				if (!bInvocationCompleted.Load() && !bShouldStop.Load())
-				{
-					Result.bTimedOut = true;
-					Result.Error = TEXT("Binding no-stop monitor timed out waiting for invocation completion.");
-				}
-
-				return Result;
-			});
-	}
-
-	struct FBindingFixtureRuntime
-	{
-		UClass* GeneratedClass = nullptr;
-		UFunction* TriggerDebugBreakFunction = nullptr;
-		UFunction* TriggerEnsureFunction = nullptr;
-		UObject* Object = nullptr;
-	};
-
-	bool ResolveBindingFixtureRuntime(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FAngelscriptDebuggerScriptFixture& Fixture,
-		FBindingFixtureRuntime& OutRuntime)
-	{
-		OutRuntime.GeneratedClass = Fixture.FindGeneratedClass(Engine);
-		if (!CheckNotNull(Test, TEXT("Debugger.Binding.DebugBreakAndEnsure should resolve the generated binding fixture class"), OutRuntime.GeneratedClass))
-		{
-			return false;
-		}
-
-		OutRuntime.TriggerDebugBreakFunction = Fixture.FindGeneratedFunction(Engine, TEXT("TriggerDebugBreak"));
-		if (!CheckNotNull(Test, TEXT("Debugger.Binding.DebugBreakAndEnsure should resolve TriggerDebugBreak on the generated binding fixture"), OutRuntime.TriggerDebugBreakFunction))
-		{
-			return false;
-		}
-
-		OutRuntime.TriggerEnsureFunction = Fixture.FindGeneratedFunction(Engine, TEXT("TriggerEnsure"));
-		if (!CheckNotNull(Test, TEXT("Debugger.Binding.DebugBreakAndEnsure should resolve TriggerEnsure on the generated binding fixture"), OutRuntime.TriggerEnsureFunction))
-		{
-			return false;
-		}
-
-		OutRuntime.Object = NewObject<UObject>(GetTransientPackage(), OutRuntime.GeneratedClass);
-		return CheckNotNull(Test, TEXT("Debugger.Binding.DebugBreakAndEnsure should create a runtime UObject from the generated binding fixture class"), OutRuntime.Object);
-	}
-
-	struct FBindingCheckFixtureRuntime
-	{
-		UFunction* TriggerCheckFunction = nullptr;
-		UObject* Object = nullptr;
-	};
-
-	bool ResolveBindingCheckFixtureRuntime(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		const FAngelscriptDebuggerScriptFixture& Fixture,
-		FBindingCheckFixtureRuntime& OutRuntime)
-	{
-		UClass* GeneratedClass = Fixture.FindGeneratedClass(Engine);
-		if (!CheckNotNull(Test, TEXT("Debugger.Binding.CheckBreaksEveryInvocation should resolve the generated binding fixture class"), GeneratedClass))
-		{
-			return false;
-		}
-
-		OutRuntime.TriggerCheckFunction = Fixture.FindGeneratedFunction(Engine, TEXT("TriggerCheck"));
-		if (!CheckNotNull(Test, TEXT("Debugger.Binding.CheckBreaksEveryInvocation should resolve TriggerCheck on the generated binding fixture"), OutRuntime.TriggerCheckFunction))
-		{
-			return false;
-		}
-
-		OutRuntime.Object = NewObject<UObject>(GetTransientPackage(), GeneratedClass);
-		return CheckNotNull(Test, TEXT("Debugger.Binding.CheckBreaksEveryInvocation should create a runtime UObject from the generated binding fixture class"), OutRuntime.Object);
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBindingTests,
 	"Angelscript.TestModule.Debugger.Binding",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsTrue(bActual, Message);
+}
+
+template <typename ActualType, typename ExpectedType>
+static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.AreEqual(Expected, Actual, Message);
+}
+
+template <typename ValueType>
+static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsNotNull(Value, Message);
+}
+
+template <typename TInvocationState>
+static bool WaitForBindingInvocationCompletion(
+	FAutomationTestBase& Test,
+	FAngelscriptDebuggerTestSession& Session,
+	const TSharedRef<TInvocationState>& InvocationState,
+	const TCHAR* Context)
+{
+	const bool bCompleted = Session.PumpUntil(
+		[&InvocationState]()
+		{
+			return InvocationState->bCompleted.Load();
+		},
+		Session.GetDefaultTimeoutSeconds());
+
+	return CheckTrue(Test, Context, bCompleted);
+}
+
+template <typename T>
+static bool WaitForTypedBindingMessage(
+	FAngelscriptDebuggerTestClient& Client,
+	EDebugMessageType ExpectedType,
+	float TimeoutSeconds,
+	TOptional<T>& OutValue,
+	FString& OutError,
+	const TCHAR* Context)
+{
+	OutValue = Client.WaitForTypedMessage<T>(ExpectedType, TimeoutSeconds);
+	if (!OutValue.IsSet())
+	{
+		OutError = FString::Printf(TEXT("%s: %s"), Context, *Client.GetLastError());
+		return false;
+	}
+
+	return true;
+}
+
+struct FBindingStopMonitorResult
+{
+	TArray<FAngelscriptDebugMessageEnvelope> StopEnvelopes;
+	TOptional<FStoppedMessage> StopMessage;
+	TOptional<FAngelscriptCallStack> Callstack;
+	int32 ContinuedCount = 0;
+	bool bTimedOut = false;
+	FString Error;
+};
+
+struct FBindingNoStopMonitorResult
+{
+	int32 UnexpectedStopCount = 0;
+	int32 ContinuedCount = 0;
+	bool bTimedOut = false;
+	FString Error;
+};
+
+static TFuture<FBindingStopMonitorResult> StartBindingStopMonitor(
+	int32 Port,
+	TAtomic<bool>& bMonitorReady,
+	TAtomic<bool>& bShouldStop,
+	float TimeoutSeconds)
+{
+	return Async(EAsyncExecution::ThreadPool,
+		[Port, &bMonitorReady, &bShouldStop, TimeoutSeconds]() -> FBindingStopMonitorResult
+		{
+			FBindingStopMonitorResult Result;
+			FAngelscriptDebuggerTestClient MonitorClient;
+			ON_SCOPE_EXIT
+			{
+				MonitorClient.SendStopDebugging();
+				MonitorClient.SendDisconnect();
+				MonitorClient.Disconnect();
+			};
+
+			if (!MonitorClient.Connect(TEXT("127.0.0.1"), Port))
+			{
+				Result.Error = FString::Printf(TEXT("Binding monitor failed to connect: %s"), *MonitorClient.GetLastError());
+				bMonitorReady = true;
+				return Result;
+			}
+
+			if (!HandshakeMonitorClient(MonitorClient, bShouldStop, TimeoutSeconds, Result.Error))
+			{
+				Result.bTimedOut = !bShouldStop.Load();
+				bMonitorReady = true;
+				return Result;
+			}
+
+			bMonitorReady = true;
+
+			TOptional<FAngelscriptDebugMessageEnvelope> StopEnvelope = MonitorClient.WaitForMessageType(EDebugMessageType::HasStopped, TimeoutSeconds);
+			if (!StopEnvelope.IsSet())
+			{
+				Result.Error = FString::Printf(TEXT("Binding monitor timed out waiting for HasStopped: %s"), *MonitorClient.GetLastError());
+				Result.bTimedOut = !bShouldStop.Load();
+				return Result;
+			}
+
+			Result.StopEnvelopes.Add(StopEnvelope.GetValue());
+			Result.StopMessage = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(StopEnvelope.GetValue());
+			if (!Result.StopMessage.IsSet())
+			{
+				Result.Error = TEXT("Binding monitor failed to deserialize the HasStopped payload.");
+				return Result;
+			}
+
+			if (!MonitorClient.SendRequestCallStack() ||
+				!WaitForTypedBindingMessage(MonitorClient, EDebugMessageType::CallStack, TimeoutSeconds, Result.Callstack, Result.Error, TEXT("Binding monitor failed to receive CallStack")))
+			{
+				Result.bTimedOut = !bShouldStop.Load();
+				return Result;
+			}
+
+			if (!MonitorClient.SendContinue())
+			{
+				Result.Error = FString::Printf(TEXT("Binding monitor failed to send Continue: %s"), *MonitorClient.GetLastError());
+				return Result;
+			}
+
+			TOptional<FEmptyMessage> ContinuedMessage;
+			if (!WaitForTypedBindingMessage(MonitorClient, EDebugMessageType::HasContinued, TimeoutSeconds, ContinuedMessage, Result.Error, TEXT("Binding monitor failed to receive HasContinued")))
+			{
+				Result.bTimedOut = !bShouldStop.Load();
+				return Result;
+			}
+
+			Result.ContinuedCount = 1;
+			return Result;
+		});
+}
+
+static TFuture<FBindingNoStopMonitorResult> StartBindingNoStopMonitor(
+	int32 Port,
+	TAtomic<bool>& bMonitorReady,
+	TAtomic<bool>& bShouldStop,
+	TAtomic<bool>& bInvocationCompleted,
+	float TimeoutSeconds)
+{
+	return Async(EAsyncExecution::ThreadPool,
+		[Port, &bMonitorReady, &bShouldStop, &bInvocationCompleted, TimeoutSeconds]() -> FBindingNoStopMonitorResult
+		{
+			FBindingNoStopMonitorResult Result;
+			FAngelscriptDebuggerTestClient MonitorClient;
+			ON_SCOPE_EXIT
+			{
+				MonitorClient.SendStopDebugging();
+				MonitorClient.SendDisconnect();
+				MonitorClient.Disconnect();
+			};
+
+			if (!MonitorClient.Connect(TEXT("127.0.0.1"), Port))
+			{
+				Result.Error = FString::Printf(TEXT("Binding no-stop monitor failed to connect: %s"), *MonitorClient.GetLastError());
+				bMonitorReady = true;
+				return Result;
+			}
+
+			if (!HandshakeMonitorClient(MonitorClient, bShouldStop, TimeoutSeconds, Result.Error))
+			{
+				Result.bTimedOut = !bShouldStop.Load();
+				bMonitorReady = true;
+				return Result;
+			}
+
+			bMonitorReady = true;
+
+			const double EndTime = FPlatformTime::Seconds() + TimeoutSeconds;
+			while (FPlatformTime::Seconds() < EndTime && !bShouldStop.Load())
+			{
+				if (bInvocationCompleted.Load())
+				{
+					return Result;
+				}
+
+				TOptional<FAngelscriptDebugMessageEnvelope> Envelope = MonitorClient.ReceiveEnvelope();
+				if (Envelope.IsSet())
+				{
+					if (Envelope->MessageType == EDebugMessageType::HasStopped)
+					{
+						++Result.UnexpectedStopCount;
+						if (!MonitorClient.SendContinue())
+						{
+							Result.Error = FString::Printf(TEXT("Binding no-stop monitor failed to send Continue after an unexpected stop: %s"), *MonitorClient.GetLastError());
+							return Result;
+						}
+
+						TOptional<FEmptyMessage> ContinuedMessage;
+						if (!WaitForTypedBindingMessage(MonitorClient, EDebugMessageType::HasContinued, TimeoutSeconds, ContinuedMessage, Result.Error, TEXT("Binding no-stop monitor failed to receive HasContinued after an unexpected stop")))
+						{
+							Result.bTimedOut = !bShouldStop.Load();
+							return Result;
+						}
+
+						++Result.ContinuedCount;
+					}
+				}
+				else if (!MonitorClient.GetLastError().IsEmpty())
+				{
+					Result.Error = FString::Printf(TEXT("Binding no-stop monitor failed while waiting for invocation completion: %s"), *MonitorClient.GetLastError());
+					return Result;
+				}
+
+				FPlatformProcess::Sleep(0.001f);
+			}
+
+			if (!bInvocationCompleted.Load() && !bShouldStop.Load())
+			{
+				Result.bTimedOut = true;
+				Result.Error = TEXT("Binding no-stop monitor timed out waiting for invocation completion.");
+			}
+
+			return Result;
+		});
+}
+
+struct FBindingFixtureRuntime
+{
+	UClass* GeneratedClass = nullptr;
+	UFunction* TriggerDebugBreakFunction = nullptr;
+	UFunction* TriggerEnsureFunction = nullptr;
+	UObject* Object = nullptr;
+};
+
+static bool ResolveBindingFixtureRuntime(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine,
+	const FAngelscriptDebuggerScriptFixture& Fixture,
+	FBindingFixtureRuntime& OutRuntime)
+{
+	OutRuntime.GeneratedClass = Fixture.FindGeneratedClass(Engine);
+	if (!CheckNotNull(Test, TEXT("Debugger.Binding.DebugBreakAndEnsure should resolve the generated binding fixture class"), OutRuntime.GeneratedClass))
+	{
+		return false;
+	}
+
+	OutRuntime.TriggerDebugBreakFunction = Fixture.FindGeneratedFunction(Engine, TEXT("TriggerDebugBreak"));
+	if (!CheckNotNull(Test, TEXT("Debugger.Binding.DebugBreakAndEnsure should resolve TriggerDebugBreak on the generated binding fixture"), OutRuntime.TriggerDebugBreakFunction))
+	{
+		return false;
+	}
+
+	OutRuntime.TriggerEnsureFunction = Fixture.FindGeneratedFunction(Engine, TEXT("TriggerEnsure"));
+	if (!CheckNotNull(Test, TEXT("Debugger.Binding.DebugBreakAndEnsure should resolve TriggerEnsure on the generated binding fixture"), OutRuntime.TriggerEnsureFunction))
+	{
+		return false;
+	}
+
+	OutRuntime.Object = NewObject<UObject>(GetTransientPackage(), OutRuntime.GeneratedClass);
+	return CheckNotNull(Test, TEXT("Debugger.Binding.DebugBreakAndEnsure should create a runtime UObject from the generated binding fixture class"), OutRuntime.Object);
+}
+
+struct FBindingCheckFixtureRuntime
+{
+	UFunction* TriggerCheckFunction = nullptr;
+	UObject* Object = nullptr;
+};
+
+static bool ResolveBindingCheckFixtureRuntime(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine,
+	const FAngelscriptDebuggerScriptFixture& Fixture,
+	FBindingCheckFixtureRuntime& OutRuntime)
+{
+	UClass* GeneratedClass = Fixture.FindGeneratedClass(Engine);
+	if (!CheckNotNull(Test, TEXT("Debugger.Binding.CheckBreaksEveryInvocation should resolve the generated binding fixture class"), GeneratedClass))
+	{
+		return false;
+	}
+
+	OutRuntime.TriggerCheckFunction = Fixture.FindGeneratedFunction(Engine, TEXT("TriggerCheck"));
+	if (!CheckNotNull(Test, TEXT("Debugger.Binding.CheckBreaksEveryInvocation should resolve TriggerCheck on the generated binding fixture"), OutRuntime.TriggerCheckFunction))
+	{
+		return false;
+	}
+
+	OutRuntime.Object = NewObject<UObject>(GetTransientPackage(), GeneratedClass);
+	return CheckNotNull(Test, TEXT("Debugger.Binding.CheckBreaksEveryInvocation should create a runtime UObject from the generated binding fixture class"), OutRuntime.Object);
+}
+
+public:
 	FDebuggerTestContext Ctx;
 
 	BEFORE_EACH()
@@ -331,9 +330,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBindingTests,
 
 	TEST_METHOD(DebugBreakAndEnsure)
 	{
-		using namespace AngelscriptDebuggerBindingTests_Private;
-
-		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBindingFixture();
+const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBindingFixture();
 		FAngelscriptEngine& Engine = Ctx.GetEngine();
 
 		ON_SCOPE_EXIT
@@ -534,9 +531,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBindingTests,
 
 	TEST_METHOD(CheckBreaksEveryInvocation)
 	{
-		using namespace AngelscriptDebuggerBindingTests_Private;
-
-		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBindingFixture();
+const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBindingFixture();
 		FAngelscriptEngine& Engine = Ctx.GetEngine();
 
 		ON_SCOPE_EXIT

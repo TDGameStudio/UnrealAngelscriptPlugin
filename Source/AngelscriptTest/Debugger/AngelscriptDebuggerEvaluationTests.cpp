@@ -13,265 +13,264 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptDebuggerEvaluationTests_Private
-{
-	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsTrue(bActual, Message);
-	}
-
-	template <typename ActualType, typename ExpectedType>
-	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreEqual(Expected, Actual, Message);
-	}
-
-	struct FAsyncGeneratedInvocationState : public TSharedFromThis<FAsyncGeneratedInvocationState>
-	{
-		TAtomic<bool> bCompleted = false;
-		bool bResolvedClass = false;
-		bool bResolvedFunction = false;
-		bool bCreatedObject = false;
-		bool bSucceeded = false;
-		int32 Result = 0;
-	};
-
-	TSharedRef<FAsyncGeneratedInvocationState> DispatchGeneratedIntInvocation(
-		FAngelscriptEngine& Engine,
-		const FAngelscriptDebuggerScriptFixture& Fixture)
-	{
-		TSharedRef<FAsyncGeneratedInvocationState> State = MakeShared<FAsyncGeneratedInvocationState>();
-
-		AsyncTask(ENamedThreads::GameThread, [&Engine, Fixture, State]()
-		{
-			UClass* GeneratedClass = Fixture.FindGeneratedClass(Engine);
-			State->bResolvedClass = GeneratedClass != nullptr;
-
-			UFunction* EntryFunction = Fixture.FindGeneratedFunction(Engine, Fixture.EntryFunctionName);
-			State->bResolvedFunction = EntryFunction != nullptr;
-
-			if (GeneratedClass != nullptr && EntryFunction != nullptr)
-			{
-				UObject* Object = NewObject<UObject>(GetTransientPackage(), GeneratedClass);
-				State->bCreatedObject = Object != nullptr;
-
-				if (Object != nullptr)
-				{
-					int32 InvocationResult = 0;
-					State->bSucceeded = ExecuteGeneratedIntEventOnGameThread(&Engine, Object, EntryFunction, InvocationResult);
-					State->Result = InvocationResult;
-				}
-			}
-
-			State->bCompleted = true;
-		});
-
-		return State;
-	}
-
-	bool WaitForGeneratedInvocationCompletion(
-		FAutomationTestBase& Test,
-		FAngelscriptDebuggerTestSession& Session,
-		const TSharedRef<FAsyncGeneratedInvocationState>& InvocationState,
-		const TCHAR* Context)
-	{
-		const bool bCompleted = Session.PumpUntil(
-			[&InvocationState]()
-			{
-				return InvocationState->bCompleted.Load();
-			},
-			Session.GetDefaultTimeoutSeconds());
-
-		return CheckTrue(Test, Context, bCompleted);
-	}
-
-	template <typename T>
-	bool WaitForTypedMessage(
-		FAngelscriptDebuggerTestClient& Client,
-		EDebugMessageType ExpectedType,
-		float TimeoutSeconds,
-		TOptional<T>& OutValue,
-		FString& OutError,
-		const TCHAR* Context)
-	{
-		OutValue = Client.WaitForTypedMessage<T>(ExpectedType, TimeoutSeconds);
-		if (!OutValue.IsSet())
-		{
-			OutError = FString::Printf(TEXT("%s: %s"), Context, *Client.GetLastError());
-			return false;
-		}
-
-		return true;
-	}
-
-	bool AssertLegacyVariablePayload(FAutomationTestBase& Test, const FAngelscriptVariable& Variable, const TCHAR* Context)
-	{
-		const FString AddressContext = FString::Printf(TEXT("%s should report ValueAddress = 0 for adapter v1"), Context);
-		const FString SizeContext = FString::Printf(TEXT("%s should report ValueSize = 0 for adapter v1"), Context);
-		const bool bAddressMatches = CheckEqual(Test, *AddressContext, Variable.ValueAddress, static_cast<uint64>(0));
-		const bool bSizeMatches = CheckEqual(Test, *SizeContext, Variable.ValueSize, static_cast<uint8>(0));
-		return bAddressMatches && bSizeMatches;
-	}
-
-	bool AssertLegacyVariablePayloads(
-		FAutomationTestBase& Test,
-		const TArray<FAngelscriptVariable>& Variables,
-		const TCHAR* Context)
-	{
-		bool bAllMatch = true;
-		for (const FAngelscriptVariable& Variable : Variables)
-		{
-			const FString VariableContext = FString::Printf(TEXT("%s variable '%s'"), Context, *Variable.Name);
-			bAllMatch &= AssertLegacyVariablePayload(Test, Variable, *VariableContext);
-		}
-
-		return bAllMatch;
-	}
-
-	struct FEvaluationMonitorResult
-	{
-		TArray<FAngelscriptDebugMessageEnvelope> StopEnvelopes;
-		TOptional<FStoppedMessage> StopMessage;
-		TOptional<FAngelscriptCallStack> Callstack;
-		TOptional<FAngelscriptVariable> LeafLocalValue;
-		TOptional<FAngelscriptVariable> LeafCombinedValue;
-		TOptional<FAngelscriptVariable> ThisMemberValue;
-		TOptional<FAngelscriptVariable> ModuleGlobalCounterValue;
-		TOptional<FAngelscriptVariables> LocalScopeVariables;
-		TOptional<FAngelscriptVariables> ThisScopeVariables;
-		TOptional<FAngelscriptVariables> ModuleScopeVariables;
-		int32 ContinuedCount = 0;
-		bool bTimedOut = false;
-		FString Error;
-	};
-
-	TFuture<FEvaluationMonitorResult> StartEvaluationMonitor(
-		int32 Port,
-		TAtomic<bool>& bMonitorReady,
-		TAtomic<bool>& bShouldStop,
-		const FAngelscriptDebuggerScriptFixture& Fixture,
-		float TimeoutSeconds,
-		int32 AdapterVersion = 2)
-	{
-		return Async(EAsyncExecution::ThreadPool,
-			[Port, &bMonitorReady, &bShouldStop, Fixture, TimeoutSeconds, AdapterVersion]() -> FEvaluationMonitorResult
-			{
-				FEvaluationMonitorResult Result;
-				FAngelscriptDebuggerTestClient MonitorClient;
-				ON_SCOPE_EXIT
-				{
-					MonitorClient.SendStopDebugging();
-					MonitorClient.SendDisconnect();
-					MonitorClient.Disconnect();
-				};
-
-				if (!MonitorClient.Connect(TEXT("127.0.0.1"), Port))
-				{
-					Result.Error = FString::Printf(TEXT("Evaluation monitor failed to connect: %s"), *MonitorClient.GetLastError());
-					bMonitorReady = true;
-					return Result;
-				}
-
-				FString HandshakeError;
-				if (!HandshakeMonitorClient(MonitorClient, bShouldStop, AdapterVersion, TimeoutSeconds, HandshakeError))
-				{
-					Result.Error = HandshakeError;
-					Result.bTimedOut = true;
-					bMonitorReady = true;
-					return Result;
-				}
-
-				bMonitorReady = true;
-
-				TOptional<FAngelscriptDebugMessageEnvelope> StopEnvelope = MonitorClient.WaitForMessageType(EDebugMessageType::HasStopped, TimeoutSeconds);
-				if (!StopEnvelope.IsSet())
-				{
-					Result.Error = FString::Printf(TEXT("Evaluation monitor timed out waiting for HasStopped: %s"), *MonitorClient.GetLastError());
-					Result.bTimedOut = true;
-					return Result;
-				}
-
-				Result.StopEnvelopes.Add(StopEnvelope.GetValue());
-				Result.StopMessage = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(StopEnvelope.GetValue());
-				if (!Result.StopMessage.IsSet())
-				{
-					Result.Error = TEXT("Evaluation monitor failed to deserialize the HasStopped payload.");
-					return Result;
-				}
-
-				if (!MonitorClient.SendRequestCallStack() ||
-					!WaitForTypedMessage(MonitorClient, EDebugMessageType::CallStack, TimeoutSeconds, Result.Callstack, Result.Error, TEXT("Evaluation monitor failed to receive CallStack")))
-				{
-					return Result;
-				}
-
-				if (!MonitorClient.SendRequestEvaluate(Fixture.GetEvalPath(TEXT("LeafLocalValuePath"))) ||
-					!WaitForTypedMessage(MonitorClient, EDebugMessageType::Evaluate, TimeoutSeconds, Result.LeafLocalValue, Result.Error, TEXT("Evaluation monitor failed to receive LocalValue evaluate reply")))
-				{
-					return Result;
-				}
-
-				if (!MonitorClient.SendRequestEvaluate(Fixture.GetEvalPath(TEXT("LeafCombinedPath"))) ||
-					!WaitForTypedMessage(MonitorClient, EDebugMessageType::Evaluate, TimeoutSeconds, Result.LeafCombinedValue, Result.Error, TEXT("Evaluation monitor failed to receive Combined evaluate reply")))
-				{
-					return Result;
-				}
-
-				if (!MonitorClient.SendRequestEvaluate(Fixture.GetEvalPath(TEXT("ThisMemberValuePath"))) ||
-					!WaitForTypedMessage(MonitorClient, EDebugMessageType::Evaluate, TimeoutSeconds, Result.ThisMemberValue, Result.Error, TEXT("Evaluation monitor failed to receive MemberValue evaluate reply")))
-				{
-					return Result;
-				}
-
-				if (!MonitorClient.SendRequestEvaluate(Fixture.GetEvalPath(TEXT("ModuleGlobalCounterPath"))) ||
-					!WaitForTypedMessage(MonitorClient, EDebugMessageType::Evaluate, TimeoutSeconds, Result.ModuleGlobalCounterValue, Result.Error, TEXT("Evaluation monitor failed to receive GlobalCounter evaluate reply")))
-				{
-					return Result;
-				}
-
-				if (!MonitorClient.SendRequestVariables(Fixture.GetEvalPath(TEXT("LocalScopePath"))) ||
-					!WaitForTypedMessage(MonitorClient, EDebugMessageType::Variables, TimeoutSeconds, Result.LocalScopeVariables, Result.Error, TEXT("Evaluation monitor failed to receive local scope variables")))
-				{
-					return Result;
-				}
-
-				if (!MonitorClient.SendRequestVariables(Fixture.GetEvalPath(TEXT("ThisScopePath"))) ||
-					!WaitForTypedMessage(MonitorClient, EDebugMessageType::Variables, TimeoutSeconds, Result.ThisScopeVariables, Result.Error, TEXT("Evaluation monitor failed to receive this scope variables")))
-				{
-					return Result;
-				}
-
-				if (!MonitorClient.SendRequestVariables(Fixture.GetEvalPath(TEXT("ModuleScopePath"))) ||
-					!WaitForTypedMessage(MonitorClient, EDebugMessageType::Variables, TimeoutSeconds, Result.ModuleScopeVariables, Result.Error, TEXT("Evaluation monitor failed to receive module scope variables")))
-				{
-					return Result;
-				}
-
-				if (!MonitorClient.SendContinue())
-				{
-					Result.Error = FString::Printf(TEXT("Evaluation monitor failed to send Continue: %s"), *MonitorClient.GetLastError());
-					return Result;
-				}
-
-				if (!MonitorClient.WaitForMessageType(EDebugMessageType::HasContinued, TimeoutSeconds).IsSet())
-				{
-					Result.Error = FString::Printf(TEXT("Evaluation monitor timed out waiting for HasContinued: %s"), *MonitorClient.GetLastError());
-					Result.bTimedOut = true;
-					return Result;
-				}
-
-				Result.ContinuedCount = 1;
-				return Result;
-			});
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerEvaluationTests,
 	"Angelscript.TestModule.Debugger.Evaluation",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsTrue(bActual, Message);
+}
+
+template <typename ActualType, typename ExpectedType>
+static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.AreEqual(Expected, Actual, Message);
+}
+
+struct FAsyncGeneratedInvocationState : public TSharedFromThis<FAsyncGeneratedInvocationState>
+{
+	TAtomic<bool> bCompleted = false;
+	bool bResolvedClass = false;
+	bool bResolvedFunction = false;
+	bool bCreatedObject = false;
+	bool bSucceeded = false;
+	int32 Result = 0;
+};
+
+static TSharedRef<FAsyncGeneratedInvocationState> DispatchGeneratedIntInvocation(
+	FAngelscriptEngine& Engine,
+	const FAngelscriptDebuggerScriptFixture& Fixture)
+{
+	TSharedRef<FAsyncGeneratedInvocationState> State = MakeShared<FAsyncGeneratedInvocationState>();
+
+	AsyncTask(ENamedThreads::GameThread, [&Engine, Fixture, State]()
+	{
+		UClass* GeneratedClass = Fixture.FindGeneratedClass(Engine);
+		State->bResolvedClass = GeneratedClass != nullptr;
+
+		UFunction* EntryFunction = Fixture.FindGeneratedFunction(Engine, Fixture.EntryFunctionName);
+		State->bResolvedFunction = EntryFunction != nullptr;
+
+		if (GeneratedClass != nullptr && EntryFunction != nullptr)
+		{
+			UObject* Object = NewObject<UObject>(GetTransientPackage(), GeneratedClass);
+			State->bCreatedObject = Object != nullptr;
+
+			if (Object != nullptr)
+			{
+				int32 InvocationResult = 0;
+				State->bSucceeded = ExecuteGeneratedIntEventOnGameThread(&Engine, Object, EntryFunction, InvocationResult);
+				State->Result = InvocationResult;
+			}
+		}
+
+		State->bCompleted = true;
+	});
+
+	return State;
+}
+
+static bool WaitForGeneratedInvocationCompletion(
+	FAutomationTestBase& Test,
+	FAngelscriptDebuggerTestSession& Session,
+	const TSharedRef<FAsyncGeneratedInvocationState>& InvocationState,
+	const TCHAR* Context)
+{
+	const bool bCompleted = Session.PumpUntil(
+		[&InvocationState]()
+		{
+			return InvocationState->bCompleted.Load();
+		},
+		Session.GetDefaultTimeoutSeconds());
+
+	return CheckTrue(Test, Context, bCompleted);
+}
+
+template <typename T>
+static bool WaitForTypedMessage(
+	FAngelscriptDebuggerTestClient& Client,
+	EDebugMessageType ExpectedType,
+	float TimeoutSeconds,
+	TOptional<T>& OutValue,
+	FString& OutError,
+	const TCHAR* Context)
+{
+	OutValue = Client.WaitForTypedMessage<T>(ExpectedType, TimeoutSeconds);
+	if (!OutValue.IsSet())
+	{
+		OutError = FString::Printf(TEXT("%s: %s"), Context, *Client.GetLastError());
+		return false;
+	}
+
+	return true;
+}
+
+static bool AssertLegacyVariablePayload(FAutomationTestBase& Test, const FAngelscriptVariable& Variable, const TCHAR* Context)
+{
+	const FString AddressContext = FString::Printf(TEXT("%s should report ValueAddress = 0 for adapter v1"), Context);
+	const FString SizeContext = FString::Printf(TEXT("%s should report ValueSize = 0 for adapter v1"), Context);
+	const bool bAddressMatches = CheckEqual(Test, *AddressContext, Variable.ValueAddress, static_cast<uint64>(0));
+	const bool bSizeMatches = CheckEqual(Test, *SizeContext, Variable.ValueSize, static_cast<uint8>(0));
+	return bAddressMatches && bSizeMatches;
+}
+
+static bool AssertLegacyVariablePayloads(
+	FAutomationTestBase& Test,
+	const TArray<FAngelscriptVariable>& Variables,
+	const TCHAR* Context)
+{
+	bool bAllMatch = true;
+	for (const FAngelscriptVariable& Variable : Variables)
+	{
+		const FString VariableContext = FString::Printf(TEXT("%s variable '%s'"), Context, *Variable.Name);
+		bAllMatch &= AssertLegacyVariablePayload(Test, Variable, *VariableContext);
+	}
+
+	return bAllMatch;
+}
+
+struct FEvaluationMonitorResult
+{
+	TArray<FAngelscriptDebugMessageEnvelope> StopEnvelopes;
+	TOptional<FStoppedMessage> StopMessage;
+	TOptional<FAngelscriptCallStack> Callstack;
+	TOptional<FAngelscriptVariable> LeafLocalValue;
+	TOptional<FAngelscriptVariable> LeafCombinedValue;
+	TOptional<FAngelscriptVariable> ThisMemberValue;
+	TOptional<FAngelscriptVariable> ModuleGlobalCounterValue;
+	TOptional<FAngelscriptVariables> LocalScopeVariables;
+	TOptional<FAngelscriptVariables> ThisScopeVariables;
+	TOptional<FAngelscriptVariables> ModuleScopeVariables;
+	int32 ContinuedCount = 0;
+	bool bTimedOut = false;
+	FString Error;
+};
+
+static TFuture<FEvaluationMonitorResult> StartEvaluationMonitor(
+	int32 Port,
+	TAtomic<bool>& bMonitorReady,
+	TAtomic<bool>& bShouldStop,
+	const FAngelscriptDebuggerScriptFixture& Fixture,
+	float TimeoutSeconds,
+	int32 AdapterVersion = 2)
+{
+	return Async(EAsyncExecution::ThreadPool,
+		[Port, &bMonitorReady, &bShouldStop, Fixture, TimeoutSeconds, AdapterVersion]() -> FEvaluationMonitorResult
+		{
+			FEvaluationMonitorResult Result;
+			FAngelscriptDebuggerTestClient MonitorClient;
+			ON_SCOPE_EXIT
+			{
+				MonitorClient.SendStopDebugging();
+				MonitorClient.SendDisconnect();
+				MonitorClient.Disconnect();
+			};
+
+			if (!MonitorClient.Connect(TEXT("127.0.0.1"), Port))
+			{
+				Result.Error = FString::Printf(TEXT("Evaluation monitor failed to connect: %s"), *MonitorClient.GetLastError());
+				bMonitorReady = true;
+				return Result;
+			}
+
+			FString HandshakeError;
+			if (!HandshakeMonitorClient(MonitorClient, bShouldStop, AdapterVersion, TimeoutSeconds, HandshakeError))
+			{
+				Result.Error = HandshakeError;
+				Result.bTimedOut = true;
+				bMonitorReady = true;
+				return Result;
+			}
+
+			bMonitorReady = true;
+
+			TOptional<FAngelscriptDebugMessageEnvelope> StopEnvelope = MonitorClient.WaitForMessageType(EDebugMessageType::HasStopped, TimeoutSeconds);
+			if (!StopEnvelope.IsSet())
+			{
+				Result.Error = FString::Printf(TEXT("Evaluation monitor timed out waiting for HasStopped: %s"), *MonitorClient.GetLastError());
+				Result.bTimedOut = true;
+				return Result;
+			}
+
+			Result.StopEnvelopes.Add(StopEnvelope.GetValue());
+			Result.StopMessage = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(StopEnvelope.GetValue());
+			if (!Result.StopMessage.IsSet())
+			{
+				Result.Error = TEXT("Evaluation monitor failed to deserialize the HasStopped payload.");
+				return Result;
+			}
+
+			if (!MonitorClient.SendRequestCallStack() ||
+				!WaitForTypedMessage(MonitorClient, EDebugMessageType::CallStack, TimeoutSeconds, Result.Callstack, Result.Error, TEXT("Evaluation monitor failed to receive CallStack")))
+			{
+				return Result;
+			}
+
+			if (!MonitorClient.SendRequestEvaluate(Fixture.GetEvalPath(TEXT("LeafLocalValuePath"))) ||
+				!WaitForTypedMessage(MonitorClient, EDebugMessageType::Evaluate, TimeoutSeconds, Result.LeafLocalValue, Result.Error, TEXT("Evaluation monitor failed to receive LocalValue evaluate reply")))
+			{
+				return Result;
+			}
+
+			if (!MonitorClient.SendRequestEvaluate(Fixture.GetEvalPath(TEXT("LeafCombinedPath"))) ||
+				!WaitForTypedMessage(MonitorClient, EDebugMessageType::Evaluate, TimeoutSeconds, Result.LeafCombinedValue, Result.Error, TEXT("Evaluation monitor failed to receive Combined evaluate reply")))
+			{
+				return Result;
+			}
+
+			if (!MonitorClient.SendRequestEvaluate(Fixture.GetEvalPath(TEXT("ThisMemberValuePath"))) ||
+				!WaitForTypedMessage(MonitorClient, EDebugMessageType::Evaluate, TimeoutSeconds, Result.ThisMemberValue, Result.Error, TEXT("Evaluation monitor failed to receive MemberValue evaluate reply")))
+			{
+				return Result;
+			}
+
+			if (!MonitorClient.SendRequestEvaluate(Fixture.GetEvalPath(TEXT("ModuleGlobalCounterPath"))) ||
+				!WaitForTypedMessage(MonitorClient, EDebugMessageType::Evaluate, TimeoutSeconds, Result.ModuleGlobalCounterValue, Result.Error, TEXT("Evaluation monitor failed to receive GlobalCounter evaluate reply")))
+			{
+				return Result;
+			}
+
+			if (!MonitorClient.SendRequestVariables(Fixture.GetEvalPath(TEXT("LocalScopePath"))) ||
+				!WaitForTypedMessage(MonitorClient, EDebugMessageType::Variables, TimeoutSeconds, Result.LocalScopeVariables, Result.Error, TEXT("Evaluation monitor failed to receive local scope variables")))
+			{
+				return Result;
+			}
+
+			if (!MonitorClient.SendRequestVariables(Fixture.GetEvalPath(TEXT("ThisScopePath"))) ||
+				!WaitForTypedMessage(MonitorClient, EDebugMessageType::Variables, TimeoutSeconds, Result.ThisScopeVariables, Result.Error, TEXT("Evaluation monitor failed to receive this scope variables")))
+			{
+				return Result;
+			}
+
+			if (!MonitorClient.SendRequestVariables(Fixture.GetEvalPath(TEXT("ModuleScopePath"))) ||
+				!WaitForTypedMessage(MonitorClient, EDebugMessageType::Variables, TimeoutSeconds, Result.ModuleScopeVariables, Result.Error, TEXT("Evaluation monitor failed to receive module scope variables")))
+			{
+				return Result;
+			}
+
+			if (!MonitorClient.SendContinue())
+			{
+				Result.Error = FString::Printf(TEXT("Evaluation monitor failed to send Continue: %s"), *MonitorClient.GetLastError());
+				return Result;
+			}
+
+			if (!MonitorClient.WaitForMessageType(EDebugMessageType::HasContinued, TimeoutSeconds).IsSet())
+			{
+				Result.Error = FString::Printf(TEXT("Evaluation monitor timed out waiting for HasContinued: %s"), *MonitorClient.GetLastError());
+				Result.bTimedOut = true;
+				return Result;
+			}
+
+			Result.ContinuedCount = 1;
+			return Result;
+		});
+}
+
+public:
 	FDebuggerTestContext Ctx;
 
 	BEFORE_EACH()
@@ -286,9 +285,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerEvaluationTests,
 
 	TEST_METHOD(ScopeValues)
 	{
-		using namespace AngelscriptDebuggerEvaluationTests_Private;
-
-		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateCallstackFixture();
+const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateCallstackFixture();
 		FAngelscriptEngine& Engine = Ctx.GetEngine();
 
 		ASSERT_THAT(IsTrue(Fixture.Compile(Engine), TEXT("Debugger.Evaluation.ScopeValues should compile the callstack fixture")));
@@ -403,10 +400,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerEvaluationTests,
 
 	TEST_METHOD(AdapterV1LegacyPayload)
 	{
-		using namespace AngelscriptDebuggerEvaluationTests_Private;
-
-		// Re-initialize with adapter version 1
-		Ctx.TearDown();
+Ctx.TearDown();
 		ASSERT_THAT(IsTrue(Ctx.SetUp(*TestRunner, /*AdapterVersion=*/ 1)));
 
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateCallstackFixture();

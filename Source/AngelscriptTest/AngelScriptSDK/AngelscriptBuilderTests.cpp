@@ -5,9 +5,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptBuilderTestSupport;
-using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptBuilderTests,
 	"Angelscript.TestModule.AngelScriptSDK.Builder",
@@ -16,6 +13,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBuilderTests,
 private:
 	void LogBuilderState(const FString& Stage, const asCBuilder& Builder, const asCModule* Module = nullptr, bool bExpandBuilderDescriptions = true, bool bIncludeDiagnosticCounters = true) const
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		AddInfo(FString::Printf(TEXT("[Builder][%s] %s | %s"), *Stage, *DescribeBuilderCounts(Builder, bIncludeDiagnosticCounters), *DescribeModuleCounts(Module)));
 		if (bExpandBuilderDescriptions)
 		{
@@ -34,6 +35,10 @@ private:
 
 	void LogBuilderSectionInput(const FString& Stage, const char* SectionName, const char* Source) const
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		AddInfo(FString::Printf(
 			TEXT("[Builder][%s] add section name=%s bytes=%d lines=%d"),
 			*Stage,
@@ -44,12 +49,20 @@ private:
 
 	void LogBuilderStageResult(const FString& Stage, int Result, const asCBuilder& Builder, const asCModule* Module = nullptr, bool bExpandBuilderDescriptions = true) const
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		AddInfo(FString::Printf(TEXT("[Builder][%s] result=%d"), *Stage, Result));
 		LogBuilderState(Stage, Builder, Module, bExpandBuilderDescriptions);
 	}
 
 	void LogScriptExecutionResult(const FString& Stage, const char* Declaration, int32 Result) const
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		AddInfo(FString::Printf(TEXT("[Builder][%s] executed %s => %d"), *Stage, *ToTestString(Declaration), Result));
 	}
 
@@ -64,6 +77,10 @@ private:
 
 	bool AddBuilderSectionWithLog(asCModule& Module, const char* SectionName, const char* Source, const FString& Stage) const
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		LogBuilderSectionInput(Stage, SectionName, Source);
 		const bool bAdded = AddBuilderSection(Module, SectionName, Source);
 		AddInfo(FString::Printf(TEXT("[Builder][%s] AddScriptSection result=%s"), *Stage, BoolText(bAdded)));
@@ -80,6 +97,10 @@ private:
 
 	bool RunBuilderStage(asCBuilder& Builder, const FString& Stage, int (asCBuilder::*StageMethod)(), const asCModule* Module = nullptr) const
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		LogBuilderState(FString::Printf(TEXT("%s.before"), *Stage), Builder, Module, true, false);
 		const int Result = (Builder.*StageMethod)();
 		LogBuilderStageResult(FString::Printf(TEXT("%s.after"), *Stage), Result, Builder, Module);
@@ -88,6 +109,10 @@ private:
 
 	bool RunBuilderPipelineThroughLayout(asCBuilder& Builder, const asCModule* Module = nullptr) const
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		if (!RunBuilderStage(Builder, TEXT("BuildParallelParseScripts"), &asCBuilder::BuildParallelParseScripts, Module))
 		{
 			return false;
@@ -111,7 +136,7 @@ private:
 	}
 
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -130,10 +155,14 @@ public:
 
 	TEST_METHOD(CompileFunctionUsesProvidedSectionName)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder CompileFunction section test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderCompileFunctionSection");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderCompileFunctionSection");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder CompileFunction section test should create a module")));
 
@@ -164,10 +193,14 @@ public:
 
 	TEST_METHOD(CompileFunctionFailureDoesNotLeakFunction)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder CompileFunction failure test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderCompileFunctionFailure");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderCompileFunctionFailure");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder CompileFunction failure test should create a module")));
 
@@ -200,10 +233,14 @@ public:
 
 	TEST_METHOD(ParseScriptsCreatesParserNodes)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder parse test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderParseScripts");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderParseScripts");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder parse test should create a backing module")));
 
@@ -289,10 +326,14 @@ public:
 
 	TEST_METHOD(GenerateTypesRegistersDeclarations)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder type-generation test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderGenerateTypes");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderGenerateTypes");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder type-generation test should create a backing module")));
 
@@ -376,10 +417,14 @@ public:
 
 	TEST_METHOD(GenerateFunctionsRegistersGlobalsAndFunctions)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder function-generation test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderGenerateFunctions");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderGenerateFunctions");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder function-generation test should create a backing module")));
 
@@ -447,10 +492,14 @@ public:
 
 	TEST_METHOD(LayoutAndCompileProduceExecutableBytecode)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder compile test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderCompileCode");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderCompileCode");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder compile test should create a backing module")));
 
@@ -542,10 +591,14 @@ public:
 
 	TEST_METHOD(StageFailureStopsBeforeExecutableCode)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder stage failure test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderStageFailure");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderStageFailure");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder stage failure test should create a backing module")));
 
@@ -589,10 +642,14 @@ public:
 
 	TEST_METHOD(CrossSectionDependenciesCompileAndKeepSections)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder cross-section dependency test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderCrossSectionDependencies");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderCrossSectionDependencies");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder cross-section dependency test should create a backing module")));
 
@@ -664,10 +721,14 @@ public:
 
 	TEST_METHOD(NamespaceResolutionSeparatesTypesFunctionsAndGlobals)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder namespace test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderNamespaceResolution");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderNamespaceResolution");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder namespace test should create a backing module")));
 
@@ -761,10 +822,14 @@ public:
 
 	TEST_METHOD(ClassInheritanceResolvesBaseTypesAndInheritedCalls)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder inheritance test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderClassInheritance");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderClassInheritance");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder inheritance test should create a backing module")));
 
@@ -862,10 +927,14 @@ public:
 
 	TEST_METHOD(ScriptInterfaceDeclarationFailsWithoutLeakingState)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder interface-boundary test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderScriptInterfaceBoundary");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderScriptInterfaceBoundary");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder interface-boundary test should create a backing module")));
 
@@ -918,7 +987,7 @@ public:
 		ASSERT_THAT(IsNull(Module->GetFunctionByDecl("int Entry()"),
 			TEXT("Builder interface-boundary test should not expose Entry after parse failure")));
 
-		const FNativeMessageEntry* InterfaceMessage = Engine.GetMessages().Entries.Num() > 0 ? &Engine.GetMessages().Entries[0] : nullptr;
+		const AngelscriptNativeTestSupport::FNativeMessageEntry* InterfaceMessage = Engine.GetMessages().Entries.Num() > 0 ? &Engine.GetMessages().Entries[0] : nullptr;
 		ASSERT_THAT(IsNotNull(InterfaceMessage,
 			TEXT("Builder interface-boundary test should report a diagnostic")));
 		ASSERT_THAT(AreEqual(FString(TEXT("BuilderScriptInterfaceBoundary")), InterfaceMessage != nullptr ? InterfaceMessage->Section : FString(),
@@ -931,10 +1000,14 @@ public:
 
 	TEST_METHOD(DuplicateDeclarationsFailWithoutLeakingModuleState)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder duplicate-declaration test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderDuplicateDeclarations");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderDuplicateDeclarations");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder duplicate-declaration test should create a backing module")));
 
@@ -980,7 +1053,7 @@ public:
 		ASSERT_THAT(AreEqual(0, static_cast<int32>(Builder->globVariableList.GetLength()),
 			TEXT("Builder duplicate-declaration test should not produce global descriptions after type-generation failure")));
 
-		const FNativeMessageEntry* DuplicateMessage = Engine.GetMessages().Entries.Num() > 0 ? &Engine.GetMessages().Entries[0] : nullptr;
+		const AngelscriptNativeTestSupport::FNativeMessageEntry* DuplicateMessage = Engine.GetMessages().Entries.Num() > 0 ? &Engine.GetMessages().Entries[0] : nullptr;
 		ASSERT_THAT(IsNotNull(DuplicateMessage,
 			TEXT("Builder duplicate-declaration test should report a diagnostic")));
 		ASSERT_THAT(AreEqual(FString(TEXT("BuilderDuplicateDeclarations")), DuplicateMessage != nullptr ? DuplicateMessage->Section : FString(),
@@ -993,10 +1066,14 @@ public:
 
 	TEST_METHOD(PropertyInitializersAndMethodOverloadsCompile)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder initializer and overload test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderInitializersAndOverloads");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderInitializersAndOverloads");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder initializer and overload test should create a backing module")));
 
@@ -1080,10 +1157,14 @@ public:
 
 	TEST_METHOD(OverloadedGlobalFunctionsRetainDistinctDescriptions)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder global overload test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderGlobalOverloads");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderGlobalOverloads");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder global overload test should create a backing module")));
 

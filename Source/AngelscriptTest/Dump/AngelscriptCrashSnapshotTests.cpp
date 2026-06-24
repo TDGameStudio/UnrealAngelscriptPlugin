@@ -13,46 +13,43 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Dump_CrashSnapshotTests_Private
-{
-	FString MakeUniqueCrashSnapshotPath(const FString& Prefix)
-	{
-		return FPaths::Combine(
-			FPaths::ProjectSavedDir(),
-			TEXT("Automation"),
-			TEXT("CrashSnapshot"),
-			FString::Printf(TEXT("%s_%s"), *Prefix, *FGuid::NewGuid().ToString(EGuidFormats::Digits)));
-	}
-
-	bool LoadSnapshotJson(FAutomationTestBase& Test, const FString& SnapshotPath, TSharedPtr<FJsonObject>& OutObject)
-	{
-		FString JsonString;
-		if (!FFileHelper::LoadFileToString(JsonString, *SnapshotPath))
-		{
-			Test.AddError(FString::Printf(TEXT("Failed to load crash snapshot '%s'"), *SnapshotPath));
-			return false;
-		}
-
-		TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonString);
-		if (!FJsonSerializer::Deserialize(Reader, OutObject) || !OutObject.IsValid())
-		{
-			Test.AddError(FString::Printf(TEXT("Failed to parse crash snapshot JSON '%s'"), *SnapshotPath));
-			return false;
-		}
-
-		return true;
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptCrashSnapshotTest,
 	"Angelscript.TestModule.Dump.CrashSnapshot",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static FString MakeUniqueCrashSnapshotPath(const FString& Prefix)
+{
+	return FPaths::Combine(
+		FPaths::ProjectSavedDir(),
+		TEXT("Automation"),
+		TEXT("CrashSnapshot"),
+		FString::Printf(TEXT("%s_%s"), *Prefix, *FGuid::NewGuid().ToString(EGuidFormats::Digits)));
+}
+
+static bool LoadSnapshotJson(FAutomationTestBase& Test, const FString& SnapshotPath, TSharedPtr<FJsonObject>& OutObject)
+{
+	FString JsonString;
+	if (!FFileHelper::LoadFileToString(JsonString, *SnapshotPath))
+	{
+		Test.AddError(FString::Printf(TEXT("Failed to load crash snapshot '%s'"), *SnapshotPath));
+		return false;
+	}
+
+	TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonString);
+	if (!FJsonSerializer::Deserialize(Reader, OutObject) || !OutObject.IsValid())
+	{
+		Test.AddError(FString::Printf(TEXT("Failed to parse crash snapshot JSON '%s'"), *SnapshotPath));
+		return false;
+	}
+
+	return true;
+}
+
+public:
 	TEST_METHOD(Write)
 	{
-		using namespace AngelscriptTest_Dump_CrashSnapshotTests_Private;
-
-		const FString OutputDir = MakeUniqueCrashSnapshotPath(TEXT("Write"));
+const FString OutputDir = MakeUniqueCrashSnapshotPath(TEXT("Write"));
 		const FString Marker = TEXT("snapshot-write-test-marker");
 
 		const FAngelscriptCrashSnapshot::FWriteResult Result =

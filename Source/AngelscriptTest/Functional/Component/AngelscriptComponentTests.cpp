@@ -15,68 +15,6 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
-namespace AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private
-{
-	constexpr float ComponentTestCaseDeltaTime = 0.016f;
-
-	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsTrue(bActual, Message);
-	}
-
-	template <typename ActualType, typename ExpectedType>
-	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreEqual(Expected, Actual, Message);
-	}
-
-	template <typename ValueType>
-	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsNotNull(Value, Message);
-	}
-
-	void InitializeComponentTestCaseSpawner(FActorTestSpawner& Spawner)
-	{
-		Spawner.InitializeGameSubsystems();
-	}
-
-	template <typename ComponentType = UActorComponent>
-	ComponentType* CreateComponentTestCaseScriptComponent(
-		FAutomationTestBase& Test,
-		AActor& OwnerActor,
-		UClass* ComponentClass,
-		const TCHAR* Context)
-	{
-		if (!CheckNotNull(Test, *FString::Printf(TEXT("%s should compile to a valid component class"), Context), ComponentClass))
-		{
-			return nullptr;
-		}
-
-		UActorComponent* Component = NewObject<UActorComponent>(&OwnerActor, ComponentClass);
-		if (!CheckNotNull(Test, *FString::Printf(TEXT("%s should instantiate a runtime component"), Context), Component))
-		{
-			return nullptr;
-		}
-
-		OwnerActor.AddInstanceComponent(Component);
-		Component->OnComponentCreated();
-		Component->RegisterComponent();
-		Component->Activate(true);
-
-		ComponentType* TypedComponent = Cast<ComponentType>(Component);
-		if (!CheckNotNull(Test, *FString::Printf(TEXT("%s should produce the expected component base type"), Context), TypedComponent))
-		{
-			return nullptr;
-		}
-
-		return TypedComponent;
-	}
-}
-
 namespace DeepAttachChainTest
 {
 	static const FName ModuleName(TEXT("ASComponent.DeepAttachChain"));
@@ -109,12 +47,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComponentTests,
 	"Angelscript.TestModule.Component",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	static constexpr float ComponentTestCaseDeltaTime =
-		AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private::ComponentTestCaseDeltaTime;
+	static constexpr float ComponentTestCaseDeltaTime = 0.016f;
 
 	static void InitializeComponentTestCaseSpawner(FActorTestSpawner& Spawner)
 	{
-		AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private::InitializeComponentTestCaseSpawner(Spawner);
+		Spawner.InitializeGameSubsystems();
 	}
 
 	template <typename ComponentType = UActorComponent>
@@ -124,22 +61,42 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComponentTests,
 		UClass* ComponentClass,
 		const TCHAR* Context)
 	{
-		return AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private::CreateComponentTestCaseScriptComponent<ComponentType>(
-			Test,
-			OwnerActor,
-			ComponentClass,
-			Context);
+		if (!CheckNotNull(Test, *FString::Printf(TEXT("%s should compile to a valid component class"), Context), ComponentClass))
+		{
+			return nullptr;
+		}
+
+		UActorComponent* Component = NewObject<UActorComponent>(&OwnerActor, ComponentClass);
+		if (!CheckNotNull(Test, *FString::Printf(TEXT("%s should instantiate a runtime component"), Context), Component))
+		{
+			return nullptr;
+		}
+
+		OwnerActor.AddInstanceComponent(Component);
+		Component->OnComponentCreated();
+		Component->RegisterComponent();
+		Component->Activate(true);
+
+		ComponentType* TypedComponent = Cast<ComponentType>(Component);
+		if (!CheckNotNull(Test, *FString::Printf(TEXT("%s should produce the expected component base type"), Context), TypedComponent))
+		{
+			return nullptr;
+		}
+
+		return TypedComponent;
 	}
 
 	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
 	{
-		return AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private::CheckTrue(Test, Message, bActual);
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsTrue(bActual, Message);
 	}
 
 	template <typename ValueType>
 	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
 	{
-		return AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private::CheckNotNull(Test, Message, Value);
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsNotNull(Value, Message);
 	}
 
 	TEST_METHOD(BeginPlay)
@@ -366,18 +323,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDefaultComponentTests,
 {
 	static void InitializeComponentTestCaseSpawner(FActorTestSpawner& Spawner)
 	{
-		AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private::InitializeComponentTestCaseSpawner(Spawner);
+		Spawner.InitializeGameSubsystems();
 	}
 
 	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
 	{
-		return AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private::CheckTrue(Test, Message, bActual);
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsTrue(bActual, Message);
 	}
 
 	template <typename ValueType>
 	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
 	{
-		return AngelscriptTest_Component_AngelscriptComponentTestCaseTests_Private::CheckNotNull(Test, Message, Value);
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsNotNull(Value, Message);
 	}
 
 	TEST_METHOD(Basic)

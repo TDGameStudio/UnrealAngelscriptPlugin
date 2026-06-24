@@ -10,7 +10,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeBytecodeJumpsTests,
 	"Angelscript.TestModule.AngelScriptSDK.Bytecode.Jumps",
@@ -33,7 +32,7 @@ private:
 public:
 	TEST_METHOD(ForwardJumpResolves)
 	{
-		FBytecodeFixture Fixture("BytecodeJumpForward");
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeJumpForward");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -54,7 +53,7 @@ public:
 
 	TEST_METHOD(BackwardJumpResolves)
 	{
-		FBytecodeFixture Fixture("BytecodeJumpBackward");
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeJumpBackward");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -75,7 +74,7 @@ public:
 
 	TEST_METHOD(MultipleLabelsResolveIndependently)
 	{
-		FBytecodeFixture Fixture("BytecodeJumpMultiple");
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeJumpMultiple");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -98,7 +97,7 @@ public:
 
 	TEST_METHOD(JumpToUnresolvedLabelReturnsError)
 	{
-		FBytecodeFixture Fixture("BytecodeJumpUnresolved");
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeJumpUnresolved");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -113,7 +112,7 @@ public:
 
 	TEST_METHOD(JumpAcrossAddedSequences)
 	{
-		FBytecodeFixture Fixture("BytecodeJumpAddedSequences");
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeJumpAddedSequences");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;

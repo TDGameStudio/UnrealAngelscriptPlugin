@@ -21,8 +21,17 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_StaticJIT_AOT_Private
+struct FAngelscriptStaticJITAotUASFunctionDispatchTests;
+struct FAngelscriptStaticJITAotMultiEngineTests;
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITAotTests,
+	"Angelscript.TestModule.StaticJIT.AOT",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	friend struct FAngelscriptStaticJITAotUASFunctionDispatchTests;
+	friend struct FAngelscriptStaticJITAotMultiEngineTests;
+
 	struct FPrimitiveArgParams
 	{
 		int32 Value = 0;
@@ -41,7 +50,7 @@ namespace AngelscriptTest_StaticJIT_AOT_Private
 		int32 ReturnValue = 0;
 	};
 
-	asCScriptFunction* FindEntryFunction(FAngelscriptEngine& Engine)
+	static asCScriptFunction* FindEntryFunction(FAngelscriptEngine& Engine)
 	{
 		TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModuleByModuleName(AngelscriptStaticJITAotFixture::GetModuleName().ToString());
 		if (!ModuleDesc.IsValid() || ModuleDesc->ScriptModule == nullptr)
@@ -53,7 +62,7 @@ namespace AngelscriptTest_StaticJIT_AOT_Private
 		return static_cast<asCScriptFunction*>(ModuleDesc->ScriptModule->GetFunctionByDecl(EntryDecl.Get()));
 	}
 
-	FString GetFunctionNameFromDeclaration(const FString& Declaration)
+	static FString GetFunctionNameFromDeclaration(const FString& Declaration)
 	{
 		int32 OpenParenIndex = INDEX_NONE;
 		if (!Declaration.FindChar(TEXT('('), OpenParenIndex))
@@ -71,7 +80,7 @@ namespace AngelscriptTest_StaticJIT_AOT_Private
 		return Prefix.Mid(NameSeparatorIndex + 1).TrimStartAndEnd();
 	}
 
-	FString GetAvailableMethodDeclarations(asITypeInfo& TypeInfo)
+	static FString GetAvailableMethodDeclarations(asITypeInfo& TypeInfo)
 	{
 		FString AvailableMethods;
 		const asUINT MethodCount = TypeInfo.GetMethodCount();
@@ -94,7 +103,7 @@ namespace AngelscriptTest_StaticJIT_AOT_Private
 		return AvailableMethods.IsEmpty() ? TEXT("<none>") : AvailableMethods;
 	}
 
-	asCScriptFunction* FindMethodFunction(FAutomationTestBase& Test, FAngelscriptEngine& Engine, const FString& Declaration)
+	static asCScriptFunction* FindMethodFunction(FAutomationTestBase& Test, FAngelscriptEngine& Engine, const FString& Declaration)
 	{
 		UASClass* GeneratedClass = Cast<UASClass>(FindGeneratedClass(&Engine, AngelscriptStaticJITAotFixture::GetGeneratedClassName()));
 		if (GeneratedClass == nullptr)
@@ -149,7 +158,7 @@ namespace AngelscriptTest_StaticJIT_AOT_Private
 		return static_cast<asCScriptFunction*>(Function);
 	}
 
-	FString GetAvailableGlobalFunctionDeclarations(asIScriptModule& Module)
+	static FString GetAvailableGlobalFunctionDeclarations(asIScriptModule& Module)
 	{
 		FString AvailableFunctions;
 		const asUINT FunctionCount = Module.GetFunctionCount();
@@ -172,7 +181,7 @@ namespace AngelscriptTest_StaticJIT_AOT_Private
 		return AvailableFunctions.IsEmpty() ? TEXT("<none>") : AvailableFunctions;
 	}
 
-	asCScriptFunction* FindGlobalFunction(FAutomationTestBase& Test, FAngelscriptEngine& Engine, const FString& Declaration)
+	static asCScriptFunction* FindGlobalFunction(FAutomationTestBase& Test, FAngelscriptEngine& Engine, const FString& Declaration)
 	{
 		TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModuleByModuleName(AngelscriptStaticJITAotFixture::GetModuleName().ToString());
 		if (!ModuleDesc.IsValid() || ModuleDesc->ScriptModule == nullptr)
@@ -217,7 +226,7 @@ namespace AngelscriptTest_StaticJIT_AOT_Private
 		return static_cast<asCScriptFunction*>(Function);
 	}
 
-	bool RequireJitEntries(FAutomationTestBase& Test, FAngelscriptEngine& Engine, asCScriptFunction* Function, const TCHAR* Label, uint32& OutFunctionId)
+	static bool RequireJitEntries(FAutomationTestBase& Test, FAngelscriptEngine& Engine, asCScriptFunction* Function, const TCHAR* Label, uint32& OutFunctionId)
 	{
 		if (!Test.TestNotNull(*FString::Printf(TEXT("StaticJIT.AOT %s should resolve a script function"), Label), Function))
 		{
@@ -235,7 +244,7 @@ namespace AngelscriptTest_StaticJIT_AOT_Private
 			&& Test.TestNotNull(*FString::Printf(TEXT("StaticJIT.AOT %s should attach jitFunction_ParmsEntry"), Label), Function->jitFunction_ParmsEntry);
 	}
 
-	bool LoadAotFixtureFromPrecompiledData(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
+	static bool LoadAotFixtureFromPrecompiledData(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 	{
 		FString AvailabilityError;
 		if (!Test.TestTrue(TEXT("StaticJIT.AOT generated output and local cache should be available before runtime verification"), AngelscriptStaticJITAotFixture::IsGeneratedOutputAvailable(&AvailabilityError)))
@@ -260,12 +269,33 @@ namespace AngelscriptTest_StaticJIT_AOT_Private
 
 		return true;
 	}
-}
 
-namespace AngelscriptTest_StaticJIT_AOT_Private
-{
+	static bool RunGeneratedOutputVerify(FAutomationTestBase& Test);
+	static bool RunRuntimeRegistration(FAutomationTestBase& Test);
+	static bool RunRuntimeExecution(FAutomationTestBase& Test);
+	static bool RunUASFunctionJitEntryAttachment(FAutomationTestBase& Test);
+	static bool RunUASFunctionRuntimeCallEvent(FAutomationTestBase& Test);
+	static bool RunStaticWorldContextRuntimeCallEvent(FAutomationTestBase& Test);
+	static bool RunMultiEngineSequentialLoad(FAutomationTestBase& Test);
 
-bool RunGeneratedOutputVerify(FAutomationTestBase& Test)
+public:
+	TEST_METHOD(GeneratedOutputVerify)
+	{
+		ASSERT_THAT(IsTrue(RunGeneratedOutputVerify(*TestRunner)));
+	}
+
+	TEST_METHOD(RuntimeRegistersGeneratedFunction)
+	{
+		ASSERT_THAT(IsTrue(RunRuntimeRegistration(*TestRunner)));
+	}
+
+	TEST_METHOD(RuntimeExecuteUsesGeneratedEntry)
+	{
+		ASSERT_THAT(IsTrue(RunRuntimeExecution(*TestRunner)));
+	}
+};
+
+bool FAngelscriptStaticJITAotTests::RunGeneratedOutputVerify(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptStaticJITAotGeneration;
 	const FStaticJITAotGenerationResult Result = Run(EStaticJITAotGenerationMode::Verify);
@@ -276,9 +306,8 @@ bool RunGeneratedOutputVerify(FAutomationTestBase& Test)
 	return Result.bSuccess;
 }
 
-bool RunRuntimeRegistration(FAutomationTestBase& Test)
+bool FAngelscriptStaticJITAotTests::RunRuntimeRegistration(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_StaticJIT_AOT_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngineScope EngineScope(Engine);
 
@@ -304,9 +333,8 @@ bool RunRuntimeRegistration(FAutomationTestBase& Test)
 	return true;
 }
 
-bool RunRuntimeExecution(FAutomationTestBase& Test)
+bool FAngelscriptStaticJITAotTests::RunRuntimeExecution(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_StaticJIT_AOT_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngineScope EngineScope(Engine);
 
@@ -354,9 +382,8 @@ bool RunRuntimeExecution(FAutomationTestBase& Test)
 	return true;
 }
 
-bool RunUASFunctionJitEntryAttachment(FAutomationTestBase& Test)
+bool FAngelscriptStaticJITAotTests::RunUASFunctionJitEntryAttachment(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_StaticJIT_AOT_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngineScope EngineScope(Engine);
 
@@ -402,9 +429,8 @@ bool RunUASFunctionJitEntryAttachment(FAutomationTestBase& Test)
 	return true;
 }
 
-bool RunUASFunctionRuntimeCallEvent(FAutomationTestBase& Test)
+bool FAngelscriptStaticJITAotTests::RunUASFunctionRuntimeCallEvent(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_StaticJIT_AOT_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngineScope EngineScope(Engine);
 
@@ -492,9 +518,8 @@ bool RunUASFunctionRuntimeCallEvent(FAutomationTestBase& Test)
 	return true;
 }
 
-bool RunStaticWorldContextRuntimeCallEvent(FAutomationTestBase& Test)
+bool FAngelscriptStaticJITAotTests::RunStaticWorldContextRuntimeCallEvent(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_StaticJIT_AOT_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngineScope EngineScope(Engine);
 
@@ -550,9 +575,8 @@ bool RunStaticWorldContextRuntimeCallEvent(FAutomationTestBase& Test)
 	return true;
 }
 
-bool RunMultiEngineSequentialLoad(FAutomationTestBase& Test)
+bool FAngelscriptStaticJITAotTests::RunMultiEngineSequentialLoad(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_StaticJIT_AOT_Private;
 	for (int32 Index = 0; Index < 2; ++Index)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -584,51 +608,23 @@ bool RunMultiEngineSequentialLoad(FAutomationTestBase& Test)
 	return true;
 }
 
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITAotTests,
-	"Angelscript.TestModule.StaticJIT.AOT",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
-	TEST_METHOD(GeneratedOutputVerify)
-	{
-		using namespace AngelscriptTest_StaticJIT_AOT_Private;
-		ASSERT_THAT(IsTrue(RunGeneratedOutputVerify(*TestRunner)));
-	}
-
-	TEST_METHOD(RuntimeRegistersGeneratedFunction)
-	{
-		using namespace AngelscriptTest_StaticJIT_AOT_Private;
-		ASSERT_THAT(IsTrue(RunRuntimeRegistration(*TestRunner)));
-	}
-
-	TEST_METHOD(RuntimeExecuteUsesGeneratedEntry)
-	{
-		using namespace AngelscriptTest_StaticJIT_AOT_Private;
-		ASSERT_THAT(IsTrue(RunRuntimeExecution(*TestRunner)));
-	}
-};
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITAotUASFunctionDispatchTests,
 	"Angelscript.TestModule.StaticJIT.AOT.UASFunctionDispatch",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	TEST_METHOD(ExposesJitEntries)
 	{
-		using namespace AngelscriptTest_StaticJIT_AOT_Private;
-		ASSERT_THAT(IsTrue(RunUASFunctionJitEntryAttachment(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptStaticJITAotTests::RunUASFunctionJitEntryAttachment(*TestRunner)));
 	}
 
 	TEST_METHOD(RuntimeCallEventUsesGeneratedJit)
 	{
-		using namespace AngelscriptTest_StaticJIT_AOT_Private;
-		ASSERT_THAT(IsTrue(RunUASFunctionRuntimeCallEvent(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptStaticJITAotTests::RunUASFunctionRuntimeCallEvent(*TestRunner)));
 	}
 
 	TEST_METHOD(StaticWorldContextUsesGeneratedJit)
 	{
-		using namespace AngelscriptTest_StaticJIT_AOT_Private;
-		ASSERT_THAT(IsTrue(RunStaticWorldContextRuntimeCallEvent(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptStaticJITAotTests::RunStaticWorldContextRuntimeCallEvent(*TestRunner)));
 	}
 };
 
@@ -638,8 +634,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITAotMultiEngineTests,
 {
 	TEST_METHOD(SequentialLoadsKeepGeneratedRegistryVisible)
 	{
-		using namespace AngelscriptTest_StaticJIT_AOT_Private;
-		ASSERT_THAT(IsTrue(RunMultiEngineSequentialLoad(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptStaticJITAotTests::RunMultiEngineSequentialLoad(*TestRunner)));
 	}
 };
 

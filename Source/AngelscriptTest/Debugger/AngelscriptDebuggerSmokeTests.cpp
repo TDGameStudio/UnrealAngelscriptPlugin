@@ -4,8 +4,11 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptDebuggerSmokeTests_Private
+TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSmokeTests,
+	"Angelscript.TestModule.Debugger.Smoke",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
 	class FScopedDebugBreakFiltersBinding
 	{
 	public:
@@ -31,7 +34,7 @@ namespace AngelscriptDebuggerSmokeTests_Private
 		TFunction<void(FAngelscriptDebugBreakFilters&)> PopulateFilters;
 	};
 
-	bool WaitForDebuggerEnvelopeType(
+	static bool WaitForDebuggerEnvelopeType(
 		FAutomationTestBase& Test,
 		FAngelscriptDebuggerTestSession& Session,
 		FAngelscriptDebuggerTestClient& Client,
@@ -39,7 +42,7 @@ namespace AngelscriptDebuggerSmokeTests_Private
 		TOptional<FAngelscriptDebugMessageEnvelope>& OutEnvelope,
 		const TCHAR* Context)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		const bool bReceivedEnvelope = Session.PumpUntil(
 			[&Client, &OutEnvelope, ExpectedType]()
 			{
@@ -59,7 +62,7 @@ namespace AngelscriptDebuggerSmokeTests_Private
 			},
 			Session.GetDefaultTimeoutSeconds());
 
-		if (!Assert.IsTrue(bReceivedEnvelope, Context))
+		if (!LocalAssert.IsTrue(bReceivedEnvelope, Context))
 		{
 			if (!Client.GetLastError().IsEmpty())
 			{
@@ -70,12 +73,8 @@ namespace AngelscriptDebuggerSmokeTests_Private
 
 		return true;
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSmokeTests,
-	"Angelscript.TestModule.Debugger.Smoke",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	FDebuggerTestContext Ctx;
 
 	BEFORE_EACH()
@@ -142,8 +141,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSmokeTests,
 
 	TEST_METHOD(BreakFiltersRoundtrip)
 	{
-		using namespace AngelscriptDebuggerSmokeTests_Private;
-
 		FScopedDebugBreakFiltersBinding ScopedBinding(
 			Ctx.GetEngine(),
 			[](FAngelscriptDebugBreakFilters& OutFilters)

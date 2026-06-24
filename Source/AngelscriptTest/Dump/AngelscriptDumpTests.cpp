@@ -12,9 +12,9 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private
+struct FAngelscriptDumpTestHelpers
 {
-	FString MakeUniqueDumpTestPath(const FString& Prefix)
+	static FString MakeUniqueDumpTestPath(const FString& Prefix)
 	{
 		return FPaths::Combine(
 			FPaths::ProjectSavedDir(),
@@ -23,7 +23,7 @@ namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private
 			FString::Printf(TEXT("%s_%s"), *Prefix, *FGuid::NewGuid().ToString(EGuidFormats::Digits)));
 	}
 
-	TArray<FString> GetExpectedPhaseOneCsvFiles()
+	static TArray<FString> GetExpectedPhaseOneCsvFiles()
 	{
 		return {
 			TEXT("EngineOverview.csv"),
@@ -56,7 +56,7 @@ namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private
 		};
 	}
 
-	FString GetExpectedSummaryStatus(const FString& TableName)
+	static FString GetExpectedSummaryStatus(const FString& TableName)
 	{
 		if (TableName == TEXT("ToStringTypes.csv"))
 		{
@@ -86,7 +86,7 @@ namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private
 		return TEXT("Success");
 	}
 
-	bool LoadFileContents(FAutomationTestBase& Test, const FString& Filename, FString& OutContents)
+	static bool LoadFileContents(FAutomationTestBase& Test, const FString& Filename, FString& OutContents)
 	{
 		if (!FFileHelper::LoadFileToString(OutContents, *Filename))
 		{
@@ -97,7 +97,7 @@ namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private
 		return true;
 	}
 
-	bool RunDumpAll(FAutomationTestBase& Test, FString& OutOutputDir)
+	static bool RunDumpAll(FAutomationTestBase& Test, FString& OutOutputDir)
 	{
 		FResolvedProductionLikeEngine ResolvedEngine;
 		if (!AcquireProductionLikeEngine(Test, TEXT("Expected a production-like engine for dump tests"), ResolvedEngine))
@@ -115,7 +115,7 @@ namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private
 		return Test.TestTrue(TEXT("DumpAll should create the output directory"), IFileManager::Get().DirectoryExists(*OutOutputDir));
 	}
 
-	TMap<FString, TPair<int32, FString>> ParseDumpSummary(const FString& SummaryContents)
+	static TMap<FString, TPair<int32, FString>> ParseDumpSummary(const FString& SummaryContents)
 	{
 		TArray<FString> Lines;
 		SummaryContents.ParseIntoArrayLines(Lines, true);
@@ -135,7 +135,7 @@ namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private
 
 		return SummaryRows;
 	}
-}
+};
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptCSVWriterTest,
 	"Angelscript.TestModule.Dump.CSVWriter",
@@ -143,8 +143,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCSVWriterTest,
 {
 	TEST_METHOD(Basic)
 	{
-		using namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private;
-		const FString OutputFilename = FPaths::Combine(MakeUniqueDumpTestPath(TEXT("CSVWriterBasic")), TEXT("Basic.csv"));
+		const FString OutputFilename = FPaths::Combine(FAngelscriptDumpTestHelpers::MakeUniqueDumpTestPath(TEXT("CSVWriterBasic")), TEXT("Basic.csv"));
 
 		FCSVWriter Writer;
 		Writer.AddHeader({ TEXT("Name"), TEXT("Value") });
@@ -159,7 +158,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCSVWriterTest,
 		ASSERT_THAT(IsTrue(bSaved, TEXT("FCSVWriter basic save should succeed")));
 
 		FString FileContents;
-		ASSERT_THAT(IsTrue(LoadFileContents(*TestRunner, OutputFilename, FileContents), TEXT("CSV output should be readable")));
+		ASSERT_THAT(IsTrue(FAngelscriptDumpTestHelpers::LoadFileContents(*TestRunner, OutputFilename, FileContents), TEXT("CSV output should be readable")));
 
 		ASSERT_THAT(IsTrue(FileContents.Contains(TEXT("Name,Value")), TEXT("CSV output should contain the header line")));
 		ASSERT_THAT(IsTrue(FileContents.Contains(TEXT("Alpha,42")), TEXT("CSV output should contain the written row")));
@@ -167,8 +166,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCSVWriterTest,
 
 	TEST_METHOD(SpecialCharacters)
 	{
-		using namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private;
-		const FString OutputFilename = FPaths::Combine(MakeUniqueDumpTestPath(TEXT("CSVWriterEscape")), TEXT("Escaped.csv"));
+		const FString OutputFilename = FPaths::Combine(FAngelscriptDumpTestHelpers::MakeUniqueDumpTestPath(TEXT("CSVWriterEscape")), TEXT("Escaped.csv"));
 
 		FCSVWriter Writer;
 		Writer.AddHeader({ TEXT("One"), TEXT("Two"), TEXT("Three") });
@@ -183,7 +181,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCSVWriterTest,
 		ASSERT_THAT(IsTrue(bSaved, TEXT("FCSVWriter escape save should succeed")));
 
 		FString FileContents;
-		ASSERT_THAT(IsTrue(LoadFileContents(*TestRunner, OutputFilename, FileContents), TEXT("Escaped CSV output should be readable")));
+		ASSERT_THAT(IsTrue(FAngelscriptDumpTestHelpers::LoadFileContents(*TestRunner, OutputFilename, FileContents), TEXT("Escaped CSV output should be readable")));
 
 		ASSERT_THAT(IsTrue(FileContents.Contains(TEXT("\"Comma,Value\"")), TEXT("CSV should quote comma-containing fields")));
 		ASSERT_THAT(IsTrue(FileContents.Contains(TEXT("\"Quote \"\"Here\"\"\"")), TEXT("CSV should double embedded quotes")));
@@ -197,11 +195,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptStateDumpTest,
 {
 	TEST_METHOD(EndToEnd)
 	{
-		using namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private;
 		FString OutputDir;
-		ASSERT_THAT(IsTrue(RunDumpAll(*TestRunner, OutputDir), TEXT("DumpAll should complete")));
+		ASSERT_THAT(IsTrue(FAngelscriptDumpTestHelpers::RunDumpAll(*TestRunner, OutputDir), TEXT("DumpAll should complete")));
 
-		for (const FString& ExpectedFilename : GetExpectedPhaseOneCsvFiles())
+		for (const FString& ExpectedFilename : FAngelscriptDumpTestHelpers::GetExpectedPhaseOneCsvFiles())
 		{
 			const FString CsvPath = FPaths::Combine(OutputDir, ExpectedFilename);
 			ASSERT_THAT(IsTrue(IFileManager::Get().FileExists(*CsvPath), *FString::Printf(TEXT("DumpAll should create '%s'"), *ExpectedFilename)));
@@ -210,21 +207,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptStateDumpTest,
 
 	TEST_METHOD(Summary)
 	{
-		using namespace AngelscriptTest_Dump_AngelscriptDumpTests_Private;
 		FString OutputDir;
-		ASSERT_THAT(IsTrue(RunDumpAll(*TestRunner, OutputDir), TEXT("DumpAll should complete for summary validation")));
+		ASSERT_THAT(IsTrue(FAngelscriptDumpTestHelpers::RunDumpAll(*TestRunner, OutputDir), TEXT("DumpAll should complete for summary validation")));
 
 		const FString SummaryPath = FPaths::Combine(OutputDir, TEXT("DumpSummary.csv"));
 		FString SummaryContents;
-		ASSERT_THAT(IsTrue(LoadFileContents(*TestRunner, SummaryPath, SummaryContents), TEXT("DumpSummary should be readable")));
+		ASSERT_THAT(IsTrue(FAngelscriptDumpTestHelpers::LoadFileContents(*TestRunner, SummaryPath, SummaryContents), TEXT("DumpSummary should be readable")));
 
-		const TMap<FString, TPair<int32, FString>> SummaryRows = ParseDumpSummary(SummaryContents);
-		for (const FString& ExpectedFilename : GetExpectedPhaseOneCsvFiles())
+		const TMap<FString, TPair<int32, FString>> SummaryRows = FAngelscriptDumpTestHelpers::ParseDumpSummary(SummaryContents);
+		for (const FString& ExpectedFilename : FAngelscriptDumpTestHelpers::GetExpectedPhaseOneCsvFiles())
 		{
 			const TPair<int32, FString>* SummaryRow = SummaryRows.Find(ExpectedFilename);
 			ASSERT_THAT(IsNotNull(SummaryRow, *FString::Printf(TEXT("DumpSummary should contain a row for '%s'"), *ExpectedFilename)));
 
-			const FString ExpectedStatus = GetExpectedSummaryStatus(ExpectedFilename);
+			const FString ExpectedStatus = FAngelscriptDumpTestHelpers::GetExpectedSummaryStatus(ExpectedFilename);
 			if (ExpectedStatus.IsEmpty())
 			{
 				const bool bAcceptable = SummaryRow->Value == TEXT("Success") || SummaryRow->Value == TEXT("Skipped");

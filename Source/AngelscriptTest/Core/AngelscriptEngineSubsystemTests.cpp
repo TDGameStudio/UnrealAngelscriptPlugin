@@ -9,29 +9,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Core_AngelscriptEngineSubsystemTests_Private
-{
-	struct FEngineSubsystemContextStackGuard
-	{
-		TArray<FAngelscriptEngine*> SavedStack;
-
-		FEngineSubsystemContextStackGuard()
-		{
-			SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
-		}
-
-		~FEngineSubsystemContextStackGuard()
-		{
-			FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
-		}
-
-		void DiscardSavedStack()
-		{
-			SavedStack.Reset();
-		}
-	};
-}
-
 
 struct FAngelscriptEngineSubsystemTestAccess
 {
@@ -90,10 +67,31 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineSubsystemTests,
 	"Angelscript.TestModule.Engine.EngineSubsystem",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+struct FEngineSubsystemContextStackGuard
+{
+	TArray<FAngelscriptEngine*> SavedStack;
+
+	FEngineSubsystemContextStackGuard()
+	{
+		SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
+	}
+
+	~FEngineSubsystemContextStackGuard()
+	{
+		FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
+	}
+
+	void DiscardSavedStack()
+	{
+		SavedStack.Reset();
+	}
+};
+
+public:
 	TEST_METHOD(ShouldCreateHonorsEditorAndCommandletGates)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptEngineSubsystemTests_Private;
-		ON_SCOPE_EXIT
+ON_SCOPE_EXIT
 		{
 			FAngelscriptEngineSubsystemTestAccess::ClearStartupEnvironmentOverride();
 		};
@@ -132,8 +130,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineSubsystemTests,
 
 	TEST_METHOD(InitializeOverrideIsIdempotentAndRestorable)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptEngineSubsystemTests_Private;
-		FEngineSubsystemContextStackGuard ContextGuard;
+FEngineSubsystemContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{

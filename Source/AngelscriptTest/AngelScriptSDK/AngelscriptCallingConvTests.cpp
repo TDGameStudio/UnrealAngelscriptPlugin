@@ -6,8 +6,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKCallingConvTests,
 	"Angelscript.TestModule.AngelScriptSDK.CallingConv",
@@ -41,7 +39,7 @@ private:
 	}
 
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 	inline static bool bCDeclRegistered = false;
 	inline static bool bGenericRegistered = false;
 	inline static bool bNativeAdderRegistered = false;
@@ -97,6 +95,9 @@ public:
 
 	TEST_METHOD(CDecl)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK calling-convention CDecl test should create a standalone engine")));
 		if (!bCDeclRegistered)
@@ -104,7 +105,7 @@ public:
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKCallingConvCDecl", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKCallingConvCDecl", R"(
 int Entry()
 {
 	return DoubleNativeValue(21);
@@ -126,6 +127,9 @@ int Entry()
 
 	TEST_METHOD(Generic)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK calling-convention generic test should create a standalone engine")));
 		if (!bGenericRegistered)
@@ -133,7 +137,7 @@ int Entry()
 			return;
 		}
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKCallingConvGeneric", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKCallingConvGeneric", R"(
 int Entry()
 {
 	return TripleGenericValue(14);
@@ -155,6 +159,9 @@ int Entry()
 
 	TEST_METHOD(Thiscall)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK calling-convention thiscall test should create a standalone engine")));
 		if (!bNativeAdderRegistered)
@@ -164,7 +171,7 @@ int Entry()
 
 		// Compile-only test: verify the module compiles with native thiscall method registration.
 		// Script class instantiation in isolated engine context may crash, so we only verify compilation.
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKCallingConvThiscall", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKCallingConvThiscall", R"(
 int Entry()
 {
 	NativeAdder Value;

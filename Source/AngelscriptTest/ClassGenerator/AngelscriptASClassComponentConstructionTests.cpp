@@ -74,8 +74,8 @@ class UComponentConstructionCarrier : UActorComponent
 		}
 
 		UASClass* GeneratedASClass = Cast<UASClass>(GeneratedClass);
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(
 				GeneratedASClass,
 				TEXT("ASClass component-construction test case should compile the carrier into a UASClass")))
 		{
@@ -83,13 +83,13 @@ class UComponentConstructionCarrier : UActorComponent
 		}
 
 		bool bHasRequiredFunctions = true;
-		bHasRequiredFunctions &= Assert.IsNotNull(
+		bHasRequiredFunctions &= LocalAssert.IsNotNull(
 			GeneratedASClass->ConstructFunction,
 			TEXT("ASClass component-construction test case should bind the script constructor function"));
-		bHasRequiredFunctions &= Assert.IsNotNull(
+		bHasRequiredFunctions &= LocalAssert.IsNotNull(
 			GeneratedASClass->DefaultsFunction,
 			TEXT("ASClass component-construction test case should bind the defaults function"));
-		bHasRequiredFunctions &= Assert.IsNotNull(
+		bHasRequiredFunctions &= LocalAssert.IsNotNull(
 			GeneratedASClass->ScriptTypePtr,
 			TEXT("ASClass component-construction test case should keep a live script type pointer"));
 		if (!bHasRequiredFunctions)
@@ -129,16 +129,16 @@ class UComponentConstructionCarrier : UActorComponent
 		const FComponentConstructionSnapshot& Snapshot,
 		int32 ExpectedCtorCountForScope)
 	{
-		FNoDiscardAsserter Assert(Test);
-		const bool bCtorCountMatches = Assert.AreEqual(
+		FNoDiscardAsserter LocalAssert(Test);
+		const bool bCtorCountMatches = LocalAssert.AreEqual(
 			ExpectedCtorCountForScope,
 			Snapshot.CtorCount,
 			*FString::Printf(TEXT("%s should observe the expected constructor count"), *ScopeLabel));
-		const bool bDefaultValueMatches = Assert.AreEqual(
+		const bool bDefaultValueMatches = LocalAssert.AreEqual(
 			ExpectedDefaultValue,
 			Snapshot.DefaultValue,
 			*FString::Printf(TEXT("%s should preserve the scripted integer default"), *ScopeLabel));
-		const bool bDefaultLabelMatches = Assert.AreEqual(
+		const bool bDefaultLabelMatches = LocalAssert.AreEqual(
 			ExpectedDefaultLabel,
 			Snapshot.DefaultLabel,
 			*FString::Printf(TEXT("%s should preserve the scripted string default"), *ScopeLabel));
@@ -153,8 +153,8 @@ class UComponentConstructionCarrier : UActorComponent
 		const TCHAR* InstanceName,
 		const TCHAR* Context)
 	{
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(
 				ComponentClass,
 				*FString::Printf(TEXT("%s should compile to a valid generated component class"), Context)))
 		{
@@ -162,7 +162,7 @@ class UComponentConstructionCarrier : UActorComponent
 		}
 
 		UActorComponent* Component = NewObject<UActorComponent>(&OwnerActor, ComponentClass, InstanceName);
-		if (!Assert.IsNotNull(
+		if (!LocalAssert.IsNotNull(
 				Component,
 				*FString::Printf(TEXT("%s should instantiate a runtime component"), Context)))
 		{
@@ -170,10 +170,10 @@ class UComponentConstructionCarrier : UActorComponent
 		}
 
 		bool bHasExpectedOwner = true;
-		bHasExpectedOwner &= Assert.IsTrue(
+		bHasExpectedOwner &= LocalAssert.IsTrue(
 			Component->GetTypedOuter<AActor>() == &OwnerActor,
 			*FString::Printf(TEXT("%s should keep the host actor as the typed outer"), Context));
-		bHasExpectedOwner &= Assert.IsTrue(
+		bHasExpectedOwner &= LocalAssert.IsTrue(
 			Component->GetOwner() == &OwnerActor,
 			*FString::Printf(TEXT("%s should resolve the host actor as owner even before registration"), Context));
 		if (!bHasExpectedOwner)

@@ -4,17 +4,18 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptBuilderTestSupport;
-using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptBuilderDependencyTests,
 	"Angelscript.TestModule.AngelScriptSDK.Builder.Dependencies",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
-	static bool BuildProviderModule(FAutomationTestBase& Test, FNativeTestEngine& TestEngine, asCModule& Module, const char* SectionName, const char* Source)
+	static bool BuildProviderModule(FAutomationTestBase& Test, AngelscriptNativeTestSupport::FNativeTestEngine& TestEngine, asCModule& Module, const char* SectionName, const char* Source)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		if (!AddBuilderSectionWithLog(Test, Module, SectionName, Source, FString::Printf(TEXT("%s.AddSection"), UTF8_TO_TCHAR(SectionName))))
 		{
 			return false;
@@ -26,8 +27,12 @@ private:
 		return BuildResult == asSUCCESS;
 	}
 
-	static bool CompileConsumerModule(FAutomationTestBase& Test, FNativeTestEngine& TestEngine, asCModule& Module, const FString& Stage)
+	static bool CompileConsumerModule(FAutomationTestBase& Test, AngelscriptNativeTestSupport::FNativeTestEngine& TestEngine, asCModule& Module, const FString& Stage)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asCBuilder* Builder = Module.builder;
 		if (Builder == nullptr)
 		{
@@ -56,7 +61,7 @@ private:
 	}
 
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -75,14 +80,18 @@ public:
 
 	TEST_METHOD(DirectMarkDependencyRecordsModuleAndSourceLocation)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder direct dependency test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ProviderScope(Engine, "BuilderDependencyDirectProvider");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ProviderScope(Engine, "BuilderDependencyDirectProvider");
 		asCModule* ProviderModule = CreateBuilderModule(ScriptEngine, ProviderScope.Get());
 		ASSERT_THAT(IsNotNull(ProviderModule, TEXT("Builder direct dependency test should create provider module")));
 
-		FScopedNativeModuleName ConsumerScope(Engine, "BuilderDependencyDirectConsumer");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ConsumerScope(Engine, "BuilderDependencyDirectConsumer");
 		asCModule* ConsumerModule = CreateBuilderModule(ScriptEngine, ConsumerScope.Get());
 		ASSERT_THAT(IsNotNull(ConsumerModule, TEXT("Builder direct dependency test should create consumer module")));
 
@@ -119,10 +128,14 @@ class Marker
 
 	TEST_METHOD(ExplicitMarkStructuralDependencyRecordsStructuralFlag)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder structural dependency test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ProviderScope(Engine, "BuilderDependencyStructuralProvider");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ProviderScope(Engine, "BuilderDependencyStructuralProvider");
 		asCModule* ProviderModule = CreateBuilderModule(ScriptEngine, ProviderScope.Get());
 		ASSERT_THAT(IsNotNull(ProviderModule, TEXT("Builder structural dependency test should create provider module")));
 
@@ -137,7 +150,7 @@ class ProviderValue
 		asCTypeInfo* ProviderType = static_cast<asCTypeInfo*>(ProviderModule->GetTypeInfoByDecl("ProviderValue"));
 		ASSERT_THAT(IsNotNull(ProviderType, TEXT("Builder structural dependency test should expose provider type metadata")));
 
-		FScopedNativeModuleName ConsumerScope(Engine, "BuilderDependencyStructuralConsumer");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ConsumerScope(Engine, "BuilderDependencyStructuralConsumer");
 		asCModule* ConsumerModule = CreateBuilderModule(ScriptEngine, ConsumerScope.Get());
 		ASSERT_THAT(IsNotNull(ConsumerModule, TEXT("Builder structural dependency test should create consumer module")));
 
@@ -179,10 +192,14 @@ class ConsumerValue
 
 	TEST_METHOD(DefaultConstructorCallMarksHardValueDependency)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder hard dependency test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ProviderScope(Engine, "BuilderDependencyHardProvider");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ProviderScope(Engine, "BuilderDependencyHardProvider");
 		asCModule* ProviderModule = CreateBuilderModule(ScriptEngine, ProviderScope.Get());
 		ASSERT_THAT(IsNotNull(ProviderModule, TEXT("Builder hard dependency test should create provider module")));
 
@@ -195,7 +212,7 @@ int ProviderValue()
 		ASSERT_THAT(IsTrue(BuildProviderModule(*TestRunner, Engine, *ProviderModule, "BuilderDependencyHardProvider.as", ProviderSource.c_str()),
 			TEXT("Builder hard dependency test should build provider module")));
 
-		FScopedNativeModuleName ConsumerScope(Engine, "BuilderDependencyHardConsumer");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ConsumerScope(Engine, "BuilderDependencyHardConsumer");
 		asCModule* ConsumerModule = CreateBuilderModule(ScriptEngine, ConsumerScope.Get());
 		ASSERT_THAT(IsNotNull(ConsumerModule, TEXT("Builder hard dependency test should create consumer module")));
 		ConsumerModule->ImportModule(ProviderModule);
@@ -230,10 +247,14 @@ int Entry()
 
 	TEST_METHOD(GlobalInitializerRejectsCrossModuleFunctionDependency)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder global dependency test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ProviderScope(Engine, "BuilderDependencyGlobalProvider");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ProviderScope(Engine, "BuilderDependencyGlobalProvider");
 		asCModule* ProviderModule = CreateBuilderModule(ScriptEngine, ProviderScope.Get());
 		ASSERT_THAT(IsNotNull(ProviderModule, TEXT("Builder global dependency test should create provider module")));
 
@@ -246,7 +267,7 @@ int ProviderValue()
 		ASSERT_THAT(IsTrue(BuildProviderModule(*TestRunner, Engine, *ProviderModule, "BuilderDependencyGlobalProvider.as", ProviderSource.c_str()),
 			TEXT("Builder global dependency test should build provider module")));
 
-		FScopedNativeModuleName ConsumerScope(Engine, "BuilderDependencyGlobalConsumer");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ConsumerScope(Engine, "BuilderDependencyGlobalConsumer");
 		asCModule* ConsumerModule = CreateBuilderModule(ScriptEngine, ConsumerScope.Get());
 		ASSERT_THAT(IsNotNull(ConsumerModule, TEXT("Builder global dependency test should create consumer module")));
 		ConsumerModule->ImportModule(ProviderModule);
@@ -283,7 +304,7 @@ int Entry()
 		ASSERT_THAT(IsTrue(AssertBuilderDiagnostic(
 			*TestRunner,
 			Engine.GetMessages(),
-			FExpectedBuilderDiagnostic::Error(TEXT("BuilderDependencyGlobalConsumer.as"), 1, TEXT("Global variable initialization cannot call global function ProviderValue")),
+			AngelscriptBuilderTestSupport::FExpectedBuilderDiagnostic::Error(TEXT("BuilderDependencyGlobalConsumer.as"), 1, TEXT("Global variable initialization cannot call global function ProviderValue")),
 			TEXT("Builder global dependency test should report cross-module initializer diagnostic"))));
 		asIScriptFunction* EntryFunction = ConsumerModule->GetFunctionByDecl("int Entry()");
 		ASSERT_THAT(IsNotNull(EntryFunction,

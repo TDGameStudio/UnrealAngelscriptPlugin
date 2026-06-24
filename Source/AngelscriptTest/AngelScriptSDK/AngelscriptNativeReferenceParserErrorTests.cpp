@@ -4,7 +4,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceParserErrorTests,
 	"Angelscript.TestModule.AngelScriptSDK.Reference.ParserErrors",
@@ -28,6 +27,8 @@ private:
 public:
 	TEST_METHOD(UnfinishedClassReportsMissingBrace)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		const int CompileResult = CompileSnippet("ReferenceParserUnfinishedClass", R"(
 class myclass
@@ -42,6 +43,8 @@ class myclass
 
 	TEST_METHOD(CapitalConstInParameterIsRejected)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		const int CompileResult = CompileSnippet("ReferenceParserCapitalConst", R"(
 class myclass
@@ -59,6 +62,8 @@ class myclass
 
 	TEST_METHOD(UnclosedNamespaceReportsEndOfFile)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		const int CompileResult = CompileSnippet("ReferenceParserUnclosedNamespace", R"(
 namespace Outer
@@ -76,6 +81,8 @@ namespace Outer
 
 	TEST_METHOD(BadParameterListAccumulatesSyntaxError)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		const int CompileResult = CompileSnippet("ReferenceParserBadParameters", R"(
 void Bad(int A,, int B)
@@ -91,6 +98,8 @@ void Bad(int A,, int B)
 
 	TEST_METHOD(MultipleMalformedDeclarationsReportMultipleErrors)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		const int CompileResult = CompileSnippet("ReferenceParserMultipleMalformed", R"(
 void Bad( { }

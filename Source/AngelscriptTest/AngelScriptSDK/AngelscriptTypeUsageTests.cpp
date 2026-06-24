@@ -25,8 +25,8 @@ private:
 	{
 		FTCHARToUTF8 DeclarationUtf8(*Declaration);
 		asITypeInfo* TypeInfo = Module.GetTypeInfoByDecl(DeclarationUtf8.Get());
-		FNoDiscardAsserter Assert(Test);
-		(void)Assert.IsNotNull(
+		FNoDiscardAsserter LocalAssert(Test);
+		(void)LocalAssert.IsNotNull(
 			TypeInfo,
 			*FString::Printf(TEXT("Compiled module should expose script type '%s'"), *Declaration));
 		return TypeInfo;
@@ -76,8 +76,8 @@ private:
 	static asITypeInfo* FindTypeInfoById(FAutomationTestBase& Test, asIScriptEngine& ScriptEngine, int TypeId, const FString& Context)
 	{
 		asITypeInfo* TypeInfo = (TypeId != asINVALID_TYPE) ? ScriptEngine.GetTypeInfoById(TypeId) : nullptr;
-		FNoDiscardAsserter Assert(Test);
-		(void)Assert.IsNotNull(TypeInfo, *FString::Printf(TEXT("%s should resolve to a script type"), *Context));
+		FNoDiscardAsserter LocalAssert(Test);
+		(void)LocalAssert.IsNotNull(TypeInfo, *FString::Printf(TEXT("%s should resolve to a script type"), *Context));
 		return TypeInfo;
 	}
 
@@ -104,8 +104,8 @@ private:
 	static FProperty* FindPropertyByName(FAutomationTestBase& Test, UStruct& Owner, const TCHAR* PropertyName)
 	{
 		FProperty* Property = FindFProperty<FProperty>(&Owner, PropertyName);
-		FNoDiscardAsserter Assert(Test);
-		(void)Assert.IsNotNull(
+		FNoDiscardAsserter LocalAssert(Test);
+		(void)LocalAssert.IsNotNull(
 			Property,
 			*FString::Printf(TEXT("Generated owner '%s' should expose property '%s'"), *Owner.GetName(), PropertyName));
 		return Property;
@@ -118,15 +118,15 @@ private:
 		const TSharedPtr<FAngelscriptType>& ExpectedType,
 		asITypeInfo* ExpectedScriptClass)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bMatches = true;
-		bMatches &= Assert.IsTrue(
+		bMatches &= LocalAssert.IsTrue(
 			Usage.IsValid(),
 			*FString::Printf(TEXT("%s should resolve to a valid type usage"), *Context));
-		bMatches &= Assert.IsTrue(
+		bMatches &= LocalAssert.IsTrue(
 			Usage.Type.Get() == ExpectedType.Get(),
 			*FString::Printf(TEXT("%s should resolve to the expected script kind"), *Context));
-		bMatches &= Assert.AreEqual(
+		bMatches &= LocalAssert.AreEqual(
 			ExpectedScriptClass,
 			Usage.ScriptClass,
 			*FString::Printf(TEXT("%s should preserve the originating script type"), *Context));
@@ -140,16 +140,16 @@ private:
 		const bool bExpectedConst,
 		const bool bExpectedReference)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bMatches = true;
-		bMatches &= Assert.IsTrue(
+		bMatches &= LocalAssert.IsTrue(
 			Usage.IsValid(),
 			*FString::Printf(TEXT("%s should resolve to a valid type usage"), *Context));
-		bMatches &= Assert.AreEqual(
+		bMatches &= LocalAssert.AreEqual(
 			bExpectedConst,
 			Usage.bIsConst,
 			*FString::Printf(TEXT("%s should preserve the const qualifier"), *Context));
-		bMatches &= Assert.AreEqual(
+		bMatches &= LocalAssert.AreEqual(
 			bExpectedReference,
 			Usage.bIsReference,
 			*FString::Printf(TEXT("%s should preserve the reference qualifier"), *Context));

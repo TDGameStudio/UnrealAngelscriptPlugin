@@ -13,7 +13,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeSourceRangeTests,
 	"Angelscript.TestModule.AngelScriptSDK.ScriptNode.SourceRange",
@@ -22,6 +21,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeSourceRangeTests,
 private:
 	static bool ParseRangeScript(FAutomationTestBase& Test, FNoDiscardAsserter& Assert, asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source, TFunctionRef<void(asCScriptCode&, const asCScriptNode&)> Verify)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a source-range module"), UTF8_TO_TCHAR(ModuleName))))
 		{
@@ -32,7 +33,7 @@ private:
 		asCScriptCode Code;
 		Code.SetCode(ModuleName, Source, true);
 
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 		const int ParseResult = Parser.ParseScript(&Code);
 		if (!Assert.AreEqual(0, ParseResult, FString::Printf(TEXT("%s should parse successfully"), UTF8_TO_TCHAR(ModuleName))))
 		{
@@ -60,6 +61,8 @@ private:
 public:
 	TEST_METHOD(LineColPropagatedToFunction)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode source-range test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
@@ -93,6 +96,8 @@ public:
 
 	TEST_METHOD(LineColPropagatedToClassMember)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode source-range test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
@@ -121,6 +126,8 @@ public:
 
 	TEST_METHOD(MultilineStatementSpansCorrectRange)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode source-range test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
@@ -157,6 +164,8 @@ public:
 
 	TEST_METHOD(CommentSkippedDoesNotShiftNextNodeLine)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode source-range test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
@@ -185,6 +194,8 @@ public:
 
 	TEST_METHOD(BomDoesNotPoisonFirstNodeColumn)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode source-range test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };

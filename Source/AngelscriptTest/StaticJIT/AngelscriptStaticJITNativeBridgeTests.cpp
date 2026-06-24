@@ -12,9 +12,12 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeBridgeTests_Private
+TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITNativeBridgeTests,
+	"Angelscript.TestModule.StaticJIT.NativeBridge",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	constexpr asDWORD ExpectedGenericReturnValue = 0x1234ABCD;
+private:
+	static constexpr asDWORD ExpectedGenericReturnValue = 0x1234ABCD;
 
 	struct FGenericProbeState
 	{
@@ -23,9 +26,9 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeBridgeTests_Privat
 		int32 SetReturnResult = asERROR;
 	};
 
-	thread_local FGenericProbeState* GActiveGenericProbeState = nullptr;
+	static thread_local FGenericProbeState* GActiveGenericProbeState;
 
-	void GenericActiveFunctionProbe(asIScriptGeneric* Generic)
+	static void GenericActiveFunctionProbe(asIScriptGeneric* Generic)
 	{
 		check(GActiveGenericProbeState != nullptr);
 		++GActiveGenericProbeState->CallCount;
@@ -68,7 +71,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeBridgeTests_Privat
 		asCScriptFunction* Function = nullptr;
 	};
 
-	bool VerifyThreadLocalStateAvailable(
+	static bool VerifyThreadLocalStateAvailable(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		asCThreadLocalData*& OutThreadLocalData)
@@ -82,7 +85,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeBridgeTests_Privat
 				OutThreadLocalData);
 	}
 
-	bool VerifyGenericFunctionBridge(
+	static bool VerifyGenericFunctionBridge(
 		FAutomationTestBase& Test,
 		asCScriptEngine& ScriptEngine,
 		asCThreadLocalData& ThreadLocalData)
@@ -172,7 +175,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeBridgeTests_Privat
 		return bPassed && bRestoredExecution && bRestoredContext && bRestoredOriginalFunction;
 	}
 
-	bool VerifyGenericMethodNullThisGuard(
+	static bool VerifyGenericMethodNullThisGuard(
 		FAutomationTestBase& Test,
 		asCScriptEngine& ScriptEngine,
 		asCThreadLocalData& ThreadLocalData)
@@ -257,15 +260,27 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeBridgeTests_Privat
 			ThreadLocalData.activeFunction == PreviousActiveFunction);
 		return bPassed && bRestoredExecution && bRestoredContext && bRestoredOriginalFunction;
 	}
-}
 
+	static bool RunNativeBridgeGenericCallRestoresState(FAutomationTestBase& Test);
+	static bool RunNativeBridgeGenericMethodNullThisThrows(FAutomationTestBase& Test);
 
-namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeBridgeTests_Private
+public:
+	TEST_METHOD(GenericCallRestoresState)
+	{
+		ASSERT_THAT(IsTrue(RunNativeBridgeGenericCallRestoresState(*TestRunner)));
+	}
+
+	TEST_METHOD(GenericMethodNullThisThrows)
+	{
+		ASSERT_THAT(IsTrue(RunNativeBridgeGenericMethodNullThisThrows(*TestRunner)));
+	}
+};
+
+thread_local FAngelscriptStaticJITNativeBridgeTests::FGenericProbeState* FAngelscriptStaticJITNativeBridgeTests::GActiveGenericProbeState = nullptr;
+
+bool FAngelscriptStaticJITNativeBridgeTests::RunNativeBridgeGenericCallRestoresState(FAutomationTestBase& Test)
 {
 
-bool RunNativeBridgeGenericCallRestoresState(FAutomationTestBase& Test)
-{
-	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeBridgeTests_Private;
 	bool bPassed = false;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 	{
@@ -308,9 +323,8 @@ bool RunNativeBridgeGenericCallRestoresState(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunNativeBridgeGenericMethodNullThisThrows(FAutomationTestBase& Test)
+bool FAngelscriptStaticJITNativeBridgeTests::RunNativeBridgeGenericMethodNullThisThrows(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeBridgeTests_Private;
 	bool bPassed = false;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 	{
@@ -352,24 +366,5 @@ bool RunNativeBridgeGenericMethodNullThisThrows(FAutomationTestBase& Test)
 	}
 	return bPassed;
 }
-
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITNativeBridgeTests,
-	"Angelscript.TestModule.StaticJIT.NativeBridge",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
-	TEST_METHOD(GenericCallRestoresState)
-	{
-		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeBridgeTests_Private;
-		ASSERT_THAT(IsTrue(RunNativeBridgeGenericCallRestoresState(*TestRunner)));
-	}
-
-	TEST_METHOD(GenericMethodNullThisThrows)
-	{
-		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeBridgeTests_Private;
-		ASSERT_THAT(IsTrue(RunNativeBridgeGenericMethodNullThisThrows(*TestRunner)));
-	}
-};
 
 #endif

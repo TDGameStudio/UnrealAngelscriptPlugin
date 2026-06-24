@@ -9,11 +9,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_HotReload_AngelscriptHotReloadPropertyTests_Private
-{
-}
-
-
 #define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 #define TestFalse(...) Test.TestFalse(__VA_ARGS__)
 #define TestEqual(...) Test.TestEqual(__VA_ARGS__)
@@ -21,8 +16,7 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadPropertyTests_Private
 
 static bool SoftReloadBasic(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadPropertyTests_Private;
-	bool bPassed = false;
+bool bPassed = false;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 	const FString ScriptV1 = TEXT(R"AS(
@@ -125,8 +119,7 @@ int GetSoftReloadVersion()
 
 static bool SoftReloadPreservesOtherModules(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadPropertyTests_Private;
-	bool bPassed = false;
+bool bPassed = false;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 	const FString ScriptA = TEXT(R"AS(
@@ -194,8 +187,7 @@ int GetValueA()
 
 static bool FullReloadBasic(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadPropertyTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 	const FString ScriptV1 = TEXT(R"AS(
 UCLASS()
@@ -295,8 +287,7 @@ class UFullReloadTarget : UObject
 
 static bool FullReloadEnumBasic(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadPropertyTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 	ON_SCOPE_EXIT
 	{

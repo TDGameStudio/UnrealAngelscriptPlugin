@@ -16,15 +16,15 @@ namespace ScriptStructCQTest
 {
 	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
 	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsTrue(bActual, Message);
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsTrue(bActual, Message);
 	}
 
 	template <typename ActualType, typename ExpectedType>
 	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
 	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreEqual(Expected, Actual, Message);
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.AreEqual(Expected, Actual, Message);
 	}
 
 	template <typename ActualType, typename ExpectedType>
@@ -36,15 +36,15 @@ namespace ScriptStructCQTest
 	template <typename ActualType, typename ExpectedType>
 	static bool CheckNotEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
 	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreNotEqual(Expected, Actual, Message);
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.AreNotEqual(Expected, Actual, Message);
 	}
 
 	template <typename ValueType>
 	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
 	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsNotNull(Value, Message);
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsNotNull(Value, Message);
 	}
 
 	template <typename ValueType>
@@ -56,8 +56,8 @@ namespace ScriptStructCQTest
 	template <typename ValueType>
 	static bool CheckNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
 	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsNull(Value, Message);
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsNull(Value, Message);
 	}
 }
 

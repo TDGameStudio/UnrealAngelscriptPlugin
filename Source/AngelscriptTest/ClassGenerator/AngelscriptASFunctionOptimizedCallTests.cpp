@@ -136,8 +136,8 @@ class UOptimizedCallTarget : UObject
 		const TCHAR* FunctionName)
 	{
 		UASFunction* ScriptFunction = Cast<UASFunction>(FindGeneratedFunction(ScriptClass, FunctionName));
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(
 				ScriptFunction,
 				*FString::Printf(TEXT("Optimized-call test case should generate '%s' as a UASFunction"), FunctionName)))
 		{

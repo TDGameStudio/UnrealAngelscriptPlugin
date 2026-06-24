@@ -16,26 +16,24 @@
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private
-{
-	struct FCoreTestContextStackGuard
-	{
-		TArray<FAngelscriptEngine*> SavedStack;
-		FCoreTestContextStackGuard() { SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear(); }
-		~FCoreTestContextStackGuard() { FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack)); }
-		void DiscardSavedStack() { SavedStack.Reset(); }
-	};
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 	"Angelscript.TestModule.Engine",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+struct FCoreTestContextStackGuard
+{
+	TArray<FAngelscriptEngine*> SavedStack;
+	FCoreTestContextStackGuard() { SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear(); }
+	~FCoreTestContextStackGuard() { FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack)); }
+	void DiscardSavedStack() { SavedStack.Reset(); }
+};
+
+public:
 	TEST_METHOD(CreateDestroy)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private;
-		DestroySharedTestEngine();
+DestroySharedTestEngine();
 		FAngelscriptEngineConfig Config;
 		FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 
@@ -51,8 +49,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 
 	TEST_METHOD(ScanFreeInitializeAcquiresProcessPackages)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private;
-		FCoreTestContextStackGuard ContextGuard;
+FCoreTestContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
@@ -90,8 +87,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 
 	TEST_METHOD(CompileSnippet)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		if (!this->Assert.IsNotNull(&Engine, TEXT("Compile test should create an initialized engine")))
 		{
@@ -121,8 +117,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 
 	TEST_METHOD(ExecuteSnippet)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		if (!this->Assert.IsNotNull(&Engine, TEXT("Execute test should create an initialized engine")))
 		{
@@ -169,8 +164,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 
 	TEST_METHOD(LastFullDestroyClearsTypeState)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private;
-		FCoreTestContextStackGuard ContextGuard;
+FCoreTestContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
@@ -206,8 +200,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 
 	TEST_METHOD(FullDestroyAllowsCleanRecreate)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private;
-		FCoreTestContextStackGuard ContextGuard;
+FCoreTestContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
@@ -278,8 +271,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineCoreTests,
 
 	TEST_METHOD(FullDestroyAllowsAnnotatedRecreate)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private;
-		FCoreTestContextStackGuard ContextGuard;
+FCoreTestContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
@@ -369,8 +361,7 @@ class ARecreateAnnotatedActorB : AActor
 
 	TEST_METHOD(FullDestroyAllowsAnnotatedSameNameRecreate)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptEngineCoreTests_Private;
-		FCoreTestContextStackGuard ContextGuard;
+FCoreTestContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{

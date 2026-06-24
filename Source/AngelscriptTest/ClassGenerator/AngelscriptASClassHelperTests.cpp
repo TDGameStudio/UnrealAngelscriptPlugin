@@ -25,8 +25,8 @@ namespace ASClassHelperTest
 		FStringView Suffix,
 		const TCHAR* CallingContext = TEXT("AngelscriptASClassHelperTests"))
 	{
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(ParentClass, TEXT("ASClass helper test case should receive a valid script parent class")))
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(ParentClass, TEXT("ASClass helper test case should receive a valid script parent class")))
 		{
 			return nullptr;
 		}
@@ -37,7 +37,7 @@ namespace ASClassHelperTest
 			Suffix.GetData(),
 			*FGuid::NewGuid().ToString(EGuidFormats::Digits));
 		UPackage* BlueprintPackage = CreatePackage(*PackagePath);
-		if (!Assert.IsNotNull(BlueprintPackage, TEXT("ASClass helper test case should create a transient blueprint package")))
+		if (!LocalAssert.IsNotNull(BlueprintPackage, TEXT("ASClass helper test case should create a transient blueprint package")))
 		{
 			return nullptr;
 		}
@@ -53,7 +53,7 @@ namespace ASClassHelperTest
 			UBlueprint::StaticClass(),
 			UBlueprintGeneratedClass::StaticClass(),
 			CallingContext);
-		if (!Assert.IsNotNull(Blueprint, TEXT("ASClass helper test case should create a transient blueprint asset")))
+		if (!LocalAssert.IsNotNull(Blueprint, TEXT("ASClass helper test case should create a transient blueprint asset")))
 		{
 			return nullptr;
 		}
@@ -64,8 +64,8 @@ namespace ASClassHelperTest
 	bool CompileAndValidateBlueprint(FAutomationTestBase& Test, UBlueprint& Blueprint)
 	{
 		FKismetEditorUtilities::CompileBlueprint(&Blueprint);
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsNotNull(Blueprint.GeneratedClass.Get(), TEXT("ASClass helper test case should compile the transient blueprint"));
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsNotNull(Blueprint.GeneratedClass.Get(), TEXT("ASClass helper test case should compile the transient blueprint"));
 	}
 
 	void CleanupBlueprint(UBlueprint*& Blueprint)

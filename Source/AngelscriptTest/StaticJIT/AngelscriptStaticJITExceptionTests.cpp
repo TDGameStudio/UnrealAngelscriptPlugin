@@ -7,8 +7,11 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private
+TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITExceptionHelperTests,
+	"Angelscript.TestModule.StaticJIT.ExceptionHelpers",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
 	struct FMappedExceptionCase
 	{
 		const TCHAR* Label = TEXT("");
@@ -25,7 +28,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private
 		const TCHAR* ExpectedError = TEXT("");
 	};
 
-	bool RunExceptionCase(
+	static bool RunExceptionCase(
 		FAutomationTestBase& Test,
 		asCThreadLocalData* ThreadLocalData,
 		const TCHAR* CaseLabel,
@@ -82,7 +85,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private
 		return bPassed && bRestoredExecution && bRestoredContext;
 	}
 
-	bool VerifySetExceptionMappings(FAutomationTestBase& Test, asCThreadLocalData* ThreadLocalData)
+	static bool VerifySetExceptionMappings(FAutomationTestBase& Test, asCThreadLocalData* ThreadLocalData)
 	{
 		static constexpr FMappedExceptionCase Cases[] =
 		{
@@ -113,7 +116,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private
 		return true;
 	}
 
-	bool VerifyWrapperMappings(FAutomationTestBase& Test, asCThreadLocalData* ThreadLocalData)
+	static bool VerifyWrapperMappings(FAutomationTestBase& Test, asCThreadLocalData* ThreadLocalData)
 	{
 		static constexpr FWrapperExceptionCase Cases[] =
 		{
@@ -143,15 +146,30 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private
 
 		return true;
 	}
-}
 
+	static bool RunExceptionHelpersMapExpectedErrors(FAutomationTestBase& Test);
+	static bool RunExceptionHelpersWrapperParity(FAutomationTestBase& Test);
+	static bool RunExceptionHelpersSwitchValueInvalid(FAutomationTestBase& Test);
 
-namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private
+public:
+	TEST_METHOD(MapExpectedErrors)
+	{
+		ASSERT_THAT(IsTrue(RunExceptionHelpersMapExpectedErrors(*TestRunner)));
+	}
+
+	TEST_METHOD(WrappersMatchMappedMessages)
+	{
+		ASSERT_THAT(IsTrue(RunExceptionHelpersWrapperParity(*TestRunner)));
+	}
+
+	TEST_METHOD(SwitchValueInvalidUsesDedicatedMessage)
+	{
+		ASSERT_THAT(IsTrue(RunExceptionHelpersSwitchValueInvalid(*TestRunner)));
+	}
+};
+
+bool FAngelscriptStaticJITExceptionHelperTests::RunExceptionHelpersMapExpectedErrors(FAutomationTestBase& Test)
 {
-
-bool RunExceptionHelpersMapExpectedErrors(FAutomationTestBase& Test)
-{
-	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private;
 	bool bPassed = false;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 	{
@@ -187,9 +205,8 @@ bool RunExceptionHelpersMapExpectedErrors(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunExceptionHelpersWrapperParity(FAutomationTestBase& Test)
+bool FAngelscriptStaticJITExceptionHelperTests::RunExceptionHelpersWrapperParity(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private;
 	bool bPassed = false;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 	{
@@ -225,9 +242,8 @@ bool RunExceptionHelpersWrapperParity(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunExceptionHelpersSwitchValueInvalid(FAutomationTestBase& Test)
+bool FAngelscriptStaticJITExceptionHelperTests::RunExceptionHelpersSwitchValueInvalid(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private;
 	bool bPassed = false;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 	{
@@ -270,30 +286,5 @@ bool RunExceptionHelpersSwitchValueInvalid(FAutomationTestBase& Test)
 	}
 	return bPassed;
 }
-
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITExceptionHelperTests,
-	"Angelscript.TestModule.StaticJIT.ExceptionHelpers",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
-	TEST_METHOD(MapExpectedErrors)
-	{
-		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private;
-		ASSERT_THAT(IsTrue(RunExceptionHelpersMapExpectedErrors(*TestRunner)));
-	}
-
-	TEST_METHOD(WrappersMatchMappedMessages)
-	{
-		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private;
-		ASSERT_THAT(IsTrue(RunExceptionHelpersWrapperParity(*TestRunner)));
-	}
-
-	TEST_METHOD(SwitchValueInvalidUsesDedicatedMessage)
-	{
-		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITExceptionTests_Private;
-		ASSERT_THAT(IsTrue(RunExceptionHelpersSwitchValueInvalid(*TestRunner)));
-	}
-};
 
 #endif

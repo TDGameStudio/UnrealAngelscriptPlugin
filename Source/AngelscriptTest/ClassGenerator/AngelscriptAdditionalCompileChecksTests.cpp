@@ -8,79 +8,77 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_ClassGenerator_AngelscriptAdditionalCompileChecksTests_Private
-{
-	static const FName AdditionalChecksModuleName(TEXT("AdditionalChecksMod"));
-	static const FString AdditionalChecksFilename(TEXT("AdditionalChecksMod.as"));
-	static const FName AdditionalChecksClassName(TEXT("UAdditionalChecksTarget"));
-
-	static const FName AdditionalChecksRejectedModuleName(TEXT("AdditionalChecksRejectMod"));
-	static const FString AdditionalChecksRejectedFilename(TEXT("AdditionalChecksRejectMod.as"));
-	static const FName AdditionalChecksRejectedClassName(TEXT("UAdditionalChecksRejectedTarget"));
-
-	bool IsHandledReloadResult(const ECompileResult ReloadResult)
-	{
-		return ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled;
-	}
-
-	bool SummaryContainsDiagnosticMessage(const FAngelscriptCompileTraceSummary& Summary, const FString& ExpectedMessage)
-	{
-		for (const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
-		{
-			if (Diagnostic.Message.Contains(ExpectedMessage))
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	struct FTestAdditionalCompileChecks final : FAngelscriptAdditionalCompileChecks
-	{
-		int32 CompileCheckCount = 0;
-		int32 PostReloadCount = 0;
-		FString LastModuleName;
-		FString LastClassName;
-		bool bLastFullReload = false;
-		bool bRejectCompile = false;
-		FString RejectMessage = TEXT("Test additional compile check rejected the script class.");
-		TArray<bool> PostReloadHistory;
-
-		virtual bool ScriptCompileAdditionalChecks(TSharedPtr<FAngelscriptModuleDesc> ModuleDesc, TSharedPtr<FAngelscriptClassDesc> ClassDesc) override
-		{
-			++CompileCheckCount;
-			LastModuleName = ModuleDesc.IsValid() ? ModuleDesc->ModuleName : FString();
-			LastClassName = ClassDesc.IsValid() ? ClassDesc->ClassName : FString();
-
-			if (bRejectCompile)
-			{
-				FAngelscriptEngine::Get().ScriptCompileError(ModuleDesc, 1, RejectMessage);
-				return false;
-			}
-
-			return true;
-		}
-
-		virtual void PostReloadAdditionalChecks(bool bFullReload, TSharedPtr<FAngelscriptModuleDesc> ModuleDesc, TSharedPtr<FAngelscriptClassDesc> ClassDesc) override
-		{
-			++PostReloadCount;
-			bLastFullReload = bFullReload;
-			LastModuleName = ModuleDesc.IsValid() ? ModuleDesc->ModuleName : FString();
-			LastClassName = ClassDesc.IsValid() ? ClassDesc->ClassName : FString();
-			PostReloadHistory.Add(bFullReload);
-		}
-	};
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptAdditionalCompileChecksTests,
 	"Angelscript.TestModule.ClassGenerator.AdditionalCompileChecks",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+inline static const FName AdditionalChecksModuleName = FName(TEXT("AdditionalChecksMod"));
+inline static const FString AdditionalChecksFilename = FString(TEXT("AdditionalChecksMod.as"));
+inline static const FName AdditionalChecksClassName = FName(TEXT("UAdditionalChecksTarget"));
+
+inline static const FName AdditionalChecksRejectedModuleName = FName(TEXT("AdditionalChecksRejectMod"));
+inline static const FString AdditionalChecksRejectedFilename = FString(TEXT("AdditionalChecksRejectMod.as"));
+inline static const FName AdditionalChecksRejectedClassName = FName(TEXT("UAdditionalChecksRejectedTarget"));
+
+static bool IsHandledReloadResult(const ECompileResult ReloadResult)
+{
+	return ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled;
+}
+
+static bool SummaryContainsDiagnosticMessage(const FAngelscriptCompileTraceSummary& Summary, const FString& ExpectedMessage)
+{
+	for (const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
+	{
+		if (Diagnostic.Message.Contains(ExpectedMessage))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+struct FTestAdditionalCompileChecks final : FAngelscriptAdditionalCompileChecks
+{
+	int32 CompileCheckCount = 0;
+	int32 PostReloadCount = 0;
+	FString LastModuleName;
+	FString LastClassName;
+	bool bLastFullReload = false;
+	bool bRejectCompile = false;
+	FString RejectMessage = TEXT("Test additional compile check rejected the script class.");
+	TArray<bool> PostReloadHistory;
+
+	virtual bool ScriptCompileAdditionalChecks(TSharedPtr<FAngelscriptModuleDesc> ModuleDesc, TSharedPtr<FAngelscriptClassDesc> ClassDesc) override
+	{
+		++CompileCheckCount;
+		LastModuleName = ModuleDesc.IsValid() ? ModuleDesc->ModuleName : FString();
+		LastClassName = ClassDesc.IsValid() ? ClassDesc->ClassName : FString();
+
+		if (bRejectCompile)
+		{
+			FAngelscriptEngine::Get().ScriptCompileError(ModuleDesc, 1, RejectMessage);
+			return false;
+		}
+
+		return true;
+	}
+
+	virtual void PostReloadAdditionalChecks(bool bFullReload, TSharedPtr<FAngelscriptModuleDesc> ModuleDesc, TSharedPtr<FAngelscriptClassDesc> ClassDesc) override
+	{
+		++PostReloadCount;
+		bLastFullReload = bFullReload;
+		LastModuleName = ModuleDesc.IsValid() ? ModuleDesc->ModuleName : FString();
+		LastClassName = ClassDesc.IsValid() ? ClassDesc->ClassName : FString();
+		PostReloadHistory.Add(bFullReload);
+	}
+};
+
+public:
 	TEST_METHOD(InvokeCompileAndPostReloadHooks)
 	{
-		using namespace AngelscriptTest_ClassGenerator_AngelscriptAdditionalCompileChecksTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 		TSharedPtr<FTestAdditionalCompileChecks> Recorder = MakeShared<FTestAdditionalCompileChecks>();

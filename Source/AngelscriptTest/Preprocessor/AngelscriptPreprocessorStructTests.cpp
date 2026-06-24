@@ -17,8 +17,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace PreprocessorTestHelpers;
-
 // ============================================================================
 // Test class
 // ============================================================================
@@ -33,6 +31,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorStructTest,
 	// ========================================================================
 	TEST_METHOD(InheritanceRejected)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		static const FString ExpectedMessage =
 			TEXT("Error parsing script struct FDerivedStruct. Structs may not inherit from anything.");
 
@@ -66,6 +66,8 @@ USTRUCT() struct FDerivedStruct : FBaseStruct
 	// ========================================================================
 	TEST_METHOD(DefaultPropertySpecifierUsesStructSettings)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 

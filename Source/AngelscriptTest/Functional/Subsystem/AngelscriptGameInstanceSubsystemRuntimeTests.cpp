@@ -90,8 +90,12 @@ struct FAngelscriptTickBehaviorTestAccess
 	}
 };
 
-namespace AngelscriptTest_Subsystem_AngelscriptGameInstanceSubsystemRuntimeTests_Private
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptGameInstanceSubsystemTests,
+	"Angelscript.TestModule.GameInstanceSubsystem",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
 	struct FCoreTestContextStackGuard
 	{
 		TArray<FAngelscriptEngine*> SavedStack;
@@ -112,7 +116,7 @@ namespace AngelscriptTest_Subsystem_AngelscriptGameInstanceSubsystemRuntimeTests
 		}
 	};
 
-	bool InitializeRuntimeSubsystemTestCase(
+	static bool InitializeRuntimeSubsystemTestCase(
 		FAutomationTestBase& Test,
 		FActorTestSpawner& Spawner,
 		UWorld*& OutWorld,
@@ -137,7 +141,7 @@ namespace AngelscriptTest_Subsystem_AngelscriptGameInstanceSubsystemRuntimeTests
 		return Test.TestNotNull(TEXT("Subsystem runtime test case should expose the Angelscript game-instance subsystem"), OutSubsystem);
 	}
 
-	bool VerifyTickAdvancesProbe(
+	static bool VerifyTickAdvancesProbe(
 		FAutomationTestBase& Test,
 		UAngelscriptGameInstanceSubsystem& Subsystem,
 		const TCHAR* ContextLabel)
@@ -158,18 +162,11 @@ namespace AngelscriptTest_Subsystem_AngelscriptGameInstanceSubsystemRuntimeTests
 			*FString::Printf(TEXT("%s should advance the engine tick probe when the primary engine is tickable"), ContextLabel),
 			FAngelscriptTickBehaviorTestAccess::GetNextHotReloadCheck(*PrimaryEngine) > PreviousNextHotReloadCheck);
 	}
-}
 
-
-TEST_CLASS_WITH_FLAGS(
-	FAngelscriptGameInstanceSubsystemTests,
-	"Angelscript.TestModule.GameInstanceSubsystem",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(InitializeAdoptsOrOwnsEngineAndTicksIt)
 	{
-		using namespace AngelscriptTest_Subsystem_AngelscriptGameInstanceSubsystemRuntimeTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		{
@@ -238,9 +235,77 @@ TEST_CLASS_WITH_FLAGS(
 	"Angelscript.TestModule.GameInstanceSubsystem.MultiOwnerLifecycle",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	struct FCoreTestContextStackGuard
+	{
+		TArray<FAngelscriptEngine*> SavedStack;
+
+		FCoreTestContextStackGuard()
+		{
+			SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
+		}
+
+		~FCoreTestContextStackGuard()
+		{
+			FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
+		}
+
+		void DiscardSavedStack()
+		{
+			SavedStack.Reset();
+		}
+	};
+
+	static bool InitializeRuntimeSubsystemTestCase(
+		FAutomationTestBase& Test,
+		FActorTestSpawner& Spawner,
+		UWorld*& OutWorld,
+		UGameInstance*& OutGameInstance,
+		UAngelscriptGameInstanceSubsystem*& OutSubsystem)
+	{
+		Spawner.InitializeGameSubsystems();
+
+		OutWorld = &Spawner.GetWorld();
+		if (!Test.TestNotNull(TEXT("Subsystem runtime test case should create a test world"), OutWorld))
+		{
+			return false;
+		}
+
+		OutGameInstance = OutWorld->GetGameInstance();
+		if (!Test.TestNotNull(TEXT("Subsystem runtime test case should expose a game instance"), OutGameInstance))
+		{
+			return false;
+		}
+
+		OutSubsystem = OutGameInstance->GetSubsystem<UAngelscriptGameInstanceSubsystem>();
+		return Test.TestNotNull(TEXT("Subsystem runtime test case should expose the Angelscript game-instance subsystem"), OutSubsystem);
+	}
+
+	static bool VerifyTickAdvancesProbe(
+		FAutomationTestBase& Test,
+		UAngelscriptGameInstanceSubsystem& Subsystem,
+		const TCHAR* ContextLabel)
+	{
+		FAngelscriptEngine* PrimaryEngine = Subsystem.GetEngine();
+		if (!Test.TestNotNull(
+			*FString::Printf(TEXT("%s should expose a primary engine"), ContextLabel),
+			PrimaryEngine))
+		{
+			return false;
+		}
+
+		FAngelscriptTickBehaviorTestAccess::PrepareTickProbe(*PrimaryEngine);
+		const double PreviousNextHotReloadCheck = FAngelscriptTickBehaviorTestAccess::GetNextHotReloadCheck(*PrimaryEngine);
+		Subsystem.Tick(0.0f);
+
+		return Test.TestTrue(
+			*FString::Printf(TEXT("%s should advance the engine tick probe when the primary engine is tickable"), ContextLabel),
+			FAngelscriptTickBehaviorTestAccess::GetNextHotReloadCheck(*PrimaryEngine) > PreviousNextHotReloadCheck);
+	}
+
+public:
 	TEST_METHOD(SharedPrimaryEngineKeepsTickOwnershipUntilLastShutdown)
 	{
-		using namespace AngelscriptTest_Subsystem_AngelscriptGameInstanceSubsystemRuntimeTests_Private;
 		FCoreTestContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())

@@ -10,24 +10,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_Angelscript_AngelscriptFunctionTests_Private
-{
-	const FAngelscriptCompileTraceDiagnosticSummary* FindDiagnosticContaining(
-		const FAngelscriptCompileTraceSummary& Summary,
-		const FString& Needle)
-	{
-		for (const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
-		{
-			if (Diagnostic.Message.Contains(Needle))
-			{
-				return &Diagnostic;
-			}
-		}
-
-		return nullptr;
-	}
-}
-
 
 bool CompileModuleWithResult(FAngelscriptEngine* Engine, ECompileType CompileType, FName ModuleName, FString Filename, FString Script, ECompileResult& OutCompileResult);
 void ResetSharedCloneEngine(FAngelscriptEngine& Engine);
@@ -38,6 +20,23 @@ TEST_CLASS_WITH_FLAGS(
 	"Angelscript.TestModule.Functional.Functions",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static const FAngelscriptCompileTraceDiagnosticSummary* FindDiagnosticContaining(
+	const FAngelscriptCompileTraceSummary& Summary,
+	const FString& Needle)
+{
+	for (const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
+	{
+		if (Diagnostic.Message.Contains(Needle))
+		{
+			return &Diagnostic;
+		}
+	}
+
+	return nullptr;
+}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE_FULL();
@@ -103,8 +102,7 @@ int Run()
 
 	TEST_METHOD(NamedArguments_InvalidNameDiagnostics)
 	{
-		using namespace AngelscriptTest_Angelscript_AngelscriptFunctionTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		auto VerifyInvalidNamedArguments = [this, &Engine](

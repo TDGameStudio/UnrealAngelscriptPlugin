@@ -50,155 +50,153 @@ struct FAngelscriptBindConfigTestAccess
 	}
 };
 
-namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private
-{
-	struct FBindExecutionRecorder
-	{
-		static TMap<FName, int32>& GetCounts()
-		{
-			static TMap<FName, int32> Counts;
-			return Counts;
-		}
-
-		static void Reset(const FName CounterKey)
-		{
-			GetCounts().FindOrAdd(CounterKey) = 0;
-		}
-
-		static void Increment(const FName CounterKey)
-		{
-			++GetCounts().FindOrAdd(CounterKey);
-		}
-
-		static int32 Get(const FName CounterKey)
-		{
-			return GetCounts().FindRef(CounterKey);
-		}
-	};
-
-	FName MakeUniqueBindTestName(const TCHAR* Prefix)
-	{
-		return FName(*FString::Printf(TEXT("%s.%s"), Prefix, *FGuid::NewGuid().ToString(EGuidFormats::Digits)));
-	}
-
-	TArray<FName> FindNewBindNames(const TArray<FName>& BeforeNames, const TArray<FName>& AfterNames)
-	{
-		TSet<FName> ExistingNames;
-		for (const FName& BeforeName : BeforeNames)
-		{
-			ExistingNames.Add(BeforeName);
-		}
-
-		TArray<FName> NewNames;
-		for (const FName& AfterName : AfterNames)
-		{
-			if (!ExistingNames.Contains(AfterName))
-			{
-				NewNames.Add(AfterName);
-			}
-		}
-
-		return NewNames;
-	}
-
-	TSet<FName> BuildDisabledSetExcluding(const TArray<FName>& AllBindNames, const TSet<FName>& AllowedNames)
-	{
-		TSet<FName> DisabledBindNames;
-		for (const FName& BindName : AllBindNames)
-		{
-			if (!AllowedNames.Contains(BindName))
-			{
-				DisabledBindNames.Add(BindName);
-			}
-		}
-
-		return DisabledBindNames;
-	}
-
-	void ExecuteIsolatedBinds(const TSet<FName>& DisabledBindNames)
-	{
-		UE_SET_LOG_VERBOSITY(Angelscript, Fatal);
-		FAngelscriptBindConfigTestAccess::CallBinds(DisabledBindNames);
-		UE_SET_LOG_VERBOSITY(Angelscript, Log);
-	}
-
-	FAngelscriptBindExecutionSnapshot ObserveStartupBindPass(const FAngelscriptEngineConfig& Config)
-	{
-		DestroySharedTestEngine();
-		if (FAngelscriptEngine::IsInitialized())
-		{
-			FAngelscriptBindConfigTestAccess::DestroyGlobalEngine();
-		}
-
-		FAngelscriptBindExecutionObservation::Reset();
-		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
-		check(Engine.IsValid());
-		FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
-		Engine.Reset();
-		DestroySharedTestEngine();
-
-		if (FAngelscriptEngine::IsInitialized())
-		{
-			FAngelscriptBindConfigTestAccess::DestroyGlobalEngine();
-		}
-
-		return Snapshot;
-	}
-
-	int32 FindBindIndexByName(const TArray<FAngelscriptBinds::FBindInfo>& BindInfos, const FName BindName)
-	{
-		for (int32 BindIndex = 0; BindIndex < BindInfos.Num(); ++BindIndex)
-		{
-			if (BindInfos[BindIndex].BindName == BindName)
-			{
-				return BindIndex;
-			}
-		}
-
-		return INDEX_NONE;
-	}
-
-	const FAngelscriptBinds::FBindInfo* FindBindInfoByName(const TArray<FAngelscriptBinds::FBindInfo>& BindInfos, const FName BindName)
-	{
-		for (const FAngelscriptBinds::FBindInfo& BindInfo : BindInfos)
-		{
-			if (BindInfo.BindName == BindName)
-			{
-				return &BindInfo;
-			}
-		}
-
-		return nullptr;
-	}
-
-	bool IsFunctionEntryBound(const FFuncEntry& Entry)
-	{
-		FGenericFuncPtr FuncPtr = Entry.FuncPtr;
-		return FuncPtr.IsBound() && Entry.Caller.IsBound();
-	}
-
-	bool AreFunctionEntriesEqual(const FFuncEntry& Left, const FFuncEntry& Right)
-	{
-		return FMemory::Memcmp(&Left.FuncPtr, &Right.FuncPtr, sizeof(FGenericFuncPtr)) == 0 &&
-			FMemory::Memcmp(&Left.Caller, &Right.Caller, sizeof(ASAutoCaller::FunctionCaller)) == 0;
-	}
-
-	void CDECL NoOpGeneric(asIScriptGeneric* Generic)
-	{
-		(void)Generic;
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 	"Angelscript.TestModule.Engine.BindConfig",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+struct FBindExecutionRecorder
+{
+	static TMap<FName, int32>& GetCounts()
+	{
+		static TMap<FName, int32> Counts;
+		return Counts;
+	}
+
+	static void Reset(const FName CounterKey)
+	{
+		GetCounts().FindOrAdd(CounterKey) = 0;
+	}
+
+	static void Increment(const FName CounterKey)
+	{
+		++GetCounts().FindOrAdd(CounterKey);
+	}
+
+	static int32 Get(const FName CounterKey)
+	{
+		return GetCounts().FindRef(CounterKey);
+	}
+};
+
+static FName MakeUniqueBindTestName(const TCHAR* Prefix)
+{
+	return FName(*FString::Printf(TEXT("%s.%s"), Prefix, *FGuid::NewGuid().ToString(EGuidFormats::Digits)));
+}
+
+static TArray<FName> FindNewBindNames(const TArray<FName>& BeforeNames, const TArray<FName>& AfterNames)
+{
+	TSet<FName> ExistingNames;
+	for (const FName& BeforeName : BeforeNames)
+	{
+		ExistingNames.Add(BeforeName);
+	}
+
+	TArray<FName> NewNames;
+	for (const FName& AfterName : AfterNames)
+	{
+		if (!ExistingNames.Contains(AfterName))
+		{
+			NewNames.Add(AfterName);
+		}
+	}
+
+	return NewNames;
+}
+
+static TSet<FName> BuildDisabledSetExcluding(const TArray<FName>& AllBindNames, const TSet<FName>& AllowedNames)
+{
+	TSet<FName> DisabledBindNames;
+	for (const FName& BindName : AllBindNames)
+	{
+		if (!AllowedNames.Contains(BindName))
+		{
+			DisabledBindNames.Add(BindName);
+		}
+	}
+
+	return DisabledBindNames;
+}
+
+static void ExecuteIsolatedBinds(const TSet<FName>& DisabledBindNames)
+{
+	UE_SET_LOG_VERBOSITY(Angelscript, Fatal);
+	FAngelscriptBindConfigTestAccess::CallBinds(DisabledBindNames);
+	UE_SET_LOG_VERBOSITY(Angelscript, Log);
+}
+
+static FAngelscriptBindExecutionSnapshot ObserveStartupBindPass(const FAngelscriptEngineConfig& Config)
+{
+	DestroySharedTestEngine();
+	if (FAngelscriptEngine::IsInitialized())
+	{
+		FAngelscriptBindConfigTestAccess::DestroyGlobalEngine();
+	}
+
+	FAngelscriptBindExecutionObservation::Reset();
+	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
+	TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
+	check(Engine.IsValid());
+	FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
+	Engine.Reset();
+	DestroySharedTestEngine();
+
+	if (FAngelscriptEngine::IsInitialized())
+	{
+		FAngelscriptBindConfigTestAccess::DestroyGlobalEngine();
+	}
+
+	return Snapshot;
+}
+
+static int32 FindBindIndexByName(const TArray<FAngelscriptBinds::FBindInfo>& BindInfos, const FName BindName)
+{
+	for (int32 BindIndex = 0; BindIndex < BindInfos.Num(); ++BindIndex)
+	{
+		if (BindInfos[BindIndex].BindName == BindName)
+		{
+			return BindIndex;
+		}
+	}
+
+	return INDEX_NONE;
+}
+
+static const FAngelscriptBinds::FBindInfo* FindBindInfoByName(const TArray<FAngelscriptBinds::FBindInfo>& BindInfos, const FName BindName)
+{
+	for (const FAngelscriptBinds::FBindInfo& BindInfo : BindInfos)
+	{
+		if (BindInfo.BindName == BindName)
+		{
+			return &BindInfo;
+		}
+	}
+
+	return nullptr;
+}
+
+static bool IsFunctionEntryBound(const FFuncEntry& Entry)
+{
+	FGenericFuncPtr FuncPtr = Entry.FuncPtr;
+	return FuncPtr.IsBound() && Entry.Caller.IsBound();
+}
+
+static bool AreFunctionEntriesEqual(const FFuncEntry& Left, const FFuncEntry& Right)
+{
+	return FMemory::Memcmp(&Left.FuncPtr, &Right.FuncPtr, sizeof(FGenericFuncPtr)) == 0 &&
+		FMemory::Memcmp(&Left.Caller, &Right.Caller, sizeof(ASAutoCaller::FunctionCaller)) == 0;
+}
+
+static void CDECL NoOpGeneric(asIScriptGeneric* Generic)
+{
+	(void)Generic;
+}
+
+public:
 	TEST_METHOD(GlobalDisabledBindNames)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		UAngelscriptSettings* Settings = GetMutableDefault<UAngelscriptSettings>();
+UAngelscriptSettings* Settings = GetMutableDefault<UAngelscriptSettings>();
 		if (!this->Assert.IsNotNull(Settings, TEXT("BindConfig.GlobalDisabledBindNames should access mutable settings")))
 		{
 			return;
@@ -257,8 +255,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 	TEST_METHOD(EngineDisabledBindNames)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		UAngelscriptSettings* Settings = GetMutableDefault<UAngelscriptSettings>();
+UAngelscriptSettings* Settings = GetMutableDefault<UAngelscriptSettings>();
 		if (!this->Assert.IsNotNull(Settings, TEXT("BindConfig.EngineDisabledBindNames should access mutable settings")))
 		{
 			return;
@@ -309,8 +306,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 	TEST_METHOD(UnnamedBindBackwardCompatibility)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		const TArray<FName> BaselineBindNames = FAngelscriptBinds::GetAllRegisteredBindNames();
+const TArray<FName> BaselineBindNames = FAngelscriptBinds::GetAllRegisteredBindNames();
 		const FName CounterKey = MakeUniqueBindTestName(TEXT("Automation.BindConfig.Unnamed.Counter"));
 		FBindExecutionRecorder::Reset(CounterKey);
 
@@ -363,8 +359,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 	TEST_METHOD(StartupBindInfoPreservesOrder)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		const FName EarlyBindName = MakeUniqueBindTestName(TEXT("Automation.BindConfig.StartupOrder.Early"));
+const FName EarlyBindName = MakeUniqueBindTestName(TEXT("Automation.BindConfig.StartupOrder.Early"));
 		const FName LateBindName = MakeUniqueBindTestName(TEXT("Automation.BindConfig.StartupOrder.Late"));
 		FAngelscriptBinds::FBind EarlyBind(EarlyBindName, -100, []() {});
 		FAngelscriptBinds::FBind LateBind(LateBindName, 100, []() {});
@@ -400,8 +395,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 	TEST_METHOD(StartupPathMergesDisabledBindNames)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		UAngelscriptSettings* Settings = GetMutableDefault<UAngelscriptSettings>();
+UAngelscriptSettings* Settings = GetMutableDefault<UAngelscriptSettings>();
 		if (!this->Assert.IsNotNull(Settings, TEXT("BindConfig.StartupPathMergesDisabledBindNames should access mutable settings")))
 		{
 			return;
@@ -442,8 +436,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 	TEST_METHOD(GeneratedBlueprintCallableEntriesPopulateClassMaps)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		DestroySharedTestEngine();
+DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
 		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
@@ -483,8 +476,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 	TEST_METHOD(AddFunctionEntryPreservesFirstRegistration)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		FAngelscriptBinds::ResetBindState();
+FAngelscriptBinds::ResetBindState();
 		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); };
 
 		const FString FunctionName = TEXT("K2_DestroyActor");
@@ -507,8 +499,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 	TEST_METHOD(BlueprintInternalUseOnlyCanBeOverriddenForAngelscript)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		UFunction* WithOverride = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("InternalCallableWithOverride"));
+UFunction* WithOverride = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("InternalCallableWithOverride"));
 		UFunction* WithoutOverride = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("InternalCallableWithoutOverride"));
 		if (!this->Assert.IsNotNull(WithOverride, TEXT("BlueprintInternalUseOnlyCanBeOverriddenForAngelscript should find the override test function"))
 			|| !this->Assert.IsNotNull(WithoutOverride, TEXT("BlueprintInternalUseOnlyCanBeOverriddenForAngelscript should find the control test function")))
@@ -524,8 +515,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 	TEST_METHOD(FunctionLevelScriptMethodUsesFirstParameterAsMixin)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		DestroySharedTestEngine();
+DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
 		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
@@ -553,8 +543,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 	TEST_METHOD(CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		DestroySharedTestEngine();
+DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
 		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
@@ -595,8 +584,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 	TEST_METHOD(ScriptAllowTemporaryThisAppendsAcceptTemporaryThis)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		DestroySharedTestEngine();
+DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
 		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
@@ -621,8 +609,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 	TEST_METHOD(UnsafeDuringActorConstructionSetsUnsafeTrait)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		DestroySharedTestEngine();
+DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
 		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
@@ -661,8 +648,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 	TEST_METHOD(OverloadedExportedFunctionsCanRecoverDirectBind)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		DestroySharedTestEngine();
+DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
 		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
@@ -686,8 +672,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 	TEST_METHOD(InlineDefinitionFunctionsCanRecoverDirectBind)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		DestroySharedTestEngine();
+DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
 		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
@@ -709,8 +694,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 
 	TEST_METHOD(InlineOutRefFunctionsCanRecoverDirectBind)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindConfigTests_Private;
-		DestroySharedTestEngine();
+DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
 		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };

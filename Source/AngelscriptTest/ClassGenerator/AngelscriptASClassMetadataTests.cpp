@@ -33,8 +33,8 @@ class %s : AActor
 )AS"),
 			*TestCase.GeneratedClassName.ToString());
 
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsTrue(
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsTrue(
 			CompileAnnotatedModuleFromMemory(&Engine, TestCase.ModuleName, TestCase.Filename, ScriptSource),
 			FString::Printf(TEXT("ASClass metadata case '%s' should compile"), *TestCase.ModuleName.ToString())))
 		{
@@ -42,7 +42,7 @@ class %s : AActor
 		}
 
 		UASClass* GeneratedClass = Cast<UASClass>(FindGeneratedClass(&Engine, TestCase.GeneratedClassName));
-		if (!Assert.IsNotNull(
+		if (!LocalAssert.IsNotNull(
 			GeneratedClass,
 			FString::Printf(TEXT("ASClass metadata case '%s' should generate '%s'"), *TestCase.ModuleName.ToString(), *TestCase.GeneratedClassName.ToString())))
 		{

@@ -15,76 +15,74 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
-namespace AngelscriptTest_Core_AngelscriptDebuggerAutoEvaluationTests_Private
-{
-	asITypeInfo* FindScriptTypeInfoForClass(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		UClass* ScriptClass)
-	{
-		FNoDiscardAsserter Assert(Test);
-		const FString BoundTypeName = FAngelscriptType::GetBoundClassName(ScriptClass);
-		asITypeInfo* ScriptType = nullptr;
-		if (const UASClass* ScriptASClass = Cast<UASClass>(ScriptClass))
-		{
-			ScriptType = static_cast<asITypeInfo*>(ScriptASClass->ScriptTypePtr);
-		}
-
-		if (ScriptType == nullptr)
-		{
-			const FTCHARToUTF8 BoundTypeNameUtf8(*BoundTypeName);
-			ScriptType = Engine.GetScriptEngine()->GetTypeInfoByName(BoundTypeNameUtf8.Get());
-		}
-
-		if (!Assert.IsNotNull(
-				ScriptType,
-				*FString::Printf(TEXT("Debugger auto-evaluate test should resolve script type '%s'"), *BoundTypeName)))
-		{
-			return nullptr;
-		}
-		return ScriptType;
-	}
-
-	asIScriptFunction* FindMethodByDecl(
-		FAutomationTestBase& Test,
-		asITypeInfo& ScriptType,
-		const FString& Declaration)
-	{
-		FNoDiscardAsserter Assert(Test);
-		const FTCHARToUTF8 DeclarationUtf8(*Declaration);
-		asIScriptFunction* Function = ScriptType.GetMethodByDecl(DeclarationUtf8.Get());
-		if (!Assert.IsNotNull(
-				Function,
-				*FString::Printf(TEXT("Debugger auto-evaluate test should resolve method '%s'"), *Declaration)))
-		{
-			return nullptr;
-		}
-		return Function;
-	}
-
-	FString BuildDebuggerFunctionPath(const asIScriptFunction& ScriptFunction)
-	{
-		FString FunctionPath;
-		if (ScriptFunction.GetObjectType() != nullptr)
-		{
-			FunctionPath = ANSI_TO_TCHAR(ScriptFunction.GetObjectType()->GetName());
-			FunctionPath += TEXT(".");
-		}
-
-		FunctionPath += ANSI_TO_TCHAR(ScriptFunction.GetName());
-		return FunctionPath;
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerAutoEvaluationTests,
 	"Angelscript.TestModule.Engine.Debugger.AutoEvaluate",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static asITypeInfo* FindScriptTypeInfoForClass(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine,
+	UClass* ScriptClass)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	const FString BoundTypeName = FAngelscriptType::GetBoundClassName(ScriptClass);
+	asITypeInfo* ScriptType = nullptr;
+	if (const UASClass* ScriptASClass = Cast<UASClass>(ScriptClass))
+	{
+		ScriptType = static_cast<asITypeInfo*>(ScriptASClass->ScriptTypePtr);
+	}
+
+	if (ScriptType == nullptr)
+	{
+		const FTCHARToUTF8 BoundTypeNameUtf8(*BoundTypeName);
+		ScriptType = Engine.GetScriptEngine()->GetTypeInfoByName(BoundTypeNameUtf8.Get());
+	}
+
+	if (!LocalAssert.IsNotNull(
+			ScriptType,
+			*FString::Printf(TEXT("Debugger auto-evaluate test should resolve script type '%s'"), *BoundTypeName)))
+	{
+		return nullptr;
+	}
+	return ScriptType;
+}
+
+static asIScriptFunction* FindMethodByDecl(
+	FAutomationTestBase& Test,
+	asITypeInfo& ScriptType,
+	const FString& Declaration)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	const FTCHARToUTF8 DeclarationUtf8(*Declaration);
+	asIScriptFunction* Function = ScriptType.GetMethodByDecl(DeclarationUtf8.Get());
+	if (!LocalAssert.IsNotNull(
+			Function,
+			*FString::Printf(TEXT("Debugger auto-evaluate test should resolve method '%s'"), *Declaration)))
+	{
+		return nullptr;
+	}
+	return Function;
+}
+
+static FString BuildDebuggerFunctionPath(const asIScriptFunction& ScriptFunction)
+{
+	FString FunctionPath;
+	if (ScriptFunction.GetObjectType() != nullptr)
+	{
+		FunctionPath = ANSI_TO_TCHAR(ScriptFunction.GetObjectType()->GetName());
+		FunctionPath += TEXT(".");
+	}
+
+	FunctionPath += ANSI_TO_TCHAR(ScriptFunction.GetName());
+	return FunctionPath;
+}
+
+public:
 	TEST_METHOD(RespectsBlacklistAndTracksSourceProperty)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptDebuggerAutoEvaluationTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 		static const FName ModuleName(TEXT("CoreDebuggerAutoEvaluateWorldless"));

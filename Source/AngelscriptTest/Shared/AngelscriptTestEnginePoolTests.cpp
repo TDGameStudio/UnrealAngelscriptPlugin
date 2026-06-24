@@ -18,27 +18,10 @@
 #define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 #define TestNull(...) Test.TestNull(__VA_ARGS__)
 
-namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private
-{
-	int32 CountRootedDetachedASClasses()
-	{
-		int32 Count = 0;
-		for (TObjectIterator<UASClass> It; It; ++It)
-		{
-			if (It->ScriptTypePtr == nullptr && It->IsRooted())
-			{
-				++Count;
-			}
-		}
-		return Count;
-	}
-}
-
 
 static bool RunPrewarmCachesBindDatabase(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private;
-	ShutdownTestEnginePool();
+ShutdownTestEnginePool();
 	FAngelscriptBindExecutionObservation::Reset();
 
 	FAngelscriptEngine& SourceEngine = PrewarmTestEnginePool();
@@ -61,8 +44,7 @@ static bool RunPrewarmCachesBindDatabase(FAutomationTestBase& Test)
 
 static bool RunModuleCleanDiscardsOnlyDelta(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private;
-	ShutdownTestEnginePool();
+ShutdownTestEnginePool();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
@@ -87,10 +69,9 @@ static bool RunModuleCleanDiscardsOnlyDelta(FAutomationTestBase& Test)
 	return true;
 }
 
-static bool RunGeneratedClassCleanupIsBounded(FAutomationTestBase& Test)
+static bool RunGeneratedClassCleanupIsBounded(FAutomationTestBase& Test, const TFunctionRef<int32()> CountRootedDetachedClasses)
 {
-	using namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private;
-	ShutdownTestEnginePool();
+ShutdownTestEnginePool();
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
@@ -122,7 +103,7 @@ class UPoolGeneratedClassObject : UObject
 	}
 
 	const FAngelscriptTestEnginePoolMetrics Metrics = GetTestEnginePoolMetrics();
-	TestEqual(TEXT("Generated-class cleanup should leave no rooted detached UASClass objects"), CountRootedDetachedASClasses(), 0);
+	TestEqual(TEXT("Generated-class cleanup should leave no rooted detached UASClass objects"), CountRootedDetachedClasses(), 0);
 	TestTrue(TEXT("Generated-class cleanup should discard the generated class module"), Metrics.LastActiveModuleDiscardCount >= 1);
 	TestTrue(TEXT("Generated-class cleanup should inspect detached generated classes"), Metrics.LastDetachedClassCount >= 1);
 
@@ -132,8 +113,7 @@ class UPoolGeneratedClassObject : UObject
 
 static bool RunGeneratedStructCleanupIsBounded(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private;
-	static const FName GeneratedStructName(TEXT("PoolGeneratedStruct"));
+static const FName GeneratedStructName(TEXT("PoolGeneratedStruct"));
 
 	ShutdownTestEnginePool();
 	FAngelscriptTestEnginePool::Get().SetGarbageCollectEveryNCleanups(1);
@@ -184,8 +164,7 @@ struct FPoolGeneratedStruct
 
 static bool RunGeneratedEnumDelegateCleanupIsBounded(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private;
-	ShutdownTestEnginePool();
+ShutdownTestEnginePool();
 	FAngelscriptTestEnginePool::Get().SetGarbageCollectEveryNCleanups(1);
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 
@@ -286,8 +265,7 @@ event void FPoolGeneratedEvent(int Value);
 
 static bool RunGeneratedClassActionCacheIsCleared(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_Shared_AngelscriptTestEnginePoolTests_Private;
-	ShutdownTestEnginePool();
+ShutdownTestEnginePool();
 	FAngelscriptTestEnginePool::Get().SetGarbageCollectEveryNCleanups(1);
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 
@@ -354,6 +332,21 @@ TEST_CLASS_WITH_FLAGS(
 	"Angelscript.TestModule.Shared.TestEnginePool",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static int32 CountRootedDetachedASClasses()
+{
+	int32 Count = 0;
+	for (TObjectIterator<UASClass> It; It; ++It)
+	{
+		if (It->ScriptTypePtr == nullptr && It->IsRooted())
+		{
+			++Count;
+		}
+	}
+	return Count;
+}
+
+public:
 	TEST_METHOD(PrewarmCachesBindDatabase)
 	{
 		ASSERT_THAT(IsTrue(RunPrewarmCachesBindDatabase(*TestRunner)));
@@ -366,7 +359,7 @@ TEST_CLASS_WITH_FLAGS(
 
 	TEST_METHOD(GeneratedClassCleanupIsBounded)
 	{
-		ASSERT_THAT(IsTrue(RunGeneratedClassCleanupIsBounded(*TestRunner)));
+		ASSERT_THAT(IsTrue(RunGeneratedClassCleanupIsBounded(*TestRunner, [] { return CountRootedDetachedASClasses(); })));
 	}
 
 	TEST_METHOD(GeneratedStructCleanupIsBounded)

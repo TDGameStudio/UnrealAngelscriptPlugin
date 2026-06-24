@@ -16,78 +16,76 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
-namespace AngelscriptTest_ClassGenerator_AngelscriptASClassReferenceSchemaTests_Private
-{
-	static const FName ReferenceSchemaModuleName(TEXT("ASClassReferenceSchema"));
-	static const FString ReferenceSchemaFilename(TEXT("ASClassReferenceSchema.as"));
-	static const FName ReferenceSchemaClassName(TEXT("UReferenceSchemaHolder"));
-	static const FName ReferenceSchemaSoftReloadModuleName(TEXT("ASClassReferenceSchemaSoftReload"));
-	static const FString ReferenceSchemaSoftReloadFilename(TEXT("ASClassReferenceSchemaSoftReload.as"));
-	static const FName ReferenceSchemaSoftReloadClassName(TEXT("UReferenceSchemaReloadHolder"));
-
-	struct FStoreParams { UObject* InValue = nullptr; };
-	struct FGetStoredParams { UObject* ReturnValue = nullptr; };
-	struct FGetVersionParams { int32 ReturnValue = 0; };
-
-	UFunction* RequireGeneratedFunction(FAutomationTestBase& Test, UClass* OwnerClass, FName FunctionName, const TCHAR* Context)
-	{
-		UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
-		FNoDiscardAsserter Assert(Test);
-		(void)Assert.IsNotNull(Function, *FString::Printf(TEXT("%s should expose generated function '%s'"), Context, *FunctionName.ToString()));
-		return Function;
-	}
-
-	bool InvokeGeneratedFunction(FAngelscriptEngine& Engine, UObject* Object, UFunction* Function, void* Params)
-	{
-		if (!::IsValid(Object) || Function == nullptr) { return false; }
-		FAngelscriptEngineScope FunctionScope(Engine, Object);
-		if (UASFunction* ScriptFunction = Cast<UASFunction>(Function))
-		{ ScriptFunction->RuntimeCallEvent(Object, Params); }
-		else
-		{ Object->ProcessEvent(Function, Params); }
-		return true;
-	}
-
-	int32 CountSchemaMembers(UE::GC::FSchemaView Schema)
-	{
-		if (Schema.IsEmpty()) { return 0; }
-		int32 Count = 0;
-		for (const UE::GC::FMemberWord* WordIt = Schema.GetWords(); true; ++WordIt)
-		{
-			const UE::GC::Private::FMemberWordUnpacked Quad(WordIt->Members);
-			for (UE::GC::Private::FMemberUnpacked Member : Quad.Members)
-			{
-				switch (Member.Type)
-				{
-				case UE::GC::EMemberType::StridedArray:
-				case UE::GC::EMemberType::StructArray:
-				case UE::GC::EMemberType::StructSet:
-				case UE::GC::EMemberType::FreezableStructArray:
-				case UE::GC::EMemberType::Optional:
-				case UE::GC::EMemberType::MemberARO:
-					++WordIt;
-					break;
-				case UE::GC::EMemberType::ARO:
-				case UE::GC::EMemberType::SlowARO:
-				case UE::GC::EMemberType::Stop:
-					return Count;
-				default:
-					break;
-				}
-				++Count;
-			}
-		}
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptASClassReferenceSchemaTests,
 	"Angelscript.TestModule.ClassGenerator.ASClass",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+inline static const FName ReferenceSchemaModuleName = FName(TEXT("ASClassReferenceSchema"));
+inline static const FString ReferenceSchemaFilename = FString(TEXT("ASClassReferenceSchema.as"));
+inline static const FName ReferenceSchemaClassName = FName(TEXT("UReferenceSchemaHolder"));
+inline static const FName ReferenceSchemaSoftReloadModuleName = FName(TEXT("ASClassReferenceSchemaSoftReload"));
+inline static const FString ReferenceSchemaSoftReloadFilename = FString(TEXT("ASClassReferenceSchemaSoftReload.as"));
+inline static const FName ReferenceSchemaSoftReloadClassName = FName(TEXT("UReferenceSchemaReloadHolder"));
+
+struct FStoreParams { UObject* InValue = nullptr; };
+struct FGetStoredParams { UObject* ReturnValue = nullptr; };
+struct FGetVersionParams { int32 ReturnValue = 0; };
+
+static UFunction* RequireGeneratedFunction(FAutomationTestBase& Test, UClass* OwnerClass, FName FunctionName, const TCHAR* Context)
+{
+	UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
+	FNoDiscardAsserter LocalAssert(Test);
+	(void)LocalAssert.IsNotNull(Function, *FString::Printf(TEXT("%s should expose generated function '%s'"), Context, *FunctionName.ToString()));
+	return Function;
+}
+
+static bool InvokeGeneratedFunction(FAngelscriptEngine& Engine, UObject* Object, UFunction* Function, void* Params)
+{
+	if (!::IsValid(Object) || Function == nullptr) { return false; }
+	FAngelscriptEngineScope FunctionScope(Engine, Object);
+	if (UASFunction* ScriptFunction = Cast<UASFunction>(Function))
+	{ ScriptFunction->RuntimeCallEvent(Object, Params); }
+	else
+	{ Object->ProcessEvent(Function, Params); }
+	return true;
+}
+
+static int32 CountSchemaMembers(UE::GC::FSchemaView Schema)
+{
+	if (Schema.IsEmpty()) { return 0; }
+	int32 Count = 0;
+	for (const UE::GC::FMemberWord* WordIt = Schema.GetWords(); true; ++WordIt)
+	{
+		const UE::GC::Private::FMemberWordUnpacked Quad(WordIt->Members);
+		for (UE::GC::Private::FMemberUnpacked Member : Quad.Members)
+		{
+			switch (Member.Type)
+			{
+			case UE::GC::EMemberType::StridedArray:
+			case UE::GC::EMemberType::StructArray:
+			case UE::GC::EMemberType::StructSet:
+			case UE::GC::EMemberType::FreezableStructArray:
+			case UE::GC::EMemberType::Optional:
+			case UE::GC::EMemberType::MemberARO:
+				++WordIt;
+				break;
+			case UE::GC::EMemberType::ARO:
+			case UE::GC::EMemberType::SlowARO:
+			case UE::GC::EMemberType::Stop:
+				return Count;
+			default:
+				break;
+			}
+			++Count;
+		}
+	}
+}
+
+public:
 	TEST_METHOD(RuntimeAddReferencedObjectsKeepsScriptOnlyObjectReferenceAlive)
 	{
-		using namespace AngelscriptTest_ClassGenerator_AngelscriptASClassReferenceSchemaTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
@@ -172,8 +170,7 @@ class UReferenceSchemaHolder : UObject
 
 	TEST_METHOD(ReferenceSchemaDoesNotDuplicateAcrossRepeatedSoftReload)
 	{
-		using namespace AngelscriptTest_ClassGenerator_AngelscriptASClassReferenceSchemaTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
 		{

@@ -6,59 +6,54 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogAngelscriptDumpCommand, Log, All);
 
-namespace AngelscriptTest_Dump_AngelscriptDumpCommand_Private
+static FString SanitizeAngelscriptDumpOutputDirArg(FString OutputDir)
 {
-	FString SanitizeOutputDirArg(FString OutputDir)
+	OutputDir.TrimStartAndEndInline();
+	while (OutputDir.EndsWith(TEXT(";")))
 	{
-		OutputDir.TrimStartAndEndInline();
-		while (OutputDir.EndsWith(TEXT(";")))
-		{
-			OutputDir.LeftChopInline(1, EAllowShrinking::No);
-			OutputDir.TrimEndInline();
-		}
-
-		if (OutputDir.Len() >= 2 && OutputDir.StartsWith(TEXT("\"")) && OutputDir.EndsWith(TEXT("\"")))
-		{
-			OutputDir = OutputDir.Mid(1, OutputDir.Len() - 2);
-		}
-
-		return OutputDir;
+		OutputDir.LeftChopInline(1, EAllowShrinking::No);
+		OutputDir.TrimEndInline();
 	}
 
-	void ExecuteDumpEngineState(const TArray<FString>& Args)
+	if (OutputDir.Len() >= 2 && OutputDir.StartsWith(TEXT("\"")) && OutputDir.EndsWith(TEXT("\"")))
 	{
-		if (!FAngelscriptEngine::IsInitialized())
-		{
-			UE_LOG(LogAngelscriptDumpCommand, Error, TEXT("Cannot dump Angelscript engine state because no global engine is initialized."));
-			return;
-		}
-
-		if (Args.Num() > 1)
-		{
-			TArray<FString> ExtraArgs;
-			for (int32 ArgIndex = 1; ArgIndex < Args.Num(); ++ArgIndex)
-			{
-				ExtraArgs.Add(Args[ArgIndex]);
-			}
-
-			UE_LOG(LogAngelscriptDumpCommand, Warning, TEXT("Ignoring extra as.DumpEngineState arguments after the output directory: '%s'."), *FString::Join(ExtraArgs, TEXT(" ")));
-		}
-
-		const FString RequestedOutputDir = Args.IsEmpty() ? FString() : SanitizeOutputDirArg(Args[0]);
-		const FString ActualOutputDir = FAngelscriptStateDump::DumpAll(FAngelscriptEngine::Get(), RequestedOutputDir);
-		if (ActualOutputDir.IsEmpty())
-		{
-			UE_LOG(LogAngelscriptDumpCommand, Error, TEXT("Angelscript engine state dump failed."));
-			return;
-		}
-
-		UE_LOG(LogAngelscriptDumpCommand, Log, TEXT("Angelscript engine state dumped to '%s'."), *ActualOutputDir);
+		OutputDir = OutputDir.Mid(1, OutputDir.Len() - 2);
 	}
 
-	FAutoConsoleCommand GAngelscriptDumpEngineStateCommand(
-		TEXT("as.DumpEngineState"),
-		TEXT("Dump Angelscript engine state to CSV tables. Optional: as.DumpEngineState [OutputDir]"),
-		FConsoleCommandWithArgsDelegate::CreateStatic(&ExecuteDumpEngineState));
+	return OutputDir;
 }
 
-using namespace AngelscriptTest_Dump_AngelscriptDumpCommand_Private;
+static void ExecuteAngelscriptDumpEngineState(const TArray<FString>& Args)
+{
+	if (!FAngelscriptEngine::IsInitialized())
+	{
+		UE_LOG(LogAngelscriptDumpCommand, Error, TEXT("Cannot dump Angelscript engine state because no global engine is initialized."));
+		return;
+	}
+
+	if (Args.Num() > 1)
+	{
+		TArray<FString> ExtraArgs;
+		for (int32 ArgIndex = 1; ArgIndex < Args.Num(); ++ArgIndex)
+		{
+			ExtraArgs.Add(Args[ArgIndex]);
+		}
+
+		UE_LOG(LogAngelscriptDumpCommand, Warning, TEXT("Ignoring extra as.DumpEngineState arguments after the output directory: '%s'."), *FString::Join(ExtraArgs, TEXT(" ")));
+	}
+
+	const FString RequestedOutputDir = Args.IsEmpty() ? FString() : SanitizeAngelscriptDumpOutputDirArg(Args[0]);
+	const FString ActualOutputDir = FAngelscriptStateDump::DumpAll(FAngelscriptEngine::Get(), RequestedOutputDir);
+	if (ActualOutputDir.IsEmpty())
+	{
+		UE_LOG(LogAngelscriptDumpCommand, Error, TEXT("Angelscript engine state dump failed."));
+		return;
+	}
+
+	UE_LOG(LogAngelscriptDumpCommand, Log, TEXT("Angelscript engine state dumped to '%s'."), *ActualOutputDir);
+}
+
+static FAutoConsoleCommand GAngelscriptDumpEngineStateCommand(
+	TEXT("as.DumpEngineState"),
+	TEXT("Dump Angelscript engine state to CSV tables. Optional: as.DumpEngineState [OutputDir]"),
+	FConsoleCommandWithArgsDelegate::CreateStatic(&ExecuteAngelscriptDumpEngineState));

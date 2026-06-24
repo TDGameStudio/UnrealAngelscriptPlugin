@@ -12,7 +12,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptRestoreTests,
 	"Angelscript.TestModule.AngelScriptSDK.Restore",
@@ -68,7 +67,7 @@ public:
 		}
 		ASSERT_THAT(AreEqual(42, SourceValue, TEXT("Restore roundtrip should execute before serialization")));
 
-		FMemoryBinaryStream Stream;
+		AngelscriptNativeTestSupport::FMemoryBinaryStream Stream;
 		const int SaveResult = SourceModule->SaveByteCode(&Stream, false);
 		ASSERT_THAT(AreEqual(static_cast<int>(asSUCCESS), SaveResult, TEXT("Restore roundtrip should save bytecode successfully")));
 		ASSERT_THAT(IsTrue(Stream.Num() > 0, TEXT("Restore roundtrip should emit bytecode bytes")));
@@ -106,7 +105,7 @@ public:
 		asCModule* SourceModule = BuildRestoreModule(*TestRunner, SourceEngine, "RestoreStripSourceModule");
 		ASSERT_THAT(IsNotNull(SourceModule, TEXT("Restore strip roundtrip should compile a source module")));
 
-		FMemoryBinaryStream Stream;
+		AngelscriptNativeTestSupport::FMemoryBinaryStream Stream;
 		const int SaveResult = SourceModule->SaveByteCode(&Stream, true);
 		ASSERT_THAT(AreEqual(static_cast<int>(asSUCCESS), SaveResult, TEXT("Restore strip roundtrip should save bytecode successfully")));
 
@@ -138,7 +137,7 @@ public:
 		asCModule* RestoredModule = CreateRestoreModule(ScriptEngine, "RestoreEmptyStream");
 		ASSERT_THAT(IsNotNull(RestoredModule, TEXT("Restore empty stream test should create a destination module")));
 
-		FMemoryBinaryStream Stream;
+		AngelscriptNativeTestSupport::FMemoryBinaryStream Stream;
 		bool bWasDebugInfoStripped = false;
 		TestRunner->AddExpectedErrorPlain(TEXT("Unexpected end of file"), EAutomationExpectedErrorFlags::Contains, -1);
 		const int LoadResult = RestoredModule->LoadByteCode(&Stream, &bWasDebugInfoStripped);
@@ -160,7 +159,7 @@ public:
 		asCModule* SourceModule = BuildRestoreModule(*TestRunner, SourceEngine, "RestoreTruncatedSourceModule");
 		ASSERT_THAT(IsNotNull(SourceModule, TEXT("Restore truncated stream test should compile a source module")));
 
-		FMemoryBinaryStream Stream;
+		AngelscriptNativeTestSupport::FMemoryBinaryStream Stream;
 		const int SaveResult = SourceModule->SaveByteCode(&Stream, false);
 		ASSERT_THAT(AreEqual(static_cast<int>(asSUCCESS), SaveResult, TEXT("Restore truncated stream test should save bytecode successfully")));
 		ASSERT_THAT(IsTrue(Stream.Num() > 16, TEXT("Restore truncated stream test should emit enough bytes to truncate")));
@@ -201,12 +200,12 @@ public:
 		asCModule* SourceModule = BuildRestoreModule(*TestRunner, SourceEngine, "RestoreFailureCleanupSourceModule");
 		ASSERT_THAT(IsNotNull(SourceModule, TEXT("Restore failure cleanup test should compile a source module")));
 
-		FMemoryBinaryStream CompleteStream;
+		AngelscriptNativeTestSupport::FMemoryBinaryStream CompleteStream;
 		const int SaveResult = SourceModule->SaveByteCode(&CompleteStream, false);
 		ASSERT_THAT(AreEqual(static_cast<int>(asSUCCESS), SaveResult, TEXT("Restore failure cleanup test should save bytecode successfully")));
 		ASSERT_THAT(IsTrue(CompleteStream.Num() > 16, TEXT("Restore failure cleanup test should emit enough bytes to truncate")));
 
-		FMemoryBinaryStream TruncatedStream = CompleteStream;
+		AngelscriptNativeTestSupport::FMemoryBinaryStream TruncatedStream = CompleteStream;
 		TruncatedStream.Truncate(TruncatedStream.Num() - 16);
 		TruncatedStream.ResetReadOffset();
 		SourceModule->Discard();

@@ -13,29 +13,6 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
-namespace AngelscriptDelegateTests_Private
-{
-	static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsFalse(bActual, Message);
-	}
-
-	template <typename ActualType, typename ExpectedType>
-	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreEqual(Expected, Actual, Message);
-	}
-
-	template <typename ValueType>
-	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsNotNull(Value, Message);
-	}
-}
-
 namespace
 {
 	struct FTestCaseIntStringParams
@@ -56,7 +33,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDelegateUnicastTest,
 	template <typename ValueType>
 	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
 	{
-		return AngelscriptDelegateTests_Private::CheckNotNull(Test, Message, Value);
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsNotNull(Value, Message);
 	}
 
 	BEFORE_ALL()
@@ -367,7 +345,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDelegateMulticastTest,
 	template <typename ValueType>
 	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
 	{
-		return AngelscriptDelegateTests_Private::CheckNotNull(Test, Message, Value);
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsNotNull(Value, Message);
 	}
 
 	BEFORE_ALL()

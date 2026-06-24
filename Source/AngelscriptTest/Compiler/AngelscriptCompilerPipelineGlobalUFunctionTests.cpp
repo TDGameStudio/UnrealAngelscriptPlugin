@@ -102,23 +102,23 @@ namespace CompilerPipelineGlobalUFunctionTest
 		UASFunction* Function,
 		int32& OutResult)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 
 		FIntProperty* ReturnProperty = FindFProperty<FIntProperty>(Function, TEXT("ReturnValue"));
-		if (!Assert.IsNotNull(ReturnProperty, TEXT("Global UFUNCTION statics-class test case should expose a ReturnValue property")))
+		if (!LocalAssert.IsNotNull(ReturnProperty, TEXT("Global UFUNCTION statics-class test case should expose a ReturnValue property")))
 		{
 			return false;
 		}
 
 		FStructOnScope Params(Function);
 		void* ParamsMemory = Params.GetStructMemory();
-		if (!Assert.IsNotNull(ParamsMemory, TEXT("Global UFUNCTION statics-class test case should allocate a reflected parameter buffer")))
+		if (!LocalAssert.IsNotNull(ParamsMemory, TEXT("Global UFUNCTION statics-class test case should allocate a reflected parameter buffer")))
 		{
 			return false;
 		}
 
 		UObject* DefaultObject = OwnerClass != nullptr ? OwnerClass->GetDefaultObject() : nullptr;
-		if (!Assert.IsNotNull(DefaultObject, TEXT("Global UFUNCTION statics-class test case should expose a default object for the generated statics class")))
+		if (!LocalAssert.IsNotNull(DefaultObject, TEXT("Global UFUNCTION statics-class test case should expose a default object for the generated statics class")))
 		{
 			return false;
 		}
@@ -133,8 +133,6 @@ namespace CompilerPipelineGlobalUFunctionTest
 		return true;
 	}
 }
-
-using namespace CompilerPipelineGlobalUFunctionTest;
 
 namespace CompilerPipelineGlobalUFunctionSanitizedModuleTest
 {

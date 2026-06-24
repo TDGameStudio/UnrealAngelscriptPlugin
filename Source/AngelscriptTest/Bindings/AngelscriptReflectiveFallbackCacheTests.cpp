@@ -47,35 +47,34 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_Bindings_ReflectiveFallbackCache_Private
-{
-	// Build the AS namespace prefix used for static UFUNCTIONs that reach the
-	// reflective fallback.
-	FString GetPathsLibraryCallPrefix(FAutomationTestBase& Test)
-	{
-		UClass* LibraryClass = UBlueprintPathsLibrary::StaticClass();
-		UFunction* RepresentativeFunction = LibraryClass->FindFunctionByName(TEXT("GetBaseFilename"));
-		TSharedPtr<FAngelscriptType> LibraryType = FAngelscriptType::GetByClass(LibraryClass);
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsTrue(LibraryType.IsValid(), TEXT("BlueprintPathsLibrary type should resolve")))
-		{
-			return FString();
-		}
-
-		if (!Assert.IsNotNull(RepresentativeFunction, TEXT("GetBaseFilename should exist on BlueprintPathsLibrary")))
-		{
-			return FString();
-		}
-
-		const FString Namespace = FAngelscriptFunctionSignature::GetScriptNamespaceForClass(LibraryType.ToSharedRef(), RepresentativeFunction);
-		return Namespace.IsEmpty() ? FString() : Namespace + TEXT("::");
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptReflectiveFallbackCacheTest,
 	"Angelscript.TestModule.Bindings.ReflectiveFallbackCache",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+// Build the AS namespace prefix used for static UFUNCTIONs that reach the
+// reflective fallback.
+static FString GetPathsLibraryCallPrefix(FAutomationTestBase& Test)
+{
+	UClass* LibraryClass = UBlueprintPathsLibrary::StaticClass();
+	UFunction* RepresentativeFunction = LibraryClass->FindFunctionByName(TEXT("GetBaseFilename"));
+	TSharedPtr<FAngelscriptType> LibraryType = FAngelscriptType::GetByClass(LibraryClass);
+	FNoDiscardAsserter LocalAssert(Test);
+	if (!LocalAssert.IsTrue(LibraryType.IsValid(), TEXT("BlueprintPathsLibrary type should resolve")))
+	{
+		return FString();
+	}
+
+	if (!LocalAssert.IsNotNull(RepresentativeFunction, TEXT("GetBaseFilename should exist on BlueprintPathsLibrary")))
+	{
+		return FString();
+	}
+
+	const FString Namespace = FAngelscriptFunctionSignature::GetScriptNamespaceForClass(LibraryType.ToSharedRef(), RepresentativeFunction);
+	return Namespace.IsEmpty() ? FString() : Namespace + TEXT("::");
+}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -93,8 +92,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptReflectiveFallbackCacheTest,
 
 	TEST_METHOD(PODScalar)
 	{
-		using namespace AngelscriptTest_Bindings_ReflectiveFallbackCache_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
 		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
@@ -125,8 +123,7 @@ int RunPODScalar()
 
 	TEST_METHOD(NonPOD)
 	{
-		using namespace AngelscriptTest_Bindings_ReflectiveFallbackCache_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
 		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
@@ -163,8 +160,7 @@ int RunNonPOD()
 
 	TEST_METHOD(OutParam)
 	{
-		using namespace AngelscriptTest_Bindings_ReflectiveFallbackCache_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
 		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
@@ -202,8 +198,7 @@ int RunOutParam()
 
 	TEST_METHOD(Return)
 	{
-		using namespace AngelscriptTest_Bindings_ReflectiveFallbackCache_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
 		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
@@ -242,8 +237,7 @@ int RunReturn()
 
 	TEST_METHOD(MixinObject)
 	{
-		using namespace AngelscriptTest_Bindings_ReflectiveFallbackCache_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
 		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
@@ -284,8 +278,7 @@ int RunMixin()
 
 	TEST_METHOD(CacheReuse)
 	{
-		using namespace AngelscriptTest_Bindings_ReflectiveFallbackCache_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
 		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
@@ -348,8 +341,7 @@ int RunCacheReuse()
 
 	TEST_METHOD(CVarParityCachedVsProcessEvent)
 	{
-		using namespace AngelscriptTest_Bindings_ReflectiveFallbackCache_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
 		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);

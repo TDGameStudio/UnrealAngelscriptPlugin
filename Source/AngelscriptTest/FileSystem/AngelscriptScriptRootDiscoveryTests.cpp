@@ -6,60 +6,58 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_FileSystem_AngelscriptScriptRootDiscoveryTests_Private
-{
-	FString NormalizeDiscoveryPath(const FString& InPath)
-	{
-		FString Normalized = InPath;
-		FPaths::NormalizeFilename(Normalized);
-		Normalized.ReplaceInline(TEXT("\\"), TEXT("/"));
-		return Normalized;
-	}
-
-	TArray<FString> MakeScriptRootsForTest(
-		const FAngelscriptEngineConfig& Config,
-		const FAngelscriptEngineDependencies& Dependencies,
-		const bool bOnlyProjectRoot)
-	{
-		FAngelscriptEngine TemporaryEngine(Config, Dependencies);
-		return TemporaryEngine.DiscoverScriptRoots(bOnlyProjectRoot);
-	}
-
-	bool TestRootSequence(
-		FAutomationTestBase& Test,
-		const FString& Context,
-		const TArray<FString>& Actual,
-		const TArray<FString>& Expected)
-	{
-		bool bPassed = Test.TestEqual(
-			*FString::Printf(TEXT("%s should keep the expected root count"), *Context),
-			Actual.Num(),
-			Expected.Num());
-		if (Actual.Num() != Expected.Num())
-		{
-			return false;
-		}
-
-		for (int32 Index = 0; Index < Expected.Num(); ++Index)
-		{
-			bPassed &= Test.TestEqual(
-				*FString::Printf(TEXT("%s should keep root index %d stable"), *Context, Index),
-				Actual[Index],
-				Expected[Index]);
-		}
-
-		return bPassed;
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptScriptRootDiscoveryTest,
 	"Angelscript.TestModule.FileSystem.RootDiscovery",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static FString NormalizeDiscoveryPath(const FString& InPath)
+{
+	FString Normalized = InPath;
+	FPaths::NormalizeFilename(Normalized);
+	Normalized.ReplaceInline(TEXT("\\"), TEXT("/"));
+	return Normalized;
+}
+
+static TArray<FString> MakeScriptRootsForTest(
+	const FAngelscriptEngineConfig& Config,
+	const FAngelscriptEngineDependencies& Dependencies,
+	const bool bOnlyProjectRoot)
+{
+	FAngelscriptEngine TemporaryEngine(Config, Dependencies);
+	return TemporaryEngine.DiscoverScriptRoots(bOnlyProjectRoot);
+}
+
+static bool TestRootSequence(
+	FAutomationTestBase& Test,
+	const FString& Context,
+	const TArray<FString>& Actual,
+	const TArray<FString>& Expected)
+{
+	bool bPassed = Test.TestEqual(
+		*FString::Printf(TEXT("%s should keep the expected root count"), *Context),
+		Actual.Num(),
+		Expected.Num());
+	if (Actual.Num() != Expected.Num())
+	{
+		return false;
+	}
+
+	for (int32 Index = 0; Index < Expected.Num(); ++Index)
+	{
+		bPassed &= Test.TestEqual(
+			*FString::Printf(TEXT("%s should keep root index %d stable"), *Context, Index),
+			Actual[Index],
+			Expected[Index]);
+	}
+
+	return bPassed;
+}
+
+public:
 	TEST_METHOD(ProjectRootFirstAndPluginRootsDeduped)
 	{
-		using namespace AngelscriptTest_FileSystem_AngelscriptScriptRootDiscoveryTests_Private;
-		const FString ProjectDir = NormalizeDiscoveryPath(TEXT("J:/VirtualProject"));
+const FString ProjectDir = NormalizeDiscoveryPath(TEXT("J:/VirtualProject"));
 		const FString ProjectScriptRoot = NormalizeDiscoveryPath(ProjectDir / TEXT("Script"));
 		const FString PluginBetaRoot = NormalizeDiscoveryPath(TEXT("J:/VirtualProject/Plugins/Beta/Script"));
 		const FString PluginAlphaRoot = NormalizeDiscoveryPath(TEXT("J:/VirtualProject/Plugins/Alpha/Script"));

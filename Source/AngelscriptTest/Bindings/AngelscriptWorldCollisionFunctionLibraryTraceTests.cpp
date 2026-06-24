@@ -77,28 +77,28 @@ namespace WorldCollisionTraceTestHelpers
 
 	bool ExpectHitResultParity(FAutomationTestBase& Test, const TCHAR* Label, bool bScriptReturnValue, bool bNativeReturnValue, const FHitResult& ScriptHit, const FHitResult& NativeHit)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bPassed = true;
-		bPassed &= Assert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), Label));
-		bPassed &= Assert.AreEqual(NativeHit.GetActor(), ScriptHit.GetActor(), *FString::Printf(TEXT("%s should preserve the hit actor"), Label));
-		bPassed &= Assert.AreEqual(NativeHit.GetComponent(), ScriptHit.GetComponent(), *FString::Printf(TEXT("%s should preserve the hit component"), Label));
-		bPassed &= Assert.AreEqual(NativeHit.bBlockingHit, ScriptHit.bBlockingHit, *FString::Printf(TEXT("%s should preserve the blocking-hit flag"), Label));
-		bPassed &= Assert.IsTrue(ScriptHit.Location.Equals(NativeHit.Location, 0.05f), *FString::Printf(TEXT("%s should preserve the hit location"), Label));
-		bPassed &= Assert.IsTrue(ScriptHit.ImpactPoint.Equals(NativeHit.ImpactPoint, 0.05f), *FString::Printf(TEXT("%s should preserve the impact point"), Label));
+		bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), Label));
+		bPassed &= LocalAssert.AreEqual(NativeHit.GetActor(), ScriptHit.GetActor(), *FString::Printf(TEXT("%s should preserve the hit actor"), Label));
+		bPassed &= LocalAssert.AreEqual(NativeHit.GetComponent(), ScriptHit.GetComponent(), *FString::Printf(TEXT("%s should preserve the hit component"), Label));
+		bPassed &= LocalAssert.AreEqual(NativeHit.bBlockingHit, ScriptHit.bBlockingHit, *FString::Printf(TEXT("%s should preserve the blocking-hit flag"), Label));
+		bPassed &= LocalAssert.IsTrue(ScriptHit.Location.Equals(NativeHit.Location, 0.05f), *FString::Printf(TEXT("%s should preserve the hit location"), Label));
+		bPassed &= LocalAssert.IsTrue(ScriptHit.ImpactPoint.Equals(NativeHit.ImpactPoint, 0.05f), *FString::Printf(TEXT("%s should preserve the impact point"), Label));
 		return bPassed;
 	}
 
 	template <typename TResult>
 	bool ExpectArrayParity(FAutomationTestBase& Test, const TCHAR* Label, bool bScriptReturnValue, bool bNativeReturnValue, const TArray<TResult>& ScriptResults, const TArray<TResult>& NativeResults)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bPassed = true;
-		bPassed &= Assert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), Label));
-		bPassed &= Assert.AreEqual(NativeResults.Num(), ScriptResults.Num(), *FString::Printf(TEXT("%s should preserve the result count"), Label));
+		bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), Label));
+		bPassed &= LocalAssert.AreEqual(NativeResults.Num(), ScriptResults.Num(), *FString::Printf(TEXT("%s should preserve the result count"), Label));
 		if (ScriptResults.Num() > 0 && NativeResults.Num() > 0)
 		{
-			bPassed &= Assert.AreEqual(NativeResults[0].GetActor(), ScriptResults[0].GetActor(), *FString::Printf(TEXT("%s should preserve the first result actor"), Label));
-			bPassed &= Assert.AreEqual(NativeResults[0].GetComponent(), ScriptResults[0].GetComponent(), *FString::Printf(TEXT("%s should preserve the first result component"), Label));
+			bPassed &= LocalAssert.AreEqual(NativeResults[0].GetActor(), ScriptResults[0].GetActor(), *FString::Printf(TEXT("%s should preserve the first result actor"), Label));
+			bPassed &= LocalAssert.AreEqual(NativeResults[0].GetComponent(), ScriptResults[0].GetComponent(), *FString::Printf(TEXT("%s should preserve the first result component"), Label));
 		}
 		return bPassed;
 	}
@@ -111,8 +111,6 @@ namespace WorldCollisionTraceTestHelpers
 		});
 	}
 }
-
-using namespace WorldCollisionTraceTestHelpers;
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -135,6 +133,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptWorldCollisionTraceBindingsTest,
 
 	TEST_METHOD(LineTraceSingle)
 	{
+		using namespace WorldCollisionTraceTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
@@ -176,6 +176,8 @@ bool RunLineTraceSingleByChannelHit(FHitResult& OutHit)
 
 	TEST_METHOD(LineTraceMultiHit)
 	{
+		using namespace WorldCollisionTraceTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
@@ -216,6 +218,8 @@ bool RunLineTraceMultiByChannelHit(TArray<FHitResult>& OutHits)
 
 	TEST_METHOD(LineTraceMultiMiss)
 	{
+		using namespace WorldCollisionTraceTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
@@ -258,6 +262,8 @@ bool RunLineTraceMultiByChannelMiss(TArray<FHitResult>& OutHits)
 
 	TEST_METHOD(SweepSingleByObject)
 	{
+		using namespace WorldCollisionTraceTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
@@ -306,6 +312,8 @@ bool RunSweepSingleByObjectTypeHit(FHitResult& OutHit)
 
 	TEST_METHOD(OverlapMultiByProfile)
 	{
+		using namespace WorldCollisionTraceTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
@@ -350,6 +358,8 @@ bool RunOverlapMultiByProfileHit(TArray<FOverlapResult>& OutOverlaps)
 
 	TEST_METHOD(OverlapMultiMiss)
 	{
+		using namespace WorldCollisionTraceTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 

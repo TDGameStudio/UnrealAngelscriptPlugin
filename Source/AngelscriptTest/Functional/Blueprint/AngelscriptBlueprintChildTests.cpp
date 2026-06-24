@@ -14,26 +14,19 @@ namespace BlueprintChildTestConstants
 	constexpr int32 OverrideChainTickCount = 4;
 }
 
-namespace BlueprintChildTests_Private
-{
-	template <typename ValueType>
-	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsNotNull(Value, Message);
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptBlueprintChildTest,
 	"Angelscript.TestModule.Blueprint.Child",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	template <typename ValueType>
-	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
-	{
-		return BlueprintChildTests_Private::CheckNotNull(Test, Message, Value);
-	}
+private:
+template <typename ValueType>
+static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsNotNull(Value, Message);
+}
 
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();

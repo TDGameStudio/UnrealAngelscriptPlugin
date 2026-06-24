@@ -80,16 +80,16 @@ namespace
 		FName FunctionName,
 		int32& OutResult)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
-		if (!Assert.IsNotNull(
+		if (!LocalAssert.IsNotNull(
 				Function,
 				*FString::Printf(TEXT("World collision async sweep method '%s' should exist"), *FunctionName.ToString())))
 		{
 			return false;
 		}
 
-		return Assert.IsTrue(
+		return LocalAssert.IsTrue(
 			ExecuteGeneratedIntEventOnGameThread(Object, Function, OutResult),
 			*FString::Printf(TEXT("World collision async sweep method '%s' should execute"), *FunctionName.ToString()));
 	}
@@ -101,14 +101,14 @@ namespace
 		FName PropertyName,
 		ValueType* Value)
 	{
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(Object, TEXT("World collision async sweep object should be valid for reflected writes")))
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(Object, TEXT("World collision async sweep object should be valid for reflected writes")))
 		{
 			return false;
 		}
 
 		FObjectProperty* Property = FindFProperty<FObjectProperty>(Object->GetClass(), PropertyName);
-		if (!Assert.IsNotNull(
+		if (!LocalAssert.IsNotNull(
 				Property,
 				*FString::Printf(TEXT("World collision async sweep property '%s' should exist"), *PropertyName.ToString())))
 		{
@@ -125,14 +125,14 @@ namespace
 		FName PropertyName,
 		uint64& OutValue)
 	{
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(Object, TEXT("World collision async sweep object should be valid for uint64 property reads")))
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(Object, TEXT("World collision async sweep object should be valid for uint64 property reads")))
 		{
 			return false;
 		}
 
 		FUInt64Property* Property = FindFProperty<FUInt64Property>(Object->GetClass(), PropertyName);
-		if (!Assert.IsNotNull(
+		if (!LocalAssert.IsNotNull(
 				Property,
 				*FString::Printf(TEXT("World collision async sweep property '%s' should exist"), *PropertyName.ToString())))
 		{
@@ -158,14 +158,14 @@ namespace
 		UWorld& World,
 		AActor& ScriptActor)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		FIntProperty* ChannelCallbackCountProperty = FindFProperty<FIntProperty>(ScriptActor.GetClass(), TEXT("ChannelCallbackCount"));
 		FIntProperty* ObjectCallbackCountProperty = FindFProperty<FIntProperty>(ScriptActor.GetClass(), TEXT("ObjectCallbackCount"));
 		FIntProperty* ProfileCallbackCountProperty = FindFProperty<FIntProperty>(ScriptActor.GetClass(), TEXT("ProfileCallbackCount"));
 		bool bHasCallbackProperties = true;
-		bHasCallbackProperties &= Assert.IsNotNull(ChannelCallbackCountProperty, TEXT("Async sweep actor should expose ChannelCallbackCount"));
-		bHasCallbackProperties &= Assert.IsNotNull(ObjectCallbackCountProperty, TEXT("Async sweep actor should expose ObjectCallbackCount"));
-		bHasCallbackProperties &= Assert.IsNotNull(ProfileCallbackCountProperty, TEXT("Async sweep actor should expose ProfileCallbackCount"));
+		bHasCallbackProperties &= LocalAssert.IsNotNull(ChannelCallbackCountProperty, TEXT("Async sweep actor should expose ChannelCallbackCount"));
+		bHasCallbackProperties &= LocalAssert.IsNotNull(ObjectCallbackCountProperty, TEXT("Async sweep actor should expose ObjectCallbackCount"));
+		bHasCallbackProperties &= LocalAssert.IsNotNull(ProfileCallbackCountProperty, TEXT("Async sweep actor should expose ProfileCallbackCount"));
 		if (!bHasCallbackProperties)
 		{
 			return false;

@@ -6,15 +6,13 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptSDKTestSupport;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKFunctionTests,
 	"Angelscript.TestModule.AngelScriptSDK.Function",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -35,7 +33,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKFunctionTests,
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK function overload/default test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionOverloadDefault", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionOverloadDefault", R"(
 int AddOne(int Value)
 {
 	return Value + 1;
@@ -67,7 +65,7 @@ int AddWithDefaultExplicit()
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int AddOne(int)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int AddOne(int)");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -78,7 +76,7 @@ int AddWithDefaultExplicit()
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int AddPair(int, int)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int AddPair(int, int)");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -89,7 +87,7 @@ int AddWithDefaultExplicit()
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int AddWithDefaultImplicit()");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int AddWithDefaultImplicit()");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -99,7 +97,7 @@ int AddWithDefaultExplicit()
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int AddWithDefaultExplicit()");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int AddWithDefaultExplicit()");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -114,7 +112,7 @@ int AddWithDefaultExplicit()
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK function ref-argument test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionRefArgument", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionRefArgument", R"(
 void WriteValue(int &out Value)
 {
 	Value = 7;
@@ -126,7 +124,7 @@ void WriteValue(int &out Value)
 		}
 
 		int32 Value = 0;
-		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "void WriteValue(int&out)");
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "void WriteValue(int&out)");
 		if (!Invoker.IsValid())
 		{
 			return;
@@ -141,7 +139,7 @@ void WriteValue(int &out Value)
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK function by-ref mutation test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionByRefMutation", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionByRefMutation", R"(
 void Increment(int &inout Value)
 {
 	Value += 1;
@@ -153,7 +151,7 @@ void Increment(int &inout Value)
 		}
 
 		int32 Value = 41;
-		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "void Increment(int&inout)");
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "void Increment(int&inout)");
 		if (!Invoker.IsValid())
 		{
 			return;
@@ -168,7 +166,7 @@ void Increment(int &inout Value)
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK function const-in-ref test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionConstInRef", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionConstInRef", R"(
 int Sum(const int &in A, const int &in B)
 {
 	return A + B;
@@ -181,7 +179,7 @@ int Sum(const int &in A, const int &in B)
 
 		int32 Left = 17;
 		int32 Right = 25;
-		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Sum(const int&in, const int&in)");
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Sum(const int&in, const int&in)");
 		if (!Invoker.IsValid())
 		{
 			return;
@@ -196,7 +194,7 @@ int Sum(const int &in A, const int &in B)
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK function type-overload test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionTypeOverload", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionTypeOverload", R"(
 int Describe(int Value)    { return 1; }
 int Describe(double Value) { return 2; }
 int Describe(bool Value)   { return 3; }
@@ -222,7 +220,7 @@ int DescribeBool()
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int DescribeInt()");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int DescribeInt()");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -232,7 +230,7 @@ int DescribeBool()
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int DescribeDouble()");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int DescribeDouble()");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -242,7 +240,7 @@ int DescribeBool()
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int DescribeBool()");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int DescribeBool()");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -257,7 +255,7 @@ int DescribeBool()
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK function recursion test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionRecursion", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionRecursion", R"(
 int Factorial(int N)
 {
 	if (N <= 1) return 1;
@@ -276,7 +274,7 @@ int Fib(int N)
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Factorial(int)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Factorial(int)");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -287,7 +285,7 @@ int Fib(int N)
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Factorial(int)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Factorial(int)");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -298,7 +296,7 @@ int Fib(int N)
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Fib(int)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Fib(int)");
 			if (!Invoker.IsValid())
 			{
 				return;

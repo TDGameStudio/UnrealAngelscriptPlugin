@@ -4,47 +4,45 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Core_AngelscriptBindStringTests_Private
-{
-	bool ExpectBindStringState(
-		FAutomationTestBase& Test,
-		const TCHAR* Context,
-		const FBindString& BindString,
-		const bool bExpectedEmpty,
-		const TCHAR* ExpectedUnreal,
-		const ANSICHAR* ExpectedAnsi)
-	{
-		FNoDiscardAsserter Assert(Test);
-		bool bOk = true;
-		bOk &= Assert.AreEqual(
-			bExpectedEmpty,
-			BindString.IsEmpty(),
-			*FString::Printf(TEXT("%s should report the expected empty state"), Context));
-		bOk &= Assert.AreEqual(
-			FString(ExpectedUnreal),
-			BindString.ToFString(),
-			*FString::Printf(TEXT("%s should round-trip to FString"), Context));
-		bOk &= Assert.AreEqual(
-			FString(ExpectedUnreal),
-			FString(ANSI_TO_TCHAR(BindString.ToCString())),
-			*FString::Printf(TEXT("%s should round-trip to ANSI text"), Context));
-		bOk &= Assert.AreEqual(
-			0,
-			FCStringAnsi::Strcmp(BindString.ToCString(), ExpectedAnsi),
-			*FString::Printf(TEXT("%s should preserve the expected ANSI payload"), Context));
-		return bOk;
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptBindStringTests,
 	"Angelscript.TestModule.Engine.BindString",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static bool ExpectBindStringState(
+	FAutomationTestBase& Test,
+	const TCHAR* Context,
+	const FBindString& BindString,
+	const bool bExpectedEmpty,
+	const TCHAR* ExpectedUnreal,
+	const ANSICHAR* ExpectedAnsi)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	bool bOk = true;
+	bOk &= LocalAssert.AreEqual(
+		bExpectedEmpty,
+		BindString.IsEmpty(),
+		*FString::Printf(TEXT("%s should report the expected empty state"), Context));
+	bOk &= LocalAssert.AreEqual(
+		FString(ExpectedUnreal),
+		BindString.ToFString(),
+		*FString::Printf(TEXT("%s should round-trip to FString"), Context));
+	bOk &= LocalAssert.AreEqual(
+		FString(ExpectedUnreal),
+		FString(ANSI_TO_TCHAR(BindString.ToCString())),
+		*FString::Printf(TEXT("%s should round-trip to ANSI text"), Context));
+	bOk &= LocalAssert.AreEqual(
+		0,
+		FCStringAnsi::Strcmp(BindString.ToCString(), ExpectedAnsi),
+		*FString::Printf(TEXT("%s should preserve the expected ANSI payload"), Context));
+	return bOk;
+}
+
+public:
 	TEST_METHOD(EmptyAndRoundTripAcrossConstantDynamicAndUnrealSources)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindStringTests_Private;
-		FBindString ConstantEmpty("");
+FBindString ConstantEmpty("");
 		if (!ExpectBindStringState(*TestRunner, TEXT("BindString constant empty"), ConstantEmpty, true, TEXT(""), ""))
 		{
 			return;

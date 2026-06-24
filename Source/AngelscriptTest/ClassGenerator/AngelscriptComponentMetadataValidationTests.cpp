@@ -7,34 +7,37 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_ClassGenerator_AngelscriptComponentMetadataValidationTests_Private
+TEST_CLASS_WITH_FLAGS(FAngelscriptComponentMetadataValidationTests,
+	"Angelscript.TestModule.ClassGenerator.Component",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	static const FName ComponentMetadataValidationModuleName(TEXT("ASComponentInvalidAttachParent"));
-	static constexpr TCHAR ComponentMetadataValidationFilename[] = TEXT("ComponentInvalidAttachParent.as");
-	static const FName InvalidAttachParentClassName(TEXT("AComponentInvalidAttachParent"));
-	static const FString InvalidAttachParentDiagnosticFragment(
-		TEXT("Attach parent MissingParent does not exist for DefaultComponent Billboard."));
-	static const FName MissingOverrideTargetModuleName(TEXT("ASComponentMissingOverrideTarget"));
-	static constexpr TCHAR MissingOverrideTargetFilename[] = TEXT("ComponentMissingOverrideTarget.as");
-	static const FName MissingOverrideTargetBaseClassName(TEXT("ABaseOverrideMissing"));
-	static const FName MissingOverrideTargetDerivedClassName(TEXT("ADerivedOverrideMissing"));
-	static const FString MissingOverrideTargetDiagnosticFragment(
-		TEXT("OverrideComponent ADerivedOverrideMissing::ReplacementRoot could not find component MissingScene in base class to override."));
+private:
+inline static const FName ComponentMetadataValidationModuleName = FName(TEXT("ASComponentInvalidAttachParent"));
+static constexpr TCHAR ComponentMetadataValidationFilename[] = TEXT("ComponentInvalidAttachParent.as");
+inline static const FName InvalidAttachParentClassName = FName(TEXT("AComponentInvalidAttachParent"));
+inline static const FString InvalidAttachParentDiagnosticFragment = FString(
+	TEXT("Attach parent MissingParent does not exist for DefaultComponent Billboard."));
+inline static const FName MissingOverrideTargetModuleName = FName(TEXT("ASComponentMissingOverrideTarget"));
+static constexpr TCHAR MissingOverrideTargetFilename[] = TEXT("ComponentMissingOverrideTarget.as");
+inline static const FName MissingOverrideTargetBaseClassName = FName(TEXT("ABaseOverrideMissing"));
+inline static const FName MissingOverrideTargetDerivedClassName = FName(TEXT("ADerivedOverrideMissing"));
+inline static const FString MissingOverrideTargetDiagnosticFragment = FString(
+	TEXT("OverrideComponent ADerivedOverrideMissing::ReplacementRoot could not find component MissingScene in base class to override."));
 
-	const FAngelscriptCompileTraceDiagnosticSummary* FindErrorDiagnosticContaining(
-		const TArray<FAngelscriptCompileTraceDiagnosticSummary>& Diagnostics,
-		const FString& Fragment)
-	{
-		return Diagnostics.FindByPredicate(
-			[&Fragment](const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic)
-			{
-				return Diagnostic.bIsError && Diagnostic.Message.Contains(Fragment);
-			});
-	}
+static const FAngelscriptCompileTraceDiagnosticSummary* FindErrorDiagnosticContaining(
+	const TArray<FAngelscriptCompileTraceDiagnosticSummary>& Diagnostics,
+	const FString& Fragment)
+{
+	return Diagnostics.FindByPredicate(
+		[&Fragment](const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic)
+		{
+			return Diagnostic.bIsError && Diagnostic.Message.Contains(Fragment);
+		});
+}
 
-	FString BuildInvalidAttachParentScript()
-	{
-		return TEXT(R"AS(
+static FString BuildInvalidAttachParentScript()
+{
+	return TEXT(R"AS(
 UCLASS()
 class UComponentInvalidAttachParentRoot : USceneComponent
 {
@@ -43,18 +46,18 @@ class UComponentInvalidAttachParentRoot : USceneComponent
 UCLASS()
 class AComponentInvalidAttachParent : AActor
 {
-	UPROPERTY(DefaultComponent, RootComponent)
-	UComponentInvalidAttachParentRoot RootScene;
+UPROPERTY(DefaultComponent, RootComponent)
+UComponentInvalidAttachParentRoot RootScene;
 
-	UPROPERTY(DefaultComponent, Attach = MissingParent)
-	UBillboardComponent Billboard;
+UPROPERTY(DefaultComponent, Attach = MissingParent)
+UBillboardComponent Billboard;
 }
 )AS");
-	}
+}
 
-	FString BuildMissingOverrideTargetScript()
-	{
-		return TEXT(R"AS(
+static FString BuildMissingOverrideTargetScript()
+{
+	return TEXT(R"AS(
 UCLASS()
 class UBaseOverrideMissingRoot : USceneComponent
 {
@@ -68,28 +71,23 @@ class UDerivedOverrideMissingRoot : UBaseOverrideMissingRoot
 UCLASS()
 class ABaseOverrideMissing : AActor
 {
-	UPROPERTY(DefaultComponent, RootComponent)
-	UBaseOverrideMissingRoot RootScene;
+UPROPERTY(DefaultComponent, RootComponent)
+UBaseOverrideMissingRoot RootScene;
 }
 
 UCLASS()
 class ADerivedOverrideMissing : ABaseOverrideMissing
 {
-	UPROPERTY(OverrideComponent = MissingScene)
-	UDerivedOverrideMissingRoot ReplacementRoot;
+UPROPERTY(OverrideComponent = MissingScene)
+UDerivedOverrideMissingRoot ReplacementRoot;
 }
 )AS");
-	}
 }
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptComponentMetadataValidationTests,
-	"Angelscript.TestModule.ClassGenerator.Component",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(InvalidAttachParentFailsClosed)
 	{
-		using namespace AngelscriptTest_ClassGenerator_AngelscriptComponentMetadataValidationTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
@@ -120,8 +118,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComponentMetadataValidationTests,
 
 	TEST_METHOD(MissingOverrideTargetFailsClosed)
 	{
-		using namespace AngelscriptTest_ClassGenerator_AngelscriptComponentMetadataValidationTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
 		{

@@ -10,74 +10,72 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Core_AngelscriptBindsRegistrationTests_Private
-{
-	FString GetCurrentNamespace(asIScriptEngine* ScriptEngine)
-	{
-		return ScriptEngine != nullptr ? FString(ANSI_TO_TCHAR(ScriptEngine->GetDefaultNamespace())) : FString();
-	}
-
-	asITypeInfo* FindTypeInfoInNamespace(asIScriptEngine* ScriptEngine, const FString& NamespaceName, const FString& TypeName)
-	{
-		if (ScriptEngine == nullptr)
-		{
-			return nullptr;
-		}
-
-		const FString PreviousNamespace = GetCurrentNamespace(ScriptEngine);
-		ScriptEngine->SetDefaultNamespace(TCHAR_TO_ANSI(*NamespaceName));
-		ON_SCOPE_EXIT
-		{
-			ScriptEngine->SetDefaultNamespace(TCHAR_TO_ANSI(*PreviousNamespace));
-		};
-
-		return ScriptEngine->GetTypeInfoByDecl(TCHAR_TO_ANSI(*TypeName));
-	}
-
-	int32 GetEnumValueCount(asITypeInfo* EnumType)
-	{
-		return EnumType != nullptr ? static_cast<int32>(EnumType->GetEnumValueCount()) : 0;
-	}
-
-	bool FindEnumValueByName(asITypeInfo* EnumType, const FString& ValueName, int32& OutValue)
-	{
-		if (EnumType == nullptr)
-		{
-			return false;
-		}
-
-		for (asUINT ValueIndex = 0, ValueCount = EnumType->GetEnumValueCount(); ValueIndex < ValueCount; ++ValueIndex)
-		{
-			int32 CurrentValue = 0;
-			const char* CurrentName = EnumType->GetEnumValueByIndex(ValueIndex, &CurrentValue);
-			if (CurrentName != nullptr && ValueName == ANSI_TO_TCHAR(CurrentName))
-			{
-				OutValue = CurrentValue;
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	FString MakeAutomationBindTypeName(const TCHAR* Prefix)
-	{
-		return FString::Printf(
-			TEXT("%s_%s"),
-			Prefix,
-			*FGuid::NewGuid().ToString(EGuidFormats::Digits).Left(8));
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptBindsRegistrationTests,
 	"Angelscript.TestModule.Engine.Binds",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static FString GetCurrentNamespace(asIScriptEngine* ScriptEngine)
+{
+	return ScriptEngine != nullptr ? FString(ANSI_TO_TCHAR(ScriptEngine->GetDefaultNamespace())) : FString();
+}
+
+static asITypeInfo* FindTypeInfoInNamespace(asIScriptEngine* ScriptEngine, const FString& NamespaceName, const FString& TypeName)
+{
+	if (ScriptEngine == nullptr)
+	{
+		return nullptr;
+	}
+
+	const FString PreviousNamespace = GetCurrentNamespace(ScriptEngine);
+	ScriptEngine->SetDefaultNamespace(TCHAR_TO_ANSI(*NamespaceName));
+	ON_SCOPE_EXIT
+	{
+		ScriptEngine->SetDefaultNamespace(TCHAR_TO_ANSI(*PreviousNamespace));
+	};
+
+	return ScriptEngine->GetTypeInfoByDecl(TCHAR_TO_ANSI(*TypeName));
+}
+
+static int32 GetEnumValueCount(asITypeInfo* EnumType)
+{
+	return EnumType != nullptr ? static_cast<int32>(EnumType->GetEnumValueCount()) : 0;
+}
+
+static bool FindEnumValueByName(asITypeInfo* EnumType, const FString& ValueName, int32& OutValue)
+{
+	if (EnumType == nullptr)
+	{
+		return false;
+	}
+
+	for (asUINT ValueIndex = 0, ValueCount = EnumType->GetEnumValueCount(); ValueIndex < ValueCount; ++ValueIndex)
+	{
+		int32 CurrentValue = 0;
+		const char* CurrentName = EnumType->GetEnumValueByIndex(ValueIndex, &CurrentValue);
+		if (CurrentName != nullptr && ValueName == ANSI_TO_TCHAR(CurrentName))
+		{
+			OutValue = CurrentValue;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+static FString MakeAutomationBindTypeName(const TCHAR* Prefix)
+{
+	return FString::Printf(
+		TEXT("%s_%s"),
+		Prefix,
+		*FGuid::NewGuid().ToString(EGuidFormats::Digits).Left(8));
+}
+
+public:
 	TEST_METHOD(NamespaceGuardRestoresDefaultNamespaceAndEnumBindDeduplicatesValues)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindsRegistrationTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
@@ -165,8 +163,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindsRegistrationTests,
 
 	TEST_METHOD(ReferenceAndValueClassPreserveLayoutAndReuseExistingTypeInfo)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindsRegistrationTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();

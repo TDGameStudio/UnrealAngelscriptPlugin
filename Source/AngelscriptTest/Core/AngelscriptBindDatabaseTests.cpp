@@ -16,125 +16,123 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_Core_AngelscriptBindDatabaseTests_Private
-{
-	struct FBindDatabaseContextStackGuard
-	{
-		TArray<FAngelscriptEngine*> SavedStack;
-		FBindDatabaseContextStackGuard() { SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear(); }
-		~FBindDatabaseContextStackGuard() { FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack)); }
-		void DiscardSavedStack() { SavedStack.Reset(); }
-	};
-
-	FString MakeBindDatabaseAutomationDirectory()
-	{
-		return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation"), TEXT("BindDatabase"), FGuid::NewGuid().ToString(EGuidFormats::Digits));
-	}
-
-	FAngelscriptPropertyBind MakeSamplePropertyBind(const FString& Declaration, const FString& UnrealPath)
-	{
-		FAngelscriptPropertyBind Bind;
-		Bind.Declaration = Declaration; Bind.UnrealPath = UnrealPath;
-		Bind.bCanWrite = true; Bind.bCanRead = true; Bind.bCanEdit = false;
-		return Bind;
-	}
-
-	FAngelscriptMethodBind MakeSampleMethodBind()
-	{
-		FAngelscriptMethodBind Bind;
-		Bind.Declaration = TEXT("void DestroyActor()"); Bind.UnrealPath = TEXT("/Script/Engine.Actor:K2_DestroyActor");
-		Bind.ClassName = TEXT("AActor"); Bind.ScriptName = TEXT("DestroyActor");
-		Bind.WorldContextArgument = 1; Bind.DeterminesOutputTypeArgument = -1;
-		Bind.bStaticInUnreal = false; Bind.bStaticInScript = true; Bind.bGlobalScope = false;
-		Bind.bNotAngelscriptProperty = true; Bind.bTrivial = true;
-		return Bind;
-	}
-
-	FAngelscriptClassBind MakeSampleClassBind(UClass* Class)
-	{
-		FAngelscriptClassBind Bind;
-		Bind.TypeName = TEXT("AActor"); Bind.UnrealPath = Class->GetPathName();
-		Bind.Methods.Add(MakeSampleMethodBind());
-		Bind.Properties.Add(MakeSamplePropertyBind(TEXT("float InitialLifeSpan"), TEXT("/Script/Engine.Actor:InitialLifeSpan")));
-		return Bind;
-	}
-
-	FAngelscriptClassBind MakeNamedSampleClassBind(UClass* Class, const FString& TypeName)
-	{
-		FAngelscriptClassBind Bind = MakeSampleClassBind(Class); Bind.TypeName = TypeName; return Bind;
-	}
-
-	FAngelscriptStructBind MakeSampleStructBind(UScriptStruct* Struct)
-	{
-		FAngelscriptStructBind Bind;
-		Bind.TypeName = TEXT("FHitResult"); Bind.UnrealPath = Struct->GetPathName();
-		Bind.Properties.Add(MakeSamplePropertyBind(TEXT("bool bBlockingHit"), TEXT("/Script/Engine.HitResult:bBlockingHit")));
-		return Bind;
-	}
-
-	void WriteLegacyUnversionedCache(const FString& CachePath, const FAngelscriptClassBind& ClassBind, const FAngelscriptStructBind& StructBind)
-	{
-		TArray<FAngelscriptStructBind> Structs;
-		Structs.Add(StructBind);
-		TArray<FAngelscriptClassBind> Classes;
-		Classes.Add(ClassBind);
-
-		TArray<uint8> Data;
-		FMemoryWriter Writer(Data);
-		Writer << Structs;
-		Writer << Classes;
-		FFileHelper::SaveArrayToFile(Data, *CachePath);
-	}
-
-	bool ExpectPropertyBindEquals(FAutomationTestBase& Test, const TCHAR* Context, const FAngelscriptPropertyBind& Actual, const FAngelscriptPropertyBind& Expected)
-	{
-		FNoDiscardAsserter Assert(Test);
-		bool bOk = true;
-		bOk &= Assert.AreEqual(Expected.Declaration, Actual.Declaration, *FString::Printf(TEXT("%s should round-trip property declaration"), Context));
-		bOk &= Assert.AreEqual(Expected.UnrealPath, Actual.UnrealPath, *FString::Printf(TEXT("%s should round-trip property UnrealPath"), Context));
-		bOk &= Assert.AreEqual(Expected.bCanWrite, Actual.bCanWrite, *FString::Printf(TEXT("%s should round-trip property bCanWrite"), Context));
-		bOk &= Assert.AreEqual(Expected.bCanRead, Actual.bCanRead, *FString::Printf(TEXT("%s should round-trip property bCanRead"), Context));
-		bOk &= Assert.AreEqual(Expected.bCanEdit, Actual.bCanEdit, *FString::Printf(TEXT("%s should round-trip property bCanEdit"), Context));
-		return bOk;
-	}
-
-	bool ExpectMethodBindEquals(FAutomationTestBase& Test, const FAngelscriptMethodBind& Actual, const FAngelscriptMethodBind& Expected)
-	{
-		FNoDiscardAsserter Assert(Test);
-		bool bOk = true;
-		bOk &= Assert.AreEqual(Expected.Declaration, Actual.Declaration, TEXT("BindDatabase round-trip should preserve method declaration"));
-		bOk &= Assert.AreEqual(Expected.UnrealPath, Actual.UnrealPath, TEXT("BindDatabase round-trip should preserve method UnrealPath"));
-		bOk &= Assert.AreEqual(Expected.ClassName, Actual.ClassName, TEXT("BindDatabase round-trip should preserve method ClassName"));
-		bOk &= Assert.AreEqual(Expected.ScriptName, Actual.ScriptName, TEXT("BindDatabase round-trip should preserve method ScriptName"));
-		bOk &= Assert.AreEqual(static_cast<int32>(Expected.WorldContextArgument), static_cast<int32>(Actual.WorldContextArgument), TEXT("BindDatabase round-trip should preserve method WorldContextArgument"));
-		bOk &= Assert.AreEqual(static_cast<int32>(Expected.DeterminesOutputTypeArgument), static_cast<int32>(Actual.DeterminesOutputTypeArgument), TEXT("BindDatabase round-trip should preserve method DeterminesOutputTypeArgument"));
-		bOk &= Assert.AreEqual(Expected.bStaticInUnreal, Actual.bStaticInUnreal, TEXT("BindDatabase round-trip should preserve method bStaticInUnreal"));
-		bOk &= Assert.AreEqual(Expected.bStaticInScript, Actual.bStaticInScript, TEXT("BindDatabase round-trip should preserve method bStaticInScript"));
-		bOk &= Assert.AreEqual(Expected.bGlobalScope, Actual.bGlobalScope, TEXT("BindDatabase round-trip should preserve method bGlobalScope"));
-		bOk &= Assert.AreEqual(Expected.bNotAngelscriptProperty, Actual.bNotAngelscriptProperty, TEXT("BindDatabase round-trip should preserve method bNotAngelscriptProperty"));
-		bOk &= Assert.AreEqual(Expected.bTrivial, Actual.bTrivial, TEXT("BindDatabase round-trip should preserve method bTrivial"));
-		return bOk;
-	}
-
-	bool DatabaseContainsClassBindNamed(const FAngelscriptBindDatabase& Database, const FString& TypeName)
-	{
-		return Database.Classes.ContainsByPredicate([&TypeName](const FAngelscriptClassBind& Bind) { return Bind.TypeName == TypeName; });
-	}
-
-	UDelegateFunction* GetSampleDelegateFunction()
-	{
-		const FMulticastDelegateProperty* DelegateProperty = FindFProperty<FMulticastDelegateProperty>(AActor::StaticClass(), GET_MEMBER_NAME_CHECKED(AActor, OnActorBeginOverlap));
-		return DelegateProperty != nullptr ? Cast<UDelegateFunction>(DelegateProperty->SignatureFunction) : nullptr;
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Engine.BindDatabase", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+struct FBindDatabaseContextStackGuard
+{
+	TArray<FAngelscriptEngine*> SavedStack;
+	FBindDatabaseContextStackGuard() { SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear(); }
+	~FBindDatabaseContextStackGuard() { FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack)); }
+	void DiscardSavedStack() { SavedStack.Reset(); }
+};
+
+static FString MakeBindDatabaseAutomationDirectory()
+{
+	return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation"), TEXT("BindDatabase"), FGuid::NewGuid().ToString(EGuidFormats::Digits));
+}
+
+static FAngelscriptPropertyBind MakeSamplePropertyBind(const FString& Declaration, const FString& UnrealPath)
+{
+	FAngelscriptPropertyBind Bind;
+	Bind.Declaration = Declaration; Bind.UnrealPath = UnrealPath;
+	Bind.bCanWrite = true; Bind.bCanRead = true; Bind.bCanEdit = false;
+	return Bind;
+}
+
+static FAngelscriptMethodBind MakeSampleMethodBind()
+{
+	FAngelscriptMethodBind Bind;
+	Bind.Declaration = TEXT("void DestroyActor()"); Bind.UnrealPath = TEXT("/Script/Engine.Actor:K2_DestroyActor");
+	Bind.ClassName = TEXT("AActor"); Bind.ScriptName = TEXT("DestroyActor");
+	Bind.WorldContextArgument = 1; Bind.DeterminesOutputTypeArgument = -1;
+	Bind.bStaticInUnreal = false; Bind.bStaticInScript = true; Bind.bGlobalScope = false;
+	Bind.bNotAngelscriptProperty = true; Bind.bTrivial = true;
+	return Bind;
+}
+
+static FAngelscriptClassBind MakeSampleClassBind(UClass* Class)
+{
+	FAngelscriptClassBind Bind;
+	Bind.TypeName = TEXT("AActor"); Bind.UnrealPath = Class->GetPathName();
+	Bind.Methods.Add(MakeSampleMethodBind());
+	Bind.Properties.Add(MakeSamplePropertyBind(TEXT("float InitialLifeSpan"), TEXT("/Script/Engine.Actor:InitialLifeSpan")));
+	return Bind;
+}
+
+static FAngelscriptClassBind MakeNamedSampleClassBind(UClass* Class, const FString& TypeName)
+{
+	FAngelscriptClassBind Bind = MakeSampleClassBind(Class); Bind.TypeName = TypeName; return Bind;
+}
+
+static FAngelscriptStructBind MakeSampleStructBind(UScriptStruct* Struct)
+{
+	FAngelscriptStructBind Bind;
+	Bind.TypeName = TEXT("FHitResult"); Bind.UnrealPath = Struct->GetPathName();
+	Bind.Properties.Add(MakeSamplePropertyBind(TEXT("bool bBlockingHit"), TEXT("/Script/Engine.HitResult:bBlockingHit")));
+	return Bind;
+}
+
+static void WriteLegacyUnversionedCache(const FString& CachePath, const FAngelscriptClassBind& ClassBind, const FAngelscriptStructBind& StructBind)
+{
+	TArray<FAngelscriptStructBind> Structs;
+	Structs.Add(StructBind);
+	TArray<FAngelscriptClassBind> Classes;
+	Classes.Add(ClassBind);
+
+	TArray<uint8> Data;
+	FMemoryWriter Writer(Data);
+	Writer << Structs;
+	Writer << Classes;
+	FFileHelper::SaveArrayToFile(Data, *CachePath);
+}
+
+static bool ExpectPropertyBindEquals(FAutomationTestBase& Test, const TCHAR* Context, const FAngelscriptPropertyBind& Actual, const FAngelscriptPropertyBind& Expected)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	bool bOk = true;
+	bOk &= LocalAssert.AreEqual(Expected.Declaration, Actual.Declaration, *FString::Printf(TEXT("%s should round-trip property declaration"), Context));
+	bOk &= LocalAssert.AreEqual(Expected.UnrealPath, Actual.UnrealPath, *FString::Printf(TEXT("%s should round-trip property UnrealPath"), Context));
+	bOk &= LocalAssert.AreEqual(Expected.bCanWrite, Actual.bCanWrite, *FString::Printf(TEXT("%s should round-trip property bCanWrite"), Context));
+	bOk &= LocalAssert.AreEqual(Expected.bCanRead, Actual.bCanRead, *FString::Printf(TEXT("%s should round-trip property bCanRead"), Context));
+	bOk &= LocalAssert.AreEqual(Expected.bCanEdit, Actual.bCanEdit, *FString::Printf(TEXT("%s should round-trip property bCanEdit"), Context));
+	return bOk;
+}
+
+static bool ExpectMethodBindEquals(FAutomationTestBase& Test, const FAngelscriptMethodBind& Actual, const FAngelscriptMethodBind& Expected)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	bool bOk = true;
+	bOk &= LocalAssert.AreEqual(Expected.Declaration, Actual.Declaration, TEXT("BindDatabase round-trip should preserve method declaration"));
+	bOk &= LocalAssert.AreEqual(Expected.UnrealPath, Actual.UnrealPath, TEXT("BindDatabase round-trip should preserve method UnrealPath"));
+	bOk &= LocalAssert.AreEqual(Expected.ClassName, Actual.ClassName, TEXT("BindDatabase round-trip should preserve method ClassName"));
+	bOk &= LocalAssert.AreEqual(Expected.ScriptName, Actual.ScriptName, TEXT("BindDatabase round-trip should preserve method ScriptName"));
+	bOk &= LocalAssert.AreEqual(static_cast<int32>(Expected.WorldContextArgument), static_cast<int32>(Actual.WorldContextArgument), TEXT("BindDatabase round-trip should preserve method WorldContextArgument"));
+	bOk &= LocalAssert.AreEqual(static_cast<int32>(Expected.DeterminesOutputTypeArgument), static_cast<int32>(Actual.DeterminesOutputTypeArgument), TEXT("BindDatabase round-trip should preserve method DeterminesOutputTypeArgument"));
+	bOk &= LocalAssert.AreEqual(Expected.bStaticInUnreal, Actual.bStaticInUnreal, TEXT("BindDatabase round-trip should preserve method bStaticInUnreal"));
+	bOk &= LocalAssert.AreEqual(Expected.bStaticInScript, Actual.bStaticInScript, TEXT("BindDatabase round-trip should preserve method bStaticInScript"));
+	bOk &= LocalAssert.AreEqual(Expected.bGlobalScope, Actual.bGlobalScope, TEXT("BindDatabase round-trip should preserve method bGlobalScope"));
+	bOk &= LocalAssert.AreEqual(Expected.bNotAngelscriptProperty, Actual.bNotAngelscriptProperty, TEXT("BindDatabase round-trip should preserve method bNotAngelscriptProperty"));
+	bOk &= LocalAssert.AreEqual(Expected.bTrivial, Actual.bTrivial, TEXT("BindDatabase round-trip should preserve method bTrivial"));
+	return bOk;
+}
+
+static bool DatabaseContainsClassBindNamed(const FAngelscriptBindDatabase& Database, const FString& TypeName)
+{
+	return Database.Classes.ContainsByPredicate([&TypeName](const FAngelscriptClassBind& Bind) { return Bind.TypeName == TypeName; });
+}
+
+static UDelegateFunction* GetSampleDelegateFunction()
+{
+	const FMulticastDelegateProperty* DelegateProperty = FindFProperty<FMulticastDelegateProperty>(AActor::StaticClass(), GET_MEMBER_NAME_CHECKED(AActor, OnActorBeginOverlap));
+	return DelegateProperty != nullptr ? Cast<UDelegateFunction>(DelegateProperty->SignatureFunction) : nullptr;
+}
+
+public:
 	TEST_METHOD(SaveLoadRoundTripsClassesAndHeaders)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindDatabaseTests_Private;
-		FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
+FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
 		if (!this->Assert.IsTrue(Fixture.IsValid(), TEXT("BindDatabase.SaveLoadRoundTripsClassesAndHeaders should acquire an isolated full engine"))) { return; }
 		FAngelscriptEngine& Engine = Fixture.GetEngine();
 		FAngelscriptBindDatabase* LocalDatabase = Engine.GetBindDatabase();
@@ -213,8 +211,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 
 	TEST_METHOD(RejectsLegacyUnversionedCache)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindDatabaseTests_Private;
-		FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
+FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
 		if (!this->Assert.IsTrue(Fixture.IsValid(), TEXT("should acquire an isolated full engine"))) { return; }
 		FAngelscriptEngine& Engine = Fixture.GetEngine();
 		FAngelscriptBindDatabase& Database = Engine.GetBindDatabaseForTesting();
@@ -244,8 +241,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 
 	TEST_METHOD(GetPrefersCurrentEngineSharedDatabaseAndFallsBackToLegacySingleton)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindDatabaseTests_Private;
-		FBindDatabaseContextStackGuard ContextGuard;
+FBindDatabaseContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine(); }
 		ContextGuard.DiscardSavedStack();
@@ -316,8 +312,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 
 	TEST_METHOD(LoadWithoutHeadersSidecarLeavesHeaderLinksEmptyButRestoresBinds)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindDatabaseTests_Private;
-		FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
+FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
 		if (!this->Assert.IsTrue(Fixture.IsValid(), TEXT("should acquire an isolated full engine"))) { return; }
 		FAngelscriptEngine& Engine = Fixture.GetEngine();
 		FAngelscriptBindDatabase& Database = Engine.GetBindDatabaseForTesting();
@@ -370,8 +365,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindDatabaseTests, "Angelscript.TestModule.Eng
 
 	TEST_METHOD(ClearPurgesEnumsDelegatesAndHeaderLinks)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptBindDatabaseTests_Private;
-		FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
+FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
 		if (!this->Assert.IsTrue(Fixture.IsValid(), TEXT("should acquire an isolated full engine"))) { return; }
 		FAngelscriptEngine& Engine = Fixture.GetEngine();
 		FAngelscriptBindDatabase& Database = Engine.GetBindDatabaseForTesting();

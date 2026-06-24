@@ -11,37 +11,69 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_HotReload_AngelscriptHotReloadVersionChainTests_Private
-{
-	using namespace AngelscriptFunctionalTestUtils;
-
-	static const FName VersionChainModuleName(TEXT("HotReloadVersionChain"));
-	static const FString VersionChainFilename(TEXT("HotReloadVersionChain.as"));
-	static const FName VersionChainClassName(TEXT("AHotReloadVersionChainTarget"));
-	static const FName SoftReloadConsistencyModuleName(TEXT("HotReloadSoftReloadConsistency"));
-	static const FString SoftReloadConsistencyFilename(TEXT("HotReloadSoftReloadConsistency.as"));
-	static const FName SoftReloadConsistencyClassName(TEXT("AHotReloadSoftReloadConsistencyTarget"));
-
-	void InitializeVersionChainSpawner(FActorTestSpawner& Spawner)
-	{
-		Spawner.InitializeGameSubsystems();
-	}
-
-	bool IsHandledReloadResult(const ECompileResult ReloadResult)
-	{
-		return ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled;
-	}
-}
-
-
 #define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 #define TestEqual(...) Test.TestEqual(__VA_ARGS__)
 #define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 #define TestNull(...) Test.TestNull(__VA_ARGS__)
 
-static bool FullReloadVersionChainAndCDOConsistency(FAutomationTestBase& Test)
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadFullReloadVersionChainTests,
+	"Angelscript.TestModule.HotReload.FullReload",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadVersionChainTests_Private;
+private:
+	inline static const FName VersionChainModuleName = FName(TEXT("HotReloadVersionChain"));
+	inline static const FString VersionChainFilename = FString(TEXT("HotReloadVersionChain.as"));
+	inline static const FName VersionChainClassName = FName(TEXT("AHotReloadVersionChainTarget"));
+
+	static void InitializeVersionChainSpawner(FActorTestSpawner& Spawner)
+	{
+		Spawner.InitializeGameSubsystems();
+	}
+
+	static bool IsHandledReloadResult(const ECompileResult ReloadResult)
+	{
+		return ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled;
+	}
+
+	static bool RunVersionChainAndCDOConsistency(FAutomationTestBase& Test);
+
+public:
+	TEST_METHOD(VersionChainAndCDOConsistency)
+	{
+		ASSERT_THAT(IsTrue(RunVersionChainAndCDOConsistency(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadSoftReloadVersionChainTests,
+	"Angelscript.TestModule.HotReload.SoftReload",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+private:
+	inline static const FName SoftReloadConsistencyModuleName = FName(TEXT("HotReloadSoftReloadConsistency"));
+	inline static const FString SoftReloadConsistencyFilename = FString(TEXT("HotReloadSoftReloadConsistency.as"));
+	inline static const FName SoftReloadConsistencyClassName = FName(TEXT("AHotReloadSoftReloadConsistencyTarget"));
+
+	static void InitializeVersionChainSpawner(FActorTestSpawner& Spawner)
+	{
+		Spawner.InitializeGameSubsystems();
+	}
+
+	static bool IsHandledReloadResult(const ECompileResult ReloadResult)
+	{
+		return ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled;
+	}
+
+	static bool RunCDOAndInstanceConsistency(FAutomationTestBase& Test);
+
+public:
+	TEST_METHOD(CDOAndInstanceConsistency)
+	{
+		ASSERT_THAT(IsTrue(RunCDOAndInstanceConsistency(*TestRunner)));
+	}
+};
+
+bool FAngelscriptHotReloadFullReloadVersionChainTests::RunVersionChainAndCDOConsistency(FAutomationTestBase& Test)
+{
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 	ON_SCOPE_EXIT
@@ -226,9 +258,8 @@ class AHotReloadVersionChainTarget : AActor
 	return true;
 }
 
-static bool SoftReloadCDOAndInstanceConsistency(FAutomationTestBase& Test)
+bool FAngelscriptHotReloadSoftReloadVersionChainTests::RunCDOAndInstanceConsistency(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadVersionChainTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 	ON_SCOPE_EXIT
@@ -429,25 +460,5 @@ class AHotReloadSoftReloadConsistencyTarget : AActor
 #undef TestEqual
 #undef TestNotNull
 #undef TestNull
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadFullReloadVersionChainTests,
-	"Angelscript.TestModule.HotReload.FullReload",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
-	TEST_METHOD(VersionChainAndCDOConsistency)
-	{
-		ASSERT_THAT(IsTrue(FullReloadVersionChainAndCDOConsistency(*TestRunner)));
-	}
-};
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadSoftReloadVersionChainTests,
-	"Angelscript.TestModule.HotReload.SoftReload",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
-	TEST_METHOD(CDOAndInstanceConsistency)
-	{
-		ASSERT_THAT(IsTrue(SoftReloadCDOAndInstanceConsistency(*TestRunner)));
-	}
-};
 
 #endif

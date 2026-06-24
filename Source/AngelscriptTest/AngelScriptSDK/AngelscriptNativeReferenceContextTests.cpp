@@ -17,16 +17,16 @@ private:
 		asIScriptEngine*& OutScriptEngine,
 		asIScriptModule*& OutModule)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 
 		OutScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
-		if (!Assert.IsNotNull(OutScriptEngine, TEXT("Reference context test should create a native engine")))
+		if (!LocalAssert.IsNotNull(OutScriptEngine, TEXT("Reference context test should create a native engine")))
 		{
 			return false;
 		}
 
 		OutModule = AngelscriptNativeTestSupport::BuildNativeModule(OutScriptEngine, ModuleName, Source);
-		if (!Assert.IsNotNull(OutModule, TEXT("Reference context test should build the module")))
+		if (!LocalAssert.IsNotNull(OutModule, TEXT("Reference context test should build the module")))
 		{
 			Test.AddInfo(AngelscriptNativeTestSupport::CollectMessages(Messages));
 			return false;

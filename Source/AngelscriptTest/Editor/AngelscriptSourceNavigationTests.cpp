@@ -16,35 +16,6 @@
 #if WITH_EDITOR && WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_Editor_AngelscriptSourceNavigationTests_Private
-{
-	struct FRecordedSourceNavigation
-	{
-		int32 CallCount = 0;
-		FString Path;
-		int32 LineNumber = INDEX_NONE;
-
-		void Install()
-		{
-			AngelscriptSourceNavigation::SetOpenLocationOverrideForTesting(
-				[this](const FAngelscriptSourceNavigationLocation& Location)
-				{
-					++CallCount;
-					Path = Location.Path;
-					LineNumber = Location.LineNumber;
-				});
-		}
-
-		void Reset()
-		{
-			CallCount = 0;
-			Path.Reset();
-			LineNumber = INDEX_NONE;
-		}
-	};
-}
-
-
 TEST_CLASS_WITH_FLAGS(
 	FAngelscriptFunctionSourceNavigationTest,
 	"Angelscript.TestModule.Editor.SourceNavigation",
@@ -52,7 +23,6 @@ TEST_CLASS_WITH_FLAGS(
 {
 	TEST_METHOD(Functions)
 	{
-		using namespace AngelscriptTest_Editor_AngelscriptSourceNavigationTests_Private;
 		FResolvedProductionLikeEngine ResolvedEngine;
 		ASSERT_THAT(IsTrue(AcquireProductionLikeEngine(*TestRunner, TEXT("Source navigation tests require a production-like engine."), ResolvedEngine)));
 
@@ -131,9 +101,35 @@ TEST_CLASS_WITH_FLAGS(
 	"Angelscript.TestModule.Editor.SourceNavigation",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter | EAutomationTestFlags::Disabled) // DISABLED(#ue57-headless): property navigation source metadata is not populated in headless mode; shares root cause with SourceNavigation.Functions
 {
+private:
+	struct FRecordedSourceNavigation
+	{
+		int32 CallCount = 0;
+		FString Path;
+		int32 LineNumber = INDEX_NONE;
+
+		void Install()
+		{
+			AngelscriptSourceNavigation::SetOpenLocationOverrideForTesting(
+				[this](const FAngelscriptSourceNavigationLocation& Location)
+				{
+					++CallCount;
+					Path = Location.Path;
+					LineNumber = Location.LineNumber;
+				});
+		}
+
+		void Reset()
+		{
+			CallCount = 0;
+			Path.Reset();
+			LineNumber = INDEX_NONE;
+		}
+	};
+
+public:
 	TEST_METHOD(NavigateToFunctionUsesStoredSourceLocation)
 	{
-		using namespace AngelscriptTest_Editor_AngelscriptSourceNavigationTests_Private;
 		FResolvedProductionLikeEngine ResolvedEngine;
 		ASSERT_THAT(IsTrue(AcquireProductionLikeEngine(*TestRunner, TEXT("Source navigation navigation-action test requires a production-like engine."), ResolvedEngine)));
 

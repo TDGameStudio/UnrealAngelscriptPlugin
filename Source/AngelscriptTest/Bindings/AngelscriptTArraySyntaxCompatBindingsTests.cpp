@@ -72,8 +72,8 @@ int Entry()
 		return false;
 	}
 
-	FNoDiscardAsserter Assert(Test);
-	return Assert.AreEqual(1, Result, TEXT("int[] mutation helpers should match TArray<int> script behaviour"));
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.AreEqual(1, Result, TEXT("int[] mutation helpers should match TArray<int> script behaviour"));
 }
 
 bool RunIntArrayIteratorCompatSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
@@ -149,8 +149,8 @@ int Entry()
 		return false;
 	}
 
-	FNoDiscardAsserter Assert(Test);
-	return Assert.AreEqual(1, Result, TEXT("int[] iterator helpers should match TArray<int> script behaviour"));
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.AreEqual(1, Result, TEXT("int[] iterator helpers should match TArray<int> script behaviour"));
 }
 
 bool RunIntArrayOperationsSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
@@ -1080,13 +1080,13 @@ TSubclassOf<AActor>[] ReturnActorClassArray()
 		TEXT("int[] return value should expose returned primitive elements"),
 		[&Test](const FScriptArray& ReturnedArray)
 		{
-			FNoDiscardAsserter Assert(Test);
+			FNoDiscardAsserter LocalAssert(Test);
 			const int32* Values = static_cast<const int32*>(ReturnedArray.GetData());
-			return Assert.AreEqual(3, ReturnedArray.Num(), TEXT("Returned int[] should have Num=3"))
-				&& Assert.IsNotNull(Values, TEXT("Returned int[] should expose data"))
-				&& Assert.AreEqual(3, Values[0], TEXT("Returned int[][0]"))
-				&& Assert.AreEqual(5, Values[1], TEXT("Returned int[][1]"))
-				&& Assert.AreEqual(8, Values[2], TEXT("Returned int[][2]"));
+			return LocalAssert.AreEqual(3, ReturnedArray.Num(), TEXT("Returned int[] should have Num=3"))
+				&& LocalAssert.IsNotNull(Values, TEXT("Returned int[] should expose data"))
+				&& LocalAssert.AreEqual(3, Values[0], TEXT("Returned int[][0]"))
+				&& LocalAssert.AreEqual(5, Values[1], TEXT("Returned int[][1]"))
+				&& LocalAssert.AreEqual(8, Values[2], TEXT("Returned int[][2]"));
 		});
 	bPassed &= TArrayBindingsExecuteFunctionReturningScriptArray(
 		Test,
@@ -1097,12 +1097,12 @@ TSubclassOf<AActor>[] ReturnActorClassArray()
 		TEXT("FVector[] return value should expose returned struct elements"),
 		[&Test](const FScriptArray& ReturnedArray)
 		{
-			FNoDiscardAsserter Assert(Test);
+			FNoDiscardAsserter LocalAssert(Test);
 			const FVector* Values = static_cast<const FVector*>(ReturnedArray.GetData());
-			return Assert.AreEqual(2, ReturnedArray.Num(), TEXT("Returned FVector[] should have Num=2"))
-				&& Assert.IsNotNull(Values, TEXT("Returned FVector[] should expose data"))
-				&& Assert.AreEqual(FVector(1.0, 2.0, 3.0), Values[0], TEXT("Returned FVector[][0]"))
-				&& Assert.AreEqual(FVector(4.0, 5.0, 6.0), Values[1], TEXT("Returned FVector[][1]"));
+			return LocalAssert.AreEqual(2, ReturnedArray.Num(), TEXT("Returned FVector[] should have Num=2"))
+				&& LocalAssert.IsNotNull(Values, TEXT("Returned FVector[] should expose data"))
+				&& LocalAssert.AreEqual(FVector(1.0, 2.0, 3.0), Values[0], TEXT("Returned FVector[][0]"))
+				&& LocalAssert.AreEqual(FVector(4.0, 5.0, 6.0), Values[1], TEXT("Returned FVector[][1]"));
 		});
 	bPassed &= TArrayBindingsExecuteFunctionReturningScriptArray(
 		Test,
@@ -1113,12 +1113,12 @@ TSubclassOf<AActor>[] ReturnActorClassArray()
 		TEXT("FString[] return value should expose returned string elements"),
 		[&Test](const FScriptArray& ReturnedArray)
 		{
-			FNoDiscardAsserter Assert(Test);
+			FNoDiscardAsserter LocalAssert(Test);
 			const FString* Values = static_cast<const FString*>(ReturnedArray.GetData());
-			return Assert.AreEqual(2, ReturnedArray.Num(), TEXT("Returned FString[] should have Num=2"))
-				&& Assert.IsNotNull(Values, TEXT("Returned FString[] should expose data"))
-				&& Assert.AreEqual(FString(TEXT("Alpha")), Values[0], TEXT("Returned FString[][0]"))
-				&& Assert.AreEqual(FString(TEXT("Beta")), Values[1], TEXT("Returned FString[][1]"));
+			return LocalAssert.AreEqual(2, ReturnedArray.Num(), TEXT("Returned FString[] should have Num=2"))
+				&& LocalAssert.IsNotNull(Values, TEXT("Returned FString[] should expose data"))
+				&& LocalAssert.AreEqual(FString(TEXT("Alpha")), Values[0], TEXT("Returned FString[][0]"))
+				&& LocalAssert.AreEqual(FString(TEXT("Beta")), Values[1], TEXT("Returned FString[][1]"));
 		});
 	bPassed &= TArrayBindingsExecuteFunctionReturningScriptArray(
 		Test,
@@ -1129,12 +1129,12 @@ TSubclassOf<AActor>[] ReturnActorClassArray()
 		TEXT("TSubclassOf<AActor>[] return value should expose returned class wrappers"),
 		[&Test](const FScriptArray& ReturnedArray)
 		{
-			FNoDiscardAsserter Assert(Test);
+			FNoDiscardAsserter LocalAssert(Test);
 			const TSubclassOf<AActor>* Classes = static_cast<const TSubclassOf<AActor>*>(ReturnedArray.GetData());
-			return Assert.AreEqual(2, ReturnedArray.Num(), TEXT("Returned TSubclassOf<AActor>[] should have Num=2"))
-				&& Assert.IsNotNull(Classes, TEXT("Returned TSubclassOf<AActor>[] should expose data"))
-				&& Assert.AreEqual(AActor::StaticClass(), Classes[0].Get(), TEXT("Returned TSubclassOf<AActor>[][0]"))
-				&& Assert.AreEqual(ACameraActor::StaticClass(), Classes[1].Get(), TEXT("Returned TSubclassOf<AActor>[][1]"));
+			return LocalAssert.AreEqual(2, ReturnedArray.Num(), TEXT("Returned TSubclassOf<AActor>[] should have Num=2"))
+				&& LocalAssert.IsNotNull(Classes, TEXT("Returned TSubclassOf<AActor>[] should expose data"))
+				&& LocalAssert.AreEqual(AActor::StaticClass(), Classes[0].Get(), TEXT("Returned TSubclassOf<AActor>[][0]"))
+				&& LocalAssert.AreEqual(ACameraActor::StaticClass(), Classes[1].Get(), TEXT("Returned TSubclassOf<AActor>[][1]"));
 		});
 
 	return bPassed;
@@ -1506,17 +1506,17 @@ int Entry()
 	TArrayBindingsReportCompileSummaryDiagnostics(Test, TEXT("int[][] nested container rejection"), Summary);
 
 	bool bPassed = true;
-	FNoDiscardAsserter Assert(Test);
-	bPassed &= Assert.IsFalse(
+	FNoDiscardAsserter LocalAssert(Test);
+	bPassed &= LocalAssert.IsFalse(
 		bCompiled,
 		TEXT("int[][] should fail compilation because nested containers are currently unsupported"));
-	bPassed &= Assert.AreEqual(
+	bPassed &= LocalAssert.AreEqual(
 		ECompileResult::Error,
 		Summary.CompileResult,
 		TEXT("int[][] rejection should be a compile error"));
 	if (Summary.Diagnostics.Num() > 0)
 	{
-		bPassed &= Assert.IsTrue(
+		bPassed &= LocalAssert.IsTrue(
 			TArrayBindingsCompileSummaryContainsDiagnosticMessage(Summary, TArraySyntaxCompatNestedContainerDiagnostic),
 			TEXT("int[][] rejection should report nested container diagnostics when diagnostics are available"));
 	}

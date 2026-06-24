@@ -105,11 +105,11 @@ namespace CompilerPipelinePropertyDefaultTest
 		UObject* Object,
 		FString& OutValue)
 	{
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(
 				Property,
 				*FString::Printf(TEXT("%s should expose the reflected FString property"), Context))
-			|| !Assert.IsNotNull(
+			|| !LocalAssert.IsNotNull(
 				Object,
 				*FString::Printf(TEXT("%s should expose the target object"), Context)))
 		{
@@ -126,12 +126,10 @@ namespace CompilerPipelinePropertyDefaultTest
 		const FString& ActualValue,
 		const FString& ExpectedValue)
 	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreEqual(ExpectedValue, ActualValue, Context);
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.AreEqual(ExpectedValue, ActualValue, Context);
 	}
 }
-
-using namespace CompilerPipelinePropertyDefaultTest;
 
 TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",

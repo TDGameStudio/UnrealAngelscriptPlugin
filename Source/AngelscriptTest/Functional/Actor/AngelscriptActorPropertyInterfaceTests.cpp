@@ -42,8 +42,6 @@ namespace AngelscriptActorPropertyInterfaceTestHelpers
 	}
 }
 
-using namespace AngelscriptActorPropertyInterfaceTestHelpers;
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptActorPropertyInterfaceTest,
 	"Angelscript.TestModule.Actor.PropertyInterface",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -170,6 +168,8 @@ class ATestActorDefaultValues : AActor
 
 	TEST_METHOD(InterfaceBoundMethods)
 	{
+		using namespace AngelscriptActorPropertyInterfaceTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		static const FName ModuleName(TEXT("TestActorInterfaceBoundMethods"));
@@ -275,6 +275,8 @@ class ATestActorInterfaceBoundMethods : AActor
 
 	TEST_METHOD(InterfaceComponentAndInput)
 	{
+		using namespace AngelscriptActorPropertyInterfaceTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		static const FName ModuleName(TEXT("TestActorInterfaceComponentAndInput"));
@@ -348,6 +350,8 @@ class ATestActorInterfaceComponentAndInput : AActor
 
 	TEST_METHOD(InterfaceSpawnAndQuery)
 	{
+		using namespace AngelscriptActorPropertyInterfaceTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		static const FName ModuleName(TEXT("TestActorInterfaceSpawnAndQuery"));

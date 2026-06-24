@@ -6,8 +6,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKCompilerTests,
 	"Angelscript.TestModule.AngelScriptSDK.Compiler",
@@ -17,7 +15,7 @@ private:
 	static void VoidHelper() { }
 
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -36,10 +34,13 @@ public:
 
 	TEST_METHOD(Basic)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK compiler basic test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKCompilerBasic", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKCompilerBasic", R"(
 const int GlobalVar = 42;
 
 int Multiply(int A, int B)
@@ -69,11 +70,14 @@ bool Entry()
 
 	TEST_METHOD(Error)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK compiler error test should create a standalone engine")));
 
 		// Test that invalid syntax produces compile errors
-		FScopedNativeModuleName ModuleScope(Engine, "SDKCompilerError");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "SDKCompilerError");
 		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKCompilerError", R"(
 int MissingReturn() { }
 )");
@@ -111,12 +115,15 @@ int MissingReturn() { }
 
 	TEST_METHOD(MultipleErrors)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK compiler multiple-errors test should create a standalone engine")));
 
 		// Script with multiple independent errors: undefined symbol and type mismatch.
 		Engine.ResetMessages();
-		FScopedNativeModuleName ModuleScope(Engine, "SDKCompilerMultipleErrors");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "SDKCompilerMultipleErrors");
 		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKCompilerMultipleErrors", R"(
 int Entry()
 {
@@ -134,13 +141,16 @@ int Entry()
 
 	TEST_METHOD(TypeMismatch)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK compiler type-mismatch test should create a standalone engine")));
 
 		// Calling a function that returns void and assigning it should fail.
 		Engine.ResetMessages();
 		ScriptEngine->RegisterGlobalFunction("void DoNothing()", asFUNCTION(VoidHelper), asCALL_CDECL);
-		FScopedNativeModuleName ModuleScope(Engine, "SDKCompilerTypeMismatch");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "SDKCompilerTypeMismatch");
 		asIScriptModule* Module = BuildNativeModule(ScriptEngine, "SDKCompilerTypeMismatch", R"(
 int Entry()
 {
@@ -154,12 +164,15 @@ int Entry()
 
 	TEST_METHOD(RecompileAfterError)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK compiler recompile-after-error test should create a standalone engine")));
 
 		// First attempt: compile failure.
 		Engine.ResetMessages();
-		FScopedNativeModuleName ModuleScope(Engine, "SDKCompilerRecompile");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "SDKCompilerRecompile");
 		asIScriptModule* FailedModule = BuildNativeModule(ScriptEngine, "SDKCompilerRecompile", R"(
 int Entry() { return NotDefined; }
 )");

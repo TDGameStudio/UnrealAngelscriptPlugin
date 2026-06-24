@@ -144,8 +144,8 @@ class UCompilerBlueprintCallableDefaultTrueCarrier : UObject
 		const TSharedPtr<FAngelscriptFunctionDesc>& FunctionDesc,
 		const FExpectedFunctionFlags& Expected)
 	{
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsTrue(
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsTrue(
 				FunctionDesc.IsValid(),
 				*FString::Printf(TEXT("%s should parse function descriptor %s"), *TestCaseLabel, Expected.FunctionName)))
 		{
@@ -153,11 +153,11 @@ class UCompilerBlueprintCallableDefaultTrueCarrier : UObject
 		}
 
 		bool bPassed = true;
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			Expected.bBlueprintCallable,
 			FunctionDesc->bBlueprintCallable,
 			*FString::Printf(TEXT("%s should set bBlueprintCallable for %s during preprocessing"), *TestCaseLabel, Expected.FunctionName));
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			Expected.bBlueprintPure,
 			FunctionDesc->bBlueprintPure,
 			*FString::Printf(TEXT("%s should set bBlueprintPure for %s during preprocessing"), *TestCaseLabel, Expected.FunctionName));
@@ -171,8 +171,8 @@ class UCompilerBlueprintCallableDefaultTrueCarrier : UObject
 		const FExpectedFunctionFlags& Expected)
 	{
 		UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, Expected.FunctionName);
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(
 				GeneratedFunction,
 				*FString::Printf(TEXT("%s should materialize generated function %s"), *TestCaseLabel, Expected.FunctionName)))
 		{
@@ -180,19 +180,17 @@ class UCompilerBlueprintCallableDefaultTrueCarrier : UObject
 		}
 
 		bool bPassed = true;
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			Expected.bBlueprintCallable,
 			GeneratedFunction->HasAnyFunctionFlags(FUNC_BlueprintCallable),
 			*FString::Printf(TEXT("%s should set FUNC_BlueprintCallable for %s"), *TestCaseLabel, Expected.FunctionName));
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			Expected.bBlueprintPure,
 			GeneratedFunction->HasAnyFunctionFlags(FUNC_BlueprintPure),
 			*FString::Printf(TEXT("%s should set FUNC_BlueprintPure for %s"), *TestCaseLabel, Expected.FunctionName));
 		return bPassed;
 	}
 }
-
-using namespace CompilerPipelineFunctionFlagTest;
 
 TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionFlagTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",

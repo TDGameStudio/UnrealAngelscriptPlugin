@@ -58,11 +58,14 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private
+TEST_CLASS_WITH_FLAGS(FAngelscriptReflectiveFallbackBenchmarkTests,
+	"Angelscript.TestModule.Performance.ReflectiveFallback",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	constexpr int32 WarmupRuns = 1;
-	constexpr int32 MeasurementRuns = 3;
-	constexpr int32 IterationsPerMeasurement = 10000;
+private:
+	static constexpr int32 WarmupRuns = 1;
+	static constexpr int32 MeasurementRuns = 3;
+	static constexpr int32 IterationsPerMeasurement = 10000;
 
 	struct FMeasuredSamples
 	{
@@ -71,7 +74,7 @@ namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private
 	};
 
 	template <typename CallableType>
-	FMeasuredSamples MeasureSamples(CallableType&& Callable)
+	static FMeasuredSamples MeasureSamples(CallableType&& Callable)
 	{
 		for (int32 WarmupIndex = 0; WarmupIndex < WarmupRuns; ++WarmupIndex)
 		{
@@ -88,7 +91,7 @@ namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private
 		return Result;
 	}
 
-	void AddMetric(
+	static void AddMetric(
 		TArray<FAngelscriptPerformanceMetric>& Metrics,
 		const FString& Name,
 		const TArray<double>& Samples,
@@ -97,7 +100,7 @@ namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private
 		Metrics.Add({ Name, Samples, ComputeMedian(Samples), TEXT("seconds"), Source });
 	}
 
-	bool WriteAndVerifyMetrics(
+	static bool WriteAndVerifyMetrics(
 		FAutomationTestBase& Test,
 		const FString& RunId,
 		const FString& TestGroup,
@@ -120,7 +123,7 @@ namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private
 	// honest even if production semantics evolve.
 	// ---------------------------------------------------------------------
 
-	bool LocalIsPropertySimpleCopy(const FProperty* Property)
+	static bool LocalIsPropertySimpleCopy(const FProperty* Property)
 	{
 		if (Property == nullptr)
 		{
@@ -192,7 +195,7 @@ namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private
 		int32 ReturnValueOffset = MAX_uint16;
 	};
 
-	FBenchParamCache MakeCache(UFunction* Function)
+	static FBenchParamCache MakeCache(UFunction* Function)
 	{
 		FBenchParamCache Cache;
 		Cache.ParmsSize = Function->PropertiesSize;
@@ -236,7 +239,7 @@ namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private
 	// non-string return types. The mapping intentionally collapses values to
 	// int64 and does not preserve identity - it just needs to be deterministic
 	// for the same input across all four dispatch paths.
-	int64 ExtractChecksum(const FProperty* Return, const void* RetPtr)
+	static int64 ExtractChecksum(const FProperty* Return, const void* RetPtr)
 	{
 		if (Return == nullptr || RetPtr == nullptr)
 		{
@@ -308,7 +311,7 @@ namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private
 	// + ProcessEvent path (matches the original reflective fallback before the
 	// cache landed). The InputArgs array supplies parameter values in the same
 	// order they appear in the UFunction.
-	int64 InvokeProcessEventOnce(UObject* Target, UFunction* Function, const TArray<const void*>& InputArgs, void* OutReturn = nullptr)
+	static int64 InvokeProcessEventOnce(UObject* Target, UFunction* Function, const TArray<const void*>& InputArgs, void* OutReturn = nullptr)
 	{
 		uint8* Buffer = static_cast<uint8*>(FMemory_Alloca(Function->ParmsSize));
 		FMemory::Memzero(Buffer, Function->ParmsSize);
@@ -355,7 +358,7 @@ namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private
 	// pre-built cache. Per-call TFieldIterator + CopySingleValue still happen,
 	// but ProcessEvent's overhead (PreScriptCall hooks, BP override resolution,
 	// persistent-frame management) is bypassed.
-	int64 InvokeUncachedFFrameOnce(UObject* Target, UFunction* Function, const TArray<const void*>& InputArgs, void* OutReturn = nullptr)
+	static int64 InvokeUncachedFFrameOnce(UObject* Target, UFunction* Function, const TArray<const void*>& InputArgs, void* OutReturn = nullptr)
 	{
 		uint8* Buffer = static_cast<uint8*>(FMemory_Alloca(Function->PropertiesSize));
 		FMemory::Memzero(Buffer, Function->PropertiesSize);
@@ -433,7 +436,7 @@ namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private
 
 	// Cached path: uses the pre-built FBenchParamCache and FFrame + Invoke.
 	// POD args go through Memcpy; non-POD args go through CopySingleValue.
-	int64 InvokeCachedOnce(UObject* Target, UFunction* Function, const FBenchParamCache& Cache, const TArray<const void*>& InputArgs, void* OutReturn = nullptr)
+	static int64 InvokeCachedOnce(UObject* Target, UFunction* Function, const FBenchParamCache& Cache, const TArray<const void*>& InputArgs, void* OutReturn = nullptr)
 	{
 		uint8* Buffer = static_cast<uint8*>(FMemory_Alloca(Cache.ParmsSize));
 		FMemory::Memzero(Buffer, Cache.ParmsSize);
@@ -535,7 +538,7 @@ namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private
 	};
 
 	template <typename A0BodyType>
-	FRunResult BenchOne(
+	static FRunResult BenchOne(
 		UObject* Target,
 		UFunction* Function,
 		const FBenchParamCache& Cache,
@@ -589,7 +592,7 @@ namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private
 		return R;
 	}
 
-	void EmitFourWayMetrics(
+	static void EmitFourWayMetrics(
 		TArray<FAngelscriptPerformanceMetric>& Metrics,
 		const FString& Prefix,
 		const FRunResult& R)
@@ -600,7 +603,7 @@ namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private
 		AddMetric(Metrics, Prefix + TEXT(".a3_cached_invoke_seconds"), R.A3.Samples, TEXT("Cached FFrame+Invoke"));
 	}
 
-	void TestChecksumsAcrossPaths(
+	static void TestChecksumsAcrossPaths(
 		FAutomationTestBase& Test,
 		const FString& Name,
 		const FRunResult& R,
@@ -613,14 +616,18 @@ namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private
 			Test.TestEqual(*FString::Printf(TEXT("%s checksums (A0 vs A1) should match"), *Name), R.A0.Checksum, R.A1.Checksum);
 		}
 	}
-}
 
-namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private
-{
+	static bool RunReflectiveFallbackBenchmark(FAutomationTestBase& Test);
 
-bool RunReflectiveFallbackBenchmark(FAutomationTestBase& Test)
+public:
+	TEST_METHOD(Benchmark)
+	{
+		ASSERT_THAT(IsTrue(RunReflectiveFallbackBenchmark(*TestRunner)));
+	}
+};
+
+bool FAngelscriptReflectiveFallbackBenchmarkTests::RunReflectiveFallbackBenchmark(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private;
 
 	UAngelscriptPerformanceTestTargetObject* Target = GetMutableDefault<UAngelscriptPerformanceTestTargetObject>();
 	if (!Test.TestNotNull(TEXT("Benchmark target CDO should resolve"), Target))
@@ -873,18 +880,5 @@ bool RunReflectiveFallbackBenchmark(FAutomationTestBase& Test)
 
 	return !Test.HasAnyErrors() && bWroteMetrics;
 }
-
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptReflectiveFallbackBenchmarkTests,
-	"Angelscript.TestModule.Performance.ReflectiveFallback",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
-	TEST_METHOD(Benchmark)
-	{
-		using namespace AngelscriptTest_Performance_ReflectiveFallbackBenchmark_Private;
-		ASSERT_THAT(IsTrue(RunReflectiveFallbackBenchmark(*TestRunner)));
-	}
-};
 
 #endif

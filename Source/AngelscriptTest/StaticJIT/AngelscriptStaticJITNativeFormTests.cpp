@@ -1,17 +1,27 @@
 #include "CQTest.h"
 
 #include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestEngineAcquisition.h"
 
 #include "StaticJIT/StaticJITBinds.h"
 
+#include "StartAngelscriptHeaders.h"
+#include "source/as_objecttype.h"
+#include "source/as_scriptengine.h"
+#include "source/as_scriptfunction.h"
+#include "EndAngelscriptHeaders.h"
+
 #if WITH_DEV_AUTOMATION_TESTS && AS_CAN_GENERATE_JIT
 
-namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeFormTests_Private
+TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITNativeFormTests,
+	"Angelscript.TestModule.StaticJIT.NativeForms",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	constexpr TCHAR SourceFilename[] = TEXT("StaticJITTArrayIndexCustomCall.as");
-	const FName ModuleName(TEXT("ASStaticJITTArrayIndexCustomCall"));
+private:
+	inline static constexpr TCHAR SourceFilename[] = TEXT("StaticJITTArrayIndexCustomCall.as");
+	inline static const FName ModuleName = FName(TEXT("ASStaticJITTArrayIndexCustomCall"));
 
-	FString MakeScriptSource()
+	static FString MakeScriptSource()
 	{
 		return
 			TEXT("int ReadMiddle()\n")
@@ -31,7 +41,7 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeFormTests_Private
 			TEXT("}\n");
 	}
 
-	asITypeInfo* FindArrayTypeInfo(FAutomationTestBase& Test, asIScriptEngine& ScriptEngine)
+	static asITypeInfo* FindArrayTypeInfo(FAutomationTestBase& Test, asIScriptEngine& ScriptEngine)
 	{
 		static constexpr const ANSICHAR* CandidateDecls[] =
 		{
@@ -51,14 +61,14 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeFormTests_Private
 		return nullptr;
 	}
 
-	bool GeneratedSourceUsesExpectedIndexFastPath(const FString& GeneratedSource)
+	static bool GeneratedSourceUsesExpectedIndexFastPath(const FString& GeneratedSource)
 	{
 		return GeneratedSource.Contains(TEXT("FArrayOperations::OpIndex_Template_Unchecked"))
 			|| GeneratedSource.Contains(TEXT("FArrayOperations::OpIndex_Stride_Unchecked"))
 			|| GeneratedSource.Contains(TEXT("FArrayOperations::OpIndex_Unchecked"));
 	}
 
-	FScriptFunctionNativeForm* FindNativeFormForMethodName(
+	static FScriptFunctionNativeForm* FindNativeFormForMethodName(
 		FAutomationTestBase& Test,
 		asITypeInfo& TypeInfo,
 		const ANSICHAR* MethodName,
@@ -103,15 +113,18 @@ namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeFormTests_Private
 
 		return nullptr;
 	}
-}
 
+	static bool RunTArrayIndexCustomCall(FAutomationTestBase& Test);
 
-namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeFormTests_Private
+public:
+	TEST_METHOD(TArrayIndexCustomCall)
+	{
+		ASSERT_THAT(IsTrue(RunTArrayIndexCustomCall(*TestRunner)));
+	}
+};
+
+bool FAngelscriptStaticJITNativeFormTests::RunTArrayIndexCustomCall(FAutomationTestBase& Test)
 {
-
-bool RunTArrayIndexCustomCall(FAutomationTestBase& Test)
-{
-	using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeFormTests_Private;
 	bool bPassed = false;
 	FAngelscriptEngineConfig Config;
 	Config.bGeneratePrecompiledData = true;
@@ -241,18 +254,5 @@ bool RunTArrayIndexCustomCall(FAutomationTestBase& Test)
 
 	return bPassed;
 }
-
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITNativeFormTests,
-	"Angelscript.TestModule.StaticJIT.NativeForms",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
-	TEST_METHOD(TArrayIndexCustomCall)
-	{
-		using namespace AngelscriptTest_StaticJIT_AngelscriptStaticJITNativeFormTests_Private;
-		ASSERT_THAT(IsTrue(RunTArrayIndexCustomCall(*TestRunner)));
-	}
-};
 
 #endif

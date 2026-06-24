@@ -1,16 +1,16 @@
 // ============================================================================
 // AngelscriptRandomStreamBindingsTests.cpp
 //
-// FRandomStream binding coverage — CQTest refactor. Automation IDs:
+// FRandomStream binding coverage �?CQTest refactor. Automation IDs:
 //   Angelscript.TestModule.Bindings.RandomStream.FAngelscriptRandomStreamBindingsTest.*
 //
 // Sections:
-//   IntSeedSequence   — int32 seed construction, GetInitialSeed, GetCurrentSeed,
+//   IntSeedSequence   �?int32 seed construction, GetInitialSeed, GetCurrentSeed,
 //                       GetUnsignedInt, RandRange, GetFraction, FRandRange, copy parity
-//   IntSeedReset      — Reset behaviour after sequence consumption
-//   UintSeedSequence  — uint32 seed construction, GetInitialSeed, GetCurrentSeed,
+//   IntSeedReset      �?Reset behaviour after sequence consumption
+//   UintSeedSequence  �?uint32 seed construction, GetInitialSeed, GetCurrentSeed,
 //                       GetUnsignedInt, Reset
-//   NameSeedSequence  — Initialize(FName), GetCurrentSeed, RandRange
+//   NameSeedSequence  �?Initialize(FName), GetCurrentSeed, RandRange
 //
 // CQTest adaptation notes:
 //   Native C++ expectations are computed at test time and substituted into script
@@ -29,19 +29,6 @@
 // Helpers
 // ----------------------------------------------------------------------------
 
-namespace AngelscriptRandomStreamBindingsTests_Private
-{
-	FString ToScriptFloatLiteral(double Value)
-	{
-		FString Literal = FString::Printf(TEXT("%.17g"), Value);
-		if (!Literal.Contains(TEXT(".")) && !Literal.Contains(TEXT("e")) && !Literal.Contains(TEXT("E")))
-		{
-			Literal += TEXT(".0");
-		}
-		return Literal;
-	}
-}
-
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -56,6 +43,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRandomStreamBindingsTest,
 	"Angelscript.TestModule.Bindings.RandomStream",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static FString ToScriptFloatLiteral(double Value)
+{
+	FString Literal = FString::Printf(TEXT("%.17g"), Value);
+	if (!Literal.Contains(TEXT(".")) && !Literal.Contains(TEXT("e")) && !Literal.Contains(TEXT("E")))
+	{
+		Literal += TEXT(".0");
+	}
+	return Literal;
+}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -69,8 +68,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRandomStreamBindingsTest,
 
 	TEST_METHOD(IntSeedSequence)
 	{
-		using namespace AngelscriptRandomStreamBindingsTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		// Compute native expectations
@@ -183,8 +181,7 @@ int IntSeed_CopyParity()
 
 	TEST_METHOD(IntSeedReset)
 	{
-		using namespace AngelscriptRandomStreamBindingsTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		// Compute native expectation
@@ -225,8 +222,7 @@ int IntSeed_Reset()
 
 	TEST_METHOD(UintSeedSequence)
 	{
-		using namespace AngelscriptRandomStreamBindingsTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		FRandomStream Native(uint32(123));
@@ -281,8 +277,7 @@ int UintSeed_Reset()
 
 	TEST_METHOD(NameSeedSequence)
 	{
-		using namespace AngelscriptRandomStreamBindingsTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		FRandomStream Native;

@@ -1,11 +1,11 @@
 // ============================================================================
 // AngelscriptWorldCollisionAsyncBindingsTests.cpp
 //
-// World collision async binding coverage — CQTest refactor. Automation IDs:
+// World collision async binding coverage �?CQTest refactor. Automation IDs:
 //   Angelscript.TestModule.Bindings.WorldCollisionAsync.FAngelscriptWorldCollisionAsyncBindingsTest.*
 //
 // Sections:
-//   AsyncTraceCallbacks — async line trace and overlap with delegate callbacks
+//   AsyncTraceCallbacks �?async line trace and overlap with delegate callbacks
 //
 // CQTest adaptation notes:
 //   Single legacy automation test converted to TEST_CLASS.
@@ -34,127 +34,6 @@
 // Helper utilities (retained from original)
 // ----------------------------------------------------------------------------
 
-namespace AngelscriptTest_Bindings_AngelscriptWorldCollisionAsyncBindingsTests_Private
-{
-	using namespace AngelscriptFunctionalTestUtils;
-
-	static const FName WorldCollisionAsyncModuleName(TEXT("ASWorldCollisionAsyncTraceCallbacks"));
-	static const FString WorldCollisionAsyncFilename(TEXT("WorldCollisionAsyncTraceCallbacks.as"));
-	static const FName WorldCollisionAsyncClassName(TEXT("ATestWorldCollisionAsyncCallbacks"));
-	static const FVector AsyncCollisionTargetLocation(0.0f, 0.0f, 0.0f);
-	static const FVector AsyncLineTraceStart(-200.0f, 0.0f, 0.0f);
-	static const FVector AsyncLineTraceEnd(200.0f, 0.0f, 0.0f);
-	static const FVector AsyncTargetExtent(50.0f, 50.0f, 50.0f);
-	static const FVector AsyncQueryExtent(30.0f, 30.0f, 30.0f);
-	static constexpr float AsyncTickDeltaTime = 1.0f / 60.0f;
-	static constexpr int32 AsyncMaxTickCount = 90;
-
-	UBoxComponent* AddCollisionBox(
-		AActor& Owner,
-		const FName ComponentName,
-		const FVector& BoxExtent,
-		const FVector& WorldLocation)
-	{
-		UBoxComponent* BoxComponent = NewObject<UBoxComponent>(&Owner, ComponentName);
-		check(BoxComponent != nullptr);
-
-		Owner.AddInstanceComponent(BoxComponent);
-		Owner.SetRootComponent(BoxComponent);
-		BoxComponent->RegisterComponent();
-		BoxComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		BoxComponent->SetCollisionObjectType(ECC_WorldDynamic);
-		BoxComponent->SetCollisionResponseToAllChannels(ECR_Block);
-		BoxComponent->SetGenerateOverlapEvents(true);
-		BoxComponent->SetBoxExtent(BoxExtent);
-		BoxComponent->SetWorldLocation(WorldLocation);
-		return BoxComponent;
-	}
-
-	bool ExecuteGeneratedIntMethod(
-		FAutomationTestBase& Test,
-		UObject* Object,
-		UClass* OwnerClass,
-		FName FunctionName,
-		int32& OutResult)
-	{
-		FNoDiscardAsserter Assert(Test);
-		UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
-		if (!Assert.IsNotNull(
-			Function,
-			*FString::Printf(TEXT("World collision async method '%s' should exist"), *FunctionName.ToString())))
-		{
-			return false;
-		}
-
-		return Assert.IsTrue(
-			ExecuteGeneratedIntEventOnGameThread(Object, Function, OutResult),
-			*FString::Printf(TEXT("World collision async method '%s' should execute"), *FunctionName.ToString()));
-	}
-
-	bool ReadUInt64PropertyChecked(
-		FAutomationTestBase& Test,
-		UObject* Object,
-		FName PropertyName,
-		uint64& OutValue)
-	{
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(Object, TEXT("World collision async object should be valid for uint64 property reads")))
-		{
-			return false;
-		}
-
-		FUInt64Property* Property = FindFProperty<FUInt64Property>(Object->GetClass(), PropertyName);
-		if (!Assert.IsNotNull(
-			Property,
-			*FString::Printf(TEXT("World collision async property '%s' should exist"), *PropertyName.ToString())))
-		{
-			return false;
-		}
-
-		OutValue = Property->GetPropertyValue_InContainer(Object);
-		return true;
-	}
-
-	bool WaitForAsyncCallbacks(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		UWorld& World,
-		AActor& ScriptActor)
-	{
-		FNoDiscardAsserter Assert(Test);
-		FIntProperty* LineCallbackCountProperty = FindFProperty<FIntProperty>(ScriptActor.GetClass(), TEXT("LineCallbackCount"));
-		FIntProperty* OverlapCallbackCountProperty = FindFProperty<FIntProperty>(ScriptActor.GetClass(), TEXT("OverlapCallbackCount"));
-		bool bHasCallbackProperties = true;
-		bHasCallbackProperties &= Assert.IsNotNull(LineCallbackCountProperty, TEXT("World collision async actor should expose LineCallbackCount"));
-		bHasCallbackProperties &= Assert.IsNotNull(OverlapCallbackCountProperty, TEXT("World collision async actor should expose OverlapCallbackCount"));
-		if (!bHasCallbackProperties)
-		{
-			return false;
-		}
-
-		for (int32 TickIndex = 0; TickIndex < AsyncMaxTickCount; ++TickIndex)
-		{
-			const int32 LineCallbackCount = LineCallbackCountProperty->GetPropertyValue_InContainer(&ScriptActor);
-			const int32 OverlapCallbackCount = OverlapCallbackCountProperty->GetPropertyValue_InContainer(&ScriptActor);
-			if (LineCallbackCount >= 1 && OverlapCallbackCount >= 1)
-			{
-				return true;
-			}
-
-			TickWorld(Engine, World, AsyncTickDeltaTime, 1);
-		}
-
-		const int32 FinalLineCallbackCount = LineCallbackCountProperty->GetPropertyValue_InContainer(&ScriptActor);
-		const int32 FinalOverlapCallbackCount = OverlapCallbackCountProperty->GetPropertyValue_InContainer(&ScriptActor);
-		Test.AddError(FString::Printf(
-			TEXT("Async world-collision callbacks did not complete within %d ticks (line=%d overlap=%d)."),
-			AsyncMaxTickCount,
-			FinalLineCallbackCount,
-			FinalOverlapCallbackCount));
-		return false;
-	}
-}
-
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -169,14 +48,131 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptWorldCollisionAsyncBindingsTest,
 	"Angelscript.TestModule.Bindings.WorldCollisionAsync",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+inline static const FName WorldCollisionAsyncModuleName = FName(TEXT("ASWorldCollisionAsyncTraceCallbacks"));
+inline static const FString WorldCollisionAsyncFilename = FString(TEXT("WorldCollisionAsyncTraceCallbacks.as"));
+inline static const FName WorldCollisionAsyncClassName = FName(TEXT("ATestWorldCollisionAsyncCallbacks"));
+inline static const FVector AsyncCollisionTargetLocation = FVector(0.0f, 0.0f, 0.0f);
+inline static const FVector AsyncLineTraceStart = FVector(-200.0f, 0.0f, 0.0f);
+inline static const FVector AsyncLineTraceEnd = FVector(200.0f, 0.0f, 0.0f);
+inline static const FVector AsyncTargetExtent = FVector(50.0f, 50.0f, 50.0f);
+inline static const FVector AsyncQueryExtent = FVector(30.0f, 30.0f, 30.0f);
+static constexpr float AsyncTickDeltaTime = 1.0f / 60.0f;
+static constexpr int32 AsyncMaxTickCount = 90;
+
+static UBoxComponent* AddCollisionBox(
+	AActor& Owner,
+	const FName ComponentName,
+	const FVector& BoxExtent,
+	const FVector& WorldLocation)
+{
+	UBoxComponent* BoxComponent = NewObject<UBoxComponent>(&Owner, ComponentName);
+	check(BoxComponent != nullptr);
+
+	Owner.AddInstanceComponent(BoxComponent);
+	Owner.SetRootComponent(BoxComponent);
+	BoxComponent->RegisterComponent();
+	BoxComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	BoxComponent->SetCollisionObjectType(ECC_WorldDynamic);
+	BoxComponent->SetCollisionResponseToAllChannels(ECR_Block);
+	BoxComponent->SetGenerateOverlapEvents(true);
+	BoxComponent->SetBoxExtent(BoxExtent);
+	BoxComponent->SetWorldLocation(WorldLocation);
+	return BoxComponent;
+}
+
+static bool ExecuteGeneratedIntMethod(
+	FAutomationTestBase& Test,
+	UObject* Object,
+	UClass* OwnerClass,
+	FName FunctionName,
+	int32& OutResult)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
+	if (!LocalAssert.IsNotNull(
+		Function,
+		*FString::Printf(TEXT("World collision async method '%s' should exist"), *FunctionName.ToString())))
+	{
+		return false;
+	}
+
+	return LocalAssert.IsTrue(
+		ExecuteGeneratedIntEventOnGameThread(Object, Function, OutResult),
+		*FString::Printf(TEXT("World collision async method '%s' should execute"), *FunctionName.ToString()));
+}
+
+static bool ReadUInt64PropertyChecked(
+	FAutomationTestBase& Test,
+	UObject* Object,
+	FName PropertyName,
+	uint64& OutValue)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	if (!LocalAssert.IsNotNull(Object, TEXT("World collision async object should be valid for uint64 property reads")))
+	{
+		return false;
+	}
+
+	FUInt64Property* Property = FindFProperty<FUInt64Property>(Object->GetClass(), PropertyName);
+	if (!LocalAssert.IsNotNull(
+		Property,
+		*FString::Printf(TEXT("World collision async property '%s' should exist"), *PropertyName.ToString())))
+	{
+		return false;
+	}
+
+	OutValue = Property->GetPropertyValue_InContainer(Object);
+	return true;
+}
+
+static bool WaitForAsyncCallbacks(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine,
+	UWorld& World,
+	AActor& ScriptActor)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	FIntProperty* LineCallbackCountProperty = FindFProperty<FIntProperty>(ScriptActor.GetClass(), TEXT("LineCallbackCount"));
+	FIntProperty* OverlapCallbackCountProperty = FindFProperty<FIntProperty>(ScriptActor.GetClass(), TEXT("OverlapCallbackCount"));
+	bool bHasCallbackProperties = true;
+	bHasCallbackProperties &= LocalAssert.IsNotNull(LineCallbackCountProperty, TEXT("World collision async actor should expose LineCallbackCount"));
+	bHasCallbackProperties &= LocalAssert.IsNotNull(OverlapCallbackCountProperty, TEXT("World collision async actor should expose OverlapCallbackCount"));
+	if (!bHasCallbackProperties)
+	{
+		return false;
+	}
+
+	for (int32 TickIndex = 0; TickIndex < AsyncMaxTickCount; ++TickIndex)
+	{
+		const int32 LineCallbackCount = LineCallbackCountProperty->GetPropertyValue_InContainer(&ScriptActor);
+		const int32 OverlapCallbackCount = OverlapCallbackCountProperty->GetPropertyValue_InContainer(&ScriptActor);
+		if (LineCallbackCount >= 1 && OverlapCallbackCount >= 1)
+		{
+			return true;
+		}
+
+		AngelscriptFunctionalTestUtils::TickWorld(Engine, World, AsyncTickDeltaTime, 1);
+	}
+
+	const int32 FinalLineCallbackCount = LineCallbackCountProperty->GetPropertyValue_InContainer(&ScriptActor);
+	const int32 FinalOverlapCallbackCount = OverlapCallbackCountProperty->GetPropertyValue_InContainer(&ScriptActor);
+	Test.AddError(FString::Printf(
+		TEXT("Async world-collision callbacks did not complete within %d ticks (line=%d overlap=%d)."),
+		AsyncMaxTickCount,
+		FinalLineCallbackCount,
+		FinalOverlapCallbackCount));
+	return false;
+}
+
+public:
 	// ====================================================================
 	// Section: AsyncTraceCallbacks
 	// ====================================================================
 
 	TEST_METHOD(AsyncTraceCallbacks)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptWorldCollisionAsyncBindingsTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		{
 		FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
@@ -192,7 +188,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptWorldCollisionAsyncBindingsTest,
 			Engine.DiscardModule(*WorldCollisionAsyncModuleName.ToString());
 		};
 
-		UClass* ScriptClass = CompileScriptModule(
+		UClass* ScriptClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
 			*TestRunner,
 			Engine,
 			WorldCollisionAsyncModuleName,
@@ -324,10 +320,10 @@ class ATestWorldCollisionAsyncCallbacks : AActor
 		UBoxComponent* TargetBox = AddCollisionBox(TargetActor, TEXT("AsyncCollisionTarget"), AsyncTargetExtent, AsyncCollisionTargetLocation);
 		ASSERT_THAT(IsNotNull(TargetBox, TEXT("World collision async target box should be created")));
 
-		AActor* ScriptActor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		AActor* ScriptActor = AngelscriptFunctionalTestUtils::SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(ScriptActor, TEXT("World collision async script actor should spawn")));
 
-		BeginPlayActor(Engine, *ScriptActor);
+		AngelscriptFunctionalTestUtils::BeginPlayActor(Engine, *ScriptActor);
 
 		UWorld* World = TargetActor.GetWorld();
 		ASSERT_THAT(IsNotNull(World, TEXT("World collision async test should access the spawned test world")));
@@ -360,18 +356,18 @@ class ATestWorldCollisionAsyncCallbacks : AActor
 		uint64 LastLineCallbackHandle = 0;
 		uint64 OverlapHandleRaw = 0;
 		uint64 LastOverlapCallbackHandle = 0;
-		if (!ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("LineCallbackCount"), LineCallbackCount)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("LineUserData"), LineUserData)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("LineHitCount"), LineHitCount)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("LineQuerySucceeded"), LineQuerySucceeded)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("LineQueryHitCount"), LineQueryHitCount)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("LineHandleValidInitially"), LineHandleValidInitially)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("OverlapCallbackCount"), OverlapCallbackCount)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("OverlapUserData"), OverlapUserData)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("OverlapHitCount"), OverlapHitCount)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("OverlapQuerySucceeded"), OverlapQuerySucceeded)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("OverlapQueryHitCount"), OverlapQueryHitCount)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("OverlapHandleValidInitially"), OverlapHandleValidInitially)
+		if (!AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("LineCallbackCount"), LineCallbackCount)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("LineUserData"), LineUserData)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("LineHitCount"), LineHitCount)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("LineQuerySucceeded"), LineQuerySucceeded)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("LineQueryHitCount"), LineQueryHitCount)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("LineHandleValidInitially"), LineHandleValidInitially)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("OverlapCallbackCount"), OverlapCallbackCount)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("OverlapUserData"), OverlapUserData)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("OverlapHitCount"), OverlapHitCount)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("OverlapQuerySucceeded"), OverlapQuerySucceeded)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("OverlapQueryHitCount"), OverlapQueryHitCount)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptActor, TEXT("OverlapHandleValidInitially"), OverlapHandleValidInitially)
 			|| !ReadUInt64PropertyChecked(*TestRunner, ScriptActor, TEXT("LineHandleRaw"), LineHandleRaw)
 			|| !ReadUInt64PropertyChecked(*TestRunner, ScriptActor, TEXT("LastLineCallbackHandle"), LastLineCallbackHandle)
 			|| !ReadUInt64PropertyChecked(*TestRunner, ScriptActor, TEXT("OverlapHandleRaw"), OverlapHandleRaw)

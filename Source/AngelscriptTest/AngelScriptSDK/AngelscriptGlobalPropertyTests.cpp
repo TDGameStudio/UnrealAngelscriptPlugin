@@ -9,7 +9,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalPropertyTests,
 	"Angelscript.TestModule.AngelScriptSDK.GlobalProperty",
@@ -23,7 +22,7 @@ private:
 	inline static bool GTestBool = false;
 
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -34,33 +33,33 @@ public:
 			return;
 		}
 
-		FNoDiscardAsserter Assert(*TestRunner);
-		if (!Assert.IsTrue(ScriptEngine->RegisterGlobalProperty("int GTestValue", &GTestValue) >= 0,
+		FNoDiscardAsserter LocalAssert(*TestRunner);
+		if (!LocalAssert.IsTrue(ScriptEngine->RegisterGlobalProperty("int GTestValue", &GTestValue) >= 0,
 			TEXT("RegisterGlobalProperty int GTestValue should succeed")))
 		{
 			return;
 		}
-		if (!Assert.IsTrue(ScriptEngine->RegisterGlobalProperty("int GTestA", &GTestA) >= 0,
+		if (!LocalAssert.IsTrue(ScriptEngine->RegisterGlobalProperty("int GTestA", &GTestA) >= 0,
 			TEXT("RegisterGlobalProperty int GTestA should succeed")))
 		{
 			return;
 		}
-		if (!Assert.IsTrue(ScriptEngine->RegisterGlobalProperty("int GTestB", &GTestB) >= 0,
+		if (!LocalAssert.IsTrue(ScriptEngine->RegisterGlobalProperty("int GTestB", &GTestB) >= 0,
 			TEXT("RegisterGlobalProperty int GTestB should succeed")))
 		{
 			return;
 		}
-		if (!Assert.IsTrue(ScriptEngine->RegisterGlobalProperty("double GScalar", &GTestDouble) >= 0,
+		if (!LocalAssert.IsTrue(ScriptEngine->RegisterGlobalProperty("double GScalar", &GTestDouble) >= 0,
 			TEXT("RegisterGlobalProperty double GScalar should succeed")))
 		{
 			return;
 		}
-		if (!Assert.IsTrue(ScriptEngine->RegisterGlobalProperty("double GTestDouble", &GTestDouble) >= 0,
+		if (!LocalAssert.IsTrue(ScriptEngine->RegisterGlobalProperty("double GTestDouble", &GTestDouble) >= 0,
 			TEXT("RegisterGlobalProperty double GTestDouble should succeed")))
 		{
 			return;
 		}
-		if (!Assert.IsTrue(ScriptEngine->RegisterGlobalProperty("bool GTestBool", &GTestBool) >= 0,
+		if (!LocalAssert.IsTrue(ScriptEngine->RegisterGlobalProperty("bool GTestBool", &GTestBool) >= 0,
 			TEXT("RegisterGlobalProperty bool GTestBool should succeed")))
 		{
 			return;
@@ -84,12 +83,15 @@ public:
 
 	TEST_METHOD(ScriptReads)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		GTestValue = 42;
 
-		FScopedNativeModule M(*TestRunner, Engine, "GPRead", "int Entry() { return GTestValue; }\n");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "GPRead", "int Entry() { return GTestValue; }\n");
 		if (!M.IsValid()) return;
 
 		int32 Result = 0;
@@ -99,12 +101,15 @@ public:
 
 	TEST_METHOD(ScriptWrites)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		GTestValue = 0;
 
-		FScopedNativeModule M(*TestRunner, Engine, "GPWrite", "void Entry() { GTestValue = 99; }\n");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "GPWrite", "void Entry() { GTestValue = 99; }\n");
 		if (!M.IsValid()) return;
 
 		ExecuteScriptVoidFunction(*TestRunner, SE, M, "void Entry()");
@@ -113,13 +118,16 @@ public:
 
 	TEST_METHOD(MultipleGlobals)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		GTestA = 10;
 		GTestB = 20;
 
-		FScopedNativeModule M(*TestRunner, Engine, "GPMulti", "int Entry() { return GTestA + GTestB; }\n");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "GPMulti", "int Entry() { return GTestA + GTestB; }\n");
 		if (!M.IsValid()) return;
 
 		int32 Result = 0;
@@ -129,6 +137,9 @@ public:
 
 	TEST_METHOD(ScalarReadModifyWrite)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
@@ -138,7 +149,7 @@ public:
 		// supported scalar floating declaration is `double` backed by a C++ double.
 		GTestDouble = 1.5;
 
-		FScopedNativeModule M(*TestRunner, Engine, "GPFloat", "void Entry() { GScalar = GScalar * 2.0 + 1.0; }\n");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "GPFloat", "void Entry() { GScalar = GScalar * 2.0 + 1.0; }\n");
 		if (!M.IsValid()) return;
 
 		ExecuteScriptVoidFunction(*TestRunner, SE, M, "void Entry()");
@@ -148,12 +159,15 @@ public:
 
 	TEST_METHOD(DoubleProperty)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		GTestDouble = 2.5;
 
-		FScopedNativeModule M(*TestRunner, Engine, "GPDouble", "double Entry() { return GTestDouble * 4.0; }\n");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "GPDouble", "double Entry() { return GTestDouble * 4.0; }\n");
 		if (!M.IsValid()) return;
 
 		double Result = 0.0;
@@ -164,12 +178,15 @@ public:
 
 	TEST_METHOD(BoolProperty)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		GTestBool = false;
 
-		FScopedNativeModule M(*TestRunner, Engine, "GPBool", "void Entry() { GTestBool = !GTestBool; }\n");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "GPBool", "void Entry() { GTestBool = !GTestBool; }\n");
 		if (!M.IsValid()) return;
 
 		ExecuteScriptVoidFunction(*TestRunner, SE, M, "void Entry()");

@@ -115,8 +115,6 @@ namespace CompilerPipelineImportTest
 	}
 }
 
-using namespace CompilerPipelineImportTest;
-
 TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

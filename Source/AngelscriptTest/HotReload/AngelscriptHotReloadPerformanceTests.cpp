@@ -11,59 +11,59 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_HotReload_AngelscriptHotReloadPerformanceTests_Private
-{
-struct FHotReloadPerformanceSample
-	{
-		double ReloadSeconds = 0.0;
-		ECompileResult CompileResult = ECompileResult::Error;
-	};
 
-	template<typename MeasureFunc>
-	TArray<FHotReloadPerformanceSample> CollectHotReloadSamples(MeasureFunc&& Measure)
-	{
-		constexpr int32 WarmupRuns = 1;
-		constexpr int32 MeasurementRuns = 3;
-		for (int32 WarmupIndex = 0; WarmupIndex < WarmupRuns; ++WarmupIndex)
-		{
-			Measure();
-		}
-
-		TArray<FHotReloadPerformanceSample> Samples;
-		for (int32 MeasurementIndex = 0; MeasurementIndex < MeasurementRuns; ++MeasurementIndex)
-		{
-			Samples.Add(Measure());
-		}
-		return Samples;
-	}
-
-	FString WriteHotReloadMetrics(FAutomationTestBase& Test, const FString& RunId, const FString& TestGroup, const FString& MetricName, const TArray<FHotReloadPerformanceSample>& Samples, const TArray<FString>& Notes)
-	{
-		TArray<double> Durations;
-		for (const FHotReloadPerformanceSample& Sample : Samples)
-		{
-			Durations.Add(Sample.ReloadSeconds);
-		}
-
-		LogPerformanceMetric(MetricName, Durations);
-
-		TArray<FAngelscriptPerformanceMetric> Metrics;
-		Metrics.Add({ MetricName, Durations, ComputeMedian(Durations) });
-		const FString MetricsPath = WritePerformanceMetricsArtifact(RunId, TestGroup, Metrics, Notes);
-		Test.TestTrue(TEXT("Hot reload performance test should write a metrics.json artifact"), FPlatformFileManager::Get().GetPlatformFile().FileExists(*MetricsPath));
-		return MetricsPath;
-	}
-}
-
-
-#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 #define AddExpectedError(...) Test.AddExpectedError(__VA_ARGS__)
 #define AddExpectedErrorPlain(...) Test.AddExpectedErrorPlain(__VA_ARGS__)
 
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadPerformanceTests,
+	"Angelscript.TestModule.HotReload.Performance",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+private:
+struct FHotReloadPerformanceSample
+{
+	double ReloadSeconds = 0.0;
+	ECompileResult CompileResult = ECompileResult::Error;
+};
+
+template<typename MeasureFunc>
+static TArray<FHotReloadPerformanceSample> CollectHotReloadSamples(MeasureFunc&& Measure)
+{
+	constexpr int32 WarmupRuns = 1;
+	constexpr int32 MeasurementRuns = 3;
+	for (int32 WarmupIndex = 0; WarmupIndex < WarmupRuns; ++WarmupIndex)
+	{
+		Measure();
+	}
+
+	TArray<FHotReloadPerformanceSample> Samples;
+	for (int32 MeasurementIndex = 0; MeasurementIndex < MeasurementRuns; ++MeasurementIndex)
+	{
+		Samples.Add(Measure());
+	}
+	return Samples;
+}
+
+static FString WriteHotReloadMetrics(FAutomationTestBase& Test, const FString& RunId, const FString& TestGroup, const FString& MetricName, const TArray<FHotReloadPerformanceSample>& Samples, const TArray<FString>& Notes)
+{
+	TArray<double> Durations;
+	for (const FHotReloadPerformanceSample& Sample : Samples)
+	{
+		Durations.Add(Sample.ReloadSeconds);
+	}
+
+	LogPerformanceMetric(MetricName, Durations);
+
+	TArray<FAngelscriptPerformanceMetric> Metrics;
+	Metrics.Add({ MetricName, Durations, ComputeMedian(Durations) });
+	const FString MetricsPath = WritePerformanceMetricsArtifact(RunId, TestGroup, Metrics, Notes);
+	Test.TestTrue(TEXT("Hot reload performance test should write a metrics.json artifact"), FPlatformFileManager::Get().GetPlatformFile().FileExists(*MetricsPath));
+	return MetricsPath;
+}
+
 static bool HotReloadSoftLatency(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadPerformanceTests_Private;
-	const auto Measure = []() -> FHotReloadPerformanceSample
+const auto Measure = []() -> FHotReloadPerformanceSample
 	{
 		FHotReloadPerformanceSample ReturnSample;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -109,7 +109,7 @@ class UHotReloadPerformanceSoft : UObject
 	const TArray<FHotReloadPerformanceSample> Samples = CollectHotReloadSamples(Measure);
 	for (const FHotReloadPerformanceSample& Sample : Samples)
 	{
-		TestTrue(TEXT("Soft reload latency baseline should stay on a handled reload path"), Sample.CompileResult == ECompileResult::FullyHandled || Sample.CompileResult == ECompileResult::PartiallyHandled);
+		Test.TestTrue(TEXT("Soft reload latency baseline should stay on a handled reload path"), Sample.CompileResult == ECompileResult::FullyHandled || Sample.CompileResult == ECompileResult::PartiallyHandled);
 	}
 	WriteHotReloadMetrics(Test, TEXT("P3_2_HotReloadPerformance_Soft"), TEXT("Angelscript.TestModule.HotReload.Performance.SoftReloadLatency"), TEXT("reload.modify.soft_seconds"), Samples, { TEXT("Measured on a body-only module change via SoftReloadOnly compile path.") });
 	return true;
@@ -117,8 +117,7 @@ class UHotReloadPerformanceSoft : UObject
 
 static bool HotReloadFullLatency(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadPerformanceTests_Private;
-	const auto Measure = []() -> FHotReloadPerformanceSample
+const auto Measure = []() -> FHotReloadPerformanceSample
 	{
 		FHotReloadPerformanceSample ReturnSample;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -161,7 +160,7 @@ class UHotReloadPerformanceFull : UObject
 	const TArray<FHotReloadPerformanceSample> Samples = CollectHotReloadSamples(Measure);
 	for (const FHotReloadPerformanceSample& Sample : Samples)
 	{
-		TestTrue(TEXT("Full reload latency baseline should stay on a handled full reload path"), Sample.CompileResult == ECompileResult::FullyHandled || Sample.CompileResult == ECompileResult::PartiallyHandled);
+		Test.TestTrue(TEXT("Full reload latency baseline should stay on a handled full reload path"), Sample.CompileResult == ECompileResult::FullyHandled || Sample.CompileResult == ECompileResult::PartiallyHandled);
 	}
 	WriteHotReloadMetrics(Test, TEXT("P3_2_HotReloadPerformance_Full"), TEXT("Angelscript.TestModule.HotReload.Performance.FullReloadLatency"), TEXT("reload.full.seconds"), Samples, { TEXT("Measured on a structural property change via FullReload compile path.") });
 	return true;
@@ -169,8 +168,7 @@ class UHotReloadPerformanceFull : UObject
 
 static bool HotReloadRenameWindowLatency(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadPerformanceTests_Private;
-	AddExpectedError(TEXT("Cannot declare class UHotReloadPerformanceRename in module HotReloadPerformanceRenameNew. A class with this name already exists in module HotReloadPerformanceRenameOld."), EAutomationExpectedErrorFlags::Contains, 4);
+AddExpectedError(TEXT("Cannot declare class UHotReloadPerformanceRename in module HotReloadPerformanceRenameNew. A class with this name already exists in module HotReloadPerformanceRenameOld."), EAutomationExpectedErrorFlags::Contains, 4);
 
 	const auto Measure = []() -> FHotReloadPerformanceSample
 	{
@@ -215,7 +213,7 @@ class UHotReloadPerformanceRename : UObject
 	const TArray<FHotReloadPerformanceSample> Samples = CollectHotReloadSamples(Measure);
 	for (const FHotReloadPerformanceSample& Sample : Samples)
 	{
-		TestTrue(TEXT("Rename-window latency baseline should complete a modeled rename-window processing pass"),
+		Test.TestTrue(TEXT("Rename-window latency baseline should complete a modeled rename-window processing pass"),
 			Sample.CompileResult == ECompileResult::FullyHandled
 			|| Sample.CompileResult == ECompileResult::PartiallyHandled
 			|| Sample.CompileResult == ECompileResult::Error
@@ -227,8 +225,7 @@ class UHotReloadPerformanceRename : UObject
 
 static bool HotReloadBurstChurnLatency(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadPerformanceTests_Private;
-	AddExpectedErrorPlain(TEXT("Full Reload is required due to UPROPERTY() or UFUNCTION() changes, but cannot perform a full reload right now. Keeping old angelscript code active."), EAutomationExpectedErrorFlags::Contains, -1);
+AddExpectedErrorPlain(TEXT("Full Reload is required due to UPROPERTY() or UFUNCTION() changes, but cannot perform a full reload right now. Keeping old angelscript code active."), EAutomationExpectedErrorFlags::Contains, -1);
 
 	const auto Measure = []() -> FHotReloadPerformanceSample
 	{
@@ -300,7 +297,7 @@ class UHotReloadPerformanceBurst : UObject
 	const TArray<FHotReloadPerformanceSample> Samples = CollectHotReloadSamples(Measure);
 	for (const FHotReloadPerformanceSample& Sample : Samples)
 	{
-		TestTrue(TEXT("Burst churn latency test should complete a modeled reload burst or explicitly surface the need for a deferred full reload"),
+		Test.TestTrue(TEXT("Burst churn latency test should complete a modeled reload burst or explicitly surface the need for a deferred full reload"),
 			Sample.CompileResult == ECompileResult::FullyHandled
 			|| Sample.CompileResult == ECompileResult::PartiallyHandled
 			|| Sample.CompileResult == ECompileResult::ErrorNeedFullReload);
@@ -309,14 +306,7 @@ class UHotReloadPerformanceBurst : UObject
 	return true;
 }
 
-#undef TestTrue
-#undef AddExpectedError
-#undef AddExpectedErrorPlain
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadPerformanceTests,
-	"Angelscript.TestModule.HotReload.Performance",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(SoftReloadLatency)
 	{
 		ASSERT_THAT(IsTrue(HotReloadSoftLatency(*TestRunner)));
@@ -337,5 +327,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadPerformanceTests,
 		ASSERT_THAT(IsTrue(HotReloadBurstChurnLatency(*TestRunner)));
 	}
 };
+
+#undef AddExpectedError
+#undef AddExpectedErrorPlain
 
 #endif

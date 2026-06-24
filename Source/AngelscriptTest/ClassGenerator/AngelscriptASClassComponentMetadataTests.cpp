@@ -9,152 +9,150 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
-namespace AngelscriptTest_ClassGenerator_AngelscriptASClassComponentMetadataTests_Private
-{
-	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsTrue(bActual, Message);
-	}
-
-	static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsFalse(bActual, Message);
-	}
-
-	template <typename ActualType, typename ExpectedType>
-	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreEqual(Expected, Actual, Message);
-	}
-
-	template <typename ValueType>
-	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsNotNull(Value, Message);
-	}
-
-	static const FName ASClassComponentMetadataModuleName(TEXT("ASClassComponentMetadata"));
-	static const FString ASClassComponentMetadataFilename(TEXT("ASClassComponentMetadata.as"));
-	static const FName ASClassComponentMetadataDerivedClassName(TEXT("AMetadataDerivedActor"));
-	static const FName ASClassComponentMetadataBaseClassName(TEXT("AMetadataBaseActor"));
-	static const FName ASClassRootComponentName(TEXT("RootScene"));
-	static const FName ASClassBillboardComponentName(TEXT("Billboard"));
-	static const FName ASClassOverrideVariableName(TEXT("ReplacementBillboard"));
-
-	static const FName ASClassComponentMetadataSoftReloadModuleName(TEXT("ASClassComponentMetadataSoftReload"));
-	static const FString ASClassComponentMetadataSoftReloadFilename(TEXT("ASClassComponentMetadataSoftReload.as"));
-	static const FName ASClassComponentMetadataSoftReloadDerivedClassName(TEXT("ASoftMetadataDerivedActor"));
-	static const FName ASClassComponentMetadataSoftReloadBaseClassName(TEXT("ASoftMetadataBaseActor"));
-	static const FName ASClassSoftReloadRootComponentClassName(TEXT("USoftMetadataRootComponent"));
-	static const FName ASClassSoftReloadReplacementComponentClassName(TEXT("USoftMetadataReplacementBillboardComponent"));
-
-	bool IsHandledReloadResult(const ECompileResult ReloadResult)
-	{
-		return ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled;
-	}
-
-	struct FDefaultComponentMetadataSnapshot
-	{
-		FName ComponentClassName = NAME_None;
-		FName ComponentName = NAME_None;
-		FName Attach = NAME_None;
-		FName AttachSocket = NAME_None;
-		bool bIsRoot = false;
-		bool bEditorOnly = false;
-
-		bool operator==(const FDefaultComponentMetadataSnapshot& Other) const
-		{
-			return ComponentClassName == Other.ComponentClassName
-				&& ComponentName == Other.ComponentName
-				&& Attach == Other.Attach
-				&& AttachSocket == Other.AttachSocket
-				&& bIsRoot == Other.bIsRoot
-				&& bEditorOnly == Other.bEditorOnly;
-		}
-	};
-
-	struct FOverrideComponentMetadataSnapshot
-	{
-		FName ComponentClassName = NAME_None;
-		FName OverrideComponentName = NAME_None;
-		FName VariableName = NAME_None;
-
-		bool operator==(const FOverrideComponentMetadataSnapshot& Other) const
-		{
-			return ComponentClassName == Other.ComponentClassName
-				&& OverrideComponentName == Other.OverrideComponentName
-				&& VariableName == Other.VariableName;
-		}
-	};
-
-	const UASClass::FDefaultComponent* FindDefaultComponentEntryByName(const UASClass* ScriptClass, FName ComponentName)
-	{
-		if (ScriptClass == nullptr) { return nullptr; }
-		return ScriptClass->DefaultComponents.FindByPredicate([ComponentName](const UASClass::FDefaultComponent& Entry)
-		{ return Entry.ComponentName == ComponentName; });
-	}
-
-	const UASClass::FOverrideComponent* FindOverrideComponentEntryByVariableName(const UASClass* ScriptClass, FName VariableName)
-	{
-		if (ScriptClass == nullptr) { return nullptr; }
-		return ScriptClass->OverrideComponents.FindByPredicate([VariableName](const UASClass::FOverrideComponent& Entry)
-		{ return Entry.VariableName == VariableName; });
-	}
-
-	TArray<FDefaultComponentMetadataSnapshot> SnapshotDefaultComponentLayoutMetadata(const UASClass* ScriptClass)
-	{
-		TArray<FDefaultComponentMetadataSnapshot> Snapshot;
-		if (ScriptClass == nullptr) { return Snapshot; }
-		Snapshot.Reserve(ScriptClass->DefaultComponents.Num());
-		for (const UASClass::FDefaultComponent& Entry : ScriptClass->DefaultComponents)
-		{
-			Snapshot.Add({
-				Entry.ComponentClass != nullptr ? Entry.ComponentClass->GetFName() : NAME_None,
-				Entry.ComponentName, Entry.Attach, Entry.AttachSocket, Entry.bIsRoot, Entry.bEditorOnly
-			});
-		}
-		return Snapshot;
-	}
-
-	TArray<FOverrideComponentMetadataSnapshot> SnapshotOverrideComponentLayoutMetadata(const UASClass* ScriptClass)
-	{
-		TArray<FOverrideComponentMetadataSnapshot> Snapshot;
-		if (ScriptClass == nullptr) { return Snapshot; }
-		Snapshot.Reserve(ScriptClass->OverrideComponents.Num());
-		for (const UASClass::FOverrideComponent& Entry : ScriptClass->OverrideComponents)
-		{
-			Snapshot.Add({
-				Entry.ComponentClass != nullptr ? Entry.ComponentClass->GetFName() : NAME_None,
-				Entry.OverrideComponentName, Entry.VariableName
-			});
-		}
-		return Snapshot;
-	}
-
-	USceneComponent* FindSceneComponentByName(const AActor* Actor, FName ComponentName)
-	{
-		if (Actor == nullptr) { return nullptr; }
-		for (UActorComponent* Component : Actor->GetComponents())
-		{
-			if (Component != nullptr && Component->GetFName() == ComponentName)
-			{ return Cast<USceneComponent>(Component); }
-		}
-		return nullptr;
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptASClassComponentMetadataTests,
 	"Angelscript.TestModule.ClassGenerator.ASClass",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsTrue(bActual, Message);
+}
+
+static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsFalse(bActual, Message);
+}
+
+template <typename ActualType, typename ExpectedType>
+static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.AreEqual(Expected, Actual, Message);
+}
+
+template <typename ValueType>
+static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsNotNull(Value, Message);
+}
+
+inline static const FName ASClassComponentMetadataModuleName = FName(TEXT("ASClassComponentMetadata"));
+inline static const FString ASClassComponentMetadataFilename = FString(TEXT("ASClassComponentMetadata.as"));
+inline static const FName ASClassComponentMetadataDerivedClassName = FName(TEXT("AMetadataDerivedActor"));
+inline static const FName ASClassComponentMetadataBaseClassName = FName(TEXT("AMetadataBaseActor"));
+inline static const FName ASClassRootComponentName = FName(TEXT("RootScene"));
+inline static const FName ASClassBillboardComponentName = FName(TEXT("Billboard"));
+inline static const FName ASClassOverrideVariableName = FName(TEXT("ReplacementBillboard"));
+
+inline static const FName ASClassComponentMetadataSoftReloadModuleName = FName(TEXT("ASClassComponentMetadataSoftReload"));
+inline static const FString ASClassComponentMetadataSoftReloadFilename = FString(TEXT("ASClassComponentMetadataSoftReload.as"));
+inline static const FName ASClassComponentMetadataSoftReloadDerivedClassName = FName(TEXT("ASoftMetadataDerivedActor"));
+inline static const FName ASClassComponentMetadataSoftReloadBaseClassName = FName(TEXT("ASoftMetadataBaseActor"));
+inline static const FName ASClassSoftReloadRootComponentClassName = FName(TEXT("USoftMetadataRootComponent"));
+inline static const FName ASClassSoftReloadReplacementComponentClassName = FName(TEXT("USoftMetadataReplacementBillboardComponent"));
+
+static bool IsHandledReloadResult(const ECompileResult ReloadResult)
+{
+	return ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled;
+}
+
+struct FDefaultComponentMetadataSnapshot
+{
+	FName ComponentClassName = NAME_None;
+	FName ComponentName = NAME_None;
+	FName Attach = NAME_None;
+	FName AttachSocket = NAME_None;
+	bool bIsRoot = false;
+	bool bEditorOnly = false;
+
+	bool operator==(const FDefaultComponentMetadataSnapshot& Other) const
+	{
+		return ComponentClassName == Other.ComponentClassName
+			&& ComponentName == Other.ComponentName
+			&& Attach == Other.Attach
+			&& AttachSocket == Other.AttachSocket
+			&& bIsRoot == Other.bIsRoot
+			&& bEditorOnly == Other.bEditorOnly;
+	}
+};
+
+struct FOverrideComponentMetadataSnapshot
+{
+	FName ComponentClassName = NAME_None;
+	FName OverrideComponentName = NAME_None;
+	FName VariableName = NAME_None;
+
+	bool operator==(const FOverrideComponentMetadataSnapshot& Other) const
+	{
+		return ComponentClassName == Other.ComponentClassName
+			&& OverrideComponentName == Other.OverrideComponentName
+			&& VariableName == Other.VariableName;
+	}
+};
+
+static const UASClass::FDefaultComponent* FindDefaultComponentEntryByName(const UASClass* ScriptClass, FName ComponentName)
+{
+	if (ScriptClass == nullptr) { return nullptr; }
+	return ScriptClass->DefaultComponents.FindByPredicate([ComponentName](const UASClass::FDefaultComponent& Entry)
+	{ return Entry.ComponentName == ComponentName; });
+}
+
+static const UASClass::FOverrideComponent* FindOverrideComponentEntryByVariableName(const UASClass* ScriptClass, FName VariableName)
+{
+	if (ScriptClass == nullptr) { return nullptr; }
+	return ScriptClass->OverrideComponents.FindByPredicate([VariableName](const UASClass::FOverrideComponent& Entry)
+	{ return Entry.VariableName == VariableName; });
+}
+
+static TArray<FDefaultComponentMetadataSnapshot> SnapshotDefaultComponentLayoutMetadata(const UASClass* ScriptClass)
+{
+	TArray<FDefaultComponentMetadataSnapshot> Snapshot;
+	if (ScriptClass == nullptr) { return Snapshot; }
+	Snapshot.Reserve(ScriptClass->DefaultComponents.Num());
+	for (const UASClass::FDefaultComponent& Entry : ScriptClass->DefaultComponents)
+	{
+		Snapshot.Add({
+			Entry.ComponentClass != nullptr ? Entry.ComponentClass->GetFName() : NAME_None,
+			Entry.ComponentName, Entry.Attach, Entry.AttachSocket, Entry.bIsRoot, Entry.bEditorOnly
+		});
+	}
+	return Snapshot;
+}
+
+static TArray<FOverrideComponentMetadataSnapshot> SnapshotOverrideComponentLayoutMetadata(const UASClass* ScriptClass)
+{
+	TArray<FOverrideComponentMetadataSnapshot> Snapshot;
+	if (ScriptClass == nullptr) { return Snapshot; }
+	Snapshot.Reserve(ScriptClass->OverrideComponents.Num());
+	for (const UASClass::FOverrideComponent& Entry : ScriptClass->OverrideComponents)
+	{
+		Snapshot.Add({
+			Entry.ComponentClass != nullptr ? Entry.ComponentClass->GetFName() : NAME_None,
+			Entry.OverrideComponentName, Entry.VariableName
+		});
+	}
+	return Snapshot;
+}
+
+static USceneComponent* FindSceneComponentByName(const AActor* Actor, FName ComponentName)
+{
+	if (Actor == nullptr) { return nullptr; }
+	for (UActorComponent* Component : Actor->GetComponents())
+	{
+		if (Component != nullptr && Component->GetFName() == ComponentName)
+		{ return Cast<USceneComponent>(Component); }
+	}
+	return nullptr;
+}
+
+public:
 	TEST_METHOD(DefaultComponentMetadataCapturesRootAndAttachLayout)
 	{
-		using namespace AngelscriptTest_ClassGenerator_AngelscriptASClassComponentMetadataTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
@@ -237,8 +235,7 @@ class AMetadataDerivedActor : AMetadataBaseActor
 
 	TEST_METHOD(SoftReloadPreservesDefaultComponentMetadataWithoutDuplication)
 	{
-		using namespace AngelscriptTest_ClassGenerator_AngelscriptASClassComponentMetadataTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
 		{

@@ -12,27 +12,25 @@
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_ClassGenerator_ClassGeneratorTests_Private
-{
-	FAngelscriptEngine* GetEngineForClassGeneratorTests(FAutomationTestBase* Test)
-	{
-		if (FAngelscriptEngine* ProductionEngine = TryGetRunningProductionEngine())
-		{
-			return ProductionEngine;
-		}
-
-		return &GetOrCreateSharedCloneEngine();
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptClassGeneratorTests,
 	"Angelscript.TestModule.ClassGenerator",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static FAngelscriptEngine* GetEngineForClassGeneratorTests(FAutomationTestBase* Test)
+{
+	if (FAngelscriptEngine* ProductionEngine = TryGetRunningProductionEngine())
+	{
+		return ProductionEngine;
+	}
+
+	return &GetOrCreateSharedCloneEngine();
+}
+
+public:
 	TEST_METHOD(EmptyModuleSetup)
 	{
-		using namespace AngelscriptTest_ClassGenerator_ClassGeneratorTests_Private;
-		FAngelscriptEngine* Engine = GetEngineForClassGeneratorTests(TestRunner);
+FAngelscriptEngine* Engine = GetEngineForClassGeneratorTests(TestRunner);
 		ASSERT_THAT(IsNotNull(Engine, TEXT("ClassGenerator test should have an initialized engine")));
 		FAngelscriptEngineScope EngineScope(*Engine);
 

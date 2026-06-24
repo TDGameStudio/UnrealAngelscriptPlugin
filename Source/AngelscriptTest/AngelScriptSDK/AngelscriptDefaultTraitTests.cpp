@@ -5,13 +5,12 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKDefaultTraitTests,
 	"Angelscript.TestModule.AngelScriptSDK.Compiler",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -33,7 +32,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKDefaultTraitTests,
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK default-trait modifier test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKDefaultTraitModifiers", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKDefaultTraitModifiers", R"(
 int DefaultsOnlyValue() defaults
 {
 	return 7;

@@ -1,14 +1,14 @@
 // ============================================================================
 // AngelscriptEnumBindingsTests.cpp
 //
-// UEnum binding coverage — CQTest refactor. Automation IDs:
+// UEnum binding coverage �?CQTest refactor. Automation IDs:
 //   Angelscript.TestModule.Bindings.Enum.FAngelscriptEnumBindingsTest.*
 //
 // Sections:
-//   NameAndIndex      — GetNameByIndex, GetNameByValue, GetIndexByName, GetValueByName
-//   StringAndDisplay  — GetNameStringByIndex, GetNameStringByValue, GetIndexByNameString,
+//   NameAndIndex      �?GetNameByIndex, GetNameByValue, GetIndexByName, GetValueByName
+//   StringAndDisplay  �?GetNameStringByIndex, GetNameStringByValue, GetIndexByNameString,
 //                        GetValueByNameString, GetDisplayNameTextByValue, GenerateEnumPrefix
-//   Validation        — IsValidEnumValue (valid/invalid), IsValidEnumName (valid/invalid),
+//   Validation        �?IsValidEnumValue (valid/invalid), IsValidEnumName (valid/invalid),
 //                        GetValueByName(missing), GetIndexByName(missing),
 //                        GetIndexByNameString(missing)
 //
@@ -35,67 +35,8 @@
 
 
 // ----------------------------------------------------------------------------
-// Helpers — compute and inject native baselines
+// Helpers �?compute and inject native baselines
 // ----------------------------------------------------------------------------
-
-namespace AngelscriptEnumBindingsTests_Private
-{
-	struct FEnumBaselines
-	{
-		UEnum* Enum = nullptr;
-		int64 WorldValue = 0;
-		FName WorldName;
-		FString WorldNameString;
-		int32 WorldIndex = 0;
-		FString WorldDisplay;
-		FString EnumPrefix;
-		FName MissingName;
-		FString MissingNameString;
-		int64 MissingValue = 0;
-		int32 MissingIndex = 0;
-		int32 MissingIndexString = 0;
-		FString EnumPath;
-
-		bool Init(FAutomationTestBase& Test)
-		{
-			FNoDiscardAsserter Assert(Test);
-			Enum = StaticEnum<EAttachmentRule>();
-			if (!Assert.IsNotNull(Enum, TEXT("Enum baseline should resolve native UEnum")))
-			{
-				return false;
-			}
-			WorldValue = static_cast<int64>(EAttachmentRule::KeepWorld);
-			WorldName = Enum->GetNameByValue(WorldValue);
-			WorldNameString = Enum->GetNameStringByValue(WorldValue);
-			WorldIndex = Enum->GetIndexByName(WorldName);
-			WorldDisplay = Enum->GetDisplayNameTextByValue(WorldValue).ToString();
-			EnumPrefix = Enum->GenerateEnumPrefix();
-			MissingName = FName(TEXT("EAttachmentRule::DefinitelyMissing"));
-			MissingNameString = TEXT("DefinitelyMissing");
-			MissingValue = Enum->GetValueByName(MissingName);
-			MissingIndex = Enum->GetIndexByName(MissingName);
-			MissingIndexString = Enum->GetIndexByNameString(MissingNameString);
-			EnumPath = Enum->GetPathName().ReplaceCharWithEscapedChar();
-			return true;
-		}
-
-		void Substitute(FString& Script) const
-		{
-			Script.ReplaceInline(TEXT("$ENUM_PATH$"), *EnumPath);
-			Script.ReplaceInline(TEXT("$WORLD_NAME$"), *WorldName.ToString().ReplaceCharWithEscapedChar());
-			Script.ReplaceInline(TEXT("$WORLD_NAME_STRING$"), *WorldNameString.ReplaceCharWithEscapedChar());
-			Script.ReplaceInline(TEXT("$WORLD_DISPLAY$"), *WorldDisplay.ReplaceCharWithEscapedChar());
-			Script.ReplaceInline(TEXT("$ENUM_PREFIX$"), *EnumPrefix.ReplaceCharWithEscapedChar());
-			Script.ReplaceInline(TEXT("$MISSING_NAME$"), *MissingName.ToString());
-			Script.ReplaceInline(TEXT("$MISSING_NAME_STRING$"), *MissingNameString);
-			Script.ReplaceInline(TEXT("$WORLD_INDEX$"), *LexToString(WorldIndex));
-			Script.ReplaceInline(TEXT("$WORLD_VALUE$"), *LexToString(WorldValue));
-			Script.ReplaceInline(TEXT("$MISSING_VALUE$"), *LexToString(MissingValue));
-			Script.ReplaceInline(TEXT("$MISSING_INDEX$"), *LexToString(MissingIndex));
-			Script.ReplaceInline(TEXT("$MISSING_INDEX_STRING$"), *LexToString(MissingIndexString));
-		}
-	};
-}
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -105,6 +46,64 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEnumBindingsTest,
 	"Angelscript.TestModule.Bindings.Enum",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+struct FEnumBaselines
+{
+	UEnum* Enum = nullptr;
+	int64 WorldValue = 0;
+	FName WorldName;
+	FString WorldNameString;
+	int32 WorldIndex = 0;
+	FString WorldDisplay;
+	FString EnumPrefix;
+	FName MissingName;
+	FString MissingNameString;
+	int64 MissingValue = 0;
+	int32 MissingIndex = 0;
+	int32 MissingIndexString = 0;
+	FString EnumPath;
+
+	bool Init(FAutomationTestBase& Test)
+	{
+		FNoDiscardAsserter LocalAssert(Test);
+		Enum = StaticEnum<EAttachmentRule>();
+		if (!LocalAssert.IsNotNull(Enum, TEXT("Enum baseline should resolve native UEnum")))
+		{
+			return false;
+		}
+		WorldValue = static_cast<int64>(EAttachmentRule::KeepWorld);
+		WorldName = Enum->GetNameByValue(WorldValue);
+		WorldNameString = Enum->GetNameStringByValue(WorldValue);
+		WorldIndex = Enum->GetIndexByName(WorldName);
+		WorldDisplay = Enum->GetDisplayNameTextByValue(WorldValue).ToString();
+		EnumPrefix = Enum->GenerateEnumPrefix();
+		MissingName = FName(TEXT("EAttachmentRule::DefinitelyMissing"));
+		MissingNameString = TEXT("DefinitelyMissing");
+		MissingValue = Enum->GetValueByName(MissingName);
+		MissingIndex = Enum->GetIndexByName(MissingName);
+		MissingIndexString = Enum->GetIndexByNameString(MissingNameString);
+		EnumPath = Enum->GetPathName().ReplaceCharWithEscapedChar();
+		return true;
+	}
+
+	void Substitute(FString& Script) const
+	{
+		Script.ReplaceInline(TEXT("$ENUM_PATH$"), *EnumPath);
+		Script.ReplaceInline(TEXT("$WORLD_NAME$"), *WorldName.ToString().ReplaceCharWithEscapedChar());
+		Script.ReplaceInline(TEXT("$WORLD_NAME_STRING$"), *WorldNameString.ReplaceCharWithEscapedChar());
+		Script.ReplaceInline(TEXT("$WORLD_DISPLAY$"), *WorldDisplay.ReplaceCharWithEscapedChar());
+		Script.ReplaceInline(TEXT("$ENUM_PREFIX$"), *EnumPrefix.ReplaceCharWithEscapedChar());
+		Script.ReplaceInline(TEXT("$MISSING_NAME$"), *MissingName.ToString());
+		Script.ReplaceInline(TEXT("$MISSING_NAME_STRING$"), *MissingNameString);
+		Script.ReplaceInline(TEXT("$WORLD_INDEX$"), *LexToString(WorldIndex));
+		Script.ReplaceInline(TEXT("$WORLD_VALUE$"), *LexToString(WorldValue));
+		Script.ReplaceInline(TEXT("$MISSING_VALUE$"), *LexToString(MissingValue));
+		Script.ReplaceInline(TEXT("$MISSING_INDEX$"), *LexToString(MissingIndex));
+		Script.ReplaceInline(TEXT("$MISSING_INDEX_STRING$"), *LexToString(MissingIndexString));
+	}
+};
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -118,9 +117,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEnumBindingsTest,
 
 	TEST_METHOD(NameAndIndex)
 	{
-		using namespace AngelscriptEnumBindingsTests_Private;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		FEnumBaselines B;
@@ -175,9 +172,7 @@ int GetValueByName()
 
 	TEST_METHOD(StringAndDisplay)
 	{
-		using namespace AngelscriptEnumBindingsTests_Private;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		FEnumBaselines B;
@@ -246,9 +241,7 @@ int GenerateEnumPrefix()
 
 	TEST_METHOD(Validation)
 	{
-		using namespace AngelscriptEnumBindingsTests_Private;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		FEnumBaselines B;

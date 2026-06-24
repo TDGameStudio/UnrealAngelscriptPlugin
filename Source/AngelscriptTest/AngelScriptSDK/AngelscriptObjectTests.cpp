@@ -5,8 +5,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptSDKTestSupport;
 
 
 
@@ -125,7 +123,7 @@ public:
 		return Slots[Index];
 	}
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -144,6 +142,9 @@ public:
 
 	TEST_METHOD(ValueType)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK object value-type test should create a standalone engine")));
 
@@ -160,7 +161,7 @@ public:
 			RegisterPropertyResult >= 0,
 			TEXT("SDK object value-type test should register all object APIs")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKObjectValueType", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKObjectValueType", R"(
 bool CopyObjectValue()
 {
 	Object value;
@@ -180,10 +181,13 @@ bool CopyObjectValue()
 
 	TEST_METHOD(ConstructorChain)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK object constructor-chain test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKObjectConstructorChain", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKObjectConstructorChain", R"(
 class InternalClass
 {
 	InternalClass()
@@ -225,10 +229,13 @@ bool ConstructNestedMember()
 
 	TEST_METHOD(NativeFloatWrapper)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK object native-float wrapper test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKObjectFloatValue", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKObjectFloatValue", R"(
 class FloatValue
 {
 	float Value;

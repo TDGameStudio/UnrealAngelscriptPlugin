@@ -103,8 +103,8 @@ class UComposeOntoProjected : UObject
 		}
 
 		OutPreparedModules.Modules = Preprocessor.GetModulesToCompile();
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.AreEqual(
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.AreEqual(
 			1,
 			OutPreparedModules.Modules.Num(),
 			TEXT("ComposeOntoClass missing-target test should preprocess exactly one module descriptor")))

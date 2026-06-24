@@ -8,65 +8,64 @@
 // Test Layer: Runtime Integration
 #if WITH_DEV_AUTOMATION_TESTS
 
-
-namespace AngelscriptTest_Angelscript_AngelscriptNativeScriptHotReloadTests_Private
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptHotReloadTests,
+	"Angelscript.TestModule.HotReload.NativeScript",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	bool VerifyNativeScriptHotReloadInline(
-		FAutomationTestBase& Test,
-		const TCHAR* GroupLabel,
-		const TArray<TPair<FString, FString>>& InlineScripts)
+private:
+static bool VerifyNativeScriptHotReloadInline(
+	FAutomationTestBase& Test,
+	const TCHAR* GroupLabel,
+	const TArray<TPair<FString, FString>>& InlineScripts)
+{
+	FAngelscriptEngine* ProductionEngine = RequireRunningProductionEngine(Test, TEXT("Native script hot reload tests require a production engine."));
+	if (ProductionEngine == nullptr)
 	{
-		FAngelscriptEngine* ProductionEngine = RequireRunningProductionEngine(Test, TEXT("Native script hot reload tests require a production engine."));
-		if (ProductionEngine == nullptr)
+		return false;
+	}
+
+	FAngelscriptEngine& Engine = *ProductionEngine;
+
+	for (int32 Index = 0; Index < InlineScripts.Num(); ++Index)
+	{
+		const FString& Filename = InlineScripts[Index].Key;
+		const FString& Source   = InlineScripts[Index].Value;
+
+		const FName ModuleName(*FPaths::GetBaseFilename(Filename));
+		ON_SCOPE_EXIT { Engine.DiscardModule(*ModuleName.ToString()); };
+
+		ECompileResult InitialCompileResult = ECompileResult::Error;
+		if (!Test.TestTrue(
+			FString::Printf(TEXT("%s should compile '%s' before reload"), GroupLabel, *Filename),
+			CompileModuleWithResult(&Engine, ECompileType::FullReload, ModuleName, Filename, Source, InitialCompileResult)))
 		{
 			return false;
 		}
 
-		FAngelscriptEngine& Engine = *ProductionEngine;
-
-		for (int32 Index = 0; Index < InlineScripts.Num(); ++Index)
+		FString ReloadSource = Source;
+		ReloadSource += TEXT("\n// hot reload verification marker\n");
+		ECompileResult ReloadCompileResult = ECompileResult::Error;
+		if (!Test.TestTrue(
+			FString::Printf(TEXT("%s should hot reload '%s' through the compile wrapper"), GroupLabel, *Filename),
+			CompileModuleWithResult(&Engine, ECompileType::SoftReloadOnly, ModuleName, Filename, ReloadSource, ReloadCompileResult)))
 		{
-			const FString& Filename = InlineScripts[Index].Key;
-			const FString& Source   = InlineScripts[Index].Value;
-
-			const FName ModuleName(*FPaths::GetBaseFilename(Filename));
-			ON_SCOPE_EXIT { Engine.DiscardModule(*ModuleName.ToString()); };
-
-			ECompileResult InitialCompileResult = ECompileResult::Error;
-			if (!Test.TestTrue(
-				FString::Printf(TEXT("%s should compile '%s' before reload"), GroupLabel, *Filename),
-				CompileModuleWithResult(&Engine, ECompileType::FullReload, ModuleName, Filename, Source, InitialCompileResult)))
-			{
-				return false;
-			}
-
-			FString ReloadSource = Source;
-			ReloadSource += TEXT("\n// hot reload verification marker\n");
-			ECompileResult ReloadCompileResult = ECompileResult::Error;
-			if (!Test.TestTrue(
-				FString::Printf(TEXT("%s should hot reload '%s' through the compile wrapper"), GroupLabel, *Filename),
-				CompileModuleWithResult(&Engine, ECompileType::SoftReloadOnly, ModuleName, Filename, ReloadSource, ReloadCompileResult)))
-			{
-				return false;
-			}
-
-			if (!Test.TestTrue(
-				FString::Printf(TEXT("%s should keep '%s' on a handled reload path"), GroupLabel, *Filename),
-				ReloadCompileResult == ECompileResult::FullyHandled || ReloadCompileResult == ECompileResult::PartiallyHandled))
-			{
-				return false;
-			}
+			return false;
 		}
 
-		return true;
+		if (!Test.TestTrue(
+			FString::Printf(TEXT("%s should keep '%s' on a handled reload path"), GroupLabel, *Filename),
+			ReloadCompileResult == ECompileResult::FullyHandled || ReloadCompileResult == ECompileResult::PartiallyHandled))
+		{
+			return false;
+		}
 	}
-}
 
+	return true;
+}
 
 static bool NativeScriptHotReloadPhase2A(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_Angelscript_AngelscriptNativeScriptHotReloadTests_Private;
-	return VerifyNativeScriptHotReloadInline(
+return VerifyNativeScriptHotReloadInline(
 		Test,
 		TEXT("Phase2A"),
 		{
@@ -128,8 +127,7 @@ class UNativeHotReloadPhase2AHandleCarrier : UObject
 
 static bool NativeScriptHotReloadPhase2B(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_Angelscript_AngelscriptNativeScriptHotReloadTests_Private;
-	return VerifyNativeScriptHotReloadInline(
+return VerifyNativeScriptHotReloadInline(
 		Test,
 		TEXT("Phase2B"),
 		{
@@ -226,8 +224,7 @@ class UNativeHotReloadPhase2BMathCarrier : UObject
 
 static bool NativeScriptHotReloadPhase2C(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_Angelscript_AngelscriptNativeScriptHotReloadTests_Private;
-	const FString RelativeFilename = TEXT("Script/Tests/Test_ExampleActorFixture.as");
+const FString RelativeFilename = TEXT("Script/Tests/Test_ExampleActorFixture.as");
 	const FString AbsoluteFilename = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / RelativeFilename);
 	FString Source;
 	if (!FFileHelper::LoadFileToString(Source, *AbsoluteFilename))
@@ -244,10 +241,7 @@ static bool NativeScriptHotReloadPhase2C(FAutomationTestBase& Test)
 		});
 }
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptHotReloadTests,
-	"Angelscript.TestModule.HotReload.NativeScript",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(Phase2A)
 	{
 		ASSERT_THAT(IsTrue(NativeScriptHotReloadPhase2A(*TestRunner)));

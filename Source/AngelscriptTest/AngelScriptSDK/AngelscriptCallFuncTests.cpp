@@ -9,8 +9,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptCallFuncTests,
 	"Angelscript.TestModule.AngelScriptSDK.CallFunc",
@@ -67,7 +65,7 @@ private:
 	}
 
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 	inline static bool bHelpersRegistered = false;
 
 	BEFORE_ALL()
@@ -90,10 +88,13 @@ public:
 
 	TEST_METHOD(MultipleArgs)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		if (!bHelpersRegistered) return;
-		FScopedNativeModule M(*TestRunner, Engine, "CallFuncMultiArgs", "int Entry() { return AddFour(10, 20, 30, 40); }\n");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "CallFuncMultiArgs", "int Entry() { return AddFour(10, 20, 30, 40); }\n");
 		if (!M.IsValid()) return;
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
@@ -102,10 +103,13 @@ public:
 
 	TEST_METHOD(FloatPrecision)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		if (!bHelpersRegistered) return;
-		FScopedNativeModule M(*TestRunner, Engine, "CallFuncFloat", "double Entry() { return MultiplyDouble(3.14159, 2.0); }\n");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "CallFuncFloat", "double Entry() { return MultiplyDouble(3.14159, 2.0); }\n");
 		if (!M.IsValid()) return;
 		double Result = 0.0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "double Entry()", Result)) return;
@@ -114,11 +118,14 @@ public:
 
 	TEST_METHOD(VoidSideEffect)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		if (!bHelpersRegistered) return;
 		GSideEffectAccumulator = 0;
-		FScopedNativeModule M(*TestRunner, Engine, "CallFuncVoid", "void Entry() { AccumulateValue(10); AccumulateValue(20); AccumulateValue(12); }\n");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "CallFuncVoid", "void Entry() { AccumulateValue(10); AccumulateValue(20); AccumulateValue(12); }\n");
 		if (!M.IsValid()) return;
 		if (!ExecuteScriptVoidFunction(*TestRunner, SE, M, "void Entry()")) return;
 		ASSERT_THAT(AreEqual(42, GSideEffectAccumulator, TEXT("Accumulator=42")));
@@ -126,10 +133,13 @@ public:
 
 	TEST_METHOD(NestedCall)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		if (!bHelpersRegistered) return;
-		FScopedNativeModule M(*TestRunner, Engine, "CallFuncNested", "int Entry() { return IncrementAndReturn(IncrementAndReturn(IncrementAndReturn(0))); }\n");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "CallFuncNested", "int Entry() { return IncrementAndReturn(IncrementAndReturn(IncrementAndReturn(0))); }\n");
 		if (!M.IsValid()) return;
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
@@ -138,10 +148,13 @@ public:
 
 	TEST_METHOD(ManyArgs)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		if (!bHelpersRegistered) return;
-		FScopedNativeModule M(*TestRunner, Engine, "CallFuncManyArgs", "int Entry() { return SumSix(1, 2, 3, 4, 5, 6); }\n");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "CallFuncManyArgs", "int Entry() { return SumSix(1, 2, 3, 4, 5, 6); }\n");
 		if (!M.IsValid()) return;
 		int32 Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "int Entry()", Result)) return;
@@ -150,10 +163,13 @@ public:
 
 	TEST_METHOD(WideReturn)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		if (!bHelpersRegistered) return;
-		FScopedNativeModule M(*TestRunner, Engine, "CallFuncWideReturn", "int64 Entry() { return WidenAndScale(3); }\n");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "CallFuncWideReturn", "int64 Entry() { return WidenAndScale(3); }\n");
 		if (!M.IsValid()) return;
 		asIScriptFunction* Func = GetNativeFunctionByDecl(M, "int64 Entry()");
 		ASSERT_THAT(IsNotNull(Func, TEXT("Should resolve")));
@@ -172,10 +188,13 @@ public:
 
 	TEST_METHOD(MixedIntDoubleArgs)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		if (!bHelpersRegistered) return;
-		FScopedNativeModule M(*TestRunner, Engine, "CallFuncMixed", "double Entry() { return MixIn025(7, 0.25); }\n");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "CallFuncMixed", "double Entry() { return MixIn025(7, 0.25); }\n");
 		if (!M.IsValid()) return;
 		double Result = 0.0;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "double Entry()", Result)) return;
@@ -185,10 +204,13 @@ public:
 
 	TEST_METHOD(BoolReturn)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		if (!bHelpersRegistered) return;
-		FScopedNativeModule M(*TestRunner, Engine, "CallFuncBool", "bool Entry() { return IsPositive(5) && !IsPositive(-3) && !IsPositive(0); }\n");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "CallFuncBool", "bool Entry() { return IsPositive(5) && !IsPositive(-3) && !IsPositive(0); }\n");
 		if (!M.IsValid()) return;
 		bool bResult = false;
 		if (!ExecuteScriptFunction(*TestRunner, SE, M, "bool Entry()", bResult)) return;
@@ -197,10 +219,13 @@ public:
 
 	TEST_METHOD(OutParams)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		if (!bHelpersRegistered) return;
-		FScopedNativeModule M(*TestRunner, Engine, "CallFuncOut", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "CallFuncOut", R"(
 bool Entry()
 {
 	int q = 0;

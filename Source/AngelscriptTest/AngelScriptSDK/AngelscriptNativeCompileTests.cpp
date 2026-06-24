@@ -5,13 +5,12 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeCompileTests,
 	"Angelscript.TestModule.AngelScriptSDK.Compile",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -30,10 +29,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeCompileTests,
 
 	TEST_METHOD(SimpleFunction)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Native compile simple-function test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "NativeCompileSimpleFunction", "int Test() { return 42; }");
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "NativeCompileSimpleFunction", "int Test() { return 42; }");
 		if (!Module.IsValid())
 		{
 			return;
@@ -48,7 +49,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeCompileTests,
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Native compile multiple-functions test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "NativeCompileMultipleFunctions", "void A() {} void B() {} int C() { return 42; }");
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "NativeCompileMultipleFunctions", "void A() {} void B() {} int C() { return 42; }");
 		if (!Module.IsValid())
 		{
 			return;
@@ -63,7 +64,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeCompileTests,
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Native compile global-variables test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "NativeCompileGlobalVariables", "const int First = 40; const int Second = 2; int Read() { return First + Second; }");
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "NativeCompileGlobalVariables", "const int First = 40; const int Second = 2; int Read() { return First + Second; }");
 		if (!Module.IsValid())
 		{
 			return;
@@ -75,10 +76,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeCompileTests,
 
 	TEST_METHOD(SyntaxError)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Native compile syntax-error test should create a standalone engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "NativeCompileSyntaxError");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "NativeCompileSyntaxError");
 		asIScriptModule* Module = nullptr;
 		const int BuildResult = CompileNativeModule(ScriptEngine, "NativeCompileSyntaxError", "int Broken( { return 1; }", Module);
 		if (!this->Assert.IsTrue(BuildResult < 0, TEXT("Native compile syntax-error test should fail with a negative build result")))
@@ -92,10 +95,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeCompileTests,
 
 	TEST_METHOD(ErrorMessage)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Native compile error-message test should create a standalone engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "NativeCompileErrorMessage");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "NativeCompileErrorMessage");
 		asIScriptModule* Module = nullptr;
 		const int BuildResult = CompileNativeModule(ScriptEngine, "NativeCompileErrorMessage", "int Broken( { return 1; }", Module);
 		if (!this->Assert.IsTrue(BuildResult < 0, TEXT("Native compile error-message test should fail with a negative build result")))
@@ -104,11 +109,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeCompileTests,
 			return;
 		}
 
-		const FNativeMessageCollector& Messages = Engine.GetMessages();
+		const AngelscriptNativeTestSupport::FNativeMessageCollector& Messages = Engine.GetMessages();
 		ASSERT_THAT(IsTrue(Messages.Entries.Num() > 0,
 			TEXT("Native compile error-message test should capture at least one diagnostic entry")));
 
-		const FNativeMessageEntry& FirstMessage = Messages.Entries[0];
+		const AngelscriptNativeTestSupport::FNativeMessageEntry& FirstMessage = Messages.Entries[0];
 		ASSERT_THAT(IsTrue(!FirstMessage.Message.IsEmpty(),
 			TEXT("Native compile error-message test should capture a non-empty message text")));
 		ASSERT_THAT(IsTrue(FirstMessage.Row > 0,

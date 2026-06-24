@@ -21,17 +21,20 @@
 ANGELSCRIPTRUNTIME_API void GAngelscriptCrossModuleEnsureRegisteredForTesting();
 ANGELSCRIPTRUNTIME_API int32 GAngelscriptCrossModuleBindGlobalFunctionForTesting(const ANSICHAR* Signature, FAngelscriptCrossModuleEntry* Entry);
 
-namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private
+TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleDirectBindRuntimeTests,
+	"Angelscript.CppTests.UHTToolResolver.CrossModuleDirectBind",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	constexpr const TCHAR* TestModuleName = TEXT("Engine");
-	constexpr const TCHAR* TestClassName = TEXT("Actor");
-	constexpr const TCHAR* LateFunctionName = TEXT("CrossModuleLateLoadedAutomationProbe");
-	constexpr const TCHAR* WorkerFunctionName = TEXT("CrossModuleWorkerThreadAutomationProbe");
-	constexpr const TCHAR* MismatchFunctionName = TEXT("CrossModuleLayoutMismatchAutomationProbe");
-	constexpr const TCHAR* MalformedFunctionName = TEXT("CrossModuleMalformedAutomationProbe");
-	constexpr const TCHAR* ExistingFunctionName = TEXT("CrossModuleExistingSlotAutomationProbe");
-	constexpr const TCHAR* MultiShardFunctionNameA = TEXT("CrossModuleMultiShardAutomationProbeA");
-	constexpr const TCHAR* MultiShardFunctionNameB = TEXT("CrossModuleMultiShardAutomationProbeB");
+private:
+	static constexpr const TCHAR* TestModuleName = TEXT("Engine");
+	static constexpr const TCHAR* TestClassName = TEXT("Actor");
+	static constexpr const TCHAR* LateFunctionName = TEXT("CrossModuleLateLoadedAutomationProbe");
+	static constexpr const TCHAR* WorkerFunctionName = TEXT("CrossModuleWorkerThreadAutomationProbe");
+	static constexpr const TCHAR* MismatchFunctionName = TEXT("CrossModuleLayoutMismatchAutomationProbe");
+	static constexpr const TCHAR* MalformedFunctionName = TEXT("CrossModuleMalformedAutomationProbe");
+	static constexpr const TCHAR* ExistingFunctionName = TEXT("CrossModuleExistingSlotAutomationProbe");
+	static constexpr const TCHAR* MultiShardFunctionNameA = TEXT("CrossModuleMultiShardAutomationProbeA");
+	static constexpr const TCHAR* MultiShardFunctionNameB = TEXT("CrossModuleMultiShardAutomationProbeB");
 
 	struct FGenericHookProbeState
 	{
@@ -47,13 +50,13 @@ namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private
 		uint32 FrameFlags = 0;
 	};
 
-	FGenericHookProbeState* GGenericHookProbeState = nullptr;
+	static FGenericHookProbeState* GGenericHookProbeState;
 
-	void NoOpThunk(UObject* /*Self*/, FAngelscriptCrossModuleCallFrame* /*Frame*/)
+	static void NoOpThunk(UObject* /*Self*/, FAngelscriptCrossModuleCallFrame* /*Frame*/)
 	{
 	}
 
-	void SumThunk(UObject* Self, FAngelscriptCrossModuleCallFrame* Frame)
+	static void SumThunk(UObject* Self, FAngelscriptCrossModuleCallFrame* Frame)
 	{
 		if (GGenericHookProbeState == nullptr)
 		{
@@ -134,24 +137,24 @@ namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private
 		}
 	};
 
-	void RegisterAndUnregisterFeature(FTestCrossModuleFeature& Feature)
+	static void RegisterAndUnregisterFeature(FTestCrossModuleFeature& Feature)
 	{
 		IModularFeatures::Get().RegisterModularFeature(FAngelscriptCrossModuleBindings::FeatureName(), &Feature);
 		IModularFeatures::Get().UnregisterModularFeature(FAngelscriptCrossModuleBindings::FeatureName(), &Feature);
 	}
 
-	const FFuncEntry* FindActorEntry(const TCHAR* FunctionName)
+	static const FFuncEntry* FindActorEntry(const TCHAR* FunctionName)
 	{
 		const TMap<FString, FFuncEntry>* ActorEntries = FAngelscriptBinds::GetClassFuncMaps().Find(AActor::StaticClass());
 		return ActorEntries != nullptr ? ActorEntries->Find(FunctionName) : nullptr;
 	}
 
-	bool IsEntryFunctionBound(const FFuncEntry& Entry)
+	static bool IsEntryFunctionBound(const FFuncEntry& Entry)
 	{
 		return const_cast<FGenericFuncPtr&>(Entry.FuncPtr).IsBound();
 	}
 
-	bool WaitForGameThreadFeatureInjection(const TCHAR* FunctionName, double TimeoutSeconds = 5.0)
+	static bool WaitForGameThreadFeatureInjection(const TCHAR* FunctionName, double TimeoutSeconds = 5.0)
 	{
 		const double DeadlineSeconds = FPlatformTime::Seconds() + TimeoutSeconds;
 		while (FPlatformTime::Seconds() < DeadlineSeconds)
@@ -168,20 +171,61 @@ namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private
 		return FindActorEntry(FunctionName) != nullptr;
 	}
 
-	bool EnsureCrossModuleSubscriptionReady()
+	static bool EnsureCrossModuleSubscriptionReady()
 	{
 		GAngelscriptCrossModuleEnsureRegisteredForTesting();
 		return true;
 	}
-}
 
-namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private
+	static bool RunExistingSlotPriority(FAutomationTestBase& Test);
+	static bool RunLateRegistration(FAutomationTestBase& Test);
+	static bool RunWorkerThreadRegistration(FAutomationTestBase& Test);
+	static bool RunGenericHookFrameThunk(FAutomationTestBase& Test);
+	static bool RunSameModuleMultipleFeature(FAutomationTestBase& Test);
+	static bool RunLayoutMismatch(FAutomationTestBase& Test);
+	static bool RunMalformedFeature(FAutomationTestBase& Test);
+
+public:
+	TEST_METHOD(SameModuleShardWins_When_BothExist)
+	{
+		ASSERT_THAT(IsTrue(RunExistingSlotPriority(*TestRunner)));
+	}
+
+	TEST_METHOD(OnModularFeatureRegistered_LateLoadedModule)
+	{
+		ASSERT_THAT(IsTrue(RunLateRegistration(*TestRunner)));
+	}
+
+	TEST_METHOD(OnModularFeatureRegistered_WorkerThreadInvocation_MarshalsToGameThread)
+	{
+		ASSERT_THAT(IsTrue(RunWorkerThreadRegistration(*TestRunner)));
+	}
+
+	TEST_METHOD(GenericHook_FrameThunkReceivesSlotsAndReturn)
+	{
+		ASSERT_THAT(IsTrue(RunGenericHookFrameThunk(*TestRunner)));
+	}
+
+	TEST_METHOD(MultipleFeaturesSameModule_AllInjected_NoModuleNameDedup)
+	{
+		ASSERT_THAT(IsTrue(RunSameModuleMultipleFeature(*TestRunner)));
+	}
+
+	TEST_METHOD(LayoutVersionMismatch_FeatureSkipped_NoCrash)
+	{
+		ASSERT_THAT(IsTrue(RunLayoutMismatch(*TestRunner)));
+	}
+
+	TEST_METHOD(RuntimeNullRangeValidation_RejectsMalformedFeature)
+	{
+		ASSERT_THAT(IsTrue(RunMalformedFeature(*TestRunner)));
+	}
+};
+
+FAngelscriptCrossModuleDirectBindRuntimeTests::FGenericHookProbeState* FAngelscriptCrossModuleDirectBindRuntimeTests::GGenericHookProbeState = nullptr;
+
+bool FAngelscriptCrossModuleDirectBindRuntimeTests::RunExistingSlotPriority(FAutomationTestBase& Test)
 {
-
-bool RunExistingSlotPriority(FAutomationTestBase& Test)
-{
-	using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
-
 	if (!EnsureCrossModuleSubscriptionReady())
 	{
 		return true;
@@ -207,10 +251,8 @@ bool RunExistingSlotPriority(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunLateRegistration(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleDirectBindRuntimeTests::RunLateRegistration(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
-
 	if (!EnsureCrossModuleSubscriptionReady())
 	{
 		return true;
@@ -235,10 +277,8 @@ bool RunLateRegistration(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunWorkerThreadRegistration(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleDirectBindRuntimeTests::RunWorkerThreadRegistration(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
-
 	if (!EnsureCrossModuleSubscriptionReady())
 	{
 		return true;
@@ -277,10 +317,8 @@ bool RunWorkerThreadRegistration(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunGenericHookFrameThunk(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleDirectBindRuntimeTests::RunGenericHookFrameThunk(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
-
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 	FAngelscriptEngineScope Scope(Engine);
 
@@ -338,10 +376,8 @@ int Run()
 	return bPassed;
 }
 
-bool RunSameModuleMultipleFeature(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleDirectBindRuntimeTests::RunSameModuleMultipleFeature(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
-
 	if (!EnsureCrossModuleSubscriptionReady())
 	{
 		return true;
@@ -377,10 +413,8 @@ bool RunSameModuleMultipleFeature(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunLayoutMismatch(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleDirectBindRuntimeTests::RunLayoutMismatch(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
-
 	if (!EnsureCrossModuleSubscriptionReady())
 	{
 		return true;
@@ -396,10 +430,8 @@ bool RunLayoutMismatch(FAutomationTestBase& Test)
 	return Test.TestNull(TEXT("Layout-mismatched cross-module feature should not inject an entry"), FindActorEntry(MismatchFunctionName));
 }
 
-bool RunMalformedFeature(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleDirectBindRuntimeTests::RunMalformedFeature(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
-
 	if (!EnsureCrossModuleSubscriptionReady())
 	{
 		return true;
@@ -419,54 +451,5 @@ bool RunMalformedFeature(FAutomationTestBase& Test)
 
 	return Test.TestNull(TEXT("Malformed cross-module features should not inject entries"), FindActorEntry(MalformedFunctionName));
 }
-
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleDirectBindRuntimeTests,
-	"Angelscript.CppTests.UHTToolResolver.CrossModuleDirectBind",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
-	TEST_METHOD(SameModuleShardWins_When_BothExist)
-	{
-		using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
-		ASSERT_THAT(IsTrue(RunExistingSlotPriority(*TestRunner)));
-	}
-
-	TEST_METHOD(OnModularFeatureRegistered_LateLoadedModule)
-	{
-		using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
-		ASSERT_THAT(IsTrue(RunLateRegistration(*TestRunner)));
-	}
-
-	TEST_METHOD(OnModularFeatureRegistered_WorkerThreadInvocation_MarshalsToGameThread)
-	{
-		using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
-		ASSERT_THAT(IsTrue(RunWorkerThreadRegistration(*TestRunner)));
-	}
-
-	TEST_METHOD(GenericHook_FrameThunkReceivesSlotsAndReturn)
-	{
-		using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
-		ASSERT_THAT(IsTrue(RunGenericHookFrameThunk(*TestRunner)));
-	}
-
-	TEST_METHOD(MultipleFeaturesSameModule_AllInjected_NoModuleNameDedup)
-	{
-		using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
-		ASSERT_THAT(IsTrue(RunSameModuleMultipleFeature(*TestRunner)));
-	}
-
-	TEST_METHOD(LayoutVersionMismatch_FeatureSkipped_NoCrash)
-	{
-		using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
-		ASSERT_THAT(IsTrue(RunLayoutMismatch(*TestRunner)));
-	}
-
-	TEST_METHOD(RuntimeNullRangeValidation_RejectsMalformedFeature)
-	{
-		using namespace AngelscriptTest_UHTTool_CrossModuleDirect_Private;
-		ASSERT_THAT(IsTrue(RunMalformedFeature(*TestRunner)));
-	}
-};
 
 #endif

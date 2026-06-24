@@ -13,279 +13,278 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptDebuggerDataBreakpointTests_Private
-{
-	FAngelscriptDebuggerScriptFixture CreateDataBreakpointFixture()
-	{
-		FAngelscriptDebuggerScriptFixture Fixture;
-		Fixture.ModuleName = TEXT("DebuggerDataBreakpointFixture");
-		Fixture.GeneratedClassName = NAME_None;
-		Fixture.EntryFunctionName = NAME_None;
-		Fixture.EntryFunctionDeclaration = TEXT("int RunTestCase()");
-		Fixture.Filename = TEXT("DebuggerDataBreakpointFixture.as");
-		Fixture.ScriptSource = TEXT(R"AS(int Inner(int Value)
-{
-	int StoredValue = 9;
-
-	int InnerValue = Value + StoredValue;
-	return InnerValue;
-}
-
-int RunTestCase()
-{
-	int Result = Inner(4);
-	/*MARK:StepAfterCallLine*/ Result += 1;
-	/*MARK:PostMutationLine*/ int Snapshot = Result;
-	return Snapshot;
-}
-)AS");
-		Fixture.LineMarkers.Add(TEXT("StepAfterCallLine"), 12);
-		Fixture.LineMarkers.Add(TEXT("PostMutationLine"), 13);
-		Fixture.EvalPaths.Add(TEXT("ResultPath"), TEXT("0:Result"));
-		Fixture.bUseAnnotatedCompilation = false;
-		return Fixture;
-	}
-
-	template <typename T>
-	bool WaitForTypedMessageUntil(
-		FAngelscriptDebuggerTestClient& Client,
-		TAtomic<bool>& bShouldStop,
-		EDebugMessageType ExpectedType,
-		float TimeoutSeconds,
-		TOptional<T>& OutValue,
-		FString& OutError,
-		const TCHAR* Context)
-	{
-		const double EndTime = FPlatformTime::Seconds() + TimeoutSeconds;
-		while (FPlatformTime::Seconds() < EndTime && !bShouldStop.Load())
-		{
-			TOptional<FAngelscriptDebugMessageEnvelope> Envelope = Client.ReceiveEnvelope();
-			if (Envelope.IsSet())
-			{
-				if (Envelope->MessageType == ExpectedType)
-				{
-					OutValue = FAngelscriptDebuggerTestClient::DeserializeMessage<T>(Envelope.GetValue());
-					if (!OutValue.IsSet())
-					{
-						OutError = FString::Printf(TEXT("%s: failed to deserialize debugger message type %d."), Context, static_cast<int32>(ExpectedType));
-						return false;
-					}
-
-					return true;
-				}
-			}
-			else if (!Client.GetLastError().IsEmpty())
-			{
-				OutError = FString::Printf(TEXT("%s: %s"), Context, *Client.GetLastError());
-				return false;
-			}
-
-			FPlatformProcess::Sleep(0.001f);
-		}
-
-		OutError = bShouldStop.Load()
-			? FString::Printf(TEXT("%s: aborted while waiting for debugger message type %d."), Context, static_cast<int32>(ExpectedType))
-			: FString::Printf(TEXT("%s: timed out waiting for debugger message type %d."), Context, static_cast<int32>(ExpectedType));
-		return false;
-	}
-
-	struct FDataBreakpointMonitorResult
-	{
-		TOptional<FStoppedMessage> InitialStopMessage;
-		TOptional<FAngelscriptVariable> ResultVariable;
-		TOptional<FStoppedMessage> DataBreakpointStopMessage;
-		TOptional<FAngelscriptClearDataBreakpoints> ClearDataBreakpoints;
-		bool bTimedOut = false;
-		FString Error;
-	};
-
-	TFuture<FDataBreakpointMonitorResult> StartDataBreakpointMonitor(
-		int32 Port,
-		TAtomic<bool>& bMonitorReady,
-		TAtomic<bool>& bShouldStop,
-		const FAngelscriptDebuggerScriptFixture& Fixture,
-		float TimeoutSeconds)
-	{
-		return Async(EAsyncExecution::ThreadPool,
-			[Port, &bMonitorReady, &bShouldStop, Fixture, TimeoutSeconds]() -> FDataBreakpointMonitorResult
-			{
-				FDataBreakpointMonitorResult Result;
-				FAngelscriptDebuggerTestClient MonitorClient;
-				ON_SCOPE_EXIT
-				{
-					MonitorClient.SendStopDebugging();
-					MonitorClient.SendDisconnect();
-					MonitorClient.Disconnect();
-				};
-
-				if (!MonitorClient.Connect(TEXT("127.0.0.1"), Port))
-				{
-					Result.Error = FString::Printf(TEXT("Data breakpoint monitor failed to connect: %s"), *MonitorClient.GetLastError());
-					bMonitorReady = true;
-					return Result;
-				}
-
-				if (!HandshakeMonitorClient(MonitorClient, bShouldStop, TimeoutSeconds, Result.Error))
-				{
-					Result.bTimedOut = !bShouldStop.Load();
-					bMonitorReady = true;
-					return Result;
-				}
-
-				bMonitorReady = true;
-
-				if (!WaitForTypedMessageUntil(MonitorClient, bShouldStop, EDebugMessageType::HasStopped, TimeoutSeconds, Result.InitialStopMessage, Result.Error, TEXT("Data breakpoint monitor failed to receive the initial stop")))
-				{
-					Result.bTimedOut = !bShouldStop.Load();
-					return Result;
-				}
-
-				if (!MonitorClient.SendRequestEvaluate(Fixture.GetEvalPath(TEXT("ResultPath"))))
-				{
-					Result.Error = FString::Printf(TEXT("Data breakpoint monitor failed to request evaluate for Result: %s"), *MonitorClient.GetLastError());
-					return Result;
-				}
-
-				if (!WaitForTypedMessageUntil(MonitorClient, bShouldStop, EDebugMessageType::Evaluate, TimeoutSeconds, Result.ResultVariable, Result.Error, TEXT("Data breakpoint monitor failed to receive evaluate reply for Result")))
-				{
-					Result.bTimedOut = !bShouldStop.Load();
-					return Result;
-				}
-
-				if (Result.ResultVariable->ValueAddress == 0 || Result.ResultVariable->ValueSize == 0)
-				{
-					Result.Error = FString::Printf(
-						TEXT("Data breakpoint monitor received a non-monitorable evaluate reply for Result (Address=%llu, Size=%u)."),
-						static_cast<unsigned long long>(Result.ResultVariable->ValueAddress),
-						static_cast<uint32>(Result.ResultVariable->ValueSize));
-					return Result;
-				}
-
-				FAngelscriptDataBreakpoints DataBreakpoints;
-				FAngelscriptDataBreakpoint DataBreakpoint;
-				DataBreakpoint.Id = 11;
-				DataBreakpoint.Address = Result.ResultVariable->ValueAddress;
-				DataBreakpoint.AddressSize = Result.ResultVariable->ValueSize;
-				DataBreakpoint.HitCount = 1;
-				DataBreakpoint.Name = TEXT("Result");
-				DataBreakpoints.Breakpoints.Add(DataBreakpoint);
-				if (!MonitorClient.SendTypedMessage(EDebugMessageType::SetDataBreakpoints, DataBreakpoints))
-				{
-					Result.Error = FString::Printf(TEXT("Data breakpoint monitor failed to send SetDataBreakpoints: %s"), *MonitorClient.GetLastError());
-					return Result;
-				}
-
-				if (!MonitorClient.SendContinue())
-				{
-					Result.Error = FString::Printf(TEXT("Data breakpoint monitor failed to continue from the initial breakpoint stop: %s"), *MonitorClient.GetLastError());
-					return Result;
-				}
-
-				if (!WaitForTypedMessageUntil(MonitorClient, bShouldStop, EDebugMessageType::HasStopped, TimeoutSeconds, Result.DataBreakpointStopMessage, Result.Error, TEXT("Data breakpoint monitor failed to receive the data breakpoint stop")))
-				{
-					Result.bTimedOut = !bShouldStop.Load();
-					return Result;
-				}
-
-				if (!MonitorClient.SendContinue())
-				{
-					Result.Error = FString::Printf(TEXT("Data breakpoint monitor failed to continue from the data breakpoint stop: %s"), *MonitorClient.GetLastError());
-					return Result;
-				}
-
-				if (!WaitForTypedMessageUntil(MonitorClient, bShouldStop, EDebugMessageType::ClearDataBreakpoints, TimeoutSeconds, Result.ClearDataBreakpoints, Result.Error, TEXT("Data breakpoint monitor failed to receive ClearDataBreakpoints")))
-				{
-					Result.bTimedOut = !bShouldStop.Load();
-					return Result;
-				}
-
-				return Result;
-			});
-	}
-
-	struct FPassiveBreakpointMonitorResult
-	{
-		TArray<FStoppedMessage> StopMessages;
-		bool bTimedOut = false;
-		FString Error;
-	};
-
-	TFuture<FPassiveBreakpointMonitorResult> StartPassiveBreakpointMonitor(
-		int32 Port,
-		TAtomic<bool>& bMonitorReady,
-		TAtomic<bool>& bShouldStop,
-		float TimeoutSeconds)
-	{
-		return Async(EAsyncExecution::ThreadPool,
-			[Port, &bMonitorReady, &bShouldStop, TimeoutSeconds]() -> FPassiveBreakpointMonitorResult
-			{
-				FPassiveBreakpointMonitorResult Result;
-				FAngelscriptDebuggerTestClient MonitorClient;
-				ON_SCOPE_EXIT
-				{
-					MonitorClient.SendStopDebugging();
-					MonitorClient.SendDisconnect();
-					MonitorClient.Disconnect();
-				};
-
-				if (!MonitorClient.Connect(TEXT("127.0.0.1"), Port))
-				{
-					Result.Error = FString::Printf(TEXT("Passive breakpoint monitor failed to connect: %s"), *MonitorClient.GetLastError());
-					bMonitorReady = true;
-					return Result;
-				}
-
-				if (!HandshakeMonitorClient(MonitorClient, bShouldStop, TimeoutSeconds, Result.Error))
-				{
-					Result.bTimedOut = !bShouldStop.Load();
-					bMonitorReady = true;
-					return Result;
-				}
-
-				bMonitorReady = true;
-
-				const double EndTime = FPlatformTime::Seconds() + TimeoutSeconds;
-				while (FPlatformTime::Seconds() < EndTime && !bShouldStop.Load())
-				{
-					TOptional<FAngelscriptDebugMessageEnvelope> Envelope = MonitorClient.ReceiveEnvelope();
-					if (Envelope.IsSet())
-					{
-						if (Envelope->MessageType == EDebugMessageType::HasStopped)
-						{
-							TOptional<FStoppedMessage> StopMessage = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(Envelope.GetValue());
-							if (!StopMessage.IsSet())
-							{
-								Result.Error = TEXT("Passive breakpoint monitor failed to deserialize a HasStopped payload.");
-								return Result;
-							}
-
-							Result.StopMessages.Add(StopMessage.GetValue());
-							MonitorClient.SendContinue();
-						}
-					}
-					else if (!MonitorClient.GetLastError().IsEmpty())
-					{
-						Result.Error = FString::Printf(TEXT("Passive breakpoint monitor failed while polling: %s"), *MonitorClient.GetLastError());
-						return Result;
-					}
-
-					FPlatformProcess::Sleep(0.001f);
-				}
-
-				if (!bShouldStop.Load() && FPlatformTime::Seconds() >= EndTime)
-				{
-					Result.bTimedOut = true;
-				}
-
-				return Result;
-			});
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerDataBreakpointTests,
 	"Angelscript.TestModule.Debugger.DataBreakpoint",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static FAngelscriptDebuggerScriptFixture CreateDataBreakpointFixture()
+{
+	FAngelscriptDebuggerScriptFixture Fixture;
+	Fixture.ModuleName = TEXT("DebuggerDataBreakpointFixture");
+	Fixture.GeneratedClassName = NAME_None;
+	Fixture.EntryFunctionName = NAME_None;
+	Fixture.EntryFunctionDeclaration = TEXT("int RunTestCase()");
+	Fixture.Filename = TEXT("DebuggerDataBreakpointFixture.as");
+	Fixture.ScriptSource = TEXT(R"AS(int Inner(int Value)
+{
+int StoredValue = 9;
+
+int InnerValue = Value + StoredValue;
+return InnerValue;
+}
+
+int RunTestCase()
+{
+int Result = Inner(4);
+/*MARK:StepAfterCallLine*/ Result += 1;
+/*MARK:PostMutationLine*/ int Snapshot = Result;
+return Snapshot;
+}
+)AS");
+	Fixture.LineMarkers.Add(TEXT("StepAfterCallLine"), 12);
+	Fixture.LineMarkers.Add(TEXT("PostMutationLine"), 13);
+	Fixture.EvalPaths.Add(TEXT("ResultPath"), TEXT("0:Result"));
+	Fixture.bUseAnnotatedCompilation = false;
+	return Fixture;
+}
+
+template <typename T>
+static bool WaitForTypedMessageUntil(
+	FAngelscriptDebuggerTestClient& Client,
+	TAtomic<bool>& bShouldStop,
+	EDebugMessageType ExpectedType,
+	float TimeoutSeconds,
+	TOptional<T>& OutValue,
+	FString& OutError,
+	const TCHAR* Context)
+{
+	const double EndTime = FPlatformTime::Seconds() + TimeoutSeconds;
+	while (FPlatformTime::Seconds() < EndTime && !bShouldStop.Load())
+	{
+		TOptional<FAngelscriptDebugMessageEnvelope> Envelope = Client.ReceiveEnvelope();
+		if (Envelope.IsSet())
+		{
+			if (Envelope->MessageType == ExpectedType)
+			{
+				OutValue = FAngelscriptDebuggerTestClient::DeserializeMessage<T>(Envelope.GetValue());
+				if (!OutValue.IsSet())
+				{
+					OutError = FString::Printf(TEXT("%s: failed to deserialize debugger message type %d."), Context, static_cast<int32>(ExpectedType));
+					return false;
+				}
+
+				return true;
+			}
+		}
+		else if (!Client.GetLastError().IsEmpty())
+		{
+			OutError = FString::Printf(TEXT("%s: %s"), Context, *Client.GetLastError());
+			return false;
+		}
+
+		FPlatformProcess::Sleep(0.001f);
+	}
+
+	OutError = bShouldStop.Load()
+		? FString::Printf(TEXT("%s: aborted while waiting for debugger message type %d."), Context, static_cast<int32>(ExpectedType))
+		: FString::Printf(TEXT("%s: timed out waiting for debugger message type %d."), Context, static_cast<int32>(ExpectedType));
+	return false;
+}
+
+struct FDataBreakpointMonitorResult
+{
+	TOptional<FStoppedMessage> InitialStopMessage;
+	TOptional<FAngelscriptVariable> ResultVariable;
+	TOptional<FStoppedMessage> DataBreakpointStopMessage;
+	TOptional<FAngelscriptClearDataBreakpoints> ClearDataBreakpoints;
+	bool bTimedOut = false;
+	FString Error;
+};
+
+static TFuture<FDataBreakpointMonitorResult> StartDataBreakpointMonitor(
+	int32 Port,
+	TAtomic<bool>& bMonitorReady,
+	TAtomic<bool>& bShouldStop,
+	const FAngelscriptDebuggerScriptFixture& Fixture,
+	float TimeoutSeconds)
+{
+	return Async(EAsyncExecution::ThreadPool,
+		[Port, &bMonitorReady, &bShouldStop, Fixture, TimeoutSeconds]() -> FDataBreakpointMonitorResult
+		{
+			FDataBreakpointMonitorResult Result;
+			FAngelscriptDebuggerTestClient MonitorClient;
+			ON_SCOPE_EXIT
+			{
+				MonitorClient.SendStopDebugging();
+				MonitorClient.SendDisconnect();
+				MonitorClient.Disconnect();
+			};
+
+			if (!MonitorClient.Connect(TEXT("127.0.0.1"), Port))
+			{
+				Result.Error = FString::Printf(TEXT("Data breakpoint monitor failed to connect: %s"), *MonitorClient.GetLastError());
+				bMonitorReady = true;
+				return Result;
+			}
+
+			if (!HandshakeMonitorClient(MonitorClient, bShouldStop, TimeoutSeconds, Result.Error))
+			{
+				Result.bTimedOut = !bShouldStop.Load();
+				bMonitorReady = true;
+				return Result;
+			}
+
+			bMonitorReady = true;
+
+			if (!WaitForTypedMessageUntil(MonitorClient, bShouldStop, EDebugMessageType::HasStopped, TimeoutSeconds, Result.InitialStopMessage, Result.Error, TEXT("Data breakpoint monitor failed to receive the initial stop")))
+			{
+				Result.bTimedOut = !bShouldStop.Load();
+				return Result;
+			}
+
+			if (!MonitorClient.SendRequestEvaluate(Fixture.GetEvalPath(TEXT("ResultPath"))))
+			{
+				Result.Error = FString::Printf(TEXT("Data breakpoint monitor failed to request evaluate for Result: %s"), *MonitorClient.GetLastError());
+				return Result;
+			}
+
+			if (!WaitForTypedMessageUntil(MonitorClient, bShouldStop, EDebugMessageType::Evaluate, TimeoutSeconds, Result.ResultVariable, Result.Error, TEXT("Data breakpoint monitor failed to receive evaluate reply for Result")))
+			{
+				Result.bTimedOut = !bShouldStop.Load();
+				return Result;
+			}
+
+			if (Result.ResultVariable->ValueAddress == 0 || Result.ResultVariable->ValueSize == 0)
+			{
+				Result.Error = FString::Printf(
+					TEXT("Data breakpoint monitor received a non-monitorable evaluate reply for Result (Address=%llu, Size=%u)."),
+					static_cast<unsigned long long>(Result.ResultVariable->ValueAddress),
+					static_cast<uint32>(Result.ResultVariable->ValueSize));
+				return Result;
+			}
+
+			FAngelscriptDataBreakpoints DataBreakpoints;
+			FAngelscriptDataBreakpoint DataBreakpoint;
+			DataBreakpoint.Id = 11;
+			DataBreakpoint.Address = Result.ResultVariable->ValueAddress;
+			DataBreakpoint.AddressSize = Result.ResultVariable->ValueSize;
+			DataBreakpoint.HitCount = 1;
+			DataBreakpoint.Name = TEXT("Result");
+			DataBreakpoints.Breakpoints.Add(DataBreakpoint);
+			if (!MonitorClient.SendTypedMessage(EDebugMessageType::SetDataBreakpoints, DataBreakpoints))
+			{
+				Result.Error = FString::Printf(TEXT("Data breakpoint monitor failed to send SetDataBreakpoints: %s"), *MonitorClient.GetLastError());
+				return Result;
+			}
+
+			if (!MonitorClient.SendContinue())
+			{
+				Result.Error = FString::Printf(TEXT("Data breakpoint monitor failed to continue from the initial breakpoint stop: %s"), *MonitorClient.GetLastError());
+				return Result;
+			}
+
+			if (!WaitForTypedMessageUntil(MonitorClient, bShouldStop, EDebugMessageType::HasStopped, TimeoutSeconds, Result.DataBreakpointStopMessage, Result.Error, TEXT("Data breakpoint monitor failed to receive the data breakpoint stop")))
+			{
+				Result.bTimedOut = !bShouldStop.Load();
+				return Result;
+			}
+
+			if (!MonitorClient.SendContinue())
+			{
+				Result.Error = FString::Printf(TEXT("Data breakpoint monitor failed to continue from the data breakpoint stop: %s"), *MonitorClient.GetLastError());
+				return Result;
+			}
+
+			if (!WaitForTypedMessageUntil(MonitorClient, bShouldStop, EDebugMessageType::ClearDataBreakpoints, TimeoutSeconds, Result.ClearDataBreakpoints, Result.Error, TEXT("Data breakpoint monitor failed to receive ClearDataBreakpoints")))
+			{
+				Result.bTimedOut = !bShouldStop.Load();
+				return Result;
+			}
+
+			return Result;
+		});
+}
+
+struct FPassiveBreakpointMonitorResult
+{
+	TArray<FStoppedMessage> StopMessages;
+	bool bTimedOut = false;
+	FString Error;
+};
+
+static TFuture<FPassiveBreakpointMonitorResult> StartPassiveBreakpointMonitor(
+	int32 Port,
+	TAtomic<bool>& bMonitorReady,
+	TAtomic<bool>& bShouldStop,
+	float TimeoutSeconds)
+{
+	return Async(EAsyncExecution::ThreadPool,
+		[Port, &bMonitorReady, &bShouldStop, TimeoutSeconds]() -> FPassiveBreakpointMonitorResult
+		{
+			FPassiveBreakpointMonitorResult Result;
+			FAngelscriptDebuggerTestClient MonitorClient;
+			ON_SCOPE_EXIT
+			{
+				MonitorClient.SendStopDebugging();
+				MonitorClient.SendDisconnect();
+				MonitorClient.Disconnect();
+			};
+
+			if (!MonitorClient.Connect(TEXT("127.0.0.1"), Port))
+			{
+				Result.Error = FString::Printf(TEXT("Passive breakpoint monitor failed to connect: %s"), *MonitorClient.GetLastError());
+				bMonitorReady = true;
+				return Result;
+			}
+
+			if (!HandshakeMonitorClient(MonitorClient, bShouldStop, TimeoutSeconds, Result.Error))
+			{
+				Result.bTimedOut = !bShouldStop.Load();
+				bMonitorReady = true;
+				return Result;
+			}
+
+			bMonitorReady = true;
+
+			const double EndTime = FPlatformTime::Seconds() + TimeoutSeconds;
+			while (FPlatformTime::Seconds() < EndTime && !bShouldStop.Load())
+			{
+				TOptional<FAngelscriptDebugMessageEnvelope> Envelope = MonitorClient.ReceiveEnvelope();
+				if (Envelope.IsSet())
+				{
+					if (Envelope->MessageType == EDebugMessageType::HasStopped)
+					{
+						TOptional<FStoppedMessage> StopMessage = FAngelscriptDebuggerTestClient::DeserializeMessage<FStoppedMessage>(Envelope.GetValue());
+						if (!StopMessage.IsSet())
+						{
+							Result.Error = TEXT("Passive breakpoint monitor failed to deserialize a HasStopped payload.");
+							return Result;
+						}
+
+						Result.StopMessages.Add(StopMessage.GetValue());
+						MonitorClient.SendContinue();
+					}
+				}
+				else if (!MonitorClient.GetLastError().IsEmpty())
+				{
+					Result.Error = FString::Printf(TEXT("Passive breakpoint monitor failed while polling: %s"), *MonitorClient.GetLastError());
+					return Result;
+				}
+
+				FPlatformProcess::Sleep(0.001f);
+			}
+
+			if (!bShouldStop.Load() && FPlatformTime::Seconds() >= EndTime)
+			{
+				Result.bTimedOut = true;
+			}
+
+			return Result;
+		});
+}
+
+public:
 	FDebuggerTestContext Ctx;
 
 	BEFORE_EACH()
@@ -300,9 +299,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerDataBreakpointTests,
 
 	TEST_METHOD(LocalValueHitCount)
 	{
-		using namespace AngelscriptDebuggerDataBreakpointTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = CreateDataBreakpointFixture();
 		FAngelscriptClearBreakpoints ClearBreakpoints;
 		ClearBreakpoints.Filename = Fixture.Filename;

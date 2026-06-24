@@ -13,11 +13,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_HotReload_AngelscriptHotReloadFunctionTests_Private
-{
-}
-
-
 struct FAngelscriptHotReloadTestAccess
 {
 	static void QueueFileChange(FAngelscriptEngine& Engine, const FAngelscriptEngine::FFilenamePair& Filename)
@@ -65,8 +60,7 @@ struct FAngelscriptHotReloadTestAccess
 
 static bool ModuleRecordTracking(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadFunctionTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 	const FString ScriptA = TEXT(R"AS(
 UCLASS()
@@ -137,8 +131,7 @@ class UTrackedObjectB : UObject
 
 static bool DiscardModule(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadFunctionTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 	const FString ScriptA = TEXT(R"AS(
 UCLASS()
@@ -201,8 +194,7 @@ int SurvivorEntry()
 
 static bool DiscardAndRecompile(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadFunctionTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 	const FString ScriptV1 = TEXT(R"AS(
 UCLASS()
@@ -425,8 +417,7 @@ static bool SourceProviderSeparatesVirtualPathState(FAutomationTestBase& Test)
 
 static bool DiscardModuleRemovesGlobalFunctionAvailability(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadFunctionTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	const FName FirstModuleName(TEXT("DiscardGlobalFunctionA"));
@@ -492,8 +483,7 @@ static bool DiscardModuleRemovesGlobalFunctionAvailability(FAutomationTestBase& 
 
 static bool ModuleWatcherQueuesFileChanges(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadFunctionTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	const FAngelscriptEngine::FFilenamePair FilenamePair{
@@ -523,8 +513,7 @@ static bool ModuleWatcherQueuesFileChanges(FAutomationTestBase& Test)
 
 static bool HotReloadModifyLookupFlow(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadFunctionTests_Private;
-	bool bPassed = false;
+bool bPassed = false;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 	static const FName ModuleName(TEXT("HotReloadModifyLookupFlow"));
@@ -610,8 +599,7 @@ class UHotReloadModifyLookupFlow : UObject
 
 static bool HotReloadFailureKeepsOldCode(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadFunctionTests_Private;
-	AddExpectedError(TEXT("HotReloadFailureKeepsOldCode.as:"), EAutomationExpectedErrorFlags::Contains, 2);
+AddExpectedError(TEXT("HotReloadFailureKeepsOldCode.as:"), EAutomationExpectedErrorFlags::Contains, 2);
 	AddExpectedError(TEXT("Identifier 'MissingType' is not a data type in global namespace"), EAutomationExpectedErrorFlags::Contains, 1);
 	AddExpectedError(TEXT("Identifier 'MissingType' is not a data type"), EAutomationExpectedErrorFlags::Contains, 1);
 	AddExpectedError(TEXT("Hot reload failed due to script compile errors. Keeping all old script code."), EAutomationExpectedErrorFlags::Contains, 1);

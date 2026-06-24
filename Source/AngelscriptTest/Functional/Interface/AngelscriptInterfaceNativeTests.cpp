@@ -1,7 +1,7 @@
 // ============================================================================
 // AngelscriptInterfaceNativeTests.cpp
 //
-// Native interface implementation tests — CQTest refactor. Automation IDs:
+// Native interface implementation tests �?CQTest refactor. Automation IDs:
 //   Angelscript.TestModule.Interface.Native.NativeImplement
 //   Angelscript.TestModule.Interface.Native.NativeInheritedImplement
 //   Angelscript.TestModule.Interface.Native.NativeReferenceRoundTrip
@@ -30,25 +30,6 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
-namespace AngelscriptInterfaceNativeTests_Private
-{
-	template <typename ActualType, typename ExpectedType>
-	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreEqual(Expected, Actual, Message);
-	}
-
-	template <typename ValueType>
-	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsNotNull(Value, Message);
-	}
-}
-
-using namespace AngelscriptInterfaceNativeTests_Private;
-
 // ----------------------------------------------------------------------------
 // Profile
 // ----------------------------------------------------------------------------
@@ -60,12 +41,28 @@ using namespace AngelscriptInterfaceNativeTests_Private;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptInterfaceNativeTest, "Angelscript.TestModule.Interface.Native", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+template <typename ActualType, typename ExpectedType>
+static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.AreEqual(Expected, Actual, Message);
+}
+
+template <typename ValueType>
+static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsNotNull(Value, Message);
+}
+
+public:
 	BEFORE_ALL() { ASTEST_CREATE_ENGINE(); }
 	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
 
 	TEST_METHOD(NativeImplement)
 	{
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		AngelscriptNativeInterfaceTestHelpers::EnsureNativeInterfaceBound(UAngelscriptNativeParentInterface::StaticClass());
@@ -180,7 +177,7 @@ class ATestInterfaceNativeImplement : AActor, UAngelscriptNativeParentInterface
 
 	TEST_METHOD(NativeInheritedImplement)
 	{
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		AngelscriptNativeInterfaceTestHelpers::EnsureNativeInterfaceBound(UAngelscriptNativeParentInterface::StaticClass());
@@ -310,7 +307,7 @@ class ATestInterfaceNativeInheritedImplement : AActor, UAngelscriptNativeChildIn
 
 	TEST_METHOD(NativeReferenceRoundTrip)
 	{
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		AngelscriptNativeInterfaceTestHelpers::EnsureNativeInterfaceBound(UAngelscriptNativeParentInterface::StaticClass());
@@ -396,7 +393,7 @@ class ATestInterfaceNativeReferenceRoundTrip : AActor, UAngelscriptNativeParentI
 
 	TEST_METHOD(NativeReferenceRoundTripCppBridgeMutatesActorState)
 	{
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		AngelscriptNativeInterfaceTestHelpers::EnsureNativeInterfaceBound(UAngelscriptNativeParentInterface::StaticClass());
@@ -506,7 +503,7 @@ class ATestInterfaceNativeReferenceRoundTripCppBridgeState : AActor, UAngelscrip
 
 	TEST_METHOD(NativeInheritedParentBridgeSetterAndRef)
 	{
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		AngelscriptNativeInterfaceTestHelpers::EnsureNativeInterfaceBound(UAngelscriptNativeParentInterface::StaticClass());

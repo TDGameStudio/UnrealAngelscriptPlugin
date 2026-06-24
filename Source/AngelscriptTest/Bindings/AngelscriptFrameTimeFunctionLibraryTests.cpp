@@ -1,14 +1,14 @@
 // ============================================================================
 // AngelscriptFrameTimeFunctionLibraryTests.cpp
 //
-// FQualifiedFrameTime binding coverage — CQTest pattern. Automation ID:
+// FQualifiedFrameTime binding coverage �?CQTest pattern. Automation ID:
 //   Angelscript.TestModule.FunctionLibraries.FrameTime.FAngelscriptFrameTimeBindingsTest.*
 //
 // Sections:
-//   NativeBaselines        — verify 3 native FQualifiedFrameTime.AsSeconds()
+//   NativeBaselines        �?verify 3 native FQualifiedFrameTime.AsSeconds()
 //                            cases using TestTrue + FMath::IsNearlyEqual
 //                            (no AS engine needed)
-//   AsSecondsMixinCompiles — verify the AsSeconds() mixin binding compiles
+//   AsSecondsMixinCompiles �?verify the AsSeconds() mixin binding compiles
 //                            and is callable from script
 // ============================================================================
 
@@ -31,27 +31,6 @@
 // Constants
 // ----------------------------------------------------------------------------
 
-namespace AngelscriptTest_FrameTime_Private
-{
-	static constexpr double FrameTimeTolerance = 0.000000001;
-
-	struct FFrameTimeAsSecondsCase
-	{
-		const TCHAR* Label = TEXT("");
-		FQualifiedFrameTime Value;
-		double ExpectedSeconds = 0.0;
-	};
-
-	TArray<FFrameTimeAsSecondsCase> BuildNativeCases()
-	{
-		return {
-			{ TEXT("48 @ 24fps"), FQualifiedFrameTime(FFrameTime(48), FFrameRate(24, 1)), 2.0 },
-			{ TEXT("90 @ 30fps"), FQualifiedFrameTime(FFrameTime(90), FFrameRate(30, 1)), 3.0 },
-			{ TEXT("12 @ 25fps"), FQualifiedFrameTime(FFrameTime(FFrameNumber(12)), FFrameRate(25, 1)), 0.48 }
-		};
-	}
-}
-
 // ----------------------------------------------------------------------------
 // Test class
 // ----------------------------------------------------------------------------
@@ -60,6 +39,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFrameTimeBindingsTest,
 	"Angelscript.TestModule.FunctionLibraries.FrameTime",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static constexpr double FrameTimeTolerance = 0.000000001;
+
+struct FFrameTimeAsSecondsCase
+{
+	const TCHAR* Label = TEXT("");
+	FQualifiedFrameTime Value;
+	double ExpectedSeconds = 0.0;
+};
+
+static TArray<FFrameTimeAsSecondsCase> BuildNativeCases()
+{
+	return {
+		{ TEXT("48 @ 24fps"), FQualifiedFrameTime(FFrameTime(48), FFrameRate(24, 1)), 2.0 },
+		{ TEXT("90 @ 30fps"), FQualifiedFrameTime(FFrameTime(90), FFrameRate(30, 1)), 3.0 },
+		{ TEXT("12 @ 25fps"), FQualifiedFrameTime(FFrameTime(FFrameNumber(12)), FFrameRate(25, 1)), 0.48 }
+	};
+}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -73,9 +72,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFrameTimeBindingsTest,
 
 	TEST_METHOD(NativeBaselines)
 	{
-		using namespace AngelscriptTest_FrameTime_Private;
-
-		const TArray<FFrameTimeAsSecondsCase> Cases = BuildNativeCases();
+const TArray<FFrameTimeAsSecondsCase> Cases = BuildNativeCases();
 		for (const FFrameTimeAsSecondsCase& C : Cases)
 		{
 			ASSERT_THAT(IsTrue(

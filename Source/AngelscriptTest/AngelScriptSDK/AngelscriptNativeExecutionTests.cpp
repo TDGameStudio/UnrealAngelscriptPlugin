@@ -5,7 +5,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeExecutionTests,
 	"Angelscript.TestModule.AngelScriptSDK.Execute",
@@ -15,11 +14,13 @@ private:
 	static bool BuildModuleForExecution(
 		FAutomationTestBase& Test,
 		FNoDiscardAsserter& Assert,
-		FNativeTestEngine& NativeEngine,
+		AngelscriptNativeTestSupport::FNativeTestEngine& NativeEngine,
 		const char* ModuleName,
 		const char* Source,
 		asIScriptModule*& OutModule)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* const ScriptEngine = NativeEngine.Get();
 		if (!Assert.IsNotNull(ScriptEngine,
 			TEXT("Native execution tests should create a standalone AngelScript engine")))
@@ -39,7 +40,7 @@ private:
 	}
 
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -58,9 +59,11 @@ public:
 
 	TEST_METHOD(VoidFunction)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		asIScriptModule* Module = nullptr;
-		FScopedNativeModuleName ModuleScope(Engine, "NativeExecuteVoid");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "NativeExecuteVoid");
 		if (!BuildModuleForExecution(*TestRunner, this->Assert, Engine, "NativeExecuteVoid", "void Test() {}", Module))
 		{
 			return;
@@ -82,9 +85,11 @@ public:
 
 	TEST_METHOD(ReturnValue)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		asIScriptModule* Module = nullptr;
-		FScopedNativeModuleName ModuleScope(Engine, "NativeExecuteReturn");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "NativeExecuteReturn");
 		if (!BuildModuleForExecution(*TestRunner, this->Assert, Engine, "NativeExecuteReturn", "int Test() { return 42; }", Module))
 		{
 			return;
@@ -108,9 +113,11 @@ public:
 
 	TEST_METHOD(OneArg)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		asIScriptModule* Module = nullptr;
-		FScopedNativeModuleName ModuleScope(Engine, "NativeExecuteOneArg");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "NativeExecuteOneArg");
 		if (!BuildModuleForExecution(*TestRunner, this->Assert, Engine, "NativeExecuteOneArg", "int Test(int Value) { return Value * 2; }", Module))
 		{
 			return;
@@ -139,9 +146,11 @@ public:
 
 	TEST_METHOD(TwoArgs)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		asIScriptModule* Module = nullptr;
-		FScopedNativeModuleName ModuleScope(Engine, "NativeExecuteTwoArgs");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "NativeExecuteTwoArgs");
 		if (!BuildModuleForExecution(*TestRunner, this->Assert, Engine, "NativeExecuteTwoArgs", "int Test(int A, int B) { return A + B; }", Module))
 		{
 			return;
@@ -171,9 +180,11 @@ public:
 
 	TEST_METHOD(ThreeArgs)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		asIScriptModule* Module = nullptr;
-		FScopedNativeModuleName ModuleScope(Engine, "NativeExecuteThreeArgs");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "NativeExecuteThreeArgs");
 		if (!BuildModuleForExecution(*TestRunner, this->Assert, Engine, "NativeExecuteThreeArgs", "int Test(int A, int B, int C) { return A + B + C; }", Module))
 		{
 			return;

@@ -59,8 +59,10 @@ int GetValue() { return 42; }
 |------|------|------|
 | ≥2 个主题目录共用 | `Shared/*.h` | `FAngelscriptTestExecutor`、`BuildModule` |
 | 仅 `Bindings/` 内 ≥2 个 `.cpp` | `Bindings/Angelscript*TestHelpers.h` | `Bindings/AngelscriptTArrayBindingsTestHelpers.h` |
-| 仅单个 `.cpp` | 保留 `AngelscriptTest_<File>_Private` | ReflectiveFallback 缓存探测 |
+| 仅单个 CQTest `.cpp` | 放进所属 `TEST_CLASS_WITH_FLAGS` 的 `private:` 区域 | 嵌套 fixture、runner 函数、本地常量 |
 | 大文件按 Section 拆 | `Bindings/*Sections.h` | Console 簇 |
+
+单文件 CQTest helper 默认属于测试类本身：helper 常量、嵌套结构、runner 函数放在 `private:` 下，然后在 `BEFORE_*`、`AFTER_*`、`TEST_METHOD` 前恢复 `public:`，保证 CQTest 注册仍可见。只有非 CQTest 或多测试类共享且内部化会造成实质重复时，才保留经过明确审查的文件级 helper。
 
 参考形态：`Bindings/AngelscriptQuatBindingsTests.cpp`。Bindings 模块头清单见 `Shared/README.md` §「Bindings Execute migration」。
 

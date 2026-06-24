@@ -11,22 +11,20 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
-namespace AngelscriptTest_ClassGenerator_AngelscriptASClassTickSettingsTests_Private
-{
-	static const FName ASClassTickSettingsModuleName(TEXT("ASClassTickSettings"));
-	static const FString ASClassTickSettingsFilename(TEXT("ASClassTickSettings.as"));
-	static const FName ASClassTickParentName(TEXT("AScriptTickParent"));
-	static const FName ASClassTickChildName(TEXT("AScriptTickChild"));
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptASClassTickSettingsTests,
 	"Angelscript.TestModule.ClassGenerator.ASClass",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+inline static const FName ASClassTickSettingsModuleName = FName(TEXT("ASClassTickSettings"));
+inline static const FString ASClassTickSettingsFilename = FString(TEXT("ASClassTickSettings.as"));
+inline static const FName ASClassTickParentName = FName(TEXT("AScriptTickParent"));
+inline static const FName ASClassTickChildName = FName(TEXT("AScriptTickChild"));
+
+public:
 	TEST_METHOD(TickSettingsEnableChildTickWhenReceiveTickIsImplemented)
 	{
-		using namespace AngelscriptTest_ClassGenerator_AngelscriptASClassTickSettingsTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
 		{

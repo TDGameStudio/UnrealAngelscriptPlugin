@@ -9,7 +9,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptBytecodeTests,
 	"Angelscript.TestModule.AngelScriptSDK.Bytecode",
@@ -50,31 +49,31 @@ private:
 		asDWORD*& OutBytecode,
 		asUINT& OutBytecodeLength)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 
 		OutModule = AngelscriptNativeTestSupport::BuildNativeModule(ScriptEngine, ModuleName, Source);
-		if (!Assert.IsNotNull(OutModule, TEXT("Bytecode compile test should build the script module")))
+		if (!LocalAssert.IsNotNull(OutModule, TEXT("Bytecode compile test should build the script module")))
 		{
 			return false;
 		}
 
 		OutFunction = AngelscriptNativeTestSupport::GetNativeFunctionByDecl(OutModule, Declaration);
-		if (!Assert.IsNotNull(OutFunction, TEXT("Bytecode compile test should resolve the requested function")))
+		if (!LocalAssert.IsNotNull(OutFunction, TEXT("Bytecode compile test should resolve the requested function")))
 		{
 			return false;
 		}
 
 		OutBytecode = OutFunction->GetByteCode(&OutBytecodeLength);
-		return Assert.IsNotNull(OutBytecode, TEXT("Bytecode compile test should expose a bytecode buffer"))
-			&& Assert.IsTrue(OutBytecodeLength > 0, TEXT("Bytecode compile test should emit at least one bytecode dword"));
+		return LocalAssert.IsNotNull(OutBytecode, TEXT("Bytecode compile test should expose a bytecode buffer"))
+			&& LocalAssert.IsTrue(OutBytecodeLength > 0, TEXT("Bytecode compile test should emit at least one bytecode dword"));
 	}
 
 	static bool ExecuteIntEntry(FAutomationTestBase& Test, asIScriptEngine* ScriptEngine, asIScriptFunction* Function, int32& OutValue)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 
 		asIScriptContext* Context = ScriptEngine != nullptr ? ScriptEngine->CreateContext() : nullptr;
-		if (!Assert.IsNotNull(Context, TEXT("Bytecode compile test should create an execution context")))
+		if (!LocalAssert.IsNotNull(Context, TEXT("Bytecode compile test should create an execution context")))
 		{
 			return false;
 		}
@@ -82,7 +81,7 @@ private:
 		const int ExecuteResult = AngelscriptNativeTestSupport::PrepareAndExecute(Context, Function);
 		OutValue = static_cast<int32>(Context->GetReturnDWord());
 		Context->Release();
-		return Assert.AreEqual(static_cast<int32>(asEXECUTION_FINISHED), ExecuteResult, TEXT("Bytecode compile test should execute successfully"));
+		return LocalAssert.AreEqual(static_cast<int32>(asEXECUTION_FINISHED), ExecuteResult, TEXT("Bytecode compile test should execute successfully"));
 	}
 
 	static bool BytecodeContainsOpcode(const asDWORD* Bytecode, const asUINT BytecodeLength, const asEBCInstr Opcode)
@@ -147,7 +146,9 @@ private:
 public:
 	TEST_METHOD(InstructionSequence)
 	{
-		FBytecodeFixture Fixture("BytecodeInstructionSequence");
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeInstructionSequence");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -173,7 +174,9 @@ public:
 
 	TEST_METHOD(Append)
 	{
-		FBytecodeFixture Fixture("BytecodeAppend");
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeAppend");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -204,7 +207,7 @@ public:
 
 	TEST_METHOD(JumpResolution)
 	{
-		FBytecodeFixture Fixture("BytecodeJumpResolution");
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeJumpResolution");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -230,7 +233,7 @@ public:
 
 	TEST_METHOD(Output)
 	{
-		FBytecodeFixture Fixture("BytecodeOutput");
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOutput");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -253,7 +256,7 @@ public:
 
 	TEST_METHOD(EmptyBytecodeState)
 	{
-		FBytecodeFixture Fixture("BytecodeEmptyState");
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeEmptyState");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -271,7 +274,9 @@ public:
 
 	TEST_METHOD(InsertFirstInstructionPrependsSequence)
 	{
-		FBytecodeFixture Fixture("BytecodeInsertFirst");
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeInsertFirst");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -293,7 +298,9 @@ public:
 
 	TEST_METHOD(RemoveLastInstructionUpdatesTail)
 	{
-		FBytecodeFixture Fixture("BytecodeRemoveLast");
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeRemoveLast");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -315,7 +322,9 @@ public:
 
 	TEST_METHOD(ClearAllResetsInstructionList)
 	{
-		FBytecodeFixture Fixture("BytecodeClearAll");
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeClearAll");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -341,7 +350,9 @@ public:
 
 	TEST_METHOD(LineInstructionSerializesDebugMarker)
 	{
-		FBytecodeFixture Fixture("BytecodeLineInstruction");
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeLineInstruction");
 		if (!Fixture.IsValid(*TestRunner))
 		{
 			return;
@@ -363,7 +374,7 @@ public:
 
 	TEST_METHOD(CompiledFunctionExposesExecutableBytecode)
 	{
-		FNativeMessageCollector Messages;
+		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Compiled bytecode test should create a native engine")));
 		ON_SCOPE_EXIT { AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine); };
@@ -398,7 +409,7 @@ public:
 
 	TEST_METHOD(CompiledControlFlowProducesBranchOpcode)
 	{
-		FNativeMessageCollector Messages;
+		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Compiled branch bytecode test should create a native engine")));
 		ON_SCOPE_EXIT { AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine); };
@@ -447,7 +458,7 @@ public:
 
 	TEST_METHOD(CompiledLoopProducesBackwardJump)
 	{
-		FNativeMessageCollector Messages;
+		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Compiled loop bytecode test should create a native engine")));
 		ON_SCOPE_EXIT { AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine); };
@@ -489,7 +500,7 @@ public:
 
 	TEST_METHOD(CompiledArithmeticBytecodeDiffersFromConstantReturn)
 	{
-		FNativeMessageCollector Messages;
+		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Compiled arithmetic bytecode test should create a native engine")));
 		ON_SCOPE_EXIT { AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine); };

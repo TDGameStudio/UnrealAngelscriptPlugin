@@ -5,7 +5,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKEngineTests,
 	"Angelscript.TestModule.AngelScriptSDK.Engine",
@@ -13,7 +12,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKEngineTests,
 {
 	TEST_METHOD(Create)
 	{
-		FSDKBufferedOutStream BufferedOutStream;
+		AngelscriptNativeTestSupport::FSDKBufferedOutStream BufferedOutStream;
 		asIScriptEngine* PrimaryEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		ASSERT_THAT(IsNotNull(PrimaryEngine, TEXT("SDK engine-create test should create the primary engine")));
 
@@ -26,7 +25,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKEngineTests,
 		};
 
 		const int PrimaryCallbackResult = PrimaryEngine->SetMessageCallback(
-			asMETHODPR(FSDKBufferedOutStream, Callback, (asSMessageInfo*), void),
+			asMETHODPR(AngelscriptNativeTestSupport::FSDKBufferedOutStream, Callback, (asSMessageInfo*), void),
 			&BufferedOutStream,
 			asCALL_THISCALL);
 		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), PrimaryCallbackResult,
@@ -89,7 +88,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKEngineTests,
 
 	TEST_METHOD(ModuleEnumeration)
 	{
-		FNativeMessageCollector Messages;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
+		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* Engine = CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(Engine, TEXT("SDK engine module-enumeration test should create an engine")));
 

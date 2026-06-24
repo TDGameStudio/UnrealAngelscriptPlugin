@@ -12,109 +12,110 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_Angelscript_AngelscriptNativeScriptHotReloadBehaviorTests_Private
-{
-	static const FName NativeScriptNamespaceReloadModuleName(TEXT("HotReloadPhase2BMathNamespace"));
-	static const FString NativeScriptNamespaceReloadFilename(TEXT("HotReloadPhase2BMathNamespace.as"));
-	static const FName NativeScriptNamespaceReloadClassName(TEXT("UNativeHotReloadPhase2BMathCarrier"));
-	static const FName NativeScriptNamespaceReloadFunctionName(TEXT("ComputeSquare"));
-
-	static const FString NativeScriptNamespaceReloadScriptV1 = TEXT(R"AS(
-namespace NativeHotReloadMath
-{
-	int Square(int X)
-	{
-		return X * X;
-	}
-}
-
-UCLASS()
-class UNativeHotReloadPhase2BMathCarrier : UObject
-{
-	UFUNCTION()
-	int ComputeSquare(int X)
-	{
-		return NativeHotReloadMath::Square(X);
-	}
-};
-)AS");
-
-	static const FString NativeScriptNamespaceReloadScriptV2 = TEXT(R"AS(
-namespace NativeHotReloadMath
-{
-	int Square(int X)
-	{
-		return X * X + 1;
-	}
-}
-
-UCLASS()
-class UNativeHotReloadPhase2BMathCarrier : UObject
-{
-	UFUNCTION()
-	int ComputeSquare(int X)
-	{
-		return NativeHotReloadMath::Square(X);
-	}
-};
-)AS");
-
-	struct FSingleIntParamAndReturnValue
-	{
-		int32 X = 0;
-		int32 ReturnValue = 0;
-	};
-
-	bool ExecuteGeneratedIntFunctionOnGameThread(
-		FAngelscriptEngine& Engine,
-		UObject* Object,
-		UFunction* Function,
-		int32 InputValue,
-		int32& OutResult)
-	{
-		if (!::IsValid(Object) || Function == nullptr)
-		{
-			return false;
-		}
-
-		auto Invoke = [&Engine, Object, Function, InputValue, &OutResult]()
-		{
-			FSingleIntParamAndReturnValue Params;
-			Params.X = InputValue;
-
-			FAngelscriptEngineScope EngineScope(Engine, Object);
-			Object->ProcessEvent(Function, &Params);
-			OutResult = Params.ReturnValue;
-		};
-
-		if (IsInGameThread())
-		{
-			Invoke();
-			return true;
-		}
-
-		FEvent* CompletedEvent = FPlatformProcess::GetSynchEventFromPool(true);
-		AsyncTask(ENamedThreads::GameThread, [Invoke, CompletedEvent]() mutable
-		{
-			Invoke();
-			CompletedEvent->Trigger();
-		});
-
-		CompletedEvent->Wait();
-		FPlatformProcess::ReturnSynchEventToPool(CompletedEvent);
-		return true;
-	}
-}
-
 
 #define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 #define TestEqual(...) Test.TestEqual(__VA_ARGS__)
 #define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 
+TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptHotReloadBehaviorTests,
+	"Angelscript.TestModule.HotReload.NativeScript.Phase2B",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+private:
+inline static const FName NativeScriptNamespaceReloadModuleName = FName(TEXT("HotReloadPhase2BMathNamespace"));
+inline static const FString NativeScriptNamespaceReloadFilename = FString(TEXT("HotReloadPhase2BMathNamespace.as"));
+inline static const FName NativeScriptNamespaceReloadClassName = FName(TEXT("UNativeHotReloadPhase2BMathCarrier"));
+inline static const FName NativeScriptNamespaceReloadFunctionName = FName(TEXT("ComputeSquare"));
+
+inline static const FString NativeScriptNamespaceReloadScriptV1 = TEXT(R"AS(
+namespace NativeHotReloadMath
+{
+int Square(int X)
+{
+	return X * X;
+}
+}
+
+UCLASS()
+class UNativeHotReloadPhase2BMathCarrier : UObject
+{
+UFUNCTION()
+int ComputeSquare(int X)
+{
+	return NativeHotReloadMath::Square(X);
+}
+};
+)AS");
+
+inline static const FString NativeScriptNamespaceReloadScriptV2 = TEXT(R"AS(
+namespace NativeHotReloadMath
+{
+int Square(int X)
+{
+	return X * X + 1;
+}
+}
+
+UCLASS()
+class UNativeHotReloadPhase2BMathCarrier : UObject
+{
+UFUNCTION()
+int ComputeSquare(int X)
+{
+	return NativeHotReloadMath::Square(X);
+}
+};
+)AS");
+
+struct FSingleIntParamAndReturnValue
+{
+	int32 X = 0;
+	int32 ReturnValue = 0;
+};
+
+static bool ExecuteGeneratedIntFunctionOnGameThread(
+	FAngelscriptEngine& Engine,
+	UObject* Object,
+	UFunction* Function,
+	int32 InputValue,
+	int32& OutResult)
+{
+	if (!::IsValid(Object) || Function == nullptr)
+	{
+		return false;
+	}
+
+	auto Invoke = [&Engine, Object, Function, InputValue, &OutResult]()
+	{
+		FSingleIntParamAndReturnValue Params;
+		Params.X = InputValue;
+
+		FAngelscriptEngineScope EngineScope(Engine, Object);
+		Object->ProcessEvent(Function, &Params);
+		OutResult = Params.ReturnValue;
+	};
+
+	if (IsInGameThread())
+	{
+		Invoke();
+		return true;
+	}
+
+	FEvent* CompletedEvent = FPlatformProcess::GetSynchEventFromPool(true);
+	AsyncTask(ENamedThreads::GameThread, [Invoke, CompletedEvent]() mutable
+	{
+		Invoke();
+		CompletedEvent->Trigger();
+	});
+
+	CompletedEvent->Wait();
+	FPlatformProcess::ReturnSynchEventToPool(CompletedEvent);
+	return true;
+}
+
 static bool NativeScriptHotReloadPhase2BNamespaceFunctionBehaviorSwitch(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_Angelscript_AngelscriptNativeScriptHotReloadBehaviorTests_Private;
-	FAngelscriptEngine* ProductionEngine = RequireRunningProductionEngine(
+FAngelscriptEngine* ProductionEngine = RequireRunningProductionEngine(
 		Test,
 		TEXT("Native script namespace hot reload behavior tests require a production engine."));
 	if (ProductionEngine == nullptr)
@@ -236,10 +237,7 @@ static bool NativeScriptHotReloadPhase2BNamespaceFunctionBehaviorSwitch(FAutomat
 #undef TestEqual
 #undef TestNotNull
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptHotReloadBehaviorTests,
-	"Angelscript.TestModule.HotReload.NativeScript.Phase2B",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(NamespaceFunctionBehaviorSwitch)
 	{
 		ASSERT_THAT(IsTrue(NativeScriptHotReloadPhase2BNamespaceFunctionBehaviorSwitch(*TestRunner)));

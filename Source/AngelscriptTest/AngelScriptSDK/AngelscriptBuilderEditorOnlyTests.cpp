@@ -4,18 +4,16 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptBuilderTestSupport;
-using namespace AngelscriptNativeTestSupport;
 
 namespace AngelscriptBuilderEditorOnlyTest
 {
 	static sClassDeclaration* FindClassDeclarationByNameInAnyList(asCBuilder& Builder, const char* Name)
 	{
-		if (sClassDeclaration* ClassDeclaration = FindClassDeclarationByName(Builder, Name))
+		if (sClassDeclaration* ClassDeclaration = AngelscriptBuilderTestSupport::FindClassDeclarationByName(Builder, Name))
 		{
 			return ClassDeclaration;
 		}
-		return FindNamedTypeDeclarationByName(Builder, Name);
+		return AngelscriptBuilderTestSupport::FindNamedTypeDeclarationByName(Builder, Name);
 	}
 }
 
@@ -24,7 +22,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBuilderEditorOnlyTests,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -43,11 +41,14 @@ public:
 
 	TEST_METHOD(LineBlocksClassifyTopLevelDeclarations)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+
 #if WITH_EDITOR
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder editor-only line block test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderEditorOnlyLineBlocks");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderEditorOnlyLineBlocks");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder editor-only line block test should create a module")));
 
@@ -113,11 +114,14 @@ int EditorEntry()
 
 	TEST_METHOD(EditorOnlyModuleClassifiesEveryParsedNodeAsEditorOnly)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+
 #if WITH_EDITOR
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder editor-only module test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderEditorOnlyWholeModule");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderEditorOnlyWholeModule");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder editor-only module test should create a module")));
 
@@ -163,11 +167,14 @@ int RuntimeNamedEntry()
 
 	TEST_METHOD(LineBlocksIgnoreNodesFromOtherScriptSections)
 	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+
 #if WITH_EDITOR
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder editor-only section isolation test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "BuilderEditorOnlySectionIsolation");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderEditorOnlySectionIsolation");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder editor-only section isolation test should create a module")));
 

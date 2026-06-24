@@ -9,83 +9,80 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Core_AngelscriptDelegateWithPayloadTests_Private
-{
-	TStrongObjectPtr<UAngelscriptNativeScriptTestObject> CreateDelegateWithPayloadReceiver(FAutomationTestBase& Test)
-	{
-		FNoDiscardAsserter Assert(Test);
-		TStrongObjectPtr<UAngelscriptNativeScriptTestObject> Receiver(
-			NewObject<UAngelscriptNativeScriptTestObject>(GetTransientPackage(), TEXT("DelegateWithPayloadRuntimeReceiver")));
-		if (!Assert.IsNotNull(Receiver.Get(), TEXT("DelegateWithPayload runtime test should create a transient receiver object")))
-		{
-			return nullptr;
-		}
-
-		Receiver->bNativeFlag = false;
-		Receiver->PreciseValue = -1.0;
-		Receiver->LargeCount = 0;
-		return Receiver;
-	}
-
-	bool ExpectClearedDelegateState(FAutomationTestBase& Test, const FAngelscriptDelegateWithPayload& Delegate)
-	{
-		FNoDiscardAsserter Assert(Test);
-		const bool bPayloadCleared = Assert.IsFalse(
-			Delegate.Payload.IsValid(),
-			TEXT("DelegateWithPayload Reset should clear the instanced payload"));
-		const bool bObjectCleared = Assert.IsFalse(
-			Delegate.Object.IsValid(),
-			TEXT("DelegateWithPayload Reset should clear the target object weak pointer"));
-		const bool bFunctionCleared = Assert.IsTrue(
-			Delegate.FunctionName.IsNone(),
-			TEXT("DelegateWithPayload Reset should clear the bound function name"));
-		return bPayloadCleared && bObjectCleared && bFunctionCleared;
-	}
-
-	bool ExpectBoxedFloatPayload(
-		FAutomationTestBase& Test,
-		const FAngelscriptDelegateWithPayload& Delegate,
-		const float ExpectedValue)
-	{
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsTrue(
-				Delegate.Payload.IsValid(),
-				TEXT("DelegateWithPayload float bind should store an instanced payload")))
-		{
-			return false;
-		}
-
-		if (!Assert.IsTrue(
-				Delegate.Payload.GetScriptStruct() == FAngelscriptBoxedFloat::StaticStruct(),
-				TEXT("DelegateWithPayload float bind should use the boxed-float helper struct")))
-		{
-			return false;
-		}
-
-		const FAngelscriptBoxedFloat* BoxedFloat = reinterpret_cast<const FAngelscriptBoxedFloat*>(Delegate.Payload.GetMemory());
-		if (!Assert.IsNotNull(BoxedFloat, TEXT("DelegateWithPayload float bind should expose boxed payload memory")))
-		{
-			return false;
-		}
-
-		return Assert.IsNear(
-			ExpectedValue,
-			BoxedFloat->Value,
-			KINDA_SMALL_NUMBER,
-			TEXT("DelegateWithPayload float bind should preserve the boxed primitive value"));
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptDelegateWithPayloadTests,
 	"Angelscript.TestModule.Engine.DelegateWithPayload",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static TStrongObjectPtr<UAngelscriptNativeScriptTestObject> CreateDelegateWithPayloadReceiver(FAutomationTestBase& Test)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	TStrongObjectPtr<UAngelscriptNativeScriptTestObject> Receiver(
+		NewObject<UAngelscriptNativeScriptTestObject>(GetTransientPackage(), TEXT("DelegateWithPayloadRuntimeReceiver")));
+	if (!LocalAssert.IsNotNull(Receiver.Get(), TEXT("DelegateWithPayload runtime test should create a transient receiver object")))
+	{
+		return nullptr;
+	}
+
+	Receiver->bNativeFlag = false;
+	Receiver->PreciseValue = -1.0;
+	Receiver->LargeCount = 0;
+	return Receiver;
+}
+
+static bool ExpectClearedDelegateState(FAutomationTestBase& Test, const FAngelscriptDelegateWithPayload& Delegate)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	const bool bPayloadCleared = LocalAssert.IsFalse(
+		Delegate.Payload.IsValid(),
+		TEXT("DelegateWithPayload Reset should clear the instanced payload"));
+	const bool bObjectCleared = LocalAssert.IsFalse(
+		Delegate.Object.IsValid(),
+		TEXT("DelegateWithPayload Reset should clear the target object weak pointer"));
+	const bool bFunctionCleared = LocalAssert.IsTrue(
+		Delegate.FunctionName.IsNone(),
+		TEXT("DelegateWithPayload Reset should clear the bound function name"));
+	return bPayloadCleared && bObjectCleared && bFunctionCleared;
+}
+
+static bool ExpectBoxedFloatPayload(
+	FAutomationTestBase& Test,
+	const FAngelscriptDelegateWithPayload& Delegate,
+	const float ExpectedValue)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	if (!LocalAssert.IsTrue(
+			Delegate.Payload.IsValid(),
+			TEXT("DelegateWithPayload float bind should store an instanced payload")))
+	{
+		return false;
+	}
+
+	if (!LocalAssert.IsTrue(
+			Delegate.Payload.GetScriptStruct() == FAngelscriptBoxedFloat::StaticStruct(),
+			TEXT("DelegateWithPayload float bind should use the boxed-float helper struct")))
+	{
+		return false;
+	}
+
+	const FAngelscriptBoxedFloat* BoxedFloat = reinterpret_cast<const FAngelscriptBoxedFloat*>(Delegate.Payload.GetMemory());
+	if (!LocalAssert.IsNotNull(BoxedFloat, TEXT("DelegateWithPayload float bind should expose boxed payload memory")))
+	{
+		return false;
+	}
+
+	return LocalAssert.IsNear(
+		ExpectedValue,
+		BoxedFloat->Value,
+		KINDA_SMALL_NUMBER,
+		TEXT("DelegateWithPayload float bind should preserve the boxed primitive value"));
+}
+
+public:
 	TEST_METHOD(BindExecuteAndResetPrimitivePayloads)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptDelegateWithPayloadTests_Private;
-
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 		TStrongObjectPtr<UAngelscriptNativeScriptTestObject> Receiver = CreateDelegateWithPayloadReceiver(*TestRunner);

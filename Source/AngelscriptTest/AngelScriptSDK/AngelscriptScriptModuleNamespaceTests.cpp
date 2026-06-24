@@ -8,13 +8,12 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptScriptModuleNamespaceTests,
 	"Angelscript.TestModule.AngelScriptSDK.ScriptModule.Namespace",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -37,7 +36,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptModuleNamespaceTests,
 		ASSERT_THAT(IsNotNull(ScriptEngine,
 			TEXT("ScriptModule namespace default test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleNamespaceDefault");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleNamespaceDefault");
 		asIScriptModule* Module = ScriptEngine->GetModule(ModuleScope.Get(), asGM_ALWAYS_CREATE);
 		ASSERT_THAT(IsNotNull(Module,
 			TEXT("ScriptModule namespace default test should create a module")));
@@ -85,7 +84,7 @@ class Agent
 		ASSERT_THAT(IsNotNull(ScriptEngine,
 			TEXT("ScriptModule namespace explicit test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleNamespaceExplicit");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleNamespaceExplicit");
 		asIScriptModule* Module = ScriptEngine->GetModule(ModuleScope.Get(), asGM_ALWAYS_CREATE);
 		ASSERT_THAT(IsNotNull(Module,
 			TEXT("ScriptModule namespace explicit test should create a module")));
@@ -142,7 +141,7 @@ namespace Tools
 		ASSERT_THAT(IsNotNull(ScriptEngine,
 			TEXT("ScriptModule namespace invalid test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleNamespaceInvalid");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleNamespaceInvalid");
 		asIScriptModule* Module = ScriptEngine->GetModule(ModuleScope.Get(), asGM_ALWAYS_CREATE);
 		ASSERT_THAT(IsNotNull(Module,
 			TEXT("ScriptModule namespace invalid test should create a module")));

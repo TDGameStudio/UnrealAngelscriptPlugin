@@ -1,14 +1,14 @@
 // ============================================================================
 // AngelscriptMathAndPlatformBindingsTests.cpp
 //
-// Math and platform binding coverage — CQTest refactor. Automation IDs:
+// Math and platform binding coverage �?CQTest refactor. Automation IDs:
 //   Angelscript.TestModule.Bindings.MathAndPlatform.FAngelscriptMathAndPlatformBindingsTest.*
 //
 // Sections:
-//   MathExtended         — extended Math helpers (rand, interp, cubic, etc.)
-//   MathDeterministic    — deterministic math comparison vs native baselines
-//   PlatformProcess      — FPlatformProcess directory/path queries
-//   Logging              — headless-safe logging helpers
+//   MathExtended         �?extended Math helpers (rand, interp, cubic, etc.)
+//   MathDeterministic    �?deterministic math comparison vs native baselines
+//   PlatformProcess      �?FPlatformProcess directory/path queries
+//   Logging              �?headless-safe logging helpers
 //
 // CQTest adaptation notes:
 //   Four legacy automation tests merged into one TEST_CLASS.
@@ -30,38 +30,6 @@
 // Helper utilities (retained from original)
 // ----------------------------------------------------------------------------
 
-namespace AngelscriptTest_Bindings_AngelscriptMathAndPlatformBindingsTests_Private
-{
-	FString FormatScriptFloatLiteral(const double Value)
-	{
-		FString Literal = FString::Printf(TEXT("%.9g"), Value);
-		if (!Literal.Contains(TEXT(".")) && !Literal.Contains(TEXT("e")) && !Literal.Contains(TEXT("E")))
-		{
-			Literal += TEXT(".0");
-		}
-
-		return Literal;
-	}
-
-	FString FormatScriptVectorLiteral(const FVector& Value)
-	{
-		return FString::Printf(
-			TEXT("FVector(%s, %s, %s)"),
-			*FormatScriptFloatLiteral(Value.X),
-			*FormatScriptFloatLiteral(Value.Y),
-			*FormatScriptFloatLiteral(Value.Z));
-	}
-
-	FString FormatScriptRotatorLiteral(const FRotator& Value)
-	{
-		return FString::Printf(
-			TEXT("FRotator(%s, %s, %s)"),
-			*FormatScriptFloatLiteral(Value.Pitch),
-			*FormatScriptFloatLiteral(Value.Yaw),
-			*FormatScriptFloatLiteral(Value.Roll));
-	}
-}
-
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -76,6 +44,37 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMathAndPlatformBindingsTest,
 	"Angelscript.TestModule.Bindings.MathAndPlatform",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static FString FormatScriptFloatLiteral(const double Value)
+{
+	FString Literal = FString::Printf(TEXT("%.9g"), Value);
+	if (!Literal.Contains(TEXT(".")) && !Literal.Contains(TEXT("e")) && !Literal.Contains(TEXT("E")))
+	{
+		Literal += TEXT(".0");
+	}
+
+	return Literal;
+}
+
+static FString FormatScriptVectorLiteral(const FVector& Value)
+{
+	return FString::Printf(
+		TEXT("FVector(%s, %s, %s)"),
+		*FormatScriptFloatLiteral(Value.X),
+		*FormatScriptFloatLiteral(Value.Y),
+		*FormatScriptFloatLiteral(Value.Z));
+}
+
+static FString FormatScriptRotatorLiteral(const FRotator& Value)
+{
+	return FString::Printf(
+		TEXT("FRotator(%s, %s, %s)"),
+		*FormatScriptFloatLiteral(Value.Pitch),
+		*FormatScriptFloatLiteral(Value.Yaw),
+		*FormatScriptFloatLiteral(Value.Roll));
+}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -89,8 +88,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMathAndPlatformBindingsTest,
 
 	TEST_METHOD(MathExtended)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptMathAndPlatformBindingsTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMathPlatform_MathExtended"), TEXT(R"(
@@ -262,8 +260,7 @@ int LinePlaneIntersectionCorrect()
 
 	TEST_METHOD(MathDeterministic)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptMathAndPlatformBindingsTests_Private;
-		constexpr float Tolerance = 0.001f;
+constexpr float Tolerance = 0.001f;
 		const float ExpectedClampAngle = FMath::ClampAngle(370.0f, -180.0f, 180.0f);
 		const float ExpectedDeltaAngle = FMath::FindDeltaAngleDegrees(10.0f, 20.0f);
 		const float ExpectedUnwind = FMath::UnwindDegrees(370.0f);
@@ -335,8 +332,7 @@ int Entry()
 
 	TEST_METHOD(PlatformProcess)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptMathAndPlatformBindingsTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMathPlatform_PlatformProcess"), TEXT(R"(
@@ -372,8 +368,7 @@ int CanLaunchURLWorks() { return FPlatformProcess::CanLaunchURL("https://example
 
 	TEST_METHOD(Logging)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptMathAndPlatformBindingsTests_Private;
-		TestRunner->AddExpectedError(TEXT("Test error message"), EAutomationExpectedErrorFlags::Contains, 1);
+TestRunner->AddExpectedError(TEXT("Test error message"), EAutomationExpectedErrorFlags::Contains, 1);
 
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);

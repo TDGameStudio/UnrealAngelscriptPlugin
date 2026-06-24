@@ -17,8 +17,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace PreprocessorTestHelpers;
-
 // ============================================================================
 // Test class
 // ============================================================================
@@ -33,6 +31,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorFunctionMacroTest,
 	// ========================================================================
 	TEST_METHOD(RejectUnsupportedConditionalPlacement)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		TestRunner->AddExpectedError(
 			TEXT("Cannot put a UPROPERTY or UFUNCTION inside preprocessor conditions other than EDITOR or flags declared in configuration."),
 			EAutomationExpectedErrorFlags::Contains, 2);
@@ -158,6 +158,8 @@ class UEditorConditionalCarrier : UObject
 	// ========================================================================
 	TEST_METHOD(InvalidSpecifiersReportDiagnostics)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		TestRunner->AddExpectedErrorPlain(
 			TEXT("Global UFUNCTION() BadGlobalEvent may not be marked BlueprintEvent."),
 			EAutomationExpectedErrorFlags::Contains, 1);

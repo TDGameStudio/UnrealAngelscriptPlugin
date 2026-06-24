@@ -12,32 +12,31 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptDebuggerSessionTests_Private
-{
-	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsTrue(bActual, Message);
-	}
-
-	static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsFalse(bActual, Message);
-	}
-
-	template <typename ActualType, typename ExpectedType>
-	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreEqual(Expected, Actual, Message);
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionTests,
 	"Angelscript.TestModule.Debugger.Session",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsTrue(bActual, Message);
+}
+
+static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsFalse(bActual, Message);
+}
+
+template <typename ActualType, typename ExpectedType>
+static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.AreEqual(Expected, Actual, Message);
+}
+
+public:
 	FDebuggerTestContext Ctx;
 
 	BEFORE_EACH()
@@ -52,9 +51,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionTests,
 
 	TEST_METHOD(DisconnectClearsDebugState)
 	{
-		using namespace AngelscriptDebuggerSessionTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBreakpointFixture();
 		ON_SCOPE_EXIT
 		{
@@ -145,9 +142,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionTests,
 
 	TEST_METHOD(SecondClientStartPreservesBreakpoints)
 	{
-		using namespace AngelscriptDebuggerSessionTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBreakpointFixture();
 		TAtomic<bool> bAdditionalMonitorReady(false);
 		TAtomic<bool> bAdditionalMonitorHandshakeSucceeded(false);
@@ -270,9 +265,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionTests,
 
 	TEST_METHOD(SingleClientBreakpointRoundtrip)
 	{
-		using namespace AngelscriptDebuggerSessionTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 			const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBreakpointFixture();
 			TAtomic<bool> bWorkerReady{false};

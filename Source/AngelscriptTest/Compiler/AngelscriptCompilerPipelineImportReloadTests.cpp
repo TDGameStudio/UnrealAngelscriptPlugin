@@ -79,8 +79,6 @@ namespace CompilerPipelineImportReloadTest
 	}
 }
 
-using namespace CompilerPipelineImportReloadTest;
-
 TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

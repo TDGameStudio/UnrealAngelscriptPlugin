@@ -4,14 +4,14 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace PreprocessorTestHelpers;
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptVirtualScriptPathPreprocessorTest,
 	"Angelscript.TestModule.Preprocessor.VirtualScriptPaths",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	TEST_METHOD(AddFileEmitsGameVirtualPathMetadata)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 

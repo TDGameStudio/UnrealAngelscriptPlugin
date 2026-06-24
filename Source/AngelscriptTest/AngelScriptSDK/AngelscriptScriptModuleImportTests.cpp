@@ -5,14 +5,12 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptScriptModuleImportTests,
 	"Angelscript.TestModule.AngelScriptSDK.ScriptModule.Import",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -35,7 +33,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptModuleImportTests,
 		ASSERT_THAT(IsNotNull(ScriptEngine,
 			TEXT("ScriptModule import metadata test should create a standalone SDK engine")));
 
-		FScopedNativeModule Consumer(*TestRunner, Engine, "ScriptModuleImportMetadataConsumer", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Consumer(*TestRunner, Engine, "ScriptModuleImportMetadataConsumer", R"(
 import int SharedValue() from "ScriptModuleImportMetadataProvider";
 
 int Entry()
@@ -61,17 +59,20 @@ int Entry()
 
 	TEST_METHOD(BindImportedFunctionExecutesProvider)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine,
 			TEXT("ScriptModule import bind test should create a standalone SDK engine")));
 
-		FScopedNativeModule Provider(*TestRunner, Engine, "ScriptModuleImportBindProvider", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Provider(*TestRunner, Engine, "ScriptModuleImportBindProvider", R"(
 int SharedValue()
 {
 	return 77;
 }
 )");
-		FScopedNativeModule Consumer(*TestRunner, Engine, "ScriptModuleImportBindConsumer", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Consumer(*TestRunner, Engine, "ScriptModuleImportBindConsumer", R"(
 import int SharedValue() from "ScriptModuleImportBindProvider";
 
 int Entry()
@@ -102,17 +103,20 @@ int Entry()
 
 	TEST_METHOD(BindImportedFunctionRejectsSignatureMismatch)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine,
 			TEXT("ScriptModule import mismatch test should create a standalone SDK engine")));
 
-		FScopedNativeModule Provider(*TestRunner, Engine, "ScriptModuleImportMismatchProvider", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Provider(*TestRunner, Engine, "ScriptModuleImportMismatchProvider", R"(
 int SharedValue(int Value)
 {
 	return Value;
 }
 )");
-		FScopedNativeModule Consumer(*TestRunner, Engine, "ScriptModuleImportMismatchConsumer", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Consumer(*TestRunner, Engine, "ScriptModuleImportMismatchConsumer", R"(
 import int SharedValue() from "ScriptModuleImportMismatchProvider";
 
 int Entry()
@@ -140,23 +144,26 @@ int Entry()
 
 	TEST_METHOD(UnbindImportedFunctionAllowsRebind)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine,
 			TEXT("ScriptModule import rebind test should create a standalone SDK engine")));
 
-		FScopedNativeModule ProviderA(*TestRunner, Engine, "ScriptModuleImportRebindProviderA", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule ProviderA(*TestRunner, Engine, "ScriptModuleImportRebindProviderA", R"(
 int SharedValue()
 {
 	return 11;
 }
 )");
-		FScopedNativeModule ProviderB(*TestRunner, Engine, "ScriptModuleImportRebindProviderB", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule ProviderB(*TestRunner, Engine, "ScriptModuleImportRebindProviderB", R"(
 int SharedValue()
 {
 	return 29;
 }
 )");
-		FScopedNativeModule Consumer(*TestRunner, Engine, "ScriptModuleImportRebindConsumer", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Consumer(*TestRunner, Engine, "ScriptModuleImportRebindConsumer", R"(
 import int SharedValue() from "ScriptModuleImportRebindProviderA";
 
 int Entry()
@@ -204,11 +211,14 @@ int Entry()
 
 	TEST_METHOD(BindAllImportedFunctions)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine,
 			TEXT("ScriptModule import bind-all test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName MissingScope(Engine, "ScriptModuleImportBindAllMissingConsumer");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName MissingScope(Engine, "ScriptModuleImportBindAllMissingConsumer");
 		asIScriptModule* MissingConsumer = BuildNativeModule(ScriptEngine, MissingScope.Get(), R"(
 import int SharedValue() from "ScriptModuleImportBindAllMissingProvider";
 
@@ -226,13 +236,13 @@ int Entry()
 		ASSERT_THAT(AreEqual(static_cast<int32>(asCANT_BIND_ALL_FUNCTIONS), MissingConsumer->BindAllImportedFunctions(),
 			TEXT("ScriptModule import bind-all test should fail when provider is missing")));
 
-		FScopedNativeModule Provider(*TestRunner, Engine, "ScriptModuleImportBindAllProvider", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Provider(*TestRunner, Engine, "ScriptModuleImportBindAllProvider", R"(
 int SharedValue()
 {
 	return 42;
 }
 )");
-		FScopedNativeModule Consumer(*TestRunner, Engine, "ScriptModuleImportBindAllConsumer", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Consumer(*TestRunner, Engine, "ScriptModuleImportBindAllConsumer", R"(
 import int SharedValue() from "ScriptModuleImportBindAllProvider";
 
 int Entry()

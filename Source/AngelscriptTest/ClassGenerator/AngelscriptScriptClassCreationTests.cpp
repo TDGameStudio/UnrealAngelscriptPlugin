@@ -32,8 +32,8 @@ namespace ScriptClassCreationTest
 		FStringView Suffix,
 		const TCHAR* CallingContext = TEXT("AngelscriptScriptClassCreationTests"))
 	{
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(ParentClass, TEXT("Blueprint parent class should be valid")))
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(ParentClass, TEXT("Blueprint parent class should be valid")))
 		{
 			return nullptr;
 		}
@@ -44,7 +44,7 @@ namespace ScriptClassCreationTest
 			Suffix.GetData(),
 			*FGuid::NewGuid().ToString(EGuidFormats::Digits));
 		UPackage* BlueprintPackage = CreatePackage(*PackagePath);
-		if (!Assert.IsNotNull(BlueprintPackage, TEXT("Transient blueprint package should be created")))
+		if (!LocalAssert.IsNotNull(BlueprintPackage, TEXT("Transient blueprint package should be created")))
 		{
 			return nullptr;
 		}
@@ -60,7 +60,7 @@ namespace ScriptClassCreationTest
 			UBlueprint::StaticClass(),
 			UBlueprintGeneratedClass::StaticClass(),
 			CallingContext);
-		if (!Assert.IsNotNull(Blueprint, TEXT("Transient blueprint asset should be created")))
+		if (!LocalAssert.IsNotNull(Blueprint, TEXT("Transient blueprint asset should be created")))
 		{
 			return nullptr;
 		}
@@ -71,8 +71,8 @@ namespace ScriptClassCreationTest
 	bool CompileAndValidateBlueprint(FAutomationTestBase& Test, UBlueprint& Blueprint)
 	{
 		FKismetEditorUtilities::CompileBlueprint(&Blueprint);
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsNotNull(Blueprint.GeneratedClass.Get(), TEXT("Blueprint should compile to a generated class"));
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsNotNull(Blueprint.GeneratedClass.Get(), TEXT("Blueprint should compile to a generated class"));
 	}
 
 	void CleanupBlueprint(UBlueprint*& Blueprint)

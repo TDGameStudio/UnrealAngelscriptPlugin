@@ -17,8 +17,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace PreprocessorTestHelpers;
-
 // ============================================================================
 // Test class
 // ============================================================================
@@ -32,6 +30,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorBasicTest,
 	// ========================================================================
 	TEST_METHOD(BasicParse)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -64,6 +64,8 @@ int ReturnSeven()
 	// ========================================================================
 	TEST_METHOD(MacroDetection)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -110,6 +112,8 @@ class AMacroActor : AActor
 	// ========================================================================
 	TEST_METHOD(ImportParsing)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -160,6 +164,8 @@ int UseShared()
 	// ========================================================================
 	TEST_METHOD(LongSourceRemainsDeterministic)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		static constexpr int32 FunctionCount = 320;
 		static constexpr int32 BaseReturnValue = 17;
 		static constexpr int32 MinimumCodeLength = 30000;
@@ -251,6 +257,8 @@ int UseShared()
 	// ========================================================================
 	TEST_METHOD(PreprocessIsSingleUse)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 

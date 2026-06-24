@@ -52,8 +52,8 @@ namespace GameInstanceLocalPlayerTestHelpers
 		void* Object,
 		const TCHAR* ContextLabel)
 	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreEqual(
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.AreEqual(
 			static_cast<int32>(asSUCCESS),
 			Context.SetArgObject(ArgumentIndex, Object),
 			*FString::Printf(TEXT("%s should bind object argument %u"), ContextLabel, static_cast<uint32>(ArgumentIndex)));
@@ -68,8 +68,8 @@ namespace GameInstanceLocalPlayerTestHelpers
 
 		bool Initialize(FAutomationTestBase& Test)
 		{
-			FNoDiscardAsserter Assert(Test);
-			if (!Assert.IsNotNull(GEngine, TEXT("GameInstance local-player bindings test should have a live GEngine")))
+			FNoDiscardAsserter LocalAssert(Test);
+			if (!LocalAssert.IsNotNull(GEngine, TEXT("GameInstance local-player bindings test should have a live GEngine")))
 			{
 				return false;
 			}
@@ -79,13 +79,13 @@ namespace GameInstanceLocalPlayerTestHelpers
 				UPackage::StaticClass(),
 				FName(TEXT("/Angelscript_Test_GameInstanceLocalPlayer")));
 			Package = NewObject<UPackage>(GetTransientPackage(), PackageName, RF_Transient);
-			if (!Assert.IsNotNull(Package, TEXT("GameInstance local-player bindings test should create a transient world package")))
+			if (!LocalAssert.IsNotNull(Package, TEXT("GameInstance local-player bindings test should create a transient world package")))
 			{
 				return false;
 			}
 
 			GameInstance = NewObject<UGameInstance>(GEngine, UGameInstance::StaticClass());
-			if (!Assert.IsNotNull(GameInstance, TEXT("GameInstance local-player bindings test should create a standalone game instance")))
+			if (!LocalAssert.IsNotNull(GameInstance, TEXT("GameInstance local-player bindings test should create a standalone game instance")))
 			{
 				return false;
 			}
@@ -93,8 +93,8 @@ namespace GameInstanceLocalPlayerTestHelpers
 			GameInstance->InitializeStandalone(TEXT("AngelscriptGameInstanceLocalPlayerWorld"), Package);
 			World = GameInstance->GetWorld();
 			WorldContext = GameInstance->GetWorldContext();
-			if (!Assert.IsNotNull(World, TEXT("GameInstance local-player bindings test should initialize a standalone world"))
-				|| !Assert.IsNotNull(WorldContext, TEXT("GameInstance local-player bindings test should expose a world context")))
+			if (!LocalAssert.IsNotNull(World, TEXT("GameInstance local-player bindings test should initialize a standalone world"))
+				|| !LocalAssert.IsNotNull(WorldContext, TEXT("GameInstance local-player bindings test should expose a world context")))
 			{
 				return false;
 			}
@@ -103,7 +103,7 @@ namespace GameInstanceLocalPlayerTestHelpers
 				? GEngine->GameViewportClientClass.Get()
 				: UGameViewportClient::StaticClass();
 			GameViewport = NewObject<UGameViewportClient>(GEngine, ViewportClass);
-			if (!Assert.IsNotNull(GameViewport, TEXT("GameInstance local-player bindings test should create a viewport client")))
+			if (!LocalAssert.IsNotNull(GameViewport, TEXT("GameInstance local-player bindings test should create a viewport client")))
 			{
 				return false;
 			}
@@ -159,8 +159,6 @@ namespace GameInstanceLocalPlayerTestHelpers
 	};
 }
 
-using namespace GameInstanceLocalPlayerTestHelpers;
-
 // ----------------------------------------------------------------------------
 // Test class
 // ----------------------------------------------------------------------------
@@ -185,7 +183,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGameInstanceLocalPlayerBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FGameInstanceLocalPlayerFixture Fixture;
+		GameInstanceLocalPlayerTestHelpers::FGameInstanceLocalPlayerFixture Fixture;
 		if (!Fixture.Initialize(*TestRunner)) return;
 
 		UWorld* TestWorld = Fixture.World;
@@ -203,7 +201,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGameInstanceLocalPlayerBindingsTest,
 		}
 
 		if (!this->Assert.IsTrue(
-			GameInstance->FindLocalPlayerFromControllerId(LocalPlayerControllerId) == nullptr,
+			GameInstance->FindLocalPlayerFromControllerId(GameInstanceLocalPlayerTestHelpers::LocalPlayerControllerId) == nullptr,
 			TEXT("GameInstance local-player bindings test should reserve controller id 7 before script execution")))
 		{
 			return;
@@ -260,7 +258,7 @@ int VerifyGameInstanceLocalPlayerCompat(UWorld ExpectedWorld, UGameInstance Game
 }
 )");
 		Script.ReplaceInline(TEXT("$INITIAL_COUNT$"), *LexToString(InitialLocalPlayerCount));
-		Script.ReplaceInline(TEXT("$CONTROLLER_ID$"), *LexToString(LocalPlayerControllerId));
+		Script.ReplaceInline(TEXT("$CONTROLLER_ID$"), *LexToString(GameInstanceLocalPlayerTestHelpers::LocalPlayerControllerId));
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASGameInstanceLocalPlayerCompat", Script);
 		if (Module == nullptr) return;
@@ -293,8 +291,8 @@ int VerifyGameInstanceLocalPlayerCompat(UWorld ExpectedWorld, UGameInstance Game
 			return;
 		}
 
-		if (!SetArgObjectChecked(*TestRunner, *Context, 0, TestWorld, TEXT("VerifyGameInstanceLocalPlayerCompat"))
-			|| !SetArgObjectChecked(*TestRunner, *Context, 1, GameInstance, TEXT("VerifyGameInstanceLocalPlayerCompat")))
+		if (!GameInstanceLocalPlayerTestHelpers::SetArgObjectChecked(*TestRunner, *Context, 0, TestWorld, TEXT("VerifyGameInstanceLocalPlayerCompat"))
+			|| !GameInstanceLocalPlayerTestHelpers::SetArgObjectChecked(*TestRunner, *Context, 1, GameInstance, TEXT("VerifyGameInstanceLocalPlayerCompat")))
 		{
 			return;
 		}
@@ -319,7 +317,7 @@ int VerifyGameInstanceLocalPlayerCompat(UWorld ExpectedWorld, UGameInstance Game
 			GameInstance->GetNumLocalPlayers(),
 			TEXT("GameInstance local-player bindings test should restore the native local-player count after script removal")));
 		ASSERT_THAT(IsTrue(
-			GameInstance->FindLocalPlayerFromControllerId(LocalPlayerControllerId) == nullptr,
+			GameInstance->FindLocalPlayerFromControllerId(GameInstanceLocalPlayerTestHelpers::LocalPlayerControllerId) == nullptr,
 			TEXT("GameInstance local-player bindings test should remove the created controller-id lookup after script cleanup")));
 		ASSERT_THAT(IsTrue(
 			GameInstance->GetFirstLocalPlayerController(TestWorld) == nullptr,

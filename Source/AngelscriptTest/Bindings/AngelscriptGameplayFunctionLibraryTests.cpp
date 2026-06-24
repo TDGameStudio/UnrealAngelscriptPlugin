@@ -77,9 +77,9 @@ namespace
 		FName FunctionName,
 		void* Params)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
-		if (!Assert.IsNotNull(
+		if (!LocalAssert.IsNotNull(
 			Function,
 			*FString::Printf(TEXT("Gameplay function library script method '%s' should exist"), *FunctionName.ToString())))
 		{

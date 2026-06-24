@@ -12,236 +12,235 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptDebuggerPauseTests_Private
-{
-	template <typename T>
-	bool WaitForTypedMessageUntil(
-		FAngelscriptDebuggerTestClient& Client,
-		TAtomic<bool>& bShouldStop,
-		EDebugMessageType ExpectedType,
-		float TimeoutSeconds,
-		TOptional<T>& OutValue,
-		FString& OutError,
-		const TCHAR* Context)
-	{
-		const double EndTime = FPlatformTime::Seconds() + TimeoutSeconds;
-		while (FPlatformTime::Seconds() < EndTime && !bShouldStop.Load())
-		{
-			TOptional<FAngelscriptDebugMessageEnvelope> Envelope = Client.ReceiveEnvelope();
-			if (Envelope.IsSet())
-			{
-				if (Envelope->MessageType == ExpectedType)
-				{
-					OutValue = FAngelscriptDebuggerTestClient::DeserializeMessage<T>(Envelope.GetValue());
-					if (!OutValue.IsSet())
-					{
-						OutError = FString::Printf(TEXT("%s: failed to deserialize debugger message type %d."), Context, static_cast<int32>(ExpectedType));
-						return false;
-					}
-
-					return true;
-				}
-			}
-			else if (!Client.GetLastError().IsEmpty())
-			{
-				OutError = FString::Printf(TEXT("%s: %s"), Context, *Client.GetLastError());
-				return false;
-			}
-
-			FPlatformProcess::Sleep(0.001f);
-		}
-
-		OutError = bShouldStop.Load()
-			? FString::Printf(TEXT("%s: aborted while waiting for debugger message type %d."), Context, static_cast<int32>(ExpectedType))
-			: FString::Printf(TEXT("%s: timed out waiting for debugger message type %d."), Context, static_cast<int32>(ExpectedType));
-		return false;
-	}
-
-	struct FPauseMonitorResult
-	{
-		TOptional<FStoppedMessage> FirstStopMessage;
-		TOptional<FAngelscriptCallStack> FirstCallstack;
-		TOptional<FStoppedMessage> SecondStopMessage;
-		TOptional<FAngelscriptCallStack> SecondCallstack;
-		int32 ContinuedCount = 0;
-		int32 UnexpectedStopCount = 0;
-		bool bTimedOut = false;
-		FString Error;
-	};
-
-	struct FControlPauseResult
-	{
-		bool bObservedContinued = false;
-		bool bSentPause = false;
-		bool bTimedOut = false;
-		FString Error;
-	};
-
-	TFuture<FPauseMonitorResult> StartPauseMonitor(
-		int32 Port,
-		TAtomic<bool>& bMonitorReady,
-		TAtomic<bool>& bShouldStop,
-		TAtomic<bool>& bInvocationCompleted,
-		float TimeoutSeconds)
-	{
-		return Async(EAsyncExecution::ThreadPool,
-			[Port, &bMonitorReady, &bShouldStop, &bInvocationCompleted, TimeoutSeconds]() -> FPauseMonitorResult
-			{
-				FPauseMonitorResult Result;
-				FAngelscriptDebuggerTestClient MonitorClient;
-				ON_SCOPE_EXIT
-				{
-					MonitorClient.SendStopDebugging();
-					MonitorClient.SendDisconnect();
-					MonitorClient.Disconnect();
-				};
-
-				if (!MonitorClient.Connect(TEXT("127.0.0.1"), Port))
-				{
-					Result.Error = FString::Printf(TEXT("Pause monitor failed to connect: %s"), *MonitorClient.GetLastError());
-					bMonitorReady = true;
-					return Result;
-				}
-
-				if (!HandshakeMonitorClient(MonitorClient, bShouldStop, TimeoutSeconds, Result.Error))
-				{
-					Result.bTimedOut = !bShouldStop.Load();
-					bMonitorReady = true;
-					return Result;
-				}
-
-				bMonitorReady = true;
-
-				if (!WaitForTypedMessageUntil(MonitorClient, bShouldStop, EDebugMessageType::HasStopped, TimeoutSeconds, Result.FirstStopMessage, Result.Error, TEXT("Pause monitor failed to receive the initial stop")))
-				{
-					Result.bTimedOut = !bShouldStop.Load();
-					return Result;
-				}
-
-				if (!MonitorClient.SendRequestCallStack() ||
-					!WaitForTypedMessageUntil(MonitorClient, bShouldStop, EDebugMessageType::CallStack, TimeoutSeconds, Result.FirstCallstack, Result.Error, TEXT("Pause monitor failed to receive the initial callstack")))
-				{
-					Result.bTimedOut = !bShouldStop.Load();
-					return Result;
-				}
-
-				if (!MonitorClient.SendContinue())
-				{
-					Result.Error = FString::Printf(TEXT("Pause monitor failed to send Continue after the breakpoint stop: %s"), *MonitorClient.GetLastError());
-					return Result;
-				}
-
-				TOptional<FEmptyMessage> ContinueMessage;
-				if (!WaitForTypedMessageUntil(MonitorClient, bShouldStop, EDebugMessageType::HasContinued, TimeoutSeconds, ContinueMessage, Result.Error, TEXT("Pause monitor failed to receive HasContinued after resuming from the breakpoint stop")))
-				{
-					Result.bTimedOut = !bShouldStop.Load();
-					return Result;
-				}
-				++Result.ContinuedCount;
-
-				if (!WaitForTypedMessageUntil(MonitorClient, bShouldStop, EDebugMessageType::HasStopped, TimeoutSeconds, Result.SecondStopMessage, Result.Error, TEXT("Pause monitor failed to receive the pause stop")))
-				{
-					Result.bTimedOut = !bShouldStop.Load();
-					return Result;
-				}
-
-				if (!MonitorClient.SendRequestCallStack() ||
-					!WaitForTypedMessageUntil(MonitorClient, bShouldStop, EDebugMessageType::CallStack, TimeoutSeconds, Result.SecondCallstack, Result.Error, TEXT("Pause monitor failed to receive the pause callstack")))
-				{
-					Result.bTimedOut = !bShouldStop.Load();
-					return Result;
-				}
-
-				if (!MonitorClient.SendContinue())
-				{
-					Result.Error = FString::Printf(TEXT("Pause monitor failed to send Continue after the pause stop: %s"), *MonitorClient.GetLastError());
-					return Result;
-				}
-
-				const double CompletionEnd = FPlatformTime::Seconds() + TimeoutSeconds;
-				while (FPlatformTime::Seconds() < CompletionEnd && !bShouldStop.Load())
-				{
-					if (bInvocationCompleted.Load())
-					{
-						return Result;
-					}
-
-					TOptional<FAngelscriptDebugMessageEnvelope> Envelope = MonitorClient.ReceiveEnvelope();
-					if (Envelope.IsSet())
-					{
-						if (Envelope->MessageType == EDebugMessageType::HasStopped)
-						{
-							++Result.UnexpectedStopCount;
-							MonitorClient.SendContinue();
-						}
-					}
-					else if (!MonitorClient.GetLastError().IsEmpty())
-					{
-						Result.Error = FString::Printf(TEXT("Pause monitor failed while waiting for invocation completion: %s"), *MonitorClient.GetLastError());
-						return Result;
-					}
-
-					FPlatformProcess::Sleep(0.001f);
-				}
-
-				Result.bTimedOut = !bInvocationCompleted.Load();
-				if (Result.bTimedOut && Result.Error.IsEmpty())
-				{
-					Result.Error = TEXT("Pause monitor timed out waiting for invocation completion.");
-				}
-				return Result;
-			});
-	}
-
-	TFuture<FControlPauseResult> StartControlPauseRequest(
-		FAngelscriptDebuggerTestClient& Client,
-		TAtomic<bool>& bShouldStop,
-		float TimeoutSeconds)
-	{
-		return Async(EAsyncExecution::ThreadPool,
-			[&Client, &bShouldStop, TimeoutSeconds]() -> FControlPauseResult
-			{
-				FControlPauseResult Result;
-				const double EndTime = FPlatformTime::Seconds() + TimeoutSeconds;
-				while (FPlatformTime::Seconds() < EndTime && !bShouldStop.Load())
-				{
-					TOptional<FAngelscriptDebugMessageEnvelope> Envelope = Client.ReceiveEnvelope();
-					if (Envelope.IsSet())
-					{
-						if (Envelope->MessageType == EDebugMessageType::HasContinued)
-						{
-							Result.bObservedContinued = true;
-							Result.bSentPause = Client.SendPause();
-							if (!Result.bSentPause)
-							{
-								Result.Error = FString::Printf(TEXT("Control client failed to send Pause after receiving HasContinued: %s"), *Client.GetLastError());
-							}
-							return Result;
-						}
-					}
-					else if (!Client.GetLastError().IsEmpty())
-					{
-						Result.Error = FString::Printf(TEXT("Control client failed while waiting for HasContinued: %s"), *Client.GetLastError());
-						return Result;
-					}
-
-					FPlatformProcess::Sleep(0.001f);
-				}
-
-				Result.bTimedOut = !bShouldStop.Load();
-				if (Result.bTimedOut)
-				{
-					Result.Error = TEXT("Control client timed out waiting for HasContinued before sending Pause.");
-				}
-				return Result;
-			});
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerPauseTests,
 	"Angelscript.TestModule.Debugger.Pause",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+template <typename T>
+static bool WaitForTypedMessageUntil(
+	FAngelscriptDebuggerTestClient& Client,
+	TAtomic<bool>& bShouldStop,
+	EDebugMessageType ExpectedType,
+	float TimeoutSeconds,
+	TOptional<T>& OutValue,
+	FString& OutError,
+	const TCHAR* Context)
+{
+	const double EndTime = FPlatformTime::Seconds() + TimeoutSeconds;
+	while (FPlatformTime::Seconds() < EndTime && !bShouldStop.Load())
+	{
+		TOptional<FAngelscriptDebugMessageEnvelope> Envelope = Client.ReceiveEnvelope();
+		if (Envelope.IsSet())
+		{
+			if (Envelope->MessageType == ExpectedType)
+			{
+				OutValue = FAngelscriptDebuggerTestClient::DeserializeMessage<T>(Envelope.GetValue());
+				if (!OutValue.IsSet())
+				{
+					OutError = FString::Printf(TEXT("%s: failed to deserialize debugger message type %d."), Context, static_cast<int32>(ExpectedType));
+					return false;
+				}
+
+				return true;
+			}
+		}
+		else if (!Client.GetLastError().IsEmpty())
+		{
+			OutError = FString::Printf(TEXT("%s: %s"), Context, *Client.GetLastError());
+			return false;
+		}
+
+		FPlatformProcess::Sleep(0.001f);
+	}
+
+	OutError = bShouldStop.Load()
+		? FString::Printf(TEXT("%s: aborted while waiting for debugger message type %d."), Context, static_cast<int32>(ExpectedType))
+		: FString::Printf(TEXT("%s: timed out waiting for debugger message type %d."), Context, static_cast<int32>(ExpectedType));
+	return false;
+}
+
+struct FPauseMonitorResult
+{
+	TOptional<FStoppedMessage> FirstStopMessage;
+	TOptional<FAngelscriptCallStack> FirstCallstack;
+	TOptional<FStoppedMessage> SecondStopMessage;
+	TOptional<FAngelscriptCallStack> SecondCallstack;
+	int32 ContinuedCount = 0;
+	int32 UnexpectedStopCount = 0;
+	bool bTimedOut = false;
+	FString Error;
+};
+
+struct FControlPauseResult
+{
+	bool bObservedContinued = false;
+	bool bSentPause = false;
+	bool bTimedOut = false;
+	FString Error;
+};
+
+static TFuture<FPauseMonitorResult> StartPauseMonitor(
+	int32 Port,
+	TAtomic<bool>& bMonitorReady,
+	TAtomic<bool>& bShouldStop,
+	TAtomic<bool>& bInvocationCompleted,
+	float TimeoutSeconds)
+{
+	return Async(EAsyncExecution::ThreadPool,
+		[Port, &bMonitorReady, &bShouldStop, &bInvocationCompleted, TimeoutSeconds]() -> FPauseMonitorResult
+		{
+			FPauseMonitorResult Result;
+			FAngelscriptDebuggerTestClient MonitorClient;
+			ON_SCOPE_EXIT
+			{
+				MonitorClient.SendStopDebugging();
+				MonitorClient.SendDisconnect();
+				MonitorClient.Disconnect();
+			};
+
+			if (!MonitorClient.Connect(TEXT("127.0.0.1"), Port))
+			{
+				Result.Error = FString::Printf(TEXT("Pause monitor failed to connect: %s"), *MonitorClient.GetLastError());
+				bMonitorReady = true;
+				return Result;
+			}
+
+			if (!HandshakeMonitorClient(MonitorClient, bShouldStop, TimeoutSeconds, Result.Error))
+			{
+				Result.bTimedOut = !bShouldStop.Load();
+				bMonitorReady = true;
+				return Result;
+			}
+
+			bMonitorReady = true;
+
+			if (!WaitForTypedMessageUntil(MonitorClient, bShouldStop, EDebugMessageType::HasStopped, TimeoutSeconds, Result.FirstStopMessage, Result.Error, TEXT("Pause monitor failed to receive the initial stop")))
+			{
+				Result.bTimedOut = !bShouldStop.Load();
+				return Result;
+			}
+
+			if (!MonitorClient.SendRequestCallStack() ||
+				!WaitForTypedMessageUntil(MonitorClient, bShouldStop, EDebugMessageType::CallStack, TimeoutSeconds, Result.FirstCallstack, Result.Error, TEXT("Pause monitor failed to receive the initial callstack")))
+			{
+				Result.bTimedOut = !bShouldStop.Load();
+				return Result;
+			}
+
+			if (!MonitorClient.SendContinue())
+			{
+				Result.Error = FString::Printf(TEXT("Pause monitor failed to send Continue after the breakpoint stop: %s"), *MonitorClient.GetLastError());
+				return Result;
+			}
+
+			TOptional<FEmptyMessage> ContinueMessage;
+			if (!WaitForTypedMessageUntil(MonitorClient, bShouldStop, EDebugMessageType::HasContinued, TimeoutSeconds, ContinueMessage, Result.Error, TEXT("Pause monitor failed to receive HasContinued after resuming from the breakpoint stop")))
+			{
+				Result.bTimedOut = !bShouldStop.Load();
+				return Result;
+			}
+			++Result.ContinuedCount;
+
+			if (!WaitForTypedMessageUntil(MonitorClient, bShouldStop, EDebugMessageType::HasStopped, TimeoutSeconds, Result.SecondStopMessage, Result.Error, TEXT("Pause monitor failed to receive the pause stop")))
+			{
+				Result.bTimedOut = !bShouldStop.Load();
+				return Result;
+			}
+
+			if (!MonitorClient.SendRequestCallStack() ||
+				!WaitForTypedMessageUntil(MonitorClient, bShouldStop, EDebugMessageType::CallStack, TimeoutSeconds, Result.SecondCallstack, Result.Error, TEXT("Pause monitor failed to receive the pause callstack")))
+			{
+				Result.bTimedOut = !bShouldStop.Load();
+				return Result;
+			}
+
+			if (!MonitorClient.SendContinue())
+			{
+				Result.Error = FString::Printf(TEXT("Pause monitor failed to send Continue after the pause stop: %s"), *MonitorClient.GetLastError());
+				return Result;
+			}
+
+			const double CompletionEnd = FPlatformTime::Seconds() + TimeoutSeconds;
+			while (FPlatformTime::Seconds() < CompletionEnd && !bShouldStop.Load())
+			{
+				if (bInvocationCompleted.Load())
+				{
+					return Result;
+				}
+
+				TOptional<FAngelscriptDebugMessageEnvelope> Envelope = MonitorClient.ReceiveEnvelope();
+				if (Envelope.IsSet())
+				{
+					if (Envelope->MessageType == EDebugMessageType::HasStopped)
+					{
+						++Result.UnexpectedStopCount;
+						MonitorClient.SendContinue();
+					}
+				}
+				else if (!MonitorClient.GetLastError().IsEmpty())
+				{
+					Result.Error = FString::Printf(TEXT("Pause monitor failed while waiting for invocation completion: %s"), *MonitorClient.GetLastError());
+					return Result;
+				}
+
+				FPlatformProcess::Sleep(0.001f);
+			}
+
+			Result.bTimedOut = !bInvocationCompleted.Load();
+			if (Result.bTimedOut && Result.Error.IsEmpty())
+			{
+				Result.Error = TEXT("Pause monitor timed out waiting for invocation completion.");
+			}
+			return Result;
+		});
+}
+
+static TFuture<FControlPauseResult> StartControlPauseRequest(
+	FAngelscriptDebuggerTestClient& Client,
+	TAtomic<bool>& bShouldStop,
+	float TimeoutSeconds)
+{
+	return Async(EAsyncExecution::ThreadPool,
+		[&Client, &bShouldStop, TimeoutSeconds]() -> FControlPauseResult
+		{
+			FControlPauseResult Result;
+			const double EndTime = FPlatformTime::Seconds() + TimeoutSeconds;
+			while (FPlatformTime::Seconds() < EndTime && !bShouldStop.Load())
+			{
+				TOptional<FAngelscriptDebugMessageEnvelope> Envelope = Client.ReceiveEnvelope();
+				if (Envelope.IsSet())
+				{
+					if (Envelope->MessageType == EDebugMessageType::HasContinued)
+					{
+						Result.bObservedContinued = true;
+						Result.bSentPause = Client.SendPause();
+						if (!Result.bSentPause)
+						{
+							Result.Error = FString::Printf(TEXT("Control client failed to send Pause after receiving HasContinued: %s"), *Client.GetLastError());
+						}
+						return Result;
+					}
+				}
+				else if (!Client.GetLastError().IsEmpty())
+				{
+					Result.Error = FString::Printf(TEXT("Control client failed while waiting for HasContinued: %s"), *Client.GetLastError());
+					return Result;
+				}
+
+				FPlatformProcess::Sleep(0.001f);
+			}
+
+			Result.bTimedOut = !bShouldStop.Load();
+			if (Result.bTimedOut)
+			{
+				Result.Error = TEXT("Control client timed out waiting for HasContinued before sending Pause.");
+			}
+			return Result;
+		});
+}
+
+public:
 	FDebuggerTestContext Ctx;
 
 	BEFORE_EACH()
@@ -256,9 +255,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerPauseTests,
 
 	TEST_METHOD(PauseStopsAtNextScriptLine)
 	{
-		using namespace AngelscriptDebuggerPauseTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreatePauseFixture();
 		ON_SCOPE_EXIT
 		{

@@ -15,7 +15,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeScriptNodeCopyTests,
@@ -29,9 +28,9 @@ private:
 		asCScriptEngine* ScriptEngine,
 		const char* ModuleName,
 		const char* Source,
-		TFunctionRef<void(FParserAccessor&, asCScriptNode&)> Verify)
+		TFunctionRef<void(AngelscriptNativeTestSupport::FParserAccessor&, asCScriptNode&)> Verify)
 	{
-		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
+		asCModule* Module = AngelscriptNativeTestSupport::CreateSdkModule(ScriptEngine, ModuleName);
 		if (!Assert.IsNotNull(Module, FString::Printf(TEXT("%s should create a script-node copy module"), UTF8_TO_TCHAR(ModuleName))))
 		{
 			return false;
@@ -41,7 +40,7 @@ private:
 		asCScriptCode Code;
 		Code.SetCode(ModuleName, Source, true);
 
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 		const int ParseResult = Parser.ParseScript(&Code);
 		if (!Assert.AreEqual(0, ParseResult, FString::Printf(TEXT("%s should parse successfully"), UTF8_TO_TCHAR(ModuleName))))
 		{
@@ -109,7 +108,7 @@ public:
 		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode copy test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseCopyScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeCopyTypes", "int Value = 1; class FNode { int Read() { return Value; } }", [&](FParserAccessor& Parser, asCScriptNode& Root)
+		ParseCopyScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeCopyTypes", "int Value = 1; class FNode { int Read() { return Value; } }", [&](AngelscriptNativeTestSupport::FParserAccessor& Parser, asCScriptNode& Root)
 		{
 			asCScriptNode* Copy = Root.CreateCopy(Parser.MemStack, BareEngine);
 			if (!this->Assert.IsNotNull(Copy, TEXT("CreateCopy should duplicate the script root")))
@@ -131,7 +130,7 @@ public:
 		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode copy test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseCopyScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeCopyOrdering", "int A = 1; int B = 2; int C = 3;", [&](FParserAccessor& Parser, asCScriptNode& Root)
+		ParseCopyScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeCopyOrdering", "int A = 1; int B = 2; int C = 3;", [&](AngelscriptNativeTestSupport::FParserAccessor& Parser, asCScriptNode& Root)
 		{
 			asCScriptNode* Copy = Root.CreateCopy(Parser.MemStack, BareEngine);
 			if (!this->Assert.IsNotNull(Copy, TEXT("CreateCopy should duplicate top-level declarations")))
@@ -164,11 +163,13 @@ public:
 
 	TEST_METHOD(CreateCopyPreservesSourceRange)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode copy test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseCopyScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeCopyRange", "\nint Value = 9;\n", [&](FParserAccessor& Parser, asCScriptNode& Root)
+		ParseCopyScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeCopyRange", "\nint Value = 9;\n", [&](AngelscriptNativeTestSupport::FParserAccessor& Parser, asCScriptNode& Root)
 		{
 			asCScriptNode* Copy = Root.CreateCopy(Parser.MemStack, BareEngine);
 			if (!this->Assert.IsNotNull(Copy, TEXT("CreateCopy should duplicate source ranges")))
@@ -209,7 +210,7 @@ public:
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
 		const std::string Source = MakeDeepBlockSource(50);
-		ParseCopyScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeCopyDeepNesting", Source.c_str(), [&](FParserAccessor& Parser, asCScriptNode& Root)
+		ParseCopyScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeCopyDeepNesting", Source.c_str(), [&](AngelscriptNativeTestSupport::FParserAccessor& Parser, asCScriptNode& Root)
 		{
 			asCScriptNode* Copy = Root.CreateCopy(Parser.MemStack, BareEngine);
 			if (!this->Assert.IsNotNull(Copy, TEXT("CreateCopy should duplicate a deeply nested tree")))
@@ -236,7 +237,7 @@ public:
 		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode copy test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseCopyScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeCopySiblings", "int A = 1; int B = 2; class FNode { } enum ENode { One }", [&](FParserAccessor& Parser, asCScriptNode& Root)
+		ParseCopyScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeCopySiblings", "int A = 1; int B = 2; class FNode { } enum ENode { One }", [&](AngelscriptNativeTestSupport::FParserAccessor& Parser, asCScriptNode& Root)
 		{
 			asCScriptNode* Copy = Root.CreateCopy(Parser.MemStack, BareEngine);
 			if (!this->Assert.IsNotNull(Copy, TEXT("CreateCopy should duplicate sibling traversal fixture")))
@@ -268,7 +269,7 @@ public:
 		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode copy test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseCopyScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeCopyHistogram", "int A = 1; void Run() { if (A > 0) { A += 1; } }", [&](FParserAccessor& Parser, asCScriptNode& Root)
+		ParseCopyScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeCopyHistogram", "int A = 1; void Run() { if (A > 0) { A += 1; } }", [&](AngelscriptNativeTestSupport::FParserAccessor& Parser, asCScriptNode& Root)
 		{
 			asCScriptNode* Copy = Root.CreateCopy(Parser.MemStack, BareEngine);
 			if (!this->Assert.IsNotNull(Copy, TEXT("CreateCopy should duplicate histogram fixture")))
@@ -297,7 +298,7 @@ public:
 		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode copy test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
-		ParseCopyScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeCopyReattach", "int A = 1; int B = 2;", [&](FParserAccessor& Parser, asCScriptNode& Root)
+		ParseCopyScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeCopyReattach", "int A = 1; int B = 2;", [&](AngelscriptNativeTestSupport::FParserAccessor& Parser, asCScriptNode& Root)
 		{
 			asCScriptNode* Copy = Root.CreateCopy(Parser.MemStack, BareEngine);
 			if (!this->Assert.IsNotNull(Copy, TEXT("CreateCopy should duplicate reattach fixture")))

@@ -21,8 +21,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace PreprocessorTestHelpers;
-
 // ============================================================================
 // Test class
 // ============================================================================
@@ -37,6 +35,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorPropertyTest,
 	// ========================================================================
 	TEST_METHOD(InvalidCallbackSpecifiersReportDiagnostics)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		TestRunner->AddExpectedErrorPlain(
 			TEXT("No function specified for ReplicatedUsing on property UBadPropertyCarrier::TrackedValue."),
 			EAutomationExpectedErrorFlags::Contains, 1);
@@ -119,6 +119,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorPropertyTest,
 	// ========================================================================
 	TEST_METHOD(UnknownReplicationConditionReportsDiagnostic)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		TestRunner->AddExpectedErrorPlain(
 			TEXT("Unknown ReplicationCondition DefinitelyUnknown on property UBadPropertyCarrier::TrackedValue."),
 			EAutomationExpectedErrorFlags::Contains, 1);
@@ -157,6 +159,8 @@ class UBadPropertyCarrier : UObject
 	// ========================================================================
 	TEST_METHOD(DefaultBlueprintAccessUsesSettings)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -219,6 +223,8 @@ class UBlueprintAccessDefaultSpecifierCarrier : UObject
 	// ========================================================================
 	TEST_METHOD(ShowOnActorRequiresDefaultComponent)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		TestRunner->AddExpectedErrorPlain(
 			TEXT("ShowOnActor can only be used on default components in actors"),
 			EAutomationExpectedErrorFlags::Contains, 1);

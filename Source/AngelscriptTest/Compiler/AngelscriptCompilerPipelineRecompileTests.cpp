@@ -69,8 +69,8 @@ int Entry()
 			ModuleName,
 			TEXT("int Entry()"),
 			EntryResult);
-		FNoDiscardAsserter Assert(Test);
-		const bool bExecutePassed = Assert.IsTrue(
+		FNoDiscardAsserter LocalAssert(Test);
+		const bool bExecutePassed = LocalAssert.IsTrue(
 			bExecuted,
 			*FString::Printf(TEXT("Successful recompile test case should execute Entry() for value %d"), ExpectedValue));
 		if (!bExecutePassed)
@@ -78,7 +78,7 @@ int Entry()
 			return false;
 		}
 
-		return Assert.AreEqual(
+		return LocalAssert.AreEqual(
 			ExpectedValue,
 			EntryResult,
 			*FString::Printf(TEXT("Successful recompile test case should observe Entry() == %d"), ExpectedValue));
@@ -91,11 +91,11 @@ int Entry()
 		UFunction* GeneratedFunction,
 		int32 ExpectedValue)
 	{
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(
 				GeneratedClass,
 				*FString::Printf(TEXT("Successful recompile test case should materialize a generated class for value %d"), ExpectedValue))
-			|| !Assert.IsNotNull(
+			|| !LocalAssert.IsNotNull(
 				GeneratedFunction,
 				*FString::Printf(TEXT("Successful recompile test case should expose GetValue for value %d"), ExpectedValue)))
 		{
@@ -103,7 +103,7 @@ int Entry()
 		}
 
 		FIntProperty* ScoreProperty = FindFProperty<FIntProperty>(GeneratedClass, ScorePropertyName);
-		if (!Assert.IsNotNull(
+		if (!LocalAssert.IsNotNull(
 				ScoreProperty,
 				*FString::Printf(TEXT("Successful recompile test case should expose Score for value %d"), ExpectedValue)))
 		{
@@ -111,7 +111,7 @@ int Entry()
 		}
 
 		UObject* RuntimeObject = NewObject<UObject>(GetTransientPackage(), GeneratedClass);
-		if (!Assert.IsNotNull(
+		if (!LocalAssert.IsNotNull(
 				RuntimeObject,
 				*FString::Printf(TEXT("Successful recompile test case should instantiate the generated class for value %d"), ExpectedValue)))
 		{
@@ -119,14 +119,14 @@ int Entry()
 		}
 
 		const int32 DefaultScore = ScoreProperty->GetPropertyValue_InContainer(RuntimeObject);
-		const bool bDefaultScoreMatches = Assert.AreEqual(
+		const bool bDefaultScoreMatches = LocalAssert.AreEqual(
 			ExpectedValue,
 			DefaultScore,
 			*FString::Printf(TEXT("Successful recompile test case should materialize Score == %d on new instances"), ExpectedValue));
 
 		int32 MethodResult = 0;
 		const bool bExecuted = ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeObject, GeneratedFunction, MethodResult);
-		const bool bExecutePassed = Assert.IsTrue(
+		const bool bExecutePassed = LocalAssert.IsTrue(
 			bExecuted,
 			*FString::Printf(TEXT("Successful recompile test case should execute GetValue() for value %d"), ExpectedValue));
 		if (!bDefaultScoreMatches || !bExecutePassed)
@@ -134,7 +134,7 @@ int Entry()
 			return false;
 		}
 
-		return Assert.AreEqual(
+		return LocalAssert.AreEqual(
 			ExpectedValue,
 			MethodResult,
 			*FString::Printf(TEXT("Successful recompile test case should observe GetValue() == %d"), ExpectedValue));

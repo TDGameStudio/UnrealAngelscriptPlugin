@@ -17,123 +17,6 @@
 // Helpers specific to break-options gating (BreakOptionsGateStop test)
 // =============================================================================
 
-namespace AngelscriptDebuggerBreakpointTests_Private
-{
-	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsTrue(bActual, Message);
-	}
-
-	static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsFalse(bActual, Message);
-	}
-
-	template <typename ActualType, typename ExpectedType>
-	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreEqual(Expected, Actual, Message);
-	}
-
-	template <typename ValueType>
-	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsNotNull(Value, Message);
-	}
-
-	class FScopedDebugBreakOptionsBinding
-	{
-	public:
-		FScopedDebugBreakOptionsBinding(FAngelscriptEngine& Engine, TFunction<bool(const FAngelscriptDebugBreakOptions&, UObject*)> InShouldBreak)
-			: TargetDelegate(Engine.GetDebugCheckBreakOptions())
-			, PreviousDelegate(TargetDelegate)
-			, ShouldBreak(MoveTemp(InShouldBreak))
-		{
-			TargetDelegate.BindLambda([this](const FAngelscriptDebugBreakOptions& BreakOptions, UObject* WorldContext)
-			{
-				return ShouldBreak(BreakOptions, WorldContext);
-			});
-		}
-
-		~FScopedDebugBreakOptionsBinding()
-		{
-			TargetDelegate = MoveTemp(PreviousDelegate);
-		}
-
-	private:
-		FAngelscriptDebugCheckBreakOptions& TargetDelegate;
-		FAngelscriptDebugCheckBreakOptions PreviousDelegate;
-		TFunction<bool(const FAngelscriptDebugBreakOptions&, UObject*)> ShouldBreak;
-	};
-
-	bool WaitForBreakOptionsState(
-		FAutomationTestBase& Test,
-		FAngelscriptDebuggerTestSession& Session,
-		const TArray<FName>& ExpectedFilters,
-		const TArray<FName>& RejectedFilters,
-		const TCHAR* Context)
-	{
-		const bool bObservedExpectedState = Session.PumpUntil(
-			[&Session, &ExpectedFilters, &RejectedFilters]()
-			{
-				const TArray<FName>& ActiveBreakOptions = Session.GetDebugServer().BreakOptions;
-				for (const FName& ExpectedFilter : ExpectedFilters)
-				{
-					if (!ActiveBreakOptions.Contains(ExpectedFilter))
-					{
-						return false;
-					}
-				}
-
-				for (const FName& RejectedFilter : RejectedFilters)
-				{
-					if (ActiveBreakOptions.Contains(RejectedFilter))
-					{
-						return false;
-					}
-				}
-
-				return true;
-			},
-			Session.GetDefaultTimeoutSeconds());
-
-		return CheckTrue(Test, Context, bObservedExpectedState);
-	}
-
-	// Protocol tests need to wait for breakpoint ack envelopes
-	bool WaitForBreakpointAck(
-		FAutomationTestBase& Test,
-		FAngelscriptDebuggerTestSession& Session,
-		FAngelscriptDebuggerTestClient& Client,
-		TOptional<FAngelscriptBreakpoint>& OutBreakpoint)
-	{
-		const bool bReceivedAck = Session.PumpUntil(
-			[&Client, &OutBreakpoint]()
-			{
-				TOptional<FAngelscriptDebugMessageEnvelope> Envelope = Client.ReceiveEnvelope();
-				if (!Envelope.IsSet() || Envelope->MessageType != EDebugMessageType::SetBreakpoint)
-				{
-					return false;
-				}
-
-				OutBreakpoint = FAngelscriptDebuggerTestClient::DeserializeMessage<FAngelscriptBreakpoint>(Envelope.GetValue());
-				return OutBreakpoint.IsSet();
-			},
-			Session.GetDefaultTimeoutSeconds());
-
-		if (!bReceivedAck)
-		{
-			Test.AddError(FString::Printf(TEXT("Timed out waiting for SetBreakpoint ack: %s"), *Client.GetLastError()));
-		}
-
-		return bReceivedAck;
-	}
-}
-
 // =============================================================================
 // CQTest class merging breakpoint, protocol, break-options, and conditional tests
 // =============================================================================
@@ -142,6 +25,122 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 	"Angelscript.TestModule.Debugger.Breakpoint",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsTrue(bActual, Message);
+}
+
+static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsFalse(bActual, Message);
+}
+
+template <typename ActualType, typename ExpectedType>
+static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.AreEqual(Expected, Actual, Message);
+}
+
+template <typename ValueType>
+static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsNotNull(Value, Message);
+}
+
+class FScopedDebugBreakOptionsBinding
+{
+public:
+	FScopedDebugBreakOptionsBinding(FAngelscriptEngine& Engine, TFunction<bool(const FAngelscriptDebugBreakOptions&, UObject*)> InShouldBreak)
+		: TargetDelegate(Engine.GetDebugCheckBreakOptions())
+		, PreviousDelegate(TargetDelegate)
+		, ShouldBreak(MoveTemp(InShouldBreak))
+	{
+		TargetDelegate.BindLambda([this](const FAngelscriptDebugBreakOptions& BreakOptions, UObject* WorldContext)
+		{
+			return ShouldBreak(BreakOptions, WorldContext);
+		});
+	}
+
+	~FScopedDebugBreakOptionsBinding()
+	{
+		TargetDelegate = MoveTemp(PreviousDelegate);
+	}
+
+private:
+	FAngelscriptDebugCheckBreakOptions& TargetDelegate;
+	FAngelscriptDebugCheckBreakOptions PreviousDelegate;
+	TFunction<bool(const FAngelscriptDebugBreakOptions&, UObject*)> ShouldBreak;
+};
+
+static bool WaitForBreakOptionsState(
+	FAutomationTestBase& Test,
+	FAngelscriptDebuggerTestSession& Session,
+	const TArray<FName>& ExpectedFilters,
+	const TArray<FName>& RejectedFilters,
+	const TCHAR* Context)
+{
+	const bool bObservedExpectedState = Session.PumpUntil(
+		[&Session, &ExpectedFilters, &RejectedFilters]()
+		{
+			const TArray<FName>& ActiveBreakOptions = Session.GetDebugServer().BreakOptions;
+			for (const FName& ExpectedFilter : ExpectedFilters)
+			{
+				if (!ActiveBreakOptions.Contains(ExpectedFilter))
+				{
+					return false;
+				}
+			}
+
+			for (const FName& RejectedFilter : RejectedFilters)
+			{
+				if (ActiveBreakOptions.Contains(RejectedFilter))
+				{
+					return false;
+				}
+			}
+
+			return true;
+		},
+		Session.GetDefaultTimeoutSeconds());
+
+	return CheckTrue(Test, Context, bObservedExpectedState);
+}
+
+// Protocol tests need to wait for breakpoint ack envelopes
+static bool WaitForBreakpointAck(
+	FAutomationTestBase& Test,
+	FAngelscriptDebuggerTestSession& Session,
+	FAngelscriptDebuggerTestClient& Client,
+	TOptional<FAngelscriptBreakpoint>& OutBreakpoint)
+{
+	const bool bReceivedAck = Session.PumpUntil(
+		[&Client, &OutBreakpoint]()
+		{
+			TOptional<FAngelscriptDebugMessageEnvelope> Envelope = Client.ReceiveEnvelope();
+			if (!Envelope.IsSet() || Envelope->MessageType != EDebugMessageType::SetBreakpoint)
+			{
+				return false;
+			}
+
+			OutBreakpoint = FAngelscriptDebuggerTestClient::DeserializeMessage<FAngelscriptBreakpoint>(Envelope.GetValue());
+			return OutBreakpoint.IsSet();
+		},
+		Session.GetDefaultTimeoutSeconds());
+
+	if (!bReceivedAck)
+	{
+		Test.AddError(FString::Printf(TEXT("Timed out waiting for SetBreakpoint ack: %s"), *Client.GetLastError()));
+	}
+
+	return bReceivedAck;
+}
+
+public:
 	FDebuggerTestContext Ctx;
 
 	BEFORE_EACH()
@@ -155,13 +154,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 	}
 
 	// =========================================================================
-	// HitLine — sets a breakpoint and verifies the stop event + callstack
+	// HitLine �?sets a breakpoint and verifies the stop event + callstack
 	// =========================================================================
 	TEST_METHOD(HitLine)
 	{
-		using namespace AngelscriptDebuggerBreakpointTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBreakpointFixture();
 		ON_SCOPE_EXIT
 		{
@@ -238,13 +235,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 	}
 
 	// =========================================================================
-	// ClearThenResume — sets a breakpoint, hits it, clears it, runs again
+	// ClearThenResume �?sets a breakpoint, hits it, clears it, runs again
 	// =========================================================================
 	TEST_METHOD(ClearThenResume)
 	{
-		using namespace AngelscriptDebuggerBreakpointTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBreakpointFixture();
 		ON_SCOPE_EXIT
 		{
@@ -345,13 +340,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 	}
 
 	// =========================================================================
-	// IgnoreInactiveBranch — breakpoint in dead branch should not fire
+	// IgnoreInactiveBranch �?breakpoint in dead branch should not fire
 	// =========================================================================
 	TEST_METHOD(IgnoreInactiveBranch)
 	{
-		using namespace AngelscriptDebuggerBreakpointTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBreakpointFixture();
 		ON_SCOPE_EXIT
 		{
@@ -407,13 +400,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 	}
 
 	// =========================================================================
-	// NearestExecutableLineAck — non-executable line snaps to nearest executable
+	// NearestExecutableLineAck �?non-executable line snaps to nearest executable
 	// =========================================================================
 	TEST_METHOD(NearestExecutableLineAck)
 	{
-		using namespace AngelscriptDebuggerBreakpointTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBreakpointFixture();
 		ON_SCOPE_EXIT
 		{
@@ -524,13 +515,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 	}
 
 	// =========================================================================
-	// DuplicateSetReturnsRemovalAck — second set on same line returns removal
+	// DuplicateSetReturnsRemovalAck �?second set on same line returns removal
 	// =========================================================================
 	TEST_METHOD(DuplicateSetReturnsRemovalAck)
 	{
-		using namespace AngelscriptDebuggerBreakpointTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBreakpointFixture();
 		ON_SCOPE_EXIT
 		{
@@ -656,13 +645,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 	}
 
 	// =========================================================================
-	// BreakOptionsGateStop — break-options delegate gates breakpoint hits
+	// BreakOptionsGateStop �?break-options delegate gates breakpoint hits
 	// =========================================================================
 	TEST_METHOD(BreakOptionsGateStop)
 	{
-		using namespace AngelscriptDebuggerBreakpointTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBreakpointFixture();
 		UObject* BreakOptionsWorldContext = NewObject<UAngelscriptNativeScriptTestObject>();
 		ASSERT_THAT(IsNotNull(BreakOptionsWorldContext, TEXT("Debugger.Breakpoint.BreakOptionsGateStop should create a non-null world context for break-option gating")));
@@ -859,13 +846,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerBreakpointTests,
 	}
 
 	// =========================================================================
-	// Expression — conditional breakpoint fires only when expression is true
+	// Expression �?conditional breakpoint fires only when expression is true
 	// =========================================================================
 	TEST_METHOD(Expression)
 	{
-		using namespace AngelscriptDebuggerBreakpointTests_Private;
-
-		FAngelscriptEngine& Engine = Ctx.GetEngine();
+FAngelscriptEngine& Engine = Ctx.GetEngine();
 		const FAngelscriptDebuggerScriptFixture Fixture = FAngelscriptDebuggerScriptFixture::CreateBreakpointFixture();
 		ON_SCOPE_EXIT
 		{

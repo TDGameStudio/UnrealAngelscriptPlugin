@@ -15,8 +15,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace PreprocessorTestHelpers;
-
 // ============================================================================
 // Helpers
 // ============================================================================
@@ -45,6 +43,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorNamespaceTest,
 	// ========================================================================
 	TEST_METHOD(InvalidDeclarationReportsSyntax)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		static const TCHAR* InvalidNamespaceMessage =
 			TEXT("Invalid namespace declaration, expected '{' after namespace name.");
 
@@ -125,6 +125,8 @@ int Entry()
 	// ========================================================================
 	TEST_METHOD(RestrictUsageInactiveBranchIgnored)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		TUniquePtr<FAngelscriptEngine> OwnedEngine = NamespaceTestHelpers::CreateEditorEngine();
 		if (!this->Assert.IsNotNull(
 				OwnedEngine.Get(),
@@ -237,6 +239,8 @@ int Entry()
 	// ========================================================================
 	TEST_METHOD(RestrictUsageAllowPattern)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		TUniquePtr<FAngelscriptEngine> OwnedEngine = NamespaceTestHelpers::CreateEditorEngine();
 		if (!this->Assert.IsNotNull(OwnedEngine.Get(), TEXT("Should create editor engine")))
 		{

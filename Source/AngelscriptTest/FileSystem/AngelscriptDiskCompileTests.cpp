@@ -10,34 +10,32 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_FileSystem_AngelscriptDiskCompileTests_Private
-{
-	FString GetDiskCompileTestRoot()
-	{
-		return FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("Automation") / TEXT("DiskCompile"));
-	}
-
-	void CleanDiskCompileTestRoot()
-	{
-		IFileManager::Get().DeleteDirectory(*GetDiskCompileTestRoot(), false, true);
-	}
-
-	bool WriteDiskCompileTestFile(const FString& RelativePath, const FString& Content, FString& OutAbsolutePath)
-	{
-		OutAbsolutePath = FPaths::Combine(GetDiskCompileTestRoot(), RelativePath);
-		IFileManager::Get().MakeDirectory(*FPaths::GetPath(OutAbsolutePath), true);
-		return FFileHelper::SaveStringToFile(Content, *OutAbsolutePath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptDiskCompileTest,
 	"Angelscript.TestModule.FileSystem.DiskCompile",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static FString GetDiskCompileTestRoot()
+{
+	return FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("Automation") / TEXT("DiskCompile"));
+}
+
+static void CleanDiskCompileTestRoot()
+{
+	IFileManager::Get().DeleteDirectory(*GetDiskCompileTestRoot(), false, true);
+}
+
+static bool WriteDiskCompileTestFile(const FString& RelativePath, const FString& Content, FString& OutAbsolutePath)
+{
+	OutAbsolutePath = FPaths::Combine(GetDiskCompileTestRoot(), RelativePath);
+	IFileManager::Get().MakeDirectory(*FPaths::GetPath(OutAbsolutePath), true);
+	return FFileHelper::SaveStringToFile(Content, *OutAbsolutePath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+}
+
+public:
 	TEST_METHOD(ReadsUpdatedSourceFromPath)
 	{
-		using namespace AngelscriptTest_FileSystem_AngelscriptDiskCompileTests_Private;
-		CleanDiskCompileTestRoot();
+CleanDiskCompileTestRoot();
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);

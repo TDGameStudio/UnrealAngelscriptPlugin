@@ -19,8 +19,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace PreprocessorTestHelpers;
-
 // ============================================================================
 // Test class
 // ============================================================================
@@ -35,6 +33,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorDirectiveTest,
 	// ========================================================================
 	TEST_METHOD(IfdefRespectsBooleanFlagValue)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -120,6 +120,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorDirectiveTest,
 	// ========================================================================
 	TEST_METHOD(InactiveBranchSkipsUnknownConditions)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		TUniquePtr<FAngelscriptEngine> OwnedEngine = CreateEditorEngine();
 		if (!this->Assert.IsNotNull(OwnedEngine.Get(), TEXT("Should create editor engine")))
 		{
@@ -223,6 +225,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorDirectiveTest,
 	// ========================================================================
 	TEST_METHOD(ElifShortCircuitsAfterTakenBranch)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		TUniquePtr<FAngelscriptEngine> OwnedEngine = CreateEditorEngine();
 		if (!this->Assert.IsNotNull(OwnedEngine.Get(), TEXT("Should create editor engine")))
 		{
@@ -310,6 +314,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorDirectiveTest,
 	// ========================================================================
 	TEST_METHOD(StringLiteralDoesNotTriggerDirectiveLexer)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		TUniquePtr<FAngelscriptEngine> OwnedEngine = CreateEditorEngine();
 		if (!this->Assert.IsNotNull(OwnedEngine.Get(), TEXT("Should create editor engine")))
 		{
@@ -388,6 +394,8 @@ int Entry()
 	// ========================================================================
 	TEST_METHOD(CompoundConditionReportsUnsupportedSyntax)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		TestRunner->AddExpectedError(TEXT("Invalid preprocessor condition:"), EAutomationExpectedErrorFlags::Contains, 1);
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -423,6 +431,8 @@ int Entry()
 	// ========================================================================
 	TEST_METHOD(StructuralErrorsReportStableDiagnostics)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		TestRunner->AddExpectedError(TEXT("Invalid #elif, no matching #if found."), EAutomationExpectedErrorFlags::Contains, 1);
 		TestRunner->AddExpectedError(TEXT("Invalid #else, no matching #if found."), EAutomationExpectedErrorFlags::Contains, 1);
 		TestRunner->AddExpectedError(TEXT("Invalid #endif, no matching #if found."), EAutomationExpectedErrorFlags::Contains, 1);
@@ -504,6 +514,8 @@ int Entry()
 	// ========================================================================
 	TEST_METHOD(TabSeparatedDirectiveParsing)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		TUniquePtr<FAngelscriptEngine> OwnedEngine = CreateEditorEngine();
 		if (!this->Assert.IsNotNull(OwnedEngine.Get(), TEXT("Should create editor engine")))
 		{
@@ -611,6 +623,8 @@ int Entry()
 	// ========================================================================
 	TEST_METHOD(IncludeDirectiveProducesDeterministicResult)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		static const FString ExpectedDiagnostic(TEXT("Unsupported preprocessor directive '#include'. Use import or automatic imports instead."));
 
 		TestRunner->AddExpectedError(*ExpectedDiagnostic, EAutomationExpectedErrorFlags::Contains, 2);
@@ -676,6 +690,8 @@ int Entry()
 	// ========================================================================
 	TEST_METHOD(DeeplyNestedConditionals)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 

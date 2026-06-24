@@ -14,78 +14,74 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_GC_AngelscriptGCTestCaseTests_Private
-{
-	using namespace AngelscriptFunctionalTestUtils;
-
-	void InitializeGCTestCaseSpawner(FActorTestSpawner& Spawner)
-	{
-		Spawner.InitializeGameSubsystems();
-	}
-
-	void LogReferenceChainIfAlive(FAutomationTestBase& Test, const UObject* Obj, const TCHAR* Context)
-	{
-		if (!Obj)
-		{
-			return;
-		}
-		FReferenceChainSearch Search(const_cast<UObject*>(Obj), EReferenceChainSearchMode::Shortest);
-		FString ChainReport = Search.GetRootPath();
-		if (ChainReport.IsEmpty())
-		{
-			Test.AddWarning(FString::Printf(TEXT("[GC Diagnostic] %s: object %s still alive but no external reference chain found (may be held by internal root)"),
-				Context, *Obj->GetPathName()));
-		}
-		else
-		{
-			Test.AddWarning(FString::Printf(TEXT("[GC Diagnostic] %s: object %s still alive. Reference chain:\n%s"),
-				Context, *Obj->GetPathName(), *ChainReport));
-		}
-	}
-
-	template <typename ComponentType = UActorComponent>
-	ComponentType* CreateGCTestCaseScriptComponent(
-		FAutomationTestBase& Test,
-		AActor& OwnerActor,
-		UClass* ComponentClass,
-		const TCHAR* Context)
-	{
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should compile to a valid component class"), Context), ComponentClass))
-		{
-			return nullptr;
-		}
-
-		UActorComponent* Component = NewObject<UActorComponent>(&OwnerActor, ComponentClass);
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should instantiate a runtime component"), Context), Component))
-		{
-			return nullptr;
-		}
-
-		OwnerActor.AddInstanceComponent(Component);
-		Component->OnComponentCreated();
-		Component->RegisterComponent();
-		Component->Activate(true);
-
-		ComponentType* TypedComponent = Cast<ComponentType>(Component);
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should produce the expected component base type"), Context), TypedComponent))
-		{
-			return nullptr;
-		}
-
-		return TypedComponent;
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(
 	FAngelscriptGCTest,
 	"Angelscript.TestModule.GC",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static void InitializeGCTestCaseSpawner(FActorTestSpawner& Spawner)
+{
+	Spawner.InitializeGameSubsystems();
+}
+
+static void LogReferenceChainIfAlive(FAutomationTestBase& Test, const UObject* Obj, const TCHAR* Context)
+{
+	if (!Obj)
+	{
+		return;
+	}
+	FReferenceChainSearch Search(const_cast<UObject*>(Obj), EReferenceChainSearchMode::Shortest);
+	FString ChainReport = Search.GetRootPath();
+	if (ChainReport.IsEmpty())
+	{
+		Test.AddWarning(FString::Printf(TEXT("[GC Diagnostic] %s: object %s still alive but no external reference chain found (may be held by internal root)"),
+			Context, *Obj->GetPathName()));
+	}
+	else
+	{
+		Test.AddWarning(FString::Printf(TEXT("[GC Diagnostic] %s: object %s still alive. Reference chain:\n%s"),
+			Context, *Obj->GetPathName(), *ChainReport));
+	}
+}
+
+template <typename ComponentType = UActorComponent>
+static ComponentType* CreateGCTestCaseScriptComponent(
+	FAutomationTestBase& Test,
+	AActor& OwnerActor,
+	UClass* ComponentClass,
+	const TCHAR* Context)
+{
+	if (!Test.TestNotNull(*FString::Printf(TEXT("%s should compile to a valid component class"), Context), ComponentClass))
+	{
+		return nullptr;
+	}
+
+	UActorComponent* Component = NewObject<UActorComponent>(&OwnerActor, ComponentClass);
+	if (!Test.TestNotNull(*FString::Printf(TEXT("%s should instantiate a runtime component"), Context), Component))
+	{
+		return nullptr;
+	}
+
+	OwnerActor.AddInstanceComponent(Component);
+	Component->OnComponentCreated();
+	Component->RegisterComponent();
+	Component->Activate(true);
+
+	ComponentType* TypedComponent = Cast<ComponentType>(Component);
+	if (!Test.TestNotNull(*FString::Printf(TEXT("%s should produce the expected component base type"), Context), TypedComponent))
+	{
+		return nullptr;
+	}
+
+	return TypedComponent;
+}
+
+public:
 	TEST_METHOD(ActorDestroy)
 	{
-		using namespace AngelscriptTest_GC_AngelscriptGCTestCaseTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		static const FName ModuleName(TEXT("TestGCActorDestroy"));
 		ON_SCOPE_EXIT
@@ -94,7 +90,7 @@ TEST_CLASS_WITH_FLAGS(
 			ASTEST_RESET_ENGINE(Engine);
 		};
 
-		UClass* ScriptClass = CompileScriptModule(
+		UClass* ScriptClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
 			*TestRunner,
 			Engine,
 			ModuleName,
@@ -110,13 +106,13 @@ class ATestGCActorDestroy : AActor
 
 		FActorTestSpawner Spawner;
 		InitializeGCTestCaseSpawner(Spawner);
-		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		AActor* Actor = AngelscriptFunctionalTestUtils::SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor));
-		BeginPlayActor(Engine, *Actor);
+		AngelscriptFunctionalTestUtils::BeginPlayActor(Engine, *Actor);
 
 		TWeakObjectPtr<AActor> WeakActor = Actor;
 		Actor->Destroy();
-		TickWorld(Engine, Spawner.GetWorld(), 0.0f, 1);
+		AngelscriptFunctionalTestUtils::TickWorld(Engine, Spawner.GetWorld(), 0.0f, 1);
 		CollectGarbage(RF_NoFlags, true);
 
 		if (WeakActor.IsValid())
@@ -129,8 +125,7 @@ class ATestGCActorDestroy : AActor
 
 	TEST_METHOD(ComponentDestroy)
 	{
-		using namespace AngelscriptTest_GC_AngelscriptGCTestCaseTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		static const FName ModuleName(TEXT("TestGCComponentDestroy"));
 		ON_SCOPE_EXIT
@@ -139,7 +134,7 @@ class ATestGCActorDestroy : AActor
 			ASTEST_RESET_ENGINE(Engine);
 		};
 
-		UClass* ComponentClass = CompileScriptModule(
+		UClass* ComponentClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
 			*TestRunner,
 			Engine,
 			ModuleName,
@@ -161,7 +156,7 @@ class UTestGCComponentDestroy : UActorComponent
 
 		TWeakObjectPtr<UActorComponent> WeakComponent = Component;
 		Component->DestroyComponent();
-		TickWorld(Engine, Spawner.GetWorld(), 0.0f, 1);
+		AngelscriptFunctionalTestUtils::TickWorld(Engine, Spawner.GetWorld(), 0.0f, 1);
 		CollectGarbage(RF_NoFlags, true);
 
 		if (WeakComponent.IsValid())
@@ -174,8 +169,7 @@ class UTestGCComponentDestroy : UActorComponent
 
 	TEST_METHOD(WorldTeardown)
 	{
-		using namespace AngelscriptTest_GC_AngelscriptGCTestCaseTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		static const FName ModuleName(TEXT("TestGCWorldTeardown"));
 		ON_SCOPE_EXIT
@@ -184,7 +178,7 @@ class UTestGCComponentDestroy : UActorComponent
 			ASTEST_RESET_ENGINE(Engine);
 		};
 
-		UClass* ActorClass = CompileScriptModule(
+		UClass* ActorClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
 			*TestRunner,
 			Engine,
 			ModuleName,
@@ -214,9 +208,9 @@ class UTestGCWorldTeardownComponent : UActorComponent
 			InitializeGCTestCaseSpawner(Spawner);
 			WeakWorld = &Spawner.GetWorld();
 
-			AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ActorClass);
+			AActor* Actor = AngelscriptFunctionalTestUtils::SpawnScriptActor(*TestRunner, Spawner, ActorClass);
 			ASSERT_THAT(IsNotNull(Actor));
-			BeginPlayActor(Engine, *Actor);
+			AngelscriptFunctionalTestUtils::BeginPlayActor(Engine, *Actor);
 
 			UActorComponent* Component = CreateGCTestCaseScriptComponent(*TestRunner, *Actor, ComponentClass, TEXT("GC.WorldTeardown"));
 			ASSERT_THAT(IsNotNull(Component));

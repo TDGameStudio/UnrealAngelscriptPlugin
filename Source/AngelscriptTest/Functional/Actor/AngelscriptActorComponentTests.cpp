@@ -13,185 +13,184 @@
 using namespace AngelscriptFunctionalTestUtils;
 using namespace AngelscriptActorTestUtils;
 
-namespace AngelscriptTest_Functional_Actor_Component_Private
-{
-	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsTrue(bActual, Message);
-	}
-
-	template <typename ActualType, typename ExpectedType>
-	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreEqual(Expected, Actual, Message);
-	}
-
-	template <typename ValueType>
-	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsNotNull(Value, Message);
-	}
-
-	template <typename ValueType>
-	static bool CheckNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsNull(Value, Message);
-	}
-
-	int32 CountComponentsByClass(const AActor* Actor, const UClass* ComponentClass)
-	{
-		if (Actor == nullptr || ComponentClass == nullptr)
-		{
-			return 0;
-		}
-
-		int32 Count = 0;
-		for (UActorComponent* Component : Actor->GetComponents())
-		{
-			if (Component != nullptr && Component->IsA(ComponentClass))
-			{
-				++Count;
-			}
-		}
-		return Count;
-	}
-
-	template <typename ComponentType>
-	ComponentType* FindComponentByName(const AActor* Actor, const FName ComponentName)
-	{
-		if (Actor == nullptr)
-		{
-			return nullptr;
-		}
-
-		for (UActorComponent* Component : Actor->GetComponents())
-		{
-			if (Component != nullptr && Component->GetFName() == ComponentName)
-			{
-				return Cast<ComponentType>(Component);
-			}
-		}
-		return nullptr;
-	}
-
-	bool AreAllComponentsRegistered(const AActor* Actor)
-	{
-		if (Actor == nullptr)
-		{
-			return false;
-		}
-
-		for (UActorComponent* Component : Actor->GetComponents())
-		{
-			if (Component == nullptr || !Component->IsRegistered())
-			{
-				return false;
-			}
-		}
-		return true;
-	}
-
-	FString DescribeComponents(const TArray<UActorComponent*>& Components)
-	{
-		TArray<FString> Entries;
-		Entries.Reserve(Components.Num());
-		for (const UActorComponent* Component : Components)
-		{
-			if (Component == nullptr)
-			{
-				Entries.Add(TEXT("<null>"));
-				continue;
-			}
-
-			Entries.Add(FString::Printf(TEXT("%s:%s"), *Component->GetName(), *Component->GetClass()->GetName()));
-		}
-		return FString::Join(Entries, TEXT(", "));
-	}
-
-	bool InvokeComponentArrayOut(
-		FAutomationTestBase& Test,
-		UObject* Target,
-		FName FunctionName,
-		const TArray<UActorComponent*>& SeedComponents,
-		TArray<UActorComponent*>& OutComponents)
-	{
-		FFunctionInvoker Invoker(Test, Target, FunctionName);
-		if (!Invoker.IsValid())
-		{
-			return false;
-		}
-
-		Invoker.AddParam<TArray<UActorComponent*>>(SeedComponents);
-		return Invoker.Call() && Invoker.ReadParamAfterCall<TArray<UActorComponent*>>(0, OutComponents);
-	}
-
-	template <typename ComponentType>
-	bool InvokeComponentReturn(
-		FAutomationTestBase& Test,
-		UObject* Target,
-		FName FunctionName,
-		ComponentType*& OutComponent)
-	{
-		OutComponent = nullptr;
-		FFunctionInvoker Invoker(Test, Target, FunctionName);
-		if (!Invoker.IsValid())
-		{
-			return false;
-		}
-
-		OutComponent = Invoker.CallAndReturn<ComponentType*>(nullptr);
-		return true;
-	}
-
-	bool InvokeVoid(FAutomationTestBase& Test, UObject* Target, FName FunctionName)
-	{
-		FFunctionInvoker Invoker(Test, Target, FunctionName);
-		return Invoker.IsValid() && Invoker.Call();
-	}
-
-	bool ReadComponentArrayProperty(
-		FAutomationTestBase& Test,
-		UObject* Object,
-		FName PropertyName,
-		TArray<UActorComponent*>& OutComponents)
-	{
-		if (!CheckNotNull(Test, TEXT("Component array property read requires a valid object"), Object))
-		{
-			return false;
-		}
-
-		FArrayProperty* ArrayProperty = FindFProperty<FArrayProperty>(Object->GetClass(), PropertyName);
-		if (!CheckNotNull(Test, *FString::Printf(TEXT("%s should be a reflected TArray property"), *PropertyName.ToString()), ArrayProperty))
-		{
-			return false;
-		}
-
-		FObjectPropertyBase* InnerObjectProperty = CastField<FObjectPropertyBase>(ArrayProperty->Inner);
-		if (!CheckNotNull(Test, *FString::Printf(TEXT("%s should contain UObject references"), *PropertyName.ToString()), InnerObjectProperty))
-		{
-			return false;
-		}
-
-		void* ArrayAddress = ArrayProperty->ContainerPtrToValuePtr<void>(Object);
-		FScriptArrayHelper Helper(ArrayProperty, ArrayAddress);
-		OutComponents.Reset(Helper.Num());
-		for (int32 Index = 0; Index < Helper.Num(); ++Index)
-		{
-			UObject* ElementObject = InnerObjectProperty->GetObjectPropertyValue(Helper.GetRawPtr(Index));
-			OutComponents.Add(Cast<UActorComponent>(ElementObject));
-		}
-		return true;
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptActorComponentTest,
 	"Angelscript.TestModule.Actor.Component",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsTrue(bActual, Message);
+}
+
+template <typename ActualType, typename ExpectedType>
+static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.AreEqual(Expected, Actual, Message);
+}
+
+template <typename ValueType>
+static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsNotNull(Value, Message);
+}
+
+template <typename ValueType>
+static bool CheckNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsNull(Value, Message);
+}
+
+static int32 CountComponentsByClass(const AActor* Actor, const UClass* ComponentClass)
+{
+	if (Actor == nullptr || ComponentClass == nullptr)
+	{
+		return 0;
+	}
+
+	int32 Count = 0;
+	for (UActorComponent* Component : Actor->GetComponents())
+	{
+		if (Component != nullptr && Component->IsA(ComponentClass))
+		{
+			++Count;
+		}
+	}
+	return Count;
+}
+
+template <typename ComponentType>
+static ComponentType* FindComponentByName(const AActor* Actor, const FName ComponentName)
+{
+	if (Actor == nullptr)
+	{
+		return nullptr;
+	}
+
+	for (UActorComponent* Component : Actor->GetComponents())
+	{
+		if (Component != nullptr && Component->GetFName() == ComponentName)
+		{
+			return Cast<ComponentType>(Component);
+		}
+	}
+	return nullptr;
+}
+
+static bool AreAllComponentsRegistered(const AActor* Actor)
+{
+	if (Actor == nullptr)
+	{
+		return false;
+	}
+
+	for (UActorComponent* Component : Actor->GetComponents())
+	{
+		if (Component == nullptr || !Component->IsRegistered())
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+static FString DescribeComponents(const TArray<UActorComponent*>& Components)
+{
+	TArray<FString> Entries;
+	Entries.Reserve(Components.Num());
+	for (const UActorComponent* Component : Components)
+	{
+		if (Component == nullptr)
+		{
+			Entries.Add(TEXT("<null>"));
+			continue;
+		}
+
+		Entries.Add(FString::Printf(TEXT("%s:%s"), *Component->GetName(), *Component->GetClass()->GetName()));
+	}
+	return FString::Join(Entries, TEXT(", "));
+}
+
+static bool InvokeComponentArrayOut(
+	FAutomationTestBase& Test,
+	UObject* Target,
+	FName FunctionName,
+	const TArray<UActorComponent*>& SeedComponents,
+	TArray<UActorComponent*>& OutComponents)
+{
+	FFunctionInvoker Invoker(Test, Target, FunctionName);
+	if (!Invoker.IsValid())
+	{
+		return false;
+	}
+
+	Invoker.AddParam<TArray<UActorComponent*>>(SeedComponents);
+	return Invoker.Call() && Invoker.ReadParamAfterCall<TArray<UActorComponent*>>(0, OutComponents);
+}
+
+template <typename ComponentType>
+static bool InvokeComponentReturn(
+	FAutomationTestBase& Test,
+	UObject* Target,
+	FName FunctionName,
+	ComponentType*& OutComponent)
+{
+	OutComponent = nullptr;
+	FFunctionInvoker Invoker(Test, Target, FunctionName);
+	if (!Invoker.IsValid())
+	{
+		return false;
+	}
+
+	OutComponent = Invoker.CallAndReturn<ComponentType*>(nullptr);
+	return true;
+}
+
+static bool InvokeVoid(FAutomationTestBase& Test, UObject* Target, FName FunctionName)
+{
+	FFunctionInvoker Invoker(Test, Target, FunctionName);
+	return Invoker.IsValid() && Invoker.Call();
+}
+
+static bool ReadComponentArrayProperty(
+	FAutomationTestBase& Test,
+	UObject* Object,
+	FName PropertyName,
+	TArray<UActorComponent*>& OutComponents)
+{
+	if (!CheckNotNull(Test, TEXT("Component array property read requires a valid object"), Object))
+	{
+		return false;
+	}
+
+	FArrayProperty* ArrayProperty = FindFProperty<FArrayProperty>(Object->GetClass(), PropertyName);
+	if (!CheckNotNull(Test, *FString::Printf(TEXT("%s should be a reflected TArray property"), *PropertyName.ToString()), ArrayProperty))
+	{
+		return false;
+	}
+
+	FObjectPropertyBase* InnerObjectProperty = CastField<FObjectPropertyBase>(ArrayProperty->Inner);
+	if (!CheckNotNull(Test, *FString::Printf(TEXT("%s should contain UObject references"), *PropertyName.ToString()), InnerObjectProperty))
+	{
+		return false;
+	}
+
+	void* ArrayAddress = ArrayProperty->ContainerPtrToValuePtr<void>(Object);
+	FScriptArrayHelper Helper(ArrayProperty, ArrayAddress);
+	OutComponents.Reset(Helper.Num());
+	for (int32 Index = 0; Index < Helper.Num(); ++Index)
+	{
+		UObject* ElementObject = InnerObjectProperty->GetObjectPropertyValue(Helper.GetRawPtr(Index));
+		OutComponents.Add(Cast<UActorComponent>(ElementObject));
+	}
+	return true;
+}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -205,9 +204,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptActorComponentTest,
 
 	TEST_METHOD(CreateComponent)
 	{
-		using namespace AngelscriptTest_Functional_Actor_Component_Private;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		static const FName ModuleName(TEXT("TestActorCreateComponent"));
 		ON_SCOPE_EXIT { Engine.DiscardModule(*ModuleName.ToString()); };
@@ -322,9 +319,7 @@ class ATestActorCreateComponent : AActor
 
 	TEST_METHOD(GetComponent)
 	{
-		using namespace AngelscriptTest_Functional_Actor_Component_Private;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		static const FName ModuleName(TEXT("TestActorGetComponent"));
 		ON_SCOPE_EXIT { Engine.DiscardModule(*ModuleName.ToString()); };
@@ -448,9 +443,7 @@ class ATestActorGetComponent : AActor
 
 	TEST_METHOD(GetOrCreateComponent)
 	{
-		using namespace AngelscriptTest_Functional_Actor_Component_Private;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		static const FName ModuleName(TEXT("TestActorGetOrCreateComponent"));
 		ON_SCOPE_EXIT { Engine.DiscardModule(*ModuleName.ToString()); };
@@ -552,9 +545,7 @@ class ATestActorGetOrCreateComponent : AActor
 
 	TEST_METHOD(GetAllComponents)
 	{
-		using namespace AngelscriptTest_Functional_Actor_Component_Private;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		static const FName ModuleName(TEXT("TestActorGetAllComponents"));
 		ON_SCOPE_EXIT { Engine.DiscardModule(*ModuleName.ToString()); };
@@ -816,9 +807,7 @@ class ATestActorGetAllComponents : AActor
 
 	TEST_METHOD(ReturnComponentsToCpp)
 	{
-		using namespace AngelscriptTest_Functional_Actor_Component_Private;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		static const FName ModuleName(TEXT("TestActorReturnComponentsToCpp"));
 		ON_SCOPE_EXIT { Engine.DiscardModule(*ModuleName.ToString()); };

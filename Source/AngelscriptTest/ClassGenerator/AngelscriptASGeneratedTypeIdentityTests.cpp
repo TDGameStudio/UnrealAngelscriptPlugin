@@ -36,8 +36,8 @@ namespace ASGeneratedTypeIdentityTest
 
 	bool VerifyHandledReloadResult(FAutomationTestBase& Test, const TCHAR* Context, const ECompileResult ReloadResult)
 	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsTrue(
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsTrue(
 			ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled,
 			Context);
 	}
@@ -48,19 +48,19 @@ namespace ASGeneratedTypeIdentityTest
 		const TCHAR* StageLabel)
 	{
 		const FString StructMessage = FString::Printf(TEXT("%s should publish a generated UASStruct"), StageLabel);
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(Struct, *StructMessage))
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(Struct, *StructMessage))
 		{
 			return false;
 		}
 
-		const bool bIsScriptStructMatches = Assert.IsTrue(
+		const bool bIsScriptStructMatches = LocalAssert.IsTrue(
 			Struct->bIsScriptStruct,
 			*FString::Printf(TEXT("%s should mark the struct as script-generated"), StageLabel));
-		const bool bScriptTypeMatches = Assert.IsNotNull(
+		const bool bScriptTypeMatches = LocalAssert.IsNotNull(
 			Struct->ScriptType,
 			*FString::Printf(TEXT("%s should publish a live script type pointer"), StageLabel));
-		const bool bNewestVersionMatches = Assert.AreEqual(
+		const bool bNewestVersionMatches = LocalAssert.AreEqual(
 			static_cast<UScriptStruct*>(Struct),
 			Struct->GetNewestVersion(),
 			*FString::Printf(TEXT("%s should resolve GetNewestVersion to itself while canonical"), StageLabel));
@@ -74,24 +74,24 @@ namespace ASGeneratedTypeIdentityTest
 		const TCHAR* StageLabel)
 	{
 		const FString StructMessage = FString::Printf(TEXT("%s should keep the replaced struct alive for version-chain lookups"), StageLabel);
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(Struct, *StructMessage))
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(Struct, *StructMessage))
 		{
 			return false;
 		}
 
-		const bool bIsScriptStructMatches = Assert.IsTrue(
+		const bool bIsScriptStructMatches = LocalAssert.IsTrue(
 			Struct->bIsScriptStruct,
 			*FString::Printf(TEXT("%s should keep the replaced struct tagged as a script struct"), StageLabel));
-		const bool bNewestVersionMatches = Assert.AreEqual(
+		const bool bNewestVersionMatches = LocalAssert.AreEqual(
 			static_cast<UScriptStruct*>(ExpectedNewestVersion),
 			Struct->GetNewestVersion(),
 			*FString::Printf(TEXT("%s should point GetNewestVersion at the replacement struct"), StageLabel));
-		const bool bDirectVersionLinkMatches = Assert.AreEqual(
+		const bool bDirectVersionLinkMatches = LocalAssert.AreEqual(
 			ExpectedNewestVersion,
 			Struct->NewerVersion,
 			*FString::Printf(TEXT("%s should wire NewerVersion directly to the replacement struct"), StageLabel));
-		const bool bClearedScriptTypeMatches = Assert.IsNull(
+		const bool bClearedScriptTypeMatches = LocalAssert.IsNull(
 			Struct->ScriptType,
 			*FString::Printf(TEXT("%s should clear the stale script type pointer after full reload"), StageLabel));
 		return bIsScriptStructMatches

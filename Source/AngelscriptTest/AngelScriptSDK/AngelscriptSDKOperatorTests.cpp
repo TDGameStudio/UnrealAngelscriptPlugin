@@ -6,13 +6,10 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptSDKTestSupport;
-using namespace AngelscriptSDKTestUtilities;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOperatorTests, "Angelscript.TestModule.AngelScriptSDK.Operator", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -31,7 +28,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOperatorTests, "Angelscript.TestModule.Ange
 
 	bool ExpectSdkInt(asIScriptEngine* ScriptEngine, asIScriptModule* Module, const char* Declaration, const TCHAR* Label, const int32 Expected)
 	{
-		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, Declaration);
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, Declaration);
 		if (!this->Assert.IsTrue(Invoker.IsValid(), Label))
 		{
 			return false;
@@ -42,7 +39,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOperatorTests, "Angelscript.TestModule.Ange
 
 	bool ExpectSdkUInt(asIScriptEngine* ScriptEngine, asIScriptModule* Module, const char* Declaration, const TCHAR* Label, const uint32 Expected)
 	{
-		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, Declaration);
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, Declaration);
 		if (!this->Assert.IsTrue(Invoker.IsValid(), Label))
 		{
 			return false;
@@ -53,7 +50,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOperatorTests, "Angelscript.TestModule.Ange
 
 	bool ExpectSdkUInt8(asIScriptEngine* ScriptEngine, asIScriptModule* Module, const char* Declaration, const TCHAR* Label, const uint8 Expected)
 	{
-		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, Declaration);
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, Declaration);
 		if (!this->Assert.IsTrue(Invoker.IsValid(), Label))
 		{
 			return false;
@@ -64,7 +61,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOperatorTests, "Angelscript.TestModule.Ange
 
 	bool ExpectSdkBool(asIScriptEngine* ScriptEngine, asIScriptModule* Module, const char* Declaration, const TCHAR* Label, const bool bExpected)
 	{
-		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, Declaration);
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, Declaration);
 		if (!this->Assert.IsTrue(Invoker.IsValid(), Label))
 		{
 			return false;
@@ -75,7 +72,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOperatorTests, "Angelscript.TestModule.Ange
 
 	bool ExpectSdkDouble(asIScriptEngine* ScriptEngine, asIScriptModule* Module, const char* Declaration, const TCHAR* Label, const double Expected, const double Tolerance = 0.0001)
 	{
-		FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, Declaration);
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, Declaration);
 		if (!this->Assert.IsTrue(Invoker.IsValid(), Label))
 		{
 			return false;
@@ -88,7 +85,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKOperatorTests, "Angelscript.TestModule.Ange
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK operator arithmetic test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorArithmetic", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorArithmetic", R"(
 int Add() { return 10 + 5; }
 int Subtract() { return 10 - 5; }
 int Multiply() { return 10 * 5; }
@@ -126,7 +123,7 @@ int IncrementDecrement()
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK operator comparison test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorComparison", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorComparison", R"(
 bool Equal() { int a = 10; int c = 10; return a == c; }
 bool NotEqual() { int a = 10; int b = 20; return a != b; }
 bool LessThan() { int a = 10; int b = 20; return a < b; }
@@ -156,7 +153,7 @@ bool GreaterEqualSame() { int a = 10; int c = 10; return a >= c; }
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK operator logical test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorLogical", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorLogical", R"(
 bool AndTrueTrue() { return true && true; }
 bool AndTrueFalse() { return true && false; }
 bool AndFalseTrue() { return false && true; }
@@ -198,7 +195,7 @@ bool NotFalse() { return !false; }
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK operator bitwise test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorBitwise", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorBitwise", R"(
 uint BitAnd() { uint a = 0b11001100; uint b = 0b10101010; return a & b; }
 uint BitOr() { uint a = 0b11001100; uint b = 0b10101010; return a | b; }
 uint BitXor() { uint a = 0b11001100; uint b = 0b10101010; return a ^ b; }
@@ -235,7 +232,7 @@ uint CompoundBitwise()
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK operator assignment test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorAssignment", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorAssignment", R"(
 int SimpleAssign() { int a = 10; return a; }
 int AddAssign() { int b = 10; b += 5; return b; }
 int SubAssign() { int c = 10; c -= 3; return c; }
@@ -263,7 +260,7 @@ int ChainedAssign() { int x = 0, y = 0, z = 0; x = y = z = 42; return x + y + z;
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK operator ternary test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorTernary", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorTernary", R"(
 int TrueBranch() { return true ? 10 : 20; }
 int FalseBranch() { return false ? 10 : 20; }
 int NestedBranch() { int x = 5; return x > 10 ? 1 : x > 5 ? 2 : x == 5 ? 3 : 4; }
@@ -287,10 +284,14 @@ int SideEffectCounter()
 
 	TEST_METHOD(Pow)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+		using namespace AngelscriptSDKTestUtilities;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK operator pow test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorPow", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorPow", R"(
 int IntPow() { return 3 ** 2; }
 double SqrtPow() { return 9.0 ** 0.5; }
 double FractionalPow() { return 2.5 ** 2; }
@@ -334,10 +335,14 @@ void Overflow()
 
 	TEST_METHOD(Call)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+		using namespace AngelscriptSDKTestUtilities;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK operator opCall test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorCall", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorCall", R"(
 class Adder
 {
 	int opCall(int a, int b)
@@ -376,10 +381,14 @@ bool InvokeAdderTriple()
 
 	TEST_METHOD(Index)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+		using namespace AngelscriptSDKTestUtilities;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK operator index test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorIndex", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorIndex", R"(
 class SimpleArray
 {
 	int data0 = 10;
@@ -415,7 +424,7 @@ int ReadSimpleArraySlot(int Index)
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK operator precedence test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorPrecedence", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorPrecedence", R"(
 int MultiplicativeBeforeAdditive() { return 2 + 3 * 4; }
 int ParenthesesOverride() { return (2 + 3) * 4; }
 int UnaryMinusBeforeMultiply() { return -2 * 3; }
@@ -441,7 +450,7 @@ bool ComparisonBeforeLogical() { return 2 + 2 == 4 && 3 * 3 > 8; }
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK operator short-circuit test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorShortCircuit", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorShortCircuit", R"(
 int AndCounter()
 {
 	int counter = 0;

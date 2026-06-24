@@ -62,8 +62,6 @@ namespace CompilerPipelineBlueprintEventWrapperTest
 	}
 }
 
-using namespace CompilerPipelineBlueprintEventWrapperTest;
-
 namespace CompilerPipelineBlueprintEventMixedPushTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.BlueprintEventWrapperUsesMixedPushPaths"));

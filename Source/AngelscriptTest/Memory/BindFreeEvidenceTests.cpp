@@ -1,14 +1,14 @@
 // Targeted test that drives FAngelscriptEngine through several full create/destroy
-// cycles. The work performed inside the cycles is deliberately minimal — the
+// cycles. The work performed inside the cycles is deliberately minimal -the
 // memory-of-interest is the bind phase itself plus the *residual* memory that
 // remains after Reset() + GC + FMemory::Trim(true).
 //
 // The probe is implemented inside AcquireTransientFullTestEngineWithProbe()
 // (see AngelscriptTestUtilities.h) and prints four samples per cycle:
-//   T0 BeforeReset       — residual heap right before destruction
-//   T1 AfterResetAndGC   — after engine destruct + UObject GC
-//   T2 AfterTrim         — after FMemory::Trim(true) (mimalloc returns pages to OS)
-//   T3 AfterNewCreate    — once the next engine is fully bound
+//   T0 BeforeReset       -residual heap right before destruction
+//   T1 AfterResetAndGC   -after engine destruct + UObject GC
+//   T2 AfterTrim         -after FMemory::Trim(true) (mimalloc returns pages to OS)
+//   T3 AfterNewCreate    -once the next engine is fully bound
 //
 // The non-probe `AcquireTransientFullTestEngine()` overload is the one the
 // rest of the test suite uses; this file is the *only* caller of the
@@ -42,53 +42,50 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Memory_BindFreeEvidenceTests_Private
-{
-	struct FBindFreeCycleResult
-	{
-		bool bHasScriptEngine = false;
-		bool bHasSignatureRegistry = false;
-		int32 BlueprintSignatureCount = INDEX_NONE;
-	};
-
-	static FBindFreeCycleResult DriveOneCycle(const TCHAR* CycleTag)
-	{
-		UE_LOG(Angelscript, Log, TEXT("[BindFreeEvidence] === Cycle %s begin ==="), CycleTag);
-		// Use the probe-enabled overload: it wraps acquisition with the
-		// T0..T3 SampleBindFreeMem calls plus an explicit FMemory::Trim,
-		// which is exactly what this test class needs evidence for.
-		FAngelscriptEngine& Engine = AcquireTransientFullTestEngineWithProbe();
-		FBindFreeCycleResult Result;
-		Result.bHasScriptEngine = Engine.GetScriptEngine() != nullptr;
-		if (FBlueprintEventSignatureRegistry* Registry = Engine.GetBlueprintEventSignatureRegistry())
-		{
-			Result.bHasSignatureRegistry = true;
-			Result.BlueprintSignatureCount = Registry->Num();
-		}
-		UE_LOG(Angelscript, Log, TEXT("[BindFreeEvidence] === Cycle %s end   ==="), CycleTag);
-		return Result;
-	}
-
-	static void ReleaseFinalCycle()
-	{
-		// Drop the shared transient storage and trim again so the *outermost*
-		// "baseline after all cycles" sample is comparable to the first one.
-		GetTransientFullTestEngineStorage().Reset();
-		CollectGarbage(RF_NoFlags, true);
-		FMemory::Trim(true);
-		SampleBindFreeMem(TEXT("T4_AfterFinalRelease"));
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptBindFreeEvidenceTests,
 	"Angelscript.TestModule.Memory.BindFreeEvidence",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+struct FBindFreeCycleResult
+{
+	bool bHasScriptEngine = false;
+	bool bHasSignatureRegistry = false;
+	int32 BlueprintSignatureCount = INDEX_NONE;
+};
+
+static FBindFreeCycleResult DriveOneCycle(const TCHAR* CycleTag)
+{
+	UE_LOG(Angelscript, Log, TEXT("[BindFreeEvidence] === Cycle %s begin ==="), CycleTag);
+	// Use the probe-enabled overload: it wraps acquisition with the
+	// T0..T3 SampleBindFreeMem calls plus an explicit FMemory::Trim,
+	// which is exactly what this test class needs evidence for.
+	FAngelscriptEngine& Engine = AcquireTransientFullTestEngineWithProbe();
+	FBindFreeCycleResult Result;
+	Result.bHasScriptEngine = Engine.GetScriptEngine() != nullptr;
+	if (FBlueprintEventSignatureRegistry* Registry = Engine.GetBlueprintEventSignatureRegistry())
+	{
+		Result.bHasSignatureRegistry = true;
+		Result.BlueprintSignatureCount = Registry->Num();
+	}
+	UE_LOG(Angelscript, Log, TEXT("[BindFreeEvidence] === Cycle %s end   ==="), CycleTag);
+	return Result;
+}
+
+static void ReleaseFinalCycle()
+{
+	// Drop the shared transient storage and trim again so the *outermost*
+	// "baseline after all cycles" sample is comparable to the first one.
+	GetTransientFullTestEngineStorage().Reset();
+	CollectGarbage(RF_NoFlags, true);
+	FMemory::Trim(true);
+	SampleBindFreeMem(TEXT("T4_AfterFinalRelease"));
+}
+
+public:
 	TEST_METHOD(BindFreeEvidence_ThreeCycles)
 	{
-		using namespace AngelscriptTest_Memory_BindFreeEvidenceTests_Private;
-
-		SampleBindFreeMem(TEXT("T_BeforeFirstCycle"));
+SampleBindFreeMem(TEXT("T_BeforeFirstCycle"));
 
 		const FBindFreeCycleResult Cycle1 = DriveOneCycle(TEXT("1"));
 		const FBindFreeCycleResult Cycle2 = DriveOneCycle(TEXT("2"));
@@ -130,10 +127,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindFreeEvidenceTests,
 	//       cycles and the count would drift upward monotonically.
 	TEST_METHOD(BindFreeEvidence_BlueprintEventSignatureBounded)
 	{
-		using namespace AngelscriptTest_Memory_BindFreeEvidenceTests_Private;
-
-		// Clean slate.
-		GetTransientFullTestEngineStorage().Reset();
+GetTransientFullTestEngineStorage().Reset();
 		CollectGarbage(RF_NoFlags, true);
 		FMemory::Trim(true);
 
@@ -166,7 +160,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindFreeEvidenceTests,
 				const int32 Delta = ThisCount - BaselineCount;
 				ASSERT_THAT(IsTrue(
 					FMath::Abs(Delta) <= TolerancePerCycle,
-					FString::Printf(TEXT("Cycle %d Registry->Num()=%d should stay within +/-%d of baseline %d (delta=%d) — drift indicates the leak has returned"),
+					FString::Printf(TEXT("Cycle %d Registry->Num()=%d should stay within +/-%d of baseline %d (delta=%d) -drift indicates the leak has returned"),
 						Cycle, ThisCount, TolerancePerCycle, BaselineCount, Delta)));
 			}
 		}
@@ -179,9 +173,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindFreeEvidenceTests,
 
 	TEST_METHOD(BindFreeEvidence_LeakReport)
 	{
-		using namespace AngelscriptTest_Memory_BindFreeEvidenceTests_Private;
-
-		if (GEngine == nullptr)
+if (GEngine == nullptr)
 		{
 			TestRunner->AddError(TEXT("BindFreeEvidence_LeakReport requires GEngine to be initialised."));
 			return;
@@ -198,7 +190,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindFreeEvidenceTests,
 			TEXT("BindFreeEvidence_LeakReport is an explicit boundary when MALLOC_LEAKDETECTION=0")));
 		return;
 #else
-		// 1. Establish a clean slate — drop any cached engine, GC, then trim so the
+		// 1. Establish a clean slate -drop any cached engine, GC, then trim so the
 		//    leak tracker starts from a stable mimalloc baseline.
 		GetTransientFullTestEngineStorage().Reset();
 		CollectGarbage(RF_NoFlags, true);

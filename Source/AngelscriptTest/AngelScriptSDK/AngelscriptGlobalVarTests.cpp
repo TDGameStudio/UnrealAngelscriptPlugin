@@ -5,8 +5,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKGlobalVarTests,
 	"Angelscript.TestModule.AngelScriptSDK.GlobalVar",
@@ -63,7 +61,7 @@ void recursive(int n)
 		return -1;
 	}
 
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -85,7 +83,7 @@ void recursive(int n)
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK global-var enumeration test should create a standalone engine")));
 
-		FScopedNativeModule Module(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(
 			*TestRunner,
 			Engine,
 			"SDKGlobalVarEnumerate",
@@ -132,7 +130,7 @@ void recursive(int n)
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK global-var reset test should create a standalone engine")));
 
-		FScopedNativeModule Module(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(
 			*TestRunner,
 			Engine,
 			"SDKGlobalVarReset",
@@ -153,7 +151,7 @@ void recursive(int n)
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK global-var remove test should create a standalone engine")));
 
-		FScopedNativeModule Module(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(
 			*TestRunner,
 			Engine,
 			"SDKGlobalVarRemove",
@@ -177,7 +175,7 @@ void recursive(int n)
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK global-var initializer test should create a standalone engine")));
 
 		// Global initializer expression should be evaluated at module build time.
-		FScopedNativeModule Module(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(
 			*TestRunner,
 			Engine,
 			"SDKGlobalVarInitializer",
@@ -199,11 +197,14 @@ void recursive(int n)
 
 	TEST_METHOD(ConstReadAccess)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK global-var const-read test should create a standalone engine")));
 
 		// This fork requires all script globals to be const. C++ reads the const value.
-		FScopedNativeModule Module(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(
 			*TestRunner,
 			Engine,
 			"SDKGlobalVarConstRead",
@@ -244,7 +245,7 @@ int Entry()
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK global-var declaration-string test should create a standalone engine")));
 
 		// Verify GetGlobalVarDeclaration returns a non-empty string for each global.
-		FScopedNativeModule Module(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(
 			*TestRunner,
 			Engine,
 			"SDKGlobalVarDeclString",
@@ -276,7 +277,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKStackTests,
 {
 	TEST_METHOD(DataLimit)
 	{
-		FNativeMessageCollector Messages;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
+		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK stack data-limit test should create a standalone engine")));
 
@@ -306,7 +310,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKStackTests,
 
 	TEST_METHOD(CallLimit)
 	{
-		FNativeMessageCollector Messages;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
+		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK stack call-limit test should create a standalone engine")));
 
@@ -337,7 +344,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKStackTests,
 
 	TEST_METHOD(ExceptionLocation)
 	{
-		FNativeMessageCollector Messages;
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
+		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK stack exception-location test should create a standalone engine")));
 

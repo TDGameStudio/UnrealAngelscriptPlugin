@@ -80,8 +80,6 @@ namespace CompilerPipelineControlFlowTest
 	}
 }
 
-using namespace CompilerPipelineControlFlowTest;
-
 TEST_CLASS_WITH_FLAGS(FCompilerPipelineControlFlowTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

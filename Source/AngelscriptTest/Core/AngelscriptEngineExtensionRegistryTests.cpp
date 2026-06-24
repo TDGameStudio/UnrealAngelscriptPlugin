@@ -6,68 +6,66 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Core_AngelscriptEngineExtensionRegistryTests_Private
-{
-	// Stable per-engine identifier for attach/detach correlation. The hooks
-	// branch originally used `Engine.GetInstanceId()` here; Phase 7 of
-	// `refactor-as-engine-clone-removal` deleted that accessor along with
-	// the Clone-mode infrastructure. Tests only need a value that's
-	// identical for the same engine instance across attach/detach calls,
-	// which pointer-as-hex satisfies.
-	static FString MakeEngineIdentityString(const FAngelscriptEngine& Engine)
-	{
-		return FString::Printf(TEXT("%p"), static_cast<const void*>(&Engine));
-	}
-
-	struct FExtensionRegistryContextGuard
-	{
-		TArray<FAngelscriptEngine*> SavedStack;
-
-		FExtensionRegistryContextGuard()
-		{
-			SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
-		}
-
-		~FExtensionRegistryContextGuard()
-		{
-			FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
-		}
-
-		void DiscardSavedStack()
-		{
-			SavedStack.Reset();
-		}
-	};
-
-	struct FRecordingEngineExtension : IAngelscriptExtension
-	{
-		int32 AttachCount = 0;
-		int32 DetachCount = 0;
-		TArray<FString> AttachedEngineIds;
-		TArray<FString> DetachedEngineIds;
-
-		void OnEngineAttached(FAngelscriptEngine& Engine) override
-		{
-			++AttachCount;
-			AttachedEngineIds.Add(MakeEngineIdentityString(Engine));
-		}
-
-		void OnEngineDetached(FAngelscriptEngine& Engine) override
-		{
-			++DetachCount;
-			DetachedEngineIds.Add(MakeEngineIdentityString(Engine));
-		}
-	};
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 	"Angelscript.TestModule.CppTests.Engine.Extension",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+// Stable per-engine identifier for attach/detach correlation. The hooks
+// branch originally used `Engine.GetInstanceId()` here; Phase 7 of
+// `refactor-as-engine-clone-removal` deleted that accessor along with
+// the Clone-mode infrastructure. Tests only need a value that's
+// identical for the same engine instance across attach/detach calls,
+// which pointer-as-hex satisfies.
+static FString MakeEngineIdentityString(const FAngelscriptEngine& Engine)
+{
+	return FString::Printf(TEXT("%p"), static_cast<const void*>(&Engine));
+}
+
+struct FExtensionRegistryContextGuard
+{
+	TArray<FAngelscriptEngine*> SavedStack;
+
+	FExtensionRegistryContextGuard()
+	{
+		SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
+	}
+
+	~FExtensionRegistryContextGuard()
+	{
+		FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
+	}
+
+	void DiscardSavedStack()
+	{
+		SavedStack.Reset();
+	}
+};
+
+struct FRecordingEngineExtension : IAngelscriptExtension
+{
+	int32 AttachCount = 0;
+	int32 DetachCount = 0;
+	TArray<FString> AttachedEngineIds;
+	TArray<FString> DetachedEngineIds;
+
+	void OnEngineAttached(FAngelscriptEngine& Engine) override
+	{
+		++AttachCount;
+		AttachedEngineIds.Add(MakeEngineIdentityString(Engine));
+	}
+
+	void OnEngineDetached(FAngelscriptEngine& Engine) override
+	{
+		++DetachCount;
+		DetachedEngineIds.Add(MakeEngineIdentityString(Engine));
+	}
+};
+
+public:
 	TEST_METHOD(EmptyRegistryReplayIsANoop)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptEngineExtensionRegistryTests_Private;
-		FExtensionRegistryContextGuard ContextGuard;
+FExtensionRegistryContextGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
@@ -101,8 +99,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 
 	TEST_METHOD(LateRegistrationReplaysToCurrentEngine)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptEngineExtensionRegistryTests_Private;
-		FExtensionRegistryContextGuard ContextGuard;
+FExtensionRegistryContextGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
@@ -140,8 +137,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 
 	TEST_METHOD(UnregisterStopsFutureReplay)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptEngineExtensionRegistryTests_Private;
-		FExtensionRegistryContextGuard ContextGuard;
+FExtensionRegistryContextGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
@@ -188,8 +184,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExtensionRegistryTests,
 
 	TEST_METHOD(EngineLifecycleAttachesAndDetachesRegisteredExtension)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptEngineExtensionRegistryTests_Private;
-		FExtensionRegistryContextGuard ContextGuard;
+FExtensionRegistryContextGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{

@@ -11,8 +11,11 @@
 
 #if AS_WITH_STATIC_JIT_DIAGNOSTICS
 
-namespace AngelscriptTest_StaticJIT_Diagnostics_Private
+TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITAotDiagnosticTests,
+	"Angelscript.TestModule.StaticJIT.AOT.Diagnostics",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
 	struct FScopedClearedCurrentEngineStack
 	{
 		FScopedClearedCurrentEngineStack()
@@ -29,7 +32,7 @@ namespace AngelscriptTest_StaticJIT_Diagnostics_Private
 		TArray<FAngelscriptEngine*> SavedStack;
 	};
 
-	bool LoadAotFixtureForDiagnosticsTest(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
+	static bool LoadAotFixtureForDiagnosticsTest(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 	{
 		FString AvailabilityError;
 		if (!Test.TestTrue(TEXT("StaticJIT diagnostics should have generated AOT fixture output"), AngelscriptStaticJITAotFixture::IsGeneratedOutputAvailable(&AvailabilityError)))
@@ -55,12 +58,12 @@ namespace AngelscriptTest_StaticJIT_Diagnostics_Private
 		return true;
 	}
 
-	IConsoleCommand* FindDumpDiagnosticsCommand()
+	static IConsoleCommand* FindDumpDiagnosticsCommand()
 	{
 		return static_cast<IConsoleCommand*>(IConsoleManager::Get().FindConsoleObject(TEXT("as.StaticJIT.DumpDiagnostics")));
 	}
 
-	bool ExecuteDumpDiagnosticsCommand(FAutomationTestBase& Test, const TArray<FString>& Args, const TCHAR* Context)
+	static bool ExecuteDumpDiagnosticsCommand(FAutomationTestBase& Test, const TArray<FString>& Args, const TCHAR* Context)
 	{
 		IConsoleCommand* Command = FindDumpDiagnosticsCommand();
 		if (!Test.TestNotNull(
@@ -75,14 +78,30 @@ namespace AngelscriptTest_StaticJIT_Diagnostics_Private
 			*FString::Printf(TEXT("%s should execute the StaticJIT diagnostics dump command"), Context),
 			Command->Execute(Args, nullptr, OutputDevice));
 	}
-}
 
-namespace AngelscriptTest_StaticJIT_Diagnostics_Private
-{
+	static bool RunDiagnosticsResolveFixtureState(FAutomationTestBase& Test);
+	static bool RunDiagnosticsConsoleCommandRegistered(FAutomationTestBase& Test);
+	static bool RunDiagnosticsConsoleCommandFunctionPaths(FAutomationTestBase& Test);
 
-bool RunDiagnosticsResolveFixtureState(FAutomationTestBase& Test)
+public:
+	TEST_METHOD(ResolveFixtureState)
+	{
+		ASSERT_THAT(IsTrue(RunDiagnosticsResolveFixtureState(*TestRunner)));
+	}
+
+	TEST_METHOD(ConsoleCommandRegistered)
+	{
+		ASSERT_THAT(IsTrue(RunDiagnosticsConsoleCommandRegistered(*TestRunner)));
+	}
+
+	TEST_METHOD(ConsoleCommandFunctionPaths)
+	{
+		ASSERT_THAT(IsTrue(RunDiagnosticsConsoleCommandFunctionPaths(*TestRunner)));
+	}
+};
+
+bool FAngelscriptStaticJITAotDiagnosticTests::RunDiagnosticsResolveFixtureState(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_StaticJIT_Diagnostics_Private;
 
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngineScope EngineScope(Engine);
@@ -127,10 +146,8 @@ bool RunDiagnosticsResolveFixtureState(FAutomationTestBase& Test)
 	return true;
 }
 
-bool RunDiagnosticsConsoleCommandRegistered(FAutomationTestBase& Test)
+bool FAngelscriptStaticJITAotDiagnosticTests::RunDiagnosticsConsoleCommandRegistered(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_StaticJIT_Diagnostics_Private;
-
 	FScopedClearedCurrentEngineStack NoCurrentEngineScope;
 	const FStaticJITDiagnostics::FSnapshot Snapshot = FStaticJITDiagnostics::CaptureSnapshot();
 	Test.TestFalse(TEXT("StaticJIT diagnostics command test should run with no current engine"), Snapshot.bHasCurrentEngine);
@@ -145,10 +162,8 @@ bool RunDiagnosticsConsoleCommandRegistered(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunDiagnosticsConsoleCommandFunctionPaths(FAutomationTestBase& Test)
+bool FAngelscriptStaticJITAotDiagnosticTests::RunDiagnosticsConsoleCommandFunctionPaths(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_StaticJIT_Diagnostics_Private;
-
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	FAngelscriptEngineScope EngineScope(Engine);
 
@@ -167,30 +182,5 @@ bool RunDiagnosticsConsoleCommandFunctionPaths(FAutomationTestBase& Test)
 	bPassed &= ExecuteDumpDiagnosticsCommand(Test, { AngelscriptStaticJITAotFixture::GetEntryDeclaration() }, TEXT("StaticJIT diagnostics dump fixture function"));
 	return bPassed;
 }
-
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITAotDiagnosticTests,
-	"Angelscript.TestModule.StaticJIT.AOT.Diagnostics",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
-	TEST_METHOD(ResolveFixtureState)
-	{
-		using namespace AngelscriptTest_StaticJIT_Diagnostics_Private;
-		ASSERT_THAT(IsTrue(RunDiagnosticsResolveFixtureState(*TestRunner)));
-	}
-
-	TEST_METHOD(ConsoleCommandRegistered)
-	{
-		using namespace AngelscriptTest_StaticJIT_Diagnostics_Private;
-		ASSERT_THAT(IsTrue(RunDiagnosticsConsoleCommandRegistered(*TestRunner)));
-	}
-
-	TEST_METHOD(ConsoleCommandFunctionPaths)
-	{
-		using namespace AngelscriptTest_StaticJIT_Diagnostics_Private;
-		ASSERT_THAT(IsTrue(RunDiagnosticsConsoleCommandFunctionPaths(*TestRunner)));
-	}
-};
 
 #endif

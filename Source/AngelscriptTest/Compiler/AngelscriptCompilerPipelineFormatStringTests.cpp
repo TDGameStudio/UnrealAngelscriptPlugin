@@ -80,8 +80,6 @@ namespace CompilerPipelineFormatStringTest
 	}
 }
 
-using namespace CompilerPipelineFormatStringTest;
-
 TEST_CLASS_WITH_FLAGS(FCompilerPipelineFormatStringTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

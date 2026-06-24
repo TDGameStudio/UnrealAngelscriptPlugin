@@ -5,31 +5,29 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Core_AngelscriptSkipBindsTests_Private
-{
-	struct FSkipEntryExpectation
-	{
-		const TCHAR* ClassName;
-		const TCHAR* FunctionName;
-		bool bExpectedSkipped;
-	};
-
-	struct FSkipClassExpectation
-	{
-		const TCHAR* ClassName;
-		bool bExpectedSkipped;
-	};
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSkipBindsTests,
 	"Angelscript.TestModule.Engine.BindConfig.SkipBinds",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+struct FSkipEntryExpectation
+{
+	const TCHAR* ClassName;
+	const TCHAR* FunctionName;
+	bool bExpectedSkipped;
+};
+
+struct FSkipClassExpectation
+{
+	const TCHAR* ClassName;
+	bool bExpectedSkipped;
+};
+
+public:
 	TEST_METHOD(DefaultSkipListIsRegistered)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptSkipBindsTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		{
 			FAngelscriptEngineScope _AutoEngineScope(Engine);
 			ON_SCOPE_EXIT

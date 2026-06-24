@@ -16,91 +16,89 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Core_AngelscriptGeneratedFunctionTableTests_Private
-{
-	int32 CountGeneratedBindingRegistrations(const FString& GeneratedDirectory)
-	{
-		TArray<FString> GeneratedFiles;
-		IFileManager::Get().FindFilesRecursive(GeneratedFiles, *GeneratedDirectory, TEXT("AS_FunctionTable_*.gen.cpp"), true, false);
-
-		int32 RegistrationCount = 0;
-		for (const FString& GeneratedFile : GeneratedFiles)
-		{
-			FString FileContents;
-			if (!FFileHelper::LoadFileToString(FileContents, *GeneratedFile))
-			{
-				continue;
-			}
-
-			TArray<FString> Lines;
-			FileContents.ParseIntoArrayLines(Lines);
-			for (const FString& Line : Lines)
-			{
-				if (Line.Contains(TEXT("FAngelscriptBinds::AddFunctionEntry(")))
-				{
-					RegistrationCount++;
-				}
-			}
-		}
-
-		return RegistrationCount;
-	}
-
-	bool FindGeneratedBindingLine(const FString& GeneratedDirectory, const FString& FunctionName, FString& OutLine)
-	{
-		TArray<FString> GeneratedFiles;
-		IFileManager::Get().FindFilesRecursive(GeneratedFiles, *GeneratedDirectory, TEXT("AS_FunctionTable_*.gen.cpp"), true, false);
-
-		for (const FString& GeneratedFile : GeneratedFiles)
-		{
-			FString FileContents;
-			if (!FFileHelper::LoadFileToString(FileContents, *GeneratedFile))
-			{
-				continue;
-			}
-
-			TArray<FString> Lines;
-			FileContents.ParseIntoArrayLines(Lines);
-			for (const FString& Line : Lines)
-			{
-				if (Line.Contains(FunctionName))
-				{
-					OutLine = Line;
-					return true;
-				}
-			}
-		}
-
-		return false;
-	}
-
-	TArray<FString> LoadNonEmptyFileLines(const FString& FilePath)
-	{
-		FString FileContents;
-		if (!FFileHelper::LoadFileToString(FileContents, *FilePath))
-		{
-			return {};
-		}
-
-		TArray<FString> Lines;
-		FileContents.ParseIntoArrayLines(Lines);
-		Lines.RemoveAll([](const FString& Line)
-		{
-			return Line.TrimStartAndEnd().IsEmpty();
-		});
-		return Lines;
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 	"Angelscript.TestModule.Engine.GeneratedFunctionTable",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static int32 CountGeneratedBindingRegistrations(const FString& GeneratedDirectory)
+{
+	TArray<FString> GeneratedFiles;
+	IFileManager::Get().FindFilesRecursive(GeneratedFiles, *GeneratedDirectory, TEXT("AS_FunctionTable_*.gen.cpp"), true, false);
+
+	int32 RegistrationCount = 0;
+	for (const FString& GeneratedFile : GeneratedFiles)
+	{
+		FString FileContents;
+		if (!FFileHelper::LoadFileToString(FileContents, *GeneratedFile))
+		{
+			continue;
+		}
+
+		TArray<FString> Lines;
+		FileContents.ParseIntoArrayLines(Lines);
+		for (const FString& Line : Lines)
+		{
+			if (Line.Contains(TEXT("FAngelscriptBinds::AddFunctionEntry(")))
+			{
+				RegistrationCount++;
+			}
+		}
+	}
+
+	return RegistrationCount;
+}
+
+static bool FindGeneratedBindingLine(const FString& GeneratedDirectory, const FString& FunctionName, FString& OutLine)
+{
+	TArray<FString> GeneratedFiles;
+	IFileManager::Get().FindFilesRecursive(GeneratedFiles, *GeneratedDirectory, TEXT("AS_FunctionTable_*.gen.cpp"), true, false);
+
+	for (const FString& GeneratedFile : GeneratedFiles)
+	{
+		FString FileContents;
+		if (!FFileHelper::LoadFileToString(FileContents, *GeneratedFile))
+		{
+			continue;
+		}
+
+		TArray<FString> Lines;
+		FileContents.ParseIntoArrayLines(Lines);
+		for (const FString& Line : Lines)
+		{
+			if (Line.Contains(FunctionName))
+			{
+				OutLine = Line;
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+static TArray<FString> LoadNonEmptyFileLines(const FString& FilePath)
+{
+	FString FileContents;
+	if (!FFileHelper::LoadFileToString(FileContents, *FilePath))
+	{
+		return {};
+	}
+
+	TArray<FString> Lines;
+	FileContents.ParseIntoArrayLines(Lines);
+	Lines.RemoveAll([](const FString& Line)
+	{
+		return Line.TrimStartAndEnd().IsEmpty();
+	});
+	return Lines;
+}
+
+public:
 	TEST_METHOD(PopulatesClassFuncMaps)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptGeneratedFunctionTableTests_Private;
-		if (!FAngelscriptEngine::IsInitialized()) { TestRunner->AddInfo(TEXT("Production engine not initialized in headless mode, skipping")); return; }
+if (!FAngelscriptEngine::IsInitialized()) { TestRunner->AddInfo(TEXT("Production engine not initialized in headless mode, skipping")); return; }
 
 		FAngelscriptEngine& Engine = FAngelscriptEngine::Get();
 		(void)Engine;
@@ -145,8 +143,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 
 	TEST_METHOD(EditorOutputsUseWithEditorGuard)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptGeneratedFunctionTableTests_Private;
-		const FString GeneratedDirectory = FPaths::Combine(
+const FString GeneratedDirectory = FPaths::Combine(
 			FPaths::ProjectPluginsDir(),
 			TEXT("Angelscript"),
 			TEXT("Intermediate/Build/Win64/UnrealEditor/Inc/AngelscriptRuntime/UHT"));
@@ -174,8 +171,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 
 	TEST_METHOD(OutputsShardTimingHooks)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptGeneratedFunctionTableTests_Private;
-		const FString GeneratedDirectory = FPaths::Combine(
+const FString GeneratedDirectory = FPaths::Combine(
 			FPaths::ProjectPluginsDir(),
 			TEXT("Angelscript"),
 			TEXT("Intermediate/Build/Win64/UnrealEditor/Inc/AngelscriptRuntime/UHT"));
@@ -194,8 +190,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 
 	TEST_METHOD(RepresentativeCoverage)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptGeneratedFunctionTableTests_Private;
-		if (!FAngelscriptEngine::IsInitialized()) { TestRunner->AddInfo(TEXT("Production engine not initialized in headless mode, skipping")); return; }
+if (!FAngelscriptEngine::IsInitialized()) { TestRunner->AddInfo(TEXT("Production engine not initialized in headless mode, skipping")); return; }
 
 		const TMap<UClass*, TMap<FString, FFuncEntry>>& ClassFuncMaps = FAngelscriptBinds::GetClassFuncMaps();
 
@@ -241,8 +236,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 
 	TEST_METHOD(MinimalApiFunctionLevelExports)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptGeneratedFunctionTableTests_Private;
-		if (!FAngelscriptEngine::IsInitialized()) { TestRunner->AddInfo(TEXT("Production engine not initialized in headless mode, skipping")); return; }
+if (!FAngelscriptEngine::IsInitialized()) { TestRunner->AddInfo(TEXT("Production engine not initialized in headless mode, skipping")); return; }
 
 		const TMap<UClass*, TMap<FString, FFuncEntry>>& ClassFuncMaps = FAngelscriptBinds::GetClassFuncMaps();
 		const TMap<FString, FFuncEntry>* PlayerCameraManagerEntries = ClassFuncMaps.Find(APlayerCameraManager::StaticClass());
@@ -276,8 +270,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 
 	TEST_METHOD(ReflectiveFallbackStats)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptGeneratedFunctionTableTests_Private;
-		if (!FAngelscriptEngine::IsInitialized()) { TestRunner->AddInfo(TEXT("Production engine not initialized in headless mode, skipping")); return; }
+if (!FAngelscriptEngine::IsInitialized()) { TestRunner->AddInfo(TEXT("Production engine not initialized in headless mode, skipping")); return; }
 
 		const TMap<UClass*, TMap<FString, FFuncEntry>>& ClassFuncMaps = FAngelscriptBinds::GetClassFuncMaps();
 		int32 DirectCount = 0;
@@ -343,8 +336,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 
 	TEST_METHOD(SummaryOutput)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptGeneratedFunctionTableTests_Private;
-		const FString GeneratedDirectory = FPaths::Combine(
+const FString GeneratedDirectory = FPaths::Combine(
 			FPaths::ProjectPluginsDir(),
 			TEXT("Angelscript"),
 			TEXT("Intermediate/Build/Win64/UnrealEditor/Inc/AngelscriptRuntime/UHT"));
@@ -516,8 +508,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 
 	TEST_METHOD(CsvOutput)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptGeneratedFunctionTableTests_Private;
-		const FString GeneratedDirectory = FPaths::Combine(
+const FString GeneratedDirectory = FPaths::Combine(
 			FPaths::ProjectPluginsDir(),
 			TEXT("Angelscript"),
 			TEXT("Intermediate/Build/Win64/UnrealEditor/Inc/AngelscriptRuntime/UHT"));
@@ -635,8 +626,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 
 	TEST_METHOD(SkippedCsvOutput)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptGeneratedFunctionTableTests_Private;
-		const FString GeneratedDirectory = FPaths::Combine(
+const FString GeneratedDirectory = FPaths::Combine(
 			FPaths::ProjectPluginsDir(),
 			TEXT("Angelscript"),
 			TEXT("Intermediate/Build/Win64/UnrealEditor/Inc/AngelscriptRuntime/UHT"));
@@ -674,8 +664,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 
 	TEST_METHOD(SkippedReasonSummaryCsvOutput)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptGeneratedFunctionTableTests_Private;
-		const FString GeneratedDirectory = FPaths::Combine(
+const FString GeneratedDirectory = FPaths::Combine(
 			FPaths::ProjectPluginsDir(),
 			TEXT("Angelscript"),
 			TEXT("Intermediate/Build/Win64/UnrealEditor/Inc/AngelscriptRuntime/UHT"));
@@ -722,8 +711,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionTableTests,
 
 	TEST_METHOD(MacroQualifiedDirectBindings)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptGeneratedFunctionTableTests_Private;
-		const FString GeneratedDirectory = FPaths::Combine(
+const FString GeneratedDirectory = FPaths::Combine(
 			FPaths::ProjectPluginsDir(),
 			TEXT("Angelscript"),
 			TEXT("Intermediate/Build/Win64/UnrealEditor/Inc/AngelscriptRuntime/UHT"));

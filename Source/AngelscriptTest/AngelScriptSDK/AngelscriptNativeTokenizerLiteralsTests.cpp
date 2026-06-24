@@ -8,7 +8,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerLiteralsTests,
 	"Angelscript.TestModule.AngelScriptSDK.Tokenizer.Literals",
@@ -17,7 +16,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerLiteralsTests,
 private:
 	static bool ExpectTokenType(const char* Input, const eTokenType ExpectedType, int32& OutTokenLength)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 		const eTokenType TokenType = Tokenizer.GetToken(Input, std::strlen(Input), &TokenLength);
 		OutTokenLength = static_cast<int32>(TokenLength);
@@ -186,7 +185,7 @@ public:
 
 	TEST_METHOD(AdjacentStringConcatNotMerged)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		const char* Input = "\"a\"\"b\"";
 		size_t TokenLength = 0;
 

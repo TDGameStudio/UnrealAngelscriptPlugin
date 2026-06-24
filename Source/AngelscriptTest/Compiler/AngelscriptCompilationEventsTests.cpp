@@ -19,113 +19,112 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptCompilationEventsTests_Private
-{
-	struct FCompileDelegateCounters
-	{
-		FDelegateHandle PreCompileHandle;
-		FDelegateHandle PostCompileHandle;
-		FDelegateHandle PreGenerateClassesHandle;
-		int32 PreCompileCount = 0;
-		int32 PostCompileCount = 0;
-		int32 PreGenerateClassesCount = 0;
-		int32 PreGenerateClassesModuleCount = 0;
-		FAngelscriptEngine* BoundEngine = nullptr;
-
-		explicit FCompileDelegateCounters(FAngelscriptEngine& Engine)
-			: BoundEngine(&Engine)
-		{
-			PreCompileHandle = Engine.GetPreCompile().AddRaw(this, &FCompileDelegateCounters::HandlePreCompile);
-			PostCompileHandle = Engine.GetPostCompile().AddRaw(this, &FCompileDelegateCounters::HandlePostCompile);
-			PreGenerateClassesHandle = Engine.GetPreGenerateClasses().AddRaw(this, &FCompileDelegateCounters::HandlePreGenerateClasses);
-		}
-
-		~FCompileDelegateCounters()
-		{
-			if (BoundEngine == nullptr)
-			{
-				return;
-			}
-
-			if (PreCompileHandle.IsValid())
-			{
-				BoundEngine->GetPreCompile().Remove(PreCompileHandle);
-			}
-			if (PostCompileHandle.IsValid())
-			{
-				BoundEngine->GetPostCompile().Remove(PostCompileHandle);
-			}
-			if (PreGenerateClassesHandle.IsValid())
-			{
-				BoundEngine->GetPreGenerateClasses().Remove(PreGenerateClassesHandle);
-			}
-		}
-
-		void HandlePreCompile()
-		{
-			++PreCompileCount;
-		}
-
-		void HandlePostCompile()
-		{
-			++PostCompileCount;
-		}
-
-		void HandlePreGenerateClasses(const TArray<TSharedRef<FAngelscriptModuleDesc>>& Modules)
-		{
-			++PreGenerateClassesCount;
-			PreGenerateClassesModuleCount += Modules.Num();
-		}
-	};
-
-	const FAngelscriptCompilationEvent* FindFirstEvent(
-		const TArray<FAngelscriptCompilationEvent>& Events,
-		EAngelscriptCompilationEventType EventType)
-	{
-		return Events.FindByPredicate(
-			[EventType](const FAngelscriptCompilationEvent& Event)
-			{
-				return Event.Type == EventType;
-		});
-	}
-
-	const FAngelscriptCompilationEvent* FindFirstEventForModule(
-		const TArray<FAngelscriptCompilationEvent>& Events,
-		EAngelscriptCompilationEventType EventType,
-		const FString& ModuleName)
-	{
-		return Events.FindByPredicate(
-			[EventType, &ModuleName](const FAngelscriptCompilationEvent& Event)
-			{
-				return Event.Type == EventType && Event.ModuleNames.Contains(ModuleName);
-			});
-	}
-
-	int32 FindFirstPhaseIndex(
-		const TArray<FAngelscriptCompilationEvent>& Events,
-		FName Phase)
-	{
-		for (int32 Index = 0; Index < Events.Num(); ++Index)
-		{
-			if (Events[Index].Phase == Phase)
-			{
-				return Index;
-			}
-		}
-
-		return INDEX_NONE;
-	}
-
-	bool ContainsPhase(const TArray<FAngelscriptCompilationEvent>& Events, FName Phase)
-	{
-		return FindFirstPhaseIndex(Events, Phase) != INDEX_NONE;
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptCompilationEventsTest,
 	"Angelscript.TestModule.Compiler.Events",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+struct FCompileDelegateCounters
+{
+	FDelegateHandle PreCompileHandle;
+	FDelegateHandle PostCompileHandle;
+	FDelegateHandle PreGenerateClassesHandle;
+	int32 PreCompileCount = 0;
+	int32 PostCompileCount = 0;
+	int32 PreGenerateClassesCount = 0;
+	int32 PreGenerateClassesModuleCount = 0;
+	FAngelscriptEngine* BoundEngine = nullptr;
+
+	explicit FCompileDelegateCounters(FAngelscriptEngine& Engine)
+		: BoundEngine(&Engine)
+	{
+		PreCompileHandle = Engine.GetPreCompile().AddRaw(this, &FCompileDelegateCounters::HandlePreCompile);
+		PostCompileHandle = Engine.GetPostCompile().AddRaw(this, &FCompileDelegateCounters::HandlePostCompile);
+		PreGenerateClassesHandle = Engine.GetPreGenerateClasses().AddRaw(this, &FCompileDelegateCounters::HandlePreGenerateClasses);
+	}
+
+	~FCompileDelegateCounters()
+	{
+		if (BoundEngine == nullptr)
+		{
+			return;
+		}
+
+		if (PreCompileHandle.IsValid())
+		{
+			BoundEngine->GetPreCompile().Remove(PreCompileHandle);
+		}
+		if (PostCompileHandle.IsValid())
+		{
+			BoundEngine->GetPostCompile().Remove(PostCompileHandle);
+		}
+		if (PreGenerateClassesHandle.IsValid())
+		{
+			BoundEngine->GetPreGenerateClasses().Remove(PreGenerateClassesHandle);
+		}
+	}
+
+	void HandlePreCompile()
+	{
+		++PreCompileCount;
+	}
+
+	void HandlePostCompile()
+	{
+		++PostCompileCount;
+	}
+
+	void HandlePreGenerateClasses(const TArray<TSharedRef<FAngelscriptModuleDesc>>& Modules)
+	{
+		++PreGenerateClassesCount;
+		PreGenerateClassesModuleCount += Modules.Num();
+	}
+};
+
+static const FAngelscriptCompilationEvent* FindFirstEvent(
+	const TArray<FAngelscriptCompilationEvent>& Events,
+	EAngelscriptCompilationEventType EventType)
+{
+	return Events.FindByPredicate(
+		[EventType](const FAngelscriptCompilationEvent& Event)
+		{
+			return Event.Type == EventType;
+	});
+}
+
+static const FAngelscriptCompilationEvent* FindFirstEventForModule(
+	const TArray<FAngelscriptCompilationEvent>& Events,
+	EAngelscriptCompilationEventType EventType,
+	const FString& ModuleName)
+{
+	return Events.FindByPredicate(
+		[EventType, &ModuleName](const FAngelscriptCompilationEvent& Event)
+		{
+			return Event.Type == EventType && Event.ModuleNames.Contains(ModuleName);
+		});
+}
+
+static int32 FindFirstPhaseIndex(
+	const TArray<FAngelscriptCompilationEvent>& Events,
+	FName Phase)
+{
+	for (int32 Index = 0; Index < Events.Num(); ++Index)
+	{
+		if (Events[Index].Phase == Phase)
+		{
+			return Index;
+		}
+	}
+
+	return INDEX_NONE;
+}
+
+static bool ContainsPhase(const TArray<FAngelscriptCompilationEvent>& Events, FName Phase)
+{
+	return FindFirstPhaseIndex(Events, Phase) != INDEX_NONE;
+}
+
+public:
 	TEST_METHOD(NoListenerCompileIsSilentAndPreservesResult)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -186,8 +185,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilationEventsTest,
 		ASSERT_THAT(IsTrue(bCompiled, TEXT("Listener compile should compile")));
 		ASSERT_THAT(IsTrue(Events.Num() >= 2, TEXT("Listener should receive compilation events")));
 
-		const FAngelscriptCompilationEvent* BeginEvent = AngelscriptCompilationEventsTests_Private::FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileBegin);
-		const FAngelscriptCompilationEvent* EndEvent = AngelscriptCompilationEventsTests_Private::FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileEnd);
+		const FAngelscriptCompilationEvent* BeginEvent = FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileBegin);
+		const FAngelscriptCompilationEvent* EndEvent = FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileEnd);
 		if (this->Assert.IsNotNull(BeginEvent, TEXT("Listener should receive Compile.Begin")))
 		{
 			ASSERT_THAT(AreEqual(FName(TEXT("Compile.Begin")), BeginEvent->Phase, TEXT("Compile.Begin phase name should be stable")));
@@ -214,7 +213,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilationEventsTest,
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
-		AngelscriptCompilationEventsTests_Private::FCompileDelegateCounters DelegateCounters(Engine);
+		FCompileDelegateCounters DelegateCounters(Engine);
 		TArray<FAngelscriptCompilationEvent> Events;
 		const FDelegateHandle ListenerHandle = FAngelscriptCompilationEvents::RegisterListener(
 			[&Events](const FAngelscriptCompilationEvent& Event)
@@ -252,7 +251,7 @@ class UCompilationEventsDelegates : UObject
 		ASSERT_THAT(AreEqual(1, DelegateCounters.PreGenerateClassesCount, TEXT("Existing pre-generate-classes delegate should still fire once")));
 		ASSERT_THAT(AreEqual(1, DelegateCounters.PreGenerateClassesModuleCount, TEXT("Existing pre-generate-classes delegate should still carry the compiled module")));
 		ASSERT_THAT(IsNotNull(
-			AngelscriptCompilationEventsTests_Private::FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileEnd),
+			FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileEnd),
 			TEXT("Structured compile events should also be emitted")));
 
 		}
@@ -302,7 +301,7 @@ class UCompilationEventsDelegates : UObject
 		int32 PreviousIndex = INDEX_NONE;
 		for (FName Phase : ExpectedPhases)
 		{
-			const int32 PhaseIndex = AngelscriptCompilationEventsTests_Private::FindFirstPhaseIndex(Events, Phase);
+			const int32 PhaseIndex = FindFirstPhaseIndex(Events, Phase);
 			if (this->Assert.IsTrue(PhaseIndex != INDEX_NONE, FString::Printf(TEXT("Expected phase should be emitted: %s"), *Phase.ToString())))
 			{
 				ASSERT_THAT(IsTrue(PhaseIndex > PreviousIndex, FString::Printf(TEXT("Expected phase should be ordered: %s"), *Phase.ToString())));
@@ -310,7 +309,7 @@ class UCompilationEventsDelegates : UObject
 			}
 		}
 
-		const FAngelscriptCompilationEvent* AssemblyEvent = AngelscriptCompilationEventsTests_Private::FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileModuleAssembly);
+		const FAngelscriptCompilationEvent* AssemblyEvent = FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileModuleAssembly);
 		if (this->Assert.IsNotNull(AssemblyEvent, TEXT("Module assembly event should be emitted")))
 		{
 			ASSERT_THAT(AreEqual(1, AssemblyEvent->ModuleCount, TEXT("Assembly event should carry one module")));
@@ -318,7 +317,7 @@ class UCompilationEventsDelegates : UObject
 			ASSERT_THAT(AreEqual(1, AssemblyEvent->FileCount, TEXT("Assembly event should carry one file")));
 		}
 
-		const FAngelscriptCompilationEvent* CodeEvent = AngelscriptCompilationEventsTests_Private::FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileModuleCompileCode);
+		const FAngelscriptCompilationEvent* CodeEvent = FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileModuleCompileCode);
 		if (this->Assert.IsNotNull(CodeEvent, TEXT("Code compilation event should be emitted")))
 		{
 			ASSERT_THAT(AreEqual(FName(TEXT("Compile.ModuleCompileCode")), CodeEvent->Phase, TEXT("Code event should carry its stable phase")));
@@ -362,13 +361,13 @@ class UCompilationEventsDelegates : UObject
 		ASSERT_THAT(IsFalse(bCompiled, TEXT("Invalid script should not compile")));
 		ASSERT_THAT(AreEqual(ECompileResult::Error, Summary.CompileResult, TEXT("Invalid script should report error result")));
 
-		const int32 BeginIndex = AngelscriptCompilationEventsTests_Private::FindFirstPhaseIndex(Events, TEXT("Compile.Begin"));
-		const int32 EndIndex = AngelscriptCompilationEventsTests_Private::FindFirstPhaseIndex(Events, TEXT("Compile.End"));
+		const int32 BeginIndex = FindFirstPhaseIndex(Events, TEXT("Compile.Begin"));
+		const int32 EndIndex = FindFirstPhaseIndex(Events, TEXT("Compile.End"));
 		ASSERT_THAT(IsTrue(BeginIndex != INDEX_NONE, TEXT("Failed compile should emit begin")));
 		ASSERT_THAT(IsTrue(EndIndex != INDEX_NONE, TEXT("Failed compile should emit end")));
 		ASSERT_THAT(IsTrue(BeginIndex != INDEX_NONE && EndIndex > BeginIndex, TEXT("Failed compile should emit end after begin")));
 
-		const FAngelscriptCompilationEvent* EndEvent = AngelscriptCompilationEventsTests_Private::FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileEnd);
+		const FAngelscriptCompilationEvent* EndEvent = FindFirstEvent(Events, EAngelscriptCompilationEventType::CompileEnd);
 		if (this->Assert.IsNotNull(EndEvent, TEXT("Failed compile should include Compile.End payload")))
 		{
 			ASSERT_THAT(AreEqual(ECompileResult::Error, EndEvent->CompileResult, TEXT("Failed end event should carry result")));
@@ -464,10 +463,10 @@ class UCompilationEventsDelegates : UObject
 		ASSERT_THAT(IsTrue(bFirstCompiled, TEXT("First context-scoping compile should compile")));
 		ASSERT_THAT(IsTrue(bSecondCompiled, TEXT("Second context-scoping compile should compile")));
 
-		const FAngelscriptCompilationEvent* FirstBegin = AngelscriptCompilationEventsTests_Private::FindFirstEventForModule(Events, EAngelscriptCompilationEventType::CompileBegin, TEXT("CompilationContextFirstRun"));
-		const FAngelscriptCompilationEvent* FirstEnd = AngelscriptCompilationEventsTests_Private::FindFirstEventForModule(Events, EAngelscriptCompilationEventType::CompileEnd, TEXT("CompilationContextFirstRun"));
-		const FAngelscriptCompilationEvent* SecondBegin = AngelscriptCompilationEventsTests_Private::FindFirstEventForModule(Events, EAngelscriptCompilationEventType::CompileBegin, TEXT("CompilationContextSecondRun"));
-		const FAngelscriptCompilationEvent* SecondEnd = AngelscriptCompilationEventsTests_Private::FindFirstEventForModule(Events, EAngelscriptCompilationEventType::CompileEnd, TEXT("CompilationContextSecondRun"));
+		const FAngelscriptCompilationEvent* FirstBegin = FindFirstEventForModule(Events, EAngelscriptCompilationEventType::CompileBegin, TEXT("CompilationContextFirstRun"));
+		const FAngelscriptCompilationEvent* FirstEnd = FindFirstEventForModule(Events, EAngelscriptCompilationEventType::CompileEnd, TEXT("CompilationContextFirstRun"));
+		const FAngelscriptCompilationEvent* SecondBegin = FindFirstEventForModule(Events, EAngelscriptCompilationEventType::CompileBegin, TEXT("CompilationContextSecondRun"));
+		const FAngelscriptCompilationEvent* SecondEnd = FindFirstEventForModule(Events, EAngelscriptCompilationEventType::CompileEnd, TEXT("CompilationContextSecondRun"));
 
 		if (this->Assert.IsNotNull(FirstBegin, TEXT("First compile should emit a begin event"))
 			&& this->Assert.IsNotNull(FirstEnd, TEXT("First compile should emit an end event")))

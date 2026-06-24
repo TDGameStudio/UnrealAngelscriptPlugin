@@ -39,8 +39,8 @@ private:
 			ScriptType = Engine.GetScriptEngine()->GetTypeInfoByName(BoundTypeNameUtf8.Get());
 		}
 
-		FNoDiscardAsserter Assert(Test);
-		(void)Assert.IsNotNull(
+		FNoDiscardAsserter LocalAssert(Test);
+		(void)LocalAssert.IsNotNull(
 			ScriptType,
 			*FString::Printf(TEXT("Debugger value getter tracking should resolve script type '%s'"), *BoundTypeName));
 		return ScriptType;
@@ -74,8 +74,8 @@ private:
 			}
 		}
 
-		FNoDiscardAsserter Assert(Test);
-		(void)Assert.IsNotNull(
+		FNoDiscardAsserter LocalAssert(Test);
+		(void)LocalAssert.IsNotNull(
 			Function,
 			*FString::Printf(TEXT("Debugger value getter tracking should resolve method '%s'"), *Declaration));
 		return Function;
@@ -88,22 +88,22 @@ private:
 		const FString& ExpectedValue,
 		void* ExpectedAddress)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bOk = true;
-		bOk &= Assert.AreEqual(
+		bOk &= LocalAssert.AreEqual(
 			ExpectedValue,
 			DebugValue.Value,
 			*FString::Printf(TEXT("%s should stringify the getter result"), Context));
-		bOk &= Assert.IsTrue(
+		bOk &= LocalAssert.IsTrue(
 			DebugValue.bTemporaryValue,
 			*FString::Printf(TEXT("%s should mark debugger output as a temporary value"), Context));
-		bOk &= Assert.IsTrue(
+		bOk &= LocalAssert.IsTrue(
 			DebugValue.GetAddressToMonitor() == ExpectedAddress,
 			*FString::Printf(TEXT("%s should bind the monitored address back to the Health property"), Context));
-		bOk &= Assert.IsTrue(
+		bOk &= LocalAssert.IsTrue(
 			DebugValue.NonTemporaryAddress == ExpectedAddress || DebugValue.AddressToMonitor == ExpectedAddress,
 			*FString::Printf(TEXT("%s should preserve a concrete non-temporary or monitor address"), Context));
-		bOk &= Assert.AreEqual(
+		bOk &= LocalAssert.AreEqual(
 			static_cast<int32>(sizeof(int32)),
 			DebugValue.GetAddressToMonitorValueSize(),
 			*FString::Printf(TEXT("%s should report the expected monitor value size"), Context));

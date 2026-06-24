@@ -1,11 +1,11 @@
 // ============================================================================
 // AngelscriptCollisionParamsBindingsTests.cpp
 //
-// Collision params binding coverage — CQTest refactor. Automation ID:
+// Collision params binding coverage �?CQTest refactor. Automation ID:
 //   Angelscript.TestModule.Bindings.CollisionParams.FAngelscriptCollisionParamsBindingsTest.*
 //
 // Sections:
-//   CollisionQueryParamsBehaviour — full parity test for FCollisionQueryParams,
+//   CollisionQueryParamsBehaviour �?full parity test for FCollisionQueryParams,
 //     FComponentQueryParams, FCollisionObjectQueryParams, FCollisionResponseContainer
 //
 // CQTest adaptation notes:
@@ -33,171 +33,170 @@
 
 
 
-namespace AngelscriptTest_Bindings_AngelscriptCollisionParamsBindingsTests_Private
-{
-	static constexpr ANSICHAR CollisionParamsModuleName[] = "ASCollisionQueryParamsBehaviour";
-
-	template <typename IdArrayType>
-	TArray<uint32> CopyIgnoredIds(const IdArrayType& Source)
-	{
-		TArray<uint32> Result;
-		Result.Reserve(Source.Num());
-		for (uint32 Id : Source)
-		{
-			Result.Add(Id);
-		}
-		return Result;
-	}
-
-	FCollisionQueryParams BuildNativeCollisionQueryParams(const AActor* IgnoredActor, const UPrimitiveComponent* IgnoredComponent)
-	{
-		FCollisionQueryParams QueryParams;
-		QueryParams.TraceTag = TEXT("TraceTag");
-		QueryParams.OwnerTag = TEXT("OwnerTag");
-		QueryParams.bTraceComplex = true;
-		QueryParams.bFindInitialOverlaps = true;
-		QueryParams.bReturnFaceIndex = true;
-		QueryParams.bReturnPhysicalMaterial = true;
-		QueryParams.bIgnoreBlocks = true;
-		QueryParams.bIgnoreTouches = true;
-		QueryParams.bSkipNarrowPhase = true;
-		QueryParams.MobilityType = EQueryMobilityType::Dynamic;
-		QueryParams.IgnoreMask = 17;
-		QueryParams.AddIgnoredActor(IgnoredActor);
-		QueryParams.AddIgnoredComponent(IgnoredComponent);
-		QueryParams.ClearIgnoredSourceObjects();
-		QueryParams.ClearIgnoredComponents();
-		QueryParams.AddIgnoredActor(IgnoredActor);
-		QueryParams.AddIgnoredComponent(IgnoredComponent);
-		return QueryParams;
-	}
-
-	FComponentQueryParams BuildNativeComponentQueryParams(const AActor* IgnoredActor, const UPrimitiveComponent* IgnoredComponent)
-	{
-		FComponentQueryParams QueryParams;
-		QueryParams.TraceTag = TEXT("ComponentTrace");
-		QueryParams.OwnerTag = TEXT("ComponentOwner");
-		QueryParams.bTraceComplex = true;
-		QueryParams.bReturnFaceIndex = true;
-		QueryParams.MobilityType = EQueryMobilityType::Static;
-		QueryParams.IgnoreMask = 23;
-		QueryParams.ShapeCollisionMask.Bits = 3;
-		QueryParams.AddIgnoredActor(IgnoredActor);
-		QueryParams.AddIgnoredComponent(IgnoredComponent);
-		QueryParams.ClearIgnoredSourceObjects();
-		QueryParams.ClearIgnoredComponents();
-		QueryParams.AddIgnoredActor(IgnoredActor);
-		QueryParams.AddIgnoredComponent(IgnoredComponent);
-		return QueryParams;
-	}
-
-	FCollisionObjectQueryParams BuildNativeObjectQueryParams()
-	{
-		FCollisionObjectQueryParams QueryParams;
-		QueryParams.IgnoreMask = 29;
-		QueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
-		QueryParams.AddObjectTypesToQuery(ECC_Camera);
-		QueryParams.AddObjectTypesToQuery(ECC_Pawn);
-		QueryParams.RemoveObjectTypesToQuery(ECC_Pawn);
-		return QueryParams;
-	}
-
-	FCollisionResponseContainer BuildNativeResponseContainer()
-	{
-		FCollisionResponseContainer ResponseContainer(ECR_Ignore);
-		ResponseContainer.SetResponse(ECC_Visibility, ECR_Block);
-		ResponseContainer.SetResponse(ECC_Camera, ECR_Overlap);
-		return ResponseContainer;
-	}
-
-	FCollisionResponseContainer BuildNativeMinResponseContainer()
-	{
-		FCollisionResponseContainer ResponseContainer = BuildNativeResponseContainer();
-
-		FCollisionResponseContainer OtherContainer(ECR_Block);
-		OtherContainer.SetResponse(ECC_Visibility, ECR_Overlap);
-		OtherContainer.SetResponse(ECC_WorldStatic, ECR_Ignore);
-
-		return FCollisionResponseContainer::CreateMinContainer(ResponseContainer, OtherContainer);
-	}
-
-	bool ExpectSingleIgnoredId(
-		FAutomationTestBase& Test,
-		const TCHAR* ContextLabel,
-		const TArray<uint32>& ActualIds,
-		const uint32 ExpectedId)
-	{
-		FNoDiscardAsserter Assert(Test);
-		bool bPassed = true;
-		bPassed &= Assert.AreEqual(
-			1,
-			ActualIds.Num(),
-			*FString::Printf(TEXT("%s should contain exactly one ignored entry"), ContextLabel));
-
-		if (ActualIds.Num() == 1)
-		{
-			bPassed &= Assert.AreEqual(
-				ExpectedId,
-				ActualIds[0],
-				*FString::Printf(TEXT("%s should preserve the ignored object ID"), ContextLabel));
-		}
-
-		return bPassed;
-	}
-
-	bool ExpectCollisionQueryParamsParity(
-		FAutomationTestBase& Test,
-		const TCHAR* ContextLabel,
-		const FCollisionQueryParams& ScriptParams,
-		const FCollisionQueryParams& NativeParams,
-		const uint32 ExpectedActorId,
-		const uint32 ExpectedComponentId)
-	{
-		FNoDiscardAsserter Assert(Test);
-		bool bPassed = true;
-		bPassed &= Assert.AreEqual(NativeParams.TraceTag, ScriptParams.TraceTag, *FString::Printf(TEXT("%s should preserve TraceTag"), ContextLabel));
-		bPassed &= Assert.AreEqual(NativeParams.OwnerTag, ScriptParams.OwnerTag, *FString::Printf(TEXT("%s should preserve OwnerTag"), ContextLabel));
-		bPassed &= Assert.AreEqual(NativeParams.bTraceComplex, ScriptParams.bTraceComplex, *FString::Printf(TEXT("%s should preserve bTraceComplex"), ContextLabel));
-		bPassed &= Assert.AreEqual(NativeParams.bFindInitialOverlaps, ScriptParams.bFindInitialOverlaps, *FString::Printf(TEXT("%s should preserve bFindInitialOverlaps"), ContextLabel));
-		bPassed &= Assert.AreEqual(NativeParams.bReturnFaceIndex, ScriptParams.bReturnFaceIndex, *FString::Printf(TEXT("%s should preserve bReturnFaceIndex"), ContextLabel));
-		bPassed &= Assert.AreEqual(NativeParams.bReturnPhysicalMaterial, ScriptParams.bReturnPhysicalMaterial, *FString::Printf(TEXT("%s should preserve bReturnPhysicalMaterial"), ContextLabel));
-		bPassed &= Assert.AreEqual(NativeParams.bIgnoreBlocks, ScriptParams.bIgnoreBlocks, *FString::Printf(TEXT("%s should preserve bIgnoreBlocks"), ContextLabel));
-		bPassed &= Assert.AreEqual(NativeParams.bIgnoreTouches, ScriptParams.bIgnoreTouches, *FString::Printf(TEXT("%s should preserve bIgnoreTouches"), ContextLabel));
-		bPassed &= Assert.AreEqual(NativeParams.bSkipNarrowPhase, ScriptParams.bSkipNarrowPhase, *FString::Printf(TEXT("%s should preserve bSkipNarrowPhase"), ContextLabel));
-		bPassed &= Assert.AreEqual(NativeParams.MobilityType, ScriptParams.MobilityType, *FString::Printf(TEXT("%s should preserve MobilityType"), ContextLabel));
-		bPassed &= Assert.AreEqual(NativeParams.IgnoreMask, ScriptParams.IgnoreMask, *FString::Printf(TEXT("%s should preserve IgnoreMask"), ContextLabel));
-		bPassed &= ExpectSingleIgnoredId(Test, *FString::Printf(TEXT("%s ignored actors"), ContextLabel), CopyIgnoredIds(ScriptParams.GetIgnoredSourceObjects()), ExpectedActorId);
-		bPassed &= ExpectSingleIgnoredId(Test, *FString::Printf(TEXT("%s ignored components"), ContextLabel), CopyIgnoredIds(ScriptParams.GetIgnoredComponents()), ExpectedComponentId);
-		return bPassed;
-	}
-
-	bool ExpectComponentQueryParamsParity(
-		FAutomationTestBase& Test,
-		const FComponentQueryParams& ScriptParams,
-		const FComponentQueryParams& NativeParams,
-		const uint32 ExpectedActorId,
-		const uint32 ExpectedComponentId)
-	{
-		bool bPassed = ExpectCollisionQueryParamsParity(
-			Test,
-			TEXT("CollisionQueryParamsBehaviour component query params"),
-			static_cast<const FCollisionQueryParams&>(ScriptParams),
-			static_cast<const FCollisionQueryParams&>(NativeParams),
-			ExpectedActorId,
-			ExpectedComponentId);
-		FNoDiscardAsserter Assert(Test);
-		bPassed &= Assert.AreEqual(
-			NativeParams.ShapeCollisionMask.Bits,
-			ScriptParams.ShapeCollisionMask.Bits,
-			TEXT("CollisionQueryParamsBehaviour should preserve ShapeCollisionMask.Bits"));
-		return bPassed;
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptCollisionParamsBindingsTest, "Angelscript.TestModule.Bindings.CollisionParams",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static constexpr ANSICHAR CollisionParamsModuleName[] = "ASCollisionQueryParamsBehaviour";
+
+template <typename IdArrayType>
+static TArray<uint32> CopyIgnoredIds(const IdArrayType& Source)
+{
+	TArray<uint32> Result;
+	Result.Reserve(Source.Num());
+	for (uint32 Id : Source)
+	{
+		Result.Add(Id);
+	}
+	return Result;
+}
+
+static FCollisionQueryParams BuildNativeCollisionQueryParams(const AActor* IgnoredActor, const UPrimitiveComponent* IgnoredComponent)
+{
+	FCollisionQueryParams QueryParams;
+	QueryParams.TraceTag = TEXT("TraceTag");
+	QueryParams.OwnerTag = TEXT("OwnerTag");
+	QueryParams.bTraceComplex = true;
+	QueryParams.bFindInitialOverlaps = true;
+	QueryParams.bReturnFaceIndex = true;
+	QueryParams.bReturnPhysicalMaterial = true;
+	QueryParams.bIgnoreBlocks = true;
+	QueryParams.bIgnoreTouches = true;
+	QueryParams.bSkipNarrowPhase = true;
+	QueryParams.MobilityType = EQueryMobilityType::Dynamic;
+	QueryParams.IgnoreMask = 17;
+	QueryParams.AddIgnoredActor(IgnoredActor);
+	QueryParams.AddIgnoredComponent(IgnoredComponent);
+	QueryParams.ClearIgnoredSourceObjects();
+	QueryParams.ClearIgnoredComponents();
+	QueryParams.AddIgnoredActor(IgnoredActor);
+	QueryParams.AddIgnoredComponent(IgnoredComponent);
+	return QueryParams;
+}
+
+static FComponentQueryParams BuildNativeComponentQueryParams(const AActor* IgnoredActor, const UPrimitiveComponent* IgnoredComponent)
+{
+	FComponentQueryParams QueryParams;
+	QueryParams.TraceTag = TEXT("ComponentTrace");
+	QueryParams.OwnerTag = TEXT("ComponentOwner");
+	QueryParams.bTraceComplex = true;
+	QueryParams.bReturnFaceIndex = true;
+	QueryParams.MobilityType = EQueryMobilityType::Static;
+	QueryParams.IgnoreMask = 23;
+	QueryParams.ShapeCollisionMask.Bits = 3;
+	QueryParams.AddIgnoredActor(IgnoredActor);
+	QueryParams.AddIgnoredComponent(IgnoredComponent);
+	QueryParams.ClearIgnoredSourceObjects();
+	QueryParams.ClearIgnoredComponents();
+	QueryParams.AddIgnoredActor(IgnoredActor);
+	QueryParams.AddIgnoredComponent(IgnoredComponent);
+	return QueryParams;
+}
+
+static FCollisionObjectQueryParams BuildNativeObjectQueryParams()
+{
+	FCollisionObjectQueryParams QueryParams;
+	QueryParams.IgnoreMask = 29;
+	QueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
+	QueryParams.AddObjectTypesToQuery(ECC_Camera);
+	QueryParams.AddObjectTypesToQuery(ECC_Pawn);
+	QueryParams.RemoveObjectTypesToQuery(ECC_Pawn);
+	return QueryParams;
+}
+
+static FCollisionResponseContainer BuildNativeResponseContainer()
+{
+	FCollisionResponseContainer ResponseContainer(ECR_Ignore);
+	ResponseContainer.SetResponse(ECC_Visibility, ECR_Block);
+	ResponseContainer.SetResponse(ECC_Camera, ECR_Overlap);
+	return ResponseContainer;
+}
+
+static FCollisionResponseContainer BuildNativeMinResponseContainer()
+{
+	FCollisionResponseContainer ResponseContainer = BuildNativeResponseContainer();
+
+	FCollisionResponseContainer OtherContainer(ECR_Block);
+	OtherContainer.SetResponse(ECC_Visibility, ECR_Overlap);
+	OtherContainer.SetResponse(ECC_WorldStatic, ECR_Ignore);
+
+	return FCollisionResponseContainer::CreateMinContainer(ResponseContainer, OtherContainer);
+}
+
+static bool ExpectSingleIgnoredId(
+	FAutomationTestBase& Test,
+	const TCHAR* ContextLabel,
+	const TArray<uint32>& ActualIds,
+	const uint32 ExpectedId)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	bool bPassed = true;
+	bPassed &= LocalAssert.AreEqual(
+		1,
+		ActualIds.Num(),
+		*FString::Printf(TEXT("%s should contain exactly one ignored entry"), ContextLabel));
+
+	if (ActualIds.Num() == 1)
+	{
+		bPassed &= LocalAssert.AreEqual(
+			ExpectedId,
+			ActualIds[0],
+			*FString::Printf(TEXT("%s should preserve the ignored object ID"), ContextLabel));
+	}
+
+	return bPassed;
+}
+
+static bool ExpectCollisionQueryParamsParity(
+	FAutomationTestBase& Test,
+	const TCHAR* ContextLabel,
+	const FCollisionQueryParams& ScriptParams,
+	const FCollisionQueryParams& NativeParams,
+	const uint32 ExpectedActorId,
+	const uint32 ExpectedComponentId)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	bool bPassed = true;
+	bPassed &= LocalAssert.AreEqual(NativeParams.TraceTag, ScriptParams.TraceTag, *FString::Printf(TEXT("%s should preserve TraceTag"), ContextLabel));
+	bPassed &= LocalAssert.AreEqual(NativeParams.OwnerTag, ScriptParams.OwnerTag, *FString::Printf(TEXT("%s should preserve OwnerTag"), ContextLabel));
+	bPassed &= LocalAssert.AreEqual(NativeParams.bTraceComplex, ScriptParams.bTraceComplex, *FString::Printf(TEXT("%s should preserve bTraceComplex"), ContextLabel));
+	bPassed &= LocalAssert.AreEqual(NativeParams.bFindInitialOverlaps, ScriptParams.bFindInitialOverlaps, *FString::Printf(TEXT("%s should preserve bFindInitialOverlaps"), ContextLabel));
+	bPassed &= LocalAssert.AreEqual(NativeParams.bReturnFaceIndex, ScriptParams.bReturnFaceIndex, *FString::Printf(TEXT("%s should preserve bReturnFaceIndex"), ContextLabel));
+	bPassed &= LocalAssert.AreEqual(NativeParams.bReturnPhysicalMaterial, ScriptParams.bReturnPhysicalMaterial, *FString::Printf(TEXT("%s should preserve bReturnPhysicalMaterial"), ContextLabel));
+	bPassed &= LocalAssert.AreEqual(NativeParams.bIgnoreBlocks, ScriptParams.bIgnoreBlocks, *FString::Printf(TEXT("%s should preserve bIgnoreBlocks"), ContextLabel));
+	bPassed &= LocalAssert.AreEqual(NativeParams.bIgnoreTouches, ScriptParams.bIgnoreTouches, *FString::Printf(TEXT("%s should preserve bIgnoreTouches"), ContextLabel));
+	bPassed &= LocalAssert.AreEqual(NativeParams.bSkipNarrowPhase, ScriptParams.bSkipNarrowPhase, *FString::Printf(TEXT("%s should preserve bSkipNarrowPhase"), ContextLabel));
+	bPassed &= LocalAssert.AreEqual(NativeParams.MobilityType, ScriptParams.MobilityType, *FString::Printf(TEXT("%s should preserve MobilityType"), ContextLabel));
+	bPassed &= LocalAssert.AreEqual(NativeParams.IgnoreMask, ScriptParams.IgnoreMask, *FString::Printf(TEXT("%s should preserve IgnoreMask"), ContextLabel));
+	bPassed &= ExpectSingleIgnoredId(Test, *FString::Printf(TEXT("%s ignored actors"), ContextLabel), CopyIgnoredIds(ScriptParams.GetIgnoredSourceObjects()), ExpectedActorId);
+	bPassed &= ExpectSingleIgnoredId(Test, *FString::Printf(TEXT("%s ignored components"), ContextLabel), CopyIgnoredIds(ScriptParams.GetIgnoredComponents()), ExpectedComponentId);
+	return bPassed;
+}
+
+static bool ExpectComponentQueryParamsParity(
+	FAutomationTestBase& Test,
+	const FComponentQueryParams& ScriptParams,
+	const FComponentQueryParams& NativeParams,
+	const uint32 ExpectedActorId,
+	const uint32 ExpectedComponentId)
+{
+	bool bPassed = ExpectCollisionQueryParamsParity(
+		Test,
+		TEXT("CollisionQueryParamsBehaviour component query params"),
+		static_cast<const FCollisionQueryParams&>(ScriptParams),
+		static_cast<const FCollisionQueryParams&>(NativeParams),
+		ExpectedActorId,
+		ExpectedComponentId);
+	FNoDiscardAsserter LocalAssert(Test);
+	bPassed &= LocalAssert.AreEqual(
+		NativeParams.ShapeCollisionMask.Bits,
+		ScriptParams.ShapeCollisionMask.Bits,
+		TEXT("CollisionQueryParamsBehaviour should preserve ShapeCollisionMask.Bits"));
+	return bPassed;
+}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -207,8 +206,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCollisionParamsBindingsTest, "Angelscript.Test
 
 	TEST_METHOD(CollisionQueryParamsBehaviour)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptCollisionParamsBindingsTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCollisionParams_Behaviour"), TEXT(R"AS(

@@ -16,9 +16,13 @@ using namespace AngelscriptFunctionalTestUtils;
 bool CompileModuleWithResult(FAngelscriptEngine* Engine, ECompileType CompileType, FName ModuleName, FString Filename, FString Script, ECompileResult& OutCompileResult);
 bool CompileModuleFromMemory(FAngelscriptEngine* Engine, FName ModuleName, FString Filename, FString Script);
 
-namespace AngelscriptTest_ObjectModel_Private
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptObjectModelTests,
+	"Angelscript.TestModule.Functional.Objects",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	void CompileRunInt(
+private:
+	static void CompileRunInt(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		const ANSICHAR* ModuleName,
@@ -40,17 +44,10 @@ namespace AngelscriptTest_ObjectModel_Private
 
 		ExecuteIntFunction(Test, Engine, *Function, OutResult);
 	}
-}
 
-
-TEST_CLASS_WITH_FLAGS(
-	FAngelscriptObjectModelTests,
-	"Angelscript.TestModule.Functional.Objects",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(ValueTypeConstruction)
 	{
-		using namespace AngelscriptTest_ObjectModel_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
@@ -68,7 +65,6 @@ TEST_CLASS_WITH_FLAGS(
 
 	TEST_METHOD(ValueTypeCopyAndArithmetic)
 	{
-		using namespace AngelscriptTest_ObjectModel_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
@@ -222,7 +218,6 @@ class UObjectReflectedDefaultsAndFunction : UObject
 
 	TEST_METHOD(ZeroSize)
 	{
-		using namespace AngelscriptTest_ObjectModel_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
@@ -244,9 +239,33 @@ TEST_CLASS_WITH_FLAGS(
 	"Angelscript.TestModule.Functional.Objects.ZeroSize",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	static void CompileRunInt(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		const ANSICHAR* ModuleName,
+		const TCHAR* Source,
+		const TCHAR* FuncDecl,
+		int32& OutResult)
+	{
+		asIScriptModule* Module = BuildModule(Test, Engine, ModuleName, Source);
+		if (!Test.TestNotNull(TEXT("Object model helper should compile the test module"), Module))
+		{
+			return;
+		}
+
+		asIScriptFunction* Function = GetFunctionByDecl(Test, *Module, FuncDecl);
+		if (Function == nullptr)
+		{
+			return;
+		}
+
+		ExecuteIntFunction(Test, Engine, *Function, OutResult);
+	}
+
+public:
 	TEST_METHOD(ByValueAndLocalLayout)
 	{
-		using namespace AngelscriptTest_ObjectModel_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 

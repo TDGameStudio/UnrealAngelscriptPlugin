@@ -1,12 +1,12 @@
 // ============================================================================
 // AngelscriptAssetRegistryBindingsTests.cpp
 //
-// AssetRegistry binding coverage — CQTest refactor. Automation IDs:
+// AssetRegistry binding coverage �?CQTest refactor. Automation IDs:
 //   Angelscript.TestModule.Bindings.AssetRegistry.FAngelscriptAssetRegistryBindingsTest.*
 //
 // Sections:
-//   TopLevelPathAndNullParent — FTopLevelAssetPath round-trip + null parent exception
-//   QueryCompat              — deterministic AssetRegistry query vs native baselines
+//   TopLevelPathAndNullParent �?FTopLevelAssetPath round-trip + null parent exception
+//   QueryCompat              �?deterministic AssetRegistry query vs native baselines
 //
 // CQTest adaptation notes:
 //   Two legacy automation tests merged into one TEST_CLASS.
@@ -34,24 +34,6 @@
 // Helper utilities (retained from original)
 // ----------------------------------------------------------------------------
 
-namespace AngelscriptTest_Bindings_AngelscriptAssetRegistryBindingsTests_Private
-{
-	IAssetRegistry& GetAssetRegistryChecked()
-	{
-		FAssetRegistryModule& AssetRegistryModule = FModuleManager::Get().LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
-		return AssetRegistryModule.Get();
-	}
-
-	bool ContainsAssetObjectPath(const TArray<FAssetData>& Assets, const FString& ObjectPath)
-	{
-		return Assets.ContainsByPredicate([&ObjectPath](const FAssetData& AssetData)
-		{
-			return AssetData.GetObjectPathString() == ObjectPath;
-		});
-	}
-
-}
-
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -66,6 +48,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptAssetRegistryBindingsTest,
 	"Angelscript.TestModule.Bindings.AssetRegistry",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static IAssetRegistry& GetAssetRegistryChecked()
+{
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::Get().LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+	return AssetRegistryModule.Get();
+}
+
+static bool ContainsAssetObjectPath(const TArray<FAssetData>& Assets, const FString& ObjectPath)
+{
+	return Assets.ContainsByPredicate([&ObjectPath](const FAssetData& AssetData)
+	{
+		return AssetData.GetObjectPathString() == ObjectPath;
+	});
+}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -79,8 +77,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptAssetRegistryBindingsTest,
 
 	TEST_METHOD(TopLevelPathAndNullParent)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptAssetRegistryBindingsTests_Private;
-		TestRunner->AddExpectedError(TEXT("A null Class was passed to GetBlueprintCDOsByParentClass."), EAutomationExpectedErrorFlags::Contains, 0);
+TestRunner->AddExpectedError(TEXT("A null Class was passed to GetBlueprintCDOsByParentClass."), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(TEXT("ASAssetRegistry_TopLevelPathAndNullParent"), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(TEXT("void TriggerNullParent(UObject[]&)"), EAutomationExpectedErrorFlags::Contains, 0, false);
 
@@ -180,8 +177,7 @@ void TriggerNullParent(TArray<UObject>& OutAssets)
 
 	TEST_METHOD(QueryCompat)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptAssetRegistryBindingsTests_Private;
-		static const FName EngineMaterialsPath(TEXT("/Engine/EngineMaterials"));
+static const FName EngineMaterialsPath(TEXT("/Engine/EngineMaterials"));
 		static const FString TargetObjectPath(TEXT("/Engine/EngineMaterials/DefaultMaterial.DefaultMaterial"));
 
 		IAssetRegistry& AssetRegistry = GetAssetRegistryChecked();

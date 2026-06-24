@@ -11,27 +11,34 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_HotReload_AngelscriptHotReloadDelegateTests_Private
-{
-	static const FName DelegateReloadModuleName(TEXT("HotReloadDelegateMod"));
-	static const FString DelegateReloadFilename(TEXT("HotReloadDelegateMod.as"));
-	static const FName DelegateReloadCarrierClassName(TEXT("UHotReloadEventCarrier"));
-	static const FString DelegateReloadEnumName(TEXT("EHotReloadEventState"));
-	static const FName TypeReloadModuleName(TEXT("HotReloadDelegateTypeMod"));
-	static const FString TypeReloadFilename(TEXT("HotReloadDelegateTypeMod.as"));
-	static const FString TypeReloadStructName(TEXT("FHotReloadDelegatePayload"));
-	static const FName TypeReloadCarrierClassName(TEXT("UHotReloadDelegateCarrier"));
-	static const FName SignatureReloadModuleName(TEXT("HotReloadDelegateSignatureMod"));
-	static const FString SignatureReloadFilename(TEXT("HotReloadDelegateSignatureMod.as"));
-	static const FString SignatureReloadDelegateName(TEXT("FHotReloadSignal"));
-	static const FName SignatureReloadCarrierClassName(TEXT("UHotReloadDelegateSignatureCarrier"));
+struct FAngelscriptHotReloadDelegateTests;
 
-	bool IsHandledReloadResult(const ECompileResult ReloadResult)
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadReloadDelegateTests,
+	"Angelscript.TestModule.HotReload.ReloadDelegates",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+private:
+	friend struct FAngelscriptHotReloadDelegateTests;
+
+	inline static const FName DelegateReloadModuleName = FName(TEXT("HotReloadDelegateMod"));
+	inline static const FString DelegateReloadFilename = FString(TEXT("HotReloadDelegateMod.as"));
+	inline static const FName DelegateReloadCarrierClassName = FName(TEXT("UHotReloadEventCarrier"));
+	inline static const FString DelegateReloadEnumName = FString(TEXT("EHotReloadEventState"));
+	inline static const FName TypeReloadModuleName = FName(TEXT("HotReloadDelegateTypeMod"));
+	inline static const FString TypeReloadFilename = FString(TEXT("HotReloadDelegateTypeMod.as"));
+	inline static const FString TypeReloadStructName = FString(TEXT("FHotReloadDelegatePayload"));
+	inline static const FName TypeReloadCarrierClassName = FName(TEXT("UHotReloadDelegateCarrier"));
+	inline static const FName SignatureReloadModuleName = FName(TEXT("HotReloadDelegateSignatureMod"));
+	inline static const FString SignatureReloadFilename = FString(TEXT("HotReloadDelegateSignatureMod.as"));
+	inline static const FString SignatureReloadDelegateName = FString(TEXT("FHotReloadSignal"));
+	inline static const FName SignatureReloadCarrierClassName = FName(TEXT("UHotReloadDelegateSignatureCarrier"));
+
+	static bool IsHandledReloadResult(const ECompileResult ReloadResult)
 	{
 		return ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled;
 	}
 
-	bool ContainsEnumEntryWithSuffix(const TArray<TPair<FName, int64>>& Entries, const TCHAR* Suffix, const int64 ExpectedValue)
+	static bool ContainsEnumEntryWithSuffix(const TArray<TPair<FName, int64>>& Entries, const TCHAR* Suffix, const int64 ExpectedValue)
 	{
 		const FString ExpectedSuffix(Suffix);
 		for (const TPair<FName, int64>& Entry : Entries)
@@ -45,7 +52,7 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadDelegateTests_Private
 		return false;
 	}
 
-	bool TryFindEnumValueBySuffix(const UEnum& Enum, const TCHAR* Suffix, int64& OutValue)
+	static bool TryFindEnumValueBySuffix(const UEnum& Enum, const TCHAR* Suffix, int64& OutValue)
 	{
 		const FString ExpectedSuffix(Suffix);
 		const int32 EnumeratorsToCheck = Enum.NumEnums();
@@ -66,8 +73,22 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadDelegateTests_Private
 
 		return false;
 	}
-}
 
+	static bool ReloadDelegatesBroadcastEnumChangeAndFullReload(FAutomationTestBase& Test);
+	static bool ReloadDelegatesBroadcastOldAndNewTypes(FAutomationTestBase& Test);
+	static bool ReloadDelegatesBroadcastDelegateSignatureSwap(FAutomationTestBase& Test);
+
+public:
+	TEST_METHOD(BroadcastEnumChangeAndFullReload)
+	{
+		ASSERT_THAT(IsTrue(ReloadDelegatesBroadcastEnumChangeAndFullReload(*TestRunner)));
+	}
+
+	TEST_METHOD(BroadcastDelegateSignatureSwap)
+	{
+		ASSERT_THAT(IsTrue(ReloadDelegatesBroadcastDelegateSignatureSwap(*TestRunner)));
+	}
+};
 
 #define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 #define TestFalse(...) Test.TestFalse(__VA_ARGS__)
@@ -76,9 +97,8 @@ namespace AngelscriptTest_HotReload_AngelscriptHotReloadDelegateTests_Private
 #define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
 #define TestNull(...) Test.TestNull(__VA_ARGS__)
 
-static bool ReloadDelegatesBroadcastEnumChangeAndFullReload(FAutomationTestBase& Test)
+bool FAngelscriptHotReloadReloadDelegateTests::ReloadDelegatesBroadcastEnumChangeAndFullReload(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadDelegateTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
@@ -245,9 +265,8 @@ class UHotReloadEventCarrier : UObject
 	return true;
 }
 
-static bool ReloadDelegatesBroadcastOldAndNewTypes(FAutomationTestBase& Test)
+bool FAngelscriptHotReloadReloadDelegateTests::ReloadDelegatesBroadcastOldAndNewTypes(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadDelegateTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
@@ -415,9 +434,8 @@ class UHotReloadDelegateCarrier : UObject
 	return true;
 }
 
-static bool ReloadDelegatesBroadcastDelegateSignatureSwap(FAutomationTestBase& Test)
+bool FAngelscriptHotReloadReloadDelegateTests::ReloadDelegatesBroadcastDelegateSignatureSwap(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadDelegateTests_Private;
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
@@ -496,28 +514,13 @@ static bool ReloadDelegatesBroadcastDelegateSignatureSwap(FAutomationTestBase& T
 #undef TestNotNull
 #undef TestNull
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadReloadDelegateTests,
-	"Angelscript.TestModule.HotReload.ReloadDelegates",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
-	TEST_METHOD(BroadcastEnumChangeAndFullReload)
-	{
-		ASSERT_THAT(IsTrue(ReloadDelegatesBroadcastEnumChangeAndFullReload(*TestRunner)));
-	}
-
-	TEST_METHOD(BroadcastDelegateSignatureSwap)
-	{
-		ASSERT_THAT(IsTrue(ReloadDelegatesBroadcastDelegateSignatureSwap(*TestRunner)));
-	}
-};
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadDelegateTests,
 	"Angelscript.TestModule.HotReload.Delegates",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	TEST_METHOD(BroadcastOldAndNewTypes)
 	{
-		ASSERT_THAT(IsTrue(ReloadDelegatesBroadcastOldAndNewTypes(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptHotReloadReloadDelegateTests::ReloadDelegatesBroadcastOldAndNewTypes(*TestRunner)));
 	}
 };
 

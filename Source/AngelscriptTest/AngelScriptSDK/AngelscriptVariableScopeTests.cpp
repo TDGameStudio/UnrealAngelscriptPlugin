@@ -9,12 +9,10 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKVariableScopeTests, "Angelscript.TestModule.AngelScriptSDK.VariableScope", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -32,12 +30,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSDKVariableScopeTests, "Angelscript.TestModule
 	}
 	TEST_METHOD(Isolation)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		// Variable declared in inner scope should not be visible in outer scope
 		Engine.ResetMessages();
-		FScopedNativeModuleName ModuleScope(Engine, "ScopeIso");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "ScopeIso");
 		asIScriptModule* M = BuildNativeModule(SE, "ScopeIso", R"(
 int Entry()
 {
@@ -50,10 +51,13 @@ int Entry()
 
 	TEST_METHOD(Shadowing)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
-		FScopedNativeModule M(*TestRunner, Engine, "ScopeShadow", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "ScopeShadow", R"(
 int Entry()
 {
 	int x = 10;
@@ -73,10 +77,13 @@ int Entry()
 
 	TEST_METHOD(NestedBlocks)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
-		FScopedNativeModule M(*TestRunner, Engine, "ScopeNested", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "ScopeNested", R"(
 int Entry()
 {
 	int sum = 0;
@@ -98,12 +105,15 @@ int Entry()
 
 	TEST_METHOD(ForInitScope)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		// Loop counter declared in for-init is scoped to the loop; a same-named
 		// outer variable is unaffected, and two sequential loops may reuse the name.
-		FScopedNativeModule M(*TestRunner, Engine, "ScopeForInit", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "ScopeForInit", R"(
 int Entry()
 {
 	int i = 100;
@@ -126,12 +136,15 @@ int Entry()
 
 	TEST_METHOD(ForInitLeakRejected)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		// A for-init counter must not be visible after the loop body.
 		Engine.ResetMessages();
-		FScopedNativeModuleName ModuleScope(Engine, "ScopeForInitLeak");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "ScopeForInitLeak");
 		asIScriptModule* M = BuildNativeModule(SE, "ScopeForInitLeak", R"(
 int Entry()
 {
@@ -144,12 +157,15 @@ int Entry()
 
 	TEST_METHOD(DeepShadowing)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		// Each nested block may re-shadow the same name; the innermost value is
 		// used within its block, and each outer value is restored on block exit.
-		FScopedNativeModule M(*TestRunner, Engine, "ScopeDeepShadow", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "ScopeDeepShadow", R"(
 int Entry()
 {
 	int x = 1;
@@ -182,12 +198,15 @@ int Entry()
 
 	TEST_METHOD(WhileAndIfBlockScope)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		// Variables declared inside while/if bodies are block-scoped; the outer
 		// accumulator survives across iterations.
-		FScopedNativeModule M(*TestRunner, Engine, "ScopeWhileIf", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "ScopeWhileIf", R"(
 int Entry()
 {
 	int sum = 0;
@@ -219,12 +238,15 @@ int Entry()
 
 	TEST_METHOD(IfBlockLeakRejected)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		// A variable declared inside an if body must not be visible afterward.
 		Engine.ResetMessages();
-		FScopedNativeModuleName ModuleScope(Engine, "ScopeIfLeak");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "ScopeIfLeak");
 		asIScriptModule* M = BuildNativeModule(SE, "ScopeIfLeak", R"(
 int Entry()
 {

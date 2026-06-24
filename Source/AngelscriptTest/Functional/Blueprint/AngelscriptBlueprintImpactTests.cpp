@@ -20,9 +20,9 @@ namespace BlueprintImpactTestHelpers
 		const FString& PackagePath,
 		FString& OutPackageFilename)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		UPackage* Package = Blueprint.GetOutermost();
-		if (!Assert.IsNotNull(Package, TEXT("Blueprint should have a package before save")))
+		if (!LocalAssert.IsNotNull(Package, TEXT("Blueprint should have a package before save")))
 		{
 			return false;
 		}
@@ -33,7 +33,7 @@ namespace BlueprintImpactTestHelpers
 		FSavePackageArgs SaveArgs;
 		SaveArgs.TopLevelFlags = RF_Public | RF_Standalone;
 		SaveArgs.SaveFlags = SAVE_NoError;
-		return Assert.IsTrue(
+		return LocalAssert.IsTrue(
 			UPackage::SavePackage(Package, &Blueprint, *OutPackageFilename, SaveArgs),
 			TEXT("Blueprint package should save to disk"));
 	}
@@ -45,8 +45,8 @@ namespace BlueprintImpactTestHelpers
 		FString& OutPackagePath,
 		FString& OutPackageFilename)
 	{
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(ParentClass, TEXT("Disk-backed BP parent class should be valid")))
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(ParentClass, TEXT("Disk-backed BP parent class should be valid")))
 		{
 			return nullptr;
 		}
@@ -58,7 +58,7 @@ namespace BlueprintImpactTestHelpers
 			*FGuid::NewGuid().ToString(EGuidFormats::Digits));
 		OutPackagePath = FString::Printf(TEXT("/Game/Automation/%s"), *AssetName);
 		UPackage* BlueprintPackage = CreatePackage(*OutPackagePath);
-		if (!Assert.IsNotNull(BlueprintPackage, TEXT("Disk-backed BP should create a package")))
+		if (!LocalAssert.IsNotNull(BlueprintPackage, TEXT("Disk-backed BP should create a package")))
 		{
 			return nullptr;
 		}

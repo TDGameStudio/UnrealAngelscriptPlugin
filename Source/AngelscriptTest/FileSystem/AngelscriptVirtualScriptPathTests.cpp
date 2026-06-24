@@ -10,48 +10,47 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_FileSystem_VirtualScriptPaths_Private
-{
-	FString NormalizePath(const FString& InPath)
-	{
-		FString Normalized = InPath;
-		FPaths::NormalizeFilename(Normalized);
-		Normalized.ReplaceInline(TEXT("\\"), TEXT("/"));
-		return Normalized;
-	}
-
-	FString GetDiscoveryFixtureRoot()
-	{
-		return NormalizePath(FPaths::ProjectSavedDir() / TEXT("Automation") / TEXT("VirtualScriptPathDiscovery"));
-	}
-
-	void CleanDiscoveryFixtureRoot()
-	{
-		IFileManager::Get().DeleteDirectory(*GetDiscoveryFixtureRoot(), false, true);
-	}
-
-	bool WriteDiscoveryFixtureFile(const FString& AbsoluteRoot, const FString& RelativePath, const FString& Content, FString& OutAbsolutePath)
-	{
-		OutAbsolutePath = NormalizePath(FPaths::Combine(AbsoluteRoot, RelativePath));
-		IFileManager::Get().MakeDirectory(*FPaths::GetPath(OutAbsolutePath), true);
-		return FFileHelper::SaveStringToFile(Content, *OutAbsolutePath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
-	}
-
-	bool ExpectInvalidPath(FAutomationTestBase& Test, const FString& Path)
-	{
-		FAngelscriptVirtualPath VirtualPath;
-		FString Error;
-		const bool bParsed = FAngelscriptVirtualPath::TryParse(Path, VirtualPath, &Error);
-		Test.TestFalse(*FString::Printf(TEXT("Path '%s' should be rejected"), *Path), bParsed);
-		Test.TestFalse(*FString::Printf(TEXT("Path '%s' should report a parse error"), *Path), Error.IsEmpty());
-		return !bParsed && !Error.IsEmpty();
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptVirtualScriptPathTest,
 	"Angelscript.TestModule.FileSystem.VirtualScriptPaths",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static FString NormalizePath(const FString& InPath)
+{
+	FString Normalized = InPath;
+	FPaths::NormalizeFilename(Normalized);
+	Normalized.ReplaceInline(TEXT("\\"), TEXT("/"));
+	return Normalized;
+}
+
+static FString GetDiscoveryFixtureRoot()
+{
+	return NormalizePath(FPaths::ProjectSavedDir() / TEXT("Automation") / TEXT("VirtualScriptPathDiscovery"));
+}
+
+static void CleanDiscoveryFixtureRoot()
+{
+	IFileManager::Get().DeleteDirectory(*GetDiscoveryFixtureRoot(), false, true);
+}
+
+static bool WriteDiscoveryFixtureFile(const FString& AbsoluteRoot, const FString& RelativePath, const FString& Content, FString& OutAbsolutePath)
+{
+	OutAbsolutePath = NormalizePath(FPaths::Combine(AbsoluteRoot, RelativePath));
+	IFileManager::Get().MakeDirectory(*FPaths::GetPath(OutAbsolutePath), true);
+	return FFileHelper::SaveStringToFile(Content, *OutAbsolutePath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+}
+
+static bool ExpectInvalidPath(FAutomationTestBase& Test, const FString& Path)
+{
+	FAngelscriptVirtualPath VirtualPath;
+	FString Error;
+	const bool bParsed = FAngelscriptVirtualPath::TryParse(Path, VirtualPath, &Error);
+	Test.TestFalse(*FString::Printf(TEXT("Path '%s' should be rejected"), *Path), bParsed);
+	Test.TestFalse(*FString::Printf(TEXT("Path '%s' should report a parse error"), *Path), Error.IsEmpty());
+	return !bParsed && !Error.IsEmpty();
+}
+
+public:
 	TEST_METHOD(SourceDescriptorsKeepFullNames)
 	{
 		const FAngelscriptSource GameSource = FAngelscriptSource::FromGameFile(
@@ -135,9 +134,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptVirtualScriptPathTest,
 
 	TEST_METHOD(InvalidInputs)
 	{
-		using namespace AngelscriptTest_FileSystem_VirtualScriptPaths_Private;
-
-		ASSERT_THAT(IsTrue(ExpectInvalidPath(*TestRunner, TEXT("as://project/Gameplay/Enemy.as")), TEXT("as:// path should be rejected")));
+ASSERT_THAT(IsTrue(ExpectInvalidPath(*TestRunner, TEXT("as://project/Gameplay/Enemy.as")), TEXT("as:// path should be rejected")));
 		ASSERT_THAT(IsTrue(ExpectInvalidPath(*TestRunner, TEXT("/Game/Gameplay/Enemy.as")), TEXT("/Game path should be rejected")));
 		ASSERT_THAT(IsTrue(ExpectInvalidPath(*TestRunner, TEXT("/angelscript/Game/Gameplay/Enemy.as")), TEXT("case-mismatched root should be rejected")));
 		ASSERT_THAT(IsTrue(ExpectInvalidPath(*TestRunner, TEXT("/Angelscript/Game/Gameplay/Enemy.txt")), TEXT("non-AS file should be rejected")));
@@ -153,9 +150,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptVirtualScriptPathTest,
 
 	TEST_METHOD(DiscoveryFullNames)
 	{
-		using namespace AngelscriptTest_FileSystem_VirtualScriptPaths_Private;
-
-		CleanDiscoveryFixtureRoot();
+CleanDiscoveryFixtureRoot();
 		ON_SCOPE_EXIT
 		{
 			CleanDiscoveryFixtureRoot();
@@ -245,9 +240,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptVirtualScriptPathTest,
 
 	TEST_METHOD(LegacyRootPathOverrideWinsWhenDescriptorsAreStale)
 	{
-		using namespace AngelscriptTest_FileSystem_VirtualScriptPaths_Private;
-
-		CleanDiscoveryFixtureRoot();
+CleanDiscoveryFixtureRoot();
 		ON_SCOPE_EXIT
 		{
 			CleanDiscoveryFixtureRoot();

@@ -1,19 +1,19 @@
 // ============================================================================
 // AngelscriptWorldFunctionLibraryTests.cpp
 //
-// World function library binding coverage â€” CQTest refactor. Automation ID:
+// World function library binding coverage â€?CQTest refactor. Automation ID:
 //   Angelscript.TestModule.FunctionLibraries.World.FAngelscriptWorldFunctionLibraryTest.*
 //
 // Sections:
-//   WorldStreamingNullGuards â€” null world/level exception handling
-//   WorldStreamingAccess    â€” streaming level count, order, editor visibility
+//   WorldStreamingNullGuards â€?null world/level exception handling
+//   WorldStreamingAccess    â€?streaming level count, order, editor visibility
 //
 // CQTest adaptation notes:
 //   Two legacy automation tests merged into one TEST_CLASS.
 //   Both tests use ASTEST_CREATE_ENGINE_FULL (requires world context via
 //   FActorTestSpawner). Execution uses FAngelscriptTestExecutor and
 //   Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h for UObject args and exceptions.
-//   $TOKEN$ â†’ compute + ReplaceInline pattern preserved for WorldStreamingAccess.
+//   $TOKEN$ â†?compute + ReplaceInline pattern preserved for WorldStreamingAccess.
 // ============================================================================
 
 #include "CQTest.h"
@@ -35,20 +35,18 @@
 
 
 
-namespace AngelscriptTest_Bindings_AngelscriptWorldFunctionLibraryTests_Private
-{
-	static constexpr ANSICHAR ModuleName[] = "ASWorldStreamingNullGuards";
-	static constexpr ANSICHAR WorldStreamingAccessModuleName[] = "ASWorldStreamingAccess";
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptWorldFunctionLibraryTest, "Angelscript.TestModule.FunctionLibraries.World",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static constexpr ANSICHAR ModuleName[] = "ASWorldStreamingNullGuards";
+static constexpr ANSICHAR WorldStreamingAccessModuleName[] = "ASWorldStreamingAccess";
+
+public:
 	TEST_METHOD(WorldStreamingNullGuards)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptWorldFunctionLibraryTests_Private;
-		TestRunner->AddExpectedError(TEXT("Null pointer access"), EAutomationExpectedErrorFlags::Contains, 0);
+TestRunner->AddExpectedError(TEXT("Null pointer access"), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(TEXT("ASWorldStreamingNullGuards"), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(TEXT("int GetStreamingLevelCount(UWorld) | Line 4 | Col 2"), EAutomationExpectedErrorFlags::Contains, 1, false);
 		TestRunner->AddExpectedError(TEXT("bool GetLevelVisibleInEditor(ULevelStreaming) | Line 9 | Col 2"), EAutomationExpectedErrorFlags::Contains, 1, false);
@@ -208,8 +206,7 @@ bool GetLevelVisibleInEditor(ULevelStreaming Level)
 
 	TEST_METHOD(WorldStreamingAccess)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptWorldFunctionLibraryTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		{
 		FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT

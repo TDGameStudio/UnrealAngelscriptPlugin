@@ -5,7 +5,7 @@
 //   Angelscript.TestModule.Bindings.WorldCollision.FAngelscriptWorldCollisionBindingsTest.*
 //
 // Sections:
-//   SyncQueries — LineTraceSingle/Multi, SweepSingle, OverlapAny,
+//   SyncQueries �?LineTraceSingle/Multi, SweepSingle, OverlapAny,
 //                 ComponentOverlapMulti (hit/miss parity)
 //
 // CQTest adaptation notes:
@@ -42,103 +42,6 @@
 // Shared helpers (retained from original)
 // ----------------------------------------------------------------------------
 
-namespace AngelscriptTest_Bindings_AngelscriptWorldCollisionBindingsTests_Private
-{
-	static constexpr ANSICHAR WorldCollisionModuleName[] = "ASWorldCollisionSyncQueries";
-	static const FVector CollisionTargetLocation(0.0f, 0.0f, 0.0f);
-	static const FVector CollisionMissLocation(0.0f, 300.0f, 0.0f);
-	static const FVector LineTraceStart(-200.0f, 0.0f, 0.0f);
-	static const FVector LineTraceEnd(200.0f, 0.0f, 0.0f);
-	static const FVector LineTraceMissStart(-200.0f, 300.0f, 0.0f);
-	static const FVector LineTraceMissEnd(200.0f, 300.0f, 0.0f);
-	static const FVector TargetExtent(50.0f, 50.0f, 50.0f);
-	static const FVector QueryExtent(30.0f, 30.0f, 30.0f);
-	static const FQuat IdentityRotation = FQuat::Identity;
-
-	UBoxComponent* AddCollisionBox(
-		AActor& Owner,
-		const FName ComponentName,
-		const FVector& BoxExtent,
-		const FVector& WorldLocation)
-	{
-		UBoxComponent* BoxComponent = NewObject<UBoxComponent>(&Owner, ComponentName);
-		check(BoxComponent != nullptr);
-
-		Owner.AddInstanceComponent(BoxComponent);
-		Owner.SetRootComponent(BoxComponent);
-		BoxComponent->RegisterComponent();
-		BoxComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		BoxComponent->SetCollisionObjectType(ECC_WorldDynamic);
-		BoxComponent->SetCollisionResponseToAllChannels(ECR_Block);
-		BoxComponent->SetGenerateOverlapEvents(true);
-		BoxComponent->SetBoxExtent(BoxExtent);
-		BoxComponent->SetWorldLocation(WorldLocation);
-		return BoxComponent;
-	}
-
-	bool ExpectHitResultParity(
-		FAutomationTestBase& Test,
-		const TCHAR* ContextLabel,
-		const bool bScriptReturnValue,
-		const bool bNativeReturnValue,
-		const FHitResult& ScriptHit,
-		const FHitResult& NativeHit)
-	{
-		FNoDiscardAsserter Assert(Test);
-		bool bPassed = true;
-		bPassed &= Assert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel));
-		bPassed &= Assert.AreEqual(NativeHit.GetActor(), ScriptHit.GetActor(), *FString::Printf(TEXT("%s should preserve the hit actor"), ContextLabel));
-		bPassed &= Assert.AreEqual(NativeHit.GetComponent(), ScriptHit.GetComponent(), *FString::Printf(TEXT("%s should preserve the hit component"), ContextLabel));
-		bPassed &= Assert.AreEqual(NativeHit.bBlockingHit, ScriptHit.bBlockingHit, *FString::Printf(TEXT("%s should preserve the blocking-hit flag"), ContextLabel));
-		bPassed &= Assert.IsTrue(FMath::IsNearlyEqual(ScriptHit.Distance, NativeHit.Distance, 0.01f), *FString::Printf(TEXT("%s should preserve the hit distance"), ContextLabel));
-		return bPassed;
-	}
-
-	bool ExpectHitArrayParity(
-		FAutomationTestBase& Test,
-		const TCHAR* ContextLabel,
-		const bool bScriptReturnValue,
-		const bool bNativeReturnValue,
-		const TArray<FHitResult>& ScriptHits,
-		const TArray<FHitResult>& NativeHits)
-	{
-		FNoDiscardAsserter Assert(Test);
-		bool bPassed = true;
-		bPassed &= Assert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel));
-		bPassed &= Assert.AreEqual(NativeHits.Num(), ScriptHits.Num(), *FString::Printf(TEXT("%s should preserve the hit count"), ContextLabel));
-
-		for (int32 HitIndex = 0; HitIndex < FMath::Min(ScriptHits.Num(), NativeHits.Num()); ++HitIndex)
-		{
-			bPassed &= Assert.AreEqual(NativeHits[HitIndex].GetActor(), ScriptHits[HitIndex].GetActor(), *FString::Printf(TEXT("%s should preserve actor for hit %d"), ContextLabel, HitIndex));
-			bPassed &= Assert.AreEqual(NativeHits[HitIndex].GetComponent(), ScriptHits[HitIndex].GetComponent(), *FString::Printf(TEXT("%s should preserve component for hit %d"), ContextLabel, HitIndex));
-		}
-
-		return bPassed;
-	}
-
-	bool ExpectOverlapArrayParity(
-		FAutomationTestBase& Test,
-		const TCHAR* ContextLabel,
-		const bool bScriptReturnValue,
-		const bool bNativeReturnValue,
-		const TArray<FOverlapResult>& ScriptOverlaps,
-		const TArray<FOverlapResult>& NativeOverlaps)
-	{
-		FNoDiscardAsserter Assert(Test);
-		bool bPassed = true;
-		bPassed &= Assert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel));
-		bPassed &= Assert.AreEqual(NativeOverlaps.Num(), ScriptOverlaps.Num(), *FString::Printf(TEXT("%s should preserve the overlap count"), ContextLabel));
-
-		for (int32 OverlapIndex = 0; OverlapIndex < FMath::Min(ScriptOverlaps.Num(), NativeOverlaps.Num()); ++OverlapIndex)
-		{
-			bPassed &= Assert.AreEqual(NativeOverlaps[OverlapIndex].GetActor(), ScriptOverlaps[OverlapIndex].GetActor(), *FString::Printf(TEXT("%s should preserve actor for overlap %d"), ContextLabel, OverlapIndex));
-			bPassed &= Assert.AreEqual(NativeOverlaps[OverlapIndex].GetComponent(), ScriptOverlaps[OverlapIndex].GetComponent(), *FString::Printf(TEXT("%s should preserve component for overlap %d"), ContextLabel, OverlapIndex));
-		}
-
-		return bPassed;
-	}
-}
-
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -148,14 +51,109 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptWorldCollisionBindingsTest,
 	"Angelscript.TestModule.Bindings.WorldCollision",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static constexpr ANSICHAR WorldCollisionModuleName[] = "ASWorldCollisionSyncQueries";
+inline static const FVector CollisionTargetLocation = FVector(0.0f, 0.0f, 0.0f);
+inline static const FVector CollisionMissLocation = FVector(0.0f, 300.0f, 0.0f);
+inline static const FVector LineTraceStart = FVector(-200.0f, 0.0f, 0.0f);
+inline static const FVector LineTraceEnd = FVector(200.0f, 0.0f, 0.0f);
+inline static const FVector LineTraceMissStart = FVector(-200.0f, 300.0f, 0.0f);
+inline static const FVector LineTraceMissEnd = FVector(200.0f, 300.0f, 0.0f);
+inline static const FVector TargetExtent = FVector(50.0f, 50.0f, 50.0f);
+inline static const FVector QueryExtent = FVector(30.0f, 30.0f, 30.0f);
+inline static const FQuat IdentityRotation = FQuat::Identity;
+
+static UBoxComponent* AddCollisionBox(
+	AActor& Owner,
+	const FName ComponentName,
+	const FVector& BoxExtent,
+	const FVector& WorldLocation)
+{
+	UBoxComponent* BoxComponent = NewObject<UBoxComponent>(&Owner, ComponentName);
+	check(BoxComponent != nullptr);
+
+	Owner.AddInstanceComponent(BoxComponent);
+	Owner.SetRootComponent(BoxComponent);
+	BoxComponent->RegisterComponent();
+	BoxComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	BoxComponent->SetCollisionObjectType(ECC_WorldDynamic);
+	BoxComponent->SetCollisionResponseToAllChannels(ECR_Block);
+	BoxComponent->SetGenerateOverlapEvents(true);
+	BoxComponent->SetBoxExtent(BoxExtent);
+	BoxComponent->SetWorldLocation(WorldLocation);
+	return BoxComponent;
+}
+
+static bool ExpectHitResultParity(
+	FAutomationTestBase& Test,
+	const TCHAR* ContextLabel,
+	const bool bScriptReturnValue,
+	const bool bNativeReturnValue,
+	const FHitResult& ScriptHit,
+	const FHitResult& NativeHit)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	bool bPassed = true;
+	bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel));
+	bPassed &= LocalAssert.AreEqual(NativeHit.GetActor(), ScriptHit.GetActor(), *FString::Printf(TEXT("%s should preserve the hit actor"), ContextLabel));
+	bPassed &= LocalAssert.AreEqual(NativeHit.GetComponent(), ScriptHit.GetComponent(), *FString::Printf(TEXT("%s should preserve the hit component"), ContextLabel));
+	bPassed &= LocalAssert.AreEqual(NativeHit.bBlockingHit, ScriptHit.bBlockingHit, *FString::Printf(TEXT("%s should preserve the blocking-hit flag"), ContextLabel));
+	bPassed &= LocalAssert.IsTrue(FMath::IsNearlyEqual(ScriptHit.Distance, NativeHit.Distance, 0.01f), *FString::Printf(TEXT("%s should preserve the hit distance"), ContextLabel));
+	return bPassed;
+}
+
+static bool ExpectHitArrayParity(
+	FAutomationTestBase& Test,
+	const TCHAR* ContextLabel,
+	const bool bScriptReturnValue,
+	const bool bNativeReturnValue,
+	const TArray<FHitResult>& ScriptHits,
+	const TArray<FHitResult>& NativeHits)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	bool bPassed = true;
+	bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel));
+	bPassed &= LocalAssert.AreEqual(NativeHits.Num(), ScriptHits.Num(), *FString::Printf(TEXT("%s should preserve the hit count"), ContextLabel));
+
+	for (int32 HitIndex = 0; HitIndex < FMath::Min(ScriptHits.Num(), NativeHits.Num()); ++HitIndex)
+	{
+		bPassed &= LocalAssert.AreEqual(NativeHits[HitIndex].GetActor(), ScriptHits[HitIndex].GetActor(), *FString::Printf(TEXT("%s should preserve actor for hit %d"), ContextLabel, HitIndex));
+		bPassed &= LocalAssert.AreEqual(NativeHits[HitIndex].GetComponent(), ScriptHits[HitIndex].GetComponent(), *FString::Printf(TEXT("%s should preserve component for hit %d"), ContextLabel, HitIndex));
+	}
+
+	return bPassed;
+}
+
+static bool ExpectOverlapArrayParity(
+	FAutomationTestBase& Test,
+	const TCHAR* ContextLabel,
+	const bool bScriptReturnValue,
+	const bool bNativeReturnValue,
+	const TArray<FOverlapResult>& ScriptOverlaps,
+	const TArray<FOverlapResult>& NativeOverlaps)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	bool bPassed = true;
+	bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel));
+	bPassed &= LocalAssert.AreEqual(NativeOverlaps.Num(), ScriptOverlaps.Num(), *FString::Printf(TEXT("%s should preserve the overlap count"), ContextLabel));
+
+	for (int32 OverlapIndex = 0; OverlapIndex < FMath::Min(ScriptOverlaps.Num(), NativeOverlaps.Num()); ++OverlapIndex)
+	{
+		bPassed &= LocalAssert.AreEqual(NativeOverlaps[OverlapIndex].GetActor(), ScriptOverlaps[OverlapIndex].GetActor(), *FString::Printf(TEXT("%s should preserve actor for overlap %d"), ContextLabel, OverlapIndex));
+		bPassed &= LocalAssert.AreEqual(NativeOverlaps[OverlapIndex].GetComponent(), ScriptOverlaps[OverlapIndex].GetComponent(), *FString::Printf(TEXT("%s should preserve component for overlap %d"), ContextLabel, OverlapIndex));
+	}
+
+	return bPassed;
+}
+
+public:
 	// ====================================================================
 	// Section: SyncQueries
 	// ====================================================================
 
 	TEST_METHOD(SyncQueries)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptWorldCollisionBindingsTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		{
 		FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
@@ -235,9 +233,9 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 		Spawner.InitializeGameSubsystems();
 
 		AActor& CollisionTargetActor = Spawner.SpawnActor<AActor>();
-		UBoxComponent* TargetBox = AngelscriptTest_Bindings_AngelscriptWorldCollisionBindingsTests_Private::AddCollisionBox(CollisionTargetActor, FName(TEXT("CollisionTarget")), TargetExtent, CollisionTargetLocation);
+		UBoxComponent* TargetBox = AddCollisionBox(CollisionTargetActor, FName(TEXT("CollisionTarget")), TargetExtent, CollisionTargetLocation);
 		AActor& CollisionQueryActor = Spawner.SpawnActor<AActor>();
-		UBoxComponent* QueryBox = AngelscriptTest_Bindings_AngelscriptWorldCollisionBindingsTests_Private::AddCollisionBox(CollisionQueryActor, FName(TEXT("CollisionQuery")), QueryExtent, CollisionMissLocation);
+		UBoxComponent* QueryBox = AddCollisionBox(CollisionQueryActor, FName(TEXT("CollisionQuery")), QueryExtent, CollisionMissLocation);
 		if (!this->Assert.IsNotNull(TargetBox, TEXT("World collision target box should be created"))
 			|| !this->Assert.IsNotNull(QueryBox, TEXT("World collision query box should be created")))
 		{

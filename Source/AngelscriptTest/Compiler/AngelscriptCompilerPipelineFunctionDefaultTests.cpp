@@ -23,33 +23,33 @@ namespace CompilerPipelineFunctionDefaultTest
 		const char* RawDefaultArg = reinterpret_cast<const char*>(1);
 		const int Result = Function.GetParam(ParamIndex, nullptr, nullptr, &RawName, &RawDefaultArg);
 
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bPassed = true;
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			static_cast<int32>(asSUCCESS),
 			Result,
 			*FString::Printf(TEXT("Function default metadata round-trip should inspect parameter %u successfully"), static_cast<uint32>(ParamIndex)));
 
 		const FString ActualName = RawName != nullptr ? FString(UTF8_TO_TCHAR(RawName)) : FString();
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			FString(ExpectedName),
 			ActualName,
 			*FString::Printf(TEXT("Function default metadata round-trip should preserve parameter %u name"), static_cast<uint32>(ParamIndex)));
 
 		if (ExpectedDefaultArg == nullptr)
 		{
-			bPassed &= Assert.IsTrue(
+			bPassed &= LocalAssert.IsTrue(
 				RawDefaultArg == nullptr,
 				*FString::Printf(TEXT("Function default metadata round-trip should keep parameter %u without a defaultArg"), static_cast<uint32>(ParamIndex)));
 		}
 		else
 		{
-			bPassed &= Assert.IsNotNull(
+			bPassed &= LocalAssert.IsNotNull(
 				RawDefaultArg,
 				*FString::Printf(TEXT("Function default metadata round-trip should expose a defaultArg for parameter %u"), static_cast<uint32>(ParamIndex)));
 			if (RawDefaultArg != nullptr)
 			{
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					FString(ExpectedDefaultArg),
 					FString(UTF8_TO_TCHAR(RawDefaultArg)),
 					*FString::Printf(TEXT("Function default metadata round-trip should preserve parameter %u defaultArg text"), static_cast<uint32>(ParamIndex)));
@@ -59,8 +59,6 @@ namespace CompilerPipelineFunctionDefaultTest
 		return bPassed;
 	}
 }
-
-using namespace CompilerPipelineFunctionDefaultTest;
 
 TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionDefaultTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",

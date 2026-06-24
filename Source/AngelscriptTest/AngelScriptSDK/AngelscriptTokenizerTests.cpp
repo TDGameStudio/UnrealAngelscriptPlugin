@@ -8,7 +8,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptTokenizerTests,
@@ -17,7 +16,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTokenizerTests,
 {
 	TEST_METHOD(BasicTokens)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
 		ASSERT_THAT(AreEqual(static_cast<int32>(ttIdentifier), static_cast<int32>(Tokenizer.GetToken("Identifier123", 13, &TokenLength)),
@@ -43,7 +42,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTokenizerTests,
 
 	TEST_METHOD(Keywords)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
 		ASSERT_THAT(AreEqual(static_cast<int32>(ttClass), static_cast<int32>(Tokenizer.GetToken("class", 5, &TokenLength)),
@@ -58,7 +57,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTokenizerTests,
 
 	TEST_METHOD(CommentsAndStrings)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
 		ASSERT_THAT(AreEqual(static_cast<int32>(ttOnelineComment), static_cast<int32>(Tokenizer.GetToken("// hello\n", 9, &TokenLength)),
@@ -71,7 +70,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTokenizerTests,
 
 	TEST_METHOD(ErrorRecovery)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
 		ASSERT_THAT(AreEqual(static_cast<int32>(ttNonTerminatedStringConstant), static_cast<int32>(Tokenizer.GetToken("\"unterminated", 13, &TokenLength)),
@@ -82,7 +81,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTokenizerTests,
 
 	TEST_METHOD(ErrorRecoveryAdvancesAndContinues)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 		const char* Input = "`class";
 		const size_t InputLength = 6;
@@ -105,7 +104,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTokenizerTests,
 
 	TEST_METHOD(BasicLiteralAndPunctuationMatrix)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
 		struct FTokenCase
@@ -138,7 +137,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTokenizerTests,
 
 	TEST_METHOD(UnterminatedBlockCommentAndEscapes)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
 		const char UnterminatedBlockComment[] = "/* comment";

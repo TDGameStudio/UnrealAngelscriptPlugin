@@ -12,7 +12,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptParserTests,
 	"Angelscript.TestModule.AngelScriptSDK.Parser",
@@ -96,7 +95,7 @@ public:
 		asCScriptCode Code;
 		Code.SetCode("ParserExpressions", "1 + 2 * 3", true);
 
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 		asCScriptNode* Root = Parser.ParseExpressionSnippet(&Code);
 		ASSERT_THAT(IsNotNull(Root,
 			TEXT("Parser should produce an AST for expression input")));
@@ -125,7 +124,7 @@ public:
 		asCScriptCode Code;
 		Code.SetCode("ParserControlFlow", "if (true) { for (int i = 0; i < 3; i++) { while(false) { } } }", true);
 
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 		asCScriptNode* Root = Parser.ParseStatementSnippet(&Code);
 		ASSERT_THAT(IsNotNull(Root,
 			TEXT("Parser should produce an AST for control flow input")));
@@ -188,7 +187,7 @@ public:
 		asCScriptCode ValidCode;
 		ValidCode.SetCode("ParserReuseAfterSyntaxError_Valid", "int GlobalValue = 7; class FRecoveredSample { int Value; }", true);
 
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 		const int InvalidParseResult = Parser.ParseScriptSnippetWithoutImplicitReset(&InvalidCode);
 		ASSERT_THAT(IsTrue(InvalidParseResult < 0,
 			TEXT("Parser.ReuseAfterSyntaxError should fail the malformed script on the first parse")));

@@ -12,18 +12,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeReferenceScriptClassTests,
 private:
 	static bool TestHasMessageContaining(FAutomationTestBase& Test, const AngelscriptNativeTestSupport::FNativeMessageCollector& Messages, const TCHAR* ExpectedText, const TCHAR* Context)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 
 		for (const AngelscriptNativeTestSupport::FNativeMessageEntry& Entry : Messages.Entries)
 		{
 			if (Entry.Message.Contains(ExpectedText))
 			{
-				return Assert.IsTrue(true, Context);
+				return LocalAssert.IsTrue(true, Context);
 			}
 		}
 
 		Test.AddInfo(AngelscriptNativeTestSupport::CollectMessages(Messages));
-		return Assert.IsTrue(false, Context);
+		return LocalAssert.IsTrue(false, Context);
 	}
 
 	static bool TestTypeHasProperty(asITypeInfo* TypeInfo, const char* ExpectedName)
@@ -56,11 +56,11 @@ private:
 
 	static bool TestTypeHasBehaviour(FAutomationTestBase& Test, asITypeInfo* TypeInfo, asEBehaviours ExpectedBehaviour, const TCHAR* Context)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 
 		if (TypeInfo == nullptr)
 		{
-			return Assert.IsNotNull(TypeInfo, Context);
+			return LocalAssert.IsNotNull(TypeInfo, Context);
 		}
 
 		for (asUINT BehaviourIndex = 0; BehaviourIndex < TypeInfo->GetBehaviourCount(); ++BehaviourIndex)
@@ -69,7 +69,7 @@ private:
 			asIScriptFunction* const Function = TypeInfo->GetBehaviourByIndex(BehaviourIndex, &Behaviour);
 			if (Function != nullptr && Behaviour == ExpectedBehaviour)
 			{
-				return Assert.IsTrue(true, Context);
+				return LocalAssert.IsTrue(true, Context);
 			}
 		}
 
@@ -88,16 +88,16 @@ private:
 				Function != nullptr ? UTF8_TO_TCHAR(Function->GetDeclaration()) : TEXT("<null>"));
 		}
 		Test.AddInfo(Details);
-		return Assert.IsTrue(false, Context);
+		return LocalAssert.IsTrue(false, Context);
 	}
 
 	static bool TestTypeHasConstructorWithParamCount(FAutomationTestBase& Test, asITypeInfo* TypeInfo, asUINT ExpectedParamCount, const TCHAR* Context)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 
 		if (TypeInfo == nullptr)
 		{
-			return Assert.IsNotNull(TypeInfo, Context);
+			return LocalAssert.IsNotNull(TypeInfo, Context);
 		}
 
 		for (asUINT BehaviourIndex = 0; BehaviourIndex < TypeInfo->GetBehaviourCount(); ++BehaviourIndex)
@@ -106,7 +106,7 @@ private:
 			asIScriptFunction* const Function = TypeInfo->GetBehaviourByIndex(BehaviourIndex, &Behaviour);
 			if (Function != nullptr && Behaviour == asBEHAVE_CONSTRUCT && Function->GetParamCount() == ExpectedParamCount)
 			{
-				return Assert.IsTrue(true, Context);
+				return LocalAssert.IsTrue(true, Context);
 			}
 		}
 
@@ -126,21 +126,21 @@ private:
 				Function != nullptr ? UTF8_TO_TCHAR(Function->GetDeclaration()) : TEXT("<null>"));
 		}
 		Test.AddInfo(Details);
-		return Assert.IsTrue(false, Context);
+		return LocalAssert.IsTrue(false, Context);
 	}
 
 	static bool ExecuteIntFunctionAndCapture(FAutomationTestBase& Test, asIScriptEngine* ScriptEngine, asIScriptModule* Module, const char* Declaration, FScriptExecutionResult& OutResult)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 
 		asIScriptFunction* Function = AngelscriptNativeTestSupport::GetNativeFunctionByExactDecl(Module, Declaration);
-		if (!Assert.IsNotNull(Function, TEXT("Reference script-class test should resolve the requested function")))
+		if (!LocalAssert.IsNotNull(Function, TEXT("Reference script-class test should resolve the requested function")))
 		{
 			return false;
 		}
 
 		asIScriptContext* Context = ScriptEngine->CreateContext();
-		if (!Assert.IsNotNull(Context, TEXT("Reference script-class test should create an execution context")))
+		if (!LocalAssert.IsNotNull(Context, TEXT("Reference script-class test should create an execution context")))
 		{
 			return false;
 		}
@@ -160,12 +160,12 @@ private:
 
 	static bool TestIsolatedScriptClassInstantiationRaisesNullPointer(FAutomationTestBase& Test, const FScriptExecutionResult& Result, const TCHAR* Context)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bPassed = true;
-		bPassed &= Assert.AreEqual(static_cast<int32>(asEXECUTION_EXCEPTION), Result.ExecuteResult, *FString::Printf(TEXT("%s should raise the current isolated native-engine script-class exception"), Context));
-		bPassed &= Assert.AreEqual(FString(TEXT("Null pointer access")), Result.ExceptionString, *FString::Printf(TEXT("%s should report the current fork null-pointer exception text"), Context));
-		bPassed &= Assert.IsTrue(Result.ExceptionLine > 0, *FString::Printf(TEXT("%s should keep a positive exception line, got %d"), Context, Result.ExceptionLine));
-		bPassed &= Assert.AreEqual(FString(TEXT("int Entry()")), Result.ExceptionFunctionDeclaration, *FString::Printf(TEXT("%s should attribute the exception to Entry()"), Context));
+		bPassed &= LocalAssert.AreEqual(static_cast<int32>(asEXECUTION_EXCEPTION), Result.ExecuteResult, *FString::Printf(TEXT("%s should raise the current isolated native-engine script-class exception"), Context));
+		bPassed &= LocalAssert.AreEqual(FString(TEXT("Null pointer access")), Result.ExceptionString, *FString::Printf(TEXT("%s should report the current fork null-pointer exception text"), Context));
+		bPassed &= LocalAssert.IsTrue(Result.ExceptionLine > 0, *FString::Printf(TEXT("%s should keep a positive exception line, got %d"), Context, Result.ExceptionLine));
+		bPassed &= LocalAssert.AreEqual(FString(TEXT("int Entry()")), Result.ExceptionFunctionDeclaration, *FString::Printf(TEXT("%s should attribute the exception to Entry()"), Context));
 		return bPassed;
 	}
 

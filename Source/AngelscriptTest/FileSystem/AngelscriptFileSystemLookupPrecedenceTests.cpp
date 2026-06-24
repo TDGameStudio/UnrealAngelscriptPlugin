@@ -11,38 +11,36 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_FileSystem_AngelscriptFileSystemLookupPrecedenceTests_Private
-{
-	FString GetFileSystemLookupPrecedenceTestRoot()
-	{
-		return FPaths::ConvertRelativePathToFull(
-			FPaths::ProjectSavedDir() / TEXT("Automation") / TEXT("FileSystem") / TEXT("LookupPrecedence"));
-	}
-
-	void CleanFileSystemLookupPrecedenceTestRoot()
-	{
-		IFileManager::Get().DeleteDirectory(*GetFileSystemLookupPrecedenceTestRoot(), false, true);
-	}
-
-	bool WriteFileSystemLookupPrecedenceTestFile(const FString& RelativePath, const FString& Content, FString& OutAbsolutePath)
-	{
-		OutAbsolutePath = FPaths::Combine(GetFileSystemLookupPrecedenceTestRoot(), RelativePath);
-		IFileManager::Get().MakeDirectory(*FPaths::GetPath(OutAbsolutePath), true);
-		return FFileHelper::SaveStringToFile(
-			Content,
-			*OutAbsolutePath,
-			FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptModuleLookupFilenamePrecedenceTest,
 	"Angelscript.TestModule.FileSystem.ModuleLookupByFilenameOrModuleName",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static FString GetFileSystemLookupPrecedenceTestRoot()
+{
+	return FPaths::ConvertRelativePathToFull(
+		FPaths::ProjectSavedDir() / TEXT("Automation") / TEXT("FileSystem") / TEXT("LookupPrecedence"));
+}
+
+static void CleanFileSystemLookupPrecedenceTestRoot()
+{
+	IFileManager::Get().DeleteDirectory(*GetFileSystemLookupPrecedenceTestRoot(), false, true);
+}
+
+static bool WriteFileSystemLookupPrecedenceTestFile(const FString& RelativePath, const FString& Content, FString& OutAbsolutePath)
+{
+	OutAbsolutePath = FPaths::Combine(GetFileSystemLookupPrecedenceTestRoot(), RelativePath);
+	IFileManager::Get().MakeDirectory(*FPaths::GetPath(OutAbsolutePath), true);
+	return FFileHelper::SaveStringToFile(
+		Content,
+		*OutAbsolutePath,
+		FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+}
+
+public:
 	TEST_METHOD(PrefersFilenameOverMismatchedModuleName)
 	{
-		using namespace AngelscriptTest_FileSystem_AngelscriptFileSystemLookupPrecedenceTests_Private;
-		CleanFileSystemLookupPrecedenceTestRoot();
+CleanFileSystemLookupPrecedenceTestRoot();
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);

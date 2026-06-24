@@ -10,90 +10,87 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_FileSystem_AngelscriptScriptSourceProviderTests_Private
-{
-	FString NormalizePath(const FString& InPath)
-	{
-		FString Normalized = InPath;
-		FPaths::NormalizeFilename(Normalized);
-		Normalized.ReplaceInline(TEXT("\\"), TEXT("/"));
-		return Normalized;
-	}
-
-	FString GetProviderFixtureRoot()
-	{
-		return NormalizePath(FPaths::ProjectSavedDir() / TEXT("Automation") / TEXT("ScriptSourceProvider"));
-	}
-
-	void CleanProviderFixtureRoot()
-	{
-		IFileManager::Get().DeleteDirectory(*GetProviderFixtureRoot(), false, true);
-	}
-
-	bool WriteProviderFixtureFile(const FString& AbsoluteRoot, const FString& RelativePath, const FString& Content, FString& OutAbsolutePath)
-	{
-		OutAbsolutePath = NormalizePath(FPaths::Combine(AbsoluteRoot, RelativePath));
-		IFileManager::Get().MakeDirectory(*FPaths::GetPath(OutAbsolutePath), true);
-		return FFileHelper::SaveStringToFile(Content, *OutAbsolutePath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
-	}
-
-	struct FRecordingSourceProvider final : IAngelscriptSourceProvider
-	{
-		TArray<FAngelscriptSource> Sources;
-		TMap<FString, FString> SourceTextByVirtualPath;
-		int32 FindSourcesCallCount = 0;
-		int32 LoadSourceTextCallCount = 0;
-		int32 QuerySourceStateCallCount = 0;
-
-		virtual void FindSources(
-			const TArray<FAngelscriptSourceRoot>& ScriptRoots,
-			bool bSkipDevelopmentScripts,
-			bool bSkipEditorScripts,
-			TArray<FAngelscriptSource>& OutSources) override
-		{
-			++FindSourcesCallCount;
-			LastScriptRoots = ScriptRoots;
-			bLastSkipDevelopmentScripts = bSkipDevelopmentScripts;
-			bLastSkipEditorScripts = bSkipEditorScripts;
-			OutSources.Append(Sources);
-		}
-
-		virtual bool LoadSourceText(const FAngelscriptSource& Source, FString& OutSourceText) override
-		{
-			++LoadSourceTextCallCount;
-			const FString* Text = SourceTextByVirtualPath.Find(Source.VirtualPath.ToString());
-			if (Text == nullptr)
-			{
-				return false;
-			}
-			OutSourceText = *Text;
-			return true;
-		}
-
-		virtual bool QuerySourceState(const FAngelscriptSource& Source, FAngelscriptSourceState& OutState) override
-		{
-			++QuerySourceStateCallCount;
-			OutState.Timestamp = FDateTime(2026, 6, 16, 10, 0, 0);
-			OutState.ContentHash = GetTypeHash(Source.VirtualPath.ToString());
-			OutState.bHasContentHash = true;
-			return true;
-		}
-
-		TArray<FAngelscriptSourceRoot> LastScriptRoots;
-		bool bLastSkipDevelopmentScripts = false;
-		bool bLastSkipEditorScripts = false;
-	};
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptScriptSourceProviderTest,
 	"Angelscript.TestModule.FileSystem.ScriptSourceProvider",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static FString NormalizePath(const FString& InPath)
+{
+	FString Normalized = InPath;
+	FPaths::NormalizeFilename(Normalized);
+	Normalized.ReplaceInline(TEXT("\\"), TEXT("/"));
+	return Normalized;
+}
+
+static FString GetProviderFixtureRoot()
+{
+	return NormalizePath(FPaths::ProjectSavedDir() / TEXT("Automation") / TEXT("ScriptSourceProvider"));
+}
+
+static void CleanProviderFixtureRoot()
+{
+	IFileManager::Get().DeleteDirectory(*GetProviderFixtureRoot(), false, true);
+}
+
+static bool WriteProviderFixtureFile(const FString& AbsoluteRoot, const FString& RelativePath, const FString& Content, FString& OutAbsolutePath)
+{
+	OutAbsolutePath = NormalizePath(FPaths::Combine(AbsoluteRoot, RelativePath));
+	IFileManager::Get().MakeDirectory(*FPaths::GetPath(OutAbsolutePath), true);
+	return FFileHelper::SaveStringToFile(Content, *OutAbsolutePath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+}
+
+struct FRecordingSourceProvider final : IAngelscriptSourceProvider
+{
+	TArray<FAngelscriptSource> Sources;
+	TMap<FString, FString> SourceTextByVirtualPath;
+	int32 FindSourcesCallCount = 0;
+	int32 LoadSourceTextCallCount = 0;
+	int32 QuerySourceStateCallCount = 0;
+
+	virtual void FindSources(
+		const TArray<FAngelscriptSourceRoot>& ScriptRoots,
+		bool bSkipDevelopmentScripts,
+		bool bSkipEditorScripts,
+		TArray<FAngelscriptSource>& OutSources) override
+	{
+		++FindSourcesCallCount;
+		LastScriptRoots = ScriptRoots;
+		bLastSkipDevelopmentScripts = bSkipDevelopmentScripts;
+		bLastSkipEditorScripts = bSkipEditorScripts;
+		OutSources.Append(Sources);
+	}
+
+	virtual bool LoadSourceText(const FAngelscriptSource& Source, FString& OutSourceText) override
+	{
+		++LoadSourceTextCallCount;
+		const FString* Text = SourceTextByVirtualPath.Find(Source.VirtualPath.ToString());
+		if (Text == nullptr)
+		{
+			return false;
+		}
+		OutSourceText = *Text;
+		return true;
+	}
+
+	virtual bool QuerySourceState(const FAngelscriptSource& Source, FAngelscriptSourceState& OutState) override
+	{
+		++QuerySourceStateCallCount;
+		OutState.Timestamp = FDateTime(2026, 6, 16, 10, 0, 0);
+		OutState.ContentHash = GetTypeHash(Source.VirtualPath.ToString());
+		OutState.bHasContentHash = true;
+		return true;
+	}
+
+	TArray<FAngelscriptSourceRoot> LastScriptRoots;
+	bool bLastSkipDevelopmentScripts = false;
+	bool bLastSkipEditorScripts = false;
+};
+
+public:
 	TEST_METHOD(EngineDiscoveryUsesInjectedSourceProvider)
 	{
-		using namespace AngelscriptTest_FileSystem_AngelscriptScriptSourceProviderTests_Private;
-
-		TSharedRef<FRecordingSourceProvider> Provider = MakeShared<FRecordingSourceProvider>();
+TSharedRef<FRecordingSourceProvider> Provider = MakeShared<FRecordingSourceProvider>();
 		Provider->Sources.Add(FAngelscriptSource::FromGameFile(
 			TEXT("Gameplay/Player.as"),
 			TEXT("J:/ProviderProject/Script/Gameplay/Player.as")));
@@ -140,9 +137,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptSourceProviderTest,
 
 	TEST_METHOD(PreprocessorLoadsDiskBackedSourceThroughProvider)
 	{
-		using namespace AngelscriptTest_FileSystem_AngelscriptScriptSourceProviderTests_Private;
-
-		TSharedRef<FRecordingSourceProvider> Provider = MakeShared<FRecordingSourceProvider>();
+TSharedRef<FRecordingSourceProvider> Provider = MakeShared<FRecordingSourceProvider>();
 		const FAngelscriptSource Source = FAngelscriptSource::FromGameFile(
 			TEXT("Provider/Loaded.as"),
 			TEXT("J:/ProviderProject/Script/Provider/Loaded.as"));
@@ -168,9 +163,7 @@ int Entry()
 
 	TEST_METHOD(PreprocessorBypassesProviderForMemorySource)
 	{
-		using namespace AngelscriptTest_FileSystem_AngelscriptScriptSourceProviderTests_Private;
-
-		TSharedRef<FRecordingSourceProvider> Provider = MakeShared<FRecordingSourceProvider>();
+TSharedRef<FRecordingSourceProvider> Provider = MakeShared<FRecordingSourceProvider>();
 
 		FAngelscriptPreprocessor Preprocessor;
 		Preprocessor.SetSourceProvider(&Provider.Get());
@@ -189,9 +182,7 @@ int Entry()
 
 	TEST_METHOD(DiskProviderDiscoversProjectPluginAndLegacyRoots)
 	{
-		using namespace AngelscriptTest_FileSystem_AngelscriptScriptSourceProviderTests_Private;
-
-		CleanProviderFixtureRoot();
+CleanProviderFixtureRoot();
 		ON_SCOPE_EXIT
 		{
 			CleanProviderFixtureRoot();

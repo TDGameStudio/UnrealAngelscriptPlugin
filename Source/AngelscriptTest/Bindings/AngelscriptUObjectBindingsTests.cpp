@@ -79,32 +79,32 @@ FString ScriptGetPathName(UObject Obj)
 )"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bPassed = true;
 
 		// Step 1: AS creates the object, returns UObject* to C++
 		FASGlobalFunctionInvoker CreateInvoker(
 			Test, Engine, Module, TEXT("UObject CreateNamedObject()"));
-		if (!Assert.IsTrue(CreateInvoker.IsValid(), TEXT("[UObject] CreateNamedObject invoker should be valid")))
+		if (!LocalAssert.IsTrue(CreateInvoker.IsValid(), TEXT("[UObject] CreateNamedObject invoker should be valid")))
 			return false;
 
 		UObject* Obj = CreateInvoker.CallAndReturn<UObject*>(nullptr);
-		bPassed &= Assert.IsNotNull(Obj, TEXT("[UObject] AS-created object should be non-null in C++"));
+		bPassed &= LocalAssert.IsNotNull(Obj, TEXT("[UObject] AS-created object should be non-null in C++"));
 		if (Obj == nullptr) return false;
 
 		// Step 2: C++ directly verifies the real UObject
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			FName(TEXT("UObjBindTest_Identity")),
 			Obj->GetFName(),
 			TEXT("[UObject] C++ GetFName should match the name AS gave"));
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			UTexture2D::StaticClass(),
 			Obj->GetClass(),
 			TEXT("[UObject] C++ GetClass should be UTexture2D"));
-		bPassed &= Assert.IsTrue(
+		bPassed &= LocalAssert.IsTrue(
 			Obj->GetFullName().Contains(TEXT("Texture2D")),
 			TEXT("[UObject] C++ GetFullName should contain Texture2D"));
-		bPassed &= Assert.IsTrue(
+		bPassed &= LocalAssert.IsTrue(
 			Obj->GetPathName().Len() > 0,
 			TEXT("[UObject] C++ GetPathName should be non-empty"));
 
@@ -119,7 +119,7 @@ FString ScriptGetPathName(UObject Obj)
 				if (NameInvoker.Call())
 				{
 					NameInvoker.ReadReturnStruct(ScriptName);
-					bPassed &= Assert.AreEqual(
+					bPassed &= LocalAssert.AreEqual(
 						Obj->GetFName(),
 						ScriptName,
 						TEXT("[UObject] AS GetName() should match C++ GetFName()"));
@@ -163,7 +163,7 @@ UClass ScriptGetClass(UObject Obj)
 )"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bPassed = true;
 
 		// AS creates
@@ -171,15 +171,15 @@ UClass ScriptGetClass(UObject Obj)
 			Test, Engine, Module, TEXT("UObject CreateInTransient()"));
 		if (!CreateInvoker.IsValid()) return false;
 		UObject* Obj = CreateInvoker.CallAndReturn<UObject*>(nullptr);
-		bPassed &= Assert.IsNotNull(Obj, TEXT("[UObject] Created object should exist"));
+		bPassed &= LocalAssert.IsNotNull(Obj, TEXT("[UObject] Created object should exist"));
 		if (!Obj) return false;
 
 		// C++ verifies outer chain directly
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			static_cast<UObject*>(GetTransientPackage()),
 			Obj->GetOuter(),
 			TEXT("[UObject] C++ GetOuter() should be transient package"));
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			GetTransientPackage(),
 			Obj->GetPackage(),
 			TEXT("[UObject] C++ GetPackage() should be transient package"));
@@ -192,7 +192,7 @@ UClass ScriptGetClass(UObject Obj)
 			{
 				OuterInvoker.AddArgObject(Obj);
 				UObject* ScriptOuter = OuterInvoker.CallAndReturn<UObject*>(nullptr);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					Obj->GetOuter(),
 					ScriptOuter,
 					TEXT("[UObject] AS GetOuter() should match C++ GetOuter()"));
@@ -207,7 +207,7 @@ UClass ScriptGetClass(UObject Obj)
 			{
 				PkgInvoker.AddArgObject(Obj);
 				UObject* ScriptPkg = PkgInvoker.CallAndReturn<UObject*>(nullptr);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					static_cast<UObject*>(Obj->GetPackage()),
 					ScriptPkg,
 					TEXT("[UObject] AS GetPackage() should match C++ GetPackage()"));
@@ -222,7 +222,7 @@ UClass ScriptGetClass(UObject Obj)
 			{
 				ClassInvoker.AddArgObject(Obj);
 				UClass* ScriptClass = ClassInvoker.CallAndReturn<UClass*>(nullptr);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					Obj->GetClass(),
 					ScriptClass,
 					TEXT("[UObject] AS GetClass() should match C++ GetClass()"));
@@ -273,7 +273,7 @@ int ScriptIsA_Texture(UObject Obj)
 )"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bPassed = true;
 
 		// AS creates camera actor
@@ -281,13 +281,13 @@ int ScriptIsA_Texture(UObject Obj)
 			Test, Engine, Module, TEXT("UObject CreateCamera()"));
 		if (!CreateInvoker.IsValid()) return false;
 		UObject* CameraObj = CreateInvoker.CallAndReturn<UObject*>(nullptr);
-		bPassed &= Assert.IsNotNull(CameraObj, TEXT("[UObject] Camera should be created"));
+		bPassed &= LocalAssert.IsNotNull(CameraObj, TEXT("[UObject] Camera should be created"));
 		if (!CameraObj) return false;
 
 		// C++ directly verifies IsA
-		bPassed &= Assert.IsTrue(CameraObj->IsA(AActor::StaticClass()), TEXT("[UObject] C++ IsA(AActor) should be true"));
-		bPassed &= Assert.IsTrue(CameraObj->IsA(ACameraActor::StaticClass()), TEXT("[UObject] C++ IsA(ACameraActor) should be true"));
-		bPassed &= Assert.IsFalse(CameraObj->IsA(UTexture2D::StaticClass()), TEXT("[UObject] C++ IsA(UTexture2D) should be false"));
+		bPassed &= LocalAssert.IsTrue(CameraObj->IsA(AActor::StaticClass()), TEXT("[UObject] C++ IsA(AActor) should be true"));
+		bPassed &= LocalAssert.IsTrue(CameraObj->IsA(ACameraActor::StaticClass()), TEXT("[UObject] C++ IsA(ACameraActor) should be true"));
+		bPassed &= LocalAssert.IsFalse(CameraObj->IsA(UTexture2D::StaticClass()), TEXT("[UObject] C++ IsA(UTexture2D) should be false"));
 
 		// AS Cast<AActor> → C++ verifies pointer identity
 		{
@@ -297,7 +297,7 @@ int ScriptIsA_Texture(UObject Obj)
 			{
 				CastInvoker.AddArgObject(CameraObj);
 				UObject* AsActor = CastInvoker.CallAndReturn<UObject*>(nullptr);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					CameraObj,
 					AsActor,
 					TEXT("[UObject] AS Cast<AActor>(camera) should return same pointer"));
@@ -312,7 +312,7 @@ int ScriptIsA_Texture(UObject Obj)
 			{
 				CastInvoker.AddArgObject(CameraObj);
 				UObject* AsCamera = CastInvoker.CallAndReturn<UObject*>(nullptr);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					CameraObj,
 					AsCamera,
 					TEXT("[UObject] AS Cast<ACameraActor>(camera) should return same pointer"));
@@ -327,7 +327,7 @@ int ScriptIsA_Texture(UObject Obj)
 			{
 				CastInvoker.AddArgObject(CameraObj);
 				UObject* AsTexture = CastInvoker.CallAndReturn<UObject*>(nullptr);
-				bPassed &= Assert.IsNull(
+				bPassed &= LocalAssert.IsNull(
 					AsTexture,
 					TEXT("[UObject] AS Cast<UTexture2D>(camera) should return null"));
 			}
@@ -341,7 +341,7 @@ int ScriptIsA_Texture(UObject Obj)
 			{
 				Invoker.AddArgObject(CameraObj);
 				int32 Result = Invoker.CallAndReturn<int32>(INDEX_NONE);
-				bPassed &= Assert.AreEqual(Expected, Result, Label);
+				bPassed &= LocalAssert.AreEqual(Expected, Result, Label);
 			}
 		};
 		TestIsA(TEXT("int ScriptIsA_Actor(UObject Obj)"),   TEXT("[UObject] AS IsA(AActor) should return 1"),     1);
@@ -376,7 +376,7 @@ UObject ScriptFindWithOuter(UObject Outer, const FString& in Name)
 )"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bPassed = true;
 
 		// AS creates named object → C++ finds it via UE FindObject
@@ -384,12 +384,12 @@ UObject ScriptFindWithOuter(UObject Outer, const FString& in Name)
 			Test, Engine, Module, TEXT("UObject CreateNamedForFind()"));
 		if (!CreateInvoker.IsValid()) return false;
 		UObject* Created = CreateInvoker.CallAndReturn<UObject*>(nullptr);
-		bPassed &= Assert.IsNotNull(Created, TEXT("[UObject] AS-created named object should exist"));
+		bPassed &= LocalAssert.IsNotNull(Created, TEXT("[UObject] AS-created named object should exist"));
 		if (!Created) return false;
 
 		// C++ directly uses FindObject to find the same object
 		UObject* CppFound = FindObject<UObject>(GetTransientPackage(), TEXT("UObjBindTest_Find"));
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			Created,
 			CppFound,
 			TEXT("[UObject] C++ FindObject should find the same object AS created"));
@@ -403,7 +403,7 @@ UObject ScriptFindWithOuter(UObject Outer, const FString& in Name)
 			{
 				FindInvoker.AddArgRef(Path);
 				UObject* ScriptFound = FindInvoker.CallAndReturn<UObject*>(nullptr);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					Created,
 					ScriptFound,
 					TEXT("[UObject] AS FindObject(path) should return same object"));
@@ -420,7 +420,7 @@ UObject ScriptFindWithOuter(UObject Outer, const FString& in Name)
 				FindOuterInvoker.AddArgObject(GetTransientPackage());
 				FindOuterInvoker.AddArgRef(Name);
 				UObject* ScriptFound = FindOuterInvoker.CallAndReturn<UObject*>(nullptr);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					Created,
 					ScriptFound,
 					TEXT("[UObject] AS FindObject(outer, name) should return same object"));
@@ -459,7 +459,7 @@ int ScriptGetIsRooted(UObject Obj)
 )"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bPassed = true;
 
 		// AS creates
@@ -467,11 +467,11 @@ int ScriptGetIsRooted(UObject Obj)
 			Test, Engine, Module, TEXT("UObject CreateForRoot()"));
 		if (!CreateInvoker.IsValid()) return false;
 		UObject* Obj = CreateInvoker.CallAndReturn<UObject*>(nullptr);
-		bPassed &= Assert.IsNotNull(Obj, TEXT("[UObject] Object for root test should exist"));
+		bPassed &= LocalAssert.IsNotNull(Obj, TEXT("[UObject] Object for root test should exist"));
 		if (!Obj) return false;
 
 		// C++ verifies not rooted initially
-		bPassed &= Assert.IsFalse(Obj->IsRooted(), TEXT("[UObject] C++ IsRooted() should be false initially"));
+		bPassed &= LocalAssert.IsFalse(Obj->IsRooted(), TEXT("[UObject] C++ IsRooted() should be false initially"));
 
 		// AS AddToRoot
 		{
@@ -485,7 +485,7 @@ int ScriptGetIsRooted(UObject Obj)
 		}
 
 		// C++ verifies rooted after AS AddToRoot
-		bPassed &= Assert.IsTrue(Obj->IsRooted(), TEXT("[UObject] C++ IsRooted() should be true after AS AddToRoot"));
+		bPassed &= LocalAssert.IsTrue(Obj->IsRooted(), TEXT("[UObject] C++ IsRooted() should be true after AS AddToRoot"));
 
 		// AS GetIsRooted → C++ verifies AS agrees with C++
 		{
@@ -495,7 +495,7 @@ int ScriptGetIsRooted(UObject Obj)
 			{
 				RootedInvoker.AddArgObject(Obj);
 				int32 AsRooted = RootedInvoker.CallAndReturn<int32>(INDEX_NONE);
-				bPassed &= Assert.AreEqual(1, AsRooted, TEXT("[UObject] AS GetIsRooted() should match C++ IsRooted()"));
+				bPassed &= LocalAssert.AreEqual(1, AsRooted, TEXT("[UObject] AS GetIsRooted() should match C++ IsRooted()"));
 			}
 		}
 
@@ -511,7 +511,7 @@ int ScriptGetIsRooted(UObject Obj)
 		}
 
 		// C++ verifies no longer rooted
-		bPassed &= Assert.IsFalse(Obj->IsRooted(), TEXT("[UObject] C++ IsRooted() should be false after AS RemoveFromRoot"));
+		bPassed &= LocalAssert.IsFalse(Obj->IsRooted(), TEXT("[UObject] C++ IsRooted() should be false after AS RemoveFromRoot"));
 
 		// AS confirms not rooted
 		{
@@ -521,7 +521,7 @@ int ScriptGetIsRooted(UObject Obj)
 			{
 				RootedInvoker.AddArgObject(Obj);
 				int32 AsRooted = RootedInvoker.CallAndReturn<int32>(INDEX_NONE);
-				bPassed &= Assert.AreEqual(0, AsRooted, TEXT("[UObject] AS GetIsRooted() should be 0 after RemoveFromRoot"));
+				bPassed &= LocalAssert.AreEqual(0, AsRooted, TEXT("[UObject] AS GetIsRooted() should be 0 after RemoveFromRoot"));
 			}
 		}
 
@@ -558,7 +558,7 @@ int ScriptIsTransient(UObject Obj)
 )"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bPassed = true;
 
 		// AS creates transient object → C++ verifies
@@ -567,10 +567,10 @@ int ScriptIsTransient(UObject Obj)
 				Test, Engine, Module, TEXT("UObject CreateTransient()"));
 			if (!Invoker.IsValid()) return false;
 			UObject* TransientObj = Invoker.CallAndReturn<UObject*>(nullptr);
-			bPassed &= Assert.IsNotNull(TransientObj, TEXT("[UObject] Transient object should exist"));
+			bPassed &= LocalAssert.IsNotNull(TransientObj, TEXT("[UObject] Transient object should exist"));
 			if (TransientObj)
 			{
-				bPassed &= Assert.IsTrue(
+				bPassed &= LocalAssert.IsTrue(
 					TransientObj->HasAnyFlags(RF_Transient),
 					TEXT("[UObject] C++ HasAnyFlags(RF_Transient) should be true for transient-created object"));
 			}
@@ -582,7 +582,7 @@ int ScriptIsTransient(UObject Obj)
 				Test, Engine, Module, TEXT("UObject CreateNonTransient()"));
 			if (!Invoker.IsValid()) return false;
 			UObject* NormalObj = Invoker.CallAndReturn<UObject*>(nullptr);
-			bPassed &= Assert.IsNotNull(NormalObj, TEXT("[UObject] Non-transient object should exist"));
+			bPassed &= LocalAssert.IsNotNull(NormalObj, TEXT("[UObject] Non-transient object should exist"));
 			if (NormalObj)
 			{
 				// NewObject(GetTransientPackage(),...) with no bTransient=true
@@ -596,7 +596,7 @@ int ScriptIsTransient(UObject Obj)
 						IsTransInvoker.AddArgObject(NormalObj);
 						int32 AsTransient = IsTransInvoker.CallAndReturn<int32>(INDEX_NONE);
 						bool bCppTransient = NormalObj->HasAnyFlags(RF_Transient);
-						bPassed &= Assert.AreEqual(
+						bPassed &= LocalAssert.AreEqual(
 							bCppTransient ? 1 : 0,
 							AsTransient,
 							TEXT("[UObject] AS IsTransient() should match C++ HasAnyFlags(RF_Transient)"));
@@ -614,7 +614,7 @@ int ScriptIsTransient(UObject Obj)
 						SetInvoker.Call();
 					}
 				}
-				bPassed &= Assert.IsTrue(
+				bPassed &= LocalAssert.IsTrue(
 					NormalObj->HasAnyFlags(RF_Transactional),
 					TEXT("[UObject] C++ RF_Transactional should be set after AS SetTransactional(true)"));
 
@@ -629,7 +629,7 @@ int ScriptIsTransient(UObject Obj)
 						SetInvoker.Call();
 					}
 				}
-				bPassed &= Assert.IsFalse(
+				bPassed &= LocalAssert.IsFalse(
 					NormalObj->HasAnyFlags(RF_Transactional),
 					TEXT("[UObject] C++ RF_Transactional should be cleared after AS SetTransactional(false)"));
 			}
@@ -751,7 +751,7 @@ bool GetIsTransient(UObject Obj)
 )"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bPassed = true;
 
 		// Helper: create via AS, then verify in C++
@@ -763,14 +763,14 @@ bool GetIsTransient(UObject Obj)
 			bool bExpectTransient) -> UObject*
 		{
 			FASGlobalFunctionInvoker Invoker(Test, Engine, Module, CreateDecl);
-			if (!Assert.IsTrue(Invoker.IsValid(), FString::Printf(TEXT("[UObject] %s invoker valid"), Label)))
+			if (!LocalAssert.IsTrue(Invoker.IsValid(), FString::Printf(TEXT("[UObject] %s invoker valid"), Label)))
 				return nullptr;
 			UObject* Obj = Invoker.CallAndReturn<UObject*>(nullptr);
-			if (!Assert.IsNotNull(Obj, FString::Printf(TEXT("[UObject] %s should create non-null"), Label)))
+			if (!LocalAssert.IsNotNull(Obj, FString::Printf(TEXT("[UObject] %s should create non-null"), Label)))
 				return nullptr;
 
 			// C++ class check
-			bPassed &= Assert.AreEqual(
+			bPassed &= LocalAssert.AreEqual(
 				ExpectedClass,
 				Obj->GetClass(),
 				FString::Printf(TEXT("[UObject] %s C++ GetClass()"), Label));
@@ -778,7 +778,7 @@ bool GetIsTransient(UObject Obj)
 			// C++ name check
 			if (ExpectedName)
 			{
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					FName(ExpectedName),
 					Obj->GetFName(),
 					FString::Printf(TEXT("[UObject] %s C++ GetFName()"), Label));
@@ -793,7 +793,7 @@ bool GetIsTransient(UObject Obj)
 					if (NameInv.Call())
 					{
 						NameInv.ReadReturnStruct(ASName);
-						bPassed &= Assert.AreEqual(
+						bPassed &= LocalAssert.AreEqual(
 							Obj->GetFName(),
 							ASName,
 							FString::Printf(TEXT("[UObject] %s AS GetName() matches C++"), Label));
@@ -803,13 +803,13 @@ bool GetIsTransient(UObject Obj)
 			else
 			{
 				// Auto-generated name: just verify it's not empty
-				bPassed &= Assert.IsTrue(
+				bPassed &= LocalAssert.IsTrue(
 					Obj->GetFName() != NAME_None,
 					FString::Printf(TEXT("[UObject] %s C++ auto name non-empty"), Label));
 			}
 
 			// C++ outer check
-			bPassed &= Assert.AreEqual(
+			bPassed &= LocalAssert.AreEqual(
 				static_cast<UObject*>(GetTransientPackage()),
 				Obj->GetOuter(),
 				FString::Printf(TEXT("[UObject] %s C++ outer is transient pkg"), Label));
@@ -820,7 +820,7 @@ bool GetIsTransient(UObject Obj)
 			bool bCppTransient = Obj->HasAnyFlags(RF_Transient);
 			if (bExpectTransient)
 			{
-				bPassed &= Assert.IsTrue(
+				bPassed &= LocalAssert.IsTrue(
 					bCppTransient,
 					FString::Printf(TEXT("[UObject] %s C++ should have RF_Transient"), Label));
 			}
@@ -835,7 +835,7 @@ bool GetIsTransient(UObject Obj)
 					// AS bool returns as uint8 via GetReturnByte
 					int32 ASTransInt = TransInv.CallAndReturn<int32>(INDEX_NONE);
 					bool bASTransient = (ASTransInt != 0);
-					bPassed &= Assert.AreEqual(
+					bPassed &= LocalAssert.AreEqual(
 						bCppTransient,
 						bASTransient,
 						FString::Printf(TEXT("[UObject] %s AS IsTransient() matches C++"), Label));
@@ -853,7 +853,7 @@ bool GetIsTransient(UObject Obj)
 					if (FullInv.Call())
 					{
 						FullInv.ReadReturnStruct(ASFull);
-						bPassed &= Assert.AreEqual(
+						bPassed &= LocalAssert.AreEqual(
 							Obj->GetFullName(),
 							ASFull,
 							FString::Printf(TEXT("[UObject] %s AS GetFullName() matches C++"), Label));
@@ -872,7 +872,7 @@ bool GetIsTransient(UObject Obj)
 					if (PathInv.Call())
 					{
 						PathInv.ReadReturnStruct(ASPath);
-						bPassed &= Assert.AreEqual(
+						bPassed &= LocalAssert.AreEqual(
 							Obj->GetPathName(),
 							ASPath,
 							FString::Printf(TEXT("[UObject] %s AS GetPathName() matches C++"), Label));
@@ -981,7 +981,7 @@ FString GetClassName(UObject Obj)
 )"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bPassed = true;
 
 		// --- GetDefaultObject ---
@@ -992,8 +992,8 @@ FString GetClassName(UObject Obj)
 			{
 				UObject* ASCDO = Inv.CallAndReturn<UObject*>(nullptr);
 				UObject* CppCDO = UTexture2D::StaticClass()->GetDefaultObject();
-				bPassed &= Assert.IsNotNull(ASCDO, TEXT("[UObject] AS GetDefaultObject should be non-null"));
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.IsNotNull(ASCDO, TEXT("[UObject] AS GetDefaultObject should be non-null"));
+				bPassed &= LocalAssert.AreEqual(
 					CppCDO,
 					ASCDO,
 					TEXT("[UObject] AS GetDefaultObject should match C++ CDO pointer"));
@@ -1008,8 +1008,8 @@ FString GetClassName(UObject Obj)
 			{
 				UClass* ASSuperClass = Inv.CallAndReturn<UClass*>(nullptr);
 				UClass* CppSuperClass = ACameraActor::StaticClass()->GetSuperClass();
-				bPassed &= Assert.IsNotNull(ASSuperClass, TEXT("[UObject] AS GetSuperClass should be non-null"));
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.IsNotNull(ASSuperClass, TEXT("[UObject] AS GetSuperClass should be non-null"));
+				bPassed &= LocalAssert.AreEqual(
 					CppSuperClass,
 					ASSuperClass,
 					TEXT("[UObject] AS GetSuperClass(ACameraActor) should match C++"));
@@ -1024,7 +1024,7 @@ FString GetClassName(UObject Obj)
 			{
 				int32 Result = Inv.CallAndReturn<int32>(INDEX_NONE);
 				bool bResult = (Result != 0);
-				bPassed &= Assert.AreEqual(Expected, bResult, Label);
+				bPassed &= LocalAssert.AreEqual(Expected, bResult, Label);
 			}
 		};
 
@@ -1059,7 +1059,7 @@ FString GetClassName(UObject Obj)
 			{
 				UFunction* ASFunc = Inv.CallAndReturn<UFunction*>(nullptr);
 				UFunction* CppFunc = AActor::StaticClass()->FindFunctionByName(FName(TEXT("ReceiveTick")));
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					CppFunc,
 					ASFunc,
 					TEXT("[UObject] AS FindFunctionByName(ReceiveTick) should match C++"));
@@ -1071,7 +1071,7 @@ FString GetClassName(UObject Obj)
 			if (Inv.IsValid())
 			{
 				UFunction* ASFunc = Inv.CallAndReturn<UFunction*>(nullptr);
-				bPassed &= Assert.IsNull(
+				bPassed &= LocalAssert.IsNull(
 					ASFunc,
 					TEXT("[UObject] AS FindFunctionByName(nonexistent) should return null"));
 			}
@@ -1089,7 +1089,7 @@ FString GetClassName(UObject Obj)
 				if (Inv.Call())
 				{
 					Inv.ReadReturnStruct(ASClassName);
-					bPassed &= Assert.AreEqual(
+					bPassed &= LocalAssert.AreEqual(
 						TestObj->GetClass()->GetName(),
 						ASClassName,
 						TEXT("[UObject] AS GetClass().GetName() should match C++ class name"));
@@ -1154,7 +1154,7 @@ FString LogFormatted(UObject Obj)
 )"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bPassed = true;
 
 		// FString return
@@ -1167,7 +1167,7 @@ FString LogFormatted(UObject Obj)
 				if (Inv.Call())
 				{
 					Inv.ReadReturnStruct(Result);
-					bPassed &= Assert.AreEqual(
+					bPassed &= LocalAssert.AreEqual(
 						FString(TEXT("Hello from Angelscript")),
 						Result,
 						TEXT("[UObject] AS FString return should match expected"));
@@ -1185,7 +1185,7 @@ FString LogFormatted(UObject Obj)
 				if (Inv.Call())
 				{
 					Inv.ReadReturnStruct(Result);
-					bPassed &= Assert.AreEqual(
+					bPassed &= LocalAssert.AreEqual(
 						FName(TEXT("AngelscriptTestName")),
 						Result,
 						TEXT("[UObject] AS FName return should match expected"));
@@ -1200,7 +1200,7 @@ FString LogFormatted(UObject Obj)
 			if (Inv.IsValid())
 			{
 				int32 Result = Inv.CallAndReturn<int32>(INDEX_NONE);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					12345,
 					Result,
 					TEXT("[UObject] AS int return should be 12345"));
@@ -1214,7 +1214,7 @@ FString LogFormatted(UObject Obj)
 			if (Inv.IsValid())
 			{
 				double Result = Inv.CallAndReturn<double>(0.0);
-				bPassed &= Assert.IsNear(
+				bPassed &= LocalAssert.IsNear(
 					3.0,
 					Result,
 					0.01,
@@ -1229,7 +1229,7 @@ FString LogFormatted(UObject Obj)
 			if (Inv.IsValid())
 			{
 				int32 Result = Inv.CallAndReturn<int32>(INDEX_NONE);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					true,
 					Result != 0,
 					TEXT("[UObject] AS bool return true should be nonzero"));
@@ -1243,7 +1243,7 @@ FString LogFormatted(UObject Obj)
 			if (Inv.IsValid())
 			{
 				int32 Result = Inv.CallAndReturn<int32>(0);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					0,
 					Result,
 					TEXT("[UObject] AS bool return false should be zero"));
@@ -1262,10 +1262,10 @@ FString LogFormatted(UObject Obj)
 				if (Inv.Call())
 				{
 					Inv.ReadReturnStruct(Result);
-					bPassed &= Assert.IsTrue(
+					bPassed &= LocalAssert.IsTrue(
 						Result.Contains(TEXT("42")),
 						TEXT("[UObject] AS ConcatIntFloat should contain '42'"));
-					bPassed &= Assert.IsTrue(
+					bPassed &= LocalAssert.IsTrue(
 						Result.Contains(TEXT("2.")),
 						TEXT("[UObject] AS ConcatIntFloat should contain '2.'"));
 				}
@@ -1286,7 +1286,7 @@ FString LogFormatted(UObject Obj)
 					Inv.ReadReturnStruct(Result);
 					FString Expected = FString::Printf(TEXT("%s:%s"),
 						*TestObj->GetClass()->GetName(), *TestObj->GetName());
-					bPassed &= Assert.AreEqual(
+					bPassed &= LocalAssert.AreEqual(
 						Expected,
 						Result,
 						TEXT("[UObject] AS ObjectToString should match C++ built string"));
@@ -1306,7 +1306,7 @@ FString LogFormatted(UObject Obj)
 				if (Inv.Call())
 				{
 					Inv.ReadReturnStruct(Result);
-					bPassed &= Assert.AreEqual(
+					bPassed &= LocalAssert.AreEqual(
 						TestObj->GetFullName(),
 						Result,
 						TEXT("[UObject] AS GetFullName return should match C++"));
@@ -1448,7 +1448,7 @@ bool IsRootedCheck(UObject Obj)
 )"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bPassed = true;
 
 		// Create test objects in C++
@@ -1472,7 +1472,7 @@ bool IsRootedCheck(UObject Obj)
 						*TexObj->GetClass()->GetName(),
 						*TexObj->GetName(),
 						*TexObj->GetPathName());
-					bPassed &= Assert.AreEqual(
+					bPassed &= LocalAssert.AreEqual(
 						Expected,
 						Result,
 						TEXT("[CppToAS] DescribeObject(Texture) should match C++ formatted string"));
@@ -1495,7 +1495,7 @@ bool IsRootedCheck(UObject Obj)
 						*CamObj->GetClass()->GetName(),
 						*CamObj->GetName(),
 						*CamObj->GetPathName());
-					bPassed &= Assert.AreEqual(
+					bPassed &= LocalAssert.AreEqual(
 						Expected,
 						Result,
 						TEXT("[CppToAS] DescribeObject(Camera) should match C++ formatted string"));
@@ -1514,7 +1514,7 @@ bool IsRootedCheck(UObject Obj)
 				if (Inv.Call())
 				{
 					Inv.ReadReturnStruct(Result);
-					bPassed &= Assert.AreEqual(
+					bPassed &= LocalAssert.AreEqual(
 						TexObj->GetFName(),
 						Result,
 						TEXT("[CppToAS] AS GetName(Tex) should match C++ FName"));
@@ -1533,7 +1533,7 @@ bool IsRootedCheck(UObject Obj)
 				if (Inv.Call())
 				{
 					Inv.ReadReturnStruct(Result);
-					bPassed &= Assert.AreEqual(
+					bPassed &= LocalAssert.AreEqual(
 						CamObj->GetFullName(),
 						Result,
 						TEXT("[CppToAS] AS GetFullName(Cam) should match C++"));
@@ -1551,7 +1551,7 @@ bool IsRootedCheck(UObject Obj)
 				Inv.AddArgObject(Arg0);
 				if (Arg1) Inv.AddArgObject(Arg1);
 				int32 R = Inv.CallAndReturn<int32>(INDEX_NONE);
-				bPassed &= Assert.AreEqual(Expected, R != 0, Label);
+				bPassed &= LocalAssert.AreEqual(Expected, R != 0, Label);
 			}
 		};
 
@@ -1573,7 +1573,7 @@ bool IsRootedCheck(UObject Obj)
 			{
 				Inv.AddArgObject(CamObj);
 				UObject* Result = Inv.CallAndReturn<UObject*>(nullptr);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					static_cast<UObject*>(CamObj),
 					Result,
 					TEXT("[CppToAS] Cast<AActor>(Camera) should return same pointer"));
@@ -1586,7 +1586,7 @@ bool IsRootedCheck(UObject Obj)
 			{
 				Inv.AddArgObject(CamObj);
 				UObject* Result = Inv.CallAndReturn<UObject*>(nullptr);
-				bPassed &= Assert.IsNull(
+				bPassed &= LocalAssert.IsNull(
 					Result,
 					TEXT("[CppToAS] Cast<UTexture2D>(Camera) should be null"));
 			}
@@ -1598,7 +1598,7 @@ bool IsRootedCheck(UObject Obj)
 			{
 				Inv.AddArgObject(TexObj);
 				UObject* Result = Inv.CallAndReturn<UObject*>(nullptr);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					static_cast<UObject*>(TexObj),
 					Result,
 					TEXT("[CppToAS] Cast<UTexture2D>(Texture) should return same pointer"));
@@ -1613,7 +1613,7 @@ bool IsRootedCheck(UObject Obj)
 			{
 				Inv.AddArgObject(TexObj);
 				UObject* Result = Inv.CallAndReturn<UObject*>(nullptr);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					TexObj->GetOuter(),
 					Result,
 					TEXT("[CppToAS] AS GetOuter(Tex) should match C++"));
@@ -1626,7 +1626,7 @@ bool IsRootedCheck(UObject Obj)
 			{
 				Inv.AddArgObject(CamObj);
 				UObject* Result = Inv.CallAndReturn<UObject*>(nullptr);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					static_cast<UObject*>(CamObj->GetPackage()),
 					Result,
 					TEXT("[CppToAS] AS GetPackage(Cam) should match C++"));
@@ -1639,7 +1639,7 @@ bool IsRootedCheck(UObject Obj)
 			{
 				Inv.AddArgObject(TexObj);
 				UClass* Result = Inv.CallAndReturn<UClass*>(nullptr);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					TexObj->GetClass(),
 					Result,
 					TEXT("[CppToAS] AS GetClass(Tex) should be UTexture2D"));
@@ -1678,7 +1678,7 @@ bool IsRootedCheck(UObject Obj)
 					Inv.ReadReturnStruct(Result);
 					FString Expected = FString::Printf(TEXT("%s:%s"),
 						*TexObj->GetClass()->GetName(), *TexObj->GetName());
-					bPassed &= Assert.AreEqual(
+					bPassed &= LocalAssert.AreEqual(
 						Expected,
 						Result,
 						TEXT("[CppToAS] LogAndReturnInfo should return ClassName:ObjName"));
@@ -1698,7 +1698,7 @@ bool IsRootedCheck(UObject Obj)
 					Inv.ReadReturnStruct(Result);
 					FString Expected = FString::Printf(TEXT("%s,%s"),
 						*TexObj->GetName(), *CamObj->GetName());
-					bPassed &= Assert.AreEqual(
+					bPassed &= LocalAssert.AreEqual(
 						Expected,
 						Result,
 						TEXT("[CppToAS] LogMultiple should return 'TexName,CamName'"));
@@ -1709,7 +1709,7 @@ bool IsRootedCheck(UObject Obj)
 		// ---- 11. Mutation: C++ passes object → AS AddToRoot → C++ verifies ----
 		{
 			// Verify not rooted initially
-			bPassed &= Assert.IsFalse(
+			bPassed &= LocalAssert.IsFalse(
 				TexObj->IsRooted(),
 				TEXT("[CppToAS] Tex should not be rooted before AS AddToRoot"));
 
@@ -1720,7 +1720,7 @@ bool IsRootedCheck(UObject Obj)
 				if (Inv.IsValid()) { Inv.AddArgObject(TexObj); Inv.Call(); }
 			}
 			// C++ verifies rooted
-			bPassed &= Assert.IsTrue(
+			bPassed &= LocalAssert.IsTrue(
 				TexObj->IsRooted(),
 				TEXT("[CppToAS] C++ should see Tex rooted after AS AddToRoot"));
 
@@ -1736,7 +1736,7 @@ bool IsRootedCheck(UObject Obj)
 				if (Inv.IsValid()) { Inv.AddArgObject(TexObj); Inv.Call(); }
 			}
 			// C++ verifies no longer rooted
-			bPassed &= Assert.IsFalse(
+			bPassed &= LocalAssert.IsFalse(
 				TexObj->IsRooted(),
 				TEXT("[CppToAS] C++ should see Tex not rooted after AS RemoveFromRoot"));
 
@@ -1873,7 +1873,7 @@ FString DescribeChain(UObject Leaf)
 )"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		bool bPassed = true;
 
 		// =================================================================
@@ -1885,11 +1885,11 @@ FString DescribeChain(UObject Leaf)
 			Test, Engine, Module, TEXT("UObject CreateChainRoot()"));
 		if (!CreateRootInv.IsValid()) return false;
 		UObject* Root = CreateRootInv.CallAndReturn<UObject*>(nullptr);
-		bPassed &= Assert.IsNotNull(Root, TEXT("[ObjChain] Root should be non-null"));
+		bPassed &= LocalAssert.IsNotNull(Root, TEXT("[ObjChain] Root should be non-null"));
 		if (!Root) return false;
 
 		// C++ verifies root's outer is the transient package
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			static_cast<UObject*>(GetTransientPackage()),
 			Root->GetOuter(),
 			TEXT("[ObjChain] Root outer should be transient package"));
@@ -1907,11 +1907,11 @@ FString DescribeChain(UObject Leaf)
 				Child = Inv.CallAndReturn<UObject*>(nullptr);
 			}
 		}
-		bPassed &= Assert.IsNotNull(Child, TEXT("[ObjChain] Child should be non-null"));
+		bPassed &= LocalAssert.IsNotNull(Child, TEXT("[ObjChain] Child should be non-null"));
 		if (!Child) return false;
 
 		// C++ verifies child's outer is root
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			Root,
 			Child->GetOuter(),
 			TEXT("[ObjChain] C++ Child->GetOuter() should be Root"));
@@ -1929,15 +1929,15 @@ FString DescribeChain(UObject Leaf)
 				GrandChild = Inv.CallAndReturn<UObject*>(nullptr);
 			}
 		}
-		bPassed &= Assert.IsNotNull(GrandChild, TEXT("[ObjChain] GrandChild should be non-null"));
+		bPassed &= LocalAssert.IsNotNull(GrandChild, TEXT("[ObjChain] GrandChild should be non-null"));
 		if (!GrandChild) return false;
 
 		// C++ verifies grandchild chain: GC→Child→Root→Package
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			Child,
 			GrandChild->GetOuter(),
 			TEXT("[ObjChain] C++ GrandChild->GetOuter() should be Child"));
-		bPassed &= Assert.AreEqual(
+		bPassed &= LocalAssert.AreEqual(
 			Root,
 			GrandChild->GetOuter()->GetOuter(),
 			TEXT("[ObjChain] C++ GrandChild->GetOuter()->GetOuter() should be Root"));
@@ -1954,7 +1954,7 @@ FString DescribeChain(UObject Leaf)
 			{
 				Inv.AddArgObject(GrandChild);
 				UObject* WalkedRoot = Inv.CallAndReturn<UObject*>(nullptr);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					Root,
 					WalkedRoot,
 					TEXT("[ObjChain] AS WalkToRoot(GrandChild) should reach Root"));
@@ -1969,7 +1969,7 @@ FString DescribeChain(UObject Leaf)
 			{
 				Inv.AddArgObject(GrandChild);
 				int32 Depth = Inv.CallAndReturn<int32>(INDEX_NONE);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					2,
 					Depth,
 					TEXT("[ObjChain] AS GetChainDepth(GrandChild) should be 2"));
@@ -1984,7 +1984,7 @@ FString DescribeChain(UObject Leaf)
 			{
 				Inv.AddArgObject(Child);
 				int32 Depth = Inv.CallAndReturn<int32>(INDEX_NONE);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					1,
 					Depth,
 					TEXT("[ObjChain] AS GetChainDepth(Child) should be 1"));
@@ -1999,7 +1999,7 @@ FString DescribeChain(UObject Leaf)
 			{
 				Inv.AddArgObject(Root);
 				int32 Depth = Inv.CallAndReturn<int32>(INDEX_NONE);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					0,
 					Depth,
 					TEXT("[ObjChain] AS GetChainDepth(Root) should be 0"));
@@ -2018,7 +2018,7 @@ FString DescribeChain(UObject Leaf)
 				{
 					Inv.ReadReturnStruct(Result);
 					FString Expected = TEXT("ChainGrandChild_42>ChainChild_42>ChainRoot_42");
-					bPassed &= Assert.AreEqual(
+					bPassed &= LocalAssert.AreEqual(
 						Expected,
 						Result,
 						TEXT("[ObjChain] AS CollectChainNames(GC) should be GC>Child>Root"));
@@ -2044,7 +2044,7 @@ FString DescribeChain(UObject Leaf)
 			{
 				Inv.AddArgObject(Leaf);
 				int32 Depth = Inv.CallAndReturn<int32>(INDEX_NONE);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					3,
 					Depth,
 					TEXT("[ObjChain] AS GetChainDepth(CppLeaf 4-level) should be 3"));
@@ -2059,7 +2059,7 @@ FString DescribeChain(UObject Leaf)
 			{
 				Inv.AddArgObject(Leaf);
 				UObject* WalkedRoot = Inv.CallAndReturn<UObject*>(nullptr);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					L1,
 					WalkedRoot,
 					TEXT("[ObjChain] AS WalkToRoot(CppLeaf) should reach CppL1"));
@@ -2078,7 +2078,7 @@ FString DescribeChain(UObject Leaf)
 				{
 					Inv.ReadReturnStruct(Result);
 					FString Expected = TEXT("CppLeaf_42>CppL3_42>CppL2_42>CppL1_42");
-					bPassed &= Assert.AreEqual(
+					bPassed &= LocalAssert.AreEqual(
 						Expected,
 						Result,
 						TEXT("[ObjChain] AS CollectChainNames(CppLeaf) should show full chain"));
@@ -2094,7 +2094,7 @@ FString DescribeChain(UObject Leaf)
 			{
 				Inv.AddArgObject(Leaf);
 				UObject* OutermostLeaf = Inv.CallAndReturn<UObject*>(nullptr);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					static_cast<UObject*>(GetTransientPackage()),
 					OutermostLeaf,
 					TEXT("[ObjChain] AS GetOutermost(Leaf) should be transient package"));
@@ -2107,7 +2107,7 @@ FString DescribeChain(UObject Leaf)
 			{
 				Inv.AddArgObject(L2);
 				UObject* OutermostL2 = Inv.CallAndReturn<UObject*>(nullptr);
-				bPassed &= Assert.AreEqual(
+				bPassed &= LocalAssert.AreEqual(
 					static_cast<UObject*>(GetTransientPackage()),
 					OutermostL2,
 					TEXT("[ObjChain] AS GetOutermost(L2) should also be transient package"));
@@ -2126,18 +2126,18 @@ FString DescribeChain(UObject Leaf)
 				{
 					Inv.ReadReturnStruct(Result);
 					FString CppPath = Leaf->GetPathName();
-					bPassed &= Assert.AreEqual(
+					bPassed &= LocalAssert.AreEqual(
 						CppPath,
 						Result,
 						TEXT("[ObjChain] AS GetPathName(Leaf) should match C++"));
 					// Also verify it contains all ancestor names
-					bPassed &= Assert.IsTrue(
+					bPassed &= LocalAssert.IsTrue(
 						Result.Contains(TEXT("CppL1_42")),
 						TEXT("[ObjChain] PathName should contain L1"));
-					bPassed &= Assert.IsTrue(
+					bPassed &= LocalAssert.IsTrue(
 						Result.Contains(TEXT("CppL2_42")),
 						TEXT("[ObjChain] PathName should contain L2"));
-					bPassed &= Assert.IsTrue(
+					bPassed &= LocalAssert.IsTrue(
 						Result.Contains(TEXT("CppL3_42")),
 						TEXT("[ObjChain] PathName should contain L3"));
 				}
@@ -2154,7 +2154,7 @@ FString DescribeChain(UObject Leaf)
 				Inv.AddArgObject(L2);
 				Inv.AddArgObject(L2Sibling);
 				int32 R = Inv.CallAndReturn<int32>(INDEX_NONE);
-				bPassed &= Assert.IsTrue(
+				bPassed &= LocalAssert.IsTrue(
 					R != 0,
 					TEXT("[ObjChain] L2 and L2Sibling should have same outer (L1)"));
 			}
@@ -2168,7 +2168,7 @@ FString DescribeChain(UObject Leaf)
 				Inv.AddArgObject(L2);
 				Inv.AddArgObject(L3);
 				int32 R = Inv.CallAndReturn<int32>(INDEX_NONE);
-				bPassed &= Assert.IsFalse(
+				bPassed &= LocalAssert.IsFalse(
 					R != 0,
 					TEXT("[ObjChain] L2 and L3 should have different outers"));
 			}
@@ -2185,14 +2185,14 @@ FString DescribeChain(UObject Leaf)
 				if (Inv.Call())
 				{
 					Inv.ReadReturnStruct(Result);
-					bPassed &= Assert.IsTrue(
+					bPassed &= LocalAssert.IsTrue(
 						Result.Contains(TEXT("CppLeaf_42")),
 						TEXT("[ObjChain] DescribeChain should contain Leaf name"));
-					bPassed &= Assert.IsTrue(
+					bPassed &= LocalAssert.IsTrue(
 						Result.Contains(TEXT("CppL1_42")),
 						TEXT("[ObjChain] DescribeChain should contain L1 name"));
 					// Should be in format: Leaf -> L3 -> L2 -> L1
-					bPassed &= Assert.IsTrue(
+					bPassed &= LocalAssert.IsTrue(
 						Result.Contains(TEXT(" -> ")),
 						TEXT("[ObjChain] DescribeChain should contain arrow separators"));
 				}

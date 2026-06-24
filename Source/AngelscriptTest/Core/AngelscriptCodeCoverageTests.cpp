@@ -163,9 +163,9 @@ namespace AngelscriptCodeCoverageTests
 		FAngelscriptEngine& Engine,
 		const TCHAR* ModuleName)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		TSharedPtr<FAngelscriptModuleDesc> FoundModule = FindActiveModule(Engine, ModuleName);
-		(void)Assert.IsTrue(FoundModule.IsValid(), FString::Printf(TEXT("%s should be registered as an active module"), ModuleName));
+		(void)LocalAssert.IsTrue(FoundModule.IsValid(), FString::Printf(TEXT("%s should be registered as an active module"), ModuleName));
 		return FoundModule;
 	}
 
@@ -174,13 +174,13 @@ namespace AngelscriptCodeCoverageTests
 		const FLineCoverage* LineCoverage,
 		const TCHAR* Context)
 	{
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(LineCoverage, FString::Printf(TEXT("%s should have line coverage"), Context)))
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(LineCoverage, FString::Printf(TEXT("%s should have line coverage"), Context)))
 		{
 			return false;
 		}
 
-		return Assert.IsTrue(
+		return LocalAssert.IsTrue(
 			LineCoverage->NumExecutableLines() > 0,
 			FString::Printf(TEXT("%s should have executable lines"), Context));
 	}
@@ -191,8 +191,8 @@ namespace AngelscriptCodeCoverageTests
 		FString& OutContents,
 		const TCHAR* Context)
 	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsTrue(
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsTrue(
 			FFileHelper::LoadFileToString(OutContents, *Path),
 			FString::Printf(TEXT("%s should be readable at %s"), Context, *Path));
 	}

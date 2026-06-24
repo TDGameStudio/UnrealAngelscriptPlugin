@@ -1,13 +1,13 @@
 // ============================================================================
 // AngelscriptTextFormattingBindingsTests.cpp
 //
-// FFormatArgumentValue / FText::Format binding coverage — CQTest pattern.
+// FFormatArgumentValue / FText::Format binding coverage �?CQTest pattern.
 // Automation ID:
 //   Angelscript.TestModule.Bindings.TextFormatting.FAngelscriptTextFormattingBindingsTest.*
 //
 // Sections:
-//   OrderedFormat — ordered FFormatArgumentValue args + FText::Format
-//   NamedFormat   — named FFormatArgumentValue args + FText::Format
+//   OrderedFormat �?ordered FFormatArgumentValue args + FText::Format
+//   NamedFormat   �?named FFormatArgumentValue args + FText::Format
 //
 // Each section computes the C++ expected string at runtime, injects it into
 // the AS source via ReplaceInline, and verifies the AS-side formatted result
@@ -28,39 +28,8 @@
 
 
 // ----------------------------------------------------------------------------
-// Helpers — compute C++ baselines at runtime
+// Helpers �?compute C++ baselines at runtime
 // ----------------------------------------------------------------------------
-
-namespace AngelscriptTest_TextFormatting_Private
-{
-	FString BuildOrderedExpected()
-	{
-		const FText Pattern = FText::FromString(TEXT("{0}|{1}|{2}|{3}|{4}|{5}|{6}"));
-		FFormatOrderedArguments Args;
-		Args.Add(FFormatArgumentValue(int32(-7)));
-		Args.Add(FFormatArgumentValue(uint32(42)));
-		Args.Add(FFormatArgumentValue(int64(9000000000ll)));
-		Args.Add(FFormatArgumentValue(uint64(15)));
-		Args.Add(FFormatArgumentValue(float(3.25f)));
-		Args.Add(FFormatArgumentValue(double(6.5)));
-		Args.Add(FFormatArgumentValue(FText::FromString(TEXT("Alpha"))));
-		return FText::Format(Pattern, Args).ToString().ReplaceCharWithEscapedChar();
-	}
-
-	FString BuildNamedExpected()
-	{
-		const FText Pattern = FText::FromString(TEXT("{Int32}|{UInt32}|{Int64}|{UInt64}|{Float32}|{Float64}|{Text}"));
-		FFormatNamedArguments Args;
-		Args.Add(TEXT("Int32"), FFormatArgumentValue(int32(-7)));
-		Args.Add(TEXT("UInt32"), FFormatArgumentValue(uint32(42)));
-		Args.Add(TEXT("Int64"), FFormatArgumentValue(int64(9000000000ll)));
-		Args.Add(TEXT("UInt64"), FFormatArgumentValue(uint64(15)));
-		Args.Add(TEXT("Float32"), FFormatArgumentValue(float(3.25f)));
-		Args.Add(TEXT("Float64"), FFormatArgumentValue(double(6.5)));
-		Args.Add(TEXT("Text"), FFormatArgumentValue(FText::FromString(TEXT("Alpha"))));
-		return FText::Format(Pattern, Args).ToString().ReplaceCharWithEscapedChar();
-	}
-}
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -70,6 +39,36 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTextFormattingBindingsTest,
 	"Angelscript.TestModule.Bindings.TextFormatting",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static FString BuildOrderedExpected()
+{
+	const FText Pattern = FText::FromString(TEXT("{0}|{1}|{2}|{3}|{4}|{5}|{6}"));
+	FFormatOrderedArguments Args;
+	Args.Add(FFormatArgumentValue(int32(-7)));
+	Args.Add(FFormatArgumentValue(uint32(42)));
+	Args.Add(FFormatArgumentValue(int64(9000000000ll)));
+	Args.Add(FFormatArgumentValue(uint64(15)));
+	Args.Add(FFormatArgumentValue(float(3.25f)));
+	Args.Add(FFormatArgumentValue(double(6.5)));
+	Args.Add(FFormatArgumentValue(FText::FromString(TEXT("Alpha"))));
+	return FText::Format(Pattern, Args).ToString().ReplaceCharWithEscapedChar();
+}
+
+static FString BuildNamedExpected()
+{
+	const FText Pattern = FText::FromString(TEXT("{Int32}|{UInt32}|{Int64}|{UInt64}|{Float32}|{Float64}|{Text}"));
+	FFormatNamedArguments Args;
+	Args.Add(TEXT("Int32"), FFormatArgumentValue(int32(-7)));
+	Args.Add(TEXT("UInt32"), FFormatArgumentValue(uint32(42)));
+	Args.Add(TEXT("Int64"), FFormatArgumentValue(int64(9000000000ll)));
+	Args.Add(TEXT("UInt64"), FFormatArgumentValue(uint64(15)));
+	Args.Add(TEXT("Float32"), FFormatArgumentValue(float(3.25f)));
+	Args.Add(TEXT("Float64"), FFormatArgumentValue(double(6.5)));
+	Args.Add(TEXT("Text"), FFormatArgumentValue(FText::FromString(TEXT("Alpha"))));
+	return FText::Format(Pattern, Args).ToString().ReplaceCharWithEscapedChar();
+}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -83,9 +82,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTextFormattingBindingsTest,
 
 	TEST_METHOD(OrderedFormat)
 	{
-		using namespace AngelscriptTest_TextFormatting_Private;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		const FString OrderedExpected = BuildOrderedExpected();
@@ -126,9 +123,7 @@ int OrderedFormat_Match()
 
 	TEST_METHOD(NamedFormat)
 	{
-		using namespace AngelscriptTest_TextFormatting_Private;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		const FString NamedExpected = BuildNamedExpected();

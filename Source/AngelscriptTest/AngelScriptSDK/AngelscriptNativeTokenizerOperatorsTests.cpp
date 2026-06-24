@@ -8,7 +8,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeTokenizerOperatorsTests,
 	"Angelscript.TestModule.AngelScriptSDK.Tokenizer.Operators",
@@ -25,7 +24,7 @@ private:
 
 	static bool ReadToken(const char* Input, eTokenType& OutTokenType, int32& OutTokenLength)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 		OutTokenType = Tokenizer.GetToken(Input, std::strlen(Input), &TokenLength);
 		OutTokenLength = static_cast<int32>(TokenLength);
@@ -148,7 +147,7 @@ public:
 
 	TEST_METHOD(HandleOpAt)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 		const eTokenType TokenType = Tokenizer.GetToken("@", 1, &TokenLength);
 
@@ -160,7 +159,7 @@ public:
 
 	TEST_METHOD(LongestMatchPrefersShiftRAOverShiftR)
 	{
-		FTokenizerAccessor Tokenizer;
+		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
 		ASSERT_THAT(AreEqual(static_cast<int32>(ttShiftRightAAssign), static_cast<int32>(Tokenizer.GetToken(">>>=", 4, &TokenLength)),

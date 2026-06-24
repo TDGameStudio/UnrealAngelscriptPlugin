@@ -9,30 +9,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_Core_AngelscriptRuntimeModuleTests_Private
-{
-	struct FRuntimeModuleContextStackGuard
-	{
-		TArray<FAngelscriptEngine*> SavedStack;
-
-		FRuntimeModuleContextStackGuard()
-		{
-			SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
-		}
-
-		~FRuntimeModuleContextStackGuard()
-		{
-			FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
-		}
-
-		void DiscardSavedStack()
-		{
-			SavedStack.Reset();
-		}
-	};
-}
-
-
 struct FAngelscriptRuntimeModuleTickTestAccess
 {
 	static void SetInitializeOverride(TFunction<FAngelscriptEngine*()> InOverride)
@@ -91,9 +67,30 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 	"Angelscript.TestModule.Engine.RuntimeModule",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	struct FRuntimeModuleContextStackGuard
+	{
+		TArray<FAngelscriptEngine*> SavedStack;
+
+		FRuntimeModuleContextStackGuard()
+		{
+			SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
+		}
+
+		~FRuntimeModuleContextStackGuard()
+		{
+			FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
+		}
+
+		void DiscardSavedStack()
+		{
+			SavedStack.Reset();
+		}
+	};
+
+public:
 	TEST_METHOD(InitializeOverrideIsIdempotentAndRestorable)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptRuntimeModuleTests_Private;
 		FRuntimeModuleContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
@@ -171,7 +168,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 
 	TEST_METHOD(InitializeRoutesToEngineSubsystem)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptRuntimeModuleTests_Private;
 		FRuntimeModuleContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
@@ -265,7 +261,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 
 	TEST_METHOD(StartupModuleDoesNotBootstrapPrimaryEngine)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptRuntimeModuleTests_Private;
 		FRuntimeModuleContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
@@ -325,7 +320,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptRuntimeModuleTests,
 
 	TEST_METHOD(InitializeAdoptsAmbientEngineWithoutOwningIt)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptRuntimeModuleTests_Private;
 		FRuntimeModuleContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
@@ -430,9 +424,30 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEngineSubsystemTickTests,
 	"Angelscript.TestModule.Engine.EngineSubsystem",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	struct FRuntimeModuleContextStackGuard
+	{
+		TArray<FAngelscriptEngine*> SavedStack;
+
+		FRuntimeModuleContextStackGuard()
+		{
+			SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
+		}
+
+		~FRuntimeModuleContextStackGuard()
+		{
+			FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
+		}
+
+		void DiscardSavedStack()
+		{
+			SavedStack.Reset();
+		}
+	};
+
+public:
 	TEST_METHOD(TickRespectsGameInstanceOwnership)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptRuntimeModuleTests_Private;
 		FRuntimeModuleContextStackGuard ContextGuard;
 		const int32 SavedActiveTickOwners = FAngelscriptTickBehaviorTestAccess::GetActiveTickOwners();
 		DestroySharedTestEngine();

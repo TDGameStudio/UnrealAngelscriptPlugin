@@ -13,112 +13,110 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
-namespace AngelscriptTest_ClassGenerator_AngelscriptASFunctionMetadataTests_Private
-{
-	static const TCHAR* CQMessage(const TCHAR* Message)
-	{
-		return Message;
-	}
-
-	static const TCHAR* CQMessage(const FString& Message)
-	{
-		return *Message;
-	}
-
-	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsTrue(bActual, Message);
-	}
-
-	static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsFalse(bActual, Message);
-	}
-
-	template <typename ActualType, typename ExpectedType>
-	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreEqual(Expected, Actual, Message);
-	}
-
-	template <typename ActualType, typename ExpectedType>
-	static bool CheckEqual(FAutomationTestBase& Test, const FString& Message, const ActualType& Actual, const ExpectedType& Expected)
-	{
-		return CheckEqual(Test, CQMessage(Message), Actual, Expected);
-	}
-
-	template <typename ValueType>
-	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsNotNull(Value, Message);
-	}
-
-	static const FName NetValidateModuleName(TEXT("ASFunctionNetValidateCache"));
-	static const FString NetValidateFilename(TEXT("ASFunctionNetValidateCache.as"));
-	static const FName ClassificationModuleName(TEXT("ASFunctionMetadataClassification"));
-	static const FString ClassificationFilename(TEXT("ASFunctionMetadataClassification.as"));
-	static const FName ClassificationClassName(TEXT("UASFunctionMetadataClassification"));
-	static const FName ClassificationStaticsClassName(TEXT("UModule_ASFunctionMetadataClassificationStatics"));
-
-	void CollectNonReturnParameters(UFunction& Function, TArray<FProperty*>& OutParameters)
-	{
-		for (TFieldIterator<FProperty> It(&Function); It; ++It)
-		{
-			FProperty* Property = *It;
-			if (Property->HasAnyPropertyFlags(CPF_Parm) && !Property->HasAnyPropertyFlags(CPF_ReturnParm))
-			{
-				OutParameters.Add(Property);
-			}
-		}
-	}
-
-	bool ExpectMatchingParameterSignature(
-		FAutomationTestBase& Test,
-		UFunction& ServerFunction,
-		UFunction& ValidateFunction)
-	{
-		TArray<FProperty*> ServerParameters;
-		TArray<FProperty*> ValidateParameters;
-		CollectNonReturnParameters(ServerFunction, ServerParameters);
-		CollectNonReturnParameters(ValidateFunction, ValidateParameters);
-
-		if (!CheckEqual(Test,
-				TEXT("ASFunction.NetValidateCachesValidateFunction should keep the same parameter count on the _Validate function"),
-				ValidateParameters.Num(),
-				ServerParameters.Num()))
-		{
-			return false;
-		}
-
-		for (int32 Index = 0; Index < ServerParameters.Num(); ++Index)
-		{
-			FProperty* ServerParameter = ServerParameters[Index];
-			FProperty* ValidateParameter = ValidateParameters[Index];
-			const FString Context = FString::Printf(TEXT("ASFunction.NetValidateCachesValidateFunction parameter %d"), Index);
-			if (!CheckEqual(Test, Context + TEXT(" should preserve the parameter name"), ValidateParameter->GetFName(), ServerParameter->GetFName())
-				|| !CheckEqual(Test, Context + TEXT(" should preserve the parameter property class"), ValidateParameter->GetClass(), ServerParameter->GetClass())
-				|| !CheckEqual(Test, Context + TEXT(" should preserve the parameter cpp type"), ValidateParameter->GetCPPType(), ServerParameter->GetCPPType()))
-			{
-				return false;
-			}
-		}
-
-		return true;
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionMetadataTests,
 	"Angelscript.TestModule.ClassGenerator.ASFunction",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static const TCHAR* CQMessage(const TCHAR* Message)
+{
+	return Message;
+}
+
+static const TCHAR* CQMessage(const FString& Message)
+{
+	return *Message;
+}
+
+static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsTrue(bActual, Message);
+}
+
+static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsFalse(bActual, Message);
+}
+
+template <typename ActualType, typename ExpectedType>
+static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.AreEqual(Expected, Actual, Message);
+}
+
+template <typename ActualType, typename ExpectedType>
+static bool CheckEqual(FAutomationTestBase& Test, const FString& Message, const ActualType& Actual, const ExpectedType& Expected)
+{
+	return CheckEqual(Test, CQMessage(Message), Actual, Expected);
+}
+
+template <typename ValueType>
+static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsNotNull(Value, Message);
+}
+
+inline static const FName NetValidateModuleName = FName(TEXT("ASFunctionNetValidateCache"));
+inline static const FString NetValidateFilename = FString(TEXT("ASFunctionNetValidateCache.as"));
+inline static const FName ClassificationModuleName = FName(TEXT("ASFunctionMetadataClassification"));
+inline static const FString ClassificationFilename = FString(TEXT("ASFunctionMetadataClassification.as"));
+inline static const FName ClassificationClassName = FName(TEXT("UASFunctionMetadataClassification"));
+inline static const FName ClassificationStaticsClassName = FName(TEXT("UModule_ASFunctionMetadataClassificationStatics"));
+
+static void CollectNonReturnParameters(UFunction& Function, TArray<FProperty*>& OutParameters)
+{
+	for (TFieldIterator<FProperty> It(&Function); It; ++It)
+	{
+		FProperty* Property = *It;
+		if (Property->HasAnyPropertyFlags(CPF_Parm) && !Property->HasAnyPropertyFlags(CPF_ReturnParm))
+		{
+			OutParameters.Add(Property);
+		}
+	}
+}
+
+static bool ExpectMatchingParameterSignature(
+	FAutomationTestBase& Test,
+	UFunction& ServerFunction,
+	UFunction& ValidateFunction)
+{
+	TArray<FProperty*> ServerParameters;
+	TArray<FProperty*> ValidateParameters;
+	CollectNonReturnParameters(ServerFunction, ServerParameters);
+	CollectNonReturnParameters(ValidateFunction, ValidateParameters);
+
+	if (!CheckEqual(Test,
+			TEXT("ASFunction.NetValidateCachesValidateFunction should keep the same parameter count on the _Validate function"),
+			ValidateParameters.Num(),
+			ServerParameters.Num()))
+	{
+		return false;
+	}
+
+	for (int32 Index = 0; Index < ServerParameters.Num(); ++Index)
+	{
+		FProperty* ServerParameter = ServerParameters[Index];
+		FProperty* ValidateParameter = ValidateParameters[Index];
+		const FString Context = FString::Printf(TEXT("ASFunction.NetValidateCachesValidateFunction parameter %d"), Index);
+		if (!CheckEqual(Test, Context + TEXT(" should preserve the parameter name"), ValidateParameter->GetFName(), ServerParameter->GetFName())
+			|| !CheckEqual(Test, Context + TEXT(" should preserve the parameter property class"), ValidateParameter->GetClass(), ServerParameter->GetClass())
+			|| !CheckEqual(Test, Context + TEXT(" should preserve the parameter cpp type"), ValidateParameter->GetCPPType(), ServerParameter->GetCPPType()))
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+public:
 	TEST_METHOD(NetValidateCachesValidateFunction)
 	{
-		using namespace AngelscriptTest_ClassGenerator_AngelscriptASFunctionMetadataTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
@@ -187,8 +185,7 @@ class AASFunctionNetValidateCache : AActor
 
 	TEST_METHOD(GeneratedNativeAndStaleMetadataAreClassified)
 	{
-		using namespace AngelscriptTest_ClassGenerator_AngelscriptASFunctionMetadataTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 		bool bModuleDiscarded = false;

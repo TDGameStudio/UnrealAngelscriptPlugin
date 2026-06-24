@@ -55,9 +55,9 @@ namespace AngelscriptAssetManagerTestHelpers
 		const TCHAR* ContextLabel,
 		int32& OutValue)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		FIntProperty* Property = FindFProperty<FIntProperty>(Object.GetClass(), PropertyName);
-		if (!Assert.IsNotNull(
+		if (!LocalAssert.IsNotNull(
 			Property,
 			*FString::Printf(TEXT("%s should expose int property '%s'"), ContextLabel, *PropertyName.ToString())))
 		{

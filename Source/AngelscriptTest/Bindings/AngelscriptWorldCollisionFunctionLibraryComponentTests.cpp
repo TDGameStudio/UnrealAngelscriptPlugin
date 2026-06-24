@@ -6,8 +6,8 @@
 //   Angelscript.TestModule.FunctionLibraries.WorldCollisionComponent.FAngelscriptWorldCollisionFunctionLibraryComponentTest.*
 //
 // Sections:
-//   ComponentQueries     — ComponentSweepMulti/ComponentOverlapMulti hit/miss parity
-//   NullComponentQueries — null component guard returns false and clears output
+//   ComponentQueries     �?ComponentSweepMulti/ComponentOverlapMulti hit/miss parity
+//   NullComponentQueries �?null component guard returns false and clears output
 //
 // CQTest adaptation notes:
 //   Two legacy automation tests merged into one TEST_CLASS.
@@ -43,71 +43,6 @@
 // Shared helpers (retained from original)
 // ----------------------------------------------------------------------------
 
-namespace AngelscriptTest_Bindings_AngelscriptWorldCollisionFunctionLibraryComponentTests_Private
-{
-	static constexpr ANSICHAR ModuleName[] = "ASWorldCollisionFunctionLibraryComponentQueries";
-	static constexpr ANSICHAR NullComponentModuleName[] = "ASWorldCollisionFunctionLibraryNullComponentQueries";
-	static const FVector BlockingTargetLocation(0.0f, 0.0f, 0.0f);
-	static const FVector OverlapTargetLocation(0.0f, 150.0f, 0.0f);
-	static const FVector QueryComponentSpawnLocation(0.0f, 300.0f, 0.0f);
-	static const FVector SweepHitStart(-200.0f, 0.0f, 0.0f);
-	static const FVector SweepHitEnd(200.0f, 0.0f, 0.0f);
-	static const FVector SweepMissStart(-200.0f, -200.0f, 0.0f);
-	static const FVector SweepMissEnd(200.0f, -200.0f, 0.0f);
-	static const FVector TargetExtent(50.0f, 50.0f, 50.0f);
-	static const FVector OverlapExtent(40.0f, 40.0f, 40.0f);
-	static const FVector QueryExtent(30.0f, 30.0f, 30.0f);
-	static const FVector MissOverlapLocation(0.0f, -150.0f, 0.0f);
-	static const FQuat IdentityRotation = FQuat::Identity;
-
-	UBoxComponent* AddCollisionBox(AActor& Owner, FName ComponentName, const FVector& BoxExtent, const FVector& WorldLocation)
-	{
-		UBoxComponent* BoxComponent = NewObject<UBoxComponent>(&Owner, ComponentName);
-		check(BoxComponent != nullptr);
-		Owner.AddInstanceComponent(BoxComponent);
-		Owner.SetRootComponent(BoxComponent);
-		BoxComponent->RegisterComponent();
-		BoxComponent->SetCollisionProfileName(UCollisionProfile::BlockAllDynamic_ProfileName);
-		BoxComponent->SetGenerateOverlapEvents(true);
-		BoxComponent->SetBoxExtent(BoxExtent);
-		BoxComponent->SetWorldLocation(WorldLocation);
-		return BoxComponent;
-	}
-
-	template <typename TResult>
-	bool ExpectArrayParity(FAutomationTestBase& Test, const TCHAR* Label, bool bScriptReturnValue, bool bNativeReturnValue, const TArray<TResult>& ScriptResults, const TArray<TResult>& NativeResults)
-	{
-		FNoDiscardAsserter Assert(Test);
-		bool bPassed = true;
-		bPassed &= Assert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), Label));
-		bPassed &= Assert.AreEqual(NativeResults.Num(), ScriptResults.Num(), *FString::Printf(TEXT("%s should preserve the result count"), Label));
-
-		for (int32 ResultIndex = 0; ResultIndex < FMath::Min(ScriptResults.Num(), NativeResults.Num()); ++ResultIndex)
-		{
-			bPassed &= Assert.AreEqual(NativeResults[ResultIndex].GetActor(), ScriptResults[ResultIndex].GetActor(), *FString::Printf(TEXT("%s should preserve actor for result %d"), Label, ResultIndex));
-			bPassed &= Assert.AreEqual(NativeResults[ResultIndex].GetComponent(), ScriptResults[ResultIndex].GetComponent(), *FString::Printf(TEXT("%s should preserve component for result %d"), Label, ResultIndex));
-		}
-
-		return bPassed;
-	}
-
-	bool HitResultsContainComponent(const TArray<FHitResult>& Hits, const UPrimitiveComponent* Component)
-	{
-		return Hits.ContainsByPredicate([Component](const FHitResult& Hit)
-		{
-			return Hit.GetComponent() == Component;
-		});
-	}
-
-	bool OverlapsContainComponent(const TArray<FOverlapResult>& Overlaps, const UPrimitiveComponent* Component)
-	{
-		return Overlaps.ContainsByPredicate([Component](const FOverlapResult& Overlap)
-		{
-			return Overlap.GetComponent() == Component;
-		});
-	}
-}
-
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -117,14 +52,77 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptWorldCollisionFunctionLibraryComponentTest,
 	"Angelscript.TestModule.FunctionLibraries.WorldCollisionComponent",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static constexpr ANSICHAR ModuleName[] = "ASWorldCollisionFunctionLibraryComponentQueries";
+static constexpr ANSICHAR NullComponentModuleName[] = "ASWorldCollisionFunctionLibraryNullComponentQueries";
+inline static const FVector BlockingTargetLocation = FVector(0.0f, 0.0f, 0.0f);
+inline static const FVector OverlapTargetLocation = FVector(0.0f, 150.0f, 0.0f);
+inline static const FVector QueryComponentSpawnLocation = FVector(0.0f, 300.0f, 0.0f);
+inline static const FVector SweepHitStart = FVector(-200.0f, 0.0f, 0.0f);
+inline static const FVector SweepHitEnd = FVector(200.0f, 0.0f, 0.0f);
+inline static const FVector SweepMissStart = FVector(-200.0f, -200.0f, 0.0f);
+inline static const FVector SweepMissEnd = FVector(200.0f, -200.0f, 0.0f);
+inline static const FVector TargetExtent = FVector(50.0f, 50.0f, 50.0f);
+inline static const FVector OverlapExtent = FVector(40.0f, 40.0f, 40.0f);
+inline static const FVector QueryExtent = FVector(30.0f, 30.0f, 30.0f);
+inline static const FVector MissOverlapLocation = FVector(0.0f, -150.0f, 0.0f);
+inline static const FQuat IdentityRotation = FQuat::Identity;
+
+static UBoxComponent* AddCollisionBox(AActor& Owner, FName ComponentName, const FVector& BoxExtent, const FVector& WorldLocation)
+{
+	UBoxComponent* BoxComponent = NewObject<UBoxComponent>(&Owner, ComponentName);
+	check(BoxComponent != nullptr);
+	Owner.AddInstanceComponent(BoxComponent);
+	Owner.SetRootComponent(BoxComponent);
+	BoxComponent->RegisterComponent();
+	BoxComponent->SetCollisionProfileName(UCollisionProfile::BlockAllDynamic_ProfileName);
+	BoxComponent->SetGenerateOverlapEvents(true);
+	BoxComponent->SetBoxExtent(BoxExtent);
+	BoxComponent->SetWorldLocation(WorldLocation);
+	return BoxComponent;
+}
+
+template <typename TResult>
+static bool ExpectArrayParity(FAutomationTestBase& Test, const TCHAR* Label, bool bScriptReturnValue, bool bNativeReturnValue, const TArray<TResult>& ScriptResults, const TArray<TResult>& NativeResults)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	bool bPassed = true;
+	bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), Label));
+	bPassed &= LocalAssert.AreEqual(NativeResults.Num(), ScriptResults.Num(), *FString::Printf(TEXT("%s should preserve the result count"), Label));
+
+	for (int32 ResultIndex = 0; ResultIndex < FMath::Min(ScriptResults.Num(), NativeResults.Num()); ++ResultIndex)
+	{
+		bPassed &= LocalAssert.AreEqual(NativeResults[ResultIndex].GetActor(), ScriptResults[ResultIndex].GetActor(), *FString::Printf(TEXT("%s should preserve actor for result %d"), Label, ResultIndex));
+		bPassed &= LocalAssert.AreEqual(NativeResults[ResultIndex].GetComponent(), ScriptResults[ResultIndex].GetComponent(), *FString::Printf(TEXT("%s should preserve component for result %d"), Label, ResultIndex));
+	}
+
+	return bPassed;
+}
+
+static bool HitResultsContainComponent(const TArray<FHitResult>& Hits, const UPrimitiveComponent* Component)
+{
+	return Hits.ContainsByPredicate([Component](const FHitResult& Hit)
+	{
+		return Hit.GetComponent() == Component;
+	});
+}
+
+static bool OverlapsContainComponent(const TArray<FOverlapResult>& Overlaps, const UPrimitiveComponent* Component)
+{
+	return Overlaps.ContainsByPredicate([Component](const FOverlapResult& Overlap)
+	{
+		return Overlap.GetComponent() == Component;
+	});
+}
+
+public:
 	// ====================================================================
 	// Section: ComponentQueries
 	// ====================================================================
 
 	TEST_METHOD(ComponentQueries)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptWorldCollisionFunctionLibraryComponentTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		{
 		FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
@@ -184,11 +182,11 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 		Spawner.InitializeGameSubsystems();
 
 		AActor& CollisionBlockingActor = Spawner.SpawnActor<AActor>();
-		UBoxComponent* BlockingBox = AngelscriptTest_Bindings_AngelscriptWorldCollisionFunctionLibraryComponentTests_Private::AddCollisionBox(CollisionBlockingActor, FName(TEXT("BlockingTarget")), TargetExtent, BlockingTargetLocation);
+		UBoxComponent* BlockingBox = AddCollisionBox(CollisionBlockingActor, FName(TEXT("BlockingTarget")), TargetExtent, BlockingTargetLocation);
 		AActor& CollisionOverlapActor = Spawner.SpawnActor<AActor>();
-		UBoxComponent* OverlapBox = AngelscriptTest_Bindings_AngelscriptWorldCollisionFunctionLibraryComponentTests_Private::AddCollisionBox(CollisionOverlapActor, FName(TEXT("OverlapTarget")), OverlapExtent, OverlapTargetLocation);
+		UBoxComponent* OverlapBox = AddCollisionBox(CollisionOverlapActor, FName(TEXT("OverlapTarget")), OverlapExtent, OverlapTargetLocation);
 		AActor& CollisionQueryActor = Spawner.SpawnActor<AActor>();
-		UBoxComponent* QueryBox = AngelscriptTest_Bindings_AngelscriptWorldCollisionFunctionLibraryComponentTests_Private::AddCollisionBox(CollisionQueryActor, FName(TEXT("QueryComponent")), QueryExtent, QueryComponentSpawnLocation);
+		UBoxComponent* QueryBox = AddCollisionBox(CollisionQueryActor, FName(TEXT("QueryComponent")), QueryExtent, QueryComponentSpawnLocation);
 		if (!this->Assert.IsNotNull(BlockingBox, TEXT("World collision function library blocker should be created"))
 			|| !this->Assert.IsNotNull(OverlapBox, TEXT("World collision function library overlap target should be created"))
 			|| !this->Assert.IsNotNull(QueryBox, TEXT("World collision function library query component should be created")))
@@ -315,8 +313,7 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 
 	TEST_METHOD(NullComponentQueries)
 	{
-		using namespace AngelscriptTest_Bindings_AngelscriptWorldCollisionFunctionLibraryComponentTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		{
 		FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
@@ -374,11 +371,11 @@ bool RunComponentOverlapMultiNull(UPrimitiveComponent QueryComponent, TArray<FOv
 		Spawner.InitializeGameSubsystems();
 
 		AActor& CollisionBlockingActor = Spawner.SpawnActor<AActor>();
-		UBoxComponent* BlockingBox = AngelscriptTest_Bindings_AngelscriptWorldCollisionFunctionLibraryComponentTests_Private::AddCollisionBox(CollisionBlockingActor, FName(TEXT("NullGuardBlockingTarget")), TargetExtent, BlockingTargetLocation);
+		UBoxComponent* BlockingBox = AddCollisionBox(CollisionBlockingActor, FName(TEXT("NullGuardBlockingTarget")), TargetExtent, BlockingTargetLocation);
 		AActor& CollisionOverlapActor = Spawner.SpawnActor<AActor>();
-		UBoxComponent* OverlapBox = AngelscriptTest_Bindings_AngelscriptWorldCollisionFunctionLibraryComponentTests_Private::AddCollisionBox(CollisionOverlapActor, FName(TEXT("NullGuardOverlapTarget")), OverlapExtent, OverlapTargetLocation);
+		UBoxComponent* OverlapBox = AddCollisionBox(CollisionOverlapActor, FName(TEXT("NullGuardOverlapTarget")), OverlapExtent, OverlapTargetLocation);
 		AActor& CollisionQueryActor = Spawner.SpawnActor<AActor>();
-		UBoxComponent* QueryBox = AngelscriptTest_Bindings_AngelscriptWorldCollisionFunctionLibraryComponentTests_Private::AddCollisionBox(CollisionQueryActor, FName(TEXT("NullGuardQueryComponent")), QueryExtent, QueryComponentSpawnLocation);
+		UBoxComponent* QueryBox = AddCollisionBox(CollisionQueryActor, FName(TEXT("NullGuardQueryComponent")), QueryExtent, QueryComponentSpawnLocation);
 		if (!this->Assert.IsNotNull(BlockingBox, TEXT("World collision null-component test should create the blocker component"))
 			|| !this->Assert.IsNotNull(OverlapBox, TEXT("World collision null-component test should create the overlap target"))
 			|| !this->Assert.IsNotNull(QueryBox, TEXT("World collision null-component test should create the query component")))

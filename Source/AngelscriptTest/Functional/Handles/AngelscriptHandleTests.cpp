@@ -14,53 +14,6 @@ bool CompileModuleWithResult(FAngelscriptEngine* Engine, ECompileType CompileTyp
 void ResetSharedCloneEngine(FAngelscriptEngine& Engine);
 
 
-namespace AngelscriptTest_Angelscript_AngelscriptHandleTests_Private
-{
-	static constexpr ANSICHAR HandleNativeObjectArgumentModuleName[] = "ASHandleNativeObjectArgument";
-
-	bool ExecuteNativeObjectArgumentCase(
-		FAutomationTestBase& Test,
-		asIScriptContext& Context,
-		asIScriptFunction& Function,
-		UObject* Value,
-		const TCHAR* ContextLabel,
-		int32 ExpectedReturnValue)
-	{
-		const int PrepareResult = Context.Prepare(&Function);
-		if (!Test.TestEqual(
-			*FString::Printf(TEXT("%s should prepare successfully"), ContextLabel),
-			PrepareResult,
-			static_cast<int32>(asSUCCESS)))
-		{
-			return false;
-		}
-
-		const int SetArgResult = Context.SetArgObject(0, Value);
-		if (!Test.TestEqual(
-			*FString::Printf(TEXT("%s should bind the UObject argument"), ContextLabel),
-			SetArgResult,
-			static_cast<int32>(asSUCCESS)))
-		{
-			return false;
-		}
-
-		const int ExecuteResult = Context.Execute();
-		if (!Test.TestEqual(
-			*FString::Printf(TEXT("%s should execute successfully"), ContextLabel),
-			ExecuteResult,
-			static_cast<int32>(asEXECUTION_FINISHED)))
-		{
-			return false;
-		}
-
-		return Test.TestEqual(
-			*FString::Printf(TEXT("%s should return the expected nullability marker"), ContextLabel),
-			static_cast<int32>(Context.GetReturnDWord()),
-			ExpectedReturnValue);
-	}
-}
-
-
 TEST_CLASS_WITH_FLAGS(
 	FAngelscriptHandleTests,
 	"Angelscript.TestModule.Functional.Handles",
@@ -189,9 +142,53 @@ TEST_CLASS_WITH_FLAGS(
 	"Angelscript.TestModule.Functional.Handles.NativeObjectArgument",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	inline static constexpr ANSICHAR HandleNativeObjectArgumentModuleName[] = "ASHandleNativeObjectArgument";
+
+	static bool ExecuteNativeObjectArgumentCase(
+		FAutomationTestBase& Test,
+		asIScriptContext& Context,
+		asIScriptFunction& Function,
+		UObject* Value,
+		const TCHAR* ContextLabel,
+		int32 ExpectedReturnValue)
+	{
+		const int PrepareResult = Context.Prepare(&Function);
+		if (!Test.TestEqual(
+			*FString::Printf(TEXT("%s should prepare successfully"), ContextLabel),
+			PrepareResult,
+			static_cast<int32>(asSUCCESS)))
+		{
+			return false;
+		}
+
+		const int SetArgResult = Context.SetArgObject(0, Value);
+		if (!Test.TestEqual(
+			*FString::Printf(TEXT("%s should bind the UObject argument"), ContextLabel),
+			SetArgResult,
+			static_cast<int32>(asSUCCESS)))
+		{
+			return false;
+		}
+
+		const int ExecuteResult = Context.Execute();
+		if (!Test.TestEqual(
+			*FString::Printf(TEXT("%s should execute successfully"), ContextLabel),
+			ExecuteResult,
+			static_cast<int32>(asEXECUTION_FINISHED)))
+		{
+			return false;
+		}
+
+		return Test.TestEqual(
+			*FString::Printf(TEXT("%s should return the expected nullability marker"), ContextLabel),
+			static_cast<int32>(Context.GetReturnDWord()),
+			ExpectedReturnValue);
+	}
+
+public:
 	TEST_METHOD(NullAndNonNull)
 	{
-		using namespace AngelscriptTest_Angelscript_AngelscriptHandleTests_Private;
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 

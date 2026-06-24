@@ -71,16 +71,16 @@ namespace
 
 		bool VerifyCommandExists(const FString& Name, const TCHAR* ContextLabel) const
 		{
-			FNoDiscardAsserter Assert(Test);
-			return Assert.IsNotNull(
+			FNoDiscardAsserter LocalAssert(Test);
+			return LocalAssert.IsNotNull(
 				FindCommand(Name),
 				*FString::Printf(TEXT("%s should register the console command"), ContextLabel));
 		}
 
 		bool VerifyCommandMissing(const FString& Name, const TCHAR* ContextLabel) const
 		{
-			FNoDiscardAsserter Assert(Test);
-			return Assert.IsNull(
+			FNoDiscardAsserter LocalAssert(Test);
+			return LocalAssert.IsNull(
 				FindCommand(Name),
 				*FString::Printf(TEXT("%s should not leave a registered console command"), ContextLabel));
 		}
@@ -88,8 +88,8 @@ namespace
 		bool ExecuteCommand(const FString& Name, const TArray<FString>& Args, const TCHAR* ContextLabel) const
 		{
 			IConsoleCommand* Command = FindCommand(Name);
-			FNoDiscardAsserter Assert(Test);
-			if (!Assert.IsNotNull(
+			FNoDiscardAsserter LocalAssert(Test);
+			if (!LocalAssert.IsNotNull(
 					Command,
 					*FString::Printf(TEXT("%s should find the registered command before execution"), ContextLabel)))
 			{
@@ -97,7 +97,7 @@ namespace
 			}
 
 			FOutputDeviceNull OutputDevice;
-			return Assert.IsTrue(
+			return LocalAssert.IsTrue(
 				Command->Execute(Args, nullptr, OutputDevice),
 				*FString::Printf(TEXT("%s should execute the registered delegate"), ContextLabel));
 		}
@@ -105,15 +105,15 @@ namespace
 		bool VerifyInt(const FString& Name, int32 ExpectedValue, const TCHAR* ContextLabel) const
 		{
 			IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(*Name);
-			FNoDiscardAsserter Assert(Test);
-			if (!Assert.IsNotNull(
+			FNoDiscardAsserter LocalAssert(Test);
+			if (!LocalAssert.IsNotNull(
 					Variable,
 					*FString::Printf(TEXT("%s should find int cvar '%s'"), ContextLabel, *Name)))
 			{
 				return false;
 			}
 
-			return Assert.AreEqual(
+			return LocalAssert.AreEqual(
 				ExpectedValue,
 				Variable->GetInt(),
 				*FString::Printf(TEXT("%s should preserve expected int value"), ContextLabel));
@@ -122,15 +122,15 @@ namespace
 		bool VerifyFloat(const FString& Name, float ExpectedValue, const TCHAR* ContextLabel) const
 		{
 			IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(*Name);
-			FNoDiscardAsserter Assert(Test);
-			if (!Assert.IsNotNull(
+			FNoDiscardAsserter LocalAssert(Test);
+			if (!LocalAssert.IsNotNull(
 					Variable,
 					*FString::Printf(TEXT("%s should find float cvar '%s'"), ContextLabel, *Name)))
 			{
 				return false;
 			}
 
-			return Assert.IsNear(
+			return LocalAssert.IsNear(
 				ExpectedValue,
 				Variable->GetFloat(),
 				0.0001f,
@@ -140,15 +140,15 @@ namespace
 		bool VerifyBool(const FString& Name, bool bExpectedValue, const TCHAR* ContextLabel) const
 		{
 			IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(*Name);
-			FNoDiscardAsserter Assert(Test);
-			if (!Assert.IsNotNull(
+			FNoDiscardAsserter LocalAssert(Test);
+			if (!LocalAssert.IsNotNull(
 					Variable,
 					*FString::Printf(TEXT("%s should find bool cvar '%s'"), ContextLabel, *Name)))
 			{
 				return false;
 			}
 
-			return Assert.AreEqual(
+			return LocalAssert.AreEqual(
 				bExpectedValue,
 				Variable->GetBool(),
 				*FString::Printf(TEXT("%s should preserve expected bool value"), ContextLabel));
@@ -157,15 +157,15 @@ namespace
 		bool VerifyString(const FString& Name, const FString& ExpectedValue, const TCHAR* ContextLabel) const
 		{
 			IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(*Name);
-			FNoDiscardAsserter Assert(Test);
-			if (!Assert.IsNotNull(
+			FNoDiscardAsserter LocalAssert(Test);
+			if (!LocalAssert.IsNotNull(
 					Variable,
 					*FString::Printf(TEXT("%s should find string cvar '%s'"), ContextLabel, *Name)))
 			{
 				return false;
 			}
 
-			return Assert.AreEqual(
+			return LocalAssert.AreEqual(
 				ExpectedValue,
 				FString(Variable->GetString()),
 				*FString::Printf(TEXT("%s should preserve expected string value"), ContextLabel));
@@ -179,8 +179,8 @@ namespace
 			const TCHAR* ContextLabel) const
 		{
 			IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(*Name);
-			FNoDiscardAsserter Assert(Test);
-			if (!Assert.IsNotNull(
+			FNoDiscardAsserter LocalAssert(Test);
+			if (!LocalAssert.IsNotNull(
 					Variable,
 					*FString::Printf(TEXT("%s should find existing cvar '%s'"), ContextLabel, *Name)))
 			{
@@ -192,14 +192,14 @@ namespace
 			const uint32 CurrentPersistentFlags = static_cast<uint32>(Variable->GetFlags()) & ~SetByMaskBits;
 
 			bool bPassed = true;
-			bPassed &= Assert.IsTrue(
+			bPassed &= LocalAssert.IsTrue(
 				Variable == ExpectedVariable,
 				*FString::Printf(TEXT("%s should preserve the native IConsoleVariable pointer"), ContextLabel));
-			bPassed &= Assert.AreEqual(
+			bPassed &= LocalAssert.AreEqual(
 				ExpectedHelp,
 				FString(Variable->GetHelp()),
 				*FString::Printf(TEXT("%s should preserve native help text"), ContextLabel));
-			bPassed &= Assert.AreEqual(
+			bPassed &= LocalAssert.AreEqual(
 				ExpectedPersistentFlags,
 				CurrentPersistentFlags,
 				*FString::Printf(TEXT("%s should preserve persistent native flags"), ContextLabel));
@@ -229,8 +229,8 @@ namespace
 				return false;
 			}
 
-			FNoDiscardAsserter Assert(Test);
-			return Assert.AreEqual(
+			FNoDiscardAsserter LocalAssert(Test);
+			return LocalAssert.AreEqual(
 				0,
 				LeakedNames.Num(),
 				*FString::Printf(TEXT("%s should leave no '%s' console objects"), ContextLabel, ConsoleObjectPrefix));
@@ -297,8 +297,8 @@ int CommandReady()
 			OutputName,
 			TEXT("__native_unset__"),
 			TEXT("Console command argument output sink"));
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(OutputVariable, TEXT("Console command argument section should pre-register output cvar")))
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(OutputVariable, TEXT("Console command argument section should pre-register output cvar")))
 		{
 			return false;
 		}
@@ -464,8 +464,8 @@ bool RunConsoleVariableExistingSection(
 		ExistingName,
 		7,
 		TEXT("Existing native cvar for bindings test"));
-	FNoDiscardAsserter Assert(Test);
-	if (!Assert.IsNotNull(ExistingVariable, TEXT("Console variable existing section should pre-register native cvar")))
+	FNoDiscardAsserter LocalAssert(Test);
+	if (!LocalAssert.IsNotNull(ExistingVariable, TEXT("Console variable existing section should pre-register native cvar")))
 	{
 		return false;
 	}
@@ -514,8 +514,8 @@ bool RunConsoleVariableIdentitySection(
 		7,
 		TEXT("Existing native cvar identity/help/flags should survive bindings test"),
 		ECVF_Cheat);
-	FNoDiscardAsserter Assert(Test);
-	if (!Assert.IsNotNull(ExistingVariable, TEXT("Console variable identity section should pre-register native cvar")))
+	FNoDiscardAsserter LocalAssert(Test);
+	if (!LocalAssert.IsNotNull(ExistingVariable, TEXT("Console variable identity section should pre-register native cvar")))
 	{
 		return false;
 	}
@@ -557,7 +557,7 @@ return ExistingVar.GetInt();
 		ExistingHelp,
 		ExistingFlags,
 		TEXT("Console variable identity native metadata"));
-	bPassed &= Assert.IsTrue(
+	bPassed &= LocalAssert.IsTrue(
 		ExistingVariable->TestFlags(ECVF_Cheat),
 		TEXT("Console variable identity should preserve the native cheat flag"));
 	bPassed &= ConsoleScope.VerifyNoLeaks(TEXT("Console variable identity section"));
@@ -576,8 +576,8 @@ bool RunConsoleCommandBasicSection(
 		OutputName,
 		-1,
 		TEXT("Console command output sink"));
-	FNoDiscardAsserter Assert(Test);
-	if (!Assert.IsNotNull(OutputVariable, TEXT("Console command basic section should pre-register output cvar")))
+	FNoDiscardAsserter LocalAssert(Test);
+	if (!LocalAssert.IsNotNull(OutputVariable, TEXT("Console command basic section should pre-register output cvar")))
 	{
 		return false;
 	}
@@ -665,8 +665,8 @@ bool RunConsoleCommandReplacementSection(
 		OutputName,
 		-1,
 		TEXT("Console command replacement output sink"));
-	FNoDiscardAsserter Assert(Test);
-	if (!Assert.IsNotNull(OutputVariable, TEXT("Console command replacement section should pre-register output cvar")))
+	FNoDiscardAsserter LocalAssert(Test);
+	if (!LocalAssert.IsNotNull(OutputVariable, TEXT("Console command replacement section should pre-register output cvar")))
 	{
 		return false;
 	}
@@ -721,8 +721,8 @@ bool RunConsoleCommandLifecycleSection(
 		OutputName,
 		-1,
 		TEXT("Console command lifecycle output sink"));
-	FNoDiscardAsserter Assert(Test);
-	if (!Assert.IsNotNull(OutputVariable, TEXT("Console command lifecycle section should pre-register output cvar")))
+	FNoDiscardAsserter LocalAssert(Test);
+	if (!LocalAssert.IsNotNull(OutputVariable, TEXT("Console command lifecycle section should pre-register output cvar")))
 	{
 		return false;
 	}

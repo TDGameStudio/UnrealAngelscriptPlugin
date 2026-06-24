@@ -1,14 +1,14 @@
 // ============================================================================
 // AngelscriptTransformBindingsTests.cpp
 //
-// FTransform binding coverage — CQTest refactor. Automation IDs:
+// FTransform binding coverage �?CQTest refactor. Automation IDs:
 //   Angelscript.TestModule.Bindings.Transform.FAngelscriptTransformBindingsTest.*
 //
 // Sections:
-//   TransformPosition    — TransformPosition, TransformPositionNoScale,
+//   TransformPosition    �?TransformPosition, TransformPositionNoScale,
 //                          InverseTransformPosition
-//   RelativeTransform    — GetRelativeTransform, Equals verification
-//   SettersAndGetters    — SetTranslation, SetScale3D, GetTranslation, GetScale3D
+//   RelativeTransform    �?GetRelativeTransform, Equals verification
+//   SettersAndGetters    �?SetTranslation, SetScale3D, GetTranslation, GetScale3D
 //
 // CQTest adaptation notes:
 //   Native transforms computed at test time and substituted via ReplaceInline
@@ -30,45 +30,6 @@
 // Helpers
 // ----------------------------------------------------------------------------
 
-namespace AngelscriptTransformBindingsTests_Private
-{
-	FString FormatScriptFloat(double Value)
-	{
-		FString Literal = FString::Printf(TEXT("%.9g"), Value);
-		if (!Literal.Contains(TEXT(".")) && !Literal.Contains(TEXT("e")) && !Literal.Contains(TEXT("E")))
-		{
-			Literal += TEXT(".0");
-		}
-		return Literal;
-	}
-
-	FString FormatScriptVector(const FVector& V)
-	{
-		return FString::Printf(TEXT("FVector(%s, %s, %s)"),
-			*FormatScriptFloat(V.X), *FormatScriptFloat(V.Y), *FormatScriptFloat(V.Z));
-	}
-
-	FString FormatScriptRotator(const FRotator& R)
-	{
-		return FString::Printf(TEXT("FRotator(%s, %s, %s)"),
-			*FormatScriptFloat(R.Pitch), *FormatScriptFloat(R.Yaw), *FormatScriptFloat(R.Roll));
-	}
-
-	FString FormatScriptQuat(const FQuat& Q)
-	{
-		return FString::Printf(TEXT("FQuat(%s, %s, %s, %s)"),
-			*FormatScriptFloat(Q.X), *FormatScriptFloat(Q.Y), *FormatScriptFloat(Q.Z), *FormatScriptFloat(Q.W));
-	}
-
-	FString FormatScriptTransform(const FTransform& T)
-	{
-		return FString::Printf(TEXT("FTransform(%s, %s, %s)"),
-			*FormatScriptQuat(T.GetRotation()),
-			*FormatScriptVector(T.GetTranslation()),
-			*FormatScriptVector(T.GetScale3D()));
-	}
-}
-
 
 // ----------------------------------------------------------------------------
 // Profile
@@ -83,6 +44,44 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTransformBindingsTest,
 	"Angelscript.TestModule.Bindings.Transform",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static FString FormatScriptFloat(double Value)
+{
+	FString Literal = FString::Printf(TEXT("%.9g"), Value);
+	if (!Literal.Contains(TEXT(".")) && !Literal.Contains(TEXT("e")) && !Literal.Contains(TEXT("E")))
+	{
+		Literal += TEXT(".0");
+	}
+	return Literal;
+}
+
+static FString FormatScriptVector(const FVector& V)
+{
+	return FString::Printf(TEXT("FVector(%s, %s, %s)"),
+		*FormatScriptFloat(V.X), *FormatScriptFloat(V.Y), *FormatScriptFloat(V.Z));
+}
+
+static FString FormatScriptRotator(const FRotator& R)
+{
+	return FString::Printf(TEXT("FRotator(%s, %s, %s)"),
+		*FormatScriptFloat(R.Pitch), *FormatScriptFloat(R.Yaw), *FormatScriptFloat(R.Roll));
+}
+
+static FString FormatScriptQuat(const FQuat& Q)
+{
+	return FString::Printf(TEXT("FQuat(%s, %s, %s, %s)"),
+		*FormatScriptFloat(Q.X), *FormatScriptFloat(Q.Y), *FormatScriptFloat(Q.Z), *FormatScriptFloat(Q.W));
+}
+
+static FString FormatScriptTransform(const FTransform& T)
+{
+	return FString::Printf(TEXT("FTransform(%s, %s, %s)"),
+		*FormatScriptQuat(T.GetRotation()),
+		*FormatScriptVector(T.GetTranslation()),
+		*FormatScriptVector(T.GetScale3D()));
+}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -96,8 +95,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTransformBindingsTest,
 
 	TEST_METHOD(TransformPosition)
 	{
-		using namespace AngelscriptTransformBindingsTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		const FRotator BaseRot(0.0, 90.0, 0.0);
@@ -165,8 +163,7 @@ int Transform_ScaleAffectsResult()
 
 	TEST_METHOD(RelativeTransform)
 	{
-		using namespace AngelscriptTransformBindingsTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		const FRotator BaseRot(0.0, 90.0, 0.0);
@@ -226,8 +223,7 @@ int Transform_RelativeNotIdentity()
 
 	TEST_METHOD(SettersAndGetters)
 	{
-		using namespace AngelscriptTransformBindingsTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		const FRotator BaseRot(0.0, 90.0, 0.0);

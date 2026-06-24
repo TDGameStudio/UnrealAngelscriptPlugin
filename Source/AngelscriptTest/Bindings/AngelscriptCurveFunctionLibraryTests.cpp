@@ -48,8 +48,8 @@ namespace CurveTestHelpers
 		float ExpectedValue,
 		const TCHAR* ChannelLabel)
 	{
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsTrue(
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsTrue(
 			Curve.Keys.IsValidIndex(KeyIndex),
 			FString::Printf(TEXT("%s channel should contain key index %d"), ChannelLabel, KeyIndex)))
 		{
@@ -57,12 +57,12 @@ namespace CurveTestHelpers
 		}
 
 		const FRichCurveKey& Key = Curve.Keys[KeyIndex];
-		const bool bTimeMatches = Assert.IsNear(
+		const bool bTimeMatches = LocalAssert.IsNear(
 			ExpectedTime,
 			Key.Time,
 			UE_KINDA_SMALL_NUMBER,
 			FString::Printf(TEXT("%s channel key %d should preserve its timestamp"), ChannelLabel, KeyIndex));
-		const bool bValueMatches = Assert.IsNear(
+		const bool bValueMatches = LocalAssert.IsNear(
 			ExpectedValue,
 			Key.Value,
 			UE_KINDA_SMALL_NUMBER,
@@ -70,8 +70,6 @@ namespace CurveTestHelpers
 		return bTimeMatches && bValueMatches;
 	}
 }
-
-using namespace CurveTestHelpers;
 
 // ----------------------------------------------------------------------------
 // Test class
@@ -94,6 +92,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCurveFunctionLibraryBindingsTest,
 
 	TEST_METHOD(RuntimeCurveLinearColorAddDefaultKey)
 	{
+		using namespace CurveTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
@@ -162,6 +162,8 @@ int PopulateCurve(FRuntimeCurveLinearColor& Curve)
 
 	TEST_METHOD(RuntimeFloatCurveInstanceSurface)
 	{
+		using namespace CurveTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 

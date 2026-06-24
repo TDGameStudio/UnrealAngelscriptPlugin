@@ -12,57 +12,55 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_Core_AngelscriptEngineExecutionGuardTests_Private
-{
-	struct FEngineExecutionGuardContextStackGuard
-	{
-		TArray<FAngelscriptEngine*> SavedStack;
-
-		FEngineExecutionGuardContextStackGuard()
-		{
-			SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
-		}
-
-		~FEngineExecutionGuardContextStackGuard()
-		{
-			FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
-		}
-
-		void DiscardSavedStack()
-		{
-			SavedStack.Reset();
-		}
-	};
-
-	template<typename TObjectType>
-	struct TScopedAsRelease
-	{
-		TObjectType* Object = nullptr;
-
-		explicit TScopedAsRelease(TObjectType* InObject)
-			: Object(InObject)
-		{
-		}
-
-		~TScopedAsRelease()
-		{
-			if (Object != nullptr)
-			{
-				Object->Release();
-			}
-		}
-	};
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptEngineExecutionGuardTests,
 	"Angelscript.TestModule.Engine.Context",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+struct FEngineExecutionGuardContextStackGuard
+{
+	TArray<FAngelscriptEngine*> SavedStack;
+
+	FEngineExecutionGuardContextStackGuard()
+	{
+		SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
+	}
+
+	~FEngineExecutionGuardContextStackGuard()
+	{
+		FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
+	}
+
+	void DiscardSavedStack()
+	{
+		SavedStack.Reset();
+	}
+};
+
+template<typename TObjectType>
+struct TScopedAsRelease
+{
+	TObjectType* Object = nullptr;
+
+	explicit TScopedAsRelease(TObjectType* InObject)
+		: Object(InObject)
+	{
+	}
+
+	~TScopedAsRelease()
+	{
+		if (Object != nullptr)
+		{
+			Object->Release();
+		}
+	}
+};
+
+public:
 	TEST_METHOD(PrepareContextLogsCrossEngineMismatch)
 	{
-		using namespace AngelscriptTest_Core_AngelscriptEngineExecutionGuardTests_Private;
-		FEngineExecutionGuardContextStackGuard ContextGuard;
+FEngineExecutionGuardContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{

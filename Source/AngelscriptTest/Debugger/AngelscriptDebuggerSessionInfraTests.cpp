@@ -7,110 +7,108 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptDebuggerSessionInfraTests_Private
-{
-	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsTrue(bActual, Message);
-	}
-
-	static bool CheckTrue(FAutomationTestBase& Test, const FString& Message, bool bActual)
-	{
-		return CheckTrue(Test, *Message, bActual);
-	}
-
-	static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsFalse(bActual, Message);
-	}
-
-	static bool CheckFalse(FAutomationTestBase& Test, const FString& Message, bool bActual)
-	{
-		return CheckFalse(Test, *Message, bActual);
-	}
-
-	template <typename ActualType, typename ExpectedType>
-	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
-	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreEqual(Expected, Actual, Message);
-	}
-
-	template <typename ActualType, typename ExpectedType>
-	static bool CheckEqual(FAutomationTestBase& Test, const FString& Message, const ActualType& Actual, const ExpectedType& Expected)
-	{
-		return CheckEqual(Test, *Message, Actual, Expected);
-	}
-
-	TSharedRef<FFakeDebuggerClientSocket> MakePendingConnectSocket(
-		const FString& Description,
-		const TArray<ESocketConnectionState>& ConnectionStates)
-	{
-		TSharedRef<FFakeDebuggerClientSocket> Socket = MakeShared<FFakeDebuggerClientSocket>(Description);
-		Socket->SetConnectResult(false, SE_EINPROGRESS);
-		Socket->SetConnectionStates(ConnectionStates);
-		return Socket;
-	}
-
-	bool WaitForDebugServerVersion(
-		FAutomationTestBase& Test,
-		FAngelscriptDebuggerTestSession& Session,
-		FAngelscriptDebuggerTestClient& Client)
-	{
-		TOptional<FAngelscriptDebugMessageEnvelope> VersionEnvelope;
-		const bool bReceivedVersion = Session.PumpUntil(
-			[&Client, &VersionEnvelope]()
-			{
-				if (VersionEnvelope.IsSet())
-				{
-					return true;
-				}
-
-				TOptional<FAngelscriptDebugMessageEnvelope> Envelope = Client.ReceiveEnvelope();
-				if (Envelope.IsSet() && Envelope->MessageType == EDebugMessageType::DebugServerVersion)
-				{
-					VersionEnvelope = MoveTemp(Envelope);
-					return true;
-				}
-
-				return false;
-			},
-			Session.GetDefaultTimeoutSeconds());
-
-		if (!CheckTrue(Test, TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should receive DebugServerVersion after StartDebugging"), bReceivedVersion))
-		{
-			if (!Client.GetLastError().IsEmpty())
-			{
-				Test.AddError(Client.GetLastError());
-			}
-			return false;
-		}
-
-		const TOptional<FDebugServerVersionMessage> DebugServerVersion =
-			FAngelscriptDebuggerTestClient::DeserializeMessage<FDebugServerVersionMessage>(VersionEnvelope.GetValue());
-		if (!CheckTrue(Test, TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should deserialize the DebugServerVersion payload"), DebugServerVersion.IsSet()))
-		{
-			return false;
-		}
-
-		return CheckEqual(
-			Test,
-			TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should report the current debug server version"),
-			DebugServerVersion->DebugServerVersion,
-			DEBUG_SERVER_VERSION);
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionInfraTests,
 	"Angelscript.TestModule.Debugger.SessionInfra",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsTrue(bActual, Message);
+}
+
+static bool CheckTrue(FAutomationTestBase& Test, const FString& Message, bool bActual)
+{
+	return CheckTrue(Test, *Message, bActual);
+}
+
+static bool CheckFalse(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.IsFalse(bActual, Message);
+}
+
+static bool CheckFalse(FAutomationTestBase& Test, const FString& Message, bool bActual)
+{
+	return CheckFalse(Test, *Message, bActual);
+}
+
+template <typename ActualType, typename ExpectedType>
+static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
+{
+	FNoDiscardAsserter LocalAssert(Test);
+	return LocalAssert.AreEqual(Expected, Actual, Message);
+}
+
+template <typename ActualType, typename ExpectedType>
+static bool CheckEqual(FAutomationTestBase& Test, const FString& Message, const ActualType& Actual, const ExpectedType& Expected)
+{
+	return CheckEqual(Test, *Message, Actual, Expected);
+}
+
+static TSharedRef<FFakeDebuggerClientSocket> MakePendingConnectSocket(
+	const FString& Description,
+	const TArray<ESocketConnectionState>& ConnectionStates)
+{
+	TSharedRef<FFakeDebuggerClientSocket> Socket = MakeShared<FFakeDebuggerClientSocket>(Description);
+	Socket->SetConnectResult(false, SE_EINPROGRESS);
+	Socket->SetConnectionStates(ConnectionStates);
+	return Socket;
+}
+
+static bool WaitForDebugServerVersion(
+	FAutomationTestBase& Test,
+	FAngelscriptDebuggerTestSession& Session,
+	FAngelscriptDebuggerTestClient& Client)
+{
+	TOptional<FAngelscriptDebugMessageEnvelope> VersionEnvelope;
+	const bool bReceivedVersion = Session.PumpUntil(
+		[&Client, &VersionEnvelope]()
+		{
+			if (VersionEnvelope.IsSet())
+			{
+				return true;
+			}
+
+			TOptional<FAngelscriptDebugMessageEnvelope> Envelope = Client.ReceiveEnvelope();
+			if (Envelope.IsSet() && Envelope->MessageType == EDebugMessageType::DebugServerVersion)
+			{
+				VersionEnvelope = MoveTemp(Envelope);
+				return true;
+			}
+
+			return false;
+		},
+		Session.GetDefaultTimeoutSeconds());
+
+	if (!CheckTrue(Test, TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should receive DebugServerVersion after StartDebugging"), bReceivedVersion))
+	{
+		if (!Client.GetLastError().IsEmpty())
+		{
+			Test.AddError(Client.GetLastError());
+		}
+		return false;
+	}
+
+	const TOptional<FDebugServerVersionMessage> DebugServerVersion =
+		FAngelscriptDebuggerTestClient::DeserializeMessage<FDebugServerVersionMessage>(VersionEnvelope.GetValue());
+	if (!CheckTrue(Test, TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should deserialize the DebugServerVersion payload"), DebugServerVersion.IsSet()))
+	{
+		return false;
+	}
+
+	return CheckEqual(
+		Test,
+		TEXT("Debugger.SessionInfra.InitializeDoesNotMutateAdapterVersion should report the current debug server version"),
+		DebugServerVersion->DebugServerVersion,
+		DEBUG_SERVER_VERSION);
+}
+
+public:
 	TEST_METHOD(InitializeDoesNotMutateAdapterVersion)
 	{
-		using namespace AngelscriptDebuggerSessionInfraTests_Private;
-		constexpr int32 InitializeSentinelVersion = 7;
+constexpr int32 InitializeSentinelVersion = 7;
 		constexpr int32 HandshakeAdapterVersion = 2;
 		constexpr int32 FreshSessionSentinelVersion = 11;
 
@@ -202,8 +200,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionInfraTests,
 
 	TEST_METHOD(PreservesDebugBreakState)
 	{
-		using namespace AngelscriptDebuggerSessionInfraTests_Private;
-		FAngelscriptDebuggerSessionConfig SessionConfig;
+FAngelscriptDebuggerSessionConfig SessionConfig;
 		SessionConfig.DefaultTimeoutSeconds = 45.0f;
 		SessionConfig.bDisableDebugBreaks = true;
 
@@ -258,8 +255,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerSessionInfraTests,
 
 	TEST_METHOD(ClientConnectTimeoutReportsFailure)
 	{
-		using namespace AngelscriptDebuggerSessionInfraTests_Private;
-		constexpr float FailureTimeoutSeconds = 0.01f;
+constexpr float FailureTimeoutSeconds = 0.01f;
 		constexpr float SuccessTimeoutSeconds = 0.05f;
 
 		bool bPassed = true;

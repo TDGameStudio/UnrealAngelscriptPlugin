@@ -102,8 +102,6 @@ namespace CompilerPipelineMetadataSpecifierTest
 	}
 }
 
-using namespace CompilerPipelineMetadataSpecifierTest;
-
 TEST_CLASS_WITH_FLAGS(FCompilerPipelineMetadataSpecifierTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

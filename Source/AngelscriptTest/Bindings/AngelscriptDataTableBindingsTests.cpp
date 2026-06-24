@@ -47,8 +47,8 @@ namespace
 		const TCHAR* ContextLabel)
 	{
 		const FAngelscriptBindingDataTableRow* Row = DataTable.FindRow<FAngelscriptBindingDataTableRow>(FName(RowName), ContextLabel);
-		FNoDiscardAsserter Assert(Test);
-		if (!Assert.IsNotNull(Row, *FString::Printf(TEXT("%s should resolve row '%s'"), ContextLabel, RowName)))
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(Row, *FString::Printf(TEXT("%s should resolve row '%s'"), ContextLabel, RowName)))
 		{
 			return nullptr;
 		}

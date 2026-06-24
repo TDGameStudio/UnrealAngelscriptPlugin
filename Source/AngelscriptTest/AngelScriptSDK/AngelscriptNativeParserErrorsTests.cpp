@@ -13,7 +13,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserErrorsTests,
 	"Angelscript.TestModule.AngelScriptSDK.Parser.Errors",
@@ -22,6 +21,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeParserErrorsTests,
 private:
 	static int ParseScriptWithResult(asCScriptEngine* ScriptEngine, const char* ModuleName, const char* Source)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCModule* Module = CreateSdkModule(ScriptEngine, ModuleName);
 		asCBuilder Builder(ScriptEngine, Module);
 		Builder.silent = true;
@@ -29,7 +30,7 @@ private:
 		asCScriptCode Code;
 		Code.SetCode(ModuleName, Source, true);
 
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 		return Parser.ParseScript(&Code);
 	}
 
@@ -88,6 +89,8 @@ public:
 
 	TEST_METHOD(ResetClearsErrorState)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
 		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser error test should create a bare engine")));
 		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
@@ -97,7 +100,7 @@ public:
 
 		asCBuilder Builder(BareEngine, Module);
 		Builder.silent = true;
-		FParserAccessor Parser(&Builder);
+		AngelscriptNativeTestSupport::FParserAccessor Parser(&Builder);
 
 		asCScriptCode InvalidCode;
 		InvalidCode.SetCode("ParserErrorResetInvalid", "void Broken( { }", true);

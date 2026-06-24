@@ -16,24 +16,26 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
-namespace AngelscriptTest_Component_LifecycleExtended_Private
+TEST_CLASS_WITH_FLAGS(FAngelscriptComponentLifecycleExtendedTest,
+	"Angelscript.TestModule.Component.LifecycleExtended",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	template <typename ActualType, typename ExpectedType>
 	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
 	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.AreEqual(Expected, Actual, Message);
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.AreEqual(Expected, Actual, Message);
 	}
 
 	template <typename ValueType>
 	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
 	{
-		FNoDiscardAsserter Assert(Test);
-		return Assert.IsNotNull(Value, Message);
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsNotNull(Value, Message);
 	}
 
 	template <typename ComponentType = UActorComponent>
-	ComponentType* ReadComponentProperty(FAutomationTestBase& Test, UObject* Object, const TCHAR* PropertyName)
+	static ComponentType* ReadComponentProperty(FAutomationTestBase& Test, UObject* Object, const TCHAR* PropertyName)
 	{
 		UObject* ComponentObject = nullptr;
 		if (!GetObjectByPath(Test, Object, PropertyName, ComponentObject))
@@ -47,47 +49,6 @@ namespace AngelscriptTest_Component_LifecycleExtended_Private
 			*FString::Printf(TEXT("Property '%s' should point to the expected component type"), PropertyName),
 			Component);
 		return Component;
-	}
-
-	UActorComponent* FindComponentByName(AActor* Actor, FName ComponentName)
-	{
-		if (Actor == nullptr)
-		{
-			return nullptr;
-		}
-
-		for (UActorComponent* Component : Actor->GetComponents())
-		{
-			if (Component != nullptr && Component->GetFName() == ComponentName)
-			{
-				return Component;
-			}
-		}
-
-		return nullptr;
-	}
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptComponentLifecycleExtendedTest,
-	"Angelscript.TestModule.Component.LifecycleExtended",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
-	template <typename ActualType, typename ExpectedType>
-	static bool CheckEqual(FAutomationTestBase& Test, const TCHAR* Message, const ActualType& Actual, const ExpectedType& Expected)
-	{
-		return AngelscriptTest_Component_LifecycleExtended_Private::CheckEqual(Test, Message, Actual, Expected);
-	}
-
-	template <typename ValueType>
-	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
-	{
-		return AngelscriptTest_Component_LifecycleExtended_Private::CheckNotNull(Test, Message, Value);
-	}
-
-	template <typename ComponentType = UActorComponent>
-	static ComponentType* ReadComponentProperty(FAutomationTestBase& Test, UObject* Object, const TCHAR* PropertyName)
-	{
-		return AngelscriptTest_Component_LifecycleExtended_Private::ReadComponentProperty<ComponentType>(Test, Object, PropertyName);
 	}
 
 	BEFORE_ALL()
@@ -340,18 +301,43 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDefaultComponentExtendedTest,
 	template <typename ValueType>
 	static bool CheckNotNull(FAutomationTestBase& Test, const TCHAR* Message, const ValueType& Value)
 	{
-		return AngelscriptTest_Component_LifecycleExtended_Private::CheckNotNull(Test, Message, Value);
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsNotNull(Value, Message);
 	}
 
 	template <typename ComponentType = UActorComponent>
 	static ComponentType* ReadComponentProperty(FAutomationTestBase& Test, UObject* Object, const TCHAR* PropertyName)
 	{
-		return AngelscriptTest_Component_LifecycleExtended_Private::ReadComponentProperty<ComponentType>(Test, Object, PropertyName);
+		UObject* ComponentObject = nullptr;
+		if (!GetObjectByPath(Test, Object, PropertyName, ComponentObject))
+		{
+			return nullptr;
+		}
+
+		ComponentType* Component = Cast<ComponentType>(ComponentObject);
+		(void)CheckNotNull(
+			Test,
+			*FString::Printf(TEXT("Property '%s' should point to the expected component type"), PropertyName),
+			Component);
+		return Component;
 	}
 
 	static UActorComponent* FindComponentByName(AActor* Actor, FName ComponentName)
 	{
-		return AngelscriptTest_Component_LifecycleExtended_Private::FindComponentByName(Actor, ComponentName);
+		if (Actor == nullptr)
+		{
+			return nullptr;
+		}
+
+		for (UActorComponent* Component : Actor->GetComponents())
+		{
+			if (Component != nullptr && Component->GetFName() == ComponentName)
+			{
+				return Component;
+			}
+		}
+
+		return nullptr;
 	}
 
 	BEFORE_ALL()

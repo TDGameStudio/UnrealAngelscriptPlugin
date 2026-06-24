@@ -5,8 +5,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptScriptModuleTests,
 	"Angelscript.TestModule.AngelScriptSDK.ScriptModule",
@@ -160,6 +158,9 @@ private:
 
 	static void LogModuleState(FAutomationTestBase& Test, asIScriptEngine* ScriptEngine, asIScriptModule* Module, const TCHAR* Stage)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		Test.AddInfo(FString::Printf(
 			TEXT("ScriptModule state [%s]: engineModuleCount=%u module=%s name=%s defaultNamespace=%s functions={%s} globals={%s} objectTypes={%s} enums={%s} typedefs={%s} imports=%u"),
 			Stage != nullptr ? Stage : TEXT("<unknown>"),
@@ -176,7 +177,7 @@ private:
 	}
 
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -195,10 +196,13 @@ public:
 
 	TEST_METHOD(Create)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule create test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleCreate");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleCreate");
 		asIScriptModule* Module = CreateScriptModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("ScriptModule create test should create a module")));
 		LogModuleState(*TestRunner, ScriptEngine, Module, TEXT("create-after-module"));
@@ -236,6 +240,9 @@ public:
 
 	TEST_METHOD(SingleModulePipeline)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule single-module test should create a standalone SDK engine")));
 
@@ -245,7 +252,7 @@ public:
 				return 42;
 			}
 			)AS");
-		FScopedNativeModule Module(*TestRunner, Engine, "ScriptModuleSinglePipeline", ScriptSource.c_str());
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "ScriptModuleSinglePipeline", ScriptSource.c_str());
 		if (!Module.IsValid())
 		{
 			TestRunner->AddInfo(Engine.GetMessagesText());
@@ -265,6 +272,9 @@ public:
 
 	TEST_METHOD(Discard)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule discard test should create a standalone SDK engine")));
 
@@ -276,7 +286,7 @@ public:
 				return Value;
 			}
 			)AS");
-		FScopedNativeModule Module(*TestRunner, Engine, "ScriptModuleDiscard", ScriptSource.c_str());
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "ScriptModuleDiscard", ScriptSource.c_str());
 		if (!Module.IsValid())
 		{
 			return;
@@ -324,6 +334,9 @@ public:
 
 	TEST_METHOD(MultipleModulesKeepDistinctFunctions)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule multi-module test should create a standalone SDK engine")));
 
@@ -333,7 +346,7 @@ public:
 				return 1;
 			}
 			)AS");
-		FScopedNativeModule Module1(*TestRunner, Engine, "ScriptModuleMulti1", FirstModuleSource.c_str());
+		AngelscriptNativeTestSupport::FScopedNativeModule Module1(*TestRunner, Engine, "ScriptModuleMulti1", FirstModuleSource.c_str());
 		if (!Module1.IsValid())
 		{
 			return;
@@ -345,7 +358,7 @@ public:
 				return 2;
 			}
 			)AS");
-		FScopedNativeModule Module2(*TestRunner, Engine, "ScriptModuleMulti2", SecondModuleSource.c_str());
+		AngelscriptNativeTestSupport::FScopedNativeModule Module2(*TestRunner, Engine, "ScriptModuleMulti2", SecondModuleSource.c_str());
 		if (!Module2.IsValid())
 		{
 			return;
@@ -381,10 +394,13 @@ public:
 
 	TEST_METHOD(RebuildModule)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule rebuild test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleRebuild");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleRebuild");
 		const std::string ModuleV1Source = ASTEST_AS_ANSI(R"AS(
 			int Entry()
 			{
@@ -444,10 +460,13 @@ public:
 
 	TEST_METHOD(MultiSectionBuild)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule multi-section test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleMultiSection");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleMultiSection");
 		asIScriptModule* Module = CreateScriptModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("ScriptModule multi-section test should create a backing module")));
 
@@ -485,10 +504,13 @@ public:
 
 	TEST_METHOD(CrossSectionSymbolResolution)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule cross-section symbol test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleCrossSectionSymbol");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleCrossSectionSymbol");
 		asIScriptModule* Module = CreateScriptModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("ScriptModule cross-section symbol test should create a module")));
 
@@ -526,6 +548,9 @@ public:
 
 	TEST_METHOD(EnumerateFunctions)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule enumerate test should create a standalone SDK engine")));
 
@@ -545,7 +570,7 @@ public:
 				return 3;
 			}
 			)AS");
-		FScopedNativeModule Module(*TestRunner, Engine, "ScriptModuleEnumerate", ScriptSource.c_str());
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "ScriptModuleEnumerate", ScriptSource.c_str());
 		if (!Module.IsValid())
 		{
 			return;
@@ -590,10 +615,13 @@ public:
 
 	TEST_METHOD(RecompileAfterDiscard)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule recompile test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleRecompile");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleRecompile");
 		const std::string FirstModuleSource = ASTEST_AS_ANSI(R"AS(
 			int Entry()
 			{
@@ -667,10 +695,13 @@ public:
 
 	TEST_METHOD(DiscardThenRebuildCreatesDistinctFunctionsAndTypes)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule typed rebuild test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleTypedRebuild");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleTypedRebuild");
 		const std::string ModuleV1Source = ASTEST_AS_ANSI(R"AS(
 			class VersionedState
 			{
@@ -787,6 +818,9 @@ public:
 
 	TEST_METHOD(FunctionReturnTypeMatrixExecutesModuleFunctions)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule return matrix test should create a standalone SDK engine")));
 
@@ -846,7 +880,7 @@ public:
 				return 6.25;
 			}
 			)AS");
-		FScopedNativeModule Module(*TestRunner, Engine, "ScriptModuleReturnTypeMatrix", ScriptSource.c_str());
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "ScriptModuleReturnTypeMatrix", ScriptSource.c_str());
 		if (!Module.IsValid())
 		{
 			TestRunner->AddInfo(Engine.GetMessagesText());
@@ -856,50 +890,50 @@ public:
 
 		ASSERT_THAT(AreEqual(11, static_cast<int32>(Module->GetFunctionCount()), TEXT("ScriptModule return matrix test should expose every return function")));
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool ReturnBool()");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool ReturnBool()");
 			ASSERT_THAT(IsTrue(Invoker.CallAndReturn<bool>(false), TEXT("ScriptModule return matrix test should execute bool return")));
 		}
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int8 ReturnInt8()");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int8 ReturnInt8()");
 			ASSERT_THAT(AreEqual(static_cast<int8>(-128), Invoker.CallAndReturn<int8>(0), TEXT("ScriptModule return matrix test should execute int8 return")));
 		}
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "uint8 ReturnUInt8()");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "uint8 ReturnUInt8()");
 			ASSERT_THAT(AreEqual(static_cast<uint8>(255), Invoker.CallAndReturn<uint8>(0), TEXT("ScriptModule return matrix test should execute uint8 return")));
 		}
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int16 ReturnInt16()");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int16 ReturnInt16()");
 			ASSERT_THAT(AreEqual(static_cast<int16>(-32768), Invoker.CallAndReturn<int16>(0), TEXT("ScriptModule return matrix test should execute int16 return")));
 		}
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "uint16 ReturnUInt16()");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "uint16 ReturnUInt16()");
 			ASSERT_THAT(AreEqual(static_cast<uint16>(65535), Invoker.CallAndReturn<uint16>(0), TEXT("ScriptModule return matrix test should execute uint16 return")));
 		}
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int ReturnInt()");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int ReturnInt()");
 			ASSERT_THAT(AreEqual(-123456789, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("ScriptModule return matrix test should execute int return")));
 		}
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "uint ReturnUInt()");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "uint ReturnUInt()");
 			ASSERT_THAT(AreEqual(static_cast<uint32>(4000000000u), Invoker.CallAndReturn<uint32>(0), TEXT("ScriptModule return matrix test should execute uint return")));
 		}
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int64 ReturnInt64()");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int64 ReturnInt64()");
 			ASSERT_THAT(AreEqual(static_cast<int64>(-9000000000ll), Invoker.CallAndReturn<int64>(0), TEXT("ScriptModule return matrix test should execute int64 return")));
 		}
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "uint64 ReturnUInt64()");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "uint64 ReturnUInt64()");
 			ASSERT_THAT(AreEqual(static_cast<uint64>(9000000000ull), Invoker.CallAndReturn<uint64>(0), TEXT("ScriptModule return matrix test should execute uint64 return")));
 		}
 
 		float FloatResult = 0.0f;
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "float ReturnFloat()");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "float ReturnFloat()");
 			FloatResult = Invoker.CallAndReturn<float>(0.0f);
 		}
 		double DoubleResult = 0.0;
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "double ReturnDouble()");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "double ReturnDouble()");
 			DoubleResult = Invoker.CallAndReturn<double>(0.0);
 		}
 		ASSERT_THAT(IsNear(3.5f, FloatResult, 0.0001f, TEXT("ScriptModule return matrix test should execute float return")));
@@ -937,7 +971,7 @@ public:
 				return Value >= Min && Value <= Max;
 			}
 			)AS");
-		FScopedNativeModule Module(*TestRunner, Engine, "ScriptModuleArgumentReturnRoundTrip", ScriptSource.c_str());
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "ScriptModuleArgumentReturnRoundTrip", ScriptSource.c_str());
 		if (!Module.IsValid())
 		{
 			TestRunner->AddInfo(Engine.GetMessagesText());
@@ -946,32 +980,32 @@ public:
 		LogModuleState(*TestRunner, ScriptEngine, Module, TEXT("argument-roundtrip-after-build"));
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Sum(int, int)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Sum(int, int)");
 			Invoker.AddArg(static_cast<int32>(-10)).AddArg(static_cast<int32>(52));
 			ASSERT_THAT(AreEqual(42, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("ScriptModule argument roundtrip test should return Sum(-10,52)=42")));
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "uint64 Mix(uint64, uint64)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "uint64 Mix(uint64, uint64)");
 			Invoker.AddArg(static_cast<uint64>(0x1234ull)).AddArg(static_cast<uint64>(0xABCDull));
 			ASSERT_THAT(AreEqual(static_cast<uint64>(0x12340000ABCDull), Invoker.CallAndReturn<uint64>(0), TEXT("ScriptModule argument roundtrip test should preserve uint64 arguments and return")));
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "double Scale(double, double)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "double Scale(double, double)");
 			Invoker.AddArg(7.5).AddArg(4.0);
 			const double Result = Invoker.CallAndReturn<double>(0.0);
 			ASSERT_THAT(IsNear(30.0, Result, 0.0001, TEXT("ScriptModule argument roundtrip test should return Scale(7.5,4.0)=30.0")));
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool IsInside(int, int, int)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool IsInside(int, int, int)");
 			Invoker.AddArg(static_cast<int32>(5)).AddArg(static_cast<int32>(1)).AddArg(static_cast<int32>(10));
 			ASSERT_THAT(IsTrue(Invoker.CallAndReturn<bool>(false), TEXT("ScriptModule argument roundtrip test should return true for an in-range value")));
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool IsInside(int, int, int)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool IsInside(int, int, int)");
 			Invoker.AddArg(static_cast<int32>(-5)).AddArg(static_cast<int32>(1)).AddArg(static_cast<int32>(10));
 			ASSERT_THAT(IsFalse(Invoker.CallAndReturn<bool>(true), TEXT("ScriptModule argument roundtrip test should return false for an out-of-range value")));
 		}
@@ -980,6 +1014,9 @@ public:
 
 	TEST_METHOD(RichModuleStoresTopLevelTablesAndExecutesEntry)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule rich storage test should create a standalone SDK engine")));
 
@@ -1018,7 +1055,7 @@ public:
 				}
 			}
 			)AS");
-		FScopedNativeModule Module(*TestRunner, Engine, "ScriptModuleRichStorage", ScriptSource.c_str());
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "ScriptModuleRichStorage", ScriptSource.c_str());
 		if (!Module.IsValid())
 		{
 			TestRunner->AddInfo(Engine.GetMessagesText());
@@ -1071,10 +1108,13 @@ public:
 
 	TEST_METHOD(RebuildClearsPreviousTopLevelTables)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule table rebuild test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleTableRebuild");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleTableRebuild");
 		const std::string ModuleV1Source = ASTEST_AS_ANSI(R"AS(
 			const int OldValue = 100;
 
@@ -1156,10 +1196,13 @@ public:
 
 	TEST_METHOD(FailedBuildDoesNotPublishPartialModuleTablesAndCanRecover)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule failed build recovery test should create a standalone SDK engine")));
 
-		FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleFailedBuildRecovery");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleFailedBuildRecovery");
 		asIScriptModule* FailedModule = CreateScriptModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(FailedModule, TEXT("ScriptModule failed build recovery test should create the failed-build module")));
 

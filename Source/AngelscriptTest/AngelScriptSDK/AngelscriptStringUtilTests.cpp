@@ -12,7 +12,6 @@
 //       fork doesn't support. Disabled until the API gap is resolved.
 #if 0 // WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKStringUtilTests, "Angelscript.TestModule.AngelScriptSDK.StringUtil", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -40,7 +39,9 @@ private:
 public:
 	TEST_METHOD(ParseInt)
 	{
-		FNativeMessageCollector Messages;
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
@@ -54,7 +55,9 @@ public:
 
 	TEST_METHOD(ParseNegativeInt)
 	{
-		FNativeMessageCollector Messages;
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
@@ -68,7 +71,9 @@ public:
 
 	TEST_METHOD(ParseFloat)
 	{
-		FNativeMessageCollector Messages;
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
@@ -82,7 +87,9 @@ public:
 
 	TEST_METHOD(ParseZero)
 	{
-		FNativeMessageCollector Messages;
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };
@@ -96,7 +103,9 @@ public:
 
 	TEST_METHOD(LargeValue)
 	{
-		FNativeMessageCollector Messages;
+		using namespace AngelscriptNativeTestSupport;
+
+		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* SE = CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 		ON_SCOPE_EXIT { DestroyNativeEngine(SE); };

@@ -6,8 +6,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
-using namespace AngelscriptSDKTestSupport;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKConversionTests,
 	"Angelscript.TestModule.AngelScriptSDK.Conversion",
@@ -33,7 +31,7 @@ private:
 	}
 
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -54,7 +52,7 @@ public:
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK numeric conversion test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionNumeric", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionNumeric", R"(
 int AddSmallAndMedium(int8 Small, uint16 Medium)
 {
 	return Small + Medium;
@@ -71,7 +69,7 @@ float NarrowPrecise(double Value)
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int AddSmallAndMedium(int8, uint16)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int AddSmallAndMedium(int8, uint16)");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -82,7 +80,7 @@ float NarrowPrecise(double Value)
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "float NarrowPrecise(double)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "float NarrowPrecise(double)");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -99,7 +97,7 @@ float NarrowPrecise(double Value)
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK explicit-cast conversion test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionExplicit", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionExplicit", R"(
 int TruncateDouble(double Value)
 {
 	return int(Value);
@@ -121,7 +119,7 @@ float AddFloatQuarter(uint64 Value)
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int TruncateDouble(double)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int TruncateDouble(double)");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -132,7 +130,7 @@ float AddFloatQuarter(uint64 Value)
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "uint64 WidenToUint64(int)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "uint64 WidenToUint64(int)");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -143,7 +141,7 @@ float AddFloatQuarter(uint64 Value)
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "float AddFloatQuarter(uint64)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "float AddFloatQuarter(uint64)");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -157,10 +155,13 @@ float AddFloatQuarter(uint64 Value)
 
 	TEST_METHOD(ImplicitValueType)
 	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK implicit value-type conversion test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionImplicitValueType", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionImplicitValueType", R"(
 class Test
 {
 	int opImplConv() const
@@ -190,7 +191,7 @@ int ConvertTestToInt()
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK numeric-boundary conversion test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionNumericBoundary", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionNumericBoundary", R"(
 int Truncate(double Value)
 {
 	return int(Value);
@@ -217,7 +218,7 @@ int64 WidenInt(int Value)
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Truncate(double)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Truncate(double)");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -228,7 +229,7 @@ int64 WidenInt(int Value)
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Truncate(double)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int Truncate(double)");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -239,7 +240,7 @@ int64 WidenInt(int Value)
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int RoundTripSmallInt(int)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int RoundTripSmallInt(int)");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -250,7 +251,7 @@ int64 WidenInt(int Value)
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "uint SignedToUnsigned(int)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "uint SignedToUnsigned(int)");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -261,7 +262,7 @@ int64 WidenInt(int Value)
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int64 WidenInt(int)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int64 WidenInt(int)");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -277,7 +278,7 @@ int64 WidenInt(int Value)
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK bool-conversion test should create a standalone engine")));
 
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionBool", R"(
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionBool", R"(
 bool IsNonZero(int Value)
 {
 	return Value != 0;
@@ -294,7 +295,7 @@ int BoolToInt(bool Value)
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool IsNonZero(int)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool IsNonZero(int)");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -305,7 +306,7 @@ int BoolToInt(bool Value)
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool IsNonZero(int)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "bool IsNonZero(int)");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -316,7 +317,7 @@ int BoolToInt(bool Value)
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int BoolToInt(bool)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int BoolToInt(bool)");
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -327,7 +328,7 @@ int BoolToInt(bool Value)
 		}
 
 		{
-			FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int BoolToInt(bool)");
+			AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(*TestRunner, ScriptEngine, Module, "int BoolToInt(bool)");
 			if (!Invoker.IsValid())
 			{
 				return;

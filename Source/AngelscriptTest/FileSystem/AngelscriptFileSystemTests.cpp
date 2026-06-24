@@ -11,40 +11,38 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_FileSystem_AngelscriptFileSystemTests_Private
-{
-	FString GetFileSystemTestRoot()
-	{
-		return FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("Automation") / TEXT("FileSystem"));
-	}
-
-	FString GetLegacyFileSystemTestRoot()
-	{
-		return FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Script") / TEXT("Automation") / TEXT("FileSystem"));
-	}
-
-	void CleanFileSystemTestRoot()
-	{
-		IFileManager::Get().DeleteDirectory(*GetFileSystemTestRoot(), false, true);
-		IFileManager::Get().DeleteDirectory(*GetLegacyFileSystemTestRoot(), false, true);
-	}
-
-	bool WriteFileSystemTestFile(const FString& RelativePath, const FString& Content, FString& OutAbsolutePath)
-	{
-		OutAbsolutePath = FPaths::Combine(GetFileSystemTestRoot(), RelativePath);
-		IFileManager::Get().MakeDirectory(*FPaths::GetPath(OutAbsolutePath), true);
-		return FFileHelper::SaveStringToFile(Content, *OutAbsolutePath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptFileSystemTest,
 	"Angelscript.TestModule.FileSystem",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static FString GetFileSystemTestRoot()
+{
+	return FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("Automation") / TEXT("FileSystem"));
+}
+
+static FString GetLegacyFileSystemTestRoot()
+{
+	return FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Script") / TEXT("Automation") / TEXT("FileSystem"));
+}
+
+static void CleanFileSystemTestRoot()
+{
+	IFileManager::Get().DeleteDirectory(*GetFileSystemTestRoot(), false, true);
+	IFileManager::Get().DeleteDirectory(*GetLegacyFileSystemTestRoot(), false, true);
+}
+
+static bool WriteFileSystemTestFile(const FString& RelativePath, const FString& Content, FString& OutAbsolutePath)
+{
+	OutAbsolutePath = FPaths::Combine(GetFileSystemTestRoot(), RelativePath);
+	IFileManager::Get().MakeDirectory(*FPaths::GetPath(OutAbsolutePath), true);
+	return FFileHelper::SaveStringToFile(Content, *OutAbsolutePath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+}
+
+public:
 	TEST_METHOD(ModuleLookupByFilename)
 	{
-	using namespace AngelscriptTest_FileSystem_AngelscriptFileSystemTests_Private;
-	CleanFileSystemTestRoot();
+CleanFileSystemTestRoot();
 	ON_SCOPE_EXIT
 	{
 		CleanFileSystemTestRoot();
@@ -78,8 +76,7 @@ int PatrolEntry()
 
 	TEST_METHOD(CompileFromDisk)
 	{
-	using namespace AngelscriptTest_FileSystem_AngelscriptFileSystemTests_Private;
-	CleanFileSystemTestRoot();
+CleanFileSystemTestRoot();
 	ON_SCOPE_EXIT
 	{
 		CleanFileSystemTestRoot();
@@ -110,8 +107,7 @@ int Entry()
 
 	TEST_METHOD(PartialFailurePreservesGoodModules)
 	{
-	using namespace AngelscriptTest_FileSystem_AngelscriptFileSystemTests_Private;
-	CleanFileSystemTestRoot();
+CleanFileSystemTestRoot();
 	ON_SCOPE_EXIT
 	{
 		CleanFileSystemTestRoot();
@@ -151,8 +147,7 @@ int BrokenEntry()
 
 	TEST_METHOD(Discovery)
 	{
-	using namespace AngelscriptTest_FileSystem_AngelscriptFileSystemTests_Private;
-	CleanFileSystemTestRoot();
+CleanFileSystemTestRoot();
 	ON_SCOPE_EXIT
 	{
 		CleanFileSystemTestRoot();
@@ -191,8 +186,7 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 
 	TEST_METHOD(SkipRules)
 	{
-	using namespace AngelscriptTest_FileSystem_AngelscriptFileSystemTests_Private;
-	CleanFileSystemTestRoot();
+CleanFileSystemTestRoot();
 	ON_SCOPE_EXIT
 	{
 		CleanFileSystemTestRoot();
@@ -225,8 +219,7 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 
 	TEST_METHOD(RenameUpdatesModuleLookup)
 	{
-	using namespace AngelscriptTest_FileSystem_AngelscriptFileSystemTests_Private;
-	CleanFileSystemTestRoot();
+CleanFileSystemTestRoot();
 	ON_SCOPE_EXIT
 	{
 		CleanFileSystemTestRoot();
@@ -262,8 +255,7 @@ int PatrolEntry()
 
 	TEST_METHOD(PathNormalizationLookup)
 	{
-	using namespace AngelscriptTest_FileSystem_AngelscriptFileSystemTests_Private;
-	CleanFileSystemTestRoot();
+CleanFileSystemTestRoot();
 	ON_SCOPE_EXIT
 	{
 		CleanFileSystemTestRoot();
@@ -297,8 +289,7 @@ int NormalizeEntry()
 
 	TEST_METHOD(MixedSuccessFailureRecoveryAndRemap)
 	{
-	using namespace AngelscriptTest_FileSystem_AngelscriptFileSystemTests_Private;
-	TestRunner->AddExpectedError(TEXT("Automation/FileSystem/Mixed/Bad.as:"), EAutomationExpectedErrorFlags::Contains, 1);
+TestRunner->AddExpectedError(TEXT("Automation/FileSystem/Mixed/Bad.as:"), EAutomationExpectedErrorFlags::Contains, 1);
 	TestRunner->AddExpectedError(TEXT("Identifier 'MissingType' is not a data type"), EAutomationExpectedErrorFlags::Contains, 1);
 	TestRunner->AddExpectedError(TEXT("Hot reload failed due to script compile errors. Keeping all old script code."), EAutomationExpectedErrorFlags::Contains, 1);
 	CleanFileSystemTestRoot();

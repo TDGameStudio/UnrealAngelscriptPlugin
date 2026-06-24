@@ -17,23 +17,40 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
-{
-	constexpr uint32 ProbeLayoutVersion = 0xA5C0DE02u;
-	FAutomationTestBase* GActiveTest = nullptr;
+struct FAngelscriptCrossModulePublicHeaderTests;
+struct FAngelscriptCrossModuleLayoutVersionTests;
+struct FAngelscriptCrossModuleResolverTests;
+struct FAngelscriptCrossModuleDirectBindProbeTests;
+struct FAngelscriptCrossModuleGenerationProfileTests;
+struct FAngelscriptCrossModuleDefaultOffTests;
 
-	bool TestTrue(const TCHAR* What, bool bValue) { return GActiveTest->TestTrue(What, bValue); }
-	bool TestTrue(const FString& What, bool bValue) { return GActiveTest->TestTrue(*What, bValue); }
-	bool TestFalse(const TCHAR* What, bool bValue) { return GActiveTest->TestFalse(What, bValue); }
-	bool TestFalse(const FString& What, bool bValue) { return GActiveTest->TestFalse(*What, bValue); }
+TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleLinkProbeTests,
+	"Angelscript.CppTests.UHTToolResolver.LinkProbe",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+private:
+	friend struct FAngelscriptCrossModulePublicHeaderTests;
+	friend struct FAngelscriptCrossModuleLayoutVersionTests;
+	friend struct FAngelscriptCrossModuleResolverTests;
+	friend struct FAngelscriptCrossModuleDirectBindProbeTests;
+	friend struct FAngelscriptCrossModuleGenerationProfileTests;
+	friend struct FAngelscriptCrossModuleDefaultOffTests;
+
+	static constexpr uint32 ProbeLayoutVersion = 0xA5C0DE02u;
+	static FAutomationTestBase* GActiveTest;
+
+	static bool TestTrue(const TCHAR* What, bool bValue) { return GActiveTest->TestTrue(What, bValue); }
+	static bool TestTrue(const FString& What, bool bValue) { return GActiveTest->TestTrue(*What, bValue); }
+	static bool TestFalse(const TCHAR* What, bool bValue) { return GActiveTest->TestFalse(What, bValue); }
+	static bool TestFalse(const FString& What, bool bValue) { return GActiveTest->TestFalse(*What, bValue); }
 	template <typename ExpectedType, typename ActualType>
-	bool TestEqual(const TCHAR* What, const ExpectedType& Expected, const ActualType& Actual) { return GActiveTest->TestEqual(What, Expected, Actual); }
+	static bool TestEqual(const TCHAR* What, const ExpectedType& Expected, const ActualType& Actual) { return GActiveTest->TestEqual(What, Expected, Actual); }
 	template <typename ExpectedType, typename ActualType>
-	bool TestEqual(const FString& What, const ExpectedType& Expected, const ActualType& Actual) { return GActiveTest->TestEqual(*What, Expected, Actual); }
+	static bool TestEqual(const FString& What, const ExpectedType& Expected, const ActualType& Actual) { return GActiveTest->TestEqual(*What, Expected, Actual); }
 	template <typename ValueType>
-	bool TestNotNull(const TCHAR* What, ValueType* Value) { return GActiveTest->TestNotNull(What, Value); }
+	static bool TestNotNull(const TCHAR* What, ValueType* Value) { return GActiveTest->TestNotNull(What, Value); }
 	template <typename ValueType>
-	bool TestNull(const TCHAR* What, ValueType* Value) { return GActiveTest->TestNull(What, Value); }
+	static bool TestNull(const TCHAR* What, ValueType* Value) { return GActiveTest->TestNull(What, Value); }
 
 	static_assert(std::is_empty<IModularFeature>::value, "IModularFeature must stay empty for the probe reader layout.");
 	static_assert(!std::is_polymorphic<IModularFeature>::value, "IModularFeature must stay non-polymorphic for the probe reader layout.");
@@ -87,47 +104,47 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 	static_assert(offsetof(FCrossModuleFeatureLayoutProbe, ModuleName) == offsetof(FAngelscriptCrossModuleFeatureReader, ModuleName), "Cross-module ModuleName offset drifted.");
 	static_assert(offsetof(FCrossModuleFeatureLayoutProbe, LayoutVersion) == offsetof(FAngelscriptCrossModuleFeatureReader, LayoutVersion), "Cross-module LayoutVersion offset drifted.");
 
-	FString GetAngelscriptPluginDirectory()
+	static FString GetAngelscriptPluginDirectory()
 	{
 		return FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("Angelscript"));
 	}
 
-	FString GetCrossModuleLayoutVersionFilePath()
+	static FString GetCrossModuleLayoutVersionFilePath()
 	{
 		return FPaths::Combine(GetAngelscriptPluginDirectory(), TEXT("Source/AngelscriptUHTTool/cross-module-layout-version.txt"));
 	}
 
-	FString GetCrossModuleGenerationModulesFilePath()
+	static FString GetCrossModuleGenerationModulesFilePath()
 	{
 		return FPaths::Combine(GetAngelscriptPluginDirectory(), TEXT("Source/AngelscriptUHTTool/cross-module-generation-modules.json"));
 	}
 
-	FString GetCrossModulePublicHeaderPath()
+	static FString GetCrossModulePublicHeaderPath()
 	{
 		return FPaths::Combine(GetAngelscriptPluginDirectory(), TEXT("Source/AngelscriptRuntime/Public/UHT/AngelscriptCrossModuleBindings.h"));
 	}
 
-	FString GetRuntimeBuildCsPath()
+	static FString GetRuntimeBuildCsPath()
 	{
 		return FPaths::Combine(GetAngelscriptPluginDirectory(), TEXT("Source/AngelscriptRuntime/AngelscriptRuntime.Build.cs"));
 	}
 
-	FString GetUhtCodeGeneratorPath()
+	static FString GetUhtCodeGeneratorPath()
 	{
 		return FPaths::Combine(GetAngelscriptPluginDirectory(), TEXT("Source/AngelscriptUHTTool/AngelscriptFunctionTableCodeGenerator.cs"));
 	}
 
-	FString GetGeneratedUhtOutputDirectory()
+	static FString GetGeneratedUhtOutputDirectory()
 	{
 		return FPaths::Combine(GetAngelscriptPluginDirectory(), TEXT("Intermediate/Build/Win64/UnrealEditor/Inc/AngelscriptRuntime/UHT"));
 	}
 
-	FString GetGeneratedUhtFilePath(const TCHAR* FileName)
+	static FString GetGeneratedUhtFilePath(const TCHAR* FileName)
 	{
 		return FPaths::Combine(GetGeneratedUhtOutputDirectory(), FileName);
 	}
 
-	UClass* ResolveCrossModuleClassByName(const TCHAR* ModuleName, const TCHAR* ClassName)
+	static UClass* ResolveCrossModuleClassByName(const TCHAR* ModuleName, const TCHAR* ClassName)
 	{
 		if (ClassName == nullptr)
 		{
@@ -146,7 +163,7 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		return Cast<UClass>(StaticFindFirstObject(UClass::StaticClass(), ClassName, EFindFirstObjectOptions::ExactClass | EFindFirstObjectOptions::NativeFirst));
 	}
 
-	UClass* ResolveCrossModuleClass(const FAngelscriptCrossModuleEntry& Entry, const FAngelscriptCrossModuleFeatureReader& Reader)
+	static UClass* ResolveCrossModuleClass(const FAngelscriptCrossModuleEntry& Entry, const FAngelscriptCrossModuleFeatureReader& Reader)
 	{
 		if (UClass* Class = ResolveCrossModuleClassByName(Reader.ModuleName, Entry.ClassName))
 		{
@@ -161,17 +178,17 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		return nullptr;
 	}
 
-	FString GetEngineManualCrossModuleShardPath()
+	static FString GetEngineManualCrossModuleShardPath()
 	{
 		return FPaths::Combine(FPaths::EngineDir(), TEXT("Intermediate/Build/Win64/UnrealEditor/Inc/Engine/UHT/AS_FunctionTable_Engine_CrossModule_Manual.cpp"));
 	}
 
-	FString GetEngineAutomaticCrossModuleShardPath()
+	static FString GetEngineAutomaticCrossModuleShardPath()
 	{
 		return FPaths::Combine(FPaths::EngineDir(), TEXT("Intermediate/Build/Win64/UnrealEditor/Inc/Engine/UHT/AS_FunctionTable_Engine_CrossModule_000.cpp"));
 	}
 
-	bool LoadEngineCrossModuleShardContents(FString& OutContents)
+	static bool LoadEngineCrossModuleShardContents(FString& OutContents)
 	{
 		if (FFileHelper::LoadFileToString(OutContents, *GetEngineAutomaticCrossModuleShardPath()))
 		{
@@ -181,7 +198,7 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		return FFileHelper::LoadFileToString(OutContents, *GetEngineManualCrossModuleShardPath());
 	}
 
-	bool ContainsSafeReturnValueCrossModuleThunk(const FString& ShardContents)
+	static bool ContainsSafeReturnValueCrossModuleThunk(const FString& ShardContents)
 	{
 		return ShardContents.Contains(TEXT("FCrossModuleCallFrame* Frame")) &&
 			ShardContents.Contains(TEXT("Frame->ReturnSlot")) &&
@@ -190,7 +207,7 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 			ShardContents.Contains(TEXT(", sizeof("));
 	}
 
-	bool ContainsArgumentMarshallingCrossModuleThunk(const FString& ShardContents)
+	static bool ContainsArgumentMarshallingCrossModuleThunk(const FString& ShardContents)
 	{
 		return !ShardContents.Contains(TEXT("FCrossModuleCallFrame* /*Frame*/")) &&
 			ShardContents.Contains(TEXT("PassCrossModuleArg<")) &&
@@ -201,14 +218,14 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 			ShardContents.Contains(TEXT("TIsPointer"));
 	}
 
-	bool ContainsNonTrivialReturnConstruction(const FString& ShardContents)
+	static bool ContainsNonTrivialReturnConstruction(const FString& ShardContents)
 	{
 		return ShardContents.Contains(TEXT("new (Frame->ReturnSlot)")) &&
 			ShardContents.Contains(TEXT("BuildCrossModuleReturn")) &&
 			ShardContents.Contains(TEXT("BuildCrossModuleReturn<FVector>"));
 	}
 
-	bool ContainsNonZeroArgCrossModuleTableEntry(const FString& ShardContents)
+	static bool ContainsNonZeroArgCrossModuleTableEntry(const FString& ShardContents)
 	{
 		TArray<FString> Lines;
 		ShardContents.ParseIntoArrayLines(Lines);
@@ -236,12 +253,12 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		return false;
 	}
 
-	FString FormatLayoutVersionToken(uint32 Version)
+	static FString FormatLayoutVersionToken(uint32 Version)
 	{
 		return FString::Printf(TEXT("0x%08X"), Version);
 	}
 
-	bool LoadLayoutVersionToken(FString& OutToken)
+	static bool LoadLayoutVersionToken(FString& OutToken)
 	{
 		FString Contents;
 		if (!FFileHelper::LoadFileToString(Contents, *GetCrossModuleLayoutVersionFilePath()))
@@ -264,7 +281,7 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		return false;
 	}
 
-	TSet<FString> ExtractDependencyModuleNames(const FString& BuildCsContents)
+	static TSet<FString> ExtractDependencyModuleNames(const FString& BuildCsContents)
 	{
 		TArray<FString> Lines;
 		BuildCsContents.ParseIntoArrayLines(Lines);
@@ -311,7 +328,7 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		return ModuleNames;
 	}
 
-	bool CsvContainsRowWithPrefix(const FString& CsvContents, const FString& Prefix)
+	static bool CsvContainsRowWithPrefix(const FString& CsvContents, const FString& Prefix)
 	{
 		TArray<FString> Lines;
 		CsvContents.ParseIntoArrayLines(Lines);
@@ -326,7 +343,7 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		return false;
 	}
 
-	bool TryParseCsvLine(const FString& Line, TArray<FString>& OutFields)
+	static bool TryParseCsvLine(const FString& Line, TArray<FString>& OutFields)
 	{
 		OutFields.Reset();
 		FString Field;
@@ -367,7 +384,7 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		return true;
 	}
 
-	bool TryExtractFirstCrossModuleCsvIdentity(const FString& EntriesContents, FString& OutModuleName, FString& OutClassName, FString& OutFunctionName)
+	static bool TryExtractFirstCrossModuleCsvIdentity(const FString& EntriesContents, FString& OutModuleName, FString& OutClassName, FString& OutFunctionName)
 	{
 		TArray<FString> Lines;
 		EntriesContents.ParseIntoArrayLines(Lines);
@@ -391,7 +408,7 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		return false;
 	}
 
-	bool CsvContainsEntryKindForIdentity(const FString& EntriesContents, const FString& ModuleName, const FString& ClassName, const FString& FunctionName, const FString& EntryKind)
+	static bool CsvContainsEntryKindForIdentity(const FString& EntriesContents, const FString& ModuleName, const FString& ClassName, const FString& FunctionName, const FString& EntryKind)
 	{
 		TArray<FString> Lines;
 		EntriesContents.ParseIntoArrayLines(Lines);
@@ -412,7 +429,7 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		return false;
 	}
 
-	bool CsvContainsThunkStyleForIdentity(const FString& EntriesContents, const FString& ModuleName, const FString& ClassName, const FString& FunctionName, const FString& ThunkStyle)
+	static bool CsvContainsThunkStyleForIdentity(const FString& EntriesContents, const FString& ModuleName, const FString& ClassName, const FString& FunctionName, const FString& ThunkStyle)
 	{
 		TArray<FString> Lines;
 		EntriesContents.ParseIntoArrayLines(Lines);
@@ -433,7 +450,7 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		return false;
 	}
 
-	bool CsvContainsModuleEntryKind(const FString& EntriesContents, const FString& ModuleName, const FString& EntryKind)
+	static bool CsvContainsModuleEntryKind(const FString& EntriesContents, const FString& ModuleName, const FString& EntryKind)
 	{
 		TArray<FString> Lines;
 		EntriesContents.ParseIntoArrayLines(Lines);
@@ -454,7 +471,7 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		return false;
 	}
 
-	bool CsvContainsModuleThunkStyle(const FString& EntriesContents, const FString& ModuleName, const FString& ThunkStyle)
+	static bool CsvContainsModuleThunkStyle(const FString& EntriesContents, const FString& ModuleName, const FString& ThunkStyle)
 	{
 		TArray<FString> Lines;
 		EntriesContents.ParseIntoArrayLines(Lines);
@@ -475,7 +492,7 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		return false;
 	}
 
-	bool CsvContainsSkippedReasonForModule(const FString& SkippedEntriesContents, const FString& ModuleName, const FString& FailureReason)
+	static bool CsvContainsSkippedReasonForModule(const FString& SkippedEntriesContents, const FString& ModuleName, const FString& FailureReason)
 	{
 		TArray<FString> Lines;
 		SkippedEntriesContents.ParseIntoArrayLines(Lines);
@@ -496,7 +513,7 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 		return false;
 	}
 
-	bool TryExtractFirstRpcStubCsvIdentity(const FString& EntriesContents, FString& OutModuleName, FString& OutClassName, FString& OutFunctionName)
+	static bool TryExtractFirstRpcStubCsvIdentity(const FString& EntriesContents, FString& OutModuleName, FString& OutClassName, FString& OutFunctionName)
 	{
 		TArray<FString> Lines;
 		EntriesContents.ParseIntoArrayLines(Lines);
@@ -520,11 +537,33 @@ namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private
 
 		return false;
 	}
-}
 
-bool RunLinkProbeRoundtrip(FAutomationTestBase& Test)
+	static bool RunLinkProbeRoundtrip(FAutomationTestBase& Test);
+	static bool RunPublicHeader(FAutomationTestBase& Test);
+	static bool RunLayoutVersionSingleSource(FAutomationTestBase& Test);
+	static bool RunSkippedStatistics(FAutomationTestBase& Test);
+	static bool RunNoLongerUnexportedSymbol(FAutomationTestBase& Test);
+	static bool RunStaticAssertSizeofConsistency(FAutomationTestBase& Test);
+	static bool RunStaleCleanupBoundaries(FAutomationTestBase& Test);
+	static bool RunScriptProjectionSafetyGate(FAutomationTestBase& Test);
+	static bool RunAutomaticEntryVisible(FAutomationTestBase& Test);
+	static bool RunBuildCsDependencyBoundary(FAutomationTestBase& Test);
+	static bool RunGenerationProfilesPolicy(FAutomationTestBase& Test);
+	static bool RunGenerationProfilesEntries(FAutomationTestBase& Test);
+	static bool RunDefaultOffDiagnostics(FAutomationTestBase& Test);
+	static bool RunDefaultOffGeneratedOutput(FAutomationTestBase& Test);
+
+public:
+	TEST_METHOD(IModularFeaturesRoundtrip)
+	{
+		ASSERT_THAT(IsTrue(RunLinkProbeRoundtrip(*TestRunner)));
+	}
+};
+
+FAutomationTestBase* FAngelscriptCrossModuleLinkProbeTests::GActiveTest = nullptr;
+
+bool FAngelscriptCrossModuleLinkProbeTests::RunLinkProbeRoundtrip(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
 	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	TArray<IModularFeature*> Features = IModularFeatures::Get().GetModularFeatureImplementations<IModularFeature>(
@@ -532,9 +571,8 @@ bool RunLinkProbeRoundtrip(FAutomationTestBase& Test)
 	return TestEqual(TEXT("Engine module link probe feature should not be registered while cross-module generation is disabled by default"), Features.Num(), 0);
 }
 
-bool RunPublicHeader(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleLinkProbeTests::RunPublicHeader(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
 	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString HeaderContents;
@@ -559,9 +597,8 @@ bool RunPublicHeader(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunLayoutVersionSingleSource(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleLinkProbeTests::RunLayoutVersionSingleSource(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
 	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString VersionToken;
@@ -596,9 +633,8 @@ bool RunLayoutVersionSingleSource(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunSkippedStatistics(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleLinkProbeTests::RunSkippedStatistics(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
 	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString SummaryContents;
@@ -661,9 +697,8 @@ bool RunSkippedStatistics(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunNoLongerUnexportedSymbol(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleLinkProbeTests::RunNoLongerUnexportedSymbol(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
 	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString SummaryContents;
@@ -691,9 +726,8 @@ bool RunNoLongerUnexportedSymbol(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunStaticAssertSizeofConsistency(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleLinkProbeTests::RunStaticAssertSizeofConsistency(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
 	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	static_assert(sizeof(FAngelscriptCrossModuleEntry) == 32, "FAngelscriptCrossModuleEntry size must match generator-emitted ABI.");
@@ -721,9 +755,8 @@ bool RunStaticAssertSizeofConsistency(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunStaleCleanupBoundaries(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleLinkProbeTests::RunStaleCleanupBoundaries(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
 	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString GeneratorContents;
@@ -740,9 +773,8 @@ bool RunStaleCleanupBoundaries(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunScriptProjectionSafetyGate(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleLinkProbeTests::RunScriptProjectionSafetyGate(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
 	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString GeneratorContents;
@@ -761,9 +793,8 @@ bool RunScriptProjectionSafetyGate(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunAutomaticEntryVisible(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleLinkProbeTests::RunAutomaticEntryVisible(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
 	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FAngelscriptEngine* CurrentEngine = FAngelscriptEngine::TryGetCurrentEngine();
@@ -778,9 +809,8 @@ bool RunAutomaticEntryVisible(FAutomationTestBase& Test)
 	return TestEqual(TEXT("Automatic cross-module entries should not be injected while generation is disabled by default"), Features.Num(), 0);
 }
 
-bool RunBuildCsDependencyBoundary(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleLinkProbeTests::RunBuildCsDependencyBoundary(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
 	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString BuildCsContents;
@@ -810,9 +840,8 @@ bool RunBuildCsDependencyBoundary(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunGenerationProfilesPolicy(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleLinkProbeTests::RunGenerationProfilesPolicy(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
 	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString ProfileConfigContents;
@@ -865,9 +894,8 @@ bool RunGenerationProfilesPolicy(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunGenerationProfilesEntries(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleLinkProbeTests::RunGenerationProfilesEntries(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
 	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString EntriesContents;
@@ -927,9 +955,8 @@ bool RunGenerationProfilesEntries(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunDefaultOffDiagnostics(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleLinkProbeTests::RunDefaultOffDiagnostics(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
 	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString ProfileConfigContents;
@@ -961,9 +988,8 @@ bool RunDefaultOffDiagnostics(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-bool RunDefaultOffGeneratedOutput(FAutomationTestBase& Test)
+bool FAngelscriptCrossModuleLinkProbeTests::RunDefaultOffGeneratedOutput(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
 	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
 	FString EntriesContents;
@@ -991,25 +1017,13 @@ bool RunDefaultOffGeneratedOutput(FAutomationTestBase& Test)
 	return bPassed;
 }
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleLinkProbeTests,
-	"Angelscript.CppTests.UHTToolResolver.LinkProbe",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
-	TEST_METHOD(IModularFeaturesRoundtrip)
-	{
-		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
-		ASSERT_THAT(IsTrue(RunLinkProbeRoundtrip(*TestRunner)));
-	}
-};
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModulePublicHeaderTests,
 	"Angelscript.CppTests.UHTToolResolver.PublicHeader",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	TEST_METHOD(NoASRuntimeOrSDKDeps)
 	{
-		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
-		ASSERT_THAT(IsTrue(RunPublicHeader(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptCrossModuleLinkProbeTests::RunPublicHeader(*TestRunner)));
 	}
 };
 
@@ -1019,8 +1033,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleLayoutVersionTests,
 {
 	TEST_METHOD(LayoutVersionFile_SingleSource_GeneratorAndHeaderInSync)
 	{
-		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
-		ASSERT_THAT(IsTrue(RunLayoutVersionSingleSource(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptCrossModuleLinkProbeTests::RunLayoutVersionSingleSource(*TestRunner)));
 	}
 };
 
@@ -1030,26 +1043,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleResolverTests,
 {
 	TEST_METHOD(NoLongerEmitsUnexportedSymbol_ForCrossModuleCandidate)
 	{
-		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
-		ASSERT_THAT(IsTrue(RunNoLongerUnexportedSymbol(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptCrossModuleLinkProbeTests::RunNoLongerUnexportedSymbol(*TestRunner)));
 	}
 
 	TEST_METHOD(StaticAssert_SizeofConsistency)
 	{
-		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
-		ASSERT_THAT(IsTrue(RunStaticAssertSizeofConsistency(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptCrossModuleLinkProbeTests::RunStaticAssertSizeofConsistency(*TestRunner)));
 	}
 
 	TEST_METHOD(StaleCleanup_CrossModuleEnumeratesSupportedModuleDirectories)
 	{
-		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
-		ASSERT_THAT(IsTrue(RunStaleCleanupBoundaries(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptCrossModuleLinkProbeTests::RunStaleCleanupBoundaries(*TestRunner)));
 	}
 
 	TEST_METHOD(BuildCs_NoEngineModuleAddedAsDependency)
 	{
-		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
-		ASSERT_THAT(IsTrue(RunBuildCsDependencyBoundary(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptCrossModuleLinkProbeTests::RunBuildCsDependencyBoundary(*TestRunner)));
 	}
 };
 
@@ -1059,20 +1068,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleDirectBindProbeTests,
 {
 	TEST_METHOD(SkippedStatisticsClassifyCrossModuleOutcomes)
 	{
-		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
-		ASSERT_THAT(IsTrue(RunSkippedStatistics(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptCrossModuleLinkProbeTests::RunSkippedStatistics(*TestRunner)));
 	}
 
 	TEST_METHOD(ScriptMethodMixinProjection_ExcludedFromAutomaticSafeSet)
 	{
-		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
-		ASSERT_THAT(IsTrue(RunScriptProjectionSafetyGate(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptCrossModuleLinkProbeTests::RunScriptProjectionSafetyGate(*TestRunner)));
 	}
 
 	TEST_METHOD(AutomaticEntryVisible)
 	{
-		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
-		ASSERT_THAT(IsTrue(RunAutomaticEntryVisible(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptCrossModuleLinkProbeTests::RunAutomaticEntryVisible(*TestRunner)));
 	}
 };
 
@@ -1082,14 +1088,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleGenerationProfileTests,
 {
 	TEST_METHOD(PolicyFileAndBuildCsBoundary)
 	{
-		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
-		ASSERT_THAT(IsTrue(RunGenerationProfilesPolicy(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptCrossModuleLinkProbeTests::RunGenerationProfilesPolicy(*TestRunner)));
 	}
 
 	TEST_METHOD(GeneratedRowsAreCrossModuleOnly)
 	{
-		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
-		ASSERT_THAT(IsTrue(RunGenerationProfilesEntries(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptCrossModuleLinkProbeTests::RunGenerationProfilesEntries(*TestRunner)));
 	}
 };
 
@@ -1099,14 +1103,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleDefaultOffTests,
 {
 	TEST_METHOD(DiagnosticsAndProfileOptIn)
 	{
-		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
-		ASSERT_THAT(IsTrue(RunDefaultOffDiagnostics(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptCrossModuleLinkProbeTests::RunDefaultOffDiagnostics(*TestRunner)));
 	}
 
 	TEST_METHOD(GeneratedOutputsSuppressed)
 	{
-		using namespace AngelscriptTest_UHTToolResolver_LinkProbe_Private;
-		ASSERT_THAT(IsTrue(RunDefaultOffGeneratedOutput(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptCrossModuleLinkProbeTests::RunDefaultOffGeneratedOutput(*TestRunner)));
 	}
 };
 

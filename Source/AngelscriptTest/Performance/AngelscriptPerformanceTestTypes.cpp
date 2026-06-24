@@ -3,20 +3,16 @@
 #include "AngelscriptBinds.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
-namespace AngelscriptTest_Performance_TestTypes_Private
-{
-	void MarkPreviousBindEditorOnly()
-	{
-		FAngelscriptBinds::SetPreviousBindIsEditorOnly(true);
-	}
-}
 
 AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AngelscriptPerformanceTestTargetObject(
 	TEXT("AngelscriptPerformanceTestTargetObject"),
 	(int32)FAngelscriptBinds::EOrder::Late + 101,
 	[]
 	{
-		using namespace AngelscriptTest_Performance_TestTypes_Private;
+		auto MarkPreviousBindEditorOnly = []
+		{
+			FAngelscriptBinds::SetPreviousBindIsEditorOnly(true);
+		};
 
 		FAngelscriptBinds TargetObject_ = FAngelscriptBinds::ExistingClass("UAngelscriptPerformanceTestTargetObject");
 		if (TargetObject_.GetTypeInfo() == nullptr)

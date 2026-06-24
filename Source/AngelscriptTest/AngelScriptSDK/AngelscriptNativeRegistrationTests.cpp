@@ -5,7 +5,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptNativeTestSupport;
 
 
 
@@ -72,10 +71,12 @@ private:
 		const char* ModuleName,
 		const char* Source,
 		const char* Declaration,
-		FNativeTestEngine& NativeEngine,
+		AngelscriptNativeTestSupport::FNativeTestEngine& NativeEngine,
 		int32& OutValue,
 		FString& OutDiagnostics)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
 		asIScriptModule* Module = BuildNativeModule(ScriptEngine, ModuleName, Source);
 		if (Module == nullptr)
 		{
@@ -126,7 +127,7 @@ private:
 		return true;
 	}
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 	inline static bool bGlobalFunctionRegistered = false;
 	inline static bool bGlobalPropertyRegistered = false;
 	inline static bool bNativeCounterRegistered = false;
@@ -192,7 +193,7 @@ public:
 
 		int32 Result = 0;
 		FString Diagnostics;
-		FScopedNativeModuleName ModuleScope(Engine, "NativeRegisterGlobalFunction");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "NativeRegisterGlobalFunction");
 		if (!this->Assert.IsTrue(ExecuteRegisteredScript(ScriptEngine, "NativeRegisterGlobalFunction", "int Entry() { return DoubleNative(21); }", "int Entry()", Engine, Result, Diagnostics),
 			TEXT("Native registration tests should compile, resolve, and execute the script module")))
 		{
@@ -218,7 +219,7 @@ public:
 
 		int32 Result = 0;
 		FString Diagnostics;
-		FScopedNativeModuleName ModuleScope(Engine, "NativeRegisterGlobalProperty");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "NativeRegisterGlobalProperty");
 		if (!this->Assert.IsTrue(ExecuteRegisteredScript(ScriptEngine, "NativeRegisterGlobalProperty", "int Entry() { return NativeGlobalValue * 2; }", "int Entry()", Engine, Result, Diagnostics),
 			TEXT("Native registration tests should compile, resolve, and execute the script module")))
 		{
@@ -244,7 +245,7 @@ public:
 
 		int32 Result = 0;
 		FString Diagnostics;
-		FScopedNativeModuleName ModuleScope(Engine, "NativeRegisterSimpleValueType");
+		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "NativeRegisterSimpleValueType");
 		if (!this->Assert.IsTrue(ExecuteRegisteredScript(ScriptEngine, "NativeRegisterSimpleValueType", "int Entry() { NativeCounter Counter; Counter.Value = 19; return Counter.Value + 23; }", "int Entry()", Engine, Result, Diagnostics),
 			TEXT("Native registration tests should compile, resolve, and execute the script module")))
 		{

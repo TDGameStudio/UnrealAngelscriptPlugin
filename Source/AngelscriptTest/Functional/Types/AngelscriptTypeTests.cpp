@@ -11,16 +11,21 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_Angelscript_AngelscriptTypeTests_Private
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptTypeTests,
+	"Angelscript.TestModule.Functional.Types",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	FString BuildAutoInferenceMatrixScript(const bool bFloatUsesFloat64)
-	{
-		return bFloatUsesFloat64
-			? TEXT(R"AS(
+private:
+static FString BuildAutoInferenceMatrixScript(const bool bFloatUsesFloat64)
+{
+	return bFloatUsesFloat64
+		? TEXT(R"AS(
 enum EKind
 {
-	A,
-	B
+A,
+B
 }
 
 int Which(int Value) { return 1; }
@@ -29,17 +34,17 @@ int Which(EKind Value) { return 3; }
 
 int Run()
 {
-	auto IntValue = 42;
-	auto FloatValue = 1.5;
-	auto EnumValue = EKind::B;
-	return Which(IntValue) * 100 + Which(FloatValue) * 10 + Which(EnumValue);
+auto IntValue = 42;
+auto FloatValue = 1.5;
+auto EnumValue = EKind::B;
+return Which(IntValue) * 100 + Which(FloatValue) * 10 + Which(EnumValue);
 }
 )AS")
-			: TEXT(R"AS(
+		: TEXT(R"AS(
 enum EKind
 {
-	A,
-	B
+A,
+B
 }
 
 int Which(int Value) { return 1; }
@@ -48,148 +53,142 @@ int Which(EKind Value) { return 3; }
 
 int Run()
 {
-	auto IntValue = 42;
-	auto FloatValue = 1.5f;
-	auto EnumValue = EKind::B;
-	return Which(IntValue) * 100 + Which(FloatValue) * 10 + Which(EnumValue);
+auto IntValue = 42;
+auto FloatValue = 1.5f;
+auto EnumValue = EKind::B;
+return Which(IntValue) * 100 + Which(FloatValue) * 10 + Which(EnumValue);
 }
 )AS");
-	}
+}
 
-	FString BuildImplicitCastNegativeAndParamWideningScript(const bool bFloatUsesFloat64)
-	{
-		return bFloatUsesFloat64
-			? TEXT(R"AS(
+static FString BuildImplicitCastNegativeAndParamWideningScript(const bool bFloatUsesFloat64)
+{
+	return bFloatUsesFloat64
+		? TEXT(R"AS(
 double Accept(double Value)
 {
-	return Value;
+return Value;
 }
 
 int Run()
 {
-	int Negative = -7;
-	double Assigned = Negative;
-	double Forwarded = Accept(Negative);
-	return (Assigned < 0.0 ? 1 : 0) * 100 + (int(Assigned) == -7 ? 1 : 0) * 10 + (int(Forwarded) == -7 ? 1 : 0);
+int Negative = -7;
+double Assigned = Negative;
+double Forwarded = Accept(Negative);
+return (Assigned < 0.0 ? 1 : 0) * 100 + (int(Assigned) == -7 ? 1 : 0) * 10 + (int(Forwarded) == -7 ? 1 : 0);
 }
 )AS")
-			: TEXT(R"AS(
+		: TEXT(R"AS(
 float Accept(float Value)
 {
-	return Value;
+return Value;
 }
 
 int Run()
 {
-	int Negative = -7;
-	float Assigned = Negative;
-	float Forwarded = Accept(Negative);
-	return (Assigned < 0.0f ? 1 : 0) * 100 + (int(Assigned) == -7 ? 1 : 0) * 10 + (int(Forwarded) == -7 ? 1 : 0);
+int Negative = -7;
+float Assigned = Negative;
+float Forwarded = Accept(Negative);
+return (Assigned < 0.0f ? 1 : 0) * 100 + (int(Assigned) == -7 ? 1 : 0) * 10 + (int(Forwarded) == -7 ? 1 : 0);
 }
 )AS");
-	}
+}
 
-	FString BuildNegativeAndFractionalFloatScript(const bool bFloatUsesFloat64)
-	{
-		return bFloatUsesFloat64
-			? TEXT(R"AS(
+static FString BuildNegativeAndFractionalFloatScript(const bool bFloatUsesFloat64)
+{
+	return bFloatUsesFloat64
+		? TEXT(R"AS(
 double Run()
 {
-	double A = -1.25;
-	double B = 0.5;
-	double C = 2.0;
-	return (A + B) * C;
+double A = -1.25;
+double B = 0.5;
+double C = 2.0;
+return (A + B) * C;
 }
 )AS")
-			: TEXT(R"AS(
+		: TEXT(R"AS(
 float Run()
 {
-	float A = -1.25f;
-	float B = 0.5f;
-	float C = 2.0f;
-	return (A + B) * C;
+float A = -1.25f;
+float B = 0.5f;
+float C = 2.0f;
+return (A + B) * C;
 }
 )AS");
-	}
+}
 
-	FString BuildFloatConfigurationModesScript(const bool bFloatUsesFloat64)
-	{
-		return bFloatUsesFloat64
-			? TEXT(R"AS(
+static FString BuildFloatConfigurationModesScript(const bool bFloatUsesFloat64)
+{
+	return bFloatUsesFloat64
+		? TEXT(R"AS(
 float Run()
 {
-	float A = -1.25;
-	float B = 2.5;
-	return A + B;
+float A = -1.25;
+float B = 2.5;
+return A + B;
 }
 )AS")
-			: TEXT(R"AS(
+		: TEXT(R"AS(
 float Run()
 {
-	float A = -1.25f;
-	float B = 2.5f;
-	return A + B;
+float A = -1.25f;
+float B = 2.5f;
+return A + B;
 }
 )AS");
+}
+
+static asIScriptFunction* FindFunctionByDeclExact(asIScriptModule& Module, const FString& Declaration)
+{
+	FTCHARToUTF8 DeclarationUtf8(*Declaration);
+	return Module.GetFunctionByDecl(DeclarationUtf8.Get());
+}
+
+static bool ReadExpectedFloatResult(FAutomationTestBase& Test, FAngelscriptEngine& Engine, asIScriptFunction& Function, double ExpectedValue)
+{
+	asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
+	if (!Test.TestNotNull(TEXT("Float helper should expose a script engine"), ScriptEngine))
+	{
+		return false;
 	}
 
-	asIScriptFunction* FindFunctionByDeclExact(asIScriptModule& Module, const FString& Declaration)
+	asIScriptContext* Context = Engine.CreateContext();
+	if (!Test.TestNotNull(TEXT("Float helper should create an execution context"), Context))
 	{
-		FTCHARToUTF8 DeclarationUtf8(*Declaration);
-		return Module.GetFunctionByDecl(DeclarationUtf8.Get());
+		return false;
 	}
 
-	bool ReadExpectedFloatResult(FAutomationTestBase& Test, FAngelscriptEngine& Engine, asIScriptFunction& Function, double ExpectedValue)
+	const int PrepareResult = Context->Prepare(&Function);
+	const int ExecuteResult = PrepareResult == asSUCCESS ? Context->Execute() : PrepareResult;
+	if (!Test.TestEqual(TEXT("Float helper should prepare the function"), PrepareResult, static_cast<int32>(asSUCCESS)) ||
+		!Test.TestEqual(TEXT("Float helper should execute the function"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
 	{
-		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
-		if (!Test.TestNotNull(TEXT("Float helper should expose a script engine"), ScriptEngine))
-		{
-			return false;
-		}
-
-		asIScriptContext* Context = Engine.CreateContext();
-		if (!Test.TestNotNull(TEXT("Float helper should create an execution context"), Context))
-		{
-			return false;
-		}
-
-		const int PrepareResult = Context->Prepare(&Function);
-		const int ExecuteResult = PrepareResult == asSUCCESS ? Context->Execute() : PrepareResult;
-		if (!Test.TestEqual(TEXT("Float helper should prepare the function"), PrepareResult, static_cast<int32>(asSUCCESS)) ||
-			!Test.TestEqual(TEXT("Float helper should execute the function"), ExecuteResult, static_cast<int32>(asEXECUTION_FINISHED)))
-		{
-			Context->Release();
-			return false;
-		}
-
-		const bool bFloatUsesFloat64 = ScriptEngine->GetEngineProperty(asEP_FLOAT_IS_FLOAT64) != 0;
-		bool bMatches = false;
-		if (bFloatUsesFloat64)
-		{
-			double ReturnValue = 0.0;
-			const asQWORD EncodedReturnValue = Context->GetReturnQWord();
-			FMemory::Memcpy(&ReturnValue, &EncodedReturnValue, sizeof(ReturnValue));
-			bMatches = FMath::IsNearlyEqual(ReturnValue, ExpectedValue, 0.001);
-			Test.TestTrue(TEXT("Float helper should preserve float64-compatible return values"), bMatches);
-		}
-		else
-		{
-			const float ReturnValue = Context->GetReturnFloat();
-			bMatches = FMath::IsNearlyEqual(ReturnValue, static_cast<float>(ExpectedValue), 0.001f);
-			Test.TestTrue(TEXT("Float helper should preserve float return values"), bMatches);
-		}
-
 		Context->Release();
-		return bMatches;
+		return false;
 	}
+
+	const bool bFloatUsesFloat64 = ScriptEngine->GetEngineProperty(asEP_FLOAT_IS_FLOAT64) != 0;
+	bool bMatches = false;
+	if (bFloatUsesFloat64)
+	{
+		double ReturnValue = 0.0;
+		const asQWORD EncodedReturnValue = Context->GetReturnQWord();
+		FMemory::Memcpy(&ReturnValue, &EncodedReturnValue, sizeof(ReturnValue));
+		bMatches = FMath::IsNearlyEqual(ReturnValue, ExpectedValue, 0.001);
+		Test.TestTrue(TEXT("Float helper should preserve float64-compatible return values"), bMatches);
+	}
+	else
+	{
+		const float ReturnValue = Context->GetReturnFloat();
+		bMatches = FMath::IsNearlyEqual(ReturnValue, static_cast<float>(ExpectedValue), 0.001f);
+		Test.TestTrue(TEXT("Float helper should preserve float return values"), bMatches);
+	}
+
+	Context->Release();
+	return bMatches;
 }
 
-
-TEST_CLASS_WITH_FLAGS(
-	FAngelscriptTypeTests,
-	"Angelscript.TestModule.Functional.Types",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -252,8 +251,7 @@ TEST_CLASS_WITH_FLAGS(
 
 	TEST_METHOD(Float)
 	{
-		using namespace AngelscriptTest_Angelscript_AngelscriptTypeTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
@@ -276,8 +274,7 @@ TEST_CLASS_WITH_FLAGS(
 
 	TEST_METHOD(Float_ConfigurationModes)
 	{
-		using namespace AngelscriptTest_Angelscript_AngelscriptTypeTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		ON_SCOPE_EXIT
 		{
@@ -383,8 +380,7 @@ TEST_CLASS_WITH_FLAGS(
 
 	TEST_METHOD(Float_NegativeAndFractionalMatrix)
 	{
-		using namespace AngelscriptTest_Angelscript_AngelscriptTypeTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
@@ -477,8 +473,7 @@ TEST_CLASS_WITH_FLAGS(
 
 	TEST_METHOD(AutoInferenceMatrix)
 	{
-		using namespace AngelscriptTest_Angelscript_AngelscriptTypeTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
@@ -520,8 +515,7 @@ TEST_CLASS_WITH_FLAGS(
 
 	TEST_METHOD(ImplicitCast)
 	{
-		using namespace AngelscriptTest_Angelscript_AngelscriptTypeTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
@@ -544,8 +538,7 @@ TEST_CLASS_WITH_FLAGS(
 
 	TEST_METHOD(ImplicitCast_NegativeAndParamWidening)
 	{
-		using namespace AngelscriptTest_Angelscript_AngelscriptTypeTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();

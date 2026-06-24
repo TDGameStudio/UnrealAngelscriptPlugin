@@ -12,19 +12,16 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_Inheritance_AngelscriptInheritanceTestCaseTests_Private
-{
-	using namespace AngelscriptFunctionalTestUtils;
-
-	void InitializeInheritanceTestCaseSpawner(FActorTestSpawner& Spawner)
-	{
-		Spawner.InitializeGameSubsystems();
-	}
-}
-
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptInheritanceFunctionalTests, "Angelscript.TestModule.Inheritance", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+static void InitializeInheritanceTestCaseSpawner(FActorTestSpawner& Spawner)
+{
+	Spawner.InitializeGameSubsystems();
+}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -34,8 +31,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptInheritanceFunctionalTests, "Angelscript.TestM
 
 	TEST_METHOD(ScriptToScript)
 	{
-		using namespace AngelscriptTest_Inheritance_AngelscriptInheritanceTestCaseTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		static const FName ModuleName(TEXT("TestInheritanceScriptToScript"));
 		ON_SCOPE_EXIT
@@ -94,8 +90,7 @@ class ATestInheritanceDerived : ATestCaseInheritanceBase
 
 	TEST_METHOD(Super)
 	{
-		using namespace AngelscriptTest_Inheritance_AngelscriptInheritanceTestCaseTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		static const FName ModuleName(TEXT("TestInheritanceSuper"));
 		ON_SCOPE_EXIT
@@ -154,8 +149,7 @@ class ATestInheritanceSuperDerived : ATestCaseInheritanceSuperBase
 
 	TEST_METHOD(IsA)
 	{
-		using namespace AngelscriptTest_Inheritance_AngelscriptInheritanceTestCaseTests_Private;
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 		static const FName ModuleName(TEXT("TestInheritanceIsA"));
 		ON_SCOPE_EXIT

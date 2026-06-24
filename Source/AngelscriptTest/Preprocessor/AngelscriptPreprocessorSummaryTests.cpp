@@ -13,54 +13,53 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace PreprocessorTestHelpers;
-
-namespace AngelscriptPreprocessorSummaryTests_Private
-{
-	struct FHookSummaryCapture
-	{
-		FDelegateHandle ProcessChunksHandle;
-		FDelegateHandle PostProcessCodeHandle;
-		TArray<FAngelscriptPreprocessorSummary> ProcessChunksSummaries;
-		TArray<FAngelscriptPreprocessorSummary> PostProcessCodeSummaries;
-
-		FHookSummaryCapture()
-		{
-			ProcessChunksHandle = FAngelscriptPreprocessor::OnProcessChunks.AddRaw(this, &FHookSummaryCapture::HandleProcessChunks);
-			PostProcessCodeHandle = FAngelscriptPreprocessor::OnPostProcessCode.AddRaw(this, &FHookSummaryCapture::HandlePostProcessCode);
-		}
-
-		~FHookSummaryCapture()
-		{
-			if (ProcessChunksHandle.IsValid())
-			{
-				FAngelscriptPreprocessor::OnProcessChunks.Remove(ProcessChunksHandle);
-			}
-
-			if (PostProcessCodeHandle.IsValid())
-			{
-				FAngelscriptPreprocessor::OnPostProcessCode.Remove(PostProcessCodeHandle);
-			}
-		}
-
-		void HandleProcessChunks(FAngelscriptPreprocessor& Preprocessor)
-		{
-			ProcessChunksSummaries.Add(Preprocessor.GetSummary());
-		}
-
-		void HandlePostProcessCode(FAngelscriptPreprocessor& Preprocessor)
-		{
-			PostProcessCodeSummaries.Add(Preprocessor.GetSummary());
-		}
-	};
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorSummaryTest,
 	"Angelscript.TestModule.Preprocessor.Summary",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+struct FHookSummaryCapture
+{
+	FDelegateHandle ProcessChunksHandle;
+	FDelegateHandle PostProcessCodeHandle;
+	TArray<FAngelscriptPreprocessorSummary> ProcessChunksSummaries;
+	TArray<FAngelscriptPreprocessorSummary> PostProcessCodeSummaries;
+
+	FHookSummaryCapture()
+	{
+		ProcessChunksHandle = FAngelscriptPreprocessor::OnProcessChunks.AddRaw(this, &FHookSummaryCapture::HandleProcessChunks);
+		PostProcessCodeHandle = FAngelscriptPreprocessor::OnPostProcessCode.AddRaw(this, &FHookSummaryCapture::HandlePostProcessCode);
+	}
+
+	~FHookSummaryCapture()
+	{
+		if (ProcessChunksHandle.IsValid())
+		{
+			FAngelscriptPreprocessor::OnProcessChunks.Remove(ProcessChunksHandle);
+		}
+
+		if (PostProcessCodeHandle.IsValid())
+		{
+			FAngelscriptPreprocessor::OnPostProcessCode.Remove(PostProcessCodeHandle);
+		}
+	}
+
+	void HandleProcessChunks(FAngelscriptPreprocessor& Preprocessor)
+	{
+		ProcessChunksSummaries.Add(Preprocessor.GetSummary());
+	}
+
+	void HandlePostProcessCode(FAngelscriptPreprocessor& Preprocessor)
+	{
+		PostProcessCodeSummaries.Add(Preprocessor.GetSummary());
+	}
+};
+
+public:
 	TEST_METHOD(SummaryReportsProcessedScriptStructure)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -168,6 +167,8 @@ class USummaryConsumer : UObject
 
 	TEST_METHOD(SummaryAvailableAtExistingHookPoints)
 	{
+		using namespace PreprocessorTestHelpers;
+
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine); FScopedModuleCleanEngine _AutoModuleClean(Engine);
 
@@ -180,7 +181,7 @@ class USummaryHookCarrier : UObject
 }
 )"));
 
-		AngelscriptPreprocessorSummaryTests_Private::FHookSummaryCapture Capture;
+		FHookSummaryCapture Capture;
 		ON_SCOPE_EXIT
 		{
 			FAngelscriptPreprocessor::OnProcessChunks.Remove(Capture.ProcessChunksHandle);

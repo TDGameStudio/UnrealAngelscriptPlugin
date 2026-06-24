@@ -7,7 +7,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptSDKTestSupport;
 
 
 
@@ -168,7 +167,7 @@ private:
 		}
 	}
 public:
-	inline static FNativeTestEngine Engine;
+	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 
 	BEFORE_ALL()
 	{
@@ -188,6 +187,8 @@ public:
 
 	TEST_METHOD(BasicCallback)
 	{
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK execute basic-callback test should create a script engine")));
 
@@ -228,6 +229,8 @@ public:
 
 	TEST_METHOD(OneArg)
 	{
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK execute one-arg test should create a script engine")));
 
@@ -272,6 +275,8 @@ public:
 
 	TEST_METHOD(TwoArgs)
 	{
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK execute two-args test should create a script engine")));
 
@@ -293,6 +298,8 @@ public:
 
 	TEST_METHOD(FourArgs)
 	{
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK execute four-args test should create a script engine")));
 
@@ -317,6 +324,8 @@ public:
 
 	TEST_METHOD(FloatArgs)
 	{
+		using namespace AngelscriptSDKTestSupport;
+
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK execute float-args test should create a script engine")));
 

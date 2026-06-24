@@ -10,24 +10,15 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_HotReload_AngelscriptHotReloadTestCaseTests_Private
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadTests,
+	"Angelscript.TestModule.HotReload",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	using namespace AngelscriptFunctionalTestUtils;
-void InitializeHotReloadTestCaseSpawner(FActorTestSpawner& Spawner)
-	{
-		Spawner.InitializeGameSubsystems();
-	}
-}
-
-
-#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
-#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
-#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
-
+private:
 static bool HotReloadPropertyPreserved(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadTestCaseTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 	static const FName ModuleName(TEXT("TestHotReloadPropertyPreserved"));
 	ON_SCOPE_EXIT
@@ -65,7 +56,7 @@ class ATestHotReloadPropertyPreserved : AActor
 }
 )AS");
 
-	UClass* ClassV1 = CompileScriptModule(
+	UClass* ClassV1 = AngelscriptFunctionalTestUtils::CompileScriptModule(
 		Test,
 		Engine,
 		ModuleName,
@@ -79,57 +70,57 @@ class ATestHotReloadPropertyPreserved : AActor
 
 	FActorTestSpawner Spawner;
 	InitializeHotReloadTestCaseSpawner(Spawner);
-	AActor* Actor = SpawnScriptActor(Test, Spawner, ClassV1);
+	AActor* Actor = AngelscriptFunctionalTestUtils::SpawnScriptActor(Test, Spawner, ClassV1);
 	if (Actor == nullptr)
 	{
 		return false;
 	}
-	BeginPlayActor(*Actor);
+	AngelscriptFunctionalTestUtils::BeginPlayActor(*Actor);
 
 	FIntProperty* CounterProperty = FindFProperty<FIntProperty>(ClassV1, TEXT("Counter"));
-	if (!TestNotNull(TEXT("TestCase hot-reload property should exist before reload"), CounterProperty))
+	if (!Test.TestNotNull(TEXT("TestCase hot-reload property should exist before reload"), CounterProperty))
 	{
 		return false;
 	}
 	CounterProperty->SetPropertyValue_InContainer(Actor, 42);
 
 	ECompileResult ReloadResult = ECompileResult::Error;
-	if (!TestTrue(TEXT("TestCase hot-reload property-preserved compile should succeed on the soft reload path"),
+	if (!Test.TestTrue(TEXT("TestCase hot-reload property-preserved compile should succeed on the soft reload path"),
 		CompileModuleWithResult(&Engine, ECompileType::SoftReloadOnly, ModuleName, TEXT("TestHotReloadPropertyPreserved.as"), ScriptV2, ReloadResult)))
 	{
 		return false;
 	}
-	if (!TestTrue(TEXT("TestCase hot-reload property-preserved should stay on the soft reload path"), ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled))
+	if (!Test.TestTrue(TEXT("TestCase hot-reload property-preserved should stay on the soft reload path"), ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled))
 	{
 		return false;
 	}
 
 	UClass* ClassAfterReload = FindGeneratedClass(&Engine, TEXT("ATestHotReloadPropertyPreserved"));
-	if (!TestNotNull(TEXT("TestCase hot-reload property-preserved class should exist after reload"), ClassAfterReload))
+	if (!Test.TestNotNull(TEXT("TestCase hot-reload property-preserved class should exist after reload"), ClassAfterReload))
 	{
 		return false;
 	}
-	TestEqual(TEXT("TestCase hot-reload property-preserved should keep the generated actor class instance"), ClassAfterReload, ClassV1);
+	Test.TestEqual(TEXT("TestCase hot-reload property-preserved should keep the generated actor class instance"), ClassAfterReload, ClassV1);
 
 	int32 CounterValue = 0;
-	if (!ReadPropertyValue<FIntProperty>(Test, Actor, TEXT("Counter"), CounterValue))
+	if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(Test, Actor, TEXT("Counter"), CounterValue))
 	{
 		return false;
 	}
-	TestEqual(TEXT("TestCase hot-reload property-preserved should keep the actor property value after soft reload"), CounterValue, 42);
+	Test.TestEqual(TEXT("TestCase hot-reload property-preserved should keep the actor property value after soft reload"), CounterValue, 42);
 
 	UFunction* GetValueFunction = FindGeneratedFunction(ClassAfterReload, TEXT("GetValue"));
-	if (!TestNotNull(TEXT("TestCase hot-reload property-preserved function should still exist after reload"), GetValueFunction))
+	if (!Test.TestNotNull(TEXT("TestCase hot-reload property-preserved function should still exist after reload"), GetValueFunction))
 	{
 		return false;
 	}
 
 	int32 Result = 0;
-	if (!TestTrue(TEXT("TestCase hot-reload property-preserved function should execute after reload"), ExecuteGeneratedIntEventOnGameThread(Actor, GetValueFunction, Result)))
+	if (!Test.TestTrue(TEXT("TestCase hot-reload property-preserved function should execute after reload"), ExecuteGeneratedIntEventOnGameThread(Actor, GetValueFunction, Result)))
 	{
 		return false;
 	}
-	TestEqual(TEXT("TestCase hot-reload property-preserved function should observe the preserved property value after reload"), Result, 142);
+	Test.TestEqual(TEXT("TestCase hot-reload property-preserved function should observe the preserved property value after reload"), Result, 142);
 	}
 
 	return true;
@@ -137,8 +128,7 @@ class ATestHotReloadPropertyPreserved : AActor
 
 static bool HotReloadAddProperty(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadTestCaseTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 	static const FName ModuleName(TEXT("TestHotReloadAddProperty"));
 	ON_SCOPE_EXIT
@@ -167,7 +157,7 @@ class ATestHotReloadAddProperty : AActor
 }
 )AS");
 
-	UClass* ClassV1 = CompileScriptModule(
+	UClass* ClassV1 = AngelscriptFunctionalTestUtils::CompileScriptModule(
 		Test,
 		Engine,
 		ModuleName,
@@ -180,44 +170,44 @@ class ATestHotReloadAddProperty : AActor
 	}
 
 	ECompileResult ReloadResult = ECompileResult::Error;
-	if (!TestTrue(TEXT("TestCase hot-reload add-property compile should succeed on the full reload path"),
+	if (!Test.TestTrue(TEXT("TestCase hot-reload add-property compile should succeed on the full reload path"),
 		CompileModuleWithResult(&Engine, ECompileType::FullReload, ModuleName, TEXT("TestHotReloadAddProperty.as"), ScriptV2, ReloadResult)))
 	{
 		return false;
 	}
-	if (!TestTrue(TEXT("TestCase hot-reload add-property should be handled by a full reload"), ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled))
+	if (!Test.TestTrue(TEXT("TestCase hot-reload add-property should be handled by a full reload"), ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled))
 	{
 		return false;
 	}
 
 	UClass* ClassV2 = FindGeneratedClass(&Engine, TEXT("ATestHotReloadAddProperty"));
-	if (!TestNotNull(TEXT("TestCase hot-reload add-property class should exist after reload"), ClassV2))
+	if (!Test.TestNotNull(TEXT("TestCase hot-reload add-property class should exist after reload"), ClassV2))
 	{
 		return false;
 	}
 
 	FActorTestSpawner Spawner;
 	InitializeHotReloadTestCaseSpawner(Spawner);
-	AActor* Actor = SpawnScriptActor(Test, Spawner, ClassV2);
+	AActor* Actor = AngelscriptFunctionalTestUtils::SpawnScriptActor(Test, Spawner, ClassV2);
 	if (Actor == nullptr)
 	{
 		return false;
 	}
-	BeginPlayActor(*Actor);
+	AngelscriptFunctionalTestUtils::BeginPlayActor(*Actor);
 
 	int32 ExistingValue = 0;
-	if (!ReadPropertyValue<FIntProperty>(Test, Actor, TEXT("ExistingValue"), ExistingValue))
+	if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(Test, Actor, TEXT("ExistingValue"), ExistingValue))
 	{
 		return false;
 	}
 	int32 NewValue = 0;
-	if (!ReadPropertyValue<FIntProperty>(Test, Actor, TEXT("NewValue"), NewValue))
+	if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(Test, Actor, TEXT("NewValue"), NewValue))
 	{
 		return false;
 	}
 
-	TestEqual(TEXT("TestCase hot-reload add-property should preserve the original property default"), ExistingValue, 1);
-	TestEqual(TEXT("TestCase hot-reload add-property should expose the newly added property with its default value"), NewValue, 99);
+	Test.TestEqual(TEXT("TestCase hot-reload add-property should preserve the original property default"), ExistingValue, 1);
+	Test.TestEqual(TEXT("TestCase hot-reload add-property should expose the newly added property with its default value"), NewValue, 99);
 	}
 
 	return true;
@@ -225,8 +215,7 @@ class ATestHotReloadAddProperty : AActor
 
 static bool HotReloadFunctionChange(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadTestCaseTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 	static const FName ModuleName(TEXT("TestHotReloadFunctionChange"));
 	ON_SCOPE_EXIT
@@ -258,7 +247,7 @@ class ATestHotReloadFunctionChange : AActor
 }
 )AS");
 
-	UClass* ClassV1 = CompileScriptModule(
+	UClass* ClassV1 = AngelscriptFunctionalTestUtils::CompileScriptModule(
 		Test,
 		Engine,
 		ModuleName,
@@ -272,55 +261,55 @@ class ATestHotReloadFunctionChange : AActor
 
 	FActorTestSpawner Spawner;
 	InitializeHotReloadTestCaseSpawner(Spawner);
-	AActor* Actor = SpawnScriptActor(Test, Spawner, ClassV1);
+	AActor* Actor = AngelscriptFunctionalTestUtils::SpawnScriptActor(Test, Spawner, ClassV1);
 	if (Actor == nullptr)
 	{
 		return false;
 	}
-	BeginPlayActor(*Actor);
+	AngelscriptFunctionalTestUtils::BeginPlayActor(*Actor);
 
 	UFunction* GetValueBeforeReload = FindGeneratedFunction(ClassV1, TEXT("GetValue"));
-	if (!TestNotNull(TEXT("TestCase hot-reload function-change function should exist before reload"), GetValueBeforeReload))
+	if (!Test.TestNotNull(TEXT("TestCase hot-reload function-change function should exist before reload"), GetValueBeforeReload))
 	{
 		return false;
 	}
 
 	int32 BeforeReloadResult = 0;
-	if (!TestTrue(TEXT("TestCase hot-reload function-change function should execute before reload"), ExecuteGeneratedIntEventOnGameThread(Actor, GetValueBeforeReload, BeforeReloadResult)))
+	if (!Test.TestTrue(TEXT("TestCase hot-reload function-change function should execute before reload"), ExecuteGeneratedIntEventOnGameThread(Actor, GetValueBeforeReload, BeforeReloadResult)))
 	{
 		return false;
 	}
-	TestEqual(TEXT("TestCase hot-reload function-change should return the original value before reload"), BeforeReloadResult, 1);
+	Test.TestEqual(TEXT("TestCase hot-reload function-change should return the original value before reload"), BeforeReloadResult, 1);
 
 	ECompileResult ReloadResult = ECompileResult::Error;
-	if (!TestTrue(TEXT("TestCase hot-reload function-change compile should succeed on the soft reload path"),
+	if (!Test.TestTrue(TEXT("TestCase hot-reload function-change compile should succeed on the soft reload path"),
 		CompileModuleWithResult(&Engine, ECompileType::SoftReloadOnly, ModuleName, TEXT("TestHotReloadFunctionChange.as"), ScriptV2, ReloadResult)))
 	{
 		return false;
 	}
-	if (!TestTrue(TEXT("TestCase hot-reload function-change should stay on the soft reload path"), ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled))
+	if (!Test.TestTrue(TEXT("TestCase hot-reload function-change should stay on the soft reload path"), ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled))
 	{
 		return false;
 	}
 
 	UClass* ClassAfterReload = FindGeneratedClass(&Engine, TEXT("ATestHotReloadFunctionChange"));
-	if (!TestNotNull(TEXT("TestCase hot-reload function-change class should exist after reload"), ClassAfterReload))
+	if (!Test.TestNotNull(TEXT("TestCase hot-reload function-change class should exist after reload"), ClassAfterReload))
 	{
 		return false;
 	}
 
 	UFunction* GetValueAfterReload = FindGeneratedFunction(ClassAfterReload, TEXT("GetValue"));
-	if (!TestNotNull(TEXT("TestCase hot-reload function-change function should exist after reload"), GetValueAfterReload))
+	if (!Test.TestNotNull(TEXT("TestCase hot-reload function-change function should exist after reload"), GetValueAfterReload))
 	{
 		return false;
 	}
 
 	int32 AfterReloadResult = 0;
-	if (!TestTrue(TEXT("TestCase hot-reload function-change function should execute after reload"), ExecuteGeneratedIntEventOnGameThread(Actor, GetValueAfterReload, AfterReloadResult)))
+	if (!Test.TestTrue(TEXT("TestCase hot-reload function-change function should execute after reload"), ExecuteGeneratedIntEventOnGameThread(Actor, GetValueAfterReload, AfterReloadResult)))
 	{
 		return false;
 	}
-	TestEqual(TEXT("TestCase hot-reload function-change should expose the updated function body on the same actor instance"), AfterReloadResult, 2);
+	Test.TestEqual(TEXT("TestCase hot-reload function-change should expose the updated function body on the same actor instance"), AfterReloadResult, 2);
 	}
 
 	return true;
@@ -328,8 +317,7 @@ class ATestHotReloadFunctionChange : AActor
 
 static bool HotReloadPIEStructuralChangeNeedsFullReload(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadTestCaseTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 	static const FName ModuleName(TEXT("TestHotReloadPIEStructuralChange"));
 	ON_SCOPE_EXIT
@@ -358,7 +346,7 @@ class ATestHotReloadPIEStructuralChange : AActor
 }
 )AS");
 
-	UClass* BaselineClass = CompileScriptModule(
+	UClass* BaselineClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
 		Test,
 		Engine,
 		ModuleName,
@@ -381,13 +369,13 @@ class ATestHotReloadPIEStructuralChange : AActor
 		ReloadRequirement,
 		bWantsFullReload,
 		bNeedsFullReload);
-	if (!TestTrue(TEXT("PIE structural hot-reload analysis should complete"), bAnalyzed))
+	if (!Test.TestTrue(TEXT("PIE structural hot-reload analysis should complete"), bAnalyzed))
 	{
 		return false;
 	}
 
-	TestTrue(TEXT("Structural actor change should request a full reload path"), bWantsFullReload || bNeedsFullReload);
-	return TestTrue(
+	Test.TestTrue(TEXT("Structural actor change should request a full reload path"), bWantsFullReload || bNeedsFullReload);
+	return Test.TestTrue(
 		TEXT("Structural actor change should not stay on the soft reload path"),
 		ReloadRequirement == FAngelscriptClassGenerator::FullReloadRequired
 		|| ReloadRequirement == FAngelscriptClassGenerator::FullReloadSuggested);
@@ -395,14 +383,12 @@ class ATestHotReloadPIEStructuralChange : AActor
 	}
 }
 
-#undef TestTrue
-#undef TestEqual
-#undef TestNotNull
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadTests,
-	"Angelscript.TestModule.HotReload",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+static void InitializeHotReloadTestCaseSpawner(FActorTestSpawner& Spawner)
 {
+	Spawner.InitializeGameSubsystems();
+}
+
+public:
 	TEST_METHOD(PropertyPreserved)
 	{
 		ASSERT_THAT(IsTrue(HotReloadPropertyPreserved(*TestRunner)));

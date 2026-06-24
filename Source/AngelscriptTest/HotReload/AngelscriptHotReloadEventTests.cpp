@@ -11,168 +11,165 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace AngelscriptTest_HotReload_AngelscriptHotReloadEventTests_Private
+
+#define AddExpectedError(...) Test.AddExpectedError(__VA_ARGS__)
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadEventTests,
+	"Angelscript.TestModule.HotReload.Events",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	static const FName PostReloadModeModuleName(TEXT("HotReloadPostReloadModeMod"));
-	static const FString PostReloadModeFilename(TEXT("HotReloadPostReloadModeMod.as"));
-	static const FName PostReloadModeClassName(TEXT("UPostReloadModeTarget"));
+private:
+inline static const FName PostReloadModeModuleName = FName(TEXT("HotReloadPostReloadModeMod"));
+inline static const FString PostReloadModeFilename = FString(TEXT("HotReloadPostReloadModeMod.as"));
+inline static const FName PostReloadModeClassName = FName(TEXT("UPostReloadModeTarget"));
 
-	bool IsHandledReloadResult(const ECompileResult ReloadResult)
-	{
-		return ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled;
-	}
-
-	struct FPostReloadObservation
-	{
-		bool bWasFullReload = false;
-		UClass* VisibleClass = nullptr;
-	};
-
-	struct FClassReloadObservation
-	{
-		UClass* OldClass = nullptr;
-		UClass* NewClass = nullptr;
-	};
-
-	struct FScopedPostReloadListener
-	{
-		explicit FScopedPostReloadListener(FAngelscriptEngine& InEngine, const FName InClassName)
-			: Engine(&InEngine)
-			, ClassName(InClassName)
-		{
-			Handle = Engine->GetOnPostReload().AddRaw(this, &FScopedPostReloadListener::HandlePostReload);
-		}
-
-		~FScopedPostReloadListener()
-		{
-			if (Handle.IsValid() && Engine != nullptr)
-			{
-				Engine->GetOnPostReload().Remove(Handle);
-			}
-		}
-
-		void HandlePostReload(const bool bWasFullReload)
-		{
-			FPostReloadObservation& Observation = Observations.AddDefaulted_GetRef();
-			Observation.bWasFullReload = bWasFullReload;
-			Observation.VisibleClass = FindGeneratedClass(Engine, ClassName);
-		}
-
-		FAngelscriptEngine* Engine = nullptr;
-		FName ClassName;
-		FDelegateHandle Handle;
-		TArray<FPostReloadObservation> Observations;
-	};
-
-	struct FScopedReloadEventRecorder
-	{
-		explicit FScopedReloadEventRecorder(FAngelscriptEngine& InEngine)
-			: Engine(&InEngine)
-		{
-			PostReloadHandle = Engine->GetOnPostReload().AddRaw(this, &FScopedReloadEventRecorder::HandlePostReload);
-			ClassReloadHandle = Engine->GetOnClassReload().AddRaw(this, &FScopedReloadEventRecorder::HandleClassReload);
-			FullReloadHandle = Engine->GetOnFullReload().AddRaw(this, &FScopedReloadEventRecorder::HandleFullReload);
-		}
-
-		~FScopedReloadEventRecorder()
-		{
-			if (Engine == nullptr)
-			{
-				return;
-			}
-
-			if (PostReloadHandle.IsValid())
-			{
-				Engine->GetOnPostReload().Remove(PostReloadHandle);
-			}
-
-			if (ClassReloadHandle.IsValid())
-			{
-				Engine->GetOnClassReload().Remove(ClassReloadHandle);
-			}
-
-			if (FullReloadHandle.IsValid())
-			{
-				Engine->GetOnFullReload().Remove(FullReloadHandle);
-			}
-		}
-
-		void HandlePostReload(const bool bWasFullReload)
-		{
-			PostReloadModes.Add(bWasFullReload);
-		}
-
-		void HandleClassReload(UClass* OldClass, UClass* NewClass)
-		{
-			FClassReloadObservation& Observation = ClassReloads.AddDefaulted_GetRef();
-			Observation.OldClass = OldClass;
-			Observation.NewClass = NewClass;
-		}
-
-		void HandleFullReload()
-		{
-			++FullReloadCount;
-		}
-
-		FDelegateHandle PostReloadHandle;
-		FDelegateHandle ClassReloadHandle;
-		FDelegateHandle FullReloadHandle;
-		TArray<bool> PostReloadModes;
-		TArray<FClassReloadObservation> ClassReloads;
-		int32 FullReloadCount = 0;
-		FAngelscriptEngine* Engine = nullptr;
-	};
-
-	bool ExecuteGetValue(
-		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
-		UClass* Class,
-		const int32 ExpectedValue,
-		const TCHAR* Context)
-	{
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should expose the generated class"), Context), Class))
-		{
-			return false;
-		}
-
-		UFunction* GetValueFunction = FindGeneratedFunction(Class, TEXT("GetValue"));
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should expose GetValue"), Context), GetValueFunction))
-		{
-			return false;
-		}
-
-		UObject* RuntimeObject = NewObject<UObject>(GetTransientPackage(), Class);
-		if (!Test.TestNotNull(*FString::Printf(TEXT("%s should instantiate the generated class"), Context), RuntimeObject))
-		{
-			return false;
-		}
-
-		int32 Result = 0;
-		if (!Test.TestTrue(
-			*FString::Printf(TEXT("%s should execute GetValue on the game thread"), Context),
-			ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeObject, GetValueFunction, Result)))
-		{
-			return false;
-		}
-
-		return Test.TestEqual(
-			*FString::Printf(TEXT("%s should surface the expected GetValue result"), Context),
-			Result,
-			ExpectedValue);
-	}
+static bool IsHandledReloadResult(const ECompileResult ReloadResult)
+{
+	return ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled;
 }
 
+struct FPostReloadObservation
+{
+	bool bWasFullReload = false;
+	UClass* VisibleClass = nullptr;
+};
 
-#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
-#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
-#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
-#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
-#define AddExpectedError(...) Test.AddExpectedError(__VA_ARGS__)
+struct FClassReloadObservation
+{
+	UClass* OldClass = nullptr;
+	UClass* NewClass = nullptr;
+};
+
+struct FScopedPostReloadListener
+{
+	explicit FScopedPostReloadListener(FAngelscriptEngine& InEngine, const FName InClassName)
+		: Engine(&InEngine)
+		, ClassName(InClassName)
+	{
+		Handle = Engine->GetOnPostReload().AddRaw(this, &FScopedPostReloadListener::HandlePostReload);
+	}
+
+	~FScopedPostReloadListener()
+	{
+		if (Handle.IsValid() && Engine != nullptr)
+		{
+			Engine->GetOnPostReload().Remove(Handle);
+		}
+	}
+
+	void HandlePostReload(const bool bWasFullReload)
+	{
+		FPostReloadObservation& Observation = Observations.AddDefaulted_GetRef();
+		Observation.bWasFullReload = bWasFullReload;
+		Observation.VisibleClass = FindGeneratedClass(Engine, ClassName);
+	}
+
+	FAngelscriptEngine* Engine = nullptr;
+	FName ClassName;
+	FDelegateHandle Handle;
+	TArray<FPostReloadObservation> Observations;
+};
+
+struct FScopedReloadEventRecorder
+{
+	explicit FScopedReloadEventRecorder(FAngelscriptEngine& InEngine)
+		: Engine(&InEngine)
+	{
+		PostReloadHandle = Engine->GetOnPostReload().AddRaw(this, &FScopedReloadEventRecorder::HandlePostReload);
+		ClassReloadHandle = Engine->GetOnClassReload().AddRaw(this, &FScopedReloadEventRecorder::HandleClassReload);
+		FullReloadHandle = Engine->GetOnFullReload().AddRaw(this, &FScopedReloadEventRecorder::HandleFullReload);
+	}
+
+	~FScopedReloadEventRecorder()
+	{
+		if (Engine == nullptr)
+		{
+			return;
+		}
+
+		if (PostReloadHandle.IsValid())
+		{
+			Engine->GetOnPostReload().Remove(PostReloadHandle);
+		}
+
+		if (ClassReloadHandle.IsValid())
+		{
+			Engine->GetOnClassReload().Remove(ClassReloadHandle);
+		}
+
+		if (FullReloadHandle.IsValid())
+		{
+			Engine->GetOnFullReload().Remove(FullReloadHandle);
+		}
+	}
+
+	void HandlePostReload(const bool bWasFullReload)
+	{
+		PostReloadModes.Add(bWasFullReload);
+	}
+
+	void HandleClassReload(UClass* OldClass, UClass* NewClass)
+	{
+		FClassReloadObservation& Observation = ClassReloads.AddDefaulted_GetRef();
+		Observation.OldClass = OldClass;
+		Observation.NewClass = NewClass;
+	}
+
+	void HandleFullReload()
+	{
+		++FullReloadCount;
+	}
+
+	FDelegateHandle PostReloadHandle;
+	FDelegateHandle ClassReloadHandle;
+	FDelegateHandle FullReloadHandle;
+	TArray<bool> PostReloadModes;
+	TArray<FClassReloadObservation> ClassReloads;
+	int32 FullReloadCount = 0;
+	FAngelscriptEngine* Engine = nullptr;
+};
+
+static bool ExecuteGetValue(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine,
+	UClass* Class,
+	const int32 ExpectedValue,
+	const TCHAR* Context)
+{
+	if (!Test.TestNotNull(*FString::Printf(TEXT("%s should expose the generated class"), Context), Class))
+	{
+		return false;
+	}
+
+	UFunction* GetValueFunction = FindGeneratedFunction(Class, TEXT("GetValue"));
+	if (!Test.TestNotNull(*FString::Printf(TEXT("%s should expose GetValue"), Context), GetValueFunction))
+	{
+		return false;
+	}
+
+	UObject* RuntimeObject = NewObject<UObject>(GetTransientPackage(), Class);
+	if (!Test.TestNotNull(*FString::Printf(TEXT("%s should instantiate the generated class"), Context), RuntimeObject))
+	{
+		return false;
+	}
+
+	int32 Result = 0;
+	if (!Test.TestTrue(
+		*FString::Printf(TEXT("%s should execute GetValue on the game thread"), Context),
+		ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeObject, GetValueFunction, Result)))
+	{
+		return false;
+	}
+
+	return Test.TestEqual(
+		*FString::Printf(TEXT("%s should surface the expected GetValue result"), Context),
+		Result,
+		ExpectedValue);
+}
 
 static bool PostReloadModeFlagMatchesReloadPath(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadEventTests_Private;
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 	ON_SCOPE_EXIT
@@ -220,7 +217,7 @@ class UPostReloadModeTarget : UObject
 }
 )AS");
 
-	if (!TestTrue(
+	if (!Test.TestTrue(
 		TEXT("Post-reload mode-flag test should compile the initial module"),
 		CompileAnnotatedModuleFromMemory(&Engine, PostReloadModeModuleName, PostReloadModeFilename, ScriptV1)))
 	{
@@ -236,7 +233,7 @@ class UPostReloadModeTarget : UObject
 	FScopedPostReloadListener Listener(Engine, PostReloadModeClassName);
 
 	ECompileResult SoftReloadResult = ECompileResult::Error;
-	if (!TestTrue(
+	if (!Test.TestTrue(
 		TEXT("Post-reload mode-flag test should compile the body-only update on the soft reload path"),
 		CompileModuleWithResult(
 			&Engine,
@@ -249,7 +246,7 @@ class UPostReloadModeTarget : UObject
 		return false;
 	}
 
-	if (!TestTrue(
+	if (!Test.TestTrue(
 		TEXT("Soft reload should stay on a handled reload path"),
 		IsHandledReloadResult(SoftReloadResult)))
 	{
@@ -257,19 +254,19 @@ class UPostReloadModeTarget : UObject
 	}
 
 	UClass* ClassAfterSoftReload = FindGeneratedClass(&Engine, PostReloadModeClassName);
-	if (!TestNotNull(TEXT("Soft reload should keep the generated class visible"), ClassAfterSoftReload))
+	if (!Test.TestNotNull(TEXT("Soft reload should keep the generated class visible"), ClassAfterSoftReload))
 	{
 		return false;
 	}
 
-	TestEqual(TEXT("Soft reload should preserve the live UClass object"), ClassAfterSoftReload, InitialClass);
-	TestEqual(TEXT("Soft reload should trigger exactly one post-reload event"), Listener.Observations.Num(), 1);
+	Test.TestEqual(TEXT("Soft reload should preserve the live UClass object"), ClassAfterSoftReload, InitialClass);
+	Test.TestEqual(TEXT("Soft reload should trigger exactly one post-reload event"), Listener.Observations.Num(), 1);
 	if (Listener.Observations.Num() >= 1)
 	{
-		TestFalse(
+		Test.TestFalse(
 			TEXT("Soft reload should be reported as soft reload by the post-reload event"),
 			Listener.Observations[0].bWasFullReload);
-		TestEqual(
+		Test.TestEqual(
 			TEXT("Soft reload should already expose the canonical class when post-reload broadcasts"),
 			Listener.Observations[0].VisibleClass,
 			ClassAfterSoftReload);
@@ -281,7 +278,7 @@ class UPostReloadModeTarget : UObject
 	}
 
 	ECompileResult FullReloadResult = ECompileResult::Error;
-	if (!TestTrue(
+	if (!Test.TestTrue(
 		TEXT("Post-reload mode-flag test should compile the structural update on the full reload path"),
 		CompileModuleWithResult(
 			&Engine,
@@ -294,7 +291,7 @@ class UPostReloadModeTarget : UObject
 		return false;
 	}
 
-	if (!TestTrue(
+	if (!Test.TestTrue(
 		TEXT("Full reload should stay on a handled reload path"),
 		IsHandledReloadResult(FullReloadResult)))
 	{
@@ -302,22 +299,22 @@ class UPostReloadModeTarget : UObject
 	}
 
 	UClass* ClassAfterFullReload = FindGeneratedClass(&Engine, PostReloadModeClassName);
-	if (!TestNotNull(TEXT("Full reload should keep the generated class visible"), ClassAfterFullReload))
+	if (!Test.TestNotNull(TEXT("Full reload should keep the generated class visible"), ClassAfterFullReload))
 	{
 		return false;
 	}
 
-	TestEqual(TEXT("Full reload should append a second post-reload event"), Listener.Observations.Num(), 2);
+	Test.TestEqual(TEXT("Full reload should append a second post-reload event"), Listener.Observations.Num(), 2);
 	if (Listener.Observations.Num() >= 2)
 	{
-		TestTrue(TEXT("Full reload should be reported as full reload by the post-reload event"), Listener.Observations[1].bWasFullReload);
-		TestEqual(
+		Test.TestTrue(TEXT("Full reload should be reported as full reload by the post-reload event"), Listener.Observations[1].bWasFullReload);
+		Test.TestEqual(
 			TEXT("Full reload should already expose the canonical class when post-reload broadcasts"),
 			Listener.Observations[1].VisibleClass,
 			ClassAfterFullReload);
 	}
 
-	TestNotNull(TEXT("Full reload should expose the newly added Epoch property"), FindFProperty<FIntProperty>(ClassAfterFullReload, TEXT("Epoch")));
+	Test.TestNotNull(TEXT("Full reload should expose the newly added Epoch property"), FindFProperty<FIntProperty>(ClassAfterFullReload, TEXT("Epoch")));
 	if (!ExecuteGetValue(Test, Engine, ClassAfterFullReload, 3, TEXT("Full reload post-reload mode-flag baseline")))
 	{
 		return false;
@@ -329,8 +326,7 @@ class UPostReloadModeTarget : UObject
 
 static bool FailedReloadDoesNotBroadcastReloadDelegates(FAutomationTestBase& Test)
 {
-	using namespace AngelscriptTest_HotReload_AngelscriptHotReloadEventTests_Private;
-	static const FName ModuleName(TEXT("HotReloadFailedReloadEventMod"));
+static const FName ModuleName(TEXT("HotReloadFailedReloadEventMod"));
 	static const FString Filename(TEXT("HotReloadFailedReloadEventMod.as"));
 	static const FName ClassName(TEXT("UFailedReloadEventTarget"));
 
@@ -374,7 +370,7 @@ class UFailedReloadEventTarget : UObject
 		ASTEST_RESET_ENGINE(Engine);
 	};
 
-	if (!TestTrue(
+	if (!Test.TestTrue(
 		TEXT("Failed-reload event test should compile the initial module"),
 		CompileAnnotatedModuleFromMemory(&Engine, ModuleName, Filename, ScriptV1)))
 	{
@@ -382,7 +378,7 @@ class UFailedReloadEventTarget : UObject
 	}
 
 	UClass* ClassBeforeFailure = FindGeneratedClass(&Engine, ClassName);
-	if (!TestNotNull(
+	if (!Test.TestNotNull(
 		TEXT("Failed-reload event test should expose the generated class before reload failure"),
 		ClassBeforeFailure))
 	{
@@ -410,27 +406,27 @@ class UFailedReloadEventTarget : UObject
 		BrokenScript,
 		ReloadResult);
 
-	bPassed &= TestFalse(
+	bPassed &= Test.TestFalse(
 		TEXT("Failed-reload event test should fail the broken hot reload compile"),
 		bCompiled);
-	bPassed &= TestTrue(
+	bPassed &= Test.TestTrue(
 		TEXT("Failed-reload event test should report an error reload state"),
 		ReloadResult == ECompileResult::Error || ReloadResult == ECompileResult::ErrorNeedFullReload);
-	bPassed &= TestEqual(
+	bPassed &= Test.TestEqual(
 		TEXT("Failed-reload event test should not broadcast post-reload when compilation fails"),
 		ReloadEvents.PostReloadModes.Num(),
 		0);
-	bPassed &= TestEqual(
+	bPassed &= Test.TestEqual(
 		TEXT("Failed-reload event test should not broadcast class-reload when compilation fails"),
 		ReloadEvents.ClassReloads.Num(),
 		0);
-	bPassed &= TestEqual(
+	bPassed &= Test.TestEqual(
 		TEXT("Failed-reload event test should not broadcast full-reload when compilation fails"),
 		ReloadEvents.FullReloadCount,
 		0);
 
 	UClass* ClassAfterFailure = FindGeneratedClass(&Engine, ClassName);
-	bPassed &= TestEqual(
+	bPassed &= Test.TestEqual(
 		TEXT("Failed-reload event test should keep the old generated class visible after the failed reload"),
 		ClassAfterFailure,
 		ClassBeforeFailure);
@@ -448,25 +444,18 @@ class UFailedReloadEventTarget : UObject
 	return bPassed;
 }
 
-#undef TestTrue
-#undef TestFalse
-#undef TestEqual
-#undef TestNotNull
-#undef AddExpectedError
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadEventTests,
-	"Angelscript.TestModule.HotReload.Events",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	TEST_METHOD(PostReloadModeFlagMatchesReloadPath)
 	{
-		ASSERT_THAT(IsTrue(::PostReloadModeFlagMatchesReloadPath(*TestRunner)));
+		ASSERT_THAT(IsTrue(PostReloadModeFlagMatchesReloadPath(*TestRunner)));
 	}
 
 	TEST_METHOD(FailedReloadDoesNotBroadcastReloadDelegates)
 	{
-		ASSERT_THAT(IsTrue(::FailedReloadDoesNotBroadcastReloadDelegates(*TestRunner)));
+		ASSERT_THAT(IsTrue(FailedReloadDoesNotBroadcastReloadDelegates(*TestRunner)));
 	}
 };
+
+#undef AddExpectedError
 
 #endif

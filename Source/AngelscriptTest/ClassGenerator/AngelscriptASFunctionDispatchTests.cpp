@@ -58,16 +58,16 @@ namespace ASFunctionDispatchTests
 
 	bool ExpectFunctionClass(FAutomationTestBase& Test, UClass* OwnerClass, const FMatrixCase& TestCase)
 	{
-		FNoDiscardAsserter Assert(Test);
+		FNoDiscardAsserter LocalAssert(Test);
 		UASFunction* Function = Cast<UASFunction>(FindGeneratedFunction(OwnerClass, TestCase.FunctionName));
-		if (!Assert.IsNotNull(
+		if (!LocalAssert.IsNotNull(
 				Function,
 				*FString::Printf(TEXT("AllocateFunctionFor matrix should expose '%s'"), TestCase.FunctionName)))
 		{
 			return false;
 		}
 
-		return Assert.IsTrue(
+		return LocalAssert.IsTrue(
 			Function->GetClass() == TestCase.ExpectedFunctionClass,
 			*FString::Printf(
 				TEXT("AllocateFunctionFor %s should select %s (actual: %s)"),
