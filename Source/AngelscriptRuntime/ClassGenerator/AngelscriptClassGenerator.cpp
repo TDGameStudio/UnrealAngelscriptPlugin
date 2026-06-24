@@ -3316,7 +3316,11 @@ void FAngelscriptClassGenerator::DoFullReloadClass(FModuleData& ModuleData, FCla
 	GetObjectsOfClass(ReplacedClass, Instances, true, RF_NoFlags);
 
 	// Set up the class' base data
-	NewClass->ClassFlags = CLASS_CompiledFromBlueprint;
+	// UASClass is not a UBlueprintGeneratedClass, but Blueprint GC/reinstance code
+	// walks non-native superclasses as if they are BPGCs when collecting persistent
+	// UberGraphFrame references. Mark script classes as native-like so that walk
+	// stops at the AS boundary instead of reinterpret-casting UASClass as BPGC.
+	NewClass->ClassFlags = CLASS_CompiledFromBlueprint | CLASS_Native;
 	NewClass->bIsScriptClass = true;
 	NewClass->ClassFlags |= (SuperClass->ClassFlags & CLASS_ScriptInherit);
 
@@ -4307,12 +4311,17 @@ void FAngelscriptClassGenerator::DoSoftReload(FModuleData& ModuleData, FClassDat
 		UASClass* ASClass = UASClass::GetFirstASClass(CheckClass);
 		if (ASClass == Class)
 		{
-			//ensure(CheckClass->ScriptTypePtr == OldScriptType);
-			ensure(asClass->ScriptTypePtr == OldScriptType);
+			// CheckClass can be a BlueprintGeneratedClass that derives from this UASClass.
+			// In that case Cast<UASClass>(CheckClass) is null; the actual script type is
+			// stored on the AS ancestor, which was updated above.
+			if (asClass != nullptr)
+			{
+				ensure(asClass->ScriptTypePtr == OldScriptType);
 
-			// Update the actual angelscript type we're using
-			asClass->ScriptTypePtr = Class->ScriptTypePtr;
-			asClass->OwnerScriptEngine = Class->OwnerScriptEngine;
+				// Update the actual angelscript type we're using
+				asClass->ScriptTypePtr = Class->ScriptTypePtr;
+				asClass->OwnerScriptEngine = Class->OwnerScriptEngine;
+			}
 
 			// Refresh the serialization schema
 			DestroyAngelscriptUnversionedSchema(CheckClass);
