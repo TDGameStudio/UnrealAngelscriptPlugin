@@ -118,6 +118,8 @@ struct FAngelscriptEditorModuleTestAccess
 	static void ResetPlatformExecuteOverride();
 	static void SetSnippetRunnerOpenOverride(TFunction<void()> InOverride);
 	static void ResetSnippetRunnerOpenOverride();
+	static void SetClassViewerRefreshOverride(TFunction<void()> InOverride);
+	static void ResetClassViewerRefreshOverride();
 	static void SetOnEngineInitDoneOverride(TFunction<void()> InOverride);
 	static void ResetOnEngineInitDoneOverride();
 	static void InvokeOnLiteralAssetSaved(UObject* Object);

@@ -11,6 +11,7 @@
 #include "Serialization/MemoryReader.h"
 #include "Serialization/MemoryWriter.h"
 #include "Serialization/StructuredArchive.h"
+#include "Templates/GuardValueAccessors.h"
 #include "UObject/UnrealType.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -168,7 +169,7 @@ static bool LoadFixture(
 	FStructuredArchive StructuredArchive(Formatter);
 	FStructuredArchive::FSlot Slot = StructuredArchive.Open();
 
-	TGuardValue<bool> SavingPackageGuard(GIsSavingPackage, false);
+	TGuardValueAccessors<bool> SavingPackageGuard([]() { return UE::IsSavingPackage(); }, UE::SetIsSavingPackage, false);
 	OutLoaded = FAngelscriptUnversionedPropertySerializationFixture();
 
 	if (Path == ESerializationPath::Unversioned)

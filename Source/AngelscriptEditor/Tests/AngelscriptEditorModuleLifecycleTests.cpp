@@ -338,6 +338,51 @@ static bool RunOnEngineInitDoneActivatesAngelscriptDataSourceOnce(FAutomationTes
 	return true;
 }
 
+static bool RunStartupRefreshesClassViewerAfterInitialCompile(FAutomationTestBase& Test)
+{
+	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleLifecycleTests_Private;
+	FMockDirectoryWatcher DirectoryWatcher;
+	FAngelscriptEditorModule Module;
+	bool bModuleStarted = false;
+	int32 ClassViewerRefreshCount = 0;
+
+	TArray<FAngelscriptEngine*> SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
+	FAngelscriptEngine Engine;
+	Engine.bIsInitialCompileFinished = true;
+	TUniquePtr<FAngelscriptEngineScope> EngineScope = MakeUnique<FAngelscriptEngineScope>(Engine);
+
+	FAngelscriptEditorModuleTestAccess::SetDirectoryWatcherResolver([&DirectoryWatcher]()
+	{
+		return &DirectoryWatcher;
+	});
+	FAngelscriptEditorModuleTestAccess::SetClassViewerRefreshOverride([&ClassViewerRefreshCount]()
+	{
+		++ClassViewerRefreshCount;
+	});
+
+	ON_SCOPE_EXIT
+	{
+		if (bModuleStarted)
+		{
+			Module.ShutdownModule();
+		}
+		FAngelscriptEditorModuleTestAccess::ResetClassViewerRefreshOverride();
+		FAngelscriptEditorModuleTestAccess::ResetDirectoryWatcherResolver();
+		EngineScope.Reset();
+		FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
+	};
+
+	Module.StartupModule();
+	bModuleStarted = true;
+
+	TestEqual(
+		TEXT("Editor.Module.StartupRefreshesClassViewerAfterInitialCompile should request one ClassViewer refresh after attaching to an already compiled engine"),
+		ClassViewerRefreshCount,
+		1);
+
+	return true;
+}
+
 #undef TestTrue
 #undef TestFalse
 #undef TestEqual
@@ -352,6 +397,11 @@ TEST_CLASS_WITH_FLAGS(
 	TEST_METHOD(StartupShutdownRegistersAndCleansHooks)
 	{
 		ASSERT_THAT(IsTrue(RunStartupShutdownRegistersAndCleansHooks(*TestRunner)));
+	}
+
+	TEST_METHOD(StartupRefreshesClassViewerAfterInitialCompile)
+	{
+		ASSERT_THAT(IsTrue(RunStartupRefreshesClassViewerAfterInitialCompile(*TestRunner)));
 	}
 };
 

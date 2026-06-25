@@ -66,6 +66,7 @@ namespace
 	FAngelscriptEditorModuleLiteralAssetSaveTestHooks GLiteralAssetSaveTestHooks;
 	TFunction<bool(const TCHAR*, const TCHAR*, const TCHAR*)> GPlatformExecuteOverrideForTesting;
 	TFunction<void()> GSnippetRunnerOpenOverrideForTesting;
+	TFunction<void()> GClassViewerRefreshOverrideForTesting;
 	TFunction<void()> GOnEngineInitDoneOverrideForTesting;
 	int32 GOnPostEngineInitRegistrationCountForTesting = 0;
 #endif
@@ -83,6 +84,22 @@ namespace
 
 		FDirectoryWatcherModule& DirectoryWatcherModule = FModuleManager::LoadModuleChecked<FDirectoryWatcherModule>("DirectoryWatcher");
 		return DirectoryWatcherModule.Get();
+	}
+
+	void RequestClassViewerHierarchyRefreshForEditorModule()
+	{
+#if WITH_DEV_AUTOMATION_TESTS
+		if (GClassViewerRefreshOverrideForTesting)
+		{
+			GClassViewerRefreshOverrideForTesting();
+			return;
+		}
+#endif
+
+		if (GEditor != nullptr)
+		{
+			GEditor->BroadcastClassPackageLoadedOrUnloaded();
+		}
 	}
 
 	void UnregisterDirectoryWatchers(TArray<TPair<FString, FDelegateHandle>>& InOutWatchHandles, IDirectoryWatcher* DirectoryWatcher)
@@ -463,6 +480,16 @@ void FAngelscriptEditorModuleTestAccess::ResetSnippetRunnerOpenOverride()
 	GSnippetRunnerOpenOverrideForTesting = nullptr;
 }
 
+void FAngelscriptEditorModuleTestAccess::SetClassViewerRefreshOverride(TFunction<void()> InOverride)
+{
+	GClassViewerRefreshOverrideForTesting = MoveTemp(InOverride);
+}
+
+void FAngelscriptEditorModuleTestAccess::ResetClassViewerRefreshOverride()
+{
+	GClassViewerRefreshOverrideForTesting = nullptr;
+}
+
 void FAngelscriptEditorModuleTestAccess::SetOnEngineInitDoneOverride(TFunction<void()> InOverride)
 {
 	GOnEngineInitDoneOverrideForTesting = MoveTemp(InOverride);
@@ -815,7 +842,10 @@ void FAngelscriptEditorModule::StartupModule()
 	RegisterAngelscriptSourceNavigation();
 
 	if (FAngelscriptEngine::IsInitialized() && FAngelscriptEngine::Get().IsInitialCompileFinished())
+	{
 		FComponentTypeRegistry::Get().Invalidate();
+		RequestClassViewerHierarchyRefreshForEditorModule();
+	}
 
 	if (!GOnPostEngineInitHandle.IsValid())
 	{

@@ -79,7 +79,7 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorMenuExtensionsTests_P
 		}
 
 		Asset->ClearFlags(RF_Public | RF_Standalone);
-		Asset->Rename(nullptr, GetTransientPackage(), REN_DontCreateRedirectors | REN_ForceNoResetLoaders | REN_NonTransactional);
+		Asset->Rename(nullptr, GetTransientPackage(), REN_DontCreateRedirectors | REN_AllowPackageLinkerMismatch | REN_NonTransactional);
 		Asset->MarkAsGarbage();
 		Asset = nullptr;
 	}

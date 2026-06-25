@@ -434,7 +434,7 @@ static bool RunShowCreateBlueprintPopupDoesNotPromptSaveOrOpenEditorWhenBlueprin
 		if (CreatedObjectToCleanup != nullptr)
 		{
 			CreatedObjectToCleanup->ClearFlags(RF_Public | RF_Standalone);
-			CreatedObjectToCleanup->Rename(nullptr, GetTransientPackage(), REN_DontCreateRedirectors | REN_ForceNoResetLoaders | REN_NonTransactional);
+			CreatedObjectToCleanup->Rename(nullptr, GetTransientPackage(), REN_DontCreateRedirectors | REN_AllowPackageLinkerMismatch | REN_NonTransactional);
 			CreatedObjectToCleanup->MarkAsGarbage();
 		}
 		if (PackageToCleanup != nullptr)

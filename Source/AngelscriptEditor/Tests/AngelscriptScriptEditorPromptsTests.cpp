@@ -46,7 +46,7 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptScriptEditorPromptsTests_Pr
 		}
 
 		Object->ClearFlags(RF_Public | RF_Standalone);
-		Object->Rename(nullptr, GetTransientPackage(), REN_DontCreateRedirectors | REN_ForceNoResetLoaders | REN_NonTransactional);
+		Object->Rename(nullptr, GetTransientPackage(), REN_DontCreateRedirectors | REN_AllowPackageLinkerMismatch | REN_NonTransactional);
 		Object->MarkAsGarbage();
 		Object = nullptr;
 	}
