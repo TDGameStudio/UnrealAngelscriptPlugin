@@ -1,4 +1,5 @@
 #include "AngelscriptTestAdapter.h"
+#include "AngelscriptSDKTestExecutionHelpers.h"
 
 #include "CQTest.h"
 #include "Misc/ScopeExit.h"

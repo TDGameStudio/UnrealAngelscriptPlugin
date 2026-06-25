@@ -1,6 +1,7 @@
 #include "CQTest.h"
 
 #include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestMacros.h"
 #include "StaticJIT/AOT/AngelscriptStaticJITAotFixture.h"
 #include "StaticJIT/AngelscriptStaticJIT.h"
 #include "StaticJIT/StaticJITDiagnostics.h"

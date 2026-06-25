@@ -74,6 +74,8 @@ public:
 
 bool FAngelscriptHotReloadFullReloadVersionChainTests::RunVersionChainAndCDOConsistency(FAutomationTestBase& Test)
 {
+	using namespace AngelscriptFunctionalTestUtils;
+
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 	ON_SCOPE_EXIT
@@ -260,6 +262,8 @@ class AHotReloadVersionChainTarget : AActor
 
 bool FAngelscriptHotReloadSoftReloadVersionChainTests::RunCDOAndInstanceConsistency(FAutomationTestBase& Test)
 {
+	using namespace AngelscriptFunctionalTestUtils;
+
 	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 	ON_SCOPE_EXIT

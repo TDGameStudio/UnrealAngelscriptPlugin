@@ -1,4 +1,5 @@
 #include "AngelscriptTestMacros.h"
+#include "AngelscriptNativeTestSupport.h"
 #include "CQTest.h"
 
 #include "StartAngelscriptHeaders.h"

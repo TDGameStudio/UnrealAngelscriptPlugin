@@ -1,9 +1,14 @@
 #include "StaticJIT/AOT/AngelscriptStaticJITAotGeneration.h"
 
 #include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestEngineAcquisition.h"
 #include "StaticJIT/AOT/AngelscriptStaticJITAotFixture.h"
 #include "StaticJIT/AngelscriptStaticJIT.h"
 #include "StaticJIT/PrecompiledData.h"
+
+#include "StartAngelscriptHeaders.h"
+#include "source/as_module.h"
+#include "EndAngelscriptHeaders.h"
 
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"

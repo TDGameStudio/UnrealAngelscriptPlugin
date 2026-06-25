@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Misc/CoreDelegates.h"
 #include "UObject/WeakObjectPtr.h"
 #include "UObject/CoreNetTypes.h"
 #include "ClassGenerator/AngelscriptAdditionalCompileChecks.h"
