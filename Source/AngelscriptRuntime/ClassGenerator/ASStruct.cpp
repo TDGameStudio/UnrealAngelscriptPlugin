@@ -25,17 +25,19 @@ struct FASStructOps : UASStruct::ICppStructOps
 
 	struct FASFakeVTable : public UE::CoreUObject::Private::FStructOpsFakeVTable
 	{
-		void* Construct;
+		void (*Construct)(void*);
 #if !(UE_BUILD_TEST || UE_BUILD_SHIPPING)
-		void* ConstructForTests;
+		void (*ConstructForTests)(void*);
 #endif
-		void* Destruct;
-		void* Copy;
-		void* Identical;
-		void* GetStructTypeHash;
+		void (*Destruct)(void*);
+		bool (*Copy)(void*, const void*, int32);
+		bool (*Identical)(const void*, const void*, uint32, bool&);
+		uint32 (*GetStructTypeHash)(const void*);
 	};
 
 	FASFakeVTable FakeVTable;
+
+	static thread_local FASStructOps* ConstructingOps;
 
 	FASStructOps(UASStruct* InStruct, int32 InSize, int32 InAlignment)
 		: UASStruct::ICppStructOps(InSize, InAlignment)
@@ -55,14 +57,14 @@ struct FASStructOps : UASStruct::ICppStructOps
 			| UE::CoreUObject::Private::EStructOpsFakeVTableFlags::Identical
 			| UE::CoreUObject::Private::EStructOpsFakeVTableFlags::GetStructTypeHash;
 
-		FakeVTable.Construct = reinterpret_cast<void*>(&FASStructOps::Construct);
+		FakeVTable.Construct = &FASStructOps::Construct;
 #if !(UE_BUILD_TEST || UE_BUILD_SHIPPING)
-		FakeVTable.ConstructForTests = reinterpret_cast<void*>(&FASStructOps::Construct);
+		FakeVTable.ConstructForTests = &FASStructOps::Construct;
 #endif
-		FakeVTable.Destruct = reinterpret_cast<void*>(&FASStructOps::Destruct);
-		FakeVTable.Copy = reinterpret_cast<void*>(&FASStructOps::Copy);
-		FakeVTable.Identical = reinterpret_cast<void*>(&FASStructOps::Identical);
-		FakeVTable.GetStructTypeHash = reinterpret_cast<void*>(&FASStructOps::GetStructTypeHash);
+		FakeVTable.Destruct = &FASStructOps::Destruct;
+		FakeVTable.Copy = &FASStructOps::Copy;
+		FakeVTable.Identical = &FASStructOps::Identical;
+		FakeVTable.GetStructTypeHash = &FASStructOps::GetStructTypeHash;
 
 		FMemory::Memzero(FakeVTable.Capabilities);
 		FakeVTable.Capabilities.HasDestructor = true;
@@ -124,34 +126,64 @@ struct FASStructOps : UASStruct::ICppStructOps
 		}
 	}
 
-	static void Construct(FASStructOps* Ops, void* Dest)
+	static FASStructOps* GetOpsFromValue(const void* Address)
 	{
+		if (Address == nullptr)
+			return nullptr;
+
+		const UASStruct::FScriptStructValueHeader* Header = UASStruct::GetValueHeader(Address);
+		return Header->IsValid() ? static_cast<FASStructOps*>(Header->CppStructOps) : nullptr;
+	}
+
+	static void Construct(void* Dest)
+	{
+		FASStructOps* Ops = ConstructingOps;
+		if (Ops == nullptr)
+			Ops = GetOpsFromValue(Dest);
+		check(Ops != nullptr);
+
 		if (Ops->ScriptType == nullptr)
 		{
 			FMemory::Memzero(Dest, Ops->GetSize());
 			return;
 		}
 
+		FMemory::Memzero(Dest, Ops->GetSize());
+		UASStruct::FScriptStructValueHeader* Header = UASStruct::GetValueHeader(Dest);
+		Header->Magic = UASStruct::FScriptStructValueHeader::MagicValue;
+		Header->ScriptType = Ops->ScriptType;
+		Header->CppStructOps = Ops;
+		ScriptObject_Construct(Ops->ScriptType, (asCScriptObject*)Dest);
+
 		if (Ops->ConstructFunction != nullptr)
 		{
 			FAngelscriptContext Context(Ops->ConstructFunction->GetEngine());
 			if (!PrepareAngelscriptContextWithLog(Context, Ops->ConstructFunction, TEXT("FASStructOps::Construct")))
 			{
-				FMemory::Memzero(Dest, Ops->GetSize());
 				return;
 			}
 			Context->SetObject((asIScriptObject*)Dest);
 			Context->Execute();
 		}
-		else
-		{
-			FMemory::Memzero(Dest, Ops->GetSize());
-		}
 	}
 
-	static void Destruct(FASStructOps* Ops, void* Dest)
+	static void Destruct(void* Dest)
 	{
+		FASStructOps* Ops = GetOpsFromValue(Dest);
+		if (Ops == nullptr)
+			return;
+
 		if (Ops->ScriptType == nullptr)
+		{
+			FMemory::Memzero(Dest, Ops->GetSize());
+			return;
+		}
+
+		// During process-exit UObject purge the owning AngelScript engine may already
+		// have been released (FAngelscriptEngine::Shutdown -> ShutDownAndRelease), which
+		// leaves asITypeInfo::engine dangling and crashes CallDestructor. The process is
+		// terminating, so skipping the script destructor here is safe.
+		if (FAngelscriptEngine::AreEnginesReleasedForExit())
 		{
 			FMemory::Memzero(Dest, Ops->GetSize());
 			return;
@@ -161,19 +193,44 @@ struct FASStructOps : UASStruct::ICppStructOps
 		ScriptObject->CallDestructor(Ops->ScriptType);
 	}
 
-	static bool Copy(FASStructOps* Ops, void* Dest, void const* Src, int32 ArrayDim)
+	static bool Copy(void* Dest, void const* Src, int32 ArrayDim)
 	{
+		FASStructOps* Ops = GetOpsFromValue(Src);
+		if (Ops == nullptr)
+			Ops = GetOpsFromValue(Dest);
+		if (Ops == nullptr)
+			return false;
+
 		if (Ops->ScriptType == nullptr)
 			return true;
 
-		auto* DestObject = (asCScriptObject*)(Dest);
-		auto* SourceObject = (asCScriptObject*)(Src);
-		DestObject->PerformCopy(SourceObject, Ops->ScriptType, Ops->ScriptType);
+		for (int32 Index = 0; Index < ArrayDim; ++Index)
+		{
+			uint8* DestElement = static_cast<uint8*>(Dest) + Index * Ops->GetSize();
+			const uint8* SrcElement = static_cast<const uint8*>(Src) + Index * Ops->GetSize();
+
+			UASStruct::FScriptStructValueHeader* Header = UASStruct::GetValueHeader(DestElement);
+			if (!Header->IsValid())
+			{
+				Header->Magic = UASStruct::FScriptStructValueHeader::MagicValue;
+				Header->ScriptType = Ops->ScriptType;
+				Header->CppStructOps = Ops;
+				ScriptObject_Construct(Ops->ScriptType, (asCScriptObject*)DestElement);
+			}
+
+			auto* DestObject = reinterpret_cast<asCScriptObject*>(DestElement);
+			auto* SourceObject = reinterpret_cast<asCScriptObject*>(const_cast<uint8*>(SrcElement));
+			DestObject->PerformCopy(SourceObject, Ops->ScriptType, Ops->ScriptType);
+		}
 		return true;
 	}
 
-	static bool Identical(FASStructOps* Ops, const void* A, const void* B, uint32 PortFlags, bool& bOutResult)
+	static bool Identical(const void* A, const void* B, uint32 PortFlags, bool& bOutResult)
 	{
+		FASStructOps* Ops = GetOpsFromValue(A);
+		if (Ops == nullptr)
+			return false;
+
 		if (Ops->ScriptType == nullptr)
 			return false;
 		if (Ops->EqualsFunction == nullptr)
@@ -192,8 +249,12 @@ struct FASStructOps : UASStruct::ICppStructOps
 		return true;
 	}
 
-	static uint32 GetStructTypeHash(FASStructOps* Ops, const void* Src)
+	static uint32 GetStructTypeHash(const void* Src)
 	{
+		FASStructOps* Ops = GetOpsFromValue(Src);
+		if (Ops == nullptr)
+			return 0;
+
 		if (Ops->HashFunction == nullptr)
 			return 0;
 
@@ -208,6 +269,24 @@ struct FASStructOps : UASStruct::ICppStructOps
 	}
 };
 
+thread_local FASStructOps* FASStructOps::ConstructingOps = nullptr;
+
+struct FASStructOpsScope
+{
+	FASStructOps* PreviousOps = nullptr;
+
+	explicit FASStructOpsScope(const UASStruct& Struct)
+	{
+		PreviousOps = FASStructOps::ConstructingOps;
+		FASStructOps::ConstructingOps = static_cast<FASStructOps*>(Struct.GetCppStructOps());
+	}
+
+	~FASStructOpsScope()
+	{
+		FASStructOps::ConstructingOps = PreviousOps;
+	}
+};
+
 UASStruct::UASStruct(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
@@ -216,6 +295,18 @@ UASStruct::UASStruct(const FObjectInitializer& ObjectInitializer)
 UASStruct::ICppStructOps* UASStruct::CreateCppStructOps()
 {
 	return new FASStructOps(this, GetPropertiesSize(), GetMinAlignment());
+}
+
+void UASStruct::InitializeStruct(void* Dest, int32 ArrayDim) const
+{
+	FASStructOpsScope OpsScope(*this);
+	Super::InitializeStruct(Dest, ArrayDim);
+}
+
+void UASStruct::DestroyStruct(void* Dest, int32 ArrayDim) const
+{
+	FASStructOpsScope OpsScope(*this);
+	Super::DestroyStruct(Dest, ArrayDim);
 }
 
 void UASStruct::PrepareCppStructOps()

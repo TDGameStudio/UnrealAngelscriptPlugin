@@ -942,10 +942,16 @@ FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpEngineSettings(FA
 			continue;
 		}
 
+		// Property metadata is editor-only; cooked builds report an empty category.
+#if WITH_EDITORONLY_DATA
+		const FString PropertyCategory = Property->GetMetaData(TEXT("Category"));
+#else
+		const FString PropertyCategory;
+#endif
 		Writer.AddRow({
 			Property->GetName(),
 			ExportPropertyValue(*Property, &Settings),
-			Property->GetMetaData(TEXT("Category"))
+			PropertyCategory
 		});
 	}
 

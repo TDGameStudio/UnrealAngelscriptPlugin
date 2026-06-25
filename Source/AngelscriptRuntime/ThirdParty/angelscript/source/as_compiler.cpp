@@ -222,7 +222,7 @@ int asCCompiler::CompileDefaultDestructor(asCBuilder *in_builder, asCScriptCode 
 	int ParentOffset = 0;
 	if (outFunc->objectType->derivedFrom != nullptr)
 		ParentOffset = outFunc->objectType->derivedFrom->size;
-	else if (outFunc->objectType->shadowType != nullptr)
+	else if (outFunc->objectType->shadowType != nullptr || outFunc->objectType->basePropertyOffset != 0)
 		ParentOffset = outFunc->objectType->basePropertyOffset;
 
 	for(asUINT n = 0; n < outFunc->objectType->properties.GetLength(); n++ )
@@ -838,7 +838,7 @@ void asCCompiler::CompileMemberInitialization(asCByteCode *bc, bool onlyDefaults
 	int ParentOffset = 0;
 	if (outFunc->objectType->derivedFrom != nullptr)
 		ParentOffset = outFunc->objectType->derivedFrom->size;
-	else if (outFunc->objectType->shadowType != nullptr)
+	else if (outFunc->objectType->shadowType != nullptr || outFunc->objectType->basePropertyOffset != 0)
 		ParentOffset = outFunc->objectType->basePropertyOffset;
 
 	for( asUINT n = 0; n < outFunc->objectType->properties.GetLength(); n++ )
@@ -1187,7 +1187,7 @@ int asCCompiler::CompileFunction(asCBuilder *in_builder, asCScriptCode *in_scrip
 		int ParentOffset = 0;
 		if (outFunc->objectType->derivedFrom != nullptr)
 			ParentOffset = outFunc->objectType->derivedFrom->size;
-		else if (outFunc->objectType->shadowType != nullptr)
+		else if (outFunc->objectType->shadowType != nullptr || outFunc->objectType->basePropertyOffset != 0)
 			ParentOffset = outFunc->objectType->basePropertyOffset;
 
 		for( n = 0; n < (int)outFunc->objectType->properties.GetLength(); n++ )

@@ -17,6 +17,7 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptClassReloadHelperPostReload
 	{
 		int32 RefreshAllCalls = 0;
 		int32 BlueprintCompiledCalls = 0;
+		int32 ClassPackageLoadedOrUnloadedCalls = 0;
 		int32 InvalidateComponentRegistryCalls = 0;
 		int32 ExecCalls = 0;
 		TArray<FString> ExecCommands;
@@ -95,12 +96,17 @@ static bool RunOnPostReloadFullReloadEffects(FAutomationTestBase& Test)
 	ULevel* AddedLevel = nullptr;
 	ULevel* SavedCurrentLevel = nullptr;
 	FDelegateHandle BlueprintCompiledHandle;
+	FDelegateHandle ClassPackageHandle;
 
 	ON_SCOPE_EXIT
 	{
 		if (BlueprintCompiledHandle.IsValid() && GEditor != nullptr)
 		{
 			GEditor->OnBlueprintCompiled().Remove(BlueprintCompiledHandle);
+		}
+		if (ClassPackageHandle.IsValid() && GEditor != nullptr)
+		{
+			GEditor->OnClassPackageLoadedOrUnloaded().Remove(ClassPackageHandle);
 		}
 
 		FClassReloadHelperTestAccess::ResetPostReloadTestHooks();
@@ -185,6 +191,10 @@ static bool RunOnPostReloadFullReloadEffects(FAutomationTestBase& Test)
 	{
 		++CallLog.BlueprintCompiledCalls;
 	});
+	ClassPackageHandle = GEditor->OnClassPackageLoadedOrUnloaded().AddLambda([&CallLog]()
+	{
+		++CallLog.ClassPackageLoadedOrUnloadedCalls;
+	});
 
 	FClassReloadHelperPostReloadTestHooks Hooks;
 	Hooks.RefreshAllActions = [&CallLog]()
@@ -217,6 +227,10 @@ static bool RunOnPostReloadFullReloadEffects(FAutomationTestBase& Test)
 		return false;
 	}
 	if (!TestEqual(TEXT("ClassReloadHelper.OnPostReload full-reload test should broadcast blueprint compiled once"), CallLog.BlueprintCompiledCalls, 1))
+	{
+		return false;
+	}
+	if (!TestEqual(TEXT("ClassReloadHelper.OnPostReload full-reload test should not also broadcast class-package loaded/unloaded"), CallLog.ClassPackageLoadedOrUnloadedCalls, 0))
 	{
 		return false;
 	}
@@ -276,12 +290,17 @@ static bool RunOnPostReloadSoftReloadInvalidation(FAutomationTestBase& Test)
 	TUniquePtr<FAngelscriptEngine> Engine = MakeClassReloadHelperPostReloadTestEngine();
 	TUniquePtr<FAngelscriptEngineScope> EngineScope;
 	FDelegateHandle BlueprintCompiledHandle;
+	FDelegateHandle ClassPackageHandle;
 
 	ON_SCOPE_EXIT
 	{
 		if (BlueprintCompiledHandle.IsValid() && GEditor != nullptr)
 		{
 			GEditor->OnBlueprintCompiled().Remove(BlueprintCompiledHandle);
+		}
+		if (ClassPackageHandle.IsValid() && GEditor != nullptr)
+		{
+			GEditor->OnClassPackageLoadedOrUnloaded().Remove(ClassPackageHandle);
 		}
 
 		FClassReloadHelperTestAccess::ResetPostReloadTestHooks();
@@ -316,6 +335,10 @@ static bool RunOnPostReloadSoftReloadInvalidation(FAutomationTestBase& Test)
 	{
 		++CallLog.BlueprintCompiledCalls;
 	});
+	ClassPackageHandle = GEditor->OnClassPackageLoadedOrUnloaded().AddLambda([&CallLog]()
+	{
+		++CallLog.ClassPackageLoadedOrUnloadedCalls;
+	});
 
 	FClassReloadHelperPostReloadTestHooks Hooks;
 	Hooks.RefreshAllActions = [&CallLog]()
@@ -338,9 +361,14 @@ static bool RunOnPostReloadSoftReloadInvalidation(FAutomationTestBase& Test)
 
 	Engine->bIsInitialCompileFinished = false;
 	SeedPostReloadResetSentinels(ReloadState);
+	ReloadState.bRefreshClassViewerHierarchy = true;
 	Engine->GetOnPostReload().Broadcast(false);
 
 	if (!TestEqual(TEXT("ClassReloadHelper.OnPostReload soft-reload test should invalidate the component registry once when initial compile is unfinished"), CallLog.InvalidateComponentRegistryCalls, 1))
+	{
+		return false;
+	}
+	if (!TestEqual(TEXT("ClassReloadHelper.OnPostReload soft-reload test should broadcast class-package loaded/unloaded once when class hierarchy changed"), CallLog.ClassPackageLoadedOrUnloadedCalls, 1))
 	{
 		return false;
 	}
@@ -371,9 +399,14 @@ static bool RunOnPostReloadSoftReloadInvalidation(FAutomationTestBase& Test)
 
 	Engine->bIsInitialCompileFinished = true;
 	SeedPostReloadResetSentinels(ReloadState);
+	ReloadState.bRefreshClassViewerHierarchy = true;
 	Engine->GetOnPostReload().Broadcast(false);
 
 	if (!TestEqual(TEXT("ClassReloadHelper.OnPostReload soft-reload test should not invalidate the component registry again once initial compile is finished"), CallLog.InvalidateComponentRegistryCalls, 1))
+	{
+		return false;
+	}
+	if (!TestEqual(TEXT("ClassReloadHelper.OnPostReload soft-reload test should broadcast class-package loaded/unloaded across both soft reloads"), CallLog.ClassPackageLoadedOrUnloadedCalls, 2))
 	{
 		return false;
 	}

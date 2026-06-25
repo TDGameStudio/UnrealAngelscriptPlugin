@@ -70,7 +70,10 @@ struct FAngelscriptFunctionSignature
 	{
 	}
 
-#if WITH_EDITOR
+	// Available in all build configurations. The dynamic class generator resolves
+	// Blueprint-event script names at runtime (including in packaged / non-editor
+	// builds via GetBlueprintEventByScriptName), so these helpers must not be
+	// editor-only. Only the metadata lookup below is editor-only and is guarded.
 	static FString GetPrimaryScriptName(const FString& InScriptName)
 	{
 		FString PrimaryName;
@@ -82,21 +85,18 @@ struct FAngelscriptFunctionSignature
 		return InScriptName;
 	}
 
-	FAngelscriptFunctionSignature(TSharedRef<FAngelscriptType> InType, UFunction* InFunction, const TCHAR* OverrideName = nullptr)
-	{
-		InitFromFunction(InType, InFunction, OverrideName);
-	}
-
 	static FString GetScriptNameForFunction(UFunction* InFunction)
 	{
 		// Determine the actual name of the function to bind
 		FString OutScriptName = InFunction->GetName();
 
+#if WITH_EDITORONLY_DATA
 		if (InFunction->HasMetaData(NAME_Signature_ScriptName))
 		{
 			OutScriptName = GetPrimaryScriptName(InFunction->GetMetaData(NAME_Signature_ScriptName));
 		}
 		else
+#endif
 		{
 			bool bChangedName = false;
 			bChangedName |= OutScriptName.RemoveFromStart(TEXT("K2_"));
@@ -148,7 +148,13 @@ struct FAngelscriptFunctionSignature
 		}
 		return OutScriptName;
 	}
-	
+
+#if WITH_EDITOR
+	FAngelscriptFunctionSignature(TSharedRef<FAngelscriptType> InType, UFunction* InFunction, const TCHAR* OverrideName = nullptr)
+	{
+		InitFromFunction(InType, InFunction, OverrideName);
+	}
+
 	static FString GetScriptNamespaceForClass(TSharedRef<FAngelscriptType> InType, UFunction* InFunction)
 	{
 		if (InFunction != nullptr)

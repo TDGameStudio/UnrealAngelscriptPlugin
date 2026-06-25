@@ -772,10 +772,8 @@ void UASFunction::FinalizeArguments()
 			else
 				Arg.VMBehavior = EArgumentVMBehavior::ObjectPointer;
 		}
-		else
+		else if (Arg.Type.IsPrimitive())
 		{
-			check(Arg.Type.IsPrimitive());
-
 			// Special case: a float property that is represented by a double argument should
 			// be converted as part of the call thunk.
 			if (Arg.Type.Type == FAngelscriptType::ScriptFloatParamExtendedToDoubleType())
@@ -807,6 +805,18 @@ void UASFunction::FinalizeArguments()
 				break;
 				}
 			}
+		}
+		else
+		{
+			if (Arg.Type.NeedCopy())
+				Arg.ParmBehavior = EArgumentParmBehavior::Reference;
+			else
+				Arg.ParmBehavior = EArgumentParmBehavior::ReferencePOD;
+
+			if (Arg.Type.NeedConstruct())
+				Arg.VMBehavior = EArgumentVMBehavior::Reference;
+			else
+				Arg.VMBehavior = EArgumentVMBehavior::ReferencePOD;
 		}
 
 		if (Arg.Type.CanDestruct() && Arg.Type.NeedDestruct())

@@ -87,7 +87,9 @@ namespace
 namespace
 {
 	constexpr int32 BlueprintCallableReflectiveFallbackMaxArgs = 16;
+#if WITH_EDITORONLY_DATA
 	const FName NAME_BlueprintCallableReflectiveFallback_CustomThunk(TEXT("CustomThunk"));
+#endif
 
 	// =====================================================================
 	// CVar: as.ReflectiveFallback.UseCache (default 1)
@@ -951,10 +953,15 @@ EReflectionFallbackResult EvaluateReflectionFallback(const UFunction* Function)
 		return EReflectionFallbackResult::InterfaceClass;
 	}
 
+#if WITH_EDITORONLY_DATA
+	// CustomThunk is UHT-only metadata, stripped from cooked builds. The generated
+	// function table already excludes CustomThunk functions at cook time, so this
+	// runtime gate is only needed in editor.
 	if (Function->HasMetaData(NAME_BlueprintCallableReflectiveFallback_CustomThunk))
 	{
 		return EReflectionFallbackResult::CustomThunk;
 	}
+#endif
 
 	if (GetNonReturnParameterCount(Function) > BlueprintCallableReflectiveFallbackMaxArgs)
 	{

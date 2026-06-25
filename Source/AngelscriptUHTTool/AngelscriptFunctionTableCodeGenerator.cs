@@ -17,7 +17,11 @@ internal sealed record AngelscriptGeneratedFunctionEntry(
 	string FunctionName,
 	string EraseMacro,
 	string EntryKind,
-	string ThunkStyle)
+	string ThunkStyle,
+	// Non-null when the bound UFUNCTION only exists in editor builds (declared inside
+	// #if WITH_EDITOR / WITH_EDITORONLY_DATA). Holds the exact preprocessor macro the
+	// registration line must be guarded with so non-editor (packaged) targets compile.
+	string? EditorOnlyGuard = null)
 {
 	public string BuildRegistrationLine()
 	{
@@ -604,7 +608,19 @@ internal static class AngelscriptFunctionTableCodeGenerator
 
 		for (int entryIndex = startIndex; entryIndex < startIndex + entryCount; entryIndex++)
 		{
-			builder.AppendLine(entries[entryIndex].BuildRegistrationLine());
+			AngelscriptGeneratedFunctionEntry entry = entries[entryIndex];
+			bool needsEditorGuard = !editorOnly && entry.EditorOnlyGuard != null;
+			if (needsEditorGuard)
+			{
+				builder.Append("#if ").AppendLine(entry.EditorOnlyGuard);
+			}
+
+			builder.AppendLine(entry.BuildRegistrationLine());
+
+			if (needsEditorGuard)
+			{
+				builder.AppendLine("#endif");
+			}
 		}
 
 		builder.AppendLine("\tconst double GeneratedFunctionTableElapsedMilliseconds = (FPlatformTime::Seconds() - GeneratedFunctionTableStartSeconds) * 1000.0;");
@@ -1300,7 +1316,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 						}
 					}
 
-					entries.Add(new AngelscriptGeneratedFunctionEntry(classObj.SourceName, function.SourceName, eraseMacro, entryKind, thunkStyle));
+					entries.Add(new AngelscriptGeneratedFunctionEntry(classObj.SourceName, function.SourceName, eraseMacro, entryKind, thunkStyle, ResolveEditorOnlyGuard(function)));
 				}
 			}
 		}
@@ -1764,6 +1780,27 @@ internal static class AngelscriptFunctionTableCodeGenerator
 	private static bool HasReturnReference(AngelscriptFunctionSignature signature, UhtFunction function)
 	{
 		return ReturnsByRef(function) || signature.ReturnType.Contains("&", StringComparison.Ordinal);
+	}
+
+	// Editor-only UFUNCTIONs (declared inside #if WITH_EDITOR / WITH_EDITORONLY_DATA) do not
+	// exist when compiling a non-editor (packaged) target, so a direct bind to their C++ symbol
+	// fails to compile. Mirror the exact preprocessor guard UHT used for the declaration so the
+	// generated registration line is excluded in non-editor builds and kept in editor builds.
+	private static string? ResolveEditorOnlyGuard(UhtFunction function)
+	{
+		if (!function.FunctionFlags.HasAnyFlags(EFunctionFlags.EditorOnly))
+		{
+			return null;
+		}
+
+		bool isWithEditor = (function.DefineScope & UhtDefineScope.Editor) != 0;
+		bool isWithEditorOnlyData = (function.DefineScope & UhtDefineScope.EditorOnlyData) != 0;
+		if (isWithEditorOnlyData && !isWithEditor)
+		{
+			return "WITH_EDITORONLY_DATA";
+		}
+
+		return "WITH_EDITOR";
 	}
 
 	private static bool ShouldGenerate(UhtClass classObj, UhtFunction function)

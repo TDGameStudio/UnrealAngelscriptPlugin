@@ -2597,7 +2597,28 @@ void FAngelscriptClassGenerator::PerformReload(bool bFullReload)
 	{
 		FAngelscriptScopeTimer PostTimer(TEXT("post soft reload"));
 		if (FAngelscriptEngine* HookEngine = FAngelscriptEngine::TryGetCurrentEngine())
+		{
+			for (auto& ModuleData : Modules)
+			{
+				for (auto& ClassData : ModuleData.Classes)
+				{
+					if (ClassData.NewClass->bIsStruct)
+						continue;
+
+					UClass* NewClass = ClassData.NewClass.IsValid() ? ClassData.NewClass->Class : nullptr;
+					UClass* OldClass = nullptr;
+					if (ClassData.OldClass.IsValid())
+						OldClass = ClassData.OldClass->Class;
+					else
+						OldClass = ClassData.ReplacedClass;
+
+					if ((OldClass != nullptr || NewClass != nullptr) && OldClass != NewClass)
+						HookEngine->GetOnClassReload().Broadcast(OldClass, NewClass);
+				}
+			}
+
 			HookEngine->GetOnPostReload().Broadcast(bIsDoingFullReload);
+		}
 	}
 
 #if WITH_EDITOR

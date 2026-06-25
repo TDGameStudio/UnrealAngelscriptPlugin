@@ -92,10 +92,6 @@ static FGeneratedFunctionTableTimingSummary& GetGeneratedFunctionTableTimingSumm
 
 bool FAngelscriptBinds::ShouldSkipBlueprintCallableFunction(const UFunction* Function)
 {
-	static const FName NAME_Function_NotInAngelscript(TEXT("NotInAngelscript"));
-	static const FName NAME_Function_BlueprintInternalUseOnly(TEXT("BlueprintInternalUseOnly"));
-	static const FName NAME_Function_UsableInAngelscript(TEXT("UsableInAngelscript"));
-
 	if (Function == nullptr)
 	{
 		return true;
@@ -106,6 +102,14 @@ bool FAngelscriptBinds::ShouldSkipBlueprintCallableFunction(const UFunction* Fun
 		return true;
 	}
 
+#if WITH_EDITORONLY_DATA
+	// UFunction metadata is editor-only and stripped from cooked builds. In packaged
+	// builds these gates fall through; the bind database baked at cook time already
+	// reflects the editor-time decisions.
+	static const FName NAME_Function_NotInAngelscript(TEXT("NotInAngelscript"));
+	static const FName NAME_Function_BlueprintInternalUseOnly(TEXT("BlueprintInternalUseOnly"));
+	static const FName NAME_Function_UsableInAngelscript(TEXT("UsableInAngelscript"));
+
 	if (Function->HasMetaData(NAME_Function_NotInAngelscript))
 	{
 		return true;
@@ -115,6 +119,7 @@ bool FAngelscriptBinds::ShouldSkipBlueprintCallableFunction(const UFunction* Fun
 	{
 		return true;
 	}
+#endif
 
 	if (const UClass* OwningClass = Function->GetOuterUClass())
 	{
@@ -574,6 +579,14 @@ int FAngelscriptBinds::CompileOutInTest(int FunctionId)
 	auto& Manager = FAngelscriptEngine::Get();
 	auto* Function = (asCScriptFunction*)Manager.Engine->GetFunctionById(FunctionId);
 
+	// A negative FunctionId means the bind registration failed (e.g. the target type was
+	// not registered). GetFunctionById then returns null; bail out instead of crashing so
+	// the failed bind is simply skipped and surfaced via the earlier registration error.
+	if (Function == nullptr)
+	{
+		return FunctionId;
+	}
+
 	if (UE_BUILD_TEST || UE_BUILD_SHIPPING || (WITH_EDITOR && FAngelscriptEngine::IsSimulatingCookedForCurrentContext()))
 	{
 		Function->compileOutType = asECompileOutType::CompileOutEntirely;
@@ -592,6 +605,11 @@ int FAngelscriptBinds::CompileOutIfNoLog(int FunctionId)
 	auto& Manager = FAngelscriptEngine::Get();
 	auto* Function = (asCScriptFunction*)Manager.Engine->GetFunctionById(FunctionId);
 
+	if (Function == nullptr)
+	{
+		return FunctionId;
+	}
+
 	if (UE_BUILD_TEST || UE_BUILD_SHIPPING || (WITH_EDITOR && FAngelscriptEngine::IsSimulatingCookedForCurrentContext()))
 	{
 		Function->compileOutType = asECompileOutType::CompileOutEntirely;
@@ -609,6 +627,11 @@ int FAngelscriptBinds::CompileOutAsEnsure(int FunctionId)
 {
 	auto& Manager = FAngelscriptEngine::Get();
 	auto* Function = (asCScriptFunction*)Manager.Engine->GetFunctionById(FunctionId);
+	if (Function == nullptr)
+	{
+		return FunctionId;
+	}
+
 	Function->traits.SetTrait(asTRAIT_NODISCARD, true);
 
 	if (UE_BUILD_SHIPPING || (WITH_EDITOR && FAngelscriptEngine::IsSimulatingCookedForCurrentContext()))
@@ -622,6 +645,10 @@ int FAngelscriptBinds::CompileOutAsCheck(int FunctionId)
 {
 	auto& Manager = FAngelscriptEngine::Get();
 	auto* Function = (asCScriptFunction*)Manager.Engine->GetFunctionById(FunctionId);
+	if (Function == nullptr)
+	{
+		return FunctionId;
+	}
 
 	if (UE_BUILD_SHIPPING || (WITH_EDITOR && FAngelscriptEngine::IsSimulatingCookedForCurrentContext()))
 	{
@@ -642,7 +669,10 @@ int FAngelscriptBinds::CompileReplaceWithFirstArgInTest(int FunctionId)
 	{
 		auto& Manager = FAngelscriptEngine::Get();
 		auto* Function = (asCScriptFunction*)Manager.Engine->GetFunctionById(FunctionId);
-		Function->compileOutType = asECompileOutType::ReplaceWithFirstParam;
+		if (Function != nullptr)
+		{
+			Function->compileOutType = asECompileOutType::ReplaceWithFirstParam;
+		}
 	}
 	return FunctionId;
 }

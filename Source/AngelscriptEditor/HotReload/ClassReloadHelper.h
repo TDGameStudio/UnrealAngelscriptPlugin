@@ -73,6 +73,7 @@ struct FClassReloadHelper
 	{
 		bool bRefreshAllActions = false;
 		bool bReloadedVolume = false;
+		bool bRefreshClassViewerHierarchy = false;
 
 		TMap<UClass*, UClass*> ReloadClasses;
 		TMap<UObject*, UObject*> ReloadAssets;
@@ -121,6 +122,8 @@ struct FClassReloadHelper
 					ReloadState().ReloadClasses.Add(OldClass, NewClass);
 				else
 					ReloadState().NewClasses.Add(NewClass);
+
+				ReloadState().bRefreshClassViewerHierarchy = true;
 
 				const bool bTouchesInterfaceReload =
 					(OldClass != nullptr && (OldClass->HasAnyClassFlags(CLASS_Interface) || OldClass->Interfaces.Num() > 0))
@@ -231,6 +234,11 @@ struct FClassReloadHelper
 				if (bFullReload && GEditor != nullptr)
 				{
 					GEditor->BroadcastBlueprintCompiled();
+				}
+
+				if (!bFullReload && ReloadState().bRefreshClassViewerHierarchy && GEditor != nullptr)
+				{
+					GEditor->BroadcastClassPackageLoadedOrUnloaded();
 				}
 
 				if (!FAngelscriptEngine::IsInitialized() || !FAngelscriptEngine::Get().IsInitialCompileFinished())

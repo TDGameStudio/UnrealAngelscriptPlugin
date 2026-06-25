@@ -609,6 +609,7 @@ FAngelscriptEngineConfig FAngelscriptEngineConfig::FromCurrentProcess()
 	Config.bGeneratePrecompiledData = FParse::Param(FCommandLine::Get(), TEXT("as-generate-precompiled-data"));
 	Config.bDevelopmentMode = FParse::Param(FCommandLine::Get(), TEXT("as-development-mode"));
 	Config.bIgnorePrecompiledData = FParse::Param(FCommandLine::Get(), TEXT("as-ignore-precompiled-data"));
+	Config.bSkipStaticJITCodeGen = FParse::Param(FCommandLine::Get(), TEXT("as-skip-static-jit-codegen"));
 	Config.bSkipWriteBindDB = FParse::Param(FCommandLine::Get(), TEXT("as-skip-write-bind-db"));
 	Config.bWriteBindDB = FParse::Param(FCommandLine::Get(), TEXT("as-write-bind-db"));
 	Config.bExitOnError = FParse::Param(FCommandLine::Get(), TEXT("as-exit-on-error"));
@@ -856,6 +857,27 @@ bool FAngelscriptEngine::ShouldInitializeThreaded()
 	{
 		return RuntimeConfig.bForceThreadedInitialize;
 	}
+
+#if AS_USE_BIND_DB
+	// Defensive measure (pending verification), NOT a known hard requirement.
+	//
+	// Hazelight upstream runs cooked initialization on a worker thread by default and it
+	// works there, so threaded cooked init is not inherently unsafe. The cooked crash we
+	// originally chased was actually an ordering bug: Load(Binds.Cache) ran before this
+	// engine's owned FAngelscriptBindDatabase was constructed, so the cache populated the
+	// fallback LegacyBindDatabase and bind-time readers saw an empty database (every
+	// reflected engine type unregistered). That root cause is fixed in Initialize_AnyThread()
+	// by constructing BindDatabase before the Load call.
+	//
+	// We still force game-thread init for cooked builds as a precaution, because this fork's
+	// engine-scoped-state refactor may have introduced other worker-thread hazards that have
+	// not yet been validated against a packaged build. Once a threaded cooked run is verified
+	// end-to-end, this block can be removed to regain upstream's parallel-init startup.
+	if (!RuntimeConfig.bForceThreadedInitialize)
+	{
+		return false;
+	}
+#endif
 
 	return !RuntimeConfig.bSkipThreadedInitialize;
 }
@@ -1339,6 +1361,15 @@ bool FAngelscriptEngine::DiscardModule(const TCHAR* ModuleName)
 	return true;
 }
 
+// Set once an owned engine is released during process exit. Game-thread only; the
+// exit purge that reads it is single-threaded, so a plain bool is sufficient.
+static bool GAngelscriptEnginesReleasedForExit = false;
+
+bool FAngelscriptEngine::AreEnginesReleasedForExit()
+{
+	return GAngelscriptEnginesReleasedForExit;
+}
+
 void FAngelscriptEngine::Shutdown()
 {
 	const bool bHadInitializedEngine = Engine != nullptr;
@@ -1467,6 +1498,15 @@ void FAngelscriptEngine::Shutdown()
 	// Engine teardown: the engine releases its own fields directly here.
 	if (bShouldReleaseOwnedEngine && Engine != nullptr)
 	{
+		// If we are releasing during process exit, the UObject system may still purge
+		// script-backed structs after this point (PurgeAllUObjectsOnExit). Mark engines
+		// as released so UASStruct destruction skips running script destructors against
+		// the now-freed engine instead of crashing.
+		if (IsEngineExitRequested())
+		{
+			GAngelscriptEnginesReleasedForExit = true;
+		}
+
 		FAngelscriptStaticTypeInfoRegistry::ClearForEngine(Engine);
 		// Drop script-enum -> asITypeInfo* entries before AS engine release so
 		// any late access in the teardown window cannot read a dangling pointer.
@@ -1790,7 +1830,11 @@ void FAngelscriptEngine::Initialize_AnyThread()
 		PrecompiledData = new FAngelscriptPrecompiledData(Engine);
 	}
 
-	if (bGeneratePrecompiledData)
+	// StaticJIT is only wired up when we actually want the C++ transpilation pass.
+	// With bSkipStaticJITCodeGen we still produce the PrecompiledScript.Cache bytecode
+	// archive, but never install the JIT compiler (whose CompileFunction asserts unless
+	// it is in generate-output mode), so scripts compile to plain bytecode.
+	if (bGeneratePrecompiledData && !RuntimeConfig.bSkipStaticJITCodeGen)
 	{
 		StaticJIT = new FAngelscriptStaticJIT();
 		StaticJIT->PrecompiledData = PrecompiledData;
@@ -1819,6 +1863,19 @@ void FAngelscriptEngine::Initialize_AnyThread()
 		CodeCoverage = new FAngelscriptCodeCoverage;
 	}
 #endif
+
+	// The bind database must exist on this engine BEFORE we load Binds.Cache below.
+	// FAngelscriptBindDatabase::Get() resolves to the *current engine's* instance, and if it
+	// has not been constructed yet Load() silently populates the fallback LegacyBindDatabase
+	// instead. The owned database is then created empty further down, and BindScriptTypes()
+	// reads that empty instance — leaving every reflected engine type (AActor, FMargin,
+	// UActorComponent, ...) unregistered and crashing dependent hand-written binds in cooked
+	// builds. Construct it up-front so Load() and the bind-time readers share one instance.
+	if (!BindDatabase.IsValid())
+	{
+		LLM_SCOPE_BYTAG(Angelscript);
+		BindDatabase = MakeUnique<FAngelscriptBindDatabase>();
+	}
 
 #if AS_USE_BIND_DB
 	{
@@ -4980,18 +5037,28 @@ void FAngelscriptEngine::CompileModule_Types_Stage1(ECompileType CompileType, TS
 	// to treat compilation for classes derived from code classes.
 	for (auto ClassDesc : Module->Classes)
 	{
-		if (ClassDesc->CodeSuperClass == nullptr)
-			continue;
-
 		asPreClassData Data;
-		Data.PropertyOffset = ClassDesc->CodeSuperClass->GetPropertiesSize();
+		bool bHasPreClassData = false;
 
-		FString SuperClassName = FAngelscriptType::GetBoundClassName(ClassDesc->CodeSuperClass);
-		Data.ShadowType = Engine->allRegisteredTypesByName.FindFirst_CaseInsensitive(TCHAR_TO_ANSI(*SuperClassName));
+		if (ClassDesc->bIsStruct)
+		{
+			Data.PropertyOffset = UASStruct::ScriptValueOffset;
+			bHasPreClassData = true;
+		}
 
-		checkf(Data.ShadowType != nullptr, TEXT("Unable to find C++ class %s to inherit from"), *SuperClassName);
+		if (ClassDesc->CodeSuperClass != nullptr)
+		{
+			Data.PropertyOffset = ClassDesc->CodeSuperClass->GetPropertiesSize();
 
-		ScriptModule->AddPreClassData(TCHAR_TO_ANSI(*ClassDesc->ClassName), Data);
+			FString SuperClassName = FAngelscriptType::GetBoundClassName(ClassDesc->CodeSuperClass);
+			Data.ShadowType = Engine->allRegisteredTypesByName.FindFirst_CaseInsensitive(TCHAR_TO_ANSI(*SuperClassName));
+
+			checkf(Data.ShadowType != nullptr, TEXT("Unable to find C++ class %s to inherit from"), *SuperClassName);
+			bHasPreClassData = true;
+		}
+
+		if (bHasPreClassData)
+			ScriptModule->AddPreClassData(TCHAR_TO_ANSI(*ClassDesc->ClassName), Data);
 	}
 
 	// Delegates need to be tagged with a userdata tag so they can be detected correctly during compilation

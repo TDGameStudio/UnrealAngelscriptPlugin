@@ -141,6 +141,13 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngineConfig
 	UPROPERTY()
 	bool bIgnorePrecompiledData = false;
 
+	// When generating precompiled data, skip the StaticJIT C++ transpilation pass
+	// (only emit the PrecompiledScript.Cache bytecode archive). Useful for shipping
+	// scripts in a package without StaticJIT, and to avoid transpiler limitations on
+	// certain script constructs.
+	UPROPERTY()
+	bool bSkipStaticJITCodeGen = false;
+
 	UPROPERTY()
 	bool bSkipWriteBindDB = false;
 
@@ -221,6 +228,12 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 	static UObject* GetAmbientWorldContext();
 	static bool ShouldUseEditorScriptsForCurrentContext();
 	static bool ShouldUseAutomaticImportMethodForCurrentContext();
+
+	// True once an owned AngelScript engine has been released during process exit.
+	// After this point the UObject system may still purge script-backed structs whose
+	// owning asITypeInfo/engine is gone; callers (e.g. UASStruct destruction) must skip
+	// running script destructors to avoid dereferencing a freed engine.
+	static bool AreEnginesReleasedForExit();
 	static class asCThreadLocalData* GameThreadTLD;
 	static bool bStaticJITTranspiledCodeLoaded;
 

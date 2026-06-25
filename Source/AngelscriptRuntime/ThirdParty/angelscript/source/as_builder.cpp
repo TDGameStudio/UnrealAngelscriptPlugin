@@ -917,7 +917,7 @@ void asCBuilder::CreateDefaultDestructors()
 			int ParentOffset = 0;
 			if (objType->derivedFrom != nullptr)
 				ParentOffset = objType->derivedFrom->size;
-			else if (objType->shadowType != nullptr)
+			else if (objType->shadowType != nullptr || objType->basePropertyOffset != 0)
 				ParentOffset = objType->basePropertyOffset;
 
 			for( asUINT n = 0; n < objType->properties.GetLength(); n++ )
@@ -3499,6 +3499,8 @@ void asCBuilder::LayoutClass(sClassDeclaration* decl)
 		ot->size = ot->basePropertyOffset;
 		ot->alignment = FMath::Max(ot->alignment, ot->shadowType->alignment);
 	}
+	else if (ot->basePropertyOffset != 0)
+		ot->size = ot->basePropertyOffset;
 	else
 		ot->size = 0;
 
@@ -3729,7 +3731,7 @@ void asCBuilder::LayoutClass(sClassDeclaration* decl)
 	int baseOffset = 0;
 	if (ot->derivedFrom != nullptr)
 		baseOffset = ot->derivedFrom->size;
-	else if (ot->shadowType != nullptr)
+	else if (ot->shadowType != nullptr || ot->basePropertyOffset != 0)
 		baseOffset = ot->basePropertyOffset;
 
 	for( asUINT p = 0; p < ot->properties.GetLength(); p++ )
