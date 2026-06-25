@@ -1,10 +1,12 @@
 #include "Dump/AngelscriptCSVWriter.h"
+#include "Dump/AngelscriptDumpCommand.h"
 #include "Dump/AngelscriptStateDump.h"
 
 #include "AngelscriptTestUtilities.h"
 #include "CQTest.h"
 
 #include "HAL/FileManager.h"
+#include "HAL/IConsoleManager.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Guid.h"
@@ -193,6 +195,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptStateDumpTest,
 	"Angelscript.TestModule.Dump.DumpAll",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	TEST_METHOD(ConsoleCommandIsRegistered)
+	{
+		IConsoleObject* ConsoleObject = IConsoleManager::Get().FindConsoleObject(FAngelscriptDumpCommand::GetCommandName());
+		ASSERT_THAT(IsNotNull(ConsoleObject, TEXT("DumpEngineState console command should be registered")));
+		if (ConsoleObject != nullptr)
+		{
+			ASSERT_THAT(IsNotNull(ConsoleObject->AsCommand(), TEXT("DumpEngineState console object should be a command")));
+		}
+	}
+
 	TEST_METHOD(EndToEnd)
 	{
 		FString OutputDir;
