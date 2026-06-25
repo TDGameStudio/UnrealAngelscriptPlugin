@@ -4297,23 +4297,12 @@ void FAngelscriptClassGenerator::DoSoftReload(FModuleData& ModuleData, FClassDat
 		if (!CheckClass->IsChildOf(Class))
 			return;
 
-		// Don't touch classes that have been replaced through a full reload
-		UASClass* asClass = Cast<UASClass>(CheckClass);
-		//if (CheckClass->ScriptTypePtr == nullptr)
-		//if (asClass == nullptr || asClass->ScriptTypePtr == nullptr)
-		if (asClass != nullptr && asClass->ScriptTypePtr == nullptr)
+		UASClass* ASClass = UASClass::GetFirstASClass(CheckClass);
+		if (ASClass == nullptr || ASClass->ScriptTypePtr == nullptr)
 			return;
 
-		UASClass* ASClass = UASClass::GetFirstASClass(CheckClass);
 		if (ASClass == Class)
 		{
-			//ensure(CheckClass->ScriptTypePtr == OldScriptType);
-			ensure(asClass->ScriptTypePtr == OldScriptType);
-
-			// Update the actual angelscript type we're using
-			asClass->ScriptTypePtr = Class->ScriptTypePtr;
-			asClass->OwnerScriptEngine = Class->OwnerScriptEngine;
-
 			// Refresh the serialization schema
 			DestroyAngelscriptUnversionedSchema(CheckClass);
 
