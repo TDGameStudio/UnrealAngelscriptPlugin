@@ -1,170 +1,138 @@
-#include "Editor.h"
-#include "Engine/Engine.h"
+#include "CQTest.h"
+#include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptTestMacros.h"
+#include "Editor/AngelscriptPIETestUtils.h"
+
+#include "Engine/LevelScriptActor.h"
+#include "Engine/LevelScriptBlueprint.h"
 #include "Engine/World.h"
-#include "Misc/AutomationTest.h"
-#include "Tests/AutomationCommon.h"
+#include "GameFramework/GameModeBase.h"
 #include "Tests/AutomationEditorCommon.h"
 
 #if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR
 
-namespace TemplatePIETest
-{
-	constexpr double DefaultTimeoutSeconds = 10.0;
-
-	UWorld* FindPIEWorld()
-	{
-		if (GEditor != nullptr)
-		{
-			if (FWorldContext* PIEWorldContext = GEditor->GetPIEWorldContext())
-			{
-				if (UWorld* World = PIEWorldContext->World())
-				{
-					return World;
-				}
-			}
-		}
-
-		if (GEngine == nullptr)
-		{
-			return nullptr;
-		}
-
-		for (const FWorldContext& Context : GEngine->GetWorldContexts())
-		{
-			if (Context.WorldType == EWorldType::PIE && Context.World() != nullptr)
-			{
-				return Context.World();
-			}
-		}
-
-		return nullptr;
-	}
-
-	bool IsPIEWorldAlive()
-	{
-		return FindPIEWorld() != nullptr || (GEditor != nullptr && GEditor->PlayWorld != nullptr);
-	}
-
-	UWorld* CreateTransientEmptyMap(FAutomationTestBase& Test)
-	{
-		UWorld* EditorWorld = FAutomationEditorCommonUtils::CreateNewMap();
-		if (!Test.TestNotNull(TEXT("Template_PIE should create a transient empty editor map"), EditorWorld))
-		{
-			return nullptr;
-		}
-
-		Test.TestTrue(TEXT("Template_PIE editor map should be an editor world"), EditorWorld->WorldType == EWorldType::Editor);
-		Test.TestNotNull(TEXT("Template_PIE editor map should have a persistent level"), EditorWorld->PersistentLevel.Get());
-		return EditorWorld;
-	}
-
-	class FWaitForPIEWorldCommand final : public IAutomationLatentCommand
-	{
-	public:
-		explicit FWaitForPIEWorldCommand(FAutomationTestBase& InTest, double InTimeoutSeconds = DefaultTimeoutSeconds)
-			: Test(InTest)
-			, TimeoutSeconds(InTimeoutSeconds)
-		{
-		}
-
-		virtual bool Update() override
-		{
-			if (UWorld* PIEWorld = FindPIEWorld())
-			{
-				Test.TestTrue(TEXT("Template_PIE should run in a PIE world"), PIEWorld->WorldType == EWorldType::PIE);
-				Test.TestNotNull(TEXT("Template_PIE PIE world should have a persistent level"), PIEWorld->PersistentLevel.Get());
-				return true;
-			}
-
-			if (GetCurrentRunTime() > TimeoutSeconds)
-			{
-				Test.AddError(FString::Printf(TEXT("Template_PIE timed out after %.1f seconds waiting for PIE world creation."), TimeoutSeconds));
-				return true;
-			}
-
-			return false;
-		}
-
-	private:
-		FAutomationTestBase& Test;
-		double TimeoutSeconds;
-	};
-
-	class FWaitForPIEEndCommand final : public IAutomationLatentCommand
-	{
-	public:
-		explicit FWaitForPIEEndCommand(FAutomationTestBase& InTest, double InTimeoutSeconds = DefaultTimeoutSeconds)
-			: Test(InTest)
-			, TimeoutSeconds(InTimeoutSeconds)
-		{
-		}
-
-		virtual bool Update() override
-		{
-			if (!IsPIEWorldAlive())
-			{
-				return true;
-			}
-
-			if (GetCurrentRunTime() > TimeoutSeconds)
-			{
-				Test.AddError(FString::Printf(TEXT("Template_PIE timed out after %.1f seconds waiting for PIE shutdown."), TimeoutSeconds));
-				return true;
-			}
-
-			return false;
-		}
-
-	private:
-		FAutomationTestBase& Test;
-		double TimeoutSeconds;
-	};
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTemplatePIETest,
-	"Angelscript.Template.PIE.EmptyMap_StartPIE_EndPIE",
+TEST_CLASS_WITH_FLAGS(FAngelscriptTemplatePIETest,
+	"Angelscript.Template.PIE",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTemplatePIETest::RunTest(const FString& Parameters)
 {
-	using namespace TemplatePIETest;
+private:
+	inline static const FName ModuleName = TEXT("ASTemplatePIE");
+	inline static const FString Filename = TEXT("ASTemplatePIE.as");
+	inline static const FName GameModeClassName = TEXT("ATemplatePIEGameMode");
+	inline static const FName LevelScriptClassName = TEXT("ATemplatePIELevelScriptParent");
+	static constexpr double DefaultTimeoutSeconds = 10.0;
 
-	if (IsPIEWorldAlive())
+	static void DiscardTemplateModule()
 	{
-		AddError(TEXT("Template_PIE must start from editor mode with no existing PIE session."));
-		return false;
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		Engine.DiscardModule(*ModuleName.ToString());
 	}
 
-	if (CreateTransientEmptyMap(*this) == nullptr)
+public:
+	BEFORE_ALL()
 	{
-		return false;
+		ASTEST_CREATE_ENGINE();
 	}
 
-	ADD_LATENT_AUTOMATION_COMMAND(FStartPIECommand(false));
-	ADD_LATENT_AUTOMATION_COMMAND(FWaitForPIEWorldCommand(*this));
-	ADD_LATENT_AUTOMATION_COMMAND(FFunctionLatentCommand([this]() -> bool
+	AFTER_ALL()
 	{
-		UWorld* PIEWorld = TemplatePIETest::FindPIEWorld();
-		if (!TestNotNull(TEXT("Template_PIE should expose a PIE world for assertions"), PIEWorld))
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
+	TEST_METHOD(EmptyMap_StartPIE_EndPIE_WithAngelscriptGameModeAndLevelBlueprint)
+	{
+		ASSERT_THAT(IsFalse(
+			AngelscriptPIETestUtils::IsPIEWorldAlive(),
+			TEXT("Template_PIE must start from editor mode with no existing PIE session")));
+
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS(Blueprintable)
+			class ATemplatePIEGameMode : AGameModeBase
+			{
+			}
+
+			UCLASS(Blueprintable, NotPlaceable)
+			class ATemplatePIELevelScriptParent : ALevelScriptActor
+			{
+				default SetReplicates(false);
+
+				UPROPERTY()
+				int TemplateValue = 42;
+			}
+		)AS");
+
+		UClass* GameModeClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			Filename,
+			ScriptSource,
+			GameModeClassName);
+		ASSERT_THAT(IsNotNull(GameModeClass, TEXT("Template_PIE should compile an AS GameMode class")));
+		ASSERT_THAT(IsTrue(GameModeClass->IsChildOf(AGameModeBase::StaticClass()), TEXT("Template_PIE AS GameMode should derive from AGameModeBase")));
+
+		UClass* LevelScriptClass = FindGeneratedClass(&Engine, LevelScriptClassName);
+		ASSERT_THAT(IsNotNull(LevelScriptClass, TEXT("Template_PIE should compile an AS LevelScriptActor parent")));
+		ASSERT_THAT(IsTrue(LevelScriptClass->IsChildOf(ALevelScriptActor::StaticClass()), TEXT("Template_PIE AS LevelScript parent should derive from ALevelScriptActor")));
+
+		AngelscriptPIETestUtils::FScopedLevelScriptActorClassOverride LevelScriptOverride(LevelScriptClass);
+		UWorld* EditorWorld = AngelscriptPIETestUtils::CreateTransientEmptyMap(*TestRunner, TEXT("Template_PIE"));
+		ASSERT_THAT(IsNotNull(EditorWorld, TEXT("Template_PIE should create a transient editor map")));
+
+		ULevelScriptBlueprint* LevelBlueprint = AngelscriptPIETestUtils::CreateAndCompileLevelBlueprint(
+			*TestRunner,
+			EditorWorld,
+			LevelScriptClass,
+			TEXT("Template_PIE"));
+		ASSERT_THAT(IsNotNull(LevelBlueprint, TEXT("Template_PIE should create a Level Blueprint with an AS parent")));
+
+		FRequestPlaySessionParams RequestParams;
+		ASSERT_THAT(IsTrue(
+			AngelscriptPIETestUtils::BuildStandalonePIERequest(*TestRunner, GameModeClass, RequestParams),
+			TEXT("Template_PIE should build a standalone PIE request")));
+
+		TestCommandBuilder.CleanUpWith(TEXT("Discard Template_PIE AS module"), []()
 		{
-			return true;
+			DiscardTemplateModule();
+		});
+		TestCommandBuilder.CleanUpWith(TEXT("End Template_PIE PIE cleanup"), []()
+		{
+			AngelscriptPIETestUtils::EndPIE();
+		});
+
+		if (TestRunner->HasAnyErrors())
+		{
+			return;
 		}
 
-		TestTrue(TEXT("Template_PIE world type should be PIE"), PIEWorld->WorldType == EWorldType::PIE);
-		TestNotNull(TEXT("Template_PIE PIE world should have a persistent level"), PIEWorld->PersistentLevel.Get());
-
-		if (GEditor != nullptr && GEditor->PlayWorld != nullptr)
-		{
-			TestTrue(TEXT("Template_PIE PlayWorld should match the discovered PIE world"), GEditor->PlayWorld == PIEWorld);
-		}
-
-		return true;
-	}));
-	ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
-	ADD_LATENT_AUTOMATION_COMMAND(FWaitForPIEEndCommand(*this));
-
-	return true;
-}
+		AddCommand(new FStartPIEForAutomationCommand(RequestParams));
+		TestCommandBuilder
+			.Until(TEXT("Wait for Template_PIE PIE world"), []()
+			{
+				return AngelscriptPIETestUtils::FindPIEWorld() != nullptr;
+			}, FTimespan::FromSeconds(DefaultTimeoutSeconds))
+			.Then(TEXT("Assert Template_PIE PIE world"), [this, GameModeClass, LevelScriptClass]()
+			{
+				UWorld* PIEWorld = AngelscriptPIETestUtils::FindPIEWorld();
+				ASSERT_THAT(IsNotNull(PIEWorld, TEXT("Template_PIE should expose a PIE world for assertions")));
+				ASSERT_THAT(AreEqual(EWorldType::PIE, PIEWorld->WorldType, TEXT("Template_PIE world type should be PIE")));
+				ASSERT_THAT(IsNotNull(PIEWorld->PersistentLevel.Get(), TEXT("Template_PIE PIE world should have a persistent level")));
+				ASSERT_THAT(IsTrue(AngelscriptPIETestUtils::HasExpectedGameMode(PIEWorld, GameModeClass), TEXT("Template_PIE PIE world should use the AS GameMode class")));
+				ASSERT_THAT(IsTrue(AngelscriptPIETestUtils::HasExpectedLevelScriptActor(PIEWorld, LevelScriptClass), TEXT("Template_PIE LevelScriptActor should inherit from the AS parent")));
+			})
+			.Then(TEXT("End Template_PIE PIE session"), []()
+			{
+				AngelscriptPIETestUtils::EndPIE();
+			})
+			.Until(TEXT("Wait for Template_PIE PIE shutdown"), []()
+			{
+				return !AngelscriptPIETestUtils::IsPIEWorldAlive();
+			}, FTimespan::FromSeconds(DefaultTimeoutSeconds));
+	}
+};
 
 #endif

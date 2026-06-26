@@ -1,303 +1,236 @@
-#include "Editor.h"
-#include "Engine/Engine.h"
+#include "CQTest.h"
+#include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptTestMacros.h"
+#include "Editor/AngelscriptPIETestUtils.h"
+
+#include "Engine/GameInstance.h"
+#include "Engine/LevelScriptActor.h"
+#include "Engine/LevelScriptBlueprint.h"
 #include "Engine/NetConnection.h"
 #include "Engine/NetDriver.h"
 #include "Engine/World.h"
 #include "GameFramework/GameModeBase.h"
-#include "LevelEditor.h"
-#include "Misc/AutomationTest.h"
-#include "Modules/ModuleManager.h"
-#include "PlayInEditorDataTypes.h"
-#include "Settings/LevelEditorPlaySettings.h"
-#include "Tests/AutomationCommon.h"
+#include "GameFramework/GameStateBase.h"
 #include "Tests/AutomationEditorCommon.h"
 
 #if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR
 
-namespace TemplateMultiplayerPIETest
+TEST_CLASS_WITH_FLAGS(FAngelscriptTemplateMultiplayerPIETest,
+	"Angelscript.Template.MultiplayerPIE",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	constexpr double DefaultTimeoutSeconds = 10.0;
-	constexpr int32 ExpectedClientWorldCount = 1;
-	constexpr int32 ExpectedPIEInstanceCount = ExpectedClientWorldCount + 1;
+private:
+	static constexpr double DefaultTimeoutSeconds = 10.0;
 
-	struct FMultiplayerPIEWorlds
+	static FName MakeModuleName(int32 PlayerCount)
 	{
-		UWorld* ServerWorld = nullptr;
-		TArray<UWorld*> ClientWorlds;
-	};
-
-	TArray<UWorld*> FindPIEWorlds()
-	{
-		TArray<UWorld*> Worlds;
-		if (GEngine == nullptr)
-		{
-			return Worlds;
-		}
-
-		for (const FWorldContext& Context : GEngine->GetWorldContexts())
-		{
-			UWorld* World = Context.World();
-			if (Context.WorldType == EWorldType::PIE && IsValid(World))
-			{
-				Worlds.Add(World);
-			}
-		}
-
-		return Worlds;
+		return FName(*FString::Printf(TEXT("ASTemplateMultiplayerPIE%dPlayers"), PlayerCount));
 	}
 
-	FMultiplayerPIEWorlds FindNetworkPIEWorlds()
+	static FString MakeFilename(int32 PlayerCount)
 	{
-		FMultiplayerPIEWorlds Result;
-		for (UWorld* World : FindPIEWorlds())
-		{
-			UNetDriver* NetDriver = World->GetNetDriver();
-			if (!IsValid(NetDriver))
+		return FString::Printf(TEXT("ASTemplateMultiplayerPIE%dPlayers.as"), PlayerCount);
+	}
+
+	static FName MakeGameModeClassName(int32 PlayerCount)
+	{
+		return FName(*FString::Printf(TEXT("ATemplateMultiplayerPIE%dPlayersGameMode"), PlayerCount));
+	}
+
+	static FName MakeLevelScriptClassName(int32 PlayerCount)
+	{
+		return FName(*FString::Printf(TEXT("ATemplateMultiplayerPIE%dPlayersLevelScriptParent"), PlayerCount));
+	}
+
+	static FString MakeContext(int32 PlayerCount)
+	{
+		return FString::Printf(TEXT("Template_MultiplayerPIE_%dPlayers"), PlayerCount);
+	}
+
+	static FString MakeScriptSource(int32 PlayerCount)
+	{
+		FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS(Blueprintable)
+			class __GameModeClassName__ : AGameModeBase
 			{
-				continue;
 			}
 
-			if (NetDriver->IsServer())
+			UCLASS(Blueprintable, NotPlaceable)
+			class __LevelScriptClassName__ : ALevelScriptActor
 			{
-				if (Result.ServerWorld == nullptr)
-				{
-					Result.ServerWorld = World;
-				}
+				default SetReplicates(false);
+
+				UPROPERTY()
+				int TemplatePlayerCount = __PlayerCount__;
 			}
-			else
-			{
-				Result.ClientWorlds.Add(World);
-			}
-		}
+		)AS");
 
-		return Result;
+		ScriptSource.ReplaceInline(TEXT("__GameModeClassName__"), *MakeGameModeClassName(PlayerCount).ToString());
+		ScriptSource.ReplaceInline(TEXT("__LevelScriptClassName__"), *MakeLevelScriptClassName(PlayerCount).ToString());
+		ScriptSource.ReplaceInline(TEXT("__PlayerCount__"), *FString::FromInt(PlayerCount));
+		return ScriptSource;
 	}
 
-	bool AreClientConnectionsReady(UWorld* ServerWorld, int32 ExpectedClientCount)
+	static void DiscardTemplateModule(FName ModuleName)
 	{
-		if (!IsValid(ServerWorld))
-		{
-			return false;
-		}
-
-		UNetDriver* NetDriver = ServerWorld->GetNetDriver();
-		if (!IsValid(NetDriver) || !NetDriver->IsServer())
-		{
-			return false;
-		}
-
-		if (NetDriver->ClientConnections.Num() != ExpectedClientCount)
-		{
-			return false;
-		}
-
-		for (const UNetConnection* ClientConnection : NetDriver->ClientConnections)
-		{
-			if (ClientConnection == nullptr || ClientConnection->ViewTarget == nullptr)
-			{
-				return false;
-			}
-		}
-
-		return true;
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		Engine.DiscardModule(*ModuleName.ToString());
 	}
 
-	bool HasExpectedMultiplayerPIEWorlds()
+	static void AddExpectedNetworkWarnings()
 	{
-		const FMultiplayerPIEWorlds Worlds = FindNetworkPIEWorlds();
-		return Worlds.ServerWorld != nullptr
-			&& Worlds.ClientWorlds.Num() == ExpectedClientWorldCount
-			&& AreClientConnectionsReady(Worlds.ServerWorld, ExpectedClientWorldCount);
+		TestRunner->AddExpectedErrorPlain(TEXT("FNetGUIDCache::SupportsObject: Level /Temp/"), EAutomationExpectedErrorFlags::Contains, -1);
+		TestRunner->AddExpectedError(TEXT("RegisterNetGUID_Client: Guid with pathname\\. FullNetGUIDPath: \\[[0-9]+\\]WorldSettings"), EAutomationExpectedErrorFlags::Contains, -1);
 	}
 
-	bool IsAnyPIEWorldAlive()
+	void AssertListenServerWorld(UWorld* ServerWorld, UClass* GameModeClass, UClass* LevelScriptClass, int32 ExpectedClientWorldCount, const FString& Context)
 	{
-		return FindPIEWorlds().Num() > 0 || (GEditor != nullptr && GEditor->PlayWorld != nullptr);
-	}
-
-	UWorld* CreateTransientEmptyMap(FAutomationTestBase& Test)
-	{
-		UWorld* EditorWorld = FAutomationEditorCommonUtils::CreateNewMap();
-		if (!Test.TestNotNull(TEXT("Template_MultiplayerPIE should create a transient empty editor map"), EditorWorld))
-		{
-			return nullptr;
-		}
-
-		Test.TestTrue(TEXT("Template_MultiplayerPIE editor map should be an editor world"), EditorWorld->WorldType == EWorldType::Editor);
-		Test.TestNotNull(TEXT("Template_MultiplayerPIE editor map should have a persistent level"), EditorWorld->PersistentLevel.Get());
-		return EditorWorld;
-	}
-
-	bool BuildMultiplayerPIERequest(FAutomationTestBase& Test, FRequestPlaySessionParams& OutParams)
-	{
-		ULevelEditorPlaySettings* PlaySettings = NewObject<ULevelEditorPlaySettings>();
-		if (!Test.TestNotNull(TEXT("Template_MultiplayerPIE should create transient play settings"), PlaySettings))
-		{
-			return false;
-		}
-
-		PlaySettings->SetPlayNetMode(EPlayNetMode::PIE_ListenServer);
-		PlaySettings->SetPlayNumberOfClients(ExpectedPIEInstanceCount);
-		PlaySettings->SetRunUnderOneProcess(true);
-		PlaySettings->bLaunchSeparateServer = false;
-		PlaySettings->GameGetsMouseControl = false;
-
-		FLevelEditorModule& LevelEditorModule = FModuleManager::Get().GetModuleChecked<FLevelEditorModule>(TEXT("LevelEditor"));
-
-		OutParams.WorldType = EPlaySessionWorldType::PlayInEditor;
-		OutParams.DestinationSlateViewport = LevelEditorModule.GetFirstActiveViewport();
-		OutParams.EditorPlaySettings = PlaySettings;
-		OutParams.GameModeOverride = AGameModeBase::StaticClass();
-
-		PlaySettings->AddToRoot();
-		return true;
-	}
-
-	void AssertMultiplayerPIEWorlds(FAutomationTestBase& Test)
-	{
-		const FMultiplayerPIEWorlds Worlds = FindNetworkPIEWorlds();
-		UWorld* ServerWorld = Worlds.ServerWorld;
-		if (!Test.TestNotNull(TEXT("Template_MultiplayerPIE should expose a server PIE world"), ServerWorld))
-		{
-			return;
-		}
-
-		Test.TestEqual(TEXT("Template_MultiplayerPIE should expose one client PIE world"), Worlds.ClientWorlds.Num(), ExpectedClientWorldCount);
-		if (Worlds.ClientWorlds.Num() != ExpectedClientWorldCount)
-		{
-			return;
-		}
-
-		UWorld* ClientWorld = Worlds.ClientWorlds[0];
-		Test.TestNotNull(TEXT("Template_MultiplayerPIE should expose a client PIE world"), ClientWorld);
-		Test.TestTrue(TEXT("Template_MultiplayerPIE server world type should be PIE"), ServerWorld->WorldType == EWorldType::PIE);
-		Test.TestTrue(TEXT("Template_MultiplayerPIE client world type should be PIE"), ClientWorld->WorldType == EWorldType::PIE);
-		Test.TestNotNull(TEXT("Template_MultiplayerPIE server world should have a persistent level"), ServerWorld->PersistentLevel.Get());
-		Test.TestNotNull(TEXT("Template_MultiplayerPIE client world should have a persistent level"), ClientWorld->PersistentLevel.Get());
+		ASSERT_THAT(IsNotNull(ServerWorld, *FString::Printf(TEXT("%s should expose a server PIE world"), *Context)));
+		ASSERT_THAT(AreEqual(EWorldType::PIE, ServerWorld->WorldType, *FString::Printf(TEXT("%s server world type should be PIE"), *Context)));
+		ASSERT_THAT(IsNotNull(ServerWorld->PersistentLevel.Get(), *FString::Printf(TEXT("%s server world should have a persistent level"), *Context)));
+		ASSERT_THAT(IsTrue(AngelscriptPIETestUtils::HasExpectedLevelScriptActor(ServerWorld, LevelScriptClass), *FString::Printf(TEXT("%s server LevelScriptActor should inherit from the AS parent"), *Context)));
+		ASSERT_THAT(AreEqual(NM_ListenServer, ServerWorld->GetNetMode(), *FString::Printf(TEXT("%s server should run as listen server"), *Context)));
+		ASSERT_THAT(IsNotNull(ServerWorld->GetGameInstance(), *FString::Printf(TEXT("%s server should have a GameInstance"), *Context)));
+		ASSERT_THAT(IsTrue(ServerWorld->GetGameInstance()->GetClass()->IsChildOf(UGameInstance::StaticClass()), *FString::Printf(TEXT("%s server GameInstance should be usable from PIE"), *Context)));
 
 		UNetDriver* ServerNetDriver = ServerWorld->GetNetDriver();
+		ASSERT_THAT(IsNotNull(ServerNetDriver, *FString::Printf(TEXT("%s server world should have a net driver"), *Context)));
+		ASSERT_THAT(IsTrue(ServerNetDriver->IsServer(), *FString::Printf(TEXT("%s server net driver should be authoritative"), *Context)));
+		ASSERT_THAT(AreEqual(ExpectedClientWorldCount, ServerNetDriver->ClientConnections.Num(), *FString::Printf(TEXT("%s server should have the expected client connections"), *Context)));
+		ASSERT_THAT(IsTrue(AngelscriptPIETestUtils::AreClientConnectionsReady(ServerWorld, ExpectedClientWorldCount), *FString::Printf(TEXT("%s server client connections should be ready"), *Context)));
+		ASSERT_THAT(IsTrue(AngelscriptPIETestUtils::HasExpectedGameMode(ServerWorld, GameModeClass), *FString::Printf(TEXT("%s server should use the AS GameMode class"), *Context)));
+	}
+
+	void AssertClientWorld(UWorld* ClientWorld, UClass* LevelScriptClass, int32 ClientIndex, const FString& Context)
+	{
+		const FString ClientContext = FString::Printf(TEXT("%s client %d"), *Context, ClientIndex + 1);
+		ASSERT_THAT(IsNotNull(ClientWorld, *FString::Printf(TEXT("%s should expose a PIE world"), *ClientContext)));
+		ASSERT_THAT(AreEqual(EWorldType::PIE, ClientWorld->WorldType, *FString::Printf(TEXT("%s world type should be PIE"), *ClientContext)));
+		ASSERT_THAT(IsNotNull(ClientWorld->PersistentLevel.Get(), *FString::Printf(TEXT("%s world should have a persistent level"), *ClientContext)));
+		ASSERT_THAT(IsTrue(AngelscriptPIETestUtils::HasExpectedLevelScriptActor(ClientWorld, LevelScriptClass), *FString::Printf(TEXT("%s LevelScriptActor should inherit from the AS parent"), *ClientContext)));
+		ASSERT_THAT(AreEqual(NM_Client, ClientWorld->GetNetMode(), *FString::Printf(TEXT("%s should run as network client"), *ClientContext)));
+		ASSERT_THAT(IsNotNull(ClientWorld->GetGameInstance(), *FString::Printf(TEXT("%s should have a GameInstance"), *ClientContext)));
+
 		UNetDriver* ClientNetDriver = ClientWorld->GetNetDriver();
-		Test.TestNotNull(TEXT("Template_MultiplayerPIE server world should have a net driver"), ServerNetDriver);
-		Test.TestNotNull(TEXT("Template_MultiplayerPIE client world should have a net driver"), ClientNetDriver);
-		if (ServerNetDriver != nullptr && ClientNetDriver != nullptr)
-		{
-			Test.TestTrue(TEXT("Template_MultiplayerPIE server net driver should be authoritative"), ServerNetDriver->IsServer());
-			Test.TestFalse(TEXT("Template_MultiplayerPIE client net driver should not be authoritative"), ClientNetDriver->IsServer());
-			Test.TestTrue(TEXT("Template_MultiplayerPIE server should have one client connection"),
-				AreClientConnectionsReady(ServerWorld, ExpectedClientWorldCount));
-		}
-
-		Test.TestTrue(TEXT("Template_MultiplayerPIE server should run as listen server"), ServerWorld->GetNetMode() == NM_ListenServer);
-		Test.TestTrue(TEXT("Template_MultiplayerPIE client should run as network client"), ClientWorld->GetNetMode() == NM_Client);
+		ASSERT_THAT(IsNotNull(ClientNetDriver, *FString::Printf(TEXT("%s world should have a net driver"), *ClientContext)));
+		ASSERT_THAT(IsFalse(ClientNetDriver->IsServer(), *FString::Printf(TEXT("%s net driver should not be authoritative"), *ClientContext)));
+		ASSERT_THAT(IsNotNull(ClientWorld->GetGameState(), *FString::Printf(TEXT("%s should receive a GameState"), *ClientContext)));
 	}
 
-	class FWaitForMultiplayerPIEWorldsCommand final : public IAutomationLatentCommand
+	void RunMultiplayerPIEScenario(int32 PlayerCount)
 	{
-	public:
-		explicit FWaitForMultiplayerPIEWorldsCommand(FAutomationTestBase& InTest, double InTimeoutSeconds = DefaultTimeoutSeconds)
-			: Test(InTest)
-			, TimeoutSeconds(InTimeoutSeconds)
+		const int32 ExpectedClientWorldCount = PlayerCount - 1;
+		const FName ModuleName = MakeModuleName(PlayerCount);
+		const FString Filename = MakeFilename(PlayerCount);
+		const FName GameModeClassName = MakeGameModeClassName(PlayerCount);
+		const FName LevelScriptClassName = MakeLevelScriptClassName(PlayerCount);
+		const FString Context = MakeContext(PlayerCount);
+
+		ASSERT_THAT(IsFalse(
+			AngelscriptPIETestUtils::IsPIEWorldAlive(),
+			*FString::Printf(TEXT("%s must start from editor mode with no existing PIE session"), *Context)));
+
+		AddExpectedNetworkWarnings();
+
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
+
+		UClass* GameModeClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			Filename,
+			MakeScriptSource(PlayerCount),
+			GameModeClassName);
+		ASSERT_THAT(IsNotNull(GameModeClass, *FString::Printf(TEXT("%s should compile an AS GameMode class"), *Context)));
+		ASSERT_THAT(IsTrue(GameModeClass->IsChildOf(AGameModeBase::StaticClass()), *FString::Printf(TEXT("%s AS GameMode should derive from AGameModeBase"), *Context)));
+
+		UClass* LevelScriptClass = FindGeneratedClass(&Engine, LevelScriptClassName);
+		ASSERT_THAT(IsNotNull(LevelScriptClass, *FString::Printf(TEXT("%s should compile an AS LevelScriptActor parent"), *Context)));
+		ASSERT_THAT(IsTrue(LevelScriptClass->IsChildOf(ALevelScriptActor::StaticClass()), *FString::Printf(TEXT("%s AS LevelScript parent should derive from ALevelScriptActor"), *Context)));
+
+		AngelscriptPIETestUtils::FScopedLevelScriptActorClassOverride LevelScriptOverride(LevelScriptClass);
+		UWorld* EditorWorld = AngelscriptPIETestUtils::CreateTransientEmptyMap(*TestRunner, *Context);
+		ASSERT_THAT(IsNotNull(EditorWorld, *FString::Printf(TEXT("%s should create a transient editor map"), *Context)));
+
+		ULevelScriptBlueprint* LevelBlueprint = AngelscriptPIETestUtils::CreateAndCompileLevelBlueprint(
+			*TestRunner,
+			EditorWorld,
+			LevelScriptClass,
+			*Context);
+		ASSERT_THAT(IsNotNull(LevelBlueprint, *FString::Printf(TEXT("%s should create a Level Blueprint with an AS parent"), *Context)));
+
+		FRequestPlaySessionParams RequestParams;
+		ASSERT_THAT(IsTrue(
+			AngelscriptPIETestUtils::BuildListenServerPIERequest(*TestRunner, GameModeClass, ExpectedClientWorldCount, RequestParams),
+			*FString::Printf(TEXT("%s should build a listen-server PIE request"), *Context)));
+
+		TestCommandBuilder.CleanUpWith(TEXT("Discard Template_MultiplayerPIE AS module"), [ModuleName]()
 		{
+			DiscardTemplateModule(ModuleName);
+		});
+		TestCommandBuilder.CleanUpWith(TEXT("End Template_MultiplayerPIE PIE cleanup"), []()
+		{
+			AngelscriptPIETestUtils::EndPIE();
+		});
+
+		if (TestRunner->HasAnyErrors())
+		{
+			return;
 		}
 
-		virtual bool Update() override
-		{
-			if (HasExpectedMultiplayerPIEWorlds())
+		AddCommand(new FStartPIEForAutomationCommand(RequestParams));
+		TestCommandBuilder
+			.Until(TEXT("Wait for Template_MultiplayerPIE worlds"), [ExpectedClientWorldCount]()
 			{
-				AssertMultiplayerPIEWorlds(Test);
-				return true;
-			}
-
-			if (GetCurrentRunTime() > TimeoutSeconds)
+				return AngelscriptPIETestUtils::HasExpectedNetworkPIEWorlds(ExpectedClientWorldCount);
+			}, FTimespan::FromSeconds(DefaultTimeoutSeconds))
+			.Then(TEXT("Assert Template_MultiplayerPIE worlds"), [this, GameModeClass, LevelScriptClass, ExpectedClientWorldCount, Context]()
 			{
-				const FMultiplayerPIEWorlds Worlds = FindNetworkPIEWorlds();
-				Test.AddError(FString::Printf(
-					TEXT("Template_MultiplayerPIE timed out after %.1f seconds waiting for one listen server and one client PIE world. ServerWorld=%s ClientWorlds=%d."),
-					TimeoutSeconds,
-					Worlds.ServerWorld != nullptr ? TEXT("true") : TEXT("false"),
-					Worlds.ClientWorlds.Num()));
-				return true;
-			}
-
-			return false;
-		}
-
-	private:
-		FAutomationTestBase& Test;
-		double TimeoutSeconds;
-	};
-
-	class FWaitForPIEEndCommand final : public IAutomationLatentCommand
-	{
-	public:
-		explicit FWaitForPIEEndCommand(FAutomationTestBase& InTest, double InTimeoutSeconds = DefaultTimeoutSeconds)
-			: Test(InTest)
-			, TimeoutSeconds(InTimeoutSeconds)
-		{
-		}
-
-		virtual bool Update() override
-		{
-			if (!IsAnyPIEWorldAlive())
+				const AngelscriptPIETestUtils::FNetworkPIEWorlds Worlds = AngelscriptPIETestUtils::FindNetworkPIEWorlds();
+				ASSERT_THAT(AreEqual(ExpectedClientWorldCount, Worlds.ClientWorlds.Num(), *FString::Printf(TEXT("%s should expose the expected client PIE worlds"), *Context)));
+				AssertListenServerWorld(Worlds.ServerWorld, GameModeClass, LevelScriptClass, ExpectedClientWorldCount, Context);
+				for (int32 ClientIndex = 0; ClientIndex < Worlds.ClientWorlds.Num(); ++ClientIndex)
+				{
+					AssertClientWorld(Worlds.ClientWorlds[ClientIndex], LevelScriptClass, ClientIndex, Context);
+				}
+			})
+			.Then(TEXT("End Template_MultiplayerPIE PIE session"), []()
 			{
-				return true;
-			}
-
-			if (GetCurrentRunTime() > TimeoutSeconds)
+				AngelscriptPIETestUtils::EndPIE();
+			})
+			.Until(TEXT("Wait for Template_MultiplayerPIE PIE shutdown"), []()
 			{
-				Test.AddError(FString::Printf(TEXT("Template_MultiplayerPIE timed out after %.1f seconds waiting for PIE shutdown."), TimeoutSeconds));
-				return true;
-			}
-
-			return false;
-		}
-
-	private:
-		FAutomationTestBase& Test;
-		double TimeoutSeconds;
-	};
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FAngelscriptTemplateMultiplayerPIETest,
-	"Angelscript.Template.MultiplayerPIE.EmptyMap_ListenServerAndClient_StartPIE_EndPIE",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FAngelscriptTemplateMultiplayerPIETest::RunTest(const FString& Parameters)
-{
-	using namespace TemplateMultiplayerPIETest;
-
-	if (IsAnyPIEWorldAlive())
-	{
-		AddError(TEXT("Template_MultiplayerPIE must start from editor mode with no existing PIE session."));
-		return false;
+				return !AngelscriptPIETestUtils::IsPIEWorldAlive();
+			}, FTimespan::FromSeconds(DefaultTimeoutSeconds));
 	}
 
-	if (CreateTransientEmptyMap(*this) == nullptr)
+public:
+	BEFORE_ALL()
 	{
-		return false;
+		ASTEST_CREATE_ENGINE();
 	}
 
-	FRequestPlaySessionParams RequestParams;
-	if (!BuildMultiplayerPIERequest(*this, RequestParams))
+	AFTER_ALL()
 	{
-		return false;
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
 	}
 
-	AddExpectedErrorPlain(TEXT("FNetGUIDCache::SupportsObject: Level /Temp/"), EAutomationExpectedErrorFlags::Contains, -1);
-	AddExpectedErrorPlain(TEXT("RegisterNetGUID_Client: Guid with pathname. FullNetGUIDPath: [16]WorldSettings"), EAutomationExpectedErrorFlags::Contains, -1);
-
-	ADD_LATENT_AUTOMATION_COMMAND(FStartPIEForAutomationCommand(RequestParams));
-	ADD_LATENT_AUTOMATION_COMMAND(FWaitForMultiplayerPIEWorldsCommand(*this));
-	ADD_LATENT_AUTOMATION_COMMAND(FFunctionLatentCommand([this]() -> bool
+	TEST_METHOD(EmptyMap_TwoPlayers_StartPIE_EndPIE_WithAngelscriptGameModeAndLevelBlueprint)
 	{
-		TemplateMultiplayerPIETest::AssertMultiplayerPIEWorlds(*this);
-		return true;
-	}));
-	ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
-	ADD_LATENT_AUTOMATION_COMMAND(FWaitForPIEEndCommand(*this));
+		RunMultiplayerPIEScenario(2);
+	}
 
-	return true;
-}
+	TEST_METHOD(EmptyMap_ThreePlayers_StartPIE_EndPIE_WithAngelscriptGameModeAndLevelBlueprint)
+	{
+		RunMultiplayerPIEScenario(3);
+	}
+
+	TEST_METHOD(EmptyMap_FourPlayers_StartPIE_EndPIE_WithAngelscriptGameModeAndLevelBlueprint)
+	{
+		RunMultiplayerPIEScenario(4);
+	}
+};
 
 #endif
