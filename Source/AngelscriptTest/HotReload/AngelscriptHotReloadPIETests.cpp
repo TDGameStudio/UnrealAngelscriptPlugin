@@ -62,6 +62,29 @@ private:
 		FRequestPlaySessionParams RequestParams;
 	};
 
+	class FStartPIEFromRequestProvider : public IAutomationLatentCommand
+	{
+	public:
+		explicit FStartPIEFromRequestProvider(TFunction<FRequestPlaySessionParams()> InRequestProvider)
+			: RequestProvider(MoveTemp(InRequestProvider))
+		{
+		}
+
+		bool Update() override
+		{
+			if (!StartCommand.IsValid())
+			{
+				StartCommand = MakeUnique<FStartPIEForAutomationCommand>(RequestProvider());
+			}
+
+			return StartCommand->Update();
+		}
+
+	private:
+		TFunction<FRequestPlaySessionParams()> RequestProvider;
+		TUniquePtr<FStartPIEForAutomationCommand> StartCommand;
+	};
+
 	static bool IsHandledReloadResult(const ECompileResult ReloadResult)
 	{
 		return ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled;
@@ -322,6 +345,11 @@ private:
 		{
 			DiscardModule(ModuleName);
 		});
+	}
+
+	void QueuePIEStart(TFunction<FRequestPlaySessionParams()> RequestProvider)
+	{
+		AddCommand(MakeShared<FStartPIEFromRequestProvider>(MoveTemp(RequestProvider)));
 	}
 
 public:
@@ -1000,10 +1028,12 @@ public:
 					TEXT("HotReload PIE after-end after full reload"),
 					Fixture->RequestParams)));
 			})
-			.Then(TEXT("Queue HotReload PIE after-end second session"), [Fixture]()
-			{
-				ADD_LATENT_AUTOMATION_COMMAND(FStartPIEForAutomationCommand(Fixture->RequestParams));
-			})
+			;
+		QueuePIEStart([Fixture]()
+		{
+			return Fixture->RequestParams;
+		});
+		TestCommandBuilder
 			.Until(TEXT("Wait for HotReload PIE after-end second world"), []()
 			{
 				return AngelscriptPIETestUtils::FindPIEWorld() != nullptr;
@@ -1178,11 +1208,19 @@ public:
 				ASSERT_THAT(AreEqual(ECompileResult::FullyHandled, ReloadResult, TEXT("HotReload PIE sequence V2 should be a pure soft reload")));
 				Fixture->LevelScriptClass = FindGeneratedClass(&Engine, SequenceLevelScriptClassName);
 				ASSERT_THAT(IsNotNull(Fixture->LevelScriptClass, TEXT("HotReload PIE sequence should resolve LevelScript V2")));
+				ASSERT_THAT(IsTrue(RebuildStandalonePIERequest(
+					*TestRunner,
+					Engine,
+					SequenceGameModeClassName,
+					TEXT("HotReload PIE sequence V2"),
+					Fixture->RequestParams)));
 			})
-			.Then(TEXT("Queue HotReload PIE sequence second session"), [Fixture]()
-			{
-				ADD_LATENT_AUTOMATION_COMMAND(FStartPIEForAutomationCommand(Fixture->RequestParams));
-			})
+			;
+		QueuePIEStart([Fixture]()
+		{
+			return Fixture->RequestParams;
+		});
+		TestCommandBuilder
 			.Until(TEXT("Wait for HotReload PIE sequence second world"), []()
 			{
 				return AngelscriptPIETestUtils::FindPIEWorld() != nullptr;
@@ -1227,11 +1265,19 @@ public:
 				ASSERT_THAT(AreEqual(ECompileResult::FullyHandled, ReloadResult, TEXT("HotReload PIE sequence V4 should be a pure soft reload")));
 				Fixture->LevelScriptClass = FindGeneratedClass(&Engine, SequenceLevelScriptClassName);
 				ASSERT_THAT(IsNotNull(Fixture->LevelScriptClass, TEXT("HotReload PIE sequence should resolve LevelScript V4")));
+				ASSERT_THAT(IsTrue(RebuildStandalonePIERequest(
+					*TestRunner,
+					Engine,
+					SequenceGameModeClassName,
+					TEXT("HotReload PIE sequence V4"),
+					Fixture->RequestParams)));
 			})
-			.Then(TEXT("Queue HotReload PIE sequence third session"), [Fixture]()
-			{
-				ADD_LATENT_AUTOMATION_COMMAND(FStartPIEForAutomationCommand(Fixture->RequestParams));
-			})
+			;
+		QueuePIEStart([Fixture]()
+		{
+			return Fixture->RequestParams;
+		});
+		TestCommandBuilder
 			.Until(TEXT("Wait for HotReload PIE sequence third world"), []()
 			{
 				return AngelscriptPIETestUtils::FindPIEWorld() != nullptr;
