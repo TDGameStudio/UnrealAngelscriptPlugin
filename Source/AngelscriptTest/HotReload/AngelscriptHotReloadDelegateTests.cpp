@@ -767,15 +767,20 @@ public:
 					UFUNCTION()
 					int HandlePrimitive(int Value)
 					{
-						return Value + 10;
+						int Result = Value + 10;
+						Log(n"HotReloadDelegateTests", "Primitive V1 HandlePrimitive Value=" + Value + " Result=" + Result);
+						return Result;
 					}
 				}
 
 				int RunPrimitive(UHotReloadPrimitiveReceiver Receiver)
 				{
+					Log(n"HotReloadDelegateTests", "Primitive V1 RunPrimitive: binding HandlePrimitive");
 					FHotReloadPrimitiveSignal Signal;
 					Signal.BindUFunction(Receiver, n"HandlePrimitive");
-					return Signal.Execute(5);
+					int Result = Signal.Execute(5);
+					Log(n"HotReloadDelegateTests", "Primitive V1 RunPrimitive Result=" + Result);
+					return Result;
 				}
 				)AS");
 
@@ -817,6 +822,7 @@ public:
 					UFUNCTION()
 					int HandlePrimitive(int Value, bool bEnabled, float Scale, const FString& Label, FName Tag)
 					{
+						Log(n"HotReloadDelegateTests", "Primitive V2 HandlePrimitive Value=" + Value + " bEnabled=" + bEnabled + " Scale=" + Scale + " Label=" + Label + " Tag=" + Tag);
 						int Result = Value;
 						if (bEnabled)
 						{
@@ -829,15 +835,19 @@ public:
 							Result += 100;
 						}
 
+						Log(n"HotReloadDelegateTests", "Primitive V2 HandlePrimitive Result=" + Result);
 						return Result;
 					}
 				}
 
 				int RunPrimitive(UHotReloadPrimitiveReceiver Receiver)
 				{
+					Log(n"HotReloadDelegateTests", "Primitive V2 RunPrimitive: binding HandlePrimitive");
 					FHotReloadPrimitiveSignal Signal;
 					Signal.BindUFunction(Receiver, n"HandlePrimitive");
-					return Signal.Execute(7, true, 2.5f, "Alpha", FName("Ready"));
+					int Result = Signal.Execute(7, true, 2.5f, "Alpha", FName("Ready"));
+					Log(n"HotReloadDelegateTests", "Primitive V2 RunPrimitive Result=" + Result);
+					return Result;
 				}
 				)AS");
 
@@ -896,15 +906,20 @@ public:
 					UFUNCTION()
 					int HandleStructs(FVector Location)
 					{
-						return int(Location.X + Location.Y + Location.Z);
+						int Result = int(Location.X + Location.Y + Location.Z);
+						Log(n"HotReloadDelegateTests", "NativeStruct V1 HandleStructs Location=" + Location + " Result=" + Result);
+						return Result;
 					}
 				}
 
 				int RunNativeStruct(UHotReloadNativeStructReceiver Receiver)
 				{
+					Log(n"HotReloadDelegateTests", "NativeStruct V1 RunNativeStruct: binding HandleStructs");
 					FHotReloadNativeStructSignal Signal;
 					Signal.BindUFunction(Receiver, n"HandleStructs");
-					return Signal.Execute(FVector(1.0, 2.0, 3.0));
+					int Result = Signal.Execute(FVector(1.0, 2.0, 3.0));
+					Log(n"HotReloadDelegateTests", "NativeStruct V1 RunNativeStruct Result=" + Result);
+					return Result;
 				}
 				)AS");
 
@@ -946,27 +961,33 @@ public:
 					int HandleStructs(FVector Location, FVector2D Offset, FTransform Transform, FLinearColor Tint, FColor PackedColor, FGuid Id)
 					{
 						FVector Translation = Transform.GetTranslation();
-						return int(
+						Log(n"HotReloadDelegateTests", "NativeStruct V2 HandleStructs Location=" + Location + " Offset=" + Offset + " Translation=" + Translation + " Tint=" + Tint + " PackedColor=" + PackedColor + " Id=" + Id.ToString());
+						int Result = int(
 							Location.X + Location.Y + Location.Z +
 							Offset.X + Offset.Y +
 							Translation.X + Translation.Y + Translation.Z +
 							Tint.R * 10.0f + Tint.G * 10.0f + Tint.B * 10.0f +
 							PackedColor.R + PackedColor.G + PackedColor.B +
 							Id[0] + Id[1] + Id[2] + Id[3]);
+						Log(n"HotReloadDelegateTests", "NativeStruct V2 HandleStructs Result=" + Result);
+						return Result;
 					}
 				}
 
 				int RunNativeStruct(UHotReloadNativeStructReceiver Receiver)
 				{
+					Log(n"HotReloadDelegateTests", "NativeStruct V2 RunNativeStruct: binding HandleStructs");
 					FHotReloadNativeStructSignal Signal;
 					Signal.BindUFunction(Receiver, n"HandleStructs");
-					return Signal.Execute(
+					int Result = Signal.Execute(
 						FVector(1.0, 2.0, 3.0),
 						FVector2D(4.0, 5.0),
 						FTransform(FVector(6.0, 7.0, 8.0)),
 						FLinearColor(0.1f, 0.2f, 0.3f, 1.0f),
 						FColor(9, 10, 11, 255),
 						FGuid(12, 13, 14, 15));
+					Log(n"HotReloadDelegateTests", "NativeStruct V2 RunNativeStruct Result=" + Result);
+					return Result;
 				}
 				)AS");
 
@@ -1025,19 +1046,24 @@ public:
 					UFUNCTION()
 					int HandleContainers(TArray<int> Values)
 					{
-						return Values.Num() + Values[0] + Values[1];
+						int Result = Values.Num() + Values[0] + Values[1];
+						Log(n"HotReloadDelegateTests", "Container V1 HandleContainers Values.Num=" + Values.Num() + " First=" + Values[0] + " Second=" + Values[1] + " Result=" + Result);
+						return Result;
 					}
 				}
 
 				int RunContainers(UHotReloadContainerReceiver Receiver)
 				{
+					Log(n"HotReloadDelegateTests", "Container V1 RunContainers: building Values");
 					TArray<int> Values;
 					Values.Add(3);
 					Values.Add(4);
 
 					FHotReloadContainerSignal Signal;
 					Signal.BindUFunction(Receiver, n"HandleContainers");
-					return Signal.Execute(Values);
+					int Result = Signal.Execute(Values);
+					Log(n"HotReloadDelegateTests", "Container V1 RunContainers Result=" + Result);
+					return Result;
 				}
 				)AS");
 
@@ -1078,6 +1104,7 @@ public:
 					UFUNCTION()
 					int HandleContainers(TArray<int> Values, TArray<FVector> Vectors, TMap<FString, int> Scores, TSet<FName> Tags)
 					{
+						Log(n"HotReloadDelegateTests", "Container V2 HandleContainers Values.Num=" + Values.Num() + " Vectors.Num=" + Vectors.Num() + " Scores.Num=" + Scores.Num() + " Tags.Num=" + Tags.Num());
 						int AlphaScore = 0;
 						Scores.Find("Alpha", AlphaScore);
 
@@ -1089,12 +1116,14 @@ public:
 						Result += AlphaScore + BetaScore;
 						Result += Tags.Contains(FName("Ready")) ? 100 : 0;
 						Result += Tags.Contains(FName("Missing")) ? 1000 : 0;
+						Log(n"HotReloadDelegateTests", "Container V2 HandleContainers AlphaScore=" + AlphaScore + " BetaScore=" + BetaScore + " HasReady=" + Tags.Contains(FName("Ready")) + " HasMissing=" + Tags.Contains(FName("Missing")) + " Result=" + Result);
 						return Result;
 					}
 				}
 
 				int RunContainers(UHotReloadContainerReceiver Receiver)
 				{
+					Log(n"HotReloadDelegateTests", "Container V2 RunContainers: building containers");
 					TArray<int> Values;
 					Values.Add(5);
 					Values.Add(6);
@@ -1113,7 +1142,9 @@ public:
 
 					FHotReloadContainerSignal Signal;
 					Signal.BindUFunction(Receiver, n"HandleContainers");
-					return Signal.Execute(Values, Vectors, Scores, Tags);
+					int Result = Signal.Execute(Values, Vectors, Scores, Tags);
+					Log(n"HotReloadDelegateTests", "Container V2 RunContainers Result=" + Result);
+					return Result;
 				}
 				)AS");
 
@@ -1167,17 +1198,22 @@ public:
 					UFUNCTION()
 					int HandleReferences(UTexture2D Texture)
 					{
-						return IsValid(Texture) ? 17 : 0;
+						int Result = IsValid(Texture) ? 17 : 0;
+						Log(n"HotReloadDelegateTests", "Reference V1 HandleReferences TextureValid=" + IsValid(Texture) + " Result=" + Result);
+						return Result;
 					}
 				}
 
 				int RunReferences(UHotReloadReferenceReceiver Receiver)
 				{
+					Log(n"HotReloadDelegateTests", "Reference V1 RunReferences: creating texture");
 					UTexture2D Texture = Cast<UTexture2D>(NewObject(GetTransientPackage(), UTexture2D::StaticClass()));
 
 					FHotReloadReferenceSignal Signal;
 					Signal.BindUFunction(Receiver, n"HandleReferences");
-					return Signal.Execute(Texture);
+					int Result = Signal.Execute(Texture);
+					Log(n"HotReloadDelegateTests", "Reference V1 RunReferences Result=" + Result);
+					return Result;
 				}
 				)AS");
 
@@ -1218,6 +1254,11 @@ public:
 					UFUNCTION()
 					int HandleReferences(UTexture2D Texture, UClass TextureClass, TSubclassOf<AActor> ActorClass, TSoftObjectPtr<UTexture2D> SoftTexture, TSoftClassPtr<AActor> SoftActorClass)
 					{
+						TSubclassOf<AActor> ResolvedSoftActorClass = SoftActorClass.Get();
+						FString TextureClassName = TextureClass != null ? TextureClass.GetName().ToString() : "null";
+						FString ActorClassName = ActorClass.Get() != null ? ActorClass.Get().GetName().ToString() : "null";
+						FString SoftActorClassName = ResolvedSoftActorClass.Get() != null ? ResolvedSoftActorClass.Get().GetName().ToString() : "null";
+						Log(n"HotReloadDelegateTests", "Reference V2 HandleReferences TextureValid=" + IsValid(Texture) + " TextureClass=" + TextureClassName + " ActorClass=" + ActorClassName + " SoftTextureValid=" + IsValid(SoftTexture.Get()) + " SoftActorClass=" + SoftActorClassName);
 						int Result = 0;
 
 						if (IsValid(Texture))
@@ -1251,12 +1292,14 @@ public:
 							Result += 32;
 						}
 
+						Log(n"HotReloadDelegateTests", "Reference V2 HandleReferences Result=" + Result);
 						return Result;
 					}
 				}
 
 				int RunReferences(UHotReloadReferenceReceiver Receiver)
 				{
+					Log(n"HotReloadDelegateTests", "Reference V2 RunReferences: creating reference parameters");
 					UTexture2D Texture = Cast<UTexture2D>(NewObject(GetTransientPackage(), UTexture2D::StaticClass()));
 					TSubclassOf<AActor> ActorClass = ACameraActor::StaticClass();
 					TSoftObjectPtr<UTexture2D> SoftTexture(Texture);
@@ -1264,7 +1307,9 @@ public:
 
 					FHotReloadReferenceSignal Signal;
 					Signal.BindUFunction(Receiver, n"HandleReferences");
-					return Signal.Execute(Texture, UTexture2D::StaticClass(), ActorClass, SoftTexture, SoftActorClass);
+					int Result = Signal.Execute(Texture, UTexture2D::StaticClass(), ActorClass, SoftTexture, SoftActorClass);
+					Log(n"HotReloadDelegateTests", "Reference V2 RunReferences Result=" + Result);
+					return Result;
 				}
 				)AS");
 
@@ -1331,18 +1376,22 @@ public:
 					UFUNCTION()
 					int HandlePayload(const FHotReloadScriptPayload& Payload)
 					{
+						Log(n"HotReloadDelegateTests", "ScriptStruct V1 HandlePayload Value=" + Payload.Value);
 						return Payload.Value;
 					}
 				}
 
 				int RunPayload(UHotReloadScriptStructReceiver Receiver)
 				{
+					Log(n"HotReloadDelegateTests", "ScriptStruct V1 RunPayload: building payload");
 					FHotReloadScriptPayload Payload;
 					Payload.Value = 12;
 
 					FHotReloadScriptStructSignal Signal;
 					Signal.BindUFunction(Receiver, n"HandlePayload");
-					return Signal.Execute(Payload);
+					int Result = Signal.Execute(Payload);
+					Log(n"HotReloadDelegateTests", "ScriptStruct V1 RunPayload Result=" + Result);
+					return Result;
 				}
 				)AS");
 
@@ -1405,19 +1454,24 @@ public:
 					UFUNCTION()
 					int HandlePayload(const FHotReloadScriptPayload& Payload)
 					{
-						return Payload.Value + Payload.Bonus;
+						int Result = Payload.Value + Payload.Bonus;
+						Log(n"HotReloadDelegateTests", "ScriptStruct V2 HandlePayload Value=" + Payload.Value + " Bonus=" + Payload.Bonus + " Result=" + Result);
+						return Result;
 					}
 				}
 
 				int RunPayload(UHotReloadScriptStructReceiver Receiver)
 				{
+					Log(n"HotReloadDelegateTests", "ScriptStruct V2 RunPayload: building payload");
 					FHotReloadScriptPayload Payload;
 					Payload.Value = 20;
 					Payload.Bonus = 22;
 
 					FHotReloadScriptStructSignal Signal;
 					Signal.BindUFunction(Receiver, n"HandlePayload");
-					return Signal.Execute(Payload);
+					int Result = Signal.Execute(Payload);
+					Log(n"HotReloadDelegateTests", "ScriptStruct V2 RunPayload Result=" + Result);
+					return Result;
 				}
 				)AS");
 
