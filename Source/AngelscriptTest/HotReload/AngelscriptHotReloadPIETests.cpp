@@ -50,6 +50,11 @@ private:
 	inline static const FName SequenceGameModeClassName = TEXT("AHotReloadPIESequenceGameMode");
 	inline static const FName SequenceLevelScriptClassName = TEXT("AHotReloadPIESequenceLevelScript");
 
+	inline static const FString MatrixFilename = TEXT("ASHotReloadPIEMatrix.as");
+	inline static const FName MatrixModuleName = TEXT("ASHotReloadPIEMatrix");
+	inline static const FName MatrixGameModeClassName = TEXT("AHotReloadPIEMatrixGameMode");
+	inline static const FName MatrixLevelScriptClassName = TEXT("AHotReloadPIEMatrixLevelScript");
+
 	static constexpr double DefaultTimeoutSeconds = 10.0;
 
 	struct FPIEFixture
@@ -74,7 +79,16 @@ private:
 		{
 			if (!StartCommand.IsValid())
 			{
-				StartCommand = MakeUnique<FStartPIEForAutomationCommand>(RequestProvider());
+				FRequestPlaySessionParams RequestParams = RequestProvider();
+				if (FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest())
+				{
+					if (CurrentTest->HasAnyErrors())
+					{
+						return true;
+					}
+				}
+
+				StartCommand = MakeUnique<FStartPIEForAutomationCommand>(RequestParams);
 			}
 
 			return StartCommand->Update();
@@ -1294,6 +1308,453 @@ public:
 				AngelscriptPIETestUtils::EndPIE();
 			})
 			.Until(TEXT("Wait for HotReload PIE sequence third shutdown"), []()
+			{
+				return !AngelscriptPIETestUtils::IsPIEWorldAlive();
+			}, FTimespan::FromSeconds(DefaultTimeoutSeconds));
+	}
+
+	TEST_METHOD(PIEReloadMatrixCoversBeforeDuringAfterAndRepeatedSessions)
+	{
+		ASSERT_THAT(IsFalse(
+			AngelscriptPIETestUtils::IsPIEWorldAlive(),
+			TEXT("HotReload PIE matrix test must start with no active PIE session")));
+
+		RegisterCleanup(MatrixModuleName, TEXT("HotReload PIE matrix"));
+
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
+
+		const FString ScriptV1 = ASTEST_AS(R"AS(
+			UCLASS(Blueprintable)
+			class AHotReloadPIEMatrixGameMode : AGameModeBase
+			{
+			}
+
+			UCLASS(Blueprintable, NotPlaceable)
+			class AHotReloadPIEMatrixLevelScript : ALevelScriptActor
+			{
+				default SetReplicates(false);
+
+				UPROPERTY()
+				int ExistingValue = 10;
+
+				UFUNCTION()
+				int GetValue()
+				{
+					return ExistingValue + 1;
+				}
+			}
+			)AS");
+
+		const FString ScriptV2BeforeBody = ASTEST_AS(R"AS(
+			UCLASS(Blueprintable)
+			class AHotReloadPIEMatrixGameMode : AGameModeBase
+			{
+			}
+
+			UCLASS(Blueprintable, NotPlaceable)
+			class AHotReloadPIEMatrixLevelScript : ALevelScriptActor
+			{
+				default SetReplicates(false);
+
+				UPROPERTY()
+				int ExistingValue = 10;
+
+				UFUNCTION()
+				int GetValue()
+				{
+					return ExistingValue + 2;
+				}
+			}
+			)AS");
+
+		const FString ScriptV3DuringBody = ASTEST_AS(R"AS(
+			UCLASS(Blueprintable)
+			class AHotReloadPIEMatrixGameMode : AGameModeBase
+			{
+			}
+
+			UCLASS(Blueprintable, NotPlaceable)
+			class AHotReloadPIEMatrixLevelScript : ALevelScriptActor
+			{
+				default SetReplicates(false);
+
+				UPROPERTY()
+				int ExistingValue = 10;
+
+				UFUNCTION()
+				int GetValue()
+				{
+					return ExistingValue + 3;
+				}
+			}
+			)AS");
+
+		const FString ScriptV4DuringRequiredSignature = ASTEST_AS(R"AS(
+			UCLASS(Blueprintable)
+			class AHotReloadPIEMatrixGameMode : AGameModeBase
+			{
+			}
+
+			UCLASS(Blueprintable, NotPlaceable)
+			class AHotReloadPIEMatrixLevelScript : ALevelScriptActor
+			{
+				default SetReplicates(false);
+
+				UPROPERTY()
+				int ExistingValue = 10;
+
+				UFUNCTION()
+				int GetValue(int Extra)
+				{
+					return ExistingValue + Extra;
+				}
+			}
+			)AS");
+
+		const FString ScriptV5DuringSuggestedShape = ASTEST_AS(R"AS(
+			UCLASS(Blueprintable)
+			class AHotReloadPIEMatrixGameMode : AGameModeBase
+			{
+			}
+
+			UCLASS(Blueprintable, NotPlaceable)
+			class AHotReloadPIEMatrixLevelScript : ALevelScriptActor
+			{
+				default SetReplicates(false);
+
+				UPROPERTY()
+				int ExistingValue = 10;
+
+				UPROPERTY()
+				int AddedValue = 40;
+
+				UFUNCTION()
+				int GetValue()
+				{
+					return ExistingValue + 4;
+				}
+			}
+			)AS");
+
+		const FString ScriptV6AfterShape = ASTEST_AS(R"AS(
+			UCLASS(Blueprintable)
+			class AHotReloadPIEMatrixGameMode : AGameModeBase
+			{
+			}
+
+			UCLASS(Blueprintable, NotPlaceable)
+			class AHotReloadPIEMatrixLevelScript : ALevelScriptActor
+			{
+				default SetReplicates(false);
+
+				UPROPERTY()
+				int ExistingValue = 10;
+
+				UPROPERTY()
+				int AddedValue = 40;
+
+				UFUNCTION()
+				int GetValue()
+				{
+					return ExistingValue + AddedValue;
+				}
+			}
+			)AS");
+
+		const FString ScriptV7AfterBody = ASTEST_AS(R"AS(
+			UCLASS(Blueprintable)
+			class AHotReloadPIEMatrixGameMode : AGameModeBase
+			{
+			}
+
+			UCLASS(Blueprintable, NotPlaceable)
+			class AHotReloadPIEMatrixLevelScript : ALevelScriptActor
+			{
+				default SetReplicates(false);
+
+				UPROPERTY()
+				int ExistingValue = 10;
+
+				UPROPERTY()
+				int AddedValue = 40;
+
+				UFUNCTION()
+				int GetValue()
+				{
+					return ExistingValue + AddedValue + 1;
+				}
+			}
+			)AS");
+
+		TSharedRef<FPIEFixture> Fixture = MakeShared<FPIEFixture>();
+		ASSERT_THAT(IsTrue(PreparePIEFixture(
+			*TestRunner,
+			Engine,
+			MatrixModuleName,
+			MatrixFilename,
+			ScriptV1,
+			MatrixGameModeClassName,
+			MatrixLevelScriptClassName,
+			TEXT("HotReload PIE matrix"),
+			Fixture.Get())));
+
+		ECompileResult BeforePIEReloadResult = ECompileResult::Error;
+		ASSERT_THAT(IsTrue(
+			CompileModuleWithResult(&Engine, ECompileType::SoftReloadOnly, MatrixModuleName, MatrixFilename, ScriptV2BeforeBody, BeforePIEReloadResult),
+			TEXT("HotReload PIE matrix should compile a body reload before PIE starts")));
+		ASSERT_THAT(AreEqual(ECompileResult::FullyHandled, BeforePIEReloadResult, TEXT("HotReload PIE matrix before-PIE body reload should be fully handled")));
+		Fixture->LevelScriptClass = FindGeneratedClass(&Engine, MatrixLevelScriptClassName);
+		ASSERT_THAT(IsNotNull(Fixture->LevelScriptClass, TEXT("HotReload PIE matrix should resolve LevelScript after before-PIE body reload")));
+		ASSERT_THAT(IsTrue(RebuildStandalonePIERequest(
+			*TestRunner,
+			Engine,
+			MatrixGameModeClassName,
+			TEXT("HotReload PIE matrix before first PIE"),
+			Fixture->RequestParams)));
+
+		if (TestRunner->HasAnyErrors())
+		{
+			return;
+		}
+
+		QueuePIEStart([Fixture]()
+		{
+			return Fixture->RequestParams;
+		});
+		TestCommandBuilder
+			.Until(TEXT("Wait for HotReload PIE matrix first world"), []()
+			{
+				return AngelscriptPIETestUtils::FindPIEWorld() != nullptr;
+			}, FTimespan::FromSeconds(DefaultTimeoutSeconds))
+			.Then(TEXT("Assert HotReload PIE matrix first session sees before-PIE body reload"), [this, Fixture]()
+			{
+				FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+				UWorld* PIEWorld = AngelscriptPIETestUtils::FindPIEWorld();
+				ASSERT_THAT(IsTrue(AssertPIEWorldUsesClasses(
+					*TestRunner,
+					PIEWorld,
+					FindGeneratedClass(&Engine, MatrixGameModeClassName),
+					Fixture->LevelScriptClass,
+					TEXT("HotReload PIE matrix first session"))));
+
+				ALevelScriptActor* LevelScriptActor = GetPIELevelScriptActor(*TestRunner, PIEWorld, TEXT("HotReload PIE matrix first session"));
+				ASSERT_THAT(IsNotNull(LevelScriptActor, TEXT("HotReload PIE matrix first session should expose a LevelScriptActor")));
+				ASSERT_THAT(IsTrue(InvokeGetValue(
+					*TestRunner,
+					Engine,
+					LevelScriptActor,
+					Fixture->LevelScriptClass,
+					12,
+					TEXT("HotReload PIE matrix first session"))));
+			})
+			.Then(TEXT("Apply body reload while HotReload PIE matrix first session is running"), [this, Fixture, ScriptV3DuringBody]()
+			{
+				FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+				ECompileResult DuringBodyReloadResult = ECompileResult::Error;
+				ASSERT_THAT(IsTrue(
+					CompileModuleWithResult(&Engine, ECompileType::SoftReloadOnly, MatrixModuleName, MatrixFilename, ScriptV3DuringBody, DuringBodyReloadResult),
+					TEXT("HotReload PIE matrix should compile body reload during PIE")));
+				ASSERT_THAT(AreEqual(ECompileResult::FullyHandled, DuringBodyReloadResult, TEXT("HotReload PIE matrix during-PIE body reload should be fully handled")));
+
+				Fixture->LevelScriptClass = FindGeneratedClass(&Engine, MatrixLevelScriptClassName);
+				ASSERT_THAT(IsNotNull(Fixture->LevelScriptClass, TEXT("HotReload PIE matrix should resolve LevelScript after during-PIE body reload")));
+
+				ALevelScriptActor* LevelScriptActor = GetPIELevelScriptActor(*TestRunner, AngelscriptPIETestUtils::FindPIEWorld(), TEXT("HotReload PIE matrix during body reload"));
+				ASSERT_THAT(IsNotNull(LevelScriptActor, TEXT("HotReload PIE matrix should keep live LevelScriptActor after body reload")));
+				ASSERT_THAT(IsTrue(InvokeGetValue(
+					*TestRunner,
+					Engine,
+					LevelScriptActor,
+					Fixture->LevelScriptClass,
+					13,
+					TEXT("HotReload PIE matrix during body reload"))));
+			})
+			.Then(TEXT("Reject signature reload while HotReload PIE matrix first session is running"), [this, Fixture, ScriptV4DuringRequiredSignature]()
+			{
+				TestRunner->AddExpectedErrorPlain(
+					TEXT("Full Reload is required due to UPROPERTY() or UFUNCTION() changes"),
+					EAutomationExpectedErrorFlags::Contains,
+					0);
+
+				FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+				ECompileResult DuringSignatureReloadResult = ECompileResult::FullyHandled;
+				ASSERT_THAT(IsFalse(
+					CompileModuleWithResult(&Engine, ECompileType::SoftReloadOnly, MatrixModuleName, MatrixFilename, ScriptV4DuringRequiredSignature, DuringSignatureReloadResult),
+					TEXT("HotReload PIE matrix should reject required signature reload during PIE")));
+				ASSERT_THAT(AreEqual(ECompileResult::ErrorNeedFullReload, DuringSignatureReloadResult, TEXT("HotReload PIE matrix during-PIE signature reload should report ErrorNeedFullReload")));
+
+				UClass* ClassAfterRejectedReload = FindGeneratedClass(&Engine, MatrixLevelScriptClassName);
+				ASSERT_THAT(IsNotNull(ClassAfterRejectedReload, TEXT("HotReload PIE matrix should keep LevelScript published after rejected signature reload")));
+				ASSERT_THAT(AreEqual(Fixture->LevelScriptClass, ClassAfterRejectedReload, TEXT("HotReload PIE matrix rejected signature reload should keep prior LevelScript class")));
+
+				ALevelScriptActor* LevelScriptActor = GetPIELevelScriptActor(*TestRunner, AngelscriptPIETestUtils::FindPIEWorld(), TEXT("HotReload PIE matrix rejected signature reload"));
+				ASSERT_THAT(IsNotNull(LevelScriptActor, TEXT("HotReload PIE matrix should keep live LevelScriptActor after rejected signature reload")));
+				ASSERT_THAT(IsTrue(InvokeGetValue(
+					*TestRunner,
+					Engine,
+					LevelScriptActor,
+					ClassAfterRejectedReload,
+					13,
+					TEXT("HotReload PIE matrix rejected signature reload"))));
+			})
+			.Then(TEXT("Apply suggested property reload while HotReload PIE matrix first session is running"), [this, Fixture, ScriptV5DuringSuggestedShape]()
+			{
+				TestRunner->AddExpectedErrorPlain(TEXT("Performing a Soft Reload during PIE"), EAutomationExpectedErrorFlags::Contains, 0);
+
+				FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+				ECompileResult DuringPropertyReloadResult = ECompileResult::Error;
+				ASSERT_THAT(IsTrue(
+					CompileModuleWithResult(&Engine, ECompileType::SoftReloadOnly, MatrixModuleName, MatrixFilename, ScriptV5DuringSuggestedShape, DuringPropertyReloadResult),
+					TEXT("HotReload PIE matrix should accept suggested property reload during PIE")));
+				ASSERT_THAT(AreEqual(ECompileResult::PartiallyHandled, DuringPropertyReloadResult, TEXT("HotReload PIE matrix during-PIE property reload should be partially handled")));
+
+				Fixture->LevelScriptClass = FindGeneratedClass(&Engine, MatrixLevelScriptClassName);
+				ASSERT_THAT(IsNotNull(Fixture->LevelScriptClass, TEXT("HotReload PIE matrix should resolve LevelScript after suggested property reload")));
+
+				ALevelScriptActor* LevelScriptActor = GetPIELevelScriptActor(*TestRunner, AngelscriptPIETestUtils::FindPIEWorld(), TEXT("HotReload PIE matrix suggested property reload"));
+				ASSERT_THAT(IsNotNull(LevelScriptActor, TEXT("HotReload PIE matrix should keep live LevelScriptActor after suggested property reload")));
+				ASSERT_THAT(IsTrue(InvokeGetValue(
+					*TestRunner,
+					Engine,
+					LevelScriptActor,
+					Fixture->LevelScriptClass,
+					14,
+					TEXT("HotReload PIE matrix suggested property reload"))));
+
+				FIntProperty* RejectedAddedValueProperty = FindFProperty<FIntProperty>(LevelScriptActor->GetClass(), TEXT("AddedValue"));
+				ASSERT_THAT(IsNull(
+					RejectedAddedValueProperty,
+					TEXT("HotReload PIE matrix should not expose deferred AddedValue during PIE")));
+			})
+			.Then(TEXT("End HotReload PIE matrix first session"), []()
+			{
+				AngelscriptPIETestUtils::EndPIE();
+			})
+			.Until(TEXT("Wait for HotReload PIE matrix first shutdown"), []()
+			{
+				return !AngelscriptPIETestUtils::IsPIEWorldAlive();
+			}, FTimespan::FromSeconds(DefaultTimeoutSeconds))
+			.Then(TEXT("Apply shape reload after HotReload PIE matrix first session"), [this, Fixture, ScriptV6AfterShape]()
+			{
+				FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+				ECompileResult AfterShapeReloadResult = ECompileResult::Error;
+				ASSERT_THAT(IsTrue(
+					CompileModuleWithResult(&Engine, ECompileType::FullReload, MatrixModuleName, MatrixFilename, ScriptV6AfterShape, AfterShapeReloadResult),
+					TEXT("HotReload PIE matrix should accept shape reload after PIE ends")));
+				ASSERT_THAT(IsTrue(IsHandledReloadResult(AfterShapeReloadResult), TEXT("HotReload PIE matrix after-PIE shape reload should be handled")));
+
+				UClass* ReloadedLevelScriptClass = FindGeneratedClass(&Engine, MatrixLevelScriptClassName);
+				ASSERT_THAT(IsNotNull(ReloadedLevelScriptClass, TEXT("HotReload PIE matrix should resolve LevelScript after after-PIE shape reload")));
+				ASSERT_THAT(IsTrue(ReloadedLevelScriptClass != Fixture->LevelScriptClass, TEXT("HotReload PIE matrix after-PIE shape reload should replace LevelScript class")));
+				ASSERT_THAT(AreEqual(ReloadedLevelScriptClass, Fixture->InitialLevelScriptASClass->GetMostUpToDateClass(), TEXT("HotReload PIE matrix initial AS class should point at current shape version")));
+				Fixture->LevelScriptClass = ReloadedLevelScriptClass;
+
+				ASSERT_THAT(IsTrue(RecompileLevelBlueprint(*TestRunner, Fixture->LevelBlueprint, TEXT("HotReload PIE matrix after shape reload"))));
+				ASSERT_THAT(IsTrue(LevelBlueprintParentChainResolvesTo(
+					*TestRunner,
+					Fixture->LevelBlueprint->GeneratedClass.Get(),
+					ReloadedLevelScriptClass,
+					TEXT("HotReload PIE matrix after shape reload"))));
+
+				ASSERT_THAT(IsTrue(RebuildStandalonePIERequest(
+					*TestRunner,
+					Engine,
+					MatrixGameModeClassName,
+					TEXT("HotReload PIE matrix before second PIE"),
+					Fixture->RequestParams)));
+			})
+			;
+
+		QueuePIEStart([Fixture]()
+		{
+			return Fixture->RequestParams;
+		});
+		TestCommandBuilder
+			.Until(TEXT("Wait for HotReload PIE matrix second world"), []()
+			{
+				return AngelscriptPIETestUtils::FindPIEWorld() != nullptr;
+			}, FTimespan::FromSeconds(DefaultTimeoutSeconds))
+			.Then(TEXT("Assert HotReload PIE matrix second session sees after-PIE shape reload"), [this, Fixture]()
+			{
+				FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+				UWorld* PIEWorld = AngelscriptPIETestUtils::FindPIEWorld();
+				ASSERT_THAT(IsTrue(AssertPIEWorldUsesClasses(
+					*TestRunner,
+					PIEWorld,
+					FindGeneratedClass(&Engine, MatrixGameModeClassName),
+					Fixture->LevelScriptClass,
+					TEXT("HotReload PIE matrix second session"))));
+
+				ALevelScriptActor* LevelScriptActor = GetPIELevelScriptActor(*TestRunner, PIEWorld, TEXT("HotReload PIE matrix second session"));
+				ASSERT_THAT(IsNotNull(LevelScriptActor, TEXT("HotReload PIE matrix second session should expose a LevelScriptActor")));
+
+				int32 AddedValue = 0;
+				ASSERT_THAT(IsTrue(ReadIntProperty(*TestRunner, LevelScriptActor, TEXT("AddedValue"), AddedValue, TEXT("HotReload PIE matrix second session"))));
+				ASSERT_THAT(AreEqual(40, AddedValue, TEXT("HotReload PIE matrix second session should expose AddedValue from after-PIE shape reload")));
+				ASSERT_THAT(IsTrue(InvokeGetValue(
+					*TestRunner,
+					Engine,
+					LevelScriptActor,
+					Fixture->LevelScriptClass,
+					50,
+					TEXT("HotReload PIE matrix second session"))));
+			})
+			.Then(TEXT("End HotReload PIE matrix second session"), []()
+			{
+				AngelscriptPIETestUtils::EndPIE();
+			})
+			.Until(TEXT("Wait for HotReload PIE matrix second shutdown"), []()
+			{
+				return !AngelscriptPIETestUtils::IsPIEWorldAlive();
+			}, FTimespan::FromSeconds(DefaultTimeoutSeconds))
+			.Then(TEXT("Apply body reload after HotReload PIE matrix second session"), [this, Fixture, ScriptV7AfterBody]()
+			{
+				FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+				ECompileResult AfterBodyReloadResult = ECompileResult::Error;
+				ASSERT_THAT(IsTrue(
+					CompileModuleWithResult(&Engine, ECompileType::SoftReloadOnly, MatrixModuleName, MatrixFilename, ScriptV7AfterBody, AfterBodyReloadResult),
+					TEXT("HotReload PIE matrix should accept body reload after second PIE ends")));
+				ASSERT_THAT(AreEqual(ECompileResult::FullyHandled, AfterBodyReloadResult, TEXT("HotReload PIE matrix after-PIE body reload should be fully handled")));
+
+				Fixture->LevelScriptClass = FindGeneratedClass(&Engine, MatrixLevelScriptClassName);
+				ASSERT_THAT(IsNotNull(Fixture->LevelScriptClass, TEXT("HotReload PIE matrix should resolve LevelScript after after-PIE body reload")));
+				ASSERT_THAT(IsTrue(RebuildStandalonePIERequest(
+					*TestRunner,
+					Engine,
+					MatrixGameModeClassName,
+					TEXT("HotReload PIE matrix before third PIE"),
+					Fixture->RequestParams)));
+			})
+			;
+
+		QueuePIEStart([Fixture]()
+		{
+			return Fixture->RequestParams;
+		});
+		TestCommandBuilder
+			.Until(TEXT("Wait for HotReload PIE matrix third world"), []()
+			{
+				return AngelscriptPIETestUtils::FindPIEWorld() != nullptr;
+			}, FTimespan::FromSeconds(DefaultTimeoutSeconds))
+			.Then(TEXT("Assert HotReload PIE matrix third session sees final body reload"), [this, Fixture]()
+			{
+				FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+				ALevelScriptActor* LevelScriptActor = GetPIELevelScriptActor(*TestRunner, AngelscriptPIETestUtils::FindPIEWorld(), TEXT("HotReload PIE matrix third session"));
+				ASSERT_THAT(IsNotNull(LevelScriptActor, TEXT("HotReload PIE matrix third session should expose a LevelScriptActor")));
+				ASSERT_THAT(IsTrue(InvokeGetValue(
+					*TestRunner,
+					Engine,
+					LevelScriptActor,
+					Fixture->LevelScriptClass,
+					51,
+					TEXT("HotReload PIE matrix third session"))));
+			})
+			.Then(TEXT("End HotReload PIE matrix third session"), []()
+			{
+				AngelscriptPIETestUtils::EndPIE();
+			})
+			.Until(TEXT("Wait for HotReload PIE matrix third shutdown"), []()
 			{
 				return !AngelscriptPIETestUtils::IsPIEWorldAlive();
 			}, FTimespan::FromSeconds(DefaultTimeoutSeconds));
