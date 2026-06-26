@@ -48,6 +48,7 @@ namespace UnrealBuildTool.Rules
 				{
 					"BlueprintGraph",
 					"CQTest",
+					"LevelEditor",
 					"Networking",
 					"Sockets",
 					"UnrealEd",
