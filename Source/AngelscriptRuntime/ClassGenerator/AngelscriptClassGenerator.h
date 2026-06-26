@@ -162,6 +162,7 @@ private:
 	void Analyze(FModuleData& Module);
 	void Analyze(FModuleData& Module, FClassData& Class);
 	void Analyze(FModuleData& Module, FDelegateData& Class);
+	void TryGenerateClassRenameRedirects(FModuleData& Module);
 
 	void SetupModule(FModuleData& Module);
 
