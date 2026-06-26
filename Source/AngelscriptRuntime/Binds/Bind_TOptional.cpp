@@ -361,6 +361,20 @@ void FOptionalOperations::Reset(FAngelscriptOptional& Optional)
 	}
 }
 
+void FOptionalOperations::StoreValue(void* DestinationPtr, void* ValuePtr)
+{
+	if (ValuePtr == nullptr && Type.IsObjectPointer())
+	{
+		FMemory::Memzero(DestinationPtr, TypeSize);
+		return;
+	}
+
+	if (bNeedCopy)
+		Type.CopyValue(ValuePtr, DestinationPtr);
+	else
+		FMemory::Memcpy(DestinationPtr, ValuePtr, TypeSize);
+}
+
 void FOptionalOperations::Set(FAngelscriptOptional& Optional, void* ValuePtr)
 {
 	void* DestinationPtr = GetValuePtr(Optional);
@@ -371,10 +385,7 @@ void FOptionalOperations::Set(FAngelscriptOptional& Optional, void* ValuePtr)
 		Type.ConstructValue(DestinationPtr);
 	}
 
-	if (bNeedCopy)
-		Type.CopyValue(ValuePtr, DestinationPtr);
-	else
-		FMemory::Memcpy(DestinationPtr, ValuePtr, TypeSize);
+	StoreValue(DestinationPtr, ValuePtr);
 }
 
 void FAngelscriptOptionalBinds::CopyConstruct(FAngelscriptOptional& Optional, asCObjectType* Meta, FAngelscriptOptional& Other)
@@ -410,10 +421,7 @@ void FAngelscriptOptionalBinds::InitConstruct(FAngelscriptOptional& Optional, as
 	if (Ops->bNeedConstruct)
 		Ops->Type.ConstructValue(DestinationPtr);
 
-	if (Ops->bNeedCopy)
-		Ops->Type.CopyValue(ValuePtr, DestinationPtr);
-	else
-		FMemory::Memcpy(DestinationPtr, ValuePtr, Ops->TypeSize);
+	Ops->StoreValue(DestinationPtr, ValuePtr);
 
 	*Ops->GetIsSetPtr(Optional) = true;
 }

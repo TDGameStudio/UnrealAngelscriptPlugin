@@ -7,6 +7,7 @@
 // ============================================================================
 
 #include "CQTest.h"
+#include "AngelscriptBinds.h"
 #include "AngelscriptTestModuleScope.h"
 #include "AngelscriptTestExecute.h"
 
@@ -29,6 +30,21 @@
 
 namespace
 {
+	UObject* GetOptionalNullNativeRefForTesting()
+	{
+		return nullptr;
+	}
+
+	AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AngelscriptOptionalNullNativeRefForTesting(
+		TEXT("AngelscriptOptionalNullNativeRefForTesting"),
+		(int32)FAngelscriptBinds::EOrder::Late + 101,
+		[]
+		{
+			FAngelscriptBinds::BindGlobalFunction(
+				"UObject& OptionalNullNativeRefForTesting()",
+				FUNC_TRIVIAL(GetOptionalNullNativeRefForTesting));
+		});
+
 	bool RunOptionalSection(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
@@ -437,6 +453,129 @@ int OptApi_GetMutableViaRef()
 	}
 
 	// -----------------------------------------------------------------------
+	// Section: OptionalNullHandle — pure AS nullable UObject handle expressions.
+	// This covers function-returned null handles, which use a different ABI path
+	// than the direct nullptr literal covered by OptionalTypeMatrix.
+	// -----------------------------------------------------------------------
+
+	bool RunOptionalNullHandleSection(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine)
+	{
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASOptional_NullHandle"), TEXT(R"(
+class UOptionalNullHandleObject : UObject
+{
+}
+
+UOptionalNullHandleObject GetNullHandle()
+{
+	return nullptr;
+}
+
+int OptNullHandle_ConstructFromFunction_IsSet()
+{
+	TOptional<UOptionalNullHandleObject> O(GetNullHandle());
+	return O.IsSet() ? 1 : 0;
+}
+
+int OptNullHandle_ConstructFromFunction_ValueIsNull()
+{
+	TOptional<UOptionalNullHandleObject> O(GetNullHandle());
+	return O.GetValue() == nullptr ? 1 : 0;
+}
+
+int OptNullHandle_SetFromFunction_IsSet()
+{
+	TOptional<UOptionalNullHandleObject> O;
+	O.Set(GetNullHandle());
+	return O.IsSet() ? 1 : 0;
+}
+
+int OptNullHandle_SetFromFunction_ValueIsNull()
+{
+	TOptional<UOptionalNullHandleObject> O;
+	O.Set(GetNullHandle());
+	return O.GetValue() == nullptr ? 1 : 0;
+}
+
+int OptNullHandle_AssignFromFunction_IsSet()
+{
+	TOptional<UOptionalNullHandleObject> O;
+	O = GetNullHandle();
+	return O.IsSet() ? 1 : 0;
+}
+
+int OptNullHandle_AssignFromFunction_ValueIsNull()
+{
+	TOptional<UOptionalNullHandleObject> O;
+	O = GetNullHandle();
+	return O.GetValue() == nullptr ? 1 : 0;
+}
+
+int OptNullHandle_ConstructFromNativeRef_IsSet()
+{
+	TOptional<UObject> O(OptionalNullNativeRefForTesting());
+	return O.IsSet() ? 1 : 0;
+}
+
+int OptNullHandle_ConstructFromNativeRef_ValueIsNull()
+{
+	TOptional<UObject> O(OptionalNullNativeRefForTesting());
+	return O.GetValue() == nullptr ? 1 : 0;
+}
+
+int OptNullHandle_SetFromNativeRef_IsSet()
+{
+	TOptional<UObject> O;
+	O.Set(OptionalNullNativeRefForTesting());
+	return O.IsSet() ? 1 : 0;
+}
+
+int OptNullHandle_SetFromNativeRef_ValueIsNull()
+{
+	TOptional<UObject> O;
+	O.Set(OptionalNullNativeRefForTesting());
+	return O.GetValue() == nullptr ? 1 : 0;
+}
+
+int OptNullHandle_AssignFromNativeRef_IsSet()
+{
+	TOptional<UObject> O;
+	O = OptionalNullNativeRefForTesting();
+	return O.IsSet() ? 1 : 0;
+}
+
+int OptNullHandle_AssignFromNativeRef_ValueIsNull()
+{
+	TOptional<UObject> O;
+	O = OptionalNullNativeRefForTesting();
+	return O.GetValue() == nullptr ? 1 : 0;
+}
+)"));
+		if (!ModuleScope.IsValid())
+		{
+			return false;
+		}
+		asIScriptModule& Module = ModuleScope.GetModule();
+
+		const FExpectedGlobalInt Cases[] = {
+			{ TEXT("int OptNullHandle_ConstructFromFunction_IsSet()"),     TEXT("TOptional<script object> constructed from returned null handle should be set"), 1 },
+			{ TEXT("int OptNullHandle_ConstructFromFunction_ValueIsNull()"),TEXT("TOptional<script object> constructed from returned null handle should store null"), 1 },
+			{ TEXT("int OptNullHandle_SetFromFunction_IsSet()"),           TEXT("TOptional<script object>.Set(returned null handle) should be set"), 1 },
+			{ TEXT("int OptNullHandle_SetFromFunction_ValueIsNull()"),      TEXT("TOptional<script object>.Set(returned null handle) should store null"), 1 },
+			{ TEXT("int OptNullHandle_AssignFromFunction_IsSet()"),        TEXT("TOptional<script object> assigned returned null handle should be set"), 1 },
+			{ TEXT("int OptNullHandle_AssignFromFunction_ValueIsNull()"),   TEXT("TOptional<script object> assigned returned null handle should store null"), 1 },
+			{ TEXT("int OptNullHandle_ConstructFromNativeRef_IsSet()"),     TEXT("TOptional<UObject> constructed from null native ref should be set"), 1 },
+			{ TEXT("int OptNullHandle_ConstructFromNativeRef_ValueIsNull()"),TEXT("TOptional<UObject> constructed from null native ref should store null"), 1 },
+			{ TEXT("int OptNullHandle_SetFromNativeRef_IsSet()"),           TEXT("TOptional<UObject>.Set(null native ref) should be set"), 1 },
+			{ TEXT("int OptNullHandle_SetFromNativeRef_ValueIsNull()"),     TEXT("TOptional<UObject>.Set(null native ref) should store null"), 1 },
+			{ TEXT("int OptNullHandle_AssignFromNativeRef_IsSet()"),        TEXT("TOptional<UObject> assigned null native ref should be set"), 1 },
+			{ TEXT("int OptNullHandle_AssignFromNativeRef_ValueIsNull()"),  TEXT("TOptional<UObject> assigned null native ref should store null"), 1 },
+		};
+		return ExpectGlobalInts(Test, Engine, Module,  Cases);
+	}
+
+	// -----------------------------------------------------------------------
 	// Section: OptionalReturnType — exercise non-int return type paths.
 	// Script functions return bool / float / FString / FVector directly
 	// from Optional operations. C++ side uses typed assertion helpers.
@@ -693,6 +832,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptOptionalBindingsTest,
 		RunOptionalSection(*TestRunner, Engine);
 		RunOptionalTypeMatrixSection(*TestRunner, Engine);
 		RunOptionalApiCoverageSection(*TestRunner, Engine);
+		RunOptionalNullHandleSection(*TestRunner, Engine);
 		RunOptionalReturnTypeSection(*TestRunner, Engine);
 		RunOptionalLogDiagnosticSection(*TestRunner, Engine);
 

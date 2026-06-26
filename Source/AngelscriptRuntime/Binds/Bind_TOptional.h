@@ -48,6 +48,7 @@ struct ANGELSCRIPTRUNTIME_API FOptionalOperations
 		return &Optional;
 	}
 
+	void StoreValue(void* DestinationPtr, void* ValuePtr);
 	void Reset(FAngelscriptOptional& Optional);
 	void Set(FAngelscriptOptional& Optional, void* ValuePtr);
 
