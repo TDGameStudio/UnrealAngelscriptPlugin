@@ -1,4 +1,5 @@
 #include "CQTest.h"
+#include "AngelscriptNativeTestSupport.h"
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestMacros.h"
@@ -7,539 +8,516 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 
-// Test Layer: Runtime Integration
-#if WITH_DEV_AUTOMATION_TESTS
-
-
-#define TestTrue(...) Test.TestTrue(__VA_ARGS__)
-#define TestFalse(...) Test.TestFalse(__VA_ARGS__)
-#define TestEqual(...) Test.TestEqual(__VA_ARGS__)
-#define TestNotNull(...) Test.TestNotNull(__VA_ARGS__)
-
-static bool AnalyzeReloadNoChange(FAutomationTestBase& Test)
-{
-	FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	const FString ScriptV1 = TEXT(R"AS(
-UCLASS()
-class UReloadNoChangeTarget : UObject
-{
-	UPROPERTY()
-	int Value;
-
-	default Value = 10;
-
-	UFUNCTION()
-	int GetValue()
-	{
-		return Value;
-	}
-}
-)AS");
-
-	if (!TestTrue(TEXT("Initial module compile should succeed"), CompileAnnotatedModuleFromMemory(&Engine, TEXT("ReloadNoChangeMod"), TEXT("ReloadNoChangeMod.as"), ScriptV1)))
-	{
-		return false;
-	}
-
-	FAngelscriptClassGenerator::EReloadRequirement ReloadRequirement = FAngelscriptClassGenerator::Error;
-	bool bWantsFullReload = true;
-	bool bNeedsFullReload = true;
-	const bool bAnalyzed = AnalyzeReloadFromMemory(&Engine, TEXT("ReloadNoChangeMod"), TEXT("ReloadNoChangeMod.as"), ScriptV1, ReloadRequirement, bWantsFullReload, bNeedsFullReload);
-
-	if (!TestTrue(TEXT("Reload analysis should succeed for unchanged module"), bAnalyzed))
-	{
-		return false;
-	}
-
-	TestEqual(TEXT("Unchanged module should remain soft reload"), ReloadRequirement, FAngelscriptClassGenerator::SoftReload);
-	TestFalse(TEXT("Unchanged module should not suggest full reload"), bWantsFullReload);
-	TestFalse(TEXT("Unchanged module should not require full reload"), bNeedsFullReload);
-	}
-
-	return true;
-}
-
-static bool AnalyzeReloadPropertyCountChange(FAutomationTestBase& Test)
-{
-	FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	const FString ScriptV1 = TEXT(R"AS(
-UCLASS()
-class UReloadPropertyTarget : UObject
-{
-	UPROPERTY()
-	int Value;
-}
-)AS");
-	const FString ScriptV2 = TEXT(R"AS(
-UCLASS()
-class UReloadPropertyTarget : UObject
-{
-	UPROPERTY()
-	int Value;
-
-	UPROPERTY()
-	int ExtraValue;
-}
-)AS");
-
-	if (!TestTrue(TEXT("Initial property-count module compile should succeed"), CompileAnnotatedModuleFromMemory(&Engine, TEXT("ReloadPropertyMod"), TEXT("ReloadPropertyMod.as"), ScriptV1)))
-	{
-		return false;
-	}
-
-	FAngelscriptClassGenerator::EReloadRequirement ReloadRequirement = FAngelscriptClassGenerator::Error;
-	bool bWantsFullReload = false;
-	bool bNeedsFullReload = false;
-	const bool bAnalyzed = AnalyzeReloadFromMemory(&Engine, TEXT("ReloadPropertyMod"), TEXT("ReloadPropertyMod.as"), ScriptV2, ReloadRequirement, bWantsFullReload, bNeedsFullReload);
-
-	if (!TestTrue(TEXT("Reload analysis should succeed for property count change"), bAnalyzed))
-	{
-		return false;
-	}
-
-	TestTrue(TEXT("Property count change should request a full reload path"), bWantsFullReload || bNeedsFullReload);
-	TestTrue(TEXT("Property count change should not remain soft reload"), ReloadRequirement == FAngelscriptClassGenerator::FullReloadRequired || ReloadRequirement == FAngelscriptClassGenerator::FullReloadSuggested);
-	}
-
-	return true;
-}
-
-static bool AnalyzeReloadSuperClassChange(FAutomationTestBase& Test)
-{
-	FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	const FString ScriptV1 = TEXT(R"AS(
-UCLASS()
-class UReloadSuperTarget : UObject
-{
-}
-)AS");
-	const FString ScriptV2 = TEXT(R"AS(
-UCLASS()
-class UReloadSuperTarget : AActor
-{
-}
-)AS");
-
-	if (!TestTrue(TEXT("Initial super-class module compile should succeed"), CompileAnnotatedModuleFromMemory(&Engine, TEXT("ReloadSuperMod"), TEXT("ReloadSuperMod.as"), ScriptV1)))
-	{
-		return false;
-	}
-
-	FAngelscriptClassGenerator::EReloadRequirement ReloadRequirement = FAngelscriptClassGenerator::Error;
-	bool bWantsFullReload = false;
-	bool bNeedsFullReload = false;
-	const bool bAnalyzed = AnalyzeReloadFromMemory(&Engine, TEXT("ReloadSuperMod"), TEXT("ReloadSuperMod.as"), ScriptV2, ReloadRequirement, bWantsFullReload, bNeedsFullReload);
-
-	if (!TestTrue(TEXT("Reload analysis should succeed for super-class change"), bAnalyzed))
-	{
-		return false;
-	}
-
-	TestTrue(TEXT("Super-class change should request a full reload path"), bWantsFullReload || bNeedsFullReload);
-	TestEqual(TEXT("Super-class change should require a full reload"), ReloadRequirement, FAngelscriptClassGenerator::FullReloadRequired);
-	}
-
-	return true;
-}
-
-static bool AnalyzeReloadSoftReloadRequirement(FAutomationTestBase& Test)
-{
-	FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	const FString ScriptV1 = TEXT(R"AS(
-UCLASS()
-class UReloadSoftRequirementTarget : UObject
-{
-	UFUNCTION()
-	int GetValue()
-	{
-		return 1;
-	}
-}
-)AS");
-	const FString ScriptV2 = TEXT(R"AS(
-UCLASS()
-class UReloadSoftRequirementTarget : UObject
-{
-	UFUNCTION()
-	int GetValue()
-	{
-		return 2;
-	}
-}
-)AS");
-
-	if (!TestTrue(TEXT("Initial soft-requirement module compile should succeed"), CompileAnnotatedModuleFromMemory(&Engine, TEXT("ReloadSoftRequirementMod"), TEXT("ReloadSoftRequirementMod.as"), ScriptV1)))
-	{
-		return false;
-	}
-
-	FAngelscriptClassGenerator::EReloadRequirement ReloadRequirement = FAngelscriptClassGenerator::Error;
-	bool bWantsFullReload = true;
-	bool bNeedsFullReload = true;
-	const bool bAnalyzed = AnalyzeReloadFromMemory(&Engine, TEXT("ReloadSoftRequirementMod"), TEXT("ReloadSoftRequirementMod.as"), ScriptV2, ReloadRequirement, bWantsFullReload, bNeedsFullReload);
-
-	if (!TestTrue(TEXT("Reload analysis should succeed for body-only change"), bAnalyzed))
-	{
-		return false;
-	}
-
-	TestEqual(TEXT("Body-only change should remain soft reload"), ReloadRequirement, FAngelscriptClassGenerator::SoftReload);
-	TestFalse(TEXT("Body-only change should not suggest full reload"), bWantsFullReload);
-	TestFalse(TEXT("Body-only change should not require full reload"), bNeedsFullReload);
-	}
-
-	return true;
-}
-
-static bool AnalyzeReloadClassAdded(FAutomationTestBase& Test)
-{
-	FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	const FString ScriptV1 = TEXT(R"AS(
-UCLASS()
-class UExistingReloadTarget : UObject
-{
-}
-)AS");
-	const FString ScriptV2 = TEXT(R"AS(
-UCLASS()
-class UExistingReloadTarget : UObject
-{
-}
-
-UCLASS()
-class UNewReloadTarget : UObject
-{
-}
-)AS");
-
-	if (!TestTrue(TEXT("Initial class-added baseline compile should succeed"), CompileAnnotatedModuleFromMemory(&Engine, TEXT("ReloadClassAddedMod"), TEXT("ReloadClassAddedMod.as"), ScriptV1)))
-	{
-		return false;
-	}
-
-	FAngelscriptClassGenerator::EReloadRequirement ReloadRequirement = FAngelscriptClassGenerator::Error;
-	bool bWantsFullReload = false;
-	bool bNeedsFullReload = false;
-	const bool bAnalyzed = AnalyzeReloadFromMemory(&Engine, TEXT("ReloadClassAddedMod"), TEXT("ReloadClassAddedMod.as"), ScriptV2, ReloadRequirement, bWantsFullReload, bNeedsFullReload);
-
-	if (!TestTrue(TEXT("Reload analysis should succeed for class add"), bAnalyzed))
-	{
-		return false;
-	}
-
-	TestTrue(TEXT("Class add should request a full reload path"), bWantsFullReload || bNeedsFullReload);
-	TestEqual(TEXT("Class add should suggest a full reload"), ReloadRequirement, FAngelscriptClassGenerator::FullReloadSuggested);
-	}
-
-	return true;
-}
-
-static bool AnalyzeReloadClassRemoved(FAutomationTestBase& Test)
-{
-	FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	const FString ScriptV1 = TEXT(R"AS(
-UCLASS()
-class UReloadSurvivorTarget : UObject
-{
-}
-
-UCLASS()
-class UReloadRemovedTarget : UObject
-{
-}
-)AS");
-	const FString ScriptV2 = TEXT(R"AS(
-UCLASS()
-class UReloadSurvivorTarget : UObject
-{
-}
-)AS");
-
-	if (!TestTrue(TEXT("Initial class-removed baseline compile should succeed"), CompileAnnotatedModuleFromMemory(&Engine, TEXT("ReloadClassRemovedMod"), TEXT("ReloadClassRemovedMod.as"), ScriptV1)))
-	{
-		return false;
-	}
-
-	FAngelscriptClassGenerator::EReloadRequirement ReloadRequirement = FAngelscriptClassGenerator::Error;
-	bool bWantsFullReload = false;
-	bool bNeedsFullReload = false;
-	const bool bAnalyzed = AnalyzeReloadFromMemory(&Engine, TEXT("ReloadClassRemovedMod"), TEXT("ReloadClassRemovedMod.as"), ScriptV2, ReloadRequirement, bWantsFullReload, bNeedsFullReload);
-
-	if (!TestTrue(TEXT("Reload analysis should succeed for class remove"), bAnalyzed))
-	{
-		return false;
-	}
-
-	TestTrue(TEXT("Class remove should request a full reload path"), bWantsFullReload || bNeedsFullReload);
-	TestEqual(TEXT("Class remove should require a full reload"), ReloadRequirement, FAngelscriptClassGenerator::FullReloadRequired);
-	}
-
-	return true;
-}
-
-static bool AnalyzeReloadFunctionSignatureChanged(FAutomationTestBase& Test)
-{
-	FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	const FString ScriptV1 = TEXT(R"AS(
-UCLASS()
-class UReloadFunctionTarget : UObject
-{
-	UFUNCTION()
-	int ComputeValue()
-	{
-		return 1;
-	}
-}
-)AS");
-	const FString ScriptV2 = TEXT(R"AS(
-UCLASS()
-class UReloadFunctionTarget : UObject
-{
-	UFUNCTION()
-	float ComputeValue(float Scale)
-	{
-		return Scale;
-	}
-}
-)AS");
-
-	if (!TestTrue(TEXT("Initial function-signature baseline compile should succeed"), CompileAnnotatedModuleFromMemory(&Engine, TEXT("ReloadFunctionMod"), TEXT("ReloadFunctionMod.as"), ScriptV1)))
-	{
-		return false;
-	}
-
-	FAngelscriptClassGenerator::EReloadRequirement ReloadRequirement = FAngelscriptClassGenerator::Error;
-	bool bWantsFullReload = false;
-	bool bNeedsFullReload = false;
-	const bool bAnalyzed = AnalyzeReloadFromMemory(&Engine, TEXT("ReloadFunctionMod"), TEXT("ReloadFunctionMod.as"), ScriptV2, ReloadRequirement, bWantsFullReload, bNeedsFullReload);
-
-	if (!TestTrue(TEXT("Reload analysis should succeed for function signature change"), bAnalyzed))
-	{
-		return false;
-	}
-
-	TestTrue(TEXT("Function signature change should request a full reload path"), bWantsFullReload || bNeedsFullReload);
-	TestEqual(TEXT("Function signature change should require a full reload"), ReloadRequirement, FAngelscriptClassGenerator::FullReloadRequired);
-	}
-
-	return true;
-}
-
-static bool AnalyzeReloadEnumValueChange(FAutomationTestBase& Test)
-{
-	FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	const FString ScriptV1 = TEXT(R"AS(
-UENUM(BlueprintType)
-enum class EReloadAnalysisState : uint16
-{
-	Alpha = 1,
-	Beta = 4
-}
-
-UCLASS()
-class UReloadEnumValueCarrier : UObject
-{
-	UPROPERTY()
-	EReloadAnalysisState State;
-
-	default State = EReloadAnalysisState::Alpha;
-}
-)AS");
-	const FString ScriptV2 = TEXT(R"AS(
-UENUM(BlueprintType)
-enum class EReloadAnalysisState : uint16
-{
-	Alpha = 1,
-	Beta = 7
-}
-
-UCLASS()
-class UReloadEnumValueCarrier : UObject
-{
-	UPROPERTY()
-	EReloadAnalysisState State;
-
-	default State = EReloadAnalysisState::Alpha;
-}
-)AS");
-
-	if (!TestTrue(TEXT("Initial enum-value baseline compile should succeed"), CompileAnnotatedModuleFromMemory(&Engine, TEXT("ReloadEnumValueMod"), TEXT("ReloadEnumValueMod.as"), ScriptV1)))
-	{
-		return false;
-	}
-
-	FAngelscriptClassGenerator::EReloadRequirement ReloadRequirement = FAngelscriptClassGenerator::Error;
-	bool bWantsFullReload = false;
-	bool bNeedsFullReload = false;
-	const bool bAnalyzed = AnalyzeReloadFromMemory(&Engine, TEXT("ReloadEnumValueMod"), TEXT("ReloadEnumValueMod.as"), ScriptV2, ReloadRequirement, bWantsFullReload, bNeedsFullReload);
-
-	if (!TestTrue(TEXT("Reload analysis should succeed for enum value-only change"), bAnalyzed))
-	{
-		return false;
-	}
-
-	TestEqual(TEXT("Enum value-only change should suggest a full reload"), ReloadRequirement, FAngelscriptClassGenerator::FullReloadSuggested);
-	TestTrue(TEXT("Enum value-only change should request a full reload path"), bWantsFullReload);
-	TestFalse(TEXT("Enum value-only change should not be marked as full reload required"), bNeedsFullReload);
-	}
-
-	return true;
-}
-
-static bool AnalyzeReloadDelegateSignatureChange(FAutomationTestBase& Test)
-{
-	FAngelscriptEngine& EngineOwner = ASTEST_CREATE_ENGINE();
-	FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-	{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-	static const FName ModuleName(TEXT("ReloadDelegateSignatureMod"));
-	ON_SCOPE_EXIT
-	{
-		Engine.DiscardModule(*ModuleName.ToString());
-	};
-
-	const FString ScriptV1 = TEXT(R"AS(
-delegate void FReloadAnalysisSignal(int Value);
-
-UCLASS()
-class UReloadDelegateAnalysisCarrier : UObject
-{
-	UPROPERTY()
-	FReloadAnalysisSignal Signal;
-}
-)AS");
-	const FString ScriptV2 = TEXT(R"AS(
-delegate void FReloadAnalysisSignal(int Value, int Tag);
-
-UCLASS()
-class UReloadDelegateAnalysisCarrier : UObject
-{
-	UPROPERTY()
-	FReloadAnalysisSignal Signal;
-}
-)AS");
-
-	if (!TestTrue(
-			TEXT("Initial delegate-signature analysis baseline compile should succeed"),
-			CompileAnnotatedModuleFromMemory(&Engine, ModuleName, TEXT("ReloadDelegateSignatureMod.as"), ScriptV1)))
-	{
-		return false;
-	}
-
-	if (!TestNotNull(
-			TEXT("Delegate-signature analysis baseline should publish the carrier class"),
-			FindGeneratedClass(&Engine, TEXT("UReloadDelegateAnalysisCarrier"))))
-	{
-		return false;
-	}
-
-	if (!TestTrue(
-			TEXT("Delegate-signature analysis baseline should publish the delegate metadata"),
-			Engine.GetDelegate(TEXT("FReloadAnalysisSignal")).IsValid()))
-	{
-		return false;
-	}
-
-	FAngelscriptClassGenerator::EReloadRequirement ReloadRequirement = FAngelscriptClassGenerator::Error;
-	bool bWantsFullReload = false;
-	bool bNeedsFullReload = false;
-	const bool bAnalyzed = AnalyzeReloadFromMemory(
-		&Engine,
-		ModuleName,
-		TEXT("ReloadDelegateSignatureMod.as"),
-		ScriptV2,
-		ReloadRequirement,
-		bWantsFullReload,
-		bNeedsFullReload);
-
-	if (!TestTrue(TEXT("Reload analysis should succeed for delegate signature change"), bAnalyzed))
-	{
-		return false;
-	}
-
-	TestEqual(
-		TEXT("Delegate signature change should require a full reload"),
-		ReloadRequirement,
-		FAngelscriptClassGenerator::FullReloadRequired);
-	TestTrue(
-		TEXT("Delegate signature change should request a full reload"),
-		bWantsFullReload);
-	TestTrue(
-		TEXT("Delegate signature change should be marked as full reload required"),
-		bNeedsFullReload);
-	}
-
-	return true;
-}
-
-#undef TestTrue
-#undef TestFalse
-#undef TestEqual
-#undef TestNotNull
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptAnalyzeReloadTests,
 	"Angelscript.TestModule.HotReload.AnalyzeReload",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	inline static const FName NoChangeModuleName = FName(TEXT("ReloadNoChangeMod"));
+	inline static const FString NoChangeFilename = FString(TEXT("ReloadNoChangeMod.as"));
+
+	inline static const FName PropertyModuleName = FName(TEXT("ReloadPropertyMod"));
+	inline static const FString PropertyFilename = FString(TEXT("ReloadPropertyMod.as"));
+
+	inline static const FName SuperModuleName = FName(TEXT("ReloadSuperMod"));
+	inline static const FString SuperFilename = FString(TEXT("ReloadSuperMod.as"));
+
+	inline static const FName SoftRequirementModuleName = FName(TEXT("ReloadSoftRequirementMod"));
+	inline static const FString SoftRequirementFilename = FString(TEXT("ReloadSoftRequirementMod.as"));
+
+	inline static const FName ClassAddedModuleName = FName(TEXT("ReloadClassAddedMod"));
+	inline static const FString ClassAddedFilename = FString(TEXT("ReloadClassAddedMod.as"));
+
+	inline static const FName ClassRemovedModuleName = FName(TEXT("ReloadClassRemovedMod"));
+	inline static const FString ClassRemovedFilename = FString(TEXT("ReloadClassRemovedMod.as"));
+
+	inline static const FName FunctionModuleName = FName(TEXT("ReloadFunctionMod"));
+	inline static const FString FunctionFilename = FString(TEXT("ReloadFunctionMod.as"));
+
+	inline static const FName EnumValueModuleName = FName(TEXT("ReloadEnumValueMod"));
+	inline static const FString EnumValueFilename = FString(TEXT("ReloadEnumValueMod.as"));
+
+	inline static const FName DelegateSignatureModuleName = FName(TEXT("ReloadDelegateSignatureMod"));
+	inline static const FString DelegateSignatureFilename = FString(TEXT("ReloadDelegateSignatureMod.as"));
+	inline static const FName DelegateSignatureCarrierClassName = FName(TEXT("UReloadDelegateAnalysisCarrier"));
+	inline static const FString DelegateSignatureName = FString(TEXT("FReloadAnalysisSignal"));
+
+	struct FReloadDecision
+	{
+		FAngelscriptClassGenerator::EReloadRequirement Requirement = FAngelscriptClassGenerator::Error;
+		bool bWantsFullReload = false;
+		bool bNeedsFullReload = false;
+	};
+
+	static void DiscardModule(FAngelscriptEngine& Engine, const FName ModuleName)
+	{
+		Engine.DiscardModule(*ModuleName.ToString());
+	}
+
+	static bool AnalyzeReloadCase(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		const FName ModuleName,
+		const FString& Filename,
+		const FString& ScriptV1,
+		const FString& ScriptV2,
+		const TCHAR* Context,
+		FReloadDecision& OutDecision)
+	{
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsTrue(
+				CompileAnnotatedModuleFromMemory(&Engine, ModuleName, Filename, ScriptV1),
+				*FString::Printf(TEXT("%s should compile before reload analysis"), Context)))
+		{
+			return false;
+		}
+
+		OutDecision = FReloadDecision();
+		return LocalAssert.IsTrue(
+			AnalyzeReloadFromMemory(
+				&Engine,
+				ModuleName,
+				Filename,
+				ScriptV2,
+				OutDecision.Requirement,
+				OutDecision.bWantsFullReload,
+				OutDecision.bNeedsFullReload),
+			*FString::Printf(TEXT("%s should analyze the reload edit"), Context));
+	}
+
+public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(NoChange)
 	{
-		ASSERT_THAT(IsTrue(::AnalyzeReloadNoChange(*TestRunner)));
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			DiscardModule(Engine, NoChangeModuleName);
+		};
+
+		const FString ScriptV1 = ASTEST_AS(R"AS(
+			UCLASS()
+			class UReloadNoChangeTarget : UObject
+			{
+				UPROPERTY()
+				int Value;
+
+				default Value = 10;
+
+				UFUNCTION()
+				int GetValue()
+				{
+					return Value;
+				}
+			}
+			)AS");
+
+		FReloadDecision Decision;
+		ASSERT_THAT(IsTrue(AnalyzeReloadCase(
+			*TestRunner,
+			Engine,
+			NoChangeModuleName,
+			NoChangeFilename,
+			ScriptV1,
+			ScriptV1,
+			TEXT("Unchanged module"),
+			Decision)));
+
+		ASSERT_THAT(AreEqual(FAngelscriptClassGenerator::SoftReload, Decision.Requirement, TEXT("Unchanged module should remain soft reload")));
+		ASSERT_THAT(IsFalse(Decision.bWantsFullReload, TEXT("Unchanged module should not suggest full reload")));
+		ASSERT_THAT(IsFalse(Decision.bNeedsFullReload, TEXT("Unchanged module should not require full reload")));
 	}
 
 	TEST_METHOD(PropertyCountChange)
 	{
-		ASSERT_THAT(IsTrue(::AnalyzeReloadPropertyCountChange(*TestRunner)));
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			DiscardModule(Engine, PropertyModuleName);
+		};
+
+		const FString ScriptV1 = ASTEST_AS(R"AS(
+			UCLASS()
+			class UReloadPropertyTarget : UObject
+			{
+				UPROPERTY()
+				int Value;
+			}
+			)AS");
+		const FString ScriptV2 = ASTEST_AS(R"AS(
+			UCLASS()
+			class UReloadPropertyTarget : UObject
+			{
+				UPROPERTY()
+				int Value;
+
+				UPROPERTY()
+				int ExtraValue;
+			}
+			)AS");
+
+		FReloadDecision Decision;
+		ASSERT_THAT(IsTrue(AnalyzeReloadCase(
+			*TestRunner,
+			Engine,
+			PropertyModuleName,
+			PropertyFilename,
+			ScriptV1,
+			ScriptV2,
+			TEXT("Property count change"),
+			Decision)));
+
+		ASSERT_THAT(IsTrue(Decision.bWantsFullReload || Decision.bNeedsFullReload, TEXT("Property count change should request a full reload path")));
+		ASSERT_THAT(IsTrue(
+			Decision.Requirement == FAngelscriptClassGenerator::FullReloadRequired
+				|| Decision.Requirement == FAngelscriptClassGenerator::FullReloadSuggested,
+			TEXT("Property count change should not remain soft reload")));
 	}
 
 	TEST_METHOD(SuperClassChange)
 	{
-		ASSERT_THAT(IsTrue(::AnalyzeReloadSuperClassChange(*TestRunner)));
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			DiscardModule(Engine, SuperModuleName);
+		};
+
+		const FString ScriptV1 = ASTEST_AS(R"AS(
+			UCLASS()
+			class UReloadSuperTarget : UObject
+			{
+			}
+			)AS");
+		const FString ScriptV2 = ASTEST_AS(R"AS(
+			UCLASS()
+			class UReloadSuperTarget : AActor
+			{
+			}
+			)AS");
+
+		FReloadDecision Decision;
+		ASSERT_THAT(IsTrue(AnalyzeReloadCase(
+			*TestRunner,
+			Engine,
+			SuperModuleName,
+			SuperFilename,
+			ScriptV1,
+			ScriptV2,
+			TEXT("Super-class change"),
+			Decision)));
+
+		ASSERT_THAT(IsTrue(Decision.bWantsFullReload || Decision.bNeedsFullReload, TEXT("Super-class change should request a full reload path")));
+		ASSERT_THAT(AreEqual(FAngelscriptClassGenerator::FullReloadRequired, Decision.Requirement, TEXT("Super-class change should require a full reload")));
 	}
 
 	TEST_METHOD(SoftReloadRequirement)
 	{
-		ASSERT_THAT(IsTrue(::AnalyzeReloadSoftReloadRequirement(*TestRunner)));
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			DiscardModule(Engine, SoftRequirementModuleName);
+		};
+
+		const FString ScriptV1 = ASTEST_AS(R"AS(
+			UCLASS()
+			class UReloadSoftRequirementTarget : UObject
+			{
+				UFUNCTION()
+				int GetValue()
+				{
+					return 1;
+				}
+			}
+			)AS");
+		const FString ScriptV2 = ASTEST_AS(R"AS(
+			UCLASS()
+			class UReloadSoftRequirementTarget : UObject
+			{
+				UFUNCTION()
+				int GetValue()
+				{
+					return 2;
+				}
+			}
+			)AS");
+
+		FReloadDecision Decision;
+		ASSERT_THAT(IsTrue(AnalyzeReloadCase(
+			*TestRunner,
+			Engine,
+			SoftRequirementModuleName,
+			SoftRequirementFilename,
+			ScriptV1,
+			ScriptV2,
+			TEXT("Body-only change"),
+			Decision)));
+
+		ASSERT_THAT(AreEqual(FAngelscriptClassGenerator::SoftReload, Decision.Requirement, TEXT("Body-only change should remain soft reload")));
+		ASSERT_THAT(IsFalse(Decision.bWantsFullReload, TEXT("Body-only change should not suggest full reload")));
+		ASSERT_THAT(IsFalse(Decision.bNeedsFullReload, TEXT("Body-only change should not require full reload")));
 	}
 
 	TEST_METHOD(ClassAdded)
 	{
-		ASSERT_THAT(IsTrue(::AnalyzeReloadClassAdded(*TestRunner)));
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			DiscardModule(Engine, ClassAddedModuleName);
+		};
+
+		const FString ScriptV1 = ASTEST_AS(R"AS(
+			UCLASS()
+			class UExistingReloadTarget : UObject
+			{
+			}
+			)AS");
+		const FString ScriptV2 = ASTEST_AS(R"AS(
+			UCLASS()
+			class UExistingReloadTarget : UObject
+			{
+			}
+
+			UCLASS()
+			class UNewReloadTarget : UObject
+			{
+			}
+			)AS");
+
+		FReloadDecision Decision;
+		ASSERT_THAT(IsTrue(AnalyzeReloadCase(
+			*TestRunner,
+			Engine,
+			ClassAddedModuleName,
+			ClassAddedFilename,
+			ScriptV1,
+			ScriptV2,
+			TEXT("Class add"),
+			Decision)));
+
+		ASSERT_THAT(IsTrue(Decision.bWantsFullReload || Decision.bNeedsFullReload, TEXT("Class add should request a full reload path")));
+		ASSERT_THAT(AreEqual(FAngelscriptClassGenerator::FullReloadSuggested, Decision.Requirement, TEXT("Class add should suggest a full reload")));
 	}
 
 	TEST_METHOD(ClassRemoved)
 	{
-		ASSERT_THAT(IsTrue(::AnalyzeReloadClassRemoved(*TestRunner)));
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			DiscardModule(Engine, ClassRemovedModuleName);
+		};
+
+		const FString ScriptV1 = ASTEST_AS(R"AS(
+			UCLASS()
+			class UReloadSurvivorTarget : UObject
+			{
+			}
+
+			UCLASS()
+			class UReloadRemovedTarget : UObject
+			{
+			}
+			)AS");
+		const FString ScriptV2 = ASTEST_AS(R"AS(
+			UCLASS()
+			class UReloadSurvivorTarget : UObject
+			{
+			}
+			)AS");
+
+		FReloadDecision Decision;
+		ASSERT_THAT(IsTrue(AnalyzeReloadCase(
+			*TestRunner,
+			Engine,
+			ClassRemovedModuleName,
+			ClassRemovedFilename,
+			ScriptV1,
+			ScriptV2,
+			TEXT("Class remove"),
+			Decision)));
+
+		ASSERT_THAT(IsTrue(Decision.bWantsFullReload || Decision.bNeedsFullReload, TEXT("Class remove should request a full reload path")));
+		ASSERT_THAT(AreEqual(FAngelscriptClassGenerator::FullReloadRequired, Decision.Requirement, TEXT("Class remove should require a full reload")));
 	}
 
 	TEST_METHOD(FunctionSignatureChanged)
 	{
-		ASSERT_THAT(IsTrue(::AnalyzeReloadFunctionSignatureChanged(*TestRunner)));
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			DiscardModule(Engine, FunctionModuleName);
+		};
+
+		const FString ScriptV1 = ASTEST_AS(R"AS(
+			UCLASS()
+			class UReloadFunctionTarget : UObject
+			{
+				UFUNCTION()
+				int ComputeValue()
+				{
+					return 1;
+				}
+			}
+			)AS");
+		const FString ScriptV2 = ASTEST_AS(R"AS(
+			UCLASS()
+			class UReloadFunctionTarget : UObject
+			{
+				UFUNCTION()
+				float ComputeValue(float Scale)
+				{
+					return Scale;
+				}
+			}
+			)AS");
+
+		FReloadDecision Decision;
+		ASSERT_THAT(IsTrue(AnalyzeReloadCase(
+			*TestRunner,
+			Engine,
+			FunctionModuleName,
+			FunctionFilename,
+			ScriptV1,
+			ScriptV2,
+			TEXT("Function signature change"),
+			Decision)));
+
+		ASSERT_THAT(IsTrue(Decision.bWantsFullReload || Decision.bNeedsFullReload, TEXT("Function signature change should request a full reload path")));
+		ASSERT_THAT(AreEqual(FAngelscriptClassGenerator::FullReloadRequired, Decision.Requirement, TEXT("Function signature change should require a full reload")));
 	}
 
 	TEST_METHOD(EnumValueChange)
 	{
-		ASSERT_THAT(IsTrue(::AnalyzeReloadEnumValueChange(*TestRunner)));
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			DiscardModule(Engine, EnumValueModuleName);
+		};
+
+		const FString ScriptV1 = ASTEST_AS(R"AS(
+			UENUM(BlueprintType)
+			enum class EReloadAnalysisState : uint16
+			{
+				Alpha = 1,
+				Beta = 4
+			}
+
+			UCLASS()
+			class UReloadEnumValueCarrier : UObject
+			{
+				UPROPERTY()
+				EReloadAnalysisState State;
+
+				default State = EReloadAnalysisState::Alpha;
+			}
+			)AS");
+		const FString ScriptV2 = ASTEST_AS(R"AS(
+			UENUM(BlueprintType)
+			enum class EReloadAnalysisState : uint16
+			{
+				Alpha = 1,
+				Beta = 7
+			}
+
+			UCLASS()
+			class UReloadEnumValueCarrier : UObject
+			{
+				UPROPERTY()
+				EReloadAnalysisState State;
+
+				default State = EReloadAnalysisState::Alpha;
+			}
+			)AS");
+
+		FReloadDecision Decision;
+		ASSERT_THAT(IsTrue(AnalyzeReloadCase(
+			*TestRunner,
+			Engine,
+			EnumValueModuleName,
+			EnumValueFilename,
+			ScriptV1,
+			ScriptV2,
+			TEXT("Enum value-only change"),
+			Decision)));
+
+		ASSERT_THAT(AreEqual(FAngelscriptClassGenerator::FullReloadSuggested, Decision.Requirement, TEXT("Enum value-only change should suggest a full reload")));
+		ASSERT_THAT(IsTrue(Decision.bWantsFullReload, TEXT("Enum value-only change should request a full reload path")));
+		ASSERT_THAT(IsFalse(Decision.bNeedsFullReload, TEXT("Enum value-only change should not be marked as full reload required")));
 	}
 
 	TEST_METHOD(DelegateSignatureChange)
 	{
-		ASSERT_THAT(IsTrue(::AnalyzeReloadDelegateSignatureChange(*TestRunner)));
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope AutoEngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			DiscardModule(Engine, DelegateSignatureModuleName);
+		};
+
+		const FString ScriptV1 = ASTEST_AS(R"AS(
+			delegate void FReloadAnalysisSignal(int Value);
+
+			UCLASS()
+			class UReloadDelegateAnalysisCarrier : UObject
+			{
+				UPROPERTY()
+				FReloadAnalysisSignal Signal;
+			}
+			)AS");
+		const FString ScriptV2 = ASTEST_AS(R"AS(
+			delegate void FReloadAnalysisSignal(int Value, int Tag);
+
+			UCLASS()
+			class UReloadDelegateAnalysisCarrier : UObject
+			{
+				UPROPERTY()
+				FReloadAnalysisSignal Signal;
+			}
+			)AS");
+
+		ASSERT_THAT(IsTrue(
+			CompileAnnotatedModuleFromMemory(&Engine, DelegateSignatureModuleName, DelegateSignatureFilename, ScriptV1),
+			TEXT("Delegate-signature analysis baseline should compile")));
+
+		ASSERT_THAT(IsNotNull(
+			FindGeneratedClass(&Engine, DelegateSignatureCarrierClassName),
+			TEXT("Delegate-signature analysis baseline should publish the carrier class")));
+
+		ASSERT_THAT(IsTrue(
+			Engine.GetDelegate(DelegateSignatureName).IsValid(),
+			TEXT("Delegate-signature analysis baseline should publish the delegate metadata")));
+
+		FReloadDecision Decision;
+		ASSERT_THAT(IsTrue(
+			AnalyzeReloadFromMemory(
+				&Engine,
+				DelegateSignatureModuleName,
+				DelegateSignatureFilename,
+				ScriptV2,
+				Decision.Requirement,
+				Decision.bWantsFullReload,
+				Decision.bNeedsFullReload),
+			TEXT("Reload analysis should succeed for delegate signature change")));
+
+		ASSERT_THAT(AreEqual(FAngelscriptClassGenerator::FullReloadRequired, Decision.Requirement, TEXT("Delegate signature change should require a full reload")));
+		ASSERT_THAT(IsTrue(Decision.bWantsFullReload, TEXT("Delegate signature change should request a full reload")));
+		ASSERT_THAT(IsTrue(Decision.bNeedsFullReload, TEXT("Delegate signature change should be marked as full reload required")));
 	}
 };
-
-#endif
