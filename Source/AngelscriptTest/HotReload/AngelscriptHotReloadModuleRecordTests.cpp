@@ -6,11 +6,6 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 
-// Test Layer: Runtime Integration
-#if WITH_DEV_AUTOMATION_TESTS
-
-
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadModuleRecordTests,
 	"Angelscript.TestModule.HotReload.ModuleRecordTracking",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -266,5 +261,3 @@ public:
 		ASSERT_THAT(IsTrue(ModuleRecordTracksEnumAndDelegateArtifacts(*TestRunner)));
 	}
 };
-
-#endif
