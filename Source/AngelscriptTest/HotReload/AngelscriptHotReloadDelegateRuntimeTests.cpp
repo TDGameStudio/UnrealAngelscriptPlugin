@@ -18,7 +18,7 @@
 #include "UObject/UnrealType.h"
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadDelegateRuntimeTests,
-	"Angelscript.TestModule.HotReload.Delegate.Runtime",
+	"Angelscript.TestModule.HotReload.Delegates.Runtime",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
@@ -32,6 +32,22 @@ private:
 	inline static const FName TickDelegateModuleName = FName(TEXT("HotReloadDelegateRuntimeTick"));
 	inline static const FString TickDelegateFilename = FString(TEXT("HotReloadDelegateRuntimeTick.as"));
 	inline static const FName TickDelegateClassName = FName(TEXT("AHotReloadDelegateRuntimeTickParent"));
+
+	inline static const FName NegativeDelegateModuleName = FName(TEXT("HotReloadDelegateRuntimeNegative"));
+	inline static const FString NegativeDelegateFilename = FString(TEXT("HotReloadDelegateRuntimeNegative.as"));
+	inline static const FName NegativeDelegateClassName = FName(TEXT("UHotReloadDelegateRuntimeNegativeReceiver"));
+
+	inline static const FName MulticastDelegateModuleName = FName(TEXT("HotReloadDelegateRuntimeMulticast"));
+	inline static const FString MulticastDelegateFilename = FString(TEXT("HotReloadDelegateRuntimeMulticast.as"));
+	inline static const FName MulticastDelegateClassName = FName(TEXT("AHotReloadDelegateRuntimeMulticastActor"));
+
+	inline static const FName RoundTripDelegateModuleName = FName(TEXT("HotReloadDelegateRuntimeRoundTrip"));
+	inline static const FString RoundTripDelegateFilename = FString(TEXT("HotReloadDelegateRuntimeRoundTrip.as"));
+	inline static const FName RoundTripDelegateClassName = FName(TEXT("UHotReloadDelegateRuntimeRoundTripReceiver"));
+
+	inline static const FName LifecycleDelegateModuleName = FName(TEXT("HotReloadDelegateRuntimeLifecycle"));
+	inline static const FString LifecycleDelegateFilename = FString(TEXT("HotReloadDelegateRuntimeLifecycle.as"));
+	inline static const FName LifecycleDelegateClassName = FName(TEXT("AHotReloadDelegateRuntimeLifecycleBroadcaster"));
 
 	struct FScopedTransientBlueprint
 	{
@@ -253,6 +269,33 @@ private:
 		Actor.PrimaryActorTick.bCanEverTick = true;
 		Actor.SetActorTickEnabled(true);
 		Actor.RegisterAllActorTickFunctions(true, false);
+	}
+
+	static bool ExecuteGlobalInt(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		FName ModuleName,
+		const TCHAR* FunctionDecl,
+		int32 InputValue,
+		int32 ExpectedResult,
+		const TCHAR* Context)
+	{
+		asIScriptModule* Module = FindScriptModule(Engine, ModuleName);
+		if (!ExpectNotNull(Test, Module, TEXT("Delegate runtime hot reload should expose the script module")))
+		{
+			return false;
+		}
+
+		FAngelscriptTestExecutor Executor(Test, Engine, *Module, FunctionDecl);
+		if (!Executor.IsValid())
+		{
+			return false;
+		}
+
+		const int32 Result = Executor
+			.AddArg(InputValue)
+			.ExecuteAndGet<int32>(INDEX_NONE);
+		return ExpectEqual(Test, ExpectedResult, Result, Context);
 	}
 
 public:
@@ -1017,6 +1060,612 @@ public:
 			BeginPlayCountAfterReload,
 			TEXT("Delegate world tick hot reload V2 Blueprint actor"))));
 		ASSERT_THAT(AreEqual(1, BeginPlayCountAfterReload, TEXT("Delegate world tick hot reload should not replay BeginPlay during soft reload")));
+		}
+	}
+
+	TEST_METHOD(NegativeDelegateRuntimeErrorsStayExplicitAcrossReloads)
+	{
+		TestRunner->AddExpectedError(TEXT("Executing unbound delegate."), EAutomationExpectedErrorFlags::Contains, 2);
+		TestRunner->AddExpectedError(TEXT("Could not find function in object with this name. Is it declared UFUNCTION()?"), EAutomationExpectedErrorFlags::Contains, 1);
+		TestRunner->AddExpectedError(TEXT("Specified function is not compatible with delegate function."), EAutomationExpectedErrorFlags::Contains, 1);
+		TestRunner->AddExpectedError(TEXT("int FHotReloadNegativeCompute::Execute(int) const"), EAutomationExpectedErrorFlags::Contains, 2, false);
+		TestRunner->AddExpectedError(TEXT("void FHotReloadNegativeCompute::BindUFunction(UObject, FName)"), EAutomationExpectedErrorFlags::Contains, 2, false);
+		TestRunner->AddExpectedError(TEXT("HotReloadDelegateRuntimeNegative"), EAutomationExpectedErrorFlags::Contains, 0, false);
+		TestRunner->AddExpectedError(TEXT("void TriggerUnboundExecute()"), EAutomationExpectedErrorFlags::Contains, 0, false);
+		TestRunner->AddExpectedError(TEXT("void TriggerMissingHandler()"), EAutomationExpectedErrorFlags::Contains, 0, false);
+		TestRunner->AddExpectedError(TEXT("void TriggerSignatureMismatch()"), EAutomationExpectedErrorFlags::Contains, 0, false);
+
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+		{ FAngelscriptEngineScope EngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*NegativeDelegateModuleName.ToString());
+			ASTEST_RESET_ENGINE(Engine);
+		};
+
+		const FString NegativeReloadV1Source = ASTEST_AS(R"AS(
+			delegate int FHotReloadNegativeCompute(int Value);
+
+			UCLASS()
+			class UHotReloadDelegateRuntimeNegativeReceiver : UObject
+			{
+				UFUNCTION()
+				int HandleCompute(int Value)
+				{
+					return Value + 1;
+				}
+
+				UFUNCTION()
+				void WrongSignature()
+				{
+				}
+			}
+
+			UHotReloadDelegateRuntimeNegativeReceiver MakeReceiver()
+			{
+				return Cast<UHotReloadDelegateRuntimeNegativeReceiver>(
+					NewObject(GetTransientPackage(), UHotReloadDelegateRuntimeNegativeReceiver::StaticClass()));
+			}
+
+			void TriggerUnboundExecute()
+			{
+				FHotReloadNegativeCompute Compute;
+				Compute.Execute(5);
+			}
+
+			void TriggerMissingHandler()
+			{
+				UHotReloadDelegateRuntimeNegativeReceiver Receiver = MakeReceiver();
+				FHotReloadNegativeCompute Compute;
+				Compute.BindUFunction(Receiver, n"MissingHandler");
+			}
+
+			void TriggerSignatureMismatch()
+			{
+				UHotReloadDelegateRuntimeNegativeReceiver Receiver = MakeReceiver();
+				FHotReloadNegativeCompute Compute;
+				Compute.BindUFunction(Receiver, n"WrongSignature");
+			}
+			)AS");
+
+		UClass* ReceiverClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
+			*TestRunner,
+			Engine,
+			NegativeDelegateModuleName,
+			NegativeDelegateFilename,
+			NegativeReloadV1Source,
+			NegativeDelegateClassName);
+		ASSERT_THAT(IsNotNull(ReceiverClass, TEXT("Delegate negative hot reload should compile the V1 receiver class")));
+
+		asIScriptModule* Module = FindScriptModule(Engine, NegativeDelegateModuleName);
+		ASSERT_THAT(IsNotNull(Module, TEXT("Delegate negative hot reload should expose the V1 script module")));
+		ASSERT_THAT(IsTrue(ExecuteFunctionExpectingScriptException(
+			*TestRunner,
+			Engine,
+			*Module,
+			TEXT("void TriggerUnboundExecute()"),
+			TEXT("unbound delegate execute should raise a clear exception"),
+			TEXT("Executing unbound delegate."))));
+		ASSERT_THAT(IsTrue(ExecuteFunctionExpectingScriptException(
+			*TestRunner,
+			Engine,
+			*Module,
+			TEXT("void TriggerMissingHandler()"),
+			TEXT("BindUFunction with a missing handler should raise a clear exception"),
+			TEXT("Could not find function in object with this name. Is it declared UFUNCTION()?"))));
+		ASSERT_THAT(IsTrue(ExecuteFunctionExpectingScriptException(
+			*TestRunner,
+			Engine,
+			*Module,
+			TEXT("void TriggerSignatureMismatch()"),
+			TEXT("BindUFunction with an incompatible handler should raise a clear exception"),
+			TEXT("Specified function is not compatible with delegate function."))));
+
+		const FString NegativeReloadV2Source = ASTEST_AS(R"AS(
+			delegate int FHotReloadNegativeCompute(int Value);
+
+			UCLASS()
+			class UHotReloadDelegateRuntimeNegativeReceiver : UObject
+			{
+				UFUNCTION()
+				int HandleCompute(int Value)
+				{
+					return Value * 2;
+				}
+
+				UFUNCTION()
+				void WrongSignature()
+				{
+				}
+			}
+
+			UHotReloadDelegateRuntimeNegativeReceiver MakeReceiver()
+			{
+				return Cast<UHotReloadDelegateRuntimeNegativeReceiver>(
+					NewObject(GetTransientPackage(), UHotReloadDelegateRuntimeNegativeReceiver::StaticClass()));
+			}
+
+			void TriggerUnboundExecute()
+			{
+				FHotReloadNegativeCompute Compute;
+				Compute.Execute(5);
+			}
+
+			void TriggerMissingHandler()
+			{
+				UHotReloadDelegateRuntimeNegativeReceiver Receiver = MakeReceiver();
+				FHotReloadNegativeCompute Compute;
+				Compute.BindUFunction(Receiver, n"MissingHandler");
+			}
+
+			void TriggerSignatureMismatch()
+			{
+				UHotReloadDelegateRuntimeNegativeReceiver Receiver = MakeReceiver();
+				FHotReloadNegativeCompute Compute;
+				Compute.BindUFunction(Receiver, n"WrongSignature");
+			}
+			)AS");
+
+		ECompileResult NegativeReloadResult = ECompileResult::Error;
+		ASSERT_THAT(IsTrue(CompileReload(
+			*TestRunner,
+			Engine,
+			ECompileType::SoftReloadOnly,
+			NegativeDelegateModuleName,
+			NegativeDelegateFilename,
+			NegativeReloadV2Source,
+			TEXT("Delegate negative hot reload body update"),
+			&NegativeReloadResult)));
+		ASSERT_THAT(AreEqual(ECompileResult::FullyHandled, NegativeReloadResult, TEXT("Delegate negative hot reload V2 should stay on the soft reload path")));
+
+		Module = FindScriptModule(Engine, NegativeDelegateModuleName);
+		ASSERT_THAT(IsNotNull(Module, TEXT("Delegate negative hot reload should expose the V2 script module")));
+		ASSERT_THAT(IsTrue(ExecuteFunctionExpectingScriptException(
+			*TestRunner,
+			Engine,
+			*Module,
+			TEXT("void TriggerUnboundExecute()"),
+			TEXT("unbound delegate execute should remain explicit after reload"),
+			TEXT("Executing unbound delegate."))));
+		}
+	}
+
+	TEST_METHOD(MulticastDelegateRuntimeRunsAcrossReloads)
+	{
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+		{ FAngelscriptEngineScope EngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*MulticastDelegateModuleName.ToString());
+			ASTEST_RESET_ENGINE(Engine);
+		};
+
+		const FString MulticastReloadV1Source = ASTEST_AS(R"AS(
+			event void FHotReloadMulticastSignal(int Value);
+
+			UCLASS()
+			class AHotReloadDelegateRuntimeMulticastActor : AActor
+			{
+				UPROPERTY()
+				FHotReloadMulticastSignal OnSignal;
+
+				UPROPERTY()
+				int CountA = 0;
+
+				UPROPERTY()
+				int CountB = 0;
+
+				UFUNCTION()
+				void HandlerA(int Value)
+				{
+					CountA += Value;
+				}
+
+				UFUNCTION()
+				void HandlerB(int Value)
+				{
+					CountB += Value * 10;
+				}
+
+				UFUNCTION()
+				int RunMulticast()
+				{
+					OnSignal.Clear();
+					CountA = 0;
+					CountB = 0;
+
+					OnSignal.AddUFunction(this, n"HandlerA");
+					OnSignal.AddUFunction(this, n"HandlerB");
+					if (!OnSignal.IsBound())
+						return 10;
+
+					OnSignal.Broadcast(2);
+					if (CountA != 2 || CountB != 20)
+						return 20;
+
+					OnSignal.Unbind(this, n"HandlerA");
+					OnSignal.Broadcast(3);
+					if (CountA != 2 || CountB != 50)
+						return 30;
+
+					OnSignal.Clear();
+					if (OnSignal.IsBound())
+						return 40;
+
+					OnSignal.Broadcast(5);
+					return (CountA == 2 && CountB == 50) ? 1 : 50;
+				}
+			}
+			)AS");
+
+		UClass* MulticastClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
+			*TestRunner,
+			Engine,
+			MulticastDelegateModuleName,
+			MulticastDelegateFilename,
+			MulticastReloadV1Source,
+			MulticastDelegateClassName);
+		ASSERT_THAT(IsNotNull(MulticastClass, TEXT("Delegate multicast hot reload should compile the V1 actor class")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = AngelscriptFunctionalTestUtils::SpawnScriptActor(*TestRunner, Spawner, MulticastClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Delegate multicast hot reload should spawn a V1 actor")));
+		AngelscriptFunctionalTestUtils::BeginPlayActor(Engine, *Actor);
+
+		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("RunMulticast")));
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("Delegate multicast hot reload should resolve V1 RunMulticast")));
+		ASSERT_THAT(AreEqual(1, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("Delegate multicast hot reload V1 should run add, broadcast, unbind, and clear")));
+
+		const FString MulticastReloadV2Source = ASTEST_AS(R"AS(
+			event void FHotReloadMulticastSignal(int Value);
+
+			UCLASS()
+			class AHotReloadDelegateRuntimeMulticastActor : AActor
+			{
+				UPROPERTY()
+				FHotReloadMulticastSignal OnSignal;
+
+				UPROPERTY()
+				int CountA = 0;
+
+				UPROPERTY()
+				int CountB = 0;
+
+				UFUNCTION()
+				void HandlerA(int Value)
+				{
+					CountA += Value * 2;
+				}
+
+				UFUNCTION()
+				void HandlerB(int Value)
+				{
+					CountB += Value * 20;
+				}
+
+				UFUNCTION()
+				int RunMulticast()
+				{
+					OnSignal.Clear();
+					CountA = 0;
+					CountB = 0;
+
+					OnSignal.AddUFunction(this, n"HandlerA");
+					OnSignal.AddUFunction(this, n"HandlerB");
+					if (!OnSignal.IsBound())
+						return 10;
+
+					OnSignal.Broadcast(2);
+					if (CountA != 4 || CountB != 40)
+						return 20;
+
+					OnSignal.Unbind(this, n"HandlerA");
+					OnSignal.Broadcast(3);
+					if (CountA != 4 || CountB != 100)
+						return 30;
+
+					OnSignal.Clear();
+					if (OnSignal.IsBound())
+						return 40;
+
+					OnSignal.Broadcast(5);
+					return (CountA == 4 && CountB == 100) ? 1 : 50;
+				}
+			}
+			)AS");
+
+		ECompileResult MulticastReloadResult = ECompileResult::Error;
+		ASSERT_THAT(IsTrue(CompileReload(
+			*TestRunner,
+			Engine,
+			ECompileType::SoftReloadOnly,
+			MulticastDelegateModuleName,
+			MulticastDelegateFilename,
+			MulticastReloadV2Source,
+			TEXT("Delegate multicast hot reload body update"),
+			&MulticastReloadResult)));
+		ASSERT_THAT(AreEqual(ECompileResult::FullyHandled, MulticastReloadResult, TEXT("Delegate multicast hot reload V2 should stay on the soft reload path")));
+
+		FFunctionInvoker ReloadedInvoker(*TestRunner, Actor, FName(TEXT("RunMulticast")));
+		ASSERT_THAT(IsTrue(ReloadedInvoker.IsValid(), TEXT("Delegate multicast hot reload should resolve V2 RunMulticast on existing actor")));
+		ASSERT_THAT(AreEqual(1, ReloadedInvoker.CallAndReturn<int32>(INDEX_NONE), TEXT("Delegate multicast hot reload V2 should run updated multicast handlers on the existing actor")));
+		}
+	}
+
+	TEST_METHOD(DelegateArgumentAndReturnRoundTripAcrossReloads)
+	{
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+		{ FAngelscriptEngineScope EngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*RoundTripDelegateModuleName.ToString());
+			ASTEST_RESET_ENGINE(Engine);
+		};
+
+		const FString RoundTripReloadV1Source = ASTEST_AS(R"AS(
+			delegate int FHotReloadRoundTripCompute(int Value);
+
+			UCLASS()
+			class UHotReloadDelegateRuntimeRoundTripReceiver : UObject
+			{
+				UFUNCTION()
+				int HandleCompute(int Value)
+				{
+					return Value + 4;
+				}
+
+				UFUNCTION()
+				FHotReloadRoundTripCompute MakeDelegate()
+				{
+					FHotReloadRoundTripCompute Compute;
+					Compute.BindUFunction(this, n"HandleCompute");
+					return Compute;
+				}
+
+				UFUNCTION()
+				int InvokePassed(FHotReloadRoundTripCompute Compute, int Value)
+				{
+					return Compute.Execute(Value);
+				}
+
+				UFUNCTION()
+				int RunRoundTrip(int Value)
+				{
+					FHotReloadRoundTripCompute Compute = MakeDelegate();
+					return InvokePassed(Compute, Value);
+				}
+			}
+
+			int RunRoundTripGlobal(int Value)
+			{
+				UHotReloadDelegateRuntimeRoundTripReceiver Receiver = Cast<UHotReloadDelegateRuntimeRoundTripReceiver>(
+					NewObject(GetTransientPackage(), UHotReloadDelegateRuntimeRoundTripReceiver::StaticClass()));
+				return Receiver.RunRoundTrip(Value);
+			}
+			)AS");
+
+		UClass* ReceiverClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
+			*TestRunner,
+			Engine,
+			RoundTripDelegateModuleName,
+			RoundTripDelegateFilename,
+			RoundTripReloadV1Source,
+			RoundTripDelegateClassName);
+		ASSERT_THAT(IsNotNull(ReceiverClass, TEXT("Delegate round-trip hot reload should compile the V1 receiver class")));
+
+		ASSERT_THAT(IsTrue(ExecuteGlobalInt(
+			*TestRunner,
+			Engine,
+			RoundTripDelegateModuleName,
+			TEXT("int RunRoundTripGlobal(int)"),
+			11,
+			15,
+			TEXT("Delegate round-trip hot reload V1 should pass and return delegate values through UFUNCTIONs"))));
+
+		const FString RoundTripReloadV2Source = ASTEST_AS(R"AS(
+			delegate int FHotReloadRoundTripCompute(int Value);
+
+			UCLASS()
+			class UHotReloadDelegateRuntimeRoundTripReceiver : UObject
+			{
+				UFUNCTION()
+				int HandleCompute(int Value)
+				{
+					return Value * 3;
+				}
+
+				UFUNCTION()
+				FHotReloadRoundTripCompute MakeDelegate()
+				{
+					FHotReloadRoundTripCompute Compute;
+					Compute.BindUFunction(this, n"HandleCompute");
+					return Compute;
+				}
+
+				UFUNCTION()
+				int InvokePassed(FHotReloadRoundTripCompute Compute, int Value)
+				{
+					return Compute.Execute(Value);
+				}
+
+				UFUNCTION()
+				int RunRoundTrip(int Value)
+				{
+					FHotReloadRoundTripCompute Compute = MakeDelegate();
+					return InvokePassed(Compute, Value);
+				}
+			}
+
+			int RunRoundTripGlobal(int Value)
+			{
+				UHotReloadDelegateRuntimeRoundTripReceiver Receiver = Cast<UHotReloadDelegateRuntimeRoundTripReceiver>(
+					NewObject(GetTransientPackage(), UHotReloadDelegateRuntimeRoundTripReceiver::StaticClass()));
+				return Receiver.RunRoundTrip(Value);
+			}
+			)AS");
+
+		ECompileResult RoundTripReloadResult = ECompileResult::Error;
+		ASSERT_THAT(IsTrue(CompileReload(
+			*TestRunner,
+			Engine,
+			ECompileType::SoftReloadOnly,
+			RoundTripDelegateModuleName,
+			RoundTripDelegateFilename,
+			RoundTripReloadV2Source,
+			TEXT("Delegate round-trip hot reload body update"),
+			&RoundTripReloadResult)));
+		ASSERT_THAT(AreEqual(ECompileResult::FullyHandled, RoundTripReloadResult, TEXT("Delegate round-trip hot reload V2 should stay on the soft reload path")));
+
+		ASSERT_THAT(IsTrue(ExecuteGlobalInt(
+			*TestRunner,
+			Engine,
+			RoundTripDelegateModuleName,
+			TEXT("int RunRoundTripGlobal(int)"),
+			7,
+			21,
+			TEXT("Delegate round-trip hot reload V2 should pass and return delegate values through UFUNCTIONs"))));
+		}
+	}
+
+	TEST_METHOD(DelegateReceiverLifecycleBoundaryAcrossReload)
+	{
+		TestRunner->AddExpectedError(TEXT("Signature mismatch while executing multicast delegate: failed to resolve bound functions."), EAutomationExpectedErrorFlags::Contains, 2);
+		TestRunner->AddExpectedError(TEXT("HotReloadDelegateRuntimeLifecycle"), EAutomationExpectedErrorFlags::Contains, 0, false);
+		TestRunner->AddExpectedError(TEXT("void FHotReloadLifecycleSignal::Broadcast(int) const"), EAutomationExpectedErrorFlags::Contains, 0, false);
+
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+		{ FAngelscriptEngineScope EngineScope(Engine);
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*LifecycleDelegateModuleName.ToString());
+			ASTEST_RESET_ENGINE(Engine);
+		};
+
+		const FString LifecycleReloadV1Source = ASTEST_AS(R"AS(
+			event void FHotReloadLifecycleSignal(int Value);
+
+			UCLASS()
+			class AHotReloadDelegateRuntimeLifecycleReceiver : AActor
+			{
+				UPROPERTY()
+				int Calls = 0;
+
+				UFUNCTION()
+				void HandleSignal(int Value)
+				{
+					Calls += Value;
+				}
+			}
+
+			UCLASS()
+			class AHotReloadDelegateRuntimeLifecycleBroadcaster : AActor
+			{
+				UPROPERTY()
+				FHotReloadLifecycleSignal OnSignal;
+
+				UFUNCTION()
+				int RunLifecycleCheck(AHotReloadDelegateRuntimeLifecycleReceiver Receiver)
+				{
+					OnSignal.Clear();
+					OnSignal.AddUFunction(Receiver, n"HandleSignal");
+					OnSignal.Broadcast(3);
+					if (Receiver.Calls != 3)
+						return 10;
+
+					Receiver.DestroyActor();
+					OnSignal.Broadcast(5);
+					return Receiver.Calls == 3 ? 1 : 20;
+				}
+			}
+			)AS");
+
+		UClass* BroadcasterClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
+			*TestRunner,
+			Engine,
+			LifecycleDelegateModuleName,
+			LifecycleDelegateFilename,
+			LifecycleReloadV1Source,
+			LifecycleDelegateClassName);
+		ASSERT_THAT(IsNotNull(BroadcasterClass, TEXT("Delegate lifecycle hot reload should compile the V1 broadcaster class")));
+
+		UClass* ReceiverClass = FindGeneratedClass(&Engine, TEXT("AHotReloadDelegateRuntimeLifecycleReceiver"));
+		ASSERT_THAT(IsNotNull(ReceiverClass, TEXT("Delegate lifecycle hot reload should compile the V1 receiver class")));
+
+		FAngelscriptTestWorld World(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(World.IsValid(), TEXT("Delegate lifecycle hot reload should create a test world")));
+
+		AActor* Broadcaster = World.SpawnActorOfClass(BroadcasterClass);
+		ASSERT_THAT(IsNotNull(Broadcaster, TEXT("Delegate lifecycle hot reload should spawn the V1 broadcaster")));
+		World.BeginPlay(*Broadcaster);
+
+		AActor* Receiver = World.SpawnActorOfClass(ReceiverClass);
+		ASSERT_THAT(IsNotNull(Receiver, TEXT("Delegate lifecycle hot reload should spawn the V1 receiver")));
+		World.BeginPlay(*Receiver);
+
+		FFunctionInvoker Invoker(*TestRunner, Broadcaster, FName(TEXT("RunLifecycleCheck")));
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("Delegate lifecycle hot reload should resolve V1 RunLifecycleCheck")));
+		ASSERT_THAT(AreEqual(0, Invoker.AddParam<AActor*>(Receiver).CallAndReturn<int32>(INDEX_NONE), TEXT("Delegate lifecycle hot reload V1 should report a controlled error for a destroyed bound target")));
+
+		const FString LifecycleReloadV2Source = ASTEST_AS(R"AS(
+			event void FHotReloadLifecycleSignal(int Value);
+
+			UCLASS()
+			class AHotReloadDelegateRuntimeLifecycleReceiver : AActor
+			{
+				UPROPERTY()
+				int Calls = 0;
+
+				UFUNCTION()
+				void HandleSignal(int Value)
+				{
+					Calls += Value * 2;
+				}
+			}
+
+			UCLASS()
+			class AHotReloadDelegateRuntimeLifecycleBroadcaster : AActor
+			{
+				UPROPERTY()
+				FHotReloadLifecycleSignal OnSignal;
+
+				UFUNCTION()
+				int RunLifecycleCheck(AHotReloadDelegateRuntimeLifecycleReceiver Receiver)
+				{
+					OnSignal.Clear();
+					OnSignal.AddUFunction(Receiver, n"HandleSignal");
+					OnSignal.Broadcast(3);
+					if (Receiver.Calls != 6)
+						return 10;
+
+					Receiver.DestroyActor();
+					OnSignal.Broadcast(5);
+					return Receiver.Calls == 6 ? 1 : 20;
+				}
+			}
+			)AS");
+
+		ECompileResult LifecycleReloadResult = ECompileResult::Error;
+		ASSERT_THAT(IsTrue(CompileReload(
+			*TestRunner,
+			Engine,
+			ECompileType::SoftReloadOnly,
+			LifecycleDelegateModuleName,
+			LifecycleDelegateFilename,
+			LifecycleReloadV2Source,
+			TEXT("Delegate lifecycle hot reload body update"),
+			&LifecycleReloadResult)));
+		ASSERT_THAT(AreEqual(ECompileResult::FullyHandled, LifecycleReloadResult, TEXT("Delegate lifecycle hot reload V2 should stay on the soft reload path")));
+
+		ReceiverClass = FindGeneratedClass(&Engine, TEXT("AHotReloadDelegateRuntimeLifecycleReceiver"));
+		ASSERT_THAT(IsNotNull(ReceiverClass, TEXT("Delegate lifecycle hot reload should resolve the V2 receiver class")));
+		AActor* ReloadedReceiver = World.SpawnActorOfClass(ReceiverClass);
+		ASSERT_THAT(IsNotNull(ReloadedReceiver, TEXT("Delegate lifecycle hot reload should spawn the V2 receiver")));
+		World.BeginPlay(*ReloadedReceiver);
+
+		FFunctionInvoker ReloadedInvoker(*TestRunner, Broadcaster, FName(TEXT("RunLifecycleCheck")));
+		ASSERT_THAT(IsTrue(ReloadedInvoker.IsValid(), TEXT("Delegate lifecycle hot reload should resolve V2 RunLifecycleCheck")));
+		ASSERT_THAT(AreEqual(0, ReloadedInvoker.AddParam<AActor*>(ReloadedReceiver).CallAndReturn<int32>(INDEX_NONE), TEXT("Delegate lifecycle hot reload V2 should report a controlled error for a destroyed bound target after reload")));
 		}
 	}
 };
