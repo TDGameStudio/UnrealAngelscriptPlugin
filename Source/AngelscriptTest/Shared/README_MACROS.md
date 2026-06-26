@@ -11,6 +11,8 @@ Chinese: `README_MACROS_ZH.md`
 | `ASTEST_CREATE_ENGINE_FULL()` | Fresh isolated full engine |
 | `ASTEST_CREATE_ENGINE_NATIVE()` | Raw asIScriptEngine* from SDK |
 | `ASTEST_RESET_ENGINE(Engine)` | Reset shared engine (use in AFTER_ALL) |
+| `ASTEST_AS(SourceLiteral)` | Normalize indented inline AngelScript raw string literals to `FString` |
+| `ASTEST_AS_ANSI(SourceLiteral)` | Normalize indented inline AngelScript raw string literals to UTF-8 `std::string` |
 
 ## Legacy Macros (defined in `AngelscriptTestLegacyHelpers.h`)
 
@@ -24,3 +26,5 @@ They use `return false` internally and are incompatible with CQTest. Do not use 
 
 - Full guide: `TESTING_GUIDE.md`
 - CQTest template: `Template/Template_CQTest.cpp`
+- PIE template: `Template/Template_PIE.cpp`
+- Multiplayer PIE template: `Template/Template_MultiplayerPIE.cpp`
