@@ -1,6 +1,5 @@
 #include "CQTest.h"
 #include "AngelscriptFunctionalTestUtils.h"
-#include "AngelscriptNativeTestSupport.h"
 #include "AngelscriptTestMacros.h"
 
 #include "Components/ActorTestSpawner.h"

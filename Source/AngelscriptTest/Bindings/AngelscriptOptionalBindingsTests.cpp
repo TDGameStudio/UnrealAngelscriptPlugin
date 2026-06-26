@@ -7,7 +7,6 @@
 
 #include "CQTest.h"
 #include "AngelscriptBinds.h"
-#include "AngelscriptNativeTestSupport.h"
 #include "AngelscriptTestExecute.h"
 #include "AngelscriptTestMacros.h"
 #include "AngelscriptTestModuleScope.h"

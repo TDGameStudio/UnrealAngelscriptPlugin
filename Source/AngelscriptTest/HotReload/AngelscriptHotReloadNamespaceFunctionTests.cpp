@@ -1,5 +1,6 @@
 #include "CQTest.h"
 #include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestMacros.h"
 #include "AngelscriptTestUtilities.h"
 
 #include "Async/Async.h"

@@ -10,6 +10,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMacroValidationTest,
 	"Angelscript.TestModule.Validation",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	TEST_METHOD(InlineSourceMacro)
+	{
+		const FString Source = ASTEST_AS(R"AS(
+			class AMacroInlineSourceActor : AActor
+			{
+				int Entry()
+				{
+					return 41;
+				}
+			}
+		)AS");
+
+		ASSERT_THAT(AreEqual(
+			TEXT("class AMacroInlineSourceActor : AActor\n{\n\tint Entry()\n\t{\n\t\treturn 41;\n\t}\n}"),
+			Source,
+			TEXT("ASTEST_AS should be available from AngelscriptTestMacros.h and normalize visual indentation")));
+	}
+
 	TEST_METHOD(GlobalBindingsMacro)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
