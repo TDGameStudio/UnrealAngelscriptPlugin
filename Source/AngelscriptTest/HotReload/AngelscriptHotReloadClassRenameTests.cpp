@@ -46,6 +46,8 @@ namespace AngelscriptHotReloadClassRenameTest
 	static const FString RenameFilename(TEXT("HotReloadClassRename.as"));
 	static const FName OriginalParentClassName(TEXT("AHotReloadClassRenameOriginalParent"));
 	static const FName RenamedParentClassName(TEXT("AHotReloadClassRenameRenamedParent"));
+	static const FName FinalParentClassName(TEXT("AHotReloadClassRenameFinalParent"));
+	static const FName MissingParentClassName(TEXT("AHotReloadClassRenameMissingParent"));
 
 	static bool IsHandledReloadResult(const ECompileResult ReloadResult)
 	{
@@ -89,6 +91,48 @@ class AHotReloadClassRenameRenamedParent : AActor
 }
 )AS");
 	}
+
+	// V3: same file, the class has been renamed again to `AHotReloadClassRenameFinalParent`.
+	static FString MakeFinalScript()
+	{
+		return TEXT(R"AS(
+UCLASS()
+class AHotReloadClassRenameFinalParent : AActor
+{
+	UPROPERTY()
+	int ExampleValue = 7;
+
+	UFUNCTION()
+	int GetValue()
+	{
+		return ExampleValue;
+	}
+}
+)AS");
+	}
+
+	class FScopedClassRedirectList
+	{
+	public:
+		FScopedClassRedirectList(TArray<FCoreRedirect>&& InRedirects, const TCHAR* InSource)
+			: Redirects(MoveTemp(InRedirects))
+			, Source(InSource)
+		{
+			FCoreRedirects::AddRedirectList(MakeArrayView(Redirects), Source);
+		}
+
+		~FScopedClassRedirectList()
+		{
+			FCoreRedirects::RemoveRedirectList(MakeArrayView(Redirects), Source);
+		}
+
+		FScopedClassRedirectList(const FScopedClassRedirectList&) = delete;
+		FScopedClassRedirectList& operator=(const FScopedClassRedirectList&) = delete;
+
+	private:
+		TArray<FCoreRedirect> Redirects;
+		FString Source;
+	};
 
 	UBlueprint* CreateTransientBlueprintChild(FAutomationTestBase& Test, UClass* ParentClass)
 	{
@@ -156,6 +200,13 @@ class AHotReloadClassRenameRenamedParent : AActor
 	FCoreRedirect MakeClassRedirect(const FName OldClassName, const FName NewClassName)
 	{
 		return FCoreRedirect(ECoreRedirectFlags::Type_Class, OldClassName.ToString(), NewClassName.ToString());
+	}
+
+	FScopedClassRedirectList MakeScopedClassRedirect(const FName OldClassName, const FName NewClassName)
+	{
+		TArray<FCoreRedirect> Redirects;
+		Redirects.Add(MakeClassRedirect(OldClassName, NewClassName));
+		return FScopedClassRedirectList(MoveTemp(Redirects), TEXT("Angelscript hot reload class rename test"));
 	}
 }
 
@@ -315,12 +366,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadClassRenameTests,
 	{
 		using namespace AngelscriptHotReloadClassRenameTest;
 
-		const FCoreRedirect RenameRedirect = MakeClassRedirect(OriginalParentClassName, RenamedParentClassName);
-		FCoreRedirects::AddRedirectList(TArrayView<const FCoreRedirect>(&RenameRedirect, 1), TEXT("Angelscript hot reload class rename test"));
-		ON_SCOPE_EXIT
-		{
-			FCoreRedirects::RemoveRedirectList(TArrayView<const FCoreRedirect>(&RenameRedirect, 1), TEXT("Angelscript hot reload class rename test"));
-		};
+		const FScopedClassRedirectList RenameRedirect = MakeScopedClassRedirect(OriginalParentClassName, RenamedParentClassName);
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope EngineScope(Engine);
@@ -374,6 +420,149 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadClassRenameTests,
 			Cast<UASClass>(RenamedParentClass),
 			UASClass::GetFirstASClass(ReparentedBlueprintClass),
 			TEXT("Reparented Blueprint child should resolve its first AS class through the renamed parent")));
+		}
+	}
+
+	TEST_METHOD(InvalidRenameRedirectDoesNotReplaceUnrelatedRemovedClass)
+	{
+		using namespace AngelscriptHotReloadClassRenameTest;
+
+		const FScopedClassRedirectList RenameRedirect = MakeScopedClassRedirect(MissingParentClassName, RenamedParentClassName);
+
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		{ FAngelscriptEngineScope EngineScope(Engine);
+		UBlueprint* Blueprint = nullptr;
+		ON_SCOPE_EXIT
+		{
+			CleanupTransientBlueprint(Blueprint);
+			Engine.DiscardModule(*RenameModuleName.ToString());
+			ASTEST_RESET_ENGINE(Engine);
+		};
+
+		UClass* OriginalParentClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
+			*TestRunner,
+			Engine,
+			RenameModuleName,
+			RenameFilename,
+			MakeOriginalScript(),
+			OriginalParentClassName);
+		ASSERT_THAT(IsNotNull(OriginalParentClass));
+
+		UASClass* OriginalParentAS = Cast<UASClass>(OriginalParentClass);
+		ASSERT_THAT(IsNotNull(OriginalParentAS, TEXT("Invalid redirect test should start from a live AS parent class")));
+
+		Blueprint = CreateTransientBlueprintChild(*TestRunner, OriginalParentClass);
+		ASSERT_THAT(IsNotNull(Blueprint));
+
+		UClass* BlueprintClass = Blueprint->GeneratedClass.Get();
+		ASSERT_THAT(IsNotNull(BlueprintClass, TEXT("Invalid redirect test should expose the generated Blueprint class")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* BlueprintActor = AngelscriptFunctionalTestUtils::SpawnScriptActor(*TestRunner, Spawner, BlueprintClass);
+		ASSERT_THAT(IsNotNull(BlueprintActor, TEXT("Invalid redirect test should spawn a Blueprint child actor before reload")));
+		AngelscriptFunctionalTestUtils::BeginPlayActor(Engine, *BlueprintActor);
+
+		ECompileResult ReloadResult = ECompileResult::Error;
+		ASSERT_THAT(IsTrue(
+			CompileModuleWithResult(&Engine, ECompileType::FullReload, RenameModuleName, RenameFilename, MakeRenamedScript(), ReloadResult),
+			TEXT("Invalid redirect test should compile the renamed-class update")));
+		ASSERT_THAT(IsTrue(IsHandledReloadResult(ReloadResult), TEXT("Invalid redirect should still resolve through a handled full-reload path")));
+
+		UClass* RenamedParentClass = FindGeneratedClass(&Engine, RenamedParentClassName);
+		ASSERT_THAT(IsNotNull(RenamedParentClass, TEXT("Invalid redirect test should find the renamed class")));
+
+		UClass* ReparentedBlueprintClass = Blueprint->GeneratedClass.Get();
+		ASSERT_THAT(IsNotNull(ReparentedBlueprintClass, TEXT("Invalid redirect test should retain a generated Blueprint class after reload")));
+		ASSERT_THAT(IsNull(OriginalParentAS->NewerVersion, TEXT("Redirect from a missing old class must not link the unrelated removed class")));
+		ASSERT_THAT(AreEqual((UClass*)OriginalParentAS, Blueprint->ParentClass.Get(), TEXT("Invalid redirect must not update Blueprint ParentClass to the renamed class")));
+		ASSERT_THAT(IsFalse(ReparentedBlueprintClass->IsChildOf(RenamedParentClass), TEXT("Invalid redirect must not make the Blueprint child derive from the renamed class")));
+		}
+	}
+
+	TEST_METHOD(TwoStepRenameRedirectChainsNewerVersionWithoutCrossLinking)
+	{
+		using namespace AngelscriptHotReloadClassRenameTest;
+
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		{ FAngelscriptEngineScope EngineScope(Engine);
+		UBlueprint* Blueprint = nullptr;
+		ON_SCOPE_EXIT
+		{
+			CleanupTransientBlueprint(Blueprint);
+			Engine.DiscardModule(*RenameModuleName.ToString());
+			ASTEST_RESET_ENGINE(Engine);
+		};
+
+		UClass* OriginalParentClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
+			*TestRunner,
+			Engine,
+			RenameModuleName,
+			RenameFilename,
+			MakeOriginalScript(),
+			OriginalParentClassName);
+		ASSERT_THAT(IsNotNull(OriginalParentClass));
+
+		UASClass* OriginalParentAS = Cast<UASClass>(OriginalParentClass);
+		ASSERT_THAT(IsNotNull(OriginalParentAS, TEXT("Two-step redirect test should start from a live AS parent class")));
+
+		Blueprint = CreateTransientBlueprintChild(*TestRunner, OriginalParentClass);
+		ASSERT_THAT(IsNotNull(Blueprint));
+
+		UClass* BlueprintClass = Blueprint->GeneratedClass.Get();
+		ASSERT_THAT(IsNotNull(BlueprintClass, TEXT("Two-step redirect test should expose the generated Blueprint class")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* BlueprintActor = AngelscriptFunctionalTestUtils::SpawnScriptActor(*TestRunner, Spawner, BlueprintClass);
+		ASSERT_THAT(IsNotNull(BlueprintActor, TEXT("Two-step redirect test should spawn a Blueprint child actor before reload")));
+		AngelscriptFunctionalTestUtils::BeginPlayActor(Engine, *BlueprintActor);
+
+		{
+			const FScopedClassRedirectList FirstRenameRedirect = MakeScopedClassRedirect(OriginalParentClassName, RenamedParentClassName);
+
+			ECompileResult FirstReloadResult = ECompileResult::Error;
+			ASSERT_THAT(IsTrue(
+				CompileModuleWithResult(&Engine, ECompileType::FullReload, RenameModuleName, RenameFilename, MakeRenamedScript(), FirstReloadResult),
+				TEXT("Two-step redirect test should compile the first rename")));
+			ASSERT_THAT(IsTrue(IsHandledReloadResult(FirstReloadResult), TEXT("First configured rename should resolve through a handled full-reload path")));
+		}
+
+		UClass* RenamedParentClass = FindGeneratedClass(&Engine, RenamedParentClassName);
+		ASSERT_THAT(IsNotNull(RenamedParentClass, TEXT("Two-step redirect test should find the intermediate renamed class")));
+
+		UASClass* RenamedParentAS = Cast<UASClass>(RenamedParentClass);
+		ASSERT_THAT(IsNotNull(RenamedParentAS, TEXT("Intermediate parent should be a live UASClass")));
+
+		UClass* FirstReparentedBlueprintClass = Blueprint->GeneratedClass.Get();
+		ASSERT_THAT(IsNotNull(FirstReparentedBlueprintClass, TEXT("Two-step redirect test should retain a generated Blueprint class after first reload")));
+		ASSERT_THAT(AreEqual(RenamedParentClass, Blueprint->ParentClass.Get(), TEXT("First redirect should update Blueprint ParentClass to the intermediate class")));
+		ASSERT_THAT(IsTrue(FirstReparentedBlueprintClass->IsChildOf(RenamedParentClass), TEXT("First redirect should make the Blueprint child derive from the intermediate class")));
+		ASSERT_THAT(AreEqual((UClass*)RenamedParentAS, OriginalParentAS->NewerVersion, TEXT("First redirect should link original class to the intermediate class")));
+
+		{
+			const FScopedClassRedirectList SecondRenameRedirect = MakeScopedClassRedirect(RenamedParentClassName, FinalParentClassName);
+
+			ECompileResult SecondReloadResult = ECompileResult::Error;
+			ASSERT_THAT(IsTrue(
+				CompileModuleWithResult(&Engine, ECompileType::FullReload, RenameModuleName, RenameFilename, MakeFinalScript(), SecondReloadResult),
+				TEXT("Two-step redirect test should compile the second rename")));
+			ASSERT_THAT(IsTrue(IsHandledReloadResult(SecondReloadResult), TEXT("Second configured rename should resolve through a handled full-reload path")));
+		}
+
+		UClass* FinalParentClass = FindGeneratedClass(&Engine, FinalParentClassName);
+		ASSERT_THAT(IsNotNull(FinalParentClass, TEXT("Two-step redirect test should find the final renamed class")));
+
+		UClass* SecondReparentedBlueprintClass = Blueprint->GeneratedClass.Get();
+		ASSERT_THAT(IsNotNull(SecondReparentedBlueprintClass, TEXT("Two-step redirect test should retain a generated Blueprint class after second reload")));
+		ASSERT_THAT(AreEqual(FinalParentClass, Blueprint->ParentClass.Get(), TEXT("Second redirect should update Blueprint ParentClass to the final class")));
+		ASSERT_THAT(IsTrue(SecondReparentedBlueprintClass->IsChildOf(FinalParentClass), TEXT("Second redirect should make the Blueprint child derive from the final class")));
+		ASSERT_THAT(AreEqual(FinalParentClass, RenamedParentAS->NewerVersion, TEXT("Second redirect should link intermediate class to the final class")));
+		ASSERT_THAT(AreEqual((UClass*)RenamedParentAS, OriginalParentAS->NewerVersion, TEXT("Second redirect must not rewrite the original class directly to the final class")));
+		ASSERT_THAT(AreEqual(
+			Cast<UASClass>(FinalParentClass),
+			UASClass::GetFirstASClass(SecondReparentedBlueprintClass),
+			TEXT("Two-step reparented Blueprint child should resolve its first AS class through the final parent")));
 		}
 	}
 
