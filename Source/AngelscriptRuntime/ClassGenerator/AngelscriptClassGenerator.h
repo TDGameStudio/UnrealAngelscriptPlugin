@@ -169,6 +169,7 @@ private:
 	void AnalyzeEnums(FModuleData& Module);
 
 	void CreateFullReloadClass(FModuleData& Module, FClassData& Class);
+	UASClass* ResolveClassRedirectReplacedClass(FModuleData& Module, FClassData& Class);
 	void FullReloadRemoveClass(FModuleData& Module, TSharedPtr<FAngelscriptClassDesc> RemovedClass);
 	void CreateFullReloadStruct(FModuleData& Module, FClassData& Class);
 	void CreateFullReloadDelegate(FModuleData& Module, FDelegateData& Delegate);

@@ -8,6 +8,7 @@
 #include "UObject/UObjectIterator.h"
 #include "UObject/GarbageCollection.h"
 #include "UObject/GarbageCollectionSchema.h"
+#include "UObject/CoreRedirects.h"
 //#include "GarbageCollectionSchema.h"
 #include "UObject/GarbageCollection.h"
 //#include "CoreUObject/Private/Serialization/UnversionPropertySerialization.h"
@@ -2723,11 +2724,21 @@ void FAngelscriptClassGenerator::CreateFullReloadClass(FModuleData& ModuleData, 
 
 	// Check if we're replacing a class
 	UASClass* ReplacedClass = FindObject<UASClass>(FAngelscriptEngine::GetPackage(), *UnrealName);
+	const bool bReplacingSameNameClass = ReplacedClass != nullptr;
+	if (ReplacedClass == nullptr)
+	{
+		ReplacedClass = ResolveClassRedirectReplacedClass(ModuleData, ClassData);
+	}
+
 	if (ReplacedClass)
 	{
-		FString OldClassName = FString::Printf(TEXT("%s_REPLACED_%d"), *ReplacedClass->GetName(), UniqueCounter());
-		ReplacedClass->Rename(*OldClassName, nullptr, REN_DontCreateRedirectors);
 		ReplacedClass->ClassFlags |= CLASS_NewerVersionExists;
+
+		if (bReplacingSameNameClass)
+		{
+			FString OldClassName = FString::Printf(TEXT("%s_REPLACED_%d"), *ReplacedClass->GetName(), UniqueCounter());
+			ReplacedClass->Rename(*OldClassName, nullptr, REN_DontCreateRedirectors);
+		}
 	}
 
 	LLM_SCOPE_BYTAG(Angelscript);
@@ -2755,6 +2766,58 @@ void FAngelscriptClassGenerator::CreateFullReloadClass(FModuleData& ModuleData, 
 			FSubsystemCollectionBase::DeactivateExternalSubsystem(ReplacedClass);
 		ReinstancedSubsystems.Add(NewClass);
 	}
+}
+
+UASClass* FAngelscriptClassGenerator::ResolveClassRedirectReplacedClass(FModuleData& ModuleData, FClassData& ClassData)
+{
+	if (!ClassData.NewClass.IsValid()
+		|| ClassData.OldClass.IsValid()
+		|| ClassData.NewClass->bIsStruct
+		|| ClassData.NewClass->bIsStaticsClass)
+	{
+		return nullptr;
+	}
+
+	TArray<FCoreRedirectObjectName> PreviousClassNames;
+	if (!FCoreRedirects::FindPreviousNames(
+		ECoreRedirectFlags::Type_Class,
+		FCoreRedirectObjectName(ClassData.NewClass->ClassName),
+		PreviousClassNames))
+	{
+		FCoreRedirects::FindPreviousNames(
+			ECoreRedirectFlags::Type_Class,
+			FCoreRedirectObjectName(FString::Printf(TEXT("/Script/Angelscript.%s"), *ClassData.NewClass->ClassName)),
+			PreviousClassNames);
+		if (PreviousClassNames.Num() == 0)
+		{
+			return nullptr;
+		}
+	}
+
+	for (const FCoreRedirectObjectName& PreviousClassName : PreviousClassNames)
+	{
+		const FString PreviousClassPath = PreviousClassName.ToString();
+		for (const TSharedPtr<FAngelscriptClassDesc>& RemovedClass : ModuleData.RemovedClasses)
+		{
+			if (!RemovedClass.IsValid()
+				|| RemovedClass->bIsStruct)
+			{
+				continue;
+			}
+
+			const FName RemovedClassName(*RemovedClass->ClassName);
+			if (PreviousClassName.ObjectName != RemovedClassName
+				&& PreviousClassPath != RemovedClass->ClassName
+				&& PreviousClassPath != FString::Printf(TEXT("/Script/Angelscript.%s"), *RemovedClass->ClassName))
+			{
+				continue;
+			}
+
+			return Cast<UASClass>(RemovedClass->Class);
+		}
+	}
+
+	return nullptr;
 }
 
 void FAngelscriptClassGenerator::FullReloadRemoveClass(FModuleData& ModuleData, TSharedPtr<FAngelscriptClassDesc> RemovedClass)
