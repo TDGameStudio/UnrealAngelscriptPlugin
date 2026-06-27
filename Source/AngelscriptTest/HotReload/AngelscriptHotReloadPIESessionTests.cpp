@@ -15,8 +15,8 @@
 
 #if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadPIETests,
-	"Angelscript.TestModule.HotReload.PIE",
+TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadPIESessionTests,
+	"Angelscript.TestModule.HotReload.PIESession",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
