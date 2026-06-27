@@ -88,6 +88,8 @@ public:
 	//virtual int32 GetContainerSize() const override { return ContainerSize; }
 	virtual int32 GetContainerSize() const { return ContainerSize; }
 
+	void ApplyScriptDefaults(UObject* Object);
+
 	virtual bool IsSafeForRootSet() const override { return true; }
 	
 	//WILL-EDIT

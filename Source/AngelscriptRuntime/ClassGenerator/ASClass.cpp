@@ -1141,6 +1141,14 @@ static FORCEINLINE_DEBUGGABLE void ExecuteDefaultsFunctions(UObject* Object, UAS
 	}
 }
 
+void UASClass::ApplyScriptDefaults(UObject* Object)
+{
+	if (Object == nullptr)
+		return;
+
+	ExecuteDefaultsFunctions(Object, this);
+}
+
 static FORCEINLINE_DEBUGGABLE void ExecuteConstructFunction(UObject* Object, UASClass* Class)
 {
 	if (Class->ConstructFunction != nullptr && Class->OwnerScriptEngine != nullptr)

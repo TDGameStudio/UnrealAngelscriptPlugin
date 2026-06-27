@@ -2,6 +2,7 @@
 #include "CoreMinimal.h"
 #include "Editor.h"
 
+#include "Engine/DataTable.h"
 #include "GameFramework/Volume.h"
 
 #include "BlueprintActionDatabase.h"

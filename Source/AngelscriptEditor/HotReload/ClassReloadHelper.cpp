@@ -129,6 +129,103 @@ namespace
 
 		FBlueprintCompilationManager::FlushCompilationQueueAndReinstance();
 	}
+
+	int32 GetReloadClassDepth(const UClass* Class)
+	{
+		int32 Depth = 0;
+		for (const UStruct* SuperStruct = Class != nullptr ? Class->GetSuperStruct() : nullptr;
+			SuperStruct != nullptr;
+			SuperStruct = SuperStruct->GetSuperStruct())
+		{
+			++Depth;
+		}
+
+		return Depth;
+	}
+
+	void ReparentReloadClassHierarchies(const TMap<UClass*, UClass*>& ReloadClasses)
+	{
+		TArray<TPair<UClass*, UClass*>> ReloadPairs;
+		for (const TPair<UClass*, UClass*>& ReloadClass : ReloadClasses)
+		{
+			if (ReloadClass.Key != nullptr && ReloadClass.Value != nullptr)
+			{
+				ReloadPairs.Add(ReloadClass);
+			}
+		}
+
+		ReloadPairs.Sort([](const TPair<UClass*, UClass*>& A, const TPair<UClass*, UClass*>& B)
+		{
+			const int32 DepthA = GetReloadClassDepth(A.Key);
+			const int32 DepthB = GetReloadClassDepth(B.Key);
+			if (DepthA != DepthB)
+			{
+				return DepthA > DepthB;
+			}
+
+			return A.Key->GetFName().LexicalLess(B.Key->GetFName());
+		});
+
+		// UE's ReparentHierarchies expands each old class to all derived classes and
+		// only suppresses derived classes that are present in the same old->new map.
+		// AS can replace a parent and child UASClass in one reload; keeping them in
+		// separate hierarchy batches avoids constructing child CDOs from a parent
+		// replacement template while still letting unrelated reloads batch together.
+		while (ReloadPairs.Num() != 0)
+		{
+			TMap<UClass*, UClass*> ReloadBatch;
+			TArray<TPair<UClass*, UClass*>> RemainingPairs;
+
+			for (const TPair<UClass*, UClass*>& ReloadPair : ReloadPairs)
+			{
+				bool bConflictsWithBatchParent = false;
+				for (const TPair<UClass*, UClass*>& BatchPair : ReloadBatch)
+				{
+					if (ReloadPair.Key->IsChildOf(BatchPair.Key) || BatchPair.Key->IsChildOf(ReloadPair.Key))
+					{
+						bConflictsWithBatchParent = true;
+						break;
+					}
+				}
+
+				if (bConflictsWithBatchParent)
+				{
+					RemainingPairs.Add(ReloadPair);
+				}
+				else
+				{
+					ReloadBatch.Add(ReloadPair.Key, ReloadPair.Value);
+				}
+			}
+
+			if (ReloadBatch.Num() != 0)
+			{
+				FBlueprintCompilationManager::ReparentHierarchies(ReloadBatch);
+			}
+
+			ReloadPairs = MoveTemp(RemainingPairs);
+		}
+	}
+
+	void ReapplyScriptDefaultsToReloadClassCDOs(const TMap<UClass*, UClass*>& ReloadClasses)
+	{
+		for (const TPair<UClass*, UClass*>& ReloadClass : ReloadClasses)
+		{
+			UASClass* NewASClass = Cast<UASClass>(ReloadClass.Value);
+			if (NewASClass == nullptr)
+			{
+				continue;
+			}
+
+			UObject* CDO = NewASClass->GetDefaultObject(false);
+			if (CDO == nullptr)
+			{
+				continue;
+			}
+
+			NewASClass->ApplyScriptDefaults(CDO);
+		}
+	}
 }
 
 // The new unreal reload system is not yet up to providing for AS reloads (for example, it does not deal well with changing UFunction definitions)
@@ -391,7 +488,8 @@ void FClassReloadHelper::FReloadState::PerformReinstance()
 
 		// Call into unreal's standard reinstancing system to
 		// actually recreate objects using the old classes.
-		FBlueprintCompilationManager::ReparentHierarchies(ReloadClasses);
+		ReparentReloadClassHierarchies(ReloadClasses);
+		ReapplyScriptDefaultsToReloadClassCDOs(ReloadClasses);
 
 		//WILL-EDIT-TEMP
 		//GAngelscriptAdditionalReplacementObjects.Reset();
