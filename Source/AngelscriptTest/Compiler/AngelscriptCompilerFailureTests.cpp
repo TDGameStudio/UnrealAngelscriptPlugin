@@ -9,7 +9,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 
-namespace CompilerPipelineFailureTest
+namespace CompilerFailureTest
 {
 	static const FName EmptyModuleName(TEXT("CompilerEmptySourceFailure"));
 	static const FString EmptyScriptFilename(TEXT("CompilerEmptySourceFailure.as"));
@@ -57,31 +57,31 @@ namespace CompilerPipelineFailureTest
 	}
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerEndToEndFailureTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerFailureTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	TEST_METHOD(EmptySourceFailsWithoutStateLeak)
 	{
-		using namespace CompilerPipelineFailureTest;
+		using namespace CompilerFailureTest;
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineFailureTest::EmptyModuleName.ToString());
-			Engine.DiscardModule(*CompilerPipelineFailureTest::RecoveryModuleName.ToString());
+			Engine.DiscardModule(*CompilerFailureTest::EmptyModuleName.ToString());
+			Engine.DiscardModule(*CompilerFailureTest::RecoveryModuleName.ToString());
 		};
 
-		TestRunner->AddExpectedError(CompilerPipelineFailureTest::EmptySourceDiagnostic, EAutomationExpectedErrorFlags::Contains, 1);
+		TestRunner->AddExpectedError(CompilerFailureTest::EmptySourceDiagnostic, EAutomationExpectedErrorFlags::Contains, 1);
 
 		FAngelscriptCompileTraceSummary EmptySummary;
 		const bool bEmptyCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::SoftReloadOnly,
-			CompilerPipelineFailureTest::EmptyModuleName,
-			CompilerPipelineFailureTest::EmptyScriptFilename,
+			CompilerFailureTest::EmptyModuleName,
+			CompilerFailureTest::EmptyScriptFilename,
 			FString(),
 			true,
 			EmptySummary,
@@ -102,7 +102,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerEndToEndFailureTests,
 			EmptySummary.CompiledModuleCount,
 			TEXT("Empty source failure should not leave any compiled modules behind")));
 		ASSERT_THAT(IsTrue(
-			CompilerPipelineFailureTest::HasErrorDiagnostic(EmptySummary.Diagnostics),
+			CompilerFailureTest::HasErrorDiagnostic(EmptySummary.Diagnostics),
 			TEXT("Empty source failure should capture at least one error diagnostic")));
 
 		FAngelscriptCompileTraceSummary RecoverySummary;
@@ -115,8 +115,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerEndToEndFailureTests,
 		const bool bRecoveryCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::SoftReloadOnly,
-			CompilerPipelineFailureTest::RecoveryModuleName,
-			CompilerPipelineFailureTest::RecoveryScriptFilename,
+			CompilerFailureTest::RecoveryModuleName,
+			CompilerFailureTest::RecoveryScriptFilename,
 			RecoveryScript,
 			true,
 			RecoverySummary);
@@ -144,8 +144,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerEndToEndFailureTests,
 		int32 EntryResult = 0;
 		const bool bExecuted = ExecuteIntFunction(
 			&Engine,
-			CompilerPipelineFailureTest::RecoveryScriptFilename,
-			CompilerPipelineFailureTest::RecoveryModuleName,
+			CompilerFailureTest::RecoveryScriptFilename,
+			CompilerFailureTest::RecoveryModuleName,
 			TEXT("int Entry()"),
 			EntryResult);
 		ASSERT_THAT(IsTrue(
@@ -164,7 +164,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerEndToEndFailureTests,
 
 	TEST_METHOD(SyntaxErrorFailsWithoutResidualReflection)
 	{
-		using namespace CompilerPipelineFailureTest;
+		using namespace CompilerFailureTest;
 
 		const FString InitialScript = TEXT(R"AS(
 	UCLASS()
@@ -205,26 +205,26 @@ TEST_CLASS_WITH_FLAGS(FCompilerEndToEndFailureTests,
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineFailureTest::SyntaxFailureModuleName.ToString());
+			Engine.DiscardModule(*CompilerFailureTest::SyntaxFailureModuleName.ToString());
 		};
 
 		const bool bInitialCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
-			CompilerPipelineFailureTest::SyntaxFailureModuleName,
-			CompilerPipelineFailureTest::SyntaxFailureScriptFilename,
+			CompilerFailureTest::SyntaxFailureModuleName,
+			CompilerFailureTest::SyntaxFailureScriptFilename,
 			InitialScript);
 		if (!this->Assert.IsTrue(bInitialCompiled, TEXT("Syntax-error recovery test should compile the initial annotated module")))
 		{
 			return;
 		}
 
-		UClass* InitialClass = FindGeneratedClass(&Engine, CompilerPipelineFailureTest::SyntaxFailureClassName);
+		UClass* InitialClass = FindGeneratedClass(&Engine, CompilerFailureTest::SyntaxFailureClassName);
 		if (!this->Assert.IsNotNull(InitialClass, TEXT("Syntax-error recovery test should materialize the initial generated class")))
 		{
 			return;
 		}
 
-		UFunction* InitialFunction = FindGeneratedFunction(InitialClass, CompilerPipelineFailureTest::SyntaxFailureFunctionName);
+		UFunction* InitialFunction = FindGeneratedFunction(InitialClass, CompilerFailureTest::SyntaxFailureFunctionName);
 		if (!this->Assert.IsNotNull(InitialFunction, TEXT("Syntax-error recovery test should find the initial generated function")))
 		{
 			return;
@@ -253,8 +253,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerEndToEndFailureTests,
 		const bool bBrokenCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::SoftReloadOnly,
-			CompilerPipelineFailureTest::SyntaxFailureModuleName,
-			CompilerPipelineFailureTest::SyntaxFailureScriptFilename,
+			CompilerFailureTest::SyntaxFailureModuleName,
+			CompilerFailureTest::SyntaxFailureScriptFilename,
 			BrokenScript,
 			true,
 			BrokenSummary,
@@ -271,31 +271,31 @@ TEST_CLASS_WITH_FLAGS(FCompilerEndToEndFailureTests,
 			TEXT("Syntax-error recovery test should surface a compile error result for the broken recompile")));
 
 		const FAngelscriptCompileTraceDiagnosticSummary* BrokenDiagnostic =
-			CompilerPipelineFailureTest::FindFirstErrorDiagnostic(BrokenSummary.Diagnostics);
+			CompilerFailureTest::FindFirstErrorDiagnostic(BrokenSummary.Diagnostics);
 		const bool bHasBrokenDiagnostic = this->Assert.IsNotNull(
 			BrokenDiagnostic,
 			TEXT("Syntax-error recovery test should capture an error diagnostic for the broken recompile"));
 		if (bHasBrokenDiagnostic)
 		{
 			ASSERT_THAT(AreEqual(
-				CompilerPipelineFailureTest::SyntaxFailureLine,
+				CompilerFailureTest::SyntaxFailureLine,
 				BrokenDiagnostic->Row,
 				TEXT("Syntax-error recovery test should point the diagnostic at the missing semicolon line")));
 			ASSERT_THAT(IsTrue(
 				!BrokenDiagnostic->Message.IsEmpty(),
 				TEXT("Syntax-error recovery test should emit a non-empty diagnostic message for the broken recompile")));
 			ASSERT_THAT(IsTrue(
-				BrokenDiagnostic->Message.Contains(CompilerPipelineFailureTest::SyntaxDiagnosticFragment)
-					|| BrokenDiagnostic->Message.Contains(CompilerPipelineFailureTest::SyntaxDiagnosticFallbackFragment),
+				BrokenDiagnostic->Message.Contains(CompilerFailureTest::SyntaxDiagnosticFragment)
+					|| BrokenDiagnostic->Message.Contains(CompilerFailureTest::SyntaxDiagnosticFallbackFragment),
 				TEXT("Syntax-error recovery test should keep a syntax-oriented diagnostic message")));
 		}
 
-		UClass* ClassAfterFailure = FindGeneratedClass(&Engine, CompilerPipelineFailureTest::SyntaxFailureClassName);
+		UClass* ClassAfterFailure = FindGeneratedClass(&Engine, CompilerFailureTest::SyntaxFailureClassName);
 		ASSERT_THAT(IsTrue(
 			ClassAfterFailure == InitialClass,
 			TEXT("Syntax-error recovery test should keep the previously generated class active after the broken recompile")));
 
-		UFunction* FunctionAfterFailure = FindGeneratedFunction(ClassAfterFailure, CompilerPipelineFailureTest::SyntaxFailureFunctionName);
+		UFunction* FunctionAfterFailure = FindGeneratedFunction(ClassAfterFailure, CompilerFailureTest::SyntaxFailureFunctionName);
 		ASSERT_THAT(IsTrue(
 			FunctionAfterFailure == InitialFunction,
 			TEXT("Syntax-error recovery test should keep the previously generated function active after the broken recompile")));
@@ -322,8 +322,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerEndToEndFailureTests,
 		const bool bFixedCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::SoftReloadOnly,
-			CompilerPipelineFailureTest::SyntaxFailureModuleName,
-			CompilerPipelineFailureTest::SyntaxFailureScriptFilename,
+			CompilerFailureTest::SyntaxFailureModuleName,
+			CompilerFailureTest::SyntaxFailureScriptFilename,
 			FixedScript,
 			true,
 			FixedSummary);
@@ -331,7 +331,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerEndToEndFailureTests,
 			bFixedCompiled,
 			TEXT("Syntax-error recovery test should successfully compile the fixed script after the broken recompile")));
 		ASSERT_THAT(IsTrue(
-			CompilerPipelineFailureTest::IsHandledCompileResult(FixedSummary.CompileResult),
+			CompilerFailureTest::IsHandledCompileResult(FixedSummary.CompileResult),
 			TEXT("Syntax-error recovery test should report a handled compile result for the fixed recompile")));
 		ASSERT_THAT(AreEqual(
 			1,
@@ -346,13 +346,13 @@ TEST_CLASS_WITH_FLAGS(FCompilerEndToEndFailureTests,
 			return;
 		}
 
-		UClass* FixedClass = FindGeneratedClass(&Engine, CompilerPipelineFailureTest::SyntaxFailureClassName);
+		UClass* FixedClass = FindGeneratedClass(&Engine, CompilerFailureTest::SyntaxFailureClassName);
 		if (!this->Assert.IsNotNull(FixedClass, TEXT("Syntax-error recovery test should keep a generated class available after the fixed recompile")))
 		{
 			return;
 		}
 
-		UFunction* FixedFunction = FindGeneratedFunction(FixedClass, CompilerPipelineFailureTest::SyntaxFailureFunctionName);
+		UFunction* FixedFunction = FindGeneratedFunction(FixedClass, CompilerFailureTest::SyntaxFailureFunctionName);
 		if (!this->Assert.IsNotNull(FixedFunction, TEXT("Syntax-error recovery test should expose the fixed generated function")))
 		{
 			return;

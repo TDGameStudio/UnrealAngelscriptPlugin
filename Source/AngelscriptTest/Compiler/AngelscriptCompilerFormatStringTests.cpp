@@ -11,7 +11,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelineFormatStringTest
+namespace CompilerFormatStringTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.FormatStringRewriteProducesExpectedOutput"));
 	static const FString RelativeScriptPath(TEXT("Tests/Compiler/FormatStringRewriteProducesExpectedOutput.as"));
@@ -80,7 +80,7 @@ namespace CompilerPipelineFormatStringTest
 	}
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineFormatStringTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerFormatStringTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -131,25 +131,25 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFormatStringTests,
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-		const FString AbsoluteScriptPath = CompilerPipelineFormatStringTest::WriteFixture(
-			CompilerPipelineFormatStringTest::RelativeScriptPath,
+		const FString AbsoluteScriptPath = CompilerFormatStringTest::WriteFixture(
+			CompilerFormatStringTest::RelativeScriptPath,
 			ScriptSource);
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineFormatStringTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerFormatStringTest::ModuleName.ToString());
 			IFileManager::Get().Delete(*AbsoluteScriptPath, false, true);
 		};
 
 		Engine.ResetDiagnostics();
 
 		FAngelscriptPreprocessor Preprocessor;
-		Preprocessor.AddFile(CompilerPipelineFormatStringTest::RelativeScriptPath, AbsoluteScriptPath);
+		Preprocessor.AddFile(CompilerFormatStringTest::RelativeScriptPath, AbsoluteScriptPath);
 
 		const bool bPreprocessSucceeded = Preprocessor.Preprocess();
 		const TArray<TSharedRef<FAngelscriptModuleDesc>> Modules = Preprocessor.GetModulesToCompile();
 
 		int32 PreprocessErrorCount = 0;
-		const TArray<FString> PreprocessMessages = CompilerPipelineFormatStringTest::CollectDiagnosticMessages(
+		const TArray<FString> PreprocessMessages = CompilerFormatStringTest::CollectDiagnosticMessages(
 			Engine,
 			AbsoluteScriptPath,
 			PreprocessErrorCount);
@@ -175,7 +175,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFormatStringTests,
 		if (Modules.Num() > 0)
 		{
 			ASSERT_THAT(AreEqual(
-				CompilerPipelineFormatStringTest::ModuleName.ToString(),
+				CompilerFormatStringTest::ModuleName.ToString(),
 				Modules[0]->ModuleName,
 				TEXT("Format string rewrite test case should preserve the expected module name")));
 		}
@@ -191,7 +191,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFormatStringTests,
 			TEXT("Format string rewrite test case should rewrite equals expansion into an explicit label prefix")));
 		ASSERT_THAT(AreEqual(
 			3,
-			CompilerPipelineFormatStringTest::CountOccurrences(ProcessedCode, TEXT("FString::ApplyFormat((")),
+			CompilerFormatStringTest::CountOccurrences(ProcessedCode, TEXT("FString::ApplyFormat((")),
 			TEXT("Format string rewrite test case should produce three ApplyFormat calls for both specifier paths")));
 		ASSERT_THAT(IsTrue(
 			ProcessedCode.Contains(TEXT("\"#06x\"")),
@@ -206,8 +206,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFormatStringTests,
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::SoftReloadOnly,
-			CompilerPipelineFormatStringTest::ModuleName,
-			CompilerPipelineFormatStringTest::RelativeScriptPath,
+			CompilerFormatStringTest::ModuleName,
+			CompilerFormatStringTest::RelativeScriptPath,
 			ScriptSource,
 			true,
 			Summary,
@@ -231,8 +231,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFormatStringTests,
 		const bool bExecuted = bCompiled
 			&& ExecuteIntFunction(
 				&Engine,
-				CompilerPipelineFormatStringTest::RelativeScriptPath,
-				CompilerPipelineFormatStringTest::ModuleName,
+				CompilerFormatStringTest::RelativeScriptPath,
+				CompilerFormatStringTest::ModuleName,
 				TEXT("int Entry()"),
 				EntryResult);
 		ASSERT_THAT(IsTrue(

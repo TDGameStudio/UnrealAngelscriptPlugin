@@ -21,7 +21,7 @@ namespace UPropertySpecifierMatrixTest
 // EditConst -> CPF_EditConst
 // ============================================================================
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineUPropertySpecifierMatrixTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerUPropertySpecifierMatrixTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {

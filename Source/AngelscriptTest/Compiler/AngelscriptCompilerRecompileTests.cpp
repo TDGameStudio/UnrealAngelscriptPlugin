@@ -10,7 +10,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelineRecompileTest
+namespace CompilerRecompileTest
 {
 	static const FName ModuleName(TEXT("CompilerSuccessfulRecompileReplacesStaleOutputs"));
 	static const FString ScriptFilename(TEXT("CompilerSuccessfulRecompileReplacesStaleOutputs.as"));
@@ -141,13 +141,13 @@ int Entry()
 	}
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineRecompileTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerRecompileTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	TEST_METHOD(SuccessfulRecompileReplacesStaleOutputs)
 	{
-	using namespace CompilerPipelineRecompileTest;
+	using namespace CompilerRecompileTest;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -155,7 +155,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRecompileTests,
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineRecompileTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerRecompileTest::ModuleName.ToString());
 		};
 
 		Engine.ResetDiagnostics();
@@ -164,9 +164,9 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRecompileTests,
 		const bool bInitialCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::FullReload,
-			CompilerPipelineRecompileTest::ModuleName,
-			CompilerPipelineRecompileTest::ScriptFilename,
-			CompilerPipelineRecompileTest::MakeScriptSource(7),
+			CompilerRecompileTest::ModuleName,
+			CompilerRecompileTest::ScriptFilename,
+			CompilerRecompileTest::MakeScriptSource(7),
 			true,
 			InitialSummary);
 		ASSERT_THAT(IsTrue(
@@ -186,26 +186,26 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRecompileTests,
 		}
 
 		TSharedPtr<FAngelscriptModuleDesc> InitialModuleDesc = Engine.GetModuleByFilenameOrModuleName(
-			CompilerPipelineRecompileTest::ScriptFilename,
-			CompilerPipelineRecompileTest::ModuleName.ToString());
+			CompilerRecompileTest::ScriptFilename,
+			CompilerRecompileTest::ModuleName.ToString());
 		if (!this->Assert.IsNotNull(InitialModuleDesc.Get(), TEXT("Successful recompile test case should publish the initial module descriptor")))
 		{
 			return;
 		}
 
-		UClass* InitialClass = FindGeneratedClass(&Engine, CompilerPipelineRecompileTest::GeneratedClassName);
+		UClass* InitialClass = FindGeneratedClass(&Engine, CompilerRecompileTest::GeneratedClassName);
 		UFunction* InitialFunction = InitialClass != nullptr
-			? FindGeneratedFunction(InitialClass, CompilerPipelineRecompileTest::GeneratedFunctionName)
+			? FindGeneratedFunction(InitialClass, CompilerRecompileTest::GeneratedFunctionName)
 			: nullptr;
-		if (!CompilerPipelineRecompileTest::ExecuteEntryAndExpect(*TestRunner, Engine, 7)
-			|| !CompilerPipelineRecompileTest::ExecuteGeneratedValueAndExpect(*TestRunner, Engine, InitialClass, InitialFunction, 7))
+		if (!CompilerRecompileTest::ExecuteEntryAndExpect(*TestRunner, Engine, 7)
+			|| !CompilerRecompileTest::ExecuteGeneratedValueAndExpect(*TestRunner, Engine, InitialClass, InitialFunction, 7))
 		{
 			return;
 		}
 
 		ASSERT_THAT(AreEqual(
 			1,
-			CompilerPipelineRecompileTest::CountActiveModulesByName(Engine, CompilerPipelineRecompileTest::ModuleName.ToString()),
+			CompilerRecompileTest::CountActiveModulesByName(Engine, CompilerRecompileTest::ModuleName.ToString()),
 			TEXT("Successful recompile test case should keep exactly one active module after the initial compile")));
 
 		Engine.ResetDiagnostics();
@@ -214,9 +214,9 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRecompileTests,
 		const bool bRecompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::FullReload,
-			CompilerPipelineRecompileTest::ModuleName,
-			CompilerPipelineRecompileTest::ScriptFilename,
-			CompilerPipelineRecompileTest::MakeScriptSource(42),
+			CompilerRecompileTest::ModuleName,
+			CompilerRecompileTest::ScriptFilename,
+			CompilerRecompileTest::MakeScriptSource(42),
 			true,
 			RecompiledSummary);
 		ASSERT_THAT(IsTrue(
@@ -236,26 +236,26 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRecompileTests,
 		}
 
 		TSharedPtr<FAngelscriptModuleDesc> RecompiledModuleDesc = Engine.GetModuleByFilenameOrModuleName(
-			CompilerPipelineRecompileTest::ScriptFilename,
-			CompilerPipelineRecompileTest::ModuleName.ToString());
+			CompilerRecompileTest::ScriptFilename,
+			CompilerRecompileTest::ModuleName.ToString());
 		if (!this->Assert.IsNotNull(RecompiledModuleDesc.Get(), TEXT("Successful recompile test case should publish the recompiled module descriptor")))
 		{
 			return;
 		}
 
-		UClass* RecompiledClass = FindGeneratedClass(&Engine, CompilerPipelineRecompileTest::GeneratedClassName);
+		UClass* RecompiledClass = FindGeneratedClass(&Engine, CompilerRecompileTest::GeneratedClassName);
 		UFunction* RecompiledFunction = RecompiledClass != nullptr
-			? FindGeneratedFunction(RecompiledClass, CompilerPipelineRecompileTest::GeneratedFunctionName)
+			? FindGeneratedFunction(RecompiledClass, CompilerRecompileTest::GeneratedFunctionName)
 			: nullptr;
-		if (!CompilerPipelineRecompileTest::ExecuteEntryAndExpect(*TestRunner, Engine, 42)
-			|| !CompilerPipelineRecompileTest::ExecuteGeneratedValueAndExpect(*TestRunner, Engine, RecompiledClass, RecompiledFunction, 42))
+		if (!CompilerRecompileTest::ExecuteEntryAndExpect(*TestRunner, Engine, 42)
+			|| !CompilerRecompileTest::ExecuteGeneratedValueAndExpect(*TestRunner, Engine, RecompiledClass, RecompiledFunction, 42))
 		{
 			return;
 		}
 
 		ASSERT_THAT(AreEqual(
 			1,
-			CompilerPipelineRecompileTest::CountActiveModulesByName(Engine, CompilerPipelineRecompileTest::ModuleName.ToString()),
+			CompilerRecompileTest::CountActiveModulesByName(Engine, CompilerRecompileTest::ModuleName.ToString()),
 			TEXT("Successful recompile test case should keep exactly one active module after the updated compile")));
 		ASSERT_THAT(AreNotEqual(
 			InitialModuleDesc.Get(),
@@ -267,7 +267,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRecompileTests,
 
 		if (RecompiledClass == InitialClass && RecompiledFunction == InitialFunction)
 		{
-			CompilerPipelineRecompileTest::ExecuteGeneratedValueAndExpect(
+			CompilerRecompileTest::ExecuteGeneratedValueAndExpect(
 				*TestRunner,
 				Engine,
 				InitialClass,

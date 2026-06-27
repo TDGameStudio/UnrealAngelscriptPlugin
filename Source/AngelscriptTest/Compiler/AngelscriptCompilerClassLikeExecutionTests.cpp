@@ -8,7 +8,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelineClassLikeExecutionTest
+namespace CompilerClassLikeExecutionTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.ClassLikeMethodExecutionRoundTrip"));
 	static const FString ScriptFilename(TEXT("Tests/Compiler/ClassLikeMethodExecutionRoundTrip.as"));
@@ -16,7 +16,7 @@ namespace CompilerPipelineClassLikeExecutionTest
 	static const FName VerifyFunctionName(TEXT("VerifyRoundTrip"));
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassLikeExecutionTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerClassLikeExecutionTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -69,15 +69,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassLikeExecutionTests,
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineClassLikeExecutionTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerClassLikeExecutionTest::ModuleName.ToString());
 		};
 
 		FAngelscriptCompileTraceSummary Summary;
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::FullReload,
-			CompilerPipelineClassLikeExecutionTest::ModuleName,
-			CompilerPipelineClassLikeExecutionTest::ScriptFilename,
+			CompilerClassLikeExecutionTest::ModuleName,
+			CompilerClassLikeExecutionTest::ScriptFilename,
 			ScriptSource,
 			true,
 			Summary);
@@ -91,13 +91,13 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassLikeExecutionTests,
 			return;
 		}
 
-		UClass* GeneratedClass = FindGeneratedClass(&Engine, CompilerPipelineClassLikeExecutionTest::GeneratedClassName);
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, CompilerClassLikeExecutionTest::GeneratedClassName);
 		ASSERT_THAT(IsNotNull(GeneratedClass, TEXT("Class-like method execution round-trip should generate the annotated carrier class")));
 
 		UFunction* EchoPlainClass = FindGeneratedFunction(GeneratedClass, TEXT("EchoPlainClass"));
 		UFunction* EchoActorClass = FindGeneratedFunction(GeneratedClass, TEXT("EchoActorClass"));
 		UFunction* EchoSoftActorClass = FindGeneratedFunction(GeneratedClass, TEXT("EchoSoftActorClass"));
-		UFunction* VerifyRoundTrip = FindGeneratedFunction(GeneratedClass, CompilerPipelineClassLikeExecutionTest::VerifyFunctionName);
+		UFunction* VerifyRoundTrip = FindGeneratedFunction(GeneratedClass, CompilerClassLikeExecutionTest::VerifyFunctionName);
 		ASSERT_THAT(IsNotNull(EchoPlainClass, TEXT("Class-like method execution round-trip should expose EchoPlainClass")));
 		ASSERT_THAT(IsNotNull(EchoActorClass, TEXT("Class-like method execution round-trip should expose EchoActorClass")));
 		ASSERT_THAT(IsNotNull(EchoSoftActorClass, TEXT("Class-like method execution round-trip should expose EchoSoftActorClass")));

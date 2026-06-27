@@ -9,7 +9,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelineExecutionTest
+namespace CompilerExecutionTest
 {
 	static const FName ModuleName(TEXT("CompilerAnnotatedMethodExecutes"));
 	static const FString ScriptFilename(TEXT("CompilerAnnotatedMethodExecutes.as"));
@@ -18,19 +18,19 @@ namespace CompilerPipelineExecutionTest
 	static const FName ScorePropertyName(TEXT("Score"));
 }
 
-namespace CompilerPipelinePlainSourceRoundTripTest
+namespace CompilerPlainSourceRoundTripTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.PlainSourceRoundTrip"));
 	static const FString RelativeScriptPath(TEXT("Tests/Compiler/PlainSourceRoundTrip.as"));
 }
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineExecutionTest,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerExecutionTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	TEST_METHOD(AnnotatedMethodExecutes)
 	{
-		using namespace CompilerPipelineExecutionTest;
+		using namespace CompilerExecutionTest;
 
 		const FString ScriptSource = TEXT(R"AS(
 UCLASS()
@@ -53,32 +53,32 @@ class UCompilerExecutionCarrier : UObject
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineExecutionTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerExecutionTest::ModuleName.ToString());
 		};
 
 		const bool bCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
-			CompilerPipelineExecutionTest::ModuleName,
-			CompilerPipelineExecutionTest::ScriptFilename,
+			CompilerExecutionTest::ModuleName,
+			CompilerExecutionTest::ScriptFilename,
 			ScriptSource);
 		if (!this->Assert.IsTrue(bCompiled, TEXT("Annotated execution test should compile the generated class module")))
 		{
 			return;
 		}
 
-		UClass* GeneratedClass = FindGeneratedClass(&Engine, CompilerPipelineExecutionTest::GeneratedClassName);
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, CompilerExecutionTest::GeneratedClassName);
 		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Annotated execution test should find the generated class")))
 		{
 			return;
 		}
 
-		UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, CompilerPipelineExecutionTest::ExecutionFunctionName);
+		UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, CompilerExecutionTest::ExecutionFunctionName);
 		if (!this->Assert.IsNotNull(GeneratedFunction, TEXT("Annotated execution test should find the generated execution function")))
 		{
 			return;
 		}
 
-		FIntProperty* ScoreProperty = FindFProperty<FIntProperty>(GeneratedClass, CompilerPipelineExecutionTest::ScorePropertyName);
+		FIntProperty* ScoreProperty = FindFProperty<FIntProperty>(GeneratedClass, CompilerExecutionTest::ScorePropertyName);
 		if (!this->Assert.IsNotNull(ScoreProperty, TEXT("Annotated execution test should expose the generated Score property")))
 		{
 			return;
@@ -113,7 +113,7 @@ class UCompilerExecutionCarrier : UObject
 
 	TEST_METHOD(PlainSourcePreprocessorRoundTrip)
 	{
-		using namespace CompilerPipelinePlainSourceRoundTripTest;
+		using namespace CompilerPlainSourceRoundTripTest;
 
 		const FString ScriptSource = TEXT(R"AS(
 int Entry()
@@ -127,15 +127,15 @@ int Entry()
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelinePlainSourceRoundTripTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerPlainSourceRoundTripTest::ModuleName.ToString());
 		};
 
 		FAngelscriptCompileTraceSummary Summary;
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::SoftReloadOnly,
-			CompilerPipelinePlainSourceRoundTripTest::ModuleName,
-			CompilerPipelinePlainSourceRoundTripTest::RelativeScriptPath,
+			CompilerPlainSourceRoundTripTest::ModuleName,
+			CompilerPlainSourceRoundTripTest::RelativeScriptPath,
 			ScriptSource,
 			true,
 			Summary,
@@ -178,8 +178,8 @@ int Entry()
 		const bool bExecuted = bCompiled
 			&& ExecuteIntFunction(
 				&Engine,
-				CompilerPipelinePlainSourceRoundTripTest::RelativeScriptPath,
-				CompilerPipelinePlainSourceRoundTripTest::ModuleName,
+				CompilerPlainSourceRoundTripTest::RelativeScriptPath,
+				CompilerPlainSourceRoundTripTest::ModuleName,
 				TEXT("int Entry()"),
 				EntryResult);
 		ASSERT_THAT(IsTrue(

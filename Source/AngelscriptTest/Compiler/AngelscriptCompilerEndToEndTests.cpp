@@ -8,7 +8,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPipelineEndToEndTest,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerEndToEndTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {

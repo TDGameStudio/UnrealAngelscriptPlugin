@@ -7,7 +7,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelineFunctionDefaultTest
+namespace CompilerFunctionDefaultTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.FunctionDefaultMetadataRoundTrip"));
 	static const FString ScriptFilename(TEXT("Tests/Compiler/FunctionDefaultMetadataRoundTrip.as"));
@@ -60,7 +60,7 @@ namespace CompilerPipelineFunctionDefaultTest
 	}
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionDefaultTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerFunctionDefaultTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -85,15 +85,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionDefaultTests,
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineFunctionDefaultTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerFunctionDefaultTest::ModuleName.ToString());
 		};
 
 		FAngelscriptCompileTraceSummary Summary;
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::SoftReloadOnly,
-			CompilerPipelineFunctionDefaultTest::ModuleName,
-			CompilerPipelineFunctionDefaultTest::ScriptFilename,
+			CompilerFunctionDefaultTest::ModuleName,
+			CompilerFunctionDefaultTest::ScriptFilename,
 			ScriptSource,
 			false,
 			Summary);
@@ -119,7 +119,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionDefaultTests,
 		int32 EntryResult = 0;
 		const bool bExecuted = ExecuteIntFunction(
 			&Engine,
-			CompilerPipelineFunctionDefaultTest::ModuleName,
+			CompilerFunctionDefaultTest::ModuleName,
 			TEXT("int Entry()"),
 			EntryResult);
 		ASSERT_THAT(IsTrue(
@@ -134,7 +134,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionDefaultTests,
 		}
 
 		const TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModuleByModuleName(
-			CompilerPipelineFunctionDefaultTest::ModuleName.ToString());
+			CompilerFunctionDefaultTest::ModuleName.ToString());
 		if (!this->Assert.IsTrue(
 				ModuleDesc.IsValid(),
 				TEXT("Function default metadata round-trip should register the module by name")))
@@ -164,19 +164,19 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionDefaultTests,
 			3,
 			static_cast<int32>(SumWithDefaults->GetParamCount()),
 			TEXT("Function default metadata round-trip should keep the exact parameter count")));
-		CompilerPipelineFunctionDefaultTest::VerifyParamMetadata(
+		CompilerFunctionDefaultTest::VerifyParamMetadata(
 			*TestRunner,
 			*SumWithDefaults,
 			0,
 			TEXT("Required"),
 			nullptr);
-		CompilerPipelineFunctionDefaultTest::VerifyParamMetadata(
+		CompilerFunctionDefaultTest::VerifyParamMetadata(
 			*TestRunner,
 			*SumWithDefaults,
 			1,
 			TEXT("Value"),
 			TEXT("21"));
-		CompilerPipelineFunctionDefaultTest::VerifyParamMetadata(
+		CompilerFunctionDefaultTest::VerifyParamMetadata(
 			*TestRunner,
 			*SumWithDefaults,
 			2,

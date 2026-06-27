@@ -8,7 +8,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelineSpecifierMetadataTest
+namespace CompilerSpecifierMetadataTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.SpecifierStringMetadataRoundTrip"));
 	static const FString RelativeScriptPath(TEXT("Tests/Compiler/SpecifierStringMetadataRoundTrip.as"));
@@ -42,7 +42,7 @@ namespace CompilerPipelineSpecifierMetadataTest
 	}
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineSpecifierMetadataTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerSpecifierMetadataTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -75,15 +75,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineSpecifierMetadataTests,
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineSpecifierMetadataTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerSpecifierMetadataTest::ModuleName.ToString());
 		};
 
 		FAngelscriptCompileTraceSummary Summary;
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::FullReload,
-			CompilerPipelineSpecifierMetadataTest::ModuleName,
-			CompilerPipelineSpecifierMetadataTest::RelativeScriptPath,
+			CompilerSpecifierMetadataTest::ModuleName,
+			CompilerSpecifierMetadataTest::RelativeScriptPath,
 			TestScriptSource,
 			true,
 			Summary,
@@ -93,7 +93,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineSpecifierMetadataTests,
 		{
 			TestRunner->AddInfo(FString::Printf(
 				TEXT("Specifier metadata diagnostics: %s"),
-				*CompilerPipelineSpecifierMetadataTest::JoinDiagnostics(Summary.Diagnostics)));
+				*CompilerSpecifierMetadataTest::JoinDiagnostics(Summary.Diagnostics)));
 		}
 
 		ASSERT_THAT(IsTrue(
@@ -128,7 +128,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineSpecifierMetadataTests,
 		if (Summary.ModuleNames.Num() > 0)
 		{
 			ASSERT_THAT(AreEqual(
-				CompilerPipelineSpecifierMetadataTest::ModuleName.ToString(),
+				CompilerSpecifierMetadataTest::ModuleName.ToString(),
 				Summary.ModuleNames[0],
 				TEXT("Specifier string metadata round-trip should normalize the module name from the relative script path")));
 		}
@@ -137,14 +137,14 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineSpecifierMetadataTests,
 			return;
 		}
 
-		UClass* GeneratedClass = FindGeneratedClass(&Engine, *CompilerPipelineSpecifierMetadataTest::ClassName);
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, *CompilerSpecifierMetadataTest::ClassName);
 		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Specifier string metadata round-trip should materialize the generated class")))
 		{
 			return;
 		}
 
-		FProperty* CountProperty = FindFProperty<FProperty>(GeneratedClass, *CompilerPipelineSpecifierMetadataTest::PropertyName);
-		UFunction* ComputeFunction = FindGeneratedFunction(GeneratedClass, *CompilerPipelineSpecifierMetadataTest::SpecifierFunctionName);
+		FProperty* CountProperty = FindFProperty<FProperty>(GeneratedClass, *CompilerSpecifierMetadataTest::PropertyName);
+		UFunction* ComputeFunction = FindGeneratedFunction(GeneratedClass, *CompilerSpecifierMetadataTest::SpecifierFunctionName);
 		if (!this->Assert.IsNotNull(CountProperty, TEXT("Specifier string metadata round-trip should materialize the generated property"))
 			|| !this->Assert.IsNotNull(ComputeFunction, TEXT("Specifier string metadata round-trip should materialize the generated function")))
 		{
@@ -152,36 +152,36 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineSpecifierMetadataTests,
 		}
 
 		ASSERT_THAT(AreEqual(
-			CompilerPipelineSpecifierMetadataTest::ExpectedClassDisplayName,
+			CompilerSpecifierMetadataTest::ExpectedClassDisplayName,
 			GeneratedClass->GetMetaData(TEXT("DisplayName")),
 			TEXT("Generated class should preserve DisplayName metadata with embedded comma")));
 		ASSERT_THAT(AreEqual(
-			CompilerPipelineSpecifierMetadataTest::ExpectedClassToolTip,
+			CompilerSpecifierMetadataTest::ExpectedClassToolTip,
 			GeneratedClass->GetMetaData(TEXT("ToolTip")),
 			TEXT("Generated class should preserve ToolTip metadata with embedded quotes")));
 		ASSERT_THAT(AreEqual(
-			CompilerPipelineSpecifierMetadataTest::ExpectedPropertyDisplayName,
+			CompilerSpecifierMetadataTest::ExpectedPropertyDisplayName,
 			CountProperty->GetMetaData(TEXT("DisplayName")),
 			TEXT("Generated property should preserve DisplayName metadata with embedded comma")));
 		ASSERT_THAT(AreEqual(
-			CompilerPipelineSpecifierMetadataTest::ExpectedPropertyToolTip,
+			CompilerSpecifierMetadataTest::ExpectedPropertyToolTip,
 			CountProperty->GetMetaData(TEXT("ToolTip")),
 			TEXT("Generated property should preserve ToolTip metadata with embedded quotes")));
 		ASSERT_THAT(AreEqual(
-			CompilerPipelineSpecifierMetadataTest::ExpectedFunctionDisplayName,
+			CompilerSpecifierMetadataTest::ExpectedFunctionDisplayName,
 			ComputeFunction->GetMetaData(TEXT("DisplayName")),
 			TEXT("Generated function should preserve DisplayName metadata with embedded comma")));
 		ASSERT_THAT(AreEqual(
-			CompilerPipelineSpecifierMetadataTest::ExpectedFunctionToolTip,
+			CompilerSpecifierMetadataTest::ExpectedFunctionToolTip,
 			ComputeFunction->GetMetaData(TEXT("ToolTip")),
 			TEXT("Generated function should preserve ToolTip metadata with embedded quotes")));
 
 		int32 EntryResult = 0;
 		const bool bExecuted = ExecuteIntFunction(
 			&Engine,
-			CompilerPipelineSpecifierMetadataTest::RelativeScriptPath,
-			CompilerPipelineSpecifierMetadataTest::ModuleName,
-			CompilerPipelineSpecifierMetadataTest::EntryFunctionDeclaration,
+			CompilerSpecifierMetadataTest::RelativeScriptPath,
+			CompilerSpecifierMetadataTest::ModuleName,
+			CompilerSpecifierMetadataTest::EntryFunctionDeclaration,
 			EntryResult);
 		ASSERT_THAT(IsTrue(
 			bExecuted,
@@ -189,7 +189,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineSpecifierMetadataTests,
 		if (bExecuted)
 		{
 			ASSERT_THAT(AreEqual(
-				CompilerPipelineSpecifierMetadataTest::ExpectedEntryValue,
+				CompilerSpecifierMetadataTest::ExpectedEntryValue,
 				EntryResult,
 				TEXT("Specifier string metadata round-trip should preserve execution after metadata parsing")));
 		}

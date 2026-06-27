@@ -18,7 +18,7 @@ namespace UFunctionSpecifierMatrixTest
 // CallInEditor specifier
 // ============================================================================
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineUFunctionSpecifierMatrixTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerUFunctionSpecifierMatrixTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {

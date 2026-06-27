@@ -12,7 +12,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelineImportReloadTest
+namespace CompilerImportReloadTest
 {
 	static const FName ProviderModuleName(TEXT("Tests.Compiler.ImportReloadSource"));
 	static const FName ConsumerModuleName(TEXT("Tests.Compiler.ImportReloadConsumer"));
@@ -79,7 +79,7 @@ namespace CompilerPipelineImportReloadTest
 	}
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerImportReloadTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -113,17 +113,17 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-		const FString ProviderAbsoluteScriptPath = CompilerPipelineImportReloadTest::WriteFixture(
-			CompilerPipelineImportReloadTest::ProviderRelativeScriptPath,
+		const FString ProviderAbsoluteScriptPath = CompilerImportReloadTest::WriteFixture(
+			CompilerImportReloadTest::ProviderRelativeScriptPath,
 			ProviderScriptSourceV1);
-		const FString ConsumerAbsoluteScriptPath = CompilerPipelineImportReloadTest::WriteFixture(
-			CompilerPipelineImportReloadTest::ConsumerRelativeScriptPath,
+		const FString ConsumerAbsoluteScriptPath = CompilerImportReloadTest::WriteFixture(
+			CompilerImportReloadTest::ConsumerRelativeScriptPath,
 			ConsumerScriptSource);
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineImportReloadTest::ConsumerModuleName.ToString());
-			Engine.DiscardModule(*CompilerPipelineImportReloadTest::ProviderModuleName.ToString());
+			Engine.DiscardModule(*CompilerImportReloadTest::ConsumerModuleName.ToString());
+			Engine.DiscardModule(*CompilerImportReloadTest::ProviderModuleName.ToString());
 			IFileManager::Get().Delete(*ConsumerAbsoluteScriptPath, false, true);
 			IFileManager::Get().Delete(*ProviderAbsoluteScriptPath, false, true);
 		};
@@ -135,10 +135,10 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 
 		FAngelscriptPreprocessor InitialPreprocessor;
 		InitialPreprocessor.AddFile(
-			CompilerPipelineImportReloadTest::ProviderRelativeScriptPath,
+			CompilerImportReloadTest::ProviderRelativeScriptPath,
 			ProviderAbsoluteScriptPath);
 		InitialPreprocessor.AddFile(
-			CompilerPipelineImportReloadTest::ConsumerRelativeScriptPath,
+			CompilerImportReloadTest::ConsumerRelativeScriptPath,
 			ConsumerAbsoluteScriptPath);
 
 		const bool bInitialPreprocessSucceeded = InitialPreprocessor.Preprocess();
@@ -146,7 +146,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 
 		int32 InitialPreprocessErrorCount = 0;
 		const FString InitialPreprocessDiagnostics = FString::Join(
-			CompilerPipelineImportReloadTest::CollectDiagnosticMessages(
+			CompilerImportReloadTest::CollectDiagnosticMessages(
 				Engine,
 				{ProviderAbsoluteScriptPath, ConsumerAbsoluteScriptPath},
 				InitialPreprocessErrorCount),
@@ -181,7 +181,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 
 		int32 InitialCompileErrorCount = 0;
 		const FString InitialCompileDiagnostics = FString::Join(
-			CompilerPipelineImportReloadTest::CollectDiagnosticMessages(
+			CompilerImportReloadTest::CollectDiagnosticMessages(
 				Engine,
 				{ProviderAbsoluteScriptPath, ConsumerAbsoluteScriptPath},
 				InitialCompileErrorCount),
@@ -208,7 +208,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 		}
 
 		TSharedPtr<FAngelscriptModuleDesc> InitialConsumerModule = Engine.GetModule(
-			CompilerPipelineImportReloadTest::ConsumerModuleName.ToString());
+			CompilerImportReloadTest::ConsumerModuleName.ToString());
 		if (!this->Assert.IsTrue(
 				InitialConsumerModule.IsValid(),
 				TEXT("Declared import reload should keep the consumer module active after the initial compile")))
@@ -224,11 +224,11 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 		if (ImportedFunctionCount > 0)
 		{
 			ASSERT_THAT(AreEqual(
-				CompilerPipelineImportReloadTest::ProviderModuleName.ToString(),
+				CompilerImportReloadTest::ProviderModuleName.ToString(),
 				FString(UTF8_TO_TCHAR(InitialConsumerModule->ScriptModule->GetImportedFunctionSourceModule(0))),
 				TEXT("Declared import reload should preserve the consumer imported function source module")));
 			ASSERT_THAT(AreEqual(
-				CompilerPipelineImportReloadTest::ImportedFunctionDeclaration,
+				CompilerImportReloadTest::ImportedFunctionDeclaration,
 				FString(UTF8_TO_TCHAR(InitialConsumerModule->ScriptModule->GetImportedFunctionDeclaration(0))),
 				TEXT("Declared import reload should preserve the consumer imported function declaration")));
 		}
@@ -236,9 +236,9 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 		int32 EntryResultBeforeReload = 0;
 		const bool bExecutedBeforeReload = ExecuteIntFunction(
 			&Engine,
-			CompilerPipelineImportReloadTest::ConsumerRelativeScriptPath,
-			CompilerPipelineImportReloadTest::ConsumerModuleName,
-			CompilerPipelineImportReloadTest::EntryFunctionDeclaration,
+			CompilerImportReloadTest::ConsumerRelativeScriptPath,
+			CompilerImportReloadTest::ConsumerModuleName,
+			CompilerImportReloadTest::EntryFunctionDeclaration,
 			EntryResultBeforeReload);
 		ASSERT_THAT(IsTrue(
 			bExecutedBeforeReload,
@@ -251,15 +251,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 				TEXT("Declared import reload should execute the initial provider implementation before the provider reload")));
 		}
 
-		CompilerPipelineImportReloadTest::WriteFixture(
-			CompilerPipelineImportReloadTest::ProviderRelativeScriptPath,
+		CompilerImportReloadTest::WriteFixture(
+			CompilerImportReloadTest::ProviderRelativeScriptPath,
 			ProviderScriptSourceV2);
 
 		Engine.ResetDiagnostics();
 
 		FAngelscriptPreprocessor ReloadPreprocessor;
 		ReloadPreprocessor.AddFile(
-			CompilerPipelineImportReloadTest::ProviderRelativeScriptPath,
+			CompilerImportReloadTest::ProviderRelativeScriptPath,
 			ProviderAbsoluteScriptPath);
 
 		const bool bReloadPreprocessSucceeded = ReloadPreprocessor.Preprocess();
@@ -267,7 +267,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 
 		int32 ReloadPreprocessErrorCount = 0;
 		const FString ReloadPreprocessDiagnostics = FString::Join(
-			CompilerPipelineImportReloadTest::CollectDiagnosticMessages(
+			CompilerImportReloadTest::CollectDiagnosticMessages(
 				Engine,
 				{ProviderAbsoluteScriptPath},
 				ReloadPreprocessErrorCount),
@@ -292,9 +292,9 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 			return;
 		}
 
-		const FAngelscriptModuleDesc* ReloadProviderModuleDesc = CompilerPipelineImportReloadTest::FindModuleByName(
+		const FAngelscriptModuleDesc* ReloadProviderModuleDesc = CompilerImportReloadTest::FindModuleByName(
 			ReloadModulesToCompile,
-			CompilerPipelineImportReloadTest::ProviderModuleName.ToString());
+			CompilerImportReloadTest::ProviderModuleName.ToString());
 		if (!this->Assert.IsNotNull(
 				ReloadProviderModuleDesc,
 				TEXT("Declared import reload should only emit the provider module descriptor during the provider-only reload")))
@@ -312,7 +312,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 
 		int32 ReloadCompileErrorCount = 0;
 		const FString ReloadCompileDiagnostics = FString::Join(
-			CompilerPipelineImportReloadTest::CollectDiagnosticMessages(
+			CompilerImportReloadTest::CollectDiagnosticMessages(
 				Engine,
 				{ProviderAbsoluteScriptPath, ConsumerAbsoluteScriptPath},
 				ReloadCompileErrorCount),
@@ -339,7 +339,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 		}
 
 		TSharedPtr<FAngelscriptModuleDesc> ReloadedConsumerModule = Engine.GetModule(
-			CompilerPipelineImportReloadTest::ConsumerModuleName.ToString());
+			CompilerImportReloadTest::ConsumerModuleName.ToString());
 		ASSERT_THAT(IsTrue(
 			ReloadedConsumerModule.IsValid(),
 			TEXT("Declared import reload should keep the consumer module active after the provider-only reload")));
@@ -353,11 +353,11 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 			if (ReloadImportedFunctionCount > 0)
 			{
 				ASSERT_THAT(AreEqual(
-					CompilerPipelineImportReloadTest::ProviderModuleName.ToString(),
+					CompilerImportReloadTest::ProviderModuleName.ToString(),
 					FString(UTF8_TO_TCHAR(ReloadedConsumerModule->ScriptModule->GetImportedFunctionSourceModule(0))),
 					TEXT("Declared import reload should keep the reloaded consumer import source module stable")));
 				ASSERT_THAT(AreEqual(
-					CompilerPipelineImportReloadTest::ImportedFunctionDeclaration,
+					CompilerImportReloadTest::ImportedFunctionDeclaration,
 					FString(UTF8_TO_TCHAR(ReloadedConsumerModule->ScriptModule->GetImportedFunctionDeclaration(0))),
 					TEXT("Declared import reload should keep the reloaded consumer import declaration stable")));
 			}
@@ -366,9 +366,9 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineImportReloadTests,
 		int32 EntryResultAfterReload = 0;
 		const bool bExecutedAfterReload = ExecuteIntFunction(
 			&Engine,
-			CompilerPipelineImportReloadTest::ConsumerRelativeScriptPath,
-			CompilerPipelineImportReloadTest::ConsumerModuleName,
-			CompilerPipelineImportReloadTest::EntryFunctionDeclaration,
+			CompilerImportReloadTest::ConsumerRelativeScriptPath,
+			CompilerImportReloadTest::ConsumerModuleName,
+			CompilerImportReloadTest::EntryFunctionDeclaration,
 			EntryResultAfterReload);
 		ASSERT_THAT(IsTrue(
 			bExecutedAfterReload,

@@ -16,7 +16,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelineGlobalUFunctionTest
+namespace CompilerGlobalUFunctionTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.GlobalUFunctionCreatesStaticsClass"));
 	static const FString RelativeScriptPath(TEXT("Tests/Compiler/GlobalUFunctionCreatesStaticsClass.as"));
@@ -134,14 +134,14 @@ namespace CompilerPipelineGlobalUFunctionTest
 	}
 }
 
-namespace CompilerPipelineGlobalUFunctionSanitizedModuleTest
+namespace CompilerGlobalUFunctionSanitizedModuleTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.GlobalUFunction-Foo+Bar"));
 	static const FString RelativeScriptPath(TEXT("Tests/Compiler/GlobalUFunction-Foo+Bar.as"));
 	static const FName SanitizedGlobalFunctionName(TEXT("GetSanitizedGlobalValue"));
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerGlobalUFunctionTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -160,25 +160,25 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-		const FString AbsoluteScriptPath = CompilerPipelineGlobalUFunctionTest::WriteFixture(
-			CompilerPipelineGlobalUFunctionTest::RelativeScriptPath,
+		const FString AbsoluteScriptPath = CompilerGlobalUFunctionTest::WriteFixture(
+			CompilerGlobalUFunctionTest::RelativeScriptPath,
 			ScriptSource);
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineGlobalUFunctionTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerGlobalUFunctionTest::ModuleName.ToString());
 			IFileManager::Get().Delete(*AbsoluteScriptPath, false, true);
 		};
 
 		Engine.ResetDiagnostics();
 
 		FAngelscriptPreprocessor Preprocessor;
-		Preprocessor.AddFile(CompilerPipelineGlobalUFunctionTest::RelativeScriptPath, AbsoluteScriptPath);
+		Preprocessor.AddFile(CompilerGlobalUFunctionTest::RelativeScriptPath, AbsoluteScriptPath);
 
 		const bool bPreprocessSucceeded = Preprocessor.Preprocess();
 		const TArray<TSharedRef<FAngelscriptModuleDesc>> Modules = Preprocessor.GetModulesToCompile();
 
 		int32 PreprocessErrorCount = 0;
-		const TArray<FString> PreprocessMessages = CompilerPipelineGlobalUFunctionTest::CollectDiagnosticMessages(
+		const TArray<FString> PreprocessMessages = CompilerGlobalUFunctionTest::CollectDiagnosticMessages(
 			Engine,
 			AbsoluteScriptPath,
 			PreprocessErrorCount);
@@ -204,9 +204,9 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
 		}
 
 		const TSharedRef<FAngelscriptModuleDesc> ModuleDesc = Modules[0];
-		const FString ExpectedStaticsClassName = CompilerPipelineGlobalUFunctionTest::MakeExpectedStaticsClassName(ModuleDesc->ModuleName);
+		const FString ExpectedStaticsClassName = CompilerGlobalUFunctionTest::MakeExpectedStaticsClassName(ModuleDesc->ModuleName);
 		int32 StaticsClassCount = 0;
-		const TSharedPtr<FAngelscriptClassDesc> StaticsClassDesc = CompilerPipelineGlobalUFunctionTest::FindStaticsClassDesc(
+		const TSharedPtr<FAngelscriptClassDesc> StaticsClassDesc = CompilerGlobalUFunctionTest::FindStaticsClassDesc(
 			ModuleDesc,
 			StaticsClassCount);
 		if (!this->Assert.IsTrue(StaticsClassDesc.IsValid(), TEXT("Global UFUNCTION statics-class test case should emit a statics class descriptor")))
@@ -224,7 +224,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
 			TEXT("Global UFUNCTION statics-class test case should normalize the generated statics class name from the module name")));
 
 		const TSharedPtr<FAngelscriptFunctionDesc> FunctionDesc = StaticsClassDesc->GetMethod(
-			CompilerPipelineGlobalUFunctionTest::GlobalFunctionName.ToString());
+			CompilerGlobalUFunctionTest::GlobalFunctionName.ToString());
 		if (!this->Assert.IsTrue(FunctionDesc.IsValid(), TEXT("Global UFUNCTION statics-class test case should attach GetGlobalValue to the generated statics class descriptor")))
 		{
 			return;
@@ -243,8 +243,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::FullReload,
-			CompilerPipelineGlobalUFunctionTest::ModuleName,
-			CompilerPipelineGlobalUFunctionTest::RelativeScriptPath,
+			CompilerGlobalUFunctionTest::ModuleName,
+			CompilerGlobalUFunctionTest::RelativeScriptPath,
 			ScriptSource,
 			true,
 			Summary);
@@ -274,7 +274,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
 			return;
 		}
 
-		UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, CompilerPipelineGlobalUFunctionTest::GlobalFunctionName);
+		UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, CompilerGlobalUFunctionTest::GlobalFunctionName);
 		UASFunction* ScriptFunction = Cast<UASFunction>(GeneratedFunction);
 		if (!this->Assert.IsNotNull(GeneratedFunction, TEXT("Global UFUNCTION statics-class test case should materialize the generated static function"))
 			|| !this->Assert.IsNotNull(ScriptFunction, TEXT("Global UFUNCTION statics-class test case should expose the generated function as a UASFunction")))
@@ -300,7 +300,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
 			TEXT("Global UFUNCTION statics-class test case should record a valid world-context offset for reflective execution")));
 
 		int32 RuntimeResult = 0;
-		const bool bExecuted = CompilerPipelineGlobalUFunctionTest::ExecuteGeneratedStaticIntFunction(
+		const bool bExecuted = CompilerGlobalUFunctionTest::ExecuteGeneratedStaticIntFunction(
 			*TestRunner,
 			GeneratedClass,
 			ScriptFunction,
@@ -335,25 +335,25 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-		const FString AbsoluteScriptPath = CompilerPipelineGlobalUFunctionTest::WriteFixture(
-			CompilerPipelineGlobalUFunctionSanitizedModuleTest::RelativeScriptPath,
+		const FString AbsoluteScriptPath = CompilerGlobalUFunctionTest::WriteFixture(
+			CompilerGlobalUFunctionSanitizedModuleTest::RelativeScriptPath,
 			ScriptSource);
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineGlobalUFunctionSanitizedModuleTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerGlobalUFunctionSanitizedModuleTest::ModuleName.ToString());
 			IFileManager::Get().Delete(*AbsoluteScriptPath, false, true);
 		};
 
 		Engine.ResetDiagnostics();
 
 		FAngelscriptPreprocessor Preprocessor;
-		Preprocessor.AddFile(CompilerPipelineGlobalUFunctionSanitizedModuleTest::RelativeScriptPath, AbsoluteScriptPath);
+		Preprocessor.AddFile(CompilerGlobalUFunctionSanitizedModuleTest::RelativeScriptPath, AbsoluteScriptPath);
 
 		const bool bPreprocessSucceeded = Preprocessor.Preprocess();
 		const TArray<TSharedRef<FAngelscriptModuleDesc>> Modules = Preprocessor.GetModulesToCompile();
 
 		int32 PreprocessErrorCount = 0;
-		const TArray<FString> PreprocessMessages = CompilerPipelineGlobalUFunctionTest::CollectDiagnosticMessages(
+		const TArray<FString> PreprocessMessages = CompilerGlobalUFunctionTest::CollectDiagnosticMessages(
 			Engine,
 			AbsoluteScriptPath,
 			PreprocessErrorCount);
@@ -382,7 +382,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
 		const FString ExpectedStaticsClassName(TEXT("Module_Tests_Compiler_GlobalUFunction_Foo_BarStatics"));
 		const FString ExpectedDisplayName(TEXT("GlobalUFunction-Foo+Bar"));
 		int32 StaticsClassCount = 0;
-		const TSharedPtr<FAngelscriptClassDesc> StaticsClassDesc = CompilerPipelineGlobalUFunctionTest::FindStaticsClassDesc(
+		const TSharedPtr<FAngelscriptClassDesc> StaticsClassDesc = CompilerGlobalUFunctionTest::FindStaticsClassDesc(
 			ModuleDesc,
 			StaticsClassCount);
 		if (!this->Assert.IsTrue(StaticsClassDesc.IsValid(), TEXT("Sanitized-module global UFUNCTION test case should emit a statics class descriptor")))
@@ -423,7 +423,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
 		}
 
 		const TSharedPtr<FAngelscriptFunctionDesc> FunctionDesc = StaticsClassDesc->GetMethod(
-			CompilerPipelineGlobalUFunctionSanitizedModuleTest::SanitizedGlobalFunctionName.ToString());
+			CompilerGlobalUFunctionSanitizedModuleTest::SanitizedGlobalFunctionName.ToString());
 		if (!this->Assert.IsTrue(FunctionDesc.IsValid(), TEXT("Sanitized-module global UFUNCTION test case should attach GetSanitizedGlobalValue to the generated statics class descriptor")))
 		{
 			return;
@@ -442,8 +442,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::FullReload,
-			CompilerPipelineGlobalUFunctionSanitizedModuleTest::ModuleName,
-			CompilerPipelineGlobalUFunctionSanitizedModuleTest::RelativeScriptPath,
+			CompilerGlobalUFunctionSanitizedModuleTest::ModuleName,
+			CompilerGlobalUFunctionSanitizedModuleTest::RelativeScriptPath,
 			ScriptSource,
 			true,
 			Summary);
@@ -473,7 +473,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
 			return;
 		}
 
-		UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, CompilerPipelineGlobalUFunctionSanitizedModuleTest::SanitizedGlobalFunctionName);
+		UFunction* GeneratedFunction = FindGeneratedFunction(GeneratedClass, CompilerGlobalUFunctionSanitizedModuleTest::SanitizedGlobalFunctionName);
 		UASFunction* ScriptFunction = Cast<UASFunction>(GeneratedFunction);
 		if (!this->Assert.IsNotNull(GeneratedFunction, TEXT("Sanitized-module global UFUNCTION test case should materialize the generated static function"))
 			|| !this->Assert.IsNotNull(ScriptFunction, TEXT("Sanitized-module global UFUNCTION test case should expose the generated function as a UASFunction")))
@@ -489,7 +489,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineGlobalUFunctionTests,
 			TEXT("Sanitized-module global UFUNCTION test case should surface the reflected function as BlueprintCallable")));
 
 		int32 RuntimeResult = 0;
-		const bool bExecuted = CompilerPipelineGlobalUFunctionTest::ExecuteGeneratedStaticIntFunction(
+		const bool bExecuted = CompilerGlobalUFunctionTest::ExecuteGeneratedStaticIntFunction(
 			*TestRunner,
 			GeneratedClass,
 			ScriptFunction,

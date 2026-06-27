@@ -15,7 +15,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelinePropertyDefaultTest
+namespace CompilerPropertyDefaultTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.StringDefaultPreservesCommentMarkersInsideLiteral"));
 	static const FString RelativeScriptPath(TEXT("Tests/Compiler/StringDefaultPreservesCommentMarkersInsideLiteral.as"));
@@ -131,7 +131,7 @@ namespace CompilerPipelinePropertyDefaultTest
 	}
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPropertyDefaultTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -169,25 +169,25 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultTests,
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-		const FString AbsoluteScriptPath = CompilerPipelinePropertyDefaultTest::WriteFixture(
-			CompilerPipelinePropertyDefaultTest::RelativeScriptPath,
+		const FString AbsoluteScriptPath = CompilerPropertyDefaultTest::WriteFixture(
+			CompilerPropertyDefaultTest::RelativeScriptPath,
 			TestScriptSource);
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelinePropertyDefaultTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerPropertyDefaultTest::ModuleName.ToString());
 			IFileManager::Get().Delete(*AbsoluteScriptPath, false, true);
 		};
 
 		Engine.ResetDiagnostics();
 
 		FAngelscriptPreprocessor Preprocessor;
-		Preprocessor.AddFile(CompilerPipelinePropertyDefaultTest::RelativeScriptPath, AbsoluteScriptPath);
+		Preprocessor.AddFile(CompilerPropertyDefaultTest::RelativeScriptPath, AbsoluteScriptPath);
 
 		const bool bPreprocessSucceeded = Preprocessor.Preprocess();
 		const TArray<TSharedRef<FAngelscriptModuleDesc>> Modules = Preprocessor.GetModulesToCompile();
 
 		int32 PreprocessErrorCount = 0;
-		const TArray<FString> PreprocessMessages = CompilerPipelinePropertyDefaultTest::CollectDiagnosticMessages(
+		const TArray<FString> PreprocessMessages = CompilerPropertyDefaultTest::CollectDiagnosticMessages(
 			Engine,
 			AbsoluteScriptPath,
 			PreprocessErrorCount);
@@ -196,7 +196,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultTests,
 		{
 			TestRunner->AddInfo(FString::Printf(
 				TEXT("Preprocess diagnostics: %s"),
-				*CompilerPipelinePropertyDefaultTest::JoinMessages(PreprocessMessages)));
+				*CompilerPropertyDefaultTest::JoinMessages(PreprocessMessages)));
 		}
 
 		ASSERT_THAT(IsTrue(
@@ -221,18 +221,18 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultTests,
 
 		const TSharedRef<FAngelscriptModuleDesc> ModuleDesc = Modules[0];
 		ASSERT_THAT(AreEqual(
-			CompilerPipelinePropertyDefaultTest::ModuleName.ToString(),
+			CompilerPropertyDefaultTest::ModuleName.ToString(),
 			ModuleDesc->ModuleName,
 			TEXT("String default literal test case should preserve the expected module name")));
 
-		const TSharedPtr<FAngelscriptClassDesc> ClassDesc = ModuleDesc->GetClass(CompilerPipelinePropertyDefaultTest::ClassName);
+		const TSharedPtr<FAngelscriptClassDesc> ClassDesc = ModuleDesc->GetClass(CompilerPropertyDefaultTest::ClassName);
 		if (!this->Assert.IsTrue(ClassDesc.IsValid(), TEXT("String default literal test case should parse the annotated class descriptor")))
 		{
 			return;
 		}
 
 		ASSERT_THAT(AreEqual(
-			CompilerPipelinePropertyDefaultTest::ExpectedDefaultsCode,
+			CompilerPropertyDefaultTest::ExpectedDefaultsCode,
 			ClassDesc->DefaultsCode,
 			TEXT("String default literal test case should preserve the exact defaults code text")));
 		ASSERT_THAT(IsTrue(
@@ -248,8 +248,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultTests,
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::FullReload,
-			CompilerPipelinePropertyDefaultTest::ModuleName,
-			CompilerPipelinePropertyDefaultTest::RelativeScriptPath,
+			CompilerPropertyDefaultTest::ModuleName,
+			CompilerPropertyDefaultTest::RelativeScriptPath,
 			TestScriptSource,
 			true,
 			Summary,
@@ -259,7 +259,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultTests,
 		{
 			TestRunner->AddInfo(FString::Printf(
 				TEXT("Compile diagnostics: %s"),
-				*CompilerPipelinePropertyDefaultTest::JoinDiagnostics(Summary.Diagnostics)));
+				*CompilerPropertyDefaultTest::JoinDiagnostics(Summary.Diagnostics)));
 		}
 
 		ASSERT_THAT(IsTrue(
@@ -284,15 +284,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultTests,
 			return;
 		}
 
-		UClass* GeneratedClass = FindGeneratedClass(&Engine, *CompilerPipelinePropertyDefaultTest::ClassName);
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, *CompilerPropertyDefaultTest::ClassName);
 		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("String default literal test case should materialize the generated class")))
 		{
 			return;
 		}
 
-		FStrProperty* MessageProperty = FindFProperty<FStrProperty>(GeneratedClass, *CompilerPipelinePropertyDefaultTest::MessagePropertyName);
-		FStrProperty* BlockTextProperty = FindFProperty<FStrProperty>(GeneratedClass, *CompilerPipelinePropertyDefaultTest::BlockTextPropertyName);
-		UFunction* VerifyDefaultsFunction = FindGeneratedFunction(GeneratedClass, CompilerPipelinePropertyDefaultTest::VerifyFunctionName);
+		FStrProperty* MessageProperty = FindFProperty<FStrProperty>(GeneratedClass, *CompilerPropertyDefaultTest::MessagePropertyName);
+		FStrProperty* BlockTextProperty = FindFProperty<FStrProperty>(GeneratedClass, *CompilerPropertyDefaultTest::BlockTextPropertyName);
+		UFunction* VerifyDefaultsFunction = FindGeneratedFunction(GeneratedClass, CompilerPropertyDefaultTest::VerifyFunctionName);
 		if (!this->Assert.IsNotNull(MessageProperty, TEXT("String default literal test case should materialize the Message property"))
 			|| !this->Assert.IsNotNull(BlockTextProperty, TEXT("String default literal test case should materialize the BlockText property"))
 			|| !this->Assert.IsNotNull(VerifyDefaultsFunction, TEXT("String default literal test case should materialize the verification function")))
@@ -308,52 +308,52 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultTests,
 			return;
 		}
 
-		CompilerPipelinePropertyDefaultTest::FRuntimeDefaultObservation Observation;
-		CompilerPipelinePropertyDefaultTest::ReadStringPropertyValue(
+		CompilerPropertyDefaultTest::FRuntimeDefaultObservation Observation;
+		CompilerPropertyDefaultTest::ReadStringPropertyValue(
 			*TestRunner,
 			TEXT("String default literal test case should read Message from the CDO"),
 			MessageProperty,
 			DefaultObject,
 			Observation.DefaultMessage);
-		CompilerPipelinePropertyDefaultTest::ReadStringPropertyValue(
+		CompilerPropertyDefaultTest::ReadStringPropertyValue(
 			*TestRunner,
 			TEXT("String default literal test case should read BlockText from the CDO"),
 			BlockTextProperty,
 			DefaultObject,
 			Observation.DefaultBlockText);
-		CompilerPipelinePropertyDefaultTest::ReadStringPropertyValue(
+		CompilerPropertyDefaultTest::ReadStringPropertyValue(
 			*TestRunner,
 			TEXT("String default literal test case should read Message from a runtime instance"),
 			MessageProperty,
 			RuntimeObject,
 			Observation.RuntimeMessage);
-		CompilerPipelinePropertyDefaultTest::ReadStringPropertyValue(
+		CompilerPropertyDefaultTest::ReadStringPropertyValue(
 			*TestRunner,
 			TEXT("String default literal test case should read BlockText from a runtime instance"),
 			BlockTextProperty,
 			RuntimeObject,
 			Observation.RuntimeBlockText);
 
-		CompilerPipelinePropertyDefaultTest::VerifyStringValue(
+		CompilerPropertyDefaultTest::VerifyStringValue(
 			*TestRunner,
 			TEXT("String default literal test case should preserve Message on the CDO"),
 			Observation.DefaultMessage,
-			CompilerPipelinePropertyDefaultTest::ExpectedMessage);
-		CompilerPipelinePropertyDefaultTest::VerifyStringValue(
+			CompilerPropertyDefaultTest::ExpectedMessage);
+		CompilerPropertyDefaultTest::VerifyStringValue(
 			*TestRunner,
 			TEXT("String default literal test case should preserve BlockText on the CDO"),
 			Observation.DefaultBlockText,
-			CompilerPipelinePropertyDefaultTest::ExpectedBlockText);
-		CompilerPipelinePropertyDefaultTest::VerifyStringValue(
+			CompilerPropertyDefaultTest::ExpectedBlockText);
+		CompilerPropertyDefaultTest::VerifyStringValue(
 			*TestRunner,
 			TEXT("String default literal test case should preserve Message on runtime instances"),
 			Observation.RuntimeMessage,
-			CompilerPipelinePropertyDefaultTest::ExpectedMessage);
-		CompilerPipelinePropertyDefaultTest::VerifyStringValue(
+			CompilerPropertyDefaultTest::ExpectedMessage);
+		CompilerPropertyDefaultTest::VerifyStringValue(
 			*TestRunner,
 			TEXT("String default literal test case should preserve BlockText on runtime instances"),
 			Observation.RuntimeBlockText,
-			CompilerPipelinePropertyDefaultTest::ExpectedBlockText);
+			CompilerPropertyDefaultTest::ExpectedBlockText);
 
 		const bool bExecuted = ExecuteGeneratedIntEventOnGameThread(
 			&Engine,
@@ -366,7 +366,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultTests,
 		if (bExecuted)
 		{
 			ASSERT_THAT(AreEqual(
-				CompilerPipelinePropertyDefaultTest::ExpectedVerifyResult,
+				CompilerPropertyDefaultTest::ExpectedVerifyResult,
 				Observation.VerifyResult,
 				TEXT("String default literal test case should keep comment markers and escaped quotes visible to script runtime code")));
 		}

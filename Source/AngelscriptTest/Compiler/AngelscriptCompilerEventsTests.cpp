@@ -1,5 +1,5 @@
 // ============================================================================
-// AngelscriptCompilationEventsTests.cpp
+// AngelscriptCompilerEventsTests.cpp
 //
 // Runtime integration tests for structured Angelscript compilation events.
 //
@@ -18,7 +18,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptCompilationEventsTest,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerEventsTests,
 	"Angelscript.TestModule.Compiler.Events",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {

@@ -11,7 +11,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelineRangeForTest
+namespace CompilerRangeForTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.RangeBasedForRewriteSkipsStringAndCommentLiterals"));
 	static const FString RelativeScriptPath(TEXT("Tests/Compiler/RangeBasedForRewriteSkipsStringAndCommentLiterals.as"));
@@ -108,7 +108,7 @@ namespace CompilerPipelineRangeForTest
 	}
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineRangeForTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerRangeForTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -143,25 +143,25 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRangeForTests,
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-		const FString AbsoluteScriptPath = CompilerPipelineRangeForTest::WriteFixture(
-			CompilerPipelineRangeForTest::RelativeScriptPath,
+		const FString AbsoluteScriptPath = CompilerRangeForTest::WriteFixture(
+			CompilerRangeForTest::RelativeScriptPath,
 			TestScriptSource);
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineRangeForTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerRangeForTest::ModuleName.ToString());
 			IFileManager::Get().Delete(*AbsoluteScriptPath, false, true);
 		};
 
 		Engine.ResetDiagnostics();
 
 		FAngelscriptPreprocessor Preprocessor;
-		Preprocessor.AddFile(CompilerPipelineRangeForTest::RelativeScriptPath, AbsoluteScriptPath);
+		Preprocessor.AddFile(CompilerRangeForTest::RelativeScriptPath, AbsoluteScriptPath);
 
 		const bool bPreprocessSucceeded = Preprocessor.Preprocess();
 		const TArray<TSharedRef<FAngelscriptModuleDesc>> Modules = Preprocessor.GetModulesToCompile();
 
 		int32 PreprocessErrorCount = 0;
-		const TArray<FString> PreprocessMessages = CompilerPipelineRangeForTest::CollectDiagnosticMessages(
+		const TArray<FString> PreprocessMessages = CompilerRangeForTest::CollectDiagnosticMessages(
 			Engine,
 			AbsoluteScriptPath,
 			PreprocessErrorCount);
@@ -169,7 +169,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRangeForTests,
 		{
 			TestRunner->AddInfo(FString::Printf(
 				TEXT("Range-for preprocess diagnostics: %s"),
-				*CompilerPipelineRangeForTest::JoinMessages(PreprocessMessages)));
+				*CompilerRangeForTest::JoinMessages(PreprocessMessages)));
 		}
 
 		const FString ProcessedCode = (Modules.Num() > 0 && Modules[0]->Code.Num() > 0)
@@ -194,31 +194,31 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRangeForTests,
 		if (Modules.Num() > 0)
 		{
 			ASSERT_THAT(AreEqual(
-				CompilerPipelineRangeForTest::ModuleName.ToString(),
+				CompilerRangeForTest::ModuleName.ToString(),
 				Modules[0]->ModuleName,
 				TEXT("Range-based for literal/comment guard test case should preserve the expected module name")));
 		}
 
 		ASSERT_THAT(AreEqual(
 			1,
-			CompilerPipelineRangeForTest::CountOccurrences(ProcessedCode, TEXT("_Iterator.CanProceed; )")),
+			CompilerRangeForTest::CountOccurrences(ProcessedCode, TEXT("_Iterator.CanProceed; )")),
 			TEXT("Range-based for literal/comment guard test case should rewrite exactly one real loop into iterator advance form")));
 		ASSERT_THAT(AreEqual(
 			1,
-			CompilerPipelineRangeForTest::CountOccurrences(ProcessedCode, TEXT("_Iterator.Proceed();")),
+			CompilerRangeForTest::CountOccurrences(ProcessedCode, TEXT("_Iterator.Proceed();")),
 			TEXT("Range-based for literal/comment guard test case should rewrite exactly one real loop into iterator proceed form")));
 		ASSERT_THAT(AreEqual(
-			CompilerPipelineRangeForTest::ExpectedRawLoopTextOccurrences,
-			CompilerPipelineRangeForTest::CountOccurrences(ProcessedCode, CompilerPipelineRangeForTest::RawLoopText),
+			CompilerRangeForTest::ExpectedRawLoopTextOccurrences,
+			CompilerRangeForTest::CountOccurrences(ProcessedCode, CompilerRangeForTest::RawLoopText),
 			TEXT("Range-based for literal/comment guard test case should preserve the raw loop text only inside the two strings and two comments")));
 		ASSERT_THAT(IsTrue(
-			ProcessedCode.Contains(CompilerPipelineRangeForTest::StringLiteralToken),
+			ProcessedCode.Contains(CompilerRangeForTest::StringLiteralToken),
 			TEXT("Range-based for literal/comment guard test case should preserve the exact string literal payload")));
 		ASSERT_THAT(IsTrue(
-			ProcessedCode.Contains(CompilerPipelineRangeForTest::LineCommentToken),
+			ProcessedCode.Contains(CompilerRangeForTest::LineCommentToken),
 			TEXT("Range-based for literal/comment guard test case should preserve the single-line comment payload")));
 		ASSERT_THAT(IsTrue(
-			ProcessedCode.Contains(CompilerPipelineRangeForTest::BlockCommentToken),
+			ProcessedCode.Contains(CompilerRangeForTest::BlockCommentToken),
 			TEXT("Range-based for literal/comment guard test case should preserve the block comment payload")));
 
 		Engine.ResetDiagnostics();
@@ -227,8 +227,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRangeForTests,
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::SoftReloadOnly,
-			CompilerPipelineRangeForTest::ModuleName,
-			CompilerPipelineRangeForTest::RelativeScriptPath,
+			CompilerRangeForTest::ModuleName,
+			CompilerRangeForTest::RelativeScriptPath,
 			TestScriptSource,
 			true,
 			Summary,
@@ -237,7 +237,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRangeForTests,
 		{
 			TestRunner->AddInfo(FString::Printf(
 				TEXT("Range-for compile diagnostics: %s"),
-				*CompilerPipelineRangeForTest::JoinDiagnostics(Summary.Diagnostics)));
+				*CompilerRangeForTest::JoinDiagnostics(Summary.Diagnostics)));
 		}
 
 		ASSERT_THAT(IsTrue(
@@ -258,8 +258,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRangeForTests,
 		const bool bExecuted = bCompiled
 			&& ExecuteIntFunction(
 				&Engine,
-				CompilerPipelineRangeForTest::RelativeScriptPath,
-				CompilerPipelineRangeForTest::ModuleName,
+				CompilerRangeForTest::RelativeScriptPath,
+				CompilerRangeForTest::ModuleName,
 				TEXT("int Entry()"),
 				EntryResult);
 		ASSERT_THAT(IsTrue(
@@ -268,7 +268,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineRangeForTests,
 		if (bExecuted)
 		{
 			ASSERT_THAT(AreEqual(
-				CompilerPipelineRangeForTest::ExpectedEntryResult,
+				CompilerRangeForTest::ExpectedEntryResult,
 				EntryResult,
 				TEXT("Range-based for literal/comment guard test case should preserve the string literal while keeping the real loop executable")));
 		}

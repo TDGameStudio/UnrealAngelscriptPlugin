@@ -13,7 +13,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelineFunctionFlagTest
+namespace CompilerFunctionFlagTest
 {
 	struct FExpectedFunctionFlags
 	{
@@ -192,7 +192,7 @@ class UCompilerBlueprintCallableDefaultTrueCarrier : UObject
 	}
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionFlagTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerFunctionFlagTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -215,10 +215,10 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionFlagTests,
 			Settings->bDefaultFunctionBlueprintCallable = PreviousDefaultCallable;
 		};
 
-		for (const CompilerPipelineFunctionFlagTest::FTestCase& TestCase : CompilerPipelineFunctionFlagTest::BuildTestCases())
+		for (const CompilerFunctionFlagTest::FTestCase& TestCase : CompilerFunctionFlagTest::BuildTestCases())
 		{
 			{
-				const FString AbsoluteScriptPath = CompilerPipelineFunctionFlagTest::WriteFixture(
+				const FString AbsoluteScriptPath = CompilerFunctionFlagTest::WriteFixture(
 					TestCase.RelativeScriptPath,
 					TestCase.ScriptSource);
 				const FString ModuleNameString = TestCase.ModuleName.ToString();
@@ -238,7 +238,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionFlagTests,
 				const TArray<TSharedRef<FAngelscriptModuleDesc>> Modules = Preprocessor.GetModulesToCompile();
 
 				int32 PreprocessErrorCount = 0;
-				const TArray<FString> PreprocessMessages = CompilerPipelineFunctionFlagTest::CollectDiagnosticMessages(
+				const TArray<FString> PreprocessMessages = CompilerFunctionFlagTest::CollectDiagnosticMessages(
 					Engine,
 					AbsoluteScriptPath,
 					PreprocessErrorCount);
@@ -277,10 +277,10 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionFlagTests,
 					return;
 				}
 
-				for (const CompilerPipelineFunctionFlagTest::FExpectedFunctionFlags& ExpectedFunction : TestCase.ExpectedFunctions)
+				for (const CompilerFunctionFlagTest::FExpectedFunctionFlags& ExpectedFunction : TestCase.ExpectedFunctions)
 				{
 					const TSharedPtr<FAngelscriptFunctionDesc> FunctionDesc = ClassDesc->GetMethod(ExpectedFunction.FunctionName);
-					CompilerPipelineFunctionFlagTest::ExpectDescriptorFlags(
+					CompilerFunctionFlagTest::ExpectDescriptorFlags(
 						*TestRunner,
 						TestCaseLabel,
 						FunctionDesc,
@@ -330,9 +330,9 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineFunctionFlagTests,
 					return;
 				}
 
-				for (const CompilerPipelineFunctionFlagTest::FExpectedFunctionFlags& ExpectedFunction : TestCase.ExpectedFunctions)
+				for (const CompilerFunctionFlagTest::FExpectedFunctionFlags& ExpectedFunction : TestCase.ExpectedFunctions)
 				{
-					CompilerPipelineFunctionFlagTest::ExpectGeneratedFlags(
+					CompilerFunctionFlagTest::ExpectGeneratedFlags(
 						*TestRunner,
 						TestCaseLabel,
 						GeneratedClass,

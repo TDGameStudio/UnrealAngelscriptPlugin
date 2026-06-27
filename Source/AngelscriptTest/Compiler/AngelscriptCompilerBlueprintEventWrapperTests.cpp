@@ -14,7 +14,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelineBlueprintEventWrapperTest
+namespace CompilerBlueprintEventWrapperTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.BlueprintEventWrapperExecutesImplementation"));
 	static const FString RelativeScriptPath(TEXT("Tests/Compiler/BlueprintEventWrapperExecutesImplementation.as"));
@@ -62,7 +62,7 @@ namespace CompilerPipelineBlueprintEventWrapperTest
 	}
 }
 
-namespace CompilerPipelineBlueprintEventMixedPushTest
+namespace CompilerBlueprintEventMixedPushTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.BlueprintEventWrapperUsesMixedPushPaths"));
 	static const FString RelativeScriptPath(TEXT("Tests/Compiler/BlueprintEventWrapperUsesMixedPushPaths.as"));
@@ -71,7 +71,7 @@ namespace CompilerPipelineBlueprintEventMixedPushTest
 	static const FString EntryFunctionName(TEXT("Entry"));
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineBlueprintEventWrapperTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerBlueprintEventWrapperTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -100,25 +100,25 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineBlueprintEventWrapperTests,
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-		const FString AbsoluteScriptPath = CompilerPipelineBlueprintEventWrapperTest::WriteFixture(
-			CompilerPipelineBlueprintEventWrapperTest::RelativeScriptPath,
+		const FString AbsoluteScriptPath = CompilerBlueprintEventWrapperTest::WriteFixture(
+			CompilerBlueprintEventWrapperTest::RelativeScriptPath,
 			ScriptSource);
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineBlueprintEventWrapperTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerBlueprintEventWrapperTest::ModuleName.ToString());
 			IFileManager::Get().Delete(*AbsoluteScriptPath, false, true);
 		};
 
 		Engine.ResetDiagnostics();
 
 		FAngelscriptPreprocessor Preprocessor;
-		Preprocessor.AddFile(CompilerPipelineBlueprintEventWrapperTest::RelativeScriptPath, AbsoluteScriptPath);
+		Preprocessor.AddFile(CompilerBlueprintEventWrapperTest::RelativeScriptPath, AbsoluteScriptPath);
 
 		const bool bPreprocessSucceeded = Preprocessor.Preprocess();
 		const TArray<TSharedRef<FAngelscriptModuleDesc>> Modules = Preprocessor.GetModulesToCompile();
 
 		int32 PreprocessErrorCount = 0;
-		const TArray<FString> PreprocessMessages = CompilerPipelineBlueprintEventWrapperTest::CollectDiagnosticMessages(
+		const TArray<FString> PreprocessMessages = CompilerBlueprintEventWrapperTest::CollectDiagnosticMessages(
 			Engine,
 			AbsoluteScriptPath,
 			PreprocessErrorCount);
@@ -144,14 +144,14 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineBlueprintEventWrapperTests,
 		}
 
 		const TSharedRef<FAngelscriptModuleDesc> ModuleDesc = Modules[0];
-		const TSharedPtr<FAngelscriptClassDesc> ClassDesc = ModuleDesc->GetClass(CompilerPipelineBlueprintEventWrapperTest::ClassName);
+		const TSharedPtr<FAngelscriptClassDesc> ClassDesc = ModuleDesc->GetClass(CompilerBlueprintEventWrapperTest::ClassName);
 		if (!this->Assert.IsTrue(ClassDesc.IsValid(), TEXT("BlueprintEvent wrapper test case should parse the annotated class descriptor")))
 		{
 			return;
 		}
 
-		const TSharedPtr<FAngelscriptFunctionDesc> ComputeDesc = ClassDesc->GetMethod(CompilerPipelineBlueprintEventWrapperTest::ComputeFunctionName);
-		const TSharedPtr<FAngelscriptFunctionDesc> EntryDesc = ClassDesc->GetMethod(CompilerPipelineBlueprintEventWrapperTest::EntryFunctionName);
+		const TSharedPtr<FAngelscriptFunctionDesc> ComputeDesc = ClassDesc->GetMethod(CompilerBlueprintEventWrapperTest::ComputeFunctionName);
+		const TSharedPtr<FAngelscriptFunctionDesc> EntryDesc = ClassDesc->GetMethod(CompilerBlueprintEventWrapperTest::EntryFunctionName);
 		if (!this->Assert.IsTrue(ComputeDesc.IsValid(), TEXT("BlueprintEvent wrapper test case should parse the BlueprintEvent function descriptor"))
 			|| !this->Assert.IsTrue(EntryDesc.IsValid(), TEXT("BlueprintEvent wrapper test case should parse the entry function descriptor")))
 		{
@@ -182,8 +182,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineBlueprintEventWrapperTests,
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::FullReload,
-			CompilerPipelineBlueprintEventWrapperTest::ModuleName,
-			CompilerPipelineBlueprintEventWrapperTest::RelativeScriptPath,
+			CompilerBlueprintEventWrapperTest::ModuleName,
+			CompilerBlueprintEventWrapperTest::RelativeScriptPath,
 			ScriptSource,
 			true,
 			Summary);
@@ -206,14 +206,14 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineBlueprintEventWrapperTests,
 			return;
 		}
 
-		UClass* GeneratedClass = FindGeneratedClass(&Engine, *CompilerPipelineBlueprintEventWrapperTest::ClassName);
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, *CompilerBlueprintEventWrapperTest::ClassName);
 		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("BlueprintEvent wrapper test case should materialize the generated class")))
 		{
 			return;
 		}
 
-		UFunction* ComputeFunction = FindGeneratedFunction(GeneratedClass, *CompilerPipelineBlueprintEventWrapperTest::ComputeFunctionName);
-		UFunction* EntryFunction = FindGeneratedFunction(GeneratedClass, *CompilerPipelineBlueprintEventWrapperTest::EntryFunctionName);
+		UFunction* ComputeFunction = FindGeneratedFunction(GeneratedClass, *CompilerBlueprintEventWrapperTest::ComputeFunctionName);
+		UFunction* EntryFunction = FindGeneratedFunction(GeneratedClass, *CompilerBlueprintEventWrapperTest::EntryFunctionName);
 		if (!this->Assert.IsNotNull(ComputeFunction, TEXT("BlueprintEvent wrapper test case should materialize the generated event wrapper function"))
 			|| !this->Assert.IsNotNull(EntryFunction, TEXT("BlueprintEvent wrapper test case should materialize the generated entry function")))
 		{
@@ -275,25 +275,25 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineBlueprintEventWrapperTests,
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-		const FString AbsoluteScriptPath = CompilerPipelineBlueprintEventWrapperTest::WriteFixture(
-			CompilerPipelineBlueprintEventMixedPushTest::RelativeScriptPath,
+		const FString AbsoluteScriptPath = CompilerBlueprintEventWrapperTest::WriteFixture(
+			CompilerBlueprintEventMixedPushTest::RelativeScriptPath,
 			ScriptSource);
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineBlueprintEventMixedPushTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerBlueprintEventMixedPushTest::ModuleName.ToString());
 			IFileManager::Get().Delete(*AbsoluteScriptPath, false, true);
 		};
 
 		Engine.ResetDiagnostics();
 
 		FAngelscriptPreprocessor Preprocessor;
-		Preprocessor.AddFile(CompilerPipelineBlueprintEventMixedPushTest::RelativeScriptPath, AbsoluteScriptPath);
+		Preprocessor.AddFile(CompilerBlueprintEventMixedPushTest::RelativeScriptPath, AbsoluteScriptPath);
 
 		const bool bPreprocessSucceeded = Preprocessor.Preprocess();
 		const TArray<TSharedRef<FAngelscriptModuleDesc>> Modules = Preprocessor.GetModulesToCompile();
 
 		int32 PreprocessErrorCount = 0;
-		const TArray<FString> PreprocessMessages = CompilerPipelineBlueprintEventWrapperTest::CollectDiagnosticMessages(
+		const TArray<FString> PreprocessMessages = CompilerBlueprintEventWrapperTest::CollectDiagnosticMessages(
 			Engine,
 			AbsoluteScriptPath,
 			PreprocessErrorCount);
@@ -319,14 +319,14 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineBlueprintEventWrapperTests,
 		}
 
 		const TSharedRef<FAngelscriptModuleDesc> ModuleDesc = Modules[0];
-		const TSharedPtr<FAngelscriptClassDesc> ClassDesc = ModuleDesc->GetClass(CompilerPipelineBlueprintEventMixedPushTest::ClassName);
+		const TSharedPtr<FAngelscriptClassDesc> ClassDesc = ModuleDesc->GetClass(CompilerBlueprintEventMixedPushTest::ClassName);
 		if (!this->Assert.IsTrue(ClassDesc.IsValid(), TEXT("Mixed-push BlueprintEvent wrapper test case should parse the annotated class descriptor")))
 		{
 			return;
 		}
 
-		const TSharedPtr<FAngelscriptFunctionDesc> EventDesc = ClassDesc->GetMethod(CompilerPipelineBlueprintEventMixedPushTest::EvaluateFunctionName);
-		const TSharedPtr<FAngelscriptFunctionDesc> EntryDesc = ClassDesc->GetMethod(CompilerPipelineBlueprintEventMixedPushTest::EntryFunctionName);
+		const TSharedPtr<FAngelscriptFunctionDesc> EventDesc = ClassDesc->GetMethod(CompilerBlueprintEventMixedPushTest::EvaluateFunctionName);
+		const TSharedPtr<FAngelscriptFunctionDesc> EntryDesc = ClassDesc->GetMethod(CompilerBlueprintEventMixedPushTest::EntryFunctionName);
 		if (!this->Assert.IsTrue(EventDesc.IsValid(), TEXT("Mixed-push BlueprintEvent wrapper test case should parse the BlueprintEvent function descriptor"))
 			|| !this->Assert.IsTrue(EntryDesc.IsValid(), TEXT("Mixed-push BlueprintEvent wrapper test case should parse the entry function descriptor")))
 		{
@@ -354,8 +354,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineBlueprintEventWrapperTests,
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::FullReload,
-			CompilerPipelineBlueprintEventMixedPushTest::ModuleName,
-			CompilerPipelineBlueprintEventMixedPushTest::RelativeScriptPath,
+			CompilerBlueprintEventMixedPushTest::ModuleName,
+			CompilerBlueprintEventMixedPushTest::RelativeScriptPath,
 			ScriptSource,
 			true,
 			Summary);
@@ -378,14 +378,14 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineBlueprintEventWrapperTests,
 			return;
 		}
 
-		UClass* GeneratedClass = FindGeneratedClass(&Engine, *CompilerPipelineBlueprintEventMixedPushTest::ClassName);
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, *CompilerBlueprintEventMixedPushTest::ClassName);
 		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Mixed-push BlueprintEvent wrapper test case should materialize the generated class")))
 		{
 			return;
 		}
 
-		UFunction* EventFunction = FindGeneratedFunction(GeneratedClass, *CompilerPipelineBlueprintEventMixedPushTest::EvaluateFunctionName);
-		UFunction* EntryFunction = FindGeneratedFunction(GeneratedClass, *CompilerPipelineBlueprintEventMixedPushTest::EntryFunctionName);
+		UFunction* EventFunction = FindGeneratedFunction(GeneratedClass, *CompilerBlueprintEventMixedPushTest::EvaluateFunctionName);
+		UFunction* EntryFunction = FindGeneratedFunction(GeneratedClass, *CompilerBlueprintEventMixedPushTest::EntryFunctionName);
 		if (!this->Assert.IsNotNull(EventFunction, TEXT("Mixed-push BlueprintEvent wrapper test case should materialize the generated event wrapper function"))
 			|| !this->Assert.IsNotNull(EntryFunction, TEXT("Mixed-push BlueprintEvent wrapper test case should materialize the generated entry function")))
 		{

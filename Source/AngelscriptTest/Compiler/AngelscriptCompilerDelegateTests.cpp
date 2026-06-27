@@ -9,7 +9,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelineDelegateMetadataTest
+namespace CompilerDelegateMetadataTest
 {
 	static const FName ModuleName(TEXT("CompilerDelegateSignatureMetadataRoundTrip"));
 	static const FString ScriptFilename(TEXT("CompilerDelegateSignatureMetadataRoundTrip.as"));
@@ -187,7 +187,7 @@ namespace CompilerPipelineDelegateMetadataTest
 	}
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineDelegateTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerDelegateTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -203,22 +203,22 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineDelegateTests,
 	class UCompilerDelegateMetadataCarrier : UObject
 	{
 	}
-	)AS"), *CompilerPipelineDelegateMetadataTest::SingleDelegateName, *CompilerPipelineDelegateMetadataTest::MultiDelegateName);
+	)AS"), *CompilerDelegateMetadataTest::SingleDelegateName, *CompilerDelegateMetadataTest::MultiDelegateName);
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineDelegateMetadataTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerDelegateMetadataTest::ModuleName.ToString());
 		};
 
 		FAngelscriptCompileTraceSummary Summary;
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::FullReload,
-			CompilerPipelineDelegateMetadataTest::ModuleName,
-			CompilerPipelineDelegateMetadataTest::ScriptFilename,
+			CompilerDelegateMetadataTest::ModuleName,
+			CompilerDelegateMetadataTest::ScriptFilename,
 			ScriptSource,
 			true,
 			Summary);
@@ -232,24 +232,24 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineDelegateTests,
 			return;
 		}
 
-		const TSharedPtr<FAngelscriptDelegateDesc> SingleDelegate = Engine.GetDelegate(CompilerPipelineDelegateMetadataTest::SingleDelegateName);
-		const TSharedPtr<FAngelscriptDelegateDesc> MultiDelegate = Engine.GetDelegate(CompilerPipelineDelegateMetadataTest::MultiDelegateName);
+		const TSharedPtr<FAngelscriptDelegateDesc> SingleDelegate = Engine.GetDelegate(CompilerDelegateMetadataTest::SingleDelegateName);
+		const TSharedPtr<FAngelscriptDelegateDesc> MultiDelegate = Engine.GetDelegate(CompilerDelegateMetadataTest::MultiDelegateName);
 
-		const TArray<CompilerPipelineDelegateMetadataTest::FExpectedArgument> SingleArguments = {
-			{ TEXT("Value"), TEXT("const int"), CompilerPipelineDelegateMetadataTest::EExpectedPropertyKind::Int, nullptr }
+		const TArray<CompilerDelegateMetadataTest::FExpectedArgument> SingleArguments = {
+			{ TEXT("Value"), TEXT("const int"), CompilerDelegateMetadataTest::EExpectedPropertyKind::Int, nullptr }
 		};
-		const TArray<CompilerPipelineDelegateMetadataTest::FExpectedArgument> MultiArguments = {
-			{ TEXT("TypeValue"), TEXT("UClass"), CompilerPipelineDelegateMetadataTest::EExpectedPropertyKind::Class, UObject::StaticClass() },
-			{ TEXT("Label"), TEXT("const FString&"), CompilerPipelineDelegateMetadataTest::EExpectedPropertyKind::String, nullptr }
+		const TArray<CompilerDelegateMetadataTest::FExpectedArgument> MultiArguments = {
+			{ TEXT("TypeValue"), TEXT("UClass"), CompilerDelegateMetadataTest::EExpectedPropertyKind::Class, UObject::StaticClass() },
+			{ TEXT("Label"), TEXT("const FString&"), CompilerDelegateMetadataTest::EExpectedPropertyKind::String, nullptr }
 		};
 
-		CompilerPipelineDelegateMetadataTest::VerifyDelegateMetadata(
+		CompilerDelegateMetadataTest::VerifyDelegateMetadata(
 			*TestRunner,
 			TEXT("Single-cast delegate signature metadata round-trip"),
 			SingleDelegate,
 			false,
 			SingleArguments);
-		CompilerPipelineDelegateMetadataTest::VerifyDelegateMetadata(
+		CompilerDelegateMetadataTest::VerifyDelegateMetadata(
 			*TestRunner,
 			TEXT("Multicast delegate signature metadata round-trip"),
 			MultiDelegate,

@@ -11,7 +11,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelineControlFlowTest
+namespace CompilerControlFlowTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.RangeBasedForRewriteSupportsBlockAndSingleLine"));
 	static const FString RelativeScriptPath(TEXT("Tests/Compiler/RangeBasedForRewriteSupportsBlockAndSingleLine.as"));
@@ -80,7 +80,7 @@ namespace CompilerPipelineControlFlowTest
 	}
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineControlFlowTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerControlFlowTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -111,25 +111,25 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineControlFlowTests,
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-		const FString AbsoluteScriptPath = CompilerPipelineControlFlowTest::WriteFixture(
-			CompilerPipelineControlFlowTest::RelativeScriptPath,
+		const FString AbsoluteScriptPath = CompilerControlFlowTest::WriteFixture(
+			CompilerControlFlowTest::RelativeScriptPath,
 			ScriptSource);
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineControlFlowTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerControlFlowTest::ModuleName.ToString());
 			IFileManager::Get().Delete(*AbsoluteScriptPath, false, true);
 		};
 
 		Engine.ResetDiagnostics();
 
 		FAngelscriptPreprocessor Preprocessor;
-		Preprocessor.AddFile(CompilerPipelineControlFlowTest::RelativeScriptPath, AbsoluteScriptPath);
+		Preprocessor.AddFile(CompilerControlFlowTest::RelativeScriptPath, AbsoluteScriptPath);
 
 		const bool bPreprocessSucceeded = Preprocessor.Preprocess();
 		const TArray<TSharedRef<FAngelscriptModuleDesc>> Modules = Preprocessor.GetModulesToCompile();
 
 		int32 PreprocessErrorCount = 0;
-		const TArray<FString> PreprocessMessages = CompilerPipelineControlFlowTest::CollectDiagnosticMessages(
+		const TArray<FString> PreprocessMessages = CompilerControlFlowTest::CollectDiagnosticMessages(
 			Engine,
 			AbsoluteScriptPath,
 			PreprocessErrorCount);
@@ -153,17 +153,17 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineControlFlowTests,
 			Modules.Num(),
 			TEXT("Range-based for rewrite test case should produce exactly one module descriptor")));
 		ASSERT_THAT(AreEqual(
-			CompilerPipelineControlFlowTest::ModuleName.ToString(),
+			CompilerControlFlowTest::ModuleName.ToString(),
 			Modules[0]->ModuleName,
 			TEXT("Range-based for rewrite test case should preserve the expected module name")));
 
 		ASSERT_THAT(AreEqual(
 			2,
-			CompilerPipelineControlFlowTest::CountOccurrences(ProcessedCode, TEXT("_Iterator.CanProceed; )")),
+			CompilerControlFlowTest::CountOccurrences(ProcessedCode, TEXT("_Iterator.CanProceed; )")),
 			TEXT("Range-based for rewrite test case should rewrite both loops into iterator advance conditions")));
 		ASSERT_THAT(AreEqual(
 			2,
-			CompilerPipelineControlFlowTest::CountOccurrences(ProcessedCode, TEXT("_Iterator.Proceed();")),
+			CompilerControlFlowTest::CountOccurrences(ProcessedCode, TEXT("_Iterator.Proceed();")),
 			TEXT("Range-based for rewrite test case should rewrite both loops into iterator proceed calls")));
 		ASSERT_THAT(IsTrue(
 			ProcessedCode.Contains(TEXT("__auto_constref_type")),
@@ -175,8 +175,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineControlFlowTests,
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::SoftReloadOnly,
-			CompilerPipelineControlFlowTest::ModuleName,
-			CompilerPipelineControlFlowTest::RelativeScriptPath,
+			CompilerControlFlowTest::ModuleName,
+			CompilerControlFlowTest::RelativeScriptPath,
 			ScriptSource,
 			true,
 			Summary,
@@ -200,8 +200,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineControlFlowTests,
 		const bool bExecuted = bCompiled
 			&& ExecuteIntFunction(
 				&Engine,
-				CompilerPipelineControlFlowTest::RelativeScriptPath,
-				CompilerPipelineControlFlowTest::ModuleName,
+				CompilerControlFlowTest::RelativeScriptPath,
+				CompilerControlFlowTest::ModuleName,
 				TEXT("int Entry()"),
 				EntryResult);
 		ASSERT_THAT(IsTrue(

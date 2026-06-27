@@ -8,7 +8,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelinePropertyReplicationConditionTest
+namespace CompilerPropertyReplicationConditionTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.PropertyReplicationConditionRoundTrip"));
 	static const FString RelativeScriptPath(TEXT("Tests/Compiler/PropertyReplicationConditionRoundTrip.as"));
@@ -36,7 +36,7 @@ namespace CompilerPipelinePropertyReplicationConditionTest
 	}
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyReplicationConditionTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPropertyReplicationConditionTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -65,7 +65,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyReplicationConditionTests,
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelinePropertyReplicationConditionTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerPropertyReplicationConditionTest::ModuleName.ToString());
 		};
 
 		Engine.ResetDiagnostics();
@@ -74,8 +74,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyReplicationConditionTests,
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::FullReload,
-			CompilerPipelinePropertyReplicationConditionTest::ModuleName,
-			CompilerPipelinePropertyReplicationConditionTest::RelativeScriptPath,
+			CompilerPropertyReplicationConditionTest::ModuleName,
+			CompilerPropertyReplicationConditionTest::RelativeScriptPath,
 			TestScriptSource,
 			true,
 			Summary,
@@ -85,7 +85,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyReplicationConditionTests,
 		{
 			TestRunner->AddInfo(FString::Printf(
 				TEXT("Compile diagnostics: %s"),
-				*CompilerPipelinePropertyReplicationConditionTest::JoinDiagnostics(Summary.Diagnostics)));
+				*CompilerPropertyReplicationConditionTest::JoinDiagnostics(Summary.Diagnostics)));
 		}
 
 		ASSERT_THAT(IsTrue(
@@ -113,26 +113,26 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyReplicationConditionTests,
 		int32 EntryResult = 0;
 		const bool bExecuted = ExecuteIntFunction(
 			&Engine,
-			CompilerPipelinePropertyReplicationConditionTest::RelativeScriptPath,
-			CompilerPipelinePropertyReplicationConditionTest::ModuleName,
-			CompilerPipelinePropertyReplicationConditionTest::EntryFunctionDeclaration,
+			CompilerPropertyReplicationConditionTest::RelativeScriptPath,
+			CompilerPropertyReplicationConditionTest::ModuleName,
+			CompilerPropertyReplicationConditionTest::EntryFunctionDeclaration,
 			EntryResult);
 		ASSERT_THAT(IsTrue(
 			bExecuted,
 			TEXT("Property replication-condition round-trip should execute the compiled entry function")));
 		ASSERT_THAT(AreEqual(
-			CompilerPipelinePropertyReplicationConditionTest::ExpectedEntryValue,
+			CompilerPropertyReplicationConditionTest::ExpectedEntryValue,
 			EntryResult,
 			TEXT("Property replication-condition round-trip should preserve module execution after metadata propagation")));
 
-		UClass* GeneratedClass = FindGeneratedClass(&Engine, *CompilerPipelinePropertyReplicationConditionTest::ClassName);
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, *CompilerPropertyReplicationConditionTest::ClassName);
 		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Property replication-condition round-trip should materialize the generated class")))
 		{
 			return;
 		}
 
-		FIntProperty* OwnerOnlyProperty = FindFProperty<FIntProperty>(GeneratedClass, *CompilerPipelinePropertyReplicationConditionTest::OwnerOnlyPropertyName);
-		FIntProperty* SkipReplayProperty = FindFProperty<FIntProperty>(GeneratedClass, *CompilerPipelinePropertyReplicationConditionTest::SkipReplayPropertyName);
+		FIntProperty* OwnerOnlyProperty = FindFProperty<FIntProperty>(GeneratedClass, *CompilerPropertyReplicationConditionTest::OwnerOnlyPropertyName);
+		FIntProperty* SkipReplayProperty = FindFProperty<FIntProperty>(GeneratedClass, *CompilerPropertyReplicationConditionTest::SkipReplayPropertyName);
 		if (!this->Assert.IsNotNull(OwnerOnlyProperty, TEXT("Property replication-condition round-trip should materialize the OwnerOnly property"))
 			|| !this->Assert.IsNotNull(SkipReplayProperty, TEXT("Property replication-condition round-trip should materialize the SkipReplay property")))
 		{

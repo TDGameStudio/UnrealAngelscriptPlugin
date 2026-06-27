@@ -13,7 +13,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelineNamespaceTest
+namespace CompilerNamespaceTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.NamespacedAnnotatedClassStaticHelperRoundTrip"));
 	static const FString RelativeScriptPath(TEXT("Tests/Compiler/NamespacedAnnotatedClassStaticHelperRoundTrip.as"));
@@ -61,13 +61,13 @@ namespace CompilerPipelineNamespaceTest
 	}
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineNamespaceTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerNamespaceTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	TEST_METHOD(NamespacedAnnotatedClassStaticHelperRoundTrip)
 	{
-	using namespace CompilerPipelineNamespaceTest;
+	using namespace CompilerNamespaceTest;
 
 
 		const FString ScriptSource = TEXT(R"AS(
@@ -93,25 +93,25 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineNamespaceTests,
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-		const FString AbsoluteScriptPath = CompilerPipelineNamespaceTest::WriteFixture(
-			CompilerPipelineNamespaceTest::RelativeScriptPath,
+		const FString AbsoluteScriptPath = CompilerNamespaceTest::WriteFixture(
+			CompilerNamespaceTest::RelativeScriptPath,
 			ScriptSource);
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineNamespaceTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerNamespaceTest::ModuleName.ToString());
 			IFileManager::Get().Delete(*AbsoluteScriptPath, false, true);
 		};
 
 		Engine.ResetDiagnostics();
 
 		FAngelscriptPreprocessor Preprocessor;
-		Preprocessor.AddFile(CompilerPipelineNamespaceTest::RelativeScriptPath, AbsoluteScriptPath);
+		Preprocessor.AddFile(CompilerNamespaceTest::RelativeScriptPath, AbsoluteScriptPath);
 
 		const bool bPreprocessSucceeded = Preprocessor.Preprocess();
 		const TArray<TSharedRef<FAngelscriptModuleDesc>> Modules = Preprocessor.GetModulesToCompile();
 
 		int32 PreprocessErrorCount = 0;
-		const TArray<FString> PreprocessMessages = CompilerPipelineNamespaceTest::CollectDiagnosticMessages(
+		const TArray<FString> PreprocessMessages = CompilerNamespaceTest::CollectDiagnosticMessages(
 			Engine,
 			AbsoluteScriptPath,
 			PreprocessErrorCount);
@@ -137,7 +137,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineNamespaceTests,
 		}
 
 		const TSharedRef<FAngelscriptModuleDesc> ModuleDesc = Modules[0];
-		const TSharedPtr<FAngelscriptClassDesc> ClassDesc = ModuleDesc->GetClass(CompilerPipelineNamespaceTest::ClassName);
+		const TSharedPtr<FAngelscriptClassDesc> ClassDesc = ModuleDesc->GetClass(CompilerNamespaceTest::ClassName);
 		if (!this->Assert.IsTrue(ClassDesc.IsValid(), TEXT("Namespaced annotated class test case should parse the annotated class descriptor")))
 		{
 			return;
@@ -176,8 +176,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineNamespaceTests,
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::FullReload,
-			CompilerPipelineNamespaceTest::ModuleName,
-			CompilerPipelineNamespaceTest::RelativeScriptPath,
+			CompilerNamespaceTest::ModuleName,
+			CompilerNamespaceTest::RelativeScriptPath,
 			ScriptSource,
 			true,
 			Summary);
@@ -204,21 +204,21 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineNamespaceTests,
 			return;
 		}
 
-		UClass* GeneratedClass = FindGeneratedClass(&Engine, *CompilerPipelineNamespaceTest::ClassName);
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, *CompilerNamespaceTest::ClassName);
 		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Namespaced annotated class test case should materialize the generated class")))
 		{
 			return;
 		}
 
 		ASSERT_THAT(IsNotNull(
-			FindGeneratedFunction(GeneratedClass, *CompilerPipelineNamespaceTest::MethodName),
+			FindGeneratedFunction(GeneratedClass, *CompilerNamespaceTest::MethodName),
 			TEXT("Namespaced annotated class test case should materialize the generated class method")));
 
 		int32 Result = 0;
 		const bool bExecuted = ExecuteIntFunction(
 			&Engine,
-			CompilerPipelineNamespaceTest::ModuleName,
-			CompilerPipelineNamespaceTest::EntryDecl,
+			CompilerNamespaceTest::ModuleName,
+			CompilerNamespaceTest::EntryDecl,
 			Result);
 		ASSERT_THAT(IsTrue(
 			bExecuted,

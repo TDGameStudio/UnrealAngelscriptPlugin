@@ -7,7 +7,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptVirtualScriptPathCompilerTest,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerVirtualScriptPathTests,
 	"Angelscript.TestModule.Compiler.VirtualScriptPaths",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {

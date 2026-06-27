@@ -20,7 +20,7 @@ namespace UClassSpecifierMatrixTest
 // Abstract -> CLASS_Abstract
 // ============================================================================
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineUClassSpecifierMatrixTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerUClassSpecifierMatrixTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {

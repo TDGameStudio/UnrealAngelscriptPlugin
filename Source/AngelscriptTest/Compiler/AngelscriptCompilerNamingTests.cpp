@@ -10,7 +10,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelineNamingTest
+namespace CompilerNamingTest
 {
 	static const FName ModuleName(TEXT("CompilerGeneratedClassExactNameLookup"));
 	static const FString ScriptFilename(TEXT("Tests/Compiler/CompilerGeneratedClassExactNameLookup.as"));
@@ -30,13 +30,13 @@ class UExactNameCarrier : UObject
 )AS");
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineNamingTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerNamingTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	TEST_METHOD(GeneratedClassExactNameLookup)
 	{
-	using namespace CompilerPipelineNamingTest;
+	using namespace CompilerNamingTest;
 
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
@@ -44,7 +44,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineNamingTests,
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineNamingTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerNamingTest::ModuleName.ToString());
 		};
 
 		Engine.ResetDiagnostics();
@@ -53,9 +53,9 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineNamingTests,
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::FullReload,
-			CompilerPipelineNamingTest::ModuleName,
-			CompilerPipelineNamingTest::ScriptFilename,
-			CompilerPipelineNamingTest::ScriptSource,
+			CompilerNamingTest::ModuleName,
+			CompilerNamingTest::ScriptFilename,
+			CompilerNamingTest::ScriptSource,
 			true,
 			Summary,
 			false);
@@ -88,14 +88,14 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineNamingTests,
 			return;
 		}
 
-		UClass* ExactLookupClass = FindObject<UClass>(Package, *CompilerPipelineNamingTest::GeneratedClassName.ToString());
+		UClass* ExactLookupClass = FindObject<UClass>(Package, *CompilerNamingTest::GeneratedClassName.ToString());
 		if (!this->Assert.IsNotNull(ExactLookupClass, TEXT("Generated-class exact-name lookup test case should find the generated class by its exact script name")))
 		{
 			return;
 		}
 
 		ASSERT_THAT(AreEqual(
-			CompilerPipelineNamingTest::GeneratedClassName.ToString(),
+			CompilerNamingTest::GeneratedClassName.ToString(),
 			ExactLookupClass->GetName(),
 			TEXT("Generated-class exact-name lookup test case should keep the exact UObject name")));
 
@@ -104,7 +104,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineNamingTests,
 			StrippedLookupClass,
 			TEXT("Generated-class exact-name lookup test case should not leave behind a stripped-name alias")));
 
-		UClass* HelperLookupClass = FindGeneratedClass(&Engine, CompilerPipelineNamingTest::GeneratedClassName);
+		UClass* HelperLookupClass = FindGeneratedClass(&Engine, CompilerNamingTest::GeneratedClassName);
 		if (!this->Assert.IsNotNull(HelperLookupClass, TEXT("Generated-class exact-name lookup test case should still resolve through FindGeneratedClass")))
 		{
 			return;
@@ -114,7 +114,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineNamingTests,
 			HelperLookupClass == ExactLookupClass,
 			TEXT("Generated-class exact-name lookup test case should have helper lookup resolve to the same exact-name object")));
 
-		UFunction* GetValueFunction = FindGeneratedFunction(ExactLookupClass, CompilerPipelineNamingTest::GeneratedFunctionName);
+		UFunction* GetValueFunction = FindGeneratedFunction(ExactLookupClass, CompilerNamingTest::GeneratedFunctionName);
 		if (!this->Assert.IsNotNull(GetValueFunction, TEXT("Generated-class exact-name lookup test case should expose GetValue on the exact-name class")))
 		{
 			return;

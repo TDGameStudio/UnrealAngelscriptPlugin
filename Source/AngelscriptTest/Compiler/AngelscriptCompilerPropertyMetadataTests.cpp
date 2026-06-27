@@ -14,7 +14,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelinePropertyMetadataTest
+namespace CompilerPropertyMetadataTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.PropertyCallbackMetadataRoundTrip"));
 	static const FString RelativeScriptPath(TEXT("Tests/Compiler/PropertyCallbackMetadataRoundTrip.as"));
@@ -115,7 +115,7 @@ namespace CompilerPipelinePropertyMetadataTest
 	}
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPropertyMetadataTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -157,25 +157,25 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-		const FString AbsoluteScriptPath = CompilerPipelinePropertyMetadataTest::WriteFixture(
-			CompilerPipelinePropertyMetadataTest::RelativeScriptPath,
+		const FString AbsoluteScriptPath = CompilerPropertyMetadataTest::WriteFixture(
+			CompilerPropertyMetadataTest::RelativeScriptPath,
 			TestScriptSource);
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelinePropertyMetadataTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerPropertyMetadataTest::ModuleName.ToString());
 			IFileManager::Get().Delete(*AbsoluteScriptPath, false, true);
 		};
 
 		Engine.ResetDiagnostics();
 
 		FAngelscriptPreprocessor Preprocessor;
-		Preprocessor.AddFile(CompilerPipelinePropertyMetadataTest::RelativeScriptPath, AbsoluteScriptPath);
+		Preprocessor.AddFile(CompilerPropertyMetadataTest::RelativeScriptPath, AbsoluteScriptPath);
 
 		const bool bPreprocessSucceeded = Preprocessor.Preprocess();
 		const TArray<TSharedRef<FAngelscriptModuleDesc>> Modules = Preprocessor.GetModulesToCompile();
 
 		int32 PreprocessErrorCount = 0;
-		const TArray<FString> PreprocessMessages = CompilerPipelinePropertyMetadataTest::CollectDiagnosticMessages(
+		const TArray<FString> PreprocessMessages = CompilerPropertyMetadataTest::CollectDiagnosticMessages(
 			Engine,
 			AbsoluteScriptPath,
 			PreprocessErrorCount);
@@ -202,20 +202,20 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 
 		const TSharedRef<FAngelscriptModuleDesc> ModuleDesc = Modules[0];
 		ASSERT_THAT(AreEqual(
-			CompilerPipelinePropertyMetadataTest::ModuleName.ToString(),
+			CompilerPropertyMetadataTest::ModuleName.ToString(),
 			ModuleDesc->ModuleName,
 			TEXT("Property callback metadata test case should preserve the expected module name")));
 
-		const TSharedPtr<FAngelscriptClassDesc> ClassDesc = ModuleDesc->GetClass(CompilerPipelinePropertyMetadataTest::ClassName);
+		const TSharedPtr<FAngelscriptClassDesc> ClassDesc = ModuleDesc->GetClass(CompilerPropertyMetadataTest::ClassName);
 		if (!this->Assert.IsTrue(ClassDesc.IsValid(), TEXT("Property callback metadata test case should parse the annotated class descriptor")))
 		{
 			return;
 		}
 
-		const TSharedPtr<FAngelscriptPropertyDesc> PropertyDesc = ClassDesc->GetProperty(CompilerPipelinePropertyMetadataTest::PropertyName);
-		const TSharedPtr<FAngelscriptFunctionDesc> OnRepDesc = ClassDesc->GetMethod(CompilerPipelinePropertyMetadataTest::OnRepFunctionName);
-		const TSharedPtr<FAngelscriptFunctionDesc> GetterDesc = ClassDesc->GetMethod(CompilerPipelinePropertyMetadataTest::GetterFunctionName);
-		const TSharedPtr<FAngelscriptFunctionDesc> SetterDesc = ClassDesc->GetMethod(CompilerPipelinePropertyMetadataTest::SetterFunctionName);
+		const TSharedPtr<FAngelscriptPropertyDesc> PropertyDesc = ClassDesc->GetProperty(CompilerPropertyMetadataTest::PropertyName);
+		const TSharedPtr<FAngelscriptFunctionDesc> OnRepDesc = ClassDesc->GetMethod(CompilerPropertyMetadataTest::OnRepFunctionName);
+		const TSharedPtr<FAngelscriptFunctionDesc> GetterDesc = ClassDesc->GetMethod(CompilerPropertyMetadataTest::GetterFunctionName);
+		const TSharedPtr<FAngelscriptFunctionDesc> SetterDesc = ClassDesc->GetMethod(CompilerPropertyMetadataTest::SetterFunctionName);
 		if (!this->Assert.IsTrue(PropertyDesc.IsValid(), TEXT("Property callback metadata test case should parse the annotated property descriptor"))
 			|| !this->Assert.IsTrue(OnRepDesc.IsValid(), TEXT("Property callback metadata test case should parse the RepNotify callback descriptor"))
 			|| !this->Assert.IsTrue(GetterDesc.IsValid(), TEXT("Property callback metadata test case should parse the BlueprintGetter descriptor"))
@@ -231,16 +231,16 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 			PropertyDesc->bRepNotify,
 			TEXT("Preprocessor should mark ReplicatedUsing properties as rep-notify")));
 		ASSERT_THAT(AreEqual(
-			CompilerPipelinePropertyMetadataTest::OnRepFunctionName,
-			CompilerPipelinePropertyMetadataTest::GetPropertyMeta(PropertyDesc, TEXT("ReplicatedUsing")),
+			CompilerPropertyMetadataTest::OnRepFunctionName,
+			CompilerPropertyMetadataTest::GetPropertyMeta(PropertyDesc, TEXT("ReplicatedUsing")),
 			TEXT("Preprocessor should preserve the ReplicatedUsing callback name")));
 		ASSERT_THAT(AreEqual(
-			CompilerPipelinePropertyMetadataTest::GetterFunctionName,
-			CompilerPipelinePropertyMetadataTest::GetPropertyMeta(PropertyDesc, TEXT("BlueprintGetter")),
+			CompilerPropertyMetadataTest::GetterFunctionName,
+			CompilerPropertyMetadataTest::GetPropertyMeta(PropertyDesc, TEXT("BlueprintGetter")),
 			TEXT("Preprocessor should preserve the BlueprintGetter callback name")));
 		ASSERT_THAT(AreEqual(
-			CompilerPipelinePropertyMetadataTest::SetterFunctionName,
-			CompilerPipelinePropertyMetadataTest::GetPropertyMeta(PropertyDesc, TEXT("BlueprintSetter")),
+			CompilerPropertyMetadataTest::SetterFunctionName,
+			CompilerPropertyMetadataTest::GetPropertyMeta(PropertyDesc, TEXT("BlueprintSetter")),
 			TEXT("Preprocessor should preserve the BlueprintSetter callback name")));
 		ASSERT_THAT(IsTrue(
 			GetterDesc->bBlueprintPure,
@@ -252,8 +252,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::FullReload,
-			CompilerPipelinePropertyMetadataTest::ModuleName,
-			CompilerPipelinePropertyMetadataTest::RelativeScriptPath,
+			CompilerPropertyMetadataTest::ModuleName,
+			CompilerPropertyMetadataTest::RelativeScriptPath,
 			TestScriptSource,
 			true,
 			Summary,
@@ -263,7 +263,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 		{
 			TestRunner->AddInfo(FString::Printf(
 				TEXT("Compile diagnostics: %s"),
-				*CompilerPipelinePropertyMetadataTest::JoinDiagnostics(Summary.Diagnostics)));
+				*CompilerPropertyMetadataTest::JoinDiagnostics(Summary.Diagnostics)));
 		}
 
 		ASSERT_THAT(IsTrue(
@@ -287,9 +287,9 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 		int32 EntryResult = 0;
 		const bool bExecuted = ExecuteIntFunction(
 			&Engine,
-			CompilerPipelinePropertyMetadataTest::RelativeScriptPath,
-			CompilerPipelinePropertyMetadataTest::ModuleName,
-			CompilerPipelinePropertyMetadataTest::EntryFunctionDeclaration,
+			CompilerPropertyMetadataTest::RelativeScriptPath,
+			CompilerPropertyMetadataTest::ModuleName,
+			CompilerPropertyMetadataTest::EntryFunctionDeclaration,
 			EntryResult);
 		ASSERT_THAT(IsTrue(
 			bExecuted,
@@ -297,21 +297,21 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 		if (bExecuted)
 		{
 			ASSERT_THAT(AreEqual(
-				CompilerPipelinePropertyMetadataTest::ExpectedEntryValue,
+				CompilerPropertyMetadataTest::ExpectedEntryValue,
 				EntryResult,
 				TEXT("Property callback metadata test case should preserve module execution after metadata propagation")));
 		}
 
-		UClass* GeneratedClass = FindGeneratedClass(&Engine, *CompilerPipelinePropertyMetadataTest::ClassName);
+		UClass* GeneratedClass = FindGeneratedClass(&Engine, *CompilerPropertyMetadataTest::ClassName);
 		if (!this->Assert.IsNotNull(GeneratedClass, TEXT("Property callback metadata test case should materialize the generated class")))
 		{
 			return;
 		}
 
-		FIntProperty* TrackedValueProperty = FindFProperty<FIntProperty>(GeneratedClass, *CompilerPipelinePropertyMetadataTest::PropertyName);
-		UFunction* OnRepFunction = FindGeneratedFunction(GeneratedClass, *CompilerPipelinePropertyMetadataTest::OnRepFunctionName);
-		UFunction* GetterFunction = FindGeneratedFunction(GeneratedClass, *CompilerPipelinePropertyMetadataTest::GetterFunctionName);
-		UFunction* SetterFunction = FindGeneratedFunction(GeneratedClass, *CompilerPipelinePropertyMetadataTest::SetterFunctionName);
+		FIntProperty* TrackedValueProperty = FindFProperty<FIntProperty>(GeneratedClass, *CompilerPropertyMetadataTest::PropertyName);
+		UFunction* OnRepFunction = FindGeneratedFunction(GeneratedClass, *CompilerPropertyMetadataTest::OnRepFunctionName);
+		UFunction* GetterFunction = FindGeneratedFunction(GeneratedClass, *CompilerPropertyMetadataTest::GetterFunctionName);
+		UFunction* SetterFunction = FindGeneratedFunction(GeneratedClass, *CompilerPropertyMetadataTest::SetterFunctionName);
 		if (!this->Assert.IsNotNull(TrackedValueProperty, TEXT("Property callback metadata test case should materialize the generated property"))
 			|| !this->Assert.IsNotNull(OnRepFunction, TEXT("Property callback metadata test case should materialize the generated RepNotify callback"))
 			|| !this->Assert.IsNotNull(GetterFunction, TEXT("Property callback metadata test case should materialize the generated BlueprintGetter callback"))
@@ -330,15 +330,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 			TrackedValueProperty->HasAnyPropertyFlags(CPF_RepNotify),
 			TEXT("Generated property should carry CPF_RepNotify")));
 		ASSERT_THAT(AreEqual(
-			FName(*CompilerPipelinePropertyMetadataTest::OnRepFunctionName),
+			FName(*CompilerPropertyMetadataTest::OnRepFunctionName),
 			TrackedValueProperty->RepNotifyFunc,
 			TEXT("Generated property should preserve the RepNotify callback name")));
 		ASSERT_THAT(AreEqual(
-			CompilerPipelinePropertyMetadataTest::GetterFunctionName,
+			CompilerPropertyMetadataTest::GetterFunctionName,
 			TrackedValueProperty->GetMetaData(TEXT("BlueprintGetter")),
 			TEXT("Generated property should preserve BlueprintGetter metadata")));
 		ASSERT_THAT(AreEqual(
-			CompilerPipelinePropertyMetadataTest::SetterFunctionName,
+			CompilerPropertyMetadataTest::SetterFunctionName,
 			TrackedValueProperty->GetMetaData(TEXT("BlueprintSetter")),
 			TEXT("Generated property should preserve BlueprintSetter metadata")));
 		ASSERT_THAT(AreEqual(
@@ -367,7 +367,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-		const TArray<CompilerPipelinePropertyMetadataTest::FPropertyCallbackValidationTestCase> TestCases = {
+		const TArray<CompilerPropertyMetadataTest::FPropertyCallbackValidationTestCase> TestCases = {
 			{
 				TEXT("ReplicatedUsing callback should reject more than one argument"),
 				FName(TEXT("Tests.Compiler.PropertyCallbackValidation.RepNotifyTooManyArgs")),
@@ -431,7 +431,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 			}
 		};
 
-		for (const CompilerPipelinePropertyMetadataTest::FPropertyCallbackValidationTestCase& TestCase : TestCases)
+		for (const CompilerPropertyMetadataTest::FPropertyCallbackValidationTestCase& TestCase : TestCases)
 		{
 			Engine.ResetDiagnostics();
 
@@ -448,11 +448,11 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyMetadataTests,
 
 			if (Summary.Diagnostics.Num() > 0)
 			{
-				TestRunner->AddInfo(FString::Printf(TEXT("%s diagnostics: %s"), TestCase.Label, *CompilerPipelinePropertyMetadataTest::JoinDiagnostics(Summary.Diagnostics)));
+				TestRunner->AddInfo(FString::Printf(TEXT("%s diagnostics: %s"), TestCase.Label, *CompilerPropertyMetadataTest::JoinDiagnostics(Summary.Diagnostics)));
 			}
 
 			const FAngelscriptCompileTraceDiagnosticSummary* MatchingDiagnostic =
-				CompilerPipelinePropertyMetadataTest::FindMatchingErrorDiagnostic(Summary.Diagnostics, TestCase.ExpectedMessageFragment);
+				CompilerPropertyMetadataTest::FindMatchingErrorDiagnostic(Summary.Diagnostics, TestCase.ExpectedMessageFragment);
 
 			ASSERT_THAT(IsFalse(bCompiled, FString::Printf(TEXT("%s should fail compile"), TestCase.Label)));
 			ASSERT_THAT(IsFalse(Summary.bCompileSucceeded, FString::Printf(TEXT("%s should keep bCompileSucceeded false"), TestCase.Label)));

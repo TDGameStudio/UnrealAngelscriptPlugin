@@ -28,7 +28,7 @@ namespace DefaultMatrixTest
 // Positive: FName default
 // ============================================================================
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelinePropertyDefaultMatrixTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerPropertyDefaultMatrixTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {

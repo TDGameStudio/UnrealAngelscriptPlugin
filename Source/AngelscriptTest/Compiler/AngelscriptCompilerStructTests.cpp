@@ -8,7 +8,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelineStructTest
+namespace CompilerStructTest
 {
 	static const FName ModuleName(TEXT("CompilerAnnotatedStructRoundTrip"));
 	static const FString ScriptFilename(TEXT("CompilerAnnotatedStructRoundTrip.as"));
@@ -16,7 +16,7 @@ namespace CompilerPipelineStructTest
 	static const FName ValuePropertyName(TEXT("Value"));
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineStructTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerStructTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -44,15 +44,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineStructTests,
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineStructTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerStructTest::ModuleName.ToString());
 		};
 
 		FAngelscriptCompileTraceSummary Summary;
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::FullReload,
-			CompilerPipelineStructTest::ModuleName,
-			CompilerPipelineStructTest::ScriptFilename,
+			CompilerStructTest::ModuleName,
+			CompilerStructTest::ScriptFilename,
 			TestScriptSource,
 			true,
 			Summary);
@@ -79,8 +79,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineStructTests,
 		int32 EntryResult = 0;
 		const bool bExecuted = ExecuteIntFunction(
 			&Engine,
-			CompilerPipelineStructTest::ScriptFilename,
-			CompilerPipelineStructTest::ModuleName,
+			CompilerStructTest::ScriptFilename,
+			CompilerStructTest::ModuleName,
 			TEXT("int Entry()"),
 			EntryResult);
 		ASSERT_THAT(IsTrue(
@@ -94,10 +94,10 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineStructTests,
 				TEXT("Annotated struct round-trip test should read the annotated struct field through runtime execution")));
 		}
 
-		UScriptStruct* GeneratedStruct = FindObject<UScriptStruct>(FAngelscriptEngine::GetPackage(), *CompilerPipelineStructTest::GeneratedStructName.ToString());
+		UScriptStruct* GeneratedStruct = FindObject<UScriptStruct>(FAngelscriptEngine::GetPackage(), *CompilerStructTest::GeneratedStructName.ToString());
 		ASSERT_THAT(IsNotNull(GeneratedStruct, TEXT("Annotated struct round-trip test should materialize a backing UScriptStruct")));
 
-		FIntProperty* ValueProperty = FindFProperty<FIntProperty>(GeneratedStruct, CompilerPipelineStructTest::ValuePropertyName);
+		FIntProperty* ValueProperty = FindFProperty<FIntProperty>(GeneratedStruct, CompilerStructTest::ValuePropertyName);
 		ASSERT_THAT(IsNotNull(
 			ValueProperty,
 			TEXT("Annotated struct round-trip test should preserve the reflected Value property on the generated UScriptStruct")));

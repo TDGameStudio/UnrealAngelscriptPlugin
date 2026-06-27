@@ -7,7 +7,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelineDelegateRuntimeTest
+namespace CompilerDelegateRuntimeTest
 {
 	static const FName ModuleName(TEXT("Tests.Compiler.DelegateExecuteReportsUnboundRuntimeError"));
 	static const FString ScriptFilename(TEXT("Tests/Compiler/DelegateExecuteReportsUnboundRuntimeError.as"));
@@ -76,7 +76,7 @@ namespace CompilerPipelineDelegateRuntimeTest
 	}
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineDelegateRuntimeTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerDelegateRuntimeTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -99,15 +99,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineDelegateRuntimeTests,
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*CompilerPipelineDelegateRuntimeTest::ModuleName.ToString());
+			Engine.DiscardModule(*CompilerDelegateRuntimeTest::ModuleName.ToString());
 		};
 
 		FAngelscriptCompileTraceSummary Summary;
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
 			ECompileType::FullReload,
-			CompilerPipelineDelegateRuntimeTest::ModuleName,
-			CompilerPipelineDelegateRuntimeTest::ScriptFilename,
+			CompilerDelegateRuntimeTest::ModuleName,
+			CompilerDelegateRuntimeTest::ScriptFilename,
 			ScriptSource,
 			true,
 			Summary);
@@ -134,19 +134,19 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineDelegateRuntimeTests,
 			return;
 		}
 
-		asIScriptModule* Module = CompilerPipelineDelegateRuntimeTest::GetCompiledModule(*TestRunner, Engine);
+		asIScriptModule* Module = CompilerDelegateRuntimeTest::GetCompiledModule(*TestRunner, Engine);
 		if (Module == nullptr)
 		{
 			return;
 		}
 
 		TestRunner->AddExpectedError(TEXT("Executing unbound delegate."), EAutomationExpectedErrorFlags::Contains, 1);
-		TestRunner->AddExpectedError(*CompilerPipelineDelegateRuntimeTest::ModuleName.ToString(), EAutomationExpectedErrorFlags::Contains, 0);
+		TestRunner->AddExpectedError(*CompilerDelegateRuntimeTest::ModuleName.ToString(), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(TEXT("int FRuntimeValueDelegate::Execute() const | Line 11"), EAutomationExpectedErrorFlags::Contains, 1, false);
 		TestRunner->AddExpectedError(TEXT("int Entry() | Line 7"), EAutomationExpectedErrorFlags::Contains, 1, false);
 
-		CompilerPipelineDelegateRuntimeTest::FExecutionExceptionResult ExecutionResult;
-		const bool bExecuted = CompilerPipelineDelegateRuntimeTest::ExecuteEntryAndCaptureException(
+		CompilerDelegateRuntimeTest::FExecutionExceptionResult ExecutionResult;
+		const bool bExecuted = CompilerDelegateRuntimeTest::ExecuteEntryAndCaptureException(
 			*TestRunner,
 			Engine,
 			*Module,
@@ -168,15 +168,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineDelegateRuntimeTests,
 			ExecutionResult.ExecuteResult,
 			TEXT("Delegate execute runtime error test case should fail during execution with a script exception")));
 		ASSERT_THAT(AreEqual(
-			FString(CompilerPipelineDelegateRuntimeTest::ExpectedExceptionString),
+			FString(CompilerDelegateRuntimeTest::ExpectedExceptionString),
 			ExecutionResult.ExceptionString,
 			TEXT("Delegate execute runtime error test case should report the generated unbound delegate message")));
 		ASSERT_THAT(AreEqual(
-			CompilerPipelineDelegateRuntimeTest::ExpectedExceptionLine,
+			CompilerDelegateRuntimeTest::ExpectedExceptionLine,
 			ExecutionResult.ExceptionLine,
 			TEXT("Delegate execute runtime error test case should report the generated delegate Execute wrapper line")));
 		ASSERT_THAT(AreEqual(
-			FString(CompilerPipelineDelegateRuntimeTest::ExpectedExceptionFunctionDeclaration),
+			FString(CompilerDelegateRuntimeTest::ExpectedExceptionFunctionDeclaration),
 			ExecutionResult.ExceptionFunctionDeclaration,
 			TEXT("Delegate execute runtime error test case should attribute the exception to the generated delegate Execute wrapper")));
 

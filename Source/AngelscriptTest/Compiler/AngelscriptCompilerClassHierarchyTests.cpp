@@ -13,7 +13,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-namespace CompilerPipelineClassHierarchyTest
+namespace CompilerClassHierarchyTest
 {
 	static const FString BaseRelativeScriptPath(TEXT("Tests/Compiler/ClassHierarchy/Base.as"));
 	static const FString ChildRelativeScriptPath(TEXT("Tests/Compiler/ClassHierarchy/Child.as"));
@@ -25,7 +25,7 @@ namespace CompilerPipelineClassHierarchyTest
 
 	FString GetFixtureRoot()
 	{
-		return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation"), TEXT("CompilerPipelineClassHierarchyFixtures"));
+		return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation"), TEXT("CompilerClassHierarchyFixtures"));
 	}
 
 	FString WriteFixture(const FString& InRelativeScriptPath, const FString& Contents)
@@ -81,7 +81,7 @@ namespace CompilerPipelineClassHierarchyTest
 	}
 }
 
-TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassHierarchyTests,
+TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerClassHierarchyTests,
 	"Angelscript.TestModule.Compiler.EndToEnd",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -92,8 +92,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassHierarchyTests,
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
-		const FString BaseAbsoluteScriptPath = CompilerPipelineClassHierarchyTest::WriteFixture(
-			CompilerPipelineClassHierarchyTest::BaseRelativeScriptPath,
+		const FString BaseAbsoluteScriptPath = CompilerClassHierarchyTest::WriteFixture(
+			CompilerClassHierarchyTest::BaseRelativeScriptPath,
 			TEXT(
 				"UCLASS()\n"
 				"class UHierarchyBase : UObject\n"
@@ -104,8 +104,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassHierarchyTests,
 				"        return 7;\n"
 				"    }\n"
 				"}\n"));
-		const FString ChildAbsoluteScriptPath = CompilerPipelineClassHierarchyTest::WriteFixture(
-			CompilerPipelineClassHierarchyTest::ChildRelativeScriptPath,
+		const FString ChildAbsoluteScriptPath = CompilerClassHierarchyTest::WriteFixture(
+			CompilerClassHierarchyTest::ChildRelativeScriptPath,
 			TEXT(
 				"UCLASS()\n"
 				"class UHierarchyChild : UHierarchyBase\n"
@@ -121,23 +121,23 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassHierarchyTests,
 		{
 			IFileManager::Get().Delete(*BaseAbsoluteScriptPath, false, true);
 			IFileManager::Get().Delete(*ChildAbsoluteScriptPath, false, true);
-			Engine.DiscardModule(*CompilerPipelineClassHierarchyTest::BaseModuleName.ToString());
-			Engine.DiscardModule(*CompilerPipelineClassHierarchyTest::ChildModuleName.ToString());
+			Engine.DiscardModule(*CompilerClassHierarchyTest::BaseModuleName.ToString());
+			Engine.DiscardModule(*CompilerClassHierarchyTest::ChildModuleName.ToString());
 		};
 
 		Engine.ResetDiagnostics();
 		Engine.LastEmittedDiagnostics.Empty();
 
 		FAngelscriptPreprocessor Preprocessor;
-		Preprocessor.AddFile(CompilerPipelineClassHierarchyTest::BaseRelativeScriptPath, BaseAbsoluteScriptPath);
-		Preprocessor.AddFile(CompilerPipelineClassHierarchyTest::ChildRelativeScriptPath, ChildAbsoluteScriptPath);
+		Preprocessor.AddFile(CompilerClassHierarchyTest::BaseRelativeScriptPath, BaseAbsoluteScriptPath);
+		Preprocessor.AddFile(CompilerClassHierarchyTest::ChildRelativeScriptPath, ChildAbsoluteScriptPath);
 
 		const bool bPreprocessSucceeded = Preprocessor.Preprocess();
 		TArray<TSharedRef<FAngelscriptModuleDesc>> ModulesToCompile = Preprocessor.GetModulesToCompile();
 
 		int32 PreprocessErrorCount = 0;
 		const FString PreprocessDiagnostics = FString::Join(
-			CompilerPipelineClassHierarchyTest::CollectDiagnosticMessages(
+			CompilerClassHierarchyTest::CollectDiagnosticMessages(
 				Engine,
 				{BaseAbsoluteScriptPath, ChildAbsoluteScriptPath},
 				PreprocessErrorCount),
@@ -162,26 +162,26 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassHierarchyTests,
 			return;
 		}
 
-		FAngelscriptModuleDesc* BaseModuleDesc = CompilerPipelineClassHierarchyTest::FindModuleByName(
+		FAngelscriptModuleDesc* BaseModuleDesc = CompilerClassHierarchyTest::FindModuleByName(
 			ModulesToCompile,
-			CompilerPipelineClassHierarchyTest::BaseModuleName.ToString());
-		FAngelscriptModuleDesc* ChildModuleDesc = CompilerPipelineClassHierarchyTest::FindModuleByName(
+			CompilerClassHierarchyTest::BaseModuleName.ToString());
+		FAngelscriptModuleDesc* ChildModuleDesc = CompilerClassHierarchyTest::FindModuleByName(
 			ModulesToCompile,
-			CompilerPipelineClassHierarchyTest::ChildModuleName.ToString());
+			CompilerClassHierarchyTest::ChildModuleName.ToString());
 		if (!this->Assert.IsNotNull(BaseModuleDesc, TEXT("Script superclass round-trip should emit the base module descriptor"))
 			|| !this->Assert.IsNotNull(ChildModuleDesc, TEXT("Script superclass round-trip should emit the child module descriptor")))
 		{
 			return;
 		}
 
-		TSharedPtr<FAngelscriptClassDesc> ChildClassDesc = ChildModuleDesc->GetClass(CompilerPipelineClassHierarchyTest::ChildClassName.ToString());
+		TSharedPtr<FAngelscriptClassDesc> ChildClassDesc = ChildModuleDesc->GetClass(CompilerClassHierarchyTest::ChildClassName.ToString());
 		if (!this->Assert.IsNotNull(ChildClassDesc.Get(), TEXT("Script superclass round-trip should preserve the child class descriptor after preprocessing")))
 		{
 			return;
 		}
 
 		ASSERT_THAT(AreEqual(
-			CompilerPipelineClassHierarchyTest::BaseClassName.ToString(),
+			CompilerClassHierarchyTest::BaseClassName.ToString(),
 			ChildClassDesc->SuperClass,
 			TEXT("Script superclass round-trip should keep the child descriptor super class text stable")));
 
@@ -195,7 +195,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassHierarchyTests,
 
 		int32 CompileErrorCount = 0;
 		const FString CompileDiagnostics = FString::Join(
-			CompilerPipelineClassHierarchyTest::CollectDiagnosticMessages(
+			CompilerClassHierarchyTest::CollectDiagnosticMessages(
 				Engine,
 				{BaseAbsoluteScriptPath, ChildAbsoluteScriptPath},
 				CompileErrorCount),
@@ -221,8 +221,8 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassHierarchyTests,
 			return;
 		}
 
-		UClass* GeneratedBaseClass = FindGeneratedClass(&Engine, CompilerPipelineClassHierarchyTest::BaseClassName);
-		UClass* GeneratedChildClass = FindGeneratedClass(&Engine, CompilerPipelineClassHierarchyTest::ChildClassName);
+		UClass* GeneratedBaseClass = FindGeneratedClass(&Engine, CompilerClassHierarchyTest::BaseClassName);
+		UClass* GeneratedChildClass = FindGeneratedClass(&Engine, CompilerClassHierarchyTest::ChildClassName);
 		if (!this->Assert.IsNotNull(GeneratedBaseClass, TEXT("Script superclass round-trip should generate the base class"))
 			|| !this->Assert.IsNotNull(GeneratedChildClass, TEXT("Script superclass round-trip should generate the child class")))
 		{
@@ -233,7 +233,7 @@ TEST_CLASS_WITH_FLAGS(FCompilerPipelineClassHierarchyTests,
 			GeneratedChildClass->GetSuperClass() == GeneratedBaseClass,
 			TEXT("Script superclass round-trip should keep the generated child super chain pointing at the generated base")));
 
-		UFunction* DerivedFunction = FindGeneratedFunction(GeneratedChildClass, CompilerPipelineClassHierarchyTest::DerivedFunctionName);
+		UFunction* DerivedFunction = FindGeneratedFunction(GeneratedChildClass, CompilerClassHierarchyTest::DerivedFunctionName);
 		if (!this->Assert.IsNotNull(DerivedFunction, TEXT("Script superclass round-trip should expose GetDerivedValue on the generated child class")))
 		{
 			return;
