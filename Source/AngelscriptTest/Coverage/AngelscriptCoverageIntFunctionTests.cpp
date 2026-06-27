@@ -168,6 +168,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 		FAngelscriptEngineScope Scope(Engine);
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovIntFunc_ParamIn", ASTEST_AS(R"AS(
+		int8 AcceptInt8In(int8&in x)
+		{
+			return x + 10;
+		}
+
+		int16 AcceptInt16In(int16&in x)
+		{
+			return x + 100;
+		}
+
 		int AcceptIntIn(int&in x)
 		{
 			return x * 3;
@@ -178,9 +188,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 			return x + 1;
 		}
 
+		uint8 AcceptUInt8In(uint8&in x)
+		{
+			return x + 5;
+		}
+
+		uint16 AcceptUInt16In(uint16&in x)
+		{
+			return x + 50;
+		}
+
 		uint AcceptUIntIn(uint&in x)
 		{
 			return x - 100;
+		}
+
+		uint64 AcceptUInt64In(uint64&in x)
+		{
+			return x + 1000;
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -191,6 +216,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 			}
 		};
 
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int8 AcceptInt8In(int8&in)"));
+			Invoker.AddArg(static_cast<int8>(5));
+			const int8 Result = Invoker.CallAndReturn<int8>(0);
+			TestRunner->TestEqual(TEXT("int8 &in parameter"), Result, static_cast<int8>(15));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int16 AcceptInt16In(int16&in)"));
+			Invoker.AddArg(static_cast<int16>(200));
+			const int16 Result = Invoker.CallAndReturn<int16>(0);
+			TestRunner->TestEqual(TEXT("int16 &in parameter"), Result, static_cast<int16>(300));
+		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int AcceptIntIn(int&in)"));
 			Invoker.AddArg(static_cast<int32>(14));
@@ -204,10 +241,28 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 			TestRunner->TestEqual(TEXT("int64 &in parameter"), Result, static_cast<int64>(10000000000LL));
 		}
 		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("uint8 AcceptUInt8In(uint8&in)"));
+			Invoker.AddArg(static_cast<uint8>(10));
+			const uint8 Result = Invoker.CallAndReturn<uint8>(0);
+			TestRunner->TestEqual(TEXT("uint8 &in parameter"), Result, static_cast<uint8>(15));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("uint16 AcceptUInt16In(uint16&in)"));
+			Invoker.AddArg(static_cast<uint16>(1000));
+			const uint16 Result = Invoker.CallAndReturn<uint16>(0);
+			TestRunner->TestEqual(TEXT("uint16 &in parameter"), Result, static_cast<uint16>(1050));
+		}
+		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("uint AcceptUIntIn(uint&in)"));
 			Invoker.AddArg(static_cast<uint32>(3000000042u));
 			const uint32 Result = Invoker.CallAndReturn<uint32>(static_cast<uint32>(0));
 			TestRunner->TestEqual(TEXT("uint &in parameter"), Result, static_cast<uint32>(2999999942u));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("uint64 AcceptUInt64In(uint64&in)"));
+			Invoker.AddArg(static_cast<uint64>(99999ull));
+			const uint64 Result = Invoker.CallAndReturn<uint64>(static_cast<uint64>(0));
+			TestRunner->TestEqual(TEXT("uint64 &in parameter"), Result, static_cast<uint64>(100999ull));
 		}
 	}
 
@@ -220,6 +275,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 		FAngelscriptEngineScope Scope(Engine);
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovIntFunc_ParamOut", ASTEST_AS(R"AS(
+		void WriteInt8(int8&out x)
+		{
+			x = 127;
+		}
+
+		void WriteInt16(int16&out x)
+		{
+			x = 30000;
+		}
+
 		void WriteInt(int&out x)
 		{
 			x = 42;
@@ -230,9 +295,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 			x = 10000000000;
 		}
 
+		void WriteUInt8(uint8&out x)
+		{
+			x = 255;
+		}
+
+		void WriteUInt16(uint16&out x)
+		{
+			x = 60000;
+		}
+
 		void WriteUInt(uint&out x)
 		{
 			x = 3000000000;
+		}
+
+		void WriteUInt64(uint64&out x)
+		{
+			x = 18000000000000000000;
 		}
 
 		void MultipleOut(int&out a, int&out b)
@@ -249,6 +329,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 			}
 		};
 
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void WriteInt8(int8&out)"));
+			int8 OutValue = 0;
+			Invoker.AddArgRef(OutValue);
+			Invoker.Call();
+			TestRunner->TestEqual(TEXT("int8 &out parameter writes value"), OutValue, static_cast<int8>(127));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void WriteInt16(int16&out)"));
+			int16 OutValue = 0;
+			Invoker.AddArgRef(OutValue);
+			Invoker.Call();
+			TestRunner->TestEqual(TEXT("int16 &out parameter writes value"), OutValue, static_cast<int16>(30000));
+		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void WriteInt(int&out)"));
 			int32 OutValue = 0;
@@ -271,6 +365,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 			TestRunner->TestEqual(TEXT("uint &out parameter writes value"), OutValue, static_cast<uint32>(3000000000u));
 		}
 		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void WriteUInt8(uint8&out)"));
+			uint8 OutValue = 0;
+			Invoker.AddArgRef(OutValue);
+			Invoker.Call();
+			TestRunner->TestEqual(TEXT("uint8 &out parameter writes value"), OutValue, static_cast<uint8>(255));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void WriteUInt16(uint16&out)"));
+			uint16 OutValue = 0;
+			Invoker.AddArgRef(OutValue);
+			Invoker.Call();
+			TestRunner->TestEqual(TEXT("uint16 &out parameter writes value"), OutValue, static_cast<uint16>(60000));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void WriteUInt64(uint64&out)"));
+			uint64 OutValue = 0;
+			Invoker.AddArgRef(OutValue);
+			Invoker.Call();
+			TestRunner->TestEqual(TEXT("uint64 &out parameter writes value"), OutValue, static_cast<uint64>(18000000000000000000ull));
+		}
+		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void MultipleOut(int&out, int&out)"));
 			int32 OutA = 0;
 			int32 OutB = 0;
@@ -290,6 +405,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 		FAngelscriptEngineScope Scope(Engine);
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovIntFunc_ParamInOut", ASTEST_AS(R"AS(
+		void DoubleInt8(int8&inout x)
+		{
+			x *= 2;
+		}
+
+		void DoubleInt16(int16&inout x)
+		{
+			x *= 2;
+		}
+
 		void DoubleInt(int&inout x)
 		{
 			x *= 2;
@@ -300,9 +425,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 			x += 1000;
 		}
 
+		void DoubleUInt8(uint8&inout x)
+		{
+			x *= 2;
+		}
+
+		void DoubleUInt16(uint16&inout x)
+		{
+			x *= 2;
+		}
+
 		void DecrementUInt(uint&inout x)
 		{
 			x -= 50;
+		}
+
+		void IncrementUInt64(uint64&inout x)
+		{
+			x += 1000;
 		}
 		)AS"));
 		ON_SCOPE_EXIT
