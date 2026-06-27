@@ -643,6 +643,766 @@ class ACoverageTimerMultipleTimersActor : AActor
 		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ActiveTimerCount"), 3,
 			TEXT("should have exactly 3 active timers"));
 	}
+
+	TEST_METHOD(TimerRemainingAndElapsed)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageTimer_RemainingElapsed"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageTimerRemainingElapsed.as"),
+			ASTEST_AS(R"AS(
+UCLASS()
+class ACoverageTimerRemainingElapsedActor : AActor
+{
+	UPROPERTY()
+	float InitialRemaining = 0.0f;
+
+	UPROPERTY()
+	float InitialElapsed = 0.0f;
+
+	UPROPERTY()
+	bool bRemainingIsPositive = false;
+
+	UPROPERTY()
+	bool bElapsedIsZeroOrSmall = false;
+
+	UPROPERTY()
+	bool bQueriesSucceeded = false;
+
+	FTimerHandle QueryHandle;
+
+	UFUNCTION()
+	void QueryCallback()
+	{
+		Print("QueryCallback executed");
+	}
+
+	UFUNCTION(BlueprintOverride)
+	void BeginPlay()
+	{
+		Print("TimerRemainingAndElapsed: Testing GetTimerRemaining and GetTimerElapsed");
+
+		// Set a timer with 2.0 second delay
+		QueryHandle = System::SetTimer(this, n"QueryCallback", 2.0f, false);
+
+		// Query immediately after setting
+		InitialRemaining = System::GetTimerRemainingHandle(QueryHandle);
+		InitialElapsed = System::GetTimerElapsedHandle(QueryHandle);
+
+		bRemainingIsPositive = (InitialRemaining > 0.0f);
+		bElapsedIsZeroOrSmall = (InitialElapsed >= 0.0f && InitialElapsed < 0.1f);
+		bQueriesSucceeded = true;
+
+		Print("Initial Remaining: " + InitialRemaining + " seconds");
+		Print("Initial Elapsed: " + InitialElapsed + " seconds");
+	}
+}
+)AS"),
+			TEXT("ACoverageTimerRemainingElapsedActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("timer remaining/elapsed actor should compile")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("timer remaining/elapsed actor should spawn")));
+		BeginPlayActor(Engine, *Actor);
+
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bQueriesSucceeded"), true,
+			TEXT("timer queries should succeed"));
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bRemainingIsPositive"), true,
+			TEXT("remaining time should be positive after timer set"));
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bElapsedIsZeroOrSmall"), true,
+			TEXT("elapsed time should be near zero immediately after timer set"));
+	}
+
+	TEST_METHOD(TimerFirstDelay)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageTimer_FirstDelay"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageTimerFirstDelay.as"),
+			ASTEST_AS(R"AS(
+UCLASS()
+class ACoverageTimerFirstDelayActor : AActor
+{
+	UPROPERTY()
+	float FirstDelayRemaining = 0.0f;
+
+	UPROPERTY()
+	bool bFirstDelayTimerActive = false;
+
+	UPROPERTY()
+	int CallbackCount = 0;
+
+	FTimerHandle FirstDelayHandle;
+
+	UFUNCTION()
+	void FirstDelayCallback()
+	{
+		CallbackCount++;
+		Print("FirstDelayCallback executed, count: " + CallbackCount);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	void BeginPlay()
+	{
+		Print("TimerFirstDelay: Testing looping timer with custom first delay");
+
+		// Set looping timer: 1.0s interval, but first execution after 2.0s
+		FirstDelayHandle = System::SetTimer(this, n"FirstDelayCallback", 1.0f, true, 2.0f);
+
+		bFirstDelayTimerActive = System::IsTimerActiveHandle(FirstDelayHandle);
+		FirstDelayRemaining = System::GetTimerRemainingHandle(FirstDelayHandle);
+
+		Print("First delay timer set, remaining: " + FirstDelayRemaining + " seconds");
+		Print("Timer active: " + bFirstDelayTimerActive);
+	}
+}
+)AS"),
+			TEXT("ACoverageTimerFirstDelayActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("timer first delay actor should compile")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("timer first delay actor should spawn")));
+		BeginPlayActor(Engine, *Actor);
+
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bFirstDelayTimerActive"), true,
+			TEXT("timer with first delay should be active"));
+	}
+
+	TEST_METHOD(TimerImmediateExecution)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageTimer_ImmediateExecution"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageTimerImmediateExecution.as"),
+			ASTEST_AS(R"AS(
+UCLASS()
+class ACoverageTimerImmediateExecutionActor : AActor
+{
+	UPROPERTY()
+	bool bImmediateTimerSetup = false;
+
+	UPROPERTY()
+	float ImmediateRemaining = 0.0f;
+
+	UPROPERTY()
+	int CallbackCount = 0;
+
+	FTimerHandle ImmediateHandle;
+
+	UFUNCTION()
+	void ImmediateCallback()
+	{
+		CallbackCount++;
+		Print("ImmediateCallback executed on next tick, count: " + CallbackCount);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	void BeginPlay()
+	{
+		Print("TimerImmediateExecution: Testing 0.0f delay for next-tick execution");
+
+		// Set timer with 0.0f delay - should execute on next tick
+		ImmediateHandle = System::SetTimer(this, n"ImmediateCallback", 0.0f, false);
+
+		bImmediateTimerSetup = System::IsTimerActiveHandle(ImmediateHandle);
+		ImmediateRemaining = System::GetTimerRemainingHandle(ImmediateHandle);
+
+		Print("Immediate timer set, active: " + bImmediateTimerSetup);
+		Print("Remaining: " + ImmediateRemaining + " seconds");
+	}
+}
+)AS"),
+			TEXT("ACoverageTimerImmediateExecutionActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("timer immediate execution actor should compile")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("timer immediate execution actor should spawn")));
+		BeginPlayActor(Engine, *Actor);
+
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bImmediateTimerSetup"), true,
+			TEXT("immediate timer (0.0f delay) should be set up successfully"));
+	}
+
+	TEST_METHOD(SystemDelay)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageTimer_SystemDelay"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageTimerSystemDelay.as"),
+			ASTEST_AS(R"AS(
+UCLASS()
+class ACoverageTimerSystemDelayActor : AActor
+{
+	UPROPERTY()
+	bool bBeforeDelay = false;
+
+	UPROPERTY()
+	bool bAfterDelay = false;
+
+	UPROPERTY()
+	bool bDelayComplete = false;
+
+	UFUNCTION(BlueprintOverride)
+	void BeginPlay()
+	{
+		Print("SystemDelay: Testing System::Delay latent function");
+		bBeforeDelay = true;
+		TestDelaySequence();
+	}
+
+	UFUNCTION()
+	void TestDelaySequence()
+	{
+		Print("Before System::Delay");
+		bBeforeDelay = true;
+
+		// Latent delay - code appears synchronous but executes across frames
+		System::Delay(0.5f);
+
+		Print("After System::Delay");
+		bAfterDelay = true;
+		bDelayComplete = true;
+	}
+}
+)AS"),
+			TEXT("ACoverageTimerSystemDelayActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("System::Delay actor should compile")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("System::Delay actor should spawn")));
+		BeginPlayActor(Engine, *Actor);
+
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bBeforeDelay"), true,
+			TEXT("code before System::Delay should execute"));
+	}
+
+	TEST_METHOD(TimerClearAndInvalidate)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageTimer_ClearInvalidate"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageTimerClearInvalidate.as"),
+			ASTEST_AS(R"AS(
+UCLASS()
+class ACoverageTimerClearInvalidateActor : AActor
+{
+	UPROPERTY()
+	bool bActiveBeforeClear = false;
+
+	UPROPERTY()
+	bool bActiveAfterClear = false;
+
+	UPROPERTY()
+	bool bValidBeforeClear = false;
+
+	UPROPERTY()
+	bool bValidAfterClear = false;
+
+	FTimerHandle ClearHandle;
+
+	UFUNCTION()
+	void ClearTestCallback()
+	{
+		Print("ClearTestCallback (should not execute if cleared)");
+	}
+
+	UFUNCTION(BlueprintOverride)
+	void BeginPlay()
+	{
+		Print("TimerClearAndInvalidate: Testing ClearAndInvalidateTimerHandle");
+
+		// Set a timer
+		ClearHandle = System::SetTimer(this, n"ClearTestCallback", 1.0f, false);
+
+		bActiveBeforeClear = System::IsTimerActiveHandle(ClearHandle);
+		bValidBeforeClear = ClearHandle.IsValid();
+
+		Print("Before clear - Active: " + bActiveBeforeClear + ", Valid: " + bValidBeforeClear);
+
+		// Clear and invalidate
+		System::ClearAndInvalidateTimerHandle(ClearHandle);
+
+		bActiveAfterClear = System::IsTimerActiveHandle(ClearHandle);
+		bValidAfterClear = ClearHandle.IsValid();
+
+		Print("After clear - Active: " + bActiveAfterClear + ", Valid: " + bValidAfterClear);
+	}
+}
+)AS"),
+			TEXT("ACoverageTimerClearInvalidateActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("timer clear and invalidate actor should compile")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("timer clear and invalidate actor should spawn")));
+		BeginPlayActor(Engine, *Actor);
+
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bActiveBeforeClear"), true,
+			TEXT("timer should be active before clear"));
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bValidBeforeClear"), true,
+			TEXT("timer handle should be valid before clear"));
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bActiveAfterClear"), false,
+			TEXT("timer should not be active after ClearAndInvalidateTimerHandle"));
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bValidAfterClear"), false,
+			TEXT("timer handle should be invalid after ClearAndInvalidateTimerHandle"));
+	}
+
+	TEST_METHOD(TimerReplaceHandle)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageTimer_ReplaceHandle"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageTimerReplaceHandle.as"),
+			ASTEST_AS(R"AS(
+UCLASS()
+class ACoverageTimerReplaceHandleActor : AActor
+{
+	UPROPERTY()
+	int FirstCallbackCount = 0;
+
+	UPROPERTY()
+	int SecondCallbackCount = 0;
+
+	UPROPERTY()
+	float FirstRemaining = 0.0f;
+
+	UPROPERTY()
+	float SecondRemaining = 0.0f;
+
+	UPROPERTY()
+	bool bHandleReplacedSuccessfully = false;
+
+	FTimerHandle SharedHandle;
+
+	UFUNCTION()
+	void FirstCallback()
+	{
+		FirstCallbackCount++;
+		Print("FirstCallback executed");
+	}
+
+	UFUNCTION()
+	void SecondCallback()
+	{
+		SecondCallbackCount++;
+		Print("SecondCallback executed");
+	}
+
+	UFUNCTION(BlueprintOverride)
+	void BeginPlay()
+	{
+		Print("TimerReplaceHandle: Testing handle replacement behavior");
+
+		// Set first timer
+		SharedHandle = System::SetTimer(this, n"FirstCallback", 2.0f, false);
+		FirstRemaining = System::GetTimerRemainingHandle(SharedHandle);
+		Print("First timer set, remaining: " + FirstRemaining);
+
+		// Replace with second timer using same handle variable
+		SharedHandle = System::SetTimer(this, n"SecondCallback", 1.0f, false);
+		SecondRemaining = System::GetTimerRemainingHandle(SharedHandle);
+		Print("Second timer set (replaced), remaining: " + SecondRemaining);
+
+		bHandleReplacedSuccessfully = (SecondRemaining > 0.0f && SecondRemaining <= 1.0f);
+	}
+}
+)AS"),
+			TEXT("ACoverageTimerReplaceHandleActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("timer replace handle actor should compile")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("timer replace handle actor should spawn")));
+		BeginPlayActor(Engine, *Actor);
+
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bHandleReplacedSuccessfully"), true,
+			TEXT("handle should be replaceable with new timer"));
+	}
+
+	TEST_METHOD(TimerLambdaCapture)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageTimer_LambdaCapture"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageTimerLambdaCapture.as"),
+			ASTEST_AS(R"AS(
+UCLASS()
+class ACoverageTimerLambdaCaptureActor : AActor
+{
+	UPROPERTY()
+	bool bLambdaTimerSetup = false;
+
+	UPROPERTY()
+	int CapturedValueSetup = 0;
+
+	UPROPERTY()
+	bool bMultipleLambdasSetup = false;
+
+	FTimerHandle LambdaHandle1;
+	FTimerHandle LambdaHandle2;
+
+	UFUNCTION(BlueprintOverride)
+	void BeginPlay()
+	{
+		Print("TimerLambdaCapture: Testing lambda callbacks with captured variables");
+
+		int LocalValue = 42;
+		FString LocalMessage = "Hello from lambda";
+
+		// Lambda timer with captured variables
+		System::SetTimer(FTimerDelegate(this, function()
+		{
+			Print("Lambda timer callback executed");
+			Print("Captured LocalValue: " + LocalValue);
+			Print("Captured LocalMessage: " + LocalMessage);
+		}), 0.1f, false);
+
+		bLambdaTimerSetup = true;
+		CapturedValueSetup = LocalValue;
+
+		// Multiple lambda timers with different captured values
+		int Value1 = 100;
+		int Value2 = 200;
+
+		LambdaHandle1 = System::SetTimer(FTimerDelegate(this, function()
+		{
+			Print("Lambda1 with captured value: " + Value1);
+		}), 0.2f, false);
+
+		LambdaHandle2 = System::SetTimer(FTimerDelegate(this, function()
+		{
+			Print("Lambda2 with captured value: " + Value2);
+		}), 0.3f, false);
+
+		bMultipleLambdasSetup = (System::IsTimerActiveHandle(LambdaHandle1) &&
+		                         System::IsTimerActiveHandle(LambdaHandle2));
+
+		Print("Lambda timers set up successfully");
+	}
+}
+)AS"),
+			TEXT("ACoverageTimerLambdaCaptureActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("timer lambda capture actor should compile")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("timer lambda capture actor should spawn")));
+		BeginPlayActor(Engine, *Actor);
+
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bLambdaTimerSetup"), true,
+			TEXT("lambda timer should be set up successfully"));
+		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("CapturedValueSetup"), 42,
+			TEXT("captured value should be accessible"));
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bMultipleLambdasSetup"), true,
+			TEXT("multiple lambda timers should be active"));
+	}
+
+	TEST_METHOD(TimerUseCaseSkillCooldown)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageTimer_SkillCooldown"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageTimerSkillCooldown.as"),
+			ASTEST_AS(R"AS(
+UCLASS()
+class ACoverageTimerSkillCooldownActor : AActor
+{
+	UPROPERTY()
+	bool bSkillOnCooldown = false;
+
+	UPROPERTY()
+	float CooldownRemaining = 0.0f;
+
+	UPROPERTY()
+	int SkillUseCount = 0;
+
+	FTimerHandle CooldownHandle;
+
+	UFUNCTION()
+	void UseSkill()
+	{
+		if (bSkillOnCooldown)
+		{
+			Print("Skill is on cooldown, remaining: " + CooldownRemaining);
+			return;
+		}
+
+		SkillUseCount++;
+		Print("Skill used! Count: " + SkillUseCount);
+
+		// Start cooldown
+		bSkillOnCooldown = true;
+		CooldownHandle = System::SetTimer(this, n"OnCooldownComplete", 3.0f, false);
+		CooldownRemaining = System::GetTimerRemainingHandle(CooldownHandle);
+		Print("Cooldown started, " + CooldownRemaining + " seconds remaining");
+	}
+
+	UFUNCTION()
+	void OnCooldownComplete()
+	{
+		bSkillOnCooldown = false;
+		Print("Cooldown complete, skill ready!");
+	}
+
+	UFUNCTION(BlueprintOverride)
+	void BeginPlay()
+	{
+		Print("TimerUseCaseSkillCooldown: Simulating skill cooldown pattern");
+		UseSkill();  // First use should succeed
+	}
+}
+)AS"),
+			TEXT("ACoverageTimerSkillCooldownActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("timer skill cooldown actor should compile")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("timer skill cooldown actor should spawn")));
+		BeginPlayActor(Engine, *Actor);
+
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bSkillOnCooldown"), true,
+			TEXT("skill should be on cooldown after use"));
+		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SkillUseCount"), 1,
+			TEXT("skill should have been used once"));
+	}
+
+	TEST_METHOD(TimerUseCasePeriodicCheck)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageTimer_PeriodicCheck"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageTimerPeriodicCheck.as"),
+			ASTEST_AS(R"AS(
+UCLASS()
+class ACoverageTimerPeriodicCheckActor : AActor
+{
+	UPROPERTY()
+	int CheckCount = 0;
+
+	UPROPERTY()
+	float CurrentHealth = 100.0f;
+
+	UPROPERTY()
+	bool bHealthCheckActive = false;
+
+	FTimerHandle HealthCheckHandle;
+
+	UFUNCTION()
+	void CheckHealth()
+	{
+		CheckCount++;
+		Print("Health check #" + CheckCount + ", current health: " + CurrentHealth);
+
+		if (CurrentHealth <= 0.0f)
+		{
+			Print("Health depleted, stopping health check");
+			System::ClearAndInvalidateTimerHandle(HealthCheckHandle);
+			bHealthCheckActive = false;
+		}
+	}
+
+	UFUNCTION(BlueprintOverride)
+	void BeginPlay()
+	{
+		Print("TimerUseCasePeriodicCheck: Periodic health monitoring");
+
+		// Check health every second
+		HealthCheckHandle = System::SetTimer(this, n"CheckHealth", 1.0f, true);
+		bHealthCheckActive = System::IsTimerActiveHandle(HealthCheckHandle);
+
+		Print("Health check timer started (1.0s interval)");
+	}
+}
+)AS"),
+			TEXT("ACoverageTimerPeriodicCheckActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("timer periodic check actor should compile")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("timer periodic check actor should spawn")));
+		BeginPlayActor(Engine, *Actor);
+
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bHealthCheckActive"), true,
+			TEXT("health check timer should be active"));
+	}
+
+	TEST_METHOD(TimerUseCaseBuffDuration)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageTimer_BuffDuration"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageTimerBuffDuration.as"),
+			ASTEST_AS(R"AS(
+UCLASS()
+class ACoverageTimerBuffDurationActor : AActor
+{
+	UPROPERTY()
+	bool bHasSpeedBuff = false;
+
+	UPROPERTY()
+	float BuffRemainingTime = 0.0f;
+
+	UPROPERTY()
+	float SpeedMultiplier = 1.0f;
+
+	FTimerHandle BuffHandle;
+
+	UFUNCTION()
+	void ApplySpeedBuff(float Duration)
+	{
+		Print("Applying speed buff for " + Duration + " seconds");
+		bHasSpeedBuff = true;
+		SpeedMultiplier = 2.0f;
+
+		// Set timer to remove buff after duration
+		BuffHandle = System::SetTimer(this, n"RemoveSpeedBuff", Duration, false);
+		BuffRemainingTime = System::GetTimerRemainingHandle(BuffHandle);
+
+		Print("Speed buff active, remaining: " + BuffRemainingTime + " seconds");
+	}
+
+	UFUNCTION()
+	void RemoveSpeedBuff()
+	{
+		Print("Speed buff expired");
+		bHasSpeedBuff = false;
+		SpeedMultiplier = 1.0f;
+		BuffRemainingTime = 0.0f;
+	}
+
+	UFUNCTION(BlueprintOverride)
+	void BeginPlay()
+	{
+		Print("TimerUseCaseBuffDuration: Buff duration management");
+		ApplySpeedBuff(10.0f);  // 10 second buff
+	}
+}
+)AS"),
+			TEXT("ACoverageTimerBuffDurationActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("timer buff duration actor should compile")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("timer buff duration actor should spawn")));
+		BeginPlayActor(Engine, *Actor);
+
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bHasSpeedBuff"), true,
+			TEXT("speed buff should be active after application"));
+	}
 };
 
 #endif // WITH_DEV_AUTOMATION_TESTS

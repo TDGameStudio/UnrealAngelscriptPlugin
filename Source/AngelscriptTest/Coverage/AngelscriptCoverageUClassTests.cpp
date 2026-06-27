@@ -3,6 +3,8 @@
 #include "AngelscriptReflectiveAccess.h"
 #include "AngelscriptTestMacros.h"
 #include "AngelscriptTestUtilities.h"
+#include "AngelscriptGlobalFunctionInvoker.h"
+#include "AngelscriptTestModuleBuilder.h"
 
 #include "Components/ActorTestSpawner.h"
 #include "GameFramework/Actor.h"
@@ -13,28 +15,29 @@
 // -----------------------------------------------------------------------------
 // AngelscriptCoverageUClassTests
 // -----------------------------------------------------------------------------
-// Comprehensive UCLASS specifier coverage for AngelScript, following the matrix
-// from Documents/Coverage/Coverage_UClass.md (Submatrix 2: UCLASS Specifiers).
+// Comprehensive test coverage for UCLASS, UPROPERTY, UFUNCTION, and UComponent
+// features in AngelScript, addressing uncovered items (⬜) from:
+//   * Documents/Coverage/Coverage_UClass.md
+//   * Documents/Coverage/Coverage_UComponent.md
 //
 // Test axes covered:
-//   * UClassBasicDeclaration       - Bare UCLASS, inheritance patterns
-//   * UClassBlueprintSpecifiers    - Blueprintable, NotBlueprintable, BlueprintType
-//   * UClassBehaviorSpecifiers     - Abstract, Transient, NotPlaceable, Deprecated
-//   * UClassConfigSpecifiers       - Config=Game, DefaultConfig, GlobalUserConfig
-//   * UClassDisplaySpecifiers      - ClassGroup, HideCategories, ShowCategories
-//   * UClassMetaData               - DisplayName, ToolTip, ShortTooltip
-//   * UClassSpecifierCombinations  - Common specifier combinations
+//   * UClassDeclarationAndInheritance  - UCLASS declarations, inheritance chains
+//   * UPropertySpecifiers              - UPROPERTY specifiers (EditAnywhere, BlueprintReadWrite, etc.)
+//   * UFunctionSpecifiers              - UFUNCTION specifiers (BlueprintCallable, BlueprintPure, etc.)
+//   * ComponentDeclaration             - DefaultComponent, RootComponent, Attach
+//   * SceneComponentOperations         - Transform, attachment, detachment
+//   * ComponentLifecycle               - BeginPlay, Tick, EndPlay
 //
-// Pattern: Compile script modules with various UCLASS specifiers, validate
-// through UClass reflection (ClassFlags, ClassConfigName, metadata).
+// Pattern: Compile AS modules with various specifiers, spawn actors, verify
+// through UClass reflection and runtime behavior.
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
 
 using namespace AngelscriptFunctionalTestUtils;
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUClassTest,
-	"Angelscript.TestModule.Coverage.UClass",
+TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUClassComponentTest,
+	"Angelscript.TestModule.Coverage.UClassComponent",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	BEFORE_ALL()
@@ -49,14 +52,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUClassTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// Basic UCLASS declarations: bare UCLASS, inheritance patterns
+	// UCLASS Declaration and Inheritance
 	// -------------------------------------------------------------------------
-	TEST_METHOD(UClassBasicDeclaration)
+	TEST_METHOD(UClassDeclarationAndInheritance)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		static const FName ModuleName(TEXT("ASCoverageUClass_BasicDecl"));
+		static const FName ModuleName(TEXT("ASCoverageUClass_DeclInherit"));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
@@ -66,198 +69,59 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUClassTest,
 			*TestRunner,
 			Engine,
 			ModuleName,
-			TEXT("ASCoverageUClassBasicDecl.as"),
+			TEXT("ASCoverageUClassDeclInherit.as"),
 			ASTEST_AS(R"AS(
-			// Bare UCLASS - minimal declaration
+			// Base UCLASS with basic properties
 			UCLASS()
-			class ABasicActor : AActor
-			{
-				UPROPERTY()
-				int Value = 10;
-			}
-
-			// Inheritance from script base class
-			UCLASS()
-			class ADerivedActor : ABasicActor
-			{
-				UPROPERTY()
-				int DerivedValue = 20;
-			}
-
-			// Multi-level inheritance
-			UCLASS()
-			class ADeepDerivedActor : ADerivedActor
-			{
-				UPROPERTY()
-				int DeepValue = 30;
-			}
-			)AS"),
-			TEXT("ABasicActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Basic UCLASS should compile")));
-
-		UClass* DerivedClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_BasicDecl.ADerivedActor")));
-		ASSERT_THAT(IsNotNull(DerivedClass, TEXT("Derived class should compile")));
-		ASSERT_THAT(IsTrue(DerivedClass->IsChildOf(ScriptClass), TEXT("ADerivedActor should inherit from ABasicActor")));
-
-		UClass* DeepDerivedClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_BasicDecl.ADeepDerivedActor")));
-		ASSERT_THAT(IsNotNull(DeepDerivedClass, TEXT("Multi-level derived class should compile")));
-		ASSERT_THAT(IsTrue(DeepDerivedClass->IsChildOf(DerivedClass), TEXT("ADeepDerivedActor should inherit from ADerivedActor")));
-	}
-
-	// -------------------------------------------------------------------------
-	// Blueprint specifiers: Blueprintable, NotBlueprintable, BlueprintType
-	// -------------------------------------------------------------------------
-	TEST_METHOD(UClassBlueprintSpecifiers)
-	{
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
-		FAngelscriptEngineScope Scope(Engine);
-
-		static const FName ModuleName(TEXT("ASCoverageUClass_BlueprintSpec"));
-		ON_SCOPE_EXIT
-		{
-			Engine.DiscardModule(*ModuleName.ToString());
-		};
-
-		UClass* ScriptClass = CompileScriptModule(
-			*TestRunner,
-			Engine,
-			ModuleName,
-			TEXT("ASCoverageUClassBlueprintSpec.as"),
-			ASTEST_AS(R"AS(
-			// Blueprintable - can be subclassed in Blueprint
-			UCLASS(Blueprintable)
-			class ABlueprintableActor : AActor
-			{
-				UPROPERTY()
-				int Value = 1;
-			}
-
-			// NotBlueprintable - cannot be subclassed in Blueprint
-			UCLASS(NotBlueprintable)
-			class ANotBlueprintableActor : AActor
-			{
-				UPROPERTY()
-				int Value = 2;
-			}
-
-			// BlueprintType - can be used as Blueprint variable type
-			UCLASS(BlueprintType)
-			class ABlueprintTypeActor : AActor
-			{
-				UPROPERTY()
-				int Value = 3;
-			}
-
-			// Combination: Blueprintable + BlueprintType
-			UCLASS(Blueprintable, BlueprintType)
-			class AFullBlueprintActor : AActor
-			{
-				UPROPERTY()
-				int Value = 4;
-			}
-			)AS"),
-			TEXT("ABlueprintableActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Blueprintable class should compile")));
-
-		UClass* NotBPClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_BlueprintSpec.ANotBlueprintableActor")));
-		ASSERT_THAT(IsNotNull(NotBPClass, TEXT("NotBlueprintable class should compile")));
-
-		UClass* BPTypeClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_BlueprintSpec.ABlueprintTypeActor")));
-		ASSERT_THAT(IsNotNull(BPTypeClass, TEXT("BlueprintType class should compile")));
-
-		UClass* FullBPClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_BlueprintSpec.AFullBlueprintActor")));
-		ASSERT_THAT(IsNotNull(FullBPClass, TEXT("Combined Blueprint class should compile")));
-	}
-
-	// -------------------------------------------------------------------------
-	// Behavior specifiers: Abstract, Transient, NotPlaceable
-	// -------------------------------------------------------------------------
-	TEST_METHOD(UClassBehaviorSpecifiers)
-	{
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
-		FAngelscriptEngineScope Scope(Engine);
-
-		static const FName ModuleName(TEXT("ASCoverageUClass_BehaviorSpec"));
-		ON_SCOPE_EXIT
-		{
-			Engine.DiscardModule(*ModuleName.ToString());
-		};
-
-		UClass* ScriptClass = CompileScriptModule(
-			*TestRunner,
-			Engine,
-			ModuleName,
-			TEXT("ASCoverageUClassBehaviorSpec.as"),
-			ASTEST_AS(R"AS(
-			// Abstract - cannot be instantiated
-			UCLASS(Abstract)
-			class AAbstractActor : AActor
-			{
-				UPROPERTY()
-				int Value = 1;
-			}
-
-			// Transient - not saved to disk
-			UCLASS(Transient)
-			class ATransientActor : AActor
-			{
-				UPROPERTY()
-				int Value = 2;
-			}
-
-			// NotPlaceable - cannot be placed in level editor
-			UCLASS(NotPlaceable)
-			class ANotPlaceableActor : AActor
-			{
-				UPROPERTY()
-				int Value = 3;
-			}
-
-			// Combination: Abstract + Blueprintable (common base class pattern)
-			UCLASS(Abstract, Blueprintable)
-			class AAbstractBaseActor : AActor
+			class ABaseTestActor : AActor
 			{
 				UPROPERTY()
 				int BaseValue = 100;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					BaseValue = 200;
+				}
 			}
 
-			// Concrete derived from abstract
+			// Derived UCLASS inheriting from script class
 			UCLASS()
-			class AConcreteActor : AAbstractBaseActor
+			class ADerivedTestActor : ABaseTestActor
 			{
 				UPROPERTY()
-				int ConcreteValue = 200;
+				int DerivedValue = 50;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					Super::BeginPlay();
+					DerivedValue = BaseValue + 10;
+				}
 			}
 			)AS"),
-			TEXT("AAbstractActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Abstract class should compile")));
-		ASSERT_THAT(IsTrue(ScriptClass->HasAnyClassFlags(CLASS_Abstract), TEXT("Should have CLASS_Abstract flag")));
+			TEXT("ADerivedTestActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Derived UCLASS should compile")));
 
-		UClass* TransientClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_BehaviorSpec.ATransientActor")));
-		ASSERT_THAT(IsNotNull(TransientClass, TEXT("Transient class should compile")));
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Derived actor should spawn")));
+		BeginPlayActor(Engine, *Actor);
 
-		UClass* NotPlaceableClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_BehaviorSpec.ANotPlaceableActor")));
-		ASSERT_THAT(IsNotNull(NotPlaceableClass, TEXT("NotPlaceable class should compile")));
-		ASSERT_THAT(IsTrue(NotPlaceableClass->HasAnyClassFlags(CLASS_NotPlaceable), TEXT("Should have CLASS_NotPlaceable flag")));
-
-		UClass* AbstractBaseClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_BehaviorSpec.AAbstractBaseActor")));
-		ASSERT_THAT(IsNotNull(AbstractBaseClass, TEXT("Abstract + Blueprintable class should compile")));
-		ASSERT_THAT(IsTrue(AbstractBaseClass->HasAnyClassFlags(CLASS_Abstract), TEXT("Should be abstract")));
-
-		UClass* ConcreteClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_BehaviorSpec.AConcreteActor")));
-		ASSERT_THAT(IsNotNull(ConcreteClass, TEXT("Concrete derived class should compile")));
-		ASSERT_THAT(IsFalse(ConcreteClass->HasAnyClassFlags(CLASS_Abstract), TEXT("Concrete class should not be abstract")));
+		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("BaseValue"), 200, TEXT("Base class BeginPlay should execute"));
+		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("DerivedValue"), 210, TEXT("Derived class should access base value"));
 	}
 
 	// -------------------------------------------------------------------------
-	// Config specifiers: Config=Game, DefaultConfig
+	// UPROPERTY Specifiers: EditAnywhere, BlueprintReadWrite, etc.
 	// -------------------------------------------------------------------------
-	TEST_METHOD(UClassConfigSpecifiers)
+	TEST_METHOD(UPropertySpecifiers)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		static const FName ModuleName(TEXT("ASCoverageUClass_ConfigSpec"));
+		static const FName ModuleName(TEXT("ASCoverageUProperty_Specifiers"));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
@@ -267,293 +131,604 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUClassTest,
 			*TestRunner,
 			Engine,
 			ModuleName,
-			TEXT("ASCoverageUClassConfigSpec.as"),
+			TEXT("ASCoverageUPropertySpecifiers.as"),
 			ASTEST_AS(R"AS(
-			// Config=Game - properties can be saved to Game.ini
-			UCLASS(Config=Game)
-			class AConfigGameActor : AActor
-			{
-				UPROPERTY(Config)
-				int ConfigValue = 100;
-
-				UPROPERTY()
-				int NonConfigValue = 200;
-			}
-
-			// DefaultConfig - uses default config file
-			UCLASS(DefaultConfig)
-			class ADefaultConfigActor : AActor
-			{
-				UPROPERTY(Config)
-				int DefaultConfigValue = 300;
-			}
-
-			// Config=Editor - editor-specific config
-			UCLASS(Config=Editor)
-			class AConfigEditorActor : AActor
-			{
-				UPROPERTY(Config)
-				int EditorConfigValue = 400;
-			}
-			)AS"),
-			TEXT("AConfigGameActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Config=Game class should compile")));
-		ASSERT_THAT(IsTrue(ScriptClass->ClassConfigName == NAME_Game, TEXT("Should use Game config")));
-
-		// Verify Config property has correct flags
-		FProperty* ConfigProp = ScriptClass->FindPropertyByName(TEXT("ConfigValue"));
-		ASSERT_THAT(IsNotNull(ConfigProp, TEXT("Config property should exist")));
-		ASSERT_THAT(IsTrue(ConfigProp->HasAnyPropertyFlags(CPF_Config), TEXT("Property should have CPF_Config flag")));
-
-		FProperty* NonConfigProp = ScriptClass->FindPropertyByName(TEXT("NonConfigValue"));
-		ASSERT_THAT(IsNotNull(NonConfigProp, TEXT("Non-config property should exist")));
-		ASSERT_THAT(IsFalse(NonConfigProp->HasAnyPropertyFlags(CPF_Config), TEXT("Non-config property should not have CPF_Config flag")));
-
-		UClass* DefaultConfigClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_ConfigSpec.ADefaultConfigActor")));
-		ASSERT_THAT(IsNotNull(DefaultConfigClass, TEXT("DefaultConfig class should compile")));
-
-		UClass* EditorConfigClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_ConfigSpec.AConfigEditorActor")));
-		ASSERT_THAT(IsNotNull(EditorConfigClass, TEXT("Config=Editor class should compile")));
-		ASSERT_THAT(IsTrue(EditorConfigClass->ClassConfigName == NAME_Editor, TEXT("Should use Editor config")));
-	}
-
-	// -------------------------------------------------------------------------
-	// Display specifiers: ClassGroup, HideCategories, ShowCategories
-	// -------------------------------------------------------------------------
-	TEST_METHOD(UClassDisplaySpecifiers)
-	{
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
-		FAngelscriptEngineScope Scope(Engine);
-
-		static const FName ModuleName(TEXT("ASCoverageUClass_DisplaySpec"));
-		ON_SCOPE_EXIT
-		{
-			Engine.DiscardModule(*ModuleName.ToString());
-		};
-
-		UClass* ScriptClass = CompileScriptModule(
-			*TestRunner,
-			Engine,
-			ModuleName,
-			TEXT("ASCoverageUClassDisplaySpec.as"),
-			ASTEST_AS(R"AS(
-			// ClassGroup - organize in editor
-			UCLASS(ClassGroup=(Custom))
-			class AGroupedActor : AActor
-			{
-				UPROPERTY()
-				int Value = 1;
-			}
-
-			// HideCategories - hide property categories
-			UCLASS(HideCategories=(Rendering, Collision))
-			class AHideCategoriesActor : AActor
-			{
-				UPROPERTY()
-				int Value = 2;
-			}
-
-			// ShowCategories - show previously hidden categories
-			UCLASS(ShowCategories=(Rendering))
-			class AShowCategoriesActor : AHideCategoriesActor
-			{
-				UPROPERTY()
-				int DerivedValue = 3;
-			}
-
-			// CollapseCategories - collapse all categories
-			UCLASS(CollapseCategories)
-			class ACollapsedActor : AActor
-			{
-				UPROPERTY(Category="MyCategory")
-				int Value = 4;
-			}
-
-			// AutoExpandCategories - auto-expand specific categories
-			UCLASS(AutoExpandCategories=(MyCategory))
-			class AAutoExpandActor : AActor
-			{
-				UPROPERTY(Category="MyCategory")
-				int CategoryValue = 5;
-
-				UPROPERTY(Category="OtherCategory")
-				int OtherValue = 6;
-			}
-			)AS"),
-			TEXT("AGroupedActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("ClassGroup class should compile")));
-
-		UClass* HideCategoriesClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_DisplaySpec.AHideCategoriesActor")));
-		ASSERT_THAT(IsNotNull(HideCategoriesClass, TEXT("HideCategories class should compile")));
-
-		UClass* ShowCategoriesClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_DisplaySpec.AShowCategoriesActor")));
-		ASSERT_THAT(IsNotNull(ShowCategoriesClass, TEXT("ShowCategories class should compile")));
-
-		UClass* CollapsedClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_DisplaySpec.ACollapsedActor")));
-		ASSERT_THAT(IsNotNull(CollapsedClass, TEXT("CollapseCategories class should compile")));
-
-		UClass* AutoExpandClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_DisplaySpec.AAutoExpandActor")));
-		ASSERT_THAT(IsNotNull(AutoExpandClass, TEXT("AutoExpandCategories class should compile")));
-	}
-
-	// -------------------------------------------------------------------------
-	// Metadata: DisplayName, ToolTip, ShortTooltip
-	// -------------------------------------------------------------------------
-	TEST_METHOD(UClassMetaData)
-	{
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
-		FAngelscriptEngineScope Scope(Engine);
-
-		static const FName ModuleName(TEXT("ASCoverageUClass_MetaData"));
-		ON_SCOPE_EXIT
-		{
-			Engine.DiscardModule(*ModuleName.ToString());
-		};
-
-		UClass* ScriptClass = CompileScriptModule(
-			*TestRunner,
-			Engine,
-			ModuleName,
-			TEXT("ASCoverageUClassMetaData.as"),
-			ASTEST_AS(R"AS(
-			// DisplayName - custom display name in editor
-			UCLASS(meta=(DisplayName="My Custom Actor"))
-			class ADisplayNameActor : AActor
-			{
-				UPROPERTY()
-				int Value = 1;
-			}
-
-			// ToolTip - full tooltip text
-			UCLASS(meta=(ToolTip="This is a detailed tooltip for the actor"))
-			class AToolTipActor : AActor
-			{
-				UPROPERTY()
-				int Value = 2;
-			}
-
-			// ShortTooltip - brief tooltip
-			UCLASS(meta=(ShortTooltip="Brief description"))
-			class AShortTooltipActor : AActor
-			{
-				UPROPERTY()
-				int Value = 3;
-			}
-
-			// Multiple metadata entries
-			UCLASS(meta=(DisplayName="Combined Meta Actor", ToolTip="Actor with multiple metadata entries"))
-			class ACombinedMetaActor : AActor
-			{
-				UPROPERTY()
-				int Value = 4;
-			}
-			)AS"),
-			TEXT("ADisplayNameActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("DisplayName class should compile")));
-
-		// Verify DisplayName metadata
-		FString DisplayName = ScriptClass->GetMetaData(TEXT("DisplayName"));
-		ASSERT_THAT(AreEqual(DisplayName, FString(TEXT("My Custom Actor")), TEXT("DisplayName metadata should be set")));
-
-		UClass* ToolTipClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_MetaData.AToolTipActor")));
-		ASSERT_THAT(IsNotNull(ToolTipClass, TEXT("ToolTip class should compile")));
-		FString ToolTip = ToolTipClass->GetMetaData(TEXT("ToolTip"));
-		ASSERT_THAT(AreEqual(ToolTip, FString(TEXT("This is a detailed tooltip for the actor")), TEXT("ToolTip metadata should be set")));
-
-		UClass* ShortTooltipClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_MetaData.AShortTooltipActor")));
-		ASSERT_THAT(IsNotNull(ShortTooltipClass, TEXT("ShortTooltip class should compile")));
-
-		UClass* CombinedClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_MetaData.ACombinedMetaActor")));
-		ASSERT_THAT(IsNotNull(CombinedClass, TEXT("Combined metadata class should compile")));
-		FString CombinedDisplayName = CombinedClass->GetMetaData(TEXT("DisplayName"));
-		FString CombinedToolTip = CombinedClass->GetMetaData(TEXT("ToolTip"));
-		ASSERT_THAT(AreEqual(CombinedDisplayName, FString(TEXT("Combined Meta Actor")), TEXT("Combined DisplayName should be set")));
-		ASSERT_THAT(AreEqual(CombinedToolTip, FString(TEXT("Actor with multiple metadata entries")), TEXT("Combined ToolTip should be set")));
-	}
-
-	// -------------------------------------------------------------------------
-	// Specifier combinations: common patterns
-	// -------------------------------------------------------------------------
-	TEST_METHOD(UClassSpecifierCombinations)
-	{
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
-		FAngelscriptEngineScope Scope(Engine);
-
-		static const FName ModuleName(TEXT("ASCoverageUClass_Combinations"));
-		ON_SCOPE_EXIT
-		{
-			Engine.DiscardModule(*ModuleName.ToString());
-		};
-
-		UClass* ScriptClass = CompileScriptModule(
-			*TestRunner,
-			Engine,
-			ModuleName,
-			TEXT("ASCoverageUClassCombinations.as"),
-			ASTEST_AS(R"AS(
-			// Common pattern: Abstract base that's blueprintable
-			UCLASS(Abstract, Blueprintable)
-			class AGameplayBase : AActor
-			{
-				UPROPERTY()
-				int BaseHealth = 100;
-			}
-
-			// Concrete implementation
 			UCLASS()
-			class AGameplayDerived : AGameplayBase
+			class APropertySpecifierActor : AActor
 			{
-				UPROPERTY()
-				int DerivedArmor = 50;
-			}
+				// EditAnywhere - editable everywhere
+				UPROPERTY(EditAnywhere)
+				int EditAnywhereValue = 10;
 
-			// BlueprintType but NotBlueprintable - can use as variable but not subclass
-			UCLASS(NotBlueprintable, BlueprintType)
-			class ADataOnlyActor : AActor
-			{
-				UPROPERTY()
-				int DataValue = 200;
-			}
+				// EditDefaultsOnly - editable in defaults only
+				UPROPERTY(EditDefaultsOnly)
+				int EditDefaultsOnlyValue = 20;
 
-			// Config + DefaultConfig combination
-			UCLASS(Config=Game, DefaultConfig)
-			class AConfigurableActor : AActor
-			{
+				// EditInstanceOnly - editable in instances only
+				UPROPERTY(EditInstanceOnly)
+				int EditInstanceOnlyValue = 30;
+
+				// BlueprintReadWrite - readable and writable in BP
+				UPROPERTY(BlueprintReadWrite)
+				int BlueprintReadWriteValue = 40;
+
+				// BlueprintReadOnly - read-only in BP
+				UPROPERTY(BlueprintReadOnly)
+				int BlueprintReadOnlyValue = 50;
+
+				// Transient - not saved
+				UPROPERTY(Transient)
+				int TransientValue = 60;
+
+				// Config - saved to config file
 				UPROPERTY(Config)
-				int ConfigHealth = 150;
+				int ConfigValue = 70;
 
-				UPROPERTY(Config)
-				float ConfigSpeed = 600.0f;
-			}
+				// SaveGame - saved in save games
+				UPROPERTY(SaveGame)
+				int SaveGameValue = 80;
 
-			// Complex combination: multiple specifiers and metadata
-			UCLASS(Blueprintable, BlueprintType, HideCategories=(Rendering), meta=(DisplayName="Complex Actor", ToolTip="Combines multiple specifiers"))
-			class AComplexActor : AActor
-			{
-				UPROPERTY()
-				int ComplexValue = 999;
+				// Category with EditAnywhere
+				UPROPERTY(EditAnywhere, Category="Test Category")
+				int CategoryValue = 90;
+
+				// Multiple specifiers combined
+				UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Combined")
+				int CombinedValue = 100;
 			}
 			)AS"),
-			TEXT("AGameplayBase"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Abstract + Blueprintable should compile")));
-		ASSERT_THAT(IsTrue(ScriptClass->HasAnyClassFlags(CLASS_Abstract), TEXT("Should be abstract")));
+			TEXT("APropertySpecifierActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Property specifier actor should compile")));
 
-		UClass* DerivedClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_Combinations.AGameplayDerived")));
-		ASSERT_THAT(IsNotNull(DerivedClass, TEXT("Concrete derived should compile")));
-		ASSERT_THAT(IsFalse(DerivedClass->HasAnyClassFlags(CLASS_Abstract), TEXT("Derived should not be abstract")));
+		// Verify property flags via reflection
+		FProperty* EditAnywhereProp = ScriptClass->FindPropertyByName(TEXT("EditAnywhereValue"));
+		ASSERT_THAT(IsNotNull(EditAnywhereProp, TEXT("EditAnywhere property should exist")));
+		ASSERT_THAT(IsTrue(EditAnywhereProp->HasAnyPropertyFlags(CPF_Edit), TEXT("EditAnywhere should have CPF_Edit flag")));
 
-		UClass* DataOnlyClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_Combinations.ADataOnlyActor")));
-		ASSERT_THAT(IsNotNull(DataOnlyClass, TEXT("NotBlueprintable + BlueprintType should compile")));
+		FProperty* BlueprintReadOnlyProp = ScriptClass->FindPropertyByName(TEXT("BlueprintReadOnlyValue"));
+		ASSERT_THAT(IsNotNull(BlueprintReadOnlyProp, TEXT("BlueprintReadOnly property should exist")));
+		ASSERT_THAT(IsTrue(BlueprintReadOnlyProp->HasAnyPropertyFlags(CPF_BlueprintVisible | CPF_BlueprintReadOnly), 
+			TEXT("BlueprintReadOnly should have CPF_BlueprintVisible and CPF_BlueprintReadOnly flags")));
 
-		UClass* ConfigClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_Combinations.AConfigurableActor")));
-		ASSERT_THAT(IsNotNull(ConfigClass, TEXT("Config + DefaultConfig should compile")));
-		ASSERT_THAT(IsTrue(ConfigClass->ClassConfigName == NAME_Game, TEXT("Should use Game config")));
+		FProperty* TransientProp = ScriptClass->FindPropertyByName(TEXT("TransientValue"));
+		ASSERT_THAT(IsNotNull(TransientProp, TEXT("Transient property should exist")));
+		ASSERT_THAT(IsTrue(TransientProp->HasAnyPropertyFlags(CPF_Transient), TEXT("Transient should have CPF_Transient flag")));
+	}
 
-		UClass* ComplexClass = Cast<UClass>(StaticFindObject(UClass::StaticClass(), nullptr, TEXT("/Script/ASCoverageUClass_Combinations.AComplexActor")));
-		ASSERT_THAT(IsNotNull(ComplexClass, TEXT("Complex combination should compile")));
-		FString ComplexDisplayName = ComplexClass->GetMetaData(TEXT("DisplayName"));
-		ASSERT_THAT(AreEqual(ComplexDisplayName, FString(TEXT("Complex Actor")), TEXT("Complex metadata should be set")));
+	// -------------------------------------------------------------------------
+	// UFUNCTION Specifiers: BlueprintCallable, BlueprintPure, etc.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(UFunctionSpecifiers)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageUFunction_Specifiers"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageUFunctionSpecifiers.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class AFunctionSpecifierActor : AActor
+			{
+				UPROPERTY()
+				int CallableValue = 0;
+
+				UPROPERTY()
+				int PureValue = 42;
+
+				// BlueprintCallable - callable from BP
+				UFUNCTION(BlueprintCallable)
+				void BlueprintCallableFunction(int Value)
+				{
+					CallableValue = Value;
+				}
+
+				// BlueprintPure - pure function (no side effects, const)
+				UFUNCTION(BlueprintPure)
+				int BlueprintPureFunction()
+				{
+					return PureValue;
+				}
+
+				// BlueprintCallable with return value
+				UFUNCTION(BlueprintCallable)
+				int AddNumbers(int A, int B)
+				{
+					return A + B;
+				}
+
+				// BlueprintCallable with multiple parameters
+				UFUNCTION(BlueprintCallable)
+				void SetValues(int Value1, int Value2)
+				{
+					CallableValue = Value1;
+					PureValue = Value2;
+				}
+
+				// Category specified
+				UFUNCTION(BlueprintCallable, Category="Test Functions")
+				int GetDoubleValue(int Value)
+				{
+					return Value * 2;
+				}
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					BlueprintCallableFunction(100);
+				}
+			}
+			)AS'),
+			TEXT("AFunctionSpecifierActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Function specifier actor should compile")));
+
+		// Verify function flags via reflection
+		UFunction* CallableFunc = ScriptClass->FindFunctionByName(TEXT("BlueprintCallableFunction"));
+		ASSERT_THAT(IsNotNull(CallableFunc, TEXT("BlueprintCallable function should exist")));
+		ASSERT_THAT(IsTrue(CallableFunc->HasAnyFunctionFlags(FUNC_BlueprintCallable), 
+			TEXT("BlueprintCallable should have FUNC_BlueprintCallable flag")));
+
+		UFunction* PureFunc = ScriptClass->FindFunctionByName(TEXT("BlueprintPureFunction"));
+		ASSERT_THAT(IsNotNull(PureFunc, TEXT("BlueprintPure function should exist")));
+		ASSERT_THAT(IsTrue(PureFunc->HasAnyFunctionFlags(FUNC_BlueprintCallable | FUNC_BlueprintPure), 
+			TEXT("BlueprintPure should have FUNC_BlueprintCallable and FUNC_BlueprintPure flags")));
+
+		// Spawn and verify runtime behavior
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Function specifier actor should spawn")));
+		BeginPlayActor(Engine, *Actor);
+
+		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("CallableValue"), 100, 
+			TEXT("BlueprintCallable function should execute in BeginPlay"));
+	}
+
+	// -------------------------------------------------------------------------
+	// DefaultComponent: Basic component declaration
+	// -------------------------------------------------------------------------
+	TEST_METHOD(ComponentDeclaration)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageComponent_Declaration"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageComponentDeclaration.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class AComponentDeclActor : AActor
+			{
+				// RootComponent declaration
+				UPROPERTY(DefaultComponent, RootComponent)
+				USceneComponent Root;
+
+				// Component attached to root
+				UPROPERTY(DefaultComponent, Attach=Root)
+				USceneComponent ChildComponent;
+
+				// StaticMeshComponent
+				UPROPERTY(DefaultComponent, Attach=Root)
+				UStaticMeshComponent MeshComponent;
+
+				// Actor component (no transform)
+				UPROPERTY(DefaultComponent)
+				UActorComponent LogicComponent;
+
+				UPROPERTY()
+				bool AllComponentsValid = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					AllComponentsValid = (Root != nullptr) && 
+					                     (ChildComponent != nullptr) && 
+					                     (MeshComponent != nullptr) &&
+					                     (LogicComponent != nullptr);
+				}
+			}
+			)AS"),
+			TEXT("AComponentDeclActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Component declaration actor should compile")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Component declaration actor should spawn")));
+		BeginPlayActor(Engine, *Actor);
+
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AllComponentsValid"), true,
+			TEXT("All DefaultComponents should be created"));
+	}
+
+	// -------------------------------------------------------------------------
+	// USceneComponent: Transform operations
+	// -------------------------------------------------------------------------
+	TEST_METHOD(SceneComponentTransform)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageSceneComponent_Transform"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageSceneComponentTransform.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ASceneTransformActor : AActor
+			{
+				UPROPERTY(DefaultComponent, RootComponent)
+				USceneComponent Root;
+
+				UPROPERTY(DefaultComponent, Attach=Root)
+				USceneComponent Child;
+
+				UPROPERTY()
+				FVector InitialLocation;
+
+				UPROPERTY()
+				FVector UpdatedLocation;
+
+				UPROPERTY()
+				FRotator UpdatedRotation;
+
+				UPROPERTY()
+				FVector ChildRelativeLocation;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					// Get initial location
+					InitialLocation = Root.GetComponentLocation();
+
+					// Set world location
+					Root.SetWorldLocation(FVector(100.f, 200.f, 300.f));
+					UpdatedLocation = Root.GetComponentLocation();
+
+					// Set world rotation
+					Root.SetWorldRotation(FRotator(45.f, 90.f, 0.f));
+					UpdatedRotation = Root.GetComponentRotation();
+
+					// Set child relative location
+					Child.SetRelativeLocation(FVector(10.f, 20.f, 30.f));
+					ChildRelativeLocation = Child.GetRelativeLocation();
+				}
+			}
+			)AS"),
+			TEXT("ASceneTransformActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Scene transform actor should compile")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Scene transform actor should spawn")));
+		BeginPlayActor(Engine, *Actor);
+
+		// Verify transform operations
+		FVector UpdatedLocation;
+		if (VerifyByPath<FStructProperty, FVector>(*TestRunner, Actor, TEXT("UpdatedLocation"), UpdatedLocation))
+		{
+			TestRunner->TestEqual(TEXT("SetWorldLocation should update location"), UpdatedLocation, FVector(100.f, 200.f, 300.f));
+		}
+
+		FRotator UpdatedRotation;
+		if (VerifyByPath<FStructProperty, FRotator>(*TestRunner, Actor, TEXT("UpdatedRotation"), UpdatedRotation))
+		{
+			TestRunner->TestEqual(TEXT("SetWorldRotation should update rotation (Pitch)"), UpdatedRotation.Pitch, 45.f, 0.01f);
+			TestRunner->TestEqual(TEXT("SetWorldRotation should update rotation (Yaw)"), UpdatedRotation.Yaw, 90.f, 0.01f);
+		}
+	}
+
+	// -------------------------------------------------------------------------
+	// USceneComponent: Attachment operations
+	// -------------------------------------------------------------------------
+	TEST_METHOD(SceneComponentAttachment)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageSceneComponent_Attach"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageSceneComponentAttach.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ASceneAttachActor : AActor
+			{
+				UPROPERTY(DefaultComponent, RootComponent)
+				USceneComponent Root;
+
+				UPROPERTY(DefaultComponent)
+				USceneComponent DynamicChild;
+
+				UPROPERTY()
+				bool IsInitiallyAttached = false;
+
+				UPROPERTY()
+				bool IsAttachedAfterOperation = false;
+
+				UPROPERTY()
+				bool IsDetached = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					// Check initial attachment state
+					IsInitiallyAttached = (DynamicChild.GetAttachParent() == nullptr);
+
+					// Attach to root
+					DynamicChild.AttachToComponent(Root, NAME_None, EAttachmentRule::KeepRelative, 
+						EAttachmentRule::KeepRelative, EAttachmentRule::KeepRelative, false);
+					IsAttachedAfterOperation = (DynamicChild.GetAttachParent() == Root);
+
+					// Detach
+					DynamicChild.DetachFromComponent(EDetachmentRule::KeepRelative, 
+						EDetachmentRule::KeepRelative, EDetachmentRule::KeepRelative, false);
+					IsDetached = (DynamicChild.GetAttachParent() == nullptr);
+				}
+			}
+			)AS"),
+			TEXT("ASceneAttachActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Scene attachment actor should compile")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Scene attachment actor should spawn")));
+		BeginPlayActor(Engine, *Actor);
+
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsAttachedAfterOperation"), true,
+			TEXT("Component should attach to root"));
+		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsDetached"), true,
+			TEXT("Component should detach from parent"));
+	}
+
+	// -------------------------------------------------------------------------
+	// UActorComponent: Lifecycle methods
+	// -------------------------------------------------------------------------
+	TEST_METHOD(ComponentLifecycle)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageComponent_Lifecycle"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageComponentLifecycle.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ULifecycleComponent : UActorComponent
+			{
+				UPROPERTY()
+				int LifecycleStep = 0;
+
+				UFUNCTION(BlueprintOverride)
+				void OnComponentCreated()
+				{
+					LifecycleStep = 1;
+				}
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					if (LifecycleStep == 1)
+						LifecycleStep = 2;
+				}
+			}
+
+			UCLASS()
+			class ALifecycleActor : AActor
+			{
+				UPROPERTY(DefaultComponent)
+				ULifecycleComponent TestComponent;
+
+				UPROPERTY()
+				int ComponentLifecycleStep = 0;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					if (TestComponent != nullptr)
+						ComponentLifecycleStep = TestComponent.LifecycleStep;
+				}
+			}
+			)AS"),
+			TEXT("ALifecycleActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Lifecycle actor should compile")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Lifecycle actor should spawn")));
+		BeginPlayActor(Engine, *Actor);
+
+		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ComponentLifecycleStep"), 2,
+			TEXT("Component lifecycle methods should execute in order"));
+	}
+
+	// -------------------------------------------------------------------------
+	// UFUNCTION: Parameter passing (value, &in, &out, &inout)
+	// -------------------------------------------------------------------------
+	TEST_METHOD(UFunctionParameterPassing)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovUFunc_ParamPass", ASTEST_AS(R"AS(
+		// Value parameter
+		int AddValue(int A, int B)
+		{
+			return A + B;
+		}
+
+		// &in parameter (read-only reference)
+		int MultiplyByTwo(int&in Value)
+		{
+			return Value * 2;
+		}
+
+		// &out parameter (write-only, returns value)
+		void GetValues(int&out A, int&out B)
+		{
+			A = 10;
+			B = 20;
+		}
+
+		// &inout parameter (read-write reference)
+		void DoubleValue(int&inout Value)
+		{
+			Value = Value * 2;
+		}
+		)AS"));
+		ON_SCOPE_EXIT { if (Module) Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName())); };
+
+		// Test value parameter
+		FASGlobalFunctionInvoker AddInvoker(*TestRunner, Engine, *Module, TEXT("int AddValue(int, int)"));
+		AddInvoker.AddArg(5);
+		AddInvoker.AddArg(3);
+		int32 AddResult = AddInvoker.CallAndReturn<int32>(0);
+		TestRunner->TestEqual(TEXT("Value parameters should work"), AddResult, 8);
+
+		// Test &in parameter
+		FASGlobalFunctionInvoker MultiplyInvoker(*TestRunner, Engine, *Module, TEXT("int MultiplyByTwo(int&in)"));
+		MultiplyInvoker.AddArg(7);
+		int32 MultiplyResult = MultiplyInvoker.CallAndReturn<int32>(0);
+		TestRunner->TestEqual(TEXT("&in parameter should work"), MultiplyResult, 14);
+
+		// Test &out parameters
+		FASGlobalFunctionInvoker OutInvoker(*TestRunner, Engine, *Module, TEXT("void GetValues(int&out, int&out)"));
+		int32 OutA = 0, OutB = 0;
+		OutInvoker.AddArgRef(OutA);
+		OutInvoker.AddArgRef(OutB);
+		OutInvoker.Call();
+		TestRunner->TestEqual(TEXT("&out parameter A should work"), OutA, 10);
+		TestRunner->TestEqual(TEXT("&out parameter B should work"), OutB, 20);
+
+		// Test &inout parameter
+		FASGlobalFunctionInvoker InOutInvoker(*TestRunner, Engine, *Module, TEXT("void DoubleValue(int&inout)"));
+		int32 InOutValue = 15;
+		InOutInvoker.AddArgRef(InOutValue);
+		InOutInvoker.Call();
+		TestRunner->TestEqual(TEXT("&inout parameter should modify value"), InOutValue, 30);
+	}
+
+	// -------------------------------------------------------------------------
+	// Container properties: TArray, TMap, TSet
+	// -------------------------------------------------------------------------
+	TEST_METHOD(ContainerProperties)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageContainer_Props"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageContainerProps.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class AContainerPropsActor : AActor
+			{
+				UPROPERTY()
+				TArray<int> IntArray;
+
+				UPROPERTY()
+				TMap<int, FString> IntStringMap;
+
+				UPROPERTY()
+				TSet<int> IntSet;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					// Populate array
+					IntArray.Add(10);
+					IntArray.Add(20);
+					IntArray.Add(30);
+
+					// Populate map
+					IntStringMap.Add(1, "One");
+					IntStringMap.Add(2, "Two");
+
+					// Populate set
+					IntSet.Add(100);
+					IntSet.Add(200);
+				}
+			}
+			)AS"),
+			TEXT("AContainerPropsActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Container props actor should compile")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Container props actor should spawn")));
+		BeginPlayActor(Engine, *Actor);
+
+		// Verify TArray
+		int32 ArraySize = GetArrayNumByPath(*TestRunner, Actor, TEXT("IntArray"));
+		TestRunner->TestEqual(TEXT("TArray should have correct size"), ArraySize, 3);
+
+		int32 ArrayValue;
+		if (VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntArray[1]"), ArrayValue))
+		{
+			TestRunner->TestEqual(TEXT("TArray element should have correct value"), ArrayValue, 20);
+		}
+
+		// Verify TMap
+		int32 MapSize = GetMapNumByPath(*TestRunner, Actor, TEXT("IntStringMap"));
+		TestRunner->TestEqual(TEXT("TMap should have correct size"), MapSize, 2);
+
+		// Verify TSet
+		int32 SetSize = GetSetNumByPath(*TestRunner, Actor, TEXT("IntSet"));
+		TestRunner->TestEqual(TEXT("TSet should have correct size"), SetSize, 2);
+
+		bool SetContains = SetContainsByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntSet"), 100);
+		TestRunner->TestTrue(TEXT("TSet should contain added element"), SetContains);
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif

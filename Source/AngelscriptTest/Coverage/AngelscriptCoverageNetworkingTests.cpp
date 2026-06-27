@@ -376,6 +376,586 @@ class ACoverageNetworkingConfigActor : AActor
 		ASSERT_THAT(IsTrue(HealthProperty != nullptr && HealthProperty->HasAnyPropertyFlags(CPF_Net),
 			TEXT("actor config replicated property should carry CPF_Net")));
 	}
+
+	TEST_METHOD(ReplicationConditionsMetadata)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageNetworking_ReplicationConditions"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageNetworkingReplicationConditions.as"),
+			ASTEST_AS(R"AS(
+UCLASS()
+class ACoverageNetworkingConditionsActor : AActor
+{
+	default SetReplicates(true);
+
+	UPROPERTY(Replicated, ReplicationCondition=InitialOnly)
+	int InitialOnlyValue = 1;
+
+	UPROPERTY(Replicated, ReplicationCondition=OwnerOnly)
+	int OwnerOnlyValue = 2;
+
+	UPROPERTY(Replicated, ReplicationCondition=SkipOwner)
+	int SkipOwnerValue = 3;
+
+	UPROPERTY(Replicated, ReplicationCondition=SimulatedOnly)
+	int SimulatedOnlyValue = 4;
+
+	UPROPERTY(Replicated, ReplicationCondition=AutonomousOnly)
+	int AutonomousOnlyValue = 5;
+
+	UPROPERTY(Replicated, ReplicationCondition=SimulatedOrPhysics)
+	int SimulatedOrPhysicsValue = 6;
+
+	UPROPERTY(Replicated, ReplicationCondition=InitialOrOwner)
+	int InitialOrOwnerValue = 7;
+
+	UPROPERTY(Replicated, ReplicationCondition=Custom)
+	int CustomValue = 8;
+
+	UPROPERTY(Replicated, ReplicationCondition=ReplayOrOwner)
+	int ReplayOrOwnerValue = 9;
+
+	UPROPERTY(Replicated, ReplicationCondition=ReplayOnly)
+	int ReplayOnlyValue = 10;
+
+	UPROPERTY(Replicated, ReplicationCondition=SimulatedOnlyNoReplay)
+	int SimulatedOnlyNoReplayValue = 11;
+
+	UPROPERTY(Replicated, ReplicationCondition=SimulatedOrPhysicsNoReplay)
+	int SimulatedOrPhysicsNoReplayValue = 12;
+
+	UPROPERTY(Replicated, ReplicationCondition=SkipReplay)
+	int SkipReplayValue = 13;
+
+	UPROPERTY(Replicated, ReplicationCondition=Never)
+	int NeverValue = 14;
+}
+)AS"),
+			TEXT("ACoverageNetworkingConditionsActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("networking replication conditions actor should compile")));
+
+		using namespace AngelscriptCoverageNetworkingTest;
+
+		struct FConditionTestCase
+		{
+			FName PropertyName;
+			ELifetimeCondition ExpectedCondition;
+			const TCHAR* ConditionName;
+		};
+
+		const FConditionTestCase TestCases[] = {
+			{ TEXT("InitialOnlyValue"), COND_InitialOnly, TEXT("InitialOnly") },
+			{ TEXT("OwnerOnlyValue"), COND_OwnerOnly, TEXT("OwnerOnly") },
+			{ TEXT("SkipOwnerValue"), COND_SkipOwner, TEXT("SkipOwner") },
+			{ TEXT("SimulatedOnlyValue"), COND_SimulatedOnly, TEXT("SimulatedOnly") },
+			{ TEXT("AutonomousOnlyValue"), COND_AutonomousOnly, TEXT("AutonomousOnly") },
+			{ TEXT("SimulatedOrPhysicsValue"), COND_SimulatedOrPhysics, TEXT("SimulatedOrPhysics") },
+			{ TEXT("InitialOrOwnerValue"), COND_InitialOrOwner, TEXT("InitialOrOwner") },
+			{ TEXT("CustomValue"), COND_Custom, TEXT("Custom") },
+			{ TEXT("ReplayOrOwnerValue"), COND_ReplayOrOwner, TEXT("ReplayOrOwner") },
+			{ TEXT("ReplayOnlyValue"), COND_ReplayOnly, TEXT("ReplayOnly") },
+			{ TEXT("SimulatedOnlyNoReplayValue"), COND_SimulatedOnlyNoReplay, TEXT("SimulatedOnlyNoReplay") },
+			{ TEXT("SimulatedOrPhysicsNoReplayValue"), COND_SimulatedOrPhysicsNoReplay, TEXT("SimulatedOrPhysicsNoReplay") },
+			{ TEXT("SkipReplayValue"), COND_SkipReplay, TEXT("SkipReplay") },
+			{ TEXT("NeverValue"), COND_Never, TEXT("Never") },
+		};
+
+		for (const FConditionTestCase& TestCase : TestCases)
+		{
+			FProperty* Property = RequireGeneratedProperty(*TestRunner, ScriptClass, TestCase.PropertyName);
+			if (Property != nullptr)
+			{
+				ASSERT_THAT(IsTrue(Property->HasAnyPropertyFlags(CPF_Net),
+					*FString::Printf(TEXT("%s should carry CPF_Net"), *TestCase.PropertyName.ToString())));
+				ASSERT_THAT(AreEqual(TestCase.ExpectedCondition,
+					Property->GetBlueprintReplicationCondition(),
+					*FString::Printf(TEXT("%s should preserve %s replication condition"),
+						*TestCase.PropertyName.ToString(), TestCase.ConditionName)));
+			}
+		}
+	}
+
+	TEST_METHOD(RPCReliabilityVariations)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageNetworking_RPCReliability"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageNetworkingRPCReliability.as"),
+			ASTEST_AS(R"AS(
+UCLASS()
+class ACoverageNetworkingRPCReliabilityActor : AActor
+{
+	default SetReplicates(true);
+
+	UFUNCTION(Server, Reliable)
+	void ServerReliableExplicit()
+	{
+	}
+
+	UFUNCTION(Server, Unreliable)
+	void ServerUnreliable()
+	{
+	}
+
+	UFUNCTION(Client, Reliable)
+	void ClientReliableExplicit()
+	{
+	}
+
+	UFUNCTION(Client, Unreliable)
+	void ClientUnreliable()
+	{
+	}
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastReliableExplicit()
+	{
+	}
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastUnreliable()
+	{
+	}
+}
+)AS"),
+			TEXT("ACoverageNetworkingRPCReliabilityActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("networking RPC reliability actor should compile")));
+
+		using namespace AngelscriptCoverageNetworkingTest;
+
+		struct FReliabilityTestCase
+		{
+			FName FunctionName;
+			EFunctionFlags ExpectedEndpoint;
+			bool bExpectedReliable;
+			const TCHAR* Description;
+		};
+
+		const FReliabilityTestCase TestCases[] = {
+			{ TEXT("ServerReliableExplicit"), FUNC_NetServer, true, TEXT("Server+Reliable should be reliable") },
+			{ TEXT("ServerUnreliable"), FUNC_NetServer, false, TEXT("Server+Unreliable should be unreliable") },
+			{ TEXT("ClientReliableExplicit"), FUNC_NetClient, true, TEXT("Client+Reliable should be reliable") },
+			{ TEXT("ClientUnreliable"), FUNC_NetClient, false, TEXT("Client+Unreliable should be unreliable") },
+			{ TEXT("MulticastReliableExplicit"), FUNC_NetMulticast, true, TEXT("NetMulticast+Reliable should be reliable") },
+			{ TEXT("MulticastUnreliable"), FUNC_NetMulticast, false, TEXT("NetMulticast+Unreliable should be unreliable") },
+		};
+
+		for (const FReliabilityTestCase& TestCase : TestCases)
+		{
+			UFunction* Function = RequireGeneratedFunction(*TestRunner, ScriptClass, TestCase.FunctionName);
+			if (Function != nullptr)
+			{
+				AssertNetFunctionFlags(*TestRunner, Function, TestCase.Description,
+					TestCase.ExpectedEndpoint, TestCase.bExpectedReliable, false);
+			}
+		}
+	}
+
+	TEST_METHOD(ComplexReplicatedTypes)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageNetworking_ComplexTypes"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageNetworkingComplexTypes.as"),
+			ASTEST_AS(R"AS(
+UCLASS()
+class ACoverageNetworkingComplexTypesActor : AActor
+{
+	default SetReplicates(true);
+
+	UPROPERTY(Replicated)
+	TArray<int> ReplicatedIntArray;
+
+	UPROPERTY(Replicated)
+	TArray<FVector> ReplicatedVectorArray;
+
+	UPROPERTY(Replicated)
+	FVector ReplicatedVector;
+
+	UPROPERTY(Replicated)
+	FRotator ReplicatedRotator;
+
+	UPROPERTY(Replicated)
+	FTransform ReplicatedTransform;
+
+	UPROPERTY(Replicated)
+	FString ReplicatedString;
+
+	UPROPERTY(Replicated)
+	FName ReplicatedName;
+
+	UPROPERTY(ReplicatedUsing=OnRep_ReplicatedActor)
+	AActor ReplicatedActorRef;
+
+	UFUNCTION()
+	void OnRep_ReplicatedActor()
+	{
+	}
+}
+)AS"),
+			TEXT("ACoverageNetworkingComplexTypesActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("networking complex types actor should compile")));
+
+		using namespace AngelscriptCoverageNetworkingTest;
+
+		const FName PropertyNames[] = {
+			TEXT("ReplicatedIntArray"),
+			TEXT("ReplicatedVectorArray"),
+			TEXT("ReplicatedVector"),
+			TEXT("ReplicatedRotator"),
+			TEXT("ReplicatedTransform"),
+			TEXT("ReplicatedString"),
+			TEXT("ReplicatedName"),
+			TEXT("ReplicatedActorRef"),
+		};
+
+		for (const FName& PropertyName : PropertyNames)
+		{
+			FProperty* Property = RequireGeneratedProperty(*TestRunner, ScriptClass, PropertyName);
+			if (Property != nullptr)
+			{
+				ASSERT_THAT(IsTrue(Property->HasAnyPropertyFlags(CPF_Net),
+					*FString::Printf(TEXT("%s should carry CPF_Net"), *PropertyName.ToString())));
+			}
+		}
+
+		FProperty* ActorRefProperty = FindFProperty<FProperty>(ScriptClass, TEXT("ReplicatedActorRef"));
+		if (ActorRefProperty != nullptr)
+		{
+			ASSERT_THAT(IsTrue(ActorRefProperty->HasAnyPropertyFlags(CPF_RepNotify),
+				TEXT("ReplicatedActorRef should carry CPF_RepNotify")));
+			ASSERT_THAT(AreEqual(FName(TEXT("OnRep_ReplicatedActor")),
+				ActorRefProperty->RepNotifyFunc,
+				TEXT("ReplicatedActorRef should preserve RepNotify function name")));
+		}
+	}
+
+	TEST_METHOD(MultipleRPCsInSingleClass)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageNetworking_MultipleRPCs"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageNetworkingMultipleRPCs.as"),
+			ASTEST_AS(R"AS(
+UCLASS()
+class ACoverageNetworkingMultiRPCActor : AActor
+{
+	default SetReplicates(true);
+
+	UFUNCTION(Server, Reliable)
+	void ServerAction1()
+	{
+	}
+
+	UFUNCTION(Server, Reliable)
+	void ServerAction2()
+	{
+	}
+
+	UFUNCTION(Client, Reliable)
+	void ClientNotify1()
+	{
+	}
+
+	UFUNCTION(Client, Reliable)
+	void ClientNotify2()
+	{
+	}
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastEvent1()
+	{
+	}
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastEvent2()
+	{
+	}
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerValidated1()
+	{
+	}
+
+	UFUNCTION()
+	bool ServerValidated1_Validate()
+	{
+		return true;
+	}
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerValidated2()
+	{
+	}
+
+	UFUNCTION()
+	bool ServerValidated2_Validate()
+	{
+		return true;
+	}
+}
+)AS"),
+			TEXT("ACoverageNetworkingMultiRPCActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("networking multiple RPCs actor should compile")));
+
+		using namespace AngelscriptCoverageNetworkingTest;
+
+		const FName ServerFunctions[] = { TEXT("ServerAction1"), TEXT("ServerAction2"), TEXT("ServerValidated1"), TEXT("ServerValidated2") };
+		const FName ClientFunctions[] = { TEXT("ClientNotify1"), TEXT("ClientNotify2") };
+		const FName MulticastFunctions[] = { TEXT("MulticastEvent1"), TEXT("MulticastEvent2") };
+		const FName ValidationFunctions[] = { TEXT("ServerValidated1_Validate"), TEXT("ServerValidated2_Validate") };
+
+		for (const FName& FuncName : ServerFunctions)
+		{
+			UFunction* Function = RequireGeneratedFunction(*TestRunner, ScriptClass, FuncName);
+			if (Function != nullptr)
+			{
+				ASSERT_THAT(IsTrue(Function->HasAnyFunctionFlags(FUNC_NetServer),
+					*FString::Printf(TEXT("%s should be a Server RPC"), *FuncName.ToString())));
+			}
+		}
+
+		for (const FName& FuncName : ClientFunctions)
+		{
+			UFunction* Function = RequireGeneratedFunction(*TestRunner, ScriptClass, FuncName);
+			if (Function != nullptr)
+			{
+				ASSERT_THAT(IsTrue(Function->HasAnyFunctionFlags(FUNC_NetClient),
+					*FString::Printf(TEXT("%s should be a Client RPC"), *FuncName.ToString())));
+			}
+		}
+
+		for (const FName& FuncName : MulticastFunctions)
+		{
+			UFunction* Function = RequireGeneratedFunction(*TestRunner, ScriptClass, FuncName);
+			if (Function != nullptr)
+			{
+				ASSERT_THAT(IsTrue(Function->HasAnyFunctionFlags(FUNC_NetMulticast),
+					*FString::Printf(TEXT("%s should be a NetMulticast RPC"), *FuncName.ToString())));
+			}
+		}
+
+		for (const FName& FuncName : ValidationFunctions)
+		{
+			UFunction* Function = RequireGeneratedFunction(*TestRunner, ScriptClass, FuncName);
+			if (Function != nullptr)
+			{
+				ASSERT_THAT(IsFalse(Function->HasAnyFunctionFlags(FUNC_Net),
+					*FString::Printf(TEXT("%s should not be a network RPC itself"), *FuncName.ToString())));
+			}
+		}
+	}
+
+	TEST_METHOD(RPCWithParameters)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageNetworking_RPCParams"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageNetworkingRPCParams.as"),
+			ASTEST_AS(R"AS(
+UCLASS()
+class ACoverageNetworkingRPCParamsActor : AActor
+{
+	default SetReplicates(true);
+
+	UFUNCTION(Server, Reliable)
+	void ServerActionWithInt(int Value)
+	{
+	}
+
+	UFUNCTION(Server, Reliable)
+	void ServerActionWithMultipleParams(int Value, float Rate, FVector Location)
+	{
+	}
+
+	UFUNCTION(Client, Reliable)
+	void ClientNotifyWithString(FString Message)
+	{
+	}
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastEventWithLocation(FVector Location, FRotator Rotation)
+	{
+	}
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerValidatedWithParams(int Damage, AActor Target)
+	{
+	}
+
+	UFUNCTION()
+	bool ServerValidatedWithParams_Validate(int Damage, AActor Target)
+	{
+		return Damage >= 0 && Target != nullptr;
+	}
+}
+)AS"),
+			TEXT("ACoverageNetworkingRPCParamsActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("networking RPC params actor should compile")));
+
+		using namespace AngelscriptCoverageNetworkingTest;
+
+		struct FRPCParamTestCase
+		{
+			FName FunctionName;
+			int32 ExpectedParamCount;
+			EFunctionFlags ExpectedEndpoint;
+		};
+
+		const FRPCParamTestCase TestCases[] = {
+			{ TEXT("ServerActionWithInt"), 1, FUNC_NetServer },
+			{ TEXT("ServerActionWithMultipleParams"), 3, FUNC_NetServer },
+			{ TEXT("ClientNotifyWithString"), 1, FUNC_NetClient },
+			{ TEXT("MulticastEventWithLocation"), 2, FUNC_NetMulticast },
+			{ TEXT("ServerValidatedWithParams"), 2, FUNC_NetServer },
+		};
+
+		for (const FRPCParamTestCase& TestCase : TestCases)
+		{
+			UFunction* Function = RequireGeneratedFunction(*TestRunner, ScriptClass, TestCase.FunctionName);
+			if (Function != nullptr)
+			{
+				ASSERT_THAT(IsTrue(Function->HasAnyFunctionFlags(FUNC_Net),
+					*FString::Printf(TEXT("%s should be a network function"), *TestCase.FunctionName.ToString())));
+				ASSERT_THAT(IsTrue(Function->HasAnyFunctionFlags(TestCase.ExpectedEndpoint),
+					*FString::Printf(TEXT("%s should have correct endpoint flag"), *TestCase.FunctionName.ToString())));
+
+				int32 ParamCount = 0;
+				for (TFieldIterator<FProperty> It(Function); It && (It->PropertyFlags & CPF_Parm); ++It)
+				{
+					if (!(It->PropertyFlags & CPF_ReturnParm))
+					{
+						ParamCount++;
+					}
+				}
+
+				ASSERT_THAT(AreEqual(TestCase.ExpectedParamCount, ParamCount,
+					*FString::Printf(TEXT("%s should have %d parameters"),
+						*TestCase.FunctionName.ToString(), TestCase.ExpectedParamCount)));
+			}
+		}
+	}
+
+	TEST_METHOD(ReplicatedPropertiesWithDefaults)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageNetworking_ReplicatedDefaults"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageNetworkingReplicatedDefaults.as"),
+			ASTEST_AS(R"AS(
+UCLASS()
+class ACoverageNetworkingDefaultsActor : AActor
+{
+	default SetReplicates(true);
+
+	UPROPERTY(Replicated)
+	int Health = 100;
+
+	UPROPERTY(Replicated)
+	float Speed = 600.0f;
+
+	UPROPERTY(Replicated)
+	bool bIsAlive = true;
+
+	UPROPERTY(Replicated)
+	FString PlayerName = "DefaultPlayer";
+
+	UPROPERTY(ReplicatedUsing=OnRep_Score)
+	int Score = 0;
+
+	UFUNCTION()
+	void OnRep_Score()
+	{
+	}
+}
+)AS"),
+			TEXT("ACoverageNetworkingDefaultsActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("networking replicated defaults actor should compile")));
+
+		AActor* DefaultActor = ScriptClass != nullptr ? Cast<AActor>(ScriptClass->GetDefaultObject()) : nullptr;
+		ASSERT_THAT(IsNotNull(DefaultActor, TEXT("networking defaults actor CDO should exist")));
+
+		using namespace AngelscriptCoverageNetworkingTest;
+
+		const FName PropertyNames[] = {
+			TEXT("Health"),
+			TEXT("Speed"),
+			TEXT("bIsAlive"),
+			TEXT("PlayerName"),
+			TEXT("Score"),
+		};
+
+		for (const FName& PropertyName : PropertyNames)
+		{
+			FProperty* Property = RequireGeneratedProperty(*TestRunner, ScriptClass, PropertyName);
+			if (Property != nullptr)
+			{
+				ASSERT_THAT(IsTrue(Property->HasAnyPropertyFlags(CPF_Net),
+					*FString::Printf(TEXT("%s should be replicated"), *PropertyName.ToString())));
+			}
+		}
+	}
 };
 
 #endif // WITH_DEV_AUTOMATION_TESTS
