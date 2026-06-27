@@ -484,6 +484,205 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFloatExpressionTest,
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestClassMemberModify()"), 1.41421f, TEXT("class member float modify"));
 		ExpectGlobalReturn<double>(Engine, Module, TEXT("double TestClassMemberDouble()"), 2.718281828459045, TEXT("class member double"));
 	}
+
+	// -------------------------------------------------------------------------
+	// Special values: NaN, Inf, -Inf, and precision comparison.
+	// Covers: NaN generation/detection, Inf generation/detection, IsNearlyEqual.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(SpecialValues)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFloatExpr_SpecialValues", ASTEST_AS(R"AS(
+		// NaN generation and detection (float)
+		bool TestFloatNaNGeneration()
+		{
+			float nanValue = 0.0f / 0.0f;
+			return Math::IsNaN(nanValue);
+		}
+
+		bool TestFloatNaNComparison()
+		{
+			float nanValue = 0.0f / 0.0f;
+			// NaN should never equal itself
+			return !(nanValue == nanValue);
+		}
+
+		// NaN generation and detection (double)
+		bool TestDoubleNaNGeneration()
+		{
+			double nanValue = 0.0 / 0.0;
+			return Math::IsNaN(nanValue);
+		}
+
+		bool TestDoubleNaNComparison()
+		{
+			double nanValue = 0.0 / 0.0;
+			// NaN should never equal itself
+			return !(nanValue == nanValue);
+		}
+
+		// Positive infinity generation and detection (float)
+		bool TestFloatInfGeneration()
+		{
+			float infValue = 1.0f / 0.0f;
+			return !Math::IsFinite(infValue) && infValue > 0.0f;
+		}
+
+		bool TestFloatInfComparison()
+		{
+			float infValue = 1.0f / 0.0f;
+			return infValue > 1000000.0f;
+		}
+
+		// Negative infinity generation and detection (float)
+		bool TestFloatNegInfGeneration()
+		{
+			float negInfValue = -1.0f / 0.0f;
+			return !Math::IsFinite(negInfValue) && negInfValue < 0.0f;
+		}
+
+		bool TestFloatNegInfComparison()
+		{
+			float negInfValue = -1.0f / 0.0f;
+			return negInfValue < -1000000.0f;
+		}
+
+		// Positive infinity generation and detection (double)
+		bool TestDoubleInfGeneration()
+		{
+			double infValue = 1.0 / 0.0;
+			return !Math::IsFinite(infValue) && infValue > 0.0;
+		}
+
+		bool TestDoubleInfComparison()
+		{
+			double infValue = 1.0 / 0.0;
+			return infValue > 1000000.0;
+		}
+
+		// Negative infinity generation and detection (double)
+		bool TestDoubleNegInfGeneration()
+		{
+			double negInfValue = -1.0 / 0.0;
+			return !Math::IsFinite(negInfValue) && negInfValue < 0.0;
+		}
+
+		bool TestDoubleNegInfComparison()
+		{
+			double negInfValue = -1.0 / 0.0;
+			return negInfValue < -1000000.0;
+		}
+
+		// IsFinite with normal values (float)
+		bool TestFloatIsFiniteNormal()
+		{
+			return Math::IsFinite(123.456f);
+		}
+
+		// IsFinite with normal values (double)
+		bool TestDoubleIsFiniteNormal()
+		{
+			return Math::IsFinite(123.456);
+		}
+
+		// Precision comparison using Math::IsNearlyEqual (float)
+		bool TestFloatPrecisionComparison()
+		{
+			float a = 1.0f / 3.0f;
+			float b = 0.333333f;
+			return Math::IsNearlyEqual(a, b, 0.00001f);
+		}
+
+		bool TestFloatPrecisionComparisonFails()
+		{
+			float a = 1.0f;
+			float b = 1.1f;
+			return !Math::IsNearlyEqual(a, b, 0.01f);
+		}
+
+		// Precision comparison using Math::IsNearlyEqual (double)
+		bool TestDoublePrecisionComparison()
+		{
+			double a = 1.0 / 3.0;
+			double b = 0.333333333333;
+			return Math::IsNearlyEqual(a, b, 0.000001);
+		}
+
+		bool TestDoublePrecisionComparisonFails()
+		{
+			double a = 1.0;
+			double b = 1.1;
+			return !Math::IsNearlyEqual(a, b, 0.01);
+		}
+
+		// Test -0.0 vs 0.0 (float)
+		bool TestFloatNegativeZeroEquality()
+		{
+			float positiveZero = 0.0f;
+			float negativeZero = -0.0f;
+			// In floating point, -0.0 == 0.0
+			return positiveZero == negativeZero;
+		}
+
+		// Test -0.0 vs 0.0 (double)
+		bool TestDoubleNegativeZeroEquality()
+		{
+			double positiveZero = 0.0;
+			double negativeZero = -0.0;
+			// In floating point, -0.0 == 0.0
+			return positiveZero == negativeZero;
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		// NaN tests (float)
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatNaNGeneration()"), true, TEXT("float NaN generation via 0.0f/0.0f"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatNaNComparison()"), true, TEXT("float NaN != NaN"));
+
+		// NaN tests (double)
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoubleNaNGeneration()"), true, TEXT("double NaN generation via 0.0/0.0"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoubleNaNComparison()"), true, TEXT("double NaN != NaN"));
+
+		// Positive Infinity tests (float)
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatInfGeneration()"), true, TEXT("float Inf generation via 1.0f/0.0f"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatInfComparison()"), true, TEXT("float Inf > large number"));
+
+		// Negative Infinity tests (float)
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatNegInfGeneration()"), true, TEXT("float -Inf generation via -1.0f/0.0f"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatNegInfComparison()"), true, TEXT("float -Inf < large negative number"));
+
+		// Positive Infinity tests (double)
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoubleInfGeneration()"), true, TEXT("double Inf generation via 1.0/0.0"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoubleInfComparison()"), true, TEXT("double Inf > large number"));
+
+		// Negative Infinity tests (double)
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoubleNegInfGeneration()"), true, TEXT("double -Inf generation via -1.0/0.0"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoubleNegInfComparison()"), true, TEXT("double -Inf < large negative number"));
+
+		// IsFinite tests
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatIsFiniteNormal()"), true, TEXT("float IsFinite with normal value"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoubleIsFiniteNormal()"), true, TEXT("double IsFinite with normal value"));
+
+		// Precision comparison tests (float)
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatPrecisionComparison()"), true, TEXT("float IsNearlyEqual for close values"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatPrecisionComparisonFails()"), true, TEXT("float IsNearlyEqual fails for distant values"));
+
+		// Precision comparison tests (double)
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoublePrecisionComparison()"), true, TEXT("double IsNearlyEqual for close values"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoublePrecisionComparisonFails()"), true, TEXT("double IsNearlyEqual fails for distant values"));
+
+		// -0.0 vs 0.0 tests
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatNegativeZeroEquality()"), true, TEXT("float -0.0 == 0.0"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoubleNegativeZeroEquality()"), true, TEXT("double -0.0 == 0.0"));
+	}
 };
 
 #endif // WITH_DEV_AUTOMATION_TESTS
