@@ -503,6 +503,257 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 		// Verify FindOrAdd added new key with modified default
 		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Key20Value"), 200, TEXT("FindOrAdd on new key should add default and modify (0+200=200)"));
 	}
+
+	// -------------------------------------------------------------------------
+	// TMap Remove operations and cleanup
+	// -------------------------------------------------------------------------
+	TEST_METHOD(TMapRemoveOperations)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageTMap_Remove"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageTMapRemove.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageTMapRemoveActor : AActor
+			{
+				UPROPERTY()
+				int InitialSize;
+
+				UPROPERTY()
+				int AfterRemoveSize;
+
+				UPROPERTY()
+				int AfterEmptySize;
+
+				UPROPERTY()
+				int RemovedCount;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					Print("=== TMap Remove Operations Test ===");
+
+					TMap<int, FString> Items;
+					Items.Add(1, "One");
+					Items.Add(2, "Two");
+					Items.Add(3, "Three");
+					Items.Add(4, "Four");
+					Items.Add(5, "Five");
+
+					Print("Initial map size: " + Items.Num());
+					InitialSize = Items.Num();
+
+					// Test Remove - returns number of removed elements
+					int Removed = Items.Remove(3);
+					Print("Removed key 3, count: " + Removed);
+					Print("Size after Remove: " + Items.Num());
+					RemovedCount = Removed;
+					AfterRemoveSize = Items.Num();
+
+					// Verify key no longer exists
+					bool HasThree = Items.Contains(3);
+					Print("Contains(3) after Remove: " + HasThree);
+
+					// Test Empty
+					Items.Empty();
+					Print("Size after Empty: " + Items.Num());
+					AfterEmptySize = Items.Num();
+				}
+			}
+			)AS"),
+			TEXT("ACoverageTMapRemoveActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TMap Remove actor class should compile")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("TMap Remove actor should spawn")));
+
+		BeginPlayActor(Engine, *Actor);
+
+		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("InitialSize"), 5, TEXT("Initial map should have 5 entries"));
+		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("RemovedCount"), 1, TEXT("Remove should return 1"));
+		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("AfterRemoveSize"), 4, TEXT("Map should have 4 entries after Remove"));
+		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("AfterEmptySize"), 0, TEXT("Map should be empty after Empty()"));
+	}
+
+	// -------------------------------------------------------------------------
+	// TMap with complex value types (TArray as value)
+	// -------------------------------------------------------------------------
+	TEST_METHOD(TMapWithArrayValues)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageTMap_ArrayValues"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageTMapArrayValues.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageTMapArrayValuesActor : AActor
+			{
+				UPROPERTY()
+				int Group1Size;
+
+				UPROPERTY()
+				int Group2Size;
+
+				UPROPERTY()
+				int Group1First;
+
+				UPROPERTY()
+				int Group2Last;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					Print("=== TMap with TArray Values Test ===");
+
+					// TMap with int key and TArray<int> value
+					TMap<int, TArray<int>> Groups;
+
+					// Add arrays to map
+					TArray<int> Group1;
+					Group1.Add(10);
+					Group1.Add(20);
+					Group1.Add(30);
+					Groups.Add(1, Group1);
+					Print("Added Group1 with " + Group1.Num() + " elements");
+
+					TArray<int> Group2;
+					Group2.Add(100);
+					Group2.Add(200);
+					Groups.Add(2, Group2);
+					Print("Added Group2 with " + Group2.Num() + " elements");
+
+					// Access and verify
+					Group1Size = Groups[1].Num();
+					Group2Size = Groups[2].Num();
+					Group1First = Groups[1][0];
+					Group2Last = Groups[2][Groups[2].Num() - 1];
+
+					Print("Groups[1] size: " + Group1Size);
+					Print("Groups[2] size: " + Group2Size);
+					Print("Groups[1][0]: " + Group1First);
+				}
+			}
+			)AS"),
+			TEXT("ACoverageTMapArrayValuesActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TMap with TArray values actor class should compile")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("TMap with TArray values actor should spawn")));
+
+		BeginPlayActor(Engine, *Actor);
+
+		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Group1Size"), 3, TEXT("Group1 should have 3 elements"));
+		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Group2Size"), 2, TEXT("Group2 should have 2 elements"));
+		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Group1First"), 10, TEXT("Group1[0] should be 10"));
+		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Group2Last"), 200, TEXT("Group2 last element should be 200"));
+	}
+
+	// -------------------------------------------------------------------------
+	// TMap edge cases - empty map operations
+	// -------------------------------------------------------------------------
+	TEST_METHOD(TMapEdgeCases)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageTMap_EdgeCases"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageTMapEdgeCases.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageTMapEdgeCasesActor : AActor
+			{
+				UPROPERTY()
+				int EmptySize;
+
+				UPROPERTY()
+				int ContainsResult;
+
+				UPROPERTY()
+				int SingleEntrySize;
+
+				UPROPERTY()
+				int RemovedFromEmpty;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					Print("=== TMap Edge Cases Test ===");
+
+					// Test empty map operations
+					TMap<int, FString> EmptyMap;
+					Print("Empty map size: " + EmptyMap.Num());
+					EmptySize = EmptyMap.Num();
+
+					bool HasKey = EmptyMap.Contains(5);
+					Print("Contains(5) in empty map: " + HasKey);
+					ContainsResult = HasKey ? 1 : 0;
+
+					// Remove from empty map (should not crash)
+					int Removed = EmptyMap.Remove(5);
+					Print("Remove(5) from empty map returned: " + Removed);
+					RemovedFromEmpty = Removed;
+
+					// Test single entry map
+					TMap<int, FString> SingleMap;
+					SingleMap.Add(42, "Answer");
+					Print("Single entry map size: " + SingleMap.Num());
+					SingleEntrySize = SingleMap.Num();
+
+					// Remove the only entry
+					SingleMap.Remove(42);
+					Print("After removing only entry: " + SingleMap.Num());
+				}
+			}
+			)AS"),
+			TEXT("ACoverageTMapEdgeCasesActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TMap edge cases actor class should compile")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("TMap edge cases actor should spawn")));
+
+		BeginPlayActor(Engine, *Actor);
+
+		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EmptySize"), 0, TEXT("Empty map should have size 0"));
+		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ContainsResult"), 0, TEXT("Contains in empty map should return false"));
+		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("RemovedFromEmpty"), 0, TEXT("Remove from empty map should return 0"));
+		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SingleEntrySize"), 1, TEXT("Single entry map should have size 1"));
+	}
 };
 
 #endif // WITH_DEV_AUTOMATION_TESTS
