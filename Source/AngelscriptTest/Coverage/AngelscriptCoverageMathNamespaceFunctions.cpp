@@ -16,8 +16,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-using namespace AngelscriptFunctionalTestUtils;
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathNamespaceFunctionsTest,
 	"Angelscript.TestModule.Coverage.MathNamespaceFunctions",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
