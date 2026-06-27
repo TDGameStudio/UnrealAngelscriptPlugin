@@ -50,37 +50,37 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLiteralAssetTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FString Script = TEXT(R"AS(
-UCLASS()
-class UBasicAssetCarrier : UObject
-{
-	UPROPERTY()
-	int Value = 0;
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class UBasicAssetCarrier : UObject
+			{
+				UPROPERTY()
+				int Value = 0;
 
-	UPROPERTY()
-	FString Name;
-}
+				UPROPERTY()
+				FString Name;
+			}
 
-asset MyBasicAsset of UBasicAssetCarrier
-{
-	Value = 42;
-	Name = "TestAsset";
-}
+			asset MyBasicAsset of UBasicAssetCarrier
+			{
+				Value = 42;
+				Name = "TestAsset";
+			}
 
-int GetAssetValue()
-{
-	UBasicAssetCarrier Asset = GetMyBasicAsset();
-	return Asset != null ? Asset.Value : -1;
-}
+			int GetAssetValue()
+			{
+				UBasicAssetCarrier Asset = GetMyBasicAsset();
+				return Asset != null ? Asset.Value : -1;
+			}
 
-int CheckAssetName()
-{
-	UBasicAssetCarrier Asset = GetMyBasicAsset();
-	return (Asset != null && Asset.Name == "TestAsset") ? 1 : 0;
-}
-)AS");
+			int CheckAssetName()
+			{
+				UBasicAssetCarrier Asset = GetMyBasicAsset();
+				return (Asset != null && Asset.Name == "TestAsset") ? 1 : 0;
+			}
+			)AS");
 
-		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageLiteralAsset_Basics"), Script);
+		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageLiteralAsset_Basics"), ScriptSource);
 		if (!Module.IsValid())
 		{
 			return;
@@ -101,39 +101,39 @@ int CheckAssetName()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FString Script = TEXT(R"AS(
-UCLASS()
-class USingletonAssetCarrier : UObject
-{
-	UPROPERTY()
-	int AccessCount = 0;
-}
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class USingletonAssetCarrier : UObject
+			{
+				UPROPERTY()
+				int AccessCount = 0;
+			}
 
-asset MySingletonAsset of USingletonAssetCarrier
-{
-	AccessCount = 1;
-}
+			asset MySingletonAsset of USingletonAssetCarrier
+			{
+				AccessCount = 1;
+			}
 
-int TestSingletonIdentity()
-{
-	USingletonAssetCarrier First = GetMySingletonAsset();
-	USingletonAssetCarrier Second = GetMySingletonAsset();
+			int TestSingletonIdentity()
+			{
+				USingletonAssetCarrier First = GetMySingletonAsset();
+				USingletonAssetCarrier Second = GetMySingletonAsset();
 
-	// Should be the same object pointer
-	if (First != Second)
-		return 0;
+				// Should be the same object pointer
+				if (First != Second)
+					return 0;
 
-	// Should have same access count (not re-initialized)
-	if (First.AccessCount != 1)
-		return 0;
+				// Should have same access count (not re-initialized)
+				if (First.AccessCount != 1)
+					return 0;
 
-	// Modify and verify both references see the change
-	First.AccessCount = 99;
-	return Second.AccessCount == 99 ? 1 : 0;
-}
-)AS");
+				// Modify and verify both references see the change
+				First.AccessCount = 99;
+				return Second.AccessCount == 99 ? 1 : 0;
+			}
+			)AS");
 
-		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageLiteralAsset_Singleton"), Script);
+		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageLiteralAsset_Singleton"), ScriptSource);
 		if (!Module.IsValid())
 		{
 			return;
@@ -154,26 +154,27 @@ int TestSingletonIdentity()
 
 		static const FName AssetName(TEXT("MyMaterializedAsset"));
 
-		FString Script = TEXT(R"AS(
-UCLASS()
-class UMaterializedAssetCarrier : UObject
-{
-	UPROPERTY()
-	bool bInitialized = false;
-}
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class UMaterializedAssetCarrier : UObject
+			{
+				UPROPERTY()
+				bool bInitialized = false;
+			}
 
-asset MyMaterializedAsset of UMaterializedAssetCarrier
-{
-	bInitialized = true;
-}
-)AS");
+			asset MyMaterializedAsset of UMaterializedAssetCarrier
+			{
+				bInitialized = true;
+			}
+			)AS");
 
-		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageLiteralAsset_Materialization"), Script);
+		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageLiteralAsset_Materialization"), ScriptSource);
 
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(TEXT("ASCoverageLiteralAsset_Materialization"));
 		};
+
 		if (!Module.IsValid())
 		{
 			return;
@@ -199,26 +200,26 @@ asset MyMaterializedAsset of UMaterializedAssetCarrier
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FString Script = TEXT(R"AS(
-UCLASS()
-class UEmptyAssetCarrier : UObject
-{
-	UPROPERTY()
-	int DefaultValue = 123;
-}
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class UEmptyAssetCarrier : UObject
+			{
+				UPROPERTY()
+				int DefaultValue = 123;
+			}
 
-asset MyEmptyAsset of UEmptyAssetCarrier
-{
-}
+			asset MyEmptyAsset of UEmptyAssetCarrier
+			{
+			}
 
-int GetEmptyAssetDefaultValue()
-{
-	UEmptyAssetCarrier Asset = GetMyEmptyAsset();
-	return Asset != null ? Asset.DefaultValue : -1;
-}
-)AS");
+			int GetEmptyAssetDefaultValue()
+			{
+				UEmptyAssetCarrier Asset = GetMyEmptyAsset();
+				return Asset != null ? Asset.DefaultValue : -1;
+			}
+			)AS");
 
-		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageLiteralAsset_Empty"), Script);
+		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageLiteralAsset_Empty"), ScriptSource);
 		if (!Module.IsValid())
 		{
 			return;
@@ -237,47 +238,47 @@ int GetEmptyAssetDefaultValue()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FString Script = TEXT(R"AS(
-UCLASS()
-class UComplexAssetCarrier : UObject
-{
-	UPROPERTY()
-	int Sum = 0;
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class UComplexAssetCarrier : UObject
+			{
+				UPROPERTY()
+				int Sum = 0;
 
-	UPROPERTY()
-	bool Condition = false;
+				UPROPERTY()
+				bool Condition = false;
 
-	UPROPERTY()
-	FVector Position;
-}
+				UPROPERTY()
+				FVector Position;
+			}
 
-asset MyComplexAsset of UComplexAssetCarrier
-{
-	Sum = 10 + 20 + 30;
-	Condition = (Sum > 50);
-	Position = FVector(1.0, 2.0, 3.0);
-}
+			asset MyComplexAsset of UComplexAssetCarrier
+			{
+				Sum = 10 + 20 + 30;
+				Condition = (Sum > 50);
+				Position = FVector(1.0, 2.0, 3.0);
+			}
 
-int TestComplexInitialization()
-{
-	UComplexAssetCarrier Asset = GetMyComplexAsset();
-	if (Asset == null)
-		return 0;
+			int TestComplexInitialization()
+			{
+				UComplexAssetCarrier Asset = GetMyComplexAsset();
+				if (Asset == null)
+					return 0;
 
-	if (Asset.Sum != 60)
-		return 0;
+				if (Asset.Sum != 60)
+					return 0;
 
-	if (!Asset.Condition)
-		return 0;
+				if (!Asset.Condition)
+					return 0;
 
-	if (!Asset.Position.Equals(FVector(1.0, 2.0, 3.0), 0.001))
-		return 0;
+				if (!Asset.Position.Equals(FVector(1.0, 2.0, 3.0), 0.001))
+					return 0;
 
-	return 1;
-}
-)AS");
+				return 1;
+			}
+			)AS");
 
-		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageLiteralAsset_Complex"), Script);
+		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageLiteralAsset_Complex"), ScriptSource);
 		if (!Module.IsValid())
 		{
 			return;
@@ -296,35 +297,35 @@ int TestComplexInitialization()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FString Script = TEXT(R"AS(
-UCLASS()
-class UNullSafeAssetCarrier : UObject
-{
-	UPROPERTY()
-	int Value = 777;
-}
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class UNullSafeAssetCarrier : UObject
+			{
+				UPROPERTY()
+				int Value = 777;
+			}
 
-asset MyNullSafeAsset of UNullSafeAssetCarrier
-{
-}
+			asset MyNullSafeAsset of UNullSafeAssetCarrier
+			{
+			}
 
-int TestAssetNullCheck()
-{
-	UNullSafeAssetCarrier Asset = GetMyNullSafeAsset();
+			int TestAssetNullCheck()
+			{
+				UNullSafeAssetCarrier Asset = GetMyNullSafeAsset();
 
-	// Asset should never be null after successful compilation
-	if (Asset == null)
-		return 0;
+				// Asset should never be null after successful compilation
+				if (Asset == null)
+					return 0;
 
-	// Should be able to access properties
-	if (Asset.Value != 777)
-		return 0;
+				// Should be able to access properties
+				if (Asset.Value != 777)
+					return 0;
 
-	return 1;
-}
-)AS");
+				return 1;
+			}
+			)AS");
 
-		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageLiteralAsset_NullSafety"), Script);
+		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageLiteralAsset_NullSafety"), ScriptSource);
 		if (!Module.IsValid())
 		{
 			return;
@@ -343,29 +344,29 @@ int TestAssetNullCheck()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FString Script = TEXT(R"AS(
-UCLASS()
-class UIncrementalAssetCarrier : UObject
-{
-	UPROPERTY()
-	int Counter = 0;
-}
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class UIncrementalAssetCarrier : UObject
+			{
+				UPROPERTY()
+				int Counter = 0;
+			}
 
-asset MyIncrementalAsset of UIncrementalAssetCarrier
-{
-	Counter += 10;
-	Counter += 20;
-	Counter += 30;
-}
+			asset MyIncrementalAsset of UIncrementalAssetCarrier
+			{
+				Counter += 10;
+				Counter += 20;
+				Counter += 30;
+			}
 
-int GetIncrementalCounter()
-{
-	UIncrementalAssetCarrier Asset = GetMyIncrementalAsset();
-	return Asset != null ? Asset.Counter : -1;
-}
-)AS");
+			int GetIncrementalCounter()
+			{
+				UIncrementalAssetCarrier Asset = GetMyIncrementalAsset();
+				return Asset != null ? Asset.Counter : -1;
+			}
+			)AS");
 
-		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageLiteralAsset_Incremental"), Script);
+		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageLiteralAsset_Incremental"), ScriptSource);
 		if (!Module.IsValid())
 		{
 			return;
