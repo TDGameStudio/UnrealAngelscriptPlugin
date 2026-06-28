@@ -4,6 +4,8 @@
 #include "Delegates/Delegate.h"
 
 struct FAngelscriptEngine;
+struct FAngelscriptStateDiff;
+struct FAngelscriptStateSnapshot;
 
 struct ANGELSCRIPTRUNTIME_API FAngelscriptStateDump
 {
@@ -18,6 +20,11 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptStateDump
 	using FDumpExtensionsDelegate = TMulticastDelegate<void(const FString&)>;
 
 	static FString DumpAll(FAngelscriptEngine& Engine, const FString& OutputDir = TEXT(""));
+	static FAngelscriptStateSnapshot CaptureSnapshot(FAngelscriptEngine& Engine);
+	static FAngelscriptStateDiff DiffSnapshots(const FAngelscriptStateSnapshot& Before, const FAngelscriptStateSnapshot& After);
+	static FTableResult DumpSnapshot(const FAngelscriptStateSnapshot& Snapshot, const FString& OutputDir);
+	static TArray<FTableResult> DumpSnapshotCategoryTables(const FAngelscriptStateSnapshot& Snapshot, const FString& OutputDir);
+	static TArray<FTableResult> DumpDiff(const FAngelscriptStateDiff& Diff, const FString& OutputDir);
 
 	static FDumpExtensionsDelegate OnDumpExtensions;
 

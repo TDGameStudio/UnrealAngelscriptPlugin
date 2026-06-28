@@ -9,6 +9,7 @@
 #include "CQTest.h"
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestMacros.h"
+#include "AngelscriptStateDumpDiffTestHelper.h"
 
 #include "Compilation/AngelscriptCompilationContext.h"
 #include "Compilation/AngelscriptCompilationEvents.h"
@@ -402,6 +403,8 @@ public:
 			}
 			)AS");
 
+		const FAngelscriptStateSnapshot BeforeState = FAngelscriptStateDumpDiffTestHelper::Capture(Engine);
+
 		FAngelscriptCompileTraceSummary Summary;
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
@@ -413,6 +416,66 @@ public:
 			Summary);
 
 		ASSERT_THAT(IsTrue(bCompiled, TEXT("Stage event compile should compile")));
+
+		const FAngelscriptStateSnapshot AfterState = FAngelscriptStateDumpDiffTestHelper::Capture(Engine);
+		FAngelscriptStateDumpDiffTestArtifacts StateArtifacts;
+		ASSERT_THAT(IsTrue(
+			FAngelscriptStateDumpDiffTestHelper::DumpDiffArtifacts(
+				*TestRunner,
+				TEXT("CompilerEventsSuccessfulCompile"),
+				BeforeState,
+				AfterState,
+				StateArtifacts),
+			TEXT("Successful compiler event test should dump before/after engine state artifacts")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptStateDumpDiffTestHelper::ContainsDiff(
+				StateArtifacts.Diff,
+				TEXT("EngineCollection"),
+				TEXT("ActiveModules"),
+				TEXT("Count"),
+				EAngelscriptStateDiffChangeType::Changed),
+			TEXT("Compiler event state diff should include FAS active module impact")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptStateDumpDiffTestHelper::ContainsDiff(
+				StateArtifacts.Diff,
+				TEXT("AsEngineInternal"),
+				TEXT("ScriptEngine"),
+				TEXT("ScriptModulesByNameCount"),
+				EAngelscriptStateDiffChangeType::Changed),
+			TEXT("Compiler event state diff should include AS engine module-name map impact")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptStateDumpDiffTestHelper::ContainsDiff(
+				StateArtifacts.Diff,
+				TEXT("AsEngineInternal"),
+				TEXT("ScriptEngine"),
+				TEXT("AllScriptGlobalFunctionCount"),
+				EAngelscriptStateDiffChangeType::Changed),
+			TEXT("Compiler event state diff should include AS engine global function impact")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptStateDumpDiffTestHelper::ContainsDiff(
+				StateArtifacts.Diff,
+				TEXT("AsEngineInternal"),
+				TEXT("ScriptEngine"),
+				TEXT("TypeIdMapCount"),
+				EAngelscriptStateDiffChangeType::Changed),
+			TEXT("Compiler event state diff should include AS engine type-id map impact")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptStateDumpDiffTestHelper::ContainsDiff(
+				StateArtifacts.Diff,
+				TEXT("AsModuleInternal"),
+				ModuleName.ToString(),
+				TEXT("ScriptFunctionCount"),
+				EAngelscriptStateDiffChangeType::Added),
+			TEXT("Compiler event state diff should include compiled AS module internals")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptStateDumpDiffTestHelper::ContainsDiff(
+				StateArtifacts.Diff,
+				TEXT("AsFunctionInternal"),
+				FString::Printf(TEXT("%s::Entry"), *ModuleName.ToString()),
+				TEXT("Declaration"),
+				EAngelscriptStateDiffChangeType::Added),
+			TEXT("Compiler event state diff should include compiled AS function internals")));
+
 		ASSERT_THAT(IsTrue(Summary.bCompileSucceeded, TEXT("Stage event compile should mark summary success")));
 		ASSERT_THAT(AreEqual(ECompileResult::FullyHandled, Summary.CompileResult, TEXT("Stage event compile should finish fully handled")));
 		ASSERT_THAT(AreEqual(1, Summary.ModuleDescCount, TEXT("Stage event compile should describe one input module")));

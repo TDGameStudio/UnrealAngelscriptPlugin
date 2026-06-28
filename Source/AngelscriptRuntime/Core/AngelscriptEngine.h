@@ -53,6 +53,7 @@ struct FAngelscriptEngineScope;
 
 struct FAngelscriptCodeCoverage;
 struct FStaticJITDiagnostics;
+struct FAngelscriptStateSnapshotBuilder;
 
 // Hook-surface forward decls. Previously these lived in a separate
 // hooks header along with a small container struct. The struct was
@@ -650,6 +651,7 @@ private:
 	friend struct FAngelscriptEngineScope;
 	friend struct FAngelscriptTestEngineScopeAccess;
 	friend struct FStaticJITDiagnostics;
+	friend struct FAngelscriptStateSnapshotBuilder;
 #if WITH_DEV_AUTOMATION_TESTS
 	friend struct FAngelscriptInterfaceSignatureTestAccess;
 #endif

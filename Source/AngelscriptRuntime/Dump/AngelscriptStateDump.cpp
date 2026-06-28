@@ -1,6 +1,8 @@
 #include "Dump/AngelscriptStateDump.h"
 
 #include "Dump/AngelscriptCSVWriter.h"
+#include "Dump/AngelscriptStateDiff.h"
+#include "Dump/AngelscriptStateSnapshot.h"
 
 #include "Core/AngelscriptBinds.h"
 #include "Core/AngelscriptDocs.h"
@@ -62,6 +64,59 @@ namespace
 		}
 
 		return Result;
+	}
+
+	bool SnapshotRowMatchesCategoryTable(const FAngelscriptStateSnapshotRow& Row, const FString& TableName)
+	{
+		if (TableName == TEXT("EngineMemberState.csv"))
+		{
+			return Row.Category == TEXT("EngineMember");
+		}
+		if (TableName == TEXT("EngineCollections.csv"))
+		{
+			return Row.Category == TEXT("EngineCollection");
+		}
+		if (TableName == TEXT("AsEngineInternalState.csv"))
+		{
+			return Row.Category == TEXT("AsEngineInternal");
+		}
+		if (TableName == TEXT("AsModuleInternalState.csv"))
+		{
+			return Row.Category == TEXT("AsModuleInternal");
+		}
+		if (TableName == TEXT("AsTypeInternalState.csv"))
+		{
+			return Row.Category == TEXT("AsTypeInternal");
+		}
+		if (TableName == TEXT("AsFunctionInternalState.csv"))
+		{
+			return Row.Category == TEXT("AsFunctionInternal");
+		}
+		return false;
+	}
+
+	void AddSnapshotHeader(FCSVWriter& Writer)
+	{
+		Writer.AddHeader({
+			TEXT("Category"),
+			TEXT("Identity"),
+			TEXT("Field"),
+			TEXT("Value"),
+			TEXT("ValueKind"),
+			TEXT("Source")
+		});
+	}
+
+	void AddSnapshotRow(FCSVWriter& Writer, const FAngelscriptStateSnapshotRow& Row)
+	{
+		Writer.AddRow({
+			Row.Category,
+			Row.Identity,
+			Row.Field,
+			Row.Value,
+			Row.ValueKind,
+			Row.Source
+		});
 	}
 
 	FString GetReplicationConditionString(const ELifetimeCondition Condition)
@@ -172,6 +227,9 @@ FString FAngelscriptStateDump::DumpAll(FAngelscriptEngine& Engine, const FString
 	TableResults.Add(DumpDebugServerState(Engine, ResolvedOutputDir));
 	TableResults.Add(DumpDebugBreakpoints(Engine, ResolvedOutputDir));
 	TableResults.Add(DumpCodeCoverage(Engine, ResolvedOutputDir));
+	const FAngelscriptStateSnapshot Snapshot = CaptureSnapshot(Engine);
+	TableResults.Add(DumpSnapshot(Snapshot, ResolvedOutputDir));
+	TableResults.Append(DumpSnapshotCategoryTables(Snapshot, ResolvedOutputDir));
 
 	const bool bHadExtensionHandlers = OnDumpExtensions.IsBound();
 	OnDumpExtensions.Broadcast(ResolvedOutputDir);
@@ -241,6 +299,118 @@ FString FAngelscriptStateDump::DumpAll(FAngelscriptEngine& Engine, const FString
 		*ResolvedOutputDir);
 
 	return ResolvedOutputDir;
+}
+
+FAngelscriptStateSnapshot FAngelscriptStateDump::CaptureSnapshot(FAngelscriptEngine& Engine)
+{
+	return FAngelscriptStateSnapshotBuilder::Capture(Engine);
+}
+
+FAngelscriptStateDiff FAngelscriptStateDump::DiffSnapshots(const FAngelscriptStateSnapshot& Before, const FAngelscriptStateSnapshot& After)
+{
+	return FAngelscriptStateDiffBuilder::Diff(Before, After);
+}
+
+FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpSnapshot(const FAngelscriptStateSnapshot& Snapshot, const FString& OutputDir)
+{
+	FCSVWriter Writer;
+	AddSnapshotHeader(Writer);
+	for (const FAngelscriptStateSnapshotRow& Row : Snapshot.Rows)
+	{
+		AddSnapshotRow(Writer, Row);
+	}
+
+	return SaveTable(OutputDir, TEXT("EngineStateSnapshot.csv"), Writer);
+}
+
+TArray<FAngelscriptStateDump::FTableResult> FAngelscriptStateDump::DumpSnapshotCategoryTables(const FAngelscriptStateSnapshot& Snapshot, const FString& OutputDir)
+{
+	static const TArray<FString> TableNames = {
+		TEXT("EngineMemberState.csv"),
+		TEXT("EngineCollections.csv"),
+		TEXT("AsEngineInternalState.csv"),
+		TEXT("AsModuleInternalState.csv"),
+		TEXT("AsTypeInternalState.csv"),
+		TEXT("AsFunctionInternalState.csv")
+	};
+
+	TArray<FTableResult> Results;
+	Results.Reserve(TableNames.Num());
+	for (const FString& TableName : TableNames)
+	{
+		FCSVWriter Writer;
+		AddSnapshotHeader(Writer);
+		for (const FAngelscriptStateSnapshotRow& Row : Snapshot.Rows)
+		{
+			if (SnapshotRowMatchesCategoryTable(Row, TableName))
+			{
+				AddSnapshotRow(Writer, Row);
+			}
+		}
+
+		Results.Add(SaveTable(OutputDir, TableName, Writer));
+	}
+
+	return Results;
+}
+
+TArray<FAngelscriptStateDump::FTableResult> FAngelscriptStateDump::DumpDiff(const FAngelscriptStateDiff& Diff, const FString& OutputDir)
+{
+	FCSVWriter DiffWriter;
+	DiffWriter.AddHeader({
+		TEXT("ChangeType"),
+		TEXT("Category"),
+		TEXT("Identity"),
+		TEXT("Field"),
+		TEXT("BeforeValue"),
+		TEXT("AfterValue"),
+		TEXT("Source")
+	});
+
+	TMap<FString, int32> SummaryCounts;
+	for (const FAngelscriptStateDiffRow& Row : Diff.Rows)
+	{
+		const FString ChangeType = FAngelscriptStateDiffBuilder::ChangeTypeToString(Row.ChangeType);
+		DiffWriter.AddRow({
+			ChangeType,
+			Row.Category,
+			Row.Identity,
+			Row.Field,
+			Row.BeforeValue,
+			Row.AfterValue,
+			Row.Source
+		});
+
+		++SummaryCounts.FindOrAdd(FString::Printf(TEXT("%s|%s"), *Row.Category, *ChangeType));
+	}
+
+	TArray<FTableResult> Results;
+	Results.Add(SaveTable(OutputDir, TEXT("StateDiff.csv"), DiffWriter));
+
+	FCSVWriter SummaryWriter;
+	SummaryWriter.AddHeader({
+		TEXT("Category"),
+		TEXT("ChangeType"),
+		TEXT("Count")
+	});
+
+	TArray<FString> SummaryKeys;
+	SummaryCounts.GetKeys(SummaryKeys);
+	SummaryKeys.Sort();
+	for (const FString& SummaryKey : SummaryKeys)
+	{
+		FString Category;
+		FString ChangeType;
+		SummaryKey.Split(TEXT("|"), &Category, &ChangeType);
+		SummaryWriter.AddRow({
+			Category,
+			ChangeType,
+			LexToString(SummaryCounts[SummaryKey])
+		});
+	}
+
+	Results.Add(SaveTable(OutputDir, TEXT("StateDiffSummary.csv"), SummaryWriter));
+	return Results;
 }
 
 FString FAngelscriptStateDump::ResolveOutputDir(const FString& OutputDir)
@@ -361,12 +531,14 @@ FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpRuntimeConfig(FAn
 
 	AddConfigValue(TEXT("bForceThreadedInitialize"), BoolToString(Config.bForceThreadedInitialize));
 	AddConfigValue(TEXT("bSkipThreadedInitialize"), BoolToString(Config.bSkipThreadedInitialize));
+	AddConfigValue(TEXT("bSkipInitialCompile"), BoolToString(Config.bSkipInitialCompile));
 	AddConfigValue(TEXT("bSimulateCooked"), BoolToString(Config.bSimulateCooked));
 	AddConfigValue(TEXT("bTestErrors"), BoolToString(Config.bTestErrors));
 	AddConfigValue(TEXT("bForcePreprocessEditorCode"), BoolToString(Config.bForcePreprocessEditorCode));
 	AddConfigValue(TEXT("bGeneratePrecompiledData"), BoolToString(Config.bGeneratePrecompiledData));
 	AddConfigValue(TEXT("bDevelopmentMode"), BoolToString(Config.bDevelopmentMode));
 	AddConfigValue(TEXT("bIgnorePrecompiledData"), BoolToString(Config.bIgnorePrecompiledData));
+	AddConfigValue(TEXT("bSkipStaticJITCodeGen"), BoolToString(Config.bSkipStaticJITCodeGen));
 	AddConfigValue(TEXT("bSkipWriteBindDB"), BoolToString(Config.bSkipWriteBindDB));
 	AddConfigValue(TEXT("bWriteBindDB"), BoolToString(Config.bWriteBindDB));
 	AddConfigValue(TEXT("bExitOnError"), BoolToString(Config.bExitOnError));

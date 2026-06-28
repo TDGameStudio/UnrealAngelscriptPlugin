@@ -59,7 +59,7 @@ namespace
 
 	FAutoConsoleCommand GAngelscriptDumpEngineStateCommand(
 		FAngelscriptDumpCommand::GetCommandName(),
-		TEXT("Dump Angelscript engine state to CSV tables. Optional: as.DumpEngineState [OutputDir]"),
+		TEXT("Dump Angelscript engine state to CSV tables, including normalized snapshot tables. Optional: as.DumpEngineState [OutputDir]"),
 		FConsoleCommandWithArgsDelegate::CreateStatic(&ExecuteAngelscriptDumpEngineState));
 }
 

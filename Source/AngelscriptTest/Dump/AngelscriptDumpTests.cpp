@@ -52,6 +52,13 @@ struct FAngelscriptDumpTestHelpers
 			TEXT("DebugServerState.csv"),
 			TEXT("DebugBreakpoints.csv"),
 			TEXT("CodeCoverage.csv"),
+			TEXT("EngineStateSnapshot.csv"),
+			TEXT("EngineMemberState.csv"),
+			TEXT("EngineCollections.csv"),
+			TEXT("AsEngineInternalState.csv"),
+			TEXT("AsModuleInternalState.csv"),
+			TEXT("AsTypeInternalState.csv"),
+			TEXT("AsFunctionInternalState.csv"),
 			TEXT("EditorReloadState.csv"),
 			TEXT("EditorMenuExtensions.csv"),
 			TEXT("DumpSummary.csv")
