@@ -7,6 +7,12 @@
 #include "Components/ActorTestSpawner.h"
 #include "GameFramework/Actor.h"
 #include "Misc/ScopeExit.h"
+#include "Serialization/MemoryReader.h"
+#include "Serialization/MemoryWriter.h"
+#include "Serialization/ObjectAndNameAsStringProxyArchive.h"
+#include "Serialization/StructuredArchive.h"
+#include "Serialization/StructuredArchiveAdapters.h"
+#include "UObject/Package.h"
 
 // -----------------------------------------------------------------------------
 // AngelscriptCoverageDynamicDelegateTests
@@ -18,7 +24,10 @@
 // Axes covered here:
 //   * DynamicDelegateDeclaration  - DECLARE_DYNAMIC_DELEGATE variants (Blueprint
 //                                   compatible delegates).
-//   * DynamicDelegateBinding      - BindDynamic, AddDynamic for UFunction binding.
+//   * DynamicDelegateBinding      - BindUFunction/AddUFunction/Unbind for
+//                                   script-facing dynamic delegate binding;
+//                                   BindDynamic/AddDynamic/RemoveDynamic are
+//                                   negative C++ macro-name boundaries.
 //   * DynamicDelegateSerialization - Persistence support for dynamic delegates.
 //   * DynamicDelegateBlueprint    - BlueprintAssignable, BlueprintCallable properties.
 //
@@ -52,7 +61,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// Basic dynamic single-cast delegate: BindDynamic, IsBound, Execute.
+	// Basic dynamic single-cast delegate: BindUFunction, IsBound, Execute.
 	// -------------------------------------------------------------------------
 	TEST_METHOD(DynamicDelegateBasics)
 	{
@@ -121,19 +130,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 			)AS"),
 			TEXT("ACoverageDynamicDelegateBasicsActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Dynamic-delegate-basics actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Dynamic-delegate-basics actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Counter"), 3, TEXT("Counter should be 3 (IsBound checks passed)"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DelegateWasCalled"), true, TEXT("Dynamic delegate should have been executed"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Counter"), 3, TEXT("Counter should be 3 (IsBound checks passed)"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DelegateWasCalled"), true, TEXT("Dynamic delegate should have been executed"))));
 	}
 
 	// -------------------------------------------------------------------------
-	// Dynamic multicast delegate: AddDynamic, RemoveDynamic, Broadcast.
+	// Dynamic multicast delegate: AddUFunction, Unbind, Broadcast.
 	// -------------------------------------------------------------------------
 	TEST_METHOD(DynamicMulticastDelegate)
 	{
@@ -206,16 +223,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 			)AS"),
 			TEXT("ACoverageDynamicMulticastActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Dynamic-multicast actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Dynamic-multicast actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Expected: 1 + 10 + 100 (first broadcast) + 1 + 100 (second broadcast) = 212
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Counter"), 212, TEXT("Dynamic multicast listeners should be called correctly"));
-		VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("Result"), FString(TEXT("ABCAC")), TEXT("Listeners should be called in order, then without B"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Counter"), 212, TEXT("Dynamic multicast listeners should be called correctly"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("Result"), FString(TEXT("ABCAC")), TEXT("Listeners should be called in order, then without B"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -279,26 +304,34 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 			)AS"),
 			TEXT("ACoverageDynamicParamsActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Dynamic-parameters actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Dynamic-parameters actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReceivedInt"), 100, TEXT("Two-param dynamic delegate should set ReceivedInt to 100"));
-		VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("ReceivedString"), FString(TEXT("Test")), TEXT("Two-param dynamic delegate should set ReceivedString"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReceivedInt"), 100, TEXT("Two-param dynamic delegate should set ReceivedInt to 100"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("ReceivedString"), FString(TEXT("Test")), TEXT("Two-param dynamic delegate should set ReceivedString"))));
 	}
 
 	// -------------------------------------------------------------------------
 	// BlueprintAssignable property: exposes dynamic delegates to Blueprint.
 	// -------------------------------------------------------------------------
-	TEST_METHOD(DynamicDelegateBlueprintAssignable)
+	TEST_METHOD(DynamicDelegateBlueprintAssignableAndCallableMetadata)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		static const FName ModuleName(TEXT("ASCoverageDynamicDelegate_BlueprintAssignable"));
+		static const FName ModuleName(TEXT("ASCoverageDynamicDelegate_BlueprintAssignableCallable"));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
@@ -308,17 +341,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 			*TestRunner,
 			Engine,
 			ModuleName,
-			TEXT("ASCoverageDynamicDelegateBlueprintAssignable.as"),
+			TEXT("ASCoverageDynamicDelegateBlueprintAssignableCallable.as"),
 			ASTEST_AS(R"AS(
+			event void FCoverageBlueprintNoParamEvent();
+			event void FCoverageBlueprintValueEvent(int NewValue);
+
 			UCLASS()
-			class ACoverageBlueprintAssignableActor : AActor
+			class ACoverageBlueprintDelegateMetadataActor : AActor
 			{
 				UPROPERTY()
 				int EventCount = 0;
 
-				// These delegates can be exposed to Blueprint via UPROPERTY
-				FSimpleMulticastDelegate OnCustomEvent;
-				FIntMulticastDelegate OnValueChanged;
+				UPROPERTY(BlueprintAssignable)
+				FCoverageBlueprintNoParamEvent OnCustomEvent;
+
+				UPROPERTY(BlueprintCallable)
+				FCoverageBlueprintValueEvent OnValueChanged;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -345,17 +383,265 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 				}
 			}
 			)AS"),
-			TEXT("ACoverageBlueprintAssignableActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Blueprint-assignable actor class should compile")));
+			TEXT("ACoverageBlueprintDelegateMetadataActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Blueprint delegate metadata actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const FMulticastDelegateProperty* AssignableProperty = FindFProperty<FMulticastDelegateProperty>(ScriptClass, TEXT("OnCustomEvent"));
+		const FMulticastDelegateProperty* CallableProperty = FindFProperty<FMulticastDelegateProperty>(ScriptClass, TEXT("OnValueChanged"));
+		ASSERT_THAT(IsNotNull(AssignableProperty, TEXT("BlueprintAssignable event property should be generated")));
+		ASSERT_THAT(IsNotNull(CallableProperty, TEXT("BlueprintCallable event property should be generated")));
+		if (AssignableProperty == nullptr || CallableProperty == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(AssignableProperty->HasAnyPropertyFlags(CPF_BlueprintAssignable), TEXT("BlueprintAssignable event should carry CPF_BlueprintAssignable")));
+		ASSERT_THAT(IsFalse(AssignableProperty->HasAnyPropertyFlags(CPF_BlueprintCallable), TEXT("BlueprintAssignable-only event should not implicitly become BlueprintCallable")));
+		ASSERT_THAT(IsTrue(CallableProperty->HasAnyPropertyFlags(CPF_BlueprintCallable), TEXT("BlueprintCallable event should carry CPF_BlueprintCallable")));
+		ASSERT_THAT(IsFalse(CallableProperty->HasAnyPropertyFlags(CPF_BlueprintAssignable), TEXT("BlueprintCallable-only event should not implicitly become BlueprintAssignable")));
+		ASSERT_THAT(IsTrue(AssignableProperty->HasAnyPropertyFlags(CPF_BlueprintVisible), TEXT("BlueprintAssignable event should be Blueprint visible")));
+		ASSERT_THAT(IsTrue(CallableProperty->HasAnyPropertyFlags(CPF_BlueprintVisible), TEXT("BlueprintCallable event should be Blueprint visible")));
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		ASSERT_THAT(IsNotNull(Actor, TEXT("Blueprint-assignable actor should spawn")));
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Blueprint delegate metadata actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Expected: 1 (from HandleCustomEvent) + 50 (from HandleValueChanged) = 51
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EventCount"), 51, TEXT("BlueprintAssignable events should be callable"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EventCount"), 51, TEXT("Blueprint-exposed events should remain callable from AS"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Dynamic delegate serialization: FScriptDelegate and FMulticastScriptDelegate
+	// properties serialize bound UObject/FName pairs.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(DynamicDelegateSerializationRoundTrip)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageDynamicDelegate_Serialization"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageDynamicDelegateSerialization.as"),
+			ASTEST_AS(R"AS(
+			delegate void FCoverageSerializedSingle();
+			event void FCoverageSerializedEvent();
+
+			UCLASS()
+			class UCoverageDynamicDelegateSerializationObject : UObject
+			{
+				UPROPERTY()
+				FCoverageSerializedSingle Single;
+
+				UPROPERTY()
+				FCoverageSerializedEvent Multi;
+
+				UFUNCTION()
+				void Handler()
+				{
+				}
+
+				UFUNCTION()
+				void BindDelegates()
+				{
+					Single.BindUFunction(this, n"Handler");
+					Multi.AddUFunction(this, n"Handler");
+				}
+			}
+			)AS"),
+			TEXT("UCoverageDynamicDelegateSerializationObject"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Dynamic delegate serialization class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		UObject* SourceObject = NewObject<UObject>(GetTransientPackage(), ScriptClass);
+		ASSERT_THAT(IsNotNull(SourceObject, TEXT("Dynamic delegate serialization source object should be created")));
+		if (SourceObject == nullptr)
+		{
+			return;
+		}
+
+		UFunction* BindDelegatesFunction = FindGeneratedFunction(ScriptClass, TEXT("BindDelegates"));
+		ASSERT_THAT(IsNotNull(BindDelegatesFunction, TEXT("BindDelegates function should be generated")));
+		if (BindDelegatesFunction == nullptr)
+		{
+			return;
+		}
+		FFunctionInvoker BindDelegatesInvoker(*TestRunner, SourceObject, TEXT("BindDelegates"));
+		ASSERT_THAT(IsTrue(BindDelegatesInvoker.Call(), TEXT("BindDelegates should execute through AS runtime dispatch")));
+
+		const FDelegateProperty* SingleProperty = FindFProperty<FDelegateProperty>(ScriptClass, TEXT("Single"));
+		const FMulticastDelegateProperty* MultiProperty = FindFProperty<FMulticastDelegateProperty>(ScriptClass, TEXT("Multi"));
+		ASSERT_THAT(IsNotNull(SingleProperty, TEXT("Serialized single delegate property should exist")));
+		ASSERT_THAT(IsNotNull(MultiProperty, TEXT("Serialized multicast delegate property should exist")));
+		if (SingleProperty == nullptr || MultiProperty == nullptr)
+		{
+			return;
+		}
+
+		const FScriptDelegate* SourceSingle = SingleProperty->ContainerPtrToValuePtr<FScriptDelegate>(SourceObject);
+		const FMulticastScriptDelegate* SourceMulti = MultiProperty->ContainerPtrToValuePtr<FMulticastScriptDelegate>(SourceObject);
+		ASSERT_THAT(IsTrue(SourceSingle->IsBound(), TEXT("Source single delegate should be bound before serialization")));
+		ASSERT_THAT(IsTrue(SourceMulti->IsBound(), TEXT("Source multicast delegate should be bound before serialization")));
+
+		TArray<uint8> SerializedBytes;
+		FMemoryWriter Writer(SerializedBytes);
+		FObjectAndNameAsStringProxyArchive WriterProxy(Writer, false);
+		FStructuredArchiveFromArchive StructuredWriter(WriterProxy);
+		FStructuredArchiveRecord WriterRecord = StructuredWriter.GetSlot().EnterRecord();
+		SingleProperty->SerializeItem(WriterRecord.EnterField(TEXT("Single")), const_cast<FScriptDelegate*>(SourceSingle), nullptr);
+		MultiProperty->SerializeItem(WriterRecord.EnterField(TEXT("Multi")), const_cast<FMulticastScriptDelegate*>(SourceMulti), nullptr);
+		ASSERT_THAT(IsTrue(SerializedBytes.Num() > 0, TEXT("Dynamic delegate properties should emit serialized bytes")));
+
+		UObject* TargetObject = NewObject<UObject>(GetTransientPackage(), ScriptClass);
+		ASSERT_THAT(IsNotNull(TargetObject, TEXT("Dynamic delegate serialization target object should be created")));
+		if (TargetObject == nullptr)
+		{
+			return;
+		}
+		FScriptDelegate* TargetSingle = SingleProperty->ContainerPtrToValuePtr<FScriptDelegate>(TargetObject);
+		FMulticastScriptDelegate* TargetMulti = MultiProperty->ContainerPtrToValuePtr<FMulticastScriptDelegate>(TargetObject);
+
+		FMemoryReader Reader(SerializedBytes);
+		FObjectAndNameAsStringProxyArchive ReaderProxy(Reader, true);
+		FStructuredArchiveFromArchive StructuredReader(ReaderProxy);
+		FStructuredArchiveRecord ReaderRecord = StructuredReader.GetSlot().EnterRecord();
+		SingleProperty->SerializeItem(ReaderRecord.EnterField(TEXT("Single")), TargetSingle, nullptr);
+		MultiProperty->SerializeItem(ReaderRecord.EnterField(TEXT("Multi")), TargetMulti, nullptr);
+
+		ASSERT_THAT(IsTrue(TargetSingle->IsBound(), TEXT("Single dynamic delegate binding should survive serialization")));
+		ASSERT_THAT(AreEqual(SourceObject, TargetSingle->GetUObject(), TEXT("Single dynamic delegate should serialize the target object")));
+		ASSERT_THAT(AreEqual(FName(TEXT("Handler")), TargetSingle->GetFunctionName(), TEXT("Single dynamic delegate should serialize the function name")));
+		ASSERT_THAT(IsTrue(TargetMulti->IsBound(), TEXT("Multicast dynamic delegate binding should survive serialization")));
+		ASSERT_THAT(AreEqual(1, TargetMulti->GetAllObjects().Num(), TEXT("Multicast dynamic delegate should serialize one bound target")));
+	}
+
+	// -------------------------------------------------------------------------
+	// C++ macro naming boundary: AS uses BindUFunction/AddUFunction/Unbind.
+	// BindDynamic/AddDynamic/RemoveDynamic are C++ macro helpers, not AS APIs.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(DynamicMacroNamesAreNotScriptAPIs)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString BindDynamicSource = ASTEST_AS(R"AS(
+			delegate void FCoverageDynamicMacroSingle();
+
+			UCLASS()
+			class ACoverageBindDynamicMacroActor : AActor
+			{
+				UPROPERTY()
+				FCoverageDynamicMacroSingle Single;
+
+				UFUNCTION()
+				void Handler()
+				{
+				}
+
+				UFUNCTION()
+				void TryBindDynamic()
+				{
+					Single.BindDynamic(this, n"Handler");
+				}
+			}
+			)AS");
+
+		TArray<FString> BindDynamicDiagnostics;
+		BindDynamicDiagnostics.Add(TEXT("No matching signatures to 'FDelegate::BindDynamic"));
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageDynamicDelegate_BindDynamicUnsupported"),
+			*BindDynamicSource,
+			TEXT("C++ BindDynamic macro name should remain outside the AS API surface"),
+			MakeArrayView(BindDynamicDiagnostics))));
+
+		const FString AddDynamicSource = ASTEST_AS(R"AS(
+			event void FCoverageDynamicMacroEvent();
+
+			UCLASS()
+			class ACoverageAddDynamicMacroActor : AActor
+			{
+				UPROPERTY()
+				FCoverageDynamicMacroEvent Multi;
+
+				UFUNCTION()
+				void Handler()
+				{
+				}
+
+				UFUNCTION()
+				void TryAddDynamic()
+				{
+					Multi.AddDynamic(this, n"Handler");
+				}
+			}
+			)AS");
+
+		TArray<FString> AddDynamicDiagnostics;
+		AddDynamicDiagnostics.Add(TEXT("No matching signatures to 'FMulticastDelegate::AddDynamic"));
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageDynamicDelegate_AddDynamicUnsupported"),
+			*AddDynamicSource,
+			TEXT("C++ AddDynamic macro name should remain outside the AS API surface"),
+			MakeArrayView(AddDynamicDiagnostics))));
+
+		const FString RemoveDynamicSource = ASTEST_AS(R"AS(
+			event void FCoverageDynamicMacroEvent();
+
+			UCLASS()
+			class ACoverageRemoveDynamicMacroActor : AActor
+			{
+				UPROPERTY()
+				FCoverageDynamicMacroEvent Multi;
+
+				UFUNCTION()
+				void Handler()
+				{
+				}
+
+				UFUNCTION()
+				void TryRemoveDynamic()
+				{
+					Multi.RemoveDynamic(this, n"Handler");
+				}
+			}
+			)AS");
+
+		TArray<FString> RemoveDynamicDiagnostics;
+		RemoveDynamicDiagnostics.Add(TEXT("No matching signatures to 'FMulticastDelegate::RemoveDynamic"));
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageDynamicDelegate_RemoveDynamicUnsupported"),
+			*RemoveDynamicSource,
+			TEXT("C++ RemoveDynamic macro name should remain outside the AS API surface"),
+			MakeArrayView(RemoveDynamicDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -431,15 +717,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 			)AS"),
 			TEXT("ACoverageDynamicClearActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Dynamic-clear actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Dynamic-clear actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Expected: 1 + 10 + 100 (first broadcast) + 1000 (not bound) = 1111
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Counter"), 1111, TEXT("Clear should remove all dynamic delegate bindings"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Counter"), 1111, TEXT("Clear should remove all dynamic delegate bindings"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -502,15 +796,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 			)AS"),
 			TEXT("ACoverageDynamicRetValActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Dynamic-return-value actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Dynamic-return-value actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("BoolResult"), true, TEXT("Bool return dynamic delegate should return true"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntResult"), 100, TEXT("Int return dynamic delegate should return doubled value"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("BoolResult"), true, TEXT("Bool return dynamic delegate should return true"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntResult"), 100, TEXT("Int return dynamic delegate should return doubled value"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -577,17 +879,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 			)AS"),
 			TEXT("ACoverageDynamicComplexParamsActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Dynamic-complex-parameters actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Dynamic-complex-parameters actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		FVector ExpectedVector(10.0f, 20.0f, 30.0f);
-		VerifyStructByPath<FVector>(*TestRunner, Actor, TEXT("ReceivedVector"), ExpectedVector, TEXT("FVector parameter should pass through"));
-		VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("ReceivedString"), FString(TEXT("Complex")), TEXT("FString parameter should pass through"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReceivedInt"), 42, TEXT("Int parameter should pass through"));
+		ASSERT_THAT(IsTrue(VerifyStructByPath<FVector>(*TestRunner, Actor, TEXT("ReceivedVector"), ExpectedVector, TEXT("FVector parameter should pass through"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("ReceivedString"), FString(TEXT("Complex")), TEXT("FString parameter should pass through"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReceivedInt"), 42, TEXT("Int parameter should pass through"))));
 	}
 };
 

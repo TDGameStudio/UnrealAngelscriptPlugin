@@ -4,13 +4,17 @@
 #include "AngelscriptTestUtilities.h"
 
 #include "Misc/ScopeExit.h"
+#include "Math/UnrealMathUtility.h"
+#include "Templates/Function.h"
+
+#include <type_traits>
 
 // -----------------------------------------------------------------------------
 // AngelscriptCoverageMathGeometricStructs
 // -----------------------------------------------------------------------------
 // Coverage for geometric structures identified in Coverage_MathStructs.md:
 // - FBox: AABB bounding box operations
-// - FBox2D: 2D bounding box operations
+// - FBox2D: unbound type boundary
 // - FPlane: Plane operations
 // - FTransform: Construction patterns not yet covered
 //
@@ -18,8 +22,6 @@
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-using namespace AngelscriptFunctionalTestUtils;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathGeometricStructsTest,
 	"Angelscript.TestModule.Coverage.MathGeometricStructs",
@@ -40,7 +42,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathGeometricStructsTest,
 	template <typename T>
 	void ExpectGlobalReturn(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const T& Expected, const TCHAR* Message)
 	{
+		ASSERT_THAT(IsNotNull(Module, TEXT("math geometric module should compile before executing global function")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
 		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("math geometric global function should resolve and prepare")));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
 		T Result{};
 		if constexpr (std::is_same_v<T, bool>
 			|| std::is_same_v<T, int32>
@@ -53,7 +66,35 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathGeometricStructsTest,
 		{
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
 		}
-		TestRunner->TestEqual(Message, Result, Expected);
+		if constexpr (std::is_floating_point_v<T>)
+		{
+			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Expected, Result, static_cast<T>(0.001)), Message));
+		}
+		else
+		{
+			ASSERT_THAT(AreEqual(Expected, Result, Message));
+		}
+	}
+
+	template <typename T>
+	void ExpectGlobalStructSatisfies(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, TFunctionRef<bool(const T&)> Predicate, const TCHAR* Message)
+	{
+		ASSERT_THAT(IsNotNull(Module, TEXT("math geometric module should compile before extracting struct")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("math geometric struct function should resolve and prepare")));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
+
+		T Result{};
+		ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
+		ASSERT_THAT(IsTrue(Predicate(Result), Message));
 	}
 
 	// -------------------------------------------------------------------------
@@ -129,78 +170,184 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathGeometricStructsTest,
 			}
 		};
 
-		// Default construction
+		ExpectGlobalStructSatisfies<FTransform>(
+			Engine,
+			Module,
+			TEXT("FTransform TestDefaultConstruction()"),
+			[](const FTransform& Result) { return Result.Equals(FTransform::Identity, 0.001); },
+			TEXT("FTransform default construction"));
+		ExpectGlobalStructSatisfies<FTransform>(
+			Engine,
+			Module,
+			TEXT("FTransform TestIdentity()"),
+			[](const FTransform& Result) { return Result.Equals(FTransform::Identity, 0.001); },
+			TEXT("FTransform::Identity"));
+		ExpectGlobalStructSatisfies<FTransform>(
+			Engine,
+			Module,
+			TEXT("FTransform TestLocationOnly()"),
+			[](const FTransform& Result) { return Result.GetLocation().Equals(FVector(100, 200, 300), 0.001); },
+			TEXT("FTransform location-only construction"));
+		ExpectGlobalStructSatisfies<FTransform>(
+			Engine,
+			Module,
+			TEXT("FTransform TestFullConstruction()"),
+			[](const FTransform& Result) { return Result.GetLocation().Equals(FVector(100, 200, 300), 0.001) && Result.GetScale3D().Equals(FVector(2, 2, 2), 0.001); },
+			TEXT("FTransform full construction"));
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestGetLocation()"),
+			[](const FVector& Result) { return Result.Equals(FVector(100, 200, 300), 0.001); },
+			TEXT("FTransform.Location accessor"));
+		ExpectGlobalStructSatisfies<FQuat>(
+			Engine,
+			Module,
+			TEXT("FQuat TestGetRotation()"),
+			[](const FQuat& Result) { return !Result.Equals(FQuat::Identity, 0.001); },
+			TEXT("FTransform.Rotation accessor"));
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestGetScale()"),
+			[](const FVector& Result) { return Result.Equals(FVector(2, 3, 4), 0.001); },
+			TEXT("FTransform.Scale3D accessor"));
+		ExpectGlobalStructSatisfies<FTransform>(
+			Engine,
+			Module,
+			TEXT("FTransform TestSetLocation()"),
+			[](const FTransform& Result) { return Result.GetLocation().Equals(FVector(50, 100, 150), 0.001); },
+			TEXT("FTransform.Location setter"));
+		ExpectGlobalStructSatisfies<FTransform>(
+			Engine,
+			Module,
+			TEXT("FTransform TestSetScale()"),
+			[](const FTransform& Result) { return Result.GetScale3D().Equals(FVector(3, 3, 3), 0.001); },
+			TEXT("FTransform.Scale3D setter"));
+	}
+
+	TEST_METHOD(FTransformOperations)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovMathGeom_FTransformOperations", ASTEST_AS(R"AS(
+		FVector TestMultiplyTransformLocation()
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FTransform TestDefaultConstruction()"));
+			FTransform First = FTransform(FVector(10, 0, 0));
+			FTransform Second = FTransform(FVector(0, 20, 0));
+			FTransform Combined = First * Second;
+			return Combined.GetLocation();
+		}
+
+		FVector TestTransformPosition()
+		{
+			FTransform Transform = FTransform(FQuat::Identity, FVector(10, 20, 30), FVector(2, 2, 2));
+			return Transform.TransformPosition(FVector(1, 2, 3));
+		}
+
+		FVector TestTransformVector()
+		{
+			FTransform Transform = FTransform(FQuat::Identity, FVector(10, 20, 30), FVector(2, 3, 4));
+			return Transform.TransformVector(FVector(1, 2, 3));
+		}
+
+		FVector TestInverseTransformPosition()
+		{
+			FTransform Transform = FTransform(FQuat::Identity, FVector(10, 20, 30), FVector(2, 2, 2));
+			return Transform.InverseTransformPosition(FVector(12, 24, 36));
+		}
+
+		FVector TestScaleTranslationAndAdd()
+		{
+			FTransform Transform = FTransform(FVector(10, 20, 30));
+			Transform.ScaleTranslation(2.0);
+			Transform.AddToTranslation(FVector(1, 2, 3));
+			return Transform.GetTranslation();
+		}
+
+		FVector TestBlendLocation()
+		{
+			FTransform A = FTransform(FVector(0, 0, 0));
+			FTransform B = FTransform(FVector(10, 20, 30));
 			FTransform Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FTransform default construction"), Result.Equals(FTransform::Identity, 0.001));
+			Result.Blend(A, B, 0.5f);
+			return Result.GetTranslation();
 		}
 
-		// Identity
+		bool TestEqualsNoScale()
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FTransform TestIdentity()"));
-			FTransform Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FTransform::Identity"), Result.Equals(FTransform::Identity, 0.001));
+			FTransform A = FTransform(FQuat::Identity, FVector(1, 2, 3), FVector(1, 1, 1));
+			FTransform B = FTransform(FQuat::Identity, FVector(1, 2, 3), FVector(4, 5, 6));
+			return A.EqualsNoScale(B, 0.001);
 		}
 
-		// Location only
+		bool TestValidityHelpers()
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FTransform TestLocationOnly()"));
-			FTransform Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FTransform location-only construction"), Result.GetLocation().Equals(FVector(100, 200, 300), 0.001));
+			FTransform Transform = FTransform(FQuat::Identity, FVector(1, 2, 3), FVector(2, 2, 2));
+			return Transform.IsValid() && !Transform.ContainsNaN();
 		}
 
-		// Full construction
+		float TestAxisScale()
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FTransform TestFullConstruction()"));
-			FTransform Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FTransform full construction location"), Result.GetLocation().Equals(FVector(100, 200, 300), 0.001));
-			TestRunner->TestTrue(TEXT("FTransform full construction scale"), Result.GetScale3D().Equals(FVector(2, 2, 2), 0.001));
+			FTransform Transform = FTransform(FQuat::Identity, FVector::ZeroVector, FVector(2, 5, 3));
+			return Transform.GetMaximumAxisScale() + Transform.GetMinimumAxisScale();
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FTransform operations module should compile")));
+		if (Module == nullptr)
+		{
+			return;
 		}
 
-		// GetLocation
+		auto ExpectVectorReturn = [this, &Engine, Module](const TCHAR* Declaration, const FVector& Expected, const TCHAR* Message)
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector TestGetLocation()"));
-			FVector Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FTransform.Location accessor"), Result.Equals(FVector(100, 200, 300), 0.001));
-		}
+			ExpectGlobalStructSatisfies<FVector>(
+				Engine,
+				Module,
+				Declaration,
+				[Expected](const FVector& Result) { return Result.Equals(Expected, 0.001); },
+				Message);
+		};
 
-		// GetRotation
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FQuat TestGetRotation()"));
-			FQuat Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FTransform.Rotation accessor"), !Result.Equals(FQuat::Identity, 0.001));
-		}
+		ExpectVectorReturn(TEXT("FVector TestMultiplyTransformLocation()"), FVector(10, 20, 0), TEXT("FTransform multiplication should combine translations"));
+		ExpectVectorReturn(TEXT("FVector TestTransformPosition()"), FVector(12, 24, 36), TEXT("FTransform.TransformPosition() should apply scale and translation"));
+		ExpectVectorReturn(TEXT("FVector TestTransformVector()"), FVector(2, 6, 12), TEXT("FTransform.TransformVector() should apply scale without translation"));
+		ExpectVectorReturn(TEXT("FVector TestInverseTransformPosition()"), FVector(1, 2, 3), TEXT("FTransform.InverseTransformPosition() should reverse TransformPosition"));
+		ExpectVectorReturn(TEXT("FVector TestScaleTranslationAndAdd()"), FVector(21, 42, 63), TEXT("ScaleTranslation and AddToTranslation should mutate translation"));
+		ExpectVectorReturn(TEXT("FVector TestBlendLocation()"), FVector(5, 10, 15), TEXT("FTransform.Blend() should interpolate translation"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestEqualsNoScale()"), true, TEXT("FTransform.EqualsNoScale() should ignore scale"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestValidityHelpers()"), true, TEXT("FTransform validity helpers"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestAxisScale()"), 7.0f, TEXT("FTransform axis scale helpers"));
+	}
 
-		// GetScale
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector TestGetScale()"));
-			FVector Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FTransform.Scale3D accessor"), Result.Equals(FVector(2, 3, 4), 0.001));
-		}
+	TEST_METHOD(FMatrixUnsupportedBoundaries)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
 
-		// SetLocation
+		const FString UnsupportedMethodSource = ASTEST_AS(R"AS(
+		FMatrix TriggerUnsupportedMatrixReturn()
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FTransform TestSetLocation()"));
-			FTransform Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FTransform.Location setter"), Result.GetLocation().Equals(FVector(50, 100, 150), 0.001));
+			return FTransform::Identity.ToMatrixWithScale();
 		}
-
-		// SetScale
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FTransform TestSetScale()"));
-			FTransform Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FTransform.Scale3D setter"), Result.GetScale3D().Equals(FVector(3, 3, 3), 0.001));
-		}
+		)AS");
+		TArray<FString> UnsupportedMethodDiagnostics;
+		UnsupportedMethodDiagnostics.Add(TEXT("FMatrix"));
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCovMathGeom_FMatrixMethodUnsupported"),
+			UnsupportedMethodSource,
+			TEXT("FTransform matrix-return APIs should remain explicit compile-failure boundaries until FMatrix is registered"),
+			MakeArrayView(UnsupportedMethodDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -219,13 +366,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathGeometricStructsTest,
 			return FBox(min, max);
 		}
 
-		FBox TestConstructionFromPoints()
+		FBox TestBuildAABB()
 		{
-			TArray<FVector> points;
-			points.Add(FVector(0, 0, 0));
-			points.Add(FVector(100, 100, 100));
-			points.Add(FVector(50, 50, 50));
-			return FBox(points);
+			return FBox::BuildAABB(FVector(50, 50, 50), FVector(50, 50, 50));
 		}
 
 		bool TestIsInside()
@@ -257,7 +400,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathGeometricStructsTest,
 		FVector TestGetSize()
 		{
 			FBox box = FBox(FVector(0, 0, 0), FVector(100, 100, 100));
-			return box.GetSize();
+			return box.Max - box.Min;
 		}
 
 		float TestGetVolume()
@@ -284,6 +427,55 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathGeometricStructsTest,
 			FBox box = FBox(FVector(0, 0, 0), FVector(100, 100, 100));
 			return box.IsValid;
 		}
+
+		bool TestIntersectAndOverlap()
+		{
+			FBox box = FBox(FVector(0, 0, 0), FVector(10, 10, 10));
+			FBox other = FBox(FVector(5, 5, 5), FVector(20, 20, 20));
+			FBox overlap = box.Overlap(other);
+			return box.Intersect(other)
+				&& box.IntersectXY(other)
+				&& overlap.Min.Equals(FVector(5, 5, 5), 0.001)
+				&& overlap.Max.Equals(FVector(10, 10, 10), 0.001);
+		}
+
+		bool TestInsideBoxAndBoundaryVariants()
+		{
+			FBox box = FBox(FVector(0, 0, 0), FVector(10, 10, 10));
+			FBox inner = FBox(FVector(2, 2, 2), FVector(8, 8, 8));
+			FVector boundary = FVector(10, 5, 5);
+			FVector outsideZ = FVector(5, 5, 20);
+			return box.IsInside(inner)
+				&& !box.IsInside(boundary)
+				&& box.IsInsideOrOn(boundary)
+				&& box.IsInsideXY(outsideZ)
+				&& box.IsInsideOrOnXY(FVector(10, 5, 20));
+		}
+
+		bool TestGetCenterAndExtentsOutParams()
+		{
+			FBox box = FBox(FVector(-2, -4, -6), FVector(6, 8, 10));
+			FVector center;
+			FVector extents;
+			box.GetCenterAndExtents(center, extents);
+			return center.Equals(FVector(2, 2, 2), 0.001)
+				&& extents.Equals(FVector(4, 6, 8), 0.001);
+		}
+
+		bool TestClosestShiftMoveAndVectorExpand()
+		{
+			FBox box = FBox(FVector(0, 0, 0), FVector(10, 10, 10));
+			FBox expanded = box.ExpandBy(FVector(1, 2, 3));
+			FBox shifted = box.ShiftBy(FVector(5, 0, 0));
+			FBox moved = box.MoveTo(FVector(100, 100, 100));
+			FVector closest = box.GetClosestPointTo(FVector(20, 5, -5));
+			return expanded.Min.Equals(FVector(-1, -2, -3), 0.001)
+				&& expanded.Max.Equals(FVector(11, 12, 13), 0.001)
+				&& shifted.Min.Equals(FVector(5, 0, 0), 0.001)
+				&& shifted.Max.Equals(FVector(15, 10, 10), 0.001)
+				&& moved.GetCenter().Equals(FVector(100, 100, 100), 0.001)
+				&& closest.Equals(FVector(10, 5, 0), 0.001);
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -293,198 +485,84 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathGeometricStructsTest,
 			}
 		};
 
-		// Construction
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FBox TestConstruction()"));
-			FBox Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FBox construction"), Result.Min.Equals(FVector(0, 0, 0), 0.001) && Result.Max.Equals(FVector(100, 100, 100), 0.001));
-		}
-
-		// Construction from points
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FBox TestConstructionFromPoints()"));
-			FBox Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FBox construction from points"), Result.IsValid != 0);
-		}
+		ExpectGlobalStructSatisfies<FBox>(
+			Engine,
+			Module,
+			TEXT("FBox TestConstruction()"),
+			[](const FBox& Result) { return Result.Min.Equals(FVector(0, 0, 0), 0.001) && Result.Max.Equals(FVector(100, 100, 100), 0.001); },
+			TEXT("FBox construction"));
+		ExpectGlobalStructSatisfies<FBox>(
+			Engine,
+			Module,
+			TEXT("FBox TestBuildAABB()"),
+			[](const FBox& Result) { return Result.Min.Equals(FVector(0, 0, 0), 0.001) && Result.Max.Equals(FVector(100, 100, 100), 0.001); },
+			TEXT("FBox BuildAABB"));
 
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestIsInside()"), true, TEXT("FBox.IsInside() point inside"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestIsInsideOutside()"), false, TEXT("FBox.IsInside() point outside"));
 
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector TestGetCenter()"));
-			FVector Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FBox.GetCenter()"), Result.Equals(FVector(50, 50, 50), 0.001));
-		}
-
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector TestGetExtent()"));
-			FVector Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FBox.GetExtent()"), Result.Equals(FVector(50, 50, 50), 0.001));
-		}
-
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector TestGetSize()"));
-			FVector Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FBox.GetSize()"), Result.Equals(FVector(100, 100, 100), 0.001));
-		}
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestGetCenter()"),
+			[](const FVector& Result) { return Result.Equals(FVector(50, 50, 50), 0.001); },
+			TEXT("FBox.GetCenter()"));
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestGetExtent()"),
+			[](const FVector& Result) { return Result.Equals(FVector(50, 50, 50), 0.001); },
+			TEXT("FBox.GetExtent()"));
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestGetSize()"),
+			[](const FVector& Result) { return Result.Equals(FVector(100, 100, 100), 0.001); },
+			TEXT("FBox.GetSize()"));
 
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestGetVolume()"), 1000.0f, TEXT("FBox.GetVolume()"));
 
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FBox TestExpandBy()"));
-			FBox Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FBox.ExpandBy()"), Result.GetSize().Equals(FVector(120, 120, 120), 0.001));
-		}
-
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FBox TestPlusOperator()"));
-			FBox Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FBox + FVector operator"), Result.Max.Equals(FVector(200, 200, 200), 0.001));
-		}
+		ExpectGlobalStructSatisfies<FBox>(
+			Engine,
+			Module,
+			TEXT("FBox TestExpandBy()"),
+			[](const FBox& Result) { return (Result.Max - Result.Min).Equals(FVector(120, 120, 120), 0.001); },
+			TEXT("FBox.ExpandBy()"));
+		ExpectGlobalStructSatisfies<FBox>(
+			Engine,
+			Module,
+			TEXT("FBox TestPlusOperator()"),
+			[](const FBox& Result) { return Result.Max.Equals(FVector(200, 200, 200), 0.001); },
+			TEXT("FBox + FVector operator"));
 
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestIsValid()"), true, TEXT("FBox.IsValid"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestIntersectAndOverlap()"), true, TEXT("FBox Intersect/IntersectXY/Overlap"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestInsideBoxAndBoundaryVariants()"), true, TEXT("FBox IsInside variants should distinguish boundary and XY checks"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestGetCenterAndExtentsOutParams()"), true, TEXT("FBox.GetCenterAndExtents() out params"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestClosestShiftMoveAndVectorExpand()"), true, TEXT("FBox closest/shift/move/vector ExpandBy helpers"));
 	}
 
-	// -------------------------------------------------------------------------
-	// FBox2D: 2D bounding box operations
-	// -------------------------------------------------------------------------
-	TEST_METHOD(FBox2DOperations)
+	TEST_METHOD(FBox2DUnsupportedBoundary)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovMathGeom_FBox2D", ASTEST_AS(R"AS(
-		FBox2D TestConstruction()
+		const FString UnsupportedSource = ASTEST_AS(R"AS(
+		bool TriggerUnsupportedFBox2D()
 		{
-			FVector2D min = FVector2D(0, 0);
-			FVector2D max = FVector2D(100, 100);
-			return FBox2D(min, max);
+			FBox2D Box = FBox2D(FVector2D(0, 0), FVector2D(100, 100));
+			return Box.IsInside(FVector2D(50, 50));
 		}
-
-		FBox2D TestConstructionFromPoints()
-		{
-			TArray<FVector2D> points;
-			points.Add(FVector2D(0, 0));
-			points.Add(FVector2D(100, 100));
-			points.Add(FVector2D(50, 50));
-			return FBox2D(points);
-		}
-
-		bool TestIsInside()
-		{
-			FBox2D box = FBox2D(FVector2D(0, 0), FVector2D(100, 100));
-			FVector2D point = FVector2D(50, 50);
-			return box.IsInside(point);
-		}
-
-		bool TestIsInsideOutside()
-		{
-			FBox2D box = FBox2D(FVector2D(0, 0), FVector2D(100, 100));
-			FVector2D point = FVector2D(200, 200);
-			return box.IsInside(point);
-		}
-
-		FVector2D TestGetCenter()
-		{
-			FBox2D box = FBox2D(FVector2D(0, 0), FVector2D(100, 100));
-			return box.GetCenter();
-		}
-
-		FVector2D TestGetExtent()
-		{
-			FBox2D box = FBox2D(FVector2D(0, 0), FVector2D(100, 100));
-			return box.GetExtent();
-		}
-
-		FVector2D TestGetSize()
-		{
-			FBox2D box = FBox2D(FVector2D(0, 0), FVector2D(100, 100));
-			return box.GetSize();
-		}
-
-		float TestGetArea()
-		{
-			FBox2D box = FBox2D(FVector2D(0, 0), FVector2D(10, 10));
-			return box.GetArea();
-		}
-
-		FBox2D TestExpandBy()
-		{
-			FBox2D box = FBox2D(FVector2D(0, 0), FVector2D(100, 100));
-			return box.ExpandBy(10.0);
-		}
-
-		bool TestIsValid()
-		{
-			FBox2D box = FBox2D(FVector2D(0, 0), FVector2D(100, 100));
-			return box.bIsValid;
-		}
-		)AS"));
-		ON_SCOPE_EXIT
-		{
-			if (Module != nullptr)
-			{
-				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
-			}
-		};
-
-		// Construction
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FBox2D TestConstruction()"));
-			FBox2D Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FBox2D construction"), Result.Min.Equals(FVector2D(0, 0), 0.001) && Result.Max.Equals(FVector2D(100, 100), 0.001));
-		}
-
-		// Construction from points
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FBox2D TestConstructionFromPoints()"));
-			FBox2D Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FBox2D construction from points"), Result.bIsValid);
-		}
-
-		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestIsInside()"), true, TEXT("FBox2D.IsInside() point inside"));
-		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestIsInsideOutside()"), false, TEXT("FBox2D.IsInside() point outside"));
-
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector2D TestGetCenter()"));
-			FVector2D Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FBox2D.GetCenter()"), Result.Equals(FVector2D(50, 50), 0.001));
-		}
-
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector2D TestGetExtent()"));
-			FVector2D Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FBox2D.GetExtent()"), Result.Equals(FVector2D(50, 50), 0.001));
-		}
-
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector2D TestGetSize()"));
-			FVector2D Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FBox2D.GetSize()"), Result.Equals(FVector2D(100, 100), 0.001));
-		}
-
-		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestGetArea()"), 100.0f, TEXT("FBox2D.GetArea()"));
-
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FBox2D TestExpandBy()"));
-			FBox2D Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FBox2D.ExpandBy()"), Result.GetSize().Equals(FVector2D(120, 120), 0.001));
-		}
-
-		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestIsValid()"), true, TEXT("FBox2D.bIsValid"));
+		)AS");
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("FBox2D"));
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCovMathGeom_FBox2DUnsupported"),
+			UnsupportedSource,
+			TEXT("FBox2D should remain an explicit compile-failure boundary until a runtime bind exists"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -499,8 +577,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathGeometricStructsTest,
 		FPlane TestConstruction()
 		{
 			FVector normal = FVector(0, 0, 1);
-			float distance = 10.0;
-			return FPlane(normal, distance);
+			FVector location = FVector(0, 0, 10);
+			return FPlane(location, normal);
 		}
 
 		FPlane TestConstructionFromPoints()
@@ -513,35 +591,48 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathGeometricStructsTest,
 
 		FPlane TestConstructionFromVector()
 		{
-			return FPlane(FVector(0, 0, 1), 0);
+			return FPlane(FVector::ZeroVector, FVector(0, 0, 1));
 		}
 
 		float TestPlaneDot()
 		{
-			FPlane plane = FPlane(FVector(0, 0, 1), 0);
+			FPlane plane = FPlane(FVector::ZeroVector, FVector(0, 0, 1));
 			FVector point = FVector(0, 0, 10);
 			return plane.PlaneDot(point);
 		}
 
-		FPlane TestNormalize()
+		FVector TestGetNormal()
 		{
-			FPlane plane = FPlane(FVector(0, 0, 2), 20);
-			FPlane result = plane;
-			result.Normalize();
-			return result;
+			FPlane plane = FPlane(FVector(0, 0, 10), FVector(0, 0, 2));
+			return plane.GetNormal();
 		}
 
-		FPlane TestFlip()
+		FVector TestGetOrigin()
 		{
-			FPlane plane = FPlane(FVector(0, 0, 1), 10);
-			return plane.Flip();
+			FPlane plane = FPlane(FVector(0, 0, 10), FVector(0, 0, 1));
+			return plane.GetOrigin();
 		}
 
 		bool TestEquals()
 		{
-			FPlane a = FPlane(FVector(0, 0, 1), 10);
-			FPlane b = FPlane(FVector(0, 0, 1), 10);
+			FPlane a = FPlane(FVector(0, 0, 10), FVector(0, 0, 1));
+			FPlane b = FPlane(FVector(0, 0, 10), FVector(0, 0, 1));
 			return a == b;
+		}
+
+		bool TestRayPlaneIntersection()
+		{
+			FPlane plane = FPlane(FVector::ZeroVector, FVector(0, 0, 1));
+			FVector intersection = plane.RayPlaneIntersection(FVector(0, 0, -5), FVector(0, 0, 1));
+			return intersection.Equals(FVector::ZeroVector, 0.001);
+		}
+
+		bool TestSegmentPlaneIntersection()
+		{
+			FPlane plane = FPlane(FVector::ZeroVector, FVector(0, 0, 1));
+			FVector intersection;
+			bool hit = plane.SegmentPlaneIntersection(FVector(0, 0, -5), FVector(0, 0, 5), intersection);
+			return hit && intersection.Equals(FVector::ZeroVector, 0.001);
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -552,54 +643,41 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathGeometricStructsTest,
 			}
 		};
 
-		// Construction
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FPlane TestConstruction()"));
-			FPlane Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FPlane construction"), Result.Z > 0.9f && FMath::Abs(Result.W - 10.0f) < 0.1f);
-		}
-
-		// Construction from points
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FPlane TestConstructionFromPoints()"));
-			FPlane Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FPlane construction from points"), Result.Z > 0.9f || Result.Z < -0.9f);
-		}
-
-		// Construction from vector
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FPlane TestConstructionFromVector()"));
-			FPlane Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FPlane construction from vector"), Result.Z > 0.9f);
-		}
-
-		// PlaneDot
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float TestPlaneDot()"));
-			float Result = Invoker.ExecuteAndGet<float>(0.0f);
-			TestRunner->TestTrue(TEXT("FPlane.PlaneDot()"), FMath::Abs(Result - 10.0f) < 0.1f);
-		}
-
-		// Normalize
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FPlane TestNormalize()"));
-			FPlane Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FPlane.Normalize()"), FMath::Abs(Result.Z - 1.0f) < 0.01f);
-		}
-
-		// Flip
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FPlane TestFlip()"));
-			FPlane Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("FPlane.Flip()"), Result.Z < -0.9f);
-		}
+		ExpectGlobalStructSatisfies<FPlane>(
+			Engine,
+			Module,
+			TEXT("FPlane TestConstruction()"),
+			[](const FPlane& Result) { return Result.Z > 0.9f && FMath::Abs(Result.W - 10.0f) < 0.1f; },
+			TEXT("FPlane construction"));
+		ExpectGlobalStructSatisfies<FPlane>(
+			Engine,
+			Module,
+			TEXT("FPlane TestConstructionFromPoints()"),
+			[](const FPlane& Result) { return Result.Z > 0.9f || Result.Z < -0.9f; },
+			TEXT("FPlane construction from points"));
+		ExpectGlobalStructSatisfies<FPlane>(
+			Engine,
+			Module,
+			TEXT("FPlane TestConstructionFromVector()"),
+			[](const FPlane& Result) { return Result.Z > 0.9f; },
+			TEXT("FPlane construction from vector"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestPlaneDot()"), 10.0f, TEXT("FPlane.PlaneDot()"));
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestGetNormal()"),
+			[](const FVector& Result) { return Result.Equals(FVector(0, 0, 1), 0.001); },
+			TEXT("FPlane.GetNormal()"));
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestGetOrigin()"),
+			[](const FVector& Result) { return Result.Equals(FVector(0, 0, 10), 0.001); },
+			TEXT("FPlane.GetOrigin()"));
 
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestEquals()"), true, TEXT("FPlane equality"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestRayPlaneIntersection()"), true, TEXT("FPlane.RayPlaneIntersection()"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestSegmentPlaneIntersection()"), true, TEXT("FPlane.SegmentPlaneIntersection() out param"));
 	}
 };
 

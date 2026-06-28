@@ -130,18 +130,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWeakReferenceTest,
 			)AS"),
 			TEXT("ACoverageWeakRefBasicsActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Weak-ref-basics actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Weak-ref-basics actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DeclarationWorked"), true, TEXT("TWeakObjectPtr declaration should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AssignmentWorked"), true, TEXT("TWeakObjectPtr assignment should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsValidWorked"), true, TEXT("TWeakObjectPtr IsValid should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetWorked"), true, TEXT("TWeakObjectPtr Get should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ResetWorked"), true, TEXT("TWeakObjectPtr Reset should work"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DeclarationWorked"), true, TEXT("TWeakObjectPtr declaration should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AssignmentWorked"), true, TEXT("TWeakObjectPtr assignment should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsValidWorked"), true, TEXT("TWeakObjectPtr IsValid should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetWorked"), true, TEXT("TWeakObjectPtr Get should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ResetWorked"), true, TEXT("TWeakObjectPtr Reset should work"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -197,12 +205,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWeakReferenceTest,
 					// Destroy the actor
 					TempActor.DestroyActor();
 
-					// Tick world to process destroy
-					System::ExecuteForOneFrame(CheckInvalidation);
-				}
-
-				void CheckInvalidation()
-				{
 					// Check that weak pointer is now invalid
 					if (!WeakTarget.IsValid())
 					{
@@ -220,19 +222,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWeakReferenceTest,
 			)AS"),
 			TEXT("ACoverageWeakRefInvalidationActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Weak-ref-invalidation actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Weak-ref-invalidation actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Tick to allow destruction and deferred check
 		TickWorld(Engine, Spawner.GetWorld(), 0.0f, 2);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InitiallyValid"), true, TEXT("Weak pointer should be initially valid"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InvalidAfterDestroy"), true, TEXT("Weak pointer should be invalid after object destruction"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetReturnsNull"), true, TEXT("Get should return null after destruction"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InitiallyValid"), true, TEXT("Weak pointer should be initially valid"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InvalidAfterDestroy"), true, TEXT("Weak pointer should be invalid after object destruction"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetReturnsNull"), true, TEXT("Get should return null after destruction"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -282,13 +292,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWeakReferenceTest,
 			)AS"),
 			TEXT("ACoverageWeakRefPropertyActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Weak-ref-property actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		// Check that properties exist
 		const FProperty* WeakTargetProp = ScriptClass->FindPropertyByName(FName(TEXT("WeakTarget")));
 		ASSERT_THAT(IsNotNull(WeakTargetProp, TEXT("WeakTarget property should exist")));
+		if (WeakTargetProp == nullptr)
+		{
+			return;
+		}
 
 		const FProperty* WeakPawnProp = ScriptClass->FindPropertyByName(FName(TEXT("WeakPawn")));
 		ASSERT_THAT(IsNotNull(WeakPawnProp, TEXT("WeakPawn property should exist")));
+		if (WeakPawnProp == nullptr)
+		{
+			return;
+		}
 
 		// Check specifiers are applied
 		ASSERT_THAT(IsTrue(WeakTargetProp->HasAnyPropertyFlags(CPF_Edit), TEXT("EditAnywhere should set CPF_Edit on weak ref")));
@@ -298,9 +320,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWeakReferenceTest,
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Weak-ref-property actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("PropertiesAssigned"), true, TEXT("Weak pointer properties should be assignable"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("PropertiesAssigned"), true, TEXT("Weak pointer properties should be assignable"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -379,18 +405,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWeakReferenceTest,
 			)AS"),
 			TEXT("ACoverageSubclassOfBasicsActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Subclass-of-basics actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Subclass-of-basics actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DeclarationWorked"), true, TEXT("TSubclassOf declaration should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AssignmentWorked"), true, TEXT("TSubclassOf assignment should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetWorked"), true, TEXT("TSubclassOf Get should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NullCheckWorked"), true, TEXT("TSubclassOf null check should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ComparisonWorked"), true, TEXT("TSubclassOf comparison should work"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DeclarationWorked"), true, TEXT("TSubclassOf declaration should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AssignmentWorked"), true, TEXT("TSubclassOf assignment should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetWorked"), true, TEXT("TSubclassOf Get should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NullCheckWorked"), true, TEXT("TSubclassOf null check should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ComparisonWorked"), true, TEXT("TSubclassOf comparison should work"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -444,14 +478,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWeakReferenceTest,
 			)AS"),
 			TEXT("ACoverageSubclassOfPropertyActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Subclass-of-property actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		// Check that properties exist with correct types
 		const FProperty* ActorClassProp = ScriptClass->FindPropertyByName(FName(TEXT("ActorClass")));
 		ASSERT_THAT(IsNotNull(ActorClassProp, TEXT("ActorClass property should exist")));
+		if (ActorClassProp == nullptr)
+		{
+			return;
+		}
 		ASSERT_THAT(IsTrue(ActorClassProp->IsA<FClassProperty>(), TEXT("ActorClass should be FClassProperty")));
 
 		const FProperty* PawnClassProp = ScriptClass->FindPropertyByName(FName(TEXT("PawnClass")));
 		ASSERT_THAT(IsNotNull(PawnClassProp, TEXT("PawnClass property should exist")));
+		if (PawnClassProp == nullptr)
+		{
+			return;
+		}
 		ASSERT_THAT(IsTrue(PawnClassProp->IsA<FClassProperty>(), TEXT("PawnClass should be FClassProperty")));
 
 		// Check specifiers
@@ -463,9 +509,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWeakReferenceTest,
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Subclass-of-property actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("PropertiesSet"), true, TEXT("TSubclassOf properties should be assignable"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("PropertiesSet"), true, TEXT("TSubclassOf properties should be assignable"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -539,15 +589,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWeakReferenceTest,
 			)AS"),
 			TEXT("ACoverageSubclassOfSpawnActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Subclass-of-spawn actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Subclass-of-spawn actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ActorSpawnWorked"), true, TEXT("Spawn with TSubclassOf<AActor> should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("PawnSpawnWorked"), true, TEXT("Spawn with TSubclassOf<APawn> should work"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ActorSpawnWorked"), true, TEXT("Spawn with TSubclassOf<AActor> should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("PawnSpawnWorked"), true, TEXT("Spawn with TSubclassOf<APawn> should work"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -612,16 +670,252 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWeakReferenceTest,
 			)AS"),
 			TEXT("ACoverageSubclassOfTypeCheckActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Subclass-of-typecheck actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Subclass-of-typecheck actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsChildOfActorWorked"), true, TEXT("AActor should be child of AActor"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsChildOfPawnWorked"), true, TEXT("APawn should be child of APawn"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("PawnIsChildOfActorWorked"), true, TEXT("APawn should be child of AActor"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsChildOfActorWorked"), true, TEXT("AActor should be child of AActor"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsChildOfPawnWorked"), true, TEXT("APawn should be child of APawn"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("PawnIsChildOfActorWorked"), true, TEXT("APawn should be child of AActor"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// TWeakObjectPtr null comparison and reassignment
+	// -------------------------------------------------------------------------
+	TEST_METHOD(WeakObjectPtrNullComparisonAndReassignment)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageWeakRef_NullReassign"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageWeakRefNullReassign.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageWeakRefNullReassignActor : AActor
+			{
+				UPROPERTY()
+				TWeakObjectPtr<AActor> WeakTarget;
+
+				UPROPERTY()
+				bool DefaultEqualsNull = false;
+
+				UPROPERTY()
+				bool AssignedNotNull = false;
+
+				UPROPERTY()
+				bool ResetEqualsNull = false;
+
+				UPROPERTY()
+				bool ReassignedToNewObject = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					DefaultEqualsNull = WeakTarget == nullptr;
+
+					AActor FirstActor = SpawnActor(AActor::StaticClass());
+					WeakTarget = FirstActor;
+					AssignedNotNull = WeakTarget != nullptr && WeakTarget.Get() == FirstActor;
+
+					WeakTarget = nullptr;
+					ResetEqualsNull = WeakTarget == nullptr && WeakTarget.Get() == nullptr;
+
+					AActor SecondActor = SpawnActor(AActor::StaticClass());
+					WeakTarget = SecondActor;
+					ReassignedToNewObject = WeakTarget.IsValid() && WeakTarget.Get() == SecondActor && WeakTarget.Get() != FirstActor;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageWeakRefNullReassignActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Weak-ref null/reassign actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Weak-ref null/reassign actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DefaultEqualsNull"), true, TEXT("Default TWeakObjectPtr should compare equal to nullptr"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AssignedNotNull"), true, TEXT("Assigned TWeakObjectPtr should compare not equal to nullptr"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ResetEqualsNull"), true, TEXT("TWeakObjectPtr assigned nullptr should compare equal to nullptr"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ReassignedToNewObject"), true, TEXT("TWeakObjectPtr should reassign to a new object"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// TWeakObjectPtr usage: break a strong cycle with a weak back-reference
+	// -------------------------------------------------------------------------
+	TEST_METHOD(WeakObjectPtrBreaksBackReferenceCycle)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageWeakRef_BreakCycle"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageWeakRefBreakCycle.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageWeakRefBreakCycleActor : AActor
+			{
+				UPROPERTY()
+				AActor StrongChild;
+
+				UPROPERTY()
+				TWeakObjectPtr<AActor> WeakParent;
+
+				UPROPERTY()
+				bool StrongForwardReferenceAlive = false;
+
+				UPROPERTY()
+				bool WeakBackReferenceDoesNotOwn = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					StrongChild = SpawnActor(AActor::StaticClass());
+					WeakParent = this;
+
+					TWeakObjectPtr<AActor> WeakChild = StrongChild;
+					System::ForceGarbageCollection(true);
+
+					StrongForwardReferenceAlive = WeakChild.IsValid() && IsValid(StrongChild);
+					WeakBackReferenceDoesNotOwn = WeakParent.IsValid() && WeakParent.Get() == this;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageWeakRefBreakCycleActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Weak-ref back-reference actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Weak-ref back-reference actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("StrongForwardReferenceAlive"), true, TEXT("Strong forward reference should keep child alive"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WeakBackReferenceDoesNotOwn"), true, TEXT("Weak back-reference should observe parent without owning it"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// TWeakObjectPtr as container element: TArray<TWeakObjectPtr<AActor>>
+	// -------------------------------------------------------------------------
+	TEST_METHOD(WeakObjectPtrArrayContainer)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageWeakRef_ArrayContainer"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageWeakRefArrayContainer.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageWeakRefArrayContainerActor : AActor
+			{
+				UPROPERTY()
+				TArray<TWeakObjectPtr<AActor>> WeakActors;
+
+				UPROPERTY()
+				bool ArrayStoredWeakRefs = false;
+
+				UPROPERTY()
+				bool ArrayNullElementWorked = false;
+
+				UPROPERTY()
+				bool ArrayInvalidatedDestroyedElement = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					AActor FirstActor = SpawnActor(AActor::StaticClass());
+					AActor SecondActor = SpawnActor(AActor::StaticClass());
+
+					WeakActors.Add(TWeakObjectPtr<AActor>(FirstActor));
+					WeakActors.Add(TWeakObjectPtr<AActor>(SecondActor));
+					WeakActors.Add(TWeakObjectPtr<AActor>());
+
+					ArrayStoredWeakRefs = WeakActors.Num() == 3 && WeakActors[0].Get() == FirstActor && WeakActors[1].Get() == SecondActor;
+					ArrayNullElementWorked = WeakActors[2] == nullptr;
+
+					SecondActor.DestroyActor();
+					ArrayInvalidatedDestroyedElement = !WeakActors[1].IsValid() && WeakActors[1].Get() == nullptr;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageWeakRefArrayContainerActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Weak-ref array actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Weak-ref array actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+		TickWorld(Engine, Spawner.GetWorld(), 0.0f, 2);
+
+		int32 Count = 0;
+		ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, Actor, TEXT("WeakActors"), Count), TEXT("TArray<TWeakObjectPtr<AActor>> length should resolve")));
+		ASSERT_THAT(AreEqual(3, Count, TEXT("TArray<TWeakObjectPtr<AActor>> should hold three entries")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ArrayStoredWeakRefs"), true, TEXT("TArray<TWeakObjectPtr<AActor>> should store weak references"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ArrayNullElementWorked"), true, TEXT("TArray<TWeakObjectPtr<AActor>> should store null weak references"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ArrayInvalidatedDestroyedElement"), true, TEXT("TArray<TWeakObjectPtr<AActor>> should reflect destroyed element invalidation"))));
 	}
 };
 

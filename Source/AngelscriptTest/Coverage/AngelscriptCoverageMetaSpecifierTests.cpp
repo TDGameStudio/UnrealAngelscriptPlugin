@@ -5,6 +5,7 @@
 #include "AngelscriptTestModuleBuilder.h"
 #include "AngelscriptTestUtilities.h"
 
+#include "ClassGenerator/ASClass.h"
 #include "Components/ActorTestSpawner.h"
 #include "GameFramework/Actor.h"
 #include "Misc/ScopeExit.h"
@@ -42,6 +43,76 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMetaSpecifierTest,
 	"Angelscript.TestModule.Coverage.MetaSpecifier",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	static const FProperty* RequireProperty(UClass* ScriptClass, const TCHAR* PropertyName)
+	{
+		return ScriptClass != nullptr ? ScriptClass->FindPropertyByName(FName(PropertyName)) : nullptr;
+	}
+
+	static UFunction* RequireFunction(UClass* ScriptClass, const TCHAR* FunctionName)
+	{
+		return ScriptClass != nullptr ? FindGeneratedFunction(ScriptClass, FName(FunctionName)) : nullptr;
+	}
+
+	static FProperty* RequireFunctionParam(UFunction* Function, const TCHAR* ParamName)
+	{
+		return Function != nullptr ? FindFProperty<FProperty>(Function, FName(ParamName)) : nullptr;
+	}
+
+	static FString GetMetaDataOrEmpty(const FProperty* Property, const TCHAR* Key)
+	{
+		return Property != nullptr ? Property->GetMetaData(Key) : FString();
+	}
+
+	static bool HasMetaData(const FProperty* Property, const TCHAR* Key)
+	{
+		return Property != nullptr && Property->HasMetaData(Key);
+	}
+
+	static bool ExpectPropertyMeta(FAutomationTestBase& Test, UClass* ScriptClass, const TCHAR* PropertyName, const TCHAR* Key, const TCHAR* ExpectedValue)
+	{
+		FNoDiscardAsserter LocalAssert(Test);
+		const FProperty* Property = RequireProperty(ScriptClass, PropertyName);
+		if (!LocalAssert.IsNotNull(Property, *FString::Printf(TEXT("%s property should exist"), PropertyName)))
+		{
+			return false;
+		}
+
+		return LocalAssert.AreEqual(
+			FString(ExpectedValue),
+			GetMetaDataOrEmpty(Property, Key),
+			*FString::Printf(TEXT("%s %s meta should be preserved"), PropertyName, Key));
+	}
+
+	static bool ExpectPropertyHasMeta(FAutomationTestBase& Test, UClass* ScriptClass, const TCHAR* PropertyName, const TCHAR* Key)
+	{
+		FNoDiscardAsserter LocalAssert(Test);
+		const FProperty* Property = RequireProperty(ScriptClass, PropertyName);
+		if (!LocalAssert.IsNotNull(Property, *FString::Printf(TEXT("%s property should exist"), PropertyName)))
+		{
+			return false;
+		}
+
+		return LocalAssert.IsTrue(
+			HasMetaData(Property, Key),
+			*FString::Printf(TEXT("%s %s meta should be present"), PropertyName, Key));
+	}
+
+	static bool ExpectPropertyLacksMeta(FAutomationTestBase& Test, UClass* ScriptClass, const TCHAR* PropertyName, const TCHAR* Key)
+	{
+		FNoDiscardAsserter LocalAssert(Test);
+		const FProperty* Property = RequireProperty(ScriptClass, PropertyName);
+		if (!LocalAssert.IsNotNull(Property, *FString::Printf(TEXT("%s property should exist"), PropertyName)))
+		{
+			return false;
+		}
+
+		return LocalAssert.IsTrue(
+			GetMetaDataOrEmpty(Property, Key).IsEmpty(),
+			*FString::Printf(TEXT("%s should not have %s metadata"), PropertyName, Key));
+	}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -95,52 +166,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMetaSpecifierTest,
 			)AS"),
 			TEXT("ACoverageMetaClampActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Meta clamp actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 #if WITH_EDITOR
-		auto FindProp = [&](const TCHAR* Name) -> const FProperty*
-		{
-			const FProperty* Found = ScriptClass->FindPropertyByName(FName(Name));
-			if (Found == nullptr)
-			{
-				TestRunner->AddError(FString::Printf(TEXT("Meta property '%s' should exist"), Name));
-			}
-			return Found;
-		};
-
-		// --- ClampedInt: ClampMin + ClampMax ---
-		if (const FProperty* ClampedInt = FindProp(TEXT("ClampedInt")))
-		{
-			TestRunner->TestEqual(TEXT("ClampedInt ClampMin meta"), ClampedInt->GetMetaData(TEXT("ClampMin")), FString(TEXT("0")));
-			TestRunner->TestEqual(TEXT("ClampedInt ClampMax meta"), ClampedInt->GetMetaData(TEXT("ClampMax")), FString(TEXT("100")));
-		}
-
-		// --- ClampedFloat: float with ClampMin + ClampMax ---
-		if (const FProperty* ClampedFloat = FindProp(TEXT("ClampedFloat")))
-		{
-			TestRunner->TestEqual(TEXT("ClampedFloat ClampMin meta"), ClampedFloat->GetMetaData(TEXT("ClampMin")), FString(TEXT("0.0")));
-			TestRunner->TestEqual(TEXT("ClampedFloat ClampMax meta"), ClampedFloat->GetMetaData(TEXT("ClampMax")), FString(TEXT("1.0")));
-		}
-
-		// --- ClampedDouble: double with negative ClampMin ---
-		if (const FProperty* ClampedDouble = FindProp(TEXT("ClampedDouble")))
-		{
-			TestRunner->TestEqual(TEXT("ClampedDouble ClampMin meta"), ClampedDouble->GetMetaData(TEXT("ClampMin")), FString(TEXT("-10.0")));
-			TestRunner->TestEqual(TEXT("ClampedDouble ClampMax meta"), ClampedDouble->GetMetaData(TEXT("ClampMax")), FString(TEXT("10.0")));
-		}
-
-		// --- OnlyMinInt: ClampMin only (no max) ---
-		if (const FProperty* OnlyMinInt = FindProp(TEXT("OnlyMinInt")))
-		{
-			TestRunner->TestEqual(TEXT("OnlyMinInt ClampMin meta"), OnlyMinInt->GetMetaData(TEXT("ClampMin")), FString(TEXT("0")));
-			TestRunner->TestTrue(TEXT("OnlyMinInt should not have ClampMax"), OnlyMinInt->GetMetaData(TEXT("ClampMax")).IsEmpty());
-		}
-
-		// --- OnlyMaxInt: ClampMax only (no min) ---
-		if (const FProperty* OnlyMaxInt = FindProp(TEXT("OnlyMaxInt")))
-		{
-			TestRunner->TestEqual(TEXT("OnlyMaxInt ClampMax meta"), OnlyMaxInt->GetMetaData(TEXT("ClampMax")), FString(TEXT("255")));
-			TestRunner->TestTrue(TEXT("OnlyMaxInt should not have ClampMin"), OnlyMaxInt->GetMetaData(TEXT("ClampMin")).IsEmpty());
-		}
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("ClampedInt"), TEXT("ClampMin"), TEXT("0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("ClampedInt"), TEXT("ClampMax"), TEXT("100"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("ClampedFloat"), TEXT("ClampMin"), TEXT("0.0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("ClampedFloat"), TEXT("ClampMax"), TEXT("1.0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("ClampedDouble"), TEXT("ClampMin"), TEXT("-10.0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("ClampedDouble"), TEXT("ClampMax"), TEXT("10.0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("OnlyMinInt"), TEXT("ClampMin"), TEXT("0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyLacksMeta(*TestRunner, ScriptClass, TEXT("OnlyMinInt"), TEXT("ClampMax"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("OnlyMaxInt"), TEXT("ClampMax"), TEXT("255"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyLacksMeta(*TestRunner, ScriptClass, TEXT("OnlyMaxInt"), TEXT("ClampMin"))));
 #endif
 	}
 
@@ -183,47 +224,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMetaSpecifierTest,
 			)AS"),
 			TEXT("ACoverageMetaUIRangeActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Meta UI range actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 #if WITH_EDITOR
-		auto FindProp = [&](const TCHAR* Name) -> const FProperty*
-		{
-			const FProperty* Found = ScriptClass->FindPropertyByName(FName(Name));
-			if (Found == nullptr)
-			{
-				TestRunner->AddError(FString::Printf(TEXT("Meta property '%s' should exist"), Name));
-			}
-			return Found;
-		};
-
-		// --- UIRangedInt: UIMin + UIMax ---
-		if (const FProperty* UIRangedInt = FindProp(TEXT("UIRangedInt")))
-		{
-			TestRunner->TestEqual(TEXT("UIRangedInt UIMin meta"), UIRangedInt->GetMetaData(TEXT("UIMin")), FString(TEXT("0")));
-			TestRunner->TestEqual(TEXT("UIRangedInt UIMax meta"), UIRangedInt->GetMetaData(TEXT("UIMax")), FString(TEXT("100")));
-		}
-
-		// --- UIRangedFloat: float with UIMin + UIMax ---
-		if (const FProperty* UIRangedFloat = FindProp(TEXT("UIRangedFloat")))
-		{
-			TestRunner->TestEqual(TEXT("UIRangedFloat UIMin meta"), UIRangedFloat->GetMetaData(TEXT("UIMin")), FString(TEXT("0.0")));
-			TestRunner->TestEqual(TEXT("UIRangedFloat UIMax meta"), UIRangedFloat->GetMetaData(TEXT("UIMax")), FString(TEXT("1.0")));
-		}
-
-		// --- UIRangedDouble: double with negative UIMin ---
-		if (const FProperty* UIRangedDouble = FindProp(TEXT("UIRangedDouble")))
-		{
-			TestRunner->TestEqual(TEXT("UIRangedDouble UIMin meta"), UIRangedDouble->GetMetaData(TEXT("UIMin")), FString(TEXT("-180.0")));
-			TestRunner->TestEqual(TEXT("UIRangedDouble UIMax meta"), UIRangedDouble->GetMetaData(TEXT("UIMax")), FString(TEXT("180.0")));
-		}
-
-		// --- ComboRangedInt: ClampMin/ClampMax + UIMin/UIMax (different ranges) ---
-		if (const FProperty* ComboRangedInt = FindProp(TEXT("ComboRangedInt")))
-		{
-			TestRunner->TestEqual(TEXT("ComboRangedInt ClampMin meta"), ComboRangedInt->GetMetaData(TEXT("ClampMin")), FString(TEXT("0")));
-			TestRunner->TestEqual(TEXT("ComboRangedInt ClampMax meta"), ComboRangedInt->GetMetaData(TEXT("ClampMax")), FString(TEXT("255")));
-			TestRunner->TestEqual(TEXT("ComboRangedInt UIMin meta"), ComboRangedInt->GetMetaData(TEXT("UIMin")), FString(TEXT("0")));
-			TestRunner->TestEqual(TEXT("ComboRangedInt UIMax meta"), ComboRangedInt->GetMetaData(TEXT("UIMax")), FString(TEXT("100")));
-		}
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("UIRangedInt"), TEXT("UIMin"), TEXT("0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("UIRangedInt"), TEXT("UIMax"), TEXT("100"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("UIRangedFloat"), TEXT("UIMin"), TEXT("0.0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("UIRangedFloat"), TEXT("UIMax"), TEXT("1.0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("UIRangedDouble"), TEXT("UIMin"), TEXT("-180.0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("UIRangedDouble"), TEXT("UIMax"), TEXT("180.0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("ComboRangedInt"), TEXT("ClampMin"), TEXT("0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("ComboRangedInt"), TEXT("ClampMax"), TEXT("255"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("ComboRangedInt"), TEXT("UIMin"), TEXT("0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("ComboRangedInt"), TEXT("UIMax"), TEXT("100"))));
 #endif
 	}
 
@@ -278,65 +294,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMetaSpecifierTest,
 			)AS"),
 			TEXT("ACoverageMetaUnitsActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Meta units actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 #if WITH_EDITOR
-		auto FindProp = [&](const TCHAR* Name) -> const FProperty*
-		{
-			const FProperty* Found = ScriptClass->FindPropertyByName(FName(Name));
-			if (Found == nullptr)
-			{
-				TestRunner->AddError(FString::Printf(TEXT("Meta property '%s' should exist"), Name));
-			}
-			return Found;
-		};
-
-		// --- AngleDegrees: Units = Degrees ---
-		if (const FProperty* AngleDegrees = FindProp(TEXT("AngleDegrees")))
-		{
-			TestRunner->TestEqual(TEXT("AngleDegrees Units meta"), AngleDegrees->GetMetaData(TEXT("Units")), FString(TEXT("Degrees")));
-		}
-
-		// --- AngleRadians: Units = Radians ---
-		if (const FProperty* AngleRadians = FindProp(TEXT("AngleRadians")))
-		{
-			TestRunner->TestEqual(TEXT("AngleRadians Units meta"), AngleRadians->GetMetaData(TEXT("Units")), FString(TEXT("Radians")));
-		}
-
-		// --- DistanceCM: Units = Centimeters ---
-		if (const FProperty* DistanceCM = FindProp(TEXT("DistanceCM")))
-		{
-			TestRunner->TestEqual(TEXT("DistanceCM Units meta"), DistanceCM->GetMetaData(TEXT("Units")), FString(TEXT("Centimeters")));
-		}
-
-		// --- DistanceM: Units = Meters ---
-		if (const FProperty* DistanceM = FindProp(TEXT("DistanceM")))
-		{
-			TestRunner->TestEqual(TEXT("DistanceM Units meta"), DistanceM->GetMetaData(TEXT("Units")), FString(TEXT("Meters")));
-		}
-
-		// --- TimeSeconds: Units = Seconds ---
-		if (const FProperty* TimeSeconds = FindProp(TEXT("TimeSeconds")))
-		{
-			TestRunner->TestEqual(TEXT("TimeSeconds Units meta"), TimeSeconds->GetMetaData(TEXT("Units")), FString(TEXT("Seconds")));
-		}
-
-		// --- TimeMS: Units = Milliseconds ---
-		if (const FProperty* TimeMS = FindProp(TEXT("TimeMS")))
-		{
-			TestRunner->TestEqual(TEXT("TimeMS Units meta"), TimeMS->GetMetaData(TEXT("Units")), FString(TEXT("Milliseconds")));
-		}
-
-		// --- Percentage: Units = Percent ---
-		if (const FProperty* Percentage = FindProp(TEXT("Percentage")))
-		{
-			TestRunner->TestEqual(TEXT("Percentage Units meta"), Percentage->GetMetaData(TEXT("Units")), FString(TEXT("Percent")));
-		}
-
-		// --- MassKG: Units = kg (custom unit) ---
-		if (const FProperty* MassKG = FindProp(TEXT("MassKG")))
-		{
-			TestRunner->TestEqual(TEXT("MassKG Units meta"), MassKG->GetMetaData(TEXT("Units")), FString(TEXT("kg")));
-		}
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("AngleDegrees"), TEXT("Units"), TEXT("Degrees"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("AngleRadians"), TEXT("Units"), TEXT("Radians"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("DistanceCM"), TEXT("Units"), TEXT("Centimeters"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("DistanceM"), TEXT("Units"), TEXT("Meters"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("TimeSeconds"), TEXT("Units"), TEXT("Seconds"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("TimeMS"), TEXT("Units"), TEXT("Milliseconds"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("Percentage"), TEXT("Units"), TEXT("Percent"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("MassKG"), TEXT("Units"), TEXT("kg"))));
 #endif
 	}
 
@@ -378,41 +349,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMetaSpecifierTest,
 			)AS"),
 			TEXT("ACoverageMetaDisplayNameActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Meta DisplayName actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 #if WITH_EDITOR
-		auto FindProp = [&](const TCHAR* Name) -> const FProperty*
-		{
-			const FProperty* Found = ScriptClass->FindPropertyByName(FName(Name));
-			if (Found == nullptr)
-			{
-				TestRunner->AddError(FString::Printf(TEXT("Meta property '%s' should exist"), Name));
-			}
-			return Found;
-		};
-
-		// --- HP: DisplayName = "Health Points" ---
-		if (const FProperty* HP = FindProp(TEXT("HP")))
-		{
-			TestRunner->TestEqual(TEXT("HP DisplayName meta"), HP->GetMetaData(TEXT("DisplayName")), FString(TEXT("Health Points")));
-		}
-
-		// --- Speed: DisplayName with special characters ---
-		if (const FProperty* Speed = FindProp(TEXT("Speed")))
-		{
-			TestRunner->TestEqual(TEXT("Speed DisplayName meta"), Speed->GetMetaData(TEXT("DisplayName")), FString(TEXT("Movement Speed (m/s)")));
-		}
-
-		// --- PlayerName: DisplayName on FString ---
-		if (const FProperty* PlayerName = FindProp(TEXT("PlayerName")))
-		{
-			TestRunner->TestEqual(TEXT("PlayerName DisplayName meta"), PlayerName->GetMetaData(TEXT("DisplayName")), FString(TEXT("Player Name")));
-		}
-
-		// --- bActive: DisplayName on bool ---
-		if (const FProperty* bActive = FindProp(TEXT("bActive")))
-		{
-			TestRunner->TestEqual(TEXT("bActive DisplayName meta"), bActive->GetMetaData(TEXT("DisplayName")), FString(TEXT("Is Active?")));
-		}
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("HP"), TEXT("DisplayName"), TEXT("Health Points"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("Speed"), TEXT("DisplayName"), TEXT("Movement Speed (m/s)"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("PlayerName"), TEXT("DisplayName"), TEXT("Player Name"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("bActive"), TEXT("DisplayName"), TEXT("Is Active?"))));
 #endif
 	}
 
@@ -461,35 +407,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMetaSpecifierTest,
 			)AS"),
 			TEXT("ACoverageMetaEditConditionActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Meta EditCondition actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 #if WITH_EDITOR
-		auto FindProp = [&](const TCHAR* Name) -> const FProperty*
-		{
-			const FProperty* Found = ScriptClass->FindPropertyByName(FName(Name));
-			if (Found == nullptr)
-			{
-				TestRunner->AddError(FString::Printf(TEXT("Meta property '%s' should exist"), Name));
-			}
-			return Found;
-		};
-
-		// --- Health: EditCondition = "bEnableHealth" ---
-		if (const FProperty* Health = FindProp(TEXT("Health")))
-		{
-			TestRunner->TestEqual(TEXT("Health EditCondition meta"), Health->GetMetaData(TEXT("EditCondition")), FString(TEXT("bEnableHealth")));
-		}
-
-		// --- Speed: EditCondition = "bEnableSpeed" ---
-		if (const FProperty* Speed = FindProp(TEXT("Speed")))
-		{
-			TestRunner->TestEqual(TEXT("Speed EditCondition meta"), Speed->GetMetaData(TEXT("EditCondition")), FString(TEXT("bEnableSpeed")));
-		}
-
-		// --- DamageMultiplier: EditCondition = "bEnableDamage" ---
-		if (const FProperty* DamageMultiplier = FindProp(TEXT("DamageMultiplier")))
-		{
-			TestRunner->TestEqual(TEXT("DamageMultiplier EditCondition meta"), DamageMultiplier->GetMetaData(TEXT("EditCondition")), FString(TEXT("bEnableDamage")));
-		}
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("Health"), TEXT("EditCondition"), TEXT("bEnableHealth"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("Speed"), TEXT("EditCondition"), TEXT("bEnableSpeed"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("DamageMultiplier"), TEXT("EditCondition"), TEXT("bEnableDamage"))));
 #endif
 	}
 
@@ -532,46 +458,418 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMetaSpecifierTest,
 			)AS"),
 			TEXT("ACoverageMetaInlineToggleActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Meta InlineEditConditionToggle actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 #if WITH_EDITOR
-		auto FindProp = [&](const TCHAR* Name) -> const FProperty*
+		ASSERT_THAT(IsTrue(ExpectPropertyHasMeta(*TestRunner, ScriptClass, TEXT("bEnableHealth"), TEXT("InlineEditConditionToggle"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("Health"), TEXT("EditCondition"), TEXT("bEnableHealth"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyHasMeta(*TestRunner, ScriptClass, TEXT("bEnableSpeed"), TEXT("InlineEditConditionToggle"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("Speed"), TEXT("EditCondition"), TEXT("bEnableSpeed"))));
+#endif
+	}
+
+	TEST_METHOD(FloatEditorMetaSpecifierRoundTrip)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMetaSpecifier_FloatEditor"));
+		ON_SCOPE_EXIT
 		{
-			const FProperty* Found = ScriptClass->FindPropertyByName(FName(Name));
-			if (Found == nullptr)
-			{
-				TestRunner->AddError(FString::Printf(TEXT("Meta property '%s' should exist"), Name));
-			}
-			return Found;
+			Engine.DiscardModule(*ModuleName.ToString());
 		};
 
-		// --- bEnableHealth: InlineEditConditionToggle ---
-		if (const FProperty* bEnableHealth = FindProp(TEXT("bEnableHealth")))
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMetaFloatEditor.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageMetaFloatEditorActor : AActor
+			{
+				UPROPERTY(meta = (ClampMin = "-45.5", ClampMax = "45.5"))
+				float PitchDegrees = 0.0f;
+
+				UPROPERTY(meta = (UIMin = "0.25", UIMax = "250.75"))
+				float SliderValue = 100.0f;
+
+				UPROPERTY(meta = (ClampMin = "0.0", ClampMax = "1000.0", UIMin = "10.0", UIMax = "900.0", Units = "Centimeters"))
+				float TravelDistance = 125.0f;
+
+				UPROPERTY(meta = (Units = "Degrees"))
+				float HeadingDegrees = 90.0f;
+
+				UPROPERTY(meta = (ClampMin = "-1.25", ClampMax = "1.25", UIMin = "-1.0", UIMax = "1.0", Units = "Degrees"))
+				double NormalizedAngle = 0.0;
+			}
+			)AS"),
+			TEXT("ACoverageMetaFloatEditorActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Float editor meta actor class should compile")));
+		if (ScriptClass == nullptr)
 		{
-			TestRunner->TestEqual(TEXT("bEnableHealth InlineEditConditionToggle meta"),
-				bEnableHealth->GetMetaData(TEXT("InlineEditConditionToggle")), FString(TEXT("true")));
+			return;
 		}
 
-		// --- Health: EditCondition = "bEnableHealth" ---
-		if (const FProperty* Health = FindProp(TEXT("Health")))
-		{
-			TestRunner->TestEqual(TEXT("Health EditCondition meta"),
-				Health->GetMetaData(TEXT("EditCondition")), FString(TEXT("bEnableHealth")));
-		}
-
-		// --- bEnableSpeed: InlineEditConditionToggle ---
-		if (const FProperty* bEnableSpeed = FindProp(TEXT("bEnableSpeed")))
-		{
-			TestRunner->TestEqual(TEXT("bEnableSpeed InlineEditConditionToggle meta"),
-				bEnableSpeed->GetMetaData(TEXT("InlineEditConditionToggle")), FString(TEXT("true")));
-		}
-
-		// --- Speed: EditCondition = "bEnableSpeed" ---
-		if (const FProperty* Speed = FindProp(TEXT("Speed")))
-		{
-			TestRunner->TestEqual(TEXT("Speed EditCondition meta"),
-				Speed->GetMetaData(TEXT("EditCondition")), FString(TEXT("bEnableSpeed")));
-		}
+#if WITH_EDITOR
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("PitchDegrees"), TEXT("ClampMin"), TEXT("-45.5"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("PitchDegrees"), TEXT("ClampMax"), TEXT("45.5"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("SliderValue"), TEXT("UIMin"), TEXT("0.25"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("SliderValue"), TEXT("UIMax"), TEXT("250.75"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("TravelDistance"), TEXT("ClampMin"), TEXT("0.0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("TravelDistance"), TEXT("ClampMax"), TEXT("1000.0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("TravelDistance"), TEXT("UIMin"), TEXT("10.0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("TravelDistance"), TEXT("UIMax"), TEXT("900.0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("TravelDistance"), TEXT("Units"), TEXT("Centimeters"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("HeadingDegrees"), TEXT("Units"), TEXT("Degrees"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("NormalizedAngle"), TEXT("ClampMin"), TEXT("-1.25"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("NormalizedAngle"), TEXT("ClampMax"), TEXT("1.25"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("NormalizedAngle"), TEXT("UIMin"), TEXT("-1.0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("NormalizedAngle"), TEXT("UIMax"), TEXT("1.0"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("NormalizedAngle"), TEXT("Units"), TEXT("Degrees"))));
 #endif
+	}
+
+	TEST_METHOD(UFunctionBasicSpecifiersAndFlags)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMetaSpecifier_UFunctionFlags"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMetaUFunctionFlags.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageMetaUFunctionFlagsActor : AActor
+			{
+				UPROPERTY()
+				int Value = 7;
+
+				UFUNCTION(NotBlueprintCallable)
+				void BasicMethod()
+				{
+					Value += 1;
+				}
+
+				UFUNCTION(BlueprintCallable, Category = "Coverage|Functions")
+				int CallableAdd(int Input)
+				{
+					return Value + Input;
+				}
+
+				UFUNCTION(BlueprintPure)
+				int PureValue() const
+				{
+					return Value;
+				}
+
+				UFUNCTION(CallInEditor, Exec)
+				void EditorExecMethod()
+				{
+					Value += 10;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageMetaUFunctionFlagsActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("UFUNCTION specifier actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("UFUNCTION specifier actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+
+		UFunction* BasicMethod = RequireFunction(ScriptClass, TEXT("BasicMethod"));
+		UFunction* CallableAdd = RequireFunction(ScriptClass, TEXT("CallableAdd"));
+		UFunction* PureValue = RequireFunction(ScriptClass, TEXT("PureValue"));
+		UFunction* EditorExecMethod = RequireFunction(ScriptClass, TEXT("EditorExecMethod"));
+		ASSERT_THAT(IsNotNull(BasicMethod, TEXT("Basic UFUNCTION should be generated")));
+		ASSERT_THAT(IsNotNull(CallableAdd, TEXT("BlueprintCallable UFUNCTION should be generated")));
+		ASSERT_THAT(IsNotNull(PureValue, TEXT("BlueprintPure UFUNCTION should be generated")));
+		ASSERT_THAT(IsNotNull(EditorExecMethod, TEXT("CallInEditor/Exec UFUNCTION should be generated")));
+		if (BasicMethod == nullptr || CallableAdd == nullptr || PureValue == nullptr || EditorExecMethod == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsFalse(BasicMethod->HasAnyFunctionFlags(FUNC_BlueprintCallable),
+			TEXT("NotBlueprintCallable should suppress the default BlueprintCallable flag")));
+		ASSERT_THAT(IsTrue(CallableAdd->HasAnyFunctionFlags(FUNC_BlueprintCallable),
+			TEXT("BlueprintCallable should set FUNC_BlueprintCallable")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Coverage|Functions")), CallableAdd->GetMetaData(TEXT("Category")),
+			TEXT("UFUNCTION Category should be preserved as function metadata")));
+		ASSERT_THAT(IsTrue(PureValue->HasAnyFunctionFlags(FUNC_BlueprintPure),
+			TEXT("BlueprintPure should set FUNC_BlueprintPure")));
+		ASSERT_THAT(IsTrue(PureValue->HasAnyFunctionFlags(FUNC_Const),
+			TEXT("const UFUNCTION should set FUNC_Const")));
+		ASSERT_THAT(IsTrue(EditorExecMethod->HasAnyFunctionFlags(FUNC_Exec),
+			TEXT("Exec should set FUNC_Exec")));
+		ASSERT_THAT(IsTrue(EditorExecMethod->HasMetaData(TEXT("CallInEditor")),
+			TEXT("CallInEditor should be preserved as function metadata")));
+
+		FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("CallableAdd"));
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("CallableAdd should be invokable through reflection")));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
+		Invoker.AddParam<int32>(5);
+		const int32 AddResult = Invoker.CallAndReturn<int32>(INDEX_NONE);
+		ASSERT_THAT(AreEqual(12, AddResult, TEXT("BlueprintCallable UFUNCTION should execute through reflected invocation")));
+	}
+
+	TEST_METHOD(UFunctionDisplayAndParameterMeta)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMetaSpecifier_UFunctionMeta"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMetaUFunctionMeta.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageMetaUFunctionMetaActor : AActor
+			{
+				UFUNCTION(BlueprintCallable, Category = "Coverage|Meta", meta = (
+					DisplayName = "Apply Meta Value",
+					Keywords = "coverage meta function",
+					ToolTip = "Applies metadata",
+					ShortToolTip = "Apply meta",
+					CompactNodeTitle = "META",
+					AdvancedDisplay = "Scale,Offset",
+					AutoCreateRefTerm = "Label"))
+				int ApplyMetaValue(
+					UPARAM(DisplayName = "Input Value") int Input,
+					UPARAM(DisplayName = "Scale Value") int Scale,
+					UPARAM(DisplayName = "Offset Value") int Offset,
+					UPARAM(DisplayName = "Label Text") const FString&in Label)
+				{
+					return Input * Scale + Offset + Label.Len();
+				}
+			}
+			)AS"),
+			TEXT("ACoverageMetaUFunctionMetaActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("UFUNCTION meta actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		UFunction* ApplyMetaValue = RequireFunction(ScriptClass, TEXT("ApplyMetaValue"));
+		ASSERT_THAT(IsNotNull(ApplyMetaValue, TEXT("ApplyMetaValue UFUNCTION should be generated")));
+		if (ApplyMetaValue == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(FString(TEXT("Coverage|Meta")), ApplyMetaValue->GetMetaData(TEXT("Category")),
+			TEXT("UFUNCTION Category should be reflected")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Apply Meta Value")), ApplyMetaValue->GetMetaData(TEXT("DisplayName")),
+			TEXT("UFUNCTION DisplayName meta should be reflected")));
+		ASSERT_THAT(AreEqual(FString(TEXT("coverage meta function")), ApplyMetaValue->GetMetaData(TEXT("Keywords")),
+			TEXT("UFUNCTION Keywords meta should be reflected")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Applies metadata")), ApplyMetaValue->GetMetaData(TEXT("ToolTip")),
+			TEXT("UFUNCTION ToolTip meta should be reflected")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Apply meta")), ApplyMetaValue->GetMetaData(TEXT("ShortToolTip")),
+			TEXT("UFUNCTION ShortToolTip meta should be reflected")));
+		ASSERT_THAT(AreEqual(FString(TEXT("META")), ApplyMetaValue->GetMetaData(TEXT("CompactNodeTitle")),
+			TEXT("UFUNCTION CompactNodeTitle meta should be reflected")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Scale,Offset")), ApplyMetaValue->GetMetaData(TEXT("AdvancedDisplay")),
+			TEXT("UFUNCTION AdvancedDisplay meta should be reflected")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Label")), ApplyMetaValue->GetMetaData(TEXT("AutoCreateRefTerm")),
+			TEXT("UFUNCTION AutoCreateRefTerm meta should be reflected")));
+
+		FProperty* InputParam = RequireFunctionParam(ApplyMetaValue, TEXT("Input"));
+		FProperty* ScaleParam = RequireFunctionParam(ApplyMetaValue, TEXT("Scale"));
+		FProperty* OffsetParam = RequireFunctionParam(ApplyMetaValue, TEXT("Offset"));
+		FProperty* LabelParam = RequireFunctionParam(ApplyMetaValue, TEXT("Label"));
+		ASSERT_THAT(IsNotNull(InputParam, TEXT("Input parameter should be reflected")));
+		ASSERT_THAT(IsNotNull(ScaleParam, TEXT("Scale parameter should be reflected")));
+		ASSERT_THAT(IsNotNull(OffsetParam, TEXT("Offset parameter should be reflected")));
+		ASSERT_THAT(IsNotNull(LabelParam, TEXT("Label parameter should be reflected")));
+		if (InputParam == nullptr || ScaleParam == nullptr || OffsetParam == nullptr || LabelParam == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(FString(TEXT("Input Value")), InputParam->GetMetaData(TEXT("DisplayName")),
+			TEXT("UPARAM DisplayName should be reflected on Input")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Scale Value")), ScaleParam->GetMetaData(TEXT("DisplayName")),
+			TEXT("UPARAM DisplayName should be reflected on Scale")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Offset Value")), OffsetParam->GetMetaData(TEXT("DisplayName")),
+			TEXT("UPARAM DisplayName should be reflected on Offset")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Label Text")), LabelParam->GetMetaData(TEXT("DisplayName")),
+			TEXT("UPARAM DisplayName should be reflected on Label")));
+		ASSERT_THAT(IsTrue(ScaleParam->HasAnyPropertyFlags(CPF_AdvancedDisplay),
+			TEXT("AdvancedDisplay should set CPF_AdvancedDisplay on Scale parameter")));
+		ASSERT_THAT(IsTrue(OffsetParam->HasAnyPropertyFlags(CPF_AdvancedDisplay),
+			TEXT("AdvancedDisplay should set CPF_AdvancedDisplay on Offset parameter")));
+	}
+
+	TEST_METHOD(UFunctionWorldContextAndPinMeta)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMetaSpecifier_UFunctionPinMeta"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMetaUFunctionPinMeta.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class UCoverageMetaFunctionPinStatics : UObject
+			{
+				UFUNCTION(BlueprintCallable, meta = (
+					WorldContext = "WorldContextObject",
+					DefaultToSelf = "WorldContextObject",
+					HidePin = "WorldContextObject",
+					AdvancedDisplay = "OptionalValue"))
+				static int CoveragePinMetaFunction(UObject WorldContextObject, int RequiredValue, int OptionalValue)
+				{
+					return RequiredValue + OptionalValue;
+				}
+			}
+			)AS"),
+			TEXT("UCoverageMetaFunctionPinStatics"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("UFUNCTION pin meta statics class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		UFunction* PinMetaFunction = RequireFunction(ScriptClass, TEXT("CoveragePinMetaFunction"));
+		ASSERT_THAT(IsNotNull(PinMetaFunction, TEXT("Static UFUNCTION pin-meta function should be generated")));
+		if (PinMetaFunction == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(FString(TEXT("WorldContextObject")), PinMetaFunction->GetMetaData(TEXT("WorldContext")),
+			TEXT("WorldContext meta should be reflected")));
+		ASSERT_THAT(AreEqual(FString(TEXT("WorldContextObject")), PinMetaFunction->GetMetaData(TEXT("DefaultToSelf")),
+			TEXT("DefaultToSelf meta should be reflected")));
+		ASSERT_THAT(AreEqual(FString(TEXT("WorldContextObject")), PinMetaFunction->GetMetaData(TEXT("HidePin")),
+			TEXT("HidePin meta should be reflected")));
+		ASSERT_THAT(AreEqual(FString(TEXT("OptionalValue")), PinMetaFunction->GetMetaData(TEXT("AdvancedDisplay")),
+			TEXT("AdvancedDisplay parameter meta should be reflected")));
+
+		FProperty* WorldContextParam = RequireFunctionParam(PinMetaFunction, TEXT("WorldContextObject"));
+		FProperty* OptionalParam = RequireFunctionParam(PinMetaFunction, TEXT("OptionalValue"));
+		ASSERT_THAT(IsNotNull(WorldContextParam, TEXT("WorldContextObject parameter should be reflected")));
+		ASSERT_THAT(IsNotNull(OptionalParam, TEXT("OptionalValue parameter should be reflected")));
+		if (WorldContextParam == nullptr || OptionalParam == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(IsAngelscriptWorldContextProperty(WorldContextParam),
+			TEXT("WorldContextObject should be classified as an AS world-context parameter")));
+		ASSERT_THAT(IsTrue(OptionalParam->HasAnyPropertyFlags(CPF_AdvancedDisplay),
+			TEXT("AdvancedDisplay should set CPF_AdvancedDisplay on OptionalValue")));
+	}
+
+	TEST_METHOD(UFunctionRecursion)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMetaSpecifier_UFunctionRecursion"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMetaUFunctionRecursion.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageMetaUFunctionRecursionActor : AActor
+			{
+				UFUNCTION(BlueprintCallable)
+				int Factorial(int Value) const
+				{
+					if (Value <= 1)
+					{
+						return 1;
+					}
+
+					return Value * Factorial(Value - 1);
+				}
+			}
+			)AS"),
+			TEXT("ACoverageMetaUFunctionRecursionActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Recursive UFUNCTION actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Recursive UFUNCTION actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+
+		UFunction* FactorialFunction = RequireFunction(ScriptClass, TEXT("Factorial"));
+		ASSERT_THAT(IsNotNull(FactorialFunction, TEXT("Factorial UFUNCTION should be generated")));
+		if (FactorialFunction == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(FactorialFunction->HasAnyFunctionFlags(FUNC_BlueprintCallable),
+			TEXT("Recursive BlueprintCallable should set FUNC_BlueprintCallable")));
+		ASSERT_THAT(IsTrue(FactorialFunction->HasAnyFunctionFlags(FUNC_Const),
+			TEXT("Recursive const UFUNCTION should set FUNC_Const")));
+
+		FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("Factorial"));
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("Factorial should be invokable through reflection")));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
+		Invoker.AddParam<int32>(5);
+		const int32 Result = Invoker.CallAndReturn<int32>(INDEX_NONE);
+		ASSERT_THAT(AreEqual(120, Result, TEXT("Recursive UFUNCTION should call itself and return 5!")));
 	}
 };
 

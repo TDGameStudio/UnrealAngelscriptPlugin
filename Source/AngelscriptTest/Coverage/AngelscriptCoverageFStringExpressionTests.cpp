@@ -46,7 +46,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 	template <typename T>
 	void ExpectGlobalReturn(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const T& Expected, const TCHAR* Message)
 	{
+		ASSERT_THAT(IsNotNull(Module, TEXT("FString expression module should compile before executing global function")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
 		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("FString expression global function should resolve and prepare")));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
+
 		T Result{};
 		if constexpr (std::is_same_v<T, bool>
 			|| std::is_same_v<T, int32>
@@ -59,7 +71,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		{
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
 		}
-		TestRunner->TestEqual(Message, Result, Expected);
+		ASSERT_THAT(AreEqual(Expected, Result, Message));
 	}
 
 	// -------------------------------------------------------------------------
@@ -107,6 +119,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 			FName Value = n"Convert";
 			return Value.ToString();
 		}
+
+		FString LocalTextToString()
+		{
+			FText Value = FText::FromString("Visible Text");
+			return Value.ToString();
+		}
+
+		FString LocalTextDefaultToString()
+		{
+			FText Value;
+			return Value.ToString();
+		}
+
+		FString AutoStringLiteral()
+		{
+			auto Value = "AutoText";
+			return Value;
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -122,6 +152,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString LocalEmpty()"), FString(TEXT("")), TEXT("local FString empty"));
 		ExpectGlobalReturn<FName>(Engine, Module, TEXT("FName LocalName()"), FName(TEXT("MyName")), TEXT("local FName"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString LocalNameToString()"), FString(TEXT("Convert")), TEXT("FName.ToString()"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString LocalTextToString()"), FString(TEXT("Visible Text")), TEXT("local FText converted to FString"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString LocalTextDefaultToString()"), FString(TEXT("")), TEXT("local default FText converted to empty FString"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString AutoStringLiteral()"), FString(TEXT("AutoText")), TEXT("auto should infer FString from a string literal"));
 	}
 
 	// -------------------------------------------------------------------------
@@ -135,6 +168,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFStringExpr_GlobalConst", ASTEST_AS(R"AS(
 		const FString GConstString = "Global";
 		const FName GConstName = n"GlobalName";
+		const FText GConstText;
 
 		FString GetGlobalString()
 		{
@@ -144,6 +178,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		FName GetGlobalName()
 		{
 			return GConstName;
+		}
+
+		FString GetGlobalText()
+		{
+			return GConstText.ToString();
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -156,6 +195,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString GetGlobalString()"), FString(TEXT("Global")), TEXT("global const FString"));
 		ExpectGlobalReturn<FName>(Engine, Module, TEXT("FName GetGlobalName()"), FName(TEXT("GlobalName")), TEXT("global const FName"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString GetGlobalText()"), FString(TEXT("")), TEXT("global const FText default construction"));
 	}
 
 	// -------------------------------------------------------------------------
@@ -206,11 +246,47 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 			return "ZZZ" > "AAA";
 		}
 
+		bool OpLessEqual()
+		{
+			return "AAA" <= "AAA";
+		}
+
+		bool OpGreaterEqual()
+		{
+			return "BBB" >= "AAA";
+		}
+
+		int OpIndex()
+		{
+			FString s = "AZ";
+			return s[1];
+		}
+
 		bool OpNameEquals()
 		{
 			FName a = n"Test";
 			FName b = n"Test";
 			return a == b;
+		}
+
+		bool OpNameNotEquals()
+		{
+			FName a = n"Alpha";
+			FName b = n"Beta";
+			return a != b;
+		}
+
+		bool OpNameEqualsString()
+		{
+			FName a = n"StringMatch";
+			return a.ToString() == "StringMatch";
+		}
+
+		bool OpTextIdentical()
+		{
+			FText a = FText::FromString("Display");
+			FText b = FText::FromString("Display");
+			return a.IdenticalTo(b);
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -228,7 +304,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpNotEquals()"), true, TEXT("string !="));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpLessThan()"), true, TEXT("string <"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpGreaterThan()"), true, TEXT("string >"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpLessEqual()"), true, TEXT("string <="));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpGreaterEqual()"), true, TEXT("string >="));
+		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int OpIndex()"), static_cast<int32>(TCHAR('Z')), TEXT("string index operator"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpNameEquals()"), true, TEXT("FName =="));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpNameNotEquals()"), true, TEXT("FName !="));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpNameEqualsString()"), true, TEXT("FName.ToString() == FString-compatible literal"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpTextIdentical()"), true, TEXT("FText IdenticalTo comparison"));
 	}
 
 	// -------------------------------------------------------------------------
@@ -279,6 +361,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		{
 			return n"TestName";
 		}
+
+		FString LiteralLong()
+		{
+			FString s = "";
+			for (int i = 0; i < 1100; ++i)
+			{
+				s += "x";
+			}
+			return s;
+		}
+
+		int LiteralLongLength()
+		{
+			return LiteralLong().Len();
+		}
+
+		FString LiteralTextConstructor()
+		{
+			return FText::FromString("TextLiteral").ToString();
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -296,6 +398,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString LiteralBackslash()"), FString(TEXT("C:\\Path\\File")), TEXT("backslash escape sequence"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString LiteralUnicode()"), FString(TEXT("Hello 世界")), TEXT("Unicode literal"));
 		ExpectGlobalReturn<FName>(Engine, Module, TEXT("FName LiteralName()"), FName(TEXT("TestName")), TEXT("FName literal (n\"\")"));
+		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int LiteralLongLength()"), 1100, TEXT("long string literal-equivalent construction"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString LiteralTextConstructor()"), FString(TEXT("TextLiteral")), TEXT("FText literal via FromString"));
 	}
 
 	// -------------------------------------------------------------------------
@@ -325,6 +429,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 			return t.ToString();
 		}
 
+		FString StringToTextToString()
+		{
+			FString s = "FromString";
+			FText t = FText::FromString(s);
+			return t.ToString();
+		}
+
 		int StringToInt()
 		{
 			FString s = "42";
@@ -345,8 +456,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 
 		FString FloatToString()
 		{
-			// Use Printf for float
-			return FString::Printf("{0}", 2.5f);
+			return FString::Format("{0}", 2.5f);
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -360,12 +470,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		ExpectGlobalReturn<FName>(Engine, Module, TEXT("FName StringToName()"), FName(TEXT("Convert")), TEXT("FString -> FName"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString NameToString()"), FString(TEXT("MyName")), TEXT("FName -> FString"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TextToString()"), FString(TEXT("TextValue")), TEXT("FText -> FString"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString StringToTextToString()"), FString(TEXT("FromString")), TEXT("FString -> FText -> FString"));
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int StringToInt()"), 42, TEXT("FString -> int"));
 
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float StringToFloat()"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("StringToFloat should resolve and prepare")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
 			float Result = Invoker.ExecuteAndGet<float>(0.0f);
-			TestRunner->TestTrue(TEXT("FString -> float"), FMath::IsNearlyEqual(Result, 3.14f, 0.01f));
+			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Result, 3.14f, 0.01f), TEXT("FString -> float")));
 		}
 
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString IntToString()"), FString(TEXT("123")), TEXT("int -> FString"));

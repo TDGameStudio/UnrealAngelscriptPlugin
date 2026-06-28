@@ -143,17 +143,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 			)AS"),
 			TEXT("ACoverageHandlesObjectRefActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Object reference basics actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Object reference basics actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DeclarationWorked"), true, TEXT("Object reference declaration should default to null"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NullCheckPassed"), true, TEXT("Null check should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AssignmentWorked"), true, TEXT("Object reference assignment should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsValidCheckPassed"), true, TEXT("IsValid should distinguish null from valid references"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DeclarationWorked"), true, TEXT("Object reference declaration should default to null"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NullCheckPassed"), true, TEXT("Null check should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AssignmentWorked"), true, TEXT("Object reference assignment should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsValidCheckPassed"), true, TEXT("IsValid should distinguish null from valid references"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -241,7 +249,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 					}
 
 					// Test GetName
-					FString Name = GetName();
+					FString Name = GetName().ToString();
 					if (!Name.IsEmpty())
 					{
 						GetNameWorked = true;
@@ -252,19 +260,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 			)AS"),
 			TEXT("ACoverageHandlesObjectRefOpsActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Object reference operations actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Object reference operations actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CastToBaseWorked"), true, TEXT("Cast to base class should succeed"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CastToDerivedWorked"), true, TEXT("Cast back to derived should succeed"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CastToUnrelatedFailed"), true, TEXT("Cast to unrelated type should fail"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ComparisonWorked"), true, TEXT("Reference comparison should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetClassWorked"), true, TEXT("GetClass should return valid UClass"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetNameWorked"), true, TEXT("GetName should return non-empty string"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CastToBaseWorked"), true, TEXT("Cast to base class should succeed"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CastToDerivedWorked"), true, TEXT("Cast back to derived should succeed"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CastToUnrelatedFailed"), true, TEXT("Cast to unrelated type should fail"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ComparisonWorked"), true, TEXT("Reference comparison should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetClassWorked"), true, TEXT("GetClass should return valid UClass"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetNameWorked"), true, TEXT("GetName should return non-empty string"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -376,30 +392,46 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 			)AS"),
 			TEXT("ACoverageHandlesTSubclassOfActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TSubclassOf actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		// Verify property types
 		const FProperty* ActorClassProp = ScriptClass->FindPropertyByName(FName(TEXT("ActorClass")));
 		ASSERT_THAT(IsNotNull(ActorClassProp, TEXT("ActorClass property should exist")));
+		if (ActorClassProp == nullptr)
+		{
+			return;
+		}
 		ASSERT_THAT(IsTrue(ActorClassProp->IsA<FClassProperty>(), TEXT("ActorClass should be FClassProperty")));
 		ASSERT_THAT(IsTrue(ActorClassProp->HasAnyPropertyFlags(CPF_Edit), TEXT("EditDefaultsOnly should set CPF_Edit")));
 
 		const FProperty* PawnClassProp = ScriptClass->FindPropertyByName(FName(TEXT("PawnClass")));
 		ASSERT_THAT(IsNotNull(PawnClassProp, TEXT("PawnClass property should exist")));
+		if (PawnClassProp == nullptr)
+		{
+			return;
+		}
 		ASSERT_THAT(IsTrue(PawnClassProp->IsA<FClassProperty>(), TEXT("PawnClass should be FClassProperty")));
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TSubclassOf actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DeclarationWorked"), true, TEXT("TSubclassOf declaration should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AssignmentWorked"), true, TEXT("TSubclassOf assignment should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NullCheckWorked"), true, TEXT("TSubclassOf null check should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetWorked"), true, TEXT("TSubclassOf Get should return UClass"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ComparisonWorked"), true, TEXT("TSubclassOf comparison should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SpawnWithClassWorked"), true, TEXT("SpawnActor with TSubclassOf should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsChildOfWorked"), true, TEXT("IsChildOf type check should work"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DeclarationWorked"), true, TEXT("TSubclassOf declaration should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AssignmentWorked"), true, TEXT("TSubclassOf assignment should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NullCheckWorked"), true, TEXT("TSubclassOf null check should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetWorked"), true, TEXT("TSubclassOf Get should return UClass"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ComparisonWorked"), true, TEXT("TSubclassOf comparison should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SpawnWithClassWorked"), true, TEXT("SpawnActor with TSubclassOf should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsChildOfWorked"), true, TEXT("IsChildOf type check should work"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -504,7 +536,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 					}
 
 					// Test LoadSynchronous
-					AActor Loaded = SoftActorRef.LoadSynchronous();
+					AActor Loaded = SoftActorRef.EditorOnlyLoadSynchronous();
 					if (Loaded == SpawnedActor)
 					{
 						SoftObjectLoadSyncWorked = true;
@@ -532,7 +564,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 					}
 
 					// Test LoadSynchronous
-					UClass LoadedClass = SoftClassRef.LoadSynchronous();
+					UClass LoadedClass = SoftClassRef.EditorOnlyLoadSynchronous();
 					if (LoadedClass != nullptr)
 					{
 						SoftClassLoadSyncWorked = true;
@@ -549,27 +581,35 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 			)AS"),
 			TEXT("ACoverageHandlesSoftRefActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Soft reference actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Soft reference actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// TSoftObjectPtr verifications
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectDeclarationWorked"), true, TEXT("TSoftObjectPtr declaration should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectAssignmentWorked"), true, TEXT("TSoftObjectPtr assignment should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectIsNullWorked"), true, TEXT("TSoftObjectPtr IsNull should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectIsValidWorked"), true, TEXT("TSoftObjectPtr IsValid should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectGetWorked"), true, TEXT("TSoftObjectPtr Get should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectLoadSyncWorked"), true, TEXT("TSoftObjectPtr LoadSynchronous should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectToStringWorked"), true, TEXT("TSoftObjectPtr ToString should work"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectDeclarationWorked"), true, TEXT("TSoftObjectPtr declaration should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectAssignmentWorked"), true, TEXT("TSoftObjectPtr assignment should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectIsNullWorked"), true, TEXT("TSoftObjectPtr IsNull should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectIsValidWorked"), true, TEXT("TSoftObjectPtr IsValid should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectGetWorked"), true, TEXT("TSoftObjectPtr Get should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectLoadSyncWorked"), true, TEXT("TSoftObjectPtr LoadSynchronous should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectToStringWorked"), true, TEXT("TSoftObjectPtr ToString should work"))));
 
 		// TSoftClassPtr verifications
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftClassDeclarationWorked"), true, TEXT("TSoftClassPtr declaration should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftClassAssignmentWorked"), true, TEXT("TSoftClassPtr assignment should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftClassLoadSyncWorked"), true, TEXT("TSoftClassPtr LoadSynchronous should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftClassGetWorked"), true, TEXT("TSoftClassPtr Get should work"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftClassDeclarationWorked"), true, TEXT("TSoftClassPtr declaration should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftClassAssignmentWorked"), true, TEXT("TSoftClassPtr assignment should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftClassLoadSyncWorked"), true, TEXT("TSoftClassPtr LoadSynchronous should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftClassGetWorked"), true, TEXT("TSoftClassPtr Get should work"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -652,11 +692,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 
 					// Destroy actor and check weak ref becomes invalid
 					TempActor.DestroyActor();
-					System::ExecuteForOneFrame(CheckWeakRefInvalidation);
-				}
 
-				void CheckWeakRefInvalidation()
-				{
 					// After destruction, weak ref should be invalid
 					if (!WeakRef.IsValid())
 					{
@@ -673,22 +709,30 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 			)AS"),
 			TEXT("ACoverageHandlesValidityActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Validity checks actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Validity checks actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Tick to allow destruction and deferred check
 		TickWorld(Engine, Spawner.GetWorld(), 0.0f, 2);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsValidForNullObjectFailed"), true, TEXT("IsValid should return false for null"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsValidForValidObjectPassed"), true, TEXT("IsValid should return true for valid object"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsValidAfterDestroyFailed"), true, TEXT("IsValid should return false after destruction"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftRefIsValidWorked"), true, TEXT("TSoftObjectPtr IsValid should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WeakRefIsValidWorked"), true, TEXT("TWeakObjectPtr IsValid should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WeakRefInvalidAfterDestroy"), true, TEXT("TWeakObjectPtr should become invalid after object destruction"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsValidForNullObjectFailed"), true, TEXT("IsValid should return false for null"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsValidForValidObjectPassed"), true, TEXT("IsValid should return true for valid object"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsValidAfterDestroyFailed"), true, TEXT("IsValid should return false after destruction"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftRefIsValidWorked"), true, TEXT("TSoftObjectPtr IsValid should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WeakRefIsValidWorked"), true, TEXT("TWeakObjectPtr IsValid should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WeakRefInvalidAfterDestroy"), true, TEXT("TWeakObjectPtr should become invalid after object destruction"))));
 	}
 };
 

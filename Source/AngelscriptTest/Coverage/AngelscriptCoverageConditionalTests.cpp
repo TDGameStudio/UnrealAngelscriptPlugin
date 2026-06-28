@@ -4,6 +4,7 @@
 #include "AngelscriptTestMacros.h"
 #include "AngelscriptTestModuleBuilder.h"
 #include "AngelscriptTestUtilities.h"
+#include "Syntax/AngelscriptSyntaxTestHelpers.h"
 
 #include "Misc/ScopeExit.h"
 
@@ -41,18 +42,30 @@ namespace AngelscriptCoverageConditionalTests_NS
 		}
 
 		// Helper
-		template <typename T>
-		void ExpectGlobalReturn(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const T& Expected, const TCHAR* Message)
+		template <typename T, typename... ArgTypes>
+		void ExpectGlobalReturn(
+			FAngelscriptEngine& Engine,
+			asIScriptModule* Module,
+			const TCHAR* Declaration,
+			const T& Expected,
+			const TCHAR* Message,
+			ArgTypes... Args)
 		{
+			ASSERT_THAT(IsNotNull(Module, TEXT("conditional module should compile before executing global function")));
 			if (Module == nullptr)
 			{
-				TestRunner->AddError(FString::Printf(TEXT("%s: backing module failed to build"), Message));
 				return;
 			}
 
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
-			const T Result = Invoker.CallAndReturn<T>();
-			TestRunner->TestEqual(Message, Result, Expected);
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("conditional global function should resolve and prepare")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			(Invoker.AddArg(Args), ...);
+			const T Result = Invoker.ExecuteAndGet<T>();
+			ASSERT_THAT(AreEqual(Expected, Result, Message));
 		}
 
 		// -------------------------------------------------------------------------
@@ -144,11 +157,11 @@ namespace AngelscriptCoverageConditionalTests_NS
 				}
 			};
 
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SimpleIf(bool)"), 10, TEXT("simple if true"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int IfElse(bool)"), 1, TEXT("if-else true branch"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int IfElseIf(int)"), 1, TEXT("if-else if positive"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int IfElseIfElse(int)"), 2, TEXT("if-else if-else chain"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SingleLineIf(bool)"), 5, TEXT("single line if"));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SimpleIf(bool)"), 10, TEXT("simple if true"), true);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int IfElse(bool)"), 1, TEXT("if-else true branch"), true);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int IfElseIf(int)"), 1, TEXT("if-else if positive"), 5);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int IfElseIfElse(int)"), 2, TEXT("if-else if-else chain"), 15);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SingleLineIf(bool)"), 5, TEXT("single line if"), true);
 		}
 
 		// -------------------------------------------------------------------------
@@ -211,8 +224,8 @@ namespace AngelscriptCoverageConditionalTests_NS
 				}
 			};
 
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int NestedIf(int, int)"), 1, TEXT("nested if both positive"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int DeepNested(int)"), 3, TEXT("deep nested if"));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int NestedIf(int, int)"), 1, TEXT("nested if both positive"), 1, 1);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int DeepNested(int)"), 3, TEXT("deep nested if"), 25);
 		}
 
 		// -------------------------------------------------------------------------
@@ -295,6 +308,16 @@ namespace AngelscriptCoverageConditionalTests_NS
 				return 0;
 			}
 
+			int NullCheckNull()
+			{
+				return NullCheck(nullptr);
+			}
+
+			int IsValidCheckNull()
+			{
+				return IsValidCheck(nullptr);
+			}
+
 			// Function return value
 			bool IsReady()
 			{
@@ -317,13 +340,13 @@ namespace AngelscriptCoverageConditionalTests_NS
 			};
 
 			ExpectGlobalReturn<int>(Engine, Module, TEXT("int BoolVariable()"), 1, TEXT("bool variable condition"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ComparisonExpr(int)"), 1, TEXT("comparison expression"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int LogicalAnd(int, int)"), 1, TEXT("logical AND"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int LogicalOr(int, int)"), 1, TEXT("logical OR"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int LogicalNot(bool)"), 1, TEXT("logical NOT"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ComplexExpr(int, int, bool)"), 1, TEXT("complex expression"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int NullCheck(UObject)"), 0, TEXT("null check"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int IsValidCheck(UObject)"), 0, TEXT("IsValid check"));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ComparisonExpr(int)"), 1, TEXT("comparison expression"), 12);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int LogicalAnd(int, int)"), 1, TEXT("logical AND"), 1, 1);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int LogicalOr(int, int)"), 1, TEXT("logical OR"), 1, 0);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int LogicalNot(bool)"), 1, TEXT("logical NOT"), false);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ComplexExpr(int, int, bool)"), 1, TEXT("complex expression"), 1, 5, false);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int NullCheckNull()"), 0, TEXT("null check"));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int IsValidCheckNull()"), 0, TEXT("IsValid check"));
 			ExpectGlobalReturn<int>(Engine, Module, TEXT("int FunctionReturnCheck()"), 1, TEXT("function return check"));
 		}
 
@@ -370,10 +393,10 @@ namespace AngelscriptCoverageConditionalTests_NS
 				}
 			};
 
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int BasicTernary(bool)"), 10, TEXT("basic ternary true"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int NestedTernary(int)"), 1, TEXT("nested ternary positive"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ReturnTernary(bool)"), 1, TEXT("return ternary"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int TernaryExpressions(int, int)"), 30, TEXT("ternary with expressions"));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int BasicTernary(bool)"), 10, TEXT("basic ternary true"), true);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int NestedTernary(int)"), 1, TEXT("nested ternary positive"), 5);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ReturnTernary(bool)"), 1, TEXT("return ternary"), true);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int TernaryExpressions(int, int)"), 30, TEXT("ternary with expressions"), 20, 10);
 		}
 
 		// -------------------------------------------------------------------------
@@ -461,10 +484,10 @@ namespace AngelscriptCoverageConditionalTests_NS
 				}
 			};
 
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int BasicSwitch(int)"), 10, TEXT("basic switch case 1"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SwitchWithBreak(int)"), 20, TEXT("switch with break"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SwitchNoDefault(int)"), 1, TEXT("switch no default"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int MultipleCase(int)"), 123, TEXT("multiple case fallthrough"));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int BasicSwitch(int)"), 10, TEXT("basic switch case 1"), 1);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SwitchWithBreak(int)"), 20, TEXT("switch with break"), 2);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SwitchNoDefault(int)"), 1, TEXT("switch no default"), 1);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int MultipleCase(int)"), 123, TEXT("multiple case fallthrough"), 2);
 		}
 
 		// -------------------------------------------------------------------------
@@ -474,6 +497,10 @@ namespace AngelscriptCoverageConditionalTests_NS
 		{
 			FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 			FAngelscriptEngineScope Scope(Engine);
+			TestRunner->AddExpectedError(
+				TEXT("Non-empty switch case with fallthrough to the next case"),
+				EAutomationExpectedErrorFlags::Contains,
+				3);
 
 			asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovConditional_SwitchFallthrough", ASTEST_AS(R"AS(
 			// Fallthrough behavior
@@ -526,8 +553,8 @@ namespace AngelscriptCoverageConditionalTests_NS
 				}
 			};
 
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int Fallthrough(int)"), 6, TEXT("fallthrough from case 1"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int PartialFallthrough(int)"), 50, TEXT("partial fallthrough case 2"));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int Fallthrough(int)"), 6, TEXT("fallthrough from case 1"), 1);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int PartialFallthrough(int)"), 50, TEXT("partial fallthrough case 2"), 2);
 		}
 
 		// -------------------------------------------------------------------------
@@ -573,6 +600,19 @@ namespace AngelscriptCoverageConditionalTests_NS
 				}
 				return -1;
 			}
+
+			int SwitchOnWorldStatic()
+			{
+				return SwitchOnEnum(ECollisionChannel::ECC_WorldStatic);
+			}
+
+			int EnumSwitchCompleteAllCases()
+			{
+				return EnumSwitchComplete(ENetRole::ROLE_None)
+					+ EnumSwitchComplete(ENetRole::ROLE_SimulatedProxy)
+					+ EnumSwitchComplete(ENetRole::ROLE_AutonomousProxy)
+					+ EnumSwitchComplete(ENetRole::ROLE_Authority);
+			}
 			)AS"));
 			ON_SCOPE_EXIT
 			{
@@ -582,8 +622,8 @@ namespace AngelscriptCoverageConditionalTests_NS
 				}
 			};
 
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SwitchOnEnum(ECollisionChannel)"), 1, TEXT("switch on enum"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int EnumSwitchComplete(ENetRole)"), 0, TEXT("enum switch complete coverage"));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SwitchOnWorldStatic()"), 1, TEXT("switch on enum"));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int EnumSwitchCompleteAllCases()"), 6, TEXT("enum switch complete coverage"));
 		}
 
 		// -------------------------------------------------------------------------
@@ -593,6 +633,10 @@ namespace AngelscriptCoverageConditionalTests_NS
 		{
 			FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 			FAngelscriptEngineScope Scope(Engine);
+			TestRunner->AddExpectedError(
+				TEXT("Implicit conversion from 64-bit integer truncates and can be incorrect"),
+				EAutomationExpectedErrorFlags::Contains,
+				1);
 
 			asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovConditional_SwitchTypes", ASTEST_AS(R"AS(
 			// Switch on int8
@@ -664,35 +708,6 @@ namespace AngelscriptCoverageConditionalTests_NS
 						return 0;
 				}
 			}
-
-			// Switch on bool (valid but not recommended)
-			int SwitchBool(bool Value)
-			{
-				switch (Value)
-				{
-					case true:
-						return 1;
-					case false:
-						return 0;
-				}
-				return -1;
-			}
-
-			// Switch on FName
-			int SwitchFName(FName Name)
-			{
-				switch (Name)
-				{
-					case n"Alpha":
-						return 1;
-					case n"Beta":
-						return 2;
-					case n"Gamma":
-						return 3;
-					default:
-						return 0;
-				}
-			}
 			)AS"));
 			ON_SCOPE_EXIT
 			{
@@ -702,13 +717,117 @@ namespace AngelscriptCoverageConditionalTests_NS
 				}
 			};
 
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SwitchInt8(int8)"), 10, TEXT("switch on int8"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SwitchInt16(int16)"), 1, TEXT("switch on int16"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SwitchInt64(int64)"), 1, TEXT("switch on int64"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SwitchUInt8(uint8)"), 50, TEXT("switch on uint8"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SwitchUInt(uint)"), 1, TEXT("switch on uint"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SwitchBool(bool)"), 1, TEXT("switch on bool"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SwitchFName(FName)"), 1, TEXT("switch on FName"));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SwitchInt8(int8)"), 10, TEXT("switch on int8"), static_cast<int8>(1));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SwitchInt16(int16)"), 1, TEXT("switch on int16"), static_cast<int16>(100));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SwitchInt64(int64)"), 1, TEXT("switch on int64"), static_cast<int64>(1000));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SwitchUInt8(uint8)"), 50, TEXT("switch on uint8"), static_cast<uint8>(5));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int SwitchUInt(uint)"), 1, TEXT("switch on uint"), static_cast<uint32>(42));
+		}
+
+		TEST_METHOD(SwitchUnsupportedTypes)
+		{
+			FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+			FAngelscriptEngineScope Scope(Engine);
+
+			const FString BoolSwitchSource = ASTEST_AS(R"AS(
+				int SwitchBool(bool Value)
+				{
+					switch (Value)
+					{
+						case true:
+							return 1;
+						case false:
+							return 0;
+					}
+					return -1;
+				}
+				)AS");
+			ASSERT_THAT(IsTrue(SyntaxTestHelpers::AssertFailsWithError(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovConditional_SwitchBoolUnsupported"),
+				*BoolSwitchSource,
+				TEXT("Switch expressions must be integral numbers"),
+				TEXT("bool switch is rejected by the compiler"))));
+
+			const FString FNameSwitchSource = ASTEST_AS(R"AS(
+				int SwitchFName(FName Name)
+				{
+					switch (Name)
+					{
+						case n"Alpha":
+							return 1;
+						default:
+							return 0;
+					}
+				}
+				)AS");
+			ASSERT_THAT(IsTrue(SyntaxTestHelpers::AssertFailsWithError(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovConditional_SwitchFNameUnsupported"),
+				*FNameSwitchSource,
+				TEXT("Switch expressions must be integral numbers"),
+				TEXT("FName switch is rejected by the compiler"))));
+		}
+
+		TEST_METHOD(SwitchEnumMissingCaseWarns)
+		{
+			FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+			FAngelscriptEngineScope Scope(Engine);
+
+			TestRunner->AddExpectedError(
+				TEXT("Switch is missing cases. Add a default case or add cases for: Third"),
+				EAutomationExpectedErrorFlags::Contains,
+				1);
+
+			FAngelscriptCompileTraceSummary Summary;
+			const FString MissingCaseSource = ASTEST_AS(R"AS(
+				enum EMissingSwitchCoverage
+				{
+					First,
+					Second,
+					Third
+				}
+
+				int UseEnum(EMissingSwitchCoverage Value)
+				{
+					switch (Value)
+					{
+						case EMissingSwitchCoverage::First:
+							return 1;
+						case EMissingSwitchCoverage::Second:
+							return 2;
+					}
+					return 0;
+				}
+				)AS");
+			CompileModuleWithSummary(
+				&Engine,
+				ECompileType::FullReload,
+				FName(TEXT("ASCovConditional_SwitchEnumMissingCaseNoWarning")),
+				TEXT("ASCovConditional_SwitchEnumMissingCaseNoWarning.as"),
+				MissingCaseSource,
+				true,
+				Summary,
+				false);
+			ON_SCOPE_EXIT
+			{
+				Engine.DiscardModule(TEXT("ASCovConditional_SwitchEnumMissingCaseNoWarning"));
+			};
+
+			ASSERT_THAT(IsTrue(Summary.bCompileSucceeded, TEXT("enum switch with a missing case should still compile")));
+
+			bool bFoundMissingCaseWarning = false;
+			for (const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
+			{
+				if (!Diagnostic.bIsError && Diagnostic.Message.Contains(TEXT("Switch is missing cases")))
+				{
+					bFoundMissingCaseWarning = true;
+					break;
+				}
+			}
+			ASSERT_THAT(IsTrue(bFoundMissingCaseWarning, TEXT("enum switch with a missing case should emit a missing-case warning")));
 		}
 	};
 }

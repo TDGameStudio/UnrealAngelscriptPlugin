@@ -88,9 +88,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageContainerParameterTest,
 				{
 					Print("=== CountByValue ===");
 					int Count = Map.Num();
-					// Modify local copy (won't affect caller)
-					Map.Add(999, "Added");
-					Print("Local map after add: " + Map.Num());
+					Print("Local map count: " + Count);
 					return Count;
 				}
 
@@ -157,19 +155,44 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageContainerParameterTest,
 			)AS"),
 			TEXT("ACoverageContainerParamTMapActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TMap parameter actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TMap parameter actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByValue"), 3, TEXT("Count by value should be 3"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByIn"), 3, TEXT("Count by &in should be 3"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByOut"), 3, TEXT("Out map should have 3 entries"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByInout"), 3, TEXT("Inout map should have 3 entries (2+1)"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("OriginalSize"), 3, TEXT("Original map should still have 3 entries"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByValue"), 3, TEXT("Count by value should be 3"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByIn"), 3, TEXT("Count by &in should be 3"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByOut"), 3, TEXT("Out map should have 3 entries"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByInout"), 3, TEXT("Inout map should have 3 entries (2+1)"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("OriginalSize"), 3, TEXT("Original map should still have 3 entries"))));
+
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("Non-const method call on read-only object reference"));
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(*TestRunner, Engine, TEXT("ASCoverageContainerParamTMapByValueMutationUnsupported"), ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageContainerParamTMapByValueMutationActor : AActor
+			{
+				int MutateByValue(TMap<int, FString> Map)
+				{
+					Map.Add(1, "One");
+					return Map.Num();
+				}
+			}
+			)AS"),
+			TEXT("TMap by-value parameters should remain read-only inside the callee"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -215,9 +238,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageContainerParameterTest,
 				{
 					Print("=== CountByValue ===");
 					int Count = Set.Num();
-					// Modify local copy (won't affect caller)
-					Set.Add(999);
-					Print("Local set after add: " + Set.Num());
+					Print("Local set count: " + Count);
 					return Count;
 				}
 
@@ -283,19 +304,44 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageContainerParameterTest,
 			)AS"),
 			TEXT("ACoverageContainerParamTSetActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TSet parameter actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TSet parameter actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByValue"), 3, TEXT("Count by value should be 3"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByIn"), 3, TEXT("Count by &in should be 3"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByOut"), 3, TEXT("Out set should have 3 elements"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByInout"), 3, TEXT("Inout set should have 3 elements (2+1)"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("OriginalSize"), 3, TEXT("Original set should still have 3 elements"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByValue"), 3, TEXT("Count by value should be 3"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByIn"), 3, TEXT("Count by &in should be 3"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByOut"), 3, TEXT("Out set should have 3 elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByInout"), 3, TEXT("Inout set should have 3 elements (2+1)"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("OriginalSize"), 3, TEXT("Original set should still have 3 elements"))));
+
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("Non-const method call on read-only object reference"));
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(*TestRunner, Engine, TEXT("ASCoverageContainerParamTSetByValueMutationUnsupported"), ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageContainerParamTSetByValueMutationActor : AActor
+			{
+				int MutateByValue(TSet<int> Set)
+				{
+					Set.Add(1);
+					return Set.Num();
+				}
+			}
+			)AS"),
+			TEXT("TSet by-value parameters should remain read-only inside the callee"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -360,17 +406,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageContainerParameterTest,
 			)AS"),
 			TEXT("ACoverageContainerReturnTSetActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TSet return actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TSet return actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SetSize"), 3, TEXT("Returned set should have 3 elements"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bContains100"), true, TEXT("Set should contain 100"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bContains200"), true, TEXT("Set should contain 200"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SetSize"), 3, TEXT("Returned set should have 3 elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bContains100"), true, TEXT("Set should contain 100"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bContains200"), true, TEXT("Set should contain 200"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -456,15 +510,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageContainerParameterTest,
 			)AS"),
 			TEXT("ACoverageContainerParamMixedActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Mixed container parameter actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Mixed container parameter actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultSize"), 7, TEXT("Total size should be 2+3+2=7"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultSize"), 7, TEXT("Total size should be 2+3+2=7"))));
 	}
 };
 

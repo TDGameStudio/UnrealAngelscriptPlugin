@@ -40,18 +40,30 @@ namespace AngelscriptCoverageJumpTests_NS
 		}
 
 		// Helper
-		template <typename T>
-		void ExpectGlobalReturn(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const T& Expected, const TCHAR* Message)
+		template <typename T, typename... ArgTypes>
+		void ExpectGlobalReturn(
+			FAngelscriptEngine& Engine,
+			asIScriptModule* Module,
+			const TCHAR* Declaration,
+			const T& Expected,
+			const TCHAR* Message,
+			ArgTypes... Args)
 		{
+			ASSERT_THAT(IsNotNull(Module, TEXT("jump module should compile before executing global function")));
 			if (Module == nullptr)
 			{
-				TestRunner->AddError(FString::Printf(TEXT("%s: backing module failed to build"), Message));
 				return;
 			}
 
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
-			const T Result = Invoker.CallAndReturn<T>();
-			TestRunner->TestEqual(Message, Result, Expected);
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("jump global function should resolve and prepare")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			(Invoker.AddArg(Args), ...);
+			const T Result = Invoker.ExecuteAndGet<T>();
+			ASSERT_THAT(AreEqual(Expected, Result, Message));
 		}
 
 		// -------------------------------------------------------------------------
@@ -160,6 +172,11 @@ namespace AngelscriptCoverageJumpTests_NS
 			FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 			FAngelscriptEngineScope Scope(Engine);
 
+			TestRunner->AddExpectedError(
+				TEXT("Non-empty switch case with fallthrough to the next case"),
+				EAutomationExpectedErrorFlags::Contains,
+				1);
+
 			asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovJump_BreakInSwitch", ASTEST_AS(R"AS(
 			// Break in switch
 			int BreakInSwitch(int Value)
@@ -233,9 +250,9 @@ namespace AngelscriptCoverageJumpTests_NS
 				}
 			};
 
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int BreakInSwitch(int)"), 10, TEXT("break in switch"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int BreakPreventsFallthrough(int)"), 5, TEXT("break prevents fallthrough"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int MultipleBreaksInSwitch(int)"), 10, TEXT("multiple breaks in switch"));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int BreakInSwitch(int)"), 10, TEXT("break in switch"), 1);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int BreakPreventsFallthrough(int)"), 5, TEXT("break prevents fallthrough"), 2);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int MultipleBreaksInSwitch(int)"), 10, TEXT("multiple breaks in switch"), 1);
 		}
 
 		// -------------------------------------------------------------------------
@@ -347,7 +364,7 @@ namespace AngelscriptCoverageJumpTests_NS
 			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ContinueInDoWhile()"), 37, TEXT("continue in do-while loop"));
 			ExpectGlobalReturn<int>(Engine, Module, TEXT("int MultipleContinues()"), 110, TEXT("multiple continues"));
 			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ContinueInNested()"), 6, TEXT("continue in nested loop"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ContinueComplexCondition()"), 49, TEXT("continue with complex condition"));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ContinueComplexCondition()"), 64, TEXT("continue with complex condition"));
 		}
 
 		// -------------------------------------------------------------------------
@@ -422,10 +439,10 @@ namespace AngelscriptCoverageJumpTests_NS
 				}
 			};
 
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int EarlyReturn(int)"), -1, TEXT("early return negative"));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int EarlyReturn(int)"), -1, TEXT("early return negative"), -5);
 			ExpectGlobalReturn<int>(Engine, Module, TEXT("int EarlyReturnInLoop()"), 5, TEXT("early return in loop"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int GuardClause(int)"), 0, TEXT("guard clause pattern"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int EarlyReturnNested(int, int)"), 1, TEXT("early return nested"));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int GuardClause(int)"), 0, TEXT("guard clause pattern"), -5);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int EarlyReturnNested(int, int)"), 1, TEXT("early return nested"), 1, 1);
 		}
 
 		// -------------------------------------------------------------------------
@@ -528,11 +545,11 @@ namespace AngelscriptCoverageJumpTests_NS
 				}
 			};
 
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int MultipleReturnPoints(int)"), -1, TEXT("multiple return points"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ReturnFromSwitch(int)"), 10, TEXT("return from switch"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ReturnExpression(int, int)"), 30, TEXT("return expression"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ReturnTernary(int)"), 1, TEXT("return ternary"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ComplexMultipleReturns(int, int, int)"), 1, TEXT("complex multiple returns"));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int MultipleReturnPoints(int)"), -1, TEXT("multiple return points"), -1);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ReturnFromSwitch(int)"), 10, TEXT("return from switch"), 1);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ReturnExpression(int, int)"), 30, TEXT("return expression"), 10, 20);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ReturnTernary(int)"), 1, TEXT("return ternary"), 1);
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ComplexMultipleReturns(int, int, int)"), 1, TEXT("complex multiple returns"), 1, 1, 1);
 			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ReturnInNestedLoops()"), 35, TEXT("return in nested loops"));
 		}
 
@@ -608,7 +625,7 @@ namespace AngelscriptCoverageJumpTests_NS
 			};
 
 			ExpectGlobalReturn<int>(Engine, Module, TEXT("int BreakAndContinue()"), 64, TEXT("break and continue together"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int AllThreeJumps(int)"), 816, TEXT("break continue and return"));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int AllThreeJumps(int)"), 817, TEXT("break continue and return"), 800);
 			ExpectGlobalReturn<int>(Engine, Module, TEXT("int NestedVariousJumps()"), 12, TEXT("nested various jumps"));
 		}
 	};

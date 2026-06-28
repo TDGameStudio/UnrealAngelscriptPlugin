@@ -5,6 +5,7 @@
 #include "AngelscriptTestUtilities.h"
 
 #include "Components/ActorTestSpawner.h"
+#include "Engine/Texture2D.h"
 #include "GameFramework/Actor.h"
 #include "Misc/ScopeExit.h"
 #include "UObject/Class.h"
@@ -110,15 +111,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 			)AS"),
 			TEXT("ACoverageGCBasicReclaimActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("GC-basic-reclaim actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("GC-basic-reclaim actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WeakRefInvalidatedAfterGC"), true,
-			TEXT("Unreferenced object should be collected and weak reference invalidated"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WeakRefInvalidatedAfterGC"), true,
+			TEXT("Unreferenced object should be collected and weak reference invalidated"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -172,15 +181,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 			)AS"),
 			TEXT("ACoverageGCUPropertyProtectionActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("GC-UPROPERTY-protection actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("GC-UPROPERTY-protection actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ObjectSurvivedGC"), true,
-			TEXT("UPROPERTY member should protect object from GC"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ObjectSurvivedGC"), true,
+			TEXT("UPROPERTY member should protect object from GC"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -243,17 +260,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 			)AS"),
 			TEXT("ACoverageGCWeakPtrInvalidationActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("GC-weak-ptr-invalidation actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("GC-weak-ptr-invalidation actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WeakPtrValidBeforeGC"), true,
-			TEXT("TWeakObjectPtr should be valid before GC"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WeakPtrInvalidAfterGC"), true,
-			TEXT("TWeakObjectPtr should become invalid after GC collects the object"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WeakPtrValidBeforeGC"), true,
+			TEXT("TWeakObjectPtr should be valid before GC"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WeakPtrInvalidAfterGC"), true,
+			TEXT("TWeakObjectPtr should become invalid after GC collects the object"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -328,17 +353,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 			)AS"),
 			TEXT("ACoverageGCContainerProtectionActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("GC-container-protection actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("GC-container-protection actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ArrayObjectSurvivedGC"), true,
-			TEXT("TArray<AActor> should protect contained objects from GC"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("MapObjectSurvivedGC"), true,
-			TEXT("TMap with AActor values should protect contained objects from GC"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ArrayObjectSurvivedGC"), true,
+			TEXT("TArray<AActor> should protect contained objects from GC"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("MapObjectSurvivedGC"), true,
+			TEXT("TMap with AActor values should protect contained objects from GC"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -404,11 +437,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 			)AS"),
 			TEXT("ACoverageGCCrossFrameHoldActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("GC-cross-frame-hold actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("GC-cross-frame-hold actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Tick multiple frames
@@ -417,8 +458,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 			TickWorld(Engine, Spawner.GetWorld(), 0.016f, 1);
 		}
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ObjectValidAfterMultipleFrames"), true,
-			TEXT("Objects held in UPROPERTY should survive GC across multiple frames"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ObjectValidAfterMultipleFrames"), true,
+			TEXT("Objects held in UPROPERTY should survive GC across multiple frames"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -475,15 +516,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 			)AS"),
 			TEXT("ACoverageGCLocalVariableNoProtectionActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("GC-local-variable-no-protection actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("GC-local-variable-no-protection actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("LocalVariableDidNotProtect"), true,
-			TEXT("Local variables should NOT protect objects from GC in AngelScript"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("LocalVariableDidNotProtect"), true,
+			TEXT("Local variables should NOT protect objects from GC in AngelScript"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -550,17 +599,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 			)AS"),
 			TEXT("ACoverageGCCollectionMethodsActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("GC-collection-methods actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("GC-collection-methods actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CollectGarbageWorked"), true,
-			TEXT("System::CollectGarbage() should trigger garbage collection"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ForceGarbageCollectionWorked"), true,
-			TEXT("System::ForceGarbageCollection() should trigger garbage collection"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CollectGarbageWorked"), true,
+			TEXT("System::CollectGarbage() should trigger garbage collection"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ForceGarbageCollectionWorked"), true,
+			TEXT("System::ForceGarbageCollection() should trigger garbage collection"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -624,17 +681,252 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 			)AS"),
 			TEXT("ACoverageGCIsValidCheckActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("GC-IsValid-check actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("GC-IsValid-check actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsValidReturnedTrueBeforeGC"), true,
-			TEXT("IsValid() should return true for live objects"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsValidDetectedInvalidObject"), true,
-			TEXT("IsValid() should detect invalid/collected objects"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsValidReturnedTrueBeforeGC"), true,
+			TEXT("IsValid() should return true for live objects"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsValidDetectedInvalidObject"), true,
+			TEXT("IsValid() should detect invalid/collected objects"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// GC NewObject with explicit Outer: NewObject participates in GC normally
+	// -------------------------------------------------------------------------
+	TEST_METHOD(GCNewObjectOuterAndCollection)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageGC_NewObjectOuter"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageGCNewObjectOuter.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageGCNewObjectOuterActor : AActor
+			{
+				UPROPERTY()
+				bool NewObjectCreatedWithOuter = false;
+
+				UPROPERTY()
+				bool UnreferencedNewObjectCollected = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					UObject CreatedObject = NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"CoverageGCNewObjectOuter");
+					TWeakObjectPtr<UObject> WeakCreatedObject = CreatedObject;
+
+					NewObjectCreatedWithOuter = CreatedObject != nullptr &&
+						CreatedObject.GetOuter() == GetTransientPackage() &&
+						CreatedObject.IsA(UTexture2D::StaticClass());
+
+					CreatedObject = nullptr;
+					System::ForceGarbageCollection(true);
+
+					UnreferencedNewObjectCollected = !WeakCreatedObject.IsValid() && WeakCreatedObject.Get() == nullptr;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageGCNewObjectOuterActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("GC-NewObject-outer actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("GC-NewObject-outer actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NewObjectCreatedWithOuter"), true,
+			TEXT("NewObject should create an object with the supplied Outer"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("UnreferencedNewObjectCollected"), true,
+			TEXT("Unreferenced NewObject result should be collectible"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// GC root reachability: AddToRoot protects, RemoveFromRoot releases
+	// -------------------------------------------------------------------------
+	TEST_METHOD(GCRootReachability)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageGC_RootReachability"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageGCRootReachability.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageGCRootReachabilityActor : AActor
+			{
+				UPROPERTY()
+				bool RootedObjectSurvivedGC = false;
+
+				UPROPERTY()
+				bool RemovedRootAllowedCollection = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					UObject RootedObject = NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"CoverageGCRootedObject");
+					RootedObject.AddToRoot();
+
+					TWeakObjectPtr<UObject> WeakRootedObject = RootedObject;
+					RootedObject = nullptr;
+
+					System::ForceGarbageCollection(true);
+					RootedObjectSurvivedGC = WeakRootedObject.IsValid();
+
+					UObject UnrootedObject = WeakRootedObject.Get();
+					if (UnrootedObject != nullptr)
+					{
+						UnrootedObject.RemoveFromRoot();
+					}
+					UnrootedObject = nullptr;
+
+					System::ForceGarbageCollection(true);
+					RemovedRootAllowedCollection = !WeakRootedObject.IsValid() && WeakRootedObject.Get() == nullptr;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageGCRootReachabilityActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("GC-root-reachability actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("GC-root-reachability actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("RootedObjectSurvivedGC"), true,
+			TEXT("Rooted object should remain reachable during GC"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("RemovedRootAllowedCollection"), true,
+			TEXT("Removing root protection should allow later collection"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// GC mark-sweep: unreachable strong reference cycles are collectible
+	// -------------------------------------------------------------------------
+	TEST_METHOD(GCStrongCycleReclaim)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageGC_StrongCycleReclaim"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageGCStrongCycleReclaim.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class UCoverageGCCycleNode : UObject
+			{
+				UPROPERTY()
+				UObject Other;
+			}
+
+			UCLASS()
+			class ACoverageGCStrongCycleActor : AActor
+			{
+				UPROPERTY()
+				bool StrongCycleCreated = false;
+
+				UPROPERTY()
+				bool StrongCycleCollected = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					UCoverageGCCycleNode NodeA = Cast<UCoverageGCCycleNode>(
+						NewObject(GetTransientPackage(), UCoverageGCCycleNode::StaticClass(), n"CoverageGCCycleA"));
+					UCoverageGCCycleNode NodeB = Cast<UCoverageGCCycleNode>(
+						NewObject(GetTransientPackage(), UCoverageGCCycleNode::StaticClass(), n"CoverageGCCycleB"));
+
+					NodeA.Other = NodeB;
+					NodeB.Other = NodeA;
+
+					TWeakObjectPtr<UObject> WeakA = NodeA;
+					TWeakObjectPtr<UObject> WeakB = NodeB;
+					StrongCycleCreated = WeakA.IsValid() && WeakB.IsValid();
+
+					NodeA = nullptr;
+					NodeB = nullptr;
+
+					System::ForceGarbageCollection(true);
+					StrongCycleCollected = !WeakA.IsValid() && !WeakB.IsValid();
+				}
+			}
+			)AS"),
+			TEXT("ACoverageGCStrongCycleActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("GC-strong-cycle actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("GC-strong-cycle actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("StrongCycleCreated"), true,
+			TEXT("Strong reference cycle should be created before GC"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("StrongCycleCollected"), true,
+			TEXT("Unreachable strong reference cycle should be collected by mark-sweep GC"))));
 	}
 };
 

@@ -1,9 +1,13 @@
 #include "CQTest.h"
+#include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptGlobalFunctionInvoker.h"
 #include "AngelscriptTestMacros.h"
 #include "AngelscriptTestModuleBuilder.h"
 #include "AngelscriptTestUtilities.h"
 
 #include "Misc/ScopeExit.h"
+
+#include <type_traits>
 
 // -----------------------------------------------------------------------------
 // AngelscriptCoverageFStringMethodTests
@@ -18,7 +22,7 @@
 //   - Substring: Left(), Right(), Mid()
 //   - Split: Split(), ParseIntoArray()
 //   - Replace: Replace(), ReplaceInline()
-//   - Format: Printf()
+//   - Format: Format()
 //   - Conversion: ToInt(), ToFloat()
 //
 // Test pattern: Pattern B/F (global functions)
@@ -47,7 +51,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringMethodTest,
 	template <typename T>
 	void ExpectGlobalReturn(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const T& Expected, const TCHAR* Message)
 	{
+		ASSERT_THAT(IsNotNull(Module, TEXT("FString method module should compile before executing global function")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
 		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("FString method global function should resolve and prepare")));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
+
 		T Result{};
 		if constexpr (std::is_same_v<T, bool>
 			|| std::is_same_v<T, int32>
@@ -60,7 +76,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringMethodTest,
 		{
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
 		}
-		TestRunner->TestEqual(Message, Result, Expected);
+		ASSERT_THAT(AreEqual(Expected, Result, Message));
 	}
 
 	// -------------------------------------------------------------------------
@@ -345,6 +361,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringMethodTest,
 			FString s = "Hello World";
 			return s.Replace("Test", "New");
 		}
+
+		FString TestReplaceInline()
+		{
+			FString s = "red red blue";
+			int Count = s.ReplaceInline("red", "green");
+			return FString::Format("{0}:{1}", Count, s);
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -357,6 +380,93 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringMethodTest,
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestReplace()"), FString(TEXT("Hello Universe")), TEXT("Replace() single"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestReplaceMultiple()"), FString(TEXT("orange orange orange")), TEXT("Replace() multiple"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestReplaceNotFound()"), FString(TEXT("Hello World")), TEXT("Replace() not found"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestReplaceInline()"), FString(TEXT("2:green green blue")), TEXT("ReplaceInline() should mutate and report replacement count"));
+	}
+
+	// -------------------------------------------------------------------------
+	// Mutable methods: Append(), AppendChar(), AppendInt(), InsertAt(),
+	// RemoveAt(), RemoveSpacesInline(), Empty(), Reset(), Reserve(), Shrink().
+	// -------------------------------------------------------------------------
+	TEST_METHOD(MutableStringMethods)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFStringMethod_Mutable", ASTEST_AS(R"AS(
+		FString TestAppendAndAppendInt()
+		{
+			FString s = "Score";
+			s.Append(": ");
+			s.AppendInt(42);
+			return s;
+		}
+
+		FString TestAppendCharAndInsertAt()
+		{
+			FString s = "AC";
+			s.InsertAt(1, 0x42);
+			s.AppendChar(0x44);
+			s.InsertAt(0, "Start-");
+			return s;
+		}
+
+		FString TestRemoveAt()
+		{
+			FString s = "ABCDEF";
+			s.RemoveAt(2, 2);
+			return s;
+		}
+
+		FString TestRemoveSpacesInline()
+		{
+			FString s = "A B  C";
+			s.RemoveSpacesInline();
+			return s;
+		}
+
+		int TestEmptyResetReserveShrink()
+		{
+			FString s = "abcdef";
+			s.Reserve(64);
+			s.Empty();
+			int AfterEmpty = s.Len();
+
+			s.Append("xy");
+			s.Reset(32);
+			int AfterReset = s.Len();
+
+			s.Append("z");
+			s.Shrink();
+			return AfterEmpty * 100 + AfterReset * 10 + s.Len();
+		}
+
+		bool TestIndexMutationAndValidation()
+		{
+			FString s = "ABC";
+			if (!s.IsValidIndex(2) || s.IsValidIndex(3))
+			{
+				return false;
+			}
+
+			s[1] = 0x5A;
+			return s == "AZC";
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("mutable FString methods module should compile")));
+
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestAppendAndAppendInt()"), FString(TEXT("Score: 42")), TEXT("Append and AppendInt should mutate the string"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestAppendCharAndInsertAt()"), FString(TEXT("Start-ABCD")), TEXT("AppendChar and InsertAt should mutate by character and string"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestRemoveAt()"), FString(TEXT("ABEF")), TEXT("RemoveAt should delete the requested range"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestRemoveSpacesInline()"), FString(TEXT("ABC")), TEXT("RemoveSpacesInline should remove spaces in place"));
+		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int TestEmptyResetReserveShrink()"), 1, TEXT("Empty/Reset/Reserve/Shrink should preserve usable string state"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestIndexMutationAndValidation()"), true, TEXT("operator[] should support valid index mutation"));
 	}
 
 	// -------------------------------------------------------------------------
@@ -391,6 +501,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringMethodTest,
 			s.ParseIntoArray(parts, ",");
 			return parts[2];
 		}
+
+		FString TestSplitLeftRight()
+		{
+			FString s = "left:right";
+			FString left;
+			FString right;
+			bool bSplit = s.Split(":", left, right);
+			return bSplit ? left + "|" + right : "failed";
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -403,10 +522,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringMethodTest,
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int TestSplitCount()"), 3, TEXT("ParseIntoArray() count"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestSplitFirst()"), FString(TEXT("apple")), TEXT("ParseIntoArray() first element"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestSplitLast()"), FString(TEXT("cherry")), TEXT("ParseIntoArray() last element"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestSplitLeftRight()"), FString(TEXT("left|right")), TEXT("Split() should fill left and right out parameters"));
 	}
 
 	// -------------------------------------------------------------------------
-	// Format methods: Printf(), Format().
+	// Format methods: Format().
 	// -------------------------------------------------------------------------
 	TEST_METHOD(FormatMethods)
 	{
@@ -414,24 +534,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringMethodTest,
 		FAngelscriptEngineScope Scope(Engine);
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFStringMethod_Format", ASTEST_AS(R"AS(
-		FString TestPrintfInt()
+		FString TestFormatInt()
 		{
-			return FString::Printf("{0}", 42);
+			return FString::Format("{0}", 42);
 		}
 
-		FString TestPrintfFloat()
+		FString TestFormatFloat()
 		{
-			return FString::Printf("{0}", 3.14f);
+			return FString::Format("{0}", 3.14f);
 		}
 
-		FString TestPrintfString()
+		FString TestFormatString()
 		{
-			return FString::Printf("Hello {0}", "World");
+			return FString::Format("Hello {0}", "World");
 		}
 
-		FString TestPrintfMultiple()
+		FString TestFormatMultiple()
 		{
-			return FString::Printf("{0} + {1} = {2}", 2, 3, 5);
+			return FString::Format("{0} + {1} = {2}", 2, 3, 5);
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -442,10 +562,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringMethodTest,
 			}
 		};
 
-		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestPrintfInt()"), FString(TEXT("42")), TEXT("Printf() with int"));
-		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestPrintfFloat()"), FString(TEXT("3.14")), TEXT("Printf() with float"));
-		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestPrintfString()"), FString(TEXT("Hello World")), TEXT("Printf() with string"));
-		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestPrintfMultiple()"), FString(TEXT("2 + 3 = 5")), TEXT("Printf() with multiple args"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestFormatInt()"), FString(TEXT("42")), TEXT("Format() with int"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestFormatFloat()"), FString(TEXT("3.14")), TEXT("Format() with float"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestFormatString()"), FString(TEXT("Hello World")), TEXT("Format() with string"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestFormatMultiple()"), FString(TEXT("2 + 3 = 5")), TEXT("Format() with multiple args"));
 	}
 
 	// -------------------------------------------------------------------------
@@ -488,14 +608,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringMethodTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FString conversion module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int TestToInt()"), 123, TEXT("FCString::Atoi()"));
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int TestToIntNegative()"), -456, TEXT("FCString::Atoi() negative"));
 
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float TestToFloat()"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("TestToFloat should resolve and prepare")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
 			float Result = Invoker.ExecuteAndGet<float>(0.0f);
-			TestRunner->TestTrue(TEXT("FCString::Atof()"), FMath::IsNearlyEqual(Result, 3.14f, 0.01f));
+			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Result, 3.14f, 0.01f), TEXT("FCString::Atof()")));
 		}
 
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int TestFromInt()"), 999, TEXT("FString::FromInt() round-trip"));

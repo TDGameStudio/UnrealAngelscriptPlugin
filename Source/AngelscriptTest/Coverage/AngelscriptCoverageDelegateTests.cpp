@@ -18,10 +18,12 @@
 // Axes covered here:
 //   * DelegateDeclaration       - DECLARE_DELEGATE variants (no params, with
 //                                 params, return value, return value + params).
-//   * DelegateBinding           - BindUFunction, BindLambda.
+//   * DelegateBinding           - BindUFunction; BindLambda is a negative
+//                                 AS-facing boundary.
 //   * DelegateExecution         - Execute, ExecuteIfBound.
 //   * DelegateUnbind            - Unbind, IsBound checks.
-//   * DelegateLambda            - Lambda captures (this, variables).
+//   * DelegateLambda            - C++ lambda syntax and capture forms are
+//                                 negative AS-facing boundaries.
 //
 // Pattern D (script execution) from the Angelscript test guide: compile AS
 // actors, spawn them, drive delegate operations, verify results through
@@ -119,15 +121,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 			)AS"),
 			TEXT("ACoverageDelegateBasicsActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Delegate-basics actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Delegate-basics actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Counter"), 3, TEXT("Counter should be 3 (IsBound checks passed)"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DelegateWasCalled"), true, TEXT("Delegate should have been executed"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Counter"), 3, TEXT("Counter should be 3 (IsBound checks passed)"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DelegateWasCalled"), true, TEXT("Delegate should have been executed"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -190,15 +200,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 			)AS"),
 			TEXT("ACoverageDelegateParamsActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Delegate-parameters actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Delegate-parameters actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReceivedInt"), 100, TEXT("Two-param delegate should set ReceivedInt to 100"));
-		VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("ReceivedString"), FString(TEXT("Test")), TEXT("Two-param delegate should set ReceivedString"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReceivedInt"), 100, TEXT("Two-param delegate should set ReceivedInt to 100"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("ReceivedString"), FString(TEXT("Test")), TEXT("Two-param delegate should set ReceivedString"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -260,15 +278,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 			)AS"),
 			TEXT("ACoverageDelegateRetValActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Delegate-return-value actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Delegate-return-value actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("BoolResult"), true, TEXT("Bool return delegate should return true"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntResult"), 100, TEXT("Int return delegate should return doubled value"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("BoolResult"), true, TEXT("Bool return delegate should return true"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntResult"), 100, TEXT("Int return delegate should return doubled value"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -326,25 +352,75 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 			)AS"),
 			TEXT("ACoverageDelegateExecuteIfBoundActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Delegate-ExecuteIfBound actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Delegate-ExecuteIfBound actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Counter"), 3, TEXT("Counter should be 3 (ExecuteIfBound handled correctly)"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Counter"), 3, TEXT("Counter should be 3 (ExecuteIfBound handled correctly)"))));
 	}
 
 	// -------------------------------------------------------------------------
-	// Lambda binding: BindLambda with various capture modes.
+	// Lambda syntax boundary: the current AS fork does not expose BindLambda-
+	// style delegate binding from script.
 	// -------------------------------------------------------------------------
-	TEST_METHOD(DelegateLambda)
+	TEST_METHOD(DelegateLambdaSyntaxIsUnsupported)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		static const FName ModuleName(TEXT("ASCoverageDelegate_Lambda"));
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			delegate void FLambdaUnsupportedSignal();
+
+			UCLASS()
+			class ACoverageDelegateLambdaUnsupportedActor : AActor
+			{
+				FLambdaUnsupportedSignal OnSignal;
+
+				UFUNCTION()
+				void Handler()
+				{
+				}
+
+				void TryBindLambda()
+				{
+					OnSignal.BindLambda(this, n"Handler");
+				}
+			}
+			)AS");
+
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'FDelegate::BindLambda"));
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageDelegate_LambdaUnsupported"),
+			*ScriptSource,
+			TEXT("BindLambda should remain an explicit unsupported AS-facing boundary"),
+			MakeArrayView(ExpectedDiagnostics))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Delegate signatures: parameter count, parameter types, return types, and
+	// delegate-as-argument callback flow.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(DelegateSignatureMatrix)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageDelegate_SignatureMatrix"));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
@@ -354,59 +430,270 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 			*TestRunner,
 			Engine,
 			ModuleName,
-			TEXT("ASCoverageDelegateLambda.as"),
+			TEXT("ASCoverageDelegateSignatureMatrix.as"),
 			ASTEST_AS(R"AS(
+			UENUM()
+			enum ECoverageDelegateState
+			{
+				Idle,
+				Active
+			}
+
+			delegate void FSignatureNoParam();
+			delegate void FSignatureOneParam(int Value);
+			delegate void FSignatureTwoParams(int Value, const FString& Label);
+			delegate void FSignatureThreeParams(int Value, float Weight, bool bEnabled);
+			delegate void FSignatureFourParams(int Value, float Weight, bool bEnabled, const FString& Label);
+			delegate void FSignatureTypeMatrix(int Value, float Weight, bool bEnabled, const FString& Label, FName Tag, FVector Location, const FVector& Direction, AActor ActorValue, ECoverageDelegateState State);
+			delegate void FSignatureCallback(int Value);
+			delegate bool FSignatureBoolReturn();
+			delegate int FSignatureIntReturn(int Value);
+			delegate float FSignatureFloatReturn(float Value);
+			delegate FString FSignatureStringReturn();
+			delegate FVector FSignatureVectorReturn();
+
 			UCLASS()
-			class ACoverageDelegateLambdaActor : AActor
+			class ACoverageDelegateSignatureMatrixActor : AActor
 			{
 				UPROPERTY()
-				int Counter = 0;
+				int CountResult = 0;
 
 				UPROPERTY()
-				int CapturedValue = 0;
+				int TypeIntValue = 0;
 
-				FSimpleDelegate OnSimpleLambda;
-				FIntDelegate OnIntLambda;
+				UPROPERTY()
+				float TypeFloatValue = 0.0f;
+
+				UPROPERTY()
+				bool TypeBoolValue = false;
+
+				UPROPERTY()
+				FString TypeStringValue;
+
+				UPROPERTY()
+				FName TypeNameValue;
+
+				UPROPERTY()
+				FVector TypeVectorValue;
+
+				UPROPERTY()
+				FVector TypeVectorRefValue;
+
+				UPROPERTY()
+				AActor TypeActorValue;
+
+				UPROPERTY()
+				ECoverageDelegateState TypeEnumValue = ECoverageDelegateState::Idle;
+
+				UPROPERTY()
+				bool BoolReturnValue = false;
+
+				UPROPERTY()
+				int IntReturnValue = 0;
+
+				UPROPERTY()
+				float FloatReturnValue = 0.0f;
+
+				UPROPERTY()
+				FString StringReturnValue;
+
+				UPROPERTY()
+				FVector VectorReturnValue;
+
+				UPROPERTY()
+				int CallbackValue = 0;
+
+				UPROPERTY()
+				int ConstRefCallbackValue = 0;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					// Lambda without capture
-					OnSimpleLambda.BindLambda([](){
-						// Simple lambda execution
-					});
-					if (OnSimpleLambda.IsBound())
+					FSignatureNoParam NoParam;
+					FSignatureOneParam OneParam;
+					FSignatureTwoParams TwoParams;
+					FSignatureThreeParams ThreeParams;
+					FSignatureFourParams FourParams;
+
+					NoParam.BindUFunction(this, n"HandleNoParam");
+					OneParam.BindUFunction(this, n"HandleOneParam");
+					TwoParams.BindUFunction(this, n"HandleTwoParams");
+					ThreeParams.BindUFunction(this, n"HandleThreeParams");
+					FourParams.BindUFunction(this, n"HandleFourParams");
+
+					NoParam.Execute();
+					OneParam.Execute(2);
+					TwoParams.Execute(3, "two");
+					ThreeParams.Execute(4, 1.5f, true);
+					FourParams.Execute(5, 2.5f, false, "four");
+
+					FSignatureTypeMatrix TypeMatrix;
+					TypeMatrix.BindUFunction(this, n"HandleTypeMatrix");
+					TypeMatrix.Execute(42, 3.5f, true, "Label", n"NameTag", FVector(1.0f, 2.0f, 3.0f), FVector(4.0f, 5.0f, 6.0f), this, ECoverageDelegateState::Active);
+
+					FSignatureBoolReturn BoolReturn;
+					FSignatureIntReturn IntReturn;
+					FSignatureFloatReturn FloatReturn;
+					FSignatureStringReturn StringReturn;
+					FSignatureVectorReturn VectorReturn;
+
+					BoolReturn.BindUFunction(this, n"ReturnBool");
+					IntReturn.BindUFunction(this, n"ReturnInt");
+					FloatReturn.BindUFunction(this, n"ReturnFloat");
+					StringReturn.BindUFunction(this, n"ReturnString");
+					VectorReturn.BindUFunction(this, n"ReturnVector");
+
+					BoolReturnValue = BoolReturn.Execute();
+					IntReturnValue = IntReturn.Execute(12);
+					FloatReturnValue = FloatReturn.Execute(2.0f);
+					StringReturnValue = StringReturn.Execute();
+					VectorReturnValue = VectorReturn.Execute();
+
+					FSignatureCallback Callback;
+					Callback.BindUFunction(this, n"HandleCallback");
+					UseCallback(Callback);
+					UseCallbackConstRef(Callback);
+				}
+
+				UFUNCTION()
+				void HandleNoParam()
+				{
+					CountResult += 1;
+				}
+
+				UFUNCTION()
+				void HandleOneParam(int Value)
+				{
+					CountResult += Value;
+				}
+
+				UFUNCTION()
+				void HandleTwoParams(int Value, const FString& Label)
+				{
+					if (Label == "two")
 					{
-						Counter++;
+						CountResult += Value;
 					}
-					OnSimpleLambda.Execute();
+				}
 
-					// Lambda with [this] capture
-					OnSimpleLambda.BindLambda([this](){
-						Counter = 10;
-					});
-					OnSimpleLambda.Execute();
+				UFUNCTION()
+				void HandleThreeParams(int Value, float Weight, bool bEnabled)
+				{
+					if (bEnabled && Weight == 1.5f)
+					{
+						CountResult += Value;
+					}
+				}
 
-					// Lambda with parameter and [this] capture
-					int LocalValue = 100;
-					OnIntLambda.BindLambda([this, LocalValue](int Param){
-						CapturedValue = LocalValue + Param;
-					});
-					OnIntLambda.Execute(50);
+				UFUNCTION()
+				void HandleFourParams(int Value, float Weight, bool bEnabled, const FString& Label)
+				{
+					if (!bEnabled && Weight == 2.5f && Label == "four")
+					{
+						CountResult += Value;
+					}
+				}
+
+				UFUNCTION()
+				void HandleTypeMatrix(int Value, float Weight, bool bEnabled, const FString& Label, FName Tag, FVector Location, const FVector& Direction, AActor ActorValue, ECoverageDelegateState State)
+				{
+					TypeIntValue = Value;
+					TypeFloatValue = Weight;
+					TypeBoolValue = bEnabled;
+					TypeStringValue = Label;
+					TypeNameValue = Tag;
+					TypeVectorValue = Location;
+					TypeVectorRefValue = Direction;
+					TypeActorValue = ActorValue;
+					TypeEnumValue = State;
+				}
+
+				UFUNCTION()
+				bool ReturnBool()
+				{
+					return true;
+				}
+
+				UFUNCTION()
+				int ReturnInt(int Value)
+				{
+					return Value * 3;
+				}
+
+				UFUNCTION()
+				float ReturnFloat(float Value)
+				{
+					return Value + 0.75f;
+				}
+
+				UFUNCTION()
+				FString ReturnString()
+				{
+					return "delegate-string";
+				}
+
+				UFUNCTION()
+				FVector ReturnVector()
+				{
+					return FVector(7.0f, 8.0f, 9.0f);
+				}
+
+				void UseCallback(FSignatureCallback Callback)
+				{
+					Callback.Execute(70);
+				}
+
+				void UseCallbackConstRef(const FSignatureCallback&in Callback)
+				{
+					Callback.Execute(30);
+				}
+
+				UFUNCTION()
+				void HandleCallback(int Value)
+				{
+					CallbackValue += Value;
+					ConstRefCallbackValue += Value;
 				}
 			}
 			)AS"),
-			TEXT("ACoverageDelegateLambdaActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Delegate-lambda actor class should compile")));
+			TEXT("ACoverageDelegateSignatureMatrixActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Delegate-signature-matrix actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		ASSERT_THAT(IsNotNull(Actor, TEXT("Delegate-lambda actor should spawn")));
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Delegate-signature-matrix actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Counter"), 10, TEXT("Lambda with [this] capture should set Counter to 10"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("CapturedValue"), 150, TEXT("Lambda with captures should compute 100 + 50"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("CountResult"), 15, TEXT("Delegate parameter-count matrix should execute 0, 1, 2, 3, and 4 parameter delegates"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("TypeIntValue"), 42, TEXT("Delegate should pass int parameters"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("TypeFloatValue"), 3.5, TEXT("Delegate should pass float parameters"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("TypeBoolValue"), true, TEXT("Delegate should pass bool parameters"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("TypeStringValue"), FString(TEXT("Label")), TEXT("Delegate should pass FString parameters"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FNameProperty, FName>(*TestRunner, Actor, TEXT("TypeNameValue"), FName(TEXT("NameTag")), TEXT("Delegate should pass FName parameters"))));
+		ASSERT_THAT(IsTrue(VerifyStructByPath<FVector>(*TestRunner, Actor, TEXT("TypeVectorValue"), FVector(1.0f, 2.0f, 3.0f), TEXT("Delegate should pass FVector by value"))));
+		ASSERT_THAT(IsTrue(VerifyStructByPath<FVector>(*TestRunner, Actor, TEXT("TypeVectorRefValue"), FVector(4.0f, 5.0f, 6.0f), TEXT("Delegate should pass const FVector&"))));
+		UObject* TypeActorValue = nullptr;
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("TypeActorValue"), TypeActorValue), TEXT("Delegate UObject parameter should be readable")));
+		ASSERT_THAT(AreEqual(static_cast<UObject*>(Actor), TypeActorValue, TEXT("Delegate should pass AActor UObject references")));
+		int64 EnumValue = 0;
+		ASSERT_THAT(IsTrue(GetEnumByPath(*TestRunner, Actor, TEXT("TypeEnumValue"), EnumValue), TEXT("Delegate enum parameter should be readable")));
+		ASSERT_THAT(AreEqual(static_cast<int64>(1), EnumValue, TEXT("Delegate should pass enum parameters")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("BoolReturnValue"), true, TEXT("Delegate bool return should round-trip"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntReturnValue"), 36, TEXT("Delegate int return should round-trip"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("FloatReturnValue"), 2.75, TEXT("Delegate float return should round-trip"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringReturnValue"), FString(TEXT("delegate-string")), TEXT("Delegate FString return should round-trip"))));
+		ASSERT_THAT(IsTrue(VerifyStructByPath<FVector>(*TestRunner, Actor, TEXT("VectorReturnValue"), FVector(7.0f, 8.0f, 9.0f), TEXT("Delegate struct return should round-trip"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("CallbackValue"), 100, TEXT("Delegate parameter callback should execute"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ConstRefCallbackValue"), 100, TEXT("const delegate reference callback should execute"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -465,14 +752,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 			)AS"),
 			TEXT("ACoverageDelegateRebindingActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Delegate-rebinding actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Delegate-rebinding actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Result"), 2, TEXT("Rebinding should replace handler (Result = 2)"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Result"), 2, TEXT("Rebinding should replace handler (Result = 2)"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -556,17 +851,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 			)AS"),
 			TEXT("ACoverageDelegateParamTypesActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Delegate-parameter-types actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Delegate-parameter-types actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntValue"), 42, TEXT("Int parameter should pass through"));
-		VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("FloatValue"), 3.14f, TEXT("Float parameter should pass through"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("BoolValue"), true, TEXT("Bool parameter should pass through"));
-		VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringValue"), FString(TEXT("Hello")), TEXT("FString parameter should pass through"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntValue"), 42, TEXT("Int parameter should pass through"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("FloatValue"), 3.14f, TEXT("Float parameter should pass through"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("BoolValue"), true, TEXT("Bool parameter should pass through"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringValue"), FString(TEXT("Hello")), TEXT("FString parameter should pass through"))));
 
 		// FVector verification
 		FVector ExpectedVector(1.0f, 2.0f, 3.0f);

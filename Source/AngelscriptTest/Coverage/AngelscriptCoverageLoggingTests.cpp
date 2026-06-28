@@ -1,12 +1,17 @@
 #include "CQTest.h"
 #include "AngelscriptFunctionalTestUtils.h"
 #include "AngelscriptReflectiveAccess.h"
+#include "AngelscriptTestExecute.h"
 #include "AngelscriptTestMacros.h"
 #include "AngelscriptTestModuleBuilder.h"
+#include "AngelscriptTestModuleScope.h"
 #include "AngelscriptTestUtilities.h"
 
 #include "Components/ActorTestSpawner.h"
+#include "CoreGlobals.h"
 #include "GameFramework/Actor.h"
+#include "Misc/OutputDevice.h"
+#include "Misc/OutputDeviceRedirector.h"
 #include "Misc/ScopeExit.h"
 
 // -----------------------------------------------------------------------------
@@ -16,9 +21,9 @@
 // the matrix from Documents/Coverage/Coverage_DebugAndLogging.md.
 //
 // Test axes covered:
-//   * PrintFunctions                - Print, PrintString, PrintWarning, PrintError
-//   * UELogMacros                   - UE_LOG with different verbosity levels
-//   * LogCategories                 - Different log categories (LogTemp, LogScript, etc.)
+//   * PrintFunctions                - Print, PrintFromObject, PrintToScreen, PrintDirectToScreen, PrintWarning, PrintError
+//   * UELogMacros                   - compile-negative boundary for unsupported native UE_LOG syntax
+//   * LogCategories                 - AS-facing FName category overloads
 //   * LogFormatting                 - String formatting in log messages
 //
 // Pattern: Compile script modules with logging calls, spawn actors, verify
@@ -34,6 +39,59 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLoggingTest,
 	"Angelscript.TestModule.Coverage.Logging",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	struct FCapturedLogLine
+	{
+		FString Text;
+		ELogVerbosity::Type Verbosity = ELogVerbosity::NoLogging;
+		FName Category;
+	};
+
+	struct FCapturedLogDevice : FOutputDevice
+	{
+		TArray<FCapturedLogLine> Lines;
+
+		void Serialize(const TCHAR* Data, ELogVerbosity::Type Verbosity, const FName& Category) override
+		{
+			Lines.Add({ FString(Data), Verbosity, Category });
+		}
+
+		bool Contains(const FString& Text, ELogVerbosity::Type Verbosity, const FName& Category) const
+		{
+			for (const FCapturedLogLine& Line : Lines)
+			{
+				if (Line.Verbosity == Verbosity
+					&& Line.Category == Category
+					&& Line.Text.Contains(Text))
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		bool ContainsText(const FString& Text) const
+		{
+			for (const FCapturedLogLine& Line : Lines)
+			{
+				if (Line.Text.Contains(Text))
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+	};
+
+	static void RegisterExpectedLogErrors(FAutomationTestBase& Test)
+	{
+		Test.AddExpectedError(TEXT("CoverageLogLevel_Error"), EAutomationExpectedErrorFlags::Contains, 1);
+		Test.AddExpectedError(TEXT("CoverageCategory_Error"), EAutomationExpectedErrorFlags::Contains, 1);
+	}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -79,8 +137,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLoggingTest,
 					int Value = 42;
 					Print("Value is: " + Value);
 
-					// PrintString with duration and color (if supported)
-					PrintString("Colored message on screen", 5.0f, FLinearColor::Red);
+					// Print with duration and color
+					Print("Colored message on screen", 5.0f, FLinearColor::Red);
+
+					// Screen/world-context variants
+					PrintFromObject(this, "Print from object context", 0.01f, FLinearColor::Green);
+					PrintToScreen("Print to screen only", 0.01f, FLinearColor::Yellow);
+					PrintDirectToScreen("Print direct to screen", 0.01f, FLinearColor::Blue);
 
 					// PrintWarning (if supported)
 					PrintWarning("This is a warning message");
@@ -104,11 +167,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLoggingTest,
 			)AS"),
 			TEXT("APrintTestActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Print functions actor class should compile")));
+		if (!ScriptClass)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Print functions actor should spawn")));
+		if (!Actor)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
 	}
 
 	// -------------------------------------------------------------------------
@@ -164,11 +236,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLoggingTest,
 			)AS"),
 			TEXT("AUELogTestActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("UE_LOG macros actor class should compile")));
+		if (!ScriptClass)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("UE_LOG macros actor should spawn")));
+		if (!Actor)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
 	}
 
 	// -------------------------------------------------------------------------
@@ -215,11 +296,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLoggingTest,
 			)AS"),
 			TEXT("ALogCategoryTestActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Log categories actor class should compile")));
+		if (!ScriptClass)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Log categories actor should spawn")));
+		if (!Actor)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
 	}
 
 	// -------------------------------------------------------------------------
@@ -292,11 +382,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLoggingTest,
 			)AS"),
 			TEXT("ALogFormattingTestActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Log formatting actor class should compile")));
+		if (!ScriptClass)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Log formatting actor should spawn")));
+		if (!Actor)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
 	}
 
 	// -------------------------------------------------------------------------
@@ -383,15 +482,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLoggingTest,
 			)AS"),
 			TEXT("AConditionalLogTestActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Conditional logging actor class should compile")));
+		if (!ScriptClass)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Conditional logging actor should spawn")));
+		if (!Actor)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
 
 		// Verify properties
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bDebugMode"), true, TEXT("bDebugMode should be true"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LogLevel"), 2, TEXT("LogLevel should be 2"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bDebugMode"), true, TEXT("bDebugMode should be true"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LogLevel"), 2, TEXT("LogLevel should be 2"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -458,11 +566,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLoggingTest,
 			)AS"),
 			TEXT("AFunctionLogTestActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Function entry/exit logging actor class should compile")));
+		if (!ScriptClass)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Function entry/exit logging actor should spawn")));
+		if (!Actor)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
 	}
 
 	// -------------------------------------------------------------------------
@@ -523,15 +640,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLoggingTest,
 			)AS"),
 			TEXT("APerformanceLogTestActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Performance conscious logging actor class should compile")));
+		if (!ScriptClass)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Performance conscious logging actor should spawn")));
+		if (!Actor)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
 
 		// Verify tick counter initialization
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("TickCounter"), 0, TEXT("TickCounter should be 0"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LogInterval"), 60, TEXT("LogInterval should be 60"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("TickCounter"), 0, TEXT("TickCounter should be 0"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LogInterval"), 60, TEXT("LogInterval should be 60"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -608,14 +734,205 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLoggingTest,
 			)AS"),
 			TEXT("AContextLogTestActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Context-rich logging actor class should compile")));
+		if (!ScriptClass)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Context-rich logging actor should spawn")));
+		if (!Actor)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
 
 		// Verify context properties
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("PlayerID"), 12345, TEXT("PlayerID should be 12345"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("PlayerID"), 12345, TEXT("PlayerID should be 12345"))));
+	}
+
+	TEST_METHOD(LogVerbosityFunctionsEmitExpectedCategories)
+	{
+		RegisterExpectedLogErrors(*TestRunner);
+
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageLogging_LogVerbosityFunctions"), ASTEST_AS(R"AS(
+			int EmitLogVerbosityMessages()
+			{
+				Log("CoverageLogLevel_Log");
+				LogInfo("CoverageLogLevel_Info");
+				LogDisplay("CoverageLogLevel_Display");
+				Warning("CoverageLogLevel_Warning");
+				Error("CoverageLogLevel_Error");
+
+				Log(n"CoverageCustomCategory", "CoverageCategory_Log");
+				Warning(n"CoverageCustomCategory", "CoverageCategory_Warning");
+				Error(n"CoverageCustomCategory", "CoverageCategory_Error");
+
+				return 1;
+			}
+			)AS"));
+		ASSERT_THAT(IsTrue(Module.IsValid(), TEXT("log verbosity module should compile")));
+		if (!Module.IsValid())
+		{
+			return;
+		}
+
+		FCapturedLogDevice LogCapture;
+		GLog->AddOutputDevice(&LogCapture);
+		ON_SCOPE_EXIT
+		{
+			GLog->RemoveOutputDevice(&LogCapture);
+		};
+
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, Module.GetModule(), TEXT("int EmitLogVerbosityMessages()"),
+			TEXT("AS logging functions should execute"), 1)));
+
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageLogLevel_Log"), ELogVerbosity::Log, FName(TEXT("Angelscript"))),
+			TEXT("Log should emit Log verbosity in the Angelscript category")));
+		ASSERT_THAT(IsTrue(LogCapture.ContainsText(TEXT("CoverageLogLevel_Info")),
+			TEXT("LogInfo should emit its message")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("[Display] CoverageLogLevel_Display"), ELogVerbosity::Display, FName(TEXT("Angelscript"))),
+			TEXT("LogDisplay should emit Display verbosity in the Angelscript category")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageLogLevel_Warning"), ELogVerbosity::Warning, FName(TEXT("Angelscript"))),
+			TEXT("Warning should emit Warning verbosity in the Angelscript category")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageLogLevel_Error"), ELogVerbosity::Error, FName(TEXT("Angelscript"))),
+			TEXT("Error should emit Error verbosity in the Angelscript category")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageCategory_Log"), ELogVerbosity::Log, FName(TEXT("CoverageCustomCategory"))),
+			TEXT("category Log overload should preserve category and Log verbosity")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageCategory_Warning"), ELogVerbosity::Warning, FName(TEXT("CoverageCustomCategory"))),
+			TEXT("category Warning overload should preserve category and Warning verbosity")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageCategory_Error"), ELogVerbosity::Error, FName(TEXT("CoverageCustomCategory"))),
+			TEXT("category Error overload should preserve category and Error verbosity")));
+	}
+
+	TEST_METHOD(ConditionalLogFunctionsGateOutput)
+	{
+		TestRunner->AddExpectedError(TEXT("CoverageConditional_Error"), EAutomationExpectedErrorFlags::Contains, 1);
+		TestRunner->AddExpectedError(TEXT("CoverageConditional_CategoryErrorTrue"), EAutomationExpectedErrorFlags::Contains, 1);
+
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageLogging_ConditionalLogFunctions"), ASTEST_AS(R"AS(
+			int EmitConditionalLogs()
+			{
+				LogIf(true, "CoverageConditional_LogTrue");
+				LogIf(false, "CoverageConditional_LogFalse");
+				LogInfoIf(true, "CoverageConditional_InfoTrue");
+				LogInfoIf(false, "CoverageConditional_InfoFalse");
+				WarningIf(true, "CoverageConditional_WarningTrue");
+				WarningIf(false, "CoverageConditional_WarningFalse");
+				ErrorIf(true, "CoverageConditional_Error");
+				ErrorIf(false, "CoverageConditional_ErrorFalse");
+
+				LogIf(true, n"CoverageConditionalCategory", "CoverageConditional_CategoryLogTrue");
+				LogIf(false, n"CoverageConditionalCategory", "CoverageConditional_CategoryLogFalse");
+				LogInfoIf(true, n"CoverageConditionalCategory", "CoverageConditional_CategoryInfoTrue");
+				LogInfoIf(false, n"CoverageConditionalCategory", "CoverageConditional_CategoryInfoFalse");
+				LogDisplayIf(true, n"CoverageConditionalCategory", "CoverageConditional_DisplayTrue");
+				LogDisplayIf(false, n"CoverageConditionalCategory", "CoverageConditional_DisplayFalse");
+				WarningIf(true, n"CoverageConditionalCategory", "CoverageConditional_CategoryWarningTrue");
+				WarningIf(false, n"CoverageConditionalCategory", "CoverageConditional_CategoryWarningFalse");
+				ErrorIf(true, n"CoverageConditionalCategory", "CoverageConditional_CategoryErrorTrue");
+				ErrorIf(false, n"CoverageConditionalCategory", "CoverageConditional_CategoryErrorFalse");
+
+				return 1;
+			}
+			)AS"));
+		ASSERT_THAT(IsTrue(Module.IsValid(), TEXT("conditional log module should compile")));
+		if (!Module.IsValid())
+		{
+			return;
+		}
+
+		FCapturedLogDevice LogCapture;
+		GLog->AddOutputDevice(&LogCapture);
+		ON_SCOPE_EXIT
+		{
+			GLog->RemoveOutputDevice(&LogCapture);
+		};
+
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, Module.GetModule(), TEXT("int EmitConditionalLogs()"),
+			TEXT("conditional logging functions should execute"), 1)));
+
+		ASSERT_THAT(IsTrue(LogCapture.ContainsText(TEXT("CoverageConditional_LogTrue")),
+			TEXT("LogIf(true) should emit")));
+		ASSERT_THAT(IsFalse(LogCapture.ContainsText(TEXT("CoverageConditional_LogFalse")),
+			TEXT("LogIf(false) should not emit")));
+		ASSERT_THAT(IsTrue(LogCapture.ContainsText(TEXT("CoverageConditional_InfoTrue")),
+			TEXT("LogInfoIf(true) should emit")));
+		ASSERT_THAT(IsFalse(LogCapture.ContainsText(TEXT("CoverageConditional_InfoFalse")),
+			TEXT("LogInfoIf(false) should not emit")));
+		ASSERT_THAT(IsTrue(LogCapture.ContainsText(TEXT("CoverageConditional_WarningTrue")),
+			TEXT("WarningIf(true) should emit")));
+		ASSERT_THAT(IsFalse(LogCapture.ContainsText(TEXT("CoverageConditional_WarningFalse")),
+			TEXT("WarningIf(false) should not emit")));
+		ASSERT_THAT(IsTrue(LogCapture.ContainsText(TEXT("CoverageConditional_Error")),
+			TEXT("ErrorIf(true) should emit")));
+		ASSERT_THAT(IsFalse(LogCapture.ContainsText(TEXT("CoverageConditional_ErrorFalse")),
+			TEXT("ErrorIf(false) should not emit")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageConditional_CategoryLogTrue"), ELogVerbosity::Log, FName(TEXT("CoverageConditionalCategory"))),
+			TEXT("LogIf(true, category) should preserve category and Log verbosity")));
+		ASSERT_THAT(IsFalse(LogCapture.ContainsText(TEXT("CoverageConditional_CategoryLogFalse")),
+			TEXT("LogIf(false, category) should not emit")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("[Information] CoverageConditional_CategoryInfoTrue"), ELogVerbosity::Log, FName(TEXT("CoverageConditionalCategory"))),
+			TEXT("LogInfoIf(true, category) should preserve category and information prefix")));
+		ASSERT_THAT(IsFalse(LogCapture.ContainsText(TEXT("CoverageConditional_CategoryInfoFalse")),
+			TEXT("LogInfoIf(false, category) should not emit")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("[Display] CoverageConditional_DisplayTrue"), ELogVerbosity::Display, FName(TEXT("CoverageConditionalCategory"))),
+			TEXT("LogDisplayIf(true, category) should preserve category and Display verbosity")));
+		ASSERT_THAT(IsFalse(LogCapture.ContainsText(TEXT("CoverageConditional_DisplayFalse")),
+			TEXT("LogDisplayIf(false, category) should not emit")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageConditional_CategoryWarningTrue"), ELogVerbosity::Warning, FName(TEXT("CoverageConditionalCategory"))),
+			TEXT("WarningIf(true, category) should preserve category and Warning verbosity")));
+		ASSERT_THAT(IsFalse(LogCapture.ContainsText(TEXT("CoverageConditional_CategoryWarningFalse")),
+			TEXT("WarningIf(false, category) should not emit")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageConditional_CategoryErrorTrue"), ELogVerbosity::Error, FName(TEXT("CoverageConditionalCategory"))),
+			TEXT("ErrorIf(true, category) should preserve category and Error verbosity")));
+		ASSERT_THAT(IsFalse(LogCapture.ContainsText(TEXT("CoverageConditional_CategoryErrorFalse")),
+			TEXT("ErrorIf(false, category) should not emit")));
+	}
+
+	TEST_METHOD(UnsupportedNativeLogMacrosAndVerbosityEnumsFailToCompile)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString UELogSource = ASTEST_AS(R"AS(
+			void TryNativeUELogMacro()
+			{
+				UE_LOG(LogTemp, Verbose, TEXT("Coverage verbose"));
+			}
+			)AS");
+		const TArray<FString> UELogFragments = { TEXT("UE_LOG") };
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageLogging_UELogMacroUnsupported"),
+			*UELogSource,
+			TEXT("native UE_LOG macro syntax is not AS-facing"),
+			MakeArrayView(UELogFragments))));
+
+		const FString ELogVerbositySource = ASTEST_AS(R"AS(
+			int TryNativeVerbosityEnum()
+			{
+				ELogVerbosity Value = ELogVerbosity::VeryVerbose;
+				return int(Value);
+			}
+			)AS");
+		const TArray<FString> ELogVerbosityFragments = { TEXT("ELogVerbosity") };
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageLogging_ELogVerbosityUnsupported"),
+			*ELogVerbositySource,
+			TEXT("ELogVerbosity enum values are not currently script-facing"),
+			MakeArrayView(ELogVerbosityFragments))));
 	}
 };
 

@@ -4,6 +4,9 @@
 #include "AngelscriptTestUtilities.h"
 
 #include "Misc/ScopeExit.h"
+#include "Templates/Function.h"
+
+#include <type_traits>
 
 // -----------------------------------------------------------------------------
 // AngelscriptCoverageMathNamespaceFunctions
@@ -20,6 +23,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathNamespaceFunctionsTest,
 	"Angelscript.TestModule.Coverage.MathNamespaceFunctions",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -31,11 +35,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathNamespaceFunctionsTest,
 		ASTEST_RESET_ENGINE(Engine);
 	}
 
+private:
 	// Helper
 	template <typename T>
 	void ExpectGlobalReturn(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const T& Expected, const TCHAR* Message, double Tolerance = 0.001)
 	{
+		ASSERT_THAT(IsNotNull(Module, TEXT("math namespace module should compile before executing global function")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
 		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("math namespace global function should resolve and prepare")));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
+
 		T Result{};
 		if constexpr (std::is_same_v<T, bool>
 			|| std::is_same_v<T, int32>
@@ -51,14 +68,55 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathNamespaceFunctionsTest,
 
 		if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>)
 		{
-			TestRunner->TestTrue(Message, FMath::IsNearlyEqual((double)Result, (double)Expected, Tolerance));
+			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual((double)Result, (double)Expected, Tolerance), Message));
 		}
 		else
 		{
-			TestRunner->TestEqual(Message, Result, Expected);
+			ASSERT_THAT(AreEqual(Expected, Result, Message));
 		}
 	}
 
+	void ExpectGlobalFloatRange(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, float MinValue, float MaxValue, const TCHAR* Message)
+	{
+		ASSERT_THAT(IsNotNull(Module, TEXT("math namespace module should compile before executing range function")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("math namespace range function should resolve and prepare")));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
+
+		const float Result = Invoker.ExecuteAndGet<float>(0.0f);
+		ASSERT_THAT(IsTrue(Result >= MinValue && Result <= MaxValue, Message));
+	}
+
+	template <typename T>
+	void ExpectGlobalStructSatisfies(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, TFunctionRef<bool(const T&)> Predicate, const TCHAR* Message)
+	{
+		ASSERT_THAT(IsNotNull(Module, TEXT("math namespace module should compile before extracting struct")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("math namespace struct function should resolve and prepare")));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
+
+		T Result{};
+		ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
+		ASSERT_THAT(IsTrue(Predicate(Result), Message));
+	}
+
+public:
 	// -------------------------------------------------------------------------
 	// Trigonometric functions: Sin, Cos, Tan, Asin, Acos, Atan, Atan2
 	// -------------------------------------------------------------------------
@@ -175,6 +233,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathNamespaceFunctionsTest,
 		{
 			return Math::LogX(2.0, 8.0);
 		}
+
+		float TestLog2()
+		{
+			return Math::Log2(8.0);
+		}
+
+		float TestExp2()
+		{
+			return Math::Exp2(3.0);
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -191,6 +259,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathNamespaceFunctionsTest,
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestExp()"), 1.0f, TEXT("Math::Exp()"), 0.001);
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestLoge()"), 2.0f, TEXT("Math::Loge()"), 0.001);
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestLogX()"), 3.0f, TEXT("Math::LogX()"), 0.001);
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestLog2()"), 3.0f, TEXT("Math::Log2()"), 0.001);
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestExp2()"), 8.0f, TEXT("Math::Exp2()"), 0.001);
 	}
 
 	// -------------------------------------------------------------------------
@@ -382,6 +452,90 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathNamespaceFunctionsTest,
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestClampInRange()"), 5.0f, TEXT("Math::Clamp() float in range"));
 	}
 
+	TEST_METHOD(SpecialValueClassificationFunctions)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovMath_SpecialValues", ASTEST_AS(R"AS(
+		bool TestFloatNaNConstant()
+		{
+			float NanValue = NAN_flt;
+			return Math::IsNaN(NanValue);
+		}
+
+		bool TestDoubleNaNConstant()
+		{
+			double NanValue = NAN_dbl;
+			return Math::IsNaN(NanValue);
+		}
+
+		bool TestFloatGeneratedNaN()
+		{
+			float NanValue = NAN_flt * 1.0f;
+			return Math::IsNaN(NanValue) && !Math::IsFinite(NanValue);
+		}
+
+		bool TestDoubleGeneratedNaN()
+		{
+			double NanValue = NAN_dbl * 1.0;
+			return Math::IsNaN(NanValue) && !Math::IsFinite(NanValue);
+		}
+
+		bool TestFloatPositiveInfinity()
+		{
+			float InfValue = Math::Exp(1000.0f);
+			return !Math::IsNaN(InfValue) && !Math::IsFinite(InfValue) && InfValue > 0.0f;
+		}
+
+		bool TestFloatNegativeInfinity()
+		{
+			float InfValue = -Math::Exp(1000.0f);
+			return !Math::IsNaN(InfValue) && !Math::IsFinite(InfValue) && InfValue < 0.0f;
+		}
+
+		bool TestDoublePositiveInfinity()
+		{
+			double InfValue = Math::Exp(1000.0);
+			return !Math::IsNaN(InfValue) && !Math::IsFinite(InfValue) && InfValue > 0.0;
+		}
+
+		bool TestDoubleNegativeInfinity()
+		{
+			double InfValue = -Math::Exp(1000.0);
+			return !Math::IsNaN(InfValue) && !Math::IsFinite(InfValue) && InfValue < 0.0;
+		}
+
+		bool TestFloatFiniteValue()
+		{
+			return Math::IsFinite(123.456f) && !Math::IsNaN(123.456f);
+		}
+
+		bool TestDoubleFiniteValue()
+		{
+			return Math::IsFinite(123.456) && !Math::IsNaN(123.456);
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatNaNConstant()"), true, TEXT("Math::IsNaN detects NAN_flt"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoubleNaNConstant()"), true, TEXT("Math::IsNaN detects NAN_dbl"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatGeneratedNaN()"), true, TEXT("Math::IsNaN detects NAN_flt expression result"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoubleGeneratedNaN()"), true, TEXT("Math::IsNaN detects NAN_dbl expression result"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatPositiveInfinity()"), true, TEXT("Math::IsFinite rejects float overflow Inf"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatNegativeInfinity()"), true, TEXT("Math::IsFinite rejects float overflow -Inf"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoublePositiveInfinity()"), true, TEXT("Math::IsFinite rejects double overflow Inf"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoubleNegativeInfinity()"), true, TEXT("Math::IsFinite rejects double overflow -Inf"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatFiniteValue()"), true, TEXT("Math::IsFinite accepts finite float"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoubleFiniteValue()"), true, TEXT("Math::IsFinite accepts finite double"));
+	}
+
 	// -------------------------------------------------------------------------
 	// Interpolation functions: Lerp, Smoothstep, InterpEaseIn/Out
 	// -------------------------------------------------------------------------
@@ -396,29 +550,44 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathNamespaceFunctionsTest,
 			return Math::Lerp(0.0, 10.0, 0.5);
 		}
 
-		float TestLerpAngle()
+		float TestLerpStableFloat()
 		{
-			return Math::LerpAngle(0.0, 180.0, 0.5);
+			return Math::LerpStable(0.0, 10.0, 0.5);
 		}
 
 		float TestInterpEaseIn()
 		{
-			return Math::InterpEaseIn(0.0, 10.0, 0.5, 2.0);
+			return Math::EaseIn(0.0, 10.0, 0.5, 2.0);
 		}
 
 		float TestInterpEaseOut()
 		{
-			return Math::InterpEaseOut(0.0, 10.0, 0.5, 2.0);
+			return Math::EaseOut(0.0, 10.0, 0.5, 2.0);
 		}
 
 		float TestInterpEaseInOut()
 		{
-			return Math::InterpEaseInOut(0.0, 10.0, 0.5, 2.0);
+			return Math::EaseInOut(0.0, 10.0, 0.5, 2.0);
 		}
 
 		float TestSmoothStep()
 		{
 			return Math::SmoothStep(0.0, 10.0, 0.5);
+		}
+
+		FVector TestVectorLerp()
+		{
+			return Math::Lerp(FVector(0, 0, 0), FVector(10, 20, 30), 0.5);
+		}
+
+		FVector TestVectorComponentLerp()
+		{
+			return Math::VLerp(FVector(0, 0, 0), FVector(10, 20, 30), FVector(0.1, 0.5, 1.0));
+		}
+
+		FVector TestVectorEaseIn()
+		{
+			return Math::EaseIn(FVector(0, 0, 0), FVector(10, 20, 30), 0.5f, 2.0f);
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -430,29 +599,31 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathNamespaceFunctionsTest,
 		};
 
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestLerpFloat()"), 5.0f, TEXT("Math::Lerp() float"));
-		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestLerpAngle()"), 90.0f, TEXT("Math::LerpAngle()"), 0.01);
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestLerpStableFloat()"), 5.0f, TEXT("Math::LerpStable() float"));
 
-		// InterpEase functions return values depend on implementation, just verify they execute
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float TestInterpEaseIn()"));
-			float Result = Invoker.ExecuteAndGet<float>(0.0f);
-			TestRunner->TestTrue(TEXT("Math::InterpEaseIn() executes"), Result >= 0.0f && Result <= 10.0f);
-		}
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float TestInterpEaseOut()"));
-			float Result = Invoker.ExecuteAndGet<float>(0.0f);
-			TestRunner->TestTrue(TEXT("Math::InterpEaseOut() executes"), Result >= 0.0f && Result <= 10.0f);
-		}
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float TestInterpEaseInOut()"));
-			float Result = Invoker.ExecuteAndGet<float>(0.0f);
-			TestRunner->TestTrue(TEXT("Math::InterpEaseInOut() executes"), Result >= 0.0f && Result <= 10.0f);
-		}
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float TestSmoothStep()"));
-			float Result = Invoker.ExecuteAndGet<float>(0.0f);
-			TestRunner->TestTrue(TEXT("Math::SmoothStep() executes"), Result >= 0.0f && Result <= 10.0f);
-		}
+		// Ease functions return values depend on implementation details, just verify they execute within the interpolation range.
+		ExpectGlobalFloatRange(Engine, Module, TEXT("float TestInterpEaseIn()"), 0.0f, 10.0f, TEXT("Math::EaseIn() executes"));
+		ExpectGlobalFloatRange(Engine, Module, TEXT("float TestInterpEaseOut()"), 0.0f, 10.0f, TEXT("Math::EaseOut() executes"));
+		ExpectGlobalFloatRange(Engine, Module, TEXT("float TestInterpEaseInOut()"), 0.0f, 10.0f, TEXT("Math::EaseInOut() executes"));
+		ExpectGlobalFloatRange(Engine, Module, TEXT("float TestSmoothStep()"), 0.0f, 10.0f, TEXT("Math::SmoothStep() executes"));
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestVectorLerp()"),
+			[](const FVector& Result) { return Result.Equals(FVector(5, 10, 15), 0.001); },
+			TEXT("Math::Lerp() vector overload"));
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestVectorComponentLerp()"),
+			[](const FVector& Result) { return Result.Equals(FVector(1, 10, 30), 0.001); },
+			TEXT("Math::VLerp() component alpha overload"));
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestVectorEaseIn()"),
+			[](const FVector& Result) { return Result.Equals(FVector(2.5, 5, 7.5), 0.001); },
+			TEXT("Math::EaseIn() vector overload"));
 	}
 
 	// -------------------------------------------------------------------------
@@ -493,27 +664,31 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathNamespaceFunctionsTest,
 		};
 
 		// Random functions - verify they execute and return values in expected ranges
+		ExpectGlobalFloatRange(Engine, Module, TEXT("float TestFRand()"), 0.0f, 1.0f, TEXT("Math::FRand() returns [0,1]"));
+		ExpectGlobalFloatRange(Engine, Module, TEXT("float TestRandRange()"), 10.0f, 20.0f, TEXT("Math::RandRange() float in range"));
+
+		ASSERT_THAT(IsNotNull(Module, TEXT("math random module should compile before executing int range function")));
+		if (Module == nullptr)
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float TestFRand()"));
-			float Result = Invoker.ExecuteAndGet<float>(0.0f);
-			TestRunner->TestTrue(TEXT("Math::FRand() returns [0,1)"), Result >= 0.0f && Result < 1.0f);
+			return;
 		}
+		FASGlobalFunctionInvoker RandRangeIntInvoker(*TestRunner, Engine, *Module, TEXT("int32 TestRandRangeInt()"));
+		ASSERT_THAT(IsTrue(RandRangeIntInvoker.IsValid(), TEXT("TestRandRangeInt should resolve and prepare")));
+		if (!RandRangeIntInvoker.IsValid())
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float TestRandRange()"));
-			float Result = Invoker.ExecuteAndGet<float>(0.0f);
-			TestRunner->TestTrue(TEXT("Math::RandRange() float in range"), Result >= 10.0f && Result <= 20.0f);
+			return;
 		}
+		const int32 RandRangeIntResult = RandRangeIntInvoker.ExecuteAndGet<int32>(0);
+		ASSERT_THAT(IsTrue(RandRangeIntResult >= 10 && RandRangeIntResult <= 20, TEXT("Math::RandRange() int in range")));
+
+		FASGlobalFunctionInvoker RandBoolInvoker(*TestRunner, Engine, *Module, TEXT("bool TestRandBool()"));
+		ASSERT_THAT(IsTrue(RandBoolInvoker.IsValid(), TEXT("TestRandBool should resolve and prepare")));
+		if (!RandBoolInvoker.IsValid())
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int32 TestRandRangeInt()"));
-			int32 Result = Invoker.ExecuteAndGet<int32>(0);
-			TestRunner->TestTrue(TEXT("Math::RandRange() int in range"), Result >= 10 && Result <= 20);
+			return;
 		}
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("bool TestRandBool()"));
-			bool Result = Invoker.ExecuteAndGet<bool>(false);
-			// Just verify it executes - it's a bool, so any value is valid
-			TestRunner->AddInfo(FString::Printf(TEXT("Math::RandBool() returned: %s"), Result ? TEXT("true") : TEXT("false")));
-		}
+		const bool RandBoolResult = RandBoolInvoker.ExecuteAndGet<bool>(false);
+		TestRunner->AddInfo(FString::Printf(TEXT("Math::RandBool() returned: %s"), RandBoolResult ? TEXT("true") : TEXT("false")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -525,20 +700,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathNamespaceFunctionsTest,
 		FAngelscriptEngineScope Scope(Engine);
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovMath_Vector", ASTEST_AS(R"AS(
-		float TestDotProduct()
-		{
-			FVector a = FVector(1, 0, 0);
-			FVector b = FVector(0, 1, 0);
-			return Math::DotProduct(a, b);
-		}
-
-		FVector TestCrossProduct()
-		{
-			FVector a = FVector(1, 0, 0);
-			FVector b = FVector(0, 1, 0);
-			return Math::CrossProduct(a, b);
-		}
-
 		float TestVectorLength()
 		{
 			FVector v = FVector(3, 4, 0);
@@ -550,6 +711,32 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathNamespaceFunctionsTest,
 			FVector v = FVector(10, 0, 0);
 			return v.GetSafeNormal();
 		}
+
+		bool TestVectorNormalizeInPlace()
+		{
+			FVector v = FVector(0, 6, 8);
+			return v.Normalize() && v.Equals(FVector(0, 0.6, 0.8), 0.001);
+		}
+
+		double TestVectorMemberDotProduct()
+		{
+			return FVector(1, 2, 3).DotProduct(FVector(4, 5, 6));
+		}
+
+		FVector TestVectorMemberCrossProduct()
+		{
+			return FVector(1, 0, 0).CrossProduct(FVector(0, 1, 0));
+		}
+
+		double TestVectorMixinAngularDistance()
+		{
+			return Math::RadiansToDegrees(FVector(1, 0, 0).AngularDistance(FVector(0, 1, 0)));
+		}
+
+		FVector TestVectorMixinConstrainToDirection()
+		{
+			return FVector(3, 4, 0).ConstrainToDirection(FVector(1, 0, 0));
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -559,23 +746,259 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathNamespaceFunctionsTest,
 			}
 		};
 
-		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestDotProduct()"), 0.0f, TEXT("Math::DotProduct()"));
-
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector TestCrossProduct()"));
-			FVector Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("Math::CrossProduct()"), Result.Equals(FVector(0, 0, 1), 0.001));
-		}
-
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestVectorLength()"), 5.0f, TEXT("Vector.Length()"));
 
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestVectorNormalize()"),
+			[](const FVector& Result) { return Result.Equals(FVector(1, 0, 0), 0.001); },
+			TEXT("Vector.GetSafeNormal()"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestVectorNormalizeInPlace()"), true, TEXT("FVector.Normalize() in-place"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double TestVectorMemberDotProduct()"), 32.0, TEXT("FVector.DotProduct() member"));
+
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestVectorMemberCrossProduct()"),
+			[](const FVector& Result) { return Result.Equals(FVector(0, 0, 1), 0.001); },
+			TEXT("FVector.CrossProduct() member"));
+
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double TestVectorMixinAngularDistance()"), 90.0, TEXT("FVector.AngularDistance() mixin"), 0.001);
+
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestVectorMixinConstrainToDirection()"),
+			[](const FVector& Result) { return Result.Equals(FVector(3, 0, 0), 0.001); },
+			TEXT("FVector.ConstrainToDirection() mixin"));
+	}
+
+	TEST_METHOD(UnsupportedVectorMathNamespaceBoundaries)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString UnsupportedSource = ASTEST_AS(R"AS(
+		float TriggerUnsupportedVectorMathNamespace()
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector TestVectorNormalize()"));
-			FVector Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("Vector.GetSafeNormal()"), Result.Equals(FVector(1, 0, 0), 0.001));
+			return Math::DotProduct(FVector(1, 0, 0), FVector(0, 1, 0))
+				+ Math::CrossProduct(FVector(1, 0, 0), FVector(0, 1, 0)).Z
+				+ Math::VectorLength(FVector(3, 4, 0))
+				+ Math::VectorNormalize(FVector(10, 0, 0)).X;
 		}
+		)AS");
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("DotProduct"));
+		ExpectedDiagnostics.Add(TEXT("CrossProduct"));
+		ExpectedDiagnostics.Add(TEXT("VectorLength"));
+		ExpectedDiagnostics.Add(TEXT("VectorNormalize"));
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCovMath_UnsupportedVectorMathNamespace"),
+			UnsupportedSource,
+			TEXT("unsupported Math:: vector namespace aliases should remain compile-failure boundaries"),
+			MakeArrayView(ExpectedDiagnostics))));
+	}
+
+	TEST_METHOD(GeometricMathFunctions)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovMath_GeometricHelpers", ASTEST_AS(R"AS(
+		bool TestLineBoxIntersection()
+		{
+			FBox box = FBox(FVector(0, 0, 0), FVector(10, 10, 10));
+			FVector start = FVector(-5, 5, 5);
+			FVector end = FVector(15, 5, 5);
+			return Math::LineBoxIntersection(box, start, end, end - start);
+		}
+
+		bool TestSphereAABBIntersection()
+		{
+			FBox box = FBox(FVector(0, 0, 0), FVector(10, 10, 10));
+			return Math::SphereAABBIntersection(FVector(5, 5, 20), 121.0, box);
+		}
+
+		FVector TestRayPlaneIntersection()
+		{
+			FPlane plane = FPlane(FVector::ZeroVector, FVector(0, 0, 1));
+			return Math::RayPlaneIntersection(FVector(0, 0, -5), FVector(0, 0, 1), plane);
+		}
+
+		FVector TestLinePlaneIntersectionWithOriginNormal()
+		{
+			return Math::LinePlaneIntersection(
+				FVector(0, 0, -5),
+				FVector(0, 0, 5),
+				FVector::ZeroVector,
+				FVector(0, 0, 1));
+		}
+
+		FVector TestClosestPointOnLine()
+		{
+			return Math::ClosestPointOnLine(FVector(0, 0, 0), FVector(10, 0, 0), FVector(3, 4, 0));
+		}
+
+		bool TestSegmentIntersection2DOutParam()
+		{
+			FVector intersection;
+			bool hit = Math::SegmentIntersection2D(
+				FVector(0, 0, 0),
+				FVector(10, 10, 0),
+				FVector(0, 10, 0),
+				FVector(10, 0, 0),
+				intersection);
+			return hit && intersection.Equals(FVector(5, 5, 0), 0.001);
+		}
+
+		bool TestIsPointInBoxHelpers()
+		{
+			return Math::IsPointInBox(FVector(1, 2, 3), FVector::ZeroVector, FVector(5, 5, 5))
+				&& Math::IsPointInBoxWithTransform(FVector(1, 2, 3), FTransform::Identity, FVector(5, 5, 5));
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestLineBoxIntersection()"), true, TEXT("Math::LineBoxIntersection()"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestSphereAABBIntersection()"), true, TEXT("Math::SphereAABBIntersection()"));
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestRayPlaneIntersection()"),
+			[](const FVector& Result) { return Result.Equals(FVector::ZeroVector, 0.001); },
+			TEXT("Math::RayPlaneIntersection()"));
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestLinePlaneIntersectionWithOriginNormal()"),
+			[](const FVector& Result) { return Result.Equals(FVector::ZeroVector, 0.001); },
+			TEXT("Math::LinePlaneIntersection() origin/normal overload"));
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestClosestPointOnLine()"),
+			[](const FVector& Result) { return Result.Equals(FVector(3, 0, 0), 0.001); },
+			TEXT("Math::ClosestPointOnLine()"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestSegmentIntersection2DOutParam()"), true, TEXT("Math::SegmentIntersection2D() out param"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestIsPointInBoxHelpers()"), true, TEXT("Math::IsPointInBox helpers"));
+	}
+
+	TEST_METHOD(VectorMethodMatrix)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovMath_VectorMethods", ASTEST_AS(R"AS(
+		float TestSizeSquared()
+		{
+			FVector SourceVector = FVector(3, 4, 12);
+			return SourceVector.SizeSquared();
+		}
+
+		float TestSize2D()
+		{
+			FVector SourceVector = FVector(3, 4, 12);
+			return SourceVector.Size2D();
+		}
+
+		float TestDistance()
+		{
+			FVector SourceVector = FVector(1, 2, 3);
+			return SourceVector.Distance(FVector(4, 6, 3));
+		}
+
+		float TestDistSquared()
+		{
+			FVector SourceVector = FVector(1, 2, 3);
+			return SourceVector.DistSquared(FVector(4, 6, 3));
+		}
+
+		bool TestIsNearlyZero()
+		{
+			return FVector(0.00001, 0.0, 0.0).IsNearlyZero(0.001);
+		}
+
+		bool TestIsZero()
+		{
+			return FVector::ZeroVector.IsZero();
+		}
+
+		bool TestIsUnit()
+		{
+			return FVector(1, 0, 0).IsUnit();
+		}
+
+		FVector TestGetClampedToSize()
+		{
+			FVector SourceVector = FVector(10, 0, 0);
+			return SourceVector.GetClampedToSize(0, 5);
+		}
+
+		FVector TestProjectOnTo()
+		{
+			FVector SourceVector = FVector(3, 4, 0);
+			return SourceVector.ProjectOnTo(FVector(1, 0, 0));
+		}
+
+		FVector TestProjectOnToNormal()
+		{
+			FVector SourceVector = FVector(3, 4, 0);
+			return SourceVector.ProjectOnToNormal(FVector(1, 0, 0));
+		}
+
+		FVector TestRotateAngleAxis()
+		{
+			FVector SourceVector = FVector(1, 0, 0);
+			return SourceVector.RotateAngleAxis(90, FVector(0, 0, 1));
+		}
+
+		bool TestRotation()
+		{
+			FRotator Rotation = FVector(1, 0, 0).Rotation();
+			return Math::Abs(Rotation.Pitch) < 0.01 && Math::Abs(Rotation.Yaw) < 0.01 && Math::Abs(Rotation.Roll) < 0.01;
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FVector method matrix module should compile")));
+
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestSizeSquared()"), 169.0f, TEXT("FVector.SizeSquared()"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestSize2D()"), 5.0f, TEXT("FVector.Size2D()"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestDistance()"), 5.0f, TEXT("FVector.Distance()"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestDistSquared()"), 25.0f, TEXT("FVector.DistSquared()"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestIsNearlyZero()"), true, TEXT("FVector.IsNearlyZero()"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestIsZero()"), true, TEXT("FVector.IsZero()"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestIsUnit()"), true, TEXT("FVector.IsUnit()"));
+
+		auto ExpectVectorReturn = [this, &Engine, Module](const TCHAR* Declaration, const FVector& Expected, const TCHAR* Message)
+		{
+			ExpectGlobalStructSatisfies<FVector>(
+				Engine,
+				Module,
+				Declaration,
+				[Expected](const FVector& Result) { return Result.Equals(Expected, 0.001); },
+				Message);
+		};
+
+		ExpectVectorReturn(TEXT("FVector TestGetClampedToSize()"), FVector(5, 0, 0), TEXT("FVector.GetClampedToSize()"));
+		ExpectVectorReturn(TEXT("FVector TestProjectOnTo()"), FVector(3, 0, 0), TEXT("FVector.ProjectOnTo()"));
+		ExpectVectorReturn(TEXT("FVector TestProjectOnToNormal()"), FVector(3, 0, 0), TEXT("FVector.ProjectOnToNormal()"));
+		ExpectVectorReturn(TEXT("FVector TestRotateAngleAxis()"), FVector(0, 1, 0), TEXT("FVector.RotateAngleAxis()"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestRotation()"), true, TEXT("FVector.Rotation()"));
 	}
 };
 

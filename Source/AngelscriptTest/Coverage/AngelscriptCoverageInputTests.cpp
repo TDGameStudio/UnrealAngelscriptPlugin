@@ -1,7 +1,9 @@
 #include "CQTest.h"
 #include "AngelscriptFunctionalTestUtils.h"
 #include "AngelscriptReflectiveAccess.h"
+#include "AngelscriptTestExecute.h"
 #include "AngelscriptTestMacros.h"
+#include "AngelscriptTestModuleScope.h"
 #include "AngelscriptTestUtilities.h"
 
 #include "Components/ActorTestSpawner.h"
@@ -9,6 +11,8 @@
 #include "GameFramework/Actor.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
+#include "InputAction.h"
+#include "InputMappingContext.h"
 #include "Misc/ScopeExit.h"
 
 // -----------------------------------------------------------------------------
@@ -731,6 +735,339 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 			)AS"),
 			TEXT("AInputModeController"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Input mode control controller class should compile")));
+	}
+
+	TEST_METHOD(EnhancedInputMappingContextAndActionValues)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int MappingContextMapUnmapAndClear()
+			{
+				UInputAction MoveAction = Cast<UInputAction>(NewObject(GetTransientPackage(), UInputAction::StaticClass(), n"CoverageMoveAction", true));
+				UInputMappingContext MappingContext = Cast<UInputMappingContext>(NewObject(GetTransientPackage(), UInputMappingContext::StaticClass(), n"CoverageMoveContext", true));
+				if (MoveAction == nullptr || MappingContext == nullptr)
+					return 0;
+
+				MoveAction.SetValueType(EInputActionValueType::Axis2D);
+				FEnhancedActionKeyMapping& WMapping = MappingContext.MapKey(MoveAction, EKeys::W);
+				FEnhancedActionKeyMapping& DMapping = MappingContext.MapKey(MoveAction, EKeys::D);
+				if (MappingContext.GetMappingCount() != 2)
+					return 0;
+				if (!MappingContext.HasMappingForInputAction(MoveAction))
+					return 0;
+				if (WMapping.GetAction() != MoveAction || WMapping.GetKey() != EKeys::W)
+					return 0;
+				if (DMapping.GetAction() != MoveAction || DMapping.GetKey() != EKeys::D)
+					return 0;
+
+				MappingContext.UnmapKey(MoveAction, EKeys::W);
+				if (MappingContext.GetMappingCount() != 1)
+					return 0;
+
+				MappingContext.UnmapAll();
+				return MappingContext.GetMappingCount() == 0 ? 1 : 0;
+			}
+
+			int InputActionValueShapes()
+			{
+				FInputActionValue FloatValue(0.75f);
+				if (FloatValue.GetAxis1D() < 0.74f || FloatValue.GetAxis1D() > 0.76f)
+					return 0;
+
+				FInputActionValue BoolValue(EInputActionValueType::Boolean, FVector(1.0f, 0.0f, 0.0f));
+				if (!BoolValue.Get())
+					return 0;
+
+				FInputActionValue Vector2DValue(FVector2D(2.0f, -3.0f));
+				FVector2D Axis2D = Vector2DValue.GetAxis2D();
+				if (Axis2D.X < 1.9f || Axis2D.X > 2.1f || Axis2D.Y > -2.9f || Axis2D.Y < -3.1f)
+					return 0;
+
+				FInputActionValue Vector3DValue(FVector(4.0f, 5.0f, 6.0f));
+				FVector Axis3D = Vector3DValue.GetAxis3D();
+				if (Axis3D.X < 3.9f || Axis3D.X > 4.1f || Axis3D.Z < 5.9f || Axis3D.Z > 6.1f)
+					return 0;
+
+				Vector3DValue.ConvertToType(EInputActionValueType::Axis1D);
+				return Vector3DValue.GetAxis1D() > 3.9f && Vector3DValue.GetAxis1D() < 4.1f ? 1 : 0;
+			}
+			)AS");
+
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASCoverageInput_EnhancedMappingAndValues"), ScriptSource);
+		ASSERT_THAT(IsTrue(ModuleScope.IsValid(), TEXT("Enhanced Input mapping/value module should compile")));
+		if (!ModuleScope.IsValid())
+		{
+			return;
+		}
+
+		asIScriptModule& ScriptModule = ModuleScope.GetModule();
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int MappingContextMapUnmapAndClear()"),
+			TEXT("UInputMappingContext should expose map, unmap, query, and clear operations to AS"), 1)));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int InputActionValueShapes()"),
+			TEXT("FInputActionValue should expose bool, float, 2D, and 3D value access to AS"), 1)));
+	}
+
+	TEST_METHOD(EnhancedInputComponentBindingEventsAndRemoval)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageInput_EnhancedComponentBinding"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class AEnhancedInputCoverageActor : AActor
+			{
+				UPROPERTY()
+				UInputAction Action;
+
+				UPROPERTY()
+				int StartedCount = 0;
+
+				UPROPERTY()
+				bool bBindingsAdded = false;
+
+				UPROPERTY()
+				bool bActionValueBindingAdded = false;
+
+				UPROPERTY()
+				bool bDebugBindingAdded = false;
+
+				UPROPERTY()
+				bool bClearRemovedBindings = false;
+
+				UFUNCTION()
+				void OnAction(FInputActionValue ActionValue, float32 ElapsedTime, float32 TriggeredTime, const UInputAction SourceAction)
+				{
+					StartedCount += 1;
+				}
+
+				UFUNCTION()
+				void OnDebug(FInputActionValue ActionValue)
+				{
+				}
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					Action = Cast<UInputAction>(NewObject(this, UInputAction::StaticClass(), n"CoverageAction", true));
+					UEnhancedInputComponent EnhancedComponent = Cast<UEnhancedInputComponent>(NewObject(this, UEnhancedInputComponent::StaticClass(), n"CoverageEnhancedInputComponent", true));
+					if (Action == nullptr || EnhancedComponent == nullptr)
+						return;
+
+					FEnhancedInputActionHandlerDynamicSignature StartedDelegate;
+					StartedDelegate.BindUFunction(this, n"OnAction");
+					EnhancedComponent.BindAction(Action, ETriggerEvent::Started, StartedDelegate);
+					EnhancedComponent.BindAction(Action, ETriggerEvent::Ongoing, StartedDelegate);
+					EnhancedComponent.BindAction(Action, ETriggerEvent::Triggered, StartedDelegate);
+					EnhancedComponent.BindAction(Action, ETriggerEvent::Completed, StartedDelegate);
+					EnhancedComponent.BindAction(Action, ETriggerEvent::Canceled, StartedDelegate);
+					bBindingsAdded = EnhancedComponent.HasBindings();
+
+					EnhancedComponent.BindActionValue(Action);
+					bActionValueBindingAdded = EnhancedComponent.HasBindings();
+
+					FInputDebugKeyHandlerDynamicSignature DebugDelegate;
+					DebugDelegate.BindUFunction(this, n"OnDebug");
+					EnhancedComponent.BindDebugKey(FInputChord(EKeys::SpaceBar), IE_Pressed, DebugDelegate, true);
+					bDebugBindingAdded = EnhancedComponent.HasBindings();
+
+					EnhancedComponent.ClearActionEventBindings();
+					EnhancedComponent.ClearActionValueBindings();
+					EnhancedComponent.ClearDebugKeyBindings();
+					bClearRemovedBindings = !EnhancedComponent.HasBindings();
+				}
+			}
+			)AS");
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageInputEnhancedComponentBinding.as"),
+			ScriptSource,
+			TEXT("AEnhancedInputCoverageActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Enhanced Input component binding actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Enhanced Input component binding actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bBindingsAdded"), true,
+			TEXT("BindAction should add event bindings for all ETriggerEvent values"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bActionValueBindingAdded"), true,
+			TEXT("BindActionValue should add a value binding"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bDebugBindingAdded"), true,
+			TEXT("BindDebugKey should add a debug key binding"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bClearRemovedBindings"), true,
+			TEXT("Enhanced Input clear helpers should remove AS-created bindings"))));
+	}
+
+	TEST_METHOD(EnhancedInputModifiersAndTriggers)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int ModifierAndTriggerLists()
+			{
+				UInputAction Action = Cast<UInputAction>(NewObject(GetTransientPackage(), UInputAction::StaticClass(), n"CoverageTriggerAction", true));
+				UInputMappingContext MappingContext = Cast<UInputMappingContext>(NewObject(GetTransientPackage(), UInputMappingContext::StaticClass(), n"CoverageTriggerContext", true));
+				if (Action == nullptr || MappingContext == nullptr)
+					return 0;
+
+				FEnhancedActionKeyMapping& Mapping = MappingContext.MapKey(Action, EKeys::SpaceBar);
+
+				UInputModifierDeadZone DeadZone = Cast<UInputModifierDeadZone>(NewObject(MappingContext, UInputModifierDeadZone::StaticClass(), n"CoverageDeadZone", true));
+				UInputModifierNegate Negate = Cast<UInputModifierNegate>(NewObject(MappingContext, UInputModifierNegate::StaticClass(), n"CoverageNegate", true));
+				UInputModifierScalar Scalar = Cast<UInputModifierScalar>(NewObject(MappingContext, UInputModifierScalar::StaticClass(), n"CoverageScalar", true));
+				UInputModifierSmooth Smooth = Cast<UInputModifierSmooth>(NewObject(MappingContext, UInputModifierSmooth::StaticClass(), n"CoverageSmooth", true));
+				UInputModifierResponseCurveExponential ResponseCurve = Cast<UInputModifierResponseCurveExponential>(NewObject(MappingContext, UInputModifierResponseCurveExponential::StaticClass(), n"CoverageResponseCurve", true));
+				if (DeadZone == nullptr || Negate == nullptr || Scalar == nullptr || Smooth == nullptr || ResponseCurve == nullptr)
+					return 0;
+
+				Mapping.AddModifier(DeadZone);
+				Mapping.AddModifier(Negate);
+				Mapping.AddModifier(Scalar);
+				Mapping.AddModifier(Smooth);
+				Mapping.AddModifier(ResponseCurve);
+				if (Mapping.GetModifierCount() != 5)
+					return 0;
+
+				UInputTriggerDown Down = Cast<UInputTriggerDown>(NewObject(MappingContext, UInputTriggerDown::StaticClass(), n"CoverageDown", true));
+				UInputTriggerPressed Pressed = Cast<UInputTriggerPressed>(NewObject(MappingContext, UInputTriggerPressed::StaticClass(), n"CoveragePressed", true));
+				UInputTriggerReleased Released = Cast<UInputTriggerReleased>(NewObject(MappingContext, UInputTriggerReleased::StaticClass(), n"CoverageReleased", true));
+				UInputTriggerHold Hold = Cast<UInputTriggerHold>(NewObject(MappingContext, UInputTriggerHold::StaticClass(), n"CoverageHold", true));
+				UInputTriggerTap Tap = Cast<UInputTriggerTap>(NewObject(MappingContext, UInputTriggerTap::StaticClass(), n"CoverageTap", true));
+				UInputTriggerPulse Pulse = Cast<UInputTriggerPulse>(NewObject(MappingContext, UInputTriggerPulse::StaticClass(), n"CoveragePulse", true));
+				if (Down == nullptr || Pressed == nullptr || Released == nullptr || Hold == nullptr || Tap == nullptr || Pulse == nullptr)
+					return 0;
+
+				Mapping.AddTrigger(Down);
+				Mapping.AddTrigger(Pressed);
+				Mapping.AddTrigger(Released);
+				Mapping.AddTrigger(Hold);
+				Mapping.AddTrigger(Tap);
+				Mapping.AddTrigger(Pulse);
+				return Mapping.GetTriggerCount() == 6 ? 1 : 0;
+			}
+			)AS");
+
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASCoverageInput_EnhancedModifiersAndTriggers"), ScriptSource);
+		ASSERT_THAT(IsTrue(ModuleScope.IsValid(), TEXT("Enhanced Input modifier/trigger module should compile")));
+		if (!ModuleScope.IsValid())
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ModuleScope.GetModule(), TEXT("int ModifierAndTriggerLists()"),
+			TEXT("Enhanced Input mappings should accept AS-created modifiers and triggers"), 1)));
+	}
+
+	TEST_METHOD(InputSettingsAndRuntimeMappingApi)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int InputSettingsReadApi()
+			{
+				UInputSettings Settings = UInputSettings::GetInputSettings();
+				if (Settings == nullptr)
+					return 0;
+
+				FName UniqueAction = Settings.GetUniqueActionName(n"CoverageAction");
+				FName UniqueAxis = Settings.GetUniqueAxisName(n"CoverageAxis");
+				int ActionCount = Settings.GetActionMappings().Num();
+				int AxisCount = Settings.GetAxisMappings().Num();
+				bool bMissingAction = Settings.DoesActionExist(n"DefinitelyMissingCoverageAction") == false;
+				bool bMissingAxis = Settings.DoesAxisExist(n"DefinitelyMissingCoverageAxis") == false;
+				return UniqueAction != NAME_None && UniqueAxis != NAME_None && ActionCount >= 0 && AxisCount >= 0 && bMissingAction && bMissingAxis ? 1 : 0;
+			}
+
+			void RuntimeMappingSignaturesCompile(UPlayerInput PlayerInput, FInputActionKeyMapping ActionMapping, FInputAxisKeyMapping AxisMapping)
+			{
+				PlayerInput.AddActionMapping(ActionMapping);
+				PlayerInput.RemoveActionMapping(ActionMapping);
+				PlayerInput.AddAxisMapping(AxisMapping);
+				PlayerInput.RemoveAxisMapping(AxisMapping);
+				PlayerInput.ForceRebuildingKeyMaps();
+				int ActionKeyCount = PlayerInput.GetKeysForAction(n"CoverageAction").Num();
+				int AxisKeyCount = PlayerInput.GetKeysForAxis(n"CoverageAxis").Num();
+				if (ActionKeyCount < 0 || AxisKeyCount < 0)
+					return;
+			}
+
+			int RuntimeMappingSignatureEntry()
+			{
+				return 1;
+			}
+			)AS");
+
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASCoverageInput_InputSettingsAndRuntimeMapping"), ScriptSource);
+		ASSERT_THAT(IsTrue(ModuleScope.IsValid(), TEXT("InputSettings/runtime mapping module should compile")));
+		if (!ModuleScope.IsValid())
+		{
+			return;
+		}
+
+		asIScriptModule& ScriptModule = ModuleScope.GetModule();
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int InputSettingsReadApi()"),
+			TEXT("UInputSettings read APIs should be available to AS"), 1)));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int RuntimeMappingSignatureEntry()"),
+			TEXT("UPlayerInput runtime remapping mixins should compile without requiring a real player-input instance"), 1)));
+	}
+
+	TEST_METHOD(TouchAndGestureApiBoundaries)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int TouchKeyAndPointerSurface()
+			{
+				bool bGestureKeysAreReachable = EKeys::Gesture_Pinch.IsValid() &&
+					EKeys::Gesture_Flick.IsValid() &&
+					EKeys::Gesture_Rotate.IsValid();
+				bool bTouchLikeControllerKeysAreReachable = EKeys::Steam_Touch_0.IsValid() &&
+					EKeys::Steam_Touch_1.IsValid();
+				return bGestureKeysAreReachable && bTouchLikeControllerKeysAreReachable ? 1 : 0;
+			}
+
+			int TouchBindingSurfaceIsAbsent()
+			{
+				return 1;
+			}
+			)AS");
+
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASCoverageInput_TouchGestureBoundaries"), ScriptSource);
+		ASSERT_THAT(IsTrue(ModuleScope.IsValid(), TEXT("touch and gesture boundary module should compile")));
+		if (!ModuleScope.IsValid())
+		{
+			return;
+		}
+
+		asIScriptModule& ScriptModule = ModuleScope.GetModule();
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int TouchKeyAndPointerSurface()"),
+			TEXT("touch and gesture key constants should be reachable to AS without real touch input"), 1)));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int TouchBindingSurfaceIsAbsent()"),
+			TEXT("touch pressed/moved/released dispatch remains a runtime-input gap rather than a fake simulation"), 1)));
 	}
 };
 

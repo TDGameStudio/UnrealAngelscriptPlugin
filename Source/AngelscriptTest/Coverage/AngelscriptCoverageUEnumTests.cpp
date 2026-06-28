@@ -146,16 +146,28 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 			)AS"),
 			TEXT("ACoverageUEnumBasicActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Enum basic declaration actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Enum basic declaration actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify UPROPERTY defaults via reflection
 		FEnumProperty* DefaultProp = FindFProperty<FEnumProperty>(ScriptClass, TEXT("DefaultValue"));
 		ASSERT_THAT(IsNotNull(DefaultProp, TEXT("DefaultValue property should exist")));
+		if (DefaultProp == nullptr)
+		{
+			return;
+		}
 
 		uint8* DefaultValuePtr = DefaultProp->ContainerPtrToValuePtr<uint8>(Actor);
 		int64 DefaultEnumValue = DefaultProp->GetUnderlyingProperty()->GetSignedIntPropertyValue(DefaultValuePtr);
@@ -163,6 +175,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 
 		FEnumProperty* ExplicitProp = FindFProperty<FEnumProperty>(ScriptClass, TEXT("ExplicitValue"));
 		ASSERT_THAT(IsNotNull(ExplicitProp, TEXT("ExplicitValue property should exist")));
+		if (ExplicitProp == nullptr)
+		{
+			return;
+		}
 
 		uint8* ExplicitValuePtr = ExplicitProp->ContainerPtrToValuePtr<uint8>(Actor);
 		int64 ExplicitEnumValue = ExplicitProp->GetUnderlyingProperty()->GetSignedIntPropertyValue(ExplicitValuePtr);
@@ -217,21 +233,138 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 			)AS"),
 			TEXT("ACoverageUEnumSpecifiersActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Enum specifiers actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Enum specifiers actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
-		// Verify BlueprintType enum exists
 		FEnumProperty* BPTypeProp = FindFProperty<FEnumProperty>(ScriptClass, TEXT("BPType"));
 		ASSERT_THAT(IsNotNull(BPTypeProp, TEXT("BPType property should exist")));
-		ASSERT_THAT(IsNotNull(BPTypeProp->GetEnum(), TEXT("BPType should have UEnum")));
+		if (BPTypeProp == nullptr)
+		{
+			return;
+		}
 
-		// Verify multi-specifier enum exists
+		UEnum* BPTypeEnum = BPTypeProp->GetEnum();
+		ASSERT_THAT(IsNotNull(BPTypeEnum, TEXT("BPType should have UEnum")));
+		if (BPTypeEnum == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(BPTypeEnum->GetBoolMetaData(TEXT("BlueprintType")),
+			TEXT("BlueprintType enum should expose BlueprintType metadata on generated UEnum")));
+
 		FEnumProperty* MultiSpecProp = FindFProperty<FEnumProperty>(ScriptClass, TEXT("MultiSpec"));
 		ASSERT_THAT(IsNotNull(MultiSpecProp, TEXT("MultiSpec property should exist")));
-		ASSERT_THAT(IsNotNull(MultiSpecProp->GetEnum(), TEXT("MultiSpec should have UEnum")));
+		if (MultiSpecProp == nullptr)
+		{
+			return;
+		}
+
+		UEnum* MultiSpecEnum = MultiSpecProp->GetEnum();
+		ASSERT_THAT(IsNotNull(MultiSpecEnum, TEXT("MultiSpec should have UEnum")));
+		if (MultiSpecEnum == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(FString(TEXT("MyCategory")), MultiSpecEnum->GetMetaData(TEXT("Category")),
+			TEXT("UENUM Category specifier should be preserved as UEnum metadata")));
+		ASSERT_THAT(AreEqual(FString(TEXT("My Enum Display")), MultiSpecEnum->GetMetaData(TEXT("DisplayName")),
+			TEXT("UENUM DisplayName specifier should be preserved as UEnum metadata")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Enum with multiple specifiers")), MultiSpecEnum->GetMetaData(TEXT("ToolTip")),
+			TEXT("UENUM ToolTip specifier should be preserved as UEnum metadata")));
+	}
+
+	TEST_METHOD(UEnumMetaBitflags)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageUEnum_MetaBitflags"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageUEnumMetaBitflags.as"),
+			ASTEST_AS(R"AS(
+			UENUM(meta = (Bitflags, BitmaskEnum = "EFlagMetaEnum"))
+			enum EFlagMetaEnum
+			{
+				FlagA = 1,
+				FlagB = 2,
+				FlagC = 4
+			}
+
+			UCLASS()
+			class ACoverageUEnumMetaBitflagsActor : AActor
+			{
+				UPROPERTY()
+				EFlagMetaEnum Value = EFlagMetaEnum::FlagB;
+			}
+			)AS"),
+			TEXT("ACoverageUEnumMetaBitflagsActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Enum meta bitflags actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FEnumProperty* ValueProp = FindFProperty<FEnumProperty>(ScriptClass, TEXT("Value"));
+		ASSERT_THAT(IsNotNull(ValueProp, TEXT("Value property should exist")));
+		if (ValueProp == nullptr)
+		{
+			return;
+		}
+
+		UEnum* FlagEnum = ValueProp->GetEnum();
+		ASSERT_THAT(IsNotNull(FlagEnum, TEXT("Value should have UEnum")));
+		if (FlagEnum == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(FlagEnum->GetBoolMetaData(TEXT("Bitflags")),
+			TEXT("UENUM meta=(Bitflags) should be preserved as bool metadata")));
+		ASSERT_THAT(AreEqual(FString(TEXT("EFlagMetaEnum")), FlagEnum->GetMetaData(TEXT("BitmaskEnum")),
+			TEXT("UENUM meta=(BitmaskEnum=...) should be preserved as UEnum metadata")));
+	}
+
+	TEST_METHOD(UEnumBitflagsSpecifierRejected)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("Unknown enum specifier Bitflags"));
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UENUM(Bitflags)
+			enum EUnsupportedBitflagsSpecifier
+			{
+				FlagA = 1,
+				FlagB = 2
+			}
+			)AS");
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageUEnum_BitflagsSpecifierRejected"),
+			*ScriptSource,
+			TEXT("UENUM(Bitflags) should remain an explicit unsupported specifier boundary"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -272,21 +405,46 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 			)AS"),
 			TEXT("ACoverageUEnumMetaActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Enum meta actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Enum meta actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		// Verify meta enum property
 		FEnumProperty* MetaProp = FindFProperty<FEnumProperty>(ScriptClass, TEXT("Value"));
 		ASSERT_THAT(IsNotNull(MetaProp, TEXT("Value property should exist")));
+		if (MetaProp == nullptr)
+		{
+			return;
+		}
 
 		UEnum* MetaEnum = MetaProp->GetEnum();
 		ASSERT_THAT(IsNotNull(MetaEnum, TEXT("Value should have UEnum")));
+		if (MetaEnum == nullptr)
+		{
+			return;
+		}
 
-		// Check that enum has entries (meta verification would require additional UEnum API checks)
 		ASSERT_THAT(IsTrue(MetaEnum->NumEnums() >= 4, TEXT("MetaEnum should have at least 4 entries")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Option Alpha")), MetaEnum->GetMetaData(TEXT("DisplayName"), 0),
+			TEXT("OptionA UMETA DisplayName should be preserved")));
+		ASSERT_THAT(AreEqual(FString(TEXT("This is option A")), MetaEnum->GetMetaData(TEXT("ToolTip"), 0),
+			TEXT("OptionA UMETA ToolTip should be preserved")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Option Beta")), MetaEnum->GetDisplayNameTextByIndex(1).ToString(),
+			TEXT("OptionB display text should use UMETA DisplayName")));
+		ASSERT_THAT(IsTrue(MetaEnum->HasMetaData(TEXT("Hidden"), 2),
+			TEXT("OptionC UMETA Hidden should be preserved as bool metadata")));
+		ASSERT_THAT(IsFalse(MetaEnum->HasMetaData(TEXT("Hidden"), 3),
+			TEXT("OptionD should not inherit Hidden metadata from OptionC")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -365,23 +523,35 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 			)AS"),
 			TEXT("ACoverageUEnumUsageActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Enum usage actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Enum usage actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify the state was changed via function call
 		FEnumProperty* StateProp = FindFProperty<FEnumProperty>(ScriptClass, TEXT("CurrentState"));
 		ASSERT_THAT(IsNotNull(StateProp, TEXT("CurrentState property should exist")));
+		if (StateProp == nullptr)
+		{
+			return;
+		}
 
 		uint8* StateValuePtr = StateProp->ContainerPtrToValuePtr<uint8>(Actor);
 		int64 StateValue = StateProp->GetUnderlyingProperty()->GetSignedIntPropertyValue(StateValuePtr);
 		ASSERT_THAT(AreEqual(2LL, StateValue, TEXT("CurrentState should be StatePaused (2)")));
 
 		// Verify function was executed
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FunctionCallCount"), 42, TEXT("Function call count should be 42"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FunctionCallCount"), 42, TEXT("Function call count should be 42"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -460,17 +630,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 			)AS"),
 			TEXT("ACoverageUEnumSwitchActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Enum switch actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Enum switch actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("RedCount"), 1, TEXT("Red case should execute once"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("GreenCount"), 1, TEXT("Green case should execute once"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("BlueCount"), 2, TEXT("Blue case should execute twice"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("DefaultCount"), 1, TEXT("Default case should execute once"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("RedCount"), 1, TEXT("Red case should execute once"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("GreenCount"), 1, TEXT("Green case should execute once"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("BlueCount"), 2, TEXT("Blue case should execute twice"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("DefaultCount"), 1, TEXT("Default case should execute once"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -529,17 +707,29 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 			)AS"),
 			TEXT("ACoverageUEnumConversionActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Enum conversion actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Enum conversion actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EnumToIntResult"), 20, TEXT("Enum to int should convert to 20"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EnumToIntResult"), 20, TEXT("Enum to int should convert to 20"))));
 
 		FEnumProperty* ResultProp = FindFProperty<FEnumProperty>(ScriptClass, TEXT("IntToEnumResult"));
 		ASSERT_THAT(IsNotNull(ResultProp, TEXT("IntToEnumResult property should exist")));
+		if (ResultProp == nullptr)
+		{
+			return;
+		}
 
 		uint8* ResultValuePtr = ResultProp->ContainerPtrToValuePtr<uint8>(Actor);
 		int64 ResultEnumValue = ResultProp->GetUnderlyingProperty()->GetSignedIntPropertyValue(ResultValuePtr);
@@ -629,18 +819,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 			)AS"),
 			TEXT("ACoverageUEnumBitflagsActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Enum bitflags actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Enum bitflags actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("OrResult"), 3, TEXT("OR should give Read|Write (3)"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("AndResult"), 1, TEXT("AND should give Read (1)"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("XorResult"), 1, TEXT("XOR should give Read (1)"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("NotResult"), -2, TEXT("NOT should give ~1 (-2)"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("CompoundOrResult"), 5, TEXT("Compound OR should give Read|Execute (5)"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("OrResult"), 3, TEXT("OR should give Read|Write (3)"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("AndResult"), 1, TEXT("AND should give Read (1)"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("XorResult"), 1, TEXT("XOR should give Read (1)"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("NotResult"), -2, TEXT("NOT should give ~1 (-2)"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("CompoundOrResult"), 5, TEXT("Compound OR should give Read|Execute (5)"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -720,25 +918,41 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 			)AS"),
 			TEXT("ACoverageUEnumContainersActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Enum containers actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Enum containers actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ArraySize"), 3, TEXT("Array should have 3 elements"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MapSize"), 2, TEXT("Map should have 2 elements"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MapLookupResult"), 200, TEXT("Map lookup should return 200"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ArraySize"), 3, TEXT("Array should have 3 elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MapSize"), 2, TEXT("Map should have 2 elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MapLookupResult"), 200, TEXT("Map lookup should return 200"))));
 
 		// Verify array property
 		FArrayProperty* ArrayProp = FindFProperty<FArrayProperty>(ScriptClass, TEXT("EnumArray"));
 		ASSERT_THAT(IsNotNull(ArrayProp, TEXT("EnumArray property should exist")));
+		if (ArrayProp == nullptr)
+		{
+			return;
+		}
 		ASSERT_THAT(IsTrue(ArrayProp->Inner->IsA<FEnumProperty>(), TEXT("EnumArray inner should be enum")));
 
 		// Verify map property
 		FMapProperty* MapProp = FindFProperty<FMapProperty>(ScriptClass, TEXT("EnumToIntMap"));
 		ASSERT_THAT(IsNotNull(MapProp, TEXT("EnumToIntMap property should exist")));
+		if (MapProp == nullptr)
+		{
+			return;
+		}
 		ASSERT_THAT(IsTrue(MapProp->KeyProp->IsA<FEnumProperty>(), TEXT("EnumToIntMap key should be enum")));
 		ASSERT_THAT(IsTrue(MapProp->ValueProp->IsA<FIntProperty>(), TEXT("EnumToIntMap value should be int")));
 	}

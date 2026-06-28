@@ -9,9 +9,14 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Components/ArrowComponent.h"
+#include "Components/AudioComponent.h"
 #include "Components/BoxComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/InputComponent.h"
+#include "Components/PointLightComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Misc/ScopeExit.h"
 
 // -----------------------------------------------------------------------------
@@ -100,15 +105,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSpecialComponentTest,
 			TEXT("ACoverageSpecialStaticMeshActor"));
 
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Special static mesh actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Special static mesh actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("MeshWasNull"), true, TEXT("Mesh should be null initially"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MaterialCount"), 0, TEXT("Material count should be 0"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("MeshWasNull"), true, TEXT("Mesh should be null initially"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MaterialCount"), 0, TEXT("Material count should be 0"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -181,23 +194,31 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSpecialComponentTest,
 			TEXT("ACoverageSpecialCharacterMovementActor"));
 
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Special character movement actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Special character movement actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		float NewMaxWalkSpeed = 0.0f;
-		VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewMaxWalkSpeed"), NewMaxWalkSpeed);
+		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewMaxWalkSpeed"), NewMaxWalkSpeed)));
 		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewMaxWalkSpeed, 800.0f, 0.01f), TEXT("MaxWalkSpeed should be set to 800")));
 
 		float NewJumpVelocity = 0.0f;
-		VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewJumpVelocity"), NewJumpVelocity);
+		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewJumpVelocity"), NewJumpVelocity)));
 		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewJumpVelocity, 500.0f, 0.01f), TEXT("JumpZVelocity should be set to 500")));
 
 		float NewGravityScale = 0.0f;
-		VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewGravityScale"), NewGravityScale);
+		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewGravityScale"), NewGravityScale)));
 		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewGravityScale, 1.5f, 0.01f), TEXT("GravityScale should be set to 1.5")));
 	}
 
@@ -258,18 +279,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSpecialComponentTest,
 			TEXT("ACoverageSpecialCameraActor"));
 
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Special camera actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Special camera actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		float NewFOV = 0.0f;
-		VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewFOV"), NewFOV);
+		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewFOV"), NewFOV)));
 		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewFOV, 120.0f, 0.01f), TEXT("FOV should be set to 120")));
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ConstrainAspectRatio"), true, TEXT("Aspect ratio should be constrained"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ConstrainAspectRatio"), true, TEXT("Aspect ratio should be constrained"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -339,22 +368,30 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSpecialComponentTest,
 			TEXT("ACoverageSpecialSpringArmActor"));
 
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Special spring arm actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Special spring arm actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		float NewArmLength = 0.0f;
-		VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewArmLength"), NewArmLength);
+		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewArmLength"), NewArmLength)));
 		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewArmLength, 500.0f, 0.01f), TEXT("Arm length should be set to 500")));
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DoCollisionTest"), false, TEXT("Collision test should be disabled"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("EnableCameraLag"), true, TEXT("Camera lag should be enabled"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DoCollisionTest"), false, TEXT("Collision test should be disabled"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("EnableCameraLag"), true, TEXT("Camera lag should be enabled"))));
 
 		float CameraLagSpeed = 0.0f;
-		VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("CameraLagSpeed"), CameraLagSpeed);
+		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("CameraLagSpeed"), CameraLagSpeed)));
 		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(CameraLagSpeed, 8.0f, 0.01f), TEXT("Camera lag speed should be set to 8")));
 	}
 
@@ -404,15 +441,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSpecialComponentTest,
 			TEXT("ACoverageSpecialBoxActor"));
 
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Special box actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Special box actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		FVector NewExtent;
-		GetStructByPath<FVector>(*TestRunner, Actor, TEXT("NewExtent"), NewExtent);
+		ASSERT_THAT(IsTrue(GetStructByPath<FVector>(*TestRunner, Actor, TEXT("NewExtent"), NewExtent)));
 		ASSERT_THAT(IsTrue(NewExtent.Equals(FVector(100.0f, 200.0f, 300.0f), 0.01f), TEXT("Box extent should be set correctly")));
 	}
 
@@ -462,15 +507,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSpecialComponentTest,
 			TEXT("ACoverageSpecialSphereActor"));
 
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Special sphere actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Special sphere actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		float NewRadius = 0.0f;
-		VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewRadius"), NewRadius);
+		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewRadius"), NewRadius)));
 		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewRadius, 150.0f, 0.01f), TEXT("Sphere radius should be set to 150")));
 	}
 
@@ -528,19 +581,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSpecialComponentTest,
 			TEXT("ACoverageSpecialCapsuleActor"));
 
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Special capsule actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Special capsule actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		float NewRadius = 0.0f;
-		VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewRadius"), NewRadius);
+		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewRadius"), NewRadius)));
 		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewRadius, 50.0f, 0.01f), TEXT("Capsule radius should be set to 50")));
 
 		float NewHalfHeight = 0.0f;
-		VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewHalfHeight"), NewHalfHeight);
+		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewHalfHeight"), NewHalfHeight)));
 		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewHalfHeight, 100.0f, 0.01f), TEXT("Capsule half height should be set to 100")));
 	}
 
@@ -633,30 +694,38 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSpecialComponentTest,
 			TEXT("ACoverageSpecialCustomSceneActor"));
 
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Special custom scene actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Special custom scene actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		float RetrievedRadius = 0.0f;
-		VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("RetrievedRadius"), RetrievedRadius);
+		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("RetrievedRadius"), RetrievedRadius)));
 		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(RetrievedRadius, 100.0f, 0.01f), TEXT("Custom radius should be 100")));
 
 		FLinearColor RetrievedColor;
-		GetStructByPath<FLinearColor>(*TestRunner, Actor, TEXT("RetrievedColor"), RetrievedColor);
+		ASSERT_THAT(IsTrue(GetStructByPath<FLinearColor>(*TestRunner, Actor, TEXT("RetrievedColor"), RetrievedColor)));
 		ASSERT_THAT(IsTrue(RetrievedColor.Equals(FLinearColor::Red, 0.01f), TEXT("Custom color should be red")));
 
 		float CalculatedArea = 0.0f;
-		VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("CalculatedArea"), CalculatedArea);
+		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("CalculatedArea"), CalculatedArea)));
 		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(CalculatedArea, 31415.9f, 1.0f), TEXT("Calculated area should be correct")));
 
 		// Tick a few times
 		TickWorld(Engine, Spawner.GetWorld(), 0.1f, 2);
 
 		int32 TickCount = 0;
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("TickCount"), TickCount);
+		ASSERT_THAT(IsTrue(GetByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("TickCount"), TickCount)));
 		ASSERT_THAT(IsTrue(TickCount >= 2, TEXT("Component should tick at least 2 times")));
 	}
 
@@ -718,15 +787,147 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSpecialComponentTest,
 			TEXT("ACoverageSpecialMultipleShapesActor"));
 
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Special multiple shapes actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Special multiple shapes actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AllComponentsValid"), true, TEXT("All shape components should be valid"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ShapeComponentCount"), 3, TEXT("Should have 3 shape components"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AllComponentsValid"), true, TEXT("All shape components should be valid"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ShapeComponentCount"), 3, TEXT("Should have 3 shape components"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Remaining default component types: Arrow, Audio, Input, PointLight, SkeletalMesh
+	// -------------------------------------------------------------------------
+	TEST_METHOD(AdditionalDefaultComponentTypes)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageSpecial_AdditionalTypes"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageSpecialAdditionalTypes.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageSpecialAdditionalTypesActor : AActor
+			{
+				UPROPERTY(DefaultComponent, RootComponent)
+				USceneComponent Root;
+
+				UPROPERTY(DefaultComponent, Attach=Root)
+				UArrowComponent Arrow;
+
+				UPROPERTY(DefaultComponent, Attach=Root)
+				UAudioComponent Audio;
+
+				UPROPERTY(DefaultComponent)
+				UInputComponent Input;
+
+				UPROPERTY(DefaultComponent, Attach=Root)
+				UPointLightComponent PointLight;
+
+				UPROPERTY(DefaultComponent, Attach=Root)
+				USkeletalMeshComponent SkeletalMesh;
+
+				UPROPERTY()
+				bool ArrowValid = false;
+
+				UPROPERTY()
+				bool AudioValid = false;
+
+				UPROPERTY()
+				bool InputValid = false;
+
+				UPROPERTY()
+				bool PointLightValid = false;
+
+				UPROPERTY()
+				bool SkeletalMeshValid = false;
+
+				UPROPERTY()
+				bool SceneTypesAttached = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					ArrowValid = Arrow != nullptr;
+					AudioValid = Audio != nullptr;
+					InputValid = Input != nullptr;
+					PointLightValid = PointLight != nullptr;
+					SkeletalMeshValid = SkeletalMesh != nullptr;
+
+					if (Arrow != nullptr && Audio != nullptr && PointLight != nullptr && SkeletalMesh != nullptr)
+					{
+						SceneTypesAttached =
+							Arrow.GetAttachParent() == Root
+							&& Audio.GetAttachParent() == Root
+							&& PointLight.GetAttachParent() == Root
+							&& SkeletalMesh.GetAttachParent() == Root;
+					}
+				}
+			}
+			)AS"),
+			TEXT("ACoverageSpecialAdditionalTypesActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Special additional component types actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const FObjectProperty* ArrowProperty = FindFProperty<FObjectProperty>(ScriptClass, TEXT("Arrow"));
+		const FObjectProperty* AudioProperty = FindFProperty<FObjectProperty>(ScriptClass, TEXT("Audio"));
+		const FObjectProperty* InputProperty = FindFProperty<FObjectProperty>(ScriptClass, TEXT("Input"));
+		const FObjectProperty* PointLightProperty = FindFProperty<FObjectProperty>(ScriptClass, TEXT("PointLight"));
+		const FObjectProperty* SkeletalMeshProperty = FindFProperty<FObjectProperty>(ScriptClass, TEXT("SkeletalMesh"));
+		ASSERT_THAT(IsNotNull(ArrowProperty, TEXT("Arrow component property should exist")));
+		ASSERT_THAT(IsNotNull(AudioProperty, TEXT("Audio component property should exist")));
+		ASSERT_THAT(IsNotNull(InputProperty, TEXT("Input component property should exist")));
+		ASSERT_THAT(IsNotNull(PointLightProperty, TEXT("PointLight component property should exist")));
+		ASSERT_THAT(IsNotNull(SkeletalMeshProperty, TEXT("SkeletalMesh component property should exist")));
+		if (ArrowProperty == nullptr || AudioProperty == nullptr || InputProperty == nullptr || PointLightProperty == nullptr || SkeletalMeshProperty == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(ArrowProperty->PropertyClass->IsChildOf(UArrowComponent::StaticClass()), TEXT("Arrow property should use UArrowComponent")));
+		ASSERT_THAT(IsTrue(AudioProperty->PropertyClass->IsChildOf(UAudioComponent::StaticClass()), TEXT("Audio property should use UAudioComponent")));
+		ASSERT_THAT(IsTrue(InputProperty->PropertyClass->IsChildOf(UInputComponent::StaticClass()), TEXT("Input property should use UInputComponent")));
+		ASSERT_THAT(IsTrue(PointLightProperty->PropertyClass->IsChildOf(UPointLightComponent::StaticClass()), TEXT("PointLight property should use UPointLightComponent")));
+		ASSERT_THAT(IsTrue(SkeletalMeshProperty->PropertyClass->IsChildOf(USkeletalMeshComponent::StaticClass()), TEXT("SkeletalMesh property should use USkeletalMeshComponent")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Special additional component types actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ArrowValid"), true, TEXT("UArrowComponent DefaultComponent should be created"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AudioValid"), true, TEXT("UAudioComponent DefaultComponent should be created"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InputValid"), true, TEXT("UInputComponent DefaultComponent should be created"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("PointLightValid"), true, TEXT("UPointLightComponent DefaultComponent should be created"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SkeletalMeshValid"), true, TEXT("USkeletalMeshComponent DefaultComponent should be created"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SceneTypesAttached"), true, TEXT("Scene default component types should attach to Root"))));
 	}
 };
 

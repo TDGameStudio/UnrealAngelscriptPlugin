@@ -16,9 +16,9 @@
 // from AngelscriptCoverageIntPropertyTests.cpp.
 //
 // Matrix coverage (from Documents/Coverage/Coverage_Containers.md):
-//   * TSetAdvancedOperations - Remove(), Find(), Empty(), Reset()
+//   * TSetAdvancedOperations - Contains(), Remove(), Empty(), Reset()
 //   * TSetIteration          - for-each loops
-//   * TSetSetOperations      - Union(), Intersect(), Difference(), Includes()
+//   * TSetSetOperations      - Append(Set) and unsupported set-operation aliases
 //   * TSetElementTypes       - FString, FName, enum, FVector
 //   * TSetAsParameter        - Parameters and return values
 //
@@ -46,7 +46,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// TSet advanced operations: Remove(), Find(), Empty(), Reset()
+	// TSet advanced operations: Contains(), Remove(), Empty(), Reset()
 	// -------------------------------------------------------------------------
 	TEST_METHOD(TSetAdvancedOperations)
 	{
@@ -72,10 +72,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 				TSet<int> TestSet;
 
 				UPROPERTY()
-				bool bFoundElement = false;
+				bool bContainsElement = false;
 
 				UPROPERTY()
-				int RemovedCount = 0;
+				bool bRemoved20 = false;
+
+				UPROPERTY()
+				bool bRemoved40 = false;
 
 				UPROPERTY()
 				int SizeBeforeEmpty = 0;
@@ -93,13 +96,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 					TestSet.Add(40);
 					TestSet.Add(50);
 
-					// Test Find() - returns pointer
-					int* FoundPtr = TestSet.Find(30);
-					bFoundElement = (FoundPtr != nullptr);
+					// Test Contains()
+					bContainsElement = TestSet.Contains(30);
 
 					// Test Remove()
-					RemovedCount = TestSet.Remove(20);
-					RemovedCount += TestSet.Remove(40);
+					bRemoved20 = TestSet.Remove(20);
+					bRemoved40 = TestSet.Remove(40);
 
 					// Test Empty()
 					SizeBeforeEmpty = TestSet.Num();
@@ -110,24 +112,52 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTSetAdvancedActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TSet-advanced actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TSet-advanced actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		// Verify Find() worked
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bFoundElement"), true, TEXT("Find() should locate existing element"));
+		// Verify Contains() worked
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bContainsElement"), true, TEXT("Contains() should locate existing element"))));
 
 		// Verify Remove() worked
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("RemovedCount"), 2, TEXT("Remove() should remove 2 elements"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bRemoved20"), true, TEXT("Remove() should remove element 20"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bRemoved40"), true, TEXT("Remove() should remove element 40"))));
 
 		// Verify set size before empty
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SizeBeforeEmpty"), 3, TEXT("Set should have 3 elements before Empty()"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SizeBeforeEmpty"), 3, TEXT("Set should have 3 elements before Empty()"))));
 
 		// Verify Empty() worked
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SizeAfterEmpty"), 0, TEXT("Set should be empty after Empty()"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SizeAfterEmpty"), 0, TEXT("Set should be empty after Empty()"))));
+
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TSet::Find(const int)'"));
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(*TestRunner, Engine, TEXT("ASCoverageTSetFindUnsupported"), ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageTSetFindUnsupportedActor : AActor
+			{
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					TSet<int> Values;
+					Values.Add(1);
+					Values.Find(1);
+				}
+			}
+			)AS"),
+			TEXT("TSet.Find() should remain an explicit unsupported boundary"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -165,6 +195,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 				UPROPERTY()
 				int MaxValue = 0;
 
+				UPROPERTY()
+				int ExplicitIteratorSum = 0;
+
+				UPROPERTY()
+				int ExplicitIteratorCount = 0;
+
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
@@ -183,26 +219,44 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 							MaxValue = Value;
 						}
 					}
+
+					// Test explicit iterator API.
+					TSetIterator<int> It = TestSet.Iterator();
+					while (It.CanProceed)
+					{
+						ExplicitIteratorSum += It.Proceed();
+						ExplicitIteratorCount++;
+					}
 				}
 			}
 			)AS"),
 			TEXT("ACoverageTSetIterationActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TSet-iteration actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TSet-iteration actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify iteration worked
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Sum"), 120, TEXT("Sum should be 15+25+35+45=120"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IterationCount"), 4, TEXT("Should iterate over all 4 elements"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MaxValue"), 45, TEXT("Max value should be 45"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Sum"), 120, TEXT("Sum should be 15+25+35+45=120"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IterationCount"), 4, TEXT("Should iterate over all 4 elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MaxValue"), 45, TEXT("Max value should be 45"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ExplicitIteratorSum"), 120, TEXT("explicit TSet iterator should traverse all values"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ExplicitIteratorCount"), 4, TEXT("explicit TSet iterator should visit all elements"))));
 	}
 
 	// -------------------------------------------------------------------------
-	// TSet set operations: Union, Intersect, Difference, Includes
+	// TSet set operations: Append(Set) and unsupported aliases
 	// -------------------------------------------------------------------------
 	TEST_METHOD(TSetSetOperations)
 	{
@@ -233,18 +287,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 				UPROPERTY()
 				TSet<int> UnionResult;
 
-				UPROPERTY()
-				TSet<int> IntersectResult;
-
-				UPROPERTY()
-				TSet<int> DifferenceResult;
-
-				UPROPERTY()
-				bool bSetAIncludesSubset = false;
-
-				UPROPERTY()
-				bool bSetAIncludesSetB = false;
-
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
@@ -262,36 +304,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 					SetB.Add(6);
 					SetB.Add(7);
 
-					// Test Union: A ∪ B = {1, 2, 3, 4, 5, 6, 7}
+					// Test Append(Set): A plus B = {1, 2, 3, 4, 5, 6, 7}
 					UnionResult = SetA;
 					UnionResult.Append(SetB);
-
-					// Test Intersect: A ∩ B = {3, 4, 5}
-					IntersectResult = SetA;
-					IntersectResult.Intersect(SetB);
-
-					// Test Difference: A - B = {1, 2}
-					DifferenceResult = SetA;
-					DifferenceResult.Difference(SetB);
-
-					// Test Includes (subset check)
-					TSet<int> Subset;
-					Subset.Add(2);
-					Subset.Add(3);
-					bSetAIncludesSubset = SetA.Includes(Subset);
-
-					// SetA does not include SetB (SetB has 6 and 7)
-					bSetAIncludesSetB = SetA.Includes(SetB);
 				}
 			}
 			)AS"),
 			TEXT("ACoverageTSetSetOperationsActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TSet-set-operations actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TSet-set-operations actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify Union result
@@ -299,25 +332,36 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 			int32 UnionSize = 0;
 			ASSERT_THAT(IsTrue(GetSetNumByPath(*TestRunner, Actor, TEXT("UnionResult"), UnionSize), TEXT("Should get UnionResult size")));
 			ASSERT_THAT(AreEqual(7, UnionSize, TEXT("Union should have 7 elements")));
+			ASSERT_THAT(IsTrue(SetContainsByPath<int32>(*TestRunner, Actor, TEXT("UnionResult"), 1), TEXT("UnionResult should contain SetA-only value")));
+			ASSERT_THAT(IsTrue(SetContainsByPath<int32>(*TestRunner, Actor, TEXT("UnionResult"), 7), TEXT("UnionResult should contain SetB-only value")));
 		}
 
-		// Verify Intersect result
-		{
-			int32 IntersectSize = 0;
-			ASSERT_THAT(IsTrue(GetSetNumByPath(*TestRunner, Actor, TEXT("IntersectResult"), IntersectSize), TEXT("Should get IntersectResult size")));
-			ASSERT_THAT(AreEqual(3, IntersectSize, TEXT("Intersect should have 3 elements")));
-		}
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TSet::Union(TSet<int>)'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TSet::Intersect(TSet<int>)'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TSet::Difference(TSet<int>)'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TSet::Includes(TSet<int>)'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TSet::FilterByPredicate(const int)'"));
 
-		// Verify Difference result
-		{
-			int32 DifferenceSize = 0;
-			ASSERT_THAT(IsTrue(GetSetNumByPath(*TestRunner, Actor, TEXT("DifferenceResult"), DifferenceSize), TEXT("Should get DifferenceResult size")));
-			ASSERT_THAT(AreEqual(2, DifferenceSize, TEXT("Difference should have 2 elements")));
-		}
-
-		// Verify Includes() results
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bSetAIncludesSubset"), true, TEXT("SetA should include subset {2, 3}"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bSetAIncludesSetB"), false, TEXT("SetA should not include SetB"));
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(*TestRunner, Engine, TEXT("ASCoverageTSet_SetOperationAliasesUnsupported"), ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageTSetSetOperationAliasesActor : AActor
+			{
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					TSet<int> Values;
+					TSet<int> Other;
+					Values.Union(Other);
+					Values.Intersect(Other);
+					Values.Difference(Other);
+					Values.Includes(Other);
+					Values.FilterByPredicate(1);
+				}
+			}
+			)AS"),
+			TEXT("TSet set-operation aliases and predicate filtering should remain explicit unsupported boundaries"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -408,11 +452,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTSetElementTypesActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TSet-element-types actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TSet-element-types actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify FString set
@@ -420,7 +472,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 			int32 SetSize = 0;
 			ASSERT_THAT(IsTrue(GetSetNumByPath(*TestRunner, Actor, TEXT("StringSet"), SetSize), TEXT("Should get StringSet size")));
 			ASSERT_THAT(AreEqual(4, SetSize, TEXT("StringSet should have 4 elements")));
-			VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bStringContains"), true, TEXT("StringSet should contain 'Banana'"));
+			ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bStringContains"), true, TEXT("StringSet should contain 'Banana'"))));
 		}
 
 		// Verify FName set
@@ -428,7 +480,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 			int32 SetSize = 0;
 			ASSERT_THAT(IsTrue(GetSetNumByPath(*TestRunner, Actor, TEXT("NameSet"), SetSize), TEXT("Should get NameSet size")));
 			ASSERT_THAT(AreEqual(4, SetSize, TEXT("NameSet should have 4 elements")));
-			VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bNameContains"), true, TEXT("NameSet should contain 'Green'"));
+			ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bNameContains"), true, TEXT("NameSet should contain 'Green'"))));
 		}
 
 		// Verify Enum set
@@ -436,7 +488,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 			int32 SetSize = 0;
 			ASSERT_THAT(IsTrue(GetSetNumByPath(*TestRunner, Actor, TEXT("EnumSet"), SetSize), TEXT("Should get EnumSet size")));
 			ASSERT_THAT(AreEqual(3, SetSize, TEXT("EnumSet should have 3 elements")));
-			VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bEnumContains"), true, TEXT("EnumSet should contain Beta"));
+			ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bEnumContains"), true, TEXT("EnumSet should contain Beta"))));
 		}
 
 		// Verify FVector set
@@ -444,7 +496,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 			int32 SetSize = 0;
 			ASSERT_THAT(IsTrue(GetSetNumByPath(*TestRunner, Actor, TEXT("VectorSet"), SetSize), TEXT("Should get VectorSet size")));
 			ASSERT_THAT(AreEqual(3, SetSize, TEXT("VectorSet should have 3 elements")));
-			VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bVectorContains"), true, TEXT("VectorSet should contain (0,1,0)"));
+			ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bVectorContains"), true, TEXT("VectorSet should contain (0,1,0)"))));
 		}
 	}
 
@@ -534,11 +586,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTSetParameterActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TSet-parameter actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TSet-parameter actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify original set unchanged
@@ -549,7 +609,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 		}
 
 		// Verify sum from const ref parameter
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SumFromConstRef"), 6, TEXT("Sum should be 1+2+3=6"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SumFromConstRef"), 6, TEXT("Sum should be 1+2+3=6"))));
 
 		// Verify modified set has new elements
 		{
@@ -567,14 +627,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// TSet Array conversion and combined operations
+	// TSet Append(Array) and unsupported Array() conversion
 	// -------------------------------------------------------------------------
 	TEST_METHOD(TSetArrayConversion)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		static const FName ModuleName(TEXT("ASCoverageTSet_ArrayConversion"));
+		static const FName ModuleName(TEXT("ASCoverageTSet_ArrayAppend"));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
@@ -584,7 +644,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 			*TestRunner,
 			Engine,
 			ModuleName,
-			TEXT("ASCoverageTSetArrayConversion.as"),
+			TEXT("ASCoverageTSetArrayAppend.as"),
 			ASTEST_AS(R"AS(
 			UCLASS()
 			class ACoverageTSetArrayConversionActor : AActor
@@ -593,48 +653,74 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 				TSet<int> UniqueSet;
 
 				UPROPERTY()
-				TArray<int> ConvertedArray;
+				TArray<int> SourceArray;
 
 				UPROPERTY()
-				int ArraySize = 0;
+				int SetSize = 0;
 
 				UPROPERTY()
-				bool bArrayContainsAll = false;
+				bool bSetContainsAll = false;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					// Create set with unique values
-					UniqueSet.Add(100);
-					UniqueSet.Add(200);
-					UniqueSet.Add(300);
-					UniqueSet.Add(400);
+					SourceArray.Add(100);
+					SourceArray.Add(200);
+					SourceArray.Add(300);
+					SourceArray.Add(400);
+					SourceArray.Add(400);
 
-					// Convert to array
-					ConvertedArray = UniqueSet.Array();
-					ArraySize = ConvertedArray.Num();
+					UniqueSet.Append(SourceArray);
+					SetSize = UniqueSet.Num();
 
 					// Verify all elements present (order may vary)
-					bArrayContainsAll =
-						ConvertedArray.Contains(100) &&
-						ConvertedArray.Contains(200) &&
-						ConvertedArray.Contains(300) &&
-						ConvertedArray.Contains(400);
+					bSetContainsAll =
+						UniqueSet.Contains(100) &&
+						UniqueSet.Contains(200) &&
+						UniqueSet.Contains(300) &&
+						UniqueSet.Contains(400);
 				}
 			}
 			)AS"),
 			TEXT("ACoverageTSetArrayConversionActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TSet-array-conversion actor class should compile")));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TSet-array-append actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		ASSERT_THAT(IsNotNull(Actor, TEXT("TSet-array-conversion actor should spawn")));
+		ASSERT_THAT(IsNotNull(Actor, TEXT("TSet-array-append actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		// Verify conversion worked
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ArraySize"), 4, TEXT("Converted array should have 4 elements"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bArrayContainsAll"), true, TEXT("Array should contain all set elements"));
+		// Verify Append(Array) worked
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SetSize"), 4, TEXT("Set should contain 4 unique elements after Append(Array)"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bSetContainsAll"), true, TEXT("Set should contain all array elements"))));
+
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TSet::Array()'"));
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(*TestRunner, Engine, TEXT("ASCoverageTSetArrayConversionUnsupported"), ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageTSetArrayConversionUnsupportedActor : AActor
+			{
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					TSet<int> Values;
+					Values.Add(1);
+					TArray<int> Converted = Values.Array();
+				}
+			}
+			)AS"),
+			TEXT("TSet.Array() should remain an explicit unsupported boundary"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -697,17 +783,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTSetResetCapacityActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TSet-reset-capacity actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TSet-reset-capacity actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify Reset() worked
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SizeBeforeReset"), 5, TEXT("Set should have 5 elements before Reset()"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SizeAfterReset"), 0, TEXT("Set should be empty after Reset()"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bReAddSuccess"), true, TEXT("Should be able to re-add elements after Reset()"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SizeBeforeReset"), 5, TEXT("Set should have 5 elements before Reset()"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SizeAfterReset"), 0, TEXT("Set should be empty after Reset()"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bReAddSuccess"), true, TEXT("Should be able to re-add elements after Reset()"))));
 	}
 };
 

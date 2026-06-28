@@ -5,6 +5,8 @@
 
 #include "Misc/ScopeExit.h"
 
+#include <type_traits>
+
 // -----------------------------------------------------------------------------
 // AngelscriptCoverageFTransformExpressionTests
 // -----------------------------------------------------------------------------
@@ -15,8 +17,6 @@
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
-
-using namespace AngelscriptFunctionalTestUtils;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformExpressionTest,
 	"Angelscript.TestModule.Coverage.FTransformExpression",
@@ -37,7 +37,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformExpressionTest,
 	template <typename T>
 	void ExpectGlobalReturn(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const T& Expected, const TCHAR* Message)
 	{
+		ASSERT_THAT(IsNotNull(Module, TEXT("FTransform expression module should compile before executing global function")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
 		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("FTransform expression global function should resolve and prepare")));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
 		T Result{};
 		if constexpr (std::is_same_v<T, bool>
 			|| std::is_same_v<T, int32>
@@ -50,25 +61,47 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformExpressionTest,
 		{
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
 		}
-		TestRunner->TestEqual(Message, Result, Expected);
+		ASSERT_THAT(AreEqual(Expected, Result, Message));
 	}
 
 	// Helper for FVector with tolerance
 	void ExpectVectorNearlyEqual(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const FVector& Expected, const TCHAR* Message, double Tolerance = 0.0001)
 	{
+		ASSERT_THAT(IsNotNull(Module, TEXT("FTransform expression module should compile before executing vector function")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
 		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("FTransform vector function should resolve and prepare")));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
 		FVector Result;
 		ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-		TestRunner->TestTrue(Message, Result.Equals(Expected, Tolerance));
+		ASSERT_THAT(IsTrue(Result.Equals(Expected, Tolerance), Message));
 	}
 
 	// Helper for FTransform with tolerance
 	void ExpectTransformNearlyEqual(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const FTransform& Expected, const TCHAR* Message, double Tolerance = 0.0001)
 	{
+		ASSERT_THAT(IsNotNull(Module, TEXT("FTransform expression module should compile before executing transform function")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
 		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("FTransform function should resolve and prepare")));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
 		FTransform Result;
 		ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-		TestRunner->TestTrue(Message, Result.Equals(Expected, Tolerance));
+		ASSERT_THAT(IsTrue(Result.Equals(Expected, Tolerance), Message));
 	}
 
 	// -------------------------------------------------------------------------

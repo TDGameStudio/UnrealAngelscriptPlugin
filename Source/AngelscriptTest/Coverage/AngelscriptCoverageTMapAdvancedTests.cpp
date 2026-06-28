@@ -16,10 +16,10 @@
 // from AngelscriptCoverageIntPropertyTests.cpp.
 //
 // Matrix coverage (from Documents/Coverage/Coverage_Containers.md):
-//   * TMapAdvancedOperations - Find(), Remove(), GetKeys(), index access
-//   * TMapIteration          - for-each over key-value pairs
+//   * TMapAdvancedOperations - Find(out), Remove(), GetKeys(), index access
+//   * TMapIteration          - Iterator() key-value traversal
 //   * TMapKeyTypes           - FString, FName, enum keys
-//   * TMapValueTypes         - FVector, TArray<int> values
+//   * TMapValueTypes         - FVector values and nested-container rejection
 //   * TMapAdvancedLookup     - FindOrAdd()
 //
 // Basic operations (Add, Contains, Num) are already covered in the int tests.
@@ -46,7 +46,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// TMap advanced operations: Find(), Remove(), GetKeys(), index access
+	// TMap advanced operations: Find(out), Remove(), GetKeys(), index access
 	// -------------------------------------------------------------------------
 	TEST_METHOD(TMapAdvancedOperations)
 	{
@@ -75,10 +75,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 				bool bFoundKey = false;
 
 				UPROPERTY()
+				FString FoundValue;
+
+				UPROPERTY()
 				bool bRemovedKey = false;
 
 				UPROPERTY()
+				bool bContainsRemovedKey = true;
+
+				UPROPERTY()
 				TArray<int> Keys;
+
+				UPROPERTY()
+				TArray<FString> Values;
 
 				UPROPERTY()
 				FString IndexAccessValue;
@@ -92,39 +101,51 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 					TestMap.Add(3, "Three");
 					TestMap.Add(4, "Four");
 
-					// Test Find() - returns pointer
-					FString* FoundPtr = TestMap.Find(2);
-					bFoundKey = (FoundPtr != nullptr);
+					// Test Find() - copies the value to an out parameter.
+					bFoundKey = TestMap.Find(2, FoundValue);
 
 					// Test Remove()
-					int RemoveCount = TestMap.Remove(3);
-					bRemovedKey = (RemoveCount > 0);
+					bRemovedKey = TestMap.Remove(3);
+					bContainsRemovedKey = TestMap.Contains(3);
 
 					// Test GetKeys()
 					TestMap.GetKeys(Keys);
 
+					// Test GetValues()
+					TestMap.GetValues(Values);
+
 					// Test index access (Map[Key])
 					IndexAccessValue = TestMap[1];
 
-					// Test index access for non-existent key (should add default)
-					TestMap[5] = "Five";
+					// Add a new key after index-read coverage.
+					TestMap.Add(5, "Five");
 				}
 			}
 			)AS"),
 			TEXT("ACoverageTMapAdvancedActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TMap-advanced actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TMap-advanced actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		// Verify Find() worked
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bFoundKey"), true, TEXT("Find() should locate existing key"));
+		// Verify Find(out) worked
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bFoundKey"), true, TEXT("Find(out) should locate existing key"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("FoundValue"), FString(TEXT("Two")), TEXT("Find(out) should copy the found value"))));
 
 		// Verify Remove() worked
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bRemovedKey"), true, TEXT("Remove() should remove existing key"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bRemovedKey"), true, TEXT("Remove() should remove existing key"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bContainsRemovedKey"), false, TEXT("Removed key should no longer be present"))));
 
 		// Verify map size after removal
 		int32 MapSize = 0;
@@ -136,13 +157,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 		ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, Actor, TEXT("Keys"), KeysCount), TEXT("Should get keys array size")));
 		ASSERT_THAT(AreEqual(3, KeysCount, TEXT("GetKeys() should return 3 keys (before index-add)")));
 
+		int32 ValuesCount = 0;
+		ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, Actor, TEXT("Values"), ValuesCount), TEXT("Should get values array size")));
+		ASSERT_THAT(AreEqual(3, ValuesCount, TEXT("GetValues() should return 3 values (before index-add)")));
+
 		// Verify index access read
 		FString IndexValue;
 		ASSERT_THAT(IsTrue(GetByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("IndexAccessValue"), IndexValue),
 			TEXT("Should read IndexAccessValue")));
 		ASSERT_THAT(AreEqual(FString(TEXT("One")), IndexValue, TEXT("Index access should read correct value")));
 
-		// Verify index access for new key worked
+		// Verify the explicitly added key worked
 		FString NewValue;
 		ASSERT_THAT(IsTrue(GetMapValueByPath<int32, FStrProperty, FString>(*TestRunner, Actor, TEXT("TestMap"), 5, NewValue),
 			TEXT("Should find newly added key")));
@@ -150,7 +175,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// TMap iteration: for-each over key-value pairs
+	// TMap iteration: explicit iterator over key-value pairs
 	// -------------------------------------------------------------------------
 	TEST_METHOD(TMapIteration)
 	{
@@ -191,11 +216,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 					TestMap.Add(20, "B");
 					TestMap.Add(30, "C");
 
-					// Test for-each iteration over pairs
-					for (auto& Pair : TestMap)
+					// Test explicit iterator over key-value pairs.
+					TMapIterator<int, FString> It = TestMap.Iterator();
+					while (It.CanProceed)
 					{
-						KeySum += Pair.Key;
-						ConcatenatedValues += Pair.Value;
+						It.Proceed();
+						KeySum += It.GetKey();
+						ConcatenatedValues += It.GetValue();
 						IterationCount++;
 					}
 				}
@@ -203,16 +230,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTMapIterationActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TMap-iteration actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TMap-iteration actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify iteration worked
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("KeySum"), 60, TEXT("Key sum should be 10+20+30=60"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IterationCount"), 3, TEXT("Should iterate over all 3 pairs"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("KeySum"), 60, TEXT("Key sum should be 10+20+30=60"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IterationCount"), 3, TEXT("Should iterate over all 3 pairs"))));
 
 		// Verify concatenated values (order may vary in TMap, so check length)
 		FString ConcatValue;
@@ -284,11 +319,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTMapKeyTypesActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TMap-key-types actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TMap-key-types actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify FString key map
@@ -330,7 +373,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// TMap value types: FVector, TArray<int>
+	// TMap value types: FVector and nested-container boundary
 	// -------------------------------------------------------------------------
 	TEST_METHOD(TMapValueTypes)
 	{
@@ -356,7 +399,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 				TMap<int, FVector> IntToVectorMap;
 
 				UPROPERTY()
-				TMap<FString, TArray<int>> StringToArrayMap;
+				FVector FirstVectorValue;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -365,28 +408,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 					IntToVectorMap.Add(1, FVector(1.0, 2.0, 3.0));
 					IntToVectorMap.Add(2, FVector(4.0, 5.0, 6.0));
 					IntToVectorMap.Add(3, FVector(7.0, 8.0, 9.0));
-
-					// TArray<int> values
-					TArray<int> Array1;
-					Array1.Add(10);
-					Array1.Add(20);
-					StringToArrayMap.Add("First", Array1);
-
-					TArray<int> Array2;
-					Array2.Add(30);
-					Array2.Add(40);
-					Array2.Add(50);
-					StringToArrayMap.Add("Second", Array2);
+					FirstVectorValue = IntToVectorMap[1];
 				}
 			}
 			)AS"),
 			TEXT("ACoverageTMapValueTypesActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TMap-value-types actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TMap-value-types actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify TMap<int, FVector>
@@ -395,36 +435,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 			ASSERT_THAT(IsTrue(GetMapNumByPath(*TestRunner, Actor, TEXT("IntToVectorMap"), MapSize), TEXT("Should get IntToVectorMap size")));
 			ASSERT_THAT(AreEqual(3, MapSize, TEXT("IntToVectorMap should have 3 entries")));
 
-			// Verify FVector value via path (map lookups return references, but we can verify via nested path)
+			// Verify FVector map value access via AS; property paths do not index TMap keys.
 			FVector VectorValue;
-			ASSERT_THAT(IsTrue(GetStructByPath<FVector>(*TestRunner, Actor, TEXT("IntToVectorMap[1]"), VectorValue),
+			ASSERT_THAT(IsTrue(GetStructByPath<FVector>(*TestRunner, Actor, TEXT("FirstVectorValue"), VectorValue),
 				TEXT("Should read FVector from map")));
 			ASSERT_THAT(IsTrue(VectorValue.Equals(FVector(1.0, 2.0, 3.0), 0.001), TEXT("IntToVectorMap[1] should be (1,2,3)")));
 		}
 
-		// Verify TMap<FString, TArray<int>>
-		{
-			int32 MapSize = 0;
-			ASSERT_THAT(IsTrue(GetMapNumByPath(*TestRunner, Actor, TEXT("StringToArrayMap"), MapSize), TEXT("Should get StringToArrayMap size")));
-			ASSERT_THAT(AreEqual(2, MapSize, TEXT("StringToArrayMap should have 2 entries")));
-
-			// Verify nested array size
-			int32 ArraySize = 0;
-			ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, Actor, TEXT("StringToArrayMap[First]"), ArraySize),
-				TEXT("Should get array size from map value")));
-			ASSERT_THAT(AreEqual(2, ArraySize, TEXT("StringToArrayMap['First'] should have 2 elements")));
-
-			// Verify nested array element
-			int32 Element = 0;
-			ASSERT_THAT(IsTrue(GetByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("StringToArrayMap[First][1]"), Element),
-				TEXT("Should read nested array element")));
-			ASSERT_THAT(AreEqual(20, Element, TEXT("StringToArrayMap['First'][1] should be 20")));
-
-			// Verify second array
-			ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, Actor, TEXT("StringToArrayMap[Second]"), ArraySize),
-				TEXT("Should get second array size")));
-			ASSERT_THAT(AreEqual(3, ArraySize, TEXT("StringToArrayMap['Second'] should have 3 elements")));
-		}
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("Containers cannot be nested in other containers"));
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(*TestRunner, Engine, TEXT("ASCoverageTMap_ArrayValueUnsupported"), ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageTMapArrayValueActor : AActor
+			{
+				UPROPERTY()
+				TMap<FString, TArray<int>> StringToArrayMap;
+			}
+			)AS"),
+			TEXT("TMap<FString,TArray<int>> should remain an explicit unsupported boundary"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -486,22 +515,30 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTMapFindOrAddActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TMap-FindOrAdd actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TMap-FindOrAdd actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify initial and final sizes
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("InitialSize"), 1, TEXT("Initial map size should be 1"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FinalSize"), 2, TEXT("Final map size should be 2 after FindOrAdd"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("InitialSize"), 1, TEXT("Initial map size should be 1"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FinalSize"), 2, TEXT("Final map size should be 2 after FindOrAdd"))));
 
 		// Verify FindOrAdd modified existing value
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Key10Value"), 150, TEXT("FindOrAdd on existing key should modify value (100+50=150)"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Key10Value"), 150, TEXT("FindOrAdd on existing key should modify value (100+50=150)"))));
 
 		// Verify FindOrAdd added new key with modified default
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Key20Value"), 200, TEXT("FindOrAdd on new key should add default and modify (0+200=200)"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Key20Value"), 200, TEXT("FindOrAdd on new key should add default and modify (0+200=200)"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -537,7 +574,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 				int AfterEmptySize;
 
 				UPROPERTY()
-				int RemovedCount;
+				bool bRemovedExisting;
+
+				UPROPERTY()
+				bool bContainsRemovedKey;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -554,16 +594,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 					Print("Initial map size: " + Items.Num());
 					InitialSize = Items.Num();
 
-					// Test Remove - returns number of removed elements
-					int Removed = Items.Remove(3);
-					Print("Removed key 3, count: " + Removed);
+					// Test Remove - returns whether the key was removed.
+					bool bRemoved = Items.Remove(3);
+					Print("Removed key 3: " + bRemoved);
 					Print("Size after Remove: " + Items.Num());
-					RemovedCount = Removed;
+					bRemovedExisting = bRemoved;
 					AfterRemoveSize = Items.Num();
 
 					// Verify key no longer exists
 					bool HasThree = Items.Contains(3);
 					Print("Contains(3) after Remove: " + HasThree);
+					bContainsRemovedKey = HasThree;
 
 					// Test Empty
 					Items.Empty();
@@ -574,103 +615,50 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTMapRemoveActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TMap Remove actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TMap Remove actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("InitialSize"), 5, TEXT("Initial map should have 5 entries"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("RemovedCount"), 1, TEXT("Remove should return 1"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("AfterRemoveSize"), 4, TEXT("Map should have 4 entries after Remove"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("AfterEmptySize"), 0, TEXT("Map should be empty after Empty()"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("InitialSize"), 5, TEXT("Initial map should have 5 entries"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bRemovedExisting"), true, TEXT("Remove should return true for an existing key"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bContainsRemovedKey"), false, TEXT("Removed key should no longer be present"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("AfterRemoveSize"), 4, TEXT("Map should have 4 entries after Remove"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("AfterEmptySize"), 0, TEXT("Map should be empty after Empty()"))));
 	}
 
 	// -------------------------------------------------------------------------
-	// TMap with complex value types (TArray as value)
+	// TMap with TArray values is rejected by this fork.
 	// -------------------------------------------------------------------------
 	TEST_METHOD(TMapWithArrayValues)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		static const FName ModuleName(TEXT("ASCoverageTMap_ArrayValues"));
-		ON_SCOPE_EXIT
-		{
-			Engine.DiscardModule(*ModuleName.ToString());
-		};
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("Containers cannot be nested in other containers"));
 
-		UClass* ScriptClass = CompileScriptModule(
-			*TestRunner,
-			Engine,
-			ModuleName,
-			TEXT("ASCoverageTMapArrayValues.as"),
-			ASTEST_AS(R"AS(
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(*TestRunner, Engine, TEXT("ASCoverageTMapArrayValuesUnsupported"), ASTEST_AS(R"AS(
 			UCLASS()
 			class ACoverageTMapArrayValuesActor : AActor
 			{
 				UPROPERTY()
-				int Group1Size;
-
-				UPROPERTY()
-				int Group2Size;
-
-				UPROPERTY()
-				int Group1First;
-
-				UPROPERTY()
-				int Group2Last;
-
-				UFUNCTION(BlueprintOverride)
-				void BeginPlay()
-				{
-					Print("=== TMap with TArray Values Test ===");
-
-					// TMap with int key and TArray<int> value
-					TMap<int, TArray<int>> Groups;
-
-					// Add arrays to map
-					TArray<int> Group1;
-					Group1.Add(10);
-					Group1.Add(20);
-					Group1.Add(30);
-					Groups.Add(1, Group1);
-					Print("Added Group1 with " + Group1.Num() + " elements");
-
-					TArray<int> Group2;
-					Group2.Add(100);
-					Group2.Add(200);
-					Groups.Add(2, Group2);
-					Print("Added Group2 with " + Group2.Num() + " elements");
-
-					// Access and verify
-					Group1Size = Groups[1].Num();
-					Group2Size = Groups[2].Num();
-					Group1First = Groups[1][0];
-					Group2Last = Groups[2][Groups[2].Num() - 1];
-
-					Print("Groups[1] size: " + Group1Size);
-					Print("Groups[2] size: " + Group2Size);
-					Print("Groups[1][0]: " + Group1First);
-				}
+				TMap<int, TArray<int>> Groups;
 			}
 			)AS"),
-			TEXT("ACoverageTMapArrayValuesActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TMap with TArray values actor class should compile")));
-
-		FActorTestSpawner Spawner;
-		Spawner.InitializeGameSubsystems();
-		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		ASSERT_THAT(IsNotNull(Actor, TEXT("TMap with TArray values actor should spawn")));
-
-		BeginPlayActor(Engine, *Actor);
-
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Group1Size"), 3, TEXT("Group1 should have 3 elements"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Group2Size"), 2, TEXT("Group2 should have 2 elements"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Group1First"), 10, TEXT("Group1[0] should be 10"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Group2Last"), 200, TEXT("Group2 last element should be 200"));
+			TEXT("TMap<int,TArray<int>> should remain an explicit unsupported boundary"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -706,7 +694,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 				int SingleEntrySize;
 
 				UPROPERTY()
-				int RemovedFromEmpty;
+				bool bRemovedFromEmpty;
+
+				UPROPERTY()
+				int AfterSingleRemoveSize;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -723,9 +714,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 					ContainsResult = HasKey ? 1 : 0;
 
 					// Remove from empty map (should not crash)
-					int Removed = EmptyMap.Remove(5);
-					Print("Remove(5) from empty map returned: " + Removed);
-					RemovedFromEmpty = Removed;
+					bool bRemoved = EmptyMap.Remove(5);
+					Print("Remove(5) from empty map returned: " + bRemoved);
+					bRemovedFromEmpty = bRemoved;
 
 					// Test single entry map
 					TMap<int, FString> SingleMap;
@@ -736,23 +727,78 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 					// Remove the only entry
 					SingleMap.Remove(42);
 					Print("After removing only entry: " + SingleMap.Num());
+					AfterSingleRemoveSize = SingleMap.Num();
 				}
 			}
 			)AS"),
 			TEXT("ACoverageTMapEdgeCasesActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TMap edge cases actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TMap edge cases actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EmptySize"), 0, TEXT("Empty map should have size 0"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ContainsResult"), 0, TEXT("Contains in empty map should return false"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("RemovedFromEmpty"), 0, TEXT("Remove from empty map should return 0"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SingleEntrySize"), 1, TEXT("Single entry map should have size 1"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EmptySize"), 0, TEXT("Empty map should have size 0"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ContainsResult"), 0, TEXT("Contains in empty map should return false"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bRemovedFromEmpty"), false, TEXT("Remove from empty map should return false"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SingleEntrySize"), 1, TEXT("Single entry map should have size 1"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("AfterSingleRemoveSize"), 0, TEXT("Removing the only entry should empty the map"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Unsupported TMap API aliases from UE API surface
+	// -------------------------------------------------------------------------
+	TEST_METHOD(TMapUnsupportedApiAliases)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TMap::GenerateKeyArray(int[])'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TMap::GenerateValueArray(FString[])'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TMap::FindRef(const int)'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TMap::FindChecked(const int)'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TMap::Reserve(const int)'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TMap::Shrink()'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TMap::Append(TMap<int,FString>)'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TMap::FilterByPredicate(const int)'"));
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(*TestRunner, Engine, TEXT("ASCoverageTMapUnsupportedApiAliases"), ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageTMapUnsupportedApiActor : AActor
+			{
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					TMap<int, FString> Values;
+					TMap<int, FString> Other;
+					TArray<int> Keys;
+					TArray<FString> OutValues;
+					Values.Add(1, "One");
+					Values.GenerateKeyArray(Keys);
+					Values.GenerateValueArray(OutValues);
+					Values.FindRef(1);
+					Values.FindChecked(1);
+					Values.Reserve(8);
+					Values.Shrink();
+					Values.Append(Other);
+					Values.FilterByPredicate(1);
+				}
+			}
+			)AS"),
+			TEXT("Unbound TMap UE aliases should remain explicit unsupported boundaries"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 };
 

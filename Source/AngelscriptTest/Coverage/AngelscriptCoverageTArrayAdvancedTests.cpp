@@ -7,19 +7,21 @@
 #include "Components/ActorTestSpawner.h"
 #include "GameFramework/Actor.h"
 #include "Misc/ScopeExit.h"
+#include "UObject/Class.h"
+#include "UObject/UnrealType.h"
 
 // -----------------------------------------------------------------------------
 // AngelscriptCoverageTArrayAdvancedTests
 // -----------------------------------------------------------------------------
 // Advanced coverage for TArray operations in AngelScript.
 // This file covers:
-//   - Sort() / Reverse() - Array sorting and reversal
+//   - Sort() - Array sorting
 //   - Insert() / RemoveAt() - Insertion and removal by index
-//   - Find() - Search returning index
+//   - FindIndex() - Search returning index
 //   - Reserve() - Capacity pre-allocation
 //   - For-each iteration - Range-based loops
 //   - Different element types - FString, FVector, UObject references
-//   - Nested containers - TArray<TArray<int>>
+//   - Nested containers - TArray<TArray<int>> unsupported boundary
 //
 // Basic operations (Add, Contains, Num, indexing) are already covered in
 // AngelscriptCoverageIntPropertyTests.cpp.
@@ -47,7 +49,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// TArray Sort and Reverse operations
+	// TArray Sort operations
 	// -------------------------------------------------------------------------
 	TEST_METHOD(TArraySortAndReverse)
 	{
@@ -72,9 +74,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 				UPROPERTY()
 				TArray<int> IntArray;
 
-				UPROPERTY()
-				TArray<int> ReversedArray;
-
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
@@ -84,40 +83,33 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 					IntArray.Add(8);
 					IntArray.Add(1);
 					IntArray.Add(9);
-					
 					IntArray.Sort();
-					
-					// Test Reverse
-					ReversedArray.Add(1);
-					ReversedArray.Add(2);
-					ReversedArray.Add(3);
-					ReversedArray.Add(4);
-					
-					ReversedArray.Reverse();
 				}
 			}
 			)AS"),
 			TEXT("ACoverageTArraySortActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray-sort actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray-sort actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify sorted array
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntArray[0]"), 1, TEXT("Sorted array[0] should be 1"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntArray[1]"), 2, TEXT("Sorted array[1] should be 2"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntArray[2]"), 5, TEXT("Sorted array[2] should be 5"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntArray[3]"), 8, TEXT("Sorted array[3] should be 8"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntArray[4]"), 9, TEXT("Sorted array[4] should be 9"));
-
-		// Verify reversed array
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReversedArray[0]"), 4, TEXT("Reversed array[0] should be 4"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReversedArray[1]"), 3, TEXT("Reversed array[1] should be 3"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReversedArray[2]"), 2, TEXT("Reversed array[2] should be 2"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReversedArray[3]"), 1, TEXT("Reversed array[3] should be 1"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntArray[0]"), 1, TEXT("Sorted array[0] should be 1"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntArray[1]"), 2, TEXT("Sorted array[1] should be 2"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntArray[2]"), 5, TEXT("Sorted array[2] should be 5"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntArray[3]"), 8, TEXT("Sorted array[3] should be 8"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntArray[4]"), 9, TEXT("Sorted array[4] should be 9"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -173,11 +165,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTArrayInsertActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray-insert actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray-insert actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify final array: [10, 20, 30, 35]
@@ -185,14 +185,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 		ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, Actor, TEXT("Values"), NumElements), TEXT("Should get array length")));
 		ASSERT_THAT(AreEqual(4, NumElements, TEXT("Array should have 4 elements after operations")));
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Values[0]"), 10, TEXT("Values[0] should be 10"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Values[1]"), 20, TEXT("Values[1] should be 20"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Values[2]"), 30, TEXT("Values[2] should be 30"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Values[3]"), 35, TEXT("Values[3] should be 35"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Values[0]"), 10, TEXT("Values[0] should be 10"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Values[1]"), 20, TEXT("Values[1] should be 20"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Values[2]"), 30, TEXT("Values[2] should be 30"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Values[3]"), 35, TEXT("Values[3] should be 35"))));
 	}
 
 	// -------------------------------------------------------------------------
-	// TArray Find operation - returns index or -1
+	// TArray FindIndex operation - returns index or -1
 	// -------------------------------------------------------------------------
 	TEST_METHOD(TArrayFind)
 	{
@@ -235,26 +235,34 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 					Values.Add(300);
 					Values.Add(200);  // Duplicate
 					
-					FindIndex1 = Values.Find(100);  // Should be 0
-					FindIndex2 = Values.Find(200);  // Should be 1 (first occurrence)
-					FindIndex3 = Values.Find(300);  // Should be 2
-					NotFoundIndex = Values.Find(999);  // Should be -1
+					FindIndex1 = Values.FindIndex(100);  // Should be 0
+					FindIndex2 = Values.FindIndex(200);  // Should be 1 (first occurrence)
+					FindIndex3 = Values.FindIndex(300);  // Should be 2
+					NotFoundIndex = Values.FindIndex(999);  // Should be -1
 				}
 			}
 			)AS"),
 			TEXT("ACoverageTArrayFindActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray-find actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray-find actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FindIndex1"), 0, TEXT("Find(100) should return index 0"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FindIndex2"), 1, TEXT("Find(200) should return index 1 (first occurrence)"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FindIndex3"), 2, TEXT("Find(300) should return index 2"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("NotFoundIndex"), -1, TEXT("Find(999) should return -1 when not found"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FindIndex1"), 0, TEXT("FindIndex(100) should return index 0"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FindIndex2"), 1, TEXT("FindIndex(200) should return index 1 (first occurrence)"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FindIndex3"), 2, TEXT("FindIndex(300) should return index 2"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("NotFoundIndex"), -1, TEXT("FindIndex(999) should return -1 when not found"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -304,20 +312,28 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTArrayReserveActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray-reserve actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray-reserve actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Reserve doesn't change Num(), only capacity
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FinalSize"), 10, TEXT("Array size should be 10 after adding 10 elements"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FinalSize"), 10, TEXT("Array size should be 10 after adding 10 elements"))));
 
 		// Verify some elements
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReservedArray[0]"), 0, TEXT("ReservedArray[0] should be 0"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReservedArray[5]"), 50, TEXT("ReservedArray[5] should be 50"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReservedArray[9]"), 90, TEXT("ReservedArray[9] should be 90"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReservedArray[0]"), 0, TEXT("ReservedArray[0] should be 0"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReservedArray[5]"), 50, TEXT("ReservedArray[5] should be 50"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReservedArray[9]"), 90, TEXT("ReservedArray[9] should be 90"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -352,6 +368,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 				UPROPERTY()
 				TArray<int> ModifiedArray;
 
+				UPROPERTY()
+				int ExplicitIteratorSum = 0;
+
+				UPROPERTY()
+				int ExplicitIteratorCount = 0;
+
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
@@ -377,6 +399,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 						SumByReference += Val;
 					}
 					
+					// Explicit iterator API coverage.
+					TArrayIterator<int> It = Values.Iterator();
+					while (It.CanProceed)
+					{
+						ExplicitIteratorSum += It.Proceed();
+						ExplicitIteratorCount++;
+					}
+
 					// Copy modified values
 					ModifiedArray = Values;
 				}
@@ -384,25 +414,35 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTArrayForEachActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray-foreach actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray-foreach actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Sum by value should be 1+2+3+4+5 = 15
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SumByValue"), 15, TEXT("For-each by value sum should be 15"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SumByValue"), 15, TEXT("For-each by value sum should be 15"))));
 
 		// Sum by reference should be 2+4+6+8+10 = 30
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SumByReference"), 30, TEXT("For-each by reference sum should be 30"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SumByReference"), 30, TEXT("For-each by reference sum should be 30"))));
 
 		// Verify modified array values
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ModifiedArray[0]"), 2, TEXT("ModifiedArray[0] should be 2"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ModifiedArray[1]"), 4, TEXT("ModifiedArray[1] should be 4"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ModifiedArray[2]"), 6, TEXT("ModifiedArray[2] should be 6"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ModifiedArray[3]"), 8, TEXT("ModifiedArray[3] should be 8"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ModifiedArray[4]"), 10, TEXT("ModifiedArray[4] should be 10"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ModifiedArray[0]"), 2, TEXT("ModifiedArray[0] should be 2"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ModifiedArray[1]"), 4, TEXT("ModifiedArray[1] should be 4"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ModifiedArray[2]"), 6, TEXT("ModifiedArray[2] should be 6"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ModifiedArray[3]"), 8, TEXT("ModifiedArray[3] should be 8"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ModifiedArray[4]"), 10, TEXT("ModifiedArray[4] should be 10"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ExplicitIteratorSum"), 30, TEXT("explicit TArray iterator should traverse all values"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ExplicitIteratorCount"), 5, TEXT("explicit TArray iterator should visit all elements"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -448,9 +488,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 					// Sort strings alphabetically
 					StringArray.Sort();
 					
-					// Find operations
-					FindIndexHello = StringArray.Find("Hello");
-					FindIndexNotFound = StringArray.Find("Missing");
+					// FindIndex operations
+					FindIndexHello = StringArray.FindIndex("Hello");
+					FindIndexNotFound = StringArray.FindIndex("Missing");
 					
 					// Insert at beginning
 					StringArray.Insert("AAA", 0);
@@ -459,24 +499,32 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTArrayStringActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray<FString> actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray<FString> actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// After sorting: ["AngelScript", "Hello", "Test", "World"]
 		// After inserting "AAA" at 0: ["AAA", "AngelScript", "Hello", "Test", "World"]
-		VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringArray[0]"), FString(TEXT("AAA")), TEXT("StringArray[0] should be 'AAA'"));
-		VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringArray[1]"), FString(TEXT("AngelScript")), TEXT("StringArray[1] should be 'AngelScript'"));
-		VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringArray[2]"), FString(TEXT("Hello")), TEXT("StringArray[2] should be 'Hello'"));
-		VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringArray[3]"), FString(TEXT("Test")), TEXT("StringArray[3] should be 'Test'"));
-		VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringArray[4]"), FString(TEXT("World")), TEXT("StringArray[4] should be 'World'"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringArray[0]"), FString(TEXT("AAA")), TEXT("StringArray[0] should be 'AAA'"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringArray[1]"), FString(TEXT("AngelScript")), TEXT("StringArray[1] should be 'AngelScript'"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringArray[2]"), FString(TEXT("Hello")), TEXT("StringArray[2] should be 'Hello'"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringArray[3]"), FString(TEXT("Test")), TEXT("StringArray[3] should be 'Test'"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringArray[4]"), FString(TEXT("World")), TEXT("StringArray[4] should be 'World'"))));
 
-		// Find should return index 2 (after insert, "Hello" is at index 2)
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FindIndexHello"), 2, TEXT("Find('Hello') should return 2"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FindIndexNotFound"), -1, TEXT("Find('Missing') should return -1"));
+		// FindIndex is captured before inserting "AAA".
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FindIndexHello"), 1, TEXT("FindIndex('Hello') should return 1 before insert"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FindIndexNotFound"), -1, TEXT("FindIndex('Missing') should return -1"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -522,11 +570,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTArrayVectorActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray<FVector> actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray<FVector> actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Final array: [(1,0,0), (0.5,0.5,0), (0,1,0)]
@@ -534,14 +590,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 		ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, Actor, TEXT("VectorArray"), NumElements), TEXT("Should get array length")));
 		ASSERT_THAT(AreEqual(3, NumElements, TEXT("VectorArray should have 3 elements")));
 
-		VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("VectorArray[0].X"), 1.0, TEXT("VectorArray[0].X should be 1.0"));
-		VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("VectorArray[0].Y"), 0.0, TEXT("VectorArray[0].Y should be 0.0"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("VectorArray[0].X"), 1.0, TEXT("VectorArray[0].X should be 1.0"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("VectorArray[0].Y"), 0.0, TEXT("VectorArray[0].Y should be 0.0"))));
 
-		VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("VectorArray[1].X"), 0.5, TEXT("VectorArray[1].X should be 0.5"));
-		VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("VectorArray[1].Y"), 0.5, TEXT("VectorArray[1].Y should be 0.5"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("VectorArray[1].X"), 0.5, TEXT("VectorArray[1].X should be 0.5"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("VectorArray[1].Y"), 0.5, TEXT("VectorArray[1].Y should be 0.5"))));
 
-		VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("VectorArray[2].X"), 0.0, TEXT("VectorArray[2].X should be 0.0"));
-		VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("VectorArray[2].Y"), 1.0, TEXT("VectorArray[2].Y should be 1.0"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("VectorArray[2].X"), 0.0, TEXT("VectorArray[2].X should be 0.0"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("VectorArray[2].Y"), 1.0, TEXT("VectorArray[2].Y should be 1.0"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -594,8 +650,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 					// Test Contains
 					bContainsSelf = ActorReferences.Contains(this);
 					
-					// Test Find
-					int SelfIndex = ActorReferences.Find(this);
+					// Test FindIndex
+					int SelfIndex = ActorReferences.FindIndex(this);
 					if (SelfIndex != 0)
 					{
 						ActorCount = -1;  // Signal error
@@ -605,101 +661,92 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTArrayActorRefsActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray<AActor> actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray<AActor> actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ActorCount"), 3, TEXT("ActorReferences should have 3 actors"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bContainsSelf"), true, TEXT("ActorReferences should contain self"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ActorCount"), 3, TEXT("ActorReferences should have 3 actors"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bContainsSelf"), true, TEXT("ActorReferences should contain self"))));
 	}
 
 	// -------------------------------------------------------------------------
-	// Nested containers: TArray<TArray<int>>
+	// Nested containers: TArray<TArray<int>> is rejected by this fork.
 	// -------------------------------------------------------------------------
 	TEST_METHOD(TArrayNestedContainers)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		static const FName ModuleName(TEXT("ASCoverageTArray_Nested"));
-		ON_SCOPE_EXIT
-		{
-			Engine.DiscardModule(*ModuleName.ToString());
-		};
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("Containers cannot be nested in other containers"));
 
-		UClass* ScriptClass = CompileScriptModule(
-			*TestRunner,
-			Engine,
-			ModuleName,
-			TEXT("ASCoverageTArrayNested.as"),
-			ASTEST_AS(R"AS(
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(*TestRunner, Engine, TEXT("ASCoverageTArrayNestedUnsupported"), ASTEST_AS(R"AS(
 			UCLASS()
 			class ACoverageTArrayNestedActor : AActor
 			{
 				UPROPERTY()
 				TArray<TArray<int>> Matrix;
+			}
+			)AS"),
+			TEXT("TArray<TArray<int>> should remain an explicit unsupported boundary"),
+			MakeArrayView(ExpectedDiagnostics))));
 
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(*TestRunner, Engine, TEXT("ASCoverageTArrayDeepNestedUnsupported"), ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageTArrayDeepNestedActor : AActor
+			{
 				UPROPERTY()
-				int RowCount;
+				TArray<TArray<TArray<int>>> Matrix;
+			}
+			)AS"),
+			TEXT("TArray<TArray<TArray<int>>> should remain an explicit unsupported boundary"),
+			MakeArrayView(ExpectedDiagnostics))));
+	}
 
-				UPROPERTY()
-				int TotalElements;
+	// -------------------------------------------------------------------------
+	// Unsupported TArray API aliases from older matrix drafts.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(TArrayUnsupportedApiAliases)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
 
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TArray::Find(const int)'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TArray::FindLast(const int)'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TArray::Reverse()'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TArray::RemoveAll(const int)'"));
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(*TestRunner, Engine, TEXT("ASCoverageTArrayUnsupportedApiAliases"), ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageTArrayUnsupportedApiActor : AActor
+			{
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					// Create a 3x3 matrix
-					for (int i = 0; i < 3; i++)
-					{
-						TArray<int> Row;
-						for (int j = 0; j < 3; j++)
-						{
-							Row.Add(i * 3 + j);
-						}
-						Matrix.Add(Row);
-					}
-					
-					RowCount = Matrix.Num();
-					
-					// Count total elements
-					TotalElements = 0;
-					for (const TArray<int>& Row : Matrix)
-					{
-						TotalElements += Row.Num();
-					}
-					
-					// Modify nested array
-					Matrix[1][1] = 999;
+					TArray<int> Values;
+					Values.Add(1);
+					Values.Add(2);
+					Values.Find(1);
+					Values.FindLast(1);
+					Values.Reverse();
+					Values.RemoveAll(1);
 				}
 			}
 			)AS"),
-			TEXT("ACoverageTArrayNestedActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray<TArray<int>> actor class should compile")));
-
-		FActorTestSpawner Spawner;
-		Spawner.InitializeGameSubsystems();
-		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray<TArray<int>> actor should spawn")));
-		BeginPlayActor(Engine, *Actor);
-
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("RowCount"), 3, TEXT("Matrix should have 3 rows"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("TotalElements"), 9, TEXT("Matrix should have 9 total elements"));
-
-		// Verify some matrix values
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Matrix[0][0]"), 0, TEXT("Matrix[0][0] should be 0"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Matrix[0][1]"), 1, TEXT("Matrix[0][1] should be 1"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Matrix[0][2]"), 2, TEXT("Matrix[0][2] should be 2"));
-		
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Matrix[1][0]"), 3, TEXT("Matrix[1][0] should be 3"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Matrix[1][1]"), 999, TEXT("Matrix[1][1] should be 999 (modified)"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Matrix[1][2]"), 5, TEXT("Matrix[1][2] should be 5"));
-		
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Matrix[2][0]"), 6, TEXT("Matrix[2][0] should be 6"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Matrix[2][1]"), 7, TEXT("Matrix[2][1] should be 7"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Matrix[2][2]"), 8, TEXT("Matrix[2][2] should be 8"));
+			TEXT("Legacy TArray aliases Find/FindLast/Reverse/RemoveAll should remain explicit unsupported boundaries"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -777,21 +824,29 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTArrayAppendActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray Append actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray Append actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MergedSize"), 5, TEXT("Merged array should have 5 elements"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MergedArray[0]"), 1, TEXT("MergedArray[0] should be 1"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MergedArray[1]"), 2, TEXT("MergedArray[1] should be 2"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MergedArray[2]"), 3, TEXT("MergedArray[2] should be 3"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MergedArray[3]"), 4, TEXT("MergedArray[3] should be 4"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MergedArray[4]"), 5, TEXT("MergedArray[4] should be 5"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("AppendEmptyResult"), 1, TEXT("Appending empty array should not change size"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MergedSize"), 5, TEXT("Merged array should have 5 elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MergedArray[0]"), 1, TEXT("MergedArray[0] should be 1"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MergedArray[1]"), 2, TEXT("MergedArray[1] should be 2"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MergedArray[2]"), 3, TEXT("MergedArray[2] should be 3"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MergedArray[3]"), 4, TEXT("MergedArray[3] should be 4"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MergedArray[4]"), 5, TEXT("MergedArray[4] should be 5"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("AppendEmptyResult"), 1, TEXT("Appending empty array should not change size"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -829,7 +884,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					Print("=== TArray AddUnique and RemoveAll Test ===");
+					Print("=== TArray AddUnique and Remove Test ===");
 
 					// Test AddUnique
 					TArray<int> Numbers;
@@ -846,7 +901,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 
 					UniqueArraySize = Numbers.Num();
 
-					// Test RemoveAll - remove all instances of a value
+					// Test Remove - remove all instances of a value
 					TArray<int> Values;
 					Values.Add(1);
 					Values.Add(2);
@@ -856,14 +911,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 					Values.Add(2);
 					Values.Add(5);
 
-					Print("Before RemoveAll(2):");
+					Print("Before Remove(2):");
 					Print("  Values size: " + Values.Num());
 					for (int i = 0; i < Values.Num(); i++)
 						Print("  Values[" + i + "] = " + Values[i]);
 
-					int Removed = Values.RemoveAll(2);
+					int Removed = Values.Remove(2);
 
-					Print("After RemoveAll(2):");
+					Print("After Remove(2):");
 					Print("  Removed count: " + Removed);
 					Print("  Values size: " + Values.Num());
 					for (int i = 0; i < Values.Num(); i++)
@@ -875,18 +930,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 			}
 			)AS"),
 			TEXT("ACoverageTArrayUniqueRemoveActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray AddUnique/RemoveAll actor class should compile")));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray AddUnique/Remove actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray AddUnique/RemoveAll actor should spawn")));
+		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray AddUnique/Remove actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("UniqueArraySize"), 3, TEXT("AddUnique should result in 3 unique elements"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("RemovedCount"), 3, TEXT("RemoveAll should remove 3 instances of value 2"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FinalSize"), 4, TEXT("Array should have 4 elements after RemoveAll"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("UniqueArraySize"), 3, TEXT("AddUnique should result in 3 unique elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("RemovedCount"), 3, TEXT("Remove should remove 3 instances of value 2"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FinalSize"), 4, TEXT("Array should have 4 elements after Remove"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -972,18 +1035,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTArraySetNumActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray SetNum actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray SetNum actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ExpandedSize"), 10, TEXT("SetNum(10) should expand array to 10 elements"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ShrunkSize"), 2, TEXT("SetNum(2) should shrink array to 2 elements"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LastElement"), 0, TEXT("New elements should be default-initialized to 0"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EmptyResetSize"), 0, TEXT("Reset should clear array"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ExpandedSize"), 10, TEXT("SetNum(10) should expand array to 10 elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ShrunkSize"), 2, TEXT("SetNum(2) should shrink array to 2 elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LastElement"), 0, TEXT("New elements should be default-initialized to 0"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EmptyResetSize"), 0, TEXT("Reset should clear array"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1063,25 +1134,33 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTArraySwapActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray Swap actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray Swap actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify swapped int array
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SwappedArray[0]"), 50, TEXT("SwappedArray[0] should be 50"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SwappedArray[1]"), 20, TEXT("SwappedArray[1] should be 20"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SwappedArray[2]"), 30, TEXT("SwappedArray[2] should be 30"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SwappedArray[3]"), 40, TEXT("SwappedArray[3] should be 40"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SwappedArray[4]"), 10, TEXT("SwappedArray[4] should be 10"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SwappedArray[0]"), 50, TEXT("SwappedArray[0] should be 50"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SwappedArray[1]"), 20, TEXT("SwappedArray[1] should be 20"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SwappedArray[2]"), 30, TEXT("SwappedArray[2] should be 30"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SwappedArray[3]"), 40, TEXT("SwappedArray[3] should be 40"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SwappedArray[4]"), 10, TEXT("SwappedArray[4] should be 10"))));
 
 		// Verify swapped string array
-		VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringSwapped[0]"), TEXT("Third"), TEXT("StringSwapped[0] should be 'Third'"));
-		VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringSwapped[1]"), TEXT("Second"), TEXT("StringSwapped[1] should be 'Second'"));
-		VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringSwapped[2]"), TEXT("First"), TEXT("StringSwapped[2] should be 'First'"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringSwapped[0]"), TEXT("Third"), TEXT("StringSwapped[0] should be 'Third'"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringSwapped[1]"), TEXT("Second"), TEXT("StringSwapped[1] should be 'Second'"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringSwapped[2]"), TEXT("First"), TEXT("StringSwapped[2] should be 'First'"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1140,8 +1219,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 					for (int i = 0; i < Numbers.Num(); i++)
 						Print("  Numbers[" + i + "] = " + Numbers[i]);
 
-					int LastIndex = Numbers.FindLast(5);
-					Print("FindLast(5) returned: " + LastIndex);
+					int LastIndex = -1;
+					for (int i = 0; i < Numbers.Num(); i++)
+					{
+						if (Numbers[i] == 5)
+							LastIndex = i;
+					}
+					Print("manual last index for 5 returned: " + LastIndex);
 					FindLastResult = LastIndex;
 
 					// Test Contains
@@ -1164,19 +1248,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTArraySearchActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray Search actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray Search actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FindLastResult"), 4, TEXT("FindLast(5) should return index 4"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ContainsTrue"), 1, TEXT("Contains(5) should return true"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ContainsFalse"), 0, TEXT("Contains(100) should return false"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IsValidTrue"), 1, TEXT("IsValidIndex(5) should return true"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IsValidFalse"), 0, TEXT("IsValidIndex(10) should return false"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FindLastResult"), 4, TEXT("Manual last-index search should return index 4"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ContainsTrue"), 1, TEXT("Contains(5) should return true"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ContainsFalse"), 0, TEXT("Contains(100) should return false"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IsValidTrue"), 1, TEXT("IsValidIndex(5) should return true"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IsValidFalse"), 0, TEXT("IsValidIndex(10) should return false"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1227,9 +1319,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 					for (int i = 0; i < Names.Num(); i++)
 						Print("  Names[" + i + "] = " + Names[i]);
 
-					// Test Find
-					int EnemyIndex = Names.Find(n"Enemy");
-					Print("Find(n\"Enemy\") returned: " + EnemyIndex);
+					// Test FindIndex
+					int EnemyIndex = Names.FindIndex(n"Enemy");
+					Print("FindIndex(n\"Enemy\") returned: " + EnemyIndex);
 					FindIndex = EnemyIndex;
 
 					// Test Sort
@@ -1244,17 +1336,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTArrayFNameActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray<FName> actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray<FName> actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FindIndex"), 1, TEXT("Find(n\"Enemy\") should return index 1"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SortedCount"), 5, TEXT("Sorted array should still have 5 elements"));
-		VerifyByPath<FNameProperty, FName>(*TestRunner, Actor, TEXT("Names[0]"), TEXT("Enemy"), TEXT("First sorted name"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FindIndex"), 1, TEXT("FindIndex(n\"Enemy\") should return index 1"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SortedCount"), 5, TEXT("Sorted array should still have 5 elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FNameProperty, FName>(*TestRunner, Actor, TEXT("Names[0]"), TEXT("Enemy"), TEXT("First sorted name"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1305,8 +1405,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 					Print("Empty array size: " + EmptyArray.Num());
 					EmptyArraySize = EmptyArray.Num();
 
-					int FindResult = EmptyArray.Find(5);
-					Print("Find(5) in empty array: " + FindResult);
+					int FindResult = EmptyArray.FindIndex(5);
+					Print("FindIndex(5) in empty array: " + FindResult);
 					FindInEmpty = FindResult;
 
 					bool ContainsResult = EmptyArray.Contains(5);
@@ -1316,10 +1416,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 					// Sort empty array (should not crash)
 					EmptyArray.Sort();
 					Print("Sort on empty array succeeded");
-
-					// Reverse empty array
-					EmptyArray.Reverse();
-					Print("Reverse on empty array succeeded");
 
 					// Test single element array
 					TArray<int> SingleArray;
@@ -1332,27 +1428,32 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 					SingleElementValue = SingleArray[0];
 					Print("Single element after sort: " + SingleElementValue);
 
-					// Reverse single element
-					SingleArray.Reverse();
-					Print("Single element after reverse: " + SingleArray[0]);
 				}
 			}
 			)AS"),
 			TEXT("ACoverageTArrayEdgeCasesActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray edge cases actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray edge cases actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EmptyArraySize"), 0, TEXT("Empty array should have size 0"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FindInEmpty"), -1, TEXT("Find in empty array should return -1"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ContainsInEmpty"), 0, TEXT("Contains in empty array should return false"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SingleElementSize"), 1, TEXT("Single element array should have size 1"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SingleElementValue"), 42, TEXT("Single element value should be preserved"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EmptyArraySize"), 0, TEXT("Empty array should have size 0"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FindInEmpty"), -1, TEXT("FindIndex in empty array should return -1"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ContainsInEmpty"), 0, TEXT("Contains in empty array should return false"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SingleElementSize"), 1, TEXT("Single element array should have size 1"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SingleElementValue"), 42, TEXT("Single element value should be preserved"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1462,17 +1563,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTArrayBulkActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray bulk operations actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray bulk operations actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("BulkAddedSize"), 100, TEXT("Bulk add should result in 100 elements"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MergedSize"), 150, TEXT("Merged arrays should have 150 elements"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("DuplicateRemoved"), 5, TEXT("Array without duplicates should have 5 unique elements"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("BulkAddedSize"), 100, TEXT("Bulk add should result in 100 elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MergedSize"), 150, TEXT("Merged arrays should have 150 elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("DuplicateRemoved"), 5, TEXT("Array without duplicates should have 5 unique elements"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1529,12 +1638,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 						Print("  Numbers[" + i + "] = " + Numbers[i]);
 
 					// Find first occurrence
-					int First = Numbers.Find(5);
+					int First = Numbers.FindIndex(5);
 					Print("First occurrence of 5: " + First);
 					FirstOccurrence = First;
 
-					// Find last occurrence
-					int Last = Numbers.FindLast(5);
+					// Find last occurrence manually.
+					int Last = -1;
+					for (int i = 0; i < Numbers.Num(); i++)
+					{
+						if (Numbers[i] == 5)
+							Last = i;
+					}
 					Print("Last occurrence of 5: " + Last);
 					LastOccurrence = Last;
 
@@ -1549,9 +1663,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 					TotalOccurrences = Count;
 
 					// Remove all occurrences
-					int Removed = Numbers.RemoveAll(5);
+					int Removed = Numbers.Remove(5);
 					Print("Removed " + Removed + " occurrences");
-					Print("Array size after RemoveAll: " + Numbers.Num());
+					Print("Array size after Remove: " + Numbers.Num());
 					AfterRemoveSize = Numbers.Num();
 
 					Print("Array after removing duplicates:");
@@ -1562,18 +1676,143 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 			)AS"),
 			TEXT("ACoverageTArrayDuplicatesActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray duplicate handling actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("TArray duplicate handling actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FirstOccurrence"), 0, TEXT("First occurrence should be at index 0"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LastOccurrence"), 6, TEXT("Last occurrence should be at index 6"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("TotalOccurrences"), 4, TEXT("Should find 4 occurrences"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("AfterRemoveSize"), 3, TEXT("Array should have 3 elements after RemoveAll"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FirstOccurrence"), 0, TEXT("First occurrence should be at index 0"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LastOccurrence"), 6, TEXT("Last occurrence should be at index 6"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("TotalOccurrences"), 4, TEXT("Should find 4 occurrences"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("AfterRemoveSize"), 3, TEXT("Array should have 3 elements after Remove"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// TArray UPROPERTY specifiers and metadata
+	// -------------------------------------------------------------------------
+	TEST_METHOD(TArrayPropertySpecifiersAndMeta)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageTArray_PropertySpecifiers"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageTArrayPropertySpecifiers.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageTArrayPropertySpecifierActor : AActor
+			{
+				UPROPERTY(BlueprintReadWrite)
+				TArray<int> BlueprintValues;
+
+				UPROPERTY(meta = (ClampMin = "0", ClampMax = "10"))
+				TArray<int> ClampedValues;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					BlueprintValues.Add(1);
+					BlueprintValues.Add(2);
+					ClampedValues.Add(3);
+				}
+			}
+			)AS"),
+			TEXT("ACoverageTArrayPropertySpecifierActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TArray property specifier actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const FArrayProperty* BlueprintValues = FindFProperty<FArrayProperty>(ScriptClass, TEXT("BlueprintValues"));
+		ASSERT_THAT(IsNotNull(BlueprintValues, TEXT("BlueprintValues should be an array property")));
+		if (BlueprintValues == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(BlueprintValues->HasAnyPropertyFlags(CPF_BlueprintVisible), TEXT("BlueprintReadWrite array should be BlueprintVisible")));
+		ASSERT_THAT(IsFalse(BlueprintValues->HasAnyPropertyFlags(CPF_BlueprintReadOnly), TEXT("BlueprintReadWrite array should not be BlueprintReadOnly")));
+
+		const FArrayProperty* ClampedValues = FindFProperty<FArrayProperty>(ScriptClass, TEXT("ClampedValues"));
+		ASSERT_THAT(IsNotNull(ClampedValues, TEXT("ClampedValues should be an array property")));
+		if (ClampedValues == nullptr)
+		{
+			return;
+		}
+#if WITH_EDITOR
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("0")),
+			ClampedValues->GetMetaData(TEXT("ClampMin")),
+			TEXT("TArray ClampMin meta should round-trip")));
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("10")),
+			ClampedValues->GetMetaData(TEXT("ClampMax")),
+			TEXT("TArray ClampMax meta should round-trip")));
+#endif
+	}
+
+	// -------------------------------------------------------------------------
+	// Unsupported TArray algorithms from UE API surface
+	// -------------------------------------------------------------------------
+	TEST_METHOD(TArrayUnsupportedAlgorithms)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TArray::StableSort()'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TArray::FilterByPredicate(const int)'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TArray::FindByKey(const int)'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TArray::FindByPredicate(const int)'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TArray::Heapify()'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TArray::HeapPop()'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TArray::HeapPush(const int)'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TArray::LowerBound(const int)'"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'TArray::UpperBound(const int)'"));
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(*TestRunner, Engine, TEXT("ASCoverageTArrayUnsupportedAlgorithms"), ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageTArrayUnsupportedAlgorithmsActor : AActor
+			{
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					TArray<int> Values;
+					Values.Add(1);
+					Values.Add(2);
+					Values.StableSort();
+					Values.FilterByPredicate(1);
+					Values.FindByKey(1);
+					Values.FindByPredicate(1);
+					Values.Heapify();
+					Values.HeapPop();
+					Values.HeapPush(3);
+					Values.LowerBound(1);
+					Values.UpperBound(2);
+				}
+			}
+			)AS"),
+			TEXT("Unbound TArray algorithms should remain explicit unsupported boundaries"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 };
 

@@ -5,6 +5,7 @@
 #include "AngelscriptTestUtilities.h"
 
 #include "Components/ActorTestSpawner.h"
+#include "Engine/Texture2D.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
@@ -135,16 +136,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandleTest,
 			)AS"),
 			TEXT("ACoverageHandleBasicsActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Handle-basics actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Handle-basics actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("TestPassed"), true, TEXT("Handle basics test should pass"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("NullCheckResult"), 3, TEXT("Null check should complete all stages"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IsValidResult"), 2, TEXT("IsValid check should complete both stages"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("TestPassed"), true, TEXT("Handle basics test should pass"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("NullCheckResult"), 3, TEXT("Null check should complete all stages"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IsValidResult"), 2, TEXT("IsValid check should complete both stages"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -212,16 +221,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandleTest,
 			)AS"),
 			TEXT("ACoverageHandleComparisonActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Handle-comparison actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Handle-comparison actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SameRefEqual"), true, TEXT("Same reference handles should be equal"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NullComparison"), true, TEXT("Null comparison should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DifferentRefNotEqual"), true, TEXT("Different references should not be equal"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SameRefEqual"), true, TEXT("Same reference handles should be equal"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NullComparison"), true, TEXT("Null comparison should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DifferentRefNotEqual"), true, TEXT("Different references should not be equal"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -284,16 +301,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandleTest,
 			)AS"),
 			TEXT("ACoverageHandleCastActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Handle-cast actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Handle-cast actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CastToBaseSucceeded"), true, TEXT("Cast to base class should succeed"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CastToDerivedSucceeded"), true, TEXT("Cast back to derived should succeed"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CastToUnrelatedFailed"), true, TEXT("Cast to unrelated type should fail"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CastToBaseSucceeded"), true, TEXT("Cast to base class should succeed"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CastToDerivedSucceeded"), true, TEXT("Cast back to derived should succeed"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CastToUnrelatedFailed"), true, TEXT("Cast to unrelated type should fail"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -346,14 +371,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandleTest,
 			)AS"),
 			TEXT("ACoverageHandlePropertyActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Handle-property actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		// Check that properties exist with correct types
 		const FProperty* TargetActorProp = ScriptClass->FindPropertyByName(FName(TEXT("TargetActor")));
 		ASSERT_THAT(IsNotNull(TargetActorProp, TEXT("TargetActor property should exist")));
+		if (TargetActorProp == nullptr)
+		{
+			return;
+		}
 		ASSERT_THAT(IsTrue(TargetActorProp->IsA<FObjectProperty>(), TEXT("TargetActor should be FObjectProperty")));
 
 		const FProperty* TargetPawnProp = ScriptClass->FindPropertyByName(FName(TEXT("TargetPawn")));
 		ASSERT_THAT(IsNotNull(TargetPawnProp, TEXT("TargetPawn property should exist")));
+		if (TargetPawnProp == nullptr)
+		{
+			return;
+		}
 		ASSERT_THAT(IsTrue(TargetPawnProp->IsA<FObjectProperty>(), TEXT("TargetPawn should be FObjectProperty")));
 
 		// Check specifiers are applied
@@ -364,9 +401,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandleTest,
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Handle-property actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("PropertiesAssigned"), true, TEXT("Handle properties should be assignable"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("PropertiesAssigned"), true, TEXT("Handle properties should be assignable"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -447,16 +488,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandleTest,
 			)AS"),
 			TEXT("ACoverageHandleParameterActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Handle-parameter actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Handle-parameter actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InputParamWorked"), true, TEXT("Handle as input parameter should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ReturnValueWorked"), true, TEXT("Handle as return value should work"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("OutParamWorked"), true, TEXT("Handle as out parameter should work"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InputParamWorked"), true, TEXT("Handle as input parameter should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ReturnValueWorked"), true, TEXT("Handle as return value should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("OutParamWorked"), true, TEXT("Handle as out parameter should work"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -513,11 +562,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandleTest,
 			)AS"),
 			TEXT("ACoverageHandleContainerActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Handle-container actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Handle-container actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// --- TArray<AActor> ---
@@ -529,21 +586,21 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandleTest,
 
 		// Verify first element is self (non-null handle)
 		{
-			const FObjectProperty* Prop = CastField<FObjectProperty>(Actor->GetClass()->FindPropertyByName(FName(TEXT("ActorArray"))));
-			ASSERT_THAT(IsNotNull(Prop, TEXT("ActorArray property should exist")));
-
-			const FArrayProperty* ArrayProp = CastField<FArrayProperty>(Prop->Owner.ToField());
-			if (ArrayProp != nullptr)
+			const FArrayProperty* ArrayProp = CastField<FArrayProperty>(Actor->GetClass()->FindPropertyByName(FName(TEXT("ActorArray"))));
+			ASSERT_THAT(IsNotNull(ArrayProp, TEXT("ActorArray property should exist")));
+			if (ArrayProp == nullptr)
 			{
-				FScriptArrayHelper ArrayHelper(ArrayProp, ArrayProp->ContainerPtrToValuePtr<void>(Actor));
-				if (ArrayHelper.Num() > 0)
+				return;
+			}
+
+			FScriptArrayHelper ArrayHelper(ArrayProp, ArrayProp->ContainerPtrToValuePtr<void>(Actor));
+			if (ArrayHelper.Num() > 0)
+			{
+				const FObjectProperty* InnerProp = CastField<FObjectProperty>(ArrayProp->Inner);
+				if (InnerProp != nullptr)
 				{
-					const FObjectProperty* InnerProp = CastField<FObjectProperty>(ArrayProp->Inner);
-					if (InnerProp != nullptr)
-					{
-						UObject* Element0 = InnerProp->GetObjectPropertyValue(ArrayHelper.GetRawPtr(0));
-						ASSERT_THAT(AreEqual(Actor, Element0, TEXT("TArray<AActor>[0] should be self")));
-					}
+					UObject* Element0 = InnerProp->GetObjectPropertyValue(ArrayHelper.GetRawPtr(0));
+					ASSERT_THAT(AreEqual(Actor, Element0, TEXT("TArray<AActor>[0] should be self")));
 				}
 			}
 		}
@@ -609,7 +666,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandleTest,
 					}
 
 					// Test GetName
-					FString Name = GetName();
+					FString Name = GetName().ToString();
 					if (!Name.IsEmpty())
 					{
 						GetNameWorked = true;
@@ -627,16 +684,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandleTest,
 			)AS"),
 			TEXT("ACoverageHandleOperationsActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Handle-operations actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Handle-operations actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetClassWorked"), true, TEXT("GetClass should return valid UClass"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetNameWorked"), true, TEXT("GetName should return non-empty string"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsAWorked"), true, TEXT("IsA type check should work"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetClassWorked"), true, TEXT("GetClass should return valid UClass"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetNameWorked"), true, TEXT("GetName should return non-empty string"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsAWorked"), true, TEXT("IsA type check should work"))));
 
 		// Verify ActorName is not empty
 		FString ActorName;
@@ -646,6 +711,412 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandleTest,
 			ActorName = NameProp->GetPropertyValue_InContainer(Actor);
 			ASSERT_THAT(IsFalse(ActorName.IsEmpty(), TEXT("Actor name should not be empty")));
 		}
+	}
+
+	// -------------------------------------------------------------------------
+	// UObject handle and NewObject: generic UObject creation and identity
+	// -------------------------------------------------------------------------
+	TEST_METHOD(UObjectHandleAndNewObject)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageHandle_UObjectNewObject"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageHandleUObjectNewObject.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageHandleUObjectNewObjectActor : AActor
+			{
+				UPROPERTY()
+				bool UObjectDeclaredAndAssigned = false;
+
+				UPROPERTY()
+				bool NewObjectCreated = false;
+
+				UPROPERTY()
+				bool NewObjectOuterWorked = false;
+
+				UPROPERTY()
+				bool NewObjectNameWorked = false;
+
+				UPROPERTY()
+				bool NewObjectClassWorked = false;
+
+				UPROPERTY()
+				UObject GenericObject;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					UObject EmptyObject;
+					if (EmptyObject != nullptr)
+					{
+						return;
+					}
+
+					GenericObject = NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"CoverageUObjectHandleTexture");
+					if (GenericObject == nullptr)
+					{
+						return;
+					}
+
+					UObjectDeclaredAndAssigned = true;
+					NewObjectCreated = IsValid(GenericObject);
+					NewObjectOuterWorked = GenericObject.GetOuter() == GetTransientPackage();
+					NewObjectNameWorked = GenericObject.GetName() == n"CoverageUObjectHandleTexture";
+					NewObjectClassWorked = GenericObject.IsA(UTexture2D::StaticClass());
+				}
+			}
+			)AS"),
+			TEXT("ACoverageHandleUObjectNewObjectActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("UObject/NewObject actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("UObject/NewObject actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("UObjectDeclaredAndAssigned"), true, TEXT("UObject handle declaration and assignment should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NewObjectCreated"), true, TEXT("NewObject should create a valid UObject"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NewObjectOuterWorked"), true, TEXT("NewObject should honor the supplied Outer"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NewObjectNameWorked"), true, TEXT("NewObject should honor the supplied name"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NewObjectClassWorked"), true, TEXT("NewObject should create the requested class"))));
+
+		UObject* GenericObject = nullptr;
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("GenericObject"), GenericObject), TEXT("GenericObject should be readable as reflected UObject")));
+		ASSERT_THAT(IsNotNull(GenericObject, TEXT("GenericObject should hold the AS-created UObject")));
+		if (GenericObject == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(UTexture2D::StaticClass(), GenericObject->GetClass(), TEXT("C++ should observe the AS-created UObject class")));
+	}
+
+	// -------------------------------------------------------------------------
+	// Actor destroy: DestroyActor invalidates IsValid on the next frame
+	// -------------------------------------------------------------------------
+	TEST_METHOD(HandleDestroyActorInvalidatesReference)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageHandle_DestroyActor"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageHandleDestroyActor.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageHandleDestroyActor : AActor
+			{
+				UPROPERTY()
+				AActor Victim;
+
+				UPROPERTY()
+				bool DestroyCalled = false;
+
+				UPROPERTY()
+				bool InvalidAfterDestroy = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					Victim = SpawnActor(AActor::StaticClass());
+					if (Victim != nullptr)
+					{
+						Victim.DestroyActor();
+						DestroyCalled = true;
+					}
+					InvalidAfterDestroy = !IsValid(Victim);
+				}
+			}
+			)AS"),
+			TEXT("ACoverageHandleDestroyActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("DestroyActor actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("DestroyActor actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+		TickWorld(Engine, Spawner.GetWorld(), 0.0f, 2);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DestroyCalled"), true, TEXT("DestroyActor should be callable from AS"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InvalidAfterDestroy"), true, TEXT("Destroyed actor handle should become invalid"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// TObjectPtr: declaration, raw-handle parity, implicit conversion
+	// -------------------------------------------------------------------------
+	TEST_METHOD(TObjectPtrRouting)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageHandle_TObjectPtrRouting"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageHandleTObjectPtrRouting.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageHandleTObjectPtrActor : AActor
+			{
+				UPROPERTY()
+				TObjectPtr<AActor> StoredActor;
+
+				UPROPERTY()
+				bool DefaultNullWorked = false;
+
+				UPROPERTY()
+				bool AssignmentWorked = false;
+
+				UPROPERTY()
+				bool GetMatchedRawHandle = false;
+
+				UPROPERTY()
+				bool ImplicitConversionWorked = false;
+
+				UPROPERTY()
+				bool CopyComparisonWorked = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					TObjectPtr<AActor> Empty;
+					DefaultNullWorked = Empty.Get() == nullptr;
+
+					AActor SpawnedActor = SpawnActor(AActor::StaticClass());
+					StoredActor = SpawnedActor;
+
+					AssignmentWorked = StoredActor == SpawnedActor;
+					GetMatchedRawHandle = StoredActor.Get() == SpawnedActor;
+
+					AActor RawActor = StoredActor;
+					ImplicitConversionWorked = RawActor == SpawnedActor;
+
+					TObjectPtr<AActor> CopiedActor = StoredActor;
+					CopyComparisonWorked = CopiedActor == StoredActor;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageHandleTObjectPtrActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TObjectPtr actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const FProperty* StoredActorProp = ScriptClass->FindPropertyByName(FName(TEXT("StoredActor")));
+		ASSERT_THAT(IsNotNull(StoredActorProp, TEXT("StoredActor property should exist")));
+		if (StoredActorProp == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(StoredActorProp->IsA<FObjectProperty>(), TEXT("TObjectPtr should be emitted as an object property")));
+		ASSERT_THAT(IsTrue(StoredActorProp->HasAnyPropertyFlags(CPF_TObjectPtr), TEXT("TObjectPtr property should keep CPF_TObjectPtr routing flag")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("TObjectPtr actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DefaultNullWorked"), true, TEXT("Default TObjectPtr should be null"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AssignmentWorked"), true, TEXT("TObjectPtr assignment should compare with raw handles"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetMatchedRawHandle"), true, TEXT("TObjectPtr.Get should match the assigned raw handle"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ImplicitConversionWorked"), true, TEXT("TObjectPtr should implicitly convert to raw handle"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CopyComparisonWorked"), true, TEXT("TObjectPtr copy should compare equal"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// TSubclassOf as function parameter and NewObject class argument
+	// -------------------------------------------------------------------------
+	TEST_METHOD(TSubclassOfParameterAndNewObject)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageHandle_TSubclassOfParameterNewObject"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageHandleTSubclassOfParameterNewObject.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageHandleSubclassParameterActor : AActor
+			{
+				UPROPERTY()
+				bool ParameterAcceptedClass = false;
+
+				UPROPERTY()
+				bool NewObjectFromClassWorked = false;
+
+				UPROPERTY()
+				bool NewObjectFromTSubclassOfWorked = false;
+
+				void AcceptActorClass(TSubclassOf<AActor> InClass)
+				{
+					ParameterAcceptedClass = InClass != nullptr && InClass.IsChildOf(AActor::StaticClass());
+				}
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					TSubclassOf<AActor> ActorClass = AActor::StaticClass();
+					AcceptActorClass(ActorClass);
+
+					TSubclassOf<UObject> TextureClass = UTexture2D::StaticClass();
+					UObject FromClass = NewObject(GetTransientPackage(), TextureClass.Get(), n"CoverageSubclassNewObjectClass");
+					NewObjectFromClassWorked = FromClass != nullptr && FromClass.IsA(UTexture2D::StaticClass());
+
+					UObject FromSubclassOf = NewObject(GetTransientPackage(), TextureClass, n"CoverageSubclassNewObjectSubclass");
+					NewObjectFromTSubclassOfWorked = FromSubclassOf != nullptr && FromSubclassOf.IsA(UTexture2D::StaticClass());
+				}
+			}
+			)AS"),
+			TEXT("ACoverageHandleSubclassParameterActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TSubclassOf parameter actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("TSubclassOf parameter actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ParameterAcceptedClass"), true, TEXT("TSubclassOf should pass through function parameters"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NewObjectFromClassWorked"), true, TEXT("NewObject should accept the UClass returned by TSubclassOf.Get"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NewObjectFromTSubclassOfWorked"), true, TEXT("NewObject should accept TSubclassOf directly as a class argument"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Handle containers: TSet<AActor> pointer hashing
+	// -------------------------------------------------------------------------
+	TEST_METHOD(HandleSetContainer)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageHandle_TSet"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageHandleTSet.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageHandleSetActor : AActor
+			{
+				UPROPERTY()
+				TSet<AActor> ActorSet;
+
+				UPROPERTY()
+				bool AddDedupWorked = false;
+
+				UPROPERTY()
+				bool ContainsWorked = false;
+
+				UPROPERTY()
+				bool RemoveWorked = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					AActor OtherActor = SpawnActor(AActor::StaticClass());
+
+					ActorSet.Add(this);
+					ActorSet.Add(this);
+					ActorSet.Add(OtherActor);
+
+					AddDedupWorked = ActorSet.Num() == 2;
+					ContainsWorked = ActorSet.Contains(this) && ActorSet.Contains(OtherActor);
+
+					ActorSet.Remove(this);
+					RemoveWorked = !ActorSet.Contains(this) && ActorSet.Num() == 1;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageHandleSetActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TSet<AActor> actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("TSet<AActor> actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AddDedupWorked"), true, TEXT("TSet<AActor> should deduplicate pointer handles"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ContainsWorked"), true, TEXT("TSet<AActor> should find pointer handles"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("RemoveWorked"), true, TEXT("TSet<AActor> should remove pointer handles"))));
 	}
 };
 

@@ -92,11 +92,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringPropertyTest,
 			)AS"),
 			TEXT("ACoverageFStringDefaultsActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("String-defaults actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("String-defaults actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		// FString with value
 		VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringValue"), FString(TEXT("Hello")), TEXT("FString UPROPERTY with default value"));
@@ -116,7 +124,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringPropertyTest,
 		// FText default constructed (empty)
 		FText ReadText;
 		ASSERT_THAT(IsTrue(GetByPath<FTextProperty, FText>(*TestRunner, Actor, TEXT("TextValue"), ReadText)));
-		TestRunner->TestTrue(TEXT("FText UPROPERTY default should be empty"), ReadText.IsEmpty());
+		ASSERT_THAT(IsTrue(ReadText.IsEmpty(), TEXT("FText UPROPERTY default should be empty")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -154,11 +162,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringPropertyTest,
 			)AS"),
 			TEXT("ACoverageFStringWriteActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("String-write actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("String-write actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		// FString write round-trip
 		ASSERT_THAT(IsTrue(SetByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringValue"), FString(TEXT("Hello World")))));
@@ -176,7 +192,75 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringPropertyTest,
 		ASSERT_THAT(IsTrue(SetByPath<FTextProperty, FText>(*TestRunner, Actor, TEXT("TextValue"), TestText)));
 		FText ReadText;
 		ASSERT_THAT(IsTrue(GetByPath<FTextProperty, FText>(*TestRunner, Actor, TEXT("TextValue"), ReadText)));
-		TestRunner->TestTrue(TEXT("FText write round-trip"), ReadText.EqualTo(TestText));
+		ASSERT_THAT(IsTrue(ReadText.EqualTo(TestText), TEXT("FText write round-trip")));
+	}
+
+	TEST_METHOD(StringPropertySpecifierFlags)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageFStringProperty_Specifiers"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageFStringPropertySpecifiers.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageFStringSpecifierActor : AActor
+			{
+				UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Coverage|String")
+				FString EditableString;
+
+				UPROPERTY(BlueprintReadOnly)
+				FName ReadOnlyName;
+
+				UPROPERTY(AdvancedDisplay)
+				FText AdvancedText;
+			}
+			)AS"),
+			TEXT("ACoverageFStringSpecifierActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("String-specifier actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const FProperty* EditableString = FindFProperty<FProperty>(ScriptClass, TEXT("EditableString"));
+		ASSERT_THAT(IsNotNull(EditableString, TEXT("EditableString property should exist")));
+		if (EditableString == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(EditableString->HasAnyPropertyFlags(CPF_Edit), TEXT("EditAnywhere FString should set CPF_Edit")));
+		ASSERT_THAT(IsTrue(EditableString->HasAnyPropertyFlags(CPF_BlueprintVisible), TEXT("BlueprintReadWrite FString should set CPF_BlueprintVisible")));
+		ASSERT_THAT(IsFalse(EditableString->HasAnyPropertyFlags(CPF_BlueprintReadOnly), TEXT("BlueprintReadWrite FString should not set CPF_BlueprintReadOnly")));
+#if WITH_EDITOR
+		ASSERT_THAT(AreEqual(FString(TEXT("Coverage|String")), EditableString->GetMetaData(TEXT("Category")), TEXT("FString Category metadata should round-trip")));
+#endif
+
+		const FProperty* ReadOnlyName = FindFProperty<FProperty>(ScriptClass, TEXT("ReadOnlyName"));
+		ASSERT_THAT(IsNotNull(ReadOnlyName, TEXT("ReadOnlyName property should exist")));
+		if (ReadOnlyName == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(ReadOnlyName->HasAnyPropertyFlags(CPF_BlueprintVisible), TEXT("BlueprintReadOnly FName should set CPF_BlueprintVisible")));
+		ASSERT_THAT(IsTrue(ReadOnlyName->HasAnyPropertyFlags(CPF_BlueprintReadOnly), TEXT("BlueprintReadOnly FName should set CPF_BlueprintReadOnly")));
+
+		const FProperty* AdvancedText = FindFProperty<FProperty>(ScriptClass, TEXT("AdvancedText"));
+		ASSERT_THAT(IsNotNull(AdvancedText, TEXT("AdvancedText property should exist")));
+		if (AdvancedText == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(AdvancedText->HasAnyPropertyFlags(CPF_AdvancedDisplay), TEXT("AdvancedDisplay FText should set CPF_AdvancedDisplay")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -232,11 +316,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringPropertyTest,
 			)AS"),
 			TEXT("ACoverageFStringSpecialActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("String-special actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("String-special actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Empty string
@@ -335,11 +427,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringPropertyTest,
 			)AS"),
 			TEXT("ACoverageFStringContainerActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("String-container actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("String-container actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// TArray<FString>
@@ -363,6 +463,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringPropertyTest,
 			VerifyByPath<FNameProperty, FName>(*TestRunner, Actor, TEXT("NameArray[1]"), FName(TEXT("Beta")), TEXT("TArray<FName>[1]"));
 		}
 
+		// TArray<FText>
+		{
+			int32 Length = 0;
+			ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, Actor, TEXT("TextArray"), Length)));
+			ASSERT_THAT(AreEqual(2, Length, TEXT("TArray<FText> should have 2 elements")));
+
+			FText TextValue;
+			ASSERT_THAT(IsTrue(GetByPath<FTextProperty, FText>(*TestRunner, Actor, TEXT("TextArray[0]"), TextValue)));
+			ASSERT_THAT(IsTrue(TextValue.EqualTo(FText::FromString(TEXT("Text1"))), TEXT("TArray<FText>[0] should round-trip")));
+		}
+
 		// TMap<FString, int>
 		{
 			int32 Count = 0;
@@ -379,6 +490,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringPropertyTest,
 			FString Value;
 			ASSERT_THAT(IsTrue(GetMapValueByPath<int32, FStrProperty, FString>(*TestRunner, Actor, TEXT("IntToStringMap"), 10, Value)));
 			ASSERT_THAT(AreEqual(FString(TEXT("Ten")), Value, TEXT("TMap<int,FString>[10] should be \"Ten\"")));
+		}
+
+		// TMap<FName, int>
+		{
+			int32 Value = 0;
+			ASSERT_THAT(IsTrue(GetMapValueByPath<FName, FIntProperty, int32>(*TestRunner, Actor, TEXT("NameToIntMap"), FName(TEXT("Second")), Value)));
+			ASSERT_THAT(AreEqual(200, Value, TEXT("TMap<FName,int>[n\"Second\"] should be 200")));
 		}
 
 		// TSet<FString>

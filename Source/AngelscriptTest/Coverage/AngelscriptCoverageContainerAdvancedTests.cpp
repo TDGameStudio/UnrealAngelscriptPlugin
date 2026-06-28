@@ -23,6 +23,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageContainerAdvancedTest,
 	"Angelscript.TestModule.Coverage.ContainerAdvanced",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -125,17 +126,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageContainerAdvancedTest,
 			)AS"),
 			TEXT("ACoverageContainerParameterActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Container parameter actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Container parameter actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByValue"), 6, TEXT("Sum by value should be 6"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByRef"), 3, TEXT("Array modified by ref should have 3 elements"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByOut"), 3, TEXT("Out array should have 3 elements"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByValue"), 6, TEXT("Sum by value should be 6"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByRef"), 3, TEXT("Array modified by ref should have 3 elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultByOut"), 3, TEXT("Out array should have 3 elements"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -207,27 +216,35 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageContainerAdvancedTest,
 			)AS"),
 			TEXT("ACoverageContainerReturnActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Container return actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Container return actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ArraySize"), 3, TEXT("Returned array should have 3 elements"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MapSize"), 2, TEXT("Returned map should have 2 entries"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ArraySize"), 3, TEXT("Returned array should have 3 elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MapSize"), 2, TEXT("Returned map should have 2 entries"))));
 	}
 
 	// -------------------------------------------------------------------------
-	// More nested container combinations
+	// Container reference return: return a member array by reference
 	// -------------------------------------------------------------------------
-	TEST_METHOD(NestedContainerCombinations)
+	TEST_METHOD(ContainerReferenceReturn)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		static const FName ModuleName(TEXT("ASCoverageContainer_Nested"));
+		static const FName ModuleName(TEXT("ASCoverageContainer_RefReturn"));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
@@ -237,62 +254,406 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageContainerAdvancedTest,
 			*TestRunner,
 			Engine,
 			ModuleName,
-			TEXT("ASCoverageContainerNested.as"),
+			TEXT("ASCoverageContainerReferenceReturn.as"),
 			ASTEST_AS(R"AS(
 			UCLASS()
-			class ACoverageContainerNestedActor : AActor
+			class ACoverageContainerReferenceReturnActor : AActor
 			{
 				UPROPERTY()
-				int ArrayOfMapsSize;
+				TArray<int> Values;
 
 				UPROPERTY()
-				int FirstMapSize;
+				int RefSize = 0;
 
 				UPROPERTY()
-				int NestedValue;
+				int FirstValue = 0;
+
+				TArray<int>& GetValuesRef()
+				{
+					return Values;
+				}
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					Print("=== Nested Container Combinations Test ===");
+					Values.Add(10);
+					Values.Add(20);
 
-					// TArray<TMap<int, FString>>
-					TArray<TMap<int, FString>> ArrayOfMaps;
+					TArray<int>& Ref = GetValuesRef();
+					Ref.Add(30);
 
-					TMap<int, FString> Map1;
-					Map1.Add(1, "A");
-					Map1.Add(2, "B");
-					ArrayOfMaps.Add(Map1);
-
-					TMap<int, FString> Map2;
-					Map2.Add(3, "C");
-					Map2.Add(4, "D");
-					ArrayOfMaps.Add(Map2);
-
-					Print("Array of maps size: " + ArrayOfMaps.Num());
-					ArrayOfMapsSize = ArrayOfMaps.Num();
-					FirstMapSize = ArrayOfMaps[0].Num();
-
-					// Access nested value
-					FString Value = ArrayOfMaps[0][1];
-					Print("ArrayOfMaps[0][1]: " + Value);
-					NestedValue = (Value == "A") ? 1 : 0;
+					RefSize = Values.Num();
+					FirstValue = Ref[0];
 				}
 			}
 			)AS"),
-			TEXT("ACoverageContainerNestedActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Nested container actor class should compile")));
+			TEXT("ACoverageContainerReferenceReturnActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Container reference return actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		ASSERT_THAT(IsNotNull(Actor, TEXT("Nested container actor should spawn")));
-
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Container reference return actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ArrayOfMapsSize"), 2, TEXT("Array should contain 2 maps"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FirstMapSize"), 2, TEXT("First map should have 2 entries"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("NestedValue"), 1, TEXT("Nested value should be 'A'"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("RefSize"), 3, TEXT("Returned array reference should modify the member array"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FirstValue"), 10, TEXT("Returned array reference should preserve member contents"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Array<Struct<Array>>: container inside struct, then struct array
+	// -------------------------------------------------------------------------
+	TEST_METHOD(ArrayOfStructsContainingArrays)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageContainer_ArrayStructArray"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageContainerArrayStructArray.as"),
+			ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FArrayPayload
+			{
+				UPROPERTY()
+				TArray<int> Values;
+			}
+
+			UCLASS()
+			class ACoverageContainerArrayStructArrayActor : AActor
+			{
+				UPROPERTY()
+				TArray<FArrayPayload> Payloads;
+
+				UPROPERTY()
+				int PayloadCount = 0;
+
+				UPROPERTY()
+				int FirstInnerSize = 0;
+
+				UPROPERTY()
+				int SecondInnerFirstValue = 0;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					FArrayPayload First;
+					First.Values.Add(1);
+					First.Values.Add(2);
+
+					FArrayPayload Second;
+					Second.Values.Add(10);
+					Second.Values.Add(20);
+					Second.Values.Add(30);
+
+					Payloads.Add(First);
+					Payloads.Add(Second);
+
+					PayloadCount = Payloads.Num();
+					FirstInnerSize = Payloads[0].Values.Num();
+					SecondInnerFirstValue = Payloads[1].Values[0];
+				}
+			}
+			)AS"),
+			TEXT("ACoverageContainerArrayStructArrayActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Array<Struct<Array>> actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Array<Struct<Array>> actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("PayloadCount"), 2, TEXT("Outer TArray<FArrayPayload> should have two elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FirstInnerSize"), 2, TEXT("First struct inner array should have two elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SecondInnerFirstValue"), 10, TEXT("Second struct inner array should preserve first value"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Nested container combinations are rejected by this fork.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(NestedContainerCombinationsUnsupported)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ExpectedDiagnostic(TEXT("Containers cannot be nested in other containers"));
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(ExpectedDiagnostic);
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(*TestRunner, Engine, TEXT("ASCoverageContainer_ArrayOfMapsUnsupported"), ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageContainerArrayOfMapsActor : AActor
+			{
+				UPROPERTY()
+				TArray<TMap<int, FString>> ArrayOfMaps;
+			}
+			)AS"),
+			TEXT("TArray<TMap<int,FString>> should remain an explicit unsupported boundary"),
+			MakeArrayView(ExpectedDiagnostics))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Advanced iterator operations: copy/assignment, mutation, map removal
+	// -------------------------------------------------------------------------
+	TEST_METHOD(ContainerIteratorAdvancedOperations)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageContainer_IteratorAdvanced"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageContainerIteratorAdvanced.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageContainerIteratorAdvancedActor : AActor
+			{
+				UPROPERTY()
+				int ArrayCopyAssignSum = 0;
+
+				UPROPERTY()
+				int ArrayMutableWriteSum = 0;
+
+				UPROPERTY()
+				int MapCopyAssignKeySum = 0;
+
+				UPROPERTY()
+				int MapCopyAssignValueSum = 0;
+
+				UPROPERTY()
+				int MapMutationVisitedCount = 0;
+
+				UPROPERTY()
+				int MapMutationRemainingCount = 0;
+
+				UPROPERTY()
+				int MapMutationUpdatedValueSum = 0;
+
+				UPROPERTY()
+				int MapMutationRemovedKeyCount = 0;
+
+				UPROPERTY()
+				int SetCopyAssignSum = 0;
+
+				UPROPERTY()
+				int SetCopyAssignVisitCount = 0;
+
+				void ExerciseArrayIterator()
+				{
+					TArray<int> Values;
+					Values.Add(1);
+					Values.Add(2);
+					Values.Add(3);
+					Values.Add(4);
+
+					TArrayIterator<int> Original = Values.Iterator();
+					TArrayIterator<int> Copied = Original;
+					TArrayIterator<int> Assigned = Values.Iterator();
+					Assigned = Copied;
+
+					while (Original.CanProceed)
+					{
+						ArrayCopyAssignSum += Original.Proceed();
+					}
+
+					while (Copied.CanProceed)
+					{
+						ArrayCopyAssignSum += Copied.Proceed();
+					}
+
+					while (Assigned.CanProceed)
+					{
+						ArrayCopyAssignSum += Assigned.Proceed();
+					}
+
+					TArrayIterator<int> Mutating = Values.Iterator();
+					if (Mutating.CanProceed)
+					{
+						Mutating.Proceed() = 10;
+					}
+
+					ArrayMutableWriteSum = Values[0] + Values[1] + Values[2] + Values[3];
+				}
+
+				void ExerciseMapIterator()
+				{
+					TMap<int, int> Values;
+					Values.Add(1, 10);
+					Values.Add(2, 20);
+					Values.Add(3, 30);
+
+					TMapIterator<int, int> Original = Values.Iterator();
+					TMapIterator<int, int> Copied = Original;
+					TMapIterator<int, int> Assigned = Values.Iterator();
+					Assigned = Copied;
+
+					while (Original.CanProceed)
+					{
+						Original.Proceed();
+						MapCopyAssignKeySum += Original.GetKey();
+						MapCopyAssignValueSum += Original.GetValue();
+					}
+
+					while (Copied.CanProceed)
+					{
+						Copied.Proceed();
+						MapCopyAssignKeySum += Copied.GetKey();
+						MapCopyAssignValueSum += Copied.GetValue();
+					}
+
+					while (Assigned.CanProceed)
+					{
+						Assigned.Proceed();
+						MapCopyAssignKeySum += Assigned.GetKey();
+						MapCopyAssignValueSum += Assigned.GetValue();
+					}
+
+					TMap<int, int> MutableValues;
+					MutableValues.Add(1, 10);
+					MutableValues.Add(2, 20);
+					MutableValues.Add(3, 30);
+					MutableValues.Add(4, 40);
+
+					TMapIterator<int, int> Mutating = MutableValues.Iterator();
+					while (Mutating.CanProceed)
+					{
+						Mutating.Proceed();
+						MapMutationVisitedCount++;
+
+						if (Mutating.GetKey() == 2 || Mutating.GetKey() == 4)
+						{
+							Mutating.RemoveCurrent();
+						}
+						else
+						{
+							int NewValue = Mutating.GetValue() + 100;
+							Mutating.SetValue(NewValue);
+						}
+					}
+
+					MapMutationRemainingCount = MutableValues.Num();
+
+					int FoundValue = 0;
+					if (MutableValues.Find(1, FoundValue))
+					{
+						MapMutationUpdatedValueSum += FoundValue;
+					}
+
+					if (MutableValues.Find(3, FoundValue))
+					{
+						MapMutationUpdatedValueSum += FoundValue;
+					}
+
+					if (MutableValues.Contains(2))
+					{
+						MapMutationRemovedKeyCount++;
+					}
+
+					if (MutableValues.Contains(4))
+					{
+						MapMutationRemovedKeyCount++;
+					}
+				}
+
+				void ExerciseSetIterator()
+				{
+					TSet<int> Values;
+					Values.Add(2);
+					Values.Add(4);
+					Values.Add(8);
+
+					TSetIterator<int> Original = Values.Iterator();
+					TSetIterator<int> Copied = Original;
+					TSetIterator<int> Assigned = Values.Iterator();
+					Assigned = Copied;
+
+					while (Original.CanProceed)
+					{
+						SetCopyAssignSum += Original.Proceed();
+						SetCopyAssignVisitCount++;
+					}
+
+					while (Copied.CanProceed)
+					{
+						SetCopyAssignSum += Copied.Proceed();
+						SetCopyAssignVisitCount++;
+					}
+
+					while (Assigned.CanProceed)
+					{
+						SetCopyAssignSum += Assigned.Proceed();
+						SetCopyAssignVisitCount++;
+					}
+				}
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					ExerciseArrayIterator();
+					ExerciseMapIterator();
+					ExerciseSetIterator();
+				}
+			}
+			)AS"),
+			TEXT("ACoverageContainerIteratorAdvancedActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Advanced container iterator actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Advanced container iterator actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ArrayCopyAssignSum"), 30, TEXT("TArray iterator copy and assignment should traverse the same source"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ArrayMutableWriteSum"), 19, TEXT("TArray mutable iterator should write through Proceed reference"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MapCopyAssignKeySum"), 18, TEXT("TMap iterator copy and assignment should preserve key traversal"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MapCopyAssignValueSum"), 180, TEXT("TMap iterator copy and assignment should preserve value traversal"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MapMutationVisitedCount"), 4, TEXT("TMap mutating iterator should visit all original entries"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MapMutationRemainingCount"), 2, TEXT("TMap RemoveCurrent should remove the selected entries"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MapMutationUpdatedValueSum"), 240, TEXT("TMap SetValue should update retained entries"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MapMutationRemovedKeyCount"), 0, TEXT("TMap removed keys should no longer be present"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SetCopyAssignSum"), 42, TEXT("TSet iterator copy and assignment should traverse the same source"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SetCopyAssignVisitCount"), 9, TEXT("TSet copied and assigned iterators should each visit all values"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -359,16 +720,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageContainerAdvancedTest,
 			)AS"),
 			TEXT("ACoverageContainerNonUPropActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Non-UPROPERTY container actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Non-UPROPERTY container actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LocalArrayResult"), 3, TEXT("Local array should have 3 elements"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("TempMapResult"), 2, TEXT("Temp map should have 2 entries"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LocalArrayResult"), 3, TEXT("Local array should have 3 elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("TempMapResult"), 2, TEXT("Temp map should have 2 entries"))));
 	}
 };
 

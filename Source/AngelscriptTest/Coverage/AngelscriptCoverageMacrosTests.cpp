@@ -7,6 +7,7 @@
 #include "Components/ActorTestSpawner.h"
 #include "GameFramework/Actor.h"
 #include "Misc/ScopeExit.h"
+#include "Templates/UnrealTemplate.h"
 #include "UObject/Class.h"
 #include "UObject/UnrealType.h"
 
@@ -17,16 +18,22 @@
 // Based on Documents/Coverage/Coverage_OtherMacros.md.
 //
 // Coverage matrix:
+//   * UInterfaceMacroDeclarationRejected - UINTERFACE() unsupported boundary
+//   * GeneratedBodyInsideInterfaceRejected - GENERATED_BODY() interface boundary
+//   * UDelegateMacroDeclarationRejected - UDELEGATE() unsupported boundary
+//   * ScriptDelegateReflectsUDelegateFunction - supported AS delegate reflection
+//   * CustomMetadataKeysRoundTrip  - custom reflection metadata keys
+//   * EditorConditionActiveBranchReflects - supported EDITOR conditional branch
+//   * ReflectionMacroCombination   - combined reflection macro surface
+//   * MacroExpansionIgnores...     - macro expansion boundary cases
 //   * UEnumAdvancedDeclaration      - UENUM with BlueprintType, DisplayName, ToolTip
 //   * UStructAdvancedUsage          - Complex USTRUCT with nested types, operators
 //   * UParamModifiers               - UPARAM usage in function parameters
-//   * BlueprintImplementableEvent   - Blueprint-only events (C++ calls, BP implements)
-//   * BlueprintNativeEvent          - Events with C++ default and BP override capability
+//   * BlueprintEvent                - AS-supported Blueprint event wrapper behavior
 //
-// Note: AngelScript treats BlueprintImplementableEvent and BlueprintNativeEvent
-// differently than C++. In AS, these are used for cross-language boundaries:
-// - BlueprintImplementableEvent: AS declares, Blueprint implements
-// - BlueprintNativeEvent: AS provides default, Blueprint can override
+// Note: AngelScript uses the fork-specific BlueprintEvent / BlueprintOverride
+// specifiers for script-authored Blueprint events. The C++ implementable/native
+// event spellings are not AS UFUNCTION specifiers in this fork.
 //
 // Pattern: spawn AS actor, test advanced macro scenarios, validate through
 // reflection and runtime behavior verification.
@@ -40,6 +47,61 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMacrosTest,
 	"Angelscript.TestModule.Coverage.Macros",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	static UFunction* RequireGeneratedFunction(UClass* ScriptClass, const TCHAR* FunctionName)
+	{
+		return ScriptClass != nullptr ? FindGeneratedFunction(ScriptClass, FName(FunctionName)) : nullptr;
+	}
+
+	static TArray<FProperty*> GetOrderedParameters(UFunction* Function)
+	{
+		TArray<FProperty*> Parameters;
+		if (Function == nullptr)
+		{
+			return Parameters;
+		}
+
+		for (TFieldIterator<FProperty> It(Function); It; ++It)
+		{
+			FProperty* Property = *It;
+			if (Property != nullptr
+				&& Property->HasAnyPropertyFlags(CPF_Parm)
+				&& !Property->HasAnyPropertyFlags(CPF_ReturnParm))
+			{
+				Parameters.Add(Property);
+			}
+		}
+
+		Parameters.Sort([](const FProperty& Left, const FProperty& Right)
+		{
+			return Left.GetOffset_ForUFunction() < Right.GetOffset_ForUFunction();
+		});
+
+		return Parameters;
+	}
+
+	static FProperty* GetSingleParameter(UFunction* Function)
+	{
+		const TArray<FProperty*> Parameters = GetOrderedParameters(Function);
+		return Parameters.Num() == 1 ? Parameters[0] : nullptr;
+	}
+
+	static FProperty* FindScriptProperty(UClass* ScriptClass, const TCHAR* PropertyName)
+	{
+		return ScriptClass != nullptr ? ScriptClass->FindPropertyByName(FName(PropertyName)) : nullptr;
+	}
+
+	static FString GetClassMetadata(UClass* ScriptClass, const TCHAR* MetadataKey)
+	{
+		return ScriptClass != nullptr ? ScriptClass->GetMetaData(MetadataKey) : FString();
+	}
+
+	static FString GetParameterDisplayName(const FProperty* Parameter)
+	{
+		return Parameter != nullptr ? Parameter->GetMetaData(TEXT("DisplayName")) : FString();
+	}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -49,6 +111,617 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMacrosTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		ASTEST_RESET_ENGINE(Engine);
+	}
+
+	// -------------------------------------------------------------------------
+	// UINTERFACE declaration boundary: script-level UINTERFACE() is intentionally
+	// unsupported in this fork, so the macro spelling should fail explicitly.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(UInterfaceMacroDeclarationRejected)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UINTERFACE()
+			interface ICoverageMacrosUnsupportedUInterface
+			{
+				void Execute();
+			}
+			)AS");
+
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("Expected identifier"));
+		ExpectedDiagnostics.Add(TEXT("Instead found '('"));
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageMacros_UInterfaceMacroUnsupported"),
+			ScriptSource,
+			TEXT("UINTERFACE() script declarations should remain unsupported in this fork"),
+			MakeArrayView(ExpectedDiagnostics))));
+	}
+
+	// -------------------------------------------------------------------------
+	// GENERATED_BODY boundary: this C++ macro should not be accepted inside a
+	// script interface declaration.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(GeneratedBodyInsideInterfaceRejected)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			interface ICoverageMacrosUnsupportedGeneratedBodyInterface
+			{
+				GENERATED_BODY()
+			}
+			)AS");
+
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("Expected method or property"));
+		ExpectedDiagnostics.Add(TEXT("Instead found identifier 'GENERATED_BODY'"));
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageMacros_GeneratedBodyUnsupported"),
+			ScriptSource,
+			TEXT("GENERATED_BODY() inside script interface declarations should remain unsupported"),
+			MakeArrayView(ExpectedDiagnostics))));
+	}
+
+	// -------------------------------------------------------------------------
+	// UDELEGATE declaration boundary: AS supports delegate declarations, but not
+	// the C++ UDELEGATE() macro spelling on script delegates.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(UDelegateMacroDeclarationRejected)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UDELEGATE()
+			delegate void FCoverageUnsupportedUDelegate(int Value);
+			)AS");
+
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("Expected identifier"));
+		ExpectedDiagnostics.Add(TEXT("Instead found '('"));
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageMacros_UDelegateMacroUnsupported"),
+			ScriptSource,
+			TEXT("UDELEGATE() macro spelling should remain unsupported for AS delegate declarations"),
+			MakeArrayView(ExpectedDiagnostics))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Native AS delegate declaration: this is the supported replacement for the
+	// rejected UDELEGATE() macro and validates UDelegateFunction reflection.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(ScriptDelegateReflectsUDelegateFunction)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMacros_ScriptDelegateReflection"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMacrosScriptDelegateReflection.as"),
+			ASTEST_AS(R"AS(
+			delegate void FCoverageMacroSignal(int Value);
+
+			UCLASS()
+			class ACoverageMacrosDelegateActor : AActor
+			{
+				UPROPERTY()
+				FCoverageMacroSignal Signal;
+			}
+			)AS"),
+			TEXT("ACoverageMacrosDelegateActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Script delegate carrier should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const TSharedPtr<FAngelscriptDelegateDesc> DelegateDesc = Engine.GetDelegate(TEXT("FCoverageMacroSignal"));
+		ASSERT_THAT(IsTrue(DelegateDesc.IsValid(), TEXT("Script delegate should register an engine delegate descriptor")));
+		ASSERT_THAT(IsTrue(DelegateDesc.IsValid() && !DelegateDesc->bIsMulticast,
+			TEXT("delegate keyword should create a single-cast delegate")));
+		UFunction* DelegateFunction = DelegateDesc.IsValid() ? DelegateDesc->Function : nullptr;
+		ASSERT_THAT(IsNotNull(DelegateFunction, TEXT("Script delegate should materialize a UDelegateFunction")));
+		if (DelegateFunction == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(DelegateFunction != nullptr && DelegateFunction->IsA<UDelegateFunction>(),
+			TEXT("Generated delegate signature should be a UDelegateFunction")));
+
+		FProperty* DelegateParam = GetSingleParameter(DelegateFunction);
+		ASSERT_THAT(IsNotNull(DelegateParam, TEXT("Delegate signature should expose its Value parameter")));
+		if (DelegateParam == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(FName(TEXT("Value")), DelegateParam->GetFName(),
+			TEXT("Delegate signature parameter name should round-trip")));
+		ASSERT_THAT(IsNotNull(CastField<FIntProperty>(DelegateParam),
+			TEXT("Delegate signature Value parameter should be reflected as an int")));
+
+		FDelegateProperty* SignalProperty = CastField<FDelegateProperty>(FindScriptProperty(ScriptClass, TEXT("Signal")));
+		ASSERT_THAT(IsNotNull(SignalProperty, TEXT("Delegate UPROPERTY should reflect as FDelegateProperty")));
+		if (SignalProperty == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(DelegateFunction, SignalProperty->SignatureFunction.Get(),
+			TEXT("Delegate property should target the generated UDelegateFunction")));
+	}
+
+	// -------------------------------------------------------------------------
+	// Custom metadata keys: UCLASS / UPROPERTY / UFUNCTION meta should round-trip
+	// through the reflected UE metadata maps.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(CustomMetadataKeysRoundTrip)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMacros_CustomMetadata"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMacrosCustomMetadata.as"),
+			ASTEST_AS(R"AS(
+			UCLASS(meta=(CoverageClassKey="ClassValue", DisplayName="Coverage Metadata Actor"))
+			class ACoverageMacrosMetadataActor : AActor
+			{
+				UPROPERTY(meta=(CoveragePropertyKey="PropertyValue", ClampMin="1"))
+				int ReflectedValue = 7;
+
+				UFUNCTION(BlueprintCallable, meta=(CoverageFunctionKey="FunctionValue", Keywords="coverage metadata"))
+				int ReadValue() const
+				{
+					return ReflectedValue;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageMacrosMetadataActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Custom metadata actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(FString(TEXT("ClassValue")), GetClassMetadata(ScriptClass, TEXT("CoverageClassKey")),
+			TEXT("UCLASS custom metadata key should round-trip")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Coverage Metadata Actor")), GetClassMetadata(ScriptClass, TEXT("DisplayName")),
+			TEXT("UCLASS DisplayName metadata should round-trip with custom keys")));
+
+		FProperty* ReflectedValueProperty = FindScriptProperty(ScriptClass, TEXT("ReflectedValue"));
+		ASSERT_THAT(IsNotNull(ReflectedValueProperty, TEXT("ReflectedValue property should exist")));
+		if (ReflectedValueProperty == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(FString(TEXT("PropertyValue")),
+			ReflectedValueProperty->GetMetaData(TEXT("CoveragePropertyKey")),
+			TEXT("UPROPERTY custom metadata key should round-trip")));
+		ASSERT_THAT(AreEqual(FString(TEXT("1")),
+			ReflectedValueProperty->GetMetaData(TEXT("ClampMin")),
+			TEXT("UPROPERTY standard metadata should remain available beside custom keys")));
+
+		UFunction* ReadValueFunction = RequireGeneratedFunction(ScriptClass, TEXT("ReadValue"));
+		ASSERT_THAT(IsNotNull(ReadValueFunction, TEXT("ReadValue UFUNCTION should exist")));
+		if (ReadValueFunction == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(FString(TEXT("FunctionValue")),
+			ReadValueFunction->GetMetaData(TEXT("CoverageFunctionKey")),
+			TEXT("UFUNCTION custom metadata key should round-trip")));
+		ASSERT_THAT(AreEqual(FString(TEXT("coverage metadata")),
+			ReadValueFunction->GetMetaData(TEXT("Keywords")),
+			TEXT("UFUNCTION standard metadata should remain available beside custom keys")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Custom metadata actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+
+		FFunctionInvoker ReadValueInvoker(*TestRunner, Actor, TEXT("ReadValue"));
+		ASSERT_THAT(IsTrue(ReadValueInvoker.IsValid(), TEXT("ReadValue should be invokable through reflection")));
+		if (!ReadValueInvoker.IsValid())
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(7, ReadValueInvoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("Custom metadata should not affect reflected function execution")));
+	}
+
+	// -------------------------------------------------------------------------
+	// WITH_EDITOR boundary: the AS preprocessor uses EDITOR / EDITORONLY_DATA
+	// flags; WITH_EDITOR is a C++ macro and is intentionally rejected.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(WithEditorMacroNameRejected)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			#if WITH_EDITOR
+			int EditorOnlyValue()
+			{
+				return 1;
+			}
+			#endif
+			)AS");
+
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("Invalid preprocessor condition: WITH_EDITOR"));
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageMacros_WithEditorUnsupported"),
+			ScriptSource,
+			TEXT("WITH_EDITOR should remain a C++ macro name, not an AS preprocessor flag"),
+			MakeArrayView(ExpectedDiagnostics))));
+	}
+
+	// -------------------------------------------------------------------------
+	// EDITOR condition branch: validate the supported AS editor condition form
+	// and prove the active branch reflects and runs.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(EditorConditionActiveBranchReflects)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		TGuardValue<bool> UseEditorScriptsGuard(Engine.bUseEditorScripts, true);
+
+		static const FName ModuleName(TEXT("ASCoverageMacros_EditorConditionBranch"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMacrosEditorConditionBranch.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageMacrosEditorConditionActor : AActor
+			{
+				#if EDITOR
+				UPROPERTY()
+				int ActiveBranchValue = 57;
+
+				UFUNCTION()
+				int GetBranchValue() const
+				{
+					return ActiveBranchValue;
+				}
+				#else
+				UPROPERTY()
+				int InactiveBranchValue = -1;
+
+				UFUNCTION()
+				int GetBranchValue() const
+				{
+					return InactiveBranchValue;
+				}
+				#endif
+			}
+			)AS"),
+			TEXT("ACoverageMacrosEditorConditionActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("EDITOR condition actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FProperty* ActiveBranchProperty = FindScriptProperty(ScriptClass, TEXT("ActiveBranchValue"));
+		ASSERT_THAT(IsNotNull(ActiveBranchProperty, TEXT("EDITOR active branch property should be reflected")));
+		FProperty* InactiveBranchProperty = FindScriptProperty(ScriptClass, TEXT("InactiveBranchValue"));
+		ASSERT_THAT(IsNull(InactiveBranchProperty, TEXT("EDITOR inactive branch property should not be reflected")));
+
+		UFunction* GetBranchValueFunction = RequireGeneratedFunction(ScriptClass, TEXT("GetBranchValue"));
+		ASSERT_THAT(IsNotNull(GetBranchValueFunction, TEXT("EDITOR active branch function should be reflected")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("EDITOR condition actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+
+		FFunctionInvoker GetBranchValueInvoker(*TestRunner, Actor, TEXT("GetBranchValue"));
+		ASSERT_THAT(IsTrue(GetBranchValueInvoker.IsValid(), TEXT("GetBranchValue should be invokable through reflection")));
+		if (!GetBranchValueInvoker.IsValid())
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(57, GetBranchValueInvoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("EDITOR active branch function should execute the reflected active branch")));
+	}
+
+	// -------------------------------------------------------------------------
+	// Reflection macro combination: one script combines UENUM, delegate, USTRUCT,
+	// UCLASS, UPROPERTY, and UFUNCTION and validates runtime/reflection together.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(ReflectionMacroCombination)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMacros_ReflectionCombination"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMacrosReflectionCombination.as"),
+			ASTEST_AS(R"AS(
+			UENUM(BlueprintType)
+			enum ECoverageMacroCombinedState
+			{
+				Ready UMETA(DisplayName="Ready State"),
+				Blocked UMETA(Hidden)
+			}
+
+			delegate void FCoverageMacroCombinedSignal(int Value);
+
+			USTRUCT(BlueprintType)
+			struct FCoverageMacroCombinedPayload
+			{
+				UPROPERTY()
+				int Amount = 0;
+			}
+
+			UCLASS(BlueprintType, meta=(CoverageCombinedKey="CombinedValue"))
+			class ACoverageMacrosCombinedActor : AActor
+			{
+				UPROPERTY(meta=(CoveragePropertyKey="CombinedProperty"))
+				FCoverageMacroCombinedPayload Payload;
+
+				UPROPERTY()
+				ECoverageMacroCombinedState State = ECoverageMacroCombinedState::Ready;
+
+				UPROPERTY()
+				FCoverageMacroCombinedSignal Signal;
+
+				UPROPERTY()
+				int RuntimeResult = 0;
+
+				UFUNCTION(BlueprintCallable, meta=(CoverageFunctionKey="CombinedFunction"))
+				int ApplyPayload(int Bonus)
+				{
+					RuntimeResult = Payload.Amount + Bonus;
+					if (State == ECoverageMacroCombinedState::Ready)
+					{
+						RuntimeResult += 1;
+					}
+					return RuntimeResult;
+				}
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					Payload.Amount = 20;
+					ApplyPayload(21);
+				}
+			}
+			)AS"),
+			TEXT("ACoverageMacrosCombinedActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Combined reflection macro actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(FString(TEXT("CombinedValue")), GetClassMetadata(ScriptClass, TEXT("CoverageCombinedKey")),
+			TEXT("Combined UCLASS metadata should round-trip")));
+
+		FStructProperty* PayloadProperty = CastField<FStructProperty>(FindScriptProperty(ScriptClass, TEXT("Payload")));
+		ASSERT_THAT(IsNotNull(PayloadProperty, TEXT("Combined USTRUCT property should reflect as FStructProperty")));
+		if (PayloadProperty == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(FString(TEXT("CombinedProperty")),
+			PayloadProperty->GetMetaData(TEXT("CoveragePropertyKey")),
+			TEXT("Combined UPROPERTY metadata should round-trip")));
+
+		FEnumProperty* StateProperty = CastField<FEnumProperty>(FindScriptProperty(ScriptClass, TEXT("State")));
+		ASSERT_THAT(IsNotNull(StateProperty, TEXT("Combined UENUM property should reflect as FEnumProperty")));
+		if (StateProperty == nullptr)
+		{
+			return;
+		}
+
+		UEnum* StateEnum = StateProperty->GetEnum();
+		ASSERT_THAT(IsNotNull(StateEnum, TEXT("Combined enum property should expose its UEnum")));
+		if (StateEnum == nullptr)
+		{
+			return;
+		}
+
+		const int32 ReadyStateIndex = StateEnum->GetIndexByNameString(TEXT("Ready"));
+		ASSERT_THAT(AreNotEqual(INDEX_NONE, ReadyStateIndex,
+			TEXT("Combined enum should expose the Ready enumerator")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Ready State")),
+			StateEnum != nullptr && ReadyStateIndex != INDEX_NONE ? StateEnum->GetMetaData(TEXT("DisplayName"), ReadyStateIndex) : FString(),
+			TEXT("Combined UMETA DisplayName should round-trip")));
+
+		const TSharedPtr<FAngelscriptDelegateDesc> DelegateDesc = Engine.GetDelegate(TEXT("FCoverageMacroCombinedSignal"));
+		ASSERT_THAT(IsTrue(DelegateDesc.IsValid(), TEXT("Combined delegate should register an engine delegate descriptor")));
+		UFunction* DelegateFunction = DelegateDesc.IsValid() ? DelegateDesc->Function : nullptr;
+		ASSERT_THAT(IsNotNull(DelegateFunction, TEXT("Combined delegate should materialize a UDelegateFunction")));
+		if (DelegateFunction == nullptr)
+		{
+			return;
+		}
+
+		FDelegateProperty* SignalProperty = CastField<FDelegateProperty>(FindScriptProperty(ScriptClass, TEXT("Signal")));
+		ASSERT_THAT(IsNotNull(SignalProperty, TEXT("Combined delegate property should reflect as FDelegateProperty")));
+		if (SignalProperty == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(DelegateFunction, SignalProperty->SignatureFunction.Get(),
+			TEXT("Combined delegate property should target the generated UDelegateFunction")));
+
+		UFunction* ApplyPayloadFunction = RequireGeneratedFunction(ScriptClass, TEXT("ApplyPayload"));
+		ASSERT_THAT(IsNotNull(ApplyPayloadFunction, TEXT("Combined UFUNCTION should be reflected")));
+		if (ApplyPayloadFunction == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(FString(TEXT("CombinedFunction")),
+			ApplyPayloadFunction->GetMetaData(TEXT("CoverageFunctionKey")),
+			TEXT("Combined UFUNCTION metadata should round-trip")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Combined reflection macro actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		const bool bRuntimeResultMatched = VerifyByPath<FIntProperty, int32>(
+			*TestRunner,
+			Actor,
+			TEXT("RuntimeResult"),
+			42,
+			TEXT("Combined macro runtime path should execute BeginPlay and UFUNCTION"));
+		ASSERT_THAT(IsTrue(bRuntimeResultMatched, TEXT("Combined runtime result should match")));
+
+		FFunctionInvoker ApplyPayloadInvoker(*TestRunner, Actor, TEXT("ApplyPayload"));
+		ASSERT_THAT(IsTrue(ApplyPayloadInvoker.IsValid(), TEXT("Combined ApplyPayload should be invokable through reflection")));
+		if (!ApplyPayloadInvoker.IsValid())
+		{
+			return;
+		}
+		ApplyPayloadInvoker.AddParam<int32>(5);
+		ASSERT_THAT(AreEqual(26, ApplyPayloadInvoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("Combined reflected UFUNCTION invocation should consume USTRUCT and UENUM state")));
+	}
+
+	// -------------------------------------------------------------------------
+	// Macro expansion boundaries: macro-like tokens in comments, strings, and
+	// inactive condition branches should not be recognized as reflection macros.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(MacroExpansionIgnoresCommentsStringsAndInactiveBranches)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMacros_ExpansionBoundaries"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMacrosExpansionBoundaries.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageMacrosExpansionBoundaryActor : AActor
+			{
+				// UPROPERTY()
+				// int CommentOnlyProperty = -1;
+
+				UPROPERTY()
+				FString LiteralMacroText = "UFUNCTION() int ShouldNotExist()";
+
+				#if COOK_COMMANDLET
+				UPROPERTY()
+				int CookOnlyProperty = -2;
+				#endif
+
+				UFUNCTION()
+				int GetLiteralLength() const
+				{
+					return LiteralMacroText.Len();
+				}
+			}
+			)AS"),
+			TEXT("ACoverageMacrosExpansionBoundaryActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Macro expansion boundary actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsNull(FindScriptProperty(ScriptClass, TEXT("CommentOnlyProperty")),
+			TEXT("UPROPERTY token in a comment should not create a reflected property")));
+		ASSERT_THAT(IsNull(RequireGeneratedFunction(ScriptClass, TEXT("ShouldNotExist")),
+			TEXT("UFUNCTION token in a string literal should not create a reflected function")));
+		ASSERT_THAT(IsNull(FindScriptProperty(ScriptClass, TEXT("CookOnlyProperty")),
+			TEXT("Reflection macro in inactive commandlet branch should not be reflected in editor tests")));
+		ASSERT_THAT(IsNotNull(FindScriptProperty(ScriptClass, TEXT("LiteralMacroText")),
+			TEXT("Real property after comment/string macro tokens should still reflect")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Macro expansion boundary actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+
+		FFunctionInvoker GetLiteralLengthInvoker(*TestRunner, Actor, TEXT("GetLiteralLength"));
+		ASSERT_THAT(IsTrue(GetLiteralLengthInvoker.IsValid(), TEXT("Boundary function should be invokable through reflection")));
+		if (!GetLiteralLengthInvoker.IsValid())
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(32, GetLiteralLengthInvoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("Macro-looking string literal should remain runtime string data")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -133,29 +806,71 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMacrosTest,
 			)AS"),
 			TEXT("ACoverageMacrosUEnumActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Advanced UENUM actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Advanced UENUM actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify enum values were set correctly
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("TestResult"), 2,
-			TEXT("Switch statement should set TestResult to 2 for Option_B"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("TestResult"), 2,
+			TEXT("Switch statement should set TestResult to 2 for Option_B")),
+			TEXT("Advanced UENUM runtime result should verify")));
 
 		// Verify UENUM property has correct metadata
-		FProperty* EnumProp = ScriptClass->FindPropertyByName(TEXT("AdvancedValue"));
+		FProperty* EnumProp = FindScriptProperty(ScriptClass, TEXT("AdvancedValue"));
 		ASSERT_THAT(IsNotNull(EnumProp, TEXT("AdvancedValue property should exist")));
+		if (EnumProp == nullptr)
+		{
+			return;
+		}
 
 		FEnumProperty* EnumProperty = CastField<FEnumProperty>(EnumProp);
-		if (EnumProperty)
+		ASSERT_THAT(IsNotNull(EnumProperty, TEXT("AdvancedValue should be backed by an enum property")));
+		if (EnumProperty == nullptr)
 		{
-			UEnum* EnumType = EnumProperty->GetEnum();
-			ASSERT_THAT(IsNotNull(EnumType, TEXT("Enum type should be accessible")));
-			ASSERT_THAT(IsTrue(EnumType->HasMetaData(TEXT("BlueprintType")),
-				TEXT("Enum should have BlueprintType metadata")));
+			return;
 		}
+
+		UEnum* EnumType = EnumProperty->GetEnum();
+		ASSERT_THAT(IsNotNull(EnumType, TEXT("Enum type should be accessible")));
+		if (EnumType == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(EnumType->HasMetaData(TEXT("BlueprintType")),
+			TEXT("Enum should have BlueprintType metadata")));
+
+		const int32 OptionAIndex = EnumType->GetIndexByNameString(TEXT("Option_A"));
+		const int32 OptionBIndex = EnumType->GetIndexByNameString(TEXT("Option_B"));
+		const int32 OptionCIndex = EnumType->GetIndexByNameString(TEXT("Option_C"));
+		const int32 OptionMaxIndex = EnumType->GetIndexByNameString(TEXT("Option_MAX"));
+		ASSERT_THAT(AreNotEqual(INDEX_NONE, OptionAIndex, TEXT("Option_A should exist in reflected UEnum")));
+		ASSERT_THAT(AreNotEqual(INDEX_NONE, OptionBIndex, TEXT("Option_B should exist in reflected UEnum")));
+		ASSERT_THAT(AreNotEqual(INDEX_NONE, OptionCIndex, TEXT("Option_C should exist in reflected UEnum")));
+		ASSERT_THAT(AreNotEqual(INDEX_NONE, OptionMaxIndex, TEXT("Option_MAX should exist in reflected UEnum")));
+		ASSERT_THAT(AreEqual(FString(TEXT("First Option")),
+			OptionAIndex != INDEX_NONE ? EnumType->GetMetaData(TEXT("DisplayName"), OptionAIndex) : FString(),
+			TEXT("UMETA DisplayName should round-trip for Option_A")));
+		ASSERT_THAT(AreEqual(FString(TEXT("This is the first option")),
+			OptionAIndex != INDEX_NONE ? EnumType->GetMetaData(TEXT("ToolTip"), OptionAIndex) : FString(),
+			TEXT("UMETA ToolTip should round-trip for Option_A")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Second Option")),
+			OptionBIndex != INDEX_NONE ? EnumType->GetMetaData(TEXT("DisplayName"), OptionBIndex) : FString(),
+			TEXT("UMETA DisplayName should round-trip for Option_B")));
+		ASSERT_THAT(IsTrue(OptionCIndex != INDEX_NONE && EnumType->HasMetaData(TEXT("Hidden"), OptionCIndex),
+			TEXT("UMETA Hidden should round-trip for Option_C")));
+		ASSERT_THAT(IsTrue(OptionMaxIndex != INDEX_NONE && EnumType->HasMetaData(TEXT("Hidden"), OptionMaxIndex),
+			TEXT("UMETA Hidden should round-trip for Option_MAX")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -214,8 +929,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMacrosTest,
 
 				int opCmp(const FAdvancedStruct&in Other) const
 				{
-					if (Value < Other.Value) return -1;
-					if (Value > Other.Value) return 1;
+					if (Value < Other.Value)
+					{
+						return -1;
+					}
+
+					if (Value > Other.Value)
+					{
+						return 1;
+					}
+
 					return 0;
 				}
 
@@ -299,22 +1022,33 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMacrosTest,
 			)AS"),
 			TEXT("ACoverageMacrosUStructActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Advanced USTRUCT actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Advanced USTRUCT actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify struct operations
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ComparisonResult"), 1,
-			TEXT("Struct comparison should return 1 for different structs"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("AdditionValue"), 300,
-			TEXT("Struct addition should sum values"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ComparisonResult"), 1,
+			TEXT("Struct comparison should return 1 for different structs")),
+			TEXT("Struct comparison result should verify")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("AdditionValue"), 300,
+			TEXT("Struct addition should sum values")),
+			TEXT("Struct addition result should verify")));
 
 		// Verify nested struct
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ComplexData.Inner.Value"), 500,
-			TEXT("Nested struct value should be set"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ComplexData.Inner.Value"), 500,
+			TEXT("Nested struct value should be set")),
+			TEXT("Nested struct value should verify")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -398,36 +1132,87 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMacrosTest,
 			)AS"),
 			TEXT("ACoverageMacrosUParamActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("UPARAM actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("UPARAM actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify UPARAM functions executed correctly
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultValue"), 50,
-			TEXT("UPARAM function should calculate result correctly"));
-		VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("ResultString"),
-			FString(TEXT("Test Processed")), TEXT("UPARAM string function should process text"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultValue"), 50,
+			TEXT("UPARAM function should calculate result correctly")),
+			TEXT("UPARAM numeric result should verify")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("ResultString"),
+			FString(TEXT("Test Processed")), TEXT("UPARAM string function should process text")),
+			TEXT("UPARAM string result should verify")));
 
 		// Verify UFUNCTION metadata
-		UFunction* ProcessFunc = ScriptClass->FindFunctionByName(TEXT("ProcessValue"));
+		UFunction* ProcessFunc = RequireGeneratedFunction(ScriptClass, TEXT("ProcessValue"));
 		ASSERT_THAT(IsNotNull(ProcessFunc, TEXT("ProcessValue function should exist")));
+		if (ProcessFunc == nullptr)
+		{
+			return;
+		}
+		const TArray<FProperty*> ProcessParams = GetOrderedParameters(ProcessFunc);
+		ASSERT_THAT(AreEqual(3, ProcessParams.Num(), TEXT("ProcessValue should expose three reflected parameters")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Input Number")), GetParameterDisplayName(ProcessParams.IsValidIndex(0) ? ProcessParams[0] : nullptr),
+			TEXT("UPARAM DisplayName should round-trip for InValue")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Multiplier")), GetParameterDisplayName(ProcessParams.IsValidIndex(1) ? ProcessParams[1] : nullptr),
+			TEXT("UPARAM DisplayName should round-trip for Multiplier")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Result")), GetParameterDisplayName(ProcessParams.IsValidIndex(2) ? ProcessParams[2] : nullptr),
+			TEXT("UPARAM DisplayName should round-trip for OutResult")));
+		ASSERT_THAT(IsTrue(ProcessParams.IsValidIndex(2) && ProcessParams[2]->HasAnyPropertyFlags(CPF_OutParm),
+			TEXT("UPARAM(ref) output parameter should reflect CPF_OutParm")));
+
+		UFunction* SplitFunc = RequireGeneratedFunction(ScriptClass, TEXT("SplitValue"));
+		ASSERT_THAT(IsNotNull(SplitFunc, TEXT("SplitValue function should exist")));
+		if (SplitFunc == nullptr)
+		{
+			return;
+		}
+		const TArray<FProperty*> SplitParams = GetOrderedParameters(SplitFunc);
+		ASSERT_THAT(AreEqual(3, SplitParams.Num(), TEXT("SplitValue should expose three reflected parameters")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Input")), GetParameterDisplayName(SplitParams.IsValidIndex(0) ? SplitParams[0] : nullptr),
+			TEXT("UPARAM DisplayName should round-trip for SplitValue input")));
+		ASSERT_THAT(IsTrue(SplitParams.IsValidIndex(1) && SplitParams[1]->HasAnyPropertyFlags(CPF_OutParm),
+			TEXT("UPARAM(ref) Half1 should reflect CPF_OutParm")));
+		ASSERT_THAT(IsTrue(SplitParams.IsValidIndex(2) && SplitParams[2]->HasAnyPropertyFlags(CPF_OutParm),
+			TEXT("UPARAM(ref) Half2 should reflect CPF_OutParm")));
+
+		UFunction* ProcessStringFunc = RequireGeneratedFunction(ScriptClass, TEXT("ProcessString"));
+		ASSERT_THAT(IsNotNull(ProcessStringFunc, TEXT("ProcessString function should exist")));
+		if (ProcessStringFunc == nullptr)
+		{
+			return;
+		}
+		const TArray<FProperty*> ProcessStringParams = GetOrderedParameters(ProcessStringFunc);
+		ASSERT_THAT(AreEqual(2, ProcessStringParams.Num(), TEXT("ProcessString should expose two reflected parameters")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Input Text")), GetParameterDisplayName(ProcessStringParams.IsValidIndex(0) ? ProcessStringParams[0] : nullptr),
+			TEXT("UPARAM DisplayName should round-trip for const ref input")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Output Text")), GetParameterDisplayName(ProcessStringParams.IsValidIndex(1) ? ProcessStringParams[1] : nullptr),
+			TEXT("UPARAM DisplayName should round-trip for string output")));
+		ASSERT_THAT(IsTrue(ProcessStringParams.IsValidIndex(1) && ProcessStringParams[1]->HasAnyPropertyFlags(CPF_OutParm),
+			TEXT("UPARAM(ref) string output should reflect CPF_OutParm")));
 	}
 
 	// -------------------------------------------------------------------------
-	// BlueprintImplementableEvent - Blueprint-only implementation
-	// Note: In AngelScript, this is primarily used for cross-language scenarios
-	// where AS declares an event that Blueprint classes can implement.
-	// For pure AS testing, we verify the declaration compiles correctly.
+	// BlueprintEvent - event wrapper metadata and dispatch.
 	// -------------------------------------------------------------------------
-	TEST_METHOD(BlueprintImplementableEvent)
+	TEST_METHOD(BlueprintEventMetadataAndDispatch)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		static const FName ModuleName(TEXT("ASCoverageMacros_BPImplEvent"));
+		static const FName ModuleName(TEXT("ASCoverageMacros_BlueprintEventMetadata"));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
@@ -437,10 +1222,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMacrosTest,
 			*TestRunner,
 			Engine,
 			ModuleName,
-			TEXT("ASCoveragesMacrosBPImplEvent.as"),
+			TEXT("ASCoveragesMacrosBlueprintEventMetadata.as"),
 			ASTEST_AS(R"AS(
 			UCLASS()
-			class ACoveragesMacrosBPImplEventActor : AActor
+			class ACoveragesMacrosBlueprintEventActor : AActor
 			{
 				UPROPERTY()
 				int EventCallCount = 0;
@@ -448,74 +1233,103 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMacrosTest,
 				UPROPERTY()
 				int EventValue = 0;
 
-				// BlueprintImplementableEvent - can be implemented in Blueprint
-				UFUNCTION(BlueprintImplementableEvent, Category="Events")
-				void OnCustomEvent(int Value);
+				// BlueprintEvent - can be overridden by Blueprint child classes
+				UFUNCTION(BlueprintEvent, Category="Events")
+				void OnCustomEvent(int Value)
+				{
+					EventCallCount++;
+					EventValue = Value;
+				}
 
-				// BlueprintImplementableEvent with return value
-				UFUNCTION(BlueprintImplementableEvent, Category="Events")
-				int CalculateValue(int Input);
+				// BlueprintEvent with return value
+				UFUNCTION(BlueprintEvent, Category="Events")
+				int CalculateValue(int Input)
+				{
+					return Input * 2;
+				}
 
-				// BlueprintImplementableEvent with multiple parameters
-				UFUNCTION(BlueprintImplementableEvent, Category="Events")
-				void OnComplexEvent(int IntParam, FString StringParam, FVector VectorParam);
+				// BlueprintEvent with multiple parameters
+				UFUNCTION(BlueprintEvent, Category="Events")
+				void OnComplexEvent(int IntParam, FString StringParam, FVector VectorParam)
+				{
+					EventCallCount += IntParam;
+					EventValue = int(VectorParam.X);
+				}
 
 				// Function that would call the event (in real usage)
 				UFUNCTION(BlueprintCallable, Category="Testing")
 				void TriggerEvent(int Value)
 				{
-					// In a real scenario with Blueprint child class, this would call the BP implementation
-					// For pure AS testing, we just verify the signature is correct
-					EventCallCount++;
-					EventValue = Value;
+					OnCustomEvent(CalculateValue(Value));
 				}
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					TriggerEvent(42);
+					TriggerEvent(21);
 				}
 			}
 			)AS"),
-			TEXT("ACoveragesMacrosBPImplEventActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("BlueprintImplementableEvent actor should compile")));
+			TEXT("ACoveragesMacrosBlueprintEventActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("BlueprintEvent actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		ASSERT_THAT(IsNotNull(Actor, TEXT("BlueprintImplementableEvent actor should spawn")));
+		ASSERT_THAT(IsNotNull(Actor, TEXT("BlueprintEvent actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify function metadata
-		UFunction* EventFunc = ScriptClass->FindFunctionByName(TEXT("OnCustomEvent"));
+		UFunction* EventFunc = RequireGeneratedFunction(ScriptClass, TEXT("OnCustomEvent"));
 		ASSERT_THAT(IsNotNull(EventFunc, TEXT("OnCustomEvent should exist")));
+		if (EventFunc == nullptr)
+		{
+			return;
+		}
+
 		ASSERT_THAT(IsTrue(EventFunc->HasAnyFunctionFlags(FUNC_BlueprintEvent),
 			TEXT("OnCustomEvent should have BlueprintEvent flag")));
 
-		UFunction* CalcFunc = ScriptClass->FindFunctionByName(TEXT("CalculateValue"));
+		UFunction* CalcFunc = RequireGeneratedFunction(ScriptClass, TEXT("CalculateValue"));
 		ASSERT_THAT(IsNotNull(CalcFunc, TEXT("CalculateValue should exist")));
+		if (CalcFunc == nullptr)
+		{
+			return;
+		}
 
-		UFunction* ComplexFunc = ScriptClass->FindFunctionByName(TEXT("OnComplexEvent"));
+		UFunction* ComplexFunc = RequireGeneratedFunction(ScriptClass, TEXT("OnComplexEvent"));
 		ASSERT_THAT(IsNotNull(ComplexFunc, TEXT("OnComplexEvent should exist")));
+		if (ComplexFunc == nullptr)
+		{
+			return;
+		}
 
 		// Verify trigger function worked
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EventCallCount"), 1,
-			TEXT("Event trigger function should increment counter"));
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EventValue"), 42,
-			TEXT("Event trigger function should set value"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EventCallCount"), 1,
+			TEXT("Event trigger function should increment counter")),
+			TEXT("BlueprintEvent call count should verify")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EventValue"), 42,
+			TEXT("Event trigger function should set value")),
+			TEXT("BlueprintEvent value should verify")));
 	}
 
 	// -------------------------------------------------------------------------
-	// BlueprintNativeEvent - Event with native implementation and BP override
-	// Note: In AngelScript, this allows AS to provide a default implementation
-	// that Blueprint child classes can optionally override.
+	// BlueprintEvent - Event with AS default implementation and BP override surface.
 	// -------------------------------------------------------------------------
-	TEST_METHOD(BlueprintNativeEvent)
+	TEST_METHOD(BlueprintEventDefaultImplementations)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		static const FName ModuleName(TEXT("ASCoverageMacros_BPNativeEvent"));
+		static const FName ModuleName(TEXT("ASCoverageMacros_BlueprintEventDefaults"));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
@@ -525,10 +1339,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMacrosTest,
 			*TestRunner,
 			Engine,
 			ModuleName,
-			TEXT("ASCoverageMacrosBPNativeEvent.as"),
+			TEXT("ASCoverageMacrosBlueprintEventDefaults.as"),
 			ASTEST_AS(R"AS(
 			UCLASS()
-			class ACoverageMacrosBPNativeEventActor : AActor
+			class ACoverageMacrosBlueprintEventDefaultsActor : AActor
 			{
 				UPROPERTY()
 				int NativeEventResult = 0;
@@ -536,16 +1350,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMacrosTest,
 				UPROPERTY()
 				FString NativeEventString;
 
-				// BlueprintNativeEvent with default implementation
-				UFUNCTION(BlueprintNativeEvent, Category="Events")
+				// BlueprintEvent with default implementation
+				UFUNCTION(BlueprintEvent, Category="Events")
 				int ProcessNativeEvent(int Input)
 				{
 					// Default implementation - can be overridden in Blueprint
 					return Input * 2;
 				}
 
-				// BlueprintNativeEvent with string processing
-				UFUNCTION(BlueprintNativeEvent, Category="Events")
+				// BlueprintEvent with string processing
+				UFUNCTION(BlueprintEvent, Category="Events")
 				FString FormatNativeEvent(const FString&in Input, int Count)
 				{
 					FString Result = Input;
@@ -556,8 +1370,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMacrosTest,
 					return Result;
 				}
 
-				// BlueprintNativeEvent with void return
-				UFUNCTION(BlueprintNativeEvent, Category="Events")
+				// BlueprintEvent with void return
+				UFUNCTION(BlueprintEvent, Category="Events")
 				void ExecuteNativeEvent(int Value)
 				{
 					NativeEventResult = Value * 3;
@@ -585,33 +1399,56 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMacrosTest,
 				}
 			}
 			)AS"),
-			TEXT("ACoverageMacrosBPNativeEventActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("BlueprintNativeEvent actor should compile")));
+			TEXT("ACoverageMacrosBlueprintEventDefaultsActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("BlueprintEvent defaults actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		ASSERT_THAT(IsNotNull(Actor, TEXT("BlueprintNativeEvent actor should spawn")));
+		ASSERT_THAT(IsNotNull(Actor, TEXT("BlueprintEvent defaults actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify native event function metadata
-		UFunction* ProcessFunc = ScriptClass->FindFunctionByName(TEXT("ProcessNativeEvent"));
+		UFunction* ProcessFunc = RequireGeneratedFunction(ScriptClass, TEXT("ProcessNativeEvent"));
 		ASSERT_THAT(IsNotNull(ProcessFunc, TEXT("ProcessNativeEvent should exist")));
+		if (ProcessFunc == nullptr)
+		{
+			return;
+		}
+
 		ASSERT_THAT(IsTrue(ProcessFunc->HasAnyFunctionFlags(FUNC_BlueprintEvent),
 			TEXT("ProcessNativeEvent should have BlueprintEvent flag")));
 
-		UFunction* FormatFunc = ScriptClass->FindFunctionByName(TEXT("FormatNativeEvent"));
+		UFunction* FormatFunc = RequireGeneratedFunction(ScriptClass, TEXT("FormatNativeEvent"));
 		ASSERT_THAT(IsNotNull(FormatFunc, TEXT("FormatNativeEvent should exist")));
+		if (FormatFunc == nullptr)
+		{
+			return;
+		}
 
-		UFunction* ExecuteFunc = ScriptClass->FindFunctionByName(TEXT("ExecuteNativeEvent"));
+		UFunction* ExecuteFunc = RequireGeneratedFunction(ScriptClass, TEXT("ExecuteNativeEvent"));
 		ASSERT_THAT(IsNotNull(ExecuteFunc, TEXT("ExecuteNativeEvent should exist")));
+		if (ExecuteFunc == nullptr)
+		{
+			return;
+		}
 
 		// Verify native event default implementations executed
 		// Note: ExecuteNativeEvent overwrites NativeEventResult, so we check its result
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("NativeEventResult"), 15,
-			TEXT("ExecuteNativeEvent should set result to 5 * 3 = 15"));
-		VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("NativeEventString"),
-			FString(TEXT("Test Test Test")), TEXT("FormatNativeEvent should repeat string"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("NativeEventResult"), 15,
+			TEXT("ExecuteNativeEvent should set result to 5 * 3 = 15")),
+			TEXT("BlueprintEvent integer result should verify")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("NativeEventString"),
+			FString(TEXT("Test Test Test")), TEXT("FormatNativeEvent should repeat string")),
+			TEXT("BlueprintEvent string result should verify")));
 	}
 };
 

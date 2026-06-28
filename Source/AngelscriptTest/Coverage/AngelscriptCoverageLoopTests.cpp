@@ -4,6 +4,7 @@
 #include "AngelscriptTestMacros.h"
 #include "AngelscriptTestModuleBuilder.h"
 #include "AngelscriptTestUtilities.h"
+#include "Syntax/AngelscriptSyntaxTestHelpers.h"
 
 #include "Misc/ScopeExit.h"
 
@@ -45,15 +46,20 @@ namespace AngelscriptCoverageLoopTests_NS
 		template <typename T>
 		void ExpectGlobalReturn(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const T& Expected, const TCHAR* Message)
 		{
+			ASSERT_THAT(IsNotNull(Module, TEXT("loop module should compile before executing global function")));
 			if (Module == nullptr)
 			{
-				TestRunner->AddError(FString::Printf(TEXT("%s: backing module failed to build"), Message));
 				return;
 			}
 
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("loop global function should resolve and prepare")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
 			const T Result = Invoker.CallAndReturn<T>();
-			TestRunner->TestEqual(Message, Result, Expected);
+			ASSERT_THAT(AreEqual(Expected, Result, Message));
 		}
 
 		// -------------------------------------------------------------------------
@@ -302,8 +308,7 @@ namespace AngelscriptCoverageLoopTests_NS
 				return Sum;
 			}
 
-			// For-each with TMap
-			int ForEachMap()
+			int MapIteratorKeyValue()
 			{
 				TMap<int, int> Map;
 				Map.Add(1, 10);
@@ -311,9 +316,11 @@ namespace AngelscriptCoverageLoopTests_NS
 				Map.Add(3, 30);
 
 				int Sum = 0;
-				for (auto& Pair : Map)
+				TMapIterator<int, int> It = Map.Iterator();
+				while (It.CanProceed)
 				{
-					Sum += Pair.Key + Pair.Value;
+					It.Proceed();
+					Sum += It.GetKey() + It.GetValue();
 				}
 				return Sum;
 			}
@@ -330,7 +337,35 @@ namespace AngelscriptCoverageLoopTests_NS
 			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ForEachReference()"), 12, TEXT("for-each reference modify"));
 			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ForEachConstRef()"), 60, TEXT("for-each const reference"));
 			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ForEachSet()"), 30, TEXT("for-each TSet"));
-			ExpectGlobalReturn<int>(Engine, Module, TEXT("int ForEachMap()"), 66, TEXT("for-each TMap"));
+			ExpectGlobalReturn<int>(Engine, Module, TEXT("int MapIteratorKeyValue()"), 66, TEXT("TMap iterator key/value"));
+		}
+
+		TEST_METHOD(TMapForEachPairUnsupported)
+		{
+			FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+			FAngelscriptEngineScope Scope(Engine);
+
+			const FString UnsupportedMapPairSource = ASTEST_AS(R"AS(
+				int UnsupportedMapPair()
+				{
+					TMap<int, int> Map;
+					Map.Add(1, 10);
+
+					int Sum = 0;
+					for (auto& Pair : Map)
+					{
+						Sum += Pair.Key + Pair.Value;
+					}
+					return Sum;
+				}
+				)AS");
+			ASSERT_THAT(IsTrue(SyntaxTestHelpers::AssertFailsWithError(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovLoop_TMapForEachPairUnsupported"),
+				*UnsupportedMapPairSource,
+				TEXT("'Key' is not a member of 'TMapIterator<int,int>'"),
+				TEXT("TMap for-each exposes an iterator, not a Pair.Key/Pair.Value object"))));
 		}
 
 		// -------------------------------------------------------------------------

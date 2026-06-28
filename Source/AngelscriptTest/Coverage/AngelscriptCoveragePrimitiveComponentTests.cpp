@@ -6,6 +6,7 @@
 
 #include "Components/ActorTestSpawner.h"
 #include "Components/SphereComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 #include "Misc/ScopeExit.h"
 
@@ -110,16 +111,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 			TEXT("ACoveragePrimitiveRenderingActor"));
 
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Primitive rendering actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Primitive rendering actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InitiallyVisible"), true, TEXT("Component should be initially visible"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AfterSetVisible"), false, TEXT("Component should be invisible after SetVisibility(false)"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CustomDepthEnabled"), true, TEXT("Custom depth should be enabled"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InitiallyVisible"), true, TEXT("Component should be initially visible"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AfterSetVisible"), false, TEXT("Component should be invisible after SetVisibility(false)"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CustomDepthEnabled"), true, TEXT("Custom depth should be enabled"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -157,6 +166,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 				UPROPERTY()
 				bool GenerateOverlapEventsSet = false;
 
+				UPROPERTY()
+				bool CollisionModesCovered = false;
+
+				UPROPERTY()
+				bool CommonProfilesCovered = false;
+
+				UPROPERTY()
+				bool NotifyRigidBodyCollisionSet = false;
+
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
@@ -171,22 +189,85 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 					// Enable overlap events
 					MeshComp.SetGenerateOverlapEvents(true);
 					GenerateOverlapEventsSet = MeshComp.GetGenerateOverlapEvents();
+
+					// Exercise collision enabled modes with readback.
+					MeshComp.SetCollisionEnabled(ECollisionEnabled::NoCollision);
+					bool bNoCollision = MeshComp.GetCollisionEnabled() == ECollisionEnabled::NoCollision;
+					MeshComp.SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+					bool bQueryOnly = MeshComp.GetCollisionEnabled() == ECollisionEnabled::QueryOnly;
+					MeshComp.SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+					bool bPhysicsOnly = MeshComp.GetCollisionEnabled() == ECollisionEnabled::PhysicsOnly;
+					MeshComp.SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+					bool bQueryAndPhysics = MeshComp.GetCollisionEnabled() == ECollisionEnabled::QueryAndPhysics;
+					CollisionModesCovered = bNoCollision && bQueryOnly && bPhysicsOnly && bQueryAndPhysics;
+
+					// Exercise common built-in profiles with readback.
+					MeshComp.SetCollisionProfileName(n"NoCollision");
+					bool bNoCollisionProfile = MeshComp.GetCollisionProfileName() == n"NoCollision";
+					MeshComp.SetCollisionProfileName(n"BlockAll");
+					bool bBlockAllProfile = MeshComp.GetCollisionProfileName() == n"BlockAll";
+					MeshComp.SetCollisionProfileName(n"OverlapAll");
+					bool bOverlapAllProfile = MeshComp.GetCollisionProfileName() == n"OverlapAll";
+					MeshComp.SetCollisionProfileName(n"BlockAllDynamic");
+					bool bBlockAllDynamicProfile = MeshComp.GetCollisionProfileName() == n"BlockAllDynamic";
+					MeshComp.SetCollisionProfileName(n"OverlapAllDynamic");
+					bool bOverlapAllDynamicProfile = MeshComp.GetCollisionProfileName() == n"OverlapAllDynamic";
+					MeshComp.SetCollisionProfileName(n"IgnoreOnlyPawn");
+					bool bIgnoreOnlyPawnProfile = MeshComp.GetCollisionProfileName() == n"IgnoreOnlyPawn";
+					MeshComp.SetCollisionProfileName(n"OverlapOnlyPawn");
+					bool bOverlapOnlyPawnProfile = MeshComp.GetCollisionProfileName() == n"OverlapOnlyPawn";
+					MeshComp.SetCollisionProfileName(n"Pawn");
+					bool bPawnProfile = MeshComp.GetCollisionProfileName() == n"Pawn";
+					MeshComp.SetCollisionProfileName(n"PhysicsActor");
+					bool bPhysicsActorProfile = MeshComp.GetCollisionProfileName() == n"PhysicsActor";
+					CommonProfilesCovered =
+						bNoCollisionProfile
+						&& bBlockAllProfile
+						&& bOverlapAllProfile
+						&& bBlockAllDynamicProfile
+						&& bOverlapAllDynamicProfile
+						&& bIgnoreOnlyPawnProfile
+						&& bOverlapOnlyPawnProfile
+						&& bPawnProfile
+						&& bPhysicsActorProfile;
+
+					MeshComp.SetNotifyRigidBodyCollision(true);
+					NotifyRigidBodyCollisionSet = true;
 				}
 			}
 			)AS"),
 			TEXT("ACoveragePrimitiveCollisionSetupActor"));
 
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Primitive collision setup actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Primitive collision setup actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CollisionEnabledSet"), true, TEXT("Collision enabled should be set"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ProfileSet"), true, TEXT("Collision profile should be set"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GenerateOverlapEventsSet"), true, TEXT("Generate overlap events should be set"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CollisionEnabledSet"), true, TEXT("Collision enabled should be set"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ProfileSet"), true, TEXT("Collision profile should be set"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GenerateOverlapEventsSet"), true, TEXT("Generate overlap events should be set"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CollisionModesCovered"), true, TEXT("Collision enabled modes should round-trip"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CommonProfilesCovered"), true, TEXT("Common collision profiles should round-trip"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NotifyRigidBodyCollisionSet"), true, TEXT("Rigid body collision notification should be set"))));
+
+		UStaticMeshComponent* MeshComp = Actor->FindComponentByClass<UStaticMeshComponent>();
+		ASSERT_THAT(IsNotNull(MeshComp, TEXT("Collision setup mesh component should exist")));
+		if (MeshComp == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(MeshComp->BodyInstance.bNotifyRigidBodyCollision, TEXT("Rigid body collision notification should round-trip to BodyInstance")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -258,20 +339,37 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 			TEXT("ACoveragePrimitiveCollisionEventsActor"));
 
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Primitive collision events actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Primitive collision events actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Spawn another actor to overlap with
 		UWorld& World = Spawner.GetWorld();
 		AActor* OverlapActor = World.SpawnActor<AActor>(AActor::StaticClass(), FVector(50.0f, 0.0f, 0.0f), FRotator::ZeroRotator);
 		ASSERT_THAT(IsNotNull(OverlapActor, TEXT("Overlap actor should spawn")));
+		if (OverlapActor == nullptr)
+		{
+			return;
+		}
 
 		// Add a sphere component to the overlap actor
 		USphereComponent* OverlapSphere = NewObject<USphereComponent>(OverlapActor);
+		ASSERT_THAT(IsNotNull(OverlapSphere, TEXT("Overlap sphere component should be created")));
+		if (OverlapSphere == nullptr)
+		{
+			return;
+		}
 		OverlapSphere->SetSphereRadius(50.0f);
 		OverlapSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		OverlapSphere->SetCollisionProfileName(TEXT("OverlapAll"));
@@ -282,7 +380,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 		TickWorld(Engine, Spawner.GetWorld(), 0.1f, 1);
 
 		int32 BeginOverlapCount = 0;
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("BeginOverlapCount"), BeginOverlapCount);
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("BeginOverlapCount"), BeginOverlapCount)));
 		ASSERT_THAT(IsTrue(BeginOverlapCount > 0, TEXT("Overlap event should fire")));
 	}
 
@@ -348,17 +446,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 			TEXT("ACoveragePrimitivePhysicsActor"));
 
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Primitive physics actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Primitive physics actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("PhysicsEnabled"), true, TEXT("Physics should be enabled"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GravityEnabled"), true, TEXT("Gravity should be enabled"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ImpulseApplied"), true, TEXT("Impulse should be applied"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ForceApplied"), true, TEXT("Force should be applied"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("PhysicsEnabled"), true, TEXT("Physics should be enabled"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GravityEnabled"), true, TEXT("Gravity should be enabled"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ImpulseApplied"), true, TEXT("Impulse should be applied"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ForceApplied"), true, TEXT("Force should be applied"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -393,34 +499,69 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 				UPROPERTY()
 				bool AllChannelsSet = false;
 
+				UPROPERTY()
+				bool ObjectTypeSet = false;
+
+				UPROPERTY()
+				bool BlockResponseSet = false;
+
+				UPROPERTY()
+				bool OverlapResponseSet = false;
+
+				UPROPERTY()
+				bool IgnoreResponseSet = false;
+
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
 					// Set response to specific channel
 					MeshComp.SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Block);
-					ResponseSet = true;
+					BlockResponseSet = MeshComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn) == ECollisionResponse::ECR_Block;
+
+					MeshComp.SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Overlap);
+					OverlapResponseSet = MeshComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility) == ECollisionResponse::ECR_Overlap;
+
+					MeshComp.SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
+					IgnoreResponseSet = MeshComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_Camera) == ECollisionResponse::ECR_Ignore;
+					ResponseSet = BlockResponseSet && OverlapResponseSet && IgnoreResponseSet;
 
 					// Set response to all channels
-					MeshComp.SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-					AllChannelsSet = true;
+					MeshComp.SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
+					AllChannelsSet =
+						MeshComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn) == ECollisionResponse::ECR_Block
+						&& MeshComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility) == ECollisionResponse::ECR_Block
+						&& MeshComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_Camera) == ECollisionResponse::ECR_Block;
 
 					// Set object type
 					MeshComp.SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+					ObjectTypeSet = MeshComp.GetCollisionObjectType() == ECollisionChannel::ECC_WorldDynamic;
 				}
 			}
 			)AS"),
 			TEXT("ACoveragePrimitiveCollisionResponseActor"));
 
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Primitive collision response actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Primitive collision response actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ResponseSet"), true, TEXT("Collision response should be set"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AllChannelsSet"), true, TEXT("All channels response should be set"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ResponseSet"), true, TEXT("Collision response should be set"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("BlockResponseSet"), true, TEXT("Block response should round-trip"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("OverlapResponseSet"), true, TEXT("Overlap response should round-trip"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IgnoreResponseSet"), true, TEXT("Ignore response should round-trip"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AllChannelsSet"), true, TEXT("All channels response should be set"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ObjectTypeSet"), true, TEXT("Collision object type should round-trip"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -476,15 +617,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 			TEXT("ACoveragePrimitiveHitEventsActor"));
 
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Primitive hit events actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Primitive hit events actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify event was bound (actual hit would require physics simulation)
-		VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("HitCount"), 0, TEXT("Hit count should be 0 initially"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("HitCount"), 0, TEXT("Hit count should be 0 initially"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -532,15 +681,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 			TEXT("ACoveragePrimitiveHiddenInGameActor"));
 
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Primitive hidden in game actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Primitive hidden in game actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InitiallyHidden"), false, TEXT("Component should not be initially hidden"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AfterSetHidden"), true, TEXT("Component should be hidden after SetHiddenInGame(true)"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InitiallyHidden"), false, TEXT("Component should not be initially hidden"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AfterSetHidden"), true, TEXT("Component should be hidden after SetHiddenInGame(true)"))));
 	}
 };
 
