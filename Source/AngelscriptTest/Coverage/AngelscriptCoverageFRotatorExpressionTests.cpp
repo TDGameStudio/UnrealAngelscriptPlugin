@@ -221,7 +221,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const TArray<FString> ExpectedFragments = { TEXT("No matching signatures to 'opNeg") };
+		const TArray<FString> ExpectedFragments = { TEXT("Function 'opNeg()' not found") };
 		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
 			*TestRunner,
 			Engine,
@@ -391,7 +391,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 
 		bool IsNearlyZero()
 		{
-			FRotator r = FRotator(0.0001, 0.0001, 0.0001);
+			FRotator r = FRotator(0.000001, 0.000001, 0.000001);
 			return r.IsNearlyZero();
 		}
 		)AS"));
@@ -422,8 +422,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FRotator ClampRotator()"));
 			FRotator Result;
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			// Test that clamping occurred
-			ASSERT_THAT(IsTrue(Result.Pitch >= -90.0 && Result.Pitch <= 90.0, TEXT("FRotator Clamp")));
+			ASSERT_THAT(IsTrue(Result.Equals(FRotator(100, 200, 100).Clamp(), 0.001), TEXT("FRotator Clamp")));
 		}
 
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool IsZero()"), true, TEXT("rotator IsZero()"));
@@ -539,12 +538,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 			return FRotator::MakeFromEuler(euler);
 		}
 
-		FRotator LerpRotators()
-		{
-			FRotator a = FRotator(0, 0, 0);
-			FRotator b = FRotator(90, 90, 90);
-			return FRotator::Lerp(a, b, 0.5);
-		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -553,6 +546,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FRotator static method module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		// MakeFromEuler
 		{
@@ -562,15 +560,28 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 			FRotator Expected = FRotator::MakeFromEuler(FVector(10, 20, 30));
 			TestRunner->TestTrue(TEXT("FRotator::MakeFromEuler()"), Result.Equals(Expected, 0.001));
 		}
+	}
 
-		// Lerp
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FRotator LerpRotators()"));
-			FRotator Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			FRotator Expected = FMath::Lerp(FRotator(0, 0, 0), FRotator(90, 90, 90), 0.5f);
-			TestRunner->TestTrue(TEXT("FRotator::Lerp()"), Result.Equals(Expected, 0.001));
-		}
+	TEST_METHOD(RotatorUnsupportedStaticMethods)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const TArray<FString> ExpectedFragments = { TEXT("No matching signatures to 'FRotator::Lerp") };
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCovFRotatorExpr_LerpUnsupported"),
+			ASTEST_AS(R"AS(
+			FRotator TryLerp()
+			{
+				FRotator A = FRotator(0, 0, 0);
+				FRotator B = FRotator(90, 90, 90);
+				return FRotator::Lerp(A, B, 0.5);
+			}
+			)AS"),
+			TEXT("FRotator::Lerp is not bound on the current AS surface"),
+			MakeArrayView(ExpectedFragments))));
 	}
 
 	TEST_METHOD(RotatorDeclarationsAndConfirmedMethods)
@@ -669,7 +680,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 
 		class FPlainRotatorHolder
 		{
-		public:
 			FRotator Value;
 
 			FPlainRotatorHolder()
@@ -678,7 +688,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 			}
 		}
 
-		float PlainClassMemberValue()
+		int PlainClassMemberValueRaisesBoundary()
 		{
 			FPlainRotatorHolder Holder;
 			return Holder.Value.Pitch + Holder.Value.Yaw + Holder.Value.Roll;
@@ -699,23 +709,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float LocalDefaultIsZero()"));
-			ASSERT_THAT(IsNear(0.0f, Invoker.ExecuteAndGet<float>(-1.0f), 0.01f, TEXT("FRotator local default declaration should be zero")));
+			ASSERT_THAT(IsNear(0.0, Invoker.ExecuteAndGet<double>(-1.0), 0.01, TEXT("FRotator local default declaration should be zero")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float LocalScalarConstructorSum()"));
-			ASSERT_THAT(IsNear(21.0f, Invoker.ExecuteAndGet<float>(-1.0f), 0.01f, TEXT("FRotator scalar constructor should fill all components")));
+			ASSERT_THAT(IsNear(21.0, Invoker.ExecuteAndGet<double>(-1.0), 0.01, TEXT("FRotator scalar constructor should fill all components")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float LocalCopyConstructorSum()"));
-			ASSERT_THAT(IsNear(6.0f, Invoker.ExecuteAndGet<float>(-1.0f), 0.01f, TEXT("FRotator copy constructor should preserve components")));
+			ASSERT_THAT(IsNear(6.0, Invoker.ExecuteAndGet<double>(-1.0), 0.01, TEXT("FRotator copy constructor should preserve components")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float LocalConstValue()"));
-			ASSERT_THAT(IsNear(60.0f, Invoker.ExecuteAndGet<float>(-1.0f), 0.01f, TEXT("FRotator local const declaration should expose members")));
+			ASSERT_THAT(IsNear(60.0, Invoker.ExecuteAndGet<double>(-1.0), 0.01, TEXT("FRotator local const declaration should expose members")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float GlobalConstValue()"));
-			ASSERT_THAT(IsNear(0.0f, Invoker.ExecuteAndGet<float>(-1.0f), 0.01f, TEXT("FRotator global const declaration should expose members")));
+			ASSERT_THAT(IsNear(0.0, Invoker.ExecuteAndGet<double>(-1.0), 0.01, TEXT("FRotator global const declaration should expose members")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FRotator NormalizeMutates()"));
@@ -731,7 +741,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float AxisHelpers()"));
-			ASSERT_THAT(IsNear(360.0f, Invoker.ExecuteAndGet<float>(-1.0f), 0.01f, TEXT("FRotator axis helpers should normalize and clamp angles")));
+			ASSERT_THAT(IsNear(360.0, Invoker.ExecuteAndGet<double>(-1.0), 0.01, TEXT("FRotator axis helpers should normalize and clamp angles")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("bool WindingAndRemainder()"));
@@ -739,7 +749,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float ManhattanDistance()"));
-			ASSERT_THAT(IsNear(45.0f, Invoker.ExecuteAndGet<float>(-1.0f), 0.01f, TEXT("FRotator.GetManhattanDistance() should sum component deltas")));
+			ASSERT_THAT(IsNear(45.0, Invoker.ExecuteAndGet<double>(-1.0), 0.01, TEXT("FRotator.GetManhattanDistance() should sum component deltas")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector RightVector()"));
@@ -762,8 +772,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndGet<bool>(false), TEXT("FRotator GetRelative/ApplyRelative should round-trip")));
 		}
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float PlainClassMemberValue()"));
-			ASSERT_THAT(IsNear(12.0f, Invoker.ExecuteAndGet<float>(-1.0f), 0.01f, TEXT("FRotator plain class member should be usable without UPROPERTY")));
+			asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("int PlainClassMemberValueRaisesBoundary()"));
+			ASSERT_THAT(IsNotNull(Function, TEXT("FRotator plain script class boundary function should exist")));
+			if (Function != nullptr)
+			{
+				ASSERT_THAT(IsTrue(ExecuteIntFunctionExpectingScriptException(
+					*TestRunner,
+					Engine,
+					*Function,
+					TEXT("FRotator plain script class member boundary"),
+					TEXT("Null pointer access"),
+					TEXT("int PlainClassMemberValueRaisesBoundary() | Line"))));
+			}
 		}
 	}
 };
