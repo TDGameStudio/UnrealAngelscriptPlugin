@@ -257,6 +257,115 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorPropertyTest,
 			VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("IntToColorMap[2].R"), 0.0f, TEXT("TMap<int,FLinearColor>[2].R (Black)"));
 		}
 	}
+
+	TEST_METHOD(FLinearColorClassMemberExecution)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageFLinearColorProperty_ClassMembers"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageFLinearColorPropertyClassMembers.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageFLinearColorClassMemberActor : AActor
+			{
+				UPROPERTY()
+				FLinearColor EditableColor = FLinearColor(0.2, 0.4, 0.6, 0.8);
+
+				UPROPERTY()
+				TArray<FLinearColor> ColorHistory;
+
+				FLinearColor RuntimeTint = FLinearColor::LucBlue;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					FLinearColor LocalTint = EditableColor + RuntimeTint.GetClamped(0.0, 1.0);
+					RuntimeTint = LocalTint.GetClamped(0.0, 1.0);
+					ColorHistory.Add(EditableColor);
+					ColorHistory.Add(ReadConstTint());
+					ColorHistory.Add(FLinearColor::MakeFromHex(0xFFFFFFFF, false));
+				}
+
+				UFUNCTION()
+				FLinearColor ReadRuntimeTint()
+				{
+					return RuntimeTint;
+				}
+
+				UFUNCTION()
+				FLinearColor ReadConstTint()
+				{
+					const FLinearColor ConstTint = FLinearColor::Yellow;
+					return ConstTint;
+				}
+
+				UFUNCTION()
+				FLinearColor BlendHistory()
+				{
+					FLinearColor Total = FLinearColor::Transparent;
+					for (int Index = 0; Index < ColorHistory.Num(); ++Index)
+					{
+						Total += ColorHistory[Index];
+					}
+					return Total.GetClamped(0.0, 1.0);
+				}
+			}
+			)AS"),
+			TEXT("ACoverageFLinearColorClassMemberActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("FLinearColor class-member actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("FLinearColor class-member actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("EditableColor.R"), 0.2f, TEXT("UPROPERTY FLinearColor custom R should persist"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("EditableColor.A"), 0.8f, TEXT("UPROPERTY FLinearColor custom A should persist"))));
+
+		int32 Length = 0;
+		ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, Actor, TEXT("ColorHistory"), Length), TEXT("ColorHistory length should resolve")));
+		ASSERT_THAT(AreEqual(3, Length, TEXT("TArray<FLinearColor> UPROPERTY should collect three class-member colors")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("ColorHistory[0].G"), 0.4f, TEXT("ColorHistory should store editable color"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("ColorHistory[1].R"), 1.0f, TEXT("ColorHistory should store const predefined color"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("ColorHistory[2].B"), 1.0f, TEXT("ColorHistory should store MakeFromHex linear white"))));
+
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("ReadRuntimeTint"));
+			const FLinearColor Result = Invoker.CallAndReturn<FLinearColor>();
+			ASSERT_THAT(IsTrue(Result.Equals(FLinearColor(0.2f, 1.0f, 1.0f, 1.0f), 0.001f), TEXT("Non-UPROPERTY FLinearColor class member should update through methods")));
+		}
+
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("ReadConstTint"));
+			const FLinearColor Result = Invoker.CallAndReturn<FLinearColor>();
+			ASSERT_THAT(IsTrue(Result.Equals(FLinearColor::Yellow, 0.001f), TEXT("const local FLinearColor should return predefined color")));
+		}
+
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("BlendHistory"));
+			const FLinearColor Result = Invoker.CallAndReturn<FLinearColor>();
+			ASSERT_THAT(IsTrue(Result.Equals(FLinearColor(1.0f, 1.0f, 1.0f, 1.0f), 0.001f), TEXT("FLinearColor UPROPERTY array should blend and clamp in UFUNCTION")));
+		}
+	}
 };
 
 #endif // WITH_DEV_AUTOMATION_TESTS

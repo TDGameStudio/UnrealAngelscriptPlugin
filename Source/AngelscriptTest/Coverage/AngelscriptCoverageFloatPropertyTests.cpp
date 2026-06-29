@@ -5,9 +5,14 @@
 #include "AngelscriptTestModuleBuilder.h"
 #include "AngelscriptTestUtilities.h"
 
+#include "ClassGenerator/ASClass.h"
 #include "Components/ActorTestSpawner.h"
+#include "Containers/Set.h"
 #include "GameFramework/Actor.h"
 #include "Misc/ScopeExit.h"
+#include "UObject/CoreNet.h"
+#include "UObject/FieldIterator.h"
+#include "UObject/UnrealType.h"
 
 #include <cmath>
 #include <limits>
@@ -47,6 +52,36 @@ private:
 	static constexpr FScriptFloatValue AsScriptFloat(float Value)
 	{
 		return static_cast<FScriptFloatValue>(Value);
+	}
+
+	static FName ResolveReplicatedPropertyName(const UClass* OwnerClass, const FLifetimeProperty& LifetimeProperty)
+	{
+		for (TFieldIterator<FProperty> It(OwnerClass); It; ++It)
+		{
+			if (It->RepIndex == LifetimeProperty.RepIndex)
+			{
+				return It->GetFName();
+			}
+		}
+
+		return NAME_None;
+	}
+
+	static TSet<FName> CollectReplicatedPropertyNames(
+		const UClass* OwnerClass,
+		const TArray<FLifetimeProperty>& LifetimeProperties)
+	{
+		TSet<FName> PropertyNames;
+		for (const FLifetimeProperty& LifetimeProperty : LifetimeProperties)
+		{
+			const FName PropertyName = ResolveReplicatedPropertyName(OwnerClass, LifetimeProperty);
+			if (PropertyName != NAME_None)
+			{
+				PropertyNames.Add(PropertyName);
+			}
+		}
+
+		return PropertyNames;
 	}
 
 public:
@@ -90,6 +125,12 @@ public:
 
 				UPROPERTY()
 				double DoubleValue;
+
+				UPROPERTY()
+				float InitializedFloat = 1.25f;
+
+				UPROPERTY()
+				double InitializedDouble = 2.5;
 			}
 			)AS"),
 			TEXT("ACoverageFloatDefaultsActor"));
@@ -111,8 +152,26 @@ public:
 		ASSERT_THAT(IsTrue(VerifyByPath<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, Actor, TEXT("FloatValue"), AsScriptFloat(0.0f),
 			TEXT("AS float UPROPERTY defaults to 0.0 and reflects as FDoubleProperty"))));
 
-		// Double defaults to 0.0
 		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("DoubleValue"), 0.0, TEXT("double UPROPERTY defaults to 0.0"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, Actor, TEXT("InitializedFloat"), AsScriptFloat(1.25f),
+			TEXT("AS float UPROPERTY initializer should read back through reflection"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("InitializedDouble"), 2.5, TEXT("double UPROPERTY initializer should read back through reflection"))));
+
+		AActor* DefaultActor = Cast<AActor>(ScriptClass->GetDefaultObject());
+		ASSERT_THAT(IsNotNull(DefaultActor, TEXT("Float-defaults actor CDO should be available")));
+		if (DefaultActor == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, DefaultActor, TEXT("FloatValue"), AsScriptFloat(0.0f),
+			TEXT("AS float UPROPERTY CDO default should remain zero"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, DefaultActor, TEXT("DoubleValue"), 0.0,
+			TEXT("double UPROPERTY CDO default should remain zero"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, DefaultActor, TEXT("InitializedFloat"), AsScriptFloat(1.25f),
+			TEXT("AS float UPROPERTY initializer should be present on CDO"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, DefaultActor, TEXT("InitializedDouble"), 2.5,
+			TEXT("double UPROPERTY initializer should be present on CDO"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -175,6 +234,122 @@ public:
 
 		ASSERT_THAT(IsTrue(SetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("DoubleValue"), -1.7320508075688772)));
 		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("DoubleValue"), -1.7320508075688772, TEXT("double negative write round-trip"))));
+	}
+
+	TEST_METHOD(FloatPropertyScriptMutationRoundTrip)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageFloatProperty_ScriptMutation"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageFloatPropertyScriptMutation.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageFloatScriptMutationActor : AActor
+			{
+				UPROPERTY()
+				float FloatValue = 1.5f;
+
+				UPROPERTY()
+				double DoubleValue = 2.25;
+
+				UFUNCTION()
+				void AssignValues(float NewFloat, double NewDouble)
+				{
+					FloatValue = NewFloat;
+					DoubleValue = NewDouble;
+				}
+
+				UFUNCTION()
+				float AddToFloat(float Delta)
+				{
+					FloatValue += Delta;
+					return FloatValue;
+				}
+
+				UFUNCTION()
+				double AddToDouble(double Delta)
+				{
+					DoubleValue += Delta;
+					return DoubleValue;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageFloatScriptMutationActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Float script-mutation actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Float script-mutation actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("AssignValues"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("AssignValues should be invokable")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+
+			Invoker.AddParam<double>(12.5).AddParam<double>(42.75);
+			ASSERT_THAT(IsTrue(Invoker.Call(), TEXT("AssignValues should execute")));
+		}
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, Actor, TEXT("FloatValue"), AsScriptFloat(12.5f),
+			TEXT("AS float UPROPERTY should reflect script-assigned value"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("DoubleValue"), 42.75,
+			TEXT("double UPROPERTY should reflect script-assigned value"))));
+
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("AddToFloat"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("AddToFloat should be invokable")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+
+			Invoker.AddParam<double>(0.25);
+			const double Result = Invoker.CallAndReturn<double>(0.0);
+			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Result, 12.75, 0.001),
+				TEXT("AS float UFUNCTION return should expose the mutated UPROPERTY value")));
+		}
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, Actor, TEXT("FloatValue"), AsScriptFloat(12.75f),
+			TEXT("AS float UPROPERTY should retain script arithmetic mutation"))));
+
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("AddToDouble"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("AddToDouble should be invokable")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+
+			Invoker.AddParam<double>(0.125);
+			const double Result = Invoker.CallAndReturn<double>(0.0);
+			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Result, 42.875, 0.0001),
+				TEXT("double UFUNCTION return should expose the mutated UPROPERTY value")));
+		}
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("DoubleValue"), 42.875,
+			TEXT("double UPROPERTY should retain script arithmetic mutation"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -301,6 +476,7 @@ public:
 		const FScriptFloatValue FloatNaN = AsScriptFloat(std::numeric_limits<float>::quiet_NaN());
 		const FScriptFloatValue FloatInf = AsScriptFloat(std::numeric_limits<float>::infinity());
 		const FScriptFloatValue FloatNegInf = AsScriptFloat(-std::numeric_limits<float>::infinity());
+		const FScriptFloatValue FloatPosZero = AsScriptFloat(0.0f);
 		const FScriptFloatValue FloatNegZero = AsScriptFloat(-0.0f);
 
 		ASSERT_THAT(IsTrue(SetByPath<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, Actor, TEXT("FloatValue"), FloatNaN)));
@@ -318,13 +494,24 @@ public:
 		ASSERT_THAT(IsTrue(GetByPath<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, Actor, TEXT("FloatValue"), ReadNegInf)));
 		ASSERT_THAT(IsTrue(std::isinf(ReadNegInf) && ReadNegInf < 0.0, TEXT("AS float -Inf write round-trip")));
 
+		ASSERT_THAT(IsTrue(SetByPath<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, Actor, TEXT("FloatValue"), FloatPosZero)));
+		FScriptFloatValue ReadPosZero = 1.0;
+		ASSERT_THAT(IsTrue(GetByPath<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, Actor, TEXT("FloatValue"), ReadPosZero)));
+		ASSERT_THAT(AreEqual(0.0, ReadPosZero, TEXT("AS float +0.0 should compare equal to zero")));
+		ASSERT_THAT(IsFalse(std::signbit(ReadPosZero), TEXT("AS float +0.0 should not carry a negative sign bit")));
+
 		ASSERT_THAT(IsTrue(SetByPath<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, Actor, TEXT("FloatValue"), FloatNegZero)));
-		ASSERT_THAT(IsTrue(VerifyByPath<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, Actor, TEXT("FloatValue"), FloatNegZero, TEXT("AS float -0.0"))));
+		FScriptFloatValue ReadNegZero = 1.0;
+		ASSERT_THAT(IsTrue(GetByPath<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, Actor, TEXT("FloatValue"), ReadNegZero)));
+		ASSERT_THAT(AreEqual(0.0, ReadNegZero, TEXT("AS float -0.0 should compare equal to zero")));
+		ASSERT_THAT(IsTrue(std::signbit(ReadNegZero), TEXT("AS float -0.0 should preserve its sign bit")));
 
 		// Double special values
 		const double DoubleNaN = std::numeric_limits<double>::quiet_NaN();
 		const double DoubleInf = std::numeric_limits<double>::infinity();
 		const double DoubleNegInf = -std::numeric_limits<double>::infinity();
+		const double DoublePosZero = 0.0;
+		const double DoubleNegZero = -0.0;
 
 		ASSERT_THAT(IsTrue(SetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("DoubleValue"), DoubleNaN)));
 		double ReadDoubleNaN = 0.0;
@@ -340,6 +527,18 @@ public:
 		double ReadDoubleNegInf = 0.0;
 		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("DoubleValue"), ReadDoubleNegInf)));
 		ASSERT_THAT(IsTrue(std::isinf(ReadDoubleNegInf) && ReadDoubleNegInf < 0.0, TEXT("double -Inf write round-trip")));
+
+		ASSERT_THAT(IsTrue(SetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("DoubleValue"), DoublePosZero)));
+		double ReadDoublePosZero = 1.0;
+		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("DoubleValue"), ReadDoublePosZero)));
+		ASSERT_THAT(AreEqual(0.0, ReadDoublePosZero, TEXT("double +0.0 should compare equal to zero")));
+		ASSERT_THAT(IsFalse(std::signbit(ReadDoublePosZero), TEXT("double +0.0 should not carry a negative sign bit")));
+
+		ASSERT_THAT(IsTrue(SetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("DoubleValue"), DoubleNegZero)));
+		double ReadDoubleNegZero = 1.0;
+		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("DoubleValue"), ReadDoubleNegZero)));
+		ASSERT_THAT(AreEqual(0.0, ReadDoubleNegZero, TEXT("double -0.0 should compare equal to zero")));
+		ASSERT_THAT(IsTrue(std::signbit(ReadDoubleNegZero), TEXT("double -0.0 should preserve its sign bit")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -457,6 +656,141 @@ public:
 		}
 	}
 
+	TEST_METHOD(FloatNestedContainerBoundary)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const TArray<FString> ExpectedDiagnostics = { TEXT("Containers cannot be nested in other containers") };
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageFloatProperty_NestedArrayUnsupported"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageFloatNestedArrayActor : AActor
+			{
+				UPROPERTY()
+				TArray<TArray<float>> Matrix;
+			}
+			)AS"),
+			TEXT("TArray<TArray<float>> should remain an explicit unsupported boundary"),
+			MakeArrayView(ExpectedDiagnostics))));
+	}
+
+	TEST_METHOD(FloatReplicatedProperties)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageFloatProperty_Replication"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageFloatPropertyReplication.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageFloatReplicationActor : AActor
+			{
+				default SetReplicates(true);
+
+				UPROPERTY(Replicated)
+				float ReplicatedFloat = 1.25f;
+
+				UPROPERTY(Replicated)
+				double ReplicatedDouble = 2.5;
+
+				UPROPERTY(ReplicatedUsing=OnRep_RepNotifyFloat)
+				float RepNotifyFloat = 3.75f;
+
+				UPROPERTY(ReplicatedUsing=OnRep_PreciseValue)
+				double PreciseValue = 4.5;
+
+				UFUNCTION()
+				void OnRep_RepNotifyFloat()
+				{
+				}
+
+				UFUNCTION()
+				void OnRep_PreciseValue()
+				{
+				}
+			}
+			)AS"),
+			TEXT("ACoverageFloatReplicationActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Float-replication actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const FScriptFloatProperty* ReplicatedFloatProperty = CastField<FScriptFloatProperty>(ScriptClass->FindPropertyByName(FName(TEXT("ReplicatedFloat"))));
+		const FDoubleProperty* ReplicatedDoubleProperty = CastField<FDoubleProperty>(ScriptClass->FindPropertyByName(FName(TEXT("ReplicatedDouble"))));
+		const FScriptFloatProperty* RepNotifyFloatProperty = CastField<FScriptFloatProperty>(ScriptClass->FindPropertyByName(FName(TEXT("RepNotifyFloat"))));
+		const FDoubleProperty* PreciseValueProperty = CastField<FDoubleProperty>(ScriptClass->FindPropertyByName(FName(TEXT("PreciseValue"))));
+		ASSERT_THAT(IsNotNull(ReplicatedFloatProperty, TEXT("Replicated float property should be generated as FDoubleProperty under float64 mode")));
+		ASSERT_THAT(IsNotNull(ReplicatedDoubleProperty, TEXT("Replicated double property should be generated as FDoubleProperty")));
+		ASSERT_THAT(IsNotNull(RepNotifyFloatProperty, TEXT("RepNotify float property should be generated as FDoubleProperty under float64 mode")));
+		ASSERT_THAT(IsNotNull(PreciseValueProperty, TEXT("RepNotify double property should be generated as FDoubleProperty")));
+		if (ReplicatedFloatProperty == nullptr || ReplicatedDoubleProperty == nullptr || RepNotifyFloatProperty == nullptr || PreciseValueProperty == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(ReplicatedFloatProperty->HasAnyPropertyFlags(CPF_Net), TEXT("Replicated float should carry CPF_Net")));
+		ASSERT_THAT(IsFalse(ReplicatedFloatProperty->HasAnyPropertyFlags(CPF_RepNotify), TEXT("plain Replicated float should not carry CPF_RepNotify")));
+		ASSERT_THAT(IsTrue(ReplicatedDoubleProperty->HasAnyPropertyFlags(CPF_Net), TEXT("Replicated double should carry CPF_Net")));
+		ASSERT_THAT(IsFalse(ReplicatedDoubleProperty->HasAnyPropertyFlags(CPF_RepNotify), TEXT("plain Replicated double should not carry CPF_RepNotify")));
+		ASSERT_THAT(IsTrue(RepNotifyFloatProperty->HasAnyPropertyFlags(CPF_Net), TEXT("ReplicatedUsing float should carry CPF_Net")));
+		ASSERT_THAT(IsTrue(RepNotifyFloatProperty->HasAnyPropertyFlags(CPF_RepNotify), TEXT("ReplicatedUsing float should carry CPF_RepNotify")));
+		ASSERT_THAT(AreEqual(FName(TEXT("OnRep_RepNotifyFloat")), RepNotifyFloatProperty->RepNotifyFunc,
+			TEXT("ReplicatedUsing float should preserve the RepNotify function name")));
+		ASSERT_THAT(IsTrue(PreciseValueProperty->HasAnyPropertyFlags(CPF_Net), TEXT("ReplicatedUsing double should carry CPF_Net")));
+		ASSERT_THAT(IsTrue(PreciseValueProperty->HasAnyPropertyFlags(CPF_RepNotify), TEXT("ReplicatedUsing double should carry CPF_RepNotify")));
+		ASSERT_THAT(AreEqual(FName(TEXT("OnRep_PreciseValue")), PreciseValueProperty->RepNotifyFunc,
+			TEXT("ReplicatedUsing double should preserve the RepNotify function name")));
+
+		const UFunction* RepNotifyFloatFunction = FindGeneratedFunction(ScriptClass, TEXT("OnRep_RepNotifyFloat"));
+		const UFunction* RepNotifyDoubleFunction = FindGeneratedFunction(ScriptClass, TEXT("OnRep_PreciseValue"));
+		ASSERT_THAT(IsNotNull(RepNotifyFloatFunction, TEXT("float RepNotify callback should be generated")));
+		ASSERT_THAT(IsNotNull(RepNotifyDoubleFunction, TEXT("double RepNotify callback should be generated")));
+		if (RepNotifyFloatFunction == nullptr || RepNotifyDoubleFunction == nullptr)
+		{
+			return;
+		}
+
+		UASClass* ScriptASClass = Cast<UASClass>(ScriptClass);
+		ASSERT_THAT(IsNotNull(ScriptASClass, TEXT("Float-replication actor should be backed by UASClass")));
+		if (ScriptASClass == nullptr)
+		{
+			return;
+		}
+
+		TArray<FLifetimeProperty> LifetimeProperties;
+		ScriptASClass->GetLifetimeScriptReplicationList(LifetimeProperties);
+		const TSet<FName> LifetimePropertyNames = CollectReplicatedPropertyNames(ScriptClass, LifetimeProperties);
+
+		ASSERT_THAT(AreEqual(4, LifetimeProperties.Num(),
+			TEXT("float lifetime replication list should contain all script replicated float-family properties")));
+		ASSERT_THAT(AreEqual(4, LifetimePropertyNames.Num(),
+			TEXT("float lifetime replication entries should resolve to unique property names")));
+		ASSERT_THAT(IsTrue(LifetimePropertyNames.Contains(FName(TEXT("ReplicatedFloat"))),
+			TEXT("float lifetime replication list should include ReplicatedFloat")));
+		ASSERT_THAT(IsTrue(LifetimePropertyNames.Contains(FName(TEXT("ReplicatedDouble"))),
+			TEXT("float lifetime replication list should include ReplicatedDouble")));
+		ASSERT_THAT(IsTrue(LifetimePropertyNames.Contains(FName(TEXT("RepNotifyFloat"))),
+			TEXT("float lifetime replication list should include RepNotifyFloat")));
+		ASSERT_THAT(IsTrue(LifetimePropertyNames.Contains(FName(TEXT("PreciseValue"))),
+			TEXT("float lifetime replication list should include PreciseValue")));
+	}
+
 	TEST_METHOD(FloatPropertySpecifierFlags)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
@@ -477,6 +811,33 @@ public:
 			UCLASS()
 			class ACoverageFloatSpecifierActor : AActor
 			{
+				UPROPERTY(EditAnywhere)
+				float EditAnywhereFloat = 1.0f;
+
+				UPROPERTY(EditDefaultsOnly)
+				float EditDefaultsOnlyFloat = 2.0f;
+
+				UPROPERTY(EditInstanceOnly)
+				float EditInstanceOnlyFloat = 3.0f;
+
+				UPROPERTY(NotEditable)
+				float NotEditableFloat = 4.0f;
+
+				UPROPERTY(EditConst)
+				float EditConstFloat = 5.0f;
+
+				UPROPERTY(VisibleAnywhere)
+				float VisibleAnywhereFloat = 6.0f;
+
+				UPROPERTY(BlueprintReadWrite)
+				float BlueprintReadWriteFloat = 7.0f;
+
+				UPROPERTY(BlueprintReadOnly)
+				float BlueprintReadOnlyFloat = 8.0f;
+
+				UPROPERTY(Transient)
+				float TransientFloat = 9.0f;
+
 				UPROPERTY(meta = (ClampMin = "0.0", ClampMax = "1.0"))
 				float ClampedFloat = 0.5f;
 
@@ -491,6 +852,12 @@ public:
 
 				UPROPERTY(Category = "FloatCoverage")
 				float CategorizedFloat = 1.0f;
+
+				UPROPERTY(EditAnywhere, meta = (ClampMin = "0.0", ClampMax = "1.0"))
+				float EditableClampedFloat = 0.25f;
+
+				UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DoubleCoverage", meta = (ClampMin = "-10.0", ClampMax = "10.0", UIMin = "-5.0", UIMax = "5.0", Units = "Seconds"))
+				double EditableReadonlySeconds = 1.5;
 			}
 			)AS"),
 			TEXT("ACoverageFloatSpecifierActor"));
@@ -504,6 +871,25 @@ public:
 		auto FindProperty = [&](const TCHAR* PropertyName) -> const FProperty*
 		{
 			return ScriptClass->FindPropertyByName(FName(PropertyName));
+		};
+
+		auto CheckFlag = [&](const TCHAR* PropertyName, EPropertyFlags Flag, bool bExpected, const TCHAR* Label)
+		{
+			const FProperty* Property = FindProperty(PropertyName);
+			ASSERT_THAT(IsNotNull(Property, *FString::Printf(TEXT("%s should be registered"), PropertyName)));
+			if (Property == nullptr)
+			{
+				return;
+			}
+
+			if (bExpected)
+			{
+				ASSERT_THAT(IsTrue(Property->HasAnyPropertyFlags(Flag), Label));
+			}
+			else
+			{
+				ASSERT_THAT(IsFalse(Property->HasAnyPropertyFlags(Flag), Label));
+			}
 		};
 
 		auto VerifyMeta = [&](const TCHAR* PropertyName, const TCHAR* MetaKey, const TCHAR* ExpectedValue) -> bool
@@ -521,6 +907,40 @@ public:
 				ActualValue,
 				*FString::Printf(TEXT("%s %s meta should round-trip"), PropertyName, MetaKey));
 		};
+
+		CheckFlag(TEXT("EditAnywhereFloat"), CPF_Edit, true, TEXT("EditAnywhere float -> CPF_Edit"));
+		CheckFlag(TEXT("EditAnywhereFloat"), CPF_DisableEditOnInstance, false, TEXT("EditAnywhere float -> editable on instance"));
+		CheckFlag(TEXT("EditAnywhereFloat"), CPF_DisableEditOnTemplate, false, TEXT("EditAnywhere float -> editable on defaults"));
+
+		CheckFlag(TEXT("EditDefaultsOnlyFloat"), CPF_Edit, true, TEXT("EditDefaultsOnly float -> CPF_Edit"));
+		CheckFlag(TEXT("EditDefaultsOnlyFloat"), CPF_DisableEditOnInstance, true, TEXT("EditDefaultsOnly float -> disabled on instance"));
+		CheckFlag(TEXT("EditDefaultsOnlyFloat"), CPF_DisableEditOnTemplate, false, TEXT("EditDefaultsOnly float -> editable on defaults"));
+
+		CheckFlag(TEXT("EditInstanceOnlyFloat"), CPF_Edit, true, TEXT("EditInstanceOnly float -> CPF_Edit"));
+		CheckFlag(TEXT("EditInstanceOnlyFloat"), CPF_DisableEditOnTemplate, true, TEXT("EditInstanceOnly float -> disabled on defaults"));
+		CheckFlag(TEXT("EditInstanceOnlyFloat"), CPF_DisableEditOnInstance, false, TEXT("EditInstanceOnly float -> editable on instance"));
+
+		CheckFlag(TEXT("NotEditableFloat"), CPF_Edit, false, TEXT("NotEditable float -> clears CPF_Edit"));
+
+		CheckFlag(TEXT("EditConstFloat"), CPF_Edit, true, TEXT("EditConst float keeps default CPF_Edit"));
+		CheckFlag(TEXT("EditConstFloat"), CPF_EditConst, true, TEXT("EditConst float -> CPF_EditConst"));
+
+		CheckFlag(TEXT("VisibleAnywhereFloat"), CPF_Edit, true, TEXT("VisibleAnywhere float -> CPF_Edit"));
+		CheckFlag(TEXT("VisibleAnywhereFloat"), CPF_EditConst, true, TEXT("VisibleAnywhere float -> CPF_EditConst"));
+		CheckFlag(TEXT("VisibleAnywhereFloat"), CPF_DisableEditOnInstance, false, TEXT("VisibleAnywhere float -> visible on instance"));
+		CheckFlag(TEXT("VisibleAnywhereFloat"), CPF_DisableEditOnTemplate, false, TEXT("VisibleAnywhere float -> visible on defaults"));
+
+		CheckFlag(TEXT("BlueprintReadWriteFloat"), CPF_BlueprintVisible, true, TEXT("BlueprintReadWrite float -> CPF_BlueprintVisible"));
+		CheckFlag(TEXT("BlueprintReadWriteFloat"), CPF_BlueprintReadOnly, false, TEXT("BlueprintReadWrite float -> not read-only"));
+
+		CheckFlag(TEXT("BlueprintReadOnlyFloat"), CPF_BlueprintVisible, true, TEXT("BlueprintReadOnly float -> CPF_BlueprintVisible"));
+		CheckFlag(TEXT("BlueprintReadOnlyFloat"), CPF_BlueprintReadOnly, true, TEXT("BlueprintReadOnly float -> CPF_BlueprintReadOnly"));
+
+		CheckFlag(TEXT("TransientFloat"), CPF_Transient, true, TEXT("Transient float -> CPF_Transient"));
+		CheckFlag(TEXT("EditableClampedFloat"), CPF_Edit, true, TEXT("EditAnywhere+Clamp float -> CPF_Edit"));
+		CheckFlag(TEXT("EditableReadonlySeconds"), CPF_Edit, true, TEXT("EditAnywhere double -> CPF_Edit"));
+		CheckFlag(TEXT("EditableReadonlySeconds"), CPF_BlueprintVisible, true, TEXT("BlueprintReadOnly double -> CPF_BlueprintVisible"));
+		CheckFlag(TEXT("EditableReadonlySeconds"), CPF_BlueprintReadOnly, true, TEXT("BlueprintReadOnly double -> CPF_BlueprintReadOnly"));
 
 		const FProperty* ClampedFloat = FindProperty(TEXT("ClampedFloat"));
 		ASSERT_THAT(IsNotNull(ClampedFloat, TEXT("ClampedFloat should be registered")));
@@ -554,6 +974,14 @@ public:
 		}
 		ASSERT_THAT(IsTrue(DistanceCentimeters->IsA<FScriptFloatProperty>(), TEXT("Units=\"Centimeters\" coverage target should be an AS float property")));
 
+		const FProperty* EditableReadonlySeconds = FindProperty(TEXT("EditableReadonlySeconds"));
+		ASSERT_THAT(IsNotNull(EditableReadonlySeconds, TEXT("EditableReadonlySeconds should be registered")));
+		if (EditableReadonlySeconds == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(EditableReadonlySeconds->IsA<FDoubleProperty>(), TEXT("double specifier coverage target should be a double property")));
+
 		ASSERT_THAT(IsTrue(VerifyMeta(TEXT("ClampedFloat"), TEXT("ClampMin"), TEXT("0.0"))));
 		ASSERT_THAT(IsTrue(VerifyMeta(TEXT("ClampedFloat"), TEXT("ClampMax"), TEXT("1.0"))));
 		ASSERT_THAT(IsTrue(VerifyMeta(TEXT("UIFloat"), TEXT("UIMin"), TEXT("0.0"))));
@@ -561,6 +989,14 @@ public:
 		ASSERT_THAT(IsTrue(VerifyMeta(TEXT("AngleDegrees"), TEXT("Units"), TEXT("Degrees"))));
 		ASSERT_THAT(IsTrue(VerifyMeta(TEXT("DistanceCentimeters"), TEXT("Units"), TEXT("Centimeters"))));
 		ASSERT_THAT(IsTrue(VerifyMeta(TEXT("CategorizedFloat"), TEXT("Category"), TEXT("FloatCoverage"))));
+		ASSERT_THAT(IsTrue(VerifyMeta(TEXT("EditableClampedFloat"), TEXT("ClampMin"), TEXT("0.0"))));
+		ASSERT_THAT(IsTrue(VerifyMeta(TEXT("EditableClampedFloat"), TEXT("ClampMax"), TEXT("1.0"))));
+		ASSERT_THAT(IsTrue(VerifyMeta(TEXT("EditableReadonlySeconds"), TEXT("ClampMin"), TEXT("-10.0"))));
+		ASSERT_THAT(IsTrue(VerifyMeta(TEXT("EditableReadonlySeconds"), TEXT("ClampMax"), TEXT("10.0"))));
+		ASSERT_THAT(IsTrue(VerifyMeta(TEXT("EditableReadonlySeconds"), TEXT("UIMin"), TEXT("-5.0"))));
+		ASSERT_THAT(IsTrue(VerifyMeta(TEXT("EditableReadonlySeconds"), TEXT("UIMax"), TEXT("5.0"))));
+		ASSERT_THAT(IsTrue(VerifyMeta(TEXT("EditableReadonlySeconds"), TEXT("Units"), TEXT("Seconds"))));
+		ASSERT_THAT(IsTrue(VerifyMeta(TEXT("EditableReadonlySeconds"), TEXT("Category"), TEXT("DoubleCoverage"))));
 #endif
 	}
 };

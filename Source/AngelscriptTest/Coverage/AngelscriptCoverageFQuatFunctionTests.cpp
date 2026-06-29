@@ -402,6 +402,177 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFQuatFunctionTest,
 			TestRunner->TestTrue(TEXT("UFUNCTION FQuat to FRotator"), Result.Equals(FRotator(0, 90, 0), 0.1));
 		}
 	}
+
+	TEST_METHOD(UFunctionConstArrayAndOutPaths)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageFQuatFunction_ConstArrayOut"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageFQuatFunctionConstArrayOut.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageFQuatFunctionConstArrayActor : AActor
+			{
+				UPROPERTY()
+				FQuat StoredQuat = FQuat::Identity;
+
+				UPROPERTY()
+				TArray<FQuat> StoredQuats;
+
+				UPROPERTY()
+				FQuat LastArrayProduct = FQuat::Identity;
+
+				UPROPERTY()
+				int LastArrayCount = 0;
+
+				UFUNCTION()
+				double ReadConstQuat(const FQuat&in Value)
+				{
+					return Value.GetAngle();
+				}
+
+				UFUNCTION()
+				FQuat StoreAndReturn(FQuat Value)
+				{
+					StoredQuat = Value;
+					return StoredQuat.Inverse();
+				}
+
+				UFUNCTION()
+				int AcceptQuatArray(const TArray<FQuat>&in Values)
+				{
+					LastArrayCount = Values.Num();
+					LastArrayProduct = FQuat::Identity;
+					for (FQuat Value : Values)
+					{
+						LastArrayProduct *= Value;
+					}
+					return LastArrayCount;
+				}
+
+				UFUNCTION()
+				TArray<FQuat> MakeQuatArray(FQuat First, FQuat Second)
+				{
+					TArray<FQuat> Result;
+					Result.Add(First);
+					Result.Add(Second);
+					StoredQuats = Result;
+					return Result;
+				}
+
+				UFUNCTION()
+				void FillOutQuatArray(TArray<FQuat>&out Result)
+				{
+					Result.Add(FQuat::Identity);
+					Result.Add(FQuat(FVector::UpVector, 1.5707963267948966));
+					StoredQuats = Result;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageFQuatFunctionConstArrayActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("FQuat const/array UFUNCTION actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("FQuat const/array UFUNCTION actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		{
+			const FQuat Input = FQuat(FVector::UpVector, UE_DOUBLE_HALF_PI);
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("ReadConstQuat"));
+			Invoker.AddParam<FQuat>(Input);
+			const double Result = Invoker.CallAndReturn<double>(0.0);
+			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Result, Input.GetAngle(), 0.001),
+				TEXT("const FQuat&in UFUNCTION parameter should read quaternion angle")));
+		}
+		{
+			const FQuat Input = FQuat(FVector::UpVector, UE_DOUBLE_HALF_PI);
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("StoreAndReturn"));
+			Invoker.AddParam<FQuat>(Input);
+			const FQuat Result = Invoker.CallAndReturn<FQuat>(FQuat::Identity);
+			ASSERT_THAT(IsTrue(Result.Equals(Input.Inverse(), 0.001),
+				TEXT("FQuat UFUNCTION return should carry inverse result")));
+
+			FQuat Stored = FQuat::Identity;
+			ASSERT_THAT(IsTrue(GetStructByPath<FQuat>(*TestRunner, Actor, TEXT("StoredQuat"), Stored),
+				TEXT("StoredQuat should be readable through reflection")));
+			ASSERT_THAT(IsTrue(Stored.Equals(Input, 0.001),
+				TEXT("FQuat UFUNCTION should store value parameter in class member")));
+		}
+		{
+			TArray<FQuat> Values;
+			Values.Add(FQuat(FVector::UpVector, UE_DOUBLE_HALF_PI * 0.5));
+			Values.Add(FQuat(FVector::UpVector, UE_DOUBLE_HALF_PI * 0.5));
+
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("AcceptQuatArray"));
+			Invoker.AddParam<TArray<FQuat>>(Values);
+			const int32 Result = Invoker.CallAndReturn<int32>(INDEX_NONE);
+			ASSERT_THAT(AreEqual(2, Result, TEXT("TArray<FQuat> UFUNCTION parameter should report element count")));
+
+			FQuat Product = FQuat::Identity;
+			ASSERT_THAT(IsTrue(GetStructByPath<FQuat>(*TestRunner, Actor, TEXT("LastArrayProduct"), Product),
+				TEXT("LastArrayProduct should be readable through reflection")));
+			ASSERT_THAT(IsTrue(Product.Equals(Values[0] * Values[1], 0.001),
+				TEXT("TArray<FQuat> UFUNCTION parameter should preserve element values")));
+		}
+		{
+			const FQuat First = FQuat::Identity;
+			const FQuat Second = FQuat(FVector::UpVector, UE_DOUBLE_HALF_PI);
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("MakeQuatArray"));
+			Invoker.AddParam<FQuat>(First);
+			Invoker.AddParam<FQuat>(Second);
+			const TArray<FQuat> Result = Invoker.CallAndReturn<TArray<FQuat>>(TArray<FQuat>());
+			ASSERT_THAT(AreEqual(2, Result.Num(), TEXT("TArray<FQuat> UFUNCTION return should contain two elements")));
+			ASSERT_THAT(IsTrue(Result.IsValidIndex(1), TEXT("TArray<FQuat> UFUNCTION return should expose second element")));
+			if (!Result.IsValidIndex(1))
+			{
+				return;
+			}
+			ASSERT_THAT(IsTrue(Result[1].Equals(Second, 0.001),
+				TEXT("TArray<FQuat> UFUNCTION return should preserve second quaternion")));
+
+			int32 StoredCount = 0;
+			ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, Actor, TEXT("StoredQuats"), StoredCount),
+				TEXT("StoredQuats should expose returned TArray<FQuat> count through reflection")));
+			ASSERT_THAT(AreEqual(2, StoredCount, TEXT("StoredQuats should contain returned elements")));
+		}
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("FillOutQuatArray"));
+			Invoker.AddParam<TArray<FQuat>>(TArray<FQuat>());
+			ASSERT_THAT(IsTrue(Invoker.Call(), TEXT("TArray<FQuat>&out UFUNCTION should execute")));
+
+			TArray<FQuat> OutValues;
+			ASSERT_THAT(IsTrue(Invoker.ReadParamAfterCall<TArray<FQuat>>(0, OutValues),
+				TEXT("TArray<FQuat>&out UFUNCTION should copy output buffer back")));
+			ASSERT_THAT(AreEqual(2, OutValues.Num(), TEXT("TArray<FQuat>&out should contain two elements")));
+			ASSERT_THAT(IsTrue(OutValues.IsValidIndex(1), TEXT("TArray<FQuat>&out should expose second element")));
+			if (!OutValues.IsValidIndex(1))
+			{
+				return;
+			}
+			ASSERT_THAT(IsTrue(OutValues[1].Equals(FQuat(FVector::UpVector, UE_DOUBLE_HALF_PI), 0.001),
+				TEXT("TArray<FQuat>&out should preserve written quaternion")));
+		}
+	}
 };
 
 #endif // WITH_DEV_AUTOMATION_TESTS

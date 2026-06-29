@@ -17,7 +17,7 @@
 // Coverage for AngelScript Garbage Collection and object lifecycle verification.
 // This file covers the "GC (Garbage Collection)" section of the coverage matrix:
 //
-//   Documents/Coverage/Coverage_HandlesAndReferences.md - Sub-matrix 9
+//   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md - Sub-matrix 9
 //
 // Axes covered here:
 //   * GCBasicReclaim           - unreferenced objects are collected by GC
@@ -35,7 +35,7 @@
 // an AS actor, drive its members, read them back through FPropertyBindingPath
 // helpers in Shared/AngelscriptReflectiveAccess.h.
 //
-// Detailed coverage matrix: Documents/Coverage/Coverage_HandlesAndReferences.md
+// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -845,6 +845,92 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 			TEXT("Rooted object should remain reachable during GC"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("RemovedRootAllowedCollection"), true,
 			TEXT("Removing root protection should allow later collection"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// GC UPROPERTY reachability chain: roots traverse nested referenced objects
+	// -------------------------------------------------------------------------
+	TEST_METHOD(GCUPropertyReachabilityChain)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageGC_UPropertyReachabilityChain"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageGCUPropertyReachabilityChain.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class UCoverageGCReachabilityNode : UObject
+			{
+				UPROPERTY()
+				UObject Child;
+			}
+
+			UCLASS()
+			class ACoverageGCReachabilityChainActor : AActor
+			{
+				UPROPERTY()
+				UCoverageGCReachabilityNode RootNode;
+
+				UPROPERTY()
+				bool ReachabilityChainSurvivedGC = false;
+
+				UPROPERTY()
+				bool ReleasedChainWasCollected = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					RootNode = Cast<UCoverageGCReachabilityNode>(
+						NewObject(this, UCoverageGCReachabilityNode::StaticClass(), n"CoverageGCReachabilityRoot"));
+
+					UObject LeafObject = NewObject(RootNode, UTexture2D::StaticClass(), n"CoverageGCReachabilityLeaf");
+					RootNode.Child = LeafObject;
+
+					TWeakObjectPtr<UObject> WeakRoot = RootNode;
+					TWeakObjectPtr<UObject> WeakLeaf = LeafObject;
+					LeafObject = nullptr;
+
+					System::ForceGarbageCollection(true);
+					ReachabilityChainSurvivedGC = WeakRoot.IsValid() && WeakLeaf.IsValid() && RootNode.Child != nullptr;
+
+					RootNode.Child = nullptr;
+					RootNode = nullptr;
+
+					System::ForceGarbageCollection(true);
+					ReleasedChainWasCollected = !WeakRoot.IsValid() && !WeakLeaf.IsValid();
+				}
+			}
+			)AS"),
+			TEXT("ACoverageGCReachabilityChainActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("GC-UPROPERTY-reachability-chain actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("GC-UPROPERTY-reachability-chain actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ReachabilityChainSurvivedGC"), true,
+			TEXT("UPROPERTY reachability should traverse nested object references"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ReleasedChainWasCollected"), true,
+			TEXT("Released UPROPERTY chain should become collectible"))));
 	}
 
 	// -------------------------------------------------------------------------

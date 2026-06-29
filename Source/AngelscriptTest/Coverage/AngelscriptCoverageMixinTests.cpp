@@ -402,6 +402,107 @@ public:
 			TEXT("grandchild should observe inherited overload layer state"))));
 	}
 
+	TEST_METHOD(MixinConflictResolutionUsesExplicitBaseReceiverView)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMixin_BaseReceiverConflict"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ParentClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMixinBaseReceiverConflict.as"),
+			ASTEST_AS(R"AS(
+			mixin void RouteConflict(ACoverageMixinBaseReceiverParent Self)
+			{
+				Self.RouteTrace = Self.RouteTrace * 10 + 1;
+				Self.ParentRouteCount += 1;
+			}
+
+			mixin void RouteConflict(ACoverageMixinBaseReceiverChild Self)
+			{
+				Self.RouteTrace = Self.RouteTrace * 10 + 2;
+				Self.ChildRouteCount += 1;
+			}
+
+			UCLASS()
+			class ACoverageMixinBaseReceiverParent : AActor
+			{
+				UPROPERTY()
+				int RouteTrace = 0;
+
+				UPROPERTY()
+				int ParentRouteCount = 0;
+			}
+
+			UCLASS()
+			class ACoverageMixinBaseReceiverChild : ACoverageMixinBaseReceiverParent
+			{
+				UPROPERTY()
+				int ChildRouteCount = 0;
+
+				UPROPERTY()
+				int ParentViewTrace = 0;
+
+				UPROPERTY()
+				int ChildViewTrace = 0;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					ACoverageMixinBaseReceiverParent ParentView = Cast<ACoverageMixinBaseReceiverParent>(this);
+					if (ParentView != nullptr)
+					{
+						ParentView.RouteConflict();
+						ParentViewTrace = RouteTrace;
+					}
+
+					this.RouteConflict();
+					ChildViewTrace = RouteTrace;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageMixinBaseReceiverParent"));
+		ASSERT_THAT(IsNotNull(ParentClass, TEXT("mixin base receiver conflict parent should compile")));
+		if (ParentClass == nullptr)
+		{
+			return;
+		}
+
+		UClass* ChildClass = FindGeneratedClass(&Engine, TEXT("ACoverageMixinBaseReceiverChild"));
+		ASSERT_THAT(IsNotNull(ChildClass, TEXT("mixin base receiver conflict child should compile")));
+		if (ChildClass == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(ChildClass->IsChildOf(ParentClass), TEXT("mixin base receiver conflict child should inherit the parent receiver type")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* ChildActor = SpawnScriptActor(*TestRunner, Spawner, ChildClass);
+		ASSERT_THAT(IsNotNull(ChildActor, TEXT("mixin base receiver conflict child should spawn")));
+		if (ChildActor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *ChildActor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, ChildActor, TEXT("ParentViewTrace"), 1,
+			TEXT("explicit base receiver view should select the base mixin overload on a child instance"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, ChildActor, TEXT("ChildViewTrace"), 12,
+			TEXT("child receiver view should then select the child mixin overload on the same instance"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, ChildActor, TEXT("ParentRouteCount"), 1,
+			TEXT("base mixin overload should mutate base UPROPERTY state once"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, ChildActor, TEXT("ChildRouteCount"), 1,
+			TEXT("child mixin overload should mutate child UPROPERTY state once"))));
+	}
+
 	TEST_METHOD(MixinDispatchesVirtualCallsToOverrides)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();

@@ -15,7 +15,7 @@
 // AngelscriptCoverageMacrosTests
 // -----------------------------------------------------------------------------
 // Comprehensive coverage for advanced AngelScript macro usage scenarios.
-// Based on Documents/Coverage/Coverage_OtherMacros.md.
+// Based on OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md.
 //
 // Coverage matrix:
 //   * UInterfaceMacroDeclarationRejected - UINTERFACE() unsupported boundary
@@ -27,6 +27,7 @@
 //   * ReflectionMacroCombination   - combined reflection macro surface
 //   * MacroExpansionIgnores...     - macro expansion boundary cases
 //   * UEnumAdvancedDeclaration      - UENUM with BlueprintType, DisplayName, ToolTip
+//   * UEnumCustomMetadataRoundTrip  - enum-level meta and entry UMETA custom keys
 //   * UStructAdvancedUsage          - Complex USTRUCT with nested types, operators
 //   * UParamModifiers               - UPARAM usage in function parameters
 //   * BlueprintEvent                - AS-supported Blueprint event wrapper behavior
@@ -170,6 +171,90 @@ public:
 			ScriptSource,
 			TEXT("GENERATED_BODY() inside script interface declarations should remain unsupported"),
 			MakeArrayView(ExpectedDiagnostics))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Script interface boundaries: the coverage matrix still lists interface
+	// declaration forms and specifiers, but this fork rejects script interfaces.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(ScriptInterfaceDeclarationBoundariesRejected)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptInterfaceSource = ASTEST_AS(R"AS(
+			interface ICoverageMacrosScriptInterface
+			{
+				void Execute();
+			}
+			)AS");
+
+		TArray<FString> ScriptInterfaceDiagnostics;
+		ScriptInterfaceDiagnostics.Add(TEXT("Virtual property syntax has been removed"));
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageMacros_ScriptInterfaceUnsupported"),
+			ScriptInterfaceSource,
+			TEXT("script interface declarations should remain unsupported in this fork"),
+			MakeArrayView(ScriptInterfaceDiagnostics))));
+
+		const FString BlueprintTypeInterfaceSource = ASTEST_AS(R"AS(
+			UINTERFACE(BlueprintType)
+			interface ICoverageMacrosBlueprintTypeInterface
+			{
+				void Execute();
+			}
+			)AS");
+
+		TArray<FString> BlueprintTypeDiagnostics;
+		BlueprintTypeDiagnostics.Add(TEXT("Expected identifier"));
+		BlueprintTypeDiagnostics.Add(TEXT("Instead found '('"));
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageMacros_BlueprintTypeInterfaceUnsupported"),
+			BlueprintTypeInterfaceSource,
+			TEXT("UINTERFACE(BlueprintType) declarations should remain unsupported in script"),
+			MakeArrayView(BlueprintTypeDiagnostics))));
+
+		const FString BlueprintableInterfaceSource = ASTEST_AS(R"AS(
+			UINTERFACE(Blueprintable)
+			interface ICoverageMacrosBlueprintableInterface
+			{
+				void Execute();
+			}
+			)AS");
+
+		TArray<FString> BlueprintableDiagnostics;
+		BlueprintableDiagnostics.Add(TEXT("Expected identifier"));
+		BlueprintableDiagnostics.Add(TEXT("Instead found '('"));
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageMacros_BlueprintableInterfaceUnsupported"),
+			BlueprintableInterfaceSource,
+			TEXT("UINTERFACE(Blueprintable) declarations should remain unsupported in script"),
+			MakeArrayView(BlueprintableDiagnostics))));
+
+		const FString InterfaceUFunctionSource = ASTEST_AS(R"AS(
+			interface ICoverageMacrosInterfaceFunction
+			{
+				UFUNCTION(BlueprintCallable)
+				void Execute();
+			}
+			)AS");
+
+		TArray<FString> InterfaceUFunctionDiagnostics;
+		InterfaceUFunctionDiagnostics.Add(TEXT("Expected method or property"));
+		InterfaceUFunctionDiagnostics.Add(TEXT("Instead found identifier 'UFUNCTION'"));
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageMacros_InterfaceUFunctionUnsupported"),
+			InterfaceUFunctionSource,
+			TEXT("UFUNCTION methods inside script interfaces should remain unsupported"),
+			MakeArrayView(InterfaceUFunctionDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -871,6 +956,710 @@ public:
 			TEXT("UMETA Hidden should round-trip for Option_C")));
 		ASSERT_THAT(IsTrue(OptionMaxIndex != INDEX_NONE && EnumType->HasMetaData(TEXT("Hidden"), OptionMaxIndex),
 			TEXT("UMETA Hidden should round-trip for Option_MAX")));
+	}
+
+	// -------------------------------------------------------------------------
+	// UENUM / UMETA custom metadata keys should stay scoped to the generated enum
+	// and individual enum entries.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(UEnumCustomMetadataRoundTrip)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMacros_UEnumCustomMetadata"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMacrosUEnumCustomMetadata.as"),
+			ASTEST_AS(R"AS(
+			UENUM(BlueprintType, meta=(CoverageEnumKey="EnumValue", CoverageEnumMode="Strict"))
+			enum ECoverageMacroCustomMetadataState
+			{
+				Alpha UMETA(DisplayName="Alpha Visible", CoverageEntryKey="AlphaValue"),
+				Beta UMETA(ToolTip="Beta tooltip", CoverageEntryKey="BetaValue"),
+				Gamma UMETA(Hidden, CoverageEntryKey="GammaValue")
+			}
+
+			UCLASS()
+			class ACoverageMacrosEnumCustomMetadataActor : AActor
+			{
+				UPROPERTY()
+				ECoverageMacroCustomMetadataState State = ECoverageMacroCustomMetadataState::Beta;
+
+				UFUNCTION()
+				int GetStateIndex() const
+				{
+					return int(State);
+				}
+			}
+			)AS"),
+			TEXT("ACoverageMacrosEnumCustomMetadataActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Custom UENUM metadata actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FEnumProperty* StateProperty = CastField<FEnumProperty>(FindScriptProperty(ScriptClass, TEXT("State")));
+		ASSERT_THAT(IsNotNull(StateProperty, TEXT("State should be backed by a reflected enum property")));
+		if (StateProperty == nullptr)
+		{
+			return;
+		}
+
+		UEnum* StateEnum = StateProperty->GetEnum();
+		ASSERT_THAT(IsNotNull(StateEnum, TEXT("State property should expose its generated UEnum")));
+		if (StateEnum == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(FString(TEXT("EnumValue")), StateEnum->GetMetaData(TEXT("CoverageEnumKey")),
+			TEXT("UENUM meta custom key should round-trip on the enum")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Strict")), StateEnum->GetMetaData(TEXT("CoverageEnumMode")),
+			TEXT("Multiple UENUM meta keys should round-trip on the enum")));
+		ASSERT_THAT(IsTrue(StateEnum->HasMetaData(TEXT("BlueprintType")),
+			TEXT("BlueprintType should remain present beside custom enum metadata")));
+
+		const int32 AlphaIndex = StateEnum->GetIndexByNameString(TEXT("Alpha"));
+		const int32 BetaIndex = StateEnum->GetIndexByNameString(TEXT("Beta"));
+		const int32 GammaIndex = StateEnum->GetIndexByNameString(TEXT("Gamma"));
+		ASSERT_THAT(AreNotEqual(INDEX_NONE, AlphaIndex, TEXT("Alpha enumerator should exist")));
+		ASSERT_THAT(AreNotEqual(INDEX_NONE, BetaIndex, TEXT("Beta enumerator should exist")));
+		ASSERT_THAT(AreNotEqual(INDEX_NONE, GammaIndex, TEXT("Gamma enumerator should exist")));
+		ASSERT_THAT(AreEqual(FString(TEXT("AlphaValue")),
+			AlphaIndex != INDEX_NONE ? StateEnum->GetMetaData(TEXT("CoverageEntryKey"), AlphaIndex) : FString(),
+			TEXT("UMETA custom key should round-trip for Alpha")));
+		ASSERT_THAT(AreEqual(FString(TEXT("BetaValue")),
+			BetaIndex != INDEX_NONE ? StateEnum->GetMetaData(TEXT("CoverageEntryKey"), BetaIndex) : FString(),
+			TEXT("UMETA custom key should round-trip for Beta")));
+		ASSERT_THAT(AreEqual(FString(TEXT("GammaValue")),
+			GammaIndex != INDEX_NONE ? StateEnum->GetMetaData(TEXT("CoverageEntryKey"), GammaIndex) : FString(),
+			TEXT("UMETA custom key should round-trip for Gamma")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Alpha Visible")),
+			AlphaIndex != INDEX_NONE ? StateEnum->GetMetaData(TEXT("DisplayName"), AlphaIndex) : FString(),
+			TEXT("UMETA DisplayName should remain available beside custom keys")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Beta tooltip")),
+			BetaIndex != INDEX_NONE ? StateEnum->GetMetaData(TEXT("ToolTip"), BetaIndex) : FString(),
+			TEXT("UMETA ToolTip should remain available beside custom keys")));
+		ASSERT_THAT(IsTrue(GammaIndex != INDEX_NONE && StateEnum->HasMetaData(TEXT("Hidden"), GammaIndex),
+			TEXT("UMETA Hidden should remain available beside custom keys")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Custom UENUM metadata actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+
+		FFunctionInvoker GetStateIndexInvoker(*TestRunner, Actor, TEXT("GetStateIndex"));
+		ASSERT_THAT(IsTrue(GetStateIndexInvoker.IsValid(), TEXT("GetStateIndex should be invokable through reflection")));
+		if (!GetStateIndexInvoker.IsValid())
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(1, GetStateIndexInvoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("Custom enum metadata should not affect enum runtime value conversion")));
+	}
+
+	// -------------------------------------------------------------------------
+	// UENUM bitflag metadata and integer-backed bitwise usage.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(UEnumBitflagMetadataAndRuntimeOperators)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMacros_UEnumBitflagMetadata"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMacrosUEnumBitflagMetadata.as"),
+			ASTEST_AS(R"AS(
+			UENUM(meta=(Bitflags, BitmaskEnum="ECoverageMacroFlagState"))
+			enum ECoverageMacroFlagState
+			{
+				None = 0,
+				Read = 1,
+				Write = 2,
+				Execute = 4
+			}
+
+			UENUM()
+			enum ECoverageMacroFlagMetadataState
+			{
+				NoFlags UMETA(DisplayName="No Flags", ToolTip="No flag selected"),
+				ReadFlag UMETA(DisplayName="Read Flag"),
+				WriteFlag UMETA(ToolTip="Write permission"),
+				ExecuteFlag UMETA(Hidden)
+			}
+
+			UCLASS()
+			class ACoverageMacrosEnumBitflagActor : AActor
+			{
+				UPROPERTY()
+				ECoverageMacroFlagState ReflectedFlag = ECoverageMacroFlagState::Read;
+
+				UPROPERTY()
+				ECoverageMacroFlagMetadataState ReflectedEntry = ECoverageMacroFlagMetadataState::ReadFlag;
+
+				UPROPERTY()
+				int OrResult = 0;
+
+				UPROPERTY()
+				int AndResult = 0;
+
+				UPROPERTY()
+				int XorResult = 0;
+
+				UPROPERTY()
+				int NotResult = 0;
+
+				UPROPERTY()
+				int CompoundResult = 0;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					int Flags = int(ECoverageMacroFlagState::Read) | int(ECoverageMacroFlagState::Execute);
+					OrResult = Flags;
+					AndResult = Flags & int(ECoverageMacroFlagState::Read);
+					XorResult = Flags ^ int(ECoverageMacroFlagState::Execute);
+					NotResult = ~int(ECoverageMacroFlagState::Read);
+
+					Flags |= int(ECoverageMacroFlagState::Write);
+					CompoundResult = Flags;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageMacrosEnumBitflagActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Enum bitflag metadata actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FEnumProperty* ReflectedFlagProperty = CastField<FEnumProperty>(FindScriptProperty(ScriptClass, TEXT("ReflectedFlag")));
+		ASSERT_THAT(IsNotNull(ReflectedFlagProperty, TEXT("ReflectedFlag should be backed by an enum property")));
+		if (ReflectedFlagProperty == nullptr)
+		{
+			return;
+		}
+
+		UEnum* FlagEnum = ReflectedFlagProperty->GetEnum();
+		ASSERT_THAT(IsNotNull(FlagEnum, TEXT("ReflectedFlag should expose its generated UEnum")));
+		if (FlagEnum == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(FlagEnum->GetBoolMetaData(TEXT("Bitflags")),
+			TEXT("UENUM meta=(Bitflags) should round-trip as bool enum metadata")));
+		ASSERT_THAT(AreEqual(FString(TEXT("ECoverageMacroFlagState")), FlagEnum->GetMetaData(TEXT("BitmaskEnum")),
+			TEXT("UENUM meta=(BitmaskEnum=...) should round-trip as enum metadata")));
+
+		const int32 NoneIndex = FlagEnum->GetIndexByNameString(TEXT("None"));
+		const int32 ReadIndex = FlagEnum->GetIndexByNameString(TEXT("Read"));
+		const int32 WriteIndex = FlagEnum->GetIndexByNameString(TEXT("Write"));
+		const int32 ExecuteIndex = FlagEnum->GetIndexByNameString(TEXT("Execute"));
+		ASSERT_THAT(AreNotEqual(INDEX_NONE, NoneIndex, TEXT("None enumerator should exist")));
+		ASSERT_THAT(AreNotEqual(INDEX_NONE, ReadIndex, TEXT("Read enumerator should exist")));
+		ASSERT_THAT(AreNotEqual(INDEX_NONE, WriteIndex, TEXT("Write enumerator should exist")));
+		ASSERT_THAT(AreNotEqual(INDEX_NONE, ExecuteIndex, TEXT("Execute enumerator should exist")));
+		if (NoneIndex == INDEX_NONE || ReadIndex == INDEX_NONE || WriteIndex == INDEX_NONE || ExecuteIndex == INDEX_NONE)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(0LL, FlagEnum->GetValueByIndex(NoneIndex), TEXT("None should preserve explicit bit value 0")));
+		ASSERT_THAT(AreEqual(1LL, FlagEnum->GetValueByIndex(ReadIndex), TEXT("Read should preserve explicit bit value 1")));
+		ASSERT_THAT(AreEqual(2LL, FlagEnum->GetValueByIndex(WriteIndex), TEXT("Write should preserve explicit bit value 2")));
+		ASSERT_THAT(AreEqual(4LL, FlagEnum->GetValueByIndex(ExecuteIndex), TEXT("Execute should preserve explicit bit value 4")));
+
+		FEnumProperty* ReflectedEntryProperty = CastField<FEnumProperty>(FindScriptProperty(ScriptClass, TEXT("ReflectedEntry")));
+		ASSERT_THAT(IsNotNull(ReflectedEntryProperty, TEXT("ReflectedEntry should be backed by an enum property")));
+		if (ReflectedEntryProperty == nullptr)
+		{
+			return;
+		}
+
+		UEnum* MetadataEnum = ReflectedEntryProperty->GetEnum();
+		ASSERT_THAT(IsNotNull(MetadataEnum, TEXT("ReflectedEntry should expose its generated UEnum")));
+		if (MetadataEnum == nullptr)
+		{
+			return;
+		}
+
+		const int32 NoFlagsIndex = MetadataEnum->GetIndexByNameString(TEXT("NoFlags"));
+		const int32 ReadFlagIndex = MetadataEnum->GetIndexByNameString(TEXT("ReadFlag"));
+		const int32 WriteFlagIndex = MetadataEnum->GetIndexByNameString(TEXT("WriteFlag"));
+		const int32 ExecuteFlagIndex = MetadataEnum->GetIndexByNameString(TEXT("ExecuteFlag"));
+		ASSERT_THAT(AreNotEqual(INDEX_NONE, NoFlagsIndex, TEXT("NoFlags enumerator should exist")));
+		ASSERT_THAT(AreNotEqual(INDEX_NONE, ReadFlagIndex, TEXT("ReadFlag enumerator should exist")));
+		ASSERT_THAT(AreNotEqual(INDEX_NONE, WriteFlagIndex, TEXT("WriteFlag enumerator should exist")));
+		ASSERT_THAT(AreNotEqual(INDEX_NONE, ExecuteFlagIndex, TEXT("ExecuteFlag enumerator should exist")));
+		ASSERT_THAT(AreEqual(FString(TEXT("No Flags")),
+			NoFlagsIndex != INDEX_NONE ? MetadataEnum->GetMetaData(TEXT("DisplayName"), NoFlagsIndex) : FString(),
+			TEXT("UMETA DisplayName should round-trip for bitflag enum entries")));
+		ASSERT_THAT(AreEqual(FString(TEXT("No flag selected")),
+			NoFlagsIndex != INDEX_NONE ? MetadataEnum->GetMetaData(TEXT("ToolTip"), NoFlagsIndex) : FString(),
+			TEXT("UMETA ToolTip should round-trip for bitflag enum entries")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Read Flag")),
+			ReadFlagIndex != INDEX_NONE ? MetadataEnum->GetMetaData(TEXT("DisplayName"), ReadFlagIndex) : FString(),
+			TEXT("UMETA DisplayName should round-trip for non-zero bitflag entries")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Write permission")),
+			WriteFlagIndex != INDEX_NONE ? MetadataEnum->GetMetaData(TEXT("ToolTip"), WriteFlagIndex) : FString(),
+			TEXT("UMETA ToolTip should round-trip for non-zero bitflag entries")));
+		ASSERT_THAT(IsTrue(ExecuteFlagIndex != INDEX_NONE && MetadataEnum->HasMetaData(TEXT("Hidden"), ExecuteFlagIndex),
+			TEXT("UMETA Hidden should round-trip for bitflag enum entries")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Enum bitflag metadata actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("OrResult"), 5,
+			TEXT("Bitwise OR should combine Read and Execute"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("AndResult"), 1,
+			TEXT("Bitwise AND should keep the Read flag"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("XorResult"), 1,
+			TEXT("Bitwise XOR should toggle the Execute flag"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("NotResult"), -2,
+			TEXT("Bitwise NOT should invert the Read flag integer"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("CompoundResult"), 7,
+			TEXT("Compound OR assignment should add Write to existing flags"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// UFUNCTION ordinary members, const members, flags, and editor metadata.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(UFunctionSpecifiersMetadataAndConstReflection)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMacros_UFunctionSpecifiersMetadata"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMacrosUFunctionSpecifiersMetadata.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageMacrosFunctionSpecifiersActor : AActor
+			{
+				UPROPERTY()
+				int StoredValue = 5;
+
+				UFUNCTION()
+				void SetStoredValue(int Value)
+				{
+					StoredValue = Value;
+				}
+
+				UFUNCTION()
+				int GetStoredValue() const
+				{
+					return StoredValue;
+				}
+
+				UFUNCTION(BlueprintCallable, Category="Coverage|Functions", CallInEditor, meta=(
+					DisplayName="Visible Coverage Action",
+					Keywords="coverage macro function",
+					ToolTip="Full function tooltip",
+					ShortToolTip="Short function tooltip",
+					CompactNodeTitle="ACT",
+					AdvancedDisplay="OptionalValue,OptionalLabel",
+					WorldContext="Target",
+					DefaultToSelf="Target",
+					HidePin="Target",
+					AutoCreateRefTerm="OptionalLabel"))
+				void VisibleAction(UObject Target, int RequiredValue, int OptionalValue, const FString&in OptionalLabel)
+				{
+					StoredValue = RequiredValue + OptionalValue + OptionalLabel.Len();
+					if (Target != nullptr)
+					{
+						StoredValue += 1;
+					}
+				}
+
+				UFUNCTION(BlueprintPure, Category="Coverage|Functions", meta=(DisplayName="Read Coverage Value"))
+				int ReadValue() const
+				{
+					return StoredValue;
+				}
+
+				UFUNCTION(Exec, Category="Coverage|Console")
+				void CoverageConsoleCommand()
+				{
+					StoredValue = 77;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageMacrosFunctionSpecifiersActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("UFUNCTION specifier metadata actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		UFunction* SetStoredValueFunction = RequireGeneratedFunction(ScriptClass, TEXT("SetStoredValue"));
+		UFunction* GetStoredValueFunction = RequireGeneratedFunction(ScriptClass, TEXT("GetStoredValue"));
+		ASSERT_THAT(IsNotNull(SetStoredValueFunction, TEXT("Plain UFUNCTION member should be generated")));
+		ASSERT_THAT(IsNotNull(GetStoredValueFunction, TEXT("Plain const UFUNCTION member should be generated")));
+		if (SetStoredValueFunction == nullptr || GetStoredValueFunction == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(SetStoredValueFunction->HasAnyFunctionFlags(FUNC_BlueprintCallable),
+			TEXT("Plain UFUNCTION member should be BlueprintCallable through reflection")));
+		ASSERT_THAT(IsFalse(SetStoredValueFunction->HasAnyFunctionFlags(FUNC_Const),
+			TEXT("Plain non-const UFUNCTION member should not set FUNC_Const")));
+		ASSERT_THAT(IsTrue(GetStoredValueFunction->HasAnyFunctionFlags(FUNC_BlueprintCallable),
+			TEXT("Plain const UFUNCTION member should be BlueprintCallable through reflection")));
+		ASSERT_THAT(IsTrue(GetStoredValueFunction->HasAnyFunctionFlags(FUNC_Const),
+			TEXT("Plain const UFUNCTION member should set FUNC_Const")));
+
+		UFunction* VisibleActionFunction = RequireGeneratedFunction(ScriptClass, TEXT("VisibleAction"));
+		ASSERT_THAT(IsNotNull(VisibleActionFunction, TEXT("BlueprintCallable metadata function should be generated")));
+		if (VisibleActionFunction == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(VisibleActionFunction->HasAnyFunctionFlags(FUNC_BlueprintCallable),
+			TEXT("BlueprintCallable should set FUNC_BlueprintCallable")));
+		ASSERT_THAT(IsFalse(VisibleActionFunction->HasAnyFunctionFlags(FUNC_BlueprintPure),
+			TEXT("BlueprintCallable action should not set FUNC_BlueprintPure")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Coverage|Functions")), VisibleActionFunction->GetMetaData(TEXT("Category")),
+			TEXT("UFUNCTION Category metadata should round-trip")));
+		ASSERT_THAT(IsTrue(VisibleActionFunction->HasMetaData(TEXT("CallInEditor")),
+			TEXT("CallInEditor should be preserved as function metadata")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Visible Coverage Action")), VisibleActionFunction->GetMetaData(TEXT("DisplayName")),
+			TEXT("UFUNCTION DisplayName metadata should round-trip")));
+		ASSERT_THAT(AreEqual(FString(TEXT("coverage macro function")), VisibleActionFunction->GetMetaData(TEXT("Keywords")),
+			TEXT("UFUNCTION Keywords metadata should round-trip")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Full function tooltip")), VisibleActionFunction->GetMetaData(TEXT("ToolTip")),
+			TEXT("UFUNCTION ToolTip metadata should round-trip")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Short function tooltip")), VisibleActionFunction->GetMetaData(TEXT("ShortToolTip")),
+			TEXT("UFUNCTION ShortToolTip metadata should round-trip")));
+		ASSERT_THAT(AreEqual(FString(TEXT("ACT")), VisibleActionFunction->GetMetaData(TEXT("CompactNodeTitle")),
+			TEXT("UFUNCTION CompactNodeTitle metadata should round-trip")));
+		ASSERT_THAT(AreEqual(FString(TEXT("OptionalValue,OptionalLabel")), VisibleActionFunction->GetMetaData(TEXT("AdvancedDisplay")),
+			TEXT("UFUNCTION AdvancedDisplay metadata should round-trip")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Target")), VisibleActionFunction->GetMetaData(TEXT("WorldContext")),
+			TEXT("UFUNCTION WorldContext metadata should round-trip")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Target")), VisibleActionFunction->GetMetaData(TEXT("DefaultToSelf")),
+			TEXT("UFUNCTION DefaultToSelf metadata should round-trip")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Target")), VisibleActionFunction->GetMetaData(TEXT("HidePin")),
+			TEXT("UFUNCTION HidePin metadata should round-trip")));
+		ASSERT_THAT(AreEqual(FString(TEXT("OptionalLabel")), VisibleActionFunction->GetMetaData(TEXT("AutoCreateRefTerm")),
+			TEXT("UFUNCTION AutoCreateRefTerm metadata should round-trip")));
+
+		const TArray<FProperty*> VisibleActionParams = GetOrderedParameters(VisibleActionFunction);
+		ASSERT_THAT(AreEqual(4, VisibleActionParams.Num(), TEXT("VisibleAction should expose four reflected parameters")));
+		ASSERT_THAT(IsFalse(VisibleActionParams.IsValidIndex(0) && VisibleActionParams[0]->HasAnyPropertyFlags(CPF_AdvancedDisplay),
+			TEXT("Target parameter should not be AdvancedDisplay")));
+		ASSERT_THAT(IsFalse(VisibleActionParams.IsValidIndex(1) && VisibleActionParams[1]->HasAnyPropertyFlags(CPF_AdvancedDisplay),
+			TEXT("RequiredValue parameter should not be AdvancedDisplay")));
+		ASSERT_THAT(IsTrue(VisibleActionParams.IsValidIndex(2) && VisibleActionParams[2]->HasAnyPropertyFlags(CPF_AdvancedDisplay),
+			TEXT("OptionalValue parameter should be AdvancedDisplay")));
+		ASSERT_THAT(IsTrue(VisibleActionParams.IsValidIndex(3) && VisibleActionParams[3]->HasAnyPropertyFlags(CPF_AdvancedDisplay),
+			TEXT("OptionalLabel parameter should be AdvancedDisplay")));
+
+		UFunction* ReadValueFunction = RequireGeneratedFunction(ScriptClass, TEXT("ReadValue"));
+		ASSERT_THAT(IsNotNull(ReadValueFunction, TEXT("BlueprintPure function should be generated")));
+		if (ReadValueFunction == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(ReadValueFunction->HasAnyFunctionFlags(FUNC_BlueprintCallable),
+			TEXT("BlueprintPure should also be BlueprintCallable for reflection")));
+		ASSERT_THAT(IsTrue(ReadValueFunction->HasAnyFunctionFlags(FUNC_BlueprintPure),
+			TEXT("BlueprintPure should set FUNC_BlueprintPure")));
+		ASSERT_THAT(IsTrue(ReadValueFunction->HasAnyFunctionFlags(FUNC_Const),
+			TEXT("BlueprintPure const method should set FUNC_Const")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Read Coverage Value")), ReadValueFunction->GetMetaData(TEXT("DisplayName")),
+			TEXT("BlueprintPure DisplayName metadata should round-trip")));
+
+		UFunction* ConsoleCommandFunction = RequireGeneratedFunction(ScriptClass, TEXT("CoverageConsoleCommand"));
+		ASSERT_THAT(IsNotNull(ConsoleCommandFunction, TEXT("Exec function should be generated")));
+		if (ConsoleCommandFunction == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(ConsoleCommandFunction->HasAnyFunctionFlags(FUNC_Exec),
+			TEXT("Exec should set FUNC_Exec")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Coverage|Console")), ConsoleCommandFunction->GetMetaData(TEXT("Category")),
+			TEXT("Exec function Category metadata should round-trip")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("UFUNCTION specifier metadata actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+
+		FFunctionInvoker SetStoredValueInvoker(*TestRunner, Actor, TEXT("SetStoredValue"));
+		ASSERT_THAT(IsTrue(SetStoredValueInvoker.IsValid(), TEXT("SetStoredValue should be invokable through reflection")));
+		if (!SetStoredValueInvoker.IsValid())
+		{
+			return;
+		}
+		SetStoredValueInvoker.AddParam<int32>(12);
+		ASSERT_THAT(IsTrue(SetStoredValueInvoker.Call(), TEXT("Plain UFUNCTION reflected invocation should succeed")));
+
+		FFunctionInvoker GetStoredValueInvoker(*TestRunner, Actor, TEXT("GetStoredValue"));
+		ASSERT_THAT(IsTrue(GetStoredValueInvoker.IsValid(), TEXT("GetStoredValue should be invokable through reflection")));
+		if (!GetStoredValueInvoker.IsValid())
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(12, GetStoredValueInvoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("Plain const UFUNCTION reflected invocation should read current state")));
+
+		FFunctionInvoker VisibleActionInvoker(*TestRunner, Actor, TEXT("VisibleAction"));
+		ASSERT_THAT(IsTrue(VisibleActionInvoker.IsValid(), TEXT("VisibleAction should be invokable through reflection")));
+		if (!VisibleActionInvoker.IsValid())
+		{
+			return;
+		}
+		VisibleActionInvoker.AddParam<UObject*>(Actor);
+		VisibleActionInvoker.AddParam<int32>(20);
+		VisibleActionInvoker.AddParam<int32>(3);
+		VisibleActionInvoker.AddParam<FString>(FString(TEXT("abcd")));
+		ASSERT_THAT(IsTrue(VisibleActionInvoker.Call(), TEXT("BlueprintCallable reflected invocation should succeed")));
+
+		FFunctionInvoker ReadValueInvoker(*TestRunner, Actor, TEXT("ReadValue"));
+		ASSERT_THAT(IsTrue(ReadValueInvoker.IsValid(), TEXT("ReadValue should be invokable through reflection")));
+		if (!ReadValueInvoker.IsValid())
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(28, ReadValueInvoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("BlueprintCallable invocation should update state visible to BlueprintPure getter")));
+
+		FFunctionInvoker ConsoleCommandInvoker(*TestRunner, Actor, TEXT("CoverageConsoleCommand"));
+		ASSERT_THAT(IsTrue(ConsoleCommandInvoker.IsValid(), TEXT("Exec function should be invokable through reflection")));
+		if (!ConsoleCommandInvoker.IsValid())
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(ConsoleCommandInvoker.Call(), TEXT("Exec reflected invocation should succeed")));
+
+		FFunctionInvoker ReadAfterExecInvoker(*TestRunner, Actor, TEXT("ReadValue"));
+		ASSERT_THAT(IsTrue(ReadAfterExecInvoker.IsValid(), TEXT("ReadValue should remain invokable after Exec")));
+		if (!ReadAfterExecInvoker.IsValid())
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(77, ReadAfterExecInvoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("Exec reflected invocation should update script actor state")));
+	}
+
+	// -------------------------------------------------------------------------
+	// UFUNCTION special scenarios: recursion, virtual BlueprintOverride dispatch,
+	// and calling a parent implementation through Super:: from a child method.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(UFunctionRecursiveVirtualOverrideAndSuperCall)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMacros_UFunctionRecursiveVirtualSuper"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* BaseClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMacrosUFunctionRecursiveVirtualSuper.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageMacrosFunctionVirtualBase : AActor
+			{
+				UPROPERTY()
+				int TraceValue = 0;
+
+				UFUNCTION(BlueprintEvent)
+				int ComputeVirtual(int Value)
+				{
+					TraceValue = TraceValue * 10 + 1;
+					return Value + 1;
+				}
+
+				UFUNCTION()
+				int Factorial(int Value)
+				{
+					if (Value <= 1)
+					{
+						return 1;
+					}
+
+					return Value * Factorial(Value - 1);
+				}
+
+				UFUNCTION()
+				int DispatchVirtual(int Value)
+				{
+					return ComputeVirtual(Value);
+				}
+
+				UFUNCTION()
+				int BaseOnlyCompute(int Value)
+				{
+					TraceValue = TraceValue * 10 + 4;
+					return Value + 4;
+				}
+			}
+
+			UCLASS()
+			class ACoverageMacrosFunctionVirtualChild : ACoverageMacrosFunctionVirtualBase
+			{
+				UFUNCTION(BlueprintOverride)
+				int ComputeVirtual(int Value)
+				{
+					TraceValue = TraceValue * 10 + 2;
+					return Value + 10;
+				}
+
+				UFUNCTION()
+				int CallParentCompute(int Value)
+				{
+					return Super::BaseOnlyCompute(Value) + 100;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageMacrosFunctionVirtualBase"));
+		ASSERT_THAT(IsNotNull(BaseClass, TEXT("Recursive virtual UFUNCTION base class should compile")));
+		if (BaseClass == nullptr)
+		{
+			return;
+		}
+
+		UClass* ChildClass = FindGeneratedClass(&Engine, TEXT("ACoverageMacrosFunctionVirtualChild"));
+		ASSERT_THAT(IsNotNull(ChildClass, TEXT("Recursive virtual UFUNCTION child class should compile")));
+		if (ChildClass == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(ChildClass->IsChildOf(BaseClass), TEXT("Virtual UFUNCTION child should inherit from base")));
+
+		UFunction* BaseComputeVirtualFunction = RequireGeneratedFunction(BaseClass, TEXT("ComputeVirtual"));
+		UFunction* ChildComputeVirtualFunction = RequireGeneratedFunction(ChildClass, TEXT("ComputeVirtual"));
+		UFunction* FactorialFunction = RequireGeneratedFunction(BaseClass, TEXT("Factorial"));
+		UFunction* CallParentComputeFunction = RequireGeneratedFunction(ChildClass, TEXT("CallParentCompute"));
+		ASSERT_THAT(IsNotNull(BaseComputeVirtualFunction, TEXT("Base BlueprintEvent UFUNCTION should be generated")));
+		ASSERT_THAT(IsNotNull(ChildComputeVirtualFunction, TEXT("Child BlueprintOverride UFUNCTION should be generated")));
+		ASSERT_THAT(IsNotNull(FactorialFunction, TEXT("Recursive UFUNCTION should be generated")));
+		ASSERT_THAT(IsNotNull(CallParentComputeFunction, TEXT("Super:: caller UFUNCTION should be generated")));
+		if (BaseComputeVirtualFunction == nullptr
+			|| ChildComputeVirtualFunction == nullptr
+			|| FactorialFunction == nullptr
+			|| CallParentComputeFunction == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(BaseComputeVirtualFunction->HasAnyFunctionFlags(FUNC_BlueprintEvent),
+			TEXT("BlueprintEvent base function should set FUNC_BlueprintEvent")));
+		ASSERT_THAT(IsTrue(ChildComputeVirtualFunction->HasAnyFunctionFlags(FUNC_BlueprintEvent),
+			TEXT("BlueprintOverride child function should surface as FUNC_BlueprintEvent")));
+		ASSERT_THAT(IsFalse(FactorialFunction->HasAnyFunctionFlags(FUNC_BlueprintEvent),
+			TEXT("Plain recursive UFUNCTION should not set FUNC_BlueprintEvent")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* BaseActor = SpawnScriptActor(*TestRunner, Spawner, BaseClass);
+		ASSERT_THAT(IsNotNull(BaseActor, TEXT("Recursive virtual base actor should spawn")));
+		if (BaseActor == nullptr)
+		{
+			return;
+		}
+
+		AActor* ChildActor = SpawnScriptActor(*TestRunner, Spawner, ChildClass);
+		ASSERT_THAT(IsNotNull(ChildActor, TEXT("Recursive virtual child actor should spawn")));
+		if (ChildActor == nullptr)
+		{
+			return;
+		}
+
+		FFunctionInvoker BaseDispatchInvoker(*TestRunner, BaseActor, TEXT("DispatchVirtual"));
+		ASSERT_THAT(IsTrue(BaseDispatchInvoker.IsValid(), TEXT("Base virtual dispatch should be invokable")));
+		if (!BaseDispatchInvoker.IsValid())
+		{
+			return;
+		}
+		BaseDispatchInvoker.AddParam<int32>(7);
+		ASSERT_THAT(AreEqual(8, BaseDispatchInvoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("Base virtual dispatch should execute the parent implementation")));
+
+		FFunctionInvoker FactorialInvoker(*TestRunner, ChildActor, TEXT("Factorial"));
+		ASSERT_THAT(IsTrue(FactorialInvoker.IsValid(), TEXT("Recursive UFUNCTION should be invokable on child")));
+		if (!FactorialInvoker.IsValid())
+		{
+			return;
+		}
+		FactorialInvoker.AddParam<int32>(5);
+		ASSERT_THAT(AreEqual(120, FactorialInvoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("Recursive UFUNCTION should call itself until the base case")));
+
+		FFunctionInvoker ChildDispatchInvoker(*TestRunner, ChildActor, TEXT("DispatchVirtual"));
+		ASSERT_THAT(IsTrue(ChildDispatchInvoker.IsValid(), TEXT("Inherited dispatch UFUNCTION should be invokable on child")));
+		if (!ChildDispatchInvoker.IsValid())
+		{
+			return;
+		}
+		ChildDispatchInvoker.AddParam<int32>(7);
+		ASSERT_THAT(AreEqual(17, ChildDispatchInvoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("Inherited base call site should dispatch to child BlueprintOverride")));
+
+		FFunctionInvoker ParentComputeInvoker(*TestRunner, ChildActor, TEXT("CallParentCompute"));
+		ASSERT_THAT(IsTrue(ParentComputeInvoker.IsValid(), TEXT("Super:: caller should be invokable on child")));
+		if (!ParentComputeInvoker.IsValid())
+		{
+			return;
+		}
+		ParentComputeInvoker.AddParam<int32>(7);
+		ASSERT_THAT(AreEqual(111, ParentComputeInvoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("Super:: call should execute the parent UFUNCTION implementation")));
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, BaseActor, TEXT("TraceValue"), 1,
+			TEXT("Base actor trace should record the parent virtual implementation"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, ChildActor, TEXT("TraceValue"), 24,
+			TEXT("Child actor trace should record child override then Super:: parent call"))));
 	}
 
 	// -------------------------------------------------------------------------

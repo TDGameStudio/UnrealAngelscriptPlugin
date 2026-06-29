@@ -12,7 +12,7 @@
 // AngelscriptCoverageDelegateTests
 // -----------------------------------------------------------------------------
 // Coverage for AngelScript single-cast delegate (FDelegate) usage, the first
-// slice of the delegates-and-events matrix (Documents/Coverage/Coverage_DelegatesAndEvents.md
+// slice of the delegates-and-events matrix (OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 // section 1). Each TEST_METHOD walks one usage axis from the matrix:
 //
 // Axes covered here:
@@ -29,7 +29,7 @@
 // actors, spawn them, drive delegate operations, verify results through
 // properties or return values.
 //
-// Detailed coverage matrix: Documents/Coverage/Coverage_DelegatesAndEvents.md
+// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -697,6 +697,118 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 	}
 
 	// -------------------------------------------------------------------------
+	// Delegate return edge cases: UObject handles and UENUM values should
+	// round-trip through Execute return slots, not only through parameters.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(DelegateObjectAndEnumReturnValues)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageDelegate_ObjectEnumReturns"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageDelegateObjectEnumReturns.as"),
+			ASTEST_AS(R"AS(
+			UENUM()
+			enum ECoverageDelegateObjectRoute
+			{
+				Missing,
+				Matched,
+				Fallback
+			}
+
+			delegate AActor FDelegateActorReturn();
+			delegate ECoverageDelegateObjectRoute FDelegateEnumReturn(AActor ActorValue);
+
+			UCLASS()
+			class ACoverageDelegateObjectEnumReturnActor : AActor
+			{
+				UPROPERTY()
+				AActor ReturnedActor;
+
+				UPROPERTY()
+				ECoverageDelegateObjectRoute ReturnedRoute = ECoverageDelegateObjectRoute::Missing;
+
+				UPROPERTY()
+				bool bReturnedSelf = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					FDelegateActorReturn ActorReturn;
+					ActorReturn.BindUFunction(this, n"ReturnSelfActor");
+					ReturnedActor = ActorReturn.Execute();
+					bReturnedSelf = ReturnedActor == this;
+
+					FDelegateEnumReturn EnumReturn;
+					EnumReturn.BindUFunction(this, n"ClassifyActor");
+					ReturnedRoute = EnumReturn.Execute(ReturnedActor);
+				}
+
+				UFUNCTION()
+				AActor ReturnSelfActor()
+				{
+					return this;
+				}
+
+				UFUNCTION()
+				ECoverageDelegateObjectRoute ClassifyActor(AActor ActorValue)
+				{
+					if (ActorValue == this)
+					{
+						return ECoverageDelegateObjectRoute::Matched;
+					}
+
+					return ECoverageDelegateObjectRoute::Fallback;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageDelegateObjectEnumReturnActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Delegate object/enum return actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Delegate object/enum return actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		UObject* ReturnedActor = nullptr;
+		const bool bReadReturnedActor = GetObjectByPath(*TestRunner, Actor, TEXT("ReturnedActor"), ReturnedActor);
+		ASSERT_THAT(IsTrue(bReadReturnedActor, TEXT("ReturnedActor should be readable as an object property")));
+		if (!bReadReturnedActor)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(static_cast<UObject*>(Actor), ReturnedActor, TEXT("Delegate AActor return should preserve object identity")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bReturnedSelf"), true, TEXT("Delegate AActor return should compare equal to the receiver"))));
+
+		int64 ReturnedRoute = 0;
+		const bool bReadReturnedRoute = GetEnumByPath(*TestRunner, Actor, TEXT("ReturnedRoute"), ReturnedRoute);
+		ASSERT_THAT(IsTrue(bReadReturnedRoute, TEXT("ReturnedRoute should be readable as an enum property")));
+		if (!bReadReturnedRoute)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(static_cast<int64>(1), ReturnedRoute, TEXT("Delegate UENUM return should preserve the Matched enumerator")));
+	}
+
+	// -------------------------------------------------------------------------
 	// Delegate rebinding: binding a new function to an already-bound delegate
 	// should replace the previous binding.
 	// -------------------------------------------------------------------------
@@ -873,7 +985,429 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 
 		// FVector verification
 		FVector ExpectedVector(1.0f, 2.0f, 3.0f);
-		VerifyStructByPath<FVector>(*TestRunner, Actor, TEXT("VectorValue"), ExpectedVector, TEXT("FVector parameter should pass through"));
+		ASSERT_THAT(IsTrue(VerifyStructByPath<FVector>(*TestRunner, Actor, TEXT("VectorValue"), ExpectedVector, TEXT("FVector parameter should pass through"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Delegate member and UFUNCTION parameter reflection: single-cast delegate
+	// properties materialize as FDelegateProperty and delegate callback
+	// parameters keep their generated signature functions.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(DelegateMemberAndParameterReflection)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageDelegate_MemberParameterReflection"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageDelegateMemberParameterReflection.as"),
+			ASTEST_AS(R"AS(
+			delegate void FCoverageDelegateMemberSignal(int Value, const FString& Label);
+			delegate int FCoverageDelegateCallback(int Value);
+
+			UCLASS()
+			class UCoverageDelegateReflectionObject : UObject
+			{
+				UPROPERTY()
+				FCoverageDelegateMemberSignal OnMemberSignal;
+
+				UFUNCTION()
+				int ConsumeCallback(FCoverageDelegateCallback Callback)
+				{
+					if (!Callback.IsBound())
+					{
+						return -1;
+					}
+
+					return Callback.Execute(21);
+				}
+
+				UFUNCTION()
+				int DoubleValue(int Value)
+				{
+					return Value * 2;
+				}
+
+				UFUNCTION()
+				int ExecuteCallbackPath()
+				{
+					FCoverageDelegateCallback Callback;
+					Callback.BindUFunction(this, n"DoubleValue");
+					return ConsumeCallback(Callback);
+				}
+			}
+			)AS"),
+			TEXT("UCoverageDelegateReflectionObject"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Delegate reflection object class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const FDelegateProperty* MemberProperty = FindFProperty<FDelegateProperty>(ScriptClass, TEXT("OnMemberSignal"));
+		ASSERT_THAT(IsNotNull(MemberProperty, TEXT("Single-cast delegate UPROPERTY should generate FDelegateProperty")));
+		if (MemberProperty == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsNotNull(MemberProperty->SignatureFunction, TEXT("Delegate member should keep its signature function")));
+		if (MemberProperty->SignatureFunction == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsNotNull(FindFProperty<FIntProperty>(MemberProperty->SignatureFunction, TEXT("Value")), TEXT("Delegate member signature should expose the int parameter")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FStrProperty>(MemberProperty->SignatureFunction, TEXT("Label")), TEXT("Delegate member signature should expose the FString parameter")));
+
+		UFunction* ConsumeFunction = ScriptClass->FindFunctionByName(TEXT("ConsumeCallback"));
+		ASSERT_THAT(IsNotNull(ConsumeFunction, TEXT("Delegate callback consumer UFUNCTION should exist")));
+		if (ConsumeFunction == nullptr)
+		{
+			return;
+		}
+
+		const FDelegateProperty* CallbackParameter = FindFProperty<FDelegateProperty>(ConsumeFunction, TEXT("Callback"));
+		ASSERT_THAT(IsNotNull(CallbackParameter, TEXT("Delegate UFUNCTION parameter should generate FDelegateProperty")));
+		if (CallbackParameter == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsNotNull(CallbackParameter->SignatureFunction, TEXT("Delegate callback parameter should keep its signature function")));
+		if (CallbackParameter->SignatureFunction == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsNotNull(FindFProperty<FIntProperty>(CallbackParameter->SignatureFunction, TEXT("Value")), TEXT("Delegate callback parameter signature should expose its input")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FIntProperty>(CallbackParameter->SignatureFunction, TEXT("ReturnValue")), TEXT("Delegate callback parameter signature should expose its return value")));
+
+		UObject* ScriptObject = NewObject<UObject>(GetTransientPackage(), ScriptClass);
+		ASSERT_THAT(IsNotNull(ScriptObject, TEXT("Delegate reflection object should be creatable")));
+		if (ScriptObject == nullptr)
+		{
+			return;
+		}
+
+		FFunctionInvoker ExecuteCallbackInvoker(*TestRunner, ScriptObject, TEXT("ExecuteCallbackPath"));
+		ASSERT_THAT(IsTrue(ExecuteCallbackInvoker.IsValid(), TEXT("ExecuteCallbackPath should be invokable")));
+		if (!ExecuteCallbackInvoker.IsValid())
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(42, ExecuteCallbackInvoker.CallAndReturn<int32>(INDEX_NONE), TEXT("Delegate UFUNCTION parameter path should execute a bound callback")));
+	}
+
+	// -------------------------------------------------------------------------
+	// Delegate UPROPERTY runtime path: a single-cast delegate member should bind,
+	// execute, and become a no-op after Clear().
+	// -------------------------------------------------------------------------
+	TEST_METHOD(DelegateMemberRuntimeClearBoundary)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageDelegate_MemberRuntimeClearBoundary"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageDelegateMemberRuntimeClearBoundary.as"),
+			ASTEST_AS(R"AS(
+			delegate void FCoverageDelegateAction(float Weight, const FString& Label);
+
+			UCLASS()
+			class ACoverageDelegateMemberRuntimeActor : AActor
+			{
+				UPROPERTY()
+				FCoverageDelegateAction OnAction;
+
+				UPROPERTY()
+				bool bInitialBound = true;
+
+				UPROPERTY()
+				bool bBoundAfterBind = false;
+
+				UPROPERTY()
+				bool bBoundAfterClear = true;
+
+				UPROPERTY()
+				float LastWeight = 0.0f;
+
+				UPROPERTY()
+				FString LastLabel;
+
+				UPROPERTY()
+				int CallCount = 0;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					bInitialBound = OnAction.IsBound();
+
+					OnAction.BindUFunction(this, n"HandleAction");
+					bBoundAfterBind = OnAction.IsBound();
+					OnAction.Execute(2.5f, "member");
+
+					OnAction.Clear();
+					bBoundAfterClear = OnAction.IsBound();
+					OnAction.ExecuteIfBound(9.0f, "cleared");
+				}
+
+				UFUNCTION()
+				void HandleAction(float Weight, const FString& Label)
+				{
+					LastWeight = Weight;
+					LastLabel = Label;
+					CallCount += 1;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageDelegateMemberRuntimeActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Delegate member runtime actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Delegate member runtime actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bInitialBound"), false, TEXT("Delegate UPROPERTY should start unbound"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bBoundAfterBind"), true, TEXT("Delegate UPROPERTY should report bound after BindUFunction"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("LastWeight"), 2.5, TEXT("Delegate UPROPERTY should pass float parameters"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("LastLabel"), FString(TEXT("member")), TEXT("Delegate UPROPERTY should pass string parameters"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bBoundAfterClear"), false, TEXT("Clear should leave delegate UPROPERTY unbound"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("CallCount"), 1, TEXT("ExecuteIfBound after Clear should not call the handler"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Script USTRUCT UFUNCTION parameter regression: a reflected UFUNCTION that
+	// receives an AS struct must execute the same argument-buffer path as
+	// delegates, not only compile metadata.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(DelegateScriptStructUFunctionParameterExecutes)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageDelegate_ScriptStructUFunctionParameter"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageDelegateScriptStructUFunctionParameter.as"),
+			ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FCoverageDelegateFunctionPayload
+			{
+				UPROPERTY()
+				int Value = 0;
+
+				UPROPERTY()
+				int Bonus = 0;
+			}
+
+			UCLASS()
+			class UCoverageDelegateFunctionPayloadReceiver : UObject
+			{
+				UPROPERTY()
+				FCoverageDelegateFunctionPayload Payload;
+
+				UPROPERTY()
+				int LastValue = 0;
+
+				UPROPERTY()
+				int LastBonus = 0;
+
+				UFUNCTION()
+				void InitializePayload()
+				{
+					Payload.Value = 31;
+					Payload.Bonus = 11;
+				}
+
+				UFUNCTION()
+				int ConsumePayload(FCoverageDelegateFunctionPayload InputPayload)
+				{
+					LastValue = InputPayload.Value;
+					LastBonus = InputPayload.Bonus;
+					return InputPayload.Value + InputPayload.Bonus;
+				}
+			}
+			)AS"),
+			TEXT("UCoverageDelegateFunctionPayloadReceiver"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Delegate script-struct UFUNCTION receiver class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		UFunction* ConsumePayloadFunction = ScriptClass->FindFunctionByName(TEXT("ConsumePayload"));
+		UFunction* InitializePayloadFunction = ScriptClass->FindFunctionByName(TEXT("InitializePayload"));
+		ASSERT_THAT(IsNotNull(ConsumePayloadFunction, TEXT("Script-struct UFUNCTION parameter should generate a UFunction")));
+		ASSERT_THAT(IsNotNull(InitializePayloadFunction, TEXT("Script-struct payload initializer should generate a UFunction")));
+		if (ConsumePayloadFunction == nullptr || InitializePayloadFunction == nullptr)
+		{
+			return;
+		}
+
+		const FStructProperty* PayloadProperty = FindFProperty<FStructProperty>(ScriptClass, TEXT("Payload"));
+		const FStructProperty* PayloadParameter = FindFProperty<FStructProperty>(ConsumePayloadFunction, TEXT("InputPayload"));
+		ASSERT_THAT(IsNotNull(PayloadProperty, TEXT("Script-struct payload property should be generated")));
+		ASSERT_THAT(IsNotNull(PayloadParameter, TEXT("Script-struct UFUNCTION should expose its AS USTRUCT parameter")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FIntProperty>(ConsumePayloadFunction, TEXT("ReturnValue")), TEXT("Script-struct UFUNCTION should expose its return value")));
+		if (PayloadProperty == nullptr || PayloadParameter == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(PayloadProperty->Struct, PayloadParameter->Struct, TEXT("Payload property and UFUNCTION parameter should use the same AS USTRUCT")));
+
+		UObject* Receiver = NewObject<UObject>(GetTransientPackage(), ScriptClass);
+		ASSERT_THAT(IsNotNull(Receiver, TEXT("Delegate script-struct UFUNCTION receiver should be creatable")));
+		if (Receiver == nullptr)
+		{
+			return;
+		}
+
+		FFunctionInvoker InitializePayloadInvoker(*TestRunner, Receiver, TEXT("InitializePayload"));
+		ASSERT_THAT(IsTrue(InitializePayloadInvoker.IsValid(), TEXT("InitializePayload should be invokable")));
+		if (!InitializePayloadInvoker.IsValid())
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(InitializePayloadInvoker.Call(), TEXT("InitializePayload should write the AS USTRUCT source value")));
+
+		FFunctionInvoker ConsumePayloadInvoker(*TestRunner, Receiver, TEXT("ConsumePayload"));
+		ASSERT_THAT(IsTrue(ConsumePayloadInvoker.IsValid(), TEXT("ConsumePayload should be invokable")));
+		if (!ConsumePayloadInvoker.IsValid())
+		{
+			return;
+		}
+
+		FProperty* ParameterProperty = nullptr;
+		void* ParameterSlot = nullptr;
+		const bool bAddedParameterSlot = ConsumePayloadInvoker.AddParamSlot(ParameterProperty, ParameterSlot);
+		ASSERT_THAT(IsTrue(bAddedParameterSlot, TEXT("ConsumePayload should expose its AS USTRUCT parameter slot")));
+		ASSERT_THAT(IsNotNull(ParameterProperty, TEXT("ConsumePayload parameter property should be returned")));
+		ASSERT_THAT(IsNotNull(ParameterSlot, TEXT("ConsumePayload parameter slot should be returned")));
+		if (!bAddedParameterSlot || ParameterProperty == nullptr || ParameterSlot == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(static_cast<const FProperty*>(PayloadParameter), static_cast<const FProperty*>(ParameterProperty), TEXT("Returned parameter slot should match the AS USTRUCT parameter")));
+		PayloadParameter->CopyCompleteValue(ParameterSlot, PayloadProperty->ContainerPtrToValuePtr<void>(Receiver));
+
+		ASSERT_THAT(AreEqual(42, ConsumePayloadInvoker.CallAndReturn<int32>(INDEX_NONE), TEXT("AS USTRUCT fields should cross a reflected UFUNCTION parameter path")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Receiver, TEXT("LastValue"), 31, TEXT("AS USTRUCT Value field should reach the UFUNCTION body"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Receiver, TEXT("LastBonus"), 11, TEXT("AS USTRUCT Bonus field should reach the UFUNCTION body"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Script USTRUCT parameter regression: delegate execution must pass AS
+	// USTRUCT values through the UE event argument buffer, not just compile.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(DelegateScriptStructParameterExecutes)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageDelegate_ScriptStructParameter"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageDelegateScriptStructParameter.as"),
+			ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FCoverageDelegatePayload
+			{
+				UPROPERTY()
+				int Value = 0;
+
+				UPROPERTY()
+				int Bonus = 0;
+			}
+
+			delegate int FCoverageDelegatePayloadCallback(FCoverageDelegatePayload Payload);
+
+			UCLASS()
+			class ACoverageDelegateScriptStructActor : AActor
+			{
+				UPROPERTY()
+				int Result = 0;
+
+				UPROPERTY()
+				bool DelegateWasBound = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					FCoverageDelegatePayload Payload;
+					Payload.Value = 19;
+					Payload.Bonus = 23;
+
+					FCoverageDelegatePayloadCallback Callback;
+					Callback.BindUFunction(this, n"HandlePayload");
+					DelegateWasBound = Callback.IsBound();
+					Result = Callback.Execute(Payload);
+				}
+
+				UFUNCTION()
+				int HandlePayload(FCoverageDelegatePayload Payload)
+				{
+					return Payload.Value + Payload.Bonus;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageDelegateScriptStructActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Delegate script-struct actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Delegate script-struct actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DelegateWasBound"), true, TEXT("Script-struct delegate should bind to the AS receiver"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Result"), 42, TEXT("Script USTRUCT fields should round-trip through delegate execution"))));
 	}
 };
 

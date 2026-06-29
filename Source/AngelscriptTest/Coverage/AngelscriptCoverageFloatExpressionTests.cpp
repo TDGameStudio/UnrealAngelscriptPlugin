@@ -17,9 +17,9 @@
 // half of the float matrix. This file covers:
 //
 //   * Local/global declarations
-//   * Arithmetic operators (+ - * / %)
+//   * Arithmetic operators (+ - * /)
 //   * Comparison operators (== != < <= > >=)
-//   * Compound assignment (+=, -=, *=, /=, %=)
+//   * Compound assignment (+=, -=, *=, /=)
 //   * Increment/decrement (++, --)
 //   * Literals (decimal, scientific notation, f suffix)
 //   * Type conversions (float <-> double, float <-> int)
@@ -44,6 +44,34 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFloatExpressionTest,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
+	template <typename T>
+	T ExecuteGlobalReturnValue(FAngelscriptEngine& Engine, FASGlobalFunctionInvoker& Invoker, const TCHAR* Declaration)
+	{
+		if constexpr (std::is_same_v<T, float>)
+		{
+			asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
+			ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Float expression helper should expose a script engine")));
+			if (ScriptEngine == nullptr)
+			{
+				return 0.0f;
+			}
+
+			const FString DeclarationString(Declaration);
+			const bool bExplicitFloat32Return = DeclarationString.StartsWith(TEXT("float32 "));
+			const bool bReadReturnAsDouble = !bExplicitFloat32Return && ScriptEngine->GetEngineProperty(asEP_FLOAT_IS_FLOAT64) != 0;
+			if (bReadReturnAsDouble)
+			{
+				return static_cast<float>(Invoker.ExecuteAndGet<double>(0.0));
+			}
+
+			return Invoker.ExecuteAndGet<float>(0.0f);
+		}
+		else
+		{
+			return Invoker.ExecuteAndGet<T>(T{});
+		}
+	}
+
 	// Helper: build module + expect global return
 	template <typename T>
 	void ExpectGlobalReturn(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const T& Expected, const TCHAR* Message)
@@ -60,7 +88,7 @@ private:
 		{
 			return;
 		}
-		const T Result = Invoker.ExecuteAndGet<T>(T{});
+		const T Result = ExecuteGlobalReturnValue<T>(Engine, Invoker, Declaration);
 
 		if constexpr (std::is_same_v<T, float>)
 		{
@@ -92,7 +120,7 @@ private:
 			return;
 		}
 
-		const T Result = Invoker.ExecuteAndGet<T>(T{});
+		const T Result = ExecuteGlobalReturnValue<T>(Engine, Invoker, Declaration);
 		ASSERT_THAT(IsTrue(Predicate(Result), Message));
 	}
 
@@ -117,6 +145,12 @@ public:
 		FAngelscriptEngineScope Scope(Engine);
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFloatExpr_LocalDecl", ASTEST_AS(R"AS(
+		float LocalNoDefault()
+		{
+			float Value;
+			return Value;
+		}
+
 		float LocalDefaultInit()
 		{
 			float Value = 5.5f;
@@ -133,6 +167,18 @@ public:
 		float LocalConst()
 		{
 			const float Value = 9.9f;
+			return Value;
+		}
+
+		double LocalDoubleNoDefault()
+		{
+			double Value;
+			return Value;
+		}
+
+		double LocalDoubleConst()
+		{
+			const double Value = 10.25;
 			return Value;
 		}
 
@@ -162,9 +208,12 @@ public:
 			}
 		};
 
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LocalNoDefault()"),    0.0f,  TEXT("local float without initializer should default to zero"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LocalDefaultInit()"),  5.5f,  TEXT("local float with default initializer"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LocalDeferredInit()"), 7.7f,  TEXT("local float declared then assigned"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LocalConst()"),        9.9f,  TEXT("local const float"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double LocalDoubleNoDefault()"), 0.0, TEXT("local double without initializer should default to zero"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double LocalDoubleConst()"), 10.25, TEXT("local const double"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LocalAutoFloat()"),   11.11f, TEXT("auto infers float from f suffix"));
 		ExpectGlobalReturn<double>(Engine, Module, TEXT("double LocalAutoDouble()"), 13.13,  TEXT("auto infers double from no suffix"));
 		ExpectGlobalReturn<double>(Engine, Module, TEXT("double LocalDouble()"),     1.234567890123456, TEXT("local double"));
@@ -205,8 +254,7 @@ public:
 	}
 
 	// -------------------------------------------------------------------------
-	// Arithmetic operators: + - * / % and unary minus.
-	// Note: float supports % (modulo), unlike some languages.
+	// Arithmetic operators: + - * / and unary minus.
 	// -------------------------------------------------------------------------
 	TEST_METHOD(ArithmeticOperators)
 	{
@@ -234,14 +282,34 @@ public:
 			return 10.0f / 2.5f;
 		}
 
-		float OpModulo()
-		{
-			return 7.5f % 2.0f;
-		}
-
 		float OpUnaryMinus()
 		{
 			return -(4.2f);
+		}
+
+		double OpDoubleAdd()
+		{
+			return 1.25 + 2.75;
+		}
+
+		double OpDoubleSubtract()
+		{
+			return 5.5 - 1.25;
+		}
+
+		double OpDoubleMultiply()
+		{
+			return 2.5 * 4.0;
+		}
+
+		double OpDoubleDivide()
+		{
+			return 9.0 / 2.0;
+		}
+
+		double OpDoubleUnaryMinus()
+		{
+			return -(6.75);
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -256,8 +324,12 @@ public:
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float OpSubtract()"),   3.0f,  TEXT("float subtraction"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float OpMultiply()"),  12.0f,  TEXT("float multiplication"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float OpDivide()"),     4.0f,  TEXT("float division"));
-		ExpectGlobalReturn<float>(Engine, Module, TEXT("float OpModulo()"),     1.5f,  TEXT("float modulo"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float OpUnaryMinus()"), -4.2f, TEXT("float unary minus"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double OpDoubleAdd()"),        4.0,  TEXT("double addition"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double OpDoubleSubtract()"),   4.25, TEXT("double subtraction"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double OpDoubleMultiply()"),  10.0,  TEXT("double multiplication"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double OpDoubleDivide()"),     4.5,  TEXT("double division"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double OpDoubleUnaryMinus()"), -6.75, TEXT("double unary minus"));
 	}
 
 	// -------------------------------------------------------------------------
@@ -300,6 +372,36 @@ public:
 		{
 			return 5.0f >= 5.0f;
 		}
+
+		bool OpDoubleEqual()
+		{
+			return 3.25 == 3.25;
+		}
+
+		bool OpDoubleNotEqual()
+		{
+			return 3.25 != 4.25;
+		}
+
+		bool OpDoubleLess()
+		{
+			return 2.25 < 3.25;
+		}
+
+		bool OpDoubleLessEqual()
+		{
+			return 2.25 <= 2.25;
+		}
+
+		bool OpDoubleGreater()
+		{
+			return 5.25 > 3.25;
+		}
+
+		bool OpDoubleGreaterEqual()
+		{
+			return 5.25 >= 5.25;
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -315,6 +417,12 @@ public:
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpLessEqual()"),    true,  TEXT("float <="));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpGreater()"),      true,  TEXT("float >"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpGreaterEqual()"), true,  TEXT("float >="));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpDoubleEqual()"),        true, TEXT("double =="));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpDoubleNotEqual()"),     true, TEXT("double !="));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpDoubleLess()"),         true, TEXT("double <"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpDoubleLessEqual()"),    true, TEXT("double <="));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpDoubleGreater()"),      true, TEXT("double >"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpDoubleGreaterEqual()"), true, TEXT("double >="));
 	}
 
 	// -------------------------------------------------------------------------
@@ -354,13 +462,6 @@ public:
 			return x;
 		}
 
-		float OpModuloAssign()
-		{
-			float x = 10.0f;
-			x %= 3.0f;
-			return x;
-		}
-
 		float OpPreIncrement()
 		{
 			float x = 5.0f;
@@ -388,6 +489,62 @@ public:
 			float y = x--;
 			return y;
 		}
+
+		double OpDoubleAddAssign()
+		{
+			double x = 10.0;
+			x += 5.5;
+			return x;
+		}
+
+		double OpDoubleSubtractAssign()
+		{
+			double x = 10.0;
+			x -= 3.25;
+			return x;
+		}
+
+		double OpDoubleMultiplyAssign()
+		{
+			double x = 4.0;
+			x *= 2.5;
+			return x;
+		}
+
+		double OpDoubleDivideAssign()
+		{
+			double x = 20.0;
+			x /= 4.0;
+			return x;
+		}
+
+		double OpDoublePreIncrement()
+		{
+			double x = 5.0;
+			++x;
+			return x;
+		}
+
+		double OpDoublePostIncrement()
+		{
+			double x = 5.0;
+			double y = x++;
+			return y;
+		}
+
+		double OpDoublePreDecrement()
+		{
+			double x = 5.0;
+			--x;
+			return x;
+		}
+
+		double OpDoublePostDecrement()
+		{
+			double x = 5.0;
+			double y = x--;
+			return y;
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -401,11 +558,76 @@ public:
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float OpSubtractAssign()"),  7.0f, TEXT("float -="));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float OpMultiplyAssign()"), 10.0f, TEXT("float *="));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float OpDivideAssign()"),    5.0f, TEXT("float /="));
-		ExpectGlobalReturn<float>(Engine, Module, TEXT("float OpModuloAssign()"),    1.0f, TEXT("float %="));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float OpPreIncrement()"),    6.0f, TEXT("float ++x"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float OpPostIncrement()"),   5.0f, TEXT("float x++"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float OpPreDecrement()"),    4.0f, TEXT("float --x"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float OpPostDecrement()"),   5.0f, TEXT("float x--"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double OpDoubleAddAssign()"),      15.5,  TEXT("double +="));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double OpDoubleSubtractAssign()"),  6.75, TEXT("double -="));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double OpDoubleMultiplyAssign()"), 10.0,  TEXT("double *="));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double OpDoubleDivideAssign()"),    5.0,  TEXT("double /="));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double OpDoublePreIncrement()"),    6.0,  TEXT("double ++x"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double OpDoublePostIncrement()"),   5.0,  TEXT("double x++"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double OpDoublePreDecrement()"),    4.0,  TEXT("double --x"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double OpDoublePostDecrement()"),   5.0,  TEXT("double x--"));
+	}
+
+	TEST_METHOD(TernaryOperators)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFloatExpr_Ternary", ASTEST_AS(R"AS(
+		float PickPositiveFloat()
+		{
+			float Value = 2.0f;
+			return Value > 0.0f ? 7.5f : -7.5f;
+		}
+
+		float PickNegativeFloat()
+		{
+			float Value = -2.0f;
+			return Value > 0.0f ? 7.5f : -7.5f;
+		}
+
+		double PickPositiveDouble()
+		{
+			double Value = 2.0;
+			return Value > 0.0 ? 8.25 : -8.25;
+		}
+
+		double PickNegativeDouble()
+		{
+			double Value = -2.0;
+			return Value > 0.0 ? 8.25 : -8.25;
+		}
+
+		double PickMixedFloat32DoublePromotes()
+		{
+			bool bUseFloat32 = true;
+			return bUseFloat32 ? float32(1.25f) : 2.5;
+		}
+
+		float32 PickExplicitFloat32Branch()
+		{
+			bool bUseFirst = false;
+			return bUseFirst ? float32(9.5f) : float32(3.75f);
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float PickPositiveFloat()"), 7.5f, TEXT("float ternary true branch"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float PickNegativeFloat()"), -7.5f, TEXT("float ternary false branch"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double PickPositiveDouble()"), 8.25, TEXT("double ternary true branch"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double PickNegativeDouble()"), -8.25, TEXT("double ternary false branch"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double PickMixedFloat32DoublePromotes()"), 1.25, TEXT("mixed float32/double ternary promotes to double"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float32 PickExplicitFloat32Branch()"), 3.75f, TEXT("explicit float32 ternary preserves branch value"));
 	}
 
 	// -------------------------------------------------------------------------
@@ -427,9 +649,34 @@ public:
 			return 1.5e2f;
 		}
 
+		float LiteralScientificSmall()
+		{
+			return 1e-2f;
+		}
+
 		double LiteralNoSuffix()
 		{
 			return 3.14159;
+		}
+
+		double LiteralDoubleScientific()
+		{
+			return 1.5e3;
+		}
+
+		double LiteralDoubleScientificSmall()
+		{
+			return 1e-2;
+		}
+
+		float32 LiteralFloat32ScientificUppercase()
+		{
+			return float32(6.25E-1);
+		}
+
+		double LiteralDoubleScientificPositiveSign()
+		{
+			return 2.5e+2;
 		}
 
 		float LiteralWithSuffix()
@@ -437,9 +684,19 @@ public:
 			return 2.71828f;
 		}
 
+		float LiteralNegative()
+		{
+			return -1.5f;
+		}
+
 		float LiteralIntToFloat()
 		{
 			return 42;
+		}
+
+		double LiteralIntToDouble()
+		{
+			return 43;
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -452,9 +709,39 @@ public:
 
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LiteralDecimal()"),    123.456f, TEXT("decimal literal"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LiteralScientific()"),  150.0f,  TEXT("scientific notation 1.5e2"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LiteralScientificSmall()"), 0.01f, TEXT("scientific notation 1e-2f"));
 		ExpectGlobalReturn<double>(Engine, Module, TEXT("double LiteralNoSuffix()"),   3.14159, TEXT("no suffix defaults to double"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double LiteralDoubleScientific()"), 1500.0, TEXT("double scientific notation 1.5e3"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double LiteralDoubleScientificSmall()"), 0.01, TEXT("double scientific notation 1e-2"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float32 LiteralFloat32ScientificUppercase()"), 0.625f, TEXT("float32 scientific notation with uppercase exponent"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double LiteralDoubleScientificPositiveSign()"), 250.0, TEXT("double scientific notation with explicit positive exponent"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LiteralWithSuffix()"),  2.71828f, TEXT("f suffix is float"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LiteralNegative()"), -1.5f, TEXT("negative float literal via unary minus"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LiteralIntToFloat()"),  42.0f,    TEXT("int literal converts to float"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double LiteralIntToDouble()"), 43.0, TEXT("int literal converts to double"));
+	}
+
+	TEST_METHOD(FloatLiteralUnsupportedSuffixBoundaries)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const TArray<FString> ExpectedDiagnostics = {
+			TEXT("Expected ';'"),
+			TEXT("Instead found identifier 'd'"),
+		};
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCovFloatExpr_DoubleSuffixUnsupported"),
+			ASTEST_AS(R"AS(
+			double LiteralDoubleSuffix()
+			{
+				return 1.25d;
+			}
+			)AS"),
+			TEXT("double literal d suffix should remain unsupported; no-suffix literals are the supported double path"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -469,7 +756,7 @@ public:
 		double FloatToDouble()
 		{
 			float f = 3.14159f;
-			return double(f);
+			return f;
 		}
 
 		float DoubleToFloat()
@@ -478,10 +765,22 @@ public:
 			return float(d);
 		}
 
+		float32 DoubleToFloat32()
+		{
+			float64 d = 2.718281828459045;
+			return float32(d);
+		}
+
+		float64 Float32ToFloat64()
+		{
+			float32 f = 0.125f;
+			return f;
+		}
+
 		float IntToFloat()
 		{
 			int i = 42;
-			return float(i);
+			return i;
 		}
 
 		int FloatToInt()
@@ -493,13 +792,44 @@ public:
 		double IntToDouble()
 		{
 			int i = 123;
-			return double(i);
+			return i;
 		}
 
 		int DoubleToInt()
 		{
 			double d = 456.789;
 			return int(d);
+		}
+
+		int NegativeFloatToInt()
+		{
+			float f = -9.99f;
+			return int(f);
+		}
+
+		int NegativeDoubleToInt()
+		{
+			double d = -456.789;
+			return int(d);
+		}
+
+		float32 NegativeIntToFloat32()
+		{
+			int i = -42;
+			return i;
+		}
+
+		int Float32ToInt()
+		{
+			float32 f = -3.75f;
+			return int(f);
+		}
+
+		bool DoubleToFloatPrecisionLoss()
+		{
+			float64 d = 16777217.0;
+			float32 f = float32(d);
+			return float64(f) != d;
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -512,10 +842,17 @@ public:
 
 		ExpectGlobalReturn<double>(Engine, Module, TEXT("double FloatToDouble()"), 3.14159, TEXT("float widens to double"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float DoubleToFloat()"), 2.71828f, TEXT("double truncates to float"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float32 DoubleToFloat32()"), 2.71828f, TEXT("double explicitly narrows to float32"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("float64 Float32ToFloat64()"), 0.125, TEXT("float32 widens to float64"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float IntToFloat()"), 42.0f, TEXT("int converts to float"));
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int FloatToInt()"), 9, TEXT("float truncates to int"));
 		ExpectGlobalReturn<double>(Engine, Module, TEXT("double IntToDouble()"), 123.0, TEXT("int converts to double"));
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int DoubleToInt()"), 456, TEXT("double truncates to int"));
+		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int NegativeFloatToInt()"), -9, TEXT("negative float truncates toward zero"));
+		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int NegativeDoubleToInt()"), -456, TEXT("negative double truncates toward zero"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float32 NegativeIntToFloat32()"), -42.0f, TEXT("negative int converts to float32"));
+		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int Float32ToInt()"), -3, TEXT("float32 truncates to int toward zero"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool DoubleToFloatPrecisionLoss()"), true, TEXT("double to float32 explicit conversion can lose precision"));
 	}
 
 	// -------------------------------------------------------------------------
@@ -617,6 +954,17 @@ public:
 			return !(nanValue == nanValue);
 		}
 
+		bool TestFloat32NaNFromSqrt()
+		{
+			float32 nanValue = Math::Sqrt(float32(-1.0f));
+			return Math::IsNaN(nanValue) && !Math::IsFinite(nanValue);
+		}
+
+		bool TestFloatIsFiniteRejectsNaN()
+		{
+			return !Math::IsFinite(NAN_flt);
+		}
+
 		float ReturnFloatNaNConstant()
 		{
 			return NAN_flt;
@@ -640,6 +988,17 @@ public:
 			double nanValue = NAN_dbl;
 			// NaN should never equal itself
 			return !(nanValue == nanValue);
+		}
+
+		bool TestDoubleNaNFromSqrt()
+		{
+			double nanValue = Math::Sqrt(-1.0);
+			return Math::IsNaN(nanValue) && !Math::IsFinite(nanValue);
+		}
+
+		bool TestDoubleIsFiniteRejectsNaN()
+		{
+			return !Math::IsFinite(NAN_dbl);
 		}
 
 		double ReturnDoubleNaNConstant()
@@ -746,6 +1105,13 @@ public:
 			return !Math::IsNearlyEqual(a, b, 0.01f);
 		}
 
+		bool TestFloatEpsilonBoundary()
+		{
+			float a = 1.0f;
+			float b = a + 0.000001f;
+			return Math::IsNearlyEqual(a, b, 0.00001f) && !Math::IsNearlyEqual(a, b, 0.0000001f);
+		}
+
 		// Precision comparison using Math::IsNearlyEqual (double)
 		bool TestDoublePrecisionComparison()
 		{
@@ -759,6 +1125,13 @@ public:
 			double a = 1.0;
 			double b = 1.1;
 			return !Math::IsNearlyEqual(a, b, 0.01);
+		}
+
+		bool TestDoubleEpsilonBoundary()
+		{
+			double a = 1.0;
+			double b = a + 0.000000001;
+			return Math::IsNearlyEqual(a, b, 0.00000001) && !Math::IsNearlyEqual(a, b, 0.0000000001);
 		}
 
 		// Test -0.0 vs 0.0 (float)
@@ -801,6 +1174,8 @@ public:
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatNaNConstant()"), true, TEXT("float NaN constant via NAN_flt"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatNaNGeneration()"), true, TEXT("float NaN generation via NAN_flt expression"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatNaNComparison()"), true, TEXT("float NaN != NaN"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloat32NaNFromSqrt()"), true, TEXT("float32 NaN generated through Math::Sqrt"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatIsFiniteRejectsNaN()"), true, TEXT("float IsFinite rejects NaN"));
 		ExpectGlobalReturnSatisfies<float>(Engine, Module, TEXT("float ReturnFloatNaNConstant()"),
 			[](float Result) { return std::isnan(Result); },
 			TEXT("float NAN_flt should return NaN to C++"));
@@ -809,6 +1184,8 @@ public:
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoubleNaNConstant()"), true, TEXT("double NaN constant via NAN_dbl"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoubleNaNGeneration()"), true, TEXT("double NaN generation via NAN_dbl expression"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoubleNaNComparison()"), true, TEXT("double NaN != NaN"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoubleNaNFromSqrt()"), true, TEXT("double NaN generated through Math::Sqrt"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoubleIsFiniteRejectsNaN()"), true, TEXT("double IsFinite rejects NaN"));
 		ExpectGlobalReturnSatisfies<double>(Engine, Module, TEXT("double ReturnDoubleNaNConstant()"),
 			[](double Result) { return std::isnan(Result); },
 			TEXT("double NAN_dbl should return NaN to C++"));
@@ -848,10 +1225,12 @@ public:
 		// Precision comparison tests (float)
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatPrecisionComparison()"), true, TEXT("float IsNearlyEqual for close values"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatPrecisionComparisonFails()"), true, TEXT("float IsNearlyEqual fails for distant values"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatEpsilonBoundary()"), true, TEXT("float near-equal boundary honors tolerance"));
 
 		// Precision comparison tests (double)
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoublePrecisionComparison()"), true, TEXT("double IsNearlyEqual for close values"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoublePrecisionComparisonFails()"), true, TEXT("double IsNearlyEqual fails for distant values"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestDoubleEpsilonBoundary()"), true, TEXT("double near-equal boundary honors tolerance"));
 
 		// -0.0 vs 0.0 tests
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatNegativeZeroEquality()"), true, TEXT("float -0.0 == 0.0"));

@@ -484,6 +484,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringFunctionTest,
 		{
 			return text.ToString();
 		}
+
+		FString NameWithDefault(FName name = n"DefaultName")
+		{
+			return name.ToString();
+		}
+
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -556,6 +562,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringFunctionTest,
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
 			ASSERT_THAT(AreEqual(FString(TEXT("DefaultText")), Result, TEXT("FText explicit parameter mirrors default-value coverage path")));
 		}
+
+		// FName default
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FString NameWithDefault()"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("NameWithDefault should resolve and prepare")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			FString Result;
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
+			ASSERT_THAT(AreEqual(FString(TEXT("DefaultName")), Result, TEXT("FName default parameter used")));
+		}
+
 	}
 
 	// -------------------------------------------------------------------------
@@ -577,6 +597,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringFunctionTest,
 			return "Name: " + x.ToString();
 		}
 
+		FString Process(FText x)
+		{
+			return "Text: " + x.ToString();
+		}
+
 		FString CallProcessString()
 		{
 			return Process("Test");
@@ -585,6 +610,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringFunctionTest,
 		FString CallProcessName()
 		{
 			return Process(n"Test");
+		}
+
+		FString CallProcessText()
+		{
+			return Process(FText::FromString("Test"));
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -622,6 +652,37 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringFunctionTest,
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
 			ASSERT_THAT(AreEqual(FString(TEXT("Name: Test")), Result, TEXT("overload resolves to FName version")));
 		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FString CallProcessText()"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("CallProcessText should resolve and prepare")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			FString Result;
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
+			ASSERT_THAT(AreEqual(FString(TEXT("Text: Test")), Result, TEXT("overload resolves to FText version")));
+		}
+	}
+
+	TEST_METHOD(UnsupportedFunctionSignatureBoundaries)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const TArray<FString> ExpectedDiagnostics = { TEXT("FText") };
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCovFStringFunc_FTextLiteralDefaultUnsupported"),
+			ASTEST_AS(R"AS(
+			FString TextDefaultLiteral(FText text = "DefaultText")
+			{
+				return text.ToString();
+			}
+			)AS"),
+			TEXT("FText default parameters from string literals should remain an explicit unsupported boundary"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -666,9 +727,48 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringFunctionTest,
 				}
 
 				UFUNCTION()
+				FString DescribeReferences(const FString&in label, FName&in name, FText&in text)
+				{
+					return label + "|" + name.ToString() + "|" + text.ToString();
+				}
+
+				UFUNCTION()
+				FString FormatTextResult()
+				{
+					return FText::Format(FText::FromString("{0}:{1}"), FText::FromString("Count"), 7).ToString();
+				}
+
+				UFUNCTION()
+				FString DefaultString(FString value = "UFunctionDefaultString")
+				{
+					return value + "|Seen";
+				}
+
+				UFUNCTION()
+				FString DefaultName(FName value = n"UFunctionDefaultName")
+				{
+					return value.ToString() + "|Seen";
+				}
+
+				UFUNCTION()
 				void WriteOut(FString&out result)
 				{
 					result = "UFUNCTION Output";
+				}
+
+				UFUNCTION()
+				void WriteNameAndText(FName&out outName, FText&out outText)
+				{
+					outName = n"UFunctionNameOut";
+					outText = FText::FromString("UFunctionTextOut");
+				}
+
+				UFUNCTION()
+				void MutateAll(FString&inout label, FName&inout name, FText&inout text)
+				{
+					label += "|Mutated";
+					name = FName(name.ToString() + "Mutated");
+					text = FText::FromString(text.ToString() + "Mutated");
 				}
 			}
 			)AS"),
@@ -688,6 +788,113 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringFunctionTest,
 			return;
 		}
 		BeginPlayActor(Engine, *Actor);
+
+		UFunction* DescribeFunction = FindGeneratedFunction(ScriptClass, TEXT("DescribeReferences"));
+		ASSERT_THAT(IsNotNull(DescribeFunction, TEXT("DescribeReferences UFUNCTION should be generated")));
+		if (DescribeFunction == nullptr)
+		{
+			return;
+		}
+
+		UFunction* ConcatFunction = FindGeneratedFunction(ScriptClass, TEXT("ConcatStrings"));
+		UFunction* GetNameFunction = FindGeneratedFunction(ScriptClass, TEXT("GetName"));
+		UFunction* EchoTextFunction = FindGeneratedFunction(ScriptClass, TEXT("EchoText"));
+		ASSERT_THAT(IsNotNull(ConcatFunction, TEXT("ConcatStrings UFUNCTION should be generated")));
+		ASSERT_THAT(IsNotNull(GetNameFunction, TEXT("GetName UFUNCTION should be generated")));
+		ASSERT_THAT(IsNotNull(EchoTextFunction, TEXT("EchoText UFUNCTION should be generated")));
+		if (ConcatFunction == nullptr || GetNameFunction == nullptr || EchoTextFunction == nullptr)
+		{
+			return;
+		}
+
+		const FProperty* ConcatAParam = FindFProperty<FProperty>(ConcatFunction, TEXT("a"));
+		const FProperty* ConcatBParam = FindFProperty<FProperty>(ConcatFunction, TEXT("b"));
+		const FProperty* ConcatReturnParam = ConcatFunction->GetReturnProperty();
+		const FProperty* GetNameReturnParam = GetNameFunction->GetReturnProperty();
+		const FProperty* EchoTextValueParam = FindFProperty<FProperty>(EchoTextFunction, TEXT("value"));
+		const FProperty* EchoTextReturnParam = EchoTextFunction->GetReturnProperty();
+		ASSERT_THAT(IsNotNull(CastField<FStrProperty>(ConcatAParam), TEXT("ConcatStrings FString parameter a should reflect as FStrProperty")));
+		ASSERT_THAT(IsNotNull(CastField<FStrProperty>(ConcatBParam), TEXT("ConcatStrings FString parameter b should reflect as FStrProperty")));
+		ASSERT_THAT(IsNotNull(CastField<FStrProperty>(ConcatReturnParam), TEXT("ConcatStrings FString return should reflect as FStrProperty")));
+		ASSERT_THAT(IsNotNull(CastField<FNameProperty>(GetNameReturnParam), TEXT("GetName FName return should reflect as FNameProperty")));
+		ASSERT_THAT(IsNotNull(CastField<FTextProperty>(EchoTextValueParam), TEXT("EchoText FText parameter should reflect as FTextProperty")));
+		ASSERT_THAT(IsNotNull(CastField<FTextProperty>(EchoTextReturnParam), TEXT("EchoText FText return should reflect as FTextProperty")));
+		if (ConcatAParam == nullptr || ConcatBParam == nullptr || ConcatReturnParam == nullptr || GetNameReturnParam == nullptr
+			|| EchoTextValueParam == nullptr || EchoTextReturnParam == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(ConcatReturnParam->HasAnyPropertyFlags(CPF_ReturnParm), TEXT("ConcatStrings FString return should carry CPF_ReturnParm")));
+		ASSERT_THAT(IsTrue(GetNameReturnParam->HasAnyPropertyFlags(CPF_ReturnParm), TEXT("GetName FName return should carry CPF_ReturnParm")));
+		ASSERT_THAT(IsTrue(EchoTextReturnParam->HasAnyPropertyFlags(CPF_ReturnParm), TEXT("EchoText FText return should carry CPF_ReturnParm")));
+
+		const FProperty* LabelParam = FindFProperty<FProperty>(DescribeFunction, TEXT("label"));
+		const FProperty* NameParam = FindFProperty<FProperty>(DescribeFunction, TEXT("name"));
+		const FProperty* TextParam = FindFProperty<FProperty>(DescribeFunction, TEXT("text"));
+		ASSERT_THAT(IsNotNull(LabelParam, TEXT("DescribeReferences label parameter should exist")));
+		ASSERT_THAT(IsNotNull(NameParam, TEXT("DescribeReferences name parameter should exist")));
+		ASSERT_THAT(IsNotNull(TextParam, TEXT("DescribeReferences text parameter should exist")));
+		if (LabelParam == nullptr || NameParam == nullptr || TextParam == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(LabelParam->HasAnyPropertyFlags(CPF_ConstParm), TEXT("const FString&in UFUNCTION parameter should carry CPF_ConstParm")));
+		ASSERT_THAT(IsTrue(LabelParam->HasAnyPropertyFlags(CPF_OutParm), TEXT("const FString&in UFUNCTION parameter should carry CPF_OutParm reference metadata")));
+		ASSERT_THAT(IsTrue(NameParam->HasAnyPropertyFlags(CPF_OutParm), TEXT("FName&in UFUNCTION parameter should carry CPF_OutParm reference metadata")));
+		ASSERT_THAT(IsTrue(TextParam->HasAnyPropertyFlags(CPF_OutParm), TEXT("FText&in UFUNCTION parameter should carry CPF_OutParm reference metadata")));
+
+		UFunction* WriteOutFunction = FindGeneratedFunction(ScriptClass, TEXT("WriteOut"));
+		UFunction* WriteNameAndTextFunction = FindGeneratedFunction(ScriptClass, TEXT("WriteNameAndText"));
+		UFunction* MutateAllFunction = FindGeneratedFunction(ScriptClass, TEXT("MutateAll"));
+		ASSERT_THAT(IsNotNull(WriteOutFunction, TEXT("WriteOut UFUNCTION should be generated")));
+		ASSERT_THAT(IsNotNull(WriteNameAndTextFunction, TEXT("WriteNameAndText UFUNCTION should be generated")));
+		ASSERT_THAT(IsNotNull(MutateAllFunction, TEXT("MutateAll UFUNCTION should be generated")));
+		if (WriteOutFunction == nullptr || WriteNameAndTextFunction == nullptr || MutateAllFunction == nullptr)
+		{
+			return;
+		}
+
+		const FProperty* WriteOutResultParam = FindFProperty<FProperty>(WriteOutFunction, TEXT("result"));
+		const FProperty* WriteNameOutParam = FindFProperty<FProperty>(WriteNameAndTextFunction, TEXT("outName"));
+		const FProperty* WriteTextOutParam = FindFProperty<FProperty>(WriteNameAndTextFunction, TEXT("outText"));
+		const FProperty* MutateLabelParam = FindFProperty<FProperty>(MutateAllFunction, TEXT("label"));
+		const FProperty* MutateNameParam = FindFProperty<FProperty>(MutateAllFunction, TEXT("name"));
+		const FProperty* MutateTextParam = FindFProperty<FProperty>(MutateAllFunction, TEXT("text"));
+		ASSERT_THAT(IsNotNull(CastField<FStrProperty>(WriteOutResultParam), TEXT("FString &out UFUNCTION parameter should reflect as FStrProperty")));
+		ASSERT_THAT(IsNotNull(CastField<FNameProperty>(WriteNameOutParam), TEXT("FName &out UFUNCTION parameter should reflect as FNameProperty")));
+		ASSERT_THAT(IsNotNull(CastField<FTextProperty>(WriteTextOutParam), TEXT("FText &out UFUNCTION parameter should reflect as FTextProperty")));
+		ASSERT_THAT(IsNotNull(CastField<FStrProperty>(MutateLabelParam), TEXT("FString &inout UFUNCTION parameter should reflect as FStrProperty")));
+		ASSERT_THAT(IsNotNull(CastField<FNameProperty>(MutateNameParam), TEXT("FName &inout UFUNCTION parameter should reflect as FNameProperty")));
+		ASSERT_THAT(IsNotNull(CastField<FTextProperty>(MutateTextParam), TEXT("FText &inout UFUNCTION parameter should reflect as FTextProperty")));
+		if (WriteOutResultParam == nullptr || WriteNameOutParam == nullptr || WriteTextOutParam == nullptr
+			|| MutateLabelParam == nullptr || MutateNameParam == nullptr || MutateTextParam == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(WriteOutResultParam->HasAnyPropertyFlags(CPF_OutParm), TEXT("FString &out UFUNCTION parameter should carry CPF_OutParm")));
+		ASSERT_THAT(IsTrue(WriteNameOutParam->HasAnyPropertyFlags(CPF_OutParm), TEXT("FName &out UFUNCTION parameter should carry CPF_OutParm")));
+		ASSERT_THAT(IsTrue(WriteTextOutParam->HasAnyPropertyFlags(CPF_OutParm), TEXT("FText &out UFUNCTION parameter should carry CPF_OutParm")));
+		ASSERT_THAT(IsTrue(MutateLabelParam->HasAnyPropertyFlags(CPF_OutParm), TEXT("FString &inout UFUNCTION parameter should carry CPF_OutParm")));
+		ASSERT_THAT(IsTrue(MutateNameParam->HasAnyPropertyFlags(CPF_OutParm), TEXT("FName &inout UFUNCTION parameter should carry CPF_OutParm")));
+		ASSERT_THAT(IsTrue(MutateTextParam->HasAnyPropertyFlags(CPF_OutParm), TEXT("FText &inout UFUNCTION parameter should carry CPF_OutParm")));
+
+		UFunction* DefaultStringFunction = FindGeneratedFunction(ScriptClass, TEXT("DefaultString"));
+		UFunction* DefaultNameFunction = FindGeneratedFunction(ScriptClass, TEXT("DefaultName"));
+		ASSERT_THAT(IsNotNull(DefaultStringFunction, TEXT("DefaultString UFUNCTION should be generated")));
+		ASSERT_THAT(IsNotNull(DefaultNameFunction, TEXT("DefaultName UFUNCTION should be generated")));
+		if (DefaultStringFunction == nullptr || DefaultNameFunction == nullptr)
+		{
+			return;
+		}
+
+		const FProperty* DefaultStringValueParam = FindFProperty<FProperty>(DefaultStringFunction, TEXT("value"));
+		const FProperty* DefaultNameValueParam = FindFProperty<FProperty>(DefaultNameFunction, TEXT("value"));
+		ASSERT_THAT(IsNotNull(CastField<FStrProperty>(DefaultStringValueParam), TEXT("DefaultString FString default parameter should reflect as FStrProperty")));
+		ASSERT_THAT(IsNotNull(CastField<FNameProperty>(DefaultNameValueParam), TEXT("DefaultName FName default parameter should reflect as FNameProperty")));
+		if (DefaultStringValueParam == nullptr || DefaultNameValueParam == nullptr)
+		{
+			return;
+		}
 
 		// UFUNCTION with FString parameters and return
 		{
@@ -728,6 +935,57 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringFunctionTest,
 			ASSERT_THAT(IsTrue(Result.EqualTo(FText::FromString(TEXT("EchoedText"))), TEXT("UFUNCTION FText parameter and return")));
 		}
 
+		// UFUNCTION with string-family const-reference parameters
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("DescribeReferences"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("DescribeReferences UFUNCTION should resolve")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddParam(FString(TEXT("Label")));
+			Invoker.AddParam(FName(TEXT("NameValue")));
+			Invoker.AddParam(FText::FromString(TEXT("TextValue")));
+			const FString Result = Invoker.CallAndReturn<FString>();
+			ASSERT_THAT(AreEqual(FString(TEXT("Label|NameValue|TextValue")), Result, TEXT("UFUNCTION string-family const-reference parameters")));
+		}
+
+		// UFUNCTION with FText formatting return
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("FormatTextResult"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("FormatTextResult UFUNCTION should resolve")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			const FString Result = Invoker.CallAndReturn<FString>();
+			ASSERT_THAT(AreEqual(FString(TEXT("Count:7")), Result, TEXT("UFUNCTION FText format result should round-trip")));
+		}
+
+		// UFUNCTION with string-family default parameters populated through reflection
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("DefaultString"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("DefaultString UFUNCTION should resolve")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddParam(FString(TEXT("ExplicitString")));
+			const FString Result = Invoker.CallAndReturn<FString>();
+			ASSERT_THAT(AreEqual(FString(TEXT("ExplicitString|Seen")), Result, TEXT("UFUNCTION FString default-parameter signature should execute when populated explicitly")));
+		}
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("DefaultName"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("DefaultName UFUNCTION should resolve")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddParam(FName(TEXT("ExplicitName")));
+			const FString Result = Invoker.CallAndReturn<FString>();
+			ASSERT_THAT(AreEqual(FString(TEXT("ExplicitName|Seen")), Result, TEXT("UFUNCTION FName default-parameter signature should execute when populated explicitly")));
+		}
+
 		// UFUNCTION with &out parameter
 		{
 			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("WriteOut"));
@@ -738,9 +996,51 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringFunctionTest,
 			}
 			FString OutValue;
 			Invoker.AddParam(FString());
-			Invoker.Call();
-			Invoker.ReadParamAfterCall(0, OutValue);
+			ASSERT_THAT(IsTrue(Invoker.Call(), TEXT("WriteOut UFUNCTION should execute")));
+			ASSERT_THAT(IsTrue(Invoker.ReadParamAfterCall(0, OutValue), TEXT("WriteOut should expose FString out value after call")));
 			ASSERT_THAT(AreEqual(FString(TEXT("UFUNCTION Output")), OutValue, TEXT("UFUNCTION FString &out parameter")));
+		}
+
+		// UFUNCTION with FName/FText &out parameters
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("WriteNameAndText"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("WriteNameAndText UFUNCTION should resolve")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			FName OutName;
+			FText OutText;
+			Invoker.AddParam(FName());
+			Invoker.AddParam(FText::GetEmpty());
+			ASSERT_THAT(IsTrue(Invoker.Call(), TEXT("WriteNameAndText UFUNCTION should execute")));
+			ASSERT_THAT(IsTrue(Invoker.ReadParamAfterCall(0, OutName), TEXT("WriteNameAndText should expose FName out value after call")));
+			ASSERT_THAT(IsTrue(Invoker.ReadParamAfterCall(1, OutText), TEXT("WriteNameAndText should expose FText out value after call")));
+			ASSERT_THAT(AreEqual(FName(TEXT("UFunctionNameOut")), OutName, TEXT("UFUNCTION FName &out parameter")));
+			ASSERT_THAT(AreEqual(FString(TEXT("UFunctionTextOut")), OutText.ToString(), TEXT("UFUNCTION FText &out parameter")));
+		}
+
+		// UFUNCTION with string-family &inout parameters
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("MutateAll"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("MutateAll UFUNCTION should resolve")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			FString Label = TEXT("Label");
+			FName Name(TEXT("Name"));
+			FText Text = FText::FromString(TEXT("Text"));
+			Invoker.AddParam(Label);
+			Invoker.AddParam(Name);
+			Invoker.AddParam(Text);
+			ASSERT_THAT(IsTrue(Invoker.Call(), TEXT("MutateAll UFUNCTION should execute")));
+			ASSERT_THAT(IsTrue(Invoker.ReadParamAfterCall(0, Label), TEXT("MutateAll should expose FString inout value after call")));
+			ASSERT_THAT(IsTrue(Invoker.ReadParamAfterCall(1, Name), TEXT("MutateAll should expose FName inout value after call")));
+			ASSERT_THAT(IsTrue(Invoker.ReadParamAfterCall(2, Text), TEXT("MutateAll should expose FText inout value after call")));
+			ASSERT_THAT(AreEqual(FString(TEXT("Label|Mutated")), Label, TEXT("UFUNCTION FString &inout parameter")));
+			ASSERT_THAT(AreEqual(FName(TEXT("NameMutated")), Name, TEXT("UFUNCTION FName &inout parameter")));
+			ASSERT_THAT(AreEqual(FString(TEXT("TextMutated")), Text.ToString(), TEXT("UFUNCTION FText &inout parameter")));
 		}
 	}
 };

@@ -48,9 +48,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorExpressionTest,
 		}
 		else
 		{
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result), Message));
 		}
-		TestRunner->TestEqual(Message, Result, Expected);
+		ASSERT_THAT(AreEqual(Expected, Result, Message));
 	}
 
 	// Helper for FLinearColor with tolerance
@@ -58,8 +58,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorExpressionTest,
 	{
 		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
 		FLinearColor Result;
-		ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-		TestRunner->TestTrue(Message, Result.Equals(Expected, Tolerance));
+		ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result), Message));
+		ASSERT_THAT(IsTrue(Result.Equals(Expected, Tolerance), Message));
 	}
 
 	// -------------------------------------------------------------------------
@@ -124,7 +124,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorExpressionTest,
 			}
 		};
 
-		ExpectGlobalReturn<FLinearColor>(Engine, Module, TEXT("FLinearColor ConstructDefault()"), FLinearColor(0, 0, 0, 0), TEXT("FLinearColor() default"));
+		ExpectGlobalReturn<FLinearColor>(Engine, Module, TEXT("FLinearColor ConstructDefault()"), FLinearColor(0, 0, 0, 1), TEXT("FLinearColor() default"));
 		ExpectGlobalReturn<FLinearColor>(Engine, Module, TEXT("FLinearColor ConstructFourParams()"), FLinearColor(0.5f, 0.6f, 0.7f, 0.8f), TEXT("FLinearColor(R,G,B,A)"));
 		ExpectGlobalReturn<FLinearColor>(Engine, Module, TEXT("FLinearColor ConstructThreeParams()"), FLinearColor(0.2f, 0.4f, 0.6f, 1.0f), TEXT("FLinearColor(R,G,B) default alpha"));
 		ExpectGlobalReturn<FLinearColor>(Engine, Module, TEXT("FLinearColor ConstructWhite()"), FLinearColor::White, TEXT("FLinearColor::White"));
@@ -347,6 +347,117 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorExpressionTest,
 			FLinearColor Result;
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
 			TestRunner->TestTrue(TEXT("LerpUsingHSV produces intermediate color"), Result.R > 0.0f && Result.R < 1.0f);
+		}
+	}
+
+	TEST_METHOD(FLinearColorAdvancedMethods)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFLinearColorExpr_AdvancedMethods", ASTEST_AS(R"AS(
+		FLinearColor ClampColor()
+		{
+			FLinearColor c = FLinearColor(-0.5, 0.25, 1.5, 2.0);
+			return c.GetClamped(0.0, 1.0);
+		}
+
+		bool EqualsWithinTolerance()
+		{
+			FLinearColor a = FLinearColor(0.2, 0.4, 0.6, 1.0);
+			FLinearColor b = FLinearColor(0.201, 0.399, 0.6, 1.0);
+			return a.Equals(b, 0.01);
+		}
+
+		bool AlmostBlack()
+		{
+			FLinearColor c = FLinearColor(0.0, 0.0, 0.0, 1.0);
+			return c.IsAlmostBlack();
+		}
+
+		float MinComponent()
+		{
+			FLinearColor c = FLinearColor(0.6, 0.2, 0.9, 0.4);
+			return c.GetMin();
+		}
+
+		float MaxComponent()
+		{
+			FLinearColor c = FLinearColor(0.6, 0.2, 0.9, 0.4);
+			return c.GetMax();
+		}
+
+		FLinearColor RoundTripHSV()
+		{
+			FLinearColor c = FLinearColor(0.25, 0.5, 0.75, 1.0);
+			return c.LinearRGBToHSV().HSVToLinearRGB();
+		}
+
+		FLinearColor MakeHexSRGB()
+		{
+			return FLinearColor::MakeFromHex(0xFFFFFFFF, true);
+		}
+
+		FLinearColor MakeHexLinear()
+		{
+			return FLinearColor::MakeFromHex(0xFFFFFFFF, false);
+		}
+
+		FLinearColor ConstructFromFColor()
+		{
+			FColor c = FColor(255, 0, 0, 255);
+			return FLinearColor(c);
+		}
+
+		FLinearColor ReinterpretFromFColor()
+		{
+			FColor c = FColor(0, 255, 0, 255);
+			return c.ReinterpretAsLinear();
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FLinearColor advanced method module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		ExpectColorNearlyEqual(Engine, Module, TEXT("FLinearColor ClampColor()"), FLinearColor(0.0f, 0.25f, 1.0f, 1.0f), TEXT("FLinearColor.GetClamped()"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool EqualsWithinTolerance()"), true, TEXT("FLinearColor.Equals(tolerance)"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool AlmostBlack()"), true, TEXT("FLinearColor.IsAlmostBlack()"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float MinComponent()"), 0.2f, TEXT("FLinearColor.GetMin()"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float MaxComponent()"), 0.9f, TEXT("FLinearColor.GetMax()"));
+		ExpectColorNearlyEqual(Engine, Module, TEXT("FLinearColor RoundTripHSV()"), FLinearColor(0.25f, 0.5f, 0.75f, 1.0f), TEXT("LinearRGBToHSV().HSVToLinearRGB()"), 0.01f);
+
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FLinearColor MakeHexSRGB()"));
+			FLinearColor Result;
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result), TEXT("MakeFromHex(true) should execute")));
+			ASSERT_THAT(IsTrue(Result.R > 0.99f && Result.G > 0.99f && Result.B > 0.99f && Result.A > 0.99f, TEXT("MakeFromHex(true) should produce opaque white")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FLinearColor MakeHexLinear()"));
+			FLinearColor Result;
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result), TEXT("MakeFromHex(false) should execute")));
+			ASSERT_THAT(IsTrue(Result.R > 0.99f && Result.G > 0.99f && Result.B > 0.99f && Result.A > 0.99f, TEXT("MakeFromHex(false) should reinterpret opaque white")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FLinearColor ConstructFromFColor()"));
+			FLinearColor Result;
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result), TEXT("FLinearColor(FColor) should execute")));
+			ASSERT_THAT(IsTrue(Result.R > 0.99f && Result.G < 0.01f && Result.B < 0.01f && Result.A > 0.99f, TEXT("FLinearColor(FColor) should convert opaque red")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FLinearColor ReinterpretFromFColor()"));
+			FLinearColor Result;
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result), TEXT("FColor.ReinterpretAsLinear should execute")));
+			ASSERT_THAT(IsTrue(Result.G > 0.99f && Result.R < 0.01f && Result.B < 0.01f && Result.A > 0.99f, TEXT("FColor.ReinterpretAsLinear should produce opaque green")));
 		}
 	}
 

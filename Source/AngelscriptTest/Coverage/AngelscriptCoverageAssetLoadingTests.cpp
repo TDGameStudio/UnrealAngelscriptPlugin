@@ -10,15 +10,17 @@
 // -----------------------------------------------------------------------------
 // AngelscriptCoverageAssetLoadingTests
 // -----------------------------------------------------------------------------
-// Coverage for the high-priority synchronous asset-loading slice from:
+// Coverage for the high-priority asset-loading and soft-reference slices from:
 //
-//   Documents/Coverage/Coverage_AssetLoading.md
+//   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 //
 // Axes covered here:
 //   * FSoftObjectPath.TryLoad for a known engine asset
 //   * FSoftClassPath.TryLoadClass for a known native class
 //   * global LoadObject for a known engine asset
 //   * missing-path boundaries for sync load helpers
+//   * soft path string/metadata identity
+//   * TSoftObjectPtr/TSoftClassPtr path construction, pending, and reset paths
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -30,6 +32,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageAssetLoadingTest,
 private:
 	static constexpr const TCHAR* DefaultTexturePath = TEXT("/Engine/EngineResources/DefaultTexture.DefaultTexture");
 	static constexpr const TCHAR* MissingTexturePath = TEXT("/Engine/EngineResources/DefinitelyMissingCoverageTexture.DefinitelyMissingCoverageTexture");
+	static constexpr const TCHAR* MissingActorClassPath = TEXT("/Game/Coverage/DefinitelyMissingCoverageActor.DefinitelyMissingCoverageActor_C");
+	static constexpr const TCHAR* CrossLevelActorPath = TEXT("/Game/Coverage/OtherMap.OtherMap:PersistentLevel.OtherActor");
 
 public:
 	BEFORE_ALL()
@@ -126,6 +130,82 @@ public:
 			TEXT("FSoftClassPath.ResolveClass should return the same class after TryLoadClass"), 1)));
 	}
 
+	TEST_METHOD(SoftPathStringIdentityAndMissingClassBoundaries)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FSoftObjectPath DefaultTextureSoftPath(DefaultTexturePath);
+		const FSoftClassPath ActorSoftClassPath(AActor::StaticClass());
+		FString Script = ASTEST_AS(R"AS(
+			int SoftObjectPathStringIdentity()
+			{
+				FSoftObjectPath TexturePath("__DEFAULT_TEXTURE_PATH__");
+				if (!TexturePath.IsValid() || TexturePath.IsNull())
+					return 0;
+
+				if (!TexturePath.IsAsset() || TexturePath.IsSubobject())
+					return 0;
+
+				if (TexturePath.ToString() != "__DEFAULT_TEXTURE_PATH__")
+					return 0;
+
+				if (TexturePath.GetLongPackageName() != "__DEFAULT_TEXTURE_PACKAGE__")
+					return 0;
+
+				return TexturePath.GetAssetName() == "__DEFAULT_TEXTURE_ASSET__" ? 1 : 0;
+			}
+
+			int SoftClassPathStringIdentity()
+			{
+				FSoftClassPath ClassPath("__ACTOR_CLASS_PATH__");
+				if (!ClassPath.IsValid() || ClassPath.IsNull())
+					return 0;
+
+				if (!ClassPath.IsAsset() || ClassPath.IsSubobject())
+					return 0;
+
+				if (ClassPath.ToString() != "__ACTOR_CLASS_PATH__")
+					return 0;
+
+				if (ClassPath.GetLongPackageName() != "__ACTOR_CLASS_PACKAGE__")
+					return 0;
+
+				return ClassPath.GetAssetName() == "__ACTOR_CLASS_ASSET__" ? 1 : 0;
+			}
+
+			int MissingSoftClassPathResolveBoundaries()
+			{
+				FSoftClassPath ClassPath("__MISSING_CLASS_PATH__");
+				return ClassPath.IsValid()
+					&& ClassPath.ResolveClass() == null
+					&& ClassPath.TryLoadClass() == null ? 1 : 0;
+			}
+			)AS");
+		Script.ReplaceInline(TEXT("__DEFAULT_TEXTURE_PATH__"), *DefaultTextureSoftPath.ToString().ReplaceCharWithEscapedChar(), ESearchCase::CaseSensitive);
+		Script.ReplaceInline(TEXT("__DEFAULT_TEXTURE_PACKAGE__"), *DefaultTextureSoftPath.GetLongPackageName().ReplaceCharWithEscapedChar(), ESearchCase::CaseSensitive);
+		Script.ReplaceInline(TEXT("__DEFAULT_TEXTURE_ASSET__"), *DefaultTextureSoftPath.GetAssetName().ReplaceCharWithEscapedChar(), ESearchCase::CaseSensitive);
+		Script.ReplaceInline(TEXT("__ACTOR_CLASS_PATH__"), *ActorSoftClassPath.ToString().ReplaceCharWithEscapedChar(), ESearchCase::CaseSensitive);
+		Script.ReplaceInline(TEXT("__ACTOR_CLASS_PACKAGE__"), *ActorSoftClassPath.GetLongPackageName().ReplaceCharWithEscapedChar(), ESearchCase::CaseSensitive);
+		Script.ReplaceInline(TEXT("__ACTOR_CLASS_ASSET__"), *ActorSoftClassPath.GetAssetName().ReplaceCharWithEscapedChar(), ESearchCase::CaseSensitive);
+		Script.ReplaceInline(TEXT("__MISSING_CLASS_PATH__"), MissingActorClassPath, ESearchCase::CaseSensitive);
+
+		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageAssetLoading_SoftPathStringIdentity"), Script);
+		ASSERT_THAT(IsTrue(Module.IsValid(), TEXT("soft path string identity module should compile")));
+		if (!Module.IsValid())
+		{
+			return;
+		}
+
+		asIScriptModule& ScriptModule = Module.GetModule();
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int SoftObjectPathStringIdentity()"),
+			TEXT("FSoftObjectPath string and metadata identity should match the native path"), 1)));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int SoftClassPathStringIdentity()"),
+			TEXT("FSoftClassPath string and metadata identity should match the native class path"), 1)));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int MissingSoftClassPathResolveBoundaries()"),
+			TEXT("FSoftClassPath missing-class resolve and load boundaries should return null"), 1)));
+	}
+
 	TEST_METHOD(GlobalLoadObject)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
@@ -159,6 +239,106 @@ public:
 			TEXT("global LoadObject should synchronously load a known engine texture"), 1)));
 		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int LoadObjectMissingTexture()"),
 			TEXT("global LoadObject should return null for a missing path"), 1)));
+	}
+
+	TEST_METHOD(SoftReferencePathConstructionAndPending)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FSoftClassPath ActorSoftClassPath(AActor::StaticClass());
+		FString ScriptSource = ASTEST_AS(R"AS(
+			int SoftObjectPtrConstructedFromPathKeepsIdentity()
+			{
+				FSoftObjectPath TexturePath("__DEFAULT_TEXTURE_PATH__");
+				TSoftObjectPtr<UTexture2D> TextureRef(TexturePath);
+				return !TextureRef.IsNull()
+					&& TextureRef.ToSoftObjectPath() == TexturePath
+					&& TextureRef.ToString() == TexturePath.ToString()
+					&& TextureRef.GetLongPackageName() == TexturePath.GetLongPackageName()
+					&& TextureRef.GetAssetName() == TexturePath.GetAssetName() ? 1 : 0;
+			}
+
+			int MissingSoftObjectPtrReportsPending()
+			{
+				TSoftObjectPtr<UTexture2D> MissingRef(FSoftObjectPath("__MISSING_TEXTURE_PATH__"));
+				return !MissingRef.IsNull()
+					&& !MissingRef.IsValid()
+					&& MissingRef.IsPending()
+					&& MissingRef.Get() == null ? 1 : 0;
+			}
+
+			int CrossLevelSoftObjectPtrStaysPathOnly()
+			{
+				TSoftObjectPtr<AActor> ActorRef(FSoftObjectPath("__CROSS_LEVEL_ACTOR_PATH__"));
+				return !ActorRef.IsNull()
+					&& !ActorRef.IsValid()
+					&& ActorRef.IsPending()
+					&& ActorRef.ToString().Contains("PersistentLevel.OtherActor") ? 1 : 0;
+			}
+
+			int SoftClassPtrConstructedFromPathResolvesActor()
+			{
+				FSoftObjectPath ClassObjectPath("__ACTOR_CLASS_PATH__");
+				TSoftClassPtr<AActor> ActorClassRef(ClassObjectPath);
+				TSubclassOf<AActor> LoadedClass = ActorClassRef.Get();
+				return !ActorClassRef.IsNull()
+					&& ActorClassRef.IsValid()
+					&& ActorClassRef.ToSoftObjectPath() == ClassObjectPath
+					&& LoadedClass.IsValid()
+					&& LoadedClass.IsChildOf(AActor::StaticClass()) ? 1 : 0;
+			}
+
+			int MissingSoftClassPtrReportsPending()
+			{
+				TSoftClassPtr<AActor> MissingClassRef(FSoftObjectPath("__MISSING_CLASS_PATH__"));
+				TSubclassOf<AActor> MissingClass = MissingClassRef.Get();
+				return !MissingClassRef.IsNull()
+					&& !MissingClassRef.IsValid()
+					&& MissingClassRef.IsPending()
+					&& !MissingClass.IsValid() ? 1 : 0;
+			}
+
+			int ResetSoftReferencesClearPaths()
+			{
+				TSoftObjectPtr<UTexture2D> TextureRef(FSoftObjectPath("__DEFAULT_TEXTURE_PATH__"));
+				TSoftClassPtr<AActor> ActorClassRef(FSoftObjectPath("__ACTOR_CLASS_PATH__"));
+				TextureRef.Reset();
+				ActorClassRef.Reset();
+				return TextureRef.IsNull()
+					&& ActorClassRef.IsNull()
+					&& !TextureRef.IsPending()
+					&& !ActorClassRef.IsPending()
+					&& TextureRef.ToString().IsEmpty()
+					&& ActorClassRef.ToString().IsEmpty() ? 1 : 0;
+			}
+			)AS");
+		ScriptSource.ReplaceInline(TEXT("__DEFAULT_TEXTURE_PATH__"), DefaultTexturePath, ESearchCase::CaseSensitive);
+		ScriptSource.ReplaceInline(TEXT("__MISSING_TEXTURE_PATH__"), MissingTexturePath, ESearchCase::CaseSensitive);
+		ScriptSource.ReplaceInline(TEXT("__CROSS_LEVEL_ACTOR_PATH__"), CrossLevelActorPath, ESearchCase::CaseSensitive);
+		ScriptSource.ReplaceInline(TEXT("__ACTOR_CLASS_PATH__"), *ActorSoftClassPath.ToString().ReplaceCharWithEscapedChar(), ESearchCase::CaseSensitive);
+		ScriptSource.ReplaceInline(TEXT("__MISSING_CLASS_PATH__"), MissingActorClassPath, ESearchCase::CaseSensitive);
+
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASCoverageAssetLoading_SoftReferencePathConstruction"), ScriptSource);
+		ASSERT_THAT(IsTrue(ModuleScope.IsValid(), TEXT("soft-reference path construction module should compile")));
+		if (!ModuleScope.IsValid())
+		{
+			return;
+		}
+
+		asIScriptModule& ScriptModule = ModuleScope.GetModule();
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int SoftObjectPtrConstructedFromPathKeepsIdentity()"),
+			TEXT("TSoftObjectPtr should preserve FSoftObjectPath identity and metadata"), 1)));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int MissingSoftObjectPtrReportsPending()"),
+			TEXT("TSoftObjectPtr should report pending for path-only missing assets"), 1)));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int CrossLevelSoftObjectPtrStaysPathOnly()"),
+			TEXT("TSoftObjectPtr should preserve cross-level actor object paths without loading"), 1)));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int SoftClassPtrConstructedFromPathResolvesActor()"),
+			TEXT("TSoftClassPtr should construct from a class path and resolve the loaded actor class"), 1)));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int MissingSoftClassPtrReportsPending()"),
+			TEXT("TSoftClassPtr should report pending for path-only missing classes"), 1)));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int ResetSoftReferencesClearPaths()"),
+			TEXT("soft reference Reset should clear stored object and class paths"), 1)));
 	}
 
 	TEST_METHOD(SoftReferenceAsyncBoundaries)

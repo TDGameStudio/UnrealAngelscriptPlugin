@@ -10,6 +10,7 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "Components/ActorComponent.h"
+#include "Components/SceneComponent.h"
 #include "Misc/ScopeExit.h"
 #include "UObject/Class.h"
 
@@ -19,7 +20,7 @@
 // Coverage for AngelScript UObject Handle (basic object references).
 // This file covers the "UObject Handle" section of the coverage matrix:
 //
-//   Documents/Coverage/Coverage_HandlesAndReferences.md - Sub-matrix 1
+//   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md - Sub-matrix 1
 //
 // Axes covered here:
 //   * HandleBasics           - declaration, null checks, IsValid, assignment
@@ -34,7 +35,7 @@
 // an AS actor, drive its members, read them back through FPropertyBindingPath
 // helpers in Shared/AngelscriptReflectiveAccess.h.
 //
-// Detailed coverage matrix: Documents/Coverage/Coverage_HandlesAndReferences.md
+// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -408,6 +409,130 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandleTest,
 		BeginPlayActor(Engine, *Actor);
 
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("PropertiesAssigned"), true, TEXT("Handle properties should be assignable"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Member references: UObject, Actor, and Component UPROPERTY handles
+	// -------------------------------------------------------------------------
+	TEST_METHOD(MemberObjectActorComponentReferences)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageHandle_MemberReferences"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageHandleMemberReferences.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageHandleMemberReferenceActor : AActor
+			{
+				UPROPERTY()
+				UObject MemberObject;
+
+				UPROPERTY()
+				AActor MemberActor;
+
+				UPROPERTY()
+				UActorComponent MemberComponent;
+
+				UPROPERTY()
+				bool ObjectReferenceWorked = false;
+
+				UPROPERTY()
+				bool ActorReferenceWorked = false;
+
+				UPROPERTY()
+				bool ComponentReferenceWorked = false;
+
+				UPROPERTY()
+				bool ComponentOwnerWorked = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					MemberObject = NewObject(this, UTexture2D::StaticClass(), n"CoverageMemberObject");
+					MemberActor = SpawnActor(AActor::StaticClass());
+					MemberComponent = CreateComponent(USceneComponent::StaticClass(), n"CoverageMemberComponent");
+
+					ObjectReferenceWorked = MemberObject != nullptr && MemberObject.GetOuter() == this;
+					ActorReferenceWorked = MemberActor != nullptr && MemberActor != this;
+					ComponentReferenceWorked = MemberComponent != nullptr && MemberComponent.GetName() == n"CoverageMemberComponent";
+					ComponentOwnerWorked = MemberComponent != nullptr && MemberComponent.GetOwner() == this;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageHandleMemberReferenceActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Member-reference actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const FProperty* MemberObjectProp = ScriptClass->FindPropertyByName(FName(TEXT("MemberObject")));
+		ASSERT_THAT(IsNotNull(MemberObjectProp, TEXT("MemberObject property should exist")));
+		if (MemberObjectProp == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(MemberObjectProp->IsA<FObjectProperty>(), TEXT("MemberObject should be an object property")));
+
+		const FProperty* MemberActorProp = ScriptClass->FindPropertyByName(FName(TEXT("MemberActor")));
+		ASSERT_THAT(IsNotNull(MemberActorProp, TEXT("MemberActor property should exist")));
+		if (MemberActorProp == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(MemberActorProp->IsA<FObjectProperty>(), TEXT("MemberActor should be an object property")));
+
+		const FProperty* MemberComponentProp = ScriptClass->FindPropertyByName(FName(TEXT("MemberComponent")));
+		ASSERT_THAT(IsNotNull(MemberComponentProp, TEXT("MemberComponent property should exist")));
+		if (MemberComponentProp == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(MemberComponentProp->IsA<FObjectProperty>(), TEXT("MemberComponent should be an object property")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Member-reference actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ObjectReferenceWorked"), true, TEXT("UObject member reference should hold a created object"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ActorReferenceWorked"), true, TEXT("Actor member reference should hold a spawned actor"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ComponentReferenceWorked"), true, TEXT("Component member reference should hold a created component"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ComponentOwnerWorked"), true, TEXT("Component member reference should keep actor ownership"))));
+
+		UObject* MemberObject = nullptr;
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("MemberObject"), MemberObject), TEXT("MemberObject should be readable")));
+		ASSERT_THAT(IsNotNull(MemberObject, TEXT("MemberObject should hold a UObject")));
+		if (MemberObject == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(static_cast<UObject*>(Actor), MemberObject->GetOuter(), TEXT("MemberObject should be outered to the actor")));
+
+		UObject* MemberComponentObject = nullptr;
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("MemberComponent"), MemberComponentObject), TEXT("MemberComponent should be readable")));
+		UActorComponent* MemberComponent = Cast<UActorComponent>(MemberComponentObject);
+		ASSERT_THAT(IsNotNull(MemberComponent, TEXT("MemberComponent should hold a UActorComponent")));
+		if (MemberComponent == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(Actor, MemberComponent->GetOwner(), TEXT("MemberComponent should be owned by the actor")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -808,6 +933,96 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandleTest,
 			return;
 		}
 		ASSERT_THAT(AreEqual(UTexture2D::StaticClass(), GenericObject->GetClass(), TEXT("C++ should observe the AS-created UObject class")));
+	}
+
+	// -------------------------------------------------------------------------
+	// UObject handle assignment: generic UObject identity with actor Outer
+	// -------------------------------------------------------------------------
+	TEST_METHOD(UObjectHandleAssignmentAndActorOuter)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageHandle_UObjectAssignmentActorOuter"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageHandleUObjectAssignmentActorOuter.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageHandleUObjectAssignmentActorOuter : AActor
+			{
+				UPROPERTY()
+				UObject OuterOwnedObject;
+
+				UPROPERTY()
+				bool NullAssignmentWorked = false;
+
+				UPROPERTY()
+				bool AssignmentEqualityWorked = false;
+
+				UPROPERTY()
+				bool ReassignmentWorked = false;
+
+				UPROPERTY()
+				bool ActorOuterWorked = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					UObject ObjectA = NewObject(this, UTexture2D::StaticClass(), n"CoverageHandleObjectA");
+					UObject ObjectB = NewObject(this, UTexture2D::StaticClass(), n"CoverageHandleObjectB");
+
+					UObject GenericObject = nullptr;
+					NullAssignmentWorked = GenericObject == nullptr;
+
+					GenericObject = ObjectA;
+					AssignmentEqualityWorked = GenericObject == ObjectA && GenericObject != ObjectB;
+
+					OuterOwnedObject = ObjectB;
+					ActorOuterWorked = OuterOwnedObject != nullptr && OuterOwnedObject.GetOuter() == this;
+
+					GenericObject = OuterOwnedObject;
+					ReassignmentWorked = GenericObject == ObjectB && GenericObject != ObjectA;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageHandleUObjectAssignmentActorOuter"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("UObject assignment actor-outer class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("UObject assignment actor-outer actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NullAssignmentWorked"), true, TEXT("UObject null assignment should compare as null"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AssignmentEqualityWorked"), true, TEXT("UObject assignment should preserve identity equality"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ReassignmentWorked"), true, TEXT("UObject reassignment should update identity equality"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ActorOuterWorked"), true, TEXT("NewObject should accept an actor Outer"))));
+
+		UObject* OuterOwnedObject = nullptr;
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("OuterOwnedObject"), OuterOwnedObject), TEXT("OuterOwnedObject should be readable")));
+		ASSERT_THAT(IsNotNull(OuterOwnedObject, TEXT("OuterOwnedObject should hold the actor-owned UObject")));
+		if (OuterOwnedObject == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(static_cast<UObject*>(Actor), OuterOwnedObject->GetOuter(), TEXT("C++ should observe the actor Outer on NewObject result")));
 	}
 
 	// -------------------------------------------------------------------------

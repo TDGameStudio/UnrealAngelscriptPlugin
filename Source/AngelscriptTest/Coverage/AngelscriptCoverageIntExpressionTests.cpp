@@ -17,7 +17,7 @@
 // compiling module-level global functions and invoking them through
 // FASGlobalFunctionInvoker (Pattern B/F from the Angelscript test guide).
 //
-// Axes covered here (Documents/Coverage/Coverage_IntProperty.md):
+// Axes covered here (OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md):
 //   * LocalDeclarations          - sub-matrix 2: local default-init / deferred
 //                                  init / local const / auto inference.
 //   * GlobalConstDeclarations     - sub-matrix 2: module-level `const` globals
@@ -320,6 +320,97 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntExpressionTest,
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int OpDiv()"),    7,  TEXT("int truncating division"));
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int OpMod()"),    2,  TEXT("int modulo"));
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int OpNegate()"), -5, TEXT("int unary minus"));
+	}
+
+	TEST_METHOD(IntWidthOperatorSamples)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovIntExpr_WidthOps", ASTEST_AS(R"AS(
+		int8 Int8Arithmetic()
+		{
+			int8 Value = 10;
+			Value += 5;
+			Value *= 2;
+			return Value - 3;
+		}
+
+		int16 Int16Bitwise()
+		{
+			int16 Value = 0x00F0;
+			Value |= 0x000F;
+			Value ^= 0x0033;
+			return Value;
+		}
+
+		int64 Int64ShiftAndCompare()
+		{
+			int64 Value = 1;
+			Value <<= 40;
+			if (Value > int64(1000000000000))
+			{
+				return Value >> 20;
+			}
+
+			return -1;
+		}
+
+		uint8 UInt8WrapAndIncrement()
+		{
+			uint8 Value = 250;
+			Value += 5;
+			return ++Value;
+		}
+
+		uint16 UInt16ShiftAndMask()
+		{
+			uint16 Value = 0x00FF;
+			Value <<= 4;
+			return Value & 0x0FF0;
+		}
+
+		uint UIntLogicalShift()
+		{
+			uint Value = 0x80000000;
+			return Value >> 28;
+		}
+
+		uint64 UInt64BitwiseAndCompare()
+		{
+			uint64 Value = 0x100000000;
+			Value |= 0xFF;
+			return Value > uint64(0xFFFFFFFF) ? Value : uint64(0);
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ASSERT_THAT(IsNotNull(Module, TEXT("Int width-operator module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(static_cast<int8>(27), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int8 Int8Arithmetic()")).CallAndReturn<int8>(0),
+			TEXT("int8 arithmetic and compound assignment should evaluate")));
+		ASSERT_THAT(AreEqual(static_cast<int16>(0x00CC), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int16 Int16Bitwise()")).CallAndReturn<int16>(0),
+			TEXT("int16 bitwise compound operators should evaluate")));
+		ASSERT_THAT(AreEqual(static_cast<int64>(1LL << 20), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int64 Int64ShiftAndCompare()")).CallAndReturn<int64>(0),
+			TEXT("int64 shift and comparison should evaluate")));
+		ASSERT_THAT(AreEqual(static_cast<uint8>(0), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("uint8 UInt8WrapAndIncrement()")).CallAndReturn<uint8>(0),
+			TEXT("uint8 compound add and pre-increment should preserve current wrap behavior")));
+		ASSERT_THAT(AreEqual(static_cast<uint16>(0x0FF0), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("uint16 UInt16ShiftAndMask()")).CallAndReturn<uint16>(0),
+			TEXT("uint16 shift and mask should evaluate")));
+		ASSERT_THAT(AreEqual(static_cast<uint32>(8), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("uint UIntLogicalShift()")).CallAndReturn<uint32>(0),
+			TEXT("uint right shift should evaluate on the unsigned domain")));
+		ASSERT_THAT(AreEqual(static_cast<uint64>(0x1000000FFull), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("uint64 UInt64BitwiseAndCompare()")).CallAndReturn<uint64>(0),
+			TEXT("uint64 bitwise OR and comparison should evaluate")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1393,6 +1484,412 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntExpressionTest,
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int UnaryMinusPrecedence()"), -15, TEXT("unary - before *"));
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int PreIncrementInExpression()"), 12, TEXT("++x in expression"));
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int PostIncrementInExpression()"), 10, TEXT("x++ in expression"));
+	}
+
+	TEST_METHOD(DeclarationContextEdges)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovIntExpr_DeclarationEdges", ASTEST_AS(R"AS(
+		int MultipleLocalDeclarations()
+		{
+			int A = 1, B = 2, C = 3;
+			return A + B + C;
+		}
+
+		int ExpressionInitializedLocal()
+		{
+			int A = 10;
+			int B = 20;
+			int Result = A + B * 2;
+			return Result;
+		}
+
+		int GetInitializerValue()
+		{
+			return 33;
+		}
+
+		int FunctionCallInitializedLocal()
+		{
+			int Result = GetInitializerValue();
+			return Result;
+		}
+
+		int AutoComplexExpression()
+		{
+			auto Result = int8(4) + int16(8) + 30;
+			return Result;
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ASSERT_THAT(IsNotNull(Module, TEXT("Int declaration-edge module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(6, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int MultipleLocalDeclarations()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("multiple local int declarations should initialize in order")));
+		ASSERT_THAT(AreEqual(50, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int ExpressionInitializedLocal()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("local int should initialize from an expression")));
+		ASSERT_THAT(AreEqual(33, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int FunctionCallInitializedLocal()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("local int should initialize from a function call")));
+		ASSERT_THAT(AreEqual(42, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int AutoComplexExpression()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("auto should infer an int-compatible result from mixed narrow integer expression")));
+	}
+
+	TEST_METHOD(ClassMembersNonPropertyAllWidths)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovIntExpr_ClassMemberWidths", ASTEST_AS(R"AS(
+		class IntWidthHolder
+		{
+			int8 Int8Value;
+			int16 Int16Value;
+			uint8 UInt8Value;
+			uint16 UInt16Value;
+			uint64 UInt64Value;
+
+			IntWidthHolder()
+			{
+				Int8Value = -12;
+				Int16Value = -1234;
+				UInt8Value = 250;
+				UInt16Value = 60000;
+				UInt64Value = 12000000000000000000;
+			}
+		}
+
+		int8 ReadInt8Member()
+		{
+			IntWidthHolder Holder;
+			return Holder.Int8Value;
+		}
+
+		int16 ReadInt16Member()
+		{
+			IntWidthHolder Holder;
+			return Holder.Int16Value;
+		}
+
+		uint8 ReadUInt8Member()
+		{
+			IntWidthHolder Holder;
+			return Holder.UInt8Value;
+		}
+
+		uint16 ReadUInt16Member()
+		{
+			IntWidthHolder Holder;
+			return Holder.UInt16Value;
+		}
+
+		uint64 ReadUInt64Member()
+		{
+			IntWidthHolder Holder;
+			return Holder.UInt64Value;
+		}
+
+		int ModifyNarrowMembers()
+		{
+			IntWidthHolder Holder;
+			Holder.Int8Value = 12;
+			Holder.Int16Value = 30;
+			Holder.UInt8Value = 40;
+			Holder.UInt16Value = 50;
+			return Holder.Int8Value + Holder.Int16Value + Holder.UInt8Value + Holder.UInt16Value;
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ASSERT_THAT(IsNotNull(Module, TEXT("Int class-member width module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(static_cast<int8>(-12), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int8 ReadInt8Member()")).CallAndReturn<int8>(0),
+			TEXT("plain class int8 member should read back")));
+		ASSERT_THAT(AreEqual(static_cast<int16>(-1234), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int16 ReadInt16Member()")).CallAndReturn<int16>(0),
+			TEXT("plain class int16 member should read back")));
+		ASSERT_THAT(AreEqual(static_cast<uint8>(250), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("uint8 ReadUInt8Member()")).CallAndReturn<uint8>(0),
+			TEXT("plain class uint8 member should read back")));
+		ASSERT_THAT(AreEqual(static_cast<uint16>(60000), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("uint16 ReadUInt16Member()")).CallAndReturn<uint16>(0),
+			TEXT("plain class uint16 member should read back")));
+		ASSERT_THAT(AreEqual(static_cast<uint64>(12000000000000000000ull), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("uint64 ReadUInt64Member()")).CallAndReturn<uint64>(0),
+			TEXT("plain class uint64 member should read back")));
+		ASSERT_THAT(AreEqual(132, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int ModifyNarrowMembers()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("plain class narrow integer members should be mutable")));
+	}
+
+	TEST_METHOD(IntegerLiteralEdges)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovIntExpr_LiteralEdges", ASTEST_AS(R"AS(
+		int NegativeHexLiteral()
+		{
+			return -0x10;
+		}
+
+		int NegativeBinaryLiteral()
+		{
+			return -0b1010;
+		}
+
+		uint HexUIntMaxLiteral()
+		{
+			return 0xFFFFFFFF;
+		}
+
+		int64 LargeHexInt64Literal()
+		{
+			return 0x100000000;
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ASSERT_THAT(IsNotNull(Module, TEXT("Int literal-edge module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(-16, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int NegativeHexLiteral()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("negative hexadecimal literal should evaluate")));
+		ASSERT_THAT(AreEqual(-10, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int NegativeBinaryLiteral()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("negative binary literal should evaluate")));
+		ASSERT_THAT(AreEqual(static_cast<uint32>(0xFFFFFFFFu), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("uint HexUIntMaxLiteral()")).CallAndReturn<uint32>(0),
+			TEXT("0xFFFFFFFF should be usable as uint max")));
+		ASSERT_THAT(AreEqual(static_cast<int64>(0x100000000LL), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int64 LargeHexInt64Literal()")).CallAndReturn<int64>(0),
+			TEXT("large hexadecimal literal should fit int64")));
+	}
+
+	TEST_METHOD(IntegerConversionLossAndOutOfRange)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovIntExpr_ConversionLoss", ASTEST_AS(R"AS(
+		int TruncateLargeInt64ToInt()
+		{
+			int64 Value = 10000000000;
+			return int(Value);
+		}
+
+		int UnsignedToSignedLargeValue()
+		{
+			uint Value = 3000000000;
+			return int(Value);
+		}
+
+		int DoubleTruncatesTowardZero()
+		{
+			double Value = -9.9;
+			return int(Value);
+		}
+
+		int8 NarrowIntToInt8Wraps()
+		{
+			int Value = 128;
+			return int8(Value);
+		}
+
+		enum EConversionEdgeEnum
+		{
+			Zero = 0,
+			One = 1
+		}
+
+		int OutOfRangeEnumAsInt()
+		{
+			EConversionEdgeEnum Value = EConversionEdgeEnum(999);
+			return int(Value);
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ASSERT_THAT(IsNotNull(Module, TEXT("Int conversion-loss module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(static_cast<int32>(10000000000LL), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int TruncateLargeInt64ToInt()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("int64 to int conversion should preserve the current truncation behavior")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(3000000000u), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int UnsignedToSignedLargeValue()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("large uint to int conversion should preserve the current bit pattern behavior")));
+		ASSERT_THAT(AreEqual(-9, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int DoubleTruncatesTowardZero()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("double to int conversion should truncate toward zero for negative values")));
+		ASSERT_THAT(AreEqual(static_cast<int8>(-128), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int8 NarrowIntToInt8Wraps()")).CallAndReturn<int8>(0),
+			TEXT("int to int8 narrowing should preserve current wrap behavior")));
+		ASSERT_THAT(AreEqual(999, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int OutOfRangeEnumAsInt()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("enum conversion should preserve out-of-range integer payloads")));
+	}
+
+	TEST_METHOD(ChainedNumericPromotionExpressions)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovIntExpr_PromotionChains", ASTEST_AS(R"AS(
+		int64 Int8IntInt64Chain()
+		{
+			int8 A = 12;
+			int B = 30;
+			int64 C = 9000000000;
+			return A + B + C;
+		}
+
+		int64 ComplexSignedPromotion()
+		{
+			int8 A = 4;
+			int16 B = 6;
+			int64 C = 1000000000;
+			return (A + B) * C;
+		}
+
+		uint64 UnsignedPromotionChain()
+		{
+			uint8 A = 200;
+			uint B = 3000000000;
+			uint64 C = 10000000000000000000;
+			return A + B + C;
+		}
+
+		int64 ExplicitSignedUnsignedChain()
+		{
+			int8 A = -5;
+			uint16 B = 40;
+			int64 C = 1000;
+			return int64(A) + int64(B) + C;
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ASSERT_THAT(IsNotNull(Module, TEXT("Int promotion-chain module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(static_cast<int64>(9000000042LL), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int64 Int8IntInt64Chain()")).CallAndReturn<int64>(0),
+			TEXT("int8 + int + int64 should promote through the chain")));
+		ASSERT_THAT(AreEqual(static_cast<int64>(10000000000LL), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int64 ComplexSignedPromotion()")).CallAndReturn<int64>(0),
+			TEXT("(int8 + int16) * int64 should promote before multiplication")));
+		ASSERT_THAT(AreEqual(static_cast<uint64>(10000000003000000200ull), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("uint64 UnsignedPromotionChain()")).CallAndReturn<uint64>(0),
+			TEXT("uint8 + uint + uint64 should promote through the chain")));
+		ASSERT_THAT(AreEqual(static_cast<int64>(1035), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int64 ExplicitSignedUnsignedChain()")).CallAndReturn<int64>(0),
+			TEXT("explicit signed/unsigned promotion chain should evaluate")));
+	}
+
+	TEST_METHOD(ComplexIntegerExpressionEvaluation)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovIntExpr_ComplexEvaluation", ASTEST_AS(R"AS(
+		int NestedArithmeticExpression()
+		{
+			int A = 8;
+			int B = 4;
+			int C = 20;
+			int D = 5;
+			int E = 23;
+			int F = 6;
+			return (A + B) * (C - D) / (E % F);
+		}
+
+		int MixedBitwiseExpression()
+		{
+			int A = 0xF0;
+			int B = 0xCC;
+			int C = 0x0F;
+			int D = 0x33;
+			return (A & B) | (C ^ D);
+		}
+
+		int TernaryIntegerExpression(bool bUsePositive)
+		{
+			int Positive = 42;
+			int Negative = -42;
+			return bUsePositive ? Positive : Negative;
+		}
+
+		int AssignmentExpressionValue()
+		{
+			int X = 0;
+			int Y = 0;
+			X = Y = 7;
+			return X * 10 + Y;
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ASSERT_THAT(IsNotNull(Module, TEXT("Int complex-expression module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(36, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int NestedArithmeticExpression()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("nested arithmetic expression should evaluate in the expected order")));
+		ASSERT_THAT(AreEqual(0xFC, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int MixedBitwiseExpression()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("mixed bitwise expression should evaluate in the expected order")));
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int TernaryIntegerExpression(bool)"));
+			Invoker.AddArg(true);
+			ASSERT_THAT(AreEqual(42, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("ternary integer expression should choose true branch")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int TernaryIntegerExpression(bool)"));
+			Invoker.AddArg(false);
+			ASSERT_THAT(AreEqual(-42, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("ternary integer expression should choose false branch")));
+		}
+		ASSERT_THAT(AreEqual(77, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int AssignmentExpressionValue()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("chained assignment should update both integer variables")));
 	}
 };
 

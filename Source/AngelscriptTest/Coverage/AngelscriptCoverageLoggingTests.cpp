@@ -18,7 +18,7 @@
 // AngelscriptCoverageLoggingTests
 // -----------------------------------------------------------------------------
 // Comprehensive logging and debug output coverage for AngelScript, following
-// the matrix from Documents/Coverage/Coverage_DebugAndLogging.md.
+// the matrix from OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md.
 //
 // Test axes covered:
 //   * PrintFunctions                - Print, PrintFromObject, PrintToScreen, PrintDirectToScreen, PrintWarning, PrintError
@@ -82,6 +82,20 @@ private:
 			}
 
 			return false;
+		}
+
+		int32 CountText(const FString& Text) const
+		{
+			int32 Count = 0;
+			for (const FCapturedLogLine& Line : Lines)
+			{
+				if (Line.Text.Contains(Text))
+				{
+					++Count;
+				}
+			}
+
+			return Count;
 		}
 	};
 
@@ -933,6 +947,185 @@ public:
 			*ELogVerbositySource,
 			TEXT("ELogVerbosity enum values are not currently script-facing"),
 			MakeArrayView(ELogVerbosityFragments))));
+
+		const FString NativeFatalVerbositySource = ASTEST_AS(R"AS(
+			void TryNativeFatalVerbosity()
+			{
+				Fatal("Coverage fatal");
+			}
+			)AS");
+		const TArray<FString> NativeFatalVerbosityFragments = { TEXT("Fatal") };
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageLogging_FatalFunctionUnsupported"),
+			*NativeFatalVerbositySource,
+			TEXT("Fatal logging is native crash behavior and is not exposed as an AS logging helper"),
+			MakeArrayView(NativeFatalVerbosityFragments))));
+
+		const FString NativeVerboseVerbositySource = ASTEST_AS(R"AS(
+			void TryNativeVerboseVerbosity()
+			{
+				Verbose("Coverage verbose");
+				VeryVerbose("Coverage very verbose");
+			}
+			)AS");
+		const TArray<FString> NativeVerboseVerbosityFragments = { TEXT("Verbose") };
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageLogging_VerboseFunctionsUnsupported"),
+			*NativeVerboseVerbositySource,
+			TEXT("Verbose and VeryVerbose are native log levels, not direct AS logging helper names"),
+			MakeArrayView(NativeVerboseVerbosityFragments))));
+	}
+
+	TEST_METHOD(SupportedLogLevelsMapToAutomationSafeVerbosity)
+	{
+		RegisterExpectedLogErrors(*TestRunner);
+
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageLogging_SupportedLogLevels"), ASTEST_AS(R"AS(
+			int EmitSupportedLogLevels()
+			{
+				Log("CoverageSeverity_Log");
+				LogInfo("CoverageSeverity_Info");
+				LogDisplay("CoverageSeverity_Display");
+				Warning("CoverageSeverity_Warning");
+				Error("CoverageLogLevel_Error");
+
+				Log(n"CoverageSeverityCategory", "CoverageSeverity_CategoryLog");
+				LogInfo(n"CoverageSeverityCategory", "CoverageSeverity_CategoryInfo");
+				LogDisplay(n"CoverageSeverityCategory", "CoverageSeverity_CategoryDisplay");
+				Warning(n"CoverageSeverityCategory", "CoverageSeverity_CategoryWarning");
+				Error(n"CoverageCustomCategory", "CoverageCategory_Error");
+
+				return 1;
+			}
+			)AS"));
+		ASSERT_THAT(IsTrue(Module.IsValid(), TEXT("supported log-level module should compile")));
+		if (!Module.IsValid())
+		{
+			return;
+		}
+
+		FCapturedLogDevice LogCapture;
+		GLog->AddOutputDevice(&LogCapture);
+		ON_SCOPE_EXIT
+		{
+			GLog->RemoveOutputDevice(&LogCapture);
+		};
+
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, Module.GetModule(), TEXT("int EmitSupportedLogLevels()"),
+			TEXT("supported log-level wrappers should execute"), 1)));
+
+		ASSERT_THAT(AreEqual(1, LogCapture.CountText(TEXT("CoverageSeverity_Log")),
+			TEXT("Log wrapper should emit exactly once")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("[Information] CoverageSeverity_Info"), ELogVerbosity::Log, FName(TEXT("Angelscript"))),
+			TEXT("LogInfo should use Log verbosity with an information prefix")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("[Display] CoverageSeverity_Display"), ELogVerbosity::Display, FName(TEXT("Angelscript"))),
+			TEXT("LogDisplay should use Display verbosity")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageSeverity_Warning"), ELogVerbosity::Warning, FName(TEXT("Angelscript"))),
+			TEXT("Warning should use Warning verbosity")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageLogLevel_Error"), ELogVerbosity::Error, FName(TEXT("Angelscript"))),
+			TEXT("Error should use Error verbosity")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageSeverity_CategoryLog"), ELogVerbosity::Log, FName(TEXT("CoverageSeverityCategory"))),
+			TEXT("category Log should preserve the supplied category")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("[Information] CoverageSeverity_CategoryInfo"), ELogVerbosity::Log, FName(TEXT("CoverageSeverityCategory"))),
+			TEXT("category LogInfo should preserve category and information prefix")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("[Display] CoverageSeverity_CategoryDisplay"), ELogVerbosity::Display, FName(TEXT("CoverageSeverityCategory"))),
+			TEXT("category LogDisplay should preserve category and Display verbosity")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageSeverity_CategoryWarning"), ELogVerbosity::Warning, FName(TEXT("CoverageSeverityCategory"))),
+			TEXT("category Warning should preserve category and Warning verbosity")));
+		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageCategory_Error"), ELogVerbosity::Error, FName(TEXT("CoverageCustomCategory"))),
+			TEXT("category Error should preserve category and Error verbosity")));
+	}
+
+	TEST_METHOD(NetworkDebugLoggingPatterns)
+	{
+		TestRunner->AddExpectedError(TEXT("CoverageNetworkDebug_RPC"), EAutomationExpectedErrorFlags::Contains, 1);
+
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageLogging_NetworkDebug"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageLoggingNetworkDebug.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ANetworkDebugLogTestActor : AActor
+			{
+				default SetReplicates(true);
+
+				UPROPERTY(ReplicatedUsing=OnRep_DebugValue)
+				int DebugValue = 0;
+
+				UPROPERTY()
+				bool bLoggedAuthority = false;
+
+				UPROPERTY()
+				bool bLoggedOnRep = false;
+
+				UPROPERTY()
+				bool bLoggedRpc = false;
+
+				void LogRpcDebugValue(int InValue)
+				{
+					Error("CoverageNetworkDebug_RPC Value=" + InValue);
+					bLoggedRpc = true;
+				}
+
+				UFUNCTION()
+				void OnRep_DebugValue()
+				{
+					Print("CoverageNetworkDebug_OnRep DebugValue=" + DebugValue);
+					bLoggedOnRep = true;
+				}
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					Print("CoverageNetworkDebug_Authority=" + HasAuthority());
+					bLoggedAuthority = true;
+					DebugValue = 17;
+					OnRep_DebugValue();
+					LogRpcDebugValue(DebugValue);
+				}
+			}
+			)AS"),
+			TEXT("ANetworkDebugLogTestActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("network debug logging actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("network debug logging actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+
+		BeginPlayActor(Engine, *Actor);
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bLoggedAuthority"), true,
+			TEXT("network debug logging should include authority context"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bLoggedOnRep"), true,
+			TEXT("network debug logging should include replication notification context"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bLoggedRpc"), true,
+			TEXT("network debug logging should include RPC parameter context"))));
 	}
 };
 

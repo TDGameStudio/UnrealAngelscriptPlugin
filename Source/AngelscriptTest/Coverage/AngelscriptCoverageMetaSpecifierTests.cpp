@@ -31,8 +31,8 @@
 // system.
 //
 // Test pattern: Pattern D (Actor + FProperty reflection + metadata reading)
-// Coverage matrix: Documents/Coverage/Coverage_IntProperty.md (sub-matrix 4)
-//                  Documents/Coverage/Coverage_FloatProperty.md (sub-matrix 4)
+// Coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md (sub-matrix 4)
+//                  OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md (sub-matrix 4)
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -362,6 +362,72 @@ public:
 #endif
 	}
 
+	TEST_METHOD(PropertyPresentationMeta)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMetaSpecifier_PropertyPresentation"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMetaPropertyPresentation.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageMetaPropertyPresentationActor : AActor
+			{
+				UPROPERTY(EditAnywhere, Category = "Coverage|Presentation", AdvancedDisplay, meta = (
+					DisplayName = "Detailed Health",
+					ToolTip = "Detailed health tooltip",
+					ShortToolTip = "Health tip"))
+				int DetailedHealth = 100;
+
+				UPROPERTY(EditAnywhere, Category = "Coverage|Presentation", meta = (
+					ToolTip = "Display-only ratio tooltip",
+					ShortToolTip = "Ratio tip"))
+				float DisplayRatio = 0.5f;
+
+				UPROPERTY(Category = "Coverage|Nested|Presentation", meta = (
+					DisplayName = "Presentation Label"))
+				FString PresentationLabel = "Ready";
+			}
+			)AS"),
+			TEXT("ACoverageMetaPropertyPresentationActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Property presentation meta actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+#if WITH_EDITOR
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("DetailedHealth"), TEXT("Category"), TEXT("Coverage|Presentation"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("DetailedHealth"), TEXT("DisplayName"), TEXT("Detailed Health"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("DetailedHealth"), TEXT("ToolTip"), TEXT("Detailed health tooltip"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("DetailedHealth"), TEXT("ShortToolTip"), TEXT("Health tip"))));
+
+		const FProperty* DetailedHealthProperty = RequireProperty(ScriptClass, TEXT("DetailedHealth"));
+		ASSERT_THAT(IsNotNull(DetailedHealthProperty, TEXT("DetailedHealth property should exist")));
+		if (DetailedHealthProperty == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(DetailedHealthProperty->HasAnyPropertyFlags(CPF_AdvancedDisplay),
+			TEXT("AdvancedDisplay property specifier should set CPF_AdvancedDisplay")));
+
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("DisplayRatio"), TEXT("Category"), TEXT("Coverage|Presentation"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("DisplayRatio"), TEXT("ToolTip"), TEXT("Display-only ratio tooltip"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("DisplayRatio"), TEXT("ShortToolTip"), TEXT("Ratio tip"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("PresentationLabel"), TEXT("Category"), TEXT("Coverage|Nested|Presentation"))));
+		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("PresentationLabel"), TEXT("DisplayName"), TEXT("Presentation Label"))));
+#endif
+	}
+
 	// -------------------------------------------------------------------------
 	// EditCondition: Conditional editing based on another property.
 	// The property is only editable when the condition evaluates to true.
@@ -530,6 +596,57 @@ public:
 		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("NormalizedAngle"), TEXT("UIMin"), TEXT("-1.0"))));
 		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("NormalizedAngle"), TEXT("UIMax"), TEXT("1.0"))));
 		ASSERT_THAT(IsTrue(ExpectPropertyMeta(*TestRunner, ScriptClass, TEXT("NormalizedAngle"), TEXT("Units"), TEXT("Degrees"))));
+#endif
+	}
+
+	TEST_METHOD(UClassDisplayAndBlueprintMeta)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMetaSpecifier_UClassMeta"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMetaUClassMeta.as"),
+			ASTEST_AS(R"AS(
+			UCLASS(meta = (
+				DisplayName = "Coverage Metadata Actor",
+				ShortTooltip = "Short class tooltip",
+				ToolTip = "Full class tooltip",
+				IsBlueprintBase = "true",
+				ChildCanTick,
+				IgnoreCategoryKeywordsInSubclasses))
+			class ACoverageMetaUClassActor : AActor
+			{
+			}
+			)AS"),
+			TEXT("ACoverageMetaUClassActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("UCLASS metadata actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+#if WITH_EDITOR
+		ASSERT_THAT(AreEqual(FString(TEXT("Coverage Metadata Actor")), ScriptClass->GetMetaData(TEXT("DisplayName")),
+			TEXT("UCLASS DisplayName metadata should round-trip")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Short class tooltip")), ScriptClass->GetMetaData(TEXT("ShortTooltip")),
+			TEXT("UCLASS ShortTooltip metadata should round-trip")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Full class tooltip")), ScriptClass->GetMetaData(TEXT("ToolTip")),
+			TEXT("UCLASS ToolTip metadata should round-trip")));
+		ASSERT_THAT(AreEqual(FString(TEXT("true")), ScriptClass->GetMetaData(TEXT("IsBlueprintBase")),
+			TEXT("UCLASS IsBlueprintBase metadata should round-trip")));
+		ASSERT_THAT(IsTrue(ScriptClass->HasMetaData(TEXT("ChildCanTick")),
+			TEXT("UCLASS ChildCanTick metadata should be present")));
+		ASSERT_THAT(IsTrue(ScriptClass->HasMetaData(TEXT("IgnoreCategoryKeywordsInSubclasses")),
+			TEXT("UCLASS IgnoreCategoryKeywordsInSubclasses metadata should be present")));
 #endif
 	}
 

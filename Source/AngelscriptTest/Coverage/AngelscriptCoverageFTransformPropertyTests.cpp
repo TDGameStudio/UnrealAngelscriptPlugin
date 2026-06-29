@@ -299,6 +299,179 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformPropertyTest,
 			VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("IntToTransformMap[3].Translation.Z"), 30.0, TEXT("TMap<int,FTransform>[3].Translation.Z"));
 		}
 	}
+
+	TEST_METHOD(FTransformPropertySpecifierAndRuntimeFlow)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageFTransformProperty_RuntimeFlow"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageFTransformPropertyRuntimeFlow.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageFTransformRuntimeFlowActor : AActor
+			{
+				UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Coverage|Transform", meta = (DisplayName = "Editable Transform"))
+				FTransform EditableTransform = FTransform(FRotator(0, 90, 0), FVector(10, 20, 30), FVector(2, 3, 4));
+
+				UPROPERTY()
+				TArray<FTransform> ReflectedTransforms;
+
+				UPROPERTY()
+				TMap<int, FTransform> ReflectedTransformMap;
+
+				UPROPERTY()
+				FTransform PlainMemberSnapshot;
+
+				UPROPERTY()
+				FVector RotatedForward;
+
+				UPROPERTY()
+				bool bPlainMemberMatchesSnapshot = false;
+
+				FTransform PlainMember;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					PlainMember = FTransform(FRotator(0, 90, 0), FVector(3, 4, 5), FVector(1, 1, 1));
+					PlainMemberSnapshot = PlainMember;
+					RotatedForward = PlainMember.TransformVector(FVector::ForwardVector);
+
+					ReflectedTransforms.Add(EditableTransform);
+					ReflectedTransforms.Add(PlainMember);
+
+					ReflectedTransformMap.Add(9, EditableTransform);
+					ReflectedTransformMap.Add(11, PlainMember);
+
+					bPlainMemberMatchesSnapshot = PlainMemberSnapshot.Equals(PlainMember, 0.001);
+				}
+			}
+			)AS"),
+			TEXT("ACoverageFTransformRuntimeFlowActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("FTransform runtime-flow actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const FProperty* EditableTransform = ScriptClass->FindPropertyByName(FName(TEXT("EditableTransform")));
+		ASSERT_THAT(IsNotNull(EditableTransform, TEXT("Editable FTransform property should be reflected")));
+		if (EditableTransform == nullptr)
+		{
+			return;
+		}
+
+		const FStructProperty* EditableStruct = CastField<const FStructProperty>(EditableTransform);
+		ASSERT_THAT(IsNotNull(EditableStruct, TEXT("Editable FTransform should reflect as FStructProperty")));
+		if (EditableStruct == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(TBaseStructure<FTransform>::Get(), EditableStruct->Struct, TEXT("Editable FTransform should use the native FTransform struct")));
+		ASSERT_THAT(IsTrue(EditableTransform->HasAnyPropertyFlags(CPF_Edit), TEXT("EditAnywhere FTransform should set CPF_Edit")));
+		ASSERT_THAT(IsTrue(EditableTransform->HasAnyPropertyFlags(CPF_BlueprintVisible), TEXT("BlueprintReadOnly FTransform should set CPF_BlueprintVisible")));
+		ASSERT_THAT(IsTrue(EditableTransform->HasAnyPropertyFlags(CPF_BlueprintReadOnly), TEXT("BlueprintReadOnly FTransform should set CPF_BlueprintReadOnly")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Coverage|Transform")), EditableTransform->GetMetaData(TEXT("Category")), TEXT("FTransform Category metadata should round-trip")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Editable Transform")), EditableTransform->GetMetaData(TEXT("DisplayName")), TEXT("FTransform DisplayName metadata should round-trip")));
+
+		const FProperty* ArrayPropertyRaw = ScriptClass->FindPropertyByName(FName(TEXT("ReflectedTransforms")));
+		ASSERT_THAT(IsNotNull(ArrayPropertyRaw, TEXT("TArray<FTransform> property should be reflected")));
+		if (ArrayPropertyRaw == nullptr)
+		{
+			return;
+		}
+		const FArrayProperty* ArrayProperty = CastField<const FArrayProperty>(ArrayPropertyRaw);
+		ASSERT_THAT(IsNotNull(ArrayProperty, TEXT("ReflectedTransforms should be an FArrayProperty")));
+		if (ArrayProperty == nullptr)
+		{
+			return;
+		}
+		const FStructProperty* ArrayElementProperty = CastField<const FStructProperty>(ArrayProperty->Inner);
+		ASSERT_THAT(IsNotNull(ArrayElementProperty, TEXT("TArray<FTransform> element should reflect as FStructProperty")));
+		if (ArrayElementProperty == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(TBaseStructure<FTransform>::Get(), ArrayElementProperty->Struct, TEXT("TArray<FTransform> element should use the native FTransform struct")));
+
+		const FProperty* MapPropertyRaw = ScriptClass->FindPropertyByName(FName(TEXT("ReflectedTransformMap")));
+		ASSERT_THAT(IsNotNull(MapPropertyRaw, TEXT("TMap<int, FTransform> property should be reflected")));
+		if (MapPropertyRaw == nullptr)
+		{
+			return;
+		}
+		const FMapProperty* MapProperty = CastField<const FMapProperty>(MapPropertyRaw);
+		ASSERT_THAT(IsNotNull(MapProperty, TEXT("ReflectedTransformMap should be an FMapProperty")));
+		if (MapProperty == nullptr)
+		{
+			return;
+		}
+		const FStructProperty* MapValueProperty = CastField<const FStructProperty>(MapProperty->ValueProp);
+		ASSERT_THAT(IsNotNull(MapValueProperty, TEXT("TMap<int, FTransform> value should reflect as FStructProperty")));
+		if (MapValueProperty == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(TBaseStructure<FTransform>::Get(), MapValueProperty->Struct, TEXT("TMap<int, FTransform> value should use the native FTransform struct")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("FTransform runtime-flow actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		FTransform EditableValue = FTransform::Identity;
+		ASSERT_THAT(IsTrue(GetStructByPath<FTransform>(*TestRunner, Actor, TEXT("EditableTransform"), EditableValue),
+			TEXT("EditableTransform should be readable as full FTransform struct")));
+		ASSERT_THAT(IsTrue(EditableValue.Equals(FTransform(FRotator(0, 90, 0), FVector(10, 20, 30), FVector(2, 3, 4)), 0.001),
+			TEXT("Editable FTransform should preserve rotation, translation, and scale defaults")));
+
+		FTransform Snapshot = FTransform::Identity;
+		ASSERT_THAT(IsTrue(GetStructByPath<FTransform>(*TestRunner, Actor, TEXT("PlainMemberSnapshot"), Snapshot),
+			TEXT("PlainMemberSnapshot should be readable as full FTransform struct")));
+		ASSERT_THAT(IsTrue(Snapshot.Equals(FTransform(FRotator(0, 90, 0), FVector(3, 4, 5), FVector(1, 1, 1)), 0.001),
+			TEXT("plain class member FTransform should copy into reflected snapshot during BeginPlay")));
+
+		FVector Rotated = FVector::ZeroVector;
+		ASSERT_THAT(IsTrue(GetStructByPath<FVector>(*TestRunner, Actor, TEXT("RotatedForward"), Rotated),
+			TEXT("RotatedForward should be readable as full FVector struct")));
+		ASSERT_THAT(IsTrue(Rotated.Equals(FVector::RightVector, 0.001),
+			TEXT("plain class member FTransform should transform vectors during BeginPlay")));
+
+		int32 ArrayCount = 0;
+		ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, Actor, TEXT("ReflectedTransforms"), ArrayCount),
+			TEXT("ReflectedTransforms TArray<FTransform> length should resolve")));
+		ASSERT_THAT(AreEqual(2, ArrayCount, TEXT("ReflectedTransforms should contain BeginPlay values")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("ReflectedTransforms[0].Translation.X"), 10.0,
+			TEXT("TArray<FTransform> should preserve editable transform translation"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("ReflectedTransforms[1].Translation.Z"), 5.0,
+			TEXT("TArray<FTransform> should preserve plain member snapshot translation"))));
+
+		int32 MapCount = 0;
+		ASSERT_THAT(IsTrue(GetMapNumByPath(*TestRunner, Actor, TEXT("ReflectedTransformMap"), MapCount),
+			TEXT("ReflectedTransformMap TMap<int, FTransform> length should resolve")));
+		ASSERT_THAT(AreEqual(2, MapCount, TEXT("ReflectedTransformMap should contain BeginPlay values")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("ReflectedTransformMap[9].Scale3D.Y"), 3.0,
+			TEXT("TMap<int, FTransform> should preserve editable transform scale"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("ReflectedTransformMap[11].Translation.Y"), 4.0,
+			TEXT("TMap<int, FTransform> should preserve plain member transform translation"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bPlainMemberMatchesSnapshot"), true,
+			TEXT("plain class member comparison result should be reflected"))));
+	}
 };
 
 #endif // WITH_DEV_AUTOMATION_TESTS

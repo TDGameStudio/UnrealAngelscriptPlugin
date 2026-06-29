@@ -24,7 +24,7 @@
 // -----------------------------------------------------------------------------
 // Coverage for AngelScript special component types (StaticMesh, SkeletalMesh,
 // CharacterMovement, Camera, SpringArm, Shape components), corresponding to
-// Documents/Coverage/Coverage_UComponent.md section 7.
+// OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md section 7.
 //
 // Axes covered here:
 //   * StaticMeshComponent       - SetStaticMesh, SetMaterial
@@ -37,7 +37,7 @@
 // Pattern D (script execution): compile AS actors with special components,
 // spawn them, manipulate component-specific properties, verify results.
 //
-// Detailed coverage matrix: Documents/Coverage/Coverage_UComponent.md
+// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -209,17 +209,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSpecialComponentTest,
 		}
 		BeginPlayActor(Engine, *Actor);
 
-		float NewMaxWalkSpeed = 0.0f;
-		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewMaxWalkSpeed"), NewMaxWalkSpeed)));
-		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewMaxWalkSpeed, 800.0f, 0.01f), TEXT("MaxWalkSpeed should be set to 800")));
+		double NewMaxWalkSpeed = 0.0;
+		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("NewMaxWalkSpeed"), NewMaxWalkSpeed)));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewMaxWalkSpeed, 800.0, 0.01), TEXT("MaxWalkSpeed should be set to 800")));
 
-		float NewJumpVelocity = 0.0f;
-		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewJumpVelocity"), NewJumpVelocity)));
-		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewJumpVelocity, 500.0f, 0.01f), TEXT("JumpZVelocity should be set to 500")));
+		double NewJumpVelocity = 0.0;
+		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("NewJumpVelocity"), NewJumpVelocity)));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewJumpVelocity, 500.0, 0.01), TEXT("JumpZVelocity should be set to 500")));
 
-		float NewGravityScale = 0.0f;
-		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewGravityScale"), NewGravityScale)));
-		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewGravityScale, 1.5f, 0.01f), TEXT("GravityScale should be set to 1.5")));
+		double NewGravityScale = 0.0;
+		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("NewGravityScale"), NewGravityScale)));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewGravityScale, 1.5, 0.01), TEXT("GravityScale should be set to 1.5")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -294,9 +294,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSpecialComponentTest,
 		}
 		BeginPlayActor(Engine, *Actor);
 
-		float NewFOV = 0.0f;
-		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewFOV"), NewFOV)));
-		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewFOV, 120.0f, 0.01f), TEXT("FOV should be set to 120")));
+		double NewFOV = 0.0;
+		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("NewFOV"), NewFOV)));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewFOV, 120.0, 0.01), TEXT("FOV should be set to 120")));
 
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ConstrainAspectRatio"), true, TEXT("Aspect ratio should be constrained"))));
 	}
@@ -383,16 +383,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSpecialComponentTest,
 		}
 		BeginPlayActor(Engine, *Actor);
 
-		float NewArmLength = 0.0f;
-		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewArmLength"), NewArmLength)));
-		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewArmLength, 500.0f, 0.01f), TEXT("Arm length should be set to 500")));
+		double NewArmLength = 0.0;
+		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("NewArmLength"), NewArmLength)));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewArmLength, 500.0, 0.01), TEXT("Arm length should be set to 500")));
 
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DoCollisionTest"), false, TEXT("Collision test should be disabled"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("EnableCameraLag"), true, TEXT("Camera lag should be enabled"))));
 
-		float CameraLagSpeed = 0.0f;
-		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("CameraLagSpeed"), CameraLagSpeed)));
-		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(CameraLagSpeed, 8.0f, 0.01f), TEXT("Camera lag speed should be set to 8")));
+		double CameraLagSpeed = 0.0;
+		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("CameraLagSpeed"), CameraLagSpeed)));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(CameraLagSpeed, 8.0, 0.01), TEXT("Camera lag speed should be set to 8")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -522,9 +522,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSpecialComponentTest,
 		}
 		BeginPlayActor(Engine, *Actor);
 
-		float NewRadius = 0.0f;
-		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewRadius"), NewRadius)));
-		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewRadius, 150.0f, 0.01f), TEXT("Sphere radius should be set to 150")));
+		double NewRadius = 0.0;
+		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("NewRadius"), NewRadius)));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewRadius, 150.0, 0.01), TEXT("Sphere radius should be set to 150")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -596,13 +596,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSpecialComponentTest,
 		}
 		BeginPlayActor(Engine, *Actor);
 
-		float NewRadius = 0.0f;
-		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewRadius"), NewRadius)));
-		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewRadius, 50.0f, 0.01f), TEXT("Capsule radius should be set to 50")));
+		double NewRadius = 0.0;
+		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("NewRadius"), NewRadius)));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewRadius, 50.0, 0.01), TEXT("Capsule radius should be set to 50")));
 
-		float NewHalfHeight = 0.0f;
-		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NewHalfHeight"), NewHalfHeight)));
-		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewHalfHeight, 100.0f, 0.01f), TEXT("Capsule half height should be set to 100")));
+		double NewHalfHeight = 0.0;
+		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("NewHalfHeight"), NewHalfHeight)));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(NewHalfHeight, 100.0, 0.01), TEXT("Capsule half height should be set to 100")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -709,17 +709,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSpecialComponentTest,
 		}
 		BeginPlayActor(Engine, *Actor);
 
-		float RetrievedRadius = 0.0f;
-		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("RetrievedRadius"), RetrievedRadius)));
-		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(RetrievedRadius, 100.0f, 0.01f), TEXT("Custom radius should be 100")));
+		double RetrievedRadius = 0.0;
+		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("RetrievedRadius"), RetrievedRadius)));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(RetrievedRadius, 100.0, 0.01), TEXT("Custom radius should be 100")));
 
 		FLinearColor RetrievedColor;
 		ASSERT_THAT(IsTrue(GetStructByPath<FLinearColor>(*TestRunner, Actor, TEXT("RetrievedColor"), RetrievedColor)));
 		ASSERT_THAT(IsTrue(RetrievedColor.Equals(FLinearColor::Red, 0.01f), TEXT("Custom color should be red")));
 
-		float CalculatedArea = 0.0f;
-		ASSERT_THAT(IsTrue(GetByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("CalculatedArea"), CalculatedArea)));
-		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(CalculatedArea, 31415.9f, 1.0f), TEXT("Calculated area should be correct")));
+		double CalculatedArea = 0.0;
+		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("CalculatedArea"), CalculatedArea)));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(CalculatedArea, 31415.9, 1.0), TEXT("Calculated area should be correct")));
 
 		// Tick a few times
 		TickWorld(Engine, Spawner.GetWorld(), 0.1f, 2);
@@ -928,6 +928,173 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSpecialComponentTest,
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("PointLightValid"), true, TEXT("UPointLightComponent DefaultComponent should be created"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SkeletalMeshValid"), true, TEXT("USkeletalMeshComponent DefaultComponent should be created"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SceneTypesAttached"), true, TEXT("Scene default component types should attach to Root"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Special component operations: class lookup, tags, registration, activation, destruction
+	// -------------------------------------------------------------------------
+	TEST_METHOD(SpecialComponentOperations)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageSpecial_ComponentOperations"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageSpecialComponentOperations.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageSpecialComponentOperationsActor : AActor
+			{
+				UPROPERTY(DefaultComponent, RootComponent)
+				USceneComponent Root;
+
+				UPROPERTY(DefaultComponent, Attach=Root)
+				UArrowComponent Arrow;
+
+				UPROPERTY(DefaultComponent, Attach=Root)
+				UAudioComponent Audio;
+
+				UPROPERTY(DefaultComponent)
+				UInputComponent Input;
+
+				UPROPERTY()
+				UArrowComponent RuntimeArrow;
+
+				UPROPERTY()
+				bool FoundArrowByClass = false;
+
+				UPROPERTY()
+				bool FoundAudioByClass = false;
+
+				UPROPERTY()
+				bool FoundInputByClass = false;
+
+				UPROPERTY()
+				int TaggedSpecialComponentCount = 0;
+
+				UPROPERTY()
+				bool ArrowHasTag = false;
+
+				UPROPERTY()
+				bool AudioOwnerMatched = false;
+
+				UPROPERTY()
+				bool InputOwnerMatched = false;
+
+				UPROPERTY()
+				bool AudioWorldMatched = false;
+
+				UPROPERTY()
+				bool RuntimeArrowCreated = false;
+
+				UPROPERTY()
+				bool RuntimeArrowInitiallyUnregistered = false;
+
+				UPROPERTY()
+				bool RuntimeArrowRegistered = false;
+
+				UPROPERTY()
+				bool RuntimeArrowActivated = false;
+
+				UPROPERTY()
+				bool RuntimeArrowDeactivated = false;
+
+				UPROPERTY()
+				bool RuntimeArrowDestroyed = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					if (Arrow != nullptr)
+					{
+						Arrow.ComponentTags.Add(n"SpecialCoverage");
+						ArrowHasTag = Arrow.ComponentHasTag(n"SpecialCoverage");
+					}
+
+					if (Audio != nullptr)
+					{
+						Audio.ComponentTags.Add(n"SpecialCoverage");
+						Audio.SetVolumeMultiplier(0.25f);
+						Audio.Stop();
+						AudioOwnerMatched = Audio.GetOwner() == this;
+						AudioWorldMatched = Audio.GetWorld() == GetWorld();
+					}
+
+					if (Input != nullptr)
+					{
+						Input.ComponentTags.Add(n"SpecialCoverage");
+						InputOwnerMatched = Input.GetOwner() == this;
+					}
+
+					FoundArrowByClass = Cast<UArrowComponent>(FindComponentByClass(UArrowComponent::StaticClass())) == Arrow;
+					FoundAudioByClass = Cast<UAudioComponent>(GetComponentByClass(UAudioComponent::StaticClass())) == Audio;
+					FoundInputByClass = Cast<UInputComponent>(FindComponentByClass(UInputComponent::StaticClass())) == Input;
+
+					TArray<UActorComponent> TaggedComponents = GetComponentsByTag(UActorComponent::StaticClass(), n"SpecialCoverage");
+					TaggedSpecialComponentCount = TaggedComponents.Num();
+
+					RuntimeArrow = Cast<UArrowComponent>(NewObject(this, UArrowComponent::StaticClass(), n"RuntimeArrow", true));
+					RuntimeArrowCreated = RuntimeArrow != nullptr;
+					if (RuntimeArrow == nullptr)
+					{
+						return;
+					}
+
+					RuntimeArrowInitiallyUnregistered = !RuntimeArrow.IsRegistered();
+					RuntimeArrow.AttachToComponent(Root, NAME_None, EAttachmentRule::KeepRelative, EAttachmentRule::KeepRelative, EAttachmentRule::KeepRelative, false);
+					RuntimeArrow.RegisterComponent();
+					RuntimeArrowRegistered = RuntimeArrow.IsRegistered();
+
+					RuntimeArrow.Activate(true);
+					RuntimeArrowActivated = RuntimeArrow.IsActive();
+
+					RuntimeArrow.Deactivate();
+					RuntimeArrowDeactivated = !RuntimeArrow.IsActive();
+
+					RuntimeArrow.DestroyComponent();
+					RuntimeArrowDestroyed = RuntimeArrow.IsBeingDestroyed();
+				}
+			}
+			)AS"),
+			TEXT("ACoverageSpecialComponentOperationsActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Special component operations actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Special component operations actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("FoundArrowByClass"), true, TEXT("FindComponentByClass should find UArrowComponent"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("FoundAudioByClass"), true, TEXT("GetComponentByClass should find UAudioComponent"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("FoundInputByClass"), true, TEXT("FindComponentByClass should find UInputComponent"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("TaggedSpecialComponentCount"), 3, TEXT("GetComponentsByTag should find tagged Arrow, Audio, and Input components"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ArrowHasTag"), true, TEXT("ComponentHasTag should detect the Arrow tag"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AudioOwnerMatched"), true, TEXT("Audio GetOwner should return the owning actor"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InputOwnerMatched"), true, TEXT("Input GetOwner should return the owning actor"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AudioWorldMatched"), true, TEXT("Audio GetWorld should match the actor world"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("RuntimeArrowCreated"), true, TEXT("NewObject should create a runtime UArrowComponent"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("RuntimeArrowInitiallyUnregistered"), true, TEXT("NewObject component should start unregistered"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("RuntimeArrowRegistered"), true, TEXT("RegisterComponent should register the runtime UArrowComponent"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("RuntimeArrowActivated"), true, TEXT("Activate should mark runtime UArrowComponent active"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("RuntimeArrowDeactivated"), true, TEXT("Deactivate should mark runtime UArrowComponent inactive"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("RuntimeArrowDestroyed"), true, TEXT("DestroyComponent should mark runtime UArrowComponent as being destroyed"))));
 	}
 };
 

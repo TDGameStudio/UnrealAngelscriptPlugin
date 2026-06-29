@@ -108,9 +108,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 			return Value;
 		}
 
+		FString LocalDefaultString()
+		{
+			FString Value;
+			return Value;
+		}
+
 		FName LocalName()
 		{
 			FName Value = n"MyName";
+			return Value;
+		}
+
+		FName LocalNameDefault()
+		{
+			FName Value;
+			return Value;
+		}
+
+		FName LocalNameConst()
+		{
+			const FName Value = n"ConstName";
 			return Value;
 		}
 
@@ -132,6 +150,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 			return Value.ToString();
 		}
 
+		FString LocalTextConstToString()
+		{
+			const FText Value = FText::FromString("Const Text");
+			return Value.ToString();
+		}
+
 		FString AutoStringLiteral()
 		{
 			auto Value = "AutoText";
@@ -150,10 +174,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString LocalDeferredInit()"), FString(TEXT("World")), TEXT("local FString declared then assigned"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString LocalConst()"), FString(TEXT("Const")), TEXT("local const FString"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString LocalEmpty()"), FString(TEXT("")), TEXT("local FString empty"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString LocalDefaultString()"), FString(TEXT("")), TEXT("local default FString should be empty"));
 		ExpectGlobalReturn<FName>(Engine, Module, TEXT("FName LocalName()"), FName(TEXT("MyName")), TEXT("local FName"));
+		ExpectGlobalReturn<FName>(Engine, Module, TEXT("FName LocalNameDefault()"), NAME_None, TEXT("local default FName should be NAME_None"));
+		ExpectGlobalReturn<FName>(Engine, Module, TEXT("FName LocalNameConst()"), FName(TEXT("ConstName")), TEXT("local const FName"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString LocalNameToString()"), FString(TEXT("Convert")), TEXT("FName.ToString()"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString LocalTextToString()"), FString(TEXT("Visible Text")), TEXT("local FText converted to FString"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString LocalTextDefaultToString()"), FString(TEXT("")), TEXT("local default FText converted to empty FString"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString LocalTextConstToString()"), FString(TEXT("Const Text")), TEXT("local const FText converted to FString"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString AutoStringLiteral()"), FString(TEXT("AutoText")), TEXT("auto should infer FString from a string literal"));
 	}
 
@@ -282,6 +310,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 			return a.ToString() == "StringMatch";
 		}
 
+		bool OpNameReassignmentKeepsPreviousCopiesStable()
+		{
+			FName original = n"Original";
+			FName copy = original;
+			original = n"Updated";
+			return copy == n"Original" && original == n"Updated";
+		}
+
 		bool OpTextIdentical()
 		{
 			FText a = FText::FromString("Display");
@@ -310,6 +346,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpNameEquals()"), true, TEXT("FName =="));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpNameNotEquals()"), true, TEXT("FName !="));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpNameEqualsString()"), true, TEXT("FName.ToString() == FString-compatible literal"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpNameReassignmentKeepsPreviousCopiesStable()"), true, TEXT("FName value reassignment should not mutate previous copies"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpTextIdentical()"), true, TEXT("FText IdenticalTo comparison"));
 	}
 
@@ -488,6 +525,255 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString FloatToString()"), FString(TEXT("2.5")), TEXT("float -> FString"));
 	}
 
+	TEST_METHOD(NameAndTextSpecificOperations)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFStringExpr_NameTextSpecific", ASTEST_AS(R"AS(
+		bool DefaultNameIsNone()
+		{
+			FName Value;
+			return Value.IsNone();
+		}
+
+		FString PlainNameString()
+		{
+			FName Value = FName("Plain_17");
+			return Value.GetPlainNameString();
+		}
+
+		bool NameCaseInsensitiveEquality()
+		{
+			FName Lower = FName("display");
+			FName Upper = FName("DISPLAY");
+			return Lower.IsEqual(Upper);
+		}
+
+		bool NameCaseSensitiveInequality()
+		{
+			FName Lower = FName("display");
+			FName Upper = FName("DISPLAY");
+			return !Lower.IsEqual(Upper, false);
+		}
+
+		bool NameCompareOrdersValues()
+		{
+			FName Alpha = n"Alpha";
+			FName Beta = n"Beta";
+			return Alpha.Compare(Beta) < 0 && Beta.Compare(Alpha) > 0;
+		}
+
+		bool NameHashIsStable()
+		{
+			FName Value = n"StableHash";
+			return Value.GetHash() == Value.GetHash();
+		}
+
+		bool TextFromStringState()
+		{
+			FText Value = FText::FromString("State");
+			return Value.IsInitializedFromString() && !Value.IsEmpty();
+		}
+
+		bool CultureInvariantTextState()
+		{
+			FText Value = FText::AsCultureInvariant("Invariant");
+			return Value.IsCultureInvariant() && Value.ToString() == "Invariant";
+		}
+
+		FString TextFromName()
+		{
+			return FText::FromName(n"NameText").ToString();
+		}
+
+		FString TextFormatOrdered()
+		{
+			FText Pattern = FText::FromString("{0}:{1}");
+			return FText::Format(Pattern, FText::FromString("A"), 7).ToString();
+		}
+
+		int TextFormatPatternParameterCount()
+		{
+			TArray<FString> Names;
+			FText::GetFormatPatternParameters(FText::FromString("{First}-{Second}"), Names);
+			return Names.Num();
+		}
+
+		FString TextJoin()
+		{
+			TArray<FText> Parts;
+			Parts.Add(FText::FromString("A"));
+			Parts.Add(FText::FromString("B"));
+			return FText::Join(FText::FromString("|"), Parts).ToString();
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool DefaultNameIsNone()"), true, TEXT("default FName should be NAME_None"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString PlainNameString()"), FString(TEXT("Plain_17")), TEXT("FName.GetPlainNameString()"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool NameCaseInsensitiveEquality()"), true, TEXT("FName.IsEqual defaults to case-insensitive comparison"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool NameCaseSensitiveInequality()"), true, TEXT("FName.IsEqual can compare case-sensitively"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool NameCompareOrdersValues()"), true, TEXT("FName.Compare() should expose ordering semantics"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool NameHashIsStable()"), true, TEXT("FName.GetHash() should be stable for the same value"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TextFromStringState()"), true, TEXT("FText.FromString state predicates"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool CultureInvariantTextState()"), true, TEXT("FText.AsCultureInvariant state predicates"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TextFromName()"), FString(TEXT("NameText")), TEXT("FText.FromName()"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TextFormatOrdered()"), FString(TEXT("A:7")), TEXT("FText.Format ordered arguments"));
+		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int TextFormatPatternParameterCount()"), 2, TEXT("FText.GetFormatPatternParameters()"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TextJoin()"), FString(TEXT("A|B")), TEXT("FText.Join(TArray<FText>)"));
+	}
+
+	TEST_METHOD(UnsupportedStringExpressionBoundaries)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		{
+			const TArray<FString> ExpectedDiagnostics = { TEXT("Global variable 'GMutable' must be const. Mutable global variables are not supported.") };
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovFStringExpr_GlobalMutableUnsupported"),
+				ASTEST_AS(R"AS(
+				FString GMutable = "Mutable";
+
+				FString ReadMutable()
+				{
+					return GMutable;
+				}
+				)AS"),
+				TEXT("mutable module-level FString globals should remain unsupported"),
+				MakeArrayView(ExpectedDiagnostics))));
+		}
+
+		{
+			const TArray<FString> ExpectedDiagnostics = { TEXT("ToInt") };
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovFStringExpr_ToIntMethodUnsupported"),
+				ASTEST_AS(R"AS(
+				int TryStringToIntMethod()
+				{
+					FString Value = "42";
+					return Value.ToInt();
+				}
+				)AS"),
+				TEXT("FString.ToInt() should remain an explicit unsupported boundary"),
+				MakeArrayView(ExpectedDiagnostics))));
+		}
+
+		{
+			const TArray<FString> ExpectedDiagnostics = { TEXT("ToFloat") };
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovFStringExpr_ToFloatMethodUnsupported"),
+				ASTEST_AS(R"AS(
+				float TryStringToFloatMethod()
+				{
+					FString Value = "3.14";
+					return Value.ToFloat();
+				}
+				)AS"),
+				TEXT("FString.ToFloat() should remain an explicit unsupported boundary"),
+				MakeArrayView(ExpectedDiagnostics))));
+		}
+
+		{
+			const TArray<FString> ExpectedDiagnostics = { TEXT("No matching operator") };
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovFStringExpr_FNameOrderingOperatorUnsupported"),
+				ASTEST_AS(R"AS(
+				bool TryNameOrdering()
+				{
+					FName Left = n"Alpha";
+					FName Right = n"Beta";
+					return Left < Right;
+				}
+				)AS"),
+				TEXT("FName ordering operator syntax should remain unsupported; use Compare instead"),
+				MakeArrayView(ExpectedDiagnostics))));
+		}
+
+		{
+			const TArray<FString> ExpectedDiagnostics = { TEXT("No matching operator") };
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovFStringExpr_FTextEqualsOperatorUnsupported"),
+				ASTEST_AS(R"AS(
+				bool TryTextEqualsOperator()
+				{
+					FText Left = FText::FromString("A");
+					FText Right = FText::FromString("A");
+					return Left == Right;
+				}
+				)AS"),
+				TEXT("FText equality operator syntax should remain unsupported; use IdenticalTo instead"),
+				MakeArrayView(ExpectedDiagnostics))));
+		}
+
+		{
+			const TArray<FString> ExpectedDiagnostics = { TEXT("No matching operator") };
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovFStringExpr_FTextOrderingUnsupported"),
+				ASTEST_AS(R"AS(
+				bool TryTextOrdering()
+				{
+					FText Left = FText::FromString("A");
+					FText Right = FText::FromString("B");
+					return Left < Right;
+				}
+				)AS"),
+				TEXT("FText ordering operators should remain unsupported"),
+				MakeArrayView(ExpectedDiagnostics))));
+		}
+	}
+
+	TEST_METHOD(NameAndTextComparisonOperators)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFStringExpr_NameTextComparisons", ASTEST_AS(R"AS(
+		bool NameCompareOrdersValues()
+		{
+			FName Left = n"Alpha";
+			FName Right = n"Beta";
+			return Left.Compare(Right) < 0 && Right.Compare(Left) > 0;
+		}
+
+		bool TextIdentical()
+		{
+			FText Left = FText::FromString("A");
+			FText Right = FText::FromString("A");
+			return Left.IdenticalTo(Right);
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool NameCompareOrdersValues()"), true, TEXT("FName.Compare() should expose ordering semantics"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TextIdentical()"), true, TEXT("FText IdenticalTo comparison"));
+	}
+
 	// -------------------------------------------------------------------------
 	// Class members (non-UPROPERTY): script-visible string fields without
 	// reflection, accessed directly within script code.
@@ -502,11 +788,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		{
 			FString Value;
 			FName NameValue;
+			FText TextValue;
 
 			StringHolder()
 			{
 				Value = "Initial";
 				NameValue = n"Tag";
+				TextValue = FText::FromString("TextMember");
 			}
 
 			FString GetValue() const
@@ -522,6 +810,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 			FName GetNameValue() const
 			{
 				return NameValue;
+			}
+
+			FString GetTextValue() const
+			{
+				return TextValue.ToString();
 			}
 		}
 
@@ -543,6 +836,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 			StringHolder holder;
 			return holder.NameValue;
 		}
+
+		FString TestClassMemberText()
+		{
+			StringHolder holder;
+			return holder.GetTextValue();
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -555,6 +854,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestClassMemberAccess()"), FString(TEXT("Initial")), TEXT("class member FString direct access"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestClassMemberModify()"), FString(TEXT("Modified")), TEXT("class member FString modify"));
 		ExpectGlobalReturn<FName>(Engine, Module, TEXT("FName TestClassMemberName()"), FName(TEXT("Tag")), TEXT("class member FName"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestClassMemberText()"), FString(TEXT("TextMember")), TEXT("class member FText"));
 	}
 };
 

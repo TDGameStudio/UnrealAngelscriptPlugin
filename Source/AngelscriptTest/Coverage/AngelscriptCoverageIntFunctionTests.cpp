@@ -8,6 +8,7 @@
 
 #include "Components/ActorTestSpawner.h"
 #include "GameFramework/Actor.h"
+#include "Math/NumericLimits.h"
 #include "Misc/ScopeExit.h"
 
 // -----------------------------------------------------------------------------
@@ -15,7 +16,7 @@
 // -----------------------------------------------------------------------------
 // "Übershader-style" coverage for AngelScript integer-family *function usage*
 // -- the function parameter / return value half of the int matrix. This file
-// covers sub-matrix 6 from Documents/Coverage/Coverage_IntProperty.md:
+// covers sub-matrix 6 from OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md:
 //
 //   * Function parameters (value / &in / &out / &inout)
 //   * Return values
@@ -751,6 +752,667 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 			Invoker.Call();
 			Invoker.ReadParamAfterCall(0, OutValue);
 			TestRunner->TestEqual(TEXT("UFUNCTION int &out parameter"), OutValue, 999);
+		}
+	}
+
+	TEST_METHOD(FunctionReferenceParameterCombinations)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovIntFunc_ReferenceCombos", ASTEST_AS(R"AS(
+		void DefaultAndOut(int&out Result, int Value = 10)
+		{
+			Result = Value * 2;
+		}
+
+		void MultipleOutOrder(int Seed, int&out A, int&out B, int&out C)
+		{
+			A = Seed + 1;
+			B = Seed + 2;
+			C = Seed + 3;
+		}
+
+		void PreserveInOut(int&inout Value)
+		{
+			int Original = Value;
+			Value = Original * 2 + 1;
+		}
+
+		int ConstInValue(const int&in Value)
+		{
+			return Value + 1;
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ASSERT_THAT(IsNotNull(Module, TEXT("Int reference-combination module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void DefaultAndOut(int&out)"));
+			int32 Result = 0;
+			Invoker.AddArgRef(Result);
+			ASSERT_THAT(IsTrue(Invoker.Call(), TEXT("default argument should combine with an int &out parameter")));
+			ASSERT_THAT(AreEqual(20, Result, TEXT("default argument should be applied when trailing int is omitted")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void DefaultAndOut(int&out, int)"));
+			int32 Result = 0;
+			Invoker.AddArgRef(Result).AddArg(7);
+			ASSERT_THAT(IsTrue(Invoker.Call(), TEXT("explicit argument should combine with an int &out parameter")));
+			ASSERT_THAT(AreEqual(14, Result, TEXT("explicit argument should override default before writing out")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void MultipleOutOrder(int, int&out, int&out, int&out)"));
+			int32 A = 0;
+			int32 B = 0;
+			int32 C = 0;
+			Invoker.AddArg(40).AddArgRef(A).AddArgRef(B).AddArgRef(C);
+			ASSERT_THAT(IsTrue(Invoker.Call(), TEXT("multiple int &out parameters should execute")));
+			ASSERT_THAT(AreEqual(41, A, TEXT("first &out parameter should receive first assigned value")));
+			ASSERT_THAT(AreEqual(42, B, TEXT("second &out parameter should receive second assigned value")));
+			ASSERT_THAT(AreEqual(43, C, TEXT("third &out parameter should receive third assigned value")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void PreserveInOut(int&inout)"));
+			int32 Value = 20;
+			Invoker.AddArgRef(Value);
+			ASSERT_THAT(IsTrue(Invoker.Call(), TEXT("int &inout parameter should execute")));
+			ASSERT_THAT(AreEqual(41, Value, TEXT("int &inout parameter should see and update the initial caller value")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int ConstInValue(const int&in)"));
+			const int32 Value = 41;
+			Invoker.AddArgRef(Value);
+			ASSERT_THAT(AreEqual(42, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("const int &in parameter should read caller value")));
+		}
+	}
+
+	TEST_METHOD(FunctionReturnControlFlow)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovIntFunc_ReturnFlow", ASTEST_AS(R"AS(
+		int Add(int A, int B)
+		{
+			return A + B;
+		}
+
+		int ReturnExpression()
+		{
+			int A = 20;
+			int B = 22;
+			return A + B;
+		}
+
+		int ReturnFunctionCall()
+		{
+			return Add(20, 22);
+		}
+
+		int ConditionalReturn(int Value)
+		{
+			return Value > 0 ? Value : -Value;
+		}
+
+		int EarlyReturn(int Value)
+		{
+			if (Value < 0)
+			{
+				return -1;
+			}
+
+			return Value + 1;
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ASSERT_THAT(IsNotNull(Module, TEXT("Int return-control-flow module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(42, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int ReturnExpression()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("function should return an integer expression")));
+		ASSERT_THAT(AreEqual(42, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int ReturnFunctionCall()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("function should return another function call result")));
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int ConditionalReturn(int)"));
+			Invoker.AddArg(-42);
+			ASSERT_THAT(AreEqual(42, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("conditional return should select absolute value branch")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int EarlyReturn(int)"));
+			Invoker.AddArg(-5);
+			ASSERT_THAT(AreEqual(-1, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("early return should exit before final return")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int EarlyReturn(int)"));
+			Invoker.AddArg(41);
+			ASSERT_THAT(AreEqual(42, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("fallthrough return should execute when early condition is false")));
+		}
+	}
+
+	TEST_METHOD(FunctionDefaultParameterEdges)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovIntFunc_DefaultEdges", ASTEST_AS(R"AS(
+		int MultipleDefaults(int A, int B = 10, int C = 20)
+		{
+			return A + B + C;
+		}
+
+		int NegativeDefault(int Value = -7)
+		{
+			return Value;
+		}
+
+		int BoundaryDefault(int Value = 2147483647)
+		{
+			return Value;
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ASSERT_THAT(IsNotNull(Module, TEXT("Int default-parameter edge module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int MultipleDefaults(int)"));
+			Invoker.AddArg(12);
+			ASSERT_THAT(AreEqual(42, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("multiple defaults should fill both omitted trailing parameters")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int MultipleDefaults(int, int)"));
+			Invoker.AddArg(12).AddArg(10);
+			ASSERT_THAT(AreEqual(42, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("partial omission should fill the final default parameter")));
+		}
+		ASSERT_THAT(AreEqual(-7, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int NegativeDefault()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("negative default int parameter should be applied")));
+		ASSERT_THAT(AreEqual(TNumericLimits<int32>::Max(), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int BoundaryDefault()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("boundary default int parameter should be applied")));
+	}
+
+	TEST_METHOD(FunctionOverloadArityAndNumericResolution)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovIntFunc_OverloadEdges", ASTEST_AS(R"AS(
+		int Choose(int A)
+		{
+			return A + 1;
+		}
+
+		int Choose(int A, int B)
+		{
+			return A + B + 2;
+		}
+
+		int Choose(int A, int B, int C)
+		{
+			return A + B + C + 3;
+		}
+
+		int Numeric(int Value)
+		{
+			return Value + 10;
+		}
+
+		int Numeric(double Value)
+		{
+			return int(Value) + 20;
+		}
+
+		int CallChooseOne()
+		{
+			return Choose(41);
+		}
+
+		int CallChooseTwo()
+		{
+			return Choose(10, 30);
+		}
+
+		int CallChooseThree()
+		{
+			return Choose(10, 20, 9);
+		}
+
+		int CallNumericInt()
+		{
+			return Numeric(32);
+		}
+
+		int CallNumericDouble()
+		{
+			return Numeric(22.5);
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ASSERT_THAT(IsNotNull(Module, TEXT("Int overload-edge module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(42, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int CallChooseOne()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("single-parameter overload should resolve by arity")));
+		ASSERT_THAT(AreEqual(42, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int CallChooseTwo()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("two-parameter overload should resolve by arity")));
+		ASSERT_THAT(AreEqual(42, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int CallChooseThree()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("three-parameter overload should resolve by arity")));
+		ASSERT_THAT(AreEqual(42, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int CallNumericInt()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("integer literal should resolve to int overload")));
+		ASSERT_THAT(AreEqual(42, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int CallNumericDouble()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("floating literal should resolve to double overload")));
+	}
+
+	TEST_METHOD(UFunctionSpecifierDefaultsAndOutParameters)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageIntFunction_UFunctionEdges"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageIntFunctionUFunctionEdges.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageIntFunctionEdgesActor : AActor
+			{
+				UFUNCTION(BlueprintCallable, Category = "Coverage|Int")
+				int CallableAdd(int A, int B)
+				{
+					return A + B;
+				}
+
+				UFUNCTION(BlueprintPure, Category = "Coverage|Int")
+				int PureDouble(int Value) const
+				{
+					return Value * 2;
+				}
+
+				UFUNCTION()
+				int DefaultInt(int Value = 10)
+				{
+					return Value * 4 + 2;
+				}
+
+				UFUNCTION()
+				void SplitOut(int Input, int&out A, int&out B)
+				{
+					A = Input + 1;
+					B = Input + 2;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageIntFunctionEdgesActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Int UFUNCTION edge actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		UFunction* CallableAdd = FindGeneratedFunction(ScriptClass, TEXT("CallableAdd"));
+		ASSERT_THAT(IsNotNull(CallableAdd, TEXT("CallableAdd should be generated")));
+		if (CallableAdd != nullptr)
+		{
+			ASSERT_THAT(IsTrue(CallableAdd->HasAnyFunctionFlags(FUNC_BlueprintCallable), TEXT("BlueprintCallable int UFUNCTION should set FUNC_BlueprintCallable")));
+			ASSERT_THAT(IsFalse(CallableAdd->HasAnyFunctionFlags(FUNC_BlueprintPure), TEXT("BlueprintCallable int UFUNCTION should not set FUNC_BlueprintPure")));
+		}
+
+		UFunction* PureDouble = FindGeneratedFunction(ScriptClass, TEXT("PureDouble"));
+		ASSERT_THAT(IsNotNull(PureDouble, TEXT("PureDouble should be generated")));
+		if (PureDouble != nullptr)
+		{
+			ASSERT_THAT(IsTrue(PureDouble->HasAnyFunctionFlags(FUNC_BlueprintCallable), TEXT("BlueprintPure int UFUNCTION should also be BlueprintCallable")));
+			ASSERT_THAT(IsTrue(PureDouble->HasAnyFunctionFlags(FUNC_BlueprintPure), TEXT("BlueprintPure int UFUNCTION should set FUNC_BlueprintPure")));
+			ASSERT_THAT(IsTrue(PureDouble->HasAnyFunctionFlags(FUNC_Const), TEXT("const BlueprintPure int UFUNCTION should set FUNC_Const")));
+		}
+
+		UFunction* DefaultInt = FindGeneratedFunction(ScriptClass, TEXT("DefaultInt"));
+		ASSERT_THAT(IsNotNull(DefaultInt, TEXT("DefaultInt should be generated")));
+		if (DefaultInt != nullptr)
+		{
+			ASSERT_THAT(IsNotNull(FindFProperty<FIntProperty>(DefaultInt, TEXT("Value")), TEXT("DefaultInt should expose its int parameter")));
+		}
+
+		UFunction* SplitOut = FindGeneratedFunction(ScriptClass, TEXT("SplitOut"));
+		ASSERT_THAT(IsNotNull(SplitOut, TEXT("SplitOut should be generated")));
+		if (SplitOut != nullptr)
+		{
+			FProperty* AParam = FindFProperty<FIntProperty>(SplitOut, TEXT("A"));
+			FProperty* BParam = FindFProperty<FIntProperty>(SplitOut, TEXT("B"));
+			ASSERT_THAT(IsNotNull(AParam, TEXT("SplitOut should expose first int out parameter")));
+			ASSERT_THAT(IsNotNull(BParam, TEXT("SplitOut should expose second int out parameter")));
+			if (AParam != nullptr)
+			{
+				ASSERT_THAT(IsTrue(AParam->HasAnyPropertyFlags(CPF_OutParm), TEXT("SplitOut first int parameter should be marked CPF_OutParm")));
+			}
+			if (BParam != nullptr)
+			{
+				ASSERT_THAT(IsTrue(BParam->HasAnyPropertyFlags(CPF_OutParm), TEXT("SplitOut second int parameter should be marked CPF_OutParm")));
+			}
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Int UFUNCTION edge actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+
+		BeginPlayActor(Engine, *Actor);
+
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("CallableAdd"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("CallableAdd should be invokable")));
+			Invoker.AddParam<int32>(20).AddParam<int32>(22);
+			ASSERT_THAT(AreEqual(42, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("BlueprintCallable int UFUNCTION should execute through FFunctionInvoker")));
+		}
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("PureDouble"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("PureDouble should be invokable")));
+			Invoker.AddParam<int32>(21);
+			ASSERT_THAT(AreEqual(42, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("BlueprintPure int UFUNCTION should execute through FFunctionInvoker")));
+		}
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("DefaultInt"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("DefaultInt should be invokable with explicit reflected parameter")));
+			Invoker.AddParam<int32>(10);
+			ASSERT_THAT(AreEqual(42, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("UFUNCTION int default parameter signature should execute when populated explicitly")));
+		}
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("SplitOut"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("SplitOut should be invokable")));
+			Invoker.AddParam<int32>(40).AddParam<int32>(0).AddParam<int32>(0);
+			ASSERT_THAT(IsTrue(Invoker.Call(), TEXT("UFUNCTION int &out combination should execute through FFunctionInvoker")));
+
+			int32 A = 0;
+			int32 B = 0;
+			ASSERT_THAT(IsTrue(Invoker.ReadParamAfterCall(1, A), TEXT("SplitOut should expose first out value after call")));
+			ASSERT_THAT(IsTrue(Invoker.ReadParamAfterCall(2, B), TEXT("SplitOut should expose second out value after call")));
+			ASSERT_THAT(AreEqual(41, A, TEXT("first UFUNCTION int &out parameter should preserve order")));
+			ASSERT_THAT(AreEqual(42, B, TEXT("second UFUNCTION int &out parameter should preserve order")));
+		}
+	}
+
+	TEST_METHOD(UFunctionAllIntegerWidthsReflectAndInvoke)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageIntFunction_UFunctionWidths"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageIntFunctionUFunctionWidths.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageIntFunctionWidthsActor : AActor
+			{
+				UFUNCTION()
+				int8 EchoInt8(int8 Value)
+				{
+					return Value + 1;
+				}
+
+				UFUNCTION()
+				int16 EchoInt16(int16 Value)
+				{
+					return Value + 2;
+				}
+
+				UFUNCTION()
+				int EchoInt(int Value)
+				{
+					return Value + 3;
+				}
+
+				UFUNCTION()
+				int64 EchoInt64(int64 Value)
+				{
+					return Value + 4;
+				}
+
+				UFUNCTION()
+				uint8 EchoUInt8(uint8 Value)
+				{
+					return Value + 5;
+				}
+
+				UFUNCTION()
+				uint16 EchoUInt16(uint16 Value)
+				{
+					return Value + 6;
+				}
+
+				UFUNCTION()
+				uint EchoUInt(uint Value)
+				{
+					return Value + 7;
+				}
+
+				UFUNCTION()
+				uint64 EchoUInt64(uint64 Value)
+				{
+					return Value + 8;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageIntFunctionWidthsActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Int UFUNCTION width actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		UFunction* EchoInt8 = FindGeneratedFunction(ScriptClass, TEXT("EchoInt8"));
+		ASSERT_THAT(IsNotNull(EchoInt8, TEXT("EchoInt8 should be generated")));
+		if (EchoInt8 != nullptr)
+		{
+			ASSERT_THAT(IsNotNull(FindFProperty<FInt8Property>(EchoInt8, TEXT("Value")), TEXT("EchoInt8 parameter should reflect as FInt8Property")));
+			ASSERT_THAT(IsNotNull(CastField<FInt8Property>(EchoInt8->GetReturnProperty()), TEXT("EchoInt8 return should reflect as FInt8Property")));
+		}
+
+		UFunction* EchoInt16 = FindGeneratedFunction(ScriptClass, TEXT("EchoInt16"));
+		ASSERT_THAT(IsNotNull(EchoInt16, TEXT("EchoInt16 should be generated")));
+		if (EchoInt16 != nullptr)
+		{
+			ASSERT_THAT(IsNotNull(FindFProperty<FInt16Property>(EchoInt16, TEXT("Value")), TEXT("EchoInt16 parameter should reflect as FInt16Property")));
+			ASSERT_THAT(IsNotNull(CastField<FInt16Property>(EchoInt16->GetReturnProperty()), TEXT("EchoInt16 return should reflect as FInt16Property")));
+		}
+
+		UFunction* EchoInt = FindGeneratedFunction(ScriptClass, TEXT("EchoInt"));
+		ASSERT_THAT(IsNotNull(EchoInt, TEXT("EchoInt should be generated")));
+		if (EchoInt != nullptr)
+		{
+			ASSERT_THAT(IsNotNull(FindFProperty<FIntProperty>(EchoInt, TEXT("Value")), TEXT("EchoInt parameter should reflect as FIntProperty")));
+			ASSERT_THAT(IsNotNull(CastField<FIntProperty>(EchoInt->GetReturnProperty()), TEXT("EchoInt return should reflect as FIntProperty")));
+		}
+
+		UFunction* EchoInt64 = FindGeneratedFunction(ScriptClass, TEXT("EchoInt64"));
+		ASSERT_THAT(IsNotNull(EchoInt64, TEXT("EchoInt64 should be generated")));
+		if (EchoInt64 != nullptr)
+		{
+			ASSERT_THAT(IsNotNull(FindFProperty<FInt64Property>(EchoInt64, TEXT("Value")), TEXT("EchoInt64 parameter should reflect as FInt64Property")));
+			ASSERT_THAT(IsNotNull(CastField<FInt64Property>(EchoInt64->GetReturnProperty()), TEXT("EchoInt64 return should reflect as FInt64Property")));
+		}
+
+		UFunction* EchoUInt8 = FindGeneratedFunction(ScriptClass, TEXT("EchoUInt8"));
+		ASSERT_THAT(IsNotNull(EchoUInt8, TEXT("EchoUInt8 should be generated")));
+		if (EchoUInt8 != nullptr)
+		{
+			ASSERT_THAT(IsNotNull(FindFProperty<FByteProperty>(EchoUInt8, TEXT("Value")), TEXT("EchoUInt8 parameter should reflect as FByteProperty")));
+			ASSERT_THAT(IsNotNull(CastField<FByteProperty>(EchoUInt8->GetReturnProperty()), TEXT("EchoUInt8 return should reflect as FByteProperty")));
+		}
+
+		UFunction* EchoUInt16 = FindGeneratedFunction(ScriptClass, TEXT("EchoUInt16"));
+		ASSERT_THAT(IsNotNull(EchoUInt16, TEXT("EchoUInt16 should be generated")));
+		if (EchoUInt16 != nullptr)
+		{
+			ASSERT_THAT(IsNotNull(FindFProperty<FUInt16Property>(EchoUInt16, TEXT("Value")), TEXT("EchoUInt16 parameter should reflect as FUInt16Property")));
+			ASSERT_THAT(IsNotNull(CastField<FUInt16Property>(EchoUInt16->GetReturnProperty()), TEXT("EchoUInt16 return should reflect as FUInt16Property")));
+		}
+
+		UFunction* EchoUInt = FindGeneratedFunction(ScriptClass, TEXT("EchoUInt"));
+		ASSERT_THAT(IsNotNull(EchoUInt, TEXT("EchoUInt should be generated")));
+		if (EchoUInt != nullptr)
+		{
+			ASSERT_THAT(IsNotNull(FindFProperty<FUInt32Property>(EchoUInt, TEXT("Value")), TEXT("EchoUInt parameter should reflect as FUInt32Property")));
+			ASSERT_THAT(IsNotNull(CastField<FUInt32Property>(EchoUInt->GetReturnProperty()), TEXT("EchoUInt return should reflect as FUInt32Property")));
+		}
+
+		UFunction* EchoUInt64 = FindGeneratedFunction(ScriptClass, TEXT("EchoUInt64"));
+		ASSERT_THAT(IsNotNull(EchoUInt64, TEXT("EchoUInt64 should be generated")));
+		if (EchoUInt64 != nullptr)
+		{
+			ASSERT_THAT(IsNotNull(FindFProperty<FUInt64Property>(EchoUInt64, TEXT("Value")), TEXT("EchoUInt64 parameter should reflect as FUInt64Property")));
+			ASSERT_THAT(IsNotNull(CastField<FUInt64Property>(EchoUInt64->GetReturnProperty()), TEXT("EchoUInt64 return should reflect as FUInt64Property")));
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Int UFUNCTION width actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+
+		BeginPlayActor(Engine, *Actor);
+
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("EchoInt8"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("EchoInt8 should be invokable")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddParam<int8>(41);
+			ASSERT_THAT(AreEqual(static_cast<int8>(42), Invoker.CallAndReturn<int8>(0), TEXT("UFUNCTION int8 parameter and return should execute")));
+		}
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("EchoInt16"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("EchoInt16 should be invokable")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddParam<int16>(29998);
+			ASSERT_THAT(AreEqual(static_cast<int16>(30000), Invoker.CallAndReturn<int16>(0), TEXT("UFUNCTION int16 parameter and return should execute")));
+		}
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("EchoInt"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("EchoInt should be invokable")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddParam<int32>(39);
+			ASSERT_THAT(AreEqual(42, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("UFUNCTION int parameter and return should execute")));
+		}
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("EchoInt64"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("EchoInt64 should be invokable")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddParam<int64>(9999999996LL);
+			ASSERT_THAT(AreEqual(static_cast<int64>(10000000000LL), Invoker.CallAndReturn<int64>(0), TEXT("UFUNCTION int64 parameter and return should execute")));
+		}
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("EchoUInt8"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("EchoUInt8 should be invokable")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddParam<uint8>(250);
+			ASSERT_THAT(AreEqual(static_cast<uint8>(255), Invoker.CallAndReturn<uint8>(0), TEXT("UFUNCTION uint8 parameter and return should execute")));
+		}
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("EchoUInt16"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("EchoUInt16 should be invokable")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddParam<uint16>(59994);
+			ASSERT_THAT(AreEqual(static_cast<uint16>(60000), Invoker.CallAndReturn<uint16>(0), TEXT("UFUNCTION uint16 parameter and return should execute")));
+		}
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("EchoUInt"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("EchoUInt should be invokable")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddParam<uint32>(2999999993u);
+			ASSERT_THAT(AreEqual(static_cast<uint32>(3000000000u), Invoker.CallAndReturn<uint32>(0), TEXT("UFUNCTION uint parameter and return should execute")));
+		}
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("EchoUInt64"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("EchoUInt64 should be invokable")));
+			if (!Invoker.IsValid())
+			{
+				return;
+			}
+			Invoker.AddParam<uint64>(11999999999999999992ull);
+			ASSERT_THAT(AreEqual(static_cast<uint64>(12000000000000000000ull), Invoker.CallAndReturn<uint64>(0), TEXT("UFUNCTION uint64 parameter and return should execute")));
 		}
 	}
 };

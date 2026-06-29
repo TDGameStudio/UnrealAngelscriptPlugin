@@ -235,6 +235,138 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorPropertyTest,
 			VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("IntToRotatorMap[3].Roll"), 45.0, TEXT("TMap<int,FRotator>[3].Roll"));
 		}
 	}
+
+	TEST_METHOD(FRotatorPropertySpecifierFlags)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageFRotatorProperty_SpecifierFlags"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageFRotatorPropertySpecifierFlags.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageFRotatorSpecifierActor : AActor
+			{
+				UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Coverage|Rotator", meta = (ClampMin = "-180.0", ClampMax = "180.0"))
+				FRotator EditableRotation = FRotator(10, -20, 30);
+
+				UPROPERTY()
+				TArray<FRotator> ReflectedRotators;
+
+				UPROPERTY()
+				TMap<int, FRotator> ReflectedRotatorMap;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					ReflectedRotators.Add(EditableRotation);
+					ReflectedRotators.Add(FRotator::ZeroRotator);
+
+					ReflectedRotatorMap.Add(7, FRotator(70, 80, 90));
+				}
+			}
+			)AS"),
+			TEXT("ACoverageFRotatorSpecifierActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("FRotator specifier actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const FProperty* EditableRotation = ScriptClass->FindPropertyByName(FName(TEXT("EditableRotation")));
+		ASSERT_THAT(IsNotNull(EditableRotation, TEXT("Editable FRotator property should be reflected")));
+		if (EditableRotation == nullptr)
+		{
+			return;
+		}
+
+		const FStructProperty* EditableStruct = CastField<const FStructProperty>(EditableRotation);
+		ASSERT_THAT(IsNotNull(EditableStruct, TEXT("Editable FRotator should reflect as FStructProperty")));
+		if (EditableStruct == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(TBaseStructure<FRotator>::Get(), EditableStruct->Struct, TEXT("Editable FRotator should use the native FRotator struct")));
+		ASSERT_THAT(IsTrue(EditableRotation->HasAnyPropertyFlags(CPF_Edit), TEXT("EditAnywhere FRotator should set CPF_Edit")));
+		ASSERT_THAT(IsTrue(EditableRotation->HasAnyPropertyFlags(CPF_BlueprintVisible), TEXT("BlueprintReadOnly FRotator should set CPF_BlueprintVisible")));
+		ASSERT_THAT(IsTrue(EditableRotation->HasAnyPropertyFlags(CPF_BlueprintReadOnly), TEXT("BlueprintReadOnly FRotator should set CPF_BlueprintReadOnly")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Coverage|Rotator")), EditableRotation->GetMetaData(TEXT("Category")), TEXT("FRotator Category metadata should round-trip")));
+		ASSERT_THAT(AreEqual(FString(TEXT("-180.0")), EditableRotation->GetMetaData(TEXT("ClampMin")), TEXT("FRotator ClampMin metadata should round-trip")));
+		ASSERT_THAT(AreEqual(FString(TEXT("180.0")), EditableRotation->GetMetaData(TEXT("ClampMax")), TEXT("FRotator ClampMax metadata should round-trip")));
+
+		const FProperty* ArrayPropertyRaw = ScriptClass->FindPropertyByName(FName(TEXT("ReflectedRotators")));
+		ASSERT_THAT(IsNotNull(ArrayPropertyRaw, TEXT("TArray<FRotator> property should be reflected")));
+		if (ArrayPropertyRaw == nullptr)
+		{
+			return;
+		}
+		const FArrayProperty* ArrayProperty = CastField<const FArrayProperty>(ArrayPropertyRaw);
+		ASSERT_THAT(IsNotNull(ArrayProperty, TEXT("ReflectedRotators should be an FArrayProperty")));
+		if (ArrayProperty == nullptr)
+		{
+			return;
+		}
+		const FStructProperty* ArrayElementProperty = CastField<const FStructProperty>(ArrayProperty->Inner);
+		ASSERT_THAT(IsNotNull(ArrayElementProperty, TEXT("TArray<FRotator> element should reflect as FStructProperty")));
+		if (ArrayElementProperty == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(TBaseStructure<FRotator>::Get(), ArrayElementProperty->Struct, TEXT("TArray<FRotator> element should use the native FRotator struct")));
+
+		const FProperty* MapPropertyRaw = ScriptClass->FindPropertyByName(FName(TEXT("ReflectedRotatorMap")));
+		ASSERT_THAT(IsNotNull(MapPropertyRaw, TEXT("TMap<int, FRotator> property should be reflected")));
+		if (MapPropertyRaw == nullptr)
+		{
+			return;
+		}
+		const FMapProperty* MapProperty = CastField<const FMapProperty>(MapPropertyRaw);
+		ASSERT_THAT(IsNotNull(MapProperty, TEXT("ReflectedRotatorMap should be an FMapProperty")));
+		if (MapProperty == nullptr)
+		{
+			return;
+		}
+		const FStructProperty* MapValueProperty = CastField<const FStructProperty>(MapProperty->ValueProp);
+		ASSERT_THAT(IsNotNull(MapValueProperty, TEXT("TMap<int, FRotator> value should reflect as FStructProperty")));
+		if (MapValueProperty == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(TBaseStructure<FRotator>::Get(), MapValueProperty->Struct, TEXT("TMap<int, FRotator> value should use the native FRotator struct")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("FRotator specifier actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("EditableRotation.Pitch"), 10.0, TEXT("Editable FRotator Pitch should read back"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("EditableRotation.Yaw"), -20.0, TEXT("Editable FRotator Yaw should read back"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("EditableRotation.Roll"), 30.0, TEXT("Editable FRotator Roll should read back"))));
+
+		int32 ArrayCount = 0;
+		ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, Actor, TEXT("ReflectedRotators"), ArrayCount)));
+		ASSERT_THAT(AreEqual(2, ArrayCount, TEXT("TArray<FRotator> reflected property should contain BeginPlay values")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("ReflectedRotators[0].Yaw"), -20.0, TEXT("TArray<FRotator> should preserve first value"))));
+
+		int32 MapCount = 0;
+		ASSERT_THAT(IsTrue(GetMapNumByPath(*TestRunner, Actor, TEXT("ReflectedRotatorMap"), MapCount)));
+		ASSERT_THAT(AreEqual(1, MapCount, TEXT("TMap<int, FRotator> reflected property should contain BeginPlay value")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("ReflectedRotatorMap[7].Roll"), 90.0, TEXT("TMap<int, FRotator> should preserve mapped value"))));
+	}
 };
 
 #endif // WITH_DEV_AUTOMATION_TESTS

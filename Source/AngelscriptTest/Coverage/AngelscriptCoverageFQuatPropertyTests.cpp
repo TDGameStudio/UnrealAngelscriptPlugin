@@ -241,6 +241,135 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFQuatPropertyTest,
 			TestRunner->TestTrue(TEXT("TMap<int,FQuat>[2].Z (45 yaw) non-zero"), FMath::Abs(Map2Z) > 0.3);
 		}
 	}
+
+	TEST_METHOD(FQuatClassMemberRuntimeFlow)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageFQuatProperty_RuntimeFlow"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageFQuatPropertyRuntimeFlow.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageFQuatRuntimeFlowActor : AActor
+			{
+				UPROPERTY()
+				FQuat CurrentQuat = FQuat::Identity;
+
+				UPROPERTY()
+				FQuat CopyConstructedQuat;
+
+				UPROPERTY()
+				FQuat AssignedQuat;
+
+				UPROPERTY()
+				FQuat InverseQuat;
+
+				UPROPERTY()
+				FVector RotatedForward;
+
+				UPROPERTY()
+				TArray<FQuat> History;
+
+				UPROPERTY()
+				bool bCopyEqualsAssigned = false;
+
+				UPROPERTY()
+				bool bInverseComposesToIdentity = false;
+
+				UPROPERTY()
+				bool bHistoryPreservesValues = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					const FQuat LocalTurn = FQuat(FVector::UpVector, 1.5707963267948966);
+					CurrentQuat = LocalTurn;
+					CopyConstructedQuat = FQuat(CurrentQuat);
+					AssignedQuat = FQuat::Identity;
+					AssignedQuat = CopyConstructedQuat;
+					InverseQuat = CurrentQuat.Inverse();
+					RotatedForward = CurrentQuat.RotateVector(FVector::ForwardVector);
+
+					History.Add(FQuat::Identity);
+					History.Add(CurrentQuat);
+					History.Add(InverseQuat);
+
+					bCopyEqualsAssigned = CopyConstructedQuat == AssignedQuat;
+					bInverseComposesToIdentity = (CurrentQuat * InverseQuat).IsIdentity(0.001);
+					bHistoryPreservesValues = History.Num() == 3
+						&& History[1].Equals(CurrentQuat, 0.001)
+						&& History[2].Equals(InverseQuat, 0.001);
+				}
+			}
+			)AS"),
+			TEXT("ACoverageFQuatRuntimeFlowActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("FQuat runtime-flow actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("FQuat runtime-flow actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		FQuat Current = FQuat::Identity;
+		ASSERT_THAT(IsTrue(GetStructByPath<FQuat>(*TestRunner, Actor, TEXT("CurrentQuat"), Current),
+			TEXT("CurrentQuat should be readable as full FQuat struct")));
+		ASSERT_THAT(IsTrue(Current.Equals(FQuat(FVector::UpVector, UE_DOUBLE_HALF_PI), 0.001),
+			TEXT("class member FQuat should accept assignment from local const FQuat")));
+
+		FQuat Assigned = FQuat::Identity;
+		ASSERT_THAT(IsTrue(GetStructByPath<FQuat>(*TestRunner, Actor, TEXT("AssignedQuat"), Assigned),
+			TEXT("AssignedQuat should be readable as full FQuat struct")));
+		ASSERT_THAT(IsTrue(Assigned.Equals(Current, 0.001),
+			TEXT("class member FQuat should preserve copy construction and assignment")));
+
+		FVector RotatedForward = FVector::ZeroVector;
+		ASSERT_THAT(IsTrue(GetStructByPath<FVector>(*TestRunner, Actor, TEXT("RotatedForward"), RotatedForward),
+			TEXT("RotatedForward should be readable as full FVector struct")));
+		ASSERT_THAT(IsTrue(RotatedForward.Equals(FVector::RightVector, 0.001),
+			TEXT("class member FQuat should rotate FVector during BeginPlay")));
+
+		int32 HistoryCount = 0;
+		ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, Actor, TEXT("History"), HistoryCount),
+			TEXT("History TArray<FQuat> length should resolve")));
+		ASSERT_THAT(AreEqual(3, HistoryCount, TEXT("History TArray<FQuat> should contain three elements")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("History[0].W"), 1.0,
+			TEXT("History[0] should store FQuat::Identity"))));
+
+		double CurrentZ = 0.0;
+		double History1Z = 0.0;
+		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("CurrentQuat.Z"), CurrentZ),
+			TEXT("CurrentQuat.Z should be readable through nested path")));
+		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("History[1].Z"), History1Z),
+			TEXT("History[1].Z should be readable through nested array path")));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(History1Z, CurrentZ, 0.001),
+			TEXT("TArray<FQuat> element should preserve class member quaternion value")));
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bCopyEqualsAssigned"), true,
+			TEXT("FQuat copy/assignment comparison result should be reflected"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bInverseComposesToIdentity"), true,
+			TEXT("FQuat inverse composition result should be reflected"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bHistoryPreservesValues"), true,
+			TEXT("TArray<FQuat> preservation result should be reflected"))));
+	}
 };
 
 #endif // WITH_DEV_AUTOMATION_TESTS

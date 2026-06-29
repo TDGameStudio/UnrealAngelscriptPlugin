@@ -14,7 +14,7 @@
 // AngelscriptCoverageUEnumTests
 // -----------------------------------------------------------------------------
 // Comprehensive coverage for AngelScript UENUM declarations and usage.
-// Based on Documents/Coverage/Coverage_OtherMacros.md section 2 (UENUM).
+// Based on OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md section 2 (UENUM).
 //
 // Coverage matrix:
 //   * UEnumBasicDeclaration     - enum / UENUM() / explicit values / namespace
@@ -25,6 +25,8 @@
 //   * UEnumConversion           - int <-> enum conversions
 //   * UEnumBitflags             - bitwise operations on enums (| & ^ ~)
 //   * UEnumInContainers         - TArray<EEnum> / TMap<EEnum, *> / TMap<*, EEnum>
+//   * UEnumClassUsage           - enum class / explicit underlying type
+//   * UEnumInvalidDiagnostics   - unsupported/invalid enum compile diagnostics
 //
 // Note: AngelScript does not support the Bitflags UENUM specifier. Bitwise
 // operations are performed by converting enum values to int.
@@ -314,6 +316,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 			{
 				UPROPERTY()
 				EFlagMetaEnum Value = EFlagMetaEnum::FlagB;
+
+				UPROPERTY(meta = (Bitmask, BitmaskEnum = "EFlagMetaEnum"))
+				int ActiveFlags = 0;
 			}
 			)AS"),
 			TEXT("ACoverageUEnumMetaBitflagsActor"));
@@ -340,6 +345,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 			TEXT("UENUM meta=(Bitflags) should be preserved as bool metadata")));
 		ASSERT_THAT(AreEqual(FString(TEXT("EFlagMetaEnum")), FlagEnum->GetMetaData(TEXT("BitmaskEnum")),
 			TEXT("UENUM meta=(BitmaskEnum=...) should be preserved as UEnum metadata")));
+
+		FIntProperty* ActiveFlagsProp = FindFProperty<FIntProperty>(ScriptClass, TEXT("ActiveFlags"));
+		ASSERT_THAT(IsNotNull(ActiveFlagsProp, TEXT("ActiveFlags bitmask property should exist")));
+		if (ActiveFlagsProp == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(ActiveFlagsProp->HasMetaData(TEXT("Bitmask")),
+			TEXT("UPROPERTY meta=(Bitmask) should be preserved on bitmask integer property")));
+		ASSERT_THAT(AreEqual(FString(TEXT("EFlagMetaEnum")), ActiveFlagsProp->GetMetaData(TEXT("BitmaskEnum")),
+			TEXT("UPROPERTY meta=(BitmaskEnum=...) should preserve the linked UENUM name")));
 	}
 
 	TEST_METHOD(UEnumBitflagsSpecifierRejected)
@@ -445,6 +461,222 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 			TEXT("OptionC UMETA Hidden should be preserved as bool metadata")));
 		ASSERT_THAT(IsFalse(MetaEnum->HasMetaData(TEXT("Hidden"), 3),
 			TEXT("OptionD should not inherit Hidden metadata from OptionC")));
+	}
+
+	TEST_METHOD(UEnumClassUsage)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageUEnum_ClassUsage"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageUEnumClassUsage.as"),
+			ASTEST_AS(R"AS(
+			UENUM(BlueprintType)
+			enum class EClassScopedState : uint16
+			{
+				Idle,
+				Armed = 7,
+				Fired = 12
+			}
+
+			UCLASS()
+			class ACoverageUEnumClassUsageActor : AActor
+			{
+				UPROPERTY()
+				EClassScopedState CurrentState = EClassScopedState::Armed;
+
+				UPROPERTY()
+				int ScopedValue = 0;
+
+				UPROPERTY()
+				int ReturnedValue = 0;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					EClassScopedState LocalState = EClassScopedState::Fired;
+					check(LocalState == EClassScopedState::Fired);
+
+					CurrentState = GetNextState(EClassScopedState::Idle);
+					check(CurrentState == EClassScopedState::Armed);
+					ScopedValue = int(CurrentState);
+					ReturnedValue = int(LocalState);
+				}
+
+				EClassScopedState GetNextState(EClassScopedState State)
+				{
+					if (State == EClassScopedState::Idle)
+						return EClassScopedState::Armed;
+
+					return EClassScopedState::Fired;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageUEnumClassUsageActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Enum class usage actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FEnumProperty* StateProp = FindFProperty<FEnumProperty>(ScriptClass, TEXT("CurrentState"));
+		ASSERT_THAT(IsNotNull(StateProp, TEXT("CurrentState enum class property should exist")));
+		if (StateProp == nullptr)
+		{
+			return;
+		}
+
+		UEnum* StateEnum = StateProp->GetEnum();
+		ASSERT_THAT(IsNotNull(StateEnum, TEXT("CurrentState should have generated UEnum")));
+		if (StateEnum == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsNotNull(StateProp->GetUnderlyingProperty(),
+			TEXT("enum class property should expose an underlying numeric property")));
+		if (StateProp->GetUnderlyingProperty() == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(StateEnum->GetMaxEnumValue() >= 12,
+			TEXT("enum class explicit values should be preserved on the generated UEnum")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Enum class usage actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		void* StateValuePtr = StateProp->ContainerPtrToValuePtr<void>(Actor);
+		const uint64 StateValue = StateProp->GetUnderlyingProperty()->GetUnsignedIntPropertyValue(StateValuePtr);
+		ASSERT_THAT(AreEqual(7ULL, StateValue, TEXT("CurrentState should store Armed (7) after enum class function call")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ScopedValue"), 7, TEXT("enum class scoped value should convert to int"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReturnedValue"), 12, TEXT("enum class local value should convert to int"))));
+	}
+
+	TEST_METHOD(UEnumReflectionQuery)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageUEnum_ReflectionQuery"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageUEnumReflectionQuery.as"),
+			ASTEST_AS(R"AS(
+			UENUM(BlueprintType)
+			enum EReflectionValueEnum
+			{
+				None = 0,
+				Alpha = 3,
+				Beta = 8
+			}
+
+			UENUM(BlueprintType)
+			enum EReflectionMetaEnum
+			{
+				NoSelection UMETA(DisplayName="No Selection"),
+				AlphaChoice UMETA(DisplayName="Alpha Choice", ToolTip="Alpha tooltip"),
+				BetaHidden UMETA(Hidden)
+			}
+
+			UCLASS()
+			class ACoverageUEnumReflectionQueryActor : AActor
+			{
+				UPROPERTY()
+				EReflectionValueEnum Value = EReflectionValueEnum::Alpha;
+
+				UPROPERTY()
+				EReflectionMetaEnum MetaValue = EReflectionMetaEnum::AlphaChoice;
+			}
+			)AS"),
+			TEXT("ACoverageUEnumReflectionQueryActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Enum reflection query actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FEnumProperty* ValueProp = FindFProperty<FEnumProperty>(ScriptClass, TEXT("Value"));
+		ASSERT_THAT(IsNotNull(ValueProp, TEXT("Value enum property should exist")));
+		if (ValueProp == nullptr)
+		{
+			return;
+		}
+
+		UEnum* ValueEnum = ValueProp->GetEnum();
+		ASSERT_THAT(IsNotNull(ValueEnum, TEXT("Value should expose generated UEnum")));
+		if (ValueEnum == nullptr)
+		{
+			return;
+		}
+
+		const int32 NoneIndex = ValueEnum->GetIndexByNameString(TEXT("None"));
+		const int32 AlphaIndex = ValueEnum->GetIndexByNameString(TEXT("Alpha"));
+		const int32 BetaIndex = ValueEnum->GetIndexByNameString(TEXT("Beta"));
+		ASSERT_THAT(AreEqual(0, NoneIndex, TEXT("None should be queryable by entry name")));
+		ASSERT_THAT(AreEqual(1, AlphaIndex, TEXT("Alpha should be queryable by entry name")));
+		ASSERT_THAT(AreEqual(2, BetaIndex, TEXT("Beta should be queryable by entry name")));
+		if (NoneIndex == INDEX_NONE || AlphaIndex == INDEX_NONE || BetaIndex == INDEX_NONE)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(0LL, ValueEnum->GetValueByIndex(NoneIndex), TEXT("None should preserve explicit value 0")));
+		ASSERT_THAT(AreEqual(3LL, ValueEnum->GetValueByIndex(AlphaIndex), TEXT("Alpha should preserve explicit value 3")));
+		ASSERT_THAT(AreEqual(8LL, ValueEnum->GetValueByIndex(BetaIndex), TEXT("Beta should preserve explicit value 8")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Alpha")), ValueEnum->GetNameStringByValue(3),
+			TEXT("Generated UEnum should map explicit value 3 back to Alpha")));
+		ASSERT_THAT(AreEqual(8LL, ValueEnum->GetValueByNameString(TEXT("Beta")),
+			TEXT("Generated UEnum should map Beta name back to explicit value 8")));
+
+		FEnumProperty* MetaValueProp = FindFProperty<FEnumProperty>(ScriptClass, TEXT("MetaValue"));
+		ASSERT_THAT(IsNotNull(MetaValueProp, TEXT("MetaValue enum property should exist")));
+		if (MetaValueProp == nullptr)
+		{
+			return;
+		}
+
+		UEnum* MetaEnum = MetaValueProp->GetEnum();
+		ASSERT_THAT(IsNotNull(MetaEnum, TEXT("MetaValue should expose generated UEnum")));
+		if (MetaEnum == nullptr)
+		{
+			return;
+		}
+
+		const int32 AlphaChoiceIndex = MetaEnum->GetIndexByNameString(TEXT("AlphaChoice"));
+		const int32 BetaHiddenIndex = MetaEnum->GetIndexByNameString(TEXT("BetaHidden"));
+		ASSERT_THAT(AreEqual(1, AlphaChoiceIndex, TEXT("AlphaChoice should be queryable by entry name")));
+		ASSERT_THAT(AreEqual(2, BetaHiddenIndex, TEXT("BetaHidden should be queryable by entry name")));
+		if (AlphaChoiceIndex == INDEX_NONE || BetaHiddenIndex == INDEX_NONE)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(FString(TEXT("Alpha Choice")), MetaEnum->GetDisplayNameTextByIndex(AlphaChoiceIndex).ToString(),
+			TEXT("DisplayName metadata should drive reflected display text")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Alpha tooltip")), MetaEnum->GetMetaData(TEXT("ToolTip"), AlphaChoiceIndex),
+			TEXT("ToolTip metadata should remain queryable by enum index")));
+		ASSERT_THAT(IsTrue(MetaEnum->HasMetaData(TEXT("Hidden"), BetaHiddenIndex),
+			TEXT("Hidden metadata should remain queryable by enum index")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -876,6 +1108,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 				TArray<EContainerEnum> EnumArray;
 
 				UPROPERTY()
+				TSet<EContainerEnum> EnumSet;
+
+				UPROPERTY()
 				TMap<EContainerEnum, int> EnumToIntMap;
 
 				UPROPERTY()
@@ -890,6 +1125,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 				UPROPERTY()
 				int MapLookupResult = 0;
 
+				UPROPERTY()
+				bool bSetContainsItem2 = false;
+
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
@@ -900,6 +1138,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 					ArraySize = EnumArray.Num();
 					check(ArraySize == 3);
 					check(EnumArray[1] == EContainerEnum::Item3);
+
+					// TSet<EEnum>
+					EnumSet.Add(EContainerEnum::Item1);
+					EnumSet.Add(EContainerEnum::Item2);
+					EnumSet.Add(EContainerEnum::Item2);
+					check(EnumSet.Num() == 2);
+					bSetContainsItem2 = EnumSet.Contains(EContainerEnum::Item2);
 
 					// TMap<EEnum, int>
 					EnumToIntMap.Add(EContainerEnum::Item1, 100);
@@ -936,6 +1181,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ArraySize"), 3, TEXT("Array should have 3 elements"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MapSize"), 2, TEXT("Map should have 2 elements"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("MapLookupResult"), 200, TEXT("Map lookup should return 200"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bSetContainsItem2"), true, TEXT("Enum set should contain Item2"))));
 
 		// Verify array property
 		FArrayProperty* ArrayProp = FindFProperty<FArrayProperty>(ScriptClass, TEXT("EnumArray"));
@@ -946,6 +1192,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 		}
 		ASSERT_THAT(IsTrue(ArrayProp->Inner->IsA<FEnumProperty>(), TEXT("EnumArray inner should be enum")));
 
+		FSetProperty* SetProp = FindFProperty<FSetProperty>(ScriptClass, TEXT("EnumSet"));
+		ASSERT_THAT(IsNotNull(SetProp, TEXT("EnumSet property should exist")));
+		if (SetProp == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(SetProp->ElementProp->IsA<FEnumProperty>(), TEXT("EnumSet element should be enum")));
+
 		// Verify map property
 		FMapProperty* MapProp = FindFProperty<FMapProperty>(ScriptClass, TEXT("EnumToIntMap"));
 		ASSERT_THAT(IsNotNull(MapProp, TEXT("EnumToIntMap property should exist")));
@@ -955,6 +1209,38 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 		}
 		ASSERT_THAT(IsTrue(MapProp->KeyProp->IsA<FEnumProperty>(), TEXT("EnumToIntMap key should be enum")));
 		ASSERT_THAT(IsTrue(MapProp->ValueProp->IsA<FIntProperty>(), TEXT("EnumToIntMap value should be int")));
+	}
+
+	TEST_METHOD(UEnumInvalidDiagnostics)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("MissingOption"));
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UENUM()
+			enum EInvalidAssignmentEnum
+			{
+				OptionA,
+				OptionB
+			}
+
+			UCLASS()
+			class ACoverageUEnumInvalidDiagnosticsActor : AActor
+			{
+				UPROPERTY()
+				EInvalidAssignmentEnum Value = EInvalidAssignmentEnum::MissingOption;
+			}
+			)AS");
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageUEnum_InvalidDiagnostics"),
+			ScriptSource,
+			TEXT("Referencing a missing enum entry should remain a compile error"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 };
 

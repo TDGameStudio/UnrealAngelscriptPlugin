@@ -18,7 +18,7 @@
 // AngelscriptCoverageEventTests
 // -----------------------------------------------------------------------------
 // Coverage for AngelScript event system usage, the fourth slice of the
-// delegates-and-events matrix (Documents/Coverage/Coverage_DelegatesAndEvents.md
+// delegates-and-events matrix (OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 // section 4). Each TEST_METHOD walks one usage axis from the matrix:
 //
 // Axes covered here:
@@ -36,7 +36,7 @@
 // allow multiple listeners to respond to state changes, user input, or system
 // notifications.
 //
-// Detailed coverage matrix: Documents/Coverage/Coverage_DelegatesAndEvents.md
+// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -205,6 +205,102 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 			return;
 		}
 		ASSERT_THAT(IsNotNull(FindFProperty<FIntProperty>(CallableProperty->SignatureFunction, TEXT("Value")), TEXT("BlueprintCallable event signature should expose its parameter")));
+	}
+
+	// -------------------------------------------------------------------------
+	// BlueprintEvent UFUNCTION metadata and wrapper execution: AS event
+	// functions surface as BlueprintEvent UFunctions and route calls through the
+	// generated implementation wrapper.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(EventBlueprintEventMetadataAndExecution)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageEvent_BlueprintEventMetadata"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageEventBlueprintEventMetadata.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class UCoverageBlueprintEventObject : UObject
+			{
+				UPROPERTY()
+				int LastInput = 0;
+
+				UPROPERTY()
+				FString LastLabel;
+
+				UFUNCTION(BlueprintEvent)
+				int ComputeEvent(int Value, const FString& Label)
+				{
+					LastInput = Value;
+					LastLabel = Label;
+					return Value + 5;
+				}
+
+				UFUNCTION(BlueprintCallable, BlueprintEvent)
+				int CallableEvent(int Value)
+				{
+					return Value * 3;
+				}
+
+				UFUNCTION()
+				int RunEvents()
+				{
+					return ComputeEvent(37, "Event") + CallableEvent(2);
+				}
+			}
+			)AS"),
+			TEXT("UCoverageBlueprintEventObject"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("BlueprintEvent coverage object class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		UFunction* ComputeEventFunction = ScriptClass->FindFunctionByName(TEXT("ComputeEvent"));
+		UFunction* CallableEventFunction = ScriptClass->FindFunctionByName(TEXT("CallableEvent"));
+		UFunction* RunEventsFunction = ScriptClass->FindFunctionByName(TEXT("RunEvents"));
+		ASSERT_THAT(IsNotNull(ComputeEventFunction, TEXT("BlueprintEvent wrapper UFUNCTION should exist")));
+		ASSERT_THAT(IsNotNull(CallableEventFunction, TEXT("BlueprintCallable BlueprintEvent wrapper UFUNCTION should exist")));
+		ASSERT_THAT(IsNotNull(RunEventsFunction, TEXT("BlueprintEvent entry UFUNCTION should exist")));
+		if (ComputeEventFunction == nullptr || CallableEventFunction == nullptr || RunEventsFunction == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(ComputeEventFunction->HasAnyFunctionFlags(FUNC_BlueprintEvent), TEXT("ComputeEvent should carry FUNC_BlueprintEvent")));
+		ASSERT_THAT(IsFalse(ComputeEventFunction->HasAnyFunctionFlags(FUNC_BlueprintCallable), TEXT("Plain BlueprintEvent should not imply FUNC_BlueprintCallable")));
+		ASSERT_THAT(IsTrue(CallableEventFunction->HasAnyFunctionFlags(FUNC_BlueprintEvent), TEXT("CallableEvent should carry FUNC_BlueprintEvent")));
+		ASSERT_THAT(IsTrue(CallableEventFunction->HasAnyFunctionFlags(FUNC_BlueprintCallable), TEXT("Explicit BlueprintCallable BlueprintEvent should carry FUNC_BlueprintCallable")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FIntProperty>(ComputeEventFunction, TEXT("Value")), TEXT("BlueprintEvent should expose int input parameter")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FStrProperty>(ComputeEventFunction, TEXT("Label")), TEXT("BlueprintEvent should expose FString input parameter")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FIntProperty>(ComputeEventFunction, TEXT("ReturnValue")), TEXT("BlueprintEvent should expose return parameter")));
+
+		UObject* ScriptObject = NewObject<UObject>(GetTransientPackage(), ScriptClass);
+		ASSERT_THAT(IsNotNull(ScriptObject, TEXT("BlueprintEvent coverage object should be creatable")));
+		if (ScriptObject == nullptr)
+		{
+			return;
+		}
+
+		FFunctionInvoker RunEventsInvoker(*TestRunner, ScriptObject, TEXT("RunEvents"));
+		ASSERT_THAT(IsTrue(RunEventsInvoker.IsValid(), TEXT("RunEvents should be invokable")));
+		if (!RunEventsInvoker.IsValid())
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(48, RunEventsInvoker.CallAndReturn<int32>(INDEX_NONE), TEXT("BlueprintEvent wrapper should execute the AS implementation path")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, ScriptObject, TEXT("LastInput"), 37, TEXT("BlueprintEvent implementation should receive the int parameter"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, ScriptObject, TEXT("LastLabel"), FString(TEXT("Event")), TEXT("BlueprintEvent implementation should receive the FString parameter"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1326,6 +1422,211 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 			*HttpRequestSource,
 			TEXT("HTTP BindLambda callback surface should stay outside current AS event coverage"),
 			MakeArrayView(HttpRequestDiagnostics))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Network-style RepNotify event: ReplicatedUsing metadata should preserve
+	// the notify callback, and the callback should be executable as a real
+	// state-change event path.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(EventRepNotifyExecutesStateChange)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageEvent_RepNotifyExecutes"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageEventRepNotifyExecutes.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageEventRepNotifyActor : AActor
+			{
+				UPROPERTY(ReplicatedUsing=OnRep_TrackedHealth)
+				int TrackedHealth = 0;
+
+				UPROPERTY()
+				int RepNotifyCount = 0;
+
+				UPROPERTY()
+				int LastReplicatedHealth = 0;
+
+				UPROPERTY()
+				bool bRepNotifyExecuted = false;
+
+				UFUNCTION()
+				void ApplyReplicatedHealth(int NewHealth)
+				{
+					TrackedHealth = NewHealth;
+					OnRep_TrackedHealth();
+				}
+
+				UFUNCTION()
+				void OnRep_TrackedHealth()
+				{
+					RepNotifyCount += 1;
+					LastReplicatedHealth = TrackedHealth;
+					bRepNotifyExecuted = true;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageEventRepNotifyActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("RepNotify event actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const FIntProperty* TrackedHealthProperty = FindFProperty<FIntProperty>(ScriptClass, TEXT("TrackedHealth"));
+		ASSERT_THAT(IsNotNull(TrackedHealthProperty, TEXT("RepNotify event property should be generated")));
+		if (TrackedHealthProperty == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(TrackedHealthProperty->HasAnyPropertyFlags(CPF_Net), TEXT("RepNotify event property should carry CPF_Net")));
+		ASSERT_THAT(IsTrue(TrackedHealthProperty->HasAnyPropertyFlags(CPF_RepNotify), TEXT("RepNotify event property should carry CPF_RepNotify")));
+		ASSERT_THAT(AreEqual(FName(TEXT("OnRep_TrackedHealth")), TrackedHealthProperty->RepNotifyFunc, TEXT("RepNotify event property should preserve callback name")));
+
+		UFunction* RepNotifyFunction = ScriptClass->FindFunctionByName(TEXT("OnRep_TrackedHealth"));
+		UFunction* ApplyFunction = ScriptClass->FindFunctionByName(TEXT("ApplyReplicatedHealth"));
+		ASSERT_THAT(IsNotNull(RepNotifyFunction, TEXT("RepNotify callback UFUNCTION should exist")));
+		ASSERT_THAT(IsNotNull(ApplyFunction, TEXT("RepNotify state-change entry UFUNCTION should exist")));
+		if (RepNotifyFunction == nullptr || ApplyFunction == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsFalse(RepNotifyFunction->HasAnyFunctionFlags(FUNC_Net), TEXT("RepNotify callback should be a local notify, not an RPC")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("RepNotify event actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+
+		FFunctionInvoker ApplyInvoker(*TestRunner, Actor, TEXT("ApplyReplicatedHealth"));
+		ASSERT_THAT(IsTrue(ApplyInvoker.IsValid(), TEXT("ApplyReplicatedHealth should be invokable")));
+		if (!ApplyInvoker.IsValid())
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(ApplyInvoker.AddParam<int32>(87).Call(), TEXT("RepNotify state-change entry should execute")));
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("TrackedHealth"), 87, TEXT("Replicated value should be assigned before notify"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("RepNotifyCount"), 1, TEXT("RepNotify event should execute exactly once"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LastReplicatedHealth"), 87, TEXT("RepNotify event should observe the replicated value"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bRepNotifyExecuted"), true, TEXT("RepNotify event should mark its runtime path"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Event bus style decoupling: separate publisher and receiver objects bind
+	// through a shared event property, then targeted Unbind stops delivery.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(EventBusDecouplesPublisherAndReceiver)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageEvent_EventBus"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageEventBus.as"),
+			ASTEST_AS(R"AS(
+			event void FCoverageEventBusMessage(int Value, const FString& Label);
+
+			UCLASS()
+			class UCoverageEventBusReceiver : UObject
+			{
+				UPROPERTY()
+				int Total = 0;
+
+				UPROPERTY()
+				FString Log;
+
+				UFUNCTION()
+				void HandleMessage(int Value, const FString& Label)
+				{
+					Total += Value;
+					Log += Label;
+				}
+			}
+
+			UCLASS()
+			class ACoverageEventBusActor : AActor
+			{
+				UPROPERTY()
+				FCoverageEventBusMessage OnMessage;
+
+				UPROPERTY()
+				UCoverageEventBusReceiver Receiver;
+
+				UPROPERTY()
+				int ReceiverTotal = 0;
+
+				UPROPERTY()
+				FString ReceiverLog;
+
+				UPROPERTY()
+				bool WasBoundBeforeUnbind = false;
+
+				UPROPERTY()
+				bool WasBoundAfterUnbind = true;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					Receiver = Cast<UCoverageEventBusReceiver>(NewObject(this, UCoverageEventBusReceiver::StaticClass(), n"CoverageEventBusReceiver"));
+					OnMessage.AddUFunction(Receiver, n"HandleMessage");
+					WasBoundBeforeUnbind = OnMessage.IsBound();
+
+					OnMessage.Broadcast(7, "A");
+					OnMessage.Unbind(Receiver, n"HandleMessage");
+					WasBoundAfterUnbind = OnMessage.IsBound();
+					OnMessage.Broadcast(11, "B");
+
+					ReceiverTotal = Receiver.Total;
+					ReceiverLog = Receiver.Log;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageEventBusActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Event bus actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Event bus actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WasBoundBeforeUnbind"), true, TEXT("Event bus should be bound before targeted Unbind"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WasBoundAfterUnbind"), false, TEXT("Targeted Unbind should remove the receiver"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReceiverTotal"), 7, TEXT("Receiver should only observe the pre-unbind event"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("ReceiverLog"), FString(TEXT("A")), TEXT("Receiver log should exclude the post-unbind broadcast"))));
 	}
 };
 

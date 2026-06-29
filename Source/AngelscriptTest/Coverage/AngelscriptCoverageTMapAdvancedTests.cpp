@@ -15,7 +15,7 @@
 // Advanced TMap container operations coverage, extending the basic int tests
 // from AngelscriptCoverageIntPropertyTests.cpp.
 //
-// Matrix coverage (from Documents/Coverage/Coverage_Containers.md):
+// Matrix coverage (from OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md):
 //   * TMapAdvancedOperations - Find(out), Remove(), GetKeys(), index access
 //   * TMapIteration          - Iterator() key-value traversal
 //   * TMapKeyTypes           - FString, FName, enum keys
@@ -454,6 +454,110 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 			)AS"),
 			TEXT("TMap<FString,TArray<int>> should remain an explicit unsupported boundary"),
 			MakeArrayView(ExpectedDiagnostics))));
+	}
+
+	// -------------------------------------------------------------------------
+	// TMap key overwrite plus stable lookup/removal/key-value array operations
+	// -------------------------------------------------------------------------
+	TEST_METHOD(TMapOverwriteRemoveContainsKeysValues)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageTMap_OverwriteLookup"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageTMapOverwriteLookup.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageTMapOverwriteLookupActor : AActor
+			{
+				UPROPERTY()
+				TMap<int, FString> Values;
+
+				UPROPERTY()
+				FString OverwrittenValue;
+
+				UPROPERTY()
+				bool bContainsOverwrittenKey = false;
+
+				UPROPERTY()
+				bool bRemovedExistingKey = false;
+
+				UPROPERTY()
+				bool bRemovedMissingKey = true;
+
+				UPROPERTY()
+				bool bContainsRemovedKey = true;
+
+				UPROPERTY()
+				TArray<int> Keys;
+
+				UPROPERTY()
+				TArray<FString> OutValues;
+
+				UPROPERTY()
+				int FinalSize = 0;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					Values.Add(1, "One");
+					Values.Add(2, "Two");
+					Values.Add(2, "TwoUpdated");
+					Values.Add(3, "Three");
+
+					bContainsOverwrittenKey = Values.Contains(2);
+					Values.Find(2, OverwrittenValue);
+
+					bRemovedExistingKey = Values.Remove(1);
+					bRemovedMissingKey = Values.Remove(99);
+					bContainsRemovedKey = Values.Contains(1);
+
+					Values.GetKeys(Keys);
+					Values.GetValues(OutValues);
+					FinalSize = Values.Num();
+				}
+			}
+			)AS"),
+			TEXT("ACoverageTMapOverwriteLookupActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TMap overwrite lookup actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("TMap overwrite lookup actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bContainsOverwrittenKey"), true, TEXT("Contains should find overwritten key"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("OverwrittenValue"), FString(TEXT("TwoUpdated")), TEXT("Add should overwrite existing key value"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bRemovedExistingKey"), true, TEXT("Remove should return true for an existing key"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bRemovedMissingKey"), false, TEXT("Remove should return false for a missing key"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bContainsRemovedKey"), false, TEXT("Contains should return false after removal"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FinalSize"), 2, TEXT("Map should keep overwritten key and remove one key"))));
+
+		int32 KeysCount = 0;
+		ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, Actor, TEXT("Keys"), KeysCount), TEXT("Should get keys array size")));
+		ASSERT_THAT(AreEqual(2, KeysCount, TEXT("GetKeys should return remaining keys")));
+
+		int32 ValuesCount = 0;
+		ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, Actor, TEXT("OutValues"), ValuesCount), TEXT("Should get values array size")));
+		ASSERT_THAT(AreEqual(2, ValuesCount, TEXT("GetValues should return remaining values")));
 	}
 
 	// -------------------------------------------------------------------------

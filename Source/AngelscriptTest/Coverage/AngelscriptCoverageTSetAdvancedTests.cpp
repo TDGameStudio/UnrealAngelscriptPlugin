@@ -15,7 +15,7 @@
 // Advanced TSet container operations coverage, extending the basic int tests
 // from AngelscriptCoverageIntPropertyTests.cpp.
 //
-// Matrix coverage (from Documents/Coverage/Coverage_Containers.md):
+// Matrix coverage (from OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md):
 //   * TSetAdvancedOperations - Contains(), Remove(), Empty(), Reset()
 //   * TSetIteration          - for-each loops
 //   * TSetSetOperations      - Append(Set) and unsupported set-operation aliases
@@ -721,6 +721,107 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 			)AS"),
 			TEXT("TSet.Array() should remain an explicit unsupported boundary"),
 			MakeArrayView(ExpectedDiagnostics))));
+	}
+
+	// -------------------------------------------------------------------------
+	// TSet duplicate dedupe with stable mutating operations
+	// -------------------------------------------------------------------------
+	TEST_METHOD(TSetDuplicateDedupeRemoveReset)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageTSet_DuplicateDedupeRemoveReset"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageTSetDuplicateDedupeRemoveReset.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageTSetDuplicateDedupeRemoveResetActor : AActor
+			{
+				UPROPERTY()
+				TSet<int> Values;
+
+				UPROPERTY()
+				int SizeAfterDuplicates = 0;
+
+				UPROPERTY()
+				bool bContainsBeforeRemove = false;
+
+				UPROPERTY()
+				bool bRemoveExistingReturned = false;
+
+				UPROPERTY()
+				bool bRemoveMissingReturned = true;
+
+				UPROPERTY()
+				bool bContainsAfterRemove = true;
+
+				UPROPERTY()
+				int SizeAfterRemove = 0;
+
+				UPROPERTY()
+				bool bResetClearedSet = false;
+
+				UPROPERTY()
+				bool bAddAfterResetWorked = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					Values.Add(7);
+					Values.Add(7);
+					Values.Add(11);
+					Values.Add(11);
+
+					SizeAfterDuplicates = Values.Num();
+					bContainsBeforeRemove = Values.Contains(7) && Values.Contains(11);
+
+					bRemoveExistingReturned = Values.Remove(7);
+					bRemoveMissingReturned = Values.Remove(99);
+					bContainsAfterRemove = Values.Contains(7);
+					SizeAfterRemove = Values.Num();
+
+					Values.Reset();
+					bResetClearedSet = Values.Num() == 0 && !Values.Contains(11);
+
+					Values.Add(13);
+					bAddAfterResetWorked = Values.Num() == 1 && Values.Contains(13);
+				}
+			}
+			)AS"),
+			TEXT("ACoverageTSetDuplicateDedupeRemoveResetActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TSet duplicate/remove/reset actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("TSet duplicate/remove/reset actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SizeAfterDuplicates"), 2, TEXT("TSet should deduplicate repeated Add values"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bContainsBeforeRemove"), true, TEXT("TSet should contain both unique values before removal"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bRemoveExistingReturned"), true, TEXT("Remove should return true for an existing value"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bRemoveMissingReturned"), false, TEXT("Remove should return false for a missing value"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bContainsAfterRemove"), false, TEXT("Removed value should no longer be contained"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SizeAfterRemove"), 1, TEXT("TSet should keep only the remaining value after removal"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bResetClearedSet"), true, TEXT("Reset should clear all values"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bAddAfterResetWorked"), true, TEXT("TSet should accept new values after Reset"))));
 	}
 
 	// -------------------------------------------------------------------------

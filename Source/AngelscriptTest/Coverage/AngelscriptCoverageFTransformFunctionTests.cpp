@@ -429,6 +429,225 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformFunctionTest,
 			TestRunner->TestTrue(TEXT("UFUNCTION FTransform and FVector"), Result.Equals(Expected, 0.01));
 		}
 	}
+
+	TEST_METHOD(FunctionConstArrayAndStoredMemberRoundTrip)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFTransformFunc_ArrayGlobal", ASTEST_AS(R"AS(
+		TArray<FTransform> MakeTransformArray()
+		{
+			TArray<FTransform> Values;
+			Values.Add(FTransform::Identity);
+			Values.Add(FTransform(FVector(10, 20, 30)));
+			Values.Add(FTransform(FQuat::Identity, FVector(1, 2, 3), FVector(2, 3, 4)));
+			return Values;
+		}
+
+		FTransform CombineTransformArray(const TArray<FTransform>&in Values)
+		{
+			FTransform Result = FTransform::Identity;
+			for (int Index = 0; Index < Values.Num(); ++Index)
+			{
+				Result *= Values[Index];
+			}
+			return Result;
+		}
+
+		int ValidateArrayReturn()
+		{
+			TArray<FTransform> Values = MakeTransformArray();
+			return Values.Num() == 3
+				&& Values[0].Equals(FTransform::Identity, 0.001)
+				&& Values[1].GetLocation().Equals(FVector(10, 20, 30), 0.001)
+				&& Values[2].GetScale3D().Equals(FVector(2, 3, 4), 0.001)
+				? 1 : 0;
+		}
+
+		int ValidateArrayInput()
+		{
+			TArray<FTransform> Values;
+			Values.Add(FTransform(FVector(1, 0, 0)));
+			Values.Add(FTransform(FVector(0, 2, 0)));
+			return CombineTransformArray(Values).GetLocation().Equals(FVector(1, 2, 0), 0.001) ? 1 : 0;
+		}
+
+		FTransform ReadConstTransform(const FTransform&in Value)
+		{
+			return Value.Inverse();
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FTransform array global function module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int ValidateArrayReturn()"));
+			ASSERT_THAT(AreEqual(1, Invoker.ExecuteAndGet<int32>(0), TEXT("TArray<FTransform> return should preserve values inside AS")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int ValidateArrayInput()"));
+			ASSERT_THAT(AreEqual(1, Invoker.ExecuteAndGet<int32>(0), TEXT("const TArray<FTransform>&in should pass values inside AS")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FTransform ReadConstTransform(const FTransform&in)"));
+			FTransform Input(FQuat::Identity, FVector(10, 20, 30), FVector(2, 2, 2));
+			Invoker.AddArgRef(Input);
+			FTransform Result;
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result), TEXT("const FTransform&in global function should execute")));
+			ASSERT_THAT(IsTrue(Result.Equals(Input.Inverse(), 0.001), TEXT("const FTransform&in global function should read input without mutation")));
+			ASSERT_THAT(IsTrue(Input.Equals(FTransform(FQuat::Identity, FVector(10, 20, 30), FVector(2, 2, 2)), 0.001), TEXT("const FTransform&in global function should leave caller value unchanged")));
+		}
+
+		static const FName ModuleName(TEXT("ASCoverageFTransformFunction_ArrayUFUNCTION"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageFTransformFunctionArrayUFUNCTION.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageFTransformFunctionArrayActor : AActor
+			{
+				UPROPERTY()
+				FTransform StoredTransform;
+
+				UPROPERTY()
+				TArray<FTransform> StoredTransforms;
+
+				UPROPERTY()
+				int LastArrayCount = 0;
+
+				UFUNCTION()
+				FTransform StoreAndReturnInverse(FTransform Value)
+				{
+					StoredTransform = Value;
+					return StoredTransform.Inverse();
+				}
+
+				UFUNCTION()
+				int AcceptTransformArray(const TArray<FTransform>&in Values)
+				{
+					LastArrayCount = Values.Num();
+					StoredTransform = FTransform::Identity;
+					for (FTransform Value : Values)
+					{
+						StoredTransform *= Value;
+					}
+					return LastArrayCount;
+				}
+
+				UFUNCTION()
+				TArray<FTransform> MakeTransformArray(FTransform First, FTransform Second)
+				{
+					TArray<FTransform> Result;
+					Result.Add(First);
+					Result.Add(Second);
+					StoredTransforms = Result;
+					return Result;
+				}
+
+				UFUNCTION()
+				void FillOutTransformArray(TArray<FTransform>&out Result)
+				{
+					Result.Add(FTransform::Identity);
+					Result.Add(FTransform(FQuat::Identity, FVector(30, 60, 90), FVector(2, 2, 2)));
+					StoredTransforms = Result;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageFTransformFunctionArrayActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("FTransform array UFUNCTION actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("FTransform array UFUNCTION actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		{
+			const FTransform Input(FQuat::Identity, FVector(10, 20, 30), FVector(2, 2, 2));
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("StoreAndReturnInverse"));
+			Invoker.AddParam<FTransform>(Input);
+			const FTransform Result = Invoker.CallAndReturn<FTransform>(FTransform::Identity);
+			ASSERT_THAT(IsTrue(Result.Equals(Input.Inverse(), 0.001), TEXT("FTransform UFUNCTION return should carry inverse result")));
+
+			FTransform Stored = FTransform::Identity;
+			ASSERT_THAT(IsTrue(GetStructByPath<FTransform>(*TestRunner, Actor, TEXT("StoredTransform"), Stored), TEXT("StoredTransform should be readable through reflection")));
+			ASSERT_THAT(IsTrue(Stored.Equals(Input, 0.001), TEXT("FTransform UFUNCTION should store value parameter in class member")));
+		}
+		{
+			TArray<FTransform> Values;
+			Values.Add(FTransform(FVector(1, 0, 0)));
+			Values.Add(FTransform(FVector(0, 2, 0)));
+
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("AcceptTransformArray"));
+			Invoker.AddParam<TArray<FTransform>>(Values);
+			const int32 Result = Invoker.CallAndReturn<int32>(INDEX_NONE);
+			ASSERT_THAT(AreEqual(2, Result, TEXT("TArray<FTransform> UFUNCTION parameter should report element count")));
+
+			FTransform Stored = FTransform::Identity;
+			ASSERT_THAT(IsTrue(GetStructByPath<FTransform>(*TestRunner, Actor, TEXT("StoredTransform"), Stored), TEXT("StoredTransform should be readable after array parameter call")));
+			ASSERT_THAT(IsTrue(Stored.Equals(FTransform(FVector(1, 2, 0)), 0.001), TEXT("TArray<FTransform> UFUNCTION parameter should preserve element values")));
+		}
+		{
+			const FTransform First = FTransform::Identity;
+			const FTransform Second(FQuat::Identity, FVector(10, 20, 30), FVector(2, 3, 4));
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("MakeTransformArray"));
+			Invoker.AddParam<FTransform>(First);
+			Invoker.AddParam<FTransform>(Second);
+			const TArray<FTransform> Result = Invoker.CallAndReturn<TArray<FTransform>>(TArray<FTransform>());
+			ASSERT_THAT(AreEqual(2, Result.Num(), TEXT("TArray<FTransform> UFUNCTION return should contain two elements")));
+			ASSERT_THAT(IsTrue(Result.IsValidIndex(1), TEXT("TArray<FTransform> UFUNCTION return should expose second element")));
+			if (!Result.IsValidIndex(1))
+			{
+				return;
+			}
+			ASSERT_THAT(IsTrue(Result[1].Equals(Second, 0.001), TEXT("TArray<FTransform> UFUNCTION return should preserve second transform")));
+
+			int32 StoredCount = 0;
+			ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, Actor, TEXT("StoredTransforms"), StoredCount), TEXT("StoredTransforms should expose returned TArray<FTransform> count through reflection")));
+			ASSERT_THAT(AreEqual(2, StoredCount, TEXT("StoredTransforms should contain returned elements")));
+		}
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("FillOutTransformArray"));
+			Invoker.AddParam<TArray<FTransform>>(TArray<FTransform>());
+			ASSERT_THAT(IsTrue(Invoker.Call(), TEXT("TArray<FTransform>&out UFUNCTION should execute")));
+
+			TArray<FTransform> OutValues;
+			ASSERT_THAT(IsTrue(Invoker.ReadParamAfterCall<TArray<FTransform>>(0, OutValues), TEXT("TArray<FTransform>&out UFUNCTION should copy output buffer back")));
+			ASSERT_THAT(AreEqual(2, OutValues.Num(), TEXT("TArray<FTransform>&out should contain two elements")));
+			ASSERT_THAT(IsTrue(OutValues.IsValidIndex(1), TEXT("TArray<FTransform>&out should expose second element")));
+			if (!OutValues.IsValidIndex(1))
+			{
+				return;
+			}
+			ASSERT_THAT(IsTrue(OutValues[1].Equals(FTransform(FQuat::Identity, FVector(30, 60, 90), FVector(2, 2, 2)), 0.001), TEXT("TArray<FTransform>&out should preserve written transform")));
+		}
+	}
 };
 
 #endif // WITH_DEV_AUTOMATION_TESTS

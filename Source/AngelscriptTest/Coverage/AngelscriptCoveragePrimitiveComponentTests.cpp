@@ -14,7 +14,7 @@
 // AngelscriptCoveragePrimitiveComponentTests
 // -----------------------------------------------------------------------------
 // Coverage for AngelScript UPrimitiveComponent features (rendering, collision,
-// physics), corresponding to Documents/Coverage/Coverage_UComponent.md section 6.
+// physics), corresponding to OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md section 6.
 //
 // Axes covered here:
 //   * PrimitiveRendering        - Visibility, CastShadow, CustomDepth
@@ -22,11 +22,12 @@
 //   * PrimitiveCollisionSetup   - CollisionEnabled, CollisionProfile
 //   * PrimitiveCollisionEvents  - OnComponentHit, BeginOverlap, EndOverlap
 //   * PrimitivePhysics          - SimulatePhysics, AddImpulse, AddForce
+//   * PrimitivePhysicsStateReadback - MassOverride, LinearVelocity, AngularVelocity
 //
 // Pattern D (script execution): compile AS actors with primitive components,
 // spawn them, manipulate rendering/collision/physics, verify results.
 //
-// Detailed coverage matrix: Documents/Coverage/Coverage_UComponent.md
+// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -271,6 +272,91 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 	}
 
 	// -------------------------------------------------------------------------
+	// Primitive collision configuration: component-level setter/getter readback
+	// -------------------------------------------------------------------------
+	TEST_METHOD(PrimitiveCollisionConfigurationReadback)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoveragePrimitive_CollisionConfigurationReadback"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoveragePrimitiveCollisionConfigurationReadback.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoveragePrimitiveCollisionConfigurationReadbackActor : AActor
+			{
+				UPROPERTY(DefaultComponent, RootComponent)
+				USphereComponent SphereComp;
+
+				UPROPERTY()
+				bool CollisionEnabledRoundTripped = false;
+
+				UPROPERTY()
+				bool ObjectTypeRoundTripped = false;
+
+				UPROPERTY()
+				bool ChannelResponseRoundTripped = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					SphereComp.SetCollisionEnabled(ECollisionEnabled::NoCollision);
+					bool bNoCollision = SphereComp.GetCollisionEnabled() == ECollisionEnabled::NoCollision;
+					SphereComp.SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+					bool bQueryOnly = SphereComp.GetCollisionEnabled() == ECollisionEnabled::QueryOnly;
+					SphereComp.SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+					bool bQueryAndPhysics = SphereComp.GetCollisionEnabled() == ECollisionEnabled::QueryAndPhysics;
+					CollisionEnabledRoundTripped = bNoCollision && bQueryOnly && bQueryAndPhysics;
+
+					SphereComp.SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+					bool bWorldDynamic = SphereComp.GetCollisionObjectType() == ECollisionChannel::ECC_WorldDynamic;
+					SphereComp.SetCollisionObjectType(ECollisionChannel::ECC_Pawn);
+					bool bPawn = SphereComp.GetCollisionObjectType() == ECollisionChannel::ECC_Pawn;
+					ObjectTypeRoundTripped = bWorldDynamic && bPawn;
+
+					SphereComp.SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Block);
+					bool bPawnBlocks = SphereComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn) == ECollisionResponse::ECR_Block;
+					SphereComp.SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Overlap);
+					bool bVisibilityOverlaps = SphereComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility) == ECollisionResponse::ECR_Overlap;
+					SphereComp.SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
+					bool bCameraIgnores = SphereComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_Camera) == ECollisionResponse::ECR_Ignore;
+					ChannelResponseRoundTripped = bPawnBlocks && bVisibilityOverlaps && bCameraIgnores;
+				}
+			}
+			)AS"),
+			TEXT("ACoveragePrimitiveCollisionConfigurationReadbackActor"));
+
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Primitive collision configuration readback actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Primitive collision configuration readback actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CollisionEnabledRoundTripped"), true, TEXT("SetCollisionEnabled should round-trip through GetCollisionEnabled"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ObjectTypeRoundTripped"), true, TEXT("SetCollisionObjectType should round-trip through GetCollisionObjectType"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ChannelResponseRoundTripped"), true, TEXT("SetCollisionResponseToChannel should round-trip through GetCollisionResponseToChannel"))));
+	}
+
+	// -------------------------------------------------------------------------
 	// Primitive collision events: OnComponentBeginOverlap, OnComponentEndOverlap
 	// -------------------------------------------------------------------------
 	TEST_METHOD(PrimitiveCollisionEvents)
@@ -468,6 +554,113 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 	}
 
 	// -------------------------------------------------------------------------
+	// Primitive physics state: mass and velocity getter/setter readback
+	// -------------------------------------------------------------------------
+	TEST_METHOD(PrimitivePhysicsStateReadback)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoveragePrimitive_PhysicsStateReadback"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoveragePrimitivePhysicsStateReadback.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoveragePrimitivePhysicsStateReadbackActor : AActor
+			{
+				UPROPERTY(DefaultComponent, RootComponent)
+				USphereComponent SphereComp;
+
+				UPROPERTY()
+				bool SimulatePhysicsEnabled = false;
+
+				UPROPERTY()
+				bool SimulatePhysicsDisabled = false;
+
+				UPROPERTY()
+				bool GravityDisabled = false;
+
+				UPROPERTY()
+				bool MassOverrideRoundTripped = false;
+
+				UPROPERTY()
+				bool LinearVelocityRoundTripped = false;
+
+				UPROPERTY()
+				bool AngularVelocityRoundTripped = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					SphereComp.SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+					SphereComp.SetSimulatePhysics(true);
+					SimulatePhysicsEnabled = SphereComp.IsSimulatingPhysics();
+
+					SphereComp.SetEnableGravity(false);
+					GravityDisabled = !SphereComp.IsGravityEnabled();
+
+					SphereComp.SetMassOverrideInKg(NAME_None, 125.0f, true);
+					float Mass = SphereComp.GetMass();
+					MassOverrideRoundTripped = Mass > 124.0f && Mass < 126.0f;
+
+					FVector TargetLinearVelocity = FVector(120.0f, 30.0f, 0.0f);
+					SphereComp.SetPhysicsLinearVelocity(TargetLinearVelocity, false, NAME_None);
+					FVector LinearVelocity = SphereComp.GetPhysicsLinearVelocity(NAME_None);
+					LinearVelocityRoundTripped =
+						LinearVelocity.X > 119.0f
+						&& LinearVelocity.X < 121.0f
+						&& LinearVelocity.Y > 29.0f
+						&& LinearVelocity.Y < 31.0f;
+
+					FVector TargetAngularVelocity = FVector(0.0f, 45.0f, 90.0f);
+					SphereComp.SetPhysicsAngularVelocityInDegrees(TargetAngularVelocity, false, NAME_None);
+					FVector AngularVelocity = SphereComp.GetPhysicsAngularVelocityInDegrees(NAME_None);
+					AngularVelocityRoundTripped =
+						AngularVelocity.Y > 44.0f
+						&& AngularVelocity.Y < 46.0f
+						&& AngularVelocity.Z > 89.0f
+						&& AngularVelocity.Z < 91.0f;
+
+					SphereComp.SetSimulatePhysics(false);
+					SimulatePhysicsDisabled = !SphereComp.IsSimulatingPhysics();
+				}
+			}
+			)AS"),
+			TEXT("ACoveragePrimitivePhysicsStateReadbackActor"));
+
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Primitive physics state readback actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Primitive physics state readback actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SimulatePhysicsEnabled"), true, TEXT("SetSimulatePhysics(true) should round-trip through IsSimulatingPhysics"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SimulatePhysicsDisabled"), true, TEXT("SetSimulatePhysics(false) should round-trip through IsSimulatingPhysics"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GravityDisabled"), true, TEXT("SetEnableGravity(false) should round-trip through IsGravityEnabled"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("MassOverrideRoundTripped"), true, TEXT("SetMassOverrideInKg should round-trip through GetMass"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("LinearVelocityRoundTripped"), true, TEXT("SetPhysicsLinearVelocity should round-trip through GetPhysicsLinearVelocity"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AngularVelocityRoundTripped"), true, TEXT("SetPhysicsAngularVelocityInDegrees should round-trip through GetPhysicsAngularVelocityInDegrees"))));
+	}
+
+	// -------------------------------------------------------------------------
 	// Primitive collision response: SetCollisionResponseToChannel
 	// -------------------------------------------------------------------------
 	TEST_METHOD(PrimitiveCollisionResponse)
@@ -562,6 +755,232 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IgnoreResponseSet"), true, TEXT("Ignore response should round-trip"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AllChannelsSet"), true, TEXT("All channels response should be set"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ObjectTypeSet"), true, TEXT("Collision object type should round-trip"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Primitive collision channels: built-in and game trace channel readback
+	// -------------------------------------------------------------------------
+	TEST_METHOD(PrimitiveCollisionChannelMatrixReadback)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoveragePrimitive_CollisionChannelMatrix"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoveragePrimitiveCollisionChannelMatrix.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoveragePrimitiveCollisionChannelMatrixActor : AActor
+			{
+				UPROPERTY(DefaultComponent, RootComponent)
+				UStaticMeshComponent MeshComp;
+
+				UPROPERTY()
+				bool BuiltInObjectTypesRoundTripped = false;
+
+				UPROPERTY()
+				bool BuiltInTraceChannelsRoundTripped = false;
+
+				UPROPERTY()
+				bool AllResponsesRoundTripped = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					MeshComp.SetCollisionObjectType(ECollisionChannel::ECC_WorldStatic);
+					bool bWorldStatic = MeshComp.GetCollisionObjectType() == ECollisionChannel::ECC_WorldStatic;
+					MeshComp.SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+					bool bWorldDynamic = MeshComp.GetCollisionObjectType() == ECollisionChannel::ECC_WorldDynamic;
+					MeshComp.SetCollisionObjectType(ECollisionChannel::ECC_Pawn);
+					bool bPawn = MeshComp.GetCollisionObjectType() == ECollisionChannel::ECC_Pawn;
+					MeshComp.SetCollisionObjectType(ECollisionChannel::ECC_PhysicsBody);
+					bool bPhysicsBody = MeshComp.GetCollisionObjectType() == ECollisionChannel::ECC_PhysicsBody;
+					MeshComp.SetCollisionObjectType(ECollisionChannel::ECC_Vehicle);
+					bool bVehicle = MeshComp.GetCollisionObjectType() == ECollisionChannel::ECC_Vehicle;
+					MeshComp.SetCollisionObjectType(ECollisionChannel::ECC_Destructible);
+					bool bDestructible = MeshComp.GetCollisionObjectType() == ECollisionChannel::ECC_Destructible;
+					BuiltInObjectTypesRoundTripped =
+						bWorldStatic
+						&& bWorldDynamic
+						&& bPawn
+						&& bPhysicsBody
+						&& bVehicle
+						&& bDestructible;
+
+					MeshComp.SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+					bool bVisibility = MeshComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility) == ECollisionResponse::ECR_Block;
+					MeshComp.SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
+					bool bCamera = MeshComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_Camera) == ECollisionResponse::ECR_Ignore;
+					BuiltInTraceChannelsRoundTripped = bVisibility && bCamera;
+
+					MeshComp.SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+					AllResponsesRoundTripped =
+						MeshComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic) == ECollisionResponse::ECR_Ignore
+						&& MeshComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic) == ECollisionResponse::ECR_Ignore
+						&& MeshComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn) == ECollisionResponse::ECR_Ignore
+						&& MeshComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility) == ECollisionResponse::ECR_Ignore
+						&& MeshComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_Camera) == ECollisionResponse::ECR_Ignore
+						&& MeshComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_PhysicsBody) == ECollisionResponse::ECR_Ignore
+						&& MeshComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_Vehicle) == ECollisionResponse::ECR_Ignore
+						&& MeshComp.GetCollisionResponseToChannel(ECollisionChannel::ECC_Destructible) == ECollisionResponse::ECR_Ignore;
+				}
+			}
+			)AS"),
+			TEXT("ACoveragePrimitiveCollisionChannelMatrixActor"));
+
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Primitive collision channel matrix actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Primitive collision channel matrix actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("BuiltInObjectTypesRoundTripped"), true, TEXT("Built-in object channels should round-trip through object type"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("BuiltInTraceChannelsRoundTripped"), true, TEXT("Built-in trace channels should round-trip through responses"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AllResponsesRoundTripped"), true, TEXT("SetCollisionResponseToAllChannels should affect built-in and game channels"))));
+
+		UPrimitiveComponent* MeshComp = Cast<UPrimitiveComponent>(Actor->GetRootComponent());
+		ASSERT_THAT(IsNotNull(MeshComp, TEXT("Primitive collision channel matrix actor should keep a primitive root")));
+		if (MeshComp == nullptr)
+		{
+			return;
+		}
+
+		MeshComp->SetCollisionResponseToChannel(ECC_GameTraceChannel1, ECR_Overlap);
+		MeshComp->SetCollisionResponseToChannel(ECC_GameTraceChannel18, ECR_Block);
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(ECR_Overlap),
+			static_cast<int32>(MeshComp->GetCollisionResponseToChannel(ECC_GameTraceChannel1)),
+			TEXT("Game trace channel 1 should round-trip through primitive collision responses")));
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(ECR_Block),
+			static_cast<int32>(MeshComp->GetCollisionResponseToChannel(ECC_GameTraceChannel18)),
+			TEXT("Game trace channel 18 should round-trip through primitive collision responses")));
+	}
+
+	// -------------------------------------------------------------------------
+	// Primitive trace/object query setup: channel and object query parameter readback
+	// -------------------------------------------------------------------------
+	TEST_METHOD(PrimitiveTraceObjectQueryReadback)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoveragePrimitive_TraceObjectQuery"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoveragePrimitiveTraceObjectQuery.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoveragePrimitiveTraceObjectQueryActor : AActor
+			{
+				UPROPERTY(DefaultComponent, RootComponent)
+				USphereComponent SphereComp;
+
+				UPROPERTY()
+				bool TraceChannelsReadable = false;
+
+				UPROPERTY()
+				bool ObjectQueryChannelsValidated = false;
+
+				UPROPERTY()
+				bool ObjectQueryParamsRoundTripped = false;
+
+				UPROPERTY()
+				bool ResponseContainerRoundTripped = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					TraceChannelsReadable =
+						int(ECollisionChannel::ECC_Visibility) >= 0
+						&& int(ECollisionChannel::ECC_Camera) >= 0;
+
+					ObjectQueryChannelsValidated =
+						FCollisionObjectQueryParams::IsValidObjectQuery(ECollisionChannel::ECC_WorldStatic)
+						&& FCollisionObjectQueryParams::IsValidObjectQuery(ECollisionChannel::ECC_WorldDynamic)
+						&& FCollisionObjectQueryParams::IsValidObjectQuery(ECollisionChannel::ECC_Pawn)
+						&& FCollisionObjectQueryParams::IsValidObjectQuery(ECollisionChannel::ECC_PhysicsBody)
+						&& !FCollisionObjectQueryParams::IsValidObjectQuery(ECollisionChannel::ECC_Visibility)
+						&& !FCollisionObjectQueryParams::IsValidObjectQuery(ECollisionChannel::ECC_Camera);
+
+					FCollisionObjectQueryParams ObjectParams;
+					ObjectParams.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldStatic);
+					ObjectParams.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldDynamic);
+					ObjectParams.AddObjectTypesToQuery(ECollisionChannel::ECC_Pawn);
+					int64 BeforeRemove = ObjectParams.GetQueryBitfield64();
+					ObjectParams.RemoveObjectTypesToQuery(ECollisionChannel::ECC_Pawn);
+					int64 AfterRemove = ObjectParams.GetQueryBitfield64();
+					ObjectQueryParamsRoundTripped =
+						ObjectParams.IsValid()
+						&& BeforeRemove != 0
+						&& AfterRemove != 0
+						&& BeforeRemove != AfterRemove
+						&& ObjectParams.GetObjectTypesToQuery() == AfterRemove;
+
+					FCollisionResponseContainer Responses(ECollisionResponse::ECR_Ignore);
+					bool bSetVisibility = Responses.SetResponse(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+					bool bSetPawn = Responses.SetResponse(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
+					bool bSetAll = Responses.SetAllChannels(ECollisionResponse::ECR_Block);
+					ResponseContainerRoundTripped =
+						bSetVisibility
+						&& bSetPawn
+						&& bSetAll
+						&& Responses.GetResponse(ECollisionChannel::ECC_Visibility) == ECollisionResponse::ECR_Block
+						&& Responses.GetResponse(ECollisionChannel::ECC_Pawn) == ECollisionResponse::ECR_Block
+						&& Responses.GetResponse(ECollisionChannel::ECC_Camera) == ECollisionResponse::ECR_Block;
+
+					SphereComp.SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+					SphereComp.SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+				}
+			}
+			)AS"),
+			TEXT("ACoveragePrimitiveTraceObjectQueryActor"));
+
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Primitive trace object query actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Primitive trace object query actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("TraceChannelsReadable"), true, TEXT("Trace channel enums should be readable"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ObjectQueryChannelsValidated"), true, TEXT("Object query validation should distinguish object and trace channels"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ObjectQueryParamsRoundTripped"), true, TEXT("Object query params should round-trip channel bitfields"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ResponseContainerRoundTripped"), true, TEXT("Response container should round-trip channel responses"))));
 	}
 
 	// -------------------------------------------------------------------------

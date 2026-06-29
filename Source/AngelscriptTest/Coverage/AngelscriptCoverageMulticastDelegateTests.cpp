@@ -12,7 +12,7 @@
 // AngelscriptCoverageMulticastDelegateTests
 // -----------------------------------------------------------------------------
 // Coverage for AngelScript multicast delegate (FMulticastDelegate) usage, the
-// second slice of the delegates-and-events matrix (Documents/Coverage/Coverage_DelegatesAndEvents.md
+// second slice of the delegates-and-events matrix (OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 // section 2). Each TEST_METHOD walks one usage axis from the matrix:
 //
 // Axes covered here:
@@ -31,7 +31,7 @@
 // Multicast delegates do NOT support return values (multiple listeners would
 // create ambiguity about which return value to use).
 //
-// Detailed coverage matrix: Documents/Coverage/Coverage_DelegatesAndEvents.md
+// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -778,6 +778,275 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMulticastDelegateTest,
 		BeginPlayActor(Engine, *Actor);
 
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Counter"), 21, TEXT("Multiple UFUNCTION listeners should broadcast, then targeted Unbind should remove one"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Multicast object cleanup: UnbindObject removes every listener registered
+	// by that target, including different handler functions.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(MulticastUnbindObjectRemovesTargetListeners)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMulticastDelegate_UnbindObject"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMulticastDelegateUnbindObject.as"),
+			ASTEST_AS(R"AS(
+			event void FCoverageUnbindObjectSignal();
+
+			UCLASS()
+			class ACoverageMulticastUnbindObjectActor : AActor
+			{
+				UPROPERTY()
+				int CountA = 0;
+
+				UPROPERTY()
+				int CountB = 0;
+
+				UPROPERTY()
+				int CountC = 0;
+
+				UPROPERTY()
+				bool WasBoundBeforeUnbind = false;
+
+				UPROPERTY()
+				bool WasBoundAfterUnbind = true;
+
+				UPROPERTY()
+				FCoverageUnbindObjectSignal OnSignal;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					OnSignal.AddUFunction(this, n"HandlerA");
+					OnSignal.AddUFunction(this, n"HandlerB");
+					OnSignal.AddUFunction(this, n"HandlerC");
+					WasBoundBeforeUnbind = OnSignal.IsBound();
+
+					OnSignal.Broadcast();
+					OnSignal.UnbindObject(this);
+					WasBoundAfterUnbind = OnSignal.IsBound();
+					OnSignal.Broadcast();
+				}
+
+				UFUNCTION()
+				void HandlerA()
+				{
+					CountA += 1;
+				}
+
+				UFUNCTION()
+				void HandlerB()
+				{
+					CountB += 1;
+				}
+
+				UFUNCTION()
+				void HandlerC()
+				{
+					CountC += 1;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageMulticastUnbindObjectActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Multicast UnbindObject actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Multicast UnbindObject actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WasBoundBeforeUnbind"), true, TEXT("Multicast should be bound before UnbindObject"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WasBoundAfterUnbind"), false, TEXT("UnbindObject should remove all target listeners"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("CountA"), 1, TEXT("HandlerA should only run before UnbindObject"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("CountB"), 1, TEXT("HandlerB should only run before UnbindObject"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("CountC"), 1, TEXT("HandlerC should only run before UnbindObject"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Multicast event parameter matrix: primitive, string/name, FVector value and
+	// const-ref, UObject handle.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(MulticastEventParameterTypeMatrix)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMulticastDelegate_ParameterTypeMatrix"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageMulticastDelegateParameterTypeMatrix.as"),
+			ASTEST_AS(R"AS(
+			event void FCoveragePrimitiveSignal(int Value, bool bEnabled, float Scale);
+			event void FCoverageTextSignal(const FString& Text, FName Tag);
+			event void FCoverageVectorValueSignal(FVector Location);
+			event void FCoverageVectorRefSignal(const FVector& Direction);
+			event void FCoverageObjectSignal(AActor ActorValue);
+
+			UCLASS()
+			class ACoverageMulticastParameterTypeMatrixActor : AActor
+			{
+				UPROPERTY()
+				int PrimitiveScore = 0;
+
+				UPROPERTY()
+				FString TextResult;
+
+				UPROPERTY()
+				FName NameResult;
+
+				UPROPERTY()
+				FVector VectorValueResult;
+
+				UPROPERTY()
+				FVector VectorRefResult;
+
+				UPROPERTY()
+				bool bObjectMatched = false;
+
+				UPROPERTY()
+				FCoveragePrimitiveSignal OnPrimitive;
+
+				UPROPERTY()
+				FCoverageTextSignal OnText;
+
+				UPROPERTY()
+				FCoverageVectorValueSignal OnVectorValue;
+
+				UPROPERTY()
+				FCoverageVectorRefSignal OnVectorRef;
+
+				UPROPERTY()
+				FCoverageObjectSignal OnObject;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					OnPrimitive.AddUFunction(this, n"HandlePrimitive");
+					OnText.AddUFunction(this, n"HandleText");
+					OnVectorValue.AddUFunction(this, n"HandleVectorValue");
+					OnVectorRef.AddUFunction(this, n"HandleVectorRef");
+					OnObject.AddUFunction(this, n"HandleObject");
+
+					OnPrimitive.Broadcast(7, true, 2.5f);
+					OnText.Broadcast("Score", n"ReadyTag");
+					OnVectorValue.Broadcast(FVector(1.0, 2.0, 3.0));
+					OnVectorRef.Broadcast(FVector(4.0, 5.0, 6.0));
+					OnObject.Broadcast(this);
+				}
+
+				UFUNCTION()
+				void HandlePrimitive(int Value, bool bEnabled, float Scale)
+				{
+					PrimitiveScore = Value;
+					if (bEnabled)
+					{
+						PrimitiveScore += 100;
+					}
+					PrimitiveScore += int(Scale * 10.0);
+				}
+
+				UFUNCTION()
+				void HandleText(const FString& Text, FName Tag)
+				{
+					TextResult = Text + "_handled";
+					NameResult = Tag;
+				}
+
+				UFUNCTION()
+				void HandleVectorValue(FVector Location)
+				{
+					VectorValueResult = Location + FVector(10.0, 10.0, 10.0);
+				}
+
+				UFUNCTION()
+				void HandleVectorRef(const FVector& Direction)
+				{
+					VectorRefResult = Direction * 2.0;
+				}
+
+				UFUNCTION()
+				void HandleObject(AActor ActorValue)
+				{
+					bObjectMatched = ActorValue == this;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageMulticastParameterTypeMatrixActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Multicast event parameter matrix actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const TSharedPtr<FAngelscriptDelegateDesc> PrimitiveDelegate = Engine.GetDelegate(TEXT("FCoveragePrimitiveSignal"));
+		const TSharedPtr<FAngelscriptDelegateDesc> TextDelegate = Engine.GetDelegate(TEXT("FCoverageTextSignal"));
+		const TSharedPtr<FAngelscriptDelegateDesc> VectorValueDelegate = Engine.GetDelegate(TEXT("FCoverageVectorValueSignal"));
+		const TSharedPtr<FAngelscriptDelegateDesc> VectorRefDelegate = Engine.GetDelegate(TEXT("FCoverageVectorRefSignal"));
+		const TSharedPtr<FAngelscriptDelegateDesc> ObjectDelegate = Engine.GetDelegate(TEXT("FCoverageObjectSignal"));
+		ASSERT_THAT(IsTrue(PrimitiveDelegate.IsValid(), TEXT("Primitive event metadata should be registered")));
+		ASSERT_THAT(IsTrue(TextDelegate.IsValid(), TEXT("Text event metadata should be registered")));
+		ASSERT_THAT(IsTrue(VectorValueDelegate.IsValid(), TEXT("Vector value event metadata should be registered")));
+		ASSERT_THAT(IsTrue(VectorRefDelegate.IsValid(), TEXT("Vector ref event metadata should be registered")));
+		ASSERT_THAT(IsTrue(ObjectDelegate.IsValid(), TEXT("Object event metadata should be registered")));
+		if (!PrimitiveDelegate.IsValid() || !TextDelegate.IsValid() || !VectorValueDelegate.IsValid() || !VectorRefDelegate.IsValid() || !ObjectDelegate.IsValid())
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsNotNull(FindFProperty<FIntProperty>(PrimitiveDelegate->Function, TEXT("Value")), TEXT("Primitive event should expose int parameter")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FBoolProperty>(PrimitiveDelegate->Function, TEXT("bEnabled")), TEXT("Primitive event should expose bool parameter")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FStrProperty>(TextDelegate->Function, TEXT("Text")), TEXT("Text event should expose FString parameter")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FNameProperty>(TextDelegate->Function, TEXT("Tag")), TEXT("Text event should expose FName parameter")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FStructProperty>(VectorValueDelegate->Function, TEXT("Location")), TEXT("Vector value event should expose FVector parameter")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FStructProperty>(VectorRefDelegate->Function, TEXT("Direction")), TEXT("Vector ref event should expose const FVector& parameter")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FObjectProperty>(ObjectDelegate->Function, TEXT("ActorValue")), TEXT("Object event should expose AActor parameter")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Multicast event parameter matrix actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		FVector VectorValueResult = FVector::ZeroVector;
+		FVector VectorRefResult = FVector::ZeroVector;
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("PrimitiveScore"), 132, TEXT("Primitive event parameters should cross multicast broadcast"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("TextResult"), FString(TEXT("Score_handled")), TEXT("FString event parameter should cross multicast broadcast"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FNameProperty, FName>(*TestRunner, Actor, TEXT("NameResult"), FName(TEXT("ReadyTag")), TEXT("FName event parameter should cross multicast broadcast"))));
+		ASSERT_THAT(IsTrue(GetStructByPath<FVector>(*TestRunner, Actor, TEXT("VectorValueResult"), VectorValueResult), TEXT("FVector value result should be readable")));
+		ASSERT_THAT(IsTrue(VectorValueResult.Equals(FVector(11.0, 12.0, 13.0), 0.001), TEXT("FVector value event parameter should cross multicast broadcast")));
+		ASSERT_THAT(IsTrue(GetStructByPath<FVector>(*TestRunner, Actor, TEXT("VectorRefResult"), VectorRefResult), TEXT("FVector ref result should be readable")));
+		ASSERT_THAT(IsTrue(VectorRefResult.Equals(FVector(8.0, 10.0, 12.0), 0.001), TEXT("const FVector& event parameter should cross multicast broadcast")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bObjectMatched"), true, TEXT("AActor event parameter should cross multicast broadcast"))));
 	}
 };
 

@@ -18,7 +18,7 @@
 // This extends AngelscriptCoverageContainerAdvancedTests.cpp with comprehensive
 // coverage for TMap and TSet parameter passing scenarios.
 //
-// Matrix coverage (from Documents/Coverage/Coverage_Containers.md):
+// Matrix coverage (from OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md):
 //   * TArray/TMap/TSet as value parameters (copy semantics)
 //   * TArray/TMap/TSet as &in parameters (const reference, read-only)
 //   * TArray/TMap/TSet as &out parameters (output, caller receives result)

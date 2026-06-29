@@ -17,7 +17,7 @@
 // Coverage for AngelScript weak references and class references.
 // This file covers weak reference and class reference sections from:
 //
-//   Documents/Coverage/Coverage_HandlesAndReferences.md - Sub-matrix 3 & 6
+//   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md - Sub-matrix 3 & 6
 //
 // Axes covered here:
 //   * WeakObjectPtrBasics          - declaration, assignment, IsValid, Get
@@ -32,7 +32,7 @@
 // an AS actor, drive its members, read them back through FPropertyBindingPath
 // helpers in Shared/AngelscriptReflectiveAccess.h.
 //
-// Detailed coverage matrix: Documents/Coverage/Coverage_HandlesAndReferences.md
+// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -790,10 +790,29 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWeakReferenceTest,
 			TEXT("ASCoverageWeakRefBreakCycle.as"),
 			ASTEST_AS(R"AS(
 			UCLASS()
+			class ACoverageWeakRefCycleChild : AActor
+			{
+				UPROPERTY()
+				TWeakObjectPtr<AActor> WeakParent;
+
+				UFUNCTION()
+				void SetParent(AActor Parent)
+				{
+					WeakParent = Parent;
+				}
+
+				UFUNCTION()
+				bool HasWeakParent(AActor ExpectedParent)
+				{
+					return WeakParent.IsValid() && WeakParent.Get() == ExpectedParent;
+				}
+			}
+
+			UCLASS()
 			class ACoverageWeakRefBreakCycleActor : AActor
 			{
 				UPROPERTY()
-				AActor StrongChild;
+				ACoverageWeakRefCycleChild StrongChild;
 
 				UPROPERTY()
 				TWeakObjectPtr<AActor> WeakParent;
@@ -807,14 +826,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWeakReferenceTest,
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					StrongChild = SpawnActor(AActor::StaticClass());
+					StrongChild = Cast<ACoverageWeakRefCycleChild>(SpawnActor(ACoverageWeakRefCycleChild::StaticClass()));
 					WeakParent = this;
+					StrongChild.SetParent(this);
 
 					TWeakObjectPtr<AActor> WeakChild = StrongChild;
 					System::ForceGarbageCollection(true);
 
 					StrongForwardReferenceAlive = WeakChild.IsValid() && IsValid(StrongChild);
-					WeakBackReferenceDoesNotOwn = WeakParent.IsValid() && WeakParent.Get() == this;
+					WeakBackReferenceDoesNotOwn = WeakParent.IsValid() && WeakParent.Get() == this && StrongChild.HasWeakParent(this);
 				}
 			}
 			)AS"),
@@ -880,9 +900,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWeakReferenceTest,
 					AActor FirstActor = SpawnActor(AActor::StaticClass());
 					AActor SecondActor = SpawnActor(AActor::StaticClass());
 
-					WeakActors.Add(TWeakObjectPtr<AActor>(FirstActor));
-					WeakActors.Add(TWeakObjectPtr<AActor>(SecondActor));
-					WeakActors.Add(TWeakObjectPtr<AActor>());
+					TWeakObjectPtr<AActor> WeakFirst = FirstActor;
+					TWeakObjectPtr<AActor> WeakSecond = SecondActor;
+					TWeakObjectPtr<AActor> EmptyWeak;
+
+					WeakActors.Add(WeakFirst);
+					WeakActors.Add(WeakSecond);
+					WeakActors.Add(EmptyWeak);
 
 					ArrayStoredWeakRefs = WeakActors.Num() == 3 && WeakActors[0].Get() == FirstActor && WeakActors[1].Get() == SecondActor;
 					ArrayNullElementWorked = WeakActors[2] == nullptr;

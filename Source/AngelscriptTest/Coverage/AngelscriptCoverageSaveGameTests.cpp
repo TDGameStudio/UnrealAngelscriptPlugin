@@ -14,7 +14,7 @@
 // -----------------------------------------------------------------------------
 // Coverage for the high-priority SaveGame slice from:
 //
-//   Documents/Coverage/Coverage_SaveGame.md
+//   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 //
 // Axes covered here:
 //   * AS-defined USaveGame subclasses compile and expose SaveGame properties
@@ -27,11 +27,14 @@
 
 using namespace AngelscriptFunctionalTestUtils;
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSaveGameTest,
+	"Angelscript.TestModule.Coverage.SaveGame",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
 	static constexpr int32 SaveGameUserIndex = 0;
 
-	UClass* CompileCoverageSaveGameClass(FAutomationTestBase& Test, FAngelscriptEngine& Engine, FName ModuleName)
+	static UClass* CompileCoverageSaveGameClass(FAutomationTestBase& Test, FAngelscriptEngine& Engine, FName ModuleName)
 	{
 		return CompileScriptModule(
 			Test,
@@ -39,67 +42,51 @@ namespace
 			ModuleName,
 			TEXT("ASCoverageSaveGame.as"),
 			ASTEST_AS(R"AS(
-UCLASS()
-class UCoverageSaveGameObject : USaveGame
-{
-	UPROPERTY(SaveGame)
-	int Progress = 17;
+			UCLASS()
+			class UCoverageSaveGameObject : USaveGame
+			{
+				UPROPERTY(SaveGame)
+				int Progress = 17;
 
-	UPROPERTY(SaveGame)
-	FString PlayerName = "InitialPlayer";
+				UPROPERTY(SaveGame)
+				FString PlayerName = "InitialPlayer";
 
-	UPROPERTY(SaveGame)
-	bool bUnlocked = false;
+				UPROPERTY(SaveGame)
+				bool bUnlocked = false;
 
-	UFUNCTION()
-	void ApplyProgress(int NewProgress, const FString& NewPlayerName, bool bNewUnlocked)
-	{
-		Progress = NewProgress;
-		PlayerName = NewPlayerName;
-		bUnlocked = bNewUnlocked;
-	}
-}
-)AS"),
+				UFUNCTION()
+				void ApplyProgress(int NewProgress, const FString& NewPlayerName, bool bNewUnlocked)
+				{
+					Progress = NewProgress;
+					PlayerName = NewPlayerName;
+					bUnlocked = bNewUnlocked;
+				}
+			}
+			)AS"),
 			TEXT("UCoverageSaveGameObject"));
 	}
 
-	bool InvokeApplyProgress(
+	static bool InvokeApplyProgress(
 		FAutomationTestBase& Test,
-		FAngelscriptEngine& Engine,
 		UObject* SaveGameObject,
-		UClass* SaveGameClass,
 		int32 Progress,
 		const FString& PlayerName,
 		bool bUnlocked)
 	{
-		struct FApplyProgressParams
-		{
-			int32 NewProgress = 0;
-			FString NewPlayerName;
-			bool bNewUnlocked = false;
-		};
-
-		UFunction* Function = FindGeneratedFunction(SaveGameClass, TEXT("ApplyProgress"));
-		if (!Test.TestNotNull(TEXT("SaveGame ApplyProgress UFUNCTION should exist"), Function))
+		FFunctionInvoker Invoker(Test, SaveGameObject, TEXT("ApplyProgress"));
+		if (!Invoker.IsValid())
 		{
 			return false;
 		}
 
-		FApplyProgressParams Params;
-		Params.NewProgress = Progress;
-		Params.NewPlayerName = PlayerName;
-		Params.bNewUnlocked = bUnlocked;
-
-		FAngelscriptEngineScope ObjectScope(Engine, SaveGameObject);
-		SaveGameObject->ProcessEvent(Function, &Params);
-		return true;
+		return Invoker
+			.AddParam<int32>(Progress)
+			.AddParam<FString>(PlayerName)
+			.AddParam<bool>(bUnlocked)
+			.Call();
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSaveGameTest,
-	"Angelscript.TestModule.Coverage.SaveGame",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -137,6 +124,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSaveGameTest,
 		ASSERT_THAT(IsNotNull(ProgressProperty, TEXT("Progress SaveGame property should exist")));
 		ASSERT_THAT(IsNotNull(PlayerNameProperty, TEXT("PlayerName SaveGame property should exist")));
 		ASSERT_THAT(IsNotNull(UnlockedProperty, TEXT("bUnlocked SaveGame property should exist")));
+		if (ProgressProperty == nullptr
+			|| PlayerNameProperty == nullptr
+			|| UnlockedProperty == nullptr)
+		{
+			return;
+		}
 
 		ASSERT_THAT(IsTrue(ProgressProperty->HasAnyPropertyFlags(CPF_SaveGame),
 			TEXT("Progress should carry CPF_SaveGame")));
@@ -147,6 +140,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSaveGameTest,
 
 		UObject* CDO = SaveGameClass->GetDefaultObject();
 		ASSERT_THAT(IsNotNull(CDO, TEXT("AS SaveGame class should expose a CDO")));
+		if (CDO == nullptr)
+		{
+			return;
+		}
 		ASSERT_THAT(AreEqual(17, ProgressProperty->GetPropertyValue_InContainer(CDO),
 			TEXT("Progress CDO default should match AS initializer")));
 		ASSERT_THAT(AreEqual(FString(TEXT("InitialPlayer")), PlayerNameProperty->GetPropertyValue_InContainer(CDO),
@@ -181,8 +178,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSaveGameTest,
 
 		USaveGame* SaveGame = Cast<USaveGame>(UGameplayStatics::CreateSaveGameObject(SaveGameClass));
 		ASSERT_THAT(IsNotNull(SaveGame, TEXT("CreateSaveGameObject should instantiate the AS SaveGame class")));
+		if (SaveGame == nullptr)
+		{
+			return;
+		}
 
-		if (!InvokeApplyProgress(*TestRunner, Engine, SaveGame, SaveGameClass, 91, TEXT("RoundTripPlayer"), true))
+		if (!InvokeApplyProgress(*TestRunner, SaveGame, 91, TEXT("RoundTripPlayer"), true))
 		{
 			return;
 		}
@@ -194,15 +195,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSaveGameTest,
 
 		USaveGame* LoadedSaveGame = UGameplayStatics::LoadGameFromSlot(SlotName, SaveGameUserIndex);
 		ASSERT_THAT(IsNotNull(LoadedSaveGame, TEXT("LoadGameFromSlot should load the saved AS SaveGame object")));
+		if (LoadedSaveGame == nullptr)
+		{
+			return;
+		}
 		ASSERT_THAT(IsTrue(LoadedSaveGame->GetClass()->IsChildOf(SaveGameClass),
 			TEXT("Loaded SaveGame should preserve the AS generated class")));
 
-		VerifyByPath<FIntProperty, int32>(*TestRunner, LoadedSaveGame, TEXT("Progress"), 91,
-			TEXT("Loaded SaveGame should preserve int SaveGame data"));
-		VerifyByPath<FStrProperty, FString>(*TestRunner, LoadedSaveGame, TEXT("PlayerName"), FString(TEXT("RoundTripPlayer")),
-			TEXT("Loaded SaveGame should preserve FString SaveGame data"));
-		VerifyByPath<FBoolProperty, bool>(*TestRunner, LoadedSaveGame, TEXT("bUnlocked"), true,
-			TEXT("Loaded SaveGame should preserve bool SaveGame data"));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, LoadedSaveGame, TEXT("Progress"), 91,
+			TEXT("Loaded SaveGame should preserve int SaveGame data"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, LoadedSaveGame, TEXT("PlayerName"), FString(TEXT("RoundTripPlayer")),
+			TEXT("Loaded SaveGame should preserve FString SaveGame data"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, LoadedSaveGame, TEXT("bUnlocked"), true,
+			TEXT("Loaded SaveGame should preserve bool SaveGame data"))));
 
 		ASSERT_THAT(IsTrue(UGameplayStatics::DeleteGameInSlot(SlotName, SaveGameUserIndex),
 			TEXT("DeleteGameInSlot should remove the saved slot")));

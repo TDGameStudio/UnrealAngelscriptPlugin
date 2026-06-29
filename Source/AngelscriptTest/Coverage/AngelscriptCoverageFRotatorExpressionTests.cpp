@@ -333,7 +333,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 		FRotator ClampRotator()
 		{
 			FRotator r = FRotator(100, 200, 100);
-			return r.GetClamped();
+			return r.Clamp();
 		}
 
 		bool IsZero()
@@ -371,7 +371,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 			FRotator Result;
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
 			// Test that clamping occurred
-			TestRunner->TestTrue(TEXT("FRotator GetClamped"), Result.Pitch >= -90.0 && Result.Pitch <= 90.0);
+			ASSERT_THAT(IsTrue(Result.Pitch >= -90.0 && Result.Pitch <= 90.0, TEXT("FRotator Clamp")));
 		}
 
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool IsZero()"), true, TEXT("rotator IsZero()"));
@@ -513,6 +513,200 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
 			FRotator Expected = FMath::Lerp(FRotator(0, 0, 0), FRotator(90, 90, 90), 0.5f);
 			TestRunner->TestTrue(TEXT("FRotator::Lerp()"), Result.Equals(Expected, 0.001));
+		}
+	}
+
+	TEST_METHOD(RotatorDeclarationsAndConfirmedMethods)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFRotatorExpr_DeclarationsMethods", ASTEST_AS(R"AS(
+		const FRotator GlobalConstRotator = FRotator::ZeroRotator;
+
+		float LocalDefaultIsZero()
+		{
+			FRotator r;
+			return r.Pitch + r.Yaw + r.Roll;
+		}
+
+		float LocalScalarConstructorSum()
+		{
+			FRotator r = FRotator(7);
+			return r.Pitch + r.Yaw + r.Roll;
+		}
+
+		float LocalCopyConstructorSum()
+		{
+			FRotator Source = FRotator(1, 2, 3);
+			FRotator Copy = FRotator(Source);
+			return Copy.Pitch + Copy.Yaw + Copy.Roll;
+		}
+
+		float LocalConstValue()
+		{
+			const FRotator r = FRotator(10, 20, 30);
+			return r.Pitch + r.Yaw + r.Roll;
+		}
+
+		float GlobalConstValue()
+		{
+			return GlobalConstRotator.Pitch + GlobalConstRotator.Yaw + GlobalConstRotator.Roll;
+		}
+
+		FRotator NormalizeMutates()
+		{
+			FRotator r = FRotator(0, 450, 0);
+			r.Normalize();
+			return r;
+		}
+
+		FRotator InverseRotator()
+		{
+			return FRotator(0, 90, 0).GetInverse();
+		}
+
+		float AxisHelpers()
+		{
+			return FRotator::NormalizeAxis(450) + FRotator::ClampAxis(-90);
+		}
+
+		bool WindingAndRemainder()
+		{
+			FRotator Winding;
+			FRotator Remainder;
+			FRotator(0, 450, 0).GetWindingAndRemainder(Winding, Remainder);
+			return Winding.Equals(FRotator(0, 360, 0), 0.001) && Remainder.Equals(FRotator(0, 90, 0), 0.001);
+		}
+
+		float ManhattanDistance()
+		{
+			return FRotator(10, 20, 30).GetManhattanDistance(FRotator(5, 5, 5));
+		}
+
+		FVector RightVector()
+		{
+			return FRotator(0, 0, 0).GetRightVector();
+		}
+
+		FVector UpVector()
+		{
+			return FRotator(0, 0, 0).GetUpVector();
+		}
+
+		bool DeltaRoundTrip()
+		{
+			FRotator Origin = FRotator::ZeroRotator;
+			FRotator Target = FRotator(0, 90, 0);
+			FRotator Delta = FRotator::GetDelta(Origin, Target);
+			return FRotator::ApplyDelta(Origin, Delta).Equals(Target, 0.05);
+		}
+
+		bool RelativeRoundTrip()
+		{
+			FRotator Parent = FRotator(0, 30, 0);
+			FRotator Child = FRotator(0, 75, 0);
+			FRotator Relative = FRotator::GetRelative(Parent, Child);
+			return FRotator::ApplyRelative(Parent, Relative).Equals(Child, 0.05);
+		}
+
+		class FPlainRotatorHolder
+		{
+		public:
+			FRotator Value;
+
+			FPlainRotatorHolder()
+			{
+				Value = FRotator(2, 4, 6);
+			}
+		}
+
+		float PlainClassMemberValue()
+		{
+			FPlainRotatorHolder Holder;
+			return Holder.Value.Pitch + Holder.Value.Yaw + Holder.Value.Roll;
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FRotator declaration/method module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float LocalDefaultIsZero()"));
+			ASSERT_THAT(AreEqual(0.0f, Invoker.ExecuteAndGet<float>(-1.0f), TEXT("FRotator local default declaration should be zero")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float LocalScalarConstructorSum()"));
+			ASSERT_THAT(AreEqual(21.0f, Invoker.ExecuteAndGet<float>(-1.0f), TEXT("FRotator scalar constructor should fill all components")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float LocalCopyConstructorSum()"));
+			ASSERT_THAT(AreEqual(6.0f, Invoker.ExecuteAndGet<float>(-1.0f), TEXT("FRotator copy constructor should preserve components")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float LocalConstValue()"));
+			ASSERT_THAT(AreEqual(60.0f, Invoker.ExecuteAndGet<float>(-1.0f), TEXT("FRotator local const declaration should expose members")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float GlobalConstValue()"));
+			ASSERT_THAT(AreEqual(0.0f, Invoker.ExecuteAndGet<float>(-1.0f), TEXT("FRotator global const declaration should expose members")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FRotator NormalizeMutates()"));
+			FRotator Result;
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result), TEXT("NormalizeMutates should execute")));
+			ASSERT_THAT(IsTrue(Result.Equals(FRotator(0, 90, 0), 0.001), TEXT("FRotator.Normalize() should mutate in place")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FRotator InverseRotator()"));
+			FRotator Result;
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result), TEXT("InverseRotator should execute")));
+			ASSERT_THAT(IsTrue(Result.Equals(FRotator(0, 90, 0).GetInverse(), 0.001), TEXT("FRotator.GetInverse() should match native inverse")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float AxisHelpers()"));
+			ASSERT_THAT(AreEqual(360.0f, Invoker.ExecuteAndGet<float>(-1.0f), TEXT("FRotator axis helpers should normalize and clamp angles")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("bool WindingAndRemainder()"));
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndGet<bool>(false), TEXT("FRotator.GetWindingAndRemainder() should populate out rotators")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float ManhattanDistance()"));
+			ASSERT_THAT(AreEqual(45.0f, Invoker.ExecuteAndGet<float>(-1.0f), TEXT("FRotator.GetManhattanDistance() should sum component deltas")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector RightVector()"));
+			FVector Result;
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result), TEXT("RightVector should execute")));
+			ASSERT_THAT(IsTrue(Result.Equals(FVector::RightVector, 0.001), TEXT("FRotator.GetRightVector() should expose right axis")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector UpVector()"));
+			FVector Result;
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result), TEXT("UpVector should execute")));
+			ASSERT_THAT(IsTrue(Result.Equals(FVector::UpVector, 0.001), TEXT("FRotator.GetUpVector() should expose up axis")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("bool DeltaRoundTrip()"));
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndGet<bool>(false), TEXT("FRotator GetDelta/ApplyDelta should round-trip")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("bool RelativeRoundTrip()"));
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndGet<bool>(false), TEXT("FRotator GetRelative/ApplyRelative should round-trip")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float PlainClassMemberValue()"));
+			ASSERT_THAT(AreEqual(12.0f, Invoker.ExecuteAndGet<float>(-1.0f), TEXT("FRotator plain class member should be usable without UPROPERTY")));
 		}
 	}
 };

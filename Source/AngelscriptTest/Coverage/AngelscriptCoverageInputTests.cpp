@@ -11,8 +11,10 @@
 #include "GameFramework/Actor.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
+#include "EnhancedInputComponent.h"
 #include "InputAction.h"
 #include "InputMappingContext.h"
+#include "InputTriggers.h"
 #include "Misc/ScopeExit.h"
 
 // -----------------------------------------------------------------------------
@@ -336,6 +338,104 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 			)AS"),
 			TEXT("AKeyDirectBindingPawn"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Key direct binding pawn class should compile")));
+	}
+
+	// -------------------------------------------------------------------------
+	// Input binding visibility: SetupPlayerInputComponent creates action, axis, and key bindings
+	// -------------------------------------------------------------------------
+	TEST_METHOD(InputBindingCollectionsVisibleAfterSetup)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageInput_BindingCollectionsVisible"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageInputBindingCollectionsVisible.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class AInputBindingVisibilityPawn : APawn
+			{
+				UPROPERTY()
+				int SetupCallCount = 0;
+
+				UFUNCTION(BlueprintOverride)
+				void SetupPlayerInputComponent(UInputComponent PlayerInputComponent)
+				{
+					SetupCallCount++;
+					PlayerInputComponent.BindAction(n"Jump", IE_Pressed, this, n"OnJumpPressed");
+					PlayerInputComponent.BindAction(n"Jump", IE_Released, this, n"OnJumpReleased");
+					PlayerInputComponent.BindAxis(n"MoveForward", this, n"OnMoveForward");
+					PlayerInputComponent.BindAxis(n"Turn", this, n"OnTurn");
+					PlayerInputComponent.BindKey(EKeys::SpaceBar, IE_Pressed, this, n"OnSpacePressed");
+					PlayerInputComponent.BindKey(EKeys::LeftMouseButton, IE_Released, this, n"OnLeftMouseReleased");
+				}
+
+				UFUNCTION() void OnJumpPressed() {}
+				UFUNCTION() void OnJumpReleased() {}
+				UFUNCTION() void OnSpacePressed() {}
+				UFUNCTION() void OnLeftMouseReleased() {}
+				UFUNCTION() void OnMoveForward(float Value) {}
+				UFUNCTION() void OnTurn(float Value) {}
+			}
+			)AS"),
+			TEXT("AInputBindingVisibilityPawn"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Input binding visibility pawn class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		APawn* Pawn = SpawnScriptActor<APawn>(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Pawn, TEXT("Input binding visibility pawn should spawn")));
+		if (Pawn == nullptr)
+		{
+			return;
+		}
+
+		UInputComponent* InputComponent = NewObject<UInputComponent>(Pawn, TEXT("CoverageInputComponent"));
+		ASSERT_THAT(IsNotNull(InputComponent, TEXT("Input component should be created for setup")));
+		if (InputComponent == nullptr)
+		{
+			return;
+		}
+
+		FFunctionInvoker SetupInvoker(*TestRunner, Pawn, FName(TEXT("SetupPlayerInputComponent")));
+		ASSERT_THAT(IsTrue(SetupInvoker.IsValid(), TEXT("SetupPlayerInputComponent should be invokable")));
+		SetupInvoker.AddParam<UInputComponent*>(InputComponent);
+		ASSERT_THAT(IsTrue(SetupInvoker.Call(), TEXT("SetupPlayerInputComponent should execute")));
+
+		int32 SetupCallCount = 0;
+		ASSERT_THAT(IsTrue(GetByPath<FIntProperty, int32>(*TestRunner, Pawn, TEXT("SetupCallCount"), SetupCallCount), TEXT("SetupCallCount should be readable")));
+		ASSERT_THAT(AreEqual(1, SetupCallCount, TEXT("SetupPlayerInputComponent should run exactly once")));
+
+		ASSERT_THAT(AreEqual(2, InputComponent->GetNumActionBindings(), TEXT("BindAction should add pressed and released action bindings")));
+		ASSERT_THAT(AreEqual(2, InputComponent->AxisBindings.Num(), TEXT("BindAxis should add two axis bindings")));
+		ASSERT_THAT(AreEqual(2, InputComponent->KeyBindings.Num(), TEXT("BindKey should add two key bindings")));
+		ASSERT_THAT(IsTrue(InputComponent->HasBindings(), TEXT("InputComponent should report bindings after AS setup")));
+
+		const FInputActionBinding& JumpPressedBinding = InputComponent->GetActionBinding(0);
+		const FInputActionBinding& JumpReleasedBinding = InputComponent->GetActionBinding(1);
+		ASSERT_THAT(AreEqual(FName(TEXT("Jump")), JumpPressedBinding.GetActionName(), TEXT("First action binding should keep the Jump action name")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(IE_Pressed), static_cast<int32>(JumpPressedBinding.KeyEvent.GetValue()), TEXT("First action binding should keep IE_Pressed")));
+		ASSERT_THAT(AreEqual(FName(TEXT("Jump")), JumpReleasedBinding.GetActionName(), TEXT("Second action binding should keep the Jump action name")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(IE_Released), static_cast<int32>(JumpReleasedBinding.KeyEvent.GetValue()), TEXT("Second action binding should keep IE_Released")));
+
+		ASSERT_THAT(AreEqual(FName(TEXT("MoveForward")), InputComponent->AxisBindings[0].AxisName, TEXT("First axis binding should keep MoveForward")));
+		ASSERT_THAT(AreEqual(FName(TEXT("Turn")), InputComponent->AxisBindings[1].AxisName, TEXT("Second axis binding should keep Turn")));
+		ASSERT_THAT(AreEqual(EKeys::SpaceBar, InputComponent->KeyBindings[0].Chord.Key, TEXT("First key binding should keep SpaceBar")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(IE_Pressed), static_cast<int32>(InputComponent->KeyBindings[0].KeyEvent.GetValue()), TEXT("SpaceBar binding should keep IE_Pressed")));
+		ASSERT_THAT(AreEqual(EKeys::LeftMouseButton, InputComponent->KeyBindings[1].Chord.Key, TEXT("Second key binding should keep LeftMouseButton")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(IE_Released), static_cast<int32>(InputComponent->KeyBindings[1].KeyEvent.GetValue()), TEXT("LeftMouseButton binding should keep IE_Released")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -737,6 +837,96 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Input mode control controller class should compile")));
 	}
 
+	TEST_METHOD(InputModeSwitchingUnsupportedBoundary)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		ASSERT_THAT(IsNull(APlayerController::StaticClass()->FindFunctionByName(TEXT("SetInputMode")),
+			TEXT("SetInputMode should remain outside reflected APlayerController UFUNCTIONs")));
+
+		const FString GameOnlySource = ASTEST_AS(R"AS(
+			UCLASS()
+			class AInputModeSwitchingBoundaryController : APlayerController
+			{
+				UFUNCTION()
+				void TryGameOnlyInputMode()
+				{
+					FInputModeGameOnly GameOnlyMode;
+					SetInputMode(GameOnlyMode);
+				}
+			}
+			)AS");
+
+		const TArray<FString> GameOnlyExpectedDiagnostics = { TEXT("FInputModeGameOnly") };
+		const bool bGameOnlyFailedAsExpected = CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageInput_InputModeSwitchingUnsupported"),
+			GameOnlySource,
+			TEXT("SetInputMode input-mode structs should remain an explicit AS binding boundary"),
+			MakeArrayView(GameOnlyExpectedDiagnostics));
+		ASSERT_THAT(IsTrue(bGameOnlyFailedAsExpected, TEXT("Game-only input mode should stay unavailable to AS")));
+		if (!bGameOnlyFailedAsExpected)
+		{
+			return;
+		}
+
+		const FString UIOnlySource = ASTEST_AS(R"AS(
+			UCLASS()
+			class AInputModeUIOnlyBoundaryController : APlayerController
+			{
+				UFUNCTION()
+				void TryUIOnlyInputMode()
+				{
+					FInputModeUIOnly UIOnlyMode;
+					SetInputMode(UIOnlyMode);
+				}
+			}
+			)AS");
+
+		const TArray<FString> UIOnlyExpectedDiagnostics = { TEXT("FInputModeUIOnly") };
+		const bool bUIOnlyFailedAsExpected = CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageInput_UIOnlyInputModeUnsupported"),
+			UIOnlySource,
+			TEXT("UI-only input mode structs should remain an explicit AS binding boundary"),
+			MakeArrayView(UIOnlyExpectedDiagnostics));
+		ASSERT_THAT(IsTrue(bUIOnlyFailedAsExpected, TEXT("UI-only input mode should stay unavailable to AS")));
+		if (!bUIOnlyFailedAsExpected)
+		{
+			return;
+		}
+
+		const FString GameAndUISource = ASTEST_AS(R"AS(
+			UCLASS()
+			class AInputModeGameAndUIBoundaryController : APlayerController
+			{
+				UFUNCTION()
+				void TryGameAndUIInputMode()
+				{
+					FInputModeGameAndUI GameAndUIMode;
+					SetInputMode(GameAndUIMode);
+				}
+			}
+			)AS");
+
+		const TArray<FString> GameAndUIExpectedDiagnostics = { TEXT("FInputModeGameAndUI") };
+		const bool bGameAndUIFailedAsExpected = CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageInput_GameAndUIInputModeUnsupported"),
+			GameAndUISource,
+			TEXT("Game-and-UI input mode structs should remain an explicit AS binding boundary"),
+			MakeArrayView(GameAndUIExpectedDiagnostics));
+		ASSERT_THAT(IsTrue(bGameAndUIFailedAsExpected, TEXT("Game-and-UI input mode should stay unavailable to AS")));
+		if (!bGameAndUIFailedAsExpected)
+		{
+			return;
+		}
+	}
+
 	TEST_METHOD(EnhancedInputMappingContextAndActionValues)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
@@ -849,7 +1039,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 				}
 
 				UFUNCTION()
-				void OnDebug(FInputActionValue ActionValue)
+				void OnDebug(FKey Key, FInputActionValue ActionValue)
 				{
 				}
 
@@ -980,6 +1170,72 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 			TEXT("Enhanced Input mappings should accept AS-created modifiers and triggers"), 1)));
 	}
 
+	TEST_METHOD(EnhancedInputActionAndMappingMetadata)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int ActionAndMappingMetadata()
+			{
+				UInputAction MoveAction = Cast<UInputAction>(NewObject(GetTransientPackage(), UInputAction::StaticClass(), n"CoverageMetadataMoveAction", true));
+				UInputAction ConfirmAction = Cast<UInputAction>(NewObject(GetTransientPackage(), UInputAction::StaticClass(), n"CoverageMetadataConfirmAction", true));
+				UInputMappingContext MappingContext = Cast<UInputMappingContext>(NewObject(GetTransientPackage(), UInputMappingContext::StaticClass(), n"CoverageMetadataContext", true));
+				if (MoveAction == nullptr || ConfirmAction == nullptr || MappingContext == nullptr)
+					return 0;
+
+				MoveAction.SetValueType(EInputActionValueType::Axis2D);
+				MoveAction.SetAccumulationBehavior(EInputActionAccumulationBehavior::Cumulative);
+				ConfirmAction.SetValueType(EInputActionValueType::Boolean);
+				ConfirmAction.SetAccumulationBehavior(EInputActionAccumulationBehavior::TakeHighestAbsoluteValue);
+				if (MoveAction.GetValueType() != EInputActionValueType::Axis2D)
+					return 0;
+				if (MoveAction.GetAccumulationBehavior() != EInputActionAccumulationBehavior::Cumulative)
+					return 0;
+				if (ConfirmAction.GetValueType() != EInputActionValueType::Boolean)
+					return 0;
+
+				FEnhancedActionKeyMapping& MoveMapping = MappingContext.MapKey(MoveAction, EKeys::Gamepad_Left2D);
+				FEnhancedActionKeyMapping& ConfirmMapping = MappingContext.MapKey(ConfirmAction, EKeys::Gamepad_FaceButton_Bottom);
+				if (MappingContext.GetMappingCount() != 2)
+					return 0;
+
+				UInputModifierNegate Negate = Cast<UInputModifierNegate>(NewObject(MappingContext, UInputModifierNegate::StaticClass(), n"CoverageMetadataNegate", true));
+				UInputModifierScalar Scalar = Cast<UInputModifierScalar>(NewObject(MappingContext, UInputModifierScalar::StaticClass(), n"CoverageMetadataScalar", true));
+				UInputTriggerCombo Combo = Cast<UInputTriggerCombo>(NewObject(MappingContext, UInputTriggerCombo::StaticClass(), n"CoverageMetadataCombo", true));
+				UInputTriggerDown Down = Cast<UInputTriggerDown>(NewObject(MappingContext, UInputTriggerDown::StaticClass(), n"CoverageMetadataDown", true));
+				if (Negate == nullptr || Scalar == nullptr || Combo == nullptr || Down == nullptr)
+					return 0;
+
+				MoveMapping.AddModifier(Negate);
+				MoveMapping.AddModifier(Scalar);
+				ConfirmMapping.AddTrigger(Combo);
+				ConfirmMapping.AddTrigger(Down);
+				if (MoveMapping.GetModifierCount() != 2 || ConfirmMapping.GetTriggerCount() != 2)
+					return 0;
+
+				MoveMapping.ClearModifiers();
+				ConfirmMapping.ClearTriggers();
+				if (MoveMapping.GetModifierCount() != 0 || ConfirmMapping.GetTriggerCount() != 0)
+					return 0;
+
+				ConfirmMapping.SetAction(MoveAction);
+				ConfirmMapping.SetKey(EKeys::Enter);
+				return ConfirmMapping.GetAction() == MoveAction && ConfirmMapping.GetKey() == EKeys::Enter ? 1 : 0;
+			}
+			)AS");
+
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASCoverageInput_EnhancedActionAndMappingMetadata"), ScriptSource);
+		ASSERT_THAT(IsTrue(ModuleScope.IsValid(), TEXT("Enhanced Input action/mapping metadata module should compile")));
+		if (!ModuleScope.IsValid())
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ModuleScope.GetModule(), TEXT("int ActionAndMappingMetadata()"),
+			TEXT("Enhanced Input action metadata and mapping mutation APIs should be available to AS"), 1)));
+	}
+
 	TEST_METHOD(InputSettingsAndRuntimeMappingApi)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
@@ -1068,6 +1324,340 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 			TEXT("touch and gesture key constants should be reachable to AS without real touch input"), 1)));
 		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int TouchBindingSurfaceIsAbsent()"),
 			TEXT("touch pressed/moved/released dispatch remains a runtime-input gap rather than a fake simulation"), 1)));
+	}
+
+	TEST_METHOD(AdvancedInputComponentBindingCollections)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageInput_AdvancedBindingCollections"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageInputAdvancedBindingCollections.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class AAdvancedInputBindingPawn : APawn
+			{
+				UPROPERTY()
+				int SetupCallCount = 0;
+
+				UFUNCTION(BlueprintOverride)
+				void SetupPlayerInputComponent(UInputComponent PlayerInputComponent)
+				{
+					SetupCallCount++;
+					PlayerInputComponent.BindChord(FInputChord(EKeys::LeftMouseButton, true, false, false, false), IE_Pressed, this, n"OnShiftLeftMouse");
+					PlayerInputComponent.BindAxisKey(n"MouseX", this, n"OnMouseXAxis");
+					PlayerInputComponent.BindVectorAxis(EKeys::Tilt, this, n"OnTiltAxis");
+				}
+
+				UFUNCTION()
+				void OnShiftLeftMouse()
+				{
+				}
+
+				UFUNCTION()
+				void OnMouseXAxis(float Value)
+				{
+				}
+
+				UFUNCTION()
+				void OnTiltAxis(FVector Value)
+				{
+				}
+			}
+			)AS"),
+			TEXT("AAdvancedInputBindingPawn"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("advanced input binding pawn class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		APawn* Pawn = SpawnScriptActor<APawn>(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Pawn, TEXT("advanced input binding pawn should spawn")));
+		if (Pawn == nullptr)
+		{
+			return;
+		}
+
+		UInputComponent* InputComponent = NewObject<UInputComponent>(Pawn, TEXT("AdvancedCoverageInputComponent"));
+		ASSERT_THAT(IsNotNull(InputComponent, TEXT("input component should be created for advanced binding setup")));
+		if (InputComponent == nullptr)
+		{
+			return;
+		}
+
+		FFunctionInvoker SetupInvoker(*TestRunner, Pawn, FName(TEXT("SetupPlayerInputComponent")));
+		ASSERT_THAT(IsTrue(SetupInvoker.IsValid(), TEXT("advanced SetupPlayerInputComponent should be invokable")));
+		if (!SetupInvoker.IsValid())
+		{
+			return;
+		}
+		SetupInvoker.AddParam<UInputComponent*>(InputComponent);
+		ASSERT_THAT(IsTrue(SetupInvoker.Call(), TEXT("advanced SetupPlayerInputComponent should execute")));
+
+		int32 SetupCallCount = 0;
+		ASSERT_THAT(IsTrue(GetByPath<FIntProperty, int32>(*TestRunner, Pawn, TEXT("SetupCallCount"), SetupCallCount), TEXT("advanced SetupCallCount should be readable")));
+		ASSERT_THAT(AreEqual(1, SetupCallCount, TEXT("advanced SetupPlayerInputComponent should run exactly once")));
+
+		ASSERT_THAT(AreEqual(1, InputComponent->KeyBindings.Num(), TEXT("BindChord should add one key binding")));
+		ASSERT_THAT(AreEqual(1, InputComponent->AxisKeyBindings.Num(), TEXT("BindAxisKey should add one axis-key binding")));
+		ASSERT_THAT(AreEqual(1, InputComponent->VectorAxisBindings.Num(), TEXT("BindVectorAxis should add one vector-axis binding")));
+		ASSERT_THAT(IsTrue(InputComponent->HasBindings(), TEXT("InputComponent should report advanced AS bindings")));
+		if (InputComponent->KeyBindings.Num() != 1 || InputComponent->AxisKeyBindings.Num() != 1 || InputComponent->VectorAxisBindings.Num() != 1)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(EKeys::LeftMouseButton, InputComponent->KeyBindings[0].Chord.Key, TEXT("BindChord should keep the mouse key")));
+		ASSERT_THAT(IsTrue(InputComponent->KeyBindings[0].Chord.bShift, TEXT("BindChord should keep the shift modifier")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(IE_Pressed), static_cast<int32>(InputComponent->KeyBindings[0].KeyEvent.GetValue()), TEXT("BindChord should keep IE_Pressed")));
+		ASSERT_THAT(AreEqual(FName(TEXT("MouseX")), InputComponent->AxisKeyBindings[0].AxisKey.GetFName(), TEXT("BindAxisKey should keep MouseX")));
+		ASSERT_THAT(AreEqual(EKeys::Tilt, InputComponent->VectorAxisBindings[0].AxisKey, TEXT("BindVectorAxis should keep Tilt")));
+	}
+
+	TEST_METHOD(EnhancedInputBindingHandlesAndRemoval)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageInput_EnhancedBindingHandles"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageInputEnhancedBindingHandles.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class AEnhancedInputBindingHandleActor : AActor
+			{
+				UPROPERTY()
+				UInputAction Action;
+
+				UPROPERTY()
+				bool bSetupRan = false;
+
+				UFUNCTION()
+				void OnAction(FInputActionValue ActionValue, float32 ElapsedTime, float32 TriggeredTime, const UInputAction SourceAction)
+				{
+				}
+
+				UFUNCTION()
+				void OnDebug(FKey Key, FInputActionValue ActionValue)
+				{
+				}
+
+				UFUNCTION()
+				void SetupEnhancedInput(UEnhancedInputComponent EnhancedComponent)
+				{
+					if (Action == nullptr || EnhancedComponent == nullptr)
+						return;
+
+					FEnhancedInputActionHandlerDynamicSignature ActionDelegate;
+					ActionDelegate.BindUFunction(this, n"OnAction");
+					EnhancedComponent.BindAction(Action, ETriggerEvent::Started, ActionDelegate);
+					EnhancedComponent.BindAction(Action, ETriggerEvent::Triggered, ActionDelegate);
+					EnhancedComponent.BindActionValue(Action);
+
+					FInputDebugKeyHandlerDynamicSignature DebugDelegate;
+					DebugDelegate.BindUFunction(this, n"OnDebug");
+					EnhancedComponent.BindDebugKey(FInputChord(EKeys::F), IE_Pressed, DebugDelegate, true);
+					bSetupRan = EnhancedComponent.HasBindings();
+				}
+			}
+			)AS"),
+			TEXT("AEnhancedInputBindingHandleActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("enhanced input binding handle actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("enhanced input binding handle actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+
+		UEnhancedInputComponent* EnhancedComponent = NewObject<UEnhancedInputComponent>(Actor, TEXT("CoverageEnhancedBindingComponent"));
+		UInputAction* InputAction = NewObject<UInputAction>(Actor, TEXT("CoverageEnhancedBindingAction"));
+		ASSERT_THAT(IsNotNull(EnhancedComponent, TEXT("enhanced input component should be created for binding handles")));
+		ASSERT_THAT(IsNotNull(InputAction, TEXT("input action should be created for binding handles")));
+		if (EnhancedComponent == nullptr || InputAction == nullptr)
+		{
+			return;
+		}
+
+		FObjectPropertyBase* ActionProperty = FindFProperty<FObjectPropertyBase>(ScriptClass, TEXT("Action"));
+		ASSERT_THAT(IsNotNull(ActionProperty, TEXT("Action property should be reflected")));
+		if (ActionProperty == nullptr)
+		{
+			return;
+		}
+		ActionProperty->SetObjectPropertyValue_InContainer(Actor, InputAction);
+
+		FFunctionInvoker SetupInvoker(*TestRunner, Actor, FName(TEXT("SetupEnhancedInput")));
+		ASSERT_THAT(IsTrue(SetupInvoker.IsValid(), TEXT("SetupEnhancedInput should be invokable")));
+		if (!SetupInvoker.IsValid())
+		{
+			return;
+		}
+		SetupInvoker.AddParam<UEnhancedInputComponent*>(EnhancedComponent);
+		ASSERT_THAT(IsTrue(SetupInvoker.Call(), TEXT("SetupEnhancedInput should execute")));
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bSetupRan"), true,
+			TEXT("AS Enhanced Input setup should observe component bindings"))));
+
+		const TArray<TUniquePtr<FEnhancedInputActionEventBinding>>& EventBindings = EnhancedComponent->GetActionEventBindings();
+		ASSERT_THAT(AreEqual(2, EventBindings.Num(), TEXT("BindAction should create Started and Triggered event bindings")));
+		if (EventBindings.Num() != 2)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(EventBindings[0].IsValid(), TEXT("first enhanced input event binding should be valid")));
+		ASSERT_THAT(IsTrue(EventBindings[1].IsValid(), TEXT("second enhanced input event binding should be valid")));
+		if (!EventBindings[0].IsValid() || !EventBindings[1].IsValid())
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(EventBindings[0]->GetAction() == InputAction, TEXT("first event binding should keep the requested action")));
+		ASSERT_THAT(AreEqual(ETriggerEvent::Started, EventBindings[0]->GetTriggerEvent(), TEXT("first event binding should keep Started")));
+		ASSERT_THAT(IsTrue(EventBindings[0]->IsBoundToObject(Actor), TEXT("first event binding should be bound to the AS actor")));
+		ASSERT_THAT(IsTrue(EventBindings[1]->GetAction() == InputAction, TEXT("second event binding should keep the requested action")));
+		ASSERT_THAT(AreEqual(ETriggerEvent::Triggered, EventBindings[1]->GetTriggerEvent(), TEXT("second event binding should keep Triggered")));
+		ASSERT_THAT(IsTrue(EventBindings[1]->IsBoundToObject(Actor), TEXT("second event binding should be bound to the AS actor")));
+
+		const uint32 TriggeredHandle = EventBindings[1]->GetHandle();
+		ASSERT_THAT(IsTrue(TriggeredHandle != 0, TEXT("enhanced input event binding should expose a non-zero handle")));
+		ASSERT_THAT(IsTrue(EnhancedComponent->RemoveBindingByHandle(TriggeredHandle), TEXT("RemoveBindingByHandle should remove the Triggered event binding")));
+		ASSERT_THAT(AreEqual(1, EnhancedComponent->GetActionEventBindings().Num(), TEXT("event binding handle removal should leave one event binding")));
+
+		const TArray<FEnhancedInputActionValueBinding>& ValueBindings = EnhancedComponent->GetActionValueBindings();
+		ASSERT_THAT(AreEqual(1, ValueBindings.Num(), TEXT("BindActionValue should create one value binding")));
+		if (ValueBindings.Num() != 1)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(ValueBindings[0].GetAction() == InputAction, TEXT("value binding should keep the requested action")));
+		ASSERT_THAT(IsTrue(ValueBindings[0].GetHandle() != 0, TEXT("value binding should expose a non-zero handle")));
+		ASSERT_THAT(IsTrue(EnhancedComponent->RemoveActionValueBinding(0), TEXT("RemoveActionValueBinding should remove the AS-created value binding")));
+		ASSERT_THAT(AreEqual(0, EnhancedComponent->GetActionValueBindings().Num(), TEXT("value binding removal should empty value bindings")));
+
+		const TArray<TUniquePtr<FInputDebugKeyBinding>>& DebugBindings = EnhancedComponent->GetDebugKeyBindings();
+		ASSERT_THAT(AreEqual(1, DebugBindings.Num(), TEXT("BindDebugKey should create one debug key binding")));
+		if (DebugBindings.Num() != 1)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(DebugBindings[0].IsValid(), TEXT("debug key binding should be valid")));
+		if (!DebugBindings[0].IsValid())
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(DebugBindings[0]->GetHandle() != 0, TEXT("debug key binding should expose a non-zero handle")));
+		ASSERT_THAT(IsTrue(EnhancedComponent->RemoveDebugKeyBinding(0), TEXT("RemoveDebugKeyBinding should remove the AS-created debug binding")));
+		ASSERT_THAT(AreEqual(0, EnhancedComponent->GetDebugKeyBindings().Num(), TEXT("debug key removal should empty debug bindings")));
+
+		ASSERT_THAT(IsTrue(EnhancedComponent->RemoveActionEventBinding(0), TEXT("RemoveActionEventBinding should remove the remaining event binding")));
+		ASSERT_THAT(AreEqual(0, EnhancedComponent->GetActionEventBindings().Num(), TEXT("event binding removal should empty event bindings")));
+		ASSERT_THAT(IsFalse(EnhancedComponent->HasBindings(), TEXT("enhanced input component should have no bindings after removals")));
+	}
+
+	TEST_METHOD(TouchStateQuerySurface)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageInput_TouchStateQuerySurface"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageInputTouchStateQuerySurface.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ATouchStateQueryController : APlayerController
+			{
+				UPROPERTY()
+				float32 TouchX = 0.0f;
+
+				UPROPERTY()
+				float32 TouchY = 0.0f;
+
+				UPROPERTY()
+				bool bTouchPressed = false;
+
+				UFUNCTION()
+				void CaptureTouch(ETouchIndex FingerIndex)
+				{
+					GetInputTouchState(FingerIndex, TouchX, TouchY, bTouchPressed);
+				}
+
+				UFUNCTION()
+				bool HasTouchStateStorage()
+				{
+					return TouchX == 0.0f && TouchY == 0.0f && !bTouchPressed;
+				}
+			}
+			)AS"),
+			TEXT("ATouchStateQueryController"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("touch state query controller class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		UFunction* CaptureFunction = ScriptClass->FindFunctionByName(TEXT("CaptureTouch"));
+		ASSERT_THAT(IsNotNull(CaptureFunction, TEXT("CaptureTouch should be reflected")));
+		if (CaptureFunction == nullptr)
+		{
+			return;
+		}
+
+		UFunction* StorageFunction = ScriptClass->FindFunctionByName(TEXT("HasTouchStateStorage"));
+		ASSERT_THAT(IsNotNull(StorageFunction, TEXT("HasTouchStateStorage should be reflected")));
+		if (StorageFunction == nullptr)
+		{
+			return;
+		}
+
+		const FNumericProperty* TouchXProperty = FindFProperty<FNumericProperty>(ScriptClass, TEXT("TouchX"));
+		const FNumericProperty* TouchYProperty = FindFProperty<FNumericProperty>(ScriptClass, TEXT("TouchY"));
+		ASSERT_THAT(IsNotNull(TouchXProperty, TEXT("TouchX should expose touch X storage")));
+		ASSERT_THAT(IsNotNull(TouchYProperty, TEXT("TouchY should expose touch Y storage")));
+		if (TouchXProperty == nullptr || TouchYProperty == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(TouchXProperty->IsFloatingPoint(), TEXT("TouchX should use floating-point storage")));
+		ASSERT_THAT(IsTrue(TouchYProperty->IsFloatingPoint(), TEXT("TouchY should use floating-point storage")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FBoolProperty>(ScriptClass, TEXT("bTouchPressed")), TEXT("bTouchPressed should expose touch pressed storage")));
+		ASSERT_THAT(IsNotNull(CaptureFunction->FindPropertyByName(TEXT("FingerIndex")), TEXT("CaptureTouch should expose ETouchIndex input")));
+		ASSERT_THAT(IsNotNull(CastField<FBoolProperty>(StorageFunction->GetReturnProperty()), TEXT("HasTouchStateStorage should return bool")));
 	}
 };
 

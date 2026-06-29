@@ -149,14 +149,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorFunctionTest,
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void WriteColor(FLinearColor&out)"));
 			FLinearColor OutValue;
 			Invoker.AddArgRef(OutValue);
-			Invoker.Execute();
+			ASSERT_THAT(IsTrue(Invoker.Execute(), TEXT("WriteColor should execute")));
 			TestRunner->TestTrue(TEXT("FLinearColor &out parameter"), OutValue.Equals(FLinearColor(0.25f, 0.5f, 0.75f, 1.0f), 0.001f));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void WriteMultipleColors(FLinearColor&out, FLinearColor&out)"));
 			FLinearColor OutA, OutB;
 			Invoker.AddArgRef(OutA).AddArgRef(OutB);
-			Invoker.Execute();
+			ASSERT_THAT(IsTrue(Invoker.Execute(), TEXT("WriteMultipleColors should execute")));
 			TestRunner->TestEqual(TEXT("multiple &out parameter A"), OutA, FLinearColor::Red);
 			TestRunner->TestEqual(TEXT("multiple &out parameter B"), OutB, FLinearColor::Green);
 		}
@@ -188,7 +188,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorFunctionTest,
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void BrightenColor(FLinearColor&inout, float)"));
 			FLinearColor Value = FLinearColor(0.5f, 0.5f, 0.5f, 1.0f);
 			Invoker.AddArgRef(Value).AddArg(2.0f);
-			Invoker.Execute();
+			ASSERT_THAT(IsTrue(Invoker.Execute(), TEXT("BrightenColor should execute")));
 			TestRunner->TestTrue(TEXT("FLinearColor &inout parameter brightens color"), Value.Equals(FLinearColor(1.0f, 1.0f, 1.0f, 2.0f), 0.001f));
 		}
 	}
@@ -244,6 +244,102 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorFunctionTest,
 			FLinearColor Result;
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
 			TestRunner->TestTrue(TEXT("FLinearColor return computed"), Result.R > 0.4f && Result.B > 0.4f);
+		}
+	}
+
+	TEST_METHOD(FunctionArrayAndConversionRoundTrip)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFLinearColorFunc_ArrayConversion", ASTEST_AS(R"AS(
+		TArray<FLinearColor> MakeColorArray()
+		{
+			TArray<FLinearColor> Values;
+			Values.Add(FLinearColor::Red);
+			Values.Add(FLinearColor(0.25, 0.5, 0.75, 1.0));
+			FLinearColor Blue = FLinearColor::Blue;
+			Values.Add(Blue.GetClamped());
+			return Values;
+		}
+
+		FLinearColor SumColorArray(const TArray<FLinearColor>&in Values)
+		{
+			FLinearColor Total = FLinearColor::Transparent;
+			for (int Index = 0; Index < Values.Num(); ++Index)
+			{
+				Total += Values[Index];
+			}
+			return Total;
+		}
+
+		int ValidateArrayReturn()
+		{
+			TArray<FLinearColor> Values = MakeColorArray();
+			return Values.Num() == 3
+				&& Values[0] == FLinearColor::Red
+				&& Values[1].Equals(FLinearColor(0.25, 0.5, 0.75, 1.0), 0.001)
+				&& Values[2] == FLinearColor::Blue
+				? 1 : 0;
+		}
+
+		int ValidateArrayInput()
+		{
+			TArray<FLinearColor> Values;
+			Values.Add(FLinearColor(0.1, 0.2, 0.3, 0.4));
+			Values.Add(FLinearColor(0.2, 0.3, 0.4, 0.5));
+			FLinearColor Sum = SumColorArray(Values);
+			return Sum.Equals(FLinearColor(0.3, 0.5, 0.7, 0.9), 0.001) ? 1 : 0;
+		}
+
+		FLinearColor ReturnFromFColor(FColor Packed)
+		{
+			return FLinearColor(Packed);
+		}
+
+		FLinearColor ReturnReinterpretedFColor(FColor Packed)
+		{
+			return Packed.ReinterpretAsLinear();
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FLinearColor array/conversion function module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int ValidateArrayReturn()"));
+			const int32 Result = Invoker.ExecuteAndGet<int32>(0);
+			ASSERT_THAT(AreEqual(1, Result, TEXT("TArray<FLinearColor> return should preserve values inside AS")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int ValidateArrayInput()"));
+			const int32 Result = Invoker.ExecuteAndGet<int32>(0);
+			ASSERT_THAT(AreEqual(1, Result, TEXT("const TArray<FLinearColor>&in should pass values inside AS")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FLinearColor ReturnFromFColor(FColor)"));
+			FColor Packed(255, 0, 0, 255);
+			Invoker.AddArgStruct(Packed);
+			FLinearColor Result;
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result), TEXT("FLinearColor(FColor) function return should execute")));
+			ASSERT_THAT(IsTrue(Result.R > 0.99f && Result.G < 0.01f && Result.B < 0.01f && Result.A > 0.99f, TEXT("FLinearColor(FColor) function should convert red")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FLinearColor ReturnReinterpretedFColor(FColor)"));
+			FColor Packed(0, 255, 0, 255);
+			Invoker.AddArgStruct(Packed);
+			FLinearColor Result;
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result), TEXT("FColor.ReinterpretAsLinear function return should execute")));
+			ASSERT_THAT(IsTrue(Result.G > 0.99f && Result.R < 0.01f && Result.B < 0.01f && Result.A > 0.99f, TEXT("FColor.ReinterpretAsLinear function should convert green")));
 		}
 	}
 
@@ -331,15 +427,35 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorFunctionTest,
 				{
 					result = FLinearColor::Yellow;
 				}
+
+				UFUNCTION()
+				FLinearColor ClampInput(FLinearColor color)
+				{
+					return color.GetClamped(0.0, 1.0);
+				}
+
+				UFUNCTION()
+				FLinearColor ConvertPacked(FColor color)
+				{
+					return FLinearColor(color);
+				}
 			}
 			)AS"),
 			TEXT("ACoverageFLinearColorFunctionActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("FLinearColor-function UFUNCTION actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("FLinearColor-function UFUNCTION actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
 		BeginPlayActor(Engine, *Actor);
 
 		// UFUNCTION with FLinearColor parameters and return
@@ -348,7 +464,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorFunctionTest,
 			Invoker.AddParam(FLinearColor::Red);
 			Invoker.AddParam(FLinearColor::Blue);
 			const FLinearColor Result = Invoker.CallAndReturn<FLinearColor>();
-			TestRunner->TestTrue(TEXT("UFUNCTION FLinearColor parameters and return"), Result.R > 0.4f && Result.B > 0.4f);
+			ASSERT_THAT(IsTrue(Result.R > 0.4f && Result.B > 0.4f, TEXT("UFUNCTION FLinearColor parameters and return")));
 		}
 
 		// UFUNCTION with FLinearColor parameter and float return
@@ -356,7 +472,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorFunctionTest,
 			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("GetColorLuminance"));
 			Invoker.AddParam(FLinearColor::White);
 			const float Result = Invoker.CallAndReturn<float>();
-			TestRunner->TestTrue(TEXT("UFUNCTION FLinearColor to float"), Result > 0.9f);
+			ASSERT_THAT(IsTrue(Result > 0.9f, TEXT("UFUNCTION FLinearColor to float")));
 		}
 
 		// UFUNCTION with &out parameter
@@ -364,9 +480,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorFunctionTest,
 			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("WriteOut"));
 			FLinearColor OutValue;
 			Invoker.AddParam(FLinearColor::Black);
-			Invoker.Call();
-			Invoker.ReadParamAfterCall(0, OutValue);
-			TestRunner->TestEqual(TEXT("UFUNCTION FLinearColor &out parameter"), OutValue, FLinearColor::Yellow);
+			ASSERT_THAT(IsTrue(Invoker.Call(), TEXT("WriteOut should execute")));
+			ASSERT_THAT(IsTrue(Invoker.ReadParamAfterCall(0, OutValue), TEXT("WriteOut should expose FLinearColor out value after call")));
+			ASSERT_THAT(IsTrue(OutValue.Equals(FLinearColor::Yellow, 0.001f), TEXT("UFUNCTION FLinearColor &out parameter")));
+		}
+
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("ClampInput"));
+			Invoker.AddParam(FLinearColor(-0.25f, 0.5f, 1.5f, 2.0f));
+			const FLinearColor Result = Invoker.CallAndReturn<FLinearColor>();
+			ASSERT_THAT(IsTrue(Result.Equals(FLinearColor(0.0f, 0.5f, 1.0f, 1.0f), 0.001f), TEXT("UFUNCTION should return clamped FLinearColor")));
+		}
+
+		{
+			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("ConvertPacked"));
+			Invoker.AddParam(FColor(255, 0, 0, 255));
+			const FLinearColor Result = Invoker.CallAndReturn<FLinearColor>();
+			ASSERT_THAT(IsTrue(Result.R > 0.99f && Result.G < 0.01f && Result.B < 0.01f && Result.A > 0.99f, TEXT("UFUNCTION should return FLinearColor converted from FColor")));
 		}
 	}
 };

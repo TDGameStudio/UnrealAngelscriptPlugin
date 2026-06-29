@@ -504,6 +504,110 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFQuatExpressionTest,
 			ExpectQuatNearlyEqual(Engine, Module, TEXT("FQuat FindBetweenVectors()"), Expected, TEXT("FQuat::FindBetweenVectors()"), 0.01);
 		}
 	}
+
+	TEST_METHOD(QuatAdvancedOperatorsAndMethods)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFQuatExpr_AdvancedOps", ASTEST_AS(R"AS(
+		bool CopyAssignAndEquality()
+		{
+			FQuat Source = FQuat(FVector::UpVector, 1.5707963267948966);
+			FQuat Copy(Source);
+			FQuat Assigned;
+			Assigned = Copy;
+			return Assigned == Source && Assigned.Equals(Source, 0.001);
+		}
+
+		bool CompoundAndScalarOperators()
+		{
+			FQuat QuarterTurn = FQuat(FVector::UpVector, 1.5707963267948966);
+			FQuat Working = FQuat::Identity;
+			Working *= QuarterTurn;
+			FQuat Inflated = Working * 2.0;
+			Inflated /= 2.0;
+			FQuat AddedThenSubtracted = (Working + FQuat::Identity) - FQuat::Identity;
+			return Inflated.Equals(QuarterTurn, 0.001)
+				&& AddedThenSubtracted.Equals(QuarterTurn, 0.001);
+		}
+
+		bool AxisAngleAndDirectionMethods()
+		{
+			FQuat QuarterTurn = FQuat(FVector::UpVector, 1.5707963267948966);
+			FVector Axis;
+			float64 Angle = 0.0;
+			QuarterTurn.ToAxisAndAngle(Axis, Angle);
+			return Axis.Equals(FVector::UpVector, 0.001)
+				&& Math::Abs(Angle - 1.5707963267948966) < 0.001
+				&& QuarterTurn.GetForwardVector().Equals(QuarterTurn.GetAxisX(), 0.001)
+				&& QuarterTurn.Vector().Equals(QuarterTurn.GetAxisX(), 0.001);
+		}
+
+		bool InterpolationAndErrorMethods()
+		{
+			FQuat Start = FQuat::Identity;
+			FQuat End = FQuat(FVector::UpVector, 1.5707963267948966);
+			FQuat Fast = FQuat::FastLerp(Start, End, 0.5).GetNormalized();
+			FQuat Full = FQuat::SlerpFullPath(Start, End, 0.5);
+			float64 Error = FQuat::Error(Fast, Full);
+			return Fast.IsNormalized()
+				&& Full.IsNormalized()
+				&& Error < 0.1
+				&& FQuat::ErrorAutoNormalize(Fast * 2.0, Full * 3.0) < 0.1;
+		}
+
+		bool SwingTwistAndTangents()
+		{
+			FQuat Rotation = FQuat(FVector::UpVector, 1.5707963267948966);
+			FQuat Swing;
+			FQuat Twist;
+			Rotation.ToSwingTwist(FVector::UpVector, Swing, Twist);
+
+			FQuat Tangent;
+			FQuat::CalcTangents(FQuat::Identity, Rotation, FQuat(FVector::UpVector, 3.1415926535897932), 0.0, Tangent);
+
+			return Twist.IsNormalized()
+				&& Swing.IsNormalized()
+				&& Math::Abs(Rotation.GetTwistAngle(FVector::UpVector) - 1.5707963267948966) < 0.001
+				&& !Tangent.ContainsNaN();
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ASSERT_THAT(IsNotNull(Module, TEXT("advanced FQuat expression module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("bool CopyAssignAndEquality()"));
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndGet<bool>(false), TEXT("copy construction, assignment, and equality should work")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("bool CompoundAndScalarOperators()"));
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndGet<bool>(false), TEXT("compound quaternion and scalar operators should work")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("bool AxisAngleAndDirectionMethods()"));
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndGet<bool>(false), TEXT("axis-angle and direction accessors should work")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("bool InterpolationAndErrorMethods()"));
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndGet<bool>(false), TEXT("interpolation and error helpers should work")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("bool SwingTwistAndTangents()"));
+			ASSERT_THAT(IsTrue(Invoker.ExecuteAndGet<bool>(false), TEXT("swing/twist and tangent helpers should work")));
+		}
+	}
 };
 
 #endif // WITH_DEV_AUTOMATION_TESTS

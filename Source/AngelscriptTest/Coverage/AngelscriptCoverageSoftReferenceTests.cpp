@@ -22,7 +22,7 @@
 // Coverage for AngelScript soft references (TSoftObjectPtr, TSoftClassPtr).
 // This file covers the soft reference sections from:
 //
-//   Documents/Coverage/Coverage_HandlesAndReferences.md - Sub-matrix 4 & 5
+//   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md - Sub-matrix 4 & 5
 //
 // Axes covered here:
 //   * SoftObjectPtrBasics        - TSoftObjectPtr declaration, assignment, Get, LoadSynchronous
@@ -37,7 +37,7 @@
 // an AS actor, drive its members, read them back through FPropertyBindingPath
 // helpers in Shared/AngelscriptReflectiveAccess.h.
 //
-// Detailed coverage matrix: Documents/Coverage/Coverage_HandlesAndReferences.md
+// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -944,6 +944,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSoftReferenceTest,
 			return;
 		}
 		BeginPlayActor(Engine, *Actor);
+		FTaskGraphInterface::Get().ProcessThreadUntilIdle(ENamedThreads::GameThread);
+		FTaskGraphInterface::Get().ProcessThreadUntilIdle(ENamedThreads::GameThread_Local);
 
 		int32 AsyncCallbackCount = 0;
 		ASSERT_THAT(IsTrue(ReadIntPropertyChecked(*TestRunner, Actor, TEXT("AsyncCallbackCount"), AsyncCallbackCount), TEXT("AsyncCallbackCount should be readable")));
@@ -973,10 +975,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSoftReferenceTest,
 			ModuleName,
 			TEXT("ASCoverageSoftClassConfiguredPath.as"),
 			ASTEST_AS(R"AS(
-			UCLASS()
+			UCLASS(Config=Game)
 			class ACoverageSoftClassConfiguredPathActor : AActor
 			{
-				UPROPERTY()
+				UPROPERTY(Config)
 				TSoftClassPtr<AActor> ConfiguredActorClass;
 
 				UPROPERTY()
@@ -987,6 +989,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSoftReferenceTest,
 
 				UPROPERTY()
 				bool ConfiguredClassCanSpawn = false;
+
+				UPROPERTY()
+				bool PendingConfiguredPath = false;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -999,6 +1004,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSoftReferenceTest,
 
 					AActor SpawnedActor = SpawnActor(LoadedClass);
 					ConfiguredClassCanSpawn = SpawnedActor != nullptr;
+
+					TSoftClassPtr<AActor> MissingConfiguredClass(FSoftObjectPath("/Game/Coverage/MissingActorClass.MissingActorClass_C"));
+					PendingConfiguredPath = !MissingConfiguredClass.IsNull() && !MissingConfiguredClass.IsValid() && MissingConfiguredClass.IsPending();
 				}
 			}
 			)AS"),
@@ -1008,6 +1016,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSoftReferenceTest,
 		{
 			return;
 		}
+
+		ASSERT_THAT(IsTrue(ScriptClass->HasAnyClassFlags(CLASS_Config), TEXT("Config=Game should make the soft-class harness a config class")));
+		ASSERT_THAT(AreEqual(FName(TEXT("Game")), ScriptClass->ClassConfigName, TEXT("Config=Game should set the soft-class harness config name")));
+
+		const FProperty* ConfiguredActorClassProp = ScriptClass->FindPropertyByName(TEXT("ConfiguredActorClass"));
+		ASSERT_THAT(IsNotNull(ConfiguredActorClassProp, TEXT("ConfiguredActorClass config property should exist")));
+		if (ConfiguredActorClassProp == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(ConfiguredActorClassProp->HasAnyPropertyFlags(CPF_Config), TEXT("UPROPERTY(Config) should set CPF_Config on TSoftClassPtr")));
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
@@ -1022,6 +1041,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSoftReferenceTest,
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ConstructedFromConfiguredPath"), true, TEXT("TSoftClassPtr should construct from a configured path"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("LoadedConfiguredClass"), true, TEXT("Configured TSoftClassPtr should resolve the actor class"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ConfiguredClassCanSpawn"), true, TEXT("Configured TSoftClassPtr should be usable as a spawn class"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("PendingConfiguredPath"), true, TEXT("TSoftClassPtr should report pending for path-only configured classes"))));
 	}
 };
 

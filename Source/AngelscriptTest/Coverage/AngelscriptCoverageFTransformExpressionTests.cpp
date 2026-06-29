@@ -84,6 +84,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformExpressionTest,
 		ASSERT_THAT(IsTrue(Result.Equals(Expected, Tolerance), Message));
 	}
 
+	void ExpectQuatNearlyEqual(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const FQuat& Expected, const TCHAR* Message, double Tolerance = 0.0001)
+	{
+		ASSERT_THAT(IsNotNull(Module, TEXT("FTransform expression module should compile before executing quat function")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("FTransform quat function should resolve and prepare")));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
+		FQuat Result;
+		ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
+		ASSERT_THAT(IsTrue(Result.Equals(Expected, Tolerance), Message));
+	}
+
 	// Helper for FTransform with tolerance
 	void ExpectTransformNearlyEqual(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const FTransform& Expected, const TCHAR* Message, double Tolerance = 0.0001)
 	{
@@ -436,6 +455,141 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformExpressionTest,
 			FVector Expected(10, 20, 30);
 			ExpectVectorNearlyEqual(Engine, Module, TEXT("FVector InverseRoundTrip()"), Expected, TEXT("FTransform inverse round-trip"), 0.01);
 		}
+	}
+
+	// -------------------------------------------------------------------------
+	// FTransform bound methods beyond the baseline position/vector path.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(TransformAdvancedMethodsAndMutators)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFTransformExpr_AdvancedMethods", ASTEST_AS(R"AS(
+		FQuat TransformRotation()
+		{
+			FTransform T = FTransform(FRotator(0, 90, 0), FVector(100, 0, 0), FVector(2, 3, 4));
+			FQuat Local = FQuat(FRotator(10, 20, 30));
+			return T.TransformRotation(Local);
+		}
+
+		FQuat InverseTransformRotationRoundTrip()
+		{
+			FTransform T = FTransform(FRotator(0, 90, 0), FVector(100, 0, 0), FVector(2, 3, 4));
+			FQuat Local = FQuat(FRotator(10, 20, 30));
+			return T.InverseTransformRotation(T.TransformRotation(Local));
+		}
+
+		FVector TransformPositionNoScale()
+		{
+			FTransform T = FTransform(FQuat::Identity, FVector(10, 20, 30), FVector(2, 3, 4));
+			return T.TransformPositionNoScale(FVector(1, 2, 3));
+		}
+
+		FVector TransformVectorNoScale()
+		{
+			FTransform T = FTransform(FQuat::Identity, FVector(10, 20, 30), FVector(2, 3, 4));
+			return T.TransformVectorNoScale(FVector(1, 2, 3));
+		}
+
+		FVector InverseTransformPositionNoScaleRoundTrip()
+		{
+			FTransform T = FTransform(FQuat::Identity, FVector(10, 20, 30), FVector(2, 3, 4));
+			FVector Local = FVector(1, 2, 3);
+			return T.InverseTransformPositionNoScale(T.TransformPositionNoScale(Local));
+		}
+
+		FVector ConstGetterComposition()
+		{
+			const FTransform T = FTransform(FQuat::Identity, FVector(3, 4, 5), FVector(2, 3, 4));
+			return T.GetLocation() + T.GetTranslation() + T.GetScale3D();
+		}
+
+		FTransform MultiplyAssign()
+		{
+			FTransform T = FTransform(FVector(1, 0, 0));
+			T *= FTransform(FVector(0, 2, 0));
+			return T;
+		}
+
+		FTransform SetTranslationAndScale()
+		{
+			FTransform T = FTransform::Identity;
+			T.SetTranslationAndScale3D(FVector(7, 8, 9), FVector(2, 3, 4));
+			return T;
+		}
+
+		FVector MutateTranslationAndScaling()
+		{
+			FTransform T = FTransform::Identity;
+			T.SetLocation(FVector(1, 2, 3));
+			T.AddToTranslation(FVector(4, 5, 6));
+			T.SetScale3D(FVector(2, 3, 4));
+			T.ScaleTranslation(2.0);
+			T.RemoveScaling();
+			return T.GetLocation() + T.GetScale3D();
+		}
+
+		bool CompareNoScale()
+		{
+			FTransform A = FTransform(FQuat::Identity, FVector(1, 2, 3), FVector(1, 1, 1));
+			FTransform B = FTransform(FQuat::Identity, FVector(1, 2, 3), FVector(4, 5, 6));
+			return A.EqualsNoScale(B, 0.001);
+		}
+
+		bool CompareTranslationOnly()
+		{
+			FTransform A = FTransform(FQuat::Identity, FVector(1, 2, 3), FVector(1, 1, 1));
+			FTransform B = FTransform(FQuat(FRotator(0, 90, 0)), FVector(1, 2, 3), FVector(4, 5, 6));
+			return A.TranslationEquals(B, 0.001);
+		}
+
+		float AxisScaleSum()
+		{
+			FTransform T = FTransform(FQuat::Identity, FVector::ZeroVector, FVector(2, 5, 3));
+			return T.GetMaximumAxisScale() + T.GetMinimumAxisScale();
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		{
+			const FTransform T(FRotator(0, 90, 0), FVector(100, 0, 0), FVector(2, 3, 4));
+			const FQuat Local(FRotator(10, 20, 30));
+			ExpectQuatNearlyEqual(Engine, Module, TEXT("FQuat TransformRotation()"), T.TransformRotation(Local), TEXT("FTransform.TransformRotation()"));
+			ExpectQuatNearlyEqual(Engine, Module, TEXT("FQuat InverseTransformRotationRoundTrip()"), Local, TEXT("FTransform.InverseTransformRotation() round-trip"));
+		}
+
+		{
+			const FTransform T(FQuat::Identity, FVector(10, 20, 30), FVector(2, 3, 4));
+			ExpectVectorNearlyEqual(Engine, Module, TEXT("FVector TransformPositionNoScale()"), T.TransformPositionNoScale(FVector(1, 2, 3)), TEXT("FTransform.TransformPositionNoScale()"));
+			ExpectVectorNearlyEqual(Engine, Module, TEXT("FVector TransformVectorNoScale()"), T.TransformVectorNoScale(FVector(1, 2, 3)), TEXT("FTransform.TransformVectorNoScale()"));
+			ExpectVectorNearlyEqual(Engine, Module, TEXT("FVector InverseTransformPositionNoScaleRoundTrip()"), FVector(1, 2, 3), TEXT("FTransform.InverseTransformPositionNoScale() round-trip"));
+		}
+
+		ExpectVectorNearlyEqual(Engine, Module, TEXT("FVector ConstGetterComposition()"), FVector(8, 11, 14), TEXT("const FTransform getters should read location, translation, and scale"));
+
+		{
+			FTransform Expected(FVector(1, 0, 0));
+			Expected *= FTransform(FVector(0, 2, 0));
+			ExpectTransformNearlyEqual(Engine, Module, TEXT("FTransform MultiplyAssign()"), Expected, TEXT("FTransform opMulAssign(FTransform)"));
+		}
+
+		{
+			FTransform Expected = FTransform::Identity;
+			Expected.SetTranslationAndScale3D(FVector(7, 8, 9), FVector(2, 3, 4));
+			ExpectTransformNearlyEqual(Engine, Module, TEXT("FTransform SetTranslationAndScale()"), Expected, TEXT("FTransform.SetTranslationAndScale3D()"));
+		}
+
+		ExpectVectorNearlyEqual(Engine, Module, TEXT("FVector MutateTranslationAndScaling()"), FVector(11, 15, 19), TEXT("FTransform translation/scale mutators"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool CompareNoScale()"), true, TEXT("FTransform.EqualsNoScale() ignores scale"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool CompareTranslationOnly()"), true, TEXT("FTransform.TranslationEquals() ignores rotation and scale"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float AxisScaleSum()"), 7.0f, TEXT("FTransform axis scale helpers"));
 	}
 
 	// -------------------------------------------------------------------------

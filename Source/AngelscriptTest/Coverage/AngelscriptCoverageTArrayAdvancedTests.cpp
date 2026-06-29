@@ -26,7 +26,7 @@
 // Basic operations (Add, Contains, Num, indexing) are already covered in
 // AngelscriptCoverageIntPropertyTests.cpp.
 //
-// Detailed coverage matrix: Documents/Coverage/Coverage_Containers.md
+// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -711,6 +711,40 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 			}
 			)AS"),
 			TEXT("TArray<TArray<TArray<int>>> should remain an explicit unsupported boundary"),
+			MakeArrayView(ExpectedDiagnostics))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Nested containers: TArray<TMap<...>> and TArray<TSet<...>> are rejected.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(TArrayNestedMapAndSetContainers)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("Containers cannot be nested in other containers"));
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(*TestRunner, Engine, TEXT("ASCoverageTArrayNestedMapUnsupported"), ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageTArrayNestedMapActor : AActor
+			{
+				UPROPERTY()
+				TArray<TMap<int, FString>> Rows;
+			}
+			)AS"),
+			TEXT("TArray<TMap<int, FString>> should remain an explicit unsupported boundary"),
+			MakeArrayView(ExpectedDiagnostics))));
+
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(*TestRunner, Engine, TEXT("ASCoverageTArrayNestedSetUnsupported"), ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageTArrayNestedSetActor : AActor
+			{
+				UPROPERTY()
+				TArray<TSet<int>> Rows;
+			}
+			)AS"),
+			TEXT("TArray<TSet<int>> should remain an explicit unsupported boundary"),
 			MakeArrayView(ExpectedDiagnostics))));
 	}
 

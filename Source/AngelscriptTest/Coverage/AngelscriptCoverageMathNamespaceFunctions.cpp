@@ -95,6 +95,25 @@ private:
 		ASSERT_THAT(IsTrue(Result >= MinValue && Result <= MaxValue, Message));
 	}
 
+	void ExpectGlobalFloatSatisfies(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, TFunctionRef<bool(float)> Predicate, const TCHAR* Message)
+	{
+		ASSERT_THAT(IsNotNull(Module, TEXT("math namespace module should compile before executing predicate function")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("math namespace predicate function should resolve and prepare")));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
+
+		const float Result = Invoker.ExecuteAndGet<float>(0.0f);
+		ASSERT_THAT(IsTrue(Predicate(Result), Message));
+	}
+
 	template <typename T>
 	void ExpectGlobalStructSatisfies(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, TFunctionRef<bool(const T&)> Predicate, const TCHAR* Message)
 	{
@@ -161,6 +180,22 @@ public:
 			return Math::RadiansToDegrees(Math::Atan2(1.0, 1.0));
 		}
 
+		float TestFastAsin()
+		{
+			return Math::RadiansToDegrees(Math::FastAsin(0.5));
+		}
+
+		float TestSinh()
+		{
+			return Math::Sinh(0.0);
+		}
+
+		float TestFloatOverload()
+		{
+			float Angle = Math::DegreesToRadians(30.0f);
+			return Math::Sin(Angle) + Math::Cos(Angle) + Math::Tan(0.0f);
+		}
+
 		float TestDegreesToRadians()
 		{
 			return Math::DegreesToRadians(180.0);
@@ -186,6 +221,9 @@ public:
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestAcos()"), 90.0f, TEXT("Math::Acos()"), 0.001);
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestAtan()"), 45.0f, TEXT("Math::Atan()"), 0.001);
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestAtan2()"), 45.0f, TEXT("Math::Atan2()"), 0.001);
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestFastAsin()"), 30.0f, TEXT("Math::FastAsin()"), 0.001);
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestSinh()"), 0.0f, TEXT("Math::Sinh()"), 0.001);
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestFloatOverload()"), 1.366f, TEXT("Math trig float32 overloads"), 0.001);
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestDegreesToRadians()"), PI, TEXT("Math::DegreesToRadians()"), 0.001);
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestRadiansToDegrees()"), 180.0f, TEXT("Math::RadiansToDegrees()"), 0.001);
 	}
@@ -243,6 +281,16 @@ public:
 		{
 			return Math::Exp2(3.0);
 		}
+
+		float TestFloatPowSqrtLog()
+		{
+			return Math::Pow(3.0f, 2.0f) + Math::Sqrt(25.0f) + Math::Log2(16.0f);
+		}
+
+		float TestInvSqrtEst()
+		{
+			return Math::InvSqrtEst(4.0f);
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -261,6 +309,8 @@ public:
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestLogX()"), 3.0f, TEXT("Math::LogX()"), 0.001);
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestLog2()"), 3.0f, TEXT("Math::Log2()"), 0.001);
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestExp2()"), 8.0f, TEXT("Math::Exp2()"), 0.001);
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestFloatPowSqrtLog()"), 18.0f, TEXT("Math power/root float32 overloads"), 0.001);
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestInvSqrtEst()"), 0.5f, TEXT("Math::InvSqrtEst()"), 0.05);
 	}
 
 	// -------------------------------------------------------------------------
@@ -321,6 +371,21 @@ public:
 		{
 			return Math::Fmod(10.0, 3.0);
 		}
+
+		float TestNegativeRounding()
+		{
+			return Math::Floor(-3.2) + Math::Ceil(-3.8) + Math::Round(-3.5) + Math::Trunc(-3.9);
+		}
+
+		float TestToFloatRounding()
+		{
+			return Math::FloorToFloat(3.7f) + Math::CeilToFloat(3.2f) + Math::RoundToFloat(3.5f) + Math::TruncToFloat(3.9f);
+		}
+
+		double TestToDoubleRounding()
+		{
+			return Math::FloorToDouble(3.7) + Math::CeilToDouble(3.2) + Math::RoundToDouble(3.5) + Math::TruncToDouble(3.9);
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -340,6 +405,9 @@ public:
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int32 TestTruncToInt()"), 3, TEXT("Math::TruncToInt()"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestFractional()"), 0.7f, TEXT("Math::Fractional()"), 0.001);
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestModulo()"), 1.0f, TEXT("Math::Fmod()"), 0.001);
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestNegativeRounding()"), -14.0f, TEXT("Math rounding handles negative inputs"), 0.001);
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestToFloatRounding()"), 14.0f, TEXT("Math *ToFloat rounding helpers"), 0.001);
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double TestToDoubleRounding()"), 14.0, TEXT("Math *ToDouble rounding helpers"), 0.001);
 	}
 
 	// -------------------------------------------------------------------------
@@ -375,6 +443,16 @@ public:
 		{
 			return Math::Sign(0.0);
 		}
+
+		float TestAbsAndSignFloat32()
+		{
+			return Math::Abs(-2.25f) + Math::Sign(12.0f) + Math::Sign(-12.0f);
+		}
+
+		double TestAbsAndSignFloat64()
+		{
+			return Math::Abs(-8.5) + Math::Sign(12.0) + Math::Sign(-12.0);
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -389,6 +467,8 @@ public:
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestSignFloat()"), -1.0f, TEXT("Math::Sign() float"));
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int32 TestSignInt()"), 1, TEXT("Math::Sign() int"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestSignZero()"), 0.0f, TEXT("Math::Sign() zero"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestAbsAndSignFloat32()"), 2.25f, TEXT("Math::Abs()/Sign() float32 overloads"), 0.001);
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double TestAbsAndSignFloat64()"), 8.5, TEXT("Math::Abs()/Sign() float64 overloads"), 0.001);
 	}
 
 	// -------------------------------------------------------------------------
@@ -434,6 +514,28 @@ public:
 		{
 			return Math::Clamp(5.0, 0.0, 10.0);
 		}
+
+		double TestClampDouble()
+		{
+			return Math::Clamp(-2.5, -1.0, 4.0);
+		}
+
+		float TestMax3()
+		{
+			return Math::Max3(1.0f, 7.0f, 3.0f);
+		}
+
+		bool TestWithinRanges()
+		{
+			return Math::IsWithin(5.0, 0.0, 10.0)
+				&& !Math::IsWithin(10.0, 0.0, 10.0)
+				&& Math::IsWithinInclusive(10.0, 0.0, 10.0);
+		}
+
+		float TestClampAngleAndUnwind()
+		{
+			return Math::ClampAngle(30.0f, -45.0f, 45.0f) + Math::UnwindDegrees(450.0f);
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -450,6 +552,10 @@ public:
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestClampFloat()"), 10.0f, TEXT("Math::Clamp() float clamped to max"));
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int32 TestClampInt()"), 0, TEXT("Math::Clamp() int clamped to min"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestClampInRange()"), 5.0f, TEXT("Math::Clamp() float in range"));
+		ExpectGlobalReturn<double>(Engine, Module, TEXT("double TestClampDouble()"), -1.0, TEXT("Math::Clamp() double clamped to min"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestMax3()"), 7.0f, TEXT("Math::Max3() float"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestWithinRanges()"), true, TEXT("Math::IsWithin()/IsWithinInclusive()"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestClampAngleAndUnwind()"), 120.0f, TEXT("Math angle clamp/unwind helpers"), 0.001);
 	}
 
 	TEST_METHOD(SpecialValueClassificationFunctions)
@@ -589,6 +695,32 @@ public:
 		{
 			return Math::EaseIn(FVector(0, 0, 0), FVector(10, 20, 30), 0.5f, 2.0f);
 		}
+
+		FVector TestVectorEaseOut()
+		{
+			return Math::EaseOut(FVector(0, 0, 0), FVector(10, 20, 30), 0.5f, 2.0f);
+		}
+
+		FVector TestVectorEaseInOut()
+		{
+			return Math::EaseInOut(FVector(0, 0, 0), FVector(10, 20, 30), 0.5f, 2.0f);
+		}
+
+		float TestFInterpConstantTo()
+		{
+			return Math::FInterpConstantTo(0.0f, 10.0f, 0.5f, 4.0f);
+		}
+
+		float TestFInterpTo()
+		{
+			return Math::FInterpTo(0.0f, 10.0f, 0.5f, 1.0f);
+		}
+
+		float TestMappedRange()
+		{
+			return Math::GetMappedRangeValueClamped(FVector2D(0, 10), FVector2D(0, 100), 15.0)
+				+ Math::GetMappedRangeValueUnclamped(FVector2D(0, 10), FVector2D(0, 100), 15.0);
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -624,6 +756,83 @@ public:
 			TEXT("FVector TestVectorEaseIn()"),
 			[](const FVector& Result) { return Result.Equals(FVector(2.5, 5, 7.5), 0.001); },
 			TEXT("Math::EaseIn() vector overload"));
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestVectorEaseOut()"),
+			[](const FVector& Result) { return Result.Equals(FVector(7.5, 15, 22.5), 0.001); },
+			TEXT("Math::EaseOut() vector overload"));
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestVectorEaseInOut()"),
+			[](const FVector& Result) { return Result.Equals(FVector(5, 10, 15), 0.001); },
+			TEXT("Math::EaseInOut() vector overload"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestFInterpConstantTo()"), 2.0f, TEXT("Math::FInterpConstantTo()"), 0.001);
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestFInterpTo()"), 5.0f, TEXT("Math::FInterpTo()"), 0.001);
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestMappedRange()"), 250.0f, TEXT("Math mapped range helpers"), 0.001);
+	}
+
+	TEST_METHOD(ScalarCurveAndUtilityFunctions)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovMath_ScalarCurvesUtilities", ASTEST_AS(R"AS(
+		float TestSinusoidalInOut()
+		{
+			return Math::SinusoidalIn(0.0f, 10.0f, 0.0f)
+				+ Math::SinusoidalOut(0.0f, 10.0f, 1.0f)
+				+ Math::SinusoidalInOut(0.0f, 10.0f, 0.5f);
+		}
+
+		float TestExpoAndCircularFamilies()
+		{
+			return Math::ExpoIn(0.0f, 10.0f, 1.0f)
+				+ Math::ExpoOut(0.0f, 10.0f, 0.0f)
+				+ Math::ExpoInOut(0.0f, 10.0f, 0.5f)
+				+ Math::CircularIn(0.0f, 10.0f, 0.0f)
+				+ Math::CircularOut(0.0f, 10.0f, 1.0f)
+				+ Math::CircularInOut(0.0f, 10.0f, 0.5f);
+		}
+
+		float TestCubicInterp()
+		{
+			return Math::CubicInterp(0.0f, 0.0f, 10.0f, 0.0f, 0.5f);
+		}
+
+		float TestScalarUtilities()
+		{
+			return Math::GridSnap(12.3f, 5.0f)
+				+ Math::NormalizeToRange(15.0, 10.0, 20.0)
+				+ Math::MakePulsatingValue(0.25, 1.0f, 0.0f);
+		}
+
+		bool TestScalarPredicates()
+		{
+			return Math::IsNearlyEqual(1.0f, 1.00001f, 0.001f)
+				&& Math::IsNearlyZero(0.00001f, 0.001f)
+				&& Math::IsPowerOfTwo(64);
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestSinusoidalInOut()"), 15.0f, TEXT("Math sinusoidal interpolation family"), 0.001);
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestExpoAndCircularFamilies()"), 30.0f, TEXT("Math expo/circular interpolation families"), 0.001);
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestCubicInterp()"), 5.0f, TEXT("Math::CubicInterp() scalar"), 0.001);
+		ExpectGlobalFloatSatisfies(
+			Engine,
+			Module,
+			TEXT("float TestScalarUtilities()"),
+			[](float Result) { return Result >= 10.5f && Result <= 11.5f; },
+			TEXT("Math scalar utility helpers should execute and keep pulse output normalized"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestScalarPredicates()"), true, TEXT("Math scalar predicate helpers"));
 	}
 
 	// -------------------------------------------------------------------------
@@ -653,6 +862,26 @@ public:
 		bool TestRandBool()
 		{
 			return Math::RandBool();
+		}
+
+		int32 TestRandHelper()
+		{
+			return Math::RandHelper(5);
+		}
+
+		int32 TestRand()
+		{
+			return Math::Rand();
+		}
+
+		FVector TestVRand()
+		{
+			return Math::VRand();
+		}
+
+		FVector2D TestRandPointInCircle()
+		{
+			return Math::RandPointInCircle(5.0f);
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -689,6 +918,37 @@ public:
 		}
 		const bool RandBoolResult = RandBoolInvoker.ExecuteAndGet<bool>(false);
 		TestRunner->AddInfo(FString::Printf(TEXT("Math::RandBool() returned: %s"), RandBoolResult ? TEXT("true") : TEXT("false")));
+
+		FASGlobalFunctionInvoker RandHelperInvoker(*TestRunner, Engine, *Module, TEXT("int32 TestRandHelper()"));
+		ASSERT_THAT(IsTrue(RandHelperInvoker.IsValid(), TEXT("TestRandHelper should resolve and prepare")));
+		if (!RandHelperInvoker.IsValid())
+		{
+			return;
+		}
+		const int32 RandHelperResult = RandHelperInvoker.ExecuteAndGet<int32>(-1);
+		ASSERT_THAT(IsTrue(RandHelperResult >= 0 && RandHelperResult < 5, TEXT("Math::RandHelper() returns [0, Max)")));
+
+		FASGlobalFunctionInvoker RandInvoker(*TestRunner, Engine, *Module, TEXT("int32 TestRand()"));
+		ASSERT_THAT(IsTrue(RandInvoker.IsValid(), TEXT("TestRand should resolve and prepare")));
+		if (!RandInvoker.IsValid())
+		{
+			return;
+		}
+		const int32 RandResult = RandInvoker.ExecuteAndGet<int32>(0);
+		ASSERT_THAT(IsTrue(RandResult >= 0, TEXT("Math::Rand() returns non-negative integer")));
+
+		ExpectGlobalStructSatisfies<FVector>(
+			Engine,
+			Module,
+			TEXT("FVector TestVRand()"),
+			[](const FVector& Result) { return FMath::IsNearlyEqual(Result.Size(), 1.0, 0.001); },
+			TEXT("Math::VRand() returns a unit vector"));
+		ExpectGlobalStructSatisfies<FVector2D>(
+			Engine,
+			Module,
+			TEXT("FVector2D TestRandPointInCircle()"),
+			[](const FVector2D& Result) { return Result.Size() <= 5.001; },
+			TEXT("Math::RandPointInCircle() stays within radius"));
 	}
 
 	// -------------------------------------------------------------------------

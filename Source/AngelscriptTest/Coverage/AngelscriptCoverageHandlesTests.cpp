@@ -1,10 +1,13 @@
 #include "CQTest.h"
 #include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptNativeInterfaceTestHelpers.h"
+#include "AngelscriptNativeInterfaceTestTypes.h"
 #include "AngelscriptReflectiveAccess.h"
 #include "AngelscriptTestMacros.h"
 #include "AngelscriptTestUtilities.h"
 
 #include "Components/ActorTestSpawner.h"
+#include "Engine/Texture2D.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
@@ -13,6 +16,7 @@
 #include "UObject/Class.h"
 #include "UObject/SoftObjectPtr.h"
 #include "UObject/GarbageCollection.h"
+#include "UObject/ScriptInterface.h"
 
 // -----------------------------------------------------------------------------
 // AngelscriptCoverageHandlesTests
@@ -20,7 +24,7 @@
 // Comprehensive coverage for AngelScript handles and references system.
 // This file covers all reference types from:
 //
-//   Documents/Coverage/Coverage_HandlesAndReferences.md
+//   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 //
 // Test groups:
 //   1. Object References (AActor*, UObject*)
@@ -40,7 +44,7 @@
 // an AS actor, drive its members, read them back through FPropertyBindingPath
 // helpers in Shared/AngelscriptReflectiveAccess.h.
 //
-// Detailed coverage matrix: Documents/Coverage/Coverage_HandlesAndReferences.md
+// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -733,6 +737,713 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftRefIsValidWorked"), true, TEXT("TSoftObjectPtr IsValid should work"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WeakRefIsValidWorked"), true, TEXT("TWeakObjectPtr IsValid should work"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WeakRefInvalidAfterDestroy"), true, TEXT("TWeakObjectPtr should become invalid after object destruction"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// 6. Native interface references: property, parameter, container, null
+	// -------------------------------------------------------------------------
+	TEST_METHOD(NativeInterfaceReferenceHandles)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		AngelscriptNativeInterfaceTestHelpers::EnsureNativeInterfaceBound(UAngelscriptNativeParentInterface::StaticClass());
+
+		static const FName ModuleName(TEXT("ASCoverageHandles_NativeInterfaceRefs"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageHandlesNativeInterfaceRefs.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageHandlesNativeInterfaceRefsActor : AActor, UAngelscriptNativeParentInterface
+			{
+				UPROPERTY()
+				UAngelscriptNativeParentInterface InterfaceRef;
+
+				UPROPERTY()
+				UAngelscriptNativeParentInterface ClearedInterfaceRef;
+
+				UPROPERTY()
+				TArray<UAngelscriptNativeParentInterface> InterfaceRefs;
+
+				UPROPERTY()
+				int NativeValue = 37;
+
+				UPROPERTY()
+				int ParameterValue = 0;
+
+				UPROPERTY()
+				FName NativeMarker = NAME_None;
+
+				UPROPERTY()
+				bool DefaultNullWorked = false;
+
+				UPROPERTY()
+				bool CastAssignmentWorked = false;
+
+				UPROPERTY()
+				bool InterfaceDispatchWorked = false;
+
+				UPROPERTY()
+				bool InterfaceParameterWorked = false;
+
+				UPROPERTY()
+				bool InterfaceArrayWorked = false;
+
+				UPROPERTY()
+				bool NullResetWorked = false;
+
+				UFUNCTION()
+				int GetNativeValue() const
+				{
+					return NativeValue;
+				}
+
+				UFUNCTION()
+				void SetNativeMarker(FName Marker)
+				{
+					NativeMarker = Marker;
+				}
+
+				UFUNCTION()
+				void AdjustNativeValue(int Delta, int& Value)
+				{
+					Value += Delta;
+				}
+
+				void AcceptInterface(UAngelscriptNativeParentInterface InInterface)
+				{
+					if (InInterface != nullptr)
+					{
+						int Adjusted = 5;
+						InInterface.AdjustNativeValue(4, Adjusted);
+						ParameterValue = InInterface.GetNativeValue() + Adjusted;
+						InterfaceParameterWorked = ParameterValue == 46;
+					}
+				}
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					UAngelscriptNativeParentInterface EmptyRef;
+					DefaultNullWorked = EmptyRef == nullptr;
+
+					UObject SelfObject = this;
+					InterfaceRef = Cast<UAngelscriptNativeParentInterface>(SelfObject);
+					CastAssignmentWorked = InterfaceRef != nullptr;
+
+					if (InterfaceRef != nullptr)
+					{
+						InterfaceDispatchWorked = InterfaceRef.GetNativeValue() == 37;
+						InterfaceRef.SetNativeMarker(n"FromNativeInterfaceHandle");
+						AcceptInterface(InterfaceRef);
+					}
+
+					InterfaceRefs.Add(InterfaceRef);
+					InterfaceRefs.Add(Cast<UAngelscriptNativeParentInterface>(SelfObject));
+					InterfaceArrayWorked = InterfaceRefs.Num() == 2 &&
+						InterfaceRefs[0] != nullptr &&
+						InterfaceRefs[1].GetNativeValue() == 37;
+
+					ClearedInterfaceRef = InterfaceRef;
+					ClearedInterfaceRef = nullptr;
+					NullResetWorked = ClearedInterfaceRef == nullptr;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageHandlesNativeInterfaceRefsActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Native interface handle actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(ScriptClass->ImplementsInterface(UAngelscriptNativeParentInterface::StaticClass()), TEXT("Script actor should implement the native parent interface")));
+
+		const FProperty* InterfaceRefProp = ScriptClass->FindPropertyByName(FName(TEXT("InterfaceRef")));
+		ASSERT_THAT(IsNotNull(InterfaceRefProp, TEXT("InterfaceRef property should exist")));
+		if (InterfaceRefProp == nullptr)
+		{
+			return;
+		}
+
+		const FInterfaceProperty* InterfaceProperty = CastField<FInterfaceProperty>(InterfaceRefProp);
+		ASSERT_THAT(IsNotNull(InterfaceProperty, TEXT("InterfaceRef should be emitted as FInterfaceProperty")));
+		if (InterfaceProperty == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(UAngelscriptNativeParentInterface::StaticClass(), InterfaceProperty->InterfaceClass, TEXT("InterfaceRef should target the native parent interface")));
+
+		const FArrayProperty* InterfaceRefsProp = CastField<FArrayProperty>(ScriptClass->FindPropertyByName(FName(TEXT("InterfaceRefs"))));
+		ASSERT_THAT(IsNotNull(InterfaceRefsProp, TEXT("InterfaceRefs array property should exist")));
+		if (InterfaceRefsProp == nullptr)
+		{
+			return;
+		}
+
+		const FInterfaceProperty* InterfaceRefsInnerProp = CastField<FInterfaceProperty>(InterfaceRefsProp->Inner);
+		ASSERT_THAT(IsNotNull(InterfaceRefsInnerProp, TEXT("InterfaceRefs array should store interface values")));
+		if (InterfaceRefsInnerProp == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(UAngelscriptNativeParentInterface::StaticClass(), InterfaceRefsInnerProp->InterfaceClass, TEXT("InterfaceRefs inner property should target the native parent interface")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Native interface handle actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DefaultNullWorked"), true, TEXT("Native interface references should default to null"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CastAssignmentWorked"), true, TEXT("Native interface references should assign from Cast<I>"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InterfaceDispatchWorked"), true, TEXT("Native interface references should dispatch methods"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InterfaceParameterWorked"), true, TEXT("Native interface references should pass through AS parameters"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InterfaceArrayWorked"), true, TEXT("Native interface references should work as array elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NullResetWorked"), true, TEXT("Native interface references should reset to null"))));
+
+		int32 ParameterValue = 0;
+		ASSERT_THAT(IsTrue(ReadIntPropertyChecked(*TestRunner, Actor, TEXT("ParameterValue"), ParameterValue), TEXT("ParameterValue should be readable")));
+		ASSERT_THAT(AreEqual(46, ParameterValue, TEXT("Interface parameter should preserve dispatch and ref argument mutation")));
+
+		FName NativeMarker = NAME_None;
+		ASSERT_THAT(IsTrue(GetByPath<FNameProperty, FName>(*TestRunner, Actor, TEXT("NativeMarker"), NativeMarker), TEXT("NativeMarker should be readable")));
+		ASSERT_THAT(AreEqual(FName(TEXT("FromNativeInterfaceHandle")), NativeMarker, TEXT("Interface setter should mutate actor state")));
+
+		const FScriptInterface* InterfaceValue = InterfaceProperty->ContainerPtrToValuePtr<FScriptInterface>(Actor);
+		ASSERT_THAT(IsNotNull(InterfaceValue, TEXT("C++ should read the interface property backing value")));
+		if (InterfaceValue == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(static_cast<UObject*>(Actor), InterfaceValue->GetObject(), TEXT("InterfaceRef should expose the script actor object")));
+		ASSERT_THAT(IsNotNull(InterfaceValue->GetInterface(), TEXT("InterfaceRef should expose a native interface pointer")));
+
+		FScriptArrayHelper InterfaceArrayHelper(InterfaceRefsProp, InterfaceRefsProp->ContainerPtrToValuePtr<void>(Actor));
+		ASSERT_THAT(AreEqual(2, InterfaceArrayHelper.Num(), TEXT("C++ should observe two stored interface references")));
+		if (InterfaceArrayHelper.Num() == 0)
+		{
+			return;
+		}
+
+		const FScriptInterface* FirstArrayInterface = reinterpret_cast<const FScriptInterface*>(InterfaceArrayHelper.GetRawPtr(0));
+		ASSERT_THAT(IsNotNull(FirstArrayInterface, TEXT("First interface array element should be readable")));
+		if (FirstArrayInterface == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(static_cast<UObject*>(Actor), FirstArrayInterface->GetObject(), TEXT("Interface array element should expose the script actor object")));
+		ASSERT_THAT(IsNotNull(FirstArrayInterface->GetInterface(), TEXT("Interface array element should expose a native interface pointer")));
+	}
+
+	// -------------------------------------------------------------------------
+	// 7. Advanced handle coverage: UObject, TObjectPtr, NewObject, TSubclassOf
+	// -------------------------------------------------------------------------
+	TEST_METHOD(UObjectNewObjectTObjectPtrAndSubclassReferences)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageHandles_AdvancedRefs"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageHandlesAdvancedRefs.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageHandlesAdvancedRefsActor : AActor
+			{
+				UPROPERTY()
+				UObject GenericObject;
+
+				UPROPERTY()
+				TObjectPtr<UObject> SmartObject;
+
+				UPROPERTY()
+				TSubclassOf<UObject> ObjectClass;
+
+				UPROPERTY()
+				bool UObjectNullAssignmentEqualityWorked = false;
+
+				UPROPERTY()
+				bool NewObjectOuterWorked = false;
+
+				UPROPERTY()
+				bool TObjectPtrRoutedToObjectProperty = false;
+
+				UPROPERTY()
+				bool SubclassParameterWorked = false;
+
+				UPROPERTY()
+				bool ReflectedSubclassParameterWorked = false;
+
+				UPROPERTY()
+				bool SubclassCreatedInstance = false;
+
+				void AcceptObjectClass(TSubclassOf<UObject> InClass)
+				{
+					SubclassParameterWorked = InClass != nullptr && InClass.IsChildOf(UTexture2D::StaticClass());
+					ObjectClass = InClass;
+				}
+
+				UFUNCTION()
+				void AcceptClassFromCpp(TSubclassOf<UObject> InClass)
+				{
+					ReflectedSubclassParameterWorked = InClass != nullptr && InClass.IsChildOf(UTexture2D::StaticClass());
+					AcceptObjectClass(InClass);
+				}
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					UObject EmptyObject = nullptr;
+					UObjectNullAssignmentEqualityWorked = EmptyObject == nullptr;
+
+					GenericObject = NewObject(this, UTexture2D::StaticClass(), n"CoverageHandlesAdvancedRefsTexture");
+					NewObjectOuterWorked = GenericObject != nullptr &&
+						GenericObject.GetOuter() == this &&
+						GenericObject.IsA(UTexture2D::StaticClass());
+
+					SmartObject = GenericObject;
+					UObject RawObject = SmartObject;
+					TObjectPtrRoutedToObjectProperty = RawObject == GenericObject &&
+						SmartObject.Get() == GenericObject;
+
+					AcceptObjectClass(UTexture2D::StaticClass());
+					UObject CreatedFromSubclass = NewObject(this, ObjectClass, n"CoverageHandlesAdvancedRefsSubclassTexture");
+					SubclassCreatedInstance = CreatedFromSubclass != nullptr &&
+						CreatedFromSubclass.GetOuter() == this &&
+						CreatedFromSubclass.IsA(UTexture2D::StaticClass());
+				}
+			}
+			)AS"),
+			TEXT("ACoverageHandlesAdvancedRefsActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Advanced handles actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const FProperty* SmartObjectProp = ScriptClass->FindPropertyByName(FName(TEXT("SmartObject")));
+		ASSERT_THAT(IsNotNull(SmartObjectProp, TEXT("SmartObject property should exist")));
+		if (SmartObjectProp == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(SmartObjectProp->IsA<FObjectProperty>(), TEXT("TObjectPtr<UObject> should emit an object property")));
+		ASSERT_THAT(IsTrue(SmartObjectProp->HasAnyPropertyFlags(CPF_TObjectPtr), TEXT("TObjectPtr<UObject> should preserve routing flag")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Advanced handles actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("UObjectNullAssignmentEqualityWorked"), true, TEXT("UObject handle null assignment and equality should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NewObjectOuterWorked"), true, TEXT("NewObject should honor an actor Outer"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("TObjectPtrRoutedToObjectProperty"), true, TEXT("TObjectPtr<UObject> should route like a UObject handle"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SubclassParameterWorked"), true, TEXT("TSubclassOf<UObject> should pass through AS function parameters"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SubclassCreatedInstance"), true, TEXT("NewObject should create from a stored TSubclassOf class"))));
+
+		UObject* GenericObject = nullptr;
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("GenericObject"), GenericObject), TEXT("GenericObject should be readable")));
+		ASSERT_THAT(IsNotNull(GenericObject, TEXT("GenericObject should hold the created UObject")));
+		if (GenericObject == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(static_cast<UObject*>(Actor), GenericObject->GetOuter(), TEXT("C++ should observe the actor as NewObject Outer")));
+
+		FFunctionInvoker Invoker(*TestRunner, Actor, FName(TEXT("AcceptClassFromCpp")));
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("AcceptClassFromCpp should resolve")));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
+		Invoker.AddParam<TSubclassOf<UObject>>(TSubclassOf<UObject>(UTexture2D::StaticClass()));
+		ASSERT_THAT(IsTrue(Invoker.Call(), TEXT("Reflected TSubclassOf<UObject> parameter invocation should succeed")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ReflectedSubclassParameterWorked"), true, TEXT("Reflected TSubclassOf<UObject> parameter should be consumed"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// 8. Weak reference containers: array storage, null element, reassignment
+	// -------------------------------------------------------------------------
+	TEST_METHOD(WeakObjectPtrArrayContainerAndReassignment)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageHandles_WeakArrayReassign"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageHandlesWeakArrayReassign.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageHandlesWeakArrayReassignActor : AActor
+			{
+				UPROPERTY()
+				TArray<TWeakObjectPtr<AActor>> WeakActors;
+
+				UPROPERTY()
+				TWeakObjectPtr<AActor> ReassignedWeakActor;
+
+				UPROPERTY()
+				bool ArrayStoredWeakReferences = false;
+
+				UPROPERTY()
+				bool ArrayNullElementComparedToNull = false;
+
+				UPROPERTY()
+				bool DestroyedElementInvalidated = false;
+
+				UPROPERTY()
+				bool ReassignedToNewObject = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					AActor FirstActor = SpawnActor(AActor::StaticClass());
+					AActor SecondActor = SpawnActor(AActor::StaticClass());
+					AActor ReplacementActor = SpawnActor(AActor::StaticClass());
+
+					TWeakObjectPtr<AActor> WeakFirst = FirstActor;
+					TWeakObjectPtr<AActor> WeakSecond = SecondActor;
+					TWeakObjectPtr<AActor> EmptyWeak;
+
+					WeakActors.Add(WeakFirst);
+					WeakActors.Add(WeakSecond);
+					WeakActors.Add(EmptyWeak);
+
+					ArrayStoredWeakReferences = WeakActors.Num() == 3 &&
+						WeakActors[0].Get() == FirstActor &&
+						WeakActors[1].Get() == SecondActor;
+					ArrayNullElementComparedToNull = WeakActors[2] == nullptr;
+
+					SecondActor.DestroyActor();
+					DestroyedElementInvalidated = WeakActors[1] == nullptr &&
+						WeakActors[1].Get() == nullptr &&
+						!WeakActors[1].IsValid();
+
+					ReassignedWeakActor = FirstActor;
+					ReassignedWeakActor = ReplacementActor;
+					ReassignedToNewObject = ReassignedWeakActor.IsValid() &&
+						ReassignedWeakActor.Get() == ReplacementActor &&
+						ReassignedWeakActor.Get() != FirstActor;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageHandlesWeakArrayReassignActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Weak array/reassignment actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const FArrayProperty* WeakActorsProp = CastField<FArrayProperty>(ScriptClass->FindPropertyByName(FName(TEXT("WeakActors"))));
+		ASSERT_THAT(IsNotNull(WeakActorsProp, TEXT("WeakActors property should be an array")));
+		if (WeakActorsProp == nullptr)
+		{
+			return;
+		}
+
+		const FWeakObjectProperty* WeakActorsInnerProp = CastField<FWeakObjectProperty>(WeakActorsProp->Inner);
+		ASSERT_THAT(IsNotNull(WeakActorsInnerProp, TEXT("WeakActors array should store weak object pointers")));
+		if (WeakActorsInnerProp == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(AActor::StaticClass(), WeakActorsInnerProp->PropertyClass, TEXT("WeakActors inner property should target AActor")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Weak array/reassignment actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		int32 WeakActorCount = 0;
+		ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, Actor, TEXT("WeakActors"), WeakActorCount), TEXT("WeakActors array length should be readable")));
+		ASSERT_THAT(AreEqual(3, WeakActorCount, TEXT("WeakActors should retain the expected number of entries")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ArrayStoredWeakReferences"), true, TEXT("TArray<TWeakObjectPtr<AActor>> should store live weak references"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ArrayNullElementComparedToNull"), true, TEXT("TArray<TWeakObjectPtr<AActor>> should store and compare null weak elements"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DestroyedElementInvalidated"), true, TEXT("Destroyed actor weak array element should invalidate deterministically"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ReassignedToNewObject"), true, TEXT("TWeakObjectPtr should reassign from one valid object to another"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// 9. Soft reference path boundary: FSoftObjectPath, pending, configured class
+	// -------------------------------------------------------------------------
+	TEST_METHOD(SoftReferencePathConstructionAndPendingBoundary)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageHandles_SoftPathBoundary"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageHandlesSoftPathBoundary.as"),
+			ASTEST_AS(R"AS(
+			UCLASS(Config=Game)
+			class ACoverageHandlesSoftPathBoundaryActor : AActor
+			{
+				UPROPERTY()
+				TSoftObjectPtr<UTexture2D> TextureFromPath;
+
+				UPROPERTY()
+				TSoftObjectPtr<AActor> CrossLevelActorPath;
+
+				UPROPERTY(Config)
+				TSoftClassPtr<AActor> ConfiguredActorClass;
+
+				UPROPERTY()
+				bool ConstructedObjectPath = false;
+
+				UPROPERTY()
+				bool MissingObjectIsPending = false;
+
+				UPROPERTY()
+				bool CrossLevelPathStored = false;
+
+				UPROPERTY()
+				bool ResourcePathCanResolve = false;
+
+				UPROPERTY()
+				bool ConfiguredClassPathWorked = false;
+
+				UPROPERTY()
+				bool MissingClassIsPending = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					FSoftObjectPath TexturePath("/Engine/EngineResources/DefaultTexture.DefaultTexture");
+					TextureFromPath = TSoftObjectPtr<UTexture2D>(TexturePath);
+					ConstructedObjectPath = TextureFromPath.ToSoftObjectPath() == TexturePath &&
+						TextureFromPath.ToString() == TexturePath.ToString();
+
+					TSoftObjectPtr<UTexture2D> MissingTexture(FSoftObjectPath("/Game/Coverage/MissingTexture.MissingTexture"));
+					MissingObjectIsPending = !MissingTexture.IsNull() &&
+						!MissingTexture.IsValid() &&
+						MissingTexture.IsPending();
+
+					CrossLevelActorPath = TSoftObjectPtr<AActor>(FSoftObjectPath("/Game/Coverage/OtherMap.OtherMap:PersistentLevel.OtherActor"));
+					CrossLevelPathStored = CrossLevelActorPath.IsPending() &&
+						CrossLevelActorPath.ToString().Contains("PersistentLevel");
+
+					UObject ResolvedTexture = TextureFromPath.ToSoftObjectPath().TryLoad();
+					ResourcePathCanResolve = Cast<UTexture2D>(ResolvedTexture) != nullptr;
+
+					ConfiguredActorClass = TSoftClassPtr<AActor>(FSoftObjectPath("/Script/Engine.Actor"));
+					TSubclassOf<AActor> LoadedClass = ConfiguredActorClass.Get();
+					ConfiguredClassPathWorked = LoadedClass.IsValid() &&
+						LoadedClass.IsChildOf(AActor::StaticClass()) &&
+						ConfiguredActorClass.ToString().Contains("Actor");
+
+					TSoftClassPtr<AActor> MissingActorClass(FSoftObjectPath("/Game/Coverage/MissingActorClass.MissingActorClass_C"));
+					MissingClassIsPending = !MissingActorClass.IsNull() &&
+						!MissingActorClass.IsValid() &&
+						MissingActorClass.IsPending();
+				}
+			}
+			)AS"),
+			TEXT("ACoverageHandlesSoftPathBoundaryActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Soft path boundary actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const FSoftObjectProperty* TextureFromPathProp = CastField<FSoftObjectProperty>(ScriptClass->FindPropertyByName(FName(TEXT("TextureFromPath"))));
+		ASSERT_THAT(IsNotNull(TextureFromPathProp, TEXT("TextureFromPath should be emitted as FSoftObjectProperty")));
+		if (TextureFromPathProp == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(UTexture2D::StaticClass(), TextureFromPathProp->PropertyClass, TEXT("TextureFromPath should target UTexture2D")));
+
+		const FSoftClassProperty* ConfiguredActorClassProp = CastField<FSoftClassProperty>(ScriptClass->FindPropertyByName(FName(TEXT("ConfiguredActorClass"))));
+		ASSERT_THAT(IsNotNull(ConfiguredActorClassProp, TEXT("ConfiguredActorClass should be emitted as FSoftClassProperty")));
+		if (ConfiguredActorClassProp == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(ConfiguredActorClassProp->HasAnyPropertyFlags(CPF_Config), TEXT("UPROPERTY(Config) should set CPF_Config on TSoftClassPtr")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Soft path boundary actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ConstructedObjectPath"), true, TEXT("TSoftObjectPtr should construct from FSoftObjectPath"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("MissingObjectIsPending"), true, TEXT("TSoftObjectPtr.IsPending should report unresolved path-only object references"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CrossLevelPathStored"), true, TEXT("TSoftObjectPtr should preserve cross-level actor object paths"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ResourcePathCanResolve"), true, TEXT("FSoftObjectPath should support on-demand resource loading"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ConfiguredClassPathWorked"), true, TEXT("TSoftClassPtr should construct from a configured class path"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("MissingClassIsPending"), true, TEXT("TSoftClassPtr.IsPending should report unresolved class paths"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// 10. GC reachability boundary: strong properties, containers, weak invalidation
+	// -------------------------------------------------------------------------
+	TEST_METHOD(GCReachabilityAndWeakInvalidationBoundary)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageHandles_GCReachability"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageHandlesGCReachability.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageHandlesGCReachabilityActor : AActor
+			{
+				UPROPERTY()
+				UObject StrongObject;
+
+				UPROPERTY()
+				TArray<UObject> StrongObjects;
+
+				UPROPERTY()
+				TWeakObjectPtr<UObject> WeakStrongObject;
+
+				UPROPERTY()
+				TWeakObjectPtr<UObject> WeakContainerObject;
+
+				UPROPERTY()
+				TWeakObjectPtr<AActor> WeakDestroyedActor;
+
+				UPROPERTY()
+				bool StrongPropertySurvivedGC = false;
+
+				UPROPERTY()
+				bool StrongContainerSurvivedGC = false;
+
+				UPROPERTY()
+				bool WeakDestroyedActorInvalidated = false;
+
+				UPROPERTY()
+				bool WeakPointersObserveStrongReachability = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					StrongObject = NewObject(this, UTexture2D::StaticClass(), n"CoverageHandlesGCStrongTexture");
+					UObject ContainerObject = NewObject(this, UTexture2D::StaticClass(), n"CoverageHandlesGCContainerTexture");
+					StrongObjects.Add(ContainerObject);
+
+					WeakStrongObject = StrongObject;
+					WeakContainerObject = ContainerObject;
+
+					AActor DestroyedActor = SpawnActor(AActor::StaticClass());
+					WeakDestroyedActor = DestroyedActor;
+					DestroyedActor.DestroyActor();
+
+					System::ForceGarbageCollection(true);
+
+					StrongPropertySurvivedGC = StrongObject != nullptr &&
+						WeakStrongObject.IsValid() &&
+						WeakStrongObject.Get() == StrongObject;
+					StrongContainerSurvivedGC = StrongObjects.Num() == 1 &&
+						StrongObjects[0] != nullptr &&
+						WeakContainerObject.IsValid() &&
+						WeakContainerObject.Get() == StrongObjects[0];
+					WeakDestroyedActorInvalidated = WeakDestroyedActor == nullptr &&
+						WeakDestroyedActor.Get() == nullptr &&
+						!WeakDestroyedActor.IsValid();
+					WeakPointersObserveStrongReachability = StrongPropertySurvivedGC &&
+						StrongContainerSurvivedGC &&
+						WeakStrongObject.Get() != WeakContainerObject.Get();
+				}
+			}
+			)AS"),
+			TEXT("ACoverageHandlesGCReachabilityActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("GC reachability actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const FArrayProperty* StrongObjectsProp = CastField<FArrayProperty>(ScriptClass->FindPropertyByName(FName(TEXT("StrongObjects"))));
+		ASSERT_THAT(IsNotNull(StrongObjectsProp, TEXT("StrongObjects property should be an array")));
+		if (StrongObjectsProp == nullptr)
+		{
+			return;
+		}
+
+		const FObjectProperty* StrongObjectsInnerProp = CastField<FObjectProperty>(StrongObjectsProp->Inner);
+		ASSERT_THAT(IsNotNull(StrongObjectsInnerProp, TEXT("StrongObjects array should store UObject handles")));
+		if (StrongObjectsInnerProp == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(UObject::StaticClass(), StrongObjectsInnerProp->PropertyClass, TEXT("StrongObjects inner property should target UObject")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("GC reachability actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("StrongPropertySurvivedGC"), true, TEXT("UPROPERTY UObject handle should keep NewObject reachable across forced GC"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("StrongContainerSurvivedGC"), true, TEXT("TArray<UObject> UPROPERTY should keep contained NewObject reachable across forced GC"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WeakDestroyedActorInvalidated"), true, TEXT("TWeakObjectPtr should invalidate after observed actor destruction"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("WeakPointersObserveStrongReachability"), true, TEXT("Weak pointers should observe but not replace strong UPROPERTY reachability"))));
 	}
 };
 

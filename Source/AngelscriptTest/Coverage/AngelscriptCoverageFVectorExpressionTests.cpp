@@ -463,6 +463,196 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorExpressionTest,
 		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector SetY()"), FVector(10, 200, 30), TEXT("FVector.Y setter"));
 		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector SetZ()"), FVector(10, 20, 300), TEXT("FVector.Z setter"));
 	}
+
+	TEST_METHOD(FVectorDeclarationsAndIndexAccess)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFVectorExpr_DeclarationsIndex", ASTEST_AS(R"AS(
+		const FVector GlobalConstVector = FVector::ZeroVector;
+
+		float LocalDefaultIsZero()
+		{
+			FVector v;
+			return v.X + v.Y + v.Z;
+		}
+
+		float LocalDefaultValue()
+		{
+			FVector v = FVector(1, 2, 3);
+			return v.X + v.Y + v.Z;
+		}
+
+		float LocalConstValue()
+		{
+			const FVector v = FVector(1, 0, 0);
+			return v.X;
+		}
+
+		float GlobalConstValue()
+		{
+			return GlobalConstVector.X + GlobalConstVector.Y + GlobalConstVector.Z;
+		}
+
+		float IndexRead()
+		{
+			FVector v = FVector(4, 5, 6);
+			return v[0] + v[1] + v[2];
+		}
+
+		FVector IndexWrite()
+		{
+			FVector v = FVector::ZeroVector;
+			v[0] = 7;
+			v[1] = 8;
+			v[2] = 9;
+			return v;
+		}
+
+		class FPlainVectorHolder
+		{
+		public:
+			FVector Value;
+
+			FPlainVectorHolder()
+			{
+				Value = FVector(2, 4, 6);
+			}
+		}
+
+		float PlainClassMemberValue()
+		{
+			FPlainVectorHolder Holder;
+			return Holder.Value.X + Holder.Value.Y + Holder.Value.Z;
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LocalDefaultIsZero()"), 0.0f, TEXT("FVector local default declaration should be zero"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LocalDefaultValue()"), 6.0f, TEXT("FVector local initialized declaration"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LocalConstValue()"), 1.0f, TEXT("FVector local const declaration"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float GlobalConstValue()"), 0.0f, TEXT("FVector global const declaration"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float IndexRead()"), 15.0f, TEXT("FVector index read"));
+		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector IndexWrite()"), FVector(7, 8, 9), TEXT("FVector index write"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float PlainClassMemberValue()"), 12.0f, TEXT("FVector plain class member should be usable without UPROPERTY"));
+	}
+
+	TEST_METHOD(FVectorExtendedOperatorsAndMethods)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFVectorExpr_ExtendedMethods", ASTEST_AS(R"AS(
+		FVector OpComponentMultiply()
+		{
+			return FVector(2, 3, 4) * FVector(5, 6, 7);
+		}
+
+		FVector OpComponentDivide()
+		{
+			return FVector(20, 30, 40) / FVector(2, 3, 4);
+		}
+
+		FVector OpCompoundComponentMultiply()
+		{
+			FVector v = FVector(2, 3, 4);
+			v *= FVector(5, 6, 7);
+			return v;
+		}
+
+		FVector OpCompoundComponentDivide()
+		{
+			FVector v = FVector(20, 30, 40);
+			v /= FVector(2, 3, 4);
+			return v;
+		}
+
+		bool NormalizeMutates()
+		{
+			FVector v = FVector(10, 0, 0);
+			bool bNormalized = v.Normalize();
+			return bNormalized && v.Equals(FVector(1, 0, 0), 0.001);
+		}
+
+		bool UnitAndNormalizedChecks()
+		{
+			FVector v = FVector(1, 0, 0);
+			return v.IsUnit() && v.IsNormalized();
+		}
+
+		float DistSquaredMethod()
+		{
+			return FVector(1, 2, 3).DistSquared(FVector(4, 6, 3));
+		}
+
+		FVector ProjectOnToVector()
+		{
+			return FVector(3, 4, 0).ProjectOnTo(FVector(1, 0, 0));
+		}
+
+		FVector ProjectOnToNormalVector()
+		{
+			return FVector(3, 4, 0).ProjectOnToNormal(FVector(0, 1, 0));
+		}
+
+		FVector LerpVector()
+		{
+			return Math::Lerp(FVector(0, 0, 0), FVector(10, 20, 30), 0.25);
+		}
+
+		FVector ClampSizeVector()
+		{
+			return FVector(10, 0, 0).GetClampedToSize(0, 5);
+		}
+
+		FVector ClampMaxSizeVector()
+		{
+			return FVector(0, 12, 0).GetClampedToMaxSize(3);
+		}
+
+		FVector RotateAroundZ()
+		{
+			return FVector(1, 0, 0).RotateAngleAxis(90, FVector(0, 0, 1));
+		}
+
+		bool DirectionAndLengthOutParams()
+		{
+			FVector Direction;
+			float64 Length = 0;
+			FVector(0, 3, 4).ToDirectionAndLength(Direction, Length);
+			return Direction.Equals(FVector(0, 0.6, 0.8), 0.001) && Length > 4.999 && Length < 5.001;
+		}
+		)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector OpComponentMultiply()"), FVector(10, 18, 28), TEXT("FVector component multiply"));
+		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector OpComponentDivide()"), FVector(10, 10, 10), TEXT("FVector component divide"));
+		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector OpCompoundComponentMultiply()"), FVector(10, 18, 28), TEXT("FVector component *= "));
+		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector OpCompoundComponentDivide()"), FVector(10, 10, 10), TEXT("FVector component /= "));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool NormalizeMutates()"), true, TEXT("FVector.Normalize() should mutate and report success"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool UnitAndNormalizedChecks()"), true, TEXT("FVector IsUnit/IsNormalized"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float DistSquaredMethod()"), 25.0f, TEXT("FVector.DistSquared()"));
+		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector ProjectOnToVector()"), FVector(3, 0, 0), TEXT("FVector.ProjectOnTo()"));
+		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector ProjectOnToNormalVector()"), FVector(0, 4, 0), TEXT("FVector.ProjectOnToNormal()"));
+		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector LerpVector()"), FVector(2.5, 5, 7.5), TEXT("Math::Lerp FVector"));
+		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector ClampSizeVector()"), FVector(5, 0, 0), TEXT("FVector.GetClampedToSize()"));
+		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector ClampMaxSizeVector()"), FVector(0, 3, 0), TEXT("FVector.GetClampedToMaxSize()"));
+		ExpectVectorNearlyEqual(Engine, Module, TEXT("FVector RotateAroundZ()"), FVector(0, 1, 0), TEXT("FVector.RotateAngleAxis()"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool DirectionAndLengthOutParams()"), true, TEXT("FVector.ToDirectionAndLength() out params"));
+	}
 };
 
 #endif // WITH_DEV_AUTOMATION_TESTS

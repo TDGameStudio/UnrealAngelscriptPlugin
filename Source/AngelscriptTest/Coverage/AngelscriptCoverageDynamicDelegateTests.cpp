@@ -18,7 +18,7 @@
 // AngelscriptCoverageDynamicDelegateTests
 // -----------------------------------------------------------------------------
 // Coverage for AngelScript dynamic delegate usage, the third slice of the
-// delegates-and-events matrix (Documents/Coverage/Coverage_DelegatesAndEvents.md
+// delegates-and-events matrix (OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 // section 3). Each TEST_METHOD walks one usage axis from the matrix:
 //
 // Axes covered here:
@@ -38,7 +38,7 @@
 // Dynamic delegates are Blueprint-compatible but slower than regular delegates.
 // They support serialization and are required for Blueprint event integration.
 //
-// Detailed coverage matrix: Documents/Coverage/Coverage_DelegatesAndEvents.md
+// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -898,6 +898,351 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 		ASSERT_THAT(IsTrue(VerifyStructByPath<FVector>(*TestRunner, Actor, TEXT("ReceivedVector"), ExpectedVector, TEXT("FVector parameter should pass through"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("ReceivedString"), FString(TEXT("Complex")), TEXT("FString parameter should pass through"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReceivedInt"), 42, TEXT("Int parameter should pass through"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Dynamic multicast delegate property reflection plus runtime execution with
+	// an AS USTRUCT payload. This covers BlueprintAssignable event properties and
+	// proves the struct fields cross the event argument buffer.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(DynamicDelegateStructPayloadPropertyExecutes)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageDynamicDelegate_StructPayloadProperty"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageDynamicDelegateStructPayloadProperty.as"),
+			ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FCoverageDynamicPayload
+			{
+				UPROPERTY()
+				int Value = 0;
+
+				UPROPERTY()
+				int Bonus = 0;
+			}
+
+			event void FCoverageDynamicPayloadEvent(FCoverageDynamicPayload Payload);
+
+			UCLASS()
+			class ACoverageDynamicStructPayloadActor : AActor
+			{
+				UPROPERTY(BlueprintAssignable)
+				FCoverageDynamicPayloadEvent OnPayload;
+
+				UPROPERTY()
+				int ReceivedValue = 0;
+
+				UPROPERTY()
+				int ReceivedBonus = 0;
+
+				UPROPERTY()
+				int Result = 0;
+
+				UPROPERTY()
+				bool EventWasBound = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					OnPayload.AddUFunction(this, n"HandlePayload");
+					EventWasBound = OnPayload.IsBound();
+
+					FCoverageDynamicPayload Payload;
+					Payload.Value = 19;
+					Payload.Bonus = 23;
+					OnPayload.Broadcast(Payload);
+				}
+
+				UFUNCTION()
+				void HandlePayload(FCoverageDynamicPayload Payload)
+				{
+					ReceivedValue = Payload.Value;
+					ReceivedBonus = Payload.Bonus;
+					Result = Payload.Value + Payload.Bonus;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageDynamicStructPayloadActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Dynamic struct-payload actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const FMulticastDelegateProperty* PayloadProperty = FindFProperty<FMulticastDelegateProperty>(ScriptClass, TEXT("OnPayload"));
+		ASSERT_THAT(IsNotNull(PayloadProperty, TEXT("BlueprintAssignable struct event should generate FMulticastDelegateProperty")));
+		if (PayloadProperty == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(PayloadProperty->HasAnyPropertyFlags(CPF_BlueprintAssignable), TEXT("Struct payload event should carry CPF_BlueprintAssignable")));
+		ASSERT_THAT(IsNotNull(PayloadProperty->SignatureFunction, TEXT("Struct payload event should keep its signature function")));
+		if (PayloadProperty->SignatureFunction == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsNotNull(FindFProperty<FStructProperty>(PayloadProperty->SignatureFunction, TEXT("Payload")), TEXT("Struct payload event signature should expose the AS USTRUCT parameter")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Dynamic struct-payload actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("EventWasBound"), true, TEXT("Struct payload event should bind to the AS receiver"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReceivedValue"), 19, TEXT("Struct payload event should pass Value field"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReceivedBonus"), 23, TEXT("Struct payload event should pass Bonus field"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Result"), 42, TEXT("Struct payload event should execute the handler path"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Dynamic delegate declaration runtime: AS-declared single-cast delegates
+	// should bind and execute no-param, parameter, and return-value paths.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(DynamicDelegateDeclaredSingleCastRuntime)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageDynamicDelegate_DeclaredRuntime"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageDynamicDelegateDeclaredRuntime.as"),
+			ASTEST_AS(R"AS(
+			delegate void FCoverageDeclaredNoParam();
+			delegate void FCoverageDeclaredValue(int Value);
+			delegate int FCoverageDeclaredRetVal(int Value);
+
+			UCLASS()
+			class ACoverageDynamicDeclaredRuntimeActor : AActor
+			{
+				UPROPERTY()
+				FCoverageDeclaredNoParam OnNoParam;
+
+				UPROPERTY()
+				FCoverageDeclaredValue OnValue;
+
+				UPROPERTY()
+				FCoverageDeclaredRetVal OnRetVal;
+
+				UPROPERTY()
+				int Counter = 0;
+
+				UPROPERTY()
+				int ReceivedValue = 0;
+
+				UPROPERTY()
+				int ReturnResult = 0;
+
+				UPROPERTY()
+				bool bNoParamBound = false;
+
+				UPROPERTY()
+				bool bValueBound = false;
+
+				UPROPERTY()
+				bool bRetValBound = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					OnNoParam.BindUFunction(this, n"HandleNoParam");
+					OnValue.BindUFunction(this, n"HandleValue");
+					OnRetVal.BindUFunction(this, n"HandleRetVal");
+
+					bNoParamBound = OnNoParam.IsBound();
+					bValueBound = OnValue.IsBound();
+					bRetValBound = OnRetVal.IsBound();
+
+					OnNoParam.Execute();
+					OnValue.Execute(17);
+					ReturnResult = OnRetVal.Execute(25);
+				}
+
+				UFUNCTION()
+				void HandleNoParam()
+				{
+					Counter += 1;
+				}
+
+				UFUNCTION()
+				void HandleValue(int Value)
+				{
+					ReceivedValue = Value;
+					Counter += Value;
+				}
+
+				UFUNCTION()
+				int HandleRetVal(int Value)
+				{
+					return Value + 11;
+				}
+			}
+			)AS"),
+			TEXT("ACoverageDynamicDeclaredRuntimeActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Dynamic declared-runtime actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const FDelegateProperty* NoParamProperty = FindFProperty<FDelegateProperty>(ScriptClass, TEXT("OnNoParam"));
+		const FDelegateProperty* ValueProperty = FindFProperty<FDelegateProperty>(ScriptClass, TEXT("OnValue"));
+		const FDelegateProperty* RetValProperty = FindFProperty<FDelegateProperty>(ScriptClass, TEXT("OnRetVal"));
+		ASSERT_THAT(IsNotNull(NoParamProperty, TEXT("No-param AS delegate UPROPERTY should generate FDelegateProperty")));
+		ASSERT_THAT(IsNotNull(ValueProperty, TEXT("Parameterized AS delegate UPROPERTY should generate FDelegateProperty")));
+		ASSERT_THAT(IsNotNull(RetValProperty, TEXT("Return-value AS delegate UPROPERTY should generate FDelegateProperty")));
+		if (NoParamProperty == nullptr || ValueProperty == nullptr || RetValProperty == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsNotNull(ValueProperty->SignatureFunction, TEXT("Parameterized AS delegate should keep a signature function")));
+		ASSERT_THAT(IsNotNull(RetValProperty->SignatureFunction, TEXT("Return-value AS delegate should keep a signature function")));
+		if (ValueProperty->SignatureFunction == nullptr || RetValProperty->SignatureFunction == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsNotNull(FindFProperty<FIntProperty>(ValueProperty->SignatureFunction, TEXT("Value")), TEXT("Parameterized AS delegate should expose the named parameter")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FIntProperty>(RetValProperty->SignatureFunction, TEXT("Value")), TEXT("Return-value AS delegate should expose the input parameter")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FIntProperty>(RetValProperty->SignatureFunction, TEXT("ReturnValue")), TEXT("Return-value AS delegate should expose ReturnValue")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Dynamic declared-runtime actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bNoParamBound"), true, TEXT("No-param AS delegate should bind"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bValueBound"), true, TEXT("Parameterized AS delegate should bind"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bRetValBound"), true, TEXT("Return-value AS delegate should bind"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Counter"), 18, TEXT("No-param and parameterized AS delegates should execute"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReceivedValue"), 17, TEXT("AS delegate parameter should reach its receiver"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ReturnResult"), 36, TEXT("AS delegate return value should round-trip"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// Dynamic delegate declaration metadata: single-cast delegates and multicast
+	// events should materialize named signature parameters and return properties.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(DynamicDelegateDeclarationMetadata)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageDynamicDelegate_DeclarationMetadata"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageDynamicDelegateDeclarationMetadata.as"),
+			ASTEST_AS(R"AS(
+			delegate void FCoverageDynamicNoParam();
+			delegate void FCoverageDynamicValue(int Value);
+			delegate bool FCoverageDynamicBoolResult();
+			event void FCoverageDynamicEvent();
+			event void FCoverageDynamicValueEvent(int NewValue);
+
+			UCLASS()
+			class UCoverageDynamicDelegateMetadataObject : UObject
+			{
+				UPROPERTY()
+				FCoverageDynamicNoParam SingleNoParam;
+
+				UPROPERTY()
+				FCoverageDynamicValue SingleValue;
+
+				UPROPERTY()
+				FCoverageDynamicBoolResult SingleBoolResult;
+
+				UPROPERTY(BlueprintAssignable)
+				FCoverageDynamicEvent AssignableEvent;
+
+				UPROPERTY(BlueprintCallable)
+				FCoverageDynamicValueEvent CallableValueEvent;
+			}
+			)AS"),
+			TEXT("UCoverageDynamicDelegateMetadataObject"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Dynamic delegate metadata object class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const TSharedPtr<FAngelscriptDelegateDesc> NoParamDelegate = Engine.GetDelegate(TEXT("FCoverageDynamicNoParam"));
+		const TSharedPtr<FAngelscriptDelegateDesc> ValueDelegate = Engine.GetDelegate(TEXT("FCoverageDynamicValue"));
+		const TSharedPtr<FAngelscriptDelegateDesc> BoolResultDelegate = Engine.GetDelegate(TEXT("FCoverageDynamicBoolResult"));
+		const TSharedPtr<FAngelscriptDelegateDesc> EventDelegate = Engine.GetDelegate(TEXT("FCoverageDynamicEvent"));
+		const TSharedPtr<FAngelscriptDelegateDesc> ValueEventDelegate = Engine.GetDelegate(TEXT("FCoverageDynamicValueEvent"));
+		ASSERT_THAT(IsTrue(NoParamDelegate.IsValid(), TEXT("No-param dynamic delegate metadata should be registered")));
+		ASSERT_THAT(IsTrue(ValueDelegate.IsValid(), TEXT("Value dynamic delegate metadata should be registered")));
+		ASSERT_THAT(IsTrue(BoolResultDelegate.IsValid(), TEXT("Return-value dynamic delegate metadata should be registered")));
+		ASSERT_THAT(IsTrue(EventDelegate.IsValid(), TEXT("No-param dynamic event metadata should be registered")));
+		ASSERT_THAT(IsTrue(ValueEventDelegate.IsValid(), TEXT("Value dynamic event metadata should be registered")));
+		if (!NoParamDelegate.IsValid() || !ValueDelegate.IsValid() || !BoolResultDelegate.IsValid() || !EventDelegate.IsValid() || !ValueEventDelegate.IsValid())
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsFalse(NoParamDelegate->bIsMulticast, TEXT("delegate declarations should be single-cast")));
+		ASSERT_THAT(IsFalse(ValueDelegate->bIsMulticast, TEXT("parameterized delegate declarations should be single-cast")));
+		ASSERT_THAT(IsFalse(BoolResultDelegate->bIsMulticast, TEXT("return-value delegate declarations should be single-cast")));
+		ASSERT_THAT(IsTrue(EventDelegate->bIsMulticast, TEXT("event declarations should be multicast")));
+		ASSERT_THAT(IsTrue(ValueEventDelegate->bIsMulticast, TEXT("parameterized event declarations should be multicast")));
+		ASSERT_THAT(IsNotNull(ValueDelegate->Function, TEXT("Value dynamic delegate should generate a signature function")));
+		ASSERT_THAT(IsNotNull(BoolResultDelegate->Function, TEXT("Return-value dynamic delegate should generate a signature function")));
+		ASSERT_THAT(IsNotNull(ValueEventDelegate->Function, TEXT("Value dynamic event should generate a signature function")));
+		if (ValueDelegate->Function == nullptr || BoolResultDelegate->Function == nullptr || ValueEventDelegate->Function == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsNotNull(FindFProperty<FIntProperty>(ValueDelegate->Function, TEXT("Value")), TEXT("Dynamic delegate parameter should keep its declared name")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FBoolProperty>(BoolResultDelegate->Function, TEXT("ReturnValue")), TEXT("Dynamic delegate return value should materialize as ReturnValue")));
+		ASSERT_THAT(IsNotNull(FindFProperty<FIntProperty>(ValueEventDelegate->Function, TEXT("NewValue")), TEXT("Dynamic event parameter should keep its declared name")));
+
+		const FDelegateProperty* SingleNoParamProperty = FindFProperty<FDelegateProperty>(ScriptClass, TEXT("SingleNoParam"));
+		const FDelegateProperty* SingleValueProperty = FindFProperty<FDelegateProperty>(ScriptClass, TEXT("SingleValue"));
+		const FDelegateProperty* SingleBoolResultProperty = FindFProperty<FDelegateProperty>(ScriptClass, TEXT("SingleBoolResult"));
+		const FMulticastDelegateProperty* AssignableEventProperty = FindFProperty<FMulticastDelegateProperty>(ScriptClass, TEXT("AssignableEvent"));
+		const FMulticastDelegateProperty* CallableValueEventProperty = FindFProperty<FMulticastDelegateProperty>(ScriptClass, TEXT("CallableValueEvent"));
+		ASSERT_THAT(IsNotNull(SingleNoParamProperty, TEXT("Single-cast delegate UPROPERTY should generate FDelegateProperty")));
+		ASSERT_THAT(IsNotNull(SingleValueProperty, TEXT("Parameterized delegate UPROPERTY should generate FDelegateProperty")));
+		ASSERT_THAT(IsNotNull(SingleBoolResultProperty, TEXT("Return-value delegate UPROPERTY should generate FDelegateProperty")));
+		ASSERT_THAT(IsNotNull(AssignableEventProperty, TEXT("Assignable event UPROPERTY should generate FMulticastDelegateProperty")));
+		ASSERT_THAT(IsNotNull(CallableValueEventProperty, TEXT("Callable event UPROPERTY should generate FMulticastDelegateProperty")));
 	}
 };
 

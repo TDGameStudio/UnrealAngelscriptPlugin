@@ -16,7 +16,7 @@
 // -----------------------------------------------------------------------------
 // Coverage for the Material slice from:
 //
-//   Documents/Coverage/Coverage_Material.md
+//   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 //
 // The tests avoid requiring a mesh asset or real RHI. They inject the engine
 // default material from C++ and let AS exercise UPrimitiveComponent material APIs
@@ -67,6 +67,15 @@ class ACoverageMaterialActor : AActor
 	UPROPERTY()
 	bool bParameterControlsCallable = false;
 
+	UPROPERTY()
+	bool bParameterReadbackCallable = false;
+
+	UPROPERTY()
+	double ScalarParameterReadback = -1.0;
+
+	UPROPERTY()
+	FLinearColor VectorParameterReadback = FLinearColor::Black;
+
 	UFUNCTION(BlueprintOverride)
 	void BeginPlay()
 	{
@@ -89,6 +98,15 @@ class ACoverageMaterialActor : AActor
 			DynamicMaterial.SetScalarParameterValue(n"CoverageScalar", 0.5f);
 			DynamicMaterial.SetVectorParameterValue(n"CoverageColor", FLinearColor(0.25f, 0.50f, 0.75f, 1.0f));
 			bParameterControlsCallable = true;
+
+			ScalarParameterReadback = DynamicMaterial.GetScalarParameterValue(n"CoverageScalar");
+			VectorParameterReadback = DynamicMaterial.GetVectorParameterValue(n"CoverageColor");
+			bParameterReadbackCallable =
+				Math::IsNearlyEqual(ScalarParameterReadback, 0.5f, 0.001f)
+				&& Math::IsNearlyEqual(VectorParameterReadback.R, 0.25f, 0.001f)
+				&& Math::IsNearlyEqual(VectorParameterReadback.G, 0.50f, 0.001f)
+				&& Math::IsNearlyEqual(VectorParameterReadback.B, 0.75f, 0.001f)
+				&& Math::IsNearlyEqual(VectorParameterReadback.A, 1.0f, 0.001f);
 		}
 	}
 }
@@ -227,6 +245,93 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMaterialTest,
 		ASSERT_THAT(IsNotNull(Mesh, TEXT("Mesh should be a UStaticMeshComponent")));
 		ASSERT_THAT(AreEqual(static_cast<UMaterialInterface*>(DynamicMaterial), Mesh->GetMaterial(0),
 			TEXT("Component material slot should contain the dynamic material created by AS")));
+	}
+
+	TEST_METHOD(DynamicMaterialParameterReadback)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageMaterial_DynamicReadback"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileCoverageMaterialActor(*TestRunner, Engine, ModuleName);
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("DynamicMaterialParameterReadback module should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		UMaterialInterface* DefaultMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
+		ASSERT_THAT(IsNotNull(DefaultMaterial, TEXT("Engine default surface material should be available")));
+		if (DefaultMaterial == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnMaterialActor(*TestRunner, Engine, Spawner, ScriptClass, DefaultMaterial);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Material coverage actor should spawn for parameter readback")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bParameterReadbackCallable"), true,
+			TEXT("AS should read back scalar and vector MID parameters through getter bindings"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("ScalarParameterReadback"), 0.5,
+			TEXT("AS scalar parameter getter should return the value set on the MID"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("VectorParameterReadback.R"), 0.25f,
+			TEXT("AS vector parameter getter should return the red channel set on the MID"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("VectorParameterReadback.G"), 0.5f,
+			TEXT("AS vector parameter getter should return the green channel set on the MID"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("VectorParameterReadback.B"), 0.75f,
+			TEXT("AS vector parameter getter should return the blue channel set on the MID"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("VectorParameterReadback.A"), 1.0f,
+			TEXT("AS vector parameter getter should return the alpha channel set on the MID"))));
+
+		UObject* DynamicMaterialObject = nullptr;
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("DynamicMaterial"), DynamicMaterialObject),
+			TEXT("DynamicMaterial should be readable for native parameter validation")));
+		UMaterialInstanceDynamic* DynamicMaterial = Cast<UMaterialInstanceDynamic>(DynamicMaterialObject);
+		ASSERT_THAT(IsNotNull(DynamicMaterial, TEXT("DynamicMaterial should be a UMaterialInstanceDynamic for native parameter validation")));
+		if (DynamicMaterial == nullptr)
+		{
+			return;
+		}
+
+		const FName ScalarParameterName(TEXT("CoverageScalar"));
+		const FScalarParameterValue* ScalarParameter = DynamicMaterial->ScalarParameterValues.FindByPredicate(
+			[ScalarParameterName](const FScalarParameterValue& Parameter)
+			{
+				return Parameter.ParameterInfo.Name == ScalarParameterName;
+			});
+		ASSERT_THAT(IsNotNull(ScalarParameter, TEXT("AS SetScalarParameterValue should create a scalar MID override")));
+		if (ScalarParameter == nullptr)
+		{
+			return;
+		}
+
+		const FName VectorParameterName(TEXT("CoverageColor"));
+		const FVectorParameterValue* VectorParameter = DynamicMaterial->VectorParameterValues.FindByPredicate(
+			[VectorParameterName](const FVectorParameterValue& Parameter)
+			{
+				return Parameter.ParameterInfo.Name == VectorParameterName;
+			});
+		ASSERT_THAT(IsNotNull(VectorParameter, TEXT("AS SetVectorParameterValue should create a vector MID override")));
+		if (VectorParameter == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(ScalarParameter->ParameterValue, 0.5f, 0.001f),
+			TEXT("Native MID scalar override should match the AS-written value")));
+		ASSERT_THAT(IsTrue(VectorParameter->ParameterValue.Equals(FLinearColor(0.25f, 0.50f, 0.75f, 1.0f), 0.001f),
+			TEXT("Native MID vector override should match the AS-written value")));
 	}
 };
 
