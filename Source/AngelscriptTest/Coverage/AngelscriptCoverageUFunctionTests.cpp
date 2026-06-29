@@ -4593,7 +4593,7 @@ public:
 		{
 			return;
 		}
-		ASSERT_THAT(AreEqual(FVector::StaticStruct(), VectorReturnProperty->Struct,
+		ASSERT_THAT(AreEqual(TBaseStructure<FVector>::Get(), VectorReturnProperty->Struct,
 			TEXT("FVector return should preserve the FVector struct type")));
 
 		FObjectProperty* ActorReturnProperty = CastField<FObjectProperty>(ActorReturn);
@@ -5067,7 +5067,7 @@ public:
 		{
 			return;
 		}
-		RuntimeStateParam->GetUnderlyingProperty()->SetIntPropertyValue(ParamSlot, 4);
+		RuntimeStateParam->GetUnderlyingProperty()->SetIntPropertyValue(ParamSlot, static_cast<int64>(4));
 
 		ASSERT_THAT(IsTrue(EvaluateInvoker.AddParamSlot(ParamProperty, ParamSlot),
 			TEXT("EvaluateEnumMatrix should expose array enum slot")));
@@ -5085,9 +5085,9 @@ public:
 		}
 		FScriptArrayHelper RuntimeStatesHelper(RuntimeStatesParam, ParamSlot);
 		const int32 FirstIndex = RuntimeStatesHelper.AddValue();
-		RuntimeStatesInner->GetUnderlyingProperty()->SetIntPropertyValue(RuntimeStatesHelper.GetRawPtr(FirstIndex), 10);
+		RuntimeStatesInner->GetUnderlyingProperty()->SetIntPropertyValue(RuntimeStatesHelper.GetRawPtr(FirstIndex), static_cast<int64>(10));
 		const int32 SecondIndex = RuntimeStatesHelper.AddValue();
-		RuntimeStatesInner->GetUnderlyingProperty()->SetIntPropertyValue(RuntimeStatesHelper.GetRawPtr(SecondIndex), 28);
+		RuntimeStatesInner->GetUnderlyingProperty()->SetIntPropertyValue(RuntimeStatesHelper.GetRawPtr(SecondIndex), static_cast<int64>(28));
 		ASSERT_THAT(AreEqual(42, EvaluateInvoker.CallAndReturn<int32>(INDEX_NONE),
 			TEXT("UENUM scalar plus TArray<UENUM> parameter should execute through reflection")));
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LastScore"), 42,
@@ -5679,7 +5679,7 @@ public:
 		{
 			return;
 		}
-		RuntimeStateParam->GetUnderlyingProperty()->SetIntPropertyValue(ParamSlot, 2);
+		RuntimeStateParam->GetUnderlyingProperty()->SetIntPropertyValue(ParamSlot, static_cast<int64>(2));
 		Invoker.AddParam<double>(25.0);
 		Invoker.AddParam<UObject*>(Actor);
 		FProperty* OutProperty = nullptr;
@@ -6006,7 +6006,7 @@ public:
 		{
 			return;
 		}
-		RuntimeChoiceParam->GetUnderlyingProperty()->SetIntPropertyValue(ChoiceSlot, 3);
+		RuntimeChoiceParam->GetUnderlyingProperty()->SetIntPropertyValue(ChoiceSlot, static_cast<int64>(3));
 		DefaultInvoker.AddParam<UObject*>(Actor);
 		DefaultInvoker.AddParam<TSubclassOf<AActor>>(TSubclassOf<AActor>(ScriptClass));
 		ASSERT_THAT(AreEqual(56, DefaultInvoker.CallAndReturn<int32>(INDEX_NONE),
@@ -6123,7 +6123,7 @@ public:
 			TEXT("const FString &in should carry const/out/reference flags")));
 		ASSERT_THAT(IsTrue(ConstLocationParam->HasAllPropertyFlags(CPF_ConstParm | CPF_OutParm | CPF_ReferenceParm),
 			TEXT("const FVector &in should carry const/out/reference flags")));
-		ASSERT_THAT(AreEqual(FVector::StaticStruct(), ConstLocationParam->Struct,
+		ASSERT_THAT(AreEqual(TBaseStructure<FVector>::Get(), ConstLocationParam->Struct,
 			TEXT("const FVector &in should preserve the FVector struct type")));
 		ASSERT_THAT(IsTrue(ReadConstRefs->HasAnyFunctionFlags(FUNC_HasOutParms),
 			TEXT("reference input plus return should set FUNC_HasOutParms")));
@@ -8290,7 +8290,7 @@ public:
 
 		ASSERT_THAT(AreEqual(UObject::StaticClass(), ObjectParam->PropertyClass,
 			TEXT("UObject parameter should preserve the UObject class")));
-		ASSERT_THAT(AreEqual(FVector::StaticStruct(), VectorParam->Struct,
+		ASSERT_THAT(AreEqual(TBaseStructure<FVector>::Get(), VectorParam->Struct,
 			TEXT("FVector parameter should preserve the native struct type")));
 		ASSERT_THAT(IsTrue(TextParam->HasAnyPropertyFlags(CPF_ConstParm),
 			TEXT("const FText&in should carry CPF_ConstParm")));

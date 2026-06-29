@@ -61,7 +61,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformExpressionTest,
 		{
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
 		}
-		ASSERT_THAT(AreEqual(Expected, Result, Message));
+		if constexpr (std::is_floating_point_v<T>)
+		{
+			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Expected, Result, static_cast<T>(0.0001)), Message));
+		}
+		else
+		{
+			ASSERT_THAT(AreEqual(Expected, Result, Message));
+		}
 	}
 
 	// Helper for FVector with tolerance

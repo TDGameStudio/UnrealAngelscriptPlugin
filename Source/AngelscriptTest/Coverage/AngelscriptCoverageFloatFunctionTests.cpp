@@ -502,11 +502,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFloatFunctionTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		UClass* ScriptClass = CompileScriptClass(
-			*TestRunner,
-			Engine,
-			"ASCovFloatFunc_UFunction",
-			ASTEST_AS(R"AS(
+		static const FName ModuleName(TEXT("ASCovFloatFunc_UFunction"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
 			UCLASS()
 			class ACoverageFloatFunctionActor : AActor
 			{
@@ -548,8 +550,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFloatFunctionTest,
 					return Value + 1.0;
 				}
 			}
-			)AS"),
-			TEXT("ACoverageFloatFunctionActor"));
+			)AS");
+
+		ASSERT_THAT(IsTrue(CompileAnnotatedModuleFromMemory(
+			&Engine,
+			ModuleName,
+			TEXT("ASCovFloatFunc_UFunction.as"),
+			ScriptSource),
+			TEXT("Float UFUNCTION module should compile")));
+
+		UClass* ScriptClass = FindGeneratedClass(&Engine, TEXT("ACoverageFloatFunctionActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Float UFUNCTION actor class should compile")));
 		if (ScriptClass == nullptr)
 		{

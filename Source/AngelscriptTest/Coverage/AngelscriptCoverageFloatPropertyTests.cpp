@@ -497,13 +497,13 @@ public:
 		ASSERT_THAT(IsTrue(SetByPath<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, Actor, TEXT("FloatValue"), FloatPosZero)));
 		FScriptFloatValue ReadPosZero = 1.0;
 		ASSERT_THAT(IsTrue(GetByPath<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, Actor, TEXT("FloatValue"), ReadPosZero)));
-		ASSERT_THAT(AreEqual(0.0, ReadPosZero, TEXT("AS float +0.0 should compare equal to zero")));
+		ASSERT_THAT(IsTrue(ReadPosZero == 0.0, TEXT("AS float +0.0 should compare equal to zero")));
 		ASSERT_THAT(IsFalse(std::signbit(ReadPosZero), TEXT("AS float +0.0 should not carry a negative sign bit")));
 
 		ASSERT_THAT(IsTrue(SetByPath<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, Actor, TEXT("FloatValue"), FloatNegZero)));
 		FScriptFloatValue ReadNegZero = 1.0;
 		ASSERT_THAT(IsTrue(GetByPath<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, Actor, TEXT("FloatValue"), ReadNegZero)));
-		ASSERT_THAT(AreEqual(0.0, ReadNegZero, TEXT("AS float -0.0 should compare equal to zero")));
+		ASSERT_THAT(IsTrue(ReadNegZero == 0.0, TEXT("AS float -0.0 should compare equal to zero")));
 		ASSERT_THAT(IsTrue(std::signbit(ReadNegZero), TEXT("AS float -0.0 should preserve its sign bit")));
 
 		// Double special values
@@ -531,13 +531,13 @@ public:
 		ASSERT_THAT(IsTrue(SetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("DoubleValue"), DoublePosZero)));
 		double ReadDoublePosZero = 1.0;
 		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("DoubleValue"), ReadDoublePosZero)));
-		ASSERT_THAT(AreEqual(0.0, ReadDoublePosZero, TEXT("double +0.0 should compare equal to zero")));
+		ASSERT_THAT(IsTrue(ReadDoublePosZero == 0.0, TEXT("double +0.0 should compare equal to zero")));
 		ASSERT_THAT(IsFalse(std::signbit(ReadDoublePosZero), TEXT("double +0.0 should not carry a negative sign bit")));
 
 		ASSERT_THAT(IsTrue(SetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("DoubleValue"), DoubleNegZero)));
 		double ReadDoubleNegZero = 1.0;
 		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("DoubleValue"), ReadDoubleNegZero)));
-		ASSERT_THAT(AreEqual(0.0, ReadDoubleNegZero, TEXT("double -0.0 should compare equal to zero")));
+		ASSERT_THAT(IsTrue(ReadDoubleNegZero == 0.0, TEXT("double -0.0 should compare equal to zero")));
 		ASSERT_THAT(IsTrue(std::signbit(ReadDoubleNegZero), TEXT("double -0.0 should preserve its sign bit")));
 	}
 

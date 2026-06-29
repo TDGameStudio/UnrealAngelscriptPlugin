@@ -78,7 +78,7 @@ namespace AngelscriptCoverageNetworkingTest
 		}
 
 		UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
-		LocalAssert.IsNotNull(Function, *FString::Printf(TEXT("networking function '%s' should be generated"), *FunctionName.ToString()));
+		(void)LocalAssert.IsNotNull(Function, *FString::Printf(TEXT("networking function '%s' should be generated"), *FunctionName.ToString()));
 		return Function;
 	}
 
@@ -91,7 +91,7 @@ namespace AngelscriptCoverageNetworkingTest
 		}
 
 		FProperty* Property = FindFProperty<FProperty>(OwnerClass, PropertyName);
-		LocalAssert.IsNotNull(Property, *FString::Printf(TEXT("networking property '%s' should be generated"), *PropertyName.ToString()));
+		(void)LocalAssert.IsNotNull(Property, *FString::Printf(TEXT("networking property '%s' should be generated"), *PropertyName.ToString()));
 		return Property;
 	}
 
@@ -109,17 +109,17 @@ namespace AngelscriptCoverageNetworkingTest
 		}
 
 		FNoDiscardAsserter LocalAssert(Test);
-		LocalAssert.IsTrue(
+		(void)LocalAssert.IsTrue(
 			Function->HasAnyFunctionFlags(FUNC_Net),
 			*FString::Printf(TEXT("%s should carry FUNC_Net"), Context));
-		LocalAssert.IsTrue(
+		(void)LocalAssert.IsTrue(
 			Function->HasAnyFunctionFlags(RequiredEndpointFlag),
 			*FString::Printf(TEXT("%s should carry the expected RPC endpoint flag"), Context));
-		LocalAssert.AreEqual(
+		(void)LocalAssert.AreEqual(
 			bExpectedReliable,
 			Function->HasAnyFunctionFlags(FUNC_NetReliable),
 			*FString::Printf(TEXT("%s reliability flag should match declaration"), Context));
-		LocalAssert.AreEqual(
+		(void)LocalAssert.AreEqual(
 			bExpectedValidate,
 			Function->HasAnyFunctionFlags(FUNC_NetValidate),
 			*FString::Printf(TEXT("%s validation flag should match declaration"), Context));

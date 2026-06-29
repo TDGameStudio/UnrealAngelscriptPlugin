@@ -768,6 +768,12 @@ private:
 		return LocalAssert.IsNotNull(Value, Message);
 	}
 
+	template <typename PointerType>
+	static bool ExpectNotNull(FAutomationTestBase& Test, const TCHAR* Message, const TObjectPtr<PointerType>& Value)
+	{
+		return ExpectNotNull(Test, Message, Value.Get());
+	}
+
 	static bool ExpectTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bValue)
 	{
 		FNoDiscardAsserter LocalAssert(Test);
@@ -1451,7 +1457,7 @@ private:
 				continue;
 			}
 
-			if (KeyProperty->Identical(Helper.GetKeyPtr(SparseIndex), KeyStorage))
+			if (KeyProperty->Identical(Helper.GetKeyPtr(SparseIndex), KeyStorage, PPF_None))
 			{
 				OutValue = ValueProperty->GetPropertyValue(Helper.GetValuePtr(SparseIndex));
 				return true;
@@ -1505,7 +1511,7 @@ private:
 				continue;
 			}
 
-			if (KeyProperty->Identical(Helper.GetKeyPtr(SparseIndex), KeyStorage))
+			if (KeyProperty->Identical(Helper.GetKeyPtr(SparseIndex), KeyStorage, PPF_None))
 			{
 				OutValue = ValueProperty->GetPropertyValue(Helper.GetValuePtr(SparseIndex));
 				return true;
@@ -1558,7 +1564,7 @@ private:
 				continue;
 			}
 
-			if (KeyProperty->Identical(Helper.GetKeyPtr(SparseIndex), KeyStorage))
+			if (KeyProperty->Identical(Helper.GetKeyPtr(SparseIndex), KeyStorage, PPF_None))
 			{
 				OutValue = ValueProperty->GetObjectPropertyValue(Helper.GetValuePtr(SparseIndex));
 				return true;
@@ -1612,7 +1618,7 @@ private:
 				continue;
 			}
 
-			if (KeyProperty->Identical(Helper.GetKeyPtr(SparseIndex), KeyStorage))
+			if (KeyProperty->Identical(Helper.GetKeyPtr(SparseIndex), KeyStorage, PPF_None))
 			{
 				OutValueAddress = Helper.GetValuePtr(SparseIndex);
 				return true;

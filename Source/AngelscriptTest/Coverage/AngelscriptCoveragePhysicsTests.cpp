@@ -1529,13 +1529,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 		OtherComponent->RegisterComponent();
 
 		FHitResult Hit;
-		Hit.SetBlockingHit(true);
+		Hit.bBlockingHit = true;
 		Hit.ImpactPoint = FVector(10.0f, 20.0f, 30.0f);
 		Hit.BoneName = FName(TEXT("CoverageComponentHitBone"));
 		SphereComponent->OnComponentHit.Broadcast(SphereComponent, OtherActor, OtherComponent, FVector(0.0f, 2.0f, 0.0f), Hit);
 
 		FHitResult SweepHit;
-		SweepHit.SetBlockingHit(true);
+		SweepHit.bBlockingHit = true;
 		SweepHit.Location = FVector(4.0f, 5.0f, 6.0f);
 		SphereComponent->OnComponentBeginOverlap.Broadcast(SphereComponent, OtherActor, OtherComponent, 17, true, SweepHit);
 		SphereComponent->OnComponentEndOverlap.Broadcast(SphereComponent, OtherActor, OtherComponent, 19);

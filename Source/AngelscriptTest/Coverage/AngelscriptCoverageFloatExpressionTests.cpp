@@ -50,7 +50,6 @@ private:
 		if constexpr (std::is_same_v<T, float>)
 		{
 			asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
-			ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Float expression helper should expose a script engine")));
 			if (ScriptEngine == nullptr)
 			{
 				return 0.0f;

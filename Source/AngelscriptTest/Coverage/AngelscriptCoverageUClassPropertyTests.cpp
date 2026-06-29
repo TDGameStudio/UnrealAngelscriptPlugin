@@ -1993,7 +1993,7 @@ public:
 				continue;
 			}
 
-			if (*static_cast<const int32*>(MapHelper.GetKeyPtr(SparseIndex)) == 32)
+			if (*reinterpret_cast<const int32*>(MapHelper.GetKeyPtr(SparseIndex)) == 32)
 			{
 				MapValueAddress = MapHelper.GetValuePtr(SparseIndex);
 				break;

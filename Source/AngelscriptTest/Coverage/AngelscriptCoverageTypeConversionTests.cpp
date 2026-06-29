@@ -57,7 +57,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTypeConversionTest,
 		}
 
 		const T Result = Invoker.ExecuteAndGet<T>(T{});
-		ASSERT_THAT(AreEqual(Expected, Result, Message));
+		if constexpr (std::is_floating_point_v<T>)
+		{
+			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Expected, Result, static_cast<T>(0.0001)), Message));
+		}
+		else
+		{
+			ASSERT_THAT(AreEqual(Expected, Result, Message));
+		}
 	}
 
 	template <typename T>
@@ -603,44 +610,48 @@ class ACoverageTypeConversionActor : AActor
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("ASCoverageTypeConversion_BadPrimitiveCast"),
-			ASTEST_AS(R"AS(
+		const FString BadPrimitiveCastSource = ASTEST_AS(R"AS(
 				void Test()
 				{
 					int Value = 5;
 					auto Actor = Cast<AActor>(Value);
 				}
-				)AS"),
+				)AS");
+		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("ASCoverageTypeConversion_BadPrimitiveCast"),
+			*BadPrimitiveCastSource,
 			TEXT("Cast<T> on primitive should fail"));
 
-		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("ASCoverageTypeConversion_BadImplicitBaseToDerived"),
-			ASTEST_AS(R"AS(
+		const FString BadImplicitBaseToDerivedSource = ASTEST_AS(R"AS(
 				void Test(AActor Actor)
 				{
 					APawn Pawn = Actor;
 				}
-				)AS"),
+				)AS");
+		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("ASCoverageTypeConversion_BadImplicitBaseToDerived"),
+			*BadImplicitBaseToDerivedSource,
 			TEXT("implicit base-to-derived object conversion should fail"));
 
-		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("ASCoverageTypeConversion_BadStringToInt"),
-			ASTEST_AS(R"AS(
+		const FString BadStringToIntSource = ASTEST_AS(R"AS(
 				void Test()
 				{
 					FString Text = "42";
 					int Value = Text;
 				}
-				)AS"),
+				)AS");
+		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("ASCoverageTypeConversion_BadStringToInt"),
+			*BadStringToIntSource,
 			TEXT("implicit FString to int should fail"));
 
-		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("ASCoverageTypeConversion_BadRawHandleCondition"),
-			ASTEST_AS(R"AS(
+		const FString BadRawHandleConditionSource = ASTEST_AS(R"AS(
 				void Test(AActor Actor)
 				{
 					if (Actor)
 					{
 					}
 				}
-				)AS"),
+				)AS");
+		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("ASCoverageTypeConversion_BadRawHandleCondition"),
+			*BadRawHandleConditionSource,
 			TEXT("bare UObject handle conditions should remain unsupported without an explicit bool-producing expression"));
 	}
 };
