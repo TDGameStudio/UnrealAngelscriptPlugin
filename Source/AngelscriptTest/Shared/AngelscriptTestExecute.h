@@ -1076,6 +1076,23 @@ inline bool CompileAndExpectFailure(
 	return bPassed;
 }
 
+inline bool CompileAndExpectFailure(
+	FAutomationTestBase& Test,
+	FAngelscriptEngine& Engine,
+	const TCHAR* ModuleName,
+	const FString& Source,
+	const TCHAR* CaseLabel,
+	TArrayView<const FString> ExpectedDiagnosticFragments)
+{
+	return CompileAndExpectFailure(
+		Test,
+		Engine,
+		ModuleName,
+		*Source,
+		CaseLabel,
+		ExpectedDiagnosticFragments);
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
 
 

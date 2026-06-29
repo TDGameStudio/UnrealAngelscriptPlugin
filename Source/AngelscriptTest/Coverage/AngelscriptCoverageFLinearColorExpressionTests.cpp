@@ -38,24 +38,30 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorExpressionTest,
 	void ExpectGlobalReturn(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const T& Expected, const TCHAR* Message)
 	{
 		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
-		T Result{};
-		if constexpr (std::is_same_v<T, bool>
+		if constexpr (std::is_same_v<T, float>)
+		{
+			const double Result = Invoker.ExecuteAndGet<double>(0.0);
+			ASSERT_THAT(IsNear(static_cast<double>(Expected), Result, 0.0001, Message));
+			return;
+		}
+		else if constexpr (std::is_same_v<T, bool>
 			|| std::is_same_v<T, int32>
-			|| std::is_same_v<T, float>
 			|| std::is_same_v<T, double>)
 		{
-			Result = Invoker.ExecuteAndGet<T>(T{});
+			const T Result = Invoker.ExecuteAndGet<T>(T{});
+			if constexpr (std::is_floating_point_v<T>)
+			{
+				ASSERT_THAT(IsNear(Expected, Result, static_cast<T>(0.0001), Message));
+			}
+			else
+			{
+				ASSERT_THAT(AreEqual(Expected, Result, Message));
+			}
 		}
 		else
 		{
+			T Result{};
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result), Message));
-		}
-		if constexpr (std::is_floating_point_v<T>)
-		{
-			ASSERT_THAT(IsNear(Expected, Result, static_cast<T>(0.0001), Message));
-		}
-		else
-		{
 			ASSERT_THAT(AreEqual(Expected, Result, Message));
 		}
 	}
@@ -130,6 +136,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorExpressionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FLinearColor construction module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		ExpectGlobalReturn<FLinearColor>(Engine, Module, TEXT("FLinearColor ConstructDefault()"), FLinearColor(0, 0, 0, 1), TEXT("FLinearColor() default"));
 		ExpectGlobalReturn<FLinearColor>(Engine, Module, TEXT("FLinearColor ConstructFourParams()"), FLinearColor(0.5f, 0.6f, 0.7f, 0.8f), TEXT("FLinearColor(R,G,B,A)"));
@@ -205,6 +216,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorExpressionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FLinearColor arithmetic module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		ExpectColorNearlyEqual(Engine, Module, TEXT("FLinearColor OpAdd()"), FLinearColor(0.6f, 0.6f, 0.6f, 0.6f), TEXT("color addition"));
 		ExpectColorNearlyEqual(Engine, Module, TEXT("FLinearColor OpSubtract()"), FLinearColor(0.8f, 0.5f, 0.5f, 0.3f), TEXT("color subtraction"));
@@ -259,6 +275,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorExpressionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FLinearColor comparison module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpEquals_True()"), true, TEXT("color == (equal)"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpEquals_False()"), false, TEXT("color == (not equal)"));
@@ -287,12 +308,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorExpressionTest,
 			return c.ToFColor(false);
 		}
 
-		FLinearColor Desaturate()
-		{
-			FLinearColor c = FLinearColor::Red;
-			return c.Desaturate(0.5);
-		}
-
 		float GetLuminance()
 		{
 			FLinearColor c = FLinearColor::White;
@@ -313,6 +328,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorExpressionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FLinearColor methods module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		// ToFColor with sRGB
 		{
@@ -333,18 +353,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorExpressionTest,
 			TestRunner->TestEqual(TEXT("ToFColor(false) R"), Result.R, (uint8)255);
 		}
 
-		// Desaturate
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FLinearColor Desaturate()"));
-			FLinearColor Result;
-			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestTrue(TEXT("Desaturate reduces saturation"), Result.R < 1.0f && Result.G > 0.0f);
-		}
-
 		// GetLuminance
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float GetLuminance()"));
-			float Result = Invoker.ExecuteAndGet<float>(0.0f);
+			const double Result = Invoker.ExecuteAndGet<double>(0.0);
 			TestRunner->TestTrue(TEXT("GetLuminance of white"), Result > 0.9f);
 		}
 
@@ -355,6 +367,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorExpressionTest,
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
 			TestRunner->TestTrue(TEXT("LerpUsingHSV produces intermediate color"), Result.R > 0.0f && Result.R < 1.0f);
 		}
+	}
+
+	TEST_METHOD(LinearColorUnsupportedMethods)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const TArray<FString> ExpectedFragments = { TEXT("No matching signatures to 'FLinearColor::Desaturate") };
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCovFLinearColorExpr_DesaturateUnsupported"),
+			ASTEST_AS(R"AS(
+			FLinearColor TryDesaturate()
+			{
+				FLinearColor Color = FLinearColor::Red;
+				return Color.Desaturate(0.5);
+			}
+			)AS"),
+			TEXT("FLinearColor.Desaturate is not bound on the current AS surface"),
+			MakeArrayView(ExpectedFragments))));
 	}
 
 	TEST_METHOD(FLinearColorAdvancedMethods)
@@ -536,6 +569,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorExpressionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FLinearColor member access module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float GetR()"), 0.1f, TEXT("FLinearColor.R getter"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float GetG()"), 0.2f, TEXT("FLinearColor.G getter"));

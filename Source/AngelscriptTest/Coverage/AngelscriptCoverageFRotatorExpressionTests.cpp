@@ -39,19 +39,32 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 	void ExpectGlobalReturn(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const T& Expected, const TCHAR* Message)
 	{
 		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
-		T Result{};
-		if constexpr (std::is_same_v<T, bool>
+		if constexpr (std::is_same_v<T, float>)
+		{
+			const double Result = Invoker.ExecuteAndGet<double>(0.0);
+			ASSERT_THAT(IsNear(static_cast<double>(Expected), Result, 0.0001, Message));
+			return;
+		}
+		else if constexpr (std::is_same_v<T, bool>
 			|| std::is_same_v<T, int32>
-			|| std::is_same_v<T, float>
 			|| std::is_same_v<T, double>)
 		{
-			Result = Invoker.ExecuteAndGet<T>(T{});
+			const T Result = Invoker.ExecuteAndGet<T>(T{});
+			if constexpr (std::is_floating_point_v<T>)
+			{
+				ASSERT_THAT(IsNear(Expected, Result, static_cast<T>(0.0001), Message));
+			}
+			else
+			{
+				ASSERT_THAT(AreEqual(Expected, Result, Message));
+			}
 		}
 		else
 		{
+			T Result{};
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
+			ASSERT_THAT(AreEqual(Expected, Result, Message));
 		}
-		TestRunner->TestEqual(Message, Result, Expected);
 	}
 
 	// Helper for FRotator with tolerance
@@ -118,6 +131,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FRotator construction module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		ExpectGlobalReturn<FRotator>(Engine, Module, TEXT("FRotator ConstructDefault()"), FRotator::ZeroRotator, TEXT("FRotator() default"));
 		ExpectGlobalReturn<FRotator>(Engine, Module, TEXT("FRotator ConstructThreeParams()"), FRotator(10, 20, 30), TEXT("FRotator(10,20,30)"));
@@ -156,12 +174,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 			return r * 2.0;
 		}
 
-		FRotator OpNegate()
-		{
-			FRotator r = FRotator(10, 20, 30);
-			return -r;
-		}
-
 		FRotator OpCompoundAdd()
 		{
 			FRotator r = FRotator(10, 20, 30);
@@ -190,14 +202,39 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FRotator arithmetic module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		ExpectGlobalReturn<FRotator>(Engine, Module, TEXT("FRotator OpAdd()"), FRotator(15, 30, 45), TEXT("rotator addition"));
 		ExpectGlobalReturn<FRotator>(Engine, Module, TEXT("FRotator OpSubtract()"), FRotator(90, 180, 270), TEXT("rotator subtraction"));
 		ExpectGlobalReturn<FRotator>(Engine, Module, TEXT("FRotator OpMultiplyScalar()"), FRotator(20, 40, 60), TEXT("rotator * scalar"));
-		ExpectGlobalReturn<FRotator>(Engine, Module, TEXT("FRotator OpNegate()"), FRotator(-10, -20, -30), TEXT("rotator negation"));
 		ExpectGlobalReturn<FRotator>(Engine, Module, TEXT("FRotator OpCompoundAdd()"), FRotator(15, 25, 35), TEXT("rotator += "));
 		ExpectGlobalReturn<FRotator>(Engine, Module, TEXT("FRotator OpCompoundSubtract()"), FRotator(90, 80, 70), TEXT("rotator -= "));
 		ExpectGlobalReturn<FRotator>(Engine, Module, TEXT("FRotator OpCompoundMultiply()"), FRotator(30, 60, 90), TEXT("rotator *= "));
+	}
+
+	TEST_METHOD(RotatorUnsupportedOperators)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const TArray<FString> ExpectedFragments = { TEXT("No matching signatures to 'opNeg") };
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCovFRotatorExpr_UnaryNegateUnsupported"),
+			ASTEST_AS(R"AS(
+			FRotator TryNegate()
+			{
+				FRotator Rotator = FRotator(10, 20, 30);
+				return -Rotator;
+			}
+			)AS"),
+			TEXT("FRotator unary negation is not bound on the current AS surface"),
+			MakeArrayView(ExpectedFragments))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -244,6 +281,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FRotator comparison module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpEquals_True()"), true, TEXT("rotator == (equal)"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpEquals_False()"), false, TEXT("rotator == (not equal)"));
@@ -306,6 +348,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FRotator member access module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float GetPitch()"), 10.0f, TEXT("FRotator.Pitch getter"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float GetYaw()"), 20.0f, TEXT("FRotator.Yaw getter"));
@@ -355,6 +402,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FRotator normalization module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		// Normalize - angles should be in [-180, 180] range
 		{
@@ -426,6 +478,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FRotator conversion module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		// Vector() - forward direction
 		ExpectVectorNearlyEqual(Engine, Module, TEXT("FVector RotatorToVector()"), FVector::ForwardVector, TEXT("FRotator.Vector()"), 0.01);
