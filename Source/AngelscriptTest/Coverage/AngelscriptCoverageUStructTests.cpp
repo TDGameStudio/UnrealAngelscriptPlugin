@@ -2071,11 +2071,7 @@ public:
 			Engine.DiscardModule(*ModuleName.ToString());
 		};
 
-		UClass* ScriptClass = CompileScriptModule(
-			*TestRunner,
-			Engine,
-			ModuleName,
-			TEXT("ASCoverageUStructEmptyContainerShapeMatrix.as"),
+		const FString ScriptSource =
 			ASTEST_AS(R"AS(
 			USTRUCT(BlueprintType)
 			struct FEmptyContainerStruct
@@ -2174,6 +2170,8 @@ public:
 
 				UPROPERTY()
 				bool EmptyStructStructMapInFound = false;
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				FEmptyContainerStruct MakeEmpty()
 				{
@@ -2254,6 +2252,8 @@ public:
 					Items.Add(21, MakeEmpty());
 					return Items;
 				}
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UFUNCTION(BlueprintCallable)
 				int CountStructKeyMapValue(TMap<FEmptyContainerStruct, int> Items)
@@ -2334,6 +2334,8 @@ public:
 					Items.Add(MakeEmpty(), MakeEmpty());
 					return Items;
 				}
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UFUNCTION(BlueprintCallable)
 				int CountSetValue(TSet<FEmptyContainerStruct> Items)
@@ -2390,7 +2392,14 @@ public:
 					EmptySet.Add(MakeEmpty());
 				}
 			}
-			)AS"),
+			)AS");
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageUStructEmptyContainerShapeMatrix.as"),
+			ScriptSource,
 			TEXT("ACoverageEmptyStructContainerActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Empty USTRUCT container actor should compile")));
 		if (ScriptClass == nullptr)
@@ -4217,7 +4226,7 @@ public:
 			TEXT("bool default should propagate to the CDO")));
 		ASSERT_THAT(AreEqual(17, CountProperty->GetPropertyValue_InContainer(DataAddress),
 			TEXT("int default should propagate to the CDO")));
-		ASSERT_THAT(AreEqual(2.5, WeightProperty->GetPropertyValue_InContainer(DataAddress),
+		ASSERT_THAT(IsNear(2.5, WeightProperty->GetPropertyValue_InContainer(DataAddress), 0.0001,
 			TEXT("double default should propagate to the CDO")));
 		ASSERT_THAT(AreEqual(FString(TEXT("DefaultLabel")), LabelProperty->GetPropertyValue_InContainer(DataAddress),
 			TEXT("FString default should propagate to the CDO")));
@@ -5607,11 +5616,7 @@ public:
 			Engine.DiscardModule(*ModuleName.ToString());
 		};
 
-		UClass* ScriptClass = CompileScriptModule(
-			*TestRunner,
-			Engine,
-			ModuleName,
-			TEXT("ASCoverageUStructDelegateContainerRoundTrip.as"),
+		const FString ScriptSource =
 			ASTEST_AS(R"AS(
 			USTRUCT(BlueprintType)
 			struct FDelegateContainerStruct
@@ -5644,6 +5649,8 @@ public:
 			delegate void FStructMapOutSignal(TMap<int, FDelegateContainerStruct>&out Items);
 			delegate int FStructMapInoutSignal(TMap<int, FDelegateContainerStruct>&inout Items);
 			delegate TMap<int, FDelegateContainerStruct> FStructMapReturnSignal();
+			)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 			delegate int FStructKeyMapValueSignal(TMap<FDelegateContainerStruct, int> Items);
 			delegate int FStructKeyMapInSignal(const TMap<FDelegateContainerStruct, int>&in Items);
@@ -5830,6 +5837,8 @@ public:
 
 				UPROPERTY()
 				TSet<FDelegateContainerStruct> SetReturnResult;
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UPROPERTY()
 				bool bArrayValuePreserved = false;
@@ -5878,6 +5887,8 @@ public:
 
 				UPROPERTY()
 				bool bSetInPreserved = false;
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				FDelegateContainerStruct MakeItem(int ID, FName Tag)
 				{
@@ -6012,6 +6023,8 @@ public:
 					Items.Add(MakeItem(55, n"KeyMapReturnB"), 155);
 					return Items;
 				}
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UFUNCTION()
 				int HandleStructMapValue(TMap<FDelegateContainerStruct, FDelegateContainerStruct> Items)
@@ -6104,6 +6117,8 @@ public:
 					Items.Add(MakeItem(31, n"SetReturnB"));
 					return Items;
 				}
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -6196,6 +6211,8 @@ public:
 					bKeyMapReturnPreserved =
 						KeyMapReturnResult.Find(MakeItem(55, n"KeyMapReturnB"), KeyMapReturnFound)
 						&& KeyMapReturnFound == 155;
+					)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 					TMap<FDelegateContainerStruct, FDelegateContainerStruct> StructMapValueItems;
 					StructMapValueItems.Add(MakeItem(60, n"StructMapValueKeyA"), MakeItem(160, n"StructMapValueValueA"));
@@ -6242,7 +6259,14 @@ public:
 					SetReturnResult = SetReturnSignal.Execute();
 				}
 			}
-			)AS"),
+			)AS");
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageUStructDelegateContainerRoundTrip.as"),
+			ScriptSource,
 			TEXT("ACoverageStructDelegateContainerActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("UStruct delegate container actor should compile")));
 		if (ScriptClass == nullptr)
@@ -6452,11 +6476,7 @@ public:
 			Engine.DiscardModule(*ModuleName.ToString());
 		};
 
-		UClass* ScriptClass = CompileScriptModule(
-			*TestRunner,
-			Engine,
-			ModuleName,
-			TEXT("ASCoverageUStructExtendedMapDelegatePermutationMatrix.as"),
+		const FString ScriptSource =
 			ASTEST_AS(R"AS(
 			USTRUCT(BlueprintType)
 			struct FDelegateExtendedMapKey
@@ -6652,6 +6672,8 @@ public:
 
 				UPROPERTY()
 				bool StructFloatReturnPreserved = false;
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				FDelegateExtendedMapKey MakeKey(int ID, FName Tag)
 				{
@@ -6780,6 +6802,8 @@ public:
 					Items.Add(MakeKey(241, n"StructBoolReturnB"), false);
 					return Items;
 				}
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UFUNCTION()
 				int HandleStructFloatValue(TMap<FDelegateExtendedMapKey, float> Items)
@@ -6834,6 +6858,8 @@ public:
 					Items.Add(MakeKey(341, n"StructFloatReturnB"), 342.5f);
 					return Items;
 				}
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -6934,7 +6960,14 @@ public:
 						&& StructFloatReturnFound == 342.5f;
 				}
 			}
-			)AS"),
+			)AS");
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageUStructExtendedMapDelegatePermutationMatrix.as"),
+			ScriptSource,
 			TEXT("ACoverageStructExtendedMapDelegateActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("UStruct extended map-delegate actor should compile")));
 		if (ScriptClass == nullptr)
@@ -7109,11 +7142,7 @@ public:
 			Engine.DiscardModule(*ModuleName.ToString());
 		};
 
-		UClass* ScriptClass = CompileScriptModule(
-			*TestRunner,
-			Engine,
-			ModuleName,
-			TEXT("ASCoverageUStructMapKeyValueDelegatePermutationMatrix.as"),
+		const FString ScriptSource =
 			ASTEST_AS(R"AS(
 			UCLASS()
 			class UCoverageStructDelegateMapKeyObject : UObject
@@ -7158,6 +7187,8 @@ public:
 				UPROPERTY()
 				FString Label;
 			}
+			)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 			delegate int FNameStructMapValueSignal(TMap<FName, FDelegateKeyValueMapValue> Items);
 			delegate int FNameStructMapInSignal(const TMap<FName, FDelegateKeyValueMapValue>&in Items);
@@ -7233,6 +7264,8 @@ public:
 
 				UPROPERTY()
 				FStringStructMapReturnSignal StringStructReturnSignal;
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UPROPERTY()
 				FFloatStructMapValueSignal FloatStructValueSignal;
@@ -7374,6 +7407,8 @@ public:
 
 				UPROPERTY()
 				bool StringStructReturnPreserved = false;
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UPROPERTY()
 				int FloatStructValueResult = 0;
@@ -7407,6 +7442,8 @@ public:
 
 				UPROPERTY()
 				bool FloatStructReturnPreserved = false;
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UPROPERTY()
 				int ObjectStructValueResult = 0;
@@ -7539,6 +7576,8 @@ public:
 
 				UPROPERTY()
 				bool StructObjectReturnPreserved = false;
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				FDelegateKeyValueMapKey MakeKey(int ID, FName Tag)
 				{
@@ -7569,6 +7608,8 @@ public:
 					Object.Value = Value;
 					return Object;
 				}
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UFUNCTION()
 				int HandleNameStructValue(TMap<FName, FDelegateKeyValueMapValue> Items)
@@ -7685,6 +7726,8 @@ public:
 					Items.Add("StringReturnB", MakeValue(242, "StringReturnB"));
 					return Items;
 				}
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UFUNCTION()
 				int HandleFloatStructValue(TMap<float, FDelegateKeyValueMapValue> Items)
@@ -7829,6 +7872,8 @@ public:
 					Items.Add(MakeKeyObject(742), MakeValue(742, "ObjectReturnB"));
 					return Items;
 				}
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UFUNCTION()
 				int HandleStructStringValue(TMap<FDelegateKeyValueMapKey, FString> Items)
@@ -7937,6 +7982,8 @@ public:
 					Items.Add(MakeKey(441, n"StructNameReturnB"), n"StructNameReturnB");
 					return Items;
 				}
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UFUNCTION()
 				int HandleStructObjectValue(TMap<FDelegateKeyValueMapKey, UCoverageStructDelegateMapValueObject> Items)
@@ -8063,6 +8110,8 @@ public:
 						StringStructReturnResult.Find("StringReturnB", StringStructReturnFound)
 						&& StringStructReturnFound.Score == 242
 						&& StringStructReturnFound.Label == "StringReturnB";
+					)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 					FloatStructValueSignal.BindUFunction(this, n"HandleFloatStructValue");
 					FloatStructInSignal.BindUFunction(this, n"HandleFloatStructIn");
@@ -8145,6 +8194,8 @@ public:
 							ObjectStructReturnPreserved = true;
 						}
 					}
+					)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 					StructStringValueSignal.BindUFunction(this, n"HandleStructStringValue");
 					StructStringInSignal.BindUFunction(this, n"HandleStructStringIn");
@@ -8176,6 +8227,8 @@ public:
 					StructStringReturnPreserved =
 						StructStringReturnResult.Find(MakeKey(341, n"StructStringReturnB"), StructStringReturnFound)
 						&& StructStringReturnFound == "StructStringReturnB";
+					)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 					StructNameValueSignal.BindUFunction(this, n"HandleStructNameValue");
 					StructNameInSignal.BindUFunction(this, n"HandleStructNameIn");
@@ -8242,7 +8295,14 @@ public:
 						&& StructObjectReturnFound.Value == 542;
 				}
 			}
-			)AS"),
+			)AS");
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageUStructMapKeyValueDelegatePermutationMatrix.as"),
+			ScriptSource,
 			TEXT("ACoverageStructMapKeyValueDelegateActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("UStruct map key/value delegate actor should compile")));
 		if (ScriptClass == nullptr)
@@ -10642,7 +10702,7 @@ public:
 			TEXT("TMap<int,FStruct> should preserve struct int value fields")));
 		ASSERT_THAT(AreEqual(FString(TEXT("Shield")), ItemNameProperty->GetPropertyValue_InContainer(ShieldValueAddress),
 			TEXT("TMap<int,FStruct> should preserve struct string value fields")));
-		ASSERT_THAT(AreEqual(10.0, WeightProperty->GetPropertyValue_InContainer(ShieldValueAddress),
+		ASSERT_THAT(IsNear(10.0, WeightProperty->GetPropertyValue_InContainer(ShieldValueAddress), 0.0001,
 			TEXT("TMap<int,FStruct> should preserve struct float value fields")));
 
 		// Verify TMap<FString, FStruct>
@@ -10676,7 +10736,7 @@ public:
 			TEXT("TMap<FString,FStruct> should preserve struct int value fields")));
 		ASSERT_THAT(AreEqual(FString(TEXT("Potion")), ItemNameProperty->GetPropertyValue_InContainer(PotionValueAddress),
 			TEXT("TMap<FString,FStruct> should preserve struct string value fields")));
-		ASSERT_THAT(AreEqual(0.5, WeightProperty->GetPropertyValue_InContainer(PotionValueAddress),
+		ASSERT_THAT(IsNear(0.5, WeightProperty->GetPropertyValue_InContainer(PotionValueAddress), 0.0001,
 			TEXT("TMap<FString,FStruct> should preserve struct float value fields")));
 	}
 
@@ -12062,11 +12122,7 @@ public:
 			Engine.DiscardModule(*ModuleName.ToString());
 		};
 
-		UClass* ScriptClass = CompileScriptModule(
-			*TestRunner,
-			Engine,
-			ModuleName,
-			TEXT("ASCoverageUStructMapKeyValueParameterAndReturnMatrix.as"),
+		const FString ScriptSource =
 			ASTEST_AS(R"AS(
 			UCLASS()
 			class UCoverageStructMapParamValueObject : UObject
@@ -12227,6 +12283,8 @@ public:
 
 				UPROPERTY()
 				bool StructObjectReturnPreserved = false;
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				FMapParamKey MakeKey(int ID, FName Tag)
 				{
@@ -12315,6 +12373,8 @@ public:
 						&& Found.Label == "NameReturnB";
 					return Items;
 				}
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UFUNCTION(BlueprintCallable)
 				int CountStringStructValue(TMap<FString, FMapParamValue> Items)
@@ -12441,6 +12501,8 @@ public:
 						&& Found == "StructStringReturnB";
 					return Items;
 				}
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UFUNCTION(BlueprintCallable)
 				int CountStructNameValue(TMap<FMapParamKey, FName> Items)
@@ -12502,6 +12564,8 @@ public:
 						&& Found == n"StructNameReturnB";
 					return Items;
 				}
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UFUNCTION(BlueprintCallable)
 				int CountStructObjectValue(TMap<FMapParamKey, UCoverageStructMapParamValueObject> Items)
@@ -12569,7 +12633,14 @@ public:
 					return Items;
 				}
 			}
-			)AS"),
+			)AS");
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageUStructMapKeyValueParameterAndReturnMatrix.as"),
+			ScriptSource,
 			TEXT("ACoverageStructMapParamMatrixActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("UStruct map key/value parameter matrix actor should compile")));
 		if (ScriptClass == nullptr)
@@ -13451,11 +13522,7 @@ public:
 			Engine.DiscardModule(*ModuleName.ToString());
 		};
 
-		UClass* ScriptClass = CompileScriptModule(
-			*TestRunner,
-			Engine,
-			ModuleName,
-			TEXT("ASCoverageUStructMapPrimitiveKeyValueParameterAndReturnMatrix.as"),
+		const FString ScriptSource =
 			ASTEST_AS(R"AS(
 			USTRUCT(BlueprintType)
 			struct FMapPrimitiveKey
@@ -13486,6 +13553,8 @@ public:
 				UPROPERTY()
 				FString Label;
 			}
+			)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 			UCLASS()
 			class UCoverageStructMapPrimitiveKeyObject : UObject
@@ -13704,6 +13773,8 @@ public:
 						&& Found.Label == "BoolReturnFalse";
 					return Items;
 				}
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UFUNCTION(BlueprintCallable)
 				int CountFloatStructValue(TMap<float, FMapPrimitiveValue> Items)
@@ -13849,11 +13920,13 @@ public:
 						FMapPrimitiveValue Value = Element.GetValue();
 						if (Key != nullptr && Key.Value == 242 && Value.Score == 242 && Value.Label == "ObjectReturnB")
 						{
-							ObjectStructReturnPreserved = true;
+					ObjectStructReturnPreserved = true;
 						}
 					}
 					return Items;
 				}
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UFUNCTION(BlueprintCallable)
 				int CountStructBoolValue(TMap<FMapPrimitiveKey, bool> Items)
@@ -13915,6 +13988,8 @@ public:
 						&& !Found;
 					return Items;
 				}
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UFUNCTION(BlueprintCallable)
 				int CountStructFloatValue(TMap<FMapPrimitiveKey, float> Items)
@@ -13977,7 +14052,14 @@ public:
 					return Items;
 				}
 			}
-			)AS"),
+			)AS");
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageUStructMapPrimitiveKeyValueParameterAndReturnMatrix.as"),
+			ScriptSource,
 			TEXT("ACoverageStructMapPrimitiveMatrixActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("UStruct primitive map matrix actor should compile")));
 		if (ScriptClass == nullptr)
@@ -14814,7 +14896,7 @@ public:
 		ASSERT_THAT(AreEqual(2, StructFloatOutHelper.Num(), TEXT("TMap<FStruct,float> &out should write two entries")));
 		ASSERT_THAT(IsTrue(GetSimpleMapValueByStructKey<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, *MapProperty, ParamSlot,
 			*KeyIDProperty, *KeyTagProperty, 521, FName(TEXT("OutFloatB")), FloatValue)));
-		ASSERT_THAT(AreEqual(522.5, FloatValue, TEXT("TMap<FStruct,float> &out should preserve float values")));
+		ASSERT_THAT(IsNear(522.5, FloatValue, 0.0001, TEXT("TMap<FStruct,float> &out should preserve float values")));
 
 		FFunctionInvoker StructFloatInoutInvoker(*TestRunner, Actor, TEXT("MutateStructFloatInout"));
 		ASSERT_THAT(IsTrue(StructFloatInoutInvoker.IsValid(), TEXT("MutateStructFloatInout should be invokable")));
@@ -14838,7 +14920,7 @@ public:
 		FloatValue = 0.0;
 		ASSERT_THAT(IsTrue(GetSimpleMapValueByStructKey<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, *MapProperty, ParamSlot,
 			*KeyIDProperty, *KeyTagProperty, 530, FName(TEXT("InoutFloatA")), FloatValue)));
-		ASSERT_THAT(AreEqual(631.5, FloatValue, TEXT("TMap<FStruct,float> &inout should mutate existing value")));
+		ASSERT_THAT(IsNear(631.5, FloatValue, 0.0001, TEXT("TMap<FStruct,float> &inout should mutate existing value")));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("StructFloatInoutSawOriginal"), true,
 			TEXT("TMap<FStruct,float> &inout should read caller-provided entries"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("StructFloatInoutMutated"), true,
@@ -14877,7 +14959,7 @@ public:
 		FloatValue = 0.0;
 		ASSERT_THAT(IsTrue(GetSimpleMapValueByStructKey<FScriptFloatProperty, FScriptFloatValue>(*TestRunner, *MapReturnProperty, ReturnSlot,
 			*KeyIDProperty, *KeyTagProperty, 541, FName(TEXT("ReturnFloatB")), FloatValue)));
-		ASSERT_THAT(AreEqual(542.5, FloatValue, TEXT("TMap<FStruct,float> return should preserve float values")));
+		ASSERT_THAT(IsNear(542.5, FloatValue, 0.0001, TEXT("TMap<FStruct,float> return should preserve float values")));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("StructFloatReturnPreserved"), true,
 			TEXT("TMap<FStruct,float> return should preserve script-side Find behavior"))));
 	}

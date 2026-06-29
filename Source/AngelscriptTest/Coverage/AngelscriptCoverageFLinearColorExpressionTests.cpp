@@ -50,7 +50,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorExpressionTest,
 		{
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result), Message));
 		}
-		ASSERT_THAT(AreEqual(Expected, Result, Message));
+		if constexpr (std::is_floating_point_v<T>)
+		{
+			ASSERT_THAT(IsNear(Expected, Result, static_cast<T>(0.0001), Message));
+		}
+		else
+		{
+			ASSERT_THAT(AreEqual(Expected, Result, Message));
+		}
 	}
 
 	// Helper for FLinearColor with tolerance

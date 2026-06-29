@@ -586,7 +586,8 @@ public:
 			Engine.DiscardModule(*ModuleName.ToString());
 		};
 
-		const FString ScriptSource = ASTEST_AS(R"AS(
+		const FString ScriptSource =
+			ASTEST_AS(R"AS(
 			UCLASS()
 			class UCoverageUClassPropertyReferenceContainerObject : UObject
 			{
@@ -710,6 +711,8 @@ public:
 
 				UPROPERTY()
 				bool bNameToSoftScriptClassFound = false;
+				)AS") + TEXT("\n") +
+			ASTEST_AS(R"AS(
 
 				UCoverageUClassPropertyReferenceContainerObject MakeObject(FName ObjectName, int Value)
 				{

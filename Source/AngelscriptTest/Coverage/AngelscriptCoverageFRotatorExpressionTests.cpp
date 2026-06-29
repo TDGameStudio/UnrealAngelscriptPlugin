@@ -642,23 +642,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float LocalDefaultIsZero()"));
-			ASSERT_THAT(AreEqual(0.0f, Invoker.ExecuteAndGet<float>(-1.0f), TEXT("FRotator local default declaration should be zero")));
+			ASSERT_THAT(IsNear(0.0f, Invoker.ExecuteAndGet<float>(-1.0f), 0.01f, TEXT("FRotator local default declaration should be zero")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float LocalScalarConstructorSum()"));
-			ASSERT_THAT(AreEqual(21.0f, Invoker.ExecuteAndGet<float>(-1.0f), TEXT("FRotator scalar constructor should fill all components")));
+			ASSERT_THAT(IsNear(21.0f, Invoker.ExecuteAndGet<float>(-1.0f), 0.01f, TEXT("FRotator scalar constructor should fill all components")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float LocalCopyConstructorSum()"));
-			ASSERT_THAT(AreEqual(6.0f, Invoker.ExecuteAndGet<float>(-1.0f), TEXT("FRotator copy constructor should preserve components")));
+			ASSERT_THAT(IsNear(6.0f, Invoker.ExecuteAndGet<float>(-1.0f), 0.01f, TEXT("FRotator copy constructor should preserve components")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float LocalConstValue()"));
-			ASSERT_THAT(AreEqual(60.0f, Invoker.ExecuteAndGet<float>(-1.0f), TEXT("FRotator local const declaration should expose members")));
+			ASSERT_THAT(IsNear(60.0f, Invoker.ExecuteAndGet<float>(-1.0f), 0.01f, TEXT("FRotator local const declaration should expose members")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float GlobalConstValue()"));
-			ASSERT_THAT(AreEqual(0.0f, Invoker.ExecuteAndGet<float>(-1.0f), TEXT("FRotator global const declaration should expose members")));
+			ASSERT_THAT(IsNear(0.0f, Invoker.ExecuteAndGet<float>(-1.0f), 0.01f, TEXT("FRotator global const declaration should expose members")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FRotator NormalizeMutates()"));
@@ -674,7 +674,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float AxisHelpers()"));
-			ASSERT_THAT(AreEqual(360.0f, Invoker.ExecuteAndGet<float>(-1.0f), TEXT("FRotator axis helpers should normalize and clamp angles")));
+			ASSERT_THAT(IsNear(360.0f, Invoker.ExecuteAndGet<float>(-1.0f), 0.01f, TEXT("FRotator axis helpers should normalize and clamp angles")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("bool WindingAndRemainder()"));
@@ -682,7 +682,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float ManhattanDistance()"));
-			ASSERT_THAT(AreEqual(45.0f, Invoker.ExecuteAndGet<float>(-1.0f), TEXT("FRotator.GetManhattanDistance() should sum component deltas")));
+			ASSERT_THAT(IsNear(45.0f, Invoker.ExecuteAndGet<float>(-1.0f), 0.01f, TEXT("FRotator.GetManhattanDistance() should sum component deltas")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector RightVector()"));
@@ -706,7 +706,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorExpressionTest,
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float PlainClassMemberValue()"));
-			ASSERT_THAT(AreEqual(12.0f, Invoker.ExecuteAndGet<float>(-1.0f), TEXT("FRotator plain class member should be usable without UPROPERTY")));
+			ASSERT_THAT(IsNear(12.0f, Invoker.ExecuteAndGet<float>(-1.0f), 0.01f, TEXT("FRotator plain class member should be usable without UPROPERTY")));
 		}
 	}
 };

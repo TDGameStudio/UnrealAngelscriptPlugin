@@ -39,6 +39,8 @@ namespace UnrealBuildTool.Rules
 			{
 				"AIModule",
 				"EnhancedInput",
+				"InputCore",
+				"Slate",
 				"SlateCore",
 				"UMG",
 			});
