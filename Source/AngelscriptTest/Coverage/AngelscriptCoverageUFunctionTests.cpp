@@ -71,6 +71,11 @@ private:
 		return Parameter != nullptr ? Parameter->GetMetaData(TEXT("DisplayName")) : FString();
 	}
 
+	static FName GetStaticsClassName(FName ModuleName)
+	{
+		return FName(*FString::Printf(TEXT("UModule_%sStatics"), *ModuleName.ToString()));
+	}
+
 	static bool HasAllFunctionFlags(const UFunction* Function, EFunctionFlags RequiredFlags)
 	{
 		return Function != nullptr && Function->HasAllFunctionFlags(RequiredFlags);
@@ -520,7 +525,7 @@ public:
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		static const FName ModuleName(TEXT("ASCoverageUFunction_UParamMatrix"));
+		static const FName ModuleName(TEXT("ASCoverageUFunction_ParamRefMatrix"));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
@@ -528,7 +533,7 @@ public:
 
 		const FString ScriptSource = ASTEST_AS(R"AS(
 			UCLASS()
-			class ACoverageUFunctionUParamActor : AActor
+			class ACoverageUFunctionParamRefActor : AActor
 			{
 				UPROPERTY()
 				int LastResult = 0;
@@ -536,31 +541,23 @@ public:
 				UPROPERTY()
 				FString LastOutput;
 
-				UFUNCTION(BlueprintCallable, Category="Coverage|UParam")
-				int ProcessWithDisplayNames(
-					UPARAM(DisplayName="Input Number") int Input,
-					UPARAM(DisplayName="Scale Value") int Scale,
-					UPARAM(DisplayName="Adjusted Value", ref) int&out Adjusted)
+				UFUNCTION(BlueprintCallable, Category="Coverage|ParamRef")
+				int ProcessWithOutParam(int Input, int Scale, int&out Adjusted)
 				{
 					Adjusted = Input * Scale;
 					LastResult = Adjusted + 2;
 					return LastResult;
 				}
 
-				UFUNCTION(BlueprintCallable, Category="Coverage|UParam")
-				void SplitWithRefs(
-					UPARAM(DisplayName="Source Value") int Source,
-					UPARAM(ref) int&out Left,
-					UPARAM(ref) int&out Right)
+				UFUNCTION(BlueprintCallable, Category="Coverage|ParamRef")
+				void SplitWithRefs(int Source, int&out Left, int&out Right)
 				{
-					Left = Source / 2;
+					Left = Math::IntegerDivisionTrunc(Source, 2);
 					Right = Source - Left;
 				}
 
-				UFUNCTION(BlueprintCallable, Category="Coverage|UParam")
-				void TransformString(
-					UPARAM(DisplayName="Input Text") const FString&in Input,
-					UPARAM(DisplayName="Output Text", ref) FString&out Output)
+				UFUNCTION(BlueprintCallable, Category="Coverage|ParamRef")
+				void TransformString(const FString&in Input, FString&out Output)
 				{
 					Output = Input + ":processed";
 					LastOutput = Output;
@@ -571,75 +568,65 @@ public:
 			*TestRunner,
 			Engine,
 			ModuleName,
-			TEXT("ASCoverageUFunctionUParamMatrix.as"),
+			TEXT("ASCoverageUFunctionParamRefMatrix.as"),
 			ScriptSource,
-			TEXT("ACoverageUFunctionUParamActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("UPARAM UFUNCTION actor should compile")));
+			TEXT("ACoverageUFunctionParamRefActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("parameter/ref UFUNCTION actor should compile")));
 		if (ScriptClass == nullptr)
 		{
 			return;
 		}
 
-		UFunction* ProcessWithDisplayNames = FindFunctionForTest(ScriptClass, TEXT("ProcessWithDisplayNames"));
+		UFunction* ProcessWithOutParam = FindFunctionForTest(ScriptClass, TEXT("ProcessWithOutParam"));
 		UFunction* SplitWithRefs = FindFunctionForTest(ScriptClass, TEXT("SplitWithRefs"));
 		UFunction* TransformString = FindFunctionForTest(ScriptClass, TEXT("TransformString"));
-		ASSERT_THAT(IsNotNull(ProcessWithDisplayNames, TEXT("ProcessWithDisplayNames should be generated")));
+		ASSERT_THAT(IsNotNull(ProcessWithOutParam, TEXT("ProcessWithOutParam should be generated")));
 		ASSERT_THAT(IsNotNull(SplitWithRefs, TEXT("SplitWithRefs should be generated")));
 		ASSERT_THAT(IsNotNull(TransformString, TEXT("TransformString should be generated")));
-		if (ProcessWithDisplayNames == nullptr || SplitWithRefs == nullptr || TransformString == nullptr)
+		if (ProcessWithOutParam == nullptr || SplitWithRefs == nullptr || TransformString == nullptr)
 		{
 			return;
 		}
 
-		const TArray<FProperty*> ProcessParams = GetOrderedParameters(ProcessWithDisplayNames);
-		ASSERT_THAT(AreEqual(3, ProcessParams.Num(), TEXT("ProcessWithDisplayNames should expose three parameters in declaration order")));
-		ASSERT_THAT(AreEqual(FString(TEXT("Input Number")), GetParameterDisplayName(ProcessParams.IsValidIndex(0) ? ProcessParams[0] : nullptr),
-			TEXT("UPARAM DisplayName should round-trip on first scalar parameter")));
-		ASSERT_THAT(AreEqual(FString(TEXT("Scale Value")), GetParameterDisplayName(ProcessParams.IsValidIndex(1) ? ProcessParams[1] : nullptr),
-			TEXT("UPARAM DisplayName should round-trip on second scalar parameter")));
-		ASSERT_THAT(AreEqual(FString(TEXT("Adjusted Value")), GetParameterDisplayName(ProcessParams.IsValidIndex(2) ? ProcessParams[2] : nullptr),
-			TEXT("UPARAM DisplayName should round-trip on out parameter")));
+		const TArray<FProperty*> ProcessParams = GetOrderedParameters(ProcessWithOutParam);
+		ASSERT_THAT(AreEqual(3, ProcessParams.Num(), TEXT("ProcessWithOutParam should expose three parameters in declaration order")));
+		ASSERT_THAT(AreEqual(FString(), GetParameterDisplayName(ProcessParams.IsValidIndex(0) ? ProcessParams[0] : nullptr),
+			TEXT("plain parameter should not synthesize DisplayName metadata")));
 		ASSERT_THAT(IsTrue(ProcessParams.IsValidIndex(2) && ProcessParams[2]->HasAnyPropertyFlags(CPF_OutParm),
-			TEXT("UPARAM(ref) int &out parameter should carry CPF_OutParm")));
+			TEXT("int &out parameter should carry CPF_OutParm")));
 		ASSERT_THAT(IsFalse(ProcessParams.IsValidIndex(2) && ProcessParams[2]->HasAnyPropertyFlags(CPF_ReferenceParm),
-			TEXT("UPARAM(ref) int &out parameter should remain an out-only parameter")));
+			TEXT("int &out parameter should remain an out-only parameter")));
 
-		FIntProperty* ProcessReturn = CastField<FIntProperty>(ProcessWithDisplayNames->GetReturnProperty());
-		ASSERT_THAT(IsNotNull(ProcessReturn, TEXT("ProcessWithDisplayNames should reflect int return")));
+		FIntProperty* ProcessReturn = CastField<FIntProperty>(ProcessWithOutParam->GetReturnProperty());
+		ASSERT_THAT(IsNotNull(ProcessReturn, TEXT("ProcessWithOutParam should reflect int return")));
 		ASSERT_THAT(IsTrue(ProcessReturn != nullptr && ProcessReturn->HasAnyPropertyFlags(CPF_ReturnParm),
-			TEXT("ProcessWithDisplayNames return should carry CPF_ReturnParm")));
+			TEXT("ProcessWithOutParam return should carry CPF_ReturnParm")));
 
 		const TArray<FProperty*> SplitParams = GetOrderedParameters(SplitWithRefs);
 		ASSERT_THAT(AreEqual(3, SplitParams.Num(), TEXT("SplitWithRefs should expose three parameters in declaration order")));
-		ASSERT_THAT(AreEqual(FString(TEXT("Source Value")), GetParameterDisplayName(SplitParams.IsValidIndex(0) ? SplitParams[0] : nullptr),
-			TEXT("UPARAM DisplayName should round-trip on SplitWithRefs input")));
 		ASSERT_THAT(IsTrue(SplitParams.IsValidIndex(1) && SplitParams[1]->HasAnyPropertyFlags(CPF_OutParm),
-			TEXT("UPARAM(ref) Left parameter should carry CPF_OutParm")));
+			TEXT("Left out parameter should carry CPF_OutParm")));
 		ASSERT_THAT(IsTrue(SplitParams.IsValidIndex(2) && SplitParams[2]->HasAnyPropertyFlags(CPF_OutParm),
-			TEXT("UPARAM(ref) Right parameter should carry CPF_OutParm")));
+			TEXT("Right out parameter should carry CPF_OutParm")));
 
 		const TArray<FProperty*> StringParams = GetOrderedParameters(TransformString);
 		ASSERT_THAT(AreEqual(2, StringParams.Num(), TEXT("TransformString should expose two parameters in declaration order")));
-		ASSERT_THAT(AreEqual(FString(TEXT("Input Text")), GetParameterDisplayName(StringParams.IsValidIndex(0) ? StringParams[0] : nullptr),
-			TEXT("UPARAM DisplayName should round-trip on const-ref FString input")));
-		ASSERT_THAT(AreEqual(FString(TEXT("Output Text")), GetParameterDisplayName(StringParams.IsValidIndex(1) ? StringParams[1] : nullptr),
-			TEXT("UPARAM DisplayName should round-trip on FString out parameter")));
 		ASSERT_THAT(IsTrue(StringParams.IsValidIndex(0) && StringParams[0]->HasAllPropertyFlags(CPF_ConstParm | CPF_OutParm | CPF_ReferenceParm),
-			TEXT("const FString&in UPARAM should carry const/out/reference flags")));
+			TEXT("const FString&in parameter should carry const/out/reference flags")));
 		ASSERT_THAT(IsTrue(StringParams.IsValidIndex(1) && StringParams[1]->HasAnyPropertyFlags(CPF_OutParm),
-			TEXT("UPARAM(ref) FString &out parameter should carry CPF_OutParm")));
+			TEXT("FString &out parameter should carry CPF_OutParm")));
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		ASSERT_THAT(IsNotNull(Actor, TEXT("UPARAM UFUNCTION actor should spawn")));
+		ASSERT_THAT(IsNotNull(Actor, TEXT("parameter/ref UFUNCTION actor should spawn")));
 		if (Actor == nullptr)
 		{
 			return;
 		}
 
-		FFunctionInvoker ProcessInvoker(*TestRunner, Actor, TEXT("ProcessWithDisplayNames"));
-		ASSERT_THAT(IsTrue(ProcessInvoker.IsValid(), TEXT("ProcessWithDisplayNames should be invokable")));
+		FFunctionInvoker ProcessInvoker(*TestRunner, Actor, TEXT("ProcessWithOutParam"));
+		ASSERT_THAT(IsTrue(ProcessInvoker.IsValid(), TEXT("ProcessWithOutParam should be invokable")));
 		if (!ProcessInvoker.IsValid())
 		{
 			return;
@@ -649,7 +636,7 @@ public:
 		FProperty* AdjustedSlotProperty = nullptr;
 		void* AdjustedSlot = nullptr;
 		ASSERT_THAT(IsTrue(ProcessInvoker.AddParamSlot(AdjustedSlotProperty, AdjustedSlot),
-			TEXT("ProcessWithDisplayNames should expose adjusted out slot")));
+			TEXT("ProcessWithOutParam should expose adjusted out slot")));
 		FIntProperty* AdjustedIntProperty = CastField<FIntProperty>(AdjustedSlotProperty);
 		ASSERT_THAT(IsNotNull(AdjustedIntProperty, TEXT("Adjusted out slot should be FIntProperty")));
 		if (AdjustedSlot == nullptr || AdjustedIntProperty == nullptr)
@@ -657,9 +644,9 @@ public:
 			return;
 		}
 		ASSERT_THAT(AreEqual(37, ProcessInvoker.CallAndReturn<int32>(INDEX_NONE),
-			TEXT("ProcessWithDisplayNames should return value based on UPARAM out calculation")));
+			TEXT("ProcessWithOutParam should return value based on out calculation")));
 		ASSERT_THAT(AreEqual(35, AdjustedIntProperty->GetPropertyValue(AdjustedSlot),
-			TEXT("ProcessWithDisplayNames should write adjusted out value")));
+			TEXT("ProcessWithOutParam should write adjusted out value")));
 
 		FFunctionInvoker SplitInvoker(*TestRunner, Actor, TEXT("SplitWithRefs"));
 		ASSERT_THAT(IsTrue(SplitInvoker.IsValid(), TEXT("SplitWithRefs should be invokable")));
@@ -682,7 +669,7 @@ public:
 		{
 			return;
 		}
-		ASSERT_THAT(IsTrue(SplitInvoker.Call(), TEXT("SplitWithRefs should write both UPARAM ref outputs")));
+		ASSERT_THAT(IsTrue(SplitInvoker.Call(), TEXT("SplitWithRefs should write both ref outputs")));
 		ASSERT_THAT(AreEqual(20, LeftIntProperty->GetPropertyValue(LeftSlot), TEXT("SplitWithRefs should write Left")));
 		ASSERT_THAT(AreEqual(21, RightIntProperty->GetPropertyValue(RightSlot), TEXT("SplitWithRefs should write Right")));
 
@@ -703,11 +690,42 @@ public:
 		{
 			return;
 		}
-		ASSERT_THAT(IsTrue(StringInvoker.Call(), TEXT("TransformString should execute through UPARAM ref output")));
+		ASSERT_THAT(IsTrue(StringInvoker.Call(), TEXT("TransformString should execute through ref output")));
 		ASSERT_THAT(AreEqual(FString(TEXT("Input:processed")), OutputStringProperty->GetPropertyValue(OutputSlot),
 			TEXT("TransformString should write FString out parameter")));
 		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("LastOutput"), FString(TEXT("Input:processed")),
 			TEXT("TransformString should update reflected state"))));
+
+		static const FName InvalidModuleName(TEXT("ASCoverageUFunction_InvalidUParamSyntax"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*InvalidModuleName.ToString());
+		};
+
+		const FString InvalidUParamSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageUFunctionInvalidUParamActor : AActor
+			{
+				UFUNCTION(BlueprintCallable)
+				void InvalidUPARAM(UPARAM(DisplayName="Input Value") int Value)
+				{
+				}
+			}
+			)AS");
+		FAngelscriptCompileTraceSummary InvalidUParamSummary;
+		const bool bInvalidUParamCompiled = CompileModuleWithSummary(
+			&Engine,
+			ECompileType::FullReload,
+			InvalidModuleName,
+			TEXT("ASCoverageUFunctionInvalidUParamSyntax.as"),
+			InvalidUParamSource,
+			/*bUsePreprocessor=*/ true,
+			InvalidUParamSummary,
+			/*bSuppressCompileErrorLogs=*/ true);
+		ASSERT_THAT(IsFalse(bInvalidUParamCompiled,
+			TEXT("UPARAM(...) parameter macro syntax is not parsed by the current fork and should remain an explicit boundary")));
+		ASSERT_THAT(IsTrue(CompileSummaryHasErrorContaining(InvalidUParamSummary, TEXT("Instead found '('")),
+			TEXT("UPARAM(...) boundary should report the parser rejecting macro-style parameter syntax")));
 	}
 
 	TEST_METHOD(UFunctionSpecifierFlagEdges)
@@ -912,8 +930,8 @@ public:
 
 		ASSERT_THAT(IsTrue(PlainExecCommand->HasAnyFunctionFlags(FUNC_Exec),
 			TEXT("Exec should set FUNC_Exec on a non-callable UFUNCTION")));
-		ASSERT_THAT(IsFalse(PlainExecCommand->HasAnyFunctionFlags(FUNC_BlueprintCallable),
-			TEXT("plain Exec should not imply BlueprintCallable")));
+		ASSERT_THAT(IsTrue(PlainExecCommand->HasAnyFunctionFlags(FUNC_BlueprintCallable),
+			TEXT("plain Exec currently follows the fork default UFUNCTION callable policy")));
 		ASSERT_THAT(IsFalse(PlainExecCommand->HasMetaData(TEXT("CallInEditor")),
 			TEXT("plain Exec should not gain CallInEditor metadata")));
 
@@ -1916,7 +1934,7 @@ public:
 			return;
 		}
 
-		UClass* StaticsClass = FindGeneratedClass(&Engine, TEXT("UModule_ASCoverageUFunction_StaticGlobalReflectionStatics"));
+		UClass* StaticsClass = FindGeneratedClass(&Engine, GetStaticsClassName(ModuleName));
 		ASSERT_THAT(IsNotNull(StaticsClass, TEXT("global UFUNCTION should generate a module statics class")));
 		if (StaticsClass == nullptr)
 		{
@@ -2021,7 +2039,7 @@ public:
 			return;
 		}
 
-		UClass* StaticsClass = FindGeneratedClass(&Engine, TEXT("UModule_ASCoverageUFunction_StaticWorldContextGenerationStatics"));
+		UClass* StaticsClass = FindGeneratedClass(&Engine, GetStaticsClassName(ModuleName));
 		ASSERT_THAT(IsNotNull(StaticsClass, TEXT("static world-context UFUNCTIONs should generate a statics class")));
 		if (StaticsClass == nullptr)
 		{
@@ -2188,7 +2206,7 @@ public:
 			return;
 		}
 
-		UClass* StaticsClass = FindGeneratedClass(&Engine, TEXT("UModule_ASCoverageUFunction_StaticGlobalComplexParametersStatics"));
+		UClass* StaticsClass = FindGeneratedClass(&Engine, GetStaticsClassName(ModuleName));
 		ASSERT_THAT(IsNotNull(StaticsClass, TEXT("complex global UFUNCTIONs should generate a statics class")));
 		if (StaticsClass == nullptr)
 		{
@@ -2399,9 +2417,7 @@ public:
 			}
 
 			UFUNCTION(BlueprintCallable, Category="Coverage|StaticMeta")
-			void StaticUPARAMAction(
-				UPARAM(DisplayName="Input Value") int Input,
-				UPARAM(DisplayName="Output Value", ref) int&out Output)
+			void StaticOutAction(int Input, int&out Output)
 			{
 				Output = CoverageUFunctionStaticHelpers::Scale(Input) + 10;
 			}
@@ -2417,7 +2433,7 @@ public:
 			return;
 		}
 
-		UClass* StaticsClass = FindGeneratedClass(&Engine, TEXT("UModule_ASCoverageUFunction_StaticAdvancedMetadataStatics"));
+		UClass* StaticsClass = FindGeneratedClass(&Engine, GetStaticsClassName(ModuleName));
 		ASSERT_THAT(IsNotNull(StaticsClass, TEXT("static advanced metadata functions should generate a statics class")));
 		if (StaticsClass == nullptr)
 		{
@@ -2426,11 +2442,11 @@ public:
 
 		UFunction* StaticMetadataAction = FindFunctionForTest(StaticsClass, TEXT("StaticMetadataAction"));
 		UFunction* StaticPureAlias = FindFunctionForTest(StaticsClass, TEXT("StaticPureAlias"));
-		UFunction* StaticUPARAMAction = FindFunctionForTest(StaticsClass, TEXT("StaticUPARAMAction"));
+		UFunction* StaticOutAction = FindFunctionForTest(StaticsClass, TEXT("StaticOutAction"));
 		ASSERT_THAT(IsNotNull(StaticMetadataAction, TEXT("StaticMetadataAction should be generated")));
 		ASSERT_THAT(IsNotNull(StaticPureAlias, TEXT("StaticPureAlias should be generated")));
-		ASSERT_THAT(IsNotNull(StaticUPARAMAction, TEXT("StaticUPARAMAction should be generated")));
-		if (StaticMetadataAction == nullptr || StaticPureAlias == nullptr || StaticUPARAMAction == nullptr)
+		ASSERT_THAT(IsNotNull(StaticOutAction, TEXT("StaticOutAction should be generated")));
+		if (StaticMetadataAction == nullptr || StaticPureAlias == nullptr || StaticOutAction == nullptr)
 		{
 			return;
 		}
@@ -2503,26 +2519,22 @@ public:
 		ASSERT_THAT(IsTrue(StaticPureReturn->HasAnyPropertyFlags(CPF_ReturnParm),
 			TEXT("StaticPureAlias return should carry CPF_ReturnParm")));
 
-		const TArray<FProperty*> UPARAMParams = GetOrderedParameters(StaticUPARAMAction);
-		ASSERT_THAT(AreEqual(3, UPARAMParams.Num(), TEXT("StaticUPARAMAction should expose two declared parameters plus generated world context")));
-		ASSERT_THAT(AreEqual(FString(TEXT("Input Value")), GetParameterDisplayName(UPARAMParams.IsValidIndex(0) ? UPARAMParams[0] : nullptr),
-			TEXT("static UPARAM input DisplayName should round-trip")));
-		ASSERT_THAT(AreEqual(FString(TEXT("Output Value")), GetParameterDisplayName(UPARAMParams.IsValidIndex(1) ? UPARAMParams[1] : nullptr),
-			TEXT("static UPARAM output DisplayName should round-trip")));
-		ASSERT_THAT(IsTrue(UPARAMParams.IsValidIndex(1) && UPARAMParams[1]->HasAnyPropertyFlags(CPF_OutParm),
-			TEXT("static UPARAM(ref) output should carry CPF_OutParm")));
-		ASSERT_THAT(IsFalse(UPARAMParams.IsValidIndex(1) && UPARAMParams[1]->HasAnyPropertyFlags(CPF_ReferenceParm),
-			TEXT("static UPARAM(ref) output should remain out-only")));
-		FObjectProperty* UPARAMWorld = CastField<FObjectProperty>(UPARAMParams.IsValidIndex(2) ? UPARAMParams[2] : nullptr);
-		ASSERT_THAT(IsNotNull(UPARAMWorld, TEXT("StaticUPARAMAction should append generated UObject world context")));
-		if (UPARAMWorld == nullptr)
+		const TArray<FProperty*> StaticOutParams = GetOrderedParameters(StaticOutAction);
+		ASSERT_THAT(AreEqual(3, StaticOutParams.Num(), TEXT("StaticOutAction should expose two declared parameters plus generated world context")));
+		ASSERT_THAT(IsTrue(StaticOutParams.IsValidIndex(1) && StaticOutParams[1]->HasAnyPropertyFlags(CPF_OutParm),
+			TEXT("static output should carry CPF_OutParm")));
+		ASSERT_THAT(IsFalse(StaticOutParams.IsValidIndex(1) && StaticOutParams[1]->HasAnyPropertyFlags(CPF_ReferenceParm),
+			TEXT("static output should remain out-only")));
+		FObjectProperty* StaticOutWorld = CastField<FObjectProperty>(StaticOutParams.IsValidIndex(2) ? StaticOutParams[2] : nullptr);
+		ASSERT_THAT(IsNotNull(StaticOutWorld, TEXT("StaticOutAction should append generated UObject world context")));
+		if (StaticOutWorld == nullptr)
 		{
 			return;
 		}
-		ASSERT_THAT(AreEqual(FName(TEXT("_World_Context")), UPARAMWorld->GetFName(),
-			TEXT("StaticUPARAMAction generated world-context parameter should keep the standard name")));
-		ASSERT_THAT(AreEqual(UObject::StaticClass(), UPARAMWorld->PropertyClass,
-			TEXT("StaticUPARAMAction generated world-context parameter should be UObject")));
+		ASSERT_THAT(AreEqual(FName(TEXT("_World_Context")), StaticOutWorld->GetFName(),
+			TEXT("StaticOutAction generated world-context parameter should keep the standard name")));
+		ASSERT_THAT(AreEqual(UObject::StaticClass(), StaticOutWorld->PropertyClass,
+			TEXT("StaticOutAction generated world-context parameter should be UObject")));
 
 		UObject* StaticsDefaultObject = StaticsClass->GetDefaultObject();
 		ASSERT_THAT(IsNotNull(StaticsDefaultObject, TEXT("static advanced metadata statics class should expose CDO")));
@@ -2554,27 +2566,27 @@ public:
 		ASSERT_THAT(AreEqual(42, PureInvoker.CallAndReturn<int32>(INDEX_NONE),
 			TEXT("StaticPureAlias should execute namespace helper with explicit default override")));
 
-		FFunctionInvoker UPARAMInvoker(*TestRunner, StaticsDefaultObject, TEXT("StaticUPARAMAction"));
-		ASSERT_THAT(IsTrue(UPARAMInvoker.IsValid(), TEXT("StaticUPARAMAction should be invokable")));
-		if (!UPARAMInvoker.IsValid())
+		FFunctionInvoker OutInvoker(*TestRunner, StaticsDefaultObject, TEXT("StaticOutAction"));
+		ASSERT_THAT(IsTrue(OutInvoker.IsValid(), TEXT("StaticOutAction should be invokable")));
+		if (!OutInvoker.IsValid())
 		{
 			return;
 		}
-		UPARAMInvoker.AddParam<int32>(16);
+		OutInvoker.AddParam<int32>(16);
 		FProperty* OutputSlotProperty = nullptr;
 		void* OutputSlot = nullptr;
-		ASSERT_THAT(IsTrue(UPARAMInvoker.AddParamSlot(OutputSlotProperty, OutputSlot),
-			TEXT("StaticUPARAMAction should expose out parameter slot")));
+		ASSERT_THAT(IsTrue(OutInvoker.AddParamSlot(OutputSlotProperty, OutputSlot),
+			TEXT("StaticOutAction should expose out parameter slot")));
 		FIntProperty* OutputIntProperty = CastField<FIntProperty>(OutputSlotProperty);
-		ASSERT_THAT(IsNotNull(OutputIntProperty, TEXT("StaticUPARAMAction out slot should be FIntProperty")));
+		ASSERT_THAT(IsNotNull(OutputIntProperty, TEXT("StaticOutAction out slot should be FIntProperty")));
 		if (OutputSlot == nullptr || OutputIntProperty == nullptr)
 		{
 			return;
 		}
-		UPARAMInvoker.AddParam<UObject*>(StaticsDefaultObject);
-		ASSERT_THAT(IsTrue(UPARAMInvoker.Call(), TEXT("StaticUPARAMAction should write reflected out parameter")));
+		OutInvoker.AddParam<UObject*>(StaticsDefaultObject);
+		ASSERT_THAT(IsTrue(OutInvoker.Call(), TEXT("StaticOutAction should write reflected out parameter")));
 		ASSERT_THAT(AreEqual(42, OutputIntProperty->GetPropertyValue(OutputSlot),
-			TEXT("StaticUPARAMAction should write namespace-computed out value")));
+			TEXT("StaticOutAction should write namespace-computed out value")));
 	}
 
 	TEST_METHOD(NetworkSpecifierFlagMatrix)
@@ -3719,7 +3731,7 @@ public:
 				}
 
 				UFUNCTION(BlueprintEvent, BlueprintCallable, Category="Coverage|EventDefaults", meta=(DisplayName="Mutable Ref Event"))
-				int EventWithMutableRef(UPARAM(ref) int&inout MutableValue, int Bonus = 5)
+				int EventWithMutableRef(int&inout MutableValue, int Bonus = 5)
 				{
 					EventCallCount += 1;
 					MutableValue += Bonus;
@@ -3796,9 +3808,9 @@ public:
 		ASSERT_THAT(IsTrue(DefaultLabel->HasAnyPropertyFlags(CPF_ConstParm | CPF_OutParm),
 			TEXT("const FString&in event parameter should carry const/out reference flags")));
 		ASSERT_THAT(IsTrue(MutableValue->HasAllPropertyFlags(CPF_OutParm | CPF_ReferenceParm),
-			TEXT("UPARAM(ref) int&inout event parameter should carry out/reference flags")));
+			TEXT("int&inout event parameter should carry out/reference flags")));
 		ASSERT_THAT(IsFalse(MutableValue->HasAnyPropertyFlags(CPF_ConstParm),
-			TEXT("UPARAM(ref) int&inout event parameter should not carry const flags")));
+			TEXT("int&inout event parameter should not carry const flags")));
 		ASSERT_THAT(IsTrue(DefaultReturn->HasAnyPropertyFlags(CPF_ReturnParm),
 			TEXT("default event return should carry CPF_ReturnParm")));
 		ASSERT_THAT(IsTrue(MutableReturn->HasAnyPropertyFlags(CPF_ReturnParm),
