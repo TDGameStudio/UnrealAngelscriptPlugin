@@ -38,29 +38,53 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVector2DExpressionTest,
 	template <typename T>
 	void ExpectGlobalReturn(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const T& Expected, const TCHAR* Message)
 	{
+		ASSERT_THAT(IsNotNull(Module, TEXT("FVector2D expression module should compile before invoking globals")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
 		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
 		T Result{};
-		if constexpr (std::is_same_v<T, bool>
+		if constexpr (std::is_same_v<T, float>)
+		{
+			const double Actual = Invoker.ExecuteAndGet<double>(0.0);
+			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(static_cast<double>(Expected), Actual, 0.0001), Message));
+		}
+		else if constexpr (std::is_same_v<T, bool>
 			|| std::is_same_v<T, int32>
-			|| std::is_same_v<T, float>
 			|| std::is_same_v<T, double>)
 		{
 			Result = Invoker.ExecuteAndGet<T>(T{});
+			if constexpr (std::is_floating_point_v<T>)
+			{
+				ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Expected, Result, static_cast<T>(0.0001)), Message));
+			}
+			else
+			{
+				ASSERT_THAT(AreEqual(Expected, Result, Message));
+			}
 		}
 		else
 		{
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
+			ASSERT_THAT(AreEqual(Expected, Result, Message));
 		}
-		TestRunner->TestEqual(Message, Result, Expected);
 	}
 
 	// Helper for FVector2D with tolerance
 	void ExpectVector2DNearlyEqual(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const FVector2D& Expected, const TCHAR* Message, double Tolerance = 0.0001)
 	{
+		ASSERT_THAT(IsNotNull(Module, TEXT("FVector2D expression module should compile before invoking globals")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
 		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
 		FVector2D Result;
 		ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-		TestRunner->TestTrue(Message, Result.Equals(Expected, Tolerance));
+		ASSERT_THAT(IsTrue(Result.Equals(Expected, Tolerance), Message));
 	}
 
 	// -------------------------------------------------------------------------
@@ -82,29 +106,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVector2DExpressionTest,
 			return FVector2D(3.5, 7.2);
 		}
 
-		FVector2D ConstructSingleValue()
-		{
-			return FVector2D(5.0);
-		}
-
 		FVector2D ConstructZeroVector()
 		{
 			return FVector2D::ZeroVector;
 		}
 
-		FVector2D ConstructOneVector()
+		FVector2D ConstructUnitVector()
 		{
-			return FVector2D::One;
-		}
-
-		FVector2D ConstructUnitX()
-		{
-			return FVector2D::UnitX;
-		}
-
-		FVector2D ConstructUnitY()
-		{
-			return FVector2D::UnitY;
+			return FVector2D::UnitVector;
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -117,11 +126,32 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVector2DExpressionTest,
 
 		ExpectGlobalReturn<FVector2D>(Engine, Module, TEXT("FVector2D ConstructDefault()"), FVector2D::ZeroVector, TEXT("FVector2D() default"));
 		ExpectGlobalReturn<FVector2D>(Engine, Module, TEXT("FVector2D ConstructTwoParams()"), FVector2D(3.5, 7.2), TEXT("FVector2D(X,Y)"));
-		ExpectGlobalReturn<FVector2D>(Engine, Module, TEXT("FVector2D ConstructSingleValue()"), FVector2D(5.0, 5.0), TEXT("FVector2D(V) single value"));
 		ExpectGlobalReturn<FVector2D>(Engine, Module, TEXT("FVector2D ConstructZeroVector()"), FVector2D::ZeroVector, TEXT("FVector2D::ZeroVector"));
-		ExpectGlobalReturn<FVector2D>(Engine, Module, TEXT("FVector2D ConstructOneVector()"), FVector2D::One(), TEXT("FVector2D::One"));
-		ExpectGlobalReturn<FVector2D>(Engine, Module, TEXT("FVector2D ConstructUnitX()"), FVector2D::UnitX(), TEXT("FVector2D::UnitX"));
-		ExpectGlobalReturn<FVector2D>(Engine, Module, TEXT("FVector2D ConstructUnitY()"), FVector2D::UnitY(), TEXT("FVector2D::UnitY"));
+		ExpectGlobalReturn<FVector2D>(Engine, Module, TEXT("FVector2D ConstructUnitVector()"), FVector2D::UnitVector, TEXT("FVector2D::UnitVector"));
+
+		{
+			const TArray<FString> ExpectedDiagnostics = {
+				TEXT("No matching signatures to 'FVector2D(const float)'"),
+				TEXT("'FVector2D::One' is not declared"),
+				TEXT("'FVector2D::UnitX' is not declared"),
+				TEXT("'FVector2D::UnitY' is not declared")
+			};
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovFVector2DExpr_ConstructUnsupported"),
+				ASTEST_AS(R"AS(
+				void TryUnsupportedVector2DConstruction()
+				{
+					FVector2D Single = FVector2D(5.0);
+					FVector2D One = FVector2D::One;
+					FVector2D UnitX = FVector2D::UnitX;
+					FVector2D UnitY = FVector2D::UnitY;
+				}
+				)AS"),
+				TEXT("FVector2D single-value constructor and unbound constants should remain explicit unsupported boundaries"),
+				MakeArrayView(ExpectedDiagnostics))));
+		}
 	}
 
 	// -------------------------------------------------------------------------
@@ -264,7 +294,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVector2DExpressionTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// FVector2D dot product using | operator.
+	// FVector2D dot product via bound method. The `|` operator is not exposed
+	// for FVector2D on the current AS binding surface.
 	// -------------------------------------------------------------------------
 	TEST_METHOD(Vector2DDotProduct)
 	{
@@ -272,32 +303,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVector2DExpressionTest,
 		FAngelscriptEngineScope Scope(Engine);
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFVector2DExpr_DotProduct", ASTEST_AS(R"AS(
-		float DotProductOperator()
+		float DotProductOrthogonal()
 		{
 			FVector2D a = FVector2D(1.0, 0.0);
 			FVector2D b = FVector2D(0.0, 1.0);
-			return a | b;
-		}
-
-		float DotProductOrthogonal()
-		{
-			FVector2D a = FVector2D::UnitX();
-			FVector2D b = FVector2D::UnitY();
-			return a | b;
+			return a.DotProduct(b);
 		}
 
 		float DotProductParallel()
 		{
 			FVector2D a = FVector2D(3.0, 4.0);
 			FVector2D b = FVector2D(6.0, 8.0);
-			return a | b;
+			return a.DotProduct(b);
 		}
 
 		float DotProductGeneral()
 		{
 			FVector2D a = FVector2D(2.0, 3.0);
 			FVector2D b = FVector2D(4.0, 5.0);
-			return a | b;
+			return a.DotProduct(b);
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -308,10 +332,29 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVector2DExpressionTest,
 			}
 		};
 
-		ExpectGlobalReturn<float>(Engine, Module, TEXT("float DotProductOperator()"), 0.0f, TEXT("dot product operator (orthogonal)"));
-		ExpectGlobalReturn<float>(Engine, Module, TEXT("float DotProductOrthogonal()"), 0.0f, TEXT("dot product UnitX | UnitY"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float DotProductOrthogonal()"), 0.0f, TEXT("dot product orthogonal vectors"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float DotProductParallel()"), 50.0f, TEXT("dot product parallel vectors"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float DotProductGeneral()"), 23.0f, TEXT("dot product general case"));
+
+		{
+			const TArray<FString> ExpectedDiagnostics = {
+				TEXT("No matching operator that takes the types 'FVector2D' and 'FVector2D' found")
+			};
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovFVector2DExpr_DotOperatorUnsupported"),
+				ASTEST_AS(R"AS(
+				float TryDotOperator()
+				{
+					FVector2D A = FVector2D(1.0, 0.0);
+					FVector2D B = FVector2D(0.0, 1.0);
+					return A | B;
+				}
+				)AS"),
+				TEXT("FVector2D dot operator should remain an explicit unsupported boundary"),
+				MakeArrayView(ExpectedDiagnostics))));
+		}
 	}
 
 	// -------------------------------------------------------------------------

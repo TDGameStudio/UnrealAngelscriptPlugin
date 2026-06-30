@@ -191,14 +191,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformFunctionTest,
 		FAngelscriptEngineScope Scope(Engine);
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFTransformFunc_ParamInOut", ASTEST_AS(R"AS(
-		void ScaleTransform(FTransform&inout t)
+		void AssignScaleTransform(FTransform&inout t)
 		{
-			t.SetScale3D(FVector(2, 2, 2));
+			t = FTransform(t.GetRotation(), t.GetLocation(), FVector(2, 2, 2));
 		}
 
-		void TranslateTransform(FTransform&inout t, FVector offset)
+		void AssignTranslateTransform(FTransform&inout t, FVector offset)
 		{
-			t.AddToTranslation(offset);
+			t = FTransform(t.GetRotation(), t.GetLocation() + offset, t.GetScale3D());
+		}
+
+		void MutateScaleTransform(FTransform&inout t)
+		{
+			t.SetScale3D(FVector(2, 2, 2));
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -215,19 +220,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformFunctionTest,
 		}
 
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void ScaleTransform(FTransform&inout)"));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void AssignScaleTransform(FTransform&inout)"));
 			FTransform Value(FQuat::Identity, FVector::ZeroVector, FVector(1, 1, 1));
 			Invoker.AddArgRef(Value);
-			Invoker.Execute();
-			TestRunner->TestTrue(TEXT("FTransform &inout parameter scales"), Value.GetScale3D().Equals(FVector(2, 2, 2), 0.01));
+			ASSERT_THAT(IsTrue(Invoker.Execute(), TEXT("FTransform assignment &inout scale should execute")));
+			ASSERT_THAT(IsTrue(Value.GetScale3D().Equals(FVector(2, 2, 2), 0.01), TEXT("FTransform &inout assignment should scale caller value")));
 		}
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void TranslateTransform(FTransform&inout, FVector)"));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void AssignTranslateTransform(FTransform&inout, FVector)"));
 			FTransform Value(FVector(10, 20, 30));
 			FVector Offset(5, 10, 15);
 			Invoker.AddArgRef(Value).AddArgRef(Offset);
-			Invoker.Execute();
-			TestRunner->TestTrue(TEXT("FTransform &inout parameter translates"), Value.GetLocation().Equals(FVector(15, 30, 45), 0.01));
+			ASSERT_THAT(IsTrue(Invoker.Execute(), TEXT("FTransform assignment &inout translation should execute")));
+			ASSERT_THAT(IsTrue(Value.GetLocation().Equals(FVector(15, 30, 45), 0.01), TEXT("FTransform &inout assignment should translate caller value")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void MutateScaleTransform(FTransform&inout)"));
+			FTransform Value(FQuat::Identity, FVector::ZeroVector, FVector(1, 1, 1));
+			Invoker.AddArgRef(Value);
+			ASSERT_THAT(IsTrue(Invoker.Execute(), TEXT("FTransform mutator &inout scale should execute")));
+			ASSERT_THAT(IsTrue(Value.GetScale3D().Equals(FVector(2, 2, 2), 0.01), TEXT("FTransform &inout mutator should scale caller value")));
 		}
 	}
 
