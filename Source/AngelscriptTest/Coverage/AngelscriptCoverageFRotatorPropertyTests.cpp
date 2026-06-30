@@ -31,6 +31,76 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorPropertyTest,
 	"Angelscript.TestModule.Coverage.FRotatorProperty",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	static bool GetIntRotatorMapValue(
+		FAutomationTestBase& Test,
+		UObject* Object,
+		FStringView Path,
+		const int32 Key,
+		FRotator& OutValue)
+	{
+		FPropertyBindingPathIndirection Leaf;
+		if (!ResolvePathOnObject(Test, Object, Path, Leaf))
+		{
+			return false;
+		}
+
+		const FMapProperty* MapProperty = CastField<const FMapProperty>(Leaf.GetProperty());
+		if (!Test.TestNotNull(
+				*FString::Printf(TEXT("Property '%.*s' should be a TMap"), Path.Len(), Path.GetData()),
+				MapProperty))
+		{
+			return false;
+		}
+
+		const FIntProperty* KeyProperty = CastField<const FIntProperty>(MapProperty->KeyProp);
+		if (!Test.TestNotNull(
+				*FString::Printf(TEXT("TMap key property at '%.*s' should be FIntProperty"), Path.Len(), Path.GetData()),
+				KeyProperty))
+		{
+			return false;
+		}
+
+		const FStructProperty* ValueProperty = CastField<const FStructProperty>(MapProperty->ValueProp);
+		if (!Test.TestNotNull(
+				*FString::Printf(TEXT("TMap value property at '%.*s' should be FStructProperty"), Path.Len(), Path.GetData()),
+				ValueProperty))
+		{
+			return false;
+		}
+
+		const UScriptStruct* ExpectedStruct = TBaseStructure<FRotator>::Get();
+		if (!Test.TestTrue(
+				*FString::Printf(TEXT("TMap value property at '%.*s' should be FRotator"), Path.Len(), Path.GetData()),
+				ValueProperty->Struct != nullptr && ExpectedStruct != nullptr
+				&& ValueProperty->Struct->IsChildOf(ExpectedStruct)))
+		{
+			return false;
+		}
+
+		FScriptMapHelper Helper(MapProperty, Leaf.GetPropertyAddress());
+		for (int32 SparseIndex = 0; SparseIndex < Helper.GetMaxIndex(); ++SparseIndex)
+		{
+			if (!Helper.IsValidIndex(SparseIndex))
+			{
+				continue;
+			}
+
+			if (KeyProperty->GetPropertyValue(Helper.GetKeyPtr(SparseIndex)) == Key)
+			{
+				ValueProperty->CopySingleValue(&OutValue, Helper.GetValuePtr(SparseIndex));
+				return true;
+			}
+		}
+
+		Test.AddError(FString::Printf(
+			TEXT("TMap at '%.*s' does not contain key %d"),
+			Path.Len(), Path.GetData(),
+			Key));
+		return false;
+	}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -229,10 +299,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorPropertyTest,
 			ASSERT_THAT(IsTrue(GetMapNumByPath(*TestRunner, Actor, TEXT("IntToRotatorMap"), Count)));
 			ASSERT_THAT(AreEqual(3, Count, TEXT("TMap<int,FRotator> should have 3 entries")));
 
-			// Access map values through nested path
-			VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("IntToRotatorMap[1].Pitch"), 45.0, TEXT("TMap<int,FRotator>[1].Pitch"));
-			VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("IntToRotatorMap[2].Yaw"), 90.0, TEXT("TMap<int,FRotator>[2].Yaw"));
-			VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("IntToRotatorMap[3].Roll"), 45.0, TEXT("TMap<int,FRotator>[3].Roll"));
+			FRotator MapValue = FRotator::ZeroRotator;
+			ASSERT_THAT(IsTrue(GetIntRotatorMapValue(*TestRunner, Actor, TEXT("IntToRotatorMap"), 1, MapValue)));
+			ASSERT_THAT(IsNear(45.0, MapValue.Pitch, 0.001, TEXT("TMap<int,FRotator>[1].Pitch")));
+
+			ASSERT_THAT(IsTrue(GetIntRotatorMapValue(*TestRunner, Actor, TEXT("IntToRotatorMap"), 2, MapValue)));
+			ASSERT_THAT(IsNear(90.0, MapValue.Yaw, 0.001, TEXT("TMap<int,FRotator>[2].Yaw")));
+
+			ASSERT_THAT(IsTrue(GetIntRotatorMapValue(*TestRunner, Actor, TEXT("IntToRotatorMap"), 3, MapValue)));
+			ASSERT_THAT(IsNear(45.0, MapValue.Roll, 0.001, TEXT("TMap<int,FRotator>[3].Roll")));
 		}
 	}
 
@@ -365,7 +440,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorPropertyTest,
 		int32 MapCount = 0;
 		ASSERT_THAT(IsTrue(GetMapNumByPath(*TestRunner, Actor, TEXT("ReflectedRotatorMap"), MapCount)));
 		ASSERT_THAT(AreEqual(1, MapCount, TEXT("TMap<int, FRotator> reflected property should contain BeginPlay value")));
-		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("ReflectedRotatorMap[7].Roll"), 90.0, TEXT("TMap<int, FRotator> should preserve mapped value"))));
+
+		FRotator MapValue = FRotator::ZeroRotator;
+		ASSERT_THAT(IsTrue(GetIntRotatorMapValue(*TestRunner, Actor, TEXT("ReflectedRotatorMap"), 7, MapValue)));
+		ASSERT_THAT(IsNear(90.0, MapValue.Roll, 0.001, TEXT("TMap<int, FRotator> should preserve mapped value")));
 	}
 };
 

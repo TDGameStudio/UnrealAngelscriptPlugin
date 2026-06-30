@@ -94,13 +94,25 @@ public:
 					this.AddScore();
 					this.AddScore(7);
 
-					ACoverageMixinHostActor Other = SpawnActor<ACoverageMixinHostActor>();
+					// Spawn a no-op peer subclass (not the host class itself) so the
+					// spawned receiver does not recursively run host BeginPlay/SpawnActor.
+					ACoverageMixinHostActor Other = Cast<ACoverageMixinHostActor>(SpawnActor(ACoverageMixinPeerActor::StaticClass()));
 					this.CopyScoreTo(Other, 3);
 					if (Other != nullptr)
 					{
 						OtherScore = Other.Score;
 						Other.DestroyActor();
 					}
+				}
+			}
+
+			UCLASS()
+			class ACoverageMixinPeerActor : ACoverageMixinHostActor
+			{
+				// No-op BeginPlay keeps the spawned peer from recursively spawning more peers.
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
 				}
 			}
 			)AS"),
@@ -329,8 +341,13 @@ public:
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					this.MarkSource();
-					this.AddLayer(4);
+					// A grandchild descends from BOTH receiver types, so an auto-dispatched
+					// `this.MarkSource()` is ambiguous (AS overload resolution does not rank by
+					// inheritance distance when neither overload is an exact match). Select the
+					// nearest (child) overload through an explicit child-typed receiver view.
+					ACoverageMixinConflictChild ChildView = this;
+					ChildView.MarkSource();
+					ChildView.AddLayer(4);
 					GrandchildRouteValue = ChildRouteValue + RouteValue;
 					GrandchildLayerTotal = ChildLayerTotal + LayerTotal;
 				}
@@ -673,7 +690,9 @@ public:
 				{
 					bCopiedLinkedScore = this.CopyLinkedScore();
 
-					LinkedActor = SpawnActor<ACoverageMixinPropertyActor>();
+					// Spawn a no-op peer subclass (not the same class) so the linked actor
+					// does not recursively run BeginPlay/SpawnActor.
+					LinkedActor = Cast<ACoverageMixinPropertyActor>(SpawnActor(ACoverageMixinPropertyPeerActor::StaticClass()));
 					if (LinkedActor != nullptr)
 					{
 						LinkedActor.Score = 40;
@@ -683,6 +702,16 @@ public:
 					}
 
 					this.ApplyNameMarker(n"MixinTouchedProperty");
+				}
+			}
+
+			UCLASS()
+			class ACoverageMixinPropertyPeerActor : ACoverageMixinPropertyActor
+			{
+				// No-op BeginPlay keeps the linked peer from recursively spawning.
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
 				}
 			}
 			)AS"),

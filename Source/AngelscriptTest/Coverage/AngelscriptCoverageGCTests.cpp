@@ -9,7 +9,6 @@
 #include "GameFramework/Actor.h"
 #include "Misc/ScopeExit.h"
 #include "UObject/Class.h"
-#include "UObject/GarbageCollection.h"
 
 // -----------------------------------------------------------------------------
 // AngelscriptCoverageGCTests
@@ -28,7 +27,7 @@
 //
 // GC verification strategy:
 //   1. Create objects with various reference patterns
-//   2. Trigger ForceGarbageCollection() or CollectGarbage()
+//   2. Trigger synchronous GC through CoverageGC test helpers
 //   3. Verify object validity using IsValid() and TWeakObjectPtr.IsValid()
 //
 // Pattern D (UPROPERTY path read/write) from the Angelscript test guide: spawn
@@ -86,20 +85,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					// Create a local actor that has no strong references
-					AActor TempActor = SpawnActor(AActor::StaticClass());
+					// Create a local object that has no strong references
+					UObject TempObject = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
 
 					// Create weak reference to track it
-					TWeakObjectPtr<AActor> WeakRef = TempActor;
+					TWeakObjectPtr<UObject> WeakRef = TempObject;
 
 					// At this point, only the local variable holds it
 					// Local variables do not protect from GC in AngelScript
 
 					// Clear the local reference
-					TempActor = nullptr;
+					TempObject = nullptr;
 
 					// Force garbage collection
-					System::ForceGarbageCollection(true);
+					CoverageGC::ForceGarbageCollectionNow();
 
 					// After GC, the weak reference should be invalid
 					if (!WeakRef.IsValid())
@@ -154,7 +153,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 			class ACoverageGCUPropertyProtectionActor : AActor
 			{
 				UPROPERTY()
-				AActor StrongRefActor;
+				UObject StrongRefObject;
 
 				UPROPERTY()
 				bool ObjectSurvivedGC = false;
@@ -162,17 +161,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					// Create an actor and hold it in UPROPERTY member
-					StrongRefActor = SpawnActor(AActor::StaticClass());
+					// Create an object and hold it in UPROPERTY member
+					StrongRefObject = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
 
 					// Create weak reference to verify it survives
-					TWeakObjectPtr<AActor> WeakRef = StrongRefActor;
+					TWeakObjectPtr<UObject> WeakRef = StrongRefObject;
 
 					// Force garbage collection
-					System::ForceGarbageCollection(true);
+					CoverageGC::ForceGarbageCollectionNow();
 
 					// UPROPERTY should protect the object from GC
-					if (WeakRef.IsValid() && IsValid(StrongRefActor))
+					if (WeakRef.IsValid() && IsValid(StrongRefObject))
 					{
 						ObjectSurvivedGC = true;
 					}
@@ -232,11 +231,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					// Create an actor with no strong references
-					AActor TempActor = SpawnActor(AActor::StaticClass());
+					// Create an object with no strong references
+					UObject TempObject = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
 
 					// Create weak reference
-					TWeakObjectPtr<AActor> WeakRef = TempActor;
+					TWeakObjectPtr<UObject> WeakRef = TempObject;
 
 					// Verify weak ref is initially valid
 					if (WeakRef.IsValid())
@@ -245,10 +244,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 					}
 
 					// Clear strong reference
-					TempActor = nullptr;
+					TempObject = nullptr;
 
 					// Force GC
-					System::ForceGarbageCollection(true);
+					CoverageGC::ForceGarbageCollectionNow();
 
 					// Weak reference should now be invalid
 					if (!WeakRef.IsValid())
@@ -305,10 +304,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 			class ACoverageGCContainerProtectionActor : AActor
 			{
 				UPROPERTY()
-				TArray<AActor> ActorArray;
+				TArray<UObject> ObjectArray;
 
 				UPROPERTY()
-				TMap<int32, AActor> ActorMap;
+				TMap<int32, UObject> ObjectMap;
 
 				UPROPERTY()
 				bool ArrayObjectSurvivedGC = false;
@@ -319,32 +318,32 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					// Create actors and store in containers
-					AActor ArrayActor = SpawnActor(AActor::StaticClass());
-					ActorArray.Add(ArrayActor);
+					// Create objects and store in containers
+					UObject ArrayObject = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
+					ObjectArray.Add(ArrayObject);
 
-					AActor MapActor = SpawnActor(AActor::StaticClass());
-					ActorMap.Add(1, MapActor);
+					UObject MapObject = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
+					ObjectMap.Add(1, MapObject);
 
 					// Create weak references to verify survival
-					TWeakObjectPtr<AActor> WeakArrayRef = ArrayActor;
-					TWeakObjectPtr<AActor> WeakMapRef = MapActor;
+					TWeakObjectPtr<UObject> WeakArrayRef = ArrayObject;
+					TWeakObjectPtr<UObject> WeakMapRef = MapObject;
 
 					// Clear local references
-					ArrayActor = nullptr;
-					MapActor = nullptr;
+					ArrayObject = nullptr;
+					MapObject = nullptr;
 
 					// Force GC
-					System::ForceGarbageCollection(true);
+					CoverageGC::ForceGarbageCollectionNow();
 
 					// Container members should protect objects from GC
-					if (WeakArrayRef.IsValid() && IsValid(ActorArray[0]))
+					if (WeakArrayRef.IsValid() && IsValid(ObjectArray[0]))
 					{
 						ArrayObjectSurvivedGC = true;
 					}
 
-					AActor RetrievedMapActor = ActorMap[1];
-					if (WeakMapRef.IsValid() && IsValid(RetrievedMapActor))
+					UObject RetrievedMapObject = ObjectMap[1];
+					if (WeakMapRef.IsValid() && IsValid(RetrievedMapObject))
 					{
 						MapObjectSurvivedGC = true;
 					}
@@ -369,9 +368,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 		BeginPlayActor(Engine, *Actor);
 
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ArrayObjectSurvivedGC"), true,
-			TEXT("TArray<AActor> should protect contained objects from GC"))));
+			TEXT("TArray<UObject> should protect contained objects from GC"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("MapObjectSurvivedGC"), true,
-			TEXT("TMap with AActor values should protect contained objects from GC"))));
+			TEXT("TMap with UObject values should protect contained objects from GC"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -398,10 +397,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 			class ACoverageGCCrossFrameHoldActor : AActor
 			{
 				UPROPERTY()
-				AActor HeldActor;
+				UObject HeldObject;
 
 				UPROPERTY()
-				TWeakObjectPtr<AActor> WeakRef;
+				TWeakObjectPtr<UObject> WeakRef;
 
 				UPROPERTY()
 				int32 FrameCount = 0;
@@ -412,9 +411,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					// Create actor and hold it
-					HeldActor = SpawnActor(AActor::StaticClass());
-					WeakRef = HeldActor;
+					// Create object and hold it
+					HeldObject = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
+					WeakRef = HeldObject;
 				}
 
 				UFUNCTION(BlueprintOverride)
@@ -425,9 +424,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 					// After 3 frames, force GC and verify object still exists
 					if (FrameCount == 3)
 					{
-						System::ForceGarbageCollection(true);
+						CoverageGC::ForceGarbageCollectionNow();
 
-						if (WeakRef.IsValid() && IsValid(HeldActor))
+						if (WeakRef.IsValid() && IsValid(HeldObject))
 						{
 							ObjectValidAfterMultipleFrames = true;
 						}
@@ -490,14 +489,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 
 				void TestLocalScope()
 				{
-					// Create actor in local scope
-					AActor LocalActor = SpawnActor(AActor::StaticClass());
+					// Create object in local scope
+					UObject LocalObject = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
 
 					// Create weak reference to track it
-					TWeakObjectPtr<AActor> WeakRef = LocalActor;
+					TWeakObjectPtr<UObject> WeakRef = LocalObject;
 
 					// Force GC while local variable still exists
-					System::ForceGarbageCollection(true);
+					CoverageGC::ForceGarbageCollectionNow();
 
 					// Local variables in AngelScript do NOT protect from GC
 					// (Unlike C++ stack variables which do protect)
@@ -569,11 +568,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 				{
 					// Test CollectGarbage()
 					{
-						AActor TempActor = SpawnActor(AActor::StaticClass());
-						TWeakObjectPtr<AActor> WeakRef = TempActor;
-						TempActor = nullptr;
+						UObject TempObject = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
+						TWeakObjectPtr<UObject> WeakRef = TempObject;
+						TempObject = nullptr;
 
-						System::CollectGarbage(EObjectFlags::RF_NoFlags, true);
+						CoverageGC::CollectGarbageNow();
 
 						if (!WeakRef.IsValid())
 						{
@@ -583,11 +582,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 
 					// Test ForceGarbageCollection()
 					{
-						AActor TempActor2 = SpawnActor(AActor::StaticClass());
-						TWeakObjectPtr<AActor> WeakRef2 = TempActor2;
-						TempActor2 = nullptr;
+						UObject TempObject2 = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
+						TWeakObjectPtr<UObject> WeakRef2 = TempObject2;
+						TempObject2 = nullptr;
 
-						System::ForceGarbageCollection(true);
+						CoverageGC::ForceGarbageCollectionNow();
 
 						if (!WeakRef2.IsValid())
 						{
@@ -615,9 +614,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 		BeginPlayActor(Engine, *Actor);
 
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CollectGarbageWorked"), true,
-			TEXT("System::CollectGarbage() should trigger garbage collection"))));
+			TEXT("CoverageGC::CollectGarbageNow() should trigger garbage collection"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ForceGarbageCollectionWorked"), true,
-			TEXT("System::ForceGarbageCollection() should trigger garbage collection"))));
+			TEXT("CoverageGC::ForceGarbageCollectionNow() should trigger garbage collection"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -652,27 +651,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					// Create actor
-					AActor TempActor = SpawnActor(AActor::StaticClass());
+					// Create object
+					UObject TempObject = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
 
 					// IsValid should return true for live object
-					if (IsValid(TempActor))
+					if (IsValid(TempObject))
 					{
 						IsValidReturnedTrueBeforeGC = true;
 					}
 
 					// Get weak reference, then clear strong ref
-					TWeakObjectPtr<AActor> WeakRef = TempActor;
-					TempActor = nullptr;
+					TWeakObjectPtr<UObject> WeakRef = TempObject;
+					TempObject = nullptr;
 
 					// Force GC
-					System::ForceGarbageCollection(true);
+					CoverageGC::ForceGarbageCollectionNow();
 
 					// Try to get object from weak ref
-					AActor RetrievedActor = WeakRef.Get();
+					UObject RetrievedObject = WeakRef.Get();
 
-					// IsValid should return false (or RetrievedActor is nullptr)
-					if (RetrievedActor == nullptr || !IsValid(RetrievedActor))
+					// IsValid should return false (or RetrievedObject is nullptr)
+					if (RetrievedObject == nullptr || !IsValid(RetrievedObject))
 					{
 						IsValidDetectedInvalidObject = true;
 					}
@@ -742,7 +741,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 						CreatedObject.IsA(UTexture2D::StaticClass());
 
 					CreatedObject = nullptr;
-					System::ForceGarbageCollection(true);
+					CoverageGC::ForceGarbageCollectionNow();
 
 					UnreferencedNewObjectCollected = !WeakCreatedObject.IsValid() && WeakCreatedObject.Get() == nullptr;
 				}
@@ -809,7 +808,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 					TWeakObjectPtr<UObject> WeakRootedObject = RootedObject;
 					RootedObject = nullptr;
 
-					System::ForceGarbageCollection(true);
+					CoverageGC::ForceGarbageCollectionNow();
 					RootedObjectSurvivedGC = WeakRootedObject.IsValid();
 
 					UObject UnrootedObject = WeakRootedObject.Get();
@@ -819,7 +818,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 					}
 					UnrootedObject = nullptr;
 
-					System::ForceGarbageCollection(true);
+					CoverageGC::ForceGarbageCollectionNow();
 					RemovedRootAllowedCollection = !WeakRootedObject.IsValid() && WeakRootedObject.Get() == nullptr;
 				}
 			}
@@ -899,13 +898,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 					TWeakObjectPtr<UObject> WeakLeaf = LeafObject;
 					LeafObject = nullptr;
 
-					System::ForceGarbageCollection(true);
+					CoverageGC::ForceGarbageCollectionNow();
 					ReachabilityChainSurvivedGC = WeakRoot.IsValid() && WeakLeaf.IsValid() && RootNode.Child != nullptr;
 
 					RootNode.Child = nullptr;
 					RootNode = nullptr;
 
-					System::ForceGarbageCollection(true);
+					CoverageGC::ForceGarbageCollectionNow();
 					ReleasedChainWasCollected = !WeakRoot.IsValid() && !WeakLeaf.IsValid();
 				}
 			}
@@ -987,7 +986,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageGCTest,
 					NodeA = nullptr;
 					NodeB = nullptr;
 
-					System::ForceGarbageCollection(true);
+					CoverageGC::ForceGarbageCollectionNow();
 					StrongCycleCollected = !WeakA.IsValid() && !WeakB.IsValid();
 				}
 			}

@@ -58,56 +58,44 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageConstTest,
 		FAngelscriptEngineScope Scope(Engine);
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCoverageConst_ValuesMethodsRefs", ASTEST_AS(R"AS(
-const int GlobalLimit = 12;
+			const int GlobalLimit = 12;
 
-int LocalConstValue()
-{
-	const int LocalLimit = 5;
-	return LocalLimit + GlobalLimit;
-}
+			int LocalConstValue()
+			{
+				const int LocalLimit = 5;
+				return LocalLimit + GlobalLimit;
+			}
 
-class ConstCounter
-{
-	int Value = 0;
+			int AddReadonly(const int&in Amount)
+			{
+				return 30 + Amount;
+			}
 
-	int GetValue() const
-	{
-		return Value;
-	}
+			int ConstInRefRead()
+			{
+				const int Bonus = 34;
+				return AddReadonly(Bonus);
+			}
 
-	int AddReadonly(const int&in Amount) const
-	{
-		return Value + Amount;
-	}
-}
+			int SumConstArray(const TArray<int>&in Values)
+			{
+				int Sum = 0;
+				for (const int& Value : Values)
+				{
+					Sum += Value;
+				}
+				return Sum;
+			}
 
-int ConstMethodAndInRef()
-{
-	ConstCounter Counter;
-	Counter.Value = 30;
-	const int Bonus = 4;
-	return Counter.GetValue() + Counter.AddReadonly(Bonus);
-}
-
-int SumConstArray(const TArray<int>&in Values)
-{
-	int Sum = 0;
-	for (const int& Value : Values)
-	{
-		Sum += Value;
-	}
-	return Sum;
-}
-
-int ConstContainerRead()
-{
-	TArray<int> Values;
-	Values.Add(3);
-	Values.Add(4);
-	Values.Add(5);
-	return SumConstArray(Values);
-}
-)AS"));
+			int ConstContainerRead()
+			{
+				TArray<int> Values;
+				Values.Add(3);
+				Values.Add(4);
+				Values.Add(5);
+				return SumConstArray(Values);
+			}
+			)AS"));
 		ON_SCOPE_EXIT
 		{
 			if (Module != nullptr)
@@ -117,8 +105,64 @@ int ConstContainerRead()
 		};
 
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int LocalConstValue()"), 17, TEXT("local and global const values should read"));
-		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int ConstMethodAndInRef()"), 64, TEXT("const method and const &in should read state"));
+		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int ConstInRefRead()"), 64, TEXT("const &in should read caller state"));
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int ConstContainerRead()"), 12, TEXT("const array reference and const foreach should read elements"));
+	}
+
+	TEST_METHOD(PlainScriptClassConstMethodBoundary)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCoverageConst_PlainClassBoundary", ASTEST_AS(R"AS(
+			class ConstCounter
+			{
+				int Value = 0;
+
+				int GetValue() const
+				{
+					return Value;
+				}
+
+				int AddReadonly(const int&in Amount) const
+				{
+					return Value + Amount;
+				}
+			}
+
+			int ConstMethodPlainClassBoundary()
+			{
+				ConstCounter Counter;
+				Counter.Value = 30;
+				const int Bonus = 4;
+				return Counter.GetValue() + Counter.AddReadonly(Bonus);
+			}
+			)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+
+		ASSERT_THAT(IsNotNull(Module, TEXT("plain script class const boundary module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		TestRunner->AddExpectedError(TEXT("Null pointer access"), EAutomationExpectedErrorFlags::Contains, 0);
+		TestRunner->AddExpectedError(TEXT("ASCoverageConst_PlainClassBoundary"), EAutomationExpectedErrorFlags::Contains, 0);
+		TestRunner->AddExpectedError(TEXT("ConstMethodPlainClassBoundary"), EAutomationExpectedErrorFlags::Contains, 1);
+
+		ASSERT_THAT(IsTrue(ExecuteAndExpectException(
+			*TestRunner,
+			Engine,
+			*Module,
+			TEXT("int ConstMethodPlainClassBoundary()"),
+			TEXT("plain script class const method member access currently remains a runtime boundary"),
+			TEXT("Null pointer access"))));
 	}
 
 	TEST_METHOD(ConstUFunctionAndPropertyReflection)
@@ -138,35 +182,35 @@ int ConstContainerRead()
 			ModuleName,
 			TEXT("ASCoverageConstUFunctionProperty.as"),
 			ASTEST_AS(R"AS(
-UCLASS()
-class ACoverageConstActor : AActor
-{
-	UPROPERTY()
-	int Value = 21;
+				UCLASS()
+				class ACoverageConstActor : AActor
+				{
+					UPROPERTY()
+					int Value = 21;
 
-	UPROPERTY()
-	int Observed = 0;
+					UPROPERTY()
+					int Observed = 0;
 
-	UFUNCTION()
-	int GetValue() const
-	{
-		return Value;
-	}
+					UFUNCTION()
+					int GetValue() const
+					{
+						return Value;
+					}
 
-	UFUNCTION()
-	int AddConstParam(const int&in Amount) const
-	{
-		return Value + Amount;
-	}
+					UFUNCTION()
+					int AddConstParam(const int&in Amount) const
+					{
+						return Value + Amount;
+					}
 
-	UFUNCTION(BlueprintOverride)
-	void BeginPlay()
-	{
-		const int Bonus = 8;
-		Observed = GetValue() + AddConstParam(Bonus);
-	}
-}
-)AS"),
+					UFUNCTION(BlueprintOverride)
+					void BeginPlay()
+					{
+						const int Bonus = 8;
+						Observed = GetValue() + AddConstParam(Bonus);
+					}
+				}
+				)AS"),
 			TEXT("ACoverageConstActor"));
 		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("const actor should compile")));
 
@@ -184,37 +228,49 @@ class ACoverageConstActor : AActor
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("ASCoverageConst_ModifyLocal"),
-			TEXT(R"(
-void Test()
-{
-	const int Value = 1;
-	Value = 2;
-}
-)"),
+		const FString ModifyLocalSource = ASTEST_AS(R"AS(
+			void Test()
+			{
+				const int Value = 1;
+				Value = 2;
+			}
+			)AS");
+		SyntaxTestHelpers::AssertFailsToCompile(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageConst_ModifyLocal"),
+			*ModifyLocalSource,
 			TEXT("modifying a const local should fail"));
 
-		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("ASCoverageConst_ModifyParam"),
-			TEXT(R"(
-void Test(const int Value)
-{
-	Value = 2;
-}
-)"),
+		const FString ModifyParamSource = ASTEST_AS(R"AS(
+			void Test(const int Value)
+			{
+				Value = 2;
+			}
+			)AS");
+		SyntaxTestHelpers::AssertFailsToCompile(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageConst_ModifyParam"),
+			*ModifyParamSource,
 			TEXT("modifying a const value parameter should fail"));
 
-		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("ASCoverageConst_ConstMethodMutatesMember"),
-			TEXT(R"(
-class ConstMutationProbe
-{
-	int Value = 0;
+		const FString ConstMethodMutatesMemberSource = ASTEST_AS(R"AS(
+			class ConstMutationProbe
+			{
+				int Value = 0;
 
-	void Mutate() const
-	{
-		Value = 2;
-	}
-}
-)"),
+				void Mutate() const
+				{
+					Value = 2;
+				}
+			}
+			)AS");
+		SyntaxTestHelpers::AssertFailsToCompile(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageConst_ConstMethodMutatesMember"),
+			*ConstMethodMutatesMemberSource,
 			TEXT("mutating a member from const method should fail"));
 	}
 };

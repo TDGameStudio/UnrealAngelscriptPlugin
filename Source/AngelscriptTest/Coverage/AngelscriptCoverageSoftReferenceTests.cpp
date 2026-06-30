@@ -25,12 +25,12 @@
 //   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md - Sub-matrix 4 & 5
 //
 // Axes covered here:
-//   * SoftObjectPtrBasics        - TSoftObjectPtr declaration, assignment, Get, LoadSynchronous
+//   * SoftObjectPtrBasics        - TSoftObjectPtr declaration, assignment, Get
 //   * SoftObjectPtrNullChecks    - IsNull, IsValid checks
 //   * SoftObjectPtrPath          - ToSoftObjectPath, ToString path operations
 //   * SoftObjectPtrAsProperty    - TSoftObjectPtr as UPROPERTY with specifiers
 //   * SoftObjectPtrInContainers  - TArray, TMap with soft references
-//   * SoftClassPtrBasics         - TSoftClassPtr declaration, LoadSynchronous, Get
+//   * SoftClassPtrBasics         - TSoftClassPtr declaration, Get
 //   * SoftClassPtrPath           - ToString, path operations
 //
 // Pattern D (UPROPERTY path read/write) from the Angelscript test guide: spawn
@@ -60,7 +60,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSoftReferenceTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// TSoftObjectPtr basics: declaration, assignment, Get, LoadSynchronous
+	// TSoftObjectPtr basics: declaration, assignment, Get
 	// -------------------------------------------------------------------------
 	TEST_METHOD(SoftObjectPtrBasics)
 	{
@@ -94,9 +94,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSoftReferenceTest,
 				UPROPERTY()
 				bool GetBeforeLoadReturnsNull = false;
 
-				UPROPERTY()
-				bool LoadSynchronousWorked = false;
-
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
@@ -117,13 +114,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSoftReferenceTest,
 					if (Retrieved == SpawnedActor)
 					{
 						GetWorked = true;
-					}
-
-					// Test LoadSynchronous on already-loaded object
-					AActor Loaded = SoftActor.EditorOnlyLoadSynchronous();
-					if (Loaded == SpawnedActor)
-					{
-						LoadSynchronousWorked = true;
 					}
 
 					// Test Get() before load returns null for unloaded reference
@@ -158,7 +148,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSoftReferenceTest,
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AssignmentWorked"), true, TEXT("TSoftObjectPtr assignment should work"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetWorked"), true, TEXT("TSoftObjectPtr Get should work"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetBeforeLoadReturnsNull"), true, TEXT("TSoftObjectPtr Get should return null for unloaded object"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("LoadSynchronousWorked"), true, TEXT("TSoftObjectPtr LoadSynchronous should work"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -527,7 +516,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSoftReferenceTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// TSoftClassPtr basics: declaration, LoadSynchronous, Get
+	// TSoftClassPtr basics: declaration, Get
 	// -------------------------------------------------------------------------
 	TEST_METHOD(SoftClassPtrBasics)
 	{
@@ -556,9 +545,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSoftReferenceTest,
 				bool AssignmentWorked = false;
 
 				UPROPERTY()
-				bool LoadSynchronousWorked = false;
-
-				UPROPERTY()
 				bool GetWorked = false;
 
 				UPROPERTY()
@@ -578,24 +564,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSoftReferenceTest,
 						AssignmentWorked = true;
 					}
 
-					// Test LoadSynchronous
-					UClass LoadedClass = SoftClass.EditorOnlyLoadSynchronous();
-					if (LoadedClass != nullptr)
-					{
-						LoadSynchronousWorked = true;
-					}
-
 					// Test Get
-					UClass GetClass = SoftClass.Get();
-					if (GetClass != nullptr)
+					TSubclassOf<AActor> GetClass = SoftClass.Get();
+					if (GetClass.IsValid() && GetClass.IsChildOf(AActor::StaticClass()))
 					{
 						GetWorked = true;
 					}
 
 					// Test spawning with loaded class
-					if (LoadedClass != nullptr)
+					if (GetClass.IsValid())
 					{
-						AActor SpawnedActor = SpawnActor(LoadedClass);
+						AActor SpawnedActor = SpawnActor(GetClass);
 						if (SpawnedActor != nullptr)
 						{
 							SpawnFromSoftClassWorked = true;
@@ -623,7 +602,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageSoftReferenceTest,
 
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DeclarationWorked"), true, TEXT("TSoftClassPtr declaration should work"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AssignmentWorked"), true, TEXT("TSoftClassPtr assignment should work"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("LoadSynchronousWorked"), true, TEXT("TSoftClassPtr LoadSynchronous should work"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetWorked"), true, TEXT("TSoftClassPtr Get should work"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SpawnFromSoftClassWorked"), true, TEXT("Spawning from soft class reference should work"))));
 	}

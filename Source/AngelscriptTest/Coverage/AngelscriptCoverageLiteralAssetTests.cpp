@@ -49,6 +49,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLiteralAssetTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
+		TestRunner->AddExpectedError(TEXT("LogUObjectBase: Class pointer is invalid or CDO is invalid."), EAutomationExpectedErrorFlags::Contains, 1);
 
 		const FString ScriptSource = ASTEST_AS(R"AS(
 			UCLASS()
@@ -100,6 +101,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLiteralAssetTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
+		TestRunner->AddExpectedError(TEXT("LogUObjectBase: Class pointer is invalid or CDO is invalid."), EAutomationExpectedErrorFlags::Contains, 1);
 
 		const FString ScriptSource = ASTEST_AS(R"AS(
 			UCLASS()
@@ -151,6 +153,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLiteralAssetTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
+		TestRunner->AddExpectedError(TEXT("LogUObjectBase: Class pointer is invalid or CDO is invalid."), EAutomationExpectedErrorFlags::Contains, 1);
 
 		static const FName AssetName(TEXT("MyMaterializedAsset"));
 
@@ -166,15 +169,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLiteralAssetTest,
 			{
 				bInitialized = true;
 			}
-			)AS");
+		)AS");
 
 		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageLiteralAsset_Materialization"), ScriptSource);
-
-		ON_SCOPE_EXIT
-		{
-			Engine.DiscardModule(TEXT("ASCoverageLiteralAsset_Materialization"));
-		};
-
 		if (!Module.IsValid())
 		{
 			return;
@@ -199,6 +196,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLiteralAssetTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
+		TestRunner->AddExpectedError(TEXT("LogUObjectBase: Class pointer is invalid or CDO is invalid."), EAutomationExpectedErrorFlags::Contains, 1);
 
 		const FString ScriptSource = ASTEST_AS(R"AS(
 			UCLASS()
@@ -237,6 +235,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLiteralAssetTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
+		TestRunner->AddExpectedError(TEXT("LogUObjectBase: Class pointer is invalid or CDO is invalid."), EAutomationExpectedErrorFlags::Contains, 1);
 
 		const FString ScriptSource = ASTEST_AS(R"AS(
 			UCLASS()
@@ -296,6 +295,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLiteralAssetTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
+		TestRunner->AddExpectedError(TEXT("LogUObjectBase: Class pointer is invalid or CDO is invalid."), EAutomationExpectedErrorFlags::Contains, 1);
 
 		const FString ScriptSource = ASTEST_AS(R"AS(
 			UCLASS()
@@ -343,6 +343,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLiteralAssetTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
+		TestRunner->AddExpectedError(TEXT("LogUObjectBase: Class pointer is invalid or CDO is invalid."), EAutomationExpectedErrorFlags::Contains, 1);
 
 		const FString ScriptSource = ASTEST_AS(R"AS(
 			UCLASS()

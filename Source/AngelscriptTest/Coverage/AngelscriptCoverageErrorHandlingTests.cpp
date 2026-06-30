@@ -52,7 +52,7 @@ public:
 					return false;
 				}
 
-				OutResult = Numerator / Denominator;
+				OutResult = Math::IntegerDivisionTrunc(Numerator, Denominator);
 				return true;
 			}
 
@@ -253,6 +253,13 @@ public:
 		TestRunner->AddExpectedError(TEXT("Cannot move assign an array into itself."), EAutomationExpectedErrorFlags::Contains, 1);
 		TestRunner->AddExpectedError(TEXT("Null pointer access"), EAutomationExpectedErrorFlags::Contains, 1);
 		TestRunner->AddExpectedError(TEXT("Division by zero"), EAutomationExpectedErrorFlags::Contains, 1);
+		TestRunner->AddExpectedError(TEXT("ASCoverageErrorHandling_NegativeBoundaries"), EAutomationExpectedErrorFlags::Contains, 6);
+		TestRunner->AddExpectedError(TEXT("TriggerArrayOutOfBounds"), EAutomationExpectedErrorFlags::Contains, 1);
+		TestRunner->AddExpectedError(TEXT("TriggerNullObjectAccess"), EAutomationExpectedErrorFlags::Contains, 1);
+		TestRunner->AddExpectedError(TEXT("TriggerDivideByZero"), EAutomationExpectedErrorFlags::Contains, 1);
+		TestRunner->AddExpectedError(TEXT("TriggerInsertOutOfBounds"), EAutomationExpectedErrorFlags::Contains, 1);
+		TestRunner->AddExpectedError(TEXT("TriggerNegativeArraySize"), EAutomationExpectedErrorFlags::Contains, 1);
+		TestRunner->AddExpectedError(TEXT("TriggerMoveAssignSelf"), EAutomationExpectedErrorFlags::Contains, 1);
 
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
@@ -265,10 +272,10 @@ public:
 				Values[1] = 20;
 			}
 
-			void TriggerNullObjectAccess()
+			FVector TriggerNullObjectAccess()
 			{
 				AActor Actor;
-				Actor.GetActorLocation();
+				return Actor.GetActorLocation();
 			}
 
 			void TriggerDivideByZero()
@@ -309,7 +316,7 @@ public:
 		asIScriptModule& ScriptModule = Module.GetModule();
 		ASSERT_THAT(IsTrue(ExecuteAndExpectException(*TestRunner, Engine, ScriptModule, TEXT("void TriggerArrayOutOfBounds()"),
 			TEXT("array write past the valid range should raise a script exception"), TEXT("Array index out of bounds."))));
-		ASSERT_THAT(IsTrue(ExecuteAndExpectException(*TestRunner, Engine, ScriptModule, TEXT("void TriggerNullObjectAccess()"),
+		ASSERT_THAT(IsTrue(ExecuteAndExpectException(*TestRunner, Engine, ScriptModule, TEXT("FVector TriggerNullObjectAccess()"),
 			TEXT("null UObject method access should raise a script exception"), TEXT("Null pointer access"))));
 		ASSERT_THAT(IsTrue(ExecuteAndExpectException(*TestRunner, Engine, ScriptModule, TEXT("void TriggerDivideByZero()"),
 			TEXT("integer divide by zero should raise a script exception"), TEXT("Division by zero"))));
@@ -431,7 +438,7 @@ public:
 			)AS");
 		const TArray<FString> SyntaxDiagnostics =
 		{
-			TEXT("Expected ';'"),
+			TEXT("Expected ',' or ';'"),
 			TEXT("Instead found")
 		};
 		ASSERT_THAT(IsTrue(CompileAndExpectFailure(

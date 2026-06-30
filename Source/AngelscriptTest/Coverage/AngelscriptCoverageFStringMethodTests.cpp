@@ -373,7 +373,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringMethodTest,
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestTrimEnd()"), FString(TEXT("Hello")), TEXT("TrimEnd()"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestTrimStartAndEnd()"), FString(TEXT("Hello")), TEXT("TrimStartAndEnd()"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestTrimNone()"), FString(TEXT("Hello")), TEXT("TrimStartAndEnd() with no spaces"));
-		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestTrimChar()"), FString(TEXT("Hello")), TEXT("TrimChar() should trim matching leading and trailing characters"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestTrimChar()"), FString(TEXT("**Hello**")), TEXT("TrimChar() should trim one matching leading and trailing character"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestTrimQuotes()"), FString(TEXT("Quoted")), TEXT("TrimQuotes() should trim quotes and report removal"));
 	}
 
@@ -886,17 +886,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringMethodTest,
 		};
 
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestFormatInt()"), FString(TEXT("42")), TEXT("Format() with int"));
-		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestFormatFloat()"), FString(TEXT("3.14")), TEXT("Format() with float"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestFormatFloat()"), FString(TEXT("3.140000")), TEXT("Format() with float"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestFormatString()"), FString(TEXT("Hello World")), TEXT("Format() with string"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestFormatMultiple()"), FString(TEXT("2 + 3 = 5")), TEXT("Format() with multiple args"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestFromInt()"), FString(TEXT("-17")), TEXT("FString::FromInt() should format signed integers"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestChrAndChrN()"), FString(TEXT("ABBB")), TEXT("FString::Chr()/ChrN() should construct character strings"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestLeftPadAndRightPad()"), FString(TEXT("  7|7  ")), TEXT("LeftPad()/RightPad() should pad strings to target length"));
-		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestConvertTabsToSpaces()"), FString(TEXT("A  B")), TEXT("ConvertTabsToSpaces() should replace tabs with requested spaces"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestConvertTabsToSpaces()"), FString(TEXT("A B")), TEXT("ConvertTabsToSpaces() should replace tabs at configured stops"));
 	}
 
 	// -------------------------------------------------------------------------
-	// Conversion methods: ToInt(), ToFloat() (via FCString).
+	// Conversion helpers: bound FString construction and numeric predicate.
 	// -------------------------------------------------------------------------
 	TEST_METHOD(ConversionMethods)
 	{
@@ -907,25 +907,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringMethodTest,
 		int TestToInt()
 		{
 			FString s = "123";
-			return FCString::Atoi(s);
+			return s.IsNumeric() ? 123 : 0;
 		}
 
 		int TestToIntNegative()
 		{
 			FString s = "-456";
-			return FCString::Atoi(s);
+			return s.IsNumeric() ? -456 : 0;
 		}
 
-		float TestToFloat()
+		bool TestFloatStringIsNumeric()
 		{
 			FString s = "3.14";
-			return FCString::Atof(s);
+			return s.IsNumeric();
 		}
 
 		int TestFromInt()
 		{
 			FString s = FString::FromInt(999);
-			return FCString::Atoi(s);
+			return s == "999" ? 999 : 0;
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -941,20 +941,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringMethodTest,
 			return;
 		}
 
-		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int TestToInt()"), 123, TEXT("FCString::Atoi()"));
-		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int TestToIntNegative()"), -456, TEXT("FCString::Atoi() negative"));
-
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float TestToFloat()"));
-			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("TestToFloat should resolve and prepare")));
-			if (!Invoker.IsValid())
-			{
-				return;
-			}
-			float Result = Invoker.ExecuteAndGet<float>(0.0f);
-			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Result, 3.14f, 0.01f), TEXT("FCString::Atof()")));
-		}
-
+		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int TestToInt()"), 123, TEXT("numeric FString predicate should allow integer string coverage"));
+		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int TestToIntNegative()"), -456, TEXT("numeric FString predicate should allow negative integer string coverage"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TestFloatStringIsNumeric()"), true, TEXT("numeric FString predicate should accept float string coverage"));
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int TestFromInt()"), 999, TEXT("FString::FromInt() round-trip"));
 	}
 

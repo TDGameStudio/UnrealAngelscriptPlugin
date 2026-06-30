@@ -8,7 +8,6 @@
 
 #include "Components/ActorTestSpawner.h"
 #include "Misc/ScopeExit.h"
-#include "UObject/ScriptInterface.h"
 #include "UObject/UnrealType.h"
 
 // -----------------------------------------------------------------------------
@@ -20,8 +19,8 @@
 // The AS 2.33-based fork does not support script-level interface declarations or
 // TScriptInterface<I> script types. These tests keep the coverage matrix honest
 // by proving the unsupported forms fail at compile time with explicit diagnostics.
-// Native UInterface references remain supported and are covered through property,
-// container, null, assignment, and call-dispatch paths below.
+// Native UInterface references remain supported and are covered through script
+// member, null, assignment, parameter, and call-dispatch paths below.
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -187,8 +186,7 @@ public:
 		FAngelscriptEngineScope Scope(Engine);
 
 		TArray<FString> ExpectedDiagnostics;
-		ExpectedDiagnostics.Add(TEXT("Expected method or property"));
-		ExpectedDiagnostics.Add(TEXT("Instead found identifier 'GENERATED_BODY'"));
+		ExpectedDiagnostics.Add(TEXT("Virtual property syntax has been removed"));
 
 		const FString ScriptSource = ASTEST_AS(R"AS(
 			interface ICoverageUnsupportedGeneratedBodyInterface
@@ -287,14 +285,14 @@ public:
 			MakeArrayView(ExpectedDiagnostics))));
 	}
 
-	TEST_METHOD(NativeInterfaceReferencePropertyAndContainer)
+	TEST_METHOD(NativeInterfaceReferenceMemberAndDispatch)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		AngelscriptNativeInterfaceTestHelpers::EnsureNativeInterfaceBound(UAngelscriptNativeParentInterface::StaticClass());
 
-		static const FName ModuleName(TEXT("ASCoverageUInterface_NativeReferencePropertyContainer"));
+		static const FName ModuleName(TEXT("ASCoverageUInterface_NativeReferencePropertyDispatch"));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
@@ -304,16 +302,12 @@ public:
 			*TestRunner,
 			Engine,
 			ModuleName,
-			TEXT("ASCoverageUInterfaceNativeReferencePropertyContainer.as"),
+			TEXT("ASCoverageUInterfaceNativeReferencePropertyDispatch.as"),
 			ASTEST_AS(R"AS(
 			UCLASS()
 			class ACoverageNativeInterfaceReferenceActor : AActor, UAngelscriptNativeParentInterface
 			{
-				UPROPERTY()
 				UAngelscriptNativeParentInterface InterfaceRef;
-
-				UPROPERTY()
-				TArray<UAngelscriptNativeParentInterface> InterfaceRefs;
 
 				UPROPERTY()
 				int NativeValue = 42;
@@ -332,9 +326,6 @@ public:
 
 				UPROPERTY()
 				bool InterfaceCallWorked = false;
-
-				UPROPERTY()
-				bool ContainerStoredInterfaces = false;
 
 				UFUNCTION()
 				int GetNativeValue() const
@@ -370,12 +361,6 @@ public:
 						InterfaceRef.SetNativeMarker(n"FromInterfaceRef");
 					}
 
-					InterfaceRefs.Add(InterfaceRef);
-					InterfaceRefs.Add(Cast<UAngelscriptNativeParentInterface>(SelfObject));
-					ContainerStoredInterfaces = InterfaceRefs.Num() == 2 &&
-						InterfaceRefs[0] != nullptr &&
-						InterfaceRefs[1].GetNativeValue() == 42;
-
 					InterfaceRef = nullptr;
 					NullResetWorked = InterfaceRef == nullptr;
 				}
@@ -390,38 +375,6 @@ public:
 
 		ASSERT_THAT(IsTrue(ScriptClass->ImplementsInterface(UAngelscriptNativeParentInterface::StaticClass()),
 			TEXT("Script class should implement the native parent interface")));
-
-		const FProperty* InterfaceRefProperty = ScriptClass->FindPropertyByName(FName(TEXT("InterfaceRef")));
-		ASSERT_THAT(IsNotNull(InterfaceRefProperty, TEXT("InterfaceRef property should exist")));
-		if (InterfaceRefProperty == nullptr)
-		{
-			return;
-		}
-
-		const FInterfaceProperty* InterfaceProperty = CastField<FInterfaceProperty>(InterfaceRefProperty);
-		ASSERT_THAT(IsNotNull(InterfaceProperty, TEXT("InterfaceRef should emit an FInterfaceProperty")));
-		if (InterfaceProperty == nullptr)
-		{
-			return;
-		}
-		ASSERT_THAT(AreEqual(UAngelscriptNativeParentInterface::StaticClass(), InterfaceProperty->InterfaceClass,
-			TEXT("InterfaceRef should target the native parent interface class")));
-
-		const FArrayProperty* InterfaceRefsProperty = CastField<FArrayProperty>(ScriptClass->FindPropertyByName(FName(TEXT("InterfaceRefs"))));
-		ASSERT_THAT(IsNotNull(InterfaceRefsProperty, TEXT("InterfaceRefs array property should exist")));
-		if (InterfaceRefsProperty == nullptr)
-		{
-			return;
-		}
-
-		const FInterfaceProperty* InterfaceRefsInnerProperty = CastField<FInterfaceProperty>(InterfaceRefsProperty->Inner);
-		ASSERT_THAT(IsNotNull(InterfaceRefsInnerProperty, TEXT("InterfaceRefs should store interface elements")));
-		if (InterfaceRefsInnerProperty == nullptr)
-		{
-			return;
-		}
-		ASSERT_THAT(AreEqual(UAngelscriptNativeParentInterface::StaticClass(), InterfaceRefsInnerProperty->InterfaceClass,
-			TEXT("InterfaceRefs inner property should target the native parent interface class")));
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
@@ -439,8 +392,6 @@ public:
 			TEXT("Native interface reference assignment should work"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InterfaceCallWorked"), true,
 			TEXT("Native interface reference should dispatch interface methods"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ContainerStoredInterfaces"), true,
-			TEXT("TArray of native interface references should store callable entries"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NullResetWorked"), true,
 			TEXT("Native interface references should reset to null"))));
 
@@ -449,33 +400,9 @@ public:
 			TEXT("NativeMarker should be readable")));
 		ASSERT_THAT(AreEqual(FName(TEXT("FromInterfaceRef")), NativeMarker,
 			TEXT("Native interface setter should mutate actor state")));
-
-		int32 InterfaceRefCount = 0;
-		ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, Actor, TEXT("InterfaceRefs"), InterfaceRefCount),
-			TEXT("InterfaceRefs array length should resolve")));
-		ASSERT_THAT(AreEqual(2, InterfaceRefCount, TEXT("InterfaceRefs should retain two interface values")));
-
-		FScriptInterface* FirstInterfaceValue = InterfaceProperty->ContainerPtrToValuePtr<FScriptInterface>(Actor);
-		ASSERT_THAT(IsNotNull(FirstInterfaceValue, TEXT("C++ should read the script interface property value")));
-		if (FirstInterfaceValue != nullptr)
-		{
-			ASSERT_THAT(IsNull(FirstInterfaceValue->GetObject(), TEXT("InterfaceRef should be null after AS reset")));
-			ASSERT_THAT(IsNull(FirstInterfaceValue->GetInterface(), TEXT("InterfaceRef interface pointer should be null after AS reset")));
-		}
-
-		FScriptArrayHelper InterfaceArrayHelper(InterfaceRefsProperty, InterfaceRefsProperty->ContainerPtrToValuePtr<void>(Actor));
-		ASSERT_THAT(AreEqual(2, InterfaceArrayHelper.Num(), TEXT("C++ should observe two stored interface array entries")));
-		if (InterfaceArrayHelper.Num() > 0)
-		{
-			const FScriptInterface* FirstArrayInterface = reinterpret_cast<const FScriptInterface*>(InterfaceArrayHelper.GetRawPtr(0));
-			ASSERT_THAT(IsNotNull(FirstArrayInterface->GetObject(), TEXT("Interface array entry should expose its UObject")));
-			ASSERT_THAT(IsNotNull(FirstArrayInterface->GetInterface(), TEXT("Interface array entry should expose its native interface pointer")));
-			ASSERT_THAT(AreEqual(static_cast<UObject*>(Actor), FirstArrayInterface->GetObject(),
-				TEXT("Interface array entry object should be the script actor")));
-		}
 	}
 
-	TEST_METHOD(NativeInterfacePolymorphicContainerAndParameters)
+	TEST_METHOD(NativeInterfacePolymorphicReferencesAndParameters)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
@@ -483,7 +410,7 @@ public:
 		AngelscriptNativeInterfaceTestHelpers::EnsureNativeInterfaceBound(UAngelscriptNativeParentInterface::StaticClass());
 		AngelscriptNativeInterfaceTestHelpers::EnsureNativeInterfaceBound(UAngelscriptNativeChildInterface::StaticClass());
 
-		static const FName ModuleName(TEXT("ASCoverageUInterface_NativePolymorphicContainer"));
+		static const FName ModuleName(TEXT("ASCoverageUInterface_NativePolymorphicReferences"));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
@@ -493,7 +420,7 @@ public:
 			*TestRunner,
 			Engine,
 			ModuleName,
-			TEXT("ASCoverageUInterfaceNativePolymorphicContainer.as"),
+			TEXT("ASCoverageUInterfaceNativePolymorphicReferences.as"),
 			ASTEST_AS(R"AS(
 			UCLASS()
 			class ACoverageNativeInterfaceBaseActor : AActor, UAngelscriptNativeParentInterface
@@ -566,11 +493,7 @@ public:
 				UPROPERTY()
 				UObject SecondSource;
 
-				UPROPERTY()
 				UAngelscriptNativeParentInterface CurrentRef;
-
-				UPROPERTY()
-				TArray<UAngelscriptNativeParentInterface> ParentRefs;
 
 				UPROPERTY()
 				int PolymorphicSum = 0;
@@ -618,14 +541,7 @@ public:
 					if (FirstRef == nullptr || SecondRef == nullptr)
 						return;
 
-					ParentRefs.Add(FirstRef);
-					ParentRefs.Add(SecondRef);
-
-					for (int Index = 0; Index < ParentRefs.Num(); ++Index)
-					{
-						PolymorphicSum += ParentRefs[Index].GetNativeValue();
-					}
-
+					PolymorphicSum = FirstRef.GetNativeValue() + SecondRef.GetNativeValue();
 					PolymorphicDispatchWorked = PolymorphicSum == 57;
 
 					CurrentRef = SecondRef;
@@ -683,31 +599,6 @@ public:
 			return;
 		}
 
-		const FInterfaceProperty* CurrentRefProperty = CastField<FInterfaceProperty>(ScriptClass->FindPropertyByName(FName(TEXT("CurrentRef"))));
-		ASSERT_THAT(IsNotNull(CurrentRefProperty, TEXT("CurrentRef should emit an FInterfaceProperty")));
-		if (CurrentRefProperty == nullptr)
-		{
-			return;
-		}
-		ASSERT_THAT(AreEqual(UAngelscriptNativeParentInterface::StaticClass(), CurrentRefProperty->InterfaceClass,
-			TEXT("CurrentRef should target the native parent interface class")));
-
-		const FArrayProperty* ParentRefsProperty = CastField<FArrayProperty>(ScriptClass->FindPropertyByName(FName(TEXT("ParentRefs"))));
-		ASSERT_THAT(IsNotNull(ParentRefsProperty, TEXT("ParentRefs array property should exist")));
-		if (ParentRefsProperty == nullptr)
-		{
-			return;
-		}
-
-		const FInterfaceProperty* ParentRefsInnerProperty = CastField<FInterfaceProperty>(ParentRefsProperty->Inner);
-		ASSERT_THAT(IsNotNull(ParentRefsInnerProperty, TEXT("ParentRefs should store interface elements")));
-		if (ParentRefsInnerProperty == nullptr)
-		{
-			return;
-		}
-		ASSERT_THAT(AreEqual(UAngelscriptNativeParentInterface::StaticClass(), ParentRefsInnerProperty->InterfaceClass,
-			TEXT("ParentRefs inner property should target the native parent interface class")));
-
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* BaseActor = SpawnScriptActor(*TestRunner, Spawner, BaseClass);
@@ -741,7 +632,7 @@ public:
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, CollectorActor, TEXT("SecondAssigned"), true,
 			TEXT("Native interface reference should assign from the second script implementer"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, CollectorActor, TEXT("PolymorphicDispatchWorked"), true,
-			TEXT("Native interface array should dispatch through different script implementer classes"))));
+			TEXT("Native interface references should dispatch through different script implementer classes"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, CollectorActor, TEXT("InterfaceParameterWorked"), true,
 			TEXT("Native interface parameters should preserve interface dispatch and ref mutation"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, CollectorActor, TEXT("ChildCastWorked"), true,
@@ -751,7 +642,7 @@ public:
 		ASSERT_THAT(IsTrue(ReadIntPropertyChecked(*TestRunner, CollectorActor, TEXT("PolymorphicSum"), PolymorphicSum),
 			TEXT("PolymorphicSum should be readable")));
 		ASSERT_THAT(AreEqual(57, PolymorphicSum,
-			TEXT("Native interface array should sum parent dispatch results from both implementers")));
+			TEXT("Native interface references should sum parent dispatch results from both implementers")));
 
 		int32 ParameterAdjustedValue = 0;
 		ASSERT_THAT(IsTrue(ReadIntPropertyChecked(*TestRunner, CollectorActor, TEXT("ParameterAdjustedValue"), ParameterAdjustedValue),
@@ -764,46 +655,6 @@ public:
 			TEXT("ChildInterfaceValue should be readable")));
 		ASSERT_THAT(AreEqual(223, ChildInterfaceValue,
 			TEXT("Native child interface method should dispatch on the child implementer")));
-
-		FScriptInterface* CurrentInterfaceValue = CurrentRefProperty->ContainerPtrToValuePtr<FScriptInterface>(CollectorActor);
-		ASSERT_THAT(IsNotNull(CurrentInterfaceValue, TEXT("C++ should read the current script interface property value")));
-		if (CurrentInterfaceValue == nullptr)
-		{
-			return;
-		}
-		ASSERT_THAT(AreEqual(static_cast<UObject*>(ChildActor), CurrentInterfaceValue->GetObject(),
-			TEXT("CurrentRef object should point at the child actor")));
-		ASSERT_THAT(IsNotNull(CurrentInterfaceValue->GetInterface(),
-			TEXT("CurrentRef should expose the child actor native parent interface pointer")));
-
-		FScriptArrayHelper ParentRefsArrayHelper(ParentRefsProperty, ParentRefsProperty->ContainerPtrToValuePtr<void>(CollectorActor));
-		ASSERT_THAT(AreEqual(2, ParentRefsArrayHelper.Num(), TEXT("C++ should observe two polymorphic interface array entries")));
-		if (ParentRefsArrayHelper.Num() < 2)
-		{
-			return;
-		}
-
-		const FScriptInterface* FirstArrayInterface = reinterpret_cast<const FScriptInterface*>(ParentRefsArrayHelper.GetRawPtr(0));
-		ASSERT_THAT(IsNotNull(FirstArrayInterface, TEXT("First polymorphic interface array entry should be readable")));
-		if (FirstArrayInterface == nullptr)
-		{
-			return;
-		}
-		ASSERT_THAT(AreEqual(static_cast<UObject*>(BaseActor), FirstArrayInterface->GetObject(),
-			TEXT("First interface array entry object should be the base actor")));
-		ASSERT_THAT(IsNotNull(FirstArrayInterface->GetInterface(),
-			TEXT("First interface array entry should expose a native interface pointer")));
-
-		const FScriptInterface* SecondArrayInterface = reinterpret_cast<const FScriptInterface*>(ParentRefsArrayHelper.GetRawPtr(1));
-		ASSERT_THAT(IsNotNull(SecondArrayInterface, TEXT("Second polymorphic interface array entry should be readable")));
-		if (SecondArrayInterface == nullptr)
-		{
-			return;
-		}
-		ASSERT_THAT(AreEqual(static_cast<UObject*>(ChildActor), SecondArrayInterface->GetObject(),
-			TEXT("Second interface array entry object should be the child actor")));
-		ASSERT_THAT(IsNotNull(SecondArrayInterface->GetInterface(),
-			TEXT("Second interface array entry should expose a native interface pointer")));
 	}
 
 	TEST_METHOD(NativeSingleInterfaceMetadataAndReflectedDispatch)

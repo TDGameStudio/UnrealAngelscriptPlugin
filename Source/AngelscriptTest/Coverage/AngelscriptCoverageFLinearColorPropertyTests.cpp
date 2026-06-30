@@ -31,6 +31,76 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorPropertyTest,
 	"Angelscript.TestModule.Coverage.FLinearColorProperty",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	static bool GetIntLinearColorMapValue(
+		FAutomationTestBase& Test,
+		UObject* Object,
+		FStringView Path,
+		const int32 Key,
+		FLinearColor& OutValue)
+	{
+		FPropertyBindingPathIndirection Leaf;
+		if (!ResolvePathOnObject(Test, Object, Path, Leaf))
+		{
+			return false;
+		}
+
+		const FMapProperty* MapProperty = CastField<const FMapProperty>(Leaf.GetProperty());
+		if (!Test.TestNotNull(
+				*FString::Printf(TEXT("Property '%.*s' should be a TMap"), Path.Len(), Path.GetData()),
+				MapProperty))
+		{
+			return false;
+		}
+
+		const FIntProperty* KeyProperty = CastField<const FIntProperty>(MapProperty->KeyProp);
+		if (!Test.TestNotNull(
+				*FString::Printf(TEXT("TMap key property at '%.*s' should be FIntProperty"), Path.Len(), Path.GetData()),
+				KeyProperty))
+		{
+			return false;
+		}
+
+		const FStructProperty* ValueProperty = CastField<const FStructProperty>(MapProperty->ValueProp);
+		if (!Test.TestNotNull(
+				*FString::Printf(TEXT("TMap value property at '%.*s' should be FStructProperty"), Path.Len(), Path.GetData()),
+				ValueProperty))
+		{
+			return false;
+		}
+
+		const UScriptStruct* ExpectedStruct = TBaseStructure<FLinearColor>::Get();
+		if (!Test.TestTrue(
+				*FString::Printf(TEXT("TMap value property at '%.*s' should be FLinearColor"), Path.Len(), Path.GetData()),
+				ValueProperty->Struct != nullptr && ExpectedStruct != nullptr
+				&& ValueProperty->Struct->IsChildOf(ExpectedStruct)))
+		{
+			return false;
+		}
+
+		FScriptMapHelper Helper(MapProperty, Leaf.GetPropertyAddress());
+		for (int32 SparseIndex = 0; SparseIndex < Helper.GetMaxIndex(); ++SparseIndex)
+		{
+			if (!Helper.IsValidIndex(SparseIndex))
+			{
+				continue;
+			}
+
+			if (KeyProperty->GetPropertyValue(Helper.GetKeyPtr(SparseIndex)) == Key)
+			{
+				ValueProperty->CopySingleValue(&OutValue, Helper.GetValuePtr(SparseIndex));
+				return true;
+			}
+		}
+
+		Test.AddError(FString::Printf(
+			TEXT("TMap at '%.*s' does not contain key %d"),
+			Path.Len(), Path.GetData(),
+			Key));
+		return false;
+	}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -114,9 +184,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorPropertyTest,
 		VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("CustomColor.B"), 0.75f, TEXT("FLinearColor custom B"));
 		VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("CustomColor.A"), 1.0f, TEXT("FLinearColor custom A"));
 
-		// No default (should be black)
+		// No explicit default uses the bound FLinearColor default constructor: black with opaque alpha.
 		VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NoDefaultColor.R"), 0.0f, TEXT("FLinearColor no default R"));
-		VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NoDefaultColor.A"), 0.0f, TEXT("FLinearColor no default A"));
+		VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("NoDefaultColor.A"), 1.0f, TEXT("FLinearColor no default A"));
 
 		// Blue color (0, 0, 1, 1)
 		VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("BlueColor.B"), 1.0f, TEXT("FLinearColor::Blue.B"));
@@ -252,9 +322,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorPropertyTest,
 			ASSERT_THAT(IsTrue(GetMapNumByPath(*TestRunner, Actor, TEXT("IntToColorMap"), Count)));
 			ASSERT_THAT(AreEqual(3, Count, TEXT("TMap<int,FLinearColor> should have 3 entries")));
 
-			VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("IntToColorMap[1].R"), 1.0f, TEXT("TMap<int,FLinearColor>[1].R (White)"));
-			VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("IntToColorMap[1].G"), 1.0f, TEXT("TMap<int,FLinearColor>[1].G (White)"));
-			VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("IntToColorMap[2].R"), 0.0f, TEXT("TMap<int,FLinearColor>[2].R (Black)"));
+			FLinearColor ColorValue = FLinearColor::Transparent;
+			ASSERT_THAT(IsTrue(GetIntLinearColorMapValue(*TestRunner, Actor, TEXT("IntToColorMap"), 1, ColorValue)));
+			ASSERT_THAT(IsNear(1.0f, ColorValue.R, 0.001f, TEXT("TMap<int,FLinearColor>[1].R (White)")));
+			ASSERT_THAT(IsNear(1.0f, ColorValue.G, 0.001f, TEXT("TMap<int,FLinearColor>[1].G (White)")));
+
+			ASSERT_THAT(IsTrue(GetIntLinearColorMapValue(*TestRunner, Actor, TEXT("IntToColorMap"), 2, ColorValue)));
+			ASSERT_THAT(IsNear(0.0f, ColorValue.R, 0.001f, TEXT("TMap<int,FLinearColor>[2].R (Black)")));
 		}
 	}
 

@@ -110,17 +110,21 @@ public:
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					InitialLocation = Root.GetComponentLocation();
+					InitialLocation = Root.GetWorldLocation();
 
-					// Set world transform
-					Root.SetWorldLocation(FVector(100.0f, 200.0f, 300.0f));
-					Root.SetWorldRotation(FRotator(0.0f, 90.0f, 0.0f));
+					// Set world transform. SetWorldLocation/SetWorldRotation are reflective
+					// K2_ binds with a required FHitResult&out sweep param (no AS defaults on
+					// out params), so all four arguments must be supplied explicitly.
+					FHitResult SweepHit;
+					Root.SetWorldLocation(FVector(100.0f, 200.0f, 300.0f), false, SweepHit, false);
+					Root.SetWorldRotation(FRotator(0.0f, 90.0f, 0.0f), false, SweepHit, false);
 					Root.SetWorldScale3D(FVector(2.0f, 2.0f, 2.0f));
 
 					// Read back
-					NewLocation = Root.GetComponentLocation();
-					NewRotation = Root.GetComponentRotation();
-					NewScale = Root.GetComponentScale();
+					NewLocation = Root.GetWorldLocation();
+					NewRotation = Root.GetWorldRotation();
+					// No direct world-scale getter is AS-bound; derive it from the world transform.
+					NewScale = Root.GetComponentTransform().GetScale3D();
 				}
 			}
 			)AS"),
@@ -197,7 +201,8 @@ public:
 				void BeginPlay()
 				{
 					// Set root to known position
-					Root.SetWorldLocation(FVector(100.0f, 0.0f, 0.0f));
+					FHitResult SweepHit;
+					Root.SetWorldLocation(FVector(100.0f, 0.0f, 0.0f), false, SweepHit, false);
 
 					// Set child relative transform
 					Child.SetRelativeLocation(FVector(50.0f, 0.0f, 0.0f));
@@ -206,7 +211,7 @@ public:
 					// Read back
 					ChildRelativeLocation = Child.RelativeLocation;
 					ChildRelativeRotation = Child.RelativeRotation;
-					ChildWorldLocation = Child.GetComponentLocation();
+					ChildWorldLocation = Child.GetWorldLocation();
 				}
 			}
 			)AS"),
@@ -282,6 +287,10 @@ public:
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
+					// DefaultComponents auto-attach to the root component at construction, so
+					// detach first to establish a real "initially detached" baseline.
+					Detached.DetachFromComponent(EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, false);
+
 					// Check initial state
 					InitiallyAttached = Detached.IsAttachedTo(Root);
 
@@ -290,7 +299,9 @@ public:
 					AfterAttach = Detached.IsAttachedTo(Root);
 
 					// Detach
-					Detached.DetachFromComponent(FDetachmentTransformRules(EDetachmentRule::KeepWorld, false));
+					// FDetachmentTransformRules has no AS-bound constructor; DetachFromComponent
+					// takes the per-channel rules directly (Location, Rotation, Scale, bCallModify).
+					Detached.DetachFromComponent(EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, false);
 					AfterDetach = Detached.IsAttachedTo(Root);
 				}
 			}
@@ -396,12 +407,13 @@ public:
 				void BeginPlay()
 				{
 					// Set root to offset position
-					Root.SetWorldLocation(FVector(100.0f, 100.0f, 0.0f));
+					FHitResult SweepHit;
+					Root.SetWorldLocation(FVector(100.0f, 100.0f, 0.0f), false, SweepHit, false);
 
 					// KeepWorld rule: world position unchanged
-					TestComp1.SetWorldLocation(FVector(50.0f, 50.0f, 0.0f));
+					TestComp1.SetWorldLocation(FVector(50.0f, 50.0f, 0.0f), false, SweepHit, false);
 					TestComp1.AttachToComponent(Root, NAME_None, EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, false);
-					KeepWorldLocation = TestComp1.GetComponentLocation();
+					KeepWorldLocation = TestComp1.GetWorldLocation();
 					KeepWorldRelativeLocation = TestComp1.RelativeLocation;
 					KeepWorldAttachedToRoot = TestComp1.IsAttachedTo(Root);
 					KeepWorldParentIsRoot = TestComp1.GetAttachParent() == Root;
@@ -409,20 +421,27 @@ public:
 					// KeepRelative rule: relative offset preserved
 					TestComp2.SetRelativeLocation(FVector(20.0f, 0.0f, 0.0f));
 					TestComp2.AttachToComponent(Root, NAME_None, EAttachmentRule::KeepRelative, EAttachmentRule::KeepRelative, EAttachmentRule::KeepRelative, false);
-					KeepRelativeLocation = TestComp2.GetComponentLocation();
+					KeepRelativeLocation = TestComp2.GetWorldLocation();
 					KeepRelativeRelativeLocation = TestComp2.RelativeLocation;
 					KeepRelativeAttachedToRoot = TestComp2.IsAttachedTo(Root);
 					KeepRelativeParentIsRoot = TestComp2.GetAttachParent() == Root;
 
-					// SnapToTarget rule: snaps to parent
-					TestComp3.SetWorldLocation(FVector(200.0f, 200.0f, 0.0f));
+					// SnapToTarget rule: snaps to parent. TestComp3 is a DefaultComponent already
+					// attached to Root, and AttachToComponent on an already-attached component with
+					// the same parent/socket is a no-op in UE (the new rules are not re-applied).
+					// Detach first (keeping world position) so the SnapToTarget rule genuinely runs.
+					TestComp3.SetWorldLocation(FVector(200.0f, 200.0f, 0.0f), false, SweepHit, false);
+					TestComp3.DetachFromComponent(EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, false);
 					TestComp3.AttachToComponent(Root, NAME_None, EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, false);
-					SnapToTargetLocation = TestComp3.GetComponentLocation();
+					SnapToTargetLocation = TestComp3.GetWorldLocation();
 					SnapToTargetRelativeLocation = TestComp3.RelativeLocation;
 					SnapToTargetAttachedToRoot = TestComp3.IsAttachedTo(Root);
 					SnapToTargetParentIsRoot = TestComp3.GetAttachParent() == Root;
 
-					TArray<USceneComponent> RootChildren = Root.GetAttachChildren();
+					// GetAttachChildren has no direct AS getter; GetChildrenComponents fills an
+					// out array (bIncludeAllDescendants, Children&out).
+					TArray<USceneComponent> RootChildren;
+					Root.GetChildrenComponents(false, RootChildren);
 					RootChildrenCount = RootChildren.Num();
 				}
 			}
@@ -567,10 +586,12 @@ public:
 					USceneComponent GrandChildParent = GrandChild.GetAttachParent();
 					GrandChildParentIsChild1 = (GrandChildParent == Child1);
 
-					TArray<USceneComponent> RootChildren = Root.GetAttachChildren();
+					TArray<USceneComponent> RootChildren;
+					Root.GetChildrenComponents(false, RootChildren);
 					RootChildrenCount = RootChildren.Num();
 
-					TArray<USceneComponent> Child1Children = Child1.GetAttachChildren();
+					TArray<USceneComponent> Child1Children;
+					Child1.GetChildrenComponents(false, Child1Children);
 					Child1ChildrenCount = Child1Children.Num();
 				}
 			}
@@ -660,10 +681,10 @@ public:
 					RuntimeChildAttached = RuntimeAttached.GetAttachParent() == Root;
 					RuntimeAttachSocket = RuntimeAttached.GetAttachSocketName();
 
-					FVector RootLocation = Root.GetComponentLocation();
+					FVector RootLocation = Root.GetWorldLocation();
 					RootSocketLocationMatchesRoot = Root.GetSocketLocation(n"CoverageSocket").Equals(RootLocation, 0.01f);
 
-					FVector ChildLocation = SocketChild.GetComponentLocation();
+					FVector ChildLocation = SocketChild.GetWorldLocation();
 					ChildSocketLocationMatchesChild = SocketChild.GetSocketLocation(NAME_None).Equals(ChildLocation, 0.01f);
 				}
 			}
@@ -822,17 +843,20 @@ public:
 				{
 					// Create and set a complete transform
 					FTransform NewTransform;
-					NewTransform.Location = FVector(100.0f, 200.0f, 300.0f);
-					NewTransform.Rotation = FQuat(FRotator(10.0f, 20.0f, 30.0f));
-					NewTransform.Scale3D = FVector(1.5f, 1.5f, 1.5f);
+					NewTransform.SetLocation(FVector(100.0f, 200.0f, 300.0f));
+					NewTransform.SetRotation(FQuat(FRotator(10.0f, 20.0f, 30.0f)));
+					NewTransform.SetScale3D(FVector(1.5f, 1.5f, 1.5f));
 
-					Root.SetWorldTransform(NewTransform);
+					// SetWorldTransform is a reflective K2_ bind requiring the sweep/teleport
+					// arguments (FHitResult&out has no AS default).
+					FHitResult SweepHit;
+					Root.SetWorldTransform(NewTransform, false, SweepHit, false);
 
 					// Read back using GetComponentTransform
 					FTransform CurrentTransform = Root.GetComponentTransform();
-					FinalLocation = CurrentTransform.Location;
-					FinalRotation = CurrentTransform.Rotation.Rotator();
-					FinalScale = CurrentTransform.Scale3D;
+					FinalLocation = CurrentTransform.GetLocation();
+					FinalRotation = CurrentTransform.GetRotation().Rotator();
+					FinalScale = CurrentTransform.GetScale3D();
 				}
 			}
 			)AS"),

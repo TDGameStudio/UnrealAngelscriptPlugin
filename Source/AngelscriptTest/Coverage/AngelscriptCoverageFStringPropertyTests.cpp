@@ -1426,7 +1426,7 @@ public:
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const TArray<FString> ExpectedDiagnostics = { TEXT("Key type does not have a hash function defined") };
+		const TArray<FString> ExpectedDiagnostics = { TEXT("Subtype cannot be constructed or copied") };
 
 		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
 			*TestRunner,

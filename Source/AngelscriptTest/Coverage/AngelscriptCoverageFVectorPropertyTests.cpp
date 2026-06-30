@@ -31,6 +31,76 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorPropertyTest,
 	"Angelscript.TestModule.Coverage.FVectorProperty",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	static bool GetIntVectorMapValue(
+		FAutomationTestBase& Test,
+		UObject* Object,
+		FStringView Path,
+		const int32 Key,
+		FVector& OutValue)
+	{
+		FPropertyBindingPathIndirection Leaf;
+		if (!ResolvePathOnObject(Test, Object, Path, Leaf))
+		{
+			return false;
+		}
+
+		const FMapProperty* MapProperty = CastField<const FMapProperty>(Leaf.GetProperty());
+		if (!Test.TestNotNull(
+				*FString::Printf(TEXT("Property '%.*s' should be a TMap"), Path.Len(), Path.GetData()),
+				MapProperty))
+		{
+			return false;
+		}
+
+		const FIntProperty* KeyProperty = CastField<const FIntProperty>(MapProperty->KeyProp);
+		if (!Test.TestNotNull(
+				*FString::Printf(TEXT("TMap key property at '%.*s' should be FIntProperty"), Path.Len(), Path.GetData()),
+				KeyProperty))
+		{
+			return false;
+		}
+
+		const FStructProperty* ValueProperty = CastField<const FStructProperty>(MapProperty->ValueProp);
+		if (!Test.TestNotNull(
+				*FString::Printf(TEXT("TMap value property at '%.*s' should be FStructProperty"), Path.Len(), Path.GetData()),
+				ValueProperty))
+		{
+			return false;
+		}
+
+		const UScriptStruct* ExpectedStruct = TBaseStructure<FVector>::Get();
+		if (!Test.TestTrue(
+				*FString::Printf(TEXT("TMap value property at '%.*s' should be FVector"), Path.Len(), Path.GetData()),
+				ValueProperty->Struct != nullptr && ExpectedStruct != nullptr
+				&& ValueProperty->Struct->IsChildOf(ExpectedStruct)))
+		{
+			return false;
+		}
+
+		FScriptMapHelper Helper(MapProperty, Leaf.GetPropertyAddress());
+		for (int32 SparseIndex = 0; SparseIndex < Helper.GetMaxIndex(); ++SparseIndex)
+		{
+			if (!Helper.IsValidIndex(SparseIndex))
+			{
+				continue;
+			}
+
+			if (KeyProperty->GetPropertyValue(Helper.GetKeyPtr(SparseIndex)) == Key)
+			{
+				ValueProperty->CopySingleValue(&OutValue, Helper.GetValuePtr(SparseIndex));
+				return true;
+			}
+		}
+
+		Test.AddError(FString::Printf(
+			TEXT("TMap at '%.*s' does not contain key %d"),
+			Path.Len(), Path.GetData(),
+			Key));
+		return false;
+	}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -238,9 +308,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorPropertyTest,
 			ASSERT_THAT(IsTrue(GetMapNumByPath(*TestRunner, Actor, TEXT("IntToVectorMap"), Count)));
 			ASSERT_THAT(AreEqual(3, Count, TEXT("TMap<int,FVector> should have 3 entries")));
 
-			// Access map values through nested path
-			VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("IntToVectorMap[1].X"), 1.0, TEXT("TMap<int,FVector>[1].X (ForwardVector)"));
-			VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("IntToVectorMap[3].Z"), 1.0, TEXT("TMap<int,FVector>[3].Z (UpVector)"));
+			FVector MapValue = FVector::ZeroVector;
+			ASSERT_THAT(IsTrue(GetIntVectorMapValue(*TestRunner, Actor, TEXT("IntToVectorMap"), 1, MapValue)));
+			ASSERT_THAT(IsNear(1.0, MapValue.X, 0.001, TEXT("TMap<int,FVector>[1].X (ForwardVector)")));
+
+			ASSERT_THAT(IsTrue(GetIntVectorMapValue(*TestRunner, Actor, TEXT("IntToVectorMap"), 3, MapValue)));
+			ASSERT_THAT(IsNear(1.0, MapValue.Z, 0.001, TEXT("TMap<int,FVector>[3].Z (UpVector)")));
 		}
 	}
 

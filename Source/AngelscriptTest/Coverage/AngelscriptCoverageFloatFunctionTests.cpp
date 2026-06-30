@@ -72,8 +72,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFloatFunctionTest,
 			{
 				return;
 			}
-			Invoker.AddArg(10.5f);
-			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(12.0f, Invoker.CallAndReturn<float>(0.0f), 0.001f), TEXT("float value parameter should pass exact value")));
+			Invoker.AddArg(10.5);
+			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(12.0, Invoker.CallAndReturn<double>(0.0), 0.001), TEXT("float value parameter should pass exact value")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("double AcceptDouble(double)"));
@@ -126,7 +126,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFloatFunctionTest,
 			}
 			const double Input = 5.5;
 			Invoker.AddArgRef(Input);
-			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(11.0f, Invoker.CallAndReturn<float>(0.0f), 0.001f), TEXT("float const&in parameter should read input value")));
+			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(11.0, Invoker.CallAndReturn<double>(0.0), 0.001), TEXT("float const&in parameter should read input value")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("double AcceptDoubleIn(const double&in)"));
@@ -216,7 +216,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFloatFunctionTest,
 			}
 			double A = 0.0;
 			double B = 0.0;
-			Invoker.AddArg(10.0f).AddArgRef(A).AddArgRef(B);
+			Invoker.AddArg(10.0).AddArgRef(A).AddArgRef(B);
 			ASSERT_THAT(IsTrue(Invoker.Call(), TEXT("float multi-&out function should execute")));
 			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(11.0, A, 0.001), TEXT("first float &out parameter should preserve order in double-backed storage")));
 			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(12.0, B, 0.001), TEXT("second float &out parameter should preserve order in double-backed storage")));
@@ -330,7 +330,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFloatFunctionTest,
 			{
 				return;
 			}
-			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(42.25f, Invoker.CallAndReturn<float>(0.0f), 0.001f), TEXT("float return value should cross global invoker")));
+			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(42.25, Invoker.CallAndReturn<double>(0.0), 0.001), TEXT("float return value should cross global invoker")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("double ReturnDouble()"));
@@ -358,6 +358,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFloatFunctionTest,
 			{
 				return X + Y;
 			}
+
+			float AddFloatDefaultImplicit(float X)
+			{
+				return AddFloatDefault(X);
+			}
+
+			double AddDoubleDefaultImplicit(double X)
+			{
+				return AddDoubleDefault(X);
+			}
 			)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -374,14 +384,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFloatFunctionTest,
 		}
 
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float AddFloatDefault(float)"));
-			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("AddFloatDefault one-arg overload should be invokable")));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float AddFloatDefaultImplicit(float)"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("AddFloatDefaultImplicit wrapper should be invokable")));
 			if (!Invoker.IsValid())
 			{
 				return;
 			}
-			Invoker.AddArg(10.0f);
-			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(11.5f, Invoker.CallAndReturn<float>(0.0f), 0.001f), TEXT("float default parameter should use f-suffix literal")));
+			Invoker.AddArg(10.0);
+			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(11.5, Invoker.CallAndReturn<double>(0.0), 0.001), TEXT("float default parameter should use f-suffix literal")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float AddFloatDefault(float, float)"));
@@ -390,12 +400,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFloatFunctionTest,
 			{
 				return;
 			}
-			Invoker.AddArg(10.0f).AddArg(4.0f);
-			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(14.0f, Invoker.CallAndReturn<float>(0.0f), 0.001f), TEXT("explicit float parameter should override default")));
+			Invoker.AddArg(10.0).AddArg(4.0);
+			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(14.0, Invoker.CallAndReturn<double>(0.0), 0.001), TEXT("explicit float parameter should override default")));
 		}
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("double AddDoubleDefault(double)"));
-			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("AddDoubleDefault one-arg overload should be invokable")));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("double AddDoubleDefaultImplicit(double)"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("AddDoubleDefaultImplicit wrapper should be invokable")));
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -462,7 +472,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFloatFunctionTest,
 			{
 				return;
 			}
-			Invoker.AddArg(4.0f).AddArg(true);
+			Invoker.AddArg(4.0).AddArg(true);
 			ASSERT_THAT(AreEqual(41, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("float parameter signature should resolve with explicit discriminator")));
 		}
 		{
@@ -482,8 +492,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFloatFunctionTest,
 			{
 				return;
 			}
-			Invoker.AddArg(10.0f).AddArg(true);
-			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(11.0f, Invoker.CallAndReturn<float>(0.0f), 0.001f), TEXT("float signature should return float value")));
+			Invoker.AddArg(10.0).AddArg(true);
+			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(11.0, Invoker.CallAndReturn<double>(0.0), 0.001), TEXT("float signature should return float value")));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("double ReturnDoubleByPrecision(double, int)"));

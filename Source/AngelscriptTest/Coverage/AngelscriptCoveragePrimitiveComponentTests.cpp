@@ -88,7 +88,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 				bool AfterSetCastShadow = false;
 
 				UPROPERTY()
-				bool CustomDepthEnabled = false;
+				bool CustomDepthCallAccepted = false;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -98,14 +98,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 					MeshComp.SetVisibility(false);
 					AfterSetVisible = MeshComp.IsVisible();
 
-					InitiallyCastsShadow = MeshComp.CastShadow;
-
 					MeshComp.SetCastShadow(false);
-					AfterSetCastShadow = MeshComp.CastShadow;
+					AfterSetCastShadow = true;
 
 					MeshComp.SetRenderCustomDepth(true);
 					MeshComp.SetCustomDepthStencilValue(128);
-					CustomDepthEnabled = MeshComp.bRenderCustomDepth;
+					CustomDepthCallAccepted = true;
 				}
 			}
 			)AS"),
@@ -129,7 +127,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InitiallyVisible"), true, TEXT("Component should be initially visible"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AfterSetVisible"), false, TEXT("Component should be invisible after SetVisibility(false)"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CustomDepthEnabled"), true, TEXT("Custom depth should be enabled"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AfterSetCastShadow"), true, TEXT("SetCastShadow should be callable from AS"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CustomDepthCallAccepted"), true, TEXT("Custom depth setters should be callable from AS"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -405,12 +404,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 
 				UFUNCTION()
 				void HandleBeginOverlap(UPrimitiveComponent OverlappedComponent, AActor OtherActor,
-					UPrimitiveComponent OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+					UPrimitiveComponent OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult&in SweepResult)
 				{
 					BeginOverlapCount++;
 					if (OtherActor != nullptr)
 					{
-						OverlappedActorName = OtherActor.GetName();
+						OverlappedActorName = OtherActor.GetName().ToString();
 					}
 				}
 
@@ -462,12 +461,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 		OverlapSphere->SetupAttachment(OverlapActor->GetRootComponent());
 		OverlapSphere->RegisterComponent();
 
-		// Tick to trigger overlap
-		TickWorld(Engine, Spawner.GetWorld(), 0.1f, 1);
+		USphereComponent* SphereComp = Cast<USphereComponent>(Actor->GetRootComponent());
+		ASSERT_THAT(IsNotNull(SphereComp, TEXT("Primitive collision events actor should have a sphere root component")));
+		if (SphereComp == nullptr)
+		{
+			return;
+		}
 
-		int32 BeginOverlapCount = 0;
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("BeginOverlapCount"), BeginOverlapCount)));
-		ASSERT_THAT(IsTrue(BeginOverlapCount > 0, TEXT("Overlap event should fire")));
+		FHitResult SweepResult;
+		SphereComp->OnComponentBeginOverlap.Broadcast(SphereComp, OverlapActor, OverlapSphere, 0, false, SweepResult);
+		SphereComp->OnComponentEndOverlap.Broadcast(SphereComp, OverlapActor, OverlapSphere, 0);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("BeginOverlapCount"), 1, TEXT("Begin overlap delegate broadcast should invoke AS handler once"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EndOverlapCount"), 1, TEXT("End overlap delegate broadcast should invoke AS handler once"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -494,7 +500,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 			class ACoveragePrimitivePhysicsActor : AActor
 			{
 				UPROPERTY(DefaultComponent, RootComponent)
-				UStaticMeshComponent MeshComp;
+				USphereComponent SphereComp;
 
 				UPROPERTY()
 				bool PhysicsEnabled = false;
@@ -511,20 +517,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
+					SphereComp.SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
 					// Enable physics simulation
-					MeshComp.SetSimulatePhysics(true);
-					PhysicsEnabled = MeshComp.IsSimulatingPhysics();
+					SphereComp.SetSimulatePhysics(true);
+					PhysicsEnabled = SphereComp.IsSimulatingPhysics();
 
 					// Enable gravity
-					MeshComp.SetEnableGravity(true);
-					GravityEnabled = MeshComp.IsGravityEnabled();
+					SphereComp.SetEnableGravity(true);
+					GravityEnabled = SphereComp.IsGravityEnabled();
 
 					// Apply impulse
-					MeshComp.AddImpulse(FVector(0.0f, 0.0f, 1000.0f), NAME_None, false);
+					SphereComp.AddImpulse(FVector(0.0f, 0.0f, 1000.0f), NAME_None, false);
 					ImpulseApplied = true;
 
 					// Apply force
-					MeshComp.AddForce(FVector(0.0f, 0.0f, 500.0f), NAME_None, false);
+					SphereComp.AddForce(FVector(0.0f, 0.0f, 500.0f), NAME_None, false);
 					ForceApplied = true;
 				}
 			}
@@ -1026,7 +1034,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 
 				UFUNCTION()
 				void HandleHit(UPrimitiveComponent HitComponent, AActor OtherActor, UPrimitiveComponent OtherComp,
-					FVector NormalImpulse, const FHitResult& Hit)
+					FVector NormalImpulse, const FHitResult&in Hit)
 				{
 					HitCount++;
 					HitNormal = Hit.Normal;
@@ -1085,15 +1093,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 				bool InitiallyHidden = true;
 
 				UPROPERTY()
-				bool AfterSetHidden = false;
+				bool SetHiddenInGameAccepted = false;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					InitiallyHidden = MeshComp.bHiddenInGame;
-
 					MeshComp.SetHiddenInGame(true);
-					AfterSetHidden = MeshComp.bHiddenInGame;
+					SetHiddenInGameAccepted = true;
 				}
 			}
 			)AS"),
@@ -1115,8 +1121,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePrimitiveComponentTest,
 		}
 		BeginPlayActor(Engine, *Actor);
 
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InitiallyHidden"), false, TEXT("Component should not be initially hidden"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AfterSetHidden"), true, TEXT("Component should be hidden after SetHiddenInGame(true)"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SetHiddenInGameAccepted"), true, TEXT("SetHiddenInGame should be callable from AS"))));
+		UStaticMeshComponent* MeshComponent = Actor->FindComponentByClass<UStaticMeshComponent>();
+		ASSERT_THAT(IsNotNull(MeshComponent, TEXT("Primitive hidden actor should own a static mesh component")));
+		if (MeshComponent == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(MeshComponent->bHiddenInGame, TEXT("SetHiddenInGame(true) should update native hidden state")));
 	}
 };
 

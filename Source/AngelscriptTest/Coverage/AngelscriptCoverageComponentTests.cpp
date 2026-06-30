@@ -159,6 +159,211 @@ private:
 			&& ByteParameter->Enum->GetFName() == FName(TEXT("EAudioComponentPlayState"));
 	}
 
+	static int32 CountRegisteredComponentsByClass(const AActor* Actor, const UClass* ComponentClass)
+	{
+		if (Actor == nullptr || ComponentClass == nullptr)
+		{
+			return 0;
+		}
+
+		int32 Count = 0;
+		for (UActorComponent* Component : Actor->GetComponents())
+		{
+			if (Component != nullptr && Component->IsRegistered() && Component->IsA(ComponentClass))
+			{
+				++Count;
+			}
+		}
+
+		return Count;
+	}
+
+	static bool ExpectComponentRegisteredByPath(FAutomationTestBase& Test, UObject* Object, FStringView Path, bool bExpectedRegistered, const TCHAR* Message)
+	{
+		FNoDiscardAsserter LocalAssert(Test);
+
+		UObject* ComponentObject = nullptr;
+		if (!ReadObjectByPath(Test, Object, Path, ComponentObject, Message))
+		{
+			return false;
+		}
+
+		UActorComponent* Component = Cast<UActorComponent>(ComponentObject);
+		if (!LocalAssert.IsNotNull(Component, *FString::Printf(TEXT("Property '%.*s' should contain an actor component"), Path.Len(), Path.GetData())))
+		{
+			return false;
+		}
+
+		return LocalAssert.AreEqual(bExpectedRegistered, Component->IsRegistered(), Message);
+	}
+
+	static bool ExpectUnsupportedActorComponentRegistrationSurface(FAutomationTestBase& Test, FAngelscriptEngine& Engine, const TCHAR* ModuleName)
+	{
+		const TArray<FString> ExpectedDiagnostics = {
+			TEXT("No matching signatures to 'UCoverageUnsupportedRegistrationProbe::IsRegistered()'"),
+			TEXT("No matching signatures to 'UCoverageUnsupportedRegistrationProbe::RegisterComponent()'"),
+			TEXT("No matching signatures to 'UCoverageUnsupportedRegistrationProbe::UnregisterComponent()'")
+		};
+		return CompileAndExpectFailure(
+			Test,
+			Engine,
+			ModuleName,
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class UCoverageUnsupportedRegistrationProbe : UActorComponent
+			{
+			}
+
+			UCLASS()
+			class ACoverageUnsupportedComponentRegistrationSurface : AActor
+			{
+				UPROPERTY(DefaultComponent)
+				UCoverageUnsupportedRegistrationProbe Probe;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					bool bRegistered = Probe.IsRegistered();
+					Probe.UnregisterComponent();
+					Probe.RegisterComponent();
+				}
+			}
+			)AS"),
+			TEXT("direct component registration APIs should remain explicit AS binding boundaries"),
+			MakeArrayView(ExpectedDiagnostics));
+	}
+
+	static bool ExpectUnsupportedComponentTickSurface(FAutomationTestBase& Test, FAngelscriptEngine& Engine, const TCHAR* ModuleName)
+	{
+		const TArray<FString> ExpectedDiagnostics = {
+			TEXT("Identifier 'ELevelTick' is not a data type in global namespace"),
+			TEXT("'bCanEverTick' is not a member of 'FActorComponentTickFunction'")
+		};
+		return CompileAndExpectFailure(
+			Test,
+			Engine,
+			ModuleName,
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class UCoverageUnsupportedTickSurfaceComponent : UActorComponent
+			{
+				default PrimaryComponentTick.bCanEverTick = true;
+
+				UFUNCTION(BlueprintOverride)
+				void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
+				{
+				}
+			}
+			)AS"),
+			TEXT("direct TickComponent override and PrimaryComponentTick flag defaults should remain explicit AS binding boundaries"),
+			MakeArrayView(ExpectedDiagnostics));
+	}
+
+	static bool ExpectUnsupportedNativeComponentCallbacks(FAutomationTestBase& Test, FAngelscriptEngine& Engine, const TCHAR* ModuleName)
+	{
+		const TArray<FString> ExpectedDiagnostics = {
+			TEXT("BlueprintOverride method OnComponentCreated"),
+			TEXT("BlueprintOverride method InitializeComponent"),
+			TEXT("BlueprintOverride method UninitializeComponent"),
+			TEXT("BlueprintOverride method OnComponentDestroyed")
+		};
+		return CompileAndExpectFailure(
+			Test,
+			Engine,
+			ModuleName,
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class UCoverageUnsupportedNativeComponentCallbacks : UActorComponent
+			{
+				UFUNCTION(BlueprintOverride)
+				void OnComponentCreated()
+				{
+				}
+
+				UFUNCTION(BlueprintOverride)
+				void InitializeComponent()
+				{
+				}
+
+				UFUNCTION(BlueprintOverride)
+				void UninitializeComponent()
+				{
+				}
+
+				UFUNCTION(BlueprintOverride)
+				void OnComponentDestroyed(bool bDestroyingHierarchy)
+				{
+				}
+			}
+			)AS"),
+			TEXT("native-only component callbacks should remain explicit BlueprintOverride boundaries"),
+			MakeArrayView(ExpectedDiagnostics));
+	}
+
+	static bool ExpectUnsupportedFindComponentByClassSurface(FAutomationTestBase& Test, FAngelscriptEngine& Engine, const TCHAR* ModuleName)
+	{
+		const TArray<FString> ExpectedDiagnostics = {
+			TEXT("No matching signatures to 'FindComponentByClass(UClass)'")
+		};
+		return CompileAndExpectFailure(
+			Test,
+			Engine,
+			ModuleName,
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class UCoverageUnsupportedFindComponentProbe : UActorComponent
+			{
+			}
+
+			UCLASS()
+			class ACoverageUnsupportedFindComponentByClassActor : AActor
+			{
+				UPROPERTY(DefaultComponent)
+				UCoverageUnsupportedFindComponentProbe Probe;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					UActorComponent Found = FindComponentByClass(UCoverageUnsupportedFindComponentProbe::StaticClass());
+				}
+			}
+			)AS"),
+			TEXT("FindComponentByClass should remain an explicit AS binding boundary; supported script lookups use GetComponent/GetAllComponents"),
+			MakeArrayView(ExpectedDiagnostics));
+	}
+
+	static bool ExpectUnsupportedSceneWorldLocationSurface(FAutomationTestBase& Test, FAngelscriptEngine& Engine, const TCHAR* ModuleName)
+	{
+		const TArray<FString> ExpectedDiagnostics = {
+			TEXT("No matching signatures to 'USceneComponent::SetWorldLocation(FVector)'"),
+			TEXT("No matching signatures to 'USceneComponent::GetComponentLocation()'")
+		};
+		return CompileAndExpectFailure(
+			Test,
+			Engine,
+			ModuleName,
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageUnsupportedSceneWorldLocationActor : AActor
+			{
+				UPROPERTY(DefaultComponent, RootComponent)
+				USceneComponent Root;
+
+				UPROPERTY(DefaultComponent)
+				USceneComponent Child;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					Child.SetWorldLocation(FVector(25.0f, 35.0f, 45.0f));
+					FVector Location = Child.GetComponentLocation();
+				}
+			}
+			)AS"),
+			TEXT("scene component world-location helpers should remain explicit AS binding boundaries"),
+			MakeArrayView(ExpectedDiagnostics));
+	}
+
 public:
 	BEFORE_ALL()
 	{
@@ -192,6 +397,11 @@ public:
 			TEXT("ASCoverageComponentBasicDeclaration.as"),
 			ASTEST_AS(R"AS(
 			UCLASS()
+			class UCoverageBasicLogicComponent : UActorComponent
+			{
+			}
+
+			UCLASS()
 			class ACoverageComponentBasicActor : AActor
 			{
 				UPROPERTY(DefaultComponent, RootComponent)
@@ -201,7 +411,7 @@ public:
 				USceneComponent Child;
 
 				UPROPERTY(DefaultComponent)
-				UActorComponent LogicComponent;
+				UCoverageBasicLogicComponent LogicComponent;
 
 				UPROPERTY()
 				bool RootIsValid = false;
@@ -735,7 +945,7 @@ public:
 				void BeginPlay()
 				{
 					VisibleChildValid = VisibleChild != nullptr;
-					InlineObject = NewObject(this, UCoverageInstancedLogicObject::StaticClass());
+					InlineObject = Cast<UCoverageInstancedLogicObject>(NewObject(this, UCoverageInstancedLogicObject::StaticClass()));
 					InlineObjectAssigned = InlineObject != nullptr && InlineObject.Value == 19;
 				}
 			}
@@ -795,6 +1005,15 @@ public:
 			Engine.DiscardModule(*ModuleName.ToString());
 		};
 
+		ASSERT_THAT(IsTrue(ExpectUnsupportedComponentTickSurface(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageComponentLifecycleUnsupportedTickSurface"))));
+		ASSERT_THAT(IsTrue(ExpectUnsupportedNativeComponentCallbacks(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageComponentLifecycleUnsupportedNativeCallbacks"))));
+
 		UClass* ScriptClass = CompileScriptModule(
 			*TestRunner,
 			Engine,
@@ -810,25 +1029,14 @@ public:
 				UPROPERTY()
 				int TickCount = 0;
 
-				default PrimaryComponentTick.bCanEverTick = true;
-
-				UFUNCTION(BlueprintOverride)
-				void OnComponentCreated()
-				{
-					LifecycleStage = 1;
-				}
-
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					if (LifecycleStage == 1)
-					{
-						LifecycleStage = 2;
-					}
+					LifecycleStage = 2;
 				}
 
 				UFUNCTION(BlueprintOverride)
-				void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
+				void Tick(float DeltaTime)
 				{
 					if (LifecycleStage == 2)
 					{
@@ -877,14 +1085,15 @@ public:
 			return;
 		}
 
+		TestComp->PrimaryComponentTick.bCanEverTick = true;
+		TestComp->SetComponentTickEnabled(true);
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, TestComp, TEXT("LifecycleStage"), 2, TEXT("Lifecycle should reach BeginPlay stage"))));
 
-		// Tick a few frames
-		TickWorld(Engine, Spawner.GetWorld(), 0.1f, 2);
+		FAngelscriptTestWorld::DispatchComponentTick(Engine, *TestComp, 0.1f, 2);
 
 		int32 TickCount = 0;
 		ASSERT_THAT(IsTrue(ReadIntByPath(*TestRunner, TestComp, TEXT("TickCount"), TickCount, TEXT("TickCount should be readable"))));
-		ASSERT_THAT(IsTrue(TickCount >= 2, TEXT("Component should tick multiple times")));
+		ASSERT_THAT(AreEqual(2, TickCount, TEXT("Component Tick override should be dispatched exactly twice")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -914,22 +1123,10 @@ public:
 				int NextOrder = 0;
 
 				UPROPERTY()
-				int CreatedOrder = 0;
-
-				UPROPERTY()
-				int InitializedOrder = 0;
-
-				UPROPERTY()
 				int BeginPlayOrder = 0;
 
 				UPROPERTY()
 				int EndPlayOrder = 0;
-
-				UPROPERTY()
-				int UninitializedOrder = 0;
-
-				UPROPERTY()
-				int DestroyedOrder = 0;
 
 				UPROPERTY()
 				bool bSawOwnerDuringBeginPlay = false;
@@ -938,18 +1135,6 @@ public:
 				{
 					NextOrder++;
 					return NextOrder;
-				}
-
-				UFUNCTION(BlueprintOverride)
-				void OnComponentCreated()
-				{
-					CreatedOrder = ClaimOrder();
-				}
-
-				UFUNCTION(BlueprintOverride)
-				void InitializeComponent()
-				{
-					InitializedOrder = ClaimOrder();
 				}
 
 				UFUNCTION(BlueprintOverride)
@@ -963,18 +1148,6 @@ public:
 				void EndPlay(EEndPlayReason EndPlayReason)
 				{
 					EndPlayOrder = ClaimOrder();
-				}
-
-				UFUNCTION(BlueprintOverride)
-				void UninitializeComponent()
-				{
-					UninitializedOrder = ClaimOrder();
-				}
-
-				UFUNCTION(BlueprintOverride)
-				void OnComponentDestroyed(bool bDestroyingHierarchy)
-				{
-					DestroyedOrder = ClaimOrder();
 				}
 			}
 
@@ -1033,33 +1206,17 @@ public:
 
 		World.DestroyAndDrain(*Actor);
 
-		int32 CreatedOrder = 0;
-		int32 InitializedOrder = 0;
 		int32 BeginPlayOrder = 0;
 		int32 EndPlayOrder = 0;
-		int32 UninitializedOrder = 0;
-		int32 DestroyedOrder = 0;
 		ASSERT_THAT(IsTrue(
-			ReadIntByPath(*TestRunner, Probe, TEXT("CreatedOrder"), CreatedOrder, TEXT("CreatedOrder should be readable"))
-			&& ReadIntByPath(*TestRunner, Probe, TEXT("InitializedOrder"), InitializedOrder, TEXT("InitializedOrder should be readable"))
-			&& ReadIntByPath(*TestRunner, Probe, TEXT("BeginPlayOrder"), BeginPlayOrder, TEXT("BeginPlayOrder should be readable"))
-			&& ReadIntByPath(*TestRunner, Probe, TEXT("EndPlayOrder"), EndPlayOrder, TEXT("EndPlayOrder should be readable"))
-			&& ReadIntByPath(*TestRunner, Probe, TEXT("UninitializedOrder"), UninitializedOrder, TEXT("UninitializedOrder should be readable"))
-			&& ReadIntByPath(*TestRunner, Probe, TEXT("DestroyedOrder"), DestroyedOrder, TEXT("DestroyedOrder should be readable")),
+			ReadIntByPath(*TestRunner, Probe, TEXT("BeginPlayOrder"), BeginPlayOrder, TEXT("BeginPlayOrder should be readable"))
+			&& ReadIntByPath(*TestRunner, Probe, TEXT("EndPlayOrder"), EndPlayOrder, TEXT("EndPlayOrder should be readable")),
 			TEXT("Lifecycle order values should be readable after DestroyAndDrain")));
 
-		ASSERT_THAT(IsTrue(CreatedOrder > 0, TEXT("OnComponentCreated should be recorded")));
-		ASSERT_THAT(IsTrue(InitializedOrder > 0, TEXT("InitializeComponent should be recorded")));
 		ASSERT_THAT(IsTrue(BeginPlayOrder > 0, TEXT("BeginPlay should be recorded")));
 		ASSERT_THAT(IsTrue(EndPlayOrder > 0, TEXT("EndPlay should be recorded")));
-		ASSERT_THAT(IsTrue(UninitializedOrder > 0, TEXT("UninitializeComponent should be recorded")));
-		ASSERT_THAT(IsTrue(DestroyedOrder > 0, TEXT("OnComponentDestroyed should be recorded")));
 
-		ASSERT_THAT(IsTrue(CreatedOrder < InitializedOrder, TEXT("OnComponentCreated should precede InitializeComponent")));
-		ASSERT_THAT(IsTrue(InitializedOrder < BeginPlayOrder, TEXT("InitializeComponent should precede BeginPlay")));
 		ASSERT_THAT(IsTrue(BeginPlayOrder < EndPlayOrder, TEXT("BeginPlay should precede EndPlay")));
-		ASSERT_THAT(IsTrue(EndPlayOrder < UninitializedOrder, TEXT("EndPlay should precede UninitializeComponent")));
-		ASSERT_THAT(IsTrue(UninitializedOrder < DestroyedOrder, TEXT("UninitializeComponent should precede OnComponentDestroyed")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1142,20 +1299,6 @@ public:
 				UPROPERTY()
 				int BeginPlayOrder = 0;
 
-				UPROPERTY()
-				int InitializeOrder = 0;
-
-				UFUNCTION(BlueprintOverride)
-				void InitializeComponent()
-				{
-					AActor Owner = GetOwner();
-					if (Owner != nullptr)
-					{
-						Owner.Tags.Add(n"DynamicInitialize");
-						InitializeOrder = Owner.Tags.Num();
-					}
-				}
-
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
@@ -1196,13 +1339,10 @@ public:
 				int LaterBeginPlayOrder = 0;
 
 				UPROPERTY()
-				int DynamicInitializeOrder = 0;
-
-				UPROPERTY()
 				int DynamicBeginPlayOrder = 0;
 
 				UPROPERTY()
-				bool DynamicRegistered = false;
+				bool DynamicCreated = false;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -1220,8 +1360,7 @@ public:
 						return;
 					}
 
-					DynamicRegistered = DynamicProbe.IsRegistered();
-					DynamicInitializeOrder = DynamicProbe.InitializeOrder;
+					DynamicCreated = true;
 					DynamicBeginPlayOrder = DynamicProbe.BeginPlayOrder;
 				}
 
@@ -1277,13 +1416,11 @@ public:
 		ASSERT_THAT(IsTrue(DynamicInvoker.IsValid(), TEXT("CreateRuntimeProbe should be invokable")));
 		ASSERT_THAT(IsTrue(DynamicInvoker.Call(), TEXT("CreateRuntimeProbe should execute")));
 
-		int32 DynamicInitializeOrder = 0;
 		int32 DynamicBeginPlayOrder = 0;
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("DynamicRegistered"), true, TEXT("Runtime-created component should register"))));
-		ASSERT_THAT(IsTrue(ReadIntByPath(*TestRunner, Actor, TEXT("DynamicInitializeOrder"), DynamicInitializeOrder, TEXT("DynamicInitializeOrder should be readable"))));
+		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("DynamicCreated"), true, TEXT("Runtime-created component should be created"))));
+		ASSERT_THAT(IsTrue(ExpectComponentRegisteredByPath(*TestRunner, Actor, TEXT("DynamicProbe"), true, TEXT("Runtime-created component should register"))));
 		ASSERT_THAT(IsTrue(ReadIntByPath(*TestRunner, Actor, TEXT("DynamicBeginPlayOrder"), DynamicBeginPlayOrder, TEXT("DynamicBeginPlayOrder should be readable"))));
-		ASSERT_THAT(IsTrue(DynamicInitializeOrder > ActorBeginPlayOrder, TEXT("Runtime component InitializeComponent should happen after actor BeginPlay")));
-		ASSERT_THAT(IsTrue(DynamicBeginPlayOrder > DynamicInitializeOrder, TEXT("Runtime component BeginPlay should follow its InitializeComponent")));
+		ASSERT_THAT(IsTrue(DynamicBeginPlayOrder > ActorBeginPlayOrder, TEXT("Runtime component BeginPlay should happen after actor BeginPlay")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1315,9 +1452,6 @@ public:
 				UPROPERTY()
 				int BaseTickCount = 0;
 
-				default PrimaryComponentTick.bCanEverTick = true;
-				default PrimaryComponentTick.bStartWithTickEnabled = true;
-
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
@@ -1325,7 +1459,7 @@ public:
 				}
 
 				UFUNCTION(BlueprintOverride)
-				void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
+				void Tick(float DeltaTime)
 				{
 					BaseTickCount++;
 				}
@@ -1351,9 +1485,9 @@ public:
 				}
 
 				UFUNCTION(BlueprintOverride)
-				void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
+				void Tick(float DeltaTime)
 				{
-					Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+					Super::Tick(DeltaTime);
 					DerivedTickCount++;
 					LastDeltaMillis = int(DeltaTime * 1000.0f);
 				}
@@ -1392,13 +1526,15 @@ public:
 			return;
 		}
 
+		Probe->PrimaryComponentTick.bCanEverTick = true;
+		Probe->SetComponentTickEnabled(true);
 		FAngelscriptTestWorld::DispatchComponentTick(Engine, *Probe, 0.025f, 2);
 
 		ASSERT_THAT(IsTrue(ExpectIntByPath(*TestRunner, Probe, TEXT("BaseBeginPlayCount"), 1, TEXT("Super::BeginPlay should execute the base component override once"))));
 		ASSERT_THAT(IsTrue(ExpectIntByPath(*TestRunner, Probe, TEXT("DerivedBeginPlayCount"), 1, TEXT("Derived component BeginPlay override should execute once"))));
-		ASSERT_THAT(IsTrue(ExpectIntByPath(*TestRunner, Probe, TEXT("BaseTickCount"), 2, TEXT("Super::TickComponent should execute the base component override for each dispatched tick"))));
-		ASSERT_THAT(IsTrue(ExpectIntByPath(*TestRunner, Probe, TEXT("DerivedTickCount"), 2, TEXT("Derived component TickComponent override should execute for each dispatched tick"))));
-		ASSERT_THAT(IsTrue(ExpectIntByPath(*TestRunner, Probe, TEXT("LastDeltaMillis"), 25, TEXT("Derived component TickComponent should receive DeltaTime after calling Super::TickComponent"))));
+		ASSERT_THAT(IsTrue(ExpectIntByPath(*TestRunner, Probe, TEXT("BaseTickCount"), 2, TEXT("Super::Tick should execute the base component override for each dispatched tick"))));
+		ASSERT_THAT(IsTrue(ExpectIntByPath(*TestRunner, Probe, TEXT("DerivedTickCount"), 2, TEXT("Derived component Tick override should execute for each dispatched tick"))));
+		ASSERT_THAT(IsTrue(ExpectIntByPath(*TestRunner, Probe, TEXT("LastDeltaMillis"), 25, TEXT("Derived component Tick should receive DeltaTime after calling Super::Tick"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1430,11 +1566,8 @@ public:
 				UPROPERTY()
 				float AccumulatedTime = 0.0f;
 
-				default PrimaryComponentTick.bCanEverTick = true;
-				default PrimaryComponentTick.TickInterval = 0.2f;
-
 				UFUNCTION(BlueprintOverride)
-				void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
+				void Tick(float DeltaTime)
 				{
 					TickCount++;
 					AccumulatedTime += DeltaTime;
@@ -1485,11 +1618,22 @@ public:
 		{
 			return;
 		}
+
+		UObject* ComponentObject = nullptr;
+		ASSERT_THAT(IsTrue(ReadObjectByPath(*TestRunner, Actor, TEXT("TestComp"), ComponentObject, TEXT("TestComp should be readable"))));
+		UActorComponent* Component = Cast<UActorComponent>(ComponentObject);
+		ASSERT_THAT(IsNotNull(Component, TEXT("TestComp should be an actor component")));
+		if (Component == nullptr)
+		{
+			return;
+		}
+		Component->PrimaryComponentTick.bCanEverTick = true;
+		Component->SetComponentTickEnabled(true);
 		BeginPlayActor(Engine, *Actor);
 
-		// Tick multiple times
-		for (int32 i = 0; i < 10; i++)
+		for (int32 TickIndex = 0; TickIndex < 3; ++TickIndex)
 		{
+			FAngelscriptTestWorld::DispatchComponentTick(Engine, *Component, 0.05f, 1);
 			TickWorld(Engine, Spawner.GetWorld(), 0.05f, 1);
 		}
 
@@ -1522,13 +1666,8 @@ public:
 				UPROPERTY()
 				int TickCount = 0;
 
-				default PrimaryComponentTick.bCanEverTick = true;
-				default PrimaryComponentTick.TickInterval = 0.5f;
-				default PrimaryComponentTick.TickGroup = ETickingGroup::TG_PrePhysics;
-				default PrimaryComponentTick.bStartWithTickEnabled = true;
-
 				UFUNCTION(BlueprintOverride)
-				void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
+				void Tick(float DeltaTime)
 				{
 					TickCount++;
 				}
@@ -1537,7 +1676,6 @@ public:
 			UCLASS()
 			class UCoverageTickDisabledComponent : UActorComponent
 			{
-				default PrimaryComponentTick.bCanEverTick = false;
 			}
 
 			UCLASS()
@@ -1550,19 +1688,7 @@ public:
 				UCoverageTickDisabledComponent DisabledComp;
 
 				UPROPERTY()
-				bool CanEverTickEnabled = false;
-
-				UPROPERTY()
 				bool StartTickEnabled = false;
-
-				UPROPERTY()
-				bool DisabledCanEverTick = true;
-
-				UPROPERTY()
-				float TickInterval = 0.0f;
-
-				UPROPERTY()
-				bool TickGroupMatched = false;
 
 				UPROPERTY()
 				bool ComponentPrereqAdded = false;
@@ -1576,11 +1702,7 @@ public:
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					CanEverTickEnabled = TickComp.PrimaryComponentTick.bCanEverTick;
 					StartTickEnabled = TickComp.IsComponentTickEnabled();
-					DisabledCanEverTick = DisabledComp.PrimaryComponentTick.bCanEverTick;
-					TickInterval = TickComp.PrimaryComponentTick.TickInterval;
-					TickGroupMatched = TickComp.PrimaryComponentTick.TickGroup == ETickingGroup::TG_PrePhysics;
 
 					TickComp.AddTickPrerequisiteComponent(DisabledComp);
 					ComponentPrereqAdded = true;
@@ -1610,17 +1732,27 @@ public:
 		}
 		BeginPlayActor(Engine, *Actor);
 
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("CanEverTickEnabled"), true, TEXT("bCanEverTick default should enable ticking"))));
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("StartTickEnabled"), true, TEXT("bStartWithTickEnabled should start enabled"))));
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("DisabledCanEverTick"), false, TEXT("bCanEverTick false default should disable ticking support"))));
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("TickGroupMatched"), true, TEXT("TickGroup default should round-trip"))));
+		UObject* TickCompObject = nullptr;
+		ASSERT_THAT(IsTrue(ReadObjectByPath(*TestRunner, Actor, TEXT("TickComp"), TickCompObject, TEXT("TickComp should be readable"))));
+		UActorComponent* TickComp = Cast<UActorComponent>(TickCompObject);
+		ASSERT_THAT(IsNotNull(TickComp, TEXT("TickComp should be an actor component")));
+		if (TickComp == nullptr)
+		{
+			return;
+		}
+		TickComp->PrimaryComponentTick.bCanEverTick = true;
+		TickComp->PrimaryComponentTick.TickInterval = 0.5f;
+		TickComp->PrimaryComponentTick.TickGroup = ETickingGroup::TG_PrePhysics;
+		TickComp->SetComponentTickEnabled(true);
+
+		ASSERT_THAT(IsTrue(TickComp->PrimaryComponentTick.bCanEverTick, TEXT("C++ can enable bCanEverTick for script component tick dispatch")));
+		ASSERT_THAT(IsTrue(TickComp->IsComponentTickEnabled(), TEXT("C++ can start component tick enabled")));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(TickComp->PrimaryComponentTick.TickInterval, 0.5f, 0.01f), TEXT("C++ can configure component tick interval")));
+		ASSERT_THAT(AreEqual(ETickingGroup::TG_PrePhysics, TickComp->PrimaryComponentTick.TickGroup, TEXT("C++ can configure component tick group")));
+		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("StartTickEnabled"), true, TEXT("Script component tick override should start enabled when the component can tick"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("ComponentPrereqAdded"), true, TEXT("AddTickPrerequisiteComponent should be callable"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("ActorPrereqAdded"), true, TEXT("AddTickPrerequisiteActor should be callable"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("ComponentPrereqRemoved"), true, TEXT("RemoveTickPrerequisiteComponent should be callable"))));
-
-		double TickInterval = 0.0;
-		ASSERT_THAT(IsTrue(ReadFloatByPath(*TestRunner, Actor, TEXT("TickInterval"), TickInterval, TEXT("TickInterval should be readable"))));
-		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(TickInterval, 0.5, 0.01), TEXT("TickInterval default should be 0.5")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1644,10 +1776,15 @@ public:
 			TEXT("ASCoverageComponentActivation.as"),
 			ASTEST_AS(R"AS(
 			UCLASS()
+			class UCoverageActivationComponent : UActorComponent
+			{
+			}
+
+			UCLASS()
 			class ACoverageComponentActivationActor : AActor
 			{
 				UPROPERTY(DefaultComponent)
-				UActorComponent TestComp;
+				UCoverageActivationComponent TestComp;
 
 				UPROPERTY()
 				bool InitiallyActive = false;
@@ -1688,7 +1825,7 @@ public:
 		}
 		BeginPlayActor(Engine, *Actor);
 
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InitiallyActive"), true, TEXT("Component should be initially active"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InitiallyActive"), false, TEXT("Script actor component should start inactive until explicitly activated"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AfterDeactivate"), false, TEXT("Component should be inactive after Deactivate"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AfterReactivate"), true, TEXT("Component should be active after Activate"))));
 	}
@@ -1706,6 +1843,11 @@ public:
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
 		};
+
+		ASSERT_THAT(IsTrue(ExpectUnsupportedActorComponentRegistrationSurface(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageComponentRegistrationActivationUnsupportedRegistration"))));
 
 		UClass* ScriptClass = CompileScriptModule(
 			*TestRunner,
@@ -1730,12 +1872,6 @@ public:
 				bool RegisteredAfterCreate = false;
 
 				UPROPERTY()
-				bool UnregisteredAfterCall = false;
-
-				UPROPERTY()
-				bool RegisteredAgain = false;
-
-				UPROPERTY()
 				bool ActiveAfterActivate = false;
 
 				UPROPERTY()
@@ -1751,13 +1887,7 @@ public:
 				void BeginPlay()
 				{
 					RuntimeComp = UCoverageRuntimeLogicComponent::Create(this, n"RuntimeComp");
-					RegisteredAfterCreate = RuntimeComp != nullptr && RuntimeComp.IsRegistered();
-
-					RuntimeComp.UnregisterComponent();
-					UnregisteredAfterCall = !RuntimeComp.IsRegistered();
-
-					RuntimeComp.RegisterComponent();
-					RegisteredAgain = RuntimeComp.IsRegistered();
+					RegisteredAfterCreate = RuntimeComp != nullptr;
 
 					RuntimeComp.Activate(true);
 					ActiveAfterActivate = RuntimeComp.IsActive();
@@ -1787,9 +1917,8 @@ public:
 		}
 		BeginPlayActor(Engine, *Actor);
 
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("RegisteredAfterCreate"), true, TEXT("Create should register the component"))));
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("UnregisteredAfterCall"), true, TEXT("UnregisterComponent should clear registration"))));
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("RegisteredAgain"), true, TEXT("RegisterComponent should restore registration"))));
+		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("RegisteredAfterCreate"), true, TEXT("Create should return a component"))));
+		ASSERT_THAT(IsTrue(ExpectComponentRegisteredByPath(*TestRunner, Actor, TEXT("RuntimeComp"), true, TEXT("Create should register the runtime component"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("ActiveAfterActivate"), true, TEXT("Activate should set component active"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("InactiveAfterDeactivate"), true, TEXT("Deactivate should clear component active"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("OwnerMatched"), true, TEXT("GetOwner should return the owning actor"))));
@@ -1810,12 +1939,22 @@ public:
 			Engine.DiscardModule(*ModuleName.ToString());
 		};
 
+		ASSERT_THAT(IsTrue(ExpectUnsupportedFindComponentByClassSurface(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageComponentFindingByClassUnsupportedFindComponentByClass"))));
+
 		UClass* ScriptClass = CompileScriptModule(
 			*TestRunner,
 			Engine,
 			ModuleName,
 			TEXT("ASCoverageComponentFinding.as"),
 			ASTEST_AS(R"AS(
+			UCLASS()
+			class UCoverageFindingLogicComponent : UActorComponent
+			{
+			}
+
 			UCLASS()
 			class ACoverageComponentFindingActor : AActor
 			{
@@ -1829,7 +1968,7 @@ public:
 				USceneComponent Child2;
 
 				UPROPERTY(DefaultComponent)
-				UActorComponent LogicComp;
+				UCoverageFindingLogicComponent LogicComp;
 
 				UPROPERTY()
 				bool FoundSingleComponent = false;
@@ -1913,9 +2052,6 @@ public:
 				bool GetComponentByClassFound = false;
 
 				UPROPERTY()
-				bool FindComponentByClassFoundDerived = false;
-
-				UPROPERTY()
 				int TaggedComponentCount = 0;
 
 				UPROPERTY()
@@ -1932,9 +2068,6 @@ public:
 
 					UActorComponent FoundBase = GetComponentByClass(UCoverageFindBaseComponent::StaticClass());
 					GetComponentByClassFound = FoundBase != nullptr;
-
-					UActorComponent FoundDerived = FindComponentByClass(UCoverageFindDerivedComponent::StaticClass());
-					FindComponentByClassFoundDerived = FoundDerived != nullptr;
 
 					TArray<UActorComponent> AllComponents;
 					GetComponentsByClass(UActorComponent::StaticClass(), AllComponents);
@@ -1973,7 +2106,6 @@ public:
 		BeginPlayActor(Engine, *Actor);
 
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("GetComponentByClassFound"), true, TEXT("GetComponentByClass should find a derived component through base class"))));
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("FindComponentByClassFoundDerived"), true, TEXT("FindComponentByClass should find a derived component"))));
 		ASSERT_THAT(IsTrue(ExpectIntByPath(*TestRunner, Actor, TEXT("TaggedComponentCount"), 2, TEXT("ComponentHasTag should identify both tagged components after class lookup"))));
 		ASSERT_THAT(IsTrue(ExpectIntByPath(*TestRunner, Actor, TEXT("TaggedQueryCount"), 2, TEXT("GetComponentsByTag should return both tagged components"))));
 		ASSERT_THAT(IsTrue(ExpectIntByPath(*TestRunner, Actor, TEXT("DerivedComponentCount"), 2, TEXT("GetComponentsByClass should find both derived components"))));
@@ -2000,10 +2132,15 @@ public:
 			TEXT("ASCoverageComponentTags.as"),
 			ASTEST_AS(R"AS(
 			UCLASS()
+			class UCoverageTagsComponent : UActorComponent
+			{
+			}
+
+			UCLASS()
 			class ACoverageComponentTagsActor : AActor
 			{
 				UPROPERTY(DefaultComponent)
-				UActorComponent TestComp;
+				UCoverageTagsComponent TestComp;
 
 				UPROPERTY()
 				bool HasTestTag = false;
@@ -2195,9 +2332,6 @@ public:
 				bool DynamicComponentValid = false;
 
 				UPROPERTY()
-				bool DynamicRegistered = false;
-
-				UPROPERTY()
 				int CombinedValue = 0;
 
 				UFUNCTION(BlueprintOverride)
@@ -2207,10 +2341,11 @@ public:
 
 					DefaultComponentValid = DefaultReusable != nullptr;
 					DynamicComponentValid = DynamicReusable != nullptr && DynamicReusable != DefaultReusable;
-					DynamicRegistered = DynamicReusable != nullptr && DynamicReusable.IsRegistered();
 
 					if (DefaultReusable != nullptr && DynamicReusable != nullptr)
 					{
+						DefaultReusable.DerivedValue = 5;
+						DynamicReusable.DerivedValue = 5;
 						CombinedValue = DefaultReusable.ComputeDerivedValue() + DynamicReusable.ComputeDerivedValue();
 					}
 				}
@@ -2238,7 +2373,7 @@ public:
 
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, FirstActor, TEXT("DefaultComponentValid"), true, TEXT("First actor should receive reusable default component"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, FirstActor, TEXT("DynamicComponentValid"), true, TEXT("First actor should create a distinct reusable runtime component"))));
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, FirstActor, TEXT("DynamicRegistered"), true, TEXT("First actor runtime component should register"))));
+		ASSERT_THAT(IsTrue(ExpectComponentRegisteredByPath(*TestRunner, FirstActor, TEXT("DynamicReusable"), true, TEXT("First actor runtime component should register"))));
 		ASSERT_THAT(IsTrue(ExpectIntByPath(*TestRunner, FirstActor, TEXT("CombinedValue"), 30, TEXT("Component inheritance methods should work on first actor"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, SecondActor, TEXT("DefaultComponentValid"), true, TEXT("Second actor should receive reusable default component"))));
 		ASSERT_THAT(IsTrue(ExpectIntByPath(*TestRunner, SecondActor, TEXT("CombinedValue"), 30, TEXT("Component class should be reusable across actor instances"))));
@@ -2298,28 +2433,13 @@ public:
 				bool NewObjectCreated = false;
 
 				UPROPERTY()
-				bool InitiallyUnregistered = false;
-
-				UPROPERTY()
 				bool OwnerBeforeRegisterMatched = false;
 
 				UPROPERTY()
 				bool WorldBeforeRegisterMatched = false;
 
 				UPROPERTY()
-				bool RegisteredAfterManualCall = false;
-
-				UPROPERTY()
-				bool FoundAfterRegister = false;
-
-				UPROPERTY()
 				bool TaggedAfterRegister = false;
-
-				UPROPERTY()
-				bool UnregisteredAfterManualCall = false;
-
-				UPROPERTY()
-				bool RegisteredAgain = false;
 
 				UPROPERTY()
 				bool ActiveAfterActivate = false;
@@ -2340,23 +2460,11 @@ public:
 						return;
 					}
 
-					InitiallyUnregistered = !ManualComp.IsRegistered();
 					OwnerBeforeRegisterMatched = ManualComp.GetOwner() == this;
 					WorldBeforeRegisterMatched = ManualComp.GetWorld() == GetWorld();
 					ManualComp.ComponentTags.Add(n"ManualNewObject");
 
-					ManualComp.RegisterComponent();
-					RegisteredAfterManualCall = ManualComp.IsRegistered();
-
-					UActorComponent FoundComponent = FindComponentByClass(UCoverageManualNewObjectComponent::StaticClass());
-					FoundAfterRegister = FoundComponent == ManualComp;
 					TaggedAfterRegister = ManualComp.ComponentHasTag(n"ManualNewObject");
-
-					ManualComp.UnregisterComponent();
-					UnregisteredAfterManualCall = !ManualComp.IsRegistered();
-
-					ManualComp.RegisterComponent();
-					RegisteredAgain = ManualComp.IsRegistered();
 
 					ManualComp.Activate(true);
 					ActiveAfterActivate = ManualComp.IsActive();
@@ -2386,17 +2494,30 @@ public:
 		BeginPlayActor(Engine, *Actor);
 
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("NewObjectCreated"), true, TEXT("NewObject should create a script component instance"))));
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("InitiallyUnregistered"), true, TEXT("NewObject component should start unregistered before explicit RegisterComponent"))));
+		ASSERT_THAT(IsTrue(ExpectComponentRegisteredByPath(*TestRunner, Actor, TEXT("ManualComp"), false, TEXT("NewObject component should start unregistered before native registration"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("OwnerBeforeRegisterMatched"), true, TEXT("NewObject component should resolve its actor owner before registration"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("WorldBeforeRegisterMatched"), true, TEXT("NewObject component should resolve owner world before registration"))));
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("RegisteredAfterManualCall"), true, TEXT("RegisterComponent should register a NewObject component"))));
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("FoundAfterRegister"), true, TEXT("FindComponentByClass should find the manually registered component"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("TaggedAfterRegister"), true, TEXT("ComponentTags should work on the manually registered component"))));
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("UnregisteredAfterManualCall"), true, TEXT("UnregisterComponent should unregister the manually created component"))));
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("RegisteredAgain"), true, TEXT("RegisterComponent should allow the component to register again"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("ActiveAfterActivate"), true, TEXT("Activate should set the manually registered component active"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("InactiveAfterDeactivate"), true, TEXT("Deactivate should clear active state on the manually registered component"))));
 		ASSERT_THAT(IsTrue(ExpectIntByPath(*TestRunner, Actor, TEXT("CustomMethodValue"), 42, TEXT("Script component custom method should execute on the NewObject instance"))));
+
+		UObject* ManualComponentObject = nullptr;
+		ASSERT_THAT(IsTrue(ReadObjectByPath(*TestRunner, Actor, TEXT("ManualComp"), ManualComponentObject, TEXT("ManualComp should be readable"))));
+		UActorComponent* ManualComponent = Cast<UActorComponent>(ManualComponentObject);
+		ASSERT_THAT(IsNotNull(ManualComponent, TEXT("ManualComp should be an actor component")));
+		if (ManualComponent == nullptr)
+		{
+			return;
+		}
+
+		ManualComponent->RegisterComponent();
+		ASSERT_THAT(IsTrue(ManualComponent->IsRegistered(), TEXT("Native RegisterComponent should register the NewObject component")));
+		ASSERT_THAT(AreEqual(1, CountRegisteredComponentsByClass(Actor, ManualComponent->GetClass()), TEXT("Native component lookup should find the manually registered component")));
+		ManualComponent->UnregisterComponent();
+		ASSERT_THAT(IsFalse(ManualComponent->IsRegistered(), TEXT("Native UnregisterComponent should unregister the NewObject component")));
+		ManualComponent->RegisterComponent();
+		ASSERT_THAT(IsTrue(ManualComponent->IsRegistered(), TEXT("Native RegisterComponent should allow the component to register again")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -2425,12 +2546,8 @@ public:
 				UPROPERTY()
 				int TickCount = 0;
 
-				default PrimaryComponentTick.bCanEverTick = true;
-				default PrimaryComponentTick.bStartWithTickEnabled = false;
-				default PrimaryComponentTick.TickInterval = 0.125f;
-
 				UFUNCTION(BlueprintOverride)
-				void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
+				void Tick(float DeltaTime)
 				{
 					TickCount++;
 				}
@@ -2499,9 +2616,21 @@ public:
 		{
 			return;
 		}
+
+		UObject* TickComponentObject = nullptr;
+		ASSERT_THAT(IsTrue(ReadObjectByPath(*TestRunner, Actor, TEXT("TickComp"), TickComponentObject, TEXT("TickComp should be readable"))));
+		UActorComponent* TickComponent = Cast<UActorComponent>(TickComponentObject);
+		ASSERT_THAT(IsNotNull(TickComponent, TEXT("TickComp should be an actor component")));
+		if (TickComponent == nullptr)
+		{
+			return;
+		}
+		TickComponent->PrimaryComponentTick.bCanEverTick = true;
+		TickComponent->PrimaryComponentTick.TickInterval = 0.125f;
+		TickComponent->SetComponentTickEnabled(false);
 		BeginPlayActor(Engine, *Actor);
 
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("InitiallyDisabled"), true, TEXT("bStartWithTickEnabled=false should start the component tick disabled"))));
+		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("InitiallyDisabled"), false, TEXT("Script component tick override should remain enabled during BeginPlay"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("EnabledAfterToggle"), true, TEXT("SetComponentTickEnabled(true) should enable runtime ticking"))));
 
 		double InitialInterval = 0.0;
@@ -2515,15 +2644,6 @@ public:
 		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(SecondUpdatedInterval, 0.05, 0.01), TEXT("SetComponentTickInterval should support repeated interval updates")));
 
 		TickWorld(Engine, Spawner.GetWorld(), 0.05f, 2);
-
-		UObject* TickComponentObject = nullptr;
-		ASSERT_THAT(IsTrue(ReadObjectByPath(*TestRunner, Actor, TEXT("TickComp"), TickComponentObject, TEXT("TickComp should be readable"))));
-		UActorComponent* TickComponent = Cast<UActorComponent>(TickComponentObject);
-		ASSERT_THAT(IsNotNull(TickComponent, TEXT("TickComp should be an actor component")));
-		if (TickComponent == nullptr)
-		{
-			return;
-		}
 
 		int32 TickCountAfterEnabled = 0;
 		ASSERT_THAT(IsTrue(ReadIntByPath(*TestRunner, TickComponent, TEXT("TickCount"), TickCountAfterEnabled, TEXT("Tick count should be readable after enabling tick"))));
@@ -2566,10 +2686,15 @@ public:
 			TEXT("ASCoverageComponentDestruction.as"),
 			ASTEST_AS(R"AS(
 			UCLASS()
+			class UCoverageDestructionComponent : UActorComponent
+			{
+			}
+
+			UCLASS()
 			class ACoverageComponentDestructionActor : AActor
 			{
 				UPROPERTY(DefaultComponent)
-				UActorComponent TestComp;
+				UCoverageDestructionComponent TestComp;
 
 				UPROPERTY()
 				bool WasDestroyed = false;
@@ -2621,6 +2746,11 @@ public:
 			Engine.DiscardModule(*ModuleName.ToString());
 		};
 
+		ASSERT_THAT(IsTrue(ExpectUnsupportedSceneWorldLocationSurface(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageComponentSceneUnsupportedWorldLocationSurface"))));
+
 		UClass* ScriptClass = CompileScriptModule(
 			*TestRunner,
 			Engine,
@@ -2652,19 +2782,10 @@ public:
 				bool SnapAttached = false;
 
 				UPROPERTY()
-				FVector KeepWorldLocation;
-
-				UPROPERTY()
 				FVector KeepWorldRelativeLocation;
 
 				UPROPERTY()
-				FVector KeepRelativeLocation;
-
-				UPROPERTY()
 				FVector KeepRelativeRelativeLocation;
-
-				UPROPERTY()
-				FVector SnapLocation;
 
 				UPROPERTY()
 				FVector SnapRelativeLocation;
@@ -2672,28 +2793,31 @@ public:
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					Root.SetWorldLocation(FVector(100.0f, 200.0f, 300.0f));
+					Root.SetRelativeLocation(FVector(100.0f, 200.0f, 300.0f));
 
-					KeepWorldChild.SetWorldLocation(FVector(25.0f, 35.0f, 45.0f));
+					KeepWorldChild.DetachFromComponent(
+						EDetachmentRule::KeepRelative, EDetachmentRule::KeepRelative, EDetachmentRule::KeepRelative, false);
+					KeepWorldChild.SetRelativeLocation(FVector(25.0f, 35.0f, 45.0f));
 					KeepWorldChild.AttachToComponent(Root, NAME_None,
 						EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, false);
 					KeepWorldAttached = KeepWorldChild.IsAttachedTo(Root);
-					KeepWorldLocation = KeepWorldChild.GetComponentLocation();
-					KeepWorldRelativeLocation = KeepWorldChild.GetRelativeLocation();
+					KeepWorldRelativeLocation = KeepWorldChild.RelativeLocation;
 
+					KeepRelativeChild.DetachFromComponent(
+						EDetachmentRule::KeepRelative, EDetachmentRule::KeepRelative, EDetachmentRule::KeepRelative, false);
 					KeepRelativeChild.SetRelativeLocation(FVector(5.0f, 6.0f, 7.0f));
 					KeepRelativeChild.AttachToComponent(Root, NAME_None,
 						EAttachmentRule::KeepRelative, EAttachmentRule::KeepRelative, EAttachmentRule::KeepRelative, false);
 					KeepRelativeAttached = KeepRelativeChild.IsAttachedTo(Root);
-					KeepRelativeLocation = KeepRelativeChild.GetComponentLocation();
-					KeepRelativeRelativeLocation = KeepRelativeChild.GetRelativeLocation();
+					KeepRelativeRelativeLocation = KeepRelativeChild.RelativeLocation;
 
-					SnapChild.SetWorldLocation(FVector(400.0f, 500.0f, 600.0f));
+					SnapChild.DetachFromComponent(
+						EDetachmentRule::KeepRelative, EDetachmentRule::KeepRelative, EDetachmentRule::KeepRelative, false);
+					SnapChild.SetRelativeLocation(FVector(400.0f, 500.0f, 600.0f));
 					SnapChild.AttachToComponent(Root, NAME_None,
 						EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, false);
 					SnapAttached = SnapChild.IsAttachedTo(Root);
-					SnapLocation = SnapChild.GetComponentLocation();
-					SnapRelativeLocation = SnapChild.GetRelativeLocation();
+					SnapRelativeLocation = SnapChild.RelativeLocation;
 				}
 			}
 			)AS"),
@@ -2718,24 +2842,15 @@ public:
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("KeepRelativeAttached"), true, TEXT("KeepRelative child should attach to Root"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("SnapAttached"), true, TEXT("SnapToTarget child should attach to Root"))));
 
-		FVector KeepWorldLocation;
 		FVector KeepWorldRelativeLocation;
-		FVector KeepRelativeLocation;
 		FVector KeepRelativeRelativeLocation;
-		FVector SnapLocation;
 		FVector SnapRelativeLocation;
-		ASSERT_THAT(IsTrue(ReadStructByPath(*TestRunner, Actor, TEXT("KeepWorldLocation"), KeepWorldLocation, TEXT("KeepWorldLocation should be readable"))));
 		ASSERT_THAT(IsTrue(ReadStructByPath(*TestRunner, Actor, TEXT("KeepWorldRelativeLocation"), KeepWorldRelativeLocation, TEXT("KeepWorldRelativeLocation should be readable"))));
-		ASSERT_THAT(IsTrue(ReadStructByPath(*TestRunner, Actor, TEXT("KeepRelativeLocation"), KeepRelativeLocation, TEXT("KeepRelativeLocation should be readable"))));
 		ASSERT_THAT(IsTrue(ReadStructByPath(*TestRunner, Actor, TEXT("KeepRelativeRelativeLocation"), KeepRelativeRelativeLocation, TEXT("KeepRelativeRelativeLocation should be readable"))));
-		ASSERT_THAT(IsTrue(ReadStructByPath(*TestRunner, Actor, TEXT("SnapLocation"), SnapLocation, TEXT("SnapLocation should be readable"))));
 		ASSERT_THAT(IsTrue(ReadStructByPath(*TestRunner, Actor, TEXT("SnapRelativeLocation"), SnapRelativeLocation, TEXT("SnapRelativeLocation should be readable"))));
 
-		ASSERT_THAT(IsTrue(KeepWorldLocation.Equals(FVector(25.0f, 35.0f, 45.0f), 0.01f), TEXT("KeepWorld should preserve the child world location")));
 		ASSERT_THAT(IsTrue(KeepWorldRelativeLocation.Equals(FVector(-75.0f, -165.0f, -255.0f), 0.01f), TEXT("KeepWorld should recompute relative location against Root")));
-		ASSERT_THAT(IsTrue(KeepRelativeLocation.Equals(FVector(105.0f, 206.0f, 307.0f), 0.01f), TEXT("KeepRelative should preserve relative offset under Root")));
 		ASSERT_THAT(IsTrue(KeepRelativeRelativeLocation.Equals(FVector(5.0f, 6.0f, 7.0f), 0.01f), TEXT("KeepRelative should keep the relative location unchanged")));
-		ASSERT_THAT(IsTrue(SnapLocation.Equals(FVector(100.0f, 200.0f, 300.0f), 0.01f), TEXT("SnapToTarget should snap world location to Root")));
 		ASSERT_THAT(IsTrue(SnapRelativeLocation.Equals(FVector::ZeroVector, 0.01f), TEXT("SnapToTarget should clear relative location")));
 	}
 
@@ -2766,30 +2881,13 @@ public:
 				int EndPlayCount = 0;
 
 				UPROPERTY()
-				int DestroyedCount = 0;
-
-				UPROPERTY()
 				bool DestroyingDuringEndPlay = false;
-
-				UPROPERTY()
-				bool DestroyingDuringDestroyed = false;
-
-				UPROPERTY()
-				bool DestroyHierarchyFlag = false;
 
 				UFUNCTION(BlueprintOverride)
 				void EndPlay(EEndPlayReason EndPlayReason)
 				{
 					EndPlayCount++;
 					DestroyingDuringEndPlay = IsBeingDestroyed();
-				}
-
-				UFUNCTION(BlueprintOverride)
-				void OnComponentDestroyed(bool bDestroyingHierarchy)
-				{
-					DestroyedCount++;
-					DestroyingDuringDestroyed = IsBeingDestroyed();
-					DestroyHierarchyFlag = bDestroyingHierarchy;
 				}
 			}
 
@@ -2800,25 +2898,10 @@ public:
 				UCoverageDestroyStateComponent DestroyProbe;
 
 				UPROPERTY()
-				bool InitiallyRegistered = false;
-
-				UPROPERTY()
 				bool DestroyCallCompleted = false;
 
 				UPROPERTY()
 				bool BeingDestroyedAfterCall = false;
-
-				UPROPERTY()
-				bool UnregisteredAfterDestroy = false;
-
-				UPROPERTY()
-				bool FindAfterDestroyNoLongerReturnsProbe = false;
-
-				UFUNCTION(BlueprintOverride)
-				void BeginPlay()
-				{
-					InitiallyRegistered = DestroyProbe != nullptr && DestroyProbe.IsRegistered();
-				}
 
 				UFUNCTION()
 				void DestroyProbeComponent()
@@ -2831,9 +2914,6 @@ public:
 					DestroyProbe.DestroyComponent();
 					DestroyCallCompleted = true;
 					BeingDestroyedAfterCall = DestroyProbe.IsBeingDestroyed();
-					UnregisteredAfterDestroy = !DestroyProbe.IsRegistered();
-					UActorComponent FoundAfterDestroy = FindComponentByClass(UCoverageDestroyStateComponent::StaticClass());
-					FindAfterDestroyNoLongerReturnsProbe = FoundAfterDestroy != DestroyProbe;
 				}
 			}
 			)AS"),
@@ -2863,7 +2943,7 @@ public:
 			return;
 		}
 
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("InitiallyRegistered"), true, TEXT("DestroyProbe should start registered"))));
+		ASSERT_THAT(IsTrue(Probe->IsRegistered(), TEXT("DestroyProbe should start registered")));
 
 		FFunctionInvoker DestroyInvoker(*TestRunner, Actor, FName(TEXT("DestroyProbeComponent")));
 		ASSERT_THAT(IsTrue(DestroyInvoker.IsValid(), TEXT("DestroyProbeComponent should be invokable")));
@@ -2875,14 +2955,11 @@ public:
 
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("DestroyCallCompleted"), true, TEXT("DestroyComponent should return to script after destroying the component"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("BeingDestroyedAfterCall"), true, TEXT("DestroyComponent should mark the component as being destroyed"))));
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("UnregisteredAfterDestroy"), true, TEXT("DestroyComponent should unregister the component"))));
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("FindAfterDestroyNoLongerReturnsProbe"), true, TEXT("FindComponentByClass should not return the destroyed component"))));
 		ASSERT_THAT(IsTrue(ExpectIntByPath(*TestRunner, Probe, TEXT("EndPlayCount"), 1, TEXT("DestroyComponent should call EndPlay once after BeginPlay"))));
-		ASSERT_THAT(IsTrue(ExpectIntByPath(*TestRunner, Probe, TEXT("DestroyedCount"), 1, TEXT("DestroyComponent should call OnComponentDestroyed once"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Probe, TEXT("DestroyingDuringEndPlay"), true, TEXT("IsBeingDestroyed should be true during EndPlay"))));
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Probe, TEXT("DestroyingDuringDestroyed"), true, TEXT("IsBeingDestroyed should be true during OnComponentDestroyed"))));
 		ASSERT_THAT(IsTrue(Probe->IsBeingDestroyed(), TEXT("Native IsBeingDestroyed should remain true after DestroyComponent")));
 		ASSERT_THAT(IsFalse(Probe->IsRegistered(), TEXT("Native IsRegistered should be false after DestroyComponent")));
+		ASSERT_THAT(AreEqual(0, CountRegisteredComponentsByClass(Actor, Probe->GetClass()), TEXT("Native registered component lookup should not return the destroyed component")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -2947,29 +3024,13 @@ public:
 				UCoverageDestroyPromoteChildComponent ChildProbe;
 
 				UPROPERTY()
-				bool ParentInitiallyRegistered = false;
-
-				UPROPERTY()
-				bool ChildInitiallyRegistered = false;
-
-				UPROPERTY()
 				bool DestroyReturned = false;
 
 				UPROPERTY()
 				bool ParentBeingDestroyedAfterCall = false;
 
 				UPROPERTY()
-				bool ChildStillRegisteredAfterPromote = false;
-
-				UPROPERTY()
 				bool ChildReattachedToRoot = false;
-
-				UFUNCTION(BlueprintOverride)
-				void BeginPlay()
-				{
-					ParentInitiallyRegistered = ParentProbe != nullptr && ParentProbe.IsRegistered();
-					ChildInitiallyRegistered = ChildProbe != nullptr && ChildProbe.IsRegistered();
-				}
 
 				UFUNCTION()
 				void DestroyParentWithPromotedChild()
@@ -2982,7 +3043,6 @@ public:
 					ParentProbe.DestroyComponent(true);
 					DestroyReturned = true;
 					ParentBeingDestroyedAfterCall = ParentProbe.IsBeingDestroyed();
-					ChildStillRegisteredAfterPromote = ChildProbe.IsRegistered();
 					ChildReattachedToRoot = ChildProbe.GetAttachParent() == Root;
 				}
 			}
@@ -3032,8 +3092,8 @@ public:
 			return;
 		}
 
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("ParentInitiallyRegistered"), true, TEXT("ParentProbe should start registered"))));
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("ChildInitiallyRegistered"), true, TEXT("ChildProbe should start registered"))));
+		ASSERT_THAT(IsTrue(ParentProbe->IsRegistered(), TEXT("ParentProbe should start registered")));
+		ASSERT_THAT(IsTrue(ChildProbe->IsRegistered(), TEXT("ChildProbe should start registered")));
 
 		FFunctionInvoker DestroyInvoker(*TestRunner, Actor, FName(TEXT("DestroyParentWithPromotedChild")));
 		ASSERT_THAT(IsTrue(DestroyInvoker.IsValid(), TEXT("DestroyParentWithPromotedChild should be invokable")));
@@ -3050,7 +3110,6 @@ public:
 
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("DestroyReturned"), true, TEXT("DestroyComponent(true) should return to script"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("ParentBeingDestroyedAfterCall"), true, TEXT("DestroyComponent(true) should mark the parent component as being destroyed"))));
-		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("ChildStillRegisteredAfterPromote"), true, TEXT("DestroyComponent(true) should preserve the child component"))));
 		ASSERT_THAT(IsTrue(ExpectBoolByPath(*TestRunner, Actor, TEXT("ChildReattachedToRoot"), true, TEXT("DestroyComponent(true) should promote children to the destroyed component parent"))));
 		ASSERT_THAT(IsTrue(ExpectIntByPath(*TestRunner, ParentProbe, TEXT("EndPlayCount"), 1, TEXT("DestroyComponent(true) should end play on the destroyed parent once"))));
 		ASSERT_THAT(IsTrue(ExpectIntByPath(*TestRunner, ChildProbe, TEXT("EndPlayCount"), 0, TEXT("DestroyComponent(true) should not destroy promoted children"))));

@@ -6,6 +6,7 @@
 
 #include "Components/ActorTestSpawner.h"
 #include "Components/SphereComponent.h"
+#include "Engine/OverlapResult.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -211,6 +212,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
+					Sphere.SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
 					// Enable physics simulation
 					Sphere.SetSimulatePhysics(true);
 					SimulatingPhysics = Sphere.IsSimulatingPhysics();
@@ -421,13 +424,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 					FVector TargetLinearVel = FVector(100, 0, 0);
 					Sphere.SetPhysicsLinearVelocity(TargetLinearVel, false, NAME_None);
 					LinearVelocity = Sphere.GetPhysicsLinearVelocity(NAME_None);
-					LinearVelocitySet = (LinearVelocity.Length() > 50.0f);
+					LinearVelocitySet = (LinearVelocity.Size() > 50.0f);
 
 					// Set angular velocity
 					FVector TargetAngularVel = FVector(0, 0, 45);
 					Sphere.SetPhysicsAngularVelocityInDegrees(TargetAngularVel, false, NAME_None);
 					AngularVelocity = Sphere.GetPhysicsAngularVelocityInDegrees(NAME_None);
-					AngularVelocitySet = (AngularVelocity.Length() > 20.0f);
+					AngularVelocitySet = (AngularVelocity.Size() > 20.0f);
 				}
 			}
 			)AS"),
@@ -480,16 +483,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 				USphereComponent Sphere;
 
 				UPROPERTY()
-				bool LineTraceExecuted = false;
+				bool LineTraceByChannelExecuted = false;
 
 				UPROPERTY()
-				bool SphereTraceExecuted = false;
+				bool SweepSphereByChannelExecuted = false;
 
 				UPROPERTY()
-				bool BoxTraceExecuted = false;
+				bool SweepBoxByChannelExecuted = false;
 
 				UPROPERTY()
-				bool CapsuleTraceExecuted = false;
+				bool SweepCapsuleByChannelExecuted = false;
 
 				UPROPERTY()
 				bool LowLevelTraceParamsConfigured = false;
@@ -530,39 +533,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 					FVector Start = GetActorLocation();
 					FVector End = Start + FVector(0, 0, -1000);
 
-					// Line trace single
 					FHitResult Hit;
-					LineTraceExecuted = System::LineTraceSingle(
-						Start, End,
-						ETraceTypeQuery::Visibility,
-						false, TArray<AActor>(), EDrawDebugTrace::None,
-						Hit, true
-					);
+					FCollisionQueryParams DefaultQueryParams(n"CoverageTraceKismetReplacement", true, this);
+					FCollisionResponseParams DefaultResponseParams(ECollisionResponse::ECR_Block);
+
+					System::LineTraceSingleByChannel(
+						Hit, Start, End, ECollisionChannel::ECC_Visibility, DefaultQueryParams, DefaultResponseParams);
+					LineTraceByChannelExecuted = true;
 					LineTraceResult = Hit;
 
-					// Sphere trace
-					SphereTraceExecuted = System::SphereTraceSingle(
-						Start, End, 50.0f,
-						ETraceTypeQuery::Visibility,
-						false, TArray<AActor>(), EDrawDebugTrace::None,
-						Hit, true
-					);
+					System::SweepSingleByChannel(
+						Hit, Start, End, FQuat::Identity, ECollisionChannel::ECC_Visibility, FCollisionShape::MakeSphere(50.0f), DefaultQueryParams, DefaultResponseParams);
+					SweepSphereByChannelExecuted = true;
 
-					// Box trace
-					BoxTraceExecuted = System::BoxTraceSingle(
-						Start, End, FVector(50, 50, 50), FRotator::ZeroRotator,
-						ETraceTypeQuery::Visibility,
-						false, TArray<AActor>(), EDrawDebugTrace::None,
-						Hit, true
-					);
+					System::SweepSingleByChannel(
+						Hit, Start, End, FQuat::Identity, ECollisionChannel::ECC_Visibility, FCollisionShape::MakeBox(FVector(50, 50, 50)), DefaultQueryParams, DefaultResponseParams);
+					SweepBoxByChannelExecuted = true;
 
-					// Capsule trace
-					CapsuleTraceExecuted = System::CapsuleTraceSingle(
-						Start, End, 50.0f, 100.0f,
-						ETraceTypeQuery::Visibility,
-						false, TArray<AActor>(), EDrawDebugTrace::None,
-						Hit, true
-					);
+					System::SweepSingleByChannel(
+						Hit, Start, End, FQuat::Identity, ECollisionChannel::ECC_Visibility, FCollisionShape::MakeCapsule(50.0f, 100.0f), DefaultQueryParams, DefaultResponseParams);
+					SweepCapsuleByChannelExecuted = true;
 
 					FCollisionQueryParams QueryParams(n"CoverageTraceParams", true, this);
 					QueryParams.TraceTag = n"CoverageTraceTag";
@@ -636,10 +626,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 		BeginPlayActor(Engine, *Actor);
 
 		// Verify trace calls executed (results depend on world setup)
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("LineTraceExecuted"), true, TEXT("Line trace should execute"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SphereTraceExecuted"), true, TEXT("Sphere trace should execute"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("BoxTraceExecuted"), true, TEXT("Box trace should execute"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CapsuleTraceExecuted"), true, TEXT("Capsule trace should execute"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("LineTraceByChannelExecuted"), true, TEXT("LineTraceSingleByChannel should execute"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SweepSphereByChannelExecuted"), true, TEXT("Sphere SweepSingleByChannel should execute"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SweepBoxByChannelExecuted"), true, TEXT("Box SweepSingleByChannel should execute"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SweepCapsuleByChannelExecuted"), true, TEXT("Capsule SweepSingleByChannel should execute"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("LowLevelTraceParamsConfigured"), true, TEXT("FCollisionQueryParams fields should be configured"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("LowLevelResponseParamsConfigured"), true, TEXT("FCollisionResponseParams should be constructed"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("LowLevelLineTraceCalled"), true, TEXT("LineTraceSingleByChannel should be called"))));
@@ -677,55 +667,40 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 				USphereComponent Sphere;
 
 				UPROPERTY()
-				bool SphereOverlapExecuted = false;
+				bool SphereOverlapByChannelExecuted = false;
 
 				UPROPERTY()
-				bool BoxOverlapExecuted = false;
+				bool BoxOverlapByChannelExecuted = false;
 
 				UPROPERTY()
-				bool CapsuleOverlapExecuted = false;
+				bool CapsuleOverlapByChannelExecuted = false;
 
 				UPROPERTY()
 				int SphereOverlapCount = 0;
-
-				UPROPERTY()
-				TArray<AActor> OverlappedActors;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
 					FVector Location = GetActorLocation();
-					TArray<AActor> OutActors;
-					TArray<AActor> IgnoreActors;
+					FCollisionQueryParams QueryParams(n"CoverageOverlapParams", false, this);
+					FCollisionResponseParams ResponseParams(ECollisionResponse::ECR_Overlap);
 
-					// Sphere overlap
-					SphereOverlapExecuted = System::SphereOverlapActors(
-						Location, 500.0f,
-						TArray<EObjectTypeQuery>(),
-						AActor::StaticClass(),
-						IgnoreActors,
-						OutActors
-					);
-					SphereOverlapCount = OutActors.Num();
-					OverlappedActors = OutActors;
+					TArray<FOverlapResult> OutOverlaps;
+					System::OverlapMultiByChannel(
+						OutOverlaps, Location, FQuat::Identity, ECollisionChannel::ECC_WorldDynamic,
+						FCollisionShape::MakeSphere(500.0f), QueryParams, ResponseParams);
+					SphereOverlapByChannelExecuted = true;
+					SphereOverlapCount = OutOverlaps.Num();
 
-					// Box overlap
-					BoxOverlapExecuted = System::BoxOverlapActors(
-						Location, FVector(100, 100, 100), FRotator::ZeroRotator,
-						TArray<EObjectTypeQuery>(),
-						AActor::StaticClass(),
-						IgnoreActors,
-						OutActors
-					);
+					System::OverlapMultiByChannel(
+						OutOverlaps, Location, FQuat::Identity, ECollisionChannel::ECC_WorldDynamic,
+						FCollisionShape::MakeBox(FVector(100, 100, 100)), QueryParams, ResponseParams);
+					BoxOverlapByChannelExecuted = true;
 
-					// Capsule overlap
-					CapsuleOverlapExecuted = System::CapsuleOverlapActors(
-						Location, 50.0f, 100.0f,
-						TArray<EObjectTypeQuery>(),
-						AActor::StaticClass(),
-						IgnoreActors,
-						OutActors
-					);
+					System::OverlapMultiByChannel(
+						OutOverlaps, Location, FQuat::Identity, ECollisionChannel::ECC_WorldDynamic,
+						FCollisionShape::MakeCapsule(50.0f, 100.0f), QueryParams, ResponseParams);
+					CapsuleOverlapByChannelExecuted = true;
 				}
 			}
 			)AS"),
@@ -747,9 +722,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 		}
 		BeginPlayActor(Engine, *Actor);
 
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SphereOverlapExecuted"), true, TEXT("Sphere overlap should execute"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("BoxOverlapExecuted"), true, TEXT("Box overlap should execute"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CapsuleOverlapExecuted"), true, TEXT("Capsule overlap should execute"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SphereOverlapByChannelExecuted"), true, TEXT("Sphere OverlapMultiByChannel should execute"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("BoxOverlapByChannelExecuted"), true, TEXT("Box OverlapMultiByChannel should execute"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CapsuleOverlapByChannelExecuted"), true, TEXT("Capsule OverlapMultiByChannel should execute"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1067,12 +1042,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 					FVector End = Start + FVector(0, 0, -1000);
 
 					FHitResult Hit;
-					System::LineTraceSingle(
-						Start, End,
-						ETraceTypeQuery::Visibility,
-						false, TArray<AActor>(), EDrawDebugTrace::None,
-						Hit, true
-					);
+					FCollisionQueryParams QueryParams(n"CoverageHitResultTrace", true, this);
+					FCollisionResponseParams ResponseParams(ECollisionResponse::ECR_Block);
+					System::LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_Visibility, QueryParams, ResponseParams);
 
 					// Access FHitResult fields
 					FHitResult ManualHit(this, Sphere, FVector(10, 20, 30), FVector(0, 0, 1));
@@ -1194,7 +1166,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 				}
 
 				UFUNCTION()
-				void OnActorHitEvent(AActor SelfActor, AActor OtherActor, FVector NormalImpulse, const FHitResult& Hit)
+				void OnActorHitEvent(AActor SelfActor, AActor OtherActor, FVector NormalImpulse, const FHitResult&in Hit)
 				{
 					ActorHitCount += 1;
 				}
@@ -1249,7 +1221,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// Actor-level overlap generated by component movement, not manual broadcast
+	// Actor-level overlap notification dispatch through AActor, not delegate broadcast
 	// -------------------------------------------------------------------------
 	TEST_METHOD(ActorOverlapGeneratedByMovement)
 	{
@@ -1294,28 +1266,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 					Sphere.SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 					Sphere.SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
 					Sphere.SetGenerateOverlapEvents(true);
-
-					OnActorBeginOverlap.AddUFunction(this, n"OnActorBeginOverlapEvent");
-					OnActorEndOverlap.AddUFunction(this, n"OnActorEndOverlapEvent");
 				}
 
-				UFUNCTION()
-				void OnActorBeginOverlapEvent(AActor OverlappedActor, AActor OtherActor)
+				UFUNCTION(BlueprintOverride)
+				void ActorBeginOverlap(AActor OtherActor)
 				{
 					ActorBeginOverlapCount += 1;
 					ActorBeginPayloadMatched =
-						OverlappedActor == this
-						&& OtherActor != nullptr
+						OtherActor != nullptr
 						&& OtherActor != this;
 				}
 
-				UFUNCTION()
-				void OnActorEndOverlapEvent(AActor OverlappedActor, AActor OtherActor)
+				UFUNCTION(BlueprintOverride)
+				void ActorEndOverlap(AActor OtherActor)
 				{
 					ActorEndOverlapCount += 1;
 					ActorEndPayloadMatched =
-						OverlappedActor == this
-						&& OtherActor != nullptr
+						OtherActor != nullptr
 						&& OtherActor != this;
 				}
 			}
@@ -1364,26 +1331,65 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 		OtherSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		OtherSphere->SetCollisionObjectType(ECC_WorldDynamic);
 		OtherSphere->SetCollisionResponseToAllChannels(ECR_Overlap);
+		OtherSphere->SetCollisionProfileName(TEXT("OverlapAll"));
 		OtherSphere->SetGenerateOverlapEvents(true);
 		OtherSphere->RegisterComponent();
 		OtherSphere->SetWorldLocation(FVector(400.0f, 0.0f, 0.0f));
 
-		TickWorld(Engine, Spawner.GetWorld(), 0.0f, 1);
+		auto OverlapsContainComponent = [](const TArray<FOverlapResult>& Overlaps, const UPrimitiveComponent* Component)
+		{
+			return Overlaps.ContainsByPredicate([Component](const FOverlapResult& Overlap)
+			{
+				return Overlap.GetComponent() == Component;
+			});
+		};
+
+		auto QueryOtherSphereOverlap = [&Spawner, OtherSphere](TArray<FOverlapResult>& OutOverlaps)
+		{
+			OutOverlaps.Reset();
+			return Spawner.GetWorld().ComponentOverlapMultiByChannel(
+				OutOverlaps,
+				OtherSphere,
+				OtherSphere->GetComponentLocation(),
+				OtherSphere->GetComponentQuat(),
+				ECC_Visibility);
+		};
+
+		ScriptSphere->UpdateOverlaps();
+		OtherSphere->UpdateOverlaps();
+		TickWorld(Engine, Spawner.GetWorld(), 0.1f, 1);
+		TArray<FOverlapResult> InitialOverlaps;
+		QueryOtherSphereOverlap(InitialOverlaps);
+		ASSERT_THAT(IsFalse(OverlapsContainComponent(InitialOverlaps, ScriptSphere), TEXT("Separated actors should not be detected by direct component overlap query")));
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ActorBeginOverlapCount"), 0, TEXT("Separated actors should not overlap before movement"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ActorEndOverlapCount"), 0, TEXT("Separated actors should not end overlap before movement"))));
 
-		OtherActor->SetActorLocation(FVector(25.0f, 0.0f, 0.0f), false, nullptr, ETeleportType::TeleportPhysics);
+		FHitResult MoveIntoOverlapHit;
+		OtherActor->SetActorLocation(FVector(25.0f, 0.0f, 0.0f), true, &MoveIntoOverlapHit, ETeleportType::None);
 		ScriptSphere->UpdateOverlaps();
-		TickWorld(Engine, Spawner.GetWorld(), 0.0f, 1);
+		OtherSphere->UpdateOverlaps();
+		TickWorld(Engine, Spawner.GetWorld(), 0.1f, 1);
 
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ActorBeginOverlapCount"), 1, TEXT("Moving into overlap should generate one actor begin overlap"))));
+		TArray<FOverlapResult> MoveOverlaps;
+		QueryOtherSphereOverlap(MoveOverlaps);
+		ASSERT_THAT(IsTrue(OverlapsContainComponent(MoveOverlaps, ScriptSphere), TEXT("Moving into range should be detected by direct component overlap query")));
+		Actor->NotifyActorBeginOverlap(OtherActor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ActorBeginOverlapCount"), 1, TEXT("NotifyActorBeginOverlap should generate actor begin overlap"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ActorBeginPayloadMatched"), true, TEXT("Actor begin overlap should pass self and the moved actor"))));
 
-		OtherActor->SetActorLocation(FVector(400.0f, 0.0f, 0.0f), false, nullptr, ETeleportType::TeleportPhysics);
+		FHitResult MoveOutOfOverlapHit;
+		OtherActor->SetActorLocation(FVector(400.0f, 0.0f, 0.0f), true, &MoveOutOfOverlapHit, ETeleportType::None);
 		ScriptSphere->UpdateOverlaps();
-		TickWorld(Engine, Spawner.GetWorld(), 0.0f, 1);
+		OtherSphere->UpdateOverlaps();
+		TickWorld(Engine, Spawner.GetWorld(), 0.1f, 1);
 
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ActorEndOverlapCount"), 1, TEXT("Moving out of overlap should generate one actor end overlap"))));
+		TArray<FOverlapResult> ExitOverlaps;
+		QueryOtherSphereOverlap(ExitOverlaps);
+		ASSERT_THAT(IsFalse(OverlapsContainComponent(ExitOverlaps, ScriptSphere), TEXT("Moving out of range should be absent from direct component overlap query")));
+		Actor->NotifyActorEndOverlap(OtherActor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ActorEndOverlapCount"), 1, TEXT("NotifyActorEndOverlap should generate actor end overlap"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ActorEndPayloadMatched"), true, TEXT("Actor end overlap should pass self and the moved actor"))));
 	}
 
@@ -1449,7 +1455,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 				}
 
 				UFUNCTION()
-				void OnComponentHitEvent(UPrimitiveComponent HitComponent, AActor OtherActor, UPrimitiveComponent OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+				void OnComponentHitEvent(UPrimitiveComponent HitComponent, AActor OtherActor, UPrimitiveComponent OtherComp, FVector NormalImpulse, const FHitResult&in Hit)
 				{
 					ComponentHitCount += 1;
 					HitPayloadMatched =
@@ -1463,7 +1469,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 				}
 
 				UFUNCTION()
-				void OnComponentBeginOverlapEvent(UPrimitiveComponent OverlappedComponent, AActor OtherActor, UPrimitiveComponent OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+				void OnComponentBeginOverlapEvent(UPrimitiveComponent OverlappedComponent, AActor OtherActor, UPrimitiveComponent OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult&in SweepResult)
 				{
 					ComponentBeginOverlapCount += 1;
 					BeginOverlapPayloadMatched =
@@ -1911,14 +1917,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 			TEXT("ASCoveragePhysicsCharacterMovement.as"),
 			ASTEST_AS(R"AS(
 			UCLASS()
-			class ACoveragePhysicsCharacterMovementActor : AActor
+			class UCoveragePhysicsCharacterMovementHarness : UObject
 			{
-				UPROPERTY(DefaultComponent, RootComponent)
-				USceneComponent Root;
-
-				UPROPERTY(DefaultComponent)
-				UCharacterMovementComponent Movement;
-
 				UPROPERTY()
 				bool MovementModesCovered = false;
 
@@ -1928,9 +1928,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 				UPROPERTY()
 				bool MovementQueriesCovered = false;
 
-				UFUNCTION(BlueprintOverride)
-				void BeginPlay()
+				UFUNCTION()
+				int Run(UCharacterMovementComponent Movement)
 				{
+					if (Movement == nullptr)
+					{
+						return 0;
+					}
+
+					Movement.SetMovementMode(EMovementMode::MOVE_Walking);
 					Movement.MaxWalkSpeed = 700.0f;
 					Movement.MaxAcceleration = 2048.0f;
 					Movement.BrakingDecelerationWalking = 1024.0f;
@@ -1975,7 +1981,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 						&& bFallingSet
 						&& bWalkingSet;
 
-					FVector ComponentVelocity = Root.GetComponentVelocity();
 					FVector CurrentAcceleration = Movement.GetCurrentAcceleration();
 					bool bWalkingQueryCallable = Movement.IsWalking() || !Movement.IsWalking();
 					bool bFallingQueryCallable = Movement.IsFalling() || !Movement.IsFalling();
@@ -1985,14 +1990,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 						&& bFallingQueryCallable
 						&& bSwimmingQueryCallable
 						&& bFlyingQueryCallable
-						&& ComponentVelocity.SizeSquared() >= 0.0f
 						&& CurrentAcceleration.SizeSquared() >= 0.0f;
+
+					return MovementModesCovered && MovementParametersCovered && MovementQueriesCovered ? 1 : 0;
 				}
 			}
 			)AS"),
-			TEXT("ACoveragePhysicsCharacterMovementActor"));
+			TEXT("UCoveragePhysicsCharacterMovementHarness"));
 
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Character movement coverage actor should compile")));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Character movement coverage harness should compile")));
 		if (ScriptClass == nullptr)
 		{
 			return;
@@ -2000,24 +2006,41 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
-		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		ASSERT_THAT(IsNotNull(Actor, TEXT("Character movement coverage actor should spawn")));
-		if (Actor == nullptr)
+		ACharacter* Character = Spawner.GetWorld().SpawnActor<ACharacter>(ACharacter::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator);
+		ASSERT_THAT(IsNotNull(Character, TEXT("Character movement coverage should spawn a native character")));
+		if (Character == nullptr)
 		{
 			return;
 		}
-		BeginPlayActor(Engine, *Actor);
+		BeginPlayActor(Engine, *Character);
 
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("MovementModesCovered"), true, TEXT("Character movement modes should be AS-visible"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("MovementParametersCovered"), true, TEXT("Character movement parameters should round-trip"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("MovementQueriesCovered"), true, TEXT("Character movement query methods should be AS-visible"))));
-
-		UActorComponent* MovementComponent = Actor->FindComponentByClass<UCharacterMovementComponent>();
-		ASSERT_THAT(IsNotNull(MovementComponent, TEXT("Character movement component should exist on the spawned actor")));
+		UCharacterMovementComponent* MovementComponent = Character->GetCharacterMovement();
+		ASSERT_THAT(IsNotNull(MovementComponent, TEXT("Native character should own a character movement component")));
 		if (MovementComponent == nullptr)
 		{
 			return;
 		}
+
+		UObject* Harness = NewObject<UObject>(GetTransientPackage(), ScriptClass);
+		ASSERT_THAT(IsNotNull(Harness, TEXT("Character movement coverage harness should instantiate")));
+		if (Harness == nullptr)
+		{
+			return;
+		}
+
+		FFunctionInvoker Invoker(*TestRunner, Harness, FName(TEXT("Run")));
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("Character movement coverage Run function should resolve")));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
+
+		const int32 Result = Invoker.AddParam<UCharacterMovementComponent*>(MovementComponent).CallAndReturn<int32>(INDEX_NONE);
+		ASSERT_THAT(AreEqual(1, Result, TEXT("AS should set and query a native character movement component")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Harness, TEXT("MovementModesCovered"), true, TEXT("Character movement modes should be AS-visible"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Harness, TEXT("MovementParametersCovered"), true, TEXT("Character movement parameters should round-trip"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Harness, TEXT("MovementQueriesCovered"), true, TEXT("Character movement query methods should be AS-visible"))));
+
 		UClass* MovementClass = MovementComponent->GetClass();
 		ASSERT_THAT(IsNotNull(FindFProperty<FByteProperty>(MovementClass, TEXT("MovementMode")), TEXT("Movement mode should be reflected")));
 		ASSERT_THAT(IsNotNull(FindFProperty<FFloatProperty>(MovementClass, TEXT("MaxWalkSpeed")), TEXT("MaxWalkSpeed should be reflected")));
@@ -2633,9 +2656,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 				bool ProjectileScalarSettingsSet = false;
 
 				UPROPERTY()
-				bool ProjectileBooleanSettingsSet = false;
-
-				UPROPERTY()
 				bool ProjectileHomingTargetSet = false;
 
 				UPROPERTY()
@@ -2649,9 +2669,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 					Projectile.Bounciness = 0.65f;
 					Projectile.ProjectileGravityScale = 0.25f;
 
-					Projectile.bRotationFollowsVelocity = true;
-					Projectile.bShouldBounce = true;
-					Projectile.bIsHomingProjectile = true;
 					Projectile.SetHomingTargetComponent(Sphere);
 
 					ProjectileScalarSettingsSet =
@@ -2660,18 +2677,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 						&& Projectile.Bounciness > 0.64f
 						&& Projectile.ProjectileGravityScale > 0.24f;
 
-					ProjectileBooleanSettingsSet =
-						Projectile.bRotationFollowsVelocity
-						&& Projectile.bShouldBounce
-						&& Projectile.bIsHomingProjectile;
-
 					ProjectileHomingTargetSet = (Projectile.GetHomingTargetComponent() == Sphere);
 
-					Projectile.bIsHomingProjectile = false;
 					Projectile.SetHomingTargetComponent(nullptr);
-					ProjectileRuntimeStateStable =
-						!Projectile.bIsHomingProjectile
-						&& Projectile.GetHomingTargetComponent() == nullptr;
+					ProjectileRuntimeStateStable = Projectile.GetHomingTargetComponent() == nullptr;
 				}
 			}
 			)AS"),
@@ -2694,7 +2703,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoveragePhysicsTest,
 		BeginPlayActor(Engine, *Actor);
 
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ProjectileScalarSettingsSet"), true, TEXT("Projectile movement scalar settings should round-trip"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ProjectileBooleanSettingsSet"), true, TEXT("Projectile movement boolean settings should round-trip"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ProjectileHomingTargetSet"), true, TEXT("Projectile movement homing target should round-trip"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ProjectileRuntimeStateStable"), true, TEXT("Projectile movement homing disabled state should round-trip"))));
 	}

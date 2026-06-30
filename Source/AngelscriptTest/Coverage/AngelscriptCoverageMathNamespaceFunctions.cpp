@@ -54,9 +54,14 @@ private:
 		}
 
 		T Result{};
-		if constexpr (std::is_same_v<T, bool>
+		if constexpr (std::is_same_v<T, float>)
+		{
+			// AS `float` is double-backed on this fork (asEP_FLOAT_IS_FLOAT64=1):
+			// read the return register as double before narrowing to float.
+			Result = static_cast<float>(Invoker.ExecuteAndGet<double>(0.0));
+		}
+		else if constexpr (std::is_same_v<T, bool>
 			|| std::is_same_v<T, int32>
-			|| std::is_same_v<T, float>
 			|| std::is_same_v<T, double>)
 		{
 			Result = Invoker.ExecuteAndGet<T>(T{});
@@ -91,7 +96,7 @@ private:
 			return;
 		}
 
-		const float Result = Invoker.ExecuteAndGet<float>(0.0f);
+		const float Result = static_cast<float>(Invoker.ExecuteAndGet<double>(0.0));
 		ASSERT_THAT(IsTrue(Result >= MinValue && Result <= MaxValue, Message));
 	}
 
@@ -110,7 +115,7 @@ private:
 			return;
 		}
 
-		const float Result = Invoker.ExecuteAndGet<float>(0.0f);
+		const float Result = static_cast<float>(Invoker.ExecuteAndGet<double>(0.0));
 		ASSERT_THAT(IsTrue(Predicate(Result), Message));
 	}
 
@@ -324,7 +329,7 @@ public:
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovMath_Rounding", ASTEST_AS(R"AS(
 		float TestFloor()
 		{
-			return Math::Floor(3.7);
+			return Math::FloorToFloat(3.7);
 		}
 
 		int32 TestFloorToInt()
@@ -334,7 +339,7 @@ public:
 
 		float TestCeil()
 		{
-			return Math::Ceil(3.2);
+			return Math::CeilToFloat(3.2);
 		}
 
 		int32 TestCeilToInt()
@@ -344,7 +349,7 @@ public:
 
 		float TestRound()
 		{
-			return Math::Round(3.5);
+			return Math::RoundToFloat(3.5);
 		}
 
 		int32 TestRoundToInt()
@@ -354,7 +359,7 @@ public:
 
 		float TestTrunc()
 		{
-			return Math::Trunc(3.9);
+			return Math::TruncToFloat(3.9);
 		}
 
 		int32 TestTruncToInt()
@@ -374,7 +379,7 @@ public:
 
 		float TestNegativeRounding()
 		{
-			return Math::Floor(-3.2) + Math::Ceil(-3.8) + Math::Round(-3.5) + Math::Trunc(-3.9);
+			return Math::FloorToFloat(-3.2) + Math::CeilToFloat(-3.8) + Math::RoundToFloat(-3.5) + Math::TruncToFloat(-3.9);
 		}
 
 		float TestToFloatRounding()
@@ -405,7 +410,9 @@ public:
 		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int32 TestTruncToInt()"), 3, TEXT("Math::TruncToInt()"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestFractional()"), 0.7f, TEXT("Math::Fractional()"), 0.001);
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestModulo()"), 1.0f, TEXT("Math::Fmod()"), 0.001);
-		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestNegativeRounding()"), -14.0f, TEXT("Math rounding handles negative inputs"), 0.001);
+		// FloorToFloat(-3.2)=-4, CeilToFloat(-3.8)=-3, RoundToFloat(-3.5)=floor(-3.0)=-3,
+		// TruncToFloat(-3.9)=-3  =>  sum = -13.0
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestNegativeRounding()"), -13.0f, TEXT("Math rounding handles negative inputs"), 0.001);
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestToFloatRounding()"), 14.0f, TEXT("Math *ToFloat rounding helpers"), 0.001);
 		ExpectGlobalReturn<double>(Engine, Module, TEXT("double TestToDoubleRounding()"), 14.0, TEXT("Math *ToDouble rounding helpers"), 0.001);
 	}
@@ -963,7 +970,7 @@ public:
 		float TestVectorLength()
 		{
 			FVector v = FVector(3, 4, 0);
-			return v.Length();
+			return v.Size();
 		}
 
 		FVector TestVectorNormalize()
@@ -1039,27 +1046,48 @@ public:
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const FString UnsupportedSource = ASTEST_AS(R"AS(
-		float TriggerUnsupportedVectorMathNamespace()
+		// Compile each alias in isolation: a single combined expression only surfaces
+		// the first unresolved-symbol diagnostic before the compiler bails out.
+		auto ExpectAliasUnsupported = [this, &Engine](const TCHAR* ModuleSuffix, const FString& Source, const TCHAR* DiagnosticToken)
 		{
-			return Math::DotProduct(FVector(1, 0, 0), FVector(0, 1, 0))
-				+ Math::CrossProduct(FVector(1, 0, 0), FVector(0, 1, 0)).Z
-				+ Math::VectorLength(FVector(3, 4, 0))
-				+ Math::VectorNormalize(FVector(10, 0, 0)).X;
+			TArray<FString> ExpectedDiagnostics;
+			ExpectedDiagnostics.Add(DiagnosticToken);
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				*FString::Printf(TEXT("ASCovMath_UnsupportedVectorMathNamespace_%s"), ModuleSuffix),
+				Source,
+				*FString::Printf(TEXT("unsupported Math::%s alias should remain a compile-failure boundary"), DiagnosticToken),
+				MakeArrayView(ExpectedDiagnostics))));
+		};
+
+		ExpectAliasUnsupported(TEXT("DotProduct"), ASTEST_AS(R"AS(
+		float Trigger()
+		{
+			return Math::DotProduct(FVector(1, 0, 0), FVector(0, 1, 0));
 		}
-		)AS");
-		TArray<FString> ExpectedDiagnostics;
-		ExpectedDiagnostics.Add(TEXT("DotProduct"));
-		ExpectedDiagnostics.Add(TEXT("CrossProduct"));
-		ExpectedDiagnostics.Add(TEXT("VectorLength"));
-		ExpectedDiagnostics.Add(TEXT("VectorNormalize"));
-		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
-			*TestRunner,
-			Engine,
-			TEXT("ASCovMath_UnsupportedVectorMathNamespace"),
-			UnsupportedSource,
-			TEXT("unsupported Math:: vector namespace aliases should remain compile-failure boundaries"),
-			MakeArrayView(ExpectedDiagnostics))));
+		)AS"), TEXT("DotProduct"));
+
+		ExpectAliasUnsupported(TEXT("CrossProduct"), ASTEST_AS(R"AS(
+		float Trigger()
+		{
+			return Math::CrossProduct(FVector(1, 0, 0), FVector(0, 1, 0)).Z;
+		}
+		)AS"), TEXT("CrossProduct"));
+
+		ExpectAliasUnsupported(TEXT("VectorLength"), ASTEST_AS(R"AS(
+		float Trigger()
+		{
+			return Math::VectorLength(FVector(3, 4, 0));
+		}
+		)AS"), TEXT("VectorLength"));
+
+		ExpectAliasUnsupported(TEXT("VectorNormalize"), ASTEST_AS(R"AS(
+		float Trigger()
+		{
+			return Math::VectorNormalize(FVector(10, 0, 0)).X;
+		}
+		)AS"), TEXT("VectorNormalize"));
 	}
 
 	TEST_METHOD(GeometricMathFunctions)

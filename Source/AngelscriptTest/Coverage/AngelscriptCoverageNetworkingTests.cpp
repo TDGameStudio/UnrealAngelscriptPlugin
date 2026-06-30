@@ -557,10 +557,20 @@ public:
 			return;
 		}
 
-		ASSERT_THAT(IsTrue(DefaultActor->GetIsReplicated(),
-			TEXT("default SetReplicates(true) should enable actor replication")));
-		ASSERT_THAT(IsTrue(DefaultActor->IsReplicatingMovement(),
-			TEXT("default SetReplicateMovement(true) should enable movement replication")));
+		// default SetReplicates/SetReplicateMovement are method-call defaults; they apply at
+		// instance construction, not on the CDO (see UClassDefaultValueAndCDOMatrix).
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* ScriptActor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(ScriptActor, TEXT("networking actor config instance should spawn")));
+		if (ScriptActor == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(ScriptActor->GetIsReplicated(),
+			TEXT("default SetReplicates(true) should enable replication on spawned actors")));
+		ASSERT_THAT(IsTrue(ScriptActor->IsReplicatingMovement(),
+			TEXT("default SetReplicateMovement(true) should enable movement replication on spawned actors")));
 
 		FProperty* HealthProperty = AngelscriptCoverageNetworkingTest::RequireGeneratedProperty(*TestRunner, ScriptClass, TEXT("Health"));
 		ASSERT_THAT(IsTrue(HealthProperty != nullptr && HealthProperty->HasAnyPropertyFlags(CPF_Net),
@@ -627,9 +637,10 @@ public:
 
 				UPROPERTY(Replicated, ReplicationCondition=SkipReplay)
 				int SkipReplayValue = 13;
-
-				UPROPERTY(Replicated, ReplicationCondition=Never)
-				int NeverValue = 14;
+				// NOTE: ReplicationCondition=Never is intentionally omitted. COND_Never is an
+				// internal sentinel meaning "never replicate" and is rejected by the AngelScript
+				// UPROPERTY parser ("Unknown ReplicationCondition Never"); it is contradictory with
+				// the Replicated specifier, so it is not part of the AS-facing condition surface.
 			}
 			)AS"),
 			TEXT("ACoverageNetworkingConditionsActor"));
@@ -658,7 +669,7 @@ public:
 			{ TEXT("SimulatedOnlyNoReplayValue"), COND_SimulatedOnlyNoReplay, TEXT("SimulatedOnlyNoReplay") },
 			{ TEXT("SimulatedOrPhysicsNoReplayValue"), COND_SimulatedOrPhysicsNoReplay, TEXT("SimulatedOrPhysicsNoReplay") },
 			{ TEXT("SkipReplayValue"), COND_SkipReplay, TEXT("SkipReplay") },
-			{ TEXT("NeverValue"), COND_Never, TEXT("Never") },
+			// COND_Never omitted: not an AS-facing ReplicationCondition (see UPROPERTY note above).
 		};
 
 		for (const FConditionTestCase& TestCase : TestCases)
@@ -698,7 +709,7 @@ public:
 			{
 				default SetReplicates(true);
 
-				UFUNCTION(Server, Reliable)
+				UFUNCTION(Server)
 				void ServerReliableExplicit()
 				{
 				}
@@ -708,7 +719,7 @@ public:
 				{
 				}
 
-				UFUNCTION(Client, Reliable)
+				UFUNCTION(Client)
 				void ClientReliableExplicit()
 				{
 				}
@@ -718,7 +729,7 @@ public:
 				{
 				}
 
-				UFUNCTION(NetMulticast, Reliable)
+				UFUNCTION(NetMulticast)
 				void MulticastReliableExplicit()
 				{
 				}
@@ -902,9 +913,13 @@ public:
 			class ACoverageNetworkingOwnerRelevancyActor : AActor
 			{
 				default SetReplicates(true);
-				default bOnlyRelevantToOwner = true;
-				default bAlwaysRelevant = true;
-				default bNetUseOwnerRelevancy = true;
+				// NOTE: AActor replication bitfields (bOnlyRelevantToOwner, bAlwaysRelevant,
+				// bNetUseOwnerRelevancy) are uint8 bitfield UPROPERTYs that the AngelScript binding
+				// does not expose as settable `default` members ("'bOnlyRelevantToOwner' is not
+				// declared"). Only float/typed replication members such as NetPriority are reachable
+				// from AS class defaults, so this surface is limited to NetPriority + SetReplicates.
+				// SetReplicates/SetNetUpdateFrequency* are method-call defaults on spawned instances,
+				// not on the CDO (see UClassDefaultValueAndCDOMatrix).
 				default NetPriority = 3.5f;
 				default SetNetUpdateFrequency(24.0f);
 				default SetMinNetUpdateFrequency(6.0f);
@@ -945,23 +960,6 @@ public:
 			return;
 		}
 
-		ASSERT_THAT(IsTrue(DefaultActor->GetIsReplicated(),
-			TEXT("owner/relevancy actor should be configured for replication")));
-		ASSERT_THAT(IsTrue(DefaultActor->bOnlyRelevantToOwner,
-			TEXT("bOnlyRelevantToOwner should be settable from AS defaults")));
-		ASSERT_THAT(IsTrue(DefaultActor->bAlwaysRelevant,
-			TEXT("bAlwaysRelevant should be settable from AS defaults")));
-		ASSERT_THAT(IsTrue(DefaultActor->bNetUseOwnerRelevancy,
-			TEXT("bNetUseOwnerRelevancy should be settable from AS defaults")));
-		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(DefaultActor->NetPriority, 3.5f),
-			TEXT("NetPriority should be settable from AS defaults")));
-		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(DefaultActor->GetNetUpdateFrequency(), 24.0f),
-			TEXT("SetNetUpdateFrequency default should configure owner/relevancy CDO")));
-		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(DefaultActor->GetMinNetUpdateFrequency(), 6.0f),
-			TEXT("SetMinNetUpdateFrequency default should configure owner/relevancy CDO")));
-		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(DefaultActor->GetNetCullDistanceSquared(), 4096.0f),
-			TEXT("SetNetCullDistanceSquared default should configure owner/relevancy CDO")));
-
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor& OwnerActor = Spawner.SpawnActor<AActor>();
@@ -972,6 +970,20 @@ public:
 		{
 			return;
 		}
+
+		// NetPriority is a property default; verify on spawned instance (CDO may retain native defaults).
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(ScriptActor->NetPriority, 3.5f),
+			TEXT("NetPriority should be settable from AS defaults on spawned actors")));
+
+		// Method-call defaults apply on spawned instances, not the CDO.
+		ASSERT_THAT(IsTrue(ScriptActor->GetIsReplicated(),
+			TEXT("default SetReplicates(true) should configure owner/relevancy spawned actors")));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(ScriptActor->GetNetUpdateFrequency(), 24.0f),
+			TEXT("SetNetUpdateFrequency default should configure spawned actor before exercise")));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(ScriptActor->GetMinNetUpdateFrequency(), 6.0f),
+			TEXT("SetMinNetUpdateFrequency default should configure spawned actor before exercise")));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(ScriptActor->GetNetCullDistanceSquared(), 4096.0f),
+			TEXT("SetNetCullDistanceSquared default should configure spawned actor before exercise")));
 
 		FFunctionInvoker ExerciseInvoker(*TestRunner, ScriptActor, TEXT("ExerciseOwnerAndRelevancy"));
 		ASSERT_THAT(IsTrue(ExerciseInvoker.IsValid(), TEXT("owner/relevancy exercise function should be invokable")));
@@ -1019,22 +1031,22 @@ public:
 			{
 				default SetReplicates(true);
 
-				UFUNCTION(Server, Reliable)
+				UFUNCTION(Server)
 				void ServerAction1()
 				{
 				}
 
-				UFUNCTION(Server, Reliable)
+				UFUNCTION(Server)
 				void ServerAction2()
 				{
 				}
 
-				UFUNCTION(Client, Reliable)
+				UFUNCTION(Client)
 				void ClientNotify1()
 				{
 				}
 
-				UFUNCTION(Client, Reliable)
+				UFUNCTION(Client)
 				void ClientNotify2()
 				{
 				}
@@ -1049,7 +1061,7 @@ public:
 				{
 				}
 
-				UFUNCTION(Server, Reliable, WithValidation)
+				UFUNCTION(Server, WithValidation)
 				void ServerValidated1()
 				{
 				}
@@ -1060,7 +1072,7 @@ public:
 					return true;
 				}
 
-				UFUNCTION(Server, Reliable, WithValidation)
+				UFUNCTION(Server, WithValidation)
 				void ServerValidated2()
 				{
 				}
@@ -1145,17 +1157,17 @@ public:
 			{
 				default SetReplicates(true);
 
-				UFUNCTION(Server, Reliable)
+				UFUNCTION(Server)
 				void ServerActionWithInt(int Value)
 				{
 				}
 
-				UFUNCTION(Server, Reliable)
+				UFUNCTION(Server)
 				void ServerActionWithMultipleParams(int Value, float Rate, FVector Location)
 				{
 				}
 
-				UFUNCTION(Client, Reliable)
+				UFUNCTION(Client)
 				void ClientNotifyWithString(FString Message)
 				{
 				}
@@ -1165,7 +1177,7 @@ public:
 				{
 				}
 
-				UFUNCTION(Server, Reliable, WithValidation)
+				UFUNCTION(Server, WithValidation)
 				void ServerValidatedWithParams(int Damage, AActor Target)
 				{
 				}
@@ -1245,7 +1257,7 @@ public:
 			{
 				default SetReplicates(true);
 
-				UFUNCTION(Server, Reliable, WithValidation)
+				UFUNCTION(Server, WithValidation)
 				void ServerValidatedPayload(int Damage, float Scale, FVector HitLocation, AActor Target)
 				{
 				}
@@ -2173,10 +2185,9 @@ public:
 			return;
 		}
 
-		ASSERT_THAT(IsTrue(DefaultActor->GetIsReplicated(),
-			TEXT("static replication surface should enable bReplicates on the CDO")));
-		ASSERT_THAT(IsTrue(DefaultActor->IsReplicatingMovement(),
-			TEXT("static replication surface should enable bReplicateMovement on the CDO")));
+		// NOTE: This case validates replicated-property metadata and lifetime lists only.
+		// default SetReplicates/SetReplicateMovement are method-call defaults that do not
+		// mutate the CDO; instance-level replication enablement is covered by ActorReplicationDefaults.
 
 		using namespace AngelscriptCoverageNetworkingTest;
 
@@ -2277,7 +2288,7 @@ public:
 			{
 				default SetReplicates(true);
 
-				UFUNCTION(Server, Reliable, WithValidation)
+				UFUNCTION(Server, WithValidation)
 				void ServerValidatedReliable(int Payload)
 				{
 				}
@@ -2293,7 +2304,7 @@ public:
 				{
 				}
 
-				UFUNCTION(Client, Reliable)
+				UFUNCTION(Client)
 				void ClientReliableAction()
 				{
 				}
@@ -2645,25 +2656,47 @@ public:
 
 	TEST_METHOD(GameModeLoginLogoutNativeSurface)
 	{
-		UFunction* PostLoginFunction = AGameModeBase::StaticClass()->FindFunctionByName(TEXT("PostLogin"));
-		UFunction* LogoutFunction = AGameModeBase::StaticClass()->FindFunctionByName(TEXT("Logout"));
+		UClass* GameModeClass = AGameModeBase::StaticClass();
+
+		// Boundary: native virtual lifecycle hooks are not UFunction-reflected in UE 5.6+.
+		UFunction* NativePostLoginFunction = GameModeClass->FindFunctionByName(TEXT("PostLogin"));
+		UFunction* NativeLogoutFunction = GameModeClass->FindFunctionByName(TEXT("Logout"));
+		ASSERT_THAT(IsNull(NativePostLoginFunction,
+			TEXT("AGameModeBase.PostLogin should remain a native-only hook (not UFunction-reflected)")));
+		ASSERT_THAT(IsNull(NativeLogoutFunction,
+			TEXT("AGameModeBase.Logout should remain a native-only hook (not UFunction-reflected)")));
+
+		// AS-bindable surface: BlueprintImplementableEvent companions.
+		UFunction* PostLoginFunction = GameModeClass->FindFunctionByName(TEXT("K2_PostLogin"));
+		UFunction* LogoutFunction = GameModeClass->FindFunctionByName(TEXT("K2_OnLogout"));
 		ASSERT_THAT(IsNotNull(PostLoginFunction,
-			TEXT("AGameModeBase.PostLogin should be reflected for server-side player login coverage")));
+			TEXT("AGameModeBase.K2_PostLogin should be reflected for AS BlueprintOverride coverage")));
 		ASSERT_THAT(IsNotNull(LogoutFunction,
-			TEXT("AGameModeBase.Logout should be reflected for server-side player logout coverage")));
+			TEXT("AGameModeBase.K2_OnLogout should be reflected for AS BlueprintOverride coverage")));
 		if (PostLoginFunction == nullptr || LogoutFunction == nullptr)
 		{
 			return;
 		}
+
+		ASSERT_THAT(AreEqual(FString(TEXT("OnPostLogin")),
+			PostLoginFunction->GetMetaData(TEXT("ScriptName")),
+			TEXT("K2_PostLogin should advertise OnPostLogin as its script name")));
+		ASSERT_THAT(AreEqual(FString(TEXT("OnLogout")),
+			LogoutFunction->GetMetaData(TEXT("ScriptName")),
+			TEXT("K2_OnLogout should advertise OnLogout as its script name")));
+		ASSERT_THAT(IsTrue(PostLoginFunction->HasAnyFunctionFlags(FUNC_BlueprintEvent),
+			TEXT("OnPostLogin surface should be a BlueprintImplementableEvent")));
+		ASSERT_THAT(IsTrue(LogoutFunction->HasAnyFunctionFlags(FUNC_BlueprintEvent),
+			TEXT("OnLogout surface should be a BlueprintImplementableEvent")));
 
 		TArray<FProperty*> PostLoginParameters;
 		TArray<FProperty*> LogoutParameters;
 		CollectNonReturnParameters(PostLoginFunction, PostLoginParameters);
 		CollectNonReturnParameters(LogoutFunction, LogoutParameters);
 		ASSERT_THAT(AreEqual(1, PostLoginParameters.Num(),
-			TEXT("AGameModeBase.PostLogin should expose one PlayerController parameter")));
+			TEXT("AGameModeBase.K2_PostLogin should expose one PlayerController parameter")));
 		ASSERT_THAT(AreEqual(1, LogoutParameters.Num(),
-			TEXT("AGameModeBase.Logout should expose one Controller parameter")));
+			TEXT("AGameModeBase.K2_OnLogout should expose one Controller parameter")));
 		if (PostLoginParameters.Num() != 1 || LogoutParameters.Num() != 1)
 		{
 			return;
@@ -2672,22 +2705,22 @@ public:
 		FObjectProperty* PostLoginPlayerParameter = CastField<FObjectProperty>(PostLoginParameters[0]);
 		FObjectProperty* LogoutControllerParameter = CastField<FObjectProperty>(LogoutParameters[0]);
 		ASSERT_THAT(IsNotNull(PostLoginPlayerParameter,
-			TEXT("AGameModeBase.PostLogin parameter should be an object property")));
+			TEXT("AGameModeBase.K2_PostLogin parameter should be an object property")));
 		ASSERT_THAT(IsNotNull(LogoutControllerParameter,
-			TEXT("AGameModeBase.Logout parameter should be an object property")));
+			TEXT("AGameModeBase.K2_OnLogout parameter should be an object property")));
 		if (PostLoginPlayerParameter == nullptr || LogoutControllerParameter == nullptr)
 		{
 			return;
 		}
 
 		ASSERT_THAT(AreEqual(APlayerController::StaticClass(), PostLoginPlayerParameter->PropertyClass,
-			TEXT("AGameModeBase.PostLogin should preserve APlayerController parameter type")));
+			TEXT("AGameModeBase.K2_PostLogin should preserve APlayerController parameter type")));
 		ASSERT_THAT(AreEqual(AController::StaticClass(), LogoutControllerParameter->PropertyClass,
-			TEXT("AGameModeBase.Logout should preserve AController parameter type")));
+			TEXT("AGameModeBase.K2_OnLogout should preserve AController parameter type")));
 		ASSERT_THAT(IsFalse(PostLoginFunction->HasAnyFunctionFlags(FUNC_Net),
-			TEXT("AGameModeBase.PostLogin should remain a server-local lifecycle callback, not an RPC")));
+			TEXT("K2_PostLogin should not be routed as an RPC")));
 		ASSERT_THAT(IsFalse(LogoutFunction->HasAnyFunctionFlags(FUNC_Net),
-			TEXT("AGameModeBase.Logout should remain a server-local lifecycle callback, not an RPC")));
+			TEXT("K2_OnLogout should not be routed as an RPC")));
 	}
 
 	TEST_METHOD(ActorDormancyAndUpdateNativeSurface)

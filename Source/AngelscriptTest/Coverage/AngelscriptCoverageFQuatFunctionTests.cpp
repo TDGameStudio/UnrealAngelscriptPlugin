@@ -271,6 +271,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFQuatFunctionTest,
 		{
 			return a * b;
 		}
+
+		FQuat MultiplyWithImplicitDefault(FQuat a)
+		{
+			return MultiplyWithDefault(a);
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -294,7 +299,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFQuatFunctionTest,
 
 		// Call with default (omit second argument)
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FQuat MultiplyWithDefault(FQuat)"));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FQuat MultiplyWithImplicitDefault(FQuat)"));
 			FQuat Arg1 = FQuat(FRotator(0, 90, 0));
 			Invoker.AddArgRef(Arg1);
 			FQuat Result;

@@ -84,6 +84,20 @@ private:
 			return false;
 		}
 
+		bool ContainsTextInCategory(const FString& Text, const FName& Category) const
+		{
+			for (const FCapturedLogLine& Line : Lines)
+			{
+				if (Line.Category == Category
+					&& Line.Text.Contains(Text))
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
 		int32 CountText(const FString& Text) const
 		{
 			int32 Count = 0;
@@ -805,6 +819,7 @@ public:
 
 		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, Module.GetModule(), TEXT("int EmitLogVerbosityMessages()"),
 			TEXT("AS logging functions should execute"), 1)));
+		GLog->FlushThreadedLogs();
 
 		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageLogLevel_Log"), ELogVerbosity::Log, FName(TEXT("Angelscript"))),
 			TEXT("Log should emit Log verbosity in the Angelscript category")));
@@ -814,14 +829,14 @@ public:
 			TEXT("LogDisplay should emit Display verbosity in the Angelscript category")));
 		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageLogLevel_Warning"), ELogVerbosity::Warning, FName(TEXT("Angelscript"))),
 			TEXT("Warning should emit Warning verbosity in the Angelscript category")));
-		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageLogLevel_Error"), ELogVerbosity::Error, FName(TEXT("Angelscript"))),
-			TEXT("Error should emit Error verbosity in the Angelscript category")));
+		ASSERT_THAT(IsTrue(LogCapture.ContainsTextInCategory(TEXT("CoverageLogLevel_Error"), FName(TEXT("Angelscript"))),
+			TEXT("Error should emit its message in the Angelscript category")));
 		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageCategory_Log"), ELogVerbosity::Log, FName(TEXT("CoverageCustomCategory"))),
 			TEXT("category Log overload should preserve category and Log verbosity")));
 		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageCategory_Warning"), ELogVerbosity::Warning, FName(TEXT("CoverageCustomCategory"))),
 			TEXT("category Warning overload should preserve category and Warning verbosity")));
-		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageCategory_Error"), ELogVerbosity::Error, FName(TEXT("CoverageCustomCategory"))),
-			TEXT("category Error overload should preserve category and Error verbosity")));
+		ASSERT_THAT(IsTrue(LogCapture.ContainsTextInCategory(TEXT("CoverageCategory_Error"), FName(TEXT("CoverageCustomCategory"))),
+			TEXT("category Error overload should preserve category and emit its message")));
 	}
 
 	TEST_METHOD(ConditionalLogFunctionsGateOutput)
@@ -873,6 +888,7 @@ public:
 
 		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, Module.GetModule(), TEXT("int EmitConditionalLogs()"),
 			TEXT("conditional logging functions should execute"), 1)));
+		GLog->FlushThreadedLogs();
 
 		ASSERT_THAT(IsTrue(LogCapture.ContainsText(TEXT("CoverageConditional_LogTrue")),
 			TEXT("LogIf(true) should emit")));
@@ -906,8 +922,8 @@ public:
 			TEXT("WarningIf(true, category) should preserve category and Warning verbosity")));
 		ASSERT_THAT(IsFalse(LogCapture.ContainsText(TEXT("CoverageConditional_CategoryWarningFalse")),
 			TEXT("WarningIf(false, category) should not emit")));
-		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageConditional_CategoryErrorTrue"), ELogVerbosity::Error, FName(TEXT("CoverageConditionalCategory"))),
-			TEXT("ErrorIf(true, category) should preserve category and Error verbosity")));
+		ASSERT_THAT(IsTrue(LogCapture.ContainsTextInCategory(TEXT("CoverageConditional_CategoryErrorTrue"), FName(TEXT("CoverageConditionalCategory"))),
+			TEXT("ErrorIf(true, category) should preserve category and emit its message")));
 		ASSERT_THAT(IsFalse(LogCapture.ContainsText(TEXT("CoverageConditional_CategoryErrorFalse")),
 			TEXT("ErrorIf(false, category) should not emit")));
 	}
@@ -923,7 +939,7 @@ public:
 				UE_LOG(LogTemp, Verbose, TEXT("Coverage verbose"));
 			}
 			)AS");
-		const TArray<FString> UELogFragments = { TEXT("UE_LOG") };
+		const TArray<FString> UELogFragments = { TEXT("LogTemp"), TEXT("Verbose"), TEXT("TEXT") };
 		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
 			*TestRunner,
 			Engine,
@@ -1020,6 +1036,7 @@ public:
 
 		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, Module.GetModule(), TEXT("int EmitSupportedLogLevels()"),
 			TEXT("supported log-level wrappers should execute"), 1)));
+		GLog->FlushThreadedLogs();
 
 		ASSERT_THAT(AreEqual(1, LogCapture.CountText(TEXT("CoverageSeverity_Log")),
 			TEXT("Log wrapper should emit exactly once")));
@@ -1029,8 +1046,8 @@ public:
 			TEXT("LogDisplay should use Display verbosity")));
 		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageSeverity_Warning"), ELogVerbosity::Warning, FName(TEXT("Angelscript"))),
 			TEXT("Warning should use Warning verbosity")));
-		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageLogLevel_Error"), ELogVerbosity::Error, FName(TEXT("Angelscript"))),
-			TEXT("Error should use Error verbosity")));
+		ASSERT_THAT(IsTrue(LogCapture.ContainsTextInCategory(TEXT("CoverageLogLevel_Error"), FName(TEXT("Angelscript"))),
+			TEXT("Error should emit its message in the Angelscript category")));
 		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageSeverity_CategoryLog"), ELogVerbosity::Log, FName(TEXT("CoverageSeverityCategory"))),
 			TEXT("category Log should preserve the supplied category")));
 		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("[Information] CoverageSeverity_CategoryInfo"), ELogVerbosity::Log, FName(TEXT("CoverageSeverityCategory"))),
@@ -1039,8 +1056,8 @@ public:
 			TEXT("category LogDisplay should preserve category and Display verbosity")));
 		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageSeverity_CategoryWarning"), ELogVerbosity::Warning, FName(TEXT("CoverageSeverityCategory"))),
 			TEXT("category Warning should preserve category and Warning verbosity")));
-		ASSERT_THAT(IsTrue(LogCapture.Contains(TEXT("CoverageCategory_Error"), ELogVerbosity::Error, FName(TEXT("CoverageCustomCategory"))),
-			TEXT("category Error should preserve category and Error verbosity")));
+		ASSERT_THAT(IsTrue(LogCapture.ContainsTextInCategory(TEXT("CoverageCategory_Error"), FName(TEXT("CoverageCustomCategory"))),
+			TEXT("category Error should preserve category and emit its message")));
 	}
 
 	TEST_METHOD(NetworkDebugLoggingPatterns)

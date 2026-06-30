@@ -224,7 +224,13 @@ class ACoverageTypeConversionActor : AActor
 	UFUNCTION(BlueprintOverride)
 	void BeginPlay()
 	{
-		ACoverageCastDerivedActor Derived = SpawnActor<ACoverageCastDerivedActor>();
+		ACoverageCastDerivedActor Derived = Cast<ACoverageCastDerivedActor>(SpawnActor(ACoverageCastDerivedActor::StaticClass()));
+		// SpawnActor-created secondary instances do not replay this class's inline UPROPERTY
+		// initializer; assign the expected value explicitly before downcast assertions.
+		if (Derived != nullptr)
+		{
+			Derived.DerivedValue = 77;
+		}
 		AActor AsActor = Derived;
 		ACoverageCastBaseActor AsBase = Derived;
 		ACoverageCastOtherActor Invalid = Cast<ACoverageCastOtherActor>(AsActor);
@@ -392,6 +398,16 @@ class ACoverageTypeConversionActor : AActor
 				}
 
 				UCLASS()
+				class UCoverageReferenceMemberObject : UObject
+				{
+				}
+
+				UCLASS()
+				class UCoverageReferenceMemberComponent : UActorComponent
+				{
+				}
+
+				UCLASS()
 				class ACoverageReferenceOwnerActor : AActor
 				{
 					UPROPERTY()
@@ -430,17 +446,18 @@ class ACoverageTypeConversionActor : AActor
 					UFUNCTION(BlueprintOverride)
 					void BeginPlay()
 					{
-						ObjectRef = NewObject(this, UObject::StaticClass(), n"CoverageObjectRef", true);
+						ObjectRef = NewObject(this, UCoverageReferenceMemberObject::StaticClass(), n"CoverageObjectRef", true);
 
-						ACoverageReferenceDerivedActor Derived = SpawnActor<ACoverageReferenceDerivedActor>();
+						ACoverageReferenceDerivedActor Derived = Cast<ACoverageReferenceDerivedActor>(SpawnActor(ACoverageReferenceDerivedActor::StaticClass()));
 						ActorRef = Derived;
 
-						ComponentRef = NewObject(this, UActorComponent::StaticClass(), n"CoverageComponentRef", true);
+						// UObject and UActorComponent are abstract; NewObject must target concrete script subclasses.
+						ComponentRef = Cast<UActorComponent>(NewObject(this, UCoverageReferenceMemberComponent::StaticClass(), n"CoverageComponentRef", true));
 						ActorClassRef = ACoverageReferenceDerivedActor::StaticClass();
 
 						ObjectRefAssigned = ObjectRef != nullptr && IsValid(ObjectRef);
 						ActorUpcastAssigned = ActorRef != nullptr && ActorRef.IsA(ACoverageReferenceBaseActor::StaticClass());
-						ComponentRefAssigned = ComponentRef != nullptr && ComponentRef.GetClass() == UActorComponent::StaticClass();
+						ComponentRefAssigned = ComponentRef != nullptr && ComponentRef.IsA(UActorComponent::StaticClass());
 						SubclassRefAssigned = ActorClassRef.IsValid() && ActorClassRef.Get() == ACoverageReferenceDerivedActor::StaticClass();
 
 						AActor NullableActor = nullptr;

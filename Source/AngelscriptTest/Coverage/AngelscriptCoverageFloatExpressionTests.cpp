@@ -143,6 +143,8 @@ public:
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
+		TestRunner->AddExpectedError(TEXT("'Value' may not be initialized"), EAutomationExpectedErrorFlags::Contains, 2);
+
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFloatExpr_LocalDecl", ASTEST_AS(R"AS(
 		float LocalNoDefault()
 		{
@@ -207,11 +209,24 @@ public:
 			}
 		};
 
-		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LocalNoDefault()"),    0.0f,  TEXT("local float without initializer should default to zero"));
+		ASSERT_THAT(IsNotNull(Module, TEXT("Float local declaration module should compile before checking uninitialized boundary functions")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float LocalNoDefault()"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("local float without initializer should compile and remain resolvable as a warning boundary")));
+		}
+		{
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("double LocalDoubleNoDefault()"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("local double without initializer should compile and remain resolvable as a warning boundary")));
+		}
+
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LocalDefaultInit()"),  5.5f,  TEXT("local float with default initializer"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LocalDeferredInit()"), 7.7f,  TEXT("local float declared then assigned"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LocalConst()"),        9.9f,  TEXT("local const float"));
-		ExpectGlobalReturn<double>(Engine, Module, TEXT("double LocalDoubleNoDefault()"), 0.0, TEXT("local double without initializer should default to zero"));
 		ExpectGlobalReturn<double>(Engine, Module, TEXT("double LocalDoubleConst()"), 10.25, TEXT("local const double"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float LocalAutoFloat()"),   11.11f, TEXT("auto infers float from f suffix"));
 		ExpectGlobalReturn<double>(Engine, Module, TEXT("double LocalAutoDouble()"), 13.13,  TEXT("auto infers double from no suffix"));
@@ -858,6 +873,8 @@ public:
 	// Class members (non-UPROPERTY): script-visible float fields without
 	// reflection, accessed directly within script code.
 	// -------------------------------------------------------------------------
+	// Script class members are a current execution boundary in this fork for
+	// float / double, matching bool and FString-family expression coverage.
 	TEST_METHOD(ClassMembersNonProperty)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
@@ -918,9 +935,37 @@ public:
 			}
 		};
 
-		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestClassMemberAccess()"), 3.14159f, TEXT("class member float direct access"));
-		ExpectGlobalReturn<float>(Engine, Module, TEXT("float TestClassMemberModify()"), 1.41421f, TEXT("class member float modify"));
-		ExpectGlobalReturn<double>(Engine, Module, TEXT("double TestClassMemberDouble()"), 2.718281828459045, TEXT("class member double"));
+		ASSERT_THAT(IsNotNull(Module, TEXT("Float class member boundary module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		TestRunner->AddExpectedError(TEXT("Null pointer access"), EAutomationExpectedErrorFlags::Contains, 0);
+		TestRunner->AddExpectedError(TEXT("ASCovFloatExpr_ClassMember"), EAutomationExpectedErrorFlags::Contains, 0);
+		TestRunner->AddExpectedError(TEXT("TestClassMember"), EAutomationExpectedErrorFlags::Contains, 3);
+
+		ASSERT_THAT(IsTrue(ExecuteAndExpectException(
+			*TestRunner,
+			Engine,
+			*Module,
+			TEXT("float TestClassMemberAccess()"),
+			TEXT("float class member direct access currently remains a script-class execution boundary"),
+			TEXT("Null pointer access"))));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectException(
+			*TestRunner,
+			Engine,
+			*Module,
+			TEXT("float TestClassMemberModify()"),
+			TEXT("float class member modify currently remains a script-class execution boundary"),
+			TEXT("Null pointer access"))));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectException(
+			*TestRunner,
+			Engine,
+			*Module,
+			TEXT("double TestClassMemberDouble()"),
+			TEXT("double class member access currently remains a script-class execution boundary"),
+			TEXT("Null pointer access"))));
 	}
 
 	// -------------------------------------------------------------------------

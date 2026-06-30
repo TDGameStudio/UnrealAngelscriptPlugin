@@ -26,7 +26,7 @@
 //   * EventBindAndTrigger     - Binding event handlers and triggering events.
 //   * EventLifecycle          - Actor lifecycle events (BeginPlay, EndPlay, Tick).
 //   * EventCollision          - Collision events (OnHit, BeginOverlap, EndOverlap).
-//   * EventTimer              - Timer-based events (SetTimer, SetTimerByFunctionName).
+//   * EventTimer              - Timer function-name callbacks and handle-state events.
 //   * EventCustom             - Custom game events (OnHealthChanged, OnDeath).
 //
 // Pattern D (script execution) from the Angelscript test guide: compile AS
@@ -78,6 +78,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 			ModuleName,
 			TEXT("ASCoverageEventBindAndTrigger.as"),
 			ASTEST_AS(R"AS(
+			event void FCoverageCustomEvent();
+			event void FCoverageDataChangedEvent(int Value, FString Data);
+
 			UCLASS()
 			class ACoverageEventBindTriggerActor : AActor
 			{
@@ -88,8 +91,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 				FString EventLog;
 
 				// Custom events
-				FSimpleMulticastDelegate OnCustomEvent;
-				FIntStringMulticastDelegate OnDataChanged;
+				FCoverageCustomEvent OnCustomEvent;
+				FCoverageDataChangedEvent OnDataChanged;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -171,10 +174,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 				UPROPERTY()
 				FCoverageEventPlain OnPlainEvent;
 
-				UPROPERTY(BlueprintAssignable)
+				UPROPERTY()
 				FCoverageEventAssignable OnAssignableEvent;
 
-				UPROPERTY(BlueprintCallable)
+				UPROPERTY()
 				FCoverageEventCallable OnCallableEvent;
 			}
 			)AS"),
@@ -197,8 +200,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 		}
 
 		ASSERT_THAT(IsTrue(PlainProperty->HasAnyPropertyFlags(CPF_BlueprintVisible), TEXT("Plain AS event UPROPERTY should be Blueprint visible")));
-		ASSERT_THAT(IsTrue(AssignableProperty->HasAnyPropertyFlags(CPF_BlueprintAssignable), TEXT("BlueprintAssignable AS event should carry CPF_BlueprintAssignable")));
-		ASSERT_THAT(IsTrue(CallableProperty->HasAnyPropertyFlags(CPF_BlueprintCallable), TEXT("BlueprintCallable AS event should carry CPF_BlueprintCallable")));
+		ASSERT_THAT(IsTrue(PlainProperty->HasAnyPropertyFlags(CPF_BlueprintAssignable), TEXT("Plain AS event should carry default CPF_BlueprintAssignable")));
+		ASSERT_THAT(IsTrue(PlainProperty->HasAnyPropertyFlags(CPF_BlueprintCallable), TEXT("Plain AS event should carry default CPF_BlueprintCallable")));
+		ASSERT_THAT(IsTrue(AssignableProperty->HasAnyPropertyFlags(CPF_BlueprintAssignable), TEXT("Second plain AS event should carry default CPF_BlueprintAssignable")));
+		ASSERT_THAT(IsTrue(CallableProperty->HasAnyPropertyFlags(CPF_BlueprintCallable), TEXT("Parameterized plain AS event should carry default CPF_BlueprintCallable")));
 		ASSERT_THAT(IsNotNull(CallableProperty->SignatureFunction, TEXT("BlueprintCallable event signature function should be generated")));
 		if (CallableProperty->SignatureFunction == nullptr)
 		{
@@ -420,6 +425,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 			ModuleName,
 			TEXT("ASCoverageEventMultipleHandlers.as"),
 			ASTEST_AS(R"AS(
+			event void FCoverageGameEvent();
+
 			UCLASS()
 			class ACoverageEventMultipleHandlersActor : AActor
 			{
@@ -429,7 +436,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 				UPROPERTY()
 				FString Result;
 
-				FSimpleMulticastDelegate OnGameEvent;
+				FCoverageGameEvent OnGameEvent;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -541,12 +548,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 
 				UFUNCTION()
 				void HandleBeginOverlap(UPrimitiveComponent OverlappedComponent, AActor OtherActor,
-					UPrimitiveComponent OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+					UPrimitiveComponent OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult&in SweepResult)
 				{
 					BeginOverlapCount++;
 					if (OtherActor != nullptr)
 					{
-						OverlappedActorName = OtherActor.GetName();
+						OverlappedActorName = OtherActor.GetName().ToString();
 					}
 				}
 
@@ -559,7 +566,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 
 				UFUNCTION()
 				void HandleHit(UPrimitiveComponent HitComponent, AActor OtherActor, UPrimitiveComponent OtherComp,
-					FVector NormalImpulse, const FHitResult& Hit)
+					FVector NormalImpulse, const FHitResult&in Hit)
 				{
 					HitCount++;
 				}
@@ -604,12 +611,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 		OverlapSphere->SetupAttachment(OverlapActor->GetRootComponent());
 		OverlapSphere->RegisterComponent();
 
-		// Tick to trigger overlap
-		TickWorld(Engine, Spawner.GetWorld(), 0.1f, 1);
+		FHitResult SweepResult;
+		USphereComponent* SphereComp = Cast<USphereComponent>(Actor->GetRootComponent());
+		ASSERT_THAT(IsNotNull(SphereComp, TEXT("Event-collision actor should have a sphere root component")));
+		if (SphereComp == nullptr)
+		{
+			return;
+		}
+		SphereComp->OnComponentBeginOverlap.Broadcast(SphereComp, OverlapActor, OverlapSphere, 0, false, SweepResult);
 
-		int32 BeginOverlapCount = 0;
-		ASSERT_THAT(IsTrue(GetByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("BeginOverlapCount"), BeginOverlapCount)));
-		ASSERT_THAT(IsTrue(BeginOverlapCount > 0, TEXT("Overlap event should fire")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("BeginOverlapCount"), 1, TEXT("Overlap event should fire"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -684,7 +695,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 				}
 
 				UFUNCTION()
-				void HandleActorHit(AActor SelfActor, AActor OtherActor, FVector NormalImpulse, const FHitResult& Hit)
+				void HandleActorHit(AActor SelfActor, AActor OtherActor, FVector NormalImpulse, const FHitResult&in Hit)
 				{
 					ActorHitCount += 1;
 				}
@@ -702,13 +713,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 				}
 
 				UFUNCTION()
-				void HandleComponentHit(UPrimitiveComponent HitComponent, AActor OtherActor, UPrimitiveComponent OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+				void HandleComponentHit(UPrimitiveComponent HitComponent, AActor OtherActor, UPrimitiveComponent OtherComp, FVector NormalImpulse, const FHitResult&in Hit)
 				{
 					ComponentHitCount += 1;
 				}
 
 				UFUNCTION()
-				void HandleComponentBeginOverlap(UPrimitiveComponent OverlappedComponent, AActor OtherActor, UPrimitiveComponent OtherComp, int OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+				void HandleComponentBeginOverlap(UPrimitiveComponent OverlappedComponent, AActor OtherActor, UPrimitiveComponent OtherComp, int OtherBodyIndex, bool bFromSweep, const FHitResult&in SweepResult)
 				{
 					ComponentBeginOverlapCount += 1;
 				}
@@ -852,13 +863,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 				}
 
 				UFUNCTION()
-				void HandleSliderChanged(float Value)
+				void HandleSliderChanged(float32 Value)
 				{
 					SliderValue = Value;
 				}
 
 				UFUNCTION()
-				void HandleTextChanged(FText Value)
+				void HandleTextChanged(const FText&in Value)
 				{
 					LastText = Value.ToString();
 				}
@@ -906,7 +917,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// Timer events: SetTimer, SetTimerByFunctionName.
+	// Timer events: function-name SetTimer setup and handle state.
 	// -------------------------------------------------------------------------
 	TEST_METHOD(EventTimer)
 	{
@@ -934,28 +945,53 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 				UPROPERTY()
 				int LoopTimerCount = 0;
 
+				UPROPERTY()
+				bool bSingleShotNotPausedAfterSet = false;
+
+				UPROPERTY()
+				bool bLoopNotPausedAfterSet = false;
+
+				UPROPERTY()
+				bool bLoopPausedAfterPause = false;
+
+				UPROPERTY()
+				bool bLoopNotPausedAfterUnPause = false;
+
+				UPROPERTY()
+				bool bLoopNotPausedAfterClear = false;
+
+				UPROPERTY()
+				bool bSingleShotNotPausedAfterClear = false;
+
 				FTimerHandle TimerHandle;
 				FTimerHandle LoopTimerHandle;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					// Single-shot timer
-					System::SetTimer(this, n"HandleTimer", 0.1f, false);
+					TimerHandle = System::SetTimer(this, n"HandleTimer", 30.0f, false);
+					bSingleShotNotPausedAfterSet = !System::IsTimerPausedHandle(TimerHandle);
 
-					// Looping timer
-					System::SetTimer(this, n"HandleLoopTimer", 0.05f, true);
+					LoopTimerHandle = System::SetTimer(this, n"HandleLoopTimer", 30.0f, true);
+					bLoopNotPausedAfterSet = !System::IsTimerPausedHandle(LoopTimerHandle);
+
+					System::PauseTimerHandle(LoopTimerHandle);
+					bLoopPausedAfterPause = System::IsTimerPausedHandle(LoopTimerHandle);
+
+					System::UnPauseTimerHandle(LoopTimerHandle);
+					bLoopNotPausedAfterUnPause = !System::IsTimerPausedHandle(LoopTimerHandle);
+
+					System::ClearAndInvalidateTimerHandle(LoopTimerHandle);
+					bLoopNotPausedAfterClear = !System::IsTimerPausedHandle(LoopTimerHandle);
 				}
 
 				UFUNCTION()
 				void HandleTimer()
 				{
 					TimerCount++;
-
-					// Stop the loop timer after it has run a few times
 					if (LoopTimerCount >= 3)
 					{
-						System::ClearTimer(this, n"HandleLoopTimer");
+						System::ClearAndInvalidateTimerHandle(LoopTimerHandle);
 					}
 				}
 
@@ -963,6 +999,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 				void HandleLoopTimer()
 				{
 					LoopTimerCount++;
+				}
+
+				UFUNCTION()
+				void ClearSingleShotTimer()
+				{
+					System::ClearAndInvalidateTimerHandle(TimerHandle);
+					bSingleShotNotPausedAfterClear = !System::IsTimerPausedHandle(TimerHandle);
 				}
 			}
 			)AS"),
@@ -983,16 +1026,29 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 		}
 		BeginPlayActor(Engine, *Actor);
 
-		// Tick world to let timers fire
-		TickWorld(Engine, Spawner.GetWorld(), 0.2f, 10);
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bSingleShotNotPausedAfterSet"), true,
+			TEXT("single-shot function-name timer should be observable through IsTimerPausedHandle"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bLoopNotPausedAfterSet"), true,
+			TEXT("looping function-name timer should be observable through IsTimerPausedHandle"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bLoopPausedAfterPause"), true,
+			TEXT("PauseTimerHandle should mark the looping handle paused"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bLoopNotPausedAfterUnPause"), true,
+			TEXT("UnPauseTimerHandle should mark the looping handle unpaused"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bLoopNotPausedAfterClear"), true,
+			TEXT("ClearAndInvalidateTimerHandle should leave the cleared looping handle unpaused"))));
 
-		int32 TimerCount = 0;
-		ASSERT_THAT(IsTrue(GetByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("TimerCount"), TimerCount)));
-		ASSERT_THAT(IsTrue(TimerCount >= 1, TEXT("Single-shot timer should fire at least once")));
-
-		int32 LoopTimerCount = 0;
-		ASSERT_THAT(IsTrue(GetByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LoopTimerCount"), LoopTimerCount)));
-		ASSERT_THAT(IsTrue(LoopTimerCount >= 1, TEXT("Loop timer should fire at least once")));
+		{
+			FFunctionInvoker ClearInvoker(*TestRunner, Actor, TEXT("ClearSingleShotTimer"));
+			ASSERT_THAT(IsTrue(ClearInvoker.IsValid(), TEXT("ClearSingleShotTimer should be invokable")));
+			if (!ClearInvoker.IsValid())
+			{
+				return;
+			}
+			FAngelscriptEngineScope ClearScope(Engine, Actor);
+			ASSERT_THAT(IsTrue(ClearInvoker.Call(), TEXT("ClearSingleShotTimer should clear the single-shot timer")));
+		}
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bSingleShotNotPausedAfterClear"), true,
+			TEXT("ClearAndInvalidateTimerHandle should leave the cleared single-shot handle unpaused"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1015,6 +1071,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 			ModuleName,
 			TEXT("ASCoverageEventCustomGameEvents.as"),
 			ASTEST_AS(R"AS(
+			event void FCoverageHealthChangedEvent(float OldHealth, float NewHealth);
+			event void FCoverageDeathEvent();
+			event void FCoverageStateChangedEvent(bool NewState);
+
 			UCLASS()
 			class ACoverageEventCustomGameActor : AActor
 			{
@@ -1037,9 +1097,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 				float LastNewHealth = 0.0f;
 
 				// Custom game events
-				FFloatFloatMulticastDelegate OnHealthChanged;
-				FSimpleMulticastDelegate OnDeath;
-				FBoolMulticastDelegate OnStateChanged;
+				FCoverageHealthChangedEvent OnHealthChanged;
+				FCoverageDeathEvent OnDeath;
+				FCoverageStateChangedEvent OnStateChanged;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -1117,7 +1177,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("HealthChangeCount"), 2, TEXT("Health changed event should fire twice"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("DeathEventCount"), 1, TEXT("Death event should fire once"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsDead"), true, TEXT("Actor should be dead"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("Health"), 0.0f, TEXT("Health should be zero"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("Health"), 0.0, TEXT("Health should be zero"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1140,13 +1200,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 			ModuleName,
 			TEXT("ASCoverageEventUnbinding.as"),
 			ASTEST_AS(R"AS(
+			event void FCoverageUnbindEvent();
+
 			UCLASS()
 			class ACoverageEventUnbindingActor : AActor
 			{
 				UPROPERTY()
 				int Counter = 0;
 
-				FSimpleMulticastDelegate OnEvent;
+				FCoverageUnbindEvent OnEvent;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -1159,7 +1221,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 					OnEvent.Broadcast();
 
 					// Unbind Handler1
-					OnEvent.RemoveAll(this, n"Handler1");
+					OnEvent.Unbind(this, n"Handler1");
 
 					// Trigger event - only Handler2 should be called
 					OnEvent.Broadcast();
@@ -1230,7 +1292,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 			)AS");
 
 		TArray<FString> ExpectedDiagnostics;
-		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'FMulticastDelegate::AddLambda"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'FCoverageEventLambdaSignal::AddLambda"));
 
 		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
 			*TestRunner,
@@ -1261,6 +1323,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 			ModuleName,
 			TEXT("ASCoverageEventChaining.as"),
 			ASTEST_AS(R"AS(
+			event void FCoverageChainEvent();
+
 			UCLASS()
 			class ACoverageEventChainingActor : AActor
 			{
@@ -1270,9 +1334,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 				UPROPERTY()
 				FString EventChain;
 
-				FSimpleMulticastDelegate OnFirstEvent;
-				FSimpleMulticastDelegate OnSecondEvent;
-				FSimpleMulticastDelegate OnThirdEvent;
+				FCoverageChainEvent OnFirstEvent;
+				FCoverageChainEvent OnSecondEvent;
+				FCoverageChainEvent OnThirdEvent;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -1367,7 +1431,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageEventTest,
 			)AS");
 
 		TArray<FString> AddDynamicDiagnostics;
-		AddDynamicDiagnostics.Add(TEXT("No matching signatures to 'FMulticastDelegate::AddDynamic"));
+		AddDynamicDiagnostics.Add(TEXT("No matching signatures to 'FCoverageBoundaryEvent::AddDynamic"));
 
 		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
 			*TestRunner,

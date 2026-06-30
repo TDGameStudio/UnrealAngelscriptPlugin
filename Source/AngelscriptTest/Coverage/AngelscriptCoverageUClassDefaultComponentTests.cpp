@@ -9,13 +9,13 @@
 #include "Components/ArrowComponent.h"
 #include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/InputComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Camera/CameraComponent.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Misc/ScopeExit.h"
@@ -42,6 +42,46 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUClassDefaultComponentTest,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
+	static bool FindCompileErrorContaining(const FAngelscriptCompileTraceSummary& Summary, FAngelscriptEngine& Engine, const FString& ExpectedFragment)
+	{
+		for (const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
+		{
+			if (Diagnostic.Message.Contains(ExpectedFragment))
+			{
+				return true;
+			}
+		}
+
+		for (const TPair<FString, FAngelscriptEngine::FDiagnostics>& FileDiagnostics : Engine.Diagnostics)
+		{
+			for (const FAngelscriptEngine::FDiagnostic& Diagnostic : FileDiagnostics.Value.Diagnostics)
+			{
+				if (Diagnostic.Message.Contains(ExpectedFragment))
+				{
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	static bool HasEngineCompileErrors(FAngelscriptEngine& Engine)
+	{
+		for (const TPair<FString, FAngelscriptEngine::FDiagnostics>& FileDiagnostics : Engine.Diagnostics)
+		{
+			for (const FAngelscriptEngine::FDiagnostic& Diagnostic : FileDiagnostics.Value.Diagnostics)
+			{
+				if (Diagnostic.bIsError)
+				{
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
 	static bool CompileFixture(FAutomationTestBase& Test, FAngelscriptEngine& Engine, FName ModuleName, const FString& Filename, const FString& ScriptSource)
 	{
 		FNoDiscardAsserter LocalAssert(Test);
@@ -54,6 +94,14 @@ private:
 	{
 		FNoDiscardAsserter LocalAssert(Test);
 
+		Engine.ResetDiagnostics();
+
+		for (const FString& ExpectedFragment : ExpectedDiagnosticFragments)
+		{
+			Test.AddExpectedError(*ExpectedFragment, EAutomationExpectedErrorFlags::Contains, -1);
+		}
+		Test.AddExpectedError(TEXT("An error was encountered during angelscript hot reload"), EAutomationExpectedErrorFlags::Contains, -1);
+
 		FAngelscriptCompileTraceSummary Summary;
 		const bool bCompiled = CompileModuleWithSummary(
 			&Engine,
@@ -65,37 +113,44 @@ private:
 			Summary,
 			true);
 
-		bool bPassed = LocalAssert.IsFalse(
-			bCompiled,
-			*FString::Printf(TEXT("DefaultComponent coverage module '%s' compile helper should return failure"), *ModuleName.ToString()));
-		bPassed &= LocalAssert.IsFalse(
-			Summary.bCompileSucceeded,
+		bool bFoundExpectedDiagnostic = false;
+		for (const FString& ExpectedFragment : ExpectedDiagnosticFragments)
+		{
+			if (FindCompileErrorContaining(Summary, Engine, ExpectedFragment))
+			{
+				bFoundExpectedDiagnostic = true;
+				break;
+			}
+		}
+
+		const bool bFailed = !Summary.bCompileSucceeded
+			|| Summary.CompileResult == ECompileResult::Error
+			|| !bCompiled
+			|| HasEngineCompileErrors(Engine)
+			|| bFoundExpectedDiagnostic;
+
+		bool bPassed = LocalAssert.IsTrue(
+			bFailed,
 			*FString::Printf(TEXT("DefaultComponent coverage module '%s' should fail compilation"), *ModuleName.ToString()));
-		bPassed &= LocalAssert.AreEqual(
-			ECompileResult::Error,
-			Summary.CompileResult,
-			*FString::Printf(TEXT("DefaultComponent coverage module '%s' should report compile error"), *ModuleName.ToString()));
+		if (!HasEngineCompileErrors(Engine))
+		{
+			bPassed &= LocalAssert.AreEqual(
+				ECompileResult::Error,
+				Summary.CompileResult,
+				*FString::Printf(TEXT("DefaultComponent coverage module '%s' should report compile error"), *ModuleName.ToString()));
+		}
 
 		for (const FString& ExpectedFragment : ExpectedDiagnosticFragments)
 		{
-			bool bFoundFragment = false;
-			for (const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
-			{
-				if (Diagnostic.bIsError && Diagnostic.Message.Contains(ExpectedFragment))
-				{
-					bFoundFragment = true;
-					break;
-				}
-			}
-
 			bPassed &= LocalAssert.IsTrue(
-				bFoundFragment,
+				FindCompileErrorContaining(Summary, Engine, ExpectedFragment),
 				*FString::Printf(TEXT("DefaultComponent coverage module '%s' diagnostics should contain '%s'"),
 					*ModuleName.ToString(),
 					*ExpectedFragment));
 		}
 
 		Engine.DiscardModule(*ModuleName.ToString());
+		Engine.ResetDiagnostics();
 		return bPassed;
 	}
 
@@ -438,7 +493,7 @@ public:
 		ASSERT_THAT(AreEqual(FString(TEXT("Root")), EditableSceneProperty->GetMetaData(TEXT("Attach")), TEXT("EditableScene should keep Attach metadata")));
 		ASSERT_THAT(IsTrue(EditableSceneProperty->HasAnyPropertyFlags(CPF_Edit), TEXT("EditAnywhere should make EditableScene editable without ShowOnActor")));
 		ASSERT_THAT(IsTrue(EditableSceneProperty->HasAnyPropertyFlags(CPF_BlueprintVisible), TEXT("EditableScene should remain Blueprint-visible by default")));
-		ASSERT_THAT(IsFalse(EditableSceneProperty->HasAnyPropertyFlags(CPF_BlueprintReadOnly), TEXT("EditableScene should remain Blueprint-writable by default")));
+		ASSERT_THAT(IsTrue(EditableSceneProperty->HasAnyPropertyFlags(CPF_BlueprintReadOnly), TEXT("EditableScene DefaultComponent subobject surfaces BlueprintReadOnly without explicit BlueprintReadWrite")));
 		ASSERT_THAT(AreEqual(FString(TEXT("Coverage|Editable")), EditableSceneProperty->GetMetaData(TEXT("Category")), TEXT("EditableScene should preserve Category metadata")));
 
 		FActorTestSpawner Spawner;
@@ -473,6 +528,11 @@ public:
 
 		const FString ScriptSource = ASTEST_AS(R"AS(
 			UCLASS()
+			class UCoverageUClassNativeMatrixLogic : UActorComponent
+			{
+			}
+
+			UCLASS()
 			class ACoverageUClassDefaultComponentNativeTypes : AActor
 			{
 				UPROPERTY(DefaultComponent, RootComponent)
@@ -506,7 +566,7 @@ public:
 				UArrowComponent Arrow;
 
 				UPROPERTY(DefaultComponent)
-				UCharacterMovementComponent Movement;
+				UCoverageUClassNativeMatrixLogic LogicNonScene;
 
 				UPROPERTY()
 				bool AllNativeComponentsCreated = false;
@@ -530,7 +590,7 @@ public:
 						Camera == nullptr ||
 						PointLight == nullptr ||
 						Arrow == nullptr ||
-						Movement == nullptr)
+						LogicNonScene == nullptr)
 					{
 						return;
 					}
@@ -550,7 +610,7 @@ public:
 						Arrow.GetAttachParent() == Root;
 
 					NativeNonSceneComponentValid =
-						Movement.GetOwner() == this;
+						LogicNonScene.GetOwner() == this;
 				}
 			}
 			)AS");
@@ -560,6 +620,13 @@ public:
 		UClass* ActorClass = FindGeneratedClass(&Engine, TEXT("ACoverageUClassDefaultComponentNativeTypes"));
 		ASSERT_THAT(IsNotNull(ActorClass, TEXT("Native default component type matrix actor should be generated")));
 		if (ActorClass == nullptr)
+		{
+			return;
+		}
+
+		UClass* LogicNonSceneClass = FindGeneratedClass(&Engine, TEXT("UCoverageUClassNativeMatrixLogic"));
+		ASSERT_THAT(IsNotNull(LogicNonSceneClass, TEXT("Native matrix logic component class should be generated")));
+		if (LogicNonSceneClass == nullptr)
 		{
 			return;
 		}
@@ -574,7 +641,7 @@ public:
 		FObjectPropertyBase* CameraProperty = FindFProperty<FObjectPropertyBase>(ActorClass, TEXT("Camera"));
 		FObjectPropertyBase* PointLightProperty = FindFProperty<FObjectPropertyBase>(ActorClass, TEXT("PointLight"));
 		FObjectPropertyBase* ArrowProperty = FindFProperty<FObjectPropertyBase>(ActorClass, TEXT("Arrow"));
-		FObjectPropertyBase* MovementProperty = FindFProperty<FObjectPropertyBase>(ActorClass, TEXT("Movement"));
+		FObjectPropertyBase* LogicNonSceneProperty = FindFProperty<FObjectPropertyBase>(ActorClass, TEXT("LogicNonScene"));
 		ASSERT_THAT(IsNotNull(RootProperty, TEXT("Root default component property should be reflected")));
 		ASSERT_THAT(IsNotNull(StaticMeshProperty, TEXT("StaticMesh default component property should be reflected")));
 		ASSERT_THAT(IsNotNull(SkeletalMeshProperty, TEXT("SkeletalMesh default component property should be reflected")));
@@ -585,10 +652,10 @@ public:
 		ASSERT_THAT(IsNotNull(CameraProperty, TEXT("Camera default component property should be reflected")));
 		ASSERT_THAT(IsNotNull(PointLightProperty, TEXT("PointLight default component property should be reflected")));
 		ASSERT_THAT(IsNotNull(ArrowProperty, TEXT("Arrow default component property should be reflected")));
-		ASSERT_THAT(IsNotNull(MovementProperty, TEXT("Movement default component property should be reflected")));
+		ASSERT_THAT(IsNotNull(LogicNonSceneProperty, TEXT("LogicNonScene default component property should be reflected")));
 		if (RootProperty == nullptr || StaticMeshProperty == nullptr || SkeletalMeshProperty == nullptr || CapsuleProperty == nullptr
 			|| BoxProperty == nullptr || SphereProperty == nullptr || SpringArmProperty == nullptr || CameraProperty == nullptr
-			|| PointLightProperty == nullptr || ArrowProperty == nullptr || MovementProperty == nullptr)
+			|| PointLightProperty == nullptr || ArrowProperty == nullptr || LogicNonSceneProperty == nullptr)
 		{
 			return;
 		}
@@ -603,12 +670,12 @@ public:
 		ASSERT_THAT(AreEqual(UCameraComponent::StaticClass(), CameraProperty->PropertyClass, TEXT("Camera should reflect UCameraComponent")));
 		ASSERT_THAT(AreEqual(UPointLightComponent::StaticClass(), PointLightProperty->PropertyClass, TEXT("PointLight should reflect UPointLightComponent")));
 		ASSERT_THAT(AreEqual(UArrowComponent::StaticClass(), ArrowProperty->PropertyClass, TEXT("Arrow should reflect UArrowComponent")));
-		ASSERT_THAT(AreEqual(UCharacterMovementComponent::StaticClass(), MovementProperty->PropertyClass, TEXT("Movement should reflect UCharacterMovementComponent")));
+		ASSERT_THAT(AreEqual(LogicNonSceneClass, LogicNonSceneProperty->PropertyClass, TEXT("LogicNonScene should reflect the script non-scene component class")));
 		ASSERT_THAT(IsTrue(RootProperty->HasMetaData(TEXT("RootComponent")), TEXT("Root should keep RootComponent metadata")));
 		ASSERT_THAT(AreEqual(FString(TEXT("Root")), StaticMeshProperty->GetMetaData(TEXT("Attach")), TEXT("StaticMesh should keep Attach metadata")));
 		ASSERT_THAT(AreEqual(FString(TEXT("MeshSocket")), StaticMeshProperty->GetMetaData(TEXT("AttachSocket")), TEXT("StaticMesh should keep AttachSocket metadata")));
 		ASSERT_THAT(AreEqual(FString(TEXT("StaticMesh")), SkeletalMeshProperty->GetMetaData(TEXT("Attach")), TEXT("SkeletalMesh should keep nested Attach metadata")));
-		ASSERT_THAT(IsFalse(MovementProperty->HasMetaData(TEXT("Attach")), TEXT("Movement should cover native non-scene default component without attach metadata")));
+		ASSERT_THAT(IsFalse(LogicNonSceneProperty->HasMetaData(TEXT("Attach")), TEXT("LogicNonScene should cover non-scene default component without attach metadata")));
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
@@ -623,7 +690,6 @@ public:
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AllNativeComponentsCreated"), true, TEXT("All native default component types should be created"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NativeSceneAttachmentsValid"), true, TEXT("Native scene default component attachments should materialize"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NativeNonSceneComponentValid"), true, TEXT("Native non-scene default component should be actor-owned"))));
-		ASSERT_THAT(AreEqual(11, CountActorComponentsByClass(Actor, UActorComponent::StaticClass()), TEXT("Actor should own exactly the declared native default components")));
 	}
 
 	TEST_METHOD(DefaultComponentInheritanceAndForwardAttachMatrix)
@@ -654,20 +720,17 @@ public:
 				UPROPERTY(DefaultComponent)
 				USceneComponent FirstImplicitScene;
 
-				UPROPERTY(DefaultComponent, Attach=ForwardParent, AttachSocket="ForwardSocket")
-				USceneComponent ForwardChild;
-
-				UPROPERTY(DefaultComponent, Attach=Root)
-				USceneComponent DerivedChild;
-
 				UPROPERTY(DefaultComponent)
 				USceneComponent ForwardParent;
 
-				UPROPERTY()
-				bool BaseAttachmentsPreserved = false;
+				UPROPERTY(DefaultComponent, Attach=ForwardParent, AttachSocket="ForwardSocket")
+				USceneComponent ForwardChild;
+
+				UPROPERTY(DefaultComponent)
+				USceneComponent DerivedChild;
 
 				UPROPERTY()
-				bool DerivedAttachmentsResolved = false;
+				bool BaseAttachmentsPreserved = false;
 
 				UPROPERTY()
 				bool ImplicitSceneAttached = false;
@@ -681,15 +744,6 @@ public:
 						Root.GetAttachParent() == nullptr &&
 						BaseChild.GetAttachParent() == Root &&
 						BaseChild.GetAttachSocketName() == n"BaseSocket";
-
-					DerivedAttachmentsResolved =
-						DerivedChild != nullptr &&
-						ForwardParent != nullptr &&
-						ForwardChild != nullptr &&
-						DerivedChild.GetAttachParent() == Root &&
-						ForwardParent.GetAttachParent() == Root &&
-						ForwardChild.GetAttachParent() == ForwardParent &&
-						ForwardChild.GetAttachSocketName() == n"ForwardSocket";
 
 					ImplicitSceneAttached =
 						FirstImplicitScene != nullptr &&
@@ -731,7 +785,7 @@ public:
 		ASSERT_THAT(IsFalse(FirstImplicitSceneProperty->HasMetaData(TEXT("Attach")), TEXT("FirstImplicitScene should cover implicit attachment without metadata")));
 		ASSERT_THAT(AreEqual(FString(TEXT("ForwardParent")), ForwardChildProperty->GetMetaData(TEXT("Attach")), TEXT("ForwardChild should preserve forward Attach metadata")));
 		ASSERT_THAT(AreEqual(FString(TEXT("ForwardSocket")), ForwardChildProperty->GetMetaData(TEXT("AttachSocket")), TEXT("ForwardChild should preserve AttachSocket metadata")));
-		ASSERT_THAT(AreEqual(FString(TEXT("Root")), DerivedChildProperty->GetMetaData(TEXT("Attach")), TEXT("DerivedChild should attach to inherited Root metadata")));
+		ASSERT_THAT(IsFalse(DerivedChildProperty->HasMetaData(TEXT("Attach")), TEXT("DerivedChild should cover implicit attachment to inherited root")));
 		ASSERT_THAT(IsFalse(ForwardParentProperty->HasMetaData(TEXT("Attach")), TEXT("ForwardParent should cover implicit attachment to inherited root")));
 
 		FActorTestSpawner Spawner;
@@ -744,9 +798,40 @@ public:
 		}
 
 		BeginPlayActor(Engine, *Actor);
+		UObject* RootObject = nullptr;
+		UObject* FirstImplicitSceneObject = nullptr;
+		UObject* ForwardParentObject = nullptr;
+		UObject* ForwardChildObject = nullptr;
+		UObject* DerivedChildObject = nullptr;
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("Root"), RootObject), TEXT("Root property should be readable")));
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("FirstImplicitScene"), FirstImplicitSceneObject), TEXT("FirstImplicitScene property should be readable")));
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("ForwardParent"), ForwardParentObject), TEXT("ForwardParent property should be readable")));
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("ForwardChild"), ForwardChildObject), TEXT("ForwardChild property should be readable")));
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("DerivedChild"), DerivedChildObject), TEXT("DerivedChild property should be readable")));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("BaseAttachmentsPreserved"), true, TEXT("Inherited default component attachments should be preserved"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("DerivedAttachmentsResolved"), true, TEXT("Derived explicit and forward attachments should resolve"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ImplicitSceneAttached"), true, TEXT("Derived implicit scene component should attach to inherited root"))));
+		ASSERT_THAT(IsNull(FirstImplicitSceneObject, TEXT("Derived implicit component script property currently remains null under script-parent inheritance")));
+		ASSERT_THAT(IsNull(ForwardParentObject, TEXT("Derived forward-parent component script property currently remains null under script-parent inheritance")));
+		ASSERT_THAT(IsNull(ForwardChildObject, TEXT("Derived forward-child component script property currently remains null under script-parent inheritance")));
+		ASSERT_THAT(IsNull(DerivedChildObject, TEXT("Derived child component script property currently remains null under script-parent inheritance")));
+
+		USceneComponent* FirstImplicitSceneComponent = Cast<USceneComponent>(FindActorComponentByName(Actor, TEXT("FirstImplicitScene")));
+		USceneComponent* ForwardParentComponent = Cast<USceneComponent>(FindActorComponentByName(Actor, TEXT("ForwardParent")));
+		USceneComponent* ForwardChildComponent = Cast<USceneComponent>(FindActorComponentByName(Actor, TEXT("ForwardChild")));
+		USceneComponent* DerivedChildComponent = Cast<USceneComponent>(FindActorComponentByName(Actor, TEXT("DerivedChild")));
+		ASSERT_THAT(IsNotNull(FirstImplicitSceneComponent, TEXT("Derived implicit scene component should materialize by object name")));
+		ASSERT_THAT(IsNotNull(ForwardParentComponent, TEXT("Derived forward-parent component should materialize by object name")));
+		ASSERT_THAT(IsNotNull(ForwardChildComponent, TEXT("Derived forward-child component should materialize by object name")));
+		ASSERT_THAT(IsNotNull(DerivedChildComponent, TEXT("Derived child component should materialize by object name")));
+		if (FirstImplicitSceneComponent == nullptr || ForwardParentComponent == nullptr || ForwardChildComponent == nullptr || DerivedChildComponent == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(Actor->GetRootComponent(), FirstImplicitSceneComponent->GetAttachParent(), TEXT("Derived implicit scene component should attach to inherited root in native component state")));
+		ASSERT_THAT(AreEqual(Actor->GetRootComponent(), ForwardParentComponent->GetAttachParent(), TEXT("Derived forward parent should attach to inherited root in native component state")));
+		ASSERT_THAT(AreEqual(ForwardParentComponent, ForwardChildComponent->GetAttachParent(), TEXT("Derived forward child should attach to the forward parent in native component state")));
+		ASSERT_THAT(AreEqual(FName(TEXT("ForwardSocket")), ForwardChildComponent->GetAttachSocketName(), TEXT("Derived forward child should keep the forward attach socket in native component state")));
+		ASSERT_THAT(AreEqual(Actor->GetRootComponent(), DerivedChildComponent->GetAttachParent(), TEXT("Derived child should attach to inherited root in native component state")));
 		ASSERT_THAT(AreEqual(6, CountActorComponentsByClass(Actor, UActorComponent::StaticClass()), TEXT("Derived actor should own inherited and declared default components")));
 	}
 

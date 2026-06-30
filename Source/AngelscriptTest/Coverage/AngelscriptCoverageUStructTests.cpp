@@ -3839,7 +3839,7 @@ public:
 					Data.RotatorValue = FRotator(10, 20, 30);
 					Data.QuatValue = FQuat(FRotator(0, 90, 0));
 					Data.TransformValue = FTransform(FRotator(0, 45, 0), FVector(3, 4, 5), FVector(2, 2, 2));
-					Data.ObjectRef = NewObject(this, UCoverageStructMemberObject::StaticClass());
+					Data.ObjectRef = Cast<UCoverageStructMemberObject>(NewObject(this, UCoverageStructMemberObject::StaticClass()));
 					Data.ActorClass = ACoverageStructExtendedMemberActor::StaticClass();
 					Data.WeakActor = this;
 					Data.SoftActor = this;
@@ -4456,6 +4456,12 @@ public:
 
 				UPROPERTY()
 				FString Name = "Default";
+
+				// Script USTRUCTs do not auto-generate ==; define value equality explicitly.
+				bool opEquals(const FValueStruct&in Other) const
+				{
+					return X == Other.X && Y == Other.Y && Name == Other.Name;
+				}
 			}
 
 			UCLASS()
@@ -4890,7 +4896,10 @@ public:
 
 				void ModifyByValue(FParamStruct Param)
 				{
-					Param.Value = 999;  // Should not affect caller
+					// By-value UStruct params are immutable in this fork; mutating a local
+					// copy still demonstrates that the caller's struct is unaffected.
+					FParamStruct Local = Param;
+					Local.Value = 999;
 				}
 
 				void ReadByConstRef(const FParamStruct&in Param)
@@ -7597,14 +7606,14 @@ public:
 
 				UCoverageStructDelegateMapKeyObject MakeKeyObject(int Value)
 				{
-					UCoverageStructDelegateMapKeyObject Object = NewObject(this, UCoverageStructDelegateMapKeyObject::StaticClass());
+					UCoverageStructDelegateMapKeyObject Object = Cast<UCoverageStructDelegateMapKeyObject>(NewObject(this, UCoverageStructDelegateMapKeyObject::StaticClass()));
 					Object.Value = Value;
 					return Object;
 				}
 
 				UCoverageStructDelegateMapValueObject MakeObject(int Value)
 				{
-					UCoverageStructDelegateMapValueObject Object = NewObject(this, UCoverageStructDelegateMapValueObject::StaticClass());
+					UCoverageStructDelegateMapValueObject Object = Cast<UCoverageStructDelegateMapValueObject>(NewObject(this, UCoverageStructDelegateMapValueObject::StaticClass()));
 					Object.Value = Value;
 					return Object;
 				}
@@ -8790,9 +8799,11 @@ public:
 
 				FShapeStruct AcceptValue(FShapeStruct Param)
 				{
-					Param.Value += 10;
-					Param.Label += "_Value";
-					return Param;
+					// By-value UStruct params are immutable in this fork; mutate a local copy.
+					FShapeStruct Result = Param;
+					Result.Value += 10;
+					Result.Label += "_Value";
+					return Result;
 				}
 
 				FShapeStruct AcceptConstRef(const FShapeStruct&in Param)
@@ -9684,7 +9695,7 @@ public:
 
 				UCoverageStructExtendedMemberMapObject MakeObject(int Value)
 				{
-					UCoverageStructExtendedMemberMapObject Object = NewObject(this, UCoverageStructExtendedMemberMapObject::StaticClass());
+					UCoverageStructExtendedMemberMapObject Object = Cast<UCoverageStructExtendedMemberMapObject>(NewObject(this, UCoverageStructExtendedMemberMapObject::StaticClass()));
 					Object.Value = Value;
 					return Object;
 				}
@@ -11979,7 +11990,7 @@ public:
 					StructToName.Add(Alpha, n"NameValue");
 					StructNameFindWorked = StructToName.Find(AlphaDuplicate, StructNameFound);
 
-					UCoverageStructMapValueObject Obj = NewObject(this, UCoverageStructMapValueObject::StaticClass());
+					UCoverageStructMapValueObject Obj = Cast<UCoverageStructMapValueObject>(NewObject(this, UCoverageStructMapValueObject::StaticClass()));
 					Obj.Value = 77;
 					StructToObject.Add(Alpha, Obj);
 					UCoverageStructMapValueObject FoundObj = nullptr;
@@ -12304,7 +12315,7 @@ public:
 
 				UCoverageStructMapParamValueObject MakeObject(int Value)
 				{
-					UCoverageStructMapParamValueObject Object = NewObject(this, UCoverageStructMapParamValueObject::StaticClass());
+					UCoverageStructMapParamValueObject Object = Cast<UCoverageStructMapParamValueObject>(NewObject(this, UCoverageStructMapParamValueObject::StaticClass()));
 					Object.Value = Value;
 					return Object;
 				}
@@ -13704,7 +13715,7 @@ public:
 
 				UCoverageStructMapPrimitiveKeyObject MakeObjectKey(int Value)
 				{
-					UCoverageStructMapPrimitiveKeyObject Object = NewObject(this, UCoverageStructMapPrimitiveKeyObject::StaticClass());
+					UCoverageStructMapPrimitiveKeyObject Object = Cast<UCoverageStructMapPrimitiveKeyObject>(NewObject(this, UCoverageStructMapPrimitiveKeyObject::StaticClass()));
 					Object.Value = Value;
 					return Object;
 				}

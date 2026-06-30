@@ -262,7 +262,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 		{
 			return;
 		}
-		ASSERT_THAT(IsTrue(BPTypeEnum->GetBoolMetaData(TEXT("BlueprintType")),
+		ASSERT_THAT(IsTrue(BPTypeEnum->HasMetaData(TEXT("BlueprintType")),
 			TEXT("BlueprintType enum should expose BlueprintType metadata on generated UEnum")));
 
 		FEnumProperty* MultiSpecProp = FindFProperty<FEnumProperty>(ScriptClass, TEXT("MultiSpec"));
@@ -341,8 +341,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 		{
 			return;
 		}
-		ASSERT_THAT(IsTrue(FlagEnum->GetBoolMetaData(TEXT("Bitflags")),
-			TEXT("UENUM meta=(Bitflags) should be preserved as bool metadata")));
+		ASSERT_THAT(IsTrue(FlagEnum->HasMetaData(TEXT("Bitflags")),
+			TEXT("UENUM meta=(Bitflags) should be preserved as UEnum metadata key presence")));
 		ASSERT_THAT(AreEqual(FString(TEXT("EFlagMetaEnum")), FlagEnum->GetMetaData(TEXT("BitmaskEnum")),
 			TEXT("UENUM meta=(BitmaskEnum=...) should be preserved as UEnum metadata")));
 
@@ -363,8 +363,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		TArray<FString> ExpectedDiagnostics;
-		ExpectedDiagnostics.Add(TEXT("Unknown enum specifier Bitflags"));
+		TestRunner->AddExpectedError(TEXT("Unknown enum specifier Bitflags"), EAutomationExpectedErrorFlags::Contains, 1);
 
 		const FString ScriptSource = ASTEST_AS(R"AS(
 			UENUM(Bitflags)
@@ -374,13 +373,62 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageUEnumTest,
 				FlagB = 2
 			}
 			)AS");
-		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
-			*TestRunner,
-			Engine,
-			TEXT("ASCoverageUEnum_BitflagsSpecifierRejected"),
-			*ScriptSource,
-			TEXT("UENUM(Bitflags) should remain an explicit unsupported specifier boundary"),
-			MakeArrayView(ExpectedDiagnostics))));
+
+		FAngelscriptCompileTraceSummary Summary;
+		const bool bCompiled = CompileModuleWithSummary(
+			&Engine,
+			ECompileType::FullReload,
+			FName(TEXT("ASCoverageUEnum_BitflagsSpecifierRejected")),
+			TEXT("ASCoverageUEnum_BitflagsSpecifierRejected.as"),
+			ScriptSource,
+			/*bUsePreprocessor=*/ true,
+			Summary,
+			/*bSuppressCompileErrorLogs=*/ true);
+
+		ASSERT_THAT(IsFalse(bCompiled,
+			TEXT("UENUM(Bitflags) should fail to compile as an explicit unsupported specifier boundary")));
+		ASSERT_THAT(AreEqual(ECompileResult::Error, Summary.CompileResult,
+			TEXT("UENUM(Bitflags) should surface Error compile result")));
+
+		// Preprocessor MacroError diagnostics may not always land in Summary.Diagnostics;
+		// scan both the compile trace summary and the engine diagnostic map.
+		auto DiagnosticContains = [](const FString& Message, const TCHAR* Fragment) -> bool
+		{
+			return Message.Contains(Fragment);
+		};
+
+		bool bFoundDiagnostic = false;
+		for (const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
+		{
+			if (Diagnostic.bIsError && DiagnosticContains(Diagnostic.Message, TEXT("Unknown enum specifier Bitflags")))
+			{
+				bFoundDiagnostic = true;
+				break;
+			}
+		}
+		if (!bFoundDiagnostic)
+		{
+			for (const TPair<FString, FAngelscriptEngine::FDiagnostics>& FileDiagnostics : Engine.Diagnostics)
+			{
+				for (const FAngelscriptEngine::FDiagnostic& Diagnostic : FileDiagnostics.Value.Diagnostics)
+				{
+					if (Diagnostic.bIsError && DiagnosticContains(Diagnostic.Message, TEXT("Unknown enum specifier Bitflags")))
+					{
+						bFoundDiagnostic = true;
+						break;
+					}
+				}
+				if (bFoundDiagnostic)
+				{
+					break;
+				}
+			}
+		}
+
+		ASSERT_THAT(IsTrue(bFoundDiagnostic,
+			TEXT("UENUM(Bitflags) should report unknown enum specifier diagnostic")));
+
+		Engine.DiscardModule(TEXT("ASCoverageUEnum_BitflagsSpecifierRejected"));
 	}
 
 	// -------------------------------------------------------------------------

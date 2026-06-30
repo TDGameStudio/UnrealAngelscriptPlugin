@@ -475,9 +475,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringFunctionTest,
 			return a + b;
 		}
 
+		FString ConcatWithImplicitDefault(FString a)
+		{
+			return ConcatWithDefault(a);
+		}
+
 		FString GreetWithDefault(FString name = "World")
 		{
 			return "Hello " + name;
+		}
+
+		FString GreetWithImplicitDefault()
+		{
+			return GreetWithDefault();
 		}
 
 		FString TextWithDefault(FText text)
@@ -488,6 +498,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringFunctionTest,
 		FString NameWithDefault(FName name = n"DefaultName")
 		{
 			return name.ToString();
+		}
+
+		FString NameWithImplicitDefault()
+		{
+			return NameWithDefault();
 		}
 
 		)AS"));
@@ -522,8 +537,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringFunctionTest,
 
 		// Call with default (omit second argument)
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FString ConcatWithDefault(FString)"));
-			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("ConcatWithDefault with default arg should resolve and prepare")));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FString ConcatWithImplicitDefault(FString)"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("ConcatWithImplicitDefault should resolve and prepare")));
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -537,8 +552,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringFunctionTest,
 
 		// Call with default name
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FString GreetWithDefault()"));
-			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("GreetWithDefault should resolve and prepare")));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FString GreetWithImplicitDefault()"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("GreetWithImplicitDefault should resolve and prepare")));
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -565,8 +580,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringFunctionTest,
 
 		// FName default
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FString NameWithDefault()"));
-			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("NameWithDefault should resolve and prepare")));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FString NameWithImplicitDefault()"));
+			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("NameWithImplicitDefault should resolve and prepare")));
 			if (!Invoker.IsValid())
 			{
 				return;
@@ -670,19 +685,46 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringFunctionTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const TArray<FString> ExpectedDiagnostics = { TEXT("FText") };
-		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
-			*TestRunner,
-			Engine,
-			TEXT("ASCovFStringFunc_FTextLiteralDefaultUnsupported"),
-			ASTEST_AS(R"AS(
+		TestRunner->AddExpectedError(
+			TEXT("Default argument value \"DefaultText\" has type const FString"),
+			EAutomationExpectedErrorFlags::Contains,
+			2);
+		TestRunner->AddExpectedError(
+			TEXT("Failed while compiling default arg for parameter 0"),
+			EAutomationExpectedErrorFlags::Contains,
+			2);
+		TestRunner->AddExpectedError(
+			TEXT("Failed to compile script module 'ASCovFStringFunc_FTextLiteralDefault'"),
+			EAutomationExpectedErrorFlags::Contains,
+			1);
+		TestRunner->AddExpectedError(
+			TEXT("ASCovFStringFunc_FTextLiteralDefault"),
+			EAutomationExpectedErrorFlags::Contains,
+			1);
+		TestRunner->AddExpectedError(
+			TEXT("Hot reload failed due to script compile errors"),
+			EAutomationExpectedErrorFlags::Contains,
+			1);
+
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFStringFunc_FTextLiteralDefault", ASTEST_AS(R"AS(
 			FString TextDefaultLiteral(FText text = "DefaultText")
 			{
 				return text.ToString();
 			}
-			)AS"),
-			TEXT("FText default parameters from string literals should remain an explicit unsupported boundary"),
-			MakeArrayView(ExpectedDiagnostics))));
+
+			FString TextDefaultLiteralImplicit()
+			{
+				return TextDefaultLiteral();
+			}
+			)AS"));
+		ON_SCOPE_EXIT
+		{
+			if (Module != nullptr)
+			{
+				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+			}
+		};
+		ASSERT_THAT(IsNull(Module, TEXT("FText string-literal defaults should remain an unsupported boundary")));
 	}
 
 	// -------------------------------------------------------------------------

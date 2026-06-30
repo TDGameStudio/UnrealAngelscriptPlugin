@@ -112,8 +112,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorFunctionTest,
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float AcceptColorIn(FLinearColor&in)"));
 			FLinearColor Input = FLinearColor::White;
 			Invoker.AddArgRef(Input);
-			float Result = Invoker.ExecuteAndGet<float>(0.0f);
-			TestRunner->TestTrue(TEXT("FLinearColor &in parameter"), Result > 0.9f);
+			const double Result = Invoker.ExecuteAndGet<double>(0.0);
+			TestRunner->TestTrue(TEXT("FLinearColor &in parameter"), Result > 0.9);
 		}
 	}
 
@@ -187,7 +187,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorFunctionTest,
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void BrightenColor(FLinearColor&inout, float)"));
 			FLinearColor Value = FLinearColor(0.5f, 0.5f, 0.5f, 1.0f);
-			Invoker.AddArgRef(Value).AddArg(2.0f);
+			Invoker.AddArgRef(Value).AddArg(2.0);
 			ASSERT_THAT(IsTrue(Invoker.Execute(), TEXT("BrightenColor should execute")));
 			TestRunner->TestTrue(TEXT("FLinearColor &inout parameter brightens color"), Value.Equals(FLinearColor(1.0f, 1.0f, 1.0f, 2.0f), 0.001f));
 		}
@@ -356,6 +356,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorFunctionTest,
 		{
 			return a * 0.5 + b * 0.5;
 		}
+
+		FLinearColor BlendWithImplicitDefault(FLinearColor a)
+		{
+			return BlendWithDefault(a);
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -365,7 +370,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorFunctionTest,
 			}
 		};
 
-		// Call with all arguments
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FLinearColor BlendWithDefault(FLinearColor, FLinearColor)"));
 			FLinearColor Arg1 = FLinearColor::Red;
@@ -376,9 +380,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorFunctionTest,
 			TestRunner->TestTrue(TEXT("default parameter when explicitly provided"), Result.R > 0.4f && Result.B > 0.4f);
 		}
 
-		// Call with default (omit second argument)
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FLinearColor BlendWithDefault(FLinearColor)"));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FLinearColor BlendWithImplicitDefault(FLinearColor)"));
 			FLinearColor Arg1 = FLinearColor::White;
 			Invoker.AddArgRef(Arg1);
 			FLinearColor Result;
@@ -431,7 +434,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorFunctionTest,
 				UFUNCTION()
 				FLinearColor ClampInput(FLinearColor color)
 				{
-					return color.GetClamped(0.0, 1.0);
+					FLinearColor MutableColor = color;
+					return MutableColor.GetClamped(0.0, 1.0);
 				}
 
 				UFUNCTION()
@@ -471,8 +475,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFLinearColorFunctionTest,
 		{
 			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("GetColorLuminance"));
 			Invoker.AddParam(FLinearColor::White);
-			const float Result = Invoker.CallAndReturn<float>();
-			ASSERT_THAT(IsTrue(Result > 0.9f, TEXT("UFUNCTION FLinearColor to float")));
+			const double Result = Invoker.CallAndReturn<double>();
+			ASSERT_THAT(IsTrue(Result > 0.9, TEXT("UFUNCTION FLinearColor to float")));
 		}
 
 		// UFUNCTION with &out parameter

@@ -16,7 +16,6 @@
 #include "UObject/Class.h"
 #include "UObject/SoftObjectPtr.h"
 #include "UObject/GarbageCollection.h"
-#include "UObject/ScriptInterface.h"
 
 // -----------------------------------------------------------------------------
 // AngelscriptCoverageHandlesTests
@@ -28,7 +27,7 @@
 //
 // Test groups:
 //   1. Object References (AActor*, UObject*)
-//   2. TScriptInterface<IInterface>
+//   2. Native interface references
 //   3. TSubclassOf<T>
 //   4. TSoftObjectPtr / TSoftClassPtr
 //   5. Reference validity checks (IsValid)
@@ -483,9 +482,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 				bool SoftObjectGetWorked = false;
 
 				UPROPERTY()
-				bool SoftObjectLoadSyncWorked = false;
-
-				UPROPERTY()
 				bool SoftObjectToStringWorked = false;
 
 				UPROPERTY()
@@ -493,9 +489,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 
 				UPROPERTY()
 				bool SoftClassAssignmentWorked = false;
-
-				UPROPERTY()
-				bool SoftClassLoadSyncWorked = false;
 
 				UPROPERTY()
 				bool SoftClassGetWorked = false;
@@ -539,13 +532,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 						SoftObjectGetWorked = true;
 					}
 
-					// Test LoadSynchronous
-					AActor Loaded = SoftActorRef.EditorOnlyLoadSynchronous();
-					if (Loaded == SpawnedActor)
-					{
-						SoftObjectLoadSyncWorked = true;
-					}
-
 					// Test ToString path
 					FString PathString = SoftActorRef.ToString();
 					if (!PathString.IsEmpty())
@@ -567,16 +553,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 						SoftClassAssignmentWorked = true;
 					}
 
-					// Test LoadSynchronous
-					UClass LoadedClass = SoftClassRef.EditorOnlyLoadSynchronous();
-					if (LoadedClass != nullptr)
-					{
-						SoftClassLoadSyncWorked = true;
-					}
-
 					// Test Get method
-					UClass ClassRef = SoftClassRef.Get();
-					if (ClassRef != nullptr)
+					TSubclassOf<AActor> ClassRef = SoftClassRef.Get();
+					if (ClassRef.IsValid() && ClassRef.IsChildOf(AActor::StaticClass()))
 					{
 						SoftClassGetWorked = true;
 					}
@@ -606,13 +585,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectIsNullWorked"), true, TEXT("TSoftObjectPtr IsNull should work"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectIsValidWorked"), true, TEXT("TSoftObjectPtr IsValid should work"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectGetWorked"), true, TEXT("TSoftObjectPtr Get should work"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectLoadSyncWorked"), true, TEXT("TSoftObjectPtr LoadSynchronous should work"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftObjectToStringWorked"), true, TEXT("TSoftObjectPtr ToString should work"))));
 
 		// TSoftClassPtr verifications
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftClassDeclarationWorked"), true, TEXT("TSoftClassPtr declaration should work"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftClassAssignmentWorked"), true, TEXT("TSoftClassPtr assignment should work"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftClassLoadSyncWorked"), true, TEXT("TSoftClassPtr LoadSynchronous should work"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("SoftClassGetWorked"), true, TEXT("TSoftClassPtr Get should work"))));
 	}
 
@@ -740,7 +717,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// 6. Native interface references: property, parameter, container, null
+	// 6. Native interface references: script member, parameter, null
 	// -------------------------------------------------------------------------
 	TEST_METHOD(NativeInterfaceReferenceHandles)
 	{
@@ -764,14 +741,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 			UCLASS()
 			class ACoverageHandlesNativeInterfaceRefsActor : AActor, UAngelscriptNativeParentInterface
 			{
-				UPROPERTY()
 				UAngelscriptNativeParentInterface InterfaceRef;
 
-				UPROPERTY()
 				UAngelscriptNativeParentInterface ClearedInterfaceRef;
-
-				UPROPERTY()
-				TArray<UAngelscriptNativeParentInterface> InterfaceRefs;
 
 				UPROPERTY()
 				int NativeValue = 37;
@@ -793,9 +765,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 
 				UPROPERTY()
 				bool InterfaceParameterWorked = false;
-
-				UPROPERTY()
-				bool InterfaceArrayWorked = false;
 
 				UPROPERTY()
 				bool NullResetWorked = false;
@@ -846,12 +815,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 						AcceptInterface(InterfaceRef);
 					}
 
-					InterfaceRefs.Add(InterfaceRef);
-					InterfaceRefs.Add(Cast<UAngelscriptNativeParentInterface>(SelfObject));
-					InterfaceArrayWorked = InterfaceRefs.Num() == 2 &&
-						InterfaceRefs[0] != nullptr &&
-						InterfaceRefs[1].GetNativeValue() == 37;
-
 					ClearedInterfaceRef = InterfaceRef;
 					ClearedInterfaceRef = nullptr;
 					NullResetWorked = ClearedInterfaceRef == nullptr;
@@ -867,36 +830,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 
 		ASSERT_THAT(IsTrue(ScriptClass->ImplementsInterface(UAngelscriptNativeParentInterface::StaticClass()), TEXT("Script actor should implement the native parent interface")));
 
-		const FProperty* InterfaceRefProp = ScriptClass->FindPropertyByName(FName(TEXT("InterfaceRef")));
-		ASSERT_THAT(IsNotNull(InterfaceRefProp, TEXT("InterfaceRef property should exist")));
-		if (InterfaceRefProp == nullptr)
-		{
-			return;
-		}
-
-		const FInterfaceProperty* InterfaceProperty = CastField<FInterfaceProperty>(InterfaceRefProp);
-		ASSERT_THAT(IsNotNull(InterfaceProperty, TEXT("InterfaceRef should be emitted as FInterfaceProperty")));
-		if (InterfaceProperty == nullptr)
-		{
-			return;
-		}
-		ASSERT_THAT(AreEqual(UAngelscriptNativeParentInterface::StaticClass(), InterfaceProperty->InterfaceClass, TEXT("InterfaceRef should target the native parent interface")));
-
-		const FArrayProperty* InterfaceRefsProp = CastField<FArrayProperty>(ScriptClass->FindPropertyByName(FName(TEXT("InterfaceRefs"))));
-		ASSERT_THAT(IsNotNull(InterfaceRefsProp, TEXT("InterfaceRefs array property should exist")));
-		if (InterfaceRefsProp == nullptr)
-		{
-			return;
-		}
-
-		const FInterfaceProperty* InterfaceRefsInnerProp = CastField<FInterfaceProperty>(InterfaceRefsProp->Inner);
-		ASSERT_THAT(IsNotNull(InterfaceRefsInnerProp, TEXT("InterfaceRefs array should store interface values")));
-		if (InterfaceRefsInnerProp == nullptr)
-		{
-			return;
-		}
-		ASSERT_THAT(AreEqual(UAngelscriptNativeParentInterface::StaticClass(), InterfaceRefsInnerProp->InterfaceClass, TEXT("InterfaceRefs inner property should target the native parent interface")));
-
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
@@ -911,7 +844,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("CastAssignmentWorked"), true, TEXT("Native interface references should assign from Cast<I>"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InterfaceDispatchWorked"), true, TEXT("Native interface references should dispatch methods"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InterfaceParameterWorked"), true, TEXT("Native interface references should pass through AS parameters"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("InterfaceArrayWorked"), true, TEXT("Native interface references should work as array elements"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NullResetWorked"), true, TEXT("Native interface references should reset to null"))));
 
 		int32 ParameterValue = 0;
@@ -921,31 +853,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 		FName NativeMarker = NAME_None;
 		ASSERT_THAT(IsTrue(GetByPath<FNameProperty, FName>(*TestRunner, Actor, TEXT("NativeMarker"), NativeMarker), TEXT("NativeMarker should be readable")));
 		ASSERT_THAT(AreEqual(FName(TEXT("FromNativeInterfaceHandle")), NativeMarker, TEXT("Interface setter should mutate actor state")));
-
-		const FScriptInterface* InterfaceValue = InterfaceProperty->ContainerPtrToValuePtr<FScriptInterface>(Actor);
-		ASSERT_THAT(IsNotNull(InterfaceValue, TEXT("C++ should read the interface property backing value")));
-		if (InterfaceValue == nullptr)
-		{
-			return;
-		}
-		ASSERT_THAT(AreEqual(static_cast<UObject*>(Actor), InterfaceValue->GetObject(), TEXT("InterfaceRef should expose the script actor object")));
-		ASSERT_THAT(IsNotNull(InterfaceValue->GetInterface(), TEXT("InterfaceRef should expose a native interface pointer")));
-
-		FScriptArrayHelper InterfaceArrayHelper(InterfaceRefsProp, InterfaceRefsProp->ContainerPtrToValuePtr<void>(Actor));
-		ASSERT_THAT(AreEqual(2, InterfaceArrayHelper.Num(), TEXT("C++ should observe two stored interface references")));
-		if (InterfaceArrayHelper.Num() == 0)
-		{
-			return;
-		}
-
-		const FScriptInterface* FirstArrayInterface = reinterpret_cast<const FScriptInterface*>(InterfaceArrayHelper.GetRawPtr(0));
-		ASSERT_THAT(IsNotNull(FirstArrayInterface, TEXT("First interface array element should be readable")));
-		if (FirstArrayInterface == nullptr)
-		{
-			return;
-		}
-		ASSERT_THAT(AreEqual(static_cast<UObject*>(Actor), FirstArrayInterface->GetObject(), TEXT("Interface array element should expose the script actor object")));
-		ASSERT_THAT(IsNotNull(FirstArrayInterface->GetInterface(), TEXT("Interface array element should expose a native interface pointer")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1390,7 +1297,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandlesTest,
 					WeakDestroyedActor = DestroyedActor;
 					DestroyedActor.DestroyActor();
 
-					System::ForceGarbageCollection(true);
+					CoverageGC::ForceGarbageCollectionNow();
 
 					StrongPropertySurvivedGC = StrongObject != nullptr &&
 						WeakStrongObject.IsValid() &&

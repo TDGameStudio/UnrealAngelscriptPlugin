@@ -3,6 +3,7 @@
 #include "AngelscriptReflectiveAccess.h"
 #include "AngelscriptTestMacros.h"
 #include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestWorld.h"
 
 #include "Components/ActorTestSpawner.h"
 #include "GameFramework/Actor.h"
@@ -11,6 +12,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Components/ActorComponent.h"
 #include "Components/InputComponent.h"
+#include "Components/SceneComponent.h"
 #include "Blueprint/UserWidget.h"
 #include "Misc/ScopeExit.h"
 #include "UObject/Class.h"
@@ -22,9 +24,9 @@
 // matrix from OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md (Submatrix 3: Lifecycle).
 //
 // Test axes covered:
-//   * ActorLifecycle              - BeginPlay, Tick, EndPlay, Destroyed, OnConstruction
-//   * PawnLifecycle               - SetupPlayerInputComponent, PossessedBy, UnPossessed
-//   * ComponentLifecycle          - BeginPlay, TickComponent, EndPlay
+//   * ActorLifecycle              - BeginPlay, Tick, EndPlay, Destroyed, UserConstructionScript
+//   * PawnLifecycle               - BeginPlay plus explicit boundaries for native-only pawn virtuals
+//   * ComponentLifecycle          - BeginPlay, Tick dispatch, EndPlay
 //   * WidgetLifecycle             - Construct, Destruct, Tick
 //   * MultiLevelInheritance       - Lifecycle call order across inheritance chain
 //
@@ -140,7 +142,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageClassLifecycleTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// AActor construction script: OnConstruction
+	// AActor construction script: UserConstructionScript
 	// -------------------------------------------------------------------------
 	TEST_METHOD(ActorConstructionScript)
 	{
@@ -163,25 +165,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageClassLifecycleTest,
 			class AConstructionActor : AActor
 			{
 				UPROPERTY()
-				int OnConstructionCalled = 0;
+				int ConstructionScriptCalled = 0;
 
 				UPROPERTY()
-				FVector ConstructionLocation;
+				int BeginPlaySawConstruction = 0;
 
 				UFUNCTION(BlueprintOverride)
-				void OnConstruction(FTransform Transform)
+				void UserConstructionScript()
 				{
-					OnConstructionCalled = 1;
-					ConstructionLocation = Transform.Location;
+					ConstructionScriptCalled++;
 				}
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					// Ensure OnConstruction was called before BeginPlay
-					if (OnConstructionCalled == 0)
+					if (ConstructionScriptCalled > 0)
 					{
-						OnConstructionCalled = -1; // Error state
+						BeginPlaySawConstruction = 1;
 					}
 				}
 			}
@@ -203,7 +203,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageClassLifecycleTest,
 		}
 
 		BeginPlayActor(Engine, *Actor);
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("OnConstructionCalled"), 1, TEXT("OnConstruction should be called before BeginPlay"))));
+		int32 ConstructionScriptCalled = 0;
+		ASSERT_THAT(IsTrue(ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("ConstructionScriptCalled"), ConstructionScriptCalled), TEXT("ConstructionScriptCalled should be readable")));
+		ASSERT_THAT(IsTrue(ConstructionScriptCalled > 0, TEXT("UserConstructionScript should run during spawn")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("BeginPlaySawConstruction"), 1, TEXT("BeginPlay should observe construction script state"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -219,6 +222,42 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageClassLifecycleTest,
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
 		};
+
+		{
+			const TArray<FString> ExpectedDiagnostics = {
+				TEXT("BlueprintOverride method SetupPlayerInputComponent"),
+				TEXT("does not exist in superclass Pawn"),
+				TEXT("BlueprintOverride method PossessedBy"),
+				TEXT("BlueprintOverride method ReceiveUnpossessed"),
+				TEXT("does not match function signature")
+			};
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCoverageLifecyclePawnUnsupportedOverrides"),
+				ASTEST_AS(R"AS(
+				UCLASS()
+				class ALifecyclePawnUnsupportedOverrides : APawn
+				{
+					UFUNCTION(BlueprintOverride)
+					void SetupPlayerInputComponent(UInputComponent PlayerInputComponent)
+					{
+					}
+
+					UFUNCTION(BlueprintOverride)
+					void PossessedBy(AController NewController)
+					{
+					}
+
+					UFUNCTION(BlueprintOverride)
+					void UnPossessed()
+					{
+					}
+				}
+				)AS"),
+				TEXT("APawn native-only lifecycle virtuals should remain explicit BlueprintOverride boundaries"),
+				MakeArrayView(ExpectedDiagnostics))));
+		}
 
 		UClass* ScriptClass = CompileScriptModule(
 			*TestRunner,
@@ -239,6 +278,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageClassLifecycleTest,
 				int UnPossessedCalled = 0;
 
 				UPROPERTY()
+				int UnPossessedOldControllerReceived = 0;
+
+				UPROPERTY()
 				int BeginPlayCalled = 0;
 
 				UFUNCTION(BlueprintOverride)
@@ -247,22 +289,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageClassLifecycleTest,
 					BeginPlayCalled = 1;
 				}
 
-				UFUNCTION(BlueprintOverride)
+				UFUNCTION()
 				void SetupPlayerInputComponent(UInputComponent PlayerInputComponent)
 				{
 					SetupInputCalled = 1;
 				}
 
-				UFUNCTION(BlueprintOverride)
+				UFUNCTION()
 				void PossessedBy(AController NewController)
 				{
 					PossessedByCalled = 1;
 				}
 
 				UFUNCTION(BlueprintOverride)
-				void UnPossessed()
+				void UnPossessed(AController OldController)
 				{
 					UnPossessedCalled = 1;
+					if (OldController != nullptr)
+					{
+						UnPossessedOldControllerReceived = 1;
+					}
 				}
 			}
 			)AS"),
@@ -303,13 +349,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageClassLifecycleTest,
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Pawn, TEXT("SetupInputCalled"), 1, TEXT("SetupPlayerInputComponent should increment the observable counter"))));
 
 		APlayerController& Controller = Spawner.SpawnActor<APlayerController>();
+		FFunctionInvoker PossessedByInvoker(*TestRunner, Pawn, FName(TEXT("PossessedBy")));
+		ASSERT_THAT(IsTrue(PossessedByInvoker.IsValid(), TEXT("PossessedBy should be invokable through reflection as a supported plain UFUNCTION")));
+		if (!PossessedByInvoker.IsValid())
+		{
+			return;
+		}
+		PossessedByInvoker.AddParam<AController*>(&Controller);
+		ASSERT_THAT(IsTrue(PossessedByInvoker.Call(), TEXT("PossessedBy plain UFUNCTION should execute through reflection")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Pawn, TEXT("PossessedByCalled"), 1, TEXT("PossessedBy plain UFUNCTION should increment the observable counter"))));
+
 		Controller.Possess(Pawn);
 		ASSERT_THAT(AreEqual(&Controller, Pawn->GetController(), TEXT("Controller.Possess should attach the controller to the script pawn")));
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Pawn, TEXT("PossessedByCalled"), 1, TEXT("PossessedBy should be triggered by Controller.Possess"))));
 
 		Controller.UnPossess();
 		ASSERT_THAT(IsNull(Pawn->GetController(), TEXT("Controller.UnPossess should detach the script pawn")));
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Pawn, TEXT("UnPossessedCalled"), 1, TEXT("UnPossessed should be triggered by Controller.UnPossess"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Pawn, TEXT("UnPossessedCalled"), 1, TEXT("UnPossessed BlueprintOverride should be triggered by Controller.UnPossess"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Pawn, TEXT("UnPossessedOldControllerReceived"), 1, TEXT("UnPossessed BlueprintOverride should receive the old controller"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -326,6 +382,65 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageClassLifecycleTest,
 			Engine.DiscardModule(*ModuleName.ToString());
 		};
 
+		{
+			const TArray<FString> ExpectedDiagnostics = {
+				TEXT("Identifier 'ELevelTick' is not a data type in global namespace"),
+				TEXT("'bCanEverTick' is not a member of 'FActorComponentTickFunction'")
+			};
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCoverageLifecycleComponentUnsupportedTickSurface"),
+				ASTEST_AS(R"AS(
+				UCLASS()
+				class ULifecycleComponentUnsupportedTickSurface : UActorComponent
+				{
+					default PrimaryComponentTick.bCanEverTick = true;
+
+					UFUNCTION(BlueprintOverride)
+					void TickComponent(float DeltaSeconds, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
+					{
+					}
+				}
+				)AS"),
+				TEXT("direct TickComponent override and PrimaryComponentTick.bCanEverTick defaults should remain explicit binding boundaries"),
+				MakeArrayView(ExpectedDiagnostics))));
+		}
+
+		{
+			const TArray<FString> ExpectedDiagnostics = {
+				TEXT("BlueprintOverride method OnComponentCreated"),
+				TEXT("BlueprintOverride method InitializeComponent"),
+				TEXT("BlueprintOverride method OnComponentDestroyed")
+			};
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCoverageLifecycleComponentNativeCallbacksUnsupported"),
+				ASTEST_AS(R"AS(
+				UCLASS()
+				class ULifecycleComponentNativeCallbacksUnsupported : UActorComponent
+				{
+					UFUNCTION(BlueprintOverride)
+					void OnComponentCreated()
+					{
+					}
+
+					UFUNCTION(BlueprintOverride)
+					void InitializeComponent()
+					{
+					}
+
+					UFUNCTION(BlueprintOverride)
+					void OnComponentDestroyed(bool bDestroyingHierarchy)
+					{
+					}
+				}
+				)AS"),
+				TEXT("native-only component callbacks should remain explicit BlueprintOverride boundaries"),
+				MakeArrayView(ExpectedDiagnostics))));
+		}
+
 		UClass* ScriptClass = CompileScriptModule(
 			*TestRunner,
 			Engine,
@@ -339,36 +454,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageClassLifecycleTest,
 				int BeginPlayCalled = 0;
 
 				UPROPERTY()
-				int OnComponentCreatedCalled = 0;
-
-				UPROPERTY()
-				int InitializeComponentReflected = 0;
-
-				UPROPERTY()
 				int TickCount = 0;
 
 				UPROPERTY()
 				int EndPlayCalled = 0;
 
 				UPROPERTY()
-				int OnComponentDestroyedCalled = 0;
-
-				UPROPERTY()
 				float AccumulatedDeltaTime = 0.0f;
-
-				default PrimaryComponentTick.bCanEverTick = true;
-
-				UFUNCTION(BlueprintOverride)
-				void OnComponentCreated()
-				{
-					OnComponentCreatedCalled++;
-				}
-
-				UFUNCTION(BlueprintOverride)
-				void InitializeComponent()
-				{
-					InitializeComponentReflected++;
-				}
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -377,7 +469,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageClassLifecycleTest,
 				}
 
 				UFUNCTION(BlueprintOverride)
-				void TickComponent(float DeltaSeconds, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
+				void Tick(float DeltaSeconds)
 				{
 					TickCount++;
 					AccumulatedDeltaTime += DeltaSeconds;
@@ -387,12 +479,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageClassLifecycleTest,
 				void EndPlay(EEndPlayReason EndPlayReason)
 				{
 					EndPlayCalled = 1;
-				}
-
-				UFUNCTION(BlueprintOverride)
-				void OnComponentDestroyed(bool bDestroyingHierarchy)
-				{
-					OnComponentDestroyedCalled++;
 				}
 			}
 
@@ -420,8 +506,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageClassLifecycleTest,
 		}
 
 		BeginPlayActor(Engine, *Actor);
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LifecycleComp.OnComponentCreatedCalled"), 1, TEXT("Component OnComponentCreated should be called during registration"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LifecycleComp.InitializeComponentReflected"), 1, TEXT("Component InitializeComponent should be called before BeginPlay"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LifecycleComp.BeginPlayCalled"), 1, TEXT("Component BeginPlay should be called"))));
 
 		UObject* ComponentObject = nullptr;
@@ -433,17 +517,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageClassLifecycleTest,
 			return;
 		}
 
+		Component->PrimaryComponentTick.bCanEverTick = true;
 		Component->SetComponentTickEnabled(true);
-		{
-			FAngelscriptEngineScope ComponentScope(Engine, Component);
-			Component->TickComponent(0.25f, ELevelTick::LEVELTICK_All, &Component->PrimaryComponentTick);
-		}
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LifecycleComp.TickCount"), 1, TEXT("Component TickComponent should be callable on the registered component"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("LifecycleComp.AccumulatedDeltaTime"), 0.25, TEXT("Component TickComponent should receive DeltaSeconds"))));
+		FAngelscriptTestWorld::DispatchComponentTick(Engine, *Component, 0.25f, 1);
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LifecycleComp.TickCount"), 1, TEXT("Component Tick should be dispatched through TickComponent"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("LifecycleComp.AccumulatedDeltaTime"), 0.25, TEXT("Component Tick should receive DeltaSeconds"))));
 
 		Component->DestroyComponent();
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Component, TEXT("EndPlayCalled"), 1, TEXT("Component EndPlay should run when DestroyComponent is called after BeginPlay"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Component, TEXT("OnComponentDestroyedCalled"), 1, TEXT("OnComponentDestroyed should run when DestroyComponent is called"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -818,7 +899,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageClassLifecycleTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// PostInitializeComponents: called after all components are initialized
+	// Component initialization boundaries around actor BeginPlay
 	// -------------------------------------------------------------------------
 	TEST_METHOD(ActorComponentInitialization)
 	{
@@ -831,6 +912,29 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageClassLifecycleTest,
 			Engine.DiscardModule(*ModuleName.ToString());
 		};
 
+		{
+			const TArray<FString> ExpectedDiagnostics = {
+				TEXT("BlueprintOverride method PostInitializeComponents"),
+				TEXT("does not exist in superclass Actor")
+			};
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCoverageLifecyclePostInitializeComponentsUnsupported"),
+				ASTEST_AS(R"AS(
+				UCLASS()
+				class APostInitializeComponentsUnsupportedActor : AActor
+				{
+					UFUNCTION(BlueprintOverride)
+					void PostInitializeComponents()
+					{
+					}
+				}
+				)AS"),
+				TEXT("AActor PostInitializeComponents should remain an explicit BlueprintOverride boundary"),
+				MakeArrayView(ExpectedDiagnostics))));
+		}
+
 		UClass* ScriptClass = CompileScriptModule(
 			*TestRunner,
 			Engine,
@@ -841,31 +945,21 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageClassLifecycleTest,
 			class AComponentInitActor : AActor
 			{
 				UPROPERTY()
-				int PostInitializeComponentsCalled = 0;
+				int BeginPlayCalled = 0;
 
 				UPROPERTY()
-				int BeginPlayCalled = 0;
+				int RootComponentAvailableAtBeginPlay = 0;
 
 				UPROPERTY(DefaultComponent)
 				USceneComponent RootComp;
 
 				UFUNCTION(BlueprintOverride)
-				void PostInitializeComponents()
-				{
-					PostInitializeComponentsCalled = 1;
-				}
-
-				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					// PostInitializeComponents should be called before BeginPlay
-					if (PostInitializeComponentsCalled == 1)
+					BeginPlayCalled = 1;
+					if (RootComp != nullptr)
 					{
-						BeginPlayCalled = 1;
-					}
-					else
-					{
-						BeginPlayCalled = -1; // Error state
+						RootComponentAvailableAtBeginPlay = 1;
 					}
 				}
 			}
@@ -887,8 +981,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageClassLifecycleTest,
 		}
 
 		BeginPlayActor(Engine, *Actor);
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("PostInitializeComponentsCalled"), 1, TEXT("PostInitializeComponents should be called"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("BeginPlayCalled"), 1, TEXT("BeginPlay should be called after PostInitializeComponents"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("BeginPlayCalled"), 1, TEXT("BeginPlay should be called for component initialization coverage"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("RootComponentAvailableAtBeginPlay"), 1, TEXT("DefaultComponent should be available before BeginPlay"))));
+
+		UObject* RootComponentObject = nullptr;
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("RootComp"), RootComponentObject), TEXT("RootComp should be readable as an object property")));
+		USceneComponent* RootComponent = Cast<USceneComponent>(RootComponentObject);
+		ASSERT_THAT(IsNotNull(RootComponent, TEXT("RootComp should be a scene component")));
+		if (RootComponent == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(Actor, RootComponent->GetOwner(), TEXT("DefaultComponent root should be owned by the spawned actor")));
+		ASSERT_THAT(IsTrue(RootComponent->IsRegistered(), TEXT("DefaultComponent root should be registered before BeginPlay assertions")));
 	}
 };
 

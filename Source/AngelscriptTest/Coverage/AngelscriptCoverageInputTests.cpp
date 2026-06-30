@@ -24,11 +24,11 @@
 // Documents/Coverage/Coverage_Input.md submatrices 1-3 and 6-8.
 //
 // Test axes covered:
-//   * SetupPlayerInputComponent  - APawn override for input setup
-//   * ActionBinding              - BindAction with IE_Pressed/Released/Repeat/DoubleClick
+//   * SetupPlayerInputComponent  - explicit APawn override boundary
+//   * ActionBinding              - BindAction with EInputEvent::IE_Pressed/Released/Repeat/DoubleClick
 //   * AxisBinding                - BindAxis for 1D axis inputs
 //   * KeyDirectBinding           - BindKey for direct key bindings
-//   * InputEventTypes            - IE_Pressed, IE_Released, IE_Repeat, IE_DoubleClick
+//   * InputEventTypes            - EInputEvent::IE_Pressed, EInputEvent::IE_Released, EInputEvent::IE_Repeat, EInputEvent::IE_DoubleClick
 //   * InputStateQuery            - IsInputKeyDown, WasInputKeyJustPressed, GetInputAxisValue
 //   * CommonKeys                 - EKeys constants (keyboard, mouse, gamepad)
 //
@@ -62,24 +62,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// SetupPlayerInputComponent: APawn override for input binding
+	// SetupPlayerInputComponent: APawn override boundary
 	// -------------------------------------------------------------------------
 	TEST_METHOD(SetupPlayerInputComponent)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		static const FName ModuleName(TEXT("ASCoverageInput_SetupPlayerInputComponent"));
-		ON_SCOPE_EXIT
-		{
-			Engine.DiscardModule(*ModuleName.ToString());
+		const TArray<FString> ExpectedDiagnostics = {
+			TEXT("BlueprintOverride method SetupPlayerInputComponent")
 		};
-
-		UClass* ScriptClass = CompileScriptModule(
+		const bool bFailedAsExpected = CompileAndExpectFailure(
 			*TestRunner,
 			Engine,
-			ModuleName,
-			TEXT("ASCoverageInputSetup.as"),
+			TEXT("ASCoverageInput_SetupPlayerInputComponentUnsupported"),
 			ASTEST_AS(R"AS(
 			UCLASS()
 			class AInputSetupPawn : APawn
@@ -98,11 +94,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 				}
 			}
 			)AS"),
-			TEXT("AInputSetupPawn"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("SetupPlayerInputComponent pawn class should compile")));
-
-		// The method compiles correctly - actual invocation requires controller setup
-		// which is validated in the compilation step
+			TEXT("SetupPlayerInputComponent should remain an explicit AS BlueprintOverride boundary"),
+			MakeArrayView(ExpectedDiagnostics));
+		ASSERT_THAT(IsTrue(bFailedAsExpected, TEXT("SetupPlayerInputComponent override should stay unavailable to AS")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -140,42 +134,46 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 				UPROPERTY()
 				int SelectDoubleClickCount = 0;
 
-				UFUNCTION(BlueprintOverride)
-				void SetupPlayerInputComponent(UInputComponent PlayerInputComponent)
+				UFUNCTION()
+				void SetupInput(UInputComponent PlayerInputComponent)
 				{
-					// Bind action with IE_Pressed
-					PlayerInputComponent.BindAction(n"Jump", IE_Pressed, this, n"OnJumpPressed");
+					FInputActionHandlerDynamicSignature JumpPressedDelegate;
+					JumpPressedDelegate.BindUFunction(this, n"OnJumpPressed");
+					PlayerInputComponent.BindAction(n"Jump", EInputEvent::IE_Pressed, JumpPressedDelegate);
 
-					// Bind action with IE_Released
-					PlayerInputComponent.BindAction(n"Jump", IE_Released, this, n"OnJumpReleased");
+					FInputActionHandlerDynamicSignature JumpReleasedDelegate;
+					JumpReleasedDelegate.BindUFunction(this, n"OnJumpReleased");
+					PlayerInputComponent.BindAction(n"Jump", EInputEvent::IE_Released, JumpReleasedDelegate);
 
-					// Bind action with IE_Repeat
-					PlayerInputComponent.BindAction(n"Fire", IE_Repeat, this, n"OnFireRepeat");
+					FInputActionHandlerDynamicSignature FireRepeatDelegate;
+					FireRepeatDelegate.BindUFunction(this, n"OnFireRepeat");
+					PlayerInputComponent.BindAction(n"Fire", EInputEvent::IE_Repeat, FireRepeatDelegate);
 
-					// Bind action with IE_DoubleClick
-					PlayerInputComponent.BindAction(n"Select", IE_DoubleClick, this, n"OnSelectDoubleClick");
+					FInputActionHandlerDynamicSignature SelectDoubleClickDelegate;
+					SelectDoubleClickDelegate.BindUFunction(this, n"OnSelectDoubleClick");
+					PlayerInputComponent.BindAction(n"Select", EInputEvent::IE_DoubleClick, SelectDoubleClickDelegate);
 				}
 
 				UFUNCTION()
-				void OnJumpPressed()
+				void OnJumpPressed(FKey Key)
 				{
 					JumpPressedCount++;
 				}
 
 				UFUNCTION()
-				void OnJumpReleased()
+				void OnJumpReleased(FKey Key)
 				{
 					JumpReleasedCount++;
 				}
 
 				UFUNCTION()
-				void OnFireRepeat()
+				void OnFireRepeat(FKey Key)
 				{
 					FireRepeatCount++;
 				}
 
 				UFUNCTION()
-				void OnSelectDoubleClick()
+				void OnSelectDoubleClick(FKey Key)
 				{
 					SelectDoubleClickCount++;
 				}
@@ -223,39 +221,49 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 				UPROPERTY()
 				int AxisCallCount = 0;
 
-				UFUNCTION(BlueprintOverride)
-				void SetupPlayerInputComponent(UInputComponent PlayerInputComponent)
+				UFUNCTION()
+				void SetupInput(UInputComponent PlayerInputComponent)
 				{
-					// Bind multiple axes for movement and camera
-					PlayerInputComponent.BindAxis(n"MoveForward", this, n"OnMoveForward");
-					PlayerInputComponent.BindAxis(n"MoveRight", this, n"OnMoveRight");
-					PlayerInputComponent.BindAxis(n"LookUp", this, n"OnLookUp");
-					PlayerInputComponent.BindAxis(n"Turn", this, n"OnTurn");
+					FInputAxisHandlerDynamicSignature MoveForwardDelegate;
+					MoveForwardDelegate.BindUFunction(this, n"OnMoveForward");
+					PlayerInputComponent.BindAxis(n"MoveForward", MoveForwardDelegate);
+
+					FInputAxisHandlerDynamicSignature MoveRightDelegate;
+					MoveRightDelegate.BindUFunction(this, n"OnMoveRight");
+					PlayerInputComponent.BindAxis(n"MoveRight", MoveRightDelegate);
+
+					FInputAxisHandlerDynamicSignature LookUpDelegate;
+					LookUpDelegate.BindUFunction(this, n"OnLookUp");
+					PlayerInputComponent.BindAxis(n"LookUp", LookUpDelegate);
+
+					FInputAxisHandlerDynamicSignature TurnDelegate;
+					TurnDelegate.BindUFunction(this, n"OnTurn");
+					PlayerInputComponent.BindAxis(n"Turn", TurnDelegate);
 				}
 
 				UFUNCTION()
-				void OnMoveForward(float Value)
+				void OnMoveForward(float32 Value)
 				{
 					MoveForwardValue = Value;
 					AxisCallCount++;
 				}
 
 				UFUNCTION()
-				void OnMoveRight(float Value)
+				void OnMoveRight(float32 Value)
 				{
 					MoveRightValue = Value;
 					AxisCallCount++;
 				}
 
 				UFUNCTION()
-				void OnLookUp(float Value)
+				void OnLookUp(float32 Value)
 				{
 					LookUpValue = Value;
 					AxisCallCount++;
 				}
 
 				UFUNCTION()
-				void OnTurn(float Value)
+				void OnTurn(float32 Value)
 				{
 					TurnValue = Value;
 					AxisCallCount++;
@@ -301,36 +309,46 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 				UPROPERTY()
 				int RightMouseReleasedCount = 0;
 
-				UFUNCTION(BlueprintOverride)
-				void SetupPlayerInputComponent(UInputComponent PlayerInputComponent)
+				UFUNCTION()
+				void SetupInput(UInputComponent PlayerInputComponent)
 				{
-					// Direct key bindings bypass InputAction mappings
-					PlayerInputComponent.BindKey(EKeys::SpaceBar, IE_Pressed, this, n"OnSpacePressed");
-					PlayerInputComponent.BindKey(EKeys::W, IE_Pressed, this, n"OnWPressed");
-					PlayerInputComponent.BindKey(EKeys::LeftMouseButton, IE_Pressed, this, n"OnLeftMousePressed");
-					PlayerInputComponent.BindKey(EKeys::RightMouseButton, IE_Released, this, n"OnRightMouseReleased");
+					FInputActionHandlerDynamicSignature SpacePressedDelegate;
+					SpacePressedDelegate.BindUFunction(this, n"OnSpacePressed");
+					PlayerInputComponent.BindKey(EKeys::SpaceBar, EInputEvent::IE_Pressed, SpacePressedDelegate);
+
+					FInputActionHandlerDynamicSignature WPressedDelegate;
+					WPressedDelegate.BindUFunction(this, n"OnWPressed");
+					PlayerInputComponent.BindKey(EKeys::W, EInputEvent::IE_Pressed, WPressedDelegate);
+
+					FInputActionHandlerDynamicSignature LeftMousePressedDelegate;
+					LeftMousePressedDelegate.BindUFunction(this, n"OnLeftMousePressed");
+					PlayerInputComponent.BindKey(EKeys::LeftMouseButton, EInputEvent::IE_Pressed, LeftMousePressedDelegate);
+
+					FInputActionHandlerDynamicSignature RightMouseReleasedDelegate;
+					RightMouseReleasedDelegate.BindUFunction(this, n"OnRightMouseReleased");
+					PlayerInputComponent.BindKey(EKeys::RightMouseButton, EInputEvent::IE_Released, RightMouseReleasedDelegate);
 				}
 
 				UFUNCTION()
-				void OnSpacePressed()
+				void OnSpacePressed(FKey Key)
 				{
 					SpaceKeyPressedCount++;
 				}
 
 				UFUNCTION()
-				void OnWPressed()
+				void OnWPressed(FKey Key)
 				{
 					WKeyPressedCount++;
 				}
 
 				UFUNCTION()
-				void OnLeftMousePressed()
+				void OnLeftMousePressed(FKey Key)
 				{
 					LeftMousePressedCount++;
 				}
 
 				UFUNCTION()
-				void OnRightMouseReleased()
+				void OnRightMouseReleased(FKey Key)
 				{
 					RightMouseReleasedCount++;
 				}
@@ -341,7 +359,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// Input binding visibility: SetupPlayerInputComponent creates action, axis, and key bindings
+	// Input binding visibility: SetupInput creates action, axis, and key bindings
 	// -------------------------------------------------------------------------
 	TEST_METHOD(InputBindingCollectionsVisibleAfterSetup)
 	{
@@ -366,24 +384,29 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 				UPROPERTY()
 				int SetupCallCount = 0;
 
-				UFUNCTION(BlueprintOverride)
-				void SetupPlayerInputComponent(UInputComponent PlayerInputComponent)
+				UFUNCTION()
+				void SetupInput(UInputComponent PlayerInputComponent)
 				{
 					SetupCallCount++;
-					PlayerInputComponent.BindAction(n"Jump", IE_Pressed, this, n"OnJumpPressed");
-					PlayerInputComponent.BindAction(n"Jump", IE_Released, this, n"OnJumpReleased");
-					PlayerInputComponent.BindAxis(n"MoveForward", this, n"OnMoveForward");
-					PlayerInputComponent.BindAxis(n"Turn", this, n"OnTurn");
-					PlayerInputComponent.BindKey(EKeys::SpaceBar, IE_Pressed, this, n"OnSpacePressed");
-					PlayerInputComponent.BindKey(EKeys::LeftMouseButton, IE_Released, this, n"OnLeftMouseReleased");
-				}
 
-				UFUNCTION() void OnJumpPressed() {}
-				UFUNCTION() void OnJumpReleased() {}
-				UFUNCTION() void OnSpacePressed() {}
-				UFUNCTION() void OnLeftMouseReleased() {}
-				UFUNCTION() void OnMoveForward(float Value) {}
-				UFUNCTION() void OnTurn(float Value) {}
+					FInputActionHandlerDynamicSignature JumpPressedDelegate;
+					PlayerInputComponent.BindAction(n"Jump", EInputEvent::IE_Pressed, JumpPressedDelegate);
+
+					FInputActionHandlerDynamicSignature JumpReleasedDelegate;
+					PlayerInputComponent.BindAction(n"Jump", EInputEvent::IE_Released, JumpReleasedDelegate);
+
+					FInputAxisHandlerDynamicSignature MoveForwardDelegate;
+					PlayerInputComponent.BindAxis(n"MoveForward", MoveForwardDelegate);
+
+					FInputAxisHandlerDynamicSignature TurnDelegate;
+					PlayerInputComponent.BindAxis(n"Turn", TurnDelegate);
+
+					FInputActionHandlerDynamicSignature SpacePressedDelegate;
+					PlayerInputComponent.BindKey(EKeys::SpaceBar, EInputEvent::IE_Pressed, SpacePressedDelegate);
+
+					FInputActionHandlerDynamicSignature LeftMouseReleasedDelegate;
+					PlayerInputComponent.BindKey(EKeys::LeftMouseButton, EInputEvent::IE_Released, LeftMouseReleasedDelegate);
+				}
 			}
 			)AS"),
 			TEXT("AInputBindingVisibilityPawn"));
@@ -409,14 +432,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 			return;
 		}
 
-		FFunctionInvoker SetupInvoker(*TestRunner, Pawn, FName(TEXT("SetupPlayerInputComponent")));
-		ASSERT_THAT(IsTrue(SetupInvoker.IsValid(), TEXT("SetupPlayerInputComponent should be invokable")));
+		FFunctionInvoker SetupInvoker(*TestRunner, Pawn, FName(TEXT("SetupInput")));
+		ASSERT_THAT(IsTrue(SetupInvoker.IsValid(), TEXT("SetupInput should be invokable")));
 		SetupInvoker.AddParam<UInputComponent*>(InputComponent);
-		ASSERT_THAT(IsTrue(SetupInvoker.Call(), TEXT("SetupPlayerInputComponent should execute")));
+		ASSERT_THAT(IsTrue(SetupInvoker.Call(), TEXT("SetupInput should execute")));
 
 		int32 SetupCallCount = 0;
 		ASSERT_THAT(IsTrue(GetByPath<FIntProperty, int32>(*TestRunner, Pawn, TEXT("SetupCallCount"), SetupCallCount), TEXT("SetupCallCount should be readable")));
-		ASSERT_THAT(AreEqual(1, SetupCallCount, TEXT("SetupPlayerInputComponent should run exactly once")));
+		ASSERT_THAT(AreEqual(1, SetupCallCount, TEXT("SetupInput should run exactly once")));
 
 		ASSERT_THAT(AreEqual(2, InputComponent->GetNumActionBindings(), TEXT("BindAction should add pressed and released action bindings")));
 		ASSERT_THAT(AreEqual(2, InputComponent->AxisBindings.Num(), TEXT("BindAxis should add two axis bindings")));
@@ -426,16 +449,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 		const FInputActionBinding& JumpPressedBinding = InputComponent->GetActionBinding(0);
 		const FInputActionBinding& JumpReleasedBinding = InputComponent->GetActionBinding(1);
 		ASSERT_THAT(AreEqual(FName(TEXT("Jump")), JumpPressedBinding.GetActionName(), TEXT("First action binding should keep the Jump action name")));
-		ASSERT_THAT(AreEqual(static_cast<int32>(IE_Pressed), static_cast<int32>(JumpPressedBinding.KeyEvent.GetValue()), TEXT("First action binding should keep IE_Pressed")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(EInputEvent::IE_Pressed), static_cast<int32>(JumpPressedBinding.KeyEvent.GetValue()), TEXT("First action binding should keep EInputEvent::IE_Pressed")));
 		ASSERT_THAT(AreEqual(FName(TEXT("Jump")), JumpReleasedBinding.GetActionName(), TEXT("Second action binding should keep the Jump action name")));
-		ASSERT_THAT(AreEqual(static_cast<int32>(IE_Released), static_cast<int32>(JumpReleasedBinding.KeyEvent.GetValue()), TEXT("Second action binding should keep IE_Released")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(EInputEvent::IE_Released), static_cast<int32>(JumpReleasedBinding.KeyEvent.GetValue()), TEXT("Second action binding should keep EInputEvent::IE_Released")));
 
 		ASSERT_THAT(AreEqual(FName(TEXT("MoveForward")), InputComponent->AxisBindings[0].AxisName, TEXT("First axis binding should keep MoveForward")));
 		ASSERT_THAT(AreEqual(FName(TEXT("Turn")), InputComponent->AxisBindings[1].AxisName, TEXT("Second axis binding should keep Turn")));
 		ASSERT_THAT(AreEqual(EKeys::SpaceBar, InputComponent->KeyBindings[0].Chord.Key, TEXT("First key binding should keep SpaceBar")));
-		ASSERT_THAT(AreEqual(static_cast<int32>(IE_Pressed), static_cast<int32>(InputComponent->KeyBindings[0].KeyEvent.GetValue()), TEXT("SpaceBar binding should keep IE_Pressed")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(EInputEvent::IE_Pressed), static_cast<int32>(InputComponent->KeyBindings[0].KeyEvent.GetValue()), TEXT("SpaceBar binding should keep EInputEvent::IE_Pressed")));
 		ASSERT_THAT(AreEqual(EKeys::LeftMouseButton, InputComponent->KeyBindings[1].Chord.Key, TEXT("Second key binding should keep LeftMouseButton")));
-		ASSERT_THAT(AreEqual(static_cast<int32>(IE_Released), static_cast<int32>(InputComponent->KeyBindings[1].KeyEvent.GetValue()), TEXT("LeftMouseButton binding should keep IE_Released")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(EInputEvent::IE_Released), static_cast<int32>(InputComponent->KeyBindings[1].KeyEvent.GetValue()), TEXT("LeftMouseButton binding should keep EInputEvent::IE_Released")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -446,17 +469,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		static const FName ModuleName(TEXT("ASCoverageInput_StateQuery"));
-		ON_SCOPE_EXIT
-		{
-			Engine.DiscardModule(*ModuleName.ToString());
-		};
-
-		UClass* ScriptClass = CompileScriptModule(
+		const TArray<FString> ExpectedDiagnostics = { TEXT("GetInputAxisValue") };
+		const bool bFailedAsExpected = CompileAndExpectFailure(
 			*TestRunner,
 			Engine,
-			ModuleName,
-			TEXT("ASCoverageInputStateQuery.as"),
+			TEXT("ASCoverageInput_StateQuery"),
 			ASTEST_AS(R"AS(
 			UCLASS()
 			class AInputQueryController : APlayerController
@@ -492,8 +509,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 				}
 			}
 			)AS"),
-			TEXT("AInputQueryController"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Input state query controller class should compile")));
+			TEXT("GetInputAxisValue by action name should remain an explicit AS binding boundary"),
+			MakeArrayView(ExpectedDiagnostics));
+		ASSERT_THAT(IsTrue(bFailedAsExpected, TEXT("Input state axis query should stay unavailable to AS")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -519,52 +537,118 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 			UCLASS()
 			class AKeyboardInputPawn : APawn
 			{
-				UFUNCTION(BlueprintOverride)
-				void SetupPlayerInputComponent(UInputComponent PlayerInputComponent)
+				UFUNCTION()
+				void SetupInput(UInputComponent PlayerInputComponent)
 				{
-					// WASD movement keys
-					PlayerInputComponent.BindKey(EKeys::W, IE_Pressed, this, n"OnW");
-					PlayerInputComponent.BindKey(EKeys::A, IE_Pressed, this, n"OnA");
-					PlayerInputComponent.BindKey(EKeys::S, IE_Pressed, this, n"OnS");
-					PlayerInputComponent.BindKey(EKeys::D, IE_Pressed, this, n"OnD");
+					BindPressedKey(PlayerInputComponent, EKeys::W, n"OnW");
+					BindPressedKey(PlayerInputComponent, EKeys::A, n"OnA");
+					BindPressedKey(PlayerInputComponent, EKeys::S, n"OnS");
+					BindPressedKey(PlayerInputComponent, EKeys::D, n"OnD");
 
-					// Common action keys
-					PlayerInputComponent.BindKey(EKeys::SpaceBar, IE_Pressed, this, n"OnSpace");
-					PlayerInputComponent.BindKey(EKeys::LeftShift, IE_Pressed, this, n"OnShift");
-					PlayerInputComponent.BindKey(EKeys::LeftControl, IE_Pressed, this, n"OnCtrl");
-					PlayerInputComponent.BindKey(EKeys::LeftAlt, IE_Pressed, this, n"OnAlt");
+					BindPressedKey(PlayerInputComponent, EKeys::SpaceBar, n"OnSpace");
+					BindPressedKey(PlayerInputComponent, EKeys::LeftShift, n"OnShift");
+					BindPressedKey(PlayerInputComponent, EKeys::LeftControl, n"OnCtrl");
+					BindPressedKey(PlayerInputComponent, EKeys::LeftAlt, n"OnAlt");
 
-					// UI keys
-					PlayerInputComponent.BindKey(EKeys::Tab, IE_Pressed, this, n"OnTab");
-					PlayerInputComponent.BindKey(EKeys::Escape, IE_Pressed, this, n"OnEscape");
-					PlayerInputComponent.BindKey(EKeys::Enter, IE_Pressed, this, n"OnEnter");
+					BindPressedKey(PlayerInputComponent, EKeys::Tab, n"OnTab");
+					BindPressedKey(PlayerInputComponent, EKeys::Escape, n"OnEscape");
+					BindPressedKey(PlayerInputComponent, EKeys::Enter, n"OnEnter");
 
-					// Number keys
-					PlayerInputComponent.BindKey(EKeys::One, IE_Pressed, this, n"OnOne");
-					PlayerInputComponent.BindKey(EKeys::Two, IE_Pressed, this, n"OnTwo");
-					PlayerInputComponent.BindKey(EKeys::Nine, IE_Pressed, this, n"OnNine");
+					BindPressedKey(PlayerInputComponent, EKeys::One, n"OnOne");
+					BindPressedKey(PlayerInputComponent, EKeys::Two, n"OnTwo");
+					BindPressedKey(PlayerInputComponent, EKeys::Nine, n"OnNine");
 
-					// Function keys
-					PlayerInputComponent.BindKey(EKeys::F1, IE_Pressed, this, n"OnF1");
-					PlayerInputComponent.BindKey(EKeys::F12, IE_Pressed, this, n"OnF12");
+					BindPressedKey(PlayerInputComponent, EKeys::F1, n"OnF1");
+					BindPressedKey(PlayerInputComponent, EKeys::F12, n"OnF12");
 				}
 
-				UFUNCTION() void OnW() {}
-				UFUNCTION() void OnA() {}
-				UFUNCTION() void OnS() {}
-				UFUNCTION() void OnD() {}
-				UFUNCTION() void OnSpace() {}
-				UFUNCTION() void OnShift() {}
-				UFUNCTION() void OnCtrl() {}
-				UFUNCTION() void OnAlt() {}
-				UFUNCTION() void OnTab() {}
-				UFUNCTION() void OnEscape() {}
-				UFUNCTION() void OnEnter() {}
-				UFUNCTION() void OnOne() {}
-				UFUNCTION() void OnTwo() {}
-				UFUNCTION() void OnNine() {}
-				UFUNCTION() void OnF1() {}
-				UFUNCTION() void OnF12() {}
+				UFUNCTION()
+				void BindPressedKey(UInputComponent PlayerInputComponent, FKey Key, FName FunctionName)
+				{
+					FInputActionHandlerDynamicSignature Delegate;
+					Delegate.BindUFunction(this, FunctionName);
+					PlayerInputComponent.BindKey(Key, EInputEvent::IE_Pressed, Delegate);
+				}
+
+				UFUNCTION()
+				void OnW(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnA(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnS(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnD(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnSpace(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnShift(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnCtrl(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnAlt(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnTab(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnEscape(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnEnter(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnOne(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnTwo(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnNine(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnF1(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnF12(FKey Key)
+				{
+				}
 			}
 			)AS"),
 			TEXT("AKeyboardInputPawn"));
@@ -600,41 +684,79 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 				UPROPERTY()
 				float MouseYValue = 0.0f;
 
-				UFUNCTION(BlueprintOverride)
-				void SetupPlayerInputComponent(UInputComponent PlayerInputComponent)
+				UFUNCTION()
+				void SetupInput(UInputComponent PlayerInputComponent)
 				{
-					// Mouse buttons
-					PlayerInputComponent.BindKey(EKeys::LeftMouseButton, IE_Pressed, this, n"OnLeftMouse");
-					PlayerInputComponent.BindKey(EKeys::RightMouseButton, IE_Pressed, this, n"OnRightMouse");
-					PlayerInputComponent.BindKey(EKeys::MiddleMouseButton, IE_Pressed, this, n"OnMiddleMouse");
-					PlayerInputComponent.BindKey(EKeys::ThumbMouseButton, IE_Pressed, this, n"OnThumbMouse");
-					PlayerInputComponent.BindKey(EKeys::ThumbMouseButton2, IE_Pressed, this, n"OnThumbMouse2");
-
-					// Mouse wheel
-					PlayerInputComponent.BindKey(EKeys::MouseScrollUp, IE_Pressed, this, n"OnScrollUp");
-					PlayerInputComponent.BindKey(EKeys::MouseScrollDown, IE_Pressed, this, n"OnScrollDown");
-
-					// Mouse movement axes
-					PlayerInputComponent.BindAxis(n"MouseX", this, n"OnMouseX");
-					PlayerInputComponent.BindAxis(n"MouseY", this, n"OnMouseY");
+					BindPressedKey(PlayerInputComponent, EKeys::LeftMouseButton, n"OnLeftMouse");
+					BindPressedKey(PlayerInputComponent, EKeys::RightMouseButton, n"OnRightMouse");
+					BindPressedKey(PlayerInputComponent, EKeys::MiddleMouseButton, n"OnMiddleMouse");
+					BindPressedKey(PlayerInputComponent, EKeys::ThumbMouseButton, n"OnThumbMouse");
+					BindPressedKey(PlayerInputComponent, EKeys::ThumbMouseButton2, n"OnThumbMouse2");
+					BindPressedKey(PlayerInputComponent, EKeys::MouseScrollUp, n"OnScrollUp");
+					BindPressedKey(PlayerInputComponent, EKeys::MouseScrollDown, n"OnScrollDown");
+					BindAxisName(PlayerInputComponent, n"MouseX", n"OnMouseX");
+					BindAxisName(PlayerInputComponent, n"MouseY", n"OnMouseY");
 				}
 
-				UFUNCTION() void OnLeftMouse() {}
-				UFUNCTION() void OnRightMouse() {}
-				UFUNCTION() void OnMiddleMouse() {}
-				UFUNCTION() void OnThumbMouse() {}
-				UFUNCTION() void OnThumbMouse2() {}
-				UFUNCTION() void OnScrollUp() {}
-				UFUNCTION() void OnScrollDown() {}
+				UFUNCTION()
+				void BindPressedKey(UInputComponent PlayerInputComponent, FKey Key, FName FunctionName)
+				{
+					FInputActionHandlerDynamicSignature Delegate;
+					Delegate.BindUFunction(this, FunctionName);
+					PlayerInputComponent.BindKey(Key, EInputEvent::IE_Pressed, Delegate);
+				}
 
 				UFUNCTION()
-				void OnMouseX(float Value)
+				void BindAxisName(UInputComponent PlayerInputComponent, FName AxisName, FName FunctionName)
+				{
+					FInputAxisHandlerDynamicSignature Delegate;
+					Delegate.BindUFunction(this, FunctionName);
+					PlayerInputComponent.BindAxis(AxisName, Delegate);
+				}
+
+				UFUNCTION()
+				void OnLeftMouse(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnRightMouse(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnMiddleMouse(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnThumbMouse(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnThumbMouse2(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnScrollUp(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnScrollDown(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnMouseX(float32 Value)
 				{
 					MouseXValue = Value;
 				}
 
 				UFUNCTION()
-				void OnMouseY(float Value)
+				void OnMouseY(float32 Value)
 				{
 					MouseYValue = Value;
 				}
@@ -679,75 +801,135 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 				UPROPERTY()
 				float RightStickYValue = 0.0f;
 
-				UFUNCTION(BlueprintOverride)
-				void SetupPlayerInputComponent(UInputComponent PlayerInputComponent)
+				UFUNCTION()
+				void SetupInput(UInputComponent PlayerInputComponent)
 				{
-					// Face buttons (Xbox layout: A/B/X/Y)
-					PlayerInputComponent.BindKey(EKeys::Gamepad_FaceButton_Bottom, IE_Pressed, this, n"OnFaceBottom");
-					PlayerInputComponent.BindKey(EKeys::Gamepad_FaceButton_Right, IE_Pressed, this, n"OnFaceRight");
-					PlayerInputComponent.BindKey(EKeys::Gamepad_FaceButton_Left, IE_Pressed, this, n"OnFaceLeft");
-					PlayerInputComponent.BindKey(EKeys::Gamepad_FaceButton_Top, IE_Pressed, this, n"OnFaceTop");
-
-					// Shoulder buttons
-					PlayerInputComponent.BindKey(EKeys::Gamepad_LeftShoulder, IE_Pressed, this, n"OnLeftShoulder");
-					PlayerInputComponent.BindKey(EKeys::Gamepad_RightShoulder, IE_Pressed, this, n"OnRightShoulder");
-
-					// Triggers
-					PlayerInputComponent.BindKey(EKeys::Gamepad_LeftTrigger, IE_Pressed, this, n"OnLeftTrigger");
-					PlayerInputComponent.BindKey(EKeys::Gamepad_RightTrigger, IE_Pressed, this, n"OnRightTrigger");
-
-					// D-Pad
-					PlayerInputComponent.BindKey(EKeys::Gamepad_DPad_Up, IE_Pressed, this, n"OnDPadUp");
-					PlayerInputComponent.BindKey(EKeys::Gamepad_DPad_Down, IE_Pressed, this, n"OnDPadDown");
-					PlayerInputComponent.BindKey(EKeys::Gamepad_DPad_Left, IE_Pressed, this, n"OnDPadLeft");
-					PlayerInputComponent.BindKey(EKeys::Gamepad_DPad_Right, IE_Pressed, this, n"OnDPadRight");
-
-					// Start/Select (Special buttons)
-					PlayerInputComponent.BindKey(EKeys::Gamepad_Special_Left, IE_Pressed, this, n"OnSpecialLeft");
-					PlayerInputComponent.BindKey(EKeys::Gamepad_Special_Right, IE_Pressed, this, n"OnSpecialRight");
-
-					// Analog sticks
-					PlayerInputComponent.BindAxis(n"Gamepad_LeftX", this, n"OnLeftStickX");
-					PlayerInputComponent.BindAxis(n"Gamepad_LeftY", this, n"OnLeftStickY");
-					PlayerInputComponent.BindAxis(n"Gamepad_RightX", this, n"OnRightStickX");
-					PlayerInputComponent.BindAxis(n"Gamepad_RightY", this, n"OnRightStickY");
+					BindPressedKey(PlayerInputComponent, EKeys::Gamepad_FaceButton_Bottom, n"OnFaceBottom");
+					BindPressedKey(PlayerInputComponent, EKeys::Gamepad_FaceButton_Right, n"OnFaceRight");
+					BindPressedKey(PlayerInputComponent, EKeys::Gamepad_FaceButton_Left, n"OnFaceLeft");
+					BindPressedKey(PlayerInputComponent, EKeys::Gamepad_FaceButton_Top, n"OnFaceTop");
+					BindPressedKey(PlayerInputComponent, EKeys::Gamepad_LeftShoulder, n"OnLeftShoulder");
+					BindPressedKey(PlayerInputComponent, EKeys::Gamepad_RightShoulder, n"OnRightShoulder");
+					BindPressedKey(PlayerInputComponent, EKeys::Gamepad_LeftTrigger, n"OnLeftTrigger");
+					BindPressedKey(PlayerInputComponent, EKeys::Gamepad_RightTrigger, n"OnRightTrigger");
+					BindPressedKey(PlayerInputComponent, EKeys::Gamepad_DPad_Up, n"OnDPadUp");
+					BindPressedKey(PlayerInputComponent, EKeys::Gamepad_DPad_Down, n"OnDPadDown");
+					BindPressedKey(PlayerInputComponent, EKeys::Gamepad_DPad_Left, n"OnDPadLeft");
+					BindPressedKey(PlayerInputComponent, EKeys::Gamepad_DPad_Right, n"OnDPadRight");
+					BindPressedKey(PlayerInputComponent, EKeys::Gamepad_Special_Left, n"OnSpecialLeft");
+					BindPressedKey(PlayerInputComponent, EKeys::Gamepad_Special_Right, n"OnSpecialRight");
+					BindAxisName(PlayerInputComponent, n"Gamepad_LeftX", n"OnLeftStickX");
+					BindAxisName(PlayerInputComponent, n"Gamepad_LeftY", n"OnLeftStickY");
+					BindAxisName(PlayerInputComponent, n"Gamepad_RightX", n"OnRightStickX");
+					BindAxisName(PlayerInputComponent, n"Gamepad_RightY", n"OnRightStickY");
 				}
 
-				UFUNCTION() void OnFaceBottom() {}
-				UFUNCTION() void OnFaceRight() {}
-				UFUNCTION() void OnFaceLeft() {}
-				UFUNCTION() void OnFaceTop() {}
-				UFUNCTION() void OnLeftShoulder() {}
-				UFUNCTION() void OnRightShoulder() {}
-				UFUNCTION() void OnLeftTrigger() {}
-				UFUNCTION() void OnRightTrigger() {}
-				UFUNCTION() void OnDPadUp() {}
-				UFUNCTION() void OnDPadDown() {}
-				UFUNCTION() void OnDPadLeft() {}
-				UFUNCTION() void OnDPadRight() {}
-				UFUNCTION() void OnSpecialLeft() {}
-				UFUNCTION() void OnSpecialRight() {}
+				UFUNCTION()
+				void BindPressedKey(UInputComponent PlayerInputComponent, FKey Key, FName FunctionName)
+				{
+					FInputActionHandlerDynamicSignature Delegate;
+					Delegate.BindUFunction(this, FunctionName);
+					PlayerInputComponent.BindKey(Key, EInputEvent::IE_Pressed, Delegate);
+				}
 
 				UFUNCTION()
-				void OnLeftStickX(float Value)
+				void BindAxisName(UInputComponent PlayerInputComponent, FName AxisName, FName FunctionName)
+				{
+					FInputAxisHandlerDynamicSignature Delegate;
+					Delegate.BindUFunction(this, FunctionName);
+					PlayerInputComponent.BindAxis(AxisName, Delegate);
+				}
+
+				UFUNCTION()
+				void OnFaceBottom(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnFaceRight(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnFaceLeft(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnFaceTop(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnLeftShoulder(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnRightShoulder(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnLeftTrigger(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnRightTrigger(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnDPadUp(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnDPadDown(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnDPadLeft(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnDPadRight(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnSpecialLeft(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnSpecialRight(FKey Key)
+				{
+				}
+
+				UFUNCTION()
+				void OnLeftStickX(float32 Value)
 				{
 					LeftStickXValue = Value;
 				}
 
 				UFUNCTION()
-				void OnLeftStickY(float Value)
+				void OnLeftStickY(float32 Value)
 				{
 					LeftStickYValue = Value;
 				}
 
 				UFUNCTION()
-				void OnRightStickX(float Value)
+				void OnRightStickX(float32 Value)
 				{
 					RightStickXValue = Value;
 				}
 
 				UFUNCTION()
-				void OnRightStickY(float Value)
+				void OnRightStickY(float32 Value)
 				{
 					RightStickYValue = Value;
 				}
@@ -765,17 +947,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		static const FName ModuleName(TEXT("ASCoverageInput_ComponentFinding"));
-		ON_SCOPE_EXIT
-		{
-			Engine.DiscardModule(*ModuleName.ToString());
+		const TArray<FString> ExpectedDiagnostics = {
+			TEXT("No matching signatures to 'FindComponentByClass(UClass)'")
 		};
-
-		UClass* ScriptClass = CompileScriptModule(
+		const bool bFailedAsExpected = CompileAndExpectFailure(
 			*TestRunner,
 			Engine,
-			ModuleName,
-			TEXT("ASCoverageInputComponentFinding.as"),
+			TEXT("ASCoverageInput_ComponentFindingUnsupported"),
 			ASTEST_AS(R"AS(
 			UCLASS()
 			class AInputComponentFindingPawn : APawn
@@ -791,8 +969,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 				}
 			}
 			)AS"),
-			TEXT("AInputComponentFindingPawn"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Input component finding pawn class should compile")));
+			TEXT("FindComponentByClass should remain an explicit AS input-component lookup boundary"),
+			MakeArrayView(ExpectedDiagnostics));
+		ASSERT_THAT(IsTrue(bFailedAsExpected, TEXT("FindComponentByClass(UClass) should stay unavailable to AS")));
 	}
 
 	// -------------------------------------------------------------------------
@@ -803,17 +982,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		static const FName ModuleName(TEXT("ASCoverageInput_ModeControl"));
-		ON_SCOPE_EXIT
-		{
-			Engine.DiscardModule(*ModuleName.ToString());
+		const TArray<FString> ExpectedDiagnostics = {
+			TEXT("No matching signatures to 'SetShowMouseCursor(const bool)'"),
+			TEXT("No matching signatures to 'GetShowMouseCursor()'")
 		};
-
-		UClass* ScriptClass = CompileScriptModule(
+		const bool bFailedAsExpected = CompileAndExpectFailure(
 			*TestRunner,
 			Engine,
-			ModuleName,
-			TEXT("ASCoverageInputModeControl.as"),
+			TEXT("ASCoverageInput_ModeControlUnsupported"),
 			ASTEST_AS(R"AS(
 			UCLASS()
 			class AInputModeController : APlayerController
@@ -833,8 +1009,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 				}
 			}
 			)AS"),
-			TEXT("AInputModeController"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Input mode control controller class should compile")));
+			TEXT("mouse cursor control helpers should remain explicit AS binding boundaries"),
+			MakeArrayView(ExpectedDiagnostics));
+		ASSERT_THAT(IsTrue(bFailedAsExpected, TEXT("mouse cursor control helpers should stay unavailable to AS")));
 	}
 
 	TEST_METHOD(InputModeSwitchingUnsupportedBoundary)
@@ -1065,7 +1242,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 
 					FInputDebugKeyHandlerDynamicSignature DebugDelegate;
 					DebugDelegate.BindUFunction(this, n"OnDebug");
-					EnhancedComponent.BindDebugKey(FInputChord(EKeys::SpaceBar), IE_Pressed, DebugDelegate, true);
+					EnhancedComponent.BindDebugKey(FInputChord(EKeys::SpaceBar), EInputEvent::IE_Pressed, DebugDelegate, true);
 					bDebugBindingAdded = EnhancedComponent.HasBindings();
 
 					EnhancedComponent.ClearActionEventBindings();
@@ -1349,28 +1526,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 				UPROPERTY()
 				int SetupCallCount = 0;
 
-				UFUNCTION(BlueprintOverride)
-				void SetupPlayerInputComponent(UInputComponent PlayerInputComponent)
+				UFUNCTION()
+				void SetupInput(UInputComponent PlayerInputComponent)
 				{
 					SetupCallCount++;
-					PlayerInputComponent.BindChord(FInputChord(EKeys::LeftMouseButton, true, false, false, false), IE_Pressed, this, n"OnShiftLeftMouse");
-					PlayerInputComponent.BindAxisKey(n"MouseX", this, n"OnMouseXAxis");
-					PlayerInputComponent.BindVectorAxis(EKeys::Tilt, this, n"OnTiltAxis");
-				}
 
-				UFUNCTION()
-				void OnShiftLeftMouse()
-				{
-				}
+					FInputActionHandlerDynamicSignature ChordDelegate;
+					PlayerInputComponent.BindChord(FInputChord(EKeys::LeftMouseButton, true, false, false, false), EInputEvent::IE_Pressed, ChordDelegate);
 
-				UFUNCTION()
-				void OnMouseXAxis(float Value)
-				{
-				}
+					FInputAxisHandlerDynamicSignature AxisKeyDelegate;
+					PlayerInputComponent.BindAxisKey(n"MouseX", AxisKeyDelegate);
 
-				UFUNCTION()
-				void OnTiltAxis(FVector Value)
-				{
+					FInputVectorAxisHandlerDynamicSignature VectorAxisDelegate;
+					PlayerInputComponent.BindVectorAxis(EKeys::Tilt, VectorAxisDelegate);
 				}
 			}
 			)AS"),
@@ -1397,18 +1565,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 			return;
 		}
 
-		FFunctionInvoker SetupInvoker(*TestRunner, Pawn, FName(TEXT("SetupPlayerInputComponent")));
-		ASSERT_THAT(IsTrue(SetupInvoker.IsValid(), TEXT("advanced SetupPlayerInputComponent should be invokable")));
+		FFunctionInvoker SetupInvoker(*TestRunner, Pawn, FName(TEXT("SetupInput")));
+		ASSERT_THAT(IsTrue(SetupInvoker.IsValid(), TEXT("advanced SetupInput should be invokable")));
 		if (!SetupInvoker.IsValid())
 		{
 			return;
 		}
 		SetupInvoker.AddParam<UInputComponent*>(InputComponent);
-		ASSERT_THAT(IsTrue(SetupInvoker.Call(), TEXT("advanced SetupPlayerInputComponent should execute")));
+		ASSERT_THAT(IsTrue(SetupInvoker.Call(), TEXT("advanced SetupInput should execute")));
 
 		int32 SetupCallCount = 0;
 		ASSERT_THAT(IsTrue(GetByPath<FIntProperty, int32>(*TestRunner, Pawn, TEXT("SetupCallCount"), SetupCallCount), TEXT("advanced SetupCallCount should be readable")));
-		ASSERT_THAT(AreEqual(1, SetupCallCount, TEXT("advanced SetupPlayerInputComponent should run exactly once")));
+		ASSERT_THAT(AreEqual(1, SetupCallCount, TEXT("advanced SetupInput should run exactly once")));
 
 		ASSERT_THAT(AreEqual(1, InputComponent->KeyBindings.Num(), TEXT("BindChord should add one key binding")));
 		ASSERT_THAT(AreEqual(1, InputComponent->AxisKeyBindings.Num(), TEXT("BindAxisKey should add one axis-key binding")));
@@ -1421,7 +1589,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 
 		ASSERT_THAT(AreEqual(EKeys::LeftMouseButton, InputComponent->KeyBindings[0].Chord.Key, TEXT("BindChord should keep the mouse key")));
 		ASSERT_THAT(IsTrue(InputComponent->KeyBindings[0].Chord.bShift, TEXT("BindChord should keep the shift modifier")));
-		ASSERT_THAT(AreEqual(static_cast<int32>(IE_Pressed), static_cast<int32>(InputComponent->KeyBindings[0].KeyEvent.GetValue()), TEXT("BindChord should keep IE_Pressed")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(EInputEvent::IE_Pressed), static_cast<int32>(InputComponent->KeyBindings[0].KeyEvent.GetValue()), TEXT("BindChord should keep EInputEvent::IE_Pressed")));
 		ASSERT_THAT(AreEqual(FName(TEXT("MouseX")), InputComponent->AxisKeyBindings[0].AxisKey.GetFName(), TEXT("BindAxisKey should keep MouseX")));
 		ASSERT_THAT(AreEqual(EKeys::Tilt, InputComponent->VectorAxisBindings[0].AxisKey, TEXT("BindVectorAxis should keep Tilt")));
 	}
@@ -1476,7 +1644,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 
 					FInputDebugKeyHandlerDynamicSignature DebugDelegate;
 					DebugDelegate.BindUFunction(this, n"OnDebug");
-					EnhancedComponent.BindDebugKey(FInputChord(EKeys::F), IE_Pressed, DebugDelegate, true);
+					EnhancedComponent.BindDebugKey(FInputChord(EKeys::F), EInputEvent::IE_Pressed, DebugDelegate, true);
 					bSetupRan = EnhancedComponent.HasBindings();
 				}
 			}

@@ -90,7 +90,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWeakReferenceTest,
 				bool GetWorked = false;
 
 				UPROPERTY()
-				bool ResetWorked = false;
+				bool NullAssignmentWorked = false;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -119,11 +119,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWeakReferenceTest,
 						GetWorked = true;
 					}
 
-					// Test Reset()
-					WeakActor.Reset();
+					// Test assignment to null
+					WeakActor = nullptr;
 					if (!WeakActor.IsValid())
 					{
-						ResetWorked = true;
+						NullAssignmentWorked = true;
 					}
 				}
 			}
@@ -149,7 +149,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWeakReferenceTest,
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("AssignmentWorked"), true, TEXT("TWeakObjectPtr assignment should work"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("IsValidWorked"), true, TEXT("TWeakObjectPtr IsValid should work"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("GetWorked"), true, TEXT("TWeakObjectPtr Get should work"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ResetWorked"), true, TEXT("TWeakObjectPtr Reset should work"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("NullAssignmentWorked"), true, TEXT("TWeakObjectPtr assignment to null should work"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -831,7 +831,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWeakReferenceTest,
 					StrongChild.SetParent(this);
 
 					TWeakObjectPtr<AActor> WeakChild = StrongChild;
-					System::ForceGarbageCollection(true);
+					CoverageGC::ForceGarbageCollectionNow();
 
 					StrongForwardReferenceAlive = WeakChild.IsValid() && IsValid(StrongChild);
 					WeakBackReferenceDoesNotOwn = WeakParent.IsValid() && WeakParent.Get() == this && StrongChild.HasWeakParent(this);

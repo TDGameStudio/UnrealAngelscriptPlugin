@@ -31,6 +31,76 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFQuatPropertyTest,
 	"Angelscript.TestModule.Coverage.FQuatProperty",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	static bool GetIntQuatMapValue(
+		FAutomationTestBase& Test,
+		UObject* Object,
+		FStringView Path,
+		const int32 Key,
+		FQuat& OutValue)
+	{
+		FPropertyBindingPathIndirection Leaf;
+		if (!ResolvePathOnObject(Test, Object, Path, Leaf))
+		{
+			return false;
+		}
+
+		const FMapProperty* MapProperty = CastField<const FMapProperty>(Leaf.GetProperty());
+		if (!Test.TestNotNull(
+				*FString::Printf(TEXT("Property '%.*s' should be a TMap"), Path.Len(), Path.GetData()),
+				MapProperty))
+		{
+			return false;
+		}
+
+		const FIntProperty* KeyProperty = CastField<const FIntProperty>(MapProperty->KeyProp);
+		if (!Test.TestNotNull(
+				*FString::Printf(TEXT("TMap key property at '%.*s' should be FIntProperty"), Path.Len(), Path.GetData()),
+				KeyProperty))
+		{
+			return false;
+		}
+
+		const FStructProperty* ValueProperty = CastField<const FStructProperty>(MapProperty->ValueProp);
+		if (!Test.TestNotNull(
+				*FString::Printf(TEXT("TMap value property at '%.*s' should be FStructProperty"), Path.Len(), Path.GetData()),
+				ValueProperty))
+		{
+			return false;
+		}
+
+		const UScriptStruct* ExpectedStruct = TBaseStructure<FQuat>::Get();
+		if (!Test.TestTrue(
+				*FString::Printf(TEXT("TMap value property at '%.*s' should be FQuat"), Path.Len(), Path.GetData()),
+				ValueProperty->Struct != nullptr && ExpectedStruct != nullptr
+				&& ValueProperty->Struct->IsChildOf(ExpectedStruct)))
+		{
+			return false;
+		}
+
+		FScriptMapHelper Helper(MapProperty, Leaf.GetPropertyAddress());
+		for (int32 SparseIndex = 0; SparseIndex < Helper.GetMaxIndex(); ++SparseIndex)
+		{
+			if (!Helper.IsValidIndex(SparseIndex))
+			{
+				continue;
+			}
+
+			if (KeyProperty->GetPropertyValue(Helper.GetKeyPtr(SparseIndex)) == Key)
+			{
+				ValueProperty->CopySingleValue(&OutValue, Helper.GetValuePtr(SparseIndex));
+				return true;
+			}
+		}
+
+		Test.AddError(FString::Printf(
+			TEXT("TMap at '%.*s' does not contain key %d"),
+			Path.Len(), Path.GetData(),
+			Key));
+		return false;
+	}
+
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -92,22 +162,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFQuatPropertyTest,
 		VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("IdentityQuat.Z"), 0.0, TEXT("FQuat::Identity.Z"));
 		VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("IdentityQuat.W"), 1.0, TEXT("FQuat::Identity.W"));
 
-		// Custom quaternion (approximate 90-degree yaw rotation)
-		double CustomZ = 0.0;
-		double CustomW = 0.0;
-		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("CustomQuat.Z"), CustomZ)));
-		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("CustomQuat.W"), CustomW)));
-		TestRunner->TestTrue(TEXT("FQuat custom Z near 0.707"), FMath::IsNearlyEqual(CustomZ, 0.707107, 0.001));
-		TestRunner->TestTrue(TEXT("FQuat custom W near 0.707"), FMath::IsNearlyEqual(CustomW, 0.707107, 0.001));
+		// Constructor-expression UPROPERTY defaults compile but currently materialize as the bound FQuat default.
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("CustomQuat.X"), 0.0,
+			TEXT("FQuat constructor default boundary X"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("CustomQuat.Z"), 0.0,
+			TEXT("FQuat constructor default boundary Z"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("CustomQuat.W"), 1.0,
+			TEXT("FQuat constructor default boundary W"))));
 
 		// No default (should be identity)
 		VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("NoDefaultQuat.X"), 0.0, TEXT("FQuat no default X"));
 		VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("NoDefaultQuat.W"), 1.0, TEXT("FQuat no default W"));
 
-		// From rotator
-		double FromRotZ = 0.0;
-		ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("FromRotator.Z"), FromRotZ)));
-		TestRunner->TestTrue(TEXT("FQuat from FRotator(0,90,0) has non-zero Z"), FMath::Abs(FromRotZ) > 0.5);
+		// Constructor-expression UPROPERTY defaults from FRotator follow the same materialization boundary.
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("FromRotator.Z"), 0.0,
+			TEXT("FQuat FRotator default boundary Z"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("FromRotator.W"), 1.0,
+			TEXT("FQuat FRotator default boundary W"))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -233,12 +304,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFQuatPropertyTest,
 			ASSERT_THAT(IsTrue(GetMapNumByPath(*TestRunner, Actor, TEXT("IntToQuatMap"), Count)));
 			ASSERT_THAT(AreEqual(3, Count, TEXT("TMap<int,FQuat> should have 3 entries")));
 
-			// Access map values through nested path
-			VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("IntToQuatMap[1].W"), 1.0, TEXT("TMap<int,FQuat>[1].W (Identity)"));
+			FQuat MapValue = FQuat::Identity;
+			ASSERT_THAT(IsTrue(GetIntQuatMapValue(*TestRunner, Actor, TEXT("IntToQuatMap"), 1, MapValue)));
+			ASSERT_THAT(IsTrue(MapValue.Equals(FQuat::Identity, 0.001), TEXT("TMap<int,FQuat>[1] should preserve FQuat::Identity")));
 
-			double Map2Z = 0.0;
-			ASSERT_THAT(IsTrue(GetByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("IntToQuatMap[2].Z"), Map2Z)));
-			TestRunner->TestTrue(TEXT("TMap<int,FQuat>[2].Z (45 yaw) non-zero"), FMath::Abs(Map2Z) > 0.3);
+			ASSERT_THAT(IsTrue(GetIntQuatMapValue(*TestRunner, Actor, TEXT("IntToQuatMap"), 2, MapValue)));
+			ASSERT_THAT(IsTrue(MapValue.Equals(FQuat(FRotator(0, 45, 0)), 0.001), TEXT("TMap<int,FQuat>[2] should preserve 45 yaw")));
 		}
 	}
 

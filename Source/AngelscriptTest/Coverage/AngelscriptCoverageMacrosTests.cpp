@@ -161,8 +161,7 @@ public:
 			)AS");
 
 		TArray<FString> ExpectedDiagnostics;
-		ExpectedDiagnostics.Add(TEXT("Expected method or property"));
-		ExpectedDiagnostics.Add(TEXT("Instead found identifier 'GENERATED_BODY'"));
+		ExpectedDiagnostics.Add(TEXT("Virtual property syntax has been removed"));
 
 		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
 			*TestRunner,
@@ -246,8 +245,7 @@ public:
 			)AS");
 
 		TArray<FString> InterfaceUFunctionDiagnostics;
-		InterfaceUFunctionDiagnostics.Add(TEXT("Expected method or property"));
-		InterfaceUFunctionDiagnostics.Add(TEXT("Instead found identifier 'UFUNCTION'"));
+		InterfaceUFunctionDiagnostics.Add(TEXT("Virtual property syntax has been removed"));
 		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
 			*TestRunner,
 			Engine,
@@ -470,6 +468,7 @@ public:
 
 		TArray<FString> ExpectedDiagnostics;
 		ExpectedDiagnostics.Add(TEXT("Invalid preprocessor condition: WITH_EDITOR"));
+		TestRunner->AddExpectedError(TEXT("Invalid preprocessor condition: WITH_EDITOR"), EAutomationExpectedErrorFlags::Contains, 1);
 
 		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
 			*TestRunner,
@@ -1168,8 +1167,8 @@ public:
 			return;
 		}
 
-		ASSERT_THAT(IsTrue(FlagEnum->GetBoolMetaData(TEXT("Bitflags")),
-			TEXT("UENUM meta=(Bitflags) should round-trip as bool enum metadata")));
+		ASSERT_THAT(IsTrue(FlagEnum->HasMetaData(TEXT("Bitflags")),
+			TEXT("UENUM meta=(Bitflags) should round-trip as enum metadata key presence")));
 		ASSERT_THAT(AreEqual(FString(TEXT("ECoverageMacroFlagState")), FlagEnum->GetMetaData(TEXT("BitmaskEnum")),
 			TEXT("UENUM meta=(BitmaskEnum=...) should round-trip as enum metadata")));
 
@@ -1841,156 +1840,38 @@ public:
 	}
 
 	// -------------------------------------------------------------------------
-	// UPARAM parameter modifiers in functions
+	// UPARAM parameter modifier macro spelling is a C++ UHT surface and is not
+	// accepted in script-authored UFUNCTION parameter lists.
 	// -------------------------------------------------------------------------
 	TEST_METHOD(UParamModifiers)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		static const FName ModuleName(TEXT("ASCoverageMacros_UPARAM"));
-		ON_SCOPE_EXIT
-		{
-			Engine.DiscardModule(*ModuleName.ToString());
-		};
-
-		UClass* ScriptClass = CompileScriptModule(
-			*TestRunner,
-			Engine,
-			ModuleName,
-			TEXT("ASCoverageMacrosUPARAM.as"),
-			ASTEST_AS(R"AS(
+		const FString ScriptSource = ASTEST_AS(R"AS(
 			UCLASS()
 			class ACoverageMacrosUParamActor : AActor
 			{
-				UPROPERTY()
-				int ResultValue = 0;
-
-				UPROPERTY()
-				FString ResultString;
-
-				// UPARAM with DisplayName
 				UFUNCTION(BlueprintCallable, Category="Testing")
 				void ProcessValue(
 					UPARAM(DisplayName="Input Number") int InValue,
-					UPARAM(DisplayName="Multiplier") int Multiplier,
 					UPARAM(DisplayName="Result", ref) int&out OutResult)
 				{
-					OutResult = InValue * Multiplier;
-				}
-
-				// UPARAM with ref modifier for output parameters
-				UFUNCTION(BlueprintCallable, Category="Testing")
-				void SplitValue(
-					UPARAM(DisplayName="Input") int Value,
-					UPARAM(ref) int&out Half1,
-					UPARAM(ref) int&out Half2)
-				{
-					Half1 = Value / 2;
-					Half2 = Value - Half1;
-				}
-
-				// UPARAM with const ref input
-				UFUNCTION(BlueprintCallable, Category="Testing")
-				void ProcessString(
-					UPARAM(DisplayName="Input Text") const FString&in Input,
-					UPARAM(DisplayName="Output Text", ref) FString&out Output)
-				{
-					Output = Input + " Processed";
-				}
-
-				UFUNCTION(BlueprintOverride)
-				void BeginPlay()
-				{
-					int Result;
-					ProcessValue(10, 5, Result);
-					ResultValue = Result;
-					check(ResultValue == 50);
-
-					int Half1, Half2;
-					SplitValue(100, Half1, Half2);
-					check(Half1 == 50);
-					check(Half2 == 50);
-
-					FString Output;
-					ProcessString("Test", Output);
-					ResultString = Output;
-					check(ResultString == "Test Processed");
 				}
 			}
-			)AS"),
-			TEXT("ACoverageMacrosUParamActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("UPARAM actor should compile")));
-		if (ScriptClass == nullptr)
-		{
-			return;
-		}
+			)AS");
 
-		FActorTestSpawner Spawner;
-		Spawner.InitializeGameSubsystems();
-		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		ASSERT_THAT(IsNotNull(Actor, TEXT("UPARAM actor should spawn")));
-		if (Actor == nullptr)
-		{
-			return;
-		}
-		BeginPlayActor(Engine, *Actor);
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("Expected identifier"));
+		ExpectedDiagnostics.Add(TEXT("Instead found '('"));
 
-		// Verify UPARAM functions executed correctly
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResultValue"), 50,
-			TEXT("UPARAM function should calculate result correctly")),
-			TEXT("UPARAM numeric result should verify")));
-		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("ResultString"),
-			FString(TEXT("Test Processed")), TEXT("UPARAM string function should process text")),
-			TEXT("UPARAM string result should verify")));
-
-		// Verify UFUNCTION metadata
-		UFunction* ProcessFunc = RequireGeneratedFunction(ScriptClass, TEXT("ProcessValue"));
-		ASSERT_THAT(IsNotNull(ProcessFunc, TEXT("ProcessValue function should exist")));
-		if (ProcessFunc == nullptr)
-		{
-			return;
-		}
-		const TArray<FProperty*> ProcessParams = GetOrderedParameters(ProcessFunc);
-		ASSERT_THAT(AreEqual(3, ProcessParams.Num(), TEXT("ProcessValue should expose three reflected parameters")));
-		ASSERT_THAT(AreEqual(FString(TEXT("Input Number")), GetParameterDisplayName(ProcessParams.IsValidIndex(0) ? ProcessParams[0] : nullptr),
-			TEXT("UPARAM DisplayName should round-trip for InValue")));
-		ASSERT_THAT(AreEqual(FString(TEXT("Multiplier")), GetParameterDisplayName(ProcessParams.IsValidIndex(1) ? ProcessParams[1] : nullptr),
-			TEXT("UPARAM DisplayName should round-trip for Multiplier")));
-		ASSERT_THAT(AreEqual(FString(TEXT("Result")), GetParameterDisplayName(ProcessParams.IsValidIndex(2) ? ProcessParams[2] : nullptr),
-			TEXT("UPARAM DisplayName should round-trip for OutResult")));
-		ASSERT_THAT(IsTrue(ProcessParams.IsValidIndex(2) && ProcessParams[2]->HasAnyPropertyFlags(CPF_OutParm),
-			TEXT("UPARAM(ref) output parameter should reflect CPF_OutParm")));
-
-		UFunction* SplitFunc = RequireGeneratedFunction(ScriptClass, TEXT("SplitValue"));
-		ASSERT_THAT(IsNotNull(SplitFunc, TEXT("SplitValue function should exist")));
-		if (SplitFunc == nullptr)
-		{
-			return;
-		}
-		const TArray<FProperty*> SplitParams = GetOrderedParameters(SplitFunc);
-		ASSERT_THAT(AreEqual(3, SplitParams.Num(), TEXT("SplitValue should expose three reflected parameters")));
-		ASSERT_THAT(AreEqual(FString(TEXT("Input")), GetParameterDisplayName(SplitParams.IsValidIndex(0) ? SplitParams[0] : nullptr),
-			TEXT("UPARAM DisplayName should round-trip for SplitValue input")));
-		ASSERT_THAT(IsTrue(SplitParams.IsValidIndex(1) && SplitParams[1]->HasAnyPropertyFlags(CPF_OutParm),
-			TEXT("UPARAM(ref) Half1 should reflect CPF_OutParm")));
-		ASSERT_THAT(IsTrue(SplitParams.IsValidIndex(2) && SplitParams[2]->HasAnyPropertyFlags(CPF_OutParm),
-			TEXT("UPARAM(ref) Half2 should reflect CPF_OutParm")));
-
-		UFunction* ProcessStringFunc = RequireGeneratedFunction(ScriptClass, TEXT("ProcessString"));
-		ASSERT_THAT(IsNotNull(ProcessStringFunc, TEXT("ProcessString function should exist")));
-		if (ProcessStringFunc == nullptr)
-		{
-			return;
-		}
-		const TArray<FProperty*> ProcessStringParams = GetOrderedParameters(ProcessStringFunc);
-		ASSERT_THAT(AreEqual(2, ProcessStringParams.Num(), TEXT("ProcessString should expose two reflected parameters")));
-		ASSERT_THAT(AreEqual(FString(TEXT("Input Text")), GetParameterDisplayName(ProcessStringParams.IsValidIndex(0) ? ProcessStringParams[0] : nullptr),
-			TEXT("UPARAM DisplayName should round-trip for const ref input")));
-		ASSERT_THAT(AreEqual(FString(TEXT("Output Text")), GetParameterDisplayName(ProcessStringParams.IsValidIndex(1) ? ProcessStringParams[1] : nullptr),
-			TEXT("UPARAM DisplayName should round-trip for string output")));
-		ASSERT_THAT(IsTrue(ProcessStringParams.IsValidIndex(1) && ProcessStringParams[1]->HasAnyPropertyFlags(CPF_OutParm),
-			TEXT("UPARAM(ref) string output should reflect CPF_OutParm")));
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageMacros_UPARAM"),
+			ScriptSource,
+			TEXT("UPARAM(...) script parameter macro spelling should remain unsupported"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------

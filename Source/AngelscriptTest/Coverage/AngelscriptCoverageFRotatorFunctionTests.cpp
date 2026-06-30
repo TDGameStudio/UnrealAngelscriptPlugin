@@ -188,7 +188,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorFunctionTest,
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void ScaleRotator(FRotator&inout, float)"));
 			FRotator Value = FRotator(10, 20, 30);
-			Invoker.AddArgRef(Value).AddArg(2.0f);
+			Invoker.AddArgRef(Value).AddArg(2.0);
 			Invoker.Execute();
 			TestRunner->TestEqual(TEXT("FRotator &inout parameter scales rotator"), Value, FRotator(20, 40, 60));
 		}
@@ -261,6 +261,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorFunctionTest,
 		{
 			return a + b;
 		}
+
+		FRotator AddWithImplicitDefault(FRotator a)
+		{
+			return AddWithDefault(a);
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -283,7 +288,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFRotatorFunctionTest,
 
 		// Call with default (omit second argument)
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FRotator AddWithDefault(FRotator)"));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FRotator AddWithImplicitDefault(FRotator)"));
 			FRotator Arg1 = FRotator(10, 20, 30);
 			Invoker.AddArgRef(Arg1);
 			FRotator Result;

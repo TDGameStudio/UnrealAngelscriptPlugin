@@ -40,9 +40,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFQuatExpressionTest,
 	{
 		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
 		T Result{};
-		if constexpr (std::is_same_v<T, bool>
+		if constexpr (std::is_same_v<T, float>)
+		{
+			Result = static_cast<float>(Invoker.ExecuteAndGet<double>(0.0));
+		}
+		else if constexpr (std::is_same_v<T, bool>
 			|| std::is_same_v<T, int32>
-			|| std::is_same_v<T, float>
 			|| std::is_same_v<T, double>)
 		{
 			Result = Invoker.ExecuteAndGet<T>(T{});

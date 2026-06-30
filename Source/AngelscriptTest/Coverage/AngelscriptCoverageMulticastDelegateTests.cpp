@@ -144,13 +144,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMulticastDelegateTest,
 			ModuleName,
 			TEXT("ASCoverageMulticastDelegateBasics.as"),
 			ASTEST_AS(R"AS(
+			event void FCoverageMulticastBasicsSignal();
+
 			UCLASS()
 			class ACoverageMulticastBasicsActor : AActor
 			{
 				UPROPERTY()
 				int Counter = 0;
 
-				FSimpleMulticastDelegate OnMulticast;
+				UPROPERTY()
+				FCoverageMulticastBasicsSignal OnMulticast;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -229,6 +232,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMulticastDelegateTest,
 			ModuleName,
 			TEXT("ASCoverageMulticastDelegateMultiple.as"),
 			ASTEST_AS(R"AS(
+			event void FCoverageMulticastMultipleSignal();
+
 			UCLASS()
 			class ACoverageMulticastMultipleActor : AActor
 			{
@@ -238,7 +243,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMulticastDelegateTest,
 				UPROPERTY()
 				FString Result;
 
-				FSimpleMulticastDelegate OnMulticast;
+				UPROPERTY()
+				FCoverageMulticastMultipleSignal OnMulticast;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -304,92 +310,42 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMulticastDelegateTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		static const FName ModuleName(TEXT("ASCoverageMulticastDelegate_Handle"));
-		ON_SCOPE_EXIT
-		{
-			Engine.DiscardModule(*ModuleName.ToString());
-		};
+		// AngelScript dynamic multicast delegates (declared with `event`) manage listeners by
+		// (object, function-name) pairs through AddUFunction / Unbind / UnbindObject. They do not
+		// expose C++ FDelegateHandle-based Add/Remove: FDelegateHandle is not an AS data type and
+		// AddUFunction does not return a handle. Captured as a compile boundary instead of a
+		// positive handle-management expectation.
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			event void FCoverageMulticastHandleSignal();
 
-		UClass* ScriptClass = CompileScriptModule(
-			*TestRunner,
-			Engine,
-			ModuleName,
-			TEXT("ASCoverageMulticastDelegateHandle.as"),
-			ASTEST_AS(R"AS(
 			UCLASS()
 			class ACoverageMulticastHandleActor : AActor
 			{
 				UPROPERTY()
-				int Counter = 0;
+				FCoverageMulticastHandleSignal OnMulticast;
 
-				FSimpleMulticastDelegate OnMulticast;
 				FDelegateHandle Handle1;
-				FDelegateHandle Handle2;
-
-				UFUNCTION(BlueprintOverride)
-				void BeginPlay()
-				{
-					// Add two listeners and save handles
-					Handle1 = OnMulticast.AddUFunction(this, n"Listener1");
-					Handle2 = OnMulticast.AddUFunction(this, n"Listener2");
-
-					// Test handle validity
-					if (Handle1.IsValid() && Handle2.IsValid())
-					{
-						Counter = 1;
-					}
-
-					// Broadcast - both should be called
-					OnMulticast.Broadcast();
-
-					// Remove first listener by handle
-					OnMulticast.Remove(Handle1);
-
-					// Broadcast again - only second should be called
-					OnMulticast.Broadcast();
-
-					// Remove second listener by handle
-					OnMulticast.Remove(Handle2);
-
-					// Test IsBound after removing all
-					if (!OnMulticast.IsBound())
-					{
-						Counter += 1000;
-					}
-				}
 
 				UFUNCTION()
 				void Listener1()
 				{
-					Counter += 10;
 				}
 
-				UFUNCTION()
-				void Listener2()
+				void TryHandleManagement()
 				{
-					Counter += 100;
+					Handle1 = OnMulticast.AddUFunction(this, n"Listener1");
+					OnMulticast.Remove(Handle1);
 				}
 			}
-			)AS"),
-			TEXT("ACoverageMulticastHandleActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Multicast-handle actor class should compile")));
-		if (ScriptClass == nullptr)
-		{
-			return;
-		}
-
-		FActorTestSpawner Spawner;
-		Spawner.InitializeGameSubsystems();
-		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		ASSERT_THAT(IsNotNull(Actor, TEXT("Multicast-handle actor should spawn")));
-		if (Actor == nullptr)
-		{
-			return;
-		}
-		BeginPlayActor(Engine, *Actor);
-
-		// Expected: 1 (initial) + 10 + 100 (first broadcast) + 100 (second broadcast) + 1000 (not bound) = 1211
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Counter"), 1211, TEXT("Handle management should work correctly"))));
+			)AS");
+		const TArray<FString> ExpectedDiagnostics = { TEXT("FDelegateHandle") };
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageMulticastDelegate_Handle"),
+			*ScriptSource,
+			TEXT("FDelegateHandle-based multicast add/remove is unsupported; AS uses AddUFunction/Unbind by object and function name"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -412,13 +368,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMulticastDelegateTest,
 			ModuleName,
 			TEXT("ASCoverageMulticastDelegateClear.as"),
 			ASTEST_AS(R"AS(
+			event void FCoverageMulticastClearSignal();
+
 			UCLASS()
 			class ACoverageMulticastClearActor : AActor
 			{
 				UPROPERTY()
 				int Counter = 0;
 
-				FSimpleMulticastDelegate OnMulticast;
+				UPROPERTY()
+				FCoverageMulticastClearSignal OnMulticast;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -515,7 +474,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMulticastDelegateTest,
 			)AS");
 
 		TArray<FString> ExpectedDiagnostics;
-		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'FMulticastDelegate::AddLambda"));
+		ExpectedDiagnostics.Add(TEXT("AddLambda"));
 
 		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
 			*TestRunner,
@@ -546,6 +505,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMulticastDelegateTest,
 			ModuleName,
 			TEXT("ASCoverageMulticastDelegateParameters.as"),
 			ASTEST_AS(R"AS(
+			event void FCoverageMcIntSignal(int Value);
+			event void FCoverageMcIntStringSignal(int IntValue, FString StringValue);
+
 			UCLASS()
 			class ACoverageMulticastParamsActor : AActor
 			{
@@ -555,8 +517,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMulticastDelegateTest,
 				UPROPERTY()
 				FString ConcatenatedString;
 
-				FIntMulticastDelegate OnIntMulticast;
-				FIntStringMulticastDelegate OnIntStringMulticast;
+				UPROPERTY()
+				FCoverageMcIntSignal OnIntMulticast;
+
+				UPROPERTY()
+				FCoverageMcIntStringSignal OnIntStringMulticast;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -641,18 +606,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMulticastDelegateTest,
 			ModuleName,
 			TEXT("ASCoverageMulticastDelegateRemoveAll.as"),
 			ASTEST_AS(R"AS(
+			event void FCoverageMulticastRemoveAllSignal();
+
 			UCLASS()
 			class ACoverageMulticastRemoveAllActor : AActor
 			{
 				UPROPERTY()
 				int Counter = 0;
 
-				FSimpleMulticastDelegate OnMulticast;
+				UPROPERTY()
+				FCoverageMulticastRemoveAllSignal OnMulticast;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
 				{
-					// Add same function multiple times
+					// Add the same (object, function) pair multiple times. AS AddUFunction is
+					// add-unique for dynamic multicast delegates, so duplicate adds collapse to a
+					// single binding rather than stacking three.
 					OnMulticast.AddUFunction(this, n"Handler");
 					OnMulticast.AddUFunction(this, n"Handler");
 					OnMulticast.AddUFunction(this, n"Handler");
@@ -660,11 +630,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMulticastDelegateTest,
 					// Add different function
 					OnMulticast.AddUFunction(this, n"OtherHandler");
 
-					// Broadcast - all four should be called
+					// Broadcast - Handler (once, deduped) + OtherHandler.
 					OnMulticast.Broadcast();
 
-					// RemoveAll for Handler
-					OnMulticast.RemoveAll(this, n"Handler");
+					// Unbind removes the (object, function) binding for Handler.
+					OnMulticast.Unbind(this, n"Handler");
 
 					// Broadcast again - only OtherHandler should be called
 					OnMulticast.Broadcast();
@@ -700,8 +670,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMulticastDelegateTest,
 		}
 		BeginPlayActor(Engine, *Actor);
 
-		// Expected: 3 + 100 (first broadcast) + 100 (second broadcast) = 203
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Counter"), 203, TEXT("RemoveAll should remove all bindings of specified function"))));
+		// Expected: 1 (deduped Handler) + 100 (OtherHandler) on first broadcast, then 100
+		// (OtherHandler only) on the second broadcast after Unbind = 201.
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Counter"), 201, TEXT("Unbind should remove the Handler binding; AddUFunction is add-unique"))));
 	}
 
 	// -------------------------------------------------------------------------

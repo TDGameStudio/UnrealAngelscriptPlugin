@@ -21,7 +21,7 @@
 //   * DelegateBinding           - BindUFunction; BindLambda is a negative
 //                                 AS-facing boundary.
 //   * DelegateExecution         - Execute, ExecuteIfBound.
-//   * DelegateUnbind            - Unbind, IsBound checks.
+//   * DelegateUnbind            - Clear, IsBound checks.
 //   * DelegateLambda            - C++ lambda syntax and capture forms are
 //                                 negative AS-facing boundaries.
 //
@@ -72,6 +72,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 			ModuleName,
 			TEXT("ASCoverageDelegateBasics.as"),
 			ASTEST_AS(R"AS(
+			delegate void FCoverageSimpleDelegate();
+
 			UCLASS()
 			class ACoverageDelegateBasicsActor : AActor
 			{
@@ -81,7 +83,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 				UPROPERTY()
 				bool DelegateWasCalled = false;
 
-				FSimpleDelegate OnSimpleDelegate;
+				FCoverageSimpleDelegate OnSimpleDelegate;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -104,8 +106,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 					// Execute delegate
 					OnSimpleDelegate.Execute();
 
-					// Test Unbind
-					OnSimpleDelegate.Unbind();
+					// Test Clear
+					OnSimpleDelegate.Clear();
 					if (!OnSimpleDelegate.IsBound())
 					{
 						Counter = 3;
@@ -160,6 +162,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 			ModuleName,
 			TEXT("ASCoverageDelegateParameters.as"),
 			ASTEST_AS(R"AS(
+			delegate void FCoverageIntDelegate(int Value);
+			delegate void FCoverageIntStringDelegate(int IntValue, FString StringValue);
+
 			UCLASS()
 			class ACoverageDelegateParamsActor : AActor
 			{
@@ -169,8 +174,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 				UPROPERTY()
 				FString ReceivedString;
 
-				FIntDelegate OnIntDelegate;
-				FIntStringDelegate OnIntStringDelegate;
+				FCoverageIntDelegate OnIntDelegate;
+				FCoverageIntStringDelegate OnIntStringDelegate;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -239,6 +244,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 			ModuleName,
 			TEXT("ASCoverageDelegateReturnValue.as"),
 			ASTEST_AS(R"AS(
+			delegate bool FCoverageBoolRetDelegate();
+			delegate int FCoverageIntRetIntDelegate(int Value);
+
 			UCLASS()
 			class ACoverageDelegateRetValActor : AActor
 			{
@@ -248,8 +256,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 				UPROPERTY()
 				int IntResult = 0;
 
-				FBoolRetDelegate OnBoolRetDelegate;
-				FIntRetIntDelegate OnIntRetIntDelegate;
+				FCoverageBoolRetDelegate OnBoolRetDelegate;
+				FCoverageIntRetIntDelegate OnIntRetIntDelegate;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -318,13 +326,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 			ModuleName,
 			TEXT("ASCoverageDelegateExecuteIfBound.as"),
 			ASTEST_AS(R"AS(
+			delegate void FCoverageExecuteIfBoundDelegate();
+
 			UCLASS()
 			class ACoverageDelegateExecuteIfBoundActor : AActor
 			{
 				UPROPERTY()
 				int Counter = 0;
 
-				FSimpleDelegate OnDelegate;
+				FCoverageExecuteIfBoundDelegate OnDelegate;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -337,8 +347,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 					OnDelegate.BindUFunction(this, n"HandleDelegate");
 					OnDelegate.ExecuteIfBound();
 
-					// Unbind and ExecuteIfBound again - should do nothing
-					OnDelegate.Unbind();
+					// Clear and ExecuteIfBound again - should do nothing
+					OnDelegate.Clear();
 					OnDelegate.ExecuteIfBound();
 					Counter = 3;
 				}
@@ -400,7 +410,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 			)AS");
 
 		TArray<FString> ExpectedDiagnostics;
-		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'FDelegate::BindLambda"));
+		ExpectedDiagnostics.Add(TEXT("No matching signatures to 'FLambdaUnsupportedSignal::BindLambda"));
 
 		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
 			*TestRunner,
@@ -829,13 +839,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 			ModuleName,
 			TEXT("ASCoverageDelegateRebinding.as"),
 			ASTEST_AS(R"AS(
+			delegate void FCoverageRebindingDelegate();
+
 			UCLASS()
 			class ACoverageDelegateRebindingActor : AActor
 			{
 				UPROPERTY()
 				int Result = 0;
 
-				FSimpleDelegate OnDelegate;
+				FCoverageRebindingDelegate OnDelegate;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -902,6 +914,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 			ModuleName,
 			TEXT("ASCoverageDelegateParameterTypes.as"),
 			ASTEST_AS(R"AS(
+			delegate void FCoverageIntFloatBoolDelegate(int I, float F, bool B);
+			delegate void FCoverageStringDelegate(FString S);
+			delegate void FCoverageVectorDelegate(FVector V);
+
 			UCLASS()
 			class ACoverageDelegateParamTypesActor : AActor
 			{
@@ -920,9 +936,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 				UPROPERTY()
 				FVector VectorValue;
 
-				FIntFloatBoolDelegate OnIntFloatBoolDelegate;
-				FStringDelegate OnStringDelegate;
-				FVectorDelegate OnVectorDelegate;
+				FCoverageIntFloatBoolDelegate OnIntFloatBoolDelegate;
+				FCoverageStringDelegate OnStringDelegate;
+				FCoverageVectorDelegate OnVectorDelegate;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -979,7 +995,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDelegateTest,
 		BeginPlayActor(Engine, *Actor);
 
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("IntValue"), 42, TEXT("Int parameter should pass through"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FFloatProperty, float>(*TestRunner, Actor, TEXT("FloatValue"), 3.14f, TEXT("Float parameter should pass through"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FDoubleProperty, double>(*TestRunner, Actor, TEXT("FloatValue"), 3.14, TEXT("Float parameter should pass through"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("BoolValue"), true, TEXT("Bool parameter should pass through"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("StringValue"), FString(TEXT("Hello")), TEXT("FString parameter should pass through"))));
 

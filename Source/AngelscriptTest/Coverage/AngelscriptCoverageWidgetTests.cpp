@@ -2112,8 +2112,8 @@ public:
 				}
 
 				BackSlot.SetPadding(FMargin(1.0f, 2.0f, 3.0f, 4.0f));
-				MiddleSlot.SetHorizontalAlignment(HAlign_Center);
-				FrontSlot.SetVerticalAlignment(VAlign_Bottom);
+				MiddleSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+				FrontSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Bottom);
 				return 1;
 			}
 			)AS");
@@ -3164,8 +3164,8 @@ public:
 				Border.SetBrushColor(FLinearColor(0.65f, 0.55f, 0.45f, 1.0f));
 				Border.SetContentColorAndOpacity(FLinearColor(0.25f, 0.5f, 0.75f, 1.0f));
 				Border.SetPadding(Padding);
-				Border.SetHorizontalAlignment(HAlign_Center);
-				Border.SetVerticalAlignment(VAlign_Bottom);
+				Border.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+				Border.SetVerticalAlignment(EVerticalAlignment::VAlign_Bottom);
 				return Border.SetContent(Content) != null && Content.GetParent() == Border ? 1 : 20;
 			}
 			)AS");

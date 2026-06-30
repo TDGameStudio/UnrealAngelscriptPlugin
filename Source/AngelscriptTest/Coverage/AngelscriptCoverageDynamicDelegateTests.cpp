@@ -29,7 +29,8 @@
 //                                   BindDynamic/AddDynamic/RemoveDynamic are
 //                                   negative C++ macro-name boundaries.
 //   * DynamicDelegateSerialization - Persistence support for dynamic delegates.
-//   * DynamicDelegateBlueprint    - BlueprintAssignable, BlueprintCallable properties.
+//   * DynamicDelegateBlueprint    - BlueprintAssignable, BlueprintCallable
+//                                   property specifier boundaries.
 //
 // Pattern D (script execution) from the Angelscript test guide: compile AS
 // actors, spawn them, drive dynamic delegate operations, verify results
@@ -80,6 +81,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 			ModuleName,
 			TEXT("ASCoverageDynamicDelegateBasics.as"),
 			ASTEST_AS(R"AS(
+			delegate void FCoverageDynamicSimpleDelegate();
+
 			UCLASS()
 			class ACoverageDynamicDelegateBasicsActor : AActor
 			{
@@ -90,7 +93,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 				bool DelegateWasCalled = false;
 
 				// Dynamic delegates (single-cast)
-				FSimpleDelegate OnDynamicEvent;
+				FCoverageDynamicSimpleDelegate OnDynamicEvent;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -169,6 +172,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 			ModuleName,
 			TEXT("ASCoverageDynamicDelegateMulticast.as"),
 			ASTEST_AS(R"AS(
+			event void FCoverageDynamicMulticastEvent();
+
 			UCLASS()
 			class ACoverageDynamicMulticastActor : AActor
 			{
@@ -179,7 +184,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 				FString Result;
 
 				// Dynamic multicast delegate
-				FSimpleMulticastDelegate OnMulticastEvent;
+				FCoverageDynamicMulticastEvent OnMulticastEvent;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -193,7 +198,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 					OnMulticastEvent.Broadcast();
 
 					// Remove one listener
-					OnMulticastEvent.RemoveAll(this, n"Listener2");
+					OnMulticastEvent.Unbind(this, n"Listener2");
 
 					// Broadcast again - only Listener1 and Listener3 should be called
 					OnMulticastEvent.Broadcast();
@@ -264,6 +269,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 			ModuleName,
 			TEXT("ASCoverageDynamicDelegateParameters.as"),
 			ASTEST_AS(R"AS(
+			delegate void FCoverageDynamicIntEvent(int Value);
+			event void FCoverageDynamicIntStringEvent(int IntValue, FString StringValue);
+
 			UCLASS()
 			class ACoverageDynamicParamsActor : AActor
 			{
@@ -273,8 +281,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 				UPROPERTY()
 				FString ReceivedString;
 
-				FIntDelegate OnIntEvent;
-				FIntStringMulticastDelegate OnIntStringEvent;
+				FCoverageDynamicIntEvent OnIntEvent;
+				FCoverageDynamicIntStringEvent OnIntStringEvent;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -324,25 +332,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// BlueprintAssignable property: exposes dynamic delegates to Blueprint.
+	// BlueprintAssignable / BlueprintCallable boundary: the current AS fork
+	// rejects these event property specifiers during preprocessing.
 	// -------------------------------------------------------------------------
 	TEST_METHOD(DynamicDelegateBlueprintAssignableAndCallableMetadata)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		static const FName ModuleName(TEXT("ASCoverageDynamicDelegate_BlueprintAssignableCallable"));
-		ON_SCOPE_EXIT
-		{
-			Engine.DiscardModule(*ModuleName.ToString());
-		};
-
-		UClass* ScriptClass = CompileScriptModule(
-			*TestRunner,
-			Engine,
-			ModuleName,
-			TEXT("ASCoverageDynamicDelegateBlueprintAssignableCallable.as"),
-			ASTEST_AS(R"AS(
+		const FString ScriptSource = ASTEST_AS(R"AS(
 			event void FCoverageBlueprintNoParamEvent();
 			event void FCoverageBlueprintValueEvent(int NewValue);
 
@@ -382,42 +380,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 					EventCount += NewValue;
 				}
 			}
-			)AS"),
-			TEXT("ACoverageBlueprintDelegateMetadataActor"));
-		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Blueprint delegate metadata actor class should compile")));
-		if (ScriptClass == nullptr)
-		{
-			return;
-		}
+			)AS");
 
-		const FMulticastDelegateProperty* AssignableProperty = FindFProperty<FMulticastDelegateProperty>(ScriptClass, TEXT("OnCustomEvent"));
-		const FMulticastDelegateProperty* CallableProperty = FindFProperty<FMulticastDelegateProperty>(ScriptClass, TEXT("OnValueChanged"));
-		ASSERT_THAT(IsNotNull(AssignableProperty, TEXT("BlueprintAssignable event property should be generated")));
-		ASSERT_THAT(IsNotNull(CallableProperty, TEXT("BlueprintCallable event property should be generated")));
-		if (AssignableProperty == nullptr || CallableProperty == nullptr)
-		{
-			return;
-		}
+		TArray<FString> ExpectedDiagnostics;
+		ExpectedDiagnostics.Add(TEXT("Unknown property specifier BlueprintAssignable"));
+		ExpectedDiagnostics.Add(TEXT("Unknown property specifier BlueprintCallable"));
 
-		ASSERT_THAT(IsTrue(AssignableProperty->HasAnyPropertyFlags(CPF_BlueprintAssignable), TEXT("BlueprintAssignable event should carry CPF_BlueprintAssignable")));
-		ASSERT_THAT(IsFalse(AssignableProperty->HasAnyPropertyFlags(CPF_BlueprintCallable), TEXT("BlueprintAssignable-only event should not implicitly become BlueprintCallable")));
-		ASSERT_THAT(IsTrue(CallableProperty->HasAnyPropertyFlags(CPF_BlueprintCallable), TEXT("BlueprintCallable event should carry CPF_BlueprintCallable")));
-		ASSERT_THAT(IsFalse(CallableProperty->HasAnyPropertyFlags(CPF_BlueprintAssignable), TEXT("BlueprintCallable-only event should not implicitly become BlueprintAssignable")));
-		ASSERT_THAT(IsTrue(AssignableProperty->HasAnyPropertyFlags(CPF_BlueprintVisible), TEXT("BlueprintAssignable event should be Blueprint visible")));
-		ASSERT_THAT(IsTrue(CallableProperty->HasAnyPropertyFlags(CPF_BlueprintVisible), TEXT("BlueprintCallable event should be Blueprint visible")));
+		TestRunner->AddExpectedError(TEXT("Unknown property specifier BlueprintAssignable"), EAutomationExpectedErrorFlags::Contains, 1);
+		TestRunner->AddExpectedError(TEXT("Unknown property specifier BlueprintCallable"), EAutomationExpectedErrorFlags::Contains, 1);
 
-		FActorTestSpawner Spawner;
-		Spawner.InitializeGameSubsystems();
-		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
-		ASSERT_THAT(IsNotNull(Actor, TEXT("Blueprint delegate metadata actor should spawn")));
-		if (Actor == nullptr)
-		{
-			return;
-		}
-		BeginPlayActor(Engine, *Actor);
-
-		// Expected: 1 (from HandleCustomEvent) + 50 (from HandleValueChanged) = 51
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EventCount"), 51, TEXT("Blueprint-exposed events should remain callable from AS"))));
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageDynamicDelegate_BlueprintAssignableCallable"),
+			*ScriptSource,
+			TEXT("BlueprintAssignable and BlueprintCallable event property specifiers should remain explicit preprocessing boundaries"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -567,7 +545,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 			)AS");
 
 		TArray<FString> BindDynamicDiagnostics;
-		BindDynamicDiagnostics.Add(TEXT("No matching signatures to 'FDelegate::BindDynamic"));
+		BindDynamicDiagnostics.Add(TEXT("No matching signatures to 'FCoverageDynamicMacroSingle::BindDynamic"));
 
 		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
 			*TestRunner,
@@ -600,7 +578,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 			)AS");
 
 		TArray<FString> AddDynamicDiagnostics;
-		AddDynamicDiagnostics.Add(TEXT("No matching signatures to 'FMulticastDelegate::AddDynamic"));
+		AddDynamicDiagnostics.Add(TEXT("No matching signatures to 'FCoverageDynamicMacroEvent::AddDynamic"));
 
 		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
 			*TestRunner,
@@ -633,7 +611,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 			)AS");
 
 		TArray<FString> RemoveDynamicDiagnostics;
-		RemoveDynamicDiagnostics.Add(TEXT("No matching signatures to 'FMulticastDelegate::RemoveDynamic"));
+		RemoveDynamicDiagnostics.Add(TEXT("No matching signatures to 'FCoverageDynamicMacroEvent::RemoveDynamic"));
 
 		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
 			*TestRunner,
@@ -664,13 +642,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 			ModuleName,
 			TEXT("ASCoverageDynamicDelegateClear.as"),
 			ASTEST_AS(R"AS(
+			event void FCoverageDynamicClearEvent();
+
 			UCLASS()
 			class ACoverageDynamicClearActor : AActor
 			{
 				UPROPERTY()
 				int Counter = 0;
 
-				FSimpleMulticastDelegate OnEvent;
+				FCoverageDynamicClearEvent OnEvent;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -757,6 +737,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 			ModuleName,
 			TEXT("ASCoverageDynamicDelegateReturnValue.as"),
 			ASTEST_AS(R"AS(
+			delegate bool FCoverageDynamicBoolRetEvent();
+			delegate int FCoverageDynamicIntRetIntEvent(int Value);
+
 			UCLASS()
 			class ACoverageDynamicRetValActor : AActor
 			{
@@ -766,8 +749,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 				UPROPERTY()
 				int IntResult = 0;
 
-				FBoolRetDelegate OnBoolRetEvent;
-				FIntRetIntDelegate OnIntRetIntEvent;
+				FCoverageDynamicBoolRetEvent OnBoolRetEvent;
+				FCoverageDynamicIntRetIntEvent OnIntRetIntEvent;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -835,6 +818,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 			ModuleName,
 			TEXT("ASCoverageDynamicDelegateComplexParameters.as"),
 			ASTEST_AS(R"AS(
+			delegate void FCoverageDynamicVectorEvent(FVector V);
+			event void FCoverageDynamicVectorStringIntEvent(FVector V, FString S, int I);
+
 			UCLASS()
 			class ACoverageDynamicComplexParamsActor : AActor
 			{
@@ -847,8 +833,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 				UPROPERTY()
 				int ReceivedInt = 0;
 
-				FVectorDelegate OnVectorEvent;
-				FVectorStringIntMulticastDelegate OnComplexEvent;
+				FCoverageDynamicVectorEvent OnVectorEvent;
+				FCoverageDynamicVectorStringIntEvent OnComplexEvent;
 
 				UFUNCTION(BlueprintOverride)
 				void BeginPlay()
@@ -902,8 +888,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 
 	// -------------------------------------------------------------------------
 	// Dynamic multicast delegate property reflection plus runtime execution with
-	// an AS USTRUCT payload. This covers BlueprintAssignable event properties and
-	// proves the struct fields cross the event argument buffer.
+	// an AS USTRUCT payload. This covers event properties and proves the struct
+	// fields cross the event argument buffer.
 	// -------------------------------------------------------------------------
 	TEST_METHOD(DynamicDelegateStructPayloadPropertyExecutes)
 	{
@@ -937,7 +923,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 			UCLASS()
 			class ACoverageDynamicStructPayloadActor : AActor
 			{
-				UPROPERTY(BlueprintAssignable)
+				UPROPERTY()
 				FCoverageDynamicPayloadEvent OnPayload;
 
 				UPROPERTY()
@@ -981,13 +967,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 		}
 
 		const FMulticastDelegateProperty* PayloadProperty = FindFProperty<FMulticastDelegateProperty>(ScriptClass, TEXT("OnPayload"));
-		ASSERT_THAT(IsNotNull(PayloadProperty, TEXT("BlueprintAssignable struct event should generate FMulticastDelegateProperty")));
+		ASSERT_THAT(IsNotNull(PayloadProperty, TEXT("Struct event should generate FMulticastDelegateProperty")));
 		if (PayloadProperty == nullptr)
 		{
 			return;
 		}
 
-		ASSERT_THAT(IsTrue(PayloadProperty->HasAnyPropertyFlags(CPF_BlueprintAssignable), TEXT("Struct payload event should carry CPF_BlueprintAssignable")));
+		ASSERT_THAT(IsTrue(PayloadProperty->HasAnyPropertyFlags(CPF_BlueprintAssignable | CPF_BlueprintCallable), TEXT("Plain struct payload event should carry default Blueprint assignable/callable flags")));
 		ASSERT_THAT(IsNotNull(PayloadProperty->SignatureFunction, TEXT("Struct payload event should keep its signature function")));
 		if (PayloadProperty->SignatureFunction == nullptr)
 		{
@@ -1187,10 +1173,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 				UPROPERTY()
 				FCoverageDynamicBoolResult SingleBoolResult;
 
-				UPROPERTY(BlueprintAssignable)
+				UPROPERTY()
 				FCoverageDynamicEvent AssignableEvent;
 
-				UPROPERTY(BlueprintCallable)
+				UPROPERTY()
 				FCoverageDynamicValueEvent CallableValueEvent;
 			}
 			)AS"),
@@ -1241,8 +1227,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageDynamicDelegateTest,
 		ASSERT_THAT(IsNotNull(SingleNoParamProperty, TEXT("Single-cast delegate UPROPERTY should generate FDelegateProperty")));
 		ASSERT_THAT(IsNotNull(SingleValueProperty, TEXT("Parameterized delegate UPROPERTY should generate FDelegateProperty")));
 		ASSERT_THAT(IsNotNull(SingleBoolResultProperty, TEXT("Return-value delegate UPROPERTY should generate FDelegateProperty")));
-		ASSERT_THAT(IsNotNull(AssignableEventProperty, TEXT("Assignable event UPROPERTY should generate FMulticastDelegateProperty")));
-		ASSERT_THAT(IsNotNull(CallableValueEventProperty, TEXT("Callable event UPROPERTY should generate FMulticastDelegateProperty")));
+		ASSERT_THAT(IsNotNull(AssignableEventProperty, TEXT("Plain event UPROPERTY should generate FMulticastDelegateProperty")));
+		ASSERT_THAT(IsNotNull(CallableValueEventProperty, TEXT("Plain value event UPROPERTY should generate FMulticastDelegateProperty")));
 	}
 };
 
