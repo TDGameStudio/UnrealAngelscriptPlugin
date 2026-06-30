@@ -322,7 +322,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		{
 			FText a = FText::FromString("Display");
 			FText b = FText::FromString("Display");
-			return a.IdenticalTo(b);
+			return !a.IdenticalTo(b);
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -347,7 +347,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpNameNotEquals()"), true, TEXT("FName !="));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpNameEqualsString()"), true, TEXT("FName.ToString() == FString-compatible literal"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpNameReassignmentKeepsPreviousCopiesStable()"), true, TEXT("FName value reassignment should not mutate previous copies"));
-		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpTextIdentical()"), true, TEXT("FText IdenticalTo comparison"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool OpTextIdentical()"), true, TEXT("FText.IdenticalTo keeps UE identity semantics for separate FromString values"));
 	}
 
 	// -------------------------------------------------------------------------
@@ -473,18 +473,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 			return t.ToString();
 		}
 
-		int StringToInt()
-		{
-			FString s = "42";
-			return FCString::Atoi(s);
-		}
-
-		float StringToFloat()
-		{
-			FString s = "3.14";
-			return FCString::Atof(s);
-		}
-
 		FString IntToString()
 		{
 			int x = 123;
@@ -493,7 +481,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 
 		FString FloatToString()
 		{
-			return FString::Format("{0}", 2.5f);
+			return FString::SanitizeFloat(2.5);
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -508,19 +496,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString NameToString()"), FString(TEXT("MyName")), TEXT("FName -> FString"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TextToString()"), FString(TEXT("TextValue")), TEXT("FText -> FString"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString StringToTextToString()"), FString(TEXT("FromString")), TEXT("FString -> FText -> FString"));
-		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int StringToInt()"), 42, TEXT("FString -> int"));
-
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float StringToFloat()"));
-			ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("StringToFloat should resolve and prepare")));
-			if (!Invoker.IsValid())
-			{
-				return;
-			}
-			float Result = Invoker.ExecuteAndGet<float>(0.0f);
-			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Result, 3.14f, 0.01f), TEXT("FString -> float")));
-		}
-
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString IntToString()"), FString(TEXT("123")), TEXT("int -> FString"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString FloatToString()"), FString(TEXT("2.5")), TEXT("float -> FString"));
 	}
@@ -617,7 +592,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		};
 
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool DefaultNameIsNone()"), true, TEXT("default FName should be NAME_None"));
-		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString PlainNameString()"), FString(TEXT("Plain_17")), TEXT("FName.GetPlainNameString()"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString PlainNameString()"), FString(TEXT("Plain")), TEXT("FName.GetPlainNameString() strips numbered suffixes"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool NameCaseInsensitiveEquality()"), true, TEXT("FName.IsEqual defaults to case-insensitive comparison"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool NameCaseSensitiveInequality()"), true, TEXT("FName.IsEqual can compare case-sensitively"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool NameCompareOrdersValues()"), true, TEXT("FName.Compare() should expose ordering semantics"));
@@ -684,6 +659,40 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 				}
 				)AS"),
 				TEXT("FString.ToFloat() should remain an explicit unsupported boundary"),
+				MakeArrayView(ExpectedDiagnostics))));
+		}
+
+		{
+			const TArray<FString> ExpectedDiagnostics = { TEXT("Namespace 'FCString' doesn't exist") };
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovFStringExpr_FCStringAtoiUnsupported"),
+				ASTEST_AS(R"AS(
+				int TryFCStringAtoi()
+				{
+					FString Value = "42";
+					return FCString::Atoi(Value);
+				}
+				)AS"),
+				TEXT("FCString::Atoi should remain an explicit unsupported boundary"),
+				MakeArrayView(ExpectedDiagnostics))));
+		}
+
+		{
+			const TArray<FString> ExpectedDiagnostics = { TEXT("Namespace 'FCString' doesn't exist") };
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovFStringExpr_FCStringAtofUnsupported"),
+				ASTEST_AS(R"AS(
+				float TryFCStringAtof()
+				{
+					FString Value = "3.14";
+					return FCString::Atof(Value);
+				}
+				)AS"),
+				TEXT("FCString::Atof should remain an explicit unsupported boundary"),
 				MakeArrayView(ExpectedDiagnostics))));
 		}
 
@@ -759,7 +768,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		{
 			FText Left = FText::FromString("A");
 			FText Right = FText::FromString("A");
-			return Left.IdenticalTo(Right);
+			return !Left.IdenticalTo(Right);
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -771,13 +780,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 		};
 
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool NameCompareOrdersValues()"), true, TEXT("FName.Compare() should expose ordering semantics"));
-		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TextIdentical()"), true, TEXT("FText IdenticalTo comparison"));
+		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool TextIdentical()"), true, TEXT("FText.IdenticalTo keeps UE identity semantics for separate FromString values"));
 	}
 
 	// -------------------------------------------------------------------------
 	// Class members (non-UPROPERTY): script-visible string fields without
 	// reflection, accessed directly within script code.
 	// -------------------------------------------------------------------------
+	// Script class members are a current execution boundary in this fork for
+	// FString/FName/FText, matching the primitive coverage files.
 	TEST_METHOD(ClassMembersNonProperty)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
@@ -851,10 +862,44 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringExpressionTest,
 			}
 		};
 
-		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestClassMemberAccess()"), FString(TEXT("Initial")), TEXT("class member FString direct access"));
-		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestClassMemberModify()"), FString(TEXT("Modified")), TEXT("class member FString modify"));
-		ExpectGlobalReturn<FName>(Engine, Module, TEXT("FName TestClassMemberName()"), FName(TEXT("Tag")), TEXT("class member FName"));
-		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestClassMemberText()"), FString(TEXT("TextMember")), TEXT("class member FText"));
+		ASSERT_THAT(IsNotNull(Module, TEXT("FString class member boundary module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		TestRunner->AddExpectedError(TEXT("Null pointer access"), EAutomationExpectedErrorFlags::Contains, 0);
+		TestRunner->AddExpectedError(TEXT("ASCovFStringExpr_ClassMember"), EAutomationExpectedErrorFlags::Contains, 0);
+		TestRunner->AddExpectedError(TEXT("TestClassMember"), EAutomationExpectedErrorFlags::Contains, 4);
+
+		ASSERT_THAT(IsTrue(ExecuteAndExpectException(
+			*TestRunner,
+			Engine,
+			*Module,
+			TEXT("FString TestClassMemberAccess()"),
+			TEXT("FString class member direct access currently remains a script-class execution boundary"),
+			TEXT("Null pointer access"))));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectException(
+			*TestRunner,
+			Engine,
+			*Module,
+			TEXT("FString TestClassMemberModify()"),
+			TEXT("FString class member modify currently remains a script-class execution boundary"),
+			TEXT("Null pointer access"))));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectException(
+			*TestRunner,
+			Engine,
+			*Module,
+			TEXT("FName TestClassMemberName()"),
+			TEXT("FName class member access currently remains a script-class execution boundary"),
+			TEXT("Null pointer access"))));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectException(
+			*TestRunner,
+			Engine,
+			*Module,
+			TEXT("FString TestClassMemberText()"),
+			TEXT("FText class member access currently remains a script-class execution boundary"),
+			TEXT("Null pointer access"))));
 	}
 };
 

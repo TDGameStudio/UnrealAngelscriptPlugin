@@ -50,23 +50,28 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformExpressionTest,
 			return;
 		}
 		T Result{};
-		if constexpr (std::is_same_v<T, bool>
+		if constexpr (std::is_same_v<T, float>)
+		{
+			const double Actual = Invoker.ExecuteAndGet<double>(0.0);
+			ASSERT_THAT(IsNear(static_cast<double>(Expected), Actual, 0.0001, Message));
+		}
+		else if constexpr (std::is_same_v<T, bool>
 			|| std::is_same_v<T, int32>
-			|| std::is_same_v<T, float>
 			|| std::is_same_v<T, double>)
 		{
 			Result = Invoker.ExecuteAndGet<T>(T{});
+			if constexpr (std::is_floating_point_v<T>)
+			{
+				ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Expected, Result, static_cast<T>(0.0001)), Message));
+			}
+			else
+			{
+				ASSERT_THAT(AreEqual(Expected, Result, Message));
+			}
 		}
 		else
 		{
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-		}
-		if constexpr (std::is_floating_point_v<T>)
-		{
-			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Expected, Result, static_cast<T>(0.0001)), Message));
-		}
-		else
-		{
 			ASSERT_THAT(AreEqual(Expected, Result, Message));
 		}
 	}
@@ -194,7 +199,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformExpressionTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// FTransform member access: Location, Rotation, Scale3D.
+	// FTransform accessor/mutator methods. Direct Location/Rotation/Scale3D
+	// members are not exposed on the current AS binding surface.
 	// -------------------------------------------------------------------------
 	TEST_METHOD(TransformMemberAccess)
 	{
@@ -205,33 +211,33 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformExpressionTest,
 		FVector GetLocation()
 		{
 			FTransform T = FTransform(FVector(100, 200, 300));
-			return T.Location;
+			return T.GetLocation();
 		}
 
 		FVector GetScale()
 		{
 			FTransform T = FTransform(FQuat::Identity, FVector::ZeroVector, FVector(2, 3, 4));
-			return T.Scale3D;
+			return T.GetScale3D();
 		}
 
 		FTransform SetLocation()
 		{
 			FTransform T = FTransform::Identity;
-			T.Location = FVector(10, 20, 30);
+			T.SetLocation(FVector(10, 20, 30));
 			return T;
 		}
 
 		FTransform SetScale()
 		{
 			FTransform T = FTransform::Identity;
-			T.Scale3D = FVector(5, 5, 5);
+			T.SetScale3D(FVector(5, 5, 5));
 			return T;
 		}
 
 		FTransform SetRotation()
 		{
 			FTransform T = FTransform::Identity;
-			T.Rotation = FQuat(FRotator(0, 90, 0));
+			T.SetRotation(FQuat(FRotator(0, 90, 0)));
 			return T;
 		}
 		)AS"));
@@ -243,22 +249,45 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformExpressionTest,
 			}
 		};
 
-		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector GetLocation()"), FVector(100, 200, 300), TEXT("FTransform.Location getter"));
-		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector GetScale()"), FVector(2, 3, 4), TEXT("FTransform.Scale3D getter"));
+		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector GetLocation()"), FVector(100, 200, 300), TEXT("FTransform.GetLocation()"));
+		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector GetScale()"), FVector(2, 3, 4), TEXT("FTransform.GetScale3D()"));
 
 		{
 			FTransform Expected(FVector(10, 20, 30));
-			ExpectTransformNearlyEqual(Engine, Module, TEXT("FTransform SetLocation()"), Expected, TEXT("FTransform.Location setter"));
+			ExpectTransformNearlyEqual(Engine, Module, TEXT("FTransform SetLocation()"), Expected, TEXT("FTransform.SetLocation()"));
 		}
 
 		{
 			FTransform Expected(FQuat::Identity, FVector::ZeroVector, FVector(5, 5, 5));
-			ExpectTransformNearlyEqual(Engine, Module, TEXT("FTransform SetScale()"), Expected, TEXT("FTransform.Scale3D setter"));
+			ExpectTransformNearlyEqual(Engine, Module, TEXT("FTransform SetScale()"), Expected, TEXT("FTransform.SetScale3D()"));
 		}
 
 		{
 			FTransform Expected(FRotator(0, 90, 0), FVector::ZeroVector);
-			ExpectTransformNearlyEqual(Engine, Module, TEXT("FTransform SetRotation()"), Expected, TEXT("FTransform.Rotation setter"));
+			ExpectTransformNearlyEqual(Engine, Module, TEXT("FTransform SetRotation()"), Expected, TEXT("FTransform.SetRotation()"));
+		}
+
+		{
+			const TArray<FString> ExpectedDiagnostics = {
+				TEXT("'Location' is not a member of 'FTransform'"),
+				TEXT("'Scale3D' is not a member of 'FTransform'"),
+				TEXT("'Rotation' is not a member of 'FTransform'")
+			};
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovFTransformExpr_DirectMembersUnsupported"),
+				ASTEST_AS(R"AS(
+				void TryDirectMembers()
+				{
+					FTransform T = FTransform::Identity;
+					FVector Location = T.Location;
+					FVector Scale = T.Scale3D;
+					T.Rotation = FQuat::Identity;
+				}
+				)AS"),
+				TEXT("FTransform direct members should remain explicit unsupported boundaries"),
+				MakeArrayView(ExpectedDiagnostics))));
 		}
 	}
 
@@ -600,40 +629,49 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformExpressionTest,
 	}
 
 	// -------------------------------------------------------------------------
-	// FTransform interpolation: Lerp.
+	// FTransform interpolation: Blend/BlendWith are bound. Math::Lerp is not
+	// currently exposed for FTransform and is covered as a negative boundary.
 	// -------------------------------------------------------------------------
 	TEST_METHOD(TransformInterpolation)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFTransformExpr_Lerp", ASTEST_AS(R"AS(
-		FTransform LerpTransforms()
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFTransformExpr_Blend", ASTEST_AS(R"AS(
+		FTransform BlendTransforms()
 		{
 			FTransform A = FTransform(FVector(0, 0, 0));
 			FTransform B = FTransform(FVector(100, 100, 100));
-			return Math::Lerp(A, B, 0.5f);
+			FTransform Result;
+			Result.Blend(A, B, 0.5f);
+			return Result;
 		}
 
-		FTransform LerpAtZero()
+		FTransform BlendAtZero()
 		{
 			FTransform A = FTransform(FVector(100, 200, 300));
 			FTransform B = FTransform(FVector(400, 500, 600));
-			return Math::Lerp(A, B, 0.0f);
+			FTransform Result;
+			Result.Blend(A, B, 0.0f);
+			return Result;
 		}
 
-		FTransform LerpAtOne()
+		FTransform BlendAtOne()
 		{
 			FTransform A = FTransform(FVector(100, 200, 300));
 			FTransform B = FTransform(FVector(400, 500, 600));
-			return Math::Lerp(A, B, 1.0f);
+			FTransform Result;
+			Result.Blend(A, B, 1.0f);
+			return Result;
 		}
 
-		FTransform LerpWithScale()
+		FTransform BlendWithScale()
 		{
 			FTransform A = FTransform(FQuat::Identity, FVector::ZeroVector, FVector(1, 1, 1));
 			FTransform B = FTransform(FQuat::Identity, FVector(100, 0, 0), FVector(3, 3, 3));
-			return Math::Lerp(A, B, 0.5f);
+			FTransform Result;
+			Result.Blend(A, B, 0.5f);
+			return Result;
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -649,17 +687,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformExpressionTest,
 			FTransform B(FVector(100, 100, 100));
 			FTransform Expected;
 			Expected.Blend(A, B, 0.5f);
-			ExpectTransformNearlyEqual(Engine, Module, TEXT("FTransform LerpTransforms()"), Expected, TEXT("FTransform Lerp at 0.5"), 0.01);
+			ExpectTransformNearlyEqual(Engine, Module, TEXT("FTransform BlendTransforms()"), Expected, TEXT("FTransform Blend at 0.5"), 0.01);
 		}
 
 		{
 			FTransform Expected(FVector(100, 200, 300));
-			ExpectTransformNearlyEqual(Engine, Module, TEXT("FTransform LerpAtZero()"), Expected, TEXT("FTransform Lerp at 0.0"), 0.01);
+			ExpectTransformNearlyEqual(Engine, Module, TEXT("FTransform BlendAtZero()"), Expected, TEXT("FTransform Blend at 0.0"), 0.01);
 		}
 
 		{
 			FTransform Expected(FVector(400, 500, 600));
-			ExpectTransformNearlyEqual(Engine, Module, TEXT("FTransform LerpAtOne()"), Expected, TEXT("FTransform Lerp at 1.0"), 0.01);
+			ExpectTransformNearlyEqual(Engine, Module, TEXT("FTransform BlendAtOne()"), Expected, TEXT("FTransform Blend at 1.0"), 0.01);
 		}
 
 		{
@@ -667,7 +705,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformExpressionTest,
 			FTransform B(FQuat::Identity, FVector(100, 0, 0), FVector(3, 3, 3));
 			FTransform Expected;
 			Expected.Blend(A, B, 0.5f);
-			ExpectTransformNearlyEqual(Engine, Module, TEXT("FTransform LerpWithScale()"), Expected, TEXT("FTransform Lerp with scale"), 0.01);
+			ExpectTransformNearlyEqual(Engine, Module, TEXT("FTransform BlendWithScale()"), Expected, TEXT("FTransform Blend with scale"), 0.01);
+		}
+
+		{
+			const TArray<FString> ExpectedDiagnostics = {
+				TEXT("No matching signatures to 'Math::Lerp(FTransform, FTransform, const float32)'")
+			};
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovFTransformExpr_MathLerpUnsupported"),
+				ASTEST_AS(R"AS(
+				FTransform TryMathLerp()
+				{
+					FTransform A = FTransform(FVector(0, 0, 0));
+					FTransform B = FTransform(FVector(100, 100, 100));
+					return Math::Lerp(A, B, 0.5f);
+				}
+				)AS"),
+				TEXT("Math::Lerp(FTransform) should remain an explicit unsupported boundary"),
+				MakeArrayView(ExpectedDiagnostics))));
 		}
 	}
 

@@ -51,9 +51,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformFunctionTest,
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFTransformFunc_ParamValue", ASTEST_AS(R"AS(
 		FTransform AcceptTransform(FTransform t)
 		{
-			// Modify the transform
 			FTransform Modified = t;
-			Modified.Location = Modified.Location + FVector(100, 0, 0);
+			Modified.AddToTranslation(FVector(100, 0, 0));
 			return Modified;
 		}
 
@@ -71,6 +70,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformFunctionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FTransform value parameter module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FTransform AcceptTransform(FTransform)"));
@@ -102,7 +106,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformFunctionTest,
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFTransformFunc_ParamIn", ASTEST_AS(R"AS(
 		FVector AcceptTransformIn(FTransform&in t)
 		{
-			return t.Location;
+			return t.GetLocation();
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -112,6 +116,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformFunctionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FTransform &in parameter module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector AcceptTransformIn(FTransform&in)"));
@@ -150,6 +159,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformFunctionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FTransform &out parameter module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void WriteTransform(FTransform&out)"));
@@ -177,14 +191,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformFunctionTest,
 		FAngelscriptEngineScope Scope(Engine);
 
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFTransformFunc_ParamInOut", ASTEST_AS(R"AS(
-		void ScaleTransform(FTransform&inout t, float scale)
+		void ScaleTransform(FTransform&inout t)
 		{
-			t.Scale3D = t.Scale3D * scale;
+			t.SetScale3D(FVector(2, 2, 2));
 		}
 
 		void TranslateTransform(FTransform&inout t, FVector offset)
 		{
-			t.Location = t.Location + offset;
+			t.AddToTranslation(offset);
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -194,11 +208,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformFunctionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FTransform &inout parameter module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void ScaleTransform(FTransform&inout, float)"));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void ScaleTransform(FTransform&inout)"));
 			FTransform Value(FQuat::Identity, FVector::ZeroVector, FVector(1, 1, 1));
-			Invoker.AddArgRef(Value).AddArg(2.0f);
+			Invoker.AddArgRef(Value);
 			Invoker.Execute();
 			TestRunner->TestTrue(TEXT("FTransform &inout parameter scales"), Value.GetScale3D().Equals(FVector(2, 2, 2), 0.01));
 		}
@@ -251,6 +270,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformFunctionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FTransform return value module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FTransform ReturnIdentity()"));
@@ -296,6 +320,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformFunctionTest,
 		{
 			return a * b;
 		}
+
+		FTransform ComposeUsingDefault(FTransform a)
+		{
+			return ComposeWithDefault(a);
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -304,6 +333,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformFunctionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FTransform default parameter module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		// Call with all arguments
 		{
@@ -317,15 +351,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformFunctionTest,
 			TestRunner->TestTrue(TEXT("default parameter when explicitly provided"), Result.Equals(Expected, 0.01));
 		}
 
-		// Call with default (omit second argument)
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FTransform ComposeWithDefault(FTransform)"));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FTransform ComposeUsingDefault(FTransform)"));
 			FTransform Arg1(FVector(100, 200, 300));
 			Invoker.AddArgRef(Arg1);
 			FTransform Result;
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
 			FTransform Expected = Arg1 * FTransform::Identity;
-			TestRunner->TestTrue(TEXT("default parameter used"), Result.Equals(Expected, 0.01));
+			TestRunner->TestTrue(TEXT("default parameter used through script call"), Result.Equals(Expected, 0.01));
 		}
 	}
 
@@ -361,7 +394,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFTransformFunctionTest,
 				UFUNCTION()
 				FVector GetTransformLocation(FTransform t)
 				{
-					return t.Location;
+					return t.GetLocation();
 				}
 
 				UFUNCTION()

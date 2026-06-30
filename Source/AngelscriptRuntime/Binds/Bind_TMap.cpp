@@ -1051,12 +1051,12 @@ void FAngelscriptMapBinds::GetValues(FScriptMap& Map, asCObjectType* Meta, FScri
 			OutValues.Insert(ArrayIndex, 1, Ops->ValueSize, Ops->ValueAlignment);
 			uint8* DestPtr = static_cast<uint8*>(OutValues.GetData()) + (ArrayIndex * Ops->ValueSize);
 			
-			if (Ops->bKeyNeedConstruct)
+			if (Ops->bValueNeedConstruct)
 			{
 				Ops->ValueType.ConstructValue(DestPtr);
 			}
 			
-			if (Ops->bKeyNeedCopy)
+			if (Ops->bValueNeedCopy)
 			{
 				Ops->ValueType.CopyValue(ValuePtr, DestPtr);
 			}
