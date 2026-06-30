@@ -1,6 +1,7 @@
 #include "Core/AngelscriptEditorModule.h"
 #include "HotReload/AngelscriptDirectoryWatcherInternal.h"
 #include "HotReload/ClassReloadHelper.h"
+#include "AngelscriptCompileOptions.h"
 #include "AngelscriptSettings.h"
 
 #include "AngelscriptEditorDebugBridge.h"
@@ -890,6 +891,12 @@ void FAngelscriptEditorModule::StartupModule()
 			NSLOCTEXT("Angelscript", "AngelscriptSettingsDescription", "Configuration for behavior of the angelscript compiler and script engine."),
 			GetMutableDefault<UAngelscriptSettings>()
 		);
+		SettingsModule->RegisterSettings(
+			"Project", "Plugins", "AngelscriptCompileOptions",
+			NSLOCTEXT("Angelscript", "AngelscriptCompileOptionsTitle", "Angelscript Compile Options"),
+			NSLOCTEXT("Angelscript", "AngelscriptCompileOptionsDescription", "Compile-affecting Angelscript options."),
+			GetMutableDefault<UAngelscriptCompileOptions>()
+		);
 	}
 
 	// Helper to pop open the content browser or asset editor from the debug server
@@ -1133,6 +1140,7 @@ void FAngelscriptEditorModule::ShutdownModule()
 	if (ISettingsModule* SettingsModule = FModuleManager::GetModulePtr<ISettingsModule>("Settings"))
 	{
 		SettingsModule->UnregisterSettings("Project", "Plugins", "Angelscript");
+		SettingsModule->UnregisterSettings("Project", "Plugins", "AngelscriptCompileOptions");
 	}
 
 	// Unregister the tool menu extension

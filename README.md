@@ -52,7 +52,17 @@ For ambiguous edits, offline asset migration, or hand-authored redirects, use th
 
 ## Tests
 
-The `AngelscriptTest` module is included with the plugin because this is a source plugin and the tests are part of its validation surface. In the original host project, tests are run through `Tools/RunTests.ps1`; standalone consumers can run Unreal Automation tests by prefix once the plugin is installed in a host project.
+The `AngelscriptTest` module is included with the plugin because this is a source plugin and the tests are part of its validation surface. Consumer builds default to not registering the Angelscript C++ automation tests.
+
+Enable test registration in the host project before running Angelscript C++ automation tests:
+
+```ini
+; Config/DefaultAngelscriptCompileOptions.ini
+[/Script/AngelscriptRuntime.AngelscriptCompileOptions]
+bCompileAngelscriptUnitTests=true
+```
+
+After changing this file, rebuild the editor target so `AngelscriptTest.Build.cs` can update `WITH_ANGELSCRIPT_UNITTESTS`. In the original host project, tests are run through `Tools/RunTests.ps1`; standalone consumers can run Unreal Automation tests by prefix once the plugin is installed in a host project and rebuilt with test registration enabled.
 
 ## History
 

@@ -34,6 +34,7 @@ DEFINE_LOG_CATEGORY(LogPreprocessorDump);
 
 void FAngelscriptTestModule::StartupModule()
 {
+#if WITH_ANGELSCRIPT_UNITTESTS
 	const bool bUseScanFreeStartupEngine = FParse::Param(FCommandLine::Get(), TEXT("AngelscriptTestUseScanFreeStartupEngine"));
 	if (bUseScanFreeStartupEngine)
 	{
@@ -48,13 +49,16 @@ void FAngelscriptTestModule::StartupModule()
 
 	const bool bPrewarmEngine = FParse::Param(FCommandLine::Get(), TEXT("AngelscriptTestPrewarmEngine"));
 	StartupTestEnginePool(bPrewarmEngine);
+#endif
 	UE_LOG(LogAngelscriptTest, Log, TEXT("AngelscriptTest module started."));
 }
 
 void FAngelscriptTestModule::ShutdownModule()
 {
+#if WITH_ANGELSCRIPT_UNITTESTS
 	UAngelscriptEngineSubsystem::ResetInitializeStateForTesting();
 	ShutdownTestEnginePool();
 	GAngelscriptTestStartupOverrideEngine.Reset();
+#endif
 	UE_LOG(LogAngelscriptTest, Log, TEXT("AngelscriptTest module shut down."));
 }
