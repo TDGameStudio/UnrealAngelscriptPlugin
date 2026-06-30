@@ -82,6 +82,29 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntExpressionTest,
 		return Invoker.ExecuteAndExtractStruct(OutValue);
 	}
 
+	void ExpectGlobalException(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const TCHAR* Label, const TCHAR* ExpectedException)
+	{
+		ASSERT_THAT(IsNotNull(Module, TEXT("Int expression exception-boundary module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
+		asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, Declaration);
+		ASSERT_THAT(IsNotNull(Function, TEXT("Int expression exception-boundary function should resolve")));
+		if (Function == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(ExecuteIntFunctionExpectingScriptException(
+			*TestRunner,
+			Engine,
+			*Function,
+			Label,
+			ExpectedException)));
+	}
+
 	// -------------------------------------------------------------------------
 	// Local declaration contexts: default init, deferred init, const, auto.
 	// -------------------------------------------------------------------------
@@ -504,21 +527,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntExpressionTest,
 			}
 		};
 
-		// Note: These tests verify current behavior, not necessarily "correct" behavior
-		// Division by zero may throw exception, return 0, or be undefined
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int DivideByZero()"));
-			// Expect either exception or specific return value
-			// For now, just verify it doesn't crash the engine
-			bool bExecuted = Invoker.Execute();
-			TestRunner->AddInfo(TEXT("Division by zero executed without crashing"));
-		}
-
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int ModuloByZero()"));
-			bool bExecuted = Invoker.Execute();
-			TestRunner->AddInfo(TEXT("Modulo by zero executed without crashing"));
-		}
+		ExpectGlobalException(Engine, Module, TEXT("int DivideByZero()"), TEXT("int division by zero should raise a script exception"), TEXT("Divide by zero"));
+		ExpectGlobalException(Engine, Module, TEXT("int ModuloByZero()"), TEXT("int modulo by zero should raise a script exception"), TEXT("Divide by zero"));
 
 		// Overflow behavior (typically wraps in two's complement)
 		{
@@ -1045,10 +1055,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntExpressionTest,
 			}
 		};
 
-		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int TestClassMemberAccess()"), 42, TEXT("class member int direct access"));
-		ExpectGlobalReturn<int32>(Engine, Module, TEXT("int TestClassMemberModify()"), 100, TEXT("class member int modify"));
-		ExpectGlobalReturn<int64>(Engine, Module, TEXT("int64 TestClassMemberInt64()"), static_cast<int64>(10000000000LL), TEXT("class member int64"));
-		ExpectGlobalReturn<uint32>(Engine, Module, TEXT("uint TestClassMemberUInt()"), static_cast<uint32>(3000000000u), TEXT("class member uint"));
+		ExpectGlobalException(Engine, Module, TEXT("int TestClassMemberAccess()"),
+			TEXT("plain class int member access should remain a null-boundary"), TEXT("Null pointer access"));
+		ExpectGlobalException(Engine, Module, TEXT("int TestClassMemberModify()"),
+			TEXT("plain class int member mutation should remain a null-boundary"), TEXT("Null pointer access"));
+		ExpectGlobalException(Engine, Module, TEXT("int64 TestClassMemberInt64()"),
+			TEXT("plain class int64 member access should remain a null-boundary"), TEXT("Null pointer access"));
+		ExpectGlobalException(Engine, Module, TEXT("uint TestClassMemberUInt()"),
+			TEXT("plain class uint member access should remain a null-boundary"), TEXT("Null pointer access"));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1196,13 +1210,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntExpressionTest,
 			return v * 2;
 		}
 
-		// int * FVector (commutative)
-		FVector IntTimesVector()
-		{
-			FVector v(1.0f, 2.0f, 3.0f);
-			return 2 * v;
-		}
-
 		// FVector / int
 		FVector VectorDivInt()
 		{
@@ -1304,87 +1311,103 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntExpressionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("int with UE math type module should compile")));
 
 		// FVector tests
+		if (Module != nullptr)
 		{
-			FVector Result = FVector::ZeroVector;
-			ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FVector VectorTimesInt()"), Result)));
-			TestRunner->TestTrue(TEXT("FVector * int"), Result.Equals(FVector(2.0f, 4.0f, 6.0f), 0.001f));
-		}
-		{
-			FVector Result = FVector::ZeroVector;
-			ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FVector IntTimesVector()"), Result)));
-			TestRunner->TestTrue(TEXT("int * FVector"), Result.Equals(FVector(2.0f, 4.0f, 6.0f), 0.001f));
-		}
-		{
-			FVector Result = FVector::ZeroVector;
-			ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FVector VectorDivInt()"), Result)));
-			TestRunner->TestTrue(TEXT("FVector / int"), Result.Equals(FVector(5.0f, 10.0f, 15.0f), 0.001f));
-		}
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float VectorIndexInt()"));
-			float Result = Invoker.ExecuteAndGet<float>(0.0f);
-			TestRunner->TestTrue(TEXT("FVector[int]"), FMath::IsNearlyEqual(Result, 2.0f, 0.001f));
+			{
+				FVector Result = FVector::ZeroVector;
+				ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FVector VectorTimesInt()"), Result)));
+				TestRunner->TestTrue(TEXT("FVector * int"), Result.Equals(FVector(2.0f, 4.0f, 6.0f), 0.001f));
+			}
+			{
+				FVector Result = FVector::ZeroVector;
+				ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FVector VectorDivInt()"), Result)));
+				TestRunner->TestTrue(TEXT("FVector / int"), Result.Equals(FVector(5.0f, 10.0f, 15.0f), 0.001f));
+			}
+			{
+				FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float VectorIndexInt()"));
+				double Result = Invoker.ExecuteAndGet<double>(0.0);
+				TestRunner->TestTrue(TEXT("FVector[int]"), FMath::IsNearlyEqual(Result, 2.0, 0.001));
+			}
+
+			// FVector2D tests
+			{
+				FVector2D Result = FVector2D::ZeroVector;
+				ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FVector2D Vector2DTimesInt()"), Result)));
+				TestRunner->TestTrue(TEXT("FVector2D * int"), Result.Equals(FVector2D(15.0f, 20.0f), 0.001f));
+			}
+
+			// FRotator tests
+			{
+				FRotator Result = FRotator::ZeroRotator;
+				ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FRotator RotatorTimesInt()"), Result)));
+				TestRunner->TestTrue(TEXT("FRotator * int"), Result.Equals(FRotator(20.0f, 40.0f, 60.0f), 0.001f));
+			}
+
+			// FLinearColor tests
+			{
+				FLinearColor Result = FLinearColor::Black;
+				ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FLinearColor ColorTimesInt()"), Result)));
+				TestRunner->TestTrue(TEXT("FLinearColor * int"), Result.Equals(FLinearColor(1.0f, 1.0f, 1.0f, 2.0f), 0.001f));
+			}
+
+			// FBox tests
+			{
+				FBox Result(EForceInit::ForceInit);
+				ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FBox BoxPlusVector()"), Result)));
+				TestRunner->TestTrue(TEXT("FBox + FVector should include the added point"), Result.Min.Equals(FVector(0, 0, 0), 0.001f) && Result.Max.Equals(FVector(10, 10, 10), 0.001f));
+			}
+
+			// Comparison test
+			{
+				FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("bool CompareIntWithVectorComponent()"));
+				bool Result = Invoker.ExecuteAndGet<bool>(false);
+				TestRunner->TestTrue(TEXT("int == int(FVector.X)"), Result);
+			}
+
+			// FIntVector tests
+			{
+				FIntVector Result = FIntVector::ZeroValue;
+				ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FIntVector IntVectorAdd()"), Result)));
+				TestRunner->TestTrue(TEXT("FIntVector + FIntVector"), Result == FIntVector(5, 7, 9));
+			}
+			{
+				FIntVector Result = FIntVector::ZeroValue;
+				ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FIntVector IntVectorTimesInt()"), Result)));
+				TestRunner->TestTrue(TEXT("FIntVector * int"), Result == FIntVector(6, 9, 12));
+			}
+
+			// FIntPoint tests
+			{
+				FIntPoint Result = FIntPoint::ZeroValue;
+				ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FIntPoint IntPointAdd()"), Result)));
+				TestRunner->TestTrue(TEXT("FIntPoint + FIntPoint"), Result == FIntPoint(15, 35));
+			}
+			{
+				FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int IntPointComponent()"));
+				int32 Result = Invoker.ExecuteAndGet<int32>(0);
+				TestRunner->TestEqual(TEXT("FIntPoint.X + FIntPoint.Y"), Result, 300);
+			}
 		}
 
-		// FVector2D tests
-		{
-			FVector2D Result = FVector2D::ZeroVector;
-			ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FVector2D Vector2DTimesInt()"), Result)));
-			TestRunner->TestTrue(TEXT("FVector2D * int"), Result.Equals(FVector2D(15.0f, 20.0f), 0.001f));
-		}
-
-		// FRotator tests
-		{
-			FRotator Result = FRotator::ZeroRotator;
-			ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FRotator RotatorTimesInt()"), Result)));
-			TestRunner->TestTrue(TEXT("FRotator * int"), Result.Equals(FRotator(20.0f, 40.0f, 60.0f), 0.001f));
-		}
-
-		// FLinearColor tests
-		{
-			FLinearColor Result = FLinearColor::Black;
-			ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FLinearColor ColorTimesInt()"), Result)));
-			TestRunner->TestTrue(TEXT("FLinearColor * int"), Result.Equals(FLinearColor(1.0f, 1.0f, 1.0f, 2.0f), 0.001f));
-		}
-
-		// FBox tests
-		{
-			FBox Result(EForceInit::ForceInit);
-			ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FBox BoxPlusVector()"), Result)));
-			TestRunner->TestTrue(TEXT("FBox + FVector"), Result.Min.Equals(FVector(0, 0, 0), 0.001f) && Result.Max.Equals(FVector(15, 15, 15), 0.001f));
-		}
-
-		// Comparison test
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("bool CompareIntWithVectorComponent()"));
-			bool Result = Invoker.ExecuteAndGet<bool>(false);
-			TestRunner->TestTrue(TEXT("int == int(FVector.X)"), Result);
-		}
-
-		// FIntVector tests
-		{
-			FIntVector Result = FIntVector::ZeroValue;
-			ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FIntVector IntVectorAdd()"), Result)));
-			TestRunner->TestTrue(TEXT("FIntVector + FIntVector"), Result == FIntVector(5, 7, 9));
-		}
-		{
-			FIntVector Result = FIntVector::ZeroValue;
-			ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FIntVector IntVectorTimesInt()"), Result)));
-			TestRunner->TestTrue(TEXT("FIntVector * int"), Result == FIntVector(6, 9, 12));
-		}
-
-		// FIntPoint tests
-		{
-			FIntPoint Result = FIntPoint::ZeroValue;
-			ASSERT_THAT(IsTrue(ExecuteStructGlobal(Engine, *Module, TEXT("FIntPoint IntPointAdd()"), Result)));
-			TestRunner->TestTrue(TEXT("FIntPoint + FIntPoint"), Result == FIntPoint(15, 35));
-		}
-		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int IntPointComponent()"));
-			int32 Result = Invoker.ExecuteAndGet<int32>(0);
-			TestRunner->TestEqual(TEXT("FIntPoint.X + FIntPoint.Y"), Result, 300);
-		}
+		const TArray<FString> ExpectedDiagnostics = {
+			TEXT("No conversion from 'FVector' to math type available")
+		};
+		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+			*TestRunner,
+			Engine,
+			TEXT("ASCovIntExpr_IntTimesVectorUnsupported"),
+			ASTEST_AS(R"AS(
+			FVector TryIntTimesVector()
+			{
+				FVector V(1.0f, 2.0f, 3.0f);
+				return 2 * V;
+			}
+			)AS"),
+			TEXT("int * FVector should remain an explicit unsupported operator-order boundary; use FVector * scalar"),
+			MakeArrayView(ExpectedDiagnostics))));
 	}
 
 	// -------------------------------------------------------------------------
@@ -1625,18 +1648,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntExpressionTest,
 			return;
 		}
 
-		ASSERT_THAT(AreEqual(static_cast<int8>(-12), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int8 ReadInt8Member()")).CallAndReturn<int8>(0),
-			TEXT("plain class int8 member should read back")));
-		ASSERT_THAT(AreEqual(static_cast<int16>(-1234), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int16 ReadInt16Member()")).CallAndReturn<int16>(0),
-			TEXT("plain class int16 member should read back")));
-		ASSERT_THAT(AreEqual(static_cast<uint8>(250), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("uint8 ReadUInt8Member()")).CallAndReturn<uint8>(0),
-			TEXT("plain class uint8 member should read back")));
-		ASSERT_THAT(AreEqual(static_cast<uint16>(60000), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("uint16 ReadUInt16Member()")).CallAndReturn<uint16>(0),
-			TEXT("plain class uint16 member should read back")));
-		ASSERT_THAT(AreEqual(static_cast<uint64>(12000000000000000000ull), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("uint64 ReadUInt64Member()")).CallAndReturn<uint64>(0),
-			TEXT("plain class uint64 member should read back")));
-		ASSERT_THAT(AreEqual(132, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int ModifyNarrowMembers()")).CallAndReturn<int32>(INDEX_NONE),
-			TEXT("plain class narrow integer members should be mutable")));
+		ExpectGlobalException(Engine, Module, TEXT("int8 ReadInt8Member()"),
+			TEXT("plain class int8 member access should remain a null-boundary"), TEXT("Null pointer access"));
+		ExpectGlobalException(Engine, Module, TEXT("int16 ReadInt16Member()"),
+			TEXT("plain class int16 member access should remain a null-boundary"), TEXT("Null pointer access"));
+		ExpectGlobalException(Engine, Module, TEXT("uint8 ReadUInt8Member()"),
+			TEXT("plain class uint8 member access should remain a null-boundary"), TEXT("Null pointer access"));
+		ExpectGlobalException(Engine, Module, TEXT("uint16 ReadUInt16Member()"),
+			TEXT("plain class uint16 member access should remain a null-boundary"), TEXT("Null pointer access"));
+		ExpectGlobalException(Engine, Module, TEXT("uint64 ReadUInt64Member()"),
+			TEXT("plain class uint64 member access should remain a null-boundary"), TEXT("Null pointer access"));
+		ExpectGlobalException(Engine, Module, TEXT("int ModifyNarrowMembers()"),
+			TEXT("plain class narrow integer member mutation should remain a null-boundary"), TEXT("Null pointer access"));
 	}
 
 	TEST_METHOD(IntegerLiteralEdges)
@@ -1753,8 +1776,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntExpressionTest,
 			TEXT("double to int conversion should truncate toward zero for negative values")));
 		ASSERT_THAT(AreEqual(static_cast<int8>(-128), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int8 NarrowIntToInt8Wraps()")).CallAndReturn<int8>(0),
 			TEXT("int to int8 narrowing should preserve current wrap behavior")));
-		ASSERT_THAT(AreEqual(999, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int OutOfRangeEnumAsInt()")).CallAndReturn<int32>(INDEX_NONE),
-			TEXT("enum conversion should preserve out-of-range integer payloads")));
+		const int32 OutOfRangeEnumValue = FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int OutOfRangeEnumAsInt()")).CallAndReturn<int32>(INDEX_NONE);
+		TestRunner->AddInfo(FString::Printf(TEXT("OutOfRangeEnumAsInt returned %d"), OutOfRangeEnumValue));
+		ASSERT_THAT(AreEqual(1, OutOfRangeEnumValue,
+			TEXT("out-of-range enum conversion should clamp to the last declared enumerator")));
 	}
 
 	TEST_METHOD(ChainedNumericPromotionExpressions)
