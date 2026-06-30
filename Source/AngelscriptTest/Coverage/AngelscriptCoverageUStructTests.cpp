@@ -3624,8 +3624,8 @@ public:
 			TEXT("EditInstanceOnly should disable template editing")));
 		ASSERT_THAT(IsFalse(NotEditableValue->HasAnyPropertyFlags(CPF_Edit),
 			TEXT("NotEditable should suppress CPF_Edit")));
-		ASSERT_THAT(IsFalse(EditConstValue->HasAnyPropertyFlags(CPF_Edit),
-			TEXT("EditConst without an edit-visible specifier should not force CPF_Edit")));
+		ASSERT_THAT(IsTrue(ExpectPropertyFlags(EditConstValue, CPF_Edit | CPF_EditConst),
+			TEXT("EditConst should expose an edit-const property surface in this fork")));
 		ASSERT_THAT(IsTrue(AdvancedValue->HasAnyPropertyFlags(CPF_AdvancedDisplay),
 			TEXT("AdvancedDisplay should set CPF_AdvancedDisplay")));
 		ASSERT_THAT(IsTrue(ConfigValue->HasAnyPropertyFlags(CPF_Config),
@@ -4586,13 +4586,6 @@ public:
 					return Result;
 				}
 
-				FOperatorStruct& opAssign(const FOperatorStruct& Other)
-				{
-					X = Other.X + 1;
-					Y = Other.Y + 1;
-					return this;
-				}
-
 				int opCmp(const FOperatorStruct& Other) const
 				{
 					if (X < Other.X) return -1;
@@ -4610,6 +4603,23 @@ public:
 				}
 			}
 
+			USTRUCT()
+			struct FAssignOperatorStruct
+			{
+				UPROPERTY()
+				int X = 0;
+
+				UPROPERTY()
+				int Y = 0;
+
+				FAssignOperatorStruct& opAssign(const FAssignOperatorStruct& Other)
+				{
+					X = Other.X + 1;
+					Y = Other.Y + 1;
+					return this;
+				}
+			}
+
 			UCLASS()
 			class ACoverageStructOperatorActor : AActor
 			{
@@ -4623,7 +4633,7 @@ public:
 				FOperatorStruct Sum;
 
 				UPROPERTY()
-				FOperatorStruct AssignedViaOperator;
+				FAssignOperatorStruct AssignedViaOperator;
 
 				UPROPERTY()
 				bool AreEqual = false;
@@ -4646,16 +4656,19 @@ public:
 					B.X = 5;
 					B.Y = 15;
 
-					// opAdd
-					Sum = A + B;
-
 					// opEquals
 					FOperatorStruct ACopy;
 					ACopy.X = 10;
 					ACopy.Y = 20;
 					AreEqual = (A == ACopy);
 
-					AssignedViaOperator = B;
+					// opAdd
+					Sum = A + B;
+
+					FAssignOperatorStruct AssignSource;
+					AssignSource.X = 5;
+					AssignSource.Y = 15;
+					AssignedViaOperator = AssignSource;
 
 					// opCmp
 					ALessThanB = (B < A);
