@@ -71,9 +71,24 @@ private:
 		return Parameter != nullptr ? Parameter->GetMetaData(TEXT("DisplayName")) : FString();
 	}
 
-	static FName GetStaticsClassName(FName ModuleName)
+	static FString MakeExpectedStaticsClassName(const FString& ModuleNameString)
 	{
-		return FName(*FString::Printf(TEXT("UModule_%sStatics"), *ModuleName.ToString()));
+		FString Identifier;
+		Identifier.Reserve(ModuleNameString.Len());
+		for (const TCHAR Character : ModuleNameString)
+		{
+			Identifier += FAngelscriptEngine::IsValidIdentifierCharacter(Character) ? Character : TEXT('_');
+		}
+
+		return FString::Printf(TEXT("Module_%sStatics"), *Identifier);
+	}
+
+	static FName GetStaticsClassNameFromFilename(const FString& Filename)
+	{
+		FString ModuleName = Filename.Replace(TEXT("\\"), TEXT("/"));
+		ModuleName.RemoveFromEnd(TEXT(".as"));
+		ModuleName = ModuleName.Replace(TEXT("/"), TEXT("."));
+		return FName(*FString::Printf(TEXT("U%s"), *MakeExpectedStaticsClassName(ModuleName)));
 	}
 
 	static bool HasAllFunctionFlags(const UFunction* Function, EFunctionFlags RequiredFlags)
@@ -1911,6 +1926,7 @@ public:
 		FAngelscriptEngineScope Scope(Engine);
 
 		static const FName ModuleName(TEXT("ASCoverageUFunction_StaticGlobalReflection"));
+		static const FString Filename(TEXT("ASCoverageUFunctionStaticGlobalReflection.as"));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
@@ -1926,7 +1942,7 @@ public:
 		const bool bCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
 			ModuleName,
-			TEXT("ASCoverageUFunctionStaticGlobalReflection.as"),
+			Filename,
 			ScriptSource);
 		ASSERT_THAT(IsTrue(bCompiled, TEXT("global UFUNCTION module should compile")));
 		if (!bCompiled)
@@ -1934,7 +1950,7 @@ public:
 			return;
 		}
 
-		UClass* StaticsClass = FindGeneratedClass(&Engine, GetStaticsClassName(ModuleName));
+		UClass* StaticsClass = FindGeneratedClass(&Engine, GetStaticsClassNameFromFilename(Filename));
 		ASSERT_THAT(IsNotNull(StaticsClass, TEXT("global UFUNCTION should generate a module statics class")));
 		if (StaticsClass == nullptr)
 		{
@@ -1999,6 +2015,7 @@ public:
 		FAngelscriptEngineScope Scope(Engine);
 
 		static const FName ModuleName(TEXT("ASCoverageUFunction_StaticWorldContextGeneration"));
+		static const FString Filename(TEXT("ASCoverageUFunctionStaticWorldContextGeneration.as"));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
@@ -2031,7 +2048,7 @@ public:
 		const bool bCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
 			ModuleName,
-			TEXT("ASCoverageUFunctionStaticWorldContextGeneration.as"),
+			Filename,
 			ScriptSource);
 		ASSERT_THAT(IsTrue(bCompiled, TEXT("static world-context UFUNCTION module should compile")));
 		if (!bCompiled)
@@ -2039,7 +2056,7 @@ public:
 			return;
 		}
 
-		UClass* StaticsClass = FindGeneratedClass(&Engine, GetStaticsClassName(ModuleName));
+		UClass* StaticsClass = FindGeneratedClass(&Engine, GetStaticsClassNameFromFilename(Filename));
 		ASSERT_THAT(IsNotNull(StaticsClass, TEXT("static world-context UFUNCTIONs should generate a statics class")));
 		if (StaticsClass == nullptr)
 		{
@@ -2150,6 +2167,7 @@ public:
 		FAngelscriptEngineScope Scope(Engine);
 
 		static const FName ModuleName(TEXT("ASCoverageUFunction_StaticGlobalComplexParameters"));
+		static const FString Filename(TEXT("ASCoverageUFunctionStaticGlobalComplexParameters.as"));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
@@ -2198,7 +2216,7 @@ public:
 		const bool bCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
 			ModuleName,
-			TEXT("ASCoverageUFunctionStaticGlobalComplexParameters.as"),
+			Filename,
 			ScriptSource);
 		ASSERT_THAT(IsTrue(bCompiled, TEXT("static global complex UFUNCTION module should compile")));
 		if (!bCompiled)
@@ -2206,7 +2224,7 @@ public:
 			return;
 		}
 
-		UClass* StaticsClass = FindGeneratedClass(&Engine, GetStaticsClassName(ModuleName));
+		UClass* StaticsClass = FindGeneratedClass(&Engine, GetStaticsClassNameFromFilename(Filename));
 		ASSERT_THAT(IsNotNull(StaticsClass, TEXT("complex global UFUNCTIONs should generate a statics class")));
 		if (StaticsClass == nullptr)
 		{
@@ -2385,6 +2403,7 @@ public:
 		FAngelscriptEngineScope Scope(Engine);
 
 		static const FName ModuleName(TEXT("ASCoverageUFunction_StaticAdvancedMetadata"));
+		static const FString Filename(TEXT("ASCoverageUFunctionStaticAdvancedMetadata.as"));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
@@ -2425,7 +2444,7 @@ public:
 		const bool bCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
 			ModuleName,
-			TEXT("ASCoverageUFunctionStaticAdvancedMetadata.as"),
+			Filename,
 			ScriptSource);
 		ASSERT_THAT(IsTrue(bCompiled, TEXT("static advanced metadata UFUNCTION module should compile")));
 		if (!bCompiled)
@@ -2433,7 +2452,7 @@ public:
 			return;
 		}
 
-		UClass* StaticsClass = FindGeneratedClass(&Engine, GetStaticsClassName(ModuleName));
+		UClass* StaticsClass = FindGeneratedClass(&Engine, GetStaticsClassNameFromFilename(Filename));
 		ASSERT_THAT(IsNotNull(StaticsClass, TEXT("static advanced metadata functions should generate a statics class")));
 		if (StaticsClass == nullptr)
 		{
@@ -3129,9 +3148,9 @@ public:
 		}
 		ASSERT_THAT(IsTrue(ChildClass->IsChildOf(ScriptClass), TEXT("BlueprintOverride lifecycle child should inherit from base actor")));
 
-		UFunction* BeginPlayFunction = FindFunctionForTest(ChildClass, TEXT("BeginPlay"));
+		UFunction* BeginPlayFunction = FindFunctionForTest(ChildClass, TEXT("ReceiveBeginPlay"));
 		UFunction* TickFunction = FindFunctionForTest(ChildClass, TEXT("Tick"));
-		ASSERT_THAT(IsNotNull(BeginPlayFunction, TEXT("BeginPlay BlueprintOverride should be generated")));
+		ASSERT_THAT(IsNotNull(BeginPlayFunction, TEXT("BeginPlay BlueprintOverride should materialize the native ReceiveBeginPlay event wrapper")));
 		ASSERT_THAT(IsNotNull(TickFunction, TEXT("Tick BlueprintOverride should be generated")));
 		if (BeginPlayFunction == nullptr || TickFunction == nullptr)
 		{
@@ -3139,7 +3158,7 @@ public:
 		}
 
 		ASSERT_THAT(IsTrue(BeginPlayFunction->HasAnyFunctionFlags(FUNC_BlueprintEvent),
-			TEXT("BlueprintOverride BeginPlay should surface as a BlueprintEvent function")));
+			TEXT("BlueprintOverride BeginPlay should surface through the native BlueprintEvent wrapper")));
 		ASSERT_THAT(IsTrue(TickFunction->HasAnyFunctionFlags(FUNC_BlueprintEvent),
 			TEXT("BlueprintOverride Tick should surface as a BlueprintEvent function")));
 		ASSERT_THAT(IsNotNull(FindParameterForTest(TickFunction, TEXT("DeltaSeconds")),
@@ -3254,19 +3273,9 @@ public:
 				}
 
 				UFUNCTION(BlueprintCallable, Category="Coverage|NativeEvents")
-				void DispatchActorEvents()
-				{
-					ActorBeginOverlap(this);
-					ActorEndOverlap(this);
-					EndPlay(EEndPlayReason::Destroyed);
-					Destroyed();
-					OnReset();
-				}
-
-				UFUNCTION(BlueprintCallable, Category="Coverage|NativeEvents")
 				void ReadTransformByConstRef(const FTransform&in Transform)
 				{
-					FVector Location = Transform.Location;
+					FVector Location = Transform.GetLocation();
 					LastTransformScore = int(Location.X + Location.Y + Location.Z);
 				}
 			}
@@ -3290,7 +3299,6 @@ public:
 		UFunction* EndPlay = FindFunctionForTest(ScriptClass, TEXT("EndPlay"));
 		UFunction* Destroyed = FindFunctionForTest(ScriptClass, TEXT("Destroyed"));
 		UFunction* OnReset = FindFunctionForTest(ScriptClass, TEXT("OnReset"));
-		UFunction* DispatchActorEvents = FindFunctionForTest(ScriptClass, TEXT("DispatchActorEvents"));
 		UFunction* ReadTransformByConstRef = FindFunctionForTest(ScriptClass, TEXT("ReadTransformByConstRef"));
 		ASSERT_THAT(IsNotNull(UserConstructionScript, TEXT("UserConstructionScript BlueprintOverride should be generated")));
 		ASSERT_THAT(IsNotNull(ActorBeginOverlap, TEXT("ActorBeginOverlap BlueprintOverride should be generated")));
@@ -3298,10 +3306,9 @@ public:
 		ASSERT_THAT(IsNotNull(EndPlay, TEXT("EndPlay BlueprintOverride should be generated")));
 		ASSERT_THAT(IsNotNull(Destroyed, TEXT("Destroyed BlueprintOverride should be generated")));
 		ASSERT_THAT(IsNotNull(OnReset, TEXT("OnReset BlueprintOverride should be generated")));
-		ASSERT_THAT(IsNotNull(DispatchActorEvents, TEXT("DispatchActorEvents helper should be generated")));
 		ASSERT_THAT(IsNotNull(ReadTransformByConstRef, TEXT("ReadTransformByConstRef helper should be generated")));
 		if (UserConstructionScript == nullptr || ActorBeginOverlap == nullptr || ActorEndOverlap == nullptr || EndPlay == nullptr
-			|| Destroyed == nullptr || OnReset == nullptr || DispatchActorEvents == nullptr || ReadTransformByConstRef == nullptr)
+			|| Destroyed == nullptr || OnReset == nullptr || ReadTransformByConstRef == nullptr)
 		{
 			return;
 		}
@@ -3354,21 +3361,16 @@ public:
 			return;
 		}
 
-		FFunctionInvoker DispatchInvoker(*TestRunner, Actor, TEXT("DispatchActorEvents"));
-		ASSERT_THAT(IsTrue(DispatchInvoker.IsValid(), TEXT("DispatchActorEvents should be invokable")));
-		if (!DispatchInvoker.IsValid())
 		{
-			return;
+			FAngelscriptEngineScope ActorScope(Engine, Actor);
+			Actor->NotifyActorBeginOverlap(Actor);
+			Actor->NotifyActorEndOverlap(Actor);
+			Actor->Reset();
 		}
-		ASSERT_THAT(IsTrue(DispatchInvoker.Call(), TEXT("DispatchActorEvents should execute all native event wrappers")));
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EndPlayCount"), 1,
-			TEXT("EndPlay override should execute through script helper dispatch"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("DestroyedCount"), 1,
-			TEXT("Destroyed override should execute through script helper dispatch"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ResetCount"), 1,
-			TEXT("Reset override should execute through script helper dispatch"))));
-		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LastReason"), static_cast<int32>(EEndPlayReason::Destroyed),
-			TEXT("EndPlay enum parameter should cross the UFUNCTION wrapper"))));
+			TEXT("OnReset override should execute through AActor::Reset"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LastReason"), 22,
+			TEXT("ActorEndOverlap native notification should route the AActor parameter to script"))));
 
 		FFunctionInvoker TransformInvoker(*TestRunner, Actor, TEXT("ReadTransformByConstRef"));
 		ASSERT_THAT(IsTrue(TransformInvoker.IsValid(), TEXT("ReadTransformByConstRef should be invokable")));
@@ -3380,6 +3382,17 @@ public:
 		ASSERT_THAT(IsTrue(TransformInvoker.Call(), TEXT("ReadTransformByConstRef should consume const-ref FTransform")));
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LastTransformScore"), 42,
 			TEXT("const-ref FTransform parameter should reach script code"))));
+
+		{
+			FAngelscriptEngineScope ActorScope(Engine, Actor);
+			Actor->Destroy();
+		}
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EndPlayCount"), 1,
+			TEXT("EndPlay override should execute through AActor::Destroy"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("DestroyedCount"), 1,
+			TEXT("Destroyed override should execute through AActor::Destroy"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("LastReason"), static_cast<int32>(EEndPlayReason::Destroyed),
+			TEXT("EndPlay enum parameter should cross the UFUNCTION wrapper"))));
 	}
 
 	TEST_METHOD(BlueprintEventReflectsAndInvokesImplementation)
@@ -5450,7 +5463,7 @@ public:
 				}
 
 				UFUNCTION(BlueprintCallable, Category="Coverage|Delegate")
-				int ComputeFromDelegate(int Value, const FString&in Label)
+				int ComputeFromDelegate(int Value, FString Label)
 				{
 					LastDelegateLabel = Label;
 					return Value + Label.Len() + 9;
@@ -5518,8 +5531,8 @@ public:
 		{
 			return;
 		}
-		ASSERT_THAT(IsTrue(ComputeLabelParam->HasAllPropertyFlags(CPF_ConstParm | CPF_OutParm | CPF_ReferenceParm),
-			TEXT("const FString&in delegate target parameter should carry const/out/reference flags")));
+		ASSERT_THAT(IsFalse(ComputeLabelParam->HasAnyPropertyFlags(CPF_ConstParm | CPF_OutParm | CPF_ReferenceParm),
+			TEXT("by-value FString delegate target parameter should match the delegate signature without reference flags")));
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
@@ -7796,7 +7809,7 @@ public:
 					}
 				}
 				)AS"),
-				TEXT("UFUNCTION() Conflict cannot both be BlueprintOverride and have network specifiers")
+				TEXT("UFUNCTION() Conflict cannot be both BlueprintEvent and BlueprintOverride.")
 			},
 			{
 				TEXT("WithValidation without RPC endpoint"),
