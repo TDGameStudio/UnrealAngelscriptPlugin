@@ -214,13 +214,15 @@ public:
 		FString Script = ASTEST_AS(R"AS(
 			int LoadObjectKnownTexture()
 			{
-				UObject Loaded = LoadObject(null, "__DEFAULT_TEXTURE_PATH__");
+				UObject Outer = nullptr;
+				UObject Loaded = LoadObject(Outer, "__DEFAULT_TEXTURE_PATH__");
 				return Cast<UTexture2D>(Loaded) != null ? 1 : 0;
 			}
 
 			int LoadObjectMissingTexture()
 			{
-				UObject Loaded = LoadObject(null, "__MISSING_TEXTURE_PATH__");
+				UObject Outer = nullptr;
+				UObject Loaded = LoadObject(Outer, "__MISSING_TEXTURE_PATH__");
 				return Loaded == null ? 1 : 0;
 			}
 			)AS");

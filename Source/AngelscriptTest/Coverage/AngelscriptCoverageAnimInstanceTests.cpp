@@ -82,7 +82,7 @@ class UCoverageAnimInstance : UAnimInstance
 	UFUNCTION()
 	void ProbeCurveQueries()
 	{
-		float Value = 0.0f;
+		float32 Value = 0.0f;
 		bool bFoundCurve = GetCurveValueWithDefault(n"CoverageCurve", 7.5f, Value);
 		bCurveQueriesCallable = !bFoundCurve && Value == 7.5f;
 	}
