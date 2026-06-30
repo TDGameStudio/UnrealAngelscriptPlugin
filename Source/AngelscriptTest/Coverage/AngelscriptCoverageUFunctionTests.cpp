@@ -2374,6 +2374,7 @@ public:
 		{
 			return;
 		}
+		FillInvoker.AddParam<UObject*>(StaticsDefaultObject);
 		ASSERT_THAT(IsTrue(FillInvoker.Call(), TEXT("StaticFillPayload should write reflected out parameters")));
 		ASSERT_THAT(IsTrue(VerifyPayloadStructValue(*TestRunner, *FillPayloadSlotStructProperty, FillPayloadSlot, 17, FString(TEXT("GlobalPayload")),
 			TEXT("StaticFillPayload out payload"))));
@@ -2388,6 +2389,7 @@ public:
 		}
 		ReturnInvoker.AddParam<UObject*>(StaticsDefaultObject);
 		ReturnInvoker.AddParam<int32>(42);
+		ReturnInvoker.AddParam<UObject*>(StaticsDefaultObject);
 		ASSERT_THAT(IsTrue(ReturnInvoker.Call(), TEXT("StaticReturnPayload should execute")));
 		void* ReturnSlot = ReturnPayloadParam->ContainerPtrToValuePtr<void>(ReturnInvoker.GetParamsMemory());
 		ASSERT_THAT(IsNotNull(ReturnSlot, TEXT("StaticReturnPayload return slot should be readable")));
@@ -8103,6 +8105,33 @@ public:
 				TEXT("BlueprintCallable method SetActorHiddenInGame in class ACoverageUFunctionNativeCollisionActor already specified in superclass AActor.")
 			},
 			{
+				TEXT("BlueprintEvent already specified in AS superclass"),
+				TEXT("ASCoverageUFunction_InvalidDuplicateBlueprintEventParent"),
+				TEXT("ASCoverageUFunctionInvalidDuplicateBlueprintEventParent.as"),
+				ASTEST_AS(R"AS(
+				UCLASS()
+				class ACoverageUFunctionParentEventBaseActor : AActor
+				{
+					UFUNCTION(BlueprintEvent)
+					int ComputeParentEvent(int Value)
+					{
+						return Value + 1;
+					}
+				}
+
+				UCLASS()
+				class ACoverageUFunctionParentEventChildActor : ACoverageUFunctionParentEventBaseActor
+				{
+					UFUNCTION(BlueprintEvent)
+					int ComputeParentEvent(int Value)
+					{
+						return Value + 2;
+					}
+				}
+				)AS"),
+				TEXT("declared as final and cannot be overridden")
+			},
+			{
 				TEXT("optional UFUNCTION parameter unsupported"),
 				TEXT("ASCoverageUFunction_InvalidOptionalParameter"),
 				TEXT("ASCoverageUFunctionInvalidOptionalParameter.as"),
@@ -8129,6 +8158,15 @@ public:
 
 		for (const FInvalidUFunctionCase& InvalidCase : InvalidCases)
 		{
+			TestRunner->AddExpectedErrorPlain(
+				InvalidCase.ExpectedDiagnostic,
+				EAutomationExpectedErrorFlags::Contains,
+				-1);
+			TestRunner->AddExpectedErrorPlain(
+				TEXT("Hot reload failed due to script compile errors"),
+				EAutomationExpectedErrorFlags::Contains,
+				-1);
+
 			FAngelscriptCompileTraceSummary Summary;
 			const bool bCompiled = CompileModuleWithSummary(
 				&Engine,
@@ -8154,48 +8192,6 @@ public:
 			Engine.ResetDiagnostics();
 			Engine.LastEmittedDiagnostics.Empty();
 		}
-
-		static const FName DuplicateEventModuleName(TEXT("ASCoverageUFunction_DuplicateBlueprintEventParent"));
-		const FString DuplicateEventSource = ASTEST_AS(R"AS(
-			UCLASS()
-			class ACoverageUFunctionParentEventBaseActor : AActor
-			{
-				UFUNCTION(BlueprintEvent)
-				int ComputeParentEvent(int Value)
-				{
-					return Value + 1;
-				}
-			}
-
-			UCLASS()
-			class ACoverageUFunctionParentEventChildActor : ACoverageUFunctionParentEventBaseActor
-			{
-				UFUNCTION(BlueprintEvent)
-				int ComputeParentEvent(int Value)
-				{
-					return Value + 2;
-				}
-			}
-			)AS");
-		UClass* DuplicateEventBaseClass = CompileScriptModule(
-			*TestRunner,
-			Engine,
-			DuplicateEventModuleName,
-			TEXT("ASCoverageUFunctionDuplicateBlueprintEventParent.as"),
-			DuplicateEventSource,
-			TEXT("ACoverageUFunctionParentEventBaseActor"));
-		ASSERT_THAT(IsNotNull(DuplicateEventBaseClass,
-			TEXT("AS child BlueprintEvent with the same signature as an AS parent event is currently accepted as a generated child event boundary")));
-		UClass* DuplicateEventChildClass = FindGeneratedClass(&Engine, TEXT("ACoverageUFunctionParentEventChildActor"));
-		ASSERT_THAT(IsNotNull(DuplicateEventChildClass, TEXT("duplicate AS child BlueprintEvent class should be generated")));
-		if (DuplicateEventChildClass != nullptr)
-		{
-			UFunction* DuplicateEventChildFunction = FindFunctionForTest(DuplicateEventChildClass, TEXT("ComputeParentEvent"));
-			ASSERT_THAT(IsNotNull(DuplicateEventChildFunction, TEXT("duplicate AS child BlueprintEvent should generate its own function")));
-			ASSERT_THAT(IsTrue(DuplicateEventChildFunction != nullptr && DuplicateEventChildFunction->HasAnyFunctionFlags(FUNC_BlueprintEvent),
-				TEXT("duplicate AS child BlueprintEvent should remain explicit as a current fork boundary")));
-		}
-		Engine.DiscardModule(*DuplicateEventModuleName.ToString());
 
 		static const FName ConstOverrideBoundaryModuleName(TEXT("ASCoverageUFunction_ConstOverrideBoundary"));
 		const FString ConstOverrideBoundarySource = ASTEST_AS(R"AS(
@@ -8240,8 +8236,8 @@ public:
 			{
 				ASSERT_THAT(IsTrue(ConstBoundaryBaseFunction->HasAnyFunctionFlags(FUNC_Const),
 					TEXT("const-boundary base BlueprintEvent should retain FUNC_Const")));
-				ASSERT_THAT(IsFalse(ConstBoundaryChildFunction->HasAnyFunctionFlags(FUNC_Const),
-					TEXT("current fork accepts the child override without inheriting FUNC_Const")));
+				ASSERT_THAT(IsTrue(ConstBoundaryChildFunction->HasAnyFunctionFlags(FUNC_Const),
+					TEXT("current fork accepts the child override and preserves FUNC_Const on the generated child UFunction")));
 				ASSERT_THAT(AreEqual(static_cast<UStruct*>(ConstBoundaryBaseFunction), ConstBoundaryChildFunction->GetSuperStruct(),
 					TEXT("const-boundary child override should still chain to the parent UFunction")));
 			}
