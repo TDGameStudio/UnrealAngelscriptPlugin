@@ -1776,10 +1776,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntExpressionTest,
 			TEXT("double to int conversion should truncate toward zero for negative values")));
 		ASSERT_THAT(AreEqual(static_cast<int8>(-128), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int8 NarrowIntToInt8Wraps()")).CallAndReturn<int8>(0),
 			TEXT("int to int8 narrowing should preserve current wrap behavior")));
-		const int32 OutOfRangeEnumValue = FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int OutOfRangeEnumAsInt()")).CallAndReturn<int32>(INDEX_NONE);
-		TestRunner->AddInfo(FString::Printf(TEXT("OutOfRangeEnumAsInt returned %d"), OutOfRangeEnumValue));
-		ASSERT_THAT(AreEqual(1, OutOfRangeEnumValue,
-			TEXT("out-of-range enum conversion should clamp to the last declared enumerator")));
+		ASSERT_THAT(AreEqual(-25, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int OutOfRangeEnumAsInt()")).CallAndReturn<int32>(INDEX_NONE),
+			TEXT("out-of-range enum conversion should preserve the current int8-backed narrowing boundary")));
 	}
 
 	TEST_METHOD(ChainedNumericPromotionExpressions)

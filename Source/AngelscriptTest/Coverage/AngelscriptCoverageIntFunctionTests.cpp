@@ -216,52 +216,65 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("Int &in parameter module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int8 AcceptInt8In(int8&in)"));
-			Invoker.AddArg(static_cast<int8>(5));
+			int8 Value = 5;
+			Invoker.AddArgRef(Value);
 			const int8 Result = Invoker.CallAndReturn<int8>(0);
 			TestRunner->TestEqual(TEXT("int8 &in parameter"), Result, static_cast<int8>(15));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int16 AcceptInt16In(int16&in)"));
-			Invoker.AddArg(static_cast<int16>(200));
+			int16 Value = 200;
+			Invoker.AddArgRef(Value);
 			const int16 Result = Invoker.CallAndReturn<int16>(0);
 			TestRunner->TestEqual(TEXT("int16 &in parameter"), Result, static_cast<int16>(300));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int AcceptIntIn(int&in)"));
-			Invoker.AddArg(static_cast<int32>(14));
+			int32 Value = 14;
+			Invoker.AddArgRef(Value);
 			const int32 Result = Invoker.CallAndReturn<int32>(0);
 			TestRunner->TestEqual(TEXT("int &in parameter"), Result, 42);
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int64 AcceptInt64In(int64&in)"));
-			Invoker.AddArg(static_cast<int64>(9999999999LL));
+			int64 Value = 9999999999LL;
+			Invoker.AddArgRef(Value);
 			const int64 Result = Invoker.CallAndReturn<int64>(static_cast<int64>(0));
 			TestRunner->TestEqual(TEXT("int64 &in parameter"), Result, static_cast<int64>(10000000000LL));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("uint8 AcceptUInt8In(uint8&in)"));
-			Invoker.AddArg(static_cast<uint8>(10));
+			uint8 Value = 10;
+			Invoker.AddArgRef(Value);
 			const uint8 Result = Invoker.CallAndReturn<uint8>(0);
 			TestRunner->TestEqual(TEXT("uint8 &in parameter"), Result, static_cast<uint8>(15));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("uint16 AcceptUInt16In(uint16&in)"));
-			Invoker.AddArg(static_cast<uint16>(1000));
+			uint16 Value = 1000;
+			Invoker.AddArgRef(Value);
 			const uint16 Result = Invoker.CallAndReturn<uint16>(0);
 			TestRunner->TestEqual(TEXT("uint16 &in parameter"), Result, static_cast<uint16>(1050));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("uint AcceptUIntIn(uint&in)"));
-			Invoker.AddArg(static_cast<uint32>(3000000042u));
+			uint32 Value = 3000000042u;
+			Invoker.AddArgRef(Value);
 			const uint32 Result = Invoker.CallAndReturn<uint32>(static_cast<uint32>(0));
 			TestRunner->TestEqual(TEXT("uint &in parameter"), Result, static_cast<uint32>(2999999942u));
 		}
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("uint64 AcceptUInt64In(uint64&in)"));
-			Invoker.AddArg(static_cast<uint64>(99999ull));
+			uint64 Value = 99999ull;
+			Invoker.AddArgRef(Value);
 			const uint64 Result = Invoker.CallAndReturn<uint64>(static_cast<uint64>(0));
 			TestRunner->TestEqual(TEXT("uint64 &in parameter"), Result, static_cast<uint64>(100999ull));
 		}
@@ -558,14 +571,29 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 			return a + b;
 		}
 
+		int AddUsingDefault(int a)
+		{
+			return AddWithDefault(a);
+		}
+
 		int64 MultiplyWithDefault(int64 x, int64 y = 2)
 		{
 			return x * y;
 		}
 
+		int64 MultiplyUsingDefault(int64 x)
+		{
+			return MultiplyWithDefault(x);
+		}
+
 		uint ChainDefaults(uint a = 5, uint b = 10, uint c = 15)
 		{
 			return a + b + c;
+		}
+
+		uint ChainUsingDefaults()
+		{
+			return ChainDefaults();
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -575,6 +603,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("Int default-parameter module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		// Call with all arguments
 		{
@@ -586,25 +619,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 
 		// Call with default (omit second argument)
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int AddWithDefault(int)"));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int AddUsingDefault(int)"));
 			Invoker.AddArg(32);
 			const int32 Result = Invoker.CallAndReturn<int32>(0);
-			TestRunner->TestEqual(TEXT("default parameter used"), Result, 42);
+			TestRunner->TestEqual(TEXT("default parameter used through script call"), Result, 42);
 		}
 
 		// int64 with default
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int64 MultiplyWithDefault(int64)"));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int64 MultiplyUsingDefault(int64)"));
 			Invoker.AddArg(static_cast<int64>(5000000000LL));
 			const int64 Result = Invoker.CallAndReturn<int64>(static_cast<int64>(0));
-			TestRunner->TestEqual(TEXT("int64 default parameter"), Result, static_cast<int64>(10000000000LL));
+			TestRunner->TestEqual(TEXT("int64 default parameter through script call"), Result, static_cast<int64>(10000000000LL));
 		}
 
 		// All defaults
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("uint ChainDefaults()"));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("uint ChainUsingDefaults()"));
 			const uint32 Result = Invoker.CallAndReturn<uint32>(static_cast<uint32>(0));
-			TestRunner->TestEqual(TEXT("chain of default parameters"), Result, static_cast<uint32>(30));
+			TestRunner->TestEqual(TEXT("chain of default parameters through script call"), Result, static_cast<uint32>(30));
 		}
 	}
 
@@ -766,6 +799,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 			Result = Value * 2;
 		}
 
+		void DefaultAndOutUsingDefault(int&out Result)
+		{
+			DefaultAndOut(Result);
+		}
+
 		void MultipleOutOrder(int Seed, int&out A, int&out B, int&out C)
 		{
 			A = Seed + 1;
@@ -799,7 +837,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 		}
 
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void DefaultAndOut(int&out)"));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void DefaultAndOutUsingDefault(int&out)"));
 			int32 Result = 0;
 			Invoker.AddArgRef(Result);
 			ASSERT_THAT(IsTrue(Invoker.Call(), TEXT("default argument should combine with an int &out parameter")));
@@ -922,14 +960,34 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 			return A + B + C;
 		}
 
+		int MultipleDefaultsUsingBoth(int A)
+		{
+			return MultipleDefaults(A);
+		}
+
+		int MultipleDefaultsUsingFinal(int A, int B)
+		{
+			return MultipleDefaults(A, B);
+		}
+
 		int NegativeDefault(int Value = -7)
 		{
 			return Value;
 		}
 
+		int NegativeDefaultUsingDefault()
+		{
+			return NegativeDefault();
+		}
+
 		int BoundaryDefault(int Value = 2147483647)
 		{
 			return Value;
+		}
+
+		int BoundaryDefaultUsingDefault()
+		{
+			return BoundaryDefault();
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -947,18 +1005,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 		}
 
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int MultipleDefaults(int)"));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int MultipleDefaultsUsingBoth(int)"));
 			Invoker.AddArg(12);
 			ASSERT_THAT(AreEqual(42, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("multiple defaults should fill both omitted trailing parameters")));
 		}
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int MultipleDefaults(int, int)"));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("int MultipleDefaultsUsingFinal(int, int)"));
 			Invoker.AddArg(12).AddArg(10);
 			ASSERT_THAT(AreEqual(42, Invoker.CallAndReturn<int32>(INDEX_NONE), TEXT("partial omission should fill the final default parameter")));
 		}
-		ASSERT_THAT(AreEqual(-7, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int NegativeDefault()")).CallAndReturn<int32>(INDEX_NONE),
+		ASSERT_THAT(AreEqual(-7, FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int NegativeDefaultUsingDefault()")).CallAndReturn<int32>(INDEX_NONE),
 			TEXT("negative default int parameter should be applied")));
-		ASSERT_THAT(AreEqual(TNumericLimits<int32>::Max(), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int BoundaryDefault()")).CallAndReturn<int32>(INDEX_NONE),
+		ASSERT_THAT(AreEqual(TNumericLimits<int32>::Max(), FASGlobalFunctionInvoker(*TestRunner, Engine, *Module, TEXT("int BoundaryDefaultUsingDefault()")).CallAndReturn<int32>(INDEX_NONE),
 			TEXT("boundary default int parameter should be applied")));
 	}
 
