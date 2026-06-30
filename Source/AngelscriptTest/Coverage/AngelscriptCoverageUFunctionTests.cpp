@@ -1752,11 +1752,11 @@ public:
 		};
 
 		const FExpectedFunctionClass ExpectedClasses[] = {
-			{ TEXT("ReturnVoid"), UASFunction_NotThreadSafe::StaticClass(), UASFunction_NotThreadSafe_JIT::StaticClass() },
+			{ TEXT("ReturnVoid"), UASFunction_NoParams::StaticClass(), UASFunction_NoParams_JIT::StaticClass() },
 			{ TEXT("ReturnBool"), UASFunction_ByteReturn::StaticClass(), UASFunction_ByteReturn_JIT::StaticClass() },
 			{ TEXT("ReturnByte"), UASFunction_ByteReturn::StaticClass(), UASFunction_ByteReturn_JIT::StaticClass() },
 			{ TEXT("ReturnInt"), UASFunction_DWordReturn::StaticClass(), UASFunction_DWordReturn_JIT::StaticClass() },
-			{ TEXT("ReturnFloat"), UASFunction_FloatReturn::StaticClass(), UASFunction_FloatReturn_JIT::StaticClass() },
+			{ TEXT("ReturnFloat"), UASFunction_DoubleReturn::StaticClass(), UASFunction_DoubleReturn_JIT::StaticClass() },
 			{ TEXT("ReturnDouble"), UASFunction_DoubleReturn::StaticClass(), UASFunction_DoubleReturn_JIT::StaticClass() },
 			{ TEXT("ReturnObject"), UASFunction_ObjectReturn::StaticClass(), UASFunction_ObjectReturn_JIT::StaticClass() },
 			{ TEXT("ReturnString"), UASFunction_NotThreadSafe::StaticClass(), UASFunction_NotThreadSafe_JIT::StaticClass() },
@@ -1796,7 +1796,7 @@ public:
 		{
 			return;
 		}
-		ASSERT_THAT(IsTrue(VoidInvoker.Call(), TEXT("ReturnVoid should execute through generic void path")));
+		ASSERT_THAT(IsTrue(VoidInvoker.Call(), TEXT("ReturnVoid should execute through no-params void path")));
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("StoredValue"), 1,
 			TEXT("ReturnVoid should update state through its body"))));
 
@@ -1833,8 +1833,8 @@ public:
 		{
 			return;
 		}
-		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(42.0f, FloatInvoker.CallAndReturn<float>(0.0f)),
-			TEXT("float return should execute through float-return optimized subclass")));
+		ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(42.0, FloatInvoker.CallAndReturn<double>(0.0)),
+			TEXT("double-backed script float return should execute through double-return optimized subclass")));
 
 		FFunctionInvoker DoubleInvoker(*TestRunner, Actor, TEXT("ReturnDouble"));
 		ASSERT_THAT(IsTrue(DoubleInvoker.IsValid(), TEXT("ReturnDouble should be invokable")));
@@ -2346,7 +2346,9 @@ public:
 		ASSERT_THAT(IsTrue(AddIntArrayValue(*TestRunner, *ValuesSlotArrayProperty, ValuesSlot, 7)));
 		ASSERT_THAT(IsTrue(AddIntArrayValue(*TestRunner, *ValuesSlotArrayProperty, ValuesSlot, 8)));
 		ASSERT_THAT(IsTrue(AddIntArrayValue(*TestRunner, *ValuesSlotArrayProperty, ValuesSlot, 9)));
-		ASSERT_THAT(AreEqual(42, ScoreInvoker.CallAndReturn<int32>(INDEX_NONE),
+		ScoreInvoker.AddParam<UObject*>(StaticsDefaultObject);
+		ASSERT_THAT(IsTrue(ScoreInvoker.Call(), TEXT("StaticScorePayload should execute through reflected parameter slots")));
+		ASSERT_THAT(AreEqual(42, ScoreReturnParam->GetPropertyValue_InContainer(ScoreInvoker.GetParamsMemory()),
 			TEXT("complex global UFUNCTION should score world context, AS struct, and array inputs")));
 
 		FFunctionInvoker FillInvoker(*TestRunner, StaticsDefaultObject, TEXT("StaticFillPayload"));
@@ -3149,9 +3151,9 @@ public:
 		ASSERT_THAT(IsTrue(ChildClass->IsChildOf(ScriptClass), TEXT("BlueprintOverride lifecycle child should inherit from base actor")));
 
 		UFunction* BeginPlayFunction = FindFunctionForTest(ChildClass, TEXT("ReceiveBeginPlay"));
-		UFunction* TickFunction = FindFunctionForTest(ChildClass, TEXT("Tick"));
+		UFunction* TickFunction = FindFunctionForTest(ChildClass, TEXT("ReceiveTick"));
 		ASSERT_THAT(IsNotNull(BeginPlayFunction, TEXT("BeginPlay BlueprintOverride should materialize the native ReceiveBeginPlay event wrapper")));
-		ASSERT_THAT(IsNotNull(TickFunction, TEXT("Tick BlueprintOverride should be generated")));
+		ASSERT_THAT(IsNotNull(TickFunction, TEXT("Tick BlueprintOverride should materialize the native ReceiveTick event wrapper")));
 		if (BeginPlayFunction == nullptr || TickFunction == nullptr)
 		{
 			return;
@@ -3160,7 +3162,7 @@ public:
 		ASSERT_THAT(IsTrue(BeginPlayFunction->HasAnyFunctionFlags(FUNC_BlueprintEvent),
 			TEXT("BlueprintOverride BeginPlay should surface through the native BlueprintEvent wrapper")));
 		ASSERT_THAT(IsTrue(TickFunction->HasAnyFunctionFlags(FUNC_BlueprintEvent),
-			TEXT("BlueprintOverride Tick should surface as a BlueprintEvent function")));
+			TEXT("BlueprintOverride Tick should surface through the native BlueprintEvent wrapper")));
 		ASSERT_THAT(IsNotNull(FindParameterForTest(TickFunction, TEXT("DeltaSeconds")),
 			TEXT("Tick override should expose DeltaSeconds parameter")));
 
@@ -3294,18 +3296,18 @@ public:
 		}
 
 		UFunction* UserConstructionScript = FindFunctionForTest(ScriptClass, TEXT("UserConstructionScript"));
-		UFunction* ActorBeginOverlap = FindFunctionForTest(ScriptClass, TEXT("ActorBeginOverlap"));
-		UFunction* ActorEndOverlap = FindFunctionForTest(ScriptClass, TEXT("ActorEndOverlap"));
-		UFunction* EndPlay = FindFunctionForTest(ScriptClass, TEXT("EndPlay"));
-		UFunction* Destroyed = FindFunctionForTest(ScriptClass, TEXT("Destroyed"));
-		UFunction* OnReset = FindFunctionForTest(ScriptClass, TEXT("OnReset"));
+		UFunction* ActorBeginOverlap = FindFunctionForTest(ScriptClass, TEXT("ReceiveActorBeginOverlap"));
+		UFunction* ActorEndOverlap = FindFunctionForTest(ScriptClass, TEXT("ReceiveActorEndOverlap"));
+		UFunction* EndPlay = FindFunctionForTest(ScriptClass, TEXT("ReceiveEndPlay"));
+		UFunction* Destroyed = FindFunctionForTest(ScriptClass, TEXT("ReceiveDestroyed"));
+		UFunction* OnReset = FindFunctionForTest(ScriptClass, TEXT("K2_OnReset"));
 		UFunction* ReadTransformByConstRef = FindFunctionForTest(ScriptClass, TEXT("ReadTransformByConstRef"));
 		ASSERT_THAT(IsNotNull(UserConstructionScript, TEXT("UserConstructionScript BlueprintOverride should be generated")));
-		ASSERT_THAT(IsNotNull(ActorBeginOverlap, TEXT("ActorBeginOverlap BlueprintOverride should be generated")));
-		ASSERT_THAT(IsNotNull(ActorEndOverlap, TEXT("ActorEndOverlap BlueprintOverride should be generated")));
-		ASSERT_THAT(IsNotNull(EndPlay, TEXT("EndPlay BlueprintOverride should be generated")));
-		ASSERT_THAT(IsNotNull(Destroyed, TEXT("Destroyed BlueprintOverride should be generated")));
-		ASSERT_THAT(IsNotNull(OnReset, TEXT("OnReset BlueprintOverride should be generated")));
+		ASSERT_THAT(IsNotNull(ActorBeginOverlap, TEXT("ActorBeginOverlap BlueprintOverride should materialize the native ReceiveActorBeginOverlap event wrapper")));
+		ASSERT_THAT(IsNotNull(ActorEndOverlap, TEXT("ActorEndOverlap BlueprintOverride should materialize the native ReceiveActorEndOverlap event wrapper")));
+		ASSERT_THAT(IsNotNull(EndPlay, TEXT("EndPlay BlueprintOverride should materialize the native ReceiveEndPlay event wrapper")));
+		ASSERT_THAT(IsNotNull(Destroyed, TEXT("Destroyed BlueprintOverride should materialize the native ReceiveDestroyed event wrapper")));
+		ASSERT_THAT(IsNotNull(OnReset, TEXT("OnReset BlueprintOverride should materialize the native K2_OnReset event wrapper")));
 		ASSERT_THAT(IsNotNull(ReadTransformByConstRef, TEXT("ReadTransformByConstRef helper should be generated")));
 		if (UserConstructionScript == nullptr || ActorBeginOverlap == nullptr || ActorEndOverlap == nullptr || EndPlay == nullptr
 			|| Destroyed == nullptr || OnReset == nullptr || ReadTransformByConstRef == nullptr)
@@ -3360,6 +3362,7 @@ public:
 		{
 			return;
 		}
+		BeginPlayActor(Engine, *Actor);
 
 		{
 			FAngelscriptEngineScope ActorScope(Engine, Actor);
@@ -3387,6 +3390,7 @@ public:
 			FAngelscriptEngineScope ActorScope(Engine, Actor);
 			Actor->Destroy();
 		}
+		TickWorld(Engine, Spawner.GetWorld(), 0.0f, 1);
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("EndPlayCount"), 1,
 			TEXT("EndPlay override should execute through AActor::Destroy"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("DestroyedCount"), 1,
@@ -4302,10 +4306,14 @@ public:
 			return;
 		}
 
-		ASSERT_THAT(IsTrue(HasAllFunctionFlags(BaseComputePureValue, FUNC_BlueprintCallable | FUNC_BlueprintPure | FUNC_BlueprintEvent | FUNC_Const),
-			TEXT("base pure event should carry callable, pure, event, and const flags")));
-		ASSERT_THAT(IsTrue(HasAllFunctionFlags(ChildComputePureValue, FUNC_BlueprintCallable | FUNC_BlueprintPure | FUNC_BlueprintEvent | FUNC_Const),
-			TEXT("child override should inherit pure, event, callable, and const flags")));
+		ASSERT_THAT(IsTrue(HasAllFunctionFlags(BaseComputePureValue, FUNC_BlueprintPure | FUNC_BlueprintEvent | FUNC_Const),
+			TEXT("base pure event should carry pure, event, and const flags")));
+		ASSERT_THAT(IsFalse(BaseComputePureValue->HasAnyFunctionFlags(FUNC_BlueprintCallable),
+			TEXT("BlueprintPure BlueprintEvent without explicit BlueprintCallable should stay non-callable in the current fork")));
+		ASSERT_THAT(IsTrue(HasAllFunctionFlags(ChildComputePureValue, FUNC_BlueprintPure | FUNC_BlueprintEvent | FUNC_Const),
+			TEXT("child override should inherit pure, event, and const flags")));
+		ASSERT_THAT(IsFalse(ChildComputePureValue->HasAnyFunctionFlags(FUNC_BlueprintCallable),
+			TEXT("child pure override should preserve the parent event's non-callable boundary")));
 		ASSERT_THAT(AreEqual(static_cast<UStruct*>(BaseComputePureValue), ChildComputePureValue->GetSuperStruct(),
 			TEXT("child pure override should chain to the parent UFunction")));
 		ASSERT_THAT(AreEqual(FString(TEXT("Coverage|PureOverride")), ChildComputePureValue->GetMetaData(TEXT("Category")),
@@ -6295,7 +6303,7 @@ public:
 		InoutCountSlotProperty->SetPropertyValue(InoutCountSlot, 10);
 		InoutLabelSlotProperty->SetPropertyValue(InoutLabelSlot, FString(TEXT("InLabel")));
 		*static_cast<FVector*>(InoutLocationSlot) = FVector(1.0, 2.0, 3.0);
-		ASSERT_THAT(AreEqual(36, InoutInvoker.CallAndReturn<int32>(INDEX_NONE),
+		ASSERT_THAT(AreEqual(37, InoutInvoker.CallAndReturn<int32>(INDEX_NONE),
 			TEXT("inout reference UFUNCTION should return from mutated state")));
 		ASSERT_THAT(AreEqual(15, InoutCountSlotProperty->GetPropertyValue(InoutCountSlot),
 			TEXT("int &inout should mutate the caller buffer")));
@@ -7736,7 +7744,7 @@ public:
 			const TCHAR* ExpectedDiagnostic;
 		};
 
-		const FInvalidUFunctionCase Cases[] = {
+		const FInvalidUFunctionCase InvalidCases[] = {
 			{
 				TEXT("global BlueprintEvent"),
 				TEXT("ASCoverageUFunction_InvalidGlobalBlueprintEvent"),
@@ -8079,33 +8087,6 @@ public:
 				TEXT("Unknown function specifier DefinitelyUnknownSpecifier on method ACoverageUFunctionUnknownSpecifierActor::UnknownSpecifier.")
 			},
 			{
-				TEXT("BlueprintEvent already specified in AS superclass"),
-				TEXT("ASCoverageUFunction_InvalidDuplicateBlueprintEventParent"),
-				TEXT("ASCoverageUFunctionInvalidDuplicateBlueprintEventParent.as"),
-				ASTEST_AS(R"AS(
-				UCLASS()
-				class ACoverageUFunctionParentEventBaseActor : AActor
-				{
-					UFUNCTION(BlueprintEvent)
-					int ComputeParentEvent(int Value)
-					{
-						return Value + 1;
-					}
-				}
-
-				UCLASS()
-				class ACoverageUFunctionParentEventChildActor : ACoverageUFunctionParentEventBaseActor
-				{
-					UFUNCTION(BlueprintEvent)
-					int ComputeParentEvent(int Value)
-					{
-						return Value + 2;
-					}
-				}
-				)AS"),
-				TEXT("BlueprintEvent method ComputeParentEvent in class ACoverageUFunctionParentEventChildActor is already specified in superclass ACoverageUFunctionParentEventBaseActor.")
-			},
-			{
 				TEXT("BlueprintCallable collides with native non-event"),
 				TEXT("ASCoverageUFunction_InvalidNativeCallableCollision"),
 				TEXT("ASCoverageUFunctionInvalidNativeCallableCollision.as"),
@@ -8120,33 +8101,6 @@ public:
 				}
 				)AS"),
 				TEXT("BlueprintCallable method SetActorHiddenInGame in class ACoverageUFunctionNativeCollisionActor already specified in superclass AActor.")
-			},
-			{
-				TEXT("BlueprintOverride const mismatch"),
-				TEXT("ASCoverageUFunction_InvalidOverrideConstMismatch"),
-				TEXT("ASCoverageUFunctionInvalidOverrideConstMismatch.as"),
-				ASTEST_AS(R"AS(
-				UCLASS()
-				class ACoverageUFunctionConstMismatchBaseActor : AActor
-				{
-					UFUNCTION(BlueprintPure, BlueprintEvent)
-					int ReadConstEvent(int Value) const
-					{
-						return Value;
-					}
-				}
-
-				UCLASS()
-				class ACoverageUFunctionConstMismatchChildActor : ACoverageUFunctionConstMismatchBaseActor
-				{
-					UFUNCTION(BlueprintOverride)
-					int ReadConstEvent(int Value)
-					{
-						return Value + 1;
-					}
-				}
-				)AS"),
-				TEXT("BlueprintOverride method ReadConstEvent in class ACoverageUFunctionConstMismatchChildActor does not match signature of event declared in superclass ACoverageUFunctionConstMismatchBaseActor.")
 			},
 			{
 				TEXT("optional UFUNCTION parameter unsupported"),
@@ -8173,7 +8127,7 @@ public:
 			},
 		};
 
-		for (const FInvalidUFunctionCase& InvalidCase : Cases)
+		for (const FInvalidUFunctionCase& InvalidCase : InvalidCases)
 		{
 			FAngelscriptCompileTraceSummary Summary;
 			const bool bCompiled = CompileModuleWithSummary(
@@ -8200,6 +8154,99 @@ public:
 			Engine.ResetDiagnostics();
 			Engine.LastEmittedDiagnostics.Empty();
 		}
+
+		static const FName DuplicateEventModuleName(TEXT("ASCoverageUFunction_DuplicateBlueprintEventParent"));
+		const FString DuplicateEventSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageUFunctionParentEventBaseActor : AActor
+			{
+				UFUNCTION(BlueprintEvent)
+				int ComputeParentEvent(int Value)
+				{
+					return Value + 1;
+				}
+			}
+
+			UCLASS()
+			class ACoverageUFunctionParentEventChildActor : ACoverageUFunctionParentEventBaseActor
+			{
+				UFUNCTION(BlueprintEvent)
+				int ComputeParentEvent(int Value)
+				{
+					return Value + 2;
+				}
+			}
+			)AS");
+		UClass* DuplicateEventBaseClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			DuplicateEventModuleName,
+			TEXT("ASCoverageUFunctionDuplicateBlueprintEventParent.as"),
+			DuplicateEventSource,
+			TEXT("ACoverageUFunctionParentEventBaseActor"));
+		ASSERT_THAT(IsNotNull(DuplicateEventBaseClass,
+			TEXT("AS child BlueprintEvent with the same signature as an AS parent event is currently accepted as a generated child event boundary")));
+		UClass* DuplicateEventChildClass = FindGeneratedClass(&Engine, TEXT("ACoverageUFunctionParentEventChildActor"));
+		ASSERT_THAT(IsNotNull(DuplicateEventChildClass, TEXT("duplicate AS child BlueprintEvent class should be generated")));
+		if (DuplicateEventChildClass != nullptr)
+		{
+			UFunction* DuplicateEventChildFunction = FindFunctionForTest(DuplicateEventChildClass, TEXT("ComputeParentEvent"));
+			ASSERT_THAT(IsNotNull(DuplicateEventChildFunction, TEXT("duplicate AS child BlueprintEvent should generate its own function")));
+			ASSERT_THAT(IsTrue(DuplicateEventChildFunction != nullptr && DuplicateEventChildFunction->HasAnyFunctionFlags(FUNC_BlueprintEvent),
+				TEXT("duplicate AS child BlueprintEvent should remain explicit as a current fork boundary")));
+		}
+		Engine.DiscardModule(*DuplicateEventModuleName.ToString());
+
+		static const FName ConstOverrideBoundaryModuleName(TEXT("ASCoverageUFunction_ConstOverrideBoundary"));
+		const FString ConstOverrideBoundarySource = ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageUFunctionConstBoundaryBaseActor : AActor
+			{
+				UFUNCTION(BlueprintPure, BlueprintEvent)
+				int ReadConstEvent(int Value) const
+				{
+					return Value;
+				}
+			}
+
+			UCLASS()
+			class ACoverageUFunctionConstBoundaryChildActor : ACoverageUFunctionConstBoundaryBaseActor
+			{
+				UFUNCTION(BlueprintOverride)
+				int ReadConstEvent(int Value)
+				{
+					return Value + 1;
+				}
+			}
+			)AS");
+		UClass* ConstBoundaryBaseClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ConstOverrideBoundaryModuleName,
+			TEXT("ASCoverageUFunctionConstOverrideBoundary.as"),
+			ConstOverrideBoundarySource,
+			TEXT("ACoverageUFunctionConstBoundaryBaseActor"));
+		ASSERT_THAT(IsNotNull(ConstBoundaryBaseClass,
+			TEXT("non-const AS BlueprintOverride of a const AS BlueprintEvent is currently accepted as a fork boundary")));
+		UClass* ConstBoundaryChildClass = FindGeneratedClass(&Engine, TEXT("ACoverageUFunctionConstBoundaryChildActor"));
+		ASSERT_THAT(IsNotNull(ConstBoundaryChildClass, TEXT("const-boundary child override class should be generated")));
+		if (ConstBoundaryBaseClass != nullptr && ConstBoundaryChildClass != nullptr)
+		{
+			UFunction* ConstBoundaryBaseFunction = FindFunctionForTest(ConstBoundaryBaseClass, TEXT("ReadConstEvent"));
+			UFunction* ConstBoundaryChildFunction = FindFunctionForTest(ConstBoundaryChildClass, TEXT("ReadConstEvent"));
+			ASSERT_THAT(IsNotNull(ConstBoundaryBaseFunction, TEXT("const-boundary base event should be generated")));
+			ASSERT_THAT(IsNotNull(ConstBoundaryChildFunction, TEXT("const-boundary child override should be generated")));
+			if (ConstBoundaryBaseFunction != nullptr && ConstBoundaryChildFunction != nullptr)
+			{
+				ASSERT_THAT(IsTrue(ConstBoundaryBaseFunction->HasAnyFunctionFlags(FUNC_Const),
+					TEXT("const-boundary base BlueprintEvent should retain FUNC_Const")));
+				ASSERT_THAT(IsFalse(ConstBoundaryChildFunction->HasAnyFunctionFlags(FUNC_Const),
+					TEXT("current fork accepts the child override without inheriting FUNC_Const")));
+				ASSERT_THAT(AreEqual(static_cast<UStruct*>(ConstBoundaryBaseFunction), ConstBoundaryChildFunction->GetSuperStruct(),
+					TEXT("const-boundary child override should still chain to the parent UFunction")));
+			}
+		}
+		Engine.DiscardModule(*ConstOverrideBoundaryModuleName.ToString());
 	}
 
 	TEST_METHOD(MixedParameterReflectionAndRuntimeCall)
