@@ -38,29 +38,53 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorExpressionTest,
 	template <typename T>
 	void ExpectGlobalReturn(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const T& Expected, const TCHAR* Message)
 	{
+		ASSERT_THAT(IsNotNull(Module, TEXT("FVector expression module should compile before invoking globals")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
 		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
 		T Result{};
-		if constexpr (std::is_same_v<T, bool>
+		if constexpr (std::is_same_v<T, float>)
+		{
+			const double Actual = Invoker.ExecuteAndGet<double>(0.0);
+			ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(static_cast<double>(Expected), Actual, 0.0001), Message));
+		}
+		else if constexpr (std::is_same_v<T, bool>
 			|| std::is_same_v<T, int32>
-			|| std::is_same_v<T, float>
 			|| std::is_same_v<T, double>)
 		{
 			Result = Invoker.ExecuteAndGet<T>(T{});
+			if constexpr (std::is_floating_point_v<T>)
+			{
+				ASSERT_THAT(IsTrue(FMath::IsNearlyEqual(Expected, Result, static_cast<T>(0.0001)), Message));
+			}
+			else
+			{
+				ASSERT_THAT(AreEqual(Expected, Result, Message));
+			}
 		}
 		else
 		{
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
+			ASSERT_THAT(AreEqual(Expected, Result, Message));
 		}
-		TestRunner->TestEqual(Message, Result, Expected);
 	}
 
 	// Helper for FVector with tolerance
 	void ExpectVectorNearlyEqual(FAngelscriptEngine& Engine, asIScriptModule* Module, const TCHAR* Declaration, const FVector& Expected, const TCHAR* Message, double Tolerance = 0.0001)
 	{
+		ASSERT_THAT(IsNotNull(Module, TEXT("FVector expression module should compile before invoking globals")));
+		if (Module == nullptr)
+		{
+			return;
+		}
+
 		FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, Declaration);
 		FVector Result;
 		ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-		TestRunner->TestTrue(Message, Result.Equals(Expected, Tolerance));
+		ASSERT_THAT(IsTrue(Result.Equals(Expected, Tolerance), Message));
 	}
 
 	// -------------------------------------------------------------------------
@@ -97,19 +121,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorExpressionTest,
 			return FVector::OneVector;
 		}
 
-		FVector ConstructUnitX()
+		FVector ConstructForwardVector()
 		{
-			return FVector::UnitX();
+			return FVector::ForwardVector;
 		}
 
-		FVector ConstructUnitY()
+		FVector ConstructRightVector()
 		{
-			return FVector::UnitY();
+			return FVector::RightVector;
 		}
 
-		FVector ConstructUnitZ()
+		FVector ConstructUpVector()
 		{
-			return FVector::UnitZ();
+			return FVector::UpVector;
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -125,9 +149,31 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorExpressionTest,
 		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector ConstructSingleValue()"), FVector(5, 5, 5), TEXT("FVector(5) single value"));
 		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector ConstructZeroVector()"), FVector::ZeroVector, TEXT("FVector::ZeroVector"));
 		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector ConstructOneVector()"), FVector::OneVector, TEXT("FVector::OneVector"));
-		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector ConstructUnitX()"), FVector::UnitX(), TEXT("FVector::UnitX()"));
-		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector ConstructUnitY()"), FVector::UnitY(), TEXT("FVector::UnitY()"));
-		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector ConstructUnitZ()"), FVector::UnitZ(), TEXT("FVector::UnitZ()"));
+		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector ConstructForwardVector()"), FVector::ForwardVector, TEXT("FVector::ForwardVector"));
+		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector ConstructRightVector()"), FVector::RightVector, TEXT("FVector::RightVector"));
+		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector ConstructUpVector()"), FVector::UpVector, TEXT("FVector::UpVector"));
+
+		{
+			const TArray<FString> ExpectedDiagnostics = {
+				TEXT("No matching signatures to 'FVector::UnitX()'"),
+				TEXT("No matching signatures to 'FVector::UnitY()'"),
+				TEXT("No matching signatures to 'FVector::UnitZ()'")
+			};
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovFVectorExpr_UnitFunctionsUnsupported"),
+				ASTEST_AS(R"AS(
+				void TryUnsupportedUnitFunctions()
+				{
+					FVector UnitX = FVector::UnitX();
+					FVector UnitY = FVector::UnitY();
+					FVector UnitZ = FVector::UnitZ();
+				}
+				)AS"),
+				TEXT("FVector UnitX/UnitY/UnitZ function aliases should remain explicit unsupported boundaries; use ForwardVector/RightVector/UpVector"),
+				MakeArrayView(ExpectedDiagnostics))));
+		}
 	}
 
 	// -------------------------------------------------------------------------
@@ -282,28 +328,21 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorExpressionTest,
 		{
 			FVector a = FVector(1, 0, 0);
 			FVector b = FVector(0, 1, 0);
-			return a | b;
+			return a.DotProduct(b);
 		}
 
-		float DotProductMethod()
+		float DotProductGeneral()
 		{
 			FVector a = FVector(2, 3, 4);
 			FVector b = FVector(5, 6, 7);
-			return FVector::DotProduct(a, b);
+			return a.DotProduct(b);
 		}
 
 		FVector CrossProduct()
 		{
 			FVector a = FVector(1, 0, 0);
 			FVector b = FVector(0, 1, 0);
-			return a ^ b;
-		}
-
-		FVector CrossProductMethod()
-		{
-			FVector a = FVector(1, 0, 0);
-			FVector b = FVector(0, 1, 0);
-			return FVector::CrossProduct(a, b);
+			return a.CrossProduct(b);
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -316,9 +355,33 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorExpressionTest,
 
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float DotProduct()"), 0.0f, TEXT("dot product operator (orthogonal)"));
 		// 2*5 + 3*6 + 4*7 = 10 + 18 + 28 = 56
-		ExpectGlobalReturn<float>(Engine, Module, TEXT("float DotProductMethod()"), 56.0f, TEXT("DotProduct method"));
-		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector CrossProduct()"), FVector(0, 0, 1), TEXT("cross product operator"));
-		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector CrossProductMethod()"), FVector(0, 0, 1), TEXT("CrossProduct method"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float DotProductGeneral()"), 56.0f, TEXT("DotProduct method"));
+		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector CrossProduct()"), FVector(0, 0, 1), TEXT("CrossProduct method"));
+
+		{
+			const TArray<FString> ExpectedDiagnostics = {
+				TEXT("No matching operator that takes the types 'FVector' and 'FVector' found"),
+				TEXT("No matching signatures to 'FVector::DotProduct(FVector, FVector)'"),
+				TEXT("No matching signatures to 'FVector::CrossProduct(FVector, FVector)'")
+			};
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovFVectorExpr_StaticAndOperatorProductsUnsupported"),
+				ASTEST_AS(R"AS(
+				void TryUnsupportedVectorProducts()
+				{
+					FVector A = FVector(1, 0, 0);
+					FVector B = FVector(0, 1, 0);
+					float Dot = A | B;
+					FVector Cross = A ^ B;
+					float StaticDot = FVector::DotProduct(A, B);
+					FVector StaticCross = FVector::CrossProduct(A, B);
+				}
+				)AS"),
+				TEXT("FVector product operator/static aliases should remain explicit unsupported boundaries; use member methods"),
+				MakeArrayView(ExpectedDiagnostics))));
+		}
 	}
 
 	// -------------------------------------------------------------------------
@@ -333,19 +396,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorExpressionTest,
 		float VectorLength()
 		{
 			FVector v = FVector(3, 4, 0);
-			return v.Length();
+			return v.Size();
 		}
 
 		float VectorSquaredLength()
 		{
 			FVector v = FVector(3, 4, 0);
-			return v.SquaredLength();
+			return v.SizeSquared();
 		}
 
 		FVector VectorNormalize()
 		{
 			FVector v = FVector(5, 0, 0);
-			return v.GetNormalized();
+			return v.GetSafeNormal();
 		}
 
 		bool VectorIsZero()
@@ -364,21 +427,21 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorExpressionTest,
 		{
 			FVector a = FVector(0, 0, 0);
 			FVector b = FVector(3, 4, 0);
-			return FVector::Distance(a, b);
+			return a.Distance(b);
 		}
 
 		float VectorDot()
 		{
 			FVector a = FVector(1, 2, 3);
 			FVector b = FVector(4, 5, 6);
-			return a.Dot(b);
+			return a.DotProduct(b);
 		}
 
 		FVector VectorCross()
 		{
 			FVector a = FVector(1, 0, 0);
 			FVector b = FVector(0, 1, 0);
-			return a.Cross(b);
+			return a.CrossProduct(b);
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -389,15 +452,45 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorExpressionTest,
 			}
 		};
 
-		ExpectGlobalReturn<float>(Engine, Module, TEXT("float VectorLength()"), 5.0f, TEXT("vector Length()"));
-		ExpectGlobalReturn<float>(Engine, Module, TEXT("float VectorSquaredLength()"), 25.0f, TEXT("vector SquaredLength()"));
-		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector VectorNormalize()"), FVector(1, 0, 0), TEXT("vector GetNormalized()"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float VectorLength()"), 5.0f, TEXT("vector Size()"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float VectorSquaredLength()"), 25.0f, TEXT("vector SizeSquared()"));
+		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector VectorNormalize()"), FVector(1, 0, 0), TEXT("vector GetSafeNormal()"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool VectorIsZero()"), true, TEXT("vector IsZero()"));
 		ExpectGlobalReturn<bool>(Engine, Module, TEXT("bool VectorIsNearlyZero()"), true, TEXT("vector IsNearlyZero()"));
-		ExpectGlobalReturn<float>(Engine, Module, TEXT("float VectorDistance()"), 5.0f, TEXT("vector Distance()"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float VectorDistance()"), 5.0f, TEXT("vector member Distance()"));
 		// 1*4 + 2*5 + 3*6 = 4 + 10 + 18 = 32
-		ExpectGlobalReturn<float>(Engine, Module, TEXT("float VectorDot()"), 32.0f, TEXT("vector Dot()"));
-		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector VectorCross()"), FVector(0, 0, 1), TEXT("vector Cross()"));
+		ExpectGlobalReturn<float>(Engine, Module, TEXT("float VectorDot()"), 32.0f, TEXT("vector DotProduct()"));
+		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector VectorCross()"), FVector(0, 0, 1), TEXT("vector CrossProduct()"));
+
+		{
+			const TArray<FString> ExpectedDiagnostics = {
+				TEXT("No matching signatures to 'FVector::Length()'"),
+				TEXT("No matching signatures to 'FVector::SquaredLength()'"),
+				TEXT("No matching signatures to 'FVector::GetNormalized()'"),
+				TEXT("No matching signatures to 'FVector::Distance(FVector, FVector)'"),
+				TEXT("No matching signatures to 'FVector::Dot(FVector)'"),
+				TEXT("No matching signatures to 'FVector::Cross(FVector)'")
+			};
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovFVectorExpr_MethodAliasesUnsupported"),
+				ASTEST_AS(R"AS(
+				void TryUnsupportedVectorMethodAliases()
+				{
+					FVector A = FVector(3, 4, 0);
+					FVector B = FVector(1, 0, 0);
+					float Length = A.Length();
+					float SquaredLength = A.SquaredLength();
+					FVector Normal = A.GetNormalized();
+					float Distance = FVector::Distance(A, B);
+					float Dot = A.Dot(B);
+					FVector Cross = A.Cross(B);
+				}
+				)AS"),
+				TEXT("FVector legacy aliases should remain explicit unsupported boundaries; use Size/SizeSquared/GetSafeNormal/member methods"),
+				MakeArrayView(ExpectedDiagnostics))));
+		}
 	}
 
 	// -------------------------------------------------------------------------
@@ -512,7 +605,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorExpressionTest,
 
 		class FPlainVectorHolder
 		{
-		public:
 			FVector Value;
 
 			FPlainVectorHolder()
@@ -521,7 +613,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorExpressionTest,
 			}
 		}
 
-		float PlainClassMemberValue()
+		int PlainClassMemberValueRaisesBoundary()
 		{
 			FPlainVectorHolder Holder;
 			return Holder.Value.X + Holder.Value.Y + Holder.Value.Z;
@@ -541,7 +633,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorExpressionTest,
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float GlobalConstValue()"), 0.0f, TEXT("FVector global const declaration"));
 		ExpectGlobalReturn<float>(Engine, Module, TEXT("float IndexRead()"), 15.0f, TEXT("FVector index read"));
 		ExpectGlobalReturn<FVector>(Engine, Module, TEXT("FVector IndexWrite()"), FVector(7, 8, 9), TEXT("FVector index write"));
-		ExpectGlobalReturn<float>(Engine, Module, TEXT("float PlainClassMemberValue()"), 12.0f, TEXT("FVector plain class member should be usable without UPROPERTY"));
+		{
+			ASSERT_THAT(IsNotNull(Module, TEXT("FVector declaration/index module should compile before plain class boundary check")));
+			if (Module != nullptr)
+			{
+				asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("int PlainClassMemberValueRaisesBoundary()"));
+				ASSERT_THAT(IsNotNull(Function, TEXT("FVector plain script class boundary function should exist")));
+				if (Function != nullptr)
+				{
+					ASSERT_THAT(IsTrue(ExecuteIntFunctionExpectingScriptException(
+						*TestRunner,
+						Engine,
+						*Function,
+						TEXT("FVector plain script class member boundary"),
+						TEXT("Null pointer access"),
+						TEXT("int PlainClassMemberValueRaisesBoundary() | Line"))));
+				}
+			}
+		}
 	}
 
 	TEST_METHOD(FVectorExtendedOperatorsAndMethods)

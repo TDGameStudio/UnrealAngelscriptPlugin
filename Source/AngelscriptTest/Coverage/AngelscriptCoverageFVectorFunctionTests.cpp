@@ -56,7 +56,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorFunctionTest,
 
 		float AcceptTwoVectors(FVector a, FVector b)
 		{
-			return FVector::Distance(a, b);
+			return a.Distance(b);
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -66,6 +66,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorFunctionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FVector value parameter module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector AcceptVector(FVector)"));
@@ -80,8 +85,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorFunctionTest,
 			FVector A = FVector(0, 0, 0);
 			FVector B = FVector(3, 4, 0);
 			Invoker.AddArgRef(A).AddArgRef(B);
-			float Result = Invoker.ExecuteAndGet<float>(0.0f);
-			TestRunner->TestTrue(TEXT("two FVector value parameters"), FMath::IsNearlyEqual(Result, 5.0f, 0.001f));
+			double Result = Invoker.ExecuteAndGet<double>(0.0);
+			TestRunner->TestTrue(TEXT("two FVector value parameters"), FMath::IsNearlyEqual(Result, 5.0, 0.001));
+		}
+
+		{
+			const TArray<FString> ExpectedDiagnostics = {
+				TEXT("No matching signatures to 'FVector::Distance(FVector, FVector)'")
+			};
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovFVectorFunc_StaticDistanceUnsupported"),
+				ASTEST_AS(R"AS(
+				float TryStaticDistance(FVector A, FVector B)
+				{
+					return FVector::Distance(A, B);
+				}
+				)AS"),
+				TEXT("FVector static Distance should remain an explicit unsupported boundary; use the member method"),
+				MakeArrayView(ExpectedDiagnostics))));
 		}
 	}
 
@@ -96,7 +119,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorFunctionTest,
 		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovFVectorFunc_ParamIn", ASTEST_AS(R"AS(
 		float AcceptVectorIn(FVector&in v)
 		{
-			return v.Length();
+			return v.Size();
 		}
 		)AS"));
 		ON_SCOPE_EXIT
@@ -106,13 +129,36 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorFunctionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FVector &in parameter module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("float AcceptVectorIn(FVector&in)"));
 			FVector Input = FVector(3, 4, 0);
 			Invoker.AddArgRef(Input);
-			float Result = Invoker.ExecuteAndGet<float>(0.0f);
-			TestRunner->TestTrue(TEXT("FVector &in parameter"), FMath::IsNearlyEqual(Result, 5.0f, 0.001f));
+			double Result = Invoker.ExecuteAndGet<double>(0.0);
+			TestRunner->TestTrue(TEXT("FVector &in parameter"), FMath::IsNearlyEqual(Result, 5.0, 0.001));
+		}
+
+		{
+			const TArray<FString> ExpectedDiagnostics = {
+				TEXT("No matching signatures to 'FVector::Length()'")
+			};
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASCovFVectorFunc_ParamInLengthUnsupported"),
+				ASTEST_AS(R"AS(
+				float TryVectorLength(FVector&in v)
+				{
+					return v.Length();
+				}
+				)AS"),
+				TEXT("FVector.Length() should remain an explicit unsupported boundary; use Size()"),
+				MakeArrayView(ExpectedDiagnostics))));
 		}
 	}
 
@@ -143,6 +189,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorFunctionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FVector &out parameter module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void WriteVector(FVector&out)"));
@@ -182,13 +233,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorFunctionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FVector &inout parameter module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("void ScaleVector(FVector&inout, float)"));
 			FVector Value = FVector(1, 2, 3);
-			Invoker.AddArgRef(Value).AddArg(2.0f);
-			Invoker.Execute();
-			TestRunner->TestEqual(TEXT("FVector &inout parameter scales vector"), Value, FVector(2, 4, 6));
+			Invoker.AddArgRef(Value).AddArg(2.0);
+			ASSERT_THAT(IsTrue(Invoker.Execute(), TEXT("FVector &inout scale should execute")));
+			ASSERT_THAT(IsTrue(Value.Equals(FVector(2, 4, 6), 0.001), TEXT("FVector &inout parameter should scale vector")));
 		}
 	}
 
@@ -225,6 +281,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorFunctionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FVector return value module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		{
 			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector ReturnForwardVector()"));
@@ -259,6 +320,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorFunctionTest,
 		{
 			return a + b;
 		}
+
+		FVector AddUsingDefault(FVector a)
+		{
+			return AddWithDefault(a);
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -267,6 +333,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorFunctionTest,
 				Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
 			}
 		};
+		ASSERT_THAT(IsNotNull(Module, TEXT("FVector default parameter module should compile")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		// Call with all arguments
 		{
@@ -281,12 +352,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorFunctionTest,
 
 		// Call with default (omit second argument)
 		{
-			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector AddWithDefault(FVector)"));
+			FASGlobalFunctionInvoker Invoker(*TestRunner, Engine, *Module, TEXT("FVector AddUsingDefault(FVector)"));
 			FVector Arg1 = FVector(1, 2, 3);
 			Invoker.AddArgRef(Arg1);
 			FVector Result;
 			ASSERT_THAT(IsTrue(Invoker.ExecuteAndExtractStruct(Result)));
-			TestRunner->TestEqual(TEXT("default parameter used"), Result, FVector(2, 3, 4));
+			TestRunner->TestEqual(TEXT("default parameter used through script call"), Result, FVector(2, 3, 4));
 		}
 	}
 
@@ -322,7 +393,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorFunctionTest,
 				UFUNCTION()
 				float VectorLength(FVector v)
 				{
-					return v.Length();
+					return v.Size();
 				}
 
 				UFUNCTION()
@@ -354,8 +425,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFVectorFunctionTest,
 		{
 			FFunctionInvoker Invoker(*TestRunner, Actor, TEXT("VectorLength"));
 			Invoker.AddParam(FVector(3, 4, 0));
-			const float Result = Invoker.CallAndReturn<float>();
-			TestRunner->TestTrue(TEXT("UFUNCTION FVector to float"), FMath::IsNearlyEqual(Result, 5.0f, 0.001f));
+			const double Result = Invoker.CallAndReturn<double>();
+			TestRunner->TestTrue(TEXT("UFUNCTION FVector to float"), FMath::IsNearlyEqual(Result, 5.0, 0.001));
 		}
 
 		// UFUNCTION with &out parameter
