@@ -7,6 +7,7 @@
 // ============================================================================
 
 #include "CQTest.h"
+#include "AngelscriptTestMacros.h"
 #include "Preprocessor/AngelscriptPreprocessorTestHelpers.h"
 
 #include "Compilation/AngelscriptCompilationEvents.h"

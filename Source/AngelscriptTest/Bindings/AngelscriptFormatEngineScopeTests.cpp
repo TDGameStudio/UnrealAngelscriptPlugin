@@ -1,4 +1,5 @@
 #include "CQTest.h"
+#include "AngelscriptTestEngineAcquisition.h"
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestModuleScope.h"
 #include "AngelscriptTestExecute.h"

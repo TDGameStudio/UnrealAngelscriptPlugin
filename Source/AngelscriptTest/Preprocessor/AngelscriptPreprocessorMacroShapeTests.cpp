@@ -12,6 +12,7 @@
 // ============================================================================
 
 #include "CQTest.h"
+#include "AngelscriptTestMacros.h"
 #include "Preprocessor/AngelscriptPreprocessorTestHelpers.h"
 #include "Preprocessor/Helper_CommentFormat.h"
 

@@ -1,3 +1,4 @@
+#include "AngelscriptSDKTestExecutionHelpers.h"
 #include "AngelscriptSDKTestUtilities.h"
 #include "AngelscriptTestAdapter.h"
 

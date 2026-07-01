@@ -11,6 +11,7 @@
 // ============================================================================
 
 #include "CQTest.h"
+#include "AngelscriptTestMacros.h"
 #include "Preprocessor/AngelscriptPreprocessorTestHelpers.h"
 
 #include "Misc/ScopeExit.h"

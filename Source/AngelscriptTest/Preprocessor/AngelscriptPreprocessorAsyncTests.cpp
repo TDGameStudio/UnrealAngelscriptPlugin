@@ -13,6 +13,7 @@
 // ============================================================================
 
 #include "CQTest.h"
+#include "AngelscriptTestMacros.h"
 #include "Preprocessor/AngelscriptPreprocessorTestHelpers.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
