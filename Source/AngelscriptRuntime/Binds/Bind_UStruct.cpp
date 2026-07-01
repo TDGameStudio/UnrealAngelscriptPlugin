@@ -178,6 +178,8 @@ struct FUStructType : FAngelscriptType
 
 		auto* StructProp = new FStructProperty(Params.Outer, Params.PropertyName);
 		StructProp->Struct = UsedStruct;
+		if (CanHashValue(Usage))
+			StructProp->SetPropertyFlags(CPF_HasGetValueTypeHash);
 
 		return StructProp;
 	}
@@ -227,7 +229,15 @@ struct FUStructType : FAngelscriptType
 	bool CanHashValue(const FAngelscriptTypeUsage& Usage) const override
 	{
 		auto* Ops = GetOps(Usage);
-		return Ops != nullptr && Ops->HasGetTypeHash();
+		if (Ops != nullptr && Ops->HasGetTypeHash())
+			return true;
+
+		asITypeInfo* ScriptType = GetScriptType(Usage);
+		asCObjectType* ObjectType = ScriptType != nullptr ? CastToObjectType((asCTypeInfo*)ScriptType) : nullptr;
+		if (ObjectType == nullptr || ObjectType->GetFirstMethod("Hash") == nullptr)
+			return false;
+
+		return FAngelscriptType::FindScriptStructHashFunction(ScriptType) != nullptr;
 	}
 
 	uint32 GetHash(const FAngelscriptTypeUsage& Usage, const void* Address) const

@@ -183,7 +183,7 @@ UUserWidget WithoutTreeWidget() { return Cast<UUserWidget>(FindObject("__WITHOUT
 UTextBlock DetachedTextBlock() { return Cast<UTextBlock>(FindObject("__TEXT_BLOCK_PATH__")); }
 int FixturesResolve() { return WithTreeWidget() != null && WithoutTreeWidget() != null && DetachedTextBlock() != null ? 1 : 0; }
 int WithTreeRootStartsNull() { UUserWidget Widget = WithTreeWidget(); return Widget != null && Widget.GetRootWidget() == null ? 1 : 0; }
-int InvalidClassConstructReturnsNullAndLeavesRootNull() { UUserWidget Widget = WithTreeWidget(); UWidget InvalidWidget = Widget.ConstructWidget(AActor::StaticClass(), n"BadWidget"); return InvalidWidget == null && Widget.GetRootWidget() == null ? 1 : 0; }
+int InvalidClassConstructRejectsNonWidgetClass() { UUserWidget Widget = WithTreeWidget(); UWidget InvalidWidget = Widget.ConstructWidget(AActor::StaticClass(), n"BadWidget"); return InvalidWidget == null && Widget.GetRootWidget() == null ? 1 : 0; }
 int MissingTreeSetRootNoops() { UUserWidget Widget = WithoutTreeWidget(); UTextBlock TextBlock = DetachedTextBlock(); Widget.SetRootWidget(TextBlock); return Widget.GetRootWidget() == null ? 1 : 0; }
 int MissingTreeRemoveReturnsFalse() { UUserWidget Widget = WithoutTreeWidget(); return Widget.RemoveWidget(DetachedTextBlock()) ? 0 : 1; }
 )AS");
@@ -261,8 +261,10 @@ int MissingTreeRemoveReturnsFalse() { UUserWidget Widget = WithoutTreeWidget(); 
 		bPassed &= LocalAssert.IsNull(WithoutTree.Widget->GetRootWidget(), TEXT("UserWidgetTreeErrorPaths missing-tree fixture should start without root"));
 		bPassed &= LocalAssert.IsNull(DetachedTextBlock->GetParent(), TEXT("UserWidgetTreeErrorPaths detached text block should start parentless"));
 
-		Test.AddExpectedErrorPlain(TEXT("Ensure condition failed: WidgetClass && WidgetClass->IsChildOf(UWidget::StaticClass())"), EAutomationExpectedErrorFlags::Contains, 2);
-		Test.AddExpectedErrorPlain(TEXT("LogOutputDevice:"), EAutomationExpectedErrorFlags::Contains, 0);
+		const FString InvalidClassDiagnostic(TEXT("Class set to TSubclassOf<> was not a child of templated class."));
+		Test.AddExpectedErrorPlain(InvalidClassDiagnostic, EAutomationExpectedErrorFlags::Contains, 0);
+		Test.AddExpectedErrorPlain(FString(TEXT("ASUserWidget_Error")), EAutomationExpectedErrorFlags::Contains, 0);
+		Test.AddExpectedErrorPlain(TEXT("InvalidClassConstructRejectsNonWidgetClass"), EAutomationExpectedErrorFlags::Contains, 0);
 
 		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUserWidget_Error"), BuildErrorScript(WithTree, WithoutTree, *DetachedTextBlock));
 		if (!ModuleScope.IsValid())
@@ -274,11 +276,17 @@ int MissingTreeRemoveReturnsFalse() { UUserWidget Widget = WithoutTreeWidget(); 
 		const FExpectedGlobalInt Cases[] = {
 			{ TEXT("int FixturesResolve()"), TEXT("Script should resolve tree, missing-tree and detached fixtures"), 1 },
 			{ TEXT("int WithTreeRootStartsNull()"), TEXT("Tree-backed fixture root should start null"), 1 },
-			{ TEXT("int InvalidClassConstructReturnsNullAndLeavesRootNull()"), TEXT("Invalid widget class should return null and leave root unset"), 1 },
 			{ TEXT("int MissingTreeSetRootNoops()"), TEXT("SetRootWidget without WidgetTree should be a no-op"), 1 },
 			{ TEXT("int MissingTreeRemoveReturnsFalse()"), TEXT("RemoveWidget without WidgetTree should return false"), 1 },
 		};
 		bPassed &= ExpectGlobalInts(Test, Engine, Module,  Cases);
+		bPassed &= ExecuteFunctionExpectingScriptException(
+			Test,
+			Engine,
+			Module,
+			TEXT("int InvalidClassConstructRejectsNonWidgetClass()"),
+			TEXT("Invalid widget class should reject non-widget TSubclassOf input"),
+			InvalidClassDiagnostic);
 		bPassed &= VerifyEmptyTreeState(Test, WithTree, TEXT("UserWidgetTreeErrorPaths tree-backed postcondition"));
 		bPassed &= LocalAssert.IsNull(WithoutTree.Widget->WidgetTree, TEXT("UserWidgetTreeErrorPaths missing-tree fixture should keep WidgetTree null"));
 		bPassed &= LocalAssert.IsNull(WithoutTree.Widget->GetRootWidget(), TEXT("UserWidgetTreeErrorPaths missing-tree fixture should keep root null"));

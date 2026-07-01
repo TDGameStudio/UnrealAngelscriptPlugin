@@ -71,7 +71,7 @@ private:
 	static FEdGraphPinType MakeEnumPinType(UEnum* Enum)
 	{
 		FEdGraphPinType PinType;
-		PinType.PinCategory = UEdGraphSchema_K2::PC_Enum;
+		PinType.PinCategory = UEdGraphSchema_K2::PC_Byte;
 		PinType.PinSubCategoryObject = Enum;
 		return PinType;
 	}
@@ -168,9 +168,7 @@ public:
 			TEXT("Struct BlueprintImpact should report variable-type impact")));
 
 		FEdGraphPinType& VariablePinType = Blueprint.Blueprint->NewVariables[0].VarType;
-		ASSERT_THAT(AreEqual(StructBeforeReload, Cast<UScriptStruct>(VariablePinType.PinSubCategoryObject.Get()), TEXT("Blueprint variable should still reference the old struct before hot reload retargeting")));
-		VariablePinType.PinSubCategoryObject = StructAfterReload;
-		ASSERT_THAT(AreEqual(StructAfterReload, Cast<UScriptStruct>(VariablePinType.PinSubCategoryObject.Get()), TEXT("Blueprint variable can retarget to the reloaded script struct")));
+		ASSERT_THAT(AreEqual(StructAfterReload, Cast<UScriptStruct>(VariablePinType.PinSubCategoryObject.Get()), TEXT("Blueprint variable should retarget to the reloaded script struct during hot reload")));
 	}
 
 	TEST_METHOD(EnumReloadMarksBlueprintVariablesAndPinsImpacted)
@@ -205,7 +203,8 @@ public:
 
 		const FEdGraphPinType EnumPinType = MakeEnumPinType(EnumBeforeReload);
 		AddBlueprintVariable(*Blueprint.Blueprint, TEXT("StateVariable"), EnumPinType);
-		ASSERT_THAT(IsNotNull(AddCustomEventUserPin(*Blueprint.Blueprint, EnumPinType), TEXT("BlueprintImpact enum test should add a user pin using the script enum")));
+		UK2Node_CustomEvent* CustomEvent = AddCustomEventUserPin(*Blueprint.Blueprint, EnumPinType);
+		ASSERT_THAT(IsNotNull(CustomEvent, TEXT("BlueprintImpact enum test should add a user pin using the script enum")));
 
 		const FString ReloadV2Source = ASTEST_AS(R"AS(
 			UENUM(BlueprintType)
@@ -244,7 +243,7 @@ public:
 		FEdGraphPinType& VariablePinType = Blueprint.Blueprint->NewVariables[0].VarType;
 		ASSERT_THAT(AreEqual(EnumBeforeReload, Cast<UEnum>(VariablePinType.PinSubCategoryObject.Get()), TEXT("Blueprint variable should still reference the old enum before hot reload retargeting")));
 		VariablePinType.PinSubCategoryObject = EnumAfterReload;
-		ASSERT_THAT(AreEqual(EnumAfterReload, Cast<UEnum>(VariablePinType.PinSubCategoryObject.Get()), TEXT("Blueprint variable can retarget to the reloaded script enum")));
+		ASSERT_THAT(AreEqual(EnumAfterReload, Cast<UEnum>(VariablePinType.PinSubCategoryObject.Get()), TEXT("Blueprint variable can be matched as a replacement script enum")));
 	}
 };
 

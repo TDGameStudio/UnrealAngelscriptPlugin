@@ -860,7 +860,7 @@ void FAngelscriptPreprocessor::ProcessDelegates(FFile& File)
 		File.Module->Delegates.Add(Desc);
 
 		FMacro FakeMacro;
-		FakeMacro.NameStartPos = NameStart-1;
+		FakeMacro.NameStartPos = NameStart+1;
 		FakeMacro.NameEndPos = NameEnd;
 
 		GeneratedCode += FString::Printf( TEXT("struct %s {") , *DelegateName);
@@ -888,13 +888,13 @@ void FAngelscriptPreprocessor::ProcessDelegates(FFile& File)
 		bool bReturnIsConst = false;
 		FString AccessSpecifier;
 		FString ReturnType = ExtractReturnType(Chunk, FakeMacro, bReturnIsConst, AccessSpecifier);
+		ReturnType.RemoveFromStart(TEXT("delegate"));
+		ReturnType.RemoveFromStart(TEXT("event"));
+		ReturnType.TrimStartAndEndInline();
 
 		FString QualifiedReturnType = ReturnType;
 		if (bReturnIsConst)
 			QualifiedReturnType = TEXT("const ") + ReturnType;
-
-		ReturnType.RemoveFromStart(TEXT("delegate"));
-		ReturnType.RemoveFromStart(TEXT("event"));
 
 		FString PushArgumentCode;
 		for (int32 ArgIndex = 0, ArgCount = ArgumentNames.Num(); ArgIndex < ArgCount; ++ArgIndex)
@@ -1537,6 +1537,7 @@ static FName PP_NAME_NetMulticast("NetMulticast");
 static FName PP_NAME_WithValidation("WithValidation");
 static FName PP_NAME_NetClient("Client");
 static FName PP_NAME_NetServer("Server");
+static FName PP_NAME_Reliable("Reliable");
 static FName PP_NAME_Unreliable("Unreliable");
 static FName PP_NAME_BlueprintOverride("BlueprintOverride");
 static FName PP_NAME_Meta("Meta");
@@ -1787,6 +1788,10 @@ void FAngelscriptPreprocessor::ProcessFunctionMacro(FFile& File, FChunk& Chunk, 
 		else if (Spec.Name == PP_NAME_Unreliable)
 		{
 			FunctionDesc->bUnreliable = true;
+		}
+		else if (Spec.Name == PP_NAME_Reliable)
+		{
+			FunctionDesc->bUnreliable = false;
 		}
 		else if (Spec.Name == PP_NAME_BlueprintOverride)
 		{
@@ -2043,8 +2048,25 @@ FString FAngelscriptPreprocessor::ExtractReturnType(FChunk& Chunk, FMacro& Macro
 	while (EndOfWord >= 0 && IsWhitespace(Chunk.Content[EndOfWord]))
 		EndOfWord -= 1;
 	int32 StartOfWord = EndOfWord;
-	while (StartOfWord >= 0 && !IsWhitespace(Chunk.Content[StartOfWord]))
+	int32 AngleBrackets = 0;
+	while (StartOfWord >= 0)
+	{
+		TCHAR Char = Chunk.Content[StartOfWord];
+		if (Char == '>')
+		{
+			AngleBrackets += 1;
+		}
+		else if (Char == '<')
+		{
+			AngleBrackets -= 1;
+		}
+		else if (IsWhitespace(Char) && AngleBrackets <= 0)
+		{
+			break;
+		}
+
 		StartOfWord -= 1;
+	}
 
 	// Check if there are any qualifiers in front
 	int32 EndOfQualifier = StartOfWord - 1;

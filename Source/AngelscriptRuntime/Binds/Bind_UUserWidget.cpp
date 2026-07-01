@@ -53,15 +53,17 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UUserWidget((int32)FAngelscrip
 		}
 	});
 
-	UUserWidget_.Method("UWidget ConstructWidget(UClass WidgetClass, FName WidgetName = NAME_None)", [](UUserWidget* Widget, UClass* WidgetClass, FName WidgetName)
+	UUserWidget_.Method("UWidget ConstructWidget(const TSubclassOf<UWidget>& WidgetClass, FName WidgetName = NAME_None)", [](UUserWidget* Widget, const TSubclassOf<UWidget>& WidgetClass, FName WidgetName)
 	{
-		if (Widget->WidgetTree && ensureMsgf(WidgetClass && WidgetClass->IsChildOf(UWidget::StaticClass()), TEXT("Widget Class must be a subclass of UWidget! Right now AS won't let me use a TSubclassOf, very sad!")))
+		UClass* ResolvedWidgetClass = WidgetClass.Get();
+		if (Widget->WidgetTree && ensureMsgf(ResolvedWidgetClass && ResolvedWidgetClass->IsChildOf(UWidget::StaticClass()), TEXT("Widget Class must be a subclass of UWidget!")))
 		{
-			return Widget->WidgetTree->ConstructWidget<UWidget>(WidgetClass, WidgetName);
+			return Widget->WidgetTree->ConstructWidget<UWidget>(ResolvedWidgetClass, WidgetName);
 		}
-		
+
 		return (UWidget*)nullptr;
 	});
+	FAngelscriptBinds::SetPreviousBindArgumentDeterminesOutputType(0);
 
 	UUserWidget_.Method("bool RemoveWidget(UWidget WidgetToRemove)", [](UUserWidget* Widget, UWidget* WidgetToRemove)
 	{

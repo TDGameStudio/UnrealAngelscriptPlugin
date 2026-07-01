@@ -636,6 +636,17 @@ FString FAngelscriptType::BuildFunctionDeclaration(const FAngelscriptTypeUsage& 
 	return Declaration;
 }
 
+asIScriptFunction* FAngelscriptType::FindScriptStructHashFunction(asITypeInfo* ScriptType)
+{
+	if (ScriptType == nullptr)
+		return nullptr;
+
+	if (asIScriptFunction* HashFunction = ScriptType->GetMethodByDecl("uint Hash() const"))
+		return HashFunction;
+
+	return ScriptType->GetMethodByDecl("uint32 Hash() const");
+}
+
 bool FAngelscriptType::GetDebuggerValueFromFunction(asIScriptFunction* InScriptFunction, void* Object, FDebuggerValue& OutValue, class asITypeInfo* ContainerScriptType, UStruct* ContainerClass, const FString& PropertyAddrToSearchFor)
 {
 	asCScriptFunction* ScriptFunction = (asCScriptFunction*)InScriptFunction;

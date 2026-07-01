@@ -247,6 +247,7 @@ static bool RunNoMatchingModulesProducesNoMatches(FAutomationTestBase& Test)
 	ON_SCOPE_EXIT
 	{
 		EngineScope.Reset();
+		AngelscriptEditor::BlueprintImpact::ClearBlueprintAssetsOverrideForTesting();
 		CleanupBlueprintAsset(AssetRegistryModule, Blueprint, BlueprintPackageFilename);
 		if (!ImpactedAbsoluteFilename.IsEmpty())
 		{
@@ -301,6 +302,16 @@ class %s : AActor
 	}
 
 	AssetRegistryModule.Get().ScanModifiedAssetFiles({ BlueprintPackageFilename });
+	TArray<FAssetData> CandidateAssets;
+	AssetRegistryModule.Get().GetAssetsByPackageName(FName(*BlueprintPackagePath), CandidateAssets, true);
+	if (!TestEqual(
+			TEXT("BlueprintImpact.ScanBlueprintAssets no-impact test should isolate the saved blueprint asset"),
+			CandidateAssets.Num(),
+			1))
+	{
+		return false;
+	}
+	AngelscriptEditor::BlueprintImpact::SetBlueprintAssetsOverrideForTesting(MoveTemp(CandidateAssets));
 
 	if (!TestEqual(
 			TEXT("BlueprintImpact.ScanBlueprintAssets no-impact test should only have the one synthetic active module"),

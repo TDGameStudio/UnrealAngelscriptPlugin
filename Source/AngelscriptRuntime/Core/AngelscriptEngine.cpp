@@ -1469,6 +1469,7 @@ void FAngelscriptEngine::Shutdown()
 			if (UASStruct* Struct = Cast<UASStruct>(Obj))
 			{
 				Struct->ScriptType = nullptr;
+				Struct->UpdateScriptType();
 				if (Struct->IsRooted())
 				{
 					Struct->RemoveFromRoot();

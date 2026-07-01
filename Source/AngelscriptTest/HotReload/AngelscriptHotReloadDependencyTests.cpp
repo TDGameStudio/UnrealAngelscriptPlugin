@@ -210,10 +210,10 @@ public:
 			)AS");
 
 		ASSERT_THAT(IsTrue(
-			CompileAnnotatedModuleFromMemory(&Engine, ProviderModuleName, TEXT("HotReloadDependencyProvider.as"), ProviderV1Source),
+			CompileAnnotatedModuleFromMemory(&Engine, ProviderModuleName, ProviderRelativeScriptPath, ProviderV1Source),
 			TEXT("Initial dependency provider struct module should compile")));
 		ASSERT_THAT(IsTrue(
-			CompileAnnotatedModuleFromMemory(&Engine, ConsumerModuleName, TEXT("HotReloadDependencyConsumer.as"), ConsumerV1Source),
+			CompileAnnotatedModuleFromMemory(&Engine, ConsumerModuleName, ConsumerRelativeScriptPath, ConsumerV1Source),
 			TEXT("Initial dependency consumer module should compile")));
 
 		const TSharedPtr<FAngelscriptClassDesc> StructDescBeforeReload = Engine.GetClass(TEXT("FHotReloadDependencyPayload"));
@@ -242,7 +242,7 @@ public:
 
 		ECompileResult ReloadResult = ECompileResult::Error;
 		ASSERT_THAT(IsTrue(
-			CompileModuleWithResult(&Engine, ECompileType::FullReload, ProviderModuleName, TEXT("HotReloadDependencyProvider.as"), ProviderV2Source, ReloadResult),
+			CompileModuleWithResult(&Engine, ECompileType::FullReload, ProviderModuleName, ProviderRelativeScriptPath, ProviderV2Source, ReloadResult),
 			TEXT("Provider struct full reload should compile")));
 		ASSERT_THAT(IsTrue(
 			ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled,
@@ -269,7 +269,7 @@ public:
 			)AS");
 
 		ASSERT_THAT(IsTrue(
-			CompileModuleWithResult(&Engine, ECompileType::FullReload, ConsumerModuleName, TEXT("HotReloadDependencyConsumer.as"), ConsumerV2Source, ReloadResult),
+			CompileModuleWithResult(&Engine, ECompileType::FullReload, ConsumerModuleName, ConsumerRelativeScriptPath, ConsumerV2Source, ReloadResult),
 			TEXT("Consumer full reload against provider V2 should compile")));
 		ASSERT_THAT(IsTrue(
 			ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled,

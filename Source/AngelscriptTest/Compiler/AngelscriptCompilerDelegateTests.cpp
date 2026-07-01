@@ -259,6 +259,66 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompilerDelegateTests,
 		}
 	}
 
+	TEST_METHOD(DelegateWithStructKeyMapParameterCompiles)
+	{
+		const FName ModuleName(TEXT("CompilerDelegateWithStructKeyMapParameterCompiles"));
+		const FString ScriptFilename(TEXT("CompilerDelegateWithStructKeyMapParameterCompiles.as"));
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			USTRUCT(BlueprintType)
+			struct FCompilerDelegateMapKey
+			{
+				int ID = 0;
+
+				bool opEquals(const FCompilerDelegateMapKey& Other) const
+				{
+					return ID == Other.ID;
+				}
+
+				uint32 Hash() const
+				{
+					return uint32(ID);
+				}
+			}
+
+			delegate int FCompilerStructKeyMapSignal(const TMap<FCompilerDelegateMapKey, int>&in Items);
+			delegate TMap<FCompilerDelegateMapKey, int> FCompilerStructKeyMapReturnSignal();
+
+			UCLASS()
+			class UCompilerDelegateStructKeyMapCarrier : UObject
+			{
+				UPROPERTY()
+				FCompilerStructKeyMapSignal Signal;
+
+				UPROPERTY()
+				FCompilerStructKeyMapReturnSignal ReturnSignal;
+			}
+			)AS");
+
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		FAngelscriptCompileTraceSummary Summary;
+		const bool bCompiled = CompileModuleWithSummary(
+			&Engine,
+			ECompileType::FullReload,
+			ModuleName,
+			ScriptFilename,
+			ScriptSource,
+			true,
+			Summary);
+
+		ASSERT_THAT(IsTrue(bCompiled, TEXT("Delegate with TMap<FStruct,int> parameter and return should compile")));
+		ASSERT_THAT(AreEqual(ECompileResult::FullyHandled, Summary.CompileResult, TEXT("Delegate with TMap<FStruct,int> parameter and return should finish with a fully handled compile result")));
+		ASSERT_THAT(AreEqual(0, Summary.Diagnostics.Num(), TEXT("Delegate with TMap<FStruct,int> parameter and return should not emit diagnostics")));
+
+		}
+	}
+
 };
 
 #endif

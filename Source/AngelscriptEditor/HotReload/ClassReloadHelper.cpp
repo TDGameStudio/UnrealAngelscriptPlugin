@@ -558,7 +558,7 @@ void FClassReloadHelper::FReloadState::PerformReinstance()
 						}
 					}
 
-					if (NewlyCreatedStructs.Num() != 0 && !bShouldRefresh)
+					if ((NewlyCreatedStructs.Num() != 0 || ReloadEnums.Num() != 0) && !bShouldRefresh)
 					{
 						for (auto* Pin : Node->Pins)
 						{

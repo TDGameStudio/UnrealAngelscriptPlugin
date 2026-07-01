@@ -1322,8 +1322,7 @@ bool ValidateMapOperations(asITypeInfo* TemplateType, asCString* ErrorMessage)
 			auto* ObjectType = CastToObjectType(SubType);
 			if (ObjectType != nullptr && ObjectType->GetFirstMethod("Hash") != nullptr)
 			{
-				const FString HashDecl = TEXT("uint32 Hash() const");
-				Ops->HashFunction = SubType->GetMethodByDecl(TCHAR_TO_ANSI(*HashDecl));
+				Ops->HashFunction = FAngelscriptType::FindScriptStructHashFunction(SubType);
 				bCanHash = Ops->HashFunction != nullptr;
 			}
 		}
@@ -1336,7 +1335,7 @@ bool ValidateMapOperations(asITypeInfo* TemplateType, asCString* ErrorMessage)
 
 	if (!Ops->bValid && ErrorMessage != nullptr)
 	{
-		if (bCanHash)
+		if (!bCanHash)
 		{
 			*ErrorMessage = "Key type does not have a hash function defined";
 		}

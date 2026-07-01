@@ -1208,6 +1208,14 @@ void FAngelscriptClassGenerator::Analyze(FModuleData& ModuleData, FClassData& Cl
 							ClassData.ReloadReqLines.AddUnique(PropertyDesc->LineNumber);
 						}
 					}
+					else if (HasReloadedReflectedScriptType(OldPropertyDesc->PropertyType, PropertyDesc->PropertyType))
+					{
+						if (ClassData.ReloadReq < EReloadRequirement::FullReloadSuggested)
+						{
+							ClassData.ReloadReq = EReloadRequirement::FullReloadSuggested;
+							ClassData.ReloadReqLines.AddUnique(PropertyDesc->LineNumber);
+						}
+					}
 
 					// If the definition has changed, we must do a full reload
 					if (!PropertyDesc->IsDefinitionEquivalent(*OldPropertyDesc))
@@ -1319,6 +1327,14 @@ void FAngelscriptClassGenerator::Analyze(FModuleData& ModuleData, FClassData& Cl
 					if (ClassData.ReloadReq < EReloadRequirement::FullReloadRequired)
 					{
 						ClassData.ReloadReq = EReloadRequirement::FullReloadRequired;
+						ClassData.ReloadReqLines.AddUnique(NewFunctionDesc->LineNumber);
+					}
+				}
+				else if (HasReloadedReflectedScriptType(*OldFunctionDesc, *NewFunctionDesc))
+				{
+					if (ClassData.ReloadReq < EReloadRequirement::FullReloadSuggested)
+					{
+						ClassData.ReloadReq = EReloadRequirement::FullReloadSuggested;
 						ClassData.ReloadReqLines.AddUnique(NewFunctionDesc->LineNumber);
 					}
 				}
@@ -1670,6 +1686,14 @@ void FAngelscriptClassGenerator::Analyze(FModuleData& ModuleData, FDelegateData&
 			if (DelegateData.ReloadReq < EReloadRequirement::FullReloadRequired)
 			{
 				DelegateData.ReloadReq = EReloadRequirement::FullReloadRequired;
+				DelegateData.ReloadReqLines.AddUnique(DelegateDesc->LineNumber);
+			}
+		}
+		else if (HasReloadedReflectedScriptType(*DelegateData.OldDelegate->Signature, *FunctionDesc))
+		{
+			if (DelegateData.ReloadReq < EReloadRequirement::FullReloadSuggested)
+			{
+				DelegateData.ReloadReq = EReloadRequirement::FullReloadSuggested;
 				DelegateData.ReloadReqLines.AddUnique(DelegateDesc->LineNumber);
 			}
 		}
@@ -2262,12 +2286,130 @@ bool FAngelscriptClassGenerator::ShouldFullReload(FClassData& Class)
 {
 	if (bIsDoingFullReload && Class.ReloadReq >= EReloadRequirement::FullReloadSuggested)
 		return true;
-	if (Class.NewClass->ImplementedInterfaces.Num() > 0)
+	if (HasInterfaceListChanged(Class))
 		return true;
 	//[UE++]: Materialize brand-new classes during soft reload (no OldClass to link against)
 	if (!Class.OldClass.IsValid() && !Class.NewClass->bIsStaticsClass)
 		return true;
 	//[UE--]
+	return false;
+}
+
+bool FAngelscriptClassGenerator::HasInterfaceListChanged(FClassData& Class) const
+{
+	if (!Class.OldClass.IsValid())
+		return Class.NewClass->ImplementedInterfaces.Num() > 0;
+
+	return Class.NewClass->ImplementedInterfaces != Class.OldClass->ImplementedInterfaces;
+}
+
+FAngelscriptClassGenerator::EReloadRequirement FAngelscriptClassGenerator::GetReloadRequirementForNewScriptType(asITypeInfo* ScriptType) const
+{
+	const FDataRef* Ref = DataRefByNewScriptType.Find(ScriptType);
+	if (Ref == nullptr)
+	{
+		return EReloadRequirement::SoftReload;
+	}
+
+	const FModuleData& ModuleData = Modules[Ref->ModuleIndex];
+	if (Ref->bIsClass)
+	{
+		return ModuleData.Classes[Ref->DataIndex].ReloadReq;
+	}
+
+	if (Ref->bIsDelegate)
+	{
+		return ModuleData.Delegates[Ref->DataIndex].ReloadReq;
+	}
+
+	return EReloadRequirement::SoftReload;
+}
+
+static UObject* GetReflectedObjectForScriptType(asITypeInfo* ScriptType)
+{
+	if (ScriptType == nullptr)
+	{
+		return nullptr;
+	}
+
+	void* UserData = ScriptType->GetUserData();
+	if (UserData == nullptr
+		|| UserData == FAngelscriptType::TAG_UserData_Delegate
+		|| UserData == FAngelscriptType::TAG_UserData_Multicast_Delegate)
+	{
+		return nullptr;
+	}
+
+	return static_cast<UObject*>(UserData);
+}
+
+bool FAngelscriptClassGenerator::HasReloadedReflectedScriptType(const FAngelscriptTypeUsage& OldType, const FAngelscriptTypeUsage& NewType) const
+{
+	if (!OldType.Type.IsValid() || !NewType.Type.IsValid())
+	{
+		return false;
+	}
+
+	if (OldType.ScriptClass != NewType.ScriptClass
+		&& OldType.ScriptClass != nullptr
+		&& NewType.ScriptClass != nullptr
+		&& NewType.CanCreateProperty())
+	{
+		if (UpdatedScriptTypeMap.FindRef(OldType.ScriptClass) == NewType.ScriptClass)
+		{
+			if (GetReloadRequirementForNewScriptType(NewType.ScriptClass) >= EReloadRequirement::FullReloadSuggested)
+			{
+				return true;
+			}
+		}
+		else
+		{
+			UObject* OldReflectedObject = GetReflectedObjectForScriptType(OldType.ScriptClass);
+			UObject* NewReflectedObject = GetReflectedObjectForScriptType(NewType.ScriptClass);
+			if (NewReflectedObject != nullptr
+				&& OldReflectedObject != NewReflectedObject)
+			{
+				return true;
+			}
+		}
+	}
+
+	if (OldType.SubTypes.Num() != NewType.SubTypes.Num())
+	{
+		return false;
+	}
+
+	for (int32 SubTypeIndex = 0, SubTypeCount = OldType.SubTypes.Num(); SubTypeIndex < SubTypeCount; ++SubTypeIndex)
+	{
+		if (HasReloadedReflectedScriptType(OldType.SubTypes[SubTypeIndex], NewType.SubTypes[SubTypeIndex]))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool FAngelscriptClassGenerator::HasReloadedReflectedScriptType(const FAngelscriptFunctionDesc& OldFunction, const FAngelscriptFunctionDesc& NewFunction) const
+{
+	if (HasReloadedReflectedScriptType(OldFunction.ReturnType, NewFunction.ReturnType))
+	{
+		return true;
+	}
+
+	if (OldFunction.Arguments.Num() != NewFunction.Arguments.Num())
+	{
+		return false;
+	}
+
+	for (int32 ArgIndex = 0, ArgCount = OldFunction.Arguments.Num(); ArgIndex < ArgCount; ++ArgIndex)
+	{
+		if (HasReloadedReflectedScriptType(OldFunction.Arguments[ArgIndex].Type, NewFunction.Arguments[ArgIndex].Type))
+		{
+			return true;
+		}
+	}
+
 	return false;
 }
 
@@ -4033,8 +4175,14 @@ void FAngelscriptClassGenerator::DoFullReload(FModuleData& ModuleData, FEnumData
 	// Add specified metadata
 	for (auto& MetaElement : EnumDesc->Meta)
 	{
-		if (MetaElement.Key.Value < Enum->NumEnums())
+		if (MetaElement.Key.Value == INDEX_NONE)
+		{
+			Enum->SetMetaData(*MetaElement.Key.Key.ToString(), *MetaElement.Value);
+		}
+		else if (MetaElement.Key.Value < Enum->NumEnums())
+		{
 			Enum->SetMetaData(*MetaElement.Key.Key.ToString(), *MetaElement.Value, MetaElement.Key.Value);
+		}
 	}
 #endif
 

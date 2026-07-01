@@ -7,6 +7,7 @@
 #include "Misc/ScopeExit.h"
 #include "Subsystem/ScriptGameInstanceSubsystem.h"
 #include "Subsystem/ScriptWorldSubsystem.h"
+#include "UObject/StrongObjectPtr.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -98,15 +99,18 @@ public:
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope EngineScope(Engine);
 
-		UWorld* TestWorldOuter = NewObject<UWorld>(GetTransientPackage(), TEXT("HotReloadWorldSubsystemOuter"));
-		ASSERT_THAT(IsNotNull(TestWorldOuter, TEXT("World subsystem hot reload test should create a world outer")));
+		TStrongObjectPtr<UWorld> TestWorldOuter(NewObject<UWorld>(GetTransientPackage(), TEXT("HotReloadWorldSubsystemOuter")));
+		ASSERT_THAT(IsNotNull(TestWorldOuter.Get(), TEXT("World subsystem hot reload test should create a world outer")));
+		TStrongObjectPtr<UObject> SubsystemInstance;
 
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*WorldSubsystemModuleName.ToString());
-			if (TestWorldOuter != nullptr)
+			SubsystemInstance.Reset();
+			if (TestWorldOuter.IsValid())
 			{
 				TestWorldOuter->MarkAsGarbage();
+				TestWorldOuter.Reset();
 			}
 		};
 
@@ -130,8 +134,8 @@ public:
 		ASSERT_THAT(IsNotNull(ClassBeforeReload, TEXT("World subsystem class should exist before reload")));
 		ASSERT_THAT(IsTrue(ClassBeforeReload->IsChildOf(UScriptWorldSubsystem::StaticClass()), TEXT("Generated class should derive from UScriptWorldSubsystem")));
 
-		UObject* SubsystemInstance = NewSubsystemInstance(*TestRunner, ClassBeforeReload, TestWorldOuter, TEXT("World subsystem V1"));
-		ASSERT_THAT(IsTrue(ExecuteSubsystemValue(*TestRunner, Engine, SubsystemInstance, ClassBeforeReload, 41, TEXT("World subsystem V1"))));
+		SubsystemInstance.Reset(NewSubsystemInstance(*TestRunner, ClassBeforeReload, TestWorldOuter.Get(), TEXT("World subsystem V1")));
+		ASSERT_THAT(IsTrue(ExecuteSubsystemValue(*TestRunner, Engine, SubsystemInstance.Get(), ClassBeforeReload, 41, TEXT("World subsystem V1"))));
 
 		const FString ReloadV2Source = ASTEST_AS(R"AS(
 			UCLASS()
@@ -154,7 +158,7 @@ public:
 		UClass* ClassAfterReload = FindGeneratedClass(&Engine, WorldSubsystemClassName);
 		ASSERT_THAT(IsNotNull(ClassAfterReload, TEXT("World subsystem class should exist after reload")));
 		ASSERT_THAT(AreEqual(ClassBeforeReload, ClassAfterReload, TEXT("World subsystem soft reload should preserve UClass identity")));
-		ASSERT_THAT(IsTrue(ExecuteSubsystemValue(*TestRunner, Engine, SubsystemInstance, ClassAfterReload, 64, TEXT("World subsystem V2 existing instance"))));
+		ASSERT_THAT(IsTrue(ExecuteSubsystemValue(*TestRunner, Engine, SubsystemInstance.Get(), ClassAfterReload, 64, TEXT("World subsystem V2 existing instance"))));
 	}
 
 	TEST_METHOD(GameInstanceSubsystemSoftReloadUpdatesCallableBehavior)
@@ -162,15 +166,18 @@ public:
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope EngineScope(Engine);
 
-		UGameInstance* TestGameInstanceOuter = NewObject<UGameInstance>(GetTransientPackage(), TEXT("HotReloadGameInstanceSubsystemOuter"));
-		ASSERT_THAT(IsNotNull(TestGameInstanceOuter, TEXT("Game-instance subsystem hot reload test should create a game-instance outer")));
+		TStrongObjectPtr<UGameInstance> TestGameInstanceOuter(NewObject<UGameInstance>(GetTransientPackage(), TEXT("HotReloadGameInstanceSubsystemOuter")));
+		ASSERT_THAT(IsNotNull(TestGameInstanceOuter.Get(), TEXT("Game-instance subsystem hot reload test should create a game-instance outer")));
+		TStrongObjectPtr<UObject> SubsystemInstance;
 
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*GameInstanceSubsystemModuleName.ToString());
-			if (TestGameInstanceOuter != nullptr)
+			SubsystemInstance.Reset();
+			if (TestGameInstanceOuter.IsValid())
 			{
 				TestGameInstanceOuter->MarkAsGarbage();
+				TestGameInstanceOuter.Reset();
 			}
 		};
 
@@ -194,8 +201,8 @@ public:
 		ASSERT_THAT(IsNotNull(ClassBeforeReload, TEXT("Game-instance subsystem class should exist before reload")));
 		ASSERT_THAT(IsTrue(ClassBeforeReload->IsChildOf(UScriptGameInstanceSubsystem::StaticClass()), TEXT("Generated class should derive from UScriptGameInstanceSubsystem")));
 
-		UObject* SubsystemInstance = NewSubsystemInstance(*TestRunner, ClassBeforeReload, TestGameInstanceOuter, TEXT("Game-instance subsystem V1"));
-		ASSERT_THAT(IsTrue(ExecuteSubsystemValue(*TestRunner, Engine, SubsystemInstance, ClassBeforeReload, 13, TEXT("Game-instance subsystem V1"))));
+		SubsystemInstance.Reset(NewSubsystemInstance(*TestRunner, ClassBeforeReload, TestGameInstanceOuter.Get(), TEXT("Game-instance subsystem V1")));
+		ASSERT_THAT(IsTrue(ExecuteSubsystemValue(*TestRunner, Engine, SubsystemInstance.Get(), ClassBeforeReload, 13, TEXT("Game-instance subsystem V1"))));
 
 		const FString ReloadV2Source = ASTEST_AS(R"AS(
 			UCLASS()
@@ -218,7 +225,7 @@ public:
 		UClass* ClassAfterReload = FindGeneratedClass(&Engine, GameInstanceSubsystemClassName);
 		ASSERT_THAT(IsNotNull(ClassAfterReload, TEXT("Game-instance subsystem class should exist after reload")));
 		ASSERT_THAT(AreEqual(ClassBeforeReload, ClassAfterReload, TEXT("Game-instance subsystem soft reload should preserve UClass identity")));
-		ASSERT_THAT(IsTrue(ExecuteSubsystemValue(*TestRunner, Engine, SubsystemInstance, ClassAfterReload, 31, TEXT("Game-instance subsystem V2 existing instance"))));
+		ASSERT_THAT(IsTrue(ExecuteSubsystemValue(*TestRunner, Engine, SubsystemInstance.Get(), ClassAfterReload, 31, TEXT("Game-instance subsystem V2 existing instance"))));
 	}
 };
 

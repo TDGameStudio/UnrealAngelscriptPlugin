@@ -90,6 +90,9 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptType : TSharedFromThis<FAngelscriptTyp
 	// Helper to build an angelscript function declaration
 	static FString BuildFunctionDeclaration(const FAngelscriptTypeUsage& ReturnType, const FString& FunctionName, const TArray<FAngelscriptTypeUsage>& ArgumentTypes, const TArray<FString>& ArgumentNames, const TArray<FString>& ArgumentDefaults, bool bConstMethod = false);
 
+	// Helper to find the script-side Hash() declaration used by script structs.
+	static class asIScriptFunction* FindScriptStructHashFunction(class asITypeInfo* ScriptType);
+
 	/**
 	 * Type operations
 	 */

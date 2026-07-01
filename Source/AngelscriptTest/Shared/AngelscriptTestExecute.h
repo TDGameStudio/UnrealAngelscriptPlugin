@@ -1015,6 +1015,22 @@ inline bool CompileAndExpectFailure(
 {
 	Test.AddInfo(FString(CaseLabel));
 
+	for (const FString& ExpectedFragment : ExpectedDiagnosticFragments)
+	{
+		Test.AddExpectedErrorPlain(
+			ExpectedFragment,
+			EAutomationExpectedErrorFlags::Contains,
+			-1);
+	}
+	Test.AddExpectedErrorPlain(
+		TEXT("Hot reload failed due to script compile errors"),
+		EAutomationExpectedErrorFlags::Contains,
+		-1);
+	Test.AddExpectedErrorPlain(
+		TEXT("An error was encountered during angelscript hot reload"),
+		EAutomationExpectedErrorFlags::Contains,
+		-1);
+
 	FAngelscriptCompileTraceSummary Summary;
 	const FString ModuleNameString(ModuleName);
 	const FString Filename = FString::Printf(TEXT("%s.as"), *ModuleNameString);

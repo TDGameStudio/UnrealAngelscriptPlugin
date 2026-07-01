@@ -259,6 +259,7 @@ static bool RunFullScanUsesAllActiveModulesWhenChangedScriptsEmpty(FAutomationTe
 	ON_SCOPE_EXIT
 	{
 		EngineScope.Reset();
+		AngelscriptEditor::BlueprintImpact::ClearBlueprintAssetsOverrideForTesting();
 		CleanupBlueprintAsset(AssetRegistryModule, Blueprint, BlueprintPackageFilename);
 		if (!ImpactedAbsoluteFilename.IsEmpty())
 		{
@@ -336,6 +337,16 @@ class %s : AActor
 	}
 
 	AssetRegistryModule.Get().ScanModifiedAssetFiles({ BlueprintPackageFilename });
+	TArray<FAssetData> CandidateAssets;
+	AssetRegistryModule.Get().GetAssetsByPackageName(FName(*BlueprintPackagePath), CandidateAssets, true);
+	if (!TestEqual(
+			TEXT("BlueprintImpact.ScanBlueprintAssets test should isolate the saved blueprint asset"),
+			CandidateAssets.Num(),
+			1))
+	{
+		return false;
+	}
+	AngelscriptEditor::BlueprintImpact::SetBlueprintAssetsOverrideForTesting(MoveTemp(CandidateAssets));
 
 	const int32 ExpectedActiveModuleCount = Engine->GetActiveModules().Num();
 	if (!TestEqual(

@@ -135,6 +135,10 @@ private:
 	bool ShouldFullReload(FClassData& Class);
 	bool ShouldFullReload(FEnumData& Enum);
 	bool ShouldFullReload(FDelegateData& Enum);
+	bool HasInterfaceListChanged(FClassData& Class) const;
+	EReloadRequirement GetReloadRequirementForNewScriptType(class asITypeInfo* ScriptType) const;
+	bool HasReloadedReflectedScriptType(const FAngelscriptTypeUsage& OldType, const FAngelscriptTypeUsage& NewType) const;
+	bool HasReloadedReflectedScriptType(const FAngelscriptFunctionDesc& OldFunction, const FAngelscriptFunctionDesc& NewFunction) const;
 
 	void PerformReload(bool bFullReload);
 

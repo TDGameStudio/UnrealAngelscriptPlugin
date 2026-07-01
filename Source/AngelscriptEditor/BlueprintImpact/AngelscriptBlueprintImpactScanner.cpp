@@ -47,14 +47,39 @@ namespace
 
 	bool MatchesPinType(const FEdGraphPinType& PinType, const AngelscriptEditor::BlueprintImpact::FBlueprintImpactSymbols& Symbols)
 	{
+		auto MatchesReplacementObject = [&Symbols](UObject* Object) -> bool
+		{
+			if (Object == nullptr)
+			{
+				return false;
+			}
+
+			if (Symbols.ReplacementObjects.Contains(Object))
+			{
+				return true;
+			}
+
+			for (const TPair<UObject*, UObject*>& ReplacementObject : Symbols.ReplacementObjects)
+			{
+				if (ReplacementObject.Value == Object)
+				{
+					return true;
+				}
+			}
+
+			return false;
+		};
+
 		if (PinType.PinCategory == UEdGraphSchema_K2::PC_Struct)
 		{
-			return Symbols.Structs.Contains(Cast<UScriptStruct>(PinType.PinSubCategoryObject.Get()));
+			UScriptStruct* Struct = Cast<UScriptStruct>(PinType.PinSubCategoryObject.Get());
+			return Symbols.Structs.Contains(Struct) || MatchesReplacementObject(Struct);
 		}
 
 		if (PinType.PinCategory == UEdGraphSchema_K2::PC_Enum || PinType.PinCategory == UEdGraphSchema_K2::PC_Byte)
 		{
-			return Symbols.Enums.Contains(Cast<UEnum>(PinType.PinSubCategoryObject.Get()));
+			UEnum* Enum = Cast<UEnum>(PinType.PinSubCategoryObject.Get());
+			return Symbols.Enums.Contains(Enum) || MatchesReplacementObject(Enum);
 		}
 
 		return false;

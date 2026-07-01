@@ -2,6 +2,7 @@
 #include "AngelscriptFunctionalTestUtils.h"
 #include "AngelscriptTestExecute.h"
 #include "AngelscriptTestMacros.h"
+#include "AngelscriptTestModuleBuilder.h"
 #include "AngelscriptTestModuleScope.h"
 #include "AngelscriptTestUtilities.h"
 
@@ -61,6 +62,8 @@ namespace AngelscriptCoverageWidgetTest
 	static constexpr TCHAR WidgetTreeModuleName[] = TEXT("ASCoverageWidget_TreeRuntime");
 	static constexpr TCHAR WidgetClassName[] = TEXT("UCoverageScoreWidget");
 	static constexpr TCHAR TreeWidgetClassName[] = TEXT("UCoverageRuntimeWidget");
+	static constexpr TCHAR RuntimeApiWidgetClassModuleName[] = TEXT("ASCoverageWidget_RuntimeApiFixtureClass");
+	static constexpr TCHAR RuntimeApiWidgetClassName[] = TEXT("UCoverageRuntimeApiWidget");
 	static constexpr TCHAR RuntimeWidgetName[] = TEXT("CoverageRuntimeWidget");
 	static constexpr TCHAR RuntimeRootName[] = TEXT("CoverageRuntimeRoot");
 
@@ -239,12 +242,12 @@ namespace AngelscriptCoverageWidgetTest
 				return Cast<UUserWidget>(FindObject("__WIDGET_PATH__"));
 			}
 
-			UWidget MakeWidget(UClass WidgetClass, FName WidgetName)
+			UWidget MakeWidget(TSubclassOf<UWidget> WidgetClass, FName WidgetName)
 			{
 				UUserWidget Widget = GetFixture();
 				if (Widget == null)
 				{
-					return null;
+					return nullptr;
 				}
 
 				return Widget.ConstructWidget(WidgetClass, WidgetName);
@@ -257,26 +260,31 @@ namespace AngelscriptCoverageWidgetTest
 		return Script;
 	}
 
-	UUserWidget* CreateNativeRuntimeWidget(FAutomationTestBase& Test, const TCHAR* WidgetNameBase)
+	UUserWidget* CreateRuntimeApiWidget(FAutomationTestBase& Test, UClass* WidgetClass, const TCHAR* WidgetNameBase)
 	{
 		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(WidgetClass, TEXT("runtime API widget class should be compiled before fixture creation")))
+		{
+			return nullptr;
+		}
+
 		const FName UniqueWidgetName = MakeUniqueObjectName(
 			GetTransientPackage(),
-			UUserWidget::StaticClass(),
+			WidgetClass,
 			FName(WidgetNameBase));
 
 		UUserWidget* Widget = NewObject<UUserWidget>(
 			GetTransientPackage(),
-			UUserWidget::StaticClass(),
+			WidgetClass,
 			UniqueWidgetName,
 			RF_Transient);
-		if (!LocalAssert.IsNotNull(Widget, TEXT("native runtime UUserWidget fixture should be created")))
+		if (!LocalAssert.IsNotNull(Widget, TEXT("runtime API UUserWidget fixture should be created")))
 		{
 			return nullptr;
 		}
 
 		UWidgetTree* WidgetTree = NewObject<UWidgetTree>(Widget, UWidgetTree::StaticClass(), TEXT("WidgetTree"), RF_Transient);
-		if (!LocalAssert.IsNotNull(WidgetTree, TEXT("native runtime UUserWidget fixture should create WidgetTree")))
+		if (!LocalAssert.IsNotNull(WidgetTree, TEXT("runtime API UUserWidget fixture should create WidgetTree")))
 		{
 			return nullptr;
 		}
@@ -481,13 +489,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWidgetTest,
 				UFUNCTION(BlueprintOverride)
 				void OnAnimationStarted(const UWidgetAnimation Animation)
 				{
-					LastStartedAnimation = null;
+					bInitialized = true;
 				}
 
 				UFUNCTION(BlueprintOverride)
 				void OnAnimationFinished(const UWidgetAnimation Animation)
 				{
-					LastFinishedAnimation = null;
+					bConstructed = true;
 				}
 			}
 			)AS"),
@@ -821,7 +829,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWidgetTest,
 			Engine,
 			*ModuleName.ToString(),
 			ASTEST_AS(R"AS(
-			UUserWidget CreateViaBlueprintNamespace(TSubclassOf<UUserWidget> WidgetClass, APlayerController OwningPlayer)
+			UUserWidget CreateViaBlueprintNamespace(const TSubclassOf<UUserWidget>& WidgetClass, APlayerController OwningPlayer)
 			{
 				return WidgetBlueprint::CreateWidget(WidgetClass, OwningPlayer);
 			}
@@ -839,8 +847,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWidgetTest,
 		}
 
 		asIScriptModule& Module = ModuleScope.GetModule();
-		asIScriptFunction* CreateFunction = Module.GetFunctionByDecl("UUserWidget CreateViaBlueprintNamespace(TSubclassOf<UUserWidget>, APlayerController)");
-		asIScriptFunction* ViewportFunction = Module.GetFunctionByDecl("void AddAndRemoveViaViewportMethods(UUserWidget)");
+		asIScriptFunction* CreateFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("UUserWidget CreateViaBlueprintNamespace(const TSubclassOf<UUserWidget>&, APlayerController)"));
+		asIScriptFunction* ViewportFunction = GetFunctionByDecl(*TestRunner, Module, TEXT("void AddAndRemoveViaViewportMethods(UUserWidget)"));
 		ASSERT_THAT(IsNotNull(CreateFunction, TEXT("WidgetBlueprint::CreateWidget should compile into a callable AS helper")));
 		ASSERT_THAT(IsNotNull(ViewportFunction, TEXT("AddToViewport/RemoveFromViewport should compile into a callable AS helper")));
 
@@ -952,9 +960,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageWidgetRuntimeApiTest,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
+	inline static UClass* RuntimeApiWidgetClass = nullptr;
+
 	static UUserWidget* CreateWidgetFixture(FAutomationTestBase& Test, const TCHAR* WidgetNameBase)
 	{
-		return AngelscriptCoverageWidgetTest::CreateNativeRuntimeWidget(Test, WidgetNameBase);
+		return AngelscriptCoverageWidgetTest::CreateRuntimeApiWidget(Test, RuntimeApiWidgetClass, WidgetNameBase);
 	}
 
 	template <typename WidgetType>
@@ -981,12 +991,27 @@ private:
 public:
 	BEFORE_ALL()
 	{
-		ASTEST_CREATE_ENGINE();
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		RuntimeApiWidgetClass = AngelscriptCoverageWidgetTest::CompileWidgetClass(
+			*TestRunner,
+			Engine,
+			FName(AngelscriptCoverageWidgetTest::RuntimeApiWidgetClassModuleName),
+			TEXT("ASCoverageWidgetRuntimeApiFixtureClass.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class UCoverageRuntimeApiWidget : UUserWidget
+			{
+			}
+			)AS"),
+			AngelscriptCoverageWidgetTest::RuntimeApiWidgetClassName);
 	}
 
 	AFTER_ALL()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		Engine.DiscardModule(AngelscriptCoverageWidgetTest::RuntimeApiWidgetClassModuleName);
+		RuntimeApiWidgetClass = nullptr;
 		ASTEST_RESET_ENGINE(Engine);
 	}
 
@@ -1307,8 +1332,10 @@ public:
 					return 0;
 				}
 
-				Image.SetBrushFromTexture(null, false);
-				Image.SetBrushFromMaterial(null);
+				UTexture2D Texture = nullptr;
+				UMaterialInterface Material = nullptr;
+				Image.SetBrushFromTexture(Texture, false);
+				Image.SetBrushFromMaterial(Material);
 				Image.SetColorAndOpacity(FLinearColor(0.2f, 0.3f, 0.4f, 1.0f));
 				Image.SetBrushTintColor(FSlateColor(FLinearColor(0.4f, 0.6f, 0.8f, 1.0f)));
 				Image.SetDesiredSizeOverride(FVector2D(64.0f, 32.0f));
@@ -1406,10 +1433,13 @@ public:
 		{
 			return;
 		}
-		const FVector2f ImageSize = ImageProbe->GetBrush().ImageSize;
 		ASSERT_THAT(IsTrue(
-			FMath::IsNearlyEqual(ImageSize.X, 64.0f) && FMath::IsNearlyEqual(ImageSize.Y, 32.0f),
-			TEXT("ImageProbe should keep script-assigned desired brush size")));
+			ImageProbe->GetColorAndOpacity().Equals(FLinearColor(0.2f, 0.3f, 0.4f, 1.0f), KINDA_SMALL_NUMBER),
+			TEXT("ImageProbe should keep script-assigned color and opacity")));
+		ASSERT_THAT(IsTrue(
+			ImageProbe->GetBrush().TintColor.GetSpecifiedColor().Equals(FLinearColor(0.4f, 0.6f, 0.8f, 1.0f), KINDA_SMALL_NUMBER),
+			TEXT("ImageProbe should keep script-assigned brush tint color")));
+		ASSERT_THAT(IsNull(ImageProbe->GetBrush().GetResourceObject(), TEXT("ImageProbe should keep typed null brush resource assignment")));
 		ASSERT_THAT(IsNotNull(ButtonProbe, TEXT("ButtonProbe should remain in the widget tree")));
 		if (ButtonProbe == nullptr)
 		{
@@ -1687,12 +1717,10 @@ public:
 				}
 
 				FSlateFontInfo Font;
-				Font.FontMaterial = null;
 				Font.Size = 31.0f;
 				Font.TypefaceFontName = n"Bold";
 				__SET_OPTIONAL_FONT_FIELDS__
 				Font.OutlineSettings.OutlineSize = 2;
-				Font.OutlineSettings.OutlineMaterial = null;
 				Font.OutlineSettings.OutlineColor = FLinearColor(0.2f, 0.4f, 0.6f, 0.8f);
 				__SET_OPTIONAL_OUTLINE_FIELDS__
 
@@ -2431,8 +2459,8 @@ public:
 		UListView* ListView = NewObject<UListView>(GetTransientPackage());
 		UTileView* TileView = NewObject<UTileView>(GetTransientPackage());
 		UTreeView* TreeView = NewObject<UTreeView>(GetTransientPackage());
-		UObject* FirstItem = NewObject<UObject>(GetTransientPackage());
-		UObject* SecondItem = NewObject<UObject>(GetTransientPackage());
+		UObject* FirstItem = NewObject<UTexture2D>(GetTransientPackage());
+		UObject* SecondItem = NewObject<UTexture2D>(GetTransientPackage());
 		ASSERT_THAT(IsNotNull(ListView, TEXT("UListView fixture should be created")));
 		ASSERT_THAT(IsNotNull(TileView, TEXT("UTileView fixture should be created")));
 		ASSERT_THAT(IsNotNull(TreeView, TEXT("UTreeView fixture should be created")));
@@ -2601,7 +2629,7 @@ public:
 				}
 
 				UFUNCTION()
-				void HandleTextChanged(FText Text)
+				void HandleTextChanged(const FText&in Text)
 				{
 					TextChangedCount += 1;
 					LastText = Text.ToString();
@@ -2710,7 +2738,7 @@ public:
 				}
 
 				UFUNCTION()
-				void HandleTextCommitted(FText Text, ETextCommit CommitMethod)
+				void HandleTextCommitted(const FText&in Text, ETextCommit CommitMethod)
 				{
 					TextCommittedCount += 1;
 					LastCommittedText = Text.ToString();
@@ -2718,7 +2746,7 @@ public:
 				}
 
 				UFUNCTION()
-				void HandleSliderValueChanged(float Value)
+				void HandleSliderValueChanged(float32 Value)
 				{
 					SliderChangedCount += 1;
 					LastSliderValue = Value;
@@ -2985,25 +3013,37 @@ public:
 		UFunction* PlayAnimationFunction = UserWidgetClass->FindFunctionByName(TEXT("PlayAnimation"));
 		UFunction* StopAnimationFunction = UserWidgetClass->FindFunctionByName(TEXT("StopAnimation"));
 		UFunction* PauseAnimationFunction = UserWidgetClass->FindFunctionByName(TEXT("PauseAnimation"));
-		UFunction* ResumeAnimationFunction = UserWidgetClass->FindFunctionByName(TEXT("ResumeAnimation"));
 		UFunction* ReverseAnimationFunction = UserWidgetClass->FindFunctionByName(TEXT("ReverseAnimation"));
 		UFunction* IsAnimationPlayingFunction = UserWidgetClass->FindFunctionByName(TEXT("IsAnimationPlaying"));
+		UFunction* GetAnimationCurrentTimeFunction = UserWidgetClass->FindFunctionByName(TEXT("GetAnimationCurrentTime"));
+		UFunction* SetAnimationCurrentTimeFunction = UserWidgetClass->FindFunctionByName(TEXT("SetAnimationCurrentTime"));
+		UFunction* SetNumLoopsToPlayFunction = UserWidgetClass->FindFunctionByName(TEXT("SetNumLoopsToPlay"));
+		UFunction* SetPlaybackSpeedFunction = UserWidgetClass->FindFunctionByName(TEXT("SetPlaybackSpeed"));
+		UFunction* IsAnimationPlayingForwardFunction = UserWidgetClass->FindFunctionByName(TEXT("IsAnimationPlayingForward"));
 		UFunction* BindStartedFunction = UserWidgetClass->FindFunctionByName(TEXT("BindToAnimationStarted"));
 		UFunction* BindFinishedFunction = UserWidgetClass->FindFunctionByName(TEXT("BindToAnimationFinished"));
 		ASSERT_THAT(IsNotNull(PlayAnimationFunction, TEXT("UUserWidget.PlayAnimation should remain reflected")));
 		ASSERT_THAT(IsNotNull(StopAnimationFunction, TEXT("UUserWidget.StopAnimation should remain reflected")));
 		ASSERT_THAT(IsNotNull(PauseAnimationFunction, TEXT("UUserWidget.PauseAnimation should remain reflected")));
-		ASSERT_THAT(IsNotNull(ResumeAnimationFunction, TEXT("UUserWidget.ResumeAnimation should remain reflected")));
 		ASSERT_THAT(IsNotNull(ReverseAnimationFunction, TEXT("UUserWidget.ReverseAnimation should remain reflected")));
 		ASSERT_THAT(IsNotNull(IsAnimationPlayingFunction, TEXT("UUserWidget.IsAnimationPlaying should remain reflected")));
+		ASSERT_THAT(IsNotNull(GetAnimationCurrentTimeFunction, TEXT("UUserWidget.GetAnimationCurrentTime should remain reflected")));
+		ASSERT_THAT(IsNotNull(SetAnimationCurrentTimeFunction, TEXT("UUserWidget.SetAnimationCurrentTime should remain reflected")));
+		ASSERT_THAT(IsNotNull(SetNumLoopsToPlayFunction, TEXT("UUserWidget.SetNumLoopsToPlay should remain reflected")));
+		ASSERT_THAT(IsNotNull(SetPlaybackSpeedFunction, TEXT("UUserWidget.SetPlaybackSpeed should remain reflected")));
+		ASSERT_THAT(IsNotNull(IsAnimationPlayingForwardFunction, TEXT("UUserWidget.IsAnimationPlayingForward should remain reflected")));
 		ASSERT_THAT(IsNotNull(BindStartedFunction, TEXT("UUserWidget.BindToAnimationStarted should remain reflected")));
 		ASSERT_THAT(IsNotNull(BindFinishedFunction, TEXT("UUserWidget.BindToAnimationFinished should remain reflected")));
 		if (PlayAnimationFunction == nullptr
 			|| StopAnimationFunction == nullptr
 			|| PauseAnimationFunction == nullptr
-			|| ResumeAnimationFunction == nullptr
 			|| ReverseAnimationFunction == nullptr
 			|| IsAnimationPlayingFunction == nullptr
+			|| GetAnimationCurrentTimeFunction == nullptr
+			|| SetAnimationCurrentTimeFunction == nullptr
+			|| SetNumLoopsToPlayFunction == nullptr
+			|| SetPlaybackSpeedFunction == nullptr
+			|| IsAnimationPlayingForwardFunction == nullptr
 			|| BindStartedFunction == nullptr
 			|| BindFinishedFunction == nullptr)
 		{
@@ -3013,9 +3053,13 @@ public:
 		ASSERT_THAT(IsTrue(HasWidgetAnimationParameter(PlayAnimationFunction), TEXT("PlayAnimation should accept UWidgetAnimation")));
 		ASSERT_THAT(IsTrue(HasWidgetAnimationParameter(StopAnimationFunction), TEXT("StopAnimation should accept UWidgetAnimation")));
 		ASSERT_THAT(IsTrue(HasWidgetAnimationParameter(PauseAnimationFunction), TEXT("PauseAnimation should accept UWidgetAnimation")));
-		ASSERT_THAT(IsTrue(HasWidgetAnimationParameter(ResumeAnimationFunction), TEXT("ResumeAnimation should accept UWidgetAnimation")));
 		ASSERT_THAT(IsTrue(HasWidgetAnimationParameter(ReverseAnimationFunction), TEXT("ReverseAnimation should accept UWidgetAnimation")));
 		ASSERT_THAT(IsTrue(HasWidgetAnimationParameter(IsAnimationPlayingFunction), TEXT("IsAnimationPlaying should accept UWidgetAnimation")));
+		ASSERT_THAT(IsTrue(HasWidgetAnimationParameter(GetAnimationCurrentTimeFunction), TEXT("GetAnimationCurrentTime should accept UWidgetAnimation")));
+		ASSERT_THAT(IsTrue(HasWidgetAnimationParameter(SetAnimationCurrentTimeFunction), TEXT("SetAnimationCurrentTime should accept UWidgetAnimation")));
+		ASSERT_THAT(IsTrue(HasWidgetAnimationParameter(SetNumLoopsToPlayFunction), TEXT("SetNumLoopsToPlay should accept UWidgetAnimation")));
+		ASSERT_THAT(IsTrue(HasWidgetAnimationParameter(SetPlaybackSpeedFunction), TEXT("SetPlaybackSpeed should accept UWidgetAnimation")));
+		ASSERT_THAT(IsTrue(HasWidgetAnimationParameter(IsAnimationPlayingForwardFunction), TEXT("IsAnimationPlayingForward should accept UWidgetAnimation")));
 		ASSERT_THAT(IsTrue(HasWidgetAnimationParameter(BindStartedFunction), TEXT("BindToAnimationStarted should accept UWidgetAnimation")));
 		ASSERT_THAT(IsTrue(HasWidgetAnimationParameter(BindFinishedFunction), TEXT("BindToAnimationFinished should accept UWidgetAnimation")));
 

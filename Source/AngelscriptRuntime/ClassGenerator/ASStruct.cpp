@@ -39,6 +39,12 @@ struct FASStructOps : UASStruct::ICppStructOps
 
 	static thread_local FASStructOps* ConstructingOps;
 
+	static TSet<const FASStructOps*>& GetRegisteredOps()
+	{
+		static TSet<const FASStructOps*> RegisteredOps;
+		return RegisteredOps;
+	}
+
 	FASStructOps(UASStruct* InStruct, int32 InSize, int32 InAlignment)
 		: UASStruct::ICppStructOps(InSize, InAlignment)
 		, Struct(InStruct)
@@ -72,6 +78,8 @@ struct FASStructOps : UASStruct::ICppStructOps
 		FakeVTable.Capabilities.HasIdentical = (EqualsFunction != nullptr);
 		FakeVTable.Capabilities.HasGetTypeHash = (HashFunction != nullptr);
 		FakeVTable.Capabilities.ComputedPropertyFlags |= (HashFunction != nullptr) ? CPF_HasGetValueTypeHash : CPF_None;
+
+		GetRegisteredOps().Add(this);
 	}
 
 	void SetFromStruct(UASStruct* InStruct)
@@ -109,8 +117,7 @@ struct FASStructOps : UASStruct::ICppStructOps
 
 			if (ScriptType->GetFirstMethod("Hash") != nullptr)
 			{
-				const FString HashDecl = TEXT("uint32 Hash() const");
-				HashFunction = ScriptType->GetMethodByDecl(TCHAR_TO_ANSI(*HashDecl));
+				HashFunction = FAngelscriptType::FindScriptStructHashFunction(ScriptType);
 			}
 			else
 			{
@@ -132,7 +139,33 @@ struct FASStructOps : UASStruct::ICppStructOps
 			return nullptr;
 
 		const UASStruct::FScriptStructValueHeader* Header = UASStruct::GetValueHeader(Address);
-		return Header->IsValid() ? static_cast<FASStructOps*>(Header->CppStructOps) : nullptr;
+		if (!Header->IsValid())
+			return nullptr;
+
+		FASStructOps* Ops = static_cast<FASStructOps*>(Header->CppStructOps);
+		if (!GetRegisteredOps().Contains(Ops))
+			return nullptr;
+		if (Ops == nullptr || Ops->Struct == nullptr || Ops->ScriptType == nullptr)
+			return nullptr;
+		if (Ops->Struct->GetCppStructOps() != Ops)
+			return nullptr;
+		if (Header->ScriptType != Ops->ScriptType)
+			return nullptr;
+
+		return Ops;
+	}
+
+	static void CopyScriptPayload(void* Dest, const void* Src, asCObjectType* ScriptType)
+	{
+		const int32 PayloadOffset = ScriptType->basePropertyOffset;
+		const int32 PayloadSize = ScriptType->size - PayloadOffset;
+		if (PayloadSize > 0)
+		{
+			FMemory::Memcpy(
+				static_cast<uint8*>(Dest) + PayloadOffset,
+				static_cast<const uint8*>(Src) + PayloadOffset,
+				PayloadSize);
+		}
 	}
 
 	static void Construct(void* Dest)
@@ -195,9 +228,12 @@ struct FASStructOps : UASStruct::ICppStructOps
 
 	static bool Copy(void* Dest, void const* Src, int32 ArrayDim)
 	{
-		FASStructOps* Ops = GetOpsFromValue(Src);
+		// Script temporaries reserve the pre-class header space but do not always
+		// contain a valid UE FScriptStructValueHeader. Prefer the initialized
+		// destination header and only use the source as a fallback for raw copies.
+		FASStructOps* Ops = GetOpsFromValue(Dest);
 		if (Ops == nullptr)
-			Ops = GetOpsFromValue(Dest);
+			Ops = GetOpsFromValue(Src);
 		if (Ops == nullptr)
 			return false;
 
@@ -220,7 +256,14 @@ struct FASStructOps : UASStruct::ICppStructOps
 
 			auto* DestObject = reinterpret_cast<asCScriptObject*>(DestElement);
 			auto* SourceObject = reinterpret_cast<asCScriptObject*>(const_cast<uint8*>(SrcElement));
-			DestObject->PerformCopy(SourceObject, Ops->ScriptType, Ops->ScriptType);
+			if ((Ops->ScriptType->flags & asOBJ_POD) != 0)
+			{
+				CopyScriptPayload(DestObject, SourceObject, Ops->ScriptType);
+			}
+			else
+			{
+				DestObject->CopyStruct(SourceObject, Ops->ScriptType);
+			}
 		}
 		return true;
 	}

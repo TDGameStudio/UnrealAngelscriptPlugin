@@ -223,6 +223,7 @@ class ATestBPImpactFilterB : AActor
 		FString PackageFilename;
 		ON_SCOPE_EXIT
 		{
+			AngelscriptEditor::BlueprintImpact::ClearBlueprintAssetsOverrideForTesting();
 			if (!PackageFilename.IsEmpty())
 			{
 				IFileManager::Get().Delete(*PackageFilename, false, true, true);
@@ -251,6 +252,11 @@ class ATestBPImpactDiskBacked : AActor
 
 		FAssetRegistryModule& ARM = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 		ARM.Get().ScanModifiedAssetFiles({ PackageFilename });
+
+		TArray<FAssetData> CandidateAssets;
+		ARM.Get().GetAssetsByPackageName(FName(*PackagePath), CandidateAssets, true);
+		if (!this->Assert.AreEqual(1, CandidateAssets.Num(), TEXT("Disk-backed scan should isolate the saved blueprint asset"))) return;
+		AngelscriptEditor::BlueprintImpact::SetBlueprintAssetsOverrideForTesting(MoveTemp(CandidateAssets));
 
 		AngelscriptEditor::BlueprintImpact::FBlueprintImpactRequest Request;
 		Request.ChangedScripts = { TEXT("TestBPImpactDiskBacked.as") };

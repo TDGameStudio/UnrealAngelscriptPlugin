@@ -730,6 +730,8 @@ void asCScriptObject::CopyStruct(asCScriptObject* SourceObject, asCObjectType* O
 	for( asUINT n = 0; n < ObjectType->properties.GetLength(); n++ )
 	{
 		asCObjectProperty *prop = ObjectType->properties[n];
+		if (prop->byteOffset < ObjectType->basePropertyOffset)
+			continue;
 
 		void **dst = (void**)(((char*)this) + prop->byteOffset);
 		void **src = (void**)(((char*)SourceObject) + prop->byteOffset);

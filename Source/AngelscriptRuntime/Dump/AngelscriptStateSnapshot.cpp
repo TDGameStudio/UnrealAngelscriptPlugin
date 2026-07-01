@@ -55,8 +55,7 @@ namespace
 			return TEXT("<null-type>");
 		}
 
-		const FString ModuleName = Type->module != nullptr ? CharToString(Type->module->GetName()) : TEXT("<engine>");
-		return FString::Printf(TEXT("%s::%s"), *ModuleName, *CharToString(Type->GetName()));
+		return FString::Printf(TEXT("TypeId%d::%s"), Type->GetTypeId(), *CharToString(Type->GetName()));
 	}
 
 	FString FunctionIdentity(const asCScriptFunction* Function)
@@ -66,7 +65,7 @@ namespace
 			return TEXT("<null-function>");
 		}
 
-		const FString ModuleName = Function->module != nullptr ? CharToString(Function->module->GetName()) : TEXT("<engine>");
+		const FString ModuleName = Function->GetModuleName() != nullptr ? CharToString(Function->GetModuleName()) : TEXT("<engine>");
 		return FString::Printf(TEXT("%s::%s"), *ModuleName, *CharToString(Function->GetName()));
 	}
 
@@ -599,7 +598,7 @@ FAngelscriptStateSnapshot FAngelscriptStateSnapshotBuilder::Capture(FAngelscript
 		{
 			const FString Identity = FString::Printf(TEXT("TypeIdMap/%d"), Pair.Key);
 			Snapshot.AddRow(TEXT("AsEngineInternal"), Identity, TEXT("TypeId"), LexToString(Pair.Key), TEXT("Integer"), Source);
-			Snapshot.AddRow(TEXT("AsEngineInternal"), Identity, TEXT("Type"), TypeIdentity(Pair.Value), TEXT("String"), Source);
+			Snapshot.AddRow(TEXT("AsEngineInternal"), Identity, TEXT("Type"), PointerToString(Pair.Value), TEXT("Pointer"), Source);
 			AddPointerRow(Snapshot, TEXT("AsEngineInternal"), Identity, TEXT("TypeInfo"), Pair.Value, Source);
 		}
 
@@ -618,10 +617,6 @@ FAngelscriptStateSnapshot FAngelscriptStateSnapshotBuilder::Capture(FAngelscript
 		for (asUINT ModuleIndex = 0; ModuleIndex < ScriptEngine->scriptModules.GetLength(); ++ModuleIndex)
 		{
 			AddModuleRows(Snapshot, ScriptEngine->scriptModules[ModuleIndex]);
-		}
-		for (asUINT FunctionIndex = 0; FunctionIndex < ScriptEngine->scriptFunctions.GetLength(); ++FunctionIndex)
-		{
-			AddFunctionRows(Snapshot, ScriptEngine->scriptFunctions[FunctionIndex], Source);
 		}
 		for (asUINT TypeIndex = 0; TypeIndex < ScriptEngine->registeredObjTypes.GetLength(); ++TypeIndex)
 		{
