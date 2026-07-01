@@ -19,7 +19,7 @@
 // checks for illegal mutation.
 // -----------------------------------------------------------------------------
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 using namespace AngelscriptFunctionalTestUtils;
 
@@ -275,4 +275,4 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageConstTest,
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

@@ -35,7 +35,7 @@
 //                  OpenSpec: test-coverage/coverage-matrix.md (sub-matrix 4)
 // -----------------------------------------------------------------------------
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 using namespace AngelscriptFunctionalTestUtils;
 

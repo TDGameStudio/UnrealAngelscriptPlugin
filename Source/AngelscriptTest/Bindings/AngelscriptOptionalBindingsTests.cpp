@@ -12,7 +12,7 @@
 #include "AngelscriptTestModuleScope.h"
 #include "AngelscriptTestUtilities.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 static UObject* GetOptionalNullNativeRefForTesting()
 {
@@ -792,4 +792,4 @@ public:
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

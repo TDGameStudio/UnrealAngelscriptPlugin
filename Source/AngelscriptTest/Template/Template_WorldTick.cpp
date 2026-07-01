@@ -12,7 +12,7 @@
 #include "Misc/ScopeExit.h"
 #include "UObject/UnrealType.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 // =============================================================================
 // Template_WorldTick.cpp
@@ -509,4 +509,4 @@ class UTemplateWorldTickComponent : UActorComponent
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

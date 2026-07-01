@@ -12,7 +12,7 @@
 #include "Misc/ScopeExit.h"
 #include "UObject/GarbageCollection.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 // =============================================================================
@@ -1269,4 +1269,4 @@ FAngelscriptEngine& Engine = Ctx.GetEngine();
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

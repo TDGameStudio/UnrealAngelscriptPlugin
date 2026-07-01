@@ -4,7 +4,7 @@
 
 #include "Misc/StringOutputDevice.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 using namespace AngelscriptFunctionalTestUtils;
 using namespace AngelscriptActorTestUtils;
@@ -655,4 +655,4 @@ class ATestInhHealthPickup3 : ATestInhParentBase3
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

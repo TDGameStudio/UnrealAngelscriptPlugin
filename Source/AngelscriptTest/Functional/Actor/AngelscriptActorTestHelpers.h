@@ -9,7 +9,7 @@
 #include "GameFramework/Actor.h"
 #include "Misc/AutomationTest.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 namespace AngelscriptActorTestUtils
 {
@@ -45,4 +45,4 @@ namespace AngelscriptActorTestUtils
 	}
 }
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

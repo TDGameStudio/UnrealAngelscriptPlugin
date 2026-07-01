@@ -22,7 +22,7 @@
  * of the base layer.
  */
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 // Phase 5 of refactor-as-test-shared-layout-and-naming removes the old
 // Bindings coverage profile. The example test resolves call-side helpers
@@ -50,4 +50,4 @@ TEST_CLASS_WITH_FLAGS(
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

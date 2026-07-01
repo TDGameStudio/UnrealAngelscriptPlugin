@@ -2,7 +2,7 @@
 #include "CQTest.h"
 #include "AngelscriptTestEngine.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 struct FAngelscriptDependencyInjectionTestAccess
 {

@@ -54,7 +54,7 @@
 // require a fuller UMG runtime/PIE surface.
 // -----------------------------------------------------------------------------
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 namespace AngelscriptCoverageWidgetTest
 {
@@ -3269,4 +3269,4 @@ public:
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

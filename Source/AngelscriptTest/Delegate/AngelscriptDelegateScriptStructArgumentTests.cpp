@@ -5,6 +5,8 @@
 
 #include "Misc/ScopeExit.h"
 
+#if WITH_ANGELSCRIPT_UNITTESTS
+
 TEST_CLASS_WITH_FLAGS(FAngelscriptDelegateScriptStructArgumentTests,
 	"Angelscript.TestModule.Delegate.ScriptStructArguments",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -96,3 +98,5 @@ public:
 		ASSERT_THAT(AreEqual(42, Result, TEXT("Delegate invocation should pass AS USTRUCT fields through the event argument buffer")));
 	}
 };
+
+#endif // WITH_ANGELSCRIPT_UNITTESTS

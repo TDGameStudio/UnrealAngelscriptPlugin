@@ -6,6 +6,8 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 
+#if WITH_ANGELSCRIPT_UNITTESTS
+
 TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadLifecycleTests,
 	"Angelscript.TestModule.HotReload.SoftReload",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -223,3 +225,5 @@ public:
 			TEXT("Soft reload lifecycle test case after reload"))));
 	}
 };
+
+#endif // WITH_ANGELSCRIPT_UNITTESTS

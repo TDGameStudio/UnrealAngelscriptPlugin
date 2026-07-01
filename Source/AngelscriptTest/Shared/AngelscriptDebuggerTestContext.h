@@ -27,7 +27,7 @@
 #include "AngelscriptDebuggerTestHelpers.h"
 #include "AngelscriptDebuggerTestSession.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 struct FDebuggerTestContext
 {
@@ -166,4 +166,4 @@ struct FDebuggerTestContext
 };
 
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

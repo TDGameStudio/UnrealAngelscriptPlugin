@@ -11,7 +11,7 @@
 #include "source/as_scriptnode.h"
 #include "EndAngelscriptHeaders.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 // ---------------------------------------------------------------------------
 // ScriptNode coverage map

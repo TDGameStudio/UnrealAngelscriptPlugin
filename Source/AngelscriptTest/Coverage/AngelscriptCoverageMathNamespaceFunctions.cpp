@@ -17,7 +17,7 @@
 // Test patterns: Pattern B (global functions)
 // -----------------------------------------------------------------------------
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageMathNamespaceFunctionsTest,
 	"Angelscript.TestModule.Coverage.MathNamespaceFunctions",
@@ -1290,4 +1290,4 @@ public:
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

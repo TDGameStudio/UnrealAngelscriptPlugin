@@ -15,7 +15,7 @@
 #include "AngelscriptBindingsAssertions.h"
 #include "Syntax/AngelscriptSyntaxTestHelpers.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 // ----------------------------------------------------------------------------
@@ -692,4 +692,4 @@ void Test() { int X = * 2; }
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

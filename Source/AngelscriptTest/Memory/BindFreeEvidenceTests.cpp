@@ -40,7 +40,7 @@
 // `GEngine->Exec("mallocleak.*")` so it degrades to a logged warning when the
 // engine binary lacks leak-detection support.
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptBindFreeEvidenceTests,
 	"Angelscript.TestModule.Memory.BindFreeEvidence",
@@ -231,4 +231,4 @@ if (GEngine == nullptr)
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

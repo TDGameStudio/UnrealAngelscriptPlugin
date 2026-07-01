@@ -7,6 +7,8 @@
 #include "Misc/ScopeExit.h"
 #include "UObject/UnrealType.h"
 
+#if WITH_ANGELSCRIPT_UNITTESTS
+
 TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadStructTests,
 	"Angelscript.TestModule.HotReload.Struct",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -505,3 +507,5 @@ public:
 			TEXT("Function parameter V2 should pass the reloaded script struct fields"))));
 	}
 };
+
+#endif // WITH_ANGELSCRIPT_UNITTESTS

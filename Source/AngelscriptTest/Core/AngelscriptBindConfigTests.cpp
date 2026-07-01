@@ -18,7 +18,7 @@
 #include "source/as_scriptfunction.h"
 #include "EndAngelscriptHeaders.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 class asIScriptGeneric;
 

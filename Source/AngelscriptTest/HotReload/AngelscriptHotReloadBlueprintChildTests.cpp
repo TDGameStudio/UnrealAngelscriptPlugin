@@ -16,6 +16,8 @@
 #include "UObject/Package.h"
 #include "UObject/UnrealType.h"
 
+#if WITH_ANGELSCRIPT_UNITTESTS
+
 TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadBlueprintChildTests,
 	"Angelscript.TestModule.HotReload.BlueprintChild",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -827,3 +829,5 @@ public:
 		ASSERT_THAT(AreEqual(7, FreshBonus, TEXT("HotReload Blueprint-child structural test fresh Blueprint actor should inherit updated Bonus default")));
 	}
 };
+
+#endif // WITH_ANGELSCRIPT_UNITTESTS

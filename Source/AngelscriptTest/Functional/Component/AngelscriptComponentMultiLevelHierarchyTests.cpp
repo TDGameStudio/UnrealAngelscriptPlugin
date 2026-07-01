@@ -10,7 +10,7 @@
 #include "Misc/ScopeExit.h"
 
 // Test Layer: UE Functional - Round1 deep-fill (4-level DefaultComponent attach chain)
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptComponentMultiLevelHierarchyTests,
@@ -94,4 +94,4 @@ class AFunctionalMultiLevelActor : AActor
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

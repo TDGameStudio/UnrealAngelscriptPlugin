@@ -15,7 +15,7 @@
 #include <cstddef>
 #include <type_traits>
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 struct FAngelscriptCrossModulePublicHeaderTests;
 struct FAngelscriptCrossModuleLayoutVersionTests;

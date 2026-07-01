@@ -30,7 +30,7 @@
 // Detailed coverage matrix: OpenSpec: test-coverage/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 using namespace AngelscriptFunctionalTestUtils;
 
@@ -1892,4 +1892,4 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

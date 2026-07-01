@@ -13,7 +13,7 @@ namespace UnrealBuildTool.Rules
 			PrivateDefinitions.Add("AS_ENABLE_EDITOR_JITTED_CODE=1");
 
 			bool bCompileAngelscriptUnitTests = ReadCompileUnitTestsSetting(Target);
-			PrivateDefinitions.Add("WITH_ANGELSCRIPT_UNITTESTS=" + (bCompileAngelscriptUnitTests ? "1" : "0"));
+			PublicDefinitions.Add("WITH_ANGELSCRIPT_UNITTESTS=" + (bCompileAngelscriptUnitTests ? "1" : "0"));
 			ForceIncludeFiles.Add("AngelscriptCQTest.h");
 
 			// Module root + subdirectories mirroring AngelscriptRuntime layout

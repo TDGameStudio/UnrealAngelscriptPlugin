@@ -24,7 +24,7 @@
 #include "AngelscriptDebuggerTestSession.h"
 #include "AngelscriptTestEngineHelper.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 // =========================================================================
 // Async Module Invocation
@@ -244,4 +244,4 @@ ANGELSCRIPTTEST_API int32 CountMessagesByType(
 	EDebugMessageType Type);
 
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

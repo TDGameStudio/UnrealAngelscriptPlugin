@@ -10,7 +10,7 @@
 // TODO: RegisterStringFactory API differs between AS 2.33 fork and AS 2.38.
 //       These tests use the 2.38-style 3-arg RegisterStringFactory which our
 //       fork doesn't support. Disabled until the API gap is resolved.
-#if 0 // WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS && 0
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKStringUtilTests, "Angelscript.TestModule.AngelScriptSDK.StringUtil", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -118,4 +118,4 @@ public:
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS && disabled string-factory compatibility coverage

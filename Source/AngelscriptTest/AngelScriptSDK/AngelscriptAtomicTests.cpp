@@ -19,7 +19,7 @@
 #include "EndAngelscriptHeaders.h"
 
 // TODO: asCAtomic symbols not exported from AngelscriptRuntime. Disabled until linkage resolved.
-#if 0 // WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS && 0
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKAtomicTest,
 	"Angelscript.TestModule.AngelScriptSDK.Atomic",
@@ -175,4 +175,4 @@ public:
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS && disabled atomic-linkage coverage

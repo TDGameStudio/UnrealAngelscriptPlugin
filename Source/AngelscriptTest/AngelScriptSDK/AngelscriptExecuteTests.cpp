@@ -5,7 +5,7 @@
 
 #include <cstring>
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 

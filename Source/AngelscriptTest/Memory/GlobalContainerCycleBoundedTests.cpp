@@ -30,7 +30,7 @@
 #include "UObject/GarbageCollection.h"
 #include "UObject/UObjectIterator.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 // Diagnostic accessor exported from AngelscriptRuntime. Defined in
 // Bind_BlueprintEvent.cpp; we deliberately don't `extern` the underlying
@@ -276,4 +276,4 @@ ResetToCleanSlate();
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

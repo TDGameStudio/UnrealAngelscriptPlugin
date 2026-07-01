@@ -12,7 +12,7 @@
 #include "Compilation/AngelscriptCompilationEvents.h"
 #include "Misc/ScopeExit.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptPreprocessorCompilationEventsTest,
 	"Angelscript.TestModule.Preprocessor.CompilationEvents",
@@ -154,4 +154,4 @@ class UClassAnalyzeHookCarrier : UObject
  }
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

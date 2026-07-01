@@ -24,7 +24,7 @@
  * stamp its identity into any failure messages.
  */
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 /**
  * Initialize a debugger session, connect a primary client, and send
@@ -191,4 +191,4 @@ inline bool WaitForSpecificBreakpoint(
 }
 
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

@@ -37,7 +37,7 @@
  * SubPlan implementation. This header lives only to be read as documentation.
  */
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 // FScopedAngelscriptModule (AngelscriptTestModuleScope.h) is the RAII module
 // wrapper used by every Section. Include that header directly when you need
@@ -97,4 +97,4 @@ return Fruits.Num();
 }
 
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

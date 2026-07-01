@@ -12,7 +12,7 @@
 #include "EndAngelscriptHeaders.h"
 
 // Test Layer: Runtime Integration
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptScriptObjectTypeTests,

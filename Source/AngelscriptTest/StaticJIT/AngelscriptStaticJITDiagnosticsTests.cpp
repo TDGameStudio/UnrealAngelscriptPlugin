@@ -10,6 +10,8 @@
 #include "HAL/IConsoleManager.h"
 #include "Misc/OutputDeviceNull.h"
 
+#if WITH_ANGELSCRIPT_UNITTESTS
+
 #if AS_WITH_STATIC_JIT_DIAGNOSTICS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITAotDiagnosticTests,
@@ -185,3 +187,5 @@ bool FAngelscriptStaticJITAotDiagnosticTests::RunDiagnosticsConsoleCommandFuncti
 }
 
 #endif
+
+#endif // WITH_ANGELSCRIPT_UNITTESTS

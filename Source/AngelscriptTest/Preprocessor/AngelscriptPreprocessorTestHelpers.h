@@ -38,7 +38,7 @@
 #include "Misc/Paths.h"
 #include "Misc/ScopeExit.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 // Dedicated log category for on-demand inspection of preprocessor outputs from
 // any *Tests.cpp under Preprocessor/. Default verbosity is NoLogging so the
@@ -1002,4 +1002,4 @@ namespace PreprocessorTestHelpers
 
 } // namespace PreprocessorTestHelpers
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

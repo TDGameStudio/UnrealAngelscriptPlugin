@@ -25,7 +25,7 @@
 // are covered in dedicated test suites (HotReload, ClassGenerator, Editor).
 // -----------------------------------------------------------------------------
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLiteralAssetTest,
 	"Angelscript.TestModule.Coverage.LiteralAsset",
@@ -379,4 +379,4 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageLiteralAssetTest,
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

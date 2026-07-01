@@ -15,7 +15,7 @@
 #include "source/as_scriptfunction.h"
 #include "EndAngelscriptHeaders.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 inline bool WorldCollisionSetArgAddressChecked(
 	FAutomationTestBase& Test,
@@ -236,4 +236,4 @@ inline bool WorldCollisionExecuteAddressBoolFunction(
 		OutResult);
 }
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

@@ -10,7 +10,7 @@
 #include "Misc/AutomationTest.h"
 #include "UObject/UObjectIterator.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 #define TestTrue(...) Test.TestTrue(__VA_ARGS__)
 #define TestFalse(...) Test.TestFalse(__VA_ARGS__)

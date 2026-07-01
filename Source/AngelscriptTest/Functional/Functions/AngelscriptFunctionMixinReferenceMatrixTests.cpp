@@ -8,7 +8,7 @@
 #include "UObject/UnrealType.h"
 
 // Test Layer: UE Functional - Round1 deep-fill (mixin signature matrix and default args)
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionMixinReferenceMatrixTests,
@@ -92,4 +92,4 @@ class AFunctionalMixinHostActor : AActor
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

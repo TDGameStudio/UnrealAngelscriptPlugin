@@ -6,7 +6,7 @@
 #include "HAL/PlatformProcess.h"
 #include "Misc/ScopeExit.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 // =========================================================================
 // Async Module Invocation
@@ -810,4 +810,4 @@ int32 CountMessagesByType(const FSingleClientDebuggerTranscript& Transcript, EDe
 }
 
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

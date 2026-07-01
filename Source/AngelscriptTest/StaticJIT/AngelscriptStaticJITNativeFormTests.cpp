@@ -11,7 +11,7 @@
 #include "source/as_scriptfunction.h"
 #include "EndAngelscriptHeaders.h"
 
-#if WITH_DEV_AUTOMATION_TESTS && AS_CAN_GENERATE_JIT
+#if WITH_ANGELSCRIPT_UNITTESTS && AS_CAN_GENERATE_JIT
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITNativeFormTests,
 	"Angelscript.TestModule.StaticJIT.NativeForms",

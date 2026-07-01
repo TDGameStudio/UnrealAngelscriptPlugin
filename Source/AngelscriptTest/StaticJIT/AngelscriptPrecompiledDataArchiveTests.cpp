@@ -6,7 +6,7 @@
 #include "StaticJIT/StaticJITDiagnostics.h"
 #include "StaticJIT/StaticJITHeader.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptPrecompiledDataArchiveTests,
 	"Angelscript.TestModule.StaticJIT.PrecompiledData",

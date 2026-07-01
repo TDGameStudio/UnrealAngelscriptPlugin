@@ -13,7 +13,7 @@
 // the Pause/UnPause/Clear state machine via IsTimerPausedHandle snapshots taken inside the script
 // rather than asserting on actual timer fire counts. Real fire-count behavior is tracked by
 // `Angelscript.TestModule.Learning.Runtime.TimerAndLatent` (a non-asserting trace-style test).
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptActorTimerRuntimeBehaviorTests,
@@ -115,4 +115,4 @@ class AFunctionalTimerActor : AActor
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

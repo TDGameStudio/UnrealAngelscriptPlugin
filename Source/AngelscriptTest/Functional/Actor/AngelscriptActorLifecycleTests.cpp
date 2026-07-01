@@ -4,7 +4,7 @@
 
 #include "Engine/EngineTypes.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 using namespace AngelscriptFunctionalTestUtils;
 using namespace AngelscriptActorTestUtils;
@@ -562,4 +562,4 @@ class ATestActorReset : AActor
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

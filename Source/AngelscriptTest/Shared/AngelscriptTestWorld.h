@@ -12,7 +12,7 @@
 #include "Math/Vector.h"
 #include "Misc/AutomationTest.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 // -----------------------------------------------------------------------------
 // FAngelscriptTestWorld
@@ -153,4 +153,4 @@ private:
 };
 
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

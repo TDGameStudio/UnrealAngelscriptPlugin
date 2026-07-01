@@ -4,7 +4,7 @@
 #include "Math/UnrealMathUtility.h"
 #include "UObject/GarbageCollection.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 static void CoverageGCCollectGarbageNow()
 {
@@ -47,4 +47,4 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AngelscriptCoverageGCTestHelpe
 			FUNC_TRIVIAL(CoverageGCForceGarbageCollectionNow));
 	});
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

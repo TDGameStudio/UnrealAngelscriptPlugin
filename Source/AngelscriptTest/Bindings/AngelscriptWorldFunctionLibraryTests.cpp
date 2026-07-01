@@ -1,19 +1,19 @@
 // ============================================================================
 // AngelscriptWorldFunctionLibraryTests.cpp
 //
-// World function library binding coverage â€?CQTest refactor. Automation ID:
+// World function library binding coverage ï¿½?CQTest refactor. Automation ID:
 //   Angelscript.TestModule.FunctionLibraries.World.FAngelscriptWorldFunctionLibraryTest.*
 //
 // Sections:
-//   WorldStreamingNullGuards â€?null world/level exception handling
-//   WorldStreamingAccess    â€?streaming level count, order, editor visibility
+//   WorldStreamingNullGuards ï¿½?null world/level exception handling
+//   WorldStreamingAccess    ï¿½?streaming level count, order, editor visibility
 //
 // CQTest adaptation notes:
 //   Two legacy automation tests merged into one TEST_CLASS.
 //   Both tests use ASTEST_CREATE_ENGINE_FULL (requires world context via
 //   FActorTestSpawner). Execution uses FAngelscriptTestExecutor and
 //   Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h for UObject args and exceptions.
-//   $TOKEN$ â†?compute + ReplaceInline pattern preserved for WorldStreamingAccess.
+//   $TOKEN$ ï¿½?compute + ReplaceInline pattern preserved for WorldStreamingAccess.
 // ============================================================================
 
 #include "CQTest.h"
@@ -31,7 +31,7 @@
 #include "Misc/ScopeExit.h"
 #include "Templates/Function.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 

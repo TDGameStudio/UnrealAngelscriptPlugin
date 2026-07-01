@@ -46,7 +46,7 @@
 // the slot consistently when both paths use the 4-byte accessors.
 // -----------------------------------------------------------------------------
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 // =============================================================================

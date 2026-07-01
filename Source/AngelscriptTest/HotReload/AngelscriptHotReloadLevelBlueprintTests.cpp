@@ -24,6 +24,8 @@
 #include "UObject/GarbageCollection.h"
 #include "UObject/UnrealType.h"
 
+#if WITH_ANGELSCRIPT_UNITTESTS
+
 TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadLevelBlueprintTests,
 	"Angelscript.TestModule.HotReload.LevelBlueprint",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -549,3 +551,5 @@ public:
 		ASSERT_THAT(IsTrue(InvokeGetValue(*TestRunner, Engine, ReloadedLevelScriptActor, ReloadedParentClass, 45, TEXT("Structural Level Blueprint after reload"))));
 	}
 };
+
+#endif // WITH_ANGELSCRIPT_UNITTESTS

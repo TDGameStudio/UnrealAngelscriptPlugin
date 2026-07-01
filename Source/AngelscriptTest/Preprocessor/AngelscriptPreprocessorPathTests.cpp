@@ -17,7 +17,7 @@
 #include "CQTest.h"
 #include "Preprocessor/AngelscriptPreprocessorTestHelpers.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 // ============================================================================
 // Test class
@@ -139,4 +139,4 @@ int UseShared()
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

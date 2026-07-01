@@ -16,7 +16,7 @@
 #include "Templates/Atomic.h"
 #include "UHT/AngelscriptCrossModuleBindings.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 ANGELSCRIPTRUNTIME_API void GAngelscriptCrossModuleEnsureRegisteredForTesting();
 ANGELSCRIPTRUNTIME_API int32 GAngelscriptCrossModuleBindGlobalFunctionForTesting(const ANSICHAR* Signature, FAngelscriptCrossModuleEntry* Entry);

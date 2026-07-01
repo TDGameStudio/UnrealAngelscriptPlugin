@@ -13,7 +13,7 @@
 //
 // These tests assert compile SUCCESS after the CPF_TObjectPtr fix in
 // Bind_BlueprintType.cpp restored correct type-finder routing.
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 // ============================================================================

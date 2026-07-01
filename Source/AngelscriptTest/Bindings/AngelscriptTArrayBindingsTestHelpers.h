@@ -16,7 +16,7 @@
 #include "source/as_scriptfunction.h"
 #include "EndAngelscriptHeaders.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 struct FArraySyntaxCoverageProfile
 {
@@ -388,4 +388,4 @@ inline bool TArraySyntaxCompatExpectCompileFailure(
 	return bPassed;
 }
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

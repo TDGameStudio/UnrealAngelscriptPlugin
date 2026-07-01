@@ -7,7 +7,7 @@
 #include "UObject/UnrealType.h"
 #include "GameplayTagContainer.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 namespace DefaultMatrixTest
 {

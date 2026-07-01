@@ -131,7 +131,7 @@
 #include "Misc/Guid.h"
 #include "Misc/Paths.h"
 
-#if WITH_DEV_AUTOMATION_TESTS && WITH_AS_COVERAGE
+#if WITH_ANGELSCRIPT_UNITTESTS && WITH_AS_COVERAGE
 
 using namespace AngelscriptFunctionalTestUtils;
 
@@ -1605,4 +1605,4 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCodeCoverageRobustnessTest,
 	}
 };
 
-#endif    // WITH_DEV_AUTOMATION_TESTS && WITH_AS_COVERAGE
+#endif    // WITH_ANGELSCRIPT_UNITTESTS && WITH_AS_COVERAGE

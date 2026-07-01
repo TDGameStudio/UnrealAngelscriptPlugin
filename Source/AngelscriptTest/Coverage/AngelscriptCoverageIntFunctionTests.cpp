@@ -33,7 +33,7 @@
 //   int8 / int16 / int (int32) / int64 / uint8 / uint16 / uint (uint32) / uint64
 // -----------------------------------------------------------------------------
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 using namespace AngelscriptFunctionalTestUtils;
 
@@ -1475,4 +1475,4 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntFunctionTest,
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

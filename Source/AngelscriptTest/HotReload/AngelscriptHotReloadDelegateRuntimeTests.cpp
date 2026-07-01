@@ -17,6 +17,8 @@
 #include "UObject/ScriptDelegates.h"
 #include "UObject/UnrealType.h"
 
+#if WITH_ANGELSCRIPT_UNITTESTS
+
 TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadDelegateRuntimeTests,
 	"Angelscript.TestModule.HotReload.Delegates.Runtime",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -1669,3 +1671,5 @@ public:
 		}
 	}
 };
+
+#endif // WITH_ANGELSCRIPT_UNITTESTS

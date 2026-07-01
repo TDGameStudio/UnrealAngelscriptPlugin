@@ -42,7 +42,7 @@
 // Detailed coverage matrix: Documents/Coverage/Coverage_Input.md
 // -----------------------------------------------------------------------------
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 using namespace AngelscriptFunctionalTestUtils;
 

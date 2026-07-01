@@ -7,6 +7,8 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 
+#if WITH_ANGELSCRIPT_UNITTESTS
+
 TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadChangeClassificationTests,
 	"Angelscript.TestModule.HotReload.ChangeClassification",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -1133,3 +1135,5 @@ class UHotReloadChangeClassificationClassFlagTarget : UObject
 			{ FAngelscriptClassGenerator::FullReloadSuggested, true, false })));
 	}
 };
+
+#endif // WITH_ANGELSCRIPT_UNITTESTS

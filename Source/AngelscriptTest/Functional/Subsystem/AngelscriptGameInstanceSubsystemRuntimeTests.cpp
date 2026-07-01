@@ -9,7 +9,7 @@
 #include "Misc/ScopeExit.h"
 
 // Test Layer: UE Functional
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 struct FAngelscriptTickBehaviorTestAccess

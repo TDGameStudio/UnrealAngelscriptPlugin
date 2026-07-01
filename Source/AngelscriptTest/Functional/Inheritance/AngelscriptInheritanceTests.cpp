@@ -4,7 +4,7 @@
 #include "Misc/Paths.h"
 #include "Misc/ScopeExit.h"
 // Test Layer: Runtime Integration
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 bool CompileModuleWithResult(FAngelscriptEngine* Engine, ECompileType CompileType, FName ModuleName, FString Filename, FString Script, ECompileResult& OutCompileResult);

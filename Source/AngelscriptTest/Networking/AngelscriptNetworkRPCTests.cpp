@@ -9,7 +9,7 @@
 // Test Layer: Compiler Pipeline
 // Validates that RPC specifiers (Server, Client, NetMulticast, WithValidation, Unreliable)
 // compile through the preprocessor → class generator pipeline and produce correct FUNC_Net* flags.
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 namespace AngelscriptNetworkRPCTest

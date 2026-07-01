@@ -13,7 +13,7 @@
 #include "AngelscriptBindingsAssertions.h"
 #include "Syntax/AngelscriptSyntaxTestHelpers.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 // ----------------------------------------------------------------------------
@@ -280,4 +280,4 @@ void Test() { FName N = FName(42); }
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

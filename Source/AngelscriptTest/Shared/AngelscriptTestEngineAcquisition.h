@@ -258,7 +258,7 @@ inline FAngelscriptEngine* TryGetRunningProductionDebuggerEngine()
 		}
 	}
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 	TArray<FAngelscriptEngine*> SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
 	FAngelscriptEngine* MatchingEngine = nullptr;
 	for (int32 Index = SavedStack.Num() - 1; Index >= 0; --Index)

@@ -79,7 +79,7 @@
 //       * inline ExecuteFunctionExpectingScriptException -> ExecuteAndExpectException
 //       * using FExpectedGlobalInt = FExpectedInt
 //       * namespace Detail { TraceCase } (kept for any external callers)
-//     Guarded by `WITH_DEV_AUTOMATION_TESTS` to match the original layout.
+//     Guarded by `WITH_ANGELSCRIPT_UNITTESTS` to match the original layout.
 //
 // Naming family contract (Phase 3 / OpenSpec spec
 // `as-bindings-test-execute-and-naming/spec.md`):
@@ -711,7 +711,7 @@ private:
 /** Legacy alias for FAngelscriptTestExecutor. */
 using FASGlobalFunctionInvoker = FAngelscriptTestExecutor;
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 // ========================================================================
 // Execute* family of free-function assertion helpers
@@ -1109,7 +1109,7 @@ inline bool CompileAndExpectFailure(
 		ExpectedDiagnosticFragments);
 }
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS
 
 
 // ============================================================================
@@ -1121,7 +1121,7 @@ inline bool CompileAndExpectFailure(
 // preserved verbatim so 260+ Bindings test call sites compile unchanged.
 // New code MUST use the Execute*/Compile* family directly.
 // ============================================================================
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 /** Internal trace helper kept for any external callers of `AngelscriptTestTraceCase`. */
 inline bool AngelscriptTestTraceCase(
@@ -1278,4 +1278,4 @@ inline bool ExecuteFunctionExpectingScriptException(
 }
 
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

@@ -7,7 +7,7 @@
 #include "UObject/UnrealType.h"
 
 // Test Layer: UE Functional - Round1 vacuum-fill (UAnimNotifyState script subclassing)
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptAnimNotifyStateScriptTests,
@@ -70,4 +70,4 @@ class UFunctionalAnimNotifyState_ScriptWindow : UAnimNotifyState
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

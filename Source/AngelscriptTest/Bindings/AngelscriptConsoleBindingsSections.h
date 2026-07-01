@@ -2,7 +2,7 @@
 
 #include "AngelscriptEngine.h"
 #include "Misc/AutomationTest.h"
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 bool RunConsoleVariableTypesSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine);

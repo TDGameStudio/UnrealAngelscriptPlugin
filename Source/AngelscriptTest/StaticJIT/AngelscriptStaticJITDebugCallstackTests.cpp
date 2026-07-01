@@ -5,7 +5,7 @@
 
 #include "StaticJIT/StaticJITHeader.h"
 
-#if WITH_DEV_AUTOMATION_TESTS && AS_JIT_DEBUG_CALLSTACKS
+#if WITH_ANGELSCRIPT_UNITTESTS && AS_JIT_DEBUG_CALLSTACKS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptStaticJITDebugCallstackTests,
 	"Angelscript.TestModule.StaticJIT.DebugCallstack",

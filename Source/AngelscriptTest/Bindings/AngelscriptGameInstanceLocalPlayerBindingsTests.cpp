@@ -29,7 +29,7 @@
 #include "Misc/ScopeExit.h"
 #include "UObject/Package.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 // ----------------------------------------------------------------------------

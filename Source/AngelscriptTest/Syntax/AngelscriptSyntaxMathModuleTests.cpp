@@ -13,7 +13,7 @@
 #include "AngelscriptBindingsAssertions.h"
 #include "Syntax/AngelscriptSyntaxTestHelpers.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 // ----------------------------------------------------------------------------
@@ -345,4 +345,4 @@ void Test() { float X = 3.14.15f; }
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

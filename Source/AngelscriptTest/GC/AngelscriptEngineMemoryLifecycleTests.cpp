@@ -10,7 +10,7 @@
 #include "HAL/PlatformMemory.h"
 #include "HAL/MallocAnsi.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 // ==========================================================================
@@ -573,4 +573,4 @@ class AEnumDelegateLifecycleActor : AActor
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

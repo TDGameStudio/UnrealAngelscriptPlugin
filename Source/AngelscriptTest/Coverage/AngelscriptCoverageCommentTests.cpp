@@ -8,7 +8,7 @@
 // Coverage landing file for comment syntax rows in Coverage_ControlFlow.md.
 // -----------------------------------------------------------------------------
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageCommentTest,
 	"Angelscript.TestModule.Coverage.Comment",
@@ -80,4 +80,4 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageCommentTest,
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

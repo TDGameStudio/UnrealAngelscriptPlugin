@@ -17,7 +17,7 @@
 #include "Tests/AutomationEditorCommon.h"
 #include "UObject/UnrealType.h"
 
-#if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR
+#if WITH_ANGELSCRIPT_UNITTESTS && WITH_EDITOR
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadMultiplayerPIETests,
 	"Angelscript.TestModule.HotReload.MultiplayerPIE",

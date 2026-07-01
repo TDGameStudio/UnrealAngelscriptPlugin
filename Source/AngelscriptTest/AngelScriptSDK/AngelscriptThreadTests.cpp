@@ -13,7 +13,7 @@
 #include "EndAngelscriptHeaders.h"
 
 // TODO: asCThreadManager symbols not exported from AngelscriptRuntime. Disabled until linkage resolved.
-#if 0 // WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS && 0
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptSDKThreadTests, "Angelscript.TestModule.AngelScriptSDK.Thread", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
@@ -76,4 +76,4 @@ public:
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS && disabled thread-linkage coverage

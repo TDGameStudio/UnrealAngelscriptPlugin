@@ -9,7 +9,7 @@
 // Pre-fix, all 8 reload hooks (OnClassReload, OnEnumCreated, OnEnumChanged,
 // OnStructReload, OnDelegateReload, OnFullReload, OnPostReload,
 // OnLiteralAssetReload) were process-wide multicast statics. Subscribers
-// always received events from every engine in the process â€?there was no
+// always received events from every engine in the process ï¿½?there was no
 // way to scope a listener to a single engine.
 //
 // Post-fix, each engine owns its own hooks. A listener bound on Engine A's
@@ -26,7 +26,7 @@
 #include "AngelscriptTestEngine.h"
 #include "CQTest.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
  // namespace
 
@@ -214,4 +214,4 @@ const FAngelscriptEngineConfig Config;
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

@@ -9,6 +9,8 @@
 #include "Misc/ScopeExit.h"
 #include "UObject/UObjectGlobals.h"
 
+#if WITH_ANGELSCRIPT_UNITTESTS
+
 TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadNamespaceFunctionTests,
 	"Angelscript.TestModule.HotReload.NamespaceFunction",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -529,3 +531,5 @@ public:
 		ASSERT_THAT(IsTrue(ExpectTwoIntResult(*TestRunner, Engine, ExistingObject, PairFunctionAfterReload, 5, 3, 15, TEXT("Namespace overload pair existing object after reload"))));
 	}
 };
+
+#endif // WITH_ANGELSCRIPT_UNITTESTS

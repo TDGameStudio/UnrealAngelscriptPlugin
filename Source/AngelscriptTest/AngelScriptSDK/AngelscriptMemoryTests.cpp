@@ -4,7 +4,7 @@
 #include "source/as_memory.h"
 #include "EndAngelscriptHeaders.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptMemoryTests,
 	"Angelscript.TestModule.AngelScriptSDK.Memory",

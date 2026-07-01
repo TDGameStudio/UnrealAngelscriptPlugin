@@ -10,7 +10,7 @@
 #include "Misc/ScopeLock.h"
 #include "UObject/GarbageCollection.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 // =============================================================================

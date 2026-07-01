@@ -20,7 +20,7 @@
 #include "Tests/AutomationEditorCommon.h"
 #include "UnrealEdGlobals.h"
 
-#if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR
+#if WITH_ANGELSCRIPT_UNITTESTS && WITH_EDITOR
 
 namespace AngelscriptPIETestUtils
 {

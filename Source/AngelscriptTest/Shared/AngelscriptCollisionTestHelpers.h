@@ -15,7 +15,7 @@
  * ODR-violating `AddCollisionBox` collisions that broke unity builds.
  */
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 /**
  * Spawn a UBoxComponent on `Owner` configured for query-only collision
@@ -68,4 +68,4 @@ inline UBoxComponent* AddBlockAllDynamicCollisionBox(
 }
 
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

@@ -2,7 +2,7 @@
 
 #include "AngelscriptBinds.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AngelscriptPerformanceTestTargetObject(
 	TEXT("AngelscriptPerformanceTestTargetObject"),

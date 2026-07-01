@@ -6,7 +6,7 @@
 #include "UObject/Class.h"
 #include "UObject/UObjectGlobals.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 namespace CompilerClassLikeExecutionTest
 {

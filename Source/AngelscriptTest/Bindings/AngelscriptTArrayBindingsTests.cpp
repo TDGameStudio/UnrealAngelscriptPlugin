@@ -10,7 +10,7 @@
 #include "GameFramework/Actor.h"
 #include "Misc/ScopeExit.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 static const FString TArrayBindingsNestedContainerDiagnostic = TEXT("Containers cannot be nested in other containers");

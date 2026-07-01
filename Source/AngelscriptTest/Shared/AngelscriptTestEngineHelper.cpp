@@ -584,7 +584,7 @@ bool GenerateStaticJITSourceText(FAngelscriptEngine* Engine, FName ModuleName, F
 		return false;
 	}
 
-#if WITH_DEV_AUTOMATION_TESTS && AS_CAN_GENERATE_JIT
+#if WITH_ANGELSCRIPT_UNITTESTS && AS_CAN_GENERATE_JIT
 	TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine->GetModuleByModuleName(ModuleName.ToString());
 	if (!ModuleDesc.IsValid() || ModuleDesc->ScriptModule == nullptr)
 	{
@@ -600,7 +600,7 @@ bool GenerateStaticJITSourceText(FAngelscriptEngine* Engine, FName ModuleName, F
 #else
 	if (OutError != nullptr)
 	{
-		*OutError = TEXT("GenerateStaticJITSourceText is unavailable when AS_CAN_GENERATE_JIT or WITH_DEV_AUTOMATION_TESTS is disabled.");
+		*OutError = TEXT("GenerateStaticJITSourceText is unavailable when AS_CAN_GENERATE_JIT or WITH_ANGELSCRIPT_UNITTESTS is disabled.");
 	}
 	return false;
 #endif

@@ -7,7 +7,7 @@
 #include "HAL/FileManager.h"
 #include "UObject/SavePackage.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 using namespace AngelscriptFunctionalTestUtils;
 using namespace AngelscriptBlueprintTestUtils;
@@ -276,4 +276,4 @@ class ATestBPImpactDiskBacked : AActor
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

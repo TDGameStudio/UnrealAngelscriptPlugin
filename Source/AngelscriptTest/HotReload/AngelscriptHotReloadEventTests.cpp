@@ -7,6 +7,8 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 
+#if WITH_ANGELSCRIPT_UNITTESTS
+
 TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadEventTests,
 	"Angelscript.TestModule.HotReload.Events",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -334,3 +336,5 @@ public:
 		}
 	}
 };
+
+#endif // WITH_ANGELSCRIPT_UNITTESTS

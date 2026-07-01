@@ -11,6 +11,8 @@
 #include "Misc/ScopeExit.h"
 #include "UObject/UnrealType.h"
 
+#if WITH_ANGELSCRIPT_UNITTESTS
+
 TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadReloadDelegateTests,
 	"Angelscript.TestModule.HotReload.ReloadDelegates",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -1509,3 +1511,5 @@ public:
 		}
 	}
 };
+
+#endif // WITH_ANGELSCRIPT_UNITTESTS

@@ -10,7 +10,7 @@
 #include "UObject/UnrealType.h"
 
 // Test Layer: UE Functional - Round1 vacuum-fill (UMG BindWidget metadata)
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptBindWidgetTests,
@@ -130,4 +130,4 @@ class UFunctionalScoreWidget : UUserWidget
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

@@ -28,7 +28,7 @@
  * only needs an explicit AS module name plus source.
  */
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 /**
  * Build an AS module under the given name and keep it alive for the
@@ -93,4 +93,4 @@ private:
 };
 
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

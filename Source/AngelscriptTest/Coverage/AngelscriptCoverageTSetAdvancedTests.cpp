@@ -26,7 +26,7 @@
 // This file focuses on the remaining high-priority TSet operations.
 // -----------------------------------------------------------------------------
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 using namespace AngelscriptFunctionalTestUtils;
 
@@ -906,4 +906,4 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTSetAdvancedTest,
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

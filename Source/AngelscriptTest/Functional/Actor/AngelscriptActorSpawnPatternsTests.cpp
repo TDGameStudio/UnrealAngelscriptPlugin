@@ -8,7 +8,7 @@
 #include "UObject/UnrealType.h"
 
 // Test Layer: UE Functional - Round1 deep-fill (SpawnActor invocation patterns)
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptActorSpawnPatternsTests,
@@ -109,4 +109,4 @@ class AFunctionalSpawnSourceActor : AActor
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

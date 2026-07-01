@@ -25,7 +25,7 @@ namespace
 	}
 }
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 // Definition for the log category declared in AngelscriptPreprocessorTestHelpers.h.
 // Default verbosity is NoLogging; enable on demand via -LogCmds or
 // LogPreprocessorDump.SetVerbosity(...) inside a TEST_METHOD.

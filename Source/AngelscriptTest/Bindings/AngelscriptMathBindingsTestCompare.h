@@ -7,7 +7,7 @@
 #include "Misc/AutomationTest.h"
 #include "Math/Quat.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 inline bool MathBindingsRotatorMatches(const FRotator& Actual, const FRotator& Expected, double ToleranceDegrees = 0.05)
 {
@@ -168,4 +168,4 @@ inline FTransform MakeMathBindingsTransformInterpReference(
 	return Result;
 }
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

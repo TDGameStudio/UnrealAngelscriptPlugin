@@ -13,7 +13,7 @@
 // automation.
 // -----------------------------------------------------------------------------
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageErrorHandlingTest,
 	"Angelscript.TestModule.Coverage.ErrorHandling",
@@ -469,4 +469,4 @@ public:
 	}
 };
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+#endif // WITH_ANGELSCRIPT_UNITTESTS

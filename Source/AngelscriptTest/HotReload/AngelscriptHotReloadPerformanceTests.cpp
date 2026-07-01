@@ -8,6 +8,8 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 
+#if WITH_ANGELSCRIPT_UNITTESTS
+
 TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadPerformanceTests,
 	"Angelscript.TestModule.HotReload.Performance",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -404,3 +406,5 @@ public:
 			{ TEXT("Burst churn baseline models repeated soft/full/soft reload operations on one module.") })));
 	}
 };
+
+#endif // WITH_ANGELSCRIPT_UNITTESTS

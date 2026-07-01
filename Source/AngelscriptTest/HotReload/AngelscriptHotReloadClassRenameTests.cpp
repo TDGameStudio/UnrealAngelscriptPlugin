@@ -22,6 +22,8 @@
 #include "UObject/Package.h"
 #include "UObject/UnrealType.h"
 
+#if WITH_ANGELSCRIPT_UNITTESTS
+
 // Test Layer: UE Functional
 //
 // Focus: what happens to a Blueprint that was created from an Angelscript class
@@ -1096,3 +1098,5 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHotReloadClassRenameTests,
 		}
 	}
 };
+
+#endif // WITH_ANGELSCRIPT_UNITTESTS

@@ -24,7 +24,7 @@
 #include "Components/BoxComponent.h"
 #include "GameFramework/Actor.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_ANGELSCRIPT_UNITTESTS
 
 
 // ----------------------------------------------------------------------------
