@@ -42,7 +42,6 @@ namespace UnrealBuildTool.Rules
 				"DeveloperSettings",
 				"Json",
 				"JsonUtilities",
-				"StructUtils",
             });
 
 			/* Link to libraries used in bindings */

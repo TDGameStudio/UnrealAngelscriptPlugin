@@ -34,10 +34,6 @@
 	],
 	"Plugins": [
 		{
-			"Name": "StructUtils",
-			"Enabled": true
-		},
-		{
 			"Name": "PropertyBindingUtils",
 			"Enabled": true
 		},
