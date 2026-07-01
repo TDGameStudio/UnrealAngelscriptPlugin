@@ -14,7 +14,7 @@
 // -----------------------------------------------------------------------------
 // Coverage for the high-priority SaveGame slice from:
 //
-//   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+//   OpenSpec: test-coverage/coverage-matrix.md
 //
 // Axes covered here:
 //   * AS-defined USaveGame subclasses compile and expose SaveGame properties

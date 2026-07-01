@@ -19,7 +19,7 @@
 // AngelscriptCoverageClassFeaturesTests
 // -----------------------------------------------------------------------------
 // Comprehensive class feature coverage for AngelScript, following the matrix
-// from OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md (Submatrices 4-6: Features).
+// from OpenSpec: test-coverage/coverage-matrix.md (Submatrices 4-6: Features).
 //
 // Test axes covered:
 //   * DefaultKeywordOverride        - default keyword overriding parent properties

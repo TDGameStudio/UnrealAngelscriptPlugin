@@ -17,7 +17,7 @@
 // AngelscriptCoveragePhysicsTests
 // -----------------------------------------------------------------------------
 // Coverage for AngelScript physics and collision features, corresponding to
-// OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md.
+// OpenSpec: test-coverage/coverage-matrix.md.
 //
 // Axes covered here:
 //   * CollisionEvents           - OnComponentHit, BeginOverlap, EndOverlap
@@ -32,7 +32,7 @@
 // Pattern D (script execution): compile AS actors with physics components,
 // spawn them, manipulate physics state, verify collision and trace results.
 //
-// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// Detailed coverage matrix: OpenSpec: test-coverage/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS

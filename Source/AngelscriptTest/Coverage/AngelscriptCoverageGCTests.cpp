@@ -16,7 +16,7 @@
 // Coverage for AngelScript Garbage Collection and object lifecycle verification.
 // This file covers the "GC (Garbage Collection)" section of the coverage matrix:
 //
-//   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md - Sub-matrix 9
+//   OpenSpec: test-coverage/coverage-matrix.md - Sub-matrix 9
 //
 // Axes covered here:
 //   * GCBasicReclaim           - unreferenced objects are collected by GC
@@ -34,7 +34,7 @@
 // an AS actor, drive its members, read them back through FPropertyBindingPath
 // helpers in Shared/AngelscriptReflectiveAccess.h.
 //
-// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// Detailed coverage matrix: OpenSpec: test-coverage/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS

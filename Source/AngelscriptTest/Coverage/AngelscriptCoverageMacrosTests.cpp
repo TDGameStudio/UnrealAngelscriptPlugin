@@ -15,7 +15,7 @@
 // AngelscriptCoverageMacrosTests
 // -----------------------------------------------------------------------------
 // Comprehensive coverage for advanced AngelScript macro usage scenarios.
-// Based on OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md.
+// Based on OpenSpec: test-coverage/coverage-matrix.md.
 //
 // Coverage matrix:
 //   * UInterfaceMacroDeclarationRejected - UINTERFACE() unsupported boundary

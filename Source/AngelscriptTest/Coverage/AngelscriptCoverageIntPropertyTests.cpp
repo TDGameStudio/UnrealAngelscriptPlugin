@@ -46,7 +46,7 @@
 //   uint   -> FUInt32Property  (FUIntType,   NativeType uint32)
 //   uint64 -> FUInt64Property  (FUInt64Type)
 //
-// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// Detailed coverage matrix: OpenSpec: test-coverage/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS

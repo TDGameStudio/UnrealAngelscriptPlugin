@@ -16,7 +16,7 @@
 // -----------------------------------------------------------------------------
 // "Übershader-style" coverage for AngelScript integer-family *function usage*
 // -- the function parameter / return value half of the int matrix. This file
-// covers sub-matrix 6 from OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md:
+// covers sub-matrix 6 from OpenSpec: test-coverage/coverage-matrix.md:
 //
 //   * Function parameters (value / &in / &out / &inout)
 //   * Return values

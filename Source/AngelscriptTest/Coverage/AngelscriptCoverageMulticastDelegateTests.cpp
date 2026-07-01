@@ -12,7 +12,7 @@
 // AngelscriptCoverageMulticastDelegateTests
 // -----------------------------------------------------------------------------
 // Coverage for AngelScript multicast delegate (FMulticastDelegate) usage, the
-// second slice of the delegates-and-events matrix (OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// second slice of the delegates-and-events matrix (OpenSpec: test-coverage/coverage-matrix.md
 // section 2). Each TEST_METHOD walks one usage axis from the matrix:
 //
 // Axes covered here:
@@ -31,7 +31,7 @@
 // Multicast delegates do NOT support return values (multiple listeners would
 // create ambiguity about which return value to use).
 //
-// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// Detailed coverage matrix: OpenSpec: test-coverage/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS

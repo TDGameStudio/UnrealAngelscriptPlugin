@@ -11,7 +11,7 @@
 // -----------------------------------------------------------------------------
 // Coverage for the AngelScript `asset` keyword literal asset declaration from:
 //
-//   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+//   OpenSpec: test-coverage/coverage-matrix.md
 //
 // Axes covered here:
 //   * asset declaration syntax: `asset MyAsset of UMyClass { }`

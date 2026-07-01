@@ -14,7 +14,7 @@
 // AngelscriptCoverageUEnumTests
 // -----------------------------------------------------------------------------
 // Comprehensive coverage for AngelScript UENUM declarations and usage.
-// Based on OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md section 2 (UENUM).
+// Based on OpenSpec: test-coverage/coverage-matrix.md section 2 (UENUM).
 //
 // Coverage matrix:
 //   * UEnumBasicDeclaration     - enum / UENUM() / explicit values / namespace

@@ -16,7 +16,7 @@
 // Advanced TMap container operations coverage, extending the basic int tests
 // from AngelscriptCoverageIntPropertyTests.cpp.
 //
-// Matrix coverage (from OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md):
+// Matrix coverage (from OpenSpec: test-coverage/coverage-matrix.md):
 //   * TMapAdvancedOperations - Find(out), Remove(), GetKeys(), index access
 //   * TMapIteration          - Iterator() key-value traversal
 //   * TMapKeyTypes           - FString, FName, enum keys

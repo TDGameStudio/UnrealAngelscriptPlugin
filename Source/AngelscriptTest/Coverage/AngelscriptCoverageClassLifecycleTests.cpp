@@ -21,7 +21,7 @@
 // AngelscriptCoverageClassLifecycleTests
 // -----------------------------------------------------------------------------
 // Comprehensive class lifecycle method coverage for AngelScript, following the
-// matrix from OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md (Submatrix 3: Lifecycle).
+// matrix from OpenSpec: test-coverage/coverage-matrix.md (Submatrix 3: Lifecycle).
 //
 // Test axes covered:
 //   * ActorLifecycle              - BeginPlay, Tick, EndPlay, Destroyed, UserConstructionScript

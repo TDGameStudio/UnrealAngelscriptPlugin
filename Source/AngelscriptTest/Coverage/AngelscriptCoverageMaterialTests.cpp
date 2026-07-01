@@ -16,7 +16,7 @@
 // -----------------------------------------------------------------------------
 // Coverage for the Material slice from:
 //
-//   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+//   OpenSpec: test-coverage/coverage-matrix.md
 //
 // The tests avoid requiring a mesh asset or real RHI. They inject the engine
 // default material from C++ and let AS exercise UPrimitiveComponent material APIs

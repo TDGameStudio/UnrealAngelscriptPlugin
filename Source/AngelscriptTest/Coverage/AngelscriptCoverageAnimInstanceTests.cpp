@@ -14,7 +14,7 @@
 // -----------------------------------------------------------------------------
 // Coverage for the AnimInstance slice from:
 //
-//   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+//   OpenSpec: test-coverage/coverage-matrix.md
 //
 // These cases keep the first coverage wave asset-free: they verify AS can define
 // AnimInstance subclasses, expose animation variables, and execute the core

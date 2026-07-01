@@ -17,7 +17,7 @@
 // Coverage for AngelScript weak references and class references.
 // This file covers weak reference and class reference sections from:
 //
-//   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md - Sub-matrix 3 & 6
+//   OpenSpec: test-coverage/coverage-matrix.md - Sub-matrix 3 & 6
 //
 // Axes covered here:
 //   * WeakObjectPtrBasics          - declaration, assignment, IsValid, Get
@@ -32,7 +32,7 @@
 // an AS actor, drive its members, read them back through FPropertyBindingPath
 // helpers in Shared/AngelscriptReflectiveAccess.h.
 //
-// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// Detailed coverage matrix: OpenSpec: test-coverage/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS

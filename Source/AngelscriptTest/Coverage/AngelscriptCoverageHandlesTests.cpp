@@ -23,7 +23,7 @@
 // Comprehensive coverage for AngelScript handles and references system.
 // This file covers all reference types from:
 //
-//   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+//   OpenSpec: test-coverage/coverage-matrix.md
 //
 // Test groups:
 //   1. Object References (AActor*, UObject*)
@@ -43,7 +43,7 @@
 // an AS actor, drive its members, read them back through FPropertyBindingPath
 // helpers in Shared/AngelscriptReflectiveAccess.h.
 //
-// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// Detailed coverage matrix: OpenSpec: test-coverage/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS

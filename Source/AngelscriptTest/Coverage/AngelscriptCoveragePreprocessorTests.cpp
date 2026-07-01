@@ -7,7 +7,7 @@
 // -----------------------------------------------------------------------------
 // Coverage landing file for the preprocessor matrix. The detailed suite lives in
 // AngelscriptTest/Preprocessor; this file captures the stable user-facing subset
-// expected by OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md.
+// expected by OpenSpec: test-coverage/coverage-matrix.md.
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS

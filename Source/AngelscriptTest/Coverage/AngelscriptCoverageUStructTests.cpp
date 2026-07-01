@@ -24,7 +24,7 @@
 // AngelscriptCoverageUStructTests
 // -----------------------------------------------------------------------------
 // Comprehensive USTRUCT coverage for AngelScript, following the matrix from
-// OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md section 1 (USTRUCT).
+// OpenSpec: test-coverage/coverage-matrix.md section 1 (USTRUCT).
 //
 // Coverage matrix index:
 //
@@ -79,7 +79,7 @@
 // | Gap | Target surface | Notes |
 // |---|---|---|
 // | Optional boundary reconciliation | Unsupported optional parameters/nesting | Do not mark docs until verified |
-// | Matrix-to-document reconciliation | OpenSpec test-coverage-matrix-consolidation USTRUCT rows | Update markers only after implementation/static review |
+// | Matrix-to-document reconciliation | OpenSpec test-coverage USTRUCT rows | Update markers only after implementation/static review |
 //
 // Pattern: spawn AS actor, drive members via AngelScript, validate through
 // FProperty reflection (GetByPath/SetByPath/VerifyByPath).

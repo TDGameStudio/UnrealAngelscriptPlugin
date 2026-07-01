@@ -15,7 +15,7 @@
 // Advanced TSet container operations coverage, extending the basic int tests
 // from AngelscriptCoverageIntPropertyTests.cpp.
 //
-// Matrix coverage (from OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md):
+// Matrix coverage (from OpenSpec: test-coverage/coverage-matrix.md):
 //   * TSetAdvancedOperations - Contains(), Remove(), Empty(), Reset()
 //   * TSetIteration          - for-each loops
 //   * TSetSetOperations      - Append(Set) and unsupported set-operation aliases

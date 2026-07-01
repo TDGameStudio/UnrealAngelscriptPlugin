@@ -12,7 +12,7 @@
 // -----------------------------------------------------------------------------
 // Coverage for the high-priority asset-loading and soft-reference slices from:
 //
-//   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+//   OpenSpec: test-coverage/coverage-matrix.md
 //
 // Axes covered here:
 //   * FSoftObjectPath.TryLoad for a known engine asset

@@ -17,7 +17,7 @@
 // compiling module-level global functions and invoking them through
 // FASGlobalFunctionInvoker (Pattern B/F from the Angelscript test guide).
 //
-// Axes covered here (OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md):
+// Axes covered here (OpenSpec: test-coverage/coverage-matrix.md):
 //   * LocalDeclarations          - sub-matrix 2: local default-init / deferred
 //                                  init / local const / auto inference.
 //   * GlobalConstDeclarations     - sub-matrix 2: module-level `const` globals

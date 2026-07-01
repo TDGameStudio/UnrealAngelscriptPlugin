@@ -12,7 +12,7 @@
 // AngelscriptCoverageDelegateTests
 // -----------------------------------------------------------------------------
 // Coverage for AngelScript single-cast delegate (FDelegate) usage, the first
-// slice of the delegates-and-events matrix (OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// slice of the delegates-and-events matrix (OpenSpec: test-coverage/coverage-matrix.md
 // section 1). Each TEST_METHOD walks one usage axis from the matrix:
 //
 // Axes covered here:
@@ -29,7 +29,7 @@
 // actors, spawn them, drive delegate operations, verify results through
 // properties or return values.
 //
-// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// Detailed coverage matrix: OpenSpec: test-coverage/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS

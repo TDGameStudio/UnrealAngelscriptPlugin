@@ -29,7 +29,7 @@
 // Pattern D (UPROPERTY path read/write): spawn an AS actor, drive its nested
 // struct members, read them back through FPropertyBindingPath helpers.
 //
-// Relates to OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md §3 row:
+// Relates to OpenSpec: test-coverage/coverage-matrix.md §3 row:
 //   "USTRUCT 内 int 成员（嵌套路径）"
 //
 // FProperty mapping (authoritative source: Bind_Primitives.cpp):

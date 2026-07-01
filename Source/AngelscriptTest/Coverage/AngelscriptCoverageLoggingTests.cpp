@@ -18,7 +18,7 @@
 // AngelscriptCoverageLoggingTests
 // -----------------------------------------------------------------------------
 // Comprehensive logging and debug output coverage for AngelScript, following
-// the matrix from OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md.
+// the matrix from OpenSpec: test-coverage/coverage-matrix.md.
 //
 // Test axes covered:
 //   * PrintFunctions                - Print, PrintFromObject, PrintToScreen, PrintDirectToScreen, PrintWarning, PrintError

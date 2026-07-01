@@ -18,7 +18,7 @@
 // AngelscriptCoverageDynamicDelegateTests
 // -----------------------------------------------------------------------------
 // Coverage for AngelScript dynamic delegate usage, the third slice of the
-// delegates-and-events matrix (OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// delegates-and-events matrix (OpenSpec: test-coverage/coverage-matrix.md
 // section 3). Each TEST_METHOD walks one usage axis from the matrix:
 //
 // Axes covered here:
@@ -39,7 +39,7 @@
 // Dynamic delegates are Blueprint-compatible but slower than regular delegates.
 // They support serialization and are required for Blueprint event integration.
 //
-// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// Detailed coverage matrix: OpenSpec: test-coverage/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS

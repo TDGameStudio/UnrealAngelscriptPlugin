@@ -25,7 +25,7 @@
 // AngelscriptCoverageComponentTests
 // -----------------------------------------------------------------------------
 // Coverage for AngelScript UActorComponent basics and lifecycle, corresponding
-// to OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md sections 1-4 and 8-10.
+// to OpenSpec: test-coverage/coverage-matrix.md sections 1-4 and 8-10.
 //
 // Axes covered here:
 //   * ComponentDeclaration      - DefaultComponent, RootComponent, Attach specifiers
@@ -40,7 +40,7 @@
 // Pattern D (script execution): compile AS actors with components, spawn them,
 // drive component operations through lifecycle, verify state via properties.
 //
-// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// Detailed coverage matrix: OpenSpec: test-coverage/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS

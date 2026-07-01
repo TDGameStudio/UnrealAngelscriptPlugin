@@ -20,7 +20,7 @@
 // Coverage for AngelScript UObject Handle (basic object references).
 // This file covers the "UObject Handle" section of the coverage matrix:
 //
-//   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md - Sub-matrix 1
+//   OpenSpec: test-coverage/coverage-matrix.md - Sub-matrix 1
 //
 // Axes covered here:
 //   * HandleBasics           - declaration, null checks, IsValid, assignment
@@ -35,7 +35,7 @@
 // an AS actor, drive its members, read them back through FPropertyBindingPath
 // helpers in Shared/AngelscriptReflectiveAccess.h.
 //
-// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// Detailed coverage matrix: OpenSpec: test-coverage/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS

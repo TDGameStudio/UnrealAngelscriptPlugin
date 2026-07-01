@@ -22,7 +22,7 @@
 // Coverage for AngelScript soft references (TSoftObjectPtr, TSoftClassPtr).
 // This file covers the soft reference sections from:
 //
-//   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md - Sub-matrix 4 & 5
+//   OpenSpec: test-coverage/coverage-matrix.md - Sub-matrix 4 & 5
 //
 // Axes covered here:
 //   * SoftObjectPtrBasics        - TSoftObjectPtr declaration, assignment, Get
@@ -37,7 +37,7 @@
 // an AS actor, drive its members, read them back through FPropertyBindingPath
 // helpers in Shared/AngelscriptReflectiveAccess.h.
 //
-// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// Detailed coverage matrix: OpenSpec: test-coverage/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS

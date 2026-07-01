@@ -31,8 +31,8 @@
 // system.
 //
 // Test pattern: Pattern D (Actor + FProperty reflection + metadata reading)
-// Coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md (sub-matrix 4)
-//                  OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md (sub-matrix 4)
+// Coverage matrix: OpenSpec: test-coverage/coverage-matrix.md (sub-matrix 4)
+//                  OpenSpec: test-coverage/coverage-matrix.md (sub-matrix 4)
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS

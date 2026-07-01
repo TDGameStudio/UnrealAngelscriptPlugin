@@ -27,7 +27,7 @@
 // Basic operations (Add, Contains, Num, indexing) are already covered in
 // AngelscriptCoverageIntPropertyTests.cpp.
 //
-// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// Detailed coverage matrix: OpenSpec: test-coverage/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS

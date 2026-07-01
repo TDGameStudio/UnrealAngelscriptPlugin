@@ -24,7 +24,7 @@
 // -----------------------------------------------------------------------------
 // Coverage for AngelScript special component types (StaticMesh, SkeletalMesh,
 // CharacterMovement, Camera, SpringArm, Shape components), corresponding to
-// OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md section 7.
+// OpenSpec: test-coverage/coverage-matrix.md section 7.
 //
 // Axes covered here:
 //   * StaticMeshComponent       - SetStaticMesh, SetMaterial
@@ -37,7 +37,7 @@
 // Pattern D (script execution): compile AS actors with special components,
 // spawn them, manipulate component-specific properties, verify results.
 //
-// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// Detailed coverage matrix: OpenSpec: test-coverage/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS

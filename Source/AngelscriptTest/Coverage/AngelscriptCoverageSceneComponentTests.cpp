@@ -12,7 +12,7 @@
 // AngelscriptCoverageSceneComponentTests
 // -----------------------------------------------------------------------------
 // Coverage for AngelScript USceneComponent features (transform and attachment),
-// corresponding to OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md section 5.
+// corresponding to OpenSpec: test-coverage/coverage-matrix.md section 5.
 //
 // Axes covered here:
 //   * SceneComponentTransform      - Get/SetWorldLocation/Rotation/Scale
@@ -26,7 +26,7 @@
 // Pattern D (script execution): compile AS actors with scene components,
 // spawn them, manipulate transforms and attachment, verify results.
 //
-// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// Detailed coverage matrix: OpenSpec: test-coverage/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS

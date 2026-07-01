@@ -18,7 +18,7 @@
 // AngelscriptCoverageEventTests
 // -----------------------------------------------------------------------------
 // Coverage for AngelScript event system usage, the fourth slice of the
-// delegates-and-events matrix (OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// delegates-and-events matrix (OpenSpec: test-coverage/coverage-matrix.md
 // section 4). Each TEST_METHOD walks one usage axis from the matrix:
 //
 // Axes covered here:
@@ -36,7 +36,7 @@
 // allow multiple listeners to respond to state changes, user input, or system
 // notifications.
 //
-// Detailed coverage matrix: OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
+// Detailed coverage matrix: OpenSpec: test-coverage/coverage-matrix.md
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
