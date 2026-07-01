@@ -20,6 +20,7 @@
 //   * AS-defined USaveGame subclasses compile and expose SaveGame properties
 //   * default SaveGame data is visible on CDO/new instances
 //   * UGameplayStatics synchronous save/load/delete slot lifecycle preserves AS data
+//   * nested USTRUCT and TArray SaveGame data round-trips through slots
 //   * missing-slot load returns null and existence checks remain accurate
 // -----------------------------------------------------------------------------
 
@@ -66,6 +67,78 @@ private:
 			TEXT("UCoverageSaveGameObject"));
 	}
 
+	static UClass* CompileCoverageComplexSaveGameClass(FAutomationTestBase& Test, FAngelscriptEngine& Engine, FName ModuleName)
+	{
+		return CompileScriptModule(
+			Test,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageComplexSaveGame.as"),
+			ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FCoverageSaveGameStats
+			{
+				UPROPERTY(SaveGame)
+				int Level = 1;
+
+				UPROPERTY(SaveGame)
+				FString Region = "Start";
+
+				UPROPERTY(SaveGame)
+				bool bHardMode = false;
+			}
+
+			USTRUCT()
+			struct FCoverageSaveGameItem
+			{
+				UPROPERTY(SaveGame)
+				FString ItemId;
+
+				UPROPERTY(SaveGame)
+				int Quantity = 0;
+			}
+
+			UCLASS()
+			class UCoverageComplexSaveGameObject : USaveGame
+			{
+				UPROPERTY(SaveGame)
+				FCoverageSaveGameStats Stats;
+
+				UPROPERTY(SaveGame)
+				TArray<int> Milestones;
+
+				UPROPERTY(SaveGame)
+				TArray<FCoverageSaveGameItem> Inventory;
+
+				UFUNCTION()
+				void ApplyComplexProgress()
+				{
+					Stats.Level = 42;
+					Stats.Region = "DeepSave";
+					Stats.bHardMode = true;
+
+					Milestones.Reset();
+					Milestones.Add(10);
+					Milestones.Add(20);
+					Milestones.Add(35);
+
+					Inventory.Reset();
+
+					FCoverageSaveGameItem Sword;
+					Sword.ItemId = "Sword";
+					Sword.Quantity = 1;
+					Inventory.Add(Sword);
+
+					FCoverageSaveGameItem Potion;
+					Potion.ItemId = "Potion";
+					Potion.Quantity = 5;
+					Inventory.Add(Potion);
+				}
+			}
+			)AS"),
+			TEXT("UCoverageComplexSaveGameObject"));
+	}
+
 	static bool InvokeApplyProgress(
 		FAutomationTestBase& Test,
 		UObject* SaveGameObject,
@@ -84,6 +157,17 @@ private:
 			.AddParam<FString>(PlayerName)
 			.AddParam<bool>(bUnlocked)
 			.Call();
+	}
+
+	static bool InvokeApplyComplexProgress(FAutomationTestBase& Test, UObject* SaveGameObject)
+	{
+		FFunctionInvoker Invoker(Test, SaveGameObject, TEXT("ApplyComplexProgress"));
+		if (!Invoker.IsValid())
+		{
+			return false;
+		}
+
+		return Invoker.Call();
 	}
 
 public:
@@ -213,6 +297,102 @@ public:
 			TEXT("DeleteGameInSlot should remove the saved slot")));
 		ASSERT_THAT(IsFalse(UGameplayStatics::DoesSaveGameExist(SlotName, SaveGameUserIndex),
 			TEXT("DoesSaveGameExist should report false after deleting the slot")));
+	}
+
+	TEST_METHOD(ComplexStructAndArraySlotRoundTrip)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageSaveGame_ComplexRoundTrip"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* SaveGameClass = CompileCoverageComplexSaveGameClass(*TestRunner, Engine, ModuleName);
+		if (SaveGameClass == nullptr)
+		{
+			return;
+		}
+
+		FStructProperty* StatsProperty = FindFProperty<FStructProperty>(SaveGameClass, TEXT("Stats"));
+		FArrayProperty* MilestonesProperty = FindFProperty<FArrayProperty>(SaveGameClass, TEXT("Milestones"));
+		FArrayProperty* InventoryProperty = FindFProperty<FArrayProperty>(SaveGameClass, TEXT("Inventory"));
+		ASSERT_THAT(IsNotNull(StatsProperty, TEXT("Stats SaveGame USTRUCT property should exist")));
+		ASSERT_THAT(IsNotNull(MilestonesProperty, TEXT("Milestones SaveGame array property should exist")));
+		ASSERT_THAT(IsNotNull(InventoryProperty, TEXT("Inventory SaveGame array property should exist")));
+		if (StatsProperty == nullptr || MilestonesProperty == nullptr || InventoryProperty == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(StatsProperty->HasAnyPropertyFlags(CPF_SaveGame),
+			TEXT("Stats should carry CPF_SaveGame")));
+		ASSERT_THAT(IsTrue(MilestonesProperty->HasAnyPropertyFlags(CPF_SaveGame),
+			TEXT("Milestones should carry CPF_SaveGame")));
+		ASSERT_THAT(IsTrue(InventoryProperty->HasAnyPropertyFlags(CPF_SaveGame),
+			TEXT("Inventory should carry CPF_SaveGame")));
+		ASSERT_THAT(IsNotNull(CastField<FIntProperty>(MilestonesProperty->Inner),
+			TEXT("Milestones should reflect as TArray<int>")));
+		ASSERT_THAT(IsNotNull(CastField<FStructProperty>(InventoryProperty->Inner),
+			TEXT("Inventory should reflect as TArray<FCoverageSaveGameItem>")));
+
+		const FString SlotName = FString::Printf(TEXT("ASCoverageSaveGame_Complex_%s"), *FGuid::NewGuid().ToString(EGuidFormats::Digits));
+		UGameplayStatics::DeleteGameInSlot(SlotName, SaveGameUserIndex);
+		ON_SCOPE_EXIT
+		{
+			UGameplayStatics::DeleteGameInSlot(SlotName, SaveGameUserIndex);
+		};
+
+		USaveGame* SaveGame = Cast<USaveGame>(UGameplayStatics::CreateSaveGameObject(SaveGameClass));
+		ASSERT_THAT(IsNotNull(SaveGame, TEXT("CreateSaveGameObject should instantiate the AS complex SaveGame class")));
+		if (SaveGame == nullptr)
+		{
+			return;
+		}
+
+		if (!InvokeApplyComplexProgress(*TestRunner, SaveGame))
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(UGameplayStatics::SaveGameToSlot(SaveGame, SlotName, SaveGameUserIndex),
+			TEXT("SaveGameToSlot should save AS nested struct and array SaveGame data")));
+
+		USaveGame* LoadedSaveGame = UGameplayStatics::LoadGameFromSlot(SlotName, SaveGameUserIndex);
+		ASSERT_THAT(IsNotNull(LoadedSaveGame, TEXT("LoadGameFromSlot should load the complex AS SaveGame object")));
+		if (LoadedSaveGame == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(LoadedSaveGame->GetClass()->IsChildOf(SaveGameClass),
+			TEXT("Loaded complex SaveGame should preserve the AS generated class")));
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, LoadedSaveGame, TEXT("Stats.Level"), 42,
+			TEXT("Loaded SaveGame should preserve nested USTRUCT int data"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, LoadedSaveGame, TEXT("Stats.Region"), FString(TEXT("DeepSave")),
+			TEXT("Loaded SaveGame should preserve nested USTRUCT FString data"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, LoadedSaveGame, TEXT("Stats.bHardMode"), true,
+			TEXT("Loaded SaveGame should preserve nested USTRUCT bool data"))));
+
+		int32 MilestoneCount = 0;
+		ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, LoadedSaveGame, TEXT("Milestones"), MilestoneCount),
+			TEXT("Loaded SaveGame should preserve Milestones array size")));
+		ASSERT_THAT(AreEqual(3, MilestoneCount, TEXT("Loaded Milestones array should contain three entries")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, LoadedSaveGame, TEXT("Milestones[0]"), 10,
+			TEXT("Loaded SaveGame should preserve first array entry"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, LoadedSaveGame, TEXT("Milestones[2]"), 35,
+			TEXT("Loaded SaveGame should preserve last array entry"))));
+
+		int32 InventoryCount = 0;
+		ASSERT_THAT(IsTrue(GetArrayNumByPath(*TestRunner, LoadedSaveGame, TEXT("Inventory"), InventoryCount),
+			TEXT("Loaded SaveGame should preserve Inventory array size")));
+		ASSERT_THAT(AreEqual(2, InventoryCount, TEXT("Loaded Inventory array should contain two entries")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, LoadedSaveGame, TEXT("Inventory[0].ItemId"), FString(TEXT("Sword")),
+			TEXT("Loaded SaveGame should preserve first struct-array string field"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, LoadedSaveGame, TEXT("Inventory[1].Quantity"), 5,
+			TEXT("Loaded SaveGame should preserve second struct-array int field"))));
 	}
 
 	TEST_METHOD(MissingSlotReturnsNull)

@@ -995,6 +995,104 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageClassLifecycleTest,
 		ASSERT_THAT(AreEqual(Actor, RootComponent->GetOwner(), TEXT("DefaultComponent root should be owned by the spawned actor")));
 		ASSERT_THAT(IsTrue(RootComponent->IsRegistered(), TEXT("DefaultComponent root should be registered before BeginPlay assertions")));
 	}
+
+	TEST_METHOD(NativeOnlyVirtualOverrideBoundaries)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		struct FUnsupportedOverrideCase
+		{
+			const TCHAR* ModuleName;
+			const TCHAR* ClassName;
+			const TCHAR* SuperClassName;
+			const TCHAR* DiagnosticSuperClassName;
+			const TCHAR* MethodDeclaration;
+			const TCHAR* MethodName;
+		};
+
+		const FUnsupportedOverrideCase Cases[] = {
+			{
+				TEXT("ASCoverageLifecyclePostLoadUnsupported"),
+				TEXT("UCoverageLifecyclePostLoadUnsupported"),
+				TEXT("UObject"),
+				TEXT("Object"),
+				TEXT("void PostLoad()"),
+				TEXT("PostLoad")
+			},
+			{
+				TEXT("ASCoverageLifecyclePreSaveUnsupported"),
+				TEXT("UCoverageLifecyclePreSaveUnsupported"),
+				TEXT("UObject"),
+				TEXT("Object"),
+				TEXT("void PreSave()"),
+				TEXT("PreSave")
+			},
+			{
+				TEXT("ASCoverageLifecyclePostInitPropertiesUnsupported"),
+				TEXT("UCoverageLifecyclePostInitPropertiesUnsupported"),
+				TEXT("UObject"),
+				TEXT("Object"),
+				TEXT("void PostInitProperties()"),
+				TEXT("PostInitProperties")
+			},
+			{
+				TEXT("ASCoverageLifecycleBeginDestroyUnsupported"),
+				TEXT("UCoverageLifecycleBeginDestroyUnsupported"),
+				TEXT("UObject"),
+				TEXT("Object"),
+				TEXT("void BeginDestroy()"),
+				TEXT("BeginDestroy")
+			},
+			{
+				TEXT("ASCoverageLifecycleFinishDestroyUnsupported"),
+				TEXT("UCoverageLifecycleFinishDestroyUnsupported"),
+				TEXT("UObject"),
+				TEXT("Object"),
+				TEXT("void FinishDestroy()"),
+				TEXT("FinishDestroy")
+			},
+			{
+				TEXT("ASCoverageLifecycleResetUnsupported"),
+				TEXT("ACoverageLifecycleResetUnsupported"),
+				TEXT("AActor"),
+				TEXT("Actor"),
+				TEXT("void Reset()"),
+				TEXT("Reset")
+			}
+		};
+
+		for (const FUnsupportedOverrideCase& Case : Cases)
+		{
+			const FString ScriptSource = FString::Printf(
+				TEXT("UCLASS()\n")
+				TEXT("class %s : %s\n")
+				TEXT("{\n")
+				TEXT("\tUFUNCTION(BlueprintOverride)\n")
+				TEXT("\t%s\n")
+				TEXT("\t{\n")
+				TEXT("\t}\n")
+				TEXT("}\n"),
+				Case.ClassName,
+				Case.SuperClassName,
+				Case.MethodDeclaration);
+
+			const FString MethodDiagnostic = FString::Printf(TEXT("BlueprintOverride method %s"), Case.MethodName);
+			const FString SuperclassDiagnostic = FString::Printf(TEXT("does not exist in superclass %s"), Case.DiagnosticSuperClassName);
+			const TArray<FString> ExpectedDiagnostics = {
+				MethodDiagnostic,
+				SuperclassDiagnostic
+			};
+
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				Case.ModuleName,
+				ScriptSource,
+				*FString::Printf(TEXT("%s should remain an explicit BlueprintOverride boundary"), Case.MethodName),
+				MakeArrayView(ExpectedDiagnostics))));
+		}
+	}
 };
 
 #endif // WITH_DEV_AUTOMATION_TESTS

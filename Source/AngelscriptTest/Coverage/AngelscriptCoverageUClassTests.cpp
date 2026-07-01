@@ -1651,6 +1651,106 @@ public:
 		ASSERT_THAT(AreEqual(FString(TEXT("Seed_Done")), BuildLabelInvoker.CallAndReturn<FString>(FString()), TEXT("UObject FString return should round-trip through reflection")));
 	}
 
+	TEST_METHOD(UClassDefaultObjectAndInstanceStateIndependence)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageUClass_DefaultObjectInstanceIndependence"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS(BlueprintType)
+			class UCoverageUClassDefaultObjectProbe : UObject
+			{
+				UPROPERTY()
+				int Counter = 12;
+
+				UPROPERTY()
+				FString Label = "Seed";
+			}
+			)AS");
+
+		ASSERT_THAT(IsTrue(CompileUClassFixture(*TestRunner, Engine, ModuleName, TEXT("ASCoverageUClassDefaultObjectInstanceIndependence.as"), ScriptSource)));
+
+		UClass* ProbeClass = FindGeneratedClass(&Engine, TEXT("UCoverageUClassDefaultObjectProbe"));
+		ASSERT_THAT(IsNotNull(ProbeClass, TEXT("Default object probe class should be generated")));
+		if (ProbeClass == nullptr)
+		{
+			return;
+		}
+
+		UObject* DefaultObject = ProbeClass->GetDefaultObject();
+		ASSERT_THAT(IsNotNull(DefaultObject, TEXT("Default object probe should expose a CDO")));
+		if (DefaultObject == nullptr)
+		{
+			return;
+		}
+
+		FIntProperty* CounterProperty = FindFProperty<FIntProperty>(ProbeClass, TEXT("Counter"));
+		FStrProperty* LabelProperty = FindFProperty<FStrProperty>(ProbeClass, TEXT("Label"));
+		ASSERT_THAT(IsNotNull(CounterProperty, TEXT("Counter property should be reflected on the default object probe")));
+		ASSERT_THAT(IsNotNull(LabelProperty, TEXT("Label property should be reflected on the default object probe")));
+		if (CounterProperty == nullptr || LabelProperty == nullptr)
+		{
+			return;
+		}
+
+		UObject* ExistingInstance = NewObject<UObject>(GetTransientPackage(), ProbeClass, TEXT("CoverageUClassDefaultObjectExisting"), RF_Transient);
+		ASSERT_THAT(IsNotNull(ExistingInstance, TEXT("Default object probe should instantiate before CDO mutation")));
+		if (ExistingInstance == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, ExistingInstance, TEXT("Counter"), 12,
+			TEXT("Initial instance should copy the script CDO int default"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, ExistingInstance, TEXT("Label"), FString(TEXT("Seed")),
+			TEXT("Initial instance should copy the script CDO string default"))));
+
+		CounterProperty->SetPropertyValue_InContainer(DefaultObject, 77);
+		LabelProperty->SetPropertyValue_InContainer(DefaultObject, FString(TEXT("CDO")));
+
+		UObject* InstanceAfterCDOMutation = NewObject<UObject>(GetTransientPackage(), ProbeClass, TEXT("CoverageUClassDefaultObjectAfterCDO"), RF_Transient);
+		ASSERT_THAT(IsNotNull(InstanceAfterCDOMutation, TEXT("Default object probe should instantiate after CDO mutation")));
+		if (InstanceAfterCDOMutation == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, InstanceAfterCDOMutation, TEXT("Counter"), 77,
+			TEXT("New instances should copy the mutated CDO int value"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, InstanceAfterCDOMutation, TEXT("Label"), FString(TEXT("CDO")),
+			TEXT("New instances should copy the mutated CDO string value"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, ExistingInstance, TEXT("Counter"), 12,
+			TEXT("Existing instances should not be retroactively changed by CDO mutation"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, ExistingInstance, TEXT("Label"), FString(TEXT("Seed")),
+			TEXT("Existing string defaults should not be retroactively changed by CDO mutation"))));
+
+		ASSERT_THAT(IsTrue(SetByPath<FIntProperty, int32>(*TestRunner, InstanceAfterCDOMutation, TEXT("Counter"), 99)));
+		ASSERT_THAT(IsTrue(SetByPath<FStrProperty, FString>(*TestRunner, InstanceAfterCDOMutation, TEXT("Label"), FString(TEXT("Instance")))));
+
+		ASSERT_THAT(AreEqual(77, CounterProperty->GetPropertyValue_InContainer(DefaultObject),
+			TEXT("Instance int mutation should not write back to the CDO")));
+		ASSERT_THAT(AreEqual(FString(TEXT("CDO")), LabelProperty->GetPropertyValue_InContainer(DefaultObject),
+			TEXT("Instance string mutation should not write back to the CDO")));
+
+		UObject* InstanceAfterInstanceMutation = NewObject<UObject>(GetTransientPackage(), ProbeClass, TEXT("CoverageUClassDefaultObjectAfterInstance"), RF_Transient);
+		ASSERT_THAT(IsNotNull(InstanceAfterInstanceMutation, TEXT("Default object probe should instantiate after instance mutation")));
+		if (InstanceAfterInstanceMutation == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, InstanceAfterInstanceMutation, TEXT("Counter"), 77,
+			TEXT("Later instances should continue copying the CDO int value, not a prior instance value"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, InstanceAfterInstanceMutation, TEXT("Label"), FString(TEXT("CDO")),
+			TEXT("Later instances should continue copying the CDO string value, not a prior instance value"))));
+	}
+
 	TEST_METHOD(UClassDefaultComponentTreeAndReferenceSurface)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();

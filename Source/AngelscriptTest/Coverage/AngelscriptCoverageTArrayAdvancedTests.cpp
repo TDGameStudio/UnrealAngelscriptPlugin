@@ -22,6 +22,7 @@
 //   - For-each iteration - Range-based loops
 //   - Different element types - FString, FVector, UObject references
 //   - Nested containers - TArray<TArray<int>> unsupported boundary
+//   - Out-of-bounds [] access - Stable runtime exception semantics
 //
 // Basic operations (Add, Contains, Num, indexing) are already covered in
 // AngelscriptCoverageIntPropertyTests.cpp.
@@ -1488,6 +1489,47 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTArrayAdvancedTest,
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ContainsInEmpty"), 0, TEXT("Contains in empty array should return false"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SingleElementSize"), 1, TEXT("Single element array should have size 1"))));
 		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("SingleElementValue"), 42, TEXT("Single element value should be preserved"))));
+	}
+
+	// -------------------------------------------------------------------------
+	// TArray out-of-bounds [] access reports stable script exceptions.
+	// -------------------------------------------------------------------------
+	TEST_METHOD(TArrayOutOfBoundsIndexAccess)
+	{
+		TestRunner->AddExpectedError(TEXT("Array index out of bounds."), EAutomationExpectedErrorFlags::Exact, 2, false);
+		TestRunner->AddExpectedError(TEXT("ASCoverageTArray_OutOfBoundsIndex"), EAutomationExpectedErrorFlags::Contains, 2);
+		TestRunner->AddExpectedError(TEXT("ReadPastEnd"), EAutomationExpectedErrorFlags::Contains, 1);
+		TestRunner->AddExpectedError(TEXT("WritePastEnd"), EAutomationExpectedErrorFlags::Contains, 1);
+
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageTArray_OutOfBoundsIndex"), ASTEST_AS(R"AS(
+			int ReadPastEnd()
+			{
+				TArray<int> Values;
+				Values.Add(10);
+				return Values[1];
+			}
+
+			void WritePastEnd()
+			{
+				TArray<int> Values;
+				Values.Add(10);
+				Values[1] = 20;
+			}
+			)AS"));
+		ASSERT_THAT(IsTrue(Module.IsValid(), TEXT("TArray out-of-bounds module should compile")));
+		if (!Module.IsValid())
+		{
+			return;
+		}
+
+		asIScriptModule& ScriptModule = Module.GetModule();
+		ASSERT_THAT(IsTrue(ExecuteAndExpectException(*TestRunner, Engine, ScriptModule, TEXT("int ReadPastEnd()"),
+			TEXT("TArray read past Num should raise a script exception"), TEXT("Array index out of bounds."))));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectException(*TestRunner, Engine, ScriptModule, TEXT("void WritePastEnd()"),
+			TEXT("TArray write past Num should raise a script exception"), TEXT("Array index out of bounds."))));
 	}
 
 	// -------------------------------------------------------------------------

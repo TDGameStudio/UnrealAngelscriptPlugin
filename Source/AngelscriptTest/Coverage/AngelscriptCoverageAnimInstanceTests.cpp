@@ -1,9 +1,11 @@
 #include "CQTest.h"
 #include "AngelscriptFunctionalTestUtils.h"
+#include "AngelscriptReflectiveAccess.h"
 #include "AngelscriptTestMacros.h"
 
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Misc/ScopeExit.h"
 #include "UObject/UnrealType.h"
 
@@ -15,8 +17,8 @@
 //   OpenSpec: test-coverage-matrix-consolidation/coverage-matrix.md
 //
 // These cases keep the first coverage wave asset-free: they verify AS can define
-// AnimInstance subclasses, expose animation variables, and compile calls to the
-// core owner/montage/curve query APIs without requiring a skeletal mesh asset.
+// AnimInstance subclasses, expose animation variables, and execute the core
+// owner/montage/curve query APIs without requiring a skeletal mesh asset.
 // -----------------------------------------------------------------------------
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -59,7 +61,7 @@ class UCoverageAnimInstance : UAnimInstance
 	{
 		APawn OwnerPawn = TryGetPawnOwner();
 		USkeletalMeshComponent OwnerComponent = GetOwningComponent();
-		bOwnerQueriesCallable = OwnerPawn == nullptr && OwnerComponent == nullptr;
+		bOwnerQueriesCallable = OwnerPawn == nullptr && OwnerComponent != nullptr;
 	}
 
 	UFUNCTION()
@@ -167,6 +169,57 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageAnimInstanceTest,
 			TEXT("ProbeMontageQueries should compile montage query calls")));
 		ASSERT_THAT(IsNotNull(FindGeneratedFunction(AnimClass, TEXT("ProbeCurveQueries")),
 			TEXT("ProbeCurveQueries should compile curve query calls")));
+	}
+
+	TEST_METHOD(AnimInstanceQueryFunctionsExecute)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageAnimation_QueryFunctionsExecute"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* AnimClass = CompileCoverageAnimInstanceClass(*TestRunner, Engine, ModuleName);
+		if (AnimClass == nullptr)
+		{
+			return;
+		}
+
+		USkeletalMeshComponent* OwningComponent = NewObject<USkeletalMeshComponent>(GetTransientPackage());
+		ASSERT_THAT(IsNotNull(OwningComponent,
+			TEXT("AnimInstance query probe should have a transient skeletal mesh component outer")));
+		if (OwningComponent == nullptr)
+		{
+			return;
+		}
+
+		UAnimInstance* AnimInstance = NewObject<UAnimInstance>(OwningComponent, AnimClass);
+		ASSERT_THAT(IsNotNull(AnimInstance,
+			TEXT("AS AnimInstance query probe should instantiate as UAnimInstance")));
+		if (AnimInstance == nullptr)
+		{
+			return;
+		}
+
+		FFunctionInvoker OwnerInvoker(*TestRunner, AnimInstance, TEXT("ProbeOwnerQueries"));
+		ASSERT_THAT(IsTrue(OwnerInvoker.Call(), TEXT("Owner query probe should execute")));
+
+		FFunctionInvoker MontageInvoker(*TestRunner, AnimInstance, TEXT("ProbeMontageQueries"));
+		ASSERT_THAT(IsTrue(MontageInvoker.AddParam<UAnimMontage*>(nullptr).Call(),
+			TEXT("Montage query probe should execute with a null montage")));
+
+		FFunctionInvoker CurveInvoker(*TestRunner, AnimInstance, TEXT("ProbeCurveQueries"));
+		ASSERT_THAT(IsTrue(CurveInvoker.Call(), TEXT("Curve query probe should execute")));
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, AnimInstance, TEXT("bOwnerQueriesCallable"), true,
+			TEXT("Owner queries should run and observe the asset-free component-owned state"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, AnimInstance, TEXT("bMontageQueriesCallable"), true,
+			TEXT("Montage queries should run and observe the asset-free stopped state"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, AnimInstance, TEXT("bCurveQueriesCallable"), true,
+			TEXT("Curve query should run and return the default value when no curve exists"))));
 	}
 };
 

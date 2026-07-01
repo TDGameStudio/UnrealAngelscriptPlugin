@@ -8,6 +8,7 @@
 #include "GameFramework/Actor.h"
 #include "Misc/ScopeExit.h"
 #include "UObject/Class.h"
+#include "UObject/UnrealType.h"
 
 // -----------------------------------------------------------------------------
 // AngelscriptCoverageTMapAdvancedTests
@@ -20,6 +21,7 @@
 //   * TMapIteration          - Iterator() key-value traversal
 //   * TMapKeyTypes           - FString, FName, enum keys
 //   * TMapValueTypes         - FVector values and nested-container rejection
+//   * TMapUserStructValues   - user USTRUCT values
 //   * TMapAdvancedLookup     - FindOrAdd()
 //
 // Basic operations (Add, Contains, Num) are already covered in the int tests.
@@ -454,6 +456,136 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageTMapAdvancedTest,
 			)AS"),
 			TEXT("TMap<FString,TArray<int>> should remain an explicit unsupported boundary"),
 			MakeArrayView(ExpectedDiagnostics))));
+	}
+
+	// -------------------------------------------------------------------------
+	// TMap value type: user-defined USTRUCT values
+	// -------------------------------------------------------------------------
+	TEST_METHOD(TMapUserStructValues)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageTMap_UserStructValues"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageTMapUserStructValues.as"),
+			ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FCoverageTMapPayload
+			{
+				UPROPERTY()
+				int Score = 0;
+
+				UPROPERTY()
+				FString Label;
+
+				UPROPERTY()
+				bool bComplete = false;
+			}
+
+			UCLASS()
+			class ACoverageTMapUserStructValuesActor : AActor
+			{
+				UPROPERTY()
+				TMap<int, FCoverageTMapPayload> StructValues;
+
+				UPROPERTY()
+				FCoverageTMapPayload FoundPayload;
+
+				UPROPERTY()
+				FCoverageTMapPayload OverwrittenPayload;
+
+				UPROPERTY()
+				bool bFoundPayload = false;
+
+				UPROPERTY()
+				int PayloadCount = 0;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					FCoverageTMapPayload First;
+					First.Score = 11;
+					First.Label = "First";
+					First.bComplete = false;
+
+					FCoverageTMapPayload Second;
+					Second.Score = 22;
+					Second.Label = "Second";
+					Second.bComplete = true;
+
+					FCoverageTMapPayload Replacement;
+					Replacement.Score = 33;
+					Replacement.Label = "Replacement";
+					Replacement.bComplete = true;
+
+					StructValues.Add(1, First);
+					StructValues.Add(2, Second);
+					bFoundPayload = StructValues.Find(2, FoundPayload);
+
+					StructValues.Add(1, Replacement);
+					OverwrittenPayload = StructValues[1];
+					PayloadCount = StructValues.Num();
+				}
+			}
+			)AS"),
+			TEXT("ACoverageTMapUserStructValuesActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("TMap user-struct-value actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		const FMapProperty* StructValuesProperty = FindFProperty<FMapProperty>(ScriptClass, TEXT("StructValues"));
+		ASSERT_THAT(IsNotNull(StructValuesProperty, TEXT("TMap<int,FCoverageTMapPayload> should reflect as FMapProperty")));
+		if (StructValuesProperty == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsNotNull(CastField<FIntProperty>(StructValuesProperty->KeyProp),
+			TEXT("TMap user-struct-value key should reflect as FIntProperty")));
+		ASSERT_THAT(IsNotNull(CastField<FStructProperty>(StructValuesProperty->ValueProp),
+			TEXT("TMap user-struct-value value should reflect as FStructProperty")));
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("TMap user-struct-value actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		int32 MapSize = 0;
+		ASSERT_THAT(IsTrue(GetMapNumByPath(*TestRunner, Actor, TEXT("StructValues"), MapSize), TEXT("Should get StructValues size")));
+		ASSERT_THAT(AreEqual(2, MapSize, TEXT("StructValues should retain two entries after overwrite")));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("PayloadCount"), 2,
+			TEXT("AS-side TMap.Num should report two user-struct entries"))));
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bFoundPayload"), true,
+			TEXT("TMap.Find should locate a user USTRUCT value"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("FoundPayload.Score"), 22,
+			TEXT("TMap.Find should copy user USTRUCT int fields"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("FoundPayload.Label"), FString(TEXT("Second")),
+			TEXT("TMap.Find should copy user USTRUCT string fields"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("FoundPayload.bComplete"), true,
+			TEXT("TMap.Find should copy user USTRUCT bool fields"))));
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("OverwrittenPayload.Score"), 33,
+			TEXT("TMap index access should return overwritten user USTRUCT int fields"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("OverwrittenPayload.Label"), FString(TEXT("Replacement")),
+			TEXT("TMap index access should return overwritten user USTRUCT string fields"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("OverwrittenPayload.bComplete"), true,
+			TEXT("TMap index access should return overwritten user USTRUCT bool fields"))));
 	}
 
 	// -------------------------------------------------------------------------
