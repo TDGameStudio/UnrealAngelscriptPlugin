@@ -72,6 +72,10 @@ static FString MakeAutomationBindTypeName(const TCHAR* Prefix)
 		*FGuid::NewGuid().ToString(EGuidFormats::Digits).Left(8));
 }
 
+static void CDECL NoOpPreviousBindGuard(void*)
+{
+}
+
 public:
 	TEST_METHOD(NamespaceGuardRestoresDefaultNamespaceAndEnumBindDeduplicatesValues)
 	{
@@ -214,6 +218,38 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		ASSERT_THAT(IsTrue(ExistingValueTypeInfo == ValueTypeInfo, TEXT("ExistingClass should reuse the original value type info pointer")));
 		ASSERT_THAT(AreEqual(ValueTypeInfo->GetTypeId(), DuplicateValueTypeInfo->GetTypeId(), TEXT("Repeated ValueClass registration should reuse the original type id")));
 		ASSERT_THAT(IsTrue(DuplicateValueTypeInfo == ValueTypeInfo, TEXT("Repeated ValueClass registration should reuse the original type info pointer")));
+
+		}
+	}
+
+	TEST_METHOD(CompileOutPreviousBindHelpersIgnoreFailedRegistration)
+	{
+FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+
+		const FString MissingTypeName = MakeAutomationBindTypeName(TEXT("AutomationMissingBindType"));
+		FAngelscriptBinds MissingBinds = FAngelscriptBinds::ExistingClass(MissingTypeName);
+
+		int32 FailedFunctionId = INDEX_NONE;
+		{
+			UE_SET_LOG_VERBOSITY(Angelscript, Fatal);
+			ON_SCOPE_EXIT
+			{
+				UE_SET_LOG_VERBOSITY(Angelscript, Log);
+			};
+
+			FailedFunctionId = MissingBinds.Method("void Missing()", &NoOpPreviousBindGuard);
+		}
+
+		ASSERT_THAT(IsTrue(FailedFunctionId < 0, TEXT("Binding a method on an unregistered type should fail")));
+		ASSERT_THAT(AreEqual(FailedFunctionId, FAngelscriptBinds::GetPreviousFunctionId(), TEXT("Failed registration should still become the previous function id")));
+		ASSERT_THAT(IsNull(FAngelscriptBinds::GetPreviousBind(), TEXT("Failed registration should not resolve to a previous script function")));
+
+		FAngelscriptBinds::CompileOutPreviousBind();
+		FAngelscriptBinds::CompileOutPreviousBindAsMethodChain();
+
+		ASSERT_THAT(AreEqual(FailedFunctionId, FAngelscriptBinds::GetPreviousFunctionId(), TEXT("Compile-out helpers should leave the failed previous function id unchanged")));
+		ASSERT_THAT(IsNull(FAngelscriptBinds::GetPreviousBind(), TEXT("Compile-out helpers should leave the failed previous bind unresolved")));
 
 		}
 	}

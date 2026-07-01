@@ -679,16 +679,18 @@ int FAngelscriptBinds::CompileReplaceWithFirstArgInTest(int FunctionId)
 
 void FAngelscriptBinds::CompileOutPreviousBind()
 {
-	auto& Manager = FAngelscriptEngine::Get();
-	auto* Function = (asCScriptFunction*)Manager.Engine->GetFunctionById(GetPreviouslyBoundFunctionRef());
-	Function->compileOutType = asECompileOutType::CompileOutEntirely;
+	if (auto* Function = (asCScriptFunction*)GetPreviousBind())
+	{
+		Function->compileOutType = asECompileOutType::CompileOutEntirely;
+	}
 }
 
 void FAngelscriptBinds::CompileOutPreviousBindAsMethodChain()
 {
-	auto& Manager = FAngelscriptEngine::Get();
-	auto* Function = (asCScriptFunction*)Manager.Engine->GetFunctionById(GetPreviouslyBoundFunctionRef());
-	Function->compileOutType = asECompileOutType::CompileOutAsMethodChain;
+	if (auto* Function = (asCScriptFunction*)GetPreviousBind())
+	{
+		Function->compileOutType = asECompileOutType::CompileOutAsMethodChain;
+	}
 }
 
 int FAngelscriptBinds::BindExternMethod(FBindString Signature, asSFuncPtr Ptr, ASAutoCaller::FunctionCaller Caller, void* UserData)
