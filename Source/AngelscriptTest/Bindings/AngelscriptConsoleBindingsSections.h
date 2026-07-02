@@ -5,17 +5,17 @@
 #if WITH_ANGELSCRIPT_UNITTESTS
 
 
-bool RunConsoleVariableTypesSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
-bool RunConsoleVariableExistingSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
-bool RunConsoleVariableIdentitySection(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
-bool RunConsoleCommandBasicSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
-bool RunConsoleCommandArgumentEmptySection(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
-bool RunConsoleCommandArgumentContentSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
-bool RunConsoleCommandReplacementSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
-bool RunConsoleCommandLifecycleSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
-bool RunConsoleCommandMissingHandlerSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
-bool RunConsoleCommandWrongSignatureSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
-bool RunConsoleLeakSelfCheckSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
+bool VerifyConsoleVariableTypes(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
+bool VerifyConsoleVariableExisting(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
+bool VerifyConsoleVariableIdentity(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
+bool VerifyConsoleCommandBasic(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
+bool VerifyConsoleCommandArgumentEmpty(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
+bool VerifyConsoleCommandArgumentContent(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
+bool VerifyConsoleCommandReplacement(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
+bool VerifyConsoleCommandLifecycle(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
+bool VerifyConsoleCommandMissingHandler(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
+bool VerifyConsoleCommandWrongSignature(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
+bool VerifyConsoleLeakSelfCheck(FAutomationTestBase& Test, FAngelscriptEngine& Engine);
 
 
 #endif

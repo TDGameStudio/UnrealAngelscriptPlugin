@@ -43,7 +43,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptWidgetFunctionLibraryTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: RenderTransformNullGuard
@@ -54,25 +58,31 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptWidgetFunctionLibraryTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const FString ScriptSource = TEXT(R"(
-int ReadWidgetTransform(UWidget Widget)
-{
-	const FWidgetTransform Transform = Widget.GetRenderTransform();
-	if (Transform.Translation.X != 13.5f || Transform.Translation.Y != -9.25f)
-		return 10;
-	if (Transform.Scale.X != 1.25f || Transform.Scale.Y != 0.75f)
-		return 20;
-	if (Transform.Angle != 42.0f)
-		return 30;
-	return 1;
-}
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int ReadWidgetTransform(UWidget Widget)
+			{
+				const FWidgetTransform Transform = Widget.GetRenderTransform();
+				if (Transform.Translation.X != 13.5f || Transform.Translation.Y != -9.25f)
+				{
+					return 10;
+				}
+				if (Transform.Scale.X != 1.25f || Transform.Scale.Y != 0.75f)
+				{
+					return 20;
+				}
+				if (Transform.Angle != 42.0f)
+				{
+					return 30;
+				}
+				return 1;
+			}
 
-void ReadWidgetTransformNull()
-{
-	UWidget Widget;
-	ReadWidgetTransform(Widget);
-}
-)");
+			void ReadWidgetTransformNull()
+			{
+				UWidget Widget;
+				ReadWidgetTransform(Widget);
+			}
+			)AS");
 
 		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWidget_RenderTransform"), ScriptSource);
 		if (!Mod.IsValid()) return;
@@ -106,10 +116,11 @@ void ReadWidgetTransformNull()
 		TestRunner->AddExpectedError(TEXT("int ReadWidgetTransform(UWidget) | Line 4 | Col 2"), EAutomationExpectedErrorFlags::Contains, 1, false);
 		TestRunner->AddExpectedError(TEXT("void ReadWidgetTransformNull() | Line 17 | Col 2"), EAutomationExpectedErrorFlags::Contains, 1, false);
 
-		ExecuteFunctionExpectingScriptException(*TestRunner, Engine, M, 
+		ASSERT_THAT(IsTrue(
+			ExecuteFunctionExpectingScriptException(*TestRunner, Engine, M,
 			TEXT("void ReadWidgetTransformNull()"),
 			TEXT("GetRenderTransform should report a null-pointer diagnostic for a null widget receiver"),
-			TEXT("Null pointer access"));
+			TEXT("Null pointer access"))));
 	}
 };
 

@@ -3,7 +3,7 @@
 //
 // UClass / TSubclassOf / TSoftClassPtr / StaticClass binding coverage.
 // All 10 Automation IDs are grouped under the Class. prefix so a single
-// `RunTests.ps1 -Prefix Angelscript.TestModule.Bindings.Class` invocation
+// the Bindings.Class test-runner prefix invocation
 // covers everything in one Editor startup.
 //
 //   - Angelscript.TestModule.Bindings.Class.ClassLookupCompat
@@ -49,67 +49,76 @@
 // Sections
 // ============================================================================
 
-namespace
+namespace AngelscriptClassBindingsTestPrivate
 {
 	// -----------------------------------------------------------------------
 	// Section: ClassLookup — FindClass / GetAllClasses
 	// -----------------------------------------------------------------------
-	bool RunClassLookupSection(
+	bool VerifyClassLookup(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_Lookup"), TEXT(R"(
-int FindClass_NotNull()
-{
-	UClass C = FindClass("AActor");
-	return (C == null) ? 0 : 1;
-}
-int FindClass_MissingIsNull()
-{
-	UClass C = FindClass("DefinitelyNotAClass_xyz_42");
-	return (C == null) ? 1 : 0;
-}
-int GetAllClasses_NonEmpty()
-{
-	TArray<UClass> All;
-	GetAllClasses(All);
-	return (All.Num() > 0) ? 1 : 0;
-}
-int GetAllClasses_ContainsActor()
-{
-	UClass ActorClass = FindClass("AActor");
-	TArray<UClass> All;
-	GetAllClasses(All);
-	foreach (UClass C : All)
-	{
-		if (C == ActorClass)
-			return 1;
-	}
-	return 0;
-}
-int IsChildOf_ChildToParent()
-{
-	UClass Camera = ACameraActor::StaticClass();
-	UClass Actor = AActor::StaticClass();
-	return Camera.IsChildOf(Actor) ? 1 : 0;
-}
-int IsChildOf_ParentToChildFalse()
-{
-	UClass Camera = ACameraActor::StaticClass();
-	UClass Actor = AActor::StaticClass();
-	return Actor.IsChildOf(Camera) ? 1 : 0;
-}
-int GetSuperClass_CameraIsActor()
-{
-	UClass Camera = ACameraActor::StaticClass();
-	return (Camera.GetSuperClass() == AActor::StaticClass()) ? 1 : 0;
-}
-int GetSuperClass_ActorNotNull()
-{
-	UClass Actor = AActor::StaticClass();
-	return (Actor.GetSuperClass() != null) ? 1 : 0;
-}
-)"));
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_Lookup"), ASTEST_AS(R"AS(
+			int FindClass_NotNull()
+			{
+				UClass C = FindClass("AActor");
+				return (C == null) ? 0 : 1;
+			}
+
+			int FindClass_MissingIsNull()
+			{
+				UClass C = FindClass("DefinitelyNotAClass_xyz_42");
+				return (C == null) ? 1 : 0;
+			}
+
+			int GetAllClasses_NonEmpty()
+			{
+				TArray<UClass> All;
+				GetAllClasses(All);
+				return (All.Num() > 0) ? 1 : 0;
+			}
+
+			int GetAllClasses_ContainsActor()
+			{
+				UClass ActorClass = FindClass("AActor");
+				TArray<UClass> All;
+				GetAllClasses(All);
+				foreach (UClass C : All)
+				{
+					if (C == ActorClass)
+					{
+						return 1;
+					}
+				}
+				return 0;
+			}
+
+			int IsChildOf_ChildToParent()
+			{
+				UClass Camera = ACameraActor::StaticClass();
+				UClass Actor = AActor::StaticClass();
+				return Camera.IsChildOf(Actor) ? 1 : 0;
+			}
+
+			int IsChildOf_ParentToChildFalse()
+			{
+				UClass Camera = ACameraActor::StaticClass();
+				UClass Actor = AActor::StaticClass();
+				return Actor.IsChildOf(Camera) ? 1 : 0;
+			}
+
+			int GetSuperClass_CameraIsActor()
+			{
+				UClass Camera = ACameraActor::StaticClass();
+				return (Camera.GetSuperClass() == AActor::StaticClass()) ? 1 : 0;
+			}
+
+			int GetSuperClass_ActorNotNull()
+			{
+				UClass Actor = AActor::StaticClass();
+				return (Actor.GetSuperClass() != null) ? 1 : 0;
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
@@ -129,124 +138,143 @@ int GetSuperClass_ActorNotNull()
 	// -----------------------------------------------------------------------
 	// Section: TSubclassOf — basic ops + arg passing + GetDefaultObject
 	// -----------------------------------------------------------------------
-	bool RunTSubclassOfSection(
+	bool VerifyTSubclassOf(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_TSubclassOf"), TEXT(R"(
-TSubclassOf<AActor> EchoSubclass(TSubclassOf<AActor> Value)
-{
-	return Value;
-}
-UClass EchoSubclassClass(TSubclassOf<AActor> Value)
-{
-	return Value;
-}
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_TSubclassOf"), ASTEST_AS(R"AS(
+			TSubclassOf<AActor> EchoSubclass(TSubclassOf<AActor> Value)
+			{
+				return Value;
+			}
 
-int Empty_IsValid()
-{
-	TSubclassOf<AActor> S;
-	return S.IsValid() ? 1 : 0;
-}
-int Empty_GetIsNull()
-{
-	TSubclassOf<AActor> S;
-	return (S.Get() == null) ? 1 : 0;
-}
-int AssignActor_IsValid()
-{
-	TSubclassOf<AActor> S;
-	S = AActor::StaticClass();
-	return S.IsValid() ? 1 : 0;
-}
-int AssignActor_GetMatch()
-{
-	TSubclassOf<AActor> S;
-	S = AActor::StaticClass();
-	return (S.Get() == AActor::StaticClass()) ? 1 : 0;
-}
-int AssignActor_OpEqualsClass()
-{
-	TSubclassOf<AActor> S;
-	S = AActor::StaticClass();
-	return (S == AActor::StaticClass()) ? 1 : 0;
-}
-int ImplicitFromClassArg_OpEquals()
-{
-	TSubclassOf<AActor> R = EchoSubclass(AActor::StaticClass());
-	return (R == AActor::StaticClass()) ? 1 : 0;
-}
-int ImplicitClassArg_RoundTrip()
-{
-	UClass R = EchoSubclassClass(ACameraActor::StaticClass());
-	return (R == ACameraActor::StaticClass()) ? 1 : 0;
-}
-int Narrowed_CopyOpEquals()
-{
-	TSubclassOf<AActor> N = ACameraActor::StaticClass();
-	TSubclassOf<AActor> Copy = N;
-	return (Copy == ACameraActor::StaticClass()) ? 1 : 0;
-}
-int GetDefaultObject_IsValid()
-{
-	TSubclassOf<AActor> N = ACameraActor::StaticClass();
-	AActor D = N.GetDefaultObject();
-	return IsValid(D) ? 1 : 0;
-}
-int GetDefaultObject_IsACameraActor()
-{
-	TSubclassOf<AActor> N = ACameraActor::StaticClass();
-	AActor D = N.GetDefaultObject();
-	return D.IsA(ACameraActor::StaticClass()) ? 1 : 0;
-}
-int Array_LiteralNum()
-{
-	TArray<TSubclassOf<AActor>> H;
-	H.Add(AActor::StaticClass());
-	H.Add(ACameraActor::StaticClass());
-	return H.Num();
-}
-int Array_LiteralIndex()
-{
-	TArray<TSubclassOf<AActor>> H;
-	H.Add(AActor::StaticClass());
-	H.Add(ACameraActor::StaticClass());
-	return (H[1] == ACameraActor::StaticClass()) ? 1 : 0;
-}
-int IsChildOf_CameraToActor()
-{
-	TSubclassOf<AActor> S = ACameraActor::StaticClass();
-	return S.IsChildOf(AActor::StaticClass()) ? 1 : 0;
-}
-int IsChildOf_ActorToCameraFalse()
-{
-	TSubclassOf<AActor> S = AActor::StaticClass();
-	return S.IsChildOf(ACameraActor::StaticClass()) ? 1 : 0;
-}
-int OpEquals_TwoSubclassOf()
-{
-	TSubclassOf<AActor> A = AActor::StaticClass();
-	TSubclassOf<AActor> B = AActor::StaticClass();
-	return (A == B) ? 1 : 0;
-}
-int SetKey_Contains()
-{
-	TSet<TSubclassOf<AActor>> S;
-	S.Add(AActor::StaticClass());
-	S.Add(ACameraActor::StaticClass());
-	return S.Contains(ACameraActor::StaticClass()) ? 1 : 0;
-}
-int MapKey_FindValue()
-{
-	TMap<TSubclassOf<AActor>, int> M;
-	M.Add(AActor::StaticClass(), 42);
-	M.Add(ACameraActor::StaticClass(), 99);
-	int Value = 0;
-	if (M.Find(ACameraActor::StaticClass(), Value))
-		return Value;
-	return 0;
-}
-)"));
+			UClass EchoSubclassClass(TSubclassOf<AActor> Value)
+			{
+				return Value;
+			}
+
+			int Empty_IsValid()
+			{
+				TSubclassOf<AActor> S;
+				return S.IsValid() ? 1 : 0;
+			}
+
+			int Empty_GetIsNull()
+			{
+				TSubclassOf<AActor> S;
+				return (S.Get() == null) ? 1 : 0;
+			}
+
+			int AssignActor_IsValid()
+			{
+				TSubclassOf<AActor> S;
+				S = AActor::StaticClass();
+				return S.IsValid() ? 1 : 0;
+			}
+
+			int AssignActor_GetMatch()
+			{
+				TSubclassOf<AActor> S;
+				S = AActor::StaticClass();
+				return (S.Get() == AActor::StaticClass()) ? 1 : 0;
+			}
+
+			int AssignActor_OpEqualsClass()
+			{
+				TSubclassOf<AActor> S;
+				S = AActor::StaticClass();
+				return (S == AActor::StaticClass()) ? 1 : 0;
+			}
+
+			int ImplicitFromClassArg_OpEquals()
+			{
+				TSubclassOf<AActor> R = EchoSubclass(AActor::StaticClass());
+				return (R == AActor::StaticClass()) ? 1 : 0;
+			}
+
+			int ImplicitClassArg_RoundTrip()
+			{
+				UClass R = EchoSubclassClass(ACameraActor::StaticClass());
+				return (R == ACameraActor::StaticClass()) ? 1 : 0;
+			}
+
+			int Narrowed_CopyOpEquals()
+			{
+				TSubclassOf<AActor> N = ACameraActor::StaticClass();
+				TSubclassOf<AActor> Copy = N;
+				return (Copy == ACameraActor::StaticClass()) ? 1 : 0;
+			}
+
+			int GetDefaultObject_IsValid()
+			{
+				TSubclassOf<AActor> N = ACameraActor::StaticClass();
+				AActor D = N.GetDefaultObject();
+				return IsValid(D) ? 1 : 0;
+			}
+
+			int GetDefaultObject_IsACameraActor()
+			{
+				TSubclassOf<AActor> N = ACameraActor::StaticClass();
+				AActor D = N.GetDefaultObject();
+				return D.IsA(ACameraActor::StaticClass()) ? 1 : 0;
+			}
+
+			int Array_LiteralNum()
+			{
+				TArray<TSubclassOf<AActor>> H;
+				H.Add(AActor::StaticClass());
+				H.Add(ACameraActor::StaticClass());
+				return H.Num();
+			}
+
+			int Array_LiteralIndex()
+			{
+				TArray<TSubclassOf<AActor>> H;
+				H.Add(AActor::StaticClass());
+				H.Add(ACameraActor::StaticClass());
+				return (H[1] == ACameraActor::StaticClass()) ? 1 : 0;
+			}
+
+			int IsChildOf_CameraToActor()
+			{
+				TSubclassOf<AActor> S = ACameraActor::StaticClass();
+				return S.IsChildOf(AActor::StaticClass()) ? 1 : 0;
+			}
+
+			int IsChildOf_ActorToCameraFalse()
+			{
+				TSubclassOf<AActor> S = AActor::StaticClass();
+				return S.IsChildOf(ACameraActor::StaticClass()) ? 1 : 0;
+			}
+
+			int OpEquals_TwoSubclassOf()
+			{
+				TSubclassOf<AActor> A = AActor::StaticClass();
+				TSubclassOf<AActor> B = AActor::StaticClass();
+				return (A == B) ? 1 : 0;
+			}
+
+			int SetKey_Contains()
+			{
+				TSet<TSubclassOf<AActor>> S;
+				S.Add(AActor::StaticClass());
+				S.Add(ACameraActor::StaticClass());
+				return S.Contains(ACameraActor::StaticClass()) ? 1 : 0;
+			}
+
+			int MapKey_FindValue()
+			{
+				TMap<TSubclassOf<AActor>, int> M;
+				M.Add(AActor::StaticClass(), 42);
+				M.Add(ACameraActor::StaticClass(), 99);
+				int Value = 0;
+				if (M.Find(ACameraActor::StaticClass(), Value))
+				{
+					return Value;
+				}
+				return 0;
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
@@ -281,7 +309,7 @@ int MapKey_FindValue()
 	// Plus one positive sanity path:
 	//   3) Assignment with null UClass arg cleanly resets dest
 	// -----------------------------------------------------------------------
-	bool RunTSubclassOfRejectSection(
+	bool VerifyTSubclassOfReject(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
@@ -297,17 +325,17 @@ int MapKey_FindValue()
 		Test.AddExpectedErrorPlain(TEXT("AssignClass"),
 			EAutomationExpectedErrorFlags::Contains, 0);
 
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_Reject"), TEXT(R"(
-void TriggerInvalidImplicitCtor()
-{
-	TSubclassOf<AActor> Invalid = UPackage::StaticClass();
-}
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_Reject"), ASTEST_AS(R"AS(
+			void TriggerInvalidImplicitCtor()
+			{
+				TSubclassOf<AActor> Invalid = UPackage::StaticClass();
+			}
 
-void AssignClass(TSubclassOf<AActor>& OutValue, UClass NewClass)
-{
-	OutValue = NewClass;
-}
-)"));
+			void AssignClass(TSubclassOf<AActor>& OutValue, UClass NewClass)
+			{
+				OutValue = NewClass;
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
@@ -389,123 +417,141 @@ void AssignClass(TSubclassOf<AActor>& OutValue, UClass NewClass)
 	// -----------------------------------------------------------------------
 	// Section: TSoftClassPtr — soft references to UClass
 	// -----------------------------------------------------------------------
-	bool RunTSoftClassPtrSection(
+	bool VerifyTSoftClassPtr(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_TSoftClassPtr"), TEXT(R"(
-TSoftClassPtr<AActor> EchoSoftClass(TSoftClassPtr<AActor> Value)
-{
-	return Value;
-}
-UClass EchoSoftClassClass(TSoftClassPtr<AActor> Value)
-{
-	return Value.Get();
-}
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_TSoftClassPtr"), ASTEST_AS(R"AS(
+			TSoftClassPtr<AActor> EchoSoftClass(TSoftClassPtr<AActor> Value)
+			{
+				return Value;
+			}
 
-int Empty_IsNull()
-{
-	TSoftClassPtr<AActor> S;
-	return S.IsNull() ? 1 : 0;
-}
-int Empty_IsValid()
-{
-	TSoftClassPtr<AActor> S;
-	return S.IsValid() ? 1 : 0;
-}
-int Constructed_OpEquals()
-{
-	TSoftClassPtr<AActor> S(AActor::StaticClass());
-	return (S == AActor::StaticClass()) ? 1 : 0;
-}
-int Constructed_GetMatch()
-{
-	TSoftClassPtr<AActor> S(AActor::StaticClass());
-	return (S.Get() == AActor::StaticClass()) ? 1 : 0;
-}
-int Constructed_IsValid()
-{
-	TSoftClassPtr<AActor> S(AActor::StaticClass());
-	return S.IsValid() ? 1 : 0;
-}
-int Constructed_ToStringNonEmpty()
-{
-	TSoftClassPtr<AActor> S(AActor::StaticClass());
-	return S.ToString().IsEmpty() ? 0 : 1;
-}
-int ImplicitArg_OpEquals()
-{
-	TSoftClassPtr<AActor> R = EchoSoftClass(TSoftClassPtr<AActor>(AActor::StaticClass()));
-	return (R == AActor::StaticClass()) ? 1 : 0;
-}
-int Echo_GetMatch()
-{
-	UClass R = EchoSoftClassClass(TSoftClassPtr<AActor>(ACameraActor::StaticClass()));
-	return (R == ACameraActor::StaticClass()) ? 1 : 0;
-}
-int Assigned_OpEquals()
-{
-	TSoftClassPtr<AActor> A;
-	A = AActor::StaticClass();
-	return (A == AActor::StaticClass()) ? 1 : 0;
-}
-int Array_LiteralNum()
-{
-	TArray<TSoftClassPtr<AActor>> H;
-	H.Add(TSoftClassPtr<AActor>(AActor::StaticClass()));
-	H.Add(TSoftClassPtr<AActor>(ACameraActor::StaticClass()));
-	return H.Num();
-}
-int Array_LiteralIndex()
-{
-	TArray<TSoftClassPtr<AActor>> H;
-	H.Add(TSoftClassPtr<AActor>(AActor::StaticClass()));
-	H.Add(TSoftClassPtr<AActor>(ACameraActor::StaticClass()));
-	return (H[1] == ACameraActor::StaticClass()) ? 1 : 0;
-}
-int Reset_IsNull()
-{
-	TSoftClassPtr<AActor> A(AActor::StaticClass());
-	A.Reset();
-	return A.IsNull() ? 1 : 0;
-}
-int FromTSubclassOf_Ctor()
-{
-	TSubclassOf<AActor> Sub = AActor::StaticClass();
-	TSoftClassPtr<AActor> S(Sub);
-	return (S == AActor::StaticClass()) ? 1 : 0;
-}
-int FromTSubclassOf_Assign()
-{
-	TSubclassOf<AActor> Sub = ACameraActor::StaticClass();
-	TSoftClassPtr<AActor> S;
-	S = Sub;
-	return (S == ACameraActor::StaticClass()) ? 1 : 0;
-}
-int OpEquals_TSubclassOf()
-{
-	TSubclassOf<AActor> Sub = AActor::StaticClass();
-	TSoftClassPtr<AActor> S(AActor::StaticClass());
-	return (S == Sub) ? 1 : 0;
-}
-int Get_ReturnsSubclassOf_IsValid()
-{
-	TSoftClassPtr<AActor> S(AActor::StaticClass());
-	TSubclassOf<AActor> G = S.Get();
-	return G.IsValid() ? 1 : 0;
-}
-int ToSoftObjectPath_NonEmpty()
-{
-	TSoftClassPtr<AActor> S(AActor::StaticClass());
-	FSoftObjectPath P = S.ToSoftObjectPath();
-	return P.ToString().IsEmpty() ? 0 : 1;
-}
-int GetAssetName_NonEmpty()
-{
-	TSoftClassPtr<AActor> S(AActor::StaticClass());
-	return S.GetAssetName().IsEmpty() ? 0 : 1;
-}
-)"));
+			UClass EchoSoftClassClass(TSoftClassPtr<AActor> Value)
+			{
+				return Value.Get();
+			}
+
+			int Empty_IsNull()
+			{
+				TSoftClassPtr<AActor> S;
+				return S.IsNull() ? 1 : 0;
+			}
+
+			int Empty_IsValid()
+			{
+				TSoftClassPtr<AActor> S;
+				return S.IsValid() ? 1 : 0;
+			}
+
+			int Constructed_OpEquals()
+			{
+				TSoftClassPtr<AActor> S(AActor::StaticClass());
+				return (S == AActor::StaticClass()) ? 1 : 0;
+			}
+
+			int Constructed_GetMatch()
+			{
+				TSoftClassPtr<AActor> S(AActor::StaticClass());
+				return (S.Get() == AActor::StaticClass()) ? 1 : 0;
+			}
+
+			int Constructed_IsValid()
+			{
+				TSoftClassPtr<AActor> S(AActor::StaticClass());
+				return S.IsValid() ? 1 : 0;
+			}
+
+			int Constructed_ToStringNonEmpty()
+			{
+				TSoftClassPtr<AActor> S(AActor::StaticClass());
+				return S.ToString().IsEmpty() ? 0 : 1;
+			}
+
+			int ImplicitArg_OpEquals()
+			{
+				TSoftClassPtr<AActor> R = EchoSoftClass(TSoftClassPtr<AActor>(AActor::StaticClass()));
+				return (R == AActor::StaticClass()) ? 1 : 0;
+			}
+
+			int Echo_GetMatch()
+			{
+				UClass R = EchoSoftClassClass(TSoftClassPtr<AActor>(ACameraActor::StaticClass()));
+				return (R == ACameraActor::StaticClass()) ? 1 : 0;
+			}
+
+			int Assigned_OpEquals()
+			{
+				TSoftClassPtr<AActor> A;
+				A = AActor::StaticClass();
+				return (A == AActor::StaticClass()) ? 1 : 0;
+			}
+
+			int Array_LiteralNum()
+			{
+				TArray<TSoftClassPtr<AActor>> H;
+				H.Add(TSoftClassPtr<AActor>(AActor::StaticClass()));
+				H.Add(TSoftClassPtr<AActor>(ACameraActor::StaticClass()));
+				return H.Num();
+			}
+
+			int Array_LiteralIndex()
+			{
+				TArray<TSoftClassPtr<AActor>> H;
+				H.Add(TSoftClassPtr<AActor>(AActor::StaticClass()));
+				H.Add(TSoftClassPtr<AActor>(ACameraActor::StaticClass()));
+				return (H[1] == ACameraActor::StaticClass()) ? 1 : 0;
+			}
+
+			int Reset_IsNull()
+			{
+				TSoftClassPtr<AActor> A(AActor::StaticClass());
+				A.Reset();
+				return A.IsNull() ? 1 : 0;
+			}
+
+			int FromTSubclassOf_Ctor()
+			{
+				TSubclassOf<AActor> Sub = AActor::StaticClass();
+				TSoftClassPtr<AActor> S(Sub);
+				return (S == AActor::StaticClass()) ? 1 : 0;
+			}
+
+			int FromTSubclassOf_Assign()
+			{
+				TSubclassOf<AActor> Sub = ACameraActor::StaticClass();
+				TSoftClassPtr<AActor> S;
+				S = Sub;
+				return (S == ACameraActor::StaticClass()) ? 1 : 0;
+			}
+
+			int OpEquals_TSubclassOf()
+			{
+				TSubclassOf<AActor> Sub = AActor::StaticClass();
+				TSoftClassPtr<AActor> S(AActor::StaticClass());
+				return (S == Sub) ? 1 : 0;
+			}
+
+			int Get_ReturnsSubclassOf_IsValid()
+			{
+				TSoftClassPtr<AActor> S(AActor::StaticClass());
+				TSubclassOf<AActor> G = S.Get();
+				return G.IsValid() ? 1 : 0;
+			}
+
+			int ToSoftObjectPath_NonEmpty()
+			{
+				TSoftClassPtr<AActor> S(AActor::StaticClass());
+				FSoftObjectPath P = S.ToSoftObjectPath();
+				return P.ToString().IsEmpty() ? 0 : 1;
+			}
+
+			int GetAssetName_NonEmpty()
+			{
+				TSoftClassPtr<AActor> S(AActor::StaticClass());
+				return S.GetAssetName().IsEmpty() ? 0 : 1;
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
@@ -540,7 +586,7 @@ int GetAssetName_NonEmpty()
 	//   (b) Annotated ASClass compiled from memory + reflective UFUNCTION call
 	//   (c) Follow-up plain module that resolves the generated class
 	// -----------------------------------------------------------------------
-	bool RunStaticClassSection(
+	bool VerifyStaticClass(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
@@ -549,29 +595,32 @@ int GetAssetName_NonEmpty()
 
 		// (a) Plain native StaticClass module.
 		{
-			FScopedAngelscriptModule PlainScope(Test, Engine, TEXT("ASClass_StaticClassPlain"), TEXT(R"(
-int Plain_ActorIsValid()
-{
-	UClass C = AActor::StaticClass();
-	return IsValid(C) ? 1 : 0;
-}
-int Plain_TSubclassOfIsValid()
-{
-	TSubclassOf<AActor> S = AActor::StaticClass();
-	return S.IsValid() ? 1 : 0;
-}
-int Plain_IsChildOfSelfBoth()
-{
-	UClass C = AActor::StaticClass();
-	TSubclassOf<AActor> S = AActor::StaticClass();
-	return (C.IsChildOf(S) && S.IsChildOf(C)) ? 1 : 0;
-}
-int Plain_DefaultObjectIsValid()
-{
-	UClass C = AActor::StaticClass();
-	return IsValid(C.GetDefaultObject()) ? 1 : 0;
-}
-)"));
+			FScopedAngelscriptModule PlainScope(Test, Engine, TEXT("ASClass_StaticClassPlain"), ASTEST_AS(R"AS(
+				int Plain_ActorIsValid()
+				{
+					UClass C = AActor::StaticClass();
+					return IsValid(C) ? 1 : 0;
+				}
+
+				int Plain_TSubclassOfIsValid()
+				{
+					TSubclassOf<AActor> S = AActor::StaticClass();
+					return S.IsValid() ? 1 : 0;
+				}
+
+				int Plain_IsChildOfSelfBoth()
+				{
+					UClass C = AActor::StaticClass();
+					TSubclassOf<AActor> S = AActor::StaticClass();
+					return (C.IsChildOf(S) && S.IsChildOf(C)) ? 1 : 0;
+				}
+
+				int Plain_DefaultObjectIsValid()
+				{
+					UClass C = AActor::StaticClass();
+					return IsValid(C.GetDefaultObject()) ? 1 : 0;
+				}
+				)AS"));
 			if (!PlainScope.IsValid()) return false;
 			asIScriptModule& PlainModule = PlainScope.GetModule();
 
@@ -593,27 +642,33 @@ int Plain_DefaultObjectIsValid()
 				&Engine,
 				AnnotatedModuleName,
 				TEXT("ASAnnotatedStaticClassCompat.as"),
-				TEXT(R"(
-UCLASS()
-class ABindingStaticClassActor : AActor
-{
-	UFUNCTION()
-	int ReadStaticClassCompat()
-	{
-		UClass SelfClass = ABindingStaticClassActor::StaticClass();
-		TSubclassOf<ABindingStaticClassActor> CompatClass = ABindingStaticClassActor::StaticClass();
+				ASTEST_AS(R"AS(
+					UCLASS()
+					class ABindingStaticClassActor : AActor
+					{
+						UFUNCTION()
+						int ReadStaticClassCompat()
+						{
+							UClass SelfClass = ABindingStaticClassActor::StaticClass();
+							TSubclassOf<ABindingStaticClassActor> CompatClass = ABindingStaticClassActor::StaticClass();
 
-		if (!IsValid(SelfClass) || !CompatClass.IsValid())
-			return 10;
-		if (!SelfClass.IsChildOf(GetClass()) || !GetClass().IsChildOf(SelfClass))
-			return 20;
-		if (!CompatClass.IsChildOf(SelfClass) || !SelfClass.IsChildOf(CompatClass))
-			return 30;
+							if (!IsValid(SelfClass) || !CompatClass.IsValid())
+							{
+								return 10;
+							}
+							if (!SelfClass.IsChildOf(GetClass()) || !GetClass().IsChildOf(SelfClass))
+							{
+								return 20;
+							}
+							if (!CompatClass.IsChildOf(SelfClass) || !SelfClass.IsChildOf(CompatClass))
+							{
+								return 30;
+							}
 
-		return IsValid(SelfClass.GetDefaultObject()) ? 1 : 40;
-	}
-}
-)"));
+							return IsValid(SelfClass.GetDefaultObject()) ? 1 : 40;
+						}
+					}
+					)AS"));
 			ON_SCOPE_EXIT { Engine.DiscardModule(AnnotatedModuleName); };
 
 			bPassed &= LocalAssert.IsTrue(
@@ -660,29 +715,32 @@ class ABindingStaticClassActor : AActor
 
 		// (c) Follow-up plain module resolves the generated class.
 		{
-			FScopedAngelscriptModule QueryScope(Test, Engine, TEXT("ASClass_StaticClassQuery"), TEXT(R"(
-int Query_FindGeneratedIsValid()
-{
-	UClass C = FindClass("ABindingStaticClassActor");
-	return IsValid(C) ? 1 : 0;
-}
-int Query_TSubclassOfFromFindIsValid()
-{
-	TSubclassOf<AActor> S = FindClass("ABindingStaticClassActor");
-	return S.IsValid() ? 1 : 0;
-}
-int Query_IsChildOfActor()
-{
-	UClass C = FindClass("ABindingStaticClassActor");
-	return C.IsChildOf(AActor::StaticClass()) ? 1 : 0;
-}
-int Query_TSubclassOf_IsChildOfBoth()
-{
-	UClass C = FindClass("ABindingStaticClassActor");
-	TSubclassOf<AActor> S = FindClass("ABindingStaticClassActor");
-	return (C.IsChildOf(S) && S.IsChildOf(C)) ? 1 : 0;
-}
-)"));
+			FScopedAngelscriptModule QueryScope(Test, Engine, TEXT("ASClass_StaticClassQuery"), ASTEST_AS(R"AS(
+				int Query_FindGeneratedIsValid()
+				{
+					UClass C = FindClass("ABindingStaticClassActor");
+					return IsValid(C) ? 1 : 0;
+				}
+
+				int Query_TSubclassOfFromFindIsValid()
+				{
+					TSubclassOf<AActor> S = FindClass("ABindingStaticClassActor");
+					return S.IsValid() ? 1 : 0;
+				}
+
+				int Query_IsChildOfActor()
+				{
+					UClass C = FindClass("ABindingStaticClassActor");
+					return C.IsChildOf(AActor::StaticClass()) ? 1 : 0;
+				}
+
+				int Query_TSubclassOf_IsChildOfBoth()
+				{
+					UClass C = FindClass("ABindingStaticClassActor");
+					TSubclassOf<AActor> S = FindClass("ABindingStaticClassActor");
+					return (C.IsChildOf(S) && S.IsChildOf(C)) ? 1 : 0;
+				}
+				)AS"));
 			if (!QueryScope.IsValid()) return false;
 			asIScriptModule& QueryModule = QueryScope.GetModule();
 
@@ -702,7 +760,7 @@ int Query_TSubclassOf_IsChildOfBoth()
 	// Section: NativeStaticClassNamespace — engine-level introspection,
 	// no script module construction.
 	// -----------------------------------------------------------------------
-	bool RunNativeStaticClassNamespaceSection(
+	bool VerifyNativeStaticClassNamespace(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
@@ -744,36 +802,41 @@ int Query_TSubclassOf_IsChildOfBoth()
 	// -----------------------------------------------------------------------
 	// Section: NativeStaticTypeGlobal — __StaticType_AActor global symbol
 	// -----------------------------------------------------------------------
-	bool RunNativeStaticTypeGlobalSection(
+	bool VerifyNativeStaticTypeGlobal(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_StaticTypeGlobal"), TEXT(R"(
-int StaticType_IsValid()
-{
-	return __StaticType_AActor.IsValid() ? 1 : 0;
-}
-int StaticType_GetMatch()
-{
-	return (__StaticType_AActor.Get() == AActor::StaticClass()) ? 1 : 0;
-}
-int StaticType_OpEqualsClass()
-{
-	return (__StaticType_AActor == AActor::StaticClass()) ? 1 : 0;
-}
-int StaticType_IsChildOfSelf()
-{
-	return __StaticType_AActor.IsChildOf(AActor::StaticClass()) ? 1 : 0;
-}
-int StaticType_DefaultObjectIsValid()
-{
-	return IsValid(__StaticType_AActor.GetDefaultObject()) ? 1 : 0;
-}
-int StaticType_RoundTrip_MatchNamespace()
-{
-	return (__StaticType_AActor.Get() == AActor::StaticClass()) ? 1 : 0;
-}
-)"));
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_StaticTypeGlobal"), ASTEST_AS(R"AS(
+			int StaticType_IsValid()
+			{
+				return __StaticType_AActor.IsValid() ? 1 : 0;
+			}
+
+			int StaticType_GetMatch()
+			{
+				return (__StaticType_AActor.Get() == AActor::StaticClass()) ? 1 : 0;
+			}
+
+			int StaticType_OpEqualsClass()
+			{
+				return (__StaticType_AActor == AActor::StaticClass()) ? 1 : 0;
+			}
+
+			int StaticType_IsChildOfSelf()
+			{
+				return __StaticType_AActor.IsChildOf(AActor::StaticClass()) ? 1 : 0;
+			}
+
+			int StaticType_DefaultObjectIsValid()
+			{
+				return IsValid(__StaticType_AActor.GetDefaultObject()) ? 1 : 0;
+			}
+
+			int StaticType_RoundTrip_MatchNamespace()
+			{
+				return (__StaticType_AActor.Get() == AActor::StaticClass()) ? 1 : 0;
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
@@ -794,7 +857,7 @@ int StaticType_RoundTrip_MatchNamespace()
 	// Covers: GetSourceFilePath, GetScriptModuleName, GetScriptTypeDeclaration,
 	//         IsFunctionImplementedInScript, FindFunctionByName, IsAbstract
 	// -----------------------------------------------------------------------
-	bool RunUClassReflectionSection(
+	bool VerifyUClassReflection(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
@@ -808,43 +871,53 @@ int StaticType_RoundTrip_MatchNamespace()
 				&Engine,
 				ReflModuleName,
 				TEXT("ASAnnotatedReflectionCompat.as"),
-				TEXT(R"(
-UCLASS()
-class ABindingReflectionActor : AActor
-{
-	UFUNCTION()
-	int ReadReflection()
-	{
-		UClass SelfClass = ABindingReflectionActor::StaticClass();
+				ASTEST_AS(R"AS(
+					UCLASS()
+					class ABindingReflectionActor : AActor
+					{
+						UFUNCTION()
+						int ReadReflection()
+						{
+							UClass SelfClass = ABindingReflectionActor::StaticClass();
 
-		// GetSourceFilePath — for script classes should be non-empty
-		FString SourcePath = SelfClass.GetSourceFilePath();
-		if (SourcePath.IsEmpty())
-			return 10;
+							// GetSourceFilePath — for script classes should be non-empty
+							FString SourcePath = SelfClass.GetSourceFilePath();
+							if (SourcePath.IsEmpty())
+							{
+								return 10;
+							}
 
-		// GetScriptModuleName — should be non-empty
-		FString ModName = SelfClass.GetScriptModuleName();
-		if (ModName.IsEmpty())
-			return 20;
+							// GetScriptModuleName — should be non-empty
+							FString ModName = SelfClass.GetScriptModuleName();
+							if (ModName.IsEmpty())
+							{
+								return 20;
+							}
 
-		// GetScriptTypeDeclaration — should contain class name
-		FString TypeDecl = SelfClass.GetScriptTypeDeclaration();
-		if (!TypeDecl.Contains("BindingReflectionActor"))
-			return 30;
+							// GetScriptTypeDeclaration — should contain class name
+							FString TypeDecl = SelfClass.GetScriptTypeDeclaration();
+							if (!TypeDecl.Contains("BindingReflectionActor"))
+							{
+								return 30;
+							}
 
-		// IsFunctionImplementedInScript — ReadReflection should be true
-		if (!SelfClass.IsFunctionImplementedInScript(n"ReadReflection"))
-			return 40;
+							// IsFunctionImplementedInScript — ReadReflection should be true
+							if (!SelfClass.IsFunctionImplementedInScript(n"ReadReflection"))
+							{
+								return 40;
+							}
 
-		// FindFunctionByName — ReadReflection should not be null
-		UFunction Func = SelfClass.FindFunctionByName(n"ReadReflection");
-		if (Func == null)
-			return 50;
+							// FindFunctionByName — ReadReflection should not be null
+							UFunction Func = SelfClass.FindFunctionByName(n"ReadReflection");
+							if (Func == null)
+							{
+								return 50;
+							}
 
-		return 1;
-	}
-}
-)"));
+							return 1;
+						}
+					}
+					)AS"));
 			ON_SCOPE_EXIT { Engine.DiscardModule(ReflModuleName); };
 
 			bPassed &= LocalAssert.IsTrue(
@@ -891,21 +964,24 @@ class ABindingReflectionActor : AActor
 
 		// (b) Plain module — IsAbstract on native classes.
 		{
-			FScopedAngelscriptModule AbstractScope(Test, Engine, TEXT("ASClass_IsAbstract"), TEXT(R"(
-int IsAbstract_AActor_False()
-{
-	UClass C = AActor::StaticClass();
-	return C.IsAbstract() ? 1 : 0;
-}
-int IsAbstract_FindAbstract()
-{
-	// UNavigationData is abstract in most UE builds
-	UClass C = FindClass("ANavigationData");
-	if (C == null)
-		return -1;
-	return C.IsAbstract() ? 1 : 0;
-}
-)"));
+			FScopedAngelscriptModule AbstractScope(Test, Engine, TEXT("ASClass_IsAbstract"), ASTEST_AS(R"AS(
+				int IsAbstract_AActor_False()
+				{
+					UClass C = AActor::StaticClass();
+					return C.IsAbstract() ? 1 : 0;
+				}
+
+				int IsAbstract_FindAbstract()
+				{
+					// UNavigationData is abstract in most UE builds
+					UClass C = FindClass("ANavigationData");
+					if (C == null)
+					{
+						return -1;
+					}
+					return C.IsAbstract() ? 1 : 0;
+				}
+				)AS"));
 			if (!AbstractScope.IsValid()) return false;
 			asIScriptModule& AbstractModule = AbstractScope.GetModule();
 
@@ -943,7 +1019,7 @@ int IsAbstract_FindAbstract()
 	// -----------------------------------------------------------------------
 	// Section: TSoftClassPtrReject — exception path on unrelated class assign
 	// -----------------------------------------------------------------------
-	bool RunTSoftClassPtrRejectSection(
+	bool VerifyTSoftClassPtrReject(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
@@ -955,13 +1031,13 @@ int IsAbstract_FindAbstract()
 		Test.AddExpectedErrorPlain(TEXT("TriggerBadSoftAssign"),
 			EAutomationExpectedErrorFlags::Contains, 0);
 
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_SoftClassReject"), TEXT(R"(
-void TriggerBadSoftAssign()
-{
-	TSoftClassPtr<AActor> S;
-	S = UPackage::StaticClass();
-}
-)"));
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_SoftClassReject"), ASTEST_AS(R"AS(
+			void TriggerBadSoftAssign()
+			{
+				TSoftClassPtr<AActor> S;
+				S = UPackage::StaticClass();
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
@@ -975,44 +1051,49 @@ void TriggerBadSoftAssign()
 	// -----------------------------------------------------------------------
 	// Section: ClassReturnType — return type matrix coverage
 	// -----------------------------------------------------------------------
-	bool RunClassReturnTypeSection(
+	bool VerifyClassReturnType(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_ReturnType"), TEXT(R"(
-bool ClassRet_Bool_FindClassIsValid()
-{
-	UClass C = FindClass("AActor");
-	return C != null;
-}
-bool ClassRet_Bool_IsChildOf()
-{
-	UClass Camera = ACameraActor::StaticClass();
-	return Camera.IsChildOf(AActor::StaticClass());
-}
-int ClassRet_FString_ClassNameLen()
-{
-	UClass C = AActor::StaticClass();
-	FString Name = C.GetName().ToString();
-	return Name.Len();
-}
-int ClassRet_FString_SuperClassNameLen()
-{
-	UClass C = ACameraActor::StaticClass();
-	UClass Super = C.GetSuperClass();
-	return Super.GetName().ToString().Len();
-}
-int ClassRet_UClass_Echo()
-{
-	UClass C = AActor::StaticClass();
-	return (C == AActor::StaticClass()) ? 1 : 0;
-}
-int ClassRet_SubclassOf_Echo()
-{
-	TSubclassOf<AActor> S = ACameraActor::StaticClass();
-	return (S.Get() == ACameraActor::StaticClass()) ? 1 : 0;
-}
-)"));
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_ReturnType"), ASTEST_AS(R"AS(
+			bool ClassRet_Bool_FindClassIsValid()
+			{
+				UClass C = FindClass("AActor");
+				return C != null;
+			}
+
+			bool ClassRet_Bool_IsChildOf()
+			{
+				UClass Camera = ACameraActor::StaticClass();
+				return Camera.IsChildOf(AActor::StaticClass());
+			}
+
+			int ClassRet_FString_ClassNameLen()
+			{
+				UClass C = AActor::StaticClass();
+				FString Name = C.GetName().ToString();
+				return Name.Len();
+			}
+
+			int ClassRet_FString_SuperClassNameLen()
+			{
+				UClass C = ACameraActor::StaticClass();
+				UClass Super = C.GetSuperClass();
+				return Super.GetName().ToString().Len();
+			}
+
+			int ClassRet_UClass_Echo()
+			{
+				UClass C = AActor::StaticClass();
+				return (C == AActor::StaticClass()) ? 1 : 0;
+			}
+
+			int ClassRet_SubclassOf_Echo()
+			{
+				TSubclassOf<AActor> S = ACameraActor::StaticClass();
+				return (S.Get() == ACameraActor::StaticClass()) ? 1 : 0;
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
@@ -1052,24 +1133,24 @@ int ClassRet_SubclassOf_Echo()
 	// -----------------------------------------------------------------------
 	// Section: ClassLogDiagnostic — class string diagnostics in Log()
 	// -----------------------------------------------------------------------
-	bool RunClassLogDiagnosticSection(
+	bool VerifyClassLogDiagnostic(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_LogDiag"), TEXT(R"(
-int ClassLog_Types()
-{
-	UClass C = AActor::StaticClass();
-	TSubclassOf<AActor> S = AActor::StaticClass();
-	TSoftClassPtr<AActor> Soft(AActor::StaticClass());
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASClass_LogDiag"), ASTEST_AS(R"AS(
+			int ClassLog_Types()
+			{
+				UClass C = AActor::StaticClass();
+				TSubclassOf<AActor> S = AActor::StaticClass();
+				TSoftClassPtr<AActor> Soft(AActor::StaticClass());
 
-	Log("UClass: " + C);
-	Log("TSubclassOf: " + S);
-	Log("TSoftClassPtr: " + Soft.ToString());
+				Log("UClass: " + C);
+				Log("TSubclassOf: " + S);
+				Log("TSoftClassPtr: " + Soft.ToString());
 
-	return 1;
-}
-)"));
+				return 1;
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
@@ -1079,6 +1160,8 @@ int ClassLog_Types()
 			1);
 	}
 }
+
+using namespace AngelscriptClassBindingsTestPrivate;
 
 // ============================================================================
 // Test class
@@ -1093,80 +1176,104 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptClassBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
-
-	TEST_METHOD(ClassLookupCompat)
+	AFTER_ALL()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
-		FAngelscriptEngineScope Scope(Engine);
-		RunClassLookupSection(*TestRunner, Engine);
+		ASTEST_RESET_ENGINE(Engine);
 	}
 
-	TEST_METHOD(TSubclassOfCompat)
+	TEST_METHOD(ClassLookup)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunTSubclassOfSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyClassLookup(*TestRunner, Engine),
+			TEXT("VerifyClassLookup should pass")));
+	}
+
+	TEST_METHOD(TSubclassOfPaths)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyTSubclassOf(*TestRunner, Engine),
+			TEXT("VerifyTSubclassOf should pass")));
 	}
 
 	TEST_METHOD(TSubclassOfRejectsUnrelatedClass)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunTSubclassOfRejectSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyTSubclassOfReject(*TestRunner, Engine),
+			TEXT("VerifyTSubclassOfReject should pass")));
 	}
 
-	TEST_METHOD(TSoftClassPtrCompat)
+	TEST_METHOD(TSoftClassPtrPaths)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunTSoftClassPtrSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyTSoftClassPtr(*TestRunner, Engine),
+			TEXT("VerifyTSoftClassPtr should pass")));
 	}
 
-	TEST_METHOD(StaticClassCompat)
+	TEST_METHOD(StaticClassAccess)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunStaticClassSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyStaticClass(*TestRunner, Engine),
+			TEXT("VerifyStaticClass should pass")));
 	}
 
 	TEST_METHOD(NativeStaticClassNamespace)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunNativeStaticClassNamespaceSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyNativeStaticClassNamespace(*TestRunner, Engine),
+			TEXT("VerifyNativeStaticClassNamespace should pass")));
 	}
 
 	TEST_METHOD(NativeStaticTypeGlobal)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunNativeStaticTypeGlobalSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyNativeStaticTypeGlobal(*TestRunner, Engine),
+			TEXT("VerifyNativeStaticTypeGlobal should pass")));
 	}
 
-	TEST_METHOD(UClassReflectionCompat)
+	TEST_METHOD(UClassReflection)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunUClassReflectionSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyUClassReflection(*TestRunner, Engine),
+			TEXT("VerifyUClassReflection should pass")));
 	}
 
 	TEST_METHOD(TSoftClassPtrRejectsUnrelatedClass)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunTSoftClassPtrRejectSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyTSoftClassPtrReject(*TestRunner, Engine),
+			TEXT("VerifyTSoftClassPtrReject should pass")));
 	}
 
 	TEST_METHOD(ClassReturnTypeAndLogDiag)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		if (!RunClassReturnTypeSection(*TestRunner, Engine))
+		if (!VerifyClassReturnType(*TestRunner, Engine))
 		{
 			return;
 		}
-		RunClassLogDiagnosticSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyClassLogDiagnostic(*TestRunner, Engine),
+			TEXT("VerifyClassLogDiagnostic should pass")));
 	}
 };
 

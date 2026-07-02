@@ -53,67 +53,67 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptWorldCollisionFunctionLibraryComponentTest,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
-static constexpr ANSICHAR ModuleName[] = "ASWorldCollisionFunctionLibraryComponentQueries";
-static constexpr ANSICHAR NullComponentModuleName[] = "ASWorldCollisionFunctionLibraryNullComponentQueries";
-inline static const FVector BlockingTargetLocation = FVector(0.0f, 0.0f, 0.0f);
-inline static const FVector OverlapTargetLocation = FVector(0.0f, 150.0f, 0.0f);
-inline static const FVector QueryComponentSpawnLocation = FVector(0.0f, 300.0f, 0.0f);
-inline static const FVector SweepHitStart = FVector(-200.0f, 0.0f, 0.0f);
-inline static const FVector SweepHitEnd = FVector(200.0f, 0.0f, 0.0f);
-inline static const FVector SweepMissStart = FVector(-200.0f, -200.0f, 0.0f);
-inline static const FVector SweepMissEnd = FVector(200.0f, -200.0f, 0.0f);
-inline static const FVector TargetExtent = FVector(50.0f, 50.0f, 50.0f);
-inline static const FVector OverlapExtent = FVector(40.0f, 40.0f, 40.0f);
-inline static const FVector QueryExtent = FVector(30.0f, 30.0f, 30.0f);
-inline static const FVector MissOverlapLocation = FVector(0.0f, -150.0f, 0.0f);
-inline static const FQuat IdentityRotation = FQuat::Identity;
+	static constexpr ANSICHAR ModuleName[] = "ASWorldCollisionFunctionLibraryComponentQueries";
+	static constexpr ANSICHAR NullComponentModuleName[] = "ASWorldCollisionFunctionLibraryNullComponentQueries";
+	inline static const FVector BlockingTargetLocation = FVector(0.0f, 0.0f, 0.0f);
+	inline static const FVector OverlapTargetLocation = FVector(0.0f, 150.0f, 0.0f);
+	inline static const FVector QueryComponentSpawnLocation = FVector(0.0f, 300.0f, 0.0f);
+	inline static const FVector SweepHitStart = FVector(-200.0f, 0.0f, 0.0f);
+	inline static const FVector SweepHitEnd = FVector(200.0f, 0.0f, 0.0f);
+	inline static const FVector SweepMissStart = FVector(-200.0f, -200.0f, 0.0f);
+	inline static const FVector SweepMissEnd = FVector(200.0f, -200.0f, 0.0f);
+	inline static const FVector TargetExtent = FVector(50.0f, 50.0f, 50.0f);
+	inline static const FVector OverlapExtent = FVector(40.0f, 40.0f, 40.0f);
+	inline static const FVector QueryExtent = FVector(30.0f, 30.0f, 30.0f);
+	inline static const FVector MissOverlapLocation = FVector(0.0f, -150.0f, 0.0f);
+	inline static const FQuat IdentityRotation = FQuat::Identity;
 
-static UBoxComponent* AddCollisionBox(AActor& Owner, FName ComponentName, const FVector& BoxExtent, const FVector& WorldLocation)
-{
-	UBoxComponent* BoxComponent = NewObject<UBoxComponent>(&Owner, ComponentName);
-	check(BoxComponent != nullptr);
-	Owner.AddInstanceComponent(BoxComponent);
-	Owner.SetRootComponent(BoxComponent);
-	BoxComponent->RegisterComponent();
-	BoxComponent->SetCollisionProfileName(UCollisionProfile::BlockAllDynamic_ProfileName);
-	BoxComponent->SetGenerateOverlapEvents(true);
-	BoxComponent->SetBoxExtent(BoxExtent);
-	BoxComponent->SetWorldLocation(WorldLocation);
-	return BoxComponent;
-}
-
-template <typename TResult>
-static bool ExpectArrayParity(FAutomationTestBase& Test, const TCHAR* Label, bool bScriptReturnValue, bool bNativeReturnValue, const TArray<TResult>& ScriptResults, const TArray<TResult>& NativeResults)
-{
-	FNoDiscardAsserter LocalAssert(Test);
-	bool bPassed = true;
-	bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), Label));
-	bPassed &= LocalAssert.AreEqual(NativeResults.Num(), ScriptResults.Num(), *FString::Printf(TEXT("%s should preserve the result count"), Label));
-
-	for (int32 ResultIndex = 0; ResultIndex < FMath::Min(ScriptResults.Num(), NativeResults.Num()); ++ResultIndex)
+	static UBoxComponent* AddCollisionBox(AActor& Owner, FName ComponentName, const FVector& BoxExtent, const FVector& WorldLocation)
 	{
-		bPassed &= LocalAssert.AreEqual(NativeResults[ResultIndex].GetActor(), ScriptResults[ResultIndex].GetActor(), *FString::Printf(TEXT("%s should preserve actor for result %d"), Label, ResultIndex));
-		bPassed &= LocalAssert.AreEqual(NativeResults[ResultIndex].GetComponent(), ScriptResults[ResultIndex].GetComponent(), *FString::Printf(TEXT("%s should preserve component for result %d"), Label, ResultIndex));
+		UBoxComponent* BoxComponent = NewObject<UBoxComponent>(&Owner, ComponentName);
+		check(BoxComponent != nullptr);
+		Owner.AddInstanceComponent(BoxComponent);
+		Owner.SetRootComponent(BoxComponent);
+		BoxComponent->RegisterComponent();
+		BoxComponent->SetCollisionProfileName(UCollisionProfile::BlockAllDynamic_ProfileName);
+		BoxComponent->SetGenerateOverlapEvents(true);
+		BoxComponent->SetBoxExtent(BoxExtent);
+		BoxComponent->SetWorldLocation(WorldLocation);
+		return BoxComponent;
 	}
 
-	return bPassed;
-}
-
-static bool HitResultsContainComponent(const TArray<FHitResult>& Hits, const UPrimitiveComponent* Component)
-{
-	return Hits.ContainsByPredicate([Component](const FHitResult& Hit)
+	template <typename TResult>
+	static bool ExpectArrayParity(FAutomationTestBase& Test, const TCHAR* Label, bool bScriptReturnValue, bool bNativeReturnValue, const TArray<TResult>& ScriptResults, const TArray<TResult>& NativeResults)
 	{
-		return Hit.GetComponent() == Component;
-	});
-}
+		FNoDiscardAsserter LocalAssert(Test);
+		bool bPassed = true;
+		bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), Label));
+		bPassed &= LocalAssert.AreEqual(NativeResults.Num(), ScriptResults.Num(), *FString::Printf(TEXT("%s should preserve the result count"), Label));
 
-static bool OverlapsContainComponent(const TArray<FOverlapResult>& Overlaps, const UPrimitiveComponent* Component)
-{
-	return Overlaps.ContainsByPredicate([Component](const FOverlapResult& Overlap)
+		for (int32 ResultIndex = 0; ResultIndex < FMath::Min(ScriptResults.Num(), NativeResults.Num()); ++ResultIndex)
+		{
+			bPassed &= LocalAssert.AreEqual(NativeResults[ResultIndex].GetActor(), ScriptResults[ResultIndex].GetActor(), *FString::Printf(TEXT("%s should preserve actor for result %d"), Label, ResultIndex));
+			bPassed &= LocalAssert.AreEqual(NativeResults[ResultIndex].GetComponent(), ScriptResults[ResultIndex].GetComponent(), *FString::Printf(TEXT("%s should preserve component for result %d"), Label, ResultIndex));
+		}
+
+		return bPassed;
+	}
+
+	static bool HitResultsContainComponent(const TArray<FHitResult>& Hits, const UPrimitiveComponent* Component)
 	{
-		return Overlap.GetComponent() == Component;
-	});
-}
+		return Hits.ContainsByPredicate([Component](const FHitResult& Hit)
+		{
+			return Hit.GetComponent() == Component;
+		});
+	}
+
+	static bool OverlapsContainComponent(const TArray<FOverlapResult>& Overlaps, const UPrimitiveComponent* Component)
+	{
+		return Overlaps.ContainsByPredicate([Component](const FOverlapResult& Overlap)
+		{
+			return Overlap.GetComponent() == Component;
+		});
+	}
 
 public:
 	// ====================================================================
@@ -122,8 +122,7 @@ public:
 
 	TEST_METHOD(ComponentQueries)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
-		{
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
@@ -138,41 +137,41 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 			*TestRunner,
 			Engine,
 			ModuleName,
-			TEXT(R"(
-bool RunComponentSweepMultiHit(UPrimitiveComponent QueryComponent, TArray<FHitResult>& OutHits)
-{
-	FComponentQueryParams Params = FComponentQueryParams::DefaultComponentQueryParams;
-	Params.AddIgnoredComponent(QueryComponent);
-	return System::ComponentSweepMulti(OutHits, QueryComponent, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), FQuat::Identity, Params);
-}
+			ASTEST_AS(R"AS(
+				bool RunComponentSweepMultiHit(UPrimitiveComponent QueryComponent, TArray<FHitResult>& OutHits)
+				{
+					FComponentQueryParams Params = FComponentQueryParams::DefaultComponentQueryParams;
+					Params.AddIgnoredComponent(QueryComponent);
+					return System::ComponentSweepMulti(OutHits, QueryComponent, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), FQuat::Identity, Params);
+				}
 
-bool RunComponentSweepMultiMiss(UPrimitiveComponent QueryComponent, TArray<FHitResult>& OutHits)
-{
-	FComponentQueryParams Params = FComponentQueryParams::DefaultComponentQueryParams;
-	Params.AddIgnoredComponent(QueryComponent);
-	return System::ComponentSweepMulti(OutHits, QueryComponent, FVector(-200.0f, -200.0f, 0.0f), FVector(200.0f, -200.0f, 0.0f), FQuat::Identity, Params);
-}
+				bool RunComponentSweepMultiMiss(UPrimitiveComponent QueryComponent, TArray<FHitResult>& OutHits)
+				{
+					FComponentQueryParams Params = FComponentQueryParams::DefaultComponentQueryParams;
+					Params.AddIgnoredComponent(QueryComponent);
+					return System::ComponentSweepMulti(OutHits, QueryComponent, FVector(-200.0f, -200.0f, 0.0f), FVector(200.0f, -200.0f, 0.0f), FQuat::Identity, Params);
+				}
 
-bool RunComponentOverlapMultiHit(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)
-{
-	FComponentQueryParams Params = FComponentQueryParams::DefaultComponentQueryParams;
-	Params.AddIgnoredComponent(QueryComponent);
+				bool RunComponentOverlapMultiHit(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)
+				{
+					FComponentQueryParams Params = FComponentQueryParams::DefaultComponentQueryParams;
+					Params.AddIgnoredComponent(QueryComponent);
 
-	FCollisionObjectQueryParams ObjectQueryParams;
-	ObjectQueryParams.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldDynamic);
-	return System::ComponentOverlapMulti(OutOverlaps, QueryComponent, FVector(0.0f, 150.0f, 0.0f), FQuat::Identity, Params, ObjectQueryParams);
-}
+					FCollisionObjectQueryParams ObjectQueryParams;
+					ObjectQueryParams.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldDynamic);
+					return System::ComponentOverlapMulti(OutOverlaps, QueryComponent, FVector(0.0f, 150.0f, 0.0f), FQuat::Identity, Params, ObjectQueryParams);
+				}
 
-bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)
-{
-	FComponentQueryParams Params = FComponentQueryParams::DefaultComponentQueryParams;
-	Params.AddIgnoredComponent(QueryComponent);
+				bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)
+				{
+					FComponentQueryParams Params = FComponentQueryParams::DefaultComponentQueryParams;
+					Params.AddIgnoredComponent(QueryComponent);
 
-	FCollisionObjectQueryParams ObjectQueryParams;
-	ObjectQueryParams.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldDynamic);
-	return System::ComponentOverlapMulti(OutOverlaps, QueryComponent, FVector(0.0f, -150.0f, 0.0f), FQuat::Identity, Params, ObjectQueryParams);
-}
-)"));
+					FCollisionObjectQueryParams ObjectQueryParams;
+					ObjectQueryParams.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldDynamic);
+					return System::ComponentOverlapMulti(OutOverlaps, QueryComponent, FVector(0.0f, -150.0f, 0.0f), FQuat::Identity, Params, ObjectQueryParams);
+				}
+				)AS"));
 		if (Module == nullptr)
 		{
 			return;
@@ -227,7 +226,8 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 		{
 			return;
 		}
-		ExpectArrayParity(*TestRunner, TEXT("ComponentSweepMulti hit"), bScriptComponentSweepHit, bNativeComponentSweepHit, ScriptComponentSweepHits, NativeComponentSweepHits);
+		ASSERT_THAT(IsTrue(
+			ExpectArrayParity(*TestRunner, TEXT("ComponentSweepMulti hit"), bScriptComponentSweepHit, bNativeComponentSweepHit, ScriptComponentSweepHits, NativeComponentSweepHits)));
 		ASSERT_THAT(IsTrue(ScriptComponentSweepHits.Num() >= 1, TEXT("ComponentSweepMulti hit should produce at least one hit")));
 		ASSERT_THAT(IsTrue(HitResultsContainComponent(ScriptComponentSweepHits, BlockingBox), TEXT("ComponentSweepMulti hit should include the blocker component")));
 
@@ -253,7 +253,8 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 		{
 			return;
 		}
-		ExpectArrayParity(*TestRunner, TEXT("ComponentSweepMulti miss"), bScriptComponentSweepMiss, bNativeComponentSweepMiss, ScriptComponentSweepMisses, NativeComponentSweepMisses);
+		ASSERT_THAT(IsTrue(
+			ExpectArrayParity(*TestRunner, TEXT("ComponentSweepMulti miss"), bScriptComponentSweepMiss, bNativeComponentSweepMiss, ScriptComponentSweepMisses, NativeComponentSweepMisses)));
 		ASSERT_THAT(AreEqual(0, ScriptComponentSweepMisses.Num(), TEXT("ComponentSweepMulti miss should clear stale hit results")));
 
 		// ComponentOverlapMulti hit
@@ -276,7 +277,8 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 		{
 			return;
 		}
-		ExpectArrayParity(*TestRunner, TEXT("ComponentOverlapMulti hit"), bScriptComponentOverlapHit, bNativeComponentOverlapHit, ScriptComponentOverlapHits, NativeComponentOverlapHits);
+		ASSERT_THAT(IsTrue(
+			ExpectArrayParity(*TestRunner, TEXT("ComponentOverlapMulti hit"), bScriptComponentOverlapHit, bNativeComponentOverlapHit, ScriptComponentOverlapHits, NativeComponentOverlapHits)));
 		ASSERT_THAT(IsTrue(OverlapsContainComponent(ScriptComponentOverlapHits, OverlapBox), TEXT("ComponentOverlapMulti hit should include the overlap target component")));
 
 		// ComponentOverlapMulti miss
@@ -301,10 +303,10 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 		{
 			return;
 		}
-		ExpectArrayParity(*TestRunner, TEXT("ComponentOverlapMulti miss"), bScriptComponentOverlapMiss, bNativeComponentOverlapMiss, ScriptComponentOverlapMisses, NativeComponentOverlapMisses);
+		ASSERT_THAT(IsTrue(
+			ExpectArrayParity(*TestRunner, TEXT("ComponentOverlapMulti miss"), bScriptComponentOverlapMiss, bNativeComponentOverlapMiss, ScriptComponentOverlapMisses, NativeComponentOverlapMisses)));
 		ASSERT_THAT(AreEqual(0, ScriptComponentOverlapMisses.Num(), TEXT("ComponentOverlapMulti miss should clear stale overlap results")));
 
-		}
 	}
 
 	// ====================================================================
@@ -313,8 +315,7 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 
 	TEST_METHOD(NullComponentQueries)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
-		{
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
@@ -329,39 +330,39 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 			*TestRunner,
 			Engine,
 			NullComponentModuleName,
-			TEXT(R"(
-bool RunComponentSweepMultiBaseline(UPrimitiveComponent QueryComponent, TArray<FHitResult>& OutHits)
-{
-	FComponentQueryParams Params = FComponentQueryParams::DefaultComponentQueryParams;
-	Params.AddIgnoredComponent(QueryComponent);
-	return System::ComponentSweepMulti(OutHits, QueryComponent, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), FQuat::Identity, Params);
-}
+			ASTEST_AS(R"AS(
+				bool RunComponentSweepMultiBaseline(UPrimitiveComponent QueryComponent, TArray<FHitResult>& OutHits)
+				{
+					FComponentQueryParams Params = FComponentQueryParams::DefaultComponentQueryParams;
+					Params.AddIgnoredComponent(QueryComponent);
+					return System::ComponentSweepMulti(OutHits, QueryComponent, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), FQuat::Identity, Params);
+				}
 
-bool RunComponentSweepMultiNull(UPrimitiveComponent QueryComponent, TArray<FHitResult>& OutHits)
-{
-	FComponentQueryParams Params = FComponentQueryParams::DefaultComponentQueryParams;
-	return System::ComponentSweepMulti(OutHits, QueryComponent, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), FQuat::Identity, Params);
-}
+				bool RunComponentSweepMultiNull(UPrimitiveComponent QueryComponent, TArray<FHitResult>& OutHits)
+				{
+					FComponentQueryParams Params = FComponentQueryParams::DefaultComponentQueryParams;
+					return System::ComponentSweepMulti(OutHits, QueryComponent, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), FQuat::Identity, Params);
+				}
 
-bool RunComponentOverlapMultiBaseline(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)
-{
-	FComponentQueryParams Params = FComponentQueryParams::DefaultComponentQueryParams;
-	Params.AddIgnoredComponent(QueryComponent);
+				bool RunComponentOverlapMultiBaseline(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)
+				{
+					FComponentQueryParams Params = FComponentQueryParams::DefaultComponentQueryParams;
+					Params.AddIgnoredComponent(QueryComponent);
 
-	FCollisionObjectQueryParams ObjectQueryParams;
-	ObjectQueryParams.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldDynamic);
-	return System::ComponentOverlapMulti(OutOverlaps, QueryComponent, FVector(0.0f, 150.0f, 0.0f), FQuat::Identity, Params, ObjectQueryParams);
-}
+					FCollisionObjectQueryParams ObjectQueryParams;
+					ObjectQueryParams.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldDynamic);
+					return System::ComponentOverlapMulti(OutOverlaps, QueryComponent, FVector(0.0f, 150.0f, 0.0f), FQuat::Identity, Params, ObjectQueryParams);
+				}
 
-bool RunComponentOverlapMultiNull(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)
-{
-	FComponentQueryParams Params = FComponentQueryParams::DefaultComponentQueryParams;
+				bool RunComponentOverlapMultiNull(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)
+				{
+					FComponentQueryParams Params = FComponentQueryParams::DefaultComponentQueryParams;
 
-	FCollisionObjectQueryParams ObjectQueryParams;
-	ObjectQueryParams.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldDynamic);
-	return System::ComponentOverlapMulti(OutOverlaps, QueryComponent, FVector(0.0f, 150.0f, 0.0f), FQuat::Identity, Params, ObjectQueryParams);
-}
-)"));
+					FCollisionObjectQueryParams ObjectQueryParams;
+					ObjectQueryParams.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldDynamic);
+					return System::ComponentOverlapMulti(OutOverlaps, QueryComponent, FVector(0.0f, 150.0f, 0.0f), FQuat::Identity, Params, ObjectQueryParams);
+				}
+				)AS"));
 		if (Module == nullptr)
 		{
 			return;
@@ -416,7 +417,8 @@ bool RunComponentOverlapMultiNull(UPrimitiveComponent QueryComponent, TArray<FOv
 		{
 			return;
 		}
-		ExpectArrayParity(*TestRunner, TEXT("ComponentSweepMulti baseline"), bScriptBaselineSweep, bNativeBaselineSweep, ScriptBaselineSweepHits, NativeBaselineSweepHits);
+		ASSERT_THAT(IsTrue(
+			ExpectArrayParity(*TestRunner, TEXT("ComponentSweepMulti baseline"), bScriptBaselineSweep, bNativeBaselineSweep, ScriptBaselineSweepHits, NativeBaselineSweepHits)));
 		ASSERT_THAT(IsTrue(HitResultsContainComponent(ScriptBaselineSweepHits, BlockingBox), TEXT("ComponentSweepMulti baseline should still hit the blocker component")));
 
 		// Null component sweep
@@ -460,7 +462,8 @@ bool RunComponentOverlapMultiNull(UPrimitiveComponent QueryComponent, TArray<FOv
 		{
 			return;
 		}
-		ExpectArrayParity(*TestRunner, TEXT("ComponentOverlapMulti baseline"), bScriptBaselineOverlap, bNativeBaselineOverlap, ScriptBaselineOverlaps, NativeBaselineOverlaps);
+		ASSERT_THAT(IsTrue(
+			ExpectArrayParity(*TestRunner, TEXT("ComponentOverlapMulti baseline"), bScriptBaselineOverlap, bNativeBaselineOverlap, ScriptBaselineOverlaps, NativeBaselineOverlaps)));
 		ASSERT_THAT(IsTrue(OverlapsContainComponent(ScriptBaselineOverlaps, OverlapBox), TEXT("ComponentOverlapMulti baseline should still hit the overlap target component")));
 
 		// Null component overlap
@@ -484,7 +487,6 @@ bool RunComponentOverlapMultiNull(UPrimitiveComponent QueryComponent, TArray<FOv
 		ASSERT_THAT(IsFalse(bScriptNullOverlap, TEXT("ComponentOverlapMulti should return false when the source component is null")));
 		ASSERT_THAT(AreEqual(0, ScriptNullOverlaps.Num(), TEXT("ComponentOverlapMulti should clear stale overlap results when the source component is null")));
 
-		}
 	}
 };
 

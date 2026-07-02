@@ -48,41 +48,51 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEnhancedInputBindingsTest, "Angelscript.TestMo
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
-	TEST_METHOD(InputActionValueMulAssignCompat)
+	TEST_METHOD(InputActionValueMulAssign)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_MulAssignCompat"), TEXT(R"(
-int MulAssignChaining()
-{
-	FInputActionValue Value(2.0f);
-	FInputActionValue Delta(1.0f);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_MulAssignCompat"), ASTEST_AS(R"AS(
+			int MulAssignChaining()
+			{
+				FInputActionValue Value(2.0f);
+				FInputActionValue Delta(1.0f);
 
-	Value.opMulAssign(0.5f).opMulAssign(0.5f);
-	if (Value.GetAxis1D() < 0.49f || Value.GetAxis1D() > 0.51f)
-		return 0;
+				Value.opMulAssign(0.5f).opMulAssign(0.5f);
+				if (Value.GetAxis1D() < 0.49f || Value.GetAxis1D() > 0.51f)
+				{
+					return 0;
+				}
 
-	Value += Delta;
-	if (Value.GetAxis1D() < 1.49f || Value.GetAxis1D() > 1.51f)
-		return 0;
+				Value += Delta;
+				if (Value.GetAxis1D() < 1.49f || Value.GetAxis1D() > 1.51f)
+				{
+					return 0;
+				}
 
-	if (!Value.IsNonZero())
-		return 0;
+				if (!Value.IsNonZero())
+				{
+					return 0;
+				}
 
-	return 1;
-}
-)"));
+				return 1;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		ExpectGlobalInt(*TestRunner, Engine, M, 
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,
 			TEXT("int MulAssignChaining()"),
-			TEXT("*= chaining should preserve value and support later +="), 1);
+			TEXT("*= chaining should preserve value and support later +="), 1), TEXT("*= chaining should preserve value and support later +=")));
 	}
 
-	TEST_METHOD(EnhancedInputComponentConstCompat)
+	TEST_METHOD(EnhancedInputComponentConstAccess)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
@@ -106,22 +116,23 @@ int MulAssignChaining()
 		{
 			const FName ModuleName(*FString::Printf(TEXT("ASEnhancedInputComponentConstCompat_%s"), Expectation.ScriptModuleSuffix));
 			const FString ScriptFilename = FString::Printf(TEXT("ASEnhancedInputComponentConstCompat_%s.as"), Expectation.ScriptModuleSuffix);
-			const FString Script = FString::Printf(TEXT(R"(
-bool ReadConst(const UEnhancedInputComponent Comp)
-{
-	return Comp.HasBindings();
-}
+			FString ConstMutationScriptSource = ASTEST_AS(R"AS(
+				bool ReadConst(const UEnhancedInputComponent Comp)
+				{
+					return Comp.HasBindings();
+				}
 
-void MutateConst(const UEnhancedInputComponent Comp)
-{
-	%s
-}
+				void MutateConst(const UEnhancedInputComponent Comp)
+				{
+					$CALL_EXPRESSION$
+				}
 
-int Entry()
-{
-	return 1;
-}
-)"), Expectation.CallExpression);
+				int Entry()
+				{
+					return 1;
+				}
+				)AS");
+			ConstMutationScriptSource.ReplaceInline(TEXT("$CALL_EXPRESSION$"), Expectation.CallExpression, ESearchCase::CaseSensitive);
 
 			FAngelscriptCompileTraceSummary CompileSummary;
 			const bool bCompiled = CompileModuleWithSummary(
@@ -129,7 +140,7 @@ int Entry()
 				ECompileType::SoftReloadOnly,
 				ModuleName,
 				ScriptFilename,
-				Script,
+				ConstMutationScriptSource,
 				false,
 				CompileSummary,
 				true);
@@ -147,71 +158,73 @@ int Entry()
 		}
 
 		// Mutable path should compile and execute
-		FScopedAngelscriptModule MutableMod(*TestRunner, Engine, TEXT("ASEnhancedInput_MutableCompat"), TEXT(R"(
-bool ReadConst(const UEnhancedInputComponent Comp)
-{
-	return Comp.HasBindings();
-}
+		FScopedAngelscriptModule MutableMod(*TestRunner, Engine, TEXT("ASEnhancedInput_MutableCompat"), ASTEST_AS(R"AS(
+			bool ReadConst(const UEnhancedInputComponent Comp)
+			{
+				return Comp.HasBindings();
+			}
 
-bool MutateMutable(UEnhancedInputComponent Comp)
-{
-	Comp.ClearActionEventBindings();
-	Comp.ClearActionValueBindings();
-	Comp.ClearDebugKeyBindings();
-	Comp.ClearActionBindings();
-	return Comp.HasBindings();
-}
+			bool MutateMutable(UEnhancedInputComponent Comp)
+			{
+				Comp.ClearActionEventBindings();
+				Comp.ClearActionValueBindings();
+				Comp.ClearDebugKeyBindings();
+				Comp.ClearActionBindings();
+				return Comp.HasBindings();
+			}
 
-int MutableEntry()
-{
-	return 1;
-}
-)"));
+			int MutableEntry()
+			{
+				return 1;
+			}
+			)AS"));
 		if (!MutableMod.IsValid()) return;
 		auto& MM = MutableMod.GetModule();
-		ExpectGlobalInt(*TestRunner, Engine, MM, 
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, MM,
 			TEXT("int MutableEntry()"),
-			TEXT("Mutable UEnhancedInputComponent should compile and execute"), 1);
+			TEXT("Mutable UEnhancedInputComponent should compile and execute"), 1), TEXT("Mutable UEnhancedInputComponent should compile and execute")));
 	}
 
-	TEST_METHOD(InputDebugKeyBindingExecuteCompat)
+	TEST_METHOD(InputDebugKeyBindingExecute)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_DebugKeyBindingCompat"), TEXT(R"(
-int VerifyBindingCompat(
-	FEnhancedInputActionEventBinding& EventBinding,
-	FEnhancedInputActionValueBinding& ValueBinding,
-	FInputDebugKeyBinding& DebugBinding,
-	const FInputActionInstance& ActionInstance,
-	const FInputActionValue& ActionValue)
-{
-	const uint EventHandle = EventBinding.GetHandle();
-	EventBinding.Execute(ActionInstance);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_DebugKeyBindingCompat"), ASTEST_AS(R"AS(
+			int VerifyBindingCompat(
+			FEnhancedInputActionEventBinding& EventBinding,
+			FEnhancedInputActionValueBinding& ValueBinding,
+			FInputDebugKeyBinding& DebugBinding,
+			const FInputActionInstance& ActionInstance,
+			const FInputActionValue& ActionValue)
+			{
+				const uint EventHandle = EventBinding.GetHandle();
+				EventBinding.Execute(ActionInstance);
 
-	const uint ValueHandle = ValueBinding.GetHandle();
-	const FInputActionValue CurrentValue = ValueBinding.GetValue();
+				const uint ValueHandle = ValueBinding.GetHandle();
+				const FInputActionValue CurrentValue = ValueBinding.GetValue();
 
-	const uint DebugHandle = DebugBinding.GetHandle();
-	DebugBinding.Execute(ActionValue);
+				const uint DebugHandle = DebugBinding.GetHandle();
+				DebugBinding.Execute(ActionValue);
 
-	if (CurrentValue.IsNonZero() && EventHandle == ValueHandle && ValueHandle == DebugHandle)
-		return 2;
+				if (CurrentValue.IsNonZero() && EventHandle == ValueHandle && ValueHandle == DebugHandle)
+				{
+					return 2;
+				}
 
-	return 1;
-}
+				return 1;
+			}
 
-int DebugKeyEntry()
-{
-	return 1;
-}
-)"));
+			int DebugKeyEntry()
+			{
+				return 1;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		ExpectGlobalInt(*TestRunner, Engine, M, 
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,
 			TEXT("int DebugKeyEntry()"),
-			TEXT("FInputDebugKeyBinding.Execute should coexist with binding handle helpers"), 1);
+			TEXT("FInputDebugKeyBinding.Execute should coexist with binding handle helpers"), 1), TEXT("FInputDebugKeyBinding.Execute should coexist with binding handle helpers")));
 	}
 
 	TEST_METHOD(InputActionValueConstructorsAndAxisTypes)
@@ -219,35 +232,45 @@ int DebugKeyEntry()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_ConstructorsAxisTypes"), TEXT(R"(
-int VerifyConstructorsAndAxisTypes()
-{
-	FInputActionValue Val1D = FInputActionValue(5.0f);
-	if (Val1D.GetAxis1D() < 4.9f || Val1D.GetAxis1D() > 5.1f)
-		return 0;
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_ConstructorsAxisTypes"), ASTEST_AS(R"AS(
+			int VerifyConstructorsAndAxisTypes()
+			{
+				FInputActionValue Val1D = FInputActionValue(5.0f);
+				if (Val1D.GetAxis1D() < 4.9f || Val1D.GetAxis1D() > 5.1f)
+				{
+					return 0;
+				}
 
-	FInputActionValue Val2D = FInputActionValue(FVector2D(3.0f, 4.0f));
-	FVector2D V2 = Val2D.GetAxis2D();
-	if (V2.X < 2.9f || V2.X > 3.1f)
-		return 0;
-	if (V2.Y < 3.9f || V2.Y > 4.1f)
-		return 0;
+				FInputActionValue Val2D = FInputActionValue(FVector2D(3.0f, 4.0f));
+				FVector2D V2 = Val2D.GetAxis2D();
+				if (V2.X < 2.9f || V2.X > 3.1f)
+				{
+					return 0;
+				}
+				if (V2.Y < 3.9f || V2.Y > 4.1f)
+				{
+					return 0;
+				}
 
-	FInputActionValue Val3D = FInputActionValue(FVector(1.0f, 2.0f, 3.0f));
-	FVector V3 = Val3D.GetAxis3D();
-	if (V3.X < 0.9f || V3.X > 1.1f)
-		return 0;
-	if (V3.Z < 2.9f || V3.Z > 3.1f)
-		return 0;
+				FInputActionValue Val3D = FInputActionValue(FVector(1.0f, 2.0f, 3.0f));
+				FVector V3 = Val3D.GetAxis3D();
+				if (V3.X < 0.9f || V3.X > 1.1f)
+				{
+					return 0;
+				}
+				if (V3.Z < 2.9f || V3.Z > 3.1f)
+				{
+					return 0;
+				}
 
-	return 1;
-}
-)"));
+				return 1;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		ExpectGlobalInt(*TestRunner, Engine, M, 
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,
 			TEXT("int VerifyConstructorsAndAxisTypes()"),
-			TEXT("FInputActionValue constructors and axis accessors should work correctly"), 1);
+			TEXT("FInputActionValue constructors and axis accessors should work correctly"), 1), TEXT("FInputActionValue constructors and axis accessors should work correctly")));
 	}
 
 	TEST_METHOD(InputActionValueConvertToType)
@@ -255,29 +278,33 @@ int VerifyConstructorsAndAxisTypes()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_ConvertToType"), TEXT(R"(
-int VerifyConvertToType()
-{
-	FInputActionValue Val3D = FInputActionValue(FVector(7.0f, 8.0f, 9.0f));
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_ConvertToType"), ASTEST_AS(R"AS(
+			int VerifyConvertToType()
+			{
+				FInputActionValue Val3D = FInputActionValue(FVector(7.0f, 8.0f, 9.0f));
 
-	FInputActionValue Converted1D = Val3D.ConvertToType(EInputActionValueType::Axis1D);
-	float Axis1 = Converted1D.GetAxis1D();
-	if (Axis1 < 6.9f || Axis1 > 7.1f)
-		return 0;
+				FInputActionValue Converted1D = Val3D.ConvertToType(EInputActionValueType::Axis1D);
+				float Axis1 = Converted1D.GetAxis1D();
+				if (Axis1 < 6.9f || Axis1 > 7.1f)
+				{
+					return 0;
+				}
 
-	FInputActionValue Converted2D = Val3D.ConvertToType(EInputActionValueType::Axis2D);
-	FVector2D Axis2 = Converted2D.GetAxis2D();
-	if (Axis2.X < 6.9f || Axis2.X > 7.1f)
-		return 0;
+				FInputActionValue Converted2D = Val3D.ConvertToType(EInputActionValueType::Axis2D);
+				FVector2D Axis2 = Converted2D.GetAxis2D();
+				if (Axis2.X < 6.9f || Axis2.X > 7.1f)
+				{
+					return 0;
+				}
 
-	return 1;
-}
-)"));
+				return 1;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		ExpectGlobalInt(*TestRunner, Engine, M, 
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,
 			TEXT("int VerifyConvertToType()"),
-			TEXT("ConvertToType should preserve dimension data correctly"), 1);
+			TEXT("ConvertToType should preserve dimension data correctly"), 1), TEXT("ConvertToType should preserve dimension data correctly")));
 	}
 
 	TEST_METHOD(InputMappingContextRuntimeConstruction)
@@ -285,75 +312,89 @@ int VerifyConvertToType()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_RuntimeMappingContext"), TEXT(R"(
-int ConfigureRuntimeMapping()
-{
-	UInputAction MoveAction = Cast<UInputAction>(NewObject(GetTransientPackage(), UInputAction::StaticClass(), n"AS_MoveAction", true));
-	UInputMappingContext MappingContext = Cast<UInputMappingContext>(NewObject(GetTransientPackage(), UInputMappingContext::StaticClass(), n"AS_MoveContext", true));
-	if (MoveAction == nullptr || MappingContext == nullptr)
-		return 0;
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_RuntimeMappingContext"), ASTEST_AS(R"AS(
+			int ConfigureRuntimeMapping()
+			{
+				UInputAction MoveAction = Cast<UInputAction>(NewObject(GetTransientPackage(), UInputAction::StaticClass(), n"AS_MoveAction", true));
+				UInputMappingContext MappingContext = Cast<UInputMappingContext>(NewObject(GetTransientPackage(), UInputMappingContext::StaticClass(), n"AS_MoveContext", true));
+				if (MoveAction == nullptr || MappingContext == nullptr)
+				{
+					return 0;
+				}
 
-	MoveAction.SetValueType(EInputActionValueType::Axis2D);
-	MoveAction.SetAccumulationBehavior(EInputActionAccumulationBehavior::Cumulative);
-	MappingContext.UnmapAll();
+				MoveAction.SetValueType(EInputActionValueType::Axis2D);
+				MoveAction.SetAccumulationBehavior(EInputActionAccumulationBehavior::Cumulative);
+				MappingContext.UnmapAll();
 
-	UInputModifierSwizzleAxis WSwizzle = Cast<UInputModifierSwizzleAxis>(NewObject(MappingContext, UInputModifierSwizzleAxis::StaticClass(), n"AS_WSwizzle", true));
-	UInputModifierSwizzleAxis SSwizzle = Cast<UInputModifierSwizzleAxis>(NewObject(MappingContext, UInputModifierSwizzleAxis::StaticClass(), n"AS_SSwizzle", true));
-	UInputModifierNegate SNegate = Cast<UInputModifierNegate>(NewObject(MappingContext, UInputModifierNegate::StaticClass(), n"AS_SNegate", true));
-	UInputModifierNegate ANegate = Cast<UInputModifierNegate>(NewObject(MappingContext, UInputModifierNegate::StaticClass(), n"AS_ANegate", true));
-	UInputModifierSwizzleAxis UpSwizzle = Cast<UInputModifierSwizzleAxis>(NewObject(MappingContext, UInputModifierSwizzleAxis::StaticClass(), n"AS_UpSwizzle", true));
-	UInputModifierSwizzleAxis DownSwizzle = Cast<UInputModifierSwizzleAxis>(NewObject(MappingContext, UInputModifierSwizzleAxis::StaticClass(), n"AS_DownSwizzle", true));
-	UInputModifierNegate DownNegate = Cast<UInputModifierNegate>(NewObject(MappingContext, UInputModifierNegate::StaticClass(), n"AS_DownNegate", true));
-	UInputModifierNegate LeftNegate = Cast<UInputModifierNegate>(NewObject(MappingContext, UInputModifierNegate::StaticClass(), n"AS_LeftNegate", true));
-	if (WSwizzle == nullptr || SSwizzle == nullptr || SNegate == nullptr || ANegate == nullptr
-		|| UpSwizzle == nullptr || DownSwizzle == nullptr || DownNegate == nullptr || LeftNegate == nullptr)
-		return 0;
+				UInputModifierSwizzleAxis WSwizzle = Cast<UInputModifierSwizzleAxis>(NewObject(MappingContext, UInputModifierSwizzleAxis::StaticClass(), n"AS_WSwizzle", true));
+				UInputModifierSwizzleAxis SSwizzle = Cast<UInputModifierSwizzleAxis>(NewObject(MappingContext, UInputModifierSwizzleAxis::StaticClass(), n"AS_SSwizzle", true));
+				UInputModifierNegate SNegate = Cast<UInputModifierNegate>(NewObject(MappingContext, UInputModifierNegate::StaticClass(), n"AS_SNegate", true));
+				UInputModifierNegate ANegate = Cast<UInputModifierNegate>(NewObject(MappingContext, UInputModifierNegate::StaticClass(), n"AS_ANegate", true));
+				UInputModifierSwizzleAxis UpSwizzle = Cast<UInputModifierSwizzleAxis>(NewObject(MappingContext, UInputModifierSwizzleAxis::StaticClass(), n"AS_UpSwizzle", true));
+				UInputModifierSwizzleAxis DownSwizzle = Cast<UInputModifierSwizzleAxis>(NewObject(MappingContext, UInputModifierSwizzleAxis::StaticClass(), n"AS_DownSwizzle", true));
+				UInputModifierNegate DownNegate = Cast<UInputModifierNegate>(NewObject(MappingContext, UInputModifierNegate::StaticClass(), n"AS_DownNegate", true));
+				UInputModifierNegate LeftNegate = Cast<UInputModifierNegate>(NewObject(MappingContext, UInputModifierNegate::StaticClass(), n"AS_LeftNegate", true));
+				if (WSwizzle == nullptr || SSwizzle == nullptr || SNegate == nullptr || ANegate == nullptr
+				|| UpSwizzle == nullptr || DownSwizzle == nullptr || DownNegate == nullptr || LeftNegate == nullptr)
+				return 0;
 
-	FEnhancedActionKeyMapping& W = MappingContext.MapKey(MoveAction, EKeys::W);
-	W.AddModifier(WSwizzle);
+				FEnhancedActionKeyMapping& W = MappingContext.MapKey(MoveAction, EKeys::W);
+				W.AddModifier(WSwizzle);
 
-	FEnhancedActionKeyMapping& S = MappingContext.MapKey(MoveAction, EKeys::S);
-	S.AddModifier(SSwizzle);
-	S.AddModifier(SNegate);
+				FEnhancedActionKeyMapping& S = MappingContext.MapKey(MoveAction, EKeys::S);
+				S.AddModifier(SSwizzle);
+				S.AddModifier(SNegate);
 
-	FEnhancedActionKeyMapping& A = MappingContext.MapKey(MoveAction, EKeys::A);
-	A.AddModifier(ANegate);
+				FEnhancedActionKeyMapping& A = MappingContext.MapKey(MoveAction, EKeys::A);
+				A.AddModifier(ANegate);
 
-	FEnhancedActionKeyMapping& D = MappingContext.MapKey(MoveAction, EKeys::D);
+				FEnhancedActionKeyMapping& D = MappingContext.MapKey(MoveAction, EKeys::D);
 
-	FEnhancedActionKeyMapping& Up = MappingContext.MapKey(MoveAction, EKeys::Up);
-	Up.AddModifier(UpSwizzle);
+				FEnhancedActionKeyMapping& Up = MappingContext.MapKey(MoveAction, EKeys::Up);
+				Up.AddModifier(UpSwizzle);
 
-	FEnhancedActionKeyMapping& Down = MappingContext.MapKey(MoveAction, EKeys::Down);
-	Down.AddModifier(DownSwizzle);
-	Down.AddModifier(DownNegate);
+				FEnhancedActionKeyMapping& Down = MappingContext.MapKey(MoveAction, EKeys::Down);
+				Down.AddModifier(DownSwizzle);
+				Down.AddModifier(DownNegate);
 
-	FEnhancedActionKeyMapping& Left = MappingContext.MapKey(MoveAction, EKeys::Left);
-	Left.AddModifier(LeftNegate);
+				FEnhancedActionKeyMapping& Left = MappingContext.MapKey(MoveAction, EKeys::Left);
+				Left.AddModifier(LeftNegate);
 
-	FEnhancedActionKeyMapping& Right = MappingContext.MapKey(MoveAction, EKeys::Right);
+				FEnhancedActionKeyMapping& Right = MappingContext.MapKey(MoveAction, EKeys::Right);
 
-	if (MappingContext.GetMappingCount() != 8)
-		return 0;
-	if (MoveAction.GetValueType() != EInputActionValueType::Axis2D)
-		return 0;
-	if (MoveAction.GetAccumulationBehavior() != EInputActionAccumulationBehavior::Cumulative)
-		return 0;
-	if (W.GetAction() != MoveAction || W.GetKey() != EKeys::W || W.GetModifierCount() != 1)
-		return 0;
-	if (S.GetModifierCount() != 2 || A.GetModifierCount() != 1 || D.GetModifierCount() != 0)
-		return 0;
-	if (Up.GetModifierCount() != 1 || Down.GetModifierCount() != 2 || Left.GetModifierCount() != 1 || Right.GetModifierCount() != 0)
-		return 0;
+				if (MappingContext.GetMappingCount() != 8)
+				{
+					return 0;
+				}
+				if (MoveAction.GetValueType() != EInputActionValueType::Axis2D)
+				{
+					return 0;
+				}
+				if (MoveAction.GetAccumulationBehavior() != EInputActionAccumulationBehavior::Cumulative)
+				{
+					return 0;
+				}
+				if (W.GetAction() != MoveAction || W.GetKey() != EKeys::W || W.GetModifierCount() != 1)
+				{
+					return 0;
+				}
+				if (S.GetModifierCount() != 2 || A.GetModifierCount() != 1 || D.GetModifierCount() != 0)
+				{
+					return 0;
+				}
+				if (Up.GetModifierCount() != 1 || Down.GetModifierCount() != 2 || Left.GetModifierCount() != 1 || Right.GetModifierCount() != 0)
+				{
+					return 0;
+				}
 
-	return 1;
-}
-)"));
+				return 1;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		ExpectGlobalInt(*TestRunner, Engine, M, 
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,
 			TEXT("int ConfigureRuntimeMapping()"),
-			TEXT("AS should be able to create an Enhanced Input movement context at runtime"), 1);
+			TEXT("AS should be able to create an Enhanced Input movement context at runtime"), 1), TEXT("AS should be able to create an Enhanced Input movement context at runtime")));
 	}
 
 	TEST_METHOD(EnhancedInputComponentBindActionAcceptsDynamicSignature)
@@ -366,32 +407,32 @@ int ConfigureRuntimeMapping()
 			&Engine,
 			ModuleName,
 			TEXT("ASAnnotatedEnhancedInputDynamicSignature.as"),
-			TEXT(R"(
-UCLASS()
-class ABindActionTestActor : AActor
-{
-	UPROPERTY()
-	UInputAction InputJump;
+			ASTEST_AS(R"AS(
+				UCLASS()
+				class ABindActionTestActor : AActor
+				{
+					UPROPERTY()
+					UInputAction InputJump;
 
-	UFUNCTION()
-	void OnJumpTriggered(FInputActionValue ActionValue, float32 ElapsedTime, float32 TriggeredTime, const UInputAction SourceAction)
-	{
-	}
+					UFUNCTION()
+					void OnJumpTriggered(FInputActionValue ActionValue, float32 ElapsedTime, float32 TriggeredTime, const UInputAction SourceAction)
+					{
+					}
 
-	UFUNCTION()
-	void SetupInput(UEnhancedInputComponent InputComp)
-	{
-		FEnhancedInputActionHandlerDynamicSignature Delegate;
-		Delegate.BindUFunction(this, n"OnJumpTriggered");
-		InputComp.BindAction(InputJump, ETriggerEvent::Triggered, Delegate);
-	}
-}
+					UFUNCTION()
+					void SetupInput(UEnhancedInputComponent InputComp)
+					{
+						FEnhancedInputActionHandlerDynamicSignature Delegate;
+						Delegate.BindUFunction(this, n"OnJumpTriggered");
+						InputComp.BindAction(InputJump, ETriggerEvent::Triggered, Delegate);
+					}
+				}
 
-int BindActionEntry()
-{
-	return 1;
-}
-)"));
+				int BindActionEntry()
+				{
+					return 1;
+				}
+				)AS"));
 		ON_SCOPE_EXIT { Engine.DiscardModule(ModuleName); };
 
 		if (!this->Assert.IsTrue(bCompiled, TEXT("EnhancedInput dynamic signature module should compile")))
@@ -466,25 +507,25 @@ int BindActionEntry()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_RemoveBinding"), TEXT(R"(
-void VerifyRemoveSignatures(UEnhancedInputComponent Comp)
-{
-	Comp.ClearActionEventBindings();
-	Comp.ClearActionValueBindings();
-	Comp.ClearDebugKeyBindings();
-	Comp.ClearActionBindings();
-}
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_RemoveBinding"), ASTEST_AS(R"AS(
+			void VerifyRemoveSignatures(UEnhancedInputComponent Comp)
+			{
+				Comp.ClearActionEventBindings();
+				Comp.ClearActionValueBindings();
+				Comp.ClearDebugKeyBindings();
+				Comp.ClearActionBindings();
+			}
 
-int RemoveBindingEntry()
-{
-	return 1;
-}
-)"));
+			int RemoveBindingEntry()
+			{
+				return 1;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		ExpectGlobalInt(*TestRunner, Engine, M, 
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,
 			TEXT("int RemoveBindingEntry()"),
-			TEXT("Remove/Clear binding signatures should compile"), 1);
+			TEXT("Remove/Clear binding signatures should compile"), 1), TEXT("Remove/Clear binding signatures should compile")));
 	}
 
 	TEST_METHOD(EnhancedInputComponentEditorDelegateFlags)
@@ -492,23 +533,23 @@ int RemoveBindingEntry()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_EditorDelegateFlags"), TEXT(R"(
-void VerifyEditorDelegateFlags(UEnhancedInputComponent Comp)
-{
-	Comp.SetShouldFireDelegatesInEditor(true);
-	bool bFires = Comp.ShouldFireDelegatesInEditor();
-}
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_EditorDelegateFlags"), ASTEST_AS(R"AS(
+			void VerifyEditorDelegateFlags(UEnhancedInputComponent Comp)
+			{
+				Comp.SetShouldFireDelegatesInEditor(true);
+				bool bFires = Comp.ShouldFireDelegatesInEditor();
+			}
 
-int EditorFlagsEntry()
-{
-	return 1;
-}
-)"));
+			int EditorFlagsEntry()
+			{
+				return 1;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
-		ExpectGlobalInt(*TestRunner, Engine, M, 
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,
 			TEXT("int EditorFlagsEntry()"),
-			TEXT("Editor delegate flag API should compile"), 1);
+			TEXT("Editor delegate flag API should compile"), 1), TEXT("Editor delegate flag API should compile")));
 	}
 };
 

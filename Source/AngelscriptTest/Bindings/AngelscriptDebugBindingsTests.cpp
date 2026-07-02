@@ -41,7 +41,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebugBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: Callstack
@@ -52,45 +56,57 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebugBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASDebug_Callstack"), TEXT(R"(
-bool StackContains(const TArray<FString>& Stack, const FString& Needle)
-{
-	for (int Index = 0; Index < Stack.Num(); ++Index)
-	{
-		if (Stack[Index].Contains(Needle))
-		{
-			return true;
-		}
-	}
-	return false;
-}
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASDebug_Callstack"), ASTEST_AS(R"AS(
+			bool StackContains(const TArray<FString>& Stack, const FString& Needle)
+			{
+				for (int Index = 0; Index < Stack.Num(); ++Index)
+				{
+					if (Stack[Index].Contains(Needle))
+					{
+						return true;
+					}
+				}
+				return false;
+			}
 
-int Callstack_ProbeCallstack()
-{
-	TArray<FString> Stack = GetAngelscriptCallstack();
-	FString Formatted = FormatAngelscriptCallstack();
-	if (Stack.Num() < 3)
-		return 0;
-	if (!StackContains(Stack, "Callstack_ProbeCallstack"))
-		return 0;
-	if (!StackContains(Stack, "Callstack_EntryCallstack"))
-		return 0;
-	if (!Formatted.Contains("Callstack_ProbeCallstack"))
-		return 0;
-	if (!Formatted.Contains("Callstack_EntryCallstack"))
-		return 0;
-	return 1;
-}
+			int Callstack_ProbeCallstack()
+			{
+				TArray<FString> Stack = GetAngelscriptCallstack();
+				FString Formatted = FormatAngelscriptCallstack();
+				if (Stack.Num() < 3)
+				{
+					return 0;
+				}
+				if (!StackContains(Stack, "Callstack_ProbeCallstack"))
+				{
+					return 0;
+				}
+				if (!StackContains(Stack, "Callstack_EntryCallstack"))
+				{
+					return 0;
+				}
+				if (!Formatted.Contains("Callstack_ProbeCallstack"))
+				{
+					return 0;
+				}
+				if (!Formatted.Contains("Callstack_EntryCallstack"))
+				{
+					return 0;
+				}
+				return 1;
+			}
 
-int Callstack_EntryCallstack()
-{
-	return Callstack_ProbeCallstack();
-}
-)"));
+			int Callstack_EntryCallstack()
+			{
+				return Callstack_ProbeCallstack();
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Callstack_EntryCallstack()"), TEXT("GetAngelscriptCallstack and FormatAngelscriptCallstack should capture the full call chain"), 1);
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Callstack_EntryCallstack()"), TEXT("GetAngelscriptCallstack and FormatAngelscriptCallstack should capture the full call chain"), 1),
+			TEXT("ExpectGlobalInt should pass")));
 	}
 
 	// ====================================================================
@@ -108,23 +124,23 @@ int Callstack_EntryCallstack()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASDebug_Throw"), TEXT(R"(
-void Throw_ThrowLeaf()
-{
-	throw("DebuggingThrowCompat");
-}
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASDebug_Throw"), ASTEST_AS(R"AS(
+			void Throw_ThrowLeaf()
+			{
+				throw("DebuggingThrowCompat");
+			}
 
-void Throw_ThrowMiddle()
-{
-	Throw_ThrowLeaf();
-}
+			void Throw_ThrowMiddle()
+			{
+				Throw_ThrowLeaf();
+			}
 
-int Throw_Entry()
-{
-	Throw_ThrowMiddle();
-	return 0;
-}
-)"));
+			int Throw_Entry()
+			{
+				Throw_ThrowMiddle();
+				return 0;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

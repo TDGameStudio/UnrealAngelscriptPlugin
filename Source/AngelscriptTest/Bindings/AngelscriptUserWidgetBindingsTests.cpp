@@ -14,8 +14,11 @@
 #if WITH_ANGELSCRIPT_UNITTESTS
 
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptUserWidgetBindingsTest,
+	"Angelscript.TestModule.Bindings.UserWidget",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
 	static constexpr TCHAR FixtureModuleName[] = TEXT("ASUserWidget_Fixture");
 	static constexpr TCHAR FixtureWidgetName[] = TEXT("BindingUserWidget");
 	static constexpr TCHAR MissingTreeWidgetName[] = TEXT("BindingUserWidgetMissingTree");
@@ -73,16 +76,20 @@ namespace
 
 	UClass* CreateFixtureWidgetClass(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 	{
+		const FString FixtureSourceTemplate = ASTEST_AS(R"AS(
+			UCLASS()
+			class $RUNTIME_WIDGET_CLASS$ : UUserWidget
+			{
+			}
+			)AS");
+		FString FixtureSource = FixtureSourceTemplate;
+		FixtureSource.ReplaceInline(TEXT("$RUNTIME_WIDGET_CLASS$"), RuntimeWidgetClassName, ESearchCase::CaseSensitive);
+
 		const bool bCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
 			FName(FixtureModuleName),
 			FString(FixtureModuleName) + TEXT(".as"),
-			FString::Printf(TEXT(R"AS(
-UCLASS()
-class %s : UUserWidget
-{
-}
-)AS"), RuntimeWidgetClassName));
+			FixtureSource);
 		FNoDiscardAsserter LocalAssert(Test);
 		if (!LocalAssert.IsTrue(bCompiled, TEXT("UserWidget fixture class should compile")))
 		{
@@ -155,45 +162,186 @@ class %s : UUserWidget
 
 	FString BuildBasicScript(const FUserWidgetFixture& Fixture)
 	{
-		FString Script = TEXT(R"AS(
-UUserWidget GetFixture() { return Cast<UUserWidget>(FindObject("__WIDGET_PATH__")); }
-UWidget MakeRoot(UUserWidget Widget) { return Widget.ConstructWidget(UTextBlock::StaticClass(), n"__ROOT_NAME__"); }
-int FixtureResolves() { return GetFixture() != null ? 1 : 0; }
-int InitialRootIsNull() { UUserWidget Widget = GetFixture(); return Widget != null && Widget.GetRootWidget() == null ? 1 : 0; }
-int ConstructTextBlockSucceeds() { UUserWidget Widget = GetFixture(); UWidget Root = MakeRoot(Widget); if (Root == null) return 0; Widget.SetRootWidget(Root); Widget.RemoveWidget(Root); return 1; }
-int ConstructedWidgetCastsToTextBlock() { UUserWidget Widget = GetFixture(); UWidget Root = MakeRoot(Widget); bool bOk = Cast<UTextBlock>(Root) != null; Widget.SetRootWidget(Root); Widget.RemoveWidget(Root); return bOk ? 1 : 0; }
-int ConstructedWidgetKeepsName() { UUserWidget Widget = GetFixture(); UWidget Root = MakeRoot(Widget); bool bOk = Root != null && Root.GetName() == n"__ROOT_NAME__"; Widget.SetRootWidget(Root); Widget.RemoveWidget(Root); return bOk ? 1 : 0; }
-int SetRootRoundTrips() { UUserWidget Widget = GetFixture(); UWidget Root = MakeRoot(Widget); Widget.SetRootWidget(Root); bool bOk = Widget.GetRootWidget() == Root; Widget.RemoveWidget(Root); return bOk ? 1 : 0; }
-int GetAllWidgetsCountAfterSet() { UUserWidget Widget = GetFixture(); UWidget Root = MakeRoot(Widget); Widget.SetRootWidget(Root); TArray<UWidget> Widgets; Widget.GetAllWidgets(Widgets); bool bOk = Widgets.Num() == 1; Widget.RemoveWidget(Root); return bOk ? 1 : 0; }
-int GetAllWidgetsIdentityAfterSet() { UUserWidget Widget = GetFixture(); UWidget Root = MakeRoot(Widget); Widget.SetRootWidget(Root); TArray<UWidget> Widgets; Widget.GetAllWidgets(Widgets); bool bOk = Widgets.Num() == 1 && Widgets[0] == Root; Widget.RemoveWidget(Root); return bOk ? 1 : 0; }
-int RemoveRootReturnsTrue() { UUserWidget Widget = GetFixture(); UWidget Root = MakeRoot(Widget); Widget.SetRootWidget(Root); return Widget.RemoveWidget(Root) ? 1 : 0; }
-int RootClearsAfterRemove() { UUserWidget Widget = GetFixture(); UWidget Root = MakeRoot(Widget); Widget.SetRootWidget(Root); Widget.RemoveWidget(Root); return Widget.GetRootWidget() == null ? 1 : 0; }
-int WidgetsClearAfterRemove() { UUserWidget Widget = GetFixture(); UWidget Root = MakeRoot(Widget); Widget.SetRootWidget(Root); Widget.RemoveWidget(Root); TArray<UWidget> Widgets; Widget.GetAllWidgets(Widgets); return Widgets.Num() == 0 ? 1 : 0; }
-)AS");
-		ReplaceToken(Script, TEXT("__WIDGET_PATH__"), EscapeScriptString(Fixture.WidgetPath));
-		ReplaceToken(Script, TEXT("__ROOT_NAME__"), FString(RuntimeRootWidgetName));
-		return Script;
+		FString BasicWidgetSource = ASTEST_AS(R"AS(
+			UUserWidget GetFixture()
+			{
+				return Cast<UUserWidget>(FindObject("__WIDGET_PATH__"));
+			}
+
+			UWidget MakeRoot(UUserWidget Widget)
+			{
+				return Widget.ConstructWidget(UTextBlock::StaticClass(), n"__ROOT_NAME__");
+			}
+
+			int FixtureResolves()
+			{
+				return GetFixture() != null ? 1 : 0;
+			}
+
+			int InitialRootIsNull()
+			{
+				UUserWidget Widget = GetFixture();
+				return Widget != null && Widget.GetRootWidget() == null ? 1 : 0;
+			}
+
+			int ConstructTextBlockSucceeds()
+			{
+				UUserWidget Widget = GetFixture();
+				UWidget Root = MakeRoot(Widget);
+				if (Root == null)
+				{
+					return 0;
+				}
+
+				Widget.SetRootWidget(Root);
+				Widget.RemoveWidget(Root);
+				return 1;
+			}
+
+			int ConstructedWidgetCastsToTextBlock()
+			{
+				UUserWidget Widget = GetFixture();
+				UWidget Root = MakeRoot(Widget);
+				bool bOk = Cast<UTextBlock>(Root) != null;
+				Widget.SetRootWidget(Root);
+				Widget.RemoveWidget(Root);
+				return bOk ? 1 : 0;
+			}
+
+			int ConstructedWidgetKeepsName()
+			{
+				UUserWidget Widget = GetFixture();
+				UWidget Root = MakeRoot(Widget);
+				bool bOk = Root != null && Root.GetName() == n"__ROOT_NAME__";
+				Widget.SetRootWidget(Root);
+				Widget.RemoveWidget(Root);
+				return bOk ? 1 : 0;
+			}
+
+			int SetRootRoundTrips()
+			{
+				UUserWidget Widget = GetFixture();
+				UWidget Root = MakeRoot(Widget);
+				Widget.SetRootWidget(Root);
+				bool bOk = Widget.GetRootWidget() == Root;
+				Widget.RemoveWidget(Root);
+				return bOk ? 1 : 0;
+			}
+
+			int GetAllWidgetsCountAfterSet()
+			{
+				UUserWidget Widget = GetFixture();
+				UWidget Root = MakeRoot(Widget);
+				Widget.SetRootWidget(Root);
+				TArray<UWidget> Widgets;
+				Widget.GetAllWidgets(Widgets);
+				bool bOk = Widgets.Num() == 1;
+				Widget.RemoveWidget(Root);
+				return bOk ? 1 : 0;
+			}
+
+			int GetAllWidgetsIdentityAfterSet()
+			{
+				UUserWidget Widget = GetFixture();
+				UWidget Root = MakeRoot(Widget);
+				Widget.SetRootWidget(Root);
+				TArray<UWidget> Widgets;
+				Widget.GetAllWidgets(Widgets);
+				bool bOk = Widgets.Num() == 1 && Widgets[0] == Root;
+				Widget.RemoveWidget(Root);
+				return bOk ? 1 : 0;
+			}
+
+			int RemoveRootReturnsTrue()
+			{
+				UUserWidget Widget = GetFixture();
+				UWidget Root = MakeRoot(Widget);
+				Widget.SetRootWidget(Root);
+				return Widget.RemoveWidget(Root) ? 1 : 0;
+			}
+
+			int RootClearsAfterRemove()
+			{
+				UUserWidget Widget = GetFixture();
+				UWidget Root = MakeRoot(Widget);
+				Widget.SetRootWidget(Root);
+				Widget.RemoveWidget(Root);
+				return Widget.GetRootWidget() == null ? 1 : 0;
+			}
+
+			int WidgetsClearAfterRemove()
+			{
+				UUserWidget Widget = GetFixture();
+				UWidget Root = MakeRoot(Widget);
+				Widget.SetRootWidget(Root);
+				Widget.RemoveWidget(Root);
+				TArray<UWidget> Widgets;
+				Widget.GetAllWidgets(Widgets);
+				return Widgets.Num() == 0 ? 1 : 0;
+			}
+			)AS");
+		ReplaceToken(BasicWidgetSource, TEXT("__WIDGET_PATH__"), EscapeScriptString(Fixture.WidgetPath));
+		ReplaceToken(BasicWidgetSource, TEXT("__ROOT_NAME__"), FString(RuntimeRootWidgetName));
+		return BasicWidgetSource;
 	}
 
 	FString BuildErrorScript(const FUserWidgetFixture& WithTree, const FUserWidgetFixture& WithoutTree, const UTextBlock& DetachedTextBlock)
 	{
-		FString Script = TEXT(R"AS(
-UUserWidget WithTreeWidget() { return Cast<UUserWidget>(FindObject("__WITH_TREE_PATH__")); }
-UUserWidget WithoutTreeWidget() { return Cast<UUserWidget>(FindObject("__WITHOUT_TREE_PATH__")); }
-UTextBlock DetachedTextBlock() { return Cast<UTextBlock>(FindObject("__TEXT_BLOCK_PATH__")); }
-int FixturesResolve() { return WithTreeWidget() != null && WithoutTreeWidget() != null && DetachedTextBlock() != null ? 1 : 0; }
-int WithTreeRootStartsNull() { UUserWidget Widget = WithTreeWidget(); return Widget != null && Widget.GetRootWidget() == null ? 1 : 0; }
-int InvalidClassConstructRejectsNonWidgetClass() { UUserWidget Widget = WithTreeWidget(); UWidget InvalidWidget = Widget.ConstructWidget(AActor::StaticClass(), n"BadWidget"); return InvalidWidget == null && Widget.GetRootWidget() == null ? 1 : 0; }
-int MissingTreeSetRootNoops() { UUserWidget Widget = WithoutTreeWidget(); UTextBlock TextBlock = DetachedTextBlock(); Widget.SetRootWidget(TextBlock); return Widget.GetRootWidget() == null ? 1 : 0; }
-int MissingTreeRemoveReturnsFalse() { UUserWidget Widget = WithoutTreeWidget(); return Widget.RemoveWidget(DetachedTextBlock()) ? 0 : 1; }
-)AS");
-		ReplaceToken(Script, TEXT("__WITH_TREE_PATH__"), EscapeScriptString(WithTree.WidgetPath));
-		ReplaceToken(Script, TEXT("__WITHOUT_TREE_PATH__"), EscapeScriptString(WithoutTree.WidgetPath));
-		ReplaceToken(Script, TEXT("__TEXT_BLOCK_PATH__"), EscapeScriptString(DetachedTextBlock.GetPathName()));
-		return Script;
+		FString ErrorWidgetSource = ASTEST_AS(R"AS(
+			UUserWidget WithTreeWidget()
+			{
+				return Cast<UUserWidget>(FindObject("__WITH_TREE_PATH__"));
+			}
+
+			UUserWidget WithoutTreeWidget()
+			{
+				return Cast<UUserWidget>(FindObject("__WITHOUT_TREE_PATH__"));
+			}
+
+			UTextBlock DetachedTextBlock()
+			{
+				return Cast<UTextBlock>(FindObject("__TEXT_BLOCK_PATH__"));
+			}
+
+			int FixturesResolve()
+			{
+				return WithTreeWidget() != null && WithoutTreeWidget() != null && DetachedTextBlock() != null ? 1 : 0;
+			}
+
+			int WithTreeRootStartsNull()
+			{
+				UUserWidget Widget = WithTreeWidget();
+				return Widget != null && Widget.GetRootWidget() == null ? 1 : 0;
+			}
+
+			int InvalidClassConstructRejectsNonWidgetClass()
+			{
+				UUserWidget Widget = WithTreeWidget();
+				UWidget InvalidWidget = Widget.ConstructWidget(AActor::StaticClass(), n"BadWidget");
+				return InvalidWidget == null && Widget.GetRootWidget() == null ? 1 : 0;
+			}
+
+			int MissingTreeSetRootNoops()
+			{
+				UUserWidget Widget = WithoutTreeWidget();
+				UTextBlock TextBlock = DetachedTextBlock();
+				Widget.SetRootWidget(TextBlock);
+				return Widget.GetRootWidget() == null ? 1 : 0;
+			}
+
+			int MissingTreeRemoveReturnsFalse()
+			{
+				UUserWidget Widget = WithoutTreeWidget();
+				return Widget.RemoveWidget(DetachedTextBlock()) ? 0 : 1;
+			}
+			)AS");
+		ReplaceToken(ErrorWidgetSource, TEXT("__WITH_TREE_PATH__"), EscapeScriptString(WithTree.WidgetPath));
+		ReplaceToken(ErrorWidgetSource, TEXT("__WITHOUT_TREE_PATH__"), EscapeScriptString(WithoutTree.WidgetPath));
+		ReplaceToken(ErrorWidgetSource, TEXT("__TEXT_BLOCK_PATH__"), EscapeScriptString(DetachedTextBlock.GetPathName()));
+		return ErrorWidgetSource;
 	}
 
-	bool RunWidgetTreeBasicSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
+	bool VerifyWidgetTreeBasic(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 	{
 		UClass* WidgetClass = CreateFixtureWidgetClass(Test, Engine);
 		if (WidgetClass == nullptr)
@@ -234,7 +382,7 @@ int MissingTreeRemoveReturnsFalse() { UUserWidget Widget = WithoutTreeWidget(); 
 		return bPassed;
 	}
 
-	bool RunWidgetTreeErrorSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
+	bool VerifyWidgetTreeErrorPaths(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 	{
 		UClass* WidgetClass = CreateFixtureWidgetClass(Test, Engine);
 		if (WidgetClass == nullptr)
@@ -293,28 +441,26 @@ int MissingTreeRemoveReturnsFalse() { UUserWidget Widget = WithoutTreeWidget(); 
 		bPassed &= LocalAssert.IsNull(DetachedTextBlock->GetParent(), TEXT("UserWidgetTreeErrorPaths detached text block should remain parentless"));
 		return bPassed;
 	}
-}
 
-// ----------------------------------------------------------------------------
-// Test class
-// ----------------------------------------------------------------------------
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptUserWidgetBindingsTest,
-	"Angelscript.TestModule.Bindings.UserWidget",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
-	TEST_METHOD(UserWidgetTreeCompat)
+	TEST_METHOD(UserWidgetTreeBasic)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunWidgetTreeBasicSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyWidgetTreeBasic(*TestRunner, Engine),
+			TEXT("VerifyWidgetTreeBasic should pass")));
 		}
 	}
 
@@ -322,7 +468,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUserWidgetBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunWidgetTreeErrorSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyWidgetTreeErrorPaths(*TestRunner, Engine),
+			TEXT("VerifyWidgetTreeErrorPaths should pass")));
 		}
 	}
 };

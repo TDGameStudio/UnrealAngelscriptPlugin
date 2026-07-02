@@ -45,7 +45,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCollisionValueBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: CollisionShape
@@ -56,69 +60,78 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCollisionValueBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCollisionValue_CollisionShape"), TEXT(R"(
-bool MatchesVector(const FVector InValue, const float X, const float Y, const float Z)
-{
-	return InValue.X == X && InValue.Y == Y && InValue.Z == Z;
-}
+		const FString CollisionShapeSource = ASTEST_AS(R"AS(
+			bool MatchesVector(const FVector InValue, const float X, const float Y, const float Z)
+			{
+				return InValue.X == X && InValue.Y == Y && InValue.Z == Z;
+			}
 
-int Shape_DefaultIsLine()
-{
-	FCollisionShape Shape;
-	return (Shape.IsLine() && Shape.IsNearlyZero() && MatchesVector(Shape.GetExtent(), 0.0f, 0.0f, 0.0f)) ? 1 : 0;
-}
-int Shape_SetBox()
-{
-	FCollisionShape Shape;
-	Shape.SetBox(FVector(10.0f, 20.0f, 30.0f));
-	return (Shape.IsBox() && MatchesVector(Shape.GetBox(), 10.0f, 20.0f, 30.0f) && MatchesVector(Shape.GetExtent(), 10.0f, 20.0f, 30.0f)) ? 1 : 0;
-}
-int Shape_SetSphere()
-{
-	FCollisionShape Shape;
-	Shape.SetSphere(15.0f);
-	return (Shape.IsSphere() && Shape.GetSphereRadius() == 15.0f) ? 1 : 0;
-}
-int Shape_SetCapsule()
-{
-	FCollisionShape Shape;
-	Shape.SetCapsule(7.0f, 12.0f);
-	return (Shape.IsCapsule() && Shape.GetCapsuleRadius() == 7.0f && Shape.GetCapsuleHalfHeight() == 12.0f) ? 1 : 0;
-}
-int Shape_MakeBox()
-{
-	FCollisionShape BoxFactory = FCollisionShape::MakeBox(FVector(10.0f, 20.0f, 30.0f));
-	return (BoxFactory.IsBox() && MatchesVector(BoxFactory.GetBox(), 10.0f, 20.0f, 30.0f)) ? 1 : 0;
-}
-int Shape_MakeSphere()
-{
-	FCollisionShape SphereFactory = FCollisionShape::MakeSphere(15.0f);
-	return (SphereFactory.IsSphere() && SphereFactory.GetSphereRadius() == 15.0f) ? 1 : 0;
-}
-int Shape_MakeCapsule()
-{
-	FCollisionShape CapsuleFactory = FCollisionShape::MakeCapsule(7.0f, 12.0f);
-	return (CapsuleFactory.IsCapsule() && CapsuleFactory.GetCapsuleRadius() == 7.0f && CapsuleFactory.GetCapsuleHalfHeight() == 12.0f) ? 1 : 0;
-}
-int Shape_MinExtents()
-{
-	return (FCollisionShape::MinBoxExtent() > 0.0f
-		&& FCollisionShape::MinSphereRadius() > 0.0f
-		&& FCollisionShape::MinCapsuleRadius() > 0.0f
-		&& FCollisionShape::MinCapsuleAxisHalfHeight() > 0.0f) ? 1 : 0;
-}
-)"));
+			int Shape_DefaultIsLine()
+			{
+				FCollisionShape Shape;
+				return (Shape.IsLine() && Shape.IsNearlyZero() && MatchesVector(Shape.GetExtent(), 0.0f, 0.0f, 0.0f)) ? 1 : 0;
+			}
+
+			int Shape_SetBox()
+			{
+				FCollisionShape Shape;
+				Shape.SetBox(FVector(10.0f, 20.0f, 30.0f));
+				return (Shape.IsBox() && MatchesVector(Shape.GetBox(), 10.0f, 20.0f, 30.0f) && MatchesVector(Shape.GetExtent(), 10.0f, 20.0f, 30.0f)) ? 1 : 0;
+			}
+
+			int Shape_SetSphere()
+			{
+				FCollisionShape Shape;
+				Shape.SetSphere(15.0f);
+				return (Shape.IsSphere() && Shape.GetSphereRadius() == 15.0f) ? 1 : 0;
+			}
+
+			int Shape_SetCapsule()
+			{
+				FCollisionShape Shape;
+				Shape.SetCapsule(7.0f, 12.0f);
+				return (Shape.IsCapsule() && Shape.GetCapsuleRadius() == 7.0f && Shape.GetCapsuleHalfHeight() == 12.0f) ? 1 : 0;
+			}
+
+			int Shape_MakeBox()
+			{
+				FCollisionShape BoxFactory = FCollisionShape::MakeBox(FVector(10.0f, 20.0f, 30.0f));
+				return (BoxFactory.IsBox() && MatchesVector(BoxFactory.GetBox(), 10.0f, 20.0f, 30.0f)) ? 1 : 0;
+			}
+
+			int Shape_MakeSphere()
+			{
+				FCollisionShape SphereFactory = FCollisionShape::MakeSphere(15.0f);
+				return (SphereFactory.IsSphere() && SphereFactory.GetSphereRadius() == 15.0f) ? 1 : 0;
+			}
+
+			int Shape_MakeCapsule()
+			{
+				FCollisionShape CapsuleFactory = FCollisionShape::MakeCapsule(7.0f, 12.0f);
+				return (CapsuleFactory.IsCapsule() && CapsuleFactory.GetCapsuleRadius() == 7.0f && CapsuleFactory.GetCapsuleHalfHeight() == 12.0f) ? 1 : 0;
+			}
+
+			int Shape_MinExtents()
+			{
+				return (FCollisionShape::MinBoxExtent() > 0.0f
+				&& FCollisionShape::MinSphereRadius() > 0.0f
+				&& FCollisionShape::MinCapsuleRadius() > 0.0f
+				&& FCollisionShape::MinCapsuleAxisHalfHeight() > 0.0f) ? 1 : 0;
+			}
+			)AS");
+
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCollisionValue_CollisionShape"), CollisionShapeSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_DefaultIsLine()"), TEXT("default FCollisionShape should be line with zero extent"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_SetBox()"), TEXT("SetBox should configure box shape with correct extents"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_SetSphere()"), TEXT("SetSphere should configure sphere shape with correct radius"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_SetCapsule()"), TEXT("SetCapsule should configure capsule with correct radius and half-height"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_MakeBox()"), TEXT("MakeBox factory should produce a valid box shape"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_MakeSphere()"), TEXT("MakeSphere factory should produce a valid sphere shape"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_MakeCapsule()"), TEXT("MakeCapsule factory should produce a valid capsule shape"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Shape_MinExtents()"), TEXT("min-extent queries should all return positive values"), 1);
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M, TEXT("int Shape_DefaultIsLine()"), TEXT("default FCollisionShape should be line with zero extent"), 1), TEXT("default FCollisionShape should be line with zero extent")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M, TEXT("int Shape_SetBox()"), TEXT("SetBox should configure box shape with correct extents"), 1), TEXT("SetBox should configure box shape with correct extents")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M, TEXT("int Shape_SetSphere()"), TEXT("SetSphere should configure sphere shape with correct radius"), 1), TEXT("SetSphere should configure sphere shape with correct radius")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M, TEXT("int Shape_SetCapsule()"), TEXT("SetCapsule should configure capsule with correct radius and half-height"), 1), TEXT("SetCapsule should configure capsule with correct radius and half-height")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M, TEXT("int Shape_MakeBox()"), TEXT("MakeBox factory should produce a valid box shape"), 1), TEXT("MakeBox factory should produce a valid box shape")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M, TEXT("int Shape_MakeSphere()"), TEXT("MakeSphere factory should produce a valid sphere shape"), 1), TEXT("MakeSphere factory should produce a valid sphere shape")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M, TEXT("int Shape_MakeCapsule()"), TEXT("MakeCapsule factory should produce a valid capsule shape"), 1), TEXT("MakeCapsule factory should produce a valid capsule shape")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M, TEXT("int Shape_MinExtents()"), TEXT("min-extent queries should all return positive values"), 1), TEXT("min-extent queries should all return positive values")));
 	}
 
 	// ====================================================================
@@ -130,70 +143,102 @@ int Shape_MinExtents()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCollisionValue_CollisionResultAccessors"), TEXT(R"(
-bool MatchesVector(const FVector InValue, const float X, const float Y, const float Z)
-{
-	return InValue.X == X && InValue.Y == Y && InValue.Z == Z;
-}
+		const FString CollisionResultAccessorsSource = ASTEST_AS(R"AS(
+			bool MatchesVector(const FVector InValue, const float X, const float Y, const float Z)
+			{
+				return InValue.X == X && InValue.Y == Y && InValue.Z == Z;
+			}
 
-int PopulateCollisionResults(FHitResult& OutHit, FOverlapResult& OutOverlap, AActor ExpectedActor, UPrimitiveComponent ExpectedComponent)
-{
-	int MismatchMask = 0;
+			int PopulateCollisionResults(FHitResult& OutHit, FOverlapResult& OutOverlap, AActor ExpectedActor, UPrimitiveComponent ExpectedComponent)
+			{
+				int MismatchMask = 0;
 
-	OutHit = FHitResult(FVector(-1.0f, 0.0f, 0.0f), FVector(1.0f, 0.0f, 0.0f));
-	OutHit.FaceIndex = 1;
-	OutHit.ElementIndex = 2;
-	OutHit.Item = 3;
-	OutHit.MyItem = 4;
-	OutHit.TraceStart = FVector(-2.0f, 1.0f, 0.0f);
-	OutHit.TraceEnd = FVector(3.0f, 4.0f, 5.0f);
-	OutHit.ImpactPoint = FVector(6.0f, 7.0f, 8.0f);
-	OutHit.ImpactNormal = FVector(0.0f, 0.0f, 1.0f);
-	OutHit.BoneName = n"Bone";
-	OutHit.MyBoneName = n"MyBone";
+				OutHit = FHitResult(FVector(-1.0f, 0.0f, 0.0f), FVector(1.0f, 0.0f, 0.0f));
+				OutHit.FaceIndex = 1;
+				OutHit.ElementIndex = 2;
+				OutHit.Item = 3;
+				OutHit.MyItem = 4;
+				OutHit.TraceStart = FVector(-2.0f, 1.0f, 0.0f);
+				OutHit.TraceEnd = FVector(3.0f, 4.0f, 5.0f);
+				OutHit.ImpactPoint = FVector(6.0f, 7.0f, 8.0f);
+				OutHit.ImpactNormal = FVector(0.0f, 0.0f, 1.0f);
+				OutHit.BoneName = n"Bone";
+				OutHit.MyBoneName = n"MyBone";
 
-	if (OutHit.FaceIndex != 1)
-		MismatchMask |= 1;
-	if (OutHit.ElementIndex != 2)
-		MismatchMask |= 2;
-	if (OutHit.Item != 3)
-		MismatchMask |= 4;
-	if (OutHit.MyItem != 4)
-		MismatchMask |= 8;
-	if (!MatchesVector(OutHit.TraceStart, -2.0f, 1.0f, 0.0f))
-		MismatchMask |= 16;
-	if (!MatchesVector(OutHit.TraceEnd, 3.0f, 4.0f, 5.0f))
-		MismatchMask |= 32;
-	if (!MatchesVector(OutHit.ImpactPoint, 6.0f, 7.0f, 8.0f))
-		MismatchMask |= 64;
-	if (!MatchesVector(OutHit.ImpactNormal, 0.0f, 0.0f, 1.0f))
-		MismatchMask |= 128;
-	if (OutHit.BoneName != n"Bone")
-		MismatchMask |= 256;
-	if (OutHit.MyBoneName != n"MyBone")
-		MismatchMask |= 512;
+				if (OutHit.FaceIndex != 1)
+				{
+					MismatchMask |= 1;
+				}
+				if (OutHit.ElementIndex != 2)
+				{
+					MismatchMask |= 2;
+				}
+				if (OutHit.Item != 3)
+				{
+					MismatchMask |= 4;
+				}
+				if (OutHit.MyItem != 4)
+				{
+					MismatchMask |= 8;
+				}
+				if (!MatchesVector(OutHit.TraceStart, -2.0f, 1.0f, 0.0f))
+				{
+					MismatchMask |= 16;
+				}
+				if (!MatchesVector(OutHit.TraceEnd, 3.0f, 4.0f, 5.0f))
+				{
+					MismatchMask |= 32;
+				}
+				if (!MatchesVector(OutHit.ImpactPoint, 6.0f, 7.0f, 8.0f))
+				{
+					MismatchMask |= 64;
+				}
+				if (!MatchesVector(OutHit.ImpactNormal, 0.0f, 0.0f, 1.0f))
+				{
+					MismatchMask |= 128;
+				}
+				if (OutHit.BoneName != n"Bone")
+				{
+					MismatchMask |= 256;
+				}
+				if (OutHit.MyBoneName != n"MyBone")
+				{
+					MismatchMask |= 512;
+				}
 
-	OutOverlap.ItemIndex = 9;
-	OutOverlap.SetActor(ExpectedActor);
-	OutOverlap.SetComponent(ExpectedComponent);
-	OutOverlap.SetBlockingHit(true);
+				OutOverlap.ItemIndex = 9;
+				OutOverlap.SetActor(ExpectedActor);
+				OutOverlap.SetComponent(ExpectedComponent);
+				OutOverlap.SetBlockingHit(true);
 
-	if (OutOverlap.GetActor() != ExpectedActor)
-		MismatchMask |= 1024;
-	if (OutOverlap.GetComponent() != ExpectedComponent)
-		MismatchMask |= 2048;
-	if (!OutOverlap.GetbBlockingHit())
-		MismatchMask |= 4096;
-	if (OutOverlap.ItemIndex != 9)
-		MismatchMask |= 8192;
+				if (OutOverlap.GetActor() != ExpectedActor)
+				{
+					MismatchMask |= 1024;
+				}
+				if (OutOverlap.GetComponent() != ExpectedComponent)
+				{
+					MismatchMask |= 2048;
+				}
+				if (!OutOverlap.GetbBlockingHit())
+				{
+					MismatchMask |= 4096;
+				}
+				if (OutOverlap.ItemIndex != 9)
+				{
+					MismatchMask |= 8192;
+				}
 
-	OutOverlap.SetBlockingHit(false);
-	if (OutOverlap.GetbBlockingHit())
-		MismatchMask |= 16384;
+				OutOverlap.SetBlockingHit(false);
+				if (OutOverlap.GetbBlockingHit())
+				{
+					MismatchMask |= 16384;
+				}
 
-	return MismatchMask;
-}
-)"));
+				return MismatchMask;
+			}
+			)AS");
+
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCollisionValue_CollisionResultAccessors"), CollisionResultAccessorsSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

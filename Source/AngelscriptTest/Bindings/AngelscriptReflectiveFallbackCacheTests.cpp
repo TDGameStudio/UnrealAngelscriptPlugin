@@ -52,27 +52,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptReflectiveFallbackCacheTest,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
-// Build the AS namespace prefix used for static UFUNCTIONs that reach the
-// reflective fallback.
-static FString GetPathsLibraryCallPrefix(FAutomationTestBase& Test)
-{
-	UClass* LibraryClass = UBlueprintPathsLibrary::StaticClass();
-	UFunction* RepresentativeFunction = LibraryClass->FindFunctionByName(TEXT("GetBaseFilename"));
-	TSharedPtr<FAngelscriptType> LibraryType = FAngelscriptType::GetByClass(LibraryClass);
-	FNoDiscardAsserter LocalAssert(Test);
-	if (!LocalAssert.IsTrue(LibraryType.IsValid(), TEXT("BlueprintPathsLibrary type should resolve")))
+	// Build the AS namespace prefix used for static UFUNCTIONs that reach the
+	// reflective fallback.
+	static FString BuildPathsLibraryCallPrefix(FAutomationTestBase& Test)
 	{
-		return FString();
-	}
+		UClass* LibraryClass = UBlueprintPathsLibrary::StaticClass();
+		UFunction* RepresentativeFunction = LibraryClass->FindFunctionByName(TEXT("GetBaseFilename"));
+		TSharedPtr<FAngelscriptType> LibraryType = FAngelscriptType::GetByClass(LibraryClass);
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsTrue(LibraryType.IsValid(), TEXT("BlueprintPathsLibrary type should resolve")))
+		{
+			return FString();
+		}
 
-	if (!LocalAssert.IsNotNull(RepresentativeFunction, TEXT("GetBaseFilename should exist on BlueprintPathsLibrary")))
-	{
-		return FString();
-	}
+		if (!LocalAssert.IsNotNull(RepresentativeFunction, TEXT("GetBaseFilename should exist on BlueprintPathsLibrary")))
+		{
+			return FString();
+		}
 
-	const FString Namespace = FAngelscriptFunctionSignature::GetScriptNamespaceForClass(LibraryType.ToSharedRef(), RepresentativeFunction);
-	return Namespace.IsEmpty() ? FString() : Namespace + TEXT("::");
-}
+		const FString Namespace = FAngelscriptFunctionSignature::GetScriptNamespaceForClass(LibraryType.ToSharedRef(), RepresentativeFunction);
+		return Namespace.IsEmpty() ? FString() : Namespace + TEXT("::");
+	}
 
 public:
 	BEFORE_ALL()
@@ -92,20 +92,22 @@ public:
 
 	TEST_METHOD(PODScalar)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
+		const FString CallPrefix = BuildPathsLibraryCallPrefix(*TestRunner);
 		if (CallPrefix.IsEmpty()) return;
 
-		FString Script = FString::Printf(TEXT(R"(
-int RunPODScalar()
-{
-	return %sIsRelative("Relative/Cache.txt") ? 1 : 0;
-}
-)"), *CallPrefix);
+		const FString ScriptTemplate = ASTEST_AS(R"AS(
+			int RunPODScalar()
+			{
+				return $CALL_PREFIX$IsRelative("Relative/Cache.txt") ? 1 : 0;
+			}
+			)AS");
+		FString PODScalarSource = ScriptTemplate;
+		PODScalarSource.ReplaceInline(TEXT("$CALL_PREFIX$"), *CallPrefix, ESearchCase::CaseSensitive);
 
-		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASRefCachePODScalar", Script);
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASRefCachePODScalar", PODScalarSource);
 		if (Module == nullptr) return;
 
 		asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("int RunPODScalar()"));
@@ -123,22 +125,27 @@ int RunPODScalar()
 
 	TEST_METHOD(NonPOD)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
+		const FString CallPrefix = BuildPathsLibraryCallPrefix(*TestRunner);
 		if (CallPrefix.IsEmpty()) return;
 
-		FString Script = FString::Printf(TEXT(R"(
-int RunNonPOD()
-{
-	FString Clean = %sGetCleanFilename("C:/Reflective/Fallback/Cache.txt");
-	if (Clean != "Cache.txt") return 10;
-	return 1;
-}
-)"), *CallPrefix);
+		const FString ScriptTemplate = ASTEST_AS(R"AS(
+			int RunNonPOD()
+			{
+				FString Clean = $CALL_PREFIX$GetCleanFilename("C:/Reflective/Fallback/Cache.txt");
+				if (Clean != "Cache.txt")
+				{
+					return 10;
+				}
+				return 1;
+			}
+			)AS");
+		FString NonPODSource = ScriptTemplate;
+		NonPODSource.ReplaceInline(TEXT("$CALL_PREFIX$"), *CallPrefix, ESearchCase::CaseSensitive);
 
-		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASRefCacheNonPOD", Script);
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASRefCacheNonPOD", NonPODSource);
 		if (Module == nullptr) return;
 
 		asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("int RunNonPOD()"));
@@ -160,27 +167,38 @@ int RunNonPOD()
 
 	TEST_METHOD(OutParam)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
+		const FString CallPrefix = BuildPathsLibraryCallPrefix(*TestRunner);
 		if (CallPrefix.IsEmpty()) return;
 
-		FString Script = FString::Printf(TEXT(R"(
-int RunOutParam()
-{
-	FString Path;
-	FString Filename;
-	FString Extension;
-	%sSplit("C:/Reflective/Fallback/Cache.txt", Path, Filename, Extension);
-	if (Path != "C:/Reflective/Fallback") return 10;
-	if (Filename != "Cache") return 20;
-	if (Extension != "txt") return 30;
-	return 1;
-}
-)"), *CallPrefix);
+		const FString ScriptTemplate = ASTEST_AS(R"AS(
+			int RunOutParam()
+			{
+				FString Path;
+				FString Filename;
+				FString Extension;
+				$CALL_PREFIX$Split("C:/Reflective/Fallback/Cache.txt", Path, Filename, Extension);
+				if (Path != "C:/Reflective/Fallback")
+				{
+					return 10;
+				}
+				if (Filename != "Cache")
+				{
+					return 20;
+				}
+				if (Extension != "txt")
+				{
+					return 30;
+				}
+				return 1;
+			}
+			)AS");
+		FString OutParamSource = ScriptTemplate;
+		OutParamSource.ReplaceInline(TEXT("$CALL_PREFIX$"), *CallPrefix, ESearchCase::CaseSensitive);
 
-		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASRefCacheOutParam", Script);
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASRefCacheOutParam", OutParamSource);
 		if (Module == nullptr) return;
 
 		asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("int RunOutParam()"));
@@ -198,22 +216,27 @@ int RunOutParam()
 
 	TEST_METHOD(Return)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
+		const FString CallPrefix = BuildPathsLibraryCallPrefix(*TestRunner);
 		if (CallPrefix.IsEmpty()) return;
 
-		FString Script = FString::Printf(TEXT(R"(
-int RunReturn()
-{
-	FString Base = %sGetBaseFilename("C:/Reflective/Fallback/Cache.txt", true);
-	if (Base != "Cache") return 10;
-	return 1;
-}
-)"), *CallPrefix);
+		const FString ScriptTemplate = ASTEST_AS(R"AS(
+			int RunReturn()
+			{
+				FString Base = $CALL_PREFIX$GetBaseFilename("C:/Reflective/Fallback/Cache.txt", true);
+				if (Base != "Cache")
+				{
+					return 10;
+				}
+				return 1;
+			}
+			)AS");
+		FString ReturnValueSource = ScriptTemplate;
+		ReturnValueSource.ReplaceInline(TEXT("$CALL_PREFIX$"), *CallPrefix, ESearchCase::CaseSensitive);
 
-		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASRefCacheReturn", Script);
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASRefCacheReturn", ReturnValueSource);
 		if (Module == nullptr) return;
 
 		asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("int RunReturn()"));
@@ -237,24 +260,32 @@ int RunReturn()
 
 	TEST_METHOD(MixinObject)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
+		const FString CallPrefix = BuildPathsLibraryCallPrefix(*TestRunner);
 		if (CallPrefix.IsEmpty()) return;
 
-		FString Script = FString::Printf(TEXT(R"(
-int RunMixin()
-{
-	FString Clean = %sGetCleanFilename("C:/Reflective/Fallback/Cache.txt");
-	bool bRelative = %sIsRelative("Relative/Cache.txt");
-	if (Clean != "Cache.txt") return 10;
-	if (!bRelative) return 20;
-	return 1;
-}
-)"), *CallPrefix, *CallPrefix);
+		const FString ScriptTemplate = ASTEST_AS(R"AS(
+			int RunMixin()
+			{
+				FString Clean = $CALL_PREFIX$GetCleanFilename("C:/Reflective/Fallback/Cache.txt");
+				bool bRelative = $CALL_PREFIX$IsRelative("Relative/Cache.txt");
+				if (Clean != "Cache.txt")
+				{
+					return 10;
+				}
+				if (!bRelative)
+				{
+					return 20;
+				}
+				return 1;
+			}
+			)AS");
+		FString MixinObjectSource = ScriptTemplate;
+		MixinObjectSource.ReplaceInline(TEXT("$CALL_PREFIX$"), *CallPrefix, ESearchCase::CaseSensitive);
 
-		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASRefCacheMixin", Script);
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASRefCacheMixin", MixinObjectSource);
 		if (Module == nullptr) return;
 
 		asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("int RunMixin()"));
@@ -278,27 +309,32 @@ int RunMixin()
 
 	TEST_METHOD(CacheReuse)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
+		const FString CallPrefix = BuildPathsLibraryCallPrefix(*TestRunner);
 		if (CallPrefix.IsEmpty()) return;
 
-		FString Script = FString::Printf(TEXT(R"(
-int RunCacheReuse()
-{
-	int TotalCount = 0;
-	for (int Index = 0; Index < 32; ++Index)
-	{
-		FString Clean = %sGetCleanFilename("C:/Reflective/Fallback/Cache.txt");
-		TotalCount += Clean.Len();
-	}
-	if (TotalCount != 288) return 10;
-	return 1;
-}
-)"), *CallPrefix);
+		const FString ScriptTemplate = ASTEST_AS(R"AS(
+			int RunCacheReuse()
+			{
+				int TotalCount = 0;
+				for (int Index = 0; Index < 32; ++Index)
+				{
+					FString Clean = $CALL_PREFIX$GetCleanFilename("C:/Reflective/Fallback/Cache.txt");
+					TotalCount += Clean.Len();
+				}
+				if (TotalCount != 288)
+				{
+					return 10;
+				}
+				return 1;
+			}
+			)AS");
+		FString CacheReuseSource = ScriptTemplate;
+		CacheReuseSource.ReplaceInline(TEXT("$CALL_PREFIX$"), *CallPrefix, ESearchCase::CaseSensitive);
 
-		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASRefCacheReuse", Script);
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASRefCacheReuse", CacheReuseSource);
 		if (Module == nullptr) return;
 
 		asIScriptFunction* Function = GetFunctionByDecl(*TestRunner, *Module, TEXT("int RunCacheReuse()"));
@@ -341,34 +377,35 @@ int RunCacheReuse()
 
 	TEST_METHOD(CVarParityCachedVsProcessEvent)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
 
-		const FString CallPrefix = GetPathsLibraryCallPrefix(*TestRunner);
+		const FString CallPrefix = BuildPathsLibraryCallPrefix(*TestRunner);
 		if (CallPrefix.IsEmpty()) return;
 
 		// Composite checksum exercising cached and legacy dispatch with
 		// repeated POD scalar and FString-return calls. Out-param writeback is
 		// covered by the dedicated OutParam section above.
-		FString Script = FString::Printf(TEXT(R"(
-int RunParity()
-{
-	int Acc = 0;
-	for (int Index = 0; Index < 8; ++Index)
-	{
-		bool bRelative = %sIsRelative("Relative/Cache.txt");
-		Acc += bRelative ? 100 : 0;
+		const FString ScriptTemplate = ASTEST_AS(R"AS(
+			int RunParity()
+			{
+				int Acc = 0;
+				for (int Index = 0; Index < 8; ++Index)
+				{
+					bool bRelative = $CALL_PREFIX$IsRelative("Relative/Cache.txt");
+					Acc += bRelative ? 100 : 0;
 
-		FString Clean = %sGetCleanFilename("C:/Reflective/Fallback/Cache.txt");
-		Acc += Clean.Len();
+					FString Clean = $CALL_PREFIX$GetCleanFilename("C:/Reflective/Fallback/Cache.txt");
+					Acc += Clean.Len();
 
-		FString Base = %sGetBaseFilename("C:/Reflective/Fallback/Cache.txt", true);
-		Acc += Base.Len() * 7;
-	}
-	return Acc;
-}
-)"),
-			*CallPrefix, *CallPrefix, *CallPrefix);
+					FString Base = $CALL_PREFIX$GetBaseFilename("C:/Reflective/Fallback/Cache.txt", true);
+					Acc += Base.Len() * 7;
+				}
+				return Acc;
+			}
+			)AS");
+		FString CVarParitySource = ScriptTemplate;
+		CVarParitySource.ReplaceInline(TEXT("$CALL_PREFIX$"), *CallPrefix, ESearchCase::CaseSensitive);
 
 		// Capture the CVar so we leave it exactly as we found it. The CVar is
 		// owned by AngelscriptRuntime (registered in BlueprintCallableReflectiveFallback.cpp).
@@ -379,7 +416,7 @@ int RunParity()
 
 		// --- Cached path (CVar = 1) ---
 		CVar->Set(1, ECVF_SetByCode);
-		asIScriptModule* CachedModule = BuildModule(*TestRunner, Engine, "ASRefCacheParityCached", Script);
+		asIScriptModule* CachedModule = BuildModule(*TestRunner, Engine, "ASRefCacheParityCached", CVarParitySource);
 		if (CachedModule == nullptr) return;
 		asIScriptFunction* CachedFunction = GetFunctionByDecl(*TestRunner, *CachedModule, TEXT("int RunParity()"));
 		if (CachedFunction == nullptr) return;
@@ -388,7 +425,7 @@ int RunParity()
 
 		// --- Legacy ProcessEvent path (CVar = 0) ---
 		CVar->Set(0, ECVF_SetByCode);
-		asIScriptModule* LegacyModule = BuildModule(*TestRunner, Engine, "ASRefCacheParityLegacy", Script);
+		asIScriptModule* LegacyModule = BuildModule(*TestRunner, Engine, "ASRefCacheParityLegacy", CVarParitySource);
 		if (LegacyModule == nullptr) return;
 		asIScriptFunction* LegacyFunction = GetFunctionByDecl(*TestRunner, *LegacyModule, TEXT("int RunParity()"));
 		if (LegacyFunction == nullptr) return;

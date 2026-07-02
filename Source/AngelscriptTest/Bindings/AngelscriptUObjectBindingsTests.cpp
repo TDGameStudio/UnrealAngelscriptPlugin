@@ -48,35 +48,38 @@
 // Sections — each section uses AS→C++ cross-validation
 // ============================================================================
 
-namespace
+namespace AngelscriptUObjectBindingsTestPrivate
 {
 	// -----------------------------------------------------------------------
 	// Section: CreateAndIdentity
 	//   AS creates object with name → returns to C++ → C++ verifies GetName,
 	//   GetClass, GetFullName, GetPathName on the real UObject pointer.
 	// -----------------------------------------------------------------------
-	bool RunCreateAndIdentitySection(
+	bool VerifyCreateAndIdentity(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_CreateIdentity"), TEXT(R"(
-UObject CreateNamedObject()
-{
-	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"UObjBindTest_Identity");
-}
-FName ScriptGetName(UObject Obj)
-{
-	return Obj.GetName();
-}
-FString ScriptGetFullName(UObject Obj)
-{
-	return Obj.GetFullName();
-}
-FString ScriptGetPathName(UObject Obj)
-{
-	return Obj.GetPathName();
-}
-)"));
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_CreateIdentity"), ASTEST_AS(R"AS(
+			UObject CreateNamedObject()
+			{
+				return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"UObjBindTest_Identity");
+			}
+
+			FName ScriptGetName(UObject Obj)
+			{
+				return Obj.GetName();
+			}
+
+			FString ScriptGetFullName(UObject Obj)
+			{
+				return Obj.GetFullName();
+			}
+
+			FString ScriptGetPathName(UObject Obj)
+			{
+				return Obj.GetPathName();
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 		FNoDiscardAsserter LocalAssert(Test);
@@ -135,32 +138,36 @@ FString ScriptGetPathName(UObject Obj)
 	//   AS creates object → returns to C++ → C++ verifies Outer/Package chain.
 	//   AS queries GetOuter/GetPackage → returns to C++ for comparison.
 	// -----------------------------------------------------------------------
-	bool RunHierarchyAndOuterSection(
+	bool VerifyHierarchyAndOuter(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_Hierarchy"), TEXT(R"(
-UObject CreateInTransient()
-{
-	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"UObjBindTest_Hierarchy");
-}
-UObject ScriptGetOuter(UObject Obj)
-{
-	return Obj.GetOuter();
-}
-UObject ScriptGetPackage(UObject Obj)
-{
-	return Obj.GetPackage();
-}
-UObject ScriptGetOutermost(UObject Obj)
-{
-	return Obj.GetOutermost();
-}
-UClass ScriptGetClass(UObject Obj)
-{
-	return Obj.GetClass();
-}
-)"));
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_Hierarchy"), ASTEST_AS(R"AS(
+			UObject CreateInTransient()
+			{
+				return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"UObjBindTest_Hierarchy");
+			}
+
+			UObject ScriptGetOuter(UObject Obj)
+			{
+				return Obj.GetOuter();
+			}
+
+			UObject ScriptGetPackage(UObject Obj)
+			{
+				return Obj.GetPackage();
+			}
+
+			UObject ScriptGetOutermost(UObject Obj)
+			{
+				return Obj.GetOutermost();
+			}
+
+			UClass ScriptGetClass(UObject Obj)
+			{
+				return Obj.GetClass();
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 		FNoDiscardAsserter LocalAssert(Test);
@@ -237,40 +244,46 @@ UClass ScriptGetClass(UObject Obj)
 	//   AS creates ACameraActor → returns to C++ → C++ verifies IsA/Cast.
 	//   AS does Cast<ACameraActor> → returns result to C++ → C++ verifies.
 	// -----------------------------------------------------------------------
-	bool RunTypeQueryAndCastSection(
+	bool VerifyTypeQueryAndCast(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_TypeQuery"), TEXT(R"(
-UObject CreateCamera()
-{
-	return NewObject(GetTransientPackage(), ACameraActor::StaticClass(), n"UObjBindTest_Camera");
-}
-UObject ScriptCastToActor(UObject Obj)
-{
-	return Cast<AActor>(Obj);
-}
-UObject ScriptCastToCamera(UObject Obj)
-{
-	return Cast<ACameraActor>(Obj);
-}
-UObject ScriptCastToTexture(UObject Obj)
-{
-	return Cast<UTexture2D>(Obj);
-}
-int ScriptIsA_Actor(UObject Obj)
-{
-	return Obj.IsA(AActor::StaticClass()) ? 1 : 0;
-}
-int ScriptIsA_Camera(UObject Obj)
-{
-	return Obj.IsA(ACameraActor::StaticClass()) ? 1 : 0;
-}
-int ScriptIsA_Texture(UObject Obj)
-{
-	return Obj.IsA(UTexture2D::StaticClass()) ? 1 : 0;
-}
-)"));
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_TypeQuery"), ASTEST_AS(R"AS(
+			UObject CreateCamera()
+			{
+				return NewObject(GetTransientPackage(), ACameraActor::StaticClass(), n"UObjBindTest_Camera");
+			}
+
+			UObject ScriptCastToActor(UObject Obj)
+			{
+				return Cast<AActor>(Obj);
+			}
+
+			UObject ScriptCastToCamera(UObject Obj)
+			{
+				return Cast<ACameraActor>(Obj);
+			}
+
+			UObject ScriptCastToTexture(UObject Obj)
+			{
+				return Cast<UTexture2D>(Obj);
+			}
+
+			int ScriptIsA_Actor(UObject Obj)
+			{
+				return Obj.IsA(AActor::StaticClass()) ? 1 : 0;
+			}
+
+			int ScriptIsA_Camera(UObject Obj)
+			{
+				return Obj.IsA(ACameraActor::StaticClass()) ? 1 : 0;
+			}
+
+			int ScriptIsA_Texture(UObject Obj)
+			{
+				return Obj.IsA(UTexture2D::StaticClass()) ? 1 : 0;
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 		FNoDiscardAsserter LocalAssert(Test);
@@ -356,24 +369,26 @@ int ScriptIsA_Texture(UObject Obj)
 	//   AS creates named object → C++ uses FindObject to verify.
 	//   C++ creates object → passes to AS FindObject → verifies round-trip.
 	// -----------------------------------------------------------------------
-	bool RunFindAndLookupSection(
+	bool VerifyFindAndLookup(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_FindLookup"), TEXT(R"(
-UObject CreateNamedForFind()
-{
-	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"UObjBindTest_Find");
-}
-UObject ScriptFindByPath(const FString& in Path)
-{
-	return FindObject(Path);
-}
-UObject ScriptFindWithOuter(UObject Outer, const FString& in Name)
-{
-	return FindObject(Outer, Name);
-}
-)"));
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_FindLookup"), ASTEST_AS(R"AS(
+			UObject CreateNamedForFind()
+			{
+				return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"UObjBindTest_Find");
+			}
+
+			UObject ScriptFindByPath(const FString& in Path)
+			{
+				return FindObject(Path);
+			}
+
+			UObject ScriptFindWithOuter(UObject Outer, const FString& in Name)
+			{
+				return FindObject(Outer, Name);
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 		FNoDiscardAsserter LocalAssert(Test);
@@ -435,28 +450,31 @@ UObject ScriptFindWithOuter(UObject Outer, const FString& in Name)
 	//   AS creates object → AS AddToRoot → C++ verifies IsRooted.
 	//   AS RemoveFromRoot → C++ verifies not rooted.
 	// -----------------------------------------------------------------------
-	bool RunRootLifecycleSection(
+	bool VerifyRootLifecycle(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_RootLifecycle"), TEXT(R"(
-UObject CreateForRoot()
-{
-	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"UObjBindTest_Root");
-}
-void ScriptAddToRoot(UObject Obj)
-{
-	Obj.AddToRoot();
-}
-void ScriptRemoveFromRoot(UObject Obj)
-{
-	Obj.RemoveFromRoot();
-}
-int ScriptGetIsRooted(UObject Obj)
-{
-	return Obj.GetIsRooted() ? 1 : 0;
-}
-)"));
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_RootLifecycle"), ASTEST_AS(R"AS(
+			UObject CreateForRoot()
+			{
+				return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"UObjBindTest_Root");
+			}
+
+			void ScriptAddToRoot(UObject Obj)
+			{
+				Obj.AddToRoot();
+			}
+
+			void ScriptRemoveFromRoot(UObject Obj)
+			{
+				Obj.RemoveFromRoot();
+			}
+
+			int ScriptGetIsRooted(UObject Obj)
+			{
+				return Obj.GetIsRooted() ? 1 : 0;
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 		FNoDiscardAsserter LocalAssert(Test);
@@ -534,28 +552,31 @@ int ScriptGetIsRooted(UObject Obj)
 	//   AS calls SetTransactional(true) → C++ verifies RF_Transactional.
 	//   AS calls SetTransactional(false) → C++ verifies flag cleared.
 	// -----------------------------------------------------------------------
-	bool RunFlagMutationSection(
+	bool VerifyFlagMutation(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_FlagMutation"), TEXT(R"(
-UObject CreateTransient()
-{
-	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), NAME_None, true);
-}
-UObject CreateNonTransient()
-{
-	return NewObject(GetTransientPackage(), UTexture2D::StaticClass());
-}
-void ScriptSetTransactional(UObject Obj, bool bValue)
-{
-	Obj.SetTransactional(bValue);
-}
-int ScriptIsTransient(UObject Obj)
-{
-	return Obj.IsTransient() ? 1 : 0;
-}
-)"));
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_FlagMutation"), ASTEST_AS(R"AS(
+			UObject CreateTransient()
+			{
+				return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), NAME_None, true);
+			}
+
+			UObject CreateNonTransient()
+			{
+				return NewObject(GetTransientPackage(), UTexture2D::StaticClass());
+			}
+
+			void ScriptSetTransactional(UObject Obj, bool bValue)
+			{
+				Obj.SetTransactional(bValue);
+			}
+
+			int ScriptIsTransient(UObject Obj)
+			{
+				return Obj.IsTransient() ? 1 : 0;
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 		FNoDiscardAsserter LocalAssert(Test);
@@ -643,43 +664,48 @@ int ScriptIsTransient(UObject Obj)
 	//   Script-side null handling + IsValid + object comparison.
 	//   These stay as pure-AS since null doesn't cross the boundary meaningfully.
 	// -----------------------------------------------------------------------
-	bool RunNullAndIsValidSection(
+	bool VerifyNullAndIsValid(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_NullValid"), TEXT(R"(
-int IsValid_ValidObjectTrue()
-{
-	UObject Obj = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
-	return IsValid(Obj) ? 1 : 0;
-}
-int IsValid_NullLiteralFalse()
-{
-	return IsValid(null) ? 1 : 0;
-}
-int NullComparison_ValidNotEqualNull()
-{
-	UObject Obj = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
-	return (Obj != null) ? 1 : 0;
-}
-int NullComparison_ValidEqualsNullIsFalse()
-{
-	UObject Obj = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
-	return (Obj == null) ? 1 : 0;
-}
-int NullComparison_TwoValidSameInstance()
-{
-	UObject Obj = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
-	UObject Ref = Obj;
-	return (Obj == Ref) ? 1 : 0;
-}
-int NullComparison_TwoValidDifferent()
-{
-	UObject A = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
-	UObject B = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
-	return (A != B) ? 1 : 0;
-}
-)"));
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_NullValid"), ASTEST_AS(R"AS(
+			int IsValid_ValidObjectTrue()
+			{
+				UObject Obj = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
+				return IsValid(Obj) ? 1 : 0;
+			}
+
+			int IsValid_NullLiteralFalse()
+			{
+				return IsValid(null) ? 1 : 0;
+			}
+
+			int NullComparison_ValidNotEqualNull()
+			{
+				UObject Obj = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
+				return (Obj != null) ? 1 : 0;
+			}
+
+			int NullComparison_ValidEqualsNullIsFalse()
+			{
+				UObject Obj = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
+				return (Obj == null) ? 1 : 0;
+			}
+
+			int NullComparison_TwoValidSameInstance()
+			{
+				UObject Obj = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
+				UObject Ref = Obj;
+				return (Obj == Ref) ? 1 : 0;
+			}
+
+			int NullComparison_TwoValidDifferent()
+			{
+				UObject A = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
+				UObject B = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
+				return (A != B) ? 1 : 0;
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 
@@ -703,52 +729,61 @@ int NullComparison_TwoValidDifferent()
 	//   AS creates objects with different parameter combos → returns to C++
 	//   → C++ validates name, class, outer, and flags on each.
 	// -----------------------------------------------------------------------
-	bool RunNewObjectVariantsSection(
+	bool VerifyNewObjectVariants(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_NewObjVar"), TEXT(R"(
-UObject Create_DefaultName()
-{
-	return NewObject(GetTransientPackage(), UTexture2D::StaticClass());
-}
-UObject Create_ExplicitName()
-{
-	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"NOV_Named_42");
-}
-UObject Create_TransientTrue()
-{
-	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"NOV_Trans_42", true);
-}
-UObject Create_TransientFalse()
-{
-	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"NOV_NonTrans_42", false);
-}
-UObject Create_NAMENone_Explicit()
-{
-	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), NAME_None, false);
-}
-UObject Create_CameraActor()
-{
-	return NewObject(GetTransientPackage(), ACameraActor::StaticClass(), n"NOV_Camera_42");
-}
-FName GetNameOf(UObject Obj)
-{
-	return Obj.GetName();
-}
-FString GetFullNameOf(UObject Obj)
-{
-	return Obj.GetFullName();
-}
-FString GetPathNameOf(UObject Obj)
-{
-	return Obj.GetPathName();
-}
-bool GetIsTransient(UObject Obj)
-{
-	return Obj.IsTransient();
-}
-)"));
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_NewObjVar"), ASTEST_AS(R"AS(
+			UObject Create_DefaultName()
+			{
+				return NewObject(GetTransientPackage(), UTexture2D::StaticClass());
+			}
+
+			UObject Create_ExplicitName()
+			{
+				return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"NOV_Named_42");
+			}
+
+			UObject Create_TransientTrue()
+			{
+				return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"NOV_Trans_42", true);
+			}
+
+			UObject Create_TransientFalse()
+			{
+				return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"NOV_NonTrans_42", false);
+			}
+
+			UObject Create_NAMENone_Explicit()
+			{
+				return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), NAME_None, false);
+			}
+
+			UObject Create_CameraActor()
+			{
+				return NewObject(GetTransientPackage(), ACameraActor::StaticClass(), n"NOV_Camera_42");
+			}
+
+			FName GetNameOf(UObject Obj)
+			{
+				return Obj.GetName();
+			}
+
+			FString GetFullNameOf(UObject Obj)
+			{
+				return Obj.GetFullName();
+			}
+
+			FString GetPathNameOf(UObject Obj)
+			{
+				return Obj.GetPathName();
+			}
+
+			bool GetIsTransient(UObject Obj)
+			{
+				return Obj.IsTransient();
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 		FNoDiscardAsserter LocalAssert(Test);
@@ -933,52 +968,59 @@ bool GetIsTransient(UObject Obj)
 	//   AS calls these methods → returns to C++ → C++ verifies against
 	//   direct UClass API calls.
 	// -----------------------------------------------------------------------
-	bool RunClassReflectionSection(
+	bool VerifyClassReflection(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_ClassRefl"), TEXT(R"(
-UObject GetCDO_Texture2D()
-{
-	return UTexture2D::StaticClass().GetDefaultObject();
-}
-UClass GetSuper_CameraActor()
-{
-	return ACameraActor::StaticClass().GetSuperClass();
-}
-bool IsChildOf_CameraIsActor()
-{
-	return ACameraActor::StaticClass().IsChildOf(AActor::StaticClass());
-}
-bool IsChildOf_ActorIsCamera()
-{
-	return AActor::StaticClass().IsChildOf(ACameraActor::StaticClass());
-}
-bool IsChildOf_SameClass()
-{
-	return AActor::StaticClass().IsChildOf(AActor::StaticClass());
-}
-bool IsAbstract_AActor()
-{
-	return AActor::StaticClass().IsAbstract();
-}
-bool IsAbstract_CameraActor()
-{
-	return ACameraActor::StaticClass().IsAbstract();
-}
-UFunction FindFunc_Actor_ReceiveTick()
-{
-	return AActor::StaticClass().FindFunctionByName(n"ReceiveTick");
-}
-UFunction FindFunc_Actor_Nonexistent()
-{
-	return AActor::StaticClass().FindFunctionByName(n"ThisFunctionDoesNotExist_XYZ");
-}
-FString GetClassName(UObject Obj)
-{
-	return Obj.GetClass().GetName().ToString();
-}
-)"));
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_ClassRefl"), ASTEST_AS(R"AS(
+			UObject GetCDO_Texture2D()
+			{
+				return UTexture2D::StaticClass().GetDefaultObject();
+			}
+
+			UClass GetSuper_CameraActor()
+			{
+				return ACameraActor::StaticClass().GetSuperClass();
+			}
+
+			bool IsChildOf_CameraIsActor()
+			{
+				return ACameraActor::StaticClass().IsChildOf(AActor::StaticClass());
+			}
+
+			bool IsChildOf_ActorIsCamera()
+			{
+				return AActor::StaticClass().IsChildOf(ACameraActor::StaticClass());
+			}
+
+			bool IsChildOf_SameClass()
+			{
+				return AActor::StaticClass().IsChildOf(AActor::StaticClass());
+			}
+
+			bool IsAbstract_AActor()
+			{
+				return AActor::StaticClass().IsAbstract();
+			}
+
+			bool IsAbstract_CameraActor()
+			{
+				return ACameraActor::StaticClass().IsAbstract();
+			}
+			UFunction FindFunc_Actor_ReceiveTick()
+			{
+				return AActor::StaticClass().FindFunctionByName(n"ReceiveTick");
+			}
+			UFunction FindFunc_Actor_Nonexistent()
+			{
+				return AActor::StaticClass().FindFunctionByName(n"ThisFunctionDoesNotExist_XYZ");
+			}
+
+			FString GetClassName(UObject Obj)
+			{
+				return Obj.GetClass().GetName().ToString();
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 		FNoDiscardAsserter LocalAssert(Test);
@@ -1106,52 +1148,60 @@ FString GetClassName(UObject Obj)
 	//   int, bool, float) correctly round-trip through the AS↔C++ boundary.
 	//   AS computes various values → returns to C++ → C++ verifies content.
 	// -----------------------------------------------------------------------
-	bool RunReturnValueCrossCheckSection(
+	bool VerifyReturnValueCrossCheck(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_ReturnVal"), TEXT(R"(
-FString ReturnString()
-{
-	return "Hello from Angelscript";
-}
-FName ReturnName()
-{
-	return n"AngelscriptTestName";
-}
-int ReturnInt()
-{
-	return 12345;
-}
-float ReturnFloat()
-{
-	// AS 'float' is 64-bit (bScriptFloatIsFloat64=true), use explicit value
-	return 3.0;
-}
-bool ReturnTrue()
-{
-	return true;
-}
-bool ReturnFalse()
-{
-	return false;
-}
-FString ConcatIntFloat(int A, float B)
-{
-	// float is actually double in this config
-	return "" + A + "_" + B;
-}
-FString ObjectToString(UObject Obj)
-{
-	FString Name = Obj.GetName().ToString();
-	FString ClassName = Obj.GetClass().GetName().ToString();
-	return ClassName + ":" + Name;
-}
-FString LogFormatted(UObject Obj)
-{
-	return Obj.GetFullName();
-}
-)"));
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_ReturnVal"), ASTEST_AS(R"AS(
+			FString ReturnString()
+			{
+				return "Hello from Angelscript";
+			}
+
+			FName ReturnName()
+			{
+				return n"AngelscriptTestName";
+			}
+
+			int ReturnInt()
+			{
+				return 12345;
+			}
+
+			float ReturnFloat()
+			{
+				// AS 'float' is 64-bit (bScriptFloatIsFloat64=true), use explicit value
+				return 3.0;
+			}
+
+			bool ReturnTrue()
+			{
+				return true;
+			}
+
+			bool ReturnFalse()
+			{
+				return false;
+			}
+
+			FString ConcatIntFloat(int A, float B)
+			{
+				// float is actually double in this config
+				return "" + A + "_" + B;
+			}
+
+			FString ObjectToString(UObject Obj)
+			{
+				FString Name = Obj.GetName().ToString();
+				FString ClassName = Obj.GetClass().GetName().ToString();
+				return ClassName + ":" + Name;
+			}
+
+			FString LogFormatted(UObject Obj)
+			{
+				return Obj.GetFullName();
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 		FNoDiscardAsserter LocalAssert(Test);
@@ -1336,116 +1386,116 @@ FString LogFormatted(UObject Obj)
 	//     6. C++ passes object → AS calls GetOuter/GetPackage → returns
 	//        pointer → C++ verifies matches
 	// -----------------------------------------------------------------------
-	bool RunCppToScriptPassthroughSection(
+	bool VerifyCppToScriptPassthrough(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_CppToAS"), TEXT(R"(
-// ---- Identity queries on C++-created objects ----
-FString DescribeObject(UObject Obj)
-{
-	FString ClassName = Obj.GetClass().GetName().ToString();
-	FString ObjName = Obj.GetName().ToString();
-	FString PathName = Obj.GetPathName();
-	return ClassName + "|" + ObjName + "|" + PathName;
-}
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_CppToAS"), ASTEST_AS(R"AS(
+			// ---- Identity queries on C++-created objects ----
+			FString DescribeObject(UObject Obj)
+			{
+				FString ClassName = Obj.GetClass().GetName().ToString();
+				FString ObjName = Obj.GetName().ToString();
+				FString PathName = Obj.GetPathName();
+				return ClassName + "|" + ObjName + "|" + PathName;
+			}
 
-FName GetNameOf(UObject Obj)
-{
-	return Obj.GetName();
-}
+			FName GetNameOf(UObject Obj)
+			{
+				return Obj.GetName();
+			}
 
-FString GetFullNameOf(UObject Obj)
-{
-	return Obj.GetFullName();
-}
+			FString GetFullNameOf(UObject Obj)
+			{
+				return Obj.GetFullName();
+			}
 
-// ---- Type queries on C++-passed objects ----
-bool CheckIsA(UObject Obj, UClass Class)
-{
-	return Obj.IsA(Class);
-}
+			// ---- Type queries on C++-passed objects ----
+			bool CheckIsA(UObject Obj, UClass Class)
+			{
+				return Obj.IsA(Class);
+			}
 
-UObject TryCastToActor(UObject Obj)
-{
-	return Cast<AActor>(Obj);
-}
+			UObject TryCastToActor(UObject Obj)
+			{
+				return Cast<AActor>(Obj);
+			}
 
-UObject TryCastToTexture(UObject Obj)
-{
-	return Cast<UTexture2D>(Obj);
-}
+			UObject TryCastToTexture(UObject Obj)
+			{
+				return Cast<UTexture2D>(Obj);
+			}
 
-// ---- Hierarchy queries ----
-UObject GetOuterOf(UObject Obj)
-{
-	return Obj.GetOuter();
-}
+			// ---- Hierarchy queries ----
+			UObject GetOuterOf(UObject Obj)
+			{
+				return Obj.GetOuter();
+			}
 
-UObject GetPackageOf(UObject Obj)
-{
-	return Obj.GetPackage();
-}
+			UObject GetPackageOf(UObject Obj)
+			{
+				return Obj.GetPackage();
+			}
 
-UClass GetClassOf(UObject Obj)
-{
-	return Obj.GetClass();
-}
+			UClass GetClassOf(UObject Obj)
+			{
+				return Obj.GetClass();
+			}
 
-// ---- Null / IsValid ----
-bool CheckIsValid(UObject Obj)
-{
-	return IsValid(Obj);
-}
+			// ---- Null / IsValid ----
+			bool CheckIsValid(UObject Obj)
+			{
+				return IsValid(Obj);
+			}
 
-bool CheckIsNull(UObject Obj)
-{
-	return (Obj == null);
-}
+			bool CheckIsNull(UObject Obj)
+			{
+				return (Obj == null);
+			}
 
-// ---- Comparison ----
-bool CheckSame(UObject A, UObject B)
-{
-	return (A == B);
-}
+			// ---- Comparison ----
+			bool CheckSame(UObject A, UObject B)
+			{
+				return (A == B);
+			}
 
-bool CheckNotSame(UObject A, UObject B)
-{
-	return (A != B);
-}
+			bool CheckNotSame(UObject A, UObject B)
+			{
+				return (A != B);
+			}
 
-// ---- Log with C++-passed object ----
-FString LogAndReturnInfo(UObject Obj)
-{
-	FString Info = Obj.GetClass().GetName().ToString() + ":" + Obj.GetName().ToString();
-	Log("CppToAS_LogMarker: " + Info);
-	return Info;
-}
+			// ---- Log with C++-passed object ----
+			FString LogAndReturnInfo(UObject Obj)
+			{
+				FString Info = Obj.GetClass().GetName().ToString() + ":" + Obj.GetName().ToString();
+				Log("CppToAS_LogMarker: " + Info);
+				return Info;
+			}
 
-FString LogMultiple(UObject A, UObject B)
-{
-	FString InfoA = A.GetName().ToString();
-	FString InfoB = B.GetName().ToString();
-	Log("CppToAS_MultiLog: " + InfoA + " | " + InfoB);
-	return InfoA + "," + InfoB;
-}
+			FString LogMultiple(UObject A, UObject B)
+			{
+				FString InfoA = A.GetName().ToString();
+				FString InfoB = B.GetName().ToString();
+				Log("CppToAS_MultiLog: " + InfoA + " | " + InfoB);
+				return InfoA + "," + InfoB;
+			}
 
-// ---- Mutation via C++-passed object ----
-void DoAddToRoot(UObject Obj)
-{
-	Obj.AddToRoot();
-}
+			// ---- Mutation via C++-passed object ----
+			void DoAddToRoot(UObject Obj)
+			{
+				Obj.AddToRoot();
+			}
 
-void DoRemoveFromRoot(UObject Obj)
-{
-	Obj.RemoveFromRoot();
-}
+			void DoRemoveFromRoot(UObject Obj)
+			{
+				Obj.RemoveFromRoot();
+			}
 
-bool IsRootedCheck(UObject Obj)
-{
-	return Obj.GetIsRooted();
-}
-)"));
+			bool IsRootedCheck(UObject Obj)
+			{
+				return Obj.GetIsRooted();
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 		FNoDiscardAsserter LocalAssert(Test);
@@ -1762,115 +1812,131 @@ bool IsRootedCheck(UObject Obj)
 	//     5. TArray of UObjects passed from C++ → AS iterates and builds info
 	//     6. AS stores C++-passed objects in a local array, queries each
 	// -----------------------------------------------------------------------
-	bool RunObjectChainAndNestingSection(
+	bool VerifyObjectChainAndNesting(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_ObjChain"), TEXT(R"(
-// ---- AS creates a chain of nested objects ----
-UObject CreateChainRoot()
-{
-	return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"ChainRoot_42");
-}
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_ObjChain"), ASTEST_AS(R"AS(
+			// ---- AS creates a chain of nested objects ----
+			UObject CreateChainRoot()
+			{
+				return NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"ChainRoot_42");
+			}
 
-UObject CreateChild(UObject Parent, FName ChildName)
-{
-	return NewObject(Parent, UTexture2D::StaticClass(), ChildName);
-}
+			UObject CreateChild(UObject Parent, FName ChildName)
+			{
+				return NewObject(Parent, UTexture2D::StaticClass(), ChildName);
+			}
 
-// ---- Walk the chain from the deepest object ----
-UObject WalkToRoot(UObject Obj)
-{
-	UObject Current = Obj;
-	// Walk up to 10 levels (safety limit)
-	for (int i = 0; i < 10; i++)
-	{
-		UObject Outer = Current.GetOuter();
-		if (Outer == null)
-			break;
-		// If we hit a UPackage, we're at the top
-		if (Outer.IsA(UPackage::StaticClass()))
-			break;
-		Current = Outer;
-	}
-	return Current;
-}
+			// ---- Walk the chain from the deepest object ----
+			UObject WalkToRoot(UObject Obj)
+			{
+				UObject Current = Obj;
+				// Walk up to 10 levels (safety limit)
+				for (int i = 0; i < 10; i++)
+				{
+					UObject Outer = Current.GetOuter();
+					if (Outer == null)
+					{
+						break;
+					}
+					// If we hit a UPackage, we're at the top
+					if (Outer.IsA(UPackage::StaticClass()))
+					{
+						break;
+					}
+					Current = Outer;
+				}
+				return Current;
+			}
 
-// ---- Get the depth of the outer chain (count non-package outers) ----
-int GetChainDepth(UObject Obj)
-{
-	int Depth = 0;
-	UObject Current = Obj;
-	for (int i = 0; i < 20; i++)
-	{
-		UObject Outer = Current.GetOuter();
-		if (Outer == null)
-			break;
-		if (Outer.IsA(UPackage::StaticClass()))
-			break;
-		Depth++;
-		Current = Outer;
-	}
-	return Depth;
-}
+			// ---- Get the depth of the outer chain (count non-package outers) ----
+			int GetChainDepth(UObject Obj)
+			{
+				int Depth = 0;
+				UObject Current = Obj;
+				for (int i = 0; i < 20; i++)
+				{
+					UObject Outer = Current.GetOuter();
+					if (Outer == null)
+					{
+						break;
+					}
+					if (Outer.IsA(UPackage::StaticClass()))
+					{
+						break;
+					}
+					Depth++;
+					Current = Outer;
+				}
+				return Depth;
+			}
 
-// ---- Collect names along the chain (child → root) ----
-FString CollectChainNames(UObject Obj)
-{
-	FString Result = Obj.GetName().ToString();
-	UObject Current = Obj;
-	for (int i = 0; i < 20; i++)
-	{
-		UObject Outer = Current.GetOuter();
-		if (Outer == null)
-			break;
-		if (Outer.IsA(UPackage::StaticClass()))
-			break;
-		Result += ">" + Outer.GetName().ToString();
-		Current = Outer;
-	}
-	return Result;
-}
+			// ---- Collect names along the chain (child → root) ----
+			FString CollectChainNames(UObject Obj)
+			{
+				FString Result = Obj.GetName().ToString();
+				UObject Current = Obj;
+				for (int i = 0; i < 20; i++)
+				{
+					UObject Outer = Current.GetOuter();
+					if (Outer == null)
+					{
+						break;
+					}
+					if (Outer.IsA(UPackage::StaticClass()))
+					{
+						break;
+					}
+					Result += ">" + Outer.GetName().ToString();
+					Current = Outer;
+				}
+				return Result;
+			}
 
-// ---- Get outermost (should be the package) ----
-UObject GetOutermostOf(UObject Obj)
-{
-	return Obj.GetOutermost();
-}
+			// ---- Get outermost (should be the package) ----
+			UObject GetOutermostOf(UObject Obj)
+			{
+				return Obj.GetOutermost();
+			}
 
-// ---- GetPathName reflects the full chain ----
-FString GetPathOf(UObject Obj)
-{
-	return Obj.GetPathName();
-}
+			// ---- GetPathName reflects the full chain ----
+			FString GetPathOf(UObject Obj)
+			{
+				return Obj.GetPathName();
+			}
 
-// ---- Compare two objects in the chain ----
-bool IsSameOuter(UObject A, UObject B)
-{
-	return (A.GetOuter() == B.GetOuter());
-}
+			// ---- Compare two objects in the chain ----
+			bool IsSameOuter(UObject A, UObject B)
+			{
+				return (A.GetOuter() == B.GetOuter());
+			}
 
-// ---- Log chain info ----
-FString DescribeChain(UObject Leaf)
-{
-	FString Desc = "";
-	UObject Current = Leaf;
-	int Count = 0;
-	for (int i = 0; i < 20; i++)
-	{
-		if (Count > 0)
-			Desc += " -> ";
-		Desc += Current.GetName().ToString();
-		Count++;
-		UObject Outer = Current.GetOuter();
-		if (Outer == null || Outer.IsA(UPackage::StaticClass()))
-			break;
-		Current = Outer;
-	}
-	Log("Chain: " + Desc);
-	return Desc;
-}
-)"));
+			// ---- Log chain info ----
+			FString DescribeChain(UObject Leaf)
+			{
+				FString Desc = "";
+				UObject Current = Leaf;
+				int Count = 0;
+				for (int i = 0; i < 20; i++)
+				{
+					if (Count > 0)
+					{
+						Desc += " -> ";
+					}
+					Desc += Current.GetName().ToString();
+					Count++;
+					UObject Outer = Current.GetOuter();
+					if (Outer == null || Outer.IsA(UPackage::StaticClass()))
+					{
+						break;
+					}
+					Current = Outer;
+				}
+				Log("Chain: " + Desc);
+				return Desc;
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 		FNoDiscardAsserter LocalAssert(Test);
@@ -2214,7 +2280,7 @@ FString DescribeChain(UObject Leaf)
 	//     C++ verifies all expected patterns were matched (automation does
 	//     this automatically — unmatched AddExpectedError triggers failure).
 	// -----------------------------------------------------------------------
-	bool RunLogAndDiagnosticsSection(
+	bool VerifyLogAndDiagnostics(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
@@ -2232,80 +2298,95 @@ FString DescribeChain(UObject Leaf)
 		Test.AddExpectedErrorPlain(TEXT("ASUObject_LogDiag"),       EAutomationExpectedErrorFlags::Contains, 1);
 		Test.AddExpectedErrorPlain(TEXT("CallThrow"),               EAutomationExpectedErrorFlags::Contains, 1);
 
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_LogDiag"), TEXT(R"(
-void CallLog()
-{
-	Log("BIND_LOG_MARKER_42");
-}
-void CallLogInfo()
-{
-	LogInfo("BIND_LOGINFO_MARKER_42");
-}
-void CallLogDisplay()
-{
-	LogDisplay("BIND_LOGDISPLAY_MARKER_42");
-}
-void CallError()
-{
-	Error("BIND_ERR_MARKER_42");
-}
-void CallWarning()
-{
-	Warning("BIND_WARN_MARKER_42");
-}
-void CallLogIf_True()
-{
-	LogIf(true, "BIND_LOGIF_TRUE_MARKER_42");
-}
-void CallLogIf_False()
-{
-	LogIf(false, "SHOULD_NOT_APPEAR_LOG");
-}
-void CallErrorIf_True()
-{
-	ErrorIf(true, "BIND_ERRIF_MARKER_42");
-}
-void CallErrorIf_False()
-{
-	ErrorIf(false, "SHOULD_NOT_APPEAR_ERR");
-}
-void CallWarningIf_True()
-{
-	WarningIf(true, "BIND_WARNIF_MARKER_42");
-}
-void CallWarningIf_False()
-{
-	WarningIf(false, "SHOULD_NOT_APPEAR_WARN");
-}
-void CallLogWithCategory()
-{
-	Log(n"TestCategory", "BIND_CAT_LOG_MARKER_42");
-}
-void CallErrorWithCategory()
-{
-	Error(n"TestCategory", "BIND_CAT_ERR_MARKER_42");
-}
-void CallWarningWithCategory()
-{
-	Warning(n"TestCategory", "BIND_CAT_WARN_MARKER_42");
-}
-void CallThrow()
-{
-	Throw("BIND_THROW_MARKER_42");
-}
-int LogConcatTypes()
-{
-	UObject Obj = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
-	int IntVal = 42;
-	float FloatVal = 3.14;
-	bool BoolVal = true;
-	FName NameVal = n"TestName";
-	FString StrVal = "Hello";
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASUObject_LogDiag"), ASTEST_AS(R"AS(
+			void CallLog()
+			{
+				Log("BIND_LOG_MARKER_42");
+			}
 
-	Log("Int=" + IntVal + " Float=" + FloatVal + " Bool=" + BoolVal + " Name=" + NameVal + " Str=" + StrVal + " Obj=" + Obj);
-	return 1;
-}
-)"));
+			void CallLogInfo()
+			{
+				LogInfo("BIND_LOGINFO_MARKER_42");
+			}
+
+			void CallLogDisplay()
+			{
+				LogDisplay("BIND_LOGDISPLAY_MARKER_42");
+			}
+
+			void CallError()
+			{
+				Error("BIND_ERR_MARKER_42");
+			}
+
+			void CallWarning()
+			{
+				Warning("BIND_WARN_MARKER_42");
+			}
+
+			void CallLogIf_True()
+			{
+				LogIf(true, "BIND_LOGIF_TRUE_MARKER_42");
+			}
+
+			void CallLogIf_False()
+			{
+				LogIf(false, "SHOULD_NOT_APPEAR_LOG");
+			}
+
+			void CallErrorIf_True()
+			{
+				ErrorIf(true, "BIND_ERRIF_MARKER_42");
+			}
+
+			void CallErrorIf_False()
+			{
+				ErrorIf(false, "SHOULD_NOT_APPEAR_ERR");
+			}
+
+			void CallWarningIf_True()
+			{
+				WarningIf(true, "BIND_WARNIF_MARKER_42");
+			}
+
+			void CallWarningIf_False()
+			{
+				WarningIf(false, "SHOULD_NOT_APPEAR_WARN");
+			}
+
+			void CallLogWithCategory()
+			{
+				Log(n"TestCategory", "BIND_CAT_LOG_MARKER_42");
+			}
+
+			void CallErrorWithCategory()
+			{
+				Error(n"TestCategory", "BIND_CAT_ERR_MARKER_42");
+			}
+
+			void CallWarningWithCategory()
+			{
+				Warning(n"TestCategory", "BIND_CAT_WARN_MARKER_42");
+			}
+
+			void CallThrow()
+			{
+				Throw("BIND_THROW_MARKER_42");
+			}
+
+			int LogConcatTypes()
+			{
+				UObject Obj = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
+				int IntVal = 42;
+				float FloatVal = 3.14;
+				bool BoolVal = true;
+				FName NameVal = n"TestName";
+				FString StrVal = "Hello";
+
+				Log("Int=" + IntVal + " Float=" + FloatVal + " Bool=" + BoolVal + " Name=" + NameVal + " Str=" + StrVal + " Obj=" + Obj);
+				return 1;
+			}
+			)AS"));
 		if (!ModuleScope.IsValid()) return false;
 		asIScriptModule& Module = ModuleScope.GetModule();
 		bool bPassed = true;
@@ -2355,6 +2436,8 @@ int LogConcatTypes()
 	}
 }
 
+using namespace AngelscriptUObjectBindingsTestPrivate;
+
 // ============================================================================
 // Test class
 // ============================================================================
@@ -2368,13 +2451,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	TEST_METHOD(CreateAndIdentity)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunCreateAndIdentitySection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyCreateAndIdentity(*TestRunner, Engine),
+			TEXT("VerifyCreateAndIdentity should pass")));
 		}
 	}
 
@@ -2382,7 +2471,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunHierarchyAndOuterSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyHierarchyAndOuter(*TestRunner, Engine),
+			TEXT("VerifyHierarchyAndOuter should pass")));
 		}
 	}
 
@@ -2390,7 +2481,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunTypeQueryAndCastSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyTypeQueryAndCast(*TestRunner, Engine),
+			TEXT("VerifyTypeQueryAndCast should pass")));
 		}
 	}
 
@@ -2398,7 +2491,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunFindAndLookupSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyFindAndLookup(*TestRunner, Engine),
+			TEXT("VerifyFindAndLookup should pass")));
 		}
 	}
 
@@ -2406,7 +2501,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunRootLifecycleSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyRootLifecycle(*TestRunner, Engine),
+			TEXT("VerifyRootLifecycle should pass")));
 		}
 	}
 
@@ -2414,7 +2511,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunFlagMutationSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyFlagMutation(*TestRunner, Engine),
+			TEXT("VerifyFlagMutation should pass")));
 		}
 	}
 
@@ -2422,7 +2521,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunNullAndIsValidSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyNullAndIsValid(*TestRunner, Engine),
+			TEXT("VerifyNullAndIsValid should pass")));
 		}
 	}
 
@@ -2430,7 +2531,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunNewObjectVariantsSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyNewObjectVariants(*TestRunner, Engine),
+			TEXT("VerifyNewObjectVariants should pass")));
 		}
 	}
 
@@ -2438,7 +2541,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunClassReflectionSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyClassReflection(*TestRunner, Engine),
+			TEXT("VerifyClassReflection should pass")));
 		}
 	}
 
@@ -2446,7 +2551,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunReturnValueCrossCheckSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyReturnValueCrossCheck(*TestRunner, Engine),
+			TEXT("VerifyReturnValueCrossCheck should pass")));
 		}
 	}
 
@@ -2454,7 +2561,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunCppToScriptPassthroughSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyCppToScriptPassthrough(*TestRunner, Engine),
+			TEXT("VerifyCppToScriptPassthrough should pass")));
 		}
 	}
 
@@ -2462,7 +2571,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunObjectChainAndNestingSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyObjectChainAndNesting(*TestRunner, Engine),
+			TEXT("VerifyObjectChainAndNesting should pass")));
 		}
 	}
 
@@ -2470,7 +2581,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-		RunLogAndDiagnosticsSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyLogAndDiagnostics(*TestRunner, Engine),
+			TEXT("VerifyLogAndDiagnostics should pass")));
 		}
 	}
 };

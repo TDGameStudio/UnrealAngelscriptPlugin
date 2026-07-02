@@ -18,43 +18,59 @@ static const FString TArraySyntaxCompatNestedContainerDiagnostic = TEXT("Contain
 static const FArraySyntaxCoverageProfile TArraySyntaxCompatProfile = TArraySyntaxCompatCoverageProfile();
 
 
-bool RunIntArrayMutationCompatSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
+bool VerifyIntArrayMutationSyntax(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 {
 	asIScriptModule* Module = TArrayBindingsBuildCoverageModule(Test, Engine, TArraySyntaxCompatProfile,
 		TEXT("MutationCompat"),
-		TEXT(R"(
-int Entry()
-{
-	int[] Values;
-	Values.Add(1);
-	Values.Add(2);
-	Values.Add(2);
-	Values.Add(3);
-	if (Values.FindIndex(2) != 1)
-		return 10;
-	if (Values.AddUnique(2))
-		return 20;
-	if (!Values.AddUnique(4))
-		return 30;
+		ASTEST_AS(R"AS(
+			int Entry()
+			{
+				int[] Values;
+				Values.Add(1);
+				Values.Add(2);
+				Values.Add(2);
+				Values.Add(3);
+				if (Values.FindIndex(2) != 1)
+				{
+					return 10;
+				}
+				if (Values.AddUnique(2))
+				{
+					return 20;
+				}
+				if (!Values.AddUnique(4))
+				{
+					return 30;
+				}
 
-	Values.Insert(9, 1);
-	if (!(Values.Num() == 6 && Values[1] == 9 && Values.Last() == 4))
-		return 40;
+				Values.Insert(9, 1);
+				if (!(Values.Num() == 6 && Values[1] == 9 && Values.Last() == 4))
+				{
+					return 40;
+				}
 
-	if (Values.RemoveSingle(2) != 1)
-		return 50;
-	if (Values.Remove(2) != 1)
-		return 60;
-	if (Values.FindIndex(2) != -1)
-		return 70;
+				if (Values.RemoveSingle(2) != 1)
+				{
+					return 50;
+				}
+				if (Values.Remove(2) != 1)
+				{
+					return 60;
+				}
+				if (Values.FindIndex(2) != -1)
+				{
+					return 70;
+				}
 
-	Values.Reset(4);
-	if (!Values.IsEmpty() || Values.Max() < 4)
-		return 80;
+				Values.Reset(4);
+				if (!Values.IsEmpty() || Values.Max() < 4)
+				{
+					return 80;
+				}
 
-	return 1;
-}
-)"));
+				return 1;
+			}
+			)AS"));
 	if (Module == nullptr)
 	{
 		return false;
@@ -76,62 +92,70 @@ int Entry()
 	return LocalAssert.AreEqual(1, Result, TEXT("int[] mutation helpers should match TArray<int> script behaviour"));
 }
 
-bool RunIntArrayIteratorCompatSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
+bool VerifyIntArrayIterationSyntax(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 {
 	asIScriptModule* Module = TArrayBindingsBuildCoverageModule(Test, Engine, TArraySyntaxCompatProfile,
 		TEXT("IteratorCompat"),
-		TEXT(R"(
-int Entry()
-{
-	int[] MutableValues;
-	MutableValues.Add(1);
-	MutableValues.Add(2);
-	MutableValues.Add(3);
-	TArrayIterator<int> MutableIt = MutableValues.Iterator();
+		ASTEST_AS(R"AS(
+			int Entry()
+			{
+				int[] MutableValues;
+				MutableValues.Add(1);
+				MutableValues.Add(2);
+				MutableValues.Add(3);
+				TArrayIterator<int> MutableIt = MutableValues.Iterator();
 
-	if (!MutableIt.CanProceed || MutableIt.Proceed() != 1)
-		return 10;
+				if (!MutableIt.CanProceed || MutableIt.Proceed() != 1)
+				{
+					return 10;
+				}
 
-	MutableIt.Proceed() = 20;
-	if (MutableValues[1] != 20)
-		return 20;
+				MutableIt.Proceed() = 20;
+				if (MutableValues[1] != 20)
+				{
+					return 20;
+				}
 
-	int TailSum = 0;
-	while (MutableIt.CanProceed)
-	{
-		TailSum += MutableIt.Proceed();
-	}
+				int TailSum = 0;
+				while (MutableIt.CanProceed)
+				{
+					TailSum += MutableIt.Proceed();
+				}
 
-	if (TailSum != 3 || MutableIt.CanProceed)
-		return 30;
+				if (TailSum != 3 || MutableIt.CanProceed)
+				{
+					return 30;
+				}
 
-	int[] ConstSource;
-	ConstSource.Add(4);
-	ConstSource.Add(5);
-	ConstSource.Add(6);
-	const int[] ConstValues = ConstSource;
-	TArrayConstIterator<int> ConstIt = ConstValues.Iterator();
-	int ConstSum = 0;
-	while (ConstIt.CanProceed)
-	{
-		ConstSum += ConstIt.Proceed();
-	}
+				int[] ConstSource;
+				ConstSource.Add(4);
+				ConstSource.Add(5);
+				ConstSource.Add(6);
+				const int[] ConstValues = ConstSource;
+				TArrayConstIterator<int> ConstIt = ConstValues.Iterator();
+				int ConstSum = 0;
+				while (ConstIt.CanProceed)
+				{
+					ConstSum += ConstIt.Proceed();
+				}
 
-	if (ConstSum != 15)
-		return 40;
+				if (ConstSum != 15)
+				{
+					return 40;
+				}
 
-	TArrayConstIterator<int> AliasIt = ConstIt;
-	TArrayIterator<int> MutableAliasIt = MutableValues.Iterator();
+				TArrayConstIterator<int> AliasIt = ConstIt;
+				TArrayIterator<int> MutableAliasIt = MutableValues.Iterator();
 
-	int AliasSum = 0;
-	while (MutableAliasIt.CanProceed)
-	{
-		AliasSum += MutableAliasIt.Proceed();
-	}
+				int AliasSum = 0;
+				while (MutableAliasIt.CanProceed)
+				{
+					AliasSum += MutableAliasIt.Proceed();
+				}
 
-	return AliasSum == 24 ? 1 : 50;
-}
-)"));
+				return AliasSum == 24 ? 1 : 50;
+			}
+			)AS"));
 	if (Module == nullptr)
 	{
 		return false;
@@ -153,502 +177,502 @@ int Entry()
 	return LocalAssert.AreEqual(1, Result, TEXT("int[] iterator helpers should match TArray<int> script behaviour"));
 }
 
-bool RunIntArrayOperationsSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
+bool VerifyIntArrayOperationsSyntax(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 {
-	const FString OperationsScript = FString(TEXT(R"(
-void TraceSyntaxCase(const FString&in CaseName)
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.Operations: " + CaseName);
-}
-
-int IntDefaultIsEmpty()
-{
-	int[] Values;
-	return Values.IsEmpty() && Values.Num() == 0 && Values.Max() == 0 ? 1 : 0;
-}
-
-int IntReserveKeepsNum()
-{
-	int[] Values;
-	Values.Add(4);
-	Values.Add(5);
-	Values.Reserve(16);
-	return Values.Num();
-}
-
-int IntReserveGrowsMax()
-{
-	int[] Values;
-	Values.Add(4);
-	Values.Add(5);
-	Values.Reserve(16);
-	return Values.Max();
-}
-
-int IntGetSlackAfterReserve()
-{
-	int[] Values;
-	Values.Add(4);
-	Values.Add(5);
-	Values.Reserve(16);
-	return Values.GetSlack();
-}
-
-int IntGetAllocatedSizeAfterReserve()
-{
-	int[] Values;
-	Values.Reserve(8);
-	return Values.GetAllocatedSize() > 0 ? 1 : 0;
-}
-
-int IntShrinkReducesMax()
-{
-	int[] Values;
-	Values.Reserve(16);
-	Values.Add(1);
-	Values.Add(2);
-	int MaxBefore = Values.Max();
-	Values.Shrink();
-	return Values.Max() <= MaxBefore && Values.Max() >= Values.Num() ? 1 : 0;
-}
-
-int IntEmptyReservedMax()
-{
-	int[] Values;
-	Values.Add(1);
-	Values.Empty(6);
-	return Values.Num() == 0 ? Values.Max() : 0;
-}
-
-int IntResetKeepsCapacity()
-{
-	int[] Values;
-	Values.Reserve(8);
-	Values.Add(1);
-	int MaxBefore = Values.Max();
-	Values.Reset();
-	return Values.Num() == 0 && Values.Max() >= MaxBefore ? 1 : 0;
-}
-
-int IntSetNumExtends()
-{
-	int[] Values;
-	Values.Add(7);
-	Values.SetNum(4);
-	return Values.Num();
-}
-
-int IntSetNumPreservesAndZeroes()
-{
-	int[] Values;
-	Values.Add(7);
-	Values.SetNum(4);
-	return Values[0] == 7 && Values[1] == 0 && Values[2] == 0 && Values[3] == 0 ? 1 : 0;
-}
-
-int IntSetNumZeroedPreservesAndZeroes()
-{
-	int[] Values;
-	Values.Add(7);
-	Values.SetNumZeroed(4);
-	return Values[0] == 7 && Values[1] == 0 && Values[2] == 0 && Values[3] == 0 ? 1 : 0;
-}
-
-int IntSetNumDefaultClears()
-{
-	int[] Values;
-	Values.Add(7);
-	Values.SetNum();
-	return Values.Num();
-}
-
-int IntSetNumZeroedDefaultClears()
-{
-	int[] Values;
-	Values.Add(7);
-	Values.SetNumZeroed();
-	return Values.Num();
-}
-
-int IntIndexWriteRead()
-{
-	int[] Values;
-	Values.SetNum(2);
-	Values[0] = 42;
-	return Values[0];
-}
-
-int IntConstIndexAndLastRead()
-{
-	int[] Source;
-	Source.Add(12);
-	Source.Add(22);
-	const int[] Values = Source;
-	return Values[0] + Values.Last();
-}
-
-int IntLastReadWrite()
-{
-	int[] Values;
-	Values.Add(3);
-	Values.Add(4);
-	Values.Last() = 13;
-	return Values[0] + Values.Last();
-}
-
-int IntIsValidIndex()
-{
-	int[] Values;
-	Values.Add(9);
-	return Values.IsValidIndex(0) && !Values.IsValidIndex(1) && !Values.IsValidIndex(-1) ? 1 : 0;
-}
-
-int IntAppend()
-{
-	int[] Values;
-	Values.Add(1);
-	int[] Other;
-	Other.Add(2);
-	Other.Add(3);
-	Values.Append(Other);
-	return Values[0] + Values[1] + Values[2];
-}
-
-int IntCopy()
-{
-	int[] Source;
-	Source.Add(5);
-	Source.Add(6);
-	Source.Add(7);
-	int[] Destination;
-	Destination.Add(0);
-	Destination.Add(0);
-	Destination.Add(0);
-	Destination.Copy(Source, 1, 2, 1);
-	return Destination[0] == 0 && Destination[1] == 6 && Destination[2] == 7 ? 1 : 0;
-}
-
-int IntCopyDefaultTarget()
-{
-	int[] Source;
-	Source.Add(8);
-	int[] Destination;
-	Destination.Add(0);
-	Destination.Copy(Source, 0, 1);
-	return Destination[0] == 8 ? 1 : 0;
-}
-
-int IntAssignEquals()
-{
-	int[] Source;
-	Source.Add(1);
-	int[] Assigned;
-	Assigned = Source;
-	return Assigned == Source && Assigned.Num() == 1 && Assigned[0] == 1 ? 1 : 0;
-}
-
-int IntEqualsFalse()
-{
-	int[] Left;
-	Left.Add(1);
-	int[] Right;
-	Right.Add(2);
-	return Left == Right ? 0 : 1;
-}
-
-int IntMoveAssignFrom()
-{
-	int[] Source;
-	Source.Add(4);
-	Source.Add(5);
-	int[] Destination;
-	Destination.Add(0);
-	Destination.MoveAssignFrom(Source);
-	return Destination.Num() == 2 && Destination[0] == 4 && Destination[1] == 5 && Source.Num() == 0 ? 1 : 0;
-}
-
-int IntSwap()
-{
-	int[] Values;
-	Values.Add(1);
-	Values.Add(2);
-	Values.Swap(0, 1);
-	return Values[0] == 2 && Values[1] == 1 ? 1 : 0;
-}
-
-int IntInsert()
-{
-	int[] Values;
-	Values.Add(1);
-	Values.Add(3);
-	Values.Insert(2, 1);
-	return Values[0] == 1 && Values[1] == 2 && Values[2] == 3 ? 1 : 0;
-}
-
-int IntInsertDefaultIndex()
-{
-	int[] Values;
-	Values.Add(2);
-	Values.Insert(1);
-	return Values[0] == 1 && Values[1] == 2 ? 1 : 0;
-}
-
-int IntAddUnique()
-{
-	int[] Values;
-	Values.Add(1);
-	return !Values.AddUnique(1) && Values.AddUnique(2) && Values.Num() == 2 ? 1 : 0;
-}
-
-int IntContains()
-{
-	int[] Values;
-	Values.Add(1);
-	return Values.Contains(1) && !Values.Contains(2) ? 1 : 0;
-}
-
-int IntFindIndex()
-{
-	int[] Values;
-	Values.Add(4);
-	Values.Add(5);
-	Values.Add(6);
-	return Values.FindIndex(6);
-}
-
-int IntFindIndexMissing()
-{
-	int[] Values;
-	Values.Add(4);
-	return Values.FindIndex(6);
-}
-)")) + TEXT(R"(
-
-int IntRemoveSingle()
-{
-	int[] Values;
-	Values.Add(1);
-	Values.Add(2);
-	Values.Add(1);
-	int Removed = Values.RemoveSingle(1);
-	return Removed == 1 && Values.Num() == 2 && Values.Contains(1) && Values.Contains(2) ? 1 : 0;
-}
-
-int IntRemoveSingleMissing()
-{
-	int[] Values;
-	Values.Add(1);
-	return Values.RemoveSingle(9);
-}
-
-int IntRemove()
-{
-	int[] Values;
-	Values.Add(1);
-	Values.Add(2);
-	Values.Add(1);
-	int Removed = Values.Remove(1);
-	return Removed == 2 && Values.Num() == 1 && Values[0] == 2 ? 1 : 0;
-}
-
-int IntRemoveMissing()
-{
-	int[] Values;
-	Values.Add(1);
-	return Values.Remove(9);
-}
-
-int IntRemoveSingleSwap()
-{
-	int[] Values;
-	Values.Add(1);
-	Values.Add(2);
-	Values.Add(3);
-	int Removed = Values.RemoveSingleSwap(2);
-	return Removed == 1 && Values.Num() == 2 && !Values.Contains(2) && Values.Contains(1) && Values.Contains(3) ? 1 : 0;
-}
-
-int IntRemoveSingleSwapMissing()
-{
-	int[] Values;
-	Values.Add(1);
-	return Values.RemoveSingleSwap(9);
-}
-
-int IntRemoveSwap()
-{
-	int[] Values;
-	Values.Add(1);
-	Values.Add(2);
-	Values.Add(1);
-	Values.Add(3);
-	int Removed = Values.RemoveSwap(1);
-	return Removed == 2 && Values.Num() == 2 && !Values.Contains(1) && Values.Contains(2) && Values.Contains(3) ? 1 : 0;
-}
-
-int IntRemoveSwapMissing()
-{
-	int[] Values;
-	Values.Add(1);
-	return Values.RemoveSwap(9);
-}
-
-int IntRemoveAt()
-{
-	int[] Values;
-	Values.Add(1);
-	Values.Add(2);
-	Values.Add(3);
-	Values.RemoveAt(1);
-	return Values.Num() == 2 && Values[0] == 1 && Values[1] == 3 ? 1 : 0;
-}
-
-int IntRemoveAtSwap()
-{
-	int[] Values;
-	Values.Add(1);
-	Values.Add(2);
-	Values.Add(3);
-	Values.RemoveAtSwap(0);
-	return Values.Num() == 2 && !Values.Contains(1) && Values.Contains(2) && Values.Contains(3) ? 1 : 0;
-}
-
-int IntSortAscending()
-{
-	int[] Values;
-	Values.Add(3);
-	Values.Add(1);
-	Values.Add(2);
-	Values.Sort();
-	return Values[0] * 100 + Values[1] * 10 + Values[2];
-}
-
-int IntSortDescending()
-{
-	int[] Values;
-	Values.Add(3);
-	Values.Add(1);
-	Values.Add(2);
-	Values.Sort(true);
-	return Values[0] * 100 + Values[1] * 10 + Values[2];
-}
-
-int IntShufflePreservesElements()
-{
-	int[] Values;
-	Values.Add(1);
-	Values.Add(2);
-	Values.Add(3);
-	Values.Add(4);
-	Values.Shuffle();
-	int Sum = 0;
-	int Product = 1;
-	foreach (int Value : Values)
+	const FString OperationsScript = ASTEST_AS(R"AS(
+	void TraceSyntaxCase(const FString&in CaseName)
 	{
-		Sum += Value;
-		Product *= Value;
+		Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.Operations: " + CaseName);
 	}
-	return Values.Num() == 4 && Sum == 10 && Product == 24 ? 1 : 0;
-}
 
-int IntForeachValueSum()
-{
-	int[] Values;
-	Values.Add(4);
-	Values.Add(2);
-	Values.Add(6);
-	int Sum = 0;
-	foreach (int Value : Values)
+	int IntDefaultIsEmpty()
 	{
-		Sum += Value;
+		int[] Values;
+		return Values.IsEmpty() && Values.Num() == 0 && Values.Max() == 0 ? 1 : 0;
 	}
-	return Sum;
-}
 
-int IntForeachValueIndexWeightedSum()
-{
-	int[] Values;
-	Values.Add(2);
-	Values.Add(4);
-	Values.Add(6);
-	int Sum = 0;
-	foreach (int Value, int Index : Values)
+	int IntReserveKeepsNum()
 	{
-		Sum += Value * (Index + 1);
+		int[] Values;
+		Values.Add(4);
+		Values.Add(5);
+		Values.Reserve(16);
+		return Values.Num();
 	}
-	return Sum;
-}
 
-int EmptyForeachVisitCount()
-{
-	int[] Values;
-	int Count = 0;
-	foreach (int Value : Values)
+	int IntReserveGrowsMax()
 	{
-		Count += 1;
+		int[] Values;
+		Values.Add(4);
+		Values.Add(5);
+		Values.Reserve(16);
+		return Values.Max();
 	}
-	return Count;
-}
 
-int IntEmptyIteratorCannotProceed()
-{
-	int[] Values;
-	TArrayIterator<int> Iterator = Values.Iterator();
-	return Iterator.CanProceed ? 0 : 1;
-}
-
-int IntIteratorProceedSum()
-{
-	int[] Values;
-	Values.Add(1);
-	Values.Add(2);
-	Values.Add(3);
-	TArrayIterator<int> Iterator = Values.Iterator();
-	int Sum = 0;
-	while (Iterator.CanProceed)
+	int IntGetSlackAfterReserve()
 	{
-		Sum += Iterator.Proceed();
+		int[] Values;
+		Values.Add(4);
+		Values.Add(5);
+		Values.Reserve(16);
+		return Values.GetSlack();
 	}
-	return Sum;
-}
 
-int IntMutableIteratorCanWrite()
-{
-	int[] Values;
-	Values.Add(1);
-	Values.Add(2);
-	TArrayIterator<int> Iterator = Values.Iterator();
-	Iterator.Proceed() = 20;
-	return Values[0] + Values[1];
-}
-
-int IntConstIteratorProceedSum()
-{
-	int[] Source;
-	Source.Add(4);
-	Source.Add(5);
-	Source.Add(6);
-	const int[] Values = Source;
-	TArrayConstIterator<int> Iterator = Values.Iterator();
-	int Sum = 0;
-	while (Iterator.CanProceed)
+	int IntGetAllocatedSizeAfterReserve()
 	{
-		Sum += Iterator.Proceed();
+		int[] Values;
+		Values.Reserve(8);
+		return Values.GetAllocatedSize() > 0 ? 1 : 0;
 	}
-	return Sum;
-}
 
-int IntIteratorCopyAssignStartsAtSameElement()
-{
-	int[] Values;
-	Values.Add(1);
-	Values.Add(2);
-	TArrayIterator<int> Original = Values.Iterator();
-	TArrayIterator<int> Copied = Original;
-	TArrayIterator<int> Assigned = Copied;
-	return Original.Proceed() + Copied.Proceed() + Assigned.Proceed();
-}
-)");
+	int IntShrinkReducesMax()
+	{
+		int[] Values;
+		Values.Reserve(16);
+		Values.Add(1);
+		Values.Add(2);
+		int MaxBefore = Values.Max();
+		Values.Shrink();
+		return Values.Max() <= MaxBefore && Values.Max() >= Values.Num() ? 1 : 0;
+	}
+
+	int IntEmptyReservedMax()
+	{
+		int[] Values;
+		Values.Add(1);
+		Values.Empty(6);
+		return Values.Num() == 0 ? Values.Max() : 0;
+	}
+
+	int IntResetKeepsCapacity()
+	{
+		int[] Values;
+		Values.Reserve(8);
+		Values.Add(1);
+		int MaxBefore = Values.Max();
+		Values.Reset();
+		return Values.Num() == 0 && Values.Max() >= MaxBefore ? 1 : 0;
+	}
+
+	int IntSetNumExtends()
+	{
+		int[] Values;
+		Values.Add(7);
+		Values.SetNum(4);
+		return Values.Num();
+	}
+
+	int IntSetNumPreservesAndZeroes()
+	{
+		int[] Values;
+		Values.Add(7);
+		Values.SetNum(4);
+		return Values[0] == 7 && Values[1] == 0 && Values[2] == 0 && Values[3] == 0 ? 1 : 0;
+	}
+
+	int IntSetNumZeroedPreservesAndZeroes()
+	{
+		int[] Values;
+		Values.Add(7);
+		Values.SetNumZeroed(4);
+		return Values[0] == 7 && Values[1] == 0 && Values[2] == 0 && Values[3] == 0 ? 1 : 0;
+	}
+
+	int IntSetNumDefaultClears()
+	{
+		int[] Values;
+		Values.Add(7);
+		Values.SetNum();
+		return Values.Num();
+	}
+
+	int IntSetNumZeroedDefaultClears()
+	{
+		int[] Values;
+		Values.Add(7);
+		Values.SetNumZeroed();
+		return Values.Num();
+	}
+
+	int IntIndexWriteRead()
+	{
+		int[] Values;
+		Values.SetNum(2);
+		Values[0] = 42;
+		return Values[0];
+	}
+
+	int IntConstIndexAndLastRead()
+	{
+		int[] Source;
+		Source.Add(12);
+		Source.Add(22);
+		const int[] Values = Source;
+		return Values[0] + Values.Last();
+	}
+
+	int IntLastReadWrite()
+	{
+		int[] Values;
+		Values.Add(3);
+		Values.Add(4);
+		Values.Last() = 13;
+		return Values[0] + Values.Last();
+	}
+
+	int IntIsValidIndex()
+	{
+		int[] Values;
+		Values.Add(9);
+		return Values.IsValidIndex(0) && !Values.IsValidIndex(1) && !Values.IsValidIndex(-1) ? 1 : 0;
+	}
+
+	int IntAppend()
+	{
+		int[] Values;
+		Values.Add(1);
+		int[] Other;
+		Other.Add(2);
+		Other.Add(3);
+		Values.Append(Other);
+		return Values[0] + Values[1] + Values[2];
+	}
+
+	int IntCopy()
+	{
+		int[] Source;
+		Source.Add(5);
+		Source.Add(6);
+		Source.Add(7);
+		int[] Destination;
+		Destination.Add(0);
+		Destination.Add(0);
+		Destination.Add(0);
+		Destination.Copy(Source, 1, 2, 1);
+		return Destination[0] == 0 && Destination[1] == 6 && Destination[2] == 7 ? 1 : 0;
+	}
+
+	int IntCopyDefaultTarget()
+	{
+		int[] Source;
+		Source.Add(8);
+		int[] Destination;
+		Destination.Add(0);
+		Destination.Copy(Source, 0, 1);
+		return Destination[0] == 8 ? 1 : 0;
+	}
+
+	int IntAssignEquals()
+	{
+		int[] Source;
+		Source.Add(1);
+		int[] Assigned;
+		Assigned = Source;
+		return Assigned == Source && Assigned.Num() == 1 && Assigned[0] == 1 ? 1 : 0;
+	}
+
+	int IntEqualsFalse()
+	{
+		int[] Left;
+		Left.Add(1);
+		int[] Right;
+		Right.Add(2);
+		return Left == Right ? 0 : 1;
+	}
+
+	int IntMoveAssignFrom()
+	{
+		int[] Source;
+		Source.Add(4);
+		Source.Add(5);
+		int[] Destination;
+		Destination.Add(0);
+		Destination.MoveAssignFrom(Source);
+		return Destination.Num() == 2 && Destination[0] == 4 && Destination[1] == 5 && Source.Num() == 0 ? 1 : 0;
+	}
+
+	int IntSwap()
+	{
+		int[] Values;
+		Values.Add(1);
+		Values.Add(2);
+		Values.Swap(0, 1);
+		return Values[0] == 2 && Values[1] == 1 ? 1 : 0;
+	}
+
+	int IntInsert()
+	{
+		int[] Values;
+		Values.Add(1);
+		Values.Add(3);
+		Values.Insert(2, 1);
+		return Values[0] == 1 && Values[1] == 2 && Values[2] == 3 ? 1 : 0;
+	}
+
+	int IntInsertDefaultIndex()
+	{
+		int[] Values;
+		Values.Add(2);
+		Values.Insert(1);
+		return Values[0] == 1 && Values[1] == 2 ? 1 : 0;
+	}
+
+	int IntAddUnique()
+	{
+		int[] Values;
+		Values.Add(1);
+		return !Values.AddUnique(1) && Values.AddUnique(2) && Values.Num() == 2 ? 1 : 0;
+	}
+
+	int IntContains()
+	{
+		int[] Values;
+		Values.Add(1);
+		return Values.Contains(1) && !Values.Contains(2) ? 1 : 0;
+	}
+
+	int IntFindIndex()
+	{
+		int[] Values;
+		Values.Add(4);
+		Values.Add(5);
+		Values.Add(6);
+		return Values.FindIndex(6);
+	}
+
+	int IntFindIndexMissing()
+	{
+		int[] Values;
+		Values.Add(4);
+		return Values.FindIndex(6);
+	}
+	)AS") +
+	ASTEST_AS(R"AS(
+	int IntRemoveSingle()
+	{
+		int[] Values;
+		Values.Add(1);
+		Values.Add(2);
+		Values.Add(1);
+		int Removed = Values.RemoveSingle(1);
+		return Removed == 1 && Values.Num() == 2 && Values.Contains(1) && Values.Contains(2) ? 1 : 0;
+	}
+
+	int IntRemoveSingleMissing()
+	{
+		int[] Values;
+		Values.Add(1);
+		return Values.RemoveSingle(9);
+	}
+
+	int IntRemove()
+	{
+		int[] Values;
+		Values.Add(1);
+		Values.Add(2);
+		Values.Add(1);
+		int Removed = Values.Remove(1);
+		return Removed == 2 && Values.Num() == 1 && Values[0] == 2 ? 1 : 0;
+	}
+
+	int IntRemoveMissing()
+	{
+		int[] Values;
+		Values.Add(1);
+		return Values.Remove(9);
+	}
+
+	int IntRemoveSingleSwap()
+	{
+		int[] Values;
+		Values.Add(1);
+		Values.Add(2);
+		Values.Add(3);
+		int Removed = Values.RemoveSingleSwap(2);
+		return Removed == 1 && Values.Num() == 2 && !Values.Contains(2) && Values.Contains(1) && Values.Contains(3) ? 1 : 0;
+	}
+
+	int IntRemoveSingleSwapMissing()
+	{
+		int[] Values;
+		Values.Add(1);
+		return Values.RemoveSingleSwap(9);
+	}
+
+	int IntRemoveSwap()
+	{
+		int[] Values;
+		Values.Add(1);
+		Values.Add(2);
+		Values.Add(1);
+		Values.Add(3);
+		int Removed = Values.RemoveSwap(1);
+		return Removed == 2 && Values.Num() == 2 && !Values.Contains(1) && Values.Contains(2) && Values.Contains(3) ? 1 : 0;
+	}
+
+	int IntRemoveSwapMissing()
+	{
+		int[] Values;
+		Values.Add(1);
+		return Values.RemoveSwap(9);
+	}
+
+	int IntRemoveAt()
+	{
+		int[] Values;
+		Values.Add(1);
+		Values.Add(2);
+		Values.Add(3);
+		Values.RemoveAt(1);
+		return Values.Num() == 2 && Values[0] == 1 && Values[1] == 3 ? 1 : 0;
+	}
+
+	int IntRemoveAtSwap()
+	{
+		int[] Values;
+		Values.Add(1);
+		Values.Add(2);
+		Values.Add(3);
+		Values.RemoveAtSwap(0);
+		return Values.Num() == 2 && !Values.Contains(1) && Values.Contains(2) && Values.Contains(3) ? 1 : 0;
+	}
+
+	int IntSortAscending()
+	{
+		int[] Values;
+		Values.Add(3);
+		Values.Add(1);
+		Values.Add(2);
+		Values.Sort();
+		return Values[0] * 100 + Values[1] * 10 + Values[2];
+	}
+
+	int IntSortDescending()
+	{
+		int[] Values;
+		Values.Add(3);
+		Values.Add(1);
+		Values.Add(2);
+		Values.Sort(true);
+		return Values[0] * 100 + Values[1] * 10 + Values[2];
+	}
+
+	int IntShufflePreservesElements()
+	{
+		int[] Values;
+		Values.Add(1);
+		Values.Add(2);
+		Values.Add(3);
+		Values.Add(4);
+		Values.Shuffle();
+		int Sum = 0;
+		int Product = 1;
+		foreach (int Value : Values)
+		{
+			Sum += Value;
+			Product *= Value;
+		}
+		return Values.Num() == 4 && Sum == 10 && Product == 24 ? 1 : 0;
+	}
+
+	int IntForeachValueSum()
+	{
+		int[] Values;
+		Values.Add(4);
+		Values.Add(2);
+		Values.Add(6);
+		int Sum = 0;
+		foreach (int Value : Values)
+		{
+			Sum += Value;
+		}
+		return Sum;
+	}
+
+	int IntForeachValueIndexWeightedSum()
+	{
+		int[] Values;
+		Values.Add(2);
+		Values.Add(4);
+		Values.Add(6);
+		int Sum = 0;
+		foreach (int Value, int Index : Values)
+		{
+			Sum += Value * (Index + 1);
+		}
+		return Sum;
+	}
+
+	int EmptyForeachVisitCount()
+	{
+		int[] Values;
+		int Count = 0;
+		foreach (int Value : Values)
+		{
+			Count += 1;
+		}
+		return Count;
+	}
+
+	int IntEmptyIteratorCannotProceed()
+	{
+		int[] Values;
+		TArrayIterator<int> Iterator = Values.Iterator();
+		return Iterator.CanProceed ? 0 : 1;
+	}
+
+	int IntIteratorProceedSum()
+	{
+		int[] Values;
+		Values.Add(1);
+		Values.Add(2);
+		Values.Add(3);
+		TArrayIterator<int> Iterator = Values.Iterator();
+		int Sum = 0;
+		while (Iterator.CanProceed)
+		{
+			Sum += Iterator.Proceed();
+		}
+		return Sum;
+	}
+
+	int IntMutableIteratorCanWrite()
+	{
+		int[] Values;
+		Values.Add(1);
+		Values.Add(2);
+		TArrayIterator<int> Iterator = Values.Iterator();
+		Iterator.Proceed() = 20;
+		return Values[0] + Values[1];
+	}
+
+	int IntConstIteratorProceedSum()
+	{
+		int[] Source;
+		Source.Add(4);
+		Source.Add(5);
+		Source.Add(6);
+		const int[] Values = Source;
+		TArrayConstIterator<int> Iterator = Values.Iterator();
+		int Sum = 0;
+		while (Iterator.CanProceed)
+		{
+			Sum += Iterator.Proceed();
+		}
+		return Sum;
+	}
+
+	int IntIteratorCopyAssignStartsAtSameElement()
+	{
+		int[] Values;
+		Values.Add(1);
+		Values.Add(2);
+		TArrayIterator<int> Original = Values.Iterator();
+		TArrayIterator<int> Copied = Original;
+		TArrayIterator<int> Assigned = Copied;
+		return Original.Proceed() + Copied.Proceed() + Assigned.Proceed();
+	}
+	)AS");
 
 	asIScriptModule* Module = TArrayBindingsBuildCoverageModule(Test, Engine, TArraySyntaxCompatProfile,
 		TEXT("Operations"),
@@ -720,264 +744,268 @@ int IntIteratorCopyAssignStartsAtSameElement()
 	return bPassed;
 }
 
-bool RunSyntaxTypeMatrixSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
+bool VerifySyntaxTypeMatrix(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 {
 	asIScriptModule* Module = TArrayBindingsBuildCoverageModule(Test, Engine, TArraySyntaxCompatProfile,
 		TEXT("TypeMatrix"),
-		TEXT(R"(
-void TraceSyntaxCase(const FString&in CaseName)
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.TypeMatrix: " + CaseName);
-}
+		ASTEST_AS(R"AS(
+			void TraceSyntaxCase(const FString&in CaseName)
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.TypeMatrix: " + CaseName);
+			}
 
-int UInt8ArraySum()
-{
-	uint8[] Values;
-	Values.Add(250);
-	Values.Add(5);
-	return int(Values[0]) + int(Values[1]);
-}
+			int UInt8ArraySum()
+			{
+				uint8[] Values;
+				Values.Add(250);
+				Values.Add(5);
+				return int(Values[0]) + int(Values[1]);
+			}
 
-int Int8ArrayKeepsSignedBytes()
-{
-	int8[] Values;
-	Values.Add(-8);
-	Values.Add(7);
-	return int(Values[0]) + int(Values[1]);
-}
+			int Int8ArrayKeepsSignedBytes()
+			{
+				int8[] Values;
+				Values.Add(-8);
+				Values.Add(7);
+				return int(Values[0]) + int(Values[1]);
+			}
 
-int UInt16ArraySum()
-{
-	uint16[] Values;
-	Values.Add(60000);
-	Values.Add(123);
-	return int(Values.Num() == 2 && Values[0] == 60000 && Values[1] == 123 ? 1 : 0);
-}
+			int UInt16ArraySum()
+			{
+				uint16[] Values;
+				Values.Add(60000);
+				Values.Add(123);
+				return int(Values.Num() == 2 && Values[0] == 60000 && Values[1] == 123 ? 1 : 0);
+			}
 
-int Int16ArrayKeepsSignedValues()
-{
-	int16[] Values;
-	Values.Add(-1234);
-	Values.Add(4321);
-	return Values[0] + Values[1];
-}
+			int Int16ArrayKeepsSignedValues()
+			{
+				int16[] Values;
+				Values.Add(-1234);
+				Values.Add(4321);
+				return Values[0] + Values[1];
+			}
 
-int UInt32ArrayKeepsWideValues()
-{
-	uint32[] Values;
-	Values.Add(4000000000);
-	Values.Add(42);
-	return Values.Num() == 2 && Values[0] == 4000000000 && Values[1] == 42 ? 1 : 0;
-}
+			int UInt32ArrayKeepsWideValues()
+			{
+				uint32[] Values;
+				Values.Add(4000000000);
+				Values.Add(42);
+				return Values.Num() == 2 && Values[0] == 4000000000 && Values[1] == 42 ? 1 : 0;
+			}
 
-int Int64ArrayKeepsWideValues()
-{
-	int64[] Values;
-	Values.Add(5000000000);
-	Values.Add(-9);
-	return Values.Num() == 2 && Values[0] == 5000000000 && Values[1] == -9 ? 1 : 0;
-}
+			int Int64ArrayKeepsWideValues()
+			{
+				int64[] Values;
+				Values.Add(5000000000);
+				Values.Add(-9);
+				return Values.Num() == 2 && Values[0] == 5000000000 && Values[1] == -9 ? 1 : 0;
+			}
 
-int UInt64ArrayKeepsWideValues()
-{
-	uint64[] Values;
-	Values.Add(9000000000);
-	Values.Add(11);
-	return Values.Num() == 2 && Values[0] == 9000000000 && Values[1] == 11 ? 1 : 0;
-}
+			int UInt64ArrayKeepsWideValues()
+			{
+				uint64[] Values;
+				Values.Add(9000000000);
+				Values.Add(11);
+				return Values.Num() == 2 && Values[0] == 9000000000 && Values[1] == 11 ? 1 : 0;
+			}
 
-int FloatArrayScaledSum()
-{
-	float[] Values;
-	Values.Add(1.25f);
-	Values.Add(2.50f);
-	return int((Values[0] + Values[1]) * 100.0f);
-}
+			int FloatArrayScaledSum()
+			{
+				float[] Values;
+				Values.Add(1.25f);
+				Values.Add(2.50f);
+				return int((Values[0] + Values[1]) * 100.0f);
+			}
 
-int DoubleArrayScaledSum()
-{
-	double[] Values;
-	Values.Add(1.25);
-	Values.Add(2.50);
-	return int((Values[0] + Values[1]) * 100.0);
-}
+			int DoubleArrayScaledSum()
+			{
+				double[] Values;
+				Values.Add(1.25);
+				Values.Add(2.50);
+				return int((Values[0] + Values[1]) * 100.0);
+			}
 
-int BoolArrayTrueCount()
-{
-	bool[] Values;
-	Values.Add(true);
-	Values.Add(false);
-	Values.Add(true);
-	int Count = 0;
-	foreach (bool Value : Values)
-	{
-		if (Value)
-			Count += 1;
-	}
-	return Count;
-}
+			int BoolArrayTrueCount()
+			{
+				bool[] Values;
+				Values.Add(true);
+				Values.Add(false);
+				Values.Add(true);
+				int Count = 0;
+				foreach (bool Value : Values)
+				{
+					if (Value)
+					{
+						Count += 1;
+					}
+				}
+				return Count;
+			}
 
-int FStringArrayOperations()
-{
-	FString[] Values;
-	Values.Add("Al");
-	Values.Add("pha");
-	FString Combined = Values[0] + Values[1];
-	return Combined == "Alpha" && Values.Contains("pha") && Values.FindIndex("Al") == 0 ? 1 : 0;
-}
+			int FStringArrayOperations()
+			{
+				FString[] Values;
+				Values.Add("Al");
+				Values.Add("pha");
+				FString Combined = Values[0] + Values[1];
+				return Combined == "Alpha" && Values.Contains("pha") && Values.FindIndex("Al") == 0 ? 1 : 0;
+			}
 
-int FNameArrayOperations()
-{
-	FName[] Values;
-	Values.Add(FName("Alpha"));
-	Values.Add(FName("Beta"));
-	return Values.Contains(FName("Beta")) && Values.FindIndex(FName("Alpha")) == 0 ? 1 : 0;
-}
+			int FNameArrayOperations()
+			{
+				FName[] Values;
+				Values.Add(FName("Alpha"));
+				Values.Add(FName("Beta"));
+				return Values.Contains(FName("Beta")) && Values.FindIndex(FName("Alpha")) == 0 ? 1 : 0;
+			}
 
-int FVectorArrayOperations()
-{
-	FVector[] Values;
-	Values.Add(FVector(1.0, 2.0, 3.0));
-	Values.Add(FVector(4.0, 5.0, 6.0));
-	double Sum = 0.0;
-	foreach (const FVector& Value : Values)
-	{
-		Sum += Value.X + Value.Y + Value.Z;
-	}
-	return int(Sum);
-}
+			int FVectorArrayOperations()
+			{
+				FVector[] Values;
+				Values.Add(FVector(1.0, 2.0, 3.0));
+				Values.Add(FVector(4.0, 5.0, 6.0));
+				double Sum = 0.0;
+				foreach (const FVector& Value : Values)
+				{
+					Sum += Value.X + Value.Y + Value.Z;
+				}
+				return int(Sum);
+			}
 
-int FVector2DArrayOperations()
-{
-	FVector2D[] Values;
-	Values.Add(FVector2D(2.0, 3.0));
-	Values.Add(FVector2D(5.0, 7.0));
-	double Sum = 0.0;
-	foreach (const FVector2D& Value : Values)
-	{
-		Sum += Value.X + Value.Y;
-	}
-	return int(Sum);
-}
+			int FVector2DArrayOperations()
+			{
+				FVector2D[] Values;
+				Values.Add(FVector2D(2.0, 3.0));
+				Values.Add(FVector2D(5.0, 7.0));
+				double Sum = 0.0;
+				foreach (const FVector2D& Value : Values)
+				{
+					Sum += Value.X + Value.Y;
+				}
+				return int(Sum);
+			}
 
-int FVector4ArrayOperations()
-{
-	FVector4[] Values;
-	Values.Add(FVector4(1.0, 2.0, 3.0, 4.0));
-	Values.Add(FVector4(5.0, 6.0, 7.0, 8.0));
-	double Sum = 0.0;
-	foreach (const FVector4& Value : Values)
-	{
-		Sum += Value.X + Value.Y + Value.Z + Value.W;
-	}
-	return int(Sum);
-}
+			int FVector4ArrayOperations()
+			{
+				FVector4[] Values;
+				Values.Add(FVector4(1.0, 2.0, 3.0, 4.0));
+				Values.Add(FVector4(5.0, 6.0, 7.0, 8.0));
+				double Sum = 0.0;
+				foreach (const FVector4& Value : Values)
+				{
+					Sum += Value.X + Value.Y + Value.Z + Value.W;
+				}
+				return int(Sum);
+			}
 
-int FRotatorArrayOperations()
-{
-	FRotator[] Values;
-	Values.Add(FRotator(10.0, 20.0, 30.0));
-	Values.Add(FRotator(1.0, 2.0, 3.0));
-	return int(Values[0].Pitch + Values[0].Yaw + Values[0].Roll + Values[1].Pitch + Values[1].Yaw + Values[1].Roll);
-}
+			int FRotatorArrayOperations()
+			{
+				FRotator[] Values;
+				Values.Add(FRotator(10.0, 20.0, 30.0));
+				Values.Add(FRotator(1.0, 2.0, 3.0));
+				return int(Values[0].Pitch + Values[0].Yaw + Values[0].Roll + Values[1].Pitch + Values[1].Yaw + Values[1].Roll);
+			}
 
-int FTransformArrayOperations()
-{
-	FTransform[] Values;
-	Values.Add(FTransform(FVector(10.0, 20.0, 30.0)));
-	Values.Add(FTransform(FVector(1.0, 2.0, 3.0)));
-	FVector Translation = Values[0].GetTranslation() + Values[1].GetTranslation();
-	return int(Translation.X + Translation.Y + Translation.Z);
-}
+			int FTransformArrayOperations()
+			{
+				FTransform[] Values;
+				Values.Add(FTransform(FVector(10.0, 20.0, 30.0)));
+				Values.Add(FTransform(FVector(1.0, 2.0, 3.0)));
+				FVector Translation = Values[0].GetTranslation() + Values[1].GetTranslation();
+				return int(Translation.X + Translation.Y + Translation.Z);
+			}
 
-int FLinearColorArrayOperations()
-{
-	FLinearColor[] Values;
-	Values.Add(FLinearColor(0.25f, 0.50f, 0.75f, 1.0f));
-	Values.Add(FLinearColor(1.0f, 0.75f, 0.50f, 0.25f));
-	return int((Values[0].R + Values[0].G + Values[0].B + Values[0].A + Values[1].R + Values[1].G + Values[1].B + Values[1].A) * 100.0f);
-}
+			int FLinearColorArrayOperations()
+			{
+				FLinearColor[] Values;
+				Values.Add(FLinearColor(0.25f, 0.50f, 0.75f, 1.0f));
+				Values.Add(FLinearColor(1.0f, 0.75f, 0.50f, 0.25f));
+				return int((Values[0].R + Values[0].G + Values[0].B + Values[0].A + Values[1].R + Values[1].G + Values[1].B + Values[1].A) * 100.0f);
+			}
 
-int FColorArrayOperations()
-{
-	FColor[] Values;
-	Values.Add(FColor(1, 2, 3, 4));
-	Values.Add(FColor(5, 6, 7, 8));
-	return Values.Num() == 2 && Values[0] == FColor(1, 2, 3, 4) && Values[1].ToHex() == "05060708" ? 1 : 0;
-}
+			int FColorArrayOperations()
+			{
+				FColor[] Values;
+				Values.Add(FColor(1, 2, 3, 4));
+				Values.Add(FColor(5, 6, 7, 8));
+				return Values.Num() == 2 && Values[0] == FColor(1, 2, 3, 4) && Values[1].ToHex() == "05060708" ? 1 : 0;
+			}
 
-int FIntPointArrayOperations()
-{
-	FIntPoint[] Values;
-	Values.Add(FIntPoint(3, 5));
-	Values.Add(FIntPoint(7, 11));
-	return Values[0].X + Values[0].Y + Values[1].X + Values[1].Y;
-}
+			int FIntPointArrayOperations()
+			{
+				FIntPoint[] Values;
+				Values.Add(FIntPoint(3, 5));
+				Values.Add(FIntPoint(7, 11));
+				return Values[0].X + Values[0].Y + Values[1].X + Values[1].Y;
+			}
 
-int FIntVectorArrayOperations()
-{
-	FIntVector[] Values;
-	Values.Add(FIntVector(1, 2, 3));
-	Values.Add(FIntVector(4, 5, 6));
-	return Values[0].X + Values[0].Y + Values[0].Z + Values[1].X + Values[1].Y + Values[1].Z;
-}
+			int FIntVectorArrayOperations()
+			{
+				FIntVector[] Values;
+				Values.Add(FIntVector(1, 2, 3));
+				Values.Add(FIntVector(4, 5, 6));
+				return Values[0].X + Values[0].Y + Values[0].Z + Values[1].X + Values[1].Y + Values[1].Z;
+			}
 
-int FIntVector4ArrayOperations()
-{
-	FIntVector4[] Values;
-	Values.Add(FIntVector4(1, 2, 3, 4));
-	Values.Add(FIntVector4(5, 6, 7, 8));
-	return Values[0].X + Values[0].Y + Values[0].Z + Values[0].W + Values[1].X + Values[1].Y + Values[1].Z + Values[1].W;
-}
+			int FIntVector4ArrayOperations()
+			{
+				FIntVector4[] Values;
+				Values.Add(FIntVector4(1, 2, 3, 4));
+				Values.Add(FIntVector4(5, 6, 7, 8));
+				return Values[0].X + Values[0].Y + Values[0].Z + Values[0].W + Values[1].X + Values[1].Y + Values[1].Z + Values[1].W;
+			}
 
-int FGuidArrayOperations()
-{
-	FGuid[] Values;
-	Values.Add(FGuid(1, 2, 3, 4));
-	Values.Add(FGuid(5, 6, 7, 8));
-	uint32 Sum = 0;
-	foreach (const FGuid& Value : Values)
-	{
-		Sum += Value[0] + Value[1] + Value[2] + Value[3];
-	}
-	return int(Sum);
-}
+			int FGuidArrayOperations()
+			{
+				FGuid[] Values;
+				Values.Add(FGuid(1, 2, 3, 4));
+				Values.Add(FGuid(5, 6, 7, 8));
+				uint32 Sum = 0;
+				foreach (const FGuid& Value : Values)
+				{
+					Sum += Value[0] + Value[1] + Value[2] + Value[3];
+				}
+				return int(Sum);
+			}
 
-int FTextArrayOperations()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.TypeMatrix.FTextArrayOperations: begin");
-	FText[] Values;
-	Values.SetNum(2);
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.TypeMatrix.FTextArrayOperations: after SetNum Num=" + Values.Num());
-	int EmptyCount = 0;
-	foreach (const FText& Value : Values)
-	{
-		Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.TypeMatrix.FTextArrayOperations: foreach IsEmpty=" + (Value.IsEmpty() ? "true" : "false"));
-		if (Value.IsEmpty())
-			EmptyCount += 1;
-	}
-	FText[] Copy;
-	Copy = Values;
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.TypeMatrix.FTextArrayOperations: copy Num=" + Copy.Num() + ", EmptyCount=" + EmptyCount);
-	return Copy.Num() == 2 && EmptyCount == 2 ? 1 : 0;
-}
+			int FTextArrayOperations()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.TypeMatrix.FTextArrayOperations: begin");
+				FText[] Values;
+				Values.SetNum(2);
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.TypeMatrix.FTextArrayOperations: after SetNum Num=" + Values.Num());
+				int EmptyCount = 0;
+				foreach (const FText& Value : Values)
+				{
+					Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.TypeMatrix.FTextArrayOperations: foreach IsEmpty=" + (Value.IsEmpty() ? "true" : "false"));
+					if (Value.IsEmpty())
+					{
+						EmptyCount += 1;
+					}
+				}
+				FText[] Copy;
+				Copy = Values;
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.TypeMatrix.FTextArrayOperations: copy Num=" + Copy.Num() + ", EmptyCount=" + EmptyCount);
+				return Copy.Num() == 2 && EmptyCount == 2 ? 1 : 0;
+			}
 
-int TSubclassOfActorArrayOperations()
-{
-	TSubclassOf<AActor>[] Classes;
-	Classes.Add(AActor::StaticClass());
-	Classes.Add(ACameraActor::StaticClass());
-	bool bAddedDuplicate = Classes.AddUnique(AActor::StaticClass());
-	TSubclassOf<AActor>[] Copy;
-	Copy = Classes;
-	return Copy.Num() == 2
-		&& !bAddedDuplicate
-		&& Copy[0].IsChildOf(AActor::StaticClass())
-		&& Copy[1].Get() == ACameraActor::StaticClass()
-		&& Copy.Contains(AActor::StaticClass())
-		&& Copy.FindIndex(ACameraActor::StaticClass()) == 1 ? 1 : 0;
-}
-)"));
+			int TSubclassOfActorArrayOperations()
+			{
+				TSubclassOf<AActor>[] Classes;
+				Classes.Add(AActor::StaticClass());
+				Classes.Add(ACameraActor::StaticClass());
+				bool bAddedDuplicate = Classes.AddUnique(AActor::StaticClass());
+				TSubclassOf<AActor>[] Copy;
+				Copy = Classes;
+				return Copy.Num() == 2
+				&& !bAddedDuplicate
+				&& Copy[0].IsChildOf(AActor::StaticClass())
+				&& Copy[1].Get() == ACameraActor::StaticClass()
+				&& Copy.Contains(AActor::StaticClass())
+				&& Copy.FindIndex(ACameraActor::StaticClass()) == 1 ? 1 : 0;
+			}
+			)AS"));
 	if (Module == nullptr)
 	{
 		return false;
@@ -1014,57 +1042,57 @@ int TSubclassOfActorArrayOperations()
 	return ExpectTArrayBindingsGlobalInts(Test, Engine, *Module, TArraySyntaxCompatProfile, Cases);
 }
 
-bool RunSyntaxReturnValuesSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
+bool VerifySyntaxReturnValues(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 {
 	asIScriptModule* Module = TArrayBindingsBuildCoverageModule(Test, Engine, TArraySyntaxCompatProfile,
 		TEXT("ReturnValues"),
-		TEXT(R"(
-void TraceSyntaxCase(const FString&in CaseName)
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ReturnValues: " + CaseName);
-}
+		ASTEST_AS(R"AS(
+			void TraceSyntaxCase(const FString&in CaseName)
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ReturnValues: " + CaseName);
+			}
 
-int[] ReturnIntArray()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ReturnValues.ReturnIntArray: begin");
-	int[] Values;
-	Values.Add(3);
-	Values.Add(5);
-	Values.Add(8);
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ReturnValues.ReturnIntArray: returning");
-	return Values;
-}
+			int[] ReturnIntArray()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ReturnValues.ReturnIntArray: begin");
+				int[] Values;
+				Values.Add(3);
+				Values.Add(5);
+				Values.Add(8);
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ReturnValues.ReturnIntArray: returning");
+				return Values;
+			}
 
-FVector[] ReturnVectorArray()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ReturnValues.ReturnVectorArray: begin");
-	FVector[] Values;
-	Values.Add(FVector(1.0, 2.0, 3.0));
-	Values.Add(FVector(4.0, 5.0, 6.0));
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ReturnValues.ReturnVectorArray: returning");
-	return Values;
-}
+			FVector[] ReturnVectorArray()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ReturnValues.ReturnVectorArray: begin");
+				FVector[] Values;
+				Values.Add(FVector(1.0, 2.0, 3.0));
+				Values.Add(FVector(4.0, 5.0, 6.0));
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ReturnValues.ReturnVectorArray: returning");
+				return Values;
+			}
 
-FString[] ReturnStringArray()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ReturnValues.ReturnStringArray: begin");
-	FString[] Values;
-	Values.Add("Alpha");
-	Values.Add("Beta");
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ReturnValues.ReturnStringArray: returning");
-	return Values;
-}
+			FString[] ReturnStringArray()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ReturnValues.ReturnStringArray: begin");
+				FString[] Values;
+				Values.Add("Alpha");
+				Values.Add("Beta");
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ReturnValues.ReturnStringArray: returning");
+				return Values;
+			}
 
-TSubclassOf<AActor>[] ReturnActorClassArray()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ReturnValues.ReturnActorClassArray: begin");
-	TSubclassOf<AActor>[] Classes;
-	Classes.Add(AActor::StaticClass());
-	Classes.Add(ACameraActor::StaticClass());
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ReturnValues.ReturnActorClassArray: returning");
-	return Classes;
-}
-)"));
+			TSubclassOf<AActor>[] ReturnActorClassArray()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ReturnValues.ReturnActorClassArray: begin");
+				TSubclassOf<AActor>[] Classes;
+				Classes.Add(AActor::StaticClass());
+				Classes.Add(ACameraActor::StaticClass());
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ReturnValues.ReturnActorClassArray: returning");
+				return Classes;
+			}
+			)AS"));
 	if (Module == nullptr)
 	{
 		return false;
@@ -1140,167 +1168,167 @@ TSubclassOf<AActor>[] ReturnActorClassArray()
 	return bPassed;
 }
 
-bool RunSyntaxErrorPathsSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
+bool VerifySyntaxErrorPaths(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 {
 	asIScriptModule* Module = TArrayBindingsBuildCoverageModule(Test, Engine, TArraySyntaxCompatProfile,
 		TEXT("ErrorPaths"),
-		TEXT(R"(
-void TraceSyntaxCase(const FString&in CaseName)
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths: " + CaseName);
-}
+		ASTEST_AS(R"AS(
+			void TraceSyntaxCase(const FString&in CaseName)
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths: " + CaseName);
+			}
 
-void TriggerIndexOutOfBounds()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerIndexOutOfBounds: before opIndex");
-	int[] Values;
-	Values.Add(1);
-	Values[1] = 2;
-}
+			void TriggerIndexOutOfBounds()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerIndexOutOfBounds: before opIndex");
+				int[] Values;
+				Values.Add(1);
+				Values[1] = 2;
+			}
 
-void TriggerLastOutOfBounds()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerLastOutOfBounds: before Last");
-	int[] Values;
-	int Value = Values.Last();
-}
+			void TriggerLastOutOfBounds()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerLastOutOfBounds: before Last");
+				int[] Values;
+				int Value = Values.Last();
+			}
 
-void TriggerSwapOutOfBounds()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerSwapOutOfBounds: before Swap");
-	int[] Values;
-	Values.Add(1);
-	Values.Swap(0, 1);
-}
+			void TriggerSwapOutOfBounds()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerSwapOutOfBounds: before Swap");
+				int[] Values;
+				Values.Add(1);
+				Values.Swap(0, 1);
+			}
 
-void TriggerInsertOutOfBounds()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerInsertOutOfBounds: before Insert");
-	int[] Values;
-	Values.Insert(1, 1);
-}
+			void TriggerInsertOutOfBounds()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerInsertOutOfBounds: before Insert");
+				int[] Values;
+				Values.Insert(1, 1);
+			}
 
-void TriggerRemoveAtOutOfBounds()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerRemoveAtOutOfBounds: before RemoveAt");
-	int[] Values;
-	Values.RemoveAt(0);
-}
+			void TriggerRemoveAtOutOfBounds()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerRemoveAtOutOfBounds: before RemoveAt");
+				int[] Values;
+				Values.RemoveAt(0);
+			}
 
-void TriggerRemoveAtSwapOutOfBounds()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerRemoveAtSwapOutOfBounds: before RemoveAtSwap");
-	int[] Values;
-	Values.RemoveAtSwap(0);
-}
+			void TriggerRemoveAtSwapOutOfBounds()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerRemoveAtSwapOutOfBounds: before RemoveAtSwap");
+				int[] Values;
+				Values.RemoveAtSwap(0);
+			}
 
-void TriggerAddSelfAlias()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerAddSelfAlias: before Add");
-	FString[] Values;
-	Values.Add("Alpha");
-	Values.Add(Values[0]);
-}
+			void TriggerAddSelfAlias()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerAddSelfAlias: before Add");
+				FString[] Values;
+				Values.Add("Alpha");
+				Values.Add(Values[0]);
+			}
 
-void TriggerInsertSelfAlias()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerInsertSelfAlias: before Insert");
-	FString[] Values;
-	Values.Add("Alpha");
-	Values.Insert(Values[0], 0);
-}
+			void TriggerInsertSelfAlias()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerInsertSelfAlias: before Insert");
+				FString[] Values;
+				Values.Add("Alpha");
+				Values.Insert(Values[0], 0);
+			}
 
-void TriggerCopySelf()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerCopySelf: before Copy");
-	int[] Values;
-	Values.Add(1);
-	Values.Copy(Values, 0, 1, 0);
-}
+			void TriggerCopySelf()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerCopySelf: before Copy");
+				int[] Values;
+				Values.Add(1);
+				Values.Copy(Values, 0, 1, 0);
+			}
 
-void TriggerCopyNegativeCount()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerCopyNegativeCount: before Copy");
-	int[] Source;
-	Source.Add(1);
-	int[] Destination;
-	Destination.Add(0);
-	Destination.Copy(Source, 0, -1, 0);
-}
+			void TriggerCopyNegativeCount()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerCopyNegativeCount: before Copy");
+				int[] Source;
+				Source.Add(1);
+				int[] Destination;
+				Destination.Add(0);
+				Destination.Copy(Source, 0, -1, 0);
+			}
 
-void TriggerCopySourceOutOfBounds()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerCopySourceOutOfBounds: before Copy");
-	int[] Source;
-	Source.Add(1);
-	int[] Destination;
-	Destination.Add(0);
-	Destination.Copy(Source, 1, 1, 0);
-}
+			void TriggerCopySourceOutOfBounds()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerCopySourceOutOfBounds: before Copy");
+				int[] Source;
+				Source.Add(1);
+				int[] Destination;
+				Destination.Add(0);
+				Destination.Copy(Source, 1, 1, 0);
+			}
 
-void TriggerCopyTargetOutOfBounds()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerCopyTargetOutOfBounds: before Copy");
-	int[] Source;
-	Source.Add(1);
-	int[] Destination;
-	Destination.Copy(Source, 0, 1, 0);
-}
+			void TriggerCopyTargetOutOfBounds()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerCopyTargetOutOfBounds: before Copy");
+				int[] Source;
+				Source.Add(1);
+				int[] Destination;
+				Destination.Copy(Source, 0, 1, 0);
+			}
 
-void TriggerMoveAssignSelf()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerMoveAssignSelf: before MoveAssignFrom");
-	int[] Values;
-	Values.Add(1);
-	Values.MoveAssignFrom(Values);
-}
+			void TriggerMoveAssignSelf()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerMoveAssignSelf: before MoveAssignFrom");
+				int[] Values;
+				Values.Add(1);
+				Values.MoveAssignFrom(Values);
+			}
 
-void TriggerSetNumNegative()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerSetNumNegative: before SetNum");
-	int[] Values;
-	Values.SetNum(-1);
-}
+			void TriggerSetNumNegative()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerSetNumNegative: before SetNum");
+				int[] Values;
+				Values.SetNum(-1);
+			}
 
-void TriggerSetNumZeroedNegative()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerSetNumZeroedNegative: before SetNumZeroed");
-	int[] Values;
-	Values.SetNumZeroed(-1);
-}
+			void TriggerSetNumZeroedNegative()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerSetNumZeroedNegative: before SetNumZeroed");
+				int[] Values;
+				Values.SetNumZeroed(-1);
+			}
 
-void TriggerSetNumZeroedString()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerSetNumZeroedString: before SetNumZeroed");
-	FString[] Values;
-	Values.SetNumZeroed(1);
-}
+			void TriggerSetNumZeroedString()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerSetNumZeroedString: before SetNumZeroed");
+				FString[] Values;
+				Values.SetNumZeroed(1);
+			}
 
-void TriggerIteratorProceedOutOfBounds()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerIteratorProceedOutOfBounds: before Proceed");
-	int[] Values;
-	TArrayIterator<int> Iterator = Values.Iterator();
-	Iterator.Proceed();
-}
+			void TriggerIteratorProceedOutOfBounds()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerIteratorProceedOutOfBounds: before Proceed");
+				int[] Values;
+				TArrayIterator<int> Iterator = Values.Iterator();
+				Iterator.Proceed();
+			}
 
-void TriggerConstIteratorProceedOutOfBounds()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerConstIteratorProceedOutOfBounds: before Proceed");
-	int[] Source;
-	const int[] Values = Source;
-	TArrayConstIterator<int> Iterator = Values.Iterator();
-	Iterator.Proceed();
-}
+			void TriggerConstIteratorProceedOutOfBounds()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerConstIteratorProceedOutOfBounds: before Proceed");
+				int[] Source;
+				const int[] Values = Source;
+				TArrayConstIterator<int> Iterator = Values.Iterator();
+				Iterator.Proceed();
+			}
 
-void TriggerSortUnsupportedText()
-{
-	Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerSortUnsupportedText: before Sort");
-	FText[] Values;
-	Values.SetNum(1);
-	Values.Sort();
-}
-)"));
+			void TriggerSortUnsupportedText()
+			{
+				Log(FName("TArraySyntaxCompatBindings"), "TArraySyntaxCompat.ErrorPaths.TriggerSortUnsupportedText: before Sort");
+				FText[] Values;
+				Values.SetNum(1);
+				Values.Sort();
+			}
+			)AS"));
 	if (Module == nullptr)
 	{
 		return false;
@@ -1479,15 +1507,15 @@ void TriggerSortUnsupportedText()
 	return bPassed;
 }
 
-bool RunSyntaxNestedContainerRejectionSection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
+bool VerifySyntaxNestedContainerRejection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 {
-	const FString Source = TEXT(R"(
-int Entry()
-{
-	int[][] Nested;
-	return Nested.Num();
-}
-)");
+	const FString SyntaxNestedContainerRejectionSource = ASTEST_AS(R"AS(
+		int Entry()
+		{
+			int[][] Nested;
+			return Nested.Num();
+		}
+		)AS");
 
 	const FString ModuleName = TArrayBindingsMakeModuleName(TArraySyntaxCompatProfile, TEXT("NestedContainerRejection"));
 	const FString SourceFilename = FString::Printf(TEXT("%s.as"), *ModuleName);
@@ -1498,7 +1526,7 @@ int Entry()
 		ECompileType::SoftReloadOnly,
 		FName(*ModuleName),
 		SourceFilename,
-		Source,
+		SyntaxNestedContainerRejectionSource,
 		false,
 		Summary,
 		true);
@@ -1524,7 +1552,7 @@ int Entry()
 	return bPassed;
 }
 
-bool RunObjectArraySyntaxBoundarySection(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
+bool VerifyObjectArraySyntaxBoundary(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 {
 	bool bPassed = true;
 	bPassed &= TArraySyntaxCompatExpectCompileFailure(
@@ -1532,65 +1560,65 @@ bool RunObjectArraySyntaxBoundarySection(FAutomationTestBase& Test, FAngelscript
 		Engine,
 		TArraySyntaxCompatProfile,
 		TEXT("UObjectArrayBoundary"),
-		TEXT(R"(
-int Entry()
-{
-	UObject[] Objects;
-	return Objects.Num();
-}
-)"),
+		ASTEST_AS(R"AS(
+			int Entry()
+			{
+				UObject[] Objects;
+				return Objects.Num();
+			}
+			)AS"),
 		TEXT("UObject[] local variable boundary"));
 	bPassed &= TArraySyntaxCompatExpectCompileFailure(
 		Test,
 		Engine,
 		TArraySyntaxCompatProfile,
 		TEXT("AActorArrayBoundary"),
-		TEXT(R"(
-int Entry()
-{
-	AActor[] Actors;
-	return Actors.Num();
-}
-)"),
+		ASTEST_AS(R"AS(
+			int Entry()
+			{
+				AActor[] Actors;
+				return Actors.Num();
+			}
+			)AS"),
 		TEXT("AActor[] local variable boundary"));
 	bPassed &= TArraySyntaxCompatExpectCompileFailure(
 		Test,
 		Engine,
 		TArraySyntaxCompatProfile,
 		TEXT("UActorComponentArrayBoundary"),
-		TEXT(R"(
-int Entry()
-{
-	UActorComponent[] Components;
-	return Components.Num();
-}
-)"),
+		ASTEST_AS(R"AS(
+			int Entry()
+			{
+				UActorComponent[] Components;
+				return Components.Num();
+			}
+			)AS"),
 		TEXT("UActorComponent[] local variable boundary"));
 	bPassed &= TArraySyntaxCompatExpectCompileFailure(
 		Test,
 		Engine,
 		TArraySyntaxCompatProfile,
 		TEXT("USceneComponentArrayBoundary"),
-		TEXT(R"(
-int Entry()
-{
-	USceneComponent[] Components;
-	return Components.Num();
-}
-)"),
+		ASTEST_AS(R"AS(
+			int Entry()
+			{
+				USceneComponent[] Components;
+				return Components.Num();
+			}
+			)AS"),
 		TEXT("USceneComponent[] local variable boundary"));
 	bPassed &= TArraySyntaxCompatExpectCompileFailure(
 		Test,
 		Engine,
 		TArraySyntaxCompatProfile,
 		TEXT("UClassArrayBoundary"),
-		TEXT(R"(
-int Entry()
-{
-	UClass[] Classes;
-	return Classes.Num();
-}
-)"),
+		ASTEST_AS(R"AS(
+			int Entry()
+			{
+				UClass[] Classes;
+				return Classes.Num();
+			}
+			)AS"),
 		TEXT("UClass[] local variable boundary"));
 
 	return bPassed;
@@ -1609,38 +1637,93 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTArraySyntaxCompatBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
-	TEST_METHOD(TArraySyntaxCompat)
+	TEST_METHOD(TArraySyntaxBaseline)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
 
 		TestRunner->AddInfo(TEXT("TArraySyntaxCompat.MutationCompat: begin"));
-		RunIntArrayMutationCompatSection(*TestRunner, Engine);
-
-		TestRunner->AddInfo(TEXT("TArraySyntaxCompat.IteratorCompat: begin"));
-		RunIntArrayIteratorCompatSection(*TestRunner, Engine);
-
-		TestRunner->AddInfo(TEXT("TArraySyntaxCompat.Operations: begin"));
-		RunIntArrayOperationsSection(*TestRunner, Engine);
-
-		TestRunner->AddInfo(TEXT("TArraySyntaxCompat.TypeMatrix: begin"));
-		RunSyntaxTypeMatrixSection(*TestRunner, Engine);
-
-		TestRunner->AddInfo(TEXT("TArraySyntaxCompat.ReturnValues: begin"));
-		RunSyntaxReturnValuesSection(*TestRunner, Engine);
-
-		TestRunner->AddInfo(TEXT("TArraySyntaxCompat.ErrorPaths: begin"));
-		RunSyntaxErrorPathsSection(*TestRunner, Engine);
-
-		TestRunner->AddInfo(TEXT("TArraySyntaxCompat.NestedContainerRejection: begin"));
-		RunSyntaxNestedContainerRejectionSection(*TestRunner, Engine);
-
-		TestRunner->AddInfo(TEXT("TArraySyntaxCompat.ObjectArraySyntaxBoundary: begin"));
-		RunObjectArraySyntaxBoundarySection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyIntArrayMutationSyntax(*TestRunner, Engine),
+			TEXT("VerifyIntArrayMutationSyntax should pass")));
 
 		}
+	}
+
+	TEST_METHOD(TArraySyntaxIteration)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		TestRunner->AddInfo(TEXT("TArraySyntaxCompat.IteratorCompat: begin"));
+		ASSERT_THAT(IsTrue(
+			VerifyIntArrayIterationSyntax(*TestRunner, Engine),
+			TEXT("VerifyIntArrayIterationSyntax should pass")));
+	}
+
+	TEST_METHOD(TArraySyntaxOperations)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		TestRunner->AddInfo(TEXT("TArraySyntaxCompat.Operations: begin"));
+		ASSERT_THAT(IsTrue(
+			VerifyIntArrayOperationsSyntax(*TestRunner, Engine),
+			TEXT("VerifyIntArrayOperationsSyntax should pass")));
+	}
+
+	TEST_METHOD(TArraySyntaxTypeMatrix)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		TestRunner->AddInfo(TEXT("TArraySyntaxCompat.TypeMatrix: begin"));
+		ASSERT_THAT(IsTrue(
+			VerifySyntaxTypeMatrix(*TestRunner, Engine),
+			TEXT("VerifySyntaxTypeMatrix should pass")));
+	}
+
+	TEST_METHOD(TArraySyntaxReturnValues)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		TestRunner->AddInfo(TEXT("TArraySyntaxCompat.ReturnValues: begin"));
+		ASSERT_THAT(IsTrue(
+			VerifySyntaxReturnValues(*TestRunner, Engine),
+			TEXT("VerifySyntaxReturnValues should pass")));
+	}
+
+	TEST_METHOD(TArraySyntaxErrorPaths)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		TestRunner->AddInfo(TEXT("TArraySyntaxCompat.ErrorPaths: begin"));
+		ASSERT_THAT(IsTrue(
+			VerifySyntaxErrorPaths(*TestRunner, Engine),
+			TEXT("VerifySyntaxErrorPaths should pass")));
+	}
+
+	TEST_METHOD(TArraySyntaxNestedContainerRejection)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		TestRunner->AddInfo(TEXT("TArraySyntaxCompat.NestedContainerRejection: begin"));
+		ASSERT_THAT(IsTrue(
+			VerifySyntaxNestedContainerRejection(*TestRunner, Engine),
+			TEXT("VerifySyntaxNestedContainerRejection should pass")));
+	}
+
+	TEST_METHOD(ObjectArraySyntaxBoundary)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		TestRunner->AddInfo(TEXT("TArraySyntaxCompat.ObjectArraySyntaxBoundary: begin"));
+		ASSERT_THAT(IsTrue(
+			VerifyObjectArraySyntaxBoundary(*TestRunner, Engine),
+			TEXT("VerifyObjectArraySyntaxBoundary should pass")));
 	}
 };
 

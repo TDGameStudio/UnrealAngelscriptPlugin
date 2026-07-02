@@ -40,144 +40,144 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSubsystemBindingsTest,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
-static constexpr int32 LocalPlayerControllerId = 0;
+	static constexpr int32 LocalPlayerControllerId = 0;
 
-static bool ExecuteGlobalIntWithObjects(
-	FAutomationTestBase& Test,
-	FAngelscriptEngine& Engine,
-	asIScriptModule& Module,
-	const TCHAR* FunctionDecl,
-	TArrayView<UObject* const> Args,
-	int32& OutResult)
-{
-	FASGlobalFunctionInvoker Invoker(Test, Engine, Module, FunctionDecl);
-	if (!Invoker.IsValid())
+	static bool ExecuteGlobalIntWithObjects(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		asIScriptModule& Module,
+		const TCHAR* FunctionDecl,
+		TArrayView<UObject* const> Args,
+		int32& OutResult)
 	{
-		return false;
+		FASGlobalFunctionInvoker Invoker(Test, Engine, Module, FunctionDecl);
+		if (!Invoker.IsValid())
+		{
+			return false;
+		}
+
+		for (UObject* Arg : Args)
+		{
+			Invoker.AddArgObject(Arg);
+		}
+
+		OutResult = Invoker.CallAndReturn<int32>(INDEX_NONE);
+		return Invoker.HasRun();
 	}
 
-	for (UObject* Arg : Args)
+	static bool ExecuteGlobalIntWithObject(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		asIScriptModule& Module,
+		const TCHAR* FunctionDecl,
+		UObject* Arg,
+		int32& OutResult)
 	{
-		Invoker.AddArgObject(Arg);
+		TArray<UObject*, TInlineAllocator<1>> Args;
+		Args.Add(Arg);
+		return ExecuteGlobalIntWithObjects(Test, Engine, Module, FunctionDecl, Args, OutResult);
 	}
 
-	OutResult = Invoker.CallAndReturn<int32>(INDEX_NONE);
-	return Invoker.HasRun();
-}
-
-static bool ExecuteGlobalIntWithObject(
-	FAutomationTestBase& Test,
-	FAngelscriptEngine& Engine,
-	asIScriptModule& Module,
-	const TCHAR* FunctionDecl,
-	UObject* Arg,
-	int32& OutResult)
-{
-	TArray<UObject*, TInlineAllocator<1>> Args;
-	Args.Add(Arg);
-	return ExecuteGlobalIntWithObjects(Test, Engine, Module, FunctionDecl, Args, OutResult);
-}
-
-struct FStandaloneLocalPlayerFixture
-{
-	~FStandaloneLocalPlayerFixture()
+	struct FStandaloneLocalPlayerFixture
 	{
-		Shutdown();
-	}
-
-	bool Initialize(FAutomationTestBase& Test)
-	{
-		FNoDiscardAsserter LocalAssert(Test);
-		if (!LocalAssert.IsNotNull(GEngine, TEXT("Subsystem local-player fixture should have a live GEngine")))
+		~FStandaloneLocalPlayerFixture()
 		{
-			return false;
+			Shutdown();
 		}
 
-		const FName PackageName = MakeUniqueObjectName(
-			nullptr,
-			UPackage::StaticClass(),
-			FName(TEXT("/Angelscript_Test_SubsystemBindingsLocalPlayer")));
-		Package = NewObject<UPackage>(GetTransientPackage(), PackageName, RF_Transient);
-		if (!LocalAssert.IsNotNull(Package, TEXT("Subsystem local-player fixture should create a transient world package")))
+		bool Initialize(FAutomationTestBase& Test)
 		{
-			return false;
-		}
-
-		GameInstance = NewObject<UGameInstance>(GEngine, UGameInstance::StaticClass());
-		if (!LocalAssert.IsNotNull(GameInstance, TEXT("Subsystem local-player fixture should create an engine-owned game instance")))
-		{
-			return false;
-		}
-
-		GameInstance->InitializeStandalone(TEXT("AngelscriptSubsystemBindingsLocalPlayerWorld"), Package);
-		World = GameInstance->GetWorld();
-		WorldContext = GameInstance->GetWorldContext();
-		bool bHasWorldContext = true;
-		bHasWorldContext &= LocalAssert.IsNotNull(World, TEXT("Subsystem local-player fixture should initialize a standalone world"));
-		bHasWorldContext &= LocalAssert.IsNotNull(WorldContext, TEXT("Subsystem local-player fixture should expose a world context"));
-		if (!bHasWorldContext)
-		{
-			return false;
-		}
-
-		UClass* ViewportClass = GEngine->GameViewportClientClass != nullptr
-			? GEngine->GameViewportClientClass.Get()
-			: UGameViewportClient::StaticClass();
-		GameViewport = NewObject<UGameViewportClient>(GEngine, ViewportClass);
-		if (!LocalAssert.IsNotNull(GameViewport, TEXT("Subsystem local-player fixture should create a viewport client")))
-		{
-			return false;
-		}
-
-		GameViewport->Init(*WorldContext, GameInstance, /*bCreateNewAudioDevice*/false);
-		WorldContext->GameViewport = GameViewport;
-		return true;
-	}
-
-	void Shutdown()
-	{
-		if (GameInstance == nullptr && World == nullptr)
-		{
-			return;
-		}
-
-		if (World != nullptr)
-		{
-			World->BeginTearingDown();
-		}
-
-		if (GameInstance != nullptr)
-		{
-			GameInstance->Shutdown();
-		}
-
-		if (WorldContext != nullptr)
-		{
-			WorldContext->GameViewport = nullptr;
-		}
-
-		if (World != nullptr)
-		{
-			World->DestroyWorld(false);
-			if (GEngine != nullptr)
+			FNoDiscardAsserter LocalAssert(Test);
+			if (!LocalAssert.IsNotNull(GEngine, TEXT("Subsystem local-player fixture should have a live GEngine")))
 			{
-				GEngine->DestroyWorldContext(World);
+				return false;
 			}
+
+			const FName PackageName = MakeUniqueObjectName(
+				nullptr,
+				UPackage::StaticClass(),
+				FName(TEXT("/Angelscript_Test_SubsystemBindingsLocalPlayer")));
+			Package = NewObject<UPackage>(GetTransientPackage(), PackageName, RF_Transient);
+			if (!LocalAssert.IsNotNull(Package, TEXT("Subsystem local-player fixture should create a transient world package")))
+			{
+				return false;
+			}
+
+			GameInstance = NewObject<UGameInstance>(GEngine, UGameInstance::StaticClass());
+			if (!LocalAssert.IsNotNull(GameInstance, TEXT("Subsystem local-player fixture should create an engine-owned game instance")))
+			{
+				return false;
+			}
+
+			GameInstance->InitializeStandalone(TEXT("AngelscriptSubsystemBindingsLocalPlayerWorld"), Package);
+			World = GameInstance->GetWorld();
+			WorldContext = GameInstance->GetWorldContext();
+			bool bHasWorldContext = true;
+			bHasWorldContext &= LocalAssert.IsNotNull(World, TEXT("Subsystem local-player fixture should initialize a standalone world"));
+			bHasWorldContext &= LocalAssert.IsNotNull(WorldContext, TEXT("Subsystem local-player fixture should expose a world context"));
+			if (!bHasWorldContext)
+			{
+				return false;
+			}
+
+			UClass* ViewportClass = GEngine->GameViewportClientClass != nullptr
+				? GEngine->GameViewportClientClass.Get()
+				: UGameViewportClient::StaticClass();
+			GameViewport = NewObject<UGameViewportClient>(GEngine, ViewportClass);
+			if (!LocalAssert.IsNotNull(GameViewport, TEXT("Subsystem local-player fixture should create a viewport client")))
+			{
+				return false;
+			}
+
+			GameViewport->Init(*WorldContext, GameInstance, /*bCreateNewAudioDevice*/false);
+			WorldContext->GameViewport = GameViewport;
+			return true;
 		}
 
-		GameViewport = nullptr;
-		WorldContext = nullptr;
-		World = nullptr;
-		GameInstance = nullptr;
-		Package = nullptr;
-	}
+		void Shutdown()
+		{
+			if (GameInstance == nullptr && World == nullptr)
+			{
+				return;
+			}
 
-	UPackage* Package = nullptr;
-	UGameInstance* GameInstance = nullptr;
-	UWorld* World = nullptr;
-	FWorldContext* WorldContext = nullptr;
-	UGameViewportClient* GameViewport = nullptr;
-};
+			if (World != nullptr)
+			{
+				World->BeginTearingDown();
+			}
+
+			if (GameInstance != nullptr)
+			{
+				GameInstance->Shutdown();
+			}
+
+			if (WorldContext != nullptr)
+			{
+				WorldContext->GameViewport = nullptr;
+			}
+
+			if (World != nullptr)
+			{
+				World->DestroyWorld(false);
+				if (GEngine != nullptr)
+				{
+					GEngine->DestroyWorldContext(World);
+				}
+			}
+
+			GameViewport = nullptr;
+			WorldContext = nullptr;
+			World = nullptr;
+			GameInstance = nullptr;
+			Package = nullptr;
+		}
+
+		UPackage* Package = nullptr;
+		UGameInstance* GameInstance = nullptr;
+		UWorld* World = nullptr;
+		FWorldContext* WorldContext = nullptr;
+		UGameViewportClient* GameViewport = nullptr;
+	};
 
 public:
 	BEFORE_ALL()
@@ -193,7 +193,7 @@ public:
 
 	TEST_METHOD(NamespaceHelpers)
 	{
-FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		FActorTestSpawner Spawner;
@@ -212,41 +212,61 @@ FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		ASSERT_THAT(IsNotNull(ExpectedGameInstanceSubsystem, TEXT("Subsystem namespace helper test should expose the Angelscript game-instance subsystem")));
 		ASSERT_THAT(IsNotNull(ExpectedWorldSubsystem, TEXT("Subsystem namespace helper test should expose the network world subsystem")));
 
-		const FString ScriptSource = TEXT(R"(
-int VerifySubsystemNamespaceHelpers(
-	UAngelscriptEngineSubsystem ExpectedEngineSubsystem,
-	UAngelscriptGameInstanceSubsystem ExpectedGameInstanceSubsystem,
-	UNetworkSubsystem ExpectedWorldSubsystem,
-	UClass NullClass)
-{
-	int MismatchMask = 0;
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int VerifySubsystemNamespaceHelpers(
+			UAngelscriptEngineSubsystem ExpectedEngineSubsystem,
+			UAngelscriptGameInstanceSubsystem ExpectedGameInstanceSubsystem,
+			UNetworkSubsystem ExpectedWorldSubsystem,
+			UClass NullClass)
+			{
+				int MismatchMask = 0;
 
-	if (Cast<UAngelscriptEngineSubsystem>(USubsystemLibrary::GetEngineSubsystem(UAngelscriptEngineSubsystem::StaticClass())) != ExpectedEngineSubsystem)
-		MismatchMask |= 1;
-	if (Cast<UAngelscriptGameInstanceSubsystem>(USubsystemLibrary::GetGameInstanceSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass())) != ExpectedGameInstanceSubsystem)
-		MismatchMask |= 2;
-	if (Cast<UNetworkSubsystem>(USubsystemLibrary::GetWorldSubsystem(UNetworkSubsystem::StaticClass())) != ExpectedWorldSubsystem)
-		MismatchMask |= 4;
+				if (Cast<UAngelscriptEngineSubsystem>(USubsystemLibrary::GetEngineSubsystem(UAngelscriptEngineSubsystem::StaticClass())) != ExpectedEngineSubsystem)
+				{
+					MismatchMask |= 1;
+				}
+				if (Cast<UAngelscriptGameInstanceSubsystem>(USubsystemLibrary::GetGameInstanceSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass())) != ExpectedGameInstanceSubsystem)
+				{
+					MismatchMask |= 2;
+				}
+				if (Cast<UNetworkSubsystem>(USubsystemLibrary::GetWorldSubsystem(UNetworkSubsystem::StaticClass())) != ExpectedWorldSubsystem)
+				{
+					MismatchMask |= 4;
+				}
 
-	if (USubsystemLibrary::GetEngineSubsystem(NullClass) != null)
-		MismatchMask |= 8;
-	if (USubsystemLibrary::GetGameInstanceSubsystem(NullClass) != null)
-		MismatchMask |= 16;
-	if (USubsystemLibrary::GetWorldSubsystem(NullClass) != null)
-		MismatchMask |= 32;
+				if (USubsystemLibrary::GetEngineSubsystem(NullClass) != null)
+				{
+					MismatchMask |= 8;
+				}
+				if (USubsystemLibrary::GetGameInstanceSubsystem(NullClass) != null)
+				{
+					MismatchMask |= 16;
+				}
+				if (USubsystemLibrary::GetWorldSubsystem(NullClass) != null)
+				{
+					MismatchMask |= 32;
+				}
 
-	if (USubsystemLibrary::GetEngineSubsystem(AActor::StaticClass()) != null)
-		MismatchMask |= 64;
-	if (USubsystemLibrary::GetEngineSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
-		MismatchMask |= 128;
-	if (USubsystemLibrary::GetGameInstanceSubsystem(UAngelscriptEngineSubsystem::StaticClass()) != null)
-		MismatchMask |= 256;
-	if (USubsystemLibrary::GetWorldSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
-		MismatchMask |= 512;
+				if (USubsystemLibrary::GetEngineSubsystem(AActor::StaticClass()) != null)
+				{
+					MismatchMask |= 64;
+				}
+				if (USubsystemLibrary::GetEngineSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
+				{
+					MismatchMask |= 128;
+				}
+				if (USubsystemLibrary::GetGameInstanceSubsystem(UAngelscriptEngineSubsystem::StaticClass()) != null)
+				{
+					MismatchMask |= 256;
+				}
+				if (USubsystemLibrary::GetWorldSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
+				{
+					MismatchMask |= 512;
+				}
 
-	return MismatchMask;
-}
-)");
+				return MismatchMask;
+			}
+			)AS");
 
 		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASSubsystem_NamespaceHelpers"), ScriptSource);
 		if (!ModuleScope.IsValid())
@@ -281,7 +301,7 @@ int VerifySubsystemNamespaceHelpers(
 
 	TEST_METHOD(NativeStaticGetAccessors)
 	{
-FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		FActorTestSpawner Spawner;
@@ -300,24 +320,30 @@ FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		ASSERT_THAT(IsNotNull(ExpectedGameInstanceSubsystem, TEXT("Subsystem static accessor test should expose the Angelscript game-instance subsystem")));
 		ASSERT_THAT(IsNotNull(ExpectedWorldSubsystem, TEXT("Subsystem static accessor test should expose the network world subsystem")));
 
-		const FString ScriptSource = TEXT(R"(
-int VerifyNativeSubsystemStaticGetAccessors(
-	UAngelscriptEngineSubsystem ExpectedEngineSubsystem,
-	UAngelscriptGameInstanceSubsystem ExpectedGameInstanceSubsystem,
-	UNetworkSubsystem ExpectedWorldSubsystem)
-{
-	int MismatchMask = 0;
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int VerifyNativeSubsystemStaticGetAccessors(
+			UAngelscriptEngineSubsystem ExpectedEngineSubsystem,
+			UAngelscriptGameInstanceSubsystem ExpectedGameInstanceSubsystem,
+			UNetworkSubsystem ExpectedWorldSubsystem)
+			{
+				int MismatchMask = 0;
 
-	if (UAngelscriptEngineSubsystem::Get() != ExpectedEngineSubsystem)
-		MismatchMask |= 1;
-	if (UAngelscriptGameInstanceSubsystem::Get() != ExpectedGameInstanceSubsystem)
-		MismatchMask |= 2;
-	if (UNetworkSubsystem::Get() != ExpectedWorldSubsystem)
-		MismatchMask |= 4;
+				if (UAngelscriptEngineSubsystem::Get() != ExpectedEngineSubsystem)
+				{
+					MismatchMask |= 1;
+				}
+				if (UAngelscriptGameInstanceSubsystem::Get() != ExpectedGameInstanceSubsystem)
+				{
+					MismatchMask |= 2;
+				}
+				if (UNetworkSubsystem::Get() != ExpectedWorldSubsystem)
+				{
+					MismatchMask |= 4;
+				}
 
-	return MismatchMask;
-}
-)");
+				return MismatchMask;
+			}
+			)AS");
 
 		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASSubsystem_NativeStaticGet"), ScriptSource);
 		if (!ModuleScope.IsValid())
@@ -351,7 +377,7 @@ int VerifyNativeSubsystemStaticGetAccessors(
 
 	TEST_METHOD(LocalPlayerAccessors)
 	{
-FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		FStandaloneLocalPlayerFixture Fixture;
@@ -395,49 +421,69 @@ FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		ASSERT_THAT(IsNotNull(ExpectedLocalPlayerSubsystem, TEXT("Subsystem local-player accessor test should expose the Enhanced Input local-player subsystem")));
 		ASSERT_THAT(IsTrue(PlayerController->GetLocalPlayer() == LocalPlayer, TEXT("Subsystem local-player accessor test should bind the spawned player controller to the local player")));
 
-		const FString ScriptSource = TEXT(R"(
-int VerifyLocalPlayerSubsystemAccessors(
-	ULocalPlayer LocalPlayer,
-	APlayerController PlayerController,
-	UEnhancedInputLocalPlayerSubsystem ExpectedLocalPlayerSubsystem,
-	ULocalPlayer NullLocalPlayer,
-	APlayerController NullPlayerController)
-{
-	int MismatchMask = 0;
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int VerifyLocalPlayerSubsystemAccessors(
+			ULocalPlayer LocalPlayer,
+			APlayerController PlayerController,
+			UEnhancedInputLocalPlayerSubsystem ExpectedLocalPlayerSubsystem,
+			ULocalPlayer NullLocalPlayer,
+			APlayerController NullPlayerController)
+			{
+				int MismatchMask = 0;
 
-	if (Cast<UEnhancedInputLocalPlayerSubsystem>(USubsystemLibrary::GetLocalPlayerSubsystemFromLocalPlayer(LocalPlayer, UEnhancedInputLocalPlayerSubsystem::StaticClass())) != ExpectedLocalPlayerSubsystem)
-		MismatchMask |= 1;
-	if (Cast<UEnhancedInputLocalPlayerSubsystem>(USubsystemLibrary::GetLocalPlayerSubsystemFromPlayerController(PlayerController, UEnhancedInputLocalPlayerSubsystem::StaticClass())) != ExpectedLocalPlayerSubsystem)
-		MismatchMask |= 2;
-	if (UEnhancedInputLocalPlayerSubsystem::Get(LocalPlayer) != ExpectedLocalPlayerSubsystem)
-		MismatchMask |= 4;
-	if (UEnhancedInputLocalPlayerSubsystem::Get(PlayerController) != ExpectedLocalPlayerSubsystem)
-		MismatchMask |= 8;
+				if (Cast<UEnhancedInputLocalPlayerSubsystem>(USubsystemLibrary::GetLocalPlayerSubsystemFromLocalPlayer(LocalPlayer, UEnhancedInputLocalPlayerSubsystem::StaticClass())) != ExpectedLocalPlayerSubsystem)
+				{
+					MismatchMask |= 1;
+				}
+				if (Cast<UEnhancedInputLocalPlayerSubsystem>(USubsystemLibrary::GetLocalPlayerSubsystemFromPlayerController(PlayerController, UEnhancedInputLocalPlayerSubsystem::StaticClass())) != ExpectedLocalPlayerSubsystem)
+				{
+					MismatchMask |= 2;
+				}
+				if (UEnhancedInputLocalPlayerSubsystem::Get(LocalPlayer) != ExpectedLocalPlayerSubsystem)
+				{
+					MismatchMask |= 4;
+				}
+				if (UEnhancedInputLocalPlayerSubsystem::Get(PlayerController) != ExpectedLocalPlayerSubsystem)
+				{
+					MismatchMask |= 8;
+				}
 
-	if (USubsystemLibrary::GetLocalPlayerSubsystemFromLocalPlayer(NullLocalPlayer, UEnhancedInputLocalPlayerSubsystem::StaticClass()) != null)
-		MismatchMask |= 16;
-	if (USubsystemLibrary::GetLocalPlayerSubsystemFromPlayerController(NullPlayerController, UEnhancedInputLocalPlayerSubsystem::StaticClass()) != null)
-		MismatchMask |= 32;
-	if (USubsystemLibrary::GetLocalPlayerSubsystemFromLocalPlayer(LocalPlayer, UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
-		MismatchMask |= 64;
-	if (USubsystemLibrary::GetLocalPlayerSubsystemFromPlayerController(PlayerController, UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
-		MismatchMask |= 128;
+				if (USubsystemLibrary::GetLocalPlayerSubsystemFromLocalPlayer(NullLocalPlayer, UEnhancedInputLocalPlayerSubsystem::StaticClass()) != null)
+				{
+					MismatchMask |= 16;
+				}
+				if (USubsystemLibrary::GetLocalPlayerSubsystemFromPlayerController(NullPlayerController, UEnhancedInputLocalPlayerSubsystem::StaticClass()) != null)
+				{
+					MismatchMask |= 32;
+				}
+				if (USubsystemLibrary::GetLocalPlayerSubsystemFromLocalPlayer(LocalPlayer, UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
+				{
+					MismatchMask |= 64;
+				}
+				if (USubsystemLibrary::GetLocalPlayerSubsystemFromPlayerController(PlayerController, UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
+				{
+					MismatchMask |= 128;
+				}
 
-	return MismatchMask;
-}
+				return MismatchMask;
+			}
 
-int VerifyAmbientLocalPlayerSubsystemAccessor(UEnhancedInputLocalPlayerSubsystem ExpectedLocalPlayerSubsystem)
-{
-	int MismatchMask = 0;
+			int VerifyAmbientLocalPlayerSubsystemAccessor(UEnhancedInputLocalPlayerSubsystem ExpectedLocalPlayerSubsystem)
+			{
+				int MismatchMask = 0;
 
-	if (Cast<UEnhancedInputLocalPlayerSubsystem>(USubsystemLibrary::GetLocalPlayerSubsystem(UEnhancedInputLocalPlayerSubsystem::StaticClass())) != ExpectedLocalPlayerSubsystem)
-		MismatchMask |= 1;
-	if (USubsystemLibrary::GetLocalPlayerSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
-		MismatchMask |= 2;
+				if (Cast<UEnhancedInputLocalPlayerSubsystem>(USubsystemLibrary::GetLocalPlayerSubsystem(UEnhancedInputLocalPlayerSubsystem::StaticClass())) != ExpectedLocalPlayerSubsystem)
+				{
+					MismatchMask |= 1;
+				}
+				if (USubsystemLibrary::GetLocalPlayerSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
+				{
+					MismatchMask |= 2;
+				}
 
-	return MismatchMask;
-}
-)");
+				return MismatchMask;
+			}
+			)AS");
 
 		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASSubsystem_LocalPlayer"), ScriptSource);
 		if (!ModuleScope.IsValid())

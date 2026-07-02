@@ -48,7 +48,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptContainerCompareBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: SetCompare
@@ -59,38 +63,43 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptContainerCompareBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASContainerCompare_SetCompare"), TEXT(R"(
-int SetCompare_EqualReordered()
-{
-	TSet<int> Left;
-	Left.Add(1);
-	Left.Add(4);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASContainerCompare_SetCompare"), ASTEST_AS(R"AS(
+			int SetCompare_EqualReordered()
+			{
+				TSet<int> Left;
+				Left.Add(1);
+				Left.Add(4);
 
-	TSet<int> Right;
-	Right.Add(4);
-	Right.Add(1);
+				TSet<int> Right;
+				Right.Add(4);
+				Right.Add(1);
 
-	return (Left == Right) ? 1 : 0;
-}
-int SetCompare_DifferentSize()
-{
-	TSet<int> Left;
-	Left.Add(1);
-	Left.Add(4);
+				return (Left == Right) ? 1 : 0;
+			}
 
-	TSet<int> Right;
-	Right.Add(4);
-	Right.Add(1);
-	Right.Add(7);
+			int SetCompare_DifferentSize()
+			{
+				TSet<int> Left;
+				Left.Add(1);
+				Left.Add(4);
 
-	return (Left == Right) ? 0 : 1;
-}
-)"));
+				TSet<int> Right;
+				Right.Add(4);
+				Right.Add(1);
+				Right.Add(7);
+
+				return (Left == Right) ? 0 : 1;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetCompare_EqualReordered()"), TEXT("TSet reordered elements should compare equal"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetCompare_DifferentSize()"), TEXT("TSet with different sizes should compare unequal"), 1);
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetCompare_EqualReordered()"), TEXT("TSet reordered elements should compare equal"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetCompare_DifferentSize()"), TEXT("TSet with different sizes should compare unequal"), 1),
+			TEXT("ExpectGlobalInt should pass")));
 	}
 
 	// ====================================================================
@@ -102,48 +111,56 @@ int SetCompare_DifferentSize()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASContainerCompare_SetSizeMismatch"), TEXT(R"(
-int SetMismatch_ReorderedEqual()
-{
-	TSet<int> Left;
-	Left.Add(1);
-	Left.Add(4);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASContainerCompare_SetSizeMismatch"), ASTEST_AS(R"AS(
+			int SetMismatch_ReorderedEqual()
+			{
+				TSet<int> Left;
+				Left.Add(1);
+				Left.Add(4);
 
-	TSet<int> Reordered;
-	Reordered.Add(4);
-	Reordered.Add(1);
+				TSet<int> Reordered;
+				Reordered.Add(4);
+				Reordered.Add(1);
 
-	return (Left == Reordered) ? 1 : 0;
-}
-int SetMismatch_SameSizeDifferent()
-{
-	TSet<int> Left;
-	Left.Add(1);
-	Left.Add(4);
+				return (Left == Reordered) ? 1 : 0;
+			}
 
-	TSet<int> DifferentSameSize;
-	DifferentSameSize.Add(1);
-	DifferentSameSize.Add(9);
+			int SetMismatch_SameSizeDifferent()
+			{
+				TSet<int> Left;
+				Left.Add(1);
+				Left.Add(4);
 
-	return (Left == DifferentSameSize) ? 0 : 1;
-}
-int SetMismatch_CopyEqual()
-{
-	TSet<int> Left;
-	Left.Add(1);
-	Left.Add(4);
+				TSet<int> DifferentSameSize;
+				DifferentSameSize.Add(1);
+				DifferentSameSize.Add(9);
 
-	TSet<int> Copy = Left;
+				return (Left == DifferentSameSize) ? 0 : 1;
+			}
 
-	return (Copy == Left) ? 1 : 0;
-}
-)"));
+			int SetMismatch_CopyEqual()
+			{
+				TSet<int> Left;
+				Left.Add(1);
+				Left.Add(4);
+
+				TSet<int> Copy = Left;
+
+				return (Copy == Left) ? 1 : 0;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetMismatch_ReorderedEqual()"), TEXT("TSet reordered should compare equal"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetMismatch_SameSizeDifferent()"), TEXT("TSet same-size mismatched members should compare unequal"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetMismatch_CopyEqual()"), TEXT("TSet copy should compare equal to original"), 1);
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetMismatch_ReorderedEqual()"), TEXT("TSet reordered should compare equal"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetMismatch_SameSizeDifferent()"), TEXT("TSet same-size mismatched members should compare unequal"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SetMismatch_CopyEqual()"), TEXT("TSet copy should compare equal to original"), 1),
+			TEXT("ExpectGlobalInt should pass")));
 	}
 
 	// ====================================================================
@@ -155,38 +172,43 @@ int SetMismatch_CopyEqual()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASContainerCompare_MapCompare"), TEXT(R"(
-int MapCompare_EqualReordered()
-{
-	TMap<FName, int> Left;
-	Left.Add(FName("Alpha"), 2);
-	Left.Add(FName("Beta"), 5);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASContainerCompare_MapCompare"), ASTEST_AS(R"AS(
+			int MapCompare_EqualReordered()
+			{
+				TMap<FName, int> Left;
+				Left.Add(FName("Alpha"), 2);
+				Left.Add(FName("Beta"), 5);
 
-	TMap<FName, int> Right;
-	Right.Add(FName("Beta"), 5);
-	Right.Add(FName("Alpha"), 2);
+				TMap<FName, int> Right;
+				Right.Add(FName("Beta"), 5);
+				Right.Add(FName("Alpha"), 2);
 
-	return (Left == Right) ? 1 : 0;
-}
-int MapCompare_DifferentSize()
-{
-	TMap<FName, int> Left;
-	Left.Add(FName("Alpha"), 2);
-	Left.Add(FName("Beta"), 5);
+				return (Left == Right) ? 1 : 0;
+			}
 
-	TMap<FName, int> Right;
-	Right.Add(FName("Beta"), 5);
-	Right.Add(FName("Alpha"), 2);
-	Right.Add(FName("Gamma"), 7);
+			int MapCompare_DifferentSize()
+			{
+				TMap<FName, int> Left;
+				Left.Add(FName("Alpha"), 2);
+				Left.Add(FName("Beta"), 5);
 
-	return (Left == Right) ? 0 : 1;
-}
-)"));
+				TMap<FName, int> Right;
+				Right.Add(FName("Beta"), 5);
+				Right.Add(FName("Alpha"), 2);
+				Right.Add(FName("Gamma"), 7);
+
+				return (Left == Right) ? 0 : 1;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapCompare_EqualReordered()"), TEXT("TMap reordered entries should compare equal"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapCompare_DifferentSize()"), TEXT("TMap with different sizes should compare unequal"), 1);
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapCompare_EqualReordered()"), TEXT("TMap reordered entries should compare equal"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapCompare_DifferentSize()"), TEXT("TMap with different sizes should compare unequal"), 1),
+			TEXT("ExpectGlobalInt should pass")));
 	}
 
 	// ====================================================================
@@ -198,51 +220,61 @@ int MapCompare_DifferentSize()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASContainerCompare_MapCompareValue"), TEXT(R"(
-int MapValue_EqualReordered()
-{
-	TMap<FName, int> Left;
-	Left.Add(FName("Alpha"), 2);
-	Left.Add(FName("Beta"), 5);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASContainerCompare_MapCompareValue"), ASTEST_AS(R"AS(
+			int MapValue_EqualReordered()
+			{
+				TMap<FName, int> Left;
+				Left.Add(FName("Alpha"), 2);
+				Left.Add(FName("Beta"), 5);
 
-	TMap<FName, int> Right;
-	Right.Add(FName("Beta"), 5);
-	Right.Add(FName("Alpha"), 2);
+				TMap<FName, int> Right;
+				Right.Add(FName("Beta"), 5);
+				Right.Add(FName("Alpha"), 2);
 
-	return (Left == Right) ? 1 : 0;
-}
-int MapValue_DifferentValue()
-{
-	TMap<FName, int> Left;
-	Left.Add(FName("Alpha"), 2);
-	Left.Add(FName("Beta"), 5);
+				return (Left == Right) ? 1 : 0;
+			}
 
-	TMap<FName, int> DifferentValue;
-	DifferentValue.Add(FName("Alpha"), 99);
-	DifferentValue.Add(FName("Beta"), 5);
+			int MapValue_DifferentValue()
+			{
+				TMap<FName, int> Left;
+				Left.Add(FName("Alpha"), 2);
+				Left.Add(FName("Beta"), 5);
 
-	return (Left == DifferentValue) ? 0 : 1;
-}
-int MapValue_EmptyCompare()
-{
-	TMap<FName, int> Left;
-	Left.Add(FName("Alpha"), 2);
-	Left.Add(FName("Beta"), 5);
+				TMap<FName, int> DifferentValue;
+				DifferentValue.Add(FName("Alpha"), 99);
+				DifferentValue.Add(FName("Beta"), 5);
 
-	TMap<FName, int> Empty;
-	TMap<FName, int> AnotherEmpty;
+				return (Left == DifferentValue) ? 0 : 1;
+			}
 
-	if (Left == Empty)
-		return 0;
-	return (Empty == AnotherEmpty) ? 1 : 0;
-}
-)"));
+			int MapValue_EmptyCompare()
+			{
+				TMap<FName, int> Left;
+				Left.Add(FName("Alpha"), 2);
+				Left.Add(FName("Beta"), 5);
+
+				TMap<FName, int> Empty;
+				TMap<FName, int> AnotherEmpty;
+
+				if (Left == Empty)
+				{
+					return 0;
+				}
+				return (Empty == AnotherEmpty) ? 1 : 0;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapValue_EqualReordered()"), TEXT("TMap value-equal reordered entries should compare equal"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapValue_DifferentValue()"), TEXT("TMap with different values should compare unequal"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapValue_EmptyCompare()"), TEXT("TMap empty maps should compare equal and non-empty vs empty should differ"), 1);
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapValue_EqualReordered()"), TEXT("TMap value-equal reordered entries should compare equal"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapValue_DifferentValue()"), TEXT("TMap with different values should compare unequal"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int MapValue_EmptyCompare()"), TEXT("TMap empty maps should compare equal and non-empty vs empty should differ"), 1),
+			TEXT("ExpectGlobalInt should pass")));
 	}
 
 	// ====================================================================

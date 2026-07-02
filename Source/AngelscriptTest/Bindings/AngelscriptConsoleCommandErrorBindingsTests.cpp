@@ -18,13 +18,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptConsoleCommandErrorBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
-	TEST_METHOD(MissingHandlerCompat)
+	TEST_METHOD(MissingHandler)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunConsoleCommandMissingHandlerSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyConsoleCommandMissingHandler(*TestRunner, Engine),
+			TEXT("VerifyConsoleCommandMissingHandler should pass")));
 	}
 };
 

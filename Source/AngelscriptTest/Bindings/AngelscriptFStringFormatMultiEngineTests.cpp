@@ -33,6 +33,7 @@
 
 #include "AngelscriptEngine.h"
 #include "AngelscriptTestEngine.h"
+#include "AngelscriptTestMacros.h"
 #include "CQTest.h"
 #include "Misc/Guid.h"
 
@@ -40,86 +41,84 @@
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
- // namespace
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptFStringFormatMultiEngineTests,
 	"Angelscript.TestModule.Bindings.FString.MultiEngine",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
-// Compile a parameterless `int Test()` script function in `Engine`'s named
-// module and return the resolved asIScriptFunction*. Caller owns the returned
-// pointer and must Release() it.
-static asIScriptFunction* CompileIntFunction(
-FAutomationTestBase& Test,
-FAngelscriptEngine& Engine,
-const FString& ModuleName,
-const ANSICHAR* SourceBody)
-{
-FAngelscriptEngineScope GlobalScope(Engine);
-FNoDiscardAsserter LocalAssert(Test);
+	// Compile a parameterless `int Test()` script function in `Engine`'s named
+	// module and return the resolved asIScriptFunction*. Caller owns the returned
+	// pointer and must Release() it.
+	static asIScriptFunction* CompileIntFunction(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		const FString& ModuleName,
+		const ANSICHAR* SourceBody)
+	{
+		FAngelscriptEngineScope GlobalScope(Engine);
+		FNoDiscardAsserter LocalAssert(Test);
 
-asIScriptModule* Module = Engine.GetScriptEngine()->GetModule(
-	TCHAR_TO_ANSI(*ModuleName), asGM_ALWAYS_CREATE);
-if (!LocalAssert.IsNotNull(Module, *FString::Printf(TEXT("FormatMultiEngine: should create module '%s'"), *ModuleName)))
-{
-	return nullptr;
-}
+		asIScriptModule* Module = Engine.GetScriptEngine()->GetModule(
+			TCHAR_TO_ANSI(*ModuleName), asGM_ALWAYS_CREATE);
+		if (!LocalAssert.IsNotNull(Module, *FString::Printf(TEXT("FormatMultiEngine: should create module '%s'"), *ModuleName)))
+		{
+			return nullptr;
+		}
 
-asIScriptFunction* Function = nullptr;
-const int32 CompileResult = Module->CompileFunction(
-	TCHAR_TO_ANSI(*ModuleName), SourceBody, 0, asCOMP_ADD_TO_MODULE, &Function);
-if (!LocalAssert.AreEqual(asSUCCESS, CompileResult, *FString::Printf(TEXT("FormatMultiEngine: should compile '%s'"), *ModuleName)))
-{
-	return nullptr;
-}
+		asIScriptFunction* Function = nullptr;
+		const int32 CompileResult = Module->CompileFunction(
+			TCHAR_TO_ANSI(*ModuleName), SourceBody, 0, asCOMP_ADD_TO_MODULE, &Function);
+		if (!LocalAssert.AreEqual(asSUCCESS, CompileResult, *FString::Printf(TEXT("FormatMultiEngine: should compile '%s'"), *ModuleName)))
+		{
+			return nullptr;
+		}
 
-if (!LocalAssert.IsNotNull(Function, *FString::Printf(TEXT("FormatMultiEngine: should resolve function in '%s'"), *ModuleName)))
-{
-	return nullptr;
-}
-return Function;
-}
+		if (!LocalAssert.IsNotNull(Function, *FString::Printf(TEXT("FormatMultiEngine: should resolve function in '%s'"), *ModuleName)))
+		{
+			return nullptr;
+		}
+		return Function;
+	}
 
-// Run a previously compiled int Test() function and return its int32 return
-// value, or INDEX_NONE on any execution failure. The current thread context
-// engine MUST be the engine that owns `Function`'s module.
-static int32 ExecuteIntFunction(
-FAutomationTestBase& Test,
-FAngelscriptEngine& Engine,
-asIScriptFunction& Function,
-const TCHAR* WhatLabel)
-{
-FNoDiscardAsserter LocalAssert(Test);
-asIScriptContext* Context = Engine.GetScriptEngine()->RequestContext();
-if (!LocalAssert.IsNotNull(Context, *FString::Printf(TEXT("FormatMultiEngine [%s]: should acquire a context"), WhatLabel)))
-{
-	return INDEX_NONE;
-}
+	// Run a previously compiled int Test() function and return its int32 return
+	// value, or INDEX_NONE on any execution failure. The current thread context
+	// engine MUST be the engine that owns `Function`'s module.
+	static int32 ExecuteIntFunction(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		asIScriptFunction& Function,
+		const TCHAR* WhatLabel)
+	{
+		FNoDiscardAsserter LocalAssert(Test);
+		asIScriptContext* Context = Engine.GetScriptEngine()->RequestContext();
+		if (!LocalAssert.IsNotNull(Context, *FString::Printf(TEXT("FormatMultiEngine [%s]: should acquire a context"), WhatLabel)))
+		{
+			return INDEX_NONE;
+		}
 
-const int32 PrepareResult = Context->Prepare(&Function);
-if (!LocalAssert.AreEqual(asSUCCESS, PrepareResult, *FString::Printf(TEXT("FormatMultiEngine [%s]: Prepare succeeds"), WhatLabel)))
-{
-	Engine.GetScriptEngine()->ReturnContext(Context);
-	return INDEX_NONE;
-}
+		const int32 PrepareResult = Context->Prepare(&Function);
+		if (!LocalAssert.AreEqual(asSUCCESS, PrepareResult, *FString::Printf(TEXT("FormatMultiEngine [%s]: Prepare succeeds"), WhatLabel)))
+		{
+			Engine.GetScriptEngine()->ReturnContext(Context);
+			return INDEX_NONE;
+		}
 
-const int32 ExecuteResult = Context->Execute();
-if (!LocalAssert.AreEqual(asEXECUTION_FINISHED, ExecuteResult, *FString::Printf(TEXT("FormatMultiEngine [%s]: Execute reaches asEXECUTION_FINISHED"), WhatLabel)))
-{
-	Engine.GetScriptEngine()->ReturnContext(Context);
-	return INDEX_NONE;
-}
+		const int32 ExecuteResult = Context->Execute();
+		if (!LocalAssert.AreEqual(asEXECUTION_FINISHED, ExecuteResult, *FString::Printf(TEXT("FormatMultiEngine [%s]: Execute reaches asEXECUTION_FINISHED"), WhatLabel)))
+		{
+			Engine.GetScriptEngine()->ReturnContext(Context);
+			return INDEX_NONE;
+		}
 
-const int32 ReturnValue = Context->GetReturnDWord();
-Engine.GetScriptEngine()->ReturnContext(Context);
-return ReturnValue;
-}
+		const int32 ReturnValue = Context->GetReturnDWord();
+		Engine.GetScriptEngine()->ReturnContext(Context);
+		return ReturnValue;
+	}
 
-static FString MakeUniqueModuleName(const TCHAR* Prefix)
-{
-return FString::Printf(TEXT("%s_%s"), Prefix, *FGuid::NewGuid().ToString(EGuidFormats::Digits));
-}
+	static FString MakeUniqueModuleName(const TCHAR* Prefix)
+	{
+		return FString::Printf(TEXT("%s_%s"), Prefix, *FGuid::NewGuid().ToString(EGuidFormats::Digits));
+	}
 
 public:
 	// Engine A binds FString, runs a Format call, is destroyed; a freshly
@@ -128,7 +127,7 @@ public:
 	// see the still-cached Engine-A `asITypeInfo*` and reject the arg.
 	TEST_METHOD(FormatString_AfterPreviousEngineDestroyed_StillWorks)
 	{
-const FAngelscriptEngineConfig Config;
+		const FAngelscriptEngineConfig Config;
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 
 		// Engine A: bind, format, destroy.
@@ -140,13 +139,14 @@ const FAngelscriptEngineConfig Config;
 			}
 
 			const FString ModuleNameA = MakeUniqueModuleName(TEXT("ASFStringFormatMultiEngine_A"));
-			asIScriptFunction* FunctionA = CompileIntFunction(*TestRunner, *EngineA, ModuleNameA, R"(
-int Test()
-{
-	FString R = FString::Format("{0}", "Hello");
-	return (R == "Hello") ? 1 : 0;
-}
-)");
+			const std::string EngineAFormatSource = ASTEST_AS_ANSI(R"AS(
+				int Test()
+				{
+					FString R = FString::Format("{0}", "Hello");
+					return (R == "Hello") ? 1 : 0;
+				}
+				)AS");
+			asIScriptFunction* FunctionA = CompileIntFunction(*TestRunner, *EngineA, ModuleNameA, EngineAFormatSource.c_str());
 			if (FunctionA == nullptr)
 			{
 				return;
@@ -180,13 +180,14 @@ int Test()
 			}
 
 			const FString ModuleNameB = MakeUniqueModuleName(TEXT("ASFStringFormatMultiEngine_B"));
-			asIScriptFunction* FunctionB = CompileIntFunction(*TestRunner, *EngineB, ModuleNameB, R"(
-int Test()
-{
-	FString R = FString::Format("{0}", "Hello");
-	return (R == "Hello") ? 1 : 0;
-}
-)");
+			const std::string EngineBFormatSource = ASTEST_AS_ANSI(R"AS(
+				int Test()
+				{
+					FString R = FString::Format("{0}", "Hello");
+					return (R == "Hello") ? 1 : 0;
+				}
+				)AS");
+			asIScriptFunction* FunctionB = CompileIntFunction(*TestRunner, *EngineB, ModuleNameB, EngineBFormatSource.c_str());
 			if (FunctionB == nullptr)
 			{
 				return;
@@ -211,7 +212,7 @@ int Test()
 	// TypeInfo identity, not the other engine's.
 	TEST_METHOD(FormatString_TwoEnginesConcurrent_NoCrossContamination)
 	{
-const FAngelscriptEngineConfig Config;
+		const FAngelscriptEngineConfig Config;
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 
 		TUniquePtr<FAngelscriptEngine> EngineA = FAngelscriptTestEngine::Create(Config, Dependencies);
@@ -225,20 +226,22 @@ const FAngelscriptEngineConfig Config;
 		const FString ModuleNameA = MakeUniqueModuleName(TEXT("ASFStringFormatMultiEngine_ConcA"));
 		const FString ModuleNameB = MakeUniqueModuleName(TEXT("ASFStringFormatMultiEngine_ConcB"));
 
-		asIScriptFunction* FunctionA = CompileIntFunction(*TestRunner, *EngineA, ModuleNameA, R"(
-int Test()
-{
-	FString R = FString::Format("{0}", "AAA");
-	return (R == "AAA") ? 1 : 0;
-}
-)");
-		asIScriptFunction* FunctionB = CompileIntFunction(*TestRunner, *EngineB, ModuleNameB, R"(
-int Test()
-{
-	FString R = FString::Format("{0}", "BBB");
-	return (R == "BBB") ? 1 : 0;
-}
-)");
+		const std::string EngineAConcurrentFormatSource = ASTEST_AS_ANSI(R"AS(
+			int Test()
+			{
+				FString R = FString::Format("{0}", "AAA");
+				return (R == "AAA") ? 1 : 0;
+			}
+			)AS");
+		const std::string EngineBConcurrentFormatSource = ASTEST_AS_ANSI(R"AS(
+			int Test()
+			{
+				FString R = FString::Format("{0}", "BBB");
+				return (R == "BBB") ? 1 : 0;
+			}
+			)AS");
+		asIScriptFunction* FunctionA = CompileIntFunction(*TestRunner, *EngineA, ModuleNameA, EngineAConcurrentFormatSource.c_str());
+		asIScriptFunction* FunctionB = CompileIntFunction(*TestRunner, *EngineB, ModuleNameB, EngineBConcurrentFormatSource.c_str());
 		if (FunctionA == nullptr || FunctionB == nullptr)
 		{
 			if (FunctionA != nullptr) FunctionA->Release();

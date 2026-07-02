@@ -32,26 +32,27 @@
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-using namespace AngelscriptFunctionalTestUtils;
-
 // ----------------------------------------------------------------------------
 // Profile
 // ----------------------------------------------------------------------------
 
 
 // ----------------------------------------------------------------------------
-// Helpers
+// Test class
 // ----------------------------------------------------------------------------
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptSoftReferenceFunctionLibraryTest,
+	"Angelscript.TestModule.FunctionLibraries.SoftReference",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	static const FName SoftReferenceAsyncModuleName(TEXT("ASoftReferenceAsyncDelegates"));
-	static const FString SoftReferenceAsyncFilename(TEXT("SoftReferenceAsyncDelegates.as"));
-	static const FName SoftReferenceAsyncClassName(TEXT("USoftReferenceAsyncScriptHarness"));
-	static const FString SuccessTexturePath(TEXT("/Engine/EngineResources/DefaultTexture.DefaultTexture"));
+private:
+	inline static const FName SoftReferenceAsyncModuleName = FName(TEXT("ASoftReferenceAsyncDelegates"));
+	inline static const FString SoftReferenceAsyncFilename = FString(TEXT("SoftReferenceAsyncDelegates.as"));
+	inline static const FName SoftReferenceAsyncClassName = FName(TEXT("USoftReferenceAsyncScriptHarness"));
+	inline static const FString SuccessTexturePath = FString(TEXT("/Engine/EngineResources/DefaultTexture.DefaultTexture"));
 	static constexpr double SoftReferenceAsyncTimeoutSeconds = 5.0;
 
-	void PumpSoftReferenceCallbacks()
+	static void PumpSoftReferenceCallbacks()
 	{
 		FTaskGraphInterface::Get().ProcessThreadUntilIdle(ENamedThreads::GameThread);
 		FTaskGraphInterface::Get().ProcessThreadUntilIdle(ENamedThreads::GameThread_Local);
@@ -59,7 +60,7 @@ namespace
 		FPlatformProcess::Sleep(0.001f);
 	}
 
-	bool WaitUntilSoftReference(
+	static bool WaitUntilSoftReference(
 		FAutomationTestBase& Test,
 		TFunctionRef<bool()> Predicate,
 		double TimeoutSeconds,
@@ -80,7 +81,7 @@ namespace
 		return false;
 	}
 
-	bool ExecuteGeneratedIntMethod(
+	static bool ExecuteGeneratedIntMethod(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		UObject* Object,
@@ -105,7 +106,7 @@ namespace
 	// ReadIntPropertyChecked / ReadStringPropertyChecked provided by
 	// Shared/AngelscriptFunctionalTestUtils.h
 
-	bool VerifyObjectCallbackSignature(
+	static bool VerifyObjectCallbackSignature(
 		FAutomationTestBase& Test,
 		UClass* OwnerClass,
 		FName FunctionName,
@@ -135,7 +136,7 @@ namespace
 			*FString::Printf(TEXT("Soft-reference callback '%s' should keep the current UObject delegate surface"), *FunctionName.ToString()));
 	}
 
-	bool VerifyClassCallbackSignature(
+	static bool VerifyClassCallbackSignature(
 		FAutomationTestBase& Test,
 		UClass* OwnerClass,
 		FName FunctionName,
@@ -164,22 +165,18 @@ namespace
 			Property->MetaClass.Get(),
 			*FString::Printf(TEXT("Soft-reference callback '%s' should keep the current UClass delegate surface"), *FunctionName.ToString()));
 	}
-}
 
-// ----------------------------------------------------------------------------
-// Test class
-// ----------------------------------------------------------------------------
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptSoftReferenceFunctionLibraryTest,
-	"Angelscript.TestModule.FunctionLibraries.SoftReference",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: AsyncDelegates
@@ -201,112 +198,123 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptSoftReferenceFunctionLibraryTest,
 		const FString MissingObjectPath = FString::Printf(TEXT("/Engine/EngineResources/%s.%s"), *MissingObjectName, *MissingObjectName);
 		const FString MissingClassPath = FString::Printf(TEXT("/Script/%s.%s"), *MissingClassPackageName, *MissingClassName);
 
-		const FString ScriptSource = FString::Printf(
-			TEXT(R"AS(
-UCLASS()
-class USoftReferenceAsyncScriptHarness : UObject
-{
-	UPROPERTY()
-	int ObjectSuccessCallbackCount = 0;
-	UPROPERTY()
-	int ObjectFailureCallbackCount = 0;
-	UPROPERTY()
-	int ClassSuccessCallbackCount = 0;
-	UPROPERTY()
-	int ClassFailureCallbackCount = 0;
-	UPROPERTY()
-	int bObjectSuccessWasNonNull = 0;
-	UPROPERTY()
-	int bObjectFailureWasNull = 0;
-	UPROPERTY()
-	int bClassSuccessWasNonNull = 0;
-	UPROPERTY()
-	int bClassFailureWasNull = 0;
-	UPROPERTY()
-	int bObjectPayloadMatchesExpectedType = 0;
-	UPROPERTY()
-	int bClassPayloadMatchesExpectedType = 0;
-	UPROPERTY()
-	FString LastObjectName;
-	UPROPERTY()
-	FString LastClassName;
+		const FString ScriptTemplate = ASTEST_AS(R"AS(
+			UCLASS()
+			class USoftReferenceAsyncScriptHarness : UObject
+			{
+				UPROPERTY()
+				int ObjectSuccessCallbackCount = 0;
 
-	UFUNCTION()
-	int StartObjectSuccessLoad()
-	{
-		FOnSoftObjectLoaded Delegate;
-		Delegate.BindUFunction(this, n"HandleObjectSuccess");
-		TSoftObjectPtr<UTexture2D>(FSoftObjectPath("%s")).LoadAsync(Delegate);
-		return 1;
-	}
+				UPROPERTY()
+				int ObjectFailureCallbackCount = 0;
 
-	UFUNCTION()
-	int StartObjectFailureLoad()
-	{
-		FOnSoftObjectLoaded Delegate;
-		Delegate.BindUFunction(this, n"HandleObjectFailure");
-		TSoftObjectPtr<UTexture2D>(FSoftObjectPath("%s")).LoadAsync(Delegate);
-		return 1;
-	}
+				UPROPERTY()
+				int ClassSuccessCallbackCount = 0;
 
-	UFUNCTION()
-	int StartClassSuccessLoad()
-	{
-		FOnSoftClassLoaded Delegate;
-		Delegate.BindUFunction(this, n"HandleClassSuccess");
-		TSoftClassPtr<AActor>(FSoftObjectPath("%s")).LoadAsync(Delegate);
-		return 1;
-	}
+				UPROPERTY()
+				int ClassFailureCallbackCount = 0;
 
-	UFUNCTION()
-	int StartClassFailureLoad()
-	{
-		FOnSoftClassLoaded Delegate;
-		Delegate.BindUFunction(this, n"HandleClassFailure");
-		TSoftClassPtr<AActor>(FSoftObjectPath("%s")).LoadAsync(Delegate);
-		return 1;
-	}
+				UPROPERTY()
+				int bObjectSuccessWasNonNull = 0;
 
-	UFUNCTION()
-	void HandleObjectSuccess(UObject LoadedObject)
-	{
-		UTexture2D TypedTexture = Cast<UTexture2D>(LoadedObject);
-		ObjectSuccessCallbackCount += 1;
-		bObjectSuccessWasNonNull = LoadedObject != null ? 1 : 0;
-		bObjectPayloadMatchesExpectedType = TypedTexture != null ? 1 : 0;
-		LastObjectName = TypedTexture == null ? FString() : TypedTexture.GetName().ToString();
-	}
+				UPROPERTY()
+				int bObjectFailureWasNull = 0;
 
-	UFUNCTION()
-	void HandleObjectFailure(UObject LoadedObject)
-	{
-		ObjectFailureCallbackCount += 1;
-		bObjectFailureWasNull = LoadedObject == null ? 1 : 0;
-	}
+				UPROPERTY()
+				int bClassSuccessWasNonNull = 0;
 
-	UFUNCTION()
-	void HandleClassSuccess(UClass LoadedClass)
-	{
-		ClassSuccessCallbackCount += 1;
-		bClassSuccessWasNonNull = LoadedClass != null ? 1 : 0;
-		bClassPayloadMatchesExpectedType = LoadedClass != null && LoadedClass.IsChildOf(AActor::StaticClass()) ? 1 : 0;
-		LastClassName = LoadedClass == null ? FString() : LoadedClass.GetName().ToString();
-	}
+				UPROPERTY()
+				int bClassFailureWasNull = 0;
 
-	UFUNCTION()
-	void HandleClassFailure(UClass LoadedClass)
-	{
-		ClassFailureCallbackCount += 1;
-		bClassFailureWasNull = LoadedClass == null ? 1 : 0;
-	}
-}
-)AS"),
-			*SuccessTexturePath,
-			*MissingObjectPath,
-			*SuccessClassPath,
-			*MissingClassPath);
+				UPROPERTY()
+				int bObjectPayloadMatchesExpectedType = 0;
 
-		UClass* ScriptHarnessClass = CompileScriptModule(
+				UPROPERTY()
+				int bClassPayloadMatchesExpectedType = 0;
+
+				UPROPERTY()
+				FString LastObjectName;
+
+				UPROPERTY()
+				FString LastClassName;
+
+				UFUNCTION()
+				int StartObjectSuccessLoad()
+				{
+					FOnSoftObjectLoaded Delegate;
+					Delegate.BindUFunction(this, n"HandleObjectSuccess");
+					TSoftObjectPtr<UTexture2D>(FSoftObjectPath("$SUCCESS_TEXTURE_PATH$")).LoadAsync(Delegate);
+					return 1;
+				}
+
+				UFUNCTION()
+				int StartObjectFailureLoad()
+				{
+					FOnSoftObjectLoaded Delegate;
+					Delegate.BindUFunction(this, n"HandleObjectFailure");
+					TSoftObjectPtr<UTexture2D>(FSoftObjectPath("$MISSING_OBJECT_PATH$")).LoadAsync(Delegate);
+					return 1;
+				}
+
+				UFUNCTION()
+				int StartClassSuccessLoad()
+				{
+					FOnSoftClassLoaded Delegate;
+					Delegate.BindUFunction(this, n"HandleClassSuccess");
+					TSoftClassPtr<AActor>(FSoftObjectPath("$SUCCESS_CLASS_PATH$")).LoadAsync(Delegate);
+					return 1;
+				}
+
+				UFUNCTION()
+				int StartClassFailureLoad()
+				{
+					FOnSoftClassLoaded Delegate;
+					Delegate.BindUFunction(this, n"HandleClassFailure");
+					TSoftClassPtr<AActor>(FSoftObjectPath("$MISSING_CLASS_PATH$")).LoadAsync(Delegate);
+					return 1;
+				}
+
+				UFUNCTION()
+				void HandleObjectSuccess(UObject LoadedObject)
+				{
+					UTexture2D TypedTexture = Cast<UTexture2D>(LoadedObject);
+					ObjectSuccessCallbackCount += 1;
+					bObjectSuccessWasNonNull = LoadedObject != null ? 1 : 0;
+					bObjectPayloadMatchesExpectedType = TypedTexture != null ? 1 : 0;
+					LastObjectName = TypedTexture == null ? FString() : TypedTexture.GetName().ToString();
+				}
+
+				UFUNCTION()
+				void HandleObjectFailure(UObject LoadedObject)
+				{
+					ObjectFailureCallbackCount += 1;
+					bObjectFailureWasNull = LoadedObject == null ? 1 : 0;
+				}
+
+				UFUNCTION()
+				void HandleClassSuccess(UClass LoadedClass)
+				{
+					ClassSuccessCallbackCount += 1;
+					bClassSuccessWasNonNull = LoadedClass != null ? 1 : 0;
+					bClassPayloadMatchesExpectedType = LoadedClass != null && LoadedClass.IsChildOf(AActor::StaticClass()) ? 1 : 0;
+					LastClassName = LoadedClass == null ? FString() : LoadedClass.GetName().ToString();
+				}
+
+				UFUNCTION()
+				void HandleClassFailure(UClass LoadedClass)
+				{
+					ClassFailureCallbackCount += 1;
+					bClassFailureWasNull = LoadedClass == null ? 1 : 0;
+				}
+			}
+			)AS");
+		FString ScriptSource = ScriptTemplate;
+		ScriptSource.ReplaceInline(TEXT("$SUCCESS_TEXTURE_PATH$"), *SuccessTexturePath, ESearchCase::CaseSensitive);
+		ScriptSource.ReplaceInline(TEXT("$MISSING_OBJECT_PATH$"), *MissingObjectPath, ESearchCase::CaseSensitive);
+		ScriptSource.ReplaceInline(TEXT("$SUCCESS_CLASS_PATH$"), *SuccessClassPath, ESearchCase::CaseSensitive);
+		ScriptSource.ReplaceInline(TEXT("$MISSING_CLASS_PATH$"), *MissingClassPath, ESearchCase::CaseSensitive);
+
+		UClass* ScriptHarnessClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
 			*TestRunner,
 			Engine,
 			SoftReferenceAsyncModuleName,
@@ -362,7 +370,7 @@ class USoftReferenceAsyncScriptHarness : UObject
 				[this, ScriptHarness, CounterPropertyName]()
 				{
 					int32 CallbackCount = 0;
-					return ReadIntPropertyChecked(*TestRunner, ScriptHarness, CounterPropertyName, CallbackCount) && CallbackCount >= 1;
+					return AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptHarness, CounterPropertyName, CallbackCount) && CallbackCount >= 1;
 				},
 				SoftReferenceAsyncTimeoutSeconds,
 				WaitContext);
@@ -388,18 +396,18 @@ class USoftReferenceAsyncScriptHarness : UObject
 		int32 bClassPayloadMatchesExpectedType = 0;
 		FString LastObjectName;
 		FString LastClassName;
-		if (!ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("ObjectSuccessCallbackCount"), ObjectSuccessCallbackCount)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("ObjectFailureCallbackCount"), ObjectFailureCallbackCount)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("ClassSuccessCallbackCount"), ClassSuccessCallbackCount)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("ClassFailureCallbackCount"), ClassFailureCallbackCount)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("bObjectSuccessWasNonNull"), bObjectSuccessWasNonNull)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("bObjectFailureWasNull"), bObjectFailureWasNull)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("bClassSuccessWasNonNull"), bClassSuccessWasNonNull)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("bClassFailureWasNull"), bClassFailureWasNull)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("bObjectPayloadMatchesExpectedType"), bObjectPayloadMatchesExpectedType)
-			|| !ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("bClassPayloadMatchesExpectedType"), bClassPayloadMatchesExpectedType)
-			|| !ReadStringPropertyChecked(*TestRunner, ScriptHarness, TEXT("LastObjectName"), LastObjectName)
-			|| !ReadStringPropertyChecked(*TestRunner, ScriptHarness, TEXT("LastClassName"), LastClassName))
+		if (!AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("ObjectSuccessCallbackCount"), ObjectSuccessCallbackCount)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("ObjectFailureCallbackCount"), ObjectFailureCallbackCount)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("ClassSuccessCallbackCount"), ClassSuccessCallbackCount)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("ClassFailureCallbackCount"), ClassFailureCallbackCount)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("bObjectSuccessWasNonNull"), bObjectSuccessWasNonNull)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("bObjectFailureWasNull"), bObjectFailureWasNull)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("bClassSuccessWasNonNull"), bClassSuccessWasNonNull)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("bClassFailureWasNull"), bClassFailureWasNull)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("bObjectPayloadMatchesExpectedType"), bObjectPayloadMatchesExpectedType)
+			|| !AngelscriptFunctionalTestUtils::ReadIntPropertyChecked(*TestRunner, ScriptHarness, TEXT("bClassPayloadMatchesExpectedType"), bClassPayloadMatchesExpectedType)
+			|| !AngelscriptFunctionalTestUtils::ReadStringPropertyChecked(*TestRunner, ScriptHarness, TEXT("LastObjectName"), LastObjectName)
+			|| !AngelscriptFunctionalTestUtils::ReadStringPropertyChecked(*TestRunner, ScriptHarness, TEXT("LastClassName"), LastClassName))
 		{
 			return;
 		}

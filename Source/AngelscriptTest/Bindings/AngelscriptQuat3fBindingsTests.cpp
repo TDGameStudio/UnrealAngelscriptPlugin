@@ -23,36 +23,43 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptQuat3fBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	TEST_METHOD(FRotatorBasics)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASQuat3f_Rotator"), TEXT(R"(
-int Rotator_ZeroIsZero()
-{
-	FRotator R = FRotator(0, 0, 0);
-	return (R.Pitch == 0.0 && R.Yaw == 0.0 && R.Roll == 0.0) ? 1 : 0;
-}
-int Rotator_ComponentsPreserved()
-{
-	FRotator R = FRotator(45.0, 90.0, 180.0);
-	return (R.Pitch == 45.0 && R.Yaw == 90.0 && R.Roll == 180.0) ? 1 : 0;
-}
-int Rotator_IsNearlyZero()
-{
-	// UE 5.7: FRotator::IsNearlyZero default tolerance tightened; use explicit tolerance
-	FRotator R = FRotator(0.0001, 0.0001, 0.0001);
-	return R.IsNearlyZero(0.001) ? 1 : 0;
-}
-int Rotator_IsZero()
-{
-	FRotator R = FRotator(0, 0, 0);
-	return R.IsZero() ? 1 : 0;
-}
-)"));
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASQuat3f_Rotator"), ASTEST_AS(R"AS(
+			int Rotator_ZeroIsZero()
+			{
+				FRotator R = FRotator(0, 0, 0);
+				return (R.Pitch == 0.0 && R.Yaw == 0.0 && R.Roll == 0.0) ? 1 : 0;
+			}
+
+			int Rotator_ComponentsPreserved()
+			{
+				FRotator R = FRotator(45.0, 90.0, 180.0);
+				return (R.Pitch == 45.0 && R.Yaw == 90.0 && R.Roll == 180.0) ? 1 : 0;
+			}
+
+			int Rotator_IsNearlyZero()
+			{
+				// UE 5.7: FRotator::IsNearlyZero default tolerance tightened; use explicit tolerance
+				FRotator R = FRotator(0.0001, 0.0001, 0.0001);
+				return R.IsNearlyZero(0.001) ? 1 : 0;
+			}
+
+			int Rotator_IsZero()
+			{
+				FRotator R = FRotator(0, 0, 0);
+				return R.IsZero() ? 1 : 0;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -62,7 +69,9 @@ int Rotator_IsZero()
 			{ TEXT("int Rotator_IsNearlyZero()"),        TEXT("Small rotator is nearly zero"), 1 },
 			{ TEXT("int Rotator_IsZero()"),              TEXT("Zero rotator IsZero"), 1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInts(*TestRunner, Engine, M,  Cases),
+			TEXT("ExpectGlobalInts should pass")));
 	}
 
 	TEST_METHOD(FQuatIdentity)
@@ -70,18 +79,19 @@ int Rotator_IsZero()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASQuat3f_Quat"), TEXT(R"(
-int Quat_IdentityIsNormalized()
-{
-	FQuat Q = FQuat::Identity;
-	return Q.IsNormalized() ? 1 : 0;
-}
-int Quat_IdentityComponents()
-{
-	FQuat Q = FQuat::Identity;
-	return (Q.X == 0.0 && Q.Y == 0.0 && Q.Z == 0.0 && Q.W == 1.0) ? 1 : 0;
-}
-)"));
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASQuat3f_Quat"), ASTEST_AS(R"AS(
+			int Quat_IdentityIsNormalized()
+			{
+				FQuat Q = FQuat::Identity;
+				return Q.IsNormalized() ? 1 : 0;
+			}
+
+			int Quat_IdentityComponents()
+			{
+				FQuat Q = FQuat::Identity;
+				return (Q.X == 0.0 && Q.Y == 0.0 && Q.Z == 0.0 && Q.W == 1.0) ? 1 : 0;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -89,7 +99,9 @@ int Quat_IdentityComponents()
 			{ TEXT("int Quat_IdentityIsNormalized()"), TEXT("Identity quat is normalized"), 1 },
 			{ TEXT("int Quat_IdentityComponents()"),   TEXT("Identity quat has correct XYZW"), 1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInts(*TestRunner, Engine, M,  Cases),
+			TEXT("ExpectGlobalInts should pass")));
 	}
 
 	TEST_METHOD(FTransformIdentity)
@@ -97,20 +109,21 @@ int Quat_IdentityComponents()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASQuat3f_Transform"), TEXT(R"(
-int Transform_IdentityLocation()
-{
-	FTransform T = FTransform::Identity;
-	FVector Loc = T.GetLocation();
-	return (Loc.X == 0.0 && Loc.Y == 0.0 && Loc.Z == 0.0) ? 1 : 0;
-}
-int Transform_IdentityScale()
-{
-	FTransform T = FTransform::Identity;
-	FVector S = T.GetScale3D();
-	return (S.X == 1.0 && S.Y == 1.0 && S.Z == 1.0) ? 1 : 0;
-}
-)"));
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASQuat3f_Transform"), ASTEST_AS(R"AS(
+			int Transform_IdentityLocation()
+			{
+				FTransform T = FTransform::Identity;
+				FVector Loc = T.GetLocation();
+				return (Loc.X == 0.0 && Loc.Y == 0.0 && Loc.Z == 0.0) ? 1 : 0;
+			}
+
+			int Transform_IdentityScale()
+			{
+				FTransform T = FTransform::Identity;
+				FVector S = T.GetScale3D();
+				return (S.X == 1.0 && S.Y == 1.0 && S.Z == 1.0) ? 1 : 0;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -118,7 +131,9 @@ int Transform_IdentityScale()
 			{ TEXT("int Transform_IdentityLocation()"), TEXT("Identity transform location is origin"), 1 },
 			{ TEXT("int Transform_IdentityScale()"),    TEXT("Identity transform scale is 1"), 1 },
 		};
-		ExpectGlobalInts(*TestRunner, Engine, M,  Cases);
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInts(*TestRunner, Engine, M,  Cases),
+			TEXT("ExpectGlobalInts should pass")));
 	}
 };
 

@@ -49,68 +49,75 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCompatBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: ObjectCastCompat
 	// ====================================================================
 
-	TEST_METHOD(ObjectCastCompat)
+	TEST_METHOD(ObjectCastPaths)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		// Plain module: test Cast<T> and n"" literal
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCompat_CastCompat"), TEXT(R"(
-int Compat_CastPackage()
-{
-	UObject Object = FindObject(GetTransientPackage().GetPathName());
-	UPackage Package = Cast<UPackage>(Object);
-	return IsValid(Package) ? 1 : 0;
-}
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCompat_CastCompat"), ASTEST_AS(R"AS(
+			int Compat_CastPackage()
+			{
+				UObject Object = FindObject(GetTransientPackage().GetPathName());
+				UPackage Package = Cast<UPackage>(Object);
+				return IsValid(Package) ? 1 : 0;
+			}
 
-int Compat_NameLiteral()
-{
-	FName LiteralName = n"Compat_Name";
-	return (LiteralName == FName("Compat_Name")) ? 1 : 0;
-}
-)"));
+			int Compat_NameLiteral()
+			{
+				FName LiteralName = n"Compat_Name";
+				return (LiteralName == FName("Compat_Name")) ? 1 : 0;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_CastPackage()"), TEXT("Cast<UPackage> on transient package should succeed"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_NameLiteral()"), TEXT("n\"\" literal syntax should produce matching FName"), 1);
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_CastPackage()"), TEXT("Cast<UPackage> on transient package should succeed"), 1), TEXT("Cast<UPackage> on transient package should succeed")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_NameLiteral()"), TEXT("n\"\" literal syntax should produce matching FName"), 1), TEXT("n\"\" literal syntax should produce matching FName")));
 
 		// Annotated module: test Cast<T> on generated script class
 		const bool bAnnotatedCompiled = CompileAnnotatedModuleFromMemory(
 			&Engine,
 			TEXT("ASAnnotatedCastCompat"),
 			TEXT("ASAnnotatedCastCompat.as"),
-			TEXT(R"(
-UCLASS()
-class ABindingCastActor : AActor
-{
-}
+			ASTEST_AS(R"AS(
+				UCLASS()
+				class ABindingCastActor : AActor
+				{
+				}
 
-UCLASS()
-class UBindingCastComponent : UActorComponent
-{
-	UFUNCTION()
-	int ReadCastCompat()
-	{
-		ABindingCastActor OwnerActor = Cast<ABindingCastActor>(GetOwner());
-		FName ExpectedName = n"BindingCastOwner";
+				UCLASS()
+				class UBindingCastComponent : UActorComponent
+				{
+					UFUNCTION()
+					int ReadCastCompat()
+					{
+						ABindingCastActor OwnerActor = Cast<ABindingCastActor>(GetOwner());
+						FName ExpectedName = n"BindingCastOwner";
 
-		if (OwnerActor == null)
-			return 0;
-		if (!(ExpectedName == FName("BindingCastOwner")))
-			return 0;
+						if (OwnerActor == null)
+						{
+							return 0;
+						}
+						if (!(ExpectedName == FName("BindingCastOwner")))
+						{
+							return 0;
+						}
 
-		return 1;
-	}
-}
-
-)"));
+						return 1;
+					}
+				}
+				)AS"));
 		ASSERT_THAT(IsTrue(bAnnotatedCompiled, TEXT("Compile annotated module using Cast<T> compat syntax should succeed")));
 
 		UClass* RuntimeActorClass = FindGeneratedClass(&Engine, TEXT("ABindingCastActor"));
@@ -142,19 +149,21 @@ class UBindingCastComponent : UActorComponent
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCompat_EditorOnly"), TEXT(R"(
-int Compat_EditorOnly_Package()
-{
-	UPackage Package = GetTransientPackage();
-	if (Package.IsEditorOnly())
-		return 10;
-	return 1;
-}
-)"));
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCompat_EditorOnly"), ASTEST_AS(R"AS(
+			int Compat_EditorOnly_Package()
+			{
+				UPackage Package = GetTransientPackage();
+				if (Package.IsEditorOnly())
+				{
+					return 10;
+				}
+				return 1;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_EditorOnly_Package()"), TEXT("Transient package IsEditorOnly should return false (1)"), 1);
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_EditorOnly_Package()"), TEXT("Transient package IsEditorOnly should return false (1)"), 1), TEXT("Transient package IsEditorOnly should return false (1)")));
 	}
 
 	// ====================================================================
@@ -201,237 +210,369 @@ int Compat_EditorOnly_Package()
 		ASSERT_THAT(IsFalse(bNativeNonEditorOnly, TEXT("Default transient input component should remain non-editor-only")));
 		ASSERT_THAT(IsTrue(bNativeEditorOnly, TEXT("Input component with bIsEditorOnly should report editor-only natively")));
 
-		const FString ScriptSource = FString::Printf(
-			TEXT(R"(
-int Compat_EditorOnlyParity()
-{
-	UObject NonEditorOnly = FindObject("%s");
-	UObject EditorOnly = FindObject("%s");
+		FString EditorOnlyParitySource = ASTEST_AS(R"AS(
+				int Compat_EditorOnlyParity()
+				{
+					UObject NonEditorOnly = FindObject("__NON_EDITOR_ONLY_PATH__");
+					UObject EditorOnly = FindObject("__EDITOR_ONLY_PATH__");
 
-	if (NonEditorOnly == null)
-		return 100;
-	if (EditorOnly == null)
-		return 200;
+					if (NonEditorOnly == null)
+					{
+						return 100;
+					}
+					if (EditorOnly == null)
+					{
+						return 200;
+					}
 
-	int Result = 0;
-	if (NonEditorOnly.IsEditorOnly())
-		Result += 2;
-	if (EditorOnly.IsEditorOnly())
-		Result += 1;
+					int Result = 0;
+					if (NonEditorOnly.IsEditorOnly())
+					{
+						Result += 2;
+					}
+					if (EditorOnly.IsEditorOnly())
+					{
+						Result += 1;
+					}
 
-	return Result;
-}
-)"),
-			*NonEditorOnlyComponent->GetPathName().ReplaceCharWithEscapedChar(),
-			*EditorOnlyComponent->GetPathName().ReplaceCharWithEscapedChar());
+					return Result;
+				}
+				)AS");
+		EditorOnlyParitySource.ReplaceInline(TEXT("__NON_EDITOR_ONLY_PATH__"), *NonEditorOnlyComponent->GetPathName().ReplaceCharWithEscapedChar());
+		EditorOnlyParitySource.ReplaceInline(TEXT("__EDITOR_ONLY_PATH__"), *EditorOnlyComponent->GetPathName().ReplaceCharWithEscapedChar());
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCompat_EditorOnlyParity"), ScriptSource);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCompat_EditorOnlyParity"), EditorOnlyParitySource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
 		const int32 ExpectedResult = (bNativeNonEditorOnly ? 2 : 0) + (bNativeEditorOnly ? 1 : 0);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_EditorOnlyParity()"), TEXT("Script IsEditorOnly should match native results"), ExpectedResult);
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_EditorOnlyParity()"), TEXT("Script IsEditorOnly should match native results"), ExpectedResult), TEXT("Script IsEditorOnly should match native results")));
 	}
 
 	// ====================================================================
 	// Section: TimespanCompat
 	// ====================================================================
 
-	TEST_METHOD(TimespanCompat)
+	TEST_METHOD(TimespanPaths)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCompat_TimespanCompat"), TEXT(R"(
-int Compat_Timespan_Zero()
-{
-	FTimespan Zero = FTimespan::Zero();
-	return Zero.IsZero() ? 1 : 0;
-}
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCompat_TimespanCompat"), ASTEST_AS(R"AS(
+			int Compat_Timespan_Zero()
+			{
+				FTimespan Zero = FTimespan::Zero();
+				return Zero.IsZero() ? 1 : 0;
+			}
 
-int Compat_Timespan_FromSeconds()
-{
-	FTimespan NinetySeconds = FTimespan::FromSeconds(90.0);
-	if (NinetySeconds.GetMinutes() != 1) return 0;
-	if (NinetySeconds.GetSeconds() != 30) return 0;
-	if (NinetySeconds.GetTotalSeconds() != 90.0) return 0;
-	return 1;
-}
+			int Compat_Timespan_FromSeconds()
+			{
+				FTimespan NinetySeconds = FTimespan::FromSeconds(90.0);
+				if (NinetySeconds.GetMinutes() != 1)
+				{
+					return 0;
+				}
+				if (NinetySeconds.GetSeconds() != 30)
+				{
+					return 0;
+				}
+				if (NinetySeconds.GetTotalSeconds() != 90.0)
+				{
+					return 0;
+				}
+				return 1;
+			}
 
-int Compat_Timespan_FromHours()
-{
-	FTimespan TwoHours = FTimespan::FromHours(2.0);
-	if (TwoHours.GetHours() != 2) return 0;
-	if (TwoHours.GetTotalMinutes() != 120.0) return 0;
-	return 1;
-}
+			int Compat_Timespan_FromHours()
+			{
+				FTimespan TwoHours = FTimespan::FromHours(2.0);
+				if (TwoHours.GetHours() != 2)
+				{
+					return 0;
+				}
+				if (TwoHours.GetTotalMinutes() != 120.0)
+				{
+					return 0;
+				}
+				return 1;
+			}
 
-int Compat_Timespan_Constructed()
-{
-	FTimespan Constructed(1, 2, 3);
-	if (Constructed.GetHours() != 1) return 0;
-	if (Constructed.GetMinutes() != 2) return 0;
-	if (Constructed.GetSeconds() != 3) return 0;
-	return 1;
-}
+			int Compat_Timespan_Constructed()
+			{
+				FTimespan Constructed(1, 2, 3);
+				if (Constructed.GetHours() != 1)
+				{
+					return 0;
+				}
+				if (Constructed.GetMinutes() != 2)
+				{
+					return 0;
+				}
+				if (Constructed.GetSeconds() != 3)
+				{
+					return 0;
+				}
+				return 1;
+			}
 
-int Compat_Timespan_CopyAndCompare()
-{
-	FTimespan Constructed(1, 2, 3);
-	FTimespan Copy = Constructed;
-	if (!(Copy == Constructed)) return 0;
-	if (Copy.opCmp(Constructed) != 0) return 0;
-	return 1;
-}
+			int Compat_Timespan_CopyAndCompare()
+			{
+				FTimespan Constructed(1, 2, 3);
+				FTimespan Copy = Constructed;
+				if (!(Copy == Constructed))
+				{
+					return 0;
+				}
+				if (Copy.opCmp(Constructed) != 0)
+				{
+					return 0;
+				}
+				return 1;
+			}
 
-int Compat_Timespan_Ordering()
-{
-	FTimespan Constructed(1, 2, 3);
-	FTimespan Longer = FTimespan::FromHours(2.0);
-	if (!(Longer.opCmp(Constructed) > 0)) return 0;
-	if (Longer.GetTotalDays() <= 0.0) return 0;
-	if (Longer.ToString().IsEmpty()) return 0;
-	return 1;
-}
+			int Compat_Timespan_Ordering()
+			{
+				FTimespan Constructed(1, 2, 3);
+				FTimespan Longer = FTimespan::FromHours(2.0);
+				if (!(Longer.opCmp(Constructed) > 0))
+				{
+					return 0;
+				}
+				if (Longer.GetTotalDays() <= 0.0)
+				{
+					return 0;
+				}
+				if (Longer.ToString().IsEmpty())
+				{
+					return 0;
+				}
+				return 1;
+			}
 
-int Compat_Timespan_Arithmetic()
-{
-	FTimespan Constructed(1, 2, 3);
-	FTimespan Sum = Constructed + FTimespan::FromMinutes(30.0);
-	if (Sum.GetTotalMinutes() < Constructed.GetTotalMinutes() + 29.99 || Sum.GetTotalMinutes() > Constructed.GetTotalMinutes() + 30.01)
-		return 0;
+			int Compat_Timespan_Arithmetic()
+			{
+				FTimespan Constructed(1, 2, 3);
+				FTimespan Sum = Constructed + FTimespan::FromMinutes(30.0);
+				if (Sum.GetTotalMinutes() < Constructed.GetTotalMinutes() + 29.99 || Sum.GetTotalMinutes() > Constructed.GetTotalMinutes() + 30.01)
+				{
+					return 0;
+				}
 
-	FTimespan Difference = Sum - Constructed;
-	if (Difference.GetTotalMinutes() < 29.99 || Difference.GetTotalMinutes() > 30.01)
-		return 0;
+				FTimespan Difference = Sum - Constructed;
+				if (Difference.GetTotalMinutes() < 29.99 || Difference.GetTotalMinutes() > 30.01)
+				{
+					return 0;
+				}
 
-	FTimespan Doubled = Difference * 2.0;
-	if (Doubled.GetTotalMinutes() < 59.99 || Doubled.GetTotalMinutes() > 60.01)
-		return 0;
+				FTimespan Doubled = Difference * 2.0;
+				if (Doubled.GetTotalMinutes() < 59.99 || Doubled.GetTotalMinutes() > 60.01)
+				{
+					return 0;
+				}
 
-	FTimespan Halved = Doubled / 2.0;
-	if (Halved.GetTotalMinutes() < 29.99 || Halved.GetTotalMinutes() > 30.01)
-		return 0;
+				FTimespan Halved = Doubled / 2.0;
+				if (Halved.GetTotalMinutes() < 29.99 || Halved.GetTotalMinutes() > 30.01)
+				{
+					return 0;
+				}
 
-	return 1;
-}
-)"));
+				return 1;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_Zero()"), TEXT("FTimespan::Zero should be zero"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_FromSeconds()"), TEXT("FTimespan::FromSeconds should decompose correctly"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_FromHours()"), TEXT("FTimespan::FromHours should decompose correctly"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_Constructed()"), TEXT("FTimespan(h,m,s) constructor should populate components"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_CopyAndCompare()"), TEXT("Copy and equality comparison should work"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_Ordering()"), TEXT("opCmp ordering and ToString should work"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_Arithmetic()"), TEXT("Arithmetic operators should produce correct results"), 1);
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_Zero()"), TEXT("FTimespan::Zero should be zero"), 1), TEXT("FTimespan::Zero should be zero")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_FromSeconds()"), TEXT("FTimespan::FromSeconds should decompose correctly"), 1), TEXT("FTimespan::FromSeconds should decompose correctly")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_FromHours()"), TEXT("FTimespan::FromHours should decompose correctly"), 1), TEXT("FTimespan::FromHours should decompose correctly")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_Constructed()"), TEXT("FTimespan(h,m,s) constructor should populate components"), 1), TEXT("FTimespan(h,m,s) constructor should populate components")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_CopyAndCompare()"), TEXT("Copy and equality comparison should work"), 1), TEXT("Copy and equality comparison should work")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_Ordering()"), TEXT("opCmp ordering and ToString should work"), 1), TEXT("opCmp ordering and ToString should work")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_Timespan_Arithmetic()"), TEXT("Arithmetic operators should produce correct results"), 1), TEXT("Arithmetic operators should produce correct results")));
 	}
 
 	// ====================================================================
 	// Section: DateTimeCompat
 	// ====================================================================
 
-	TEST_METHOD(DateTimeCompat)
+	TEST_METHOD(DateTimePaths)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCompat_DateTimeCompat"), TEXT(R"(
-int Compat_DateTime_Epoch()
-{
-	FDateTime Epoch = FDateTime::FromUnixTimestamp(0);
-	if (Epoch.GetYear() != 1970) return 0;
-	if (Epoch.GetMonth() != 1) return 0;
-	if (Epoch.GetDay() != 1) return 0;
-	if (Epoch.ToUnixTimestamp() != 0) return 0;
-	return 1;
-}
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCompat_DateTimeCompat"), ASTEST_AS(R"AS(
+			int Compat_DateTime_Epoch()
+			{
+				FDateTime Epoch = FDateTime::FromUnixTimestamp(0);
+				if (Epoch.GetYear() != 1970)
+				{
+					return 0;
+				}
+				if (Epoch.GetMonth() != 1)
+				{
+					return 0;
+				}
+				if (Epoch.GetDay() != 1)
+				{
+					return 0;
+				}
+				if (Epoch.ToUnixTimestamp() != 0)
+				{
+					return 0;
+				}
+				return 1;
+			}
 
-int Compat_DateTime_Constructed()
-{
-	FDateTime Constructed(2024, 12, 25, 14, 30, 15, 0);
-	if (Constructed.GetYear() != 2024) return 0;
-	if (Constructed.GetMonth() != 12) return 0;
-	if (Constructed.GetDay() != 25) return 0;
-	if (Constructed.GetHour() != 14) return 0;
-	if (Constructed.GetMinute() != 30) return 0;
-	if (Constructed.GetSecond() != 15) return 0;
-	if (!Constructed.IsAfternoon()) return 0;
-	if (Constructed.IsMorning()) return 0;
-	return 1;
-}
+			int Compat_DateTime_Constructed()
+			{
+				FDateTime Constructed(2024, 12, 25, 14, 30, 15, 0);
+				if (Constructed.GetYear() != 2024)
+				{
+					return 0;
+				}
+				if (Constructed.GetMonth() != 12)
+				{
+					return 0;
+				}
+				if (Constructed.GetDay() != 25)
+				{
+					return 0;
+				}
+				if (Constructed.GetHour() != 14)
+				{
+					return 0;
+				}
+				if (Constructed.GetMinute() != 30)
+				{
+					return 0;
+				}
+				if (Constructed.GetSecond() != 15)
+				{
+					return 0;
+				}
+				if (!Constructed.IsAfternoon())
+				{
+					return 0;
+				}
+				if (Constructed.IsMorning())
+				{
+					return 0;
+				}
+				return 1;
+			}
 
-int Compat_DateTime_CopyAndCompare()
-{
-	FDateTime Constructed(2024, 12, 25, 14, 30, 15, 0);
-	FDateTime Copy = Constructed;
-	if (!(Copy == Constructed)) return 0;
-	if (Copy.opCmp(Constructed) != 0) return 0;
-	return 1;
-}
+			int Compat_DateTime_CopyAndCompare()
+			{
+				FDateTime Constructed(2024, 12, 25, 14, 30, 15, 0);
+				FDateTime Copy = Constructed;
+				if (!(Copy == Constructed))
+				{
+					return 0;
+				}
+				if (Copy.opCmp(Constructed) != 0)
+				{
+					return 0;
+				}
+				return 1;
+			}
 
-int Compat_DateTime_Arithmetic()
-{
-	FDateTime Constructed(2024, 12, 25, 14, 30, 15, 0);
-	FTimespan OneDay = FTimespan::FromDays(1.0);
-	FDateTime NextDay = Constructed + OneDay;
-	if (!(NextDay.opCmp(Constructed) > 0)) return 0;
-	NextDay -= OneDay;
-	if (!(NextDay == Constructed)) return 0;
-	return 1;
-}
+			int Compat_DateTime_Arithmetic()
+			{
+				FDateTime Constructed(2024, 12, 25, 14, 30, 15, 0);
+				FTimespan OneDay = FTimespan::FromDays(1.0);
+				FDateTime NextDay = Constructed + OneDay;
+				if (!(NextDay.opCmp(Constructed) > 0))
+				{
+					return 0;
+				}
+				NextDay -= OneDay;
+				if (!(NextDay == Constructed))
+				{
+					return 0;
+				}
+				return 1;
+			}
 
-int Compat_DateTime_LeapYear()
-{
-	if (FDateTime::DaysInMonth(2024, 2) != 29) return 0;
-	if (!FDateTime::IsLeapYear(2024)) return 0;
-	if (FDateTime::DaysInYear(2024) != 366) return 0;
-	return 1;
-}
+			int Compat_DateTime_LeapYear()
+			{
+				if (FDateTime::DaysInMonth(2024, 2) != 29)
+				{
+					return 0;
+				}
+				if (!FDateTime::IsLeapYear(2024))
+				{
+					return 0;
+				}
+				if (FDateTime::DaysInYear(2024) != 366)
+				{
+					return 0;
+				}
+				return 1;
+			}
 
-int Compat_DateTime_Ordering()
-{
-	FDateTime Epoch = FDateTime::FromUnixTimestamp(0);
-	FDateTime Constructed(2024, 12, 25, 14, 30, 15, 0);
-	if (Epoch.opCmp(Constructed) >= 0) return 0;
-	return 1;
-}
+			int Compat_DateTime_Ordering()
+			{
+				FDateTime Epoch = FDateTime::FromUnixTimestamp(0);
+				FDateTime Constructed(2024, 12, 25, 14, 30, 15, 0);
+				if (Epoch.opCmp(Constructed) >= 0)
+				{
+					return 0;
+				}
+				return 1;
+			}
 
-int Compat_DateTime_Formatting()
-{
-	FDateTime Constructed(2024, 12, 25, 14, 30, 15, 0);
-	if (Constructed.ToIso8601().IsEmpty()) return 0;
-	if (Constructed.ToString().IsEmpty()) return 0;
-	if (Constructed.ToString("%%Y-%%m-%%d").IsEmpty()) return 0;
-	return 1;
-}
+			int Compat_DateTime_Formatting()
+			{
+				FDateTime Constructed(2024, 12, 25, 14, 30, 15, 0);
+				if (Constructed.ToIso8601().IsEmpty())
+				{
+					return 0;
+				}
+				if (Constructed.ToString().IsEmpty())
+				{
+					return 0;
+				}
+				if (Constructed.ToString("%%Y-%%m-%%d").IsEmpty())
+				{
+					return 0;
+				}
+				return 1;
+			}
 
-int Compat_DateTime_NowAndToday()
-{
-	FDateTime Today = FDateTime::Today();
-	if (Today.GetHour() != 0) return 0;
+			int Compat_DateTime_NowAndToday()
+			{
+				FDateTime Today = FDateTime::Today();
+				if (Today.GetHour() != 0)
+				{
+					return 0;
+				}
 
-	FDateTime Now = FDateTime::Now();
-	if (Now.GetYear() < 2020) return 0;
+				FDateTime Now = FDateTime::Now();
+				if (Now.GetYear() < 2020)
+				{
+					return 0;
+				}
 
-	FDateTime UtcNow = FDateTime::UtcNow();
-	if (UtcNow.GetYear() < 2020) return 0;
+				FDateTime UtcNow = FDateTime::UtcNow();
+				if (UtcNow.GetYear() < 2020)
+				{
+					return 0;
+				}
 
-	return 1;
-}
-)"));
+				return 1;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_Epoch()"), TEXT("Unix epoch should decompose to 1970-01-01"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_Constructed()"), TEXT("Full constructor should populate all components"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_CopyAndCompare()"), TEXT("Copy and equality should work"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_Arithmetic()"), TEXT("Add/subtract timespan should round-trip"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_LeapYear()"), TEXT("Leap year detection and day counts should be correct"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_Ordering()"), TEXT("opCmp ordering should work across dates"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_Formatting()"), TEXT("ToString and ToIso8601 should produce non-empty strings"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_NowAndToday()"), TEXT("Today/Now/UtcNow should return reasonable values"), 1);
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_Epoch()"), TEXT("Unix epoch should decompose to 1970-01-01"), 1), TEXT("Unix epoch should decompose to 1970-01-01")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_Constructed()"), TEXT("Full constructor should populate all components"), 1), TEXT("Full constructor should populate all components")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_CopyAndCompare()"), TEXT("Copy and equality should work"), 1), TEXT("Copy and equality should work")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_Arithmetic()"), TEXT("Add/subtract timespan should round-trip"), 1), TEXT("Add/subtract timespan should round-trip")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_LeapYear()"), TEXT("Leap year detection and day counts should be correct"), 1), TEXT("Leap year detection and day counts should be correct")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_Ordering()"), TEXT("opCmp ordering should work across dates"), 1), TEXT("opCmp ordering should work across dates")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_Formatting()"), TEXT("ToString and ToIso8601 should produce non-empty strings"), 1), TEXT("ToString and ToIso8601 should produce non-empty strings")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Compat_DateTime_NowAndToday()"), TEXT("Today/Now/UtcNow should return reasonable values"), 1), TEXT("Today/Now/UtcNow should return reasonable values")));
 	}
 };
 

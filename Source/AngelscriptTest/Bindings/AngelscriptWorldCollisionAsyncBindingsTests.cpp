@@ -49,121 +49,121 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptWorldCollisionAsyncBindingsTest,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
-inline static const FName WorldCollisionAsyncModuleName = FName(TEXT("ASWorldCollisionAsyncTraceCallbacks"));
-inline static const FString WorldCollisionAsyncFilename = FString(TEXT("WorldCollisionAsyncTraceCallbacks.as"));
-inline static const FName WorldCollisionAsyncClassName = FName(TEXT("ATestWorldCollisionAsyncCallbacks"));
-inline static const FVector AsyncCollisionTargetLocation = FVector(0.0f, 0.0f, 0.0f);
-inline static const FVector AsyncLineTraceStart = FVector(-200.0f, 0.0f, 0.0f);
-inline static const FVector AsyncLineTraceEnd = FVector(200.0f, 0.0f, 0.0f);
-inline static const FVector AsyncTargetExtent = FVector(50.0f, 50.0f, 50.0f);
-inline static const FVector AsyncQueryExtent = FVector(30.0f, 30.0f, 30.0f);
-static constexpr float AsyncTickDeltaTime = 1.0f / 60.0f;
-static constexpr int32 AsyncMaxTickCount = 90;
+	inline static const FName WorldCollisionAsyncModuleName = FName(TEXT("ASWorldCollisionAsyncTraceCallbacks"));
+	inline static const FString WorldCollisionAsyncFilename = FString(TEXT("WorldCollisionAsyncTraceCallbacks.as"));
+	inline static const FName WorldCollisionAsyncClassName = FName(TEXT("ATestWorldCollisionAsyncCallbacks"));
+	inline static const FVector AsyncCollisionTargetLocation = FVector(0.0f, 0.0f, 0.0f);
+	inline static const FVector AsyncLineTraceStart = FVector(-200.0f, 0.0f, 0.0f);
+	inline static const FVector AsyncLineTraceEnd = FVector(200.0f, 0.0f, 0.0f);
+	inline static const FVector AsyncTargetExtent = FVector(50.0f, 50.0f, 50.0f);
+	inline static const FVector AsyncQueryExtent = FVector(30.0f, 30.0f, 30.0f);
+	static constexpr float AsyncTickDeltaTime = 1.0f / 60.0f;
+	static constexpr int32 AsyncMaxTickCount = 90;
 
-static UBoxComponent* AddCollisionBox(
-	AActor& Owner,
-	const FName ComponentName,
-	const FVector& BoxExtent,
-	const FVector& WorldLocation)
-{
-	UBoxComponent* BoxComponent = NewObject<UBoxComponent>(&Owner, ComponentName);
-	check(BoxComponent != nullptr);
-
-	Owner.AddInstanceComponent(BoxComponent);
-	Owner.SetRootComponent(BoxComponent);
-	BoxComponent->RegisterComponent();
-	BoxComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	BoxComponent->SetCollisionObjectType(ECC_WorldDynamic);
-	BoxComponent->SetCollisionResponseToAllChannels(ECR_Block);
-	BoxComponent->SetGenerateOverlapEvents(true);
-	BoxComponent->SetBoxExtent(BoxExtent);
-	BoxComponent->SetWorldLocation(WorldLocation);
-	return BoxComponent;
-}
-
-static bool ExecuteGeneratedIntMethod(
-	FAutomationTestBase& Test,
-	UObject* Object,
-	UClass* OwnerClass,
-	FName FunctionName,
-	int32& OutResult)
-{
-	FNoDiscardAsserter LocalAssert(Test);
-	UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
-	if (!LocalAssert.IsNotNull(
-		Function,
-		*FString::Printf(TEXT("World collision async method '%s' should exist"), *FunctionName.ToString())))
+	static UBoxComponent* AddCollisionBox(
+		AActor& Owner,
+		const FName ComponentName,
+		const FVector& BoxExtent,
+		const FVector& WorldLocation)
 	{
-		return false;
+		UBoxComponent* BoxComponent = NewObject<UBoxComponent>(&Owner, ComponentName);
+		check(BoxComponent != nullptr);
+
+		Owner.AddInstanceComponent(BoxComponent);
+		Owner.SetRootComponent(BoxComponent);
+		BoxComponent->RegisterComponent();
+		BoxComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		BoxComponent->SetCollisionObjectType(ECC_WorldDynamic);
+		BoxComponent->SetCollisionResponseToAllChannels(ECR_Block);
+		BoxComponent->SetGenerateOverlapEvents(true);
+		BoxComponent->SetBoxExtent(BoxExtent);
+		BoxComponent->SetWorldLocation(WorldLocation);
+		return BoxComponent;
 	}
 
-	return LocalAssert.IsTrue(
-		ExecuteGeneratedIntEventOnGameThread(Object, Function, OutResult),
-		*FString::Printf(TEXT("World collision async method '%s' should execute"), *FunctionName.ToString()));
-}
-
-static bool ReadUInt64PropertyChecked(
-	FAutomationTestBase& Test,
-	UObject* Object,
-	FName PropertyName,
-	uint64& OutValue)
-{
-	FNoDiscardAsserter LocalAssert(Test);
-	if (!LocalAssert.IsNotNull(Object, TEXT("World collision async object should be valid for uint64 property reads")))
+	static bool ExecuteGeneratedIntMethod(
+		FAutomationTestBase& Test,
+		UObject* Object,
+		UClass* OwnerClass,
+		FName FunctionName,
+		int32& OutResult)
 	{
-		return false;
-	}
-
-	FUInt64Property* Property = FindFProperty<FUInt64Property>(Object->GetClass(), PropertyName);
-	if (!LocalAssert.IsNotNull(
-		Property,
-		*FString::Printf(TEXT("World collision async property '%s' should exist"), *PropertyName.ToString())))
-	{
-		return false;
-	}
-
-	OutValue = Property->GetPropertyValue_InContainer(Object);
-	return true;
-}
-
-static bool WaitForAsyncCallbacks(
-	FAutomationTestBase& Test,
-	FAngelscriptEngine& Engine,
-	UWorld& World,
-	AActor& ScriptActor)
-{
-	FNoDiscardAsserter LocalAssert(Test);
-	FIntProperty* LineCallbackCountProperty = FindFProperty<FIntProperty>(ScriptActor.GetClass(), TEXT("LineCallbackCount"));
-	FIntProperty* OverlapCallbackCountProperty = FindFProperty<FIntProperty>(ScriptActor.GetClass(), TEXT("OverlapCallbackCount"));
-	bool bHasCallbackProperties = true;
-	bHasCallbackProperties &= LocalAssert.IsNotNull(LineCallbackCountProperty, TEXT("World collision async actor should expose LineCallbackCount"));
-	bHasCallbackProperties &= LocalAssert.IsNotNull(OverlapCallbackCountProperty, TEXT("World collision async actor should expose OverlapCallbackCount"));
-	if (!bHasCallbackProperties)
-	{
-		return false;
-	}
-
-	for (int32 TickIndex = 0; TickIndex < AsyncMaxTickCount; ++TickIndex)
-	{
-		const int32 LineCallbackCount = LineCallbackCountProperty->GetPropertyValue_InContainer(&ScriptActor);
-		const int32 OverlapCallbackCount = OverlapCallbackCountProperty->GetPropertyValue_InContainer(&ScriptActor);
-		if (LineCallbackCount >= 1 && OverlapCallbackCount >= 1)
+		FNoDiscardAsserter LocalAssert(Test);
+		UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
+		if (!LocalAssert.IsNotNull(
+			Function,
+			*FString::Printf(TEXT("World collision async method '%s' should exist"), *FunctionName.ToString())))
 		{
-			return true;
+			return false;
 		}
 
-		AngelscriptFunctionalTestUtils::TickWorld(Engine, World, AsyncTickDeltaTime, 1);
+		return LocalAssert.IsTrue(
+			ExecuteGeneratedIntEventOnGameThread(Object, Function, OutResult),
+			*FString::Printf(TEXT("World collision async method '%s' should execute"), *FunctionName.ToString()));
 	}
 
-	const int32 FinalLineCallbackCount = LineCallbackCountProperty->GetPropertyValue_InContainer(&ScriptActor);
-	const int32 FinalOverlapCallbackCount = OverlapCallbackCountProperty->GetPropertyValue_InContainer(&ScriptActor);
-	Test.AddError(FString::Printf(
-		TEXT("Async world-collision callbacks did not complete within %d ticks (line=%d overlap=%d)."),
-		AsyncMaxTickCount,
-		FinalLineCallbackCount,
-		FinalOverlapCallbackCount));
-	return false;
-}
+	static bool ReadUInt64PropertyChecked(
+		FAutomationTestBase& Test,
+		UObject* Object,
+		FName PropertyName,
+		uint64& OutValue)
+	{
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsNotNull(Object, TEXT("World collision async object should be valid for uint64 property reads")))
+		{
+			return false;
+		}
+
+		FUInt64Property* Property = FindFProperty<FUInt64Property>(Object->GetClass(), PropertyName);
+		if (!LocalAssert.IsNotNull(
+			Property,
+			*FString::Printf(TEXT("World collision async property '%s' should exist"), *PropertyName.ToString())))
+		{
+			return false;
+		}
+
+		OutValue = Property->GetPropertyValue_InContainer(Object);
+		return true;
+	}
+
+	static bool WaitForAsyncCallbacks(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		UWorld& World,
+		AActor& ScriptActor)
+	{
+		FNoDiscardAsserter LocalAssert(Test);
+		FIntProperty* LineCallbackCountProperty = FindFProperty<FIntProperty>(ScriptActor.GetClass(), TEXT("LineCallbackCount"));
+		FIntProperty* OverlapCallbackCountProperty = FindFProperty<FIntProperty>(ScriptActor.GetClass(), TEXT("OverlapCallbackCount"));
+		bool bHasCallbackProperties = true;
+		bHasCallbackProperties &= LocalAssert.IsNotNull(LineCallbackCountProperty, TEXT("World collision async actor should expose LineCallbackCount"));
+		bHasCallbackProperties &= LocalAssert.IsNotNull(OverlapCallbackCountProperty, TEXT("World collision async actor should expose OverlapCallbackCount"));
+		if (!bHasCallbackProperties)
+		{
+			return false;
+		}
+
+		for (int32 TickIndex = 0; TickIndex < AsyncMaxTickCount; ++TickIndex)
+		{
+			const int32 LineCallbackCount = LineCallbackCountProperty->GetPropertyValue_InContainer(&ScriptActor);
+			const int32 OverlapCallbackCount = OverlapCallbackCountProperty->GetPropertyValue_InContainer(&ScriptActor);
+			if (LineCallbackCount >= 1 && OverlapCallbackCount >= 1)
+			{
+				return true;
+			}
+
+			AngelscriptFunctionalTestUtils::TickWorld(Engine, World, AsyncTickDeltaTime, 1);
+		}
+
+		const int32 FinalLineCallbackCount = LineCallbackCountProperty->GetPropertyValue_InContainer(&ScriptActor);
+		const int32 FinalOverlapCallbackCount = OverlapCallbackCountProperty->GetPropertyValue_InContainer(&ScriptActor);
+		Test.AddError(FString::Printf(
+			TEXT("Async world-collision callbacks did not complete within %d ticks (line=%d overlap=%d)."),
+			AsyncMaxTickCount,
+			FinalLineCallbackCount,
+			FinalOverlapCallbackCount));
+		return false;
+	}
 
 public:
 	// ====================================================================
@@ -172,7 +172,7 @@ public:
 
 	TEST_METHOD(AsyncTraceCallbacks)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		{
 		FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
@@ -193,120 +193,134 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 			Engine,
 			WorldCollisionAsyncModuleName,
 			WorldCollisionAsyncFilename,
-			TEXT(R"AS(
-UCLASS()
-class ATestWorldCollisionAsyncCallbacks : AActor
-{
-	UPROPERTY()
-	int LineCallbackCount = 0;
-	UPROPERTY()
-	int LineUserData = 0;
-	UPROPERTY()
-	int LineHitCount = 0;
-	UPROPERTY()
-	int LineQuerySucceeded = 0;
-	UPROPERTY()
-	int LineQueryHitCount = 0;
-	UPROPERTY()
-	int LineHandleValidInitially = 0;
-	UPROPERTY()
-	uint64 LineHandleRaw = 0;
-	UPROPERTY()
-	uint64 LastLineCallbackHandle = 0;
+			ASTEST_AS(R"AS(
+				UCLASS()
+				class ATestWorldCollisionAsyncCallbacks : AActor
+				{
+					UPROPERTY()
+					int LineCallbackCount = 0;
 
-	UPROPERTY()
-	int OverlapCallbackCount = 0;
-	UPROPERTY()
-	int OverlapUserData = 0;
-	UPROPERTY()
-	int OverlapHitCount = 0;
-	UPROPERTY()
-	int OverlapQuerySucceeded = 0;
-	UPROPERTY()
-	int OverlapQueryHitCount = 0;
-	UPROPERTY()
-	int OverlapHandleValidInitially = 0;
-	UPROPERTY()
-	uint64 OverlapHandleRaw = 0;
-	UPROPERTY()
-	uint64 LastOverlapCallbackHandle = 0;
+					UPROPERTY()
+					int LineUserData = 0;
 
-	FTraceHandle LineHandle;
-	FTraceHandle OverlapHandle;
+					UPROPERTY()
+					int LineHitCount = 0;
 
-	UFUNCTION()
-	int StartAsyncQueries()
-	{
-		FScriptTraceDelegate LineDelegate;
-		LineDelegate.BindUFunction(this, n"HandleLineTrace");
-		LineHandle = System::AsyncLineTraceByChannel(
-			EAsyncTraceType::Single,
-			FVector(-200.0f, 0.0f, 0.0f),
-			FVector(200.0f, 0.0f, 0.0f),
-			ECollisionChannel::ECC_Visibility,
-			FCollisionQueryParams::DefaultQueryParam,
-			FCollisionResponseParams::DefaultResponseParam,
-			LineDelegate,
-			77);
-		LineHandleRaw = LineHandle._Handle;
-		LineHandleValidInitially = System::IsTraceHandleValid(LineHandle, false) ? 1 : 0;
+					UPROPERTY()
+					int LineQuerySucceeded = 0;
 
-		FCollisionShape Shape = FCollisionShape::MakeBox(FVector(30.0f, 30.0f, 30.0f));
-		FScriptOverlapDelegate OverlapDelegate;
-		OverlapDelegate.BindUFunction(this, n"HandleOverlapTrace");
-		OverlapHandle = System::AsyncOverlapByChannel(
-			FVector::ZeroVector,
-			FQuat::Identity,
-			ECollisionChannel::ECC_Visibility,
-			Shape,
-			FCollisionQueryParams::DefaultQueryParam,
-			FCollisionResponseParams::DefaultResponseParam,
-			OverlapDelegate,
-			88);
-		OverlapHandleRaw = OverlapHandle._Handle;
-		OverlapHandleValidInitially = System::IsTraceHandleValid(OverlapHandle, true) ? 1 : 0;
-		return 1;
-	}
+					UPROPERTY()
+					int LineQueryHitCount = 0;
 
-	UFUNCTION()
-	void HandleLineTrace(uint64 TraceHandleValue, const TArray<FHitResult>& OutHits, uint32 UserData)
-	{
-		LineCallbackCount += 1;
-		LastLineCallbackHandle = TraceHandleValue;
-		LineUserData = int(UserData);
-		LineHitCount = OutHits.Num();
+					UPROPERTY()
+					int LineHandleValidInitially = 0;
 
-		FTraceDatum Datum;
-		LineQuerySucceeded = System::QueryTraceData(LineHandle, Datum) ? 1 : 0;
-		LineQueryHitCount = Datum.OutHits.Num();
-	}
+					UPROPERTY()
+					uint64 LineHandleRaw = 0;
 
-	UFUNCTION()
-	void HandleOverlapTrace(uint64 TraceHandleValue, const TArray<FOverlapResult>& OutOverlaps, uint32 UserData)
-	{
-		OverlapCallbackCount += 1;
-		LastOverlapCallbackHandle = TraceHandleValue;
-		OverlapUserData = int(UserData);
-		OverlapHitCount = OutOverlaps.Num();
+					UPROPERTY()
+					uint64 LastLineCallbackHandle = 0;
 
-		FOverlapDatum Datum;
-		OverlapQuerySucceeded = System::QueryOverlapData(OverlapHandle, Datum) ? 1 : 0;
-		OverlapQueryHitCount = Datum.OutOverlaps.Num();
-	}
+					UPROPERTY()
+					int OverlapCallbackCount = 0;
 
-	UFUNCTION()
-	int GetLineHandleValidNow()
-	{
-		return System::IsTraceHandleValid(LineHandle, false) ? 1 : 0;
-	}
+					UPROPERTY()
+					int OverlapUserData = 0;
 
-	UFUNCTION()
-	int GetOverlapHandleValidNow()
-	{
-		return System::IsTraceHandleValid(OverlapHandle, true) ? 1 : 0;
-	}
-}
-)AS"),
+					UPROPERTY()
+					int OverlapHitCount = 0;
+
+					UPROPERTY()
+					int OverlapQuerySucceeded = 0;
+
+					UPROPERTY()
+					int OverlapQueryHitCount = 0;
+
+					UPROPERTY()
+					int OverlapHandleValidInitially = 0;
+
+					UPROPERTY()
+					uint64 OverlapHandleRaw = 0;
+
+					UPROPERTY()
+					uint64 LastOverlapCallbackHandle = 0;
+
+					FTraceHandle LineHandle;
+					FTraceHandle OverlapHandle;
+
+					UFUNCTION()
+					int StartAsyncQueries()
+					{
+						FScriptTraceDelegate LineDelegate;
+						LineDelegate.BindUFunction(this, n"HandleLineTrace");
+						LineHandle = System::AsyncLineTraceByChannel(
+						EAsyncTraceType::Single,
+						FVector(-200.0f, 0.0f, 0.0f),
+						FVector(200.0f, 0.0f, 0.0f),
+						ECollisionChannel::ECC_Visibility,
+						FCollisionQueryParams::DefaultQueryParam,
+						FCollisionResponseParams::DefaultResponseParam,
+						LineDelegate,
+						77);
+						LineHandleRaw = LineHandle._Handle;
+						LineHandleValidInitially = System::IsTraceHandleValid(LineHandle, false) ? 1 : 0;
+
+						FCollisionShape Shape = FCollisionShape::MakeBox(FVector(30.0f, 30.0f, 30.0f));
+						FScriptOverlapDelegate OverlapDelegate;
+						OverlapDelegate.BindUFunction(this, n"HandleOverlapTrace");
+						OverlapHandle = System::AsyncOverlapByChannel(
+						FVector::ZeroVector,
+						FQuat::Identity,
+						ECollisionChannel::ECC_Visibility,
+						Shape,
+						FCollisionQueryParams::DefaultQueryParam,
+						FCollisionResponseParams::DefaultResponseParam,
+						OverlapDelegate,
+						88);
+						OverlapHandleRaw = OverlapHandle._Handle;
+						OverlapHandleValidInitially = System::IsTraceHandleValid(OverlapHandle, true) ? 1 : 0;
+						return 1;
+					}
+
+					UFUNCTION()
+					void HandleLineTrace(uint64 TraceHandleValue, const TArray<FHitResult>& OutHits, uint32 UserData)
+					{
+						LineCallbackCount += 1;
+						LastLineCallbackHandle = TraceHandleValue;
+						LineUserData = int(UserData);
+						LineHitCount = OutHits.Num();
+
+						FTraceDatum Datum;
+						LineQuerySucceeded = System::QueryTraceData(LineHandle, Datum) ? 1 : 0;
+						LineQueryHitCount = Datum.OutHits.Num();
+					}
+
+					UFUNCTION()
+					void HandleOverlapTrace(uint64 TraceHandleValue, const TArray<FOverlapResult>& OutOverlaps, uint32 UserData)
+					{
+						OverlapCallbackCount += 1;
+						LastOverlapCallbackHandle = TraceHandleValue;
+						OverlapUserData = int(UserData);
+						OverlapHitCount = OutOverlaps.Num();
+
+						FOverlapDatum Datum;
+						OverlapQuerySucceeded = System::QueryOverlapData(OverlapHandle, Datum) ? 1 : 0;
+						OverlapQueryHitCount = Datum.OutOverlaps.Num();
+					}
+
+					UFUNCTION()
+					int GetLineHandleValidNow()
+					{
+						return System::IsTraceHandleValid(LineHandle, false) ? 1 : 0;
+					}
+
+					UFUNCTION()
+					int GetOverlapHandleValidNow()
+					{
+						return System::IsTraceHandleValid(OverlapHandle, true) ? 1 : 0;
+					}
+				}
+				)AS"),
 			WorldCollisionAsyncClassName);
 		if (ScriptClass == nullptr)
 		{

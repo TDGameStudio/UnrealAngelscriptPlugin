@@ -43,7 +43,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptJsonBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: ObjectRoundTrip
@@ -54,98 +58,131 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptJsonBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASJson_ObjectRoundTrip"), TEXT(R"(
-int RoundTrip()
-{
-	FJsonObject Root;
-	Root.SetStringField("Name", "Alice");
-	Root.SetNumberField("Score", 1337.0);
-	Root.SetBoolField("Enabled", true);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASJson_ObjectRoundTrip"), ASTEST_AS(R"AS(
+			int RoundTrip()
+			{
+				FJsonObject Root;
+				Root.SetStringField("Name", "Alice");
+				Root.SetNumberField("Score", 1337.0);
+				Root.SetBoolField("Enabled", true);
 
-	FJsonObject Child = Root.CreateObjectField("Child");
-	Child.SetStringField("Label", "Nested");
-	Child.SetNumberField("Count", 2.0);
+				FJsonObject Child = Root.CreateObjectField("Child");
+				Child.SetStringField("Label", "Nested");
+				Child.SetNumberField("Count", 2.0);
 
-	FJsonArray Values;
-	Values.AddString("First");
-	Values.AddNumber(42);
-	Root.SetArrayField("Values", Values);
+				FJsonArray Values;
+				Values.AddString("First");
+				Values.AddNumber(42);
+				Root.SetArrayField("Values", Values);
 
-	FString Serialized = Root.SaveToString(false);
-	if (Serialized.IsEmpty())
-		return 10;
+				FString Serialized = Root.SaveToString(false);
+				if (Serialized.IsEmpty())
+				{
+					return 10;
+				}
 
-	FJsonObject Parsed = Json::ParseString(Serialized);
-	if (!Parsed.IsValid())
-		return 20;
+				FJsonObject Parsed = Json::ParseString(Serialized);
+				if (!Parsed.IsValid())
+				{
+					return 20;
+				}
 
-	if (Parsed.GetStringField("Name") != "Alice")
-		return 30;
-	if (Parsed.GetNumberField("Score") != 1337.0)
-		return 40;
-	if (!Parsed.GetBoolField("Enabled"))
-		return 50;
+				if (Parsed.GetStringField("Name") != "Alice")
+				{
+					return 30;
+				}
+				if (Parsed.GetNumberField("Score") != 1337.0)
+				{
+					return 40;
+				}
+				if (!Parsed.GetBoolField("Enabled"))
+				{
+					return 50;
+				}
 
-	FJsonArray ParsedValues = Parsed.GetArrayField("Values");
-	if (ParsedValues.Num() != 2)
-		return 60;
+				FJsonArray ParsedValues = Parsed.GetArrayField("Values");
+				if (ParsedValues.Num() != 2)
+				{
+					return 60;
+				}
 
-	FJsonObjectFieldIterator Iterator = Parsed.Iterator();
-	bool bSawEnabled = false;
-	bool bIteratorBoolValue = false;
-	while (Iterator.CanProceed)
-	{
-		Iterator.Proceed();
-		if (Iterator.GetFieldName() == "Enabled")
-		{
-			bSawEnabled = Iterator.GetValue().TryGetBool(bIteratorBoolValue);
-			break;
-		}
-	}
-	if (!bSawEnabled || !bIteratorBoolValue)
-		return 65;
+				FJsonObjectFieldIterator Iterator = Parsed.Iterator();
+				bool bSawEnabled = false;
+				bool bIteratorBoolValue = false;
+				while (Iterator.CanProceed)
+				{
+					Iterator.Proceed();
+					if (Iterator.GetFieldName() == "Enabled")
+					{
+						bSawEnabled = Iterator.GetValue().TryGetBool(bIteratorBoolValue);
+						break;
+					}
+				}
+				if (!bSawEnabled || !bIteratorBoolValue)
+				{
+					return 65;
+				}
 
-	FJsonValue FirstValue = ParsedValues.GetValueAt(0);
-	FString FirstString;
-	if (!FirstValue.TryGetString(FirstString))
-		return 70;
-	if (FirstString != "First")
-		return 80;
+				FJsonValue FirstValue = ParsedValues.GetValueAt(0);
+				FString FirstString;
+				if (!FirstValue.TryGetString(FirstString))
+				{
+					return 70;
+				}
+				if (FirstString != "First")
+				{
+					return 80;
+				}
 
-	FJsonValue SecondValue = ParsedValues.GetValueAt(1);
-	int32 SecondNumber = 0;
-	if (!SecondValue.TryGetNumber(SecondNumber))
-		return 90;
-	if (SecondNumber != 42)
-		return 100;
+				FJsonValue SecondValue = ParsedValues.GetValueAt(1);
+				int32 SecondNumber = 0;
+				if (!SecondValue.TryGetNumber(SecondNumber))
+				{
+					return 90;
+				}
+				if (SecondNumber != 42)
+				{
+					return 100;
+				}
 
-	FJsonObject ParsedChild;
-	if (!Parsed.TryGetObjectField("Child", ParsedChild))
-		return 110;
-	if (ParsedChild.GetStringField("Label") != "Nested")
-		return 120;
-	if (ParsedChild.GetNumberField("Count") != 2.0)
-		return 130;
+				FJsonObject ParsedChild;
+				if (!Parsed.TryGetObjectField("Child", ParsedChild))
+				{
+					return 110;
+				}
+				if (ParsedChild.GetStringField("Label") != "Nested")
+				{
+					return 120;
+				}
+				if (ParsedChild.GetNumberField("Count") != 2.0)
+				{
+					return 130;
+				}
 
-	FJsonArray ParsedValuesAgain;
-	if (!Parsed.TryGetArrayField("Values", ParsedValuesAgain))
-		return 140;
-	if (ParsedValuesAgain.Num() != 2)
-		return 150;
+				FJsonArray ParsedValuesAgain;
+				if (!Parsed.TryGetArrayField("Values", ParsedValuesAgain))
+				{
+					return 140;
+				}
+				if (ParsedValuesAgain.Num() != 2)
+				{
+					return 150;
+				}
 
-	if (Json::ValueTypeToString(EJsonType::Array) != "Array")
-		return 160;
+				if (Json::ValueTypeToString(EJsonType::Array) != "Array")
+				{
+					return 160;
+				}
 
-	return 1;
-}
-)"));
+				return 1;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, 
-			TEXT("int RoundTrip()"),
-			TEXT("Json object round-trip operations should preserve field values and JSON type strings"),
-			1);
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M, TEXT("int RoundTrip()"), TEXT("Json object round-trip operations should preserve field values and JSON type strings"), 1),
+			TEXT("ExpectGlobalInt should pass")));
 	}
 
 	// ====================================================================
@@ -157,53 +194,53 @@ int RoundTrip()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASJson_ErrorPaths"), TEXT(R"(
-void TriggerTypeError()
-{
-	FJsonObject Root;
-	FJsonObject Child = Root.CreateObjectField("Child");
-	Child.SetNumberField("Score", 3.5);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASJson_ErrorPaths"), ASTEST_AS(R"AS(
+			void TriggerTypeError()
+			{
+				FJsonObject Root;
+				FJsonObject Child = Root.CreateObjectField("Child");
+				Child.SetNumberField("Score", 3.5);
 
-	FJsonArray Values;
-	Values.AddNumber(1);
-	Root.SetArrayField("Values", Values);
+				FJsonArray Values;
+				Values.AddNumber(1);
+				Root.SetArrayField("Values", Values);
 
-	FString WrongTypeValue = Root.GetStringField("Child");
-	if (WrongTypeValue == "NeverReached")
-	{
-		Root.SetStringField("Unreachable", WrongTypeValue);
-	}
-}
+				FString WrongTypeValue = Root.GetStringField("Child");
+				if (WrongTypeValue == "NeverReached")
+				{
+					Root.SetStringField("Unreachable", WrongTypeValue);
+				}
+			}
 
-void TriggerOutOfBounds()
-{
-	FJsonArray Values;
-	Values.AddNumber(1);
+			void TriggerOutOfBounds()
+			{
+				FJsonArray Values;
+				Values.AddNumber(1);
 
-	FJsonValue MissingValue = Values.GetValueAt(1);
-	if (MissingValue.IsNull())
-	{
-		Values.AddString("NeverReached");
-	}
-}
+				FJsonValue MissingValue = Values.GetValueAt(1);
+				if (MissingValue.IsNull())
+				{
+					Values.AddString("NeverReached");
+				}
+			}
 
-void TriggerIteratorMutation()
-{
-	FJsonObject Root;
-	Root.SetNumberField("Score", 3.5);
+			void TriggerIteratorMutation()
+			{
+				FJsonObject Root;
+				Root.SetNumberField("Score", 3.5);
 
-	FJsonArray Values;
-	Values.AddNumber(1);
-	Root.SetArrayField("Values", Values);
+				FJsonArray Values;
+				Values.AddNumber(1);
+				Root.SetArrayField("Values", Values);
 
-	auto Iterator = Root.Iterator();
-	while (Iterator.CanProceed)
-	{
-		Iterator.Proceed();
-		Root.SetStringField("Injected", "bad");
-	}
-}
-)"));
+				auto Iterator = Root.Iterator();
+				while (Iterator.CanProceed)
+				{
+					Iterator.Proceed();
+					Root.SetStringField("Injected", "bad");
+				}
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

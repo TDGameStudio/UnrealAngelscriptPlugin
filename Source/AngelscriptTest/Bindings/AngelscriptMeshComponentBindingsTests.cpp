@@ -18,23 +18,36 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMeshComponentBindingsTest,
 	"Angelscript.TestModule.Bindings.MeshComponent",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	BEFORE_ALL() { ASTEST_CREATE_ENGINE(); }
-	AFTER_ALL() { FAngelscriptEngine& E = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(E); }
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& E = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(E);
+	}
 
 	TEST_METHOD(ProjectileMovement)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMeshComponent_Projectile"), TEXT(R"(
-int Projectile_HomingTargetRoundTrip(UProjectileMovementComponent Comp, USceneComponent Target)
-{
-	if (Comp == nullptr) return 0;
-	if (Target == nullptr) return 0;
-	Comp.SetHomingTargetComponent(Target);
-	const USceneComponent Current = Comp.GetHomingTargetComponent();
-	return (Current == Target) ? 1 : 0;
-}
-)"));
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMeshComponent_Projectile"), ASTEST_AS(R"AS(
+			int Projectile_HomingTargetRoundTrip(UProjectileMovementComponent Comp, USceneComponent Target)
+			{
+				if (Comp == nullptr)
+				{
+					return 0;
+				}
+				if (Target == nullptr)
+				{
+					return 0;
+				}
+				Comp.SetHomingTargetComponent(Target);
+				const USceneComponent Current = Comp.GetHomingTargetComponent();
+				return (Current == Target) ? 1 : 0;
+			}
+			)AS"));
 		if (!Mod.IsValid())
 		{
 			return;
@@ -65,45 +78,47 @@ int Projectile_HomingTargetRoundTrip(UProjectileMovementComponent Comp, USceneCo
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMeshComponent_Skeletal"), TEXT(R"(
-int Skeletal_TypeExists()
-{
-	USkeletalMeshComponent Comp;
-	return 1;
-}
-		)"));
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMeshComponent_Skeletal"), ASTEST_AS(R"AS(
+			int Skeletal_TypeExists()
+			{
+				USkeletalMeshComponent Comp;
+				return 1;
+			}
+		)AS"));
 		if (!Mod.IsValid())
 		{
 			ASSERT_THAT(IsTrue(false, TEXT("USkeletalMeshComponent type binding module should compile")));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
-			TEXT("int Skeletal_TypeExists()"), TEXT("USkeletalMeshComponent compiles"), 1);
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), TEXT("int Skeletal_TypeExists()"), TEXT("USkeletalMeshComponent compiles"), 1),
+			TEXT("ExpectGlobalInt should pass")));
 	}
 
 	TEST_METHOD(SkeletalMeshAssetAccessorsCompile)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMeshComponent_SkeletalAssetAccessors"), TEXT(R"(
-void Skeletal_SetAndGetAsset(USkeletalMeshComponent Comp, USkeletalMesh Mesh)
-{
-	Comp.SetSkeletalMeshAsset(Mesh);
-	USkeletalMesh CurrentMesh = Comp.GetSkeletalMeshAsset();
-}
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMeshComponent_SkeletalAssetAccessors"), ASTEST_AS(R"AS(
+			void Skeletal_SetAndGetAsset(USkeletalMeshComponent Comp, USkeletalMesh Mesh)
+			{
+				Comp.SetSkeletalMeshAsset(Mesh);
+				USkeletalMesh CurrentMesh = Comp.GetSkeletalMeshAsset();
+			}
 
-int Skeletal_SetAndGetAssetEntry()
-{
-	return 1;
-}
-		)"));
+			int Skeletal_SetAndGetAssetEntry()
+			{
+				return 1;
+			}
+		)AS"));
 		if (!Mod.IsValid())
 		{
 			ASSERT_THAT(IsTrue(false, TEXT("USkeletalMeshComponent asset accessor binding module should compile")));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
-			TEXT("int Skeletal_SetAndGetAssetEntry()"), TEXT("USkeletalMeshComponent asset accessors compile"), 1);
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), TEXT("int Skeletal_SetAndGetAssetEntry()"), TEXT("USkeletalMeshComponent asset accessors compile"), 1),
+			TEXT("ExpectGlobalInt should pass")));
 	}
 };
 

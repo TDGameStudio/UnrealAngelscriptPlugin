@@ -84,7 +84,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCurveFunctionLibraryBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: RuntimeCurveLinearColorAddDefaultKey
@@ -97,14 +101,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCurveFunctionLibraryBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCurve_LinearColorAddKey"), TEXT(R"(
-int PopulateCurve(FRuntimeCurveLinearColor& Curve)
-{
-	Curve.AddDefaultKey(0.0f, FLinearColor(1.0f, 0.0f, 0.0f, 0.25f));
-	Curve.AddDefaultKey(2.5f, FLinearColor(0.125f, 0.5f, 0.75f, 1.0f));
-	return 1;
-}
-)"));
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCurve_LinearColorAddKey"), ASTEST_AS(R"AS(
+			int PopulateCurve(FRuntimeCurveLinearColor& Curve)
+			{
+				Curve.AddDefaultKey(0.0f, FLinearColor(1.0f, 0.0f, 0.0f, 0.25f));
+				Curve.AddDefaultKey(2.5f, FLinearColor(0.125f, 0.5f, 0.75f, 1.0f));
+				return 1;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -180,35 +184,43 @@ int PopulateCurve(FRuntimeCurveLinearColor& Curve)
 			}
 		};
 
-		FString Script = TEXT(R"AS(
-int PopulateCurve(FRuntimeFloatCurve& RuntimeCurve)
-{
-	RuntimeCurve.AddDefaultKey(0.5f, 1.25f);
-	RuntimeCurve.AddDefaultKey(3.0f, 9.5f);
-	if (RuntimeCurve.GetNumKeys() != 2)
-		return 10;
+		FString RuntimeCurveSource = ASTEST_AS(R"AS(
+			int PopulateCurve(FRuntimeFloatCurve& RuntimeCurve)
+			{
+				RuntimeCurve.AddDefaultKey(0.5f, 1.25f);
+				RuntimeCurve.AddDefaultKey(3.0f, 9.5f);
+				if (RuntimeCurve.GetNumKeys() != 2)
+				{
+					return 10;
+				}
 
-	float32 MinTime = -1.0f;
-	float32 MaxTime = -1.0f;
-	RuntimeCurve.GetTimeRange(MinTime, MaxTime);
-	if (MinTime != 0.5f || MaxTime != 3.0f)
-		return 20;
+				float32 MinTime = -1.0f;
+				float32 MaxTime = -1.0f;
+				RuntimeCurve.GetTimeRange(MinTime, MaxTime);
+				if (MinTime != 0.5f || MaxTime != 3.0f)
+				{
+					return 20;
+				}
 
-	UObject CurveObject = FindObject("__CURVE_PATH__");
-	UCurveFloat CurveAsset = Cast<UCurveFloat>(CurveObject);
-	if (CurveAsset == null)
-		return 30;
+				UObject CurveObject = FindObject("__CURVE_PATH__");
+				UCurveFloat CurveAsset = Cast<UCurveFloat>(CurveObject);
+				if (CurveAsset == null)
+				{
+					return 30;
+				}
 
-	FCurveKeyHandle Handle = CurveAsset.AddAutoCurveKey(1.5f, 7.5f);
-	if (CurveAsset.GetFloatValue(1.5f) != 7.5f)
-		return 40;
-	CurveAsset.SetKeyInterpMode(Handle, ERichCurveInterpMode::RCIM_Constant, false);
-	return 1;
-}
-)AS");
-		Script.ReplaceInline(TEXT("__CURVE_PATH__"), *CurveAsset->GetPathName().ReplaceCharWithEscapedChar());
+				FCurveKeyHandle Handle = CurveAsset.AddAutoCurveKey(1.5f, 7.5f);
+				if (CurveAsset.GetFloatValue(1.5f) != 7.5f)
+				{
+					return 40;
+				}
+				CurveAsset.SetKeyInterpMode(Handle, ERichCurveInterpMode::RCIM_Constant, false);
+				return 1;
+			}
+			)AS");
+		RuntimeCurveSource.ReplaceInline(TEXT("__CURVE_PATH__"), *CurveAsset->GetPathName().ReplaceCharWithEscapedChar());
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCurve_FloatCurveInstance"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASCurve_FloatCurveInstance"), RuntimeCurveSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

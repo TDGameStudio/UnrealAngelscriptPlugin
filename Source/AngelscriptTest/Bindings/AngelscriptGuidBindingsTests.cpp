@@ -63,7 +63,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGuidBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: FormatAndSlots
@@ -77,23 +81,25 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGuidBindingsTest,
 		const FString WithHyphens = ExplicitGuid.ToString(EGuidFormats::DigitsWithHyphens);
 		const FString Digits = ExplicitGuid.ToString(EGuidFormats::Digits);
 
-		FString ScriptSource = TEXT(R"(
-int Guid_ToStringHyphens()
-{
-	const FGuid G(__GUID_A__, __GUID_B__, __GUID_C__, __GUID_D__);
-	return (G.ToString(EGuidFormats::DigitsWithHyphens) == "__HYPHENS__") ? 1 : 0;
-}
-int Guid_ToStringDigits()
-{
-	const FGuid G(__GUID_A__, __GUID_B__, __GUID_C__, __GUID_D__);
-	return (G.ToString(EGuidFormats::Digits) == "__DIGITS__") ? 1 : 0;
-}
-int Guid_SlotAccess()
-{
-	const FGuid G(__GUID_A__, __GUID_B__, __GUID_C__, __GUID_D__);
-	return (G[0] == __GUID_A__ && G[1] == __GUID_B__ && G[2] == __GUID_C__ && G[3] == __GUID_D__) ? 1 : 0;
-}
-)");
+		FString ScriptSource = ASTEST_AS(R"AS(
+			int Guid_ToStringHyphens()
+			{
+				const FGuid G(__GUID_A__, __GUID_B__, __GUID_C__, __GUID_D__);
+				return (G.ToString(EGuidFormats::DigitsWithHyphens) == "__HYPHENS__") ? 1 : 0;
+			}
+
+			int Guid_ToStringDigits()
+			{
+				const FGuid G(__GUID_A__, __GUID_B__, __GUID_C__, __GUID_D__);
+				return (G.ToString(EGuidFormats::Digits) == "__DIGITS__") ? 1 : 0;
+			}
+
+			int Guid_SlotAccess()
+			{
+				const FGuid G(__GUID_A__, __GUID_B__, __GUID_C__, __GUID_D__);
+				return (G[0] == __GUID_A__ && G[1] == __GUID_B__ && G[2] == __GUID_C__ && G[3] == __GUID_D__) ? 1 : 0;
+			}
+			)AS");
 		ReplaceGuidTokens(ScriptSource, TEXT("GUID"), ExplicitGuid);
 		ScriptSource.ReplaceInline(TEXT("__HYPHENS__"), *WithHyphens, ESearchCase::CaseSensitive);
 		ScriptSource.ReplaceInline(TEXT("__DIGITS__"), *Digits, ESearchCase::CaseSensitive);
@@ -105,9 +111,15 @@ int Guid_SlotAccess()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ToStringHyphens()"), TEXT("FGuid ToString DigitsWithHyphens should match native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ToStringDigits()"), TEXT("FGuid ToString Digits should match native"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_SlotAccess()"), TEXT("FGuid operator[] should return correct components"), 1);
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ToStringHyphens()"), TEXT("FGuid ToString DigitsWithHyphens should match native"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ToStringDigits()"), TEXT("FGuid ToString Digits should match native"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_SlotAccess()"), TEXT("FGuid operator[] should return correct components"), 1),
+			TEXT("ExpectGlobalInt should pass")));
 	}
 
 	// ====================================================================
@@ -123,40 +135,51 @@ int Guid_SlotAccess()
 		const FString WithHyphens = ExplicitGuid.ToString(EGuidFormats::DigitsWithHyphens);
 		const FString Digits = ExplicitGuid.ToString(EGuidFormats::Digits);
 
-		FString ScriptSource = TEXT(R"(
-int Guid_ParseHyphens()
-{
-	FGuid Parsed(__SENTINEL_A__, __SENTINEL_B__, __SENTINEL_C__, __SENTINEL_D__);
-	if (!FGuid::Parse("__HYPHENS__", Parsed))
-		return 0;
-	const FGuid Expected(__GUID_A__, __GUID_B__, __GUID_C__, __GUID_D__);
-	return (Parsed == Expected) ? 1 : 0;
-}
-int Guid_ParseDigits()
-{
-	FGuid Parsed(__SENTINEL_A__, __SENTINEL_B__, __SENTINEL_C__, __SENTINEL_D__);
-	if (!FGuid::Parse("__DIGITS__", Parsed))
-		return 0;
-	const FGuid Expected(__GUID_A__, __GUID_B__, __GUID_C__, __GUID_D__);
-	return (Parsed == Expected) ? 1 : 0;
-}
-int Guid_ParseExactHyphens()
-{
-	FGuid Parsed(__SENTINEL_A__, __SENTINEL_B__, __SENTINEL_C__, __SENTINEL_D__);
-	if (!FGuid::ParseExact("__HYPHENS__", EGuidFormats::DigitsWithHyphens, Parsed))
-		return 0;
-	const FGuid Expected(__GUID_A__, __GUID_B__, __GUID_C__, __GUID_D__);
-	return (Parsed == Expected) ? 1 : 0;
-}
-int Guid_ParseExactDigits()
-{
-	FGuid Parsed(__SENTINEL_A__, __SENTINEL_B__, __SENTINEL_C__, __SENTINEL_D__);
-	if (!FGuid::ParseExact("__DIGITS__", EGuidFormats::Digits, Parsed))
-		return 0;
-	const FGuid Expected(__GUID_A__, __GUID_B__, __GUID_C__, __GUID_D__);
-	return (Parsed == Expected) ? 1 : 0;
-}
-)");
+		FString ScriptSource = ASTEST_AS(R"AS(
+			int Guid_ParseHyphens()
+			{
+				FGuid Parsed(__SENTINEL_A__, __SENTINEL_B__, __SENTINEL_C__, __SENTINEL_D__);
+				if (!FGuid::Parse("__HYPHENS__", Parsed))
+				{
+					return 0;
+				}
+				const FGuid Expected(__GUID_A__, __GUID_B__, __GUID_C__, __GUID_D__);
+				return (Parsed == Expected) ? 1 : 0;
+			}
+
+			int Guid_ParseDigits()
+			{
+				FGuid Parsed(__SENTINEL_A__, __SENTINEL_B__, __SENTINEL_C__, __SENTINEL_D__);
+				if (!FGuid::Parse("__DIGITS__", Parsed))
+				{
+					return 0;
+				}
+				const FGuid Expected(__GUID_A__, __GUID_B__, __GUID_C__, __GUID_D__);
+				return (Parsed == Expected) ? 1 : 0;
+			}
+
+			int Guid_ParseExactHyphens()
+			{
+				FGuid Parsed(__SENTINEL_A__, __SENTINEL_B__, __SENTINEL_C__, __SENTINEL_D__);
+				if (!FGuid::ParseExact("__HYPHENS__", EGuidFormats::DigitsWithHyphens, Parsed))
+				{
+					return 0;
+				}
+				const FGuid Expected(__GUID_A__, __GUID_B__, __GUID_C__, __GUID_D__);
+				return (Parsed == Expected) ? 1 : 0;
+			}
+
+			int Guid_ParseExactDigits()
+			{
+				FGuid Parsed(__SENTINEL_A__, __SENTINEL_B__, __SENTINEL_C__, __SENTINEL_D__);
+				if (!FGuid::ParseExact("__DIGITS__", EGuidFormats::Digits, Parsed))
+				{
+					return 0;
+				}
+				const FGuid Expected(__GUID_A__, __GUID_B__, __GUID_C__, __GUID_D__);
+				return (Parsed == Expected) ? 1 : 0;
+			}
+			)AS");
 		ReplaceGuidTokens(ScriptSource, TEXT("GUID"), ExplicitGuid);
 		ReplaceGuidTokens(ScriptSource, TEXT("SENTINEL"), SentinelGuid);
 		ScriptSource.ReplaceInline(TEXT("__HYPHENS__"), *WithHyphens, ESearchCase::CaseSensitive);
@@ -169,10 +192,18 @@ int Guid_ParseExactDigits()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseHyphens()"), TEXT("FGuid::Parse should accept DigitsWithHyphens format"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseDigits()"), TEXT("FGuid::Parse should accept Digits format"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseExactHyphens()"), TEXT("FGuid::ParseExact should accept DigitsWithHyphens"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseExactDigits()"), TEXT("FGuid::ParseExact should accept Digits"), 1);
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseHyphens()"), TEXT("FGuid::Parse should accept DigitsWithHyphens format"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseDigits()"), TEXT("FGuid::Parse should accept Digits format"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseExactHyphens()"), TEXT("FGuid::ParseExact should accept DigitsWithHyphens"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseExactDigits()"), TEXT("FGuid::ParseExact should accept Digits"), 1),
+			TEXT("ExpectGlobalInt should pass")));
 	}
 
 	// ====================================================================
@@ -188,24 +219,29 @@ int Guid_ParseExactDigits()
 		const FString WithHyphens = ExplicitGuid.ToString(EGuidFormats::DigitsWithHyphens);
 		const FString InvalidInput = TEXT("not-a-guid");
 
-		FString ScriptSource = TEXT(R"(
-int Guid_ParseExactWrongFormat()
-{
-	FGuid Parsed(__SENTINEL_A__, __SENTINEL_B__, __SENTINEL_C__, __SENTINEL_D__);
-	const FGuid Sentinel(__SENTINEL_A__, __SENTINEL_B__, __SENTINEL_C__, __SENTINEL_D__);
-	if (FGuid::ParseExact("__HYPHENS__", EGuidFormats::Digits, Parsed))
-		return 0;
-	return (Parsed == Sentinel) ? 1 : 0;
-}
-int Guid_ParseInvalid()
-{
-	FGuid Parsed(__SENTINEL_A__, __SENTINEL_B__, __SENTINEL_C__, __SENTINEL_D__);
-	const FGuid Sentinel(__SENTINEL_A__, __SENTINEL_B__, __SENTINEL_C__, __SENTINEL_D__);
-	if (FGuid::Parse("__INVALID__", Parsed))
-		return 0;
-	return (Parsed == Sentinel) ? 1 : 0;
-}
-)");
+		FString ScriptSource = ASTEST_AS(R"AS(
+			int Guid_ParseExactWrongFormat()
+			{
+				FGuid Parsed(__SENTINEL_A__, __SENTINEL_B__, __SENTINEL_C__, __SENTINEL_D__);
+				const FGuid Sentinel(__SENTINEL_A__, __SENTINEL_B__, __SENTINEL_C__, __SENTINEL_D__);
+				if (FGuid::ParseExact("__HYPHENS__", EGuidFormats::Digits, Parsed))
+				{
+					return 0;
+				}
+				return (Parsed == Sentinel) ? 1 : 0;
+			}
+
+			int Guid_ParseInvalid()
+			{
+				FGuid Parsed(__SENTINEL_A__, __SENTINEL_B__, __SENTINEL_C__, __SENTINEL_D__);
+				const FGuid Sentinel(__SENTINEL_A__, __SENTINEL_B__, __SENTINEL_C__, __SENTINEL_D__);
+				if (FGuid::Parse("__INVALID__", Parsed))
+				{
+					return 0;
+				}
+				return (Parsed == Sentinel) ? 1 : 0;
+			}
+			)AS");
 		ReplaceGuidTokens(ScriptSource, TEXT("SENTINEL"), SentinelGuid);
 		ScriptSource.ReplaceInline(TEXT("__HYPHENS__"), *WithHyphens, ESearchCase::CaseSensitive);
 		ScriptSource.ReplaceInline(TEXT("__INVALID__"), *InvalidInput, ESearchCase::CaseSensitive);
@@ -217,8 +253,12 @@ int Guid_ParseInvalid()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseExactWrongFormat()"), TEXT("FGuid::ParseExact should reject wrong format and preserve sentinel"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseInvalid()"), TEXT("FGuid::Parse should reject invalid text and preserve sentinel"), 1);
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseExactWrongFormat()"), TEXT("FGuid::ParseExact should reject wrong format and preserve sentinel"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_ParseInvalid()"), TEXT("FGuid::Parse should reject invalid text and preserve sentinel"), 1),
+			TEXT("ExpectGlobalInt should pass")));
 	}
 
 	// ====================================================================
@@ -233,20 +273,21 @@ int Guid_ParseInvalid()
 		const FString WithHyphens = ExplicitGuid.ToString(EGuidFormats::DigitsWithHyphens);
 		const FString Digits = ExplicitGuid.ToString(EGuidFormats::Digits);
 
-		FString ScriptSource = TEXT(R"(
-int Guid_CtorFromHyphens()
-{
-	const FGuid FromStr("__HYPHENS__");
-	const FGuid Expected(__GUID_A__, __GUID_B__, __GUID_C__, __GUID_D__);
-	return (FromStr == Expected) ? 1 : 0;
-}
-int Guid_CtorFromDigits()
-{
-	const FGuid FromStr("__DIGITS__");
-	const FGuid Expected(__GUID_A__, __GUID_B__, __GUID_C__, __GUID_D__);
-	return (FromStr == Expected) ? 1 : 0;
-}
-)");
+		FString ScriptSource = ASTEST_AS(R"AS(
+			int Guid_CtorFromHyphens()
+			{
+				const FGuid FromStr("__HYPHENS__");
+				const FGuid Expected(__GUID_A__, __GUID_B__, __GUID_C__, __GUID_D__);
+				return (FromStr == Expected) ? 1 : 0;
+			}
+
+			int Guid_CtorFromDigits()
+			{
+				const FGuid FromStr("__DIGITS__");
+				const FGuid Expected(__GUID_A__, __GUID_B__, __GUID_C__, __GUID_D__);
+				return (FromStr == Expected) ? 1 : 0;
+			}
+			)AS");
 		ReplaceGuidTokens(ScriptSource, TEXT("GUID"), ExplicitGuid);
 		ScriptSource.ReplaceInline(TEXT("__HYPHENS__"), *WithHyphens, ESearchCase::CaseSensitive);
 		ScriptSource.ReplaceInline(TEXT("__DIGITS__"), *Digits, ESearchCase::CaseSensitive);
@@ -258,8 +299,12 @@ int Guid_CtorFromDigits()
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_CtorFromHyphens()"), TEXT("FGuid string ctor should parse DigitsWithHyphens"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_CtorFromDigits()"), TEXT("FGuid string ctor should parse Digits"), 1);
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_CtorFromHyphens()"), TEXT("FGuid string ctor should parse DigitsWithHyphens"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int Guid_CtorFromDigits()"), TEXT("FGuid string ctor should parse Digits"), 1),
+			TEXT("ExpectGlobalInt should pass")));
 	}
 };
 

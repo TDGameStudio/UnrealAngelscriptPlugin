@@ -45,7 +45,7 @@ public:
 		ASTEST_RESET_ENGINE(Engine);
 	}
 
-	TEST_METHOD(OptionalCompat)
+	TEST_METHOD(OptionalBaseline)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);

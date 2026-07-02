@@ -38,135 +38,139 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMathOrientationBindingsTest, "Angelscript.Test
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	TEST_METHOD(FactoriesAndTransformMutators)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMath_Orientation_FactoriesAndMutators"), TEXT(R"(
-FRotator GetAxesRotator()
-{
-	return FRotator::MakeFromAxes(FVector(1.0f, 0.0f, 0.0f), FVector(0.0f, 1.0f, 0.0f), FVector(0.0f, 0.0f, 1.0f));
-}
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMath_Orientation_FactoriesAndMutators"), ASTEST_AS(R"AS(
+			FRotator GetAxesRotator()
+			{
+				return FRotator::MakeFromAxes(FVector(1.0f, 0.0f, 0.0f), FVector(0.0f, 1.0f, 0.0f), FVector(0.0f, 0.0f, 1.0f));
+			}
 
-FVector GetAxesForward()
-{
-	return GetAxesRotator().GetForwardVector();
-}
+			FVector GetAxesForward()
+			{
+				return GetAxesRotator().GetForwardVector();
+			}
 
-FVector GetAxesForwardMember()
-{
-	const FRotator Rotator = GetAxesRotator();
-	return Rotator.GetForwardVector();
-}
+			FVector GetAxesForwardMember()
+			{
+				const FRotator Rotator = GetAxesRotator();
+				return Rotator.GetForwardVector();
+			}
 
-FVector GetAxesRight()
-{
-	return GetAxesRotator().GetRightVector();
-}
+			FVector GetAxesRight()
+			{
+				return GetAxesRotator().GetRightVector();
+			}
 
-FVector GetAxesRightMember()
-{
-	const FRotator Rotator = GetAxesRotator();
-	return Rotator.GetRightVector();
-}
+			FVector GetAxesRightMember()
+			{
+				const FRotator Rotator = GetAxesRotator();
+				return Rotator.GetRightVector();
+			}
 
-FVector GetAxesUp()
-{
-	return GetAxesRotator().GetUpVector();
-}
+			FVector GetAxesUp()
+			{
+				return GetAxesRotator().GetUpVector();
+			}
 
-FVector GetAxesUpMember()
-{
-	const FRotator Rotator = GetAxesRotator();
-	return Rotator.GetUpVector();
-}
+			FVector GetAxesUpMember()
+			{
+				const FRotator Rotator = GetAxesRotator();
+				return Rotator.GetUpVector();
+			}
 
-FRotator GetComposedRotator()
-{
-	const FRotator A = FRotator(0.0f, 90.0f, 0.0f);
-	const FRotator B = FRotator(45.0f, 0.0f, 0.0f);
-	return A.Compose(B);
-}
+			FRotator GetComposedRotator()
+			{
+				const FRotator A = FRotator(0.0f, 90.0f, 0.0f);
+				const FRotator B = FRotator(45.0f, 0.0f, 0.0f);
+				return A.Compose(B);
+			}
 
-double GetRotatorAngularDistance()
-{
-	const FRotator A = FRotator(0.0f, 0.0f, 0.0f);
-	const FRotator B = FRotator(0.0f, 90.0f, 0.0f);
-	return A.AngularDistance(B);
-}
+			double GetRotatorAngularDistance()
+			{
+				const FRotator A = FRotator(0.0f, 0.0f, 0.0f);
+				const FRotator B = FRotator(0.0f, 90.0f, 0.0f);
+				return A.AngularDistance(B);
+			}
 
-FQuat GetQuatFromX()
-{
-	return FQuat::MakeFromX(FVector(1.0f, 1.0f, 0.0f));
-}
+			FQuat GetQuatFromX()
+			{
+				return FQuat::MakeFromX(FVector(1.0f, 1.0f, 0.0f));
+			}
 
-FQuat GetQuatFromY()
-{
-	return FQuat::MakeFromY(FVector(-1.0f, 1.0f, 0.0f));
-}
+			FQuat GetQuatFromY()
+			{
+				return FQuat::MakeFromY(FVector(-1.0f, 1.0f, 0.0f));
+			}
 
-FQuat GetQuatFromZ()
-{
-	return FQuat::MakeFromZ(FVector(0.0f, 0.0f, 1.0f));
-}
+			FQuat GetQuatFromZ()
+			{
+				return FQuat::MakeFromZ(FVector(0.0f, 0.0f, 1.0f));
+			}
 
-FQuat GetQuatFromXY()
-{
-	return FQuat::MakeFromXY(FVector(1.0f, 1.0f, 0.0f), FVector(-1.0f, 1.0f, 0.0f));
-}
+			FQuat GetQuatFromXY()
+			{
+				return FQuat::MakeFromXY(FVector(1.0f, 1.0f, 0.0f), FVector(-1.0f, 1.0f, 0.0f));
+			}
 
-FQuat GetQuatFromXZ()
-{
-	return FQuat::MakeFromXZ(FVector(1.0f, 1.0f, 0.0f), FVector(0.0f, 0.0f, 1.0f));
-}
+			FQuat GetQuatFromXZ()
+			{
+				return FQuat::MakeFromXZ(FVector(1.0f, 1.0f, 0.0f), FVector(0.0f, 0.0f, 1.0f));
+			}
 
-FQuat GetQuatFromYX()
-{
-	return FQuat::MakeFromYX(FVector(-1.0f, 1.0f, 0.0f), FVector(1.0f, 1.0f, 0.0f));
-}
+			FQuat GetQuatFromYX()
+			{
+				return FQuat::MakeFromYX(FVector(-1.0f, 1.0f, 0.0f), FVector(1.0f, 1.0f, 0.0f));
+			}
 
-FQuat GetQuatFromYZ()
-{
-	return FQuat::MakeFromYZ(FVector(-1.0f, 1.0f, 0.0f), FVector(0.0f, 0.0f, 1.0f));
-}
+			FQuat GetQuatFromYZ()
+			{
+				return FQuat::MakeFromYZ(FVector(-1.0f, 1.0f, 0.0f), FVector(0.0f, 0.0f, 1.0f));
+			}
 
-FQuat GetQuatFromZX()
-{
-	return FQuat::MakeFromZX(FVector(0.0f, 0.0f, 1.0f), FVector(1.0f, 1.0f, 0.0f));
-}
+			FQuat GetQuatFromZX()
+			{
+				return FQuat::MakeFromZX(FVector(0.0f, 0.0f, 1.0f), FVector(1.0f, 1.0f, 0.0f));
+			}
 
-FQuat GetQuatFromZY()
-{
-	return FQuat::MakeFromZY(FVector(0.0f, 0.0f, 1.0f), FVector(-1.0f, 1.0f, 0.0f));
-}
+			FQuat GetQuatFromZY()
+			{
+				return FQuat::MakeFromZY(FVector(0.0f, 0.0f, 1.0f), FVector(-1.0f, 1.0f, 0.0f));
+			}
 
-FTransform GetBlendTransform()
-{
-	FTransform Result;
-	const FTransform A = FTransform(FRotator(10.0f, 20.0f, 30.0f), FVector(100.0f, -50.0f, 25.0f), FVector(1.25f, 0.75f, 2.0f));
-	const FTransform B = FTransform(FRotator(-20.0f, 70.0f, 10.0f), FVector(-40.0f, 80.0f, 5.0f), FVector(0.5f, 1.5f, 1.0f));
-	Result.Blend(A, B, 0.25f);
-	return Result;
-}
+			FTransform GetBlendTransform()
+			{
+				FTransform Result;
+				const FTransform A = FTransform(FRotator(10.0f, 20.0f, 30.0f), FVector(100.0f, -50.0f, 25.0f), FVector(1.25f, 0.75f, 2.0f));
+				const FTransform B = FTransform(FRotator(-20.0f, 70.0f, 10.0f), FVector(-40.0f, 80.0f, 5.0f), FVector(0.5f, 1.5f, 1.0f));
+				Result.Blend(A, B, 0.25f);
+				return Result;
+			}
 
-FTransform GetBlendWithTransform()
-{
-	FTransform Result = FTransform(FRotator(10.0f, 20.0f, 30.0f), FVector(100.0f, -50.0f, 25.0f), FVector(1.25f, 0.75f, 2.0f));
-	const FTransform Other = FTransform(FRotator(-20.0f, 70.0f, 10.0f), FVector(-40.0f, 80.0f, 5.0f), FVector(0.5f, 1.5f, 1.0f));
-	Result.BlendWith(Other, 0.5f);
-	return Result;
-}
+			FTransform GetBlendWithTransform()
+			{
+				FTransform Result = FTransform(FRotator(10.0f, 20.0f, 30.0f), FVector(100.0f, -50.0f, 25.0f), FVector(1.25f, 0.75f, 2.0f));
+				const FTransform Other = FTransform(FRotator(-20.0f, 70.0f, 10.0f), FVector(-40.0f, 80.0f, 5.0f), FVector(0.5f, 1.5f, 1.0f));
+				Result.BlendWith(Other, 0.5f);
+				return Result;
+			}
 
-FTransform GetSetRotationTransform()
-{
-	FTransform Result = FTransform(FRotator(10.0f, 20.0f, 30.0f), FVector(100.0f, -50.0f, 25.0f), FVector(1.25f, 0.75f, 2.0f));
-	Result.SetRotation(FRotator(-30.0f, 15.0f, 45.0f));
-	return Result;
-}
-)"));
+			FTransform GetSetRotationTransform()
+			{
+				FTransform Result = FTransform(FRotator(10.0f, 20.0f, 30.0f), FVector(100.0f, -50.0f, 25.0f), FVector(1.25f, 0.75f, 2.0f));
+				Result.SetRotation(FRotator(-30.0f, 15.0f, 45.0f));
+				return Result;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& Module = Mod.GetModule();
 
@@ -263,119 +267,141 @@ FTransform GetSetRotationTransform()
 		FTransform ExpectedSetRotationTransform = TransformA;
 		ExpectedSetRotationTransform.SetRotation(ReplacementRotation.Quaternion());
 
-		VerifyMathBindingsRotator(
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsRotator(
 			*TestRunner,
 			TEXT("FRotator::MakeFromAxes should build the same orientation as the native matrix conversion"),
 			ScriptAxesRotator,
-			ExpectedAxesRotator);
-		VerifyMathBindingsVector(
+			ExpectedAxesRotator)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsVector(
 			*TestRunner,
 			TEXT("FRotator.GetForwardVector should recover the canonical forward axis from MakeFromAxes"),
 			ScriptAxesForward,
-			CanonicalForward);
-		VerifyMathBindingsVector(
+			CanonicalForward)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsVector(
 			*TestRunner,
 			TEXT("FRotator.GetForwardVector should recover the canonical forward axis from MakeFromAxes"),
 			ScriptAxesForwardMember,
-			CanonicalForward);
-		VerifyMathBindingsVector(
+			CanonicalForward)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsVector(
 			*TestRunner,
 			TEXT("FRotator.GetRightVector should recover the canonical right axis from MakeFromAxes"),
 			ScriptAxesRight,
-			CanonicalRight);
-		VerifyMathBindingsVector(
+			CanonicalRight)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsVector(
 			*TestRunner,
 			TEXT("FRotator.GetRightVector should recover the canonical right axis from MakeFromAxes"),
 			ScriptAxesRightMember,
-			CanonicalRight);
-		VerifyMathBindingsVector(
-			*TestRunner,
-			TEXT("FRotator.GetUpVector should recover the canonical up axis from MakeFromAxes"),
-			ScriptAxesUp,
-			CanonicalUp);
-		VerifyMathBindingsVector(
-			*TestRunner,
-			TEXT("FRotator.GetUpVector should recover the canonical up axis from MakeFromAxes"),
-			ScriptAxesUpMember,
-			CanonicalUp);
-		VerifyMathBindingsRotator(
-			*TestRunner,
-			TEXT("FRotator.Compose should preserve the native B * A multiplication order"),
-			ScriptComposedRotator,
-			ExpectedComposedRotator);
+			CanonicalRight)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsVector(
+				*TestRunner,
+				TEXT("FRotator.GetUpVector should recover the canonical up axis from MakeFromAxes"),
+				ScriptAxesUp,
+				CanonicalUp)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsVector(
+				*TestRunner,
+				TEXT("FRotator.GetUpVector should recover the canonical up axis from MakeFromAxes"),
+				ScriptAxesUpMember,
+				CanonicalUp)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsRotator(
+				*TestRunner,
+				TEXT("FRotator.Compose should preserve the native B * A multiplication order"),
+				ScriptComposedRotator,
+				ExpectedComposedRotator)));
 		ASSERT_THAT(IsTrue(
 			FMath::Abs(ScriptRotatorAngularDistance - ExpectedRotatorAngularDistance) <= 0.05,
 			TEXT("FRotator.AngularDistance should expose orientation distance as an instance method")));
-		VerifyMathBindingsQuat(
-			*TestRunner,
-			TEXT("FQuat::MakeFromX should match the native rotation matrix factory"),
-			ScriptQuatFromX,
-			ExpectedQuatFromX);
-		VerifyMathBindingsQuat(
-			*TestRunner,
-			TEXT("FQuat::MakeFromY should match the native rotation matrix factory"),
-			ScriptQuatFromY,
-			ExpectedQuatFromY);
-		VerifyMathBindingsQuat(
-			*TestRunner,
-			TEXT("FQuat::MakeFromZ should match the native rotation matrix factory"),
-			ScriptQuatFromZ,
-			ExpectedQuatFromZ);
-		VerifyMathBindingsQuat(
-			*TestRunner,
-			TEXT("FQuat::MakeFromXY should match the native rotation matrix factory"),
-			ScriptQuatFromXY,
-			ExpectedQuatFromXY);
-		VerifyMathBindingsQuat(
-			*TestRunner,
-			TEXT("FQuat::MakeFromXZ should match the native rotation matrix factory"),
-			ScriptQuatFromXZ,
-			ExpectedQuatFromXZ);
-		VerifyMathBindingsQuat(
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsQuat(
+				*TestRunner,
+				TEXT("FQuat::MakeFromX should match the native rotation matrix factory"),
+				ScriptQuatFromX,
+				ExpectedQuatFromX)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsQuat(
+				*TestRunner,
+				TEXT("FQuat::MakeFromY should match the native rotation matrix factory"),
+				ScriptQuatFromY,
+				ExpectedQuatFromY)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsQuat(
+				*TestRunner,
+				TEXT("FQuat::MakeFromZ should match the native rotation matrix factory"),
+				ScriptQuatFromZ,
+				ExpectedQuatFromZ)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsQuat(
+				*TestRunner,
+				TEXT("FQuat::MakeFromXY should match the native rotation matrix factory"),
+				ScriptQuatFromXY,
+				ExpectedQuatFromXY)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsQuat(
+				*TestRunner,
+				TEXT("FQuat::MakeFromXZ should match the native rotation matrix factory"),
+				ScriptQuatFromXZ,
+				ExpectedQuatFromXZ)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsQuat(
 			*TestRunner,
 			TEXT("FQuat::MakeFromYX should match the native rotation matrix factory"),
 			ScriptQuatFromYX,
-			ExpectedQuatFromYX);
-		VerifyMathBindingsQuat(
+			ExpectedQuatFromYX)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsQuat(
 			*TestRunner,
 			TEXT("FQuat::MakeFromYZ should match the native rotation matrix factory"),
 			ScriptQuatFromYZ,
-			ExpectedQuatFromYZ);
-		VerifyMathBindingsQuat(
+			ExpectedQuatFromYZ)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsQuat(
 			*TestRunner,
 			TEXT("FQuat::MakeFromZX should match the native rotation matrix factory"),
 			ScriptQuatFromZX,
-			ExpectedQuatFromZX);
-		VerifyMathBindingsQuat(
+			ExpectedQuatFromZX)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsQuat(
 			*TestRunner,
 			TEXT("FQuat::MakeFromZY should match the native rotation matrix factory"),
 			ScriptQuatFromZY,
-			ExpectedQuatFromZY);
-		VerifyMathBindingsTransform(
+			ExpectedQuatFromZY)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsTransform(
 			*TestRunner,
 			TEXT("FTransform::Blend should match native transform blending"),
 			ScriptBlendTransform,
-			ExpectedBlendTransform);
-		VerifyMathBindingsTransform(
+			ExpectedBlendTransform)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsTransform(
 			*TestRunner,
 			TEXT("FTransform::BlendWith should match native in-place blending"),
 			ScriptBlendWithTransform,
-			ExpectedBlendWithTransform);
-		VerifyMathBindingsTransform(
+			ExpectedBlendWithTransform)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsTransform(
 			*TestRunner,
 			TEXT("FTransform::SetRotation should update only the rotation component"),
 			ScriptSetRotationTransform,
-			ExpectedSetRotationTransform);
-		VerifyMathBindingsVector(
+			ExpectedSetRotationTransform)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsVector(
 			*TestRunner,
 			TEXT("FTransform::SetRotation should preserve the original translation"),
 			ScriptSetRotationTransform.GetLocation(),
-			TransformA.GetLocation());
-		VerifyMathBindingsVector(
+			TransformA.GetLocation())));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsVector(
 			*TestRunner,
 			TEXT("FTransform::SetRotation should preserve the original scale"),
 			ScriptSetRotationTransform.GetScale3D(),
-			TransformA.GetScale3D());
+			TransformA.GetScale3D())));
 	}
 
 	TEST_METHOD(StaticDeltaAndRelativeHelpers)
@@ -383,73 +409,87 @@ FTransform GetSetRotationTransform()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMath_Orientation_StaticDelta"), TEXT(R"(
-int QuatDeltaRoundTrips()
-{
-	const FQuat Origin = FQuat(FRotator(0.0f, 15.0f, 0.0f));
-	const FQuat Target = FQuat(FRotator(10.0f, 75.0f, 5.0f));
-	const FQuat Delta = FQuat::GetDelta(Origin, Target);
-	return FQuat::ApplyDelta(Origin, Delta).Equals(Target, 0.001f) ? 1 : 0;
-}
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMath_Orientation_StaticDelta"), ASTEST_AS(R"AS(
+			int QuatDeltaRoundTrips()
+			{
+				const FQuat Origin = FQuat(FRotator(0.0f, 15.0f, 0.0f));
+				const FQuat Target = FQuat(FRotator(10.0f, 75.0f, 5.0f));
+				const FQuat Delta = FQuat::GetDelta(Origin, Target);
+				return FQuat::ApplyDelta(Origin, Delta).Equals(Target, 0.001f) ? 1 : 0;
+			}
 
-int QuatRelativeRoundTrips()
-{
-	const FQuat Parent = FQuat(FRotator(0.0f, 45.0f, 0.0f));
-	const FQuat Child = FQuat(FRotator(20.0f, 90.0f, 0.0f));
-	const FQuat Relative = FQuat::GetRelative(Parent, Child);
-	return FQuat::ApplyRelative(Parent, Relative).Equals(Child, 0.001f) ? 1 : 0;
-}
+			int QuatRelativeRoundTrips()
+			{
+				const FQuat Parent = FQuat(FRotator(0.0f, 45.0f, 0.0f));
+				const FQuat Child = FQuat(FRotator(20.0f, 90.0f, 0.0f));
+				const FQuat Relative = FQuat::GetRelative(Parent, Child);
+				return FQuat::ApplyRelative(Parent, Relative).Equals(Child, 0.001f) ? 1 : 0;
+			}
 
-int QuatAngularVelocityRoundTrips()
-{
-	const FVector AngularVelocity = FVector(0.0f, 0.0f, 2.0f);
-	const FQuat Delta = FQuat::MakeDeltaRotationFromAngularVelocity(AngularVelocity, 0.5f);
-	const FVector RoundTrip = FQuat::MakeAngularVelocityFromDeltaRotation(Delta, 0.5f);
-	return RoundTrip.Equals(AngularVelocity, 0.001f) ? 1 : 0;
-}
+			int QuatAngularVelocityRoundTrips()
+			{
+				const FVector AngularVelocity = FVector(0.0f, 0.0f, 2.0f);
+				const FQuat Delta = FQuat::MakeDeltaRotationFromAngularVelocity(AngularVelocity, 0.5f);
+				const FVector RoundTrip = FQuat::MakeAngularVelocityFromDeltaRotation(Delta, 0.5f);
+				return RoundTrip.Equals(AngularVelocity, 0.001f) ? 1 : 0;
+			}
 
-int RotatorDeltaRoundTrips()
-{
-	const FRotator Origin = FRotator(0.0f, 15.0f, 0.0f);
-	const FRotator Target = FRotator(10.0f, 75.0f, 5.0f);
-	const FRotator Delta = FRotator::GetDelta(Origin, Target);
-	return FRotator::ApplyDelta(Origin, Delta).Equals(Target, 0.05f) ? 1 : 0;
-}
+			int RotatorDeltaRoundTrips()
+			{
+				const FRotator Origin = FRotator(0.0f, 15.0f, 0.0f);
+				const FRotator Target = FRotator(10.0f, 75.0f, 5.0f);
+				const FRotator Delta = FRotator::GetDelta(Origin, Target);
+				return FRotator::ApplyDelta(Origin, Delta).Equals(Target, 0.05f) ? 1 : 0;
+			}
 
-int RotatorRelativeRoundTrips()
-{
-	const FRotator Parent = FRotator(0.0f, 45.0f, 0.0f);
-	const FRotator Child = FRotator(20.0f, 90.0f, 0.0f);
-	const FRotator Relative = FRotator::GetRelative(Parent, Child);
-	return FRotator::ApplyRelative(Parent, Relative).Equals(Child, 0.05f) ? 1 : 0;
-}
+			int RotatorRelativeRoundTrips()
+			{
+				const FRotator Parent = FRotator(0.0f, 45.0f, 0.0f);
+				const FRotator Child = FRotator(20.0f, 90.0f, 0.0f);
+				const FRotator Relative = FRotator::GetRelative(Parent, Child);
+				return FRotator::ApplyRelative(Parent, Relative).Equals(Child, 0.05f) ? 1 : 0;
+			}
 
-int TransformDeltaRoundTrips()
-{
-	const FTransform Origin = FTransform(FRotator(0.0f, 15.0f, 0.0f), FVector(10.0f, 0.0f, 0.0f), FVector::OneVector);
-	const FTransform Target = FTransform(FRotator(10.0f, 75.0f, 5.0f), FVector(25.0f, -5.0f, 2.0f), FVector::OneVector);
-	const FTransform Delta = FTransform::GetDelta(Origin, Target);
-	return FTransform::ApplyDelta(Origin, Delta).Equals(Target, 0.01f) ? 1 : 0;
-}
+			int TransformDeltaRoundTrips()
+			{
+				const FTransform Origin = FTransform(FRotator(0.0f, 15.0f, 0.0f), FVector(10.0f, 0.0f, 0.0f), FVector::OneVector);
+				const FTransform Target = FTransform(FRotator(10.0f, 75.0f, 5.0f), FVector(25.0f, -5.0f, 2.0f), FVector::OneVector);
+				const FTransform Delta = FTransform::GetDelta(Origin, Target);
+				return FTransform::ApplyDelta(Origin, Delta).Equals(Target, 0.01f) ? 1 : 0;
+			}
 
-int TransformRelativeRoundTrips()
-{
-	const FTransform Parent = FTransform(FRotator(0.0f, 45.0f, 0.0f), FVector(100.0f, 0.0f, 0.0f), FVector::OneVector);
-	const FTransform Child = FTransform(FRotator(20.0f, 90.0f, 0.0f), FVector(150.0f, 40.0f, 10.0f), FVector(1.0f, 2.0f, 1.0f));
-	const FTransform Relative = FTransform::GetRelative(Parent, Child);
-	return FTransform::ApplyRelative(Parent, Relative).Equals(Child, 0.01f) ? 1 : 0;
-}
-)"));
+			int TransformRelativeRoundTrips()
+			{
+				const FTransform Parent = FTransform(FRotator(0.0f, 45.0f, 0.0f), FVector(100.0f, 0.0f, 0.0f), FVector::OneVector);
+				const FTransform Child = FTransform(FRotator(20.0f, 90.0f, 0.0f), FVector(150.0f, 40.0f, 10.0f), FVector(1.0f, 2.0f, 1.0f));
+				const FTransform Relative = FTransform::GetRelative(Parent, Child);
+				return FTransform::ApplyRelative(Parent, Relative).Equals(Child, 0.01f) ? 1 : 0;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		asIScriptModule& Module = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int QuatDeltaRoundTrips()"), TEXT("FQuat::GetDelta/ApplyDelta should round-trip target rotations"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int QuatRelativeRoundTrips()"), TEXT("FQuat::GetRelative/ApplyRelative should round-trip child rotations"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int QuatAngularVelocityRoundTrips()"), TEXT("FQuat angular velocity helpers should round-trip axis speed"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int RotatorDeltaRoundTrips()"), TEXT("FRotator::GetDelta/ApplyDelta should round-trip target rotations"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int RotatorRelativeRoundTrips()"), TEXT("FRotator::GetRelative/ApplyRelative should round-trip child rotations"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int TransformDeltaRoundTrips()"), TEXT("FTransform::GetDelta/ApplyDelta should round-trip target transforms"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int TransformRelativeRoundTrips()"), TEXT("FTransform::GetRelative/ApplyRelative should round-trip child transforms"), 1);
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int QuatDeltaRoundTrips()"), TEXT("FQuat::GetDelta/ApplyDelta should round-trip target rotations"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int QuatRelativeRoundTrips()"), TEXT("FQuat::GetRelative/ApplyRelative should round-trip child rotations"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int QuatAngularVelocityRoundTrips()"), TEXT("FQuat angular velocity helpers should round-trip axis speed"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int RotatorDeltaRoundTrips()"), TEXT("FRotator::GetDelta/ApplyDelta should round-trip target rotations"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int RotatorRelativeRoundTrips()"), TEXT("FRotator::GetRelative/ApplyRelative should round-trip child rotations"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int TransformDeltaRoundTrips()"), TEXT("FTransform::GetDelta/ApplyDelta should round-trip target transforms"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, Module,  TEXT("int TransformRelativeRoundTrips()"), TEXT("FTransform::GetRelative/ApplyRelative should round-trip child transforms"), 1),
+			TEXT("ExpectGlobalInt should pass")));
 	}
 };
 

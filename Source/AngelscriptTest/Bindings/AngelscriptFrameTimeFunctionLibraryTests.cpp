@@ -40,23 +40,23 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFrameTimeBindingsTest,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
-static constexpr double FrameTimeTolerance = 0.000000001;
+	static constexpr double FrameTimeTolerance = 0.000000001;
 
-struct FFrameTimeAsSecondsCase
-{
-	const TCHAR* Label = TEXT("");
-	FQualifiedFrameTime Value;
-	double ExpectedSeconds = 0.0;
-};
-
-static TArray<FFrameTimeAsSecondsCase> BuildNativeCases()
-{
-	return {
-		{ TEXT("48 @ 24fps"), FQualifiedFrameTime(FFrameTime(48), FFrameRate(24, 1)), 2.0 },
-		{ TEXT("90 @ 30fps"), FQualifiedFrameTime(FFrameTime(90), FFrameRate(30, 1)), 3.0 },
-		{ TEXT("12 @ 25fps"), FQualifiedFrameTime(FFrameTime(FFrameNumber(12)), FFrameRate(25, 1)), 0.48 }
+	struct FFrameTimeAsSecondsCase
+	{
+		const TCHAR* Label = TEXT("");
+		FQualifiedFrameTime Value;
+		double ExpectedSeconds = 0.0;
 	};
-}
+
+	static TArray<FFrameTimeAsSecondsCase> BuildNativeCases()
+	{
+		return {
+			{ TEXT("48 @ 24fps"), FQualifiedFrameTime(FFrameTime(48), FFrameRate(24, 1)), 2.0 },
+			{ TEXT("90 @ 30fps"), FQualifiedFrameTime(FFrameTime(90), FFrameRate(30, 1)), 3.0 },
+			{ TEXT("12 @ 25fps"), FQualifiedFrameTime(FFrameTime(FFrameNumber(12)), FFrameRate(25, 1)), 0.48 }
+		};
+	}
 
 public:
 	BEFORE_ALL()
@@ -64,7 +64,11 @@ public:
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: NativeBaselines
@@ -72,7 +76,7 @@ public:
 
 	TEST_METHOD(NativeBaselines)
 	{
-const TArray<FFrameTimeAsSecondsCase> Cases = BuildNativeCases();
+		const TArray<FFrameTimeAsSecondsCase> Cases = BuildNativeCases();
 		for (const FFrameTimeAsSecondsCase& C : Cases)
 		{
 			ASSERT_THAT(IsTrue(
@@ -90,22 +94,21 @@ const TArray<FFrameTimeAsSecondsCase> Cases = BuildNativeCases();
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFrameTime_AsSecondsMixin"), TEXT(R"(
-int AsSeconds_Compiles()
-{
-	FQualifiedFrameTime DefaultTime;
-	// Just call AsSeconds to verify the mixin binding compiles and links.
-	DefaultTime.AsSeconds();
-	return 1;
-}
-)"));
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASFrameTime_AsSecondsMixin"), ASTEST_AS(R"AS(
+			int AsSeconds_Compiles()
+			{
+				FQualifiedFrameTime DefaultTime;
+				// Just call AsSeconds to verify the mixin binding compiles and links.
+				DefaultTime.AsSeconds();
+				return 1;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M, 
-			TEXT("int AsSeconds_Compiles()"),
-			TEXT("FQualifiedFrameTime.AsSeconds mixin binding should compile and be callable"),
-			1);
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M, TEXT("int AsSeconds_Compiles()"), TEXT("FQualifiedFrameTime.AsSeconds mixin binding should compile and be callable"), 1),
+			TEXT("ExpectGlobalInt should pass")));
 	}
 };
 

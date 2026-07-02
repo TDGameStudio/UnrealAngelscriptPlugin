@@ -35,12 +35,15 @@
 
 
 // ----------------------------------------------------------------------------
-// Helpers
+// Test class
 // ----------------------------------------------------------------------------
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptDataTableBindingsTest,
+	"Angelscript.TestModule.Bindings.DataTable",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	const FAngelscriptBindingDataTableRow* FindBindingRow(
+private:
+	static const FAngelscriptBindingDataTableRow* FindBindingRow(
 		FAutomationTestBase& Test,
 		const UDataTable& DataTable,
 		const TCHAR* RowName,
@@ -54,28 +57,24 @@ namespace
 		}
 		return Row;
 	}
-}
 
-// ----------------------------------------------------------------------------
-// Test class
-// ----------------------------------------------------------------------------
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptDataTableBindingsTest,
-	"Angelscript.TestModule.Bindings.DataTable",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: RowHandleCompat
 	// ====================================================================
 
-	TEST_METHOD(RowHandleCompat)
+	TEST_METHOD(RowHandleAndCategoryRoundTrip)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
@@ -93,126 +92,172 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDataTableBindingsTest,
 
 		DataTable->RowStruct = FAngelscriptBindingDataTableRow::StaticStruct();
 
-		FString Script = TEXT(R"(
-int Entry()
-{
-	UObject TableObject = FindObject("$TABLE_PATH$");
-	UDataTable Table = Cast<UDataTable>(TableObject);
-	if (!IsValid(Table))
-		return 10;
+		FString RowHandleScriptSource = ASTEST_AS(R"AS(
+			int Entry()
+			{
+				UObject TableObject = FindObject("$TABLE_PATH$");
+				UDataTable Table = Cast<UDataTable>(TableObject);
+				if (!IsValid(Table))
+				{
+					return 10;
+				}
 
-	FAngelscriptBindingDataTableRow Alpha;
-	Alpha.Category = n"Enemy";
-	Alpha.Count = 2;
-	Alpha.Label = "Alpha";
-	Table.AddRow(n"Alpha", Alpha);
+				FAngelscriptBindingDataTableRow Alpha;
+				Alpha.Category = n"Enemy";
+				Alpha.Count = 2;
+				Alpha.Label = "Alpha";
+				Table.AddRow(n"Alpha", Alpha);
 
-	FAngelscriptBindingDataTableRow Beta;
-	Beta.Category = n"Item";
-	Beta.Count = 7;
-	Beta.Label = "Beta";
-	Table.AddRow(n"Beta", Beta);
+				FAngelscriptBindingDataTableRow Beta;
+				Beta.Category = n"Item";
+				Beta.Count = 7;
+				Beta.Label = "Beta";
+				Table.AddRow(n"Beta", Beta);
 
-	FAngelscriptBindingDataTableRow Gamma;
-	Gamma.Category = n"Enemy";
-	Gamma.Count = 5;
-	Gamma.Label = "Gamma";
-	Table.AddRow(n"Gamma", Gamma);
+				FAngelscriptBindingDataTableRow Gamma;
+				Gamma.Category = n"Enemy";
+				Gamma.Count = 5;
+				Gamma.Label = "Gamma";
+				Table.AddRow(n"Gamma", Gamma);
 
-	TArray<FName> RowNames = Table.GetRowNames();
-	if (RowNames.Num() != 3)
-		return 20;
-	if (!RowNames.Contains(n"Alpha") || !RowNames.Contains(n"Beta") || !RowNames.Contains(n"Gamma"))
-		return 30;
+				TArray<FName> RowNames = Table.GetRowNames();
+				if (RowNames.Num() != 3)
+				{
+					return 20;
+				}
+				if (!RowNames.Contains(n"Alpha") || !RowNames.Contains(n"Beta") || !RowNames.Contains(n"Gamma"))
+				{
+					return 30;
+				}
 
-	FAngelscriptBindingDataTableRow FoundAlpha;
-	if (!Table.FindRow(n"Alpha", FoundAlpha))
-		return 40;
-	if (FoundAlpha.Category != n"Enemy" || FoundAlpha.Count != 2 || FoundAlpha.Label != "Alpha")
-		return 50;
+				FAngelscriptBindingDataTableRow FoundAlpha;
+				if (!Table.FindRow(n"Alpha", FoundAlpha))
+				{
+					return 40;
+				}
+				if (FoundAlpha.Category != n"Enemy" || FoundAlpha.Count != 2 || FoundAlpha.Label != "Alpha")
+				{
+					return 50;
+				}
 
-	TArray<FAngelscriptBindingDataTableRow> AllRows;
-	FAngelscriptBindingDataTableRow Sentinel;
-	Sentinel.Category = n"Sentinel";
-	Sentinel.Count = -99;
-	Sentinel.Label = "Sentinel";
-	AllRows.Add(Sentinel);
-	Table.GetAllRows(AllRows);
-	if (AllRows.Num() != 4)
-		return 60;
-	if (AllRows[0].Category != n"Sentinel" || AllRows[0].Count != -99 || AllRows[0].Label != "Sentinel")
-		return 70;
+				TArray<FAngelscriptBindingDataTableRow> AllRows;
+				FAngelscriptBindingDataTableRow Sentinel;
+				Sentinel.Category = n"Sentinel";
+				Sentinel.Count = -99;
+				Sentinel.Label = "Sentinel";
+				AllRows.Add(Sentinel);
+				Table.GetAllRows(AllRows);
+				if (AllRows.Num() != 4)
+				{
+					return 60;
+				}
+				if (AllRows[0].Category != n"Sentinel" || AllRows[0].Count != -99 || AllRows[0].Label != "Sentinel")
+				{
+					return 70;
+				}
 
-	bool bSawAlpha = false;
-	bool bSawBeta = false;
-	bool bSawGamma = false;
-	for (int Index = 1; Index < AllRows.Num(); ++Index)
-	{
-		if (AllRows[Index].Label == "Alpha" && AllRows[Index].Category == n"Enemy" && AllRows[Index].Count == 2)
-			bSawAlpha = true;
-		else if (AllRows[Index].Label == "Beta" && AllRows[Index].Category == n"Item" && AllRows[Index].Count == 7)
-			bSawBeta = true;
-		else if (AllRows[Index].Label == "Gamma" && AllRows[Index].Category == n"Enemy" && AllRows[Index].Count == 5)
-			bSawGamma = true;
-		else
-			return 80;
-	}
-	if (!bSawAlpha || !bSawBeta || !bSawGamma)
-		return 90;
+				bool bSawAlpha = false;
+				bool bSawBeta = false;
+				bool bSawGamma = false;
+				for (int Index = 1; Index < AllRows.Num(); ++Index)
+				{
+					if (AllRows[Index].Label == "Alpha" && AllRows[Index].Category == n"Enemy" && AllRows[Index].Count == 2)
+					{
+						bSawAlpha = true;
+					}
+					else if (AllRows[Index].Label == "Beta" && AllRows[Index].Category == n"Item" && AllRows[Index].Count == 7)
+					{
+						bSawBeta = true;
+					}
+					else if (AllRows[Index].Label == "Gamma" && AllRows[Index].Category == n"Enemy" && AllRows[Index].Count == 5)
+					{
+						bSawGamma = true;
+					}
+					else
+					{
+						return 80;
+					}
+				}
+				if (!bSawAlpha || !bSawBeta || !bSawGamma)
+				{
+					return 90;
+				}
 
-	FDataTableRowHandle BetaHandle;
-	BetaHandle.DataTable = Table;
-	BetaHandle.RowName = n"Beta";
-	FAngelscriptBindingDataTableRow BetaRow;
-	if (!BetaHandle.GetRow(BetaRow))
-		return 100;
-	if (BetaRow.Category != n"Item" || BetaRow.Count != 7 || BetaRow.Label != "Beta")
-		return 110;
+				FDataTableRowHandle BetaHandle;
+				BetaHandle.DataTable = Table;
+				BetaHandle.RowName = n"Beta";
+				FAngelscriptBindingDataTableRow BetaRow;
+				if (!BetaHandle.GetRow(BetaRow))
+				{
+					return 100;
+				}
+				if (BetaRow.Category != n"Item" || BetaRow.Count != 7 || BetaRow.Label != "Beta")
+				{
+					return 110;
+				}
 
-	FDataTableCategoryHandle EnemyHandle;
-	EnemyHandle.DataTable = Table;
-	EnemyHandle.ColumnName = n"Category";
-	EnemyHandle.RowContents = n"Enemy";
+				FDataTableCategoryHandle EnemyHandle;
+				EnemyHandle.DataTable = Table;
+				EnemyHandle.ColumnName = n"Category";
+				EnemyHandle.RowContents = n"Enemy";
 
-	TArray<FName> EnemyNames = EnemyHandle.GetRowNames();
-	if (EnemyNames.Num() != 2)
-		return 120;
-	if (!EnemyNames.Contains(n"Alpha") || !EnemyNames.Contains(n"Gamma"))
-		return 130;
+				TArray<FName> EnemyNames = EnemyHandle.GetRowNames();
+				if (EnemyNames.Num() != 2)
+				{
+					return 120;
+				}
+				if (!EnemyNames.Contains(n"Alpha") || !EnemyNames.Contains(n"Gamma"))
+				{
+					return 130;
+				}
 
-	TArray<FAngelscriptBindingDataTableRow> EnemyRows;
-	EnemyRows.Add(Sentinel);
-	EnemyHandle.GetRows(EnemyRows);
-	if (EnemyRows.Num() != 3)
-		return 140;
-	if (EnemyRows[0].Category != n"Sentinel" || EnemyRows[0].Count != -99 || EnemyRows[0].Label != "Sentinel")
-		return 150;
+				TArray<FAngelscriptBindingDataTableRow> EnemyRows;
+				EnemyRows.Add(Sentinel);
+				EnemyHandle.GetRows(EnemyRows);
+				if (EnemyRows.Num() != 3)
+				{
+					return 140;
+				}
+				if (EnemyRows[0].Category != n"Sentinel" || EnemyRows[0].Count != -99 || EnemyRows[0].Label != "Sentinel")
+				{
+					return 150;
+				}
 
-	int EnemyRowCount = 0;
-	bool bSawEnemyAlpha = false;
-	bool bSawEnemyGamma = false;
-	for (int Index = 1; Index < EnemyRows.Num(); ++Index)
-	{
-		if (EnemyRows[Index].Category != n"Enemy")
-			return 160;
-		if (EnemyRows[Index].Label == "Alpha" && EnemyRows[Index].Count == 2)
-			bSawEnemyAlpha = true;
-		else if (EnemyRows[Index].Label == "Gamma" && EnemyRows[Index].Count == 5)
-			bSawEnemyGamma = true;
-		else
-			return 170;
-		EnemyRowCount += 1;
-	}
-	if (EnemyRowCount != 2 || !bSawEnemyAlpha || !bSawEnemyGamma)
-		return 180;
+				int EnemyRowCount = 0;
+				bool bSawEnemyAlpha = false;
+				bool bSawEnemyGamma = false;
+				for (int Index = 1; Index < EnemyRows.Num(); ++Index)
+				{
+					if (EnemyRows[Index].Category != n"Enemy")
+					{
+						return 160;
+					}
+					if (EnemyRows[Index].Label == "Alpha" && EnemyRows[Index].Count == 2)
+					{
+						bSawEnemyAlpha = true;
+					}
+					else if (EnemyRows[Index].Label == "Gamma" && EnemyRows[Index].Count == 5)
+					{
+						bSawEnemyGamma = true;
+					}
+					else
+					{
+						return 170;
+					}
+					EnemyRowCount += 1;
+				}
+				if (EnemyRowCount != 2 || !bSawEnemyAlpha || !bSawEnemyGamma)
+				{
+					return 180;
+				}
 
-	return 1;
-}
-)");
+				return 1;
+			}
+			)AS");
 
-		Script.ReplaceInline(TEXT("$TABLE_PATH$"), *DataTable->GetPathName().ReplaceCharWithEscapedChar());
+		RowHandleScriptSource.ReplaceInline(TEXT("$TABLE_PATH$"), *DataTable->GetPathName().ReplaceCharWithEscapedChar());
 
-		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASDataTableRowHandleCompat", Script);
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASDataTableRowHandleCompat", RowHandleScriptSource);
 		if (Module == nullptr)
 		{
 			return;
@@ -294,83 +339,103 @@ int Entry()
 		AlphaRow.Label = TEXT("Alpha");
 		DataTable->AddRow(TEXT("Alpha"), AlphaRow);
 
-		FString StateScript = TEXT(R"(
-int Entry()
-{
-	UObject TableObject = FindObject("$TABLE_PATH$");
-	UDataTable Table = Cast<UDataTable>(TableObject);
-	if (!IsValid(Table))
-		return 10;
+		FString StateScriptSource = ASTEST_AS(R"AS(
+			int Entry()
+			{
+				UObject TableObject = FindObject("$TABLE_PATH$");
+				UDataTable Table = Cast<UDataTable>(TableObject);
+				if (!IsValid(Table))
+				{
+					return 10;
+				}
 
-	FVector WrongRow;
-	WrongRow.X = 11;
-	WrongRow.Y = 22;
-	WrongRow.Z = 33;
-	if (Table.FindRow(n"Alpha", WrongRow))
-		return 20;
-	if (WrongRow.X != 11 || WrongRow.Y != 22 || WrongRow.Z != 33)
-		return 30;
+				FVector WrongRow;
+				WrongRow.X = 11;
+				WrongRow.Y = 22;
+				WrongRow.Z = 33;
+				if (Table.FindRow(n"Alpha", WrongRow))
+				{
+					return 20;
+				}
+				if (WrongRow.X != 11 || WrongRow.Y != 22 || WrongRow.Z != 33)
+				{
+					return 30;
+				}
 
-	int InitialRowCount = Table.GetRowNames().Num();
-	Table.AddRow(n"Bad", WrongRow);
-	if (Table.GetRowNames().Num() != InitialRowCount)
-		return 40;
+				int InitialRowCount = Table.GetRowNames().Num();
+				Table.AddRow(n"Bad", WrongRow);
+				if (Table.GetRowNames().Num() != InitialRowCount)
+				{
+					return 40;
+				}
 
-	FDataTableRowHandle NullRowHandle;
-	FAngelscriptBindingDataTableRow NullHandleOut;
-	NullHandleOut.Category = n"Sentinel";
-	NullHandleOut.Count = -99;
-	NullHandleOut.Label = "Sentinel";
-	if (NullRowHandle.GetRow(NullHandleOut))
-		return 50;
-	if (NullHandleOut.Category != n"Sentinel" || NullHandleOut.Count != -99 || NullHandleOut.Label != "Sentinel")
-		return 60;
+				FDataTableRowHandle NullRowHandle;
+				FAngelscriptBindingDataTableRow NullHandleOut;
+				NullHandleOut.Category = n"Sentinel";
+				NullHandleOut.Count = -99;
+				NullHandleOut.Label = "Sentinel";
+				if (NullRowHandle.GetRow(NullHandleOut))
+				{
+					return 50;
+				}
+				if (NullHandleOut.Category != n"Sentinel" || NullHandleOut.Count != -99 || NullHandleOut.Label != "Sentinel")
+				{
+					return 60;
+				}
 
-	FDataTableCategoryHandle NullCategoryHandle;
-	TArray<FName> NullRowNames = NullCategoryHandle.GetRowNames();
-	if (NullRowNames.Num() != 0)
-		return 70;
+				FDataTableCategoryHandle NullCategoryHandle;
+				TArray<FName> NullRowNames = NullCategoryHandle.GetRowNames();
+				if (NullRowNames.Num() != 0)
+				{
+					return 70;
+				}
 
-	TArray<FAngelscriptBindingDataTableRow> NullRows;
-	FAngelscriptBindingDataTableRow Sentinel;
-	Sentinel.Category = n"Sentinel";
-	Sentinel.Count = -99;
-	Sentinel.Label = "Sentinel";
-	NullRows.Add(Sentinel);
-	NullCategoryHandle.GetRows(NullRows);
-	if (NullRows.Num() != 1)
-		return 80;
-	if (NullRows[0].Category != n"Sentinel" || NullRows[0].Count != -99 || NullRows[0].Label != "Sentinel")
-		return 90;
+				TArray<FAngelscriptBindingDataTableRow> NullRows;
+				FAngelscriptBindingDataTableRow Sentinel;
+				Sentinel.Category = n"Sentinel";
+				Sentinel.Count = -99;
+				Sentinel.Label = "Sentinel";
+				NullRows.Add(Sentinel);
+				NullCategoryHandle.GetRows(NullRows);
+				if (NullRows.Num() != 1)
+				{
+					return 80;
+				}
+				if (NullRows[0].Category != n"Sentinel" || NullRows[0].Count != -99 || NullRows[0].Label != "Sentinel")
+				{
+					return 90;
+				}
 
-	return 1;
-}
-)");
+				return 1;
+			}
+			)AS");
 
-		FString WrongArrayScript = TEXT(R"(
-int Entry()
-{
-	UObject TableObject = FindObject("$TABLE_PATH$");
-	UDataTable Table = Cast<UDataTable>(TableObject);
-	if (!IsValid(Table))
-		return 10;
+		FString WrongArrayScriptSource = ASTEST_AS(R"AS(
+			int Entry()
+			{
+				UObject TableObject = FindObject("$TABLE_PATH$");
+				UDataTable Table = Cast<UDataTable>(TableObject);
+				if (!IsValid(Table))
+				{
+					return 10;
+				}
 
-	TArray<FVector> WrongRows;
-	FVector Seed;
-	Seed.X = 1;
-	Seed.Y = 2;
-	Seed.Z = 3;
-	WrongRows.Add(Seed);
-	Table.GetAllRows(WrongRows);
-	return WrongRows.Num();
-}
-)");
+				TArray<FVector> WrongRows;
+				FVector Seed;
+				Seed.X = 1;
+				Seed.Y = 2;
+				Seed.Z = 3;
+				WrongRows.Add(Seed);
+				Table.GetAllRows(WrongRows);
+				return WrongRows.Num();
+			}
+			)AS");
 
 		const FString EscapedTablePath = DataTable->GetPathName().ReplaceCharWithEscapedChar();
-		StateScript.ReplaceInline(TEXT("$TABLE_PATH$"), *EscapedTablePath);
-		WrongArrayScript.ReplaceInline(TEXT("$TABLE_PATH$"), *EscapedTablePath);
+		StateScriptSource.ReplaceInline(TEXT("$TABLE_PATH$"), *EscapedTablePath);
+		WrongArrayScriptSource.ReplaceInline(TEXT("$TABLE_PATH$"), *EscapedTablePath);
 
-		asIScriptModule* StateModule = BuildModule(*TestRunner, Engine, "ASDataTableErrorPathsState", StateScript);
+		asIScriptModule* StateModule = BuildModule(*TestRunner, Engine, "ASDataTableErrorPathsState", StateScriptSource);
 		if (StateModule == nullptr)
 		{
 			return;
@@ -409,7 +474,7 @@ int Entry()
 			return;
 		}
 
-		asIScriptModule* WrongArrayModule = BuildModule(*TestRunner, Engine, "ASDataTableErrorPathsWrongArray", WrongArrayScript);
+		asIScriptModule* WrongArrayModule = BuildModule(*TestRunner, Engine, "ASDataTableErrorPathsWrongArray", WrongArrayScriptSource);
 		if (WrongArrayModule == nullptr)
 		{
 			return;
@@ -422,7 +487,7 @@ int Entry()
 		}
 
 		TestRunner->AddExpectedError(TEXT("ASDataTableErrorPathsWrongArray"), EAutomationExpectedErrorFlags::Contains, 0);
-		TestRunner->AddExpectedError(TEXT("int Entry() | Line 15 | Col 2"), EAutomationExpectedErrorFlags::Contains, 1, false);
+		TestRunner->AddExpectedError(TEXT("int Entry() | Line 16 | Col 2"), EAutomationExpectedErrorFlags::Contains, 1, false);
 		TestRunner->AddExpectedError(TEXT("OutArray must be a TArray of structs."), EAutomationExpectedErrorFlags::Contains, 1);
 
 		asIScriptContext* WrongArrayContext = Engine.CreateContext();

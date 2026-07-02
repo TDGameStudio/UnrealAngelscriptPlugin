@@ -33,21 +33,24 @@
 
 
 // ----------------------------------------------------------------------------
-// Helpers (kept from original, scoped to translation unit)
+// Test class
 // ----------------------------------------------------------------------------
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptPrimitiveComponentBindingsTest,
+	"Angelscript.TestModule.Bindings.PrimitiveComponent",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	static const FVector ExpectedBoxExtent(10.0f, 20.0f, 30.0f);
-	static const FVector ExpectedRelativeLocation(100.0f, 50.0f, 25.0f);
+private:
+	inline static const FVector ExpectedBoxExtent = FVector(10.0f, 20.0f, 30.0f);
+	inline static const FVector ExpectedRelativeLocation = FVector(100.0f, 50.0f, 25.0f);
 	static constexpr double BoundsTolerance = 0.01;
 
-	FString FormatDoubleLiteral(const double Value)
+	static FString FormatDoubleLiteral(const double Value)
 	{
 		return LexToString(Value);
 	}
 
-	FString FormatVectorLiteral(const FVector& Value)
+	static FString FormatVectorLiteral(const FVector& Value)
 	{
 		return FString::Printf(
 			TEXT("FVector(%s, %s, %s)"),
@@ -56,7 +59,7 @@ namespace
 			*LexToString(Value.Z));
 	}
 
-	UBoxComponent* CreatePrimitiveComponentFixture(AActor*& OutHostActor)
+	static UBoxComponent* CreatePrimitiveComponentFixture(AActor*& OutHostActor)
 	{
 		OutHostActor = NewObject<AActor>(
 			GetTransientPackage(),
@@ -89,28 +92,24 @@ namespace
 		BoxComponent->UpdateBounds();
 		return BoxComponent;
 	}
-}
 
-// ----------------------------------------------------------------------------
-// Test class
-// ----------------------------------------------------------------------------
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptPrimitiveComponentBindingsTest,
-	"Angelscript.TestModule.Bindings.PrimitiveComponent",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: BoundsCompat
 	// ====================================================================
 
-	TEST_METHOD(BoundsCompat)
+	TEST_METHOD(BoundsAndMutableFlags)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
@@ -152,71 +151,97 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptPrimitiveComponentBindingsTest,
 			TEXT("PrimComp native lightmap type should start at default")));
 
 		// Build script with token replacement
-		FString Script = TEXT(R"(
-int BoundsCompat_CollisionExtents()
-{
-	UObject FoundObject = FindObject("__COMPONENT_PATH__");
-	UPrimitiveComponent Component = Cast<UPrimitiveComponent>(FoundObject);
-	if (Component == null) return 0;
-	return Component.GetBoundingBoxExtents().Equals(__EXPECTED_BOX_EXTENT__, 0.0f) ? 1 : 0;
-}
-int BoundsCompat_BoundsOrigin()
-{
-	UObject FoundObject = FindObject("__COMPONENT_PATH__");
-	UPrimitiveComponent Component = Cast<UPrimitiveComponent>(FoundObject);
-	if (Component == null) return 0;
-	return Component.GetBoundsOrigin().Equals(__EXPECTED_BOUNDS_ORIGIN__, __BOUNDS_TOLERANCE__) ? 1 : 0;
-}
-int BoundsCompat_BoundsExtent()
-{
-	UObject FoundObject = FindObject("__COMPONENT_PATH__");
-	UPrimitiveComponent Component = Cast<UPrimitiveComponent>(FoundObject);
-	if (Component == null) return 0;
-	return Component.GetBoundsExtent().Equals(__EXPECTED_BOUNDS_EXTENT__, __BOUNDS_TOLERANCE__) ? 1 : 0;
-}
-int BoundsCompat_BoundsRadius()
-{
-	UObject FoundObject = FindObject("__COMPONENT_PATH__");
-	UPrimitiveComponent Component = Cast<UPrimitiveComponent>(FoundObject);
-	if (Component == null) return 0;
-	return Math::IsNearlyEqual(Component.GetBoundsRadius(), __EXPECTED_BOUNDS_RADIUS__, __BOUNDS_TOLERANCE__) ? 1 : 0;
-}
-int BoundsCompat_Selectable()
-{
-	UObject FoundObject = FindObject("__COMPONENT_PATH__");
-	UPrimitiveComponent Component = Cast<UPrimitiveComponent>(FoundObject);
-	if (Component == null) return 0;
-	if (Component.GetbSelectable()) return 0;
-	Component.SetbSelectable(true);
-	return Component.GetbSelectable() ? 1 : 0;
-}
-int BoundsCompat_LightmapType()
-{
-	UObject FoundObject = FindObject("__COMPONENT_PATH__");
-	UPrimitiveComponent Component = Cast<UPrimitiveComponent>(FoundObject);
-	if (Component == null) return 0;
-	Component.SetLightmapType(ELightmapType::ForceSurface);
-	return 1;
-}
-)");
+		FString BoundsCompatSource = ASTEST_AS(R"AS(
+			int BoundsCompat_CollisionExtents()
+			{
+				UObject FoundObject = FindObject("__COMPONENT_PATH__");
+				UPrimitiveComponent Component = Cast<UPrimitiveComponent>(FoundObject);
+				if (Component == null)
+				{
+					return 0;
+				}
+				return Component.GetBoundingBoxExtents().Equals(__EXPECTED_BOX_EXTENT__, 0.0f) ? 1 : 0;
+			}
 
-		Script.ReplaceInline(TEXT("__COMPONENT_PATH__"), *ComponentPath.ReplaceCharWithEscapedChar(), ESearchCase::CaseSensitive);
-		Script.ReplaceInline(TEXT("__EXPECTED_BOX_EXTENT__"), *FormatVectorLiteral(CollisionExtents), ESearchCase::CaseSensitive);
-		Script.ReplaceInline(TEXT("__EXPECTED_BOUNDS_ORIGIN__"), *FormatVectorLiteral(BoundsOrigin), ESearchCase::CaseSensitive);
-		Script.ReplaceInline(TEXT("__EXPECTED_BOUNDS_EXTENT__"), *FormatVectorLiteral(BoundsExtent), ESearchCase::CaseSensitive);
-		Script.ReplaceInline(TEXT("__EXPECTED_BOUNDS_RADIUS__"), *FormatDoubleLiteral(BoundsRadius), ESearchCase::CaseSensitive);
-		Script.ReplaceInline(TEXT("__BOUNDS_TOLERANCE__"), *FormatDoubleLiteral(BoundsTolerance), ESearchCase::CaseSensitive);
+			int BoundsCompat_BoundsOrigin()
+			{
+				UObject FoundObject = FindObject("__COMPONENT_PATH__");
+				UPrimitiveComponent Component = Cast<UPrimitiveComponent>(FoundObject);
+				if (Component == null)
+				{
+					return 0;
+				}
+				return Component.GetBoundsOrigin().Equals(__EXPECTED_BOUNDS_ORIGIN__, __BOUNDS_TOLERANCE__) ? 1 : 0;
+			}
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASPrimitiveComponent_BoundsCompat"), Script);
+			int BoundsCompat_BoundsExtent()
+			{
+				UObject FoundObject = FindObject("__COMPONENT_PATH__");
+				UPrimitiveComponent Component = Cast<UPrimitiveComponent>(FoundObject);
+				if (Component == null)
+				{
+					return 0;
+				}
+				return Component.GetBoundsExtent().Equals(__EXPECTED_BOUNDS_EXTENT__, __BOUNDS_TOLERANCE__) ? 1 : 0;
+			}
+
+			int BoundsCompat_BoundsRadius()
+			{
+				UObject FoundObject = FindObject("__COMPONENT_PATH__");
+				UPrimitiveComponent Component = Cast<UPrimitiveComponent>(FoundObject);
+				if (Component == null)
+				{
+					return 0;
+				}
+				return Math::IsNearlyEqual(Component.GetBoundsRadius(), __EXPECTED_BOUNDS_RADIUS__, __BOUNDS_TOLERANCE__) ? 1 : 0;
+			}
+
+			int BoundsCompat_Selectable()
+			{
+				UObject FoundObject = FindObject("__COMPONENT_PATH__");
+				UPrimitiveComponent Component = Cast<UPrimitiveComponent>(FoundObject);
+				if (Component == null)
+				{
+					return 0;
+				}
+				if (Component.GetbSelectable())
+				{
+					return 0;
+				}
+				Component.SetbSelectable(true);
+				return Component.GetbSelectable() ? 1 : 0;
+			}
+
+			int BoundsCompat_LightmapType()
+			{
+				UObject FoundObject = FindObject("__COMPONENT_PATH__");
+				UPrimitiveComponent Component = Cast<UPrimitiveComponent>(FoundObject);
+				if (Component == null)
+				{
+					return 0;
+				}
+				Component.SetLightmapType(ELightmapType::ForceSurface);
+				return 1;
+			}
+			)AS");
+
+		BoundsCompatSource.ReplaceInline(TEXT("__COMPONENT_PATH__"), *ComponentPath.ReplaceCharWithEscapedChar(), ESearchCase::CaseSensitive);
+		BoundsCompatSource.ReplaceInline(TEXT("__EXPECTED_BOX_EXTENT__"), *FormatVectorLiteral(CollisionExtents), ESearchCase::CaseSensitive);
+		BoundsCompatSource.ReplaceInline(TEXT("__EXPECTED_BOUNDS_ORIGIN__"), *FormatVectorLiteral(BoundsOrigin), ESearchCase::CaseSensitive);
+		BoundsCompatSource.ReplaceInline(TEXT("__EXPECTED_BOUNDS_EXTENT__"), *FormatVectorLiteral(BoundsExtent), ESearchCase::CaseSensitive);
+		BoundsCompatSource.ReplaceInline(TEXT("__EXPECTED_BOUNDS_RADIUS__"), *FormatDoubleLiteral(BoundsRadius), ESearchCase::CaseSensitive);
+		BoundsCompatSource.ReplaceInline(TEXT("__BOUNDS_TOLERANCE__"), *FormatDoubleLiteral(BoundsTolerance), ESearchCase::CaseSensitive);
+
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASPrimitiveComponent_BoundsCompat"), BoundsCompatSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_CollisionExtents()"), TEXT("collision extents should match configured box extent"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_BoundsOrigin()"), TEXT("bounds origin should reflect configured relative location"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_BoundsExtent()"), TEXT("bounds extent should match configured box extent"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_BoundsRadius()"), TEXT("bounds radius should match box extent radius"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_Selectable()"), TEXT("SetbSelectable should update native component immediately"), 1);
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_LightmapType()"), TEXT("SetLightmapType(ForceSurface) should execute without error"), 1);
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_CollisionExtents()"), TEXT("collision extents should match configured box extent"), 1), TEXT("collision extents should match configured box extent")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_BoundsOrigin()"), TEXT("bounds origin should reflect configured relative location"), 1), TEXT("bounds origin should reflect configured relative location")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_BoundsExtent()"), TEXT("bounds extent should match configured box extent"), 1), TEXT("bounds extent should match configured box extent")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_BoundsRadius()"), TEXT("bounds radius should match box extent radius"), 1), TEXT("bounds radius should match box extent radius")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_Selectable()"), TEXT("SetbSelectable should update native component immediately"), 1), TEXT("SetbSelectable should update native component immediately")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int BoundsCompat_LightmapType()"), TEXT("SetLightmapType(ForceSurface) should execute without error"), 1), TEXT("SetLightmapType(ForceSurface) should execute without error")));
 
 		// Native-side assertions for mutations done by script
 		ASSERT_THAT(IsTrue(

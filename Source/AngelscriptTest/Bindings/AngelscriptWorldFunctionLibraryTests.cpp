@@ -40,19 +40,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptWorldFunctionLibraryTest, "Angelscript.TestMod
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
-static constexpr ANSICHAR ModuleName[] = "ASWorldStreamingNullGuards";
-static constexpr ANSICHAR WorldStreamingAccessModuleName[] = "ASWorldStreamingAccess";
+	static constexpr ANSICHAR ModuleName[] = "ASWorldStreamingNullGuards";
+	static constexpr ANSICHAR WorldStreamingAccessModuleName[] = "ASWorldStreamingAccess";
 
 public:
 	TEST_METHOD(WorldStreamingNullGuards)
 	{
-TestRunner->AddExpectedError(TEXT("Null pointer access"), EAutomationExpectedErrorFlags::Contains, 0);
+		TestRunner->AddExpectedError(TEXT("Null pointer access"), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(TEXT("ASWorldStreamingNullGuards"), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(TEXT("int GetStreamingLevelCount(UWorld) | Line 4 | Col 2"), EAutomationExpectedErrorFlags::Contains, 1, false);
 		TestRunner->AddExpectedError(TEXT("bool GetLevelVisibleInEditor(ULevelStreaming) | Line 9 | Col 2"), EAutomationExpectedErrorFlags::Contains, 1, false);
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
-		{
 		FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
@@ -67,17 +66,17 @@ TestRunner->AddExpectedError(TEXT("Null pointer access"), EAutomationExpectedErr
 			*TestRunner,
 			Engine,
 			ModuleName,
-			TEXT(R"(
-int GetStreamingLevelCount(UWorld World)
-{
-	return World.GetStreamingLevels().Num();
-}
+			ASTEST_AS(R"AS(
+				int GetStreamingLevelCount(UWorld World)
+				{
+					return World.GetStreamingLevels().Num();
+				}
 
-bool GetLevelVisibleInEditor(ULevelStreaming Level)
-{
-	return Level.GetShouldBeVisibleInEditor();
-}
-)"));
+				bool GetLevelVisibleInEditor(ULevelStreaming Level)
+				{
+					return Level.GetShouldBeVisibleInEditor();
+				}
+				)AS"));
 		if (Module == nullptr)
 		{
 			return;
@@ -201,22 +200,20 @@ bool GetLevelVisibleInEditor(ULevelStreaming Level)
 			NullLevelException,
 			TEXT("GetShouldBeVisibleInEditor should report a stable null-pointer diagnostic for a null level receiver")));
 
-		}
 	}
 
 	TEST_METHOD(WorldStreamingAccess)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
-		{
-		FAngelscriptEngineScope _AutoEngineScope(Engine);
-		ON_SCOPE_EXIT
-		{
-			const TArray<TSharedRef<FAngelscriptModuleDesc>> _ActiveModules = Engine.GetActiveModules();
-			for (const TSharedRef<FAngelscriptModuleDesc>& _Module : _ActiveModules)
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+			FAngelscriptEngineScope _AutoEngineScope(Engine);
+			ON_SCOPE_EXIT
 			{
-				Engine.DiscardModule(*_Module->ModuleName);
-			}
-		};
+				const TArray<TSharedRef<FAngelscriptModuleDesc>> _ActiveModules = Engine.GetActiveModules();
+				for (const TSharedRef<FAngelscriptModuleDesc>& _Module : _ActiveModules)
+				{
+					Engine.DiscardModule(*_Module->ModuleName);
+				}
+			};
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
@@ -279,30 +276,40 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		const bool bNativeSecondVisibility = SecondStreamingLevel->GetShouldBeVisibleInEditor();
 		const bool bExpectedSecondVisibility = bNativeSecondVisibility;
 
-		FString Script = TEXT(R"(
-int VerifyWorldStreamingAccess(UWorld World, ULevelStreaming ExpectedFirst, ULevelStreaming ExpectedSecond)
-{
-	int MismatchMask = 0;
+		FString WorldStreamingAccessSource = ASTEST_AS(R"AS(
+			int VerifyWorldStreamingAccess(UWorld World, ULevelStreaming ExpectedFirst, ULevelStreaming ExpectedSecond)
+			{
+				int MismatchMask = 0;
 
-	if (World.GetStreamingLevels().Num() != $EXPECTED_COUNT$)
-		MismatchMask |= 1;
-	if (World.GetStreamingLevels().Num() <= 0 || World.GetStreamingLevels()[0] != ExpectedFirst)
-		MismatchMask |= 2;
-	if (World.GetStreamingLevels().Num() <= 1 || World.GetStreamingLevels()[1] != ExpectedSecond)
-		MismatchMask |= 4;
-	if (ExpectedFirst.GetShouldBeVisibleInEditor() != $EXPECTED_FIRST_VISIBLE$)
-		MismatchMask |= 8;
-	if (ExpectedSecond.GetShouldBeVisibleInEditor() != $EXPECTED_SECOND_VISIBLE$)
-		MismatchMask |= 16;
+				if (World.GetStreamingLevels().Num() != $EXPECTED_COUNT$)
+				{
+					MismatchMask |= 1;
+				}
+				if (World.GetStreamingLevels().Num() <= 0 || World.GetStreamingLevels()[0] != ExpectedFirst)
+				{
+					MismatchMask |= 2;
+				}
+				if (World.GetStreamingLevels().Num() <= 1 || World.GetStreamingLevels()[1] != ExpectedSecond)
+				{
+					MismatchMask |= 4;
+				}
+				if (ExpectedFirst.GetShouldBeVisibleInEditor() != $EXPECTED_FIRST_VISIBLE$)
+				{
+					MismatchMask |= 8;
+				}
+				if (ExpectedSecond.GetShouldBeVisibleInEditor() != $EXPECTED_SECOND_VISIBLE$)
+				{
+					MismatchMask |= 16;
+				}
 
-	return MismatchMask;
-}
-)");
-		Script.ReplaceInline(TEXT("$EXPECTED_COUNT$"), *LexToString(NativeStreamingLevels.Num()));
-		Script.ReplaceInline(TEXT("$EXPECTED_FIRST_VISIBLE$"), bNativeFirstVisibility ? TEXT("true") : TEXT("false"));
-		Script.ReplaceInline(TEXT("$EXPECTED_SECOND_VISIBLE$"), bExpectedSecondVisibility ? TEXT("true") : TEXT("false"));
+				return MismatchMask;
+			}
+			)AS");
+		WorldStreamingAccessSource.ReplaceInline(TEXT("$EXPECTED_COUNT$"), *LexToString(NativeStreamingLevels.Num()));
+		WorldStreamingAccessSource.ReplaceInline(TEXT("$EXPECTED_FIRST_VISIBLE$"), bNativeFirstVisibility ? TEXT("true") : TEXT("false"));
+		WorldStreamingAccessSource.ReplaceInline(TEXT("$EXPECTED_SECOND_VISIBLE$"), bExpectedSecondVisibility ? TEXT("true") : TEXT("false"));
 
-		asIScriptModule* Module = BuildModule(*TestRunner, Engine, WorldStreamingAccessModuleName, Script);
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, WorldStreamingAccessModuleName, WorldStreamingAccessSource);
 		if (Module == nullptr)
 		{
 			return;
@@ -339,7 +346,6 @@ int VerifyWorldStreamingAccess(UWorld World, ULevelStreaming ExpectedFirst, ULev
 			bNativeSecondVisibility,
 			TEXT("World streaming access test should keep the second streaming level editor-hidden")));
 
-		}
 	}
 };
 

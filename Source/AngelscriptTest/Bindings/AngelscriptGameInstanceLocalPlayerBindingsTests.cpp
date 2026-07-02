@@ -172,13 +172,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGameInstanceLocalPlayerBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: Compat
 	// ====================================================================
 
-	TEST_METHOD(Compat)
+	TEST_METHOD(GameInstanceAndLocalPlayer)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope Scope(Engine);
@@ -207,60 +211,94 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGameInstanceLocalPlayerBindingsTest,
 			return;
 		}
 
-		FString Script = TEXT(R"(
-int VerifyGameInstanceLocalPlayerCompat(UWorld ExpectedWorld, UGameInstance GameInstance)
-{
-	int MismatchMask = 0;
+		FString LocalPlayerCompatSource = ASTEST_AS(R"AS(
+			int VerifyGameInstanceLocalPlayerCompat(UWorld ExpectedWorld, UGameInstance GameInstance)
+			{
+				int MismatchMask = 0;
 
-	if (ExpectedWorld == null)
-		MismatchMask |= 1;
-	if (GameInstance == null)
-		MismatchMask |= 2;
-	if (MismatchMask != 0)
-		return MismatchMask;
+				if (ExpectedWorld == null)
+				{
+					MismatchMask |= 1;
+				}
+				if (GameInstance == null)
+				{
+					MismatchMask |= 2;
+				}
+				if (MismatchMask != 0)
+				{
+					return MismatchMask;
+				}
 
-	if (GameInstance.GetNumLocalPlayers() != $INITIAL_COUNT$)
-		MismatchMask |= 4;
+				if (GameInstance.GetNumLocalPlayers() != $INITIAL_COUNT$)
+				{
+					MismatchMask |= 4;
+				}
 
-	FString OutError;
-	ULocalPlayer Created = GameInstance.CreateLocalPlayer($CONTROLLER_ID$, OutError, false);
-	if (Created == null)
-		return MismatchMask | 8;
+				FString OutError;
+				ULocalPlayer Created = GameInstance.CreateLocalPlayer($CONTROLLER_ID$, OutError, false);
+				if (Created == null)
+				{
+					return MismatchMask | 8;
+				}
 
-	if (OutError.Len() != 0)
-		MismatchMask |= 16;
-	if (GameInstance.GetNumLocalPlayers() != ($INITIAL_COUNT$ + 1))
-		MismatchMask |= 32;
-	if (GameInstance.GetLocalPlayerByIndex($INITIAL_COUNT$) != Created)
-		MismatchMask |= 64;
-	if (GameInstance.FindLocalPlayerFromControllerId($CONTROLLER_ID$) != Created)
-		MismatchMask |= 128;
-	if (GameInstance.GetFirstGamePlayer() != Created)
-		MismatchMask |= 256;
-	if (Created.GetGameInstance() != GameInstance)
-		MismatchMask |= 512;
-	if (Created.GetWorld() != ExpectedWorld)
-		MismatchMask |= 1024;
-	if (Created.GetControllerId() != $CONTROLLER_ID$)
-		MismatchMask |= 2048;
-	if (GameInstance.GetFirstLocalPlayerController(ExpectedWorld) != null)
-		MismatchMask |= 4096;
+				if (OutError.Len() != 0)
+				{
+					MismatchMask |= 16;
+				}
+				if (GameInstance.GetNumLocalPlayers() != ($INITIAL_COUNT$ + 1))
+				{
+					MismatchMask |= 32;
+				}
+				if (GameInstance.GetLocalPlayerByIndex($INITIAL_COUNT$) != Created)
+				{
+					MismatchMask |= 64;
+				}
+				if (GameInstance.FindLocalPlayerFromControllerId($CONTROLLER_ID$) != Created)
+				{
+					MismatchMask |= 128;
+				}
+				if (GameInstance.GetFirstGamePlayer() != Created)
+				{
+					MismatchMask |= 256;
+				}
+				if (Created.GetGameInstance() != GameInstance)
+				{
+					MismatchMask |= 512;
+				}
+				if (Created.GetWorld() != ExpectedWorld)
+				{
+					MismatchMask |= 1024;
+				}
+				if (Created.GetControllerId() != $CONTROLLER_ID$)
+				{
+					MismatchMask |= 2048;
+				}
+				if (GameInstance.GetFirstLocalPlayerController(ExpectedWorld) != null)
+				{
+					MismatchMask |= 4096;
+				}
 
-	if (!GameInstance.RemoveLocalPlayer(Created))
-		return MismatchMask | 8192;
+				if (!GameInstance.RemoveLocalPlayer(Created))
+				{
+					return MismatchMask | 8192;
+				}
 
-	if (GameInstance.GetNumLocalPlayers() != $INITIAL_COUNT$)
-		MismatchMask |= 16384;
-	if (GameInstance.FindLocalPlayerFromControllerId($CONTROLLER_ID$) != null)
-		MismatchMask |= 32768;
+				if (GameInstance.GetNumLocalPlayers() != $INITIAL_COUNT$)
+				{
+					MismatchMask |= 16384;
+				}
+				if (GameInstance.FindLocalPlayerFromControllerId($CONTROLLER_ID$) != null)
+				{
+					MismatchMask |= 32768;
+				}
 
-	return MismatchMask;
-}
-)");
-		Script.ReplaceInline(TEXT("$INITIAL_COUNT$"), *LexToString(InitialLocalPlayerCount));
-		Script.ReplaceInline(TEXT("$CONTROLLER_ID$"), *LexToString(GameInstanceLocalPlayerTestHelpers::LocalPlayerControllerId));
+				return MismatchMask;
+			}
+			)AS");
+		LocalPlayerCompatSource.ReplaceInline(TEXT("$INITIAL_COUNT$"), *LexToString(InitialLocalPlayerCount));
+		LocalPlayerCompatSource.ReplaceInline(TEXT("$CONTROLLER_ID$"), *LexToString(GameInstanceLocalPlayerTestHelpers::LocalPlayerControllerId));
 
-		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASGameInstanceLocalPlayerCompat", Script);
+		asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASGameInstanceLocalPlayerCompat", LocalPlayerCompatSource);
 		if (Module == nullptr) return;
 
 		FScopedTestWorldContextScope WorldContextScope(TestWorld);

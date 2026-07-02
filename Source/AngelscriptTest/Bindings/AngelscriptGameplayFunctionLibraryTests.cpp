@@ -44,7 +44,7 @@ using namespace AngelscriptFunctionalTestUtils;
 // Helpers
 // ----------------------------------------------------------------------------
 
-namespace
+namespace AngelscriptGameplayFunctionLibraryTestPrivate
 {
 	static const FName GameplayFunctionLibraryModuleName(TEXT("ASGameplayFunctionLibraryAsyncSaveLoad"));
 	static const FString GameplayFunctionLibraryFilename(TEXT("GameplayFunctionLibraryAsyncSaveLoad.as"));
@@ -121,6 +121,8 @@ namespace
 	}
 }
 
+using namespace AngelscriptGameplayFunctionLibraryTestPrivate;
+
 // ----------------------------------------------------------------------------
 // Test class
 // ----------------------------------------------------------------------------
@@ -134,7 +136,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGameplayFunctionLibraryTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: AsyncSaveLoadDelegates
@@ -162,32 +168,34 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGameplayFunctionLibraryTest,
 			UGameplayStatics::DeleteGameInSlot(MissingSlotName, UserIndex);
 		};
 
+		const FString AsyncSaveLoadHarnessSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class UAsyncSaveLoadScriptHarness : UObject
+			{
+				UFUNCTION()
+				void StartAsyncSave(USaveGame SaveGameObject, UObject Receiver, const FString& SlotName, int32 UserIndex)
+				{
+					FAsyncSaveGameToSlotDynamicDelegate SaveDelegate;
+					SaveDelegate.BindUFunction(Receiver, n"OnSaveComplete");
+					UGameplayLibrary::AsyncSaveGameToSlot(SaveGameObject, SlotName, UserIndex, SaveDelegate);
+				}
+
+				UFUNCTION()
+				void StartAsyncLoad(UObject Receiver, const FString& SlotName, int32 UserIndex)
+				{
+					FAsyncLoadGameFromSlotDynamicDelegate LoadDelegate;
+					LoadDelegate.BindUFunction(Receiver, n"OnLoadComplete");
+					UGameplayLibrary::AsyncLoadGameFromSlot(SlotName, UserIndex, LoadDelegate);
+				}
+			}
+			)AS");
+
 		UClass* ScriptHarnessClass = CompileScriptModule(
 			*TestRunner,
 			Engine,
 			GameplayFunctionLibraryModuleName,
 			GameplayFunctionLibraryFilename,
-			TEXT(R"AS(
-UCLASS()
-class UAsyncSaveLoadScriptHarness : UObject
-{
-	UFUNCTION()
-	void StartAsyncSave(USaveGame SaveGameObject, UObject Receiver, const FString& SlotName, int32 UserIndex)
-	{
-		FAsyncSaveGameToSlotDynamicDelegate SaveDelegate;
-		SaveDelegate.BindUFunction(Receiver, n"OnSaveComplete");
-		UGameplayLibrary::AsyncSaveGameToSlot(SaveGameObject, SlotName, UserIndex, SaveDelegate);
-	}
-
-	UFUNCTION()
-	void StartAsyncLoad(UObject Receiver, const FString& SlotName, int32 UserIndex)
-	{
-		FAsyncLoadGameFromSlotDynamicDelegate LoadDelegate;
-		LoadDelegate.BindUFunction(Receiver, n"OnLoadComplete");
-		UGameplayLibrary::AsyncLoadGameFromSlot(SlotName, UserIndex, LoadDelegate);
-	}
-}
-)AS"),
+			AsyncSaveLoadHarnessSource,
 			GameplayFunctionLibraryClassName);
 		if (ScriptHarnessClass == nullptr)
 		{
@@ -324,32 +332,34 @@ class UAsyncSaveLoadScriptHarness : UObject
 			UGameplayStatics::DeleteGameInSlot(MissingSlotName, UserIndex);
 		};
 
+		const FString ImmediateFailureHarnessSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class UAsyncSaveLoadImmediateFailureScriptHarness : UObject
+			{
+				UFUNCTION()
+				void StartAsyncSave(USaveGame SaveGameObject, UObject Receiver, const FString& SlotName, int32 UserIndex)
+				{
+					FAsyncSaveGameToSlotDynamicDelegate SaveDelegate;
+					SaveDelegate.BindUFunction(Receiver, n"OnSaveComplete");
+					UGameplayLibrary::AsyncSaveGameToSlot(SaveGameObject, SlotName, UserIndex, SaveDelegate);
+				}
+
+				UFUNCTION()
+				void StartAsyncLoad(UObject Receiver, const FString& SlotName, int32 UserIndex)
+				{
+					FAsyncLoadGameFromSlotDynamicDelegate LoadDelegate;
+					LoadDelegate.BindUFunction(Receiver, n"OnLoadComplete");
+					UGameplayLibrary::AsyncLoadGameFromSlot(SlotName, UserIndex, LoadDelegate);
+				}
+			}
+			)AS");
+
 		UClass* ScriptHarnessClass = CompileScriptModule(
 			*TestRunner,
 			Engine,
 			GameplayFunctionLibraryImmediateFailureModuleName,
 			GameplayFunctionLibraryImmediateFailureFilename,
-			TEXT(R"AS(
-UCLASS()
-class UAsyncSaveLoadImmediateFailureScriptHarness : UObject
-{
-	UFUNCTION()
-	void StartAsyncSave(USaveGame SaveGameObject, UObject Receiver, const FString& SlotName, int32 UserIndex)
-	{
-		FAsyncSaveGameToSlotDynamicDelegate SaveDelegate;
-		SaveDelegate.BindUFunction(Receiver, n"OnSaveComplete");
-		UGameplayLibrary::AsyncSaveGameToSlot(SaveGameObject, SlotName, UserIndex, SaveDelegate);
-	}
-
-	UFUNCTION()
-	void StartAsyncLoad(UObject Receiver, const FString& SlotName, int32 UserIndex)
-	{
-		FAsyncLoadGameFromSlotDynamicDelegate LoadDelegate;
-		LoadDelegate.BindUFunction(Receiver, n"OnLoadComplete");
-		UGameplayLibrary::AsyncLoadGameFromSlot(SlotName, UserIndex, LoadDelegate);
-	}
-}
-)AS"),
+			ImmediateFailureHarnessSource,
 			GameplayFunctionLibraryImmediateFailureClassName);
 		if (ScriptHarnessClass == nullptr)
 		{
@@ -380,7 +390,7 @@ class UAsyncSaveLoadImmediateFailureScriptHarness : UObject
 
 		SaveGameObject->Marker = SaveMarker;
 
-		auto RunInvalidSaveCase = [this, &Engine, ScriptHarness, ScriptHarnessClass, Recorder, UserIndex](
+		auto VerifyInvalidSaveCase = [this, &Engine, ScriptHarness, ScriptHarnessClass, Recorder, UserIndex](
 			const TCHAR* CaseLabel,
 			USaveGame* SaveObject,
 			const FString& SlotName) -> bool
@@ -415,7 +425,7 @@ class UAsyncSaveLoadImmediateFailureScriptHarness : UObject
 			return bPassed;
 		};
 
-		auto RunInvalidLoadCase = [this, &Engine, ScriptHarness, ScriptHarnessClass, Recorder, UserIndex](
+		auto VerifyInvalidLoadCase = [this, &Engine, ScriptHarness, ScriptHarnessClass, Recorder, UserIndex](
 			const TCHAR* CaseLabel,
 			const FString& SlotName) -> bool
 		{
@@ -450,7 +460,7 @@ class UAsyncSaveLoadImmediateFailureScriptHarness : UObject
 			return bPassed;
 		};
 
-		if (!RunInvalidSaveCase(
+		if (!VerifyInvalidSaveCase(
 				TEXT("Gameplay async immediate-failure null-save empty-slot path"),
 				nullptr,
 				FString()))
@@ -458,7 +468,7 @@ class UAsyncSaveLoadImmediateFailureScriptHarness : UObject
 			return;
 		}
 
-		if (!RunInvalidSaveCase(
+		if (!VerifyInvalidSaveCase(
 				TEXT("Gameplay async immediate-failure valid-save empty-slot path"),
 				SaveGameObject,
 				FString()))
@@ -466,14 +476,14 @@ class UAsyncSaveLoadImmediateFailureScriptHarness : UObject
 			return;
 		}
 
-		if (!RunInvalidLoadCase(
+		if (!VerifyInvalidLoadCase(
 				TEXT("Gameplay async immediate-failure empty-slot load path"),
 				FString()))
 		{
 			return;
 		}
 
-		if (!RunInvalidLoadCase(
+		if (!VerifyInvalidLoadCase(
 				TEXT("Gameplay async immediate-failure missing-slot load path"),
 				MissingSlotName))
 		{

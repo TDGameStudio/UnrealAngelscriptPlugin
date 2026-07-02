@@ -47,51 +47,55 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptStringTableBindingsTest,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
-inline static const FString GreetingKeyString = FString(TEXT("Greeting"));
-inline static const FTextKey GreetingKey = FTextKey(TEXT("Greeting"));
-inline static const FName CommentMetaDataId = FName(TEXT("Comment"));
-inline static const FString ExpectedNamespace = FString(TEXT("AS.Test.Namespace"));
-inline static const FString ExpectedGreeting = FString(TEXT("Hello"));
-inline static const FString ExpectedComment = FString(TEXT("Doc"));
+	inline static const FString GreetingKeyString = FString(TEXT("Greeting"));
+	inline static const FTextKey GreetingKey = FTextKey(TEXT("Greeting"));
+	inline static const FName CommentMetaDataId = FName(TEXT("Comment"));
+	inline static const FString ExpectedNamespace = FString(TEXT("AS.Test.Namespace"));
+	inline static const FString ExpectedGreeting = FString(TEXT("Hello"));
+	inline static const FString ExpectedComment = FString(TEXT("Doc"));
 
-static FName MakeUniqueStringTableId()
-{
-	return FName(*FString::Printf(
-		TEXT("Angelscript.Test.StringTable.%s"),
-		*FGuid::NewGuid().ToString(EGuidFormats::Digits)));
-}
+	static FName MakeUniqueStringTableId()
+	{
+		return FName(*FString::Printf(
+			TEXT("Angelscript.Test.StringTable.%s"),
+			*FGuid::NewGuid().ToString(EGuidFormats::Digits)));
+	}
 
-static void UnregisterStringTableIfPresent(const FName TableId)
-{
-	FStringTableRegistry::Get().UnregisterStringTable(TableId);
-}
+	static void UnregisterStringTableIfPresent(const FName TableId)
+	{
+		FStringTableRegistry::Get().UnregisterStringTable(TableId);
+	}
 
-static FString BuildLocTableScript(const FName TableId)
-{
-	FString Script = TEXT(R"(
-int LocTable_ReadBack()
-{
-const FName TableId = n"__TABLE_ID__";
-LOCTABLE_NEW(TableId, "__TABLE_NAMESPACE__");
-LOCTABLE_SETSTRING(TableId, "__GREETING_KEY__", "__GREETING_VALUE__");
-LOCTABLE_SETMETA(TableId, "__GREETING_KEY__", n"__COMMENT_META_ID__", "__COMMENT_VALUE__");
+	static FString BuildLocTableScript(const FName TableId)
+	{
+		FString LocTableSource = ASTEST_AS(R"AS(
+			int LocTable_ReadBack()
+			{
+				const FName TableId = n"__TABLE_ID__";
+				LOCTABLE_NEW(TableId, "__TABLE_NAMESPACE__");
+				LOCTABLE_SETSTRING(TableId, "__GREETING_KEY__", "__GREETING_VALUE__");
+				LOCTABLE_SETMETA(TableId, "__GREETING_KEY__", n"__COMMENT_META_ID__", "__COMMENT_VALUE__");
 
-FText Greeting = LOCTABLE(TableId, "__GREETING_KEY__");
-if (Greeting.IsEmpty())
-	return 0;
-if (Greeting.ToString() != "__GREETING_VALUE__")
-	return 0;
-return 1;
-}
-)");
-	Script.ReplaceInline(TEXT("__TABLE_ID__"), *TableId.ToString(), ESearchCase::CaseSensitive);
-	Script.ReplaceInline(TEXT("__TABLE_NAMESPACE__"), *ExpectedNamespace, ESearchCase::CaseSensitive);
-	Script.ReplaceInline(TEXT("__GREETING_KEY__"), *GreetingKeyString, ESearchCase::CaseSensitive);
-	Script.ReplaceInline(TEXT("__GREETING_VALUE__"), *ExpectedGreeting, ESearchCase::CaseSensitive);
-	Script.ReplaceInline(TEXT("__COMMENT_META_ID__"), *CommentMetaDataId.ToString(), ESearchCase::CaseSensitive);
-	Script.ReplaceInline(TEXT("__COMMENT_VALUE__"), *ExpectedComment, ESearchCase::CaseSensitive);
-	return Script;
-}
+				FText Greeting = LOCTABLE(TableId, "__GREETING_KEY__");
+				if (Greeting.IsEmpty())
+				{
+					return 0;
+				}
+				if (Greeting.ToString() != "__GREETING_VALUE__")
+				{
+					return 0;
+				}
+				return 1;
+			}
+			)AS");
+		LocTableSource.ReplaceInline(TEXT("__TABLE_ID__"), *TableId.ToString(), ESearchCase::CaseSensitive);
+		LocTableSource.ReplaceInline(TEXT("__TABLE_NAMESPACE__"), *ExpectedNamespace, ESearchCase::CaseSensitive);
+		LocTableSource.ReplaceInline(TEXT("__GREETING_KEY__"), *GreetingKeyString, ESearchCase::CaseSensitive);
+		LocTableSource.ReplaceInline(TEXT("__GREETING_VALUE__"), *ExpectedGreeting, ESearchCase::CaseSensitive);
+		LocTableSource.ReplaceInline(TEXT("__COMMENT_META_ID__"), *CommentMetaDataId.ToString(), ESearchCase::CaseSensitive);
+		LocTableSource.ReplaceInline(TEXT("__COMMENT_VALUE__"), *ExpectedComment, ESearchCase::CaseSensitive);
+		return LocTableSource;
+	}
 
 public:
 	BEFORE_ALL()
@@ -99,29 +103,33 @@ public:
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: LocTableCompat
 	// ====================================================================
 
-	TEST_METHOD(LocTableCompat)
+	TEST_METHOD(LocTableLookup)
 	{
-FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		const FName TableId = MakeUniqueStringTableId();
 		ON_SCOPE_EXIT { UnregisterStringTableIfPresent(TableId); };
 		UnregisterStringTableIfPresent(TableId);
 
-		const FString Script = BuildLocTableScript(TableId);
+		const FString LocTableSource = BuildLocTableScript(TableId);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASStringTable_LocTableCompat"), Script);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASStringTable_LocTableCompat"), LocTableSource);
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
 		// Verify script can read back the localized text
-		ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int LocTable_ReadBack()"), TEXT("LOCTABLE reads back expected localized text"), 1);
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int LocTable_ReadBack()"), TEXT("LOCTABLE reads back expected localized text"), 1), TEXT("LOCTABLE reads back expected localized text")));
 
 		// Verify C++ registry state after script execution
 		FStringTableConstPtr StringTable = FStringTableRegistry::Get().FindStringTable(TableId);

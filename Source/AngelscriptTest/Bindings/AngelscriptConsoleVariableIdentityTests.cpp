@@ -18,13 +18,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptConsoleVariableIdentityBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
-	TEST_METHOD(IdentityCompat)
+	TEST_METHOD(ExistingIdentity)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunConsoleVariableIdentitySection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyConsoleVariableIdentity(*TestRunner, Engine),
+			TEXT("VerifyConsoleVariableIdentity should pass")));
 	}
 };
 

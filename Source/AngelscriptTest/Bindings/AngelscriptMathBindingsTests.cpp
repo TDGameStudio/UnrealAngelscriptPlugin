@@ -47,7 +47,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMathBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: ShortestPathAndTransformSemantics
@@ -58,68 +62,68 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptMathBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMath_ShortestPath"), TEXT(R"(
-FRotator GetShortestLerp()
-{
-	const FRotator A = FRotator(0.0f, 170.0f, 0.0f);
-	const FRotator B = FRotator(0.0f, -170.0f, 0.0f);
-	return Math::LerpShortestPath(A, B, 0.5);
-}
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMath_ShortestPath"), ASTEST_AS(R"AS(
+			FRotator GetShortestLerp()
+			{
+				const FRotator A = FRotator(0.0f, 170.0f, 0.0f);
+				const FRotator B = FRotator(0.0f, -170.0f, 0.0f);
+				return Math::LerpShortestPath(A, B, 0.5);
+			}
 
-FRotator GetShortestInterp()
-{
-	const FRotator A = FRotator(0.0f, 170.0f, 0.0f);
-	const FRotator B = FRotator(0.0f, -170.0f, 0.0f);
-	return Math::RInterpShortestPathTo(A, B, 0.5f, 4.0f);
-}
+			FRotator GetShortestInterp()
+			{
+				const FRotator A = FRotator(0.0f, 170.0f, 0.0f);
+				const FRotator B = FRotator(0.0f, -170.0f, 0.0f);
+				return Math::RInterpShortestPathTo(A, B, 0.5f, 4.0f);
+			}
 
-FRotator GetShortestInterpConstant()
-{
-	const FRotator A = FRotator(0.0f, 170.0f, 0.0f);
-	const FRotator B = FRotator(0.0f, -170.0f, 0.0f);
-	return Math::RInterpConstantShortestPathTo(A, B, 0.5f, 90.0f);
-}
+			FRotator GetShortestInterpConstant()
+			{
+				const FRotator A = FRotator(0.0f, 170.0f, 0.0f);
+				const FRotator B = FRotator(0.0f, -170.0f, 0.0f);
+				return Math::RInterpConstantShortestPathTo(A, B, 0.5f, 90.0f);
+			}
 
-FTransform GetZeroSpeedTransform()
-{
-	const FTransform CurrentTransform = FTransform(FRotator(0.0f, 90.0f, 0.0f), FVector(10.0f, 0.0f, 0.0f), FVector::OneVector);
-	const FTransform TargetTransform = FTransform(FRotator(0.0f, 180.0f, 0.0f), FVector(20.0f, 0.0f, 0.0f), FVector::OneVector);
-	return Math::TInterpTo(CurrentTransform, TargetTransform, 0.25f, 0.0f);
-}
+			FTransform GetZeroSpeedTransform()
+			{
+				const FTransform CurrentTransform = FTransform(FRotator(0.0f, 90.0f, 0.0f), FVector(10.0f, 0.0f, 0.0f), FVector::OneVector);
+				const FTransform TargetTransform = FTransform(FRotator(0.0f, 180.0f, 0.0f), FVector(20.0f, 0.0f, 0.0f), FVector::OneVector);
+				return Math::TInterpTo(CurrentTransform, TargetTransform, 0.25f, 0.0f);
+			}
 
-FTransform GetPositiveSpeedTransform()
-{
-	const FTransform CurrentTransform = FTransform(FRotator(0.0f, 90.0f, 0.0f), FVector(10.0f, 0.0f, 0.0f), FVector::OneVector);
-	const FTransform TargetTransform = FTransform(FRotator(0.0f, 180.0f, 0.0f), FVector(20.0f, 0.0f, 0.0f), FVector::OneVector);
-	return Math::TInterpTo(CurrentTransform, TargetTransform, 0.25f, 2.0f);
-}
+			FTransform GetPositiveSpeedTransform()
+			{
+				const FTransform CurrentTransform = FTransform(FRotator(0.0f, 90.0f, 0.0f), FVector(10.0f, 0.0f, 0.0f), FVector::OneVector);
+				const FTransform TargetTransform = FTransform(FRotator(0.0f, 180.0f, 0.0f), FVector(20.0f, 0.0f, 0.0f), FVector::OneVector);
+				return Math::TInterpTo(CurrentTransform, TargetTransform, 0.25f, 2.0f);
+			}
 
-FRotator GetTransformedRotation()
-{
-	const FTransform CurrentTransform = FTransform(FRotator(0.0f, 90.0f, 0.0f), FVector(10.0f, 0.0f, 0.0f), FVector::OneVector);
-	const FRotator LocalRotation = FRotator(10.0f, 20.0f, 30.0f);
-	return CurrentTransform.TransformRotation(LocalRotation);
-}
+			FRotator GetTransformedRotation()
+			{
+				const FTransform CurrentTransform = FTransform(FRotator(0.0f, 90.0f, 0.0f), FVector(10.0f, 0.0f, 0.0f), FVector::OneVector);
+				const FRotator LocalRotation = FRotator(10.0f, 20.0f, 30.0f);
+				return CurrentTransform.TransformRotation(LocalRotation);
+			}
 
-FRotator GetRoundTripRotation()
-{
-	const FTransform CurrentTransform = FTransform(FRotator(0.0f, 90.0f, 0.0f), FVector(10.0f, 0.0f, 0.0f), FVector::OneVector);
-	const FRotator LocalRotation = FRotator(10.0f, 20.0f, 30.0f);
-	return CurrentTransform.InverseTransformRotation(CurrentTransform.TransformRotation(LocalRotation));
-}
+			FRotator GetRoundTripRotation()
+			{
+				const FTransform CurrentTransform = FTransform(FRotator(0.0f, 90.0f, 0.0f), FVector(10.0f, 0.0f, 0.0f), FVector::OneVector);
+				const FRotator LocalRotation = FRotator(10.0f, 20.0f, 30.0f);
+				return CurrentTransform.InverseTransformRotation(CurrentTransform.TransformRotation(LocalRotation));
+			}
 
-FVector GetMoveSmallStep()
-{
-	const FVector Start = FVector::ZeroVector;
-	return Start.MoveTowards(FVector(10.0f, 0.0f, 0.0f), 3.0);
-}
+			FVector GetMoveSmallStep()
+			{
+				const FVector Start = FVector::ZeroVector;
+				return Start.MoveTowards(FVector(10.0f, 0.0f, 0.0f), 3.0);
+			}
 
-FVector GetMoveLargeStep()
-{
-	const FVector Start = FVector::ZeroVector;
-	return Start.MoveTowards(FVector(10.0f, 0.0f, 0.0f), 20.0);
-}
-)"));
+			FVector GetMoveLargeStep()
+			{
+				const FVector Start = FVector::ZeroVector;
+				return Start.MoveTowards(FVector(10.0f, 0.0f, 0.0f), 20.0);
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		asIScriptModule& Module = Mod.GetModule();
 
@@ -175,16 +179,58 @@ FVector GetMoveLargeStep()
 		ASSERT_THAT(IsTrue(
 			FMath::Abs(FMath::FindDeltaAngleDegrees(ScriptShortestLerp.Yaw, 0.0f)) > 90.0f,
 			TEXT("Math::LerpShortestPath should stay near the 180-degree seam instead of crossing back toward zero")));
-		VerifyMathBindingsRotator(*TestRunner, TEXT("Math::LerpShortestPath should match native quaternion slerp"), ScriptShortestLerp, ExpectedShortestLerp);
-		VerifyMathBindingsRotator(*TestRunner, TEXT("Math::RInterpShortestPathTo should match native quaternion interp"), ScriptShortestInterp, ExpectedShortestInterp);
-		VerifyMathBindingsRotator(*TestRunner, TEXT("Math::RInterpConstantShortestPathTo should match native constant-speed quaternion interp"), ScriptShortestInterpConstant, ExpectedShortestInterpConstant);
-		VerifyMathBindingsTransform(*TestRunner, TEXT("Math::TInterpTo should return the target transform when InterpSpeed is zero"), ScriptZeroSpeedTransform, ExpectedZeroSpeedTransform);
-		VerifyMathBindingsTransform(*TestRunner, TEXT("Math::TInterpTo should match native blend semantics for positive InterpSpeed"), ScriptPositiveSpeedTransform, ExpectedPositiveSpeedTransform);
-		VerifyMathBindingsRotator(*TestRunner, TEXT("FTransform.TransformRotation should match native quaternion-based rotation transform"), ScriptTransformedRotation, ExpectedTransformedRotation);
-		VerifyMathBindingsRotator(*TestRunner, TEXT("FTransform.InverseTransformRotation should round-trip the transformed rotator"), ScriptRoundTripRotation, ExpectedRoundTripRotation);
-		VerifyMathBindingsRotator(*TestRunner, TEXT("FTransform rotation round-trip should recover the original local rotator"), ScriptRoundTripRotation, LocalRotation);
-		VerifyMathBindingsVector(*TestRunner, TEXT("MoveTowards should advance by the fixed step distance when the target is farther away"), ScriptMoveSmallStep, ExpectedMoveSmallStep);
-		VerifyMathBindingsVector(*TestRunner, TEXT("MoveTowards should clamp to the target when the requested step overshoots"), ScriptMoveLargeStep, ExpectedMoveLargeStep);
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsRotator(
+				*TestRunner,
+				TEXT("Math::LerpShortestPath should match native quaternion slerp"),
+				ScriptShortestLerp,
+				ExpectedShortestLerp)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsRotator(
+				*TestRunner,
+				TEXT("Math::RInterpShortestPathTo should match native quaternion interp"),
+				ScriptShortestInterp,
+				ExpectedShortestInterp)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsRotator(
+				*TestRunner,
+				TEXT("Math::RInterpConstantShortestPathTo should match native constant-speed quaternion interp"),
+				ScriptShortestInterpConstant,
+				ExpectedShortestInterpConstant)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsTransform(
+				*TestRunner,
+				TEXT("Math::TInterpTo should return the target transform when InterpSpeed is zero"),
+				ScriptZeroSpeedTransform,
+				ExpectedZeroSpeedTransform)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsTransform(
+				*TestRunner,
+				TEXT("Math::TInterpTo should match native blend semantics for positive InterpSpeed"),
+				ScriptPositiveSpeedTransform,
+				ExpectedPositiveSpeedTransform)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsRotator(
+				*TestRunner,
+				TEXT("FTransform.TransformRotation should match native quaternion-based rotation transform"),
+				ScriptTransformedRotation,
+				ExpectedTransformedRotation)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsRotator(
+				*TestRunner,
+				TEXT("FTransform.InverseTransformRotation should round-trip the transformed rotator"),
+				ScriptRoundTripRotation,
+				ExpectedRoundTripRotation)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsRotator(
+				*TestRunner,
+				TEXT("FTransform rotation round-trip should recover the original local rotator"),
+				ScriptRoundTripRotation,
+				LocalRotation)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsVector(*TestRunner, TEXT("MoveTowards should advance by the fixed step distance when the target is farther away"), ScriptMoveSmallStep, ExpectedMoveSmallStep)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsVector(*TestRunner, TEXT("MoveTowards should clamp to the target when the requested step overshoots"), ScriptMoveLargeStep, ExpectedMoveLargeStep)));
 	}
 
 	// ====================================================================
@@ -196,21 +242,79 @@ FVector GetMoveLargeStep()
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMath_PlanarProjection"), TEXT(R"AS(
-double GetVectorSize2D() { const FVector V = FVector(3.0f, 4.0f, 12.0f); return V.Size2D(FVector(0.0f, 0.0f, 1.0f)); }
-double GetVectorSizeSquared2D() { const FVector V = FVector(3.0f, 4.0f, 12.0f); return V.SizeSquared2D(FVector(0.0f, 0.0f, 1.0f)); }
-FVector GetVectorProjected() { const FVector V = FVector(3.0f, 4.0f, 12.0f); return V.PointPlaneProject(FVector(0.0f, 0.0f, 2.0f), FVector(0.0f, 0.0f, 1.0f)); }
-double GetVectorDist2D() { const FVector V = FVector(3.0f, 4.0f, 12.0f); return V.Dist2D(FVector(0.0f, 0.0f, 12.0f), FVector(0.0f, 0.0f, 1.0f)); }
-double GetVectorDistSquared2D() { const FVector V = FVector(3.0f, 4.0f, 12.0f); return V.DistSquared2D(FVector(0.0f, 0.0f, 12.0f), FVector(0.0f, 0.0f, 1.0f)); }
-FString GetVectorColorString() { const FVector V = FVector(1.0f, 0.5f, 0.25f); return V.ToColorString(); }
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASMath_PlanarProjection"), ASTEST_AS(R"AS(
+			double GetVectorSize2D()
+			{
+				const FVector V = FVector(3.0f, 4.0f, 12.0f);
+				return V.Size2D(FVector(0.0f, 0.0f, 1.0f));
+			}
 
-float32 GetVector3fSize2D() { const FVector3f V = FVector3f(3.0f, 4.0f, 12.0f); return V.Size2D(FVector3f(0.0f, 0.0f, 1.0f)); }
-float32 GetVector3fSizeSquared2D() { const FVector3f V = FVector3f(3.0f, 4.0f, 12.0f); return V.SizeSquared2D(FVector3f(0.0f, 0.0f, 1.0f)); }
-FVector3f GetVector3fProjected() { const FVector3f V = FVector3f(3.0f, 4.0f, 12.0f); return V.PointPlaneProject(FVector3f(0.0f, 0.0f, 2.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
-float32 GetVector3fDist2D() { const FVector3f V = FVector3f(3.0f, 4.0f, 12.0f); return V.Dist2D(FVector3f(0.0f, 0.0f, 12.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
-float32 GetVector3fDistSquared2D() { const FVector3f V = FVector3f(3.0f, 4.0f, 12.0f); return V.DistSquared2D(FVector3f(0.0f, 0.0f, 12.0f), FVector3f(0.0f, 0.0f, 1.0f)); }
-FString GetVector3fColorString() { const FVector3f V = FVector3f(1.0f, 0.5f, 0.25f); return V.ToColorString(); }
-)AS"));
+			double GetVectorSizeSquared2D()
+			{
+				const FVector V = FVector(3.0f, 4.0f, 12.0f);
+				return V.SizeSquared2D(FVector(0.0f, 0.0f, 1.0f));
+			}
+
+			FVector GetVectorProjected()
+			{
+				const FVector V = FVector(3.0f, 4.0f, 12.0f);
+				return V.PointPlaneProject(FVector(0.0f, 0.0f, 2.0f), FVector(0.0f, 0.0f, 1.0f));
+			}
+
+			double GetVectorDist2D()
+			{
+				const FVector V = FVector(3.0f, 4.0f, 12.0f);
+				return V.Dist2D(FVector(0.0f, 0.0f, 12.0f), FVector(0.0f, 0.0f, 1.0f));
+			}
+
+			double GetVectorDistSquared2D()
+			{
+				const FVector V = FVector(3.0f, 4.0f, 12.0f);
+				return V.DistSquared2D(FVector(0.0f, 0.0f, 12.0f), FVector(0.0f, 0.0f, 1.0f));
+			}
+
+			FString GetVectorColorString()
+			{
+				const FVector V = FVector(1.0f, 0.5f, 0.25f);
+				return V.ToColorString();
+			}
+
+			float32 GetVector3fSize2D()
+			{
+				const FVector3f V = FVector3f(3.0f, 4.0f, 12.0f);
+				return V.Size2D(FVector3f(0.0f, 0.0f, 1.0f));
+			}
+
+			float32 GetVector3fSizeSquared2D()
+			{
+				const FVector3f V = FVector3f(3.0f, 4.0f, 12.0f);
+				return V.SizeSquared2D(FVector3f(0.0f, 0.0f, 1.0f));
+			}
+
+			FVector3f GetVector3fProjected()
+			{
+				const FVector3f V = FVector3f(3.0f, 4.0f, 12.0f);
+				return V.PointPlaneProject(FVector3f(0.0f, 0.0f, 2.0f), FVector3f(0.0f, 0.0f, 1.0f));
+			}
+
+			float32 GetVector3fDist2D()
+			{
+				const FVector3f V = FVector3f(3.0f, 4.0f, 12.0f);
+				return V.Dist2D(FVector3f(0.0f, 0.0f, 12.0f), FVector3f(0.0f, 0.0f, 1.0f));
+			}
+
+			float32 GetVector3fDistSquared2D()
+			{
+				const FVector3f V = FVector3f(3.0f, 4.0f, 12.0f);
+				return V.DistSquared2D(FVector3f(0.0f, 0.0f, 12.0f), FVector3f(0.0f, 0.0f, 1.0f));
+			}
+
+			FString GetVector3fColorString()
+			{
+				const FVector3f V = FVector3f(1.0f, 0.5f, 0.25f);
+				return V.ToColorString();
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		asIScriptModule& Module = Mod.GetModule();
 
@@ -278,17 +382,37 @@ FString GetVector3fColorString() { const FVector3f V = FVector3f(1.0f, 0.5f, 0.2
 		const float ExpectedVector3fDist2D = FMath::Sqrt(ExpectedVector3fDistSquared2D);
 		const FString ExpectedVector3fColorString = FString::Printf(TEXT("<Red>X=%3.3f </><Green>Y=%3.3f </><Blue>Z=%3.3f </>"), ColorVector3f.X, ColorVector3f.Y, ColorVector3f.Z);
 
-		VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector Size2D should match native planar length"), ScriptVectorSize2D, ExpectedVectorSize2D, KINDA_SMALL_NUMBER);
-		VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector SizeSquared2D should match native planar squared length"), ScriptVectorSizeSquared2D, ExpectedVectorSizeSquared2D, KINDA_SMALL_NUMBER);
-		VerifyMathBindingsVector(*TestRunner, TEXT("FVector PointPlaneProject should match native projection"), ScriptVectorProjected, ExpectedVectorProjected);
-		VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector Dist2D should match native planar distance"), ScriptVectorDist2D, ExpectedVectorDist2D, KINDA_SMALL_NUMBER);
-		VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector DistSquared2D should match native planar squared distance"), ScriptVectorDistSquared2D, ExpectedVectorDistSquared2D, KINDA_SMALL_NUMBER);
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector Size2D should match native planar length"), ScriptVectorSize2D, ExpectedVectorSize2D, KINDA_SMALL_NUMBER)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector SizeSquared2D should match native planar squared length"), ScriptVectorSizeSquared2D, ExpectedVectorSizeSquared2D, KINDA_SMALL_NUMBER)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsVector(*TestRunner, TEXT("FVector PointPlaneProject should match native projection"), ScriptVectorProjected, ExpectedVectorProjected)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector Dist2D should match native planar distance"), ScriptVectorDist2D, ExpectedVectorDist2D, KINDA_SMALL_NUMBER)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector DistSquared2D should match native planar squared distance"), ScriptVectorDistSquared2D, ExpectedVectorDistSquared2D, KINDA_SMALL_NUMBER)));
 		ASSERT_THAT(AreEqual(ExpectedVectorColorString, ScriptVectorColorString, TEXT("FVector ToColorString should preserve the exact formatted debug string")));
-		VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector3f Size2D should match native planar length"), ScriptVector3fSize2D, ExpectedVector3fSize2D, KINDA_SMALL_NUMBER);
-		VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector3f SizeSquared2D should match native planar squared length"), ScriptVector3fSizeSquared2D, ExpectedVector3fSizeSquared2D, KINDA_SMALL_NUMBER);
-		VerifyMathBindingsVector3f(*TestRunner, TEXT("FVector3f PointPlaneProject should match native projection"), ScriptVector3fProjected, ExpectedVector3fProjected);
-		VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector3f Dist2D should match native planar distance"), ScriptVector3fDist2D, ExpectedVector3fDist2D, KINDA_SMALL_NUMBER);
-		VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector3f DistSquared2D should match native planar squared distance"), ScriptVector3fDistSquared2D, ExpectedVector3fDistSquared2D, KINDA_SMALL_NUMBER);
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsNumeric(
+				*TestRunner,
+				TEXT("FVector3f Size2D should match native planar length"),
+				ScriptVector3fSize2D,
+				ExpectedVector3fSize2D,
+				KINDA_SMALL_NUMBER)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsNumeric(
+				*TestRunner,
+				TEXT("FVector3f SizeSquared2D should match native planar squared length"),
+				ScriptVector3fSizeSquared2D,
+				ExpectedVector3fSizeSquared2D,
+				KINDA_SMALL_NUMBER)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsVector3f(*TestRunner, TEXT("FVector3f PointPlaneProject should match native projection"), ScriptVector3fProjected, ExpectedVector3fProjected)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector3f Dist2D should match native planar distance"), ScriptVector3fDist2D, ExpectedVector3fDist2D, KINDA_SMALL_NUMBER)));
+		ASSERT_THAT(IsTrue(
+			VerifyMathBindingsNumeric(*TestRunner, TEXT("FVector3f DistSquared2D should match native planar squared distance"), ScriptVector3fDistSquared2D, ExpectedVector3fDistSquared2D, KINDA_SMALL_NUMBER)));
 		ASSERT_THAT(AreEqual(ExpectedVector3fColorString, ScriptVector3fColorString, TEXT("FVector3f ToColorString should preserve the exact formatted debug string")));
 	}
 };

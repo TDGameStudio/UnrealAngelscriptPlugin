@@ -34,12 +34,15 @@
 
 
 // ----------------------------------------------------------------------------
-// Helpers
+// Test class
 // ----------------------------------------------------------------------------
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptHitResultFunctionLibraryTest,
+	"Angelscript.TestModule.FunctionLibraries.HitResult",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	UBoxComponent* AddHitResultTestComponent(AActor& Owner, const FName ComponentName)
+private:
+	static UBoxComponent* AddHitResultTestComponent(AActor& Owner, const FName ComponentName)
 	{
 		UBoxComponent* BoxComponent = NewObject<UBoxComponent>(&Owner, ComponentName);
 		check(BoxComponent != nullptr);
@@ -52,22 +55,18 @@ namespace
 		BoxComponent->SetWorldLocation(FVector(25.0f, 0.0f, 0.0f));
 		return BoxComponent;
 	}
-}
 
-// ----------------------------------------------------------------------------
-// Test class
-// ----------------------------------------------------------------------------
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptHitResultFunctionLibraryTest,
-	"Angelscript.TestModule.FunctionLibraries.HitResult",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: Accessors
@@ -78,58 +77,78 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptHitResultFunctionLibraryTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASHitResult_Accessors"), TEXT(R"(
-int PopulateHitResult(FHitResult& OutHit, AActor ExpectedActor, UPrimitiveComponent ExpectedComponent)
-{
-	int MismatchMask = 0;
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASHitResult_Accessors"), ASTEST_AS(R"AS(
+			int PopulateHitResult(FHitResult& OutHit, AActor ExpectedActor, UPrimitiveComponent ExpectedComponent)
+			{
+				int MismatchMask = 0;
 
-	if (OutHit.GetbBlockingHit())
-		MismatchMask |= 1;
-	if (OutHit.GetbStartPenetrating())
-		MismatchMask |= 2;
+				if (OutHit.GetbBlockingHit())
+				{
+					MismatchMask |= 1;
+				}
+				if (OutHit.GetbStartPenetrating())
+				{
+					MismatchMask |= 2;
+				}
 
-	OutHit.SetActor(ExpectedActor);
-	AActor RetrievedActor = OutHit.GetActor();
-	if (!IsValid(RetrievedActor))
-		MismatchMask |= 4;
+				OutHit.SetActor(ExpectedActor);
+				AActor RetrievedActor = OutHit.GetActor();
+				if (!IsValid(RetrievedActor))
+				{
+					MismatchMask |= 4;
+				}
 
-	OutHit.SetComponent(ExpectedComponent);
-	AActor RetrievedActorAfterComponent = OutHit.GetActor();
-	if (!IsValid(RetrievedActorAfterComponent))
-		MismatchMask |= 8;
+				OutHit.SetComponent(ExpectedComponent);
+				AActor RetrievedActorAfterComponent = OutHit.GetActor();
+				if (!IsValid(RetrievedActorAfterComponent))
+				{
+					MismatchMask |= 8;
+				}
 
-	UPrimitiveComponent RetrievedComponent = OutHit.GetComponent();
-	if (!IsValid(RetrievedComponent))
-		MismatchMask |= 16;
+				UPrimitiveComponent RetrievedComponent = OutHit.GetComponent();
+				if (!IsValid(RetrievedComponent))
+				{
+					MismatchMask |= 16;
+				}
 
-	OutHit.SetBlockingHit(true);
-	if (!OutHit.GetbBlockingHit())
-		MismatchMask |= 32;
+				OutHit.SetBlockingHit(true);
+				if (!OutHit.GetbBlockingHit())
+				{
+					MismatchMask |= 32;
+				}
 
-	OutHit.SetbBlockingHit(false);
-	if (OutHit.GetbBlockingHit())
-		MismatchMask |= 64;
+				OutHit.SetbBlockingHit(false);
+				if (OutHit.GetbBlockingHit())
+				{
+					MismatchMask |= 64;
+				}
 
-	OutHit.SetbStartPenetrating(true);
-	if (!OutHit.GetbStartPenetrating())
-		MismatchMask |= 128;
+				OutHit.SetbStartPenetrating(true);
+				if (!OutHit.GetbStartPenetrating())
+				{
+					MismatchMask |= 128;
+				}
 
-	return MismatchMask;
-}
+				return MismatchMask;
+			}
 
-int ResetHitResult(FHitResult& Hit)
-{
-	int MismatchMask = 0;
+			int ResetHitResult(FHitResult& Hit)
+			{
+				int MismatchMask = 0;
 
-	Hit.Reset();
-	if (Hit.GetbBlockingHit())
-		MismatchMask |= 1;
-	if (Hit.GetbStartPenetrating())
-		MismatchMask |= 2;
+				Hit.Reset();
+				if (Hit.GetbBlockingHit())
+				{
+					MismatchMask |= 1;
+				}
+				if (Hit.GetbStartPenetrating())
+				{
+					MismatchMask |= 2;
+				}
 
-	return MismatchMask;
-}
-)"));
+				return MismatchMask;
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 

@@ -18,13 +18,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptConsoleCommandLifecycleBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	TEST_METHOD(OriginalReplacementUnload)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunConsoleCommandLifecycleSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyConsoleCommandLifecycle(*TestRunner, Engine),
+			TEXT("VerifyConsoleCommandLifecycle should pass")));
 	}
 };
 

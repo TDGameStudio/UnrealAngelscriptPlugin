@@ -48,13 +48,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptWorldBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: ContextAndGlobalsCompat
 	// ====================================================================
 
-	TEST_METHOD(ContextAndGlobalsCompat)
+	TEST_METHOD(ContextAndGlobals)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
@@ -71,41 +75,57 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptWorldBindingsTest,
 		ASSERT_THAT(IsNotNull(PersistentLevel, TEXT("World context bindings test should expose a persistent level")));
 		ASSERT_THAT(IsNotNull(GameInstance, TEXT("World context bindings test should expose a game instance")));
 
-		const FString ScriptSource = TEXT(R"(
-int VerifyWorldBindings(
-	UObject ExpectedContext,
-	UWorld ExpectedWorld,
-	ULevel ExpectedPersistentLevel,
-	UGameInstance ExpectedGameInstance,
-	bool bExpectedIsGameWorld,
-	uint ExpectedWorldType,
-	uint ExpectedFrameNumber)
-{
-	int MismatchMask = 0;
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int VerifyWorldBindings(
+			UObject ExpectedContext,
+			UWorld ExpectedWorld,
+			ULevel ExpectedPersistentLevel,
+			UGameInstance ExpectedGameInstance,
+			bool bExpectedIsGameWorld,
+			uint ExpectedWorldType,
+			uint ExpectedFrameNumber)
+			{
+				int MismatchMask = 0;
 
-	if (__WorldContext() != ExpectedContext)
-		MismatchMask |= 1;
+				if (__WorldContext() != ExpectedContext)
+				{
+					MismatchMask |= 1;
+				}
 
-	UWorld CurrentWorld = GetCurrentWorld();
-	if (CurrentWorld == null)
-		return MismatchMask | 2 | 4 | 8 | 16 | 32 | 64;
+				UWorld CurrentWorld = GetCurrentWorld();
+				if (CurrentWorld == null)
+				{
+					return MismatchMask | 2 | 4 | 8 | 16 | 32 | 64;
+				}
 
-	if (CurrentWorld != ExpectedWorld)
-		MismatchMask |= 2;
-	if (CurrentWorld.IsGameWorld() != bExpectedIsGameWorld)
-		MismatchMask |= 4;
-	if (CurrentWorld.GetPersistentLevel() != ExpectedPersistentLevel)
-		MismatchMask |= 8;
-	if (CurrentWorld.GetGameInstance() != ExpectedGameInstance)
-		MismatchMask |= 16;
-	if (uint(CurrentWorld.WorldType) != ExpectedWorldType)
-		MismatchMask |= 32;
-	if (GFrameNumber != ExpectedFrameNumber)
-		MismatchMask |= 64;
+				if (CurrentWorld != ExpectedWorld)
+				{
+					MismatchMask |= 2;
+				}
+				if (CurrentWorld.IsGameWorld() != bExpectedIsGameWorld)
+				{
+					MismatchMask |= 4;
+				}
+				if (CurrentWorld.GetPersistentLevel() != ExpectedPersistentLevel)
+				{
+					MismatchMask |= 8;
+				}
+				if (CurrentWorld.GetGameInstance() != ExpectedGameInstance)
+				{
+					MismatchMask |= 16;
+				}
+				if (uint(CurrentWorld.WorldType) != ExpectedWorldType)
+				{
+					MismatchMask |= 32;
+				}
+				if (GFrameNumber != ExpectedFrameNumber)
+				{
+					MismatchMask |= 64;
+				}
 
-	return MismatchMask;
-}
-)");
+				return MismatchMask;
+			}
+			)AS");
 
 		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorld_ContextGlobals"), ScriptSource);
 		if (!Mod.IsValid()) return;

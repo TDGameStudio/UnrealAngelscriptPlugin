@@ -15,29 +15,36 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptInputComponentMixinBindingsTest,
 	"Angelscript.TestModule.Bindings.InputMixin",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	BEFORE_ALL() { ASTEST_CREATE_ENGINE(); }
-	AFTER_ALL() { FAngelscriptEngine& E = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(E); }
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& E = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(E);
+	}
 
 	TEST_METHOD(PlatformApplicationMisc)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASInputMixin_PlatApp"), TEXT(R"(
-int PlatApp_ClipboardEmpty()
-{
-	FString Clip;
-	FPlatformApplicationMisc::ClipboardPaste(Clip);
-	return Clip.Len() >= 0 ? 1 : 0;
-}
-)"));
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASInputMixin_PlatApp"), ASTEST_AS(R"AS(
+			int PlatApp_ClipboardEmpty()
+			{
+				FString Clip;
+				FPlatformApplicationMisc::ClipboardPaste(Clip);
+				return Clip.Len() >= 0 ? 1 : 0;
+			}
+			)AS"));
 		if (!Mod.IsValid())
 		{
 			TestRunner->AddInfo(TEXT("FPlatformApplicationMisc not available, skipping"));
 			return;
 		}
-		ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), 
-			TEXT("int PlatApp_ClipboardEmpty()"),
-			TEXT("ClipboardPaste does not crash"), 1);
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), TEXT("int PlatApp_ClipboardEmpty()"), TEXT("ClipboardPaste does not crash"), 1),
+			TEXT("ExpectGlobalInt should pass")));
 	}
 };
 

@@ -14,7 +14,7 @@
 #if WITH_ANGELSCRIPT_UNITTESTS
 
 
-namespace
+namespace AngelscriptConsoleBindingsTestPrivate
 {
 	static constexpr TCHAR ConsoleObjectPrefix[] = TEXT("as.test.console");
 
@@ -260,28 +260,28 @@ namespace
 		const TCHAR* HandlerName,
 		int32 OutputMarker)
 	{
-		return FString::Printf(TEXT(R"(
-const FConsoleCommand Command("%s", n"%s");
+		FString CommandSource = ASTEST_AS(R"AS(
+			const FConsoleCommand Command("$COMMAND_NAME$", n"$HANDLER_NAME$");
 
-void %s(const TArray<FString>& Args)
-{
-	FConsoleVariable Output("%s", 0, "Console command output sink");
-	Output.SetInt(%d);
-}
+			void $HANDLER_NAME$(const TArray<FString>& Args)
+			{
+				FConsoleVariable Output("$OUTPUT_NAME$", 0, "Console command output sink");
+				Output.SetInt($OUTPUT_MARKER$);
+			}
 
-int CommandReady()
-{
-	return 1;
-}
-)"),
-			*CommandName,
-			HandlerName,
-			HandlerName,
-			*OutputName,
-			OutputMarker);
+			int CommandReady()
+			{
+				return 1;
+			}
+			)AS");
+		CommandSource.ReplaceInline(TEXT("$COMMAND_NAME$"), *CommandName, ESearchCase::CaseSensitive);
+		CommandSource.ReplaceInline(TEXT("$HANDLER_NAME$"), HandlerName, ESearchCase::CaseSensitive);
+		CommandSource.ReplaceInline(TEXT("$OUTPUT_NAME$"), *OutputName, ESearchCase::CaseSensitive);
+		CommandSource.ReplaceInline(TEXT("$OUTPUT_MARKER$"), *FString::FromInt(OutputMarker), ESearchCase::CaseSensitive);
+		return CommandSource;
 	}
 
-	bool RunConsoleCommandArgumentSection(
+	bool VerifyConsoleCommandArgument(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		const TCHAR* SectionName,
@@ -303,38 +303,43 @@ int CommandReady()
 			return false;
 		}
 
+		FString CommandArgumentSource = ASTEST_AS(R"AS(
+			const FConsoleCommand Command("$COMMAND_NAME$", n"OnCommand");
+
+			void OnCommand(const TArray<FString>& Args)
+			{
+				FConsoleVariable Output("$OUTPUT_NAME$", "__unset__", "Console command output sink");
+				if (Args.Num() == 0)
+				{
+					Output.SetString("<empty>");
+					return;
+				}
+
+				FString Joined = "";
+				for (int Index = 0, Count = Args.Num(); Index < Count; ++Index)
+				{
+					if (Index != 0)
+					{
+						Joined += "|";
+					}
+					Joined += Args[Index];
+				}
+
+				Output.SetString(Joined);
+			}
+
+			int CommandReady()
+			{
+				return 1;
+			}
+			)AS");
+		CommandArgumentSource.ReplaceInline(TEXT("$COMMAND_NAME$"), *CommandName, ESearchCase::CaseSensitive);
+		CommandArgumentSource.ReplaceInline(TEXT("$OUTPUT_NAME$"), *OutputName, ESearchCase::CaseSensitive);
 		TUniquePtr<FScopedAngelscriptModule> ModuleScope = MakeUnique<FScopedAngelscriptModule>(
 			Test,
-			Engine, 
+			Engine,
 			SectionName,
-			FString::Printf(TEXT(R"(
-const FConsoleCommand Command("%s", n"OnCommand");
-
-void OnCommand(const TArray<FString>& Args)
-{
-	FConsoleVariable Output("%s", "__unset__", "Console command output sink");
-	if (Args.Num() == 0)
-	{
-		Output.SetString("<empty>");
-		return;
-	}
-
-	FString Joined = "";
-	for (int Index = 0, Count = Args.Num(); Index < Count; ++Index)
-	{
-		if (Index != 0)
-			Joined += "|";
-		Joined += Args[Index];
-	}
-
-	Output.SetString(Joined);
-}
-
-int CommandReady()
-{
-	return 1;
-}
-)"), *CommandName, *OutputName));
+			CommandArgumentSource);
 		if (!ModuleScope->IsValid())
 		{
 			return false;
@@ -355,7 +360,9 @@ int CommandReady()
 }
 
 
-bool RunConsoleVariableTypesSection(
+using namespace AngelscriptConsoleBindingsTestPrivate;
+
+bool VerifyConsoleVariableTypes(
 	FAutomationTestBase& Test,
 	FAngelscriptEngine& Engine)
 {
@@ -367,60 +374,65 @@ bool RunConsoleVariableTypesSection(
 
 	bool bPassed = true;
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_VariableTypes"), FString::Printf(TEXT(R"(
-int IntDefault()
-{
-FConsoleVariable IntVar("%s", 5, "Test int cvar");
-return IntVar.GetInt();
-}
-int IntUpdated()
-{
-FConsoleVariable IntVar("%s", 5, "Test int cvar");
-IntVar.SetInt(42);
-return IntVar.GetInt();
-}
-float FloatDefault()
-{
-FConsoleVariable FloatVar("%s", 1.5f, "Test float cvar");
-return FloatVar.GetFloat();
-}
-float FloatUpdated()
-{
-FConsoleVariable FloatVar("%s", 1.5f, "Test float cvar");
-FloatVar.SetFloat(3.25f);
-return FloatVar.GetFloat();
-}
-int BoolDefault()
-{
-FConsoleVariable BoolVar("%s", true, "Test bool cvar");
-return BoolVar.GetBool() ? 1 : 0;
-}
-int BoolUpdated()
-{
-FConsoleVariable BoolVar("%s", true, "Test bool cvar");
-BoolVar.SetBool(false);
-return BoolVar.GetBool() ? 1 : 0;
-}
-int StringDefault()
-{
-FConsoleVariable StringVar("%s", "DefaultValue", "Test string cvar");
-return StringVar.GetString() == "DefaultValue" ? 1 : 0;
-}
-int StringUpdated()
-{
-FConsoleVariable StringVar("%s", "DefaultValue", "Test string cvar");
-StringVar.SetString("UpdatedValue");
-return StringVar.GetString() == "UpdatedValue" ? 1 : 0;
-}
-)"),
-			*IntName,
-			*IntName,
-			*FloatName,
-			*FloatName,
-			*BoolName,
-			*BoolName,
-			*StringName,
-			*StringName));
+		FString VariableTypesSource = ASTEST_AS(R"AS(
+			int IntDefault()
+			{
+				FConsoleVariable IntVar("$INT_NAME$", 5, "Test int cvar");
+				return IntVar.GetInt();
+			}
+
+			int IntUpdated()
+			{
+				FConsoleVariable IntVar("$INT_NAME$", 5, "Test int cvar");
+				IntVar.SetInt(42);
+				return IntVar.GetInt();
+			}
+
+			float FloatDefault()
+			{
+				FConsoleVariable FloatVar("$FLOAT_NAME$", 1.5f, "Test float cvar");
+				return FloatVar.GetFloat();
+			}
+
+			float FloatUpdated()
+			{
+				FConsoleVariable FloatVar("$FLOAT_NAME$", 1.5f, "Test float cvar");
+				FloatVar.SetFloat(3.25f);
+				return FloatVar.GetFloat();
+			}
+
+			int BoolDefault()
+			{
+				FConsoleVariable BoolVar("$BOOL_NAME$", true, "Test bool cvar");
+				return BoolVar.GetBool() ? 1 : 0;
+			}
+
+			int BoolUpdated()
+			{
+				FConsoleVariable BoolVar("$BOOL_NAME$", true, "Test bool cvar");
+				BoolVar.SetBool(false);
+				return BoolVar.GetBool() ? 1 : 0;
+			}
+
+			int StringDefault()
+			{
+				FConsoleVariable StringVar("$STRING_NAME$", "DefaultValue", "Test string cvar");
+				return StringVar.GetString() == "DefaultValue" ? 1 : 0;
+			}
+
+			int StringUpdated()
+			{
+				FConsoleVariable StringVar("$STRING_NAME$", "DefaultValue", "Test string cvar");
+				StringVar.SetString("UpdatedValue");
+				return StringVar.GetString() == "UpdatedValue" ? 1 : 0;
+			}
+			)AS");
+		VariableTypesSource.ReplaceInline(TEXT("$INT_NAME$"), *IntName, ESearchCase::CaseSensitive);
+		VariableTypesSource.ReplaceInline(TEXT("$FLOAT_NAME$"), *FloatName, ESearchCase::CaseSensitive);
+		VariableTypesSource.ReplaceInline(TEXT("$BOOL_NAME$"), *BoolName, ESearchCase::CaseSensitive);
+		VariableTypesSource.ReplaceInline(TEXT("$STRING_NAME$"), *StringName, ESearchCase::CaseSensitive);
+
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_VariableTypes"), VariableTypesSource);
 		if (!ModuleScope.IsValid())
 		{
 			return false;
@@ -453,7 +465,7 @@ return StringVar.GetString() == "UpdatedValue" ? 1 : 0;
 	return bPassed;
 }
 
-bool RunConsoleVariableExistingSection(
+bool VerifyConsoleVariableExisting(
 	FAutomationTestBase& Test,
 	FAngelscriptEngine& Engine)
 {
@@ -472,19 +484,23 @@ bool RunConsoleVariableExistingSection(
 
 	bool bPassed = true;
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_VariableExisting"), FString::Printf(TEXT(R"(
-int ExistingInitial()
-{
-FConsoleVariable ExistingVar("%s", 99, "Should reuse existing native cvar");
-return ExistingVar.GetInt();
-}
-int ExistingUpdated()
-{
-FConsoleVariable ExistingVar("%s", 99, "Should reuse existing native cvar");
-ExistingVar.SetInt(21);
-return ExistingVar.GetInt();
-}
-)"), *ExistingName, *ExistingName));
+		FString VariableExistingSource = ASTEST_AS(R"AS(
+			int ExistingInitial()
+			{
+				FConsoleVariable ExistingVar("$EXISTING_NAME$", 99, "Should reuse existing native cvar");
+				return ExistingVar.GetInt();
+			}
+
+			int ExistingUpdated()
+			{
+				FConsoleVariable ExistingVar("$EXISTING_NAME$", 99, "Should reuse existing native cvar");
+				ExistingVar.SetInt(21);
+				return ExistingVar.GetInt();
+			}
+			)AS");
+		VariableExistingSource.ReplaceInline(TEXT("$EXISTING_NAME$"), *ExistingName, ESearchCase::CaseSensitive);
+
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_VariableExisting"), VariableExistingSource);
 		if (!ModuleScope.IsValid())
 		{
 			return false;
@@ -502,7 +518,7 @@ return ExistingVar.GetInt();
 	return bPassed;
 }
 
-bool RunConsoleVariableIdentitySection(
+bool VerifyConsoleVariableIdentity(
 	FAutomationTestBase& Test,
 	FAngelscriptEngine& Engine)
 {
@@ -525,19 +541,23 @@ bool RunConsoleVariableIdentitySection(
 
 	bool bPassed = true;
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_VariableIdentity"), FString::Printf(TEXT(R"(
-int ExistingInitial()
-{
-FConsoleVariable ExistingVar("%s", 99, "Should not replace native cvar");
-return ExistingVar.GetInt();
-}
-int ExistingUpdated()
-{
-FConsoleVariable ExistingVar("%s", 99, "Should not replace native cvar");
-ExistingVar.SetInt(21);
-return ExistingVar.GetInt();
-}
-)"), *ExistingName, *ExistingName));
+		FString VariableIdentitySource = ASTEST_AS(R"AS(
+			int ExistingInitial()
+			{
+				FConsoleVariable ExistingVar("$EXISTING_NAME$", 99, "Should not replace native cvar");
+				return ExistingVar.GetInt();
+			}
+
+			int ExistingUpdated()
+			{
+				FConsoleVariable ExistingVar("$EXISTING_NAME$", 99, "Should not replace native cvar");
+				ExistingVar.SetInt(21);
+				return ExistingVar.GetInt();
+			}
+			)AS");
+		VariableIdentitySource.ReplaceInline(TEXT("$EXISTING_NAME$"), *ExistingName, ESearchCase::CaseSensitive);
+
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_VariableIdentity"), VariableIdentitySource);
 		if (!ModuleScope.IsValid())
 		{
 			return false;
@@ -564,7 +584,7 @@ return ExistingVar.GetInt();
 	return bPassed;
 }
 
-bool RunConsoleCommandBasicSection(
+bool VerifyConsoleCommandBasic(
 	FAutomationTestBase& Test,
 	FAngelscriptEngine& Engine)
 {
@@ -583,24 +603,28 @@ bool RunConsoleCommandBasicSection(
 	}
 
 	bool bPassed = true;
+	FString CommandBasicSource = ASTEST_AS(R"AS(
+		const FConsoleCommand Command("$COMMAND_NAME$", n"OnCommand");
+
+		void OnCommand(const TArray<FString>& Args)
+		{
+			FConsoleVariable Output("$OUTPUT_NAME$", 0, "Command output");
+			Output.SetInt(Args.Num());
+		}
+
+		int CommandReady()
+		{
+			return 1;
+		}
+		)AS");
+	CommandBasicSource.ReplaceInline(TEXT("$COMMAND_NAME$"), *CommandName, ESearchCase::CaseSensitive);
+	CommandBasicSource.ReplaceInline(TEXT("$OUTPUT_NAME$"), *OutputName, ESearchCase::CaseSensitive);
+
 	TUniquePtr<FScopedAngelscriptModule> ModuleScope = MakeUnique<FScopedAngelscriptModule>(
 		Test,
-		Engine, 
+		Engine,
 		TEXT("CommandBasic"),
-		FString::Printf(TEXT(R"(
-const FConsoleCommand Command("%s", n"OnCommand");
-
-void OnCommand(const TArray<FString>& Args)
-{
-FConsoleVariable Output("%s", 0, "Command output");
-Output.SetInt(Args.Num());
-}
-
-int CommandReady()
-{
-return 1;
-}
-)"), *CommandName, *OutputName));
+		CommandBasicSource);
 	if (!ModuleScope->IsValid())
 	{
 		return false;
@@ -624,12 +648,12 @@ return 1;
 	return bPassed;
 }
 
-bool RunConsoleCommandArgumentEmptySection(
+bool VerifyConsoleCommandArgumentEmpty(
 	FAutomationTestBase& Test,
 	FAngelscriptEngine& Engine)
 {
 	const TArray<FString> Args;
-	return RunConsoleCommandArgumentSection(
+	return VerifyConsoleCommandArgument(
 		Test,
 		Engine, 
 		TEXT("CommandArgumentEmpty"),
@@ -637,7 +661,7 @@ bool RunConsoleCommandArgumentEmptySection(
 		TEXT("<empty>"));
 }
 
-bool RunConsoleCommandArgumentContentSection(
+bool VerifyConsoleCommandArgumentContent(
 	FAutomationTestBase& Test,
 	FAngelscriptEngine& Engine)
 {
@@ -645,7 +669,7 @@ bool RunConsoleCommandArgumentContentSection(
 	Args.Add(TEXT("One"));
 	Args.Add(TEXT("Two Words"));
 	Args.Add(TEXT("Three=Value"));
-	return RunConsoleCommandArgumentSection(
+	return VerifyConsoleCommandArgument(
 		Test,
 		Engine, 
 		TEXT("CommandArgumentContent"),
@@ -653,7 +677,7 @@ bool RunConsoleCommandArgumentContentSection(
 		TEXT("One|Two Words|Three=Value"));
 }
 
-bool RunConsoleCommandReplacementSection(
+bool VerifyConsoleCommandReplacement(
 	FAutomationTestBase& Test,
 	FAngelscriptEngine& Engine)
 {
@@ -709,7 +733,7 @@ bool RunConsoleCommandReplacementSection(
 	return bPassed;
 }
 
-bool RunConsoleCommandLifecycleSection(
+bool VerifyConsoleCommandLifecycle(
 	FAutomationTestBase& Test,
 	FAngelscriptEngine& Engine)
 {
@@ -771,7 +795,7 @@ bool RunConsoleCommandLifecycleSection(
 	return bPassed;
 }
 
-bool RunConsoleCommandMissingHandlerSection(
+bool VerifyConsoleCommandMissingHandler(
 	FAutomationTestBase& Test,
 	FAngelscriptEngine& Engine)
 {
@@ -780,12 +804,15 @@ bool RunConsoleCommandMissingHandlerSection(
 
 	bool bPassed = true;
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_CommandMissingHandler"), FString::Printf(TEXT(R"(
-void Trigger()
-{
-const FConsoleCommand Command("%s", n"MissingHandler");
-}
-)"), *CommandName));
+		FString CommandMissingHandlerSource = ASTEST_AS(R"AS(
+			void Trigger()
+			{
+				const FConsoleCommand Command("$COMMAND_NAME$", n"MissingHandler");
+			}
+			)AS");
+		CommandMissingHandlerSource.ReplaceInline(TEXT("$COMMAND_NAME$"), *CommandName, ESearchCase::CaseSensitive);
+
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_CommandMissingHandler"), CommandMissingHandlerSource);
 		if (!ModuleScope.IsValid())
 		{
 			return false;
@@ -813,7 +840,7 @@ const FConsoleCommand Command("%s", n"MissingHandler");
 	return bPassed;
 }
 
-bool RunConsoleCommandWrongSignatureSection(
+bool VerifyConsoleCommandWrongSignature(
 	FAutomationTestBase& Test,
 	FAngelscriptEngine& Engine)
 {
@@ -822,16 +849,19 @@ bool RunConsoleCommandWrongSignatureSection(
 
 	bool bPassed = true;
 	{
-		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_CommandWrongSignature"), FString::Printf(TEXT(R"(
-void WrongSignature()
-{
-}
+		FString CommandWrongSignatureSource = ASTEST_AS(R"AS(
+			void WrongSignature()
+			{
+			}
 
-void Trigger()
-{
-const FConsoleCommand Command("%s", n"WrongSignature");
-}
-)"), *CommandName));
+			void Trigger()
+			{
+				const FConsoleCommand Command("$COMMAND_NAME$", n"WrongSignature");
+			}
+			)AS");
+		CommandWrongSignatureSource.ReplaceInline(TEXT("$COMMAND_NAME$"), *CommandName, ESearchCase::CaseSensitive);
+
+		FScopedAngelscriptModule ModuleScope(Test, Engine, TEXT("ASConsole_CommandWrongSignature"), CommandWrongSignatureSource);
 		if (!ModuleScope.IsValid())
 		{
 			return false;
@@ -859,7 +889,7 @@ const FConsoleCommand Command("%s", n"WrongSignature");
 	return bPassed;
 }
 
-bool RunConsoleLeakSelfCheckSection(
+bool VerifyConsoleLeakSelfCheck(
 	FAutomationTestBase& Test,
 	FAngelscriptEngine& Engine)
 {
@@ -877,48 +907,64 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptConsoleBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
-
-	TEST_METHOD(ConsoleVariableCompat)
+	AFTER_ALL()
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
-		FAngelscriptEngineScope Scope(Engine);
-		RunConsoleVariableTypesSection(*TestRunner, Engine);
+		ASTEST_RESET_ENGINE(Engine);
 	}
 
-	TEST_METHOD(ConsoleVariableExistingCompat)
+	TEST_METHOD(ConsoleVariableTypes)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunConsoleVariableExistingSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyConsoleVariableTypes(*TestRunner, Engine),
+			TEXT("VerifyConsoleVariableTypes should pass")));
 	}
 
-	TEST_METHOD(ConsoleCommandCompat)
+	TEST_METHOD(ConsoleVariableExisting)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunConsoleCommandBasicSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyConsoleVariableExisting(*TestRunner, Engine),
+			TEXT("VerifyConsoleVariableExisting should pass")));
 	}
 
-	TEST_METHOD(ConsoleCommandReplacementCompat)
+	TEST_METHOD(ConsoleCommandBasic)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunConsoleCommandReplacementSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyConsoleCommandBasic(*TestRunner, Engine),
+			TEXT("VerifyConsoleCommandBasic should pass")));
 	}
 
-	TEST_METHOD(ConsoleCommandSignatureCompat)
+	TEST_METHOD(ConsoleCommandReplacement)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunConsoleCommandWrongSignatureSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyConsoleCommandReplacement(*TestRunner, Engine),
+			TEXT("VerifyConsoleCommandReplacement should pass")));
+	}
+
+	TEST_METHOD(ConsoleCommandWrongSignature)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyConsoleCommandWrongSignature(*TestRunner, Engine),
+			TEXT("VerifyConsoleCommandWrongSignature should pass")));
 	}
 
 	TEST_METHOD(LeakSelfCheck)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
-		RunConsoleLeakSelfCheckSection(*TestRunner, Engine);
+		ASSERT_THAT(IsTrue(
+			VerifyConsoleLeakSelfCheck(*TestRunner, Engine),
+			TEXT("VerifyConsoleLeakSelfCheck should pass")));
 	}
 };
 

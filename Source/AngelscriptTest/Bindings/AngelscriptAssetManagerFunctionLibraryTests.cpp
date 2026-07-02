@@ -82,7 +82,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptAssetManagerFunctionLibraryTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: NullAndInvalidCallbackGuards
@@ -100,33 +104,33 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptAssetManagerFunctionLibraryTest,
 			Engine.DiscardModule(TEXT("ASAssetManagerNullAndInvalidCallbackGuards"));
 		};
 
-		const FString ReceiverScript = TEXT(R"AS(
-UCLASS()
-class UAssetManagerValidScanReceiver : UObject
-{
-	UPROPERTY()
-	int CallbackCount;
+		const FString ReceiverScript = ASTEST_AS(R"AS(
+			UCLASS()
+			class UAssetManagerValidScanReceiver : UObject
+			{
+				UPROPERTY()
+				int CallbackCount;
 
-	UFUNCTION()
-	void OnScanComplete()
-	{
-		CallbackCount += 1;
-	}
-}
+				UFUNCTION()
+				void OnScanComplete()
+				{
+					CallbackCount += 1;
+				}
+			}
 
-UCLASS()
-class UAssetManagerMissingScanReceiver : UObject
-{
-	UPROPERTY()
-	int CallbackCount;
+			UCLASS()
+			class UAssetManagerMissingScanReceiver : UObject
+			{
+				UPROPERTY()
+				int CallbackCount;
 
-	UFUNCTION()
-	void DifferentFunction()
-	{
-		CallbackCount += 1;
-	}
-}
-)AS");
+				UFUNCTION()
+				void DifferentFunction()
+				{
+					CallbackCount += 1;
+				}
+			}
+			)AS");
 
 		ASSERT_THAT(IsTrue(
 			CompileAnnotatedModuleFromMemory(&Engine, TEXT("ASAssetManagerNullAndInvalidCallbackGuards"), TEXT("ASAssetManagerNullAndInvalidCallbackGuards.as"), ReceiverScript),
@@ -263,140 +267,148 @@ class UAssetManagerMissingScanReceiver : UObject
 			Engine.DiscardModule(TEXT("ASAssetManagerScriptMixinCalls"));
 		};
 
-		const FString ProbeScript = TEXT(R"AS(
-UCLASS()
-class UAssetManagerScriptCallProbe : UObject
-{
-	UPROPERTY()
-	int CallbackCount;
+		const FString ProbeScript = ASTEST_AS(R"AS(
+			UCLASS()
+			class UAssetManagerScriptCallProbe : UObject
+			{
+				UPROPERTY()
+				int CallbackCount;
 
-	UFUNCTION()
-	void OnInitialScanComplete()
-	{
-		CallbackCount += 1;
-	}
+				UFUNCTION()
+				void OnInitialScanComplete()
+				{
+					CallbackCount += 1;
+				}
 
-	UFUNCTION()
-	int RunGetPrimaryAssetDataProbe(UAssetManager AssetManager)
-	{
-		Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetData: begin");
+				UFUNCTION()
+				int RunGetPrimaryAssetDataProbe(UAssetManager AssetManager)
+				{
+					Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetData: begin");
 
-		if (AssetManager == null)
-		{
-			Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetData: AssetManager is null, result=10");
-			return 10;
-		}
+					if (AssetManager == null)
+					{
+						Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetData: AssetManager is null, result=10");
+						return 10;
+					}
 
-		FPrimaryAssetId MissingAssetId("ASAssetManagerMissingType:ASAssetManagerMissingName");
-		FAssetData AssetData;
-		bool bFoundAssetData = AssetManager.GetPrimaryAssetData(MissingAssetId, AssetData);
-		Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetData: found=" + bFoundAssetData);
-		return bFoundAssetData ? 30 : 1;
-	}
+					FPrimaryAssetId MissingAssetId("ASAssetManagerMissingType:ASAssetManagerMissingName");
+					FAssetData AssetData;
+					bool bFoundAssetData = AssetManager.GetPrimaryAssetData(MissingAssetId, AssetData);
+					Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetData: found=" + bFoundAssetData);
+					return bFoundAssetData ? 30 : 1;
+				}
 
-	UFUNCTION()
-	int RunGetPrimaryAssetDataListProbe(UAssetManager AssetManager)
-	{
-		Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetDataList: begin");
+				UFUNCTION()
+				int RunGetPrimaryAssetDataListProbe(UAssetManager AssetManager)
+				{
+					Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetDataList: begin");
 
-		if (AssetManager == null)
-		{
-			Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetDataList: AssetManager is null, result=10");
-			return 10;
-		}
+					if (AssetManager == null)
+					{
+						Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetDataList: AssetManager is null, result=10");
+						return 10;
+					}
 
-		FPrimaryAssetType MissingAssetType(n"ASAssetManagerMissingType");
-		TArray<FAssetData> AssetDataList;
-		bool bFoundAssetDataList = AssetManager.GetPrimaryAssetDataList(MissingAssetType, AssetDataList);
-		Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetDataList: found=" + bFoundAssetDataList + " count=" + AssetDataList.Num());
-		if (bFoundAssetDataList)
-			return 40;
-		if (AssetDataList.Num() != 0)
-			return 41;
-		return 1;
-	}
+					FPrimaryAssetType MissingAssetType(n"ASAssetManagerMissingType");
+					TArray<FAssetData> AssetDataList;
+					bool bFoundAssetDataList = AssetManager.GetPrimaryAssetDataList(MissingAssetType, AssetDataList);
+					Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetDataList: found=" + bFoundAssetDataList + " count=" + AssetDataList.Num());
+					if (bFoundAssetDataList)
+					{
+						return 40;
+					}
+					if (AssetDataList.Num() != 0)
+					{
+						return 41;
+					}
+					return 1;
+				}
 
-	UFUNCTION()
-	int RunGetPrimaryAssetObjectProbe(UAssetManager AssetManager)
-	{
-		Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetObject: begin");
+				UFUNCTION()
+				int RunGetPrimaryAssetObjectProbe(UAssetManager AssetManager)
+				{
+					Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetObject: begin");
 
-		if (AssetManager == null)
-		{
-			Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetObject: AssetManager is null, result=10");
-			return 10;
-		}
+					if (AssetManager == null)
+					{
+						Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetObject: AssetManager is null, result=10");
+						return 10;
+					}
 
-		FPrimaryAssetId MissingAssetId("ASAssetManagerMissingType:ASAssetManagerMissingName");
-		UObject FoundObject = AssetManager.GetPrimaryAssetObject(MissingAssetId);
-		Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetObject: isValid=" + (FoundObject != null));
-		return FoundObject != null ? 50 : 1;
-	}
+					FPrimaryAssetId MissingAssetId("ASAssetManagerMissingType:ASAssetManagerMissingName");
+					UObject FoundObject = AssetManager.GetPrimaryAssetObject(MissingAssetId);
+					Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetObject: isValid=" + (FoundObject != null));
+					return FoundObject != null ? 50 : 1;
+				}
 
-	UFUNCTION()
-	int RunGetPrimaryAssetIdForObjectProbe(UAssetManager AssetManager, UObject ProbeObject)
-	{
-		Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetIdForObject: begin");
+				UFUNCTION()
+				int RunGetPrimaryAssetIdForObjectProbe(UAssetManager AssetManager, UObject ProbeObject)
+				{
+					Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetIdForObject: begin");
 
-		if (AssetManager == null)
-		{
-			Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetIdForObject: AssetManager is null, result=10");
-			return 10;
-		}
+					if (AssetManager == null)
+					{
+						Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetIdForObject: AssetManager is null, result=10");
+						return 10;
+					}
 
-		if (ProbeObject == null)
-		{
-			Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetIdForObject: ProbeObject is null, result=20");
-			return 20;
-		}
+					if (ProbeObject == null)
+					{
+						Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetIdForObject: ProbeObject is null, result=20");
+						return 20;
+					}
 
-		FPrimaryAssetId ObjectAssetId = AssetManager.GetPrimaryAssetIdForObject(ProbeObject);
-		bool bObjectAssetIdValid = ObjectAssetId.IsValid();
-		Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetIdForObject: isValid=" + bObjectAssetIdValid);
-		return bObjectAssetIdValid ? 60 : 1;
-	}
+					FPrimaryAssetId ObjectAssetId = AssetManager.GetPrimaryAssetIdForObject(ProbeObject);
+					bool bObjectAssetIdValid = ObjectAssetId.IsValid();
+					Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetIdForObject: isValid=" + bObjectAssetIdValid);
+					return bObjectAssetIdValid ? 60 : 1;
+				}
 
-	UFUNCTION()
-	int RunGetPrimaryAssetIdListProbe(UAssetManager AssetManager)
-	{
-		Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetIdList: begin");
+				UFUNCTION()
+				int RunGetPrimaryAssetIdListProbe(UAssetManager AssetManager)
+				{
+					Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetIdList: begin");
 
-		if (AssetManager == null)
-		{
-			Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetIdList: AssetManager is null, result=10");
-			return 10;
-		}
+					if (AssetManager == null)
+					{
+						Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetIdList: AssetManager is null, result=10");
+						return 10;
+					}
 
-		FPrimaryAssetType MissingAssetType(n"ASAssetManagerMissingType");
-		TArray<FPrimaryAssetId> PrimaryAssetIds;
-		bool bFoundPrimaryAssetIds = AssetManager.GetPrimaryAssetIdList(MissingAssetType, PrimaryAssetIds);
-		Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetIdList: found=" + bFoundPrimaryAssetIds + " count=" + PrimaryAssetIds.Num());
-		if (bFoundPrimaryAssetIds)
-			return 70;
-		if (PrimaryAssetIds.Num() != 0)
-			return 71;
-		return 1;
-	}
+					FPrimaryAssetType MissingAssetType(n"ASAssetManagerMissingType");
+					TArray<FPrimaryAssetId> PrimaryAssetIds;
+					bool bFoundPrimaryAssetIds = AssetManager.GetPrimaryAssetIdList(MissingAssetType, PrimaryAssetIds);
+					Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.GetPrimaryAssetIdList: found=" + bFoundPrimaryAssetIds + " count=" + PrimaryAssetIds.Num());
+					if (bFoundPrimaryAssetIds)
+					{
+						return 70;
+					}
+					if (PrimaryAssetIds.Num() != 0)
+					{
+						return 71;
+					}
+					return 1;
+				}
 
-	UFUNCTION()
-	int RunInitialScanCallbackProbe(UAssetManager AssetManager)
-	{
-		Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.InitialScanCallback: begin");
+				UFUNCTION()
+				int RunInitialScanCallbackProbe(UAssetManager AssetManager)
+				{
+					Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.InitialScanCallback: begin");
 
-		if (AssetManager == null)
-		{
-			Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.InitialScanCallback: AssetManager is null, result=10");
-			return 10;
-		}
+					if (AssetManager == null)
+					{
+						Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.InitialScanCallback: AssetManager is null, result=10");
+						return 10;
+					}
 
-		Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.InitialScanCallback: callback count before=" + CallbackCount);
-		AssetManager.CallOrRegister_OnCompletedInitialScan(this, n"OnInitialScanComplete");
-		int Result = CallbackCount == 1 ? 1 : 80;
-		Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.InitialScanCallback: callback count after=" + CallbackCount + " result=" + Result);
-		return Result;
-	}
-}
-)AS");
+					Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.InitialScanCallback: callback count before=" + CallbackCount);
+					AssetManager.CallOrRegister_OnCompletedInitialScan(this, n"OnInitialScanComplete");
+					int Result = CallbackCount == 1 ? 1 : 80;
+					Log(n"AssetManagerBindings", "ASAssetManagerScriptMixinCalls.InitialScanCallback: callback count after=" + CallbackCount + " result=" + Result);
+					return Result;
+				}
+			}
+			)AS");
 
 		ASSERT_THAT(IsTrue(
 			CompileAnnotatedModuleFromMemory(&Engine, TEXT("ASAssetManagerScriptMixinCalls"), TEXT("ASAssetManagerScriptMixinCalls.as"), ProbeScript),

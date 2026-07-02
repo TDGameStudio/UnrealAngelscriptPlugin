@@ -125,7 +125,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptWorldCollisionTraceBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: LineTraceSingle
@@ -138,12 +142,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptWorldCollisionTraceBindingsTest,
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_LineTraceSingle"), TEXT(R"(
-bool RunLineTraceSingleByChannelHit(FHitResult& OutHit)
-{
-	return System::LineTraceSingleByChannel(OutHit, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), ECollisionChannel::ECC_Visibility);
-}
-)"));
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_LineTraceSingle"), ASTEST_AS(R"AS(
+			bool RunLineTraceSingleByChannelHit(FHitResult& OutHit)
+			{
+				return System::LineTraceSingleByChannel(OutHit, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), ECollisionChannel::ECC_Visibility);
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -181,12 +185,12 @@ bool RunLineTraceSingleByChannelHit(FHitResult& OutHit)
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_LineTraceMultiHit"), TEXT(R"(
-bool RunLineTraceMultiByChannelHit(TArray<FHitResult>& OutHits)
-{
-	return System::LineTraceMultiByChannel(OutHits, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), ECollisionChannel::ECC_Visibility);
-}
-)"));
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_LineTraceMultiHit"), ASTEST_AS(R"AS(
+			bool RunLineTraceMultiByChannelHit(TArray<FHitResult>& OutHits)
+			{
+				return System::LineTraceMultiByChannel(OutHits, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), ECollisionChannel::ECC_Visibility);
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -208,7 +212,14 @@ bool RunLineTraceMultiByChannelHit(TArray<FHitResult>& OutHits)
 		{
 			return;
 		}
-		ExpectArrayParity(*TestRunner, TEXT("LineTraceMultiByChannel hit"), bScriptLineMultiHit, bNativeLineMultiHit, ScriptLineHits, NativeLineHits);
+		ASSERT_THAT(IsTrue(
+			ExpectArrayParity(
+				*TestRunner,
+				TEXT("LineTraceMultiByChannel hit"),
+				bScriptLineMultiHit,
+				bNativeLineMultiHit,
+				ScriptLineHits,
+				NativeLineHits)));
 		ASSERT_THAT(IsTrue(ScriptLineHits.Num() >= 1, TEXT("LineTraceMultiByChannel hit should produce at least one hit")));
 	}
 
@@ -223,12 +234,12 @@ bool RunLineTraceMultiByChannelHit(TArray<FHitResult>& OutHits)
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_LineTraceMultiMiss"), TEXT(R"(
-bool RunLineTraceMultiByChannelMiss(TArray<FHitResult>& OutHits)
-{
-	return System::LineTraceMultiByChannel(OutHits, FVector(-200.0f, -200.0f, 0.0f), FVector(200.0f, -200.0f, 0.0f), ECollisionChannel::ECC_Visibility);
-}
-)"));
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_LineTraceMultiMiss"), ASTEST_AS(R"AS(
+			bool RunLineTraceMultiByChannelMiss(TArray<FHitResult>& OutHits)
+			{
+				return System::LineTraceMultiByChannel(OutHits, FVector(-200.0f, -200.0f, 0.0f), FVector(200.0f, -200.0f, 0.0f), ECollisionChannel::ECC_Visibility);
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -252,7 +263,14 @@ bool RunLineTraceMultiByChannelMiss(TArray<FHitResult>& OutHits)
 		{
 			return;
 		}
-		ExpectArrayParity(*TestRunner, TEXT("LineTraceMultiByChannel miss"), bScriptLineMultiMiss, bNativeLineMultiMiss, ScriptLineMissHits, NativeLineMissHits);
+		ASSERT_THAT(IsTrue(
+			ExpectArrayParity(
+				*TestRunner,
+				TEXT("LineTraceMultiByChannel miss"),
+				bScriptLineMultiMiss,
+				bNativeLineMultiMiss,
+				ScriptLineMissHits,
+				NativeLineMissHits)));
 		ASSERT_THAT(AreEqual(0, ScriptLineMissHits.Num(), TEXT("LineTraceMultiByChannel miss should clear stale output hits")));
 	}
 
@@ -267,15 +285,15 @@ bool RunLineTraceMultiByChannelMiss(TArray<FHitResult>& OutHits)
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_SweepSingleByObject"), TEXT(R"(
-bool RunSweepSingleByObjectTypeHit(FHitResult& OutHit)
-{
-	FCollisionObjectQueryParams ObjectQueryParams;
-	ObjectQueryParams.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldDynamic);
-	const FCollisionShape Shape = FCollisionShape::MakeBox(FVector(30.0f, 30.0f, 30.0f));
-	return System::SweepSingleByObjectType(OutHit, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), FQuat::Identity, ObjectQueryParams, Shape);
-}
-)"));
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_SweepSingleByObject"), ASTEST_AS(R"AS(
+			bool RunSweepSingleByObjectTypeHit(FHitResult& OutHit)
+			{
+				FCollisionObjectQueryParams ObjectQueryParams;
+				ObjectQueryParams.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldDynamic);
+				const FCollisionShape Shape = FCollisionShape::MakeBox(FVector(30.0f, 30.0f, 30.0f));
+				return System::SweepSingleByObjectType(OutHit, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), FQuat::Identity, ObjectQueryParams, Shape);
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -317,13 +335,13 @@ bool RunSweepSingleByObjectTypeHit(FHitResult& OutHit)
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_OverlapMultiByProfile"), TEXT(R"(
-bool RunOverlapMultiByProfileHit(TArray<FOverlapResult>& OutOverlaps)
-{
-	const FCollisionShape Shape = FCollisionShape::MakeBox(FVector(45.0f, 45.0f, 45.0f));
-	return System::OverlapMultiByProfile(OutOverlaps, FVector(0.0f, 150.0f, 0.0f), FQuat::Identity, CollisionProfile::BlockAllDynamic, Shape);
-}
-)"));
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_OverlapMultiByProfile"), ASTEST_AS(R"AS(
+			bool RunOverlapMultiByProfileHit(TArray<FOverlapResult>& OutOverlaps)
+			{
+				const FCollisionShape Shape = FCollisionShape::MakeBox(FVector(45.0f, 45.0f, 45.0f));
+				return System::OverlapMultiByProfile(OutOverlaps, FVector(0.0f, 150.0f, 0.0f), FQuat::Identity, CollisionProfile::BlockAllDynamic, Shape);
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -348,7 +366,14 @@ bool RunOverlapMultiByProfileHit(TArray<FOverlapResult>& OutOverlaps)
 		{
 			return;
 		}
-		ExpectArrayParity(*TestRunner, TEXT("OverlapMultiByProfile hit"), bScriptProfileOverlapHit, bNativeProfileOverlapHit, ScriptProfileOverlaps, NativeProfileOverlaps);
+		ASSERT_THAT(IsTrue(
+			ExpectArrayParity(
+				*TestRunner,
+				TEXT("OverlapMultiByProfile hit"),
+				bScriptProfileOverlapHit,
+				bNativeProfileOverlapHit,
+				ScriptProfileOverlaps,
+				NativeProfileOverlaps)));
 		ASSERT_THAT(IsTrue(OverlapsContainComponent(ScriptProfileOverlaps, OverlapBox), TEXT("OverlapMultiByProfile hit should include the overlap target component")));
 	}
 
@@ -363,13 +388,13 @@ bool RunOverlapMultiByProfileHit(TArray<FOverlapResult>& OutOverlaps)
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_OverlapMultiMiss"), TEXT(R"(
-bool RunOverlapMultiByProfileMiss(TArray<FOverlapResult>& OutOverlaps)
-{
-	const FCollisionShape Shape = FCollisionShape::MakeBox(FVector(45.0f, 45.0f, 45.0f));
-	return System::OverlapMultiByProfile(OutOverlaps, FVector(0.0f, -150.0f, 0.0f), FQuat::Identity, CollisionProfile::BlockAllDynamic, Shape);
-}
-)"));
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_OverlapMultiMiss"), ASTEST_AS(R"AS(
+			bool RunOverlapMultiByProfileMiss(TArray<FOverlapResult>& OutOverlaps)
+			{
+				const FCollisionShape Shape = FCollisionShape::MakeBox(FVector(45.0f, 45.0f, 45.0f));
+				return System::OverlapMultiByProfile(OutOverlaps, FVector(0.0f, -150.0f, 0.0f), FQuat::Identity, CollisionProfile::BlockAllDynamic, Shape);
+			}
+			)AS"));
 		if (!Mod.IsValid()) return;
 		auto& M = Mod.GetModule();
 
@@ -393,7 +418,14 @@ bool RunOverlapMultiByProfileMiss(TArray<FOverlapResult>& OutOverlaps)
 		{
 			return;
 		}
-		ExpectArrayParity(*TestRunner, TEXT("OverlapMultiByProfile miss"), bScriptProfileOverlapMiss, bNativeProfileOverlapMiss, ScriptProfileMissOverlaps, NativeProfileMissOverlaps);
+		ASSERT_THAT(IsTrue(
+			ExpectArrayParity(
+				*TestRunner,
+				TEXT("OverlapMultiByProfile miss"),
+				bScriptProfileOverlapMiss,
+				bNativeProfileOverlapMiss,
+				ScriptProfileMissOverlaps,
+				NativeProfileMissOverlaps)));
 	}
 };
 

@@ -52,99 +52,99 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptWorldCollisionBindingsTest,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
-static constexpr ANSICHAR WorldCollisionModuleName[] = "ASWorldCollisionSyncQueries";
-inline static const FVector CollisionTargetLocation = FVector(0.0f, 0.0f, 0.0f);
-inline static const FVector CollisionMissLocation = FVector(0.0f, 300.0f, 0.0f);
-inline static const FVector LineTraceStart = FVector(-200.0f, 0.0f, 0.0f);
-inline static const FVector LineTraceEnd = FVector(200.0f, 0.0f, 0.0f);
-inline static const FVector LineTraceMissStart = FVector(-200.0f, 300.0f, 0.0f);
-inline static const FVector LineTraceMissEnd = FVector(200.0f, 300.0f, 0.0f);
-inline static const FVector TargetExtent = FVector(50.0f, 50.0f, 50.0f);
-inline static const FVector QueryExtent = FVector(30.0f, 30.0f, 30.0f);
-inline static const FQuat IdentityRotation = FQuat::Identity;
+	static constexpr ANSICHAR WorldCollisionModuleName[] = "ASWorldCollisionSyncQueries";
+	inline static const FVector CollisionTargetLocation = FVector(0.0f, 0.0f, 0.0f);
+	inline static const FVector CollisionMissLocation = FVector(0.0f, 300.0f, 0.0f);
+	inline static const FVector LineTraceStart = FVector(-200.0f, 0.0f, 0.0f);
+	inline static const FVector LineTraceEnd = FVector(200.0f, 0.0f, 0.0f);
+	inline static const FVector LineTraceMissStart = FVector(-200.0f, 300.0f, 0.0f);
+	inline static const FVector LineTraceMissEnd = FVector(200.0f, 300.0f, 0.0f);
+	inline static const FVector TargetExtent = FVector(50.0f, 50.0f, 50.0f);
+	inline static const FVector QueryExtent = FVector(30.0f, 30.0f, 30.0f);
+	inline static const FQuat IdentityRotation = FQuat::Identity;
 
-static UBoxComponent* AddCollisionBox(
-	AActor& Owner,
-	const FName ComponentName,
-	const FVector& BoxExtent,
-	const FVector& WorldLocation)
-{
-	UBoxComponent* BoxComponent = NewObject<UBoxComponent>(&Owner, ComponentName);
-	check(BoxComponent != nullptr);
-
-	Owner.AddInstanceComponent(BoxComponent);
-	Owner.SetRootComponent(BoxComponent);
-	BoxComponent->RegisterComponent();
-	BoxComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	BoxComponent->SetCollisionObjectType(ECC_WorldDynamic);
-	BoxComponent->SetCollisionResponseToAllChannels(ECR_Block);
-	BoxComponent->SetGenerateOverlapEvents(true);
-	BoxComponent->SetBoxExtent(BoxExtent);
-	BoxComponent->SetWorldLocation(WorldLocation);
-	return BoxComponent;
-}
-
-static bool ExpectHitResultParity(
-	FAutomationTestBase& Test,
-	const TCHAR* ContextLabel,
-	const bool bScriptReturnValue,
-	const bool bNativeReturnValue,
-	const FHitResult& ScriptHit,
-	const FHitResult& NativeHit)
-{
-	FNoDiscardAsserter LocalAssert(Test);
-	bool bPassed = true;
-	bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel));
-	bPassed &= LocalAssert.AreEqual(NativeHit.GetActor(), ScriptHit.GetActor(), *FString::Printf(TEXT("%s should preserve the hit actor"), ContextLabel));
-	bPassed &= LocalAssert.AreEqual(NativeHit.GetComponent(), ScriptHit.GetComponent(), *FString::Printf(TEXT("%s should preserve the hit component"), ContextLabel));
-	bPassed &= LocalAssert.AreEqual(NativeHit.bBlockingHit, ScriptHit.bBlockingHit, *FString::Printf(TEXT("%s should preserve the blocking-hit flag"), ContextLabel));
-	bPassed &= LocalAssert.IsTrue(FMath::IsNearlyEqual(ScriptHit.Distance, NativeHit.Distance, 0.01f), *FString::Printf(TEXT("%s should preserve the hit distance"), ContextLabel));
-	return bPassed;
-}
-
-static bool ExpectHitArrayParity(
-	FAutomationTestBase& Test,
-	const TCHAR* ContextLabel,
-	const bool bScriptReturnValue,
-	const bool bNativeReturnValue,
-	const TArray<FHitResult>& ScriptHits,
-	const TArray<FHitResult>& NativeHits)
-{
-	FNoDiscardAsserter LocalAssert(Test);
-	bool bPassed = true;
-	bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel));
-	bPassed &= LocalAssert.AreEqual(NativeHits.Num(), ScriptHits.Num(), *FString::Printf(TEXT("%s should preserve the hit count"), ContextLabel));
-
-	for (int32 HitIndex = 0; HitIndex < FMath::Min(ScriptHits.Num(), NativeHits.Num()); ++HitIndex)
+	static UBoxComponent* AddCollisionBox(
+		AActor& Owner,
+		const FName ComponentName,
+		const FVector& BoxExtent,
+		const FVector& WorldLocation)
 	{
-		bPassed &= LocalAssert.AreEqual(NativeHits[HitIndex].GetActor(), ScriptHits[HitIndex].GetActor(), *FString::Printf(TEXT("%s should preserve actor for hit %d"), ContextLabel, HitIndex));
-		bPassed &= LocalAssert.AreEqual(NativeHits[HitIndex].GetComponent(), ScriptHits[HitIndex].GetComponent(), *FString::Printf(TEXT("%s should preserve component for hit %d"), ContextLabel, HitIndex));
+		UBoxComponent* BoxComponent = NewObject<UBoxComponent>(&Owner, ComponentName);
+		check(BoxComponent != nullptr);
+
+		Owner.AddInstanceComponent(BoxComponent);
+		Owner.SetRootComponent(BoxComponent);
+		BoxComponent->RegisterComponent();
+		BoxComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		BoxComponent->SetCollisionObjectType(ECC_WorldDynamic);
+		BoxComponent->SetCollisionResponseToAllChannels(ECR_Block);
+		BoxComponent->SetGenerateOverlapEvents(true);
+		BoxComponent->SetBoxExtent(BoxExtent);
+		BoxComponent->SetWorldLocation(WorldLocation);
+		return BoxComponent;
 	}
 
-	return bPassed;
-}
-
-static bool ExpectOverlapArrayParity(
-	FAutomationTestBase& Test,
-	const TCHAR* ContextLabel,
-	const bool bScriptReturnValue,
-	const bool bNativeReturnValue,
-	const TArray<FOverlapResult>& ScriptOverlaps,
-	const TArray<FOverlapResult>& NativeOverlaps)
-{
-	FNoDiscardAsserter LocalAssert(Test);
-	bool bPassed = true;
-	bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel));
-	bPassed &= LocalAssert.AreEqual(NativeOverlaps.Num(), ScriptOverlaps.Num(), *FString::Printf(TEXT("%s should preserve the overlap count"), ContextLabel));
-
-	for (int32 OverlapIndex = 0; OverlapIndex < FMath::Min(ScriptOverlaps.Num(), NativeOverlaps.Num()); ++OverlapIndex)
+	static bool ExpectHitResultParity(
+		FAutomationTestBase& Test,
+		const TCHAR* ContextLabel,
+		const bool bScriptReturnValue,
+		const bool bNativeReturnValue,
+		const FHitResult& ScriptHit,
+		const FHitResult& NativeHit)
 	{
-		bPassed &= LocalAssert.AreEqual(NativeOverlaps[OverlapIndex].GetActor(), ScriptOverlaps[OverlapIndex].GetActor(), *FString::Printf(TEXT("%s should preserve actor for overlap %d"), ContextLabel, OverlapIndex));
-		bPassed &= LocalAssert.AreEqual(NativeOverlaps[OverlapIndex].GetComponent(), ScriptOverlaps[OverlapIndex].GetComponent(), *FString::Printf(TEXT("%s should preserve component for overlap %d"), ContextLabel, OverlapIndex));
+		FNoDiscardAsserter LocalAssert(Test);
+		bool bPassed = true;
+		bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel));
+		bPassed &= LocalAssert.AreEqual(NativeHit.GetActor(), ScriptHit.GetActor(), *FString::Printf(TEXT("%s should preserve the hit actor"), ContextLabel));
+		bPassed &= LocalAssert.AreEqual(NativeHit.GetComponent(), ScriptHit.GetComponent(), *FString::Printf(TEXT("%s should preserve the hit component"), ContextLabel));
+		bPassed &= LocalAssert.AreEqual(NativeHit.bBlockingHit, ScriptHit.bBlockingHit, *FString::Printf(TEXT("%s should preserve the blocking-hit flag"), ContextLabel));
+		bPassed &= LocalAssert.IsTrue(FMath::IsNearlyEqual(ScriptHit.Distance, NativeHit.Distance, 0.01f), *FString::Printf(TEXT("%s should preserve the hit distance"), ContextLabel));
+		return bPassed;
 	}
 
-	return bPassed;
-}
+	static bool ExpectHitArrayParity(
+		FAutomationTestBase& Test,
+		const TCHAR* ContextLabel,
+		const bool bScriptReturnValue,
+		const bool bNativeReturnValue,
+		const TArray<FHitResult>& ScriptHits,
+		const TArray<FHitResult>& NativeHits)
+	{
+		FNoDiscardAsserter LocalAssert(Test);
+		bool bPassed = true;
+		bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel));
+		bPassed &= LocalAssert.AreEqual(NativeHits.Num(), ScriptHits.Num(), *FString::Printf(TEXT("%s should preserve the hit count"), ContextLabel));
+
+		for (int32 HitIndex = 0; HitIndex < FMath::Min(ScriptHits.Num(), NativeHits.Num()); ++HitIndex)
+		{
+			bPassed &= LocalAssert.AreEqual(NativeHits[HitIndex].GetActor(), ScriptHits[HitIndex].GetActor(), *FString::Printf(TEXT("%s should preserve actor for hit %d"), ContextLabel, HitIndex));
+			bPassed &= LocalAssert.AreEqual(NativeHits[HitIndex].GetComponent(), ScriptHits[HitIndex].GetComponent(), *FString::Printf(TEXT("%s should preserve component for hit %d"), ContextLabel, HitIndex));
+		}
+
+		return bPassed;
+	}
+
+	static bool ExpectOverlapArrayParity(
+		FAutomationTestBase& Test,
+		const TCHAR* ContextLabel,
+		const bool bScriptReturnValue,
+		const bool bNativeReturnValue,
+		const TArray<FOverlapResult>& ScriptOverlaps,
+		const TArray<FOverlapResult>& NativeOverlaps)
+	{
+		FNoDiscardAsserter LocalAssert(Test);
+		bool bPassed = true;
+		bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel));
+		bPassed &= LocalAssert.AreEqual(NativeOverlaps.Num(), ScriptOverlaps.Num(), *FString::Printf(TEXT("%s should preserve the overlap count"), ContextLabel));
+
+		for (int32 OverlapIndex = 0; OverlapIndex < FMath::Min(ScriptOverlaps.Num(), NativeOverlaps.Num()); ++OverlapIndex)
+		{
+			bPassed &= LocalAssert.AreEqual(NativeOverlaps[OverlapIndex].GetActor(), ScriptOverlaps[OverlapIndex].GetActor(), *FString::Printf(TEXT("%s should preserve actor for overlap %d"), ContextLabel, OverlapIndex));
+			bPassed &= LocalAssert.AreEqual(NativeOverlaps[OverlapIndex].GetComponent(), ScriptOverlaps[OverlapIndex].GetComponent(), *FString::Printf(TEXT("%s should preserve component for overlap %d"), ContextLabel, OverlapIndex));
+		}
+
+		return bPassed;
+	}
 
 public:
 	// ====================================================================
@@ -153,8 +153,7 @@ public:
 
 	TEST_METHOD(SyncQueries)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
-		{
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope _AutoEngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
@@ -169,61 +168,61 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 			*TestRunner,
 			Engine,
 			WorldCollisionModuleName,
-			TEXT(R"(
-bool RunLineTraceSingleHit(FHitResult& OutHit)
-{
-	return System::LineTraceSingleByChannel(OutHit, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), ECollisionChannel::ECC_Visibility);
-}
+			ASTEST_AS(R"AS(
+				bool RunLineTraceSingleHit(FHitResult& OutHit)
+				{
+					return System::LineTraceSingleByChannel(OutHit, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), ECollisionChannel::ECC_Visibility);
+				}
 
-bool RunLineTraceSingleMiss(FHitResult& OutHit)
-{
-	return System::LineTraceSingleByChannel(OutHit, FVector(-200.0f, 300.0f, 0.0f), FVector(200.0f, 300.0f, 0.0f), ECollisionChannel::ECC_Visibility);
-}
+				bool RunLineTraceSingleMiss(FHitResult& OutHit)
+				{
+					return System::LineTraceSingleByChannel(OutHit, FVector(-200.0f, 300.0f, 0.0f), FVector(200.0f, 300.0f, 0.0f), ECollisionChannel::ECC_Visibility);
+				}
 
-bool RunLineTraceMultiHit(TArray<FHitResult>& OutHits)
-{
-	return System::LineTraceMultiByChannel(OutHits, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), ECollisionChannel::ECC_Visibility);
-}
+				bool RunLineTraceMultiHit(TArray<FHitResult>& OutHits)
+				{
+					return System::LineTraceMultiByChannel(OutHits, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), ECollisionChannel::ECC_Visibility);
+				}
 
-bool RunLineTraceMultiMiss(TArray<FHitResult>& OutHits)
-{
-	return System::LineTraceMultiByChannel(OutHits, FVector(-200.0f, 300.0f, 0.0f), FVector(200.0f, 300.0f, 0.0f), ECollisionChannel::ECC_Visibility);
-}
+				bool RunLineTraceMultiMiss(TArray<FHitResult>& OutHits)
+				{
+					return System::LineTraceMultiByChannel(OutHits, FVector(-200.0f, 300.0f, 0.0f), FVector(200.0f, 300.0f, 0.0f), ECollisionChannel::ECC_Visibility);
+				}
 
-bool RunSweepSingleHit(FHitResult& OutHit)
-{
-	FCollisionShape Shape = FCollisionShape::MakeBox(FVector(30.0f, 30.0f, 30.0f));
-	return System::SweepSingleByChannel(OutHit, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), FQuat::Identity, ECollisionChannel::ECC_Visibility, Shape);
-}
+				bool RunSweepSingleHit(FHitResult& OutHit)
+				{
+					FCollisionShape Shape = FCollisionShape::MakeBox(FVector(30.0f, 30.0f, 30.0f));
+					return System::SweepSingleByChannel(OutHit, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), FQuat::Identity, ECollisionChannel::ECC_Visibility, Shape);
+				}
 
-bool RunSweepSingleMiss(FHitResult& OutHit)
-{
-	FCollisionShape Shape = FCollisionShape::MakeBox(FVector(30.0f, 30.0f, 30.0f));
-	return System::SweepSingleByChannel(OutHit, FVector(-200.0f, 300.0f, 0.0f), FVector(200.0f, 300.0f, 0.0f), FQuat::Identity, ECollisionChannel::ECC_Visibility, Shape);
-}
+				bool RunSweepSingleMiss(FHitResult& OutHit)
+				{
+					FCollisionShape Shape = FCollisionShape::MakeBox(FVector(30.0f, 30.0f, 30.0f));
+					return System::SweepSingleByChannel(OutHit, FVector(-200.0f, 300.0f, 0.0f), FVector(200.0f, 300.0f, 0.0f), FQuat::Identity, ECollisionChannel::ECC_Visibility, Shape);
+				}
 
-bool RunOverlapAnyHit()
-{
-	FCollisionShape Shape = FCollisionShape::MakeBox(FVector(30.0f, 30.0f, 30.0f));
-	return System::OverlapAnyTestByChannel(FVector::ZeroVector, FQuat::Identity, ECollisionChannel::ECC_Visibility, Shape);
-}
+				bool RunOverlapAnyHit()
+				{
+					FCollisionShape Shape = FCollisionShape::MakeBox(FVector(30.0f, 30.0f, 30.0f));
+					return System::OverlapAnyTestByChannel(FVector::ZeroVector, FQuat::Identity, ECollisionChannel::ECC_Visibility, Shape);
+				}
 
-bool RunOverlapAnyMiss()
-{
-	FCollisionShape Shape = FCollisionShape::MakeBox(FVector(30.0f, 30.0f, 30.0f));
-	return System::OverlapAnyTestByChannel(FVector(0.0f, 300.0f, 0.0f), FQuat::Identity, ECollisionChannel::ECC_Visibility, Shape);
-}
+				bool RunOverlapAnyMiss()
+				{
+					FCollisionShape Shape = FCollisionShape::MakeBox(FVector(30.0f, 30.0f, 30.0f));
+					return System::OverlapAnyTestByChannel(FVector(0.0f, 300.0f, 0.0f), FQuat::Identity, ECollisionChannel::ECC_Visibility, Shape);
+				}
 
-bool RunComponentOverlapMultiHit(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)
-{
-	return System::ComponentOverlapMultiByChannel(OutOverlaps, QueryComponent, FVector::ZeroVector, FQuat::Identity, ECollisionChannel::ECC_Visibility);
-}
+				bool RunComponentOverlapMultiHit(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)
+				{
+					return System::ComponentOverlapMultiByChannel(OutOverlaps, QueryComponent, FVector::ZeroVector, FQuat::Identity, ECollisionChannel::ECC_Visibility);
+				}
 
-bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)
-{
-	return System::ComponentOverlapMultiByChannel(OutOverlaps, QueryComponent, FVector(0.0f, 300.0f, 0.0f), FQuat::Identity, ECollisionChannel::ECC_Visibility);
-}
-)"));
+				bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)
+				{
+					return System::ComponentOverlapMultiByChannel(OutOverlaps, QueryComponent, FVector(0.0f, 300.0f, 0.0f), FQuat::Identity, ECollisionChannel::ECC_Visibility);
+				}
+				)AS"));
 		if (Module == nullptr)
 		{
 			return;
@@ -300,7 +299,8 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 		{
 			return;
 		}
-		ExpectHitArrayParity(*TestRunner, TEXT("LineTraceMulti hit"), bScriptLineMultiHit, bNativeLineMultiHit, ScriptLineHits, NativeLineHits);
+		ASSERT_THAT(IsTrue(
+			ExpectHitArrayParity(*TestRunner, TEXT("LineTraceMulti hit"), bScriptLineMultiHit, bNativeLineMultiHit, ScriptLineHits, NativeLineHits)));
 
 		// LineTraceMulti miss
 		TArray<FHitResult> NativeLineMissHits;
@@ -317,7 +317,8 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 		{
 			return;
 		}
-		ExpectHitArrayParity(*TestRunner, TEXT("LineTraceMulti miss"), bScriptLineMultiMiss, bNativeLineMultiMiss, ScriptLineMissHits, NativeLineMissHits);
+		ASSERT_THAT(IsTrue(
+			ExpectHitArrayParity(*TestRunner, TEXT("LineTraceMulti miss"), bScriptLineMultiMiss, bNativeLineMultiMiss, ScriptLineMissHits, NativeLineMissHits)));
 
 		// SweepSingle hit
 		FHitResult NativeSweepHit;
@@ -399,13 +400,14 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 		{
 			return;
 		}
-		ExpectOverlapArrayParity(
+		ASSERT_THAT(IsTrue(
+			ExpectOverlapArrayParity(
 			*TestRunner,
 			TEXT("ComponentOverlapMultiByChannel hit"),
 			bScriptComponentOverlapHit,
 			bNativeComponentOverlapHit,
 			ScriptComponentOverlapHits,
-			NativeComponentOverlapHits);
+			NativeComponentOverlapHits)));
 
 		// ComponentOverlapMulti miss
 		TArray<FOverlapResult> NativeComponentOverlapMisses;
@@ -423,15 +425,15 @@ bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOv
 		{
 			return;
 		}
-		ExpectOverlapArrayParity(
+		ASSERT_THAT(IsTrue(
+			ExpectOverlapArrayParity(
 			*TestRunner,
 			TEXT("ComponentOverlapMultiByChannel miss"),
 			bScriptComponentOverlapMiss,
 			bNativeComponentOverlapMiss,
 			ScriptComponentOverlapMisses,
-			NativeComponentOverlapMisses);
+			NativeComponentOverlapMisses)));
 
-		}
 	}
 };
 

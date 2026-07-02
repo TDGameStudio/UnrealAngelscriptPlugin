@@ -46,112 +46,177 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptFunctionLibraryTest,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
-inline static const FName ScriptFunctionLibraryModuleName = FName(TEXT("ASGlobalInitContext_HotReload_42"));
-inline static const FString ScriptFunctionLibraryFilename = FString(TEXT("ASGlobalInitContext_HotReload_42.as"));
-inline static const FString DirectScriptFunctionLibraryModuleName = FString(TEXT("ASGlobalInitContext_Stable"));
-inline static const FString ScriptFunctionLibraryNamespace = FString(TEXT("ScopedContext"));
-inline static const FString HotReloadMarker = FString(TEXT("_NEW_"));
+	inline static const FName ScriptFunctionLibraryModuleName = FName(TEXT("ASGlobalInitContext_HotReload_42"));
+	inline static const FString ScriptFunctionLibraryFilename = FString(TEXT("ASGlobalInitContext_HotReload_42.as"));
+	inline static const FString DirectScriptFunctionLibraryModuleName = FString(TEXT("ASGlobalInitContext_Stable"));
+	inline static const FString ScriptFunctionLibraryNamespace = FString(TEXT("ScopedContext"));
+	inline static const FString HotReloadMarker = FString(TEXT("_NEW_"));
 
-template <typename TValue>
-static bool ExecuteStringGlobalFunction(
-	FAutomationTestBase& Test,
-	FAngelscriptEngine& Engine,
-	asIScriptModule& Module,
-	const TCHAR* FunctionDecl,
-	TValue& OutValue)
-{
-	FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
-	return Executor.ExecuteAndExtractStruct(OutValue);
-}
-
-static asIScriptModule* GetCompiledModule(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
-{
-	TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModule(ScriptFunctionLibraryModuleName.ToString());
-	FNoDiscardAsserter LocalAssert(Test);
-	if (!LocalAssert.IsTrue(
-			ModuleDesc.IsValid(),
-			TEXT("Script function library global-init test should keep the module registered after compile")))
+	template <typename TValue>
+	static bool ExecuteStringGlobalFunction(
+		FAutomationTestBase& Test,
+		FAngelscriptEngine& Engine,
+		asIScriptModule& Module,
+		const TCHAR* FunctionDecl,
+		TValue& OutValue)
 	{
-		return nullptr;
+		FAngelscriptTestExecutor Executor(Test, Engine, Module, FunctionDecl);
+		return Executor.ExecuteAndExtractStruct(OutValue);
 	}
 
-	asIScriptModule* Module = ModuleDesc.IsValid() ? ModuleDesc->ScriptModule : nullptr;
-	if (!LocalAssert.IsNotNull(
-			Module,
-			TEXT("Script function library global-init test should expose the backing asIScriptModule")))
+	static asIScriptModule* GetCompiledModule(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 	{
-		return nullptr;
+		TSharedPtr<FAngelscriptModuleDesc> ModuleDesc = Engine.GetModule(ScriptFunctionLibraryModuleName.ToString());
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsTrue(
+				ModuleDesc.IsValid(),
+				TEXT("Script function library global-init test should keep the module registered after compile")))
+		{
+			return nullptr;
+		}
+
+		asIScriptModule* Module = ModuleDesc.IsValid() ? ModuleDesc->ScriptModule : nullptr;
+		if (!LocalAssert.IsNotNull(
+				Module,
+				TEXT("Script function library global-init test should expose the backing asIScriptModule")))
+		{
+			return nullptr;
+		}
+
+		return Module;
 	}
 
-	return Module;
-}
+	static FString BuildScriptSource(const int32 Version)
+	{
+		FString HotReloadContextSource = ASTEST_AS(R"AS(
+			const FString PlainNameCapture = Script::GetNameOfGlobalVariableBeingInitialized();
+			const FString PlainNamespaceCapture = Script::GetNamespaceOfGlobalVariableBeingInitialized();
+			const FString PlainModuleCapture = Script::GetModuleNameOfGlobalVariableBeingInitialized();
 
-static FString BuildScriptSource(const int32 Version)
-{
-	return FString::Printf(TEXT(R"(
-const FString PlainNameCapture = Script::GetNameOfGlobalVariableBeingInitialized();
-const FString PlainNamespaceCapture = Script::GetNamespaceOfGlobalVariableBeingInitialized();
-const FString PlainModuleCapture = Script::GetModuleNameOfGlobalVariableBeingInitialized();
+			namespace $SCRIPT_NAMESPACE$
+			{
+				const FString ScopedNameCapture = Script::GetNameOfGlobalVariableBeingInitialized();
+				const FString ScopedNamespaceCapture = Script::GetNamespaceOfGlobalVariableBeingInitialized();
+				const FString ScopedModuleCapture = Script::GetModuleNameOfGlobalVariableBeingInitialized();
+			}
 
-namespace %s
-{
-const FString ScopedNameCapture = Script::GetNameOfGlobalVariableBeingInitialized();
-const FString ScopedNamespaceCapture = Script::GetNamespaceOfGlobalVariableBeingInitialized();
-const FString ScopedModuleCapture = Script::GetModuleNameOfGlobalVariableBeingInitialized();
-}
+			FString GetPlainNameCapture()
+			{
+				return PlainNameCapture;
+			}
 
-FString GetPlainNameCapture() { return PlainNameCapture; }
-FString GetPlainNamespaceCapture() { return PlainNamespaceCapture; }
-FString GetPlainModuleCapture() { return PlainModuleCapture; }
+			FString GetPlainNamespaceCapture()
+			{
+				return PlainNamespaceCapture;
+			}
 
-FString GetScopedNameCapture() { return %s::ScopedNameCapture; }
-FString GetScopedNamespaceCapture() { return %s::ScopedNamespaceCapture; }
-FString GetScopedModuleCapture() { return %s::ScopedModuleCapture; }
+			FString GetPlainModuleCapture()
+			{
+				return PlainModuleCapture;
+			}
 
-FString GetOutsideInitName() { return Script::GetNameOfGlobalVariableBeingInitialized(); }
-FString GetOutsideInitNamespace() { return Script::GetNamespaceOfGlobalVariableBeingInitialized(); }
-FString GetOutsideInitModule() { return Script::GetModuleNameOfGlobalVariableBeingInitialized(); }
+			FString GetScopedNameCapture()
+			{
+				return $SCRIPT_NAMESPACE$::ScopedNameCapture;
+			}
 
-int GetVersion() { return %d; }
-)"),
-		*ScriptFunctionLibraryNamespace,
-		*ScriptFunctionLibraryNamespace,
-		*ScriptFunctionLibraryNamespace,
-		*ScriptFunctionLibraryNamespace,
-		Version);
-}
+			FString GetScopedNamespaceCapture()
+			{
+				return $SCRIPT_NAMESPACE$::ScopedNamespaceCapture;
+			}
 
-static FString BuildDirectContextScriptSource()
-{
-	return FString::Printf(TEXT(R"(
-const FString PlainNameCapture = Script::GetNameOfGlobalVariableBeingInitialized();
-const FString PlainNamespaceCapture = Script::GetNamespaceOfGlobalVariableBeingInitialized();
-const FString PlainModuleCapture = Script::GetModuleNameOfGlobalVariableBeingInitialized();
+			FString GetScopedModuleCapture()
+			{
+				return $SCRIPT_NAMESPACE$::ScopedModuleCapture;
+			}
 
-namespace %s
-{
-const FString ScopedNameCapture = Script::GetNameOfGlobalVariableBeingInitialized();
-const FString ScopedNamespaceCapture = Script::GetNamespaceOfGlobalVariableBeingInitialized();
-const FString ScopedModuleCapture = Script::GetModuleNameOfGlobalVariableBeingInitialized();
-}
+			FString GetOutsideInitName()
+			{
+				return Script::GetNameOfGlobalVariableBeingInitialized();
+			}
 
-FString GetPlainNameCapture() { return PlainNameCapture; }
-FString GetPlainNamespaceCapture() { return PlainNamespaceCapture; }
-FString GetPlainModuleCapture() { return PlainModuleCapture; }
+			FString GetOutsideInitNamespace()
+			{
+				return Script::GetNamespaceOfGlobalVariableBeingInitialized();
+			}
 
-FString GetScopedNameCapture() { return %s::ScopedNameCapture; }
-FString GetScopedNamespaceCapture() { return %s::ScopedNamespaceCapture; }
-FString GetScopedModuleCapture() { return %s::ScopedModuleCapture; }
+			FString GetOutsideInitModule()
+			{
+				return Script::GetModuleNameOfGlobalVariableBeingInitialized();
+			}
 
-FString GetOutsideInitName() { return Script::GetNameOfGlobalVariableBeingInitialized(); }
-FString GetOutsideInitNamespace() { return Script::GetNamespaceOfGlobalVariableBeingInitialized(); }
-FString GetOutsideInitModule() { return Script::GetModuleNameOfGlobalVariableBeingInitialized(); }
-)"),
-		*ScriptFunctionLibraryNamespace,
-		*ScriptFunctionLibraryNamespace,
-		*ScriptFunctionLibraryNamespace,
-		*ScriptFunctionLibraryNamespace);
-}
+			int GetVersion()
+			{
+				return $VERSION$;
+			}
+			)AS");
+		HotReloadContextSource.ReplaceInline(TEXT("$SCRIPT_NAMESPACE$"), *ScriptFunctionLibraryNamespace);
+		HotReloadContextSource.ReplaceInline(TEXT("$VERSION$"), *FString::FromInt(Version));
+		return HotReloadContextSource;
+	}
+
+	static FString BuildDirectContextScriptSource()
+	{
+		FString DirectContextSource = ASTEST_AS(R"AS(
+			const FString PlainNameCapture = Script::GetNameOfGlobalVariableBeingInitialized();
+			const FString PlainNamespaceCapture = Script::GetNamespaceOfGlobalVariableBeingInitialized();
+			const FString PlainModuleCapture = Script::GetModuleNameOfGlobalVariableBeingInitialized();
+
+			namespace $SCRIPT_NAMESPACE$
+			{
+				const FString ScopedNameCapture = Script::GetNameOfGlobalVariableBeingInitialized();
+				const FString ScopedNamespaceCapture = Script::GetNamespaceOfGlobalVariableBeingInitialized();
+				const FString ScopedModuleCapture = Script::GetModuleNameOfGlobalVariableBeingInitialized();
+			}
+
+			FString GetPlainNameCapture()
+			{
+				return PlainNameCapture;
+			}
+
+			FString GetPlainNamespaceCapture()
+			{
+				return PlainNamespaceCapture;
+			}
+
+			FString GetPlainModuleCapture()
+			{
+				return PlainModuleCapture;
+			}
+
+			FString GetScopedNameCapture()
+			{
+				return $SCRIPT_NAMESPACE$::ScopedNameCapture;
+			}
+
+			FString GetScopedNamespaceCapture()
+			{
+				return $SCRIPT_NAMESPACE$::ScopedNamespaceCapture;
+			}
+
+			FString GetScopedModuleCapture()
+			{
+				return $SCRIPT_NAMESPACE$::ScopedModuleCapture;
+			}
+
+			FString GetOutsideInitName()
+			{
+				return Script::GetNameOfGlobalVariableBeingInitialized();
+			}
+
+			FString GetOutsideInitNamespace()
+			{
+				return Script::GetNamespaceOfGlobalVariableBeingInitialized();
+			}
+
+			FString GetOutsideInitModule()
+			{
+				return Script::GetModuleNameOfGlobalVariableBeingInitialized();
+			}
+			)AS");
+		DirectContextSource.ReplaceInline(TEXT("$SCRIPT_NAMESPACE$"), *ScriptFunctionLibraryNamespace);
+		return DirectContextSource;
+	}
 
 public:
 	BEFORE_ALL()
@@ -159,7 +224,11 @@ public:
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: GlobalInitContextHotReloadName
@@ -167,7 +236,7 @@ public:
 
 	TEST_METHOD(GlobalInitContextHotReloadName)
 	{
-FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		ON_SCOPE_EXIT
@@ -243,15 +312,15 @@ FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FString OutsideInitNamespace;
 		FString OutsideInitModule;
 
-		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainNameCapture()"), PlainNameCapture);
-		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainNamespaceCapture()"), PlainNamespaceCapture);
-		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainModuleCapture()"), PlainModuleCapture);
-		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedNameCapture()"), ScopedNameCapture);
-		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedNamespaceCapture()"), ScopedNamespaceCapture);
-		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedModuleCapture()"), ScopedModuleCapture);
-		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitName()"), OutsideInitName);
-		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitNamespace()"), OutsideInitNamespace);
-		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitModule()"), OutsideInitModule);
+		ASSERT_THAT(IsTrue(ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainNameCapture()"), PlainNameCapture)));
+		ASSERT_THAT(IsTrue(ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainNamespaceCapture()"), PlainNamespaceCapture)));
+		ASSERT_THAT(IsTrue(ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainModuleCapture()"), PlainModuleCapture)));
+		ASSERT_THAT(IsTrue(ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedNameCapture()"), ScopedNameCapture)));
+		ASSERT_THAT(IsTrue(ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedNamespaceCapture()"), ScopedNamespaceCapture)));
+		ASSERT_THAT(IsTrue(ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedModuleCapture()"), ScopedModuleCapture)));
+		ASSERT_THAT(IsTrue(ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitName()"), OutsideInitName)));
+		ASSERT_THAT(IsTrue(ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitNamespace()"), OutsideInitNamespace)));
+		ASSERT_THAT(IsTrue(ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitModule()"), OutsideInitModule)));
 
 		const FString ExpectedHotReloadPrefix = ScriptFunctionLibraryModuleName.ToString() + HotReloadMarker;
 
@@ -273,7 +342,7 @@ FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 
 	TEST_METHOD(GlobalInitContext)
 	{
-FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		asIScriptModule* Module = BuildModule(
@@ -290,15 +359,15 @@ FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FString OutsideInitNamespace;
 		FString OutsideInitModule;
 
-		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainNameCapture()"), PlainNameCapture);
-		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainNamespaceCapture()"), PlainNamespaceCapture);
-		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainModuleCapture()"), PlainModuleCapture);
-		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedNameCapture()"), ScopedNameCapture);
-		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedNamespaceCapture()"), ScopedNamespaceCapture);
-		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedModuleCapture()"), ScopedModuleCapture);
-		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitName()"), OutsideInitName);
-		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitNamespace()"), OutsideInitNamespace);
-		ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitModule()"), OutsideInitModule);
+		ASSERT_THAT(IsTrue(ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainNameCapture()"), PlainNameCapture)));
+		ASSERT_THAT(IsTrue(ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainNamespaceCapture()"), PlainNamespaceCapture)));
+		ASSERT_THAT(IsTrue(ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetPlainModuleCapture()"), PlainModuleCapture)));
+		ASSERT_THAT(IsTrue(ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedNameCapture()"), ScopedNameCapture)));
+		ASSERT_THAT(IsTrue(ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedNamespaceCapture()"), ScopedNamespaceCapture)));
+		ASSERT_THAT(IsTrue(ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetScopedModuleCapture()"), ScopedModuleCapture)));
+		ASSERT_THAT(IsTrue(ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitName()"), OutsideInitName)));
+		ASSERT_THAT(IsTrue(ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitNamespace()"), OutsideInitNamespace)));
+		ASSERT_THAT(IsTrue(ExecuteStringGlobalFunction(*TestRunner, Engine, *Module, TEXT("FString GetOutsideInitModule()"), OutsideInitModule)));
 
 		ASSERT_THAT(AreEqual(FString(TEXT("PlainNameCapture")), PlainNameCapture, TEXT("Plain global init should report variable name")));
 		ASSERT_THAT(AreEqual(FString(TEXT("")), PlainNamespaceCapture, TEXT("Plain global init should report empty namespace")));

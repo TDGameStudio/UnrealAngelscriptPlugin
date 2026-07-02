@@ -50,7 +50,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeEngineBindingsTest,
 		ASTEST_CREATE_ENGINE();
 	}
 
-	AFTER_ALL() { FAngelscriptEngine& Engine = ASTEST_GET_ENGINE(); ASTEST_RESET_ENGINE(Engine); }
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
 	// ====================================================================
 	// Section: NativeActorMethods
@@ -65,27 +69,29 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeEngineBindingsTest,
 			&Engine,
 			TEXT("ASNativeActorBindingTest"),
 			TEXT("ASNativeActorBindingTest.as"),
-			TEXT(R"(
-UCLASS()
-class ABindingExampleActor : AActor
-{
-	UFUNCTION()
-	int ReadNativeBindings()
-	{
-		FVector Location = GetActorLocation();
-		FRotator Rotation = GetActorRotation();
-		UClass RuntimeType = GetClass();
-		FName ClassName = RuntimeType.GetName();
-		FString Path = GetPathName();
-		FString FullName = GetFullName();
-		bool bActorType = IsA(RuntimeType);
+			ASTEST_AS(R"AS(
+				UCLASS()
+				class ABindingExampleActor : AActor
+				{
+					UFUNCTION()
+					int ReadNativeBindings()
+					{
+						FVector Location = GetActorLocation();
+						FRotator Rotation = GetActorRotation();
+						UClass RuntimeType = GetClass();
+						FName ClassName = RuntimeType.GetName();
+						FString Path = GetPathName();
+						FString FullName = GetFullName();
+						bool bActorType = IsA(RuntimeType);
 
-		if (Path.Len() < 0 || FullName.Len() < 0 || !bActorType)
-			return 0;
-		return 1;
-	}
-}
-)"));
+						if (Path.Len() < 0 || FullName.Len() < 0 || !bActorType)
+						{
+							return 0;
+						}
+						return 1;
+					}
+				}
+				)AS"));
 		ASSERT_THAT(IsTrue(bCompiled, TEXT("Compile annotated actor module using native bindings should succeed")));
 
 		UClass* RuntimeClass = FindGeneratedClass(&Engine, TEXT("ABindingExampleActor"));
@@ -115,75 +121,111 @@ class ABindingExampleActor : AActor
 			&Engine,
 			TEXT("ASNativeComponentBindingTest"),
 			TEXT("ASNativeComponentBindingTest.as"),
-			TEXT(R"(
-UCLASS()
-class UBindingSceneComponent : USceneComponent
-{
-	UFUNCTION()
-	int ReadComponentBindings()
-	{
-		FScopedMovementUpdate ScopedMove(this);
-		if (!IsValid(GetOwner()))
-			return 10;
-		if (!IsValid(GetPackage()) || !IsValid(GetOutermost()))
-			return 20;
+			ASTEST_AS(R"AS(
+				UCLASS()
+				class UBindingSceneComponent : USceneComponent
+				{
+					UFUNCTION()
+					int ReadComponentBindings()
+					{
+						FScopedMovementUpdate ScopedMove(this);
+						if (!IsValid(GetOwner()))
+						{
+							return 10;
+						}
+						if (!IsValid(GetPackage()) || !IsValid(GetOutermost()))
+						{
+							return 20;
+						}
 
-		Deactivate();
-		Activate();
+						Deactivate();
+						Activate();
 
-		SetRelativeLocation(FVector(1.0, 2.0, 3.0));
-		SetComponentVelocity(FVector(4.0, 5.0, 6.0));
-		FVector Relative = GetRelativeLocation();
-		FTransform Transform = GetComponentTransform();
-		FVector Velocity = GetComponentVelocity();
+						SetRelativeLocation(FVector(1.0, 2.0, 3.0));
+						SetComponentVelocity(FVector(4.0, 5.0, 6.0));
+						FVector Relative = GetRelativeLocation();
+						FTransform Transform = GetComponentTransform();
+						FVector Velocity = GetComponentVelocity();
 
-		if (!Relative.Equals(FVector(1.0, 2.0, 3.0)))
-			return 30;
-		if (!Transform.GetTranslation().Equals(Relative))
-			return 40;
-		if (!Velocity.Equals(FVector(4.0, 5.0, 6.0)))
-			return 45;
-		if (GetNumChildrenComponents() != 0)
-			return 50;
-		UActorComponent FoundByClass = GetOwner().GetComponent(USceneComponent::StaticClass());
-		if (!IsValid(FoundByClass))
-			return 80;
-		if (!(FoundByClass.GetName() == n"ScriptScene"))
-			return 90;
-		UActorComponent FoundByName = GetOwner().GetComponent(USceneComponent::StaticClass(), n"ScriptScene");
-		if (!IsValid(FoundByName))
-			return 100;
-		if (!(FoundByName.GetName() == n"ScriptScene"))
-			return 110;
-		if (!IsValid(USceneComponent::Get(GetOwner())))
-			return 120;
-		if (!(USceneComponent::Get(GetOwner()).GetName() == n"ScriptScene"))
-			return 130;
-		if (!IsValid(USceneComponent::Get(GetOwner(), n"ScriptScene")))
-			return 140;
-		if (!(USceneComponent::Get(GetOwner(), n"ScriptScene").GetName() == n"ScriptScene"))
-			return 150;
+						if (!Relative.Equals(FVector(1.0, 2.0, 3.0)))
+						{
+							return 30;
+						}
+						if (!Transform.GetTranslation().Equals(Relative))
+						{
+							return 40;
+						}
+						if (!Velocity.Equals(FVector(4.0, 5.0, 6.0)))
+						{
+							return 45;
+						}
+						if (GetNumChildrenComponents() != 0)
+						{
+							return 50;
+						}
+						UActorComponent FoundByClass = GetOwner().GetComponent(USceneComponent::StaticClass());
+						if (!IsValid(FoundByClass))
+						{
+							return 80;
+						}
+						if (!(FoundByClass.GetName() == n"ScriptScene"))
+						{
+							return 90;
+						}
+						UActorComponent FoundByName = GetOwner().GetComponent(USceneComponent::StaticClass(), n"ScriptScene");
+						if (!IsValid(FoundByName))
+						{
+							return 100;
+						}
+						if (!(FoundByName.GetName() == n"ScriptScene"))
+						{
+							return 110;
+						}
+						if (!IsValid(USceneComponent::Get(GetOwner())))
+						{
+							return 120;
+						}
+						if (!(USceneComponent::Get(GetOwner()).GetName() == n"ScriptScene"))
+						{
+							return 130;
+						}
+						if (!IsValid(USceneComponent::Get(GetOwner(), n"ScriptScene")))
+						{
+							return 140;
+						}
+						if (!(USceneComponent::Get(GetOwner(), n"ScriptScene").GetName() == n"ScriptScene"))
+						{
+							return 150;
+						}
 
-		TArray<USceneComponent> SceneComponents;
-		SceneComponents.Add(USceneComponent::Get(GetOwner()));
-		SceneComponents.Empty();
-		GetOwner().GetComponentsByClass(SceneComponents);
-		if (SceneComponents.Num() != 1)
-			return 160;
-		if (!IsValid(SceneComponents[0]) || !(SceneComponents[0].GetName() == n"ScriptScene"))
-			return 170;
+						TArray<USceneComponent> SceneComponents;
+						SceneComponents.Add(USceneComponent::Get(GetOwner()));
+						SceneComponents.Empty();
+						GetOwner().GetComponentsByClass(SceneComponents);
+						if (SceneComponents.Num() != 1)
+						{
+							return 160;
+						}
+						if (!IsValid(SceneComponents[0]) || !(SceneComponents[0].GetName() == n"ScriptScene"))
+						{
+							return 170;
+						}
 
-		TArray<UActorComponent> AllComponents;
-		GetOwner().GetComponentsByClass(AllComponents);
-		if (AllComponents.Num() != 1)
-			return 180;
-		if (!IsValid(AllComponents[0]) || !(AllComponents[0].GetName() == n"ScriptScene"))
-			return 190;
+						TArray<UActorComponent> AllComponents;
+						GetOwner().GetComponentsByClass(AllComponents);
+						if (AllComponents.Num() != 1)
+						{
+							return 180;
+						}
+						if (!IsValid(AllComponents[0]) || !(AllComponents[0].GetName() == n"ScriptScene"))
+						{
+							return 190;
+						}
 
-		return ComponentHasTag(NAME_None) ? 0 : 1;
-	}
-}
-)"));
+						return ComponentHasTag(NAME_None) ? 0 : 1;
+					}
+				}
+				)AS"));
 		ASSERT_THAT(IsTrue(bCompiled, TEXT("Compile annotated scene component module using native bindings should succeed")));
 
 		UClass* RuntimeClass = FindGeneratedClass(&Engine, TEXT("UBindingSceneComponent"));
@@ -218,18 +260,18 @@ class UBindingSceneComponent : USceneComponent
 			&Engine,
 			TEXT("ASComponentDestroyCompat"),
 			TEXT("ASComponentDestroyCompat.as"),
-			TEXT(R"(
-UCLASS()
-class UDestroyBindingComponent : UActorComponent
-{
-	UFUNCTION()
-	int DestroySelf()
-	{
-		DestroyComponent();
-		return 1;
-	}
-}
-)"));
+			ASTEST_AS(R"AS(
+				UCLASS()
+				class UDestroyBindingComponent : UActorComponent
+				{
+					UFUNCTION()
+					int DestroySelf()
+					{
+						DestroyComponent();
+						return 1;
+					}
+				}
+				)AS"));
 		ASSERT_THAT(IsTrue(bCompiled, TEXT("Compile annotated destroy component module should succeed")));
 
 		UClass* RuntimeClass = FindGeneratedClass(&Engine, TEXT("UDestroyBindingComponent"));
@@ -287,35 +329,39 @@ class UDestroyBindingComponent : UActorComponent
 			&Engine,
 			TEXT("ASComponentActivationAndTagCompat"),
 			TEXT("ASComponentActivationAndTagCompat.as"),
-			TEXT(R"(
-UCLASS()
-class UBindingActivationComponent : UActorComponent
-{
-	UFUNCTION()
-	int VerifyTagBindings()
-	{
-		if (!ComponentHasTag(n"Probe"))
-			return 0;
-		if (ComponentHasTag(NAME_None))
-			return 0;
-		return 1;
-	}
+			ASTEST_AS(R"AS(
+				UCLASS()
+				class UBindingActivationComponent : UActorComponent
+				{
+					UFUNCTION()
+					int VerifyTagBindings()
+					{
+						if (!ComponentHasTag(n"Probe"))
+						{
+							return 0;
+						}
+						if (ComponentHasTag(NAME_None))
+						{
+							return 0;
+						}
+						return 1;
+					}
 
-	UFUNCTION()
-	int DeactivateSelf()
-	{
-		Deactivate();
-		return 1;
-	}
+					UFUNCTION()
+					int DeactivateSelf()
+					{
+						Deactivate();
+						return 1;
+					}
 
-	UFUNCTION()
-	int ReactivateSelf()
-	{
-		Activate(true);
-		return 1;
-	}
-}
-)"));
+					UFUNCTION()
+					int ReactivateSelf()
+					{
+						Activate(true);
+						return 1;
+					}
+				}
+				)AS"));
 		ASSERT_THAT(IsTrue(bCompiled, TEXT("Compile annotated activation component module should succeed")));
 
 		UClass* RuntimeClass = FindGeneratedClass(&Engine, TEXT("UBindingActivationComponent"));
