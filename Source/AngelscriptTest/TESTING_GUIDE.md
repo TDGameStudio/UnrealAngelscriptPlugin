@@ -485,7 +485,7 @@ reload, and assertions directly in the `TEST_METHOD`.
 | Condition | Location | Example |
 |---|---|---|
 | Used by two or more theme directories | `Shared/*.h`; include as `AngelscriptTestExecute.h` etc. | `BuildModule`, `FAngelscriptTestExecutor`, `ExecuteAndExpectInt` |
-| Used by two or more files under `Bindings/` only | `Bindings/Angelscript*TestHelpers.h` | `Bindings/AngelscriptTArrayBindingsTestHelpers.h` |
+| Used by two or more files under `Bindings/` only | `Bindings/Angelscript*TestHelpers.h` | `Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h` |
 | Single CQTest `.cpp` only | The owning `TEST_CLASS_WITH_FLAGS` under `private:` | Nested fixtures, observation structs, local constants |
 | Large bindings file split by section | `Bindings/*Sections.h` plus main `.cpp` | Console bindings cluster |
 

@@ -1,28 +1,13 @@
 // ============================================================================
 // AngelscriptWorldCollisionFunctionLibraryTraceTests.cpp
 //
-// World collision trace binding coverage — CQTest refactor.
-// Automation ID:
-//   Angelscript.TestModule.FunctionLibraries.WorldCollisionTrace.*
-//
-// Sections:
-//   LineTraceSingle        — LineTraceSingleByChannel hit parity
-//   LineTraceMultiHit      — LineTraceMultiByChannel hit parity
-//   LineTraceMultiMiss     — LineTraceMultiByChannel miss clears output
-//   SweepSingleByObject    — SweepSingleByObjectType hit parity
-//   OverlapMultiByProfile  — OverlapMultiByProfile hit containment
-//   OverlapMultiMiss       — OverlapMultiByProfile miss parity
-//
-// CQTest adaptation notes:
-//   Original single legacy automation monolithic function split
-//   into six TEST_METHODs, each with its own FScopedAngelscriptModule.
-//   Bool+address out-params use Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h.
-//   World/collision setup is shared via BEFORE_EACH.
+// World collision trace function-library binding contract smoke. Physics
+// behavior matrices live in Coverage (`13-physics-collision`).
 // ============================================================================
 
 #include "CQTest.h"
 #include "AngelscriptTestMacros.h"
-#include "AngelscriptTestModuleScope.h"
+#include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestExecute.h"
 #include "Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h"
 
@@ -30,38 +15,21 @@
 #include "Components/BoxComponent.h"
 #include "Engine/CollisionProfile.h"
 #include "Engine/OverlapResult.h"
-#include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "Misc/ScopeExit.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-
-// ----------------------------------------------------------------------------
-// Profile
-// ----------------------------------------------------------------------------
-
-
-// ----------------------------------------------------------------------------
-// Shared helpers
-// ----------------------------------------------------------------------------
-
-namespace WorldCollisionTraceTestHelpers
+TEST_CLASS_WITH_FLAGS(FAngelscriptWorldCollisionTraceBindingsTest,
+	"Angelscript.TestModule.FunctionLibraries.WorldCollisionTrace",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	static const FVector BlockingTargetLocation(0.0f, 0.0f, 0.0f);
-	static const FVector OverlapTargetLocation(0.0f, 150.0f, 0.0f);
-	static const FVector LineTraceHitStart(-200.0f, 0.0f, 0.0f);
-	static const FVector LineTraceHitEnd(200.0f, 0.0f, 0.0f);
-	static const FVector LineTraceMissStart(-200.0f, -200.0f, 0.0f);
-	static const FVector LineTraceMissEnd(200.0f, -200.0f, 0.0f);
-	static const FVector TargetExtent(50.0f, 50.0f, 50.0f);
-	static const FVector OverlapExtent(40.0f, 40.0f, 40.0f);
-	static const FVector SweepExtent(30.0f, 30.0f, 30.0f);
-	static const FVector OverlapShapeExtent(45.0f, 45.0f, 45.0f);
-	static const FVector ProfileMissLocation(0.0f, -150.0f, 0.0f);
-	static const FQuat IdentityRotation = FQuat::Identity;
-
-	UBoxComponent* AddCollisionBox(AActor& Owner, FName ComponentName, const FVector& BoxExtent, const FVector& WorldLocation)
+private:
+	static UBoxComponent* AddCollisionBox(
+		AActor& Owner,
+		FName ComponentName,
+		const FVector& BoxExtent,
+		const FVector& WorldLocation)
 	{
 		UBoxComponent* BoxComponent = NewObject<UBoxComponent>(&Owner, ComponentName);
 		check(BoxComponent != nullptr);
@@ -75,51 +43,7 @@ namespace WorldCollisionTraceTestHelpers
 		return BoxComponent;
 	}
 
-	bool ExpectHitResultParity(FAutomationTestBase& Test, const TCHAR* Label, bool bScriptReturnValue, bool bNativeReturnValue, const FHitResult& ScriptHit, const FHitResult& NativeHit)
-	{
-		FNoDiscardAsserter LocalAssert(Test);
-		bool bPassed = true;
-		bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), Label));
-		bPassed &= LocalAssert.AreEqual(NativeHit.GetActor(), ScriptHit.GetActor(), *FString::Printf(TEXT("%s should preserve the hit actor"), Label));
-		bPassed &= LocalAssert.AreEqual(NativeHit.GetComponent(), ScriptHit.GetComponent(), *FString::Printf(TEXT("%s should preserve the hit component"), Label));
-		bPassed &= LocalAssert.AreEqual(NativeHit.bBlockingHit, ScriptHit.bBlockingHit, *FString::Printf(TEXT("%s should preserve the blocking-hit flag"), Label));
-		bPassed &= LocalAssert.IsTrue(ScriptHit.Location.Equals(NativeHit.Location, 0.05f), *FString::Printf(TEXT("%s should preserve the hit location"), Label));
-		bPassed &= LocalAssert.IsTrue(ScriptHit.ImpactPoint.Equals(NativeHit.ImpactPoint, 0.05f), *FString::Printf(TEXT("%s should preserve the impact point"), Label));
-		return bPassed;
-	}
-
-	template <typename TResult>
-	bool ExpectArrayParity(FAutomationTestBase& Test, const TCHAR* Label, bool bScriptReturnValue, bool bNativeReturnValue, const TArray<TResult>& ScriptResults, const TArray<TResult>& NativeResults)
-	{
-		FNoDiscardAsserter LocalAssert(Test);
-		bool bPassed = true;
-		bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), Label));
-		bPassed &= LocalAssert.AreEqual(NativeResults.Num(), ScriptResults.Num(), *FString::Printf(TEXT("%s should preserve the result count"), Label));
-		if (ScriptResults.Num() > 0 && NativeResults.Num() > 0)
-		{
-			bPassed &= LocalAssert.AreEqual(NativeResults[0].GetActor(), ScriptResults[0].GetActor(), *FString::Printf(TEXT("%s should preserve the first result actor"), Label));
-			bPassed &= LocalAssert.AreEqual(NativeResults[0].GetComponent(), ScriptResults[0].GetComponent(), *FString::Printf(TEXT("%s should preserve the first result component"), Label));
-		}
-		return bPassed;
-	}
-
-	bool OverlapsContainComponent(const TArray<FOverlapResult>& Overlaps, const UPrimitiveComponent* Component)
-	{
-		return Overlaps.ContainsByPredicate([Component](const FOverlapResult& Overlap)
-		{
-			return Overlap.GetComponent() == Component;
-		});
-	}
-}
-
-// ----------------------------------------------------------------------------
-// Test class
-// ----------------------------------------------------------------------------
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptWorldCollisionTraceBindingsTest,
-	"Angelscript.TestModule.FunctionLibraries.WorldCollisionTrace",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -131,301 +55,92 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptWorldCollisionTraceBindingsTest,
 		ASTEST_RESET_ENGINE(Engine);
 	}
 
-	// ====================================================================
-	// Section: LineTraceSingle
-	// ====================================================================
-
-	TEST_METHOD(LineTraceSingle)
+	TEST_METHOD(TraceFunctionLibraryEntrypointSmoke)
 	{
-		using namespace WorldCollisionTraceTestHelpers;
-
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_LineTraceSingle"), ASTEST_AS(R"AS(
-			bool RunLineTraceSingleByChannelHit(FHitResult& OutHit)
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_EntrypointSmoke"), ASTEST_AS(R"AS(
+			int VerifyTraceFunctionLibraryEntrypointSmoke()
 			{
-				return System::LineTraceSingleByChannel(OutHit, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), ECollisionChannel::ECC_Visibility);
-			}
-			)AS"));
-		if (!Mod.IsValid()) return;
-		auto& M = Mod.GetModule();
+				FHitResult LineHit;
+				FHitResult SweepHit;
+				TArray<FHitResult> MultiHits;
+				TArray<FOverlapResult> Overlaps;
 
-		FActorTestSpawner Spawner;
-		Spawner.InitializeGameSubsystems();
-		AActor& BlockingActor = Spawner.SpawnActor<AActor>();
-		UBoxComponent* BlockingBox = WorldCollisionTraceTestHelpers::AddCollisionBox(BlockingActor, TEXT("BlockingTarget"), TargetExtent, BlockingTargetLocation);
-		ASSERT_THAT(IsNotNull(BlockingBox));
-
-		UWorld* World = BlockingActor.GetWorld();
-		ASSERT_THAT(IsNotNull(World));
-		FScopedTestWorldContextScope WorldContextScope(&BlockingActor);
-
-		FHitResult NativeLineHit;
-		const bool bNativeLineHit = World->LineTraceSingleByChannel(NativeLineHit, LineTraceHitStart, LineTraceHitEnd, ECC_Visibility);
-		FHitResult ScriptLineHit;
-		bool bScriptLineHit = false;
-		if (!WorldCollisionExecuteAddressBoolFunction(*TestRunner, Engine, M, TEXT("bool RunLineTraceSingleByChannelHit(FHitResult& OutHit)"), TEXT("RunLineTraceSingleByChannelHit"), ScriptLineHit, bScriptLineHit))
-		{
-			return;
-		}
-		ExpectHitResultParity(*TestRunner, TEXT("LineTraceSingleByChannel hit"), bScriptLineHit, bNativeLineHit, ScriptLineHit, NativeLineHit);
-		ASSERT_THAT(AreEqual(static_cast<AActor*>(&BlockingActor), ScriptLineHit.GetActor(), TEXT("LineTraceSingleByChannel hit should identify the blocker actor")));
-		ASSERT_THAT(AreEqual(static_cast<UPrimitiveComponent*>(BlockingBox), ScriptLineHit.GetComponent(), TEXT("LineTraceSingleByChannel hit should identify the blocker component")));
-	}
-
-	// ====================================================================
-	// Section: LineTraceMultiHit
-	// ====================================================================
-
-	TEST_METHOD(LineTraceMultiHit)
-	{
-		using namespace WorldCollisionTraceTestHelpers;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
-		FAngelscriptEngineScope Scope(Engine);
-
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_LineTraceMultiHit"), ASTEST_AS(R"AS(
-			bool RunLineTraceMultiByChannelHit(TArray<FHitResult>& OutHits)
-			{
-				return System::LineTraceMultiByChannel(OutHits, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), ECollisionChannel::ECC_Visibility);
-			}
-			)AS"));
-		if (!Mod.IsValid()) return;
-		auto& M = Mod.GetModule();
-
-		FActorTestSpawner Spawner;
-		Spawner.InitializeGameSubsystems();
-		AActor& BlockingActor = Spawner.SpawnActor<AActor>();
-		UBoxComponent* BlockingBox = WorldCollisionTraceTestHelpers::AddCollisionBox(BlockingActor, TEXT("BlockingTarget"), TargetExtent, BlockingTargetLocation);
-		ASSERT_THAT(IsNotNull(BlockingBox));
-
-		UWorld* World = BlockingActor.GetWorld();
-		ASSERT_THAT(IsNotNull(World));
-		FScopedTestWorldContextScope WorldContextScope(&BlockingActor);
-
-		TArray<FHitResult> NativeLineHits;
-		const bool bNativeLineMultiHit = World->LineTraceMultiByChannel(NativeLineHits, LineTraceHitStart, LineTraceHitEnd, ECC_Visibility);
-		TArray<FHitResult> ScriptLineHits;
-		bool bScriptLineMultiHit = false;
-		if (!WorldCollisionExecuteAddressBoolFunction(*TestRunner, Engine, M, TEXT("bool RunLineTraceMultiByChannelHit(TArray<FHitResult>& OutHits)"), TEXT("RunLineTraceMultiByChannelHit"), ScriptLineHits, bScriptLineMultiHit))
-		{
-			return;
-		}
-		ASSERT_THAT(IsTrue(
-			ExpectArrayParity(
-				*TestRunner,
-				TEXT("LineTraceMultiByChannel hit"),
-				bScriptLineMultiHit,
-				bNativeLineMultiHit,
-				ScriptLineHits,
-				NativeLineHits)));
-		ASSERT_THAT(IsTrue(ScriptLineHits.Num() >= 1, TEXT("LineTraceMultiByChannel hit should produce at least one hit")));
-	}
-
-	// ====================================================================
-	// Section: LineTraceMultiMiss
-	// ====================================================================
-
-	TEST_METHOD(LineTraceMultiMiss)
-	{
-		using namespace WorldCollisionTraceTestHelpers;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
-		FAngelscriptEngineScope Scope(Engine);
-
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_LineTraceMultiMiss"), ASTEST_AS(R"AS(
-			bool RunLineTraceMultiByChannelMiss(TArray<FHitResult>& OutHits)
-			{
-				return System::LineTraceMultiByChannel(OutHits, FVector(-200.0f, -200.0f, 0.0f), FVector(200.0f, -200.0f, 0.0f), ECollisionChannel::ECC_Visibility);
-			}
-			)AS"));
-		if (!Mod.IsValid()) return;
-		auto& M = Mod.GetModule();
-
-		FActorTestSpawner Spawner;
-		Spawner.InitializeGameSubsystems();
-		AActor& BlockingActor = Spawner.SpawnActor<AActor>();
-		UBoxComponent* BlockingBox = WorldCollisionTraceTestHelpers::AddCollisionBox(BlockingActor, TEXT("BlockingTarget"), TargetExtent, BlockingTargetLocation);
-		ASSERT_THAT(IsNotNull(BlockingBox));
-
-		UWorld* World = BlockingActor.GetWorld();
-		ASSERT_THAT(IsNotNull(World));
-		FScopedTestWorldContextScope WorldContextScope(&BlockingActor);
-
-		TArray<FHitResult> NativeLineMissHits;
-		NativeLineMissHits.AddDefaulted();
-		const bool bNativeLineMultiMiss = World->LineTraceMultiByChannel(NativeLineMissHits, LineTraceMissStart, LineTraceMissEnd, ECC_Visibility);
-		TArray<FHitResult> ScriptLineMissHits;
-		ScriptLineMissHits.AddDefaulted();
-		bool bScriptLineMultiMiss = false;
-		if (!WorldCollisionExecuteAddressBoolFunction(*TestRunner, Engine, M, TEXT("bool RunLineTraceMultiByChannelMiss(TArray<FHitResult>& OutHits)"), TEXT("RunLineTraceMultiByChannelMiss"), ScriptLineMissHits, bScriptLineMultiMiss))
-		{
-			return;
-		}
-		ASSERT_THAT(IsTrue(
-			ExpectArrayParity(
-				*TestRunner,
-				TEXT("LineTraceMultiByChannel miss"),
-				bScriptLineMultiMiss,
-				bNativeLineMultiMiss,
-				ScriptLineMissHits,
-				NativeLineMissHits)));
-		ASSERT_THAT(AreEqual(0, ScriptLineMissHits.Num(), TEXT("LineTraceMultiByChannel miss should clear stale output hits")));
-	}
-
-	// ====================================================================
-	// Section: SweepSingleByObject
-	// ====================================================================
-
-	TEST_METHOD(SweepSingleByObject)
-	{
-		using namespace WorldCollisionTraceTestHelpers;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
-		FAngelscriptEngineScope Scope(Engine);
-
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_SweepSingleByObject"), ASTEST_AS(R"AS(
-			bool RunSweepSingleByObjectTypeHit(FHitResult& OutHit)
-			{
 				FCollisionObjectQueryParams ObjectQueryParams;
 				ObjectQueryParams.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldDynamic);
-				const FCollisionShape Shape = FCollisionShape::MakeBox(FVector(30.0f, 30.0f, 30.0f));
-				return System::SweepSingleByObjectType(OutHit, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), FQuat::Identity, ObjectQueryParams, Shape);
+
+				const FCollisionShape SweepShape = FCollisionShape::MakeBox(FVector(30.0f, 30.0f, 30.0f));
+				const FCollisionShape OverlapShape = FCollisionShape::MakeBox(FVector(45.0f, 45.0f, 45.0f));
+
+				const bool bLineSingle = System::LineTraceSingleByChannel(
+					LineHit,
+					FVector(-200.0f, 0.0f, 0.0f),
+					FVector(200.0f, 0.0f, 0.0f),
+					ECollisionChannel::ECC_Visibility);
+
+				const bool bLineMulti = System::LineTraceMultiByChannel(
+					MultiHits,
+					FVector(-200.0f, 0.0f, 0.0f),
+					FVector(200.0f, 0.0f, 0.0f),
+					ECollisionChannel::ECC_Visibility);
+
+				const bool bSweep = System::SweepSingleByObjectType(
+					SweepHit,
+					FVector(-200.0f, 0.0f, 0.0f),
+					FVector(200.0f, 0.0f, 0.0f),
+					FQuat::Identity,
+					ObjectQueryParams,
+					SweepShape);
+
+				const bool bOverlap = System::OverlapMultiByProfile(
+					Overlaps,
+					FVector(0.0f, 150.0f, 0.0f),
+					FQuat::Identity,
+					CollisionProfile::BlockAllDynamic,
+					OverlapShape);
+
+				return bLineSingle
+					&& bLineMulti
+					&& bSweep
+					&& bOverlap
+					&& MultiHits.Num() > 0
+					&& Overlaps.Num() > 0 ? 1 : 0;
 			}
 			)AS"));
-		if (!Mod.IsValid()) return;
-		auto& M = Mod.GetModule();
-
-		FActorTestSpawner Spawner;
-		Spawner.InitializeGameSubsystems();
-		AActor& BlockingActor = Spawner.SpawnActor<AActor>();
-		UBoxComponent* BlockingBox = WorldCollisionTraceTestHelpers::AddCollisionBox(BlockingActor, TEXT("BlockingTarget"), TargetExtent, BlockingTargetLocation);
-		ASSERT_THAT(IsNotNull(BlockingBox));
-
-		UWorld* World = BlockingActor.GetWorld();
-		ASSERT_THAT(IsNotNull(World));
-		FScopedTestWorldContextScope WorldContextScope(&BlockingActor);
-
-		const FCollisionShape SweepShape = FCollisionShape::MakeBox(SweepExtent);
-		FCollisionObjectQueryParams ObjectQueryParams;
-		ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
-
-		FHitResult NativeObjectSweepHit;
-		const bool bNativeObjectSweepHit = World->SweepSingleByObjectType(NativeObjectSweepHit, LineTraceHitStart, LineTraceHitEnd, IdentityRotation, ObjectQueryParams, SweepShape);
-		FHitResult ScriptObjectSweepHit;
-		bool bScriptObjectSweepHit = false;
-		if (!WorldCollisionExecuteAddressBoolFunction(*TestRunner, Engine, M, TEXT("bool RunSweepSingleByObjectTypeHit(FHitResult& OutHit)"), TEXT("RunSweepSingleByObjectTypeHit"), ScriptObjectSweepHit, bScriptObjectSweepHit))
+		if (!ModuleScope.IsValid())
 		{
 			return;
 		}
-		ExpectHitResultParity(*TestRunner, TEXT("SweepSingleByObjectType hit"), bScriptObjectSweepHit, bNativeObjectSweepHit, ScriptObjectSweepHit, NativeObjectSweepHit);
-		ASSERT_THAT(AreEqual(static_cast<AActor*>(&BlockingActor), ScriptObjectSweepHit.GetActor(), TEXT("SweepSingleByObjectType hit should identify the blocker actor")));
-		ASSERT_THAT(AreEqual(static_cast<UPrimitiveComponent*>(BlockingBox), ScriptObjectSweepHit.GetComponent(), TEXT("SweepSingleByObjectType hit should identify the blocker component")));
-	}
-
-	// ====================================================================
-	// Section: OverlapMultiByProfile
-	// ====================================================================
-
-	TEST_METHOD(OverlapMultiByProfile)
-	{
-		using namespace WorldCollisionTraceTestHelpers;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
-		FAngelscriptEngineScope Scope(Engine);
-
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_OverlapMultiByProfile"), ASTEST_AS(R"AS(
-			bool RunOverlapMultiByProfileHit(TArray<FOverlapResult>& OutOverlaps)
-			{
-				const FCollisionShape Shape = FCollisionShape::MakeBox(FVector(45.0f, 45.0f, 45.0f));
-				return System::OverlapMultiByProfile(OutOverlaps, FVector(0.0f, 150.0f, 0.0f), FQuat::Identity, CollisionProfile::BlockAllDynamic, Shape);
-			}
-			)AS"));
-		if (!Mod.IsValid()) return;
-		auto& M = Mod.GetModule();
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
+
 		AActor& BlockingActor = Spawner.SpawnActor<AActor>();
-		WorldCollisionTraceTestHelpers::AddCollisionBox(BlockingActor, TEXT("BlockingTarget"), TargetExtent, BlockingTargetLocation);
+		UBoxComponent* BlockingBox = AddCollisionBox(
+			BlockingActor,
+			FName(TEXT("WorldCollisionTraceContractBlocker")),
+			FVector(50.0f, 50.0f, 50.0f),
+			FVector::ZeroVector);
 		AActor& OverlapActor = Spawner.SpawnActor<AActor>();
-		UBoxComponent* OverlapBox = WorldCollisionTraceTestHelpers::AddCollisionBox(OverlapActor, TEXT("OverlapTarget"), OverlapExtent, OverlapTargetLocation);
-		ASSERT_THAT(IsNotNull(OverlapBox));
+		UBoxComponent* OverlapBox = AddCollisionBox(
+			OverlapActor,
+			FName(TEXT("WorldCollisionTraceContractOverlap")),
+			FVector(40.0f, 40.0f, 40.0f),
+			FVector(0.0f, 150.0f, 0.0f));
+		ASSERT_THAT(IsNotNull(BlockingBox, TEXT("World collision trace blocker should be created")));
+		ASSERT_THAT(IsNotNull(OverlapBox, TEXT("World collision trace overlap target should be created")));
 
-		UWorld* World = BlockingActor.GetWorld();
-		ASSERT_THAT(IsNotNull(World));
 		FScopedTestWorldContextScope WorldContextScope(&BlockingActor);
 
-		const FCollisionShape ProfileOverlapShape = FCollisionShape::MakeBox(OverlapShapeExtent);
-		TArray<FOverlapResult> NativeProfileOverlaps;
-		const bool bNativeProfileOverlapHit = World->OverlapMultiByProfile(NativeProfileOverlaps, OverlapTargetLocation, IdentityRotation, UCollisionProfile::BlockAllDynamic_ProfileName, ProfileOverlapShape);
-		TArray<FOverlapResult> ScriptProfileOverlaps;
-		bool bScriptProfileOverlapHit = false;
-		if (!WorldCollisionExecuteAddressBoolFunction(*TestRunner, Engine, M, TEXT("bool RunOverlapMultiByProfileHit(TArray<FOverlapResult>& OutOverlaps)"), TEXT("RunOverlapMultiByProfileHit"), ScriptProfileOverlaps, bScriptProfileOverlapHit))
-		{
-			return;
-		}
-		ASSERT_THAT(IsTrue(
-			ExpectArrayParity(
-				*TestRunner,
-				TEXT("OverlapMultiByProfile hit"),
-				bScriptProfileOverlapHit,
-				bNativeProfileOverlapHit,
-				ScriptProfileOverlaps,
-				NativeProfileOverlaps)));
-		ASSERT_THAT(IsTrue(OverlapsContainComponent(ScriptProfileOverlaps, OverlapBox), TEXT("OverlapMultiByProfile hit should include the overlap target component")));
-	}
-
-	// ====================================================================
-	// Section: OverlapMultiMiss
-	// ====================================================================
-
-	TEST_METHOD(OverlapMultiMiss)
-	{
-		using namespace WorldCollisionTraceTestHelpers;
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
-		FAngelscriptEngineScope Scope(Engine);
-
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASWorldCollisionTrace_OverlapMultiMiss"), ASTEST_AS(R"AS(
-			bool RunOverlapMultiByProfileMiss(TArray<FOverlapResult>& OutOverlaps)
-			{
-				const FCollisionShape Shape = FCollisionShape::MakeBox(FVector(45.0f, 45.0f, 45.0f));
-				return System::OverlapMultiByProfile(OutOverlaps, FVector(0.0f, -150.0f, 0.0f), FQuat::Identity, CollisionProfile::BlockAllDynamic, Shape);
-			}
-			)AS"));
-		if (!Mod.IsValid()) return;
-		auto& M = Mod.GetModule();
-
-		FActorTestSpawner Spawner;
-		Spawner.InitializeGameSubsystems();
-		AActor& BlockingActor = Spawner.SpawnActor<AActor>();
-		WorldCollisionTraceTestHelpers::AddCollisionBox(BlockingActor, TEXT("BlockingTarget"), TargetExtent, BlockingTargetLocation);
-
-		UWorld* World = BlockingActor.GetWorld();
-		ASSERT_THAT(IsNotNull(World));
-		FScopedTestWorldContextScope WorldContextScope(&BlockingActor);
-
-		const FCollisionShape ProfileOverlapShape = FCollisionShape::MakeBox(OverlapShapeExtent);
-		TArray<FOverlapResult> NativeProfileMissOverlaps;
-		NativeProfileMissOverlaps.AddDefaulted();
-		const bool bNativeProfileOverlapMiss = World->OverlapMultiByProfile(NativeProfileMissOverlaps, ProfileMissLocation, IdentityRotation, UCollisionProfile::BlockAllDynamic_ProfileName, ProfileOverlapShape);
-		TArray<FOverlapResult> ScriptProfileMissOverlaps;
-		ScriptProfileMissOverlaps.AddDefaulted();
-		bool bScriptProfileOverlapMiss = false;
-		if (!WorldCollisionExecuteAddressBoolFunction(*TestRunner, Engine, M, TEXT("bool RunOverlapMultiByProfileMiss(TArray<FOverlapResult>& OutOverlaps)"), TEXT("RunOverlapMultiByProfileMiss"), ScriptProfileMissOverlaps, bScriptProfileOverlapMiss))
-		{
-			return;
-		}
-		ASSERT_THAT(IsTrue(
-			ExpectArrayParity(
-				*TestRunner,
-				TEXT("OverlapMultiByProfile miss"),
-				bScriptProfileOverlapMiss,
-				bNativeProfileOverlapMiss,
-				ScriptProfileMissOverlaps,
-				NativeProfileMissOverlaps)));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(
+			*TestRunner,
+			Engine,
+			ModuleScope.GetModule(),
+			TEXT("int VerifyTraceFunctionLibraryEntrypointSmoke()"),
+			TEXT("Trace, sweep, and overlap function-library bindings should dispatch"),
+			1)));
 	}
 };
 

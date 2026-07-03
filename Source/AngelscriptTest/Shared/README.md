@@ -72,7 +72,6 @@ The 11 `Bindings/*.cpp` files that previously duplicated `Execute*` helpers in f
 |---|---|
 | `Bindings/AngelscriptMathBindingsTestCompare.h` | Math tolerance / `VerifyMathBindings*` / reference rotators |
 | `Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h` | `WorldCollisionExecute*` / `WorldCollisionSetArg*` |
-| `Bindings/AngelscriptTArrayBindingsTestHelpers.h` | `TArrayBindings*` / `ExpectTArrayBindings*` (`TArrayBindings` prefix avoids Unity ODR clash with global `ExpectGlobalInt`) |
 
 **Reference test shape:** `Bindings/AngelscriptQuatBindingsTests.cpp` (`FScopedAngelscriptModule` + global `ExpectGlobal*`).
 

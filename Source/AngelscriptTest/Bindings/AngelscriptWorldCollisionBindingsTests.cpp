@@ -1,68 +1,29 @@
 // ============================================================================
 // AngelscriptWorldCollisionBindingsTests.cpp
 //
-// World collision sync query binding coverage -- CQTest refactor. Automation IDs:
-//   Angelscript.TestModule.Bindings.WorldCollision.FAngelscriptWorldCollisionBindingsTest.*
-//
-// Sections:
-//   SyncQueries �?LineTraceSingle/Multi, SweepSingle, OverlapAny,
-//                 ComponentOverlapMulti (hit/miss parity)
-//
-// CQTest adaptation notes:
-//   Single legacy automation test converted to TEST_CLASS.
-//   Uses ASTEST_CREATE_ENGINE_FULL (world-based) with FActorTestSpawner.
-//   Custom address-based invocation helpers retained for the
-//   bool+out-param calling convention.
+// World collision sync-query binding contract smoke. Hit/miss parity and stale
+// output behavior live in Coverage (`13-physics-collision`).
 // ============================================================================
 
 #include "CQTest.h"
 #include "AngelscriptTestMacros.h"
 #include "AngelscriptTestUtilities.h"
-#include "AngelscriptTestModuleScope.h"
 #include "AngelscriptTestExecute.h"
 #include "Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h"
 
 #include "Components/ActorTestSpawner.h"
 #include "Components/BoxComponent.h"
 #include "Engine/OverlapResult.h"
-#include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "Misc/ScopeExit.h"
-#include "Templates/Function.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
-
-
-// ----------------------------------------------------------------------------
-// Profile
-// ----------------------------------------------------------------------------
-
-
-// ----------------------------------------------------------------------------
-// Shared helpers (retained from original)
-// ----------------------------------------------------------------------------
-
-
-// ----------------------------------------------------------------------------
-// Test class
-// ----------------------------------------------------------------------------
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptWorldCollisionBindingsTest,
 	"Angelscript.TestModule.Bindings.WorldCollision",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
-	static constexpr ANSICHAR WorldCollisionModuleName[] = "ASWorldCollisionSyncQueries";
-	inline static const FVector CollisionTargetLocation = FVector(0.0f, 0.0f, 0.0f);
-	inline static const FVector CollisionMissLocation = FVector(0.0f, 300.0f, 0.0f);
-	inline static const FVector LineTraceStart = FVector(-200.0f, 0.0f, 0.0f);
-	inline static const FVector LineTraceEnd = FVector(200.0f, 0.0f, 0.0f);
-	inline static const FVector LineTraceMissStart = FVector(-200.0f, 300.0f, 0.0f);
-	inline static const FVector LineTraceMissEnd = FVector(200.0f, 300.0f, 0.0f);
-	inline static const FVector TargetExtent = FVector(50.0f, 50.0f, 50.0f);
-	inline static const FVector QueryExtent = FVector(30.0f, 30.0f, 30.0f);
-	inline static const FQuat IdentityRotation = FQuat::Identity;
-
 	static UBoxComponent* AddCollisionBox(
 		AActor& Owner,
 		const FName ComponentName,
@@ -84,143 +45,57 @@ private:
 		return BoxComponent;
 	}
 
-	static bool ExpectHitResultParity(
-		FAutomationTestBase& Test,
-		const TCHAR* ContextLabel,
-		const bool bScriptReturnValue,
-		const bool bNativeReturnValue,
-		const FHitResult& ScriptHit,
-		const FHitResult& NativeHit)
-	{
-		FNoDiscardAsserter LocalAssert(Test);
-		bool bPassed = true;
-		bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel));
-		bPassed &= LocalAssert.AreEqual(NativeHit.GetActor(), ScriptHit.GetActor(), *FString::Printf(TEXT("%s should preserve the hit actor"), ContextLabel));
-		bPassed &= LocalAssert.AreEqual(NativeHit.GetComponent(), ScriptHit.GetComponent(), *FString::Printf(TEXT("%s should preserve the hit component"), ContextLabel));
-		bPassed &= LocalAssert.AreEqual(NativeHit.bBlockingHit, ScriptHit.bBlockingHit, *FString::Printf(TEXT("%s should preserve the blocking-hit flag"), ContextLabel));
-		bPassed &= LocalAssert.IsTrue(FMath::IsNearlyEqual(ScriptHit.Distance, NativeHit.Distance, 0.01f), *FString::Printf(TEXT("%s should preserve the hit distance"), ContextLabel));
-		return bPassed;
-	}
-
-	static bool ExpectHitArrayParity(
-		FAutomationTestBase& Test,
-		const TCHAR* ContextLabel,
-		const bool bScriptReturnValue,
-		const bool bNativeReturnValue,
-		const TArray<FHitResult>& ScriptHits,
-		const TArray<FHitResult>& NativeHits)
-	{
-		FNoDiscardAsserter LocalAssert(Test);
-		bool bPassed = true;
-		bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel));
-		bPassed &= LocalAssert.AreEqual(NativeHits.Num(), ScriptHits.Num(), *FString::Printf(TEXT("%s should preserve the hit count"), ContextLabel));
-
-		for (int32 HitIndex = 0; HitIndex < FMath::Min(ScriptHits.Num(), NativeHits.Num()); ++HitIndex)
-		{
-			bPassed &= LocalAssert.AreEqual(NativeHits[HitIndex].GetActor(), ScriptHits[HitIndex].GetActor(), *FString::Printf(TEXT("%s should preserve actor for hit %d"), ContextLabel, HitIndex));
-			bPassed &= LocalAssert.AreEqual(NativeHits[HitIndex].GetComponent(), ScriptHits[HitIndex].GetComponent(), *FString::Printf(TEXT("%s should preserve component for hit %d"), ContextLabel, HitIndex));
-		}
-
-		return bPassed;
-	}
-
-	static bool ExpectOverlapArrayParity(
-		FAutomationTestBase& Test,
-		const TCHAR* ContextLabel,
-		const bool bScriptReturnValue,
-		const bool bNativeReturnValue,
-		const TArray<FOverlapResult>& ScriptOverlaps,
-		const TArray<FOverlapResult>& NativeOverlaps)
-	{
-		FNoDiscardAsserter LocalAssert(Test);
-		bool bPassed = true;
-		bPassed &= LocalAssert.AreEqual(bNativeReturnValue, bScriptReturnValue, *FString::Printf(TEXT("%s should preserve the bool return value"), ContextLabel));
-		bPassed &= LocalAssert.AreEqual(NativeOverlaps.Num(), ScriptOverlaps.Num(), *FString::Printf(TEXT("%s should preserve the overlap count"), ContextLabel));
-
-		for (int32 OverlapIndex = 0; OverlapIndex < FMath::Min(ScriptOverlaps.Num(), NativeOverlaps.Num()); ++OverlapIndex)
-		{
-			bPassed &= LocalAssert.AreEqual(NativeOverlaps[OverlapIndex].GetActor(), ScriptOverlaps[OverlapIndex].GetActor(), *FString::Printf(TEXT("%s should preserve actor for overlap %d"), ContextLabel, OverlapIndex));
-			bPassed &= LocalAssert.AreEqual(NativeOverlaps[OverlapIndex].GetComponent(), ScriptOverlaps[OverlapIndex].GetComponent(), *FString::Printf(TEXT("%s should preserve component for overlap %d"), ContextLabel, OverlapIndex));
-		}
-
-		return bPassed;
-	}
-
 public:
-	// ====================================================================
-	// Section: SyncQueries
-	// ====================================================================
-
-	TEST_METHOD(SyncQueries)
+	TEST_METHOD(SyncQueryEntrypointSmoke)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
-		FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngineScope Scope(Engine);
 		ON_SCOPE_EXIT
 		{
-			const TArray<TSharedRef<FAngelscriptModuleDesc>> _ActiveModules = Engine.GetActiveModules();
-			for (const TSharedRef<FAngelscriptModuleDesc>& _Module : _ActiveModules)
+			const TArray<TSharedRef<FAngelscriptModuleDesc>> ActiveModules = Engine.GetActiveModules();
+			for (const TSharedRef<FAngelscriptModuleDesc>& Module : ActiveModules)
 			{
-				Engine.DiscardModule(*_Module->ModuleName);
+				Engine.DiscardModule(*Module->ModuleName);
 			}
 		};
 
 		asIScriptModule* Module = BuildModule(
 			*TestRunner,
 			Engine,
-			WorldCollisionModuleName,
+			"ASWorldCollisionSyncEntrypointSmoke",
 			ASTEST_AS(R"AS(
-				bool RunLineTraceSingleHit(FHitResult& OutHit)
+				int VerifySyncQueryEntrypointSmoke(UPrimitiveComponent QueryComponent)
 				{
-					return System::LineTraceSingleByChannel(OutHit, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), ECollisionChannel::ECC_Visibility);
-				}
-
-				bool RunLineTraceSingleMiss(FHitResult& OutHit)
-				{
-					return System::LineTraceSingleByChannel(OutHit, FVector(-200.0f, 300.0f, 0.0f), FVector(200.0f, 300.0f, 0.0f), ECollisionChannel::ECC_Visibility);
-				}
-
-				bool RunLineTraceMultiHit(TArray<FHitResult>& OutHits)
-				{
-					return System::LineTraceMultiByChannel(OutHits, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), ECollisionChannel::ECC_Visibility);
-				}
-
-				bool RunLineTraceMultiMiss(TArray<FHitResult>& OutHits)
-				{
-					return System::LineTraceMultiByChannel(OutHits, FVector(-200.0f, 300.0f, 0.0f), FVector(200.0f, 300.0f, 0.0f), ECollisionChannel::ECC_Visibility);
-				}
-
-				bool RunSweepSingleHit(FHitResult& OutHit)
-				{
+					FHitResult LineHit;
+					FHitResult SweepHit;
+					TArray<FOverlapResult> Overlaps;
 					FCollisionShape Shape = FCollisionShape::MakeBox(FVector(30.0f, 30.0f, 30.0f));
-					return System::SweepSingleByChannel(OutHit, FVector(-200.0f, 0.0f, 0.0f), FVector(200.0f, 0.0f, 0.0f), FQuat::Identity, ECollisionChannel::ECC_Visibility, Shape);
-				}
 
-				bool RunSweepSingleMiss(FHitResult& OutHit)
-				{
-					FCollisionShape Shape = FCollisionShape::MakeBox(FVector(30.0f, 30.0f, 30.0f));
-					return System::SweepSingleByChannel(OutHit, FVector(-200.0f, 300.0f, 0.0f), FVector(200.0f, 300.0f, 0.0f), FQuat::Identity, ECollisionChannel::ECC_Visibility, Shape);
-				}
+					const bool bLineTraceCalled = System::LineTraceSingleByChannel(
+						LineHit,
+						FVector(-200.0f, 0.0f, 0.0f),
+						FVector(200.0f, 0.0f, 0.0f),
+						ECollisionChannel::ECC_Visibility);
 
-				bool RunOverlapAnyHit()
-				{
-					FCollisionShape Shape = FCollisionShape::MakeBox(FVector(30.0f, 30.0f, 30.0f));
-					return System::OverlapAnyTestByChannel(FVector::ZeroVector, FQuat::Identity, ECollisionChannel::ECC_Visibility, Shape);
-				}
+					const bool bSweepCalled = System::SweepSingleByChannel(
+						SweepHit,
+						FVector(-200.0f, 0.0f, 0.0f),
+						FVector(200.0f, 0.0f, 0.0f),
+						FQuat::Identity,
+						ECollisionChannel::ECC_Visibility,
+						Shape);
 
-				bool RunOverlapAnyMiss()
-				{
-					FCollisionShape Shape = FCollisionShape::MakeBox(FVector(30.0f, 30.0f, 30.0f));
-					return System::OverlapAnyTestByChannel(FVector(0.0f, 300.0f, 0.0f), FQuat::Identity, ECollisionChannel::ECC_Visibility, Shape);
-				}
+					const bool bOverlapCalled = System::ComponentOverlapMultiByChannel(
+						Overlaps,
+						QueryComponent,
+						FVector::ZeroVector,
+						FQuat::Identity,
+						ECollisionChannel::ECC_Visibility);
 
-				bool RunComponentOverlapMultiHit(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)
-				{
-					return System::ComponentOverlapMultiByChannel(OutOverlaps, QueryComponent, FVector::ZeroVector, FQuat::Identity, ECollisionChannel::ECC_Visibility);
-				}
-
-				bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)
-				{
-					return System::ComponentOverlapMultiByChannel(OutOverlaps, QueryComponent, FVector(0.0f, 300.0f, 0.0f), FQuat::Identity, ECollisionChannel::ECC_Visibility);
+					return bLineTraceCalled
+						&& bSweepCalled
+						&& bOverlapCalled
+						&& Overlaps.Num() > 0 ? 1 : 0;
 				}
 				)AS"));
 		if (Module == nullptr)
@@ -231,209 +106,41 @@ public:
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 
-		AActor& CollisionTargetActor = Spawner.SpawnActor<AActor>();
-		UBoxComponent* TargetBox = AddCollisionBox(CollisionTargetActor, FName(TEXT("CollisionTarget")), TargetExtent, CollisionTargetLocation);
-		AActor& CollisionQueryActor = Spawner.SpawnActor<AActor>();
-		UBoxComponent* QueryBox = AddCollisionBox(CollisionQueryActor, FName(TEXT("CollisionQuery")), QueryExtent, CollisionMissLocation);
-		if (!this->Assert.IsNotNull(TargetBox, TEXT("World collision target box should be created"))
-			|| !this->Assert.IsNotNull(QueryBox, TEXT("World collision query box should be created")))
-		{
-			return;
-		}
+		AActor& TargetActor = Spawner.SpawnActor<AActor>();
+		UBoxComponent* TargetBox = AddCollisionBox(
+			TargetActor,
+			FName(TEXT("WorldCollisionContractTarget")),
+			FVector(50.0f, 50.0f, 50.0f),
+			FVector::ZeroVector);
+		AActor& QueryActor = Spawner.SpawnActor<AActor>();
+		UBoxComponent* QueryBox = AddCollisionBox(
+			QueryActor,
+			FName(TEXT("WorldCollisionContractQuery")),
+			FVector(30.0f, 30.0f, 30.0f),
+			FVector(300.0f, 0.0f, 0.0f));
 
-		UWorld* World = CollisionTargetActor.GetWorld();
-		if (!this->Assert.IsNotNull(World, TEXT("World collision test should access the spawned test world")))
-		{
-			return;
-		}
+		ASSERT_THAT(IsNotNull(TargetBox, TEXT("World collision contract target component should be created")));
+		ASSERT_THAT(IsNotNull(QueryBox, TEXT("World collision contract query component should be created")));
 
-		FScopedTestWorldContextScope WorldContextScope(&CollisionTargetActor);
-		const FCollisionShape SweepShape = FCollisionShape::MakeBox(QueryExtent);
+		FScopedTestWorldContextScope WorldContextScope(&TargetActor);
 
-		// LineTraceSingle hit
-		FHitResult NativeLineHit;
-		const bool bNativeLineHit = World->LineTraceSingleByChannel(NativeLineHit, LineTraceStart, LineTraceEnd, ECC_Visibility);
-		FHitResult ScriptLineHit;
-		bool bScriptLineHit = false;
-		if (!WorldCollisionExecuteBoolFunction(*TestRunner, Engine, *Module, TEXT("bool RunLineTraceSingleHit(FHitResult& OutHit)"),
-			[this, &ScriptLineHit](asIScriptContext& Context)
-			{
-				return WorldCollisionSetArgAddressChecked(*TestRunner, Context, 0, &ScriptLineHit, TEXT("RunLineTraceSingleHit"));
-			},
-			TEXT("RunLineTraceSingleHit"),
-			bScriptLineHit))
-		{
-			return;
-		}
-		ExpectHitResultParity(*TestRunner, TEXT("LineTraceSingle hit"), bScriptLineHit, bNativeLineHit, ScriptLineHit, NativeLineHit);
-
-		// LineTraceSingle miss
-		FHitResult NativeLineMiss;
-		const bool bNativeLineMiss = World->LineTraceSingleByChannel(NativeLineMiss, LineTraceMissStart, LineTraceMissEnd, ECC_Visibility);
-		FHitResult ScriptLineMiss;
-		bool bScriptLineMiss = false;
-		if (!WorldCollisionExecuteBoolFunction(*TestRunner, Engine, *Module, TEXT("bool RunLineTraceSingleMiss(FHitResult& OutHit)"),
-			[this, &ScriptLineMiss](asIScriptContext& Context)
-			{
-				return WorldCollisionSetArgAddressChecked(*TestRunner, Context, 0, &ScriptLineMiss, TEXT("RunLineTraceSingleMiss"));
-			},
-			TEXT("RunLineTraceSingleMiss"),
-			bScriptLineMiss))
-		{
-			return;
-		}
-		ExpectHitResultParity(*TestRunner, TEXT("LineTraceSingle miss"), bScriptLineMiss, bNativeLineMiss, ScriptLineMiss, NativeLineMiss);
-
-		// LineTraceMulti hit
-		TArray<FHitResult> NativeLineHits;
-		const bool bNativeLineMultiHit = World->LineTraceMultiByChannel(NativeLineHits, LineTraceStart, LineTraceEnd, ECC_Visibility);
-		TArray<FHitResult> ScriptLineHits;
-		bool bScriptLineMultiHit = false;
-		if (!WorldCollisionExecuteBoolFunction(*TestRunner, Engine, *Module, TEXT("bool RunLineTraceMultiHit(TArray<FHitResult>& OutHits)"),
-			[this, &ScriptLineHits](asIScriptContext& Context)
-			{
-				return WorldCollisionSetArgAddressChecked(*TestRunner, Context, 0, &ScriptLineHits, TEXT("RunLineTraceMultiHit"));
-			},
-			TEXT("RunLineTraceMultiHit"),
-			bScriptLineMultiHit))
-		{
-			return;
-		}
-		ASSERT_THAT(IsTrue(
-			ExpectHitArrayParity(*TestRunner, TEXT("LineTraceMulti hit"), bScriptLineMultiHit, bNativeLineMultiHit, ScriptLineHits, NativeLineHits)));
-
-		// LineTraceMulti miss
-		TArray<FHitResult> NativeLineMissHits;
-		const bool bNativeLineMultiMiss = World->LineTraceMultiByChannel(NativeLineMissHits, LineTraceMissStart, LineTraceMissEnd, ECC_Visibility);
-		TArray<FHitResult> ScriptLineMissHits;
-		bool bScriptLineMultiMiss = false;
-		if (!WorldCollisionExecuteBoolFunction(*TestRunner, Engine, *Module, TEXT("bool RunLineTraceMultiMiss(TArray<FHitResult>& OutHits)"),
-			[this, &ScriptLineMissHits](asIScriptContext& Context)
-			{
-				return WorldCollisionSetArgAddressChecked(*TestRunner, Context, 0, &ScriptLineMissHits, TEXT("RunLineTraceMultiMiss"));
-			},
-			TEXT("RunLineTraceMultiMiss"),
-			bScriptLineMultiMiss))
-		{
-			return;
-		}
-		ASSERT_THAT(IsTrue(
-			ExpectHitArrayParity(*TestRunner, TEXT("LineTraceMulti miss"), bScriptLineMultiMiss, bNativeLineMultiMiss, ScriptLineMissHits, NativeLineMissHits)));
-
-		// SweepSingle hit
-		FHitResult NativeSweepHit;
-		const bool bNativeSweepHit = World->SweepSingleByChannel(NativeSweepHit, LineTraceStart, LineTraceEnd, IdentityRotation, ECC_Visibility, SweepShape);
-		FHitResult ScriptSweepHit;
-		bool bScriptSweepHit = false;
-		if (!WorldCollisionExecuteBoolFunction(*TestRunner, Engine, *Module, TEXT("bool RunSweepSingleHit(FHitResult& OutHit)"),
-			[this, &ScriptSweepHit](asIScriptContext& Context)
-			{
-				return WorldCollisionSetArgAddressChecked(*TestRunner, Context, 0, &ScriptSweepHit, TEXT("RunSweepSingleHit"));
-			},
-			TEXT("RunSweepSingleHit"),
-			bScriptSweepHit))
-		{
-			return;
-		}
-		ExpectHitResultParity(*TestRunner, TEXT("SweepSingle hit"), bScriptSweepHit, bNativeSweepHit, ScriptSweepHit, NativeSweepHit);
-
-		// SweepSingle miss
-		FHitResult NativeSweepMiss;
-		const bool bNativeSweepMiss = World->SweepSingleByChannel(NativeSweepMiss, LineTraceMissStart, LineTraceMissEnd, IdentityRotation, ECC_Visibility, SweepShape);
-		FHitResult ScriptSweepMiss;
-		bool bScriptSweepMiss = false;
-		if (!WorldCollisionExecuteBoolFunction(*TestRunner, Engine, *Module, TEXT("bool RunSweepSingleMiss(FHitResult& OutHit)"),
-			[this, &ScriptSweepMiss](asIScriptContext& Context)
-			{
-				return WorldCollisionSetArgAddressChecked(*TestRunner, Context, 0, &ScriptSweepMiss, TEXT("RunSweepSingleMiss"));
-			},
-			TEXT("RunSweepSingleMiss"),
-			bScriptSweepMiss))
-		{
-			return;
-		}
-		ExpectHitResultParity(*TestRunner, TEXT("SweepSingle miss"), bScriptSweepMiss, bNativeSweepMiss, ScriptSweepMiss, NativeSweepMiss);
-
-		// OverlapAny hit
-		const bool bNativeOverlapAnyHit = World->OverlapAnyTestByChannel(CollisionTargetLocation, IdentityRotation, ECC_Visibility, SweepShape);
-		bool bScriptOverlapAnyHit = false;
-		if (!WorldCollisionExecuteBoolFunction(*TestRunner, Engine, *Module, TEXT("bool RunOverlapAnyHit()"),
-			[](asIScriptContext&) { return true; },
-			TEXT("RunOverlapAnyHit"),
-			bScriptOverlapAnyHit))
-		{
-			return;
-		}
-		if (!this->Assert.AreEqual(bNativeOverlapAnyHit, bScriptOverlapAnyHit, TEXT("OverlapAny hit should preserve the bool return value")))
-		{
-			return;
-		}
-
-		// OverlapAny miss
-		const bool bNativeOverlapAnyMiss = World->OverlapAnyTestByChannel(CollisionMissLocation, IdentityRotation, ECC_Visibility, SweepShape);
-		bool bScriptOverlapAnyMiss = false;
-		if (!WorldCollisionExecuteBoolFunction(*TestRunner, Engine, *Module, TEXT("bool RunOverlapAnyMiss()"),
-			[](asIScriptContext&) { return true; },
-			TEXT("RunOverlapAnyMiss"),
-			bScriptOverlapAnyMiss))
-		{
-			return;
-		}
-		if (!this->Assert.AreEqual(bNativeOverlapAnyMiss, bScriptOverlapAnyMiss, TEXT("OverlapAny miss should preserve the bool return value")))
-		{
-			return;
-		}
-
-		// ComponentOverlapMulti hit
-		TArray<FOverlapResult> NativeComponentOverlapHits;
-		const bool bNativeComponentOverlapHit = World->ComponentOverlapMultiByChannel(NativeComponentOverlapHits, QueryBox, CollisionTargetLocation, IdentityRotation, ECC_Visibility);
-		TArray<FOverlapResult> ScriptComponentOverlapHits;
-		bool bScriptComponentOverlapHit = false;
-		if (!WorldCollisionExecuteBoolFunction(*TestRunner, Engine, *Module, TEXT("bool RunComponentOverlapMultiHit(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)"),
-			[this, QueryBox, &ScriptComponentOverlapHits](asIScriptContext& Context)
-			{
-				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, QueryBox, TEXT("RunComponentOverlapMultiHit"))
-					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 1, &ScriptComponentOverlapHits, TEXT("RunComponentOverlapMultiHit"));
-			},
-			TEXT("RunComponentOverlapMultiHit"),
-			bScriptComponentOverlapHit))
-		{
-			return;
-		}
-		ASSERT_THAT(IsTrue(
-			ExpectOverlapArrayParity(
+		int32 Result = 0;
+		if (!WorldCollisionExecuteIntFunction(
 			*TestRunner,
-			TEXT("ComponentOverlapMultiByChannel hit"),
-			bScriptComponentOverlapHit,
-			bNativeComponentOverlapHit,
-			ScriptComponentOverlapHits,
-			NativeComponentOverlapHits)));
-
-		// ComponentOverlapMulti miss
-		TArray<FOverlapResult> NativeComponentOverlapMisses;
-		const bool bNativeComponentOverlapMiss = World->ComponentOverlapMultiByChannel(NativeComponentOverlapMisses, QueryBox, CollisionMissLocation, IdentityRotation, ECC_Visibility);
-		TArray<FOverlapResult> ScriptComponentOverlapMisses;
-		bool bScriptComponentOverlapMiss = false;
-		if (!WorldCollisionExecuteBoolFunction(*TestRunner, Engine, *Module, TEXT("bool RunComponentOverlapMultiMiss(UPrimitiveComponent QueryComponent, TArray<FOverlapResult>& OutOverlaps)"),
-			[this, QueryBox, &ScriptComponentOverlapMisses](asIScriptContext& Context)
+			Engine,
+			*Module,
+			TEXT("int VerifySyncQueryEntrypointSmoke(UPrimitiveComponent QueryComponent)"),
+			[this, QueryBox](asIScriptContext& Context)
 			{
-				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, QueryBox, TEXT("RunComponentOverlapMultiMiss"))
-					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 1, &ScriptComponentOverlapMisses, TEXT("RunComponentOverlapMultiMiss"));
+				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, QueryBox, TEXT("VerifySyncQueryEntrypointSmoke"));
 			},
-			TEXT("RunComponentOverlapMultiMiss"),
-			bScriptComponentOverlapMiss))
+			TEXT("VerifySyncQueryEntrypointSmoke"),
+			Result))
 		{
 			return;
 		}
-		ASSERT_THAT(IsTrue(
-			ExpectOverlapArrayParity(
-			*TestRunner,
-			TEXT("ComponentOverlapMultiByChannel miss"),
-			bScriptComponentOverlapMiss,
-			bNativeComponentOverlapMiss,
-			ScriptComponentOverlapMisses,
-			NativeComponentOverlapMisses)));
 
+		ASSERT_THAT(AreEqual(1, Result, TEXT("LineTrace, Sweep, and Overlap sync query bindings should dispatch")));
 	}
 };
 

@@ -1297,7 +1297,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 				UInputAction Action = Cast<UInputAction>(NewObject(GetTransientPackage(), UInputAction::StaticClass(), n"CoverageTriggerAction", true));
 				UInputMappingContext MappingContext = Cast<UInputMappingContext>(NewObject(GetTransientPackage(), UInputMappingContext::StaticClass(), n"CoverageTriggerContext", true));
 				if (Action == nullptr || MappingContext == nullptr)
+				{
 					return 0;
+				}
 
 				FEnhancedActionKeyMapping& Mapping = MappingContext.MapKey(Action, EKeys::SpaceBar);
 
@@ -1307,7 +1309,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 				UInputModifierSmooth Smooth = Cast<UInputModifierSmooth>(NewObject(MappingContext, UInputModifierSmooth::StaticClass(), n"CoverageSmooth", true));
 				UInputModifierResponseCurveExponential ResponseCurve = Cast<UInputModifierResponseCurveExponential>(NewObject(MappingContext, UInputModifierResponseCurveExponential::StaticClass(), n"CoverageResponseCurve", true));
 				if (DeadZone == nullptr || Negate == nullptr || Scalar == nullptr || Smooth == nullptr || ResponseCurve == nullptr)
+				{
 					return 0;
+				}
 
 				Mapping.AddModifier(DeadZone);
 				Mapping.AddModifier(Negate);
@@ -1315,7 +1319,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 				Mapping.AddModifier(Smooth);
 				Mapping.AddModifier(ResponseCurve);
 				if (Mapping.GetModifierCount() != 5)
+				{
 					return 0;
+				}
 
 				UInputTriggerDown Down = Cast<UInputTriggerDown>(NewObject(MappingContext, UInputTriggerDown::StaticClass(), n"CoverageDown", true));
 				UInputTriggerPressed Pressed = Cast<UInputTriggerPressed>(NewObject(MappingContext, UInputTriggerPressed::StaticClass(), n"CoveragePressed", true));
@@ -1324,7 +1330,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 				UInputTriggerTap Tap = Cast<UInputTriggerTap>(NewObject(MappingContext, UInputTriggerTap::StaticClass(), n"CoverageTap", true));
 				UInputTriggerPulse Pulse = Cast<UInputTriggerPulse>(NewObject(MappingContext, UInputTriggerPulse::StaticClass(), n"CoveragePulse", true));
 				if (Down == nullptr || Pressed == nullptr || Released == nullptr || Hold == nullptr || Tap == nullptr || Pulse == nullptr)
+				{
 					return 0;
+				}
 
 				Mapping.AddTrigger(Down);
 				Mapping.AddTrigger(Pressed);
@@ -1345,6 +1353,103 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 
 		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ModuleScope.GetModule(), TEXT("int ModifierAndTriggerLists()"),
 			TEXT("Enhanced Input mappings should accept AS-created modifiers and triggers"), 1)));
+	}
+
+	TEST_METHOD(EnhancedInputRuntimeMappingContextMatrix)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int RuntimeMovementMappingMatrix()
+			{
+				UInputAction MoveAction = Cast<UInputAction>(NewObject(GetTransientPackage(), UInputAction::StaticClass(), n"CoverageRuntimeMoveAction", true));
+				UInputMappingContext MappingContext = Cast<UInputMappingContext>(NewObject(GetTransientPackage(), UInputMappingContext::StaticClass(), n"CoverageRuntimeMoveContext", true));
+				if (MoveAction == nullptr || MappingContext == nullptr)
+				{
+					return 0;
+				}
+
+				MoveAction.SetValueType(EInputActionValueType::Axis2D);
+				MoveAction.SetAccumulationBehavior(EInputActionAccumulationBehavior::Cumulative);
+				MappingContext.UnmapAll();
+
+				UInputModifierSwizzleAxis WSwizzle = Cast<UInputModifierSwizzleAxis>(NewObject(MappingContext, UInputModifierSwizzleAxis::StaticClass(), n"CoverageRuntimeWSwizzle", true));
+				UInputModifierSwizzleAxis SSwizzle = Cast<UInputModifierSwizzleAxis>(NewObject(MappingContext, UInputModifierSwizzleAxis::StaticClass(), n"CoverageRuntimeSSwizzle", true));
+				UInputModifierNegate SNegate = Cast<UInputModifierNegate>(NewObject(MappingContext, UInputModifierNegate::StaticClass(), n"CoverageRuntimeSNegate", true));
+				UInputModifierNegate ANegate = Cast<UInputModifierNegate>(NewObject(MappingContext, UInputModifierNegate::StaticClass(), n"CoverageRuntimeANegate", true));
+				UInputModifierSwizzleAxis UpSwizzle = Cast<UInputModifierSwizzleAxis>(NewObject(MappingContext, UInputModifierSwizzleAxis::StaticClass(), n"CoverageRuntimeUpSwizzle", true));
+				UInputModifierSwizzleAxis DownSwizzle = Cast<UInputModifierSwizzleAxis>(NewObject(MappingContext, UInputModifierSwizzleAxis::StaticClass(), n"CoverageRuntimeDownSwizzle", true));
+				UInputModifierNegate DownNegate = Cast<UInputModifierNegate>(NewObject(MappingContext, UInputModifierNegate::StaticClass(), n"CoverageRuntimeDownNegate", true));
+				UInputModifierNegate LeftNegate = Cast<UInputModifierNegate>(NewObject(MappingContext, UInputModifierNegate::StaticClass(), n"CoverageRuntimeLeftNegate", true));
+				if (WSwizzle == nullptr || SSwizzle == nullptr || SNegate == nullptr || ANegate == nullptr
+					|| UpSwizzle == nullptr || DownSwizzle == nullptr || DownNegate == nullptr || LeftNegate == nullptr)
+				{
+					return 0;
+				}
+
+				FEnhancedActionKeyMapping& W = MappingContext.MapKey(MoveAction, EKeys::W);
+				W.AddModifier(WSwizzle);
+
+				FEnhancedActionKeyMapping& S = MappingContext.MapKey(MoveAction, EKeys::S);
+				S.AddModifier(SSwizzle);
+				S.AddModifier(SNegate);
+
+				FEnhancedActionKeyMapping& A = MappingContext.MapKey(MoveAction, EKeys::A);
+				A.AddModifier(ANegate);
+
+				FEnhancedActionKeyMapping& D = MappingContext.MapKey(MoveAction, EKeys::D);
+
+				FEnhancedActionKeyMapping& Up = MappingContext.MapKey(MoveAction, EKeys::Up);
+				Up.AddModifier(UpSwizzle);
+
+				FEnhancedActionKeyMapping& Down = MappingContext.MapKey(MoveAction, EKeys::Down);
+				Down.AddModifier(DownSwizzle);
+				Down.AddModifier(DownNegate);
+
+				FEnhancedActionKeyMapping& Left = MappingContext.MapKey(MoveAction, EKeys::Left);
+				Left.AddModifier(LeftNegate);
+
+				FEnhancedActionKeyMapping& Right = MappingContext.MapKey(MoveAction, EKeys::Right);
+
+				if (MappingContext.GetMappingCount() != 8)
+				{
+					return 0;
+				}
+				if (MoveAction.GetValueType() != EInputActionValueType::Axis2D)
+				{
+					return 0;
+				}
+				if (MoveAction.GetAccumulationBehavior() != EInputActionAccumulationBehavior::Cumulative)
+				{
+					return 0;
+				}
+				if (W.GetAction() != MoveAction || W.GetKey() != EKeys::W || W.GetModifierCount() != 1)
+				{
+					return 0;
+				}
+				if (S.GetModifierCount() != 2 || A.GetModifierCount() != 1 || D.GetModifierCount() != 0)
+				{
+					return 0;
+				}
+				if (Up.GetModifierCount() != 1 || Down.GetModifierCount() != 2 || Left.GetModifierCount() != 1 || Right.GetModifierCount() != 0)
+				{
+					return 0;
+				}
+
+				return 1;
+			}
+			)AS");
+
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASCoverageInput_EnhancedRuntimeMappingMatrix"), ScriptSource);
+		ASSERT_THAT(IsTrue(ModuleScope.IsValid(), TEXT("Enhanced Input runtime mapping matrix module should compile")));
+		if (!ModuleScope.IsValid())
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ModuleScope.GetModule(), TEXT("int RuntimeMovementMappingMatrix()"),
+			TEXT("Enhanced Input runtime mapping should cover WASD/arrow mappings plus Swizzle and Negate modifiers"), 1)));
 	}
 
 	TEST_METHOD(EnhancedInputActionAndMappingMetadata)

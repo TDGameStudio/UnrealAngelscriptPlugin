@@ -406,7 +406,7 @@ CompileScriptModule(TestRunner, Engine, ModuleName, Filename, Source);
 | 条件 | 位置 | 示例 |
 |---|---|---|
 | 两个或更多主题目录共用 | `Shared/*.h`；include 时直接写 `AngelscriptTestExecute.h` 等 | `BuildModule`、`FAngelscriptTestExecutor`、`ExecuteAndExpectInt` |
-| 仅 `Bindings/` 内两个或更多 `.cpp` 共用 | `Bindings/Angelscript*TestHelpers.h` | `Bindings/AngelscriptTArrayBindingsTestHelpers.h` |
+| 仅 `Bindings/` 内两个或更多 `.cpp` 共用 | `Bindings/Angelscript*TestHelpers.h` | `Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h` |
 | 仅单个 CQTest `.cpp` 使用 | 所属 `TEST_CLASS_WITH_FLAGS` 的 `private:` 区域 | 嵌套 fixture、观察结构体、本地常量 |
 | 大型 bindings 文件按 section 拆分 | `Bindings/*Sections.h` + 主 `.cpp` | Console 簇 |
 

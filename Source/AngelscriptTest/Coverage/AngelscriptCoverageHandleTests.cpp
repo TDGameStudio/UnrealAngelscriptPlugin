@@ -1026,6 +1026,255 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageHandleTest,
 	}
 
 	// -------------------------------------------------------------------------
+	// UObject flags: transient creation and transactional mutation
+	// -------------------------------------------------------------------------
+	TEST_METHOD(UObjectFlagMutationAndTransientState)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageHandle_UObjectFlags"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageHandleUObjectFlags.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageHandleUObjectFlagsActor : AActor
+			{
+				UPROPERTY()
+				UObject TransientObject;
+
+				UPROPERTY()
+				UObject TransactionalObject;
+
+				UPROPERTY()
+				UObject ClearedTransactionalObject;
+
+				UPROPERTY()
+				bool ScriptTransientMatched = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					TransientObject = NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"CoverageHandleTransientObject", true);
+					ScriptTransientMatched = TransientObject != nullptr && TransientObject.IsTransient();
+
+					TransactionalObject = NewObject(this, UTexture2D::StaticClass(), n"CoverageHandleTransactionalObject");
+					TransactionalObject.SetTransactional(true);
+
+					ClearedTransactionalObject = NewObject(this, UTexture2D::StaticClass(), n"CoverageHandleClearedTransactionalObject");
+					ClearedTransactionalObject.SetTransactional(true);
+					ClearedTransactionalObject.SetTransactional(false);
+				}
+			}
+			)AS"),
+			TEXT("ACoverageHandleUObjectFlagsActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("UObject flag coverage actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("UObject flag coverage actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ScriptTransientMatched"), true,
+			TEXT("UObject.IsTransient should match a transient NewObject result"))));
+
+		UObject* TransientObject = nullptr;
+		UObject* TransactionalObject = nullptr;
+		UObject* ClearedTransactionalObject = nullptr;
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("TransientObject"), TransientObject), TEXT("TransientObject should be readable")));
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("TransactionalObject"), TransactionalObject), TEXT("TransactionalObject should be readable")));
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("ClearedTransactionalObject"), ClearedTransactionalObject), TEXT("ClearedTransactionalObject should be readable")));
+		ASSERT_THAT(IsNotNull(TransientObject, TEXT("TransientObject should hold the AS-created transient object")));
+		ASSERT_THAT(IsNotNull(TransactionalObject, TEXT("TransactionalObject should hold the AS-created object")));
+		ASSERT_THAT(IsNotNull(ClearedTransactionalObject, TEXT("ClearedTransactionalObject should hold the AS-created object")));
+		if (TransientObject == nullptr || TransactionalObject == nullptr || ClearedTransactionalObject == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(TransientObject->HasAnyFlags(RF_Transient), TEXT("NewObject(..., true) should set RF_Transient")));
+		ASSERT_THAT(IsTrue(TransactionalObject->HasAnyFlags(RF_Transactional), TEXT("SetTransactional(true) should set RF_Transactional")));
+		ASSERT_THAT(IsFalse(ClearedTransactionalObject->HasAnyFlags(RF_Transactional), TEXT("SetTransactional(false) should clear RF_Transactional")));
+	}
+
+	// -------------------------------------------------------------------------
+	// UObject outer chain: nested NewObject hierarchy, GetOutermost, path names
+	// -------------------------------------------------------------------------
+	TEST_METHOD(UObjectOuterChainAndPathMatrix)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageHandle_UObjectOuterChain"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageHandleUObjectOuterChain.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ACoverageHandleUObjectOuterChainActor : AActor
+			{
+				UPROPERTY()
+				UObject ChainRoot;
+
+				UPROPERTY()
+				UObject ChainChild;
+
+				UPROPERTY()
+				UObject ChainLeaf;
+
+				UPROPERTY()
+				bool ChainOutersMatched = false;
+
+				UPROPERTY()
+				bool ChainOutermostMatched = false;
+
+				UPROPERTY()
+				bool ChainPathContainsNames = false;
+
+				UPROPERTY()
+				int ChainDepth = 0;
+
+				UPROPERTY()
+				FString ChainNamePath = "";
+
+				int CountOuterDepth(UObject Obj)
+				{
+					int Depth = 0;
+					UObject Current = Obj;
+					for (int Step = 0; Step < 20; ++Step)
+					{
+						UObject Outer = Current.GetOuter();
+						if (Outer == nullptr)
+						{
+							break;
+						}
+						if (Outer.IsA(UPackage::StaticClass()))
+						{
+							break;
+						}
+						Depth++;
+						Current = Outer;
+					}
+					return Depth;
+				}
+
+				FString CollectChainNames(UObject Obj)
+				{
+					FString Result = Obj.GetName().ToString();
+					UObject Current = Obj;
+					for (int Step = 0; Step < 20; ++Step)
+					{
+						UObject Outer = Current.GetOuter();
+						if (Outer == nullptr)
+						{
+							break;
+						}
+						if (Outer.IsA(UPackage::StaticClass()))
+						{
+							break;
+						}
+						Result += ">" + Outer.GetName().ToString();
+						Current = Outer;
+					}
+					return Result;
+				}
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					ChainRoot = NewObject(GetTransientPackage(), UTexture2D::StaticClass(), n"CoverageHandleChainRoot");
+					ChainChild = NewObject(ChainRoot, UTexture2D::StaticClass(), n"CoverageHandleChainChild");
+					ChainLeaf = NewObject(ChainChild, UTexture2D::StaticClass(), n"CoverageHandleChainLeaf");
+
+					ChainOutersMatched =
+						ChainRoot.GetOuter() == GetTransientPackage() &&
+						ChainChild.GetOuter() == ChainRoot &&
+						ChainLeaf.GetOuter() == ChainChild;
+					ChainOutermostMatched = ChainLeaf.GetOutermost() == GetTransientPackage();
+					ChainDepth = CountOuterDepth(ChainLeaf);
+					ChainNamePath = CollectChainNames(ChainLeaf);
+
+					FString LeafPath = ChainLeaf.GetPathName();
+					ChainPathContainsNames =
+						LeafPath.Contains("CoverageHandleChainRoot") &&
+						LeafPath.Contains("CoverageHandleChainChild") &&
+						LeafPath.Contains("CoverageHandleChainLeaf");
+				}
+			}
+			)AS"),
+			TEXT("ACoverageHandleUObjectOuterChainActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("UObject outer-chain actor class should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("UObject outer-chain actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ChainOutersMatched"), true,
+			TEXT("AS should observe each nested UObject outer"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ChainOutermostMatched"), true,
+			TEXT("AS GetOutermost should resolve the package for a nested UObject chain"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("ChainPathContainsNames"), true,
+			TEXT("AS GetPathName should include all nested UObject names"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("ChainDepth"), 2,
+			TEXT("AS should count two non-package outers above the leaf"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FStrProperty, FString>(*TestRunner, Actor, TEXT("ChainNamePath"),
+			FString(TEXT("CoverageHandleChainLeaf>CoverageHandleChainChild>CoverageHandleChainRoot")),
+			TEXT("AS should collect nested UObject chain names"))));
+
+		UObject* ChainRoot = nullptr;
+		UObject* ChainChild = nullptr;
+		UObject* ChainLeaf = nullptr;
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("ChainRoot"), ChainRoot), TEXT("ChainRoot should be readable")));
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("ChainChild"), ChainChild), TEXT("ChainChild should be readable")));
+		ASSERT_THAT(IsTrue(GetObjectByPath(*TestRunner, Actor, TEXT("ChainLeaf"), ChainLeaf), TEXT("ChainLeaf should be readable")));
+		ASSERT_THAT(IsNotNull(ChainRoot, TEXT("ChainRoot should be non-null")));
+		ASSERT_THAT(IsNotNull(ChainChild, TEXT("ChainChild should be non-null")));
+		ASSERT_THAT(IsNotNull(ChainLeaf, TEXT("ChainLeaf should be non-null")));
+		if (ChainRoot == nullptr || ChainChild == nullptr || ChainLeaf == nullptr)
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(static_cast<UObject*>(GetTransientPackage()), ChainRoot->GetOuter(), TEXT("C++ should observe root outer")));
+		ASSERT_THAT(AreEqual(ChainRoot, ChainChild->GetOuter(), TEXT("C++ should observe child outer")));
+		ASSERT_THAT(AreEqual(ChainChild, ChainLeaf->GetOuter(), TEXT("C++ should observe leaf outer")));
+	}
+
+	// -------------------------------------------------------------------------
 	// Actor destroy: DestroyActor invalidates IsValid on the next frame
 	// -------------------------------------------------------------------------
 	TEST_METHOD(HandleDestroyActorInvalidatesReference)

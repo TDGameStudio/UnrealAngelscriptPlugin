@@ -10,7 +10,6 @@
 //   InputDebugKeyBindingExecuteCompat    — binding handle/execute coexistence
 //   InputActionValueConstructorsAndAxisTypes — constructors and axis accessors
 //   InputActionValueConvertToType        — ConvertToType dimension preservation
-//   InputMappingContextRuntimeConstruction — AS-created action/context + WASD/arrow mappings
 //   EnhancedInputComponentBindActionAcceptsDynamicSignature — BindAction dynamic delegate validation
 //   EnhancedInputComponentRemoveBindingCompiles — Clear binding compilation
 //   EnhancedInputComponentEditorDelegateFlags — editor delegate flag API
@@ -305,96 +304,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptEnhancedInputBindingsTest, "Angelscript.TestMo
 		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,
 			TEXT("int VerifyConvertToType()"),
 			TEXT("ConvertToType should preserve dimension data correctly"), 1), TEXT("ConvertToType should preserve dimension data correctly")));
-	}
-
-	TEST_METHOD(InputMappingContextRuntimeConstruction)
-	{
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
-		FAngelscriptEngineScope Scope(Engine);
-
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASEnhancedInput_RuntimeMappingContext"), ASTEST_AS(R"AS(
-			int ConfigureRuntimeMapping()
-			{
-				UInputAction MoveAction = Cast<UInputAction>(NewObject(GetTransientPackage(), UInputAction::StaticClass(), n"AS_MoveAction", true));
-				UInputMappingContext MappingContext = Cast<UInputMappingContext>(NewObject(GetTransientPackage(), UInputMappingContext::StaticClass(), n"AS_MoveContext", true));
-				if (MoveAction == nullptr || MappingContext == nullptr)
-				{
-					return 0;
-				}
-
-				MoveAction.SetValueType(EInputActionValueType::Axis2D);
-				MoveAction.SetAccumulationBehavior(EInputActionAccumulationBehavior::Cumulative);
-				MappingContext.UnmapAll();
-
-				UInputModifierSwizzleAxis WSwizzle = Cast<UInputModifierSwizzleAxis>(NewObject(MappingContext, UInputModifierSwizzleAxis::StaticClass(), n"AS_WSwizzle", true));
-				UInputModifierSwizzleAxis SSwizzle = Cast<UInputModifierSwizzleAxis>(NewObject(MappingContext, UInputModifierSwizzleAxis::StaticClass(), n"AS_SSwizzle", true));
-				UInputModifierNegate SNegate = Cast<UInputModifierNegate>(NewObject(MappingContext, UInputModifierNegate::StaticClass(), n"AS_SNegate", true));
-				UInputModifierNegate ANegate = Cast<UInputModifierNegate>(NewObject(MappingContext, UInputModifierNegate::StaticClass(), n"AS_ANegate", true));
-				UInputModifierSwizzleAxis UpSwizzle = Cast<UInputModifierSwizzleAxis>(NewObject(MappingContext, UInputModifierSwizzleAxis::StaticClass(), n"AS_UpSwizzle", true));
-				UInputModifierSwizzleAxis DownSwizzle = Cast<UInputModifierSwizzleAxis>(NewObject(MappingContext, UInputModifierSwizzleAxis::StaticClass(), n"AS_DownSwizzle", true));
-				UInputModifierNegate DownNegate = Cast<UInputModifierNegate>(NewObject(MappingContext, UInputModifierNegate::StaticClass(), n"AS_DownNegate", true));
-				UInputModifierNegate LeftNegate = Cast<UInputModifierNegate>(NewObject(MappingContext, UInputModifierNegate::StaticClass(), n"AS_LeftNegate", true));
-				if (WSwizzle == nullptr || SSwizzle == nullptr || SNegate == nullptr || ANegate == nullptr
-				|| UpSwizzle == nullptr || DownSwizzle == nullptr || DownNegate == nullptr || LeftNegate == nullptr)
-				return 0;
-
-				FEnhancedActionKeyMapping& W = MappingContext.MapKey(MoveAction, EKeys::W);
-				W.AddModifier(WSwizzle);
-
-				FEnhancedActionKeyMapping& S = MappingContext.MapKey(MoveAction, EKeys::S);
-				S.AddModifier(SSwizzle);
-				S.AddModifier(SNegate);
-
-				FEnhancedActionKeyMapping& A = MappingContext.MapKey(MoveAction, EKeys::A);
-				A.AddModifier(ANegate);
-
-				FEnhancedActionKeyMapping& D = MappingContext.MapKey(MoveAction, EKeys::D);
-
-				FEnhancedActionKeyMapping& Up = MappingContext.MapKey(MoveAction, EKeys::Up);
-				Up.AddModifier(UpSwizzle);
-
-				FEnhancedActionKeyMapping& Down = MappingContext.MapKey(MoveAction, EKeys::Down);
-				Down.AddModifier(DownSwizzle);
-				Down.AddModifier(DownNegate);
-
-				FEnhancedActionKeyMapping& Left = MappingContext.MapKey(MoveAction, EKeys::Left);
-				Left.AddModifier(LeftNegate);
-
-				FEnhancedActionKeyMapping& Right = MappingContext.MapKey(MoveAction, EKeys::Right);
-
-				if (MappingContext.GetMappingCount() != 8)
-				{
-					return 0;
-				}
-				if (MoveAction.GetValueType() != EInputActionValueType::Axis2D)
-				{
-					return 0;
-				}
-				if (MoveAction.GetAccumulationBehavior() != EInputActionAccumulationBehavior::Cumulative)
-				{
-					return 0;
-				}
-				if (W.GetAction() != MoveAction || W.GetKey() != EKeys::W || W.GetModifierCount() != 1)
-				{
-					return 0;
-				}
-				if (S.GetModifierCount() != 2 || A.GetModifierCount() != 1 || D.GetModifierCount() != 0)
-				{
-					return 0;
-				}
-				if (Up.GetModifierCount() != 1 || Down.GetModifierCount() != 2 || Left.GetModifierCount() != 1 || Right.GetModifierCount() != 0)
-				{
-					return 0;
-				}
-
-				return 1;
-			}
-			)AS"));
-		if (!Mod.IsValid()) return;
-		auto& M = Mod.GetModule();
-		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,
-			TEXT("int ConfigureRuntimeMapping()"),
-			TEXT("AS should be able to create an Enhanced Input movement context at runtime"), 1), TEXT("AS should be able to create an Enhanced Input movement context at runtime")));
 	}
 
 	TEST_METHOD(EnhancedInputComponentBindActionAcceptsDynamicSignature)

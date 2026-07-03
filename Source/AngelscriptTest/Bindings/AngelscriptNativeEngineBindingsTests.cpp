@@ -8,6 +8,8 @@
 // Sections:
 //   NativeActorMethods              — AActor native method bridging
 //   NativeComponentMethods          — USceneComponent native method bridging
+//   ActorComponentFactoryContract   — AActor component factory helpers
+//   PlayerControllerContract        — APlayerController accessor helpers
 //   ComponentDestroy                — DestroyComponent binding
 //   ComponentActivationAndTag       — Activate/Deactivate/ComponentHasTag
 //
@@ -28,6 +30,7 @@
 #include "Components/ActorTestSpawner.h"
 #include "Components/SceneComponent.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/PlayerController.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
@@ -159,9 +162,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeEngineBindingsTest,
 						{
 							return 45;
 						}
-						if (GetNumChildrenComponents() != 0)
+						if (GetNumChildrenComponents() != 1)
 						{
 							return 50;
+						}
+						USceneComponent ChildByClass = GetChildComponentByClass(USceneComponent::StaticClass());
+						if (!IsValid(ChildByClass) || !(ChildByClass.GetName() == n"ScriptSceneChild"))
+						{
+							return 55;
+						}
+						TArray<USceneComponent> ChildComponents;
+						GetChildrenComponentsByClass(USceneComponent::StaticClass(), false, ChildComponents);
+						if (ChildComponents.Num() != 1)
+						{
+							return 60;
+						}
+						if (!IsValid(ChildComponents[0]) || !(ChildComponents[0].GetName() == n"ScriptSceneChild"))
+						{
+							return 65;
 						}
 						UActorComponent FoundByClass = GetOwner().GetComponent(USceneComponent::StaticClass());
 						if (!IsValid(FoundByClass))
@@ -202,22 +220,30 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeEngineBindingsTest,
 						SceneComponents.Add(USceneComponent::Get(GetOwner()));
 						SceneComponents.Empty();
 						GetOwner().GetComponentsByClass(SceneComponents);
-						if (SceneComponents.Num() != 1)
+						bool bFoundSceneComponent = false;
+						for (int Index = 0; Index < SceneComponents.Num(); ++Index)
 						{
-							return 160;
+							if (IsValid(SceneComponents[Index]) && SceneComponents[Index].GetName() == n"ScriptScene")
+							{
+								bFoundSceneComponent = true;
+							}
 						}
-						if (!IsValid(SceneComponents[0]) || !(SceneComponents[0].GetName() == n"ScriptScene"))
+						if (!bFoundSceneComponent)
 						{
 							return 170;
 						}
 
 						TArray<UActorComponent> AllComponents;
 						GetOwner().GetComponentsByClass(AllComponents);
-						if (AllComponents.Num() != 1)
+						bool bFoundActorComponent = false;
+						for (int Index = 0; Index < AllComponents.Num(); ++Index)
 						{
-							return 180;
+							if (IsValid(AllComponents[Index]) && AllComponents[Index].GetName() == n"ScriptScene")
+							{
+								bFoundActorComponent = true;
+							}
 						}
-						if (!IsValid(AllComponents[0]) || !(AllComponents[0].GetName() == n"ScriptScene"))
+						if (!bFoundActorComponent)
 						{
 							return 190;
 						}
@@ -241,10 +267,177 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeEngineBindingsTest,
 		ASSERT_THAT(IsNotNull(RuntimeComponent, TEXT("Generated scene component instance should be created")));
 
 		OuterActor->AddOwnedComponent(RuntimeComponent);
+		USceneComponent* ChildComponent = NewObject<USceneComponent>(OuterActor, USceneComponent::StaticClass(), TEXT("ScriptSceneChild"));
+		ASSERT_THAT(IsNotNull(ChildComponent, TEXT("Transient child scene component should be created")));
+		if (ChildComponent != nullptr)
+		{
+			OuterActor->AddOwnedComponent(ChildComponent);
+			ChildComponent->AttachToComponent(RuntimeComponent, FAttachmentTransformRules::KeepRelativeTransform);
+		}
 
 		int32 Result = 0;
 		ASSERT_THAT(IsTrue(ExecuteGeneratedIntEventOnGameThread(&Engine, RuntimeComponent, ReadComponentBindingsFunction, Result), TEXT("Native component binding reflected call should execute on the game thread")));
-		ASSERT_THAT(AreEqual(1, Result, TEXT("Script component should call bridged native component methods")));
+		ASSERT_THAT(AreEqual(
+			1,
+			Result,
+			*FString::Printf(TEXT("Script component should call bridged native component methods; AS returned %d"), Result)));
+	}
+
+	// ====================================================================
+	// Section: ActorComponentFactoryContract
+	// ====================================================================
+
+	TEST_METHOD(ActorComponentFactoryContract)
+	{
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
+		FAngelscriptEngineScope Scope(Engine);
+		ON_SCOPE_EXIT
+		{
+			const TArray<TSharedRef<FAngelscriptModuleDesc>> ActiveModules = Engine.GetActiveModules();
+			for (const TSharedRef<FAngelscriptModuleDesc>& Module : ActiveModules)
+			{
+				Engine.DiscardModule(*Module->ModuleName);
+			}
+		};
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor& HostActor = Spawner.SpawnActor<AActor>();
+		USceneComponent* RootComponent = NewObject<USceneComponent>(&HostActor, USceneComponent::StaticClass(), TEXT("BindingFactoryRoot"));
+		ASSERT_THAT(IsNotNull(RootComponent, TEXT("Actor/component factory contract should create a root scene component")));
+		if (RootComponent == nullptr)
+		{
+			return;
+		}
+		HostActor.AddInstanceComponent(RootComponent);
+		HostActor.SetRootComponent(RootComponent);
+		RootComponent->RegisterComponent();
+
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASNativeEngine_ActorComponentFactoryContract"), ASTEST_AS(R"AS(
+			int VerifyActorComponentFactoryContract(AActor Host)
+			{
+				if (Host == nullptr)
+				{
+					return 0;
+				}
+
+				Host.SetReplicates(true);
+				Host.SetActorScale3D(FVector(2.0f, 2.0f, 2.0f));
+				Host.SetActorTickInterval(0.25f);
+
+				if (Host.GetActorNameOrLabel().IsEmpty())
+				{
+					return 20;
+				}
+
+				UActorComponent Created = Host.CreateComponent(USceneComponent::StaticClass(), n"BindingCreatedScene");
+				if (!IsValid(Created) || Created.GetOwner() != Host)
+				{
+					return 30;
+				}
+
+				UActorComponent Found = Host.GetComponent(USceneComponent::StaticClass(), n"BindingCreatedScene");
+				if (Found != Created)
+				{
+					return 40;
+				}
+
+				UActorComponent Existing = Host.GetOrCreateComponent(USceneComponent::StaticClass(), n"BindingCreatedScene");
+				if (Existing != Created)
+				{
+					return 50;
+				}
+
+				TArray<UActorComponent> Components;
+				Host.GetAllComponents(UActorComponent::StaticClass(), Components);
+				return Components.Num() > 0 ? 1 : 60;
+			}
+			)AS"));
+		ASSERT_THAT(IsTrue(Mod.IsValid(), TEXT("Actor/component factory contract module should compile")));
+		if (!Mod.IsValid())
+		{
+			return;
+		}
+
+		FScopedTestWorldContextScope WorldContextScope(&HostActor);
+
+		FASGlobalFunctionInvoker Invoker(
+			*TestRunner,
+			Engine,
+			Mod.GetModule(),
+			TEXT("int VerifyActorComponentFactoryContract(AActor)"));
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("Actor/component factory contract function should resolve")));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
+
+		Invoker.AddArgObject(&HostActor);
+		ASSERT_THAT(AreEqual(
+			1,
+			Invoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("AActor component factory helpers should dispatch through manual bindings")));
+		ASSERT_THAT(IsTrue(HostActor.GetIsReplicated(), TEXT("SetReplicates should update native actor replication state")));
+		ASSERT_THAT(IsTrue(HostActor.GetActorScale3D().Equals(FVector(2.0f, 2.0f, 2.0f)), TEXT("SetActorScale3D should update native actor scale")));
+		ASSERT_THAT(IsNear(0.25f, HostActor.GetActorTickInterval(), 0.001f, TEXT("SetActorTickInterval should update native actor tick interval")));
+	}
+
+	// ====================================================================
+	// Section: PlayerControllerContract
+	// ====================================================================
+
+	TEST_METHOD(PlayerControllerContract)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASNativeEngine_PlayerControllerContract"), ASTEST_AS(R"AS(
+			int VerifyPlayerControllerContract(APlayerController Controller)
+			{
+				if (Controller == nullptr)
+				{
+					return 0;
+				}
+				if (!Controller.IsPlayerController())
+				{
+					return 10;
+				}
+
+				ULocalPlayer LocalPlayer = Controller.GetLocalPlayer();
+				APlayerState PlayerState = Controller.GetPlayerState();
+				APlayerCameraManager CameraManager = Controller.GetPlayerCameraManager();
+				return LocalPlayer == nullptr && PlayerState == nullptr && CameraManager == nullptr ? 1 : 20;
+			}
+			)AS"));
+		ASSERT_THAT(IsTrue(Mod.IsValid(), TEXT("PlayerController contract module should compile")));
+		if (!Mod.IsValid())
+		{
+			return;
+		}
+
+		APlayerController* Controller = NewObject<APlayerController>(GetTransientPackage(), APlayerController::StaticClass());
+		ASSERT_THAT(IsNotNull(Controller, TEXT("Transient player controller should be created")));
+		if (Controller == nullptr)
+		{
+			return;
+		}
+
+		FASGlobalFunctionInvoker Invoker(
+			*TestRunner,
+			Engine,
+			Mod.GetModule(),
+			TEXT("int VerifyPlayerControllerContract(APlayerController)"));
+		ASSERT_THAT(IsTrue(Invoker.IsValid(), TEXT("PlayerController contract function should resolve")));
+		if (!Invoker.IsValid())
+		{
+			return;
+		}
+
+		Invoker.AddArgObject(Controller);
+		ASSERT_THAT(AreEqual(
+			1,
+			Invoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("APlayerController accessors should resolve and dispatch through manual bindings")));
 	}
 
 	// ====================================================================
@@ -336,6 +529,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptNativeEngineBindingsTest,
 					UFUNCTION()
 					int VerifyTagBindings()
 					{
+						MarkRenderStateDirty();
+						SetbTickInEditor(true);
+						SetbIsEditorOnly(false);
+						SetIsVisualizationComponent(false);
+						EComponentCreationMethod CreationMethod = GetComponentCreationMethod();
+
+						if (IsVisualizationComponent())
+						{
+							return 0;
+						}
 						if (!ComponentHasTag(n"Probe"))
 						{
 							return 0;

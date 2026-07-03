@@ -6,11 +6,9 @@
 //
 // Sections:
 //   TopLevelPathAndNullParent �?FTopLevelAssetPath round-trip + null parent exception
-//   QueryCompat              �?deterministic AssetRegistry query vs native baselines
 //
 // CQTest adaptation notes:
 //   Two legacy automation tests merged into one TEST_CLASS.
-//   Both sections use token-replacement patterns with native baseline computation.
 //   TopLevelPathAndNullParent uses WorldCollisionExecuteFunctionExpectingException for negative path.
 // ============================================================================
 
@@ -25,7 +23,6 @@
 #include "GameFramework/Actor.h"
 #include "Misc/ScopeExit.h"
 #include "Templates/Function.h"
-#include "UObject/SoftObjectPath.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
@@ -53,14 +50,6 @@ private:
 	{
 		FAssetRegistryModule& AssetRegistryModule = FModuleManager::Get().LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 		return AssetRegistryModule.Get();
-	}
-
-	static bool ContainsAssetObjectPath(const TArray<FAssetData>& Assets, const FString& ObjectPath)
-	{
-		return Assets.ContainsByPredicate([&ObjectPath](const FAssetData& AssetData)
-		{
-			return AssetData.GetObjectPathString() == ObjectPath;
-		});
 	}
 
 public:
@@ -193,192 +182,6 @@ public:
 		}
 	}
 
-	// ====================================================================
-	// Section: QueryCompat
-	// ====================================================================
-
-	TEST_METHOD(QueryFilters)
-	{
-		static const FName EngineMaterialsPath(TEXT("/Engine/EngineMaterials"));
-		static const FString TargetObjectPath(TEXT("/Engine/EngineMaterials/DefaultMaterial.DefaultMaterial"));
-
-		IAssetRegistry& AssetRegistry = GetAssetRegistryChecked();
-		const bool bNativeHasAssets = AssetRegistry.HasAssets(EngineMaterialsPath, false);
-
-		TArray<FAssetData> NativeAssetsByPath;
-		const bool bNativeGetAssetsByPath = AssetRegistry.GetAssetsByPath(EngineMaterialsPath, NativeAssetsByPath, false, false);
-
-		const FAssetData NativeAssetByObjectPath = AssetRegistry.GetAssetByObjectPath(FSoftObjectPath(TargetObjectPath), false);
-		const FString NativeObjectPathString = NativeAssetByObjectPath.GetObjectPathString();
-		const FString NativeSoftObjectPathString = NativeAssetByObjectPath.GetSoftObjectPath().ToString();
-
-		TArray<FAssetData> NativeAllAssets;
-		const bool bNativeGetAllAssets = AssetRegistry.GetAllAssets(NativeAllAssets, false);
-		const bool bNativeAllAssetsContainTarget = ContainsAssetObjectPath(NativeAllAssets, TargetObjectPath);
-
-		const FTopLevelAssetPath NativeTopLevelPath(TargetObjectPath);
-		const FString NativeTopLevelPathString = NativeTopLevelPath.ToString();
-
-		ASSERT_THAT(IsTrue(bNativeHasAssets, TEXT("Native HasAssets baseline")));
-		ASSERT_THAT(IsTrue(bNativeGetAssetsByPath, TEXT("Native GetAssetsByPath baseline")));
-		ASSERT_THAT(IsTrue(NativeObjectPathString == TargetObjectPath, TEXT("Native GetAssetByObjectPath baseline")));
-		ASSERT_THAT(IsTrue(bNativeGetAllAssets, TEXT("Native GetAllAssets baseline")));
-		ASSERT_THAT(IsTrue(bNativeAllAssetsContainTarget, TEXT("Native GetAllAssets contains target")));
-		ASSERT_THAT(IsTrue(NativeTopLevelPath.IsValid(), TEXT("Native FTopLevelAssetPath valid")));
-
-		FString QueryScriptSource = ASTEST_AS(R"AS(
-			int VerifyTopLevelPathRoundTrip()
-			{
-				const FString TargetObjectPath = "__TARGET_OBJECT_PATH__";
-				const FString ExpectedTopLevelPath = "__EXPECTED_TOP_LEVEL_PATH__";
-
-				Log(n"AssetRegistryBindings", "ASAssetRegistryQueryCompat.TopLevelPathRoundTrip: begin");
-
-				FTopLevelAssetPath PathFromString(TargetObjectPath);
-				if (!PathFromString.IsValid())
-				{
-					return 10;
-				}
-				if (PathFromString.IsNull())
-				{
-					return 20;
-				}
-				Log(n"AssetRegistryBindings", "ASAssetRegistryQueryCompat.TopLevelPathRoundTrip: value=" + PathFromString.ToString() + " expected=" + ExpectedTopLevelPath);
-				if (PathFromString.ToString() != ExpectedTopLevelPath)
-				{
-					return 30;
-				}
-				return 0;
-			}
-
-			int VerifyHasAssets()
-			{
-				const bool bExpectedHasAssets = __EXPECTED_HAS_ASSETS__;
-
-				Log(n"AssetRegistryBindings", "ASAssetRegistryQueryCompat.HasAssets: begin");
-
-				const bool bActualHasAssets = AssetRegistry::HasAssets(n"__ENGINE_MATERIALS_PATH__", false);
-				Log(n"AssetRegistryBindings", "ASAssetRegistryQueryCompat.HasAssets: actual=" + bActualHasAssets + " expected=" + bExpectedHasAssets);
-				return bActualHasAssets == bExpectedHasAssets ? 0 : 40;
-			}
-
-			int VerifyGetAssetsByPath()
-			{
-				const bool bExpectedGetAssetsByPath = __EXPECTED_GET_ASSETS_BY_PATH__;
-				const int ExpectedAssetsByPathCount = __EXPECTED_ASSETS_BY_PATH_COUNT__;
-				const FString ExpectedObjectPathString = "__EXPECTED_OBJECT_PATH_STRING__";
-				const FString ExpectedSoftObjectPathString = "__EXPECTED_SOFT_OBJECT_PATH_STRING__";
-
-				Log(n"AssetRegistryBindings", "ASAssetRegistryQueryCompat.GetAssetsByPath: begin");
-
-				TArray<FAssetData> AssetsByPath;
-				const bool bActualGetAssetsByPath = AssetRegistry::GetAssetsByPath(n"__ENGINE_MATERIALS_PATH__", AssetsByPath, false, false);
-				Log(n"AssetRegistryBindings", "ASAssetRegistryQueryCompat.GetAssetsByPath: actual=" + bActualGetAssetsByPath + " expected=" + bExpectedGetAssetsByPath + " count=" + AssetsByPath.Num());
-				if (bActualGetAssetsByPath != bExpectedGetAssetsByPath)
-				{
-					return 50;
-				}
-				if (AssetsByPath.Num() != ExpectedAssetsByPathCount)
-				{
-					return 60;
-				}
-
-				bool bFoundTargetByPath = false;
-				for (int Index = 0; Index < AssetsByPath.Num(); ++Index)
-				{
-					FString AssetObjectPathString = AssetsByPath[Index].GetObjectPathString();
-					if (AssetObjectPathString == ExpectedObjectPathString)
-					{
-						bFoundTargetByPath = true;
-						if (AssetsByPath[Index].GetSoftObjectPath().ToString() != ExpectedSoftObjectPathString)
-						{
-							return 70;
-						}
-					}
-				}
-				return bFoundTargetByPath ? 0 : 80;
-			}
-
-			int VerifyGetAssetByObjectPath()
-			{
-				const FString TargetObjectPath = "__TARGET_OBJECT_PATH__";
-				const FString ExpectedObjectPathString = "__EXPECTED_OBJECT_PATH_STRING__";
-				const FString ExpectedSoftObjectPathString = "__EXPECTED_SOFT_OBJECT_PATH_STRING__";
-
-				Log(n"AssetRegistryBindings", "ASAssetRegistryQueryCompat.GetAssetByObjectPath: begin");
-
-				FAssetData AssetByObjectPath = AssetRegistry::GetAssetByObjectPath(FSoftObjectPath(TargetObjectPath), false);
-				Log(n"AssetRegistryBindings", "ASAssetRegistryQueryCompat.GetAssetByObjectPath: objectPath=" + AssetByObjectPath.GetObjectPathString());
-				if (AssetByObjectPath.GetObjectPathString() != ExpectedObjectPathString)
-				{
-					return 90;
-				}
-				if (AssetByObjectPath.GetSoftObjectPath().ToString() != ExpectedSoftObjectPathString)
-				{
-					return 100;
-				}
-				return 0;
-			}
-
-			int VerifyGetAllAssets()
-			{
-				const bool bExpectedGetAllAssets = __EXPECTED_GET_ALL_ASSETS__;
-				const bool bExpectedAllAssetsContainTarget = __EXPECTED_ALL_ASSETS_CONTAIN_TARGET__;
-				const int ExpectedAllAssetsCount = __EXPECTED_ALL_ASSETS_COUNT__;
-				const FString ExpectedObjectPathString = "__EXPECTED_OBJECT_PATH_STRING__";
-
-				Log(n"AssetRegistryBindings", "ASAssetRegistryQueryCompat.GetAllAssets: begin");
-
-				TArray<FAssetData> AllAssets;
-				const bool bActualGetAllAssets = AssetRegistry::GetAllAssets(AllAssets, false);
-				Log(n"AssetRegistryBindings", "ASAssetRegistryQueryCompat.GetAllAssets: actual=" + bActualGetAllAssets + " expected=" + bExpectedGetAllAssets + " count=" + AllAssets.Num());
-				if (bActualGetAllAssets != bExpectedGetAllAssets)
-				{
-					return 110;
-				}
-				if (AllAssets.Num() != ExpectedAllAssetsCount)
-				{
-					return 120;
-				}
-
-				bool bFoundTargetInAllAssets = false;
-				for (int Index = 0; Index < AllAssets.Num(); ++Index)
-				{
-					if (AllAssets[Index].GetObjectPathString() == ExpectedObjectPathString)
-					{
-						bFoundTargetInAllAssets = true;
-						break;
-					}
-				}
-				return bFoundTargetInAllAssets == bExpectedAllAssetsContainTarget ? 0 : 130;
-			}
-			)AS");
-
-		QueryScriptSource.ReplaceInline(TEXT("__TARGET_OBJECT_PATH__"), *TargetObjectPath, ESearchCase::CaseSensitive);
-		QueryScriptSource.ReplaceInline(TEXT("__EXPECTED_TOP_LEVEL_PATH__"), *NativeTopLevelPathString, ESearchCase::CaseSensitive);
-		QueryScriptSource.ReplaceInline(TEXT("__EXPECTED_HAS_ASSETS__"), bNativeHasAssets ? TEXT("true") : TEXT("false"), ESearchCase::CaseSensitive);
-		QueryScriptSource.ReplaceInline(TEXT("__EXPECTED_GET_ASSETS_BY_PATH__"), bNativeGetAssetsByPath ? TEXT("true") : TEXT("false"), ESearchCase::CaseSensitive);
-		QueryScriptSource.ReplaceInline(TEXT("__EXPECTED_GET_ALL_ASSETS__"), bNativeGetAllAssets ? TEXT("true") : TEXT("false"), ESearchCase::CaseSensitive);
-		QueryScriptSource.ReplaceInline(TEXT("__EXPECTED_ALL_ASSETS_CONTAIN_TARGET__"), bNativeAllAssetsContainTarget ? TEXT("true") : TEXT("false"), ESearchCase::CaseSensitive);
-		QueryScriptSource.ReplaceInline(TEXT("__EXPECTED_ASSETS_BY_PATH_COUNT__"), *FString::FromInt(NativeAssetsByPath.Num()), ESearchCase::CaseSensitive);
-		QueryScriptSource.ReplaceInline(TEXT("__EXPECTED_ALL_ASSETS_COUNT__"), *FString::FromInt(NativeAllAssets.Num()), ESearchCase::CaseSensitive);
-		QueryScriptSource.ReplaceInline(TEXT("__EXPECTED_OBJECT_PATH_STRING__"), *NativeObjectPathString, ESearchCase::CaseSensitive);
-		QueryScriptSource.ReplaceInline(TEXT("__EXPECTED_SOFT_OBJECT_PATH_STRING__"), *NativeSoftObjectPathString, ESearchCase::CaseSensitive);
-		QueryScriptSource.ReplaceInline(TEXT("__ENGINE_MATERIALS_PATH__"), *EngineMaterialsPath.ToString(), ESearchCase::CaseSensitive);
-
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
-		FAngelscriptEngineScope Scope(Engine);
-
-		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASAssetRegistry_QueryCompat"), QueryScriptSource);
-		if (!Mod.IsValid()) return;
-		auto& M = Mod.GetModule();
-
-		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyTopLevelPathRoundTrip()"), TEXT("FTopLevelAssetPath should round-trip script values"), 0), TEXT("FTopLevelAssetPath should round-trip script values")));
-		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyHasAssets()"), TEXT("AssetRegistry::HasAssets should match the native baseline"), 0), TEXT("AssetRegistry::HasAssets should match the native baseline")));
-		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyGetAssetsByPath()"), TEXT("AssetRegistry::GetAssetsByPath should match the native baseline"), 0), TEXT("AssetRegistry::GetAssetsByPath should match the native baseline")));
-		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyGetAssetByObjectPath()"), TEXT("AssetRegistry::GetAssetByObjectPath should match the native baseline"), 0), TEXT("AssetRegistry::GetAssetByObjectPath should match the native baseline")));
-		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int VerifyGetAllAssets()"), TEXT("AssetRegistry::GetAllAssets should match the native baseline"), 0), TEXT("AssetRegistry::GetAllAssets should match the native baseline")));
-	}
 };
 
 #endif

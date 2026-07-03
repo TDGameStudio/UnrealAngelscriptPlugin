@@ -3,8 +3,10 @@
 #include "AngelscriptTestMacros.h"
 #include "AngelscriptTestModuleScope.h"
 
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "Engine/Texture2D.h"
 #include "GameFramework/Actor.h"
+#include "Modules/ModuleManager.h"
 #include "UObject/SoftObjectPath.h"
 
 // -----------------------------------------------------------------------------
@@ -34,6 +36,20 @@ private:
 	static constexpr const TCHAR* MissingTexturePath = TEXT("/Engine/EngineResources/DefinitelyMissingCoverageTexture.DefinitelyMissingCoverageTexture");
 	static constexpr const TCHAR* MissingActorClassPath = TEXT("/Game/Coverage/DefinitelyMissingCoverageActor.DefinitelyMissingCoverageActor_C");
 	static constexpr const TCHAR* CrossLevelActorPath = TEXT("/Game/Coverage/OtherMap.OtherMap:PersistentLevel.OtherActor");
+
+	static IAssetRegistry& GetAssetRegistryChecked()
+	{
+		FAssetRegistryModule& AssetRegistryModule = FModuleManager::Get().LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+		return AssetRegistryModule.Get();
+	}
+
+	static bool ContainsAssetObjectPath(const TArray<FAssetData>& Assets, const FString& ObjectPath)
+	{
+		return Assets.ContainsByPredicate([&ObjectPath](const FAssetData& AssetData)
+		{
+			return AssetData.GetObjectPathString() == ObjectPath;
+		});
+	}
 
 public:
 	BEFORE_ALL()
@@ -243,6 +259,140 @@ public:
 			TEXT("global LoadObject should return null for a missing path"), 1)));
 	}
 
+	TEST_METHOD(AssetRegistryLiveQueryParity)
+	{
+		static const FName EngineMaterialsPath(TEXT("/Engine/EngineMaterials"));
+		static const FString TargetObjectPath(TEXT("/Engine/EngineMaterials/DefaultMaterial.DefaultMaterial"));
+
+		IAssetRegistry& AssetRegistry = GetAssetRegistryChecked();
+		const bool bNativeHasAssets = AssetRegistry.HasAssets(EngineMaterialsPath, false);
+
+		TArray<FAssetData> NativeAssetsByPath;
+		const bool bNativeGetAssetsByPath = AssetRegistry.GetAssetsByPath(EngineMaterialsPath, NativeAssetsByPath, false, false);
+
+		const FAssetData NativeAssetByObjectPath = AssetRegistry.GetAssetByObjectPath(FSoftObjectPath(TargetObjectPath), false);
+		const FString NativeObjectPathString = NativeAssetByObjectPath.GetObjectPathString();
+		const FString NativeSoftObjectPathString = NativeAssetByObjectPath.GetSoftObjectPath().ToString();
+
+		TArray<FAssetData> NativeAllAssets;
+		const bool bNativeGetAllAssets = AssetRegistry.GetAllAssets(NativeAllAssets, false);
+		const bool bNativeAllAssetsContainTarget = ContainsAssetObjectPath(NativeAllAssets, TargetObjectPath);
+
+		ASSERT_THAT(IsTrue(bNativeHasAssets, TEXT("Native HasAssets baseline")));
+		ASSERT_THAT(IsTrue(bNativeGetAssetsByPath, TEXT("Native GetAssetsByPath baseline")));
+		ASSERT_THAT(IsTrue(NativeObjectPathString == TargetObjectPath, TEXT("Native GetAssetByObjectPath baseline")));
+		ASSERT_THAT(IsTrue(bNativeGetAllAssets, TEXT("Native GetAllAssets baseline")));
+		ASSERT_THAT(IsTrue(bNativeAllAssetsContainTarget, TEXT("Native GetAllAssets contains target")));
+
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		FString ScriptSource = ASTEST_AS(R"AS(
+			int HasAssetsParity()
+			{
+				const bool bExpectedHasAssets = __EXPECTED_HAS_ASSETS__;
+				const bool bActualHasAssets = AssetRegistry::HasAssets(n"__ENGINE_MATERIALS_PATH__", false);
+				return bActualHasAssets == bExpectedHasAssets ? 1 : 0;
+			}
+
+			int GetAssetsByPathParity()
+			{
+				const bool bExpectedGetAssetsByPath = __EXPECTED_GET_ASSETS_BY_PATH__;
+				const int ExpectedAssetsByPathCount = __EXPECTED_ASSETS_BY_PATH_COUNT__;
+				const FString ExpectedObjectPathString = "__EXPECTED_OBJECT_PATH_STRING__";
+				const FString ExpectedSoftObjectPathString = "__EXPECTED_SOFT_OBJECT_PATH_STRING__";
+
+				TArray<FAssetData> AssetsByPath;
+				const bool bActualGetAssetsByPath = AssetRegistry::GetAssetsByPath(n"__ENGINE_MATERIALS_PATH__", AssetsByPath, false, false);
+				if (bActualGetAssetsByPath != bExpectedGetAssetsByPath)
+				{
+					return 0;
+				}
+				if (AssetsByPath.Num() != ExpectedAssetsByPathCount)
+				{
+					return 0;
+				}
+
+				for (int Index = 0; Index < AssetsByPath.Num(); ++Index)
+				{
+					if (AssetsByPath[Index].GetObjectPathString() == ExpectedObjectPathString)
+					{
+						return AssetsByPath[Index].GetSoftObjectPath().ToString() == ExpectedSoftObjectPathString ? 1 : 0;
+					}
+				}
+				return 0;
+			}
+
+			int GetAssetByObjectPathParity()
+			{
+				const FString TargetObjectPath = "__TARGET_OBJECT_PATH__";
+				const FString ExpectedObjectPathString = "__EXPECTED_OBJECT_PATH_STRING__";
+				const FString ExpectedSoftObjectPathString = "__EXPECTED_SOFT_OBJECT_PATH_STRING__";
+
+				FAssetData AssetByObjectPath = AssetRegistry::GetAssetByObjectPath(FSoftObjectPath(TargetObjectPath), false);
+				return AssetByObjectPath.GetObjectPathString() == ExpectedObjectPathString
+					&& AssetByObjectPath.GetSoftObjectPath().ToString() == ExpectedSoftObjectPathString ? 1 : 0;
+			}
+
+			int GetAllAssetsParity()
+			{
+				const bool bExpectedGetAllAssets = __EXPECTED_GET_ALL_ASSETS__;
+				const bool bExpectedAllAssetsContainTarget = __EXPECTED_ALL_ASSETS_CONTAIN_TARGET__;
+				const int ExpectedAllAssetsCount = __EXPECTED_ALL_ASSETS_COUNT__;
+				const FString ExpectedObjectPathString = "__EXPECTED_OBJECT_PATH_STRING__";
+
+				TArray<FAssetData> AllAssets;
+				const bool bActualGetAllAssets = AssetRegistry::GetAllAssets(AllAssets, false);
+				if (bActualGetAllAssets != bExpectedGetAllAssets)
+				{
+					return 0;
+				}
+				if (AllAssets.Num() != ExpectedAllAssetsCount)
+				{
+					return 0;
+				}
+
+				bool bFoundTargetInAllAssets = false;
+				for (int Index = 0; Index < AllAssets.Num(); ++Index)
+				{
+					if (AllAssets[Index].GetObjectPathString() == ExpectedObjectPathString)
+					{
+						bFoundTargetInAllAssets = true;
+						break;
+					}
+				}
+				return bFoundTargetInAllAssets == bExpectedAllAssetsContainTarget ? 1 : 0;
+			}
+			)AS");
+		ScriptSource.ReplaceInline(TEXT("__TARGET_OBJECT_PATH__"), *TargetObjectPath, ESearchCase::CaseSensitive);
+		ScriptSource.ReplaceInline(TEXT("__EXPECTED_HAS_ASSETS__"), bNativeHasAssets ? TEXT("true") : TEXT("false"), ESearchCase::CaseSensitive);
+		ScriptSource.ReplaceInline(TEXT("__EXPECTED_GET_ASSETS_BY_PATH__"), bNativeGetAssetsByPath ? TEXT("true") : TEXT("false"), ESearchCase::CaseSensitive);
+		ScriptSource.ReplaceInline(TEXT("__EXPECTED_GET_ALL_ASSETS__"), bNativeGetAllAssets ? TEXT("true") : TEXT("false"), ESearchCase::CaseSensitive);
+		ScriptSource.ReplaceInline(TEXT("__EXPECTED_ALL_ASSETS_CONTAIN_TARGET__"), bNativeAllAssetsContainTarget ? TEXT("true") : TEXT("false"), ESearchCase::CaseSensitive);
+		ScriptSource.ReplaceInline(TEXT("__EXPECTED_ASSETS_BY_PATH_COUNT__"), *FString::FromInt(NativeAssetsByPath.Num()), ESearchCase::CaseSensitive);
+		ScriptSource.ReplaceInline(TEXT("__EXPECTED_ALL_ASSETS_COUNT__"), *FString::FromInt(NativeAllAssets.Num()), ESearchCase::CaseSensitive);
+		ScriptSource.ReplaceInline(TEXT("__EXPECTED_OBJECT_PATH_STRING__"), *NativeObjectPathString, ESearchCase::CaseSensitive);
+		ScriptSource.ReplaceInline(TEXT("__EXPECTED_SOFT_OBJECT_PATH_STRING__"), *NativeSoftObjectPathString, ESearchCase::CaseSensitive);
+		ScriptSource.ReplaceInline(TEXT("__ENGINE_MATERIALS_PATH__"), *EngineMaterialsPath.ToString(), ESearchCase::CaseSensitive);
+
+		FScopedAngelscriptModule Module(*TestRunner, Engine, TEXT("ASCoverageAssetLoading_AssetRegistryLiveQueryParity"), ScriptSource);
+		ASSERT_THAT(IsTrue(Module.IsValid(), TEXT("AssetRegistry live query parity module should compile")));
+		if (!Module.IsValid())
+		{
+			return;
+		}
+
+		asIScriptModule& ScriptModule = Module.GetModule();
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int HasAssetsParity()"),
+			TEXT("AssetRegistry::HasAssets should match the native baseline"), 1)));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int GetAssetsByPathParity()"),
+			TEXT("AssetRegistry::GetAssetsByPath should match the native baseline"), 1)));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int GetAssetByObjectPathParity()"),
+			TEXT("AssetRegistry::GetAssetByObjectPath should match the native baseline"), 1)));
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, ScriptModule, TEXT("int GetAllAssetsParity()"),
+			TEXT("AssetRegistry::GetAllAssets should match the native baseline"), 1)));
+	}
+
 	TEST_METHOD(SoftReferencePathConstructionAndPending)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
@@ -404,7 +554,11 @@ public:
 				Delegate.BindUFunction(Receiver, n"HandleObjectLoaded");
 
 				FSoftObjectPath TexturePath("__DEFAULT_TEXTURE_PATH__");
-				TexturePath.TryLoad();
+				UObject LoadedTexture = TexturePath.TryLoad();
+				if (LoadedTexture == nullptr)
+				{
+					return 0;
+				}
 				TSoftObjectPtr<UTexture2D> TextureRef(TexturePath);
 				TextureRef.LoadAsync(Delegate);
 				return Receiver.ObjectCallbackCount == 1 && Receiver.bObjectPayloadWasTexture ? 1 : 0;
@@ -436,7 +590,11 @@ public:
 				Delegate.BindUFunction(Receiver, n"HandleClassLoaded");
 
 				FSoftClassPath ClassPath("__ACTOR_CLASS_PATH__");
-				ClassPath.TryLoadClass();
+				UClass LoadedClass = ClassPath.TryLoadClass();
+				if (LoadedClass == nullptr)
+				{
+					return 0;
+				}
 				TSoftClassPtr<AActor> ActorClassRef(FSoftObjectPath("__ACTOR_CLASS_PATH__"));
 				ActorClassRef.LoadAsync(Delegate);
 				return Receiver.ClassCallbackCount == 1 && Receiver.bClassPayloadWasActorClass ? 1 : 0;
