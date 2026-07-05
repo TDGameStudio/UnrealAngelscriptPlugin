@@ -12,8 +12,6 @@
 // Test Layer: Runtime Integration
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-using namespace AngelscriptFunctionalTestUtils;
-
 namespace ASClassConstructionContextTest
 {
 	static const FName ModuleName(TEXT("ASClassConstructionContext"));
@@ -42,22 +40,22 @@ namespace ASClassConstructionContextTest
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		const FString ScriptSource = TEXT(R"AS(
-delegate UObject FConstructionContextProbe();
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			delegate UObject FConstructionContextProbe();
 
-UCLASS()
-class UConstructionContextCarrier : UObject
-{
-	UPROPERTY()
-	UObject CapturedDuringDefaults = nullptr;
+			UCLASS()
+			class UConstructionContextCarrier : UObject
+			{
+				UPROPERTY()
+				UObject CapturedDuringDefaults = nullptr;
 
-	default CapturedDuringDefaults = FConstructionContextProbe(
-		FindClass("UAngelscriptConstructionContextProbe").GetDefaultObject(),
-		n"CaptureConstructingObject").ExecuteIfBound();
-}
-)AS");
+				default CapturedDuringDefaults = FConstructionContextProbe(
+					FindClass("UAngelscriptConstructionContextProbe").GetDefaultObject(),
+					n"CaptureConstructingObject").ExecuteIfBound();
+			}
+			)AS");
 
-		UClass* GeneratedClass = CompileScriptModule(
+		UClass* GeneratedClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
 			Test,
 			Engine,
 			ModuleName,
@@ -114,18 +112,28 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassConstructionContextTests,
 	"Angelscript.TestModule.ClassGenerator.ASClass",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(GetConstructingASObjectReportsCurrentScriptInstance)
 	{
-		using namespace ASClassConstructionContextTest;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 		ASClassConstructionContextTest::ResetProbeState();
 
 		ON_SCOPE_EXIT
 		{
 			ASClassConstructionContextTest::ResetProbeState();
 			Engine.DiscardModule(*ASClassConstructionContextTest::ModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
 			CollectGarbage(RF_NoFlags, true);
 		};
 
@@ -174,8 +182,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassConstructionContextTests,
 		ASClassConstructionContextTest::VerifyPostConstructionState(
 			*TestRunner,
 			Instance);
-
-		}
 	}
 };
 

@@ -34,41 +34,51 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASStructDiscardTests,
 	"Angelscript.TestModule.ClassGenerator.ASStruct",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(DiscardModuleClearsScriptTypeAndNativeOps)
 	{
-		using namespace ASStructDiscardTest;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ASStructDiscardTest::ModuleName.ToString());
 			IFileManager::Get().Delete(*ASStructDiscardTest::GetScriptAbsoluteFilename(), false, true, true);
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
-		const FString ScriptSource = TEXT(R"AS(
-USTRUCT()
-struct FDiscardableStruct
-{
-	UPROPERTY()
-	int Value = 7;
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FDiscardableStruct
+			{
+				UPROPERTY()
+				int Value = 7;
 
-	bool opEquals(const FDiscardableStruct& Other) const
-	{
-		return Value == Other.Value;
-	}
+				bool opEquals(const FDiscardableStruct& Other) const
+				{
+					return Value == Other.Value;
+				}
 
-	uint32 Hash() const
-	{
-		return uint32(Value + 11);
-	}
+				uint32 Hash() const
+				{
+					return uint32(Value + 11);
+				}
 
-	FString ToString() const
-	{
-		return "Discardable";
-	}
-};
-)AS");
+				FString ToString() const
+				{
+					return "Discardable";
+				}
+			};
+			)AS");
 
 		ASSERT_THAT(IsTrue(
 			CompileAnnotatedModuleFromMemory(&Engine, ASStructDiscardTest::ModuleName, ASStructDiscardTest::ScriptFilename, ScriptSource),
@@ -102,8 +112,6 @@ struct FDiscardableStruct
 		ASSERT_THAT(IsFalse(
 			EnumHasAnyFlags(Struct->StructFlags, STRUCT_IdenticalNative),
 			TEXT("ASStruct discard test should clear STRUCT_IdenticalNative after discard")));
-
-		}
 	}
 };
 

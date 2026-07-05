@@ -132,6 +132,8 @@ private:
 	bool bReinstancingAny = false;
 	int32 NextUniqueNumber = 0;
 
+	static int32 UniqueCounter();
+
 	bool ShouldFullReload(FClassData& Class);
 	bool ShouldFullReload(FEnumData& Enum);
 	bool ShouldFullReload(FDelegateData& Enum);

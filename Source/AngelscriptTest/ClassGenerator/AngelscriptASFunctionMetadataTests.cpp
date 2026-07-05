@@ -11,8 +11,6 @@
 // Test Layer: Runtime Integration
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-using namespace AngelscriptFunctionalTestUtils;
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionMetadataTests,
 	"Angelscript.TestModule.ClassGenerator.ASFunction",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -114,38 +112,48 @@ static bool ExpectMatchingParameterSignature(
 }
 
 public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(NetValidateCachesValidateFunction)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*NetValidateModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
-		UClass* ScriptClass = CompileScriptModule(*TestRunner, Engine, NetValidateModuleName, NetValidateFilename,
-			TEXT(R"AS(
-UCLASS()
-class AASFunctionNetValidateCache : AActor
-{
-	UFUNCTION(Server, WithValidation)
-	void Server_SetValue(int Value)
-	{
-	}
+		UClass* ScriptClass = AngelscriptFunctionalTestUtils::CompileScriptModule(*TestRunner, Engine, NetValidateModuleName, NetValidateFilename,
+			ASTEST_AS(R"AS(
+				UCLASS()
+				class AASFunctionNetValidateCache : AActor
+				{
+					UFUNCTION(Server, WithValidation)
+					void Server_SetValue(int Value)
+					{
+					}
 
-	UFUNCTION()
-	bool Server_SetValue_Validate(int Value)
-	{
-		return Value >= 0;
-	}
-}
-)AS"),
+					UFUNCTION()
+					bool Server_SetValue_Validate(int Value)
+					{
+						return Value >= 0;
+					}
+				}
+				)AS"),
 			TEXT("AASFunctionNetValidateCache"));
 		if (ScriptClass == nullptr) { return; }
 
-		UFunction* ServerFunction = FindGeneratedFunction(ScriptClass, TEXT("Server_SetValue"));
-		UFunction* ValidateFunction = FindGeneratedFunction(ScriptClass, TEXT("Server_SetValue_Validate"));
+		UFunction* ServerFunction = ::FindGeneratedFunction(ScriptClass, TEXT("Server_SetValue"));
+		UFunction* ValidateFunction = ::FindGeneratedFunction(ScriptClass, TEXT("Server_SetValue_Validate"));
 		UASFunction* GeneratedServerFunction = Cast<UASFunction>(ServerFunction);
 		if (!CheckNotNull(*TestRunner, TEXT("ASFunction.NetValidateCachesValidateFunction should generate the server RPC"), ServerFunction)
 			|| !CheckNotNull(*TestRunner, TEXT("ASFunction.NetValidateCachesValidateFunction should generate the _Validate companion function"), ValidateFunction)
@@ -180,13 +188,12 @@ class AASFunctionNetValidateCache : AActor
 		if (!ExpectMatchingParameterSignature(*TestRunner, *ServerFunction, *ValidateFunction))
 		{ return; }
 
-		}
 	}
 
 	TEST_METHOD(GeneratedNativeAndStaleMetadataAreClassified)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 
 		bool bModuleDiscarded = false;
 		ON_SCOPE_EXIT
@@ -195,29 +202,28 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 			{
 				Engine.DiscardModule(*ClassificationModuleName.ToString());
 			}
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
-		const FString ScriptSource = TEXT(R"AS(
-UCLASS()
-class UASFunctionMetadataClassification : UObject
-{
-	UPROPERTY()
-	int StoredValue = 12;
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class UASFunctionMetadataClassification : UObject
+			{
+				UPROPERTY()
+				int StoredValue = 12;
 
-	UFUNCTION()
-	int ComputeValue(int Value)
-	{
-		return Value + StoredValue;
-	}
-}
+				UFUNCTION()
+				int ComputeValue(int Value)
+				{
+					return Value + StoredValue;
+				}
+			}
 
-UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"))
-int CheckMetadataWorldContext(UObject WorldContextObject, int Value)
-{
-	return Value;
-}
-)AS");
+			UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"))
+			int CheckMetadataWorldContext(UObject WorldContextObject, int Value)
+			{
+				return Value;
+			}
+			)AS");
 
 		if (!CheckTrue(*TestRunner,
 				TEXT("ASFunction metadata classification test should compile"),
@@ -226,15 +232,15 @@ int CheckMetadataWorldContext(UObject WorldContextObject, int Value)
 			return;
 		}
 
-		UClass* ScriptClass = FindGeneratedClass(&Engine, ClassificationClassName);
-		UClass* StaticsClass = FindGeneratedClass(&Engine, ClassificationStaticsClassName);
+		UClass* ScriptClass = ::FindGeneratedClass(&Engine, ClassificationClassName);
+		UClass* StaticsClass = ::FindGeneratedClass(&Engine, ClassificationStaticsClassName);
 		if (!CheckNotNull(*TestRunner, TEXT("ASFunction metadata classification test should generate the UObject class"), ScriptClass)
 			|| !CheckNotNull(*TestRunner, TEXT("ASFunction metadata classification test should generate the module statics class"), StaticsClass))
 		{
 			return;
 		}
 
-		UASFunction* GeneratedFunction = Cast<UASFunction>(FindGeneratedFunction(ScriptClass, TEXT("ComputeValue")));
+		UASFunction* GeneratedFunction = Cast<UASFunction>(::FindGeneratedFunction(ScriptClass, TEXT("ComputeValue")));
 		FIntProperty* GeneratedClassProperty = FindFProperty<FIntProperty>(ScriptClass, TEXT("StoredValue"));
 		FIntProperty* GeneratedParamProperty = GeneratedFunction != nullptr ? FindFProperty<FIntProperty>(GeneratedFunction, TEXT("Value")) : nullptr;
 		FIntProperty* GeneratedReturnProperty = GeneratedFunction != nullptr ? FindFProperty<FIntProperty>(GeneratedFunction, TEXT("ReturnValue")) : nullptr;
@@ -246,7 +252,7 @@ int CheckMetadataWorldContext(UObject WorldContextObject, int Value)
 			return;
 		}
 
-		UASFunction* WorldContextFunction = Cast<UASFunction>(FindGeneratedFunction(StaticsClass, TEXT("CheckMetadataWorldContext")));
+		UASFunction* WorldContextFunction = Cast<UASFunction>(::FindGeneratedFunction(StaticsClass, TEXT("CheckMetadataWorldContext")));
 		FObjectProperty* WorldContextProperty = WorldContextFunction != nullptr ? FindFProperty<FObjectProperty>(WorldContextFunction, TEXT("WorldContextObject")) : nullptr;
 		FIntProperty* WorldContextValueProperty = WorldContextFunction != nullptr ? FindFProperty<FIntProperty>(WorldContextFunction, TEXT("Value")) : nullptr;
 		if (!CheckNotNull(*TestRunner, TEXT("ASFunction metadata classification test should expose the world-context UASFunction"), WorldContextFunction)
@@ -302,7 +308,6 @@ int CheckMetadataWorldContext(UObject WorldContextObject, int Value)
 			SourcePathAfterDiscard.IsEmpty() || SourceLineAfterDiscard == -1,
 			TEXT("Stale generated UASFunction should clear or invalidate source metadata after discard")));
 
-		}
 	}
 };
 

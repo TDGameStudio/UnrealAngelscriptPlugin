@@ -24,14 +24,13 @@ namespace ASClassMetadataTests
 		FAngelscriptEngine& Engine,
 		const FDeveloperOnlyModuleCase& TestCase)
 	{
-		const FString ScriptSource = FString::Printf(
-			TEXT(R"AS(
-UCLASS()
-class %s : AActor
-{
-}
-)AS"),
-			*TestCase.GeneratedClassName.ToString());
+		FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class __GeneratedClassName__ : AActor
+			{
+			}
+			)AS");
+		ScriptSource.ReplaceInline(TEXT("__GeneratedClassName__"), *TestCase.GeneratedClassName.ToString());
 
 		FNoDiscardAsserter LocalAssert(Test);
 		if (!LocalAssert.IsTrue(
@@ -56,11 +55,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassMetadataTests,
 	"Angelscript.TestModule.ClassGenerator.ASClass",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(IsDeveloperOnlyRecognizesNestedEditorModuleNames)
 	{
-		using namespace ASClassMetadataTests;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 
 		const TArray<ASClassMetadataTests::FDeveloperOnlyModuleCase> Cases =
 		{
@@ -90,7 +100,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassMetadataTests,
 			{
 				Engine.DiscardModule(*TestCase.ModuleName.ToString());
 			}
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
 		for (const ASClassMetadataTests::FDeveloperOnlyModuleCase& TestCase : Cases)
@@ -108,14 +117,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassMetadataTests,
 					TEXT("ASClass metadata case '%s' should report the expected developer-only state"),
 					*TestCase.ModuleName.ToString())));
 		}
-
-		}
 	}
 
 	TEST_METHOD(IsFunctionImplementedInScriptTurnsFalseAfterDiscard)
 	{
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 
 		static const FName DiscardModuleName(TEXT("Game.Tools.Runtime.DiscardMetadata"));
 		static const FName DiscardGeneratedClassName(TEXT("UMetadataDiscardCarrier"));
@@ -126,20 +133,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassMetadataTests,
 			{
 				Engine.DiscardModule(*DiscardModuleName.ToString());
 			}
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
-		const FString ScriptSource = TEXT(R"AS(
-UCLASS()
-class UMetadataDiscardCarrier : UObject
-{
-	UFUNCTION()
-	int ComputeValue()
-	{
-		return 7;
-	}
-}
-)AS");
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class UMetadataDiscardCarrier : UObject
+			{
+				UFUNCTION()
+				int ComputeValue()
+				{
+					return 7;
+				}
+			}
+			)AS");
 
 		ASSERT_THAT(IsTrue(
 			CompileAnnotatedModuleFromMemory(
@@ -179,8 +185,6 @@ class UMetadataDiscardCarrier : UObject
 		ASSERT_THAT(IsTrue(
 			SourcePathAfterDiscard.IsEmpty() || SourceLineAfterDiscard == -1,
 			TEXT("Generated script function should clear its source metadata after discard")));
-
-		}
 	}
 };
 

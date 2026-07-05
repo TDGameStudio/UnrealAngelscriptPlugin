@@ -198,51 +198,61 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptStructHotReloadTests,
 	"Angelscript.TestModule.ClassGenerator.ASStruct",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(GetNewestVersionAfterFullReload)
 	{
-		using namespace ScriptStructHotReloadTest;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ScriptStructHotReloadTest::ModuleName.ToString());
 			IFileManager::Get().Delete(*ScriptStructHotReloadTest::GetScriptAbsoluteFilename(), false, true, true);
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
-		const FString ScriptV1 = TEXT(R"AS(
-USTRUCT()
-struct FScriptStructHotReloadVersionChain
-{
-	UPROPERTY()
-	int Value = 1;
-};
-)AS");
-		const FString ScriptV2 = TEXT(R"AS(
-USTRUCT()
-struct FScriptStructHotReloadVersionChain
-{
-	UPROPERTY()
-	int Value = 1;
+		const FString ScriptV1 = ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FScriptStructHotReloadVersionChain
+			{
+				UPROPERTY()
+				int Value = 1;
+			};
+			)AS");
+		const FString ScriptV2 = ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FScriptStructHotReloadVersionChain
+			{
+				UPROPERTY()
+				int Value = 1;
 
-	UPROPERTY()
-	int AddedValue = 2;
-};
-)AS");
-		const FString ScriptV3 = TEXT(R"AS(
-USTRUCT()
-struct FScriptStructHotReloadVersionChain
-{
-	UPROPERTY()
-	int Value = 1;
+				UPROPERTY()
+				int AddedValue = 2;
+			};
+			)AS");
+		const FString ScriptV3 = ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FScriptStructHotReloadVersionChain
+			{
+				UPROPERTY()
+				int Value = 1;
 
-	UPROPERTY()
-	int AddedValue = 2;
+				UPROPERTY()
+				int AddedValue = 2;
 
-	UPROPERTY()
-	int TailValue = 3;
-};
-)AS");
+				UPROPERTY()
+				int TailValue = 3;
+			};
+			)AS");
 
 		if (!ScriptStructCQTest::CheckTrue(
 				*TestRunner,
@@ -300,50 +310,47 @@ struct FScriptStructHotReloadVersionChain
 		ASSERT_THAT(IsNull(ScriptStructHotReloadTest::FindStructProperty(SecondVersion, TEXT("TailValue")), TEXT("The middle replaced struct should keep the layout it had when it was canonical")));
 		ASSERT_THAT(IsNull(ScriptStructHotReloadTest::FindStructProperty(FirstVersion, TEXT("AddedValue")), TEXT("The oldest replaced struct should remain frozen at its original layout")));
 		ASSERT_THAT(IsNull(ScriptStructHotReloadTest::FindStructProperty(FirstVersion, TEXT("TailValue")), TEXT("The oldest replaced struct should never gain later properties")));
-		}
 	}
 
 	TEST_METHOD(CustomGuidStableAcrossSameNameReload)
 	{
-		using namespace ScriptStructCustomGuidTest;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ScriptStructCustomGuidTest::StableModuleName.ToString());
 			Engine.DiscardModule(*ScriptStructCustomGuidTest::DifferentModuleName.ToString());
 			IFileManager::Get().Delete(*ScriptStructCustomGuidTest::GetStableScriptAbsoluteFilename(), false, true, true);
 			IFileManager::Get().Delete(*ScriptStructCustomGuidTest::GetDifferentScriptAbsoluteFilename(), false, true, true);
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
-		const FString StableScriptV1 = TEXT(R"AS(
-USTRUCT()
-struct FStableGuidStruct
-{
-	UPROPERTY()
-	int Value = 1;
-};
-)AS");
-		const FString StableScriptV2 = TEXT(R"AS(
-USTRUCT()
-struct FStableGuidStruct
-{
-	UPROPERTY()
-	int Value = 1;
+		const FString StableScriptV1 = ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FStableGuidStruct
+			{
+				UPROPERTY()
+				int Value = 1;
+			};
+			)AS");
+		const FString StableScriptV2 = ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FStableGuidStruct
+			{
+				UPROPERTY()
+				int Value = 1;
 
-	UPROPERTY()
-	int AddedValue = 2;
-};
-)AS");
-		const FString DifferentScript = TEXT(R"AS(
-USTRUCT()
-struct FDifferentGuidStruct
-{
-	UPROPERTY()
-	int Value = 7;
-};
-)AS");
+				UPROPERTY()
+				int AddedValue = 2;
+			};
+			)AS");
+		const FString DifferentScript = ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FDifferentGuidStruct
+			{
+				UPROPERTY()
+				int Value = 7;
+			};
+			)AS");
 
 		if (!ScriptStructCQTest::CheckTrue(
 				*TestRunner,
@@ -384,61 +391,58 @@ struct FDifferentGuidStruct
 		const FGuid DifferentGuid = DifferentStruct->GetCustomGuid();
 		ASSERT_THAT(IsTrue(DifferentGuid.IsValid(), TEXT("Different-name script struct should publish a valid custom GUID")));
 		ASSERT_THAT(AreNotEqual(StableGuidBeforeReload, DifferentGuid, TEXT("Different-name script struct should not collide with the stable struct custom GUID")));
-		}
 	}
 
 	TEST_METHOD(UpdateScriptTypeClearsIdenticalAndHashCapabilitiesAfterReload)
 	{
-		using namespace ScriptStructCapabilityReloadTest;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ScriptStructCapabilityReloadTest::ModuleName.ToString());
 			IFileManager::Get().Delete(*ScriptStructCapabilityReloadTest::GetScriptAbsoluteFilename(), false, true, true);
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
-		const FString ScriptV1 = TEXT(R"AS(
-USTRUCT()
-struct FReloadableCapabilityStruct
-{
-	UPROPERTY()
-	int Value = 1;
+		const FString ScriptV1 = ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FReloadableCapabilityStruct
+			{
+				UPROPERTY()
+				int Value = 1;
 
-	bool opEquals(const FReloadableCapabilityStruct& Other) const
-	{
-		return Value == Other.Value;
-	}
+				bool opEquals(const FReloadableCapabilityStruct& Other) const
+				{
+					return Value == Other.Value;
+				}
 
-	uint32 Hash() const
-	{
-		return uint32(Value + 7);
-	}
+				uint32 Hash() const
+				{
+					return uint32(Value + 7);
+				}
 
-	FString ToString() const
-	{
-		return "HasAllCapabilities";
-	}
-};
-)AS");
+				FString ToString() const
+				{
+					return "HasAllCapabilities";
+				}
+			};
+			)AS");
 
-	const FString ScriptV2 = TEXT(R"AS(
-USTRUCT()
-struct FReloadableCapabilityStruct
-{
-	UPROPERTY()
-	int Value = 2;
+		const FString ScriptV2 = ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FReloadableCapabilityStruct
+			{
+				UPROPERTY()
+				int Value = 2;
 
-	UPROPERTY()
-	int AddedValue = 9;
+				UPROPERTY()
+				int AddedValue = 9;
 
-	FString ToString() const
-	{
-		return "ToStringOnly";
-	}
-};
-)AS");
+				FString ToString() const
+				{
+					return "ToStringOnly";
+				}
+			};
+			)AS");
 
 		if (!ScriptStructCQTest::CheckTrue(
 				*TestRunner,
@@ -475,7 +479,6 @@ struct FReloadableCapabilityStruct
 
 		ASSERT_THAT(IsNotNull(ReloadedStruct->GetToStringFunction(), TEXT("Capability reload replacement should keep the ToString binding after dropping opEquals and Hash")));
 
-		}
 	}
 };
 

@@ -14,8 +14,6 @@
 // Test Layer: Runtime Integration
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-using namespace AngelscriptFunctionalTestUtils;
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptASClassReferenceSchemaTests,
 	"Angelscript.TestModule.ClassGenerator.ASClass",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -83,37 +81,47 @@ static int32 CountSchemaMembers(UE::GC::FSchemaView Schema)
 }
 
 public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(RuntimeAddReferencedObjectsKeepsScriptOnlyObjectReferenceAlive)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ReferenceSchemaModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
-		const FString ScriptSource = TEXT(R"AS(
-UCLASS()
-class UReferenceSchemaHolder : UObject
-{
-	UObject HiddenRef = nullptr;
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class UReferenceSchemaHolder : UObject
+			{
+				UObject HiddenRef = nullptr;
 
-	UFUNCTION()
-	void Store(UObject InValue)
-	{
-		HiddenRef = InValue;
-	}
+				UFUNCTION()
+				void Store(UObject InValue)
+				{
+					HiddenRef = InValue;
+				}
 
-	UFUNCTION()
-	UObject GetStored() const
-	{
-		return HiddenRef;
-	}
-}
-)AS");
+				UFUNCTION()
+				UObject GetStored() const
+				{
+					return HiddenRef;
+				}
+			}
+			)AS");
 
-		UClass* ScriptClass = CompileScriptModule(*TestRunner, Engine, ReferenceSchemaModuleName, ReferenceSchemaFilename, ScriptSource, ReferenceSchemaClassName);
+		UClass* ScriptClass = AngelscriptFunctionalTestUtils::CompileScriptModule(*TestRunner, Engine, ReferenceSchemaModuleName, ReferenceSchemaFilename, ScriptSource, ReferenceSchemaClassName);
 		if (ScriptClass == nullptr) { return; }
 
 		UASClass* ScriptASClass = Cast<UASClass>(ScriptClass);
@@ -165,34 +173,49 @@ class UReferenceSchemaHolder : UObject
 
 		CollectGarbage(RF_NoFlags, true);
 		ASSERT_THAT(IsFalse(WeakTarget.IsValid(), TEXT("Reference-schema GC test case should release target after clearing last reference")));
-		}
 	}
 
 	TEST_METHOD(ReferenceSchemaDoesNotDuplicateAcrossRepeatedSoftReload)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ReferenceSchemaSoftReloadModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
 		auto MakeScript = [](int32 Version) -> FString
 		{
-			return FString::Printf(TEXT(R"AS(
-UCLASS()
-class UReferenceSchemaReloadHolder : UObject
-{
-	UObject HiddenRef = nullptr;
-	UFUNCTION() void Store(UObject InValue) { HiddenRef = InValue; }
-	UFUNCTION() UObject GetStored() const { return HiddenRef; }
-	UFUNCTION() int GetVersion() const { return %d; }
-}
-)AS"), Version);
+			FString ScriptSource = ASTEST_AS(R"AS(
+				UCLASS()
+				class UReferenceSchemaReloadHolder : UObject
+				{
+					UObject HiddenRef = nullptr;
+
+					UFUNCTION()
+					void Store(UObject InValue)
+					{
+						HiddenRef = InValue;
+					}
+
+					UFUNCTION()
+					UObject GetStored() const
+					{
+						return HiddenRef;
+					}
+
+					UFUNCTION()
+					int GetVersion() const
+					{
+						return __Version__;
+					}
+				}
+				)AS");
+			ScriptSource.ReplaceInline(TEXT("__Version__"), *FString::FromInt(Version));
+			return ScriptSource;
 		};
 
-		UClass* InitialClass = CompileScriptModule(*TestRunner, Engine, ReferenceSchemaSoftReloadModuleName, ReferenceSchemaSoftReloadFilename, MakeScript(1), ReferenceSchemaSoftReloadClassName);
+		UClass* InitialClass = AngelscriptFunctionalTestUtils::CompileScriptModule(*TestRunner, Engine, ReferenceSchemaSoftReloadModuleName, ReferenceSchemaSoftReloadFilename, MakeScript(1), ReferenceSchemaSoftReloadClassName);
 		if (InitialClass == nullptr) { return; }
 		UASClass* InitialASClass = Cast<UASClass>(InitialClass);
 		if (!this->Assert.IsNotNull(InitialASClass, TEXT("Reference-schema soft-reload should compile as UASClass"))) { return; }
@@ -274,8 +297,6 @@ class UReferenceSchemaReloadHolder : UObject
 		FGetStoredParams GetStoredAfterGC;
 		if (!this->Assert.IsTrue(InvokeGeneratedFunction(Engine, Holder, GetStoredFunction, &GetStoredAfterGC), TEXT("Should expose stored object after repeated reloads and GC"))) { return; }
 		ASSERT_THAT(IsTrue(GetStoredAfterGC.ReturnValue == WeakTarget.Get(), TEXT("Should preserve same stored object identity after repeated reloads")));
-
-		}
 	}
 };
 

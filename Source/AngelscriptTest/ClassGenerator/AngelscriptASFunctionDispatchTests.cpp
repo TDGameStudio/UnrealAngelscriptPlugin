@@ -10,8 +10,6 @@
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-using namespace AngelscriptFunctionalTestUtils;
-
 namespace ASFunctionDispatchTests
 {
 	static const FName MatrixModuleName(TEXT("ASFunctionDispatchMatrix"));
@@ -25,7 +23,7 @@ namespace ASFunctionDispatchTests
 		FString Filename;
 		FName GeneratedClassName;
 		const TCHAR* CaseLabel = TEXT("");
-		const TCHAR* ScriptSource = TEXT("");
+		FString ScriptSource;
 		UClass* ExpectedFunctionClass = nullptr;
 		UClass* ExpectedJitFunctionClass = nullptr;
 	};
@@ -59,7 +57,7 @@ namespace ASFunctionDispatchTests
 	bool ExpectFunctionClass(FAutomationTestBase& Test, UClass* OwnerClass, const FMatrixCase& TestCase)
 	{
 		FNoDiscardAsserter LocalAssert(Test);
-		UASFunction* Function = Cast<UASFunction>(FindGeneratedFunction(OwnerClass, TestCase.FunctionName));
+		UASFunction* Function = Cast<UASFunction>(::FindGeneratedFunction(OwnerClass, TestCase.FunctionName));
 		if (!LocalAssert.IsNotNull(
 				Function,
 				*FString::Printf(TEXT("AllocateFunctionFor matrix should expose '%s'"), TestCase.FunctionName)))
@@ -78,119 +76,119 @@ namespace ASFunctionDispatchTests
 
 	UASClass* CompileMatrixClass(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 	{
-		const FString ScriptSource = TEXT(R"AS(
-UCLASS()
-class UASFunctionDispatchMatrix : UObject
-{
-	UPROPERTY()
-	int StoredValue = 0;
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class UASFunctionDispatchMatrix : UObject
+			{
+				UPROPERTY()
+				int StoredValue = 0;
 
-	UFUNCTION()
-	void NoParams()
-	{
-		StoredValue = 1;
-	}
+				UFUNCTION()
+				void NoParams()
+				{
+					StoredValue = 1;
+				}
 
-	UFUNCTION()
-	void TakeByte(uint8 Value)
-	{
-		StoredValue = Value;
-	}
+				UFUNCTION()
+				void TakeByte(uint8 Value)
+				{
+					StoredValue = Value;
+				}
 
-	UFUNCTION()
-	void TakeBool(bool bValue)
-	{
-		StoredValue = bValue ? 1 : 0;
-	}
+				UFUNCTION()
+				void TakeBool(bool bValue)
+				{
+					StoredValue = bValue ? 1 : 0;
+				}
 
-	UFUNCTION()
-	void TakeDWord(uint32 Value)
-	{
-		StoredValue = int(Value);
-	}
+				UFUNCTION()
+				void TakeDWord(uint32 Value)
+				{
+					StoredValue = int(Value);
+				}
 
-	UFUNCTION()
-	void TakeQWord(uint64 Value)
-	{
-		StoredValue = int(Value);
-	}
+				UFUNCTION()
+				void TakeQWord(uint64 Value)
+				{
+					StoredValue = int(Value);
+				}
 
-	UFUNCTION()
-	void TakeFloat(float32 Value)
-	{
-		StoredValue = int(Value);
-	}
+				UFUNCTION()
+				void TakeFloat(float32 Value)
+				{
+					StoredValue = int(Value);
+				}
 
-	UFUNCTION()
-	void TakeDouble(float64 Value)
-	{
-		StoredValue = int(Value);
-	}
+				UFUNCTION()
+				void TakeDouble(float64 Value)
+				{
+					StoredValue = int(Value);
+				}
 
-	UFUNCTION()
-	void TakeReference(int& Value)
-	{
-		Value += 1;
-		StoredValue = Value;
-	}
+				UFUNCTION()
+				void TakeReference(int& Value)
+				{
+					Value += 1;
+					StoredValue = Value;
+				}
 
-	UFUNCTION()
-	uint8 ReturnByte()
-	{
-		return 7;
-	}
+				UFUNCTION()
+				uint8 ReturnByte()
+				{
+					return 7;
+				}
 
-	UFUNCTION()
-	int ReturnDWord()
-	{
-		return 11;
-	}
+				UFUNCTION()
+				int ReturnDWord()
+				{
+					return 11;
+				}
 
-	UFUNCTION()
-	float32 ReturnFloat()
-	{
-		return 12.0f;
-	}
+				UFUNCTION()
+				float32 ReturnFloat()
+				{
+					return 12.0f;
+				}
 
-	UFUNCTION()
-	float64 ReturnDouble()
-	{
-		return 13.0;
-	}
+				UFUNCTION()
+				float64 ReturnDouble()
+				{
+					return 13.0;
+				}
 
-	UFUNCTION()
-	UObject ReturnObject()
-	{
-		return this;
-	}
+				UFUNCTION()
+				UObject ReturnObject()
+				{
+					return this;
+				}
 
-	UFUNCTION()
-	int GenericTwoArgs(int A, int B)
-	{
-		return A + B;
-	}
+				UFUNCTION()
+				int GenericTwoArgs(int A, int B)
+				{
+					return A + B;
+				}
 
-	UFUNCTION(meta = (BlueprintThreadSafe))
-	int ThreadSafeReturn()
-	{
-		return 17;
-	}
+				UFUNCTION(meta = (BlueprintThreadSafe))
+				int ThreadSafeReturn()
+				{
+					return 17;
+				}
 
-	UFUNCTION(BlueprintEvent)
-	int VirtualReturn()
-	{
-		return 19;
-	}
-}
+				UFUNCTION(BlueprintEvent)
+				int VirtualReturn()
+				{
+					return 19;
+				}
+			}
 
-UFUNCTION(BlueprintCallable)
-int StaticReturn()
-{
-	return 23;
-}
-)AS");
+			UFUNCTION(BlueprintCallable)
+			int StaticReturn()
+			{
+				return 23;
+			}
+			)AS");
 
-		return Cast<UASClass>(CompileScriptModule(
+		return Cast<UASClass>(AngelscriptFunctionalTestUtils::CompileScriptModule(
 			Test,
 			Engine,
 			MatrixModuleName,
@@ -204,11 +202,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionDispatchTests,
 	"Angelscript.TestModule.ClassGenerator.ASFunction",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(AllocateFunctionForSelectsCorrectThreadSafeDispatchSubclass)
 	{
-		using namespace ASFunctionDispatchTests;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 
 		const TArray<ASFunctionDispatchTests::FDispatchCase> Cases =
 		{
@@ -217,17 +226,17 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionDispatchTests,
 				TEXT("ASFunctionDispatchDefault.as"),
 				TEXT("UASFunctionDispatchDefault"),
 				TEXT("default non-thread-safe"),
-				TEXT(R"AS(
-UCLASS()
-class UASFunctionDispatchDefault : UObject
-{
-	UFUNCTION()
-	int GetValue()
-	{
-		return 1;
-	}
-}
-)AS"),
+				ASTEST_AS(R"AS(
+					UCLASS()
+					class UASFunctionDispatchDefault : UObject
+					{
+						UFUNCTION()
+						int GetValue()
+						{
+							return 1;
+						}
+					}
+					)AS"),
 				UASFunction_DWordReturn::StaticClass(),
 				UASFunction_DWordReturn_JIT::StaticClass()
 			},
@@ -236,17 +245,17 @@ class UASFunctionDispatchDefault : UObject
 				TEXT("ASFunctionDispatchBlueprintThreadSafeFunction.as"),
 				TEXT("UASFunctionDispatchBlueprintThreadSafeFunction"),
 				TEXT("function-level BlueprintThreadSafe"),
-				TEXT(R"AS(
-UCLASS()
-class UASFunctionDispatchBlueprintThreadSafeFunction : UObject
-{
-	UFUNCTION(meta = (BlueprintThreadSafe))
-	int GetValue()
-	{
-		return 1;
-	}
-}
-)AS"),
+				ASTEST_AS(R"AS(
+					UCLASS()
+					class UASFunctionDispatchBlueprintThreadSafeFunction : UObject
+					{
+						UFUNCTION(meta = (BlueprintThreadSafe))
+						int GetValue()
+						{
+							return 1;
+						}
+					}
+					)AS"),
 				UASFunction::StaticClass(),
 				UASFunction_JIT::StaticClass()
 			},
@@ -255,17 +264,17 @@ class UASFunctionDispatchBlueprintThreadSafeFunction : UObject
 				TEXT("ASFunctionDispatchClassThreadSafeWithOverride.as"),
 				TEXT("UASFunctionDispatchClassThreadSafeWithOverride"),
 				TEXT("class-level BlueprintThreadSafe with function-level NotBlueprintThreadSafe"),
-				TEXT(R"AS(
-UCLASS(meta = (BlueprintThreadSafe))
-class UASFunctionDispatchClassThreadSafeWithOverride : UObject
-{
-	UFUNCTION(meta = (NotBlueprintThreadSafe))
-	int GetValue()
-	{
-		return 1;
-	}
-}
-)AS"),
+				ASTEST_AS(R"AS(
+					UCLASS(meta = (BlueprintThreadSafe))
+					class UASFunctionDispatchClassThreadSafeWithOverride : UObject
+					{
+						UFUNCTION(meta = (NotBlueprintThreadSafe))
+						int GetValue()
+						{
+							return 1;
+						}
+					}
+					)AS"),
 				UASFunction_DWordReturn::StaticClass(),
 				UASFunction_DWordReturn_JIT::StaticClass()
 			}
@@ -277,12 +286,11 @@ class UASFunctionDispatchClassThreadSafeWithOverride : UObject
 			{
 				Engine.DiscardModule(*TestCase.ModuleName.ToString());
 			}
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
 		for (const ASFunctionDispatchTests::FDispatchCase& TestCase : Cases)
 		{
-			UClass* ScriptClass = CompileScriptModule(
+			UClass* ScriptClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
 				*TestRunner,
 				Engine,
 				TestCase.ModuleName,
@@ -294,7 +302,7 @@ class UASFunctionDispatchClassThreadSafeWithOverride : UObject
 				return;
 			}
 
-			UASFunction* GeneratedFunction = Cast<UASFunction>(FindGeneratedFunction(ScriptClass, TEXT("GetValue")));
+			UASFunction* GeneratedFunction = Cast<UASFunction>(::FindGeneratedFunction(ScriptClass, TEXT("GetValue")));
 			if (!this->Assert.IsNotNull(
 					GeneratedFunction,
 					*FString::Printf(TEXT("AllocateFunctionFor %s case should generate GetValue"), TestCase.CaseLabel)))
@@ -320,7 +328,7 @@ class UASFunctionDispatchClassThreadSafeWithOverride : UObject
 
 			int32 Result = 0;
 			if (!this->Assert.IsTrue(
-					ExecuteGeneratedIntEventOnGameThread(&Engine, Instance, GeneratedFunction, Result),
+					::ExecuteGeneratedIntEventOnGameThread(&Engine, Instance, GeneratedFunction, Result),
 					*FString::Printf(TEXT("AllocateFunctionFor %s case should execute the generated function"), TestCase.CaseLabel)))
 			{
 				return;
@@ -332,19 +340,16 @@ class UASFunctionDispatchClassThreadSafeWithOverride : UObject
 				*FString::Printf(TEXT("AllocateFunctionFor %s case should keep GetValue returning 1"), TestCase.CaseLabel)));
 		}
 
-		}
 	}
 
 	TEST_METHOD(AllocateFunctionForSelectsRepresentativeDispatchMatrix)
 	{
-		using namespace ASFunctionDispatchTests;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*MatrixModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
+			Engine.DiscardModule(*ASFunctionDispatchTests::MatrixModuleName.ToString());
 		};
 
 		UASClass* ScriptClass = ASFunctionDispatchTests::CompileMatrixClass(*TestRunner, Engine);
@@ -353,13 +358,13 @@ class UASFunctionDispatchClassThreadSafeWithOverride : UObject
 			return;
 		}
 
-		UClass* StaticsClass = FindGeneratedClass(&Engine, MatrixStaticsClassName);
+		UClass* StaticsClass = ::FindGeneratedClass(&Engine, ASFunctionDispatchTests::MatrixStaticsClassName);
 		if (!this->Assert.IsNotNull(StaticsClass, TEXT("AllocateFunctionFor matrix should generate the module statics class")))
 		{
 			return;
 		}
 
-		const TArray<FMatrixCase> InstanceCases =
+		const TArray<ASFunctionDispatchTests::FMatrixCase> InstanceCases =
 		{
 			{ TEXT("NoParams"), UASFunction_NoParams::StaticClass(), TEXT("void no-param instance function") },
 			{ TEXT("TakeByte"), UASFunction_ByteArg::StaticClass(), TEXT("single byte argument") },
@@ -379,7 +384,7 @@ class UASFunctionDispatchClassThreadSafeWithOverride : UObject
 			{ TEXT("VirtualReturn"), UASFunction_DWordReturn::StaticClass(), TEXT("virtual non-JIT wrapper") },
 		};
 
-		for (const FMatrixCase& TestCase : InstanceCases)
+		for (const ASFunctionDispatchTests::FMatrixCase& TestCase : InstanceCases)
 		{
 			if (!ASFunctionDispatchTests::ExpectFunctionClass(*TestRunner, ScriptClass, TestCase))
 			{
@@ -387,7 +392,7 @@ class UASFunctionDispatchClassThreadSafeWithOverride : UObject
 			}
 		}
 
-		const FMatrixCase StaticCase =
+		const ASFunctionDispatchTests::FMatrixCase StaticCase =
 		{
 			TEXT("StaticReturn"),
 			UASFunction_NotThreadSafe::StaticClass(),
@@ -398,7 +403,7 @@ class UASFunctionDispatchClassThreadSafeWithOverride : UObject
 			return;
 		}
 
-		UASFunction* ReturnDWordFunction = Cast<UASFunction>(FindGeneratedFunction(ScriptClass, TEXT("ReturnDWord")));
+		UASFunction* ReturnDWordFunction = Cast<UASFunction>(::FindGeneratedFunction(ScriptClass, TEXT("ReturnDWord")));
 		UObject* Instance = NewObject<UObject>(GetTransientPackage(), ScriptClass, TEXT("ASFunctionDispatchMatrixInstance"));
 		if (!this->Assert.IsNotNull(Instance, TEXT("AllocateFunctionFor matrix should instantiate the generated class"))
 			|| !this->Assert.IsNotNull(ReturnDWordFunction, TEXT("AllocateFunctionFor matrix should expose ReturnDWord")))
@@ -408,7 +413,7 @@ class UASFunctionDispatchClassThreadSafeWithOverride : UObject
 
 		int32 Result = 0;
 		if (!this->Assert.IsTrue(
-				ExecuteGeneratedIntEventOnGameThread(&Engine, Instance, ReturnDWordFunction, Result),
+				::ExecuteGeneratedIntEventOnGameThread(&Engine, Instance, ReturnDWordFunction, Result),
 				TEXT("AllocateFunctionFor matrix should execute a representative return wrapper")))
 		{
 			return;
@@ -416,7 +421,6 @@ class UASFunctionDispatchClassThreadSafeWithOverride : UObject
 
 		ASSERT_THAT(AreEqual(11, Result, TEXT("Representative dispatch matrix wrapper should preserve script behavior")));
 
-		}
 	}
 };
 

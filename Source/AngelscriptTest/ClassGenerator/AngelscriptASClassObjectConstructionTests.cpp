@@ -10,8 +10,6 @@
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-using namespace AngelscriptFunctionalTestUtils;
-
 namespace ASClassObjectConstructionTest
 {
 	static const FName ModuleName(TEXT("ASClassObjectConstruction"));
@@ -35,30 +33,30 @@ namespace ASClassObjectConstructionTest
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		const FString ScriptSource = TEXT(R"AS(
-UCLASS()
-class UObjectConstructionCarrier : UObject
-{
-	UPROPERTY()
-	int CtorCount = 0;
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class UObjectConstructionCarrier : UObject
+			{
+				UPROPERTY()
+				int CtorCount = 0;
 
-	UPROPERTY()
-	int DefaultValue = 0;
+				UPROPERTY()
+				int DefaultValue = 0;
 
-	UPROPERTY()
-	FString DefaultLabel;
+				UPROPERTY()
+				FString DefaultLabel;
 
-	UObjectConstructionCarrier()
-	{
-		CtorCount += 1;
-	}
+				UObjectConstructionCarrier()
+				{
+					CtorCount += 1;
+				}
 
-	default DefaultValue = 7;
-	default DefaultLabel = "ObjectDefaults";
-}
-)AS");
+				default DefaultValue = 7;
+				default DefaultLabel = "ObjectDefaults";
+			}
+			)AS");
 
-		UClass* GeneratedClass = CompileScriptModule(
+		UClass* GeneratedClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
 			Test,
 			Engine,
 			ModuleName,
@@ -102,17 +100,17 @@ class UObjectConstructionCarrier : UObject
 		UObject* Object,
 		FObjectConstructionSnapshot& OutSnapshot)
 	{
-		if (!ReadPropertyValue<FIntProperty>(Test, Object, CtorCountPropertyName, OutSnapshot.CtorCount))
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(Test, Object, CtorCountPropertyName, OutSnapshot.CtorCount))
 		{
 			return false;
 		}
 
-		if (!ReadPropertyValue<FIntProperty>(Test, Object, DefaultValuePropertyName, OutSnapshot.DefaultValue))
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(Test, Object, DefaultValuePropertyName, OutSnapshot.DefaultValue))
 		{
 			return false;
 		}
 
-		if (!ReadPropertyValue<FStrProperty>(Test, Object, DefaultLabelPropertyName, OutSnapshot.DefaultLabel))
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FStrProperty>(Test, Object, DefaultLabelPropertyName, OutSnapshot.DefaultLabel))
 		{
 			return false;
 		}
@@ -160,16 +158,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassObjectConstructionTests,
 	"Angelscript.TestModule.ClassGenerator.ASClass",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(StaticObjectConstructorAppliesScriptConstructorAndDefaultsOnce)
 	{
-		using namespace ASClassObjectConstructionTest;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ASClassObjectConstructionTest::ModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
 			CollectGarbage(RF_NoFlags, true);
 		};
 
@@ -261,8 +269,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassObjectConstructionTests,
 			FirstSnapshot.DefaultLabel,
 			SecondSnapshot.DefaultLabel,
 			TEXT("ASClass object-construction test case should keep both runtime instances on the same scripted string default")));
-
-		}
 	}
 };
 

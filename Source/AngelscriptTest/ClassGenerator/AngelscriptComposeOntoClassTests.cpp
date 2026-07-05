@@ -34,42 +34,42 @@ namespace ComposeOntoClassTest
 
 	static FString BuildComposeOntoProbeScript()
 	{
-		return TEXT(R"AS(
-UCLASS()
-class UComposeOntoProbe : UObject
-{
-	UFUNCTION()
-	int GetValue()
-	{
-		return 7;
-	}
-}
-)AS");
+		return ASTEST_AS(R"AS(
+			UCLASS()
+			class UComposeOntoProbe : UObject
+			{
+				UFUNCTION()
+				int GetValue()
+				{
+					return 7;
+				}
+			}
+			)AS");
 	}
 
 	static FString BuildComposeOntoValidTargetScript()
 	{
-		return TEXT(R"AS(
-UCLASS()
-class UComposeOntoHost : UObject
-{
-	UFUNCTION()
-	int GetHostValue()
-	{
-		return 11;
-	}
-}
+		return ASTEST_AS(R"AS(
+			UCLASS()
+			class UComposeOntoHost : UObject
+			{
+				UFUNCTION()
+				int GetHostValue()
+				{
+					return 11;
+				}
+			}
 
-UCLASS()
-class UComposeOntoProjected : UObject
-{
-	UFUNCTION()
-	int GetProjectedValue()
-	{
-		return 17;
-	}
-}
-)AS");
+			UCLASS()
+			class UComposeOntoProjected : UObject
+			{
+				UFUNCTION()
+				int GetProjectedValue()
+				{
+					return 17;
+				}
+			}
+			)AS");
 	}
 
 	static bool PrepareAnnotatedModulesForGenerator(
@@ -163,9 +163,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComposeOntoClassTests,
 	"Angelscript.TestModule.ClassGenerator.ComposeOntoClass",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(MissingTargetFailsClosed)
 	{
-		using namespace ComposeOntoClassTest;
 		TestRunner->AddExpectedErrorPlain(
 			ComposeOntoClassTest::MissingComposeTarget,
 			EAutomationExpectedErrorFlags::Contains,
@@ -175,8 +186,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComposeOntoClassTests,
 			EAutomationExpectedErrorFlags::Contains,
 			1);
 
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 
 		Engine.Diagnostics.Empty();
 		Engine.LastEmittedDiagnostics.Empty();
@@ -196,7 +207,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComposeOntoClassTests,
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*PreparedModuleName);
-			ASTEST_RESET_ENGINE(Engine);
 
 			if (!PreparedModules.AbsoluteFilename.IsEmpty())
 			{
@@ -245,12 +255,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComposeOntoClassTests,
 			!Engine.GetModuleByModuleName(PreparedModuleName).IsValid(),
 			TEXT("ComposeOntoClass missing-target test should not publish a module record after failure")));
 
-		}
 	}
 
 	TEST_METHOD(ValidTargetDoesNotSilentlyPublishNoOpClass)
 	{
-		using namespace ComposeOntoClassTest;
 		TestRunner->AddExpectedErrorPlain(
 			ComposeOntoClassTest::ExpectedComposeUnsupportedFragment,
 			EAutomationExpectedErrorFlags::Contains,
@@ -260,8 +268,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComposeOntoClassTests,
 			EAutomationExpectedErrorFlags::Contains,
 			1);
 
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 
 		Engine.Diagnostics.Empty();
 		Engine.LastEmittedDiagnostics.Empty();
@@ -281,7 +289,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComposeOntoClassTests,
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*PreparedModuleName);
-			ASTEST_RESET_ENGINE(Engine);
 
 			if (!PreparedModules.AbsoluteFilename.IsEmpty())
 			{
@@ -345,7 +352,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptComposeOntoClassTests,
 			!Engine.GetModuleByModuleName(PreparedModuleName).IsValid(),
 			TEXT("ComposeOntoClass valid-target test should not publish a module record after the unsupported compose path")));
 
-		}
 	}
 };
 

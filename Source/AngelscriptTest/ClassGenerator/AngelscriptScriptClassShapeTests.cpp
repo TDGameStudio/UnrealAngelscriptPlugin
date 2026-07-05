@@ -10,8 +10,6 @@
 // Test Layer: UE Functional
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-using namespace AngelscriptFunctionalTestUtils;
-
 namespace ScriptClassShapeTest
 {
 	FAngelscriptEngine& AcquireFreshScriptClassShapeEngine()
@@ -36,48 +34,48 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptScriptClassShapeTests,
 	"Angelscript.TestModule.ScriptClass",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+public:
 	TEST_METHOD(ScriptInheritancePreservesParentPropertyAndOverride)
 	{
-		using namespace ScriptClassShapeTest;
 		FAngelscriptEngine& Engine = ScriptClassShapeTest::AcquireFreshScriptClassShapeEngine();
 		FAngelscriptEngineScope EngineScope(Engine);
 		static const FName ModuleName(TEXT("TestScriptClassScriptInheritance"));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
+			ResetSharedCloneEngine(Engine);
 		};
 
-		static const FString ScriptSource = TEXT(R"AS(
-UCLASS()
-class ATestScriptInheritanceParent : AActor
-{
-	UPROPERTY()
-	int ParentValue = 21;
+		static const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class ATestScriptInheritanceParent : AActor
+			{
+				UPROPERTY()
+				int ParentValue = 21;
 
-	UFUNCTION(BlueprintEvent)
-	int GetValue()
-	{
-		return ParentValue;
-	}
-}
+				UFUNCTION(BlueprintEvent)
+				int GetValue()
+				{
+					return ParentValue;
+				}
+			}
 
-UCLASS()
-class ATestScriptInheritanceChild : ATestScriptInheritanceParent
-{
-	UFUNCTION(BlueprintOverride)
-	int GetValue()
-	{
-		return ParentValue * 10 + 7;
-	}
-}
-)AS");
+			UCLASS()
+			class ATestScriptInheritanceChild : ATestScriptInheritanceParent
+			{
+				UFUNCTION(BlueprintOverride)
+				int GetValue()
+				{
+					return ParentValue * 10 + 7;
+				}
+			}
+			)AS");
 
-		UClass* ParentClass = CompileScriptModule(*TestRunner, Engine, ModuleName,
+		UClass* ParentClass = AngelscriptFunctionalTestUtils::CompileScriptModule(*TestRunner, Engine, ModuleName,
 			TEXT("TestScriptClassScriptInheritance.as"), ScriptSource, TEXT("ATestScriptInheritanceParent"));
 		if (ParentClass == nullptr) { return; }
 
-		UClass* ChildClass = FindGeneratedClass(&Engine, TEXT("ATestScriptInheritanceChild"));
+		UClass* ChildClass = ::FindGeneratedClass(&Engine, TEXT("ATestScriptInheritanceChild"));
 		ASSERT_THAT(IsNotNull(ChildClass, TEXT("Script-inheritance test case should generate the child class")));
 		if (ChildClass == nullptr) { return; }
 
@@ -99,22 +97,22 @@ class ATestScriptInheritanceChild : ATestScriptInheritanceParent
 		if (ChildDefaultObject == nullptr) { return; }
 
 		int32 ChildDefaultParentValue = 0;
-		if (!ReadPropertyValue<FIntProperty>(*TestRunner, ChildDefaultObject, TEXT("ParentValue"), ChildDefaultParentValue)) { return; }
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(*TestRunner, ChildDefaultObject, TEXT("ParentValue"), ChildDefaultParentValue)) { return; }
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
-		AActor* ParentActor = SpawnScriptActor(*TestRunner, Spawner, ParentClass);
-		AActor* ChildActor = SpawnScriptActor(*TestRunner, Spawner, ChildClass);
+		AActor* ParentActor = AngelscriptFunctionalTestUtils::SpawnScriptActor(*TestRunner, Spawner, ParentClass);
+		AActor* ChildActor = AngelscriptFunctionalTestUtils::SpawnScriptActor(*TestRunner, Spawner, ChildClass);
 		ASSERT_THAT(IsNotNull(ParentActor, TEXT("Script-inheritance test case should spawn the parent actor")));
 		ASSERT_THAT(IsNotNull(ChildActor, TEXT("Script-inheritance test case should spawn the child actor")));
 		if (ParentActor == nullptr || ChildActor == nullptr)
 		{ return; }
 
 		int32 ChildInstanceParentValue = 0;
-		if (!ReadPropertyValue<FIntProperty>(*TestRunner, ChildActor, TEXT("ParentValue"), ChildInstanceParentValue)) { return; }
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(*TestRunner, ChildActor, TEXT("ParentValue"), ChildInstanceParentValue)) { return; }
 
-		UFunction* ParentGetValueFunction = FindGeneratedFunction(ParentClass, TEXT("GetValue"));
-		UFunction* ChildGetValueFunction = FindGeneratedFunction(ChildClass, TEXT("GetValue"));
+		UFunction* ParentGetValueFunction = ::FindGeneratedFunction(ParentClass, TEXT("GetValue"));
+		UFunction* ChildGetValueFunction = ::FindGeneratedFunction(ChildClass, TEXT("GetValue"));
 		ASSERT_THAT(IsNotNull(ParentGetValueFunction, TEXT("Script-inheritance test case should generate the parent GetValue function")));
 		ASSERT_THAT(IsNotNull(ChildGetValueFunction, TEXT("Script-inheritance test case should generate the child GetValue function")));
 		if (ParentGetValueFunction == nullptr || ChildGetValueFunction == nullptr)
@@ -122,8 +120,8 @@ class ATestScriptInheritanceChild : ATestScriptInheritanceParent
 
 		int32 ParentResult = 0;
 		int32 ChildResult = 0;
-		const bool bParentExecuted = ExecuteGeneratedIntEventOnGameThread(&Engine, ParentActor, ParentGetValueFunction, ParentResult);
-		const bool bChildExecuted = ExecuteGeneratedIntEventOnGameThread(&Engine, ChildActor, ChildGetValueFunction, ChildResult);
+		const bool bParentExecuted = ::ExecuteGeneratedIntEventOnGameThread(&Engine, ParentActor, ParentGetValueFunction, ParentResult);
+		const bool bChildExecuted = ::ExecuteGeneratedIntEventOnGameThread(&Engine, ChildActor, ChildGetValueFunction, ChildResult);
 		ASSERT_THAT(IsTrue(bParentExecuted, TEXT("Script-inheritance test case should execute the parent GetValue function")));
 		ASSERT_THAT(IsTrue(bChildExecuted, TEXT("Script-inheritance test case should execute the child GetValue function")));
 		if (!bParentExecuted || !bChildExecuted)
@@ -137,24 +135,23 @@ class ATestScriptInheritanceChild : ATestScriptInheritanceParent
 
 	TEST_METHOD(EmptyActorCompilesAndSpawns)
 	{
-		using namespace ScriptClassShapeTest;
 		FAngelscriptEngine& Engine = ScriptClassShapeTest::AcquireFreshScriptClassShapeEngine();
 		FAngelscriptEngineScope EngineScope(Engine);
 		static const FName ModuleName(TEXT("TestScriptClassEmptyActor"));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
+			ResetSharedCloneEngine(Engine);
 		};
 
-		UClass* ScriptClass = CompileScriptModule(*TestRunner, Engine, ModuleName,
+		UClass* ScriptClass = AngelscriptFunctionalTestUtils::CompileScriptModule(*TestRunner, Engine, ModuleName,
 			TEXT("TestScriptClassEmptyActor.as"),
-			TEXT(R"AS(
-UCLASS()
-class AEmptyScriptActor : AActor
-{
-}
-)AS"),
+			ASTEST_AS(R"AS(
+				UCLASS()
+				class AEmptyScriptActor : AActor
+				{
+				}
+				)AS"),
 			TEXT("AEmptyScriptActor"));
 		if (ScriptClass == nullptr) { return; }
 
@@ -172,11 +169,11 @@ class AEmptyScriptActor : AActor
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
-		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		AActor* Actor = AngelscriptFunctionalTestUtils::SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		ASSERT_THAT(IsNotNull(Actor, TEXT("Empty script actor test case should spawn the generated actor class")));
 		if (Actor == nullptr) { return; }
 
-		BeginPlayActor(Engine, *Actor);
+		AngelscriptFunctionalTestUtils::BeginPlayActor(Engine, *Actor);
 		ASSERT_THAT(IsTrue(Actor->HasActorBegunPlay(), TEXT("Empty script actor test case should enter BeginPlay even without user properties or functions")));
 		ASSERT_THAT(IsTrue(Actor->Destroy(), TEXT("Empty script actor test case should allow the spawned actor to enter the destroy flow")));
 		ASSERT_THAT(IsTrue(Actor->IsActorBeingDestroyed(), TEXT("Empty script actor test case should mark the actor as being destroyed after Destroy()")));

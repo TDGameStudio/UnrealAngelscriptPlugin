@@ -10,33 +10,41 @@
 // Test Layer: Runtime Integration
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-using namespace AngelscriptFunctionalTestUtils;
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionWorldContextTests,
 	"Angelscript.TestModule.ClassGenerator.ASFunction",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
-inline static const FName WorldContextModuleName = FName(TEXT("ASFunctionWorldContext"));
-inline static const FString WorldContextFilename = FString(TEXT("ASFunctionWorldContext.as"));
-inline static const FName WorldContextStaticsClassName = FName(TEXT("UModule_ASFunctionWorldContextStatics"));
+	inline static const FName WorldContextModuleName = FName(TEXT("ASFunctionWorldContext"));
+	inline static const FString WorldContextFilename = FString(TEXT("ASFunctionWorldContext.as"));
+	inline static const FName WorldContextStaticsClassName = FName(TEXT("UModule_ASFunctionWorldContextStatics"));
 
-struct FCheckWorldContextParams
-{
-	AActor* WorldContextObject = nullptr;
-	int32 Value = 0;
-	int32 ReturnValue = 0;
-};
+	struct FCheckWorldContextParams
+	{
+		AActor* WorldContextObject = nullptr;
+		int32 Value = 0;
+		int32 ReturnValue = 0;
+	};
 
 public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(StaticWorldContextRuntimeCallUsesValidParmOffset)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*WorldContextModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
 		FActorTestSpawner Spawner;
@@ -49,22 +57,22 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		if (&ContextActor == nullptr || PreviousContext == nullptr)
 		{ return; }
 
-		const FString ScriptSource = TEXT(R"AS(
-UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"))
-int CheckWorldContext(AActor WorldContextObject, int Value)
-{
-	if (__WorldContext() != WorldContextObject)
-		return -10;
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"))
+			int CheckWorldContext(AActor WorldContextObject, int Value)
+			{
+				if (__WorldContext() != WorldContextObject)
+					return -10;
 
-	UWorld CurrentWorld = GetCurrentWorld();
-	if (CurrentWorld == null)
-		return -20;
-	if (CurrentWorld != WorldContextObject.GetWorld())
-		return -30;
+				UWorld CurrentWorld = GetCurrentWorld();
+				if (CurrentWorld == null)
+					return -20;
+				if (CurrentWorld != WorldContextObject.GetWorld())
+					return -30;
 
-	return Value;
-}
-)AS");
+				return Value;
+			}
+			)AS");
 
 		const bool bCompiled = CompileAnnotatedModuleFromMemory(&Engine, WorldContextModuleName, WorldContextFilename, ScriptSource);
 		ASSERT_THAT(IsTrue(bCompiled, TEXT("World-context function test should compile the annotated static callable module")));
@@ -125,7 +133,6 @@ int CheckWorldContext(AActor WorldContextObject, int Value)
 		}
 
 		ASSERT_THAT(IsTrue(FAngelscriptEngine::GetAmbientWorldContext() == AmbientBeforeScope, TEXT("World-context runtime call should restore the ambient context after the scoped override exits")));
-		}
 	}
 };
 

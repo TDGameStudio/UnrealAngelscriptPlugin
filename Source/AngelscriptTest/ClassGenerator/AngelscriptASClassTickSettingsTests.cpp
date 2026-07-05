@@ -9,8 +9,6 @@
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-using namespace AngelscriptFunctionalTestUtils;
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptASClassTickSettingsTests,
 	"Angelscript.TestModule.ClassGenerator.ASClass",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -22,35 +20,45 @@ inline static const FName ASClassTickParentName = FName(TEXT("AScriptTickParent"
 inline static const FName ASClassTickChildName = FName(TEXT("AScriptTickChild"));
 
 public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(TickSettingsEnableChildTickWhenReceiveTickIsImplemented)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ASClassTickSettingsModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
 		// UE 5.7: AActor::ReceiveTick is no longer a BlueprintImplementableEvent.
 		// Use Tick (the AngelScript-idiomatic name) instead.
-		const FString ScriptSource = TEXT(R"AS(
-UCLASS()
-class AScriptTickParent : AActor
-{
-}
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class AScriptTickParent : AActor
+			{
+			}
 
-UCLASS()
-class AScriptTickChild : AScriptTickParent
-{
-	UFUNCTION(BlueprintOverride)
-	void Tick(float DeltaSeconds)
-	{
-	}
-}
-)AS");
+			UCLASS()
+			class AScriptTickChild : AScriptTickParent
+			{
+				UFUNCTION(BlueprintOverride)
+				void Tick(float DeltaSeconds)
+				{
+				}
+			}
+			)AS");
 
-		UClass* ChildClass = CompileScriptModule(
+		UClass* ChildClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
 			*TestRunner, Engine, ASClassTickSettingsModuleName, ASClassTickSettingsFilename, ScriptSource, ASClassTickChildName);
 		if (ChildClass == nullptr) { return; }
 
@@ -65,12 +73,11 @@ class AScriptTickChild : AScriptTickParent
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
-		AActor* SpawnedChild = SpawnScriptActor(*TestRunner, Spawner, ChildClass);
+		AActor* SpawnedChild = AngelscriptFunctionalTestUtils::SpawnScriptActor(*TestRunner, Spawner, ChildClass);
 		ASSERT_THAT(IsNotNull(SpawnedChild, TEXT("ASClass tick-settings test should spawn a child actor instance")));
 
 		ASSERT_THAT(IsTrue(SpawnedChild->PrimaryActorTick.bCanEverTick, TEXT("ASClass tick-settings test should propagate bCanEverTick onto a spawned child actor")));
 		ASSERT_THAT(IsTrue(SpawnedChild->PrimaryActorTick.bStartWithTickEnabled, TEXT("ASClass tick-settings test should propagate bStartWithTickEnabled onto a spawned child actor")));
-		}
 	}
 };
 

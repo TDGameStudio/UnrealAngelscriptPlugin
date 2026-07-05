@@ -1,6 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
+#include "Components/SceneComponent.h"
 #include "Containers/Map.h"
 #include "Containers/Set.h"
 #include "Misc/Optional.h"
@@ -21,6 +23,24 @@ enum class EAngelscriptNativeTestEnum : uint8
 	Alpha,
 	Beta,
 	Gamma
+};
+
+UCLASS(BlueprintType, Blueprintable, ClassGroup=AngelscriptTest)
+class ANGELSCRIPTTEST_API UAngelscriptVerifyClassPlainActorComponent : public UActorComponent
+{
+	GENERATED_BODY()
+};
+
+UCLASS(Abstract, BlueprintType, Blueprintable, ClassGroup=AngelscriptTest)
+class ANGELSCRIPTTEST_API UAngelscriptVerifyClassAbstractSceneComponent : public USceneComponent
+{
+	GENERATED_BODY()
+};
+
+UCLASS(BlueprintType, Blueprintable, ClassGroup=AngelscriptTest, meta=(NotAngelscriptSpawnable))
+class ANGELSCRIPTTEST_API UAngelscriptVerifyClassNotSpawnableSceneComponent : public USceneComponent
+{
+	GENERATED_BODY()
 };
 
 UCLASS()

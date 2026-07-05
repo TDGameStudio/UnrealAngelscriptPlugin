@@ -15,8 +15,6 @@
 // Test Layer: UE Functional
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-using namespace AngelscriptFunctionalTestUtils;
-
 namespace ASClassHelperTest
 {
 	UBlueprint* CreateTransientBlueprintChild(
@@ -110,31 +108,41 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassHelperTests,
 	"Angelscript.TestModule.ClassGenerator.ASClass",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(HierarchyHelpersResolveScriptAndNativeAncestors)
 	{
-		using namespace ASClassHelperTest;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 		static const FName ModuleName(TEXT("TestASClassHierarchyHelpers"));
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
-		UClass* ScriptParentClass = CompileScriptModule(
+		UClass* ScriptParentClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
 			*TestRunner,
 			Engine,
 			ModuleName,
 			TEXT("TestASClassHierarchyHelpers.as"),
-			TEXT(R"AS(
-UCLASS()
-class AScriptHierarchyHelperParent : AActor
-{
-	UPROPERTY()
-	int Marker = 17;
-}
-)AS"),
+			ASTEST_AS(R"AS(
+				UCLASS()
+				class AScriptHierarchyHelperParent : AActor
+				{
+					UPROPERTY()
+					int Marker = 17;
+				}
+				)AS"),
 			TEXT("AScriptHierarchyHelperParent"));
 		if (ScriptParentClass == nullptr)
 		{
@@ -161,7 +169,7 @@ class AScriptHierarchyHelperParent : AActor
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
-		AActor* BlueprintChildActor = SpawnScriptActor(*TestRunner, Spawner, BlueprintChildClass);
+		AActor* BlueprintChildActor = AngelscriptFunctionalTestUtils::SpawnScriptActor(*TestRunner, Spawner, BlueprintChildClass);
 		ASSERT_THAT(IsNotNull(BlueprintChildActor, TEXT("ASClass helper test case should spawn the Blueprint child actor")));
 
 		UASClass* ScriptAncestorFromScriptClass = UASClass::GetFirstASClass(ScriptParentClass);
@@ -175,7 +183,6 @@ class AScriptHierarchyHelperParent : AActor
 		ASSERT_THAT(IsTrue(ScriptAncestorFromBlueprintActor == ScriptParentClass, TEXT("ASClass helper test case should resolve the script parent from the Blueprint child actor instance")));
 		ASSERT_THAT(IsTrue(ScriptOrNativeFromBlueprintClass == ScriptParentClass, TEXT("ASClass helper test case should prefer the script ancestor over the generated Blueprint class")));
 		ASSERT_THAT(IsTrue(ScriptOrNativeFromNativeActor == AActor::StaticClass(), TEXT("ASClass helper test case should return AActor for native AActor fallback")));
-		}
 	}
 };
 

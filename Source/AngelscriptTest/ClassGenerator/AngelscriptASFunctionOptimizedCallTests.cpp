@@ -11,8 +11,6 @@
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-using namespace AngelscriptFunctionalTestUtils;
-
 namespace ASFunctionOptimizedCallTests
 {
 	static const FName ModuleName(TEXT("ASFunctionOptimizedCall"));
@@ -31,91 +29,91 @@ namespace ASFunctionOptimizedCallTests
 
 	UASClass* CompileOptimizedCallTarget(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 	{
-		const FString ScriptSource = TEXT(R"AS(
-UCLASS()
-class UOptimizedCallTarget : UObject
-{
-	UPROPERTY()
-	int PingCount = 0;
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class UOptimizedCallTarget : UObject
+			{
+				UPROPERTY()
+				int PingCount = 0;
 
-	UPROPERTY()
-	int StoredFloatHundredths = 0;
+				UPROPERTY()
+				int StoredFloatHundredths = 0;
 
-	UPROPERTY()
-	int StoredDoubleHundredths = 0;
+				UPROPERTY()
+				int StoredDoubleHundredths = 0;
 
-	UPROPERTY()
-	int ObservedRefValue = 0;
+				UPROPERTY()
+				int ObservedRefValue = 0;
 
-	UFUNCTION()
-	void Ping()
-	{
-		PingCount += 1;
-	}
+				UFUNCTION()
+				void Ping()
+				{
+					PingCount += 1;
+				}
 
-	UFUNCTION()
-	uint8 GetByteCode()
-	{
-		return 42;
-	}
+				UFUNCTION()
+				uint8 GetByteCode()
+				{
+					return 42;
+				}
 
-	UFUNCTION()
-	void StoreFloat(float32 InValue)
-	{
-		if (Math::IsNaN(InValue))
-		{
-			StoredFloatHundredths = -7001;
-			return;
-		}
-		if (!Math::IsFinite(InValue))
-		{
-			StoredFloatHundredths = InValue > 0.0f ? 7002 : -7002;
-			return;
-		}
-		StoredFloatHundredths = int(InValue * 100.0f);
-	}
+				UFUNCTION()
+				void StoreFloat(float32 InValue)
+				{
+					if (Math::IsNaN(InValue))
+					{
+						StoredFloatHundredths = -7001;
+						return;
+					}
+					if (!Math::IsFinite(InValue))
+					{
+						StoredFloatHundredths = InValue > 0.0f ? 7002 : -7002;
+						return;
+					}
+					StoredFloatHundredths = int(InValue * 100.0f);
+				}
 
-	UFUNCTION()
-	void StoreDouble(float64 InValue)
-	{
-		if (Math::IsNaN(InValue))
-		{
-			StoredDoubleHundredths = -8001;
-			return;
-		}
-		if (!Math::IsFinite(InValue))
-		{
-			StoredDoubleHundredths = InValue > 0.0 ? 8002 : -8002;
-			return;
-		}
-		StoredDoubleHundredths = int(InValue * 100.0);
-	}
+				UFUNCTION()
+				void StoreDouble(float64 InValue)
+				{
+					if (Math::IsNaN(InValue))
+					{
+						StoredDoubleHundredths = -8001;
+						return;
+					}
+					if (!Math::IsFinite(InValue))
+					{
+						StoredDoubleHundredths = InValue > 0.0 ? 8002 : -8002;
+						return;
+					}
+					StoredDoubleHundredths = int(InValue * 100.0);
+				}
 
-	UFUNCTION()
-	void BumpRef(int& Value)
-	{
-		Value += 3;
-		ObservedRefValue = Value;
-	}
+				UFUNCTION()
+				void BumpRef(int& Value)
+				{
+					Value += 3;
+					ObservedRefValue = Value;
+				}
 
-	UFUNCTION()
-	uint8 BumpRefAndReturn(int& Value)
-	{
-		Value += 4;
-		ObservedRefValue = Value;
-		return 77;
-	}
+				UFUNCTION()
+				uint8 BumpRefAndReturn(int& Value)
+				{
+					Value += 4;
+					ObservedRefValue = Value;
+					return 77;
+				}
 
-	UFUNCTION()
-	uint8 ThrowByte()
-	{
-		Throw("ASFUNCTION_OPTIMIZED_THROW_MARKER");
-		return 99;
-	}
-}
-)AS");
+				UFUNCTION()
+				uint8 ThrowByte()
+				{
+					Throw("ASFUNCTION_OPTIMIZED_THROW_MARKER");
+					return 99;
+				}
+			}
+			)AS");
 
-		UClass* GeneratedClass = CompileScriptModule(
+		UClass* GeneratedClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
 			Test,
 			Engine,
 			ModuleName,
@@ -135,7 +133,7 @@ class UOptimizedCallTarget : UObject
 		UClass* ScriptClass,
 		const TCHAR* FunctionName)
 	{
-		UASFunction* ScriptFunction = Cast<UASFunction>(FindGeneratedFunction(ScriptClass, FunctionName));
+		UASFunction* ScriptFunction = Cast<UASFunction>(::FindGeneratedFunction(ScriptClass, FunctionName));
 		FNoDiscardAsserter LocalAssert(Test);
 		if (!LocalAssert.IsNotNull(
 				ScriptFunction,
@@ -151,16 +149,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 	"Angelscript.TestModule.ClassGenerator.ASFunction",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(OptimizedCallWrappersPreserveArgumentsAndReturnValues)
 	{
-		using namespace ASFunctionOptimizedCallTests;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ASFunctionOptimizedCallTests::ModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
 		UASClass* ScriptClass = ASFunctionOptimizedCallTests::CompileOptimizedCallTarget(*TestRunner, Engine);
@@ -217,7 +225,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 		PingFunction->OptimizedCall(Instance);
 
 		int32 PingCount = INDEX_NONE;
-		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::PingCountPropertyName, PingCount)
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::PingCountPropertyName, PingCount)
 			|| !this->Assert.AreEqual(1, PingCount, TEXT("OptimizedCall should execute a no-parameter void function exactly once")))
 		{
 			return;
@@ -232,7 +240,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 		StoreFloatFunction->OptimizedCall_FloatArg(Instance, 12.5f);
 
 		int32 StoredFloatHundredths = INDEX_NONE;
-		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredFloatHundredthsPropertyName, StoredFloatHundredths)
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredFloatHundredthsPropertyName, StoredFloatHundredths)
 			|| !this->Assert.AreEqual(1250, StoredFloatHundredths, TEXT("OptimizedCall_FloatArg should pass the float argument without mangling its value")))
 		{
 			return;
@@ -241,7 +249,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 		StoreDoubleFunction->OptimizedCall_DoubleArg(Instance, 42.25);
 
 		int32 StoredDoubleHundredths = INDEX_NONE;
-		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredDoubleHundredthsPropertyName, StoredDoubleHundredths)
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredDoubleHundredthsPropertyName, StoredDoubleHundredths)
 			|| !this->Assert.AreEqual(4225, StoredDoubleHundredths, TEXT("OptimizedCall_DoubleArg should pass the double argument without mangling its value")))
 		{
 			return;
@@ -252,7 +260,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 
 		int32 ObservedRefValue = INDEX_NONE;
 		if (!this->Assert.AreEqual(8, RefArgument, TEXT("OptimizedCall_RefArg should write through the referenced argument"))
-			|| !ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::ObservedRefValuePropertyName, ObservedRefValue)
+			|| !AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::ObservedRefValuePropertyName, ObservedRefValue)
 			|| !this->Assert.AreEqual(8, ObservedRefValue, TEXT("OptimizedCall_RefArg should expose the mutated reference value inside script state")))
 		{
 			return;
@@ -261,21 +269,19 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 		int32 RefArgumentWithReturn = 9;
 		const uint8 RefReturnValue = BumpRefAndReturnFunction->OptimizedCall_RefArg_ByteReturn(Instance, &RefArgumentWithReturn);
 		if (!this->Assert.AreEqual(13, RefArgumentWithReturn, TEXT("OptimizedCall_RefArg_ByteReturn should write through the referenced argument"))
-			|| !ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::ObservedRefValuePropertyName, ObservedRefValue)
+			|| !AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::ObservedRefValuePropertyName, ObservedRefValue)
 			|| !this->Assert.AreEqual(13, ObservedRefValue, TEXT("OptimizedCall_RefArg_ByteReturn should expose the mutated reference value inside script state"))
 			|| !this->Assert.AreEqual(77, static_cast<int32>(RefReturnValue), TEXT("OptimizedCall_RefArg_ByteReturn should preserve the script byte return value")))
 		{
 			return;
 		}
 
-		}
 	}
 
 	TEST_METHOD(OptimizedCallWrappersExposeFallbackAndSpecialValueBehavior)
 	{
-		using namespace ASFunctionOptimizedCallTests;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 
 		bool bModuleDiscarded = false;
 		ON_SCOPE_EXIT
@@ -284,7 +290,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 			{
 				Engine.DiscardModule(*ASFunctionOptimizedCallTests::ModuleName.ToString());
 			}
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
 		UASClass* ScriptClass = ASFunctionOptimizedCallTests::CompileOptimizedCallTarget(*TestRunner, Engine);
@@ -319,21 +324,21 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 
 		StoreFloatFunction->OptimizedCall_FloatArg(Instance, std::numeric_limits<float>::quiet_NaN());
 		int32 StoredFloatHundredths = INDEX_NONE;
-		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredFloatHundredthsPropertyName, StoredFloatHundredths)
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredFloatHundredthsPropertyName, StoredFloatHundredths)
 			|| !this->Assert.AreEqual(ASFunctionOptimizedCallTests::FloatNaNMarker, StoredFloatHundredths, TEXT("OptimizedCall_FloatArg should preserve a script-observable NaN classification")))
 		{
 			return;
 		}
 
 		StoreFloatFunction->OptimizedCall_FloatArg(Instance, std::numeric_limits<float>::infinity());
-		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredFloatHundredthsPropertyName, StoredFloatHundredths)
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredFloatHundredthsPropertyName, StoredFloatHundredths)
 			|| !this->Assert.AreEqual(ASFunctionOptimizedCallTests::FloatPositiveInfinityMarker, StoredFloatHundredths, TEXT("OptimizedCall_FloatArg should preserve a script-observable positive infinity classification")))
 		{
 			return;
 		}
 
 		StoreFloatFunction->OptimizedCall_FloatArg(Instance, -std::numeric_limits<float>::infinity());
-		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredFloatHundredthsPropertyName, StoredFloatHundredths)
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredFloatHundredthsPropertyName, StoredFloatHundredths)
 			|| !this->Assert.AreEqual(ASFunctionOptimizedCallTests::FloatNegativeInfinityMarker, StoredFloatHundredths, TEXT("OptimizedCall_FloatArg should preserve a script-observable negative infinity classification")))
 		{
 			return;
@@ -341,21 +346,21 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 
 		StoreDoubleFunction->OptimizedCall_DoubleArg(Instance, std::numeric_limits<double>::quiet_NaN());
 		int32 StoredDoubleHundredths = INDEX_NONE;
-		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredDoubleHundredthsPropertyName, StoredDoubleHundredths)
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredDoubleHundredthsPropertyName, StoredDoubleHundredths)
 			|| !this->Assert.AreEqual(ASFunctionOptimizedCallTests::DoubleNaNMarker, StoredDoubleHundredths, TEXT("OptimizedCall_DoubleArg should preserve a script-observable NaN classification")))
 		{
 			return;
 		}
 
 		StoreDoubleFunction->OptimizedCall_DoubleArg(Instance, std::numeric_limits<double>::infinity());
-		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredDoubleHundredthsPropertyName, StoredDoubleHundredths)
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredDoubleHundredthsPropertyName, StoredDoubleHundredths)
 			|| !this->Assert.AreEqual(ASFunctionOptimizedCallTests::DoublePositiveInfinityMarker, StoredDoubleHundredths, TEXT("OptimizedCall_DoubleArg should preserve a script-observable positive infinity classification")))
 		{
 			return;
 		}
 
 		StoreDoubleFunction->OptimizedCall_DoubleArg(Instance, -std::numeric_limits<double>::infinity());
-		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredDoubleHundredthsPropertyName, StoredDoubleHundredths)
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(*TestRunner, Instance, ASFunctionOptimizedCallTests::StoredDoubleHundredthsPropertyName, StoredDoubleHundredths)
 			|| !this->Assert.AreEqual(ASFunctionOptimizedCallTests::DoubleNegativeInfinityMarker, StoredDoubleHundredths, TEXT("OptimizedCall_DoubleArg should preserve a script-observable negative infinity classification")))
 		{
 			return;
@@ -398,7 +403,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
 		const uint8 ByteResultAfterDiscard = GetByteCodeFunction->OptimizedCall_ByteReturn(Instance);
 		ASSERT_THAT(AreEqual(0, static_cast<int32>(ByteResultAfterDiscard), TEXT("OptimizedCall_ByteReturn should return fallback byte value after discard")));
 
-		}
 	}
 };
 

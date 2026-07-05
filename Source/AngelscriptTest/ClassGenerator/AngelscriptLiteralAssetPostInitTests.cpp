@@ -8,8 +8,6 @@
 // Test Layer: Runtime Integration
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-using namespace AngelscriptFunctionalTestUtils;
-
 namespace LiteralAssetPostInitTest
 {
 	static const FName ModuleName(TEXT("ASLiteralAssetPostInit"));
@@ -37,38 +35,38 @@ namespace LiteralAssetPostInitTest
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		const FString ScriptSource = TEXT(R"AS(
-UCLASS()
-class ULiteralPostInitAsset : UObject
-{
-	UPROPERTY()
-	bool bWasPostInit = false;
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class ULiteralPostInitAsset : UObject
+			{
+				UPROPERTY()
+				bool bWasPostInit = false;
 
-	UPROPERTY()
-	int PostInitCalls = 0;
+				UPROPERTY()
+				int PostInitCalls = 0;
 
-	UPROPERTY()
-	int InitMarker = 0;
-}
+				UPROPERTY()
+				int InitMarker = 0;
+			}
 
-asset ExampleAsset of ULiteralPostInitAsset
-{
-	bWasPostInit = true;
-	PostInitCalls += 1;
-	InitMarker = 1337;
-}
+			asset ExampleAsset of ULiteralPostInitAsset
+			{
+				bWasPostInit = true;
+				PostInitCalls += 1;
+				InitMarker = 1337;
+			}
 
-int TouchExampleAssetAgain()
-{
-	ULiteralPostInitAsset ExampleAsset = GetExampleAsset();
-	if (ExampleAsset == null)
-		return -1;
+			int TouchExampleAssetAgain()
+			{
+				ULiteralPostInitAsset ExampleAsset = GetExampleAsset();
+				if (ExampleAsset == null)
+					return -1;
 
-	return ExampleAsset.InitMarker;
-}
-)AS");
+				return ExampleAsset.InitMarker;
+			}
+			)AS");
 
-		return CompileScriptModule(
+		return AngelscriptFunctionalTestUtils::CompileScriptModule(
 			Test,
 			Engine,
 			ModuleName,
@@ -82,17 +80,17 @@ int TouchExampleAssetAgain()
 		UObject* Object,
 		FLiteralAssetSnapshot& OutSnapshot)
 	{
-		if (!ReadPropertyValue<FBoolProperty>(Test, Object, WasPostInitPropertyName, OutSnapshot.bWasPostInit))
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FBoolProperty>(Test, Object, WasPostInitPropertyName, OutSnapshot.bWasPostInit))
 		{
 			return false;
 		}
 
-		if (!ReadPropertyValue<FIntProperty>(Test, Object, PostInitCallsPropertyName, OutSnapshot.PostInitCalls))
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(Test, Object, PostInitCallsPropertyName, OutSnapshot.PostInitCalls))
 		{
 			return false;
 		}
 
-		if (!ReadPropertyValue<FIntProperty>(Test, Object, InitMarkerPropertyName, OutSnapshot.InitMarker))
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(Test, Object, InitMarkerPropertyName, OutSnapshot.InitMarker))
 		{
 			return false;
 		}
@@ -107,7 +105,7 @@ int TouchExampleAssetAgain()
 		const TCHAR* Context,
 		int32& OutResult)
 	{
-		const bool bExecuted = ExecuteIntFunction(&Engine, ModuleName, Declaration, OutResult);
+		const bool bExecuted = ::ExecuteIntFunction(&Engine, ModuleName, Declaration, OutResult);
 		FNoDiscardAsserter LocalAssert(Test);
 		return LocalAssert.IsTrue(bExecuted, Context);
 	}
@@ -137,44 +135,44 @@ namespace LiteralAssetPostInitNameCollisionTest
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
-		const FString ScriptSource = TEXT(R"AS(
-UCLASS()
-class ULiteralPostInitCollisionAsset : UObject
-{
-	UPROPERTY()
-	int RightCalls = 0;
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class ULiteralPostInitCollisionAsset : UObject
+			{
+				UPROPERTY()
+				int RightCalls = 0;
 
-	UPROPERTY()
-	int WrongCalls = 0;
-}
+				UPROPERTY()
+				int WrongCalls = 0;
+			}
 
-namespace Shadow
-{
-	UObject GetCollisionExampleAsset()
-	{
-		ULiteralPostInitCollisionAsset ExampleAsset = Cast<ULiteralPostInitCollisionAsset>(__CreateLiteralAsset(ULiteralPostInitCollisionAsset, "CollisionExampleAsset"));
-		if (ExampleAsset != null)
-		{
-			ExampleAsset.WrongCalls += 1;
-			__PostLiteralAssetSetup(ExampleAsset, "CollisionExampleAsset");
-		}
-		return ExampleAsset;
-	}
-}
+			namespace Shadow
+			{
+				UObject GetCollisionExampleAsset()
+				{
+					ULiteralPostInitCollisionAsset ExampleAsset = Cast<ULiteralPostInitCollisionAsset>(__CreateLiteralAsset(ULiteralPostInitCollisionAsset, "CollisionExampleAsset"));
+					if (ExampleAsset != null)
+					{
+						ExampleAsset.WrongCalls += 1;
+						__PostLiteralAssetSetup(ExampleAsset, "CollisionExampleAsset");
+					}
+					return ExampleAsset;
+				}
+			}
 
-asset CollisionExampleAsset of ULiteralPostInitCollisionAsset
-{
-	RightCalls += 1;
-}
+			asset CollisionExampleAsset of ULiteralPostInitCollisionAsset
+			{
+				RightCalls += 1;
+			}
 
-int TouchExampleAssetAgain()
-{
-	ULiteralPostInitCollisionAsset ExampleAsset = GetCollisionExampleAsset();
-	return ExampleAsset == null ? 0 : 1;
-}
-)AS");
+			int TouchExampleAssetAgain()
+			{
+				ULiteralPostInitCollisionAsset ExampleAsset = GetCollisionExampleAsset();
+				return ExampleAsset == null ? 0 : 1;
+			}
+			)AS");
 
-		return CompileScriptModule(
+		return AngelscriptFunctionalTestUtils::CompileScriptModule(
 			Test,
 			Engine,
 			ModuleName,
@@ -188,12 +186,12 @@ int TouchExampleAssetAgain()
 		UObject* Object,
 		FLiteralAssetCollisionSnapshot& OutSnapshot)
 	{
-		if (!ReadPropertyValue<FIntProperty>(Test, Object, RightCallsPropertyName, OutSnapshot.RightCalls))
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(Test, Object, RightCallsPropertyName, OutSnapshot.RightCalls))
 		{
 			return false;
 		}
 
-		if (!ReadPropertyValue<FIntProperty>(Test, Object, WrongCallsPropertyName, OutSnapshot.WrongCalls))
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(Test, Object, WrongCallsPropertyName, OutSnapshot.WrongCalls))
 		{
 			return false;
 		}
@@ -208,7 +206,7 @@ int TouchExampleAssetAgain()
 		const TCHAR* Context,
 		int32& OutResult)
 	{
-		const bool bExecuted = ExecuteIntFunction(&Engine, ModuleName, Declaration, OutResult);
+		const bool bExecuted = ::ExecuteIntFunction(&Engine, ModuleName, Declaration, OutResult);
 		FNoDiscardAsserter LocalAssert(Test);
 		return LocalAssert.IsTrue(bExecuted, Context);
 	}
@@ -230,17 +228,27 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLiteralAssetPostInitTests,
 	"Angelscript.TestModule.ClassGenerator.LiteralAsset",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(PostInitMaterializesAssetOnce)
 	{
-		using namespace LiteralAssetPostInitTest;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 		TestRunner->AddExpectedError(TEXT("LogUObjectBase: Class pointer is invalid or CDO is invalid."), EAutomationExpectedErrorFlags::Contains, 1);
 
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*LiteralAssetPostInitTest::ModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
 		UClass* GeneratedClass = LiteralAssetPostInitTest::CompileLiteralAssetCarrier(*TestRunner, Engine);
@@ -324,8 +332,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLiteralAssetPostInitTests,
 			LiteralAssetPostInitTest::ExpectedInitMarker,
 			SnapshotAfterTouch.InitMarker,
 			TEXT("Literal-asset post-init test should preserve the init marker after repeated getter access")));
-
-		}
 	}
 
 	// PostInitResolvesGeneratedGetterInsteadOfNameCollision:
@@ -340,13 +346,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLiteralAssetPostInitTests,
 
 	TEST_METHOD(MultipleAssetsInSameClassCoexist)
 	{
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 		TestRunner->AddExpectedError(TEXT("LogUObjectBase: Class pointer is invalid or CDO is invalid."), EAutomationExpectedErrorFlags::Contains, 1);
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*LiteralAssetMultipleCoexistTest::ModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
 		ECompileResult CompileResult = ECompileResult::Error;
@@ -355,31 +360,31 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptLiteralAssetPostInitTests,
 			ECompileType::FullReload,
 			LiteralAssetMultipleCoexistTest::ModuleName,
 			LiteralAssetMultipleCoexistTest::ScriptFilename,
-			TEXT(R"AS(
-UCLASS()
-class UMultiAssetOwner : UObject
-{
-	UPROPERTY()
-	int Marker = 0;
-}
+			ASTEST_AS(R"AS(
+				UCLASS()
+				class UMultiAssetOwner : UObject
+				{
+					UPROPERTY()
+					int Marker = 0;
+				}
 
-asset FirstAsset of UMultiAssetOwner
-{
-	Marker = 10;
-}
+				asset FirstAsset of UMultiAssetOwner
+				{
+					Marker = 10;
+				}
 
-asset SecondAsset of UMultiAssetOwner
-{
-	Marker = 20;
-}
-)AS"),
+				asset SecondAsset of UMultiAssetOwner
+				{
+					Marker = 20;
+				}
+				)AS"),
 			CompileResult);
 
 		ASSERT_THAT(IsTrue(bCompiled, TEXT("Multiple assets in same class should compile")));
 		if (!bCompiled)
 			return;
 
-		UClass* GeneratedClass = FindGeneratedClass(&Engine, TEXT("UMultiAssetOwner"));
+		UClass* GeneratedClass = ::FindGeneratedClass(&Engine, TEXT("UMultiAssetOwner"));
 		ASSERT_THAT(IsNotNull(GeneratedClass, TEXT("Class should be materialized")));
 		if (GeneratedClass == nullptr)
 			return;
@@ -393,18 +398,16 @@ asset SecondAsset of UMultiAssetOwner
 			ASSERT_THAT(IsTrue(FirstAsset != SecondAsset, TEXT("Assets should be independent objects")));
 		}
 
-		}
 	}
 
 	TEST_METHOD(AssetWithDefaultComponentCoexist)
 	{
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 		TestRunner->AddExpectedError(TEXT("LogUObjectBase: Class pointer is invalid or CDO is invalid."), EAutomationExpectedErrorFlags::Contains, 1);
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*LiteralAssetWithComponentTest::ModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
 		ECompileResult CompileResult = ECompileResult::Error;
@@ -413,42 +416,41 @@ asset SecondAsset of UMultiAssetOwner
 			ECompileType::FullReload,
 			LiteralAssetWithComponentTest::ModuleName,
 			LiteralAssetWithComponentTest::ScriptFilename,
-			TEXT(R"AS(
-UCLASS()
-class UAssetCarrier : UObject
-{
-	UPROPERTY()
-	int CoexistMarker = 0;
-}
+			ASTEST_AS(R"AS(
+				UCLASS()
+				class UAssetCarrier : UObject
+				{
+					UPROPERTY()
+					int CoexistMarker = 0;
+				}
 
-UCLASS()
-class AAssetAndComponentActor : AActor
-{
-	UPROPERTY(DefaultComponent, RootComponent)
-	USceneComponent RootScene;
-}
+				UCLASS()
+				class AAssetAndComponentActor : AActor
+				{
+					UPROPERTY(DefaultComponent, RootComponent)
+					USceneComponent RootScene;
+				}
 
-asset MyCoexistAsset of UAssetCarrier
-{
-	CoexistMarker = 99;
-}
-)AS"),
+				asset MyCoexistAsset of UAssetCarrier
+				{
+					CoexistMarker = 99;
+				}
+				)AS"),
 			CompileResult);
 
 		ASSERT_THAT(IsTrue(bCompiled, TEXT("Asset + DefaultComponent coexistence should compile")));
 		if (!bCompiled)
 			return;
 
-		UClass* ActorClass = FindGeneratedClass(&Engine, TEXT("AAssetAndComponentActor"));
+		UClass* ActorClass = ::FindGeneratedClass(&Engine, TEXT("AAssetAndComponentActor"));
 		ASSERT_THAT(IsNotNull(ActorClass, TEXT("Actor class should be materialized")));
 
-		UClass* CarrierClass = FindGeneratedClass(&Engine, TEXT("UAssetCarrier"));
+		UClass* CarrierClass = ::FindGeneratedClass(&Engine, TEXT("UAssetCarrier"));
 		ASSERT_THAT(IsNotNull(CarrierClass, TEXT("Carrier class should be materialized")));
 
 		UObject* AssetObj = FindObject<UObject>(Engine.AssetsPackage, TEXT("MyCoexistAsset"));
 		ASSERT_THAT(IsNotNull(AssetObj, TEXT("Asset should coexist with component-bearing actor")));
 
-		}
 	}
 };
 

@@ -1,5 +1,5 @@
 #include "AngelscriptEngine.h"
-#include "AngelscriptTestUtilities.h"
+#include "AngelscriptTestMacros.h"
 #include "ClassGenerator/AngelscriptClassGenerator.h"
 
 #include "CQTest.h"
@@ -16,27 +16,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptClassGeneratorTests,
 	"Angelscript.TestModule.ClassGenerator",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-private:
-static FAngelscriptEngine* GetEngineForClassGeneratorTests(FAutomationTestBase* Test)
-{
-	if (FAngelscriptEngine* ProductionEngine = TryGetRunningProductionEngine())
+public:
+	BEFORE_ALL()
 	{
-		return ProductionEngine;
+		ASTEST_CREATE_ENGINE();
 	}
 
-	return &GetOrCreateSharedCloneEngine();
-}
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
 
-public:
 	TEST_METHOD(EmptyModuleSetup)
 	{
-FAngelscriptEngine* Engine = GetEngineForClassGeneratorTests(TestRunner);
-		ASSERT_THAT(IsNotNull(Engine, TEXT("ClassGenerator test should have an initialized engine")));
-		FAngelscriptEngineScope EngineScope(*Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 
 		TSharedRef<FAngelscriptModuleDesc> Module = MakeShared<FAngelscriptModuleDesc>();
 		Module->ModuleName = TEXT("Tests.ClassGenerator.EmptyModule");
-		Module->ScriptModule = static_cast<asCModule*>(Engine->GetScriptEngine()->GetModule("Tests.ClassGenerator.EmptyModule", asGM_ALWAYS_CREATE));
+		Module->ScriptModule = static_cast<asCModule*>(Engine.GetScriptEngine()->GetModule("Tests.ClassGenerator.EmptyModule", asGM_ALWAYS_CREATE));
 		ASSERT_THAT(IsNotNull(Module->ScriptModule, TEXT("ClassGenerator scaffold should create a backing script module")));
 
 		FAngelscriptClassGenerator Generator;

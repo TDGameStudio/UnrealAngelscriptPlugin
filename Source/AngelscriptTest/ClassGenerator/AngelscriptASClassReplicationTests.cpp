@@ -12,8 +12,6 @@
 // Test Layer: Runtime Integration
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-using namespace AngelscriptFunctionalTestUtils;
-
 namespace ASClassReplicationTest
 {
 	static const FName ModuleName(TEXT("ASClassLifetimeScriptReplicationList"));
@@ -62,44 +60,54 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassReplicationTests,
 	"Angelscript.TestModule.ClassGenerator.ASClass",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(LifetimeScriptReplicationListIncludesInheritedReplicatedProperties)
 	{
-		using namespace ASClassReplicationTest;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ASClassReplicationTest::ModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
-		const FString ScriptSource = TEXT(R"AS(
-UCLASS()
-class AReplicationParent : AActor
-{
-	default SetReplicates(true);
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class AReplicationParent : AActor
+			{
+				default SetReplicates(true);
 
-	UPROPERTY(Replicated)
-	int ParentValue = 7;
-}
+				UPROPERTY(Replicated)
+				int ParentValue = 7;
+			}
 
-UCLASS()
-class AReplicationChild : AReplicationParent
-{
-	UPROPERTY(Replicated)
-	int ChildValue = 11;
+			UCLASS()
+			class AReplicationChild : AReplicationParent
+			{
+				UPROPERTY(Replicated)
+				int ChildValue = 11;
 
-	UPROPERTY(ReplicatedUsing=OnRep_ChildNotifiedValue)
-	int ChildNotifiedValue = 29;
+				UPROPERTY(ReplicatedUsing=OnRep_ChildNotifiedValue)
+				int ChildNotifiedValue = 29;
 
-	UFUNCTION()
-	void OnRep_ChildNotifiedValue()
-	{
-	}
-}
-)AS");
+				UFUNCTION()
+				void OnRep_ChildNotifiedValue()
+				{
+				}
+			}
+			)AS");
 
-		UClass* ParentClass = CompileScriptModule(
+		UClass* ParentClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
 			*TestRunner,
 			Engine,
 			ASClassReplicationTest::ModuleName,
@@ -180,7 +188,6 @@ class AReplicationChild : AReplicationParent
 		ASSERT_THAT(IsTrue(
 			ReplicatedPropertyNames.Contains(ASClassReplicationTest::ChildNotifiedValueName),
 			TEXT("ASClass replication test case should include the child RepNotify property in the child lifetime list")));
-		}
 	}
 };
 

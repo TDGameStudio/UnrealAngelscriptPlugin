@@ -12,8 +12,6 @@
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-using namespace AngelscriptFunctionalTestUtils;
-
 namespace InterfaceDispatchBridgeTests
 {
 	static const FName ModuleName(TEXT("ASInterfaceDispatchBridge"));
@@ -67,74 +65,86 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptInterfaceDispatchBridgeTests,
 	"Angelscript.TestModule.ClassGenerator.Interface",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(CallInterfaceMethodDispatchesToImplementingUFunction)
 	{
-		using namespace InterfaceDispatchBridgeTests;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 
 		InterfaceDispatchBridgeTests::EnsureFixturesBound();
 
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*InterfaceDispatchBridgeTests::ModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
-		UClass* ScriptClass = CompileScriptModule(
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class AInterfaceDispatchBridgeCarrier : AActor, UAngelscriptNativeParentInterface
+			{
+				UPROPERTY()
+				int ScriptObservedValue = 0;
+
+				UPROPERTY()
+				int ScriptAdjustedValue = 0;
+
+				UPROPERTY()
+				FName ScriptObservedMarker = NAME_None;
+
+				UFUNCTION()
+				int GetNativeValue() const
+				{
+					return 55;
+				}
+
+				UFUNCTION()
+				void SetNativeMarker(FName Marker)
+				{
+					ScriptObservedMarker = Marker;
+				}
+
+				UFUNCTION()
+				void AdjustNativeValue(int Delta, int& Value)
+				{
+					Value += Delta;
+				}
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					UObject Self = this;
+					UAngelscriptNativeParentInterface ParentRef = Cast<UAngelscriptNativeParentInterface>(Self);
+					if (ParentRef == nullptr)
+						return;
+
+					ScriptObservedValue = ParentRef.GetNativeValue();
+
+					int Value = 10;
+					ParentRef.AdjustNativeValue(5, Value);
+					ScriptAdjustedValue = Value;
+
+					ParentRef.SetNativeMarker(n"BridgeHit");
+				}
+			}
+			)AS");
+
+		UClass* ScriptClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
 			*TestRunner,
 			Engine,
 			InterfaceDispatchBridgeTests::ModuleName,
 			InterfaceDispatchBridgeTests::ScriptFilename,
-			TEXT(R"AS(
-UCLASS()
-class AInterfaceDispatchBridgeCarrier : AActor, UAngelscriptNativeParentInterface
-{
-	UPROPERTY()
-	int ScriptObservedValue = 0;
-
-	UPROPERTY()
-	int ScriptAdjustedValue = 0;
-
-	UPROPERTY()
-	FName ScriptObservedMarker = NAME_None;
-
-	UFUNCTION()
-	int GetNativeValue() const
-	{
-		return 55;
-	}
-
-	UFUNCTION()
-	void SetNativeMarker(FName Marker)
-	{
-		ScriptObservedMarker = Marker;
-	}
-
-	UFUNCTION()
-	void AdjustNativeValue(int Delta, int& Value)
-	{
-		Value += Delta;
-	}
-
-	UFUNCTION(BlueprintOverride)
-	void BeginPlay()
-	{
-		UObject Self = this;
-		UAngelscriptNativeParentInterface ParentRef = Cast<UAngelscriptNativeParentInterface>(Self);
-		if (ParentRef == nullptr)
-			return;
-
-		ScriptObservedValue = ParentRef.GetNativeValue();
-
-		int Value = 10;
-		ParentRef.AdjustNativeValue(5, Value);
-		ScriptAdjustedValue = Value;
-
-		ParentRef.SetNativeMarker(n"BridgeHit");
-	}
-}
-)AS"),
+			ScriptSource,
 			InterfaceDispatchBridgeTests::GeneratedClassName);
 		if (ScriptClass == nullptr)
 		{
@@ -148,20 +158,20 @@ class AInterfaceDispatchBridgeCarrier : AActor, UAngelscriptNativeParentInterfac
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
 
-		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		AActor* Actor = AngelscriptFunctionalTestUtils::SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
 		if (Actor == nullptr)
 		{
 			return;
 		}
 
-		BeginPlayActor(Engine, *Actor);
+		AngelscriptFunctionalTestUtils::BeginPlayActor(Engine, *Actor);
 
 		int32 ScriptObservedValue = INDEX_NONE;
 		int32 ScriptAdjustedValue = INDEX_NONE;
 		FName ScriptObservedMarker = NAME_None;
-		if (!ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("ScriptObservedValue"), ScriptObservedValue)
-			|| !ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("ScriptAdjustedValue"), ScriptAdjustedValue)
-			|| !ReadPropertyValue<FNameProperty>(*TestRunner, Actor, TEXT("ScriptObservedMarker"), ScriptObservedMarker))
+		if (!AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("ScriptObservedValue"), ScriptObservedValue)
+			|| !AngelscriptFunctionalTestUtils::ReadPropertyValue<FIntProperty>(*TestRunner, Actor, TEXT("ScriptAdjustedValue"), ScriptAdjustedValue)
+			|| !AngelscriptFunctionalTestUtils::ReadPropertyValue<FNameProperty>(*TestRunner, Actor, TEXT("ScriptObservedMarker"), ScriptObservedMarker))
 		{
 			return;
 		}
@@ -178,8 +188,6 @@ class AInterfaceDispatchBridgeCarrier : AActor, UAngelscriptNativeParentInterfac
 			FName(TEXT("BridgeHit")),
 			ScriptObservedMarker,
 			TEXT("Production bridge should route void calls with payload arguments through the implementing UFunction")));
-
-		}
 	}
 };
 

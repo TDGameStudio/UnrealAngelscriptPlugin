@@ -7,8 +7,6 @@
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-using namespace AngelscriptFunctionalTestUtils;
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptASClassComponentMetadataTests,
 	"Angelscript.TestModule.ClassGenerator.ASClass",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -150,51 +148,62 @@ static USceneComponent* FindSceneComponentByName(const AActor* Actor, FName Comp
 }
 
 public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(DefaultComponentMetadataCapturesRootAndAttachLayout)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
+
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ASClassComponentMetadataModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
-		const FString ScriptSource = TEXT(R"AS(
-UCLASS()
-class UMetadataRootComponent : USceneComponent
-{
-}
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class UMetadataRootComponent : USceneComponent
+			{
+			}
 
-UCLASS()
-class UMetadataBillboardComponent : UBillboardComponent
-{
-}
+			UCLASS()
+			class UMetadataBillboardComponent : UBillboardComponent
+			{
+			}
 
-UCLASS()
-class UMetadataReplacementBillboardComponent : UMetadataBillboardComponent
-{
-}
+			UCLASS()
+			class UMetadataReplacementBillboardComponent : UMetadataBillboardComponent
+			{
+			}
 
-UCLASS()
-class AMetadataBaseActor : AActor
-{
-	UPROPERTY(DefaultComponent, RootComponent)
-	UMetadataRootComponent RootScene;
+			UCLASS()
+			class AMetadataBaseActor : AActor
+			{
+				UPROPERTY(DefaultComponent, RootComponent)
+				UMetadataRootComponent RootScene;
 
-	UPROPERTY(DefaultComponent, Attach = RootScene)
-	UMetadataBillboardComponent Billboard;
-}
+				UPROPERTY(DefaultComponent, Attach = RootScene)
+				UMetadataBillboardComponent Billboard;
+			}
 
-UCLASS()
-class AMetadataDerivedActor : AMetadataBaseActor
-{
-	UPROPERTY(OverrideComponent = Billboard)
-	UMetadataReplacementBillboardComponent ReplacementBillboard;
-}
-)AS");
+			UCLASS()
+			class AMetadataDerivedActor : AMetadataBaseActor
+			{
+				UPROPERTY(OverrideComponent = Billboard)
+				UMetadataReplacementBillboardComponent ReplacementBillboard;
+			}
+			)AS");
 
-		UClass* DerivedActorClass = CompileScriptModule(*TestRunner, Engine, ASClassComponentMetadataModuleName, ASClassComponentMetadataFilename, ScriptSource, ASClassComponentMetadataDerivedClassName);
+		UClass* DerivedActorClass = AngelscriptFunctionalTestUtils::CompileScriptModule(*TestRunner, Engine, ASClassComponentMetadataModuleName, ASClassComponentMetadataFilename, ScriptSource, ASClassComponentMetadataDerivedClassName);
 		if (DerivedActorClass == nullptr) { return; }
 
 		UASClass* BaseActorClass = Cast<UASClass>(FindGeneratedClass(&Engine, ASClassComponentMetadataBaseClassName));
@@ -230,62 +239,61 @@ class AMetadataDerivedActor : AMetadataBaseActor
 		ASSERT_THAT(AreEqual(ASClassBillboardComponentName, OverrideEntry->OverrideComponentName, TEXT("ASClass component metadata test should record which base component gets overridden")));
 		ASSERT_THAT(AreEqual(ASClassOverrideVariableName, OverrideEntry->VariableName, TEXT("ASClass component metadata test should record the overriding property name")));
 		ASSERT_THAT(IsTrue(OverrideEntry->ComponentClass == ReplacementBillboardComponentClass, TEXT("ASClass component metadata test should preserve the generated override component class")));
-		}
 	}
 
 	TEST_METHOD(SoftReloadPreservesDefaultComponentMetadataWithoutDuplication)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
+
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ASClassComponentMetadataSoftReloadModuleName.ToString());
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
-		const FString ScriptV1 = TEXT(R"AS(
-UCLASS()
-class USoftMetadataRootComponent : USceneComponent { }
-UCLASS()
-class USoftMetadataBillboardComponent : UBillboardComponent { }
-UCLASS()
-class USoftMetadataReplacementBillboardComponent : USoftMetadataBillboardComponent { }
-UCLASS()
-class ASoftMetadataBaseActor : AActor
-{
-	UPROPERTY(DefaultComponent, RootComponent) USoftMetadataRootComponent RootScene;
-	UPROPERTY(DefaultComponent, Attach = RootScene) USoftMetadataBillboardComponent Billboard;
-}
-UCLASS()
-class ASoftMetadataDerivedActor : ASoftMetadataBaseActor
-{
-	UPROPERTY(OverrideComponent = Billboard) USoftMetadataReplacementBillboardComponent ReplacementBillboard;
-	UFUNCTION() int GetVersion() { return 1; }
-}
-)AS");
+		const FString ScriptV1 = ASTEST_AS(R"AS(
+			UCLASS()
+			class USoftMetadataRootComponent : USceneComponent { }
+			UCLASS()
+			class USoftMetadataBillboardComponent : UBillboardComponent { }
+			UCLASS()
+			class USoftMetadataReplacementBillboardComponent : USoftMetadataBillboardComponent { }
+			UCLASS()
+			class ASoftMetadataBaseActor : AActor
+			{
+				UPROPERTY(DefaultComponent, RootComponent) USoftMetadataRootComponent RootScene;
+				UPROPERTY(DefaultComponent, Attach = RootScene) USoftMetadataBillboardComponent Billboard;
+			}
+			UCLASS()
+			class ASoftMetadataDerivedActor : ASoftMetadataBaseActor
+			{
+				UPROPERTY(OverrideComponent = Billboard) USoftMetadataReplacementBillboardComponent ReplacementBillboard;
+				UFUNCTION() int GetVersion() { return 1; }
+			}
+			)AS");
 
-		const FString ScriptV2 = TEXT(R"AS(
-UCLASS()
-class USoftMetadataRootComponent : USceneComponent { }
-UCLASS()
-class USoftMetadataBillboardComponent : UBillboardComponent { }
-UCLASS()
-class USoftMetadataReplacementBillboardComponent : USoftMetadataBillboardComponent { }
-UCLASS()
-class ASoftMetadataBaseActor : AActor
-{
-	UPROPERTY(DefaultComponent, RootComponent) USoftMetadataRootComponent RootScene;
-	UPROPERTY(DefaultComponent, Attach = RootScene) USoftMetadataBillboardComponent Billboard;
-}
-UCLASS()
-class ASoftMetadataDerivedActor : ASoftMetadataBaseActor
-{
-	UPROPERTY(OverrideComponent = Billboard) USoftMetadataReplacementBillboardComponent ReplacementBillboard;
-	UFUNCTION() int GetVersion() { return 2; }
-}
-)AS");
+		const FString ScriptV2 = ASTEST_AS(R"AS(
+			UCLASS()
+			class USoftMetadataRootComponent : USceneComponent { }
+			UCLASS()
+			class USoftMetadataBillboardComponent : UBillboardComponent { }
+			UCLASS()
+			class USoftMetadataReplacementBillboardComponent : USoftMetadataBillboardComponent { }
+			UCLASS()
+			class ASoftMetadataBaseActor : AActor
+			{
+				UPROPERTY(DefaultComponent, RootComponent) USoftMetadataRootComponent RootScene;
+				UPROPERTY(DefaultComponent, Attach = RootScene) USoftMetadataBillboardComponent Billboard;
+			}
+			UCLASS()
+			class ASoftMetadataDerivedActor : ASoftMetadataBaseActor
+			{
+				UPROPERTY(OverrideComponent = Billboard) USoftMetadataReplacementBillboardComponent ReplacementBillboard;
+				UFUNCTION() int GetVersion() { return 2; }
+			}
+			)AS");
 
-		UClass* InitialDerivedClass = CompileScriptModule(*TestRunner, Engine, ASClassComponentMetadataSoftReloadModuleName, ASClassComponentMetadataSoftReloadFilename, ScriptV1, ASClassComponentMetadataSoftReloadDerivedClassName);
+		UClass* InitialDerivedClass = AngelscriptFunctionalTestUtils::CompileScriptModule(*TestRunner, Engine, ASClassComponentMetadataSoftReloadModuleName, ASClassComponentMetadataSoftReloadFilename, ScriptV1, ASClassComponentMetadataSoftReloadDerivedClassName);
 		if (InitialDerivedClass == nullptr) { return; }
 
 		UASClass* InitialBaseClass = Cast<UASClass>(FindGeneratedClass(&Engine, ASClassComponentMetadataSoftReloadBaseClassName));
@@ -307,7 +315,7 @@ class ASoftMetadataDerivedActor : ASoftMetadataBaseActor
 		if (!CheckTrue(
 				*TestRunner,
 				TEXT("Soft-reload test should compile the body-only update"),
-				CompileModuleWithResult(&Engine, ECompileType::SoftReloadOnly, ASClassComponentMetadataSoftReloadModuleName, ASClassComponentMetadataSoftReloadFilename, ScriptV2, ReloadResult)))
+				::CompileModuleWithResult(&Engine, ECompileType::SoftReloadOnly, ASClassComponentMetadataSoftReloadModuleName, ASClassComponentMetadataSoftReloadFilename, ScriptV2, ReloadResult)))
 		{ return; }
 		if (!CheckTrue(*TestRunner, TEXT("Soft-reload test should stay on a handled path"), IsHandledReloadResult(ReloadResult)))
 		{ return; }
@@ -345,7 +353,7 @@ class ASoftMetadataDerivedActor : ASoftMetadataBaseActor
 
 		FActorTestSpawner Spawner;
 		Spawner.InitializeGameSubsystems();
-		AActor* ReloadedActor = SpawnScriptActor(*TestRunner, Spawner, ReloadedDerivedClass);
+		AActor* ReloadedActor = AngelscriptFunctionalTestUtils::SpawnScriptActor(*TestRunner, Spawner, ReloadedDerivedClass);
 		if (!CheckNotNull(*TestRunner, TEXT("Soft-reload test should spawn the reloaded actor"), ReloadedActor)) { return; }
 
 		USceneComponent* RuntimeRootComponent = ReloadedActor->GetRootComponent();
@@ -364,7 +372,6 @@ class ASoftMetadataDerivedActor : ASoftMetadataBaseActor
 				ExecuteGeneratedIntEventOnGameThread(&Engine, ReloadedActor, GetVersionAfterReload, VersionAfterReload)))
 		{ return; }
 		ASSERT_THAT(AreEqual(2, VersionAfterReload, TEXT("Soft-reload test should observe updated function body")));
-		}
 	}
 };
 

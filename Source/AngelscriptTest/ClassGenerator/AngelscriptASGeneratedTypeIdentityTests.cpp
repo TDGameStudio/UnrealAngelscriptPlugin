@@ -105,38 +105,48 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASGeneratedTypeIdentityTests,
 	"Angelscript.TestModule.ClassGenerator.ASStruct",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+public:
+	BEFORE_ALL()
+	{
+		ASTEST_CREATE_ENGINE();
+	}
+
+	AFTER_ALL()
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		ASTEST_RESET_ENGINE(Engine);
+	}
+
 	TEST_METHOD(ScriptIdentityFieldsTrackFullReloadLifecycle)
 	{
-		using namespace ASGeneratedTypeIdentityTest;
-		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope EngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
 			Engine.DiscardModule(*ASGeneratedTypeIdentityTest::StructModuleName.ToString());
 			IFileManager::Get().Delete(*ASGeneratedTypeIdentityTest::GetScriptAbsoluteFilename(), false, true, true);
-			ASTEST_RESET_ENGINE(Engine);
 		};
 
-		const FString ScriptV1 = TEXT(R"AS(
-USTRUCT()
-struct FStructIdentityTarget
-{
-	UPROPERTY()
-	int Value = 1;
-};
-)AS");
+		const FString ScriptV1 = ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FStructIdentityTarget
+			{
+				UPROPERTY()
+				int Value = 1;
+			};
+			)AS");
 
-		const FString ScriptV2 = TEXT(R"AS(
-USTRUCT()
-struct FStructIdentityTarget
-{
-	UPROPERTY()
-	int Value = 1;
+		const FString ScriptV2 = ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FStructIdentityTarget
+			{
+				UPROPERTY()
+				int Value = 1;
 
-	UPROPERTY()
-	int AddedValue = 2;
-};
-)AS");
+				UPROPERTY()
+				int AddedValue = 2;
+			};
+			)AS");
 
 		if (!this->Assert.IsTrue(
 				CompileAnnotatedModuleFromMemory(&Engine, ASGeneratedTypeIdentityTest::StructModuleName, ASGeneratedTypeIdentityTest::StructScriptFilename, ScriptV1),
@@ -204,8 +214,6 @@ struct FStructIdentityTarget
 			StructV1,
 			StructV2,
 			TEXT("Struct identity replaced struct"));
-
-		}
 	}
 };
 
