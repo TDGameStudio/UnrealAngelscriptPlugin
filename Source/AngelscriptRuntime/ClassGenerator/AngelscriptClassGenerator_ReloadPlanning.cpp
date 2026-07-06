@@ -1,4 +1,5 @@
 #include "ClassGenerator/AngelscriptClassGenerator.h"
+#include "ClassGenerator/AngelscriptClassReloadPlanner.h"
 #include "ClassGenerator/AngelscriptClassGeneratorShared.h"
 #include "ClassGenerator/AngelscriptClassRedirects.h"
 #include "ClassGenerator/ASClass.h"
@@ -45,22 +46,44 @@
 
 using namespace AngelscriptClassGeneratorNames;
 
-void FAngelscriptClassGenerator::AddReloadDependency(FReloadPropagation* Source, const FAngelscriptTypeUsage& Type)
+void FAngelscriptClassGenerator::RegisterReloadPlannerNodes(FAngelscriptClassReloadPlanner& Planner)
 {
-	EReloadRequirement Req = EReloadRequirement::SoftReload;
+	for (FModuleData& ModuleData : Modules)
+	{
+		for (FClassData& ClassData : ModuleData.Classes)
+		{
+			check(ClassData.NewClass.IsValid());
+			ClassData.ReloadPlannerNodeIndex = Planner.AddNode(FName(*ClassData.NewClass->ClassName), ClassData.ReloadReq).GetIndex();
+		}
 
+		for (FDelegateData& DelegateData : ModuleData.Delegates)
+		{
+			check(DelegateData.NewDelegate.IsValid());
+			DelegateData.ReloadPlannerNodeIndex = Planner.AddNode(FName(*DelegateData.NewDelegate->DelegateName), DelegateData.ReloadReq).GetIndex();
+		}
+	}
+}
+
+void FAngelscriptClassGenerator::AddReloadDependency(
+	FAngelscriptClassReloadPlanner& Planner,
+	FReloadPropagation* Source,
+	const FAngelscriptTypeUsage& Type)
+{
 	// Recursively propagate for any subtypes in this type (ex. array element type)
 	for (const FAngelscriptTypeUsage& SubType : Type.SubTypes)
-		AddReloadDependency(Source, SubType);
+		AddReloadDependency(Planner, Source, SubType);
 
 	// Types that don't have a script class will never reload
 	if (Type.ScriptClass == nullptr || !(Type.ScriptClass->GetFlags() & asOBJ_SCRIPT_OBJECT))
 		return;
 
-	AddReloadDependency(Source, Type.ScriptClass);
+	AddReloadDependency(Planner, Source, Type.ScriptClass);
 }
 
-void FAngelscriptClassGenerator::AddReloadDependency(FReloadPropagation* Source, asITypeInfo* TypeInfo)
+void FAngelscriptClassGenerator::AddReloadDependency(
+	FAngelscriptClassReloadPlanner& Planner,
+	FReloadPropagation* Source,
+	asITypeInfo* TypeInfo)
 {
 	if (TypeInfo == nullptr)
 		return;
@@ -73,31 +96,17 @@ void FAngelscriptClassGenerator::AddReloadDependency(FReloadPropagation* Source,
 		{
 			FClassData& ClassData = ModuleData.Classes[Ref->DataIndex];
 			check(ClassData.NewClass->ScriptType == TypeInfo);
-
-			PropagateReloadRequirements(ModuleData, ClassData);
-			if (!ClassData.bFinishedPropagating || ClassData.bHasOutstandingDependencies)
-			{
-				ClassData.PendingDependees.AddUnique(Source);
-				Source->bHasOutstandingDependencies = true;
-			}
-
-			if (ClassData.ReloadReq > Source->ReloadReq)
-				Source->ReloadReq = ClassData.ReloadReq;
+			Planner.AddDependency(
+				FAngelscriptClassReloadPlanner::FNodeHandle(Source->ReloadPlannerNodeIndex),
+				FAngelscriptClassReloadPlanner::FNodeHandle(ClassData.ReloadPlannerNodeIndex));
 		}
 		else if (Ref->bIsDelegate)
 		{
 			FDelegateData& DelegateData = ModuleData.Delegates[Ref->DataIndex];
 			check(DelegateData.NewDelegate->ScriptType == TypeInfo);
-
-			PropagateReloadRequirements(ModuleData, DelegateData);
-			if (!DelegateData.bFinishedPropagating || DelegateData.bHasOutstandingDependencies)
-			{
-				DelegateData.PendingDependees.AddUnique(Source);
-				Source->bHasOutstandingDependencies = true;
-			}
-
-			if (DelegateData.ReloadReq > Source->ReloadReq)
-				Source->ReloadReq = DelegateData.ReloadReq;
+			Planner.AddDependency(
+				FAngelscriptClassReloadPlanner::FNodeHandle(Source->ReloadPlannerNodeIndex),
+				FAngelscriptClassReloadPlanner::FNodeHandle(DelegateData.ReloadPlannerNodeIndex));
 		}
 	}
 	else
@@ -107,17 +116,16 @@ void FAngelscriptClassGenerator::AddReloadDependency(FReloadPropagation* Source,
 		if (SubTypeCount != 0)
 		{
 			for (int32 i = 0; i < SubTypeCount; ++i)
-				AddReloadDependency(Source, TypeInfo->GetSubType(i));
+				AddReloadDependency(Planner, Source, TypeInfo->GetSubType(i));
 		}
 	}
 }
 
-void FAngelscriptClassGenerator::PropagateReloadRequirements(FModuleData& ModuleData, FClassData& ClassData)
+void FAngelscriptClassGenerator::CollectReloadDependencies(
+	FAngelscriptClassReloadPlanner& Planner,
+	FModuleData& ModuleData,
+	FClassData& ClassData)
 {
-	if (ClassData.bStartedPropagating)
-		return;
-	ClassData.bStartedPropagating = true;
-
 	// Don't need to propagate if we're already forcing a full reload
 	if (ClassData.ReloadReq >= EReloadRequirement::FullReloadRequired)
 		return;
@@ -126,14 +134,11 @@ void FAngelscriptClassGenerator::PropagateReloadRequirements(FModuleData& Module
 
 	if (!ClassDesc->bSuperIsCodeClass)
 	{
-		FModuleData* OtherModule = nullptr;
-		FClassData* OtherClass = nullptr;
-		FDelegateData* OtherDelegate = nullptr;
 		asITypeInfo* SuperScriptType = ClassDesc->ScriptType->GetBaseType();
 
 		// Check if it's a class we're reloading
 		if (SuperScriptType != nullptr)
-			AddReloadDependency(&ClassData, SuperScriptType);
+			AddReloadDependency(Planner, &ClassData, SuperScriptType);
 	}
 
 	if (ClassData.NewClass->ScriptType != nullptr)
@@ -144,7 +149,7 @@ void FAngelscriptClassGenerator::PropagateReloadRequirements(FModuleData& Module
 		{
 			asCObjectProperty* Prop = ObjType->localProperties[PropIndex];
 			if (Prop->type.IsObject())
-				AddReloadDependency(&ClassData, Prop->type.GetTypeInfo());
+				AddReloadDependency(Planner, &ClassData, Prop->type.GetTypeInfo());
 		}
 
 		int MethodCount = ObjType->methods.GetLength();
@@ -152,13 +157,13 @@ void FAngelscriptClassGenerator::PropagateReloadRequirements(FModuleData& Module
 		{
 			asCScriptFunction* Func = (asCScriptFunction*)ObjType->engine->GetFunctionById(ObjType->methods[MethodIndex]);
 			if (Func->returnType.IsObject())
-				AddReloadDependency(&ClassData, Func->returnType.GetTypeInfo());
+				AddReloadDependency(Planner, &ClassData, Func->returnType.GetTypeInfo());
 
 			int ParamCount = Func->parameterTypes.GetLength();
 			for (int ParamIndex = 0; ParamIndex < ParamCount; ++ParamIndex)
 			{
 				if (Func->parameterTypes[ParamIndex].IsObject())
-					AddReloadDependency(&ClassData, Func->parameterTypes[ParamIndex].GetTypeInfo());
+					AddReloadDependency(Planner, &ClassData, Func->parameterTypes[ParamIndex].GetTypeInfo());
 			}
 		}
 	}
@@ -166,54 +171,73 @@ void FAngelscriptClassGenerator::PropagateReloadRequirements(FModuleData& Module
 	{
 		for (auto Property : ClassDesc->Properties)
 		{
-			AddReloadDependency(&ClassData, Property->PropertyType);
+			AddReloadDependency(Planner, &ClassData, Property->PropertyType);
 		}
 
 		for (auto Function : ClassDesc->Methods)
 		{
-			AddReloadDependency(&ClassData, Function->ReturnType);
+			AddReloadDependency(Planner, &ClassData, Function->ReturnType);
 			for (auto Argument : Function->Arguments)
-				AddReloadDependency(&ClassData, Argument.Type);
+				AddReloadDependency(Planner, &ClassData, Argument.Type);
 		}
 	}
-
-	ClassData.bFinishedPropagating = true;
-	ResolvePendingReloadDependees(&ClassData);
 }
 
-void FAngelscriptClassGenerator::PropagateReloadRequirements(FModuleData& ModuleData, FDelegateData& DelegateData)
+void FAngelscriptClassGenerator::CollectReloadDependencies(
+	FAngelscriptClassReloadPlanner& Planner,
+	FModuleData& ModuleData,
+	FDelegateData& DelegateData)
 {
-	if (DelegateData.bStartedPropagating)
-		return;
-	DelegateData.bStartedPropagating = true;
-
 	// Don't need to propagate if we're already forcing a full reload
 	if (DelegateData.ReloadReq >= EReloadRequirement::FullReloadRequired)
 		return;
 
 	auto Function = DelegateData.NewDelegate->Signature;
-	AddReloadDependency(&DelegateData, Function->ReturnType);
+	AddReloadDependency(Planner, &DelegateData, Function->ReturnType);
 	for (auto Argument : Function->Arguments)
-		AddReloadDependency(&DelegateData, Argument.Type);
-
-	DelegateData.bFinishedPropagating = true;
-	ResolvePendingReloadDependees(&DelegateData);
+		AddReloadDependency(Planner, &DelegateData, Argument.Type);
 }
 
-void FAngelscriptClassGenerator::ResolvePendingReloadDependees(FReloadPropagation* Source)
+void FAngelscriptClassGenerator::ApplyReloadPlannerResults(FAngelscriptClassReloadPlanner& Planner)
 {
-	check(Source->bFinishedPropagating);
-
-	// Anything that was marked dependent on us before we finished propagation should
-	// receive our latest reload requirement via recursive push.
-	for (FReloadPropagation* Dependee : Source->PendingDependees)
+	for (FModuleData& ModuleData : Modules)
 	{
-		if (Source->ReloadReq > Dependee->ReloadReq)
+		for (FClassData& ClassData : ModuleData.Classes)
 		{
-			Dependee->ReloadReq = Source->ReloadReq;
+			if (ClassData.ReloadPlannerNodeIndex == INDEX_NONE)
+				continue;
 
-			// Need to recurse so we apply the same reload requirement forward
-			ResolvePendingReloadDependees(Dependee);
+			const EReloadRequirement PlannedRequirement = Planner.GetRequirement(
+				FAngelscriptClassReloadPlanner::FNodeHandle(ClassData.ReloadPlannerNodeIndex));
+			if (PlannedRequirement > ClassData.ReloadReq)
+				ClassData.ReloadReq = PlannedRequirement;
+
+			if (ClassData.ReloadReq > ModuleData.ReloadReq)
+			{
+				ModuleData.ReloadReq = ClassData.ReloadReq;
+#if WITH_EDITOR
+				ModuleData.ReloadReqLines.AddUnique(ClassData.NewClass->LineNumber);
+#endif
+			}
+		}
+
+		for (FDelegateData& DelegateData : ModuleData.Delegates)
+		{
+			if (DelegateData.ReloadPlannerNodeIndex == INDEX_NONE)
+				continue;
+
+			const EReloadRequirement PlannedRequirement = Planner.GetRequirement(
+				FAngelscriptClassReloadPlanner::FNodeHandle(DelegateData.ReloadPlannerNodeIndex));
+			if (PlannedRequirement > DelegateData.ReloadReq)
+				DelegateData.ReloadReq = PlannedRequirement;
+
+			if (DelegateData.ReloadReq > ModuleData.ReloadReq)
+			{
+				ModuleData.ReloadReq = DelegateData.ReloadReq;
+#if WITH_EDITOR
+				ModuleData.ReloadReqLines.AddUnique(DelegateData.NewDelegate->LineNumber);
+#endif
+			}
 		}
 	}
 }

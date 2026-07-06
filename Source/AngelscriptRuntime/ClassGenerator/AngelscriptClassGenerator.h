@@ -37,11 +37,8 @@ struct FAngelscriptClassGenerator
 private:
 	struct FReloadPropagation
 	{
-		bool bStartedPropagating = false;
-		bool bFinishedPropagating = false;
-		bool bHasOutstandingDependencies = false;
 		EReloadRequirement ReloadReq = EReloadRequirement::SoftReload;
-		TArray<FReloadPropagation*> PendingDependees;
+		int32 ReloadPlannerNodeIndex = INDEX_NONE;
 	};
 
 	struct FClassData : public FReloadPropagation
@@ -144,12 +141,13 @@ private:
 
 	void PerformReload(bool bFullReload);
 
-	void AddReloadDependency(FReloadPropagation* Source, const FAngelscriptTypeUsage& Type);
-	void AddReloadDependency(FReloadPropagation* Source, class asITypeInfo* TypeInfo);
+	void RegisterReloadPlannerNodes(struct FAngelscriptClassReloadPlanner& Planner);
+	void AddReloadDependency(struct FAngelscriptClassReloadPlanner& Planner, FReloadPropagation* Source, const FAngelscriptTypeUsage& Type);
+	void AddReloadDependency(struct FAngelscriptClassReloadPlanner& Planner, FReloadPropagation* Source, class asITypeInfo* TypeInfo);
 
-	void PropagateReloadRequirements(FModuleData& Module, FClassData& Class);
-	void PropagateReloadRequirements(FModuleData& Module, FDelegateData& Delegate);
-	void ResolvePendingReloadDependees(FReloadPropagation* Source);
+	void CollectReloadDependencies(struct FAngelscriptClassReloadPlanner& Planner, FModuleData& Module, FClassData& Class);
+	void CollectReloadDependencies(struct FAngelscriptClassReloadPlanner& Planner, FModuleData& Module, FDelegateData& Delegate);
+	void ApplyReloadPlannerResults(struct FAngelscriptClassReloadPlanner& Planner);
 
 	TArray<FModuleData> Modules;
 	TMap<class asITypeInfo*, class asITypeInfo*> UpdatedScriptTypeMap;

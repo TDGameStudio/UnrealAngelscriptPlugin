@@ -1,4 +1,5 @@
 #include "ClassGenerator/AngelscriptClassGenerator.h"
+#include "ClassGenerator/AngelscriptClassReloadPlanner.h"
 #include "ClassGenerator/AngelscriptClassGeneratorShared.h"
 #include "ClassGenerator/AngelscriptClassRedirects.h"
 #include "ClassGenerator/ASClass.h"
@@ -1958,19 +1959,24 @@ FAngelscriptClassGenerator::EReloadRequirement FAngelscriptClassGenerator::Setup
 	for (auto& ModuleData : Modules)
 		TryGenerateClassRenameRedirects(ModuleData);
 
+	FAngelscriptClassReloadPlanner ReloadPlanner;
+	RegisterReloadPlannerNodes(ReloadPlanner);
+
 	// Make sure all classes have the reload requirements of their
 	// dependencies propagated to them.
 	for (auto& ModuleData : Modules)
 	{
 		for (auto& ClassData : ModuleData.Classes)
 		{
-			PropagateReloadRequirements(ModuleData, ClassData);
+			CollectReloadDependencies(ReloadPlanner, ModuleData, ClassData);
 		}
 		for (auto& DelegateData : ModuleData.Delegates)
 		{
-			PropagateReloadRequirements(ModuleData, DelegateData);
+			CollectReloadDependencies(ReloadPlanner, ModuleData, DelegateData);
 		}
 	}
+	ReloadPlanner.PropagateAll();
+	ApplyReloadPlannerResults(ReloadPlanner);
 
 	// Determine what kind of reload we require
 	EReloadRequirement ReloadReq = EReloadRequirement::SoftReload;
