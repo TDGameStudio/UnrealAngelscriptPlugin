@@ -76,7 +76,7 @@
 #include "Testing/AngelscriptTestSettings.h"
 
 #if WITH_AS_COVERAGE
-#include "CodeCoverage/AngelscriptCodeCoverage.h"
+#include "Extension/CodeCoverage/AngelscriptCodeCoverage.h"
 #endif
 
 DEFINE_LOG_CATEGORY(Angelscript);
@@ -1008,6 +1008,10 @@ void FAngelscriptEngine::InitializeWithoutInitialCompile()
 	}
 #endif
 
+#if WITH_AS_COVERAGE
+	FAngelscriptCodeCoverageExtension::EnsureAttached(*this);
+#endif
+
 	FAngelscriptEngineExtensionRegistry::Get().AttachEngine(*this);
 }
 
@@ -1859,10 +1863,7 @@ void FAngelscriptEngine::Initialize_AnyThread()
 #endif
 
 #if WITH_AS_COVERAGE
-	if (FAngelscriptCodeCoverage::CoverageEnabled())
-	{
-		CodeCoverage = new FAngelscriptCodeCoverage;
-	}
+	FAngelscriptCodeCoverageExtension::EnsureAttached(*this);
 #endif
 
 	// The bind database must exist on this engine BEFORE we load Binds.Cache below.
@@ -2060,16 +2061,6 @@ void FAngelscriptEngine::Initialize_AnyThread()
 #if AS_PRINT_STATS && AS_PRECOMPILED_STATS
 	if (bUsePrecompiledData)
 		FAngelscriptPrecompiledData::OutputTimingData();
-#endif
-
-#if WITH_EDITOR && WITH_AS_COVERAGE
-	FCoreDelegates::GetOnPostEngineInit().AddLambda([&]()
-	{
-		if (CodeCoverage != nullptr)
-		{
-			CodeCoverage->AddTestFrameworkHooks();
-		}
-	});
 #endif
 
 #if !UE_BUILD_SHIPPING
@@ -5146,7 +5137,7 @@ void FAngelscriptEngine::CompileModule_Globals_Stage4(ECompileType CompileType, 
 	ScriptModule->ResetGlobalVars(0);
 
 #if WITH_AS_COVERAGE
-	if (CodeCoverage != nullptr && !Module->bCompileError)
+	if (FAngelscriptCodeCoverage* CodeCoverage = FAngelscriptCodeCoverageExtension::GetForEngine(*this))
 	{
 		CodeCoverage->MapExecutableLines(*Module);
 	}
@@ -6182,7 +6173,7 @@ void FAngelscriptEngine::UpdateLineCallbackState()
 #endif
 
 #if WITH_AS_COVERAGE
-	if (CodeCoverage != nullptr)
+	if (FAngelscriptCodeCoverageExtension::GetForEngine(*this) != nullptr)
 	{
 		bEverRunLineCallback = true;
 		bAlwaysRunLineCallback = true;
@@ -6275,7 +6266,7 @@ void AngelscriptLineCallback(asCContext* Context)
 #endif
 
 #if WITH_AS_COVERAGE
-	if (AngelscriptManager.CodeCoverage != nullptr)
+	if (FAngelscriptCodeCoverage* CodeCoverage = FAngelscriptCodeCoverageExtension::GetForEngine(AngelscriptManager))
 	{
 		int Column;
 		int Line = Context->GetLineNumber(0, &Column, nullptr);
@@ -6284,7 +6275,7 @@ void AngelscriptLineCallback(asCContext* Context)
 		TSharedPtr<struct FAngelscriptModuleDesc> Module = AngelscriptManager.GetModule(ModuleName);
 		if (Module != nullptr)
 		{
-			AngelscriptManager.CodeCoverage->HitLine(*Module, Line);
+			CodeCoverage->HitLine(*Module, Line);
 		}
 	}
 #endif

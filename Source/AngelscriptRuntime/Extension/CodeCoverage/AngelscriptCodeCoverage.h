@@ -1,19 +1,23 @@
 #pragma once
 
 #include "AngelscriptEngine.h"
+#include "Core/AngelscriptEngineExtensionRegistry.h"
 #include "LineCoverage.h"
 
 #if WITH_EDITOR
 #include "IAutomationControllerModule.h"
+#include "IAutomationControllerManager.h"
 #endif
 
 class asIScriptModule;
 class asCScriptFunction;
 
-// Manages a map of FLineCoverage entries per AS module and can write out reports in HTML.
-// The resulting HTML files are written out to Saved/CodeCoverage/.
+// Manages per-module line coverage and writes the machine-readable
+// coverage_summary.json package consumed by external tools.
 struct FAngelscriptCodeCoverage
 {
+	ANGELSCRIPTRUNTIME_API ~FAngelscriptCodeCoverage();
+
 	static ANGELSCRIPTRUNTIME_API bool CoverageEnabled();
 
 	// Starts recording (HitLine calls are ignored unless we're recording).
@@ -53,14 +57,11 @@ private:
 
 	// Writes a report for the case we were run from the tests.
 	void OnTestsStopping();
+
+	void RemoveTestFrameworkHooks();
 #endif
 
-	// Writes out the coverage results as a directory structure that matches the .as source
-	// structure, with one summary .html file per source file.
-	bool WriteReportHtml(const FString& OutputDir);
-
-	// Writes summary index.html files for each dir.
-	bool WriteCoverageSummaries(const FString& OutputDir) const;
+	bool WriteCoverageJson(const FString& OutputDir);
 
 	void MapFunction(asCScriptFunction* F, TMap<int, int>& HitCounts);
 
@@ -70,4 +71,38 @@ private:
 	TMap<FString, FLineCoverage> FilesToCoverage;
 
 	bool bRecording = false;
+
+#if WITH_EDITOR
+	IAutomationControllerManagerPtr AutomationController;
+	FDelegateHandle TestsAvailableHandle;
+	FDelegateHandle TestsCompleteHandle;
+#endif
+};
+
+// Owns code coverage recorders per FAngelscriptEngine instance.
+class ANGELSCRIPTRUNTIME_API FAngelscriptCodeCoverageExtension : public IAngelscriptExtension
+{
+public:
+	FAngelscriptCodeCoverageExtension() = default;
+	FAngelscriptCodeCoverageExtension(const FAngelscriptCodeCoverageExtension&) = delete;
+	FAngelscriptCodeCoverageExtension& operator=(const FAngelscriptCodeCoverageExtension&) = delete;
+
+	virtual void OnEngineAttached(FAngelscriptEngine& Engine) override;
+	virtual void OnEngineDetached(FAngelscriptEngine& Engine) override;
+
+	FAngelscriptCodeCoverage* GetCoverage(FAngelscriptEngine& Engine) const;
+
+	static FAngelscriptCodeCoverage* GetForEngine(FAngelscriptEngine& Engine);
+	static FDelegateHandle Startup();
+	static void Shutdown(FDelegateHandle& Handle);
+	static void EnsureAttached(FAngelscriptEngine& Engine);
+
+private:
+	struct FEngineCoverage
+	{
+		FAngelscriptEngine* Engine = nullptr;
+		TUniquePtr<FAngelscriptCodeCoverage> Coverage;
+	};
+
+	TArray<FEngineCoverage> Coverages;
 };

@@ -3,6 +3,9 @@
 #include "AngelscriptEngineSubsystem.h"
 #include "AngelscriptGameInstanceSubsystem.h"
 #include "Dump/AngelscriptCrashSnapshot.h"
+#if WITH_AS_COVERAGE
+#include "Extension/CodeCoverage/AngelscriptCodeCoverage.h"
+#endif
 
 IMPLEMENT_MODULE(FAngelscriptRuntimeModule, AngelscriptRuntime);
 
@@ -17,12 +20,18 @@ void FAngelscriptRuntimeModule::StartupModule()
 {
 	UE_LOG(Angelscript, Verbose, TEXT("[RuntimeStartup] StartupModule."));
 	FAngelscriptCrashSnapshot::Startup();
+#if WITH_AS_COVERAGE
+	CodeCoverageExtensionHandle = FAngelscriptCodeCoverageExtension::Startup();
+#endif
 }
 
 void FAngelscriptRuntimeModule::ShutdownModule()
 {
 	UE_LOG(Angelscript, Verbose, TEXT("[RuntimeStartup] ShutdownModule ownedEngine=%s"),
 		OwnedPrimaryEngine.IsValid() ? TEXT("true") : TEXT("false"));
+#if WITH_AS_COVERAGE
+	FAngelscriptCodeCoverageExtension::Shutdown(CodeCoverageExtensionHandle);
+#endif
 	FAngelscriptCrashSnapshot::Shutdown();
 
 	if (OwnedPrimaryEngine.IsValid())

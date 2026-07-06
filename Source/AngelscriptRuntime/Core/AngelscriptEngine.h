@@ -51,7 +51,6 @@ struct FAngelscriptEngineLifetimeToken;
 struct FAngelscriptEngineContextStack;
 struct FAngelscriptEngineScope;
 
-struct FAngelscriptCodeCoverage;
 struct FStaticJITDiagnostics;
 struct FAngelscriptStateSnapshotBuilder;
 
@@ -789,10 +788,6 @@ public:
 	{
 		return RuntimeConfig;
 	}
-
-#if WITH_AS_COVERAGE
-	FAngelscriptCodeCoverage* CodeCoverage = nullptr;
-#endif
 
 private:
 	FAngelscriptEngineConfig RuntimeConfig;

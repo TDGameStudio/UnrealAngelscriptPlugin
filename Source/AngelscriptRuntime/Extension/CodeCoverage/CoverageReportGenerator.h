@@ -36,11 +36,6 @@ struct FCoverageNode
 	TMap<FString, FCoverageNode*> Children;
 };
 
-// Writes a .html file for this file to OutputDir/{RelativeFilename}.html, e.g. OutputDir/My/Path/File.as.html.
-// The number of lines in the source file is written out through OutNumLinesInOriginal.
-bool WriteFileCoverageReportHtml(const FString& RelativeFilename, const FLineCoverage& Coverage,
-	const FString& OutputDir, int& OutNumLinesInOriginal);
-
 // Constructs a directory tree from a bunch of paths, e.g. A/B/C.as, A/B/D.as and
 // E/F/G.as leads to the tree
 // [root] -> A -> B -> C.as
@@ -54,9 +49,13 @@ ANGELSCRIPTRUNTIME_API void AddCoverageLeaf(FCoverageNode& Root, const FString& 
 // set up the hit counts for all leaves.
 ANGELSCRIPTRUNTIME_API FCoverageCounts ComputeCoverage(FCoverageNode& Node);
 
-// Writes out index.html files for all directories. You must call ComputeCoverage first so
-// the hit counts for dirs are initialized.
-bool WriteCoverageSummaryHtml(FCoverageNode& Node, const FString& OutputDir);
+struct FCoverageJsonExportOptions
+{
+	TArray<FString> ExcludePatterns;
+};
 
-// Writes out coverage for the top level dirs + the total.
-bool WriteTopLevelCoverageJson(FCoverageNode& Root, const FString& OutputDir);
+// Writes the full machine-readable coverage package consumed by external tools.
+bool WriteCoverageSummaryJson(
+	TMap<FString, FLineCoverage>& FilesToCoverage,
+	const FString& OutputDir,
+	const FCoverageJsonExportOptions& Options);

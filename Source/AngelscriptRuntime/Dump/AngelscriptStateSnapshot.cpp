@@ -1,6 +1,9 @@
 #include "Dump/AngelscriptStateSnapshot.h"
 
 #include "Core/AngelscriptEngine.h"
+#if WITH_AS_COVERAGE
+#include "Extension/CodeCoverage/AngelscriptCodeCoverage.h"
+#endif
 
 #include "StartAngelscriptHeaders.h"
 #include "source/as_module.h"
@@ -396,7 +399,7 @@ FAngelscriptStateSnapshot FAngelscriptStateSnapshotBuilder::Capture(FAngelscript
 	AddPointerRow(Snapshot, TEXT("EngineMember"), TEXT("Services"), TEXT("PrecompiledData"), Engine.PrecompiledData, EngineSource);
 	AddPointerRow(Snapshot, TEXT("EngineMember"), TEXT("Services"), TEXT("StaticJIT"), Engine.StaticJIT, EngineSource);
 #if WITH_AS_COVERAGE
-	AddPointerRow(Snapshot, TEXT("EngineMember"), TEXT("Services"), TEXT("CodeCoverage"), Engine.CodeCoverage, EngineSource);
+	AddPointerRow(Snapshot, TEXT("EngineMember"), TEXT("Services"), TEXT("CodeCoverage"), FAngelscriptCodeCoverageExtension::GetForEngine(Engine), EngineSource);
 #else
 	Snapshot.AddRow(TEXT("EngineMember"), TEXT("Services"), TEXT("CodeCoverage"), TEXT("Unavailable"), TEXT("Unavailable"), EngineSource);
 #endif

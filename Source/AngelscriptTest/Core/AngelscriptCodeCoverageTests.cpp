@@ -7,7 +7,7 @@
 // OVERVIEW
 // --------
 // The coverage system tracks which lines of .as scripts are executed during a
-// test run and writes an HTML report afterwards. Three core types are tested:
+// test run and writes a structured JSON report afterwards. Three core types are tested:
 //
 //   FAngelscriptCodeCoverage  -- top-level manager; owns the per-file map and
 //                                drives Start/Stop recording.
@@ -69,7 +69,7 @@
 //
 // Lines outside this map are ignored when HitLine() runs. This filters out
 // invalid/out-of-range hits and keeps the report limited to compiled script
-// lines. During HTML generation, PruneGeneratedCode() also removes generated
+// lines. During JSON export, PruneGeneratedCode() also removes generated
 // AngelScript lines that live beyond the original source file length.
 //
 // AUTOMATION HOOKS
@@ -84,8 +84,7 @@
 //        +-- OnTestsComplete() --------> StopRecordingAndWriteReport()
 //
 // StartRecording() resets all hit counts and enables recording. StopRecording
-// disables recording, writes per-file HTML, writes directory index.html files,
-// and writes coverage_summary.json.
+// disables recording and writes coverage_summary.json.
 //
 // HOW TO USE CODE COVERAGE
 // ------------------------
@@ -106,8 +105,7 @@
 //   4. execute script, or call HitLine(Module, Line) directly for deterministic
 //      unit coverage of the manager;
 //   5. call StopRecordingAndWriteReport(OutputDir);
-//   6. inspect OutputDir/index.html, per-file .as.html files, and
-//      OutputDir/coverage_summary.json.
+//   6. inspect OutputDir/coverage_summary.json.
 //
 // The integration tests in this file compile real AS scripts, execute their
 // entry points to verify script behavior, and exercise MapExecutableLines /
@@ -122,14 +120,18 @@
 #include "AngelscriptReflectiveAccess.h"
 #include "AngelscriptTestMacros.h"
 
-#include "CodeCoverage/AngelscriptCodeCoverage.h"
-#include "CodeCoverage/CoverageReportGenerator.h"
-#include "CodeCoverage/LineCoverage.h"
+#include "Extension/CodeCoverage/AngelscriptCodeCoverage.h"
+#include "Extension/CodeCoverage/CoverageReportGenerator.h"
+#include "Extension/CodeCoverage/LineCoverage.h"
+#include "Dom/JsonObject.h"
 #include "HAL/PlatformFileManager.h"
 #include "GenericPlatform/GenericPlatformFile.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Guid.h"
 #include "Misc/Paths.h"
+#include "Serialization/JsonReader.h"
+#include "Serialization/JsonSerializer.h"
+#include "Testing/AngelscriptTestSettings.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS && WITH_AS_COVERAGE
 
@@ -195,6 +197,146 @@ namespace AngelscriptCodeCoverageTests
 		return LocalAssert.IsTrue(
 			FFileHelper::LoadFileToString(OutContents, *Path),
 			FString::Printf(TEXT("%s should be readable at %s"), Context, *Path));
+	}
+
+	bool LoadJsonObjectChecked(
+		FAutomationTestBase& Test,
+		const FString& Path,
+		TSharedPtr<FJsonObject>& OutObject,
+		const TCHAR* Context)
+	{
+		FString JsonString;
+		if (!LoadFileToStringChecked(Test, Path, JsonString, Context))
+		{
+			return false;
+		}
+
+		const TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonString);
+		FNoDiscardAsserter LocalAssert(Test);
+		return LocalAssert.IsTrue(
+			FJsonSerializer::Deserialize(Reader, OutObject) && OutObject.IsValid(),
+			FString::Printf(TEXT("%s should parse as JSON object"), Context));
+	}
+
+	TSharedPtr<FJsonObject> FindFileEntry(
+		const TArray<TSharedPtr<FJsonValue>>& FileValues,
+		const FString& RelativePath)
+	{
+		for (const TSharedPtr<FJsonValue>& FileValue : FileValues)
+		{
+			if (!FileValue.IsValid())
+			{
+				continue;
+			}
+
+			const TSharedPtr<FJsonObject> FileObject = FileValue->AsObject();
+			if (!FileObject.IsValid())
+			{
+				continue;
+			}
+
+			FString EntryPath;
+			if (FileObject->TryGetStringField(TEXT("relative_path"), EntryPath) && EntryPath == RelativePath)
+			{
+				return FileObject;
+			}
+		}
+
+		return nullptr;
+	}
+
+	bool RequireCoverageJsonShape(
+		FAutomationTestBase& Test,
+		const TSharedPtr<FJsonObject>& JsonObject,
+		const TCHAR* Context)
+	{
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsTrue(JsonObject.IsValid(), FString::Printf(TEXT("%s should be valid"), Context)))
+		{
+			return false;
+		}
+
+		const TSharedPtr<FJsonObject>* GeneratorObject = nullptr;
+		const TSharedPtr<FJsonObject>* SummaryObject = nullptr;
+		const TSharedPtr<FJsonObject>* SettingsObject = nullptr;
+		const TSharedPtr<FJsonObject>* CaptureObject = nullptr;
+		const TSharedPtr<FJsonObject>* ExtensionsObject = nullptr;
+		const TArray<TSharedPtr<FJsonValue>>* Directories = nullptr;
+		const TArray<TSharedPtr<FJsonValue>>* Files = nullptr;
+
+		bool bShapeOk = true;
+		bShapeOk &= LocalAssert.IsTrue(JsonObject->HasTypedField<EJson::Number>(TEXT("schema_version")), FString::Printf(TEXT("%s should include numeric schema_version"), Context));
+		bShapeOk &= LocalAssert.IsTrue(JsonObject->TryGetObjectField(TEXT("generator"), GeneratorObject), FString::Printf(TEXT("%s should include generator object"), Context));
+		bShapeOk &= LocalAssert.IsTrue(JsonObject->HasTypedField<EJson::String>(TEXT("generated_at_utc")), FString::Printf(TEXT("%s should include generated_at_utc"), Context));
+		bShapeOk &= LocalAssert.IsTrue(JsonObject->TryGetObjectField(TEXT("summary"), SummaryObject), FString::Printf(TEXT("%s should include summary object"), Context));
+		bShapeOk &= LocalAssert.IsTrue(JsonObject->TryGetArrayField(TEXT("directories"), Directories), FString::Printf(TEXT("%s should include directories array"), Context));
+		bShapeOk &= LocalAssert.IsTrue(JsonObject->TryGetArrayField(TEXT("files"), Files), FString::Printf(TEXT("%s should include files array"), Context));
+		bShapeOk &= LocalAssert.IsTrue(JsonObject->TryGetObjectField(TEXT("settings"), SettingsObject), FString::Printf(TEXT("%s should include settings object"), Context));
+		bShapeOk &= LocalAssert.IsTrue(JsonObject->TryGetObjectField(TEXT("capture_capabilities"), CaptureObject), FString::Printf(TEXT("%s should include capture_capabilities object"), Context));
+		bShapeOk &= LocalAssert.IsTrue(JsonObject->TryGetObjectField(TEXT("extensions"), ExtensionsObject), FString::Printf(TEXT("%s should include extensions object"), Context));
+		if (!bShapeOk)
+		{
+			return false;
+		}
+
+		bShapeOk &= LocalAssert.IsTrue((*GeneratorObject)->HasTypedField<EJson::String>(TEXT("name")), FString::Printf(TEXT("%s generator should include name"), Context));
+		bShapeOk &= LocalAssert.IsTrue((*SummaryObject)->HasTypedField<EJson::Number>(TEXT("lines_hit")), FString::Printf(TEXT("%s summary should include lines_hit"), Context));
+		bShapeOk &= LocalAssert.IsTrue((*SummaryObject)->HasTypedField<EJson::Number>(TEXT("lines_total")), FString::Printf(TEXT("%s summary should include lines_total"), Context));
+		bShapeOk &= LocalAssert.IsTrue((*SummaryObject)->HasTypedField<EJson::Number>(TEXT("coverage_pct")), FString::Printf(TEXT("%s summary should include coverage_pct"), Context));
+		bShapeOk &= LocalAssert.IsTrue((*SummaryObject)->HasTypedField<EJson::Boolean>(TEXT("has_executable_lines")), FString::Printf(TEXT("%s summary should include has_executable_lines"), Context));
+		bShapeOk &= LocalAssert.IsTrue((*SettingsObject)->HasTypedField<EJson::Array>(TEXT("exclude_patterns")), FString::Printf(TEXT("%s settings should include exclude_patterns"), Context));
+		bShapeOk &= LocalAssert.IsTrue((*CaptureObject)->HasTypedField<EJson::String>(TEXT("line_coverage")), FString::Printf(TEXT("%s capture_capabilities should include line_coverage"), Context));
+		bShapeOk &= LocalAssert.IsTrue((*CaptureObject)->HasTypedField<EJson::String>(TEXT("function_timing")), FString::Printf(TEXT("%s capture_capabilities should include function_timing"), Context));
+		return bShapeOk;
+	}
+
+	bool RequireFileEntryShape(
+		FAutomationTestBase& Test,
+		const TSharedPtr<FJsonObject>& FileObject,
+		const FString& RelativePath,
+		const TCHAR* Context)
+	{
+		FNoDiscardAsserter LocalAssert(Test);
+		if (!LocalAssert.IsTrue(FileObject.IsValid(), FString::Printf(TEXT("%s should be valid"), Context)))
+		{
+			return false;
+		}
+
+		const TSharedPtr<FJsonObject>* SummaryObject = nullptr;
+		const TArray<TSharedPtr<FJsonValue>>* Lines = nullptr;
+		bool bShapeOk = true;
+		bShapeOk &= LocalAssert.AreEqual(RelativePath, FileObject->GetStringField(TEXT("relative_path")), FString::Printf(TEXT("%s should expose relative_path"), Context));
+		bShapeOk &= LocalAssert.IsTrue(FileObject->HasTypedField<EJson::String>(TEXT("absolute_path")), FString::Printf(TEXT("%s should include absolute_path"), Context));
+		bShapeOk &= LocalAssert.IsTrue(FileObject->HasTypedField<EJson::Number>(TEXT("source_line_count")), FString::Printf(TEXT("%s should include source_line_count"), Context));
+		bShapeOk &= LocalAssert.IsTrue(FileObject->HasTypedField<EJson::Boolean>(TEXT("included_in_summary")), FString::Printf(TEXT("%s should include included_in_summary"), Context));
+		bShapeOk &= LocalAssert.IsTrue(FileObject->HasTypedField<EJson::String>(TEXT("exclude_pattern")), FString::Printf(TEXT("%s should include exclude_pattern"), Context));
+		bShapeOk &= LocalAssert.IsTrue(FileObject->TryGetObjectField(TEXT("summary"), SummaryObject), FString::Printf(TEXT("%s should include summary object"), Context));
+		bShapeOk &= LocalAssert.IsTrue(FileObject->TryGetArrayField(TEXT("lines"), Lines), FString::Printf(TEXT("%s should include lines array"), Context));
+		if (!bShapeOk)
+		{
+			return false;
+		}
+
+		bShapeOk &= LocalAssert.IsTrue((*SummaryObject)->HasTypedField<EJson::Number>(TEXT("lines_hit")), FString::Printf(TEXT("%s summary should include lines_hit"), Context));
+		bShapeOk &= LocalAssert.IsTrue((*SummaryObject)->HasTypedField<EJson::Number>(TEXT("lines_total")), FString::Printf(TEXT("%s summary should include lines_total"), Context));
+		bShapeOk &= LocalAssert.IsTrue((*SummaryObject)->HasTypedField<EJson::Boolean>(TEXT("has_executable_lines")), FString::Printf(TEXT("%s summary should include has_executable_lines"), Context));
+
+		int32 PreviousLine = 0;
+		for (const TSharedPtr<FJsonValue>& LineValue : *Lines)
+		{
+			const TSharedPtr<FJsonObject> LineObject = LineValue.IsValid() ? LineValue->AsObject() : nullptr;
+			if (!LocalAssert.IsTrue(LineObject.IsValid(), FString::Printf(TEXT("%s line entry should be an object"), Context)))
+			{
+				return false;
+			}
+
+			const int32 LineNumber = static_cast<int32>(LineObject->GetNumberField(TEXT("line")));
+			bShapeOk &= LocalAssert.IsTrue(LineNumber > PreviousLine, FString::Printf(TEXT("%s line entries should be sorted by line number"), Context));
+			bShapeOk &= LocalAssert.IsTrue(LineObject->HasTypedField<EJson::Number>(TEXT("hits")), FString::Printf(TEXT("%s line entry should include hits"), Context));
+			PreviousLine = LineNumber;
+		}
+
+		return bShapeOk;
 	}
 }
 
@@ -995,12 +1137,14 @@ int ReportTest()
 		Coverage.StartRecording();
 
 		const FLineCoverage* LineCov = Coverage.GetLineCoverage(*FoundModule);
-		if (AngelscriptCodeCoverageTests::RequireMappedCoverage(*TestRunner, LineCov, TEXT("ASCoverageReport")))
+		if (!AngelscriptCodeCoverageTests::RequireMappedCoverage(*TestRunner, LineCov, TEXT("ASCoverageReport")))
 		{
-			for (const auto& Pair : LineCov->HitCounts)
-			{
-				Coverage.HitLine(*FoundModule, Pair.Key);
-			}
+			return;
+		}
+
+		for (const auto& Pair : LineCov->HitCounts)
+		{
+			Coverage.HitLine(*FoundModule, Pair.Key);
 		}
 
 		const FString TempDir = AngelscriptCodeCoverageTests::MakeUniqueCoverageReportDir(TEXT("CoverageReportTest"));
@@ -1008,24 +1152,54 @@ int ReportTest()
 
 		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 		FString ExpectedIndexPath = FPaths::Combine(TempDir, TEXT("index.html"));
-		(void)this->Assert.IsTrue(
+		(void)this->Assert.IsFalse(
 			PlatformFile.FileExists(*ExpectedIndexPath),
-			FString::Printf(TEXT("index.html should exist at %s"), *ExpectedIndexPath));
+			FString::Printf(TEXT("Runtime coverage export should not write index.html at %s"), *ExpectedIndexPath));
 		const FString ExpectedSummaryJsonPath = FPaths::Combine(TempDir, TEXT("coverage_summary.json"));
 		(void)this->Assert.IsTrue(
 			PlatformFile.FileExists(*ExpectedSummaryJsonPath),
 			FString::Printf(TEXT("coverage_summary.json should exist at %s"), *ExpectedSummaryJsonPath));
 
-		// Per-module HTML report should also exist.
 		const FString ExpectedModulePath = FPaths::ChangeExtension(
 			FPaths::Combine(TempDir, (*FoundModule).Code[0].RelativeFilename),
 			TEXT(".as.html"));
-		(void)this->Assert.IsTrue(
+		(void)this->Assert.IsFalse(
 			PlatformFile.FileExists(*ExpectedModulePath),
-			FString::Printf(TEXT("Module report should exist at %s"), *ExpectedModulePath));
+			FString::Printf(TEXT("Runtime coverage export should not write module HTML at %s"), *ExpectedModulePath));
+
+		TSharedPtr<FJsonObject> SummaryObject;
+		if (!AngelscriptCodeCoverageTests::LoadJsonObjectChecked(*TestRunner, ExpectedSummaryJsonPath, SummaryObject, TEXT("Coverage report JSON"))
+			|| !AngelscriptCodeCoverageTests::RequireCoverageJsonShape(*TestRunner, SummaryObject, TEXT("Coverage report JSON")))
+		{
+			return;
+		}
+
+		const TArray<TSharedPtr<FJsonValue>>* Files = nullptr;
+		if (!this->Assert.IsTrue(SummaryObject->TryGetArrayField(TEXT("files"), Files), TEXT("Coverage report JSON should expose files")))
+		{
+			return;
+		}
+
+		const FString RelativeFilename = (*FoundModule).Code[0].RelativeFilename;
+		const TSharedPtr<FJsonObject> FileObject = AngelscriptCodeCoverageTests::FindFileEntry(*Files, RelativeFilename);
+		if (!AngelscriptCodeCoverageTests::RequireFileEntryShape(*TestRunner, FileObject, RelativeFilename, TEXT("ASCoverageReport JSON file entry")))
+		{
+			return;
+		}
+
+		const TSharedPtr<FJsonObject>* FileSummary = nullptr;
+		(void)this->Assert.IsTrue(FileObject->TryGetObjectField(TEXT("summary"), FileSummary), TEXT("ASCoverageReport file entry should include summary"));
+		(void)this->Assert.AreEqual(
+			LineCov->NumExecutableLines(),
+			static_cast<int32>((*FileSummary)->GetNumberField(TEXT("lines_total"))),
+			TEXT("JSON file summary should expose executable line count"));
+		(void)this->Assert.AreEqual(
+			LineCov->NumLinesHit(),
+			static_cast<int32>((*FileSummary)->GetNumberField(TEXT("lines_hit"))),
+			TEXT("JSON file summary should expose hit line count"));
 
 		// Keep the generated report under Saved/Automation/CodeCoverage so
-		// it can be opened manually when validating report layout and contents.
+		// coverage_summary.json can be inspected manually when validating export contents.
 	}
 
 	TEST_METHOD(ReportGenerationWritesMultiFileUClassReport)
@@ -1298,73 +1472,92 @@ class AASCoverageReportActor : AActor
 			FPaths::Combine(OutputDir, (*ActorDesc).Code[0].RelativeFilename),
 			TEXT(".as.html"));
 
-		(void)this->Assert.IsTrue(
+		(void)this->Assert.IsFalse(
 			PlatformFile.FileExists(*IndexPath),
-			FString::Printf(TEXT("Expanded report index.html should exist at %s"), *IndexPath));
+			FString::Printf(TEXT("Runtime coverage export should not write index.html at %s"), *IndexPath));
 		(void)this->Assert.IsTrue(
 			PlatformFile.FileExists(*SummaryJsonPath),
 			FString::Printf(TEXT("Expanded report coverage_summary.json should exist at %s"), *SummaryJsonPath));
-		(void)this->Assert.IsTrue(
+		(void)this->Assert.IsFalse(
 			PlatformFile.FileExists(*GlobalReportPath),
-			FString::Printf(TEXT("Global module report should exist at %s"), *GlobalReportPath));
-		(void)this->Assert.IsTrue(
+			FString::Printf(TEXT("Runtime coverage export should not write global HTML at %s"), *GlobalReportPath));
+		(void)this->Assert.IsFalse(
 			PlatformFile.FileExists(*ActorReportPath),
-			FString::Printf(TEXT("Actor module report should exist at %s"), *ActorReportPath));
+			FString::Printf(TEXT("Runtime coverage export should not write actor HTML at %s"), *ActorReportPath));
 
-		FString IndexHtml;
-		FString ActorHtml;
-		FString GlobalHtml;
-		FString SummaryJson;
-		if (!AngelscriptCodeCoverageTests::LoadFileToStringChecked(*TestRunner, IndexPath, IndexHtml, TEXT("Expanded report index"))
-			|| !AngelscriptCodeCoverageTests::LoadFileToStringChecked(*TestRunner, ActorReportPath, ActorHtml, TEXT("Actor HTML report"))
-			|| !AngelscriptCodeCoverageTests::LoadFileToStringChecked(*TestRunner, GlobalReportPath, GlobalHtml, TEXT("Global HTML report"))
-			|| !AngelscriptCodeCoverageTests::LoadFileToStringChecked(*TestRunner, SummaryJsonPath, SummaryJson, TEXT("Expanded report summary JSON")))
+		TSharedPtr<FJsonObject> SummaryObject;
+		if (!AngelscriptCodeCoverageTests::LoadJsonObjectChecked(*TestRunner, SummaryJsonPath, SummaryObject, TEXT("Expanded report JSON"))
+			|| !AngelscriptCodeCoverageTests::RequireCoverageJsonShape(*TestRunner, SummaryObject, TEXT("Expanded report JSON")))
 		{
 			return;
 		}
 
+		const TArray<TSharedPtr<FJsonValue>>* Files = nullptr;
+		const TArray<TSharedPtr<FJsonValue>>* Directories = nullptr;
+		if (!this->Assert.IsTrue(SummaryObject->TryGetArrayField(TEXT("files"), Files), TEXT("Expanded report JSON should expose files"))
+			|| !this->Assert.IsTrue(SummaryObject->TryGetArrayField(TEXT("directories"), Directories), TEXT("Expanded report JSON should expose directories")))
+		{
+			return;
+		}
+
+		(void)this->Assert.AreEqual(2, Files->Num(), TEXT("Expanded report JSON should include the global and actor files"));
+
+		FString PreviousPath;
+		for (const TSharedPtr<FJsonValue>& FileValue : *Files)
+		{
+			const TSharedPtr<FJsonObject> FileObject = FileValue.IsValid() ? FileValue->AsObject() : nullptr;
+			if (!this->Assert.IsTrue(FileObject.IsValid(), TEXT("Expanded report file entry should be an object")))
+			{
+				return;
+			}
+
+			const FString CurrentPath = FileObject->GetStringField(TEXT("relative_path"));
+			(void)this->Assert.IsTrue(
+				PreviousPath.IsEmpty() || PreviousPath < CurrentPath,
+				TEXT("Expanded report file entries should be sorted by relative_path"));
+			PreviousPath = CurrentPath;
+		}
+
+		const TSharedPtr<FJsonObject> GlobalFileObject =
+			AngelscriptCodeCoverageTests::FindFileEntry(*Files, (*GlobalDesc).Code[0].RelativeFilename);
+		const TSharedPtr<FJsonObject> ActorFileObject =
+			AngelscriptCodeCoverageTests::FindFileEntry(*Files, (*ActorDesc).Code[0].RelativeFilename);
+		if (!AngelscriptCodeCoverageTests::RequireFileEntryShape(*TestRunner, GlobalFileObject, (*GlobalDesc).Code[0].RelativeFilename, TEXT("Global report JSON file entry"))
+			|| !AngelscriptCodeCoverageTests::RequireFileEntryShape(*TestRunner, ActorFileObject, (*ActorDesc).Code[0].RelativeFilename, TEXT("Actor report JSON file entry")))
+		{
+			return;
+		}
+
+		const TSharedPtr<FJsonObject>* GlobalFileSummary = nullptr;
+		const TSharedPtr<FJsonObject>* ActorFileSummary = nullptr;
+		if (!this->Assert.IsTrue(GlobalFileObject->TryGetObjectField(TEXT("summary"), GlobalFileSummary), TEXT("Global JSON file entry should include summary"))
+			|| !this->Assert.IsTrue(ActorFileObject->TryGetObjectField(TEXT("summary"), ActorFileSummary), TEXT("Actor JSON file entry should include summary")))
+		{
+			return;
+		}
+
+		(void)this->Assert.AreEqual(
+			GlobalAfterHit->NumExecutableLines(),
+			static_cast<int32>((*GlobalFileSummary)->GetNumberField(TEXT("lines_total"))),
+			TEXT("Global JSON summary should include executable line count"));
+		(void)this->Assert.AreEqual(
+			GlobalAfterHit->NumLinesHit(),
+			static_cast<int32>((*GlobalFileSummary)->GetNumberField(TEXT("lines_hit"))),
+			TEXT("Global JSON summary should include hit line count"));
+		(void)this->Assert.AreEqual(
+			ActorAfterHit->NumExecutableLines(),
+			static_cast<int32>((*ActorFileSummary)->GetNumberField(TEXT("lines_total"))),
+			TEXT("Actor JSON summary should include executable line count"));
+		(void)this->Assert.AreEqual(
+			ActorAfterHit->NumLinesHit(),
+			static_cast<int32>((*ActorFileSummary)->GetNumberField(TEXT("lines_hit"))),
+			TEXT("Actor JSON summary should include hit line count"));
 		(void)this->Assert.IsTrue(
-			IndexHtml.Contains(TEXT("ASCoverageReportGlobal.as")),
-			TEXT("Index should link the global report"));
-		(void)this->Assert.IsTrue(
-			IndexHtml.Contains(TEXT("ASCoverageReportActor.as")),
-			TEXT("Index should link the actor report"));
-		(void)this->Assert.IsTrue(
-			ActorHtml.Contains(TEXT("AASCoverageReportActor")),
-			TEXT("Actor report should include the AS UCLASS declaration"));
-		(void)this->Assert.IsTrue(
-			ActorHtml.Contains(TEXT("UFUNCTION")),
-			TEXT("Actor report should include a UFUNCTION marker"));
-		(void)this->Assert.IsTrue(
-			ActorHtml.Contains(TEXT("class=\"covered\"")),
-			TEXT("Actor report should include covered lines"));
-		(void)this->Assert.IsTrue(
-			ActorHtml.Contains(TEXT("class=\"not-covered\"")),
-			TEXT("Actor report should include not-covered lines"));
-		(void)this->Assert.IsTrue(
-			GlobalHtml.Contains(TEXT("GlobalCoverageReportTest")),
-			TEXT("Global report should include the global entry point"));
-		(void)this->Assert.IsTrue(
-			GlobalHtml.Contains(TEXT("class=\"covered\"")),
-			TEXT("Global report should include covered lines"));
-		(void)this->Assert.IsTrue(
-			SummaryJson.Contains(TEXT("ASCoverageReportGlobal.as")),
-			TEXT("Summary JSON should contain the global file"));
-		(void)this->Assert.IsTrue(
-			SummaryJson.Contains(TEXT("ASCoverageReportActor.as")),
-			TEXT("Summary JSON should contain the actor file"));
-		(void)this->Assert.IsTrue(
-			SummaryJson.Contains(TEXT("\"coverage_pct\"")),
-			TEXT("Summary JSON should contain coverage_pct"));
-		(void)this->Assert.IsTrue(
-			SummaryJson.Contains(TEXT("\"lines_hit\"")),
-			TEXT("Summary JSON should contain lines_hit"));
-		(void)this->Assert.IsTrue(
-			SummaryJson.Contains(TEXT("\"lines_total\"")),
-			TEXT("Summary JSON should contain lines_total"));
+			Directories->Num() > 0,
+			TEXT("Expanded report JSON should include directory aggregation data"));
 
 		// Keep the generated report under Saved/Automation/CodeCoverage so
-		// UCLASS, UFUNCTION, covered, and not-covered HTML can be inspected.
+		// the structured JSON coverage package can be inspected.
 	}
 
 	TEST_METHOD(GetLineCoverageReturnsNullForUnmappedModule)
@@ -1511,11 +1704,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCodeCoverageRobustnessTest,
 		Coverage.StopRecordingAndWriteReport(TempDir);
 
 		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-		const FString ExpectedIndexPath = FPaths::Combine(TempDir, TEXT("index.html"));
+		const FString ExpectedIndexPath = FPaths::Combine(TempDir, TEXT("coverage_summary.json"));
 		(void)this->Assert.IsTrue(
 			PlatformFile.FileExists(*ExpectedIndexPath),
-			FString::Printf(TEXT("Idempotent stop should write index.html at %s"), *ExpectedIndexPath));
-		// Keep the generated report for manual inspection of idempotent output.
+			FString::Printf(TEXT("Idempotent stop should write coverage_summary.json at %s"), *ExpectedIndexPath));
+		// Keep the generated JSON for manual inspection of idempotent output.
 	}
 
 	TEST_METHOD(CoverageEnabledCallable)
@@ -1543,11 +1736,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCodeCoverageRobustnessTest,
 		Coverage.StopRecordingAndWriteReport(TempDir);
 
 		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-		const FString ExpectedIndexPath = FPaths::Combine(TempDir, TEXT("index.html"));
+		const FString ExpectedIndexPath = FPaths::Combine(TempDir, TEXT("coverage_summary.json"));
 		(void)this->Assert.IsTrue(
 			PlatformFile.FileExists(*ExpectedIndexPath),
-			FString::Printf(TEXT("StartRecording/StopRecording should write index.html at %s"), *ExpectedIndexPath));
-		// Keep the generated report for manual inspection of reset behavior.
+			FString::Printf(TEXT("StartRecording/StopRecording should write coverage_summary.json at %s"), *ExpectedIndexPath));
+		// Keep the generated JSON for manual inspection of reset behavior.
 	}
 
 	TEST_METHOD(StopRecordingToEmptyDirectory)
@@ -1561,15 +1754,31 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCodeCoverageRobustnessTest,
 
 		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 		const FString IndexPath = FPaths::Combine(TempDir, TEXT("index.html"));
-		(void)this->Assert.IsTrue(
+		(void)this->Assert.IsFalse(
 			PlatformFile.FileExists(*IndexPath),
-			FString::Printf(TEXT("Empty report should write index.html at %s"), *IndexPath));
+			FString::Printf(TEXT("Empty report should not write index.html at %s"), *IndexPath));
 		const FString SummaryJsonPath = FPaths::Combine(TempDir, TEXT("coverage_summary.json"));
 		(void)this->Assert.IsTrue(
 			PlatformFile.FileExists(*SummaryJsonPath),
 			FString::Printf(TEXT("Empty report should write coverage_summary.json at %s"), *SummaryJsonPath));
 
-		// Keep the generated empty report for manual inspection.
+		TSharedPtr<FJsonObject> SummaryObject;
+		if (!AngelscriptCodeCoverageTests::LoadJsonObjectChecked(*TestRunner, SummaryJsonPath, SummaryObject, TEXT("Empty coverage JSON"))
+			|| !AngelscriptCodeCoverageTests::RequireCoverageJsonShape(*TestRunner, SummaryObject, TEXT("Empty coverage JSON")))
+		{
+			return;
+		}
+
+		const TSharedPtr<FJsonObject>* Summary = nullptr;
+		if (!this->Assert.IsTrue(SummaryObject->TryGetObjectField(TEXT("summary"), Summary), TEXT("Empty coverage JSON should include summary")))
+		{
+			return;
+		}
+
+		(void)this->Assert.AreEqual(0, static_cast<int32>((*Summary)->GetNumberField(TEXT("lines_total"))), TEXT("Empty coverage JSON should report zero executable lines"));
+		(void)this->Assert.IsFalse((*Summary)->GetBoolField(TEXT("has_executable_lines")), TEXT("Empty coverage JSON should explicitly mark no executable lines"));
+
+		// Keep the generated empty JSON for manual inspection.
 	}
 
 	TEST_METHOD(ResetHitsOnEmptyCoverageIsNoOp)
@@ -1581,11 +1790,11 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCodeCoverageRobustnessTest,
 		Coverage.StopRecordingAndWriteReport(TempDir);
 
 		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-		const FString IndexPath = FPaths::Combine(TempDir, TEXT("index.html"));
+		const FString IndexPath = FPaths::Combine(TempDir, TEXT("coverage_summary.json"));
 		(void)this->Assert.IsTrue(
 			PlatformFile.FileExists(*IndexPath),
-			FString::Printf(TEXT("ResetHits on empty coverage should leave report generation functional at %s"), *IndexPath));
-		// Keep the generated report for manual inspection of empty reset behavior.
+			FString::Printf(TEXT("ResetHits on empty coverage should leave JSON generation functional at %s"), *IndexPath));
+		// Keep the generated JSON for manual inspection of empty reset behavior.
 	}
 
 	TEST_METHOD(MultipleHitsOnSameLineAccumulate)

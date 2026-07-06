@@ -11,7 +11,7 @@
 #include "Core/AngelscriptSettings.h"
 #include "Core/AngelscriptType.h"
 
-#include "CodeCoverage/AngelscriptCodeCoverage.h"
+#include "Extension/CodeCoverage/AngelscriptCodeCoverage.h"
 
 #include "Debugging/AngelscriptDebugServer.h"
 
@@ -1332,12 +1332,12 @@ FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpCodeCoverage(FAng
 	});
 
 #if WITH_AS_COVERAGE
-	if (Engine.CodeCoverage != nullptr)
+	if (FAngelscriptCodeCoverage* CodeCoverageRecorder = FAngelscriptCodeCoverageExtension::GetForEngine(Engine))
 	{
 		const TArray<TSharedRef<FAngelscriptModuleDesc>> ActiveModules = Engine.GetActiveModules();
 		for (const TSharedRef<FAngelscriptModuleDesc>& Module : ActiveModules)
 		{
-			const FLineCoverage* Coverage = Engine.CodeCoverage->GetLineCoverage(*Module);
+			const FLineCoverage* Coverage = CodeCoverageRecorder->GetLineCoverage(*Module);
 			if (Coverage == nullptr)
 			{
 				continue;
