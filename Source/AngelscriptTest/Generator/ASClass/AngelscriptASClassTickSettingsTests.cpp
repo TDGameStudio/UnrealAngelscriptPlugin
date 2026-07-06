@@ -10,7 +10,7 @@
 #if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptASClassTickSettingsTests,
-	"Angelscript.TestModule.Generator.ASClass",
+	"Angelscript.TestModule.Generator.ASClass.TickSettings",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:

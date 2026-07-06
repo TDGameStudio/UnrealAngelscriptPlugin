@@ -13,7 +13,7 @@
 #if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptInterfaceDispatchBridgeTests,
-	"Angelscript.TestModule.Generator.Interface",
+	"Angelscript.TestModule.Generator.ASClass.Interface",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:

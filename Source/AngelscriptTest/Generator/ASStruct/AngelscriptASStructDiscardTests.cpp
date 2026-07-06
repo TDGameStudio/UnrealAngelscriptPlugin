@@ -13,7 +13,7 @@
 #if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptASStructDiscardTests,
-	"Angelscript.TestModule.Generator.ASStruct",
+	"Angelscript.TestModule.Generator.ASStruct.Discard",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:

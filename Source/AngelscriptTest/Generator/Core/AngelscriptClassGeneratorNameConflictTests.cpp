@@ -9,7 +9,7 @@
 #if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptClassGeneratorNameConflictTests,
-	"Angelscript.TestModule.Generator.Analyze.NameConflict",
+	"Angelscript.TestModule.Generator.Core.Analyze.NameConflict",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:

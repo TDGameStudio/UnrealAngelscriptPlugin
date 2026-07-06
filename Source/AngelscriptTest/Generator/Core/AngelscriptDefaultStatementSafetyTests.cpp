@@ -8,7 +8,7 @@
 #if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptDefaultStatementSafetyTests,
-	"Angelscript.TestModule.Generator.DefaultStatementSafety",
+	"Angelscript.TestModule.Generator.Core.DefaultStatementSafety",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:

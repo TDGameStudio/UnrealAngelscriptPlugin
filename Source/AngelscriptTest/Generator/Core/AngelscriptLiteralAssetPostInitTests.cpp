@@ -9,7 +9,7 @@
 #if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptLiteralAssetPostInitTests,
-	"Angelscript.TestModule.Generator.LiteralAsset",
+	"Angelscript.TestModule.Generator.Core.LiteralAsset",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:

@@ -8,7 +8,7 @@
 #if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptASClassComponentMetadataTests,
-	"Angelscript.TestModule.Generator.ASClass",
+	"Angelscript.TestModule.Generator.ASClass.ComponentMetadata",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:

@@ -12,8 +12,8 @@
 // Test Layer: Runtime Integration
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptClassGeneratorTests,
-	"Angelscript.TestModule.Generator",
+TEST_CLASS_WITH_FLAGS(FAngelscriptClassGeneratorSetupTests,
+	"Angelscript.TestModule.Generator.Core.Setup",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 public:
@@ -34,8 +34,8 @@ public:
 		FAngelscriptEngineScope EngineScope(Engine);
 
 		TSharedRef<FAngelscriptModuleDesc> Module = MakeShared<FAngelscriptModuleDesc>();
-		Module->ModuleName = TEXT("Tests.ClassGenerator.EmptyModule");
-		Module->ScriptModule = static_cast<asCModule*>(Engine.GetScriptEngine()->GetModule("Tests.ClassGenerator.EmptyModule", asGM_ALWAYS_CREATE));
+		Module->ModuleName = TEXT("Tests.Generator.Core.Setup.EmptyModule");
+		Module->ScriptModule = static_cast<asCModule*>(Engine.GetScriptEngine()->GetModule("Tests.Generator.Core.Setup.EmptyModule", asGM_ALWAYS_CREATE));
 		ASSERT_THAT(IsNotNull(Module->ScriptModule, TEXT("ClassGenerator scaffold should create a backing script module")));
 
 		FAngelscriptClassGenerator Generator;

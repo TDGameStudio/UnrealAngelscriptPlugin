@@ -10,7 +10,7 @@
 #if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptComponentMetadataValidationTests,
-	"Angelscript.TestModule.Generator.Component",
+	"Angelscript.TestModule.Generator.ComponentValidation",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:

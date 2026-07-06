@@ -10,7 +10,7 @@
 #if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptScriptClassStructureTests,
-	"Angelscript.TestModule.ScriptClass",
+	"Angelscript.TestModule.Generator.ScriptClass.Structure",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:

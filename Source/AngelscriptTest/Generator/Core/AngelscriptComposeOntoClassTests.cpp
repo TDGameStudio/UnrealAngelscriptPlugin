@@ -15,7 +15,7 @@
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptComposeOntoClassTests,
-	"Angelscript.TestModule.Generator.ComposeOntoClass",
+	"Angelscript.TestModule.Generator.Core.ComposeOntoClass",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:

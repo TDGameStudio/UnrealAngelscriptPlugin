@@ -11,7 +11,7 @@
 #if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionProcessEventTests,
-	"Angelscript.TestModule.Generator.ASFunction",
+	"Angelscript.TestModule.Generator.ASFunction.ProcessEvent",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:

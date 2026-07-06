@@ -10,7 +10,7 @@
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptASClassMetadataTests,
-	"Angelscript.TestModule.Generator.ASClass",
+	"Angelscript.TestModule.Generator.ASClass.Metadata",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:

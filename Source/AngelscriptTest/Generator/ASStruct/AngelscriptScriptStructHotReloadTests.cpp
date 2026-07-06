@@ -13,7 +13,7 @@
 #if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptScriptStructHotReloadTests,
-	"Angelscript.TestModule.Generator.ASStruct",
+	"Angelscript.TestModule.Generator.ASStruct.HotReload",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:

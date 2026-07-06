@@ -14,7 +14,7 @@
 
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptASGeneratedTypeIdentityTests,
-	"Angelscript.TestModule.Generator.ASStruct",
+	"Angelscript.TestModule.Generator.ASStruct.GeneratedTypeIdentity",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:

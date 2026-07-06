@@ -12,7 +12,7 @@
 #if WITH_ANGELSCRIPT_UNITTESTS
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionOptimizedCallTests,
-	"Angelscript.TestModule.Generator.ASFunction",
+	"Angelscript.TestModule.Generator.ASFunction.OptimizedCall",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
