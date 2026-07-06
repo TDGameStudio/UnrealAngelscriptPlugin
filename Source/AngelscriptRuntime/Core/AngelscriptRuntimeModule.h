@@ -24,6 +24,7 @@ private:
 	#endif
 	static bool bInitializeAngelscriptCalled;
 	static TUniquePtr<FAngelscriptEngine> OwnedPrimaryEngine;
+	FDelegateHandle CrashSnapshotExtensionHandle;
 	FDelegateHandle CodeCoverageExtensionHandle;
 
 };

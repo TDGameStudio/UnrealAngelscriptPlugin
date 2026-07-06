@@ -1,5 +1,7 @@
 #include "Dump/AngelscriptCrashSnapshot.h"
 
+#include "AngelscriptEngine.h"
+#include "AngelscriptTestUtilities.h"
 #include "CQTest.h"
 
 #include "HAL/FileManager.h"
@@ -8,6 +10,7 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Guid.h"
 #include "Misc/Paths.h"
+#include "Misc/ScopeExit.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 
@@ -46,6 +49,26 @@ static bool LoadSnapshotJson(FAutomationTestBase& Test, const FString& SnapshotP
 	return true;
 }
 
+struct FCrashSnapshotContextGuard
+{
+	TArray<FAngelscriptEngine*> SavedStack;
+
+	FCrashSnapshotContextGuard()
+	{
+		SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
+	}
+
+	~FCrashSnapshotContextGuard()
+	{
+		FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
+	}
+
+	void DiscardSavedStack()
+	{
+		SavedStack.Reset();
+	}
+};
+
 public:
 	TEST_METHOD(Write)
 	{
@@ -83,6 +106,92 @@ const FString OutputDir = MakeUniqueCrashSnapshotPath(TEXT("Write"));
 	{
 		IConsoleObject* Command = IConsoleManager::Get().FindConsoleObject(TEXT("as.Test.ConfigureCrashSnapshot"));
 		ASSERT_THAT(IsNotNull(Command, TEXT("Crash snapshot test configuration command should be registered")));
+	}
+
+	TEST_METHOD(SequentialEngineLifecycleRegistersAndUnregistersHandler)
+	{
+		FCrashSnapshotContextGuard ContextGuard;
+		DestroySharedTestEngine();
+		if (FAngelscriptEngine::IsInitialized())
+		{
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+		}
+		ContextGuard.DiscardSavedStack();
+
+		const int32 BaselineCount = FAngelscriptCrashSnapshotExtension::GetActiveEngineCountForTesting();
+		const bool bBaselineRegistered = FAngelscriptCrashSnapshot::IsHandlerRegisteredForTesting();
+
+		ON_SCOPE_EXIT
+		{
+			FAngelscriptEngineContextStack::SnapshotAndClear();
+			if (FAngelscriptEngine::IsInitialized())
+			{
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			}
+			DestroySharedTestEngine();
+		};
+
+		{
+			TUniquePtr<FAngelscriptEngine> Engine = CreateFullTestEngine();
+			ASSERT_THAT(IsNotNull(Engine.Get(), TEXT("Crash snapshot lifecycle should create the first isolated engine")));
+			ASSERT_THAT(AreEqual(BaselineCount + 1, FAngelscriptCrashSnapshotExtension::GetActiveEngineCountForTesting(), TEXT("Crash snapshot extension should count the first attached engine")));
+			ASSERT_THAT(IsTrue(FAngelscriptCrashSnapshot::IsHandlerRegisteredForTesting(), TEXT("Crash snapshot handler should register while an engine is active")));
+		}
+
+		ASSERT_THAT(AreEqual(BaselineCount, FAngelscriptCrashSnapshotExtension::GetActiveEngineCountForTesting(), TEXT("Crash snapshot extension should restore active count after the first engine is destroyed")));
+		ASSERT_THAT(AreEqual(bBaselineRegistered, FAngelscriptCrashSnapshot::IsHandlerRegisteredForTesting(), TEXT("Crash snapshot handler registration should return to baseline after the last engine is destroyed")));
+
+		{
+			TUniquePtr<FAngelscriptEngine> Engine = CreateFullTestEngine();
+			ASSERT_THAT(IsNotNull(Engine.Get(), TEXT("Crash snapshot lifecycle should create the second isolated engine")));
+			ASSERT_THAT(AreEqual(BaselineCount + 1, FAngelscriptCrashSnapshotExtension::GetActiveEngineCountForTesting(), TEXT("Crash snapshot extension should count the second attached engine")));
+			ASSERT_THAT(IsTrue(FAngelscriptCrashSnapshot::IsHandlerRegisteredForTesting(), TEXT("Crash snapshot handler should register again for the second engine")));
+		}
+
+		ASSERT_THAT(AreEqual(BaselineCount, FAngelscriptCrashSnapshotExtension::GetActiveEngineCountForTesting(), TEXT("Crash snapshot extension should restore active count after the second engine is destroyed")));
+		ASSERT_THAT(AreEqual(bBaselineRegistered, FAngelscriptCrashSnapshot::IsHandlerRegisteredForTesting(), TEXT("Crash snapshot handler registration should return to baseline after sequential lifetimes")));
+	}
+
+	TEST_METHOD(OverlappingEngineLifecycleKeepsHandlerUntilLastDetach)
+	{
+		FCrashSnapshotContextGuard ContextGuard;
+		DestroySharedTestEngine();
+		if (FAngelscriptEngine::IsInitialized())
+		{
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+		}
+		ContextGuard.DiscardSavedStack();
+
+		const int32 BaselineCount = FAngelscriptCrashSnapshotExtension::GetActiveEngineCountForTesting();
+		const bool bBaselineRegistered = FAngelscriptCrashSnapshot::IsHandlerRegisteredForTesting();
+
+		ON_SCOPE_EXIT
+		{
+			FAngelscriptEngineContextStack::SnapshotAndClear();
+			if (FAngelscriptEngine::IsInitialized())
+			{
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			}
+			DestroySharedTestEngine();
+		};
+
+		TUniquePtr<FAngelscriptEngine> EngineA = CreateFullTestEngine();
+		ASSERT_THAT(IsNotNull(EngineA.Get(), TEXT("Crash snapshot overlap test should create engine A")));
+		ASSERT_THAT(AreEqual(BaselineCount + 1, FAngelscriptCrashSnapshotExtension::GetActiveEngineCountForTesting(), TEXT("Crash snapshot extension should count engine A")));
+		ASSERT_THAT(IsTrue(FAngelscriptCrashSnapshot::IsHandlerRegisteredForTesting(), TEXT("Crash snapshot handler should register after engine A attaches")));
+
+		TUniquePtr<FAngelscriptEngine> EngineB = CreateFullTestEngine();
+		ASSERT_THAT(IsNotNull(EngineB.Get(), TEXT("Crash snapshot overlap test should create engine B")));
+		ASSERT_THAT(AreEqual(BaselineCount + 2, FAngelscriptCrashSnapshotExtension::GetActiveEngineCountForTesting(), TEXT("Crash snapshot extension should count overlapping engine lifetimes")));
+		ASSERT_THAT(IsTrue(FAngelscriptCrashSnapshot::IsHandlerRegisteredForTesting(), TEXT("Crash snapshot handler should stay registered while two engines are active")));
+
+		EngineA.Reset();
+		ASSERT_THAT(AreEqual(BaselineCount + 1, FAngelscriptCrashSnapshotExtension::GetActiveEngineCountForTesting(), TEXT("Crash snapshot extension should decrement when a non-final engine detaches")));
+		ASSERT_THAT(IsTrue(FAngelscriptCrashSnapshot::IsHandlerRegisteredForTesting(), TEXT("Crash snapshot handler should stay registered until the last engine detaches")));
+
+		EngineB.Reset();
+		ASSERT_THAT(AreEqual(BaselineCount, FAngelscriptCrashSnapshotExtension::GetActiveEngineCountForTesting(), TEXT("Crash snapshot extension should restore active count after all engines detach")));
+		ASSERT_THAT(AreEqual(bBaselineRegistered, FAngelscriptCrashSnapshot::IsHandlerRegisteredForTesting(), TEXT("Crash snapshot handler registration should return to baseline after overlapping lifetimes")));
 	}
 };
 

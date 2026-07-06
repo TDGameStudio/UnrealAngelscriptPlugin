@@ -24,6 +24,9 @@ namespace AngelscriptCrashSnapshot_Private
 	FString GOverrideOutputDir;
 	FString GMarker;
 	std::atomic<bool> GHandlingCrash(false);
+	std::atomic<int32> GActiveEngineCount(0);
+	FCriticalSection GAttachedEnginesCriticalSection;
+	TSet<FAngelscriptEngine*> GAttachedEngines;
 
 	FString SanitizeCommandArg(FString Arg)
 	{
@@ -215,6 +218,7 @@ void FAngelscriptCrashSnapshot::Startup()
 	if (!GSystemErrorHandle.IsValid())
 	{
 		GSystemErrorHandle = FCoreDelegates::OnHandleSystemError.AddStatic(&FAngelscriptCrashSnapshot::HandleSystemError);
+		UE_LOG(LogAngelscriptCrashSnapshot, Log, TEXT("Angelscript crash snapshot handler registered."));
 	}
 }
 
@@ -225,6 +229,7 @@ void FAngelscriptCrashSnapshot::Shutdown()
 	{
 		FCoreDelegates::OnHandleSystemError.Remove(GSystemErrorHandle);
 		GSystemErrorHandle.Reset();
+		UE_LOG(LogAngelscriptCrashSnapshot, Log, TEXT("Angelscript crash snapshot handler unregistered."));
 	}
 }
 
@@ -238,6 +243,13 @@ void FAngelscriptCrashSnapshot::ConfigureForTesting(const FString& OutputDir, co
 	AngelscriptCrashSnapshot_Private::GOverrideOutputDir = OutputDir;
 	AngelscriptCrashSnapshot_Private::GMarker = Marker;
 }
+
+#if WITH_DEV_AUTOMATION_TESTS
+bool FAngelscriptCrashSnapshot::IsHandlerRegisteredForTesting()
+{
+	return AngelscriptCrashSnapshot_Private::GSystemErrorHandle.IsValid();
+}
+#endif
 
 void FAngelscriptCrashSnapshot::HandleSystemError()
 {
@@ -258,3 +270,85 @@ void FAngelscriptCrashSnapshot::HandleSystemError()
 		UE_LOG(LogAngelscriptCrashSnapshot, Warning, TEXT("Angelscript crash snapshot failed: %s"), *Result.ErrorMessage);
 	}
 }
+
+void FAngelscriptCrashSnapshotExtension::OnEngineAttached(FAngelscriptEngine& Engine)
+{
+	using namespace AngelscriptCrashSnapshot_Private;
+
+	int32 NewCount = GActiveEngineCount.load();
+	{
+		FScopeLock Lock(&GAttachedEnginesCriticalSection);
+		if (GAttachedEngines.Contains(&Engine))
+		{
+			UE_LOG(LogAngelscriptCrashSnapshot, Verbose, TEXT("Crash snapshot extension ignored duplicate attach for engine %p activeEngines=%d."), &Engine, NewCount);
+			return;
+		}
+
+		GAttachedEngines.Add(&Engine);
+		NewCount = ++GActiveEngineCount;
+	}
+
+	UE_LOG(LogAngelscriptCrashSnapshot, Verbose, TEXT("Crash snapshot extension attached engine %p activeEngines=%d."), &Engine, NewCount);
+	if (NewCount == 1)
+	{
+		FAngelscriptCrashSnapshot::Startup();
+	}
+}
+
+void FAngelscriptCrashSnapshotExtension::OnEngineDetached(FAngelscriptEngine& Engine)
+{
+	using namespace AngelscriptCrashSnapshot_Private;
+
+	int32 NewCount = GActiveEngineCount.load();
+	{
+		FScopeLock Lock(&GAttachedEnginesCriticalSection);
+		if (!GAttachedEngines.Remove(&Engine))
+		{
+			UE_LOG(LogAngelscriptCrashSnapshot, Verbose, TEXT("Crash snapshot extension ignored detach for unknown engine %p activeEngines=%d."), &Engine, NewCount);
+			return;
+		}
+
+		NewCount = --GActiveEngineCount;
+		if (NewCount < 0)
+		{
+			UE_LOG(LogAngelscriptCrashSnapshot, Warning, TEXT("Crash snapshot extension active engine count went negative; resetting to zero."));
+			GActiveEngineCount = 0;
+			NewCount = 0;
+		}
+	}
+
+	UE_LOG(LogAngelscriptCrashSnapshot, Verbose, TEXT("Crash snapshot extension detached engine %p activeEngines=%d."), &Engine, NewCount);
+	if (NewCount == 0)
+	{
+		FAngelscriptCrashSnapshot::Shutdown();
+	}
+}
+
+FDelegateHandle FAngelscriptCrashSnapshotExtension::Startup()
+{
+	return FAngelscriptEngineExtensionRegistry::Get().RegisterExtension(MakeShared<FAngelscriptCrashSnapshotExtension>());
+}
+
+void FAngelscriptCrashSnapshotExtension::Shutdown(FDelegateHandle& Handle)
+{
+	if (Handle.IsValid())
+	{
+		FAngelscriptEngineExtensionRegistry::Get().UnregisterExtension(Handle);
+		Handle.Reset();
+	}
+
+	using namespace AngelscriptCrashSnapshot_Private;
+	{
+		FScopeLock Lock(&GAttachedEnginesCriticalSection);
+		GAttachedEngines.Empty();
+		GActiveEngineCount = 0;
+	}
+	FAngelscriptCrashSnapshot::Shutdown();
+}
+
+#if WITH_DEV_AUTOMATION_TESTS
+int32 FAngelscriptCrashSnapshotExtension::GetActiveEngineCountForTesting()
+{
+	return AngelscriptCrashSnapshot_Private::GActiveEngineCount.load();
+}
+#endif

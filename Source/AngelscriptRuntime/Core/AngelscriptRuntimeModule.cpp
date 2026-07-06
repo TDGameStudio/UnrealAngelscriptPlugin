@@ -19,7 +19,7 @@ FAngelscriptEngine* FAngelscriptRuntimeModule::InitializedOverrideEngineForTesti
 void FAngelscriptRuntimeModule::StartupModule()
 {
 	UE_LOG(Angelscript, Verbose, TEXT("[RuntimeStartup] StartupModule."));
-	FAngelscriptCrashSnapshot::Startup();
+	CrashSnapshotExtensionHandle = FAngelscriptCrashSnapshotExtension::Startup();
 #if WITH_AS_COVERAGE
 	CodeCoverageExtensionHandle = FAngelscriptCodeCoverageExtension::Startup();
 #endif
@@ -32,7 +32,7 @@ void FAngelscriptRuntimeModule::ShutdownModule()
 #if WITH_AS_COVERAGE
 	FAngelscriptCodeCoverageExtension::Shutdown(CodeCoverageExtensionHandle);
 #endif
-	FAngelscriptCrashSnapshot::Shutdown();
+	FAngelscriptCrashSnapshotExtension::Shutdown(CrashSnapshotExtensionHandle);
 
 	if (OwnedPrimaryEngine.IsValid())
 	{
