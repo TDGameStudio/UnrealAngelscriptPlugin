@@ -12,28 +12,25 @@
 // Test Layer: Runtime Integration
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-
-namespace ASStructDiscardTest
-{
-	static const FName ModuleName(TEXT("ASStructDiscardModule"));
-	static const FName StructName(TEXT("DiscardableStruct"));
-	static const FString ScriptFilename(TEXT("ASStructDiscardModule.as"));
-
-	FString GetScriptAbsoluteFilename()
-	{
-		return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation"), ScriptFilename);
-	}
-
-	UASStruct* FindStruct()
-	{
-		return FindObject<UASStruct>(FAngelscriptEngine::GetPackage(), *StructName.ToString());
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptASStructDiscardTests,
 	"Angelscript.TestModule.ClassGenerator.ASStruct",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	inline static const FName ModuleName = FName(TEXT("ASStructDiscardModule"));
+	inline static const FName StructName = FName(TEXT("DiscardableStruct"));
+	inline static const FString ScriptFilename = FString(TEXT("ASStructDiscardModule.as"));
+
+	static FString GetScriptAbsoluteFilename()
+	{
+		return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation"), ScriptFilename);
+	}
+
+	static UASStruct* FindStruct()
+	{
+		return FindObject<UASStruct>(FAngelscriptEngine::GetPackage(), *StructName.ToString());
+	}
+
 public:
 	BEFORE_ALL()
 	{
@@ -52,8 +49,8 @@ public:
 		FAngelscriptEngineScope EngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*ASStructDiscardTest::ModuleName.ToString());
-			IFileManager::Get().Delete(*ASStructDiscardTest::GetScriptAbsoluteFilename(), false, true, true);
+			Engine.DiscardModule(*FAngelscriptASStructDiscardTests::ModuleName.ToString());
+			IFileManager::Get().Delete(*FAngelscriptASStructDiscardTests::GetScriptAbsoluteFilename(), false, true, true);
 		};
 
 		const FString ScriptSource = ASTEST_AS(R"AS(
@@ -81,10 +78,10 @@ public:
 			)AS");
 
 		ASSERT_THAT(IsTrue(
-			CompileAnnotatedModuleFromMemory(&Engine, ASStructDiscardTest::ModuleName, ASStructDiscardTest::ScriptFilename, ScriptSource),
+			CompileAnnotatedModuleFromMemory(&Engine, FAngelscriptASStructDiscardTests::ModuleName, FAngelscriptASStructDiscardTests::ScriptFilename, ScriptSource),
 			TEXT("ASStruct discard test should compile the struct module")));
 
-		UASStruct* Struct = ASStructDiscardTest::FindStruct();
+		UASStruct* Struct = FAngelscriptASStructDiscardTests::FindStruct();
 		ASSERT_THAT(IsNotNull(Struct, TEXT("ASStruct discard test should register the generated struct in the Angelscript package")));
 
 		Struct->PrepareCppStructOps();
@@ -97,10 +94,10 @@ public:
 			EnumHasAnyFlags(Struct->StructFlags, STRUCT_IdenticalNative),
 			TEXT("ASStruct discard test should advertise identical-native support before discard")));
 
-		const bool bDiscarded = Engine.DiscardModule(*ASStructDiscardTest::ModuleName.ToString());
+		const bool bDiscarded = Engine.DiscardModule(*FAngelscriptASStructDiscardTests::ModuleName.ToString());
 		ASSERT_THAT(IsTrue(bDiscarded, TEXT("ASStruct discard test should discard the owning module successfully")));
 		ASSERT_THAT(IsFalse(
-			Engine.GetModuleByModuleName(ASStructDiscardTest::ModuleName.ToString()).IsValid(),
+			Engine.GetModuleByModuleName(FAngelscriptASStructDiscardTests::ModuleName.ToString()).IsValid(),
 			TEXT("ASStruct discard test should remove the module record after discard")));
 		ASSERT_THAT(IsNull(Struct->ScriptType, TEXT("ASStruct discard test should clear the struct script type after discard")));
 		ASSERT_THAT(IsNotNull(

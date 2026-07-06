@@ -12,8 +12,11 @@
 // Test Layer: Runtime Integration
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-namespace ScriptStructCQTest
+TEST_CLASS_WITH_FLAGS(FAngelscriptScriptStructHotReloadTests,
+	"Angelscript.TestModule.ClassGenerator.ASStruct",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
 	static bool CheckTrue(FAutomationTestBase& Test, const TCHAR* Message, bool bActual)
 	{
 		FNoDiscardAsserter LocalAssert(Test);
@@ -59,95 +62,93 @@ namespace ScriptStructCQTest
 		FNoDiscardAsserter LocalAssert(Test);
 		return LocalAssert.IsNull(Value, Message);
 	}
-}
+	struct FVersionChainCase
+	{
+	inline static const FName ModuleName = FName(TEXT("ScriptStructHotReloadVersionChain"));
+	inline static const FName UnrealStructName = FName(TEXT("ScriptStructHotReloadVersionChain"));
+	inline static const FString ScriptFilename = FString(TEXT("ScriptStructHotReloadVersionChain.as"));
 
-namespace ScriptStructHotReloadTest
-{
-	static const FName ModuleName(TEXT("ScriptStructHotReloadVersionChain"));
-	static const FName UnrealStructName(TEXT("ScriptStructHotReloadVersionChain"));
-	static const FString ScriptFilename(TEXT("ScriptStructHotReloadVersionChain.as"));
-
-	FString GetScriptAbsoluteFilename()
+	static FString GetScriptAbsoluteFilename()
 	{
 		return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation"), ScriptFilename);
 	}
 
-	UASStruct* FindStructByName(const FName StructName)
+	static UASStruct* FindStructByName(const FName StructName)
 	{
 		return FindObject<UASStruct>(FAngelscriptEngine::GetPackage(), *StructName.ToString());
 	}
 
-	UASStruct* FindCurrentStruct()
+	static UASStruct* FindCurrentStruct()
 	{
 		return FindStructByName(UnrealStructName);
 	}
 
-	FProperty* FindStructProperty(UASStruct* Struct, const FName PropertyName)
+	static FProperty* FindStructProperty(UASStruct* Struct, const FName PropertyName)
 	{
 		return Struct != nullptr ? Struct->FindPropertyByName(PropertyName) : nullptr;
 	}
 
-	bool VerifyHandledReloadResult(FAutomationTestBase& Test, const TCHAR* Context, const ECompileResult ReloadResult)
+	static bool VerifyHandledReloadResult(FAutomationTestBase& Test, const TCHAR* Context, const ECompileResult ReloadResult)
 	{
-		return ScriptStructCQTest::CheckTrue(
+		return CheckTrue(
 			Test,
 			Context,
 			ReloadResult == ECompileResult::FullyHandled || ReloadResult == ECompileResult::PartiallyHandled);
 	}
-}
+	};
 
-namespace ScriptStructCustomGuidTest
-{
-	static const FName StableModuleName(TEXT("ScriptStructCustomGuidStable"));
-	static const FName StableStructName(TEXT("StableGuidStruct"));
-	static const FString StableScriptFilename(TEXT("ScriptStructCustomGuidStable.as"));
-	static const FName DifferentModuleName(TEXT("ScriptStructCustomGuidDifferent"));
-	static const FName DifferentStructName(TEXT("DifferentGuidStruct"));
-	static const FString DifferentScriptFilename(TEXT("ScriptStructCustomGuidDifferent.as"));
+	struct FCustomGuidCase
+	{
+	inline static const FName StableModuleName = FName(TEXT("ScriptStructCustomGuidStable"));
+	inline static const FName StableStructName = FName(TEXT("StableGuidStruct"));
+	inline static const FString StableScriptFilename = FString(TEXT("ScriptStructCustomGuidStable.as"));
+	inline static const FName DifferentModuleName = FName(TEXT("ScriptStructCustomGuidDifferent"));
+	inline static const FName DifferentStructName = FName(TEXT("DifferentGuidStruct"));
+	inline static const FString DifferentScriptFilename = FString(TEXT("ScriptStructCustomGuidDifferent.as"));
 
-	FString GetScriptAbsoluteFilename(const FString& InScriptFilename)
+	static FString GetScriptAbsoluteFilename(const FString& InScriptFilename)
 	{
 		return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation"), InScriptFilename);
 	}
 
-	FString GetStableScriptAbsoluteFilename()
+	static FString GetStableScriptAbsoluteFilename()
 	{
 		return GetScriptAbsoluteFilename(StableScriptFilename);
 	}
 
-	FString GetDifferentScriptAbsoluteFilename()
+	static FString GetDifferentScriptAbsoluteFilename()
 	{
 		return GetScriptAbsoluteFilename(DifferentScriptFilename);
 	}
 
-	UASStruct* FindStableStruct()
+	static UASStruct* FindStableStruct()
 	{
-		return ScriptStructHotReloadTest::FindStructByName(StableStructName);
+		return FVersionChainCase::FindStructByName(StableStructName);
 	}
 
-	UASStruct* FindDifferentStruct()
+	static UASStruct* FindDifferentStruct()
 	{
-		return ScriptStructHotReloadTest::FindStructByName(DifferentStructName);
+		return FVersionChainCase::FindStructByName(DifferentStructName);
 	}
-}
+	};
 
-namespace ScriptStructCapabilityReloadTest
-{
-	static const FName ModuleName(TEXT("ScriptStructCapabilityReload"));
-	static const FName StructName(TEXT("ReloadableCapabilityStruct"));
-	static const FString ScriptFilename(TEXT("ScriptStructCapabilityReload.as"));
+	struct FCapabilityReloadCase
+	{
+	inline static const FName ModuleName = FName(TEXT("ScriptStructCapabilityReload"));
+	inline static const FName StructName = FName(TEXT("ReloadableCapabilityStruct"));
+	inline static const FString ScriptFilename = FString(TEXT("ScriptStructCapabilityReload.as"));
 
-	FString GetScriptAbsoluteFilename()
+	static FString GetScriptAbsoluteFilename()
 	{
 		return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation"), ScriptFilename);
 	}
 
-	UASStruct* FindCurrentStruct()
+	static UASStruct* FindCurrentStruct()
 	{
-		return ScriptStructHotReloadTest::FindStructByName(StructName);
+		return FVersionChainCase::FindStructByName(StructName);
 	}
 
-	bool VerifyCapabilityState(
+	static bool VerifyCapabilityState(
 		FAutomationTestBase& Test,
 		UASStruct* Struct,
 		const TCHAR* StageLabel,
@@ -155,34 +156,34 @@ namespace ScriptStructCapabilityReloadTest
 		bool bExpectHash)
 	{
 		const FString StructMessage = FString::Printf(TEXT("%s should publish a script struct"), StageLabel);
-		if (!ScriptStructCQTest::CheckNotNull(Test, StructMessage, Struct))
+		if (!CheckNotNull(Test, StructMessage, Struct))
 		{
 			return false;
 		}
 
 		UScriptStruct::ICppStructOps* CppStructOps = Struct->GetCppStructOps();
 		const FString OpsMessage = FString::Printf(TEXT("%s should expose cpp struct ops"), StageLabel);
-		if (!ScriptStructCQTest::CheckNotNull(Test, OpsMessage, CppStructOps))
+		if (!CheckNotNull(Test, OpsMessage, CppStructOps))
 		{
 			return false;
 		}
 
-		const bool bStructFlagMatches = ScriptStructCQTest::CheckEqual(
+		const bool bStructFlagMatches = CheckEqual(
 			Test,
 			FString::Printf(TEXT("%s should keep the expected STRUCT_IdenticalNative flag"), StageLabel),
 			EnumHasAnyFlags(Struct->StructFlags, STRUCT_IdenticalNative),
 			bExpectIdentical);
-		const bool bHasIdenticalMatches = ScriptStructCQTest::CheckEqual(
+		const bool bHasIdenticalMatches = CheckEqual(
 			Test,
 			FString::Printf(TEXT("%s should keep the expected cpp-ops identical capability"), StageLabel),
 			CppStructOps->HasIdentical(),
 			bExpectIdentical);
-		const bool bHasTypeHashMatches = ScriptStructCQTest::CheckEqual(
+		const bool bHasTypeHashMatches = CheckEqual(
 			Test,
 			FString::Printf(TEXT("%s should keep the expected cpp-ops hash capability"), StageLabel),
 			CppStructOps->HasGetTypeHash(),
 			bExpectHash);
-		const bool bComputedPropertyFlagMatches = ScriptStructCQTest::CheckEqual(
+		const bool bComputedPropertyFlagMatches = CheckEqual(
 			Test,
 			FString::Printf(TEXT("%s should keep the expected CPF_HasGetValueTypeHash computed property flag"), StageLabel),
 			EnumHasAnyFlags(CppStructOps->GetComputedPropertyFlags(), CPF_HasGetValueTypeHash),
@@ -192,12 +193,8 @@ namespace ScriptStructCapabilityReloadTest
 			&& bHasTypeHashMatches
 			&& bComputedPropertyFlagMatches;
 	}
-}
+	};
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptScriptStructHotReloadTests,
-	"Angelscript.TestModule.ClassGenerator.ASStruct",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
 public:
 	BEFORE_ALL()
 	{
@@ -216,8 +213,8 @@ public:
 		FAngelscriptEngineScope EngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*ScriptStructHotReloadTest::ModuleName.ToString());
-			IFileManager::Get().Delete(*ScriptStructHotReloadTest::GetScriptAbsoluteFilename(), false, true, true);
+			Engine.DiscardModule(*FVersionChainCase::ModuleName.ToString());
+			IFileManager::Get().Delete(*FVersionChainCase::GetScriptAbsoluteFilename(), false, true, true);
 		};
 
 		const FString ScriptV1 = ASTEST_AS(R"AS(
@@ -254,62 +251,62 @@ public:
 			};
 			)AS");
 
-		if (!ScriptStructCQTest::CheckTrue(
+		if (!CheckTrue(
 				*TestRunner,
 				TEXT("Initial script struct compile should succeed"),
-				CompileAnnotatedModuleFromMemory(&Engine, ScriptStructHotReloadTest::ModuleName, ScriptStructHotReloadTest::ScriptFilename, ScriptV1)))
+				CompileAnnotatedModuleFromMemory(&Engine, FVersionChainCase::ModuleName, FVersionChainCase::ScriptFilename, ScriptV1)))
 		{ return; }
 
-		UASStruct* FirstVersion = ScriptStructHotReloadTest::FindCurrentStruct();
-		if (!ScriptStructCQTest::CheckNotNull(*TestRunner, TEXT("Initial script struct should be registered in the Angelscript package"), FirstVersion)) { return; }
-		if (!ScriptStructCQTest::CheckNotNull(*TestRunner, TEXT("Initial script struct should expose the original reflected property"), ScriptStructHotReloadTest::FindStructProperty(FirstVersion, TEXT("Value")))) { return; }
-		ASSERT_THAT(IsNull(ScriptStructHotReloadTest::FindStructProperty(FirstVersion, TEXT("AddedValue")), TEXT("Initial script struct should not expose the first added property before reload")));
-		ASSERT_THAT(IsNull(ScriptStructHotReloadTest::FindStructProperty(FirstVersion, TEXT("TailValue")), TEXT("Initial script struct should not expose the second added property before reload")));
+		UASStruct* FirstVersion = FVersionChainCase::FindCurrentStruct();
+		if (!CheckNotNull(*TestRunner, TEXT("Initial script struct should be registered in the Angelscript package"), FirstVersion)) { return; }
+		if (!CheckNotNull(*TestRunner, TEXT("Initial script struct should expose the original reflected property"), FVersionChainCase::FindStructProperty(FirstVersion, TEXT("Value")))) { return; }
+		ASSERT_THAT(IsNull(FVersionChainCase::FindStructProperty(FirstVersion, TEXT("AddedValue")), TEXT("Initial script struct should not expose the first added property before reload")));
+		ASSERT_THAT(IsNull(FVersionChainCase::FindStructProperty(FirstVersion, TEXT("TailValue")), TEXT("Initial script struct should not expose the second added property before reload")));
 
 		ECompileResult ReloadResultV2 = ECompileResult::Error;
-		if (!ScriptStructCQTest::CheckTrue(
+		if (!CheckTrue(
 				*TestRunner,
 				TEXT("First structural script struct reload should compile successfully"),
-				CompileModuleWithResult(&Engine, ECompileType::FullReload, ScriptStructHotReloadTest::ModuleName, ScriptStructHotReloadTest::ScriptFilename, ScriptV2, ReloadResultV2)))
+				CompileModuleWithResult(&Engine, ECompileType::FullReload, FVersionChainCase::ModuleName, FVersionChainCase::ScriptFilename, ScriptV2, ReloadResultV2)))
 		{ return; }
-		if (!ScriptStructHotReloadTest::VerifyHandledReloadResult(*TestRunner, TEXT("First structural script struct reload should be handled by the full reload pipeline"), ReloadResultV2))
+		if (!FVersionChainCase::VerifyHandledReloadResult(*TestRunner, TEXT("First structural script struct reload should be handled by the full reload pipeline"), ReloadResultV2))
 		{ return; }
 
-		UASStruct* SecondVersion = ScriptStructHotReloadTest::FindCurrentStruct();
-		if (!ScriptStructCQTest::CheckNotNull(*TestRunner, TEXT("First full reload should publish a new canonical script struct"), SecondVersion)) { return; }
+		UASStruct* SecondVersion = FVersionChainCase::FindCurrentStruct();
+		if (!CheckNotNull(*TestRunner, TEXT("First full reload should publish a new canonical script struct"), SecondVersion)) { return; }
 
 		ASSERT_THAT(AreNotEqual(static_cast<UScriptStruct*>(FirstVersion), static_cast<UScriptStruct*>(SecondVersion), TEXT("First full reload should replace the original struct object")));
 		ASSERT_THAT(AreEqual(SecondVersion, FirstVersion->NewerVersion, TEXT("First full reload should wire the old struct directly to the second version")));
 		ASSERT_THAT(AreEqual(static_cast<UScriptStruct*>(SecondVersion), FirstVersion->GetNewestVersion(), TEXT("GetNewestVersion should resolve the second version after the first reload")));
 		ASSERT_THAT(AreEqual(static_cast<UScriptStruct*>(SecondVersion), SecondVersion->GetNewestVersion(), TEXT("The current canonical struct should consider itself the newest version")));
-		ASSERT_THAT(IsTrue(FirstVersion->GetFName() != ScriptStructHotReloadTest::UnrealStructName, TEXT("The first version should no longer own the canonical struct name after reload")));
-		if (!ScriptStructCQTest::CheckNotNull(*TestRunner, TEXT("First full reload should expose the newly added reflected property"), ScriptStructHotReloadTest::FindStructProperty(SecondVersion, TEXT("AddedValue")))) { return; }
-		ASSERT_THAT(IsNull(ScriptStructHotReloadTest::FindStructProperty(FirstVersion, TEXT("AddedValue")), TEXT("The replaced first version should keep its original reflected layout")));
-		ASSERT_THAT(IsNull(ScriptStructHotReloadTest::FindStructProperty(SecondVersion, TEXT("TailValue")), TEXT("The second version should not expose the third-version-only property yet")));
+		ASSERT_THAT(IsTrue(FirstVersion->GetFName() != FVersionChainCase::UnrealStructName, TEXT("The first version should no longer own the canonical struct name after reload")));
+		if (!CheckNotNull(*TestRunner, TEXT("First full reload should expose the newly added reflected property"), FVersionChainCase::FindStructProperty(SecondVersion, TEXT("AddedValue")))) { return; }
+		ASSERT_THAT(IsNull(FVersionChainCase::FindStructProperty(FirstVersion, TEXT("AddedValue")), TEXT("The replaced first version should keep its original reflected layout")));
+		ASSERT_THAT(IsNull(FVersionChainCase::FindStructProperty(SecondVersion, TEXT("TailValue")), TEXT("The second version should not expose the third-version-only property yet")));
 
 		ECompileResult ReloadResultV3 = ECompileResult::Error;
-		if (!ScriptStructCQTest::CheckTrue(
+		if (!CheckTrue(
 				*TestRunner,
 				TEXT("Second structural script struct reload should compile successfully"),
-				CompileModuleWithResult(&Engine, ECompileType::FullReload, ScriptStructHotReloadTest::ModuleName, ScriptStructHotReloadTest::ScriptFilename, ScriptV3, ReloadResultV3)))
+				CompileModuleWithResult(&Engine, ECompileType::FullReload, FVersionChainCase::ModuleName, FVersionChainCase::ScriptFilename, ScriptV3, ReloadResultV3)))
 		{ return; }
-		if (!ScriptStructHotReloadTest::VerifyHandledReloadResult(*TestRunner, TEXT("Second structural script struct reload should also be handled by the full reload pipeline"), ReloadResultV3))
+		if (!FVersionChainCase::VerifyHandledReloadResult(*TestRunner, TEXT("Second structural script struct reload should also be handled by the full reload pipeline"), ReloadResultV3))
 		{ return; }
 
-		UASStruct* ThirdVersion = ScriptStructHotReloadTest::FindCurrentStruct();
-		if (!ScriptStructCQTest::CheckNotNull(*TestRunner, TEXT("Second full reload should publish the newest canonical script struct"), ThirdVersion)) { return; }
+		UASStruct* ThirdVersion = FVersionChainCase::FindCurrentStruct();
+		if (!CheckNotNull(*TestRunner, TEXT("Second full reload should publish the newest canonical script struct"), ThirdVersion)) { return; }
 
 		ASSERT_THAT(AreNotEqual(static_cast<UScriptStruct*>(SecondVersion), static_cast<UScriptStruct*>(ThirdVersion), TEXT("Second full reload should replace the second struct object")));
 		ASSERT_THAT(AreEqual(ThirdVersion, SecondVersion->NewerVersion, TEXT("Second full reload should wire the second version directly to the third version")));
 		ASSERT_THAT(AreEqual(static_cast<UScriptStruct*>(ThirdVersion), FirstVersion->GetNewestVersion(), TEXT("The original struct should walk the full version chain to the newest struct")));
 		ASSERT_THAT(AreEqual(static_cast<UScriptStruct*>(ThirdVersion), SecondVersion->GetNewestVersion(), TEXT("The middle struct should also resolve to the newest struct")));
 		ASSERT_THAT(AreEqual(static_cast<UScriptStruct*>(ThirdVersion), ThirdVersion->GetNewestVersion(), TEXT("The newest struct should still resolve to itself")));
-		ASSERT_THAT(AreEqual(ThirdVersion, ScriptStructHotReloadTest::FindCurrentStruct(), TEXT("Canonical lookup should resolve to the newest struct after multiple full reloads")));
-		ASSERT_THAT(IsTrue(SecondVersion->GetFName() != ScriptStructHotReloadTest::UnrealStructName, TEXT("The second version should also lose the canonical struct name after the next reload")));
-		if (!ScriptStructCQTest::CheckNotNull(*TestRunner, TEXT("The newest struct should expose the tail property introduced by the second reload"), ScriptStructHotReloadTest::FindStructProperty(ThirdVersion, TEXT("TailValue")))) { return; }
-		ASSERT_THAT(IsNull(ScriptStructHotReloadTest::FindStructProperty(SecondVersion, TEXT("TailValue")), TEXT("The middle replaced struct should keep the layout it had when it was canonical")));
-		ASSERT_THAT(IsNull(ScriptStructHotReloadTest::FindStructProperty(FirstVersion, TEXT("AddedValue")), TEXT("The oldest replaced struct should remain frozen at its original layout")));
-		ASSERT_THAT(IsNull(ScriptStructHotReloadTest::FindStructProperty(FirstVersion, TEXT("TailValue")), TEXT("The oldest replaced struct should never gain later properties")));
+		ASSERT_THAT(AreEqual(ThirdVersion, FVersionChainCase::FindCurrentStruct(), TEXT("Canonical lookup should resolve to the newest struct after multiple full reloads")));
+		ASSERT_THAT(IsTrue(SecondVersion->GetFName() != FVersionChainCase::UnrealStructName, TEXT("The second version should also lose the canonical struct name after the next reload")));
+		if (!CheckNotNull(*TestRunner, TEXT("The newest struct should expose the tail property introduced by the second reload"), FVersionChainCase::FindStructProperty(ThirdVersion, TEXT("TailValue")))) { return; }
+		ASSERT_THAT(IsNull(FVersionChainCase::FindStructProperty(SecondVersion, TEXT("TailValue")), TEXT("The middle replaced struct should keep the layout it had when it was canonical")));
+		ASSERT_THAT(IsNull(FVersionChainCase::FindStructProperty(FirstVersion, TEXT("AddedValue")), TEXT("The oldest replaced struct should remain frozen at its original layout")));
+		ASSERT_THAT(IsNull(FVersionChainCase::FindStructProperty(FirstVersion, TEXT("TailValue")), TEXT("The oldest replaced struct should never gain later properties")));
 	}
 
 	TEST_METHOD(CustomGuidStableAcrossSameNameReload)
@@ -318,10 +315,10 @@ public:
 		FAngelscriptEngineScope EngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*ScriptStructCustomGuidTest::StableModuleName.ToString());
-			Engine.DiscardModule(*ScriptStructCustomGuidTest::DifferentModuleName.ToString());
-			IFileManager::Get().Delete(*ScriptStructCustomGuidTest::GetStableScriptAbsoluteFilename(), false, true, true);
-			IFileManager::Get().Delete(*ScriptStructCustomGuidTest::GetDifferentScriptAbsoluteFilename(), false, true, true);
+			Engine.DiscardModule(*FCustomGuidCase::StableModuleName.ToString());
+			Engine.DiscardModule(*FCustomGuidCase::DifferentModuleName.ToString());
+			IFileManager::Get().Delete(*FCustomGuidCase::GetStableScriptAbsoluteFilename(), false, true, true);
+			IFileManager::Get().Delete(*FCustomGuidCase::GetDifferentScriptAbsoluteFilename(), false, true, true);
 		};
 
 		const FString StableScriptV1 = ASTEST_AS(R"AS(
@@ -352,42 +349,42 @@ public:
 			};
 			)AS");
 
-		if (!ScriptStructCQTest::CheckTrue(
+		if (!CheckTrue(
 				*TestRunner,
 				TEXT("Initial stable script struct compile should succeed"),
-				CompileAnnotatedModuleFromMemory(&Engine, ScriptStructCustomGuidTest::StableModuleName, ScriptStructCustomGuidTest::StableScriptFilename, StableScriptV1)))
+				CompileAnnotatedModuleFromMemory(&Engine, FCustomGuidCase::StableModuleName, FCustomGuidCase::StableScriptFilename, StableScriptV1)))
 		{ return; }
 
-		UASStruct* InitialStableStruct = ScriptStructCustomGuidTest::FindStableStruct();
-		if (!ScriptStructCQTest::CheckNotNull(*TestRunner, TEXT("Initial stable script struct should be registered in the Angelscript package"), InitialStableStruct)) { return; }
+		UASStruct* InitialStableStruct = FCustomGuidCase::FindStableStruct();
+		if (!CheckNotNull(*TestRunner, TEXT("Initial stable script struct should be registered in the Angelscript package"), InitialStableStruct)) { return; }
 		const FGuid StableGuidBeforeReload = InitialStableStruct->GetCustomGuid();
 		ASSERT_THAT(IsTrue(StableGuidBeforeReload.IsValid(), TEXT("Initial stable script struct should publish a valid custom GUID")));
 
 		ECompileResult StableReloadResult = ECompileResult::Error;
-		if (!ScriptStructCQTest::CheckTrue(
+		if (!CheckTrue(
 				*TestRunner,
 				TEXT("Stable script struct full reload should compile successfully"),
-				CompileModuleWithResult(&Engine, ECompileType::FullReload, ScriptStructCustomGuidTest::StableModuleName, ScriptStructCustomGuidTest::StableScriptFilename, StableScriptV2, StableReloadResult)))
+				CompileModuleWithResult(&Engine, ECompileType::FullReload, FCustomGuidCase::StableModuleName, FCustomGuidCase::StableScriptFilename, StableScriptV2, StableReloadResult)))
 		{ return; }
-		if (!ScriptStructHotReloadTest::VerifyHandledReloadResult(*TestRunner, TEXT("Stable script struct full reload should be handled by the reload pipeline"), StableReloadResult))
+		if (!FVersionChainCase::VerifyHandledReloadResult(*TestRunner, TEXT("Stable script struct full reload should be handled by the reload pipeline"), StableReloadResult))
 		{ return; }
 
-		UASStruct* ReloadedStableStruct = ScriptStructCustomGuidTest::FindStableStruct();
-		if (!ScriptStructCQTest::CheckNotNull(*TestRunner, TEXT("Stable script struct full reload should publish a replacement struct"), ReloadedStableStruct)) { return; }
+		UASStruct* ReloadedStableStruct = FCustomGuidCase::FindStableStruct();
+		if (!CheckNotNull(*TestRunner, TEXT("Stable script struct full reload should publish a replacement struct"), ReloadedStableStruct)) { return; }
 
 		ASSERT_THAT(AreNotEqual(static_cast<UScriptStruct*>(ReloadedStableStruct), static_cast<UScriptStruct*>(InitialStableStruct), TEXT("Stable script struct full reload should replace the canonical struct object")));
 		ASSERT_THAT(AreEqual(StableGuidBeforeReload, ReloadedStableStruct->GetCustomGuid(), TEXT("Stable script struct full reload should preserve the original custom GUID")));
 		ASSERT_THAT(AreEqual(StableGuidBeforeReload, InitialStableStruct->GetCustomGuid(), TEXT("Replaced stable script struct should retain its original custom GUID")));
 		ASSERT_THAT(AreEqual(static_cast<UScriptStruct*>(ReloadedStableStruct), InitialStableStruct->GetNewestVersion(), TEXT("Replaced stable script struct should resolve the reload result as its newest version")));
 
-		if (!ScriptStructCQTest::CheckTrue(
+		if (!CheckTrue(
 				*TestRunner,
 				TEXT("Different-name script struct compile should succeed"),
-				CompileAnnotatedModuleFromMemory(&Engine, ScriptStructCustomGuidTest::DifferentModuleName, ScriptStructCustomGuidTest::DifferentScriptFilename, DifferentScript)))
+				CompileAnnotatedModuleFromMemory(&Engine, FCustomGuidCase::DifferentModuleName, FCustomGuidCase::DifferentScriptFilename, DifferentScript)))
 		{ return; }
 
-		UASStruct* DifferentStruct = ScriptStructCustomGuidTest::FindDifferentStruct();
-		if (!ScriptStructCQTest::CheckNotNull(*TestRunner, TEXT("Different-name script struct should be registered in the Angelscript package"), DifferentStruct)) { return; }
+		UASStruct* DifferentStruct = FCustomGuidCase::FindDifferentStruct();
+		if (!CheckNotNull(*TestRunner, TEXT("Different-name script struct should be registered in the Angelscript package"), DifferentStruct)) { return; }
 		const FGuid DifferentGuid = DifferentStruct->GetCustomGuid();
 		ASSERT_THAT(IsTrue(DifferentGuid.IsValid(), TEXT("Different-name script struct should publish a valid custom GUID")));
 		ASSERT_THAT(AreNotEqual(StableGuidBeforeReload, DifferentGuid, TEXT("Different-name script struct should not collide with the stable struct custom GUID")));
@@ -399,8 +396,8 @@ public:
 		FAngelscriptEngineScope EngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*ScriptStructCapabilityReloadTest::ModuleName.ToString());
-			IFileManager::Get().Delete(*ScriptStructCapabilityReloadTest::GetScriptAbsoluteFilename(), false, true, true);
+			Engine.DiscardModule(*FCapabilityReloadCase::ModuleName.ToString());
+			IFileManager::Get().Delete(*FCapabilityReloadCase::GetScriptAbsoluteFilename(), false, true, true);
 		};
 
 		const FString ScriptV1 = ASTEST_AS(R"AS(
@@ -444,37 +441,37 @@ public:
 			};
 			)AS");
 
-		if (!ScriptStructCQTest::CheckTrue(
+		if (!CheckTrue(
 				*TestRunner,
 				TEXT("Capability baseline script struct compile should succeed"),
-				CompileAnnotatedModuleFromMemory(&Engine, ScriptStructCapabilityReloadTest::ModuleName, ScriptStructCapabilityReloadTest::ScriptFilename, ScriptV1)))
+				CompileAnnotatedModuleFromMemory(&Engine, FCapabilityReloadCase::ModuleName, FCapabilityReloadCase::ScriptFilename, ScriptV1)))
 		{ return; }
 
-		UASStruct* InitialStruct = ScriptStructCapabilityReloadTest::FindCurrentStruct();
-		if (!ScriptStructCapabilityReloadTest::VerifyCapabilityState(*TestRunner, InitialStruct, TEXT("Capability baseline struct"), true, true))
+		UASStruct* InitialStruct = FCapabilityReloadCase::FindCurrentStruct();
+		if (!FCapabilityReloadCase::VerifyCapabilityState(*TestRunner, InitialStruct, TEXT("Capability baseline struct"), true, true))
 		{ return; }
-		if (!ScriptStructCQTest::CheckNotNull(*TestRunner, TEXT("Capability baseline struct should keep the script ToString binding"), InitialStruct->GetToStringFunction()))
+		if (!CheckNotNull(*TestRunner, TEXT("Capability baseline struct should keep the script ToString binding"), InitialStruct->GetToStringFunction()))
 		{ return; }
 
 		ECompileResult ReloadResult = ECompileResult::Error;
-		if (!ScriptStructCQTest::CheckTrue(
+		if (!CheckTrue(
 				*TestRunner,
 				TEXT("Capability reload script struct compile should succeed"),
-				CompileModuleWithResult(&Engine, ECompileType::FullReload, ScriptStructCapabilityReloadTest::ModuleName, ScriptStructCapabilityReloadTest::ScriptFilename, ScriptV2, ReloadResult)))
+				CompileModuleWithResult(&Engine, ECompileType::FullReload, FCapabilityReloadCase::ModuleName, FCapabilityReloadCase::ScriptFilename, ScriptV2, ReloadResult)))
 		{ return; }
-		if (!ScriptStructHotReloadTest::VerifyHandledReloadResult(*TestRunner, TEXT("Capability reload should be handled by the full reload pipeline"), ReloadResult))
+		if (!FVersionChainCase::VerifyHandledReloadResult(*TestRunner, TEXT("Capability reload should be handled by the full reload pipeline"), ReloadResult))
 		{ return; }
 
-		UASStruct* ReloadedStruct = ScriptStructCapabilityReloadTest::FindCurrentStruct();
-		if (!ScriptStructCQTest::CheckNotNull(*TestRunner, TEXT("Capability reload should publish a replacement script struct"), ReloadedStruct)) { return; }
+		UASStruct* ReloadedStruct = FCapabilityReloadCase::FindCurrentStruct();
+		if (!CheckNotNull(*TestRunner, TEXT("Capability reload should publish a replacement script struct"), ReloadedStruct)) { return; }
 
 		ASSERT_THAT(AreNotEqual(static_cast<UScriptStruct*>(ReloadedStruct), static_cast<UScriptStruct*>(InitialStruct), TEXT("Capability reload should replace the canonical struct object")));
 		ASSERT_THAT(AreEqual(static_cast<UScriptStruct*>(ReloadedStruct), InitialStruct->GetNewestVersion(), TEXT("Capability reload should wire the previous struct to the replacement version")));
 		ASSERT_THAT(AreEqual(static_cast<UScriptStruct*>(ReloadedStruct), ReloadedStruct->GetNewestVersion(), TEXT("Capability reload replacement should consider itself the newest version")));
-		ASSERT_THAT(IsNotNull(ScriptStructHotReloadTest::FindStructProperty(ReloadedStruct, TEXT("AddedValue")), TEXT("Capability reload replacement should expose the added property that forces full reload")));
-		ASSERT_THAT(IsNull(ScriptStructHotReloadTest::FindStructProperty(InitialStruct, TEXT("AddedValue")), TEXT("Capability reload should keep the replaced struct frozen at its original layout")));
+		ASSERT_THAT(IsNotNull(FVersionChainCase::FindStructProperty(ReloadedStruct, TEXT("AddedValue")), TEXT("Capability reload replacement should expose the added property that forces full reload")));
+		ASSERT_THAT(IsNull(FVersionChainCase::FindStructProperty(InitialStruct, TEXT("AddedValue")), TEXT("Capability reload should keep the replaced struct frozen at its original layout")));
 
-		if (!ScriptStructCapabilityReloadTest::VerifyCapabilityState(*TestRunner, ReloadedStruct, TEXT("Capability reload replacement struct"), false, false))
+		if (!FCapabilityReloadCase::VerifyCapabilityState(*TestRunner, ReloadedStruct, TEXT("Capability reload replacement struct"), false, false))
 		{ return; }
 
 		ASSERT_THAT(IsNotNull(ReloadedStruct->GetToStringFunction(), TEXT("Capability reload replacement should keep the ToString binding after dropping opEquals and Hash")));

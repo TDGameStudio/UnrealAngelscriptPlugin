@@ -10,12 +10,15 @@
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-namespace ASFunctionDispatchTests
+TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionDispatchTests,
+	"Angelscript.TestModule.ClassGenerator.ASFunction",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	static const FName MatrixModuleName(TEXT("ASFunctionDispatchMatrix"));
-	static const FString MatrixFilename(TEXT("ASFunctionDispatchMatrix.as"));
-	static const FName MatrixClassName(TEXT("UASFunctionDispatchMatrix"));
-	static const FName MatrixStaticsClassName(TEXT("UModule_ASFunctionDispatchMatrixStatics"));
+private:
+	inline static const FName MatrixModuleName = FName(TEXT("ASFunctionDispatchMatrix"));
+	inline static const FString MatrixFilename = FString(TEXT("ASFunctionDispatchMatrix.as"));
+	inline static const FName MatrixClassName = FName(TEXT("UASFunctionDispatchMatrix"));
+	inline static const FName MatrixStaticsClassName = FName(TEXT("UModule_ASFunctionDispatchMatrixStatics"));
 
 	struct FDispatchCase
 	{
@@ -35,13 +38,13 @@ namespace ASFunctionDispatchTests
 		const TCHAR* CaseLabel = TEXT("");
 	};
 
-	bool MatchesExpectedFunctionClass(const UFunction& Function, const FDispatchCase& TestCase)
+	static bool MatchesExpectedFunctionClass(const UFunction& Function, const FDispatchCase& TestCase)
 	{
 		const UClass* ActualFunctionClass = Function.GetClass();
 		return ActualFunctionClass == TestCase.ExpectedFunctionClass || ActualFunctionClass == TestCase.ExpectedJitFunctionClass;
 	}
 
-	FString DescribeExpectedFunctionClasses(const FDispatchCase& TestCase)
+	static FString DescribeExpectedFunctionClasses(const FDispatchCase& TestCase)
 	{
 		return FString::Printf(
 			TEXT("%s or %s"),
@@ -49,12 +52,12 @@ namespace ASFunctionDispatchTests
 			*GetNameSafe(TestCase.ExpectedJitFunctionClass));
 	}
 
-	FString DescribeActualFunctionClass(const UFunction* Function)
+	static FString DescribeActualFunctionClass(const UFunction* Function)
 	{
 		return Function != nullptr ? GetNameSafe(Function->GetClass()) : TEXT("<null>");
 	}
 
-	bool ExpectFunctionClass(FAutomationTestBase& Test, UClass* OwnerClass, const FMatrixCase& TestCase)
+	static bool ExpectFunctionClass(FAutomationTestBase& Test, UClass* OwnerClass, const FMatrixCase& TestCase)
 	{
 		FNoDiscardAsserter LocalAssert(Test);
 		UASFunction* Function = Cast<UASFunction>(::FindGeneratedFunction(OwnerClass, TestCase.FunctionName));
@@ -74,7 +77,7 @@ namespace ASFunctionDispatchTests
 				*DescribeActualFunctionClass(Function)));
 	}
 
-	UASClass* CompileMatrixClass(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
+	static UASClass* CompileMatrixClass(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 	{
 		const FString ScriptSource = ASTEST_AS(R"AS(
 			UCLASS()
@@ -196,12 +199,6 @@ namespace ASFunctionDispatchTests
 			ScriptSource,
 			MatrixClassName));
 	}
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptASFunctionDispatchTests,
-	"Angelscript.TestModule.ClassGenerator.ASFunction",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
 public:
 	BEFORE_ALL()
 	{
@@ -219,7 +216,7 @@ public:
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope EngineScope(Engine);
 
-		const TArray<ASFunctionDispatchTests::FDispatchCase> Cases =
+		const TArray<FAngelscriptASFunctionDispatchTests::FDispatchCase> Cases =
 		{
 			{
 				TEXT("ASFunctionDispatchDefault"),
@@ -282,13 +279,13 @@ public:
 
 		ON_SCOPE_EXIT
 		{
-			for (const ASFunctionDispatchTests::FDispatchCase& TestCase : Cases)
+			for (const FAngelscriptASFunctionDispatchTests::FDispatchCase& TestCase : Cases)
 			{
 				Engine.DiscardModule(*TestCase.ModuleName.ToString());
 			}
 		};
 
-		for (const ASFunctionDispatchTests::FDispatchCase& TestCase : Cases)
+		for (const FAngelscriptASFunctionDispatchTests::FDispatchCase& TestCase : Cases)
 		{
 			UClass* ScriptClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
 				*TestRunner,
@@ -311,12 +308,12 @@ public:
 			}
 
 			ASSERT_THAT(IsTrue(
-				ASFunctionDispatchTests::MatchesExpectedFunctionClass(*GeneratedFunction, TestCase),
+				FAngelscriptASFunctionDispatchTests::MatchesExpectedFunctionClass(*GeneratedFunction, TestCase),
 				*FString::Printf(
 					TEXT("AllocateFunctionFor %s case should select %s (actual: %s)"),
 					TestCase.CaseLabel,
-					*ASFunctionDispatchTests::DescribeExpectedFunctionClasses(TestCase),
-					*ASFunctionDispatchTests::DescribeActualFunctionClass(GeneratedFunction))));
+					*FAngelscriptASFunctionDispatchTests::DescribeExpectedFunctionClasses(TestCase),
+					*FAngelscriptASFunctionDispatchTests::DescribeActualFunctionClass(GeneratedFunction))));
 
 			UObject* Instance = NewObject<UObject>(GetTransientPackage(), ScriptClass);
 			if (!this->Assert.IsNotNull(
@@ -349,22 +346,22 @@ public:
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*ASFunctionDispatchTests::MatrixModuleName.ToString());
+			Engine.DiscardModule(*FAngelscriptASFunctionDispatchTests::MatrixModuleName.ToString());
 		};
 
-		UASClass* ScriptClass = ASFunctionDispatchTests::CompileMatrixClass(*TestRunner, Engine);
+		UASClass* ScriptClass = FAngelscriptASFunctionDispatchTests::CompileMatrixClass(*TestRunner, Engine);
 		if (!this->Assert.IsNotNull(ScriptClass, TEXT("AllocateFunctionFor matrix should compile a script class")))
 		{
 			return;
 		}
 
-		UClass* StaticsClass = ::FindGeneratedClass(&Engine, ASFunctionDispatchTests::MatrixStaticsClassName);
+		UClass* StaticsClass = ::FindGeneratedClass(&Engine, FAngelscriptASFunctionDispatchTests::MatrixStaticsClassName);
 		if (!this->Assert.IsNotNull(StaticsClass, TEXT("AllocateFunctionFor matrix should generate the module statics class")))
 		{
 			return;
 		}
 
-		const TArray<ASFunctionDispatchTests::FMatrixCase> InstanceCases =
+		const TArray<FAngelscriptASFunctionDispatchTests::FMatrixCase> InstanceCases =
 		{
 			{ TEXT("NoParams"), UASFunction_NoParams::StaticClass(), TEXT("void no-param instance function") },
 			{ TEXT("TakeByte"), UASFunction_ByteArg::StaticClass(), TEXT("single byte argument") },
@@ -384,21 +381,21 @@ public:
 			{ TEXT("VirtualReturn"), UASFunction_DWordReturn::StaticClass(), TEXT("virtual non-JIT wrapper") },
 		};
 
-		for (const ASFunctionDispatchTests::FMatrixCase& TestCase : InstanceCases)
+		for (const FAngelscriptASFunctionDispatchTests::FMatrixCase& TestCase : InstanceCases)
 		{
-			if (!ASFunctionDispatchTests::ExpectFunctionClass(*TestRunner, ScriptClass, TestCase))
+			if (!FAngelscriptASFunctionDispatchTests::ExpectFunctionClass(*TestRunner, ScriptClass, TestCase))
 			{
 				return;
 			}
 		}
 
-		const ASFunctionDispatchTests::FMatrixCase StaticCase =
+		const FAngelscriptASFunctionDispatchTests::FMatrixCase StaticCase =
 		{
 			TEXT("StaticReturn"),
 			UASFunction_NotThreadSafe::StaticClass(),
 			TEXT("module-level static generic fallback")
 		};
-		if (!ASFunctionDispatchTests::ExpectFunctionClass(*TestRunner, StaticsClass, StaticCase))
+		if (!FAngelscriptASFunctionDispatchTests::ExpectFunctionClass(*TestRunner, StaticsClass, StaticCase))
 		{
 			return;
 		}

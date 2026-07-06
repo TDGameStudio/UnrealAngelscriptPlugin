@@ -9,8 +9,11 @@
 #if WITH_ANGELSCRIPT_UNITTESTS
 
 
-namespace ASClassMetadataTests
+TEST_CLASS_WITH_FLAGS(FAngelscriptASClassMetadataTests,
+	"Angelscript.TestModule.ClassGenerator.ASClass",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
 	struct FDeveloperOnlyModuleCase
 	{
 		FName ModuleName;
@@ -19,7 +22,7 @@ namespace ASClassMetadataTests
 		bool bExpectedDeveloperOnly = false;
 	};
 
-	UASClass* CompileMetadataCase(
+	static UASClass* CompileMetadataCase(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		const FDeveloperOnlyModuleCase& TestCase)
@@ -49,12 +52,6 @@ namespace ASClassMetadataTests
 		}
 		return GeneratedClass;
 	}
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptASClassMetadataTests,
-	"Angelscript.TestModule.ClassGenerator.ASClass",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
 public:
 	BEFORE_ALL()
 	{
@@ -72,7 +69,7 @@ public:
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope EngineScope(Engine);
 
-		const TArray<ASClassMetadataTests::FDeveloperOnlyModuleCase> Cases =
+		const TArray<FAngelscriptASClassMetadataTests::FDeveloperOnlyModuleCase> Cases =
 		{
 			{
 				FName(TEXT("Game.Tools.Editor.Visualizers")),
@@ -96,15 +93,15 @@ public:
 
 		ON_SCOPE_EXIT
 		{
-			for (const ASClassMetadataTests::FDeveloperOnlyModuleCase& TestCase : Cases)
+			for (const FAngelscriptASClassMetadataTests::FDeveloperOnlyModuleCase& TestCase : Cases)
 			{
 				Engine.DiscardModule(*TestCase.ModuleName.ToString());
 			}
 		};
 
-		for (const ASClassMetadataTests::FDeveloperOnlyModuleCase& TestCase : Cases)
+		for (const FAngelscriptASClassMetadataTests::FDeveloperOnlyModuleCase& TestCase : Cases)
 		{
-			UASClass* GeneratedClass = ASClassMetadataTests::CompileMetadataCase(*TestRunner, Engine, TestCase);
+			UASClass* GeneratedClass = FAngelscriptASClassMetadataTests::CompileMetadataCase(*TestRunner, Engine, TestCase);
 			if (GeneratedClass == nullptr)
 			{
 				return;

@@ -12,19 +12,22 @@
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-namespace InterfaceDispatchBridgeTests
+TEST_CLASS_WITH_FLAGS(FAngelscriptInterfaceDispatchBridgeTests,
+	"Angelscript.TestModule.ClassGenerator.Interface",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	static const FName ModuleName(TEXT("ASInterfaceDispatchBridge"));
-	static const FString ScriptFilename(TEXT("ASInterfaceDispatchBridge.as"));
-	static const FName GeneratedClassName(TEXT("AInterfaceDispatchBridgeCarrier"));
+private:
+	inline static const FName ModuleName = FName(TEXT("ASInterfaceDispatchBridge"));
+	inline static const FString ScriptFilename = FString(TEXT("ASInterfaceDispatchBridge.as"));
+	inline static const FName GeneratedClassName = FName(TEXT("AInterfaceDispatchBridgeCarrier"));
 
-	void BindProductionInterfaceMethod(FAngelscriptBinds& Binds, const TCHAR* Declaration, const TCHAR* FunctionName)
+	static void BindProductionInterfaceMethod(FAngelscriptBinds& Binds, const TCHAR* Declaration, const TCHAR* FunctionName)
 	{
 		FInterfaceMethodSignature* Signature = FAngelscriptEngine::Get().RegisterInterfaceMethodSignature(FName(FunctionName));
 		Binds.GenericMethod(FString(Declaration), CallInterfaceMethod, Signature);
 	}
 
-	void EnsureProductionNativeInterfaceBound(UClass* InterfaceClass)
+	static void EnsureProductionNativeInterfaceBound(UClass* InterfaceClass)
 	{
 		if (InterfaceClass == nullptr)
 		{
@@ -55,16 +58,11 @@ namespace InterfaceDispatchBridgeTests
 		BindProductionInterfaceMethod(Binds, TEXT("void AdjustNativeValue(int Delta, int& Value)"), TEXT("AdjustNativeValue"));
 	}
 
-	void EnsureFixturesBound()
+	static void EnsureFixturesBound()
 	{
 		EnsureProductionNativeInterfaceBound(UAngelscriptNativeParentInterface::StaticClass());
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptInterfaceDispatchBridgeTests,
-	"Angelscript.TestModule.ClassGenerator.Interface",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
 public:
 	BEFORE_ALL()
 	{
@@ -82,11 +80,11 @@ public:
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope EngineScope(Engine);
 
-		InterfaceDispatchBridgeTests::EnsureFixturesBound();
+		FAngelscriptInterfaceDispatchBridgeTests::EnsureFixturesBound();
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*InterfaceDispatchBridgeTests::ModuleName.ToString());
+			Engine.DiscardModule(*FAngelscriptInterfaceDispatchBridgeTests::ModuleName.ToString());
 		};
 
 		const FString ScriptSource = ASTEST_AS(R"AS(
@@ -142,10 +140,10 @@ public:
 		UClass* ScriptClass = AngelscriptFunctionalTestUtils::CompileScriptModule(
 			*TestRunner,
 			Engine,
-			InterfaceDispatchBridgeTests::ModuleName,
-			InterfaceDispatchBridgeTests::ScriptFilename,
+			FAngelscriptInterfaceDispatchBridgeTests::ModuleName,
+			FAngelscriptInterfaceDispatchBridgeTests::ScriptFilename,
 			ScriptSource,
-			InterfaceDispatchBridgeTests::GeneratedClassName);
+			FAngelscriptInterfaceDispatchBridgeTests::GeneratedClassName);
 		if (ScriptClass == nullptr)
 		{
 			return;

@@ -10,15 +10,18 @@
 // Test Layer: UE Functional
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-namespace ScriptClassShapeTest
+TEST_CLASS_WITH_FLAGS(FAngelscriptScriptClassShapeTests,
+	"Angelscript.TestModule.ScriptClass",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	FAngelscriptEngine& AcquireFreshScriptClassShapeEngine()
+private:
+	static FAngelscriptEngine& AcquireFreshScriptClassShapeEngine()
 	{
 		DestroySharedAndStrayGlobalTestEngine();
 		return AcquireCleanSharedCloneEngine();
 	}
 
-	int32 CountDeclaredProperties(const UClass& ScriptClass)
+	static int32 CountDeclaredProperties(const UClass& ScriptClass)
 	{
 		int32 PropertyCount = 0;
 		for (TFieldIterator<FProperty> It(&ScriptClass, EFieldIteratorFlags::ExcludeSuper); It; ++It)
@@ -28,16 +31,10 @@ namespace ScriptClassShapeTest
 
 		return PropertyCount;
 	}
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptScriptClassShapeTests,
-	"Angelscript.TestModule.ScriptClass",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
 public:
 	TEST_METHOD(ScriptInheritancePreservesParentPropertyAndOverride)
 	{
-		FAngelscriptEngine& Engine = ScriptClassShapeTest::AcquireFreshScriptClassShapeEngine();
+		FAngelscriptEngine& Engine = FAngelscriptScriptClassShapeTests::AcquireFreshScriptClassShapeEngine();
 		FAngelscriptEngineScope EngineScope(Engine);
 		static const FName ModuleName(TEXT("TestScriptClassScriptInheritance"));
 		ON_SCOPE_EXIT
@@ -135,7 +132,7 @@ public:
 
 	TEST_METHOD(EmptyActorCompilesAndSpawns)
 	{
-		FAngelscriptEngine& Engine = ScriptClassShapeTest::AcquireFreshScriptClassShapeEngine();
+		FAngelscriptEngine& Engine = FAngelscriptScriptClassShapeTests::AcquireFreshScriptClassShapeEngine();
 		FAngelscriptEngineScope EngineScope(Engine);
 		static const FName ModuleName(TEXT("TestScriptClassEmptyActor"));
 		ON_SCOPE_EXIT
@@ -161,7 +158,7 @@ public:
 
 		ASSERT_THAT(IsTrue(ScriptClass->IsChildOf(AActor::StaticClass()), TEXT("Empty script actor test case should stay actor-derived")));
 		ASSERT_THAT(AreEqual(AActor::StaticClass(), ScriptClass->GetSuperClass(), TEXT("Empty script actor test case should use AActor as the exact generated superclass")));
-		ASSERT_THAT(AreEqual(0, ScriptClassShapeTest::CountDeclaredProperties(*ScriptClass), TEXT("Empty script actor test case should not synthesize any declared user properties")));
+		ASSERT_THAT(AreEqual(0, FAngelscriptScriptClassShapeTests::CountDeclaredProperties(*ScriptClass), TEXT("Empty script actor test case should not synthesize any declared user properties")));
 
 		UObject* ClassDefaultObject = ScriptClass->GetDefaultObject();
 		ASSERT_THAT(IsNotNull(ClassDefaultObject, TEXT("Empty script actor test case should provide a class default object")));

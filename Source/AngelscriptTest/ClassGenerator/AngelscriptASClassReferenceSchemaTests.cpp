@@ -19,66 +19,89 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptASClassReferenceSchemaTests,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
-inline static const FName ReferenceSchemaModuleName = FName(TEXT("ASClassReferenceSchema"));
-inline static const FString ReferenceSchemaFilename = FString(TEXT("ASClassReferenceSchema.as"));
-inline static const FName ReferenceSchemaClassName = FName(TEXT("UReferenceSchemaHolder"));
-inline static const FName ReferenceSchemaSoftReloadModuleName = FName(TEXT("ASClassReferenceSchemaSoftReload"));
-inline static const FString ReferenceSchemaSoftReloadFilename = FString(TEXT("ASClassReferenceSchemaSoftReload.as"));
-inline static const FName ReferenceSchemaSoftReloadClassName = FName(TEXT("UReferenceSchemaReloadHolder"));
+	inline static const FName ReferenceSchemaModuleName = FName(TEXT("ASClassReferenceSchema"));
+	inline static const FString ReferenceSchemaFilename = FString(TEXT("ASClassReferenceSchema.as"));
+	inline static const FName ReferenceSchemaClassName = FName(TEXT("UReferenceSchemaHolder"));
+	inline static const FName ReferenceSchemaSoftReloadModuleName = FName(TEXT("ASClassReferenceSchemaSoftReload"));
+	inline static const FString ReferenceSchemaSoftReloadFilename = FString(TEXT("ASClassReferenceSchemaSoftReload.as"));
+	inline static const FName ReferenceSchemaSoftReloadClassName = FName(TEXT("UReferenceSchemaReloadHolder"));
 
-struct FStoreParams { UObject* InValue = nullptr; };
-struct FGetStoredParams { UObject* ReturnValue = nullptr; };
-struct FGetVersionParams { int32 ReturnValue = 0; };
-
-static UFunction* RequireGeneratedFunction(FAutomationTestBase& Test, UClass* OwnerClass, FName FunctionName, const TCHAR* Context)
-{
-	UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
-	FNoDiscardAsserter LocalAssert(Test);
-	(void)LocalAssert.IsNotNull(Function, *FString::Printf(TEXT("%s should expose generated function '%s'"), Context, *FunctionName.ToString()));
-	return Function;
-}
-
-static bool InvokeGeneratedFunction(FAngelscriptEngine& Engine, UObject* Object, UFunction* Function, void* Params)
-{
-	if (!::IsValid(Object) || Function == nullptr) { return false; }
-	FAngelscriptEngineScope FunctionScope(Engine, Object);
-	if (UASFunction* ScriptFunction = Cast<UASFunction>(Function))
-	{ ScriptFunction->RuntimeCallEvent(Object, Params); }
-	else
-	{ Object->ProcessEvent(Function, Params); }
-	return true;
-}
-
-static int32 CountSchemaMembers(UE::GC::FSchemaView Schema)
-{
-	if (Schema.IsEmpty()) { return 0; }
-	int32 Count = 0;
-	for (const UE::GC::FMemberWord* WordIt = Schema.GetWords(); true; ++WordIt)
+	struct FStoreParams
 	{
-		const UE::GC::Private::FMemberWordUnpacked Quad(WordIt->Members);
-		for (UE::GC::Private::FMemberUnpacked Member : Quad.Members)
+		UObject* InValue = nullptr;
+	};
+
+	struct FGetStoredParams
+	{
+		UObject* ReturnValue = nullptr;
+	};
+
+	struct FGetVersionParams
+	{
+		int32 ReturnValue = 0;
+	};
+
+	static UFunction* RequireGeneratedFunction(FAutomationTestBase& Test, UClass* OwnerClass, FName FunctionName, const TCHAR* Context)
+	{
+		UFunction* Function = FindGeneratedFunction(OwnerClass, FunctionName);
+		FNoDiscardAsserter LocalAssert(Test);
+		(void)LocalAssert.IsNotNull(Function, *FString::Printf(TEXT("%s should expose generated function '%s'"), Context, *FunctionName.ToString()));
+		return Function;
+	}
+
+	static bool InvokeGeneratedFunction(FAngelscriptEngine& Engine, UObject* Object, UFunction* Function, void* Params)
+	{
+		if (!::IsValid(Object) || Function == nullptr)
 		{
-			switch (Member.Type)
+			return false;
+		}
+
+		FAngelscriptEngineScope FunctionScope(Engine, Object);
+		if (UASFunction* ScriptFunction = Cast<UASFunction>(Function))
+		{
+			ScriptFunction->RuntimeCallEvent(Object, Params);
+		}
+		else
+		{
+			Object->ProcessEvent(Function, Params);
+		}
+		return true;
+	}
+
+	static int32 CountSchemaMembers(UE::GC::FSchemaView Schema)
+	{
+		if (Schema.IsEmpty())
+		{
+			return 0;
+		}
+
+		int32 Count = 0;
+		for (const UE::GC::FMemberWord* WordIt = Schema.GetWords(); true; ++WordIt)
+		{
+			const UE::GC::Private::FMemberWordUnpacked Quad(WordIt->Members);
+			for (UE::GC::Private::FMemberUnpacked Member : Quad.Members)
 			{
-			case UE::GC::EMemberType::StridedArray:
-			case UE::GC::EMemberType::StructArray:
-			case UE::GC::EMemberType::StructSet:
-			case UE::GC::EMemberType::FreezableStructArray:
-			case UE::GC::EMemberType::Optional:
-			case UE::GC::EMemberType::MemberARO:
-				++WordIt;
-				break;
-			case UE::GC::EMemberType::ARO:
-			case UE::GC::EMemberType::SlowARO:
-			case UE::GC::EMemberType::Stop:
-				return Count;
-			default:
-				break;
+				switch (Member.Type)
+				{
+				case UE::GC::EMemberType::StridedArray:
+				case UE::GC::EMemberType::StructArray:
+				case UE::GC::EMemberType::StructSet:
+				case UE::GC::EMemberType::FreezableStructArray:
+				case UE::GC::EMemberType::Optional:
+				case UE::GC::EMemberType::MemberARO:
+					++WordIt;
+					break;
+				case UE::GC::EMemberType::ARO:
+				case UE::GC::EMemberType::SlowARO:
+				case UE::GC::EMemberType::Stop:
+					return Count;
+				default:
+					break;
+				}
+				++Count;
 			}
-			++Count;
 		}
 	}
-}
 
 public:
 	BEFORE_ALL()

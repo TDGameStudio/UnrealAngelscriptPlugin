@@ -9,9 +9,12 @@
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-namespace ScriptClassStructureTests
+TEST_CLASS_WITH_FLAGS(FAngelscriptScriptClassStructureTests,
+	"Angelscript.TestModule.ScriptClass",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	int32 CountDeclaredProperties(const UClass& ScriptClass)
+private:
+	static int32 CountDeclaredProperties(const UClass& ScriptClass)
 	{
 		int32 PropertyCount = 0;
 		for (TFieldIterator<FProperty> It(&ScriptClass, EFieldIteratorFlags::ExcludeSuper); It; ++It)
@@ -21,12 +24,6 @@ namespace ScriptClassStructureTests
 
 		return PropertyCount;
 	}
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptScriptClassStructureTests,
-	"Angelscript.TestModule.ScriptClass",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
 public:
 	BEFORE_ALL()
 	{
@@ -78,7 +75,7 @@ public:
 		ASSERT_THAT(IsNotNull(ASClass, TEXT("Function-only script class test case should generate a UASClass")));
 
 		ASSERT_THAT(IsTrue(ScriptClass->IsChildOf(UObject::StaticClass()), TEXT("Function-only script class test case should remain UObject-derived")));
-		ASSERT_THAT(AreEqual(0, ScriptClassStructureTests::CountDeclaredProperties(*ScriptClass), TEXT("Function-only script class test case should not synthesize any declared user properties")));
+		ASSERT_THAT(AreEqual(0, FAngelscriptScriptClassStructureTests::CountDeclaredProperties(*ScriptClass), TEXT("Function-only script class test case should not synthesize any declared user properties")));
 		ASSERT_THAT(IsNull(FindFProperty<FProperty>(ScriptClass, TEXT("UnexpectedProperty")), TEXT("Function-only script class test case should not expose undeclared properties")));
 
 		UFunction* GetValueFunction = FindGeneratedFunction(ScriptClass, TEXT("GetValue"));
@@ -140,7 +137,7 @@ public:
 		UASClass* ASClass = Cast<UASClass>(ScriptClass);
 		ASSERT_THAT(IsNotNull(ASClass, TEXT("Namespaced script class test case should generate a UASClass")));
 		ASSERT_THAT(IsTrue(ScriptClass->IsChildOf(UObject::StaticClass()), TEXT("Namespaced script class test case should remain UObject-derived")));
-		ASSERT_THAT(AreEqual(1, ScriptClassStructureTests::CountDeclaredProperties(*ScriptClass), TEXT("Namespaced script class test case should expose exactly one declared user property")));
+		ASSERT_THAT(AreEqual(1, FAngelscriptScriptClassStructureTests::CountDeclaredProperties(*ScriptClass), TEXT("Namespaced script class test case should expose exactly one declared user property")));
 
 		UObject* DefaultObject = ScriptClass->GetDefaultObject();
 		ASSERT_THAT(IsNotNull(DefaultObject, TEXT("Namespaced script class test case should publish a class default object")));

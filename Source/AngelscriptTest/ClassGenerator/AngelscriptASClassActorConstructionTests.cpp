@@ -10,15 +10,18 @@
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-namespace ASClassActorConstructionTest
+TEST_CLASS_WITH_FLAGS(FAngelscriptASClassActorConstructionTests,
+	"Angelscript.TestModule.ClassGenerator.ASClass",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	static const FName ModuleName(TEXT("ASClassActorConstruction"));
-	static const FString ScriptFilename(TEXT("ASClassActorConstruction.as"));
-	static const FName GeneratedClassName(TEXT("AActorConstructionCarrier"));
-	static const FName CtorCountPropertyName(TEXT("CtorCount"));
-	static const FName DefaultValuePropertyName(TEXT("DefaultValue"));
-	static const FName DefaultLabelPropertyName(TEXT("DefaultLabel"));
-	static const FString ExpectedDefaultLabel(TEXT("ActorDefaults"));
+private:
+	inline static const FName ModuleName = FName(TEXT("ASClassActorConstruction"));
+	inline static const FString ScriptFilename = FString(TEXT("ASClassActorConstruction.as"));
+	inline static const FName GeneratedClassName = FName(TEXT("AActorConstructionCarrier"));
+	inline static const FName CtorCountPropertyName = FName(TEXT("CtorCount"));
+	inline static const FName DefaultValuePropertyName = FName(TEXT("DefaultValue"));
+	inline static const FName DefaultLabelPropertyName = FName(TEXT("DefaultLabel"));
+	inline static const FString ExpectedDefaultLabel = FString(TEXT("ActorDefaults"));
 	static constexpr int32 ExpectedCtorCount = 1;
 	static constexpr int32 ExpectedDefaultValue = 11;
 
@@ -29,7 +32,7 @@ namespace ASClassActorConstructionTest
 		FString DefaultLabel;
 	};
 
-	UASClass* CompileActorConstructionCarrier(
+	static UASClass* CompileActorConstructionCarrier(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
@@ -95,7 +98,7 @@ namespace ASClassActorConstructionTest
 		return GeneratedASClass;
 	}
 
-	bool ReadConstructionSnapshot(
+	static bool ReadConstructionSnapshot(
 		FAutomationTestBase& Test,
 		UObject* Object,
 		FActorConstructionSnapshot& OutSnapshot)
@@ -118,7 +121,7 @@ namespace ASClassActorConstructionTest
 		return true;
 	}
 
-	bool VerifyDefaults(
+	static bool VerifyDefaults(
 		FAutomationTestBase& Test,
 		const FString& ScopeLabel,
 		const FActorConstructionSnapshot& Snapshot)
@@ -136,7 +139,7 @@ namespace ASClassActorConstructionTest
 		return bDefaultValueMatches && bDefaultLabelMatches;
 	}
 
-	bool VerifyInstanceSnapshot(
+	static bool VerifyInstanceSnapshot(
 		FAutomationTestBase& Test,
 		const FString& ScopeLabel,
 		const FActorConstructionSnapshot& Snapshot)
@@ -150,12 +153,7 @@ namespace ASClassActorConstructionTest
 		return bCtorCountMatches
 			&& VerifyDefaults(Test, ScopeLabel, Snapshot);
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptASClassActorConstructionTests,
-	"Angelscript.TestModule.ClassGenerator.ASClass",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
 public:
 	BEFORE_ALL()
 	{
@@ -175,11 +173,11 @@ public:
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*ASClassActorConstructionTest::ModuleName.ToString());
+			Engine.DiscardModule(*FAngelscriptASClassActorConstructionTests::ModuleName.ToString());
 			CollectGarbage(RF_NoFlags, true);
 		};
 
-		UASClass* GeneratedASClass = ASClassActorConstructionTest::CompileActorConstructionCarrier(*TestRunner, Engine);
+		UASClass* GeneratedASClass = FAngelscriptASClassActorConstructionTests::CompileActorConstructionCarrier(*TestRunner, Engine);
 		if (GeneratedASClass == nullptr)
 		{
 			return;
@@ -192,8 +190,8 @@ public:
 			return;
 		}
 
-		ASClassActorConstructionTest::FActorConstructionSnapshot DefaultSnapshot;
-		if (!ASClassActorConstructionTest::ReadConstructionSnapshot(*TestRunner, DefaultObject, DefaultSnapshot))
+		FAngelscriptASClassActorConstructionTests::FActorConstructionSnapshot DefaultSnapshot;
+		if (!FAngelscriptASClassActorConstructionTests::ReadConstructionSnapshot(*TestRunner, DefaultObject, DefaultSnapshot))
 		{
 			return;
 		}
@@ -210,10 +208,10 @@ public:
 			return;
 		}
 
-		ASClassActorConstructionTest::FActorConstructionSnapshot FirstSnapshot;
-		ASClassActorConstructionTest::FActorConstructionSnapshot SecondSnapshot;
-		if (!ASClassActorConstructionTest::ReadConstructionSnapshot(*TestRunner, FirstActor, FirstSnapshot)
-			|| !ASClassActorConstructionTest::ReadConstructionSnapshot(*TestRunner, SecondActor, SecondSnapshot))
+		FAngelscriptASClassActorConstructionTests::FActorConstructionSnapshot FirstSnapshot;
+		FAngelscriptASClassActorConstructionTests::FActorConstructionSnapshot SecondSnapshot;
+		if (!FAngelscriptASClassActorConstructionTests::ReadConstructionSnapshot(*TestRunner, FirstActor, FirstSnapshot)
+			|| !FAngelscriptASClassActorConstructionTests::ReadConstructionSnapshot(*TestRunner, SecondActor, SecondSnapshot))
 		{
 			return;
 		}
@@ -231,21 +229,21 @@ public:
 			FirstActor != DefaultObject && SecondActor != DefaultObject,
 			TEXT("ASClass actor-construction test case should keep runtime actors distinct from the class default object")));
 
-		ASClassActorConstructionTest::VerifyDefaults(
+		FAngelscriptASClassActorConstructionTests::VerifyDefaults(
 			*TestRunner,
 			TEXT("ASClass actor-construction test case class default object"),
 			DefaultSnapshot);
-		ASClassActorConstructionTest::VerifyInstanceSnapshot(
+		FAngelscriptASClassActorConstructionTests::VerifyInstanceSnapshot(
 			*TestRunner,
 			TEXT("ASClass actor-construction test case first spawned actor"),
 			FirstSnapshot);
-		ASClassActorConstructionTest::VerifyInstanceSnapshot(
+		FAngelscriptASClassActorConstructionTests::VerifyInstanceSnapshot(
 			*TestRunner,
 			TEXT("ASClass actor-construction test case second spawned actor"),
 			SecondSnapshot);
 
 		ASSERT_THAT(AreEqual(
-			ASClassActorConstructionTest::ExpectedCtorCount,
+			FAngelscriptASClassActorConstructionTests::ExpectedCtorCount,
 			SecondSnapshot.CtorCount,
 			TEXT("ASClass actor-construction test case should keep the second actor constructor count isolated from the first actor")));
 		ASSERT_THAT(AreEqual(

@@ -15,9 +15,12 @@
 // Test Layer: UE Functional
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-namespace ASClassHelperTest
+TEST_CLASS_WITH_FLAGS(FAngelscriptASClassHelperTests,
+	"Angelscript.TestModule.ClassGenerator.ASClass",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	UBlueprint* CreateTransientBlueprintChild(
+private:
+	static UBlueprint* CreateTransientBlueprintChild(
 		FAutomationTestBase& Test,
 		UClass* ParentClass,
 		FStringView Suffix,
@@ -59,14 +62,14 @@ namespace ASClassHelperTest
 		return Blueprint;
 	}
 
-	bool CompileAndValidateBlueprint(FAutomationTestBase& Test, UBlueprint& Blueprint)
+	static bool CompileAndValidateBlueprint(FAutomationTestBase& Test, UBlueprint& Blueprint)
 	{
 		FKismetEditorUtilities::CompileBlueprint(&Blueprint);
 		FNoDiscardAsserter LocalAssert(Test);
 		return LocalAssert.IsNotNull(Blueprint.GeneratedClass.Get(), TEXT("ASClass helper test case should compile the transient blueprint"));
 	}
 
-	void CleanupBlueprint(UBlueprint*& Blueprint)
+	static void CleanupBlueprint(UBlueprint*& Blueprint)
 	{
 		if (Blueprint == nullptr)
 		{
@@ -102,12 +105,7 @@ namespace ASClassHelperTest
 			return BlueprintAsset != nullptr ? BlueprintAsset->GeneratedClass.Get() : nullptr;
 		}
 	};
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptASClassHelperTests,
-	"Angelscript.TestModule.ClassGenerator.ASClass",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
 public:
 	BEFORE_ALL()
 	{
@@ -152,14 +150,14 @@ public:
 		UASClass* ScriptASClass = Cast<UASClass>(ScriptParentClass);
 		ASSERT_THAT(IsNotNull(ScriptASClass, TEXT("ASClass helper test case should compile the script parent as a UASClass")));
 
-		ASClassHelperTest::FScopedTransientBlueprint Blueprint;
-		Blueprint.BlueprintAsset = ASClassHelperTest::CreateTransientBlueprintChild(*TestRunner, ScriptParentClass, TEXT("HierarchyHelpers"));
+		FAngelscriptASClassHelperTests::FScopedTransientBlueprint Blueprint;
+		Blueprint.BlueprintAsset = FAngelscriptASClassHelperTests::CreateTransientBlueprintChild(*TestRunner, ScriptParentClass, TEXT("HierarchyHelpers"));
 		if (Blueprint.BlueprintAsset == nullptr)
 		{
 			return;
 		}
 
-		if (!ASClassHelperTest::CompileAndValidateBlueprint(*TestRunner, *Blueprint.BlueprintAsset))
+		if (!FAngelscriptASClassHelperTests::CompileAndValidateBlueprint(*TestRunner, *Blueprint.BlueprintAsset))
 		{
 			return;
 		}

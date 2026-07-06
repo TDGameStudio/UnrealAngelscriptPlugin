@@ -16,15 +16,18 @@
 // Test Layer: UE Functional
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-namespace ScriptClassCreationTest
+TEST_CLASS_WITH_FLAGS(FAngelscriptScriptClassCreationTests,
+	"Angelscript.TestModule.ScriptClass",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	FAngelscriptEngine& AcquireFreshScriptClassEngine()
+private:
+	static FAngelscriptEngine& AcquireFreshScriptClassEngine()
 	{
 		DestroySharedAndStrayGlobalTestEngine();
 		return AcquireCleanSharedCloneEngine();
 	}
 
-	UBlueprint* CreateTransientBlueprintChild(
+	static UBlueprint* CreateTransientBlueprintChild(
 		FAutomationTestBase& Test,
 		UClass* ParentClass,
 		FStringView Suffix,
@@ -66,14 +69,14 @@ namespace ScriptClassCreationTest
 		return Blueprint;
 	}
 
-	bool CompileAndValidateBlueprint(FAutomationTestBase& Test, UBlueprint& Blueprint)
+	static bool CompileAndValidateBlueprint(FAutomationTestBase& Test, UBlueprint& Blueprint)
 	{
 		FKismetEditorUtilities::CompileBlueprint(&Blueprint);
 		FNoDiscardAsserter LocalAssert(Test);
 		return LocalAssert.IsNotNull(Blueprint.GeneratedClass.Get(), TEXT("Blueprint should compile to a generated class"));
 	}
 
-	void CleanupBlueprint(UBlueprint*& Blueprint)
+	static void CleanupBlueprint(UBlueprint*& Blueprint)
 	{
 		if (Blueprint == nullptr)
 		{
@@ -109,16 +112,10 @@ namespace ScriptClassCreationTest
 			return BlueprintAsset != nullptr ? BlueprintAsset->GeneratedClass.Get() : nullptr;
 		}
 	};
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptScriptClassCreationTests,
-	"Angelscript.TestModule.ScriptClass",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
 public:
 	TEST_METHOD(CompilesToUClass)
 	{
-		FAngelscriptEngine& Engine = ScriptClassCreationTest::AcquireFreshScriptClassEngine();
+		FAngelscriptEngine& Engine = FAngelscriptScriptClassCreationTests::AcquireFreshScriptClassEngine();
 		FAngelscriptEngineScope EngineScope(Engine);
 		static const FName ModuleName(TEXT("TestScriptClassCompilesToUClass"));
 		ON_SCOPE_EXIT
@@ -167,7 +164,7 @@ public:
 
 	TEST_METHOD(CanSpawnInTestWorld)
 	{
-		FAngelscriptEngine& Engine = ScriptClassCreationTest::AcquireFreshScriptClassEngine();
+		FAngelscriptEngine& Engine = FAngelscriptScriptClassCreationTests::AcquireFreshScriptClassEngine();
 		FAngelscriptEngineScope EngineScope(Engine);
 		static const FName ModuleName(TEXT("TestScriptClassCanSpawnInTestWorld"));
 		ON_SCOPE_EXIT
@@ -222,7 +219,7 @@ public:
 
 	TEST_METHOD(MultiSpawnKeepsStateIsolation)
 	{
-		FAngelscriptEngine& Engine = ScriptClassCreationTest::AcquireFreshScriptClassEngine();
+		FAngelscriptEngine& Engine = FAngelscriptScriptClassCreationTests::AcquireFreshScriptClassEngine();
 		FAngelscriptEngineScope EngineScope(Engine);
 		static const FName ModuleName(TEXT("TestScriptClassMultiSpawnKeepsStateIsolation"));
 		ON_SCOPE_EXIT
@@ -273,7 +270,7 @@ public:
 
 	TEST_METHOD(BlueprintChildCompiles)
 	{
-		FAngelscriptEngine& Engine = ScriptClassCreationTest::AcquireFreshScriptClassEngine();
+		FAngelscriptEngine& Engine = FAngelscriptScriptClassCreationTests::AcquireFreshScriptClassEngine();
 		FAngelscriptEngineScope EngineScope(Engine);
 		static const FName ModuleName(TEXT("TestScriptClassBlueprintChildCompiles"));
 		ON_SCOPE_EXIT
@@ -301,10 +298,10 @@ public:
 			TEXT("ATestScriptClassBlueprintChildCompiles"));
 		if (ScriptClass == nullptr) { return; }
 
-		ScriptClassCreationTest::FScopedTransientBlueprint Blueprint;
-		Blueprint.BlueprintAsset = ScriptClassCreationTest::CreateTransientBlueprintChild(*TestRunner, ScriptClass, TEXT("ScriptClassBlueprintChild"));
+		FAngelscriptScriptClassCreationTests::FScopedTransientBlueprint Blueprint;
+		Blueprint.BlueprintAsset = FAngelscriptScriptClassCreationTests::CreateTransientBlueprintChild(*TestRunner, ScriptClass, TEXT("ScriptClassBlueprintChild"));
 		if (Blueprint.BlueprintAsset == nullptr) { return; }
-		if (!ScriptClassCreationTest::CompileAndValidateBlueprint(*TestRunner, *Blueprint.BlueprintAsset)) { return; }
+		if (!FAngelscriptScriptClassCreationTests::CompileAndValidateBlueprint(*TestRunner, *Blueprint.BlueprintAsset)) { return; }
 
 		UClass* BlueprintClass = Blueprint.GetGeneratedClass();
 		ASSERT_THAT(IsNotNull(BlueprintClass, TEXT("Blueprint-child test case should provide a generated blueprint class")));
@@ -327,7 +324,7 @@ public:
 
 	TEST_METHOD(CDOHasExpectedDefaults)
 	{
-		FAngelscriptEngine& Engine = ScriptClassCreationTest::AcquireFreshScriptClassEngine();
+		FAngelscriptEngine& Engine = FAngelscriptScriptClassCreationTests::AcquireFreshScriptClassEngine();
 		FAngelscriptEngineScope EngineScope(Engine);
 		static const FName ModuleName(TEXT("TestScriptClassCDOHasExpectedDefaults"));
 		ON_SCOPE_EXIT
@@ -385,7 +382,7 @@ public:
 
 	TEST_METHOD(RecompileDoesNotCrashClassSwitch)
 	{
-		FAngelscriptEngine& Engine = ScriptClassCreationTest::AcquireFreshScriptClassEngine();
+		FAngelscriptEngine& Engine = FAngelscriptScriptClassCreationTests::AcquireFreshScriptClassEngine();
 		FAngelscriptEngineScope EngineScope(Engine);
 		static const FName ModuleName(TEXT("TestScriptClassRecompileDoesNotCrashClassSwitch"));
 		ON_SCOPE_EXIT
@@ -446,7 +443,7 @@ public:
 
 	TEST_METHOD(NonUClassTypeCannotSpawn)
 	{
-		FAngelscriptEngine& Engine = ScriptClassCreationTest::AcquireFreshScriptClassEngine();
+		FAngelscriptEngine& Engine = FAngelscriptScriptClassCreationTests::AcquireFreshScriptClassEngine();
 		FAngelscriptEngineScope EngineScope(Engine);
 		static const FName ModuleName(TEXT("TestScriptClassNonUClassTypeCannotSpawn"));
 		ON_SCOPE_EXIT
@@ -483,7 +480,7 @@ public:
 
 	TEST_METHOD(RenameReplacesOldClass)
 	{
-		FAngelscriptEngine& Engine = ScriptClassCreationTest::AcquireFreshScriptClassEngine();
+		FAngelscriptEngine& Engine = FAngelscriptScriptClassCreationTests::AcquireFreshScriptClassEngine();
 		FAngelscriptEngineScope EngineScope(Engine);
 		static const FName ModuleName(TEXT("TestScriptClassRenameReplacesOldClass"));
 		ON_SCOPE_EXIT

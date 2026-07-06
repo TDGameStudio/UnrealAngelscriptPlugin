@@ -13,28 +13,31 @@
 #if WITH_ANGELSCRIPT_UNITTESTS
 
 
-namespace ASGeneratedTypeIdentityTest
+TEST_CLASS_WITH_FLAGS(FAngelscriptASGeneratedTypeIdentityTests,
+	"Angelscript.TestModule.ClassGenerator.ASStruct",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	static const FName StructModuleName(TEXT("ASGeneratedStructIdentity"));
-	static const FName StructName(TEXT("StructIdentityTarget"));
-	static const FString StructScriptFilename(TEXT("ASGeneratedStructIdentity.as"));
+private:
+	inline static const FName StructModuleName = FName(TEXT("ASGeneratedStructIdentity"));
+	inline static const FName StructName = FName(TEXT("StructIdentityTarget"));
+	inline static const FString StructScriptFilename = FString(TEXT("ASGeneratedStructIdentity.as"));
 
-	FString GetScriptAbsoluteFilename()
+	static FString GetScriptAbsoluteFilename()
 	{
 		return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation"), StructScriptFilename);
 	}
 
-	UScriptStruct* FindStructObjectByName(const FName InStructName)
+	static UScriptStruct* FindStructObjectByName(const FName InStructName)
 	{
 		return FindObject<UScriptStruct>(FAngelscriptEngine::GetPackage(), *InStructName.ToString());
 	}
 
-	UASStruct* FindCurrentStruct()
+	static UASStruct* FindCurrentStruct()
 	{
 		return Cast<UASStruct>(FindStructObjectByName(StructName));
 	}
 
-	bool VerifyHandledReloadResult(FAutomationTestBase& Test, const TCHAR* Context, const ECompileResult ReloadResult)
+	static bool VerifyHandledReloadResult(FAutomationTestBase& Test, const TCHAR* Context, const ECompileResult ReloadResult)
 	{
 		FNoDiscardAsserter LocalAssert(Test);
 		return LocalAssert.IsTrue(
@@ -42,7 +45,7 @@ namespace ASGeneratedTypeIdentityTest
 			Context);
 	}
 
-	bool VerifyLiveStructIdentity(
+	static bool VerifyLiveStructIdentity(
 		FAutomationTestBase& Test,
 		UASStruct* Struct,
 		const TCHAR* StageLabel)
@@ -67,7 +70,7 @@ namespace ASGeneratedTypeIdentityTest
 		return bIsScriptStructMatches && bScriptTypeMatches && bNewestVersionMatches;
 	}
 
-	bool VerifyReplacedStructIdentity(
+	static bool VerifyReplacedStructIdentity(
 		FAutomationTestBase& Test,
 		UASStruct* Struct,
 		UASStruct* ExpectedNewestVersion,
@@ -99,12 +102,6 @@ namespace ASGeneratedTypeIdentityTest
 			&& bDirectVersionLinkMatches
 			&& bClearedScriptTypeMatches;
 	}
-}
-
-TEST_CLASS_WITH_FLAGS(FAngelscriptASGeneratedTypeIdentityTests,
-	"Angelscript.TestModule.ClassGenerator.ASStruct",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
 public:
 	BEFORE_ALL()
 	{
@@ -123,8 +120,8 @@ public:
 		FAngelscriptEngineScope EngineScope(Engine);
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*ASGeneratedTypeIdentityTest::StructModuleName.ToString());
-			IFileManager::Get().Delete(*ASGeneratedTypeIdentityTest::GetScriptAbsoluteFilename(), false, true, true);
+			Engine.DiscardModule(*FAngelscriptASGeneratedTypeIdentityTests::StructModuleName.ToString());
+			IFileManager::Get().Delete(*FAngelscriptASGeneratedTypeIdentityTests::GetScriptAbsoluteFilename(), false, true, true);
 		};
 
 		const FString ScriptV1 = ASTEST_AS(R"AS(
@@ -149,14 +146,14 @@ public:
 			)AS");
 
 		if (!this->Assert.IsTrue(
-				CompileAnnotatedModuleFromMemory(&Engine, ASGeneratedTypeIdentityTest::StructModuleName, ASGeneratedTypeIdentityTest::StructScriptFilename, ScriptV1),
+				CompileAnnotatedModuleFromMemory(&Engine, FAngelscriptASGeneratedTypeIdentityTests::StructModuleName, FAngelscriptASGeneratedTypeIdentityTests::StructScriptFilename, ScriptV1),
 				TEXT("Struct identity baseline compile should succeed")))
 		{
 			return;
 		}
 
-		UASStruct* StructV1 = ASGeneratedTypeIdentityTest::FindCurrentStruct();
-		if (!ASGeneratedTypeIdentityTest::VerifyLiveStructIdentity(*TestRunner, StructV1, TEXT("Struct identity baseline")))
+		UASStruct* StructV1 = FAngelscriptASGeneratedTypeIdentityTests::FindCurrentStruct();
+		if (!FAngelscriptASGeneratedTypeIdentityTests::VerifyLiveStructIdentity(*TestRunner, StructV1, TEXT("Struct identity baseline")))
 		{
 			return;
 		}
@@ -173,8 +170,8 @@ public:
 				CompileModuleWithResult(
 					&Engine,
 					ECompileType::FullReload,
-					ASGeneratedTypeIdentityTest::StructModuleName,
-					ASGeneratedTypeIdentityTest::StructScriptFilename,
+					FAngelscriptASGeneratedTypeIdentityTests::StructModuleName,
+					FAngelscriptASGeneratedTypeIdentityTests::StructScriptFilename,
 					ScriptV2,
 					ReloadResult),
 				TEXT("Struct identity full reload should compile successfully")))
@@ -182,7 +179,7 @@ public:
 			return;
 		}
 
-		if (!ASGeneratedTypeIdentityTest::VerifyHandledReloadResult(
+		if (!FAngelscriptASGeneratedTypeIdentityTests::VerifyHandledReloadResult(
 				*TestRunner,
 				TEXT("Struct identity full reload should be handled by the full reload pipeline"),
 				ReloadResult))
@@ -190,8 +187,8 @@ public:
 			return;
 		}
 
-		UASStruct* StructV2 = ASGeneratedTypeIdentityTest::FindCurrentStruct();
-		if (!ASGeneratedTypeIdentityTest::VerifyLiveStructIdentity(*TestRunner, StructV2, TEXT("Struct identity replacement")))
+		UASStruct* StructV2 = FAngelscriptASGeneratedTypeIdentityTests::FindCurrentStruct();
+		if (!FAngelscriptASGeneratedTypeIdentityTests::VerifyLiveStructIdentity(*TestRunner, StructV2, TEXT("Struct identity replacement")))
 		{
 			return;
 		}
@@ -209,7 +206,7 @@ public:
 		ASSERT_THAT(IsNull(
 			StructV1->FindPropertyByName(TEXT("AddedValue")),
 			TEXT("Struct identity replaced struct should keep its original reflected layout")));
-		ASGeneratedTypeIdentityTest::VerifyReplacedStructIdentity(
+		FAngelscriptASGeneratedTypeIdentityTests::VerifyReplacedStructIdentity(
 			*TestRunner,
 			StructV1,
 			StructV2,

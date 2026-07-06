@@ -8,15 +8,20 @@
 // Test Layer: Runtime Integration
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-namespace LiteralAssetPostInitTest
+TEST_CLASS_WITH_FLAGS(FAngelscriptLiteralAssetPostInitTests,
+	"Angelscript.TestModule.ClassGenerator.LiteralAsset",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	static const FName ModuleName(TEXT("ASLiteralAssetPostInit"));
-	static const FString ScriptFilename(TEXT("ASLiteralAssetPostInit.as"));
-	static const FName GeneratedClassName(TEXT("ULiteralPostInitAsset"));
-	static const FName AssetName(TEXT("ExampleAsset"));
-	static const FName WasPostInitPropertyName(TEXT("bWasPostInit"));
-	static const FName PostInitCallsPropertyName(TEXT("PostInitCalls"));
-	static const FName InitMarkerPropertyName(TEXT("InitMarker"));
+private:
+	struct FPostInitCase
+	{
+	inline static const FName ModuleName = FName(TEXT("ASLiteralAssetPostInit"));
+	inline static const FString ScriptFilename = FString(TEXT("ASLiteralAssetPostInit.as"));
+	inline static const FName GeneratedClassName = FName(TEXT("ULiteralPostInitAsset"));
+	inline static const FName AssetName = FName(TEXT("ExampleAsset"));
+	inline static const FName WasPostInitPropertyName = FName(TEXT("bWasPostInit"));
+	inline static const FName PostInitCallsPropertyName = FName(TEXT("PostInitCalls"));
+	inline static const FName InitMarkerPropertyName = FName(TEXT("InitMarker"));
 	static constexpr int32 ExpectedInitMarker = 1337;
 
 	struct FLiteralAssetSnapshot
@@ -26,12 +31,12 @@ namespace LiteralAssetPostInitTest
 		int32 InitMarker = INDEX_NONE;
 	};
 
-	UObject* FindLiteralAsset()
+	static UObject* FindLiteralAsset()
 	{
 		return FindObject<UObject>(FAngelscriptEngine::Get().AssetsPackage, *AssetName.ToString());
 	}
 
-	UClass* CompileLiteralAssetCarrier(
+	static UClass* CompileLiteralAssetCarrier(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
@@ -75,7 +80,7 @@ namespace LiteralAssetPostInitTest
 			GeneratedClassName);
 	}
 
-	bool ReadLiteralAssetSnapshot(
+	static bool ReadLiteralAssetSnapshot(
 		FAutomationTestBase& Test,
 		UObject* Object,
 		FLiteralAssetSnapshot& OutSnapshot)
@@ -98,7 +103,7 @@ namespace LiteralAssetPostInitTest
 		return true;
 	}
 
-	bool ExecuteModuleInt(
+	static bool ExecuteModuleInt(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		const FString& Declaration,
@@ -109,16 +114,16 @@ namespace LiteralAssetPostInitTest
 		FNoDiscardAsserter LocalAssert(Test);
 		return LocalAssert.IsTrue(bExecuted, Context);
 	}
-}
+	};
 
-namespace LiteralAssetPostInitNameCollisionTest
-{
-	static const FName ModuleName(TEXT("ASLiteralAssetPostInitNameCollision"));
-	static const FString ScriptFilename(TEXT("ASLiteralAssetPostInitNameCollision.as"));
-	static const FName GeneratedClassName(TEXT("ULiteralPostInitCollisionAsset"));
-	static const FName AssetName(TEXT("CollisionExampleAsset"));
-	static const FName RightCallsPropertyName(TEXT("RightCalls"));
-	static const FName WrongCallsPropertyName(TEXT("WrongCalls"));
+	struct FNameCollisionCase
+	{
+	inline static const FName ModuleName = FName(TEXT("ASLiteralAssetPostInitNameCollision"));
+	inline static const FString ScriptFilename = FString(TEXT("ASLiteralAssetPostInitNameCollision.as"));
+	inline static const FName GeneratedClassName = FName(TEXT("ULiteralPostInitCollisionAsset"));
+	inline static const FName AssetName = FName(TEXT("CollisionExampleAsset"));
+	inline static const FName RightCallsPropertyName = FName(TEXT("RightCalls"));
+	inline static const FName WrongCallsPropertyName = FName(TEXT("WrongCalls"));
 
 	struct FLiteralAssetCollisionSnapshot
 	{
@@ -126,12 +131,12 @@ namespace LiteralAssetPostInitNameCollisionTest
 		int32 WrongCalls = INDEX_NONE;
 	};
 
-	UObject* FindLiteralAsset()
+	static UObject* FindLiteralAsset()
 	{
 		return FindObject<UObject>(FAngelscriptEngine::Get().AssetsPackage, *AssetName.ToString());
 	}
 
-	UClass* CompileLiteralAssetCarrier(
+	static UClass* CompileLiteralAssetCarrier(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
@@ -181,7 +186,7 @@ namespace LiteralAssetPostInitNameCollisionTest
 			GeneratedClassName);
 	}
 
-	bool ReadLiteralAssetSnapshot(
+	static bool ReadLiteralAssetSnapshot(
 		FAutomationTestBase& Test,
 		UObject* Object,
 		FLiteralAssetCollisionSnapshot& OutSnapshot)
@@ -199,7 +204,7 @@ namespace LiteralAssetPostInitNameCollisionTest
 		return true;
 	}
 
-	bool ExecuteModuleInt(
+	static bool ExecuteModuleInt(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine,
 		const FString& Declaration,
@@ -210,24 +215,20 @@ namespace LiteralAssetPostInitNameCollisionTest
 		FNoDiscardAsserter LocalAssert(Test);
 		return LocalAssert.IsTrue(bExecuted, Context);
 	}
-}
+	};
 
-namespace LiteralAssetMultipleCoexistTest
-{
-	static const FName ModuleName(TEXT("ASLiteralAssetMultipleCoexist"));
-	static const FString ScriptFilename(TEXT("ASLiteralAssetMultipleCoexist.as"));
-}
+	struct FMultipleCoexistCase
+	{
+	inline static const FName ModuleName = FName(TEXT("ASLiteralAssetMultipleCoexist"));
+	inline static const FString ScriptFilename = FString(TEXT("ASLiteralAssetMultipleCoexist.as"));
+	};
 
-namespace LiteralAssetWithComponentTest
-{
-	static const FName ModuleName(TEXT("ASLiteralAssetWithComponent"));
-	static const FString ScriptFilename(TEXT("ASLiteralAssetWithComponent.as"));
-}
+	struct FWithComponentCase
+	{
+	inline static const FName ModuleName = FName(TEXT("ASLiteralAssetWithComponent"));
+	inline static const FString ScriptFilename = FString(TEXT("ASLiteralAssetWithComponent.as"));
+	};
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptLiteralAssetPostInitTests,
-	"Angelscript.TestModule.ClassGenerator.LiteralAsset",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
 public:
 	BEFORE_ALL()
 	{
@@ -248,25 +249,25 @@ public:
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*LiteralAssetPostInitTest::ModuleName.ToString());
+			Engine.DiscardModule(*FPostInitCase::ModuleName.ToString());
 		};
 
-		UClass* GeneratedClass = LiteralAssetPostInitTest::CompileLiteralAssetCarrier(*TestRunner, Engine);
+		UClass* GeneratedClass = FPostInitCase::CompileLiteralAssetCarrier(*TestRunner, Engine);
 		ASSERT_THAT(IsNotNull(GeneratedClass, TEXT("Literal-asset post-init test case should compile the generated asset carrier class")));
 		if (GeneratedClass == nullptr)
 		{
 			return;
 		}
 
-		UObject* LiteralAssetBeforeTouch = LiteralAssetPostInitTest::FindLiteralAsset();
+		UObject* LiteralAssetBeforeTouch = FPostInitCase::FindLiteralAsset();
 		ASSERT_THAT(IsNotNull(LiteralAssetBeforeTouch, TEXT("Literal-asset post-init test case should materialize the asset object before any explicit getter call")));
 		if (LiteralAssetBeforeTouch == nullptr)
 		{
 			return;
 		}
 
-		LiteralAssetPostInitTest::FLiteralAssetSnapshot SnapshotBeforeTouch;
-		if (!LiteralAssetPostInitTest::ReadLiteralAssetSnapshot(*TestRunner, LiteralAssetBeforeTouch, SnapshotBeforeTouch))
+		FPostInitCase::FLiteralAssetSnapshot SnapshotBeforeTouch;
+		if (!FPostInitCase::ReadLiteralAssetSnapshot(*TestRunner, LiteralAssetBeforeTouch, SnapshotBeforeTouch))
 		{
 			return;
 		}
@@ -283,7 +284,7 @@ public:
 				SnapshotBeforeTouch.bWasPostInit,
 				TEXT("Literal-asset post-init test case should preserve the bool flag written by __Init_ExampleAsset"))
 			|| !this->Assert.AreEqual(
-				LiteralAssetPostInitTest::ExpectedInitMarker,
+				FPostInitCase::ExpectedInitMarker,
 				SnapshotBeforeTouch.InitMarker,
 				TEXT("Literal-asset post-init test case should preserve the init marker written by __Init_ExampleAsset")))
 		{
@@ -291,7 +292,7 @@ public:
 		}
 
 		int32 TouchResult = INDEX_NONE;
-		if (!LiteralAssetPostInitTest::ExecuteModuleInt(
+		if (!FPostInitCase::ExecuteModuleInt(
 				*TestRunner,
 				Engine,
 				TEXT("int TouchExampleAssetAgain()"),
@@ -301,21 +302,21 @@ public:
 			return;
 		}
 
-		UObject* LiteralAssetAfterTouch = LiteralAssetPostInitTest::FindLiteralAsset();
+		UObject* LiteralAssetAfterTouch = FPostInitCase::FindLiteralAsset();
 		ASSERT_THAT(IsNotNull(LiteralAssetAfterTouch, TEXT("Literal-asset post-init test case should still expose the canonical asset after repeated getter access")));
 		if (LiteralAssetAfterTouch == nullptr)
 		{
 			return;
 		}
 
-		LiteralAssetPostInitTest::FLiteralAssetSnapshot SnapshotAfterTouch;
-		if (!LiteralAssetPostInitTest::ReadLiteralAssetSnapshot(*TestRunner, LiteralAssetAfterTouch, SnapshotAfterTouch))
+		FPostInitCase::FLiteralAssetSnapshot SnapshotAfterTouch;
+		if (!FPostInitCase::ReadLiteralAssetSnapshot(*TestRunner, LiteralAssetAfterTouch, SnapshotAfterTouch))
 		{
 			return;
 		}
 
 		ASSERT_THAT(AreEqual(
-			LiteralAssetPostInitTest::ExpectedInitMarker,
+			FPostInitCase::ExpectedInitMarker,
 			TouchResult,
 			TEXT("Literal-asset post-init test should return the initialized marker when the generated getter is touched again")));
 		ASSERT_THAT(IsTrue(
@@ -329,7 +330,7 @@ public:
 			SnapshotAfterTouch.bWasPostInit,
 			TEXT("Literal-asset post-init test should preserve the bool flag after repeated getter access")));
 		ASSERT_THAT(AreEqual(
-			LiteralAssetPostInitTest::ExpectedInitMarker,
+			FPostInitCase::ExpectedInitMarker,
 			SnapshotAfterTouch.InitMarker,
 			TEXT("Literal-asset post-init test should preserve the init marker after repeated getter access")));
 	}
@@ -351,15 +352,15 @@ public:
 		TestRunner->AddExpectedError(TEXT("LogUObjectBase: Class pointer is invalid or CDO is invalid."), EAutomationExpectedErrorFlags::Contains, 1);
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*LiteralAssetMultipleCoexistTest::ModuleName.ToString());
+			Engine.DiscardModule(*FMultipleCoexistCase::ModuleName.ToString());
 		};
 
 		ECompileResult CompileResult = ECompileResult::Error;
 		const bool bCompiled = CompileModuleWithResult(
 			&Engine,
 			ECompileType::FullReload,
-			LiteralAssetMultipleCoexistTest::ModuleName,
-			LiteralAssetMultipleCoexistTest::ScriptFilename,
+			FMultipleCoexistCase::ModuleName,
+			FMultipleCoexistCase::ScriptFilename,
 			ASTEST_AS(R"AS(
 				UCLASS()
 				class UMultiAssetOwner : UObject
@@ -407,15 +408,15 @@ public:
 		TestRunner->AddExpectedError(TEXT("LogUObjectBase: Class pointer is invalid or CDO is invalid."), EAutomationExpectedErrorFlags::Contains, 1);
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*LiteralAssetWithComponentTest::ModuleName.ToString());
+			Engine.DiscardModule(*FWithComponentCase::ModuleName.ToString());
 		};
 
 		ECompileResult CompileResult = ECompileResult::Error;
 		const bool bCompiled = CompileModuleWithResult(
 			&Engine,
 			ECompileType::FullReload,
-			LiteralAssetWithComponentTest::ModuleName,
-			LiteralAssetWithComponentTest::ScriptFilename,
+			FWithComponentCase::ModuleName,
+			FWithComponentCase::ScriptFilename,
 			ASTEST_AS(R"AS(
 				UCLASS()
 				class UAssetCarrier : UObject

@@ -10,15 +10,18 @@
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-namespace ASClassObjectConstructionTest
+TEST_CLASS_WITH_FLAGS(FAngelscriptASClassObjectConstructionTests,
+	"Angelscript.TestModule.ClassGenerator.ASClass",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	static const FName ModuleName(TEXT("ASClassObjectConstruction"));
-	static const FString ScriptFilename(TEXT("ASClassObjectConstruction.as"));
-	static const FName GeneratedClassName(TEXT("UObjectConstructionCarrier"));
-	static const FName CtorCountPropertyName(TEXT("CtorCount"));
-	static const FName DefaultValuePropertyName(TEXT("DefaultValue"));
-	static const FName DefaultLabelPropertyName(TEXT("DefaultLabel"));
-	static const FString ExpectedDefaultLabel(TEXT("ObjectDefaults"));
+private:
+	inline static const FName ModuleName = FName(TEXT("ASClassObjectConstruction"));
+	inline static const FString ScriptFilename = FString(TEXT("ASClassObjectConstruction.as"));
+	inline static const FName GeneratedClassName = FName(TEXT("UObjectConstructionCarrier"));
+	inline static const FName CtorCountPropertyName = FName(TEXT("CtorCount"));
+	inline static const FName DefaultValuePropertyName = FName(TEXT("DefaultValue"));
+	inline static const FName DefaultLabelPropertyName = FName(TEXT("DefaultLabel"));
+	inline static const FString ExpectedDefaultLabel = FString(TEXT("ObjectDefaults"));
 	static constexpr int32 ExpectedCtorCount = 1;
 	static constexpr int32 ExpectedDefaultValue = 7;
 
@@ -29,7 +32,7 @@ namespace ASClassObjectConstructionTest
 		FString DefaultLabel;
 	};
 
-	UASClass* CompileObjectConstructionCarrier(
+	static UASClass* CompileObjectConstructionCarrier(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
@@ -95,7 +98,7 @@ namespace ASClassObjectConstructionTest
 		return GeneratedASClass;
 	}
 
-	bool ReadConstructionSnapshot(
+	static bool ReadConstructionSnapshot(
 		FAutomationTestBase& Test,
 		UObject* Object,
 		FObjectConstructionSnapshot& OutSnapshot)
@@ -118,7 +121,7 @@ namespace ASClassObjectConstructionTest
 		return true;
 	}
 
-	bool VerifySnapshot(
+	static bool VerifySnapshot(
 		FAutomationTestBase& Test,
 		const FString& ScopeLabel,
 		const FObjectConstructionSnapshot& Snapshot,
@@ -141,7 +144,7 @@ namespace ASClassObjectConstructionTest
 		return bCtorCountMatches && bDefaultValueMatches && bDefaultLabelMatches;
 	}
 
-	void ReleaseObject(TWeakObjectPtr<UObject>& WeakObject)
+	static void ReleaseObject(TWeakObjectPtr<UObject>& WeakObject)
 	{
 		if (!WeakObject.IsValid())
 		{
@@ -152,12 +155,7 @@ namespace ASClassObjectConstructionTest
 		WeakObject->MarkAsGarbage();
 		WeakObject = nullptr;
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptASClassObjectConstructionTests,
-	"Angelscript.TestModule.ClassGenerator.ASClass",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
 public:
 	BEFORE_ALL()
 	{
@@ -177,11 +175,11 @@ public:
 
 		ON_SCOPE_EXIT
 		{
-			Engine.DiscardModule(*ASClassObjectConstructionTest::ModuleName.ToString());
+			Engine.DiscardModule(*FAngelscriptASClassObjectConstructionTests::ModuleName.ToString());
 			CollectGarbage(RF_NoFlags, true);
 		};
 
-		UASClass* GeneratedASClass = ASClassObjectConstructionTest::CompileObjectConstructionCarrier(*TestRunner, Engine);
+		UASClass* GeneratedASClass = FAngelscriptASClassObjectConstructionTests::CompileObjectConstructionCarrier(*TestRunner, Engine);
 		if (GeneratedASClass == nullptr)
 		{
 			return;
@@ -194,8 +192,8 @@ public:
 			return;
 		}
 
-		ASClassObjectConstructionTest::FObjectConstructionSnapshot DefaultSnapshot;
-		if (!ASClassObjectConstructionTest::ReadConstructionSnapshot(*TestRunner, DefaultObject, DefaultSnapshot))
+		FAngelscriptASClassObjectConstructionTests::FObjectConstructionSnapshot DefaultSnapshot;
+		if (!FAngelscriptASClassObjectConstructionTests::ReadConstructionSnapshot(*TestRunner, DefaultObject, DefaultSnapshot))
 		{
 			return;
 		}
@@ -216,14 +214,14 @@ public:
 		TWeakObjectPtr<UObject> WeakSecondInstance = SecondInstance;
 		ON_SCOPE_EXIT
 		{
-			ASClassObjectConstructionTest::ReleaseObject(WeakSecondInstance);
-			ASClassObjectConstructionTest::ReleaseObject(WeakFirstInstance);
+			FAngelscriptASClassObjectConstructionTests::ReleaseObject(WeakSecondInstance);
+			FAngelscriptASClassObjectConstructionTests::ReleaseObject(WeakFirstInstance);
 		};
 
-		ASClassObjectConstructionTest::FObjectConstructionSnapshot FirstSnapshot;
-		ASClassObjectConstructionTest::FObjectConstructionSnapshot SecondSnapshot;
-		if (!ASClassObjectConstructionTest::ReadConstructionSnapshot(*TestRunner, FirstInstance, FirstSnapshot)
-			|| !ASClassObjectConstructionTest::ReadConstructionSnapshot(*TestRunner, SecondInstance, SecondSnapshot))
+		FAngelscriptASClassObjectConstructionTests::FObjectConstructionSnapshot FirstSnapshot;
+		FAngelscriptASClassObjectConstructionTests::FObjectConstructionSnapshot SecondSnapshot;
+		if (!FAngelscriptASClassObjectConstructionTests::ReadConstructionSnapshot(*TestRunner, FirstInstance, FirstSnapshot)
+			|| !FAngelscriptASClassObjectConstructionTests::ReadConstructionSnapshot(*TestRunner, SecondInstance, SecondSnapshot))
 		{
 			return;
 		}
@@ -241,24 +239,24 @@ public:
 			FirstInstance != DefaultObject && SecondInstance != DefaultObject,
 			TEXT("ASClass object-construction test case should keep runtime instances distinct from the class default object")));
 
-		ASClassObjectConstructionTest::VerifySnapshot(
+		FAngelscriptASClassObjectConstructionTests::VerifySnapshot(
 			*TestRunner,
 			TEXT("ASClass object-construction test case class default object"),
 			DefaultSnapshot,
-			ASClassObjectConstructionTest::ExpectedCtorCount);
-		ASClassObjectConstructionTest::VerifySnapshot(
+			FAngelscriptASClassObjectConstructionTests::ExpectedCtorCount);
+		FAngelscriptASClassObjectConstructionTests::VerifySnapshot(
 			*TestRunner,
 			TEXT("ASClass object-construction test case first instance"),
 			FirstSnapshot,
-			ASClassObjectConstructionTest::ExpectedCtorCount);
-		ASClassObjectConstructionTest::VerifySnapshot(
+			FAngelscriptASClassObjectConstructionTests::ExpectedCtorCount);
+		FAngelscriptASClassObjectConstructionTests::VerifySnapshot(
 			*TestRunner,
 			TEXT("ASClass object-construction test case second instance"),
 			SecondSnapshot,
-			ASClassObjectConstructionTest::ExpectedCtorCount);
+			FAngelscriptASClassObjectConstructionTests::ExpectedCtorCount);
 
 		ASSERT_THAT(AreEqual(
-			ASClassObjectConstructionTest::ExpectedCtorCount,
+			FAngelscriptASClassObjectConstructionTests::ExpectedCtorCount,
 			SecondSnapshot.CtorCount,
 			TEXT("ASClass object-construction test case should keep the second instance constructor count isolated from the first instance")));
 		ASSERT_THAT(AreEqual(

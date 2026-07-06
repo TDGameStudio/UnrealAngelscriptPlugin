@@ -12,18 +12,21 @@
 // Test Layer: Runtime Integration
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-namespace ASClassConstructionContextTest
+TEST_CLASS_WITH_FLAGS(FAngelscriptASClassConstructionContextTests,
+	"Angelscript.TestModule.ClassGenerator.ASClass",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	static const FName ModuleName(TEXT("ASClassConstructionContext"));
-	static const FString ScriptFilename(TEXT("ASClassConstructionContext.as"));
-	static const FName GeneratedClassName(TEXT("UConstructionContextCarrier"));
+private:
+	inline static const FName ModuleName = FName(TEXT("ASClassConstructionContext"));
+	inline static const FString ScriptFilename = FString(TEXT("ASClassConstructionContext.as"));
+	inline static const FName GeneratedClassName = FName(TEXT("UConstructionContextCarrier"));
 
-	void ResetProbeState()
+	static void ResetProbeState()
 	{
 		UAngelscriptConstructionContextProbe::ResetCaptureState();
 	}
 
-	bool VerifyProbeBaseline(FAutomationTestBase& Test)
+	static bool VerifyProbeBaseline(FAutomationTestBase& Test)
 	{
 		FNoDiscardAsserter LocalAssert(Test);
 		const bool bCapturedObjectCleared = LocalAssert.IsNull(
@@ -36,7 +39,7 @@ namespace ASClassConstructionContextTest
 		return bCapturedObjectCleared && bCaptureCountCleared;
 	}
 
-	UASClass* CompileConstructionContextCarrier(
+	static UASClass* CompileConstructionContextCarrier(
 		FAutomationTestBase& Test,
 		FAngelscriptEngine& Engine)
 	{
@@ -78,7 +81,7 @@ namespace ASClassConstructionContextTest
 		return GeneratedASClass;
 	}
 
-	bool VerifyPostConstructionState(
+	static bool VerifyPostConstructionState(
 		FAutomationTestBase& Test,
 		UObject* Instance)
 	{
@@ -106,12 +109,7 @@ namespace ASClassConstructionContextTest
 			&& bProbeCapturedInstance
 			&& bConstructionStateCleared;
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptASClassConstructionContextTests,
-	"Angelscript.TestModule.ClassGenerator.ASClass",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
 public:
 	BEFORE_ALL()
 	{
@@ -128,16 +126,16 @@ public:
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope EngineScope(Engine);
-		ASClassConstructionContextTest::ResetProbeState();
+		FAngelscriptASClassConstructionContextTests::ResetProbeState();
 
 		ON_SCOPE_EXIT
 		{
-			ASClassConstructionContextTest::ResetProbeState();
-			Engine.DiscardModule(*ASClassConstructionContextTest::ModuleName.ToString());
+			FAngelscriptASClassConstructionContextTests::ResetProbeState();
+			Engine.DiscardModule(*FAngelscriptASClassConstructionContextTests::ModuleName.ToString());
 			CollectGarbage(RF_NoFlags, true);
 		};
 
-		if (!ASClassConstructionContextTest::VerifyProbeBaseline(*TestRunner))
+		if (!FAngelscriptASClassConstructionContextTests::VerifyProbeBaseline(*TestRunner))
 		{
 			return;
 		}
@@ -146,14 +144,14 @@ public:
 			UASClass::GetConstructingASObject(),
 			TEXT("Construction-context test case should not expose a constructing object before compiling or instantiating")));
 
-		UASClass* GeneratedASClass = ASClassConstructionContextTest::CompileConstructionContextCarrier(*TestRunner, Engine);
+		UASClass* GeneratedASClass = FAngelscriptASClassConstructionContextTests::CompileConstructionContextCarrier(*TestRunner, Engine);
 		if (GeneratedASClass == nullptr)
 		{
 			return;
 		}
 
-		ASClassConstructionContextTest::ResetProbeState();
-		if (!ASClassConstructionContextTest::VerifyProbeBaseline(*TestRunner))
+		FAngelscriptASClassConstructionContextTests::ResetProbeState();
+		if (!FAngelscriptASClassConstructionContextTests::VerifyProbeBaseline(*TestRunner))
 		{
 			return;
 		}
@@ -179,7 +177,7 @@ public:
 			}
 		};
 
-		ASClassConstructionContextTest::VerifyPostConstructionState(
+		FAngelscriptASClassConstructionContextTests::VerifyPostConstructionState(
 			*TestRunner,
 			Instance);
 	}
